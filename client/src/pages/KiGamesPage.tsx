@@ -7,6 +7,7 @@ import {
   Chip,
   Divider,
   FormControl,
+  IconButton,
   InputLabel,
   LinearProgress,
   MenuItem,
@@ -20,10 +21,12 @@ import {
 } from '@mui/material';
 import {
   Add as AddIcon,
+  ArrowBack as ArrowBackIcon,
   AutoAwesome as AutoAwesomeIcon,
   Casino as CasinoIcon,
   CheckCircle as CheckCircleIcon,
   Extension as ExtensionIcon,
+  FileDownload as FileDownloadIcon,
   Map as MapIcon,
   Psychology as PsychologyIcon,
   Quiz as QuizIcon,
@@ -62,7 +65,7 @@ const gameCards: {
   {
     tab: 'nim',
     title: 'Nimm-Spiel',
-    subtitle: 'Eine lernende KI vermeidet nach Niederlagen schlechte Zuege.',
+    subtitle: 'Eine lernende KI vermeidet nach Niederlagen schlechte Züge.',
     icon: <CasinoIcon />,
     color: '#f57c00',
     goals: ['Verstaerkendes Lernen', 'Strategien testen', 'KI-Fehler beobachten'],
@@ -73,12 +76,12 @@ const gameCards: {
     subtitle: 'Minimal-Schach als schneller Zugang zu lernenden Spielsystemen.',
     icon: <SportsEsportsIcon />,
     color: '#5e35b1',
-    goals: ['Zustandsraeume', 'Gewinnbedingungen', 'Lernen durch Ausschluss'],
+    goals: ['Zustandsräume', 'Gewinnbedingungen', 'Lernen durch Ausschluss'],
   },
   {
     tab: 'memory',
     title: 'KI-Memory',
-    subtitle: 'Zwei passende Kartenlisten werden im Teamlauf zusammengefuehrt.',
+    subtitle: 'Zwei passende Kartenlisten werden im Teamlauf zusammengeführt.',
     icon: <ExtensionIcon />,
     color: '#00897b',
     goals: ['Grundbegriffe sichern', 'Bewegung', 'Teamkommunikation'],
@@ -86,7 +89,7 @@ const gameCards: {
   {
     tab: 'escape',
     title: 'Umgebungs-Escape',
-    subtitle: 'QR-Rallye durch Vallendar mit KI-Raetseln rund um das Kloster.',
+    subtitle: 'QR-Rallye durch Vallendar mit KI-Rätseln rund um das Kloster.',
     icon: <MapIcon />,
     color: '#3949ab',
     goals: ['Ortsbezug', 'Kooperation', 'Transferfragen'],
@@ -97,12 +100,12 @@ const gameCards: {
     subtitle: 'Aussagen erscheinen vorne, die Klasse entscheidet mit Bewegung.',
     icon: <CheckCircleIcon />,
     color: '#43a047',
-    goals: ['Diagnose', 'Aktivierung', 'Begruenden lernen'],
+    goals: ['Diagnose', 'Aktivierung', 'Begründen lernen'],
   },
   {
     tab: 'bingo',
     title: 'KI Bingo',
-    subtitle: 'Begriffe aus Vortrag und Toolphase werden ueber Beispiele wiederholt.',
+    subtitle: 'Begriffe aus Vortrag und Toolphase werden über Beispiele wiederholt.',
     icon: <QuizIcon />,
     color: '#c2185b',
     goals: ['Wiederholung', 'Begriffe sichern', 'Aktivierende Pause'],
@@ -110,15 +113,15 @@ const gameCards: {
   {
     tab: 'kiornot',
     title: 'KI oder nicht KI?',
-    subtitle: 'Unterrichtssituationen nach sinnvoll, problematisch oder abhaengig einordnen.',
+    subtitle: 'Unterrichtssituationen nach sinnvoll, problematisch oder abhängig einordnen.',
     icon: <RuleIcon />,
     color: '#6d4c41',
-    goals: ['Urteilsfaehigkeit', 'Reflexion', 'Transfer'],
+    goals: ['Urteilsfähigkeit', 'Reflexion', 'Transfer'],
   },
   {
     tab: 'quickcheck',
     title: 'KI Quick Check',
-    subtitle: 'Leisen-Fokus: Hilft KI beim Lernen oder wird Denken abgekuerzt?',
+    subtitle: 'Leisen-Fokus: Hilft KI beim Lernen oder wird Denken abgekürzt?',
     icon: <PsychologyIcon />,
     color: '#1565c0',
     goals: ['Lernzeit', 'Denkzeit', 'Anstrengung'],
@@ -129,7 +132,7 @@ const gameCards: {
     subtitle: 'Falck/Flick-Raster: KI thematisieren, integrieren, reflektieren oder begrenzen.',
     icon: <RuleIcon />,
     color: '#ef6c00',
-    goals: ['Aufgabenkultur', 'Planung', 'Pruefungskultur'],
+    goals: ['Aufgabenkultur', 'Planung', 'Prüfungskultur'],
   },
   {
     tab: 'denkzeitdetektiv',
@@ -137,23 +140,23 @@ const gameCards: {
     subtitle: 'Leisen-Spiel: Welche Anschlussaufgabe macht aus KI-Material echtes Lernen?',
     icon: <PsychologyIcon />,
     color: '#283593',
-    goals: ['Anschlussaufgabe', 'Plausibilitaetsfalle', 'Denkzeit'],
+    goals: ['Anschlussaufgabe', 'Plausibilitätsfalle', 'Denkzeit'],
   },
 ];
 
 const memoryPairs: [string, string][] = [
-  ['Lernzeit', 'Zeit, in der Schuelerinnen und Schueler wirklich fachlich arbeiten.'],
-  ['Denkzeit', 'Aktive kognitive Auseinandersetzung statt nur fertige Ergebnisse uebernehmen.'],
-  ['KI Bequemlichkeit', 'Die Gefahr, dass KI Anstrengung, Lesen, Denken oder Ueben ersetzt.'],
-  ['Anschlussaufgabe', 'Die Aufgabe nach dem KI-Ergebnis: pruefen, vergleichen, anwenden oder verbessern.'],
-  ['Pruefen', 'Kontrollieren, ob ein KI-Ergebnis fachlich stimmt und belegt werden kann.'],
-  ['Vergleichen', 'Eigene Loesung und KI-Loesung gegenueberstellen und Unterschiede markieren.'],
+  ['Lernzeit', 'Zeit, in der Schülerinnen und Schüler wirklich fachlich arbeiten.'],
+  ['Denkzeit', 'Aktive kognitive Auseinandersetzung statt nur fertige Ergebnisse übernehmen.'],
+  ['KI Bequemlichkeit', 'Die Gefahr, dass KI Anstrengung, Lesen, Denken oder Üben ersetzt.'],
+  ['Anschlussaufgabe', 'Die Aufgabe nach dem KI-Ergebnis: prüfen, vergleichen, anwenden oder verbessern.'],
+  ['Prüfen', 'Kontrollieren, ob ein KI-Ergebnis fachlich stimmt und belegt werden kann.'],
+  ['Vergleichen', 'Eigene Lösung und KI-Lösung gegenüberstellen und Unterschiede markieren.'],
   ['Denkfehler', 'Eine fachliche Fehlvorstellung erkennen und korrigieren.'],
-  ['Experimentiergeraet', 'KI zum sprachlichen oder fachlichen Ausprobieren verschiedener Varianten nutzen.'],
-  ['Plausibilitaetsfalle', 'Eine KI-Antwort klingt ueberzeugend, ist aber falsch oder ungenau.'],
-  ['Vorwissen', 'Grundlage, um KI-Ergebnisse sinnvoll einordnen und bewerten zu koennen.'],
+  ['Experimentiergerät', 'KI zum sprachlichen oder fachlichen Ausprobieren verschiedener Varianten nutzen.'],
+  ['Plausibilitätsfalle', 'Eine KI-Antwort klingt überzeugend, ist aber falsch oder ungenau.'],
+  ['Vorwissen', 'Grundlage, um KI-Ergebnisse sinnvoll einordnen und bewerten zu können.'],
   ['Anstrengung', 'Notwendiger Bestandteil von Lernen, den KI nicht ersetzen sollte.'],
-  ['Lernpartner', 'KI gibt Hinweise, Fragen oder Feedback statt sofort fertige Loesungen zu liefern.'],
+  ['Lernpartner', 'KI gibt Hinweise, Fragen oder Feedback statt sofort fertige Lösungen zu liefern.'],
 ];
 
 const memoryPalette = [
@@ -171,6 +174,21 @@ const memoryPalette = [
   '#7e57c2',
 ];
 
+const memoryTeamColors = {
+  'Team A': '#ff6d00',
+  'Team B': '#00897b',
+} as const;
+
+const memoryTeamAnimals = {
+  'Team A': '🐯',
+  'Team B': '🐔',
+} as const;
+
+const memoryTeamNames = {
+  'Team A': 'Tigerkatzen',
+  'Team B': 'Johnny Hühner',
+} as const;
+
 const memoryRowBackground = (rowCount: number) =>
   `repeating-linear-gradient(
     to bottom,
@@ -183,17 +201,115 @@ const memoryRowBackground = (rowCount: number) =>
 const kiMemoryLeftText = memoryPairs.map(([term]) => term).join('\n');
 const kiMemoryRightText = memoryPairs.map(([, text]) => text).join('\n');
 
+const kiStudientageLeftText = [
+  '🔎 Google und ChatGPT vergleichen',
+  '📚 Vokabelliste + Textarbeit',
+  '📌 KI-Antwort mit Belegen prüfen',
+  '✍️ Erst ohne KI, dann Feedback',
+  '📄 Fertige Interpretation übernehmen',
+  '❓ KI-Quiz selbst lösen',
+  '📊 Begriff auf drei Niveaus',
+  '🧠 Denkfehler in Aussage finden',
+  '💬 KI fragt und gibt Tipps',
+  '🛤️ Eigenen Arbeitsweg erklären',
+  '⚖️ Faire KI-Nutzung diskutieren',
+  '✅ KI-Material fachlich prüfen',
+].join('\n');
+
+const kiStudientageRightText = [
+  'KI thematisieren',
+  'KI integrieren',
+  'KI reflektieren',
+  'KI limitieren',
+  'KI Bequemlichkeit',
+  'Üben und Sichern',
+  'Niveaudifferenzierung',
+  'Denkfehler korrigieren',
+  'KI als Lernpartner',
+  'Denkzeit sichtbar machen',
+  'Verantwortung',
+  'Lehrkraft verantwortlich',
+].join('\n');
+
+const kiStudientage2LeftText = [
+  '🤖 Wie erzeugt ChatGPT Antworten?',
+  '📚 KI-Vokabelliste + Textarbeit',
+  '📌 KI-Antwort mit Textbelegen prüfen',
+  '✍️ Erst ohne KI, dann Feedback',
+  '📄 Fertige KI-Lösung übernehmen',
+  '💬 KI stellt Fragen und Tipps',
+  '🧠 KI findet Denkfehler',
+  '📊 Text auf mehreren Niveaus',
+  '✅ KI erstellt Material',
+  '🛠️ KI-Ergebnisse bearbeiten',
+  '⚠️ KI klingt richtig, liegt falsch',
+  '🧭 KI erzeugt fertige Produkte',
+].join('\n');
+
+const kiStudientage2RightText = [
+  'KI thematisieren',
+  'KI integrieren',
+  'KI reflektieren',
+  'KI limitieren',
+  'KI Bequemlichkeit',
+  'KI als Lernpartner',
+  'Fehlvorstellungen erkennen',
+  'Differenzierung',
+  'Fachliche und didaktische Prüfung',
+  'Lernzeit und Denkzeit',
+  'Grenzen von KI',
+  'Prozessorientierung',
+].join('\n');
+
+const kiStudientage3LeftText = [
+  '🤖 Suchmaschine vs. Sprachmodell',
+  '📚 Vokabelliste im Text nutzen',
+  '📌 Kafka-Antwort mit Fehlern',
+  '✍️ Erst eigene Lösung schreiben',
+  '📊 Drei Sprachniveaus vergleichen',
+  '🧠 Dunkle Falter: Denkfehler',
+  '💬 KI fragt nur nach',
+  '🛤️ Was kam von dir?',
+  '📄 Fertige Lösung übernehmen',
+  '✅ Material didaktisch prüfen',
+  '🚦 Wo darf KI helfen?',
+  '⚖️ Erleichterung oder Anstrengung?',
+].join('\n');
+
+const kiStudientage3RightText = [
+  'KI verstehen',
+  'KI als Einstiegshilfe',
+  'Plausibilität prüfen',
+  'Eigenleistung sichern',
+  'Sprachniveau reflektieren',
+  'Fehlvorstellung sichtbar machen',
+  'Tutor statt Lösungsmaschine',
+  'Prozess zählt',
+  'Bequemlichkeitsfalle',
+  'Lehrkraft didaktisch verantwortlich',
+  'KI-Einsatz begrenzen',
+  'KI-Nutzung reflektieren',
+].join('\n');
+
 const defaultMemorySets: MemorySet[] = [
   { id: 'ki-leisen', name: 'KI / Leisen', leftText: kiMemoryLeftText, rightText: kiMemoryRightText },
+  { id: 'ki-studientage', name: 'KI Studientage', leftText: kiStudientageLeftText, rightText: kiStudientageRightText },
+  { id: 'ki-studientage-2', name: 'KI Studientage 2', leftText: kiStudientage2LeftText, rightText: kiStudientage2RightText },
+  { id: 'ki-studientage-3', name: 'KI Studientage 3', leftText: kiStudientage3LeftText, rightText: kiStudientage3RightText },
   {
     id: 'blanko',
     name: 'Blanko-Beispiel',
     leftText: 'Sonne\nMond\nWasser\nBaum',
-    rightText: 'Stern im Zentrum unseres Sonnensystems\nNatuerlicher Begleiter der Erde\nH2O, wichtig fuer Leben\nPflanze mit Stamm und Krone',
+    rightText: 'Stern im Zentrum unseres Sonnensystems\nNatürlicher Begleiter der Erde\nH2O, wichtig für Leben\nPflanze mit Stamm und Krone',
   },
 ];
 
 const memoryStorageKey = 'johnnyMonkey.kiGames.memorySets.v1';
+
+function includeMissingDefaultMemorySets(sets: MemorySet[]) {
+  const ids = new Set(sets.map((set) => set.id));
+  return [...sets, ...defaultMemorySets.filter((set) => !ids.has(set.id))];
+}
 
 function loadSavedMemoryState(): { sets: MemorySet[]; selectedId: string } | null {
   if (typeof window === 'undefined') return null;
@@ -211,7 +327,8 @@ function loadSavedMemoryState(): { sets: MemorySet[]; selectedId: string } | nul
         )
       : [];
     if (!sets.length) return null;
-    return { sets, selectedId: typeof parsed.selectedId === 'string' ? parsed.selectedId : sets[0].id };
+    const mergedSets = includeMissingDefaultMemorySets(sets);
+    return { sets: mergedSets, selectedId: typeof parsed.selectedId === 'string' ? parsed.selectedId : mergedSets[0].id };
   } catch {
     return null;
   }
@@ -221,45 +338,45 @@ const trueFalseStatements = [
   {
     text: 'Eine KI versteht Texte immer genauso wie ein Mensch.',
     answer: false,
-    explain: 'Viele Systeme berechnen wahrscheinliche Muster, ohne menschliches Weltverstaendnis zu besitzen.',
+    explain: 'Viele Systeme berechnen wahrscheinliche Muster, ohne menschliches Weltverständnis zu besitzen.',
   },
   {
-    text: 'Trainingsdaten koennen Vorurteile enthalten.',
+    text: 'Trainingsdaten können Vorurteile enthalten.',
     answer: true,
-    explain: 'Wenn Daten einseitig sind, kann das Modell diese Einseitigkeit uebernehmen.',
+    explain: 'Wenn Daten einseitig sind, kann das Modell diese Einseitigkeit übernehmen.',
   },
   {
-    text: 'Beim Nimm-Spiel kann eine KI durch verlorene Spiele bessere Zuege lernen.',
+    text: 'Beim Nimm-Spiel kann eine KI durch verlorene Spiele bessere Züge lernen.',
     answer: true,
-    explain: 'Sie kann Zuege entfernen oder seltener waehlen, die direkt zu Niederlagen gefuehrt haben.',
+    explain: 'Sie kann Züge entfernen oder seltener wählen, die direkt zu Niederlagen geführt haben.',
   },
   {
-    text: 'Ein Prompt ist nur fuer Bildgeneratoren wichtig.',
+    text: 'Ein Prompt ist nur für Bildgeneratoren wichtig.',
     answer: false,
     explain: 'Prompts steuern auch Text-, Code-, Audio- und viele andere KI-Systeme.',
   },
   {
-    text: 'KI-Ergebnisse sollten bei wichtigen Entscheidungen ueberprueft werden.',
+    text: 'KI-Ergebnisse sollten bei wichtigen Entscheidungen überprüft werden.',
     answer: true,
-    explain: 'KI kann halluzinieren, Daten falsch gewichten oder Kontext uebersehen.',
+    explain: 'KI kann halluzinieren, Daten falsch gewichten oder Kontext übersehen.',
   },
   {
     text: 'Lernen entsteht schon dadurch, dass eine KI ein gutes Ergebnis ausgibt.',
     answer: false,
-    explain: 'Nach Leisen entsteht Lernen erst durch aktive Verarbeitung, Anwendung, Uebung und Anstrengung.',
+    explain: 'Nach Leisen entsteht Lernen erst durch aktive Verarbeitung, Anwendung, Übung und Anstrengung.',
   },
   {
     text: 'Eine gute Anschlussaufgabe fragt: Was passiert nach der KI-Antwort?',
     answer: true,
-    explain: 'KI-Material wird lernwirksam, wenn Lernende es pruefen, vergleichen, korrigieren oder weiterentwickeln.',
+    explain: 'KI-Material wird lernwirksam, wenn Lernende es prüfen, vergleichen, korrigieren oder weiterentwickeln.',
   },
   {
     text: 'Plausibel formulierte KI-Antworten sind automatisch fachlich richtig.',
     answer: false,
-    explain: 'Die Plausibilitaetsfalle ist, dass falsche Antworten sehr ueberzeugend klingen koennen.',
+    explain: 'Die Plausibilitätsfalle ist, dass falsche Antworten sehr überzeugend klingen können.',
   },
   {
-    text: 'KI kann ein sprachliches und fachliches Experimentiergeraet sein.',
+    text: 'KI kann ein sprachliches und fachliches Experimentiergerät sein.',
     answer: true,
     explain: 'Sinnvoll wird das, wenn Lernende Varianten vergleichen und daraus fachlich weiterarbeiten.',
   },
@@ -276,7 +393,7 @@ const bingoTerms = [
   'Quellenkritik',
   'Arbeitsauftrag',
   'Bildgenerator',
-  'Schuelerrolle',
+  'Schülerrolle',
   'Kompetenz',
   'Transparenz',
   'Urheberrecht',
@@ -289,7 +406,7 @@ const bingoTerms = [
   'Training',
   'Modell',
   'Promptkette',
-  'Pruefen',
+  'Prüfen',
   'Rollenwechsel',
   'Lernzeit',
   'Denkzeit',
@@ -297,133 +414,133 @@ const bingoTerms = [
   'Anschlussaufgabe',
   'Vergleichen',
   'Denkfehler',
-  'Experimentiergeraet',
-  'Plausibilitaetsfalle',
+  'Experimentiergerät',
+  'Plausibilitätsfalle',
   'Vorwissen',
   'Anstrengung',
-  'Ueben und Festigen',
+  'Üben und Festigen',
   'kognitive Aktivierung',
   'motivationale Aktivierung',
   'Lernpartner',
 ];
 
 const bingoPrompts = [
-  { clue: 'Eine KI gibt eine ueberzeugende Antwort, die aber sachlich falsch ist.', answer: 'Halluzination' },
+  { clue: 'Eine KI gibt eine überzeugende Antwort, die aber sachlich falsch ist.', answer: 'Halluzination' },
   { clue: 'Eine gute Eingabe an ein KI-Tool nennt man oft ...', answer: 'Prompt' },
   { clue: 'KI bietet Lernenden Aufgaben auf verschiedenen Niveaus an.', answer: 'Differenzierung' },
   { clue: 'Bestimmte Gruppen werden systematisch verzerrt dargestellt oder benachteiligt.', answer: 'Bias' },
-  { clue: 'Bevor KI-Antworten uebernommen werden, sollten Aussagen mit verlässlichen Quellen abgeglichen werden.', answer: 'Quellenkritik' },
-  { clue: 'Wenn personenbezogene Daten nicht unbedacht in Tools eingegeben werden duerfen.', answer: 'Datenschutz' },
-  { clue: 'KI nimmt Routinearbeit ab, ersetzt aber nicht die paedagogische Entscheidung.', answer: 'Entlastung' },
-  { clue: 'Wer KI einsetzt, muss offenlegen koennen, wie ein Ergebnis entstanden ist.', answer: 'Transparenz' },
-  { clue: 'KI kann Rueckmeldungen zu Argumentation, Struktur oder Sprache geben.', answer: 'Feedback' },
+  { clue: 'Bevor KI-Antworten übernommen werden, sollten Aussagen mit verlässlichen Quellen abgeglichen werden.', answer: 'Quellenkritik' },
+  { clue: 'Wenn personenbezogene Daten nicht unbedacht in Tools eingegeben werden dürfen.', answer: 'Datenschutz' },
+  { clue: 'KI nimmt Routinearbeit ab, ersetzt aber nicht die pädagogische Entscheidung.', answer: 'Entlastung' },
+  { clue: 'Wer KI einsetzt, muss offenlegen können, wie ein Ergebnis entstanden ist.', answer: 'Transparenz' },
+  { clue: 'KI kann Rückmeldungen zu Argumentation, Struktur oder Sprache geben.', answer: 'Feedback' },
   { clue: 'Bei KI-generierten Bildern, Texten und Materialien muss die Rechtefrage bedacht werden.', answer: 'Urheberrecht' },
   { clue: 'Die Gefahr, dass KI die notwendige Anstrengung ersetzt.', answer: 'KI Bequemlichkeit' },
   { clue: 'Die entscheidende Aufgabe nach einem KI-Ergebnis.', answer: 'Anschlussaufgabe' },
-  { clue: 'Aktive fachliche Auseinandersetzung statt Ergebnisuebernahme.', answer: 'Denkzeit' },
-  { clue: 'Eine ueberzeugende, aber falsche KI-Antwort.', answer: 'Plausibilitaetsfalle' },
-  { clue: 'KI zum Ausprobieren von Sprache, Niveau, Beispielen oder Perspektiven.', answer: 'Experimentiergeraet' },
-  { clue: 'Eigene Loesung und KI-Loesung nebeneinanderlegen.', answer: 'Vergleichen' },
-  { clue: 'Grundlage, um KI-Antworten sinnvoll beurteilen zu koennen.', answer: 'Vorwissen' },
-  { clue: 'KI gibt Hinweise, Fragen oder Feedback statt sofort die Loesung zu liefern.', answer: 'Lernpartner' },
+  { clue: 'Aktive fachliche Auseinandersetzung statt Ergebnisübernahme.', answer: 'Denkzeit' },
+  { clue: 'Eine überzeugende, aber falsche KI-Antwort.', answer: 'Plausibilitätsfalle' },
+  { clue: 'KI zum Ausprobieren von Sprache, Niveau, Beispielen oder Perspektiven.', answer: 'Experimentiergerät' },
+  { clue: 'Eigene Lösung und KI-Lösung nebeneinanderlegen.', answer: 'Vergleichen' },
+  { clue: 'Grundlage, um KI-Antworten sinnvoll beurteilen zu können.', answer: 'Vorwissen' },
+  { clue: 'KI gibt Hinweise, Fragen oder Feedback statt sofort die Lösung zu liefern.', answer: 'Lernpartner' },
 ];
 
 const kiOrNotCases = [
   {
-    situation: 'Eine Lehrkraft laesst sich von KI drei Differenzierungsvarianten zu einem bestehenden Arbeitsblatt vorschlagen.',
+    situation: 'Eine Lehrkraft lässt sich von KI drei Differenzierungsvarianten zu einem bestehenden Arbeitsblatt vorschlagen.',
     recommendation: 'sinnvoll',
-    reason: 'Die Lehrkraft bleibt fachlich verantwortlich und nutzt KI als Ideengeber fuer Anpassungen.',
+    reason: 'Die Lehrkraft bleibt fachlich verantwortlich und nutzt KI als Ideengeber für Anpassungen.',
   },
   {
-    situation: 'Schuelerinnen und Schueler geben eine komplette Hausarbeit in ein KI-Tool ein und uebernehmen die Antwort unveraendert.',
+    situation: 'Schülerinnen und Schüler geben eine komplette Hausarbeit in ein KI-Tool ein und übernehmen die Antwort unverändert.',
     recommendation: 'problematisch',
     reason: 'Eigenleistung, Quellenkritik und Lernprozess gehen verloren.',
   },
   {
-    situation: 'Eine Lerngruppe nutzt KI, um eine erste Erklaerung zu einem schwierigen Fachbegriff zu bekommen, prueft diese aber im Schulbuch.',
+    situation: 'Eine Lerngruppe nutzt KI, um eine erste Erklärung zu einem schwierigen Fachbegriff zu bekommen, prüft diese aber im Schulbuch.',
     recommendation: 'gestaltung',
-    reason: 'Als Einstieg sinnvoll, wenn die Pruefung und Korrektur fest eingeplant sind.',
+    reason: 'Als Einstieg sinnvoll, wenn die Prüfung und Korrektur fest eingeplant sind.',
   },
   {
-    situation: 'Eine Lehrkraft bewertet Texte ausschliesslich mit KI, ohne die Ergebnisse zu pruefen.',
+    situation: 'Eine Lehrkraft bewertet Texte ausschließlich mit KI, ohne die Ergebnisse zu prüfen.',
     recommendation: 'problematisch',
     reason: 'Bewertung braucht Verantwortung, Kontext und menschliche Kontrolle.',
   },
   {
-    situation: 'Schuelerinnen und Schueler lassen sich Feedback zu ihrer Argumentation geben und ueberarbeiten danach ihren eigenen Text.',
+    situation: 'Schülerinnen und Schüler lassen sich Feedback zu ihrer Argumentation geben und überarbeiten danach ihren eigenen Text.',
     recommendation: 'sinnvoll',
-    reason: 'KI unterstuetzt den Prozess, die Ueberarbeitung bleibt bei den Lernenden.',
+    reason: 'KI unterstützt den Prozess, die Überarbeitung bleibt bei den Lernenden.',
   },
   {
-    situation: 'Eine Klasse erstellt mit einem Bildgenerator Symbolbilder fuer ein Lernplakat und bespricht Grenzen und Urheberrecht.',
+    situation: 'Eine Klasse erstellt mit einem Bildgenerator Symbolbilder für ein Lernplakat und bespricht Grenzen und Urheberrecht.',
     recommendation: 'gestaltung',
     reason: 'Der Einsatz kann lernwirksam sein, wenn Rechte, Quellen und Aussagekraft reflektiert werden.',
   },
   {
-    situation: 'Eine Schuelerin uebernimmt eine KI-Zusammenfassung, ohne den Originaltext zu lesen.',
+    situation: 'Eine Schülerin übernimmt eine KI-Zusammenfassung, ohne den Originaltext zu lesen.',
     recommendation: 'problematisch',
     reason: 'Das ist KI Bequemlichkeit: Die eigentliche Lese- und Denkzeit verschwindet.',
   },
   {
     situation: 'Eine Lerngruppe vergleicht eine KI-Zusammenfassung mit dem Originaltext und markiert Fehler, Auslassungen und gute Formulierungen.',
     recommendation: 'sinnvoll',
-    reason: 'Die KI liefert Material; die Anschlussaufgabe erzeugt Pruefen, Vergleichen und Begruenden.',
+    reason: 'Die KI liefert Material; die Anschlussaufgabe erzeugt Prüfen, Vergleichen und Begründen.',
   },
   {
-    situation: 'Eine Lehrkraft laesst KI-Feedback automatisch an die Klasse ausgeben, ohne es fachlich oder lerngruppenbezogen anzupassen.',
+    situation: 'Eine Lehrkraft lässt KI-Feedback automatisch an die Klasse ausgeben, ohne es fachlich oder lerngruppenbezogen anzupassen.',
     recommendation: 'problematisch',
-    reason: 'Die Lehrkraft bleibt zentral: Sie gestaltet und prueft den Lernprozess.',
+    reason: 'Die Lehrkraft bleibt zentral: Sie gestaltet und prüft den Lernprozess.',
   },
 ];
 
 const quickCheckCases = [
   {
-    statement: 'Eine Schuelerin laesst sich von der KI eine fertige Interpretation zu Kafka schreiben und uebernimmt sie unveraendert.',
+    statement: 'Eine Schülerin lässt sich von der KI eine fertige Interpretation zu Kafka schreiben und übernimmt sie unverändert.',
     answer: 'B',
-    discussion: 'Die eigene Auseinandersetzung mit dem Text wird uebersprungen. Leisen zeigt genau diese Gefahr am Beispiel "Die Verwandlung".',
+    discussion: 'Die eigene Auseinandersetzung mit dem Text wird übersprungen. Leisen zeigt genau diese Gefahr am Beispiel "Die Verwandlung".',
   },
   {
-    statement: 'Ein Schueler laesst sich von der KI eine Vokabelliste zum Wasserkreislauf erstellen und sucht die Begriffe danach im eigenen Text.',
+    statement: 'Ein Schüler lässt sich von der KI eine Vokabelliste zum Wasserkreislauf erstellen und sucht die Begriffe danach im eigenen Text.',
     answer: 'A',
     discussion: 'Die KI liefert Material, aber die aktive Arbeit bleibt bei den Lernenden.',
   },
   {
-    statement: 'Eine Lerngruppe nutzt KI, um einen Fachtext auf drei Niveaustufen erklaeren zu lassen und vergleicht anschliessend die Unterschiede.',
+    statement: 'Eine Lerngruppe nutzt KI, um einen Fachtext auf drei Niveaustufen erklären zu lassen und vergleicht anschließend die Unterschiede.',
     answer: 'A',
-    discussion: 'Die KI wird als sprachliches und fachliches Experimentiergeraet genutzt.',
+    discussion: 'Die KI wird als sprachliches und fachliches Experimentiergerät genutzt.',
   },
   {
-    statement: 'Eine Lehrkraft laesst Schuelerinnen und Schueler eine KI-Antwort pruefen und mit Textbelegen widerlegen oder verbessern.',
+    statement: 'Eine Lehrkraft lässt Schülerinnen und Schüler eine KI-Antwort prüfen und mit Textbelegen widerlegen oder verbessern.',
     answer: 'A',
-    discussion: 'Lernwirksam wird es, wenn Lernende KI-Ergebnisse pruefen, vergleichen und kritisch weiterverarbeiten.',
+    discussion: 'Lernwirksam wird es, wenn Lernende KI-Ergebnisse prüfen, vergleichen und kritisch weiterverarbeiten.',
   },
   {
-    statement: 'Eine Schuelerin fragt die KI: "Erledige meine Hausaufgabe komplett."',
+    statement: 'Eine Schülerin fragt die KI: "Erledige meine Hausaufgabe komplett."',
     answer: 'B',
     discussion: 'Die KI ersetzt hier die Denkzeit.',
   },
   {
     statement: 'Eine Klasse nutzt KI, um eigene Denkfehler in fachlichen Aussagen zu finden.',
     answer: 'A',
-    discussion: 'Leisen nutzt solche Beispiele, etwa zu Evolution, Waerme und Temperatur oder Kraeften beim Zusammenstoss.',
+    discussion: 'Leisen nutzt solche Beispiele, etwa zu Evolution, Wärme und Temperatur oder Kräften beim Zusammenstoß.',
   },
   {
-    statement: 'Eine Lehrkraft laesst die KI ein Arbeitsblatt erstellen, prueft es aber nicht weiter.',
+    statement: 'Eine Lehrkraft lässt die KI ein Arbeitsblatt erstellen, prüft es aber nicht weiter.',
     answer: 'C',
-    discussion: 'KI kann entlasten, aber die fachliche und didaktische Pruefung bleibt notwendig.',
+    discussion: 'KI kann entlasten, aber die fachliche und didaktische Prüfung bleibt notwendig.',
   },
   {
-    statement: 'Schuelerinnen und Schueler lassen sich von der KI ein Quiz erstellen, loesen es selbst und lassen danach ihre Antworten bewerten.',
+    statement: 'Schülerinnen und Schüler lassen sich von der KI ein Quiz erstellen, lösen es selbst und lassen danach ihre Antworten bewerten.',
     answer: 'A',
-    discussion: 'Das kann Lernzeit erzeugen, wenn sie selbst antworten und die Rueckmeldung pruefen.',
+    discussion: 'Das kann Lernzeit erzeugen, wenn sie selbst antworten und die Rückmeldung prüfen.',
   },
   {
-    statement: 'Eine KI formuliert sehr ueberzeugend eine falsche Antwort.',
+    statement: 'Eine KI formuliert sehr überzeugend eine falsche Antwort.',
     answer: 'B',
-    discussion: 'Sprachmodelle koennen auch bei Fehlern plausibel formulieren. Das ist Staerke und Risiko zugleich.',
+    discussion: 'Sprachmodelle können auch bei Fehlern plausibel formulieren. Das ist Stärke und Risiko zugleich.',
   },
   {
-    statement: 'Eine Lehrkraft fragt nach jeder KI-Nutzung: "Was hast du selbst verstanden, geprueft oder veraendert?"',
+    statement: 'Eine Lehrkraft fragt nach jeder KI-Nutzung: "Was hast du selbst verstanden, geprüft oder verändert?"',
     answer: 'A',
     discussion: 'Das lenkt den Blick vom Produkt auf den Lernprozess.',
   },
@@ -431,162 +548,162 @@ const quickCheckCases = [
 
 const aufgabenAmpelCases = [
   {
-    task: 'Schuelerinnen und Schueler vergleichen eine Suchmaschine mit einem KI-Sprachmodell. Was passiert jeweils mit Informationen?',
+    task: 'Schülerinnen und Schüler vergleichen eine Suchmaschine mit einem KI-Sprachmodell. Was passiert jeweils mit Informationen?',
     answer: 'A',
     accepted: ['A'],
     topic: 'KI verstehen',
     discussion: 'KI selbst wird zum Lerngegenstand: Funktionsweise, Chancen und Grenzen werden sichtbar.',
   },
   {
-    task: 'Schuelerinnen und Schueler nutzen KI, um eine Vokabelliste zu einem Fachtext zu erstellen. Danach markieren sie die Begriffe im Originaltext.',
+    task: 'Schülerinnen und Schüler nutzen KI, um eine Vokabelliste zu einem Fachtext zu erstellen. Danach markieren sie die Begriffe im Originaltext.',
     answer: 'B',
     accepted: ['B'],
     topic: 'KI als Lernressource',
     discussion: 'KI ist Lernressource, aber die Anschlussaufgabe zwingt zur Arbeit am Fachtext.',
   },
   {
-    task: 'Schuelerinnen und Schueler pruefen, ob eine KI-Interpretation durch Belege aus dem Originaltext gestuetzt wird.',
+    task: 'Schülerinnen und Schüler prüfen, ob eine KI-Interpretation durch Belege aus dem Originaltext gestützt wird.',
     answer: 'C',
     accepted: ['C'],
-    topic: 'KI-Ergebnisse pruefen',
-    discussion: 'Das KI-Ergebnis wird geprueft, hinterfragt und mit fachlichen Kriterien verglichen.',
+    topic: 'KI-Ergebnisse prüfen',
+    discussion: 'Das KI-Ergebnis wird geprüft, hinterfragt und mit fachlichen Kriterien verglichen.',
   },
   {
-    task: 'Schuelerinnen und Schueler schreiben zuerst ohne KI eine eigene Argumentation. Erst danach nutzen sie KI-Feedback.',
+    task: 'Schülerinnen und Schüler schreiben zuerst ohne KI eine eigene Argumentation. Erst danach nutzen sie KI-Feedback.',
     answer: 'D, danach C',
     accepted: ['D', 'C'],
-    topic: 'Eigene Kompetenz sichtbar machen und anschliessend reflektieren',
-    discussion: 'Die erste Eigenleistung wird sichtbar; danach kann KI reflektiert zur Ueberarbeitung dienen.',
+    topic: 'Eigene Kompetenz sichtbar machen und anschließend reflektieren',
+    discussion: 'Die erste Eigenleistung wird sichtbar; danach kann KI reflektiert zur Überarbeitung dienen.',
   },
   {
-    task: 'Schuelerinnen und Schueler sollen erklaeren, warum KI-Antworten ueberzeugend klingen koennen, obwohl sie falsch sind.',
+    task: 'Schülerinnen und Schüler sollen erklären, warum KI-Antworten überzeugend klingen können, obwohl sie falsch sind.',
     answer: 'A',
     accepted: ['A'],
     topic: 'Funktionsweise und Grenzen von KI',
     discussion: 'Hier wird KI selbst verstanden und kritisch eingeordnet.',
   },
   {
-    task: 'Schuelerinnen und Schueler lassen sich von KI drei Pruefungsfragen erstellen und beantworten diese selbst.',
+    task: 'Schülerinnen und Schüler lassen sich von KI drei Prüfungsfragen erstellen und beantworten diese selbst.',
     answer: 'B',
     accepted: ['B'],
-    topic: 'KI zum Ueben nutzen',
+    topic: 'KI zum Üben nutzen',
     discussion: 'KI wird gezielt als Lernressource eingesetzt.',
   },
   {
-    task: 'Schuelerinnen und Schueler vergleichen ihre eigene Loesung mit einer KI-Loesung und markieren Unterschiede.',
+    task: 'Schülerinnen und Schüler vergleichen ihre eigene Lösung mit einer KI-Lösung und markieren Unterschiede.',
     answer: 'C',
     accepted: ['C'],
-    topic: 'Reflexion und Qualitaetspruefung',
-    discussion: 'Die Qualitaet der KI-Loesung wird anhand der eigenen Arbeit geprueft.',
+    topic: 'Reflexion und Qualitätsprüfung',
+    discussion: 'Die Qualität der KI-Lösung wird anhand der eigenen Arbeit geprüft.',
   },
   {
-    task: 'Schuelerinnen und Schueler duerfen bei einer muendlichen Kurzdiagnose keine KI nutzen.',
+    task: 'Schülerinnen und Schüler dürfen bei einer mündlichen Kurzdiagnose keine KI nutzen.',
     answer: 'D',
     accepted: ['D'],
-    topic: 'Eigenes Koennen sichtbar machen',
+    topic: 'Eigenes Können sichtbar machen',
     discussion: 'KI wird bewusst begrenzt, damit Kompetenzen diagnostizierbar bleiben.',
   },
   {
-    task: 'Schuelerinnen und Schueler nutzen KI als Lernpartner, der nur Fragen und Tipps gibt, aber nicht sofort die Loesung nennt.',
+    task: 'Schülerinnen und Schüler nutzen KI als Lernpartner, der nur Fragen und Tipps gibt, aber nicht sofort die Lösung nennt.',
     answer: 'B',
     accepted: ['B'],
     topic: 'KI als Tutor',
     discussion: 'KI wird als Lernressource eingesetzt, ohne die Denkzeit sofort zu ersetzen.',
   },
   {
-    task: 'Schuelerinnen und Schueler diskutieren, wann KI-Nutzung im Unterricht fair, sinnvoll oder problematisch ist.',
+    task: 'Schülerinnen und Schüler diskutieren, wann KI-Nutzung im Unterricht fair, sinnvoll oder problematisch ist.',
     answer: 'A oder C',
     accepted: ['A', 'C'],
     topic: 'Regeln, Verantwortung und Reflexion',
     discussion: 'Die Aufgabe kann KI thematisieren und zugleich die eigene Nutzung reflektieren.',
   },
   {
-    task: 'Schuelerinnen und Schueler lassen sich eine Bewerbungsgespraechssituation simulieren und ueben Antworten.',
+    task: 'Schülerinnen und Schüler lassen sich eine Bewerbungsgesprächssituation simulieren und üben Antworten.',
     answer: 'B',
     accepted: ['B'],
-    topic: 'Rollenspiel und Uebung',
-    discussion: 'KI wird als Lernressource fuer Training und Feedback genutzt.',
+    topic: 'Rollenspiel und Übung',
+    discussion: 'KI wird als Lernressource für Training und Feedback genutzt.',
   },
   {
-    task: 'Schuelerinnen und Schueler geben einen fehlerhaften Text in die KI und lassen Fehler nach Inhalt, Rechtschreibung und Grammatik sortieren. Danach ueberarbeiten sie den Text selbst.',
+    task: 'Schülerinnen und Schüler geben einen fehlerhaften Text in die KI und lassen Fehler nach Inhalt, Rechtschreibung und Grammatik sortieren. Danach überarbeiten sie den Text selbst.',
     answer: 'B und C',
     accepted: ['B', 'C'],
-    topic: 'Unterstuetzung und Reflexion',
-    discussion: 'KI unterstuetzt die Analyse; lernwirksam wird es durch Pruefung und eigene Ueberarbeitung.',
+    topic: 'Unterstützung und Reflexion',
+    discussion: 'KI unterstützt die Analyse; lernwirksam wird es durch Prüfung und eigene Überarbeitung.',
   },
   {
-    task: 'Schuelerinnen und Schueler bekommen eine KI-Zusammenfassung und pruefen sie Satz fuer Satz am Originaltext.',
+    task: 'Schülerinnen und Schüler bekommen eine KI-Zusammenfassung und prüfen sie Satz für Satz am Originaltext.',
     answer: 'C',
     accepted: ['C'],
-    topic: 'Plausibilitaetsfalle und Anschlussaufgabe',
-    discussion: 'Die Aufgabe macht KI-Ergebnisse zum Gegenstand fachlicher Pruefung.',
+    topic: 'Plausibilitätsfalle und Anschlussaufgabe',
+    discussion: 'Die Aufgabe macht KI-Ergebnisse zum Gegenstand fachlicher Prüfung.',
   },
   {
-    task: 'Schuelerinnen und Schueler lassen KI drei Erklaerungen auf verschiedenen Niveaustufen erzeugen und begruenden, welche fuer wen geeignet ist.',
+    task: 'Schülerinnen und Schüler lassen KI drei Erklärungen auf verschiedenen Niveaustufen erzeugen und begründen, welche für wen geeignet ist.',
     answer: 'B und C',
     accepted: ['B', 'C'],
-    topic: 'KI als Experimentiergeraet',
-    discussion: 'KI wird integriert; lernwirksam wird es durch Vergleich und Begruendung.',
+    topic: 'KI als Experimentiergerät',
+    discussion: 'KI wird integriert; lernwirksam wird es durch Vergleich und Begründung.',
   },
   {
-    task: 'Schuelerinnen und Schueler notieren zuerst ihr Vorwissen, bevor sie eine KI-Erklaerung pruefen und ergaenzen.',
+    task: 'Schülerinnen und Schüler notieren zuerst ihr Vorwissen, bevor sie eine KI-Erklärung prüfen und ergänzen.',
     answer: 'D, danach C',
     accepted: ['D', 'C'],
     topic: 'Vorwissen sichtbar machen',
-    discussion: 'Die Begrenzung schuetzt eigene Denkzeit; danach wird KI reflektiert genutzt.',
+    discussion: 'Die Begrenzung schützt eigene Denkzeit; danach wird KI reflektiert genutzt.',
   },
 ];
 
-const leisenActions = ['Pruefen', 'Vergleichen', 'Begruenden', 'Korrigieren', 'Weiterentwickeln'] as const;
+const leisenActions = ['Prüfen', 'Vergleichen', 'Begründen', 'Korrigieren', 'Weiterentwickeln'] as const;
 
 const denkzeitCards = [
   {
     scenario: 'KI liefert eine fertige Zusammenfassung zu einem Sachtext.',
-    product: 'Schoenes Produkt, aber noch keine sichere Lernleistung.',
-    action: 'Pruefen',
+    product: 'Schönes Produkt, aber noch keine sichere Lernleistung.',
+    action: 'Prüfen',
     feedback: 'Mit dem Originaltext abgleichen: Was stimmt, was fehlt, was ist zu ungenau?',
-    concepts: ['Anschlussaufgabe', 'Vorwissen', 'Plausibilitaetsfalle'],
-    risk: 'Nur kopieren wuerde Lernzeit abkuerzen.',
+    concepts: ['Anschlussaufgabe', 'Vorwissen', 'Plausibilitätsfalle'],
+    risk: 'Nur kopieren würde Lernzeit abkürzen.',
   },
   {
-    scenario: 'KI erstellt eine Interpretation zu Kafka, die sehr ueberzeugend klingt.',
+    scenario: 'KI erstellt eine Interpretation zu Kafka, die sehr überzeugend klingt.',
     product: 'Plausible Deutung ohne eigene Textarbeit.',
-    action: 'Begruenden',
-    feedback: 'Die Deutung muss mit Textbelegen begruendet oder widerlegt werden.',
-    concepts: ['KI Bequemlichkeit', 'Denkzeit', 'Plausibilitaetsfalle'],
+    action: 'Begründen',
+    feedback: 'Die Deutung muss mit Textbelegen begründet oder widerlegt werden.',
+    concepts: ['KI Bequemlichkeit', 'Denkzeit', 'Plausibilitätsfalle'],
     risk: 'Die eigene Auseinandersetzung mit dem Text kann verschwinden.',
   },
   {
-    scenario: 'KI erzeugt drei Erklaerungen eines Fachbegriffs auf unterschiedlichen Niveaus.',
+    scenario: 'KI erzeugt drei Erklärungen eines Fachbegriffs auf unterschiedlichen Niveaus.',
     product: 'Sprachliches und fachliches Experimentiermaterial.',
     action: 'Vergleichen',
-    feedback: 'Unterschiede markieren: Welche Begriffe, Beispiele und Vereinfachungen veraendern das Verstehen?',
-    concepts: ['Experimentiergeraet', 'kognitive Aktivierung', 'Vorwissen'],
+    feedback: 'Unterschiede markieren: Welche Begriffe, Beispiele und Vereinfachungen verändern das Verstehen?',
+    concepts: ['Experimentiergerät', 'kognitive Aktivierung', 'Vorwissen'],
     risk: 'Ohne Vergleich bleibt es nur ein netter Textwechsel.',
   },
   {
-    scenario: 'KI findet in einer Schuelerloesung moegliche Denkfehler.',
+    scenario: 'KI findet in einer Schülerlösung mögliche Denkfehler.',
     product: 'Feedback mit fachlicher Unsicherheit.',
     action: 'Korrigieren',
-    feedback: 'Die Lernenden korrigieren die eigene Loesung und erklaeren, welcher Denkfehler vorlag.',
-    concepts: ['Denkfehler', 'Ueben und Festigen', 'Anstrengung'],
-    risk: 'Feedback einfach zu uebernehmen ersetzt kein Verstehen.',
+    feedback: 'Die Lernenden korrigieren die eigene Lösung und erklären, welcher Denkfehler vorlag.',
+    concepts: ['Denkfehler', 'Üben und Festigen', 'Anstrengung'],
+    risk: 'Feedback einfach zu übernehmen ersetzt kein Verstehen.',
   },
   {
     scenario: 'KI gibt Feedback zu einem selbst geschriebenen Argumentationstext.',
-    product: 'Rueckmeldung zu Struktur, Sprache und Inhalt.',
+    product: 'Rückmeldung zu Struktur, Sprache und Inhalt.',
     action: 'Weiterentwickeln',
-    feedback: 'Den eigenen Text ueberarbeiten und begruenden, welche Hinweise uebernommen oder verworfen wurden.',
+    feedback: 'Den eigenen Text überarbeiten und begründen, welche Hinweise übernommen oder verworfen wurden.',
     concepts: ['Lernpartner', 'Weiterentwickeln', 'motivationale Aktivierung'],
-    risk: 'Nur glaetten lassen erzeugt ein besseres Produkt, aber wenig Lernprozess.',
+    risk: 'Nur glätten lassen erzeugt ein besseres Produkt, aber wenig Lernprozess.',
   },
   {
     scenario: 'KI erstellt Quizfragen zu einem Thema.',
-    product: 'Uebungsmaterial in kurzer Zeit.',
-    action: 'Pruefen',
-    feedback: 'Fragen selbst loesen, Loesungen pruefen und Fehler analysieren.',
-    concepts: ['Ueben und Festigen', 'Lernzeit', 'Anschlussaufgabe'],
-    risk: 'Quizfragen anschauen ist noch kein Ueben.',
+    product: 'Übungsmaterial in kurzer Zeit.',
+    action: 'Prüfen',
+    feedback: 'Fragen selbst lösen, Lösungen prüfen und Fehler analysieren.',
+    concepts: ['Üben und Festigen', 'Lernzeit', 'Anschlussaufgabe'],
+    risk: 'Quizfragen anschauen ist noch kein Üben.',
   },
 ];
 
@@ -595,31 +712,31 @@ const escapeStations = [
     place: 'Start: Rheinpromenade Vallendar',
     qr: 'KI-START',
     task: 'Ordnet drei KI-Beispiele und markiert: Wo entsteht echte Lernzeit, wo nur ein fertiges Produkt?',
-    solution: 'Lernzeit entsteht dort, wo geprueft, verglichen, angewendet oder begruendet wird.',
+    solution: 'Lernzeit entsteht dort, wo geprüft, verglichen, angewendet oder begründet wird.',
   },
   {
-    place: 'Weg zum Kloster Schoenstatt',
+    place: 'Weg zum Kloster Schönstatt',
     qr: 'DATENSPUR',
-    task: 'Findet eine plausible, aber unsichere Aussage. Wie wuerdet ihr sie fachlich pruefen?',
-    solution: 'Plausibel heisst nicht richtig: Quelle, Beleg, Originalmaterial oder Fachwissen gegenpruefen.',
+    task: 'Findet eine plausible, aber unsichere Aussage. Wie würdet ihr sie fachlich prüfen?',
+    solution: 'Plausibel heißt nicht richtig: Quelle, Beleg, Originalmaterial oder Fachwissen gegenprüfen.',
   },
   {
     place: 'Pilgerkirche / Innenhof',
     qr: 'BLACKBOX',
     task: 'Ihr bekommt ein KI-Ergebnis. Entwickelt eine Anschlussaufgabe, die Denkzeit erzwingt.',
-    solution: 'Zum Beispiel: mit Original vergleichen, Fehler suchen, eigene Verbesserung begruenden.',
+    solution: 'Zum Beispiel: mit Original vergleichen, Fehler suchen, eigene Verbesserung begründen.',
   },
   {
     place: 'Aussichtspunkt',
     qr: 'PROMPTLABOR',
-    task: 'Nutzt KI als Experimentiergeraet: Erstellt zwei Erklaerungen fuer verschiedene Zielgruppen und vergleicht sie.',
-    solution: 'Unterschiede in Sprache, Fachlichkeit, Beispielen und Verstaendlichkeit markieren.',
+    task: 'Nutzt KI als Experimentiergerät: Erstellt zwei Erklärungen für verschiedene Zielgruppen und vergleicht sie.',
+    solution: 'Unterschiede in Sprache, Fachlichkeit, Beispielen und Verständlichkeit markieren.',
   },
   {
     place: 'Ziel: Schulhof / Klassenraum',
     qr: 'KI-KODE',
-    task: 'Loest die Abschlussfrage: Was machen Lernende nach der KI-Antwort?',
-    solution: 'Nicht uebernehmen, sondern bearbeiten: pruefen, vergleichen, korrigieren, begruenden, weiterentwickeln.',
+    task: 'Löst die Abschlussfrage: Was machen Lernende nach der KI-Antwort?',
+    solution: 'Nicht übernehmen, sondern bearbeiten: prüfen, vergleichen, korrigieren, begründen, weiterentwickeln.',
   },
 ];
 
@@ -719,11 +836,11 @@ export default function KiGamesPage() {
   const [nimWinner, setNimWinner] = useState<string>('');
   const [nimMemory, setNimMemory] = useState<Record<number, number[]>>({});
   const [lastAiMove, setLastAiMove] = useState<{ sticks: number; take: number } | null>(null);
-  const [nimLog, setNimLog] = useState<string[]>(['Start mit 15 Hoelzern. Wer das letzte Holz nimmt, gewinnt.']);
+  const [nimLog, setNimLog] = useState<string[]>(['Start mit 15 Hölzern. Wer das letzte Holz nimmt, gewinnt.']);
 
   const [hexBoard, setHexBoard] = useState<HexBoard>(initialHexBoard);
   const [hexSelected, setHexSelected] = useState<[number, number] | null>(null);
-  const [hexMessage, setHexMessage] = useState('Weiss beginnt. Ziehe einen weissen Bauern.');
+  const [hexMessage, setHexMessage] = useState('Weiß beginnt. Ziehe einen weißen Bauern.');
   const [hexAvoidedMoves, setHexAvoidedMoves] = useState(0);
 
   const [memorySets, setMemorySets] = useState<MemorySet[]>(initialMemorySets);
@@ -736,8 +853,10 @@ export default function KiGamesPage() {
   );
   const [memoryOpen, setMemoryOpen] = useState<string[]>([]);
   const [memorySolved, setMemorySolved] = useState<string[]>([]);
+  const [memorySolvedByTeam, setMemorySolvedByTeam] = useState<Record<string, 'Team A' | 'Team B'>>({});
   const [memoryTeam, setMemoryTeam] = useState<'Team A' | 'Team B'>('Team A');
   const [memoryScore, setMemoryScore] = useState({ 'Team A': 0, 'Team B': 0 });
+  const [memoryGameStarted, setMemoryGameStarted] = useState(false);
 
   const [tfIndex, setTfIndex] = useState(0);
   const [tfFeedback, setTfFeedback] = useState('');
@@ -778,6 +897,15 @@ export default function KiGamesPage() {
   const memoryLeftRows = useMemo(() => memoryLeftText.split('\n'), [memoryLeftText]);
   const memoryRightRows = useMemo(() => memoryRightText.split('\n'), [memoryRightText]);
   const memoryTableRowCount = Math.max(4, memoryLeftRows.length, memoryRightRows.length);
+  const memoryColumnCount = memoryDeck.length <= 12 ? 4 : memoryDeck.length <= 24 ? 6 : 8;
+  const memoryRowCount = Math.max(1, Math.ceil(memoryDeck.length / memoryColumnCount));
+  const memoryGameComplete = memoryDeck.length > 0 && memorySolved.length >= memoryDeck.length / 2;
+  const memoryWinner =
+    memoryGameComplete && memoryScore['Team A'] !== memoryScore['Team B']
+      ? memoryScore['Team A'] > memoryScore['Team B']
+        ? 'Team A'
+        : 'Team B'
+      : null;
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -793,7 +921,7 @@ export default function KiGamesPage() {
     setNimTurn('human');
     setNimWinner('');
     setLastAiMove(null);
-    setNimLog(['Neue Runde. Die KI behaelt ihre gelernten Verbote.']);
+    setNimLog(['Neue Runde. Die KI behält ihre gelernten Verbote.']);
   };
 
   const finishNim = (winner: string, logLine: string) => {
@@ -807,7 +935,7 @@ export default function KiGamesPage() {
         return { ...prev, [lastAiMove.sticks]: filtered.length ? filtered : options };
       });
       setNimLog((prev) => [
-        `Lerneffekt: Zug "${lastAiMove.take} nehmen" bei ${lastAiMove.sticks} Hoelzern wird kuenftig gemieden.`,
+        `Lerneffekt: Zug "${lastAiMove.take} nehmen" bei ${lastAiMove.sticks} Hölzern wird künftig gemieden.`,
         ...prev,
       ]);
     }
@@ -846,16 +974,16 @@ export default function KiGamesPage() {
   const resetHex = () => {
     setHexBoard(initialHexBoard);
     setHexSelected(null);
-    setHexMessage('Weiss beginnt. Ziehe einen weissen Bauern.');
+    setHexMessage('Weiß beginnt. Ziehe einen weißen Bauern.');
   };
 
   const checkHexWinner = (board: HexBoard) => {
-    if (board[0].includes('W')) return 'Weiss erreicht die Grundlinie und gewinnt.';
+    if (board[0].includes('W')) return 'Weiß erreicht die Grundlinie und gewinnt.';
     if (board[2].includes('B')) return 'Schwarz erreicht die Grundlinie und gewinnt.';
-    if (!board.flat().includes('W')) return 'Schwarz gewinnt: keine weissen Bauern mehr.';
-    if (!board.flat().includes('B')) return 'Weiss gewinnt: keine schwarzen Bauern mehr.';
-    if (getHexMoves(board, 'W').length === 0) return 'Schwarz gewinnt: Weiss kann nicht ziehen.';
-    if (getHexMoves(board, 'B').length === 0) return 'Weiss gewinnt: Schwarz kann nicht ziehen.';
+    if (!board.flat().includes('W')) return 'Schwarz gewinnt: keine weißen Bauern mehr.';
+    if (!board.flat().includes('B')) return 'Weiß gewinnt: keine schwarzen Bauern mehr.';
+    if (getHexMoves(board, 'W').length === 0) return 'Schwarz gewinnt: Weiß kann nicht ziehen.';
+    if (getHexMoves(board, 'B').length === 0) return 'Weiß gewinnt: Schwarz kann nicht ziehen.';
     return '';
   };
 
@@ -878,7 +1006,7 @@ export default function KiGamesPage() {
     const cell = hexBoard[row][col];
     if (cell === 'W') {
       setHexSelected([row, col]);
-      setHexMessage('Waehle ein Zielfeld: gerade vorwaerts oder diagonal zum Schlagen.');
+      setHexMessage('Wähle ein Zielfeld: gerade vorwärts oder diagonal zum Schlagen.');
       return;
     }
     if (!hexSelected) return;
@@ -901,7 +1029,7 @@ export default function KiGamesPage() {
     }
     const afterAi = makeHexAiMove(afterHuman);
     setHexBoard(afterAi);
-    setHexMessage(checkHexWinner(afterAi) || 'Schwarz hat gezogen. Weiss ist wieder dran.');
+    setHexMessage(checkHexWinner(afterAi) || 'Schwarz hat gezogen. Weiß ist wieder dran.');
   };
 
   const flipMemoryCard = (card: MemoryCard) => {
@@ -915,6 +1043,7 @@ export default function KiGamesPage() {
     window.setTimeout(() => {
       if (match && a) {
         setMemorySolved((prev) => [...prev, a.pairId]);
+        setMemorySolvedByTeam((prev) => ({ ...prev, [a.pairId]: memoryTeam }));
         setMemoryScore((prev) => ({ ...prev, [memoryTeam]: prev[memoryTeam] + 1 }));
       } else {
         setMemoryTeam((prev) => (prev === 'Team A' ? 'Team B' : 'Team A'));
@@ -927,14 +1056,17 @@ export default function KiGamesPage() {
     setMemoryDeck(createMemoryDeck(parseMemoryPairsFromColumns(memoryLeftText, memoryRightText)));
     setMemoryOpen([]);
     setMemorySolved([]);
+    setMemorySolvedByTeam({});
     setMemoryTeam('Team A');
     setMemoryScore({ 'Team A': 0, 'Team B': 0 });
+    setMemoryGameStarted(true);
   };
 
   const updateMemoryColumn = (side: 'leftText' | 'rightText', value: string) => {
     if (side === 'leftText') setMemoryLeftText(value);
     else setMemoryRightText(value);
     setMemorySets((prev) => prev.map((set) => (set.id === selectedMemorySetId ? { ...set, [side]: value } : set)));
+    setMemoryGameStarted(false);
   };
 
   const addMemoryTableRow = () => {
@@ -951,8 +1083,10 @@ export default function KiGamesPage() {
     setMemoryDeck(createMemoryDeck(parseMemoryPairsFromColumns(nextSet.leftText, nextSet.rightText)));
     setMemoryOpen([]);
     setMemorySolved([]);
+    setMemorySolvedByTeam({});
     setMemoryTeam('Team A');
     setMemoryScore({ 'Team A': 0, 'Team B': 0 });
+    setMemoryGameStarted(false);
   };
 
   const createNewMemorySet = () => {
@@ -972,8 +1106,10 @@ export default function KiGamesPage() {
     setMemoryDeck(createMemoryDeck(parseMemoryPairsFromColumns(nextSet.leftText, nextSet.rightText)));
     setMemoryOpen([]);
     setMemorySolved([]);
+    setMemorySolvedByTeam({});
     setMemoryTeam('Team A');
     setMemoryScore({ 'Team A': 0, 'Team B': 0 });
+    setMemoryGameStarted(false);
   };
 
   const answerTrueFalse = (answer: boolean) => {
@@ -1023,8 +1159,8 @@ export default function KiGamesPage() {
   const judgeQuickCheck = (choice: string) => {
     const current = quickCheckCases[quickCheckIndex];
     const labels: Record<string, string> = {
-      A: 'KI unterstuetzt Lernen',
-      B: 'KI verfuehrt zur Abkuerzung',
+      A: 'KI unterstützt Lernen',
+      B: 'KI verführt zur Abkürzung',
       C: 'Kommt auf die Aufgabe an',
     };
     setQuickCheckFeedback(
@@ -1041,7 +1177,7 @@ export default function KiGamesPage() {
     const current = aufgabenAmpelCases[ampelIndex];
     const isAccepted = current.accepted.includes(choice);
     setAmpelFeedback(
-      `${isAccepted ? 'Passend' : 'Diskussionswuerdig'}: Antwort ${current.answer}. ${current.topic}. ${current.discussion}`
+      `${isAccepted ? 'Passend' : 'Diskussionswürdig'}: Antwort ${current.answer}. ${current.topic}. ${current.discussion}`
     );
   };
 
@@ -1064,6 +1200,8 @@ export default function KiGamesPage() {
     setDenkzeitFeedback('');
   };
 
+  const memoryFullscreen = tab === 'memory' && memoryGameStarted;
+
   return (
     <Box
       sx={{
@@ -1077,7 +1215,8 @@ export default function KiGamesPage() {
         '& .MuiTypography-h6': { fontSize: { xs: '0.95rem', sm: '1.05rem' } },
       }}
     >
-      <Box sx={{ maxWidth: 1180, mx: 'auto', px: { xs: 1, sm: 1.5 }, py: 1.25, pb: 2.5 }}>
+      <Box sx={{ maxWidth: memoryFullscreen ? 'none' : 1180, mx: 'auto', px: memoryFullscreen ? 0 : { xs: 1, sm: 1.5 }, py: memoryFullscreen ? 0 : 1.25, pb: memoryFullscreen ? 0 : 2.5 }}>
+        {!memoryFullscreen && (
         <Tabs
           value={tab}
           onChange={(_, value) => setTab(value)}
@@ -1098,11 +1237,12 @@ export default function KiGamesPage() {
             },
           }}
         >
-          <Tab value="overview" label="Uebersicht" />
+          <Tab value="overview" label="Übersicht" />
           {gameCards.map((game) => (
             <Tab key={game.tab} value={game.tab} label={game.title} />
           ))}
         </Tabs>
+        )}
 
         {tab === 'overview' && (
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }, gap: 1.1 }}>
@@ -1139,7 +1279,7 @@ export default function KiGamesPage() {
                     </Box>
                   </Box>
                   <Button onClick={() => setTab(game.tab)} variant="contained" size="small" sx={{ mt: 1 }} fullWidth>
-                    Spiel oeffnen
+                    Spiel öffnen
                   </Button>
                 </CardContent>
               </Card>
@@ -1149,7 +1289,7 @@ export default function KiGamesPage() {
 
         {tab === 'nim' && (
           <Paper elevation={0} sx={{ p: { xs: 1, sm: 1.5 }, borderRadius: 2 }}>
-            <SectionTitle title="Spiel 1: Das Nimm-Spiel" subtitle="Nimm 1 bis 3 Hoelzer. Wer das letzte nimmt, gewinnt." />
+            <SectionTitle title="Spiel 1: Das Nimm-Spiel" subtitle="Nimm 1 bis 3 Hölzer. Wer das letzte nimmt, gewinnt." />
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.6, my: 2 }}>
               {Array.from({ length: Math.max(0, nimSticks) }).map((_, index) => (
                 <Box
@@ -1159,7 +1299,7 @@ export default function KiGamesPage() {
               ))}
             </Box>
             <Typography sx={{ fontWeight: 800, mb: 1 }}>
-              {nimWinner ? `Gewinner: ${nimWinner}` : nimTurn === 'ai' ? 'KI denkt...' : `${nimSticks} Hoelzer uebrig`}
+              {nimWinner ? `Gewinner: ${nimWinner}` : nimTurn === 'ai' ? 'KI denkt...' : `${nimSticks} Hölzer übrig`}
             </Typography>
             <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
               {[1, 2, 3].map((take) => (
@@ -1178,13 +1318,13 @@ export default function KiGamesPage() {
             </Stack>
             <Divider sx={{ my: 2 }} />
             <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>
-              KI-Gedaechtnis
+              KI-Gedächtnis
             </Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1 }}>
-              Erlaubte KI-Zuege bei aktueller Holzanzahl: {nimAvailableMoves.join(', ') || 'keine'}
+              Erlaubte KI-Züge bei aktueller Holzanzahl: {nimAvailableMoves.join(', ') || 'keine'}
             </Typography>
             <Typography variant="body2" sx={{ p: 1, borderRadius: 1.5, bgcolor: '#fff8e1', color: '#5d4037', fontWeight: 700, mb: 1 }}>
-              Leisen-Bruecke: Die KI lernt nicht durch das Ergebnis allein, sondern durch Rueckmeldung. Uebertragen auf Unterricht:
+              Leisen-Brücke: Die KI lernt nicht durch das Ergebnis allein, sondern durch Rückmeldung. Übertragen auf Unterricht:
               Was machen Lernende nach einer KI-Antwort?
             </Typography>
             <Stack spacing={0.75}>
@@ -1201,7 +1341,7 @@ export default function KiGamesPage() {
           <Paper elevation={0} sx={{ p: { xs: 1, sm: 1.5 }, borderRadius: 2 }}>
             <SectionTitle
               title="Spiel 2: Hexapawn"
-              subtitle="Du spielst Weiss. Schwarz bevorzugt Schlagzuege und demonstriert die Idee eines lernenden Gegners."
+              subtitle="Du spielst Weiß. Schwarz bevorzugt Schlagzüge und demonstriert die Idee eines lernenden Gegners."
             />
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '360px 1fr' }, gap: 2 }}>
               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', width: 330, maxWidth: '100%', border: '4px solid #263238' }}>
@@ -1234,17 +1374,17 @@ export default function KiGamesPage() {
                 <Typography sx={{ fontWeight: 900, mb: 1 }}>{hexMessage}</Typography>
                 <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.7, mb: 2 }}>
                   Ziel: einen Bauern auf die gegnerische Grundlinie bringen, alle gegnerischen Bauern schlagen oder den
-                  Gegner blockieren. Im Unterricht koennen verlorene Schwarz-Zuege wie beim Original-Hexapawn aus einer
+                  Gegner blockieren. Im Unterricht können verlorene Schwarz-Züge wie beim Original-Hexapawn aus einer
                   Zugliste gestrichen werden.
                 </Typography>
-                <Chip label={`Demonstrierte KI-Auswahl: ${hexAvoidedMoves} einfache Zuege nachrangig behandelt`} sx={{ mb: 2 }} />
+                <Chip label={`Demonstrierte KI-Auswahl: ${hexAvoidedMoves} einfache Züge nachrangig behandelt`} sx={{ mb: 2 }} />
                 <Typography variant="body2" sx={{ p: 1, borderRadius: 1.5, bgcolor: '#ede7f6', color: '#311b92', fontWeight: 700, mb: 1 }}>
-                  Leisen-Bruecke: Gute Zuege entstehen durch Ausprobieren, Pruefen und Korrigieren. Genau so werden
+                  Leisen-Brücke: Gute Züge entstehen durch Ausprobieren, Prüfen und Korrigieren. Genau so werden
                   KI-Ergebnisse erst durch Anschlussaufgaben lernwirksam.
                 </Typography>
                 <br />
                 <Button startIcon={<RestartAltIcon />} onClick={resetHex} variant="outlined">
-                  Brett zuruecksetzen
+                  Brett zurücksetzen
                 </Button>
               </Box>
             </Box>
@@ -1252,35 +1392,57 @@ export default function KiGamesPage() {
         )}
 
         {tab === 'memory' && (
-          <Paper elevation={0} sx={{ p: { xs: 1, sm: 1.5 }, borderRadius: 2 }}>
-            <SectionTitle
-              title="Spiel 3: Memory"
-              subtitle="Allgemeines Memory: Kartensatz waehlen, benennen, zwei Karten-Spalten fuellen und bunt spielen."
-            />
-            <Box sx={{ display: 'grid', gap: 1, mb: 1.25 }}>
-              <Box sx={{ display: 'grid', gap: 1 }}>
-                <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 0.75 }}>
-                  <FormControl size="small" fullWidth>
-                    <InputLabel id="memory-set-label">Kartensatz</InputLabel>
-                    <Select
-                      labelId="memory-set-label"
-                      label="Kartensatz"
-                      value={selectedMemorySetId}
-                      onChange={(event) => selectMemorySet(String(event.target.value))}
-                    >
-                      {memorySets.map((set) => (
-                        <MenuItem key={set.id} value={set.id}>
-                          {set.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+          <Paper
+            elevation={0}
+            sx={{
+              p: memoryGameStarted ? { xs: 0.5, sm: 0.75 } : { xs: 1, sm: 1.5 },
+              borderRadius: memoryGameStarted ? 0 : 2,
+              minHeight: memoryGameStarted ? '100vh' : undefined,
+              bgcolor: memoryGameStarted ? '#eef3f8' : undefined,
+              position: 'relative',
+            }}
+          >
+            {!memoryGameStarted && (
+            <>
+            <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 0.75, mb: 1 }}>
+              <IconButton
+                size="small"
+                onClick={() => setTab('overview')}
+                aria-label="Zurück zur KI-Spiele-Startseite"
+                sx={{
+                  width: 32,
+                  height: 32,
+                  ml: { xs: -0.75, sm: -1.25 },
+                  bgcolor: 'white',
+                  border: '1px solid rgba(0,0,0,0.12)',
+                  '&:hover': { bgcolor: '#eef3f8' },
+                }}
+              >
+                <ArrowBackIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+              <FormControl size="small" sx={{ width: { xs: 'calc(100% - 40px)', sm: 230 } }}>
+                <InputLabel id="memory-set-label">Kartensatz</InputLabel>
+                <Select
+                  labelId="memory-set-label"
+                  label="Kartensatz"
+                  value={selectedMemorySetId}
+                  onChange={(event) => selectMemorySet(String(event.target.value))}
+                >
+                  {memorySets.map((set) => (
+                    <MenuItem key={set.id} value={set.id}>
+                      {set.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              {!memoryGameStarted && (
+                <>
                   <TextField
-                    label="Name neuer Kartensatz"
+                    label="Neuer Kartensatz"
                     value={newMemorySetName}
                     onChange={(event) => setNewMemorySetName(event.target.value)}
                     size="small"
-                    sx={{ minWidth: { xs: '100%', sm: 230 } }}
+                    sx={{ width: { xs: 'calc(100% - 42px)', sm: 190 } }}
                   />
                   <Button
                     variant="contained"
@@ -1291,7 +1453,69 @@ export default function KiGamesPage() {
                   >
                     <AddIcon sx={{ fontSize: 18 }} />
                   </Button>
-                </Stack>
+                </>
+              )}
+              <Button
+                size="large"
+                variant="contained"
+                color="success"
+                onClick={resetMemory}
+                sx={{ minWidth: 150, height: 40, fontWeight: 900 }}
+              >
+                Spielen
+              </Button>
+              <Button
+                component="a"
+                href="/print/memory-huehner-karten.png"
+                download="johnny-huehner-memory-karten.png"
+                size="small"
+                variant="outlined"
+                startIcon={<FileDownloadIcon sx={{ fontSize: 17 }} />}
+                sx={{ height: 34, fontWeight: 900 }}
+              >
+                Hühner-Karten
+              </Button>
+              <Button
+                component="a"
+                href="/print/memory-huehner-karten-weiss.png"
+                download="johnny-huehner-memory-karten-weiss.png"
+                size="small"
+                variant="outlined"
+                startIcon={<FileDownloadIcon sx={{ fontSize: 17 }} />}
+                sx={{ height: 34, fontWeight: 900 }}
+              >
+                Hühner weiß
+              </Button>
+              <Button
+                component="a"
+                href="/print/memory-tiger-karten.png"
+                download="tigerkatzen-memory-karten.png"
+                size="small"
+                variant="outlined"
+                startIcon={<FileDownloadIcon sx={{ fontSize: 17 }} />}
+                sx={{ height: 34, fontWeight: 900 }}
+              >
+                Tiger-Karten
+              </Button>
+              <Button
+                component="a"
+                href="/print/memory-tiger-karten-weiss.png"
+                download="tigerkatzen-memory-karten-weiss.png"
+                size="small"
+                variant="outlined"
+                startIcon={<FileDownloadIcon sx={{ fontSize: 17 }} />}
+                sx={{ height: 34, fontWeight: 900 }}
+              >
+                Tiger weiß
+              </Button>
+              {memoryGameStarted && (
+                <Button size="small" variant="outlined" onClick={() => setMemoryGameStarted(false)}>
+                  Bearbeiten
+                </Button>
+              )}
+            </Stack>
+            <Box sx={{ display: 'grid', gap: 1, mb: 1.25 }}>
+              <Box sx={{ display: 'grid', gap: 1 }}>
                 <Box sx={{ border: '1px solid rgba(0,0,0,0.12)', borderRadius: 2, overflow: 'hidden', bgcolor: 'white' }}>
                   <Box
                     sx={{
@@ -1461,78 +1685,360 @@ export default function KiGamesPage() {
                   </Box>
                 </Box>
                 <Stack direction="row" spacing={0.75} sx={{ flexWrap: 'wrap', gap: 0.75 }}>
-                  <Button size="small" variant="contained" onClick={resetMemory}>
-                    Kartensatz spielen
-                  </Button>
-                  <Button size="small" startIcon={<RestartAltIcon />} onClick={resetMemory} variant="outlined">
-                    Neu mischen
-                  </Button>
                   <Button size="small" onClick={addMemoryTableRow} variant="outlined">
-                    Zeile hinzufuegen
+                    Zeile hinzufügen
                   </Button>
                   <Chip label={`${parseMemoryPairsFromColumns(memoryLeftText, memoryRightText).length} Paare`} />
                 </Stack>
               </Box>
             </Box>
+            </>
+            )}
 
-            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1, mb: 1.25 }}>
-              <Chip color="primary" label={`Am Zug: ${memoryTeam}`} />
-              <Chip label={`Team A: ${memoryScore['Team A']}`} />
-              <Chip label={`Team B: ${memoryScore['Team B']}`} />
-              <Chip label={`${memorySolved.length}/${Math.max(1, memoryDeck.length / 2)} Paare gefunden`} />
-            </Stack>
+            {memoryGameStarted && (
+            <>
+              <IconButton
+                size="small"
+                onClick={() => setMemoryGameStarted(false)}
+                aria-label="Zurück zur Memory-Vorbereitung"
+                sx={{
+                  width: 28,
+                  height: 28,
+                  position: 'fixed',
+                  top: 24,
+                  left: '3vw',
+                  p: 0,
+                  zIndex: 1300,
+                  bgcolor: 'white',
+                  border: '1px solid rgba(0,0,0,0.12)',
+                  boxShadow: '0 4px 12px rgba(15,23,42,0.16)',
+                  '&:hover': { bgcolor: '#eef3f8' },
+                }}
+              >
+                <ArrowBackIcon sx={{ fontSize: 16 }} />
+              </IconButton>
             <Box
               sx={{
                 display: 'grid',
-                gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)', lg: 'repeat(6, 1fr)' },
-                gap: 1,
+                gridTemplateColumns: { xs: '1fr', md: '150px minmax(0, 1fr) 150px', lg: '180px minmax(0, 1fr) 180px' },
+                alignItems: 'start',
+                gap: { xs: 0.75, md: 1.25 },
+              }}
+            >
+              {(['Team A'] as const).map((team) => {
+                const active = team === memoryTeam;
+                const winner = memoryWinner === team;
+                const highlighted = winner || (active && !memoryGameComplete);
+                return (
+                  <Button
+                    key={team}
+                    onClick={() => setMemoryTeam(team)}
+                    sx={{
+                      display: 'flex',
+                      flexDirection: { xs: 'row', md: 'column' },
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: { xs: 1, md: 1.25 },
+                      minHeight: { xs: 58, md: 'calc(100vh - 16px)' },
+                      px: 1,
+                      py: { xs: 0.75, md: 2 },
+                      borderRadius: 3,
+                      textTransform: 'none',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      color: highlighted ? 'white' : '#64748b',
+                      bgcolor: highlighted ? memoryTeamColors[team] : '#e5e7eb',
+                      border: winner ? '8px solid #facc15' : `5px solid ${highlighted ? memoryTeamColors[team] : '#cbd5e1'}`,
+                      boxShadow: winner
+                        ? `0 0 0 10px rgba(250, 204, 21, 0.35), 0 0 44px ${memoryTeamColors[team]}cc`
+                        : highlighted
+                          ? `0 12px 28px ${memoryTeamColors[team]}66`
+                          : 'none',
+                      opacity: highlighted ? 1 : 0.55,
+                      filter: highlighted ? 'none' : 'grayscale(1)',
+                      '&:hover': {
+                        bgcolor: highlighted ? memoryTeamColors[team] : '#e5e7eb',
+                      },
+                    }}
+                  >
+                    {winner && (
+                      <>
+                        <Typography
+                          aria-hidden
+                          sx={{
+                            position: 'absolute',
+                            inset: 0,
+                            display: 'grid',
+                            placeItems: 'center',
+                            fontSize: { xs: '2.4rem', md: '5.8rem' },
+                            letterSpacing: { xs: 2, md: 4 },
+                            opacity: 0.34,
+                            pointerEvents: 'none',
+                          }}
+                        >
+                          ✨ ✨ ✨
+                        </Typography>
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: { xs: 4, md: 18 },
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            px: { xs: 1.25, md: 1.6 },
+                            py: 0.6,
+                            borderRadius: 99,
+                            bgcolor: '#facc15',
+                            color: '#111827',
+                            border: '3px solid white',
+                            boxShadow: '0 8px 22px rgba(0,0,0,0.22)',
+                            fontWeight: 1000,
+                            fontSize: { xs: '0.82rem', md: '1rem' },
+                            lineHeight: 1,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          ⭐ SIEGER ⭐
+                        </Box>
+                      </>
+                    )}
+                    <Typography sx={{ fontSize: { xs: '2.1rem', md: '4.2rem' }, lineHeight: 1 }}>
+                      {memoryTeamAnimals[team]}
+                    </Typography>
+                    <Box>
+                      <Typography sx={{ fontSize: { xs: '1rem', md: '1.35rem' }, fontWeight: 1000, lineHeight: 1.05 }}>
+                        {memoryTeamNames[team]}
+                      </Typography>
+                      <Typography sx={{ fontSize: { xs: '1.15rem', md: '2.15rem' }, fontWeight: 1000, lineHeight: 1.05, mt: { md: 1 } }}>
+                        {memoryScore[team]}
+                      </Typography>
+                      <Typography sx={{ fontSize: { xs: '0.8rem', md: '1rem' }, fontWeight: 900, lineHeight: 1 }}>
+                        Paare
+                      </Typography>
+                      {active && !memoryGameComplete && (
+                        <Typography sx={{ fontSize: { xs: '0.72rem', md: '0.95rem' }, fontWeight: 1000, lineHeight: 1.1, mt: { xs: 0, md: 1.5 } }}>
+                          AM ZUG
+                        </Typography>
+                      )}
+                      {winner && (
+                        <Typography sx={{ fontSize: { xs: '1rem', md: '1.35rem' }, fontWeight: 1000, lineHeight: 1.1, mt: { xs: 0, md: 1.5 } }}>
+                          GEWONNEN ✨
+                        </Typography>
+                      )}
+                    </Box>
+                  </Button>
+                );
+              })}
+            <Box
+              sx={{
+                display: 'grid',
+                '--memory-columns': memoryColumnCount,
+                '--memory-rows': memoryRowCount,
+                '--memory-gap': '10px',
+                '--memory-side-space': { xs: '24px', md: '360px', lg: '420px' },
+                '--memory-top-space': { xs: '148px', md: '18px' },
+                '--memory-card-size': `min(
+                  150px,
+                  calc((100vw - var(--memory-side-space) - (var(--memory-columns) - 1) * var(--memory-gap)) / var(--memory-columns)),
+                  calc((100vh - var(--memory-top-space) - (var(--memory-rows) - 1) * var(--memory-gap)) / var(--memory-rows))
+                )`,
+                gridTemplateColumns: 'repeat(var(--memory-columns), var(--memory-card-size))',
+                gap: 'var(--memory-gap)',
+                width: '100%',
+                justifyContent: 'center',
+                alignContent: 'start',
               }}
             >
               {memoryDeck.map((card) => {
                 const visible = memoryOpen.includes(card.id) || memorySolved.includes(card.pairId);
                 const solved = memorySolved.includes(card.pairId);
+                const solvedTeam = memorySolvedByTeam[card.pairId];
+                const solvedTeamColor = solvedTeam ? memoryTeamColors[solvedTeam] : card.color;
+                const [leadingToken] = card.label.split(' ');
+                const hasLeadingIcon = card.kind === 'term' && leadingToken.length <= 4 && leadingToken !== card.label;
+                const cardText = hasLeadingIcon ? card.label.slice(leadingToken.length).trim() : card.label;
                 return (
                   <Button
                     key={card.id}
                     onClick={() => flipMemoryCard(card)}
                     sx={{
-                      minHeight: 116,
-                      p: 1,
+                      width: 'var(--memory-card-size)',
+                      height: 'var(--memory-card-size)',
+                      minHeight: 0,
+                      p: { xs: 1, sm: 1.15 },
                       borderRadius: 2.5,
-                      border: visible ? `3px solid ${card.color}` : '3px solid rgba(255,255,255,0.75)',
-                      background: visible
-                        ? `linear-gradient(135deg, ${card.color}22 0%, #ffffff 100%)`
-                        : `linear-gradient(135deg, ${card.color} 0%, #263238 100%)`,
-                      color: visible ? '#1f2937' : 'white',
+                      border: solved
+                        ? `5px solid ${solvedTeamColor}`
+                        : visible
+                          ? '3px solid #9ca3af'
+                          : '3px solid #9ca3af',
+                      background: solved
+                        ? '#d9f7d9'
+                        : visible
+                        ? '#ffffff'
+                        : '#ffffff',
+                      color: '#1f2937',
                       textTransform: 'none',
                       fontWeight: 900,
                       lineHeight: 1.25,
+                      overflow: 'hidden',
                       boxShadow: visible
-                        ? `0 4px 14px ${card.color}33`
-                        : `0 8px 18px ${card.color}55`,
-                      opacity: solved ? 0.72 : 1,
+                        ? `0 4px 14px ${solved ? solvedTeamColor : '#9ca3af'}33`
+                        : '0 8px 18px rgba(148,163,184,0.32)',
+                      opacity: 1,
                       transform: visible ? 'rotateY(0deg)' : 'rotateY(0deg) scale(1)',
                       transition: 'all 0.18s ease',
                       '&:hover': {
                         transform: 'translateY(-2px)',
-                        boxShadow: `0 10px 22px ${card.color}66`,
+                        boxShadow: visible
+                          ? `0 10px 22px ${solved ? solvedTeamColor : '#9ca3af'}44`
+                          : '0 10px 22px rgba(148,163,184,0.42)',
                       },
                     }}
                   >
                     {visible ? (
-                      <Box>
-                        {card.label}
+                      <Box
+                        sx={{
+                          display: 'grid',
+                          placeItems: 'center',
+                          gap: hasLeadingIcon ? 0.5 : 0,
+                          fontSize: { xs: '0.76rem', sm: '0.84rem' },
+                          lineHeight: 1.15,
+                          overflow: 'hidden',
+                          textAlign: 'center',
+                        }}
+                      >
+                        {hasLeadingIcon && (
+                          <Box component="span" sx={{ display: 'block', fontSize: { xs: '1.65rem', sm: '1.95rem' }, lineHeight: 1 }}>
+                            {leadingToken}
+                          </Box>
+                        )}
+                        <Box component="span" sx={{ display: 'block' }}>
+                          {cardText}
+                        </Box>
                       </Box>
                     ) : (
-                      <Box>
-                        <Typography sx={{ fontSize: '1.65rem', fontWeight: 1000, lineHeight: 1 }}>?</Typography>
-                        <Typography sx={{ fontSize: '0.72rem', fontWeight: 900 }}>Memory</Typography>
-                      </Box>
+                      <Box
+                        component="img"
+                        src="/johnny-logo.png"
+                        alt="Johnny Logo"
+                        sx={{
+                          width: '72%',
+                          height: '72%',
+                          objectFit: 'contain',
+                          opacity: 0.18,
+                        }}
+                      />
                     )}
                   </Button>
                 );
               })}
             </Box>
+              {(['Team B'] as const).map((team) => {
+                const active = team === memoryTeam;
+                const winner = memoryWinner === team;
+                const highlighted = winner || (active && !memoryGameComplete);
+                return (
+                  <Button
+                    key={team}
+                    onClick={() => setMemoryTeam(team)}
+                    sx={{
+                      display: 'flex',
+                      flexDirection: { xs: 'row', md: 'column' },
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: { xs: 1, md: 1.25 },
+                      minHeight: { xs: 58, md: 'calc(100vh - 16px)' },
+                      px: 1,
+                      py: { xs: 0.75, md: 2 },
+                      borderRadius: 3,
+                      textTransform: 'none',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      color: highlighted ? 'white' : '#64748b',
+                      bgcolor: highlighted ? memoryTeamColors[team] : '#e5e7eb',
+                      border: winner ? '8px solid #facc15' : `5px solid ${highlighted ? memoryTeamColors[team] : '#cbd5e1'}`,
+                      boxShadow: winner
+                        ? `0 0 0 10px rgba(250, 204, 21, 0.35), 0 0 44px ${memoryTeamColors[team]}cc`
+                        : highlighted
+                          ? `0 12px 28px ${memoryTeamColors[team]}66`
+                          : 'none',
+                      opacity: highlighted ? 1 : 0.55,
+                      filter: highlighted ? 'none' : 'grayscale(1)',
+                      '&:hover': {
+                        bgcolor: highlighted ? memoryTeamColors[team] : '#e5e7eb',
+                      },
+                    }}
+                  >
+                    {winner && (
+                      <>
+                        <Typography
+                          aria-hidden
+                          sx={{
+                            position: 'absolute',
+                            inset: 0,
+                            display: 'grid',
+                            placeItems: 'center',
+                            fontSize: { xs: '2.4rem', md: '5.8rem' },
+                            letterSpacing: { xs: 2, md: 4 },
+                            opacity: 0.34,
+                            pointerEvents: 'none',
+                          }}
+                        >
+                          ✨ ✨ ✨
+                        </Typography>
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: { xs: 4, md: 18 },
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            px: { xs: 1.25, md: 1.6 },
+                            py: 0.6,
+                            borderRadius: 99,
+                            bgcolor: '#facc15',
+                            color: '#111827',
+                            border: '3px solid white',
+                            boxShadow: '0 8px 22px rgba(0,0,0,0.22)',
+                            fontWeight: 1000,
+                            fontSize: { xs: '0.82rem', md: '1rem' },
+                            lineHeight: 1,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          ⭐ SIEGER ⭐
+                        </Box>
+                      </>
+                    )}
+                    <Typography sx={{ fontSize: { xs: '2.1rem', md: '4.2rem' }, lineHeight: 1 }}>
+                      {memoryTeamAnimals[team]}
+                    </Typography>
+                    <Box>
+                      <Typography sx={{ fontSize: { xs: '1rem', md: '1.35rem' }, fontWeight: 1000, lineHeight: 1.05 }}>
+                        {memoryTeamNames[team]}
+                      </Typography>
+                      <Typography sx={{ fontSize: { xs: '1.15rem', md: '2.15rem' }, fontWeight: 1000, lineHeight: 1.05, mt: { md: 1 } }}>
+                        {memoryScore[team]}
+                      </Typography>
+                      <Typography sx={{ fontSize: { xs: '0.8rem', md: '1rem' }, fontWeight: 900, lineHeight: 1 }}>
+                        Paare
+                      </Typography>
+                      {active && !memoryGameComplete && (
+                        <Typography sx={{ fontSize: { xs: '0.72rem', md: '0.95rem' }, fontWeight: 1000, lineHeight: 1.1, mt: { xs: 0, md: 1.5 } }}>
+                          AM ZUG
+                        </Typography>
+                      )}
+                      {winner && (
+                        <Typography sx={{ fontSize: { xs: '1rem', md: '1.35rem' }, fontWeight: 1000, lineHeight: 1.1, mt: { xs: 0, md: 1.5 } }}>
+                          GEWONNEN ✨
+                        </Typography>
+                      )}
+                    </Box>
+                  </Button>
+                );
+              })}
+            </Box>
+            </>
+            )}
           </Paper>
         )}
 
@@ -1540,7 +2046,7 @@ export default function KiGamesPage() {
           <Paper elevation={0} sx={{ p: { xs: 1, sm: 1.5 }, borderRadius: 2 }}>
             <SectionTitle
               title="Spiel 4: Umgebungs-Escape-Game"
-              subtitle="GPS-/QR-Spiel fuer Vallendar und das Kloster Schoenstatt mit KI-Bezug."
+              subtitle="GPS-/QR-Spiel für Vallendar und das Kloster Schönstatt mit KI-Bezug."
             />
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(5, 1fr)' }, gap: 1.25 }}>
               {escapeStations.map((station, index) => (
@@ -1572,7 +2078,7 @@ export default function KiGamesPage() {
                       {station.task}
                     </Typography>
                     <Typography variant="caption" sx={{ color: '#3949ab', fontWeight: 800 }}>
-                      Loesungshinweis: {station.solution}
+                      Lösungshinweis: {station.solution}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -1610,7 +2116,7 @@ export default function KiGamesPage() {
                 Links: falsch
               </Button>
               <Button size="large" variant="outlined" onClick={nextTrueFalse}>
-                Naechste Aussage
+                Nächste Aussage
               </Button>
             </Stack>
             {tfFeedback && (
@@ -1645,7 +2151,7 @@ export default function KiGamesPage() {
                       Antwort markieren
                     </Button>
                     <Button variant="outlined" onClick={nextBingoClue}>
-                      Naechster Impuls
+                      Nächster Impuls
                     </Button>
                   </Stack>
                   <Divider sx={{ my: 2 }} />
@@ -1709,7 +2215,7 @@ export default function KiGamesPage() {
           <Paper elevation={0} sx={{ p: { xs: 1, sm: 1.5 }, borderRadius: 2 }}>
             <SectionTitle
               title="Spiel 7: KI oder nicht KI?"
-              subtitle="Nach der Materialphase: Unterrichtssituationen einordnen und die Entscheidung kurz begruenden."
+              subtitle="Nach der Materialphase: Unterrichtssituationen einordnen und die Entscheidung kurz begründen."
             />
             <LinearProgress
               variant="determinate"
@@ -1744,13 +2250,13 @@ export default function KiGamesPage() {
             )}
             <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
               <Button variant="outlined" onClick={nextKiCase}>
-                Naechste Situation
+                Nächste Situation
               </Button>
               <Chip label="Positionieren: links / Mitte / rechts oder mit Karten anzeigen" />
             </Stack>
             <Divider sx={{ my: 2 }} />
             <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.7 }}>
-              Bogen fuer die Fortbildung: Vortrag und Toolphase, KI Bingo zur Wiederholung, Arbeit mit konkretem
+              Bogen für die Fortbildung: Vortrag und Toolphase, KI Bingo zur Wiederholung, Arbeit mit konkretem
               Material, danach "KI oder nicht KI?" zur Anwendung und gemeinsame Auswertung.
             </Typography>
           </Paper>
@@ -1760,7 +2266,7 @@ export default function KiGamesPage() {
           <Paper elevation={0} sx={{ p: { xs: 1, sm: 1.5 }, borderRadius: 2 }}>
             <SectionTitle
               title="Spiel 8: KI Quick Check"
-              subtitle="Nach dem Vortrag: Wird KI zur Lernchance oder zur Abkuerzung am Denkprozess vorbei?"
+              subtitle="Nach dem Vortrag: Wird KI zur Lernchance oder zur Abkürzung am Denkprozess vorbei?"
             />
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1.2fr 0.8fr' }, gap: 2 }}>
               <Box>
@@ -1781,10 +2287,10 @@ export default function KiGamesPage() {
                 </Card>
                 <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 1, mb: 2 }}>
                   <Button size="large" variant="contained" color="success" onClick={() => judgeQuickCheck('A')}>
-                    A: KI unterstuetzt Lernen
+                    A: KI unterstützt Lernen
                   </Button>
                   <Button size="large" variant="contained" color="error" onClick={() => judgeQuickCheck('B')}>
-                    B: KI verfuehrt zur Abkuerzung
+                    B: KI verführt zur Abkürzung
                   </Button>
                   <Button size="large" variant="contained" color="warning" onClick={() => judgeQuickCheck('C')}>
                     C: Kommt auf die Aufgabe an
@@ -1796,10 +2302,10 @@ export default function KiGamesPage() {
                   </Typography>
                 )}
                 <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 800, mb: 1.5 }}>
-                  Zusatzfrage: Wo entsteht hier Denkzeit fuer Schuelerinnen und Schueler?
+                  Zusatzfrage: Wo entsteht hier Denkzeit für Schülerinnen und Schüler?
                 </Typography>
                 <Button variant="outlined" onClick={nextQuickCheck}>
-                  Naechste Aussage
+                  Nächste Aussage
                 </Button>
               </Box>
 
@@ -1810,10 +2316,10 @@ export default function KiGamesPage() {
                   </Typography>
                   <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.7, mb: 1.5 }}>
                     Leisen-Perspektive: Lernwirksam wird KI erst, wenn Lernende an und mit KI-Ergebnissen arbeiten,
-                    ihr Vorwissen aktivieren, pruefen, vergleichen, begruenden und ueberarbeiten.
+                    ihr Vorwissen aktivieren, prüfen, vergleichen, begründen und überarbeiten.
                   </Typography>
                   <Stack spacing={1}>
-                    {['Toolnutzung allein reicht nicht.', 'Entscheidend sind Lernzeit und Denkzeit.', 'Krommer-Frage: Was veraendert KI an Lern- und Pruefungskultur?'].map((item) => (
+                    {['Toolnutzung allein reicht nicht.', 'Entscheidend sind Lernzeit und Denkzeit.', 'Krommer-Frage: Was verändert KI an Lern- und Prüfungskultur?'].map((item) => (
                       <Chip key={item} label={item} sx={{ justifyContent: 'flex-start', fontWeight: 700 }} />
                     ))}
                   </Stack>
@@ -1827,7 +2333,7 @@ export default function KiGamesPage() {
           <Paper elevation={0} sx={{ p: { xs: 1, sm: 1.5 }, borderRadius: 2 }}>
             <SectionTitle
               title="Spiel 9: Aufgaben Ampel KI"
-              subtitle="Nach der Schuelerperspektive: Welche didaktische Funktion erfuellt KI in der Aufgabe?"
+              subtitle="Nach der Schülerperspektive: Welche didaktische Funktion erfüllt KI in der Aufgabe?"
             />
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '0.95fr 1.05fr' }, gap: 2 }}>
               <Box>
@@ -1867,10 +2373,10 @@ export default function KiGamesPage() {
                   </Typography>
                 )}
                 <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 800, mb: 1.5 }}>
-                  Zusatzfrage: Wo entsteht hier Denkzeit fuer Schuelerinnen und Schueler?
+                  Zusatzfrage: Wo entsteht hier Denkzeit für Schülerinnen und Schüler?
                 </Typography>
                 <Button variant="outlined" onClick={nextAmpelCase}>
-                  Naechste Aufgabenkarte
+                  Nächste Aufgabenkarte
                 </Button>
               </Box>
 
@@ -1878,7 +2384,7 @@ export default function KiGamesPage() {
                 {[
                   ['KI thematisieren', 'KI selbst verstehen, Chancen und Risiken einordnen.'],
                   ['KI integrieren', 'KI als Lernressource nutzen, ohne den Lernprozess abzugeben.'],
-                  ['KI reflektieren', 'KI-Ergebnisse pruefen, vergleichen, hinterfragen und verbessern.'],
+                  ['KI reflektieren', 'KI-Ergebnisse prüfen, vergleichen, hinterfragen und verbessern.'],
                   ['KI begrenzen', 'Bewusst ohne KI arbeiten, damit Kompetenzen sichtbar werden.'],
                 ].map(([title, text]) => (
                   <Card key={title} elevation={0} sx={{ borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)' }}>
@@ -1894,8 +2400,8 @@ export default function KiGamesPage() {
                   <CardContent sx={{ p: 1.5 }}>
                     <Typography sx={{ fontWeight: 900, mb: 0.5 }}>Roter Faden</Typography>
                     <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.65 }}>
-                      Leisen fragt nach Lernzeit, Denkzeit und Anstrengung. Krommer oeffnet den Blick auf veraenderte
-                      Lern- und Pruefungskultur. Falck liefert mit den Aufgabenkategorien ein Planungsraster fuer
+                      Leisen fragt nach Lernzeit, Denkzeit und Anstrengung. Krommer öffnet den Blick auf veränderte
+                      Lern- und Prüfungskultur. Falck liefert mit den Aufgabenkategorien ein Planungsraster für
                       konkrete Unterrichtsentscheidungen.
                     </Typography>
                   </CardContent>
@@ -1952,7 +2458,7 @@ export default function KiGamesPage() {
 
                 <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
                   <Button variant="outlined" size="small" onClick={nextDenkzeitCard}>
-                    Naechste Karte
+                    Nächste Karte
                   </Button>
                   <Button
                     variant="text"
