@@ -1,0 +1,26 @@
+<svg width="960" height="540" viewBox="0 0 960 540" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="tr-bg" x1="0" y1="540" x2="960" y2="0">
+      <stop stop-color="#FFF3E0"/>
+      <stop offset="0.5" stop-color="#FFE0B2"/>
+      <stop offset="1" stop-color="#FFCC80"/>
+    </linearGradient>
+    <linearGradient id="tr-bridge" x1="200" y1="300" x2="760" y2="300">
+      <stop stop-color="#FF6F00"/>
+      <stop offset="1" stop-color="#E65100"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" rx="40" fill="url(#tr-bg)"/>
+  <!-- linke Welt -->
+  <circle cx="220" cy="240" r="70" fill="#4FC3F7" opacity="0.9"/>
+  <path d="M190 230h60v24h-60z" fill="#01579B"/>
+  <!-- rechte Welt -->
+  <circle cx="740" cy="240" r="70" fill="#81C784" opacity="0.95"/>
+  <circle cx="740" cy="230" r="22" fill="#2E7D32"/>
+  <!-- Brücke -->
+  <path d="M260 300 Q480 180 700 300 L700 340 Q480 240 260 340Z" fill="url(#tr-bridge)"/>
+  <path d="M280 310h400v16H280z" fill="#BF360C" opacity="0.35"/>
+  <!-- Transfer-Pfeile -->
+  <path d="M420 120h120l-36-40M540 120l-36 40" stroke="#D84315" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M480 380v80M440 420h80" stroke="#E65100" stroke-width="12" stroke-linecap="round"/>
+</svg>

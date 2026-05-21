@@ -20,6 +20,9 @@ router.put('/decks/:id', FlashcardController_1.updateDeck);
 router.delete('/decks/:id', FlashcardController_1.deleteDeck);
 // Deck cards routes
 router.get('/decks/:deckId/cards', FlashcardController_1.getDeckCards);
+router.get('/decks/:deckId/collaborative-cards', FlashcardController_1.getCollaborativeDeckCards);
+router.get('/decks/:deckId/collaborative-deck-full', FlashcardController_1.getCollaborativeDeckFull);
+router.post('/decks/:deckId/cards/collaborative', FlashcardController_1.createCollaborativeCard);
 // Card routes
 router.post('/cards', FlashcardController_1.createCard);
 router.put('/cards/:cardId', FlashcardController_1.updateCard);

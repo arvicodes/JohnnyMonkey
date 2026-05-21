@@ -49,7 +49,8 @@ import {
   FormatUnderlined as FormatUnderlinedIcon,
   Link as LinkIcon,
   OpenInNew as OpenInNewIcon,
-  AutoStories as AutoStoriesIcon
+  AutoStories as AutoStoriesIcon,
+  WbSunny as WbSunnyIcon
 } from '@mui/icons-material';
 import {
   DndContext,
@@ -5509,6 +5510,32 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     title="Bewegungsgeschichten (Pferderennen, Elefant, Löwenjagd)"
                   >
                     <AutoStoriesIcon sx={{ fontSize: 22 }} />
+                  </IconButton>
+                </Box>
+                {/* Stories & Tagebücher */}
+                <Box sx={{ position: 'relative' }}>
+                  <IconButton
+                    onClick={() => navigate('/stories-tagebuecher')}
+                    sx={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 1.4,
+                      position: 'relative',
+                      overflow: 'visible',
+                      border: '2px solid rgba(255, 193, 7, 0.55)',
+                      background: 'linear-gradient(135deg, #fff8e1 0%, #ffca28 45%, #ff8f00 100%)',
+                      color: '#e65100',
+                      boxShadow: '0 2px 10px rgba(255, 152, 0, 0.45)',
+                      '&:hover': {
+                        transform: 'scale(1.06)',
+                        borderColor: 'rgba(255, 152, 0, 0.85)',
+                        boxShadow: '0 4px 14px rgba(255, 152, 0, 0.55)',
+                      },
+                      transition: 'all 0.2s ease',
+                    }}
+                    title="Stories & Tagebücher: Reiseberichte, Tagebuch, Fortbildung"
+                  >
+                    <WbSunnyIcon sx={{ fontSize: 30 }} />
                   </IconButton>
                 </Box>
                 </Box>

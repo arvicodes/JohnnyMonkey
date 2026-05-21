@@ -33,4 +33,10 @@ export declare const migrateToNewSpacedRepetitionSystem: (req: Request, res: Res
 export declare const markAllDueCardsAsLearned: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
 export declare const exportStudentProgress: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
 export declare const exportTeacherDecks: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
+/** SuS: Karten eines der Gruppe zugewiesenen Decks laden (Polling, Live-Sync). */
+export declare const getCollaborativeDeckCards: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
+/** SuS: Vollständiges Deck wie in der Lehrer-Ansicht (Karten + Metadaten), für gemeinsames Erstellen. */
+export declare const getCollaborativeDeckFull: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
+/** SuS: Karte zum gemeinsamen Deck hinzufügen (nur wenn Gruppe das Deck zugewiesen hat). */
+export declare const createCollaborativeCard: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
 //# sourceMappingURL=FlashcardController.d.ts.map

@@ -5,6 +5,14 @@ export interface StorageConfig {
 export declare class StorageManager {
     private static config;
     /**
+     * Physical root of J-M-Reihen (Docker: usually /app/J-M-Reihen when LOCAL_MATERIALS_PATH=/app).
+     */
+    private static resolveJmReihenRoot;
+    /**
+     * UI/DB sometimes stores "J-M-Reihen/..." instead of "git-intern/..." — normalize for one code path.
+     */
+    private static normalizeDirRequestPath;
+    /**
      * Read directory contents
      */
     static readDirectory(dirPath: string, recursive?: boolean): Promise<any>;

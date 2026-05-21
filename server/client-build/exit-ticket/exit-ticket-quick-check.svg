@@ -1,0 +1,36 @@
+<svg width="960" height="540" viewBox="0 0 960 540" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="qc-bg" x1="0" y1="0" x2="960" y2="540">
+      <stop stop-color="#E8F5E9"/>
+      <stop offset="1" stop-color="#C8E6C9"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" rx="40" fill="url(#qc-bg)"/>
+  <text
+    x="240"
+    y="330"
+    text-anchor="middle"
+    font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+    font-size="220"
+    font-weight="800"
+    fill="#2E7D32"
+  >1</text>
+  <text
+    x="480"
+    y="330"
+    text-anchor="middle"
+    font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+    font-size="220"
+    font-weight="800"
+    fill="#2E7D32"
+  >2</text>
+  <text
+    x="720"
+    y="330"
+    text-anchor="middle"
+    font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+    font-size="220"
+    font-weight="800"
+    fill="#2E7D32"
+  >3</text>
+</svg>

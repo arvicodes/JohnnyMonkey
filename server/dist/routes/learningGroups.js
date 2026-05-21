@@ -338,6 +338,68 @@ router.get('/:groupId/lesson-shared-input-shares', async (req, res) => {
         res.status(500).json({ error: (error === null || error === void 0 ? void 0 : error.message) || 'Serverfehler' });
     }
 });
+/** Lehrer (z. B. Tablet-Modus): Signal an alle SuS dieser Gruppe — gemeinsames Karteikarten-Modal öffnen */
+router.post('/collab-flashcard-beacon', async (req, res) => {
+    try {
+        const { teacherId, groupId, lessonPath } = req.body;
+        if (!(teacherId === null || teacherId === void 0 ? void 0 : teacherId.trim()) || !(groupId === null || groupId === void 0 ? void 0 : groupId.trim()) || lessonPath == null || String(lessonPath).trim() === '') {
+            return res.status(400).json({ error: 'teacherId, groupId und lessonPath sind erforderlich' });
+        }
+        const group = await prisma.learningGroup.findUnique({
+            where: { id: groupId },
+            select: { teacherId: true },
+        });
+        if (!group || group.teacherId !== teacherId) {
+            return res.status(403).json({ error: 'Keine Berechtigung' });
+        }
+        const beaconId = `b-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+        await prisma.lessonCollabFlashcardBeacon.upsert({
+            where: {
+                groupId_lessonPath: {
+                    groupId,
+                    lessonPath: String(lessonPath),
+                },
+            },
+            create: {
+                groupId,
+                lessonPath: String(lessonPath),
+                beaconId,
+            },
+            update: { beaconId },
+        });
+        return res.json({ ok: true, beaconId });
+    }
+    catch (e) {
+        console.error('collab-flashcard-beacon POST:', e);
+        return res.status(500).json({ error: (e === null || e === void 0 ? void 0 : e.message) || 'Serverfehler' });
+    }
+});
+/** SuS: Polling — gleiche Beacon-Liste wie zuletzt vom Lehrer ausgelöst */
+router.get('/collab-flashcard-beacon/student-poll', async (req, res) => {
+    try {
+        const raw = req.headers['x-login-code'];
+        const loginCode = typeof raw === 'string' ? raw.trim() : '';
+        if (!loginCode) {
+            return res.status(401).json({ error: 'Anmeldung erforderlich' });
+        }
+        const user = await prisma.user.findFirst({
+            where: { loginCode },
+            select: { id: true, role: true },
+        });
+        if (!user || user.role !== 'STUDENT') {
+            return res.status(403).json({ error: 'Nur für Schülerkonten' });
+        }
+        const rows = await prisma.lessonCollabFlashcardBeacon.findMany({
+            where: { group: { students: { some: { id: user.id } } } },
+            select: { groupId: true, lessonPath: true, beaconId: true },
+        });
+        return res.json({ beacons: rows });
+    }
+    catch (e) {
+        console.error('collab-flashcard-beacon student-poll:', e);
+        return res.status(500).json({ error: (e === null || e === void 0 ? void 0 : e.message) || 'Serverfehler' });
+    }
+});
 // Get a single learning group by ID (MUST BE LAST among GET routes with :id)
 router.get('/:id', async (req, res) => {
     try {

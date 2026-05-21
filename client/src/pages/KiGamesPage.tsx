@@ -34,6 +34,7 @@ import {
   Rule as RuleIcon,
   SportsEsports as SportsEsportsIcon,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
 
 type TabId =
@@ -825,6 +826,7 @@ function cloneBoard(board: HexBoard): HexBoard {
 }
 
 export default function KiGamesPage() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<TabId>('overview');
   const savedMemoryState = useMemo(() => loadSavedMemoryState(), []);
   const initialMemorySets = savedMemoryState?.sets?.length ? savedMemoryState.sets : defaultMemorySets;
@@ -1049,7 +1051,7 @@ export default function KiGamesPage() {
         setMemoryTeam((prev) => (prev === 'Team A' ? 'Team B' : 'Team A'));
       }
       setMemoryOpen([]);
-    }, 1800);
+    }, 3000);
   };
 
   const resetMemory = () => {
@@ -1245,46 +1247,64 @@ export default function KiGamesPage() {
         )}
 
         {tab === 'overview' && (
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }, gap: 1.1 }}>
-            {gameCards.map((game) => (
-              <Card key={game.tab} elevation={0} sx={{ borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)' }}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                    <Box
-                      sx={{
-                        width: 34,
-                        height: 34,
-                        borderRadius: 1.5,
-                        bgcolor: game.color,
-                        color: 'white',
-                        display: 'grid',
-                        placeItems: 'center',
-                        flexShrink: 0,
-                      }}
-                    >
-                      {game.icon}
+          <>
+            <Box sx={{ width: '100vw', ml: 'calc(50% - 50vw)', pl: '5vw', mb: 1 }}>
+              <IconButton
+                size="small"
+                onClick={() => navigate('/dashboard')}
+                aria-label="Zurück zum Dashboard"
+                sx={{
+                  width: 32,
+                  height: 32,
+                  bgcolor: 'white',
+                  border: '1px solid rgba(0,0,0,0.12)',
+                  '&:hover': { bgcolor: '#eef3f8' },
+                }}
+              >
+                <ArrowBackIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }, gap: 1.1 }}>
+              {gameCards.map((game) => (
+                <Card key={game.tab} elevation={0} sx={{ borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)' }}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                      <Box
+                        sx={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: 1.5,
+                          bgcolor: game.color,
+                          color: 'white',
+                          display: 'grid',
+                          placeItems: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {game.icon}
+                      </Box>
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 900, color: '#1f2937', lineHeight: 1.15 }}>
+                          {game.title}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.35, mb: 0.75, fontSize: '0.78rem' }}>
+                          {game.subtitle}
+                        </Typography>
+                        <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
+                          {game.goals.map((goal) => (
+                            <Chip key={goal} size="small" label={goal} />
+                          ))}
+                        </Stack>
+                      </Box>
                     </Box>
-                    <Box sx={{ minWidth: 0, flex: 1 }}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 900, color: '#1f2937', lineHeight: 1.15 }}>
-                        {game.title}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.35, mb: 0.75, fontSize: '0.78rem' }}>
-                        {game.subtitle}
-                      </Typography>
-                      <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
-                        {game.goals.map((goal) => (
-                          <Chip key={goal} size="small" label={goal} />
-                        ))}
-                      </Stack>
-                    </Box>
-                  </Box>
-                  <Button onClick={() => setTab(game.tab)} variant="contained" size="small" sx={{ mt: 1 }} fullWidth>
-                    Spiel öffnen
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </Box>
+                    <Button onClick={() => setTab(game.tab)} variant="contained" size="small" sx={{ mt: 1 }} fullWidth>
+                      Spiel öffnen
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+          </>
         )}
 
         {tab === 'nim' && (

@@ -61,6 +61,7 @@ db-checkpoint-*.db
 *.temp
 *.pid
 server/uploads/
+server/story-sites-data/
 
 # Zusammengefügte ZIP > 100 MB – Teile liegen als J-M-Reihen.zip.aa / .ab im Repo; siehe scripts/assemble-j-m-reihen-zip.sh
 /J-M-Reihen.zip

@@ -318,7 +318,8 @@ import {
   SettingsRemote as SettingsRemoteIcon,
   RotateRight as RotateRightIcon,
   SlowMotionVideo as SlowMotionVideoIcon,
-  South as SouthIcon
+  South as SouthIcon,
+  WbSunny as WbSunnyIcon
 } from '@mui/icons-material';
 import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
@@ -13846,6 +13847,68 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     }}
                   >
                     KI
+                  </Typography>
+                </IconButton>
+                {/* Stories & Tagebücher */}
+                <IconButton
+                  onClick={() => navigate('/stories-tagebuecher')}
+                  sx={{
+                    p: 0.5,
+                    minWidth: 40,
+                    width: 40,
+                    height: 40,
+                    borderRadius: 1.4,
+                    position: 'relative',
+                    overflow: 'visible',
+                    border: '2px solid rgba(255, 193, 7, 0.55)',
+                    background: 'linear-gradient(135deg, #fff8e1 0%, #ffca28 45%, #ff8f00 100%)',
+                    color: '#e65100',
+                    boxShadow: '0 2px 10px rgba(255, 152, 0, 0.45)',
+                    '&:hover': {
+                      transform: 'scale(1.06)',
+                      borderColor: 'rgba(255, 152, 0, 0.85)',
+                      boxShadow: '0 4px 14px rgba(255, 152, 0, 0.55)',
+                    },
+                    transition: 'all 0.2s ease',
+                  }}
+                  title="Stories & Tagebücher: Reiseberichte, Tagebuch, Fortbildung"
+                >
+                  <WbSunnyIcon sx={{ fontSize: 28 }} />
+                </IconButton>
+                {/* Be a Hero – eigene Workouts & Kartei */}
+                <IconButton
+                  onClick={() => navigate('/be-a-hero')}
+                  sx={{
+                    p: 0.5,
+                    minWidth: 40,
+                    width: 40,
+                    height: 40,
+                    borderRadius: 1.4,
+                    position: 'relative',
+                    overflow: 'visible',
+                    border: '2px solid rgba(255, 213, 79, 0.55)',
+                    background: 'linear-gradient(135deg, #5e35b1 0%, #7e57c2 45%, #ffd54f 160%)',
+                    color: 'white',
+                    boxShadow: '0 2px 10px rgba(94, 53, 177, 0.45)',
+                    '&:hover': {
+                      transform: 'scale(1.06)',
+                      borderColor: 'rgba(255, 213, 79, 0.85)',
+                      boxShadow: '0 4px 14px rgba(94, 53, 177, 0.55)',
+                    },
+                    transition: 'all 0.2s ease',
+                  }}
+                  title="Be a Hero: Workouts anlegen & Kartei"
+                >
+                  <Typography
+                    component="span"
+                    sx={{
+                      fontSize: '1.35rem',
+                      lineHeight: 1,
+                      display: 'inline-block',
+                    }}
+                    aria-hidden
+                  >
+                    🦸
                   </Typography>
                 </IconButton>
               </Box>

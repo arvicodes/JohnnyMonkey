@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { Box, IconButton, Tooltip, Popover, MenuItem } from '@mui/material';
 import {
   FormatBold,
@@ -12,6 +12,7 @@ import {
   FormatIndentDecrease,
   Image,
 } from '@mui/icons-material';
+import { fileToStoryImageDataUrl } from '../../lib/storyImageUtils';
 
 interface RichTextEditorProps {
   value: string;
@@ -20,7 +21,19 @@ interface RichTextEditorProps {
   rows?: number;
   className?: string;
   compact?: boolean;
+  /** server: /api/materials/upload-image — dataUrl: Base64 im HTML (z. B. Stories lokal) */
+  imageStorage?: 'server' | 'dataUrl';
+  /** false: Einfügen nur als Text (keine Bilder aus Zwischenablage / kein Bild-Button) */
+  allowPasteImages?: boolean;
+  showImageToolbar?: boolean;
 }
+
+export type RichTextEditorHandle = {
+  /** Aktuelles HTML aus dem Editor (ohne Debounce). */
+  getHtml: () => string;
+  /** Editor-Inhalt sofort an onChange übergeben. */
+  flush: () => void;
+};
 
 const colors = [
   { name: 'Schwarz', value: '#000000' },
@@ -68,6 +81,42 @@ const appColors = {
  * Entfernt text-align / align aus eingefügtem oder gespeichertem HTML (Word, Google Docs, Browser),
  * damit der Text wirklich links startet – sonst schlagen Inline-Styles das Editor-CSS.
  */
+/** Word/Outlook-Zwischenablage: Formatierung behalten, Ballast entfernen. */
+function sanitizeWordPasteHtml(html: string): string {
+  if (!html || typeof html !== 'string') return '';
+  let s = html
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<!\[if[\s\S]*?<!\[endif\]>/gi, '')
+    .replace(/<\\?xml[^>]*>/gi, '')
+    .replace(/<\/?o:[^>]+>/gi, '')
+    .replace(/<\/?w:[^>]+>/gi, '')
+    .replace(/<\/?m:[^>]+>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<meta[^>]*>/gi, '')
+    .replace(/<link[^>]*>/gi, '');
+
+  try {
+    const div = document.createElement('div');
+    div.innerHTML = s;
+    div.querySelectorAll('script, iframe, object, embed').forEach((n) => n.remove());
+    div.querySelectorAll('img').forEach((img) => img.remove());
+    div.querySelectorAll('*').forEach((el) => {
+      if (el.tagName === 'A') {
+        const href = el.getAttribute('href');
+        [...el.attributes].forEach((a) => el.removeAttribute(a.name));
+        if (href && !href.startsWith('file:')) el.setAttribute('href', href);
+        return;
+      }
+      [...el.attributes].forEach((a) => el.removeAttribute(a.name));
+    });
+    s = div.innerHTML;
+  } catch {
+    /* fallback: roher String */
+  }
+
+  return sanitizeEditorHtmlForLeftAlign(s);
+}
+
 function sanitizeEditorHtmlForLeftAlign(html: string): string {
   if (!html || typeof html !== 'string') return html;
   let s = html.replace(/\salign\s*=\s*["']?(?:center|right|justify)["']?/gi, '');
@@ -280,14 +329,20 @@ function isCaretInsideListStructure(editorRoot: HTMLElement | null): boolean {
   return false;
 }
 
-export const RichTextEditor: React.FC<RichTextEditorProps> = ({
+export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(function RichTextEditor(
+  {
   value,
   onChange,
   placeholder,
   rows = 3,
   className,
   compact = false,
-}) => {
+  imageStorage = 'server',
+  allowPasteImages = true,
+  showImageToolbar = true,
+},
+  ref,
+) {
   const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
   const [isUnderline, setIsUnderline] = useState(false);
@@ -520,6 +575,15 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     if (newValue !== lastValueRef.current) debouncedOnChange(newValue);
   }, [debouncedOnChange]);
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      getHtml: () => editorRef.current?.innerHTML ?? '',
+      flush: () => flushEditorToParent(),
+    }),
+    [flushEditorToParent],
+  );
+
   // Fokus irgendwo in Toolbar+Editor = Bearbeitung; nur wenn Fokus die ganze Komponente verlässt → Sync erlauben
   useEffect(() => {
     const root = rootRef.current;
@@ -574,6 +638,12 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
     const shouldUpdate = valueChangedExternally || (editorEmpty && valueNonEmpty);
     if (shouldUpdate) {
+      const editorHasImages = host.querySelectorAll('img:not([data-editor-icon])').length > 0;
+      const valueHasImages = /<img\b/i.test(safeValue);
+      if (editorHasImages && !valueHasImages) {
+        flushEditorToParent();
+        return;
+      }
       const cursorPosition = saveCursorPosition();
       host.innerHTML = safeValue;
       lastValueRef.current = safeValue;
@@ -581,7 +651,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         restoreCursorPosition(cursorPosition);
       });
     }
-  }, [value, showFontSizePicker]);
+  }, [value, showFontSizePicker, flushEditorToParent]);
 
   // Parent-Wert spiegeln (ohne DOM anzufassen)
   useEffect(() => {
@@ -879,98 +949,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   };
 
-  const handleImageUpload = async (file: File) => {
-    if (!file) return;
-
-    try {
-      setIsUploading(true);
-
-      const formData = new FormData();
-      formData.append('image', file);
-
-      const response = await fetch('/api/materials/upload-image', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Fehler beim Hochladen des Bildes');
-      }
-
-      const result = await response.json();
-
-      if (editorRef.current) {
-        const wrap = document.createElement('span');
-        wrap.className = 'editor-image-wrap';
-        wrap.setAttribute('contenteditable', 'false');
-        wrap.style.cssText =
-          'position:relative;display:inline-block;max-width:100%;vertical-align:middle;line-height:0;margin:8px 0;';
-
-        const imgElement = document.createElement('img');
-        imgElement.setAttribute('draggable', 'false');
-        imgElement.src = result.imagePath;
-        imgElement.alt = result.fileName;
-        imgElement.style.maxWidth = '100%';
-        imgElement.style.height = 'auto';
-        imgElement.style.display = 'block';
-        imgElement.style.cursor = 'default';
-
-        imgElement.setAttribute('data-original-width', '0');
-        imgElement.setAttribute('data-original-height', '0');
-
-        wrap.appendChild(imgElement);
-
-        imgElement.onload = () => {
-          imgElement.setAttribute('data-original-width', imgElement.naturalWidth.toString());
-          imgElement.setAttribute('data-original-height', imgElement.naturalHeight.toString());
-          makeImageResizable(imgElement);
-        };
-
-        const selection = window.getSelection();
-        if (selection && selection.rangeCount > 0) {
-          const range = selection.getRangeAt(0);
-          range.deleteContents();
-          range.insertNode(wrap);
-          range.setStartAfter(wrap);
-          range.setEndAfter(wrap);
-          selection.removeAllRanges();
-          selection.addRange(range);
-        } else {
-          editorRef.current.appendChild(wrap);
-        }
-
-        const newRange = document.createRange();
-        newRange.setStartAfter(wrap);
-        newRange.collapse(true);
-        selection?.removeAllRanges();
-        selection?.addRange(newRange);
-
-        handleInput();
-      }
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      alert(error instanceof Error ? error.message : 'Fehler beim Hochladen des Bildes');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const triggerImageUpload = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      handleImageUpload(file);
-      // Reset file input
-      event.target.value = '';
-    }
-  };
-
   const handleInput = useCallback(() => {
     if (!editorRef.current) return;
     replaceDashGtWithArrowInHost(editorRef.current);
@@ -1106,6 +1084,132 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     [handleInput],
   );
 
+  const insertImageAtCursor = useCallback(
+    (src: string, alt: string) => {
+      if (!editorRef.current) return;
+      editorRef.current.focus();
+
+      const wrap = document.createElement('span');
+      wrap.className = 'editor-image-wrap';
+      wrap.setAttribute('contenteditable', 'false');
+      wrap.style.cssText =
+        'position:relative;display:inline-block;max-width:100%;vertical-align:middle;line-height:0;margin:8px 0;';
+
+      const imgElement = document.createElement('img');
+      imgElement.setAttribute('draggable', 'false');
+      imgElement.src = src;
+      imgElement.alt = alt;
+      imgElement.style.maxWidth = '100%';
+      imgElement.style.height = 'auto';
+      imgElement.style.display = 'block';
+      imgElement.style.cursor = 'default';
+      imgElement.setAttribute('data-original-width', '0');
+      imgElement.setAttribute('data-original-height', '0');
+      wrap.appendChild(imgElement);
+
+      const afterInsert = () => {
+        imgElement.setAttribute('data-original-width', imgElement.naturalWidth.toString());
+        imgElement.setAttribute('data-original-height', imgElement.naturalHeight.toString());
+        makeImageResizable(imgElement);
+        handleInput();
+      };
+
+      if (imgElement.complete && imgElement.naturalWidth > 0) {
+        afterInsert();
+      } else {
+        imgElement.onload = afterInsert;
+        imgElement.onerror = () => {
+          alert('Bild konnte nicht angezeigt werden.');
+          wrap.remove();
+        };
+      }
+
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0 && editorRef.current.contains(selection.anchorNode)) {
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(wrap);
+        range.setStartAfter(wrap);
+        range.setEndAfter(wrap);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      } else {
+        editorRef.current.appendChild(wrap);
+        const newRange = document.createRange();
+        newRange.setStartAfter(wrap);
+        newRange.collapse(true);
+        selection?.removeAllRanges();
+        selection?.addRange(newRange);
+      }
+
+      // Sofort speichern — Vorschau liest bodyHtml aus dem State, nicht aus dem DOM.
+      handleInput();
+    },
+    [makeImageResizable, handleInput]
+  );
+
+  const handleImageUpload = async (file: File) => {
+    if (!file || !file.type.startsWith('image/')) {
+      alert('Bitte eine Bilddatei wählen (JPG, PNG, …).');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+
+      let src: string;
+      let alt = file.name || 'Bild';
+
+      if (imageStorage === 'dataUrl') {
+        src = await fileToStoryImageDataUrl(file);
+      } else {
+        const formData = new FormData();
+        formData.append('image', file);
+
+        const response = await fetch('/api/materials/upload-image', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          let msg = 'Fehler beim Hochladen des Bildes';
+          try {
+            const error = await response.json();
+            msg = error.error || msg;
+          } catch {
+            /* ignore */
+          }
+          throw new Error(msg);
+        }
+
+        const result = await response.json();
+        src = result.imagePath;
+        alt = result.fileName || alt;
+      }
+
+      insertImageAtCursor(src, alt);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert(error instanceof Error ? error.message : 'Fehler beim Einfügen des Bildes');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const triggerImageUpload = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      void handleImageUpload(file);
+      event.target.value = '';
+    }
+  };
+
   useEffect(() => {
     if (!editorRef.current) return;
     const timeoutId = window.setTimeout(() => {
@@ -1171,7 +1275,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     if (!editorRef.current) return;
     try {
       const cd = e.clipboardData;
-      if (cd) {
+      if (allowPasteImages && cd) {
         if (cd.files && cd.files.length > 0) {
           const f = cd.files[0];
           if (f.type.startsWith('image/')) {
@@ -1211,16 +1315,25 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       }
 
       e.preventDefault();
-      const html = e.clipboardData.getData('text/html');
-      const text = e.clipboardData.getData('text/plain');
-      // Wenn HTML vorhanden (z. B. aus unserem Editor inkl. Icons), sicher einfügen
-      if (html && html.trim()) {
-        const sanitized = sanitizeEditorHtmlForLeftAlign(
-          html
-            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-            .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-            .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
-        );
+      const html = cd?.getData('text/html') ?? '';
+      const text = cd?.getData('text/plain') ?? '';
+      const fromWord = /class="?Mso|mso-|xmlns:o=|Word\.Document/i.test(html);
+
+      if (html.trim()) {
+        let sanitized = fromWord
+          ? sanitizeWordPasteHtml(html)
+          : sanitizeEditorHtmlForLeftAlign(
+              html
+                .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+                .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, ''),
+            );
+        if (!allowPasteImages) {
+          const d = document.createElement('div');
+          d.innerHTML = sanitized;
+          d.querySelectorAll('img').forEach((img) => img.remove());
+          sanitized = d.innerHTML;
+        }
         if (sanitized.trim()) {
           const wrap = document.createElement('div');
           wrap.innerHTML = sanitized;
@@ -1230,8 +1343,25 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           return;
         }
       }
-      const linkHtml = linkifyPlainTextToHtml(text || '');
-      document.execCommand('insertHTML', false, linkHtml);
+
+      const plain = (text || '').replace(/\r\n/g, '\n');
+      if (plain.includes('\n')) {
+        const blocks = plain
+          .split(/\n{2,}/)
+          .map((block) => block.trim())
+          .filter(Boolean)
+          .map((block) => {
+            const inner = block
+              .split('\n')
+              .map((line) => escapeHtmlText(line))
+              .join('<br>');
+            return `<p>${inner}</p>`;
+          })
+          .join('');
+        document.execCommand('insertHTML', false, sanitizeEditorHtmlForLeftAlign(blocks || ''));
+      } else {
+        document.execCommand('insertHTML', false, linkifyPlainTextToHtml(plain));
+      }
       handleInput();
     } catch (error) {
       console.warn('Error handling paste:', error);
@@ -1612,31 +1742,32 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           </IconButton>
         </Tooltip>
         
-        {/* Image Upload */}
-        <Tooltip title="Bild einfügen (oder aus Zwischenablage). Größe: grünen Punkt unten rechts ziehen. Rechtsklick: löschen.">
-          <IconButton
-            size="small"
-            onClick={triggerImageUpload}
-            disabled={isUploading}
-            sx={{
-              width: compact ? 28 : 32,
-              height: compact ? 28 : 32,
-              backgroundColor: 'transparent',
-              color: appColors.textPrimary,
-              border: `1px solid ${appColors.border}`,
-              '&:hover': {
-                backgroundColor: `${appColors.primary}10`,
-                borderColor: appColors.primary
-              },
-              '&:disabled': {
-                opacity: 0.6,
-                cursor: 'not-allowed'
-              }
-            }}
-          >
-            <Image fontSize="small" />
-          </IconButton>
-        </Tooltip>
+        {showImageToolbar ? (
+          <Tooltip title="Bild einfügen (oder aus Zwischenablage). Größe: grünen Punkt unten rechts ziehen. Rechtsklick: löschen.">
+            <IconButton
+              size="small"
+              onClick={triggerImageUpload}
+              disabled={isUploading}
+              sx={{
+                width: compact ? 28 : 32,
+                height: compact ? 28 : 32,
+                backgroundColor: 'transparent',
+                color: appColors.textPrimary,
+                border: `1px solid ${appColors.border}`,
+                '&:hover': {
+                  backgroundColor: `${appColors.primary}10`,
+                  borderColor: appColors.primary,
+                },
+                '&:disabled': {
+                  opacity: 0.6,
+                  cursor: 'not-allowed',
+                },
+              }}
+            >
+              <Image fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        ) : null}
 
         {/* Schriftgröße – wie Farbauswahl: Auswahl beim Klick speichern, dann Popover */}
         <Box ref={fontSizePickerRef} sx={{ position: 'relative' }}>
@@ -1966,14 +2097,15 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         data-placeholder={placeholder}
       />
       
-      {/* Hidden file input for image uploads */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleFileInputChange}
-        style={{ display: 'none' }}
-      />
+      {showImageToolbar ? (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileInputChange}
+          style={{ display: 'none' }}
+        />
+      ) : null}
     </Box>
   );
-};
+});

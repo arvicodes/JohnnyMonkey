@@ -1,0 +1,44 @@
+<svg width="960" height="540" viewBox="0 0 960 540" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="dr-bg" x1="0" y1="0" x2="960" y2="540">
+      <stop stop-color="#FFF8E1"/>
+      <stop offset="0.55" stop-color="#FFE0B2"/>
+      <stop offset="1" stop-color="#FFCC80"/>
+    </linearGradient>
+    <linearGradient id="dr-stroke" x1="220" y1="280" x2="740" y2="280">
+      <stop stop-color="#E91E63"/>
+      <stop offset="0.35" stop-color="#9C27B0"/>
+      <stop offset="0.65" stop-color="#3F51B5"/>
+      <stop offset="1" stop-color="#00ACC1"/>
+    </linearGradient>
+    <filter id="dr-soft" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+  <rect width="960" height="540" rx="40" fill="url(#dr-bg)"/>
+  <!-- Blatt -->
+  <rect x="200" y="120" width="560" height="300" rx="20" fill="#FFFEF7" stroke="#E0E0E0" stroke-width="3" filter="url(#dr-soft)"/>
+  <!-- Freie Strich-Zeichnung (wie mit Stift) -->
+  <path
+    d="M260 300 C 320 200, 400 380, 480 260 S 620 220, 700 300"
+    stroke="url(#dr-stroke)"
+    stroke-width="18"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  />
+  <path
+    d="M280 340 Q 400 420, 520 360 T 720 380"
+    stroke="#FF7043"
+    stroke-width="12"
+    stroke-linecap="round"
+    fill="none"
+    opacity="0.85"
+  />
+  <!-- Stift-Spitze unten rechts -->
+  <g transform="translate(620 360) rotate(-35)">
+    <rect x="0" y="0" width="120" height="22" rx="4" fill="#FFC107" stroke="#F57F17" stroke-width="2"/>
+    <path d="M120 11 L150 11 L142 0 L120 0Z" fill="#37474F"/>
+    <path d="M150 11 L158 11 L150 22 L142 22Z" fill="#FFB300"/>
+  </g>
+</svg>

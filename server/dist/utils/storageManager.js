@@ -8,55 +8,70 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 class StorageManager {
     /**
+     * Physical root of J-M-Reihen (Docker: usually /app/J-M-Reihen when LOCAL_MATERIALS_PATH=/app).
+     */
+    static resolveJmReihenRoot() {
+        if (process.env.JM_REIHEN_PATH && fs_1.default.existsSync(process.env.JM_REIHEN_PATH)) {
+            return process.env.JM_REIHEN_PATH;
+        }
+        const base = process.env.LOCAL_MATERIALS_PATH;
+        if (base) {
+            const candidate = path_1.default.join(base, 'J-M-Reihen');
+            if (fs_1.default.existsSync(candidate)) {
+                return candidate;
+            }
+        }
+        if (process.env.NODE_ENV !== 'production') {
+            const projectRoot = path_1.default.resolve(__dirname, '../../..');
+            return path_1.default.join(projectRoot, 'J-M-Reihen');
+        }
+        const serverPath = path_1.default.join(process.cwd(), 'J-M-Reihen');
+        const projectPath = path_1.default.join(process.cwd(), '..', 'J-M-Reihen');
+        if (fs_1.default.existsSync(serverPath)) {
+            return serverPath;
+        }
+        if (fs_1.default.existsSync(projectPath)) {
+            return projectPath;
+        }
+        return projectPath;
+    }
+    /**
+     * UI/DB sometimes stores "J-M-Reihen/..." instead of "git-intern/..." — normalize for one code path.
+     */
+    static normalizeDirRequestPath(raw) {
+        const p = raw.replace(/\\/g, '/').trim();
+        if (p === 'J-M-Reihen' || p === './J-M-Reihen') {
+            return 'git-intern';
+        }
+        if (p.startsWith('J-M-Reihen/')) {
+            return `git-intern/${p.slice('J-M-Reihen/'.length)}`;
+        }
+        return p;
+    }
+    /**
      * Read directory contents
      */
     static async readDirectory(dirPath, recursive = false) {
-        console.log('StorageManager.readDirectory called with:', dirPath, 'recursive:', recursive);
+        const normalized = this.normalizeDirRequestPath(dirPath);
+        console.log('StorageManager.readDirectory called with:', dirPath, '→', normalized, 'recursive:', recursive);
         // Check if this is a git-intern path (exact match or starts with git-intern/)
-        if (dirPath === 'git-intern' || dirPath.startsWith('git-intern/')) {
+        if (normalized === 'git-intern' || normalized.startsWith('git-intern/')) {
             console.log('Git-intern path detected, using J-M-Reihen directory...');
-            return this.readGitInternDirectory(dirPath, recursive);
+            return this.readGitInternDirectory(normalized, recursive);
         }
         // Check if this is an old OneDrive URL and return error
-        if (dirPath.includes('sharepoint.com') || dirPath.includes('onedrive')) {
+        if (normalized.includes('sharepoint.com') || normalized.includes('onedrive')) {
             console.log('Old OneDrive URL detected, returning error...');
             return { error: 'OneDrive-Integration wurde entfernt. Bitte verwenden Sie die Git-Intern-Option.' };
         }
         // Local file system handling
-        return this.readLocalDirectory(dirPath, recursive);
+        return this.readLocalDirectory(normalized, recursive);
     }
     /**
      * Read git-intern directory (J-M-Reihen)
      */
     static readGitInternDirectory(dirPath, recursive) {
-        // In production, look for J-M-Reihen in server directory
-        // In development, use absolute path from project root
-        let jmReihenPath;
-        if (process.env.NODE_ENV === 'production') {
-            // Production: Look in server directory first, then project root
-            const serverPath = path_1.default.join(process.cwd(), 'J-M-Reihen');
-            const projectPath = path_1.default.join(process.cwd(), '..', 'J-M-Reihen');
-            console.log('Production paths:');
-            console.log('Server path:', serverPath, 'exists:', fs_1.default.existsSync(serverPath));
-            console.log('Project path:', projectPath, 'exists:', fs_1.default.existsSync(projectPath));
-            if (fs_1.default.existsSync(serverPath)) {
-                jmReihenPath = serverPath;
-                console.log('Using server path');
-            }
-            else if (fs_1.default.existsSync(projectPath)) {
-                jmReihenPath = projectPath;
-                console.log('Using project path');
-            }
-            else {
-                jmReihenPath = serverPath; // Default to server path for error message
-                console.log('Using default server path (will fail)');
-            }
-        }
-        else {
-            // Development: Use absolute path from project root
-            const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
-            jmReihenPath = path_1.default.join(projectRoot, 'J-M-Reihen');
-        }
+        const jmReihenPath = this.resolveJmReihenRoot();
         console.log('Reading git-intern J-M-Reihen directory:', jmReihenPath);
         console.log('Directory exists:', fs_1.default.existsSync(jmReihenPath));
         if (!fs_1.default.existsSync(jmReihenPath)) {
@@ -178,37 +193,24 @@ class StorageManager {
      */
     static resolveGitInternRelativePath(relativePath) {
         const rel = relativePath.replace(/\\/g, '/');
-        if (process.env.NODE_ENV === 'production') {
-            const serverPath = path_1.default.join(process.cwd(), 'J-M-Reihen');
-            const projectPath = path_1.default.join(process.cwd(), '..', 'J-M-Reihen');
-            let jmReihenPath;
-            if (fs_1.default.existsSync(serverPath)) {
-                jmReihenPath = serverPath;
-            }
-            else if (fs_1.default.existsSync(projectPath)) {
-                jmReihenPath = projectPath;
-            }
-            else {
-                jmReihenPath = serverPath;
-            }
-            if (rel.startsWith('J-M-Reihen/')) {
-                const basePath = jmReihenPath.replace(/J-M-Reihen$/, '');
-                return path_1.default.join(basePath, rel);
-            }
-            return path_1.default.join(jmReihenPath, rel);
-        }
-        const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+        const jmReihenPath = this.resolveJmReihenRoot();
         if (rel.startsWith('J-M-Reihen/')) {
-            return path_1.default.join(projectRoot, rel);
+            return path_1.default.join(jmReihenPath, rel.slice('J-M-Reihen/'.length));
         }
-        return path_1.default.join(projectRoot, 'J-M-Reihen', rel);
+        return path_1.default.join(jmReihenPath, rel);
     }
     /**
      * Read file contents
      */
     static async readFile(filePath) {
         try {
-            const filePathNorm = filePath.replace(/\\/g, '/');
+            let filePathNorm = filePath.replace(/\\/g, '/');
+            if (filePathNorm === 'J-M-Reihen' || filePathNorm.startsWith('J-M-Reihen/')) {
+                filePathNorm =
+                    filePathNorm === 'J-M-Reihen'
+                        ? 'git-intern'
+                        : `git-intern/${filePathNorm.slice('J-M-Reihen/'.length)}`;
+            }
             // Handle git-intern paths
             if (filePathNorm.startsWith('git-intern/')) {
                 const relativePath = filePathNorm.replace('git-intern/', '');

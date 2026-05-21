@@ -23,6 +23,10 @@ import MovementStoriesPage from './pages/MovementStoriesPage';
 import EntryTicketPage from './pages/EntryTicketPage';
 import ExitTicketPage from './pages/ExitTicketPage';
 import KiGamesPage from './pages/KiGamesPage';
+import BeAHeroWorkoutsPage from './pages/BeAHeroWorkoutsPage';
+import StoriesDiariesHubPage from './pages/StoriesDiariesHubPage';
+import StorySiteBuilderPage from './pages/StorySiteBuilderPage';
+import StorySitePublicPreviewPage from './pages/StorySitePublicPreviewPage';
 
 import { Snackbar, Alert, Box, CircularProgress } from '@mui/material';
 import JohnnyCompanionSimple from './components/JohnnyCompanionSimple';
@@ -297,6 +301,10 @@ function AppContent() {
         <Route path="/entry-ticket" element={<EntryTicketPage />} />
         <Route path="/exit-ticket" element={<ExitTicketPage />} />
         <Route path="/ki-spiele" element={<KiGamesPage />} />
+        <Route path="/be-a-hero" element={<BeAHeroWorkoutsPage />} />
+        <Route path="/stories-tagebuecher" element={<StoriesDiariesHubPage />} />
+        <Route path="/stories-tagebuecher/site/:siteId/vorschau" element={<StorySitePublicPreviewPage />} />
+        <Route path="/stories-tagebuecher/site/:siteId" element={<StorySiteBuilderPage />} />
 
       </Routes>
 

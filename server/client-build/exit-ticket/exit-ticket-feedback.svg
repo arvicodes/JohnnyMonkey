@@ -1,0 +1,40 @@
+<svg width="960" height="540" viewBox="0 0 960 540" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="fb-bg" x1="80" y1="0" x2="880" y2="540" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EDE7F6"/>
+      <stop offset="0.5" stop-color="#F8BBD0"/>
+      <stop offset="1" stop-color="#E1BEE7"/>
+    </linearGradient>
+    <linearGradient id="fb-b1" x1="200" y1="140" x2="420" y2="320">
+      <stop stop-color="#7E57C2"/>
+      <stop offset="1" stop-color="#5E35B1"/>
+    </linearGradient>
+    <linearGradient id="fb-b2" x1="480" y1="100" x2="760" y2="300">
+      <stop stop-color="#EC407A"/>
+      <stop offset="1" stop-color="#AD1457"/>
+    </linearGradient>
+    <linearGradient id="fb-b3" x1="280" y1="300" x2="620" y2="480">
+      <stop stop-color="#9575CD"/>
+      <stop offset="1" stop-color="#6A1B9A"/>
+    </linearGradient>
+    <filter id="fb-sh" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+  <rect width="960" height="540" rx="40" fill="url(#fb-bg)"/>
+  <!-- drei Sprechblasen, klar voneinander getrennt -->
+  <g filter="url(#fb-sh)">
+    <path d="M220 160h200a40 40 0 0140 40v80a40 40 0 01-40 40H280l-52 44 12-44h-20a40 40 0 01-40-40v-80a40 40 0 0140-40z" fill="url(#fb-b1)"/>
+    <path d="M520 120h210a38 38 0 0138 38v95a38 38 0 01-38 38H560l-48 40 10-40h-2a38 38 0 01-38-38v-95a38 38 0 0138-38z" fill="url(#fb-b2)"/>
+    <path d="M300 320h280a42 42 0 0142 42v70a42 42 0 01-42 42H380l-60 48 14-48h-34a42 42 0 01-42-42v-70a42 42 0 0142-42z" fill="url(#fb-b3)"/>
+  </g>
+  <circle cx="320" cy="240" r="10" fill="#fff" opacity="0.95"/>
+  <circle cx="360" cy="240" r="10" fill="#fff" opacity="0.95"/>
+  <circle cx="400" cy="240" r="10" fill="#fff" opacity="0.95"/>
+  <circle cx="640" cy="200" r="9" fill="#fff" opacity="0.95"/>
+  <circle cx="680" cy="200" r="9" fill="#fff" opacity="0.95"/>
+  <circle cx="720" cy="200" r="9" fill="#fff" opacity="0.95"/>
+  <circle cx="480" cy="400" r="11" fill="#fff" opacity="0.9"/>
+  <circle cx="520" cy="400" r="11" fill="#fff" opacity="0.9"/>
+  <circle cx="560" cy="400" r="11" fill="#fff" opacity="0.9"/>
+</svg>
