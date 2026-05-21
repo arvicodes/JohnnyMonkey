@@ -5,12 +5,13 @@ import {
   splitStoryBodyHtml,
   collectPageImages,
   normalizePageForPreview,
-  STORY_PREVIEW_MAX_WIDTH,
+  STORY_BEIGE,
+  STORY_SCRAPBOOK_BG,
+  storyPageAnchorId,
+  storyPageScrollMarginSx,
 } from '../../lib/storyPageLayout';
 import { StoryPreviewImage } from './StoryPreviewImage';
-
-const SCRAPBOOK_BG =
-  'linear-gradient(180deg, #fffdf7 0%, #faf6ee 45%, #f5efe4 100%)';
+import { StoryPreviewQuickNav } from './StoryPreviewQuickNav';
 
 const washiCorner = (side: 'tl' | 'tr' | 'bl' | 'br') => {
   const base = {
@@ -49,28 +50,35 @@ function PolaroidPhoto({
   return (
     <Box
       sx={{
-        position: 'relative',
-        transform: `rotate(${rotation}deg)`,
-        transition: 'transform 0.2s ease',
-        filter: 'drop-shadow(0 10px 18px rgba(62, 39, 35, 0.22))',
         width: '100%',
+        maxWidth: '100%',
+        overflow: 'hidden',
+        boxSizing: 'border-box',
+        p: 1,
       }}
     >
       <Box
         sx={{
-          bgcolor: '#fff',
+          bgcolor: STORY_BEIGE.cream,
           p: 1,
           pb: 2.5,
           borderRadius: 0.5,
           boxShadow: '0 2px 0 rgba(0,0,0,0.06), inset 0 0 0 1px rgba(0,0,0,0.04)',
+          transform: rotation ? `rotate(${rotation}deg) scale(0.96)` : 'none',
+          transformOrigin: 'center center',
+          width: '100%',
+          maxWidth: '100%',
+          mx: 'auto',
         }}
       >
         <StoryPreviewImage
           src={src}
           alt={alt}
           sx={{
-            minHeight: 120,
-            height: { xs: 160, sm: 200, md: 240 },
+            width: '100%',
+            maxWidth: '100%',
+            aspectRatio: '4 / 3',
+            maxHeight: { xs: 160, sm: 200, md: 220 },
           }}
         />
       </Box>
@@ -96,7 +104,7 @@ export function StorySitePageBlock({ page }: { page: StoryPage }) {
   const normalized = normalizePageForPreview(page);
   const { textHtml } = splitStoryBodyHtml(normalized.bodyHtml || '');
   const images = collectPageImages(normalized);
-  const rotations = [-4, 5, -3, 6, 4, -5];
+  const rotations = [-2, 2, -1.5, 2, 1.5, -2];
 
   const headerParts: React.ReactNode[] = [];
   headerParts.push(
@@ -174,18 +182,22 @@ export function StorySitePageBlock({ page }: { page: StoryPage }) {
 
   return (
     <Box
+      id={storyPageAnchorId(page.id)}
       className="story-preview-section"
       sx={{
+        ...storyPageScrollMarginSx,
         mb: { xs: 3, sm: 4 },
         breakInside: 'avoid',
         position: 'relative',
         borderRadius: { xs: 0, sm: 1 },
         border: '1px solid rgba(141, 110, 99, 0.2)',
         boxShadow: '0 12px 32px rgba(93, 64, 55, 0.1)',
-        background: SCRAPBOOK_BG,
+        background: STORY_SCRAPBOOK_BG,
         width: '100%',
         maxWidth: '100%',
-        overflow: 'hidden',
+        overflowX: 'hidden',
+        overflowY: 'visible',
+        boxSizing: 'border-box',
         '@media print': { mb: 3, boxShadow: 'none' },
       }}
     >
@@ -201,7 +213,9 @@ export function StorySitePageBlock({ page }: { page: StoryPage }) {
           alignItems: 'stretch',
           p: { xs: 2, sm: 2.5, md: 3 },
           width: '100%',
+          maxWidth: '100%',
           minWidth: 0,
+          boxSizing: 'border-box',
         }}
       >
         {/* Kopfzeile: immer ganz oben, eine Zeile */}
@@ -228,12 +242,16 @@ export function StorySitePageBlock({ page }: { page: StoryPage }) {
           sx={{
             display: 'grid',
             gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 2fr) minmax(0, 3fr)' },
-            gap: { xs: 2, md: 3 },
+            gap: { xs: 2, md: 2 },
             width: '100%',
+            maxWidth: '100%',
+            minWidth: 0,
             alignItems: 'start',
+            overflow: 'hidden',
+            boxSizing: 'border-box',
           }}
         >
-          <Box sx={{ minWidth: 0, alignSelf: 'start' }}>
+          <Box sx={{ minWidth: 0, maxWidth: '100%', alignSelf: 'start', overflow: 'hidden' }}>
             {textHtml ? (
               <Box
                 className="story-preview-html story-preview-text-only"
@@ -252,7 +270,7 @@ export function StorySitePageBlock({ page }: { page: StoryPage }) {
                 dangerouslySetInnerHTML={{ __html: textHtml }}
               />
             ) : (
-              <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+              <Typography variant="body2" sx={{ fontStyle: 'italic', color: '#8d6e63' }}>
                 Noch kein Text — schreib im Editor.
               </Typography>
             )}
@@ -263,22 +281,26 @@ export function StorySitePageBlock({ page }: { page: StoryPage }) {
               position: 'relative',
               minHeight: { xs: 120, md: 160 },
               alignSelf: 'start',
-              bgcolor: 'rgba(255,255,255,0.35)',
+              bgcolor: 'rgba(250, 246, 238, 0.85)',
               borderRadius: 1.5,
               border: '1px dashed rgba(141, 110, 99, 0.25)',
-              p: { xs: 1.5, md: 2 },
+              p: { xs: 1.25, md: 1.5 },
+              pr: { xs: 1, md: 1.25 },
               width: '100%',
+              maxWidth: '100%',
               minWidth: 0,
               overflow: 'hidden',
+              boxSizing: 'border-box',
+              contain: 'layout',
             }}
           >
             {images.length === 0 ? (
               <Typography
                 variant="body2"
-                color="text.secondary"
                 sx={{
                   textAlign: 'center',
                   fontStyle: 'italic',
+                  color: '#8d6e63',
                   px: 2,
                   py: 2,
                   width: '100%',
@@ -290,19 +312,16 @@ export function StorySitePageBlock({ page }: { page: StoryPage }) {
               <Box
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: {
-                    xs: 'repeat(2, minmax(0, 1fr))',
-                    sm: 'repeat(2, minmax(0, 1fr))',
-                    md: images.length >= 4 ? 'repeat(3, minmax(0, 1fr))' : 'repeat(2, minmax(0, 1fr))',
-                    lg: images.length >= 5 ? 'repeat(3, minmax(0, 1fr))' : 'repeat(2, minmax(0, 1fr))',
-                  },
-                  gap: { xs: 1.5, md: 2 },
+                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                  gap: { xs: 1, md: 1.25 },
                   width: '100%',
+                  maxWidth: '100%',
+                  minWidth: 0,
                   alignContent: 'start',
                 }}
               >
                 {images.map((src, i) => (
-                  <Box key={`${src.slice(0, 48)}-${i}`} sx={{ minWidth: 0 }}>
+                  <Box key={`${src.slice(0, 48)}-${i}`} sx={{ minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
                     <PolaroidPhoto
                       src={src}
                       alt=""
@@ -319,24 +338,30 @@ export function StorySitePageBlock({ page }: { page: StoryPage }) {
   );
 }
 
-export function StorySitePreviewBody({ site }: { site: StorySite }) {
+type PreviewBodyProps = {
+  site: StorySite;
+  activePageId?: string;
+  onNavigatePage?: (pageId: string) => void;
+};
+
+export function StorySitePreviewBody({ site, activePageId, onNavigatePage }: PreviewBodyProps) {
   return (
     <Paper
       elevation={0}
       sx={{
-        bgcolor: '#f3ebe0',
+        background: STORY_SCRAPBOOK_BG,
         borderRadius: 0,
         border: 'none',
         p: { xs: 1, sm: 2, md: 2.5 },
         width: '100%',
-        maxWidth: STORY_PREVIEW_MAX_WIDTH,
-        mx: 'auto',
+        maxWidth: '100%',
         boxShadow: '0 16px 40px rgba(93, 64, 55, 0.12)',
-        overflow: 'hidden',
+        overflowX: 'hidden',
+        overflowY: 'visible',
         '@media print': { border: 'none', boxShadow: 'none', borderRadius: 0 },
       }}
     >
-      <Box sx={{ textAlign: 'center', mb: 3, position: 'relative', width: '100%' }}>
+      <Box sx={{ textAlign: 'center', mb: 2, position: 'relative', width: '100%' }}>
         <Typography
           sx={{
             fontFamily: '"Segoe Script", "Snell Roundhand", "Bradley Hand", cursive',
@@ -358,6 +383,11 @@ export function StorySitePreviewBody({ site }: { site: StorySite }) {
           }}
         />
       </Box>
+      <StoryPreviewQuickNav
+        pages={site.pages}
+        activePageId={activePageId}
+        onSelectPage={onNavigatePage}
+      />
       {site.pages.map((p) => (
         <StorySitePageBlock key={p.id} page={p} />
       ))}

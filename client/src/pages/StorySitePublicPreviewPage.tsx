@@ -7,7 +7,7 @@ import {
   type StorySite,
 } from '../lib/storySitesStorage';
 import { StorySitePreviewBody } from '../components/story-site/StorySitePreviewBody';
-import { STORY_PREVIEW_MAX_WIDTH } from '../lib/storyPageLayout';
+import { storyPreviewViewportSx, STORY_BEIGE } from '../lib/storyPageLayout';
 
 export default function StorySitePublicPreviewPage() {
   const { siteId } = useParams<{ siteId: string }>();
@@ -74,7 +74,15 @@ export default function StorySitePublicPreviewPage() {
 
   if (site === undefined) {
     return (
-      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#faf7f2' }}>
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: STORY_BEIGE.page,
+        }}
+      >
         <CircularProgress />
       </Box>
     );
@@ -88,7 +96,7 @@ export default function StorySitePublicPreviewPage() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          bgcolor: '#faf7f2',
+          bgcolor: STORY_BEIGE.page,
           px: 2,
         }}
       >
@@ -115,14 +123,13 @@ export default function StorySitePublicPreviewPage() {
     <Box
       sx={{
         minHeight: '100vh',
-        bgcolor: '#eceff1',
+        bgcolor: STORY_BEIGE.page,
         py: { xs: 1, sm: 2 },
-        px: { xs: 1, sm: 2 },
+        px: 0,
         width: '100%',
-        overflowX: 'hidden',
       }}
     >
-      <Box sx={{ width: '100%', maxWidth: STORY_PREVIEW_MAX_WIDTH, mx: 'auto' }}>
+      <Box sx={storyPreviewViewportSx}>
         <StorySitePreviewBody site={site} />
       </Box>
     </Box>

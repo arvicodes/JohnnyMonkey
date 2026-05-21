@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Box } from '@mui/material';
-import { displayStoryImageSrc } from '../../lib/storyPageLayout';
+import { displayStoryImageSrc, STORY_BEIGE } from '../../lib/storyPageLayout';
 
 type Props = {
   src: string;
@@ -25,7 +25,7 @@ export function StoryPreviewImage({ src, alt = '', sx }: Props) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          bgcolor: '#efebe9',
+          bgcolor: STORY_BEIGE.placeholder,
           color: '#8d6e63',
           fontSize: '0.75rem',
           textAlign: 'center',
@@ -49,8 +49,11 @@ export function StoryPreviewImage({ src, alt = '', sx }: Props) {
       sx={{
         display: 'block',
         width: '100%',
+        maxWidth: '100%',
+        height: 'auto',
         objectFit: 'cover',
-        bgcolor: '#eceff1',
+        verticalAlign: 'middle',
+        bgcolor: STORY_BEIGE.panel,
         ...sx,
       }}
     />

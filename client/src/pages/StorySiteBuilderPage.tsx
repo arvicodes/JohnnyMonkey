@@ -32,7 +32,7 @@ import {
   Save as SaveIcon,
 } from '@mui/icons-material';
 import { RichTextEditor, type RichTextEditorHandle } from '../components/ui/rich-text-editor';
-import { StorySitePageBlock } from '../components/story-site/StorySitePreviewBody';
+import { StorySitePreviewBody } from '../components/story-site/StorySitePreviewBody';
 import {
   StoryCompactToolbar,
   StoryToolbarDivider,
@@ -47,7 +47,7 @@ import { ErasmusDayPhotoPickerDialog } from '../components/story-site/ErasmusDay
 import { collectPageImages, normalizePageForPreview } from '../lib/storyPageLayout';
 import { fileToStoryImageDataUrl, isLikelyImageFile } from '../lib/storyImageUtils';
 import { formatIsoDateDe } from '../lib/storyPageDate';
-import { STORY_PREVIEW_MAX_WIDTH } from '../lib/storyPageLayout';
+import { storyPreviewContainerSx, STORY_BEIGE } from '../lib/storyPageLayout';
 import {
   type StorySite,
   type StoryPage,
@@ -79,6 +79,7 @@ export default function StorySiteBuilderPage() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bodyEditorRef = useRef<RichTextEditorHandle>(null);
   const galleryRef = useRef<StoryPageGalleryPanelHandle>(null);
+  const previewSectionRef = useRef<HTMLDivElement>(null);
   const siteRef = useRef(site);
   siteRef.current = site;
   const [galleryBusy, setGalleryBusy] = useState(false);
@@ -353,7 +354,15 @@ export default function StorySiteBuilderPage() {
 
   if (!site || !activePage || !activePageId) {
     return (
-      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#eceff1' }}>
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: STORY_BEIGE.page,
+        }}
+      >
         <CircularProgress />
       </Box>
     );
@@ -372,7 +381,15 @@ export default function StorySiteBuilderPage() {
         top: isMd ? 88 : undefined,
       }}
     >
-      <Box sx={{ px: 1.5, py: 1, bgcolor: 'grey.50', borderBottom: '1px solid', borderColor: 'divider' }}>
+      <Box
+        sx={{
+          px: 1.5,
+          py: 1,
+          bgcolor: STORY_BEIGE.panel,
+          borderBottom: '1px solid',
+          borderColor: 'rgba(141, 110, 99, 0.25)',
+        }}
+      >
         <Typography variant="caption" fontWeight={800} color="text.secondary">
           Unterseiten
         </Typography>
@@ -433,7 +450,7 @@ export default function StorySiteBuilderPage() {
   );
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#eceff1' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: STORY_BEIGE.page }}>
       <StoryCompactToolbar className="no-print">
         <Tooltip title="Zur Übersicht">
           <IconButton
@@ -578,7 +595,7 @@ export default function StorySiteBuilderPage() {
                 borderRadius: 2,
                 border: '1px solid',
                 borderColor: 'divider',
-                bgcolor: '#fffef9',
+                bgcolor: STORY_BEIGE.cream,
               }}
             >
               <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.5, color: '#5d4037' }}>
@@ -656,7 +673,7 @@ export default function StorySiteBuilderPage() {
                   variant="outlined"
                   sx={{
                     p: 1.25,
-                    bgcolor: '#faf6ee',
+                    bgcolor: STORY_BEIGE.panel,
                     borderColor: 'rgba(141, 110, 99, 0.35)',
                     minHeight: { xs: 220, md: 'auto' },
                   }}
@@ -681,18 +698,18 @@ export default function StorySiteBuilderPage() {
               </Typography>
             </Paper>
 
-            <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1.5, color: '#5d4037' }}>
-              So sieht die Unterseite aus (Scrapbook-Layout)
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1, color: '#5d4037' }}>
+              Vorschau (Scrapbook-Layout)
             </Typography>
             <Box
-              sx={{
-                width: '100%',
-                maxWidth: STORY_PREVIEW_MAX_WIDTH,
-                mx: 'auto',
-                overflow: 'hidden',
-              }}
+              ref={previewSectionRef}
+              sx={{ ...storyPreviewContainerSx, overflowX: 'hidden', minWidth: 0 }}
             >
-              <StorySitePageBlock page={previewPage ?? activePage} />
+              <StorySitePreviewBody
+                site={site}
+                activePageId={activePageId ?? undefined}
+                onNavigatePage={(id) => setActivePageId(id)}
+              />
             </Box>
           </Box>
         </Box>

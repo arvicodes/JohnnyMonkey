@@ -1,7 +1,39 @@
 import { dataUrlToBlobUrl } from './storyImageUtils';
 
-/** Maximale Breite der Scrapbook-Vorschau (verhindert horizontales Scrollen). */
-export const STORY_PREVIEW_MAX_WIDTH = 1080;
+/** Scrapbook-Beige (kein Grau/Weiß in der Vorschau). */
+export const STORY_BEIGE = {
+  page: '#f5efe4',
+  surface: '#f3ebe0',
+  panel: '#faf6ee',
+  cream: '#fffef9',
+  placeholder: '#e8e4dc',
+} as const;
+
+export const STORY_SCRAPBOOK_BG =
+  'linear-gradient(180deg, #fffdf7 0%, #faf6ee 45%, #f5efe4 100%)';
+
+/** Vorschau im Builder: 98 % der Inhaltsspalte, je 1 % frei links/rechts. */
+export const storyPreviewContainerSx = {
+  width: '98%',
+  maxWidth: '98%',
+  mx: 'auto',
+  boxSizing: 'border-box' as const,
+};
+
+/** Vorschau Vollbild: Fensterbreite minus je 1 % Rand (ohne vw-Überlauf). */
+export const storyPreviewViewportSx = {
+  width: '100%',
+  maxWidth: '100%',
+  px: '1%',
+  boxSizing: 'border-box' as const,
+};
+
+export function storyPageAnchorId(pageId: string): string {
+  return `story-page-${pageId}`;
+}
+
+/** Abstand unter fixierter Schnellnavigation beim Anspringen. */
+export const storyPageScrollMarginSx = { scrollMarginTop: { xs: 72, sm: 80 } };
 
 const IMG_SRC_IN_HTML =
   /<img\b[^>]*?\ssrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>"']+))[^>]*>/gi;

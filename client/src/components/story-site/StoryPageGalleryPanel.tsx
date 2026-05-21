@@ -158,7 +158,7 @@ export const StoryPageGalleryPanel = forwardRef<StoryPageGalleryPanelHandle, Pro
           border: '2px dashed',
           borderColor: dragOver ? 'primary.main' : 'rgba(141, 110, 99, 0.4)',
           borderRadius: 1.5,
-          bgcolor: dragOver ? 'rgba(25, 118, 210, 0.06)' : '#faf6ee',
+          bgcolor: dragOver ? 'rgba(205, 170, 125, 0.12)' : '#faf6ee',
           p: 1.25,
           transition: 'border-color 0.15s, background 0.15s',
           display: 'flex',
@@ -237,7 +237,7 @@ export const StoryPageGalleryPanel = forwardRef<StoryPageGalleryPanelHandle, Pro
                     aspectRatio: '4/3',
                     objectFit: 'cover',
                     borderRadius: 0.5,
-                    border: '4px solid white',
+                    border: '4px solid #fffef9',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                     display: 'block',
                   }}
@@ -251,8 +251,8 @@ export const StoryPageGalleryPanel = forwardRef<StoryPageGalleryPanelHandle, Pro
                     right: 2,
                     width: 22,
                     height: 22,
-                    bgcolor: 'white',
-                    '&:hover': { bgcolor: '#ffebee' },
+                    bgcolor: '#fffef9',
+                    '&:hover': { bgcolor: '#f5efe4' },
                   }}
                   aria-label="Bild entfernen"
                 >
