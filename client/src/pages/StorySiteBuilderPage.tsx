@@ -29,6 +29,7 @@ import {
   KeyboardArrowDown as KeyboardArrowDownIcon,
   OpenInNew as OpenInNewIcon,
   Menu as MenuIcon,
+  Save as SaveIcon,
 } from '@mui/icons-material';
 import { RichTextEditor, type RichTextEditorHandle } from '../components/ui/rich-text-editor';
 import { StorySitePageBlock } from '../components/story-site/StorySitePreviewBody';
@@ -70,6 +71,8 @@ export default function StorySiteBuilderPage() {
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [toastSeverity, setToastSeverity] = useState<'success' | 'info' | 'warning' | 'error'>('info');
+  const [saving, setSaving] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bodyEditorRef = useRef<RichTextEditorHandle>(null);
   const galleryRef = useRef<StoryPageGalleryPanelHandle>(null);
@@ -105,19 +108,25 @@ export default function StorySiteBuilderPage() {
     };
   }, [siteId, navigate]);
 
+  const showToast = useCallback((message: string, severity: 'success' | 'info' | 'warning' | 'error' = 'info') => {
+    setToastSeverity(severity);
+    setToast(message);
+  }, []);
+
   const flushPersist = useCallback(async (s: StorySite) => {
     const { localOk, serverOk, serverError, site: saved } = await persistSite(s);
     if (saved) setSite(saved);
-    if (!localOk) setToast('Lokal speichern fehlgeschlagen — bitte Seite neu laden.');
+    if (!localOk) showToast('Lokal speichern fehlgeschlagen — bitte Seite neu laden.', 'error');
     else if (!serverOk) {
-      setToast(
+      showToast(
         serverError
           ? `Server-Speichern: ${serverError}`
           : 'Server-Speichern fehlgeschlagen — Vorschau im neuen Tab evtl. unvollständig.',
+        'warning',
       );
     }
     return { localOk, serverOk };
-  }, []);
+  }, [showToast]);
 
   const scheduleSave = useCallback(
     (s: StorySite) => {
@@ -162,6 +171,32 @@ export default function StorySiteBuilderPage() {
     if (!page || liveHtml === page.bodyHtml) return site;
     return updatePage(site, activePageId, { bodyHtml: liveHtml });
   }, [site, activePageId]);
+
+  const handleSaveNow = useCallback(async () => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+    bodyEditorRef.current?.flush();
+    const latest = siteWithLiveBodyHtml();
+    if (!latest) return;
+    if (latest !== site) setSite(latest);
+    setSaving(true);
+    const { localOk, serverOk } = await flushPersist(latest);
+    setSaving(false);
+    if (localOk && serverOk) showToast('Gespeichert', 'success');
+  }, [site, siteWithLiveBodyHtml, flushPersist, showToast]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        void handleSaveNow();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handleSaveNow]);
 
   const addGalleryFiles = useCallback(
     (fileList: FileList | File[]) => {
@@ -271,7 +306,7 @@ export default function StorySiteBuilderPage() {
       const refreshed = getSiteById(latest.id);
       if (refreshed) setSite(refreshed);
     } else {
-      setToast('Vorschau geöffnet — Server-Speichern fehlgeschlagen, Bilder nur lokal.');
+      showToast('Vorschau geöffnet — Server-Speichern fehlgeschlagen, Bilder nur lokal.', 'warning');
     }
   };
 
@@ -403,6 +438,24 @@ export default function StorySiteBuilderPage() {
           sx={storyToolbarFieldSx}
         />
         <StoryToolbarDivider />
+        <Tooltip title="Jetzt speichern (Strg+S)">
+          <span>
+            <IconButton
+              size="small"
+              onClick={() => void handleSaveNow()}
+              disabled={saving}
+              aria-label="Speichern"
+              sx={{
+                ...(storyToolbarIconBtnSx as object),
+                color: 'primary.main',
+                borderColor: 'primary.light',
+              }}
+            >
+              {saving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
+            </IconButton>
+          </span>
+        </Tooltip>
+        <StoryToolbarDivider />
         <Tooltip title="Vorschau">
           <IconButton
             size="small"
@@ -413,7 +466,7 @@ export default function StorySiteBuilderPage() {
             <OpenInNewIcon />
           </IconButton>
         </Tooltip>
-        <Tooltip title="Galerie (rechts)">
+        <Tooltip title="Galerie (rechts in der Vorschau)">
           <IconButton
             size="small"
             onClick={() => galleryRef.current?.pickFiles()}
@@ -573,6 +626,8 @@ export default function StorySiteBuilderPage() {
                 </Paper>
               </Box>
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                Änderungen werden automatisch gespeichert · Speichern-Button oben oder Strg+S für sofortiges Speichern
+                {' · '}
                 {previewImageCount} Bild{previewImageCount === 1 ? '' : 'er'} in der Vorschau
               </Typography>
             </Paper>
@@ -588,7 +643,7 @@ export default function StorySiteBuilderPage() {
       </Box>
 
       <Snackbar open={!!toast} autoHideDuration={3200} onClose={() => setToast(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert severity="info" onClose={() => setToast(null)} sx={{ width: '100%' }}>
+        <Alert severity={toastSeverity} onClose={() => setToast(null)} sx={{ width: '100%' }}>
           {toast}
         </Alert>
       </Snackbar>

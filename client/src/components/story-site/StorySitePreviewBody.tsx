@@ -73,12 +73,103 @@ function PolaroidPhoto({
   );
 }
 
+const headerLinePartSx = {
+  fontFamily: '"Segoe Script", "Snell Roundhand", "Bradley Hand", cursive',
+  color: '#5d4037',
+  lineHeight: 1.25,
+  whiteSpace: 'nowrap' as const,
+  flexShrink: 0,
+};
+
+function HeaderDot() {
+  return (
+    <Typography component="span" sx={{ color: '#a1887f', flexShrink: 0, px: 0.25, lineHeight: 1.25 }}>
+      ·
+    </Typography>
+  );
+}
+
 export function StorySitePageBlock({ page }: { page: StoryPage }) {
   const normalized = normalizePageForPreview(page);
-  const meta = [normalized.dateStr, normalized.location].filter(Boolean).join(' · ');
   const { textHtml } = splitStoryBodyHtml(normalized.bodyHtml || '');
   const images = collectPageImages(normalized);
   const rotations = [-4, 5, -3, 6, 4, -5];
+
+  const headerParts: React.ReactNode[] = [];
+  headerParts.push(
+    <Typography
+      key="title"
+      component="span"
+      sx={{
+        ...headerLinePartSx,
+        fontSize: { xs: '1.1rem', sm: '1.35rem', md: '1.5rem' },
+        fontWeight: 600,
+      }}
+    >
+      {normalized.title || 'Ohne Titel'}
+    </Typography>
+  );
+  if (normalized.subtitle?.trim()) {
+    headerParts.push(<HeaderDot key="dot-sub" />);
+    headerParts.push(
+      <Typography
+        key="subtitle"
+        component="span"
+        sx={{
+          fontFamily: '"Segoe UI", system-ui, sans-serif',
+          fontSize: { xs: '1.05rem', sm: '1.2rem', md: '1.28rem' },
+          fontWeight: 700,
+          color: '#3e2723',
+          letterSpacing: '0.02em',
+          lineHeight: 1.25,
+          whiteSpace: 'nowrap',
+          flexShrink: 1,
+          minWidth: 0,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
+        {normalized.subtitle.trim()}
+      </Typography>
+    );
+  }
+  if (normalized.dateStr?.trim()) {
+    headerParts.push(<HeaderDot key="dot-date" />);
+    headerParts.push(
+      <Typography
+        key="date"
+        component="span"
+        sx={{
+          fontSize: { xs: '0.8rem', sm: '0.875rem' },
+          color: '#8d6e63',
+          letterSpacing: 0.2,
+          whiteSpace: 'nowrap',
+          flexShrink: 0,
+          lineHeight: 1.25,
+        }}
+      >
+        {normalized.dateStr.trim()}
+      </Typography>
+    );
+  }
+  if (normalized.location?.trim()) {
+    headerParts.push(<HeaderDot key="dot-loc" />);
+    headerParts.push(
+      <Typography
+        key="location"
+        component="span"
+        sx={{
+          fontSize: { xs: '0.8rem', sm: '0.875rem' },
+          color: '#8d6e63',
+          whiteSpace: 'nowrap',
+          flexShrink: 0,
+          lineHeight: 1.25,
+        }}
+      >
+        {normalized.location.trim()}
+      </Typography>
+    );
+  }
 
   return (
     <Box
@@ -103,140 +194,120 @@ export function StorySitePageBlock({ page }: { page: StoryPage }) {
 
       <Box
         sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 2fr) minmax(0, 3fr)' },
-          gap: { xs: 2, md: 3 },
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'stretch',
           p: { xs: 2, sm: 2.5, md: 3 },
-          minHeight: { md: 280 },
           width: '100%',
+          minWidth: 0,
         }}
       >
+        {/* Kopfzeile: immer ganz oben, eine Zeile */}
         <Box
           sx={{
-            order: { xs: 1, lg: 0 },
             display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            pr: { lg: 1 },
-            minWidth: 0,
-          }}
-        >
-          <Typography
-            sx={{
-              fontFamily: '"Segoe Script", "Snell Roundhand", "Bradley Hand", cursive',
-              fontSize: { xs: '1.65rem', sm: '2rem', md: '2.25rem' },
-              fontWeight: 600,
-              color: '#5d4037',
-              lineHeight: 1.2,
-              mb: 0.75,
-            }}
-          >
-            {normalized.title || 'Ohne Titel'}
-          </Typography>
-          {normalized.subtitle ? (
-            <Typography
-              sx={{
-                fontSize: { xs: '0.95rem', sm: '1.05rem' },
-                color: '#6d4c41',
-                mb: 1.5,
-                lineHeight: 1.45,
-                fontStyle: 'italic',
-              }}
-            >
-              {normalized.subtitle}
-            </Typography>
-          ) : null}
-          {meta ? (
-            <Typography
-              variant="body2"
-              sx={{
-                color: '#8d6e63',
-                mb: 2,
-                fontSize: '0.8rem',
-                letterSpacing: 0.3,
-                borderLeft: '3px solid rgba(255, 193, 7, 0.65)',
-                pl: 1.25,
-              }}
-            >
-              {meta}
-            </Typography>
-          ) : null}
-          {textHtml ? (
-            <Box
-              className="story-preview-html story-preview-text-only"
-              sx={{
-                color: '#4e342e',
-                fontSize: { xs: '0.92rem', md: '1rem' },
-                lineHeight: 1.65,
-                '& p': { mb: 1.25 },
-                '& ul, & ol': { pl: 2.5, mb: 1.25 },
-                '& img': { display: 'none' },
-              }}
-              dangerouslySetInnerHTML={{ __html: textHtml }}
-            />
-          ) : (
-            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-              Noch kein Text — schreib im Editor.
-            </Typography>
-          )}
-        </Box>
-
-        <Box
-          sx={{
-            order: { xs: 2, lg: 0 },
-            position: 'relative',
-            minHeight: { xs: 180, md: 240 },
-            display: 'flex',
-            alignItems: 'stretch',
-            justifyContent: 'stretch',
-            bgcolor: 'rgba(255,255,255,0.35)',
-            borderRadius: 1.5,
-            border: '1px dashed rgba(141, 110, 99, 0.25)',
-            p: { xs: 1.5, md: 2 },
+            flexDirection: 'row',
+            alignItems: 'baseline',
+            flexWrap: 'nowrap',
+            gap: 0,
             width: '100%',
             minWidth: 0,
+            mb: 1.25,
+            pb: 1,
+            borderBottom: '2px solid rgba(255, 193, 7, 0.45)',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            '&::-webkit-scrollbar': { height: 4 },
           }}
         >
-          {images.length === 0 ? (
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{
-                textAlign: 'center',
-                fontStyle: 'italic',
-                px: 2,
-                m: 'auto',
-                width: '100%',
-              }}
-            >
-              Bilder in der Galerie rechts neben dem Text — sie erscheinen hier als Polaroids.
-            </Typography>
-          ) : (
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: {
-                  xs: 'repeat(2, minmax(0, 1fr))',
-                  sm: 'repeat(2, minmax(0, 1fr))',
-                  md: images.length >= 4 ? 'repeat(3, minmax(0, 1fr))' : 'repeat(2, minmax(0, 1fr))',
-                  lg: images.length >= 5 ? 'repeat(3, minmax(0, 1fr))' : 'repeat(2, minmax(0, 1fr))',
-                },
-                gap: { xs: 1.5, md: 2 },
-                width: '100%',
-                alignContent: 'start',
-              }}
-            >
-              {images.map((src, i) => (
-                <Box key={`${src.slice(0, 48)}-${i}`} sx={{ minWidth: 0 }}>
-                  <PolaroidPhoto
-                    src={src}
-                    alt=""
-                    rotation={rotations[i % rotations.length]}
-                  />
-                </Box>
-              ))}
-            </Box>
-          )}
+          {headerParts}
+        </Box>
+
+        {/* Text links, Bilder rechts — Kopfzeile bleibt darüber */}
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 2fr) minmax(0, 3fr)' },
+            gap: { xs: 2, md: 3 },
+            width: '100%',
+            alignItems: 'start',
+          }}
+        >
+          <Box sx={{ minWidth: 0, alignSelf: 'start' }}>
+            {textHtml ? (
+              <Box
+                className="story-preview-html story-preview-text-only"
+                sx={{
+                  color: '#4e342e',
+                  fontSize: { xs: '0.92rem', md: '1rem' },
+                  lineHeight: 1.65,
+                  '& p': { mb: 1.25 },
+                  '& ul, & ol': { pl: 2.5, mb: 1.25 },
+                  '& img': { display: 'none' },
+                }}
+                dangerouslySetInnerHTML={{ __html: textHtml }}
+              />
+            ) : (
+              <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                Noch kein Text — schreib im Editor.
+              </Typography>
+            )}
+          </Box>
+
+          <Box
+            sx={{
+              position: 'relative',
+              minHeight: { xs: 120, md: 160 },
+              alignSelf: 'start',
+              bgcolor: 'rgba(255,255,255,0.35)',
+              borderRadius: 1.5,
+              border: '1px dashed rgba(141, 110, 99, 0.25)',
+              p: { xs: 1.5, md: 2 },
+              width: '100%',
+              minWidth: 0,
+            }}
+          >
+            {images.length === 0 ? (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  textAlign: 'center',
+                  fontStyle: 'italic',
+                  px: 2,
+                  py: 2,
+                  width: '100%',
+                }}
+              >
+                Bilder in der Galerie — sie erscheinen hier rechts als Polaroids.
+              </Typography>
+            ) : (
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: 'repeat(2, minmax(0, 1fr))',
+                    sm: 'repeat(2, minmax(0, 1fr))',
+                    md: images.length >= 4 ? 'repeat(3, minmax(0, 1fr))' : 'repeat(2, minmax(0, 1fr))',
+                    lg: images.length >= 5 ? 'repeat(3, minmax(0, 1fr))' : 'repeat(2, minmax(0, 1fr))',
+                  },
+                  gap: { xs: 1.5, md: 2 },
+                  width: '100%',
+                  alignContent: 'start',
+                }}
+              >
+                {images.map((src, i) => (
+                  <Box key={`${src.slice(0, 48)}-${i}`} sx={{ minWidth: 0 }}>
+                    <PolaroidPhoto
+                      src={src}
+                      alt=""
+                      rotation={rotations[i % rotations.length]}
+                    />
+                  </Box>
+                ))}
+              </Box>
+            )}
+          </Box>
         </Box>
       </Box>
     </Box>
