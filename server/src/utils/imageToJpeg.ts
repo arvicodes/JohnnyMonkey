@@ -12,13 +12,20 @@ export function isHeicPath(filePath: string): boolean {
   return HEIC_EXT.has(path.extname(filePath).toLowerCase());
 }
 
-async function sipsHeicToJpeg(inputPath: string, outputPath: string): Promise<Buffer> {
-  await execFileAsync('sips', ['-s', 'format', 'jpeg', inputPath, '--out', outputPath]);
+async function sipsHeicToJpeg(
+  inputPath: string,
+  outputPath: string,
+  maxEdge?: number,
+): Promise<Buffer> {
+  const args = maxEdge
+    ? ['-Z', String(maxEdge), '-s', 'format', 'jpeg', inputPath, '--out', outputPath]
+    : ['-s', 'format', 'jpeg', inputPath, '--out', outputPath];
+  await execFileAsync('sips', args);
   return fs.readFileSync(outputPath);
 }
 
-/** HEIC/HEIF → JPEG (macOS: sips direkt auf Dateipfad). */
-export async function fileToJpegBuffer(filePath: string): Promise<Buffer> {
+/** HEIC/HEIF → JPEG (macOS: sips). Optional maxEdge für schnelle Vorschau. */
+export async function fileToJpegBuffer(filePath: string, maxEdge?: number): Promise<Buffer> {
   const ext = path.extname(filePath).toLowerCase();
   if (!HEIC_EXT.has(ext)) {
     return fs.readFileSync(filePath);
@@ -28,7 +35,7 @@ export async function fileToJpegBuffer(filePath: string): Promise<Buffer> {
   }
   const tmpOut = path.join(os.tmpdir(), `heic-out-${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`);
   try {
-    return await sipsHeicToJpeg(filePath, tmpOut);
+    return await sipsHeicToJpeg(filePath, tmpOut, maxEdge);
   } finally {
     try {
       if (fs.existsSync(tmpOut)) fs.unlinkSync(tmpOut);
@@ -38,7 +45,11 @@ export async function fileToJpegBuffer(filePath: string): Promise<Buffer> {
   }
 }
 
-export async function uploadBufferToJpegBuffer(buf: Buffer, originalName: string): Promise<Buffer> {
+export async function uploadBufferToJpegBuffer(
+  buf: Buffer,
+  originalName: string,
+  maxEdge?: number,
+): Promise<Buffer> {
   const ext = path.extname(originalName).toLowerCase();
   if (!HEIC_EXT.has(ext)) return buf;
   if (process.platform !== 'darwin') {
@@ -48,7 +59,7 @@ export async function uploadBufferToJpegBuffer(buf: Buffer, originalName: string
   const tmpOut = path.join(os.tmpdir(), `heic-up-${Date.now()}.jpg`);
   try {
     fs.writeFileSync(tmpIn, buf);
-    return await sipsHeicToJpeg(tmpIn, tmpOut);
+    return await sipsHeicToJpeg(tmpIn, tmpOut, maxEdge);
   } finally {
     for (const p of [tmpIn, tmpOut]) {
       try {

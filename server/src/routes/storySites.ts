@@ -123,7 +123,9 @@ router.post('/convert-heic', photoUpload.single('file'), async (req: Request, re
     if (!isHeicPath(name)) {
       return res.status(400).json({ error: 'Keine HEIC/HEIF-Datei' });
     }
-    const jpeg = await uploadBufferToJpegBuffer(file.buffer, name);
+    const maxRaw = parseInt(String(req.query.max ?? ''), 10);
+    const maxEdge = Number.isFinite(maxRaw) && maxRaw > 0 && maxRaw <= 2048 ? maxRaw : undefined;
+    const jpeg = await uploadBufferToJpegBuffer(file.buffer, name, maxEdge);
     res.type('image/jpeg');
     res.send(jpeg);
   } catch (e) {
@@ -143,7 +145,7 @@ router.get('/local-preview', async (req: Request, res: Response) => {
     const root = resolveSafeSourceRoot(rootParam);
     const full = assertFileUnderRoot(root, fileParam);
     if (isHeicPath(full)) {
-      const buf = await fileToJpegBuffer(full);
+      const buf = await fileToJpegBuffer(full, 480);
       res.type('image/jpeg');
       return res.send(buf);
     }

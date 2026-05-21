@@ -13,6 +13,23 @@ export type LocalPhotoPick = {
   previewUrl: string;
 };
 
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 export async function scanPickedFilesForDay(
   fileList: FileList | File[],
   pageDateStr: string,
@@ -21,33 +38,32 @@ export async function scanPickedFilesForDay(
   images: LocalPhotoPick[];
   total: number;
   targetDate: string | null;
-  /** Aus EXIF: wird als Unterseiten-Datum übernommen */
   suggestedCaptureDateISO: string | null;
   matchedCount: number;
   exifCount: number;
 }> {
   const all = Array.from(fileList).filter(isLikelyImageFile);
-  const dated: LocalPhotoPick[] = [];
+  const total = all.length;
+  let done = 0;
 
-  for (let i = 0; i < all.length; i++) {
-    const file = all[i];
-    onProgress?.(i + 1, all.length);
+  const dated = await mapWithConcurrency(all, 8, async (file, i) => {
     const dateISO = await readCaptureDateISOFromFile(file);
-    const previewUrl = await createImagePreviewUrl(file);
-    dated.push({
+    const previewUrl = createImagePreviewUrl(file);
+    done += 1;
+    onProgress?.(done, total);
+    return {
       id: `${file.name}-${file.size}-${file.lastModified}-${i}`,
       file,
       fileName: file.name,
       dateISO,
       matchesDay: false,
       previewUrl,
-    });
-  }
+    };
+  });
 
   const exifCount = dated.filter((x) => x.dateISO).length;
   const suggestedCaptureDateISO = pickDominantCaptureDateISO(dated.map((x) => x.dateISO));
   const pageIso = parseStoryPageDate(pageDateStr);
-  /** Gesetztes Unterseiten-Datum hat Vorrang; sonst häufigstes EXIF-Datum */
   const targetDate = pageIso ?? suggestedCaptureDateISO;
 
   const withMatch = dated.map((img) => ({
@@ -72,7 +88,9 @@ export async function scanPickedFilesForDay(
 export function revokeLocalPhotoPreviews(images: LocalPhotoPick[]): void {
   for (const img of images) {
     try {
-      URL.revokeObjectURL(img.previewUrl);
+      if (img.previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(img.previewUrl);
+      }
     } catch {
       /* ignore */
     }

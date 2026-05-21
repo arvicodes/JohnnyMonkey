@@ -82,6 +82,7 @@ export default function StorySiteBuilderPage() {
   siteRef.current = site;
   const [galleryBusy, setGalleryBusy] = useState(false);
   const [photoPickerOpen, setPhotoPickerOpen] = useState(false);
+  const [pendingFolderFiles, setPendingFolderFiles] = useState<File[] | null>(null);
 
   useEffect(() => {
     if (!siteId) {
@@ -290,11 +291,6 @@ export default function StorySiteBuilderPage() {
     patchSite({ ...site, country });
   };
 
-  const updateImageSourceFolder = (imageSourceFolder: string) => {
-    if (!site) return;
-    patchSite({ ...site, imageSourceFolder });
-  };
-
   const handleImportedGalleryUrls = (urls: string[], captureDateISO?: string | null) => {
     if (!site || !activePageId || !urls.length) return;
     const page = site.pages.find((p) => p.id === activePageId);
@@ -311,9 +307,13 @@ export default function StorySiteBuilderPage() {
     );
   };
 
-  const erasmusBilderHint = site?.erasmusFolder
-    ? `J-M-Reihen/${site.erasmusFolder}/Bilder`
-    : undefined;
+  const handleImportFolderFiles = useCallback((files: File[]) => {
+    if (!files.length) return;
+    setPendingFolderFiles(files);
+    setPhotoPickerOpen(true);
+  }, []);
+
+  const clearPendingFolderFiles = useCallback(() => setPendingFolderFiles(null), []);
 
   const openPublicPreview = async () => {
     const latest = siteWithLiveBodyHtml();
@@ -669,6 +669,7 @@ export default function StorySiteBuilderPage() {
                     onClear={clearGalleryImages}
                     processing={galleryBusy}
                     onPickFromFolder={() => setPhotoPickerOpen(true)}
+                    onImportFolder={handleImportFolderFiles}
                   />
                 </Paper>
               </Box>
@@ -692,17 +693,19 @@ export default function StorySiteBuilderPage() {
       {site && activePage ? (
         <ErasmusDayPhotoPickerDialog
           open={photoPickerOpen}
-          onClose={() => setPhotoPickerOpen(false)}
+          onClose={() => {
+            setPhotoPickerOpen(false);
+            setPendingFolderFiles(null);
+          }}
           siteId={site.id}
           pageDateStr={activePage.dateStr}
-          imageSourceFolder={site.imageSourceFolder ?? ''}
-          onImageSourceFolderChange={updateImageSourceFolder}
+          pendingFolderFiles={pendingFolderFiles}
+          onPendingFolderFilesHandled={clearPendingFolderFiles}
           onImported={handleImportedGalleryUrls}
           onPageDateFromExif={(iso) => {
             if (!site || !activePageId) return;
             updateActivePage({ dateStr: formatIsoDateDe(iso) });
           }}
-          erasmusBilderHint={erasmusBilderHint}
         />
       ) : null}
 

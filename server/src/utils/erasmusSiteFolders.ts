@@ -36,6 +36,13 @@ export function sanitizeErasmusSegment(input: string): string {
     .trim();
 }
 
+/** Nur der Titel-Teil vor dem ersten „ - “ (z. B. „Teaching Assignment - Kroatien …“ → Teaching Assignment). */
+export function erasmusTitelFromSiteName(name: string): string {
+  const trimmed = name?.trim() || 'Neue Website';
+  const beforeDash = trimmed.split(/\s*-\s*/)[0]?.trim() || trimmed;
+  return sanitizeErasmusSegment(beforeDash);
+}
+
 /** Schema: „Jahr - Monat - Land - Titel“ */
 export function buildErasmusFolderLabel(site: {
   name?: string;
@@ -46,7 +53,7 @@ export function buildErasmusFolderLabel(site: {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const land = sanitizeErasmusSegment(site.country?.trim() || 'Unbenannt');
-  const titel = sanitizeErasmusSegment(site.name?.trim() || 'Neue Website');
+  const titel = erasmusTitelFromSiteName(site.name ?? 'Neue Website');
   return `${year} - ${month} - ${land} - ${titel}`;
 }
 

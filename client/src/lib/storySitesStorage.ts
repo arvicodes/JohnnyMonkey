@@ -25,7 +25,7 @@ export type StorySite = {
   name: string;
   /** Land für Erasmus-Ordner (Schema: Jahr - Monat - Land - Titel) */
   country?: string;
-  /** Relativer Pfad unter J-M-Reihen, z. B. Erasmus/2026 - 05 - Spanien - Bericht */
+  /** Relativer Pfad unter J-M-Reihen, z. B. Erasmus/2026 - 05 - Kroatien - Teaching Assignment */
   erasmusFolder?: string;
   /** Lokaler Ordner mit Quellfotos (iCloud-Export o. ä.) */
   imageSourceFolder?: string;

@@ -75,7 +75,7 @@ async function fileForCanvas(file: File): Promise<File> {
 
 async function renderFileToDataUrl(file: File, maxDim: number, quality: number): Promise<string> {
   const renderFile = await fileForCanvas(file);
-  const blobUrl = await createImagePreviewUrl(renderFile);
+  const blobUrl = createImagePreviewUrl(renderFile);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const el = document.createElement('img');

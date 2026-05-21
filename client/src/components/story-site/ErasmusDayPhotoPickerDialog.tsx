@@ -3,33 +3,87 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
   Button,
-  TextField,
   Typography,
   Box,
   Stack,
   Checkbox,
-  CircularProgress,
   Alert,
   LinearProgress,
   FormControlLabel,
 } from '@mui/material';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-icon-button';
 import { parseStoryPageDate, formatIsoDateDe } from '../../lib/storyPageDate';
-import { normalizeFolderPathInput } from '../../lib/normalizeFolderPath';
 import {
   scanPickedFilesForDay,
   revokeLocalPhotoPreviews,
   type LocalPhotoPick,
 } from '../../lib/scanLocalPhotoFiles';
 import { readCaptureDateISOFromFile, pickDominantCaptureDateISO } from '../../lib/photoCaptureDate';
+import { importPhotoFilesUpload } from '../../lib/storySitePhotoImport';
 import {
-  scanPhotosForDay,
-  importSelectedPhotos,
-  importPhotoFilesUpload,
-  type ScannedPhotoItem,
-} from '../../lib/storySitePhotoImport';
+  collectImageFilesFromDataTransfer,
+  pickFolderImageFilesViaDirectoryPicker,
+  supportsDirectoryPicker,
+} from '../../lib/pickFolderImageFiles';
+import { isLikelyImageFile } from '../../lib/storyImageUtils';
+import {
+  fetchHeicPreviewUrl,
+  HEIC_PREVIEW_PLACEHOLDER,
+  isHeicFile,
+} from '../../lib/heicPreview';
+
+function PickPreviewImage({ file, previewUrl, alt }: { file: File; previewUrl: string; alt: string }) {
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const [src, setSrc] = useState(previewUrl);
+
+  useEffect(() => {
+    if (!isHeicFile(file) || previewUrl !== HEIC_PREVIEW_PLACEHOLDER) {
+      setSrc(previewUrl);
+      return;
+    }
+
+    const el = imgRef.current;
+    if (!el) return;
+
+    let blobUrl: string | null = null;
+    let cancelled = false;
+
+    const load = () => {
+      void fetchHeicPreviewUrl(file, 320).then((url) => {
+        if (cancelled || !url) return;
+        blobUrl = url;
+        setSrc(url);
+      });
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        observer.disconnect();
+        load();
+      },
+      { rootMargin: '120px' },
+    );
+    observer.observe(el);
+
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+      if (blobUrl?.startsWith('blob:')) URL.revokeObjectURL(blobUrl);
+    };
+  }, [file, previewUrl]);
+
+  return (
+    <Box
+      ref={imgRef}
+      component="img"
+      src={src}
+      alt={alt}
+      sx={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block', bgcolor: '#e8e4dc' }}
+    />
+  );
+}
 
 type DisplayImage = {
   key: string;
@@ -37,7 +91,6 @@ type DisplayImage = {
   previewUrl: string;
   dateISO: string | null;
   matchesDay: boolean;
-  serverRel?: string;
   localFile?: File;
 };
 
@@ -46,31 +99,49 @@ type Props = {
   onClose: () => void;
   siteId: string;
   pageDateStr: string;
-  imageSourceFolder: string;
-  onImageSourceFolderChange: (path: string) => void;
   onImported: (galleryUrls: string[], captureDateISO?: string | null) => void;
-  /** Unterseiten-Datum aus EXIF-Aufnahmedatum setzen */
   onPageDateFromExif: (captureDateISO: string) => void;
-  erasmusBilderHint?: string;
+  /** Ordner per Galerie-Drop — wird beim Öffnen gescannt */
+  pendingFolderFiles?: File[] | null;
+  onPendingFolderFilesHandled?: () => void;
 };
+
+const folderInputVisuallyHiddenSx = {
+  position: 'fixed' as const,
+  left: -10000,
+  top: 0,
+  width: 1,
+  height: 1,
+  opacity: 0,
+  overflow: 'hidden',
+};
+
+async function readFolderFilesFromInput(input: HTMLInputElement): Promise<File[]> {
+  const snapshot = () =>
+    input.files?.length ? Array.from(input.files).filter(isLikelyImageFile) : [];
+  let files = snapshot();
+  for (const waitMs of [0, 50, 100, 200, 400, 800, 1500, 2500]) {
+    if (files.length) break;
+    if (waitMs) await new Promise((r) => window.setTimeout(r, waitMs));
+    files = snapshot();
+  }
+  return files;
+}
 
 export function ErasmusDayPhotoPickerDialog({
   open,
   onClose,
   siteId,
   pageDateStr,
-  imageSourceFolder,
-  onImageSourceFolderChange,
   onImported,
   onPageDateFromExif,
-  erasmusBilderHint,
+  pendingFolderFiles,
+  onPendingFolderFilesHandled,
 }: Props) {
   const folderInputRef = useRef<HTMLInputElement>(null);
   const folderInputId = `erasmus-folder-input-${siteId}`;
   const processFolderRef = useRef(false);
-  const [folderInput, setFolderInput] = useState(imageSourceFolder);
   const [images, setImages] = useState<DisplayImage[]>([]);
-  const [importMode, setImportMode] = useState<'path' | 'files'>('files');
   const [localPicks, setLocalPicks] = useState<LocalPhotoPick[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [scanning, setScanning] = useState(false);
@@ -79,6 +150,7 @@ export function ErasmusDayPhotoPickerDialog({
   const [error, setError] = useState<string | null>(null);
   const [scanInfo, setScanInfo] = useState<string | null>(null);
   const [onlyMatchingDay, setOnlyMatchingDay] = useState(true);
+  const [folderDragOver, setFolderDragOver] = useState(false);
 
   const targetIso = useMemo(() => parseStoryPageDate(pageDateStr), [pageDateStr]);
   const targetLabel = targetIso ? formatIsoDateDe(targetIso) : null;
@@ -96,28 +168,34 @@ export function ErasmusDayPhotoPickerDialog({
     setSelected(new Set());
     setScanInfo(null);
     setScanProgress(null);
+    setError(null);
+  }, []);
+
+  const resetBusyState = useCallback(() => {
+    setScanning(false);
+    setImporting(false);
+    processFolderRef.current = false;
   }, []);
 
   useEffect(() => {
-    if (open) setFolderInput(imageSourceFolder);
-  }, [open, imageSourceFolder]);
+    if (!open) {
+      resetGallery();
+      resetBusyState();
+      return;
+    }
+    if (!pendingFolderFiles?.length) resetBusyState();
+  }, [open, resetGallery, resetBusyState, pendingFolderFiles]);
 
   useEffect(() => {
     const el = folderInputRef.current;
-    if (!el) return;
-    el.setAttribute('webkitdirectory', 'true');
-    el.setAttribute('directory', 'true');
+    if (!el || !open) return;
+    el.setAttribute('webkitdirectory', '');
+    el.setAttribute('mozdirectory', '');
+    el.removeAttribute('directory');
     el.removeAttribute('accept');
   }, [open]);
 
-  useEffect(() => {
-    if (!open) resetGallery();
-  }, [open, resetGallery]);
-
-  const dayFilterIso = useMemo(
-    () => parseStoryPageDate(pageDateStr) ?? null,
-    [pageDateStr],
-  );
+  const dayFilterIso = useMemo(() => parseStoryPageDate(pageDateStr) ?? null, [pageDateStr]);
 
   const visibleImages = useMemo(() => {
     if (!onlyMatchingDay) return images;
@@ -141,24 +219,7 @@ export function ErasmusDayPhotoPickerDialog({
     );
   }, [dayFilterIso]);
 
-  const applyServerImages = (items: ScannedPhotoItem[], filterIso: string | null) => {
-    setImportMode('path');
-    const display = items.map((img) => ({
-      key: img.relativePath,
-      fileName: img.fileName,
-      previewUrl: img.previewUrl,
-      dateISO: img.dateISO ?? null,
-      matchesDay: filterIso ? img.dateISO === filterIso : true,
-      serverRel: img.relativePath,
-    }));
-    setImages(display);
-    setSelected(
-      new Set(display.filter((i) => (filterIso ? i.dateISO === filterIso : true)).map((i) => i.key)),
-    );
-  };
-
-  const applyLocalImages = (items: LocalPhotoPick[]) => {
-    setImportMode('files');
+  const applyLocalImages = useCallback((items: LocalPhotoPick[]) => {
     setLocalPicks(items);
     const display = items.map((img) => ({
       key: img.id,
@@ -170,7 +231,7 @@ export function ErasmusDayPhotoPickerDialog({
     }));
     setImages(display);
     setSelected(new Set(items.filter((i) => i.matchesDay).map((i) => i.id)));
-  };
+  }, []);
 
   const applyExifPageDateIfEmpty = useCallback(
     (iso: string | null | undefined) => {
@@ -180,131 +241,164 @@ export function ErasmusDayPhotoPickerDialog({
     [onPageDateFromExif, pageDateStr],
   );
 
-  const handleScanPath = useCallback(async () => {
-    const path = normalizeFolderPathInput(folderInput);
-    if (!path) {
-      setError('Bitte einen Ordnerpfad auf deinem Mac angeben.');
-      return;
-    }
-    setError(null);
-    setScanning(true);
-    resetGallery();
-    try {
-      onImageSourceFolderChange(path);
-      setFolderInput(path);
-      const result = await scanPhotosForDay(siteId, path, pageDateStr);
-      applyExifPageDateIfEmpty(result.suggestedCaptureDateISO);
-      const filterIso = targetIso ?? result.suggestedCaptureDateISO;
-      applyServerImages(result.images, filterIso);
-      const dayLabel = filterIso ? formatIsoDateDe(filterIso) : targetLabel;
-      setScanInfo(
-        `${result.matchedCount} Foto${result.matchedCount === 1 ? '' : 's'} vom ${dayLabel} (EXIF, ${result.exifCount} mit Aufnahmedatum, ${result.totalScanned} gesamt)`,
-      );
-      setOnlyMatchingDay(result.matchedCount > 0);
-      if (!result.matchedCount) {
-        setError(
-          result.exifCount === 0
-            ? 'Keine Aufnahmedaten (EXIF) in den Bildern — anderes Format oder zuerst aus Fotos.app exportieren.'
-            : 'Keine Fotos für das erkannte Haupt-Aufnahmedatum.',
-        );
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Scan fehlgeschlagen');
-      setScanInfo(null);
-    } finally {
-      setScanning(false);
-    }
-  }, [folderInput, targetLabel, siteId, pageDateStr, targetIso, onImageSourceFolderChange, resetGallery, applyExifPageDateIfEmpty]);
-
-  const collectFilesFromInput = (input: HTMLInputElement | null): File[] => {
-    if (!input?.files?.length) return [];
-    return Array.from(input.files);
-  };
-
-  const onFolderPicked = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const loadFolderFiles = useCallback(
+    async (picked: File[]) => {
       if (processFolderRef.current) return;
-
-      const input = e.target;
-      // Sofort kopieren — value-Reset oder Dialog-Fokus kann FileList leeren (Safari/Chrome + MUI)
-      let picked = collectFilesFromInput(input);
-      if (!picked.length) {
-        await new Promise((r) => window.setTimeout(r, 100));
-        picked = collectFilesFromInput(folderInputRef.current);
-      }
-      if (!picked.length) {
-        setError(
-          'Der Browser hat keine Dateien übergeben. Bitte erneut „Ordner auswählen“ klicken (nicht nur den Dialog schließen).',
-        );
-        setScanInfo(null);
+      const imageFiles = picked.filter(isLikelyImageFile);
+      const files = imageFiles.length ? imageFiles : picked;
+      if (!files.length) {
+        setError('Keine Bilddateien im Ordner.');
         return;
       }
 
       processFolderRef.current = true;
-      const list = picked;
-
-      const imageCount = list.filter(
-        (f) => f.type.startsWith('image/') || /\.(jpe?g|png|heic|heif|webp|gif|tif|tiff)$/i.test(f.name),
-      ).length;
-
-      if (!imageCount) {
-        setError(`Ordner enthält ${list.length} Datei(en), aber keine erkennbaren Bilder (JPG, PNG, HEIC …).`);
-        setScanInfo(null);
-        processFolderRef.current = false;
-        input.value = '';
-        return;
-      }
-
       setError(null);
       setScanning(true);
-      setScanProgress({ done: 0, total: imageCount });
-      setScanInfo(`${imageCount} Bilder gefunden — lese Aufnahmedatum …`);
-      resetGallery();
+      setScanProgress({ done: 0, total: files.length });
+      setScanInfo(`${files.length} Bilder — lese Aufnahmedatum …`);
+      revokeLocalPhotoPreviews(localPicksRef.current);
+      localPicksRef.current = [];
+      setLocalPicks([]);
+      setImages([]);
+      setSelected(new Set());
 
       try {
-        const result = await scanPickedFilesForDay(picked, pageDateStr, (done, total) => {
+        const result = await scanPickedFilesForDay(files, pageDateStr, (done, total) => {
           setScanProgress({ done, total });
         });
-
         applyExifPageDateIfEmpty(result.suggestedCaptureDateISO);
-
         applyLocalImages(result.images);
-        setOnlyMatchingDay(result.matchedCount > 0);
 
-        const filterIso = targetIso ?? result.suggestedCaptureDateISO;
-        const dayLabel = filterIso ? formatIsoDateDe(filterIso) : targetLabel;
+        const pageIso = parseStoryPageDate(pageDateStr);
+        const dateLabel =
+          pageIso && targetLabel
+            ? targetLabel
+            : result.targetDate
+              ? formatIsoDateDe(result.targetDate)
+              : null;
 
-        if (result.matchedCount > 0) {
-          setScanInfo(
-            `Unterseiten-Datum: ${dayLabel} (aus EXIF). ${result.matchedCount} Foto${result.matchedCount === 1 ? '' : 's'} von diesem Tag — vorausgewählt.`,
-          );
+        if (result.matchedCount > 0 && pageIso) {
           setOnlyMatchingDay(true);
-          setError(null);
-        } else if (result.exifCount === 0) {
-          setError(
-            `Von ${result.total} Bildern hat keines EXIF-Aufnahmedaten. Bitte Original-JPG/HEIC aus der Kamera oder Fotos.app verwenden.`,
+          setScanInfo(
+            `${result.total} Bilder · ${result.matchedCount} vom ${dateLabel} vorausgewählt — weitere markieren oder „Übernehmen“`,
           );
-        } else if (result.total > 0) {
+        } else if (result.exifCount === 0) {
+          setOnlyMatchingDay(false);
+          setError(`Von ${result.total} Bildern hat keines EXIF-Aufnahmedaten.`);
+          setScanInfo(`${result.total} Bilder — bitte manuell auswählen.`);
+        } else {
           setOnlyMatchingDay(false);
           setScanInfo(
-            `${result.exifCount} Bilder mit EXIF, aber kein gemeinsames Aufnahmedatum. Alle mit Datum werden angezeigt.`,
+            pageIso
+              ? `${result.total} Bilder · keine vom ${dateLabel} — alle anzeigen, selbst wählen`
+              : `${result.total} Bilder — Datum der Unterseite fehlt, EXIF-Vorschlag wurde gesetzt`,
           );
-          setError(null);
-        } else {
-          setError('Keine Bilddateien im gewählten Ordner.');
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Auswahl fehlgeschlagen');
+        setError(err instanceof Error ? err.message : 'Ordner konnte nicht gelesen werden');
         setScanInfo(null);
       } finally {
         setScanning(false);
         setScanProgress(null);
         processFolderRef.current = false;
-        if (folderInputRef.current) folderInputRef.current.value = '';
-        else input.value = '';
       }
     },
-    [pageDateStr, targetLabel, targetIso, resetGallery, applyExifPageDateIfEmpty],
+    [pageDateStr, targetLabel, applyExifPageDateIfEmpty, applyLocalImages],
+  );
+
+  const loadFolderFilesRef = useRef(loadFolderFiles);
+  loadFolderFilesRef.current = loadFolderFiles;
+
+  useEffect(() => {
+    if (!open || !pendingFolderFiles?.length) return;
+    const files = pendingFolderFiles;
+    onPendingFolderFilesHandled?.();
+    void loadFolderFilesRef.current(files);
+  }, [open, pendingFolderFiles, onPendingFolderFilesHandled]);
+
+  const importPicks = useCallback(
+    async (picks: LocalPhotoPick[]) => {
+      if (!picks.length) {
+        setError('Bitte mindestens ein Bild auswählen.');
+        return;
+      }
+      setImporting(true);
+      setError(null);
+      try {
+        const files = picks.map((p) => p.file);
+        const dates = await Promise.all(files.map((f) => readCaptureDateISOFromFile(f)));
+        const captureDateISO =
+          pickDominantCaptureDateISO(dates) ?? picks.find((p) => p.dateISO)?.dateISO ?? null;
+        const urls = await importPhotoFilesUpload(siteId, pageDateStr, files);
+        onImported(urls, captureDateISO);
+        onClose();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Import fehlgeschlagen');
+      } finally {
+        setImporting(false);
+      }
+    },
+    [siteId, pageDateStr, onImported, onClose],
+  );
+
+  const onFolderDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setFolderDragOver(false);
+      const picked = await collectImageFilesFromDataTransfer(e.dataTransfer);
+      await loadFolderFiles(picked);
+    },
+    [loadFolderFiles],
+  );
+
+  const pickFolder = useCallback(async () => {
+    setError(null);
+    processFolderRef.current = false;
+    setScanInfo('Ordner im Finder wählen …');
+
+    if (supportsDirectoryPicker()) {
+      try {
+        const files = await pickFolderImageFilesViaDirectoryPicker();
+        if (!files.length) {
+          setScanInfo(null);
+          setError('Keine Bilddateien in diesem Ordner.');
+          return;
+        }
+        await loadFolderFiles(files);
+        return;
+      } catch (e) {
+        const name = e instanceof DOMException ? e.name : e instanceof Error ? e.name : '';
+        if (name === 'AbortError') {
+          setScanInfo(null);
+          return;
+        }
+      }
+    }
+
+    setScanInfo('Finder-Dialog …');
+    const input = folderInputRef.current;
+    if (!input) return;
+    input.value = '';
+    input.click();
+  }, [loadFolderFiles]);
+
+  const onFolderInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const input = e.target;
+      void (async () => {
+        processFolderRef.current = false;
+        const files = await readFolderFilesFromInput(input);
+        input.value = '';
+        if (!files.length) {
+          setError('Keine Bilddateien — Ordner erneut wählen oder hierher ziehen.');
+          setScanInfo(null);
+          return;
+        }
+        await loadFolderFiles(files);
+      })();
+    },
+    [loadFolderFiles],
   );
 
   const toggle = (key: string) => {
@@ -316,39 +410,12 @@ export function ErasmusDayPhotoPickerDialog({
     });
   };
 
-  const handleImport = async () => {
-    const keys = [...selected];
-    if (!keys.length) {
-      setError('Bitte mindestens ein Bild auswählen.');
-      return;
-    }
-    setImporting(true);
-    setError(null);
-    try {
-      let urls: string[];
-      let captureDateISO: string | null = null;
-      if (importMode === 'files') {
-        const files = localPicks.filter((p) => keys.includes(p.id)).map((p) => p.file);
-        const dates = await Promise.all(files.map((f) => readCaptureDateISOFromFile(f)));
-        captureDateISO =
-          pickDominantCaptureDateISO(dates) ??
-          localPicks.find((p) => keys.includes(p.id))?.dateISO ??
-          null;
-        urls = await importPhotoFilesUpload(siteId, pageDateStr, files);
-      } else {
-        const path = normalizeFolderPathInput(folderInput);
-        urls = await importSelectedPhotos(siteId, path, pageDateStr, keys);
-        const picked = images.filter((i) => keys.includes(i.key) && i.dateISO);
-        captureDateISO = pickDominantCaptureDateISO(picked.map((i) => i.dateISO));
-      }
-      onImported(urls, captureDateISO);
-      onClose();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Import fehlgeschlagen');
-    } finally {
-      setImporting(false);
-    }
+  const importSelected = () => {
+    const picks = localPicks.filter((p) => selected.has(p.id));
+    void importPicks(picks);
   };
+
+  const selectAllVisible = () => setSelected(new Set(visibleImages.map((i) => i.key)));
 
   return (
     <Dialog
@@ -359,94 +426,115 @@ export function ErasmusDayPhotoPickerDialog({
       disableEnforceFocus
       disableRestoreFocus
     >
-      <DialogTitle sx={dialogCloseTitleSx}>
-        <Typography variant="h6" component="span" sx={{ fontSize: '1rem', fontWeight: 700 }}>
-          Fotos nach Tagesdatum
+      <DialogTitle
+        component="div"
+        sx={{
+          ...dialogCloseTitleSx,
+          pr: 11,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          flexWrap: 'wrap',
+        }}
+      >
+        <input
+          ref={folderInputRef}
+          id={folderInputId}
+          type="file"
+          multiple
+          tabIndex={-1}
+          aria-hidden
+          onChange={onFolderInputChange}
+          style={folderInputVisuallyHiddenSx}
+        />
+        <Typography variant="h6" component="span" sx={{ fontSize: '1rem', fontWeight: 700, mr: 'auto' }}>
+          Fotos importieren
         </Typography>
+        <Button
+          variant="contained"
+          size="small"
+          onClick={() => void pickFolder()}
+          sx={{
+            textTransform: 'none',
+            fontSize: '0.8rem',
+            py: 0.35,
+            flexShrink: 0,
+            position: 'relative',
+            zIndex: 2,
+          }}
+        >
+          Ordner auswählen
+        </Button>
+        {images.length > 0 ? (
+          <Button
+            variant="outlined"
+            size="small"
+            disabled={scanning || importing || selected.size === 0}
+            onClick={importSelected}
+            sx={{ textTransform: 'none', fontSize: '0.8rem', py: 0.35, flexShrink: 0 }}
+          >
+            {importing ? 'Kopiere …' : `${selected.size} übernehmen`}
+          </Button>
+        ) : null}
         <DialogCloseIconButton onClose={onClose} />
       </DialogTitle>
       <DialogContent dividers>
-        <Stack spacing={2}>
-          <Alert severity="success" sx={{ fontSize: '0.8rem' }}>
-            <strong>Ordner auswählen (Finder)</strong> — nach der Auswahl erscheint unten eine Fortschrittsanzeige und
-            die Vorschaubilder.
-          </Alert>
-          {!targetIso ? (
-            <Alert severity="warning" sx={{ fontSize: '0.8rem' }}>
-              Bitte zuerst bei der Unterseite ein <strong>Datum</strong> eintragen (z. B. „21. Mai 2026“), damit passende
-              Fotos vorausgewählt werden.
-            </Alert>
-          ) : (
-            <Alert severity="info" sx={{ fontSize: '0.8rem' }}>
-              Unterseiten-Datum: <strong>{targetLabel}</strong> — passende Fotos werden automatisch angehakt.
-            </Alert>
-          )}
+        <Stack spacing={1.5}>
+          {targetLabel ? (
+            <Typography variant="body2" color="text.secondary">
+              Unterseite: <strong>{targetLabel}</strong>
+            </Typography>
+          ) : null}
 
-          {/* Kein accept — sonst liefert webkitdirectory oft 0 Dateien. Label = zuverlässiger Klick. */}
-          <input
-            id={folderInputId}
-            ref={folderInputRef}
-            type="file"
-            multiple
-            onChange={(e) => void onFolderPicked(e)}
-            style={{
-              position: 'absolute',
-              width: 1,
-              height: 1,
-              padding: 0,
-              margin: -1,
-              overflow: 'hidden',
-              clip: 'rect(0,0,0,0)',
-              whiteSpace: 'nowrap',
-              border: 0,
+          <Box
+            onDragEnter={(e) => {
+              e.preventDefault();
+              setFolderDragOver(true);
             }}
-            {...({ webkitdirectory: '', directory: '' } as React.InputHTMLAttributes<HTMLInputElement>)}
-          />
+            onDragOver={(e) => {
+              e.preventDefault();
+              setFolderDragOver(true);
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              setFolderDragOver(false);
+            }}
+            onDrop={(e) => void onFolderDrop(e)}
+            sx={{
+              py: 2,
+              px: 2,
+              borderRadius: 1,
+              border: '2px dashed',
+              borderColor: folderDragOver ? 'primary.main' : 'divider',
+              bgcolor: folderDragOver ? 'action.hover' : 'transparent',
+              textAlign: 'center',
+            }}
+          >
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              Ordner aus dem Finder hierher ziehen
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+              Ordner markieren → „Öffnen“ bestätigen. Bei Fotos/iCloud: in einen normalen Unterordner
+              wechseln (z.&nbsp;B. „Erasmus 2026“). Oder Ordner hierher ziehen.
+            </Typography>
+          </Box>
 
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Button
-              component="label"
-              htmlFor={folderInputId}
-              variant="contained"
-              size="small"
-              disabled={scanning || importing}
-              sx={{ textTransform: 'none', cursor: scanning || importing ? 'default' : 'pointer' }}
-            >
-              Ordner auswählen (Finder)
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => void handleScanPath()}
-              disabled={scanning || importing || !targetIso}
-              sx={{ textTransform: 'none' }}
-            >
-              {scanning ? 'Scanne …' : 'Pfad scannen'}
-            </Button>
-          </Stack>
-
-          <TextField
-            label="Oder: absoluter Ordnerpfad"
-            size="small"
-            fullWidth
-            value={folderInput}
-            onChange={(e) => setFolderInput(e.target.value)}
-            placeholder="/Users/verachrist/Downloads/Erasmus"
-            helperText="Im Finder: Ordner → Rechtsklick → ⌥ „Pfadname kopieren“"
-          />
-
-          {scanning && scanProgress ? (
+          {scanning ? (
             <Box>
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
                 {scanInfo ?? 'Verarbeite …'}
               </Typography>
               <LinearProgress
-                variant="determinate"
-                value={scanProgress.total ? (100 * scanProgress.done) / scanProgress.total : 0}
+                variant={scanProgress?.total ? 'determinate' : 'indeterminate'}
+                value={
+                  scanProgress?.total ? (100 * scanProgress.done) / scanProgress.total : undefined
+                }
               />
-              <Typography variant="caption" color="text.secondary">
-                {scanProgress.done} / {scanProgress.total}
-              </Typography>
+              {scanProgress?.total ? (
+                <Typography variant="caption" color="text.secondary">
+                  {scanProgress.done} / {scanProgress.total}
+                </Typography>
+              ) : null}
             </Box>
           ) : scanInfo ? (
             <Typography variant="body2" color="text.secondary">
@@ -469,33 +557,48 @@ export function ErasmusDayPhotoPickerDialog({
           ) : null}
 
           {visibleImages.length > 0 ? (
-            <Stack direction="row" spacing={1}>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: dayFilterIso ? 'repeat(3, minmax(0, 1fr))' : 'repeat(2, minmax(0, 1fr))',
+                gap: 0.75,
+                width: '100%',
+              }}
+            >
               <Button
                 size="small"
-                onClick={() => setSelected(new Set(visibleImages.map((i) => i.key)))}
-                sx={{ textTransform: 'none' }}
+                fullWidth
+                onClick={selectAllVisible}
+                sx={{ textTransform: 'none', fontSize: '0.72rem', py: 0.4, minWidth: 0 }}
               >
-                Alle markieren
+                Alle sichtbaren
               </Button>
-              <Button size="small" onClick={() => setSelected(new Set())} sx={{ textTransform: 'none' }}>
+              <Button
+                size="small"
+                fullWidth
+                onClick={() => setSelected(new Set())}
+                sx={{ textTransform: 'none', fontSize: '0.72rem', py: 0.4, minWidth: 0 }}
+              >
                 Keine
               </Button>
-            </Stack>
-          ) : null}
-
-          {erasmusBilderHint ? (
-            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-              Ziel: {erasmusBilderHint}
-            </Typography>
+              {dayFilterIso ? (
+                <Button
+                  size="small"
+                  fullWidth
+                  onClick={() =>
+                    setSelected(
+                      new Set(images.filter((i) => i.dateISO === dayFilterIso).map((i) => i.key)),
+                    )
+                  }
+                  sx={{ textTransform: 'none', fontSize: '0.72rem', py: 0.4, minWidth: 0 }}
+                >
+                  Nur {targetLabel ?? formatIsoDateDe(dayFilterIso)}
+                </Button>
+              ) : null}
+            </Box>
           ) : null}
 
           {error ? <Alert severity="warning">{error}</Alert> : null}
-
-          {scanning && !scanProgress ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress size={32} />
-            </Box>
-          ) : null}
 
           {!scanning && visibleImages.length > 0 ? (
             <Box
@@ -518,17 +621,24 @@ export function ErasmusDayPhotoPickerDialog({
                       cursor: 'pointer',
                       borderRadius: 1,
                       outline: checked ? '3px solid' : '1px solid',
-                      outlineColor: checked ? 'primary.main' : img.matchesDay ? 'success.light' : 'divider',
+                      outlineColor: checked ? 'primary.main' : 'divider',
                       overflow: 'hidden',
-                      opacity: img.matchesDay ? 1 : 0.85,
                     }}
                   >
-                    <Box
-                      component="img"
-                      src={img.previewUrl}
-                      alt={img.fileName}
-                      sx={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block' }}
-                    />
+                    {img.localFile ? (
+                      <PickPreviewImage
+                        file={img.localFile}
+                        previewUrl={img.previewUrl}
+                        alt={img.fileName}
+                      />
+                    ) : (
+                      <Box
+                        component="img"
+                        src={img.previewUrl}
+                        alt={img.fileName}
+                        sx={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block' }}
+                      />
+                    )}
                     <Checkbox
                       checked={checked}
                       size="small"
@@ -565,19 +675,6 @@ export function ErasmusDayPhotoPickerDialog({
           ) : null}
         </Stack>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} sx={{ textTransform: 'none' }}>
-          Abbrechen
-        </Button>
-        <Button
-          variant="contained"
-          onClick={() => void handleImport()}
-          disabled={importing || selected.size === 0}
-          sx={{ textTransform: 'none' }}
-        >
-          {importing ? 'Kopiere …' : `${selected.size} Bild${selected.size === 1 ? '' : 'er'} übernehmen`}
-        </Button>
-      </DialogActions>
     </Dialog>
   );
 }

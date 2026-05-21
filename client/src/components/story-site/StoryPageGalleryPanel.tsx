@@ -13,10 +13,11 @@ import {
   PhotoLibrary as PhotoLibraryIcon,
 } from '@mui/icons-material';
 import { displayStoryImageSrc } from '../../lib/storyPageLayout';
+import { collectImageFilesFromDataTransfer, isLikelyImageFile } from '../../lib/storyImageUtils';
 import {
-  collectImageFilesFromDataTransfer,
-  isLikelyImageFile,
-} from '../../lib/storyImageUtils';
+  collectImageFilesFromDataTransfer as collectFolderImageFiles,
+  dataTransferHasDirectory,
+} from '../../lib/pickFolderImageFiles';
 
 type Props = {
   images: string[];
@@ -26,6 +27,8 @@ type Props = {
   onClear?: () => void;
   processing?: boolean;
   onPickFromFolder?: () => void;
+  /** Ordner per Drag & Drop — direkter Import ohne Browser-„Hochladen?“-Dialog */
+  onImportFolder?: (files: File[]) => void | Promise<void>;
 };
 
 export type StoryPageGalleryPanelHandle = { pickFiles: () => void };
@@ -36,7 +39,16 @@ function collectFilesFromInput(fileList: FileList | File[]): File[] {
 
 export const StoryPageGalleryPanel = forwardRef<StoryPageGalleryPanelHandle, Props>(
   function StoryPageGalleryPanel(
-    { images, onAddFiles, onReject, onRemoveAt, onClear, processing = false, onPickFromFolder },
+    {
+      images,
+      onAddFiles,
+      onReject,
+      onRemoveAt,
+      onClear,
+      processing = false,
+      onPickFromFolder,
+      onImportFolder,
+    },
     ref,
   ) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -59,7 +71,7 @@ export const StoryPageGalleryPanel = forwardRef<StoryPageGalleryPanelHandle, Pro
       }
       if (hadAttempt) {
         onReject?.(
-          'Keine Bilddatei erkannt — JPG/PNG per Drag & Drop oder „Bilder wählen“. HEIC ggf. vorher als JPG speichern.',
+          'Keine Bilddatei erkannt — JPG/PNG per Drag & Drop oder „Einzelbilder laden“. HEIC ggf. vorher als JPG speichern.',
         );
       }
     },
@@ -70,6 +82,13 @@ export const StoryPageGalleryPanel = forwardRef<StoryPageGalleryPanelHandle, Pro
     e.preventDefault();
     e.stopPropagation();
     setDragOver(false);
+    if (onImportFolder && dataTransferHasDirectory(e.dataTransfer)) {
+      void collectFolderImageFiles(e.dataTransfer).then((files) => {
+        if (files.length) void onImportFolder(files);
+        else onReject?.('Keine Bilddateien im Ordner erkannt.');
+      });
+      return;
+    }
     deliverFiles(e.dataTransfer, true);
   };
 
@@ -151,17 +170,6 @@ export const StoryPageGalleryPanel = forwardRef<StoryPageGalleryPanelHandle, Pro
         }}
       >
         <Stack direction="column" spacing={0.5} sx={{ flexShrink: 0 }}>
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<CloudUploadIcon sx={{ fontSize: 16 }} />}
-            onClick={pickFiles}
-            disabled={processing}
-            fullWidth
-            sx={{ textTransform: 'none', py: 0.5, fontSize: '0.75rem' }}
-          >
-            {processing ? 'Wird verarbeitet …' : 'Bilder wählen'}
-          </Button>
           {onPickFromFolder ? (
             <Button
               size="small"
@@ -176,9 +184,20 @@ export const StoryPageGalleryPanel = forwardRef<StoryPageGalleryPanelHandle, Pro
               Aus Ordner (Tag)
             </Button>
           ) : null}
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<CloudUploadIcon sx={{ fontSize: 16 }} />}
+            onClick={pickFiles}
+            disabled={processing}
+            fullWidth
+            sx={{ textTransform: 'none', py: 0.5, fontSize: '0.75rem' }}
+          >
+            {processing ? 'Wird verarbeitet …' : 'Einzelbilder laden'}
+          </Button>
         </Stack>
         <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', lineHeight: 1.3 }}>
-          Dateien hierher ziehen oder Strg+V (Bild aus Zwischenablage)
+          Ordner hierher ziehen öffnet die Auswahl · Einzelbilder: Button oder Strg+V
         </Typography>
 
         {images.length === 0 ? (

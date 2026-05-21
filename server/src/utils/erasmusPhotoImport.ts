@@ -195,7 +195,7 @@ function copyBufferToMediaDir(
 async function galleryBufferFromPath(src: string): Promise<{ buf: Buffer; extHint: string }> {
   const ext = path.extname(src).toLowerCase();
   if (isHeicPath(src)) {
-    return { buf: await fileToJpegBuffer(src), extHint: '.jpg' };
+    return { buf: await fileToJpegBuffer(src, 1600), extHint: '.jpg' };
   }
   if (['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext)) {
     return { buf: fs.readFileSync(src), extHint: ext };
@@ -313,9 +313,10 @@ export async function importPhotoBuffersToErasmus(params: {
       }
       fs.copyFileSync(tmpPath, destPath);
       const ext = path.extname(originalName).toLowerCase();
-      const galleryBuf =
-        isHeicPath(originalName) || !['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext)
-          ? await uploadBufferToJpegBuffer(buffer, originalName)
+      const galleryBuf = isHeicPath(originalName)
+        ? await uploadBufferToJpegBuffer(buffer, originalName, 1600)
+        : !['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext)
+          ? await uploadBufferToJpegBuffer(buffer, originalName, 1600)
           : buffer;
       const galleryUrl = copyBufferToMediaDir(
         siteId,
