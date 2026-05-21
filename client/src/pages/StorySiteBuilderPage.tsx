@@ -47,6 +47,7 @@ import { ErasmusDayPhotoPickerDialog } from '../components/story-site/ErasmusDay
 import { collectPageImages, normalizePageForPreview } from '../lib/storyPageLayout';
 import { fileToStoryImageDataUrl, isLikelyImageFile } from '../lib/storyImageUtils';
 import { formatIsoDateDe } from '../lib/storyPageDate';
+import { STORY_PREVIEW_MAX_WIDTH } from '../lib/storyPageLayout';
 import {
   type StorySite,
   type StoryPage,
@@ -683,7 +684,14 @@ export default function StorySiteBuilderPage() {
             <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1.5, color: '#5d4037' }}>
               So sieht die Unterseite aus (Scrapbook-Layout)
             </Typography>
-            <Box sx={{ width: '100%', maxWidth: '100%' }}>
+            <Box
+              sx={{
+                width: '100%',
+                maxWidth: STORY_PREVIEW_MAX_WIDTH,
+                mx: 'auto',
+                overflow: 'hidden',
+              }}
+            >
               <StorySitePageBlock page={previewPage ?? activePage} />
             </Box>
           </Box>

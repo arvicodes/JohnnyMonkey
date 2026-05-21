@@ -1,7 +1,12 @@
 import React from 'react';
 import { Box, Typography, Paper, Divider } from '@mui/material';
 import type { StoryPage, StorySite } from '../../lib/storySitesStorage';
-import { splitStoryBodyHtml, collectPageImages, normalizePageForPreview } from '../../lib/storyPageLayout';
+import {
+  splitStoryBodyHtml,
+  collectPageImages,
+  normalizePageForPreview,
+  STORY_PREVIEW_MAX_WIDTH,
+} from '../../lib/storyPageLayout';
 import { StoryPreviewImage } from './StoryPreviewImage';
 
 const SCRAPBOOK_BG =
@@ -77,8 +82,6 @@ const headerLinePartSx = {
   fontFamily: '"Segoe Script", "Snell Roundhand", "Bradley Hand", cursive',
   color: '#5d4037',
   lineHeight: 1.25,
-  whiteSpace: 'nowrap' as const,
-  flexShrink: 0,
 };
 
 function HeaderDot() {
@@ -161,8 +164,6 @@ export function StorySitePageBlock({ page }: { page: StoryPage }) {
         sx={{
           fontSize: { xs: '0.8rem', sm: '0.875rem' },
           color: '#8d6e63',
-          whiteSpace: 'nowrap',
-          flexShrink: 0,
           lineHeight: 1.25,
         }}
       >
@@ -179,11 +180,12 @@ export function StorySitePageBlock({ page }: { page: StoryPage }) {
         breakInside: 'avoid',
         position: 'relative',
         borderRadius: { xs: 0, sm: 1 },
-        overflow: 'visible',
         border: '1px solid rgba(141, 110, 99, 0.2)',
         boxShadow: '0 12px 32px rgba(93, 64, 55, 0.1)',
         background: SCRAPBOOK_BG,
         width: '100%',
+        maxWidth: '100%',
+        overflow: 'hidden',
         '@media print': { mb: 3, boxShadow: 'none' },
       }}
     >
@@ -208,16 +210,14 @@ export function StorySitePageBlock({ page }: { page: StoryPage }) {
             display: 'flex',
             flexDirection: 'row',
             alignItems: 'baseline',
-            flexWrap: 'nowrap',
-            gap: 0,
+            flexWrap: 'wrap',
+            gap: 0.25,
+            rowGap: 0.15,
             width: '100%',
             minWidth: 0,
             mb: 1.25,
             pb: 1,
             borderBottom: '2px solid rgba(255, 193, 7, 0.45)',
-            overflowX: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            '&::-webkit-scrollbar': { height: 4 },
           }}
         >
           {headerParts}
@@ -269,6 +269,7 @@ export function StorySitePageBlock({ page }: { page: StoryPage }) {
               p: { xs: 1.5, md: 2 },
               width: '100%',
               minWidth: 0,
+              overflow: 'hidden',
             }}
           >
             {images.length === 0 ? (
@@ -326,11 +327,12 @@ export function StorySitePreviewBody({ site }: { site: StorySite }) {
         bgcolor: '#f3ebe0',
         borderRadius: 0,
         border: 'none',
-        overflow: 'visible',
         p: { xs: 1, sm: 2, md: 2.5 },
         width: '100%',
-        maxWidth: '100%',
+        maxWidth: STORY_PREVIEW_MAX_WIDTH,
+        mx: 'auto',
         boxShadow: '0 16px 40px rgba(93, 64, 55, 0.12)',
+        overflow: 'hidden',
         '@media print': { border: 'none', boxShadow: 'none', borderRadius: 0 },
       }}
     >

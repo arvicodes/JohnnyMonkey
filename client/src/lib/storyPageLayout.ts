@@ -1,5 +1,8 @@
 import { dataUrlToBlobUrl } from './storyImageUtils';
 
+/** Maximale Breite der Scrapbook-Vorschau (verhindert horizontales Scrollen). */
+export const STORY_PREVIEW_MAX_WIDTH = 1080;
+
 const IMG_SRC_IN_HTML =
   /<img\b[^>]*?\ssrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>"']+))[^>]*>/gi;
 

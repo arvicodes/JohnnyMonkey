@@ -7,6 +7,7 @@ import {
   type StorySite,
 } from '../lib/storySitesStorage';
 import { StorySitePreviewBody } from '../components/story-site/StorySitePreviewBody';
+import { STORY_PREVIEW_MAX_WIDTH } from '../lib/storyPageLayout';
 
 export default function StorySitePublicPreviewPage() {
   const { siteId } = useParams<{ siteId: string }>();
@@ -111,8 +112,17 @@ export default function StorySitePublicPreviewPage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#eceff1', py: { xs: 1, sm: 2 }, px: 0, width: '100%' }}>
-      <Box sx={{ width: '100%', maxWidth: '100%' }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        bgcolor: '#eceff1',
+        py: { xs: 1, sm: 2 },
+        px: { xs: 1, sm: 2 },
+        width: '100%',
+        overflowX: 'hidden',
+      }}
+    >
+      <Box sx={{ width: '100%', maxWidth: STORY_PREVIEW_MAX_WIDTH, mx: 'auto' }}>
         <StorySitePreviewBody site={site} />
       </Box>
     </Box>
