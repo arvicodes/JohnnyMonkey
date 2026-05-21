@@ -7,6 +7,7 @@ import {
   FormatAlignLeft,
   FormatAlignCenter,
   FormatAlignRight,
+  FormatAlignJustify,
   FormatListBulleted,
   FormatListNumbered,
   FormatIndentDecrease,
@@ -119,10 +120,10 @@ function sanitizeWordPasteHtml(html: string): string {
 
 function sanitizeEditorHtmlForLeftAlign(html: string): string {
   if (!html || typeof html !== 'string') return html;
-  let s = html.replace(/\salign\s*=\s*["']?(?:center|right|justify)["']?/gi, '');
+  let s = html.replace(/\salign\s*=\s*["']?(?:center|right)["']?/gi, '');
   s = s.replace(/style\s*=\s*["']([^"']*)["']/gi, (_match, styles: string) => {
     const cleaned = styles
-      .replace(/text-align\s*:\s*[^;]+;?/gi, '')
+      .replace(/text-align\s*:\s*(?:center|right)\s*;?/gi, '')
       /* Google Docs / Browser: schiebt Blöcke nach rechts */
       .replace(/margin-left\s*:\s*[^;]+;?/gi, '')
       .replace(/padding-left\s*:\s*[^;]+;?/gi, '')
@@ -347,7 +348,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
   const [isItalic, setIsItalic] = useState(false);
   const [isUnderline, setIsUnderline] = useState(false);
   const [selectedColor, setSelectedColor] = useState('#000000');
-  const [alignment, setAlignment] = useState<'left' | 'center' | 'right'>('left');
+  const [alignment, setAlignment] = useState<'left' | 'center' | 'right' | 'justify'>('left');
   const [isUploading, setIsUploading] = useState(false);
   const [hexInput, setHexInput] = useState('#000000');
   const [fontSize, setFontSize] = useState('1rem');
@@ -814,9 +815,13 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
     }
   };
 
-  const applyAlignment = (align: 'left' | 'center' | 'right') => {
+  const applyAlignment = (align: 'left' | 'center' | 'right' | 'justify') => {
     try {
-      execCommand(`justify${align.charAt(0).toUpperCase() + align.slice(1)}`);
+      const cmd =
+        align === 'justify'
+          ? 'justifyFull'
+          : `justify${align.charAt(0).toUpperCase() + align.slice(1)}`;
+      execCommand(cmd);
       setAlignment(align);
     } catch (error) {
       console.warn('Error applying alignment:', error);
@@ -1953,6 +1958,26 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
           </IconButton>
         </Tooltip>
 
+        <Tooltip title="Blocksatz">
+          <IconButton
+            size="small"
+            onClick={() => applyAlignment('justify')}
+            sx={{
+              width: compact ? 28 : 32,
+              height: compact ? 28 : 32,
+              backgroundColor: alignment === 'justify' ? appColors.primary : 'transparent',
+              color: alignment === 'justify' ? 'white' : appColors.textPrimary,
+              border: `1px solid ${alignment === 'justify' ? appColors.primary : appColors.border}`,
+              '&:hover': {
+                backgroundColor: alignment === 'justify' ? appColors.primary : `${appColors.primary}10`,
+                borderColor: appColors.primary,
+              },
+            }}
+          >
+            <FormatAlignJustify fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
         <Tooltip title="Gesamten Text nach links: Ausrichtung links und Einzüge (Listen/Blöcke) zurücknehmen">
           <IconButton
             size="small"
@@ -1993,7 +2018,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
           pb: compact ? 1.25 : 1.5,
           ml: 0,
           textIndent: 0,
-          textAlign: 'left !important',
+          textAlign: 'left',
           direction: 'ltr',
           overflowWrap: 'anywhere',
           wordBreak: 'break-word',
@@ -2009,7 +2034,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
             marginLeft: '0 !important',
             paddingLeft: '0 !important',
             textIndent: '0 !important',
-            textAlign: 'left !important',
+            textAlign: 'left',
             marginTop: '0.35em',
             marginBottom: '0.35em',
           },
@@ -2018,10 +2043,13 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
           '& h1, & h2, & h3, & h4': {
             marginLeft: 0,
             paddingLeft: 0,
-            textAlign: 'left !important',
+            textAlign: 'left',
           },
-          '& ul, & ol': { marginLeft: 0, paddingLeft: '1.25em', textAlign: 'left !important' },
-          '& li': { textAlign: 'left !important' },
+          '& ul, & ol': { marginLeft: 0, paddingLeft: '1.25em', textAlign: 'left' },
+          '& li': { textAlign: 'left' },
+          '& [align="justify"], & [style*="text-align: justify"], & [style*="text-align:justify"]': {
+            textAlign: 'justify',
+          },
           '& a': {
             wordBreak: 'break-word',
             overflowWrap: 'anywhere',
@@ -2042,12 +2070,12 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
             marginRight: '0 !important',
             paddingLeft: '0 !important',
             textIndent: '0 !important',
-            textAlign: 'left !important',
+            textAlign: 'left',
           },
           '& blockquote': {
             marginLeft: '0 !important',
             paddingLeft: '0.75em !important',
-            textAlign: 'left !important',
+            textAlign: 'left',
           },
           '&:focus': {
             boxShadow: `0 0 0 2px ${appColors.primary}40`

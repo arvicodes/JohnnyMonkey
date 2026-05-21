@@ -1,3 +1,5 @@
+import { createImagePreviewUrl, isHeicFile, heicFileToJpegBlob } from './heicPreview';
+
 const IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|bmp|avif|svg|heic|heif)$/i;
 
 /** MIME oder Dateiendung (macOS liefert oft leeren type beim Drag & Drop). */
@@ -65,8 +67,15 @@ export async function fileToStoryImageDataUrl(
   return last;
 }
 
+async function fileForCanvas(file: File): Promise<File> {
+  if (!isHeicFile(file)) return file;
+  const jpeg = await heicFileToJpegBlob(file);
+  return new File([jpeg], file.name.replace(/\.heic$/i, '.jpg'), { type: 'image/jpeg' });
+}
+
 async function renderFileToDataUrl(file: File, maxDim: number, quality: number): Promise<string> {
-  const blobUrl = URL.createObjectURL(file);
+  const renderFile = await fileForCanvas(file);
+  const blobUrl = await createImagePreviewUrl(renderFile);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const el = document.createElement('img');

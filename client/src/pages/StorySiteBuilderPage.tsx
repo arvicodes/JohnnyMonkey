@@ -46,6 +46,7 @@ import {
 import { ErasmusDayPhotoPickerDialog } from '../components/story-site/ErasmusDayPhotoPickerDialog';
 import { collectPageImages, normalizePageForPreview } from '../lib/storyPageLayout';
 import { fileToStoryImageDataUrl, isLikelyImageFile } from '../lib/storyImageUtils';
+import { formatIsoDateDe } from '../lib/storyPageDate';
 import {
   type StorySite,
   type StoryPage,
@@ -211,24 +212,17 @@ export default function StorySiteBuilderPage() {
       void (async () => {
         setGalleryBusy(true);
         const added: string[] = [];
-        let heicSkipped = false;
         for (const file of files) {
-          const isHeic = /\.heic$/i.test(file.name) || /\.heif$/i.test(file.name) || /heic|heif/i.test(file.type);
           try {
             const url = await fileToStoryImageDataUrl(file);
             if (url) added.push(url);
-            else if (isHeic) heicSkipped = true;
           } catch {
-            if (isHeic) heicSkipped = true;
+            /* einzelnes Bild überspringen */
           }
         }
         setGalleryBusy(false);
         if (!added.length) {
-          setToast(
-            heicSkipped
-              ? 'HEIC wird hier nicht unterstützt — bitte das Foto als JPG/PNG speichern und erneut laden.'
-              : 'Bilder konnten nicht verarbeitet werden.',
-          );
+          setToast('Bilder konnten nicht verarbeitet werden (auch HEIC wird unterstützt — ggf. erneut versuchen).');
           return;
         }
         const current = siteRef.current;
@@ -301,13 +295,18 @@ export default function StorySiteBuilderPage() {
     patchSite({ ...site, imageSourceFolder });
   };
 
-  const handleImportedGalleryUrls = (urls: string[]) => {
+  const handleImportedGalleryUrls = (urls: string[], captureDateISO?: string | null) => {
     if (!site || !activePageId || !urls.length) return;
     const page = site.pages.find((p) => p.id === activePageId);
     const galleryImages = [...(page?.galleryImages ?? []), ...urls];
-    updateActivePage({ galleryImages, heroImage: galleryImages[0] ?? '' });
+    const patch: Partial<StoryPage> = { galleryImages, heroImage: galleryImages[0] ?? '' };
+    if (captureDateISO) {
+      patch.dateStr = formatIsoDateDe(captureDateISO);
+    }
+    updateActivePage(patch);
+    const dateHint = captureDateISO ? ` · Datum: ${formatIsoDateDe(captureDateISO)} (EXIF)` : '';
     showToast(
-      `${urls.length} Bild${urls.length === 1 ? '' : 'er'} in Galerie und Erasmus/Bilder kopiert.`,
+      `${urls.length} Bild${urls.length === 1 ? '' : 'er'} übernommen${dateHint}`,
       'success',
     );
   };
@@ -699,6 +698,10 @@ export default function StorySiteBuilderPage() {
           imageSourceFolder={site.imageSourceFolder ?? ''}
           onImageSourceFolderChange={updateImageSourceFolder}
           onImported={handleImportedGalleryUrls}
+          onPageDateFromExif={(iso) => {
+            if (!site || !activePageId) return;
+            updateActivePage({ dateStr: formatIsoDateDe(iso) });
+          }}
           erasmusBilderHint={erasmusBilderHint}
         />
       ) : null}

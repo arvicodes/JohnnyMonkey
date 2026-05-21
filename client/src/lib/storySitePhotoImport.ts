@@ -11,6 +11,8 @@ export type ScannedPhotoItem = {
 export type ScanPhotosResult = {
   root: string;
   targetDate: string | null;
+  suggestedCaptureDateISO: string | null;
+  exifCount: number;
   images: ScannedPhotoItem[];
   totalScanned: number;
   matchedCount: number;

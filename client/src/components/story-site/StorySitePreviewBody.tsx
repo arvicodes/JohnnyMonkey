@@ -241,9 +241,13 @@ export function StorySitePageBlock({ page }: { page: StoryPage }) {
                   color: '#4e342e',
                   fontSize: { xs: '0.92rem', md: '1rem' },
                   lineHeight: 1.65,
+                  textAlign: 'left',
                   '& p': { mb: 1.25 },
                   '& ul, & ol': { pl: 2.5, mb: 1.25 },
                   '& img': { display: 'none' },
+                  '& [align="justify"], & [style*="text-align: justify"], & [style*="text-align:justify"]': {
+                    textAlign: 'justify',
+                  },
                 }}
                 dangerouslySetInnerHTML={{ __html: textHtml }}
               />

@@ -12,6 +12,7 @@ import {
   importPhotoBuffersToErasmus,
 } from '../utils/erasmusPhotoImport';
 import { parseStoryPageDate } from '../utils/storyPageDate';
+import { isHeicPath, fileToJpegBuffer, uploadBufferToJpegBuffer } from '../utils/imageToJpeg';
 
 const photoUpload = multer({
   storage: multer.memoryStorage(),
@@ -111,8 +112,28 @@ router.get('/', (_req: Request, res: Response) => {
   }
 });
 
+/** HEIC aus Browser-Upload → JPEG (Vorschau / Galerie). */
+router.post('/convert-heic', photoUpload.single('file'), async (req: Request, res: Response) => {
+  try {
+    const file = req.file;
+    if (!file?.buffer?.length) {
+      return res.status(400).json({ error: 'Datei fehlt' });
+    }
+    const name = file.originalname || 'photo.heic';
+    if (!isHeicPath(name)) {
+      return res.status(400).json({ error: 'Keine HEIC/HEIF-Datei' });
+    }
+    const jpeg = await uploadBufferToJpegBuffer(file.buffer, name);
+    res.type('image/jpeg');
+    res.send(jpeg);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'HEIC-Konvertierung fehlgeschlagen';
+    res.status(500).json({ error: msg });
+  }
+});
+
 /** Vorschau eines Bildes aus einem lokalen Quellordner (Pfad muss unter root liegen). */
-router.get('/local-preview', (req: Request, res: Response) => {
+router.get('/local-preview', async (req: Request, res: Response) => {
   try {
     const rootParam = String(req.query.root ?? '');
     const fileParam = String(req.query.file ?? '');
@@ -121,6 +142,11 @@ router.get('/local-preview', (req: Request, res: Response) => {
     }
     const root = resolveSafeSourceRoot(rootParam);
     const full = assertFileUnderRoot(root, fileParam);
+    if (isHeicPath(full)) {
+      const buf = await fileToJpegBuffer(full);
+      res.type('image/jpeg');
+      return res.send(buf);
+    }
     const ext = path.extname(full).toLowerCase();
     if (ext === '.png') res.type('image/png');
     else if (ext === '.webp') res.type('image/webp');
@@ -150,15 +176,18 @@ router.post('/:id/scan-photos', async (req: Request, res: Response) => {
     }
 
     const result = await scanPhotoFolder(sourcePath, targetDate);
+    const effectiveDate = result.suggestedCaptureDateISO ?? targetDate;
     res.json({
       root: result.root,
-      targetDate,
+      targetDate: effectiveDate,
+      suggestedCaptureDateISO: result.suggestedCaptureDateISO,
+      exifCount: result.exifCount,
       images: result.images.map((img) => ({
         ...img,
         previewUrl: `/api/story-sites/local-preview?root=${encodeURIComponent(result.root)}&file=${encodeURIComponent(img.relativePath)}`,
       })),
       totalScanned: result.total,
-      matchedCount: result.images.length,
+      matchedCount: result.matchedCount,
     });
   } catch (e) {
     console.error('story-sites scan-photos', e);

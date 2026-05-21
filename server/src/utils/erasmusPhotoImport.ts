@@ -2,9 +2,10 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import crypto from 'crypto';
-import exifr from 'exifr';
 import { parseStoryPageDate } from './storyPageDate';
 import { resolveJmReihenRoot } from './erasmusSiteFolders';
+import { fileToJpegBuffer, uploadBufferToJpegBuffer, isHeicPath } from './imageToJpeg';
+import { readCaptureDateISOFromPath, readCaptureDateISOFromBuffer } from './exifCaptureDate';
 
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.gif', '.tif', '.tiff']);
 
@@ -76,56 +77,14 @@ export function assertFileUnderRoot(root: string, filePath: string): string {
   return full;
 }
 
-function extractDateFromFileName(fileName: string): string | null {
-  const base = path.basename(fileName, path.extname(fileName));
-  const patterns = [
-    /(?:^|[^\d])(\d{4})[-_]?(\d{2})[-_]?(\d{2})(?:[^\d]|$)/,
-    /(?:^|[^\d])(\d{2})[-_]?(\d{2})[-_]?(\d{4})(?:[^\d]|$)/,
-  ];
-  for (const re of patterns) {
-    const m = base.match(re);
-    if (!m) continue;
-    if (m[1].length === 4) {
-      const iso = `${m[1]}-${m[2]}-${m[3]}`;
-      if (parseStoryPageDate(iso)) return iso;
-    } else {
-      const iso = `${m[3]}-${m[2]}-${m[1]}`;
-      if (parseStoryPageDate(iso)) return iso;
-    }
+function pickDominantCaptureDateISO(dates: (string | null)[]): string | null {
+  const counts = new Map<string, number>();
+  for (const d of dates) {
+    if (!d) continue;
+    counts.set(d, (counts.get(d) ?? 0) + 1);
   }
-  return null;
-}
-
-async function getPhotoDateISO(fullPath: string): Promise<string | null> {
-  try {
-    const tags = await exifr.parse(fullPath, { pick: ['DateTimeOriginal', 'CreateDate', 'ModifyDate'] });
-    const raw = tags?.DateTimeOriginal ?? tags?.CreateDate ?? tags?.ModifyDate;
-    if (raw instanceof Date && !Number.isNaN(raw.getTime())) {
-      const y = raw.getFullYear();
-      const m = raw.getMonth() + 1;
-      const d = raw.getDate();
-      return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    }
-    if (typeof raw === 'string') {
-      const parsed = parseStoryPageDate(raw.slice(0, 10).replace(/:/g, '-'));
-      if (parsed) return parsed;
-    }
-  } catch {
-    /* EXIF optional */
-  }
-
-  const fromName = extractDateFromFileName(path.basename(fullPath));
-  if (fromName) return fromName;
-
-  try {
-    const mtime = fs.statSync(fullPath).mtime;
-    const y = mtime.getFullYear();
-    const m = mtime.getMonth() + 1;
-    const d = mtime.getDate();
-    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  } catch {
-    return null;
-  }
+  if (!counts.size) return null;
+  return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0];
 }
 
 function walkImages(dir: string, root: string, depth: number, out: ScannedPhoto[]): void {
@@ -158,7 +117,14 @@ function walkImages(dir: string, root: string, depth: number, out: ScannedPhoto[
 export async function scanPhotoFolder(
   sourcePath: string,
   targetDateISO?: string | null,
-): Promise<{ root: string; images: ScannedPhoto[]; total: number }> {
+): Promise<{
+  root: string;
+  images: ScannedPhoto[];
+  total: number;
+  matchedCount: number;
+  suggestedCaptureDateISO: string | null;
+  exifCount: number;
+}> {
   const root = resolveSafeSourceRoot(sourcePath);
   const found: ScannedPhoto[] = [];
   walkImages(root, root, 0, found);
@@ -166,9 +132,13 @@ export async function scanPhotoFolder(
   const withDates: ScannedPhoto[] = [];
   for (const item of found) {
     const full = path.join(root, item.relativePath);
-    const dateISO = await getPhotoDateISO(full);
+    const dateISO = await readCaptureDateISOFromPath(full);
     withDates.push({ ...item, dateISO });
   }
+
+  const exifCount = withDates.filter((x) => x.dateISO).length;
+  const suggestedCaptureDateISO = pickDominantCaptureDateISO(withDates.map((x) => x.dateISO));
+  const filterDate = targetDateISO ?? suggestedCaptureDateISO ?? null;
 
   withDates.sort((a, b) => {
     const da = a.dateISO ?? '9999-99-99';
@@ -177,11 +147,18 @@ export async function scanPhotoFolder(
     return a.fileName.localeCompare(b.fileName, 'de');
   });
 
-  const filtered = targetDateISO
-    ? withDates.filter((img) => img.dateISO === targetDateISO)
-    : withDates;
+  const matchedCount = filterDate
+    ? withDates.filter((img) => img.dateISO === filterDate).length
+    : withDates.length;
 
-  return { root, images: filtered, total: withDates.length };
+  return {
+    root,
+    images: withDates,
+    total: withDates.length,
+    matchedCount,
+    suggestedCaptureDateISO,
+    exifCount,
+  };
 }
 
 export function getErasmusBilderDir(erasmusFolder: string | undefined): string | null {
@@ -215,9 +192,15 @@ function copyBufferToMediaDir(
   return `/api/story-sites/${siteId}/media/${filename}`;
 }
 
-function copyToMediaDir(siteId: string, srcPath: string, mediaDir: string): string {
-  const buf = fs.readFileSync(srcPath);
-  return copyBufferToMediaDir(siteId, buf, path.extname(srcPath), mediaDir);
+async function galleryBufferFromPath(src: string): Promise<{ buf: Buffer; extHint: string }> {
+  const ext = path.extname(src).toLowerCase();
+  if (isHeicPath(src)) {
+    return { buf: await fileToJpegBuffer(src), extHint: '.jpg' };
+  }
+  if (['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext)) {
+    return { buf: fs.readFileSync(src), extHint: ext };
+  }
+  return { buf: await fileToJpegBuffer(src), extHint: '.jpg' };
 }
 
 function sanitizeCopyName(name: string): string {
@@ -253,7 +236,7 @@ export async function importPhotosToErasmus(params: {
 
   for (const rel of relativePaths) {
     const src = assertFileUnderRoot(sourceRoot, rel);
-    const fileDateISO = await getPhotoDateISO(src);
+    const fileDateISO = await readCaptureDateISOFromPath(src);
     if (pageDateISO && fileDateISO && fileDateISO !== pageDateISO) {
       throw new Error(
         `${path.basename(src)} gehört zu ${fileDateISO}, nicht zum Unterseiten-Datum ${pageDateISO}.`,
@@ -273,13 +256,8 @@ export async function importPhotosToErasmus(params: {
     }
     fs.copyFileSync(src, destPath);
 
-    const ext = path.extname(src).toLowerCase();
-    let galleryUrl: string;
-    if (['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) {
-      galleryUrl = copyToMediaDir(siteId, src, mediaDir);
-    } else {
-      galleryUrl = copyToMediaDir(siteId, destPath, mediaDir);
-    }
+    const { buf: galleryBuf, extHint } = await galleryBufferFromPath(src);
+    const galleryUrl = copyBufferToMediaDir(siteId, galleryBuf, extHint, mediaDir);
 
     imported.push({
       relativePath: rel,
@@ -318,7 +296,9 @@ export async function importPhotoBuffersToErasmus(params: {
     for (const { buffer, originalName } of files) {
       const tmpPath = path.join(tmpDir, sanitizeCopyName(originalName));
       fs.writeFileSync(tmpPath, buffer);
-      const fileDateISO = await getPhotoDateISO(tmpPath);
+      const fileDateISO =
+        (await readCaptureDateISOFromBuffer(buffer, originalName)) ??
+        (await readCaptureDateISOFromPath(tmpPath));
       const base = sanitizeCopyName(originalName);
       const prefix = pageDateISO ?? 'ohne-datum';
       let destName = `${prefix}_${base}`;
@@ -332,7 +312,17 @@ export async function importPhotoBuffersToErasmus(params: {
         n += 1;
       }
       fs.copyFileSync(tmpPath, destPath);
-      const galleryUrl = copyBufferToMediaDir(siteId, buffer, path.extname(originalName), mediaDir);
+      const ext = path.extname(originalName).toLowerCase();
+      const galleryBuf =
+        isHeicPath(originalName) || !['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext)
+          ? await uploadBufferToJpegBuffer(buffer, originalName)
+          : buffer;
+      const galleryUrl = copyBufferToMediaDir(
+        siteId,
+        galleryBuf,
+        isHeicPath(originalName) ? '.jpg' : ext,
+        mediaDir,
+      );
       imported.push({
         relativePath: originalName,
         galleryUrl,

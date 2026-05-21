@@ -23,6 +23,7 @@ import {
   revokeLocalPhotoPreviews,
   type LocalPhotoPick,
 } from '../../lib/scanLocalPhotoFiles';
+import { readCaptureDateISOFromFile, pickDominantCaptureDateISO } from '../../lib/photoCaptureDate';
 import {
   scanPhotosForDay,
   importSelectedPhotos,
@@ -47,7 +48,9 @@ type Props = {
   pageDateStr: string;
   imageSourceFolder: string;
   onImageSourceFolderChange: (path: string) => void;
-  onImported: (galleryUrls: string[]) => void;
+  onImported: (galleryUrls: string[], captureDateISO?: string | null) => void;
+  /** Unterseiten-Datum aus EXIF-Aufnahmedatum setzen */
+  onPageDateFromExif: (captureDateISO: string) => void;
   erasmusBilderHint?: string;
 };
 
@@ -59,6 +62,7 @@ export function ErasmusDayPhotoPickerDialog({
   imageSourceFolder,
   onImageSourceFolderChange,
   onImported,
+  onPageDateFromExif,
   erasmusBilderHint,
 }: Props) {
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -110,24 +114,47 @@ export function ErasmusDayPhotoPickerDialog({
     if (!open) resetGallery();
   }, [open, resetGallery]);
 
-  const visibleImages = useMemo(() => {
-    if (!onlyMatchingDay || importMode === 'path') return images;
-    return images.filter((img) => img.matchesDay);
-  }, [images, onlyMatchingDay, importMode]);
+  const dayFilterIso = useMemo(
+    () => parseStoryPageDate(pageDateStr) ?? null,
+    [pageDateStr],
+  );
 
-  const applyServerImages = (items: ScannedPhotoItem[]) => {
-    setImportMode('path');
-    setImages(
-      items.map((img) => ({
-        key: img.relativePath,
-        fileName: img.fileName,
-        previewUrl: img.previewUrl,
-        dateISO: img.dateISO ?? null,
-        matchesDay: true,
-        serverRel: img.relativePath,
+  const visibleImages = useMemo(() => {
+    if (!onlyMatchingDay) return images;
+    if (!dayFilterIso) return images.filter((img) => img.matchesDay);
+    return images.filter((img) => img.dateISO === dayFilterIso);
+  }, [images, onlyMatchingDay, dayFilterIso]);
+
+  useEffect(() => {
+    if (!dayFilterIso || images.length === 0) return;
+    setImages((prev) =>
+      prev.map((img) => ({
+        ...img,
+        matchesDay: img.dateISO === dayFilterIso,
       })),
     );
-    setSelected(new Set(items.map((i) => i.relativePath)));
+    setLocalPicks((prev) =>
+      prev.map((p) => ({
+        ...p,
+        matchesDay: p.dateISO === dayFilterIso,
+      })),
+    );
+  }, [dayFilterIso]);
+
+  const applyServerImages = (items: ScannedPhotoItem[], filterIso: string | null) => {
+    setImportMode('path');
+    const display = items.map((img) => ({
+      key: img.relativePath,
+      fileName: img.fileName,
+      previewUrl: img.previewUrl,
+      dateISO: img.dateISO ?? null,
+      matchesDay: filterIso ? img.dateISO === filterIso : true,
+      serverRel: img.relativePath,
+    }));
+    setImages(display);
+    setSelected(
+      new Set(display.filter((i) => (filterIso ? i.dateISO === filterIso : true)).map((i) => i.key)),
+    );
   };
 
   const applyLocalImages = (items: LocalPhotoPick[]) => {
@@ -145,14 +172,18 @@ export function ErasmusDayPhotoPickerDialog({
     setSelected(new Set(items.filter((i) => i.matchesDay).map((i) => i.id)));
   };
 
+  const applyExifPageDateIfEmpty = useCallback(
+    (iso: string | null | undefined) => {
+      if (!iso || parseStoryPageDate(pageDateStr)) return;
+      onPageDateFromExif(iso);
+    },
+    [onPageDateFromExif, pageDateStr],
+  );
+
   const handleScanPath = useCallback(async () => {
     const path = normalizeFolderPathInput(folderInput);
     if (!path) {
       setError('Bitte einen Ordnerpfad auf deinem Mac angeben.');
-      return;
-    }
-    if (!targetIso) {
-      setError('Unterseite hat kein gültiges Datum — bitte zuerst „Datum“ ausfüllen (z. B. 21. Mai 2026).');
       return;
     }
     setError(null);
@@ -162,12 +193,20 @@ export function ErasmusDayPhotoPickerDialog({
       onImageSourceFolderChange(path);
       setFolderInput(path);
       const result = await scanPhotosForDay(siteId, path, pageDateStr);
-      applyServerImages(result.images);
+      applyExifPageDateIfEmpty(result.suggestedCaptureDateISO);
+      const filterIso = targetIso ?? result.suggestedCaptureDateISO;
+      applyServerImages(result.images, filterIso);
+      const dayLabel = filterIso ? formatIsoDateDe(filterIso) : targetLabel;
       setScanInfo(
-        `${result.matchedCount} Bild${result.matchedCount === 1 ? '' : 'er'} am ${targetLabel} (von ${result.totalScanned} im Ordner)`,
+        `${result.matchedCount} Foto${result.matchedCount === 1 ? '' : 's'} vom ${dayLabel} (EXIF, ${result.exifCount} mit Aufnahmedatum, ${result.totalScanned} gesamt)`,
       );
-      if (!result.images.length) {
-        setError('Keine Fotos mit passendem Datum — probiere „Ordner auswählen“ (Finder).');
+      setOnlyMatchingDay(result.matchedCount > 0);
+      if (!result.matchedCount) {
+        setError(
+          result.exifCount === 0
+            ? 'Keine Aufnahmedaten (EXIF) in den Bildern — anderes Format oder zuerst aus Fotos.app exportieren.'
+            : 'Keine Fotos für das erkannte Haupt-Aufnahmedatum.',
+        );
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Scan fehlgeschlagen');
@@ -175,7 +214,7 @@ export function ErasmusDayPhotoPickerDialog({
     } finally {
       setScanning(false);
     }
-  }, [folderInput, targetIso, targetLabel, siteId, pageDateStr, onImageSourceFolderChange, resetGallery]);
+  }, [folderInput, targetLabel, siteId, pageDateStr, targetIso, onImageSourceFolderChange, resetGallery, applyExifPageDateIfEmpty]);
 
   const collectFilesFromInput = (input: HTMLInputElement | null): File[] => {
     if (!input?.files?.length) return [];
@@ -226,17 +265,29 @@ export function ErasmusDayPhotoPickerDialog({
         const result = await scanPickedFilesForDay(picked, pageDateStr, (done, total) => {
           setScanProgress({ done, total });
         });
+
+        applyExifPageDateIfEmpty(result.suggestedCaptureDateISO);
+
         applyLocalImages(result.images);
+        setOnlyMatchingDay(result.matchedCount > 0);
+
+        const filterIso = targetIso ?? result.suggestedCaptureDateISO;
+        const dayLabel = filterIso ? formatIsoDateDe(filterIso) : targetLabel;
 
         if (result.matchedCount > 0) {
           setScanInfo(
-            `${result.matchedCount} passen zu ${targetLabel ?? 'Unterseite'} (${result.total} Bilder im Ordner) — passende sind vorausgewählt.`,
+            `Unterseiten-Datum: ${dayLabel} (aus EXIF). ${result.matchedCount} Foto${result.matchedCount === 1 ? '' : 's'} von diesem Tag — vorausgewählt.`,
           );
           setOnlyMatchingDay(true);
+          setError(null);
+        } else if (result.exifCount === 0) {
+          setError(
+            `Von ${result.total} Bildern hat keines EXIF-Aufnahmedaten. Bitte Original-JPG/HEIC aus der Kamera oder Fotos.app verwenden.`,
+          );
         } else if (result.total > 0) {
           setOnlyMatchingDay(false);
           setScanInfo(
-            `${result.total} Bilder geladen, aber keines mit Datum ${targetLabel ?? 'der Unterseite'}. Alle werden angezeigt — bitte Datum der Unterseite prüfen oder manuell auswählen.`,
+            `${result.exifCount} Bilder mit EXIF, aber kein gemeinsames Aufnahmedatum. Alle mit Datum werden angezeigt.`,
           );
           setError(null);
         } else {
@@ -253,7 +304,7 @@ export function ErasmusDayPhotoPickerDialog({
         else input.value = '';
       }
     },
-    [pageDateStr, targetLabel, resetGallery],
+    [pageDateStr, targetLabel, targetIso, resetGallery, applyExifPageDateIfEmpty],
   );
 
   const toggle = (key: string) => {
@@ -275,14 +326,22 @@ export function ErasmusDayPhotoPickerDialog({
     setError(null);
     try {
       let urls: string[];
+      let captureDateISO: string | null = null;
       if (importMode === 'files') {
         const files = localPicks.filter((p) => keys.includes(p.id)).map((p) => p.file);
+        const dates = await Promise.all(files.map((f) => readCaptureDateISOFromFile(f)));
+        captureDateISO =
+          pickDominantCaptureDateISO(dates) ??
+          localPicks.find((p) => keys.includes(p.id))?.dateISO ??
+          null;
         urls = await importPhotoFilesUpload(siteId, pageDateStr, files);
       } else {
         const path = normalizeFolderPathInput(folderInput);
         urls = await importSelectedPhotos(siteId, path, pageDateStr, keys);
+        const picked = images.filter((i) => keys.includes(i.key) && i.dateISO);
+        captureDateISO = pickDominantCaptureDateISO(picked.map((i) => i.dateISO));
       }
-      onImported(urls);
+      onImported(urls, captureDateISO);
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Import fehlgeschlagen');
@@ -395,7 +454,7 @@ export function ErasmusDayPhotoPickerDialog({
             </Typography>
           ) : null}
 
-          {images.length > 0 && importMode === 'files' ? (
+          {images.length > 0 ? (
             <FormControlLabel
               control={
                 <Checkbox
@@ -404,7 +463,7 @@ export function ErasmusDayPhotoPickerDialog({
                   onChange={(e) => setOnlyMatchingDay(e.target.checked)}
                 />
               }
-              label={`Nur Fotos vom ${targetLabel ?? 'Unterseiten-Datum'} anzeigen`}
+              label={`Nur Fotos vom ${targetLabel ?? (dayFilterIso ? formatIsoDateDe(dayFilterIso) : 'Unterseiten-Datum')} anzeigen`}
               sx={{ m: 0, '& .MuiFormControlLabel-label': { fontSize: '0.8rem' } }}
             />
           ) : null}
