@@ -10,6 +10,7 @@ import {
   Image as ImageIcon,
   DeleteOutline as DeleteOutlineIcon,
   CloudUpload as CloudUploadIcon,
+  PhotoLibrary as PhotoLibraryIcon,
 } from '@mui/icons-material';
 import { displayStoryImageSrc } from '../../lib/storyPageLayout';
 import {
@@ -24,6 +25,7 @@ type Props = {
   onRemoveAt: (index: number) => void;
   onClear?: () => void;
   processing?: boolean;
+  onPickFromFolder?: () => void;
 };
 
 export type StoryPageGalleryPanelHandle = { pickFiles: () => void };
@@ -34,7 +36,7 @@ function collectFilesFromInput(fileList: FileList | File[]): File[] {
 
 export const StoryPageGalleryPanel = forwardRef<StoryPageGalleryPanelHandle, Props>(
   function StoryPageGalleryPanel(
-    { images, onAddFiles, onReject, onRemoveAt, onClear, processing = false },
+    { images, onAddFiles, onReject, onRemoveAt, onClear, processing = false, onPickFromFolder },
     ref,
   ) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -148,17 +150,33 @@ export const StoryPageGalleryPanel = forwardRef<StoryPageGalleryPanelHandle, Pro
           '&:focus-visible': { borderColor: 'primary.main' },
         }}
       >
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<CloudUploadIcon sx={{ fontSize: 16 }} />}
-          onClick={pickFiles}
-          disabled={processing}
-          fullWidth
-          sx={{ textTransform: 'none', flexShrink: 0, py: 0.5, fontSize: '0.75rem' }}
-        >
-          {processing ? 'Wird verarbeitet …' : 'Bilder wählen'}
-        </Button>
+        <Stack direction="column" spacing={0.5} sx={{ flexShrink: 0 }}>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<CloudUploadIcon sx={{ fontSize: 16 }} />}
+            onClick={pickFiles}
+            disabled={processing}
+            fullWidth
+            sx={{ textTransform: 'none', py: 0.5, fontSize: '0.75rem' }}
+          >
+            {processing ? 'Wird verarbeitet …' : 'Bilder wählen'}
+          </Button>
+          {onPickFromFolder ? (
+            <Button
+              size="small"
+              variant="contained"
+              color="secondary"
+              startIcon={<PhotoLibraryIcon sx={{ fontSize: 16 }} />}
+              onClick={onPickFromFolder}
+              disabled={processing}
+              fullWidth
+              sx={{ textTransform: 'none', py: 0.5, fontSize: '0.75rem' }}
+            >
+              Aus Ordner (Tag)
+            </Button>
+          ) : null}
+        </Stack>
         <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', lineHeight: 1.3 }}>
           Dateien hierher ziehen oder Strg+V (Bild aus Zwischenablage)
         </Typography>

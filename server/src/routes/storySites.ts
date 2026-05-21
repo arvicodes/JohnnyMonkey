@@ -2,6 +2,21 @@ import express, { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import multer from 'multer';
+import { applyErasmusFoldersToSitePayload } from '../utils/erasmusSiteFolders';
+import {
+  resolveSafeSourceRoot,
+  assertFileUnderRoot,
+  scanPhotoFolder,
+  importPhotosToErasmus,
+  importPhotoBuffersToErasmus,
+} from '../utils/erasmusPhotoImport';
+import { parseStoryPageDate } from '../utils/storyPageDate';
+
+const photoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 30 * 1024 * 1024, files: 250 },
+});
 
 const router = express.Router();
 
@@ -96,6 +111,141 @@ router.get('/', (_req: Request, res: Response) => {
   }
 });
 
+/** Vorschau eines Bildes aus einem lokalen Quellordner (Pfad muss unter root liegen). */
+router.get('/local-preview', (req: Request, res: Response) => {
+  try {
+    const rootParam = String(req.query.root ?? '');
+    const fileParam = String(req.query.file ?? '');
+    if (!rootParam || !fileParam) {
+      return res.status(400).json({ error: 'root und file erforderlich' });
+    }
+    const root = resolveSafeSourceRoot(rootParam);
+    const full = assertFileUnderRoot(root, fileParam);
+    const ext = path.extname(full).toLowerCase();
+    if (ext === '.png') res.type('image/png');
+    else if (ext === '.webp') res.type('image/webp');
+    else if (ext === '.gif') res.type('image/gif');
+    else res.type('image/jpeg');
+    res.sendFile(full);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Vorschau fehlgeschlagen';
+    res.status(400).json({ error: msg });
+  }
+});
+
+router.post('/:id/scan-photos', async (req: Request, res: Response) => {
+  try {
+    safeSiteId(req.params.id);
+    const sourcePath = String(req.body?.sourcePath ?? '');
+    const targetDateRaw = req.body?.targetDate;
+    const targetDate =
+      typeof targetDateRaw === 'string' && targetDateRaw.trim()
+        ? targetDateRaw.trim()
+        : typeof req.body?.pageDateStr === 'string'
+          ? parseStoryPageDate(req.body.pageDateStr)
+          : null;
+
+    if (!sourcePath.trim()) {
+      return res.status(400).json({ error: 'sourcePath fehlt' });
+    }
+
+    const result = await scanPhotoFolder(sourcePath, targetDate);
+    res.json({
+      root: result.root,
+      targetDate,
+      images: result.images.map((img) => ({
+        ...img,
+        previewUrl: `/api/story-sites/local-preview?root=${encodeURIComponent(result.root)}&file=${encodeURIComponent(img.relativePath)}`,
+      })),
+      totalScanned: result.total,
+      matchedCount: result.images.length,
+    });
+  } catch (e) {
+    console.error('story-sites scan-photos', e);
+    const msg = e instanceof Error ? e.message : 'Scan fehlgeschlagen';
+    res.status(400).json({ error: msg });
+  }
+});
+
+router.post('/:id/import-photos', async (req: Request, res: Response) => {
+  try {
+    const id = safeSiteId(req.params.id);
+    const sourcePath = String(req.body?.sourcePath ?? '');
+    const pageDateStr = String(req.body?.pageDateStr ?? '');
+    const relativePaths = Array.isArray(req.body?.relativePaths)
+      ? (req.body.relativePaths as unknown[]).filter((x): x is string => typeof x === 'string')
+      : [];
+
+    if (!sourcePath.trim() || !relativePaths.length) {
+      return res.status(400).json({ error: 'sourcePath und relativePaths erforderlich' });
+    }
+
+    const file = sitePath(id);
+    if (!fs.existsSync(file)) {
+      return res.status(404).json({ error: 'Website nicht gefunden' });
+    }
+    const siteRaw = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
+    const erasmusFolder =
+      typeof siteRaw.erasmusFolder === 'string' ? siteRaw.erasmusFolder : undefined;
+
+    const root = resolveSafeSourceRoot(sourcePath);
+    const imported = await importPhotosToErasmus({
+      siteId: id,
+      erasmusFolder,
+      sourceRoot: root,
+      relativePaths,
+      pageDateStr,
+      mediaDir: siteMediaDir(id),
+    });
+
+    res.json({ ok: true, imported, galleryUrls: imported.map((i) => i.galleryUrl) });
+  } catch (e) {
+    console.error('story-sites import-photos', e);
+    const msg = e instanceof Error ? e.message : 'Import fehlgeschlagen';
+    res.status(400).json({ error: msg });
+  }
+});
+
+router.post(
+  '/:id/import-photo-files',
+  photoUpload.array('photos', 250),
+  async (req: Request, res: Response) => {
+    try {
+      const id = safeSiteId(req.params.id);
+      const pageDateStr = String(req.body?.pageDateStr ?? '');
+      const uploads = (req.files as Express.Multer.File[] | undefined) ?? [];
+      if (!uploads.length) {
+        return res.status(400).json({ error: 'Keine Dateien erhalten' });
+      }
+
+      const file = sitePath(id);
+      if (!fs.existsSync(file)) {
+        return res.status(404).json({ error: 'Website nicht gefunden' });
+      }
+      const siteRaw = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
+      const erasmusFolder =
+        typeof siteRaw.erasmusFolder === 'string' ? siteRaw.erasmusFolder : undefined;
+
+      const imported = await importPhotoBuffersToErasmus({
+        siteId: id,
+        erasmusFolder,
+        files: uploads.map((f) => ({
+          buffer: f.buffer,
+          originalName: f.originalname || 'foto.jpg',
+        })),
+        pageDateStr,
+        mediaDir: siteMediaDir(id),
+      });
+
+      res.json({ ok: true, imported, galleryUrls: imported.map((i) => i.galleryUrl) });
+    } catch (e) {
+      console.error('story-sites import-photo-files', e);
+      const msg = e instanceof Error ? e.message : 'Import fehlgeschlagen';
+      res.status(400).json({ error: msg });
+    }
+  },
+);
+
 router.get('/:id/media/:filename', (req: Request, res: Response) => {
   try {
     const id = safeSiteId(req.params.id);
@@ -140,9 +290,16 @@ router.put('/:id', (req: Request, res: Response) => {
       return res.status(400).json({ error: 'ID stimmt nicht überein' });
     }
     ensureDataDir();
-    const payload = externalizeDataUrls(id, { ...req.body, id });
+    const body = { ...(req.body as Record<string, unknown>), id };
+    const { payload: withFolders, folderPath } = applyErasmusFoldersToSitePayload(body);
+    const payload = externalizeDataUrls(id, withFolders);
     fs.writeFileSync(sitePath(id), JSON.stringify(payload), 'utf8');
-    res.json({ ok: true, id });
+    res.json({
+      ok: true,
+      id,
+      erasmusFolder: payload.erasmusFolder ?? null,
+      erasmusBilderPath: folderPath ?? null,
+    });
   } catch (e) {
     console.error('story-sites put error', e);
     const msg = e instanceof Error ? e.message : 'Speichern fehlgeschlagen';

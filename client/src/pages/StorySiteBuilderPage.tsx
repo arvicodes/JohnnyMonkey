@@ -43,6 +43,7 @@ import {
   StoryPageGalleryPanel,
   type StoryPageGalleryPanelHandle,
 } from '../components/story-site/StoryPageGalleryPanel';
+import { ErasmusDayPhotoPickerDialog } from '../components/story-site/ErasmusDayPhotoPickerDialog';
 import { collectPageImages, normalizePageForPreview } from '../lib/storyPageLayout';
 import { fileToStoryImageDataUrl, isLikelyImageFile } from '../lib/storyImageUtils';
 import {
@@ -79,6 +80,7 @@ export default function StorySiteBuilderPage() {
   const siteRef = useRef(site);
   siteRef.current = site;
   const [galleryBusy, setGalleryBusy] = useState(false);
+  const [photoPickerOpen, setPhotoPickerOpen] = useState(false);
 
   useEffect(() => {
     if (!siteId) {
@@ -289,6 +291,31 @@ export default function StorySiteBuilderPage() {
     patchSite({ ...site, name });
   };
 
+  const updateCountry = (country: string) => {
+    if (!site) return;
+    patchSite({ ...site, country });
+  };
+
+  const updateImageSourceFolder = (imageSourceFolder: string) => {
+    if (!site) return;
+    patchSite({ ...site, imageSourceFolder });
+  };
+
+  const handleImportedGalleryUrls = (urls: string[]) => {
+    if (!site || !activePageId || !urls.length) return;
+    const page = site.pages.find((p) => p.id === activePageId);
+    const galleryImages = [...(page?.galleryImages ?? []), ...urls];
+    updateActivePage({ galleryImages, heroImage: galleryImages[0] ?? '' });
+    showToast(
+      `${urls.length} Bild${urls.length === 1 ? '' : 'er'} in Galerie und Erasmus/Bilder kopiert.`,
+      'success',
+    );
+  };
+
+  const erasmusBilderHint = site?.erasmusFolder
+    ? `J-M-Reihen/${site.erasmusFolder}/Bilder`
+    : undefined;
+
   const openPublicPreview = async () => {
     const latest = siteWithLiveBodyHtml();
     if (!latest) return;
@@ -432,10 +459,17 @@ export default function StorySiteBuilderPage() {
         )}
         <TextField
           size="small"
-          placeholder="Titel"
+          placeholder="Website-Titel"
           value={site.name}
           onChange={(e) => renameSite(e.target.value)}
           sx={storyToolbarFieldSx}
+        />
+        <TextField
+          size="small"
+          placeholder="Land"
+          value={site.country ?? ''}
+          onChange={(e) => updateCountry(e.target.value)}
+          sx={{ ...storyToolbarFieldSx, maxWidth: { xs: 100, sm: 140 } }}
         />
         <StoryToolbarDivider />
         <Tooltip title="Jetzt speichern (Strg+S)">
@@ -547,9 +581,22 @@ export default function StorySiteBuilderPage() {
                 bgcolor: '#fffef9',
               }}
             >
-              <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1.5, color: '#5d4037' }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.5, color: '#5d4037' }}>
                 Unterseite bearbeiten
               </Typography>
+              {site.erasmusFolder ? (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: 'block', mb: 1.5, fontFamily: 'monospace', fontSize: '0.7rem' }}
+                >
+                  J-M-Reihen/{site.erasmusFolder}/Bilder
+                </Typography>
+              ) : (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+                  Beim Speichern wird unter J-M-Reihen/Erasmus ein Ordner angelegt (Jahr - Monat - Land - Titel/Bilder).
+                </Typography>
+              )}
               <Stack spacing={1.5} sx={{ mb: 2 }}>
                 <TextField
                   label="Titel"
@@ -618,10 +665,11 @@ export default function StorySiteBuilderPage() {
                     ref={galleryRef}
                     images={activePage.galleryImages ?? []}
                     onAddFiles={addGalleryFiles}
-                    onReject={(msg) => setToast(msg)}
+                    onReject={(msg) => showToast(msg, 'warning')}
                     onRemoveAt={removeGalleryImage}
                     onClear={clearGalleryImages}
                     processing={galleryBusy}
+                    onPickFromFolder={() => setPhotoPickerOpen(true)}
                   />
                 </Paper>
               </Box>
@@ -641,6 +689,19 @@ export default function StorySiteBuilderPage() {
           </Box>
         </Box>
       </Box>
+
+      {site && activePage ? (
+        <ErasmusDayPhotoPickerDialog
+          open={photoPickerOpen}
+          onClose={() => setPhotoPickerOpen(false)}
+          siteId={site.id}
+          pageDateStr={activePage.dateStr}
+          imageSourceFolder={site.imageSourceFolder ?? ''}
+          onImageSourceFolderChange={updateImageSourceFolder}
+          onImported={handleImportedGalleryUrls}
+          erasmusBilderHint={erasmusBilderHint}
+        />
+      ) : null}
 
       <Snackbar open={!!toast} autoHideDuration={3200} onClose={() => setToast(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
         <Alert severity={toastSeverity} onClose={() => setToast(null)} sx={{ width: '100%' }}>

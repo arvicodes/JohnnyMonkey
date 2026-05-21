@@ -23,6 +23,12 @@ export type StoryPage = {
 export type StorySite = {
   id: string;
   name: string;
+  /** Land für Erasmus-Ordner (Schema: Jahr - Monat - Land - Titel) */
+  country?: string;
+  /** Relativer Pfad unter J-M-Reihen, z. B. Erasmus/2026 - 05 - Spanien - Bericht */
+  erasmusFolder?: string;
+  /** Lokaler Ordner mit Quellfotos (iCloud-Export o. ä.) */
+  imageSourceFolder?: string;
   pages: StoryPage[];
   createdAt: string;
   updatedAt: string;
@@ -92,6 +98,9 @@ export function normalizeStorySite(raw: unknown): StorySite | null {
   return {
     id: o.id,
     name: typeof o.name === 'string' && o.name.trim() ? o.name : 'Neue Website',
+    country: typeof o.country === 'string' ? o.country : '',
+    erasmusFolder: typeof o.erasmusFolder === 'string' ? o.erasmusFolder : undefined,
+    imageSourceFolder: typeof o.imageSourceFolder === 'string' ? o.imageSourceFolder : '',
     pages,
     createdAt: typeof o.createdAt === 'string' ? o.createdAt : now,
     updatedAt: typeof o.updatedAt === 'string' ? o.updatedAt : now,
@@ -227,7 +236,18 @@ export async function saveSiteToServer(site: StorySite): Promise<StorySiteServer
       signal: controller.signal,
     });
     window.clearTimeout(timer);
-    if (res.ok) return { ok: true };
+    if (res.ok) {
+      try {
+        const data = (await res.json()) as { erasmusFolder?: string | null };
+        if (data?.erasmusFolder && typeof data.erasmusFolder === 'string') {
+          normalized.erasmusFolder = data.erasmusFolder;
+          await saveSiteLocally(normalized);
+        }
+      } catch {
+        /* ignore */
+      }
+      return { ok: true };
+    }
     let error = `Server antwortete mit ${res.status}`;
     try {
       const data = (await res.json()) as { error?: string };
