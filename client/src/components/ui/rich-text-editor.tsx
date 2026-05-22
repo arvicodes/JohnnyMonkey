@@ -20,8 +20,14 @@ import {
   STORY_SNIPPET_OPTIONS,
   storySnippetContainerSx,
   type StorySnippetVariant,
+  getHighlightMarksInEditorRange,
+  unwrapHighlightMark,
 } from '../../lib/storyHighlightSnippets';
-import { attachStorySnippetDrag, prepareStorySnippetsInHost } from '../../lib/storySnippetDrag';
+import {
+  attachStorySnippetDrag,
+  prepareStorySnippetsInHost,
+  shouldRemoveStorySnippetOnDelete,
+} from '../../lib/storySnippetDrag';
 
 interface RichTextEditorProps {
   value: string;
@@ -977,6 +983,97 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
     }
   };
 
+  const wrapCurrentSelectionWithMark = () => {
+    if (!editorRef.current) return false;
+    editorRef.current.focus();
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return false;
+    const range = selection.getRangeAt(0);
+    if (!editorRef.current.contains(range.commonAncestorContainer)) return false;
+    if (range.collapsed) return false;
+
+    try {
+      const extracted = range.extractContents();
+      const mark = document.createElement('mark');
+      mark.className = 'story-snippet-mark';
+      mark.appendChild(extracted);
+      range.insertNode(mark);
+      const nextRange = document.createRange();
+      nextRange.setStartAfter(mark);
+      nextRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(nextRange);
+      handleInput();
+      return true;
+    } catch (e) {
+      console.warn('wrapCurrentSelectionWithMark failed:', e);
+      return false;
+    }
+  };
+
+  type SavedStoryHighlightRange = {
+    startContainer: Node;
+    startOffset: number;
+    endContainer: Node;
+    endOffset: number;
+  };
+
+  const saveStoryHighlightRange = (): SavedStoryHighlightRange | null => {
+    const host = editorRef.current;
+    const selection = window.getSelection();
+    if (!host || !selection || selection.rangeCount === 0) return null;
+    const range = selection.getRangeAt(0);
+    if (!host.contains(range.commonAncestorContainer)) return null;
+    return {
+      startContainer: range.startContainer,
+      startOffset: range.startOffset,
+      endContainer: range.endContainer,
+      endOffset: range.endOffset,
+    };
+  };
+
+  const restoreStoryHighlightRange = (saved: SavedStoryHighlightRange | null | undefined): boolean => {
+    const host = editorRef.current;
+    if (!host || !saved) return false;
+    try {
+      const range = document.createRange();
+      range.setStart(saved.startContainer, saved.startOffset);
+      range.setEnd(saved.endContainer, saved.endOffset);
+      if (!host.contains(range.commonAncestorContainer)) return false;
+      const selection = window.getSelection();
+      if (!selection) return false;
+      selection.removeAllRanges();
+      selection.addRange(range);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const toggleSelectionHighlightMark = () => {
+    const host = editorRef.current;
+    if (!host) return;
+    host.focus();
+    const saved = (window as Window & { savedStoryHighlightRange?: SavedStoryHighlightRange | null })
+      .savedStoryHighlightRange;
+    (window as Window & { savedStoryHighlightRange?: SavedStoryHighlightRange | null }).savedStoryHighlightRange =
+      null;
+    restoreStoryHighlightRange(saved);
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+    if (!host.contains(range.commonAncestorContainer)) return;
+
+    const marks = getHighlightMarksInEditorRange(host, range);
+    if (marks.length > 0) {
+      marks.forEach(unwrapHighlightMark);
+      handleInput();
+      return;
+    }
+    wrapCurrentSelectionWithMark();
+  };
+
   const insertStoryHighlightSnippet = (variant: StorySnippetVariant) => {
     if (!editorRef.current) return;
     editorRef.current.focus();
@@ -1038,9 +1135,22 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
     const detachDrag = attachStorySnippetDrag(host, () => handleInputRef.current());
     const observer = new MutationObserver(() => prepareStorySnippetsInHost(host));
     observer.observe(host, { childList: true, subtree: true });
+
+    const onMarkDblClick = (e: MouseEvent) => {
+      const target = e.target;
+      if (!(target instanceof HTMLElement)) return;
+      const mark = target.closest('mark, .story-snippet-mark');
+      if (!mark || !(mark instanceof HTMLElement) || !host.contains(mark)) return;
+      unwrapHighlightMark(mark);
+      handleInputRef.current();
+      e.preventDefault();
+    };
+    host.addEventListener('dblclick', onMarkDblClick);
+
     return () => {
       detachDrag();
       observer.disconnect();
+      host.removeEventListener('dblclick', onMarkDblClick);
     };
   }, [enableStorySnippets]);
 
@@ -1307,6 +1417,19 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
   }, [value, makeImageResizable]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (
+      enableStorySnippets &&
+      (e.key === 'Backspace' || e.key === 'Delete') &&
+      editorRef.current
+    ) {
+      const toRemove = shouldRemoveStorySnippetOnDelete(editorRef.current);
+      if (toRemove) {
+        e.preventDefault();
+        toRemove.remove();
+        handleInput();
+        return;
+      }
+    }
     if (e.key === 'Enter') {
       const host = editorRef.current;
       let commandReportsList = false;
@@ -1615,6 +1738,29 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
                 </IconButton>
               </Tooltip>
             ))}
+            <Tooltip title="Gelb markieren — erneut klicken oder Doppelklick auf Markierung zum Entfernen">
+              <IconButton
+                size="small"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  (window as Window & { savedStoryHighlightRange?: SavedStoryHighlightRange | null })
+                    .savedStoryHighlightRange = saveStoryHighlightRange();
+                }}
+                onClick={() => toggleSelectionHighlightMark()}
+                aria-label="Markierung setzen oder entfernen"
+                sx={{
+                  width: compact ? 28 : 32,
+                  height: compact ? 28 : 32,
+                  bgcolor: '#fff59d',
+                  border: '1px solid #fbc02d',
+                  '&:hover': { bgcolor: '#fff176', borderColor: '#f9a825' },
+                }}
+              >
+                <Box component="span" sx={{ fontSize: 11, fontWeight: 900, color: '#5d4037', lineHeight: 1 }}>
+                  ✎
+                </Box>
+              </IconButton>
+            </Tooltip>
           </>
         ) : null}
 

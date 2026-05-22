@@ -12,7 +12,10 @@ import {
   storyPageAnchorId,
   storyPageScrollMarginSx,
 } from '../../lib/storyPageLayout';
-import { storySnippetContainerSx } from '../../lib/storyHighlightSnippets';
+import {
+  storySnippetContainerSx,
+  storySnippetPreviewReadonlySx,
+} from '../../lib/storyHighlightSnippets';
 import { StoryPreviewImage } from './StoryPreviewImage';
 import { StoryPreviewQuickNav } from './StoryPreviewQuickNav';
 import { StoryPreviewImageLightbox } from './StoryPreviewImageLightbox';
@@ -294,19 +297,22 @@ export function StorySitePageBlock({
             {textHtml ? (
               <Box
                 className="story-preview-html story-preview-text-only"
-                sx={{
-                  color: '#4e342e',
-                  fontSize: { xs: '0.92rem', md: '1rem' },
-                  lineHeight: 1.65,
-                  textAlign: 'justify',
-                  '& p, & div, & li': { mb: 1.25, textAlign: 'justify' },
-                  '& ul, & ol': { pl: 2.5, mb: 1.25 },
-                  ...(!fullWidth && { '& img': { display: 'none' } }),
-                  '& [align="justify"], & [style*="text-align: justify"], & [style*="text-align:justify"]': {
+                sx={[
+                  {
+                    color: '#4e342e',
+                    fontSize: { xs: '0.92rem', md: '1rem' },
+                    lineHeight: 1.65,
                     textAlign: 'justify',
+                    '& p, & div, & li': { mb: 1.25, textAlign: 'justify' },
+                    '& ul, & ol': { pl: 2.5, mb: 1.25 },
+                    ...(!fullWidth && { '& img': { display: 'none' } }),
+                    '& [align="justify"], & [style*="text-align: justify"], & [style*="text-align:justify"]': {
+                      textAlign: 'justify',
+                    },
                   },
-                  ...storySnippetContainerSx,
-                }}
+                  storySnippetContainerSx,
+                  storySnippetPreviewReadonlySx,
+                ]}
                 dangerouslySetInnerHTML={{ __html: textHtml }}
               />
             ) : (

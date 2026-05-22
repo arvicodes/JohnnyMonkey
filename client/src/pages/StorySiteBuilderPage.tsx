@@ -1043,7 +1043,7 @@ export default function StorySiteBuilderPage() {
               >
                 <Box sx={{ minWidth: 0 }}>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
-                    Text (Strg+V aus Word — nur Text, keine Bilder). Farbige Kästchen: Schnipsel einfügen; Zettel im Text ziehen zum Verschieben.
+                    Text (Strg+V aus Word — nur Text, keine Bilder). Schnipsel: + einfügen; ✎ markieren; ⋮⋮ verschieben; Ecke unten rechts breiter/schmaler; × löschen.
                   </Typography>
                   <RichTextEditor
                     key={activePageId}
