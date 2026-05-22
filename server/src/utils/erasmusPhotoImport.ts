@@ -7,7 +7,25 @@ import { resolveJmReihenRoot } from './erasmusSiteFolders';
 import { fileToJpegBuffer, uploadBufferToJpegBuffer, isHeicPath } from './imageToJpeg';
 import { readCaptureDateISOFromPath, readCaptureDateISOFromBuffer } from './exifCaptureDate';
 
-const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.gif', '.tif', '.tiff']);
+const MEDIA_EXT = new Set([
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.webp',
+  '.heic',
+  '.heif',
+  '.gif',
+  '.tif',
+  '.tiff',
+  '.mov',
+  '.mp4',
+  '.m4v',
+  '.qt',
+]);
+
+function isVideoExt(ext: string): boolean {
+  return ext === '.mov' || ext === '.mp4' || ext === '.m4v' || ext === '.qt';
+}
 
 export type ScannedPhoto = {
   relativePath: string;
@@ -103,7 +121,7 @@ function walkImages(dir: string, root: string, depth: number, out: ScannedPhoto[
       continue;
     }
     const ext = path.extname(ent.name).toLowerCase();
-    if (!IMAGE_EXT.has(ext)) continue;
+    if (!MEDIA_EXT.has(ext)) continue;
     const relativePath = path.relative(root, full).replace(/\\/g, '/');
     out.push({
       relativePath,
@@ -173,6 +191,9 @@ function mediaExtForFile(srcPath: string): string {
   const ext = path.extname(srcPath).toLowerCase();
   if (ext === '.png') return 'png';
   if (ext === '.webp') return 'webp';
+  if (ext === '.mov') return 'mov';
+  if (ext === '.mp4') return 'mp4';
+  if (ext === '.m4v') return 'm4v';
   return 'jpg';
 }
 
@@ -194,6 +215,9 @@ function copyBufferToMediaDir(
 
 async function galleryBufferFromPath(src: string): Promise<{ buf: Buffer; extHint: string }> {
   const ext = path.extname(src).toLowerCase();
+  if (isVideoExt(ext)) {
+    return { buf: fs.readFileSync(src), extHint: ext };
+  }
   if (isHeicPath(src)) {
     return { buf: await fileToJpegBuffer(src, 1600), extHint: '.jpg' };
   }
@@ -279,10 +303,7 @@ export async function importPhotoBuffersToErasmus(params: {
   mediaDir: string;
 }): Promise<ImportedPhoto[]> {
   const { siteId, erasmusFolder, files, pageDateStr, mediaDir } = params;
-  const bilderDir = getErasmusBilderDir(erasmusFolder);
-  if (!bilderDir) {
-    throw new Error('Erasmus-Ordner fehlt — bitte Website zuerst speichern.');
-  }
+  const bilderDir = erasmusFolder?.trim() ? getErasmusBilderDir(erasmusFolder) : null;
   if (!fs.existsSync(mediaDir)) {
     fs.mkdirSync(mediaDir, { recursive: true });
   }
@@ -299,35 +320,44 @@ export async function importPhotoBuffersToErasmus(params: {
       const fileDateISO =
         (await readCaptureDateISOFromBuffer(buffer, originalName)) ??
         (await readCaptureDateISOFromPath(tmpPath));
-      const base = sanitizeCopyName(originalName);
-      const prefix = pageDateISO ?? 'ohne-datum';
-      let destName = `${prefix}_${base}`;
-      let destPath = path.join(bilderDir, destName);
-      let n = 1;
-      while (fs.existsSync(destPath)) {
-        const ext = path.extname(base);
-        const stem = path.basename(base, ext);
-        destName = `${prefix}_${stem}_${n}${ext}`;
-        destPath = path.join(bilderDir, destName);
-        n += 1;
+      let erasmusPath = tmpPath;
+      if (bilderDir) {
+        const base = sanitizeCopyName(originalName);
+        const prefix = pageDateISO ?? 'ohne-datum';
+        let destName = `${prefix}_${base}`;
+        let destPath = path.join(bilderDir, destName);
+        let n = 1;
+        while (fs.existsSync(destPath)) {
+          const ext = path.extname(base);
+          const stem = path.basename(base, ext);
+          destName = `${prefix}_${stem}_${n}${ext}`;
+          destPath = path.join(bilderDir, destName);
+          n += 1;
+        }
+        fs.copyFileSync(tmpPath, destPath);
+        erasmusPath = destPath;
       }
-      fs.copyFileSync(tmpPath, destPath);
       const ext = path.extname(originalName).toLowerCase();
-      const galleryBuf = isHeicPath(originalName)
-        ? await uploadBufferToJpegBuffer(buffer, originalName, 1600)
-        : !['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext)
-          ? await uploadBufferToJpegBuffer(buffer, originalName, 1600)
-          : buffer;
-      const galleryUrl = copyBufferToMediaDir(
-        siteId,
-        galleryBuf,
-        isHeicPath(originalName) ? '.jpg' : ext,
-        mediaDir,
-      );
+      let galleryBuf: Buffer;
+      let extHint: string;
+      if (isVideoExt(ext)) {
+        galleryBuf = buffer;
+        extHint = ext;
+      } else if (isHeicPath(originalName)) {
+        galleryBuf = await uploadBufferToJpegBuffer(buffer, originalName, 1600);
+        extHint = '.jpg';
+      } else if (['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext)) {
+        galleryBuf = buffer;
+        extHint = ext;
+      } else {
+        galleryBuf = await uploadBufferToJpegBuffer(buffer, originalName, 1600);
+        extHint = '.jpg';
+      }
+      const galleryUrl = copyBufferToMediaDir(siteId, galleryBuf, extHint, mediaDir);
       imported.push({
         relativePath: originalName,
         galleryUrl,
-        erasmusPath: destPath,
+        erasmusPath,
         dateISO: fileDateISO ?? pageDateISO,
       });
     }

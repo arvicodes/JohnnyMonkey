@@ -12,13 +12,17 @@ import {
   Alert,
   CircularProgress,
   List,
+  ListItem,
   ListItemButton,
   ListItemText,
+  ListSubheader,
   Divider,
   useMediaQuery,
   useTheme,
   Paper,
   Chip,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -30,9 +34,25 @@ import {
   OpenInNew as OpenInNewIcon,
   Menu as MenuIcon,
   Save as SaveIcon,
+  DragIndicator as DragIndicatorIcon,
 } from '@mui/icons-material';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { RichTextEditor, type RichTextEditorHandle } from '../components/ui/rich-text-editor';
-import { StorySitePreviewBody } from '../components/story-site/StorySitePreviewBody';
 import {
   StoryCompactToolbar,
   StoryToolbarDivider,
@@ -45,24 +65,131 @@ import {
 } from '../components/story-site/StoryPageGalleryPanel';
 import { ErasmusDayPhotoPickerDialog } from '../components/story-site/ErasmusDayPhotoPickerDialog';
 import { collectPageImages, normalizePageForPreview } from '../lib/storyPageLayout';
-import { fileToStoryImageDataUrl, isLikelyImageFile } from '../lib/storyImageUtils';
-import { formatIsoDateDe } from '../lib/storyPageDate';
-import { storyPreviewContainerSx, STORY_BEIGE } from '../lib/storyPageLayout';
+import { fileToStoryImageDataUrl } from '../lib/storyImageUtils';
+import { isLikelyStoryMediaFile, isLikelyVideoFile, isStoryVideoSrc } from '../lib/storyMediaUtils';
+import { rotateStoryGalleryImage90 } from '../lib/storyImageEnhance';
+import { importPhotoFilesUpload } from '../lib/storySitePhotoImport';
+import {
+  formatIsoDateDe,
+  formatStoryPageDateWithWeekday,
+  parseStoryPageDate,
+  commitStoryPageDateInput,
+} from '../lib/storyPageDate';
+import { normalizeStoryBodyHtml } from '../lib/storyBodyHtml';
+import { STORY_BEIGE, STORY_THEMATIC_ROW_BG, STORY_THEMATIC_ROW_BG_HOVER } from '../lib/storyPageLayout';
 import {
   type StorySite,
   type StoryPage,
   getSiteById,
+  upsertSite,
   persistSite,
   deleteSiteById,
   ensureStorySitesStorageReady,
   writePreviewSnapshot,
   fetchSiteHydratedFromServer,
-  mergeSitesForPreview,
+  mergeSiteForEditor,
+  clearPreviewSnapshot,
   addPageToSite,
   removePageFromSite,
   movePage,
+  reorderPagesInGroup,
+  normalizeStoryPageOrder,
+  partitionStoryPages,
+  isStoryDayPageTitle,
   updatePage,
 } from '../lib/storySitesStorage';
+
+type SortableStoryPageItemProps = {
+  page: StoryPage;
+  index: number;
+  selected: boolean;
+  thematic: boolean;
+  secondary: React.ReactNode;
+  onSelect: () => void;
+};
+
+function SortableStoryPageItem({
+  page,
+  index,
+  selected,
+  thematic,
+  secondary,
+  onSelect,
+}: SortableStoryPageItemProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: page.id,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <ListItem
+      ref={setNodeRef}
+      style={style}
+      disablePadding
+      dense
+      sx={{
+        display: 'flex',
+        alignItems: 'stretch',
+        bgcolor: isDragging
+          ? 'action.hover'
+          : thematic
+            ? STORY_THEMATIC_ROW_BG
+            : 'transparent',
+        boxShadow: isDragging ? 2 : 'none',
+        position: 'relative',
+        zIndex: isDragging ? 1 : 0,
+      }}
+    >
+      <Tooltip title="Reihenfolge ändern">
+        <Box
+          component="span"
+          {...attributes}
+          {...listeners}
+          aria-label={`Tag ${index + 1} verschieben`}
+          sx={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            alignSelf: 'stretch',
+            px: 0.5,
+            color: 'text.disabled',
+            cursor: 'grab',
+            touchAction: 'none',
+            '&:active': { cursor: 'grabbing' },
+            '&:hover': { color: 'text.secondary' },
+          }}
+        >
+          <DragIndicatorIcon sx={{ fontSize: 18 }} />
+        </Box>
+      </Tooltip>
+      <ListItemButton
+        selected={selected}
+        onClick={onSelect}
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          py: 0.85,
+          px: 1,
+          borderRadius: 0,
+          alignItems: 'flex-start',
+          ...(thematic && {
+            '&:hover': { bgcolor: STORY_THEMATIC_ROW_BG_HOVER },
+          }),
+        }}
+      >
+        <ListItemText
+          primary={page.title || `Seite ${index + 1}`}
+          secondary={secondary}
+          primaryTypographyProps={{ fontWeight: 700 }}
+          secondaryTypographyProps={{ component: 'div', sx: { mt: 0.25 } }}
+          sx={{ m: 0 }}
+        />
+      </ListItemButton>
+    </ListItem>
+  );
+}
 
 export default function StorySiteBuilderPage() {
   const theme = useTheme();
@@ -79,10 +206,10 @@ export default function StorySiteBuilderPage() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bodyEditorRef = useRef<RichTextEditorHandle>(null);
   const galleryRef = useRef<StoryPageGalleryPanelHandle>(null);
-  const previewSectionRef = useRef<HTMLDivElement>(null);
   const siteRef = useRef(site);
   siteRef.current = site;
   const [galleryBusy, setGalleryBusy] = useState(false);
+  const [galleryRotatingIndex, setGalleryRotatingIndex] = useState<number | null>(null);
   const [photoPickerOpen, setPhotoPickerOpen] = useState(false);
   const [pendingFolderFiles, setPendingFolderFiles] = useState<File[] | null>(null);
 
@@ -101,13 +228,22 @@ export default function StorySiteBuilderPage() {
         return;
       }
       const server = await fetchSiteHydratedFromServer(siteId);
-      const loaded = server ? mergeSitesForPreview(local, server) : local;
-      setSite(loaded);
+      const loaded = server ? mergeSiteForEditor(local, server) : local;
+      if (server) clearPreviewSnapshot(siteId);
+      try {
+        await upsertSite(loaded);
+      } catch {
+        /* Anzeige trotzdem mit Server-Daten */
+      }
+      setSite(normalizeStoryPageOrder(loaded));
       setActivePageId((prev) => {
         if (prev && loaded.pages.some((p) => p.id === prev)) return prev;
         return loaded.pages[0]?.id ?? null;
       });
-      void persistSite(loaded);
+      if (!server && !cancelled) {
+        setToastSeverity('warning');
+        setToast('Server nicht erreichbar — Galerie evtl. nur lokal. npm run dev starten.');
+      }
     })();
     return () => {
       cancelled = true;
@@ -146,8 +282,9 @@ export default function StorySiteBuilderPage() {
 
   const patchSite = useCallback(
     (next: StorySite) => {
-      setSite(next);
-      scheduleSave(next);
+      const normalized = normalizeStoryPageOrder(next);
+      setSite(normalized);
+      scheduleSave(normalized);
     },
     [scheduleSave]
   );
@@ -163,6 +300,26 @@ export default function StorySiteBuilderPage() {
     [site, activePageId]
   );
 
+  const activeThematicPage = useMemo(
+    () => (activePage && !isStoryDayPageTitle(activePage.title) ? activePage : null),
+    [activePage],
+  );
+
+  const activePageFullWidth = !!activeThematicPage?.fullWidth;
+
+  const pagePartitions = useMemo(
+    () => (site ? partitionStoryPages(site.pages) : { thematic: [] as StoryPage[], days: [] as StoryPage[] }),
+    [site],
+  );
+
+  const activePageMove = useMemo(() => {
+    if (!activePageId) return { canUp: false, canDown: false };
+    const inThematic = pagePartitions.thematic.some((p) => p.id === activePageId);
+    const list = inThematic ? pagePartitions.thematic : pagePartitions.days;
+    const idx = list.findIndex((p) => p.id === activePageId);
+    return { canUp: idx > 0, canDown: idx >= 0 && idx < list.length - 1 };
+  }, [activePageId, pagePartitions]);
+
   const updateActivePage = (patch: Partial<StoryPage>) => {
     if (!site || !activePageId) return;
     patchSite(updatePage(site, activePageId, patch));
@@ -175,7 +332,7 @@ export default function StorySiteBuilderPage() {
     if (liveHtml == null) return site;
     const page = site.pages.find((p) => p.id === activePageId);
     if (!page || liveHtml === page.bodyHtml) return site;
-    return updatePage(site, activePageId, { bodyHtml: liveHtml });
+    return updatePage(site, activePageId, { bodyHtml: normalizeStoryBodyHtml(liveHtml) });
   }, [site, activePageId]);
 
   const handleSaveNow = useCallback(async () => {
@@ -207,30 +364,43 @@ export default function StorySiteBuilderPage() {
   const addGalleryFiles = useCallback(
     (fileList: FileList | File[]) => {
       if (!activePageId) return;
-      const files = Array.from(fileList).filter(isLikelyImageFile);
+      const files = Array.from(fileList).filter(isLikelyStoryMediaFile);
       if (!files.length) {
-        setToast('Keine gültigen Bilddateien erkannt.');
+        setToast('Keine gültigen Bild- oder Videodateien erkannt.');
         return;
       }
       void (async () => {
         setGalleryBusy(true);
         const added: string[] = [];
+        const current = siteRef.current;
+        const page = current?.pages.find((p) => p.id === activePageId);
+        const pageDateStr = page?.dateStr ?? '';
+        const siteId = current?.id;
         for (const file of files) {
           try {
-            const url = await fileToStoryImageDataUrl(file);
-            if (url) added.push(url);
+            if (siteId) {
+              const urls = await importPhotoFilesUpload(siteId, pageDateStr, [file]);
+              if (urls[0]) {
+                added.push(urls[0]);
+                continue;
+              }
+            }
+            if (!isLikelyVideoFile(file)) {
+              const url = await fileToStoryImageDataUrl(file);
+              if (url) added.push(url);
+            }
           } catch {
-            /* einzelnes Bild überspringen */
+            /* einzelne Datei überspringen */
           }
         }
         setGalleryBusy(false);
         if (!added.length) {
-          setToast('Bilder konnten nicht verarbeitet werden (auch HEIC wird unterstützt — ggf. erneut versuchen).');
+          setToast(
+            'Medien konnten nicht verarbeitet werden (Bilder/HEIC/MOV — ggf. erneut versuchen oder Website speichern).',
+          );
           return;
         }
-        const current = siteRef.current;
         if (!current) return;
-        const page = current.pages.find((p) => p.id === activePageId);
         const galleryImages = [...(page?.galleryImages ?? []), ...added];
         patchSite(updatePage(current, activePageId, { galleryImages, heroImage: galleryImages[0] ?? '' }));
       })();
@@ -248,18 +418,118 @@ export default function StorySiteBuilderPage() {
     updateActivePage({ galleryImages: [], heroImage: '' });
   };
 
-  const previewPage = useMemo(() => {
-    if (!activePage) return null;
+  const moveGalleryImage = (index: number, direction: -1 | 1) => {
+    if (!activePage) return;
+    const list = activePage.galleryImages ?? [];
+    const next = index + direction;
+    if (next < 0 || next >= list.length) return;
+    const galleryImages = [...list];
+    [galleryImages[index], galleryImages[next]] = [galleryImages[next], galleryImages[index]];
+    updateActivePage({ galleryImages, heroImage: galleryImages[0] ?? '' });
+  };
+
+  const rotateGalleryImage = useCallback(
+    (index: number) => {
+      if (!site || !activePageId) return;
+      const raw = activePage?.galleryImages?.[index];
+      const src = raw?.split('?')[0]?.trim() ?? '';
+      if (!src) return;
+      if (isStoryVideoSrc(src)) {
+        showToast('Videos können nicht gedreht werden.', 'warning');
+        return;
+      }
+      void (async () => {
+        setGalleryRotatingIndex(index);
+        try {
+          const newSrc = await rotateStoryGalleryImage90(site.id, src);
+          const current = siteRef.current;
+          const page = current?.pages.find((p) => p.id === activePageId);
+          if (!current || !page) return;
+          const galleryImages = [...page.galleryImages];
+          galleryImages[index] = newSrc;
+          patchSite(
+            updatePage(current, activePageId, {
+              galleryImages,
+              heroImage: galleryImages[0] ?? '',
+            }),
+          );
+        } catch (e) {
+          showToast(e instanceof Error ? e.message : 'Drehen fehlgeschlagen', 'warning');
+        } finally {
+          setGalleryRotatingIndex(null);
+        }
+      })();
+    },
+    [site, activePageId, activePage?.galleryImages, patchSite, showToast],
+  );
+
+  const pageImageCount = useMemo(() => {
+    if (!activePage) return 0;
     const liveHtml = bodyEditorRef.current?.getHtml();
     const bodyHtml =
       liveHtml != null && liveHtml !== activePage.bodyHtml ? liveHtml : activePage.bodyHtml;
-    return normalizePageForPreview({ ...activePage, bodyHtml });
+    return collectPageImages(normalizePageForPreview({ ...activePage, bodyHtml })).length;
   }, [activePage]);
 
-  const previewImageCount = useMemo(() => {
-    if (!previewPage) return 0;
-    return collectPageImages(previewPage).length;
-  }, [previewPage]);
+  const pageListMetaLine = (p: StoryPage, idx: number) => {
+    const parts: string[] = [];
+    if (p.dateStr?.trim()) {
+      const withWeekday = formatStoryPageDateWithWeekday(p.dateStr);
+      parts.push(withWeekday || p.dateStr.trim());
+    }
+    if (p.location?.trim()) parts.push(p.location.trim());
+    return parts.length ? parts.join(' · ') : `${idx + 1}. Unterseite`;
+  };
+
+  const pageListDetailSx = {
+    display: 'block',
+    fontSize: '0.6rem',
+    lineHeight: 1.35,
+    fontStyle: 'italic' as const,
+    whiteSpace: 'normal' as const,
+    wordBreak: 'break-word' as const,
+  };
+
+  const pageListSecondary = (p: StoryPage, idx: number) => {
+    const meta = pageListMetaLine(p, idx);
+    const subtitle = p.subtitle?.trim();
+    return (
+      <Box component="span" sx={{ display: 'block', lineHeight: 1.28, minWidth: 0, mt: 0.15 }}>
+        {subtitle ? (
+          <Box
+            component="span"
+            sx={{
+              ...pageListDetailSx,
+              fontSize: '0.72rem',
+              color: '#1565c0',
+              mb: 0.1,
+            }}
+          >
+            {subtitle}
+          </Box>
+        ) : null}
+        <Box
+          component="span"
+          sx={{
+            ...pageListDetailSx,
+            color: '#8d6e63',
+          }}
+        >
+          {meta}
+        </Box>
+      </Box>
+    );
+  };
+
+  const pageChipLabel = (p: StoryPage, idx: number) => {
+    const title = p.title?.trim() || `Seite ${idx + 1}`;
+    const meta = pageListMetaLine(p, idx);
+    const extras: string[] = [];
+    if (p.subtitle?.trim()) extras.push(p.subtitle.trim());
+    if (meta !== `${idx + 1}. Unterseite`) extras.push(meta);
+    if (!extras.length) return title;
+    return `${title} — ${extras.join(' · ')}`;
+  };
 
   const handleAddPage = () => {
     if (!site) return;
@@ -281,6 +551,25 @@ export default function StorySiteBuilderPage() {
   const handleMove = (dir: -1 | 1) => {
     if (!site || !activePageId) return;
     patchSite(movePage(site, activePageId, dir));
+  };
+
+  const pageSortSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handlePageDragEnd = (event: DragEndEvent) => {
+    if (!site) return;
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const { thematic, days } = partitionStoryPages(site.pages);
+    const thematicIds = new Set(thematic.map((p) => p.id));
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    const group: 'thematic' | 'days' = thematicIds.has(activeId) ? 'thematic' : 'days';
+    if (group === 'thematic' && !thematicIds.has(overId)) return;
+    if (group === 'days' && thematicIds.has(overId)) return;
+    patchSite(reorderPagesInGroup(site, group, activeId, overId));
   };
 
   const renameSite = (name: string) => {
@@ -376,7 +665,6 @@ export default function StorySiteBuilderPage() {
         borderColor: 'divider',
         borderRadius: 2,
         overflow: 'hidden',
-        maxHeight: isMd ? 'calc(100vh - 140px)' : 'none',
         position: isMd ? 'sticky' : 'static',
         top: isMd ? 88 : undefined,
       }}
@@ -394,25 +682,67 @@ export default function StorySiteBuilderPage() {
           Unterseiten
         </Typography>
       </Box>
-      <List dense disablePadding sx={{ maxHeight: isMd ? 360 : 'none', overflow: isMd ? 'auto' : 'visible' }}>
-        {site.pages.map((p, idx) => (
-          <ListItemButton
-            key={p.id}
-            selected={p.id === activePageId}
-            onClick={() => {
-              setActivePageId(p.id);
-              setMobileNavOpen(false);
-            }}
-          >
-            <ListItemText
-              primary={p.title || `Seite ${idx + 1}`}
-              secondary={`${idx + 1}. Unterseite`}
-              primaryTypographyProps={{ fontWeight: 700, noWrap: true }}
-              secondaryTypographyProps={{ fontSize: '0.7rem' }}
-            />
-          </ListItemButton>
-        ))}
-      </List>
+      <DndContext sensors={pageSortSensors} collisionDetection={closestCenter} onDragEnd={handlePageDragEnd}>
+        <List dense disablePadding>
+          {pagePartitions.thematic.length > 0 ? (
+            <SortableContext
+              items={pagePartitions.thematic.map((p) => p.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {pagePartitions.thematic.map((p, idx) => (
+                <SortableStoryPageItem
+                  key={p.id}
+                  page={p}
+                  index={idx}
+                  thematic
+                  selected={p.id === activePageId}
+                  secondary={pageListSecondary(p, idx)}
+                  onSelect={() => {
+                    setActivePageId(p.id);
+                    setMobileNavOpen(false);
+                  }}
+                />
+              ))}
+            </SortableContext>
+          ) : null}
+          {pagePartitions.thematic.length > 0 && pagePartitions.days.length > 0 ? (
+            <ListSubheader
+              component="div"
+              disableSticky
+              sx={{
+                lineHeight: 1.3,
+                py: 1,
+                mt: 0.5,
+                bgcolor: STORY_BEIGE.panel,
+                borderTop: '1px solid rgba(141, 110, 99, 0.28)',
+                color: '#8d6e63',
+                fontWeight: 800,
+                fontSize: '0.68rem',
+              }}
+            >
+              Tage
+            </ListSubheader>
+          ) : null}
+          {pagePartitions.days.length > 0 ? (
+            <SortableContext items={pagePartitions.days.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+              {pagePartitions.days.map((p, idx) => (
+                <SortableStoryPageItem
+                  key={p.id}
+                  page={p}
+                  index={idx}
+                  thematic={false}
+                  selected={p.id === activePageId}
+                  secondary={pageListSecondary(p, idx)}
+                  onSelect={() => {
+                    setActivePageId(p.id);
+                    setMobileNavOpen(false);
+                  }}
+                />
+              ))}
+            </SortableContext>
+          ) : null}
+        </List>
+      </DndContext>
       <Divider />
       <Box sx={{ p: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
         <Button size="small" startIcon={<AddIcon />} onClick={handleAddPage} fullWidth variant="outlined">
@@ -421,7 +751,7 @@ export default function StorySiteBuilderPage() {
         <Stack direction="row" spacing={0.5} justifyContent="center">
           <Tooltip title="Nach oben">
             <span>
-              <IconButton size="small" onClick={() => handleMove(-1)} disabled={site.pages.findIndex((p) => p.id === activePageId) <= 0}>
+              <IconButton size="small" onClick={() => handleMove(-1)} disabled={!activePageMove.canUp}>
                 <KeyboardArrowUpIcon />
               </IconButton>
             </span>
@@ -431,7 +761,7 @@ export default function StorySiteBuilderPage() {
               <IconButton
                 size="small"
                 onClick={() => handleMove(1)}
-                disabled={site.pages.findIndex((p) => p.id === activePageId) >= site.pages.length - 1}
+                disabled={!activePageMove.canDown}
               >
                 <KeyboardArrowDownIcon />
               </IconButton>
@@ -517,17 +847,19 @@ export default function StorySiteBuilderPage() {
             <OpenInNewIcon />
           </IconButton>
         </Tooltip>
-        <Tooltip title="Galerie (rechts in der Vorschau)">
-          <IconButton
-            size="small"
-            onClick={() => galleryRef.current?.pickFiles()}
-            aria-label="Galerie"
-            sx={storyToolbarIconBtnSx}
-          >
-            <ImageIcon />
-          </IconButton>
-        </Tooltip>
-        {(activePage.galleryImages?.length ?? 0) > 0 ? (
+        {!activePageFullWidth ? (
+          <Tooltip title="Galerie">
+            <IconButton
+              size="small"
+              onClick={() => galleryRef.current?.pickFiles()}
+              aria-label="Galerie"
+              sx={storyToolbarIconBtnSx}
+            >
+              <ImageIcon />
+            </IconButton>
+          </Tooltip>
+        ) : null}
+        {!activePageFullWidth && (activePage.galleryImages?.length ?? 0) > 0 ? (
           <Tooltip title="Galerie leeren">
             <IconButton
               size="small"
@@ -555,12 +887,35 @@ export default function StorySiteBuilderPage() {
       <Box sx={{ width: '100%', maxWidth: '100%', px: { xs: 0.5, sm: 1.5, md: 2 }, py: { xs: 2, sm: 3 } }}>
         {!isMd && (
           <Box sx={{ mb: 1.5, overflowX: 'auto', pb: 0.5 }} className="no-print">
-            <Stack direction="row" spacing={0.75} sx={{ flexWrap: 'nowrap', width: 'max-content', maxWidth: '100%' }}>
-              {site.pages.map((p, idx) => (
+            <Stack
+              direction="row"
+              spacing={0.75}
+              useFlexGap
+              sx={{ flexWrap: 'wrap', width: '100%', maxWidth: '100%' }}
+            >
+              {pagePartitions.thematic.map((p, idx) => (
                 <Chip
                   key={p.id}
                   size="small"
-                  label={p.title?.trim() || `Seite ${idx + 1}`}
+                  label={pageChipLabel(p, idx)}
+                  onClick={() => setActivePageId(p.id)}
+                  color={p.id === activePageId ? 'primary' : 'default'}
+                  variant={p.id === activePageId ? 'filled' : 'outlined'}
+                  sx={{
+                    fontWeight: 700,
+                    bgcolor: p.id === activePageId ? undefined : STORY_THEMATIC_ROW_BG,
+                    borderColor: 'rgba(92, 107, 192, 0.35)',
+                  }}
+                />
+              ))}
+              {pagePartitions.thematic.length > 0 && pagePartitions.days.length > 0 ? (
+                <Box sx={{ flexBasis: '100%', width: 0, height: 0 }} aria-hidden />
+              ) : null}
+              {pagePartitions.days.map((p, idx) => (
+                <Chip
+                  key={p.id}
+                  size="small"
+                  label={pageChipLabel(p, idx)}
                   onClick={() => setActivePageId(p.id)}
                   color={p.id === activePageId ? 'primary' : 'default'}
                   variant={p.id === activePageId ? 'filled' : 'outlined'}
@@ -620,7 +975,12 @@ export default function StorySiteBuilderPage() {
                   size="small"
                   fullWidth
                   value={activePage.title}
-                  onChange={(e) => updateActivePage({ title: e.target.value })}
+                  onChange={(e) => {
+                    const title = e.target.value;
+                    const patch: Partial<StoryPage> = { title };
+                    if (isStoryDayPageTitle(title)) patch.fullWidth = false;
+                    updateActivePage(patch);
+                  }}
                 />
                 <TextField
                   label="Untertitel"
@@ -634,8 +994,15 @@ export default function StorySiteBuilderPage() {
                     label="Datum"
                     size="small"
                     fullWidth
-                    value={activePage.dateStr}
-                    onChange={(e) => updateActivePage({ dateStr: e.target.value })}
+                    value={
+                      activePage.dateStr?.trim() && parseStoryPageDate(activePage.dateStr)
+                        ? formatStoryPageDateWithWeekday(activePage.dateStr)
+                        : activePage.dateStr
+                    }
+                    onChange={(e) =>
+                      updateActivePage({ dateStr: commitStoryPageDateInput(e.target.value) })
+                    }
+                    placeholder="z. B. Mo., 4. Mai 2026"
                   />
                   <TextField
                     label="Ort"
@@ -646,71 +1013,90 @@ export default function StorySiteBuilderPage() {
                   />
                 </Stack>
               </Stack>
+              {activeThematicPage ? (
+                <FormControlLabel
+                  sx={{ mb: 1.5, ml: 0, alignItems: 'flex-start' }}
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={!!activeThematicPage.fullWidth}
+                      onChange={(e) => updateActivePage({ fullWidth: e.target.checked })}
+                      sx={{ pt: 0.35 }}
+                    />
+                  }
+                  label={
+                    <Typography variant="body2" component="span" sx={{ color: '#5d4037' }}>
+                      Volle Breite (keine Bilder rechts in der Vorschau)
+                    </Typography>
+                  }
+                />
+              ) : null}
               <Box
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) minmax(200px, 280px)' },
+                  gridTemplateColumns: activePageFullWidth
+                    ? '1fr'
+                    : { xs: '1fr', md: 'minmax(0, 1fr) minmax(200px, 280px)' },
                   gap: 1.5,
                   alignItems: 'stretch',
                 }}
               >
                 <Box sx={{ minWidth: 0 }}>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
-                    Text (Strg+V aus Word — nur Text, keine Bilder)
+                    Text (Strg+V aus Word — nur Text, keine Bilder). Farbige Kästchen: Schnipsel einfügen; Zettel im Text ziehen zum Verschieben.
                   </Typography>
                   <RichTextEditor
+                    key={activePageId}
                     ref={bodyEditorRef}
                     value={activePage.bodyHtml}
-                    onChange={(html) => updateActivePage({ bodyHtml: html })}
+                    onChange={(html) => updateActivePage({ bodyHtml: normalizeStoryBodyHtml(html) })}
                     placeholder="Dein Bericht …"
                     rows={14}
                     imageStorage="dataUrl"
                     allowPasteImages={false}
                     showImageToolbar={false}
+                    defaultTextAlign="justify"
+                    enableStorySnippets
+                    showLessonMarkup={false}
                   />
                 </Box>
-                <Paper
-                  variant="outlined"
-                  sx={{
-                    p: 1.25,
-                    bgcolor: STORY_BEIGE.panel,
-                    borderColor: 'rgba(141, 110, 99, 0.35)',
-                    minHeight: { xs: 220, md: 'auto' },
-                  }}
-                >
-                  <StoryPageGalleryPanel
-                    ref={galleryRef}
-                    images={activePage.galleryImages ?? []}
-                    onAddFiles={addGalleryFiles}
-                    onReject={(msg) => showToast(msg, 'warning')}
-                    onRemoveAt={removeGalleryImage}
-                    onClear={clearGalleryImages}
-                    processing={galleryBusy}
-                    onPickFromFolder={() => setPhotoPickerOpen(true)}
-                    onImportFolder={handleImportFolderFiles}
-                  />
-                </Paper>
+                {!activePageFullWidth ? (
+                  <Paper
+                    variant="outlined"
+                    sx={{
+                      p: 1.25,
+                      bgcolor: STORY_BEIGE.panel,
+                      borderColor: 'rgba(141, 110, 99, 0.35)',
+                      minHeight: { xs: 220, md: 'auto' },
+                    }}
+                  >
+                    <StoryPageGalleryPanel
+                      ref={galleryRef}
+                      images={activePage.galleryImages ?? []}
+                      onAddFiles={addGalleryFiles}
+                      onReject={(msg) => showToast(msg, 'warning')}
+                      onRemoveAt={removeGalleryImage}
+                      onMoveAt={moveGalleryImage}
+                      onRotateAt={rotateGalleryImage}
+                      rotatingIndex={galleryRotatingIndex}
+                      onClear={clearGalleryImages}
+                      processing={galleryBusy || galleryRotatingIndex !== null}
+                      onPickFromFolder={() => setPhotoPickerOpen(true)}
+                      onImportFolder={handleImportFolderFiles}
+                    />
+                  </Paper>
+                ) : null}
               </Box>
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
                 Änderungen werden automatisch gespeichert · Speichern-Button oben oder Strg+S für sofortiges Speichern
-                {' · '}
-                {previewImageCount} Bild{previewImageCount === 1 ? '' : 'er'} in der Vorschau
+                {!activePageFullWidth ? (
+                  <>
+                    {' · '}
+                    {pageImageCount} Bild{pageImageCount === 1 ? '' : 'er'} auf dieser Seite
+                  </>
+                ) : null}
               </Typography>
             </Paper>
-
-            <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1, color: '#5d4037' }}>
-              Vorschau (Scrapbook-Layout)
-            </Typography>
-            <Box
-              ref={previewSectionRef}
-              sx={{ ...storyPreviewContainerSx, overflowX: 'hidden', minWidth: 0 }}
-            >
-              <StorySitePreviewBody
-                site={site}
-                activePageId={activePageId ?? undefined}
-                onNavigatePage={(id) => setActivePageId(id)}
-              />
-            </Box>
           </Box>
         </Box>
       </Box>

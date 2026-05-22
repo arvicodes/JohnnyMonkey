@@ -1,5 +1,3 @@
-import { dataUrlToBlobUrl } from './storyImageUtils';
-
 /** Scrapbook-Beige (kein Grau/Weiß in der Vorschau). */
 export const STORY_BEIGE = {
   page: '#f5efe4',
@@ -8,6 +6,10 @@ export const STORY_BEIGE = {
   cream: '#fffef9',
   placeholder: '#e8e4dc',
 } as const;
+
+/** Hintergrund für thematische Unterseiten (nicht „Tag N“) in der Builder-Liste. */
+export const STORY_THEMATIC_ROW_BG = 'rgba(92, 107, 192, 0.1)';
+export const STORY_THEMATIC_ROW_BG_HOVER = 'rgba(92, 107, 192, 0.16)';
 
 export const STORY_SCRAPBOOK_BG =
   'linear-gradient(180deg, #fffdf7 0%, #faf6ee 45%, #f5efe4 100%)';
@@ -70,16 +72,23 @@ export function resolveStoryImageSrc(src: string): string {
   return s;
 }
 
-/** Für Thumbnails: lange data:-URLs als blob:-URL (stabiler in manchen Browsern). */
+/** Schwellwert: sehr lange data:-URLs laden in <img> oft nicht — blob:-URL nutzen. */
+export const STORY_DATA_URL_BLOB_THRESHOLD = 80_000;
+
+/** Für <img>/<video>: API-Pfade auflösen; große data:-URLs → blob: (Aufrufer revokeObjectURL). */
 export function displayStoryImageSrc(src: string): string {
-  const resolved = resolveStoryImageSrc(src);
-  if (!resolved.startsWith('data:image/')) return resolved;
-  return dataUrlToBlobUrl(resolved) ?? resolved;
+  return resolveStoryImageSrc(src);
 }
 
 export function pageHasLoadableDataImages(page: StoryPageImageSource): boolean {
   const urls = [...galleryFromPage(page), ...extractImageSrcsFromHtml(page.bodyHtml ?? '')];
   return urls.some((u) => u.startsWith('data:') || u.startsWith('blob:'));
+}
+
+/** Galerie/Text mit gespeicherten Server-Dateien (/api/…/media/…). */
+export function pageHasApiStoryMedia(page: StoryPageImageSource): boolean {
+  const urls = [...galleryFromPage(page), ...extractImageSrcsFromHtml(page.bodyHtml ?? '')];
+  return urls.some((u) => /\/api\/story-sites\/[^/]+\/media\//i.test(u));
 }
 
 function galleryFromPage(page: StoryPageImageSource): string[] {
@@ -110,6 +119,7 @@ export type StoryPageImageSource = {
   galleryImages?: string[];
   heroImage?: string;
   bodyHtml?: string;
+  fullWidth?: boolean;
 };
 
 export function collectPageImages(pageOrGallery: StoryPageImageSource | string, bodyHtml?: string): string[] {
@@ -117,6 +127,7 @@ export function collectPageImages(pageOrGallery: StoryPageImageSource | string, 
     typeof pageOrGallery === 'string'
       ? { heroImage: pageOrGallery, bodyHtml: bodyHtml ?? '' }
       : pageOrGallery;
+  if (page.fullWidth) return [];
   const html = page.bodyHtml ?? '';
   const { imageSrcs } = splitStoryBodyHtml(html);
   const out: string[] = [];
@@ -128,6 +139,19 @@ export function collectPageImages(pageOrGallery: StoryPageImageSource | string, 
     if (t && !out.includes(t)) out.push(t);
   }
   return out;
+}
+
+/** Alle Vorschau-Bilder der Site in Seitenreihenfolge (für Lightbox-Diashow). */
+export function buildSitePreviewImageIndex(
+  pages: Array<{ id: string } & StoryPageImageSource>
+): { images: string[]; pageStartIndex: Map<string, number> } {
+  const images: string[] = [];
+  const pageStartIndex = new Map<string, number>();
+  for (const page of pages) {
+    pageStartIndex.set(page.id, images.length);
+    images.push(...collectPageImages(normalizePageForPreview(page)));
+  }
+  return { images, pageStartIndex };
 }
 
 /** Galerie + heroImage für die Vorschau vereinheitlichen (ohne Text-Bilder). */

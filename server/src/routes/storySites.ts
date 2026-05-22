@@ -16,7 +16,7 @@ import { isHeicPath, fileToJpegBuffer, uploadBufferToJpegBuffer } from '../utils
 
 const photoUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 30 * 1024 * 1024, files: 250 },
+  limits: { fileSize: 80 * 1024 * 1024, files: 250 },
 });
 
 const router = express.Router();
@@ -50,7 +50,7 @@ function siteMediaDir(id: string): string {
 
 function safeMediaFilename(name: string): string | null {
   const base = path.basename(name);
-  if (!/^[a-f0-9]{8,64}\.(jpg|jpeg|png|webp)$/i.test(base)) return null;
+  if (!/^[a-f0-9]{8,64}\.(jpg|jpeg|png|webp|mov|mp4|m4v)$/i.test(base)) return null;
   return base;
 }
 
@@ -153,6 +153,8 @@ router.get('/local-preview', async (req: Request, res: Response) => {
     if (ext === '.png') res.type('image/png');
     else if (ext === '.webp') res.type('image/webp');
     else if (ext === '.gif') res.type('image/gif');
+    else if (ext === '.mov' || ext === '.qt') res.type('video/quicktime');
+    else if (ext === '.mp4' || ext === '.m4v') res.type('video/mp4');
     else res.type('image/jpeg');
     res.sendFile(full);
   } catch (e) {
@@ -291,6 +293,8 @@ router.get('/:id/media/:filename', (req: Request, res: Response) => {
     const ext = path.extname(filename).toLowerCase();
     if (ext === '.png') res.type('image/png');
     else if (ext === '.webp') res.type('image/webp');
+    else if (ext === '.mov' || ext === '.qt') res.type('video/quicktime');
+    else if (ext === '.mp4' || ext === '.m4v') res.type('video/mp4');
     else res.type('image/jpeg');
     res.sendFile(path.resolve(filePath));
   } catch (e) {

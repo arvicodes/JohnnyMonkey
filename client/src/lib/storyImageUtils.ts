@@ -1,4 +1,5 @@
 import { createImagePreviewUrl, isHeicFile, heicFileToJpegBlob } from './heicPreview';
+import { applyStoryPhotoEnhancementToImageData } from './storyImageEnhance';
 
 const IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|bmp|avif|svg|heic|heif)$/i;
 
@@ -95,6 +96,9 @@ async function renderFileToDataUrl(file: File, maxDim: number, quality: number):
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas nicht verfügbar');
     ctx.drawImage(img, 0, 0, width, height);
+    const imageData = ctx.getImageData(0, 0, width, height);
+    applyStoryPhotoEnhancementToImageData(imageData);
+    ctx.putImageData(imageData, 0, 0);
     const useJpeg = file.type === 'image/jpeg' || file.type === 'image/jpg' || !file.type.includes('png');
     return canvas.toDataURL(useJpeg ? 'image/jpeg' : 'image/png', useJpeg ? quality : undefined);
   } finally {

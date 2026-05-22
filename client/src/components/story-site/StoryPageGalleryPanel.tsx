@@ -11,9 +11,14 @@ import {
   DeleteOutline as DeleteOutlineIcon,
   CloudUpload as CloudUploadIcon,
   PhotoLibrary as PhotoLibraryIcon,
+  RotateRight as RotateRightIcon,
+  KeyboardArrowUp as KeyboardArrowUpIcon,
+  KeyboardArrowDown as KeyboardArrowDownIcon,
 } from '@mui/icons-material';
-import { displayStoryImageSrc } from '../../lib/storyPageLayout';
-import { collectImageFilesFromDataTransfer, isLikelyImageFile } from '../../lib/storyImageUtils';
+import { StoryPreviewImage } from './StoryPreviewImage';
+import { isStoryVideoSrc } from '../../lib/storyMediaUtils';
+import { collectImageFilesFromDataTransfer } from '../../lib/storyImageUtils';
+import { isLikelyStoryMediaFile } from '../../lib/storyMediaUtils';
 import {
   collectImageFilesFromDataTransfer as collectFolderImageFiles,
   dataTransferHasDirectory,
@@ -24,6 +29,9 @@ type Props = {
   onAddFiles: (files: File[]) => void;
   onReject?: (reason: string) => void;
   onRemoveAt: (index: number) => void;
+  onMoveAt?: (index: number, direction: -1 | 1) => void;
+  onRotateAt?: (index: number) => void;
+  rotatingIndex?: number | null;
   onClear?: () => void;
   processing?: boolean;
   onPickFromFolder?: () => void;
@@ -34,7 +42,7 @@ type Props = {
 export type StoryPageGalleryPanelHandle = { pickFiles: () => void };
 
 function collectFilesFromInput(fileList: FileList | File[]): File[] {
-  return Array.from(fileList).filter(isLikelyImageFile);
+  return Array.from(fileList).filter(isLikelyStoryMediaFile);
 }
 
 export const StoryPageGalleryPanel = forwardRef<StoryPageGalleryPanelHandle, Props>(
@@ -44,6 +52,9 @@ export const StoryPageGalleryPanel = forwardRef<StoryPageGalleryPanelHandle, Pro
       onAddFiles,
       onReject,
       onRemoveAt,
+      onMoveAt,
+      onRotateAt,
+      rotatingIndex = null,
       onClear,
       processing = false,
       onPickFromFolder,
@@ -71,7 +82,7 @@ export const StoryPageGalleryPanel = forwardRef<StoryPageGalleryPanelHandle, Pro
       }
       if (hadAttempt) {
         onReject?.(
-          'Keine Bilddatei erkannt — JPG/PNG per Drag & Drop oder „Einzelbilder laden“. HEIC ggf. vorher als JPG speichern.',
+          'Keine Bild- oder Videodatei erkannt — JPG/PNG/MOV per Drag & Drop oder „Medien laden“.',
         );
       }
     },
@@ -113,7 +124,7 @@ export const StoryPageGalleryPanel = forwardRef<StoryPageGalleryPanelHandle, Pro
       <input
         ref={inputRef}
         type="file"
-        accept="image/*,.heic,.heif"
+        accept="image/*,video/*,.heic,.heif,.mov,.mp4,.m4v"
         multiple
         hidden
         onChange={(e) => {
@@ -193,7 +204,7 @@ export const StoryPageGalleryPanel = forwardRef<StoryPageGalleryPanelHandle, Pro
             fullWidth
             sx={{ textTransform: 'none', py: 0.5, fontSize: '0.75rem' }}
           >
-            {processing ? 'Wird verarbeitet …' : 'Einzelbilder laden'}
+            {processing ? 'Wird verarbeitet …' : 'Medien laden'}
           </Button>
         </Stack>
         <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', lineHeight: 1.3 }}>
@@ -226,45 +237,108 @@ export const StoryPageGalleryPanel = forwardRef<StoryPageGalleryPanelHandle, Pro
               minHeight: 0,
             }}
           >
-            {images.map((src, i) => (
-              <Box key={`${i}-${src.slice(0, 24)}`} sx={{ position: 'relative' }}>
-                <Box
-                  component="img"
-                  src={displayStoryImageSrc(src)}
-                  alt=""
-                  sx={{
-                    width: '100%',
-                    aspectRatio: '4/3',
-                    objectFit: 'cover',
-                    borderRadius: 0.5,
-                    border: '4px solid #fffef9',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                    display: 'block',
-                  }}
-                />
-                <IconButton
-                  size="small"
-                  onClick={() => onRemoveAt(i)}
-                  sx={{
-                    position: 'absolute',
-                    top: 2,
-                    right: 2,
-                    width: 22,
-                    height: 22,
-                    bgcolor: '#fffef9',
-                    '&:hover': { bgcolor: '#f5efe4' },
-                  }}
-                  aria-label="Bild entfernen"
-                >
-                  <DeleteOutlineIcon sx={{ fontSize: 14 }} />
-                </IconButton>
-              </Box>
-            ))}
+            {images.map((src, i) => {
+              const isVideo = isStoryVideoSrc(src);
+              const busy = processing || rotatingIndex === i;
+              return (
+                <Box key={src} sx={{ position: 'relative' }}>
+                  <StoryPreviewImage
+                    src={src}
+                    alt=""
+                    variant="gallery"
+                    sx={{
+                      width: '100%',
+                      borderRadius: 0.5,
+                      border: '4px solid #fffef9',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                      opacity: busy ? 0.55 : 1,
+                    }}
+                  />
+                  {onMoveAt && images.length > 1 ? (
+                    <Stack
+                      spacing={0.25}
+                      sx={{ position: 'absolute', top: 2, left: 2, zIndex: 1 }}
+                    >
+                      <IconButton
+                        size="small"
+                        disabled={busy || i === 0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onMoveAt(i, -1);
+                        }}
+                        sx={{
+                          width: 22,
+                          height: 22,
+                          bgcolor: '#fffef9',
+                          '&:hover': { bgcolor: '#f5efe4' },
+                        }}
+                        aria-label="Nach oben"
+                      >
+                        <KeyboardArrowUpIcon sx={{ fontSize: 14 }} />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        disabled={busy || i >= images.length - 1}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onMoveAt(i, 1);
+                        }}
+                        sx={{
+                          width: 22,
+                          height: 22,
+                          bgcolor: '#fffef9',
+                          '&:hover': { bgcolor: '#f5efe4' },
+                        }}
+                        aria-label="Nach unten"
+                      >
+                        <KeyboardArrowDownIcon sx={{ fontSize: 14 }} />
+                      </IconButton>
+                    </Stack>
+                  ) : null}
+                  <Stack
+                    direction="row"
+                    spacing={0.25}
+                    sx={{ position: 'absolute', top: 2, right: 2 }}
+                  >
+                    {onRotateAt && !isVideo ? (
+                      <IconButton
+                        size="small"
+                        disabled={busy}
+                        onClick={() => onRotateAt(i)}
+                        sx={{
+                          width: 22,
+                          height: 22,
+                          bgcolor: '#fffef9',
+                          '&:hover': { bgcolor: '#f5efe4' },
+                        }}
+                        aria-label="Bild 90° drehen"
+                      >
+                        <RotateRightIcon sx={{ fontSize: 14 }} />
+                      </IconButton>
+                    ) : null}
+                    <IconButton
+                      size="small"
+                      disabled={busy}
+                      onClick={() => onRemoveAt(i)}
+                      sx={{
+                        width: 22,
+                        height: 22,
+                        bgcolor: '#fffef9',
+                        '&:hover': { bgcolor: '#f5efe4' },
+                      }}
+                      aria-label="Bild entfernen"
+                    >
+                      <DeleteOutlineIcon sx={{ fontSize: 14 }} />
+                    </IconButton>
+                  </Stack>
+                </Box>
+              );
+            })}
           </Box>
         )}
       </Box>
       <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75, display: 'block' }}>
-        {images.length} Bild{images.length === 1 ? '' : 'er'} → Vorschau rechts
+        {images.length} Medien · Pfeile links = Reihenfolge
       </Typography>
     </Box>
   );

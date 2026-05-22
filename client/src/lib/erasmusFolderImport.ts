@@ -37,7 +37,10 @@ export async function importErasmusPhotosFromFolderFiles(
   }
 
   revokeLocalPhotoPreviews(toImport);
-  const uploadFiles = toImport.map((p) => p.file);
+  const uploadFiles = toImport.map((p) => p.file).filter((f): f is File => !!f);
+  if (!uploadFiles.length) {
+    return { ok: false, message: 'Keine importierbaren Dateien.', showPicker: true };
+  }
   const urls = await importPhotoFilesUpload(siteId, pageDateStr, uploadFiles);
   const dates = await Promise.all(uploadFiles.map((f) => readCaptureDateISOFromFile(f)));
   const captureDateISO =

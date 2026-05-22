@@ -5,7 +5,12 @@ import {
   readLegacyLocalStorageRaw,
   clearLegacyLocalStorage,
 } from './storySitesDb';
-import { collectPageImages, pageHasLoadableDataImages } from './storyPageLayout';
+import {
+  collectPageImages,
+  pageHasApiStoryMedia,
+  pageHasLoadableDataImages,
+} from './storyPageLayout';
+import { addDaysToStoryPageDate } from './storyPageDate';
 
 export type StoryPage = {
   id: string;
@@ -18,6 +23,8 @@ export type StoryPage = {
   /** Bilder für die rechte Spalte (mehrere möglich) */
   galleryImages: string[];
   bodyHtml: string;
+  /** Thematische Seite: Text über volle Breite, keine Polaroid-Spalte rechts */
+  fullWidth?: boolean;
 };
 
 export type StorySite = {
@@ -85,6 +92,7 @@ function normalizePage(raw: unknown, index: number): StoryPage {
       };
     })(),
     bodyHtml: typeof p.bodyHtml === 'string' ? p.bodyHtml : '',
+    fullWidth: p.fullWidth === true,
   };
 }
 
@@ -332,15 +340,34 @@ function countSiteImages(site: StorySite): number {
   return site.pages.reduce((n, p) => n + collectPageImages(p).length, 0);
 }
 
-function pickPageForPreview(a: StoryPage, b: StoryPage): StoryPage {
-  const aData = pageHasLoadableDataImages(a);
-  const bData = pageHasLoadableDataImages(b);
-  if (aData && !bData) return a;
-  if (bData && !aData) return b;
-  return collectPageImages(a).length >= collectPageImages(b).length ? a : b;
+/** Lokale Seite vs. Server: Server-Medien schlagen veraltete data:-URLs. */
+function pickPageForPreview(local: StoryPage, server: StoryPage): StoryPage {
+  if (pageHasApiStoryMedia(server)) return server;
+  const localData = pageHasLoadableDataImages(local);
+  const serverData = pageHasLoadableDataImages(server);
+  if (localData && !serverData) return local;
+  if (serverData && !localData) return server;
+  if (!localData && !serverData) return server;
+  return collectPageImages(local).length >= collectPageImages(server).length ? local : server;
 }
 
-/** Lokale + Server-Version zusammenführen (data:-URLs bevorzugt). */
+/** Editor: Server als Basis (Medien-Dateien), lokale Ergänzungen nur für fehlende Unterseiten. */
+export function mergeSiteForEditor(local: StorySite, server: StorySite): StorySite {
+  const serverIds = new Set(server.pages.map((p) => p.id));
+  const extraLocal = local.pages.filter((p) => !serverIds.has(p.id));
+  const updatedAt =
+    Date.parse(local.updatedAt) >= Date.parse(server.updatedAt) ? local.updatedAt : server.updatedAt;
+  return {
+    ...server,
+    name: local.name || server.name,
+    country: local.country || server.country,
+    imageSourceFolder: local.imageSourceFolder || server.imageSourceFolder,
+    pages: [...server.pages, ...extraLocal],
+    updatedAt,
+  };
+}
+
+/** Vorschau-Tab: lokale + Server-Version (data:-URLs nur wenn Server keine API-Medien hat). */
 export function mergeSitesForPreview(primary: StorySite, secondary: StorySite): StorySite {
   const byId = new Map(secondary.pages.map((p) => [p.id, p]));
   const pages = primary.pages.map((serverPage) => {
@@ -374,13 +401,29 @@ export async function loadSiteForPreview(id: string): Promise<StorySite | null> 
   const local = getSiteById(id);
   const offline = pickLocalCandidate(snap, local);
 
-  // Snapshot aus „Vorschau öffnen“ (localStorage, alle Tabs) — hat meist data:-URLs
+  /** Server-Medien haben Vorrang vor frischem Snapshot (sonst „Medien nicht geladen“ bei Tag 2 …). */
+  let serverForSnap: StorySite | null = null;
+  try {
+    const res = await fetch(`/api/story-sites/${encodeURIComponent(id)}`, { cache: 'no-store' });
+    if (res.ok) serverForSnap = normalizeStorySite(await res.json());
+  } catch {
+    /* offline */
+  }
+
   if (snap && countSiteImages(snap) > 0) {
     try {
       const writtenAt = localStorage.getItem(`${PREVIEW_SNAPSHOT_TIME_PREFIX}${id}`);
       const snapAge = writtenAt ? Date.now() - Date.parse(writtenAt) : 0;
-      if (!writtenAt || snapAge < 30 * 60 * 1000) return snap;
+      if (!writtenAt || snapAge < 30 * 60 * 1000) {
+        if (serverForSnap?.pages.some((p) => pageHasApiStoryMedia(p))) {
+          return mergeSitesForPreview(snap, serverForSnap);
+        }
+        return snap;
+      }
     } catch {
+      if (serverForSnap?.pages.some((p) => pageHasApiStoryMedia(p))) {
+        return mergeSitesForPreview(snap, serverForSnap);
+      }
       return snap;
     }
   }
@@ -447,10 +490,40 @@ export function readPreviewSnapshot(id: string): StorySite | null {
   return null;
 }
 
+/** Veralteten Vorschau-Snapshot löschen (enthält oft defekte data:-Galerien). */
+export function clearPreviewSnapshot(id: string): void {
+  try {
+    localStorage.removeItem(`${PREVIEW_SNAPSHOT_PREFIX}${id}`);
+    localStorage.removeItem(`${PREVIEW_SNAPSHOT_TIME_PREFIX}${id}`);
+    sessionStorage.removeItem(`${PREVIEW_SNAPSHOT_PREFIX}${id}`);
+  } catch {
+    /* ignore */
+  }
+}
+
+function defaultsForNextPage(site: StorySite): Partial<StoryPage> {
+  const last = site.pages[site.pages.length - 1];
+  const nextIndex = site.pages.length + 1;
+  if (!last) {
+    return { title: `Tag ${nextIndex}` };
+  }
+  const titleMatch = last.title.trim().match(/^Tag\s*(\d+)\s*$/i);
+  const title = titleMatch ? `Tag ${parseInt(titleMatch[1], 10) + 1}` : `Tag ${nextIndex}`;
+  return {
+    title,
+    subtitle: '',
+    dateStr: addDaysToStoryPageDate(last.dateStr, 1),
+    location: last.location?.trim() ?? '',
+    bodyHtml: '',
+    galleryImages: [],
+    heroImage: '',
+  };
+}
+
 export function addPageToSite(site: StorySite): StorySite {
   return {
     ...site,
-    pages: [...site.pages, emptyPage()],
+    pages: [...site.pages, emptyPage(defaultsForNextPage(site))],
   };
 }
 
@@ -462,13 +535,86 @@ export function removePageFromSite(site: StorySite, pageId: string): StorySite {
   };
 }
 
+/** Titel wie „Tag 1“, „Tag 12“ — Tagebuch-Tag; alles andere gilt als thematische Unterseite. */
+export function isStoryDayPageTitle(title: string): boolean {
+  return /^Tag\s*\d+\s*$/i.test(title.trim());
+}
+
+export function partitionStoryPages(pages: StoryPage[]): { thematic: StoryPage[]; days: StoryPage[] } {
+  const thematic: StoryPage[] = [];
+  const days: StoryPage[] = [];
+  for (const p of pages) {
+    if (isStoryDayPageTitle(p.title)) days.push(p);
+    else thematic.push(p);
+  }
+  return { thematic, days };
+}
+
+export function mergeStoryPagePartitions(thematic: StoryPage[], days: StoryPage[]): StoryPage[] {
+  return [...thematic, ...days];
+}
+
+export function normalizeStoryPageOrder(site: StorySite): StorySite {
+  const { thematic, days } = partitionStoryPages(site.pages);
+  return { ...site, pages: mergeStoryPagePartitions(thematic, days) };
+}
+
+function reorderPageList(pages: StoryPage[], activeId: string, overId: string): StoryPage[] {
+  const oldIndex = pages.findIndex((p) => p.id === activeId);
+  const newIndex = pages.findIndex((p) => p.id === overId);
+  if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return pages;
+  const next = pages.slice();
+  const [removed] = next.splice(oldIndex, 1);
+  next.splice(newIndex, 0, removed);
+  return next;
+}
+
 export function movePage(site: StorySite, pageId: string, dir: -1 | 1): StorySite {
-  const idx = site.pages.findIndex((p) => p.id === pageId);
-  if (idx < 0) return site;
+  const page = site.pages.find((p) => p.id === pageId);
+  if (!page) return site;
+  const { thematic, days } = partitionStoryPages(site.pages);
+  const list = isStoryDayPageTitle(page.title) ? days : thematic;
+  const idx = list.findIndex((p) => p.id === pageId);
   const j = idx + dir;
-  if (j < 0 || j >= site.pages.length) return site;
+  if (j < 0 || j >= list.length) return site;
+  const next = list.slice();
+  [next[idx], next[j]] = [next[j], next[idx]];
+  return {
+    ...site,
+    pages: isStoryDayPageTitle(page.title)
+      ? mergeStoryPagePartitions(thematic, next)
+      : mergeStoryPagePartitions(next, days),
+  };
+}
+
+/** Unterseiten per Drag-and-Drop umsortieren (activeId → overId, nur innerhalb einer Gruppe). */
+export function reorderPagesInGroup(
+  site: StorySite,
+  group: 'thematic' | 'days',
+  activeId: string,
+  overId: string,
+): StorySite {
+  const { thematic, days } = partitionStoryPages(site.pages);
+  const list = group === 'thematic' ? thematic : days;
+  const reordered = reorderPageList(list, activeId, overId);
+  if (reordered === list) return site;
+  return {
+    ...site,
+    pages:
+      group === 'thematic'
+        ? mergeStoryPagePartitions(reordered, days)
+        : mergeStoryPagePartitions(thematic, reordered),
+  };
+}
+
+/** @deprecated Nutze reorderPagesInGroup — behält globale Reihenfolge bei. */
+export function reorderPages(site: StorySite, activeId: string, overId: string): StorySite {
+  const oldIndex = site.pages.findIndex((p) => p.id === activeId);
+  const newIndex = site.pages.findIndex((p) => p.id === overId);
+  if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return site;
   const pages = site.pages.slice();
-  [pages[idx], pages[j]] = [pages[j], pages[idx]];
+  const [removed] = pages.splice(oldIndex, 1);
+  pages.splice(newIndex, 0, removed);
   return { ...site, pages };
 }
 

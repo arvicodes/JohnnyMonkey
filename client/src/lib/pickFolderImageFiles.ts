@@ -1,4 +1,4 @@
-import { isLikelyImageFile } from './storyImageUtils';
+import { isLikelyStoryMediaFile } from './storyMediaUtils';
 
 const MAX_FOLDER_DEPTH = 6;
 
@@ -31,7 +31,7 @@ async function collectImageFilesFromDirectoryHandle(
   for await (const [, entry] of handle.entries()) {
     if (entry.kind === 'file') {
       const file = await entry.getFile();
-      if (isLikelyImageFile(file)) out.push(file);
+      if (isLikelyStoryMediaFile(file)) out.push(file);
     } else if (entry.kind === 'directory') {
       out.push(...(await collectImageFilesFromDirectoryHandle(entry, depth + 1)));
     }
@@ -81,7 +81,7 @@ async function traverseEntry(entry: FsEntry, out: File[], depth: number): Promis
     await new Promise<void>((resolve) => {
       entry.file(
         (file) => {
-          if (isLikelyImageFile(file)) out.push(file);
+          if (isLikelyStoryMediaFile(file)) out.push(file);
           resolve();
         },
         () => resolve(),
@@ -118,7 +118,7 @@ export async function collectImageFilesFromDataTransfer(dt: DataTransfer | null)
   if (!out.length && dt.files?.length) {
     for (let i = 0; i < dt.files.length; i++) {
       const f = dt.files[i];
-      if (isLikelyImageFile(f)) out.push(f);
+      if (isLikelyStoryMediaFile(f)) out.push(f);
     }
   }
   return out;

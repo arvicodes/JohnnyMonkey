@@ -68,6 +68,44 @@ export function parseStoryPageDate(dateStr: string): string | null {
   return null;
 }
 
+/** Folgetag zu einem Unterseiten-Datum (deutsches Format); bei leer/ungültig: heute + days. */
+export function addDaysToStoryPageDate(dateStr: string, days: number): string {
+  const iso = parseStoryPageDate(dateStr);
+  const base = iso
+    ? (() => {
+        const [y, m, d] = iso.split('-').map((x) => parseInt(x, 10));
+        return new Date(y, m - 1, d);
+      })()
+    : new Date();
+  base.setDate(base.getDate() + days);
+  const nextIso = toIso(base.getFullYear(), base.getMonth() + 1, base.getDate());
+  return nextIso ? formatIsoDateDe(nextIso) : dateStr;
+}
+
+/** Wochentags-Prefix aus Feldeingabe entfernen (z. B. „Mo., 4. Mai 2026“ → „4. Mai 2026“). */
+export function stripWeekdayFromDateInput(input: string): string {
+  return input.trim().replace(/^[A-Za-zäöüÄÖÜß]{2,6}\.,\s*/u, '').trim();
+}
+
+/** Eingabe normalisieren; unbekanntes Format wird unverändert (getrimmt) gespeichert. */
+export function commitStoryPageDateInput(input: string): string {
+  const stripped = stripWeekdayFromDateInput(input);
+  if (!stripped) return '';
+  const iso = parseStoryPageDate(stripped);
+  return iso ? formatIsoDateDe(iso) : stripped;
+}
+
+/** z. B. „Mo., 4. Mai 2026“ — für Listen und Vorschau */
+export function formatStoryPageDateWithWeekday(dateStr: string): string {
+  const raw = dateStr?.trim();
+  if (!raw) return '';
+  const iso = parseStoryPageDate(raw);
+  if (!iso) return raw;
+  const [y, m, d] = iso.split('-').map((x) => parseInt(x, 10));
+  const weekday = new Date(y, m - 1, d).toLocaleDateString('de-DE', { weekday: 'short' });
+  return `${weekday}, ${formatIsoDateDe(iso)}`;
+}
+
 export function formatIsoDateDe(iso: string): string {
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!m) return iso;

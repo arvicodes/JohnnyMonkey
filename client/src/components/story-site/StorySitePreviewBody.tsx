@@ -1,17 +1,22 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Box, Typography, Paper, Divider } from '@mui/material';
 import type { StoryPage, StorySite } from '../../lib/storySitesStorage';
+import { isStoryDayPageTitle } from '../../lib/storySitesStorage';
 import {
   splitStoryBodyHtml,
   collectPageImages,
+  buildSitePreviewImageIndex,
   normalizePageForPreview,
   STORY_BEIGE,
   STORY_SCRAPBOOK_BG,
   storyPageAnchorId,
   storyPageScrollMarginSx,
 } from '../../lib/storyPageLayout';
+import { storySnippetContainerSx } from '../../lib/storyHighlightSnippets';
 import { StoryPreviewImage } from './StoryPreviewImage';
 import { StoryPreviewQuickNav } from './StoryPreviewQuickNav';
+import { StoryPreviewImageLightbox } from './StoryPreviewImageLightbox';
+import { formatStoryPageDateWithWeekday } from '../../lib/storyPageDate';
 
 const washiCorner = (side: 'tl' | 'tr' | 'bl' | 'br') => {
   const base = {
@@ -42,19 +47,42 @@ function PolaroidPhoto({
   src,
   alt,
   rotation,
+  onClick,
 }: {
   src: string;
   alt: string;
   rotation: number;
+  onClick?: () => void;
 }) {
   return (
     <Box
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
       sx={{
         width: '100%',
         maxWidth: '100%',
         overflow: 'hidden',
         boxSizing: 'border-box',
         p: 1,
+        cursor: onClick ? 'pointer' : 'default',
+        borderRadius: 1,
+        '&:hover': onClick
+          ? { bgcolor: 'rgba(141, 110, 99, 0.08)' }
+          : undefined,
+        '&:focus-visible': onClick
+          ? { outline: '2px solid rgba(255, 193, 7, 0.7)', outlineOffset: 2 }
+          : undefined,
       }}
     >
       <Box
@@ -100,10 +128,19 @@ function HeaderDot() {
   );
 }
 
-export function StorySitePageBlock({ page }: { page: StoryPage }) {
+export function StorySitePageBlock({
+  page,
+  imageIndexOffset,
+  onPhotoClick,
+}: {
+  page: StoryPage;
+  imageIndexOffset: number;
+  onPhotoClick: (globalIndex: number) => void;
+}) {
   const normalized = normalizePageForPreview(page);
   const { textHtml } = splitStoryBodyHtml(normalized.bodyHtml || '');
-  const images = collectPageImages(normalized);
+  const fullWidth = !isStoryDayPageTitle(normalized.title) && !!normalized.fullWidth;
+  const images = fullWidth ? [] : collectPageImages(normalized);
   const rotations = [-2, 2, -1.5, 2, 1.5, -2];
 
   const headerParts: React.ReactNode[] = [];
@@ -159,7 +196,7 @@ export function StorySitePageBlock({ page }: { page: StoryPage }) {
           lineHeight: 1.25,
         }}
       >
-        {normalized.dateStr.trim()}
+        {formatStoryPageDateWithWeekday(normalized.dateStr) || normalized.dateStr.trim()}
       </Typography>
     );
   }
@@ -237,11 +274,13 @@ export function StorySitePageBlock({ page }: { page: StoryPage }) {
           {headerParts}
         </Box>
 
-        {/* Text links, Bilder rechts — Kopfzeile bleibt darüber */}
+        {/* Text links, Bilder rechts (oder volle Breite ohne Bildspalte) */}
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 2fr) minmax(0, 3fr)' },
+            gridTemplateColumns: fullWidth
+              ? '1fr'
+              : { xs: '1fr', md: 'minmax(0, 2fr) minmax(0, 3fr)' },
             gap: { xs: 2, md: 2 },
             width: '100%',
             maxWidth: '100%',
@@ -259,13 +298,14 @@ export function StorySitePageBlock({ page }: { page: StoryPage }) {
                   color: '#4e342e',
                   fontSize: { xs: '0.92rem', md: '1rem' },
                   lineHeight: 1.65,
-                  textAlign: 'left',
-                  '& p': { mb: 1.25 },
+                  textAlign: 'justify',
+                  '& p, & div, & li': { mb: 1.25, textAlign: 'justify' },
                   '& ul, & ol': { pl: 2.5, mb: 1.25 },
-                  '& img': { display: 'none' },
+                  ...(!fullWidth && { '& img': { display: 'none' } }),
                   '& [align="justify"], & [style*="text-align: justify"], & [style*="text-align:justify"]': {
                     textAlign: 'justify',
                   },
+                  ...storySnippetContainerSx,
                 }}
                 dangerouslySetInnerHTML={{ __html: textHtml }}
               />
@@ -276,64 +316,68 @@ export function StorySitePageBlock({ page }: { page: StoryPage }) {
             )}
           </Box>
 
-          <Box
-            sx={{
-              position: 'relative',
-              minHeight: { xs: 120, md: 160 },
-              alignSelf: 'start',
-              bgcolor: 'rgba(250, 246, 238, 0.85)',
-              borderRadius: 1.5,
-              border: '1px dashed rgba(141, 110, 99, 0.25)',
-              p: { xs: 1.25, md: 1.5 },
-              pr: { xs: 1, md: 1.25 },
-              width: '100%',
-              maxWidth: '100%',
-              minWidth: 0,
-              overflow: 'hidden',
-              boxSizing: 'border-box',
-              contain: 'layout',
-            }}
-          >
-            {images.length === 0 ? (
-              <Typography
-                variant="body2"
-                sx={{
-                  textAlign: 'center',
-                  fontStyle: 'italic',
-                  color: '#8d6e63',
-                  px: 2,
-                  py: 2,
-                  width: '100%',
-                }}
-              >
-                Bilder in der Galerie — sie erscheinen hier rechts als Polaroids.
-              </Typography>
-            ) : (
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                  gap: { xs: 1, md: 1.25 },
-                  width: '100%',
-                  maxWidth: '100%',
-                  minWidth: 0,
-                  alignContent: 'start',
-                }}
-              >
-                {images.map((src, i) => (
-                  <Box key={`${src.slice(0, 48)}-${i}`} sx={{ minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
-                    <PolaroidPhoto
-                      src={src}
-                      alt=""
-                      rotation={rotations[i % rotations.length]}
-                    />
-                  </Box>
-                ))}
-              </Box>
-            )}
-          </Box>
+          {!fullWidth ? (
+            <Box
+              sx={{
+                position: 'relative',
+                minHeight: { xs: 120, md: 160 },
+                alignSelf: 'start',
+                bgcolor: 'rgba(250, 246, 238, 0.85)',
+                borderRadius: 1.5,
+                border: '1px dashed rgba(141, 110, 99, 0.25)',
+                p: { xs: 1.25, md: 1.5 },
+                pr: { xs: 1, md: 1.25 },
+                width: '100%',
+                maxWidth: '100%',
+                minWidth: 0,
+                overflow: 'hidden',
+                boxSizing: 'border-box',
+                contain: 'layout',
+              }}
+            >
+              {images.length === 0 ? (
+                <Typography
+                  variant="body2"
+                  sx={{
+                    textAlign: 'center',
+                    fontStyle: 'italic',
+                    color: '#8d6e63',
+                    px: 2,
+                    py: 2,
+                    width: '100%',
+                  }}
+                >
+                  Bilder in der Galerie — sie erscheinen hier rechts als Polaroids.
+                </Typography>
+              ) : (
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                    gap: { xs: 1, md: 1.25 },
+                    width: '100%',
+                    maxWidth: '100%',
+                    minWidth: 0,
+                    alignContent: 'start',
+                  }}
+                >
+                  {images.map((src, i) => (
+                    <Box key={`${src.slice(0, 48)}-${i}`} sx={{ minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
+                      <PolaroidPhoto
+                        src={src}
+                        alt=""
+                        rotation={rotations[i % rotations.length]}
+                        onClick={() => onPhotoClick(imageIndexOffset + i)}
+                      />
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Box>
+          ) : null}
         </Box>
       </Box>
+
     </Box>
   );
 }
@@ -345,6 +389,12 @@ type PreviewBodyProps = {
 };
 
 export function StorySitePreviewBody({ site, activePageId, onNavigatePage }: PreviewBodyProps) {
+  const { images: allImages, pageStartIndex } = useMemo(
+    () => buildSitePreviewImageIndex(site.pages),
+    [site.pages]
+  );
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
   return (
     <Paper
       elevation={0}
@@ -389,8 +439,21 @@ export function StorySitePreviewBody({ site, activePageId, onNavigatePage }: Pre
         onSelectPage={onNavigatePage}
       />
       {site.pages.map((p) => (
-        <StorySitePageBlock key={p.id} page={p} />
+        <StorySitePageBlock
+          key={p.id}
+          page={p}
+          imageIndexOffset={pageStartIndex.get(p.id) ?? 0}
+          onPhotoClick={setLightboxIndex}
+        />
       ))}
+
+      <StoryPreviewImageLightbox
+        images={allImages}
+        open={lightboxIndex !== null && allImages.length > 0}
+        index={lightboxIndex ?? 0}
+        onClose={() => setLightboxIndex(null)}
+        onIndexChange={setLightboxIndex}
+      />
     </Paper>
   );
 }

@@ -14,6 +14,14 @@ import {
   Image,
 } from '@mui/icons-material';
 import { fileToStoryImageDataUrl } from '../../lib/storyImageUtils';
+import {
+  createStorySnippetElement,
+  selectElementContents,
+  STORY_SNIPPET_OPTIONS,
+  storySnippetContainerSx,
+  type StorySnippetVariant,
+} from '../../lib/storyHighlightSnippets';
+import { attachStorySnippetDrag, prepareStorySnippetsInHost } from '../../lib/storySnippetDrag';
 
 interface RichTextEditorProps {
   value: string;
@@ -27,6 +35,12 @@ interface RichTextEditorProps {
   /** false: Einfügen nur als Text (keine Bilder aus Zwischenablage / kein Bild-Button) */
   allowPasteImages?: boolean;
   showImageToolbar?: boolean;
+  /** Stories: Blocksatz als Standard */
+  defaultTextAlign?: 'left' | 'justify';
+  /** Story-Tagebuch: farbige Highlight-Schnipsel einfügen */
+  enableStorySnippets?: boolean;
+  /** Lehrer-Markierungen (M/O/F/A …) — in Stories meist aus */
+  showLessonMarkup?: boolean;
 }
 
 export type RichTextEditorHandle = {
@@ -117,6 +131,8 @@ function sanitizeWordPasteHtml(html: string): string {
 
   return sanitizeEditorHtmlForLeftAlign(s);
 }
+
+const JUSTIFY_BLOCK_STYLE = 'text-align: justify';
 
 function sanitizeEditorHtmlForLeftAlign(html: string): string {
   if (!html || typeof html !== 'string') return html;
@@ -341,14 +357,20 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
   imageStorage = 'server',
   allowPasteImages = true,
   showImageToolbar = true,
+  defaultTextAlign = 'left',
+  enableStorySnippets = false,
+  showLessonMarkup = true,
 },
   ref,
 ) {
+  const useJustify = defaultTextAlign === 'justify';
   const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
   const [isUnderline, setIsUnderline] = useState(false);
   const [selectedColor, setSelectedColor] = useState('#000000');
-  const [alignment, setAlignment] = useState<'left' | 'center' | 'right' | 'justify'>('left');
+  const [alignment, setAlignment] = useState<'left' | 'center' | 'right' | 'justify'>(
+    useJustify ? 'justify' : 'left',
+  );
   const [isUploading, setIsUploading] = useState(false);
   const [hexInput, setHexInput] = useState('#000000');
   const [fontSize, setFontSize] = useState('1rem');
@@ -626,33 +648,54 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
 
     const currentContent = host.innerHTML;
     const safeValue = sanitizeEditorHtmlForLeftAlign(value);
+    const displayValue =
+      useJustify && safeValue.trim()
+        ? (() => {
+            const d = document.createElement('div');
+            d.innerHTML = safeValue;
+            d.querySelectorAll('p, div').forEach((el) => {
+              if (el.tagName === 'DIV' && el.querySelector('p')) return;
+              let style = el.getAttribute('style') ?? '';
+              if (!/text-align\s*:\s*justify/i.test(style)) {
+                style = style
+                  .replace(/text-align\s*:\s*(?:left|center|right)\s*;?/gi, '')
+                  .trim();
+                el.setAttribute('style', style ? `${style}; ${JUSTIFY_BLOCK_STYLE}` : JUSTIFY_BLOCK_STYLE);
+                el.setAttribute('align', 'justify');
+              }
+            });
+            return d.innerHTML;
+          })()
+        : safeValue;
     const editorEmpty = !currentContent || currentContent.trim() === '' || currentContent === '<br>' || currentContent === '<br/>';
     const valueNonEmpty = value && value.trim() !== '';
     const valueChangedExternally = value !== lastReceivedValueRef.current;
     lastReceivedValueRef.current = value;
 
     // Bereits identisch (nach Links-Sanitisierung): nichts anfassen
-    if (valueChangedExternally && currentContent === safeValue) {
-      lastValueRef.current = safeValue;
+    if (valueChangedExternally && currentContent === displayValue) {
+      lastValueRef.current = displayValue;
       return;
     }
 
     const shouldUpdate = valueChangedExternally || (editorEmpty && valueNonEmpty);
     if (shouldUpdate) {
       const editorHasImages = host.querySelectorAll('img:not([data-editor-icon])').length > 0;
-      const valueHasImages = /<img\b/i.test(safeValue);
+      const valueHasImages = /<img\b/i.test(displayValue);
       if (editorHasImages && !valueHasImages) {
         flushEditorToParent();
         return;
       }
       const cursorPosition = saveCursorPosition();
-      host.innerHTML = safeValue;
-      lastValueRef.current = safeValue;
+      host.innerHTML = displayValue;
+      lastValueRef.current = displayValue;
+      if (enableStorySnippets) prepareStorySnippetsInHost(host);
       requestAnimationFrame(() => {
         restoreCursorPosition(cursorPosition);
+        if (enableStorySnippets) prepareStorySnippetsInHost(host);
       });
     }
-  }, [value, showFontSizePicker, flushEditorToParent]);
+  }, [value, showFontSizePicker, flushEditorToParent, useJustify, enableStorySnippets]);
 
   // Parent-Wert spiegeln (ohne DOM anzufassen)
   useEffect(() => {
@@ -934,6 +977,26 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
     }
   };
 
+  const insertStoryHighlightSnippet = (variant: StorySnippetVariant) => {
+    if (!editorRef.current) return;
+    editorRef.current.focus();
+    const snippet = createStorySnippetElement(variant);
+    const selection = window.getSelection();
+    try {
+      if (selection && selection.rangeCount > 0 && editorRef.current.contains(selection.anchorNode)) {
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(snippet);
+      } else {
+        editorRef.current.appendChild(snippet);
+      }
+      selectElementContents(snippet);
+      handleInput();
+    } catch (e) {
+      console.warn('insertStoryHighlightSnippet:', e);
+    }
+  };
+
   const createList = (ordered: boolean) => {
     try {
       execCommand(ordered ? 'insertOrderedList' : 'insertUnorderedList');
@@ -956,13 +1019,30 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
 
   const handleInput = useCallback(() => {
     if (!editorRef.current) return;
+    if (enableStorySnippets) prepareStorySnippetsInHost(editorRef.current);
     replaceDashGtWithArrowInHost(editorRef.current);
     const newValue = editorRef.current.innerHTML;
     // Only trigger onChange if editor content actually changed.
     // Wichtig: Wir filtern nur gegen den letzten bekannten Editor-Wert,
     // nicht zusätzlich gegen `value` (das kann im selben Event-Tick noch stale sein).
     if (newValue !== lastValueRef.current) debouncedOnChange(newValue);
-  }, [debouncedOnChange]);
+  }, [debouncedOnChange, enableStorySnippets]);
+
+  const handleInputRef = useRef(handleInput);
+  handleInputRef.current = handleInput;
+
+  useEffect(() => {
+    if (!enableStorySnippets || !editorRef.current) return;
+    const host = editorRef.current;
+    prepareStorySnippetsInHost(host);
+    const detachDrag = attachStorySnippetDrag(host, () => handleInputRef.current());
+    const observer = new MutationObserver(() => prepareStorySnippetsInHost(host));
+    observer.observe(host, { childList: true, subtree: true });
+    return () => {
+      detachDrag();
+      observer.disconnect();
+    };
+  }, [enableStorySnippets]);
 
   /** <img> darf keine Kindelemente haben – Griff sitzt im Wrapper-Span. */
   const ensureEditorImageWrap = (img: HTMLImageElement): HTMLSpanElement => {
@@ -1360,7 +1440,9 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
               .split('\n')
               .map((line) => escapeHtmlText(line))
               .join('<br>');
-            return `<p>${inner}</p>`;
+            return useJustify
+              ? `<p align="justify" style="${JUSTIFY_BLOCK_STYLE}">${inner}</p>`
+              : `<p>${inner}</p>`;
           })
           .join('');
         document.execCommand('insertHTML', false, sanitizeEditorHtmlForLeftAlign(blocks || ''));
@@ -1488,6 +1570,56 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
           </IconButton>
         </Tooltip>
 
+        {enableStorySnippets ? (
+          <>
+            <Box
+              component="span"
+              sx={{
+                width: '1px',
+                height: 22,
+                bgcolor: appColors.border,
+                mx: 0.25,
+                alignSelf: 'center',
+              }}
+            />
+            {STORY_SNIPPET_OPTIONS.map((opt) => (
+              <Tooltip key={opt.variant} title={opt.tooltip}>
+                <IconButton
+                  size="small"
+                  onClick={() => insertStoryHighlightSnippet(opt.variant)}
+                  aria-label={opt.tooltip}
+                  sx={{
+                    width: compact ? 28 : 32,
+                    height: compact ? 28 : 32,
+                    p: 0.5,
+                    border: `2px solid ${opt.border}`,
+                    bgcolor: opt.swatch,
+                    '&:hover': {
+                      bgcolor: opt.swatch,
+                      filter: 'brightness(0.96)',
+                      borderColor: opt.border,
+                    },
+                  }}
+                >
+                  <Box
+                    component="span"
+                    sx={{
+                      fontSize: 11,
+                      fontWeight: 800,
+                      color: '#5d4037',
+                      lineHeight: 1,
+                    }}
+                  >
+                    +
+                  </Box>
+                </IconButton>
+              </Tooltip>
+            ))}
+          </>
+        ) : null}
+
+        {showLessonMarkup ? (
+          <>
         {/* Custom Defaults: Material/Operator/Ansprache/Fachbegriff/Folie/Anweisung */}
         <Tooltip title="Material (orange, fett, dick unterstrichen)">
           <IconButton
@@ -1624,6 +1756,8 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
             <Box component="span" sx={{ fontSize: 12, fontWeight: 900 }}>A</Box>
           </IconButton>
         </Tooltip>
+          </>
+        ) : null}
         
         {/* Lists */}
         <Tooltip title="Aufzählungsliste">
@@ -2018,7 +2152,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
           pb: compact ? 1.25 : 1.5,
           ml: 0,
           textIndent: 0,
-          textAlign: 'left',
+          textAlign: useJustify ? 'justify' : 'left',
           direction: 'ltr',
           overflowWrap: 'anywhere',
           wordBreak: 'break-word',
@@ -2034,7 +2168,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
             marginLeft: '0 !important',
             paddingLeft: '0 !important',
             textIndent: '0 !important',
-            textAlign: 'left',
+            textAlign: useJustify ? 'justify' : 'left',
             marginTop: '0.35em',
             marginBottom: '0.35em',
           },
@@ -2070,13 +2204,14 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
             marginRight: '0 !important',
             paddingLeft: '0 !important',
             textIndent: '0 !important',
-            textAlign: 'left',
+            textAlign: useJustify ? 'justify' : 'left',
           },
           '& blockquote': {
             marginLeft: '0 !important',
             paddingLeft: '0.75em !important',
             textAlign: 'left',
           },
+          ...storySnippetContainerSx,
           '&:focus': {
             boxShadow: `0 0 0 2px ${appColors.primary}40`
           },

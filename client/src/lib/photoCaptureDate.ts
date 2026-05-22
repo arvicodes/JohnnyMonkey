@@ -1,5 +1,6 @@
 import exifr from 'exifr';
 import { isHeicFile } from './heicPreview';
+import { isLikelyVideoFile } from './storyMediaUtils';
 
 const EXIF_DATE_PICK = [
   'DateTimeOriginal',
@@ -45,6 +46,7 @@ function extractDateFromFileName(fileName: string): string | null {
   const patterns = [
     /(?:^|[^\d])(\d{4})[-_]?(\d{2})[-_]?(\d{2})(?:[^\d]|$)/,
     /(?:^|[^\d])(\d{2})[-_]?(\d{2})[-_]?(\d{4})(?:[^\d]|$)/,
+    /(?:^|[^\d])(\d{1,2})[.\-_](\d{1,2})[.\-_](\d{4})(?:[^\d]|$)/,
   ];
   for (const re of patterns) {
     const m = base.match(re);
@@ -60,11 +62,33 @@ function extractDateFromFileName(fileName: string): string | null {
   return null;
 }
 
-/** Aufnahmedatum: EXIF (auch HEIC), sonst Datum im Dateinamen. */
+/** Datum aus Ordnerpfad (z. B. …/2026-05-06/clip.mov). */
+export function extractDateFromRelativePath(relativePath: string): string | null {
+  const parts = relativePath.replace(/\\/g, '/').split('/').filter(Boolean);
+  for (const part of parts) {
+    const folderIso = part.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (folderIso) return `${folderIso[1]}-${folderIso[2]}-${folderIso[3]}`;
+    const fromPart = extractDateFromFileName(part);
+    if (fromPart) return fromPart;
+  }
+  return extractDateFromFileName(relativePath);
+}
+
+function fileLastModifiedDateISO(file: File): string | null {
+  if (!file.lastModified || file.lastModified <= 0) return null;
+  const d = new Date(file.lastModified);
+  if (Number.isNaN(d.getTime())) return null;
+  return exifValueToDateISO(d);
+}
+
+/** Aufnahmedatum: EXIF (auch HEIC/MOV), Pfad, Dateiname, bei Video ggf. Änderungsdatum. */
 export async function readCaptureDateISOFromFile(file: File): Promise<string | null> {
-  const tryParse = async (input: Blob | File) => {
+  const tryParse = async (
+    input: Blob | File,
+    opts: { pick?: string[]; reviveValues?: boolean } = EXIF_PARSE_OPTS,
+  ) => {
     try {
-      const tags = await exifr.parse(input, EXIF_PARSE_OPTS);
+      const tags = await exifr.parse(input, opts);
       return firstExifDateISO(tags as Record<string, unknown>);
     } catch {
       return null;
@@ -72,12 +96,31 @@ export async function readCaptureDateISOFromFile(file: File): Promise<string | n
   };
 
   let fromExif = await tryParse(file);
+  if (!fromExif && isLikelyVideoFile(file)) {
+    fromExif = await tryParse(file, {
+      pick: [...EXIF_DATE_PICK, 'TrackCreateDate', 'CreationTime'] as string[],
+      reviveValues: false,
+    });
+  }
   if (!fromExif && isHeicFile(file)) {
     const buf = await file.arrayBuffer();
     fromExif = await tryParse(new Blob([buf], { type: 'image/heic' }));
   }
   if (fromExif) return fromExif;
-  return extractDateFromFileName(file.name);
+
+  const rel = (file as File & { webkitRelativePath?: string }).webkitRelativePath?.trim() ?? '';
+  if (rel) {
+    const fromPath = extractDateFromRelativePath(rel);
+    if (fromPath) return fromPath;
+  }
+
+  const fromName = extractDateFromFileName(file.name);
+  if (fromName) return fromName;
+
+  if (isLikelyVideoFile(file)) {
+    return fileLastModifiedDateISO(file);
+  }
+  return null;
 }
 
 /** Häufigstes Aufnahmedatum in der Auswahl (für Unterseiten-Datum). */
