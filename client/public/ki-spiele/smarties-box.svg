@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" role="img" aria-label="Smarties Mini Box">
+  <defs>
+    <linearGradient id="boxRed" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e53935"/>
+      <stop offset="100%" stop-color="#b71c1c"/>
+    </linearGradient>
+    <linearGradient id="boxSide" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#c62828"/>
+      <stop offset="100%" stop-color="#8e0000"/>
+    </linearGradient>
+  </defs>
+  <rect x="40" y="48" width="220" height="150" rx="10" fill="url(#boxRed)" stroke="#7f0000" stroke-width="3"/>
+  <polygon points="260,48 290,68 290,218 260,198" fill="url(#boxSide)" stroke="#7f0000" stroke-width="3"/>
+  <polygon points="40,48 70,68 290,68 260,48" fill="#ef5350" stroke="#7f0000" stroke-width="3"/>
+  <rect x="72" y="78" width="156" height="88" rx="6" fill="#fff8e1" stroke="#5d4037" stroke-width="2"/>
+  <text x="150" y="118" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="900" fill="#c62828">Smarties</text>
+  <text x="150" y="142" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" fill="#5d4037">Mini Box</text>
+  <circle cx="98" cy="168" r="9" fill="#E53935"/>
+  <circle cx="122" cy="168" r="9" fill="#FB8C00"/>
+  <circle cx="146" cy="168" r="9" fill="#FDD835"/>
+  <circle cx="170" cy="168" r="9" fill="#43A047"/>
+  <circle cx="194" cy="168" r="9" fill="#1E88E5"/>
+  <circle cx="218" cy="168" r="9" fill="#8E24AA"/>
+  <circle cx="110" cy="186" r="9" fill="#EC407A"/>
+  <circle cx="134" cy="186" r="9" fill="#6D4C41"/>
+  <circle cx="158" cy="186" r="9" fill="#E53935"/>
+  <circle cx="182" cy="186" r="9" fill="#43A047"/>
+  <circle cx="206" cy="186" r="9" fill="#FB8C00"/>
+</svg>

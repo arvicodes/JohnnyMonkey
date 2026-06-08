@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KI Memory</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #eef3f8;
+      color: #111827;
+      line-height: 1.45;
+    }
+    .game-shell {
+      min-height: 100vh;
+      padding: 8px;
+      position: relative;
+    }
+    .game-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 4px 8px 10px;
+    }
+    .game-title {
+      margin: 0;
+      font-size: clamp(1rem, 2.5vw, 1.35rem);
+      font-weight: 900;
+    }
+    .btn {
+      font: inherit;
+      font-weight: 700;
+      border-radius: 6px;
+      border: 1px solid rgba(0,0,0,0.23);
+      background: #fff;
+      color: #374151;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      white-space: nowrap;
+    }
+    .game-layout {
+      display: grid;
+      grid-template-columns: minmax(120px, 180px) minmax(0, 1fr) minmax(120px, 180px);
+      gap: 10px;
+      align-items: start;
+    }
+    @media (max-width: 768px) {
+      .game-layout { grid-template-columns: 1fr; }
+      .team-panel { min-height: 58px !important; flex-direction: row !important; }
+    }
+    .team-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: calc(100vh - 56px);
+      padding: 12px 8px;
+      border-radius: 12px;
+      text-align: center;
+      border: 5px solid #cbd5e1;
+      background: #e5e7eb;
+      color: #64748b;
+      opacity: 0.55;
+      filter: grayscale(1);
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      font: inherit;
+    }
+    .team-panel.active {
+      opacity: 1;
+      filter: none;
+      color: #fff;
+      border-color: currentColor;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.15);
+    }
+    .team-panel.winner {
+      border-width: 8px;
+      border-color: #facc15;
+      box-shadow: 0 0 0 10px rgba(250,204,21,0.35);
+    }
+    .team-animal { font-size: clamp(2rem, 5vw, 4rem); line-height: 1; }
+    .team-name { font-size: 1rem; font-weight: 1000; }
+    .team-score { font-size: clamp(1.2rem, 3vw, 2rem); font-weight: 1000; }
+    .team-badge {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #facc15;
+      color: #111;
+      border: 3px solid #fff;
+      border-radius: 99px;
+      padding: 4px 12px;
+      font-weight: 1000;
+      font-size: 0.85rem;
+    }
+    .card-grid {
+      display: grid;
+      gap: 10px;
+      justify-content: center;
+      align-content: start;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+    }
+    .memory-card {
+      border: 3px solid #9ca3af;
+      border-radius: 10px;
+      background: #fff;
+      cursor: pointer;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      justify-self: center;
+      max-width: 100%;
+      font-weight: 900;
+      color: #1f2937;
+      box-shadow: 0 8px 18px rgba(148,163,184,0.32);
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+    .memory-card:hover { transform: translateY(-2px); }
+    .memory-card.solved { background: #d9f7d9; border-width: 5px; }
+    .memory-card .back-logo {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      opacity: 0.2;
+      user-select: none;
+    }
+    .card-face {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+      text-align: center;
+      line-height: 1.25;
+      overflow: auto;
+    }
+    .card-face.has-image { padding: 0; }
+    .card-face img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .card-face .img-caption {
+      padding: 6px 8px;
+      font-size: 0.78rem;
+      width: 100%;
+    }
+    .error-box {
+      max-width: 520px;
+      margin: 48px auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+(function () {
+  var embeddedBootstrap = null;
+
+  var MEMORY_PALETTE = ['#ef5350','#ab47bc','#5c6bc0','#29b6f6','#26a69a','#66bb6a','#d4e157','#ffca28','#ffa726','#8d6e63','#ec407a','#7e57c2'];
+  var TEAM_COLORS = { 'Team A': '#ff6d00', 'Team B': '#00897b' };
+  var TEAM_ANIMALS = { 'Team A': '🐯', 'Team B': '🐔' };
+  var TEAM_NAMES = { 'Team A': 'Tigerkatzen', 'Team B': 'Johnny Hühner' };
+  var FLIP_REVEAL_MS = 2800;
+  var CARD_WIDTH_RATIO = 1.45;
+  var GAP_PX = 10;
+  var MAX_CARD_HEIGHT = 172;
+  var gridObserver = null;
+
+  function getMaxCols(deckLength) {
+    if (deckLength <= 8) return Math.min(4, deckLength);
+    if (deckLength <= 16) return 4;
+    if (deckLength <= 24) return 5;
+    return 6;
+  }
+
+  function computeLayout(deckLength, availableWidth) {
+    var width = availableWidth > 0 ? availableWidth : 420;
+    var maxCols = getMaxCols(deckLength);
+    var cols;
+    for (cols = Math.min(maxCols, deckLength); cols >= 2; cols--) {
+      var rawCardWidth = (width - (cols - 1) * GAP_PX) / cols;
+      var cardHeight = rawCardWidth / CARD_WIDTH_RATIO;
+      if (cardHeight > MAX_CARD_HEIGHT) cardHeight = MAX_CARD_HEIGHT;
+      var cardWidth = cardHeight * CARD_WIDTH_RATIO;
+      var totalWidth = cols * cardWidth + (cols - 1) * GAP_PX;
+      if (totalWidth <= width + 1) {
+        return { columnCount: cols, cardWidth: cardWidth, cardHeight: cardHeight };
+      }
+    }
+    cols = Math.min(2, deckLength);
+    var fallbackWidth = (width - (cols - 1) * GAP_PX) / cols;
+    var fallbackHeight = Math.min(MAX_CARD_HEIGHT, fallbackWidth / CARD_WIDTH_RATIO);
+    return {
+      columnCount: cols,
+      cardWidth: fallbackHeight * CARD_WIDTH_RATIO,
+      cardHeight: fallbackHeight
+    };
+  }
+
+  function shuffle(items) {
+    var copy = items.slice();
+    for (var i = copy.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = copy[i]; copy[i] = copy[j]; copy[j] = t;
+    }
+    return copy;
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function normalizeImages(images, rowCount) {
+    var base = Array.isArray(images) ? images.map(function (e) { return String(e || '').trim(); }) : [];
+    while (base.length < rowCount) base.push('');
+    return base.slice(0, rowCount);
+  }
+
+  function parsePairs(leftText, rightText, leftImages, rightImages) {
+    var leftLines = String(leftText || '').split('\n');
+    var rightLines = String(rightText || '').split('\n');
+    var rowCount = Math.max(leftLines.length, rightLines.length, leftImages.length, rightImages.length);
+    var li = normalizeImages(leftImages, rowCount);
+    var ri = normalizeImages(rightImages, rowCount);
+    var pairs = [];
+    for (var i = 0; i < rowCount; i++) {
+      var leftTextCell = String(leftLines[i] || '').trim();
+      var rightTextCell = String(rightLines[i] || '').trim();
+      var leftImg = li[i] || '';
+      var rightImg = ri[i] || '';
+      if ((leftTextCell || leftImg) && (rightTextCell || rightImg)) {
+        pairs.push([
+          { text: leftTextCell, imageUrl: leftImg },
+          { text: rightTextCell, imageUrl: rightImg }
+        ]);
+      }
+    }
+    return pairs;
+  }
+
+  function createDeck(pairs) {
+    return shuffle(pairs.flatMap(function (pair, index) {
+      var term = pair[0];
+      var text = pair[1];
+      var color = MEMORY_PALETTE[index % MEMORY_PALETTE.length];
+      return [
+        { id: index + '-term', pairId: String(index), kind: 'term', label: term.text, imageUrl: term.imageUrl, color: color },
+        { id: index + '-text', pairId: String(index), kind: 'text', label: text.text, imageUrl: text.imageUrl, color: color }
+      ];
+    }));
+  }
+
+  function readBootstrap() {
+    if (!embeddedBootstrap) return null;
+    if (typeof embeddedBootstrap.setName !== 'string') return null;
+    if (typeof embeddedBootstrap.leftText !== 'string') return null;
+    if (typeof embeddedBootstrap.rightText !== 'string') return null;
+    return {
+      setName: embeddedBootstrap.setName.trim() || 'KI Memory',
+      leftText: embeddedBootstrap.leftText,
+      rightText: embeddedBootstrap.rightText,
+      leftImages: Array.isArray(embeddedBootstrap.leftImages) ? embeddedBootstrap.leftImages : [],
+      rightImages: Array.isArray(embeddedBootstrap.rightImages) ? embeddedBootstrap.rightImages : []
+    };
+  }
+
+  var boot = readBootstrap();
+  var state = {
+    setName: boot ? boot.setName : '',
+    leftText: boot ? boot.leftText : '',
+    rightText: boot ? boot.rightText : '',
+    leftImages: boot ? boot.leftImages : [],
+    rightImages: boot ? boot.rightImages : [],
+    deck: [],
+    open: [],
+    solved: [],
+    solvedByTeam: {},
+    team: 'Team A',
+    score: { 'Team A': 0, 'Team B': 0 },
+    layout: { columnCount: 4, cardWidth: 120, cardHeight: 83 }
+  };
+
+  function resetGame() {
+    var pairs = parsePairs(state.leftText, state.rightText, state.leftImages, state.rightImages);
+    state.deck = pairs.length ? createDeck(pairs) : [];
+    state.open = [];
+    state.solved = [];
+    state.solvedByTeam = {};
+    state.team = 'Team A';
+    state.score = { 'Team A': 0, 'Team B': 0 };
+  }
+
+  if (boot) {
+    document.title = boot.setName + ' – KI Memory';
+    resetGame();
+    state.layout = computeLayout(state.deck.length, 0);
+  }
+
+  function flipCard(card) {
+    if (state.solved.indexOf(card.pairId) >= 0) return;
+    if (state.open.indexOf(card.id) >= 0) return;
+    if (state.open.length >= 2) return;
+    state.open = state.open.concat([card.id]);
+    if (state.open.length < 2) { render(); return; }
+    var a = state.deck.find(function (c) { return c.id === state.open[0]; });
+    var b = state.deck.find(function (c) { return c.id === state.open[1]; });
+    var match = a && b && a.pairId === b.pairId && a.kind !== b.kind;
+    setTimeout(function () {
+      if (match && a) {
+        state.solved = state.solved.concat([a.pairId]);
+        state.solvedByTeam[a.pairId] = state.team;
+        state.score[state.team] += 1;
+      } else {
+        state.team = state.team === 'Team A' ? 'Team B' : 'Team A';
+      }
+      state.open = [];
+      render();
+    }, FLIP_REVEAL_MS);
+    render();
+  }
+
+  function cardFontSize(label) {
+    var n = (label || '').length;
+    if (n > 42) return '0.72rem';
+    if (n > 32) return '0.8rem';
+    if (n > 22) return '0.86rem';
+    return '0.92rem';
+  }
+
+  function renderCardFace(card) {
+    if (card.imageUrl) {
+      var caption = card.label ? '<div class="img-caption">' + escapeHtml(card.label) + '</div>' : '';
+      return '<div class="card-face has-image"><img src="' + escapeHtml(card.imageUrl) + '" alt="" />' + caption + '</div>';
+    }
+    return '<div class="card-face" style="font-size:' + cardFontSize(card.label) + '">' + escapeHtml(card.label) + '</div>';
+  }
+
+  function render() {
+    var root = document.getElementById('root');
+    if (!boot || !state.deck.length) {
+      root.innerHTML = '<div class="error-box"><h1>KI Memory</h1><p>Diese Datei enthält keine Spiel-Daten. Bitte in der App über „Als HTML herunterladen“ exportieren.</p></div>';
+      return;
+    }
+
+    var layout = state.layout;
+    var complete = state.solved.length >= state.deck.length / 2;
+    var winner = complete && state.score['Team A'] !== state.score['Team B']
+      ? (state.score['Team A'] > state.score['Team B'] ? 'Team A' : 'Team B')
+      : null;
+
+    var html = '<div class="game-shell">';
+    html += '<div class="game-top"><h1 class="game-title">' + escapeHtml(state.setName) + '</h1>';
+    html += '<button type="button" class="btn" id="restart-game">Neu mischen</button></div>';
+    html += '<div class="game-layout">';
+
+    function teamPanelHtml(team) {
+      var active = team === state.team;
+      var isWinner = winner === team;
+      var highlighted = isWinner || (active && !complete);
+      var color = TEAM_COLORS[team];
+      var panel = '<button type="button" class="team-panel' + (highlighted ? ' active' : '') + (isWinner ? ' winner' : '') + '" data-team="' + team + '" style="' + (highlighted ? 'background:' + color + ';border-color:' + (isWinner ? '#facc15' : color) + ';color:#fff' : '') + '">';
+      if (isWinner) panel += '<span class="team-badge">⭐ SIEGER ⭐</span>';
+      panel += '<span class="team-animal">' + TEAM_ANIMALS[team] + '</span>';
+      panel += '<span class="team-name">' + TEAM_NAMES[team] + '</span>';
+      panel += '<span class="team-score">' + state.score[team] + '</span>';
+      panel += '<span>Paare</span>';
+      if (active && !complete) panel += '<strong>AM ZUG</strong>';
+      if (isWinner) panel += '<strong>GEWONNEN ✨</strong>';
+      panel += '</button>';
+      return panel;
+    }
+
+    html += teamPanelHtml('Team A');
+    html += '<div class="card-grid" style="grid-template-columns:repeat(' + layout.columnCount + ', minmax(0, 1fr));">';
+    state.deck.forEach(function (card) {
+      var visible = state.open.indexOf(card.id) >= 0 || state.solved.indexOf(card.pairId) >= 0;
+      var solved = state.solved.indexOf(card.pairId) >= 0;
+      var solvedTeam = state.solvedByTeam[card.pairId];
+      var borderColor = solved ? (solvedTeam ? TEAM_COLORS[solvedTeam] : card.color) : '#9ca3af';
+      html += '<button type="button" class="memory-card' + (solved ? ' solved' : '') + '" data-card-id="' + escapeHtml(card.id) + '" style="border-color:' + borderColor + ';width:' + layout.cardWidth + 'px;height:' + layout.cardHeight + 'px;">';
+      if (visible) html += renderCardFace(card);
+      else html += '<span class="back-logo">🐵</span>';
+      html += '</button>';
+    });
+    html += '</div>';
+    html += teamPanelHtml('Team B');
+    html += '</div></div>';
+
+    root.innerHTML = html;
+    document.getElementById('restart-game').addEventListener('click', function () {
+      resetGame();
+      render();
+    });
+    root.querySelectorAll('[data-team]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        state.team = btn.getAttribute('data-team');
+        render();
+      });
+    });
+    root.querySelectorAll('[data-card-id]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var card = state.deck.find(function (c) { return c.id === btn.getAttribute('data-card-id'); });
+        if (card) flipCard(card);
+      });
+    });
+
+    if (gridObserver) gridObserver.disconnect();
+    var grid = root.querySelector('.card-grid');
+    if (grid) {
+      gridObserver = new ResizeObserver(function () {
+        var width = grid.getBoundingClientRect().width;
+        var next = computeLayout(state.deck.length, width);
+        if (
+          next.columnCount !== state.layout.columnCount ||
+          Math.abs(next.cardWidth - state.layout.cardWidth) > 1 ||
+          Math.abs(next.cardHeight - state.layout.cardHeight) > 1
+        ) {
+          state.layout = next;
+          render();
+        }
+      });
+      gridObserver.observe(grid);
+      var initialWidth = grid.getBoundingClientRect().width;
+      var initialLayout = computeLayout(state.deck.length, initialWidth);
+      if (
+        initialLayout.columnCount !== state.layout.columnCount ||
+        Math.abs(initialLayout.cardWidth - state.layout.cardWidth) > 1
+      ) {
+        state.layout = initialLayout;
+        render();
+      }
+    }
+  }
+
+  render();
+})();
+  </script>
+</body>
+</html>

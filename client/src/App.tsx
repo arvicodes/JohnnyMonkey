@@ -23,6 +23,7 @@ import MovementStoriesPage from './pages/MovementStoriesPage';
 import EntryTicketPage from './pages/EntryTicketPage';
 import ExitTicketPage from './pages/ExitTicketPage';
 import KiGamesPage from './pages/KiGamesPage';
+import SmartieIcebreakerPage from './pages/SmartieIcebreakerPage';
 import BeAHeroWorkoutsPage from './pages/BeAHeroWorkoutsPage';
 import StoriesDiariesHubPage from './pages/StoriesDiariesHubPage';
 import StorySiteBuilderPage from './pages/StorySiteBuilderPage';
@@ -301,6 +302,7 @@ function AppContent() {
         <Route path="/entry-ticket" element={<EntryTicketPage />} />
         <Route path="/exit-ticket" element={<ExitTicketPage />} />
         <Route path="/ki-spiele" element={<KiGamesPage />} />
+        <Route path="/ki-spiele/smarties" element={<SmartieIcebreakerPage />} />
         <Route path="/be-a-hero" element={<BeAHeroWorkoutsPage />} />
         <Route path="/stories-tagebuecher" element={<StoriesDiariesHubPage />} />
         <Route path="/stories-tagebuecher/site/:siteId/vorschau" element={<StorySitePublicPreviewPage />} />

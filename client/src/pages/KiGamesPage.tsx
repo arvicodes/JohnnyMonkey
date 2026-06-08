@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
   Button,
+  ButtonGroup,
   Card,
   CardContent,
   Chip,
@@ -17,6 +18,7 @@ import {
   Tab,
   Tabs,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import {
@@ -26,19 +28,26 @@ import {
   Casino as CasinoIcon,
   CheckCircle as CheckCircleIcon,
   Extension as ExtensionIcon,
+  Close as CloseIcon,
+  DeleteOutline as DeleteOutlineIcon,
   FileDownload as FileDownloadIcon,
+  Image as ImageIcon,
   Map as MapIcon,
   Psychology as PsychologyIcon,
   Quiz as QuizIcon,
   RestartAlt as RestartAltIcon,
+  MusicNote as MusicNoteIcon,
   Rule as RuleIcon,
   SportsEsports as SportsEsportsIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
+import { downloadMemoryStandaloneHtml } from '../lib/downloadMemoryStandalone';
+import SmartieIcebreakerPage from './SmartieIcebreakerPage';
 
 type TabId =
   | 'overview'
+  | 'smarties'
   | 'nim'
   | 'hexapawn'
   | 'memory'
@@ -49,8 +58,24 @@ type TabId =
   | 'quickcheck'
   | 'aufgabenampel'
   | 'denkzeitdetektiv';
-type MemoryCard = { id: string; pairId: string; pairIndex: number; kind: 'term' | 'text'; label: string; color: string };
-type MemorySet = { id: string; name: string; leftText: string; rightText: string };
+type MemoryCardCell = { text: string; imageUrl?: string };
+type MemoryCard = {
+  id: string;
+  pairId: string;
+  pairIndex: number;
+  kind: 'term' | 'text';
+  label: string;
+  imageUrl?: string;
+  color: string;
+};
+type MemorySet = {
+  id: string;
+  name: string;
+  leftText: string;
+  rightText: string;
+  leftImages?: string[];
+  rightImages?: string[];
+};
 type HexPawn = 'W' | 'B';
 type HexCell = HexPawn | null;
 type HexBoard = HexCell[][];
@@ -63,6 +88,14 @@ const gameCards: {
   color: string;
   goals: string[];
 }[] = [
+  {
+    tab: 'smarties',
+    title: 'Viele viele bunte Smarties',
+    subtitle: 'Partner*innen, Farbe, KI-Frage.',
+    icon: <Box component="img" src="/ki-spiele/smarties-box.svg" alt="" sx={{ height: 34, width: 'auto' }} />,
+    color: '#e91e63',
+    goals: ['Kennenlernen', 'Aktivierung', 'KI-Humor'],
+  },
   {
     tab: 'nim',
     title: 'Nimm-Spiel',
@@ -145,7 +178,7 @@ const gameCards: {
   },
 ];
 
-const memoryPairs: [string, string][] = [
+const memoryPairStrings: [string, string][] = [
   ['Lernzeit', 'Zeit, in der Schülerinnen und Schüler wirklich fachlich arbeiten.'],
   ['Denkzeit', 'Aktive kognitive Auseinandersetzung statt nur fertige Ergebnisse übernehmen.'],
   ['KI Bequemlichkeit', 'Die Gefahr, dass KI Anstrengung, Lesen, Denken oder Üben ersetzt.'],
@@ -159,6 +192,11 @@ const memoryPairs: [string, string][] = [
   ['Anstrengung', 'Notwendiger Bestandteil von Lernen, den KI nicht ersetzen sollte.'],
   ['Lernpartner', 'KI gibt Hinweise, Fragen oder Feedback statt sofort fertige Lösungen zu liefern.'],
 ];
+
+const memoryPairs: [MemoryCardCell, MemoryCardCell][] = memoryPairStrings.map(([term, text]) => [
+  { text: term },
+  { text },
+]);
 
 const memoryPalette = [
   '#ef5350',
@@ -199,8 +237,8 @@ const memoryRowBackground = (rowCount: number) =>
     rgba(255, 248, 225, 0.72) 60px
   )`;
 
-const kiMemoryLeftText = memoryPairs.map(([term]) => term).join('\n');
-const kiMemoryRightText = memoryPairs.map(([, text]) => text).join('\n');
+const kiMemoryLeftText = memoryPairStrings.map(([term]) => term).join('\n');
+const kiMemoryRightText = memoryPairStrings.map(([, text]) => text).join('\n');
 
 const kiStudientageLeftText = [
   '🔎 Google und ChatGPT vergleichen',
@@ -756,22 +794,182 @@ function shuffle<T>(items: T[]): T[] {
   return copy;
 }
 
-function parseMemoryPairsFromColumns(leftText: string, rightText: string): [string, string][] {
-  const leftLines = leftText
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const rightLines = rightText
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  return leftLines
-    .map((left, index) => [left, rightLines[index] || ''] as [string, string])
-    .filter(([, right]) => Boolean(right));
+function normalizeMemoryImages(images: string[] | undefined, rowCount: number): string[] {
+  const base = Array.isArray(images) ? images.map((entry) => entry.trim()) : [];
+  while (base.length < rowCount) base.push('');
+  return base.slice(0, rowCount);
 }
 
-function createMemoryDeck(pairs: [string, string][] = memoryPairs): MemoryCard[] {
+function parseMemoryCell(line: string | undefined, image?: string): MemoryCardCell {
+  return {
+    text: (line ?? '').trim(),
+    imageUrl: image?.trim() || undefined,
+  };
+}
+
+function memoryCellHasContent(cell: MemoryCardCell) {
+  return Boolean(cell.text || cell.imageUrl);
+}
+
+function isMemoryImageFile(file: File) {
+  if (file.type.startsWith('image/')) return true;
+  return /\.(jpe?g|png|gif|webp|bmp|svg|heic|heif)$/i.test(file.name);
+}
+
+async function compressMemoryImage(file: File, maxSide = 480): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+    reader.onerror = () => reject(new Error('Bild konnte nicht gelesen werden'));
+    reader.readAsDataURL(file);
+  });
+  if (!dataUrl) return '';
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Bild konnte nicht geladen werden'));
+      img.src = dataUrl;
+    });
+    const scale = Math.min(1, maxSide / Math.max(image.width, image.height, 1));
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return dataUrl;
+    ctx.drawImage(image, 0, 0, width, height);
+    return canvas.toDataURL('image/jpeg', 0.82);
+  } catch {
+    return dataUrl;
+  }
+}
+
+function parseMemoryPairsFromColumns(
+  leftText: string,
+  rightText: string,
+  leftImages: string[] = [],
+  rightImages: string[] = []
+): [MemoryCardCell, MemoryCardCell][] {
+  const leftLines = leftText.split('\n');
+  const rightLines = rightText.split('\n');
+  const rowCount = Math.max(leftLines.length, rightLines.length, leftImages.length, rightImages.length);
+  const normalizedLeftImages = normalizeMemoryImages(leftImages, rowCount);
+  const normalizedRightImages = normalizeMemoryImages(rightImages, rowCount);
+
+  return Array.from({ length: rowCount }, (_, index) => {
+    const left = parseMemoryCell(leftLines[index], normalizedLeftImages[index]);
+    const right = parseMemoryCell(rightLines[index], normalizedRightImages[index]);
+    return [left, right] as [MemoryCardCell, MemoryCardCell];
+  }).filter(([left, right]) => memoryCellHasContent(left) && memoryCellHasContent(right));
+}
+
+function buildMemoryDeckFromColumns(
+  leftText: string,
+  rightText: string,
+  leftImages: string[] = [],
+  rightImages: string[] = []
+) {
+  return createMemoryDeck(parseMemoryPairsFromColumns(leftText, rightText, leftImages, rightImages));
+}
+
+const memoryCardWidthRatio = 1.45;
+const memoryFlipRevealMs = 2800;
+const memoryGapPx = 10;
+const memoryMaxCardHeightPx = 172;
+
+function getMemoryMaxColumnCount(deckLength: number): number {
+  if (deckLength <= 8) return Math.min(4, deckLength);
+  if (deckLength <= 16) return 4;
+  if (deckLength <= 24) return 5;
+  return 6;
+}
+
+function computeMemoryPlayLayout(deckLength: number, availableWidth: number) {
+  const width = availableWidth > 0 ? availableWidth : 420;
+  const maxCols = getMemoryMaxColumnCount(deckLength);
+
+  for (let cols = Math.min(maxCols, deckLength); cols >= 2; cols -= 1) {
+    const rawCardWidth = (width - (cols - 1) * memoryGapPx) / cols;
+    let cardHeight = rawCardWidth / memoryCardWidthRatio;
+    if (cardHeight > memoryMaxCardHeightPx) {
+      cardHeight = memoryMaxCardHeightPx;
+    }
+    const cardWidth = cardHeight * memoryCardWidthRatio;
+    const totalWidth = cols * cardWidth + (cols - 1) * memoryGapPx;
+    if (totalWidth <= width + 1) {
+      return {
+        columnCount: cols,
+        rowCount: Math.max(1, Math.ceil(deckLength / cols)),
+        cardWidth,
+        cardHeight,
+      };
+    }
+  }
+
+  const cols = Math.min(2, deckLength);
+  const cardWidth = (width - (cols - 1) * memoryGapPx) / cols;
+  const cardHeight = Math.min(memoryMaxCardHeightPx, cardWidth / memoryCardWidthRatio);
+  return {
+    columnCount: cols,
+    rowCount: Math.max(1, Math.ceil(deckLength / cols)),
+    cardWidth: cardHeight * memoryCardWidthRatio,
+    cardHeight,
+  };
+}
+
+const memoryToolbarRowSx = {
+  display: 'flex',
+  flexWrap: 'nowrap',
+  gap: 0.75,
+  alignItems: 'center',
+  overflowX: 'auto',
+  mb: 1,
+  pb: 0.25,
+  '& .MuiFormControl-root, & .MuiTextField-root': { flexShrink: 0 },
+} as const;
+
+const memoryCompactFieldSx = {
+  width: 132,
+  '& .MuiInputBase-root': { height: 40, fontSize: '0.9rem' },
+  '& .MuiInputBase-input': { py: 0.75, px: 1.15 },
+} as const;
+
+const memoryButtonGroupSx = {
+  flexShrink: 0,
+  '& .MuiButton-root': {
+    fontSize: '0.88rem',
+    py: 0.7,
+    px: 1.25,
+    minHeight: 40,
+    minWidth: 0,
+    fontWeight: 700,
+    lineHeight: 1.25,
+    whiteSpace: 'nowrap',
+    textTransform: 'none',
+  },
+} as const;
+
+function getMemoryCardTypography(label: string): {
+  fontSize: { xs: string; sm: string };
+  iconSize: { xs: string; sm: string };
+} {
+  const chars = label.length;
+  if (chars > 42) {
+    return { fontSize: { xs: '0.7rem', sm: '0.8rem' }, iconSize: { xs: '1.45rem', sm: '1.7rem' } };
+  }
+  if (chars > 32) {
+    return { fontSize: { xs: '0.8rem', sm: '0.9rem' }, iconSize: { xs: '1.65rem', sm: '1.95rem' } };
+  }
+  if (chars > 22) {
+    return { fontSize: { xs: '0.86rem', sm: '0.98rem' }, iconSize: { xs: '1.8rem', sm: '2.1rem' } };
+  }
+  return { fontSize: { xs: '0.9rem', sm: '1.02rem' }, iconSize: { xs: '1.9rem', sm: '2.25rem' } };
+}
+
+function createMemoryDeck(pairs: [MemoryCardCell, MemoryCardCell][] = memoryPairs): MemoryCard[] {
   return shuffle(
     pairs.flatMap(([term, text], index) => [
       {
@@ -779,7 +977,8 @@ function createMemoryDeck(pairs: [string, string][] = memoryPairs): MemoryCard[]
         pairId: String(index),
         pairIndex: index,
         kind: 'term' as const,
-        label: term,
+        label: term.text,
+        imageUrl: term.imageUrl,
         color: memoryPalette[index % memoryPalette.length],
       },
       {
@@ -787,10 +986,125 @@ function createMemoryDeck(pairs: [string, string][] = memoryPairs): MemoryCard[]
         pairId: String(index),
         pairIndex: index,
         kind: 'text' as const,
-        label: text,
+        label: text.text,
+        imageUrl: text.imageUrl,
         color: memoryPalette[index % memoryPalette.length],
       },
     ])
+  );
+}
+
+function MemoryCardFace({ card }: { card: MemoryCard }) {
+  const [leadingToken] = card.label.split(' ');
+  const hasLeadingIcon =
+    !card.imageUrl &&
+    card.kind === 'term' &&
+    leadingToken.length <= 4 &&
+    leadingToken !== card.label &&
+    Boolean(card.label.trim());
+  const cardText = hasLeadingIcon ? card.label.slice(leadingToken.length).trim() : card.label;
+  const cardTypography = getMemoryCardTypography(card.label || 'Bild');
+
+  if (card.imageUrl) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          width: '100%',
+          height: '100%',
+          overflow: 'hidden',
+          borderRadius: 2,
+        }}
+      >
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            p: card.label.trim() ? 0.35 : 0.5,
+          }}
+        >
+          <Box
+            component="img"
+            src={card.imageUrl}
+            alt=""
+            sx={{
+              maxWidth: '100%',
+              maxHeight: '100%',
+              width: 'auto',
+              height: 'auto',
+              objectFit: 'contain',
+              display: 'block',
+            }}
+          />
+        </Box>
+        {card.label.trim() && (
+          <Box
+            sx={{
+              flexShrink: 0,
+              px: 0.6,
+              py: 0.45,
+              bgcolor: 'rgba(255,255,255,0.94)',
+              fontSize: cardTypography.fontSize,
+              lineHeight: 1.15,
+              textAlign: 'center',
+              whiteSpace: 'normal',
+              wordBreak: 'break-word',
+              overflowWrap: 'break-word',
+              fontWeight: 900,
+            }}
+          >
+            {hasLeadingIcon ? (
+              <>
+                <Box component="span" sx={{ display: 'block', fontSize: cardTypography.iconSize, lineHeight: 1, mb: 0.25 }}>
+                  {leadingToken}
+                </Box>
+                {cardText}
+              </>
+            ) : (
+              cardText
+            )}
+          </Box>
+        )}
+      </Box>
+    );
+  }
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: hasLeadingIcon ? 0.5 : 0,
+        width: '100%',
+        height: '100%',
+        fontSize: cardTypography.fontSize,
+        lineHeight: 1.2,
+        textAlign: 'center',
+        whiteSpace: 'normal',
+        wordBreak: 'break-word',
+        overflowWrap: 'break-word',
+      }}
+    >
+      {hasLeadingIcon && (
+        <Box
+          component="span"
+          sx={{ display: 'block', fontSize: cardTypography.iconSize, lineHeight: 1, flexShrink: 0 }}
+        >
+          {leadingToken}
+        </Box>
+      )}
+      {card.label.trim() && (
+        <Box component="span" sx={{ display: 'block', width: '100%' }}>
+          {cardText}
+        </Box>
+      )}
+    </Box>
   );
 }
 
@@ -848,10 +1162,32 @@ export default function KiGamesPage() {
   const [memorySets, setMemorySets] = useState<MemorySet[]>(initialMemorySets);
   const [selectedMemorySetId, setSelectedMemorySetId] = useState(initialMemorySet.id);
   const [newMemorySetName, setNewMemorySetName] = useState('');
+  const [memorySetRename, setMemorySetRename] = useState(initialMemorySet.name);
   const [memoryLeftText, setMemoryLeftText] = useState(initialMemorySet.leftText);
   const [memoryRightText, setMemoryRightText] = useState(initialMemorySet.rightText);
+  const [memoryLeftImages, setMemoryLeftImages] = useState<string[]>(() =>
+    normalizeMemoryImages(
+      initialMemorySet.leftImages,
+      Math.max(4, initialMemorySet.leftText.split('\n').length, initialMemorySet.rightText.split('\n').length)
+    )
+  );
+  const [memoryRightImages, setMemoryRightImages] = useState<string[]>(() =>
+    normalizeMemoryImages(
+      initialMemorySet.rightImages,
+      Math.max(4, initialMemorySet.leftText.split('\n').length, initialMemorySet.rightText.split('\n').length)
+    )
+  );
+  const memoryImageInputRef = useRef<HTMLInputElement>(null);
+  const memoryImageUploadTargetRef = useRef<{ side: 'left' | 'right'; rowIndex: number } | null>(null);
+  const memoryPlayGridRef = useRef<HTMLDivElement>(null);
+  const [memoryPlayGridWidth, setMemoryPlayGridWidth] = useState(0);
   const [memoryDeck, setMemoryDeck] = useState<MemoryCard[]>(() =>
-    createMemoryDeck(parseMemoryPairsFromColumns(initialMemorySet.leftText, initialMemorySet.rightText))
+    buildMemoryDeckFromColumns(
+      initialMemorySet.leftText,
+      initialMemorySet.rightText,
+      initialMemorySet.leftImages,
+      initialMemorySet.rightImages
+    )
   );
   const [memoryOpen, setMemoryOpen] = useState<string[]>([]);
   const [memorySolved, setMemorySolved] = useState<string[]>([]);
@@ -859,6 +1195,7 @@ export default function KiGamesPage() {
   const [memoryTeam, setMemoryTeam] = useState<'Team A' | 'Team B'>('Team A');
   const [memoryScore, setMemoryScore] = useState({ 'Team A': 0, 'Team B': 0 });
   const [memoryGameStarted, setMemoryGameStarted] = useState(false);
+  const [memoryExporting, setMemoryExporting] = useState(false);
 
   const [tfIndex, setTfIndex] = useState(0);
   const [tfFeedback, setTfFeedback] = useState('');
@@ -899,8 +1236,24 @@ export default function KiGamesPage() {
   const memoryLeftRows = useMemo(() => memoryLeftText.split('\n'), [memoryLeftText]);
   const memoryRightRows = useMemo(() => memoryRightText.split('\n'), [memoryRightText]);
   const memoryTableRowCount = Math.max(4, memoryLeftRows.length, memoryRightRows.length);
-  const memoryColumnCount = memoryDeck.length <= 12 ? 4 : memoryDeck.length <= 24 ? 6 : 8;
-  const memoryRowCount = Math.max(1, Math.ceil(memoryDeck.length / memoryColumnCount));
+  const memoryPlayLayout = useMemo(
+    () => computeMemoryPlayLayout(memoryDeck.length, memoryPlayGridWidth),
+    [memoryDeck.length, memoryPlayGridWidth]
+  );
+
+  useEffect(() => {
+    if (!memoryGameStarted) {
+      setMemoryPlayGridWidth(0);
+      return;
+    }
+    const node = memoryPlayGridRef.current;
+    if (!node) return;
+    const updateWidth = () => setMemoryPlayGridWidth(node.getBoundingClientRect().width);
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [memoryGameStarted, memoryDeck.length]);
   const memoryGameComplete = memoryDeck.length > 0 && memorySolved.length >= memoryDeck.length / 2;
   const memoryWinner =
     memoryGameComplete && memoryScore['Team A'] !== memoryScore['Team B']
@@ -917,6 +1270,12 @@ export default function KiGamesPage() {
       /* ignore storage errors */
     }
   }, [memorySets, selectedMemorySetId]);
+
+  useEffect(() => {
+    const set = memorySets.find((entry) => entry.id === selectedMemorySetId);
+    if (set) setMemorySetRename(set.name);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Name nur beim Kartensatz-Wechsel übernehmen
+  }, [selectedMemorySetId]);
 
   const resetNim = () => {
     setNimSticks(15);
@@ -1051,11 +1410,11 @@ export default function KiGamesPage() {
         setMemoryTeam((prev) => (prev === 'Team A' ? 'Team B' : 'Team A'));
       }
       setMemoryOpen([]);
-    }, 3000);
+    }, memoryFlipRevealMs);
   };
 
   const resetMemory = () => {
-    setMemoryDeck(createMemoryDeck(parseMemoryPairsFromColumns(memoryLeftText, memoryRightText)));
+    setMemoryDeck(buildMemoryDeckFromColumns(memoryLeftText, memoryRightText, memoryLeftImages, memoryRightImages));
     setMemoryOpen([]);
     setMemorySolved([]);
     setMemorySolvedByTeam({});
@@ -1064,31 +1423,172 @@ export default function KiGamesPage() {
     setMemoryGameStarted(true);
   };
 
+  const syncMemoryImagesForTexts = (leftText: string, rightText: string, leftImages: string[], rightImages: string[]) => {
+    const rowCount = Math.max(4, leftText.split('\n').length, rightText.split('\n').length);
+    return {
+      leftImages: normalizeMemoryImages(leftImages, rowCount),
+      rightImages: normalizeMemoryImages(rightImages, rowCount),
+    };
+  };
+
   const updateMemoryColumn = (side: 'leftText' | 'rightText', value: string) => {
+    const nextLeftText = side === 'leftText' ? value : memoryLeftText;
+    const nextRightText = side === 'rightText' ? value : memoryRightText;
+    const syncedImages = syncMemoryImagesForTexts(nextLeftText, nextRightText, memoryLeftImages, memoryRightImages);
+
     if (side === 'leftText') setMemoryLeftText(value);
     else setMemoryRightText(value);
-    setMemorySets((prev) => prev.map((set) => (set.id === selectedMemorySetId ? { ...set, [side]: value } : set)));
+    setMemoryLeftImages(syncedImages.leftImages);
+    setMemoryRightImages(syncedImages.rightImages);
+    setMemorySets((prev) =>
+      prev.map((set) =>
+        set.id === selectedMemorySetId
+          ? {
+              ...set,
+              [side]: value,
+              leftImages: syncedImages.leftImages,
+              rightImages: syncedImages.rightImages,
+            }
+          : set
+      )
+    );
     setMemoryGameStarted(false);
   };
 
+  const updateMemoryImage = (side: 'left' | 'right', rowIndex: number, imageUrl: string) => {
+    const syncedImages = syncMemoryImagesForTexts(memoryLeftText, memoryRightText, memoryLeftImages, memoryRightImages);
+    const nextLeftImages = [...syncedImages.leftImages];
+    const nextRightImages = [...syncedImages.rightImages];
+
+    if (side === 'left') nextLeftImages[rowIndex] = imageUrl;
+    else nextRightImages[rowIndex] = imageUrl;
+
+    setMemoryLeftImages(nextLeftImages);
+    setMemoryRightImages(nextRightImages);
+
+    setMemorySets((prev) =>
+      prev.map((set) =>
+        set.id === selectedMemorySetId
+          ? { ...set, leftImages: nextLeftImages, rightImages: nextRightImages }
+          : set
+      )
+    );
+    setMemoryGameStarted(false);
+  };
+
+  const openMemoryImagePicker = (side: 'left' | 'right', rowIndex: number) => {
+    memoryImageUploadTargetRef.current = { side, rowIndex };
+    memoryImageInputRef.current?.click();
+  };
+
+  const handleMemoryImageSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    const target = memoryImageUploadTargetRef.current;
+    if (!file || !target || !isMemoryImageFile(file)) return;
+
+    try {
+      const result = await compressMemoryImage(file);
+      if (!result) return;
+      updateMemoryImage(target.side, target.rowIndex, result);
+    } finally {
+      memoryImageUploadTargetRef.current = null;
+    }
+  };
+
   const addMemoryTableRow = () => {
-    updateMemoryColumn('leftText', `${memoryLeftText}${memoryLeftText ? '\n' : ''}`);
-    updateMemoryColumn('rightText', `${memoryRightText}${memoryRightText ? '\n' : ''}`);
+    const nextLeftText = `${memoryLeftText}${memoryLeftText ? '\n' : ''}`;
+    const nextRightText = `${memoryRightText}${memoryRightText ? '\n' : ''}`;
+    const syncedImages = syncMemoryImagesForTexts(nextLeftText, nextRightText, memoryLeftImages, memoryRightImages);
+    setMemoryLeftText(nextLeftText);
+    setMemoryRightText(nextRightText);
+    setMemoryLeftImages(syncedImages.leftImages);
+    setMemoryRightImages(syncedImages.rightImages);
+    setMemorySets((prev) =>
+      prev.map((set) =>
+        set.id === selectedMemorySetId
+          ? {
+              ...set,
+              leftText: nextLeftText,
+              rightText: nextRightText,
+              leftImages: syncedImages.leftImages,
+              rightImages: syncedImages.rightImages,
+            }
+          : set
+      )
+    );
+    setMemoryGameStarted(false);
   };
 
   const selectMemorySet = (id: string) => {
     const nextSet = memorySets.find((set) => set.id === id);
     if (!nextSet) return;
     setSelectedMemorySetId(nextSet.id);
+    const syncedImages = syncMemoryImagesForTexts(
+      nextSet.leftText,
+      nextSet.rightText,
+      nextSet.leftImages ?? [],
+      nextSet.rightImages ?? []
+    );
     setMemoryLeftText(nextSet.leftText);
     setMemoryRightText(nextSet.rightText);
-    setMemoryDeck(createMemoryDeck(parseMemoryPairsFromColumns(nextSet.leftText, nextSet.rightText)));
+    setMemoryLeftImages(syncedImages.leftImages);
+    setMemoryRightImages(syncedImages.rightImages);
+    setMemoryDeck(buildMemoryDeckFromColumns(nextSet.leftText, nextSet.rightText, syncedImages.leftImages, syncedImages.rightImages));
     setMemoryOpen([]);
     setMemorySolved([]);
     setMemorySolvedByTeam({});
     setMemoryTeam('Team A');
     setMemoryScore({ 'Team A': 0, 'Team B': 0 });
     setMemoryGameStarted(false);
+  };
+
+  const selectedMemorySet = memorySets.find((set) => set.id === selectedMemorySetId);
+  const canDeleteSelectedMemorySet = Boolean(selectedMemorySet?.id.startsWith('custom-'));
+
+  const renameMemorySet = () => {
+    const cleanName = memorySetRename.trim();
+    if (!cleanName || !selectedMemorySetId) return;
+    setMemorySets((prev) =>
+      prev.map((set) => (set.id === selectedMemorySetId ? { ...set, name: cleanName } : set))
+    );
+  };
+
+  const deleteMemorySet = () => {
+    if (!selectedMemorySet?.id.startsWith('custom-')) return;
+    if (!window.confirm(`Kartensatz „${selectedMemorySet.name}" wirklich löschen?`)) return;
+    const nextSets = memorySets.filter((set) => set.id !== selectedMemorySetId);
+    if (!nextSets.length) return;
+    setMemorySets(nextSets);
+    selectMemorySet(nextSets[0].id);
+  };
+
+  const handleMemoryExport = async () => {
+    const pairs = parseMemoryPairsFromColumns(
+      memoryLeftText,
+      memoryRightText,
+      memoryLeftImages,
+      memoryRightImages
+    );
+    if (!pairs.length) {
+      window.alert('Bitte mindestens ein vollständiges Paar eintragen, bevor du exportierst.');
+      return;
+    }
+
+    setMemoryExporting(true);
+    try {
+      await downloadMemoryStandaloneHtml({
+        setName: memorySetRename.trim() || selectedMemorySet?.name || 'KI Memory',
+        leftText: memoryLeftText,
+        rightText: memoryRightText,
+        leftImages: memoryLeftImages,
+        rightImages: memoryRightImages,
+      });
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Export fehlgeschlagen.');
+    } finally {
+      setMemoryExporting(false);
+    }
   };
 
   const createNewMemorySet = () => {
@@ -1099,13 +1599,17 @@ export default function KiGamesPage() {
       name: cleanName || `Neuer Kartensatz ${nextNumber}`,
       leftText: 'Karte 1\nKarte 2\nKarte 3\nKarte 4',
       rightText: 'Passende Karte 1\nPassende Karte 2\nPassende Karte 3\nPassende Karte 4',
+      leftImages: ['', '', '', ''],
+      rightImages: ['', '', '', ''],
     };
     setMemorySets((prev) => [...prev, nextSet]);
     setSelectedMemorySetId(nextSet.id);
     setNewMemorySetName('');
     setMemoryLeftText(nextSet.leftText);
     setMemoryRightText(nextSet.rightText);
-    setMemoryDeck(createMemoryDeck(parseMemoryPairsFromColumns(nextSet.leftText, nextSet.rightText)));
+    setMemoryLeftImages(nextSet.leftImages ?? []);
+    setMemoryRightImages(nextSet.rightImages ?? []);
+    setMemoryDeck(buildMemoryDeckFromColumns(nextSet.leftText, nextSet.rightText, nextSet.leftImages, nextSet.rightImages));
     setMemoryOpen([]);
     setMemorySolved([]);
     setMemorySolvedByTeam({});
@@ -1217,7 +1721,15 @@ export default function KiGamesPage() {
         '& .MuiTypography-h6': { fontSize: { xs: '0.95rem', sm: '1.05rem' } },
       }}
     >
-      <Box sx={{ maxWidth: memoryFullscreen ? 'none' : 1180, mx: 'auto', px: memoryFullscreen ? 0 : { xs: 1, sm: 1.5 }, py: memoryFullscreen ? 0 : 1.25, pb: memoryFullscreen ? 0 : 2.5 }}>
+      <Box
+        sx={{
+          maxWidth: memoryFullscreen || tab === 'smarties' ? 'none' : 1180,
+          mx: 'auto',
+          px: memoryFullscreen ? 0 : { xs: 1, sm: tab === 'smarties' ? 2 : 1.5 },
+          py: memoryFullscreen ? 0 : 1.25,
+          pb: memoryFullscreen ? 0 : 2.5,
+        }}
+      >
         {!memoryFullscreen && (
         <Tabs
           value={tab}
@@ -1271,10 +1783,10 @@ export default function KiGamesPage() {
                     <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
                       <Box
                         sx={{
-                          width: 34,
-                          height: 34,
+                          width: game.tab === 'smarties' ? 52 : 34,
+                          height: game.tab === 'smarties' ? 52 : 34,
                           borderRadius: 1.5,
-                          bgcolor: game.color,
+                          bgcolor: game.tab === 'smarties' ? 'transparent' : game.color,
                           color: 'white',
                           display: 'grid',
                           placeItems: 'center',
@@ -1306,6 +1818,8 @@ export default function KiGamesPage() {
             </Box>
           </>
         )}
+
+        {tab === 'smarties' && <SmartieIcebreakerPage embedded onBack={() => setTab('overview')} />}
 
         {tab === 'nim' && (
           <Paper elevation={0} sx={{ p: { xs: 1, sm: 1.5 }, borderRadius: 2 }}>
@@ -1424,123 +1938,152 @@ export default function KiGamesPage() {
           >
             {!memoryGameStarted && (
             <>
-            <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 0.75, mb: 1 }}>
+            <Box sx={memoryToolbarRowSx}>
               <IconButton
                 size="small"
                 onClick={() => setTab('overview')}
                 aria-label="Zurück zur KI-Spiele-Startseite"
                 sx={{
-                  width: 32,
-                  height: 32,
-                  ml: { xs: -0.75, sm: -1.25 },
+                  width: 40,
+                  height: 40,
+                  flexShrink: 0,
+                  ml: { xs: -0.5, sm: -0.75 },
                   bgcolor: 'white',
                   border: '1px solid rgba(0,0,0,0.12)',
                   '&:hover': { bgcolor: '#eef3f8' },
                 }}
               >
-                <ArrowBackIcon sx={{ fontSize: 18 }} />
+                <ArrowBackIcon sx={{ fontSize: 20 }} />
               </IconButton>
-              <FormControl size="small" sx={{ width: { xs: 'calc(100% - 40px)', sm: 230 } }}>
-                <InputLabel id="memory-set-label">Kartensatz</InputLabel>
+              <FormControl size="small" sx={{ minWidth: 168, maxWidth: 210 }}>
+                <InputLabel id="memory-set-label" sx={{ fontSize: '0.9rem' }}>
+                  Kartensatz
+                </InputLabel>
                 <Select
                   labelId="memory-set-label"
                   label="Kartensatz"
                   value={selectedMemorySetId}
                   onChange={(event) => selectMemorySet(String(event.target.value))}
+                  sx={{ height: 40, fontSize: '0.9rem', '& .MuiSelect-select': { py: 0.75 } }}
                 >
                   {memorySets.map((set) => (
-                    <MenuItem key={set.id} value={set.id}>
+                    <MenuItem key={set.id} value={set.id} sx={{ fontSize: '0.92rem' }}>
                       {set.name}
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
-              {!memoryGameStarted && (
-                <>
-                  <TextField
-                    label="Neuer Kartensatz"
-                    value={newMemorySetName}
-                    onChange={(event) => setNewMemorySetName(event.target.value)}
-                    size="small"
-                    sx={{ width: { xs: 'calc(100% - 42px)', sm: 190 } }}
-                  />
-                  <Button
-                    variant="contained"
-                    size="small"
-                    onClick={createNewMemorySet}
-                    sx={{ minWidth: 34, width: 34, height: 34, p: 0 }}
-                    aria-label="Neuen Kartensatz erstellen"
-                  >
-                    <AddIcon sx={{ fontSize: 18 }} />
-                  </Button>
-                </>
-              )}
-              <Button
-                size="large"
-                variant="contained"
-                color="success"
-                onClick={resetMemory}
-                sx={{ minWidth: 150, height: 40, fontWeight: 900 }}
-              >
-                Spielen
-              </Button>
-              <Button
-                component="a"
-                href="/print/memory-huehner-karten.png"
-                download="johnny-huehner-memory-karten.png"
+              <TextField
                 size="small"
-                variant="outlined"
-                startIcon={<FileDownloadIcon sx={{ fontSize: 17 }} />}
-                sx={{ height: 34, fontWeight: 900 }}
-              >
-                Hühner-Karten
-              </Button>
-              <Button
-                component="a"
-                href="/print/memory-huehner-karten-weiss.png"
-                download="johnny-huehner-memory-karten-weiss.png"
-                size="small"
-                variant="outlined"
-                startIcon={<FileDownloadIcon sx={{ fontSize: 17 }} />}
-                sx={{ height: 34, fontWeight: 900 }}
-              >
-                Hühner weiß
-              </Button>
-              <Button
-                component="a"
-                href="/print/memory-tiger-karten.png"
-                download="tigerkatzen-memory-karten.png"
-                size="small"
-                variant="outlined"
-                startIcon={<FileDownloadIcon sx={{ fontSize: 17 }} />}
-                sx={{ height: 34, fontWeight: 900 }}
-              >
-                Tiger-Karten
-              </Button>
-              <Button
-                component="a"
-                href="/print/memory-tiger-karten-weiss.png"
-                download="tigerkatzen-memory-karten-weiss.png"
-                size="small"
-                variant="outlined"
-                startIcon={<FileDownloadIcon sx={{ fontSize: 17 }} />}
-                sx={{ height: 34, fontWeight: 900 }}
-              >
-                Tiger weiß
-              </Button>
-              {memoryGameStarted && (
-                <Button size="small" variant="outlined" onClick={() => setMemoryGameStarted(false)}>
-                  Bearbeiten
+                placeholder="Name"
+                value={memorySetRename}
+                onChange={(event) => setMemorySetRename(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') renameMemorySet();
+                }}
+                sx={memoryCompactFieldSx}
+              />
+              <ButtonGroup size="small" variant="outlined" sx={memoryButtonGroupSx}>
+                <Button variant="contained" onClick={renameMemorySet} disabled={!memorySetRename.trim()}>
+                  Speichern
                 </Button>
-              )}
-            </Stack>
+                <Tooltip
+                  title={
+                    canDeleteSelectedMemorySet
+                      ? 'Eigenen Kartensatz löschen'
+                      : 'Vordefinierte Kartensätze können nicht gelöscht werden'
+                  }
+                >
+                  <span>
+                    <Button
+                      color="error"
+                      onClick={deleteMemorySet}
+                      disabled={!canDeleteSelectedMemorySet}
+                      aria-label="Kartensatz löschen"
+                      sx={{ minWidth: 42, px: 0.9 }}
+                    >
+                      <DeleteOutlineIcon sx={{ fontSize: 20 }} />
+                    </Button>
+                  </span>
+                </Tooltip>
+              </ButtonGroup>
+              <TextField
+                size="small"
+                placeholder="Neu …"
+                value={newMemorySetName}
+                onChange={(event) => setNewMemorySetName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') createNewMemorySet();
+                }}
+                sx={memoryCompactFieldSx}
+              />
+              <ButtonGroup size="small" variant="outlined" sx={memoryButtonGroupSx}>
+                <Button variant="contained" onClick={createNewMemorySet} aria-label="Neuen Kartensatz erstellen" sx={{ minWidth: 42, px: 0.9 }}>
+                  <AddIcon sx={{ fontSize: 20 }} />
+                </Button>
+              </ButtonGroup>
+              <ButtonGroup size="small" sx={memoryButtonGroupSx}>
+                <Button variant="contained" color="success" onClick={resetMemory}>
+                  Spielen
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={() => void handleMemoryExport()}
+                  disabled={memoryExporting}
+                  sx={{ bgcolor: 'white' }}
+                >
+                  {memoryExporting ? '…' : 'HTML'}
+                </Button>
+              </ButtonGroup>
+              <ButtonGroup size="small" variant="outlined" sx={memoryButtonGroupSx} aria-label="Druck-Karten">
+                <Tooltip title="Hühner-Karten">
+                  <Button component="a" href="/print/memory-huehner-karten.png" download="johnny-huehner-memory-karten.png" sx={{ minWidth: 42, px: 0.85, fontSize: '1rem' }}>
+                    🐔
+                  </Button>
+                </Tooltip>
+                <Tooltip title="Hühner weiß">
+                  <Button
+                    component="a"
+                    href="/print/memory-huehner-karten-weiss.png"
+                    download="johnny-huehner-memory-karten-weiss.png"
+                    sx={{ minWidth: 42, px: 0.85, fontSize: '1rem' }}
+                  >
+                    🐔⬜
+                  </Button>
+                </Tooltip>
+                <Tooltip title="Tiger-Karten">
+                  <Button component="a" href="/print/memory-tiger-karten.png" download="tigerkatzen-memory-karten.png" sx={{ minWidth: 42, px: 0.85, fontSize: '1rem' }}>
+                    🐯
+                  </Button>
+                </Tooltip>
+                <Tooltip title="Tiger weiß">
+                  <Button
+                    component="a"
+                    href="/print/memory-tiger-karten-weiss.png"
+                    download="tigerkatzen-memory-karten-weiss.png"
+                    sx={{ minWidth: 42, px: 0.85, fontSize: '1rem' }}
+                  >
+                    🐯⬜
+                  </Button>
+                </Tooltip>
+              </ButtonGroup>
+            </Box>
             <Box sx={{ display: 'grid', gap: 1, mb: 1.25 }}>
+              <input
+                ref={memoryImageInputRef}
+                type="file"
+                accept="image/*,.heic,.heif"
+                hidden
+                onChange={(event) => {
+                  void handleMemoryImageSelected(event);
+                }}
+              />
               <Box sx={{ display: 'grid', gap: 1 }}>
                 <Box sx={{ border: '1px solid rgba(0,0,0,0.12)', borderRadius: 2, overflow: 'hidden', bgcolor: 'white' }}>
                   <Box
                     sx={{
                       display: 'grid',
-                      gridTemplateColumns: '46px minmax(0, 1fr) 46px 46px minmax(0, 1fr)',
+                      gridTemplateColumns: '46px minmax(0, 1fr) 58px 46px 46px minmax(0, 1fr) 58px',
                       gap: 0,
                       bgcolor: '#263238',
                       color: 'white',
@@ -1550,14 +2093,16 @@ export default function KiGamesPage() {
                   >
                     <Box sx={{ p: 0.75, textAlign: 'center' }}>Nr.</Box>
                     <Box sx={{ p: 0.75 }}>Karten links</Box>
+                    <Box sx={{ p: 0.75, textAlign: 'center' }}>Bild</Box>
                     <Box sx={{ p: 0.75, textAlign: 'center' }}>Paar</Box>
                     <Box sx={{ p: 0.75, textAlign: 'center' }}>Nr.</Box>
                     <Box sx={{ p: 0.75 }}>Passende Karten rechts</Box>
+                    <Box sx={{ p: 0.75, textAlign: 'center' }}>Bild</Box>
                   </Box>
                   <Box
                     sx={{
                       display: 'grid',
-                      gridTemplateColumns: '46px minmax(0, 1fr) 46px 46px minmax(0, 1fr)',
+                      gridTemplateColumns: '46px minmax(0, 1fr) 58px 46px 46px minmax(0, 1fr) 58px',
                       borderTop: '1px solid rgba(0,0,0,0.08)',
                       '--memory-row-height': '30px',
                       background: memoryRowBackground(memoryTableRowCount),
@@ -1617,6 +2162,70 @@ export default function KiGamesPage() {
                         boxSizing: 'border-box',
                       }}
                     />
+                    <Box
+                      sx={{
+                        borderLeft: '1px solid rgba(0,0,0,0.08)',
+                        display: 'grid',
+                        alignContent: 'start',
+                      }}
+                    >
+                      {Array.from({ length: memoryTableRowCount }, (_, rowIndex) => {
+                        const imageUrl = memoryLeftImages[rowIndex];
+                        return (
+                          <Box
+                            key={`left-image-${rowIndex}`}
+                            sx={{
+                              height: 'var(--memory-row-height)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 0.25,
+                              px: 0.25,
+                            }}
+                          >
+                            {imageUrl ? (
+                              <>
+                                <Tooltip title="Bild ersetzen">
+                                  <Box
+                                    component="img"
+                                    src={imageUrl}
+                                    alt=""
+                                    onClick={() => openMemoryImagePicker('left', rowIndex)}
+                                    sx={{
+                                      width: 22,
+                                      height: 22,
+                                      objectFit: 'cover',
+                                      borderRadius: 0.75,
+                                      border: '1px solid rgba(0,0,0,0.16)',
+                                      cursor: 'pointer',
+                                    }}
+                                  />
+                                </Tooltip>
+                                <IconButton
+                                  size="small"
+                                  aria-label="Bild entfernen"
+                                  onClick={() => updateMemoryImage('left', rowIndex, '')}
+                                  sx={{ width: 18, height: 18, p: 0 }}
+                                >
+                                  <CloseIcon sx={{ fontSize: 13 }} />
+                                </IconButton>
+                              </>
+                            ) : (
+                              <Tooltip title="Bild hinzufügen">
+                                <IconButton
+                                  size="small"
+                                  aria-label="Bild hinzufügen"
+                                  onClick={() => openMemoryImagePicker('left', rowIndex)}
+                                  sx={{ width: 24, height: 24 }}
+                                >
+                                  <ImageIcon sx={{ fontSize: 16 }} />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                          </Box>
+                        );
+                      })}
+                    </Box>
                     <Box
                       component="textarea"
                       value={Array.from({ length: memoryTableRowCount }, () => '=').join('\n')}
@@ -1702,14 +2311,83 @@ export default function KiGamesPage() {
                         boxSizing: 'border-box',
                       }}
                     />
+                    <Box
+                      sx={{
+                        borderLeft: '1px solid rgba(0,0,0,0.08)',
+                        display: 'grid',
+                        alignContent: 'start',
+                      }}
+                    >
+                      {Array.from({ length: memoryTableRowCount }, (_, rowIndex) => {
+                        const imageUrl = memoryRightImages[rowIndex];
+                        return (
+                          <Box
+                            key={`right-image-${rowIndex}`}
+                            sx={{
+                              height: 'var(--memory-row-height)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 0.25,
+                              px: 0.25,
+                            }}
+                          >
+                            {imageUrl ? (
+                              <>
+                                <Tooltip title="Bild ersetzen">
+                                  <Box
+                                    component="img"
+                                    src={imageUrl}
+                                    alt=""
+                                    onClick={() => openMemoryImagePicker('right', rowIndex)}
+                                    sx={{
+                                      width: 22,
+                                      height: 22,
+                                      objectFit: 'cover',
+                                      borderRadius: 0.75,
+                                      border: '1px solid rgba(0,0,0,0.16)',
+                                      cursor: 'pointer',
+                                    }}
+                                  />
+                                </Tooltip>
+                                <IconButton
+                                  size="small"
+                                  aria-label="Bild entfernen"
+                                  onClick={() => updateMemoryImage('right', rowIndex, '')}
+                                  sx={{ width: 18, height: 18, p: 0 }}
+                                >
+                                  <CloseIcon sx={{ fontSize: 13 }} />
+                                </IconButton>
+                              </>
+                            ) : (
+                              <Tooltip title="Bild hinzufügen">
+                                <IconButton
+                                  size="small"
+                                  aria-label="Bild hinzufügen"
+                                  onClick={() => openMemoryImagePicker('right', rowIndex)}
+                                  sx={{ width: 24, height: 24 }}
+                                >
+                                  <ImageIcon sx={{ fontSize: 16 }} />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                          </Box>
+                        );
+                      })}
+                    </Box>
                   </Box>
                 </Box>
                 <Stack direction="row" spacing={0.75} sx={{ flexWrap: 'wrap', gap: 0.75 }}>
                   <Button size="small" onClick={addMemoryTableRow} variant="outlined">
                     Zeile hinzufügen
                   </Button>
-                  <Chip label={`${parseMemoryPairsFromColumns(memoryLeftText, memoryRightText).length} Paare`} />
+                  <Chip
+                    label={`${parseMemoryPairsFromColumns(memoryLeftText, memoryRightText, memoryLeftImages, memoryRightImages).length} Paare`}
+                  />
                 </Stack>
+                <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.35 }}>
+                  Pro Zeile optional ein Bild hinzufügen – statt Text, zusätzlich zum Text oder nur auf einer Seite des Paares.
+                </Typography>
               </Box>
             </Box>
             </>
@@ -1765,6 +2443,7 @@ export default function KiGamesPage() {
                       borderRadius: 3,
                       textTransform: 'none',
                       position: 'relative',
+                      zIndex: 2,
                       overflow: 'hidden',
                       color: highlighted ? 'white' : '#64748b',
                       bgcolor: highlighted ? memoryTeamColors[team] : '#e5e7eb',
@@ -1849,21 +2528,13 @@ export default function KiGamesPage() {
                 );
               })}
             <Box
+              ref={memoryPlayGridRef}
               sx={{
-                display: 'grid',
-                '--memory-columns': memoryColumnCount,
-                '--memory-rows': memoryRowCount,
-                '--memory-gap': '10px',
-                '--memory-side-space': { xs: '24px', md: '360px', lg: '420px' },
-                '--memory-top-space': { xs: '148px', md: '18px' },
-                '--memory-card-size': `min(
-                  150px,
-                  calc((100vw - var(--memory-side-space) - (var(--memory-columns) - 1) * var(--memory-gap)) / var(--memory-columns)),
-                  calc((100vh - var(--memory-top-space) - (var(--memory-rows) - 1) * var(--memory-gap)) / var(--memory-rows))
-                )`,
-                gridTemplateColumns: 'repeat(var(--memory-columns), var(--memory-card-size))',
-                gap: 'var(--memory-gap)',
+                minWidth: 0,
                 width: '100%',
+                display: 'grid',
+                gridTemplateColumns: `repeat(${memoryPlayLayout.columnCount}, minmax(0, 1fr))`,
+                gap: `${memoryGapPx}px`,
                 justifyContent: 'center',
                 alignContent: 'start',
               }}
@@ -1873,18 +2544,17 @@ export default function KiGamesPage() {
                 const solved = memorySolved.includes(card.pairId);
                 const solvedTeam = memorySolvedByTeam[card.pairId];
                 const solvedTeamColor = solvedTeam ? memoryTeamColors[solvedTeam] : card.color;
-                const [leadingToken] = card.label.split(' ');
-                const hasLeadingIcon = card.kind === 'term' && leadingToken.length <= 4 && leadingToken !== card.label;
-                const cardText = hasLeadingIcon ? card.label.slice(leadingToken.length).trim() : card.label;
                 return (
                   <Button
                     key={card.id}
                     onClick={() => flipMemoryCard(card)}
                     sx={{
-                      width: 'var(--memory-card-size)',
-                      height: 'var(--memory-card-size)',
+                      width: memoryPlayLayout.cardWidth,
+                      height: memoryPlayLayout.cardHeight,
+                      maxWidth: '100%',
+                      justifySelf: 'center',
                       minHeight: 0,
-                      p: { xs: 1, sm: 1.15 },
+                      p: visible && card.imageUrl ? 0 : { xs: 1, sm: 1.15 },
                       borderRadius: 2.5,
                       border: solved
                         ? `5px solid ${solvedTeamColor}`
@@ -1900,7 +2570,11 @@ export default function KiGamesPage() {
                       textTransform: 'none',
                       fontWeight: 900,
                       lineHeight: 1.25,
-                      overflow: 'hidden',
+                      overflow: visible ? (card.imageUrl ? 'hidden' : 'auto') : 'hidden',
+                      alignItems: visible && card.imageUrl ? 'stretch' : 'center',
+                      justifyContent: visible && card.imageUrl ? 'stretch' : 'center',
+                      display: 'flex',
+                      scrollbarWidth: 'thin',
                       boxShadow: visible
                         ? `0 4px 14px ${solved ? solvedTeamColor : '#9ca3af'}33`
                         : '0 8px 18px rgba(148,163,184,0.32)',
@@ -1916,38 +2590,32 @@ export default function KiGamesPage() {
                     }}
                   >
                     {visible ? (
-                      <Box
-                        sx={{
-                          display: 'grid',
-                          placeItems: 'center',
-                          gap: hasLeadingIcon ? 0.5 : 0,
-                          fontSize: { xs: '0.76rem', sm: '0.84rem' },
-                          lineHeight: 1.15,
-                          overflow: 'hidden',
-                          textAlign: 'center',
-                        }}
-                      >
-                        {hasLeadingIcon && (
-                          <Box component="span" sx={{ display: 'block', fontSize: { xs: '1.65rem', sm: '1.95rem' }, lineHeight: 1 }}>
-                            {leadingToken}
-                          </Box>
-                        )}
-                        <Box component="span" sx={{ display: 'block' }}>
-                          {cardText}
-                        </Box>
-                      </Box>
+                      <MemoryCardFace card={card} />
                     ) : (
                       <Box
-                        component="img"
-                        src="/johnny-logo.png"
-                        alt="Johnny Logo"
                         sx={{
-                          width: '72%',
-                          height: '72%',
-                          objectFit: 'contain',
-                          opacity: 0.18,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '100%',
+                          height: '100%',
                         }}
-                      />
+                      >
+                        <Box
+                          component="img"
+                          src="/johnny-logo.png"
+                          alt="Johnny Logo"
+                          sx={{
+                            width: '68%',
+                            height: '68%',
+                            maxWidth: '100%',
+                            maxHeight: '100%',
+                            objectFit: 'contain',
+                            opacity: 0.18,
+                            display: 'block',
+                          }}
+                        />
+                      </Box>
                     )}
                   </Button>
                 );
@@ -1973,6 +2641,7 @@ export default function KiGamesPage() {
                       borderRadius: 3,
                       textTransform: 'none',
                       position: 'relative',
+                      zIndex: 2,
                       overflow: 'hidden',
                       color: highlighted ? 'white' : '#64748b',
                       bgcolor: highlighted ? memoryTeamColors[team] : '#e5e7eb',
