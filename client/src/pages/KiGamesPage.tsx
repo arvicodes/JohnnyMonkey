@@ -97,6 +97,14 @@ const gameCards: {
     goals: ['Kennenlernen', 'Aktivierung', 'KI-Humor'],
   },
   {
+    tab: 'memory',
+    title: 'KI-Memory',
+    subtitle: 'Zwei passende Kartenlisten werden im Teamlauf zusammengeführt.',
+    icon: <ExtensionIcon />,
+    color: '#00897b',
+    goals: ['Grundbegriffe sichern', 'Bewegung', 'Teamkommunikation'],
+  },
+  {
     tab: 'nim',
     title: 'Nimm-Spiel',
     subtitle: 'Eine lernende KI vermeidet nach Niederlagen schlechte Züge.',
@@ -111,14 +119,6 @@ const gameCards: {
     icon: <SportsEsportsIcon />,
     color: '#5e35b1',
     goals: ['Zustandsräume', 'Gewinnbedingungen', 'Lernen durch Ausschluss'],
-  },
-  {
-    tab: 'memory',
-    title: 'KI-Memory',
-    subtitle: 'Zwei passende Kartenlisten werden im Teamlauf zusammengeführt.',
-    icon: <ExtensionIcon />,
-    color: '#00897b',
-    goals: ['Grundbegriffe sichern', 'Bewegung', 'Teamkommunikation'],
   },
   {
     tab: 'escape',
@@ -177,6 +177,10 @@ const gameCards: {
     goals: ['Anschlussaufgabe', 'Plausibilitätsfalle', 'Denkzeit'],
   },
 ];
+
+const featuredKiGameTabs: TabId[] = ['smarties', 'memory'];
+const featuredKiGames = gameCards.filter((game) => featuredKiGameTabs.includes(game.tab));
+const otherKiGames = gameCards.filter((game) => !featuredKiGameTabs.includes(game.tab));
 
 const memoryPairStrings: [string, string][] = [
   ['Lernzeit', 'Zeit, in der Schülerinnen und Schüler wirklich fachlich arbeiten.'],
@@ -1776,46 +1780,100 @@ export default function KiGamesPage() {
                 <ArrowBackIcon sx={{ fontSize: 18 }} />
               </IconButton>
             </Box>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }, gap: 1.1 }}>
-              {gameCards.map((game) => (
-                <Card key={game.tab} elevation={0} sx={{ borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)' }}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                      <Box
-                        sx={{
-                          width: game.tab === 'smarties' ? 52 : 34,
-                          height: game.tab === 'smarties' ? 52 : 34,
-                          borderRadius: 1.5,
-                          bgcolor: game.tab === 'smarties' ? 'transparent' : game.color,
-                          color: 'white',
-                          display: 'grid',
-                          placeItems: 'center',
-                          flexShrink: 0,
-                        }}
-                      >
-                        {game.icon}
+            <Stack spacing={{ xs: 2, sm: 2.5 }}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
+                  gap: 1.1,
+                }}
+              >
+                {featuredKiGames.map((game) => (
+                  <Card key={game.tab} elevation={0} sx={{ borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)' }}>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                        <Box
+                          sx={{
+                            width: game.tab === 'smarties' ? 52 : 34,
+                            height: game.tab === 'smarties' ? 52 : 34,
+                            borderRadius: 1.5,
+                            bgcolor: game.tab === 'smarties' ? 'transparent' : game.color,
+                            color: 'white',
+                            display: 'grid',
+                            placeItems: 'center',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {game.icon}
+                        </Box>
+                        <Box sx={{ minWidth: 0, flex: 1 }}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 900, color: '#1f2937', lineHeight: 1.15 }}>
+                            {game.title}
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.35, mb: 0.75, fontSize: '0.78rem' }}>
+                            {game.subtitle}
+                          </Typography>
+                          <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
+                            {game.goals.map((goal) => (
+                              <Chip key={goal} size="small" label={goal} />
+                            ))}
+                          </Stack>
+                        </Box>
                       </Box>
-                      <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 900, color: '#1f2937', lineHeight: 1.15 }}>
-                          {game.title}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.35, mb: 0.75, fontSize: '0.78rem' }}>
-                          {game.subtitle}
-                        </Typography>
-                        <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
-                          {game.goals.map((goal) => (
-                            <Chip key={goal} size="small" label={goal} />
-                          ))}
-                        </Stack>
+                      <Button onClick={() => setTab(game.tab)} variant="contained" size="small" sx={{ mt: 1 }} fullWidth>
+                        Spiel öffnen
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Box>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
+                  gap: 1.1,
+                }}
+              >
+                {otherKiGames.map((game) => (
+                  <Card key={game.tab} elevation={0} sx={{ borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)' }}>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                        <Box
+                          sx={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: 1.5,
+                            bgcolor: game.color,
+                            color: 'white',
+                            display: 'grid',
+                            placeItems: 'center',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {game.icon}
+                        </Box>
+                        <Box sx={{ minWidth: 0, flex: 1 }}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 900, color: '#1f2937', lineHeight: 1.15 }}>
+                            {game.title}
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.35, mb: 0.75, fontSize: '0.78rem' }}>
+                            {game.subtitle}
+                          </Typography>
+                          <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
+                            {game.goals.map((goal) => (
+                              <Chip key={goal} size="small" label={goal} />
+                            ))}
+                          </Stack>
+                        </Box>
                       </Box>
-                    </Box>
-                    <Button onClick={() => setTab(game.tab)} variant="contained" size="small" sx={{ mt: 1 }} fullWidth>
-                      Spiel öffnen
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </Box>
+                      <Button onClick={() => setTab(game.tab)} variant="contained" size="small" sx={{ mt: 1 }} fullWidth>
+                        Spiel öffnen
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Box>
+            </Stack>
           </>
         )}
 
