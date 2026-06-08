@@ -25,6 +25,10 @@ export type StoryPage = {
   bodyHtml: string;
   /** Thematische Seite: Text über volle Breite, keine Polaroid-Spalte rechts */
   fullWidth?: boolean;
+  /** Kleines Bild links neben dem Seitentitel (Vorschau) */
+  titleImageLeft?: string;
+  /** Kleines Bild rechts neben dem Seitentitel (Vorschau) */
+  titleImageRight?: string;
 };
 
 export type StorySite = {
@@ -67,6 +71,8 @@ function emptyPage(overrides?: Partial<StoryPage>): StoryPage {
     heroImage: overrides?.heroImage ?? '',
     galleryImages: overrides?.galleryImages ?? (overrides?.heroImage ? [overrides.heroImage] : []),
     bodyHtml: overrides?.bodyHtml ?? '',
+    titleImageLeft: overrides?.titleImageLeft ?? '',
+    titleImageRight: overrides?.titleImageRight ?? '',
   };
 }
 
@@ -93,6 +99,8 @@ function normalizePage(raw: unknown, index: number): StoryPage {
     })(),
     bodyHtml: typeof p.bodyHtml === 'string' ? p.bodyHtml : '',
     fullWidth: p.fullWidth === true,
+    titleImageLeft: typeof p.titleImageLeft === 'string' ? p.titleImageLeft.trim() : '',
+    titleImageRight: typeof p.titleImageRight === 'string' ? p.titleImageRight.trim() : '',
   };
 }
 

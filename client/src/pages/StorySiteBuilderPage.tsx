@@ -63,6 +63,7 @@ import {
   StoryPageGalleryPanel,
   type StoryPageGalleryPanelHandle,
 } from '../components/story-site/StoryPageGalleryPanel';
+import { StoryTitleImagesEditor } from '../components/story-site/StoryTitleImagesEditor';
 import { ErasmusDayPhotoPickerDialog } from '../components/story-site/ErasmusDayPhotoPickerDialog';
 import { collectPageImages, normalizePageForPreview } from '../lib/storyPageLayout';
 import { fileToStoryImageDataUrl } from '../lib/storyImageUtils';
@@ -361,6 +362,33 @@ export default function StorySiteBuilderPage() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [handleSaveNow]);
 
+  const importPageImageFile = useCallback(
+    async (file: File, forTitle = false): Promise<string | null> => {
+      if (!isLikelyStoryMediaFile(file)) return null;
+      if (forTitle && isLikelyVideoFile(file)) {
+        showToast('Neben dem Titel sind nur Bilder möglich.', 'warning');
+        return null;
+      }
+      const current = siteRef.current;
+      const page = current?.pages.find((p) => p.id === activePageId);
+      const pageDateStr = page?.dateStr ?? '';
+      const siteId = current?.id;
+      try {
+        if (siteId) {
+          const urls = await importPhotoFilesUpload(siteId, pageDateStr, [file]);
+          if (urls[0]) return urls[0];
+        }
+        if (!isLikelyVideoFile(file)) {
+          return await fileToStoryImageDataUrl(file);
+        }
+      } catch {
+        return null;
+      }
+      return null;
+    },
+    [activePageId, showToast],
+  );
+
   const addGalleryFiles = useCallback(
     (fileList: FileList | File[]) => {
       if (!activePageId) return;
@@ -374,24 +402,9 @@ export default function StorySiteBuilderPage() {
         const added: string[] = [];
         const current = siteRef.current;
         const page = current?.pages.find((p) => p.id === activePageId);
-        const pageDateStr = page?.dateStr ?? '';
-        const siteId = current?.id;
         for (const file of files) {
-          try {
-            if (siteId) {
-              const urls = await importPhotoFilesUpload(siteId, pageDateStr, [file]);
-              if (urls[0]) {
-                added.push(urls[0]);
-                continue;
-              }
-            }
-            if (!isLikelyVideoFile(file)) {
-              const url = await fileToStoryImageDataUrl(file);
-              if (url) added.push(url);
-            }
-          } catch {
-            /* einzelne Datei überspringen */
-          }
+          const url = await importPageImageFile(file);
+          if (url) added.push(url);
         }
         setGalleryBusy(false);
         if (!added.length) {
@@ -405,7 +418,7 @@ export default function StorySiteBuilderPage() {
         patchSite(updatePage(current, activePageId, { galleryImages, heroImage: galleryImages[0] ?? '' }));
       })();
     },
-    [activePageId, patchSite],
+    [activePageId, patchSite, importPageImageFile],
   );
 
   const removeGalleryImage = (index: number) => {
@@ -981,6 +994,13 @@ export default function StorySiteBuilderPage() {
                     if (isStoryDayPageTitle(title)) patch.fullWidth = false;
                     updateActivePage(patch);
                   }}
+                />
+                <StoryTitleImagesEditor
+                  titleImageLeft={activePage.titleImageLeft ?? ''}
+                  titleImageRight={activePage.titleImageRight ?? ''}
+                  onChange={(patch) => updateActivePage(patch)}
+                  onImportFile={(file) => importPageImageFile(file, true)}
+                  busy={galleryBusy}
                 />
                 <TextField
                   label="Untertitel"

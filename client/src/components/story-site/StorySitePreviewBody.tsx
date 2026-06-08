@@ -17,6 +17,7 @@ import {
   storySnippetPreviewReadonlySx,
 } from '../../lib/storyHighlightSnippets';
 import { StoryPreviewImage } from './StoryPreviewImage';
+import { StoryTitleSideImage } from './StoryTitleSideImage';
 import { StoryPreviewQuickNav } from './StoryPreviewQuickNav';
 import { StoryPreviewImageLightbox } from './StoryPreviewImageLightbox';
 import { formatStoryPageDateWithWeekday } from '../../lib/storyPageDate';
@@ -146,19 +147,42 @@ export function StorySitePageBlock({
   const images = fullWidth ? [] : collectPageImages(normalized);
   const rotations = [-2, 2, -1.5, 2, 1.5, -2];
 
+  const titleImageLeft = normalized.titleImageLeft?.trim() ?? '';
+  const titleImageRight = normalized.titleImageRight?.trim() ?? '';
+
   const headerParts: React.ReactNode[] = [];
   headerParts.push(
-    <Typography
-      key="title"
+    <Box
+      key="title-row"
       component="span"
       sx={{
-        ...headerLinePartSx,
-        fontSize: { xs: '1.1rem', sm: '1.35rem', md: '1.5rem' },
-        fontWeight: 600,
+        display: 'inline-flex',
+        alignItems: 'center',
+        flexWrap: 'nowrap',
+        gap: 0,
+        flexShrink: 0,
+        maxWidth: '100%',
+        minWidth: 0,
       }}
     >
-      {normalized.title || 'Ohne Titel'}
-    </Typography>
+      {titleImageLeft ? (
+        <StoryTitleSideImage src={titleImageLeft} side="left" alt="" />
+      ) : null}
+      <Typography
+        component="span"
+        sx={{
+          ...headerLinePartSx,
+          fontSize: { xs: '1.1rem', sm: '1.35rem', md: '1.5rem' },
+          fontWeight: 600,
+          minWidth: 0,
+        }}
+      >
+        {normalized.title || 'Ohne Titel'}
+      </Typography>
+      {titleImageRight ? (
+        <StoryTitleSideImage src={titleImageRight} side="right" alt="" />
+      ) : null}
+    </Box>
   );
   if (normalized.subtitle?.trim()) {
     headerParts.push(<HeaderDot key="dot-sub" />);
@@ -263,10 +287,10 @@ export function StorySitePageBlock({
           sx={{
             display: 'flex',
             flexDirection: 'row',
-            alignItems: 'baseline',
+            alignItems: titleImageLeft || titleImageRight ? 'center' : 'baseline',
             flexWrap: 'wrap',
             gap: 0.25,
-            rowGap: 0.15,
+            rowGap: 0.35,
             width: '100%',
             minWidth: 0,
             mb: 1.25,
