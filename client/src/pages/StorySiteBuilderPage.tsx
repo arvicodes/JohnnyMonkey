@@ -23,6 +23,9 @@ import {
   Chip,
   FormControlLabel,
   Checkbox,
+  Select,
+  MenuItem,
+  FormControl,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -65,6 +68,7 @@ import {
 } from '../components/story-site/StoryPageGalleryPanel';
 import { StoryTitleImagesEditor } from '../components/story-site/StoryTitleImagesEditor';
 import { ErasmusDayPhotoPickerDialog } from '../components/story-site/ErasmusDayPhotoPickerDialog';
+import { StoryDatePickerField } from '../components/story-site/StoryDatePickerField';
 import { collectPageImages, normalizePageForPreview } from '../lib/storyPageLayout';
 import { fileToStoryImageDataUrl } from '../lib/storyImageUtils';
 import { isLikelyStoryMediaFile, isLikelyVideoFile, isStoryVideoSrc } from '../lib/storyMediaUtils';
@@ -99,6 +103,11 @@ import {
   isStoryDayPageTitle,
   updatePage,
 } from '../lib/storySitesStorage';
+import {
+  STORY_SITE_CATEGORIES,
+  resolveStorySiteCategory,
+  type StorySiteCategoryId,
+} from '../lib/storySiteCategories';
 
 type SortableStoryPageItemProps = {
   page: StoryPage;
@@ -107,6 +116,8 @@ type SortableStoryPageItemProps = {
   thematic: boolean;
   secondary: React.ReactNode;
   onSelect: () => void;
+  canDelete?: boolean;
+  onDelete?: () => void;
 };
 
 function SortableStoryPageItem({
@@ -116,6 +127,8 @@ function SortableStoryPageItem({
   thematic,
   secondary,
   onSelect,
+  canDelete,
+  onDelete,
 }: SortableStoryPageItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: page.id,
@@ -188,6 +201,24 @@ function SortableStoryPageItem({
           sx={{ m: 0 }}
         />
       </ListItemButton>
+      {canDelete && onDelete ? (
+        <Tooltip title="Unterseite löschen">
+          <span>
+            <IconButton
+              size="small"
+              color="error"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              aria-label={`${page.title || `Seite ${index + 1}`} löschen`}
+              sx={{ alignSelf: 'center', flexShrink: 0, mr: 0.25 }}
+            >
+              <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </span>
+        </Tooltip>
+      ) : null}
     </ListItem>
   );
 }
@@ -561,6 +592,20 @@ export default function StorySiteBuilderPage() {
     setActivePageId(next.pages[0]?.id ?? null);
   };
 
+  const handleRemovePageById = (pageId: string) => {
+    if (!site || site.pages.length <= 1) return;
+    const page = site.pages.find((p) => p.id === pageId);
+    const label = page?.title?.trim() || 'Diese Unterseite';
+    if (!window.confirm(`„${label}“ wirklich löschen?`)) return;
+    const next = removePageFromSite(site, pageId);
+    patchSite(next);
+    if (activePageId === pageId) {
+      setActivePageId(next.pages[0]?.id ?? null);
+    }
+  };
+
+  const canDeletePages = (site?.pages.length ?? 0) > 1;
+
   const handleMove = (dir: -1 | 1) => {
     if (!site || !activePageId) return;
     patchSite(movePage(site, activePageId, dir));
@@ -593,6 +638,11 @@ export default function StorySiteBuilderPage() {
   const updateCountry = (country: string) => {
     if (!site) return;
     patchSite({ ...site, country });
+  };
+
+  const updateCategory = (category: StorySiteCategoryId) => {
+    if (!site) return;
+    patchSite({ ...site, category });
   };
 
   const handleImportedGalleryUrls = (urls: string[], captureDateISO?: string | null) => {
@@ -714,6 +764,8 @@ export default function StorySiteBuilderPage() {
                     setActivePageId(p.id);
                     setMobileNavOpen(false);
                   }}
+                  canDelete={canDeletePages}
+                  onDelete={() => handleRemovePageById(p.id)}
                 />
               ))}
             </SortableContext>
@@ -750,6 +802,8 @@ export default function StorySiteBuilderPage() {
                     setActivePageId(p.id);
                     setMobileNavOpen(false);
                   }}
+                  canDelete={canDeletePages}
+                  onDelete={() => handleRemovePageById(p.id)}
                 />
               ))}
             </SortableContext>
@@ -782,7 +836,7 @@ export default function StorySiteBuilderPage() {
           </Tooltip>
           <Tooltip title="Unterseite löschen">
             <span>
-              <IconButton size="small" onClick={handleRemovePage} disabled={site.pages.length <= 1} color="error">
+              <IconButton size="small" onClick={handleRemovePage} disabled={!canDeletePages} color="error">
                 <DeleteOutlineIcon fontSize="small" />
               </IconButton>
             </span>
@@ -831,6 +885,19 @@ export default function StorySiteBuilderPage() {
           onChange={(e) => updateCountry(e.target.value)}
           sx={{ ...storyToolbarFieldSx, maxWidth: { xs: 100, sm: 140 } }}
         />
+        <FormControl size="small" sx={{ flexShrink: 0, minWidth: { xs: 96, sm: 120 } }}>
+          <Select
+            value={site.category ?? resolveStorySiteCategory(site)}
+            onChange={(e) => updateCategory(e.target.value as StorySiteCategoryId)}
+            sx={{ height: 28, fontSize: '0.72rem', borderRadius: 0.75, bgcolor: 'background.paper' }}
+          >
+            {STORY_SITE_CATEGORIES.map((c) => (
+              <MenuItem key={c.id} value={c.id} sx={{ fontSize: '0.78rem' }}>
+                {c.shortLabel}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
         <StoryToolbarDivider />
         <Tooltip title="Jetzt speichern (Strg+S)">
           <span>
@@ -884,6 +951,7 @@ export default function StorySiteBuilderPage() {
             </IconButton>
           </Tooltip>
         ) : null}
+        <Box sx={{ flex: '1 1 0', minWidth: 8 }} />
         <Tooltip title="Löschen">
           <IconButton
             size="small"
@@ -1010,19 +1078,14 @@ export default function StorySiteBuilderPage() {
                   onChange={(e) => updateActivePage({ subtitle: e.target.value })}
                 />
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-                  <TextField
+                  <StoryDatePickerField
                     label="Datum"
+                    variant="field"
                     size="small"
                     fullWidth
-                    value={
-                      activePage.dateStr?.trim() && parseStoryPageDate(activePage.dateStr)
-                        ? formatStoryPageDateWithWeekday(activePage.dateStr)
-                        : activePage.dateStr
-                    }
-                    onChange={(e) =>
-                      updateActivePage({ dateStr: commitStoryPageDateInput(e.target.value) })
-                    }
-                    placeholder="z. B. Mo., 4. Mai 2026"
+                    valueFormat="de-weekday"
+                    value={activePage.dateStr}
+                    onChange={(v) => updateActivePage({ dateStr: v })}
                   />
                   <TextField
                     label="Ort"

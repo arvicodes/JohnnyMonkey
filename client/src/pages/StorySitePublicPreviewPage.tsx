@@ -72,6 +72,16 @@ export default function StorySitePublicPreviewPage() {
     };
   }, [site]);
 
+  useEffect(() => {
+    if (!site) return;
+    const hash = window.location.hash.replace(/^#/, '');
+    if (!hash) return;
+    const timer = window.setTimeout(() => {
+      document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [site]);
+
   if (site === undefined) {
     return (
       <Box

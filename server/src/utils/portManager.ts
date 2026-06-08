@@ -50,6 +50,9 @@ export class PortManager {
     return new Promise((resolve, reject) => {
       const server = app.listen(port, () => {
         const actualPort = (server.address() as AddressInfo)?.port || port;
+        server.timeout = 600_000;
+        server.keepAliveTimeout = 650_000;
+        server.headersTimeout = 660_000;
         console.log(`🚀 Server started successfully on port ${actualPort}`);
         
         resolve({ server, port: actualPort });

@@ -11,6 +11,11 @@ import {
   Stack,
   Button,
   Chip,
+  ToggleButton,
+  ToggleButtonGroup,
+  FormControl,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -19,6 +24,9 @@ import {
   DeleteOutline as DeleteOutlineIcon,
   Article as ArticleIcon,
   OpenInNew as OpenInNewIcon,
+  LockOpen as LockOpenIcon,
+  Timeline as TimelineIcon,
+  ViewList as ViewListIcon,
 } from '@mui/icons-material';
 import {
   createEmptySite,
@@ -28,26 +36,47 @@ import {
   getSiteById,
   ensureStorySitesStorageReady,
   writePreviewSnapshot,
+  syncSitesFromServer,
   STORY_SITES_UPDATED_EVENT,
   type StorySite,
 } from '../lib/storySitesStorage';
+import type { StorySiteCategoryId } from '../lib/storySiteCategories';
+import {
+  STORY_SITE_CATEGORIES,
+  filterSitesForDisplay,
+  resolveStorySiteCategory,
+  getStorySiteCategoryDef,
+  isUrlaubCategoryUnlocked,
+  lockUrlaubCategory,
+} from '../lib/storySiteCategories';
 import {
   StoryCompactToolbar,
   StoryToolbarDivider,
   storyToolbarIconBtnSx,
 } from '../components/story-site/StoryCompactToolbar';
+import { StoriesDiariesSeasonTimeline } from '../components/story-site/StoriesDiariesSeasonTimeline';
+import { UrlaubUnlockDialog } from '../components/story-site/UrlaubUnlockDialog';
+import { STORY_BEIGE, STORY_SCRAPBOOK_BG } from '../lib/storyPageLayout';
+
+type ViewMode = 'timeline' | 'list';
 
 export default function StoriesDiariesHubPage() {
   const navigate = useNavigate();
   const [sites, setSites] = useState<StorySite[]>([]);
+  const [viewMode, setViewMode] = useState<ViewMode>('timeline');
+  const [urlaubUnlocked, setUrlaubUnlocked] = useState(isUrlaubCategoryUnlocked());
+  const [unlockOpen, setUnlockOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const refresh = () => setSites(loadSites());
 
   useEffect(() => {
     let cancelled = false;
-    void ensureStorySitesStorageReady().then(() => {
+    void ensureStorySitesStorageReady().then(async () => {
+      await syncSitesFromServer();
       if (!cancelled) {
         setSites(loadSites());
+        setLoading(false);
       }
     });
     const onUpdated = () => refresh();
@@ -58,6 +87,21 @@ export default function StoriesDiariesHubPage() {
     };
   }, []);
 
+  const hiddenUrlaubCount = useMemo(() => {
+    if (urlaubUnlocked) return 0;
+    return sites.filter((s) => resolveStorySiteCategory(s) === 'urlaub').length;
+  }, [sites, urlaubUnlocked]);
+
+  const visibleSites = useMemo(
+    () => filterSitesForDisplay(sites, urlaubUnlocked),
+    [sites, urlaubUnlocked],
+  );
+
+  const sorted = useMemo(
+    () => [...visibleSites].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)),
+    [visibleSites],
+  );
+
   const handleNewSite = async () => {
     const site = createEmptySite();
     await persistSite(site);
@@ -65,13 +109,11 @@ export default function StoriesDiariesHubPage() {
     navigate(`/stories-tagebuecher/site/${site.id}`);
   };
 
-  const openSite = (id: string) => {
-    navigate(`/stories-tagebuecher/site/${id}`);
-  };
+  const openSite = (id: string) => navigate(`/stories-tagebuecher/site/${id}`);
 
-  const openPreview = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
+  const openPreview = async (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault();
     const local = getSiteById(id);
     if (local) {
       writePreviewSnapshot(local);
@@ -80,9 +122,9 @@ export default function StoriesDiariesHubPage() {
     window.open(`/stories-tagebuecher/site/${id}/vorschau`, '_blank', 'noopener,noreferrer');
   };
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
+  const handleDelete = async (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault();
     if (!window.confirm('Diese Website und alle Unterseiten löschen?')) return;
     await deleteSiteById(id);
     try {
@@ -93,10 +135,26 @@ export default function StoriesDiariesHubPage() {
     refresh();
   };
 
-  const sorted = useMemo(
-    () => [...sites].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)),
-    [sites]
-  );
+  const handleCategoryChange = async (siteId: string, category: StorySiteCategoryId) => {
+    const site = getSiteById(siteId);
+    if (!site) return;
+    await persistSite({ ...site, category });
+    refresh();
+  };
+
+  const openPageOverview = async () => {
+    if (visibleSites.length === 0 && hiddenUrlaubCount === 0) return;
+    if (visibleSites.length === 1 && hiddenUrlaubCount === 0) {
+      const local = getSiteById(visibleSites[0].id);
+      if (local) {
+        writePreviewSnapshot(local);
+        await persistSite(local);
+      }
+      navigate(`/stories-tagebuecher/site/${visibleSites[0].id}/page`);
+      return;
+    }
+    navigate('/stories-tagebuecher/page');
+  };
 
   const formatDate = (iso: string) => {
     try {
@@ -106,155 +164,197 @@ export default function StoriesDiariesHubPage() {
     }
   };
 
+  const pageButtonSx = {
+    flexShrink: 0,
+    minWidth: 52,
+    height: 28,
+    px: 1.25,
+    fontSize: '0.6875rem',
+    fontWeight: 800,
+    letterSpacing: '0.06em',
+    textTransform: 'none' as const,
+    borderColor: 'rgba(255, 152, 0, 0.55)',
+    color: '#e65100',
+  };
+
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#faf7f2' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: STORY_BEIGE.page }}>
       <StoryCompactToolbar>
         <Tooltip title="Dashboard">
-          <IconButton
-            size="small"
-            onClick={() => navigate('/dashboard')}
-            aria-label="Zurück"
-            sx={storyToolbarIconBtnSx}
-          >
+          <IconButton size="small" onClick={() => navigate('/dashboard')} sx={storyToolbarIconBtnSx}>
             <ArrowBackIcon />
           </IconButton>
         </Tooltip>
         <WbSunnyIcon sx={{ fontSize: 20, color: '#f57f17', flexShrink: 0 }} />
-        <Typography
-          component="h1"
-          noWrap
-          sx={{
-            flex: '1 1 auto',
-            minWidth: 0,
-            fontWeight: 700,
-            fontSize: '0.8125rem',
-            color: '#4e342e',
-            lineHeight: 1.2,
-          }}
-        >
-          Stories & Websites
+        <Typography noWrap sx={{ flex: '1 1 auto', minWidth: 0, fontWeight: 700, fontSize: '0.8125rem', color: '#4e342e' }}>
+          Stories & Tagebücher
         </Typography>
+        {!loading ? (
+          <Chip size="small" label={`${visibleSites.length} Website${visibleSites.length === 1 ? '' : 's'}`} sx={{ height: 22, fontWeight: 700, fontSize: '0.68rem' }} />
+        ) : null}
         <StoryToolbarDivider />
+        {!urlaubUnlocked ? (
+          <Tooltip title="Urlaub anzeigen">
+            <IconButton size="small" onClick={() => setUnlockOpen(true)} sx={{ ...(storyToolbarIconBtnSx as object), color: '#00897b' }}>
+              <LockOpenIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
+        ) : (
+          <Tooltip title="Urlaub ausblenden">
+            <IconButton
+              size="small"
+              onClick={() => {
+                lockUrlaubCategory();
+                setUrlaubUnlocked(false);
+              }}
+              sx={storyToolbarIconBtnSx}
+            >
+              <LockOpenIcon sx={{ fontSize: 16, color: '#00897b' }} />
+            </IconButton>
+          </Tooltip>
+        )}
         <Tooltip title="Neue Website">
-          <IconButton
-            size="small"
-            onClick={() => void handleNewSite()}
-            aria-label="Neu"
-            sx={{ ...(storyToolbarIconBtnSx as object), color: '#e65100', borderColor: 'rgba(230,81,0,0.4)' }}
-          >
+          <IconButton size="small" onClick={() => void handleNewSite()} sx={{ ...(storyToolbarIconBtnSx as object), color: '#e65100' }}>
             <AddIcon />
           </IconButton>
         </Tooltip>
+        <Box sx={{ flex: '1 1 0', minWidth: 8 }} />
+        <ToggleButtonGroup
+          size="small"
+          value={viewMode}
+          exclusive
+          onChange={(_, v: ViewMode | null) => v && setViewMode(v)}
+          sx={{ flexShrink: 0, height: 28, '& .MuiToggleButton-root': { px: 0.75, py: 0, minWidth: 32, height: 28 } }}
+        >
+          <ToggleButton value="timeline" aria-label="Zeitstrahl">
+            <TimelineIcon sx={{ fontSize: 16 }} />
+          </ToggleButton>
+          <ToggleButton value="list" aria-label="Liste">
+            <ViewListIcon sx={{ fontSize: 16 }} />
+          </ToggleButton>
+        </ToggleButtonGroup>
+        <Tooltip title="Übersichtsseite (PAGE)">
+          <span>
+            <Button size="small" variant="outlined" onClick={() => void openPageOverview()} disabled={sites.length === 0} sx={pageButtonSx}>
+              PAGE
+            </Button>
+          </span>
+        </Tooltip>
       </StoryCompactToolbar>
 
-      <Box sx={{ width: '100%', px: { xs: 1, sm: 1.5, md: 2 }, py: { xs: 1.5, sm: 2 } }}>
-        {sorted.length === 0 ? (
+      <Box sx={{ width: '100%', px: { xs: 0.5, sm: 1.5, md: 2 }, py: { xs: 1.5, sm: 2 } }}>
+        {loading ? (
+          <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+            Websites werden geladen…
+          </Typography>
+        ) : sites.length === 0 ? (
           <Card elevation={0} sx={{ borderRadius: 3, border: '1px dashed', borderColor: 'divider', bgcolor: 'rgba(255,255,255,0.7)' }}>
             <CardContent sx={{ py: 4, textAlign: 'center' }}>
               <Typography color="text.secondary" sx={{ mb: 2 }}>
                 Noch keine Website. Tippe oben auf + für eine neue Website.
               </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<AddIcon />}
-                onClick={() => void handleNewSite()}
-                sx={{ textTransform: 'none' }}
-              >
+              <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => void handleNewSite()} sx={{ textTransform: 'none' }}>
                 Neue Website
               </Button>
             </CardContent>
           </Card>
+        ) : viewMode === 'timeline' ? (
+          <Box
+            sx={{
+              width: '100vw',
+              maxWidth: '100vw',
+              ml: 'calc(50% - 50vw)',
+              background: STORY_SCRAPBOOK_BG,
+              borderTop: '1px solid rgba(93, 64, 55, 0.08)',
+              borderBottom: '1px solid rgba(93, 64, 55, 0.08)',
+              py: { xs: 1.5, sm: 2 },
+              boxShadow: '0 16px 40px rgba(93, 64, 55, 0.1)',
+            }}
+          >
+            <StoriesDiariesSeasonTimeline
+              sites={visibleSites}
+              editable
+              urlaubUnlocked={urlaubUnlocked}
+              hiddenUrlaubCount={hiddenUrlaubCount}
+              onOpenSite={openSite}
+              onOpenPreview={(id, e) => void openPreview(id, e)}
+              onOpenEditor={openSite}
+              onDeleteSite={(id, e) => void handleDelete(id, e)}
+              onCategoryChange={(id, cat) => void handleCategoryChange(id, cat)}
+              onRequestUrlaubUnlock={() => setUnlockOpen(true)}
+            />
+          </Box>
         ) : (
           <Stack spacing={1.5}>
-            {sorted.map((site) => (
-              <Card
-                key={site.id}
-                elevation={0}
-                sx={{
-                  borderRadius: 3,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  flexDirection: 'row',
-                  alignItems: 'stretch',
-                  transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
-                  '&:hover': {
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-                    borderColor: 'rgba(255, 152, 0, 0.45)',
-                  },
-                }}
-              >
-                <CardActionArea onClick={() => openSite(site.id)} sx={{ flex: 1, display: 'flex', alignItems: 'stretch' }}>
-                  <CardContent sx={{ py: 2, flex: 1, '&:last-child': { pb: 2 } }}>
-                    <Stack direction="row" spacing={1.5} alignItems="center">
-                      <Box
-                        sx={{
-                          width: 48,
-                          height: 48,
-                          borderRadius: 2,
-                          background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 55%, #e65100 100%)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'white',
-                          flexShrink: 0,
-                        }}
-                      >
-                        <ArticleIcon />
-                      </Box>
-                      <Box sx={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                        <Typography sx={{ fontWeight: 800, fontSize: '1.05rem' }} noWrap>
-                          {site.name}
-                        </Typography>
-                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
-                          <Chip size="small" label={`${site.pages.length} Unterseite${site.pages.length === 1 ? '' : 'n'}`} />
-                          <Typography variant="caption" color="text.secondary">
-                            Zuletzt: {formatDate(site.updatedAt)}
-                          </Typography>
-                        </Stack>
-                      </Box>
-                    </Stack>
-                  </CardContent>
-                </CardActionArea>
-                <Stack
-                  direction="row"
-                  spacing={0.25}
-                  alignItems="center"
+            {sorted.map((site) => {
+              const cat = getStorySiteCategoryDef(resolveStorySiteCategory(site));
+              return (
+                <Card
+                  key={site.id}
+                  elevation={0}
                   sx={{
-                    flexShrink: 0,
-                    px: 1,
-                    borderLeft: '1px solid',
-                    borderColor: 'divider',
-                    bgcolor: 'rgba(0,0,0,0.02)',
+                    borderRadius: 3,
+                    border: '2px solid',
+                    borderColor: cat.border,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'row',
+                    bgcolor: cat.bg,
                   }}
                 >
-                  <Tooltip title="Vorschau im neuen Tab">
-                    <IconButton
-                      size="small"
-                      onClick={(e) => void openPreview(site.id, e)}
-                      aria-label="Vorschau im neuen Tab"
-                    >
-                      <OpenInNewIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Website löschen">
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={(e) => void handleDelete(site.id, e)}
-                      aria-label="Website löschen"
-                    >
-                      <DeleteOutlineIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </Stack>
-              </Card>
-            ))}
+                  <Box sx={{ width: 5, bgcolor: cat.color, flexShrink: 0 }} />
+                  <CardActionArea onClick={() => openSite(site.id)} sx={{ flex: 1 }}>
+                    <CardContent sx={{ py: 2 }}>
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        <Box sx={{ width: 44, height: 44, borderRadius: 2, bgcolor: cat.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+                          <ArticleIcon />
+                        </Box>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography sx={{ fontWeight: 800, fontSize: '1.05rem' }} noWrap>
+                            {site.name}
+                          </Typography>
+                          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
+                            <Chip size="small" label={cat.shortLabel} sx={{ height: 20, fontSize: '0.65rem', bgcolor: cat.color, color: '#fff' }} />
+                            <Chip size="small" label={`${site.pages.length} Unterseiten`} />
+                            <Typography variant="caption" color="text.secondary">
+                              {formatDate(site.updatedAt)}
+                            </Typography>
+                          </Stack>
+                        </Box>
+                      </Stack>
+                    </CardContent>
+                  </CardActionArea>
+                  <Stack direction="column" spacing={0.5} sx={{ px: 1, py: 1, borderLeft: '1px solid', borderColor: 'divider', bgcolor: 'rgba(255,255,255,0.5)' }}>
+                    <FormControl size="small" sx={{ minWidth: 120 }} onClick={(e) => e.stopPropagation()}>
+                      <Select
+                        value={site.category ?? resolveStorySiteCategory(site)}
+                        onChange={(e) => void handleCategoryChange(site.id, e.target.value as StorySiteCategoryId)}
+                        sx={{ height: 28, fontSize: '0.72rem' }}
+                      >
+                        {STORY_SITE_CATEGORIES.map((c) => (
+                          <MenuItem key={c.id} value={c.id} sx={{ fontSize: '0.78rem' }}>
+                            {c.shortLabel}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <Stack direction="row" spacing={0.25}>
+                      <IconButton size="small" onClick={(e) => void openPreview(site.id, e)}>
+                        <OpenInNewIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" color="error" onClick={(e) => void handleDelete(site.id, e)}>
+                        <DeleteOutlineIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
+                  </Stack>
+                </Card>
+              );
+            })}
           </Stack>
         )}
       </Box>
+
+      <UrlaubUnlockDialog open={unlockOpen} onClose={() => setUnlockOpen(false)} onUnlocked={() => setUrlaubUnlocked(true)} />
     </Box>
   );
 }

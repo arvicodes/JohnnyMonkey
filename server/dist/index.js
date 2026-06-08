@@ -31,6 +31,7 @@ const kaCorrections_1 = __importDefault(require("./routes/kaCorrections"));
 const messages_1 = __importDefault(require("./routes/messages"));
 const exitTicket_1 = __importDefault(require("./routes/exitTicket"));
 const entryTicket_1 = __importDefault(require("./routes/entryTicket"));
+const excursionProtocol_1 = __importDefault(require("./routes/excursionProtocol"));
 const journey_1 = __importDefault(require("./routes/journey"));
 const storySites_1 = __importDefault(require("./routes/storySites"));
 const flashcards_1 = __importDefault(require("./routes/flashcards"));
@@ -88,6 +89,7 @@ app.use('/api/ka-corrections', kaCorrections_1.default);
 app.use('/api/messages', messages_1.default);
 app.use('/api/exit-ticket', exitTicket_1.default);
 app.use('/api/entry-ticket', entryTicket_1.default);
+app.use('/api/excursion-protocol', excursionProtocol_1.default);
 app.use('/api/journey', journey_1.default);
 app.use('/api/story-sites', storySites_1.default);
 // Material static files

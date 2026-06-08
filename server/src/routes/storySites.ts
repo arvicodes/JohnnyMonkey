@@ -55,39 +55,60 @@ function safeMediaFilename(name: string): string | null {
 }
 
 /** Base64-Bilder als Dateien ablegen — kleines JSON, zuverlässigeres Speichern. */
-function externalizeDataUrls(siteId: string, raw: Record<string, unknown>): Record<string, unknown> {
+async function externalizeDataUrls(
+  siteId: string,
+  raw: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
   const mediaDir = siteMediaDir(siteId);
-  if (!fs.existsSync(mediaDir)) {
-    fs.mkdirSync(mediaDir, { recursive: true });
-  }
+  await fs.promises.mkdir(mediaDir, { recursive: true });
 
-  const replaceInString = (input: string): string => {
+  const replaceInString = async (input: string): Promise<string> => {
     if (!input || !input.includes('data:image')) return input;
-    return input.replace(DATA_URL_RE, (_match, mime: string, b64: string) => {
+    const parts: string[] = [];
+    let lastIndex = 0;
+    const re = new RegExp(DATA_URL_RE.source, DATA_URL_RE.flags);
+    let match: RegExpExecArray | null;
+    while ((match = re.exec(input)) !== null) {
+      parts.push(input.slice(lastIndex, match.index));
+      const mime = match[1];
+      const b64 = match[2];
       const hash = crypto.createHash('sha256').update(b64).digest('hex').slice(0, 16);
       const ext = String(mime).toLowerCase().includes('png') ? 'png' : 'jpg';
       const filename = `${hash}.${ext}`;
       const filePath = path.join(mediaDir, filename);
-      if (!fs.existsSync(filePath)) {
-        fs.writeFileSync(filePath, Buffer.from(b64, 'base64'));
+      try {
+        await fs.promises.access(filePath);
+      } catch {
+        await fs.promises.writeFile(filePath, Buffer.from(b64, 'base64'));
       }
-      return `/api/story-sites/${siteId}/media/${filename}`;
-    });
+      parts.push(`/api/story-sites/${siteId}/media/${filename}`);
+      lastIndex = match.index + match[0].length;
+    }
+    parts.push(input.slice(lastIndex));
+    return parts.join('');
   };
 
   const pages = Array.isArray(raw.pages) ? raw.pages : [];
-  const nextPages = pages.map((p) => {
-    if (!p || typeof p !== 'object') return p;
-    const page = { ...(p as Record<string, unknown>) };
-    if (typeof page.heroImage === 'string') page.heroImage = replaceInString(page.heroImage);
-    if (Array.isArray(page.galleryImages)) {
-      page.galleryImages = page.galleryImages.map((item) =>
-        typeof item === 'string' ? replaceInString(item) : item,
-      );
-    }
-    if (typeof page.bodyHtml === 'string') page.bodyHtml = replaceInString(page.bodyHtml);
-    return page;
-  });
+  const nextPages = await Promise.all(
+    pages.map(async (p) => {
+      if (!p || typeof p !== 'object') return p;
+      const page = { ...(p as Record<string, unknown>) };
+      if (typeof page.heroImage === 'string') page.heroImage = await replaceInString(page.heroImage);
+      if (Array.isArray(page.galleryImages)) {
+        page.galleryImages = await Promise.all(
+          page.galleryImages.map((item) => (typeof item === 'string' ? replaceInString(item) : item)),
+        );
+      }
+      if (typeof page.titleImageLeft === 'string') {
+        page.titleImageLeft = await replaceInString(page.titleImageLeft);
+      }
+      if (typeof page.titleImageRight === 'string') {
+        page.titleImageRight = await replaceInString(page.titleImageRight);
+      }
+      if (typeof page.bodyHtml === 'string') page.bodyHtml = await replaceInString(page.bodyHtml);
+      return page;
+    }),
+  );
 
   return { ...raw, pages: nextPages };
 }
@@ -317,7 +338,8 @@ router.get('/:id', (req: Request, res: Response) => {
   }
 });
 
-router.put('/:id', (req: Request, res: Response) => {
+router.put('/:id', async (req: Request, res: Response) => {
+  const started = Date.now();
   try {
     const id = req.params.id;
     safeSiteId(id);
@@ -327,8 +349,12 @@ router.put('/:id', (req: Request, res: Response) => {
     ensureDataDir();
     const body = { ...(req.body as Record<string, unknown>), id };
     const { payload: withFolders, folderPath } = applyErasmusFoldersToSitePayload(body);
-    const payload = externalizeDataUrls(id, withFolders);
-    fs.writeFileSync(sitePath(id), JSON.stringify(payload), 'utf8');
+    const payload = await externalizeDataUrls(id, withFolders);
+    await fs.promises.writeFile(sitePath(id), JSON.stringify(payload), 'utf8');
+    const ms = Date.now() - started;
+    if (ms > 8000) {
+      console.warn(`story-sites put ${id}: ${ms}ms (große Website)`);
+    }
     res.json({
       ok: true,
       id,

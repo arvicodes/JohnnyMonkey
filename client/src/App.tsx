@@ -26,8 +26,11 @@ import KiGamesPage from './pages/KiGamesPage';
 import SmartieIcebreakerPage from './pages/SmartieIcebreakerPage';
 import BeAHeroWorkoutsPage from './pages/BeAHeroWorkoutsPage';
 import StoriesDiariesHubPage from './pages/StoriesDiariesHubPage';
+import StoriesDiariesOverviewPage from './pages/StoriesDiariesOverviewPage';
 import StorySiteBuilderPage from './pages/StorySiteBuilderPage';
+import StorySiteOverviewPage from './pages/StorySiteOverviewPage';
 import StorySitePublicPreviewPage from './pages/StorySitePublicPreviewPage';
+import ExcursionProtocolPage from './pages/ExcursionProtocolPage';
 
 import { Snackbar, Alert, Box, CircularProgress } from '@mui/material';
 import JohnnyCompanionSimple from './components/JohnnyCompanionSimple';
@@ -301,11 +304,14 @@ function AppContent() {
         <Route path="/bewegungsgeschichten-klassiker" element={<MovementStoriesPage />} />
         <Route path="/entry-ticket" element={<EntryTicketPage />} />
         <Route path="/exit-ticket" element={<ExitTicketPage />} />
+        <Route path="/protokoll" element={<ExcursionProtocolPage />} />
         <Route path="/ki-spiele" element={<KiGamesPage />} />
         <Route path="/ki-spiele/smarties" element={<SmartieIcebreakerPage />} />
         <Route path="/be-a-hero" element={<BeAHeroWorkoutsPage />} />
+        <Route path="/stories-tagebuecher/page" element={<StoriesDiariesOverviewPage />} />
         <Route path="/stories-tagebuecher" element={<StoriesDiariesHubPage />} />
         <Route path="/stories-tagebuecher/site/:siteId/vorschau" element={<StorySitePublicPreviewPage />} />
+        <Route path="/stories-tagebuecher/site/:siteId/page" element={<StorySiteOverviewPage />} />
         <Route path="/stories-tagebuecher/site/:siteId" element={<StorySiteBuilderPage />} />
 
       </Routes>

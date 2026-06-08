@@ -319,7 +319,7 @@ import {
   RotateRight as RotateRightIcon,
   SlowMotionVideo as SlowMotionVideoIcon,
   South as SouthIcon,
-  WbSunny as WbSunnyIcon
+  WbSunny as WbSunnyIcon,
 } from '@mui/icons-material';
 import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
@@ -13785,6 +13785,32 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   >
                     X
                   </Typography>
+                </IconButton>
+                {/* Exkursionsprotokoll */}
+                <IconButton
+                  onClick={() => navigate('/protokoll')}
+                  sx={{
+                    p: 0.5,
+                    minWidth: 32,
+                    width: 32,
+                    height: 32,
+                    borderRadius: 1.4,
+                    position: 'relative',
+                    overflow: 'visible',
+                    border: '2px solid rgba(109, 76, 65, 0.45)',
+                    background: 'linear-gradient(135deg, #8d6e63 0%, #5d4037 100%)',
+                    color: 'white',
+                    boxShadow: '0 2px 8px rgba(93, 64, 55, 0.35)',
+                    '&:hover': {
+                      transform: 'scale(1.05)',
+                      borderColor: 'rgba(109, 76, 65, 0.75)',
+                      boxShadow: '0 4px 12px rgba(93, 64, 55, 0.45)',
+                    },
+                    transition: 'all 0.2s ease',
+                  }}
+                  title="Protokoll — Tagesexkursion dokumentieren"
+                >
+                  <AssignmentIcon sx={{ fontSize: 18 }} />
                 </IconButton>
                 {/* Bewegungsgeschichten (WIMASU-Klassiker) */}
                 <IconButton

@@ -11,6 +11,8 @@ import {
   pageHasLoadableDataImages,
 } from './storyPageLayout';
 import { addDaysToStoryPageDate } from './storyPageDate';
+import type { StorySiteCategoryId } from './storySiteCategories';
+import { isStorySiteCategoryId } from './storySiteCategories';
 
 export type StoryPage = {
   id: string;
@@ -34,6 +36,8 @@ export type StoryPage = {
 export type StorySite = {
   id: string;
   name: string;
+  category?: StorySiteCategoryId;
+  timelineDate?: string;
   /** Land für Erasmus-Ordner (Schema: Jahr - Monat - Land - Titel) */
   country?: string;
   /** Relativer Pfad unter J-M-Reihen, z. B. Erasmus/2026 - 05 - Kroatien - Teaching Assignment */
@@ -114,6 +118,8 @@ export function normalizeStorySite(raw: unknown): StorySite | null {
   return {
     id: o.id,
     name: typeof o.name === 'string' && o.name.trim() ? o.name : 'Neue Website',
+    category: isStorySiteCategoryId(o.category) ? o.category : undefined,
+    timelineDate: typeof o.timelineDate === 'string' ? o.timelineDate.trim() : undefined,
     country: typeof o.country === 'string' ? o.country : '',
     erasmusFolder: typeof o.erasmusFolder === 'string' ? o.erasmusFolder : undefined,
     imageSourceFolder: typeof o.imageSourceFolder === 'string' ? o.imageSourceFolder : '',
@@ -226,10 +232,14 @@ export async function deleteSiteById(id: string): Promise<void> {
   dispatchSitesUpdated();
 }
 
+const SAVE_TIMEOUT_MS = 600_000;
+const SAVE_MAX_ATTEMPTS = 2;
+
 export type StorySiteServerSaveResult = {
   ok: boolean;
   status?: number;
   error?: string;
+  site?: StorySite;
 };
 
 export async function saveSiteToServer(site: StorySite): Promise<StorySiteServerSaveResult> {
@@ -240,57 +250,84 @@ export async function saveSiteToServer(site: StorySite): Promise<StorySiteServer
     return {
       ok: false,
       error: 'Website ist zu groß für den Server — bitte weniger oder kleinere Bilder verwenden.',
+      site: normalized,
     };
   }
-  try {
-    const controller = new AbortController();
-    const timer = window.setTimeout(() => controller.abort(), 300_000);
-    const res = await fetch(`/api/story-sites/${encodeURIComponent(normalized.id)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-      signal: controller.signal,
-    });
-    window.clearTimeout(timer);
-    if (res.ok) {
-      try {
-        const data = (await res.json()) as { erasmusFolder?: string | null };
-        if (data?.erasmusFolder && typeof data.erasmusFolder === 'string') {
-          normalized.erasmusFolder = data.erasmusFolder;
-          await saveSiteLocally(normalized);
+
+  let lastError = 'Netzwerkfehler';
+
+  for (let attempt = 1; attempt <= SAVE_MAX_ATTEMPTS; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), SAVE_TIMEOUT_MS);
+      const res = await fetch(`/api/story-sites/${encodeURIComponent(normalized.id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        signal: controller.signal,
+      });
+      window.clearTimeout(timer);
+
+      if (res.ok) {
+        try {
+          const data = (await res.json()) as { erasmusFolder?: string | null };
+          if (data?.erasmusFolder && typeof data.erasmusFolder === 'string') {
+            normalized.erasmusFolder = data.erasmusFolder;
+            await saveSiteLocally(normalized);
+          }
+        } catch {
+          /* ignore */
         }
+        return { ok: true, site: normalized };
+      }
+
+      let error = `Server antwortete mit ${res.status}`;
+      try {
+        const data = (await res.json()) as { error?: string };
+        if (data?.error) error = data.error;
       } catch {
         /* ignore */
       }
-      return { ok: true };
+      if (res.status === 404) {
+        error = 'API nicht gefunden — Server neu starten (npm run dev im Projektroot).';
+      } else if (res.status === 504 || res.status === 408) {
+        error =
+          'Speichern hat zu lange gedauert. Lokal ist gespeichert — bitte kurz warten und erneut speichern (Strg+S).';
+      }
+      lastError = error;
+      console.warn(`Story-Sites Server-Speichern (Versuch ${attempt}/${SAVE_MAX_ATTEMPTS}):`, error);
+
+      const retryable = res.status === 504 || res.status === 408 || res.status >= 500;
+      if (retryable && attempt < SAVE_MAX_ATTEMPTS) {
+        await new Promise((r) => window.setTimeout(r, 2000));
+        continue;
+      }
+      return { ok: false, status: res.status, error, site: normalized };
+    } catch (e) {
+      const msg =
+        e instanceof DOMException && e.name === 'AbortError'
+          ? 'Speichern abgebrochen (Zeitüberschreitung) — lokal gespeichert, bitte erneut versuchen.'
+          : e instanceof TypeError
+            ? 'Keine Verbindung zum Server — läuft „npm run dev“ (API Port 3003)?'
+            : e instanceof Error
+              ? e.message
+              : 'Netzwerkfehler';
+      lastError = msg;
+      console.warn(`Story-Sites Server-Speichern (Versuch ${attempt}/${SAVE_MAX_ATTEMPTS}):`, msg);
+
+      const retryable =
+        e instanceof DOMException && e.name === 'AbortError'
+          ? true
+          : e instanceof TypeError;
+      if (retryable && attempt < SAVE_MAX_ATTEMPTS) {
+        await new Promise((r) => window.setTimeout(r, 2000));
+        continue;
+      }
+      return { ok: false, error: msg, site: normalized };
     }
-    let error = `Server antwortete mit ${res.status}`;
-    try {
-      const data = (await res.json()) as { error?: string };
-      if (data?.error) error = data.error;
-    } catch {
-      /* ignore */
-    }
-    if (res.status === 404) {
-      error = 'API nicht gefunden — Server neu starten (npm run dev im Projektroot).';
-    } else if (res.status === 504 || res.status === 408) {
-      error =
-        'Speichern hat zu lange gedauert (Zeitüberschreitung). Lokal ist gespeichert — Server mit npm run dev neu starten und erneut speichern.';
-    }
-    console.warn('Story-Sites Server-Speichern:', error);
-    return { ok: false, status: res.status, error };
-  } catch (e) {
-    const msg =
-      e instanceof DOMException && e.name === 'AbortError'
-        ? 'Speichern abgebrochen (Zeitüberschreitung) — lokal gespeichert, bitte erneut versuchen.'
-        : e instanceof TypeError
-          ? 'Keine Verbindung zum Server — läuft „npm run dev“ (API Port 3003)?'
-          : e instanceof Error
-            ? e.message
-            : 'Netzwerkfehler';
-    console.warn('Story-Sites Server-Speichern:', msg);
-    return { ok: false, error: msg };
   }
+
+  return { ok: false, error: lastError, site: normalized };
 }
 
 /** Lokal (IndexedDB) und parallel auf dem Server. */
@@ -305,11 +342,7 @@ export async function persistSite(
     localOk = false;
   }
   const serverResult = await saveSiteToServer(site);
-  let snapshotSite = site;
-  if (serverResult.ok) {
-    const refreshed = await fetchSiteFromServer(site.id);
-    if (refreshed) snapshotSite = refreshed;
-  }
+  const snapshotSite = serverResult.site ?? normalizeStorySite(site) ?? site;
   writePreviewSnapshot(snapshotSite);
   return { localOk, serverOk: serverResult.ok, serverError: serverResult.error, site: snapshotSite };
 }
@@ -344,6 +377,33 @@ export async function fetchSiteFromServer(id: string): Promise<StorySite | null>
   }
 }
 
+/** Lokal leer oder fehlende IDs: Websites vom Server nachladen. */
+export async function syncSitesFromServer(): Promise<number> {
+  await ensureStorySitesStorageReady();
+  try {
+    const res = await fetch('/api/story-sites');
+    if (!res.ok) return 0;
+    const list = (await res.json()) as { id?: string }[];
+    let imported = 0;
+    const importAll = sitesCache.length === 0;
+    for (const item of list) {
+      const id = item.id?.trim();
+      if (!id || id === 'does-not-exist' || id.startsWith('test-') || id.startsWith('big-')) continue;
+      if (!importAll && getSiteById(id)) continue;
+      const site = await fetchSiteFromServer(id);
+      if (site) imported += 1;
+    }
+    return imported;
+  } catch {
+    return 0;
+  }
+}
+
+/** @deprecated Nutze syncSitesFromServer */
+export async function syncAllSitesFromServerIfEmpty(): Promise<number> {
+  return syncSitesFromServer();
+}
+
 function countSiteImages(site: StorySite): number {
   return site.pages.reduce((n, p) => n + collectPageImages(p).length, 0);
 }
@@ -368,6 +428,7 @@ export function mergeSiteForEditor(local: StorySite, server: StorySite): StorySi
   return {
     ...server,
     name: local.name || server.name,
+    category: local.category ?? server.category,
     country: local.country || server.country,
     imageSourceFolder: local.imageSourceFolder || server.imageSourceFolder,
     pages: [...server.pages, ...extraLocal],
@@ -541,6 +602,19 @@ export function removePageFromSite(site: StorySite, pageId: string): StorySite {
     ...site,
     pages: site.pages.filter((p) => p.id !== pageId),
   };
+}
+
+/** Titel „Startseite“ — Landing mit Übersicht der Unterseiten. */
+export function isStoryStartPageTitle(title: string): boolean {
+  return /^startseite$/i.test(title.trim());
+}
+
+export function getStoryStartPage(pages: StoryPage[]): StoryPage | undefined {
+  return pages.find((p) => isStoryStartPageTitle(p.title));
+}
+
+export function getStoryOverviewPages(pages: StoryPage[]): StoryPage[] {
+  return pages.filter((p) => !isStoryStartPageTitle(p.title));
 }
 
 /** Titel wie „Tag 1“, „Tag 12“ — Tagebuch-Tag; alles andere gilt als thematische Unterseite. */

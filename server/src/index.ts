@@ -26,6 +26,7 @@ import kaCorrectionsRoutes from './routes/kaCorrections';
 import messageRoutes from './routes/messages';
 import exitTicketRoutes from './routes/exitTicket';
 import entryTicketRoutes from './routes/entryTicket';
+import excursionProtocolRoutes from './routes/excursionProtocol';
 import journeyRoutes from './routes/journey';
 import storySitesRoutes from './routes/storySites';
 import flashcardRoutes from './routes/flashcards';
@@ -55,8 +56,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-login-code']
 }));
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 
 // Monitoring middleware (must be first)
 app.use(MonitoringService.requestMonitor());
@@ -90,6 +91,7 @@ app.use('/api/ka-corrections', kaCorrectionsRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/exit-ticket', exitTicketRoutes);
 app.use('/api/entry-ticket', entryTicketRoutes);
+app.use('/api/excursion-protocol', excursionProtocolRoutes);
 app.use('/api/journey', journeyRoutes);
 app.use('/api/story-sites', storySitesRoutes);
 
@@ -219,6 +221,9 @@ async function startServer() {
     if (process.env.NODE_ENV === 'production') {
       // Listen on 0.0.0.0 to accept connections from outside the container
       const server = app.listen(port, '0.0.0.0', () => {
+        server.timeout = 600_000;
+        server.keepAliveTimeout = 650_000;
+        server.headersTimeout = 660_000;
         console.log(`🎯 Server is running on port ${port}`);
         console.log(`🌐 Environment: ${process.env.NODE_ENV}`);
         console.log(`🔗 Health check: http://localhost:${port}/health`);

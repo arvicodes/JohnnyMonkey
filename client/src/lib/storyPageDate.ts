@@ -126,3 +126,13 @@ export function formatIsoDateDe(iso: string): string {
   const mi = parseInt(m[2], 10) - 1;
   return `${parseInt(m[3], 10)}. ${months[mi] ?? m[2]} ${m[1]}`;
 }
+
+/** Wert für HTML type="date" (YYYY-MM-DD). */
+export function toDateInputIso(value: string | undefined | null): string {
+  if (!value?.trim()) return '';
+  const stripped = stripWeekdayFromDateInput(value.trim());
+  const parsed = parseStoryPageDate(stripped);
+  if (parsed) return parsed;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(stripped)) return stripped;
+  return /^\d{4}-\d{2}-\d{2}$/.test(value.trim()) ? value.trim() : '';
+}
