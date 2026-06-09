@@ -15,7 +15,10 @@ import {
   type TimelineSeasonId,
 } from './storySiteCategories';
 import { formatIsoDateDe } from './storyPageDate';
-import { STORY_SCRAPBOOK_BG, STORY_TIMELINE_MAX_WIDTH, storySitePreviewPath } from './storyPageLayout';
+import { STORY_SCRAPBOOK_BG, STORY_TIMELINE_MAX_WIDTH } from './storyPageLayout';
+import { renderStorySitePreviewHtml, STORY_SITE_PREVIEW_STYLES } from './storySitePreviewHtml';
+
+const OVERVIEW_ID = 'page-overview';
 
 const AXIS_WIDTH = 80;
 const CARD_MAX_WIDTH = 178;
@@ -34,6 +37,10 @@ function escapeHtml(value: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function siteAnchorId(siteId: string): string {
+  return `site-${siteId}`;
 }
 
 function categoryChip(categoryId: StorySiteCategoryId): string {
@@ -68,9 +75,9 @@ function renderCard(
   const dayFraction = getSiteTimelineDayFraction(site, year, month);
   const accent = align === 'right' ? `border-right:3px solid ${cat.color}` : `border-left:3px solid ${cat.color}`;
   const alignCls = align === 'right' ? 'card-right' : 'card-left';
-  const href = `${origin}${storySitePreviewPath(site.id)}`;
+  const href = `#${siteAnchorId(site.id)}`;
   return `<div class="card-slot ${alignCls}" style="${horizontalOffsetStyle(col, dayFraction)}">
-    <a class="card" href="${href}" target="_blank" rel="noopener noreferrer" style="background:${cat.bg};border-color:${cat.border};color:${cat.text};box-shadow:0 2px 8px ${cat.border};${accent}">
+    <a class="card" href="${href}" style="background:${cat.bg};border-color:${cat.border};color:${cat.text};box-shadow:0 2px 8px ${cat.border};${accent}">
       <div class="card-title">${escapeHtml(site.name)}</div>
       <div class="card-date">${escapeHtml(formatIsoDateDe(getSiteTimelineIsoDate(site)))}</div>
     </a>
@@ -152,6 +159,25 @@ function renderTimeline(sites: StorySite[], origin: string): string {
     return '<div class="empty">Noch keine Einträge in der Timeline.</div>';
   }
   return years.map((year) => renderYearBlock(year, byYearMonth.get(year) ?? new Map(), origin)).join('');
+}
+
+function renderSiteSection(site: StorySite, origin: string): string {
+  return `<div class="shell-site" id="${siteAnchorId(site.id)}">
+    <div class="preview-sticky-toolbar">
+      <a class="back-link" href="#${OVERVIEW_ID}" aria-label="Zurück zur Übersicht">←</a>
+      <span class="preview-toolbar-title">${escapeHtml(site.name)}</span>
+    </div>
+    <div class="preview-viewport">${renderStorySitePreviewHtml(site, origin)}</div>
+  </div>`;
+}
+
+function renderSiteSections(sites: StorySite[], origin: string): string {
+  const unique = new Map<string, StorySite>();
+  for (const site of sites) unique.set(site.id, site);
+  return [...unique.values()]
+    .sort((a, b) => getSiteTimelineIsoDate(a).localeCompare(getSiteTimelineIsoDate(b)))
+    .map((site) => renderSiteSection(site, origin))
+    .join('');
 }
 
 const STYLES = `
@@ -248,6 +274,7 @@ const STYLES = `
     border-radius: 12px; border: 1px dashed rgba(93, 64, 55, 0.25);
     background: ${STORY_SCRAPBOOK_BG}; color: rgba(0, 0, 0, 0.6); font-size: 14px;
   }
+  ${STORY_SITE_PREVIEW_STYLES}
 `;
 
 export function buildStoriesPageDownloadHtml(sites: StorySite[], origin: string): string {
@@ -261,10 +288,11 @@ export function buildStoriesPageDownloadHtml(sites: StorySite[], origin: string)
 </head>
 <body class="page">
   <div class="page-pad">
-    <div class="shell">
+    <div class="shell shell-overview" id="${OVERVIEW_ID}">
       <div class="toolbar"><span class="toolbar-sun">☀</span> Stories · PAGE</div>
       <div class="content">${renderTimeline(sites, origin)}</div>
     </div>
+    ${renderSiteSections(sites, origin)}
   </div>
 </body>
 </html>`;
