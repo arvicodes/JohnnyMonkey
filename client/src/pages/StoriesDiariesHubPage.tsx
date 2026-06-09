@@ -27,6 +27,7 @@ import {
   LockOpen as LockOpenIcon,
   Timeline as TimelineIcon,
   ViewList as ViewListIcon,
+  Download as DownloadIcon,
 } from '@mui/icons-material';
 import {
   createEmptySite,
@@ -58,6 +59,7 @@ import {
 import { StoriesDiariesSeasonTimeline } from '../components/story-site/StoriesDiariesSeasonTimeline';
 import { UrlaubUnlockDialog } from '../components/story-site/UrlaubUnlockDialog';
 import { STORY_BEIGE, STORY_TIMELINE_MAX_WIDTH, storyTimelineShellSx } from '../lib/storyPageLayout';
+import { downloadStoriesPageHtml } from '../lib/storyPageHtmlDownload';
 
 type ViewMode = 'timeline' | 'list';
 
@@ -146,6 +148,15 @@ export default function StoriesDiariesHubPage() {
   const openPageOverview = () => {
     if (visibleSites.length === 0 && hiddenUrlaubCount === 0) return;
     navigate('/stories-tagebuecher/page');
+  };
+
+  const handleHtmlDownload = async () => {
+    await syncSitesFromServer();
+    const all = loadSites();
+    const visible = filterSitesForDisplay(all, urlaubUnlocked);
+    if (visible.length === 0) return;
+    downloadStoriesPageHtml(visible);
+    refresh();
   };
 
   const formatDate = (iso: string) => {
@@ -240,6 +251,20 @@ export default function StoriesDiariesHubPage() {
           <span>
             <Button size="small" variant="outlined" onClick={() => void openPageOverview()} disabled={sites.length === 0} sx={pageButtonSx}>
               PAGE
+            </Button>
+          </span>
+        </Tooltip>
+        <Tooltip title="PAGE-Übersicht als HTML herunterladen">
+          <span>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => void handleHtmlDownload()}
+              disabled={visibleSites.length === 0}
+              startIcon={<DownloadIcon sx={{ fontSize: 14 }} />}
+              sx={pageButtonSx}
+            >
+              HTML
             </Button>
           </span>
         </Tooltip>

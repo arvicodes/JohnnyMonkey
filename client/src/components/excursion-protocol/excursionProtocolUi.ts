@@ -365,6 +365,56 @@ export const protocolActivityCardSx = (index = 0) => {
   };
 };
 
+/** Dezente Hervorhebung gegebener Antworten in Abgabe-Ansichten */
+export const submissionAnswerSx = {
+  display: 'block',
+  mt: 0.25,
+  px: 0.65,
+  py: 0.4,
+  borderRadius: 1,
+  bgcolor: 'rgba(25, 118, 210, 0.05)',
+  color: '#2c5282',
+  fontWeight: 500,
+  lineHeight: 1.45,
+  whiteSpace: 'pre-wrap' as const,
+  wordBreak: 'break-word' as const,
+};
+
+export const submissionAnswerChipSx = {
+  height: 'auto',
+  minHeight: 24,
+  py: 0.25,
+  fontWeight: 600,
+  fontSize: '0.75rem',
+  bgcolor: 'rgba(25, 118, 210, 0.06)',
+  color: '#2c5282',
+  border: '1px solid',
+  borderColor: 'rgba(25, 118, 210, 0.15)',
+  '& .MuiChip-label': { whiteSpace: 'normal', lineHeight: 1.3 },
+};
+
+/** Klickbare Abschnitts-Navigation in der Abgabe-Leseansicht */
+export const submissionSectionNavChipSx = (active: boolean, index = 0) => {
+  const accent = protocolAccents[index % protocolAccents.length];
+  return {
+    height: 24,
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    bgcolor: active ? accent.tint : '#fff',
+    color: active ? accent.deep : protocolPalette.textPrimary,
+    border: '1px solid',
+    borderColor: active ? accent.main : 'divider',
+    boxShadow: active ? `0 2px 8px ${accent.main}22` : 'none',
+    transition: 'all 0.15s ease',
+    '&:hover': {
+      borderColor: accent.main,
+      bgcolor: accent.tint,
+      color: accent.deep,
+    },
+  };
+};
+
 export const protocolVibeChipSx = (selected: boolean, vibeScore?: number) => {
   const colors = vibeScore != null ? VIBE_CHIP_COLORS[vibeScore] : null;
   if (!colors) {

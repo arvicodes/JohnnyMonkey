@@ -627,48 +627,46 @@ export function ExcursionProtocolTeacherView({ formatDisplayDate }: Props) {
                 gesamt
               </Typography>
               <Stack spacing={0.75}>
-                {studentRoster.map((entry) => (
-                  <Box
-                    key={`${entry.groupId}-${entry.studentId}`}
-                    onClick={() => {
-                      if (entry.submitted && entry.submission) {
-                        setSelectedSubmissionId(entry.studentId);
-                      }
-                    }}
-                    sx={{
-                      p: 1.25,
-                      borderRadius: 1.5,
-                      border: '1px solid',
-                      borderColor: entry.submitted ? 'success.light' : 'divider',
-                      bgcolor: entry.submitted ? 'rgba(76,175,80,0.06)' : 'rgba(0,0,0,0.02)',
-                      cursor: entry.submitted ? 'pointer' : 'default',
-                      transition: 'all 0.15s ease',
-                      '&:hover': entry.submitted
-                        ? { borderColor: 'success.main', boxShadow: '0 2px 8px rgba(76,175,80,0.15)' }
-                        : undefined,
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          {entry.studentName}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                          {entry.groupName}
-                          {entry.submittedAt
-                            ? ` · ${new Date(entry.submittedAt).toLocaleString('de-DE')}`
-                            : ''}
-                        </Typography>
+                {studentRoster.map((entry, listIndex) => {
+                  const selected = selectedSubmissionId === entry.studentId;
+                  const clickable = entry.submitted && Boolean(entry.submission);
+                  return (
+                    <Box
+                      key={`${entry.groupId}-${entry.studentId}`}
+                      onClick={() => {
+                        if (clickable) setSelectedSubmissionId(entry.studentId);
+                      }}
+                      sx={{
+                        ...protocolListItemSx(selected && clickable, listIndex),
+                        cursor: clickable ? 'pointer' : 'default',
+                        opacity: clickable ? 1 : 0.72,
+                        '&:hover': clickable
+                          ? undefined
+                          : { boxShadow: 'none', transform: 'none' },
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 800, lineHeight: 1.25 }} noWrap>
+                            {entry.studentName}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.3 }}>
+                            {entry.groupName}
+                            {entry.submittedAt
+                              ? ` · ${new Date(entry.submittedAt).toLocaleString('de-DE')}`
+                              : ''}
+                          </Typography>
+                        </Box>
+                        <Chip
+                          size="small"
+                          label={entry.submitted ? 'Abgabe ansehen' : 'Noch offen'}
+                          color={entry.submitted ? 'success' : 'default'}
+                          sx={{ height: 22, fontWeight: 700, fontSize: '0.68rem', flexShrink: 0 }}
+                        />
                       </Box>
-                      <Chip
-                        size="small"
-                        label={entry.submitted ? 'Abgabe ansehen' : 'Noch offen'}
-                        color={entry.submitted ? 'success' : 'default'}
-                        sx={{ fontWeight: 600, flexShrink: 0 }}
-                      />
                     </Box>
-                  </Box>
-                ))}
+                  );
+                })}
               </Stack>
             </Stack>
           )}

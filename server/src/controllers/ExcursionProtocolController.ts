@@ -351,6 +351,7 @@ const migrateLegacyIfNeeded = async (teacherId: string): Promise<ExcursionIndexP
       date: payload.date,
       groupIds: [...new Set(groupIds)],
       publishedAt: payload.publishedAt,
+      editDeadline: null,
       reflectionQuestions: payload.reflectionQuestions,
       ratingCriteria: payload.ratingCriteria,
       submissions: payload.submissions,
@@ -422,23 +423,40 @@ const resolveStudentExcursions = async (studentId: string): Promise<ResolvedExcu
   const results: ResolvedExcursion[] = [];
   const seen = new Set<string>();
 
+  const byTeacher = new Map<string, typeof groups>();
   for (const g of groups) {
-    const resolved = await resolveExcursionForStudentGroup(g.teacherId, g.id);
-    if (!resolved || seen.has(resolved.excursionId)) continue;
+    const list = byTeacher.get(g.teacherId) ?? [];
+    list.push(g);
+    byTeacher.set(g.teacherId, list);
+  }
 
-    const payload = await loadExcursion(g.teacherId, resolved.excursionId);
-    if (!payload?.publishedAt) continue;
+  for (const [teacherId, teacherGroups] of byTeacher) {
+    const index = await loadTeacherIndex(teacherId);
 
-    seen.add(resolved.excursionId);
-    results.push({
-      teacherId: g.teacherId,
-      teacherName: g.teacher.name,
-      excursionId: resolved.excursionId,
-      lessonPath: excursionDataPath(resolved.excursionId),
-      payload,
-      groupId: g.id,
-      groupName: g.name,
-    });
+    for (const meta of index.excursions) {
+      if (!meta.publishedAt) continue;
+
+      const payload = await loadExcursion(teacherId, meta.id);
+      if (!payload?.publishedAt) continue;
+
+      for (const g of teacherGroups) {
+        if (payload.groupIds.length > 0 && !payload.groupIds.includes(g.id)) continue;
+
+        const key = `${meta.id}:${g.id}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        results.push({
+          teacherId,
+          teacherName: g.teacher.name,
+          excursionId: meta.id,
+          lessonPath: excursionDataPath(meta.id),
+          payload,
+          groupId: g.id,
+          groupName: g.name,
+        });
+      }
+    }
   }
 
   results.sort((a, b) => {
@@ -462,15 +480,8 @@ const assertStudentCanAccessExcursion = async (
     select: { id: true },
   });
 
-  for (const g of studentGroups) {
-    const resolved = await resolveExcursionForStudentGroup(teacherId, g.id);
-    if (resolved?.excursionId === excursionId) return true;
-  }
-
-  if (payload.groupIds.length > 0) {
-    return studentGroups.some((g) => payload.groupIds.includes(g.id));
-  }
-  return studentGroups.length > 0;
+  if (payload.groupIds.length === 0) return true;
+  return studentGroups.some((g) => payload.groupIds.includes(g.id));
 };
 
 const normalizeReflection = (raw: unknown): [string, string, string] => {
@@ -775,6 +786,7 @@ export class ExcursionProtocolController {
         date: typeof req.body?.date === 'string' ? req.body.date.trim() : new Date().toISOString().slice(0, 10),
         groupIds,
         publishedAt,
+        editDeadline: normalizeEditDeadline(req.body?.editDeadline, null),
         reflectionQuestions: normalizeReflection(req.body?.reflectionQuestions),
         ratingCriteria: normalizeCriteria(req.body?.ratingCriteria),
         submissions: [],

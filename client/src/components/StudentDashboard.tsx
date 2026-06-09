@@ -40,7 +40,6 @@ import {
   ExpandLess as ExpandLessIcon,
   RecordVoiceOver as ParticipationIcon,
   HelpOutline as HelpIcon,
-  Games as GamesIcon,
   DragIndicator as DragIndicatorIcon,
   Add as AddIcon,
   Palette as PaletteIcon,
@@ -49,8 +48,8 @@ import {
   FormatUnderlined as FormatUnderlinedIcon,
   Link as LinkIcon,
   OpenInNew as OpenInNewIcon,
-  AutoStories as AutoStoriesIcon,
   WbSunny as WbSunnyIcon,
+  Logout as LogoutIcon,
 } from '@mui/icons-material';
 import {
   DndContext,
@@ -5180,20 +5179,20 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             borderRadius: '12px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
           }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Avatar 
-                  sx={{ 
-                    width: 28, 
-                    height: 28, 
-                    bgcolor: '#1976d2', // Blau wie die Fläche unten
-                    boxShadow: '0 1.4px 2.8px rgba(0,0,0,0.12)'
-                  }}
-                >
-                  {studentName.charAt(0)}
-                </Avatar>
-              </Box>
-              <Box sx={{ display: 'flex', gap: 1, ml: 'auto', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, width: '100%', minWidth: 0, pr: 0.25 }}>
+              <Avatar 
+                sx={{ 
+                  width: 28, 
+                  height: 28,
+                  flexShrink: 0,
+                  bgcolor: '#1976d2',
+                  boxShadow: '0 1.4px 2.8px rgba(0,0,0,0.12)'
+                }}
+              >
+                {studentName.charAt(0)}
+              </Avatar>
+              <Box sx={{ flex: 1, minWidth: 8 }} />
+              <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexShrink: 0, flexWrap: 'nowrap', ml: 'auto' }}>
                 {/* Exkursionsprotokoll */}
                 <Box sx={{ position: 'relative' }}>
                   <Tooltip
@@ -5211,10 +5210,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         onClick={() => navigate('/protokoll')}
                         sx={{
                           p: 0,
-                          minWidth: 36,
-                          width: 36,
-                          height: 36,
-                          borderRadius: 1.25,
+                          minWidth: 44,
+                          width: 44,
+                          height: 44,
+                          borderRadius: 1.4,
                           border: excursionProtocolPublishedForStudent
                             ? '2px solid rgba(251, 140, 0, 0.55)'
                             : '2px solid rgba(245, 124, 0, 0.35)',
@@ -5254,7 +5253,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         <Typography
                           component="span"
                           sx={{
-                            fontSize: '1.2rem',
+                            fontSize: '1.35rem',
                             fontWeight: 800,
                             lineHeight: 1,
                             display: 'inline-block',
@@ -5404,258 +5403,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     )}
                   </IconButton>
                 </Box>
-                {/* Minigame Button */}
-                <Box sx={{ position: 'relative' }}>
-                  <IconButton
-                    onClick={() => {
-                      if (!canPlayMinigame(userId)) {
-                        alert('🎮 Du hast das Minigame heute bereits gespielt oder es ist Game Over! Komm morgen wieder!');
-                        return;
-                      }
-                      setShowMinigame(true);
-                    }}
-                    disabled={!canPlayMinigame(userId)}
-                    sx={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: 1.4,
-                      position: 'relative',
-                      overflow: 'visible',
-                      border: '2px solid rgba(255, 152, 0, 0.3)',
-                      background: canPlayMinigame(userId) 
-                        ? 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)'
-                        : 'linear-gradient(135deg, #9e9e9e 0%, #757575 100%)',
-                      color: 'white',
-                      boxShadow: '0 2px 8px rgba(255, 152, 0, 0.3)',
-                      '&:hover': {
-                        transform: canPlayMinigame(userId) ? 'scale(1.05)' : 'none',
-                        borderColor: canPlayMinigame(userId) ? 'rgba(255, 152, 0, 0.6)' : 'rgba(158, 158, 158, 0.3)',
-                        boxShadow: canPlayMinigame(userId) ? '0 4px 12px rgba(255, 152, 0, 0.4)' : '0 2px 8px rgba(158, 158, 158, 0.3)',
-                      },
-                      transition: 'all 0.2s ease',
-                    }}
-                    title={canPlayMinigame(userId) ? "Minigame" : "Minigame - Bereits gespielt oder Game Over"}
-                  >
-                    <GamesIcon sx={{ fontSize: 22 }} />
-                  </IconButton>
-                  {/* Grüner Badge mit Anzahl der Gewinne */}
-                  {minigameWins > 0 && (
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        top: -4,
-                        right: -4,
-                        width: 20,
-                        height: 20,
-                        borderRadius: '50%',
-                        bgcolor: '#4caf50',
-                        color: 'white',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.7rem',
-                        fontWeight: 700,
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                        border: '2px solid white',
-                        zIndex: 1,
-                      }}
-                    >
-                      {minigameWins}
-                    </Box>
-                  )}
-                </Box>
-                <Box sx={{ display: 'none' }} aria-hidden>
-                {/* Karnevals-Minigame Button */}
-                <Box sx={{ position: 'relative' }}>
-                  <IconButton
-                    onClick={() => setShowCarnivalGames(true)}
-                    sx={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: 1.4,
-                      position: 'relative',
-                      overflow: 'visible',
-                      border: '2px solid rgba(255, 20, 147, 0.3)',
-                      background: 'linear-gradient(135deg, #FF1493 0%, #FF69B4 100%)',
-                      color: 'white',
-                      boxShadow: '0 2px 8px rgba(255, 20, 147, 0.3)',
-                      '&:hover': {
-                        transform: 'scale(1.05)',
-                        borderColor: 'rgba(255, 20, 147, 0.6)',
-                        boxShadow: '0 4px 12px rgba(255, 20, 147, 0.4)',
-                      },
-                      transition: 'all 0.2s ease',
-                    }}
-                    title="Karnevals-Minigames"
-                  >
-                    <Typography
-                      component="span"
-                      sx={{
-                        fontSize: '1.4rem',
-                        lineHeight: 1,
-                        display: 'inline-block'
-                      }}
-                    >
-                      🎭
-                    </Typography>
-                  </IconButton>
-                </Box>
-                </Box>
-                {/* 7-Minuten-Workout */}
-                <Box sx={{ position: 'relative' }}>
-                  <IconButton
-                    onClick={() => navigate('/seven-minute-workout')}
-                    sx={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: 1.4,
-                      position: 'relative',
-                      overflow: 'visible',
-                      border: '2px solid rgba(255, 107, 53, 0.45)',
-                      background: 'linear-gradient(135deg, #ff6b35 0%, #f7931e 100%)',
-                      color: 'white',
-                      boxShadow: '0 2px 8px rgba(255, 107, 53, 0.35)',
-                      '&:hover': {
-                        transform: 'scale(1.05)',
-                        borderColor: 'rgba(255, 107, 53, 0.7)',
-                        boxShadow: '0 4px 12px rgba(255, 107, 53, 0.45)',
-                      },
-                      transition: 'all 0.2s ease',
-                    }}
-                    title="7-Minuten-Workout"
-                  >
-                    <Typography
-                      component="span"
-                      sx={{
-                        fontSize: '1.25rem',
-                        fontWeight: 800,
-                        lineHeight: 1,
-                        display: 'inline-block',
-                      }}
-                    >
-                      7
-                    </Typography>
-                  </IconButton>
-                </Box>
-                {/* EntryTicket */}
-                <Box sx={{ position: 'relative' }}>
-                  <IconButton
-                    onClick={() => {
-                      const band = gradeFromGroupNames(lerngruppen.map((lg) => lg.name));
-                      navigate(`/entry-ticket?grade=${band}&autostart=1&r=${Date.now()}`);
-                    }}
-                    sx={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 1.25,
-                      position: 'relative',
-                      overflow: 'visible',
-                      border: '2px solid rgba(33, 150, 243, 0.45)',
-                      background: 'linear-gradient(135deg, #1e88e5 0%, #3949ab 100%)',
-                      color: 'white',
-                      boxShadow: '0 2px 8px rgba(30, 136, 229, 0.35)',
-                      '&:hover': {
-                        transform: 'scale(1.05)',
-                        borderColor: 'rgba(33, 150, 243, 0.7)',
-                        boxShadow: '0 4px 12px rgba(30, 136, 229, 0.45)',
-                      },
-                      transition: 'all 0.2s ease',
-                    }}
-                    title="EntryTicket (10 zufällige Fragen, klassenspezifisch)"
-                  >
-                    <Typography
-                      component="span"
-                      sx={{
-                        fontSize: '1.2rem',
-                        fontWeight: 800,
-                        letterSpacing: 0,
-                        lineHeight: 1,
-                        display: 'inline-block',
-                      }}
-                    >
-                      E
-                    </Typography>
-                  </IconButton>
-                </Box>
-                {/* ExitTicket — nur aktiv, wenn die Lehrkraft eine Vorlage freigegeben hat */}
-                <Box sx={{ position: 'relative' }}>
-                  <Tooltip
-                    title={
-                      exitTicketPublishedForStudent
-                        ? 'Exit Ticket (am besten den Link von der Lehrkraft mit der passenden Vorlage nutzen)'
-                        : 'Exit Ticket — deine Lehrkraft hat noch nichts freigegeben'
-                    }
-                  >
-                    <span>
-                      <IconButton
-                        disabled={!exitTicketPublishedForStudent}
-                        onClick={() => navigate('/exit-ticket')}
-                        sx={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 1.25,
-                          position: 'relative',
-                          overflow: 'visible',
-                          border: '2px solid rgba(102, 187, 106, 0.45)',
-                          background: 'linear-gradient(135deg, #43a047 0%, #2e7d32 100%)',
-                          color: 'white',
-                          boxShadow: '0 2px 8px rgba(67, 160, 71, 0.35)',
-                          '&:hover': {
-                            transform: 'scale(1.05)',
-                            borderColor: 'rgba(102, 187, 106, 0.75)',
-                            boxShadow: '0 4px 12px rgba(67, 160, 71, 0.45)',
-                          },
-                          '&.Mui-disabled': {
-                            opacity: 0.45,
-                            background: 'linear-gradient(135deg, #9e9e9e 0%, #757575 100%)',
-                            borderColor: 'rgba(0,0,0,0.12)',
-                            color: 'rgba(255,255,255,0.9)',
-                          },
-                          transition: 'all 0.2s ease',
-                        }}
-                      >
-                        <Typography
-                          component="span"
-                          sx={{
-                            fontSize: '1.2rem',
-                            fontWeight: 800,
-                            letterSpacing: 0,
-                            lineHeight: 1,
-                            display: 'inline-block',
-                          }}
-                        >
-                          X
-                        </Typography>
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                </Box>
-                {/* Bewegungsgeschichten (WIMASU-Klassiker) */}
-                <Box sx={{ position: 'relative' }}>
-                  <IconButton
-                    onClick={() => navigate('/bewegungsgeschichten-klassiker')}
-                    sx={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: 1.4,
-                      position: 'relative',
-                      overflow: 'visible',
-                      border: '2px solid rgba(92, 107, 192, 0.45)',
-                      background: 'linear-gradient(135deg, #5c6bc0 0%, #3949ab 100%)',
-                      color: 'white',
-                      boxShadow: '0 2px 8px rgba(57, 73, 171, 0.35)',
-                      '&:hover': {
-                        transform: 'scale(1.05)',
-                        borderColor: 'rgba(92, 107, 192, 0.75)',
-                        boxShadow: '0 4px 12px rgba(57, 73, 171, 0.45)',
-                      },
-                      transition: 'all 0.2s ease',
-                    }}
-                    title="Bewegungsgeschichten (Pferderennen, Elefant, Löwenjagd)"
-                  >
-                    <AutoStoriesIcon sx={{ fontSize: 22 }} />
-                  </IconButton>
-                </Box>
                 {/* Stories & Tagebücher */}
                 <Box sx={{ position: 'relative' }}>
                   <IconButton
@@ -5679,30 +5426,29 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     }}
                     title="Stories & Tagebücher: Reiseberichte, Tagebuch, Fortbildung"
                   >
-                    <WbSunnyIcon sx={{ fontSize: 30 }} />
+                    <WbSunnyIcon sx={{ fontSize: 28 }} />
                   </IconButton>
                 </Box>
-                {/* Logout Button */}
-                <Button 
-                  variant="contained"
-                  color="primary"
-                  size="small"
-                  sx={{
-                    minWidth: 70,
-                    bgcolor: '#333',
-                    color: 'white',
-                    fontWeight: 500,
-                    boxShadow: 'none',
-                    '&:hover': { bgcolor: '#222' },
-                    borderRadius: 1.4,
-                    fontSize: '0.7rem',
-                    py: 0.35,
-                    px: 1.2
-                  }}
-                  onClick={onLogout}
-                >
-                  Logout
-                </Button>
+                <Tooltip title="Logout">
+                  <IconButton
+                    onClick={onLogout}
+                    aria-label="Logout"
+                    sx={{
+                      p: 0,
+                      minWidth: 30,
+                      width: 30,
+                      height: 30,
+                      flexShrink: 0,
+                      borderRadius: 1.25,
+                      bgcolor: '#333',
+                      color: 'white',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
+                      '&:hover': { bgcolor: '#222' },
+                    }}
+                  >
+                    <LogoutIcon sx={{ fontSize: 17 }} />
+                  </IconButton>
+                </Tooltip>
               </Box>
             </Box>
           </Box>
