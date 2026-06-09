@@ -1,16 +1,42 @@
-/** Warmes Braun-/Beige-Theme für Exkursionsprotokoll */
+/** App-weite Farbpalette (wie StudentDashboard, Entry/Exit-Ticket) */
 export const protocolPalette = {
-  deep: '#3e2723',
-  brown: '#5d4037',
-  mid: '#6d4c41',
-  light: '#8d6e63',
-  sand: '#d7ccc8',
-  cream: '#faf6f2',
-  paper: '#fffdf9',
-  glow: 'rgba(141, 110, 99, 0.18)',
-  success: '#2e7d32',
-  successBg: 'rgba(46, 125, 50, 0.1)',
+  primary: '#2E7D32',
+  secondary: '#F57C00',
+  accent1: '#1976D2',
+  accent2: '#C2185B',
+  background: '#f4f6fb',
+  cardBg: '#FFFFFF',
+  success: '#4CAF50',
+  textPrimary: '#2C3E50',
+  textSecondary: '#7F8C8D',
+  heading: '#1a237e',
+  border: '#e0e0e0',
+  /** Aliase für bestehende Komponenten */
+  deep: '#1a237e',
+  brown: '#2C3E50',
+  mid: '#1976D2',
+  light: '#64b5f6',
+  sand: '#e3e8ef',
+  cream: '#f4f6fb',
+  paper: '#FFFFFF',
+  glow: 'rgba(25, 118, 210, 0.14)',
+  successBg: 'rgba(76, 175, 80, 0.12)',
 } as const;
+
+export const protocolAccents = [
+  { main: protocolPalette.primary, deep: '#1b5e20', tint: 'rgba(46, 125, 50, 0.1)' },
+  { main: protocolPalette.accent1, deep: '#0d47a1', tint: 'rgba(25, 118, 210, 0.1)' },
+  { main: protocolPalette.secondary, deep: '#e65100', tint: 'rgba(245, 124, 0, 0.1)' },
+  { main: protocolPalette.accent2, deep: '#880e4f', tint: 'rgba(194, 24, 91, 0.1)' },
+] as const;
+
+export const VIBE_CHIP_COLORS: Record<number, { main: string; deep: string; tint: string }> = {
+  5: { main: protocolPalette.success, deep: '#2e7d32', tint: 'rgba(76, 175, 80, 0.12)' },
+  4: { main: protocolPalette.accent1, deep: '#1565c0', tint: 'rgba(25, 118, 210, 0.1)' },
+  3: { main: protocolPalette.primary, deep: '#1b5e20', tint: 'rgba(46, 125, 50, 0.1)' },
+  2: { main: protocolPalette.secondary, deep: '#ef6c00', tint: 'rgba(245, 124, 0, 0.1)' },
+  1: { main: '#90a4ae', deep: '#546e7a', tint: 'rgba(144, 164, 174, 0.12)' },
+};
 
 export const compactIconBtnSx = {
   p: 0,
@@ -30,7 +56,7 @@ export const dashboardFeatureBtnSx = (active: boolean, colors: { border: string;
   height: 36,
   borderRadius: 1.25,
   border: `2px solid ${active ? colors.border : `${colors.border}66`}`,
-  background: active ? colors.bg : `linear-gradient(135deg, #bcaaa4 0%, #8d6e63 100%)`,
+  background: active ? colors.bg : 'linear-gradient(135deg, #ffb74d 0%, #f57c00 100%)',
   color: 'white',
   boxShadow: active ? colors.shadow : 'none',
   '&:hover': {
@@ -43,11 +69,12 @@ export const dashboardFeatureBtnSx = (active: boolean, colors: { border: string;
 
 export const pageShellSx = {
   width: '100%',
-  maxWidth: '100%',
+  maxWidth: 1000,
+  mx: 'auto',
   minWidth: 0,
   boxSizing: 'border-box',
   overflowX: 'hidden',
-  px: { xs: 1, sm: 1.5, md: 2 },
+  px: { xs: 1.5, sm: 2.5 },
 } as const;
 
 export const protocolPageBgSx = {
@@ -55,16 +82,17 @@ export const protocolPageBgSx = {
   width: '100%',
   maxWidth: '100vw',
   overflowX: 'hidden',
-  background: `linear-gradient(165deg, ${protocolPalette.cream} 0%, #f3ebe4 45%, #efe4db 100%)`,
+  bgcolor: protocolPalette.background,
+  py: { xs: 2, sm: 3 },
 } as const;
 
 export const protocolCardSx = {
-  borderRadius: 2.5,
+  borderRadius: 2,
   border: '1px solid',
-  borderColor: 'rgba(141, 110, 99, 0.22)',
+  borderColor: 'divider',
   overflow: 'hidden',
-  bgcolor: protocolPalette.paper,
-  boxShadow: '0 4px 20px rgba(62, 39, 35, 0.06)',
+  bgcolor: protocolPalette.cardBg,
+  boxShadow: '0 6px 20px rgba(0,0,0,0.07)',
   transition: 'box-shadow 0.2s ease',
 } as const;
 
@@ -74,8 +102,8 @@ export const sectionCardSx = {
 
 export const protocolEditorCardSx = {
   ...protocolCardSx,
-  borderColor: 'rgba(109, 76, 65, 0.28)',
-  boxShadow: `0 6px 24px ${protocolPalette.glow}`,
+  borderColor: 'rgba(25, 118, 210, 0.22)',
+  boxShadow: '0 6px 20px rgba(25, 118, 210, 0.08)',
 };
 
 export const protocolHeroSx = {
@@ -83,41 +111,47 @@ export const protocolHeroSx = {
   maxWidth: '100%',
   minWidth: 0,
   boxSizing: 'border-box',
-  borderRadius: 2.5,
+  borderRadius: 2,
   px: { xs: 1.25, sm: 1.5 },
   py: 1.25,
   color: 'white',
   position: 'relative' as const,
   overflow: 'hidden',
-  background: `linear-gradient(125deg, ${protocolPalette.light} 0%, ${protocolPalette.mid} 42%, ${protocolPalette.deep} 100%)`,
-  boxShadow: '0 6px 22px rgba(62, 39, 35, 0.22)',
+  background: 'linear-gradient(135deg, #43a047 0%, #2e7d32 100%)',
+  boxShadow: '0 6px 20px rgba(46, 125, 50, 0.28)',
   '&::after': {
     content: '""',
     position: 'absolute',
     inset: 0,
-    background: 'radial-gradient(circle at 90% 0%, rgba(255,255,255,0.14) 0%, transparent 55%)',
+    background: 'radial-gradient(circle at 90% 0%, rgba(255,255,255,0.12) 0%, transparent 55%)',
     pointerEvents: 'none',
   },
 };
 
-export const protocolSectionHeadSx = {
-  px: { xs: 1.25, sm: 1.5 },
-  py: 0.85,
-  background: `linear-gradient(90deg, rgba(109,76,65,0.09) 0%, rgba(255,253,249,0.6) 100%)`,
-  borderBottom: '1px solid',
-  borderColor: 'rgba(141, 110, 99, 0.15)',
-  display: 'flex',
-  alignItems: 'center',
-  gap: 1,
+export const protocolSectionHeadSx = (stepIndex = 0) => {
+  const accent = protocolAccents[stepIndex % protocolAccents.length];
+  return {
+    px: { xs: 1.25, sm: 1.5 },
+    py: 0.85,
+    background: `linear-gradient(90deg, ${accent.tint} 0%, rgba(255,255,255,0.9) 100%)`,
+    borderBottom: '1px solid',
+    borderColor: 'divider',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1,
+  };
 };
 
-export const protocolStepBadgeSx = {
-  height: 22,
-  minWidth: 28,
-  fontWeight: 800,
-  bgcolor: protocolPalette.mid,
-  color: '#fff',
-  boxShadow: '0 2px 6px rgba(93,64,55,0.25)',
+export const protocolStepBadgeSx = (stepIndex = 0) => {
+  const accent = protocolAccents[stepIndex % protocolAccents.length];
+  return {
+    height: 22,
+    minWidth: 28,
+    fontWeight: 800,
+    bgcolor: accent.main,
+    color: '#fff',
+    boxShadow: `0 2px 6px ${accent.deep}44`,
+  };
 };
 
 export const protocolFieldSx = {
@@ -126,77 +160,84 @@ export const protocolFieldSx = {
     borderRadius: 1.5,
     bgcolor: '#fff',
   },
-  '& .MuiInputLabel-root': { fontSize: '0.8rem', color: protocolPalette.brown },
+  '& .MuiInputLabel-root': { fontSize: '0.8rem', color: protocolPalette.textSecondary },
   '& .MuiOutlinedInput-root': {
-    '& fieldset': { borderColor: 'rgba(141, 110, 99, 0.35)' },
-    '&:hover fieldset': { borderColor: protocolPalette.light },
-    '&.Mui-focused fieldset': { borderColor: protocolPalette.mid, borderWidth: 1.5 },
+    '& fieldset': { borderColor: protocolPalette.border },
+    '&:hover fieldset': { borderColor: protocolPalette.accent1 },
+    '&.Mui-focused fieldset': { borderColor: protocolPalette.primary, borderWidth: 1.5 },
   },
 };
 
 export const protocolSectionLabelSx = {
   fontWeight: 700,
-  color: protocolPalette.brown,
+  color: protocolPalette.textPrimary,
   fontSize: '0.78rem',
   letterSpacing: 0.2,
   mb: 0.5,
   display: 'block',
 };
 
-export const protocolListItemSx = (selected: boolean) => ({
-  p: 1,
-  borderRadius: 2,
-  border: '1px solid',
-  borderColor: selected ? protocolPalette.mid : 'rgba(141, 110, 99, 0.2)',
-  background: selected
-    ? `linear-gradient(135deg, rgba(141,110,99,0.12) 0%, rgba(255,253,249,0.9) 100%)`
-    : 'rgba(255,255,255,0.55)',
-  cursor: 'pointer',
-  transition: 'all 0.18s ease',
-  boxShadow: selected ? `0 3px 12px ${protocolPalette.glow}` : 'none',
-  '&:hover': {
-    borderColor: protocolPalette.light,
-    bgcolor: 'rgba(255,255,255,0.85)',
-    transform: 'translateY(-1px)',
-  },
-});
+export const protocolListItemSx = (selected: boolean, index = 0) => {
+  const accent = protocolAccents[index % protocolAccents.length];
+  return {
+    p: 1,
+    borderRadius: 2,
+    border: '1px solid',
+    borderColor: selected ? accent.main : 'divider',
+    background: selected ? accent.tint : 'white',
+    cursor: 'pointer',
+    transition: 'all 0.18s ease',
+    boxShadow: selected ? `0 3px 12px ${accent.main}22` : 'none',
+    '&:hover': {
+      borderColor: accent.main,
+      bgcolor: accent.tint,
+      transform: 'translateY(-1px)',
+    },
+  };
+};
 
-export const protocolGroupChipSx = (selected: boolean) => ({
-  height: 28,
-  fontSize: '0.72rem',
-  fontWeight: 700,
-  cursor: 'pointer',
-  transition: 'all 0.15s ease',
-  bgcolor: selected ? protocolPalette.mid : '#fff',
-  color: selected ? '#fff' : protocolPalette.brown,
-  border: '1px solid',
-  borderColor: selected ? protocolPalette.deep : 'rgba(141, 110, 99, 0.35)',
-  boxShadow: selected ? '0 2px 8px rgba(93,64,55,0.2)' : 'none',
-  '&:hover': {
-    bgcolor: selected ? protocolPalette.brown : 'rgba(141,110,99,0.08)',
-    transform: 'scale(1.02)',
-  },
-});
+export const protocolGroupChipSx = (selected: boolean, index = 0) => {
+  const accent = protocolAccents[index % protocolAccents.length];
+  return {
+    height: 28,
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    bgcolor: selected ? accent.main : '#fff',
+    color: selected ? '#fff' : accent.deep,
+    border: '1px solid',
+    borderColor: selected ? accent.deep : `${accent.main}55`,
+    boxShadow: selected ? `0 2px 8px ${accent.deep}28` : 'none',
+    '&:hover': {
+      bgcolor: selected ? accent.deep : accent.tint,
+      transform: 'scale(1.02)',
+    },
+  };
+};
 
 export const protocolStatusChipSx = (live: boolean) => ({
   height: 20,
   fontWeight: 700,
   fontSize: '0.65rem',
   bgcolor: live ? protocolPalette.successBg : 'rgba(0,0,0,0.06)',
-  color: live ? protocolPalette.success : protocolPalette.brown,
+  color: live ? protocolPalette.primary : protocolPalette.textSecondary,
   border: '1px solid',
   borderColor: live ? 'rgba(46,125,50,0.35)' : 'rgba(0,0,0,0.08)',
 });
 
-export const protocolProgressChipSx = (done: boolean) => ({
-  height: 22,
-  fontSize: '0.68rem',
-  fontWeight: 700,
-  bgcolor: done ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.18)',
-  color: done ? protocolPalette.success : 'white',
-  border: done ? '1px solid rgba(46,125,50,0.25)' : '1px solid rgba(255,255,255,0.25)',
-  backdropFilter: 'blur(4px)',
-});
+export const protocolProgressChipSx = (done: boolean, index = 0) => {
+  const accent = protocolAccents[index % protocolAccents.length];
+  return {
+    height: 22,
+    fontSize: '0.68rem',
+    fontWeight: 700,
+    bgcolor: done ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.2)',
+    color: done ? accent.deep : 'white',
+    border: done ? `1px solid ${accent.main}44` : '1px solid rgba(255,255,255,0.28)',
+    backdropFilter: 'blur(4px)',
+  };
+};
 
 export const protocolActionBarSx = (cols: number, maxWidth = 360) => ({
   display: 'grid',
@@ -222,21 +263,21 @@ const protocolBlockBtnBase = {
 export const protocolBtnDraftSx = {
   ...protocolBlockBtnBase,
   bgcolor: '#fff',
-  color: protocolPalette.brown,
-  border: `1px solid ${protocolPalette.sand}`,
-  boxShadow: '0 1px 3px rgba(62,39,35,0.06)',
-  '&:hover': { bgcolor: protocolPalette.cream, borderColor: protocolPalette.light, transform: 'translateY(-1px)' },
+  color: protocolPalette.textPrimary,
+  border: `1px solid ${protocolPalette.border}`,
+  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+  '&:hover': { bgcolor: '#f8fafc', borderColor: protocolPalette.accent1, transform: 'translateY(-1px)' },
 };
 
 export const protocolBtnPublishSx = {
   ...protocolBlockBtnBase,
-  background: `linear-gradient(135deg, ${protocolPalette.light} 0%, ${protocolPalette.mid} 55%, ${protocolPalette.brown} 100%)`,
+  background: 'linear-gradient(135deg, #43a047 0%, #2e7d32 100%)',
   color: '#fff',
-  border: `1px solid ${protocolPalette.deep}`,
-  boxShadow: '0 3px 10px rgba(93,64,55,0.28)',
+  border: '1px solid #1b5e20',
+  boxShadow: '0 3px 10px rgba(46, 125, 50, 0.28)',
   '&:hover': {
-    background: `linear-gradient(135deg, #a1887f 0%, ${protocolPalette.brown} 100%)`,
-    boxShadow: '0 4px 14px rgba(93,64,55,0.34)',
+    background: 'linear-gradient(135deg, #66bb6a 0%, #2e7d32 100%)',
+    boxShadow: '0 4px 14px rgba(46, 125, 50, 0.34)',
     transform: 'translateY(-1px)',
   },
   '&.Mui-disabled': { background: '#e8e4e0', color: '#aaa', borderColor: '#e0dcd8', boxShadow: 'none' },
@@ -244,38 +285,38 @@ export const protocolBtnPublishSx = {
 
 export const protocolBtnAccentSx = {
   ...protocolBlockBtnBase,
-  background: `linear-gradient(135deg, #bcaaa4 0%, ${protocolPalette.mid} 100%)`,
+  background: 'linear-gradient(135deg, #1e88e5 0%, #1976d2 100%)',
   color: '#fff',
-  border: `1px solid ${protocolPalette.brown}`,
-  boxShadow: '0 2px 8px rgba(93,64,55,0.22)',
+  border: '1px solid #1565c0',
+  boxShadow: '0 2px 8px rgba(25, 118, 210, 0.25)',
   '&:hover': {
-    background: `linear-gradient(135deg, #a1887f 0%, ${protocolPalette.brown} 100%)`,
+    background: 'linear-gradient(135deg, #42a5f5 0%, #1976d2 100%)',
     transform: 'translateY(-1px)',
   },
 };
 
 export const protocolBtnGhostSx = {
   ...protocolBlockBtnBase,
-  bgcolor: 'rgba(141,110,99,0.06)',
-  color: protocolPalette.mid,
-  border: `1px dashed rgba(141,110,99,0.45)`,
-  '&:hover': { bgcolor: 'rgba(141,110,99,0.12)', borderColor: protocolPalette.light },
+  bgcolor: 'rgba(25, 118, 210, 0.06)',
+  color: protocolPalette.accent1,
+  border: '1px dashed rgba(25, 118, 210, 0.35)',
+  '&:hover': { bgcolor: 'rgba(25, 118, 210, 0.1)', borderColor: protocolPalette.accent1 },
 };
 
 export const protocolBtnToggleSx = (active = false) => ({
   ...protocolBlockBtnBase,
   bgcolor: active ? protocolPalette.successBg : 'rgba(255,255,255,0.9)',
-  color: active ? protocolPalette.success : protocolPalette.brown,
-  border: `1px solid ${active ? 'rgba(46,125,50,0.4)' : protocolPalette.sand}`,
-  '&:hover': { bgcolor: active ? 'rgba(46,125,50,0.16)' : protocolPalette.cream },
+  color: active ? protocolPalette.primary : protocolPalette.textPrimary,
+  border: `1px solid ${active ? 'rgba(46,125,50,0.4)' : protocolPalette.border}`,
+  '&:hover': { bgcolor: active ? 'rgba(46,125,50,0.16)' : '#f8fafc' },
 });
 
 export const protocolBtnDangerSx = {
   ...protocolBlockBtnBase,
-  bgcolor: '#fff8f8',
-  color: '#b71c1c',
-  border: '1px solid #ffcdd2',
-  '&:hover': { bgcolor: '#ffebee', borderColor: '#ef9a9a', transform: 'translateY(-1px)' },
+  bgcolor: '#fff5f5',
+  color: '#c62828',
+  border: '1px solid #ef9a9a',
+  '&:hover': { bgcolor: '#ffebee', borderColor: '#e57373', transform: 'translateY(-1px)' },
 };
 
 export const protocolBtnSubmitSx = {
@@ -283,13 +324,13 @@ export const protocolBtnSubmitSx = {
   minHeight: 34,
   fontSize: '0.8rem',
   width: '100%',
-  background: `linear-gradient(135deg, ${protocolPalette.light} 0%, ${protocolPalette.mid} 50%, ${protocolPalette.brown} 100%)`,
+  background: 'linear-gradient(135deg, #43a047 0%, #2e7d32 100%)',
   color: '#fff',
-  border: `1px solid ${protocolPalette.deep}`,
-  boxShadow: '0 4px 16px rgba(93,64,55,0.28)',
+  border: '1px solid #1b5e20',
+  boxShadow: '0 4px 16px rgba(46, 125, 50, 0.28)',
   '&:hover': {
-    background: `linear-gradient(135deg, #a1887f 0%, ${protocolPalette.brown} 100%)`,
-    boxShadow: '0 6px 20px rgba(93,64,55,0.35)',
+    background: 'linear-gradient(135deg, #66bb6a 0%, #2e7d32 100%)',
+    boxShadow: '0 6px 20px rgba(46, 125, 50, 0.35)',
     transform: 'translateY(-1px)',
   },
   '&.Mui-disabled': { background: '#e8e4e0', color: '#aaa', borderColor: '#e0dcd8', boxShadow: 'none' },
@@ -299,50 +340,75 @@ export const protocolIconBtnSx = {
   ...compactIconBtnSx,
   bgcolor: '#fff',
   border: '1px solid',
-  borderColor: 'rgba(141, 110, 99, 0.3)',
-  color: protocolPalette.mid,
-  boxShadow: '0 1px 4px rgba(62,39,35,0.08)',
-  '&:hover': { bgcolor: protocolPalette.cream, borderColor: protocolPalette.mid, color: protocolPalette.brown },
+  borderColor: 'divider',
+  color: protocolPalette.textPrimary,
+  boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+  '&:hover': { bgcolor: '#f8fafc', borderColor: protocolPalette.accent1, color: protocolPalette.accent1 },
 };
 
-export const protocolActivityCardSx = {
-  p: 1.25,
-  borderRadius: 2,
-  border: '1px solid',
-  borderColor: 'rgba(141, 110, 99, 0.18)',
-  bgcolor: 'rgba(255,253,249,0.85)',
-  display: 'flex',
-  flexDirection: 'column' as const,
-  gap: 1,
-  minWidth: 0,
-  maxWidth: '100%',
-  overflow: 'hidden',
-  boxShadow: '0 2px 8px rgba(62,39,35,0.04)',
+export const protocolActivityCardSx = (index = 0) => {
+  const accent = protocolAccents[index % protocolAccents.length];
+  return {
+    p: 1.25,
+    borderRadius: 2,
+    border: '1px solid',
+    borderColor: 'divider',
+    borderLeft: `4px solid ${accent.main}`,
+    bgcolor: '#fff',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 1,
+    minWidth: 0,
+    maxWidth: '100%',
+    overflow: 'hidden',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+  };
 };
 
-export const protocolVibeChipSx = (selected: boolean) => ({
-  height: 'auto',
-  minHeight: 30,
-  py: 0.4,
-  fontWeight: 700,
-  fontSize: { xs: '0.65rem', sm: '0.72rem' },
-  cursor: 'pointer',
-  justifyContent: 'center',
-  maxWidth: '100%',
-  transition: 'all 0.15s ease',
-  '& .MuiChip-label': {
-    whiteSpace: 'normal',
-    textAlign: 'center',
-    px: 0.5,
-    lineHeight: 1.2,
-  },
-  bgcolor: selected ? protocolPalette.mid : '#fff',
-  color: selected ? '#fff' : protocolPalette.brown,
-  border: '1.5px solid',
-  borderColor: selected ? protocolPalette.deep : 'rgba(141,110,99,0.25)',
-  boxShadow: selected ? '0 2px 8px rgba(93,64,55,0.2)' : 'none',
-  '&:hover': {
-    bgcolor: selected ? protocolPalette.brown : 'rgba(141,110,99,0.08)',
-    transform: 'scale(1.02)',
-  },
-});
+export const protocolVibeChipSx = (selected: boolean, vibeScore?: number) => {
+  const colors = vibeScore != null ? VIBE_CHIP_COLORS[vibeScore] : null;
+  if (!colors) {
+    return {
+      height: 'auto',
+      minHeight: 30,
+      py: 0.4,
+      fontWeight: 700,
+      fontSize: { xs: '0.65rem', sm: '0.72rem' },
+      cursor: 'pointer',
+      justifyContent: 'center',
+      maxWidth: '100%',
+      transition: 'all 0.15s ease',
+      '& .MuiChip-label': { whiteSpace: 'normal', textAlign: 'center', px: 0.5, lineHeight: 1.2 },
+      bgcolor: selected ? protocolPalette.primary : '#fff',
+      color: selected ? '#fff' : protocolPalette.textPrimary,
+      border: '1.5px solid',
+      borderColor: selected ? protocolPalette.primary : 'divider',
+    };
+  }
+  return {
+    height: 'auto',
+    minHeight: 30,
+    py: 0.4,
+    fontWeight: 700,
+    fontSize: { xs: '0.65rem', sm: '0.72rem' },
+    cursor: 'pointer',
+    justifyContent: 'center',
+    maxWidth: '100%',
+    transition: 'all 0.15s ease',
+    '& .MuiChip-label': {
+      whiteSpace: 'normal',
+      textAlign: 'center',
+      px: 0.5,
+      lineHeight: 1.2,
+    },
+    bgcolor: selected ? colors.main : colors.tint,
+    color: selected ? '#fff' : colors.deep,
+    border: '1.5px solid',
+    borderColor: selected ? colors.deep : `${colors.main}55`,
+    boxShadow: selected ? `0 2px 8px ${colors.deep}33` : 'none',
+    '&:hover': {
+      bgcolor: selected ? colors.deep : `${colors.main}22`,
+      transform: 'scale(1.02)',
+    },
+  };
+};

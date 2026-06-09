@@ -56,6 +56,8 @@ type ExcursionDataPayload = {
   date: string;
   groupIds: string[];
   publishedAt: string | null;
+  /** ISO-Datum: danach keine Bearbeitung abgegebener Protokolle mehr. null = unbegrenzt */
+  editDeadline: string | null;
   reflectionQuestions: [string, string, string];
   ratingCriteria: string[];
   submissions: ExcursionProtocolSubmission[];
@@ -157,6 +159,10 @@ const parseExcursionData = (raw: string | null | undefined): ExcursionDataPayloa
     if (!Array.isArray(parsed.reflectionQuestions) || parsed.reflectionQuestions.length !== 3) {
       parsed.reflectionQuestions = [...DEFAULT_REFLECTION_QUESTIONS];
     }
+    if (parsed.editDeadline !== null && parsed.editDeadline !== undefined && typeof parsed.editDeadline !== 'string') {
+      parsed.editDeadline = null;
+    }
+    if (parsed.editDeadline === undefined) parsed.editDeadline = null;
     return parsed;
   } catch {
     return null;
@@ -481,11 +487,30 @@ const normalizeCriteria = (raw: unknown): string[] => {
   return arr.length > 0 ? arr : [...DEFAULT_RATING_CRITERIA];
 };
 
+const normalizeEditDeadline = (raw: unknown, existing: string | null = null): string | null => {
+  if (raw === null || raw === '') return null;
+  if (typeof raw === 'string') {
+    const t = raw.trim();
+    if (!t) return null;
+    const d = new Date(t);
+    if (Number.isNaN(d.getTime())) return existing;
+    return d.toISOString();
+  }
+  return existing;
+};
+
+const canStudentEditSubmission = (payload: ExcursionDataPayload, hasSubmission: boolean): boolean => {
+  if (!hasSubmission) return true;
+  if (!payload.editDeadline) return true;
+  return Date.now() <= new Date(payload.editDeadline).getTime();
+};
+
 const sessionDto = (payload: ExcursionDataPayload) => ({
   id: payload.id,
   title: payload.title,
   date: payload.date,
   groupIds: payload.groupIds,
+  editDeadline: payload.editDeadline ?? null,
   reflectionQuestions: payload.reflectionQuestions,
   ratingCriteria: payload.ratingCriteria,
 });
@@ -512,6 +537,7 @@ export class ExcursionProtocolController {
             groupNames: targetGroups.map((id) => groupNameById.get(id) || id),
             ratingCriteria: data?.ratingCriteria ?? [...DEFAULT_RATING_CRITERIA],
             reflectionQuestions: data?.reflectionQuestions ?? [...DEFAULT_REFLECTION_QUESTIONS],
+            editDeadline: data?.editDeadline ?? null,
             submissionCount,
             totalStudents: countUniqueStudentsInGroups(groups, targetGroups),
             isPublished: Boolean(meta.publishedAt),
@@ -556,6 +582,7 @@ export class ExcursionProtocolController {
         date,
         groupIds: validGroupIds,
         publishedAt: null,
+        editDeadline: normalizeEditDeadline(req.body?.editDeadline, null),
         reflectionQuestions: normalizeReflection(req.body?.reflectionQuestions),
         ratingCriteria: normalizeCriteria(req.body?.ratingCriteria),
         submissions: [],
@@ -609,11 +636,25 @@ export class ExcursionProtocolController {
         ratingCriteria: req.body?.ratingCriteria
           ? normalizeCriteria(req.body.ratingCriteria)
           : existing.ratingCriteria,
+        editDeadline:
+          req.body?.editDeadline !== undefined
+            ? normalizeEditDeadline(req.body.editDeadline, existing.editDeadline ?? null)
+            : existing.editDeadline ?? null,
       };
 
       await saveExcursion(user.id, next);
       const index = await loadTeacherIndex(user.id);
       syncIndexEntry(index, next);
+      if (next.publishedAt) {
+        const owned = await loadTeacherGroupsWithStudents(user.id);
+        await syncPublishedGroups(
+          user.id,
+          next,
+          next.groupIds.length > 0 ? next.groupIds : owned.map((g) => g.id),
+          index,
+          owned.map((g) => g.id),
+        );
+      }
       await saveIndex(user.id, index);
 
       return res.json({ success: true, excursion: next });
@@ -796,25 +837,37 @@ export class ExcursionProtocolController {
         const mine = resolved.payload.submissions.filter((s) => s.studentId === user.id);
         mine.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
 
+        const mySubmission = mine[0] ?? null;
+        const hasSubmission = Boolean(mySubmission);
+
         return res.json({
           session: sessionDto(resolved.payload),
-          sessions: all.map((e) => ({
-            ...sessionDto(e.payload),
-            publishedAt: e.payload.publishedAt,
-            teacherId: e.teacherId,
-            teacherName: e.teacherName,
-            groupId: e.groupId,
-            groupName: e.groupName,
-            lessonPath: e.lessonPath,
-          })),
+          sessions: all.map((e) => {
+            const sub = e.payload.submissions.find((s) => s.studentId === user.id);
+            const submitted = Boolean(sub);
+            return {
+              ...sessionDto(e.payload),
+              publishedAt: e.payload.publishedAt,
+              teacherId: e.teacherId,
+              teacherName: e.teacherName,
+              groupId: e.groupId,
+              groupName: e.groupName,
+              lessonPath: e.lessonPath,
+              studentSubmitted: submitted,
+              studentSubmittedAt: sub?.submittedAt ?? null,
+              studentCanEdit: canStudentEditSubmission(e.payload, submitted),
+            };
+          }),
           publishedAt: resolved.payload.publishedAt,
+          editDeadline: resolved.payload.editDeadline ?? null,
+          canEdit: canStudentEditSubmission(resolved.payload, hasSubmission),
           teacherId: resolved.teacherId,
           teacherName: resolved.teacherName,
           excursionId: resolved.excursionId,
           lessonPath: resolved.lessonPath,
           groupId: resolved.groupId,
           groupName: resolved.groupName,
-          mySubmission: mine[0] ?? null,
+          mySubmission,
         });
       }
 
@@ -885,6 +938,11 @@ export class ExcursionProtocolController {
       const payload = await loadExcursion(teacherId, excursionId);
       if (!payload?.publishedAt) {
         return res.status(403).json({ error: 'Protokoll ist noch nicht freigegeben' });
+      }
+
+      const existingSubmission = payload.submissions.find((item) => item.studentId === user.id);
+      if (existingSubmission && !canStudentEditSubmission(payload, true)) {
+        return res.status(403).json({ error: 'Bearbeitungszeitraum ist abgelaufen.' });
       }
 
       const nextSubmissions = payload.submissions.filter((item) => item.studentId !== user.id);

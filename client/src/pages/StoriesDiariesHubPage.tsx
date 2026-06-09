@@ -53,10 +53,11 @@ import {
   StoryCompactToolbar,
   StoryToolbarDivider,
   storyToolbarIconBtnSx,
+  storyToolbarToggleGroupSx,
 } from '../components/story-site/StoryCompactToolbar';
 import { StoriesDiariesSeasonTimeline } from '../components/story-site/StoriesDiariesSeasonTimeline';
 import { UrlaubUnlockDialog } from '../components/story-site/UrlaubUnlockDialog';
-import { STORY_BEIGE, STORY_SCRAPBOOK_BG } from '../lib/storyPageLayout';
+import { STORY_BEIGE, STORY_TIMELINE_MAX_WIDTH, storyTimelineShellSx } from '../lib/storyPageLayout';
 
 type ViewMode = 'timeline' | 'list';
 
@@ -173,13 +174,27 @@ export default function StoriesDiariesHubPage() {
     fontWeight: 800,
     letterSpacing: '0.06em',
     textTransform: 'none' as const,
-    borderColor: 'rgba(255, 152, 0, 0.55)',
+    borderRadius: 1,
+    borderColor: 'rgba(230, 81, 0, 0.45)',
     color: '#e65100',
+    bgcolor: 'rgba(255,255,255,0.65)',
+    '&:hover': {
+      borderColor: 'rgba(230, 81, 0, 0.65)',
+      bgcolor: 'rgba(255,255,255,0.9)',
+    },
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: STORY_BEIGE.page }}>
-      <StoryCompactToolbar>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        bgcolor: STORY_BEIGE.page,
+        py: { xs: 1.5, sm: 2 },
+        px: { xs: 0.75, sm: 1 },
+      }}
+    >
+      <Box sx={{ maxWidth: STORY_TIMELINE_MAX_WIDTH, mx: 'auto', width: '100%', ...storyTimelineShellSx }}>
+        <StoryCompactToolbar embedded>
         <Tooltip title="Dashboard">
           <IconButton size="small" onClick={() => navigate('/dashboard')} sx={storyToolbarIconBtnSx}>
             <ArrowBackIcon />
@@ -189,9 +204,7 @@ export default function StoriesDiariesHubPage() {
         <Typography noWrap sx={{ flex: '1 1 auto', minWidth: 0, fontWeight: 700, fontSize: '0.8125rem', color: '#4e342e' }}>
           Stories & Tagebücher
         </Typography>
-        {!loading ? (
-          <Chip size="small" label={`${visibleSites.length} Website${visibleSites.length === 1 ? '' : 's'}`} sx={{ height: 22, fontWeight: 700, fontSize: '0.68rem' }} />
-        ) : null}
+        <Box sx={{ flex: '1 1 0', minWidth: 8 }} />
         <StoryToolbarDivider />
         {!urlaubUnlocked ? (
           <Tooltip title="Urlaub anzeigen">
@@ -218,13 +231,12 @@ export default function StoriesDiariesHubPage() {
             <AddIcon />
           </IconButton>
         </Tooltip>
-        <Box sx={{ flex: '1 1 0', minWidth: 8 }} />
         <ToggleButtonGroup
           size="small"
           value={viewMode}
           exclusive
           onChange={(_, v: ViewMode | null) => v && setViewMode(v)}
-          sx={{ flexShrink: 0, height: 28, '& .MuiToggleButton-root': { px: 0.75, py: 0, minWidth: 32, height: 28 } }}
+          sx={storyToolbarToggleGroupSx}
         >
           <ToggleButton value="timeline" aria-label="Zeitstrahl">
             <TimelineIcon sx={{ fontSize: 16 }} />
@@ -240,9 +252,9 @@ export default function StoriesDiariesHubPage() {
             </Button>
           </span>
         </Tooltip>
-      </StoryCompactToolbar>
+        </StoryCompactToolbar>
 
-      <Box sx={{ width: '100%', px: { xs: 0.5, sm: 1.5, md: 2 }, py: { xs: 1.5, sm: 2 } }}>
+        <Box sx={{ px: { xs: 0.5, sm: 0.75 }, py: { xs: 1.25, sm: 1.5 } }}>
         {loading ? (
           <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
             Websites werden geladen…
@@ -259,18 +271,6 @@ export default function StoriesDiariesHubPage() {
             </CardContent>
           </Card>
         ) : viewMode === 'timeline' ? (
-          <Box
-            sx={{
-              width: '100vw',
-              maxWidth: '100vw',
-              ml: 'calc(50% - 50vw)',
-              background: STORY_SCRAPBOOK_BG,
-              borderTop: '1px solid rgba(93, 64, 55, 0.08)',
-              borderBottom: '1px solid rgba(93, 64, 55, 0.08)',
-              py: { xs: 1.5, sm: 2 },
-              boxShadow: '0 16px 40px rgba(93, 64, 55, 0.1)',
-            }}
-          >
             <StoriesDiariesSeasonTimeline
               sites={visibleSites}
               editable
@@ -283,7 +283,6 @@ export default function StoriesDiariesHubPage() {
               onCategoryChange={(id, cat) => void handleCategoryChange(id, cat)}
               onRequestUrlaubUnlock={() => setUnlockOpen(true)}
             />
-          </Box>
         ) : (
           <Stack spacing={1.5}>
             {sorted.map((site) => {
@@ -352,6 +351,7 @@ export default function StoriesDiariesHubPage() {
             })}
           </Stack>
         )}
+        </Box>
       </Box>
 
       <UrlaubUnlockDialog open={unlockOpen} onClose={() => setUnlockOpen(false)} onUnlocked={() => setUrlaubUnlocked(true)} />

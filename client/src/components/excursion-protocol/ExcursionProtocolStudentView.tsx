@@ -16,19 +16,16 @@ import {
 } from '@mui/material';
 import {
   Add as AddIcon,
-  CheckCircle as CheckCircleIcon,
   DeleteOutline as DeleteOutlineIcon,
-  Edit as EditIcon,
   PhotoCamera as PhotoCameraIcon,
 } from '@mui/icons-material';
 import {
   ACTIVITY_RATING_PROMPTS,
   ACTIVITY_VIBE_OPTIONS,
-  activityVibeLabel,
   type ExcursionActivity,
-  type ExcursionProtocolSubmission,
   type ExcursionRating,
 } from '../../lib/excursionProtocolTypes';
+import { determinateLinearProgressSx } from '../../lib/muiLinearProgressSx';
 import {
   compactIconBtnSx,
   compactIconSx,
@@ -58,15 +55,13 @@ type Props = {
   activities: ExcursionActivity[];
   reflection: ReflectionState;
   ratings: ExcursionRating[];
-  submitted: boolean;
-  mySubmission: ExcursionProtocolSubmission | null;
   submitting: boolean;
   submitError: string | null;
+  isResubmit?: boolean;
   onActivitiesChange: (next: ExcursionActivity[]) => void;
   onReflectionChange: (next: ReflectionState) => void;
   onRatingsChange: (next: ExcursionRating[]) => void;
   onSubmit: () => void;
-  onEditAgain: () => void;
   formatDisplayDate: (isoDate: string) => string;
 };
 
@@ -80,12 +75,6 @@ const activityThumbSx = {
   flexShrink: 0,
   border: '1px solid',
   borderColor: 'divider',
-};
-
-const activityThumbReadSx = {
-  ...activityThumbSx,
-  width: 72,
-  height: 54,
 };
 
 const fullGrid2 = {
@@ -119,15 +108,13 @@ export function ExcursionProtocolStudentView({
   activities,
   reflection,
   ratings,
-  submitted,
-  mySubmission,
   submitting,
   submitError,
+  isResubmit = false,
   onActivitiesChange,
   onReflectionChange,
   onRatingsChange,
   onSubmit,
-  onEditAgain,
   formatDisplayDate,
 }: Props) {
   const validActivities = activities.filter((a) => a.content.trim());
@@ -159,75 +146,6 @@ export function ExcursionProtocolStudentView({
     };
     reader.readAsDataURL(file);
   };
-
-  if (submitted && mySubmission) {
-    return (
-      <Stack spacing={1.25} sx={pageStackSx}>
-        <Card
-          sx={{
-            ...sectionCardSx,
-            borderColor: 'rgba(46,125,50,0.35)',
-            bgcolor: 'rgba(46,125,50,0.06)',
-            boxShadow: '0 4px 16px rgba(46,125,50,0.12)',
-          }}
-        >
-          <CardContent sx={{ py: 2, px: { xs: 1.25, sm: 1.5 }, textAlign: 'center', '&:last-child': { pb: 2 } }}>
-            <CheckCircleIcon sx={{ fontSize: 40, color: protocolPalette.success, mb: 0.75 }} />
-            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#2e7d32', mb: 0.5 }}>
-              Protokoll abgegeben
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-              „{sessionTitle}" ·{' '}
-              {mySubmission.submittedAt
-                ? new Date(mySubmission.submittedAt).toLocaleString('de-DE')
-                : 'gespeichert'}
-            </Typography>
-            <Tooltip title="Bearbeiten">
-              <IconButton onClick={onEditAgain} sx={{ ...compactIconBtnSx, border: '1px solid', borderColor: 'divider' }}>
-                <EditIcon sx={compactIconSx} />
-              </IconButton>
-            </Tooltip>
-          </CardContent>
-        </Card>
-
-        <Card sx={sectionCardSx}>
-          <Box sx={protocolSectionHeadSx}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: protocolPalette.deep }}>
-              Deine Abgabe
-            </Typography>
-          </Box>
-          <CardContent sx={{ p: { xs: 1.25, sm: 1.5 }, '&:last-child': { pb: { xs: 1.25, sm: 1.5 } } }}>
-            <Box sx={fullGrid2}>
-              {mySubmission.activities.map((a, i) => (
-                <Box
-                  key={i}
-                  sx={{ p: 1.25, borderRadius: 1.5, border: '1px solid', borderColor: 'divider', bgcolor: '#fafafa' }}
-                >
-                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                    {a.imageDataUrl && (
-                      <Box component="img" src={a.imageDataUrl} alt="" sx={activityThumbReadSx} />
-                    )}
-                    <Box sx={{ minWidth: 0, flex: 1 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.25 }}>
-                        {i + 1}. {a.content}
-                      </Typography>
-                      {a.activityRating && (
-                        <Chip
-                          size="small"
-                          label={activityVibeLabel(a.activityRating)}
-                          sx={{ height: 22, fontWeight: 700, fontSize: '0.75rem' }}
-                        />
-                      )}
-                    </Box>
-                  </Box>
-                </Box>
-              ))}
-            </Box>
-          </CardContent>
-        </Card>
-      </Stack>
-    );
-  }
 
   return (
     <Stack spacing={1.25} sx={pageStackSx}>
@@ -261,8 +179,8 @@ export function ExcursionProtocolStudentView({
           useFlexGap
           sx={{ maxWidth: '100%', minWidth: 0, flex: '0 1 auto', position: 'relative', zIndex: 1 }}
         >
-          {progressSteps.map((s) => (
-            <Chip key={s.label} size="small" label={s.label} sx={protocolProgressChipSx(s.done)} />
+          {progressSteps.map((s, i) => (
+            <Chip key={s.label} size="small" label={s.label} sx={protocolProgressChipSx(s.done, i)} />
           ))}
         </Stack>
       </Box>
@@ -271,14 +189,11 @@ export function ExcursionProtocolStudentView({
         variant="determinate"
         value={progressPct}
         sx={{
+          ...determinateLinearProgressSx(
+            'linear-gradient(90deg, #66bb6a 0%, #43a047 48%, #2e7d32 100%)',
+            { height: 8, barGlow: 'rgba(46, 125, 50, 0.3)' }
+          ),
           width: '100%',
-          height: 5,
-          borderRadius: 3,
-          bgcolor: 'rgba(141,110,99,0.15)',
-          '& .MuiLinearProgress-bar': {
-            borderRadius: 3,
-            background: `linear-gradient(90deg, ${protocolPalette.light}, ${protocolPalette.mid})`,
-          },
         }}
       />
 
@@ -290,8 +205,8 @@ export function ExcursionProtocolStudentView({
 
       {/* 1 Aktivitäten */}
       <Card sx={sectionCardSx}>
-        <Box sx={protocolSectionHeadSx}>
-          <Chip label="1" size="small" sx={protocolStepBadgeSx} />
+        <Box sx={protocolSectionHeadSx(0)}>
+          <Chip label="1" size="small" sx={protocolStepBadgeSx(0)} />
           <Typography variant="subtitle2" sx={{ fontWeight: 800, color: protocolPalette.deep }}>
             Aktivitäten, Fotos & Vibe
           </Typography>
@@ -299,7 +214,7 @@ export function ExcursionProtocolStudentView({
         <CardContent sx={{ p: { xs: 1.25, sm: 1.5 }, '&:last-child': { pb: { xs: 1.25, sm: 1.5 } } }}>
           <Box sx={fullGrid2}>
             {activities.map((activity, index) => (
-              <Box key={`act-${index}`} sx={protocolActivityCardSx}>
+              <Box key={`act-${index}`} sx={protocolActivityCardSx(index)}>
                 <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'flex-start', minWidth: 0, width: '100%' }}>
                   {activity.imageDataUrl ? (
                     <Box sx={{ position: 'relative', flexShrink: 0 }}>
@@ -336,11 +251,11 @@ export function ExcursionProtocolStudentView({
                           minWidth: 88,
                           borderRadius: 1,
                           border: '1px dashed',
-                          borderColor: 'rgba(141,110,99,0.45)',
-                          bgcolor: 'rgba(141,110,99,0.08)',
-                          color: protocolPalette.mid,
+                          borderColor: 'divider',
+                          bgcolor: 'rgba(25, 118, 210, 0.06)',
+                          color: protocolPalette.accent1,
                           flexShrink: 0,
-                          '&:hover': { bgcolor: 'rgba(109,76,65,0.12)' },
+                          '&:hover': { bgcolor: 'rgba(25, 118, 210, 0.12)' },
                         }}
                       >
                         <PhotoCameraIcon sx={{ fontSize: 22 }} />
@@ -378,7 +293,7 @@ export function ExcursionProtocolStudentView({
                 </Box>
                 {activity.content.trim() && (
                   <Box sx={{ minWidth: 0, maxWidth: '100%' }}>
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#5d4037', display: 'block', mb: 0.5 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: protocolPalette.textPrimary, display: 'block', mb: 0.5 }}>
                       {ACTIVITY_RATING_PROMPTS[index % ACTIVITY_RATING_PROMPTS.length]}
                     </Typography>
                     <Box
@@ -400,7 +315,7 @@ export function ExcursionProtocolStudentView({
                             size="small"
                             label={`${vibe.emoji} ${vibe.label}`}
                             onClick={() => updateActivity(index, { activityRating: vibe.score })}
-                            sx={protocolVibeChipSx(selected)}
+                            sx={protocolVibeChipSx(selected, vibe.score)}
                           />
                         );
                       })}
@@ -417,8 +332,8 @@ export function ExcursionProtocolStudentView({
                 mt: 1,
                 ...compactIconBtnSx,
                 border: '1px dashed',
-                borderColor: 'rgba(109,76,65,0.45)',
-                color: '#5d4037',
+                borderColor: 'divider',
+                color: protocolPalette.primary,
               }}
             >
               <AddIcon sx={compactIconSx} />
@@ -429,8 +344,8 @@ export function ExcursionProtocolStudentView({
 
       {/* 2 Reflexion */}
       <Card sx={sectionCardSx}>
-        <Box sx={protocolSectionHeadSx}>
-          <Chip label="2" size="small" sx={protocolStepBadgeSx} />
+        <Box sx={protocolSectionHeadSx(1)}>
+          <Chip label="2" size="small" sx={protocolStepBadgeSx(1)} />
           <Typography variant="subtitle2" sx={{ fontWeight: 800, color: protocolPalette.deep }}>
             Drei-Fragen-Methode
           </Typography>
@@ -445,7 +360,7 @@ export function ExcursionProtocolStudentView({
               ] as const
             ).map(([key, question], i) => (
               <Box key={key}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: '#5d4037', display: 'block', mb: 0.5 }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: protocolPalette.textPrimary, display: 'block', mb: 0.5 }}>
                   Frage {i + 1}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75, lineHeight: 1.35 }}>
@@ -469,8 +384,8 @@ export function ExcursionProtocolStudentView({
 
       {/* 3 Bewertung */}
       <Card sx={sectionCardSx}>
-        <Box sx={protocolSectionHeadSx}>
-          <Chip label="3" size="small" sx={protocolStepBadgeSx} />
+        <Box sx={protocolSectionHeadSx(2)}>
+          <Chip label="3" size="small" sx={protocolStepBadgeSx(2)} />
           <Typography variant="subtitle2" sx={{ fontWeight: 800, color: protocolPalette.deep }}>
             Bewertung (1–5)
           </Typography>
@@ -530,7 +445,7 @@ export function ExcursionProtocolStudentView({
         onClick={onSubmit}
         sx={protocolBtnSubmitSx}
       >
-        {submitting ? 'Speichert…' : 'Abgeben'}
+        {submitting ? 'Speichert…' : isResubmit ? 'Änderungen speichern' : 'Abgeben'}
       </Button>
     </Stack>
   );

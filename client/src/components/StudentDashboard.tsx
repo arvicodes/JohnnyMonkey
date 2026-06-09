@@ -72,6 +72,7 @@ import { RIDDLES, Riddle } from './riddles';
 import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
 import { gradeFromGroupNames } from '../lib/entryTicketGrade';
 import { apiGetSafe } from '../lib/api';
+import type { ExcursionProtocolDashboardSession } from '../lib/excursionProtocolTypes';
 import { openLessonFolderFile } from '../lib/openLessonFolderFile';
 import { CollaborativeFlashcardSessionModal } from './CollaborativeFlashcardSessionModal';
 import { StudentLessonActivityLine } from './StudentLessonActivityLine';
@@ -1906,9 +1907,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 
   /** Exit-Ticket-Seite nur nutzbar, wenn Lehrkraft per Freigabe publishedAt gesetzt hat */
   const [exitTicketPublishedForStudent, setExitTicketPublishedForStudent] = useState(false);
-  /** Exkursionsprotokoll nur nutzbar, wenn Lehrkraft freigegeben hat */
-  const [excursionProtocolPublishedForStudent, setExcursionProtocolPublishedForStudent] = useState(false);
-  const [excursionProtocolTitle, setExcursionProtocolTitle] = useState('');
+  /** Freigegebene Exkursionsprotokolle für diese Schülerin / diesen Schüler */
+  const [excursionProtocolSessions, setExcursionProtocolSessions] = useState<ExcursionProtocolDashboardSession[]>([]);
+
+  const excursionProtocolPublishedForStudent = excursionProtocolSessions.length > 0;
+  const excursionProtocolPendingCount = excursionProtocolSessions.filter((s) => !s.studentSubmitted).length;
+  const excursionProtocolNeedsAttention = excursionProtocolPendingCount > 0;
 
   // Dialog: Gemeinsames Eingabefeld beim Klick auf Stunde (z. B. 01 / 01 Einstieg / 01 Skytale)
 
@@ -2160,22 +2164,27 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     const tick = async () => {
       const res = await apiGetSafe('/api/excursion-protocol/current');
       if (!res?.ok) return;
-      let data: { publishedAt?: unknown; session?: unknown } = {};
+      let data: { publishedAt?: unknown; session?: unknown; sessions?: unknown } = {};
       try {
         data = (await res.json()) as typeof data;
       } catch {
         return;
       }
       if (cancelled) return;
-      const pub = typeof data.publishedAt === 'string' && data.publishedAt.trim() !== '';
-      const sess = data.session && typeof data.session === 'object';
-      const active = Boolean(pub && sess);
-      setExcursionProtocolPublishedForStudent(active);
-      const title =
-        active && sess && typeof (data.session as { title?: unknown }).title === 'string'
-          ? String((data.session as { title: string }).title)
-          : '';
-      setExcursionProtocolTitle(title);
+      const rawSessions = Array.isArray(data.sessions) ? data.sessions : [];
+      const sessions = rawSessions
+        .filter((s): s is Record<string, unknown> => Boolean(s) && typeof s === 'object')
+        .map((s) => ({
+          id: typeof s.id === 'string' ? s.id : '',
+          title: typeof s.title === 'string' ? s.title : 'Tagesexkursion',
+          date: typeof s.date === 'string' ? s.date : '',
+          groupName: typeof s.groupName === 'string' ? s.groupName : '',
+          studentSubmitted: Boolean(s.studentSubmitted),
+          studentSubmittedAt:
+            typeof s.studentSubmittedAt === 'string' ? s.studentSubmittedAt : null,
+        }))
+        .filter((s) => s.id);
+      setExcursionProtocolSessions(sessions);
     };
     void tick();
     const id = window.setInterval(() => void tick(), 5000);
@@ -5190,49 +5199,96 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   <Tooltip
                     title={
                       excursionProtocolPublishedForStudent
-                        ? `Protokoll: ${excursionProtocolTitle || 'Tagesexkursion'}`
+                        ? excursionProtocolNeedsAttention
+                          ? `${excursionProtocolPendingCount} Protokoll${excursionProtocolPendingCount === 1 ? '' : 'e'} offen`
+                          : 'Zum Tagesprotokoll'
                         : 'Protokoll (aktiv sobald freigegeben)'
                     }
                   >
-                    <IconButton
-                      onClick={() => navigate('/protokoll')}
-                      sx={{
-                        p: 0,
-                        minWidth: 36,
-                        width: 36,
-                        height: 36,
-                        borderRadius: 1.25,
-                        border: excursionProtocolPublishedForStudent
-                          ? '2px solid rgba(109, 76, 65, 0.55)'
-                          : '2px solid rgba(109, 76, 65, 0.35)',
-                        background: excursionProtocolPublishedForStudent
-                          ? 'linear-gradient(135deg, #8d6e63 0%, #5d4037 100%)'
-                          : 'linear-gradient(135deg, #bcaaa4 0%, #8d6e63 100%)',
-                        color: 'white',
-                        boxShadow: excursionProtocolPublishedForStudent
-                          ? '0 2px 8px rgba(93, 64, 55, 0.35)'
-                          : 'none',
-                        '&:hover': {
-                          transform: 'scale(1.05)',
-                          borderColor: 'rgba(109, 76, 65, 0.75)',
-                          boxShadow: '0 4px 12px rgba(93, 64, 55, 0.45)',
-                        },
-                        transition: 'all 0.2s ease',
-                      }}
-                    >
-                      <Typography
-                        component="span"
+                    <span>
+                      <IconButton
+                        disabled={!excursionProtocolPublishedForStudent}
+                        onClick={() => navigate('/protokoll')}
                         sx={{
-                          fontSize: '1.2rem',
-                          fontWeight: 800,
-                          lineHeight: 1,
-                          display: 'inline-block',
+                          p: 0,
+                          minWidth: 36,
+                          width: 36,
+                          height: 36,
+                          borderRadius: 1.25,
+                          border: excursionProtocolPublishedForStudent
+                            ? '2px solid rgba(251, 140, 0, 0.55)'
+                            : '2px solid rgba(245, 124, 0, 0.35)',
+                          background: excursionProtocolPublishedForStudent
+                            ? 'linear-gradient(135deg, #fb8c00 0%, #f57c00 100%)'
+                            : 'linear-gradient(135deg, #ffb74d 0%, #f57c00 100%)',
+                          color: 'white',
+                          boxShadow: excursionProtocolPublishedForStudent
+                            ? '0 2px 8px rgba(245, 124, 0, 0.35)'
+                            : 'none',
+                          ...(excursionProtocolNeedsAttention && {
+                            animation: 'protocolBtnPulse 1.35s ease-in-out infinite',
+                            '@keyframes protocolBtnPulse': {
+                              '0%, 100%': {
+                                boxShadow: '0 0 0 0 rgba(245, 124, 0, 0.55)',
+                              },
+                              '50%': {
+                                boxShadow: '0 0 0 7px rgba(245, 124, 0, 0)',
+                              },
+                            },
+                          }),
+                          '&:hover': {
+                            transform: 'scale(1.05)',
+                            borderColor: 'rgba(245, 124, 0, 0.75)',
+                            boxShadow: '0 4px 12px rgba(245, 124, 0, 0.45)',
+                          },
+                          '&.Mui-disabled': {
+                            opacity: 0.45,
+                            background: 'linear-gradient(135deg, #9e9e9e 0%, #757575 100%)',
+                            borderColor: 'rgba(0,0,0,0.12)',
+                            color: 'rgba(255,255,255,0.9)',
+                            animation: 'none',
+                          },
+                          transition: 'all 0.2s ease',
                         }}
                       >
-                        P
-                      </Typography>
-                    </IconButton>
+                        <Typography
+                          component="span"
+                          sx={{
+                            fontSize: '1.2rem',
+                            fontWeight: 800,
+                            lineHeight: 1,
+                            display: 'inline-block',
+                          }}
+                        >
+                          P
+                        </Typography>
+                      </IconButton>
+                    </span>
                   </Tooltip>
+                  {excursionProtocolNeedsAttention && (
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: -4,
+                        right: -4,
+                        minWidth: 16,
+                        height: 16,
+                        px: 0.35,
+                        borderRadius: 999,
+                        bgcolor: '#d32f2f',
+                        color: '#fff',
+                        fontSize: '0.62rem',
+                        fontWeight: 800,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '2px solid #f8f9fa',
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      {excursionProtocolPendingCount}
+                    </Box>
+                  )}
                 </Box>
                 {/* Rätseljahr 2026 Button mit Statistik-Badge */}
                 <Box sx={{ position: 'relative' }}>
@@ -5651,58 +5707,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             </Box>
           </Box>
         </Grid>
-
-        {excursionProtocolPublishedForStudent && (
-          <Grid item xs={12}>
-            <Box sx={{ px: 1.05, pb: 0.35 }}>
-              <Card
-                onClick={() => navigate('/protokoll')}
-                sx={{
-                  borderRadius: 2,
-                  cursor: 'pointer',
-                  background: 'linear-gradient(135deg, #6d4c41 0%, #4e342e 100%)',
-                  color: 'white',
-                  boxShadow: '0 2px 8px rgba(62, 39, 35, 0.22)',
-                  '&:hover': { boxShadow: '0 4px 12px rgba(62, 39, 35, 0.3)' },
-                }}
-              >
-                <CardContent sx={{ py: 1, px: 1.25, '&:last-child': { pb: 1 } }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                    <Box
-                      sx={{
-                        p: 0,
-                        minWidth: 36,
-                        width: 36,
-                        height: 36,
-                        borderRadius: 1.25,
-                        border: '2px solid rgba(255,255,255,0.35)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                        fontWeight: 800,
-                        fontSize: '1.2rem',
-                      }}
-                    >
-                      P
-                    </Box>
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="caption" sx={{ opacity: 0.85, fontWeight: 700, lineHeight: 1.2 }}>
-                        TAGESPROTOKOLL
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 800, lineHeight: 1.2 }} noWrap>
-                        {excursionProtocolTitle || 'Exkursion dokumentieren'}
-                      </Typography>
-                    </Box>
-                    <Typography variant="caption" sx={{ fontWeight: 700, opacity: 0.9, flexShrink: 0 }}>
-                      Öffnen →
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Box>
-          </Grid>
-        )}
 
         {/* Character Profile Section */}
         <Grid item xs={12} md={6}>

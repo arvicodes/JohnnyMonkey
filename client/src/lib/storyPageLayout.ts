@@ -14,6 +14,17 @@ export const STORY_THEMATIC_ROW_BG_HOVER = 'rgba(92, 107, 192, 0.16)';
 export const STORY_SCRAPBOOK_BG =
   'linear-gradient(180deg, #fffdf7 0%, #faf6ee 45%, #f5efe4 100%)';
 
+export const STORY_TIMELINE_MAX_WIDTH = 1160;
+
+/** Gemeinsame Box für Toolbar + Timeline (Hub, PAGE). */
+export const storyTimelineShellSx = {
+  border: '1.5px solid rgba(93, 64, 55, 0.18)',
+  borderRadius: 2,
+  overflow: 'hidden' as const,
+  bgcolor: 'rgba(255,255,255,0.5)',
+  boxShadow: '0 4px 16px rgba(93, 64, 55, 0.08)',
+};
+
 /** Vorschau im Builder: 98 % der Inhaltsspalte, je 1 % frei links/rechts. */
 export const storyPreviewContainerSx = {
   width: '98%',

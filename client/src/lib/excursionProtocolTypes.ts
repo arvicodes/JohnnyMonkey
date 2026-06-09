@@ -52,10 +52,35 @@ export type ExcursionSession = {
   title: string;
   date: string;
   publishedAt?: string | null;
+  editDeadline?: string | null;
   groupIds?: string[];
   reflectionQuestions: [string, string, string];
   ratingCriteria: string[];
   submissions?: ExcursionProtocolSubmission[];
+};
+
+export const canEditExcursionSubmission = (
+  editDeadline: string | null | undefined,
+  hasSubmission: boolean,
+): boolean => {
+  if (!hasSubmission) return true;
+  if (!editDeadline) return true;
+  return Date.now() <= new Date(editDeadline).getTime();
+};
+
+export const formatEditDeadlineLabel = (editDeadline: string | null | undefined): string => {
+  if (!editDeadline) return 'Bearbeitung unbegrenzt';
+  try {
+    return `Bearbeiten bis ${new Date(editDeadline).toLocaleString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })}`;
+  } catch {
+    return 'Bearbeitungsfrist gesetzt';
+  }
 };
 
 export type ExcursionTeacherGroup = {
@@ -78,6 +103,7 @@ export type ExcursionListItem = {
   submissionCount: number;
   totalStudents: number;
   isPublished: boolean;
+  editDeadline?: string | null;
 };
 
 export type ExcursionAvailableSession = {
@@ -92,7 +118,16 @@ export type ExcursionAvailableSession = {
   lessonPath: string;
   reflectionQuestions: [string, string, string];
   ratingCriteria: string[];
+  studentSubmitted?: boolean;
+  studentSubmittedAt?: string | null;
+  studentCanEdit?: boolean;
+  editDeadline?: string | null;
 };
+
+export type ExcursionProtocolDashboardSession = Pick<
+  ExcursionAvailableSession,
+  'id' | 'title' | 'date' | 'groupName' | 'studentSubmitted' | 'studentSubmittedAt'
+>;
 
 export const DEFAULT_REFLECTION_QUESTIONS: [string, string, string] = [
   'Was habe ich heute gelernt oder neu kennengelernt?',

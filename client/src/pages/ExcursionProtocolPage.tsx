@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
+  Alert,
   Box,
   Button,
   Card,
   CardContent,
-  Chip,
   CircularProgress,
   IconButton,
   Stack,
@@ -15,9 +15,12 @@ import {
 import {
   ArrowBack as ArrowBackIcon,
   Assignment as AssignmentIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 import { apiGetSafe, apiPost } from '../lib/api';
+import { ExcursionProtocolStudentList } from '../components/excursion-protocol/ExcursionProtocolStudentList';
 import { ExcursionProtocolStudentView } from '../components/excursion-protocol/ExcursionProtocolStudentView';
+import { ExcursionProtocolSubmissionDetail } from '../components/excursion-protocol/ExcursionProtocolSubmissionDetail';
 import { ExcursionProtocolTeacherView } from '../components/excursion-protocol/ExcursionProtocolTeacherView';
 import {
   compactIconBtnSx,
@@ -29,6 +32,7 @@ import {
 import {
   DEFAULT_RATING_CRITERIA,
   DEFAULT_REFLECTION_QUESTIONS,
+  formatEditDeadlineLabel,
   type ExcursionActivity,
   type ExcursionAvailableSession,
   type ExcursionProtocolSubmission,
@@ -39,6 +43,7 @@ type SessionInfo = {
   id?: string;
   title: string;
   date: string;
+  editDeadline?: string | null;
   reflectionQuestions: [string, string, string];
   ratingCriteria: string[];
 };
@@ -68,10 +73,12 @@ export default function ExcursionProtocolPage() {
 
   const [loading, setLoading] = useState(!isTeacher);
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [publishedAt, setPublishedAt] = useState<string | null>(null);
+  const [editDeadline, setEditDeadline] = useState<string | null>(null);
+  const [canEdit, setCanEdit] = useState(true);
   const [availableSessions, setAvailableSessions] = useState<ExcursionAvailableSession[]>([]);
   const [submitMeta, setSubmitMeta] = useState<SubmitMeta | null>(null);
   const [mySubmission, setMySubmission] = useState<ExcursionProtocolSubmission | null>(null);
@@ -88,10 +95,27 @@ export default function ExcursionProtocolPage() {
   const reflectionQuestions = session?.reflectionQuestions ?? DEFAULT_REFLECTION_QUESTIONS;
   const ratingCriteria = session?.ratingCriteria ?? DEFAULT_RATING_CRITERIA;
 
+  const populateFormFromSubmission = useCallback((submission: ExcursionProtocolSubmission) => {
+    setActivities(submission.activities.length > 0 ? submission.activities : [emptyActivity()]);
+    setReflection(submission.reflection);
+    setRatings(submission.ratings);
+  }, []);
+
+  const resetEmptyForm = useCallback(
+    (criteria: string[] = ratingCriteria) => {
+      setActivities([emptyActivity()]);
+      setReflection({ learned: '', highlight: '', openQuestion: '' });
+      setRatings(criteria.map((criterion) => ({ criterion, score: 0 })));
+    },
+    [ratingCriteria],
+  );
+
   const applyStudentData = useCallback(
     (data: Record<string, unknown>, excursionIdOverride?: string, silent = false) => {
       const pubAt = typeof data?.publishedAt === 'string' ? data.publishedAt.trim() : '';
       setPublishedAt(pubAt || null);
+      setEditDeadline(typeof data?.editDeadline === 'string' ? data.editDeadline : null);
+      setCanEdit(data?.canEdit !== false);
 
       const sessions = Array.isArray(data?.sessions) ? (data.sessions as ExcursionAvailableSession[]) : [];
       setAvailableSessions(sessions);
@@ -118,33 +142,23 @@ export default function ExcursionProtocolPage() {
 
       setTeacherNameForStudent(typeof data?.teacherName === 'string' ? data.teacherName : '');
 
-      const mine = data?.mySubmission as ExcursionProtocolSubmission | null;
-      if (mine) {
-        setMySubmission(mine);
-        // Beim Polling nicht zurück in die Abgabe-Ansicht springen (Bearbeiten-Modus).
-        if (silent) return;
-        setActivities(mine.activities.length > 0 ? mine.activities : [emptyActivity()]);
-        setReflection(mine.reflection);
-        setRatings(mine.ratings);
-        setSubmitted(true);
+      const mine = (data?.mySubmission as ExcursionProtocolSubmission | null) ?? null;
+      setMySubmission(mine);
+
+      if (silent) return;
+
+      if (mine && !isEditing) {
+        populateFormFromSubmission(mine);
         return;
       }
 
-      setMySubmission(null);
-      // Beim Hintergrund-Polling Formular nicht zurücksetzen — sonst verschwinden Eingaben/Bewertungen.
-      if (silent) return;
-
-      setSubmitted(false);
-      if (pubAt && data?.session) {
-        setRatings(
-          ((data.session as SessionInfo).ratingCriteria || DEFAULT_RATING_CRITERIA).map((criterion) => ({
-            criterion,
-            score: 0,
-          })),
-        );
+      if (!mine && pubAt && data?.session) {
+        const criteria =
+          ((data.session as SessionInfo).ratingCriteria || DEFAULT_RATING_CRITERIA);
+        resetEmptyForm(criteria);
       }
     },
-    [],
+    [isEditing, populateFormFromSubmission, resetEmptyForm],
   );
 
   const loadCurrent = useCallback(
@@ -197,10 +211,16 @@ export default function ExcursionProtocolPage() {
   }, [isTeacher, loadCurrent, selectedExcursionId]);
 
   useEffect(() => {
-    if (ratings.length === 0 && ratingCriteria.length > 0) {
+    if (isTeacher) return;
+    setIsEditing(false);
+    setSubmitError(null);
+  }, [isTeacher, selectedExcursionId]);
+
+  useEffect(() => {
+    if (ratings.length === 0 && ratingCriteria.length > 0 && (isEditing || !mySubmission)) {
       setRatings(ratingCriteria.map((criterion) => ({ criterion, score: 0 })));
     }
-  }, [ratingCriteria, ratings.length]);
+  }, [ratingCriteria, ratings.length, isEditing, mySubmission]);
 
   const formatDisplayDate = (isoDate: string) => {
     try {
@@ -215,14 +235,37 @@ export default function ExcursionProtocolPage() {
     }
   };
 
+  const formatShortDate = (isoDate: string) => {
+    try {
+      return new Date(isoDate).toLocaleDateString('de-DE', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+      });
+    } catch {
+      return isoDate;
+    }
+  };
+
   const selectSession = (s: ExcursionAvailableSession) => {
     setSearchParams({ id: s.id });
-    setSubmitted(false);
-    setSubmitError(null);
-    setActivities([emptyActivity()]);
-    setReflection({ learned: '', highlight: '', openQuestion: '' });
-    setRatings(s.ratingCriteria.map((criterion) => ({ criterion, score: 0 })));
   };
+
+  const clearSelection = () => {
+    setSearchParams({});
+    setIsEditing(false);
+    setSubmitError(null);
+  };
+
+  const startEditing = () => {
+    if (!mySubmission || !canEdit) return;
+    populateFormFromSubmission(mySubmission);
+    setIsEditing(true);
+    setSubmitError(null);
+  };
+
+  const showForm = Boolean(selectedExcursionId && (!mySubmission || isEditing));
+  const showSubmissionDetail = Boolean(selectedExcursionId && mySubmission && !isEditing);
 
   const handleSubmit = async () => {
     const validActivities = activities.filter((a) => a.content.trim());
@@ -269,8 +312,8 @@ export default function ExcursionProtocolPage() {
         }
         throw new Error(msg);
       }
-      setSubmitted(true);
-      await loadCurrent(true, selectedExcursionId || undefined);
+      setIsEditing(false);
+      await loadCurrent(false, selectedExcursionId || undefined);
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : 'Speichern fehlgeschlagen.');
     } finally {
@@ -278,9 +321,9 @@ export default function ExcursionProtocolPage() {
     }
   };
 
-  if (!isTeacher && loading) {
+  if (!isTeacher && loading && availableSessions.length === 0) {
     return (
-      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f5f7fa' }}>
+      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: protocolPalette.background }}>
         <CircularProgress />
       </Box>
     );
@@ -311,7 +354,7 @@ export default function ExcursionProtocolPage() {
             variant="subtitle1"
             sx={{
               fontWeight: 800,
-              color: protocolPalette.deep,
+              color: protocolPalette.heading,
               textAlign: 'center',
               flex: 1,
               px: 1,
@@ -319,8 +362,7 @@ export default function ExcursionProtocolPage() {
               lineHeight: 1.25,
             }}
           >
-            {isTeacher ? 'Protokoll' : 'Mein Tagesprotokoll'}
-            {session?.title ? ` · ${session.title}` : ''}
+            {isTeacher ? 'Protokoll' : 'Meine Tagesprotokolle'}
           </Typography>
           <Box sx={{ width: 32, flexShrink: 0 }} />
         </Box>
@@ -334,16 +376,15 @@ export default function ExcursionProtocolPage() {
 
           {isTeacher ? (
             <ExcursionProtocolTeacherView formatDisplayDate={formatDisplayDate} />
-          ) : !publishedAt || !session ? (
+          ) : availableSessions.length === 0 ? (
             <Card elevation={0} sx={{ borderRadius: 3, border: '1px dashed', borderColor: 'divider' }}>
               <CardContent sx={{ ...cardPaddingSx, py: 6, textAlign: 'center' }}>
-                <AssignmentIcon sx={{ fontSize: 48, color: '#bcaaa4', mb: 2 }} />
-                <Typography variant="h5" sx={{ fontWeight: 800, mb: 1, color: '#4e342e' }}>
+                <AssignmentIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+                <Typography variant="h5" sx={{ fontWeight: 800, mb: 1, color: protocolPalette.heading }}>
                   Noch kein Protokoll freigegeben
                 </Typography>
                 <Typography color="text.secondary" sx={{ maxWidth: 420, mx: 'auto' }}>
-                  Deine Lehrkraft muss die Exkursion erst freigeben. Dann erscheint hier dein Tagesprotokoll zum
-                  Ausfüllen.
+                  Deine Lehrkraft muss die Exkursion erst freigeben. Dann erscheinen hier deine Protokolle.
                 </Typography>
                 <Button variant="outlined" onClick={() => navigate('/dashboard')} sx={{ mt: 3, textTransform: 'none' }}>
                   Zurück zum Dashboard
@@ -352,57 +393,86 @@ export default function ExcursionProtocolPage() {
             </Card>
           ) : (
             <Stack spacing={2}>
-              {availableSessions.length > 1 && (
-                <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
-                  <CardContent sx={cardPaddingSx}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: '#5d4037' }}>
-                      Mehrere Exkursionen aktiv — wähle dein Protokoll:
-                    </Typography>
-                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                      {availableSessions.map((s) => (
-                        <Chip
-                          key={s.id}
-                          label={`${s.title} (${s.groupName})`}
-                          onClick={() => selectSession(s)}
-                          color={s.id === (submitMeta?.excursionId || selectedExcursionId) ? 'primary' : 'default'}
-                          variant={s.id === (submitMeta?.excursionId || selectedExcursionId) ? 'filled' : 'outlined'}
-                          sx={{ fontWeight: 600 }}
-                        />
-                      ))}
-                    </Stack>
-                  </CardContent>
-                </Card>
-              )}
-
-              <ExcursionProtocolStudentView
-                sessionTitle={session.title}
-                sessionDate={session.date}
-                teacherName={teacherNameForStudent}
-                reflectionQuestions={reflectionQuestions}
-                activities={activities}
-                reflection={reflection}
-                ratings={ratings}
-                submitted={submitted}
-                mySubmission={mySubmission}
-                submitting={submitting}
-                submitError={submitError}
-                onActivitiesChange={setActivities}
-                onReflectionChange={setReflection}
-                onRatingsChange={setRatings}
-                onSubmit={() => void handleSubmit()}
-                onEditAgain={() => {
-                  if (mySubmission) {
-                    setActivities(
-                      mySubmission.activities.length > 0 ? mySubmission.activities : [emptyActivity()],
-                    );
-                    setReflection(mySubmission.reflection);
-                    setRatings(mySubmission.ratings);
-                  }
-                  setSubmitted(false);
-                  setSubmitError(null);
-                }}
-                formatDisplayDate={formatDisplayDate}
+              <ExcursionProtocolStudentList
+                sessions={availableSessions}
+                selectedId={selectedExcursionId}
+                onSelect={selectSession}
+                formatShortDate={formatShortDate}
               />
+
+              {!selectedExcursionId ? (
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 1 }}>
+                  Wähle ein Protokoll aus der Liste.
+                </Typography>
+              ) : !publishedAt || !session ? (
+                <CircularProgress size={24} sx={{ display: 'block', mx: 'auto' }} />
+              ) : (
+                <Stack spacing={1.25}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: protocolPalette.textPrimary }}>
+                      {session.title}
+                    </Typography>
+                    <Button size="small" onClick={clearSelection} sx={{ textTransform: 'none', flexShrink: 0 }}>
+                      Zur Liste
+                    </Button>
+                  </Box>
+
+                  {editDeadline && (
+                    <Alert severity="info" sx={{ py: 0.25 }}>
+                      {formatEditDeadlineLabel(editDeadline)}
+                    </Alert>
+                  )}
+
+                  {showSubmissionDetail && mySubmission && (
+                    <>
+                      <ExcursionProtocolSubmissionDetail
+                        submission={mySubmission}
+                        reflectionQuestions={reflectionQuestions}
+                        title="Deine Abgabe"
+                        subtitle={
+                          mySubmission.submittedAt
+                            ? `Abgegeben am ${new Date(mySubmission.submittedAt).toLocaleString('de-DE')}`
+                            : undefined
+                        }
+                      />
+                      {canEdit ? (
+                        <Button
+                          variant="outlined"
+                          startIcon={<EditIcon />}
+                          onClick={startEditing}
+                          sx={{ textTransform: 'none', alignSelf: 'flex-start' }}
+                        >
+                          Bearbeiten
+                        </Button>
+                      ) : (
+                        <Alert severity="warning" sx={{ py: 0.25 }}>
+                          Der Bearbeitungszeitraum ist abgelaufen.
+                        </Alert>
+                      )}
+                    </>
+                  )}
+
+                  {showForm && (
+                    <ExcursionProtocolStudentView
+                      sessionTitle={session.title}
+                      sessionDate={session.date}
+                      teacherName={teacherNameForStudent}
+                      reflectionQuestions={reflectionQuestions}
+                      activities={activities}
+                      reflection={reflection}
+                      ratings={ratings}
+                      submitting={submitting}
+                      submitError={submitError}
+                      isResubmit={Boolean(mySubmission)}
+                      onActivitiesChange={setActivities}
+                      onReflectionChange={setReflection}
+                      onRatingsChange={setRatings}
+                      onSubmit={() => void handleSubmit()}
+                      formatDisplayDate={formatDisplayDate}
+                    />
+                  )}
+                </Stack>
+              )}
             </Stack>
           )}
         </Box>

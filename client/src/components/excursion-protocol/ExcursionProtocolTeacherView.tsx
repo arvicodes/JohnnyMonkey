@@ -16,7 +16,8 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { Visibility as VisibilityIcon } from '@mui/icons-material';
+import { ArrowBack as ArrowBackIcon, Visibility as VisibilityIcon } from '@mui/icons-material';
+import { ExcursionProtocolSubmissionDetail } from './ExcursionProtocolSubmissionDetail';
 import { apiDelete, apiGet, apiPost, apiPut } from '../../lib/api';
 import {
   compactIconSx,
@@ -39,9 +40,9 @@ import {
 } from './excursionProtocolUi';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-icon-button';
 import {
-  activityVibeLabel,
   DEFAULT_RATING_CRITERIA,
   DEFAULT_REFLECTION_QUESTIONS,
+  formatEditDeadlineLabel,
   type ExcursionListItem,
   type ExcursionProtocolSubmission,
   type ExcursionStudentRosterEntry,
@@ -69,11 +70,20 @@ const groupChipGridSx = {
   gap: 0.5,
 };
 
+const toDatetimeLocal = (iso: string | null | undefined): string => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 const emptyDraft = (allGroupIds: string[] = []) => ({
   title: '',
   date: new Date().toISOString().slice(0, 10),
   groupIds: [...allGroupIds],
   criteria: [...DEFAULT_RATING_CRITERIA],
+  editDeadline: '',
 });
 
 type Props = {
@@ -95,8 +105,10 @@ export function ExcursionProtocolTeacherView({ formatDisplayDate }: Props) {
   const [draftDate, setDraftDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [draftGroupIds, setDraftGroupIds] = useState<string[]>([]);
   const [draftCriteria, setDraftCriteria] = useState<string[]>([...DEFAULT_RATING_CRITERIA]);
+  const [draftEditDeadline, setDraftEditDeadline] = useState('');
 
   const [submissionsDialogOpen, setSubmissionsDialogOpen] = useState(false);
+  const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(null);
   const [teacherSubmissions, setTeacherSubmissions] = useState<ExcursionProtocolSubmission[]>([]);
   const [studentRoster, setStudentRoster] = useState<ExcursionStudentRosterEntry[]>([]);
   const [rosterPendingCount, setRosterPendingCount] = useState(0);
@@ -140,6 +152,7 @@ export function ExcursionProtocolTeacherView({ formatDisplayDate }: Props) {
       setDraftDate(d.date);
       setDraftGroupIds(d.groupIds);
       setDraftCriteria(d.criteria);
+      setDraftEditDeadline(d.editDeadline);
       return;
     }
     setDraftTitle(item.title);
@@ -148,6 +161,7 @@ export function ExcursionProtocolTeacherView({ formatDisplayDate }: Props) {
     setDraftCriteria(
       item.ratingCriteria?.length ? [...item.ratingCriteria] : [...DEFAULT_RATING_CRITERIA],
     );
+    setDraftEditDeadline(toDatetimeLocal(item.editDeadline));
   };
 
   const startNew = () => {
@@ -182,6 +196,7 @@ export function ExcursionProtocolTeacherView({ formatDisplayDate }: Props) {
         groupIds: draftGroupIds,
         ratingCriteria: draftCriteria.filter((c) => c.trim()),
         reflectionQuestions: DEFAULT_REFLECTION_QUESTIONS,
+        editDeadline: draftEditDeadline ? new Date(draftEditDeadline).toISOString() : null,
       };
 
       if (isNew) {
@@ -223,6 +238,7 @@ export function ExcursionProtocolTeacherView({ formatDisplayDate }: Props) {
           date: draftDate,
           groupIds: draftGroupIds,
           ratingCriteria: draftCriteria.filter((c) => c.trim()),
+          editDeadline: draftEditDeadline ? new Date(draftEditDeadline).toISOString() : null,
         });
         if (!createRes.ok) throw new Error('Erstellen fehlgeschlagen');
         const created = await createRes.json();
@@ -233,6 +249,7 @@ export function ExcursionProtocolTeacherView({ formatDisplayDate }: Props) {
           date: draftDate,
           groupIds: draftGroupIds,
           ratingCriteria: draftCriteria.filter((c) => c.trim()),
+          editDeadline: draftEditDeadline ? new Date(draftEditDeadline).toISOString() : null,
         });
         if (!updateRes.ok) throw new Error('Speichern fehlgeschlagen');
       }
@@ -292,6 +309,7 @@ export function ExcursionProtocolTeacherView({ formatDisplayDate }: Props) {
           rq[2] || DEFAULT_REFLECTION_QUESTIONS[2],
         ]);
       }
+      setSelectedSubmissionId(null);
       setSubmissionsDialogOpen(true);
     } catch {
       // ignore
@@ -350,11 +368,11 @@ export function ExcursionProtocolTeacherView({ formatDisplayDate }: Props) {
               </Typography>
             ) : (
               <Stack spacing={0.5}>
-                {excursions.map((item) => (
+                {excursions.map((item, listIndex) => (
                   <Box
                     key={item.id}
                     onClick={() => selectExcursion(item)}
-                    sx={protocolListItemSx(selectedId === item.id)}
+                    sx={protocolListItemSx(selectedId === item.id, listIndex)}
                   >
                     <Stack direction="row" spacing={0.75} alignItems="flex-start">
                       <Box sx={{ minWidth: 0, flex: 1 }}>
@@ -426,6 +444,24 @@ export function ExcursionProtocolTeacherView({ formatDisplayDate }: Props) {
                 </Box>
 
                 <Box>
+                  <TextField
+                    size="small"
+                    label="Bearbeiten erlaubt bis (optional)"
+                    type="datetime-local"
+                    value={draftEditDeadline}
+                    onChange={(e) => setDraftEditDeadline(e.target.value)}
+                    fullWidth
+                    helperText={
+                      draftEditDeadline
+                        ? formatEditDeadlineLabel(new Date(draftEditDeadline).toISOString())
+                        : 'Leer = Schüler können abgegebene Protokolle jederzeit bearbeiten'
+                    }
+                    sx={protocolFieldSx}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Box>
+
+                <Box>
                   <Stack direction="row" alignItems="flex-start" justifyContent="space-between" gap={1} sx={{ mb: 0.5 }}>
                     <Typography component="span" sx={{ ...protocolSectionLabelSx, mb: 0, flex: 1 }}>
                       Lerngruppen
@@ -452,7 +488,7 @@ export function ExcursionProtocolTeacherView({ formatDisplayDate }: Props) {
                     </Typography>
                   ) : (
                     <Box sx={groupChipGridSx}>
-                      {groups.map((g) => {
+                      {groups.map((g, groupIndex) => {
                         const on = draftGroupIds.includes(g.id);
                         return (
                           <Chip
@@ -460,7 +496,7 @@ export function ExcursionProtocolTeacherView({ formatDisplayDate }: Props) {
                             size="small"
                             label={`${g.name} (${g.studentCount})`}
                             onClick={() => toggleGroup(g.id)}
-                            sx={protocolGroupChipSx(on)}
+                            sx={protocolGroupChipSx(on, groupIndex)}
                           />
                         );
                       })}
@@ -534,7 +570,10 @@ export function ExcursionProtocolTeacherView({ formatDisplayDate }: Props) {
 
       <Dialog
         open={submissionsDialogOpen}
-        onClose={() => setSubmissionsDialogOpen(false)}
+        onClose={() => {
+          setSubmissionsDialogOpen(false);
+          setSelectedSubmissionId(null);
+        }}
         maxWidth={false}
         fullWidth
         PaperProps={{ sx: { width: 'min(1400px, 98vw)', maxHeight: '92vh' } }}
@@ -548,111 +587,89 @@ export function ExcursionProtocolTeacherView({ formatDisplayDate }: Props) {
         <DialogContent dividers>
           {studentRoster.length === 0 ? (
             <Typography color="text.secondary">Keine Schüler in den gewählten Gruppen.</Typography>
+          ) : selectedSubmissionId ? (
+            <Stack spacing={1.5}>
+              <Button
+                size="small"
+                startIcon={<ArrowBackIcon />}
+                onClick={() => setSelectedSubmissionId(null)}
+                sx={{ alignSelf: 'flex-start', textTransform: 'none' }}
+              >
+                Zurück zur Liste
+              </Button>
+              {(() => {
+                const sub =
+                  teacherSubmissions.find((s) => s.studentId === selectedSubmissionId) ??
+                  studentRoster.find((e) => e.studentId === selectedSubmissionId)?.submission;
+                if (!sub) {
+                  return <Typography color="text.secondary">Abgabe nicht gefunden.</Typography>;
+                }
+                const rosterEntry = studentRoster.find((e) => e.studentId === sub.studentId);
+                return (
+                  <ExcursionProtocolSubmissionDetail
+                    submission={sub}
+                    reflectionQuestions={reflectionQuestions}
+                    title={sub.studentName}
+                    subtitle={[
+                      rosterEntry?.groupName,
+                      sub.submittedAt ? new Date(sub.submittedAt).toLocaleString('de-DE') : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  />
+                );
+              })()}
+            </Stack>
           ) : (
-            <Stack spacing={3}>
+            <Stack spacing={2}>
               <Typography variant="body2" color="text.secondary">
                 {teacherSubmissions.length} abgegeben · {rosterPendingCount} noch offen · {studentRoster.length} Schüler
                 gesamt
               </Typography>
-              {teacherSubmissions.length > 0 && (
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, minmax(0, 1fr))' },
-                    gap: 2,
-                  }}
-                >
-                  {teacherSubmissions.map((sub) => (
-                    <Card key={sub.studentId} variant="outlined" sx={{ borderRadius: 2 }}>
-                      <CardContent sx={cardPaddingSx}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
-                          {sub.studentName}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-                          {new Date(sub.submittedAt).toLocaleString('de-DE')}
-                        </Typography>
-                        {sub.activities.map((a, i) => (
-                          <Box key={i} sx={{ mb: 1, display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                            {a.imageDataUrl && (
-                              <Box
-                                component="img"
-                                src={a.imageDataUrl}
-                                alt=""
-                                sx={{
-                                  width: 72,
-                                  height: 54,
-                                  objectFit: 'cover',
-                                  borderRadius: 1,
-                                  flexShrink: 0,
-                                  border: '1px solid',
-                                  borderColor: 'divider',
-                                }}
-                              />
-                            )}
-                            <Box sx={{ minWidth: 0 }}>
-                              <Typography variant="body2">{a.content}</Typography>
-                              {a.activityRating && (
-                                <Chip
-                                  size="small"
-                                  label={activityVibeLabel(a.activityRating)}
-                                  sx={{ mt: 0.5, height: 22, fontWeight: 700, fontSize: '0.72rem' }}
-                                />
-                              )}
-                            </Box>
-                          </Box>
-                        ))}
-                        <Typography variant="body2" sx={{ mt: 1 }}>
-                          {reflectionQuestions[0]}: {sub.reflection.learned}
-                        </Typography>
-                        <Typography variant="body2">
-                          {reflectionQuestions[1]}: {sub.reflection.highlight}
-                        </Typography>
-                        <Typography variant="body2">
-                          {reflectionQuestions[2]}: {sub.reflection.openQuestion}
-                        </Typography>
-                        {sub.ratings.map((r) => (
-                          <Typography key={r.criterion} variant="body2">
-                            {r.criterion}: {'★'.repeat(r.score)}{'☆'.repeat(5 - r.score)}
-                          </Typography>
-                        ))}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </Box>
-              )}
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' },
-                  gap: 1,
-                }}
-              >
+              <Stack spacing={0.75}>
                 {studentRoster.map((entry) => (
                   <Box
                     key={`${entry.groupId}-${entry.studentId}`}
+                    onClick={() => {
+                      if (entry.submitted && entry.submission) {
+                        setSelectedSubmissionId(entry.studentId);
+                      }
+                    }}
                     sx={{
                       p: 1.25,
                       borderRadius: 1.5,
                       border: '1px solid',
                       borderColor: entry.submitted ? 'success.light' : 'divider',
                       bgcolor: entry.submitted ? 'rgba(76,175,80,0.06)' : 'rgba(0,0,0,0.02)',
+                      cursor: entry.submitted ? 'pointer' : 'default',
+                      transition: 'all 0.15s ease',
+                      '&:hover': entry.submitted
+                        ? { borderColor: 'success.main', boxShadow: '0 2px 8px rgba(76,175,80,0.15)' }
+                        : undefined,
                     }}
                   >
-                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                      {entry.studentName}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                      {entry.groupName}
-                    </Typography>
-                    <Chip
-                      size="small"
-                      label={entry.submitted ? 'Abgegeben' : 'Noch offen'}
-                      color={entry.submitted ? 'success' : 'default'}
-                      sx={{ mt: 0.75, fontWeight: 600 }}
-                    />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                          {entry.studentName}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                          {entry.groupName}
+                          {entry.submittedAt
+                            ? ` · ${new Date(entry.submittedAt).toLocaleString('de-DE')}`
+                            : ''}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        size="small"
+                        label={entry.submitted ? 'Abgabe ansehen' : 'Noch offen'}
+                        color={entry.submitted ? 'success' : 'default'}
+                        sx={{ fontWeight: 600, flexShrink: 0 }}
+                      />
+                    </Box>
                   </Box>
                 ))}
-              </Box>
+              </Stack>
             </Stack>
           )}
         </DialogContent>

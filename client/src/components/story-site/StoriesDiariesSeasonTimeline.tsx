@@ -3,10 +3,8 @@ import {
   Box,
   Typography,
   Paper,
-  Chip,
   Stack,
   IconButton,
-  Tooltip,
   Button,
   Menu,
   MenuItem,
@@ -33,6 +31,8 @@ import {
   getStorySiteCategoryDef,
   getCategoryTimelineColumnIndex,
   getSiteTimelineIsoDate,
+  getSiteTimelineDay,
+  getSiteTimelineDayFraction,
   groupSitesByYearAndMonth,
   getMonthSeason,
   TIMELINE_SEASON_META,
@@ -40,15 +40,14 @@ import {
   type TimelineSeasonId,
 } from '../../lib/storySiteCategories';
 import { formatIsoDateDe } from '../../lib/storyPageDate';
-import { STORY_SCRAPBOOK_BG } from '../../lib/storyPageLayout';
+import { STORY_SCRAPBOOK_BG, STORY_TIMELINE_MAX_WIDTH } from '../../lib/storyPageLayout';
 
-export const TIMELINE_GRID_COLUMNS =
-  'minmax(0, 1fr) minmax(0, 1fr) 72px minmax(0, 1fr) minmax(0, 1fr)';
-
-const TIMELINE_MAX_WIDTH = 1000;
-const CARD_MAX_WIDTH = 148;
-const EMPTY_MONTH_HEIGHT = 56;
-const MIN_MONTH_ROW_HEIGHT = 56;
+export const TIMELINE_MAX_WIDTH = STORY_TIMELINE_MAX_WIDTH;
+const TIMELINE_AXIS_WIDTH = 80;
+const CARD_MAX_WIDTH = 168;
+const EMPTY_MONTH_HEIGHT = 62;
+const MIN_MONTH_ROW_HEIGHT = 62;
+const MAX_DAY_HORIZONTAL_OFFSET = 52;
 
 /** Mittlere Spalten leicht zur Achse, äußere an den Seiten. */
 const COLUMN_LAYOUT: Record<
@@ -72,41 +71,273 @@ function MonthAxisCell({ month }: { month: number }) {
   const season = getMonthSeason(month);
   const meta = TIMELINE_SEASON_META[season];
   const SeasonIcon = SEASON_ICONS[season];
+  const label = `${MONTH_LABELS[month - 1]} · ${meta.label}`;
 
   return (
-    <Tooltip title={`${MONTH_LABELS[month - 1]} · ${meta.label}`} placement="right">
+    <Box
+      title={label}
+      aria-label={label}
+      sx={{
+        width: TIMELINE_AXIS_WIDTH,
+        flexShrink: 0,
+        alignSelf: 'stretch',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 0.4,
+        background: meta.axisBg,
+        borderLeft: `1.5px solid ${meta.axisBorder}`,
+        borderRight: `1.5px solid ${meta.axisBorder}`,
+        py: 0.75,
+        px: 0.35,
+      }}
+    >
       <Box
         sx={{
-          gridColumn: 3,
-          alignSelf: 'stretch',
+          width: 28,
+          height: 28,
+          borderRadius: '50%',
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 0.3,
-          bgcolor: meta.axisBg,
-          borderLeft: `1px solid ${meta.axisBorder}`,
-          borderRight: `1px solid ${meta.axisBorder}`,
-          minHeight: MIN_MONTH_ROW_HEIGHT,
-          py: 0.75,
-          px: 0.25,
+          bgcolor: meta.iconRing,
+          border: `1px solid ${meta.axisBorder}`,
+          flexShrink: 0,
         }}
       >
-        <SeasonIcon sx={{ fontSize: 17, color: meta.iconColor, opacity: 0.85 }} aria-hidden />
+        <SeasonIcon sx={{ fontSize: 18, color: meta.iconColor }} aria-hidden />
+      </Box>
+      <Typography
+        sx={{
+          fontWeight: 800,
+          fontSize: '0.68rem',
+          color: meta.iconColor,
+          letterSpacing: '0.04em',
+          lineHeight: 1.1,
+          textAlign: 'center',
+          flexShrink: 0,
+        }}
+      >
+        {MONTH_LABELS[month - 1]}
+      </Typography>
+    </Box>
+  );
+}
+
+function CategoryHeaderLabel({ categoryId }: { categoryId: StorySiteCategoryId }) {
+  const cat = getStorySiteCategoryDef(categoryId);
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minWidth: 0,
+        py: 0.25,
+      }}
+    >
+      <Box
+        sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.5,
+          px: 1,
+          py: 0.4,
+          borderRadius: 1,
+          bgcolor: cat.bg,
+          border: `1px solid ${cat.border}`,
+          boxShadow: `0 1px 4px ${cat.border}`,
+        }}
+      >
+        <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: cat.color, flexShrink: 0 }} />
+        <Typography sx={{ fontSize: '0.68rem', fontWeight: 800, color: cat.text, lineHeight: 1 }}>
+          {cat.shortLabel}
+        </Typography>
+      </Box>
+    </Box>
+  );
+}
+
+/** Kopfzeile mit Kategorie-Labels — gleiches Flex-Raster wie die Monatszeilen. */
+function TimelineCategoryHeader({ year }: { year: number }) {
+  const leftCategories = TIMELINE_CATEGORY_COLUMNS.filter((id) => getCategoryTimelineColumnIndex(id) <= 1);
+  const rightCategories = TIMELINE_CATEGORY_COLUMNS.filter((id) => getCategoryTimelineColumnIndex(id) >= 3);
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'stretch',
+        width: '100%',
+        px: 0.25,
+      }}
+    >
+      <Box
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          columnGap: 1,
+          alignItems: 'center',
+        }}
+      >
+        {leftCategories.map((id) => (
+          <CategoryHeaderLabel key={id} categoryId={id} />
+        ))}
+      </Box>
+      <Box
+        sx={{
+          width: TIMELINE_AXIS_WIDTH,
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: 'rgba(250, 246, 238, 0.85)',
+          borderLeft: '1.5px solid rgba(93, 64, 55, 0.12)',
+          borderRight: '1.5px solid rgba(93, 64, 55, 0.12)',
+          minHeight: 28,
+          py: 0.5,
+        }}
+      >
         <Typography
           sx={{
+            fontFamily: '"Segoe Script", "Snell Roundhand", "Bradley Hand", cursive',
             fontWeight: 700,
-            fontSize: '0.64rem',
-            color: 'rgba(78, 52, 46, 0.75)',
-            letterSpacing: '0.03em',
+            fontSize: { xs: '1.1rem', sm: '1.25rem' },
+            color: '#4e342e',
             lineHeight: 1.1,
             textAlign: 'center',
           }}
         >
-          {MONTH_LABELS[month - 1]}
+          {year}
         </Typography>
       </Box>
-    </Tooltip>
+      <Box
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          columnGap: 1,
+          alignItems: 'center',
+        }}
+      >
+        {rightCategories.map((id) => (
+          <CategoryHeaderLabel key={id} categoryId={id} />
+        ))}
+      </Box>
+    </Box>
+  );
+}
+
+function temporalCardOffsetSx(col: 0 | 1 | 3 | 4, dayFraction: number) {
+  const isLeft = col <= 1;
+  if (isLeft) {
+    return { ml: `${dayFraction * MAX_DAY_HORIZONTAL_OFFSET}px` };
+  }
+  return { mr: `${(1 - dayFraction) * MAX_DAY_HORIZONTAL_OFFSET}px` };
+}
+
+function MonthSideColumns({
+  columns,
+  byColumn,
+  year,
+  month,
+  editable,
+  showActions,
+  onOpenSite,
+  onOpenPreview,
+  onOpenEditor,
+  onDeleteSite,
+  onCategoryChange,
+  py,
+}: {
+  columns: readonly (0 | 1 | 3 | 4)[];
+  byColumn: Map<0 | 1 | 3 | 4, StorySite[]>;
+  year: number;
+  month: number;
+  editable?: boolean;
+  showActions: boolean;
+  onOpenSite: (id: string) => void;
+  onOpenPreview?: (id: string, e: React.MouseEvent) => void;
+  onOpenEditor?: (id: string) => void;
+  onDeleteSite?: (id: string, e: React.MouseEvent) => void;
+  onCategoryChange?: (id: string, category: StorySiteCategoryId) => void;
+  py: number;
+}) {
+  return (
+    <Box
+      sx={{
+        flex: 1,
+        minWidth: 0,
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        columnGap: 1,
+        py,
+        px: 0.25,
+        alignSelf: 'stretch',
+      }}
+    >
+      {columns.map((col) => {
+        const layout = COLUMN_LAYOUT[col];
+        const sites = [...(byColumn.get(col) ?? [])].sort((a, b) =>
+          getSiteTimelineIsoDate(a).localeCompare(getSiteTimelineIsoDate(b)),
+        );
+
+        return (
+          <Box
+            key={col}
+            sx={{
+              minWidth: 0,
+              minHeight: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: layout.alignItems,
+              justifyContent: 'flex-start',
+              px: layout.px,
+            }}
+          >
+            {sites.map((site, index) => {
+              const day = getSiteTimelineDay(site);
+              const prevDay = index > 0 ? getSiteTimelineDay(sites[index - 1]) : 1;
+              const dayFraction = getSiteTimelineDayFraction(site, year, month);
+              const leadFlex = index === 0 ? Math.max(0, day - 1) : Math.max(1, day - prevDay);
+
+              return (
+                <React.Fragment key={site.id}>
+                  {leadFlex > 0 ? (
+                    <Box
+                      sx={{
+                        flex: `${leadFlex} 1 0`,
+                        minHeight: index === 0 ? 2 : 4,
+                        maxHeight: index === 0 ? 36 : 28,
+                        width: '100%',
+                      }}
+                    />
+                  ) : null}
+                  <TimelineSiteCard
+                    site={site}
+                    editable={editable}
+                    showActions={showActions}
+                    align={layout.cardAlign}
+                    offsetSx={temporalCardOffsetSx(col, dayFraction)}
+                    onOpenSite={onOpenSite}
+                    onOpenPreview={onOpenPreview}
+                    onOpenEditor={onOpenEditor}
+                    onDeleteSite={onDeleteSite}
+                    onCategoryChange={onCategoryChange}
+                  />
+                </React.Fragment>
+              );
+            })}
+          </Box>
+        );
+      })}
+    </Box>
   );
 }
 
@@ -123,59 +354,12 @@ type StoriesDiariesSeasonTimelineProps = {
   onRequestUrlaubUnlock?: () => void;
 };
 
-function CategoryColumnHeader() {
-  return (
-    <Box
-      sx={{
-        display: 'grid',
-        gridTemplateColumns: TIMELINE_GRID_COLUMNS,
-        columnGap: 1,
-        mb: 0.75,
-        width: '100%',
-      }}
-    >
-      {TIMELINE_CATEGORY_COLUMNS.map((id) => {
-        const cat = getStorySiteCategoryDef(id);
-        const col = getCategoryTimelineColumnIndex(id);
-        const gridColumn = col + 1;
-        const inward = col === 1 || col === 3;
-        return (
-          <Box
-            key={id}
-            sx={{
-              gridColumn,
-              textAlign: 'center',
-              minWidth: 0,
-              display: 'flex',
-              justifyContent: inward ? (col === 1 ? 'flex-end' : 'flex-start') : col === 0 ? 'flex-start' : 'flex-end',
-              px: inward ? 0.35 : 0,
-            }}
-          >
-            <Chip
-              label={cat.shortLabel}
-              size="small"
-              sx={{
-                height: 22,
-                fontSize: '0.65rem',
-                fontWeight: 700,
-                bgcolor: cat.bg,
-                color: cat.text,
-                border: `1px solid ${cat.border}`,
-                maxWidth: '100%',
-              }}
-            />
-          </Box>
-        );
-      })}
-    </Box>
-  );
-}
-
 type TimelineSiteCardProps = {
   site: StorySite;
   editable?: boolean;
   showActions: boolean;
   align: 'left' | 'right';
+  offsetSx?: Record<string, unknown>;
   onOpenSite: (id: string) => void;
   onOpenPreview?: (id: string, e: React.MouseEvent) => void;
   onOpenEditor?: (id: string) => void;
@@ -188,6 +372,7 @@ function TimelineSiteCard({
   editable,
   showActions,
   align,
+  offsetSx,
   onOpenSite,
   onOpenPreview,
   onOpenEditor,
@@ -209,22 +394,24 @@ function TimelineSiteCard({
         ml: align === 'right' ? 'auto' : 0,
         mr: align === 'left' ? 'auto' : 0,
         cursor: 'pointer',
-        borderRadius: 1.25,
-        border: `1px solid ${category.border}`,
-        bgcolor: 'rgba(255,255,255,0.75)',
+        borderRadius: 1.5,
+        border: `1.5px solid ${category.border}`,
+        bgcolor: category.bg,
         overflow: 'hidden',
         transition: 'box-shadow 0.15s ease',
+        boxShadow: `0 2px 8px ${category.border}`,
         ...(align === 'right'
-          ? { borderRight: `2px solid ${category.color}` }
-          : { borderLeft: `2px solid ${category.color}` }),
-        '&:hover': { boxShadow: '0 2px 8px rgba(93, 64, 55, 0.1)' },
+          ? { borderRight: `3px solid ${category.color}` }
+          : { borderLeft: `3px solid ${category.color}` }),
+        '&:hover': { boxShadow: `0 4px 14px ${category.border}` },
+        ...offsetSx,
       }}
     >
-      <Box sx={{ px: 0.9, py: 0.6 }}>
+      <Box sx={{ px: 1, py: 0.7 }}>
         <Typography
           sx={{
-            fontWeight: 700,
-            fontSize: '0.74rem',
+            fontWeight: 800,
+            fontSize: '0.78rem',
             color: category.text,
             lineHeight: 1.25,
             display: '-webkit-box',
@@ -237,7 +424,7 @@ function TimelineSiteCard({
         </Typography>
         <Typography
           variant="caption"
-          sx={{ color: 'text.secondary', fontSize: '0.6rem', mt: 0.15 }}
+          sx={{ color: category.text, fontSize: '0.62rem', mt: 0.2, fontWeight: 600, opacity: 0.9 }}
           noWrap
         >
           {dateLabel}
@@ -312,6 +499,7 @@ function TimelineSiteCard({
 }
 
 function MonthRow({
+  year,
   month,
   monthSites,
   editable,
@@ -322,6 +510,7 @@ function MonthRow({
   onDeleteSite,
   onCategoryChange,
 }: {
+  year: number;
   month: number;
   monthSites: StorySite[];
   editable?: boolean;
@@ -346,56 +535,52 @@ function MonthRow({
   const season = getMonthSeason(month);
   const seasonMeta = TIMELINE_SEASON_META[season];
 
+  const rowPy = hasEntries ? 0.6 : 0.5;
+  const rowMinHeight = hasEntries
+    ? Math.max(MIN_MONTH_ROW_HEIGHT, 68 + Math.max(0, monthSites.length - 1) * 10)
+    : EMPTY_MONTH_HEIGHT;
+
   return (
     <Box
       sx={{
-        display: 'grid',
-        gridTemplateColumns: TIMELINE_GRID_COLUMNS,
-        columnGap: 1,
+        display: 'flex',
+        flexDirection: 'row',
         alignItems: 'stretch',
         width: '100%',
-        minHeight: hasEntries ? MIN_MONTH_ROW_HEIGHT : EMPTY_MONTH_HEIGHT,
+        minHeight: rowMinHeight,
         borderBottom: '1px solid rgba(93, 64, 55, 0.08)',
         bgcolor: hasEntries ? seasonMeta.rowBg : seasonMeta.emptyRowBg,
       }}
     >
-      {([0, 1, 3, 4] as const).map((col) => {
-        const layout = COLUMN_LAYOUT[col];
-        return (
-        <Box
-          key={col}
-          sx={{
-            gridColumn: col + 1,
-            alignSelf: 'stretch',
-            py: hasEntries ? 0.6 : 0.5,
-            px: layout.px,
-            minWidth: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 0.5,
-            alignItems: layout.alignItems,
-            justifyContent: 'center',
-          }}
-        >
-          {(byColumn.get(col) ?? []).map((site) => (
-            <TimelineSiteCard
-              key={site.id}
-              site={site}
-              editable={editable}
-              showActions={showActions}
-              align={layout.cardAlign}
-              onOpenSite={onOpenSite}
-              onOpenPreview={onOpenPreview}
-              onOpenEditor={onOpenEditor}
-              onDeleteSite={onDeleteSite}
-              onCategoryChange={onCategoryChange}
-            />
-          ))}
-        </Box>
-        );
-      })}
-
+      <MonthSideColumns
+        columns={[0, 1]}
+        byColumn={byColumn}
+        year={year}
+        month={month}
+        editable={editable}
+        showActions={showActions}
+        onOpenSite={onOpenSite}
+        onOpenPreview={onOpenPreview}
+        onOpenEditor={onOpenEditor}
+        onDeleteSite={onDeleteSite}
+        onCategoryChange={onCategoryChange}
+        py={rowPy}
+      />
       <MonthAxisCell month={month} />
+      <MonthSideColumns
+        columns={[3, 4]}
+        byColumn={byColumn}
+        year={year}
+        month={month}
+        editable={editable}
+        showActions={showActions}
+        onOpenSite={onOpenSite}
+        onOpenPreview={onOpenPreview}
+        onOpenEditor={onOpenEditor}
+        onDeleteSite={onDeleteSite}
+        onCategoryChange={onCategoryChange}
+        py={rowPy}
+      />
     </Box>
   );
 }
@@ -420,44 +605,24 @@ function YearTimelineSection({
   onCategoryChange?: (id: string, category: StorySiteCategoryId) => void;
 }) {
   const showActions = Boolean(editable || onDeleteSite || onOpenPreview || onOpenEditor);
-  const entryCount = useMemo(
-    () => [...monthsMap.values()].reduce((n, list) => n + list.length, 0),
-    [monthsMap],
-  );
 
   return (
-    <Box sx={{ mb: 5, width: '100%' }}>
-      <Stack direction="row" alignItems="baseline" spacing={1.5} sx={{ mb: 1.25, px: { xs: 1, sm: 1.5 }, maxWidth: TIMELINE_MAX_WIDTH, mx: 'auto', width: '100%' }}>
-        <Typography
-          sx={{
-            fontFamily: '"Segoe Script", "Snell Roundhand", "Bradley Hand", cursive',
-            fontWeight: 700,
-            fontSize: { xs: '1.35rem', sm: '1.6rem' },
-            color: '#4e342e',
-          }}
-        >
-          {year}
-        </Typography>
-        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-          {entryCount} {entryCount === 1 ? 'Eintrag' : 'Einträge'}
-        </Typography>
-      </Stack>
-
-      <Box sx={{ px: { xs: 0.75, sm: 1 }, maxWidth: TIMELINE_MAX_WIDTH, mx: 'auto', width: '100%' }}>
-        <CategoryColumnHeader />
-        <Box
-          sx={{
-            border: '1px solid rgba(93, 64, 55, 0.14)',
-            borderRadius: 2,
-            overflow: 'hidden',
-            bgcolor: 'rgba(255,255,255,0.45)',
-          }}
-        >
+    <Box sx={{ mb: 5, width: '100%', '&:not(:first-of-type)': { pt: 2, borderTop: '1px solid rgba(93, 64, 55, 0.1)' } }}>
+      <Box
+        sx={{
+          background: STORY_SCRAPBOOK_BG,
+          borderBottom: '1px solid rgba(93, 64, 55, 0.1)',
+          py: 0.85,
+        }}
+      >
+        <TimelineCategoryHeader year={year} />
+      </Box>
           {MONTH_LABELS.map((_, i) => {
             const month = i + 1;
             return (
               <MonthRow
                 key={month}
+                year={year}
                 month={month}
                 monthSites={monthsMap.get(month) ?? []}
                 editable={editable}
@@ -470,8 +635,6 @@ function YearTimelineSection({
               />
             );
           })}
-        </Box>
-      </Box>
     </Box>
   );
 }
@@ -493,33 +656,6 @@ export function StoriesDiariesSeasonTimeline({
 
   return (
     <Box sx={{ width: '100%' }}>
-      <Stack
-        direction="row"
-        flexWrap="wrap"
-        useFlexGap
-        spacing={0.75}
-        sx={{ mb: 2, gap: 0.75, px: { xs: 1, sm: 1.5 }, maxWidth: TIMELINE_MAX_WIDTH, mx: 'auto', width: '100%' }}
-      >
-        {TIMELINE_CATEGORY_COLUMNS.map((id) => {
-          const cat = getStorySiteCategoryDef(id);
-          return (
-            <Chip
-              key={cat.id}
-              label={cat.label}
-              size="small"
-              sx={{
-                bgcolor: cat.bg,
-                color: cat.text,
-                border: `1px solid ${cat.border}`,
-                fontWeight: 700,
-                fontSize: '0.72rem',
-                height: 24,
-              }}
-            />
-          );
-        })}
-      </Stack>
-
       {!urlaubUnlocked && hiddenUrlaubCount > 0 && onRequestUrlaubUnlock ? (
         <Paper
           elevation={0}

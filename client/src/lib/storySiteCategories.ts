@@ -20,7 +20,7 @@ export const STORY_SITE_CATEGORIES: StorySiteCategoryDef[] = [
     label: 'Urlaub',
     shortLabel: 'Urlaub',
     color: '#00897b',
-    bg: 'rgba(0, 137, 123, 0.1)',
+    bg: 'rgba(0, 137, 123, 0.16)',
     border: 'rgba(0, 137, 123, 0.45)',
     text: '#00695c',
   },
@@ -29,7 +29,7 @@ export const STORY_SITE_CATEGORIES: StorySiteCategoryDef[] = [
     label: 'Fahrten & Exkursionen',
     shortLabel: 'Fahrten',
     color: '#558b2f',
-    bg: 'rgba(85, 139, 47, 0.1)',
+    bg: 'rgba(85, 139, 47, 0.16)',
     border: 'rgba(85, 139, 47, 0.45)',
     text: '#33691e',
   },
@@ -38,7 +38,7 @@ export const STORY_SITE_CATEGORIES: StorySiteCategoryDef[] = [
     label: 'Fortbildungen',
     shortLabel: 'Fortbildung',
     color: '#5e35b1',
-    bg: 'rgba(94, 53, 177, 0.1)',
+    bg: 'rgba(94, 53, 177, 0.16)',
     border: 'rgba(94, 53, 177, 0.45)',
     text: '#4527a0',
   },
@@ -47,7 +47,7 @@ export const STORY_SITE_CATEGORIES: StorySiteCategoryDef[] = [
     label: 'Erasmus+',
     shortLabel: 'Erasmus+',
     color: '#ef6c00',
-    bg: 'rgba(239, 108, 0, 0.1)',
+    bg: 'rgba(239, 108, 0, 0.16)',
     border: 'rgba(239, 108, 0, 0.45)',
     text: '#e65100',
   },
@@ -155,6 +155,28 @@ export function getSiteTimelineMonth(site: StorySite): number {
   return m >= 1 && m <= 12 ? m : 1;
 }
 
+export function getSiteTimelineDay(site: StorySite): number {
+  const d = parseInt(getSiteTimelineIsoDate(site).slice(8, 10), 10);
+  return Number.isFinite(d) && d >= 1 && d <= 31 ? d : 1;
+}
+
+export function getDaysInMonth(year: number, month: number): number {
+  if (month < 1 || month > 12) return 30;
+  return new Date(year, month, 0).getDate();
+}
+
+/** 0 = Monatsanfang, 1 = Monatsende */
+export function getSiteTimelineDayFraction(site: StorySite, year: number, month: number): number {
+  const iso = getSiteTimelineIsoDate(site);
+  const siteYear = parseInt(iso.slice(0, 4), 10);
+  const siteMonth = parseInt(iso.slice(5, 7), 10);
+  if (siteYear !== year || siteMonth !== month) return 0.5;
+  const daysInMonth = getDaysInMonth(year, month);
+  if (daysInMonth <= 1) return 0;
+  const day = getSiteTimelineDay(site);
+  return Math.max(0, Math.min(1, (day - 1) / (daysInMonth - 1)));
+}
+
 export function getMonthSeasonBg(month: number): string {
   return TIMELINE_SEASON_META[getMonthSeason(month)].rowBg;
 }
@@ -182,39 +204,39 @@ export const TIMELINE_SEASON_META: Record<
 > = {
   winter: {
     label: 'Winter',
-    iconColor: '#5c8ab8',
-    rowBg: 'rgba(100, 181, 246, 0.06)',
-    emptyRowBg: 'rgba(100, 181, 246, 0.1)',
-    axisBg: 'rgba(144, 202, 249, 0.2)',
-    axisBorder: 'rgba(100, 181, 246, 0.28)',
-    iconRing: 'rgba(144, 202, 249, 0.15)',
+    iconColor: '#1565c0',
+    rowBg: 'rgba(100, 181, 246, 0.12)',
+    emptyRowBg: 'rgba(100, 181, 246, 0.2)',
+    axisBg: 'linear-gradient(180deg, rgba(100, 181, 246, 0.45) 0%, rgba(187, 222, 251, 0.3) 100%)',
+    axisBorder: 'rgba(21, 101, 192, 0.35)',
+    iconRing: 'rgba(21, 101, 192, 0.2)',
   },
   spring: {
     label: 'Frühling',
-    iconColor: '#6a9e6d',
-    rowBg: 'rgba(102, 187, 106, 0.07)',
-    emptyRowBg: 'rgba(102, 187, 106, 0.11)',
-    axisBg: 'rgba(165, 214, 167, 0.22)',
-    axisBorder: 'rgba(102, 187, 106, 0.28)',
-    iconRing: 'rgba(165, 214, 167, 0.18)',
+    iconColor: '#2e7d32',
+    rowBg: 'rgba(102, 187, 106, 0.13)',
+    emptyRowBg: 'rgba(102, 187, 106, 0.2)',
+    axisBg: 'linear-gradient(180deg, rgba(102, 187, 106, 0.42) 0%, rgba(200, 230, 201, 0.28) 100%)',
+    axisBorder: 'rgba(27, 94, 32, 0.32)',
+    iconRing: 'rgba(27, 94, 32, 0.18)',
   },
   summer: {
     label: 'Sommer',
-    iconColor: '#c9a020',
-    rowBg: 'rgba(255, 213, 79, 0.08)',
-    emptyRowBg: 'rgba(255, 213, 79, 0.12)',
-    axisBg: 'rgba(255, 224, 130, 0.25)',
-    axisBorder: 'rgba(255, 193, 7, 0.3)',
-    iconRing: 'rgba(255, 224, 130, 0.2)',
+    iconColor: '#f9a825',
+    rowBg: 'rgba(255, 213, 79, 0.15)',
+    emptyRowBg: 'rgba(255, 213, 79, 0.22)',
+    axisBg: 'linear-gradient(180deg, rgba(255, 213, 79, 0.5) 0%, rgba(255, 236, 179, 0.32) 100%)',
+    axisBorder: 'rgba(245, 127, 23, 0.35)',
+    iconRing: 'rgba(245, 127, 23, 0.2)',
   },
   autumn: {
     label: 'Herbst',
-    iconColor: '#c27830',
-    rowBg: 'rgba(255, 167, 38, 0.07)',
-    emptyRowBg: 'rgba(255, 167, 38, 0.11)',
-    axisBg: 'rgba(255, 183, 77, 0.22)',
-    axisBorder: 'rgba(255, 152, 0, 0.28)',
-    iconRing: 'rgba(255, 183, 77, 0.18)',
+    iconColor: '#e65100',
+    rowBg: 'rgba(255, 167, 38, 0.13)',
+    emptyRowBg: 'rgba(255, 167, 38, 0.2)',
+    axisBg: 'linear-gradient(180deg, rgba(255, 167, 38, 0.45) 0%, rgba(255, 204, 128, 0.3) 100%)',
+    axisBorder: 'rgba(230, 81, 0, 0.32)',
+    iconRing: 'rgba(230, 81, 0, 0.18)',
   },
 };
 
