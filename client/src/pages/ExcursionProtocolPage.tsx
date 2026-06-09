@@ -251,12 +251,6 @@ export default function ExcursionProtocolPage() {
     setSearchParams({ id: s.id });
   };
 
-  const clearSelection = () => {
-    setSearchParams({});
-    setIsEditing(false);
-    setSubmitError(null);
-  };
-
   const startEditing = () => {
     if (!mySubmission || !canEdit) return;
     populateFormFromSubmission(mySubmission);
@@ -408,15 +402,6 @@ export default function ExcursionProtocolPage() {
                 <CircularProgress size={24} sx={{ display: 'block', mx: 'auto' }} />
               ) : (
                 <Stack spacing={1.25}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: protocolPalette.textPrimary }}>
-                      {session.title}
-                    </Typography>
-                    <Button size="small" onClick={clearSelection} sx={{ textTransform: 'none', flexShrink: 0 }}>
-                      Zur Liste
-                    </Button>
-                  </Box>
-
                   {editDeadline && (
                     <Alert severity="info" sx={{ py: 0.25 }}>
                       {formatEditDeadlineLabel(editDeadline)}

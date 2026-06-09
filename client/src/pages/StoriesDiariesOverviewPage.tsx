@@ -8,7 +8,6 @@ import {
   writePreviewSnapshot,
   persistSite,
   getSiteById,
-  deleteSiteById,
   syncSitesFromServer,
   STORY_SITES_UPDATED_EVENT,
   type StorySite,
@@ -21,7 +20,14 @@ import {
 import { StoryCompactToolbar, storyToolbarIconBtnSx } from '../components/story-site/StoryCompactToolbar';
 import { StoriesDiariesSeasonTimeline } from '../components/story-site/StoriesDiariesSeasonTimeline';
 import { UrlaubUnlockDialog } from '../components/story-site/UrlaubUnlockDialog';
-import { STORY_BEIGE, STORY_TIMELINE_MAX_WIDTH, storyTimelineShellSx } from '../lib/storyPageLayout';
+import {
+  STORY_BEIGE,
+  STORY_TIMELINE_MAX_WIDTH,
+  STORIES_HUB_PATH,
+  STORIES_PAGE_OVERVIEW_PATH,
+  rememberStoriesPreviewReturnTo,
+  storyTimelineShellSx,
+} from '../lib/storyPageLayout';
 
 export default function StoriesDiariesOverviewPage() {
   const navigate = useNavigate();
@@ -45,49 +51,21 @@ export default function StoriesDiariesOverviewPage() {
     };
   }, []);
 
-  const hiddenUrlaubCount = useMemo(() => {
-    if (!sites || urlaubUnlocked) return 0;
-    return sites.filter((s) => s.category === 'urlaub').length;
-  }, [sites, urlaubUnlocked]);
-
   const visibleSites = useMemo(
     () => (sites ? filterSitesForDisplay(sites, urlaubUnlocked) : []),
     [sites, urlaubUnlocked],
   );
 
-  const openSiteOverview = async (siteId: string) => {
+  const openSitePreview = async (siteId: string) => {
     const local = getSiteById(siteId);
     if (local) {
       writePreviewSnapshot(local);
       await persistSite(local);
     }
-    navigate(`/stories-tagebuecher/site/${siteId}/page`);
-  };
-
-  const handleDeleteSite = async (siteId: string, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    e?.preventDefault();
-    const site = getSiteById(siteId);
-    if (!site) return;
-    if (!window.confirm(`Website „${site.name}“ und alle Unterseiten wirklich löschen?`)) return;
-    await deleteSiteById(siteId);
-    try {
-      await fetch(`/api/story-sites/${encodeURIComponent(siteId)}`, { method: 'DELETE' });
-    } catch {
-      /* ignore */
-    }
-    refresh();
-  };
-
-  const openPreview = async (siteId: string, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    e?.preventDefault();
-    const local = getSiteById(siteId);
-    if (local) {
-      writePreviewSnapshot(local);
-      await persistSite(local);
-    }
-    window.open(`/stories-tagebuecher/site/${siteId}/vorschau`, '_blank', 'noopener,noreferrer');
+    rememberStoriesPreviewReturnTo(STORIES_PAGE_OVERVIEW_PATH);
+    navigate(`/stories-tagebuecher/site/${siteId}/vorschau`, {
+      state: { returnTo: STORIES_PAGE_OVERVIEW_PATH },
+    });
   };
 
   if (sites === null) {
@@ -109,8 +87,8 @@ export default function StoriesDiariesOverviewPage() {
     >
       <Box sx={{ maxWidth: STORY_TIMELINE_MAX_WIDTH, mx: 'auto', width: '100%', ...storyTimelineShellSx }}>
         <StoryCompactToolbar embedded>
-          <Tooltip title="Zurück">
-            <IconButton size="small" onClick={() => navigate('/stories-tagebuecher')} sx={storyToolbarIconBtnSx}>
+          <Tooltip title="Zurück zur Verwaltung">
+            <IconButton size="small" onClick={() => navigate(STORIES_HUB_PATH)} sx={storyToolbarIconBtnSx}>
               <ArrowBackIcon />
             </IconButton>
           </Tooltip>
@@ -140,17 +118,10 @@ export default function StoriesDiariesOverviewPage() {
         <Box sx={{ px: { xs: 0.5, sm: 0.75 }, py: { xs: 1.25, sm: 1.5 } }}>
           <StoriesDiariesSeasonTimeline
             sites={visibleSites}
-            editable
-            urlaubUnlocked={urlaubUnlocked}
-            hiddenUrlaubCount={hiddenUrlaubCount}
-            onOpenSite={(id) => void openSiteOverview(id)}
-            onOpenPreview={(id, e) => void openPreview(id, e)}
-            onOpenEditor={(id) => navigate(`/stories-tagebuecher/site/${id}`)}
-            onDeleteSite={(id, e) => void handleDeleteSite(id, e)}
-            onRequestUrlaubUnlock={() => setUnlockOpen(true)}
+            onOpenSite={(id) => void openSitePreview(id)}
           />
           <Box sx={{ textAlign: 'center', mt: 2 }}>
-            <Button size="small" variant="outlined" onClick={() => navigate('/stories-tagebuecher')} sx={{ textTransform: 'none' }}>
+            <Button size="small" variant="outlined" onClick={() => navigate(STORIES_HUB_PATH)} sx={{ textTransform: 'none' }}>
               Zur Verwaltung
             </Button>
           </Box>

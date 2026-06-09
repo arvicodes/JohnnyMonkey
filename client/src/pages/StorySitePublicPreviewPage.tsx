@@ -1,18 +1,30 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Link as RouterLink, useParams } from 'react-router-dom';
-import { Box, Typography, CircularProgress, Button, Stack } from '@mui/material';
+import { Link as RouterLink, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Box, Typography, CircularProgress, Button, Stack, IconButton, Tooltip } from '@mui/material';
+import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import {
   loadSiteForPreview,
   STORY_SITES_UPDATED_EVENT,
   type StorySite,
 } from '../lib/storySitesStorage';
 import { StorySitePreviewBody } from '../components/story-site/StorySitePreviewBody';
-import { storyPreviewViewportSx, STORY_BEIGE } from '../lib/storyPageLayout';
+import { StoryCompactToolbar, storyToolbarIconBtnSx } from '../components/story-site/StoryCompactToolbar';
+import {
+  storyPreviewViewportSx,
+  STORY_BEIGE,
+  type StoriesNavState,
+  resolveStoriesPreviewReturnTo,
+  clearStoriesPreviewReturnTo,
+} from '../lib/storyPageLayout';
 
 export default function StorySitePublicPreviewPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { siteId } = useParams<{ siteId: string }>();
   const [site, setSite] = useState<StorySite | null | undefined>(undefined);
   const [loadError, setLoadError] = useState(false);
+
+  const returnTo = resolveStoriesPreviewReturnTo((location.state as StoriesNavState | null)?.returnTo);
 
   const reload = async () => {
     if (!siteId) {
@@ -82,6 +94,12 @@ export default function StorySitePublicPreviewPage() {
     return () => window.clearTimeout(timer);
   }, [site]);
 
+  const handleBack = () => {
+    if (!returnTo) return;
+    clearStoriesPreviewReturnTo();
+    navigate(returnTo);
+  };
+
   if (site === undefined) {
     return (
       <Box
@@ -116,10 +134,16 @@ export default function StorySitePublicPreviewPage() {
               ? 'Diese Website konnte nicht geladen werden. Bitte im Builder speichern und die Vorschau erneut öffnen — oder zuerst „Website bearbeiten“ aufrufen.'
               : 'Keine Website-ID in der Adresse.'}
           </Typography>
-          <Button component={RouterLink} to="/stories-tagebuecher" variant="contained" sx={{ textTransform: 'none' }}>
-            Zur Übersicht
-          </Button>
-          {siteId ? (
+          {returnTo ? (
+            <Button onClick={handleBack} variant="contained" sx={{ textTransform: 'none' }}>
+              Zurück zur Übersicht
+            </Button>
+          ) : (
+            <Button component={RouterLink} to="/stories-tagebuecher" variant="contained" sx={{ textTransform: 'none' }}>
+              Zur Übersicht
+            </Button>
+          )}
+          {siteId && !returnTo ? (
             <Button component={RouterLink} to={`/stories-tagebuecher/site/${siteId}`} variant="outlined" sx={{ textTransform: 'none' }}>
               Website bearbeiten
             </Button>
@@ -139,6 +163,18 @@ export default function StorySitePublicPreviewPage() {
         width: '100%',
       }}
     >
+      {returnTo ? (
+        <StoryCompactToolbar>
+          <Tooltip title="Zurück zur Übersicht">
+            <IconButton size="small" onClick={handleBack} sx={storyToolbarIconBtnSx}>
+              <ArrowBackIcon />
+            </IconButton>
+          </Tooltip>
+          <Typography noWrap sx={{ flex: 1, fontWeight: 700, fontSize: '0.8125rem', color: '#4e342e' }}>
+            {site.name}
+          </Typography>
+        </StoryCompactToolbar>
+      ) : null}
       <Box sx={storyPreviewViewportSx}>
         <StorySitePreviewBody site={site} />
       </Box>

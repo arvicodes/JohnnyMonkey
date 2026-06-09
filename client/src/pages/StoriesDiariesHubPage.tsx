@@ -143,17 +143,8 @@ export default function StoriesDiariesHubPage() {
     refresh();
   };
 
-  const openPageOverview = async () => {
+  const openPageOverview = () => {
     if (visibleSites.length === 0 && hiddenUrlaubCount === 0) return;
-    if (visibleSites.length === 1 && hiddenUrlaubCount === 0) {
-      const local = getSiteById(visibleSites[0].id);
-      if (local) {
-        writePreviewSnapshot(local);
-        await persistSite(local);
-      }
-      navigate(`/stories-tagebuecher/site/${visibleSites[0].id}/page`);
-      return;
-    }
     navigate('/stories-tagebuecher/page');
   };
 
@@ -274,14 +265,11 @@ export default function StoriesDiariesHubPage() {
             <StoriesDiariesSeasonTimeline
               sites={visibleSites}
               editable
-              urlaubUnlocked={urlaubUnlocked}
-              hiddenUrlaubCount={hiddenUrlaubCount}
               onOpenSite={openSite}
               onOpenPreview={(id, e) => void openPreview(id, e)}
               onOpenEditor={openSite}
               onDeleteSite={(id, e) => void handleDelete(id, e)}
               onCategoryChange={(id, cat) => void handleCategoryChange(id, cat)}
-              onRequestUrlaubUnlock={() => setUnlockOpen(true)}
             />
         ) : (
           <Stack spacing={1.5}>

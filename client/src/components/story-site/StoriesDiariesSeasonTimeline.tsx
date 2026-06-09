@@ -5,7 +5,6 @@ import {
   Paper,
   Stack,
   IconButton,
-  Button,
   Menu,
   MenuItem,
   ListItemIcon,
@@ -15,7 +14,6 @@ import {
   OpenInNew as OpenInNewIcon,
   Edit as EditIcon,
   DeleteOutline as DeleteOutlineIcon,
-  Lock as LockIcon,
   ArrowDropDown as ArrowDropDownIcon,
   AcUnit as AcUnitIcon,
   LocalFlorist as LocalFloristIcon,
@@ -44,7 +42,7 @@ import { STORY_SCRAPBOOK_BG, STORY_TIMELINE_MAX_WIDTH } from '../../lib/storyPag
 
 export const TIMELINE_MAX_WIDTH = STORY_TIMELINE_MAX_WIDTH;
 const TIMELINE_AXIS_WIDTH = 80;
-const CARD_MAX_WIDTH = 168;
+const CARD_MAX_WIDTH = 178;
 const EMPTY_MONTH_HEIGHT = 62;
 const MIN_MONTH_ROW_HEIGHT = 62;
 const MAX_DAY_HORIZONTAL_OFFSET = 52;
@@ -344,14 +342,11 @@ function MonthSideColumns({
 type StoriesDiariesSeasonTimelineProps = {
   sites: StorySite[];
   editable?: boolean;
-  urlaubUnlocked?: boolean;
-  hiddenUrlaubCount?: number;
   onOpenSite: (id: string) => void;
   onOpenPreview?: (id: string, e: React.MouseEvent) => void;
   onOpenEditor?: (id: string) => void;
   onDeleteSite?: (id: string, e: React.MouseEvent) => void;
   onCategoryChange?: (id: string, category: StorySiteCategoryId) => void;
-  onRequestUrlaubUnlock?: () => void;
 };
 
 type TimelineSiteCardProps = {
@@ -642,59 +637,17 @@ function YearTimelineSection({
 export function StoriesDiariesSeasonTimeline({
   sites,
   editable,
-  urlaubUnlocked,
-  hiddenUrlaubCount = 0,
   onOpenSite,
   onOpenPreview,
   onOpenEditor,
   onDeleteSite,
   onCategoryChange,
-  onRequestUrlaubUnlock,
 }: StoriesDiariesSeasonTimelineProps) {
   const sitesByYearMonth = useMemo(() => groupSitesByYearAndMonth(sites), [sites]);
   const years = useMemo(() => [...sitesByYearMonth.keys()], [sitesByYearMonth]);
 
   return (
     <Box sx={{ width: '100%' }}>
-      {!urlaubUnlocked && hiddenUrlaubCount > 0 && onRequestUrlaubUnlock ? (
-        <Paper
-          elevation={0}
-          sx={{
-            mb: 2.5,
-            mx: { xs: 1, sm: 1.5 },
-            p: 1.5,
-            borderRadius: 2,
-            border: '1px dashed rgba(0, 137, 123, 0.45)',
-            bgcolor: 'rgba(0, 137, 123, 0.06)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 1,
-          }}
-        >
-          <Stack direction="row" spacing={1} alignItems="center">
-            <LockIcon sx={{ color: '#00695c', fontSize: 20 }} />
-            <Typography variant="body2" sx={{ color: '#00695c', fontWeight: 600 }}>
-              {hiddenUrlaubCount} Urlaubs-Eintr{hiddenUrlaubCount === 1 ? 'ag' : 'äge'} ausgeblendet
-            </Typography>
-          </Stack>
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={onRequestUrlaubUnlock}
-            sx={{
-              textTransform: 'none',
-              borderColor: '#00897b',
-              color: '#00695c',
-              '&:hover': { borderColor: '#00695c', bgcolor: 'rgba(0, 137, 123, 0.08)' },
-            }}
-          >
-            Freischalten
-          </Button>
-        </Paper>
-      ) : null}
-
       {years.length === 0 ? (
         <Paper
           elevation={0}

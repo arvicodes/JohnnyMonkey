@@ -9,23 +9,21 @@ import {
   CircularProgress,
   Stack,
 } from '@mui/material';
-import {
-  ArrowBack as ArrowBackIcon,
-  OpenInNew as OpenInNewIcon,
-  Edit as EditIcon,
-} from '@mui/icons-material';
+import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import {
   loadSiteForPreview,
   STORY_SITES_UPDATED_EVENT,
   type StorySite,
 } from '../lib/storySitesStorage';
 import { StorySiteOverviewBody } from '../components/story-site/StorySiteOverviewBody';
+import { StoryCompactToolbar, storyToolbarIconBtnSx } from '../components/story-site/StoryCompactToolbar';
 import {
-  StoryCompactToolbar,
-  StoryToolbarDivider,
-  storyToolbarIconBtnSx,
-} from '../components/story-site/StoryCompactToolbar';
-import { storyPreviewViewportSx, STORY_BEIGE, storyPageAnchorId } from '../lib/storyPageLayout';
+  storyPreviewViewportSx,
+  STORY_BEIGE,
+  STORIES_PAGE_OVERVIEW_PATH,
+  rememberStoriesPreviewReturnTo,
+  storySitePreviewPath,
+} from '../lib/storyPageLayout';
 
 export default function StorySiteOverviewPage() {
   const navigate = useNavigate();
@@ -73,6 +71,14 @@ export default function StorySiteOverviewPage() {
     };
   }, [site]);
 
+  const openPagePreview = (pageId: string) => {
+    if (!siteId) return;
+    rememberStoriesPreviewReturnTo(STORIES_PAGE_OVERVIEW_PATH);
+    navigate(storySitePreviewPath(siteId, pageId), {
+      state: { returnTo: STORIES_PAGE_OVERVIEW_PATH },
+    });
+  };
+
   if (site === undefined) {
     return (
       <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: STORY_BEIGE.page }}>
@@ -86,7 +92,7 @@ export default function StorySiteOverviewPage() {
       <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: STORY_BEIGE.page, px: 2 }}>
         <Stack spacing={2} alignItems="center">
           <Typography color="text.secondary">Website konnte nicht geladen werden.</Typography>
-          <Button component={RouterLink} to="/stories-tagebuecher" variant="contained" sx={{ textTransform: 'none' }}>
+          <Button component={RouterLink} to={STORIES_PAGE_OVERVIEW_PATH} variant="contained" sx={{ textTransform: 'none' }}>
             Zur Übersicht
           </Button>
         </Stack>
@@ -97,42 +103,18 @@ export default function StorySiteOverviewPage() {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: STORY_BEIGE.page }}>
       <StoryCompactToolbar>
-        <Tooltip title="Zurück">
-          <IconButton size="small" onClick={() => navigate(`/stories-tagebuecher/site/${siteId}`)} sx={storyToolbarIconBtnSx}>
+        <Tooltip title="Zurück zur Übersicht">
+          <IconButton size="small" onClick={() => navigate(STORIES_PAGE_OVERVIEW_PATH)} sx={storyToolbarIconBtnSx}>
             <ArrowBackIcon />
           </IconButton>
         </Tooltip>
         <Typography noWrap sx={{ flex: 1, fontWeight: 700, fontSize: '0.8125rem', color: '#4e342e' }}>
           {site.name} · PAGE
         </Typography>
-        <StoryToolbarDivider />
-        <Tooltip title="Bearbeiten">
-          <IconButton size="small" onClick={() => navigate(`/stories-tagebuecher/site/${siteId}`)} sx={storyToolbarIconBtnSx}>
-            <EditIcon />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Vorschau">
-          <IconButton
-            size="small"
-            onClick={() => window.open(`/stories-tagebuecher/site/${siteId}/vorschau`, '_blank', 'noopener,noreferrer')}
-            sx={storyToolbarIconBtnSx}
-          >
-            <OpenInNewIcon />
-          </IconButton>
-        </Tooltip>
       </StoryCompactToolbar>
       <Box sx={{ py: { xs: 1, sm: 2 } }}>
         <Box sx={storyPreviewViewportSx}>
-          <StorySiteOverviewBody
-            site={site}
-            onOpenPage={(pageId) =>
-              window.open(
-                `/stories-tagebuecher/site/${siteId}/vorschau#${storyPageAnchorId(pageId)}`,
-                '_blank',
-                'noopener,noreferrer',
-              )
-            }
-          />
+          <StorySiteOverviewBody site={site} onOpenPage={openPagePreview} />
         </Box>
       </Box>
     </Box>

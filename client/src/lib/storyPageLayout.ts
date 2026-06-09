@@ -14,7 +14,47 @@ export const STORY_THEMATIC_ROW_BG_HOVER = 'rgba(92, 107, 192, 0.16)';
 export const STORY_SCRAPBOOK_BG =
   'linear-gradient(180deg, #fffdf7 0%, #faf6ee 45%, #f5efe4 100%)';
 
-export const STORY_TIMELINE_MAX_WIDTH = 1160;
+export const STORY_TIMELINE_MAX_WIDTH = 1280;
+
+export const STORIES_HUB_PATH = '/stories-tagebuecher';
+export const STORIES_PAGE_OVERVIEW_PATH = '/stories-tagebuecher/page';
+
+const PREVIEW_RETURN_STORAGE_KEY = 'johnnyMonkey_storiesPreviewReturnTo';
+
+export type StoriesNavState = {
+  returnTo?: string;
+};
+
+export function storySitePreviewPath(siteId: string, pageId?: string): string {
+  const base = `${STORIES_HUB_PATH}/site/${encodeURIComponent(siteId)}/vorschau`;
+  if (!pageId) return base;
+  return `${base}#${storyPageAnchorId(pageId)}`;
+}
+
+export function rememberStoriesPreviewReturnTo(path: string): void {
+  try {
+    sessionStorage.setItem(PREVIEW_RETURN_STORAGE_KEY, path);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function resolveStoriesPreviewReturnTo(stateReturnTo?: string): string | null {
+  if (stateReturnTo?.trim()) return stateReturnTo.trim();
+  try {
+    return sessionStorage.getItem(PREVIEW_RETURN_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function clearStoriesPreviewReturnTo(): void {
+  try {
+    sessionStorage.removeItem(PREVIEW_RETURN_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 /** Gemeinsame Box für Toolbar + Timeline (Hub, PAGE). */
 export const storyTimelineShellSx = {
