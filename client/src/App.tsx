@@ -31,6 +31,8 @@ import StorySiteBuilderPage from './pages/StorySiteBuilderPage';
 import StorySiteOverviewPage from './pages/StorySiteOverviewPage';
 import StorySitePublicPreviewPage from './pages/StorySitePublicPreviewPage';
 import ExcursionProtocolPage from './pages/ExcursionProtocolPage';
+import AnnouncementsPage from './pages/AnnouncementsPage';
+import AnnouncementFlyerPage from './pages/AnnouncementFlyerPage';
 
 import { Snackbar, Alert, Box, CircularProgress } from '@mui/material';
 import JohnnyCompanionSimple from './components/JohnnyCompanionSimple';
@@ -305,6 +307,8 @@ function AppContent() {
         <Route path="/entry-ticket" element={<EntryTicketPage />} />
         <Route path="/exit-ticket" element={<ExitTicketPage />} />
         <Route path="/protokoll" element={<ExcursionProtocolPage />} />
+        <Route path="/ankuendigungen" element={<AnnouncementsPage />} />
+        <Route path="/ankuendigungen/flyer/:folderSlug" element={<AnnouncementFlyerPage />} />
         <Route path="/ki-spiele" element={<KiGamesPage />} />
         <Route path="/ki-spiele/smarties" element={<SmartieIcebreakerPage />} />
         <Route path="/be-a-hero" element={<BeAHeroWorkoutsPage />} />

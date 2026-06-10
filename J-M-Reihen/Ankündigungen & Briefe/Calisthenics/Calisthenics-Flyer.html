@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calisthenics-AG — Flyer | Johannes-Gymnasium Lahnstein</title>
+  <style>
+    :root {
+      --paper: #f7f6f3;
+      --white: #ffffff;
+      --ink: #1c1c1c;
+      --muted: #5c5c5c;
+      --faint: #e8e6e1;
+      --accent: #0d6b6e;
+      --accent-soft: rgba(13, 107, 110, 0.08);
+      --page-w: 210mm;
+      --page-h: 297mm;
+      --pad: 14mm;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+      background: #e8e6e1;
+      color: var(--ink);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      padding: 10px 16px;
+      background: var(--white);
+      border-bottom: 1px solid var(--faint);
+    }
+
+    .toolbar button {
+      border: 1px solid var(--ink);
+      background: var(--white);
+      color: var(--ink);
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 7px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .toolbar button.primary {
+      background: var(--ink);
+      color: var(--white);
+      border-color: var(--ink);
+    }
+
+    .toolbar span {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .pages {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      padding: 20px 12px 40px;
+    }
+
+    .page {
+      width: var(--page-w);
+      min-height: var(--page-h);
+      background: var(--paper);
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    }
+
+    .inner {
+      padding: var(--pad);
+      min-height: calc(var(--page-h) - 2 * var(--pad));
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* —— VORDERSEITE —— */
+    .eyebrow {
+      font-size: 0.62rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6mm;
+    }
+
+    .title-block {
+      margin-bottom: 8mm;
+      padding-bottom: 8mm;
+      border-bottom: 1px solid var(--faint);
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 300;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+      margin-bottom: 4mm;
+    }
+
+    h1 strong {
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      font-weight: 400;
+      color: var(--muted);
+      max-width: 38ch;
+    }
+
+    .intro {
+      font-size: 0.92rem;
+      color: var(--ink);
+      max-width: 42ch;
+      margin-bottom: 8mm;
+    }
+
+    .intro em {
+      font-style: normal;
+      font-weight: 500;
+    }
+
+    .hero-band {
+      margin: 0 calc(-1 * var(--pad)) 8mm;
+      height: 52mm;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero-band img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center 30%;
+      display: block;
+      filter: grayscale(18%) contrast(1.02);
+    }
+
+    .hero-band::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, transparent 40%, var(--paper) 100%);
+      pointer-events: none;
+    }
+
+    .facts {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      border: 1px solid var(--faint);
+      border-radius: 4px;
+      overflow: hidden;
+      background: var(--white);
+      margin-top: auto;
+    }
+
+    .fact {
+      padding: 5mm 4mm;
+      border-right: 1px solid var(--faint);
+    }
+
+    .fact:last-child { border-right: none; }
+
+    .fact-label {
+      font-size: 0.58rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 2mm;
+      font-weight: 600;
+    }
+
+    .fact-value {
+      font-size: 0.82rem;
+      line-height: 1.35;
+      color: var(--ink);
+    }
+
+    .ph {
+      background: var(--accent-soft);
+      border-bottom: 1px dashed var(--accent);
+      padding: 0 2px;
+      outline: none;
+      min-width: 2ch;
+      display: inline;
+    }
+
+    .ph:focus {
+      background: rgba(13, 107, 110, 0.15);
+    }
+
+    /* —— RÜCKSEITE —— */
+    .section + .section {
+      margin-top: 7mm;
+      padding-top: 7mm;
+      border-top: 1px solid var(--faint);
+    }
+
+    .section-label {
+      font-size: 0.58rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 3mm;
+    }
+
+    .section h2 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 3mm;
+    }
+
+    .section p {
+      font-size: 0.86rem;
+      color: var(--muted);
+      max-width: 52ch;
+    }
+
+    .section p strong {
+      color: var(--ink);
+      font-weight: 500;
+    }
+
+    .list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 2.5mm;
+    }
+
+    .list li {
+      font-size: 0.84rem;
+      color: var(--muted);
+      padding-left: 4mm;
+      position: relative;
+    }
+
+    .list li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.55em;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .list li strong {
+      color: var(--ink);
+      font-weight: 500;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6mm;
+    }
+
+    .highlight-box {
+      margin-top: 8mm;
+      padding: 5mm 5mm;
+      background: var(--white);
+      border: 1px solid var(--faint);
+      border-radius: 4px;
+    }
+
+    .highlight-box h2 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 2mm;
+    }
+
+    .highlight-box p {
+      font-size: 0.84rem;
+      color: var(--muted);
+    }
+
+    .page-footer {
+      margin-top: auto;
+      padding-top: 6mm;
+      border-top: 1px solid var(--faint);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 4mm;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .page-footer strong {
+      color: var(--ink);
+      font-weight: 500;
+    }
+
+    .school-mark {
+      text-align: right;
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    @media print {
+      body { background: #fff; }
+      .toolbar { display: none !important; }
+      .pages { padding: 0; gap: 0; }
+      .page {
+        box-shadow: none;
+        page-break-after: always;
+        break-after: page;
+      }
+      .page:last-child { page-break-after: auto; }
+      .ph {
+        background: transparent !important;
+        border-bottom: 1px solid var(--muted) !important;
+      }
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar no-print">
+    <span>Grau unterstrichene Felder anklicken und ausfüllen</span>
+    <button type="button" class="primary" onclick="window.print()">Drucken / PDF</button>
+  </div>
+
+  <div class="pages">
+    <!-- VORDERSEITE -->
+    <article class="page" aria-label="Flyer Vorderseite">
+      <div class="inner">
+        <p class="eyebrow">Johannes-Gymnasium Lahnstein · AG-Angebot</p>
+
+        <div class="title-block">
+          <h1>Die neue <strong>Calisthenics-AG</strong> am Johnny</h1>
+          <p class="subtitle">Kraft, Beweglichkeit und Körperbeherrschung — nur mit dem eigenen Gewicht.</p>
+        </div>
+
+        <p class="intro">
+          Schluss mit langweiligem Geräteturnen. Du lernst, deinen Körper zu beherrschen —
+          <em>stark, fit und beweglich</em>, ganz ohne Fitnessstudio. Für alle Klassenstufen, jedes Level.
+        </p>
+
+        <div class="hero-band">
+          <img src="1.png" alt="Calisthenics Training">
+        </div>
+
+        <div class="facts">
+          <div class="fact">
+            <div class="fact-label">Wer</div>
+            <div class="fact-value">Klassen 5 bis MSS<br>Anfänger &amp; Fortgeschrittene</div>
+          </div>
+          <div class="fact">
+            <div class="fact-label">Wann</div>
+            <div class="fact-value">
+              <span class="ph" contenteditable="true" data-placeholder="Wochentag">Wochentag</span>,
+              <span class="ph" contenteditable="true" data-placeholder="Uhrzeit">Uhrzeit</span> Uhr
+            </div>
+          </div>
+          <div class="fact">
+            <div class="fact-label">Wo</div>
+            <div class="fact-value">
+              <span class="ph" contenteditable="true" data-placeholder="Ort">Schulhof / Turnhalle</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- RÜCKSEITE -->
+    <article class="page" aria-label="Flyer Rückseite">
+      <div class="inner">
+        <p class="eyebrow">Mehr Infos</p>
+
+        <section class="section">
+          <p class="section-label">01 — Was ist das?</p>
+          <h2>Calisthenics</h2>
+          <p>
+            <strong>Calisthenics</strong> (Street Workout) ist Training mit dem eigenen Körpergewicht:
+            Klimmzugstangen, Barren, Boden. Keine Maschinen — dafür Kraft, Ausdauer und Kontrolle.
+          </p>
+        </section>
+
+        <div class="two-col">
+          <section class="section" style="margin-top:0;padding-top:0;border-top:none;">
+            <p class="section-label">02 — Programm</p>
+            <h2>Was dich erwartet</h2>
+            <ul class="list">
+              <li><strong>Basics</strong> — Liegestütze, Kniebeugen, Klimmzüge</li>
+              <li><strong>Skills</strong> — Handstand, Human Flag, Muscle-Up</li>
+              <li><strong>Team</strong> — gemeinsam trainieren &amp; motivieren</li>
+            </ul>
+          </section>
+
+          <section class="section" style="margin-top:0;padding-top:0;border-top:none;">
+            <p class="section-label">03 — Einstieg</p>
+            <h2>Beispiel-Einheit</h2>
+            <ul class="list">
+              <li>Liegestütze · 10–15</li>
+              <li>Kniebeugen · 15–20</li>
+              <li>Plank · 30–45 Sek.</li>
+              <li>Dips · 8–12</li>
+              <li>Ausfallschritte · 10/Bein</li>
+            </ul>
+          </section>
+        </div>
+
+        <div class="highlight-box">
+          <h2>Voraussetzungen?</h2>
+          <p>
+            <strong>Keine.</strong> Du musst weder 20 Klimmzüge schaffen noch Top-Athlet sein.
+            Jede Übung wird an dein Level angepasst. Sportzeug, Trinkflasche, gute Laune — mehr brauchst du nicht.
+          </p>
+        </div>
+
+        <footer class="page-footer">
+          <div>
+            Fragen → <strong><span class="ph" contenteditable="true" data-placeholder="Name">Name AG-Leitung</span></strong>
+            · Start <strong><span class="ph" contenteditable="true" data-placeholder="Datum">Datum</span></strong>
+          </div>
+          <div class="school-mark">Johnny · Lahnstein</div>
+        </footer>
+      </div>
+    </article>
+  </div>
+
+  <script>
+    document.querySelectorAll('.ph[contenteditable]').forEach((el) => {
+      const ph = el.dataset.placeholder || '';
+      const sync = () => {
+        if (!el.textContent.trim()) el.textContent = ph;
+      };
+      el.addEventListener('focus', () => {
+        if (el.textContent.trim() === ph) el.textContent = '';
+      });
+      el.addEventListener('blur', sync);
+      sync();
+    });
+  </script>
+</body>
+</html>

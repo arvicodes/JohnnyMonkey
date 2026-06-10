@@ -13,6 +13,7 @@ export type MemoryPlayBootstrap = {
   rightText: string;
   leftImages: string[];
   rightImages: string[];
+  backLogoUrl?: string;
 };
 
 export const memoryStorageKey = 'johnnyMonkey.kiGames.memorySets.v1';
@@ -33,9 +34,10 @@ export function readMemoryBootstrapForExport(): { sets: MemorySetExport[]; selec
         typeof (set as MemorySetExport).rightText === 'string'
     );
     if (!sets.length) return null;
+    const selectedId = typeof parsed.selectedId === 'string' ? parsed.selectedId : sets[0].id;
     return {
       sets,
-      selectedId: typeof parsed.selectedId === 'string' ? parsed.selectedId : sets[0].id,
+      selectedId: sets.some((set) => set.id === selectedId) ? selectedId : sets[0].id,
     };
   } catch {
     return null;

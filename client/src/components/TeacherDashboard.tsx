@@ -295,6 +295,7 @@ import {
   Description as MaterialIcon,
   Quiz as QuizIcon,
   Assignment as AssignmentIcon,
+  Campaign as CampaignIcon,
   CheckCircle as CheckCircleIcon,
   PlayArrow as PlayIcon,
   Stop as StopIcon,
@@ -13811,6 +13812,32 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   title="Protokoll — Tagesexkursion dokumentieren"
                 >
                   <AssignmentIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+                {/* Ankündigungen & Vordrucke (für alle) */}
+                <IconButton
+                  onClick={() => navigate('/ankuendigungen')}
+                  sx={{
+                    p: 0.5,
+                    minWidth: 32,
+                    width: 32,
+                    height: 32,
+                    borderRadius: 1.4,
+                    position: 'relative',
+                    overflow: 'visible',
+                    border: '2px solid rgba(0, 131, 143, 0.45)',
+                    background: 'linear-gradient(135deg, #00acc1 0%, #00838f 100%)',
+                    color: 'white',
+                    boxShadow: '0 2px 8px rgba(0, 131, 143, 0.32)',
+                    '&:hover': {
+                      transform: 'scale(1.05)',
+                      borderColor: 'rgba(0, 131, 143, 0.75)',
+                      boxShadow: '0 4px 12px rgba(0, 131, 143, 0.42)',
+                    },
+                    transition: 'all 0.2s ease',
+                  }}
+                  title="Ankündigungen & Vordrucke"
+                >
+                  <CampaignIcon sx={{ fontSize: 18 }} />
                 </IconButton>
                 {/* Bewegungsgeschichten (WIMASU-Klassiker) */}
                 <IconButton

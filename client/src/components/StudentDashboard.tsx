@@ -72,6 +72,7 @@ import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
 import { gradeFromGroupNames } from '../lib/entryTicketGrade';
 import { apiGetSafe } from '../lib/api';
 import type { ExcursionProtocolDashboardSession } from '../lib/excursionProtocolTypes';
+import type { AnnouncementDashboardSession } from '../lib/announcementTypes';
 import { openLessonFolderFile } from '../lib/openLessonFolderFile';
 import { CollaborativeFlashcardSessionModal } from './CollaborativeFlashcardSessionModal';
 import { StudentLessonActivityLine } from './StudentLessonActivityLine';
@@ -1913,6 +1914,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const excursionProtocolPendingCount = excursionProtocolSessions.filter((s) => !s.studentSubmitted).length;
   const excursionProtocolNeedsAttention = excursionProtocolPendingCount > 0;
 
+  /** Veröffentlichte Ankündigungen (schulweit, nicht gruppenspezifisch) */
+  const [announcementSessions, setAnnouncementSessions] = useState<AnnouncementDashboardSession[]>([]);
+  const announcementPublishedForStudent = announcementSessions.length > 0;
+  const announcementUnreadCount = announcementSessions.filter((s) => !s.isRead).length;
+  const announcementNeedsAttention = announcementUnreadCount > 0;
+
   // Dialog: Gemeinsames Eingabefeld beim Klick auf Stunde (z. B. 01 / 01 Einstieg / 01 Skytale)
 
   /** Stunde mit gemeinsamem Eingabefeld (Skytale): Ordner 01, 01 Einstieg oder 01 Skytale */
@@ -2184,6 +2191,43 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         }))
         .filter((s) => s.id);
       setExcursionProtocolSessions(sessions);
+    };
+    void tick();
+    const id = window.setInterval(() => void tick(), 5000);
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void tick();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [userId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const tick = async () => {
+      const res = await apiGetSafe('/api/announcements/current');
+      if (!res?.ok) return;
+      let data: { announcements?: unknown } = {};
+      try {
+        data = (await res.json()) as typeof data;
+      } catch {
+        return;
+      }
+      if (cancelled) return;
+      const raw = Array.isArray(data.announcements) ? data.announcements : [];
+      const sessions = raw
+        .filter((s): s is Record<string, unknown> => Boolean(s) && typeof s === 'object')
+        .map((s) => ({
+          id: typeof s.id === 'string' ? s.id : '',
+          title: typeof s.title === 'string' ? s.title : 'Ankündigung',
+          authorName: typeof s.authorName === 'string' ? s.authorName : '',
+          isRead: Boolean(s.isRead),
+        }))
+        .filter((s) => s.id);
+      setAnnouncementSessions(sessions);
     };
     void tick();
     const id = window.setInterval(() => void tick(), 5000);
@@ -5286,6 +5330,93 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                       }}
                     >
                       {excursionProtocolPendingCount}
+                    </Box>
+                  )}
+                </Box>
+                {/* Ankündigungen & Vordrucke (schulweit) */}
+                <Box sx={{ position: 'relative' }}>
+                  <Tooltip
+                    title={
+                      announcementPublishedForStudent
+                        ? announcementNeedsAttention
+                          ? `${announcementUnreadCount} neue Ankündigung${announcementUnreadCount === 1 ? '' : 'en'}`
+                          : 'Zu den Ankündigungen'
+                        : 'Ankündigungen (aktiv sobald veröffentlicht)'
+                    }
+                  >
+                    <span>
+                      <IconButton
+                        disabled={!announcementPublishedForStudent}
+                        onClick={() => navigate('/ankuendigungen')}
+                        sx={{
+                          p: 0,
+                          minWidth: 44,
+                          width: 44,
+                          height: 44,
+                          borderRadius: 1.4,
+                          border: announcementPublishedForStudent
+                            ? '2px solid rgba(0, 131, 143, 0.55)'
+                            : '2px solid rgba(0, 131, 143, 0.35)',
+                          background: announcementPublishedForStudent
+                            ? 'linear-gradient(135deg, #00acc1 0%, #00838f 100%)'
+                            : 'linear-gradient(135deg, #80deea 0%, #00838f 100%)',
+                          color: 'white',
+                          boxShadow: announcementPublishedForStudent
+                            ? '0 2px 8px rgba(0, 131, 143, 0.35)'
+                            : 'none',
+                          ...(announcementNeedsAttention && {
+                            animation: 'announcementBtnPulse 1.35s ease-in-out infinite',
+                            '@keyframes announcementBtnPulse': {
+                              '0%, 100%': {
+                                boxShadow: '0 0 0 0 rgba(0, 131, 143, 0.55)',
+                              },
+                              '50%': {
+                                boxShadow: '0 0 0 8px rgba(0, 131, 143, 0)',
+                              },
+                            },
+                          }),
+                          '&:hover': announcementPublishedForStudent
+                            ? { transform: 'scale(1.05)' }
+                            : {},
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <Typography
+                          component="span"
+                          sx={{
+                            fontSize: '1.35rem',
+                            fontWeight: 800,
+                            lineHeight: 1,
+                            display: 'inline-block',
+                          }}
+                        >
+                          A
+                        </Typography>
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                  {announcementNeedsAttention && (
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: -4,
+                        right: -4,
+                        minWidth: 16,
+                        height: 16,
+                        px: 0.35,
+                        borderRadius: 999,
+                        bgcolor: '#00838f',
+                        color: '#fff',
+                        fontSize: '0.62rem',
+                        fontWeight: 800,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '2px solid #f8f9fa',
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      {announcementUnreadCount}
                     </Box>
                   )}
                 </Box>

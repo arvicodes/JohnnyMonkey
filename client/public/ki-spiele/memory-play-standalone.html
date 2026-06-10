@@ -6,25 +6,35 @@
   <title>KI Memory</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
-    body {
+    html, body {
       margin: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+    body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       background: #eef3f8;
       color: #111827;
       line-height: 1.45;
     }
     .game-shell {
-      min-height: 100vh;
-      padding: 8px;
+      height: 100dvh;
+      max-height: 100dvh;
+      padding: 6px;
       position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-sizing: border-box;
     }
     .game-top {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
-      padding: 4px 8px 10px;
+      gap: 6px;
+      padding: 2px 4px 6px;
+      flex-shrink: 0;
     }
     .game-title {
       margin: 0;
@@ -44,23 +54,41 @@
       white-space: nowrap;
     }
     .game-layout {
+      flex: 1;
+      min-height: 0;
       display: grid;
-      grid-template-columns: minmax(120px, 180px) minmax(0, 1fr) minmax(120px, 180px);
-      gap: 10px;
-      align-items: start;
+      grid-template-columns: minmax(108px, 132px) minmax(0, 1fr) minmax(108px, 132px);
+      grid-template-rows: 1fr;
+      gap: 8px;
+      align-items: center;
+      overflow: hidden;
     }
-    @media (max-width: 768px) {
-      .game-layout { grid-template-columns: 1fr; }
-      .team-panel { min-height: 58px !important; flex-direction: row !important; }
+    .card-stage {
+      min-width: 0;
+      min-height: 0;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    @media (max-width: 899px) {
+      .game-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr auto;
+      }
+      .team-panel { min-height: 0 !important; flex-direction: row !important; padding: 8px 6px !important; }
     }
     .team-panel {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      min-height: calc(100vh - 56px);
-      padding: 12px 8px;
+      gap: 6px;
+      min-height: 0;
+      height: 100%;
+      max-height: 100%;
+      padding: 10px 6px;
       border-radius: 12px;
       text-align: center;
       border: 5px solid #cbd5e1;
@@ -104,11 +132,8 @@
     .card-grid {
       display: grid;
       gap: 10px;
-      justify-content: center;
-      align-content: start;
       width: 100%;
-      min-width: 0;
-      max-width: 100%;
+      height: 100%;
       overflow: hidden;
     }
     .memory-card {
@@ -121,8 +146,12 @@
       align-items: center;
       justify-content: center;
       overflow: hidden;
-      justify-self: center;
-      max-width: 100%;
+      width: 100%;
+      max-height: 100%;
+      aspect-ratio: 1.22 / 1;
+      align-self: center;
+      min-width: 0;
+      min-height: 0;
       font-weight: 900;
       color: #1f2937;
       box-shadow: 0 8px 18px rgba(148,163,184,0.32);
@@ -131,8 +160,18 @@
     .memory-card:hover { transform: translateY(-2px); }
     .memory-card.solved { background: #d9f7d9; border-width: 5px; }
     .memory-card .back-logo {
+      width: 72%;
+      height: 72%;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      opacity: 0.28;
+      user-select: none;
+      display: block;
+    }
+    .memory-card .back-logo-fallback {
       font-size: clamp(1.8rem, 4vw, 2.8rem);
-      opacity: 0.2;
+      opacity: 0.28;
       user-select: none;
     }
     .card-face {
@@ -145,7 +184,7 @@
       padding: 8px;
       text-align: center;
       line-height: 1.25;
-      overflow: auto;
+      overflow: hidden;
     }
     .card-face.has-image { padding: 0; }
     .card-face img {
@@ -180,40 +219,57 @@
   var TEAM_ANIMALS = { 'Team A': '🐯', 'Team B': '🐔' };
   var TEAM_NAMES = { 'Team A': 'Tigerkatzen', 'Team B': 'Johnny Hühner' };
   var FLIP_REVEAL_MS = 2800;
-  var CARD_WIDTH_RATIO = 1.45;
   var GAP_PX = 10;
-  var MAX_CARD_HEIGHT = 172;
+  var CARD_WIDTH_RATIO = 1.22;
   var gridObserver = null;
 
-  function getMaxCols(deckLength) {
-    if (deckLength <= 8) return Math.min(4, deckLength);
-    if (deckLength <= 16) return 4;
-    if (deckLength <= 24) return 5;
-    return 6;
+  function getPlayAreaSize(rect) {
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    if (vw < 900) {
+      return {
+        width: Math.max(rect.width, vw - 12),
+        height: Math.max(rect.height, vh - 108)
+      };
+    }
+    var sideChrome = (vw >= 1200 ? 272 : 232) + 20;
+    return {
+      width: Math.max(rect.width, vw - sideChrome),
+      height: Math.max(rect.height, vh - 12)
+    };
   }
 
-  function computeLayout(deckLength, availableWidth) {
-    var width = availableWidth > 0 ? availableWidth : 420;
-    var maxCols = getMaxCols(deckLength);
-    var cols;
-    for (cols = Math.min(maxCols, deckLength); cols >= 2; cols--) {
-      var rawCardWidth = (width - (cols - 1) * GAP_PX) / cols;
-      var cardHeight = rawCardWidth / CARD_WIDTH_RATIO;
-      if (cardHeight > MAX_CARD_HEIGHT) cardHeight = MAX_CARD_HEIGHT;
+  function computeLayout(deckLength, areaWidth, areaHeight) {
+    var width = areaWidth > 0 ? areaWidth : 320;
+    var height = areaHeight > 0 ? areaHeight : 320;
+    var maxCols = deckLength <= 8 ? 3 : deckLength <= 16 ? 4 : deckLength <= 24 ? 5 : 6;
+    var best = { columnCount: 2, rowCount: 1, cellWidth: 0 };
+    for (var cols = Math.min(maxCols, deckLength); cols >= 2; cols--) {
+      var rows = Math.max(1, Math.ceil(deckLength / cols));
+      var cellWidth = (width - (cols - 1) * GAP_PX) / cols;
+      var cellHeight = (height - (rows - 1) * GAP_PX) / rows;
+      var cardHeight = Math.min(cellHeight, cellWidth / CARD_WIDTH_RATIO);
       var cardWidth = cardHeight * CARD_WIDTH_RATIO;
-      var totalWidth = cols * cardWidth + (cols - 1) * GAP_PX;
-      if (totalWidth <= width + 1) {
-        return { columnCount: cols, cardWidth: cardWidth, cardHeight: cardHeight };
+      var evenRows = deckLength % cols === 0;
+      var bestEvenRows = deckLength % best.columnCount === 0;
+      var isBetter = (evenRows && !bestEvenRows) || (evenRows === bestEvenRows && cardWidth > best.cellWidth);
+      if (isBetter) {
+        best = { columnCount: cols, rowCount: rows, cellWidth: cardWidth };
       }
     }
-    cols = Math.min(2, deckLength);
-    var fallbackWidth = (width - (cols - 1) * GAP_PX) / cols;
-    var fallbackHeight = Math.min(MAX_CARD_HEIGHT, fallbackWidth / CARD_WIDTH_RATIO);
-    return {
-      columnCount: cols,
-      cardWidth: fallbackHeight * CARD_WIDTH_RATIO,
-      cardHeight: fallbackHeight
-    };
+    return { columnCount: best.columnCount, rowCount: best.rowCount };
+  }
+
+  function escapeAttr(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;');
+  }
+
+  function getBackLogoMarkup() {
+    var logoUrl = (embeddedBootstrap && embeddedBootstrap.backLogoUrl) || '../johnny-logo.png';
+    return '<img class="back-logo" src="' + escapeAttr(logoUrl) + '" alt="" onerror="this.outerHTML=\'<span class=&quot;back-logo-fallback&quot;>🐵</span>\'" />';
   }
 
   function shuffle(items) {
@@ -300,7 +356,7 @@
     solvedByTeam: {},
     team: 'Team A',
     score: { 'Team A': 0, 'Team B': 0 },
-    layout: { columnCount: 4, cardWidth: 120, cardHeight: 83 }
+    layout: { columnCount: 4, rowCount: 6 }
   };
 
   function resetGame() {
@@ -316,7 +372,7 @@
   if (boot) {
     document.title = boot.setName + ' – KI Memory';
     resetGame();
-    state.layout = computeLayout(state.deck.length, 0);
+    state.layout = computeLayout(state.deck.length, 0, 0);
   }
 
   function flipCard(card) {
@@ -394,18 +450,18 @@
     }
 
     html += teamPanelHtml('Team A');
-    html += '<div class="card-grid" style="grid-template-columns:repeat(' + layout.columnCount + ', minmax(0, 1fr));">';
+    html += '<div class="card-stage"><div class="card-grid" style="grid-template-columns:repeat(' + layout.columnCount + ',minmax(0,1fr));grid-template-rows:repeat(' + layout.rowCount + ',minmax(0,1fr));">';
     state.deck.forEach(function (card) {
       var visible = state.open.indexOf(card.id) >= 0 || state.solved.indexOf(card.pairId) >= 0;
       var solved = state.solved.indexOf(card.pairId) >= 0;
       var solvedTeam = state.solvedByTeam[card.pairId];
       var borderColor = solved ? (solvedTeam ? TEAM_COLORS[solvedTeam] : card.color) : '#9ca3af';
-      html += '<button type="button" class="memory-card' + (solved ? ' solved' : '') + '" data-card-id="' + escapeHtml(card.id) + '" style="border-color:' + borderColor + ';width:' + layout.cardWidth + 'px;height:' + layout.cardHeight + 'px;">';
+      html += '<button type="button" class="memory-card' + (solved ? ' solved' : '') + '" data-card-id="' + escapeHtml(card.id) + '" style="border-color:' + borderColor + ';">';
       if (visible) html += renderCardFace(card);
-      else html += '<span class="back-logo">🐵</span>';
+      else html += getBackLogoMarkup();
       html += '</button>';
     });
-    html += '</div>';
+    html += '</div></div>';
     html += teamPanelHtml('Team B');
     html += '</div></div>';
 
@@ -428,30 +484,22 @@
     });
 
     if (gridObserver) gridObserver.disconnect();
-    var grid = root.querySelector('.card-grid');
-    if (grid) {
-      gridObserver = new ResizeObserver(function () {
-        var width = grid.getBoundingClientRect().width;
-        var next = computeLayout(state.deck.length, width);
+    var stage = root.querySelector('.card-stage');
+    if (stage) {
+      var syncLayout = function () {
+        var area = getPlayAreaSize(stage.getBoundingClientRect());
+        var next = computeLayout(state.deck.length, area.width, area.height);
         if (
           next.columnCount !== state.layout.columnCount ||
-          Math.abs(next.cardWidth - state.layout.cardWidth) > 1 ||
-          Math.abs(next.cardHeight - state.layout.cardHeight) > 1
+          next.rowCount !== state.layout.rowCount
         ) {
           state.layout = next;
           render();
         }
-      });
-      gridObserver.observe(grid);
-      var initialWidth = grid.getBoundingClientRect().width;
-      var initialLayout = computeLayout(state.deck.length, initialWidth);
-      if (
-        initialLayout.columnCount !== state.layout.columnCount ||
-        Math.abs(initialLayout.cardWidth - state.layout.cardWidth) > 1
-      ) {
-        state.layout = initialLayout;
-        render();
-      }
+      };
+      gridObserver = new ResizeObserver(syncLayout);
+      gridObserver.observe(stage);
+      syncLayout();
     }
   }
 

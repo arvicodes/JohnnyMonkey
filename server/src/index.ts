@@ -27,6 +27,7 @@ import messageRoutes from './routes/messages';
 import exitTicketRoutes from './routes/exitTicket';
 import entryTicketRoutes from './routes/entryTicket';
 import excursionProtocolRoutes from './routes/excursionProtocol';
+import announcementRoutes from './routes/announcements';
 import journeyRoutes from './routes/journey';
 import storySitesRoutes from './routes/storySites';
 import flashcardRoutes from './routes/flashcards';
@@ -92,6 +93,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/exit-ticket', exitTicketRoutes);
 app.use('/api/entry-ticket', entryTicketRoutes);
 app.use('/api/excursion-protocol', excursionProtocolRoutes);
+app.use('/api/announcements', announcementRoutes);
 app.use('/api/journey', journeyRoutes);
 app.use('/api/story-sites', storySitesRoutes);
 

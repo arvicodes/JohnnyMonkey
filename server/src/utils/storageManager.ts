@@ -222,6 +222,37 @@ export class StorageManager {
     };
   }
 
+  private static normalizeCompare(s: string): string {
+    return s.normalize('NFC').toLowerCase();
+  }
+
+  /** macOS NFD/NFC-tolerant: Ordner- und Dateinamen segmentweise auflösen */
+  private static resolveUnicodePath(baseDir: string, relativeParts: string[]): string | null {
+    let current = baseDir;
+    for (const part of relativeParts) {
+      const target = this.normalizeCompare(part);
+      const direct = path.join(current, part);
+      if (fs.existsSync(direct)) {
+        current = direct;
+        continue;
+      }
+      let found: string | null = null;
+      try {
+        for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+          if (this.normalizeCompare(entry.name) === target) {
+            found = path.join(current, entry.name);
+            break;
+          }
+        }
+      } catch {
+        return null;
+      }
+      if (!found) return null;
+      current = found;
+    }
+    return current;
+  }
+
   /**
    * Absoluter Pfad zu einer Datei oder einem Ordner unter git-intern (Relativpfad ohne Präfix "git-intern/").
    * Gleiche Logik wie readFile — wichtig für saveFile, damit Speichern und Lesen dasselbe Verzeichnis nutzen.
@@ -229,10 +260,10 @@ export class StorageManager {
   static resolveGitInternRelativePath(relativePath: string): string {
     const rel = relativePath.replace(/\\/g, '/');
     const jmReihenPath = this.resolveJmReihenRoot();
-    if (rel.startsWith('J-M-Reihen/')) {
-      return path.join(jmReihenPath, rel.slice('J-M-Reihen/'.length));
-    }
-    return path.join(jmReihenPath, rel);
+    const inner = rel.startsWith('J-M-Reihen/') ? rel.slice('J-M-Reihen/'.length) : rel;
+    const parts = inner.split('/').filter(Boolean);
+    const resolved = this.resolveUnicodePath(jmReihenPath, parts);
+    return resolved ?? path.join(jmReihenPath, inner);
   }
 
   /**

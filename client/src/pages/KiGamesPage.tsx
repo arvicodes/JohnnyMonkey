@@ -43,6 +43,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
 import { downloadMemoryStandaloneHtml } from '../lib/downloadMemoryStandalone';
+import { memoryBackLogoUrl } from '../lib/memoryAssets';
 import SmartieIcebreakerPage from './SmartieIcebreakerPage';
 
 type TabId =
@@ -879,49 +880,46 @@ function buildMemoryDeckFromColumns(
   return createMemoryDeck(parseMemoryPairsFromColumns(leftText, rightText, leftImages, rightImages));
 }
 
-const memoryCardWidthRatio = 1.45;
 const memoryFlipRevealMs = 2800;
-const memoryGapPx = 10;
-const memoryMaxCardHeightPx = 172;
+const memoryPlayGapPx = 10;
+const memoryCardWidthRatio = 1.22;
 
-function getMemoryMaxColumnCount(deckLength: number): number {
-  if (deckLength <= 8) return Math.min(4, deckLength);
-  if (deckLength <= 16) return 4;
-  if (deckLength <= 24) return 5;
-  return 6;
+function getMemoryPlayAreaSize(rect: DOMRect) {
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const isMobile = viewportWidth < 900;
+  if (isMobile) {
+    return {
+      width: Math.max(rect.width, viewportWidth - 12),
+      height: Math.max(rect.height, viewportHeight - 108),
+    };
+  }
+  const sideChrome = (viewportWidth >= 1200 ? 272 : 232) + 20;
+  return {
+    width: Math.max(rect.width, viewportWidth - sideChrome),
+    height: Math.max(rect.height, viewportHeight - 12),
+  };
 }
 
-function computeMemoryPlayLayout(deckLength: number, availableWidth: number) {
-  const width = availableWidth > 0 ? availableWidth : 420;
-  const maxCols = getMemoryMaxColumnCount(deckLength);
+function computeMemoryPlayLayout(deckLength: number, areaWidth: number, areaHeight: number) {
+  const maxCols = deckLength <= 8 ? 3 : deckLength <= 16 ? 4 : deckLength <= 24 ? 5 : 6;
+  let best = { columnCount: 2, rowCount: 1, cellWidth: 0 };
 
-  for (let cols = Math.min(maxCols, deckLength); cols >= 2; cols -= 1) {
-    const rawCardWidth = (width - (cols - 1) * memoryGapPx) / cols;
-    let cardHeight = rawCardWidth / memoryCardWidthRatio;
-    if (cardHeight > memoryMaxCardHeightPx) {
-      cardHeight = memoryMaxCardHeightPx;
-    }
+  for (let columnCount = Math.min(maxCols, deckLength); columnCount >= 2; columnCount -= 1) {
+    const rowCount = Math.max(1, Math.ceil(deckLength / columnCount));
+    const cellWidth = areaWidth > 0 ? (areaWidth - (columnCount - 1) * memoryPlayGapPx) / columnCount : 120;
+    const cellHeight = areaHeight > 0 ? (areaHeight - (rowCount - 1) * memoryPlayGapPx) / rowCount : 100;
+    const cardHeight = Math.min(cellHeight, cellWidth / memoryCardWidthRatio);
     const cardWidth = cardHeight * memoryCardWidthRatio;
-    const totalWidth = cols * cardWidth + (cols - 1) * memoryGapPx;
-    if (totalWidth <= width + 1) {
-      return {
-        columnCount: cols,
-        rowCount: Math.max(1, Math.ceil(deckLength / cols)),
-        cardWidth,
-        cardHeight,
-      };
+    const evenRows = deckLength % columnCount === 0;
+    const bestEvenRows = deckLength % best.columnCount === 0;
+    const isBetter = (evenRows && !bestEvenRows) || (evenRows === bestEvenRows && cardWidth > best.cellWidth);
+    if (isBetter) {
+      best = { columnCount, rowCount, cellWidth: cardWidth };
     }
   }
 
-  const cols = Math.min(2, deckLength);
-  const cardWidth = (width - (cols - 1) * memoryGapPx) / cols;
-  const cardHeight = Math.min(memoryMaxCardHeightPx, cardWidth / memoryCardWidthRatio);
-  return {
-    columnCount: cols,
-    rowCount: Math.max(1, Math.ceil(deckLength / cols)),
-    cardWidth: cardHeight * memoryCardWidthRatio,
-    cardHeight,
-  };
+  return { columnCount: best.columnCount, rowCount: best.rowCount };
 }
 
 const memoryToolbarRowSx = {
@@ -995,6 +993,34 @@ function createMemoryDeck(pairs: [MemoryCardCell, MemoryCardCell][] = memoryPair
         color: memoryPalette[index % memoryPalette.length],
       },
     ])
+  );
+}
+
+function MemoryCardBack() {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <Typography component="span" sx={{ fontSize: '2.4rem', opacity: 0.35, lineHeight: 1, userSelect: 'none' }}>
+        🐵
+      </Typography>
+    );
+  }
+  return (
+    <Box
+      component="img"
+      src={memoryBackLogoUrl}
+      alt=""
+      onError={() => setFailed(true)}
+      sx={{
+        width: '72%',
+        height: '72%',
+        maxWidth: '100%',
+        maxHeight: '100%',
+        objectFit: 'contain',
+        opacity: 0.38,
+        display: 'block',
+      }}
+    />
   );
 }
 
@@ -1147,7 +1173,9 @@ export default function KiGamesPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<TabId>('overview');
   const savedMemoryState = useMemo(() => loadSavedMemoryState(), []);
-  const initialMemorySets = savedMemoryState?.sets?.length ? savedMemoryState.sets : defaultMemorySets;
+  const initialMemorySets = includeMissingDefaultMemorySets(
+    savedMemoryState?.sets?.length ? savedMemoryState.sets : defaultMemorySets
+  );
   const initialMemorySet =
     initialMemorySets.find((set) => set.id === savedMemoryState?.selectedId) || initialMemorySets[0] || defaultMemorySets[0];
 
@@ -1184,7 +1212,7 @@ export default function KiGamesPage() {
   const memoryImageInputRef = useRef<HTMLInputElement>(null);
   const memoryImageUploadTargetRef = useRef<{ side: 'left' | 'right'; rowIndex: number } | null>(null);
   const memoryPlayGridRef = useRef<HTMLDivElement>(null);
-  const [memoryPlayGridWidth, setMemoryPlayGridWidth] = useState(0);
+  const [memoryPlayGridSize, setMemoryPlayGridSize] = useState({ width: 0, height: 0 });
   const [memoryDeck, setMemoryDeck] = useState<MemoryCard[]>(() =>
     buildMemoryDeckFromColumns(
       initialMemorySet.leftText,
@@ -1241,23 +1269,9 @@ export default function KiGamesPage() {
   const memoryRightRows = useMemo(() => memoryRightText.split('\n'), [memoryRightText]);
   const memoryTableRowCount = Math.max(4, memoryLeftRows.length, memoryRightRows.length);
   const memoryPlayLayout = useMemo(
-    () => computeMemoryPlayLayout(memoryDeck.length, memoryPlayGridWidth),
-    [memoryDeck.length, memoryPlayGridWidth]
+    () => computeMemoryPlayLayout(memoryDeck.length, memoryPlayGridSize.width, memoryPlayGridSize.height),
+    [memoryDeck.length, memoryPlayGridSize.width, memoryPlayGridSize.height]
   );
-
-  useEffect(() => {
-    if (!memoryGameStarted) {
-      setMemoryPlayGridWidth(0);
-      return;
-    }
-    const node = memoryPlayGridRef.current;
-    if (!node) return;
-    const updateWidth = () => setMemoryPlayGridWidth(node.getBoundingClientRect().width);
-    updateWidth();
-    const observer = new ResizeObserver(updateWidth);
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [memoryGameStarted, memoryDeck.length]);
   const memoryGameComplete = memoryDeck.length > 0 && memorySolved.length >= memoryDeck.length / 2;
   const memoryWinner =
     memoryGameComplete && memoryScore['Team A'] !== memoryScore['Team B']
@@ -1265,6 +1279,43 @@ export default function KiGamesPage() {
         ? 'Team A'
         : 'Team B'
       : null;
+
+  useEffect(() => {
+    if (!memoryGameStarted) {
+      setMemoryPlayGridSize({ width: 0, height: 0 });
+      return;
+    }
+    const node = memoryPlayGridRef.current;
+    if (!node) return;
+    const updateSize = () => {
+      const rect = node.getBoundingClientRect();
+      setMemoryPlayGridSize(getMemoryPlayAreaSize(rect));
+    };
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(node);
+    window.addEventListener('resize', updateSize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateSize);
+    };
+  }, [memoryGameStarted, memoryDeck.length]);
+
+  useEffect(() => {
+    if (!memoryGameStarted) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [memoryGameStarted]);
+
+  useEffect(() => {
+    setMemorySets((prev) => {
+      const merged = includeMissingDefaultMemorySets(prev);
+      return merged.length === prev.length && merged.every((set, index) => set.id === prev[index]?.id) ? prev : merged;
+    });
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1715,7 +1766,9 @@ export default function KiGamesPage() {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        minHeight: memoryFullscreen ? '100dvh' : '100vh',
+        maxHeight: memoryFullscreen ? '100dvh' : undefined,
+        overflow: memoryFullscreen ? 'hidden' : undefined,
         bgcolor: '#eef3f8',
         '& .MuiCardContent-root': { p: { xs: '10px !important', sm: '12px !important' } },
         '& .MuiPaper-root': { borderRadius: 2 },
@@ -1989,7 +2042,9 @@ export default function KiGamesPage() {
             sx={{
               p: memoryGameStarted ? { xs: 0.5, sm: 0.75 } : { xs: 1, sm: 1.5 },
               borderRadius: memoryGameStarted ? 0 : 2,
-              minHeight: memoryGameStarted ? '100vh' : undefined,
+              height: memoryGameStarted ? '100dvh' : undefined,
+              maxHeight: memoryGameStarted ? '100dvh' : undefined,
+              overflow: memoryGameStarted ? 'hidden' : undefined,
               bgcolor: memoryGameStarted ? '#eef3f8' : undefined,
               position: 'relative',
             }}
@@ -2084,14 +2139,19 @@ export default function KiGamesPage() {
                 <Button variant="contained" color="success" onClick={resetMemory}>
                   Spielen
                 </Button>
-                <Button
-                  variant="outlined"
-                  onClick={() => void handleMemoryExport()}
-                  disabled={memoryExporting}
-                  sx={{ bgcolor: 'white' }}
-                >
-                  {memoryExporting ? '…' : 'HTML'}
-                </Button>
+                <Tooltip title="Spiel als offline HTML-Datei herunterladen (ki-memory-spiel.html)">
+                  <span>
+                    <Button
+                      variant="outlined"
+                      onClick={() => void handleMemoryExport()}
+                      disabled={memoryExporting}
+                      startIcon={<FileDownloadIcon sx={{ fontSize: 18 }} />}
+                      sx={{ bgcolor: 'white' }}
+                    >
+                      {memoryExporting ? '…' : 'Als HTML'}
+                    </Button>
+                  </span>
+                </Tooltip>
               </ButtonGroup>
               <ButtonGroup size="small" variant="outlined" sx={memoryButtonGroupSx} aria-label="Druck-Karten">
                 <Tooltip title="Hühner-Karten">
@@ -2473,12 +2533,47 @@ export default function KiGamesPage() {
               >
                 <ArrowBackIcon sx={{ fontSize: 16 }} />
               </IconButton>
+              <Tooltip title="Spiel als offline HTML-Datei herunterladen">
+                <span>
+                  <IconButton
+                    size="small"
+                    onClick={() => void handleMemoryExport()}
+                    disabled={memoryExporting}
+                    aria-label="Als HTML herunterladen"
+                    sx={{
+                      width: 28,
+                      height: 28,
+                      position: 'fixed',
+                      top: 24,
+                      right: '3vw',
+                      p: 0,
+                      zIndex: 1300,
+                      bgcolor: 'white',
+                      border: '1px solid rgba(0,0,0,0.12)',
+                      boxShadow: '0 4px 12px rgba(15,23,42,0.16)',
+                      '&:hover': { bgcolor: '#eef3f8' },
+                    }}
+                  >
+                    <FileDownloadIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
             <Box
               sx={{
+                height: '100dvh',
+                maxHeight: '100dvh',
+                overflow: 'hidden',
                 display: 'grid',
-                gridTemplateColumns: { xs: '1fr', md: '150px minmax(0, 1fr) 150px', lg: '180px minmax(0, 1fr) 180px' },
-                alignItems: 'start',
-                gap: { xs: 0.75, md: 1.25 },
+                gridTemplateColumns: {
+                  xs: '1fr',
+                  md: 'minmax(108px, 132px) minmax(0, 1fr) minmax(108px, 132px)',
+                  lg: 'minmax(120px, 148px) minmax(0, 1fr) minmax(120px, 148px)',
+                },
+                gridTemplateRows: { xs: 'auto 1fr auto', md: '1fr' },
+                alignItems: 'stretch',
+                gap: { xs: 0.5, md: 1 },
+                px: { xs: 0.5, md: 0.75 },
+                boxSizing: 'border-box',
               }}
             >
               {(['Team A'] as const).map((team) => {
@@ -2494,10 +2589,12 @@ export default function KiGamesPage() {
                       flexDirection: { xs: 'row', md: 'column' },
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: { xs: 1, md: 1.25 },
-                      minHeight: { xs: 58, md: 'calc(100vh - 16px)' },
+                      gap: { xs: 0.75, md: 1 },
+                      minHeight: { xs: 52, md: 0 },
+                      height: { md: '100%' },
+                      maxHeight: { md: '100%' },
                       px: 1,
-                      py: { xs: 0.75, md: 2 },
+                      py: { xs: 0.5, md: 1.25 },
                       borderRadius: 3,
                       textTransform: 'none',
                       position: 'relative',
@@ -2558,14 +2655,14 @@ export default function KiGamesPage() {
                         </Box>
                       </>
                     )}
-                    <Typography sx={{ fontSize: { xs: '2.1rem', md: '4.2rem' }, lineHeight: 1 }}>
+                    <Typography sx={{ fontSize: { xs: '1.8rem', md: 'clamp(2rem, 4.5vh, 3.4rem)' }, lineHeight: 1 }}>
                       {memoryTeamAnimals[team]}
                     </Typography>
                     <Box>
-                      <Typography sx={{ fontSize: { xs: '1rem', md: '1.35rem' }, fontWeight: 1000, lineHeight: 1.05 }}>
+                      <Typography sx={{ fontSize: { xs: '0.9rem', md: 'clamp(0.82rem, 1.6vh, 1.1rem)' }, fontWeight: 1000, lineHeight: 1.05 }}>
                         {memoryTeamNames[team]}
                       </Typography>
-                      <Typography sx={{ fontSize: { xs: '1.15rem', md: '2.15rem' }, fontWeight: 1000, lineHeight: 1.05, mt: { md: 1 } }}>
+                      <Typography sx={{ fontSize: { xs: '1.05rem', md: 'clamp(1rem, 2.8vh, 1.75rem)' }, fontWeight: 1000, lineHeight: 1.05, mt: { md: 0.5 } }}>
                         {memoryScore[team]}
                       </Typography>
                       <Typography sx={{ fontSize: { xs: '0.8rem', md: '1rem' }, fontWeight: 900, lineHeight: 1 }}>
@@ -2589,12 +2686,14 @@ export default function KiGamesPage() {
               ref={memoryPlayGridRef}
               sx={{
                 minWidth: 0,
+                minHeight: 0,
                 width: '100%',
+                height: '100%',
+                overflow: 'hidden',
                 display: 'grid',
                 gridTemplateColumns: `repeat(${memoryPlayLayout.columnCount}, minmax(0, 1fr))`,
-                gap: `${memoryGapPx}px`,
-                justifyContent: 'center',
-                alignContent: 'start',
+                gridTemplateRows: `repeat(${memoryPlayLayout.rowCount}, minmax(0, 1fr))`,
+                gap: `${memoryPlayGapPx}px`,
               }}
             >
               {memoryDeck.map((card) => {
@@ -2607,12 +2706,13 @@ export default function KiGamesPage() {
                     key={card.id}
                     onClick={() => flipMemoryCard(card)}
                     sx={{
-                      width: memoryPlayLayout.cardWidth,
-                      height: memoryPlayLayout.cardHeight,
-                      maxWidth: '100%',
-                      justifySelf: 'center',
+                      width: '100%',
+                      maxHeight: '100%',
+                      aspectRatio: `${memoryCardWidthRatio} / 1`,
+                      alignSelf: 'center',
+                      minWidth: 0,
                       minHeight: 0,
-                      p: visible && card.imageUrl ? 0 : { xs: 1, sm: 1.15 },
+                      p: visible && card.imageUrl ? 0 : { xs: 0.75, sm: 0.9 },
                       borderRadius: 2.5,
                       border: solved
                         ? `5px solid ${solvedTeamColor}`
@@ -2628,7 +2728,7 @@ export default function KiGamesPage() {
                       textTransform: 'none',
                       fontWeight: 900,
                       lineHeight: 1.25,
-                      overflow: visible ? (card.imageUrl ? 'hidden' : 'auto') : 'hidden',
+                      overflow: 'hidden',
                       alignItems: visible && card.imageUrl ? 'stretch' : 'center',
                       justifyContent: visible && card.imageUrl ? 'stretch' : 'center',
                       display: 'flex',
@@ -2659,20 +2759,7 @@ export default function KiGamesPage() {
                           height: '100%',
                         }}
                       >
-                        <Box
-                          component="img"
-                          src="/johnny-logo.png"
-                          alt="Johnny Logo"
-                          sx={{
-                            width: '68%',
-                            height: '68%',
-                            maxWidth: '100%',
-                            maxHeight: '100%',
-                            objectFit: 'contain',
-                            opacity: 0.18,
-                            display: 'block',
-                          }}
-                        />
+                        <MemoryCardBack />
                       </Box>
                     )}
                   </Button>
@@ -2692,10 +2779,12 @@ export default function KiGamesPage() {
                       flexDirection: { xs: 'row', md: 'column' },
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: { xs: 1, md: 1.25 },
-                      minHeight: { xs: 58, md: 'calc(100vh - 16px)' },
+                      gap: { xs: 0.75, md: 1 },
+                      minHeight: { xs: 52, md: 0 },
+                      height: { md: '100%' },
+                      maxHeight: { md: '100%' },
                       px: 1,
-                      py: { xs: 0.75, md: 2 },
+                      py: { xs: 0.5, md: 1.25 },
                       borderRadius: 3,
                       textTransform: 'none',
                       position: 'relative',
@@ -2756,14 +2845,14 @@ export default function KiGamesPage() {
                         </Box>
                       </>
                     )}
-                    <Typography sx={{ fontSize: { xs: '2.1rem', md: '4.2rem' }, lineHeight: 1 }}>
+                    <Typography sx={{ fontSize: { xs: '1.8rem', md: 'clamp(2rem, 4.5vh, 3.4rem)' }, lineHeight: 1 }}>
                       {memoryTeamAnimals[team]}
                     </Typography>
                     <Box>
-                      <Typography sx={{ fontSize: { xs: '1rem', md: '1.35rem' }, fontWeight: 1000, lineHeight: 1.05 }}>
+                      <Typography sx={{ fontSize: { xs: '0.9rem', md: 'clamp(0.82rem, 1.6vh, 1.1rem)' }, fontWeight: 1000, lineHeight: 1.05 }}>
                         {memoryTeamNames[team]}
                       </Typography>
-                      <Typography sx={{ fontSize: { xs: '1.15rem', md: '2.15rem' }, fontWeight: 1000, lineHeight: 1.05, mt: { md: 1 } }}>
+                      <Typography sx={{ fontSize: { xs: '1.05rem', md: 'clamp(1rem, 2.8vh, 1.75rem)' }, fontWeight: 1000, lineHeight: 1.05, mt: { md: 0.5 } }}>
                         {memoryScore[team]}
                       </Typography>
                       <Typography sx={{ fontSize: { xs: '0.8rem', md: '1rem' }, fontWeight: 900, lineHeight: 1 }}>
