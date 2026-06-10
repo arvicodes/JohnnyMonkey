@@ -10,6 +10,7 @@ import {
   loadFolderAnnouncementListItems,
   loadFolderAnnouncements,
   markFolderAnnouncementRead,
+  readFolderFlyerHtml,
   setFolderAnnouncementPublished,
   updateFolderAnnouncement,
 } from '../utils/folderAnnouncements';
@@ -511,6 +512,26 @@ export class AnnouncementController {
     } catch (error) {
       console.error('Announcement markRead error:', error);
       return res.status(500).json({ error: 'Fehler beim Markieren' });
+    }
+  }
+
+  /** HTML-Flyer aus Ordner ausliefern (Vorschau & Druck) */
+  static async serveFlyer(req: Request, res: Response) {
+    try {
+      const raw = typeof req.params.folderSlug === 'string' ? req.params.folderSlug.trim() : '';
+      const folderSlug = raw ? decodeURIComponent(raw) : '';
+      if (!folderSlug) return res.status(400).send('Ordner fehlt');
+
+      const html = readFolderFlyerHtml(folderSlug);
+      if (!html) {
+        return res.status(404).send('Kein Flyer (.html) in diesem Ordner gefunden.');
+      }
+
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.send(html);
+    } catch (error) {
+      console.error('Announcement serveFlyer error:', error);
+      return res.status(500).send('Flyer konnte nicht geladen werden.');
     }
   }
 }

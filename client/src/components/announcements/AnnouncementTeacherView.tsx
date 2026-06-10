@@ -15,7 +15,15 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { Add as AddIcon, Campaign as CampaignIcon, Delete as DeleteIcon, Link as LinkIcon } from '@mui/icons-material';
+import {
+  Add as AddIcon,
+  Campaign as CampaignIcon,
+  Delete as DeleteIcon,
+  Link as LinkIcon,
+  Visibility as VisibilityIcon,
+} from '@mui/icons-material';
+import { AnnouncementFlyerPreview } from './AnnouncementFlyerPreview';
+import { flyerPageUrl } from '../../lib/announcementPaths';
 import { apiDelete, apiGet, apiPost, apiPut } from '../../lib/api';
 import type { AnnouncementLink, AnnouncementListItem } from '../../lib/announcementTypes';
 import { formatAnnouncementDate } from '../../lib/announcementTypes';
@@ -296,6 +304,27 @@ export function AnnouncementTeacherView() {
                 size="small"
                 sx={announcementFieldSx}
               />
+
+              {selected.folderSlug && (
+                <Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: announcementPalette.textPrimary }}>
+                      Flyer-Vorschau
+                    </Typography>
+                    <Button
+                      size="small"
+                      startIcon={<VisibilityIcon sx={{ fontSize: 16 }} />}
+                      href={flyerPageUrl(selected.folderSlug)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{ textTransform: 'none', fontSize: '0.72rem', minHeight: 28 }}
+                    >
+                      Vollbild öffnen
+                    </Button>
+                  </Box>
+                  <AnnouncementFlyerPreview folderSlug={selected.folderSlug} embedded height={480} />
+                </Box>
+              )}
 
               <Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>

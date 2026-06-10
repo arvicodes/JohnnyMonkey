@@ -5,6 +5,7 @@ const router = express.Router();
 
 router.get('/list', AnnouncementController.list);
 router.get('/current', AnnouncementController.getCurrent);
+router.get('/folder/:folderSlug/flyer', AnnouncementController.serveFlyer);
 router.post('/create', AnnouncementController.create);
 router.post('/folder/create', AnnouncementController.createFolder);
 router.put('/folder/:folderSlug', AnnouncementController.updateFolder);

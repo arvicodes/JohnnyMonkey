@@ -457,3 +457,66 @@ export const findFolderSlugByAnnouncementId = (announcementId: string): string |
   }
   return null;
 };
+
+const FLYER_FILE_NAMES = ['Calisthenics-Flyer.html', 'Flyer.html', 'flyer.html'];
+
+const resolveFolderDir = (root: string, folderSlug: string): string | null => {
+  const direct = path.join(root, folderSlug);
+  if (fs.existsSync(direct)) return direct;
+  const target = normalizeForCompare(folderSlug);
+  try {
+    for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+      if (entry.isDirectory() && normalizeForCompare(entry.name) === target) {
+        return path.join(root, entry.name);
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+};
+
+const staticAssetBaseHref = (folderSlug: string): string => {
+  const parts = `${BRIEFE_REL}/${folderSlug}`
+    .replace(/\\/g, '/')
+    .split('/')
+    .filter(Boolean)
+    .map((part) => encodeURIComponent(part))
+    .join('/');
+  return `/api/file-system-paths/static/${parts}/`;
+};
+
+const injectFlyerBaseTag = (html: string, folderSlug: string): string => {
+  const baseHref = staticAssetBaseHref(folderSlug);
+  if (/<base\s/i.test(html)) return html;
+  return html.replace(/<head([^>]*)>/i, `<head$1><base href="${baseHref}">`);
+};
+
+/** Liest HTML-Flyer aus Ankündigungs-Ordner (mit Base-Tag für Bilder) */
+export const readFolderFlyerHtml = (folderSlug: string): string | null => {
+  const root = briefeRootPath();
+  if (!root) return null;
+
+  const folderDir = resolveFolderDir(root, folderSlug);
+  if (!folderDir) return null;
+
+  for (const name of FLYER_FILE_NAMES) {
+    const filePath = path.join(folderDir, name);
+    if (fs.existsSync(filePath)) {
+      return injectFlyerBaseTag(fs.readFileSync(filePath, 'utf-8'), folderSlug);
+    }
+  }
+
+  try {
+    for (const entry of fs.readdirSync(folderDir)) {
+      const lower = entry.toLowerCase();
+      if (lower.endsWith('.html') || lower.endsWith('.htm')) {
+        return injectFlyerBaseTag(fs.readFileSync(path.join(folderDir, entry), 'utf-8'), folderSlug);
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+
+  return null;
+};

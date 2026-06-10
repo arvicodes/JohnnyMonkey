@@ -4,6 +4,10 @@ export function flyerPageUrl(folderSlug: string): string {
   return `/ankuendigungen/flyer/${encodeURIComponent(folderSlug)}`;
 }
 
+export function flyerApiUrl(folderSlug: string): string {
+  return `/api/announcements/folder/${encodeURIComponent(folderSlug)}/flyer`;
+}
+
 export function gitInternPathForBriefeFile(relativePath: string): string {
   const p = relativePath.replace(/\\/g, '/').trim();
   if (p.startsWith('git-intern/')) return p;

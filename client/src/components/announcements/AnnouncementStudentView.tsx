@@ -106,7 +106,7 @@ export function AnnouncementStudentDetail({ item }: DetailProps) {
                 key={index}
                 component="a"
                 href={link.url}
-                target={link.url.startsWith('/ankuendigungen/flyer/') ? '_self' : '_blank'}
+                target="_blank"
                 rel="noopener noreferrer"
                 variant="outlined"
                 size="small"
