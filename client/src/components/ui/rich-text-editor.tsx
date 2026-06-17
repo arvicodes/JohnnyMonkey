@@ -16,6 +16,7 @@ import {
   EmojiEmotions,
 } from '@mui/icons-material';
 import type { EmojiClickData } from 'emoji-picker-react';
+import { EmojiStyle } from 'emoji-picker-react';
 import { fileToStoryImageDataUrl } from '../../lib/storyImageUtils';
 import {
   createStorySnippetElement,
@@ -2293,7 +2294,8 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
             >
               <EmojiPicker
                 onEmojiClick={(data: EmojiClickData) => insertEmoji(data.emoji)}
-                lazyLoadEmojis
+                emojiStyle={EmojiStyle.NATIVE}
+                lazyLoadEmojis={false}
                 width={320}
                 height={400}
                 searchPlaceholder="Suchen …"

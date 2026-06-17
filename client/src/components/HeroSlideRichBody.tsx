@@ -88,6 +88,15 @@ export function HeroSlideRichBody({ source, compact = false, large = false, inst
         '& h3': { typography: instruction ? 'h6' : 'subtitle1' },
         '& a': { color: '#1565c0', textDecoration: 'underline', textUnderlineOffset: '2px' },
         '& img': { maxWidth: '100%', height: 'auto', borderRadius: 1 },
+        '& img[data-editor-icon]': {
+          display: 'inline',
+          verticalAlign: 'middle',
+          maxHeight: '1.1em',
+          width: 'auto',
+          height: '1.1em',
+          margin: '0 2px',
+          borderRadius: 0,
+        },
       }}
       dangerouslySetInnerHTML={{ __html: html }}
     />
