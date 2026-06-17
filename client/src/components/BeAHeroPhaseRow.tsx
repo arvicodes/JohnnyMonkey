@@ -55,10 +55,10 @@ export function BeAHeroPhaseRow({ phase, value, onChange }: Props) {
 
       <Box
         sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: 'minmax(220px, 30%) 1fr' },
-          gap: { xs: 1.25, md: 2.5 },
-          alignItems: 'start',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: { xs: 1.25, md: 1.5 },
+          alignItems: 'stretch',
         }}
       >
         <Box
@@ -68,6 +68,8 @@ export function BeAHeroPhaseRow({ phase, value, onChange }: Props) {
             bgcolor: style.background,
             border: '1px solid',
             borderColor: style.borderColor,
+            width: '100%',
+            maxWidth: { md: 360 },
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.85 }}>
@@ -109,7 +111,7 @@ export function BeAHeroPhaseRow({ phase, value, onChange }: Props) {
               bgcolor: style.background,
               border: '1px solid',
               borderColor: style.borderColor,
-              gridColumn: { xs: '1', md: '1 / -1' },
+              width: '100%',
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: value.tabata?.enabled ? 1 : 0 }}>
@@ -184,7 +186,7 @@ export function BeAHeroPhaseRow({ phase, value, onChange }: Props) {
           </Box>
         ) : null}
 
-        <Box sx={{ minWidth: 0 }}>
+        <Box sx={{ width: '100%', minWidth: 0 }}>
           <Typography
             variant="caption"
             sx={{ display: 'block', fontWeight: 700, color: style.labelColor, fontSize: '0.72rem', mb: 0.5 }}
@@ -195,7 +197,7 @@ export function BeAHeroPhaseRow({ phase, value, onChange }: Props) {
             value={value.explanation}
             onChange={(html) => onChange({ explanation: html })}
             placeholder={EXPLANATION_PLACEHOLDERS[phase]}
-            rows={4}
+            rows={5}
             compact
             showLessonMarkup={false}
             showImageToolbar={false}
