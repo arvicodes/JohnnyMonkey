@@ -7,6 +7,8 @@ import {
   heroMinimalFieldSx,
 } from '../lib/beAHeroUi';
 import { DEFAULT_TABATA, type TabataConfig } from '../lib/tabata';
+import { emptyCardsRandomConfig, type BeAHeroCardsRandomConfig } from '../lib/beAHeroRandom';
+import { BeAHeroRandomCardsEditor } from './BeAHeroRandomCards';
 import { RichTextEditor } from './ui/rich-text-editor';
 
 export type HeroPhaseContent = {
@@ -14,6 +16,7 @@ export type HeroPhaseContent = {
   songAudioUrl: string;
   explanation: string;
   tabata?: TabataConfig;
+  random?: BeAHeroCardsRandomConfig;
 };
 
 export type HeroPhaseKey = 'warmup' | 'workout' | 'cooldown';
@@ -186,6 +189,20 @@ export function BeAHeroPhaseRow({ phase, value, onChange }: Props) {
           </Box>
         ) : null}
 
+        {phase === 'workout' ? (
+          <BeAHeroRandomCardsEditor
+            value={value.random ?? emptyCardsRandomConfig()}
+            onChange={(patch) =>
+              onChange({
+                random: { ...(value.random ?? emptyCardsRandomConfig()), ...patch },
+              })
+            }
+            labelColor={style.labelColor}
+            borderColor={style.borderColor}
+            background={style.background}
+          />
+        ) : null}
+
         <Box sx={{ width: '100%', minWidth: 0 }}>
           <Typography
             variant="caption"
@@ -214,4 +231,5 @@ export const emptyHeroPhase = (): HeroPhaseContent => ({
   songAudioUrl: '',
   explanation: '',
   tabata: { ...DEFAULT_TABATA },
+  random: emptyCardsRandomConfig(),
 });

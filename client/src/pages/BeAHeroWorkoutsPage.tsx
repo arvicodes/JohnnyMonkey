@@ -32,7 +32,9 @@ import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dial
 import { HeroSlideRichBody } from '../components/HeroSlideRichBody';
 import { parseSpotifyUrl } from '../lib/spotify';
 import { finalizeTabata, isTabataActive, normalizeTabata } from '../lib/tabata';
+import { finalizeCardsRandom, isCardsRandomActive, normalizeCardsRandom } from '../lib/beAHeroRandom';
 import { BeAHeroTabataTimer } from '../components/BeAHeroTabataTimer';
+import { BeAHeroRandomCardsPlay } from '../components/BeAHeroRandomCards';
 import { BeAHeroLogo, BeAHeroWorkoutPhaseDots } from '../components/BeAHeroLogo';
 import { BeAHeroWorkoutIcon } from '../components/BeAHeroWorkoutIcon';
 import {
@@ -120,6 +122,7 @@ function normalizePhaseContent(raw: unknown): HeroPhaseContent {
     songAudioUrl: typeof o.songAudioUrl === 'string' ? o.songAudioUrl : '',
     explanation: typeof o.explanation === 'string' ? o.explanation : '',
     tabata: normalizeTabata(o.tabata),
+    random: normalizeCardsRandom(o.random),
   };
 }
 
@@ -128,7 +131,7 @@ function phaseHasSong(phase: HeroPhaseContent): boolean {
 }
 
 function phaseHasContent(phase: HeroPhaseContent): boolean {
-  return phaseHasSong(phase) || !!phase.explanation.trim() || isTabataActive(phase.tabata);
+  return phaseHasSong(phase) || !!phase.explanation.trim() || isTabataActive(phase.tabata) || isCardsRandomActive(phase.random);
 }
 
 function finalizePhase(phase: HeroPhaseContent): HeroPhaseContent {
@@ -137,6 +140,7 @@ function finalizePhase(phase: HeroPhaseContent): HeroPhaseContent {
     songAudioUrl: phase.songAudioUrl.trim(),
     explanation: phase.explanation.trim(),
     tabata: finalizeTabata(phase.tabata),
+    random: finalizeCardsRandom(phase.random),
   };
 }
 
@@ -318,7 +322,9 @@ function HeroPhaseSlide({
   const spotify = parseSpotifyUrl(audioUrl);
   const hasSong = !!(songTitle || audioUrl);
   const showTabata = phase === 'workout' && isTabataActive(content.tabata);
+  const showRandomCards = phase === 'workout' && isCardsRandomActive(content.random);
   const tabataConfig = content.tabata!;
+  const randomConfig = content.random!;
 
   useEffect(
     () => () => {
@@ -513,12 +519,34 @@ function HeroPhaseSlide({
         <Box sx={{ flex: 1, minWidth: 0, px: { xs: 2, sm: 2.75 }, py: { xs: 2.25, sm: 2.75 }, bgcolor: '#fff' }}>
           {explanation ? (
             <HeroSlideRichBody source={explanation} instruction />
-          ) : !hasSong && !showTabata ? (
+          ) : !hasSong && !showTabata && !showRandomCards ? (
             <Typography color="text.secondary" sx={{ fontSize: '0.92rem', textAlign: 'center', py: 1 }}>
               Noch kein Inhalt für {PHASE_LABELS[phase]}.
             </Typography>
           ) : null}
         </Box>
+
+        {showRandomCards ? (
+          <Box
+            sx={{
+              flex: '0 0 auto',
+              width: { xs: '100%', sm: 300 },
+              p: { xs: 1.5, sm: 1.75 },
+              bgcolor: '#fafbfc',
+              borderTop: { xs: '1px solid', sm: 'none' },
+              borderLeft: { sm: '1px solid' },
+              borderColor: 'divider',
+              order: { xs: 4, sm: 0 },
+            }}
+          >
+            <BeAHeroRandomCardsPlay
+              config={randomConfig}
+              accentColor={style.accentMain}
+              labelColor={style.labelColor}
+              borderColor={style.borderColor}
+            />
+          </Box>
+        ) : null}
 
         {showTabata ? (
           <Box
