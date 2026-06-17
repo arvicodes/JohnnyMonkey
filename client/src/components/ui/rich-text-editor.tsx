@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Box, IconButton, Tooltip, Popover, MenuItem } from '@mui/material';
+import React, { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle, Suspense, lazy } from 'react';
+import { Box, IconButton, Tooltip, Popover, MenuItem, TextField, Divider } from '@mui/material';
 import {
   FormatBold,
   FormatItalic,
@@ -11,8 +11,11 @@ import {
   FormatListBulleted,
   FormatListNumbered,
   FormatIndentDecrease,
+  FormatColorFill,
   Image,
+  EmojiEmotions,
 } from '@mui/icons-material';
+import type { EmojiClickData } from 'emoji-picker-react';
 import { fileToStoryImageDataUrl } from '../../lib/storyImageUtils';
 import {
   createStorySnippetElement,
@@ -28,6 +31,8 @@ import {
   prepareStorySnippetsInHost,
   shouldRemoveStorySnippetOnDelete,
 } from '../../lib/storySnippetDrag';
+
+const EmojiPicker = lazy(() => import('emoji-picker-react'));
 
 interface RichTextEditorProps {
   value: string;
@@ -69,6 +74,15 @@ const colors = [
   { name: 'Türkis', value: '#0d9488' },
   { name: 'Rosa', value: '#db2777' },
   { name: 'Gelb', value: '#ca8a04' },
+];
+
+const highlightColors = [
+  { name: 'Gelb', value: '#fff59d' },
+  { name: 'Grün', value: '#c5e1a5' },
+  { name: 'Blau', value: '#90caf9' },
+  { name: 'Rosa', value: '#f8bbd0' },
+  { name: 'Orange', value: '#ffcc80' },
+  { name: 'Lila', value: '#ce93d8' },
 ];
 
 const toolbarSymbols = [
@@ -382,13 +396,30 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
   const [fontSize, setFontSize] = useState('1rem');
   const [showFontSizePicker, setShowFontSizePicker] = useState(false);
   const fontSizePickerRef = useRef<HTMLDivElement>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const savedEmojiCaretRef = useRef<{ offset: number; node: any; nodeOffset: number } | null>(null);
 
   const FONT_SIZE_OPTIONS = [
-    { label: 'Klein', value: '0.875rem' },
-    { label: 'Normal', value: '1rem' },
-    { label: 'Groß', value: '1.125rem' },
-    { label: 'Sehr groß', value: '1.25rem' },
+    { label: '10', value: '10px' },
+    { label: '11', value: '11px' },
+    { label: '12', value: '12px' },
+    { label: '13', value: '13px' },
+    { label: '14', value: '14px' },
+    { label: '16', value: '16px' },
+    { label: '18', value: '18px' },
+    { label: '20', value: '20px' },
+    { label: '24', value: '24px' },
+    { label: '28', value: '28px' },
+    { label: '32', value: '32px' },
+    { label: '40', value: '40px' },
+    { label: '48', value: '48px' },
+    { label: '56', value: '56px' },
+    { label: '64', value: '64px' },
+    { label: '80', value: '80px' },
+    { label: '96', value: '96px' },
   ];
+  const [customFontSize, setCustomFontSize] = useState('');
   
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -398,6 +429,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
   /** true solange der Nutzer dieses Feld aktiv bearbeitet (zuverlässiger als activeElement im useEffect). */
   const isEditingRef = useRef(false);
   const showFontSizePickerRef = useRef(false);
+  const showEmojiPickerRef = useRef(false);
   /** Toolbar + Editor: Fokus-Tracking ohne falsches „Blur“ nur wegen Toolbar-Klick */
   const rootRef = useRef<HTMLDivElement | null>(null);
   /** Pro Wrapper nur einmal Hover/Contextmenu – Griff wird bei Bedarf erneuert */
@@ -598,6 +630,10 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
     showFontSizePickerRef.current = showFontSizePicker;
   }, [showFontSizePicker]);
 
+  useEffect(() => {
+    showEmojiPickerRef.current = showEmojiPicker;
+  }, [showEmojiPicker]);
+
   const flushEditorToParent = useCallback(() => {
     if (!editorRef.current) return;
     const newValue = editorRef.current.innerHTML;
@@ -626,7 +662,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
       const next = e.relatedTarget as Node | null;
       if (next && root.contains(next)) return;
       window.setTimeout(() => {
-        if (showFontSizePickerRef.current) return;
+        if (showFontSizePickerRef.current || showEmojiPickerRef.current) return;
         const ae = document.activeElement;
         if (ae && root.contains(ae)) return;
         isEditingRef.current = false;
@@ -647,7 +683,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
     const host = editorRef.current;
     // Während Eingabe oder offenem Schriftgrößen-Popover (Portal): kein innerHTML aus Props —
     // sonst springt der Cursor nach vorn / Inhalt flackert.
-    if (isEditingRef.current || showFontSizePicker) {
+    if (isEditingRef.current || showFontSizePicker || showEmojiPicker) {
       lastReceivedValueRef.current = value;
       return;
     }
@@ -701,7 +737,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
         if (enableStorySnippets) prepareStorySnippetsInHost(host);
       });
     }
-  }, [value, showFontSizePicker, flushEditorToParent, useJustify, enableStorySnippets]);
+  }, [value, showFontSizePicker, showEmojiPicker, flushEditorToParent, useJustify, enableStorySnippets]);
 
   // Parent-Wert spiegeln (ohne DOM anzufassen)
   useEffect(() => {
@@ -840,6 +876,30 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
     setFontSize(size);
     wrapSelectionWithStyle('fontSize', size);
     setShowFontSizePicker(false);
+  };
+
+  const applyCustomFontSize = () => {
+    const raw = customFontSize.trim();
+    if (!raw) return;
+    const num = parseFloat(raw.replace(',', '.'));
+    if (!Number.isFinite(num) || num <= 0) return;
+    const size = /[a-z%]/i.test(raw) ? raw : `${num}px`;
+    applyFontSize(size);
+  };
+
+  const insertEmoji = (emoji: string) => {
+    const host = editorRef.current;
+    if (!host) return;
+    host.focus();
+    if (savedEmojiCaretRef.current) {
+      restoreCursorPosition(savedEmojiCaretRef.current);
+    }
+    insertSymbol(emoji);
+    savedEmojiCaretRef.current = saveCursorPosition();
+  };
+
+  const applyHighlight = (color: string) => {
+    wrapSelectionWithStyle('backgroundColor', color);
   };
 
   const insertSymbol = (char: string) => {
@@ -2108,21 +2168,140 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
               }
             }}
           >
-            <Box sx={{ minWidth: 120 }}>
-              {FONT_SIZE_OPTIONS.map((opt) => (
-                <MenuItem
-                  key={opt.value}
-                  selected={fontSize === opt.value}
-                  onClick={() => applyFontSize(opt.value)}
-                  sx={{ fontSize: opt.value }}
+            <Box sx={{ width: 232 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.75 }}>
+                <TextField
+                  size="small"
+                  type="number"
+                  placeholder="Größe"
+                  value={customFontSize}
+                  onChange={(e) => setCustomFontSize(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      applyCustomFontSize();
+                    }
+                  }}
+                  inputProps={{ min: 1, max: 400, 'aria-label': 'Eigene Schriftgröße in px' }}
+                  sx={{ flex: 1, '& input': { py: 0.5 } }}
+                />
+                <Box
+                  component="button"
+                  onClick={applyCustomFontSize}
+                  sx={{
+                    px: 1.25,
+                    py: 0.6,
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    color: '#fff',
+                    bgcolor: appColors.primary,
+                    border: 'none',
+                    borderRadius: 1,
+                    cursor: 'pointer',
+                    '&:hover': { filter: 'brightness(0.95)' },
+                  }}
                 >
-                  {opt.label}
-                </MenuItem>
-              ))}
+                  px
+                </Box>
+              </Box>
+              <Divider sx={{ mb: 0.75 }} />
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, maxHeight: 220, overflowY: 'auto' }}>
+                {FONT_SIZE_OPTIONS.map((opt) => (
+                  <Box
+                    key={opt.value}
+                    component="button"
+                    onClick={() => applyFontSize(opt.value)}
+                    sx={{
+                      minWidth: 38,
+                      px: 0.75,
+                      py: 0.5,
+                      fontSize: '0.82rem',
+                      fontWeight: fontSize === opt.value ? 800 : 600,
+                      color: fontSize === opt.value ? '#fff' : appColors.textPrimary,
+                      bgcolor: fontSize === opt.value ? appColors.primary : 'transparent',
+                      border: `1px solid ${fontSize === opt.value ? appColors.primary : appColors.border}`,
+                      borderRadius: 1,
+                      cursor: 'pointer',
+                      '&:hover': { borderColor: appColors.primary, bgcolor: `${appColors.primary}12` },
+                    }}
+                  >
+                    {opt.label}
+                  </Box>
+                ))}
+              </Box>
             </Box>
           </Popover>
         </Box>
-        
+
+        {/* Emoji einfügen */}
+        <Box ref={emojiPickerRef} sx={{ position: 'relative' }}>
+          <Tooltip title="Emoji einfügen">
+            <IconButton
+              size="small"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                savedEmojiCaretRef.current = saveCursorPosition();
+              }}
+              onClick={() => {
+                setShowEmojiPicker((v) => {
+                  const next = !v;
+                  showEmojiPickerRef.current = next;
+                  return next;
+                });
+              }}
+              sx={{
+                width: compact ? 28 : 32,
+                height: compact ? 28 : 32,
+                backgroundColor: 'transparent',
+                color: appColors.textPrimary,
+                border: `1px solid ${appColors.border}`,
+                '&:hover': { backgroundColor: `${appColors.primary}10`, borderColor: appColors.primary },
+              }}
+            >
+              <EmojiEmotions fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Popover
+            open={showEmojiPicker}
+            anchorEl={emojiPickerRef.current}
+            disableAutoFocus
+            disableEnforceFocus
+            onClose={() => {
+              showEmojiPickerRef.current = false;
+              setShowEmojiPicker(false);
+              window.setTimeout(() => {
+                const host = editorRef.current;
+                const ae = document.activeElement;
+                if (host && ae && (ae === host || host.contains(ae))) {
+                  isEditingRef.current = true;
+                } else {
+                  isEditingRef.current = false;
+                  flushEditorToParent();
+                }
+              }, 0);
+            }}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+            slotProps={{ paper: { sx: { overflow: 'hidden', borderRadius: 2 } } }}
+          >
+            <Suspense
+              fallback={
+                <Box sx={{ width: 320, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: appColors.textSecondary, fontSize: '0.85rem' }}>
+                  Emojis werden geladen …
+                </Box>
+              }
+            >
+              <EmojiPicker
+                onEmojiClick={(data: EmojiClickData) => insertEmoji(data.emoji)}
+                lazyLoadEmojis
+                width={320}
+                height={400}
+                searchPlaceholder="Suchen …"
+              />
+            </Suspense>
+          </Popover>
+        </Box>
+
         {/* Textfarbe: alle Farben direkt in der Leiste – Auswahl bei Mousedown speichern, bei Klick anwenden */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexWrap: 'wrap' }}>
           {colors.map((color) => (
@@ -2151,6 +2330,68 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
               />
             </Tooltip>
           ))}
+        </Box>
+
+        {/* Texthervorhebung (Hintergrundfarbe) */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, ml: 0.5, borderLeft: `1px solid ${appColors.border}`, pl: 0.5, flexWrap: 'wrap' }}>
+          <Tooltip title="Markieren (Hintergrundfarbe)">
+            <FormatColorFill sx={{ fontSize: 16, color: appColors.textSecondary, flexShrink: 0 }} />
+          </Tooltip>
+          {highlightColors.map((color) => (
+            <Tooltip key={color.value} title={`Markieren: ${color.name}`}>
+              <Box
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  const saved = saveSelection();
+                  (window as any).savedTextSelection = saved;
+                }}
+                onClick={() => applyHighlight(color.value)}
+                sx={{
+                  width: compact ? 22 : 26,
+                  height: compact ? 22 : 26,
+                  borderRadius: '50%',
+                  backgroundColor: color.value,
+                  border: `2px solid ${appColors.border}`,
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  '&:hover': {
+                    transform: 'scale(1.1)',
+                    borderColor: appColors.primary,
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+                  },
+                }}
+              />
+            </Tooltip>
+          ))}
+          <Tooltip title="Markierung entfernen">
+            <Box
+              onMouseDown={(e) => {
+                e.preventDefault();
+                const saved = saveSelection();
+                (window as any).savedTextSelection = saved;
+              }}
+              onClick={() => applyHighlight('transparent')}
+              sx={{
+                width: compact ? 22 : 26,
+                height: compact ? 22 : 26,
+                borderRadius: '50%',
+                backgroundColor: '#fff',
+                border: `2px solid ${appColors.border}`,
+                cursor: 'pointer',
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 12,
+                fontWeight: 800,
+                lineHeight: 1,
+                color: appColors.error,
+                '&:hover': { borderColor: appColors.primary },
+              }}
+            >
+              ✕
+            </Box>
+          </Tooltip>
         </Box>
 
         {/* Symbole einfügen (Pfeil, Aufzählung, …) */}

@@ -14,6 +14,7 @@ import {
 import MaterialShareVersionControl from './MaterialShareVersionControl';
 import KACorrectionMode from './KACorrectionMode';
 import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
+import { BeAHeroLogo } from './BeAHeroLogo';
 import TeacherMessageBox from './TeacherMessageBox';
 import { FlashcardLearningModal } from './StudentDashboard';
 import { RIDDLES } from './riddles';
@@ -13939,30 +13940,20 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     borderRadius: 1.4,
                     position: 'relative',
                     overflow: 'visible',
-                    border: '2px solid rgba(255, 213, 79, 0.55)',
-                    background: 'linear-gradient(135deg, #5e35b1 0%, #7e57c2 45%, #ffd54f 160%)',
-                    color: 'white',
-                    boxShadow: '0 2px 10px rgba(94, 53, 177, 0.45)',
+                    border: '2px solid rgba(25, 118, 210, 0.4)',
+                    background: 'linear-gradient(135deg, #e3f2fd 0%, #ffffff 100%)',
+                    color: '#1a237e',
+                    boxShadow: '0 2px 8px rgba(25, 118, 210, 0.18)',
                     '&:hover': {
-                      transform: 'scale(1.06)',
-                      borderColor: 'rgba(255, 213, 79, 0.85)',
-                      boxShadow: '0 4px 14px rgba(94, 53, 177, 0.55)',
+                      transform: 'scale(1.05)',
+                      borderColor: 'rgba(25, 118, 210, 0.65)',
+                      boxShadow: '0 4px 12px rgba(25, 118, 210, 0.22)',
                     },
                     transition: 'all 0.2s ease',
                   }}
-                  title="Be a Hero: Workouts anlegen & Kartei"
+                  title="Be a Hero – Workouts"
                 >
-                  <Typography
-                    component="span"
-                    sx={{
-                      fontSize: '1.35rem',
-                      lineHeight: 1,
-                      display: 'inline-block',
-                    }}
-                    aria-hidden
-                  >
-                    🦸
-                  </Typography>
+                  <BeAHeroLogo size={30} />
                 </IconButton>
               </Box>
             </Box>

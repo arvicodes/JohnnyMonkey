@@ -13,68 +13,70 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemButton,
-  Divider,
   Stack,
   Paper,
-  FormControlLabel,
-  Checkbox,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon,
   PlayArrow as PlayArrowIcon,
   Pause as PauseIcon,
+  Stop as StopIcon,
   MusicNote as MusicNoteIcon,
+  EmojiEvents as EmojiEventsIcon,
+  Replay as ReplayIcon,
 } from '@mui/icons-material';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
-import { SlideTextFieldWithFormatShortcuts } from '../components/SlideTextFieldWithFormatShortcuts';
-import { HeroSlideMarkdownBody } from '../components/HeroSlideMarkdownBody';
+import { HeroSlideRichBody } from '../components/HeroSlideRichBody';
+import { parseSpotifyUrl } from '../lib/spotify';
+import { finalizeTabata, isTabataActive, normalizeTabata } from '../lib/tabata';
+import { BeAHeroTabataTimer } from '../components/BeAHeroTabataTimer';
+import { BeAHeroLogo, BeAHeroWorkoutPhaseDots } from '../components/BeAHeroLogo';
+import { BeAHeroWorkoutIcon } from '../components/BeAHeroWorkoutIcon';
+import {
+  BeAHeroPhaseRow,
+  emptyHeroPhase,
+  type HeroPhaseContent,
+  type HeroPhaseKey,
+} from '../components/BeAHeroPhaseRow';
+import {
+  beAHeroDialogPaperSx,
+  beAHeroEmptyStateSx,
+  beAHeroHeaderBandSx,
+  BE_A_HERO_HEADER_LOGO_SIZE,
+  beAHeroIconActionDangerSx,
+  beAHeroIconActionSx,
+  beAHeroListItemSx,
+  beAHeroOutlinedBtnSx,
+  beAHeroPlayBtnSx,
+  beAHeroPlaySlideCardSx,
+  beAHeroPlaySlideHeaderSx,
+  beAHeroPhaseChipSx,
+  beAHeroPhaseStyle,
+  beAHeroPrimaryBtnSx,
+  compactIconBtnSx,
+  compactIconSx,
+  heroNameFieldSx,
+  protocolPageBgSx,
+  protocolPalette,
+} from '../lib/beAHeroUi';
 
-const LS_KEY = 'johnnyMonkey.beAHeroWorkouts.v3';
-const LS_KEY_V2 = 'johnnyMonkey.beAHeroWorkouts.v2';
+import {
+  loadWorkoutsWithSync,
+  persistWorkouts,
+  type BeAHeroWorkout,
+} from '../lib/beAHeroWorkoutsStorage';
 
-export type HeroSong = {
-  title: string;
-  task: string;
-  /** Direkte Audio-URL (MP3 etc.) zum Abspielen */
-  audioUrl: string;
+export type HeroWorkout = BeAHeroWorkout;
+
+type PhaseKey = HeroPhaseKey;
+
+type PlayEntry = {
+  phase: PhaseKey;
+  content: HeroPhaseContent;
 };
-
-export type HeroMusicSlot = {
-  song1: HeroSong;
-  song2: HeroSong | null;
-};
-
-/** Einzelne Folie: nur Erklärungstext */
-export type HeroSlide = {
-  id: string;
-  text: string;
-};
-
-export type HeroWorkout = {
-  id: string;
-  name: string;
-  openingMusic: HeroMusicSlot;
-  warmup: HeroSlide[];
-  workout: HeroSlide[];
-  cooldown: HeroSlide[];
-  closingMusic: HeroMusicSlot;
-  createdAt: string;
-};
-
-type PhaseKey = 'warmup' | 'workout' | 'cooldown';
-
-type PlayEntry =
-  | { kind: 'song'; when: 'opening' | 'closing'; song: HeroSong }
-  | { kind: 'slide'; phase: PhaseKey; slide: HeroSlide };
 
 const PHASE_LABELS: Record<PhaseKey, string> = {
   warmup: 'Warm-up',
@@ -82,28 +84,68 @@ const PHASE_LABELS: Record<PhaseKey, string> = {
   cooldown: 'Cooldown',
 };
 
-const SONG_WHEN_LABELS: Record<'opening' | 'closing', string> = {
-  opening: 'Startmusik',
-  closing: 'Abschlussmusik',
-};
+const beAHeroHeaderBackBtnSx = {
+  p: 0,
+  minWidth: BE_A_HERO_HEADER_LOGO_SIZE,
+  width: BE_A_HERO_HEADER_LOGO_SIZE,
+  height: BE_A_HERO_HEADER_LOGO_SIZE,
+  borderRadius: 2,
+  transition: 'all 0.2s ease',
+  bgcolor: 'white',
+  border: '1px solid',
+  borderColor: 'divider',
+  flexShrink: 0,
+  boxSizing: 'border-box',
+} as const;
+
+const beAHeroBackBtnSx = {
+  ...compactIconBtnSx,
+  bgcolor: 'white',
+  border: '1px solid',
+  borderColor: 'divider',
+  flexShrink: 0,
+} as const;
+
+const beAHeroHeaderBackIconSx = { fontSize: 22 } as const;
 
 function newId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-const emptySlide = (): HeroSlide => ({ id: newId(), text: '' });
-
-const emptySong = (): HeroSong => ({ title: '', task: '', audioUrl: '' });
-
-const emptyMusicSlot = (): HeroMusicSlot => ({ song1: emptySong(), song2: null });
-
-function songHasContent(s: HeroSong | null | undefined): boolean {
-  if (!s) return false;
-  return !!(s.title.trim() || s.task.trim() || s.audioUrl.trim());
+function normalizePhaseContent(raw: unknown): HeroPhaseContent {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return emptyHeroPhase();
+  const o = raw as Record<string, unknown>;
+  return {
+    songTitle: typeof o.songTitle === 'string' ? o.songTitle : '',
+    songAudioUrl: typeof o.songAudioUrl === 'string' ? o.songAudioUrl : '',
+    explanation: typeof o.explanation === 'string' ? o.explanation : '',
+    tabata: normalizeTabata(o.tabata),
+  };
 }
 
-function normalizeSong(raw: unknown): HeroSong {
-  if (!raw || typeof raw !== 'object') return emptySong();
+function phaseHasSong(phase: HeroPhaseContent): boolean {
+  return !!(phase.songTitle.trim() || phase.songAudioUrl.trim());
+}
+
+function phaseHasContent(phase: HeroPhaseContent): boolean {
+  return phaseHasSong(phase) || !!phase.explanation.trim() || isTabataActive(phase.tabata);
+}
+
+function finalizePhase(phase: HeroPhaseContent): HeroPhaseContent {
+  return {
+    songTitle: phase.songTitle.trim(),
+    songAudioUrl: phase.songAudioUrl.trim(),
+    explanation: phase.explanation.trim(),
+    tabata: finalizeTabata(phase.tabata),
+  };
+}
+
+type LegacySong = { title: string; task: string; audioUrl: string };
+type LegacyMusicSlot = { song1: LegacySong; song2: LegacySong | null };
+type LegacySlide = { id: string; text: string };
+
+function legacySong(raw: unknown): LegacySong {
+  if (!raw || typeof raw !== 'object') return { title: '', task: '', audioUrl: '' };
   const o = raw as Record<string, unknown>;
   return {
     title: typeof o.title === 'string' ? o.title : '',
@@ -112,53 +154,95 @@ function normalizeSong(raw: unknown): HeroSong {
   };
 }
 
-function normalizeMusicSlot(raw: unknown): HeroMusicSlot {
-  if (!raw || typeof raw !== 'object') return emptyMusicSlot();
+function legacyMusicSlot(raw: unknown): LegacyMusicSlot {
+  if (!raw || typeof raw !== 'object') return { song1: legacySong(null), song2: null };
   const o = raw as Record<string, unknown>;
-  const song1 = normalizeSong(o.song1);
-  const song2Raw = o.song2;
-  const song2 =
-    song2Raw === null || song2Raw === undefined
-      ? null
-      : songHasContent(normalizeSong(song2Raw))
-        ? normalizeSong(song2Raw)
-        : null;
-  return { song1, song2 };
+  return { song1: legacySong(o.song1), song2: o.song2 ? legacySong(o.song2) : null };
 }
 
-function normalizeSlides(raw: unknown): HeroSlide[] {
+function legacySlides(raw: unknown): LegacySlide[] {
   if (!Array.isArray(raw)) return [];
   return raw
     .map((s) => {
       if (!s || typeof s !== 'object') return null;
       const o = s as Record<string, unknown>;
-      const id = typeof o.id === 'string' ? o.id : newId();
-      const text = typeof o.text === 'string' ? o.text : '';
-      return { id, text };
+      return {
+        id: typeof o.id === 'string' ? o.id : newId(),
+        text: typeof o.text === 'string' ? o.text : '',
+      };
     })
-    .filter((x): x is HeroSlide => x !== null);
+    .filter((x): x is LegacySlide => x !== null);
+}
+
+function slidesToExplanation(slides: LegacySlide[]): string {
+  return slides
+    .map((s) => s.text.trim())
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+function mergeLegacySong(primary: LegacySong, secondary: LegacySong | null): { title: string; audioUrl: string } {
+  const title = primary.title.trim() || secondary?.title.trim() || '';
+  const audioUrl = primary.audioUrl.trim() || secondary?.audioUrl.trim() || '';
+  return { title, audioUrl };
+}
+
+function migrateLegacyPhases(o: Record<string, unknown>): Pick<HeroWorkout, 'warmup' | 'workout' | 'cooldown'> {
+  const opening = legacyMusicSlot(o.openingMusic);
+  const closing = legacyMusicSlot(o.closingMusic);
+  const warmupSlides = legacySlides(o.warmup);
+  const workoutSlides = legacySlides(o.workout);
+  const cooldownSlides = legacySlides(o.cooldown);
+
+  const openingSong = mergeLegacySong(opening.song1, opening.song2);
+  const closingSong = mergeLegacySong(closing.song1, closing.song2);
+
+  const warmupExtra = [opening.song1.task, opening.song2?.task].filter((t) => t?.trim()).join('\n\n');
+  const cooldownExtra = [closing.song1.task, closing.song2?.task].filter((t) => t?.trim()).join('\n\n');
+
+  const joinExplanation = (slides: LegacySlide[], extra: string) => {
+    const base = slidesToExplanation(slides);
+    if (!extra) return base;
+    return base ? `${base}\n\n${extra}` : extra;
+  };
+
+  return {
+    warmup: {
+      songTitle: openingSong.title,
+      songAudioUrl: openingSong.audioUrl,
+      explanation: joinExplanation(warmupSlides, warmupExtra),
+    },
+    workout: {
+      songTitle: '',
+      songAudioUrl: '',
+      explanation: slidesToExplanation(workoutSlides),
+    },
+    cooldown: {
+      songTitle: closingSong.title,
+      songAudioUrl: closingSong.audioUrl,
+      explanation: joinExplanation(cooldownSlides, cooldownExtra),
+    },
+  };
 }
 
 function migrateFromV1Cards(o: Record<string, unknown>): HeroWorkout | null {
   if (!Array.isArray(o.cards)) return null;
   const cards = o.cards as { id?: string; title?: string; description?: string }[];
-  const workout: HeroSlide[] = cards
+  const explanation = cards
     .map((c) => {
       const title = typeof c.title === 'string' ? c.title.trim() : '';
       const desc = typeof c.description === 'string' ? c.description.trim() : '';
-      const text = [title, desc].filter(Boolean).join('\n\n');
-      if (!text) return null;
-      return { id: typeof c.id === 'string' ? c.id : newId(), text };
+      return [title, desc].filter(Boolean).join('\n\n');
     })
-    .filter((x): x is HeroSlide => x !== null);
+    .filter(Boolean)
+    .join('\n\n');
+
   return {
     id: String(o.id),
     name: String(o.name),
-    openingMusic: emptyMusicSlot(),
-    warmup: [],
-    workout: workout.length ? workout : [emptySlide()],
-    cooldown: [],
-    closingMusic: emptyMusicSlot(),
+    warmup: emptyHeroPhase(),
+    workout: { ...emptyHeroPhase(), explanation },
+    cooldown: emptyHeroPhase(),
     createdAt: typeof o.createdAt === 'string' ? o.createdAt : new Date().toISOString(),
   };
 }
@@ -168,15 +252,22 @@ function parseWorkout(raw: unknown): HeroWorkout | null {
   const o = raw as Record<string, unknown>;
   if (typeof o.id !== 'string' || typeof o.name !== 'string') return null;
 
+  if (o.warmup && typeof o.warmup === 'object' && !Array.isArray(o.warmup)) {
+    return {
+      id: o.id,
+      name: o.name,
+      warmup: normalizePhaseContent(o.warmup),
+      workout: normalizePhaseContent(o.workout),
+      cooldown: normalizePhaseContent(o.cooldown),
+      createdAt: typeof o.createdAt === 'string' ? o.createdAt : new Date().toISOString(),
+    };
+  }
+
   if (Array.isArray(o.warmup) && Array.isArray(o.workout) && Array.isArray(o.cooldown)) {
     return {
       id: o.id,
       name: o.name,
-      openingMusic: normalizeMusicSlot(o.openingMusic),
-      warmup: normalizeSlides(o.warmup),
-      workout: normalizeSlides(o.workout),
-      cooldown: normalizeSlides(o.cooldown),
-      closingMusic: normalizeMusicSlot(o.closingMusic),
+      ...migrateLegacyPhases(o),
       createdAt: typeof o.createdAt === 'string' ? o.createdAt : new Date().toISOString(),
     };
   }
@@ -184,88 +275,50 @@ function parseWorkout(raw: unknown): HeroWorkout | null {
   return migrateFromV1Cards(o);
 }
 
-function loadWorkouts(): HeroWorkout[] {
-  try {
-    let raw = localStorage.getItem(LS_KEY);
-    if (!raw) raw = localStorage.getItem(LS_KEY_V2);
-    if (!raw) raw = localStorage.getItem('johnnyMonkey.beAHeroWorkouts.v1');
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map(parseWorkout).filter((w): w is HeroWorkout => w !== null);
-  } catch {
-    return [];
-  }
-}
-
-function saveWorkouts(list: HeroWorkout[]) {
-  localStorage.setItem(LS_KEY, JSON.stringify(list));
-}
-
-function flattenWorkoutSlides(w: HeroWorkout): { phase: PhaseKey; slide: HeroSlide }[] {
-  const out: { phase: PhaseKey; slide: HeroSlide }[] = [];
-  for (const slide of w.warmup) {
-    if (slide.text.trim()) out.push({ phase: 'warmup', slide });
-  }
-  for (const slide of w.workout) {
-    if (slide.text.trim()) out.push({ phase: 'workout', slide });
-  }
-  for (const slide of w.cooldown) {
-    if (slide.text.trim()) out.push({ phase: 'cooldown', slide });
-  }
-  return out;
-}
-
 function buildPlayQueue(w: HeroWorkout): PlayEntry[] {
-  const out: PlayEntry[] = [];
-  const pushSlot = (slot: HeroMusicSlot, when: 'opening' | 'closing') => {
-    if (songHasContent(slot.song1)) out.push({ kind: 'song', when, song: slot.song1 });
-    if (songHasContent(slot.song2)) out.push({ kind: 'song', when, song: slot.song2! });
-  };
-  pushSlot(w.openingMusic, 'opening');
-  for (const entry of flattenWorkoutSlides(w)) {
-    out.push({ kind: 'slide', ...entry });
-  }
-  pushSlot(w.closingMusic, 'closing');
-  return out;
+  return (['warmup', 'workout', 'cooldown'] as PhaseKey[]).map((phase) => ({
+    phase,
+    content: w[phase],
+  }));
 }
 
-function slideCount(w: HeroWorkout): number {
-  return flattenWorkoutSlides(w).length;
+function playStepCount(_w: HeroWorkout): number {
+  return 3;
 }
 
-function playStepCount(w: HeroWorkout): number {
-  return buildPlayQueue(w).length;
+function workoutHasPlayableContent(w: HeroWorkout): boolean {
+  return phaseHasContent(w.warmup) || phaseHasContent(w.workout) || phaseHasContent(w.cooldown);
 }
 
-function filterNonemptySlides(slides: HeroSlide[]): HeroSlide[] {
-  return slides.map((s) => ({ ...s, text: s.text.trim() })).filter((s) => s.text.length > 0);
-}
-
-const defaultDraftSections = (): Record<PhaseKey, HeroSlide[]> => ({
-  warmup: [emptySlide()],
-  workout: [emptySlide()],
-  cooldown: [emptySlide()],
+const defaultPhaseDraft = (): Record<PhaseKey, HeroPhaseContent> => ({
+  warmup: emptyHeroPhase(),
+  workout: emptyHeroPhase(),
+  cooldown: emptyHeroPhase(),
 });
 
-type MusicDraft = {
-  opening: HeroMusicSlot;
-  closing: HeroMusicSlot;
-  openingSong2: boolean;
-  closingSong2: boolean;
-};
+const PLAY_PHASES: PhaseKey[] = ['warmup', 'workout', 'cooldown'];
 
-const defaultMusicDraft = (): MusicDraft => ({
-  opening: emptyMusicSlot(),
-  closing: emptyMusicSlot(),
-  openingSong2: false,
-  closingSong2: false,
-});
-
-function HeroSongPanel({ song, when }: { song: HeroSong; when: 'opening' | 'closing' }) {
+function HeroPhaseSlide({
+  phase,
+  content,
+  slideIndex,
+}: {
+  phase: PhaseKey;
+  content: HeroPhaseContent;
+  slideIndex: number;
+  slideCount?: number;
+  workoutName?: string;
+}) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
-  const url = song.audioUrl.trim();
+  const style = beAHeroPhaseStyle(phase);
+  const songTitle = content.songTitle.trim();
+  const audioUrl = content.songAudioUrl.trim();
+  const explanation = content.explanation.trim();
+  const spotify = parseSpotifyUrl(audioUrl);
+  const hasSong = !!(songTitle || audioUrl);
+  const showTabata = phase === 'workout' && isTabataActive(content.tabata);
+  const tabataConfig = content.tabata!;
 
   useEffect(
     () => () => {
@@ -276,14 +329,14 @@ function HeroSongPanel({ song, when }: { song: HeroSong; when: 'opening' | 'clos
   );
 
   const togglePlay = () => {
-    if (!url) return;
+    if (!audioUrl) return;
     if (playing && audioRef.current) {
       audioRef.current.pause();
       setPlaying(false);
       return;
     }
     audioRef.current?.pause();
-    const audio = new Audio(url);
+    const audio = new Audio(audioUrl);
     audioRef.current = audio;
     audio.onended = () => setPlaying(false);
     audio.onerror = () => setPlaying(false);
@@ -293,176 +346,234 @@ function HeroSongPanel({ song, when }: { song: HeroSong; when: 'opening' | 'clos
       .catch(() => setPlaying(false));
   };
 
-  return (
-    <Box sx={{ textAlign: 'center', py: 2 }}>
-      <Typography variant="overline" sx={{ color: 'text.secondary', letterSpacing: 1.5, fontWeight: 700 }}>
-        {SONG_WHEN_LABELS[when]}
-      </Typography>
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          my: 2,
-        }}
-      >
-        <IconButton
-          onClick={togglePlay}
-          disabled={!url}
-          aria-label={playing ? 'Pause' : 'Lied abspielen'}
-          sx={{
-            position: 'relative',
-            width: { xs: 120, sm: 140 },
-            height: { xs: 120, sm: 140 },
-            borderRadius: '50%',
-            bgcolor: url ? 'primary.main' : 'action.disabledBackground',
-            color: '#fff',
-            '&:hover': { bgcolor: url ? 'primary.dark' : 'action.disabledBackground' },
-            '&.Mui-disabled': { color: 'rgba(255,255,255,0.7)' },
-          }}
-        >
-          <MusicNoteIcon sx={{ fontSize: { xs: 56, sm: 72 } }} />
-          <Box
-            sx={{
-              position: 'absolute',
-              bottom: 8,
-              right: 8,
-              bgcolor: 'rgba(0,0,0,0.35)',
-              borderRadius: '50%',
-              width: 36,
-              height: 36,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {playing ? <PauseIcon /> : <PlayArrowIcon />}
-          </Box>
-        </IconButton>
-      </Box>
-      {song.title.trim() ? (
-        <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>
-          {song.title.trim()}
-        </Typography>
-      ) : null}
-      {song.task.trim() ? (
-        <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 560, mx: 'auto', lineHeight: 1.6 }}>
-          {song.task.trim()}
-        </Typography>
-      ) : null}
-      {!url && (song.title.trim() || song.task.trim()) ? (
-        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 2 }}>
-          Zum Abspielen im Workout einen Audio-Link hinterlegen.
-        </Typography>
-      ) : null}
-    </Box>
-  );
-}
-
-function renderMusicDraftFields(
-  label: string,
-  slot: HeroMusicSlot,
-  withSong2: boolean,
-  onChange: (slot: HeroMusicSlot) => void,
-  onToggleSong2: (on: boolean) => void
-) {
-  const updateSong = (which: 'song1' | 'song2', patch: Partial<HeroSong>) => {
-    if (which === 'song1') {
-      onChange({ ...slot, song1: { ...slot.song1, ...patch } });
-      return;
-    }
-    const base = slot.song2 ?? emptySong();
-    onChange({ ...slot, song2: { ...base, ...patch } });
+  const stopPlay = () => {
+    if (!audioRef.current) return;
+    audioRef.current.pause();
+    audioRef.current.currentTime = 0;
+    setPlaying(false);
   };
 
   return (
-    <Box sx={{ mb: 2 }}>
-      <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 800 }}>
-        {label}
-      </Typography>
-      <TextField
-        label="Liedtitel"
-        fullWidth
-        size="small"
-        margin="dense"
-        value={slot.song1.title}
-        onChange={(e) => updateSong('song1', { title: e.target.value })}
-        placeholder="z. B. Eye of the Tiger"
-      />
-      <TextField
-        label="Aufgabe / Hinweis"
-        fullWidth
-        size="small"
-        margin="dense"
-        multiline
-        minRows={2}
-        value={slot.song1.task}
-        onChange={(e) => updateSong('song1', { task: e.target.value })}
-        placeholder="z. B. Beim Einlaufen mitsingen"
-      />
-      <TextField
-        label="Audio-Link (MP3 oder direkte URL)"
-        fullWidth
-        size="small"
-        margin="dense"
-        value={slot.song1.audioUrl}
-        onChange={(e) => updateSong('song1', { audioUrl: e.target.value })}
-        placeholder="https://…"
-        helperText="Wird in der Kartei über das große Noten-Symbol abgespielt"
-      />
-      <FormControlLabel
-        control={<Checkbox checked={withSong2} onChange={(e) => onToggleSong2(e.target.checked)} />}
-        label="Zweites Lied"
-        sx={{ mt: 0.5 }}
-      />
-      {withSong2 && (
-        <Box sx={{ pl: 1, borderLeft: '3px solid', borderColor: 'divider', mt: 1 }}>
-          <TextField
-            label="Liedtitel (2)"
-            fullWidth
-            size="small"
-            margin="dense"
-            value={slot.song2?.title ?? ''}
-            onChange={(e) => updateSong('song2', { title: e.target.value })}
-          />
-          <TextField
-            label="Aufgabe / Hinweis (2)"
-            fullWidth
-            size="small"
-            margin="dense"
-            multiline
-            minRows={2}
-            value={slot.song2?.task ?? ''}
-            onChange={(e) => updateSong('song2', { task: e.target.value })}
-          />
-          <TextField
-            label="Audio-Link (2)"
-            fullWidth
-            size="small"
-            margin="dense"
-            value={slot.song2?.audioUrl ?? ''}
-            onChange={(e) => updateSong('song2', { audioUrl: e.target.value })}
-          />
+    <Paper elevation={0} sx={beAHeroPlaySlideCardSx}>
+      <Box sx={beAHeroPlaySlideHeaderSx(phase)}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1.25 }}>
+          <Box sx={beAHeroPhaseChipSx(phase, true)}>{PHASE_LABELS[phase]}</Box>
+          <Typography variant="caption" sx={{ fontWeight: 700, color: style.labelColor, opacity: 0.65 }}>
+            {slideIndex + 1} / 3
+          </Typography>
         </Box>
-      )}
-    </Box>
+
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
+          {PLAY_PHASES.map((p, i) => (
+            <Box
+              key={p}
+              sx={{
+                flex: i === slideIndex ? 1.6 : 1,
+                maxWidth: i === slideIndex ? 72 : 40,
+                height: 4,
+                borderRadius: 99,
+                bgcolor: i <= slideIndex ? style.accentMain : 'rgba(15, 23, 42, 0.1)',
+                transition: 'all 0.25s ease',
+              }}
+            />
+          ))}
+        </Box>
+      </Box>
+
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: 'stretch',
+        }}
+      >
+        {hasSong ? (
+          <Box
+            sx={{
+              flex: '0 0 auto',
+              width: { xs: '100%', sm: 240 },
+              p: { xs: 1.5, sm: 1.75 },
+              bgcolor: '#fafbfc',
+              borderBottom: { xs: '1px solid', sm: 'none' },
+              borderRight: { sm: '1px solid' },
+              borderColor: 'divider',
+            }}
+          >
+            {spotify ? (
+              <Box
+                sx={{
+                  borderRadius: 2,
+                  overflow: 'hidden',
+                  border: '1px solid',
+                  borderColor: style.borderColor,
+                  bgcolor: 'rgba(255,255,255,0.72)',
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, px: 1.25, pt: 0.85, pb: 0.5 }}>
+                  <MusicNoteIcon sx={{ fontSize: 15, color: style.accentMain }} />
+                  <Typography
+                    variant="caption"
+                    sx={{ fontWeight: 700, color: style.labelColor, fontSize: '0.62rem', letterSpacing: '0.06em' }}
+                  >
+                    MUSIK · SPOTIFY
+                  </Typography>
+                </Box>
+                <Box
+                  component="iframe"
+                  title={songTitle || 'Spotify'}
+                  src={spotify.embedUrl}
+                  height={spotify.type === 'track' || spotify.type === 'episode' ? 152 : 352}
+                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                  loading="lazy"
+                  sx={{ display: 'block', width: '100%', border: 0 }}
+                />
+              </Box>
+            ) : (
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  px: 1.25,
+                  py: 1,
+                  borderRadius: 2,
+                  bgcolor: 'rgba(255,255,255,0.72)',
+                  border: '1px solid',
+                  borderColor: style.borderColor,
+                }}
+              >
+                <Tooltip title={audioUrl ? (playing ? 'Pause' : 'Abspielen') : 'Kein Audio-Link hinterlegt'}>
+                  <span>
+                    <IconButton
+                      onClick={togglePlay}
+                      disabled={!audioUrl}
+                      aria-label={playing ? 'Pause' : 'Abspielen'}
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        flexShrink: 0,
+                        bgcolor: audioUrl ? style.accentMain : 'rgba(15, 23, 42, 0.08)',
+                        color: audioUrl ? '#fff' : 'rgba(15, 23, 42, 0.35)',
+                        '&:hover': { bgcolor: audioUrl ? style.accentMain : 'rgba(15, 23, 42, 0.08)' },
+                      }}
+                    >
+                      {playing ? <PauseIcon sx={{ fontSize: 22 }} /> : <PlayArrowIcon sx={{ fontSize: 22 }} />}
+                    </IconButton>
+                  </span>
+                </Tooltip>
+
+                <Box sx={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.45, mb: 0.2 }}>
+                    <MusicNoteIcon sx={{ fontSize: 15, color: style.accentMain }} />
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: style.labelColor, fontSize: '0.62rem', letterSpacing: '0.06em' }}>
+                      MUSIK
+                    </Typography>
+                  </Box>
+                  <Typography
+                    sx={{
+                      fontWeight: 700,
+                      color: style.labelColor,
+                      fontSize: '0.88rem',
+                      lineHeight: 1.3,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {songTitle || 'Audio bereit'}
+                  </Typography>
+                </Box>
+
+                <Tooltip title="Stop">
+                  <span>
+                    <IconButton
+                      onClick={stopPlay}
+                      disabled={!audioUrl || !playing}
+                      aria-label="Stop"
+                      size="small"
+                      sx={{
+                        width: 32,
+                        height: 32,
+                        flexShrink: 0,
+                        border: '1px solid',
+                        borderColor: style.borderColor,
+                        color: style.labelColor,
+                        bgcolor: '#fff',
+                      }}
+                    >
+                      <StopIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              </Box>
+            )}
+          </Box>
+        ) : null}
+
+        <Box sx={{ flex: 1, minWidth: 0, px: { xs: 2, sm: 2.75 }, py: { xs: 2.25, sm: 2.75 }, bgcolor: '#fff' }}>
+          {explanation ? (
+            <HeroSlideRichBody source={explanation} instruction />
+          ) : !hasSong && !showTabata ? (
+            <Typography color="text.secondary" sx={{ fontSize: '0.92rem', textAlign: 'center', py: 1 }}>
+              Noch kein Inhalt für {PHASE_LABELS[phase]}.
+            </Typography>
+          ) : null}
+        </Box>
+
+        {showTabata ? (
+          <Box
+            sx={{
+              flex: '0 0 auto',
+              width: { xs: '100%', sm: 272 },
+              p: { xs: 1.5, sm: 1.75 },
+              bgcolor: '#fafbfc',
+              borderTop: { xs: '1px solid', sm: 'none' },
+              borderLeft: { sm: '1px solid' },
+              borderColor: 'divider',
+              order: { xs: 3, sm: 0 },
+            }}
+          >
+            <BeAHeroTabataTimer
+              config={tabataConfig}
+              accentColor={style.accentMain}
+              labelColor={style.labelColor}
+              borderColor={style.borderColor}
+            />
+          </Box>
+        ) : null}
+      </Box>
+    </Paper>
   );
 }
 
 export default function BeAHeroWorkoutsPage() {
   const navigate = useNavigate();
-  const [workouts, setWorkouts] = useState<HeroWorkout[]>(() => loadWorkouts());
+  const [workouts, setWorkouts] = useState<HeroWorkout[]>([]);
+  const [storageReady, setStorageReady] = useState(false);
   const [playingWorkoutId, setPlayingWorkoutId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [workoutName, setWorkoutName] = useState('');
-  const [draft, setDraft] = useState<Record<PhaseKey, HeroSlide[]>>(() => defaultDraftSections());
-  const [musicDraft, setMusicDraft] = useState<MusicDraft>(() => defaultMusicDraft());
+  const [phaseDraft, setPhaseDraft] = useState<Record<PhaseKey, HeroPhaseContent>>(() => defaultPhaseDraft());
   const [playIndex, setPlayIndex] = useState(0);
 
   useEffect(() => {
-    saveWorkouts(workouts);
-  }, [workouts]);
+    let cancelled = false;
+    loadWorkoutsWithSync(parseWorkout).then((list) => {
+      if (!cancelled) {
+        setWorkouts(list);
+        setStorageReady(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!storageReady) return;
+    void persistWorkouts(workouts);
+  }, [workouts, storageReady]);
 
   const playingWorkout = useMemo(
     () => workouts.find((w) => w.id === playingWorkoutId) ?? null,
@@ -475,101 +586,70 @@ export default function BeAHeroWorkoutsPage() {
   );
 
   const currentEntry = playQueue[playIndex];
+  // Index === playQueue.length ist die Abschluss-Karte ("geschafft").
+  const isFinishSlide = playQueue.length > 0 && playIndex >= playQueue.length;
 
   useEffect(() => {
     if (playQueue.length === 0) {
       setPlayIndex(0);
       return;
     }
-    if (playIndex >= playQueue.length) {
-      setPlayIndex(Math.max(0, playQueue.length - 1));
+    if (playIndex > playQueue.length) {
+      setPlayIndex(playQueue.length);
     }
   }, [playQueue.length, playIndex]);
 
   const startWorkout = (id: string) => {
     const w = workouts.find((x) => x.id === id);
     if (!w) return;
-    const queue = buildPlayQueue(w);
-    if (queue.length === 0) {
-      window.alert('Dieses Workout hat noch keine Folien oder Lieder mit Inhalt.');
+    if (!workoutHasPlayableContent(w)) {
+      window.alert('Dieses Workout hat noch keinen Inhalt.');
       return;
     }
     setPlayingWorkoutId(id);
     setPlayIndex(0);
   };
 
-  const exitPlay = () => {
+  const exitPlay = useCallback(() => {
     setPlayingWorkoutId(null);
     setPlayIndex(0);
-  };
+  }, []);
 
   const openNew = () => {
     setEditingId(null);
     setWorkoutName('');
-    setDraft(defaultDraftSections());
-    setMusicDraft(defaultMusicDraft());
+    setPhaseDraft(defaultPhaseDraft());
     setDialogOpen(true);
   };
 
   const openEdit = (w: HeroWorkout) => {
     setEditingId(w.id);
     setWorkoutName(w.name);
-    const nonempty = (arr: HeroSlide[]) => (arr.length ? arr.map((s) => ({ ...s })) : [emptySlide()]);
-    setDraft({
-      warmup: nonempty(w.warmup),
-      workout: nonempty(w.workout),
-      cooldown: nonempty(w.cooldown),
-    });
-    setMusicDraft({
-      opening: {
-        song1: { ...w.openingMusic.song1 },
-        song2: w.openingMusic.song2 ? { ...w.openingMusic.song2 } : null,
-      },
-      closing: {
-        song1: { ...w.closingMusic.song1 },
-        song2: w.closingMusic.song2 ? { ...w.closingMusic.song2 } : null,
-      },
-      openingSong2: !!w.openingMusic.song2,
-      closingSong2: !!w.closingMusic.song2,
+    setPhaseDraft({
+      warmup: { ...w.warmup },
+      workout: { ...w.workout },
+      cooldown: { ...w.cooldown },
     });
     setDialogOpen(true);
   };
 
   const closeDialog = () => setDialogOpen(false);
 
-  const finalizeMusicSlot = (slot: HeroMusicSlot, withSong2: boolean): HeroMusicSlot => {
-    const song1 = {
-      title: slot.song1.title.trim(),
-      task: slot.song1.task.trim(),
-      audioUrl: slot.song1.audioUrl.trim(),
-    };
-    if (!withSong2) return { song1, song2: null };
-    const s2 = slot.song2 ?? emptySong();
-    const song2 = {
-      title: s2.title.trim(),
-      task: s2.task.trim(),
-      audioUrl: s2.audioUrl.trim(),
-    };
-    return { song1, song2: songHasContent(song2) ? song2 : null };
+  const updatePhaseDraft = (phase: PhaseKey, patch: Partial<HeroPhaseContent>) => {
+    setPhaseDraft((prev) => ({ ...prev, [phase]: { ...prev[phase], ...patch } }));
   };
 
   const persistDraft = () => {
     const name = workoutName.trim();
     if (!name) return;
-    const warmup = filterNonemptySlides(draft.warmup);
-    const workout = filterNonemptySlides(draft.workout);
-    const cooldown = filterNonemptySlides(draft.cooldown);
-    const openingMusic = finalizeMusicSlot(musicDraft.opening, musicDraft.openingSong2);
-    const closingMusic = finalizeMusicSlot(musicDraft.closing, musicDraft.closingSong2);
-    const hasSlides = warmup.length + workout.length + cooldown.length > 0;
-    const hasMusic =
-      songHasContent(openingMusic.song1) ||
-      songHasContent(openingMusic.song2) ||
-      songHasContent(closingMusic.song1) ||
-      songHasContent(closingMusic.song2);
-    if (!hasSlides && !hasMusic) return;
+    const warmup = finalizePhase(phaseDraft.warmup);
+    const workout = finalizePhase(phaseDraft.workout);
+    const cooldown = finalizePhase(phaseDraft.cooldown);
+    const hasContent =
+      phaseHasContent(warmup) || phaseHasContent(workout) || phaseHasContent(cooldown);
+    if (!hasContent) return;
 
-    const payload = { name, warmup, workout, cooldown, openingMusic, closingMusic };
+    const payload = { name, warmup, workout, cooldown };
     if (editingId) {
       setWorkouts((prev) => prev.map((w) => (w.id === editingId ? { ...w, ...payload } : w)));
     } else {
@@ -588,93 +668,45 @@ export default function BeAHeroWorkoutsPage() {
     if (playingWorkoutId === id) exitPlay();
   };
 
-  const updateDraftSlide = (phase: PhaseKey, id: string, text: string) => {
-    setDraft((prev) => ({
-      ...prev,
-      [phase]: prev[phase].map((s) => (s.id === id ? { ...s, text } : s)),
-    }));
-  };
-
-  const addDraftSlide = (phase: PhaseKey) => {
-    setDraft((prev) => ({ ...prev, [phase]: [...prev[phase], emptySlide()] }));
-  };
-
-  const removeDraftSlide = (phase: PhaseKey, id: string) => {
-    setDraft((prev) => {
-      const arr = prev[phase];
-      if (arr.length <= 1) return prev;
-      return { ...prev, [phase]: arr.filter((s) => s.id !== id) };
-    });
-  };
-
   const goPlayPrev = useCallback(() => {
     if (playQueue.length === 0) return;
-    setPlayIndex((i) => (i <= 0 ? playQueue.length - 1 : i - 1));
+    setPlayIndex((i) => (i <= 0 ? 0 : i - 1));
   }, [playQueue.length]);
 
   const goPlayNext = useCallback(() => {
     if (playQueue.length === 0) return;
-    setPlayIndex((i) => (i >= playQueue.length - 1 ? 0 : i + 1));
+    setPlayIndex((i) => (i >= playQueue.length ? i : i + 1));
   }, [playQueue.length]);
 
-  const phasePaperTint = (phase: PhaseKey) => {
-    switch (phase) {
-      case 'warmup':
-        return 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)';
-      case 'workout':
-        return 'linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%)';
-      case 'cooldown':
-        return 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)';
-      default:
-        return 'linear-gradient(135deg, #e8eaf6 0%, #c5cae9 100%)';
-    }
-  };
+  const restartWorkout = useCallback(() => setPlayIndex(0), []);
 
-  const renderDraftPhase = (phase: PhaseKey) => (
-    <Box sx={{ mb: 2 }}>
-      <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 800 }}>
-        {PHASE_LABELS[phase]}
-      </Typography>
-      {draft[phase].map((s, idx) => (
-        <Box key={s.id} sx={{ mb: 1.5, p: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
-            <Typography variant="caption" color="text.secondary">
-              Folie {idx + 1}
-            </Typography>
-            {draft[phase].length > 1 && (
-              <Button size="small" color="error" onClick={() => removeDraftSlide(phase, s.id)}>
-                Entfernen
-              </Button>
-            )}
-          </Stack>
-          <SlideTextFieldWithFormatShortcuts
-            label="Erklärung"
-            fullWidth
-            size="small"
-            margin="dense"
-            multiline
-            minRows={2}
-            value={s.text}
-            onChange={(text) => updateDraftSlide(phase, s.id, text)}
-            placeholder={
-              phase === 'warmup'
-                ? 'z. B. Schultern kreisen, langsam groß werden …'
-                : phase === 'workout'
-                  ? 'z. B. Hampelmänner – 30 Sekunden …'
-                  : 'z. B. Ausatmen, locker durch die Knie …'
-            }
-            helperText="Tastatur: Strg/Cmd+B fett · Strg/Cmd+I kursiv · Strg/Cmd+U unterstreichen (<u>)"
-          />
-        </Box>
-      ))}
-      <Button startIcon={<AddIcon />} onClick={() => addDraftSlide(phase)} size="small">
-        Folie hinzufügen
-      </Button>
-    </Box>
-  );
+  useEffect(() => {
+    if (!playingWorkoutId || dialogOpen) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      const tag = target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) return;
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        goPlayPrev();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        goPlayNext();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        exitPlay();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [playingWorkoutId, dialogOpen, goPlayPrev, goPlayNext, exitPlay]);
 
   const renderPlayContent = () => {
-    if (!playingWorkout || playQueue.length === 0 || !currentEntry) {
+    if (!playingWorkout || playQueue.length === 0 || (!currentEntry && !isFinishSlide)) {
       return (
         <Typography color="text.secondary" align="center" sx={{ py: 4 }}>
           Kein Inhalt zum Abspielen.
@@ -683,271 +715,417 @@ export default function BeAHeroWorkoutsPage() {
     }
 
     return (
-      <>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-          <Button size="small" onClick={exitPlay} startIcon={<ArrowBackIcon />}>
-            Zur Liste
-          </Button>
-          <Typography variant="subtitle1" sx={{ fontWeight: 800, textAlign: 'center', flex: 1, px: 1 }}>
-            {playingWorkout.name}
-          </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ minWidth: 72, textAlign: 'right' }}>
-            {playIndex + 1} / {playQueue.length}
-          </Typography>
-        </Stack>
+      <Box
+        sx={{
+          ...protocolPageBgSx,
+          bgcolor: '#fff',
+          background: '#fff',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'stretch',
+          px: { xs: 1.5, sm: 2.5 },
+          py: { xs: 1.25, sm: 1.75 },
+          boxSizing: 'border-box',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 2, flexShrink: 0 }}>
+          <Tooltip title="Zur Liste">
+            <IconButton onClick={exitPlay} aria-label="Zurück" sx={beAHeroBackBtnSx}>
+              <ArrowBackIcon sx={compactIconSx} />
+            </IconButton>
+          </Tooltip>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography
+              sx={{
+                fontWeight: 800,
+                color: protocolPalette.heading,
+                fontSize: { xs: '0.95rem', sm: '1.05rem' },
+                lineHeight: 1.25,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {playingWorkout.name}
+            </Typography>
+            <Typography sx={{ color: 'text.secondary', fontSize: '0.72rem', fontWeight: 600 }}>
+              {isFinishSlide ? 'Geschafft' : `${playIndex + 1} / ${playQueue.length}`}
+            </Typography>
+          </Box>
+        </Box>
 
-        <Paper
-          elevation={4}
+        <Box
           sx={{
-            minHeight: 280,
-            p: { xs: 2, sm: 3 },
-            borderRadius: 3,
-            background:
-              currentEntry.kind === 'slide'
-                ? phasePaperTint(currentEntry.phase)
-                : 'linear-gradient(135deg, #fff8e1 0%, #ffe082 100%)',
+            flex: 1,
+            width: '100%',
+            maxWidth: 1200,
+            mx: 'auto',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'flex-start',
-            border: '2px solid rgba(0,0,0,0.06)',
+            minHeight: 0,
+            pb: 1,
           }}
         >
-          {currentEntry.kind === 'song' ? (
-            <HeroSongPanel song={currentEntry.song} when={currentEntry.when} />
-          ) : (
-            <>
-              <Typography
-                variant="overline"
-                sx={{ color: 'text.secondary', letterSpacing: 1.5, mb: 1.5, fontWeight: 700 }}
+          {isFinishSlide || !currentEntry ? (
+            <Paper elevation={0} sx={beAHeroPlaySlideCardSx}>
+              <Box
+                sx={{
+                  px: { xs: 2, sm: 2.5 },
+                  py: { xs: 1.5, sm: 1.75 },
+                  background: 'linear-gradient(135deg, #fff8e1 0%, #ffe7a3 100%)',
+                  borderBottom: '1px solid',
+                  borderColor: 'rgba(255, 179, 0, 0.45)',
+                }}
               >
-                {PHASE_LABELS[currentEntry.phase]}
-              </Typography>
-              <HeroSlideMarkdownBody source={currentEntry.slide.text} />
-            </>
-          )}
-        </Paper>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1.25 }}>
+                  <Box
+                    sx={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 32,
+                      height: 32,
+                      borderRadius: '50%',
+                      bgcolor: '#ffb300',
+                      color: '#fff',
+                    }}
+                  >
+                    <EmojiEventsIcon sx={{ fontSize: 18 }} />
+                  </Box>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#b26a00', opacity: 0.85 }}>
+                    {playQueue.length} / {playQueue.length}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
+                  {playQueue.map((_, i) => (
+                    <Box
+                      key={i}
+                      sx={{
+                        flex: 1,
+                        maxWidth: 56,
+                        height: 4,
+                        borderRadius: 99,
+                        bgcolor: '#ffb300',
+                      }}
+                    />
+                  ))}
+                </Box>
+              </Box>
 
-        <Stack direction="row" justifyContent="center" spacing={2} sx={{ mt: 2 }}>
-          <Button startIcon={<ChevronLeftIcon />} onClick={goPlayPrev} variant="outlined" size="small">
-            Zurück
-          </Button>
-          <Button endIcon={<ChevronRightIcon />} onClick={goPlayNext} variant="outlined" size="small">
-            Weiter
-          </Button>
-        </Stack>
-      </>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  px: { xs: 2.5, sm: 4 },
+                  py: { xs: 3, sm: 3.75 },
+                  gap: 1.5,
+                  bgcolor: '#fff',
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 84,
+                    height: 84,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'linear-gradient(135deg, #ffe082 0%, #ffb300 100%)',
+                    boxShadow: '0 8px 24px rgba(255, 179, 0, 0.4)',
+                  }}
+                >
+                  <EmojiEventsIcon sx={{ fontSize: 46, color: '#fff' }} />
+                </Box>
+
+                <Typography sx={{ fontWeight: 900, fontSize: { xs: '1.6rem', sm: '2rem' }, color: protocolPalette.heading, lineHeight: 1.1 }}>
+                  Geschafft!
+                </Typography>
+
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} sx={{ mt: 1, width: { xs: '100%', sm: 'auto' } }}>
+                  <Button
+                    variant="contained"
+                    startIcon={<ReplayIcon sx={{ fontSize: 18 }} />}
+                    onClick={restartWorkout}
+                    sx={beAHeroPrimaryBtnSx}
+                  >
+                    Nochmal
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<ArrowBackIcon sx={{ fontSize: 18 }} />}
+                    onClick={exitPlay}
+                    sx={beAHeroOutlinedBtnSx}
+                  >
+                    Zur Übersicht
+                  </Button>
+                </Stack>
+              </Box>
+            </Paper>
+          ) : (
+            <HeroPhaseSlide
+              key={playIndex}
+              phase={currentEntry.phase}
+              content={currentEntry.content}
+              slideIndex={playIndex}
+              slideCount={playQueue.length}
+              workoutName={playingWorkout.name}
+            />
+          )}
+        </Box>
+
+        <Typography
+          variant="caption"
+          sx={{
+            display: 'block',
+            textAlign: 'center',
+            color: 'text.secondary',
+            opacity: 0.65,
+            fontSize: '0.62rem',
+            fontWeight: 600,
+            pb: 0.25,
+            flexShrink: 0,
+          }}
+        >
+          ← → · Esc
+        </Typography>
+      </Box>
     );
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        width: '100vw',
-        maxWidth: '100vw',
-        marginLeft: 'calc(50% - 50vw)',
-        marginRight: 'calc(50% - 50vw)',
-        boxSizing: 'border-box',
-        background: 'linear-gradient(165deg, #1a237e 0%, #311b92 42%, #6a1b9a 100%)',
-        py: 2,
-        px: { xs: 1.5, sm: 2.5, md: 3 },
-      }}
-    >
-      <Box sx={{ width: '100%', maxWidth: '100%', mx: 0 }}>
-        <Tooltip title="Zurück zum Dashboard">
-          <IconButton
-            size="small"
-            onClick={() => navigate('/dashboard')}
-            aria-label="Zurück zum Dashboard"
-            sx={{
-              width: 28,
-              height: 28,
-              position: 'fixed',
-              top: 24,
-              left: '3vw',
-              p: 0,
-              zIndex: 1300,
-              bgcolor: 'white',
-              border: '1px solid rgba(0,0,0,0.12)',
-              boxShadow: '0 4px 12px rgba(15,23,42,0.16)',
-              '&:hover': { bgcolor: '#eef3f8' },
-            }}
-          >
-            <ArrowBackIcon sx={{ fontSize: 16 }} />
-          </IconButton>
-        </Tooltip>
-
-        <Stack direction="row" alignItems="center" sx={{ mb: 2, minHeight: 36 }}>
-          <Box sx={{ width: 36, flexShrink: 0 }} aria-hidden />
-          <Typography variant="h5" sx={{ color: '#fff', fontWeight: 800, flex: 1, textAlign: 'center' }}>
-            Be a Hero
-          </Typography>
-          <Typography
-            component="span"
-            sx={{ width: 36, flexShrink: 0, textAlign: 'right', fontSize: '1.75rem', lineHeight: 1 }}
-            aria-hidden
-          >
-            🦸
-          </Typography>
-        </Stack>
-
-        <Card sx={{ borderRadius: 3, boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}>
-          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-            {playingWorkoutId ? (
-              renderPlayContent()
-            ) : (
-              <Box>
-                <Stack
-                  direction={{ xs: 'column', sm: 'row' }}
-                  justifyContent="space-between"
-                  alignItems={{ xs: 'stretch', sm: 'center' }}
-                  spacing={1}
-                  sx={{ mb: 2 }}
+    <>
+      {playingWorkoutId ? (
+        renderPlayContent()
+      ) : (
+        <Box sx={{ ...protocolPageBgSx, bgcolor: '#fff' }}>
+          <Box sx={{ width: '100%', maxWidth: 1000, mx: 'auto', minWidth: 0, boxSizing: 'border-box', px: { xs: 1.5, sm: 2.5 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'stretch', gap: 1, mb: 2.5 }}>
+              <Tooltip title="Dashboard">
+                <IconButton
+                  onClick={() => navigate('/dashboard')}
+                  aria-label="Zurück"
+                  sx={beAHeroHeaderBackBtnSx}
                 >
-                  <Typography variant="body2" color="text.secondary">
-                    Workout antippen zum Starten · Stift zum Bearbeiten
-                  </Typography>
-                  <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} size="small">
-                    Neues Workout
-                  </Button>
-                </Stack>
-                {workouts.length === 0 ? (
-                  <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
-                    Noch keine Workouts. Lege mit „Neues Workout“ los.
-                  </Typography>
-                ) : (
-                  <List disablePadding>
-                    {workouts.map((w) => (
-                      <React.Fragment key={w.id}>
-                        <ListItem
-                          disablePadding
-                          secondaryAction={
-                            <Stack direction="row" spacing={0.5}>
-                              <Tooltip title="Bearbeiten">
-                                <IconButton
-                                  edge="end"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openEdit(w);
-                                  }}
-                                  size="small"
-                                  aria-label="Bearbeiten"
-                                >
-                                  <EditIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Löschen">
-                                <IconButton
-                                  edge="end"
-                                  onClick={(e) => removeWorkout(w.id, e)}
-                                  size="small"
-                                  aria-label="Löschen"
-                                >
-                                  <DeleteIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            </Stack>
-                          }
-                        >
-                          <ListItemButton onClick={() => startWorkout(w.id)} sx={{ py: 1.5, pr: 10 }}>
-                            <ListItemText
-                              primary={w.name}
-                              secondary={`${playStepCount(w)} Schritt${playStepCount(w) === 1 ? '' : 'e'} · ${slideCount(w)} Folie${slideCount(w) === 1 ? '' : 'n'}`}
-                              primaryTypographyProps={{ fontWeight: 700 }}
-                            />
-                          </ListItemButton>
-                        </ListItem>
-                        <Divider component="li" />
-                      </React.Fragment>
-                    ))}
-                  </List>
-                )}
+                  <ArrowBackIcon sx={beAHeroHeaderBackIconSx} />
+                </IconButton>
+              </Tooltip>
+              <Box sx={{ ...beAHeroHeaderBandSx, mb: 0, flex: 1, minWidth: 0 }}>
+                <BeAHeroLogo
+                  size={BE_A_HERO_HEADER_LOGO_SIZE}
+                  framed
+                  showWordmark
+                  layout="inline"
+                  sx={{ height: '100%', width: '100%' }}
+                />
               </Box>
-            )}
-          </CardContent>
-        </Card>
-      </Box>
+            </Box>
+
+            <Box sx={{ mb: 2 }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.75, gap: 1 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: protocolPalette.heading }}>
+                  Deine Workouts
+                </Typography>
+                {workouts.length > 0 && (
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+                    onClick={openNew}
+                    size="small"
+                    sx={beAHeroPrimaryBtnSx}
+                  >
+                    Neu
+                  </Button>
+                )}
+              </Stack>
+
+                {workouts.length === 0 ? (
+                  <Card elevation={0} sx={beAHeroEmptyStateSx}>
+                    <CardContent sx={{ py: 5, textAlign: 'center' }}>
+                      <BeAHeroLogo size={80} framed layout="stacked" sx={{ mb: 1.5, justifyContent: 'center' }} />
+                      <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 0.75, color: protocolPalette.heading }}>
+                        Noch keine Workouts
+                      </Typography>
+                      <Typography color="text.secondary" sx={{ mb: 2.5, maxWidth: 380, mx: 'auto' }}>
+                        Name festlegen, Lied und Übungserläuterung pro Phase — Warm-up, Workout, Cooldown.
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+                        onClick={openNew}
+                        size="small"
+                        sx={beAHeroPrimaryBtnSx}
+                      >
+                        Erstes Workout anlegen
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Stack spacing={1.15}>
+                    {workouts.map((w) => (
+                      <Box
+                        key={w.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => startWorkout(w.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            startWorkout(w.id);
+                          }
+                        }}
+                        sx={beAHeroListItemSx}
+                      >
+                        <BeAHeroWorkoutIcon name={w.name} size={40} />
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography sx={{ fontWeight: 700, color: protocolPalette.heading, lineHeight: 1.3 }}>
+                            {w.name}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.35 }}>
+                            {playStepCount(w)} Schritt{playStepCount(w) === 1 ? '' : 'e'}
+                          </Typography>
+                          <BeAHeroWorkoutPhaseDots
+                            warmup={phaseHasContent(w.warmup)}
+                            workout={phaseHasContent(w.workout)}
+                            cooldown={phaseHasContent(w.cooldown)}
+                          />
+                        </Box>
+                        <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                          <Tooltip title="Abspielen">
+                            <IconButton
+                              size="small"
+                              onClick={() => startWorkout(w.id)}
+                              aria-label="Abspielen"
+                              sx={beAHeroPlayBtnSx}
+                            >
+                              <PlayArrowIcon sx={{ fontSize: 17 }} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Bearbeiten">
+                            <IconButton
+                              size="small"
+                              onClick={() => openEdit(w)}
+                              aria-label="Bearbeiten"
+                              sx={beAHeroIconActionSx}
+                            >
+                              <EditIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Löschen">
+                            <IconButton
+                              size="small"
+                              onClick={(e) => removeWorkout(w.id, e)}
+                              aria-label="Löschen"
+                              sx={beAHeroIconActionDangerSx}
+                            >
+                              <DeleteIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
+                      </Box>
+                    ))}
+                  </Stack>
+                )}
+            </Box>
+          </Box>
+        </Box>
+      )}
 
       <Dialog
         open={dialogOpen}
         onClose={closeDialog}
         fullWidth
-        maxWidth={false}
+        maxWidth="lg"
         PaperProps={{
           sx: {
-            width: { xs: 'calc(100vw - 16px)', sm: 'calc(100vw - 48px)' },
-            maxWidth: 'none',
-            m: { xs: 1, sm: 3 },
+            ...beAHeroDialogPaperSx,
+            maxHeight: 'min(94vh, 860px)',
+            display: 'flex',
+            flexDirection: 'column',
           },
         }}
       >
-        <DialogTitle sx={{ ...dialogCloseTitleSx, bgcolor: '#4527a0', color: '#fff' }}>
-          <Typography variant="h6" component="span">
-            {editingId ? 'Workout bearbeiten' : 'Neues Workout'}
-          </Typography>
-          <DialogCloseIconButton
-            onClose={closeDialog}
-            sx={{ color: '#fff', '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' } }}
-            iconSx={{ color: '#fff' }}
-          />
+        <DialogTitle
+          sx={{
+            ...dialogCloseTitleSx,
+            background: 'linear-gradient(135deg, #ffffff 0%, #f4f8ff 100%)',
+            borderBottom: '1px solid',
+            borderColor: 'rgba(25, 118, 210, 0.12)',
+            py: 1.5,
+            px: { xs: 2, sm: 3 },
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pr: 4 }}>
+            <BeAHeroLogo size={48} framed showWordmark />
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 700,
+                color: protocolPalette.textSecondary,
+                px: 1,
+                py: 0.25,
+                borderRadius: 99,
+                bgcolor: 'rgba(25, 118, 210, 0.08)',
+              }}
+            >
+              {editingId ? 'Bearbeiten' : 'Neu'}
+            </Typography>
+          </Box>
+          <DialogCloseIconButton onClose={closeDialog} />
         </DialogTitle>
-        <DialogContent sx={{ pt: 2 }}>
+        <DialogContent
+          sx={{
+            pt: 2.5,
+            px: { xs: 2, sm: 3 },
+            pb: 1,
+            overflow: 'auto',
+            flex: 1,
+            bgcolor: protocolPalette.background,
+          }}
+        >
           <TextField
-            label="Name des Workouts"
+            label="Name"
             fullWidth
-            margin="normal"
+            size="small"
+            margin="none"
             value={workoutName}
             onChange={(e) => setWorkoutName(e.target.value)}
             placeholder="z. B. Helden-Runde 10 Min"
+            sx={{ ...heroNameFieldSx, mb: 2, maxWidth: 520 }}
           />
-          {renderMusicDraftFields(
-            'Startmusik',
-            musicDraft.opening,
-            musicDraft.openingSong2,
-            (opening) => setMusicDraft((m) => ({ ...m, opening })),
-            (openingSong2) =>
-              setMusicDraft((m) => ({
-                ...m,
-                openingSong2,
-                opening: {
-                  ...m.opening,
-                  song2: openingSong2 ? m.opening.song2 ?? emptySong() : null,
-                },
-              }))
-          )}
-          <Divider sx={{ my: 2 }} />
-          <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-            Folien: **fett**, *kursiv* · Strg/Cmd+B, I, U
-          </Typography>
-          {renderDraftPhase('warmup')}
-          <Divider sx={{ my: 2 }} />
-          {renderDraftPhase('workout')}
-          <Divider sx={{ my: 2 }} />
-          {renderDraftPhase('cooldown')}
-          <Divider sx={{ my: 2 }} />
-          {renderMusicDraftFields(
-            'Abschlussmusik',
-            musicDraft.closing,
-            musicDraft.closingSong2,
-            (closing) => setMusicDraft((m) => ({ ...m, closing })),
-            (closingSong2) =>
-              setMusicDraft((m) => ({
-                ...m,
-                closingSong2,
-                closing: {
-                  ...m.closing,
-                  song2: closingSong2 ? m.closing.song2 ?? emptySong() : null,
-                },
-              }))
-          )}
+
+          <Box>
+            {(['warmup', 'workout', 'cooldown'] as PhaseKey[]).map((phase) => (
+              <BeAHeroPhaseRow
+                key={phase}
+                phase={phase}
+                value={phaseDraft[phase]}
+                onChange={(patch) => updatePhaseDraft(phase, patch)}
+              />
+            ))}
+          </Box>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={closeDialog}>Abbrechen</Button>
-          <Button variant="contained" onClick={persistDraft}>
+        <DialogActions
+          sx={{
+            px: 3,
+            py: 2,
+            bgcolor: '#fff',
+            borderTop: '1px solid',
+            borderColor: 'divider',
+            gap: 1,
+            justifyContent: 'flex-end',
+          }}
+        >
+          <Button variant="outlined" size="small" onClick={closeDialog} sx={beAHeroOutlinedBtnSx}>
+            Abbrechen
+          </Button>
+          <Button variant="contained" size="small" onClick={persistDraft} sx={beAHeroPrimaryBtnSx}>
             Speichern
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </>
   );
 }

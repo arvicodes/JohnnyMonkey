@@ -30,6 +30,7 @@ import excursionProtocolRoutes from './routes/excursionProtocol';
 import announcementRoutes from './routes/announcements';
 import journeyRoutes from './routes/journey';
 import storySitesRoutes from './routes/storySites';
+import beAHeroWorkoutsRoutes from './routes/beAHeroWorkouts';
 import flashcardRoutes from './routes/flashcards';
 import submissionRoutes from './routes/submissions';
 import fileShareRoutes from './routes/fileShares';
@@ -96,6 +97,7 @@ app.use('/api/excursion-protocol', excursionProtocolRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/journey', journeyRoutes);
 app.use('/api/story-sites', storySitesRoutes);
+app.use('/api/be-a-hero/workouts', beAHeroWorkoutsRoutes);
 
 // Material static files
 app.use('/material', express.static(path.join(__dirname, '../../material')));
