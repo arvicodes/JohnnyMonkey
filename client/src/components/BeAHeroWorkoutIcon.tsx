@@ -1,15 +1,17 @@
 import React from 'react';
 import { Box } from '@mui/material';
+import type { TabataConfig } from '../lib/tabata';
 import { beAHeroWorkoutIconMeta } from '../lib/beAHeroWorkoutIcon';
 
 type BeAHeroWorkoutIconProps = {
   name: string;
+  tabata?: TabataConfig | null;
   size?: number;
 };
 
-export function BeAHeroWorkoutIcon({ name, size = 36 }: BeAHeroWorkoutIconProps) {
-  const { Icon, initials, color } = beAHeroWorkoutIconMeta(name);
-  const iconSize = Math.round(size * 0.52);
+export function BeAHeroWorkoutIcon({ name, tabata, size = 36 }: BeAHeroWorkoutIconProps) {
+  const { Icon, initials, color } = beAHeroWorkoutIconMeta(name, tabata);
+  const iconSize = Math.round(size * 0.58);
   const initialsSize = initials.length > 1 ? size * 0.34 : size * 0.4;
 
   return (

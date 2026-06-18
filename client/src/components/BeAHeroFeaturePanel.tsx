@@ -81,17 +81,25 @@ export function BeAHeroFeatureToggle({
       >
         <Box
           sx={{
-            width: 30,
-            height: 30,
+            width: 32,
+            height: 32,
             borderRadius: 1.25,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             bgcolor: enabled ? theme.main : 'rgba(15, 23, 42, 0.08)',
-            color: enabled ? '#fff' : theme.deep,
+            color: enabled ? '#fff' : theme.main,
             flexShrink: 0,
             boxShadow: enabled ? `0 2px 8px ${theme.main}44` : 'none',
-            '& .MuiSvgIcon-root': { fontSize: 17 },
+            '& .MuiSvgIcon-root': {
+              fontSize: 22,
+              display: 'block',
+              color: 'inherit',
+            },
+            '& svg': {
+              display: 'block',
+              color: 'inherit',
+            },
           }}
         >
           {icon}

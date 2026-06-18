@@ -244,6 +244,7 @@ function migrateFromV1Cards(o: Record<string, unknown>): HeroWorkout | null {
   return {
     id: String(o.id),
     name: String(o.name),
+    equipment: typeof o.equipment === 'string' ? o.equipment : '',
     warmup: emptyHeroPhase(),
     workout: { ...emptyHeroPhase(), explanation },
     cooldown: emptyHeroPhase(),
@@ -260,6 +261,7 @@ function parseWorkout(raw: unknown): HeroWorkout | null {
     return {
       id: o.id,
       name: o.name,
+      equipment: typeof o.equipment === 'string' ? o.equipment : '',
       warmup: normalizePhaseContent(o.warmup),
       workout: normalizePhaseContent(o.workout),
       cooldown: normalizePhaseContent(o.cooldown),
@@ -271,6 +273,7 @@ function parseWorkout(raw: unknown): HeroWorkout | null {
     return {
       id: o.id,
       name: o.name,
+      equipment: typeof o.equipment === 'string' ? o.equipment : '',
       ...migrateLegacyPhases(o),
       createdAt: typeof o.createdAt === 'string' ? o.createdAt : new Date().toISOString(),
     };
@@ -623,6 +626,7 @@ export default function BeAHeroWorkoutsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [workoutName, setWorkoutName] = useState('');
+  const [workoutEquipment, setWorkoutEquipment] = useState('');
   const [phaseDraft, setPhaseDraft] = useState<Record<PhaseKey, HeroPhaseContent>>(() => defaultPhaseDraft());
   const [playIndex, setPlayIndex] = useState(0);
 
@@ -693,6 +697,7 @@ export default function BeAHeroWorkoutsPage() {
   const openNew = () => {
     setEditingId(null);
     setWorkoutName('');
+    setWorkoutEquipment('');
     setPhaseDraft(defaultPhaseDraft());
     setDialogOpen(true);
   };
@@ -700,6 +705,7 @@ export default function BeAHeroWorkoutsPage() {
   const openEdit = (w: HeroWorkout) => {
     setEditingId(w.id);
     setWorkoutName(w.name);
+    setWorkoutEquipment(w.equipment ?? '');
     setPhaseDraft({
       warmup: { ...w.warmup },
       workout: { ...w.workout },
@@ -724,7 +730,13 @@ export default function BeAHeroWorkoutsPage() {
       phaseHasContent(warmup) || phaseHasContent(workout) || phaseHasContent(cooldown);
     if (!hasContent) return;
 
-    const payload = { name, warmup, workout, cooldown };
+    const payload = {
+      name,
+      equipment: workoutEquipment.trim(),
+      warmup,
+      workout,
+      cooldown,
+    };
     if (editingId) {
       setWorkouts((prev) => prev.map((w) => (w.id === editingId ? { ...w, ...payload } : w)));
     } else {
@@ -1053,8 +1065,8 @@ export default function BeAHeroWorkoutsPage() {
                         }}
                         sx={beAHeroListItemSx}
                       >
-                        <BeAHeroWorkoutIcon name={w.name} size={40} />
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <BeAHeroWorkoutIcon name={w.name} tabata={w.workout.tabata} size={40} />
+                        <Box sx={{ flex: 1, minWidth: 0, position: 'relative' }}>
                           <Typography sx={{ fontWeight: 700, color: protocolPalette.heading, lineHeight: 1.3 }}>
                             {w.name}
                           </Typography>
@@ -1066,6 +1078,30 @@ export default function BeAHeroWorkoutsPage() {
                             workout={phaseHasContent(w.workout)}
                             cooldown={phaseHasContent(w.cooldown)}
                           />
+                          {w.equipment?.trim() ? (
+                            <Typography
+                              variant="caption"
+                              aria-hidden
+                              sx={{
+                                position: 'absolute',
+                                left: 0,
+                                right: 0,
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                textAlign: 'center',
+                                fontSize: '0.7rem',
+                                lineHeight: 1.25,
+                                color: 'text.secondary',
+                                letterSpacing: '0.01em',
+                                pointerEvents: 'none',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {w.equipment.trim()}
+                            </Typography>
+                          ) : null}
                         </Box>
                         <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
                           <Tooltip title="Abspielen">
@@ -1168,6 +1204,16 @@ export default function BeAHeroWorkoutsPage() {
             value={workoutName}
             onChange={(e) => setWorkoutName(e.target.value)}
             placeholder="z. B. Helden-Runde 10 Min"
+            sx={{ ...heroNameFieldSx, mb: 1.25, maxWidth: 520 }}
+          />
+          <TextField
+            label="Benötigte Geräte"
+            fullWidth
+            size="small"
+            margin="none"
+            value={workoutEquipment}
+            onChange={(e) => setWorkoutEquipment(e.target.value)}
+            placeholder="z. B. Matte, Hanteln, Boxsack"
             sx={{ ...heroNameFieldSx, mb: 2, maxWidth: 520 }}
           />
 

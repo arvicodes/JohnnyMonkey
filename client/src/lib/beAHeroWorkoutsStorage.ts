@@ -3,6 +3,7 @@ import type { HeroPhaseContent } from '../components/BeAHeroPhaseRow';
 export type BeAHeroWorkout = {
   id: string;
   name: string;
+  equipment?: string;
   warmup: HeroPhaseContent;
   workout: HeroPhaseContent;
   cooldown: HeroPhaseContent;

@@ -1,4 +1,6 @@
+import type { ComponentType } from 'react';
 import type { SvgIconComponent } from '@mui/icons-material';
+import type { SvgIconProps } from '@mui/material/SvgIcon';
 import {
   DirectionsBike,
   DirectionsRun,
@@ -21,17 +23,22 @@ import {
   CircleOutlined,
   Deck,
   AutoAwesome,
+  FormatListNumbered,
 } from '@mui/icons-material';
+import { TabataBoxingBagIcon, TabataPyramidIcon } from '../components/BeAHeroTabataIcons';
+import { isTabataActive, normalizeTabata, type TabataConfig } from './tabata';
+
+export type WorkoutIconComponent = SvgIconComponent | ComponentType<SvgIconProps>;
 
 export type BeAHeroWorkoutIconMeta = {
-  Icon: SvgIconComponent | null;
+  Icon: WorkoutIconComponent | null;
   initials: string;
   color: string;
 };
 
 type IconRule = {
   pattern: RegExp;
-  Icon: SvgIconComponent;
+  Icon: WorkoutIconComponent;
   color: string;
 };
 
@@ -39,9 +46,12 @@ const ICON_TINTS = ['#1976d2', '#ed6c02', '#2e7d32', '#7b1fa2', '#0288d1', '#c62
 
 /** Spezifische Regeln zuerst — nur klare Fitness-/Bewegungsbegriffe (DE/EN). */
 const WORKOUT_ICON_RULES: IconRule[] = [
+  { pattern: /^\d+$/, Icon: FormatListNumbered, color: '#1565c0' },
+  { pattern: /\b(pyramide|pyramid)\b/i, Icon: TabataPyramidIcon, color: '#6a1b9a' },
+  { pattern: /\b(tae[\s-]?bo|thaibo|thai[\s-]?bo)\b/i, Icon: TabataBoxingBagIcon, color: '#c62828' },
+  { pattern: /\b(zirkel|kreis|circle)\b/i, Icon: CircleOutlined, color: '#00838f' },
   { pattern: /\b(kartenlesen|kartelesen|karte.?lesen|orakel|tarot|lenormand|wahrsag)\b/i, Icon: AutoAwesome, color: '#7b1fa2' },
   { pattern: /\b(kartelegen|kartenlegen|karte.?legen|karten.?legen|maumau|mau.?mau|kartenspiel|spielkarten|spielkarte|skat|canasta|uno)\b/i, Icon: Deck, color: '#5e35b1' },
-  { pattern: /\b(zirkel|kreis|circle)\b/i, Icon: CircleOutlined, color: '#00838f' },
   { pattern: /\b(hero|held|superheld|legende|champion|be a hero)\b/i, Icon: EmojiEvents, color: '#1976d2' },
   { pattern: /\b(lauf|jog|run|sprint|marathon|wandern|trail|ausdauerlauf)\b/i, Icon: DirectionsRun, color: '#ed6c02' },
   { pattern: /\b(yoga|pilates|dehn|stretch|meditation|achtsam)\b/i, Icon: SelfImprovement, color: '#7b1fa2' },
@@ -102,10 +112,11 @@ export function beAHeroWorkoutInitials(name: string): string {
   return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
 }
 
-export function beAHeroWorkoutIconMeta(name: string): BeAHeroWorkoutIconMeta {
+export function beAHeroWorkoutIconMeta(name: string, tabata?: TabataConfig | null): BeAHeroWorkoutIconMeta {
   const normalized = normalizeWorkoutName(name);
   const initials = beAHeroWorkoutInitials(name);
   const fallbackColor = ICON_TINTS[hashWorkoutName(normalized || initials) % ICON_TINTS.length];
+  const tabataConfig = tabata ? normalizeTabata(tabata) : null;
 
   if (!normalized) {
     return { Icon: FitnessCenter, initials, color: ICON_TINTS[0] };
@@ -115,6 +126,13 @@ export function beAHeroWorkoutIconMeta(name: string): BeAHeroWorkoutIconMeta {
     if (pattern.test(normalized)) {
       return { Icon, initials, color };
     }
+  }
+
+  if (tabataConfig && isTabataActive(tabataConfig)) {
+    if (tabataConfig.mode === 'pyramid') {
+      return { Icon: TabataPyramidIcon, initials, color: '#6a1b9a' };
+    }
+    return { Icon: TabataBoxingBagIcon, initials, color: '#c62828' };
   }
 
   return { Icon: null, initials, color: fallbackColor };

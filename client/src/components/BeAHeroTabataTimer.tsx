@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Box, IconButton, Stack, Tooltip, Typography } from '@mui/material';
 import { Pause as PauseIcon, PlayArrow as PlayArrowIcon, Replay as ReplayIcon, Stop as StopIcon } from '@mui/icons-material';
 import { formatTabataSeconds, getPyramidSet, type TabataConfig } from '../lib/tabata';
+import { TabataBoxingBagIcon, TabataPyramidIcon } from './BeAHeroTabataIcons';
 
 type TimerPhase = 'idle' | 'work' | 'rest' | 'roundRest' | 'setRest' | 'done';
 
@@ -325,9 +326,16 @@ export function BeAHeroTabataTimer({ config, accentColor, labelColor, borderColo
           textAlign: 'center',
         }}
       >
-        <Typography sx={{ fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.07em', opacity: 0.9, mb: 0.5 }}>
-          {isPyramid ? 'PYRAMIDE' : 'TABATA'} · {phaseLabel}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, mb: 0.5 }}>
+          {isPyramid ? (
+            <TabataPyramidIcon sx={{ fontSize: 18, color: 'inherit', display: 'block' }} />
+          ) : (
+            <TabataBoxingBagIcon sx={{ fontSize: 18, color: 'inherit', display: 'block' }} />
+          )}
+          <Typography sx={{ fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.07em', opacity: 0.9 }}>
+            {isPyramid ? 'PYRAMIDE' : 'TAE BO'} · {phaseLabel}
+          </Typography>
+        </Box>
         <Typography sx={{ fontWeight: 900, fontSize: '3.1rem', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
           {formatTabataSeconds(secondsLeft)}
         </Typography>

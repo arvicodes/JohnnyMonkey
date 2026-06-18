@@ -5,6 +5,8 @@ import {
   FormControl,
   IconButton,
   InputLabel,
+  ListItemIcon,
+  ListItemText,
   MenuItem,
   Select,
   TextField,
@@ -13,6 +15,7 @@ import {
 import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { heroMinimalFieldSx } from '../lib/beAHeroUi';
 import { BeAHeroFeatureBody, type BeAHeroFeatureTheme } from './BeAHeroFeaturePanel';
+import { TabataBoxingBagIcon, TabataPyramidIcon, tabataModeIcon } from './BeAHeroTabataIcons';
 import {
   DEFAULT_PYRAMID_SETS,
   DEFAULT_TABATA,
@@ -54,9 +57,25 @@ export function BeAHeroTabataEditor({ value, onChange, theme }: Props) {
           label="Modus"
           value={value.mode}
           onChange={(e) => onChange({ mode: e.target.value as TabataMode })}
+          renderValue={(mode) => (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: theme.deep }}>
+              {tabataModeIcon(mode, { sx: { fontSize: 22, color: theme.main } })}
+              <span>{mode === 'pyramid' ? 'Pyramide (Sätze)' : 'Tae Bo'}</span>
+            </Box>
+          )}
         >
-          <MenuItem value="interval">Intervall (gleichbleibend)</MenuItem>
-          <MenuItem value="pyramid">Pyramide (Sätze)</MenuItem>
+          <MenuItem value="interval">
+            <ListItemIcon sx={{ minWidth: 32, color: theme.main }}>
+              <TabataBoxingBagIcon sx={{ fontSize: 22 }} />
+            </ListItemIcon>
+            <ListItemText primary="Tae Bo" primaryTypographyProps={{ fontSize: '0.88rem', fontWeight: 700 }} />
+          </MenuItem>
+          <MenuItem value="pyramid">
+            <ListItemIcon sx={{ minWidth: 32, color: theme.main }}>
+              <TabataPyramidIcon sx={{ fontSize: 22 }} />
+            </ListItemIcon>
+            <ListItemText primary="Pyramide (Sätze)" primaryTypographyProps={{ fontSize: '0.88rem', fontWeight: 700 }} />
+          </MenuItem>
         </Select>
       </FormControl>
 

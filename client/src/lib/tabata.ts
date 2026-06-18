@@ -148,7 +148,7 @@ export function describeTabataConfig(config: TabataConfig): string {
     return `Pyramide · ${setCount} Sätze · ${t.roundsPerSet}×${t.exercisesPerSet} Üb.`;
   }
   const roundPause = t.roundRestSeconds > 0 ? ` · ${t.roundRestSeconds}s Rdn.` : '';
-  return `${t.workSeconds}s · ${t.restSeconds}s Üb.${roundPause} · ${t.exercisesPerRound} Üb. · ${t.rounds} Rdn.`;
+  return `Tae Bo · ${t.workSeconds}s · ${t.restSeconds}s Üb.${roundPause} · ${t.exercisesPerRound} Üb. · ${t.rounds} Rdn.`;
 }
 
 export function formatTabataSeconds(total: number): string {

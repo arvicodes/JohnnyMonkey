@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, TextField, Typography } from '@mui/material';
-import { MusicNote as MusicNoteIcon, Timer as TimerIcon, Casino as CasinoIcon } from '@mui/icons-material';
+import { MusicNote as MusicNoteIcon, Casino as CasinoIcon } from '@mui/icons-material';
 import {
   beAHeroPhaseCardSx,
   beAHeroPhaseStyle,
@@ -8,6 +8,7 @@ import {
 } from '../lib/beAHeroUi';
 import { DEFAULT_TABATA, describeTabataConfig, type TabataConfig } from '../lib/tabata';
 import { BeAHeroTabataEditor } from './BeAHeroTabataEditor';
+import { tabataModeIcon } from './BeAHeroTabataIcons';
 import { emptyRandomConfig, type BeAHeroRandomConfig } from '../lib/beAHeroRandom';
 import { BeAHeroRandomCardsEditor } from './BeAHeroRandomCards';
 import {
@@ -127,9 +128,9 @@ export function BeAHeroPhaseRow({ phase, value, onChange }: Props) {
             >
               <BeAHeroFeatureToggle
                 theme={BE_A_HERO_TABATA_THEME}
-                icon={<TimerIcon />}
+                icon={tabataModeIcon(tabata.enabled ? tabata.mode : 'interval')}
                 title="Tabata-Timer"
-                subtitle={tabata.enabled ? describeTabataConfig(tabata) : 'Intervall-Timer'}
+                subtitle={tabata.enabled ? describeTabataConfig(tabata) : 'Tae Bo · Pyramide'}
                 enabled={!!tabata.enabled}
                 onToggle={(enabled) =>
                   onChange({
