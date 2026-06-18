@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -30,11 +30,11 @@ import {
 } from '@mui/icons-material';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
 import { HeroSlideRichBody } from '../components/HeroSlideRichBody';
-import { parseSpotifyUrl } from '../lib/spotify';
+import { parseSpotifyUrl, spotifyAutoplayEmbedUrl, spotifyPlayEmbedHeight } from '../lib/spotify';
 import { finalizeTabata, isTabataActive, normalizeTabata } from '../lib/tabata';
-import { finalizeCardsRandom, isCardsRandomActive, normalizeCardsRandom } from '../lib/beAHeroRandom';
+import { finalizeRandom, isRandomActive, normalizeRandom } from '../lib/beAHeroRandom';
 import { BeAHeroTabataTimer } from '../components/BeAHeroTabataTimer';
-import { BeAHeroRandomCardsPlay } from '../components/BeAHeroRandomCards';
+import { BeAHeroRandomPlay } from '../components/BeAHeroRandomCards';
 import { BeAHeroLogo, BeAHeroWorkoutPhaseDots } from '../components/BeAHeroLogo';
 import { BeAHeroWorkoutIcon } from '../components/BeAHeroWorkoutIcon';
 import {
@@ -122,7 +122,7 @@ function normalizePhaseContent(raw: unknown): HeroPhaseContent {
     songAudioUrl: typeof o.songAudioUrl === 'string' ? o.songAudioUrl : '',
     explanation: typeof o.explanation === 'string' ? o.explanation : '',
     tabata: normalizeTabata(o.tabata),
-    random: normalizeCardsRandom(o.random),
+    random: normalizeRandom(o.random),
   };
 }
 
@@ -131,7 +131,7 @@ function phaseHasSong(phase: HeroPhaseContent): boolean {
 }
 
 function phaseHasContent(phase: HeroPhaseContent): boolean {
-  return phaseHasSong(phase) || !!phase.explanation.trim() || isTabataActive(phase.tabata) || isCardsRandomActive(phase.random);
+  return phaseHasSong(phase) || !!phase.explanation.trim() || isTabataActive(phase.tabata) || isRandomActive(phase.random);
 }
 
 function finalizePhase(phase: HeroPhaseContent): HeroPhaseContent {
@@ -140,7 +140,7 @@ function finalizePhase(phase: HeroPhaseContent): HeroPhaseContent {
     songAudioUrl: phase.songAudioUrl.trim(),
     explanation: phase.explanation.trim(),
     tabata: finalizeTabata(phase.tabata),
-    random: finalizeCardsRandom(phase.random),
+    random: finalizeRandom(phase.random),
   };
 }
 
@@ -322,45 +322,74 @@ function HeroPhaseSlide({
   const spotify = parseSpotifyUrl(audioUrl);
   const hasSong = !!(songTitle || audioUrl);
   const showTabata = phase === 'workout' && isTabataActive(content.tabata);
-  const showRandomCards = phase === 'workout' && isCardsRandomActive(content.random);
+  const showRandom = phase === 'workout' && isRandomActive(content.random);
   const tabataConfig = content.tabata!;
   const randomConfig = content.random!;
 
-  useEffect(
-    () => () => {
-      audioRef.current?.pause();
-      audioRef.current = null;
-    },
-    []
-  );
+  const tryPlayAudio = useCallback(() => {
+    if (!audioUrl || spotify) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+    void audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+  }, [audioUrl, spotify]);
 
-  const togglePlay = () => {
-    if (!audioUrl) return;
-    if (playing && audioRef.current) {
-      audioRef.current.pause();
+  useLayoutEffect(() => {
+    if (!audioUrl || spotify) {
       setPlaying(false);
       return;
     }
-    audioRef.current?.pause();
-    const audio = new Audio(audioUrl);
-    audioRef.current = audio;
-    audio.onended = () => setPlaying(false);
-    audio.onerror = () => setPlaying(false);
-    audio
-      .play()
-      .then(() => setPlaying(true))
-      .catch(() => setPlaying(false));
+    tryPlayAudio();
+  }, [audioUrl, spotify, tryPlayAudio]);
+
+  useEffect(() => {
+    if (!audioUrl || spotify) return;
+
+    const onKeyDown = () => {
+      if (!playing) tryPlayAudio();
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [audioUrl, spotify, playing, tryPlayAudio]);
+
+  const togglePlay = () => {
+    if (!audioUrl || spotify) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playing) {
+      audio.pause();
+      setPlaying(false);
+      return;
+    }
+    tryPlayAudio();
   };
 
   const stopPlay = () => {
-    if (!audioRef.current) return;
-    audioRef.current.pause();
-    audioRef.current.currentTime = 0;
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.pause();
+    audio.currentTime = 0;
     setPlaying(false);
   };
 
   return (
     <Paper elevation={0} sx={beAHeroPlaySlideCardSx}>
+      {audioUrl && !spotify ? (
+        <audio
+          ref={audioRef}
+          src={audioUrl}
+          autoPlay
+          playsInline
+          preload="auto"
+          onLoadedData={tryPlayAudio}
+          onCanPlayThrough={tryPlayAudio}
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onEnded={() => setPlaying(false)}
+          onError={() => setPlaying(false)}
+          style={{ display: 'none' }}
+        />
+      ) : null}
       <Box sx={beAHeroPlaySlideHeaderSx(phase)}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1.25 }}>
           <Box sx={beAHeroPhaseChipSx(phase, true)}>{PHASE_LABELS[phase]}</Box>
@@ -397,8 +426,8 @@ function HeroPhaseSlide({
           <Box
             sx={{
               flex: '0 0 auto',
-              width: { xs: '100%', sm: 240 },
-              p: { xs: 1.5, sm: 1.75 },
+              width: { xs: '100%', sm: 300 },
+              p: { xs: 1.15, sm: 1.5 },
               bgcolor: '#fafbfc',
               borderBottom: { xs: '1px solid', sm: 'none' },
               borderRight: { sm: '1px solid' },
@@ -415,23 +444,35 @@ function HeroPhaseSlide({
                   bgcolor: 'rgba(255,255,255,0.72)',
                 }}
               >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, px: 1.25, pt: 0.85, pb: 0.5 }}>
-                  <MusicNoteIcon sx={{ fontSize: 15, color: style.accentMain }} />
+                {songTitle ? (
                   <Typography
                     variant="caption"
-                    sx={{ fontWeight: 700, color: style.labelColor, fontSize: '0.62rem', letterSpacing: '0.06em' }}
+                    sx={{
+                      display: 'block',
+                      px: 1.15,
+                      pt: 0.75,
+                      pb: 0.45,
+                      fontWeight: 700,
+                      color: style.labelColor,
+                      fontSize: '0.72rem',
+                      lineHeight: 1.25,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
                   >
-                    MUSIK · SPOTIFY
+                    {songTitle}
                   </Typography>
-                </Box>
+                ) : null}
                 <Box
                   component="iframe"
+                  key={spotifyAutoplayEmbedUrl(spotify.embedUrl)}
                   title={songTitle || 'Spotify'}
-                  src={spotify.embedUrl}
-                  height={spotify.type === 'track' || spotify.type === 'episode' ? 152 : 352}
+                  src={spotifyAutoplayEmbedUrl(spotify.embedUrl)}
+                  height={spotifyPlayEmbedHeight(spotify.type)}
                   allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                  loading="lazy"
-                  sx={{ display: 'block', width: '100%', border: 0 }}
+                  loading="eager"
+                  sx={{ display: 'block', width: '100%', minHeight: spotifyPlayEmbedHeight(spotify.type), border: 0 }}
                 />
               </Box>
             ) : (
@@ -519,18 +560,18 @@ function HeroPhaseSlide({
         <Box sx={{ flex: 1, minWidth: 0, px: { xs: 2, sm: 2.75 }, py: { xs: 2.25, sm: 2.75 }, bgcolor: '#fff' }}>
           {explanation ? (
             <HeroSlideRichBody source={explanation} instruction />
-          ) : !hasSong && !showTabata && !showRandomCards ? (
+          ) : !hasSong && !showTabata && !showRandom ? (
             <Typography color="text.secondary" sx={{ fontSize: '0.92rem', textAlign: 'center', py: 1 }}>
               Noch kein Inhalt für {PHASE_LABELS[phase]}.
             </Typography>
           ) : null}
         </Box>
 
-        {showRandomCards ? (
+        {showRandom ? (
           <Box
             sx={{
               flex: '0 0 auto',
-              width: { xs: '100%', sm: 300 },
+              width: { xs: '100%', sm: 380 },
               p: { xs: 1.5, sm: 1.75 },
               bgcolor: '#fafbfc',
               borderTop: { xs: '1px solid', sm: 'none' },
@@ -539,7 +580,7 @@ function HeroPhaseSlide({
               order: { xs: 4, sm: 0 },
             }}
           >
-            <BeAHeroRandomCardsPlay
+            <BeAHeroRandomPlay
               config={randomConfig}
               accentColor={style.accentMain}
               labelColor={style.labelColor}
@@ -634,6 +675,12 @@ export default function BeAHeroWorkoutsPage() {
       window.alert('Dieses Workout hat noch keinen Inhalt.');
       return;
     }
+    // Autoplay-Freigabe innerhalb des Klick-Gesten-Kontexts (Browser-Richtlinie)
+    const unlock = document.createElement('audio');
+    unlock.volume = 0;
+    unlock.src =
+      'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+    void unlock.play().catch(() => {});
     setPlayingWorkoutId(id);
     setPlayIndex(0);
   };
@@ -786,7 +833,7 @@ export default function BeAHeroWorkoutsPage() {
           sx={{
             flex: 1,
             width: '100%',
-            maxWidth: 1200,
+            maxWidth: 1400,
             mx: 'auto',
             display: 'flex',
             flexDirection: 'column',

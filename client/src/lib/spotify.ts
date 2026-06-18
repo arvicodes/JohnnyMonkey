@@ -24,6 +24,30 @@ const SPOTIFY_TYPES: SpotifyResourceType[] = [
 const buildEmbedUrl = (type: SpotifyResourceType, id: string) =>
   `https://open.spotify.com/embed/${type}/${id}`;
 
+/** Kompakte Embed-Höhe — z. B. Listen-Vorschau. */
+export const SPOTIFY_COMPACT_EMBED_HEIGHT = 80;
+
+/** Standard-Embed mit Cover (Track/Episode). */
+export const SPOTIFY_STANDARD_EMBED_HEIGHT = 152;
+
+/** Play-Modus: höher als kompakt, aber ohne riesige Playlist-Ansicht. */
+export function spotifyPlayEmbedHeight(type: SpotifyResourceType): number {
+  return type === 'track' || type === 'episode'
+    ? SPOTIFY_STANDARD_EMBED_HEIGHT
+    : 232;
+}
+
+/** Embed-URL mit Autoplay (Spotify-Parameter). */
+export function spotifyAutoplayEmbedUrl(embedUrl: string): string {
+  try {
+    const url = new URL(embedUrl);
+    url.searchParams.set('autoplay', 'true');
+    return url.toString();
+  } catch {
+    return embedUrl.includes('?') ? `${embedUrl}&autoplay=true` : `${embedUrl}?autoplay=true`;
+  }
+}
+
 /**
  * Erkennt Spotify-Links (open.spotify.com inkl. /intl-xx/ Präfix, mit ?si=… Parametern)
  * und Spotify-URIs (spotify:track:ID) und liefert die offizielle Embed-URL zurück.

@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, IconButton, Stack, Tooltip, Typography } from '@mui/material';
 import { Pause as PauseIcon, PlayArrow as PlayArrowIcon, Replay as ReplayIcon, Stop as StopIcon } from '@mui/icons-material';
-import { formatTabataSeconds, type TabataConfig } from '../lib/tabata';
+import { formatTabataSeconds, getPyramidSet, type TabataConfig } from '../lib/tabata';
 
-type TimerPhase = 'idle' | 'work' | 'rest' | 'done';
+type TimerPhase = 'idle' | 'work' | 'rest' | 'roundRest' | 'setRest' | 'done';
 
 type Props = {
   config: TabataConfig;
@@ -21,11 +21,26 @@ const iconBtnSx = (borderColor: string) => ({
 });
 
 export function BeAHeroTabataTimer({ config, accentColor, labelColor, borderColor }: Props) {
+  const isPyramid = config.mode === 'pyramid';
   const [phase, setPhase] = useState<TimerPhase>('idle');
+  const [setIndex, setSetIndex] = useState(1);
   const [round, setRound] = useState(1);
-  const [secondsLeft, setSecondsLeft] = useState(config.workSeconds);
+  const [exercise, setExercise] = useState(1);
+  const [secondsLeft, setSecondsLeft] = useState(
+    isPyramid ? getPyramidSet(config, 1).workSeconds : config.workSeconds,
+  );
   const [running, setRunning] = useState(false);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const exerciseTotal = isPyramid ? config.exercisesPerSet : config.exercisesPerRound;
+  const roundTotal = isPyramid ? config.roundsPerSet : config.rounds;
+  const setTotal = config.pyramidSets.length;
+
+  const activeSet = useMemo(() => getPyramidSet(config, setIndex), [config, setIndex]);
+
+  const workSeconds = isPyramid ? activeSet.workSeconds : config.workSeconds;
+  const restSeconds = isPyramid ? activeSet.restSeconds : config.restSeconds;
+  const roundRestSeconds = isPyramid ? config.setRoundRestSeconds : config.roundRestSeconds;
 
   const clearTick = useCallback(() => {
     if (tickRef.current) {
@@ -38,11 +53,13 @@ export function BeAHeroTabataTimer({ config, accentColor, labelColor, borderColo
     clearTick();
     setRunning(false);
     setPhase('idle');
+    setSetIndex(1);
     setRound(1);
-    setSecondsLeft(config.workSeconds);
-  }, [clearTick, config.workSeconds]);
+    setExercise(1);
+    setSecondsLeft(isPyramid ? getPyramidSet(config, 1).workSeconds : config.workSeconds);
+  }, [clearTick, config, isPyramid]);
 
-  useEffect(() => reset, [config.workSeconds, config.restSeconds, config.rounds, reset]);
+  useEffect(() => reset(), [config, reset]);
 
   useEffect(() => () => clearTick(), [clearTick]);
 
@@ -61,56 +78,228 @@ export function BeAHeroTabataTimer({ config, accentColor, labelColor, borderColo
   useEffect(() => {
     if (!running || secondsLeft > 0) return;
 
+    if (isPyramid) {
+      const isLastExercise = exercise >= exerciseTotal;
+      const isLastRound = round >= roundTotal;
+      const isLastSet = setIndex >= setTotal;
+
+      if (phase === 'work') {
+        if (isLastExercise && isLastRound && isLastSet) {
+          setPhase('done');
+          setRunning(false);
+          setSecondsLeft(0);
+          return;
+        }
+
+        if (isLastExercise && isLastRound && setIndex < setTotal) {
+          if (config.setRestSeconds > 0) {
+            setPhase('setRest');
+            setSecondsLeft(config.setRestSeconds);
+            return;
+          }
+          setSetIndex(setIndex + 1);
+          setRound(1);
+          setExercise(1);
+          setPhase('work');
+          setSecondsLeft(getPyramidSet(config, setIndex + 1).workSeconds);
+          return;
+        }
+
+        if (isLastExercise && round < roundTotal) {
+          if (roundRestSeconds > 0) {
+            setPhase('roundRest');
+            setSecondsLeft(roundRestSeconds);
+            return;
+          }
+          setRound(round + 1);
+          setExercise(1);
+          setPhase('work');
+          setSecondsLeft(workSeconds);
+          return;
+        }
+
+        if (restSeconds > 0) {
+          setPhase('rest');
+          setSecondsLeft(restSeconds);
+          return;
+        }
+
+        setExercise(exercise + 1);
+        setPhase('work');
+        setSecondsLeft(workSeconds);
+        return;
+      }
+
+      if (phase === 'rest') {
+        setExercise(exercise + 1);
+        setPhase('work');
+        setSecondsLeft(workSeconds);
+        return;
+      }
+
+      if (phase === 'roundRest') {
+        setRound(round + 1);
+        setExercise(1);
+        setPhase('work');
+        setSecondsLeft(workSeconds);
+        return;
+      }
+
+      if (phase === 'setRest') {
+        setSetIndex(setIndex + 1);
+        setRound(1);
+        setExercise(1);
+        setPhase('work');
+        setSecondsLeft(getPyramidSet(config, setIndex + 1).workSeconds);
+      }
+      return;
+    }
+
     if (phase === 'work') {
-      if (round >= config.rounds) {
+      if (round >= roundTotal && exercise >= exerciseTotal) {
         setPhase('done');
         setRunning(false);
         setSecondsLeft(0);
         return;
       }
-      if (config.restSeconds > 0) {
-        setPhase('rest');
-        setSecondsLeft(config.restSeconds);
-      } else {
+
+      const isLastExerciseInRound = exercise >= exerciseTotal;
+
+      if (isLastExerciseInRound && round < roundTotal) {
+        if (roundRestSeconds > 0) {
+          setPhase('roundRest');
+          setSecondsLeft(roundRestSeconds);
+          return;
+        }
+        setRound(round + 1);
+        setExercise(1);
         setPhase('work');
-        setRound((r) => r + 1);
-        setSecondsLeft(config.workSeconds);
+        setSecondsLeft(workSeconds);
+        return;
       }
+
+      if (restSeconds > 0) {
+        setPhase('rest');
+        setSecondsLeft(restSeconds);
+        return;
+      }
+
+      setExercise(exercise + 1);
+      setPhase('work');
+      setSecondsLeft(workSeconds);
       return;
     }
 
     if (phase === 'rest') {
+      setExercise(exercise + 1);
       setPhase('work');
-      setRound((r) => r + 1);
-      setSecondsLeft(config.workSeconds);
+      setSecondsLeft(workSeconds);
+      return;
     }
-  }, [running, secondsLeft, phase, round, config]);
 
-  const start = () => {
-    if (phase === 'done') reset();
+    if (phase === 'roundRest') {
+      setRound(round + 1);
+      setExercise(1);
+      setPhase('work');
+      setSecondsLeft(workSeconds);
+    }
+  }, [
+    running,
+    secondsLeft,
+    phase,
+    setIndex,
+    round,
+    exercise,
+    config,
+    isPyramid,
+    exerciseTotal,
+    roundTotal,
+    setTotal,
+    workSeconds,
+    restSeconds,
+    roundRestSeconds,
+  ]);
+
+  const start = useCallback(() => {
+    const initialWork = isPyramid ? getPyramidSet(config, 1).workSeconds : config.workSeconds;
+    if (phase === 'done') {
+      clearTick();
+      setPhase('work');
+      setSetIndex(1);
+      setRound(1);
+      setExercise(1);
+      setSecondsLeft(initialWork);
+      setRunning(true);
+      return;
+    }
     if (phase === 'idle') {
       setPhase('work');
+      setSetIndex(1);
       setRound(1);
-      setSecondsLeft(config.workSeconds);
+      setExercise(1);
+      setSecondsLeft(initialWork);
     }
     setRunning(true);
-  };
+  }, [phase, clearTick, config, isPyramid]);
 
-  const pause = () => setRunning(false);
+  const pause = useCallback(() => setRunning(false), []);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
+
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      const tag = target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) return;
+
+      if (running) return;
+
+      e.preventDefault();
+      start();
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [running, start]);
 
   const phaseLabel =
-    phase === 'work' ? 'ARBEIT' : phase === 'rest' ? 'PAUSE' : phase === 'done' ? 'FERTIG' : 'BEREIT';
+    phase === 'work'
+      ? isPyramid
+        ? 'BELASTUNG'
+        : 'ARBEIT'
+      : phase === 'rest'
+        ? isPyramid
+          ? 'WECHSEL'
+          : 'PAUSE · ÜBUNG'
+        : phase === 'roundRest'
+          ? 'PAUSE · RUNDE'
+          : phase === 'setRest'
+            ? 'PAUSE · SATZ'
+            : phase === 'done'
+              ? 'FERTIG'
+              : 'BEREIT';
 
   const phaseBg =
     phase === 'work'
       ? accentColor
-      : phase === 'rest'
-        ? 'rgba(15, 23, 42, 0.12)'
+      : phase === 'rest' || phase === 'roundRest' || phase === 'setRest'
+        ? phase === 'setRest'
+          ? 'rgba(25, 118, 210, 0.22)'
+          : phase === 'roundRest'
+            ? 'rgba(25, 118, 210, 0.18)'
+            : 'rgba(15, 23, 42, 0.12)'
         : phase === 'done'
           ? 'rgba(46, 125, 50, 0.85)'
           : 'rgba(15, 23, 42, 0.06)';
 
   const phaseTextColor = phase === 'work' || phase === 'done' ? '#fff' : labelColor;
+
+  const timingHint = isPyramid
+    ? `${workSeconds}s Belastung · ${restSeconds}s Wechsel`
+    : `${workSeconds}s Arbeit · ${restSeconds}s Üb.${
+        roundRestSeconds > 0 ? ` · ${roundRestSeconds}s Rdn.` : ''
+      }`;
 
   return (
     <Box
@@ -137,16 +326,25 @@ export function BeAHeroTabataTimer({ config, accentColor, labelColor, borderColo
         }}
       >
         <Typography sx={{ fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.07em', opacity: 0.9, mb: 0.5 }}>
-          TABATA · {phaseLabel}
+          {isPyramid ? 'PYRAMIDE' : 'TABATA'} · {phaseLabel}
         </Typography>
         <Typography sx={{ fontWeight: 900, fontSize: '3.1rem', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
           {formatTabataSeconds(secondsLeft)}
         </Typography>
-        <Typography sx={{ mt: 0.75, fontSize: '0.82rem', fontWeight: 700, opacity: 0.92 }}>
-          {Math.min(round, config.rounds)} / {config.rounds}
+        {isPyramid ? (
+          <Typography sx={{ mt: 0.75, fontSize: '0.82rem', fontWeight: 700, opacity: 0.92 }}>
+            Satz {Math.min(setIndex, setTotal)} / {setTotal}
+          </Typography>
+        ) : null}
+        <Typography sx={{ mt: isPyramid ? 0.25 : 0.75, fontSize: '0.82rem', fontWeight: 700, opacity: 0.92 }}>
+          Übung {Math.min(exercise, exerciseTotal)} / {exerciseTotal}
+        </Typography>
+        <Typography sx={{ mt: 0.25, fontSize: '0.78rem', fontWeight: 700, opacity: 0.88 }}>
+          Runde {Math.min(round, roundTotal)} / {roundTotal}
         </Typography>
         <Typography variant="caption" sx={{ display: 'block', mt: 0.35, fontSize: '0.68rem', opacity: 0.8 }}>
-          {config.workSeconds}s · {config.restSeconds}s
+          {timingHint}
+          {phase === 'idle' ? ' · Enter zum Starten' : ''}
         </Typography>
       </Box>
 

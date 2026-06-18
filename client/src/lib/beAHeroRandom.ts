@@ -1,10 +1,10 @@
-export type BeAHeroRandomKind = 'cards';
+export type BeAHeroRandomKind = 'cards' | 'numbers';
 
 export type BeAHeroSuitKey = 'hearts' | 'diamonds' | 'clubs' | 'spades';
 
 export type BeAHeroSuitExercises = Record<BeAHeroSuitKey, string>;
 
-export type BeAHeroCardsRandomConfig = {
+export type BeAHeroRandomConfig = {
   enabled: boolean;
   kind: BeAHeroRandomKind;
   rankMin: number;
@@ -17,9 +17,15 @@ export type BeAHeroCardsRandomConfig = {
   jokerValue: number;
   jokerLabel: string;
   suitExercises: BeAHeroSuitExercises;
+  numberMin: number;
+  numberMax: number;
+  numberLabel: string;
+  /** 0 = unbegrenzt, >0 = Ende nach N Zügen */
+  drawLimit: number;
 };
 
-export type BeAHeroRandomConfig = BeAHeroCardsRandomConfig;
+/** @deprecated Alias */
+export type BeAHeroCardsRandomConfig = BeAHeroRandomConfig;
 
 export type HeroPlayingCardKind = 'number' | 'picture' | 'ace' | 'joker';
 
@@ -51,17 +57,44 @@ export const DEFAULT_SUIT_EXERCISES: BeAHeroSuitExercises = {
   spades: 'Plankwalks',
 };
 
-export const DEFAULT_CARDS_RANDOM: BeAHeroCardsRandomConfig = {
+export const EMPTY_SUIT_EXERCISES: BeAHeroSuitExercises = {
+  hearts: '',
+  diamonds: '',
+  clubs: '',
+  spades: '',
+};
+
+/** Neutrale Startwerte — nichts vorkonfiguriert, Nutzer legt alles selbst fest. */
+export const EMPTY_RANDOM: BeAHeroRandomConfig = {
   enabled: false,
   kind: 'cards',
+  rankMin: 2,
+  rankMax: 0,
+  includePictureCards: false,
+  includeAces: false,
+  jokerCount: 0,
+  pictureValue: 10,
+  aceValue: 15,
+  jokerValue: 20,
+  jokerLabel: '',
+  suitExercises: { ...EMPTY_SUIT_EXERCISES },
+  numberMin: 1,
+  numberMax: 0,
+  numberLabel: '',
+  drawLimit: 0,
+};
+
+/** @deprecated */
+export const EMPTY_CARDS_RANDOM = EMPTY_RANDOM;
+
+/** Fallback nur für ältere Datensätze ohne gespeicherte Zufall-Konfiguration. */
+export const DEFAULT_CARDS_RANDOM: BeAHeroRandomConfig = {
+  ...EMPTY_RANDOM,
   rankMin: 7,
   rankMax: 10,
   includePictureCards: true,
   includeAces: true,
   jokerCount: 1,
-  pictureValue: 10,
-  aceValue: 15,
-  jokerValue: 20,
   jokerLabel: 'Burpees',
   suitExercises: { ...DEFAULT_SUIT_EXERCISES },
 };
@@ -76,7 +109,7 @@ function clampInt(value: unknown, min: number, max: number, fallback: number): n
 }
 
 function normalizeSuitExercises(raw: unknown): BeAHeroSuitExercises {
-  const base = { ...DEFAULT_SUIT_EXERCISES };
+  const base = { ...EMPTY_SUIT_EXERCISES };
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return base;
   const o = raw as Record<string, unknown>;
   for (const suit of SUITS) {
@@ -86,45 +119,95 @@ function normalizeSuitExercises(raw: unknown): BeAHeroSuitExercises {
   return base;
 }
 
-export function normalizeCardsRandom(raw: unknown): BeAHeroCardsRandomConfig {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ...DEFAULT_CARDS_RANDOM };
+function parseKind(raw: unknown): BeAHeroRandomKind {
+  return raw === 'numbers' ? 'numbers' : 'cards';
+}
+
+export function normalizeRandom(raw: unknown): BeAHeroRandomConfig {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return emptyRandomConfig();
   const o = raw as Record<string, unknown>;
-  const rankMin = clampInt(o.rankMin, 2, 10, DEFAULT_CARDS_RANDOM.rankMin);
-  const rankMax = clampInt(o.rankMax, rankMin, 10, DEFAULT_CARDS_RANDOM.rankMax);
+  const kind = parseKind(o.kind);
+  const rankMin = clampInt(o.rankMin, 2, 10, EMPTY_RANDOM.rankMin);
+  const rankMax = clampInt(o.rankMax, 0, 10, EMPTY_RANDOM.rankMax);
+  const numberMin = clampInt(o.numberMin, 1, 999, EMPTY_RANDOM.numberMin);
+  const numberMax = clampInt(o.numberMax, 0, 999, EMPTY_RANDOM.numberMax);
   return {
     enabled: !!o.enabled,
-    kind: 'cards',
+    kind,
     rankMin,
     rankMax,
-    includePictureCards: o.includePictureCards !== false,
-    includeAces: o.includeAces !== false,
-    jokerCount: clampInt(o.jokerCount, 0, 4, DEFAULT_CARDS_RANDOM.jokerCount),
-    pictureValue: clampInt(o.pictureValue, 1, 99, DEFAULT_CARDS_RANDOM.pictureValue),
-    aceValue: clampInt(o.aceValue, 1, 99, DEFAULT_CARDS_RANDOM.aceValue),
-    jokerValue: clampInt(o.jokerValue, 1, 99, DEFAULT_CARDS_RANDOM.jokerValue),
-    jokerLabel: typeof o.jokerLabel === 'string' && o.jokerLabel.trim() ? o.jokerLabel.trim() : DEFAULT_CARDS_RANDOM.jokerLabel,
+    includePictureCards: o.includePictureCards === true,
+    includeAces: o.includeAces === true,
+    jokerCount: clampInt(o.jokerCount, 0, 4, 0),
+    pictureValue: clampInt(o.pictureValue, 1, 99, EMPTY_RANDOM.pictureValue),
+    aceValue: clampInt(o.aceValue, 1, 99, EMPTY_RANDOM.aceValue),
+    jokerValue: clampInt(o.jokerValue, 1, 99, EMPTY_RANDOM.jokerValue),
+    jokerLabel: typeof o.jokerLabel === 'string' ? o.jokerLabel.trim() : '',
     suitExercises: normalizeSuitExercises(o.suitExercises),
+    numberMin,
+    numberMax,
+    numberLabel: typeof o.numberLabel === 'string' ? o.numberLabel.trim() : '',
+    drawLimit: clampInt(o.drawLimit, 0, 999, 0),
   };
 }
 
-export function finalizeCardsRandom(config: BeAHeroCardsRandomConfig | undefined): BeAHeroCardsRandomConfig {
-  return normalizeCardsRandom(config);
+/** @deprecated */
+export const normalizeCardsRandom = normalizeRandom;
+
+export function finalizeRandom(config: BeAHeroRandomConfig | undefined): BeAHeroRandomConfig {
+  return normalizeRandom(config);
 }
 
-export function isCardsRandomActive(config: BeAHeroCardsRandomConfig | undefined): boolean {
-  const c = normalizeCardsRandom(config);
-  return c.enabled && countCardsInDeck(c) > 0;
+/** @deprecated */
+export const finalizeCardsRandom = finalizeRandom;
+
+export function isNumbersRandomReady(config: BeAHeroRandomConfig): boolean {
+  const c = normalizeRandom(config);
+  return c.kind === 'numbers' && c.numberMax >= c.numberMin && c.numberMin >= 1;
 }
 
-export function countCardsInDeck(config: BeAHeroCardsRandomConfig): number {
-  const c = normalizeCardsRandom(config);
-  const numberCards = 4 * Math.max(0, c.rankMax - c.rankMin + 1);
+export function isRandomActive(config: BeAHeroRandomConfig | undefined): boolean {
+  const c = normalizeRandom(config);
+  if (!c.enabled) return false;
+  if (c.kind === 'numbers') return isNumbersRandomReady(c);
+  return countCardsInDeck(c) > 0;
+}
+
+/** @deprecated */
+export const isCardsRandomActive = (config: BeAHeroRandomConfig | undefined) => {
+  const c = normalizeRandom(config);
+  return c.enabled && c.kind === 'cards' && countCardsInDeck(c) > 0;
+};
+
+export function countCardsInDeck(config: BeAHeroRandomConfig): number {
+  const c = normalizeRandom(config);
+  const numberCards =
+    c.rankMax >= c.rankMin && c.rankMin >= 2 ? 4 * (c.rankMax - c.rankMin + 1) : 0;
   const pictureCards = c.includePictureCards ? 12 : 0;
   const aces = c.includeAces ? 4 : 0;
   return numberCards + pictureCards + aces + c.jokerCount;
 }
 
-function repsLabelForCard(card: Omit<HeroPlayingCard, 'repsLabel'>, config: BeAHeroCardsRandomConfig): string {
+/** null = unbegrenzt */
+export function effectiveDrawLimit(config: BeAHeroRandomConfig): number | null {
+  const c = normalizeRandom(config);
+  return c.drawLimit > 0 ? c.drawLimit : null;
+}
+
+export function describeDrawLimit(config: BeAHeroRandomConfig, unit: 'Karte' | 'Zug' = 'Karte'): string {
+  const limit = effectiveDrawLimit(config);
+  if (!limit) return '';
+  const plural = limit === 1 ? unit : unit === 'Zug' ? 'Züge' : 'Karten';
+  return `Ende nach ${limit} ${plural}`;
+}
+
+export function rollRandomNumber(min: number, max: number): number {
+  const lo = Math.min(min, max);
+  const hi = Math.max(min, max);
+  return lo + Math.floor(Math.random() * (hi - lo + 1));
+}
+
+function repsLabelForCard(card: Omit<HeroPlayingCard, 'repsLabel'>, config: BeAHeroRandomConfig): string {
   if (card.kind === 'joker') {
     return `${card.reps} ${config.jokerLabel}`.trim();
   }
@@ -134,15 +217,16 @@ function repsLabelForCard(card: Omit<HeroPlayingCard, 'repsLabel'>, config: BeAH
   return String(card.reps);
 }
 
-export function buildPlayingDeck(config: BeAHeroCardsRandomConfig): HeroPlayingCard[] {
-  const c = normalizeCardsRandom(config);
+export function buildPlayingDeck(config: BeAHeroRandomConfig): HeroPlayingCard[] {
+  const c = normalizeRandom(config);
   const cards: HeroPlayingCard[] = [];
 
   for (const suit of SUITS) {
     const meta = SUIT_META[suit];
-    const exercise = c.suitExercises[suit]?.trim() || DEFAULT_SUIT_EXERCISES[suit];
+    const exercise = c.suitExercises[suit]?.trim() || '';
 
-    for (let rank = c.rankMin; rank <= c.rankMax; rank += 1) {
+    if (c.rankMax >= c.rankMin && c.rankMin >= 2) {
+      for (let rank = c.rankMin; rank <= c.rankMax; rank += 1) {
       const rankLabel = String(rank);
       cards.push({
         id: `${suit}-num-${rank}`,
@@ -154,6 +238,7 @@ export function buildPlayingDeck(config: BeAHeroCardsRandomConfig): HeroPlayingC
         repsLabel: String(rank),
         exercise,
       });
+      }
     }
 
     if (c.includePictureCards) {
@@ -215,23 +300,29 @@ export function shuffleDeck<T>(items: T[]): T[] {
   return next;
 }
 
-export function emptyCardsRandomConfig(): BeAHeroCardsRandomConfig {
+export function emptyRandomConfig(): BeAHeroRandomConfig {
   return {
-    ...DEFAULT_CARDS_RANDOM,
-    suitExercises: { ...DEFAULT_SUIT_EXERCISES },
+    ...EMPTY_RANDOM,
+    suitExercises: { ...EMPTY_SUIT_EXERCISES },
   };
 }
 
-export function describeCardsDeck(config: BeAHeroCardsRandomConfig): string {
-  const c = normalizeCardsRandom(config);
+/** @deprecated */
+export const emptyCardsRandomConfig = emptyRandomConfig;
+
+export function describeCardsDeck(config: BeAHeroRandomConfig): string {
+  const c = normalizeRandom(config);
+  const total = countCardsInDeck(c);
+  if (total === 0) return 'Noch kein Stapel — Kartensatz unten festlegen';
+
   const parts: string[] = [];
   if (c.rankMax >= c.rankMin) {
-    parts.push(c.rankMin === c.rankMax ? `${c.rankMin}` : `${c.rankMin} bis ${c.rankMax}`);
+    parts.push(c.rankMin === c.rankMax ? `Zahlen ${c.rankMin}` : `Zahlen ${c.rankMin}–${c.rankMax}`);
   }
   if (c.includePictureCards) parts.push('Bildkarten');
   if (c.includeAces) parts.push('Asse');
   if (c.jokerCount > 0) {
-    parts.push(c.jokerCount === 1 ? 'ein Joker' : `${c.jokerCount} Joker`);
+    parts.push(c.jokerCount === 1 ? '1 Joker' : `${c.jokerCount} Joker`);
   }
-  return parts.join(', ');
+  return parts.length > 0 ? parts.join(' · ') : 'Noch kein Stapel — Kartensatz unten festlegen';
 }
