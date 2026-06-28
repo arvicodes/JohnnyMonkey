@@ -10,7 +10,7 @@ export default function AnnouncementFlyerPage() {
   const folderSlug = rawSlug ? decodeURIComponent(rawSlug) : '';
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#e8e6e1', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ minHeight: '100dvh', bgcolor: '#e8e6e1', display: 'flex', flexDirection: 'column' }}>
       <Box
         sx={{
           display: 'flex',
@@ -33,9 +33,9 @@ export default function AnnouncementFlyerPage() {
         </Typography>
       </Box>
 
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: { xs: 0, sm: 2 }, minHeight: 0 }}>
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
         {folderSlug ? (
-          <AnnouncementFlyerPreview folderSlug={folderSlug} />
+          <AnnouncementFlyerPreview folderSlug={folderSlug} showFullscreenControl={false} />
         ) : (
           <Typography color="error" sx={{ textAlign: 'center', py: 4 }}>
             Kein Ordner angegeben.

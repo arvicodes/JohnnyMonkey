@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>KI Memory</title>
+  <title>Memory</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     html, body {
@@ -335,7 +335,7 @@
     if (typeof embeddedBootstrap.leftText !== 'string') return null;
     if (typeof embeddedBootstrap.rightText !== 'string') return null;
     return {
-      setName: embeddedBootstrap.setName.trim() || 'KI Memory',
+      setName: embeddedBootstrap.setName.trim() || 'Memory',
       leftText: embeddedBootstrap.leftText,
       rightText: embeddedBootstrap.rightText,
       leftImages: Array.isArray(embeddedBootstrap.leftImages) ? embeddedBootstrap.leftImages : [],
@@ -370,7 +370,7 @@
   }
 
   if (boot) {
-    document.title = boot.setName + ' – KI Memory';
+    document.title = boot.setName + ' – Memory';
     resetGame();
     state.layout = computeLayout(state.deck.length, 0, 0);
   }
@@ -417,7 +417,7 @@
   function render() {
     var root = document.getElementById('root');
     if (!boot || !state.deck.length) {
-      root.innerHTML = '<div class="error-box"><h1>KI Memory</h1><p>Diese Datei enthält keine Spiel-Daten. Bitte in der App über „Als HTML herunterladen“ exportieren.</p></div>';
+      root.innerHTML = '<div class="error-box"><h1>Memory</h1><p>Diese Datei enthält keine Spiel-Daten. Bitte in der App über „Als HTML herunterladen“ exportieren.</p></div>';
       return;
     }
 

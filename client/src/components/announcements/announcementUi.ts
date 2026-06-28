@@ -23,6 +23,18 @@ export const compactIconBtnSx = {
 
 export const compactIconSx = { fontSize: 20 } as const;
 
+/** Kleiner Icon-Button — Icon füllt den Klickbereich (wie Dashboard / Vergrößern). */
+export const overlayIconBtnSx = {
+  p: 0,
+  minWidth: 28,
+  width: 28,
+  height: 28,
+  borderRadius: 1.25,
+  transition: 'all 0.2s ease',
+} as const;
+
+export const overlayIconSx = { fontSize: 20, width: '100%', height: '100%' } as const;
+
 export const pageShellSx = {
   width: '100%',
   maxWidth: 900,
@@ -31,6 +43,12 @@ export const pageShellSx = {
   boxSizing: 'border-box',
   overflowX: 'hidden',
   px: { xs: 1.5, sm: 2.5 },
+} as const;
+
+export const studentPageShellSx = {
+  ...pageShellSx,
+  maxWidth: { xs: '100%', lg: 1360 },
+  px: { xs: 1.25, sm: 2, md: 3 },
 } as const;
 
 export const announcementPageBgSx = {

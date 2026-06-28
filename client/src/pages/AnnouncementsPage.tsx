@@ -22,6 +22,7 @@ import {
   compactIconBtnSx,
   compactIconSx,
   pageShellSx,
+  studentPageShellSx,
 } from '../components/announcements/announcementUi';
 
 const cardPaddingSx = { p: { xs: 1.25, sm: 1.5 }, '&:last-child': { pb: { xs: 1.25, sm: 1.5 } } };
@@ -116,7 +117,7 @@ export default function AnnouncementsPage() {
 
   return (
     <Box sx={announcementPageBgSx}>
-      <Box sx={{ ...pageShellSx, py: { xs: 1.25, sm: 1.5 } }}>
+      <Box sx={{ ...(isTeacher ? pageShellSx : studentPageShellSx), py: { xs: 1.25, sm: 1.5 } }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, width: '100%' }}>
           <Tooltip title="Dashboard">
             <IconButton

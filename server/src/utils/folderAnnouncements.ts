@@ -15,6 +15,8 @@ type FolderAnnouncementJson = {
   updatedAt?: string;
   readBy?: string[];
   links?: Array<{ label?: string; url?: string; path?: string }>;
+  images?: Array<{ url?: string; caption?: string }>;
+  layoutId?: string;
 };
 
 export type FolderAnnouncementListItem = {
@@ -22,6 +24,8 @@ export type FolderAnnouncementListItem = {
   title: string;
   body: string;
   links: Array<{ label: string; url: string }>;
+  images: Array<{ url: string; caption?: string }>;
+  layoutId: string | null;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -37,6 +41,8 @@ export type FolderAnnouncementFeedItem = {
   title: string;
   body: string;
   links: Array<{ label: string; url: string }>;
+  images: Array<{ url: string; caption?: string }>;
+  layoutId: string | null;
   publishedAt: string;
   createdAt: string;
   updatedAt: string;
@@ -127,6 +133,19 @@ const resolveAnnouncementLinkUrl = (rawUrl: string, rawPath: string): string => 
   return '';
 };
 
+const normalizeImages = (raw: FolderAnnouncementJson['images']): Array<{ url: string; caption?: string }> => {
+  if (!Array.isArray(raw)) return [];
+  const out: Array<{ url: string; caption?: string }> = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const url = typeof item.url === 'string' ? item.url.trim() : '';
+    if (!url) continue;
+    const caption = typeof item.caption === 'string' ? item.caption.trim() : undefined;
+    out.push(caption ? { url, caption } : { url });
+  }
+  return out;
+};
+
 const normalizeLinks = (raw: FolderAnnouncementJson['links']): Array<{ label: string; url: string }> => {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -157,6 +176,7 @@ const parseFolderJson = (
     if (!parsed.id) parsed.id = folderSlug.toLowerCase().replace(/\s+/g, '-');
     if (!Array.isArray(parsed.readBy)) parsed.readBy = [];
     if (!Array.isArray(parsed.links)) parsed.links = [];
+    if (!Array.isArray(parsed.images)) parsed.images = [];
     return parsed;
   } catch {
     return null;
@@ -196,6 +216,8 @@ const folderJsonToListItem = (
     title: data.title!.trim(),
     body: typeof data.body === 'string' ? data.body.trim() : '',
     links: normalizeLinks(data.links),
+    images: normalizeImages(data.images),
+    layoutId: typeof data.layoutId === 'string' ? data.layoutId : null,
     publishedAt: data.published ? data.publishedAt || updatedAt : null,
     createdAt,
     updatedAt,
@@ -263,6 +285,8 @@ export const loadFolderAnnouncements = (): FolderAnnouncementFeedItem[] => {
       title: data.title!.trim(),
       body: typeof data.body === 'string' ? data.body.trim() : '',
       links: normalizeLinks(data.links),
+      images: normalizeImages(data.images),
+      layoutId: typeof data.layoutId === 'string' ? data.layoutId : null,
       publishedAt,
       createdAt: publishedAt,
       updatedAt: publishedAt,
@@ -363,7 +387,13 @@ export const createFolderAnnouncement = (opts: {
 
 export const updateFolderAnnouncement = (
   folderSlug: string,
-  updates: { title?: string; body?: string; links?: Array<{ label: string; url?: string; path?: string }> },
+  updates: {
+    title?: string;
+    body?: string;
+    links?: Array<{ label: string; url?: string; path?: string }>;
+    images?: Array<{ url: string; caption?: string }>;
+    layoutId?: string | null;
+  },
 ): FolderAnnouncementListItem => {
   const existing = readFolderAnnouncement(folderSlug);
   if (!existing) throw new Error('Ankündigung nicht gefunden');
@@ -382,6 +412,17 @@ export const updateFolderAnnouncement = (
         ...(l.url?.trim() ? { url: l.url.trim() } : {}),
       }))
       .filter((l) => l.label && (l.url || l.path));
+  }
+  if (Array.isArray(updates.images)) {
+    existing.images = updates.images
+      .map((img) => ({
+        url: String(img.url || '').trim(),
+        ...(img.caption?.trim() ? { caption: img.caption.trim() } : {}),
+      }))
+      .filter((img) => img.url);
+  }
+  if (updates.layoutId !== undefined) {
+    existing.layoutId = updates.layoutId || undefined;
   }
 
   writeFolderAnnouncementJson(folderSlug, existing);
@@ -492,26 +533,93 @@ const injectFlyerBaseTag = (html: string, folderSlug: string): string => {
   return html.replace(/<head([^>]*)>/i, `<head$1><base href="${baseHref}">`);
 };
 
+export type FlyerPreviewMode = 'default' | 'embed' | 'fullscreen';
+
+const FLYER_PREVIEW_SCRIPT = `<script data-jm-flyer-preview>
+(function () {
+  function hideToolbar() {
+    document.querySelectorAll('.toolbar').forEach(function (el) {
+      el.style.display = 'none';
+    });
+  }
+  function fitPages() {
+    var pages = document.querySelectorAll('.page');
+    var avail = Math.max(240, document.documentElement.clientWidth - 24);
+    pages.forEach(function (page) {
+      page.style.transform = '';
+      page.style.marginBottom = '';
+      page.style.transformOrigin = 'top center';
+      var rect = page.getBoundingClientRect();
+      var w = rect.width;
+      if (!w || w <= avail) return;
+      var s = avail / w;
+      page.style.transform = 'scale(' + s + ')';
+      var h = rect.height;
+      page.style.marginBottom = h * (s - 1) + 'px';
+    });
+  }
+  function init() {
+    if (document.body.dataset.jmFlyerHideToolbar === '1') hideToolbar();
+    fitPages();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+  window.addEventListener('resize', fitPages);
+  window.addEventListener('load', fitPages);
+})();
+</script>`;
+
+const injectFlyerPreviewMode = (html: string, mode: FlyerPreviewMode): string => {
+  if (mode === 'default') return html;
+  const hideToolbar = mode === 'embed';
+  const previewStyle = `<style data-jm-flyer-preview>
+    html, body { margin: 0; overflow-x: hidden; }
+    body { min-height: 100%; }
+    .pages { padding: 12px 8px 24px !important; gap: 12px !important; }
+    .page { margin-left: auto; margin-right: auto; }
+  </style>`;
+  const bodyAttr = hideToolbar ? ' data-jm-flyer-hide-toolbar="1"' : '';
+  let out = html;
+  if (/<\/head>/i.test(out)) {
+    out = out.replace(/<\/head>/i, `${previewStyle}${FLYER_PREVIEW_SCRIPT}</head>`);
+  } else {
+    out = `${previewStyle}${FLYER_PREVIEW_SCRIPT}${out}`;
+  }
+  if (bodyAttr && /<body([^>]*)>/i.test(out)) {
+    out = out.replace(/<body([^>]*)>/i, (_m, attrs: string) => {
+      if (/data-jm-flyer-hide-toolbar/i.test(attrs)) return `<body${attrs}>`;
+      return `<body${attrs}${bodyAttr}>`;
+    });
+  }
+  return out;
+};
+
 /** Liest HTML-Flyer aus Ankündigungs-Ordner (mit Base-Tag für Bilder) */
-export const readFolderFlyerHtml = (folderSlug: string): string | null => {
+export const readFolderFlyerHtml = (folderSlug: string, previewMode: FlyerPreviewMode = 'default'): string | null => {
   const root = briefeRootPath();
   if (!root) return null;
 
   const folderDir = resolveFolderDir(root, folderSlug);
   if (!folderDir) return null;
 
+  const folderName = path.basename(folderDir);
+
+  const wrapFlyer = (raw: string) =>
+    injectFlyerPreviewMode(injectFlyerBaseTag(raw, folderName), previewMode);
+
   for (const name of FLYER_FILE_NAMES) {
     const filePath = path.join(folderDir, name);
     if (fs.existsSync(filePath)) {
-      return injectFlyerBaseTag(fs.readFileSync(filePath, 'utf-8'), folderSlug);
+      return wrapFlyer(fs.readFileSync(filePath, 'utf-8'));
     }
   }
 
   try {
     for (const entry of fs.readdirSync(folderDir)) {
       const lower = entry.toLowerCase();
+      if (lower === 'index.html' || lower === 'index.htm') continue;
       if (lower.endsWith('.html') || lower.endsWith('.htm')) {
-        return injectFlyerBaseTag(fs.readFileSync(path.join(folderDir, entry), 'utf-8'), folderSlug);
+        return wrapFlyer(fs.readFileSync(path.join(folderDir, entry), 'utf-8'));
       }
     }
   } catch {
@@ -519,4 +627,50 @@ export const readFolderFlyerHtml = (folderSlug: string): string | null => {
   }
 
   return null;
+};
+
+const FLYER_HTML_FILE = 'Flyer.html';
+const FLYER_DESIGN_FILE = 'flyer-design.json';
+
+export const readFolderFlyerDesign = (folderSlug: string): unknown | null => {
+  const root = briefeRootPath();
+  if (!root) return null;
+  const folderDir = resolveFolderDir(root, folderSlug);
+  if (!folderDir) return null;
+  const designPath = path.join(folderDir, FLYER_DESIGN_FILE);
+  if (!fs.existsSync(designPath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(designPath, 'utf-8'));
+  } catch {
+    return null;
+  }
+};
+
+export const saveFolderFlyerStudio = (folderSlug: string, html: string, document: unknown): void => {
+  const root = ensureBriefeRootPath();
+  const folderDir = resolveFolderDir(root, folderSlug);
+  if (!folderDir) throw new Error('Ankündigungs-Ordner nicht gefunden');
+
+  fs.writeFileSync(path.join(folderDir, FLYER_HTML_FILE), html, 'utf-8');
+  fs.writeFileSync(path.join(folderDir, FLYER_DESIGN_FILE), `${JSON.stringify(document, null, 2)}\n`, 'utf-8');
+};
+
+export const saveFolderAnnouncementImage = (
+  folderSlug: string,
+  buffer: Buffer,
+  originalName: string,
+): { url: string; filename: string } => {
+  const root = ensureBriefeRootPath();
+  const folderDir = resolveFolderDir(root, folderSlug);
+  if (!folderDir) throw new Error('Ankündigungs-Ordner nicht gefunden');
+
+  const ext = path.extname(originalName).toLowerCase() || '.jpg';
+  const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
+  if (!allowed.includes(ext)) throw new Error('Nur Bilddateien erlaubt');
+
+  const filename = `bild-${Date.now()}${ext}`;
+  fs.writeFileSync(path.join(folderDir, filename), buffer);
+
+  const rel = `${BRIEFE_REL}/${folderSlug}/${filename}`;
+  return { url: staticMaterialUrl(rel), filename };
 };

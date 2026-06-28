@@ -99,7 +99,7 @@ const gameCards: {
   },
   {
     tab: 'memory',
-    title: 'KI-Memory',
+    title: 'Memory',
     subtitle: 'Zwei passende Kartenlisten werden im Teamlauf zusammengeführt.',
     icon: <ExtensionIcon />,
     color: '#00897b',
@@ -350,11 +350,6 @@ const defaultMemorySets: MemorySet[] = [
 
 const memoryStorageKey = 'johnnyMonkey.kiGames.memorySets.v1';
 
-function includeMissingDefaultMemorySets(sets: MemorySet[]) {
-  const ids = new Set(sets.map((set) => set.id));
-  return [...sets, ...defaultMemorySets.filter((set) => !ids.has(set.id))];
-}
-
 function loadSavedMemoryState(): { sets: MemorySet[]; selectedId: string } | null {
   if (typeof window === 'undefined') return null;
   try {
@@ -371,8 +366,7 @@ function loadSavedMemoryState(): { sets: MemorySet[]; selectedId: string } | nul
         )
       : [];
     if (!sets.length) return null;
-    const mergedSets = includeMissingDefaultMemorySets(sets);
-    return { sets: mergedSets, selectedId: typeof parsed.selectedId === 'string' ? parsed.selectedId : mergedSets[0].id };
+    return { sets, selectedId: typeof parsed.selectedId === 'string' ? parsed.selectedId : sets[0].id };
   } catch {
     return null;
   }
@@ -1173,9 +1167,7 @@ export default function KiGamesPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<TabId>('overview');
   const savedMemoryState = useMemo(() => loadSavedMemoryState(), []);
-  const initialMemorySets = includeMissingDefaultMemorySets(
-    savedMemoryState?.sets?.length ? savedMemoryState.sets : defaultMemorySets
-  );
+  const initialMemorySets = savedMemoryState?.sets?.length ? savedMemoryState.sets : defaultMemorySets;
   const initialMemorySet =
     initialMemorySets.find((set) => set.id === savedMemoryState?.selectedId) || initialMemorySets[0] || defaultMemorySets[0];
 
@@ -1309,13 +1301,6 @@ export default function KiGamesPage() {
       document.body.style.overflow = previousOverflow;
     };
   }, [memoryGameStarted]);
-
-  useEffect(() => {
-    setMemorySets((prev) => {
-      const merged = includeMissingDefaultMemorySets(prev);
-      return merged.length === prev.length && merged.every((set, index) => set.id === prev[index]?.id) ? prev : merged;
-    });
-  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1599,7 +1584,7 @@ export default function KiGamesPage() {
   };
 
   const selectedMemorySet = memorySets.find((set) => set.id === selectedMemorySetId);
-  const canDeleteSelectedMemorySet = Boolean(selectedMemorySet?.id.startsWith('custom-'));
+  const canDeleteSelectedMemorySet = memorySets.length > 1;
 
   const renameMemorySet = () => {
     const cleanName = memorySetRename.trim();
@@ -1610,7 +1595,7 @@ export default function KiGamesPage() {
   };
 
   const deleteMemorySet = () => {
-    if (!selectedMemorySet?.id.startsWith('custom-')) return;
+    if (!selectedMemorySet || memorySets.length <= 1) return;
     if (!window.confirm(`Kartensatz „${selectedMemorySet.name}" wirklich löschen?`)) return;
     const nextSets = memorySets.filter((set) => set.id !== selectedMemorySetId);
     if (!nextSets.length) return;
@@ -1633,7 +1618,7 @@ export default function KiGamesPage() {
     setMemoryExporting(true);
     try {
       await downloadMemoryStandaloneHtml({
-        setName: memorySetRename.trim() || selectedMemorySet?.name || 'KI Memory',
+        setName: memorySetRename.trim() || selectedMemorySet?.name || 'Memory',
         leftText: memoryLeftText,
         rightText: memoryRightText,
         leftImages: memoryLeftImages,
@@ -2103,8 +2088,8 @@ export default function KiGamesPage() {
                 <Tooltip
                   title={
                     canDeleteSelectedMemorySet
-                      ? 'Eigenen Kartensatz löschen'
-                      : 'Vordefinierte Kartensätze können nicht gelöscht werden'
+                      ? 'Kartensatz löschen'
+                      : 'Mindestens ein Kartensatz muss bleiben'
                   }
                 >
                   <span>
@@ -2139,7 +2124,7 @@ export default function KiGamesPage() {
                 <Button variant="contained" color="success" onClick={resetMemory}>
                   Spielen
                 </Button>
-                <Tooltip title="Spiel als offline HTML-Datei herunterladen (ki-memory-spiel.html)">
+                <Tooltip title="Spiel als offline HTML-Datei herunterladen (memory-spiel.html)">
                   <span>
                     <Button
                       variant="outlined"

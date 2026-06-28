@@ -1,7 +1,7 @@
 import type { MemoryPlayBootstrap } from './memoryStorage';
 import { memoryBackLogoUrl } from './memoryAssets';
 
-const downloadFileName = 'ki-memory-spiel.html';
+const downloadFileName = 'memory-spiel.html';
 
 async function fetchBackLogoDataUrl(): Promise<string | undefined> {
   try {

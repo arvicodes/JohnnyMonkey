@@ -76,6 +76,7 @@ import type { AnnouncementDashboardSession } from '../lib/announcementTypes';
 import { openLessonFolderFile } from '../lib/openLessonFolderFile';
 import { CollaborativeFlashcardSessionModal } from './CollaborativeFlashcardSessionModal';
 import { StudentLessonActivityLine } from './StudentLessonActivityLine';
+import SpielMenuButton from './SpielMenuButton';
 
 const COLLAB_BEACON_LS_KEY = 'jm_collab_fc_beacon_seen_v1';
 function loadCollabBeaconSeen(): Record<string, string> {
@@ -5420,120 +5421,35 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     </Box>
                   )}
                 </Box>
-                {/* Rätseljahr 2026 Button mit Statistik-Badge */}
-                <Box sx={{ position: 'relative' }}>
-                  <IconButton
-                    onClick={() => {
-                      // Tägliches Rätsel basierend auf Datum + userId auswählen
+                <SpielMenuButton
+                  compact={false}
+                  actions={{
+                    onAdventCalendar: () => navigate('/advent-calendar'),
+                    onRiddleYear: () => {
                       const stats = getRiddleStats(userId);
                       const result = getDailyRiddleForUser(userId, stats);
-                      
                       if (result.isLocked) {
                         alert('🔒 Du hast heute bereits 2 Versuche gehabt! Das Rätsel kommt morgen wieder. Komm morgen zurück für ein neues Rätsel!');
                         return;
                       }
-                      
                       if (!result.riddle) {
-                        // Bereits gelöst heute
                         alert('🎉 Du hast das heutige Rätsel bereits gelöst! Komm morgen wieder für ein neues Rätsel!');
                         return;
                       }
-                      
                       setCurrentRiddle(result.riddle);
                       setAttemptsLeft(result.attemptsLeft);
                       setRiddleAnswer('');
                       setRiddleSolved(false);
                       setShowHint(false);
                       setShowNewYearRiddle(true);
-                    }}
-                    sx={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: 1.4,
-                      position: 'relative',
-                      overflow: 'visible',
-                      border: '2px solid rgba(102, 126, 234, 0.3)',
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      color: 'white',
-                      boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
-                      '&:hover': {
-                        transform: 'scale(1.05)',
-                        borderColor: 'rgba(102, 126, 234, 0.6)',
-                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
-                      },
-                      transition: 'all 0.2s ease',
-                    }}
-                    title={`Rätseljahr 2026 🎊 - ${riddleStats.solved} gelöst`}
-                  >
-                    {/* Rotes Geschenk mit gelber Schleife */}
-                    <Box
-                      sx={{
-                        width: '100%',
-                        height: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <svg
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        {/* Rote Geschenkbox mit Schatten */}
-                        <rect x="4" y="11" width="16" height="13" fill="#DC143C" rx="1.5" stroke="#8B0000" strokeWidth="2" />
-                        
-                        {/* Gelber vertikaler Streifen in der Mitte */}
-                        <rect x="11" y="11" width="2" height="13" fill="#FFD700" />
-                        
-                        {/* Gelbe Schleife oben */}
-                        {/* Vertikaler Teil der Schleife */}
-                        <rect x="11" y="2" width="2" height="10" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" rx="1" />
-                        
-                        {/* Horizontales Band */}
-                        <rect x="7" y="6" width="10" height="3" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" rx="1.5" />
-                        
-                        {/* Linke Schleife (nach außen gebogen) */}
-                        <ellipse cx="8.5" cy="6.5" rx="2.5" ry="3.5" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" />
-                        {/* Rechte Schleife (nach außen gebogen) */}
-                        <ellipse cx="15.5" cy="6.5" rx="2.5" ry="3.5" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" />
-                        
-                        {/* Linkes Schleifenende (diagonal geschnitten) */}
-                        <path d="M 6.5 7 L 6.5 10 L 6 10.5 L 6.5 11 L 7 10.5 L 7 7 Z" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" />
-                        {/* Rechtes Schleifenende (diagonal geschnitten) */}
-                        <path d="M 17.5 7 L 17.5 10 L 18 10.5 L 17.5 11 L 17 10.5 L 17 7 Z" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" />
-                      </svg>
-                    </Box>
-                    
-                    {/* Grüner Badge mit Anzahl gelöster Rätsel */}
-                    {riddleStats.solved > 0 && (
-                      <Box
-                        sx={{
-                          position: 'absolute',
-                          top: -4,
-                          right: -4,
-                          width: 20,
-                          height: 20,
-                          borderRadius: '50%',
-                          bgcolor: '#4caf50',
-                          color: 'white',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                          border: '2px solid white',
-                          zIndex: 1,
-                        }}
-                      >
-                        {riddleStats.solved}
-                      </Box>
-                    )}
-                  </IconButton>
-                </Box>
+                    },
+                    onCarnivalGames: () => setShowCarnivalGames(true),
+                    onMinigameTest: () => setShowMinigame(true),
+                    onSevenMinuteWorkout: () => navigate('/seven-minute-workout'),
+                    onMovementStories: () => navigate('/bewegungsgeschichten-klassiker'),
+                    onKiGames: () => navigate('/ki-spiele'),
+                  }}
+                />
                 {/* Stories & Tagebücher */}
                 <Box sx={{ position: 'relative' }}>
                   <IconButton

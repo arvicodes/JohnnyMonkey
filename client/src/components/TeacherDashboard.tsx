@@ -336,6 +336,7 @@ import { RichTextEditor } from './ui/rich-text-editor';
 import { FlashcardCreationModal } from './FlashcardCreationModal';
 import SubmissionViewer from './SubmissionViewer';
 import { openLessonFolderFile } from '../lib/openLessonFolderFile';
+import SpielMenuButton from './SpielMenuButton';
 
 /**
  * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, HÜ_, HU_)
@@ -13481,227 +13482,19 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 >
                   Logout
                 </Button>
-                {/* Adventskalender Button */}
-                <IconButton
-                  onClick={() => navigate('/advent-calendar')}
-                  sx={{
-                    p: 0.5,
-                    minWidth: 32,
-                    width: 32,
-                    height: 32,
-                    color: 'white',
-                    bgcolor: '#c62828',
-                    borderRadius: 1.4,
-                    '&:hover': { bgcolor: '#b71c1c' }
+                <SpielMenuButton
+                  showMovementGames={userRole === 'TEACHER'}
+                  actions={{
+                    onAdventCalendar: () => navigate('/advent-calendar'),
+                    onRiddleYear: () => setShowRiddleOverview(true),
+                    onCarnivalGames: () => setShowCarnivalGames(true),
+                    onMinigameTest: () => setShowMinigame(true),
+                    onMovementGames: () => setShowMovementGames(true),
+                    onSevenMinuteWorkout: () => navigate('/seven-minute-workout'),
+                    onMovementStories: () => navigate('/bewegungsgeschichten-klassiker'),
+                    onKiGames: () => navigate('/ki-spiele'),
                   }}
-                  title="Adventskalender"
-                >
-                  <Typography
-                    component="span"
-                    sx={{
-                      fontSize: '1.2rem',
-                      lineHeight: 1,
-                      display: 'inline-block'
-                    }}
-                  >
-                    🎄
-                  </Typography>
-                </IconButton>
-                {/* Rätseljahr 2026 Button */}
-                <Box sx={{ position: 'relative' }}>
-                  <IconButton
-                    onClick={() => setShowRiddleOverview(true)}
-                    sx={{
-                      p: 0.5,
-                      minWidth: 32,
-                      width: 32,
-                      height: 32,
-                      borderRadius: 1.4,
-                      position: 'relative',
-                      overflow: 'visible',
-                      border: '2px solid rgba(102, 126, 234, 0.3)',
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
-                      '&:hover': {
-                        transform: 'scale(1.05)',
-                        borderColor: 'rgba(102, 126, 234, 0.6)',
-                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
-                      },
-                      transition: 'all 0.2s ease',
-                    }}
-                    title="Rätseljahr 2026 - Übersicht"
-                  >
-                    {/* Rotes Geschenk mit gelber Schleife */}
-                    <Box
-                      sx={{
-                        width: '100%',
-                        height: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        {/* Rote Geschenkbox mit Schatten */}
-                        <rect x="4" y="11" width="16" height="13" fill="#DC143C" rx="1.5" stroke="#8B0000" strokeWidth="2" />
-                        
-                        {/* Gelber vertikaler Streifen in der Mitte */}
-                        <rect x="11" y="11" width="2" height="13" fill="#FFD700" />
-                        
-                        {/* Gelbe Schleife oben */}
-                        {/* Vertikaler Teil der Schleife */}
-                        <rect x="11" y="2" width="2" height="10" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" rx="1" />
-                        
-                        {/* Horizontales Band */}
-                        <rect x="7" y="6" width="10" height="3" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" rx="1.5" />
-                        
-                        {/* Linke Schleife (nach außen gebogen) */}
-                        <ellipse cx="8.5" cy="6.5" rx="2.5" ry="3.5" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" />
-                        {/* Rechte Schleife (nach außen gebogen) */}
-                        <ellipse cx="15.5" cy="6.5" rx="2.5" ry="3.5" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" />
-                        
-                        {/* Linkes Schleifenende (diagonal geschnitten) */}
-                        <path d="M 6.5 7 L 6.5 10 L 6 10.5 L 6.5 11 L 7 10.5 L 7 7 Z" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" />
-                        {/* Rechtes Schleifenende (diagonal geschnitten) */}
-                        <path d="M 17.5 7 L 17.5 10 L 18 10.5 L 17.5 11 L 17 10.5 L 17 7 Z" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" />
-                      </svg>
-                    </Box>
-                  </IconButton>
-                </Box>
-                {/* Karnevals-Minigame Button */}
-                <Box sx={{ position: 'relative' }}>
-                  <IconButton
-                    onClick={() => setShowCarnivalGames(true)}
-                    sx={{
-                      p: 0.5,
-                      minWidth: 32,
-                      width: 32,
-                      height: 32,
-                      borderRadius: 1.4,
-                      position: 'relative',
-                      overflow: 'visible',
-                      border: '2px solid rgba(255, 20, 147, 0.3)',
-                      background: 'linear-gradient(135deg, #FF1493 0%, #FF69B4 100%)',
-                      color: 'white',
-                      boxShadow: '0 2px 8px rgba(255, 20, 147, 0.3)',
-                      '&:hover': {
-                        transform: 'scale(1.05)',
-                        borderColor: 'rgba(255, 20, 147, 0.6)',
-                        boxShadow: '0 4px 12px rgba(255, 20, 147, 0.4)',
-                      },
-                      transition: 'all 0.2s ease',
-                    }}
-                    title="Karnevals-Minigames"
-                  >
-                    <Typography
-                      component="span"
-                      sx={{
-                        fontSize: '1.2rem',
-                        lineHeight: 1,
-                        display: 'inline-block'
-                      }}
-                    >
-                      🎭
-                    </Typography>
-                  </IconButton>
-                </Box>
-                {/* Minigame Test Button */}
-                <IconButton
-                  onClick={() => setShowMinigame(true)}
-                  sx={{
-                    p: 0.5,
-                    minWidth: 32,
-                    width: 32,
-                    height: 32,
-                    borderRadius: 1.4,
-                    position: 'relative',
-                    overflow: 'visible',
-                    border: '2px solid rgba(255, 152, 0, 0.3)',
-                    background: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)',
-                    color: 'white',
-                    boxShadow: '0 2px 8px rgba(255, 152, 0, 0.3)',
-                    '&:hover': {
-                      transform: 'scale(1.05)',
-                      borderColor: 'rgba(255, 152, 0, 0.6)',
-                      boxShadow: '0 4px 12px rgba(255, 152, 0, 0.4)',
-                    },
-                    transition: 'all 0.2s ease',
-                  }}
-                  title="Minigame Test"
-                >
-                  <GamesIcon sx={{ fontSize: 18 }} />
-                </IconButton>
-                {/* Bewegungsspiele (Klassenzimmer & draußen) – nur Lehreransicht */}
-                {userRole === 'TEACHER' && (
-                <IconButton
-                  onClick={() => setShowMovementGames(true)}
-                  sx={{
-                    p: 0.5,
-                    minWidth: 32,
-                    width: 32,
-                    height: 32,
-                    borderRadius: 1.4,
-                    position: 'relative',
-                    overflow: 'visible',
-                    border: '2px solid rgba(0, 137, 123, 0.35)',
-                    background: 'linear-gradient(135deg, #00695c 0%, #00897b 50%, #26a69a 100%)',
-                    color: 'white',
-                    boxShadow: '0 2px 8px rgba(0, 137, 123, 0.35)',
-                    '&:hover': {
-                      transform: 'scale(1.05)',
-                      borderColor: 'rgba(0, 137, 123, 0.55)',
-                      boxShadow: '0 4px 12px rgba(0, 137, 123, 0.45)',
-                    },
-                    transition: 'all 0.2s ease',
-                  }}
-                  title="Bewegungsspiele (Brainbreak & draußen)"
-                >
-                  <DirectionsRunIcon sx={{ fontSize: 20 }} />
-                </IconButton>
-                )}
-                {/* 7-Minuten-Workout */}
-                <IconButton
-                  onClick={() => navigate('/seven-minute-workout')}
-                  sx={{
-                    p: 0.5,
-                    minWidth: 32,
-                    width: 32,
-                    height: 32,
-                    borderRadius: 1.4,
-                    position: 'relative',
-                    overflow: 'visible',
-                    border: '2px solid rgba(255, 107, 53, 0.45)',
-                    background: 'linear-gradient(135deg, #ff6b35 0%, #f7931e 100%)',
-                    color: 'white',
-                    boxShadow: '0 2px 8px rgba(255, 107, 53, 0.35)',
-                    '&:hover': {
-                      transform: 'scale(1.05)',
-                      borderColor: 'rgba(255, 107, 53, 0.7)',
-                      boxShadow: '0 4px 12px rgba(255, 107, 53, 0.45)',
-                    },
-                    transition: 'all 0.2s ease',
-                  }}
-                  title="7-Minuten-Workout"
-                >
-                  <Typography
-                    component="span"
-                    sx={{
-                      fontSize: '1rem',
-                      fontWeight: 800,
-                      lineHeight: 1,
-                      display: 'inline-block',
-                      fontFamily: 'inherit',
-                    }}
-                  >
-                    7
-                  </Typography>
-                </IconButton>
+                />
                 {/* EntryTicket */}
                 <IconButton
                   onClick={() => {
@@ -13839,69 +13632,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   title="Ankündigungen & Vordrucke"
                 >
                   <CampaignIcon sx={{ fontSize: 18 }} />
-                </IconButton>
-                {/* Bewegungsgeschichten (WIMASU-Klassiker) */}
-                <IconButton
-                  onClick={() => navigate('/bewegungsgeschichten-klassiker')}
-                  sx={{
-                    p: 0.5,
-                    minWidth: 32,
-                    width: 32,
-                    height: 32,
-                    borderRadius: 1.4,
-                    position: 'relative',
-                    overflow: 'visible',
-                    border: '2px solid rgba(92, 107, 192, 0.45)',
-                    background: 'linear-gradient(135deg, #5c6bc0 0%, #3949ab 100%)',
-                    color: 'white',
-                    boxShadow: '0 2px 8px rgba(57, 73, 171, 0.35)',
-                    '&:hover': {
-                      transform: 'scale(1.05)',
-                      borderColor: 'rgba(92, 107, 192, 0.75)',
-                      boxShadow: '0 4px 12px rgba(57, 73, 171, 0.45)',
-                    },
-                    transition: 'all 0.2s ease',
-                  }}
-                  title="Bewegungsgeschichten (Pferderennen, Elefant, Löwenjagd)"
-                >
-                  <AutoStoriesIcon sx={{ fontSize: 18 }} />
-                </IconButton>
-                {/* KI-Spiele */}
-                <IconButton
-                  onClick={() => navigate('/ki-spiele')}
-                  sx={{
-                    p: 0.5,
-                    minWidth: 32,
-                    width: 32,
-                    height: 32,
-                    borderRadius: 1.4,
-                    position: 'relative',
-                    overflow: 'visible',
-                    border: '2px solid rgba(0, 188, 212, 0.45)',
-                    background: 'linear-gradient(135deg, #172554 0%, #3949ab 48%, #00acc1 100%)',
-                    color: 'white',
-                    boxShadow: '0 2px 8px rgba(57, 73, 171, 0.35)',
-                    '&:hover': {
-                      transform: 'scale(1.05)',
-                      borderColor: 'rgba(0, 188, 212, 0.75)',
-                      boxShadow: '0 4px 12px rgba(57, 73, 171, 0.45)',
-                    },
-                    transition: 'all 0.2s ease',
-                  }}
-                  title="KI-Spiele"
-                >
-                  <Typography
-                    component="span"
-                    sx={{
-                      fontSize: '0.75rem',
-                      fontWeight: 900,
-                      letterSpacing: -0.5,
-                      lineHeight: 1,
-                      display: 'inline-block',
-                    }}
-                  >
-                    KI
-                  </Typography>
                 </IconButton>
                 {/* Stories & Tagebücher */}
                 <IconButton

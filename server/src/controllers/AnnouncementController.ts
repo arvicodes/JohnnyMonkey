@@ -11,6 +11,9 @@ import {
   loadFolderAnnouncements,
   markFolderAnnouncementRead,
   readFolderFlyerHtml,
+  readFolderFlyerDesign,
+  saveFolderFlyerStudio,
+  saveFolderAnnouncementImage,
   setFolderAnnouncementPublished,
   updateFolderAnnouncement,
 } from '../utils/folderAnnouncements';
@@ -193,18 +196,8 @@ const loadAllPublishedAnnouncements = async () => {
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
 
   const folderItems = loadFolderAnnouncements().map((item) => ({
-    id: item.id,
-    title: item.title,
-    body: item.body,
-    links: item.links,
-    publishedAt: item.publishedAt,
-    createdAt: item.createdAt,
-    updatedAt: item.updatedAt,
-    authorId: item.authorId,
-    authorName: item.authorName,
+    ...item,
     isRead: false,
-    fromFolder: true as const,
-    folderSlug: item.folderSlug,
   }));
 
   return [...folderItems, ...dbItems].sort(
@@ -278,6 +271,13 @@ export class AnnouncementController {
         title: typeof req.body?.title === 'string' ? req.body.title : undefined,
         body: typeof req.body?.body === 'string' ? req.body.body : undefined,
         links: Array.isArray(req.body?.links) ? req.body.links : undefined,
+        images: Array.isArray(req.body?.images) ? req.body.images : undefined,
+        layoutId:
+          req.body?.layoutId === null
+            ? null
+            : typeof req.body?.layoutId === 'string'
+              ? req.body.layoutId
+              : undefined,
       });
 
       return res.json({ success: true, announcement });
@@ -522,16 +522,87 @@ export class AnnouncementController {
       const folderSlug = raw ? decodeURIComponent(raw) : '';
       if (!folderSlug) return res.status(400).send('Ordner fehlt');
 
-      const html = readFolderFlyerHtml(folderSlug);
+      const modeRaw = typeof req.query.mode === 'string' ? req.query.mode.trim().toLowerCase() : '';
+      const previewMode =
+        modeRaw === 'embed' || modeRaw === 'fullscreen' ? (modeRaw as 'embed' | 'fullscreen') : 'default';
+
+      const html = readFolderFlyerHtml(folderSlug, previewMode);
       if (!html) {
         return res.status(404).send('Kein Flyer (.html) in diesem Ordner gefunden.');
       }
 
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('X-Frame-Options', 'SAMEORIGIN');
       return res.send(html);
     } catch (error) {
       console.error('Announcement serveFlyer error:', error);
       return res.status(500).send('Flyer konnte nicht geladen werden.');
+    }
+  }
+
+  static async getFlyerDesign(req: Request, res: Response) {
+    try {
+      const user = await getUserByLoginCode(req);
+      if (!user) return res.status(401).json({ error: 'Nicht angemeldet' });
+      if (user.role !== 'TEACHER') return res.status(403).json({ error: 'Nur Lehrkräfte' });
+
+      const raw = typeof req.params.folderSlug === 'string' ? req.params.folderSlug.trim() : '';
+      const folderSlug = raw ? decodeURIComponent(raw) : '';
+      if (!folderSlug) return res.status(400).json({ error: 'Ordner fehlt' });
+
+      const document = readFolderFlyerDesign(folderSlug);
+      if (!document) return res.status(404).json({ error: 'Noch kein Flyer-Design gespeichert' });
+
+      return res.json({ document });
+    } catch (error) {
+      console.error('Announcement getFlyerDesign error:', error);
+      return res.status(500).json({ error: 'Design konnte nicht geladen werden' });
+    }
+  }
+
+  static async saveFlyerDesign(req: Request, res: Response) {
+    try {
+      const user = await getUserByLoginCode(req);
+      if (!user) return res.status(401).json({ error: 'Nicht angemeldet' });
+      if (user.role !== 'TEACHER') return res.status(403).json({ error: 'Nur Lehrkräfte' });
+
+      const raw = typeof req.params.folderSlug === 'string' ? req.params.folderSlug.trim() : '';
+      const folderSlug = raw ? decodeURIComponent(raw) : '';
+      if (!folderSlug) return res.status(400).json({ error: 'Ordner fehlt' });
+
+      const html = typeof req.body?.html === 'string' ? req.body.html : '';
+      const document = req.body?.document;
+      if (!html.trim()) return res.status(400).json({ error: 'HTML fehlt' });
+      if (!document || typeof document !== 'object') return res.status(400).json({ error: 'Design fehlt' });
+
+      saveFolderFlyerStudio(folderSlug, html, document);
+      return res.json({ success: true });
+    } catch (error) {
+      console.error('Announcement saveFlyerDesign error:', error);
+      const msg = error instanceof Error ? error.message : 'Speichern fehlgeschlagen';
+      return res.status(500).json({ error: msg });
+    }
+  }
+
+  static async uploadFolderImage(req: Request, res: Response) {
+    try {
+      const user = await getUserByLoginCode(req);
+      if (!user) return res.status(401).json({ error: 'Nicht angemeldet' });
+      if (user.role !== 'TEACHER') return res.status(403).json({ error: 'Nur Lehrkräfte' });
+
+      const raw = typeof req.params.folderSlug === 'string' ? req.params.folderSlug.trim() : '';
+      const folderSlug = raw ? decodeURIComponent(raw) : '';
+      if (!folderSlug) return res.status(400).json({ error: 'Ordner fehlt' });
+
+      const file = req.file as Express.Multer.File | undefined;
+      if (!file?.buffer?.length) return res.status(400).json({ error: 'Kein Bild' });
+
+      const saved = saveFolderAnnouncementImage(folderSlug, file.buffer, file.originalname || 'bild.jpg');
+      return res.json({ url: saved.url, filename: saved.filename });
+    } catch (error) {
+      console.error('Announcement uploadFolderImage error:', error);
+      const msg = error instanceof Error ? error.message : 'Upload fehlgeschlagen';
+      return res.status(500).json({ error: msg });
     }
   }
 }

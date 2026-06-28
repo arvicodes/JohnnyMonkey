@@ -3,11 +3,29 @@ export type AnnouncementLink = {
   url: string;
 };
 
+export type AnnouncementImage = {
+  url: string;
+  caption?: string;
+};
+
+export type AnnouncementLayoutId =
+  | 'hero'
+  | 'magazine'
+  | 'gallery'
+  | 'accent'
+  | 'mosaic'
+  | 'grid2'
+  | 'grid3'
+  | 'strip'
+  | 'stack';
+
 export type AnnouncementListItem = {
   id: string;
   title: string;
   body: string;
   links: AnnouncementLink[];
+  images?: AnnouncementImage[];
+  layoutId?: AnnouncementLayoutId | null;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -23,6 +41,8 @@ export type AnnouncementFeedItem = {
   title: string;
   body: string;
   links: AnnouncementLink[];
+  images?: AnnouncementImage[];
+  layoutId?: AnnouncementLayoutId | null;
   publishedAt: string;
   createdAt: string;
   updatedAt: string;

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Box,
   Button,
@@ -13,6 +13,7 @@ import {
   IconButton,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import {
@@ -20,14 +21,22 @@ import {
   Campaign as CampaignIcon,
   Delete as DeleteIcon,
   Link as LinkIcon,
-  Visibility as VisibilityIcon,
+  AutoAwesome as AutoAwesomeIcon,
+  OpenInNew as OpenInNewIcon,
 } from '@mui/icons-material';
-import { AnnouncementFlyerPreview } from './AnnouncementFlyerPreview';
-import { flyerPageUrl } from '../../lib/announcementPaths';
+import { AnnouncementDesignPicker } from './AnnouncementDesignPicker';
+import { AnnouncementImageManager } from './AnnouncementImageManager';
+import type { AnnouncementStudentDisplayItem } from './AnnouncementStudentDetailContent';
+import { AnnouncementTextTemplatePicker } from './AnnouncementTextTemplatePicker';
+import type { AnnouncementTextTemplate } from './announcementTextTemplates';
+import { htmlToPlainText } from './announcementLayouts';
 import { apiDelete, apiGet, apiPost, apiPut } from '../../lib/api';
-import type { AnnouncementLink, AnnouncementListItem } from '../../lib/announcementTypes';
+import { flyerPageUrl, flyerStudioUrl } from '../../lib/announcementPaths';
+import { openAnnouncementStudentPreviewTab } from '../../lib/announcementStudentPreviewStorage';
+import type { AnnouncementImage, AnnouncementLayoutId, AnnouncementLink, AnnouncementListItem } from '../../lib/announcementTypes';
 import { formatAnnouncementDate } from '../../lib/announcementTypes';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-icon-button';
+import { RichTextEditor, type RichTextEditorHandle } from '../ui/rich-text-editor';
 import {
   announcementActionBarSx,
   announcementBtnDangerSx,
@@ -39,6 +48,10 @@ import {
   announcementStatusChipSx,
   announcementTileGridSx,
   announcementTileSx,
+  compactIconBtnSx,
+  compactIconSx,
+  overlayIconBtnSx,
+  overlayIconSx,
 } from './announcementUi';
 
 const cardPaddingSx = { p: { xs: 1, sm: 1.25 }, '&:last-child': { pb: { xs: 1, sm: 1.25 } } };
@@ -70,12 +83,35 @@ export function AnnouncementTeacherView() {
 
   const [draftTitle, setDraftTitle] = useState('');
   const [draftBody, setDraftBody] = useState('');
+  const [draftImages, setDraftImages] = useState<AnnouncementImage[]>([]);
+  const [draftLayoutId, setDraftLayoutId] = useState<AnnouncementLayoutId | null>(null);
   const [draftLinks, setDraftLinks] = useState<AnnouncementLink[]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const [newDialogOpen, setNewDialogOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+  const bodyEditorRef = useRef<RichTextEditorHandle>(null);
 
   const selected = announcements.find((a) => a.folderSlug === selectedFolderSlug) ?? null;
+
+  const buildStudentPreviewItem = (): AnnouncementStudentDisplayItem | null => {
+    if (!selected) return null;
+    bodyEditorRef.current?.flush();
+    return {
+      title: draftTitle,
+      body: bodyEditorRef.current?.getHtml() ?? draftBody,
+      images: draftImages,
+      layoutId: draftLayoutId,
+      links: draftLinks,
+      folderSlug: selected.folderSlug,
+      publishedAt: selected.publishedAt || selected.updatedAt,
+    };
+  };
+
+  const openStudentPreviewTab = () => {
+    const item = buildStudentPreviewItem();
+    if (item) openAnnouncementStudentPreviewTab(item);
+  };
 
   const loadList = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -102,11 +138,15 @@ export function AnnouncementTeacherView() {
     if (!item) {
       setDraftTitle('');
       setDraftBody('');
+      setDraftImages([]);
+      setDraftLayoutId(null);
       setDraftLinks([]);
       return;
     }
     setDraftTitle(item.title);
     setDraftBody(item.body);
+    setDraftImages(item.images?.length ? [...item.images] : []);
+    setDraftLayoutId(item.layoutId ?? null);
     setDraftLinks(item.links?.length ? [...item.links] : []);
   };
 
@@ -148,13 +188,17 @@ export function AnnouncementTeacherView() {
 
   const handleSave = async () => {
     if (!selectedFolderSlug || !draftTitle.trim()) return;
+    bodyEditorRef.current?.flush();
+    const bodyHtml = bodyEditorRef.current?.getHtml() ?? draftBody;
     setSaving(true);
     setSuccessMsg(null);
     try {
       const payload = {
         title: draftTitle.trim(),
-        body: draftBody.trim(),
+        body: bodyHtml.trim(),
         links: draftLinks.filter((l) => l.label.trim() && l.url.trim()),
+        images: draftImages.filter((img) => img.url.trim()),
+        layoutId: draftLayoutId,
       };
       const response = await apiPut(`/api/announcements/folder/${enc(selectedFolderSlug)}`, payload);
       if (!response.ok) throw new Error('Speichern fehlgeschlagen');
@@ -213,6 +257,49 @@ export function AnnouncementTeacherView() {
 
   const addLink = () => setDraftLinks((prev) => [...prev, emptyLink()]);
   const removeLink = (index: number) => setDraftLinks((prev) => prev.filter((_, i) => i !== index));
+
+  const applyTextTemplate = (template: AnnouncementTextTemplate) => {
+    bodyEditorRef.current?.flush();
+    const currentTitle = draftTitle.trim();
+    const currentBody = htmlToPlainText(bodyEditorRef.current?.getHtml() ?? draftBody).trim();
+    if (currentTitle || currentBody) {
+      if (!window.confirm(`Vorlage „${template.name}“ übernehmen? Titel und Text werden ersetzt.`)) return;
+    }
+    setDraftTitle(template.suggestedTitle);
+    setDraftBody(template.bodyHtml);
+    if (template.suggestedLayoutId) setDraftLayoutId(template.suggestedLayoutId);
+    setSuccessMsg(`Vorlage „${template.name}“ übernommen — Platzhalter anpassen und speichern.`);
+  };
+
+  const uploadImages = async (files: File[]) => {
+    if (!selectedFolderSlug || files.length === 0) return;
+    setUploadingImage(true);
+    setLoadError(null);
+    try {
+      const loginCode = localStorage.getItem('loginCode');
+      const added: AnnouncementImage[] = [];
+      for (const file of files) {
+        const form = new FormData();
+        form.append('image', file);
+        const res = await fetch(`/api/announcements/folder/${enc(selectedFolderSlug)}/image`, {
+          method: 'POST',
+          headers: loginCode ? { 'x-login-code': loginCode } : {},
+          body: form,
+        });
+        if (!res.ok) throw new Error('Bild-Upload fehlgeschlagen');
+        const data = await res.json();
+        if (typeof data?.url === 'string') added.push({ url: data.url });
+      }
+      if (added.length) {
+        setDraftImages((prev) => [...prev, ...added]);
+        setSuccessMsg(`${added.length} Bild${added.length === 1 ? '' : 'er'} hinzugefügt`);
+      }
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Bild-Upload fehlgeschlagen');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -278,12 +365,32 @@ export function AnnouncementTeacherView() {
       {selected && (
         <Card elevation={0} sx={announcementEditorCardSx}>
           <CardContent sx={cardPaddingSx}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: announcementPalette.heading, mb: 0.5 }}>
-              {selected.title}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-              J-M-Reihen/{selected.folderPath ?? `Ankündigungen & Briefe/${selected.folderSlug}`}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 0.75, mb: 0.5 }}>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: announcementPalette.heading }}>
+                  {selected.title}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  J-M-Reihen/{selected.folderPath ?? `Ankündigungen & Briefe/${selected.folderSlug}`}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+                <Tooltip title="Schüler:innen-Vorschau in neuem Tab">
+                  <IconButton
+                    onClick={openStudentPreviewTab}
+                    aria-label="Schüler:innen-Vorschau in neuem Tab"
+                    sx={{
+                      ...compactIconBtnSx,
+                      bgcolor: announcementPalette.primary,
+                      color: '#fff',
+                      '&:hover': { bgcolor: announcementPalette.secondary },
+                    }}
+                  >
+                    <OpenInNewIcon sx={compactIconSx} />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            </Box>
 
             <Stack spacing={1.25}>
               <TextField
@@ -294,51 +401,112 @@ export function AnnouncementTeacherView() {
                 size="small"
                 sx={announcementFieldSx}
               />
-              <TextField
-                label="Inhalt / Hinweis"
-                value={draftBody}
-                onChange={(e) => setDraftBody(e.target.value)}
-                fullWidth
-                multiline
-                minRows={4}
-                size="small"
-                sx={announcementFieldSx}
+              <AnnouncementImageManager
+                images={draftImages}
+                onChange={setDraftImages}
+                onUpload={uploadImages}
+                uploading={uploadingImage}
+              />
+
+              <AnnouncementTextTemplatePicker onApply={applyTextTemplate} />
+
+              <Box>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: announcementPalette.textPrimary, display: 'block', mb: 0.5 }}>
+                  Text
+                </Typography>
+                <RichTextEditor
+                  ref={bodyEditorRef}
+                  value={draftBody}
+                  onChange={setDraftBody}
+                  placeholder="Ankündigungstext — wird in die Designvorschläge übernommen"
+                  rows={4}
+                  compact
+                  allowPasteImages={true}
+                  showImageToolbar={true}
+                  imageStorage="dataUrl"
+                  showLessonMarkup={false}
+                />
+              </Box>
+
+              <AnnouncementDesignPicker
+                title={draftTitle}
+                bodyHtml={draftBody}
+                images={draftImages.map((i) => i.url)}
+                selectedLayoutId={draftLayoutId}
+                onSelectLayout={setDraftLayoutId}
+                onApplyLayout={(html, layoutId) => {
+                  setDraftBody(html);
+                  setDraftLayoutId(layoutId);
+                  setSuccessMsg(`Design „${layoutId}“ übernommen — bitte speichern.`);
+                }}
               />
 
               {selected.folderSlug && (
                 <Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: announcementPalette.textPrimary }}>
-                      Flyer-Vorschau
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5, gap: 0.75 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: announcementPalette.textPrimary, flex: 1 }}>
+                      Optional: HTML-Flyer im Ordner
                     </Typography>
-                    <Button
-                      size="small"
-                      startIcon={<VisibilityIcon sx={{ fontSize: 16 }} />}
-                      href={flyerPageUrl(selected.folderSlug)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      sx={{ textTransform: 'none', fontSize: '0.72rem', minHeight: 28 }}
-                    >
-                      Vollbild öffnen
-                    </Button>
+                    <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+                      <Tooltip title="Flyer Studio">
+                        <IconButton
+                          component="a"
+                          href={flyerStudioUrl(selected.folderSlug, draftTitle || selected.title)}
+                          aria-label="Flyer Studio"
+                          sx={{
+                            ...compactIconBtnSx,
+                            color: announcementPalette.primary,
+                            bgcolor: 'rgba(0,131,143,0.08)',
+                            '&:hover': { bgcolor: 'rgba(0,131,143,0.16)' },
+                          }}
+                        >
+                          <AutoAwesomeIcon sx={compactIconSx} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Flyer-Vorschau in neuem Tab">
+                        <IconButton
+                          component="a"
+                          href={flyerPageUrl(selected.folderSlug)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label="Flyer-Vorschau in neuem Tab"
+                          sx={{
+                            ...compactIconBtnSx,
+                            bgcolor: announcementPalette.primary,
+                            color: '#fff',
+                            '&:hover': { bgcolor: announcementPalette.secondary },
+                          }}
+                        >
+                          <OpenInNewIcon sx={compactIconSx} />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
                   </Box>
-                  <AnnouncementFlyerPreview folderSlug={selected.folderSlug} embedded height={480} />
+                  <Typography variant="caption" color="text.secondary">
+                    Flyer.html im Ordner ablegen oder im Flyer Studio erstellen — Vorschau nur im neuen Tab.
+                  </Typography>
                 </Box>
               )}
 
               <Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
-                  <Typography variant="caption" sx={{ fontWeight: 700, color: announcementPalette.textPrimary }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5, gap: 0.75 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: announcementPalette.textPrimary, flex: 1 }}>
                     Vordrucke / Links
                   </Typography>
-                  <Button
-                    size="small"
-                    startIcon={<LinkIcon sx={{ fontSize: 16 }} />}
-                    onClick={addLink}
-                    sx={{ textTransform: 'none', fontSize: '0.72rem', minHeight: 28 }}
-                  >
-                    Link hinzufügen
-                  </Button>
+                  <Tooltip title="Link hinzufügen">
+                    <IconButton
+                      onClick={addLink}
+                      aria-label="Link hinzufügen"
+                      sx={{
+                        ...compactIconBtnSx,
+                        bgcolor: announcementPalette.primary,
+                        color: '#fff',
+                        '&:hover': { bgcolor: announcementPalette.secondary },
+                      }}
+                    >
+                      <LinkIcon sx={compactIconSx} />
+                    </IconButton>
+                  </Tooltip>
                 </Box>
                 {draftLinks.length === 0 ? (
                   <Typography variant="caption" color="text.secondary">
@@ -370,9 +538,20 @@ export function AnnouncementTeacherView() {
                           size="small"
                           sx={announcementFieldSx}
                         />
-                        <IconButton size="small" onClick={() => removeLink(index)} aria-label="Link entfernen">
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
+                        <Tooltip title="Link entfernen">
+                          <IconButton
+                            onClick={() => removeLink(index)}
+                            aria-label="Link entfernen"
+                            sx={{
+                              ...overlayIconBtnSx,
+                              mt: 0.75,
+                              color: 'error.main',
+                              '&:hover': { bgcolor: 'rgba(211,47,47,0.08)' },
+                            }}
+                          >
+                            <DeleteIcon sx={overlayIconSx} />
+                          </IconButton>
+                        </Tooltip>
                       </Box>
                     ))}
                   </Stack>
