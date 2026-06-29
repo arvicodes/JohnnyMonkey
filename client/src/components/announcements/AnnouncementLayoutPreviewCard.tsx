@@ -9,6 +9,7 @@ type PreviewProps = {
   images: string[];
   selected?: boolean;
   onClick?: () => void;
+  compact?: boolean;
 };
 
 function PreviewContent({ layoutId, title, text, images }: { layoutId: AnnouncementLayoutId; title: string; text: string; images: string[] }) {
@@ -145,7 +146,7 @@ function PreviewContent({ layoutId, title, text, images }: { layoutId: Announcem
   );
 }
 
-export function AnnouncementLayoutPreviewCard({ layout, title, text, images, selected, onClick }: PreviewProps) {
+export function AnnouncementLayoutPreviewCard({ layout, title, text, images, selected, onClick, compact }: PreviewProps) {
   return (
     <Box
       onClick={onClick}
@@ -155,26 +156,33 @@ export function AnnouncementLayoutPreviewCard({ layout, title, text, images, sel
         if (e.key === 'Enter' || e.key === ' ') onClick?.();
       }}
       sx={{
-        borderRadius: 2,
+        borderRadius: compact ? 1.25 : 2,
         overflow: 'hidden',
         cursor: 'pointer',
         border: '2px solid',
         borderColor: selected ? layout.accent : 'divider',
-        boxShadow: selected ? `0 4px 16px ${layout.accent}44` : 'none',
+        boxShadow: selected ? `0 2px 8px ${layout.accent}44` : 'none',
         transition: 'all 0.15s ease',
-        '&:hover': { borderColor: layout.accent, transform: 'translateY(-2px)' },
+        '&:hover': { borderColor: layout.accent },
       }}
     >
-      <Box sx={{ height: 14, background: layout.previewGradient }} />
-      <Box sx={{ height: 118, overflow: 'hidden' }}>
+      <Box sx={{ height: compact ? 8 : 14, background: layout.previewGradient }} />
+      <Box sx={{ height: compact ? 68 : 118, overflow: 'hidden' }}>
         <PreviewContent layoutId={layout.id} title={title} text={text} images={images} />
       </Box>
-      <Box sx={{ px: 1, py: 0.75, bgcolor: selected ? `${layout.accent}14` : '#fafafa' }}>
-        <Typography variant="caption" sx={{ fontWeight: 800, display: 'block', color: layout.accent }}>
+      <Box sx={{ px: compact ? 0.5 : 1, py: compact ? 0.35 : 0.75, bgcolor: selected ? `${layout.accent}14` : '#fafafa' }}>
+        <Typography
+          variant="caption"
+          sx={{
+            fontWeight: 800,
+            display: 'block',
+            color: layout.accent,
+            fontSize: compact ? '0.62rem' : undefined,
+            lineHeight: 1.2,
+          }}
+          noWrap
+        >
           {layout.name}
-        </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem', lineHeight: 1.3 }}>
-          {layout.description}
         </Typography>
       </Box>
     </Box>

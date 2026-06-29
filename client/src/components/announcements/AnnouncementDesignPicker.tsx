@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Grid, IconButton, Tooltip, Typography } from '@mui/material';
+import { Box, Grid, IconButton, Tooltip } from '@mui/material';
 import { Check as CheckIcon } from '@mui/icons-material';
 import {
   ANNOUNCEMENT_LAYOUTS,
@@ -9,7 +9,7 @@ import {
   type AnnouncementLayoutId,
 } from './announcementLayouts';
 import { AnnouncementLayoutPreviewCard } from './AnnouncementLayoutPreviewCard';
-import { announcementPalette, compactIconBtnSx, compactIconSx } from './announcementUi';
+import { announcementPalette, compactIconBtnSx } from './announcementUi';
 
 type Props = {
   title: string;
@@ -18,6 +18,7 @@ type Props = {
   selectedLayoutId: AnnouncementLayoutId | null;
   onSelectLayout: (id: AnnouncementLayoutId) => void;
   onApplyLayout: (html: string, layoutId: AnnouncementLayoutId) => void;
+  compact?: boolean;
 };
 
 export function AnnouncementDesignPicker({
@@ -27,16 +28,17 @@ export function AnnouncementDesignPicker({
   selectedLayoutId,
   onSelectLayout,
   onApplyLayout,
+  compact,
 }: Props) {
   const textForLayout = htmlToPlainText(bodyHtml);
-  const canSuggest = Boolean(title.trim() || textForLayout || images.length);
+  const previewTitle = 'Titel';
+  const previewText = textForLayout || 'Dein Text …';
 
   const handleApply = () => {
     if (!selectedLayoutId) return;
     const content = bodyContentForLayout(bodyHtml);
     const html = buildAnnouncementLayoutHtml({
       layoutId: selectedLayoutId,
-      title: title.trim() || 'Ankündigung',
       text: content.text,
       htmlBody: content.htmlBody,
       images,
@@ -45,57 +47,46 @@ export function AnnouncementDesignPicker({
   };
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5 }}>
-        <Typography variant="caption" sx={{ fontWeight: 700, color: announcementPalette.textPrimary, flex: 1 }}>
-          Bild-Anordnung
-          {images.length > 0 ? ` · ${images.length} Bild${images.length === 1 ? '' : 'er'}` : ''}
-        </Typography>
-        <Tooltip title="Ausgewähltes Design übernehmen">
+    <Box sx={{ mt: compact ? 0.75 : 0 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5, mb: compact ? 0.5 : 0.75 }}>
+        <Tooltip title="Layout übernehmen">
           <span>
             <IconButton
               onClick={handleApply}
               disabled={!selectedLayoutId}
-              aria-label="Design übernehmen"
+              aria-label="Layout übernehmen"
               sx={{
                 ...compactIconBtnSx,
+                width: compact ? 28 : 32,
+                height: compact ? 28 : 32,
+                minWidth: compact ? 28 : 32,
                 bgcolor: selectedLayoutId ? announcementPalette.primary : '#e0e0e0',
                 color: '#fff',
                 '&:hover': { bgcolor: selectedLayoutId ? announcementPalette.secondary : '#e0e0e0' },
                 '&.Mui-disabled': { color: 'rgba(255,255,255,0.8)' },
               }}
             >
-              <CheckIcon sx={compactIconSx} />
+              <CheckIcon sx={{ fontSize: compact ? 17 : 20 }} />
             </IconButton>
           </span>
         </Tooltip>
       </Box>
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1, lineHeight: 1.4 }}>
-        Layout für Bilder — Textformatierung bleibt erhalten. Reihenfolge der Bilder oben beachten.
-      </Typography>
 
-      {!canSuggest ? (
-        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem', py: 1 }}>
-          Titel, Text oder mindestens ein Bild eingeben — dann erscheinen Vorschläge.
-        </Typography>
-      ) : (
-        <>
-          <Grid container spacing={1.25} sx={{ mb: 1.25 }}>
-            {ANNOUNCEMENT_LAYOUTS.map((layout) => (
-              <Grid item xs={6} sm={4} md={3} key={layout.id}>
-                <AnnouncementLayoutPreviewCard
-                  layout={layout}
-                  title={title}
-                  text={textForLayout}
-                  images={images}
-                  selected={selectedLayoutId === layout.id}
-                  onClick={() => onSelectLayout(layout.id)}
-                />
-              </Grid>
-            ))}
+      <Grid container spacing={compact ? 0.5 : 1.25}>
+        {ANNOUNCEMENT_LAYOUTS.map((layout) => (
+          <Grid item xs={compact ? 6 : 6} sm={compact ? 6 : 4} md={compact ? 6 : 3} key={layout.id}>
+            <AnnouncementLayoutPreviewCard
+              layout={layout}
+              title={previewTitle}
+              text={previewText}
+              images={images}
+              selected={selectedLayoutId === layout.id}
+              onClick={() => onSelectLayout(layout.id)}
+              compact={compact}
+            />
           </Grid>
-        </>
-      )}
+        ))}
+      </Grid>
     </Box>
   );
 }

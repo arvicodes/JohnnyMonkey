@@ -32,6 +32,9 @@ import {
   prepareStorySnippetsInHost,
   shouldRemoveStorySnippetOnDelete,
 } from '../../lib/storySnippetDrag';
+import { velProtokollDisplaySx } from '../announcements/vereinProtokollStyles';
+import { RICH_TEXT_EDITOR_FONT_FAMILY } from '../../lib/richTextEditorFont';
+import { moveProtokollTabStop } from '../../lib/protokollTabNavigation';
 
 const EmojiPicker = lazy(() => import('emoji-picker-react'));
 
@@ -53,6 +56,8 @@ interface RichTextEditorProps {
   enableStorySnippets?: boolean;
   /** Lehrer-Markierungen (M/O/F/A …) — in Stories meist aus */
   showLessonMarkup?: boolean;
+  /** minimal: Fett/Kursiv, Listen, Ausrichtung — für Ankündigungen/Protokolle */
+  toolbarMode?: 'full' | 'minimal';
 }
 
 export type RichTextEditorHandle = {
@@ -381,10 +386,12 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
   defaultTextAlign = 'left',
   enableStorySnippets = false,
   showLessonMarkup = true,
+  toolbarMode = 'full',
 },
   ref,
 ) {
   const useJustify = defaultTextAlign === 'justify';
+  const minimalToolbar = toolbarMode === 'minimal';
   const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
   const [isUnderline, setIsUnderline] = useState(false);
@@ -1217,6 +1224,9 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
 
   /** <img> darf keine Kindelemente haben – Griff sitzt im Wrapper-Span. */
   const ensureEditorImageWrap = (img: HTMLImageElement): HTMLSpanElement => {
+    if (img.hasAttribute('data-protokoll-logo')) {
+      return (img.parentElement as HTMLSpanElement) ?? img as unknown as HTMLSpanElement;
+    }
     const p = img.parentElement;
     if (p?.classList.contains('editor-image-wrap')) {
       return p as HTMLSpanElement;
@@ -1238,6 +1248,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
   const makeImageResizable = useCallback(
     (img: HTMLImageElement) => {
       if (img.hasAttribute('data-editor-icon')) return;
+      if (img.hasAttribute('data-protokoll-logo')) return;
 
       const wrap = ensureEditorImageWrap(img);
       wrap.querySelector('.resize-handle')?.remove();
@@ -1531,12 +1542,17 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
     } else if (e.key === 'u' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       applyStyle('underline');
-    } else if (e.key === 'Tab' && e.shiftKey) {
+    } else if (e.key === 'Tab') {
+      const host = editorRef.current;
+      if (host?.querySelector('.vel-protokoll')) {
+        const handled = moveProtokollTabStop(host, e.shiftKey ? 'prev' : 'next');
+        if (handled) {
+          e.preventDefault();
+          return;
+        }
+      }
       e.preventDefault();
-      indentList('out');
-    } else if (e.key === 'Tab' && !e.shiftKey) {
-      e.preventDefault();
-      indentList('in');
+      indentList(e.shiftKey ? 'out' : 'in');
     }
   };
 
@@ -1646,6 +1662,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
         width: '100%',
         minWidth: 0,
         boxSizing: 'border-box',
+        fontFamily: RICH_TEXT_EDITOR_FONT_FAMILY,
         border: `1px solid ${appColors.border}`,
         borderRadius: 2,
         backgroundColor: appColors.cardBg,
@@ -1686,8 +1703,8 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
           p: compact ? 0.5 : 1,
           borderBottom: `1px solid ${appColors.border}`,
           backgroundColor: appColors.background,
-          flexWrap: 'wrap', // Kompatibel mit schmalen Modals: Toolbar in mehreren Zeilen
-          overflow: 'visible',
+          flexWrap: minimalToolbar ? 'nowrap' : 'wrap',
+          overflow: minimalToolbar ? 'auto' : 'visible',
           rowGap: 0.25,
           columnGap: 0.25,
           justifyContent: 'flex-start'
@@ -1733,7 +1750,8 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
             <FormatItalic fontSize="small" />
           </IconButton>
         </Tooltip>
-        
+
+        {!minimalToolbar ? (
         <Tooltip title="Unterstrichen (Ctrl+U)">
           <IconButton
             size="small"
@@ -1753,6 +1771,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
             <FormatUnderlined fontSize="small" />
           </IconButton>
         </Tooltip>
+        ) : null}
 
         {enableStorySnippets ? (
           <>
@@ -1965,6 +1984,20 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
         </Tooltip>
           </>
         ) : null}
+
+        {minimalToolbar ? (
+          <Box
+            component="span"
+            sx={{
+              width: '1px',
+              height: 22,
+              bgcolor: appColors.border,
+              mx: 0.25,
+              alignSelf: 'center',
+              flexShrink: 0,
+            }}
+          />
+        ) : null}
         
         {/* Lists */}
         <Tooltip title="Aufzählungsliste">
@@ -2007,6 +2040,8 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
           </IconButton>
         </Tooltip>
         
+        {!minimalToolbar ? (
+        <>
         {/* List Indentation */}
         <Tooltip title="Liste einrücken">
           <IconButton
@@ -2087,6 +2122,8 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
             </Box>
           </IconButton>
         </Tooltip>
+        </>
+        ) : null}
         
         {showImageToolbar ? (
           <Tooltip title="Bild einfügen (oder aus Zwischenablage). Größe: grünen Punkt unten rechts ziehen. Rechtsklick: löschen.">
@@ -2115,6 +2152,8 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
           </Tooltip>
         ) : null}
 
+        {!minimalToolbar ? (
+        <>
         {/* Schriftgröße – wie Farbauswahl: Auswahl beim Klick speichern, dann Popover */}
         <Box ref={fontSizePickerRef} sx={{ position: 'relative' }}>
           <Tooltip title="Schriftgröße">
@@ -2395,31 +2434,23 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
             </Box>
           </Tooltip>
         </Box>
-
-        {/* Symbole einfügen (Pfeil, Aufzählung, …) */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, ml: 0.5, borderLeft: `1px solid ${appColors.border}`, pl: 0.5 }}>
-          {toolbarSymbols.map(({ label, char }) => (
-            <Tooltip key={char} title={label}>
-              <IconButton
-                size="small"
-                onClick={() => insertSymbol(char)}
-                sx={{
-                  width: compact ? 26 : 30,
-                  height: compact ? 26 : 30,
-                  minWidth: 0,
-                  color: appColors.textPrimary,
-                  border: `1px solid ${appColors.border}`,
-                  borderRadius: 0.5,
-                  fontSize: '1rem',
-                  '&:hover': { backgroundColor: `${appColors.primary}10`, borderColor: appColors.primary }
-                }}
-              >
-                {char}
-              </IconButton>
-            </Tooltip>
-          ))}
-        </Box>
+        </>
+        ) : null}
         
+        {minimalToolbar ? (
+          <Box
+            component="span"
+            sx={{
+              width: '1px',
+              height: 22,
+              bgcolor: appColors.border,
+              mx: 0.25,
+              alignSelf: 'center',
+              flexShrink: 0,
+            }}
+          />
+        ) : null}
+
         {/* Text Alignment */}
         <Tooltip title="Links ausrichten">
           <IconButton
@@ -2501,6 +2532,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
           </IconButton>
         </Tooltip>
 
+        {!minimalToolbar ? (
         <Tooltip title="Gesamten Text nach links: Ausrichtung links und Einzüge (Listen/Blöcke) zurücknehmen">
           <IconButton
             size="small"
@@ -2520,6 +2552,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
             <FormatIndentDecrease fontSize="small" />
           </IconButton>
         </Tooltip>
+        ) : null}
       </Box>
       
       {/* Editor */}
@@ -2549,6 +2582,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
           lineHeight: 1.5,
           color: appColors.textPrimary,
           fontSize: '0.875rem',
+          fontFamily: RICH_TEXT_EDITOR_FONT_FAMILY,
           outline: 'none',
           userSelect: 'text',
           WebkitUserSelect: 'text',
@@ -2560,6 +2594,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
             textAlign: useJustify ? 'justify' : 'left',
             marginTop: '0.35em',
             marginBottom: '0.35em',
+            fontFamily: 'inherit',
           },
           '& p:first-of-type': { marginTop: 0 },
           '& p:last-of-type': { marginBottom: 0 },
@@ -2567,9 +2602,16 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
             marginLeft: 0,
             paddingLeft: 0,
             textAlign: 'left',
+            fontFamily: 'inherit',
           },
-          '& ul, & ol': { marginLeft: 0, paddingLeft: '1.25em', textAlign: 'left' },
-          '& li': { textAlign: 'left' },
+          '& ul, & ol': { marginLeft: 0, paddingLeft: '1.25em', textAlign: 'left', fontFamily: 'inherit' },
+          '& li': { textAlign: 'left', fontFamily: 'inherit' },
+          '& span, & font, & div, & blockquote, & strong, & em, & b, & i, & u': {
+            fontFamily: 'inherit',
+          },
+          '& [style*="font-family"], & font[face]': {
+            fontFamily: `${RICH_TEXT_EDITOR_FONT_FAMILY} !important`,
+          },
           '& [align="justify"], & [style*="text-align: justify"], & [style*="text-align:justify"]': {
             textAlign: 'justify',
           },
@@ -2643,7 +2685,41 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
               opacity: 0,
               transition: 'opacity 0.2s ease'
             }
-          }
+          },
+          ...velProtokollDisplaySx,
+          '& .vel-protokoll .proto-logo img, & img[data-protokoll-logo]': {
+            width: '2.18cm !important',
+            maxWidth: '2.18cm !important',
+            height: 'auto !important',
+            cursor: 'default !important',
+            border: 'none !important',
+            boxShadow: 'none !important',
+            transform: 'none !important',
+          },
+          '& .vel-protokoll .proto-logo img:hover, & img[data-protokoll-logo]:hover': {
+            boxShadow: 'none !important',
+            transform: 'none !important',
+            borderColor: 'transparent !important',
+          },
+          '& .vel-protokoll .proto-p': {
+            marginTop: '0 !important',
+            marginBottom: '0 !important',
+            textAlign: 'justify',
+          },
+          '& .vel-protokoll .proto-center': {
+            textAlign: 'center !important',
+          },
+          '& .vel-protokoll .proto-meta': {
+            textAlign: 'center !important',
+          },
+          '& .vel-protokoll .proto-list': {
+            marginLeft: '0 !important',
+            paddingLeft: '1.27cm !important',
+            textAlign: 'justify !important',
+          },
+          '& .vel-protokoll .proto-list li': {
+            textAlign: 'justify !important',
+          },
         }}
         suppressContentEditableWarning
         data-placeholder={placeholder}

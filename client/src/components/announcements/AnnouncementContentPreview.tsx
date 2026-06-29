@@ -1,11 +1,8 @@
 import React, { useMemo } from 'react';
 import { Box, Typography } from '@mui/material';
-import { Campaign as CampaignIcon } from '@mui/icons-material';
 import type { AnnouncementImage, AnnouncementLayoutId } from '../../lib/announcementTypes';
 import { AnnouncementBodyDisplay } from './announcementBody';
-import { hasAnnouncementLayout } from './announcementLayouts';
 import { AnnouncementStudentImages } from './AnnouncementStudentImages';
-import { announcementPalette } from './announcementUi';
 
 type Props = {
   title: string;
@@ -28,40 +25,20 @@ export function AnnouncementContentPreview({
   images = [],
   layoutId: _layoutId = null,
   metaLine,
-  emptyHint = 'Noch kein Inhalt — Titel, Bilder oder Design hinzufügen.',
+  emptyHint = 'Noch kein Inhalt — Text, Bilder oder Design hinzufügen.',
 }: Props) {
   const displayBody = useMemo(() => resolveStudentAnnouncementBody(body), [body]);
-  const hasLayout = hasAnnouncementLayout(displayBody);
-  const showTitleHeader = !hasLayout;
   const hasImages = images.some((img) => img.url?.trim());
 
   const isEmpty = !displayBody && !hasImages;
 
   return (
     <>
-      {showTitleHeader && title.trim() && (
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1.25 }}>
-          <CampaignIcon sx={{ color: announcementPalette.primary, mt: 0.25, flexShrink: 0 }} />
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography
-              variant="h5"
-              sx={{
-                fontWeight: 800,
-                color: announcementPalette.heading,
-                lineHeight: 1.25,
-                fontSize: { xs: '1.25rem', md: '1.5rem' },
-              }}
-            >
-              {title.trim()}
-            </Typography>
-            {metaLine ? (
-              <Typography variant="caption" color="text.secondary">
-                {metaLine}
-              </Typography>
-            ) : null}
-          </Box>
-        </Box>
-      )}
+      {metaLine ? (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.25 }}>
+          {metaLine}
+        </Typography>
+      ) : null}
 
       <AnnouncementStudentImages
         images={images}

@@ -9,6 +9,10 @@ type Props = {
   title: string;
 };
 
+function isLetterDocumentBody(bodyHtml: string): boolean {
+  return /class=["']vel-protokoll["']/i.test(bodyHtml ?? '');
+}
+
 function collectVisibleImages(images: AnnouncementImage[], bodyHtml: string): AnnouncementImage[] {
   const inBody = extractImageUrlsFromHtml(bodyHtml);
   const layoutActive = hasAnnouncementLayout(bodyHtml);
@@ -43,45 +47,18 @@ const gridSx = {
 } as const;
 
 export function AnnouncementStudentImages({ images, bodyHtml, title }: Props) {
+  if (isLetterDocumentBody(bodyHtml)) return null;
+
   const visible = collectVisibleImages(images, bodyHtml);
   if (visible.length === 0) return null;
 
-  if (visible.length === 1) {
-    const hero = visible[0];
-    return (
-      <Box sx={{ mb: 2 }}>
-        <Box
-          sx={{
-            borderRadius: 2,
-            overflow: 'hidden',
-            border: '1px solid',
-            borderColor: 'divider',
-            bgcolor: '#f5f5f5',
-          }}
-        >
-          <Box
-            component="img"
-            src={hero.url}
-            alt={hero.caption || title}
-            sx={{
-              width: '100%',
-              maxHeight: { xs: 320, md: 480 },
-              objectFit: 'cover',
-              display: 'block',
-            }}
-          />
-          {hero.caption ? (
-            <Typography variant="caption" sx={{ display: 'block', px: 1.25, py: 0.75, color: 'text.secondary' }}>
-              {hero.caption}
-            </Typography>
-          ) : null}
-        </Box>
-      </Box>
-    );
-  }
-
   return (
-    <Box sx={{ mb: 2 }}>
+    <Box
+      sx={{
+        mb: 2,
+        ...(visible.length === 1 ? { maxWidth: { xs: '100%', sm: 280 } } : null),
+      }}
+    >
       <Box sx={gridSx}>
         {visible.map((img, i) => (
           <Box

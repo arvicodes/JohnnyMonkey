@@ -2,6 +2,9 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Box,
   Button,
+  ButtonGroup,
+  Checkbox,
+  FormControlLabel,
   Card,
   CardContent,
   Chip,
@@ -20,16 +23,29 @@ import {
   Add as AddIcon,
   Campaign as CampaignIcon,
   Delete as DeleteIcon,
-  Link as LinkIcon,
   AutoAwesome as AutoAwesomeIcon,
   OpenInNew as OpenInNewIcon,
 } from '@mui/icons-material';
 import { AnnouncementDesignPicker } from './AnnouncementDesignPicker';
+import {
+  AnnouncementDocumentHeaderActions,
+  AnnouncementDocumentPreviewSection,
+  AnnouncementDocumentPreviewToggleButton,
+  AnnouncementDocumentProvider,
+} from './AnnouncementDocumentPanel';
 import { AnnouncementImageManager } from './AnnouncementImageManager';
 import type { AnnouncementStudentDisplayItem } from './AnnouncementStudentDetailContent';
-import { AnnouncementTextTemplatePicker } from './AnnouncementTextTemplatePicker';
-import type { AnnouncementTextTemplate } from './announcementTextTemplates';
-import { htmlToPlainText } from './announcementLayouts';
+import { AnnouncementTypePicker } from './AnnouncementTypePicker';
+import { findAnnouncementTemplate, isProtokollTemplate, usesVflLetterhead, type AnnouncementTextTemplate } from './announcementTextTemplates';
+import { velProtokollDisplaySx } from './vereinProtokollStyles';
+import { ensureVereinProtokollHeader } from './vereinProtokollAssets';
+import type { AnnouncementKind, AnnouncementRealm } from './announcementKinds';
+import {
+  composeStoredBodyFromEditor,
+  extractEditorHtmlFromStoredBody,
+  extractLayoutIdFromStoredBody,
+  htmlToPlainText,
+} from './announcementLayouts';
 import { apiDelete, apiGet, apiPost, apiPut } from '../../lib/api';
 import { flyerPageUrl, flyerStudioUrl } from '../../lib/announcementPaths';
 import { openAnnouncementStudentPreviewTab } from '../../lib/announcementStudentPreviewStorage';
@@ -38,12 +54,15 @@ import { formatAnnouncementDate } from '../../lib/announcementTypes';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-icon-button';
 import { RichTextEditor, type RichTextEditorHandle } from '../ui/rich-text-editor';
 import {
-  announcementActionBarSx,
   announcementBtnDangerSx,
   announcementBtnDraftSx,
   announcementBtnPublishSx,
+  announcementActionButtonGroupSx,
+  announcementEditorTopButtonGroupSx,
+  announcementEditorTopActionsSx,
   announcementEditorCardSx,
   announcementFieldSx,
+  announcementHeaderPrimaryIconBtnSx,
   announcementPalette,
   announcementStatusChipSx,
   announcementTileGridSx,
@@ -87,19 +106,35 @@ export function AnnouncementTeacherView() {
   const [draftLayoutId, setDraftLayoutId] = useState<AnnouncementLayoutId | null>(null);
   const [draftLinks, setDraftLinks] = useState<AnnouncementLink[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [draftRealm, setDraftRealm] = useState<AnnouncementRealm>('verein');
+  const [draftKind, setDraftKind] = useState<AnnouncementKind>('protokoll');
+  const [withoutStandardText, setWithoutStandardText] = useState(false);
 
   const [newDialogOpen, setNewDialogOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+  const [editorSeedKey, setEditorSeedKey] = useState(0);
   const bodyEditorRef = useRef<RichTextEditorHandle>(null);
 
   const selected = announcements.find((a) => a.folderSlug === selectedFolderSlug) ?? null;
+  const activeTemplate = findAnnouncementTemplate(draftRealm, draftKind);
+
+  const getEditorHtml = () => {
+    bodyEditorRef.current?.flush();
+    return bodyEditorRef.current?.getHtml() ?? draftBody;
+  };
+
+  const buildStoredBody = () =>
+    composeStoredBodyFromEditor({
+      editorHtml: getEditorHtml(),
+      layoutId: draftLayoutId,
+      images: draftImages.map((img) => img.url).filter(Boolean),
+    });
 
   const buildStudentPreviewItem = (): AnnouncementStudentDisplayItem | null => {
     if (!selected) return null;
-    bodyEditorRef.current?.flush();
     return {
       title: draftTitle,
-      body: bodyEditorRef.current?.getHtml() ?? draftBody,
+      body: buildStoredBody(),
       images: draftImages,
       layoutId: draftLayoutId,
       links: draftLinks,
@@ -134,25 +169,71 @@ export function AnnouncementTeacherView() {
     void loadList(false);
   }, [loadList]);
 
-  const resetDraft = (item?: AnnouncementListItem | null) => {
+  const prepareProtokollEditorHtml = useCallback((html: string, template?: AnnouncementTextTemplate | null) => {
+    if (!isProtokollTemplate(template ?? activeTemplate)) return html;
+    return ensureVereinProtokollHeader(html);
+  }, [activeTemplate]);
+
+  const applyTextTemplate = useCallback(
+    (template: AnnouncementTextTemplate, options?: { replaceTitle?: boolean }) => {
+      if (options?.replaceTitle !== false) {
+        setDraftTitle(template.suggestedTitle);
+      }
+      setDraftBody(
+        isProtokollTemplate(template) ? ensureVereinProtokollHeader(template.bodyHtml) : template.bodyHtml,
+      );
+      if (template.suggestedLayoutId) setDraftLayoutId(template.suggestedLayoutId);
+      setEditorSeedKey((key) => key + 1);
+    },
+    [],
+  );
+
+  const resetDraft = (
+    item?: AnnouncementListItem | null,
+    options?: { realm?: AnnouncementRealm; kind?: AnnouncementKind },
+  ) => {
+    const realm = options?.realm ?? draftRealm;
+    const kind = options?.kind ?? draftKind;
+
     if (!item) {
       setDraftTitle('');
       setDraftBody('');
       setDraftImages([]);
       setDraftLayoutId(null);
       setDraftLinks([]);
+      setEditorSeedKey((key) => key + 1);
       return;
     }
+
+    const editorHtml = extractEditorHtmlFromStoredBody(item.body);
+    const bodyEmpty = !htmlToPlainText(editorHtml).trim();
+    const template = findAnnouncementTemplate(realm, kind);
+
     setDraftTitle(item.title);
-    setDraftBody(item.body);
     setDraftImages(item.images?.length ? [...item.images] : []);
-    setDraftLayoutId(item.layoutId ?? null);
+    setDraftLayoutId(item.layoutId ?? extractLayoutIdFromStoredBody(item.body));
     setDraftLinks(item.links?.length ? [...item.links] : []);
+
+    if (bodyEmpty && template && !withoutStandardText) {
+      if (!item.title.trim()) setDraftTitle(template.suggestedTitle);
+      setDraftBody(
+        isProtokollTemplate(template) ? ensureVereinProtokollHeader(template.bodyHtml) : template.bodyHtml,
+      );
+    } else if (bodyEmpty && withoutStandardText) {
+      setDraftBody('');
+    } else {
+      setDraftBody(prepareProtokollEditorHtml(editorHtml, template));
+    }
+    setEditorSeedKey((key) => key + 1);
   };
 
   const selectAnnouncement = (item: AnnouncementListItem) => {
+    const realm: AnnouncementRealm = 'verein';
+    const kind: AnnouncementKind = 'protokoll';
     setSelectedFolderSlug(item.folderSlug ?? null);
-    resetDraft(item);
+    setDraftRealm(realm);
+    setDraftKind(kind);
+    resetDraft(item, { realm, kind });
     setSuccessMsg(null);
   };
 
@@ -175,7 +256,9 @@ export function AnnouncementTeacherView() {
       setNewTitle('');
       if (created?.folderSlug) {
         setSelectedFolderSlug(created.folderSlug);
-        resetDraft(created);
+        setDraftRealm('verein');
+        setDraftKind('protokoll');
+        resetDraft(created, { realm: 'verein', kind: 'protokoll' });
       }
       setSuccessMsg('Ordner angelegt — Material kann jetzt hinein.');
     } catch (err) {
@@ -188,14 +271,12 @@ export function AnnouncementTeacherView() {
 
   const handleSave = async () => {
     if (!selectedFolderSlug || !draftTitle.trim()) return;
-    bodyEditorRef.current?.flush();
-    const bodyHtml = bodyEditorRef.current?.getHtml() ?? draftBody;
     setSaving(true);
     setSuccessMsg(null);
     try {
       const payload = {
         title: draftTitle.trim(),
-        body: bodyHtml.trim(),
+        body: buildStoredBody().trim(),
         links: draftLinks.filter((l) => l.label.trim() && l.url.trim()),
         images: draftImages.filter((img) => img.url.trim()),
         layoutId: draftLayoutId,
@@ -255,20 +336,41 @@ export function AnnouncementTeacherView() {
     setDraftLinks((prev) => prev.map((l, i) => (i === index ? { ...l, [field]: value } : l)));
   };
 
-  const addLink = () => setDraftLinks((prev) => [...prev, emptyLink()]);
   const removeLink = (index: number) => setDraftLinks((prev) => prev.filter((_, i) => i !== index));
 
-  const applyTextTemplate = (template: AnnouncementTextTemplate) => {
-    bodyEditorRef.current?.flush();
+  const applyAnnouncementKind = (realm: AnnouncementRealm, kind: AnnouncementKind) => {
+    const template = findAnnouncementTemplate(realm, kind);
+    const currentHtml = bodyEditorRef.current?.getHtml() ?? draftBody;
     const currentTitle = draftTitle.trim();
-    const currentBody = htmlToPlainText(bodyEditorRef.current?.getHtml() ?? draftBody).trim();
-    if (currentTitle || currentBody) {
-      if (!window.confirm(`Vorlage „${template.name}“ übernehmen? Titel und Text werden ersetzt.`)) return;
+    const currentBody = htmlToPlainText(currentHtml).trim();
+    const sameSelection = realm === draftRealm && kind === draftKind;
+
+    if (sameSelection) {
+      if (withoutStandardText || !template || currentBody) return;
+      applyTextTemplate(template, { replaceTitle: !currentTitle });
+      setSuccessMsg('Vorlage geladen.');
+      return;
     }
-    setDraftTitle(template.suggestedTitle);
-    setDraftBody(template.bodyHtml);
-    if (template.suggestedLayoutId) setDraftLayoutId(template.suggestedLayoutId);
-    setSuccessMsg(`Vorlage „${template.name}“ übernommen — Platzhalter anpassen und speichern.`);
+
+    const hasContent = Boolean(currentTitle || currentBody);
+
+    setDraftRealm(realm);
+    setDraftKind(kind);
+
+    if (withoutStandardText) {
+      if (hasContent) setDraftTitle('');
+      setDraftBody('');
+      setEditorSeedKey((key) => key + 1);
+      setSuccessMsg(null);
+      return;
+    }
+
+    if (template) {
+      applyTextTemplate(template);
+      setSuccessMsg('Vorlage geladen.');
+    } else {
+      setSuccessMsg(null);
+    }
   };
 
   const uploadImages = async (files: File[]) => {
@@ -364,156 +466,213 @@ export function AnnouncementTeacherView() {
 
       {selected && (
         <Card elevation={0} sx={announcementEditorCardSx}>
-          <CardContent sx={cardPaddingSx}>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 0.75, mb: 0.5 }}>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: announcementPalette.heading }}>
-                  {selected.title}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                  J-M-Reihen/{selected.folderPath ?? `Ankündigungen & Briefe/${selected.folderSlug}`}
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
-                <Tooltip title="Schüler:innen-Vorschau in neuem Tab">
-                  <IconButton
-                    onClick={openStudentPreviewTab}
-                    aria-label="Schüler:innen-Vorschau in neuem Tab"
-                    sx={{
-                      ...compactIconBtnSx,
-                      bgcolor: announcementPalette.primary,
-                      color: '#fff',
-                      '&:hover': { bgcolor: announcementPalette.secondary },
-                    }}
-                  >
-                    <OpenInNewIcon sx={compactIconSx} />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-            </Box>
+          {(() => {
+            const hasDocTemplate = Boolean(activeTemplate?.sourceDocxUrl);
+            const editorAllowsInlineImages = withoutStandardText || !hasDocTemplate;
+            const editorContent = (
+              <CardContent sx={{ ...cardPaddingSx, py: { xs: 0.75, sm: 1 } }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: { xs: 'column', lg: 'row' },
+                    alignItems: { xs: 'stretch', lg: 'flex-start' },
+                    justifyContent: 'space-between',
+                    gap: { xs: 0.75, sm: 1 },
+                    mb: 0.75,
+                    minWidth: 0,
+                    overflow: 'visible',
+                  }}
+                >
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <AnnouncementTypePicker
+                      realm={draftRealm}
+                      kind={draftKind}
+                      onSelect={applyAnnouncementKind}
+                    />
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={withoutStandardText}
+                          onChange={(e) => setWithoutStandardText(e.target.checked)}
+                        />
+                      }
+                      label={
+                        <Typography variant="caption" sx={{ fontSize: '0.72rem', lineHeight: 1.2 }}>
+                          Ohne Standardtext
+                        </Typography>
+                      }
+                      sx={{ mt: 0.35, ml: 0, mr: 0, alignItems: 'center' }}
+                    />
+                  </Box>
 
-            <Stack spacing={1.25}>
-              <TextField
-                label="Titel"
-                value={draftTitle}
-                onChange={(e) => setDraftTitle(e.target.value)}
-                fullWidth
-                size="small"
-                sx={announcementFieldSx}
-              />
-              <AnnouncementImageManager
-                images={draftImages}
-                onChange={setDraftImages}
-                onUpload={uploadImages}
-                uploading={uploadingImage}
-              />
-
-              <AnnouncementTextTemplatePicker onApply={applyTextTemplate} />
-
-              <Box>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: announcementPalette.textPrimary, display: 'block', mb: 0.5 }}>
-                  Text
-                </Typography>
-                <RichTextEditor
-                  ref={bodyEditorRef}
-                  value={draftBody}
-                  onChange={setDraftBody}
-                  placeholder="Ankündigungstext — wird in die Designvorschläge übernommen"
-                  rows={4}
-                  compact
-                  allowPasteImages={true}
-                  showImageToolbar={true}
-                  imageStorage="dataUrl"
-                  showLessonMarkup={false}
-                />
-              </Box>
-
-              <AnnouncementDesignPicker
-                title={draftTitle}
-                bodyHtml={draftBody}
-                images={draftImages.map((i) => i.url)}
-                selectedLayoutId={draftLayoutId}
-                onSelectLayout={setDraftLayoutId}
-                onApplyLayout={(html, layoutId) => {
-                  setDraftBody(html);
-                  setDraftLayoutId(layoutId);
-                  setSuccessMsg(`Design „${layoutId}“ übernommen — bitte speichern.`);
-                }}
-              />
-
-              {selected.folderSlug && (
-                <Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5, gap: 0.75 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: announcementPalette.textPrimary, flex: 1 }}>
-                      Optional: HTML-Flyer im Ordner
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
-                      <Tooltip title="Flyer Studio">
-                        <IconButton
-                          component="a"
-                          href={flyerStudioUrl(selected.folderSlug, draftTitle || selected.title)}
-                          aria-label="Flyer Studio"
-                          sx={{
-                            ...compactIconBtnSx,
-                            color: announcementPalette.primary,
-                            bgcolor: 'rgba(0,131,143,0.08)',
-                            '&:hover': { bgcolor: 'rgba(0,131,143,0.16)' },
-                          }}
+                  <Box sx={announcementEditorTopActionsSx}>
+                    <Stack
+                      direction="row"
+                      spacing={0.5}
+                      alignItems="center"
+                      flexWrap="wrap"
+                      useFlexGap
+                      justifyContent={{ xs: 'flex-start', lg: 'flex-end' }}
+                      sx={{ width: '100%' }}
+                    >
+                      <ButtonGroup size="small" sx={announcementEditorTopButtonGroupSx}>
+                        <Button
+                          onClick={handleSave}
+                          disabled={saving || !draftTitle.trim()}
+                          sx={announcementBtnDraftSx}
                         >
-                          <AutoAwesomeIcon sx={compactIconSx} />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Flyer-Vorschau in neuem Tab">
+                          {saving ? '…' : 'Speichern'}
+                        </Button>
+                        <Button
+                          onClick={handlePublish}
+                          disabled={publishing || !draftTitle.trim()}
+                          sx={{ ...announcementBtnPublishSx, boxShadow: 'none' }}
+                        >
+                          {publishing ? '…' : selected.isPublished ? 'Zurückziehen' : 'Veröffentlichen'}
+                        </Button>
+                        <Button onClick={handleDelete} sx={announcementBtnDangerSx}>
+                          Löschen
+                        </Button>
+                      </ButtonGroup>
+
+                      {hasDocTemplate ? (
+                        <>
+                          <AnnouncementDocumentHeaderActions />
+                          <AnnouncementDocumentPreviewToggleButton />
+                        </>
+                      ) : null}
+
+                      <Tooltip title="Schüler:innen-Vorschau (neuer Tab)">
                         <IconButton
-                          component="a"
-                          href={flyerPageUrl(selected.folderSlug)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label="Flyer-Vorschau in neuem Tab"
-                          sx={{
-                            ...compactIconBtnSx,
-                            bgcolor: announcementPalette.primary,
-                            color: '#fff',
-                            '&:hover': { bgcolor: announcementPalette.secondary },
-                          }}
+                          onClick={openStudentPreviewTab}
+                          aria-label="Schüler-Vorschau"
+                          sx={announcementHeaderPrimaryIconBtnSx}
                         >
                           <OpenInNewIcon sx={compactIconSx} />
                         </IconButton>
                       </Tooltip>
-                    </Box>
+                    </Stack>
                   </Box>
-                  <Typography variant="caption" color="text.secondary">
-                    Flyer.html im Ordner ablegen oder im Flyer Studio erstellen — Vorschau nur im neuen Tab.
-                  </Typography>
                 </Box>
-              )}
 
-              <Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5, gap: 0.75 }}>
-                  <Typography variant="caption" sx={{ fontWeight: 700, color: announcementPalette.textPrimary, flex: 1 }}>
-                    Vordrucke / Links
-                  </Typography>
-                  <Tooltip title="Link hinzufügen">
-                    <IconButton
-                      onClick={addLink}
-                      aria-label="Link hinzufügen"
-                      sx={{
-                        ...compactIconBtnSx,
-                        bgcolor: announcementPalette.primary,
-                        color: '#fff',
-                        '&:hover': { bgcolor: announcementPalette.secondary },
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: {
+                      xs: '1fr',
+                      md: 'minmax(200px, 280px) minmax(0, 1fr)',
+                      xl: 'minmax(220px, 320px) minmax(0, 1fr)',
+                    },
+                    gap: { xs: 0.75, md: 1, lg: 1.25 },
+                    alignItems: 'start',
+                    width: '100%',
+                  }}
+                >
+                  <Box
+                    sx={{
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 1.5,
+                      bgcolor: '#fafcfd',
+                      p: 0.75,
+                      order: { xs: 2, md: 1 },
+                    }}
+                  >
+                    <AnnouncementImageManager
+                      compact
+                      images={draftImages}
+                      onChange={setDraftImages}
+                      onUpload={uploadImages}
+                      uploading={uploadingImage}
+                    />
+                    <AnnouncementDesignPicker
+                      compact
+                      title={draftTitle}
+                      bodyHtml={draftBody}
+                      images={draftImages.map((i) => i.url)}
+                      selectedLayoutId={draftLayoutId}
+                      onSelectLayout={setDraftLayoutId}
+                      onApplyLayout={(_html, layoutId) => {
+                        setDraftLayoutId(layoutId);
+                        setSuccessMsg(null);
                       }}
-                    >
-                      <LinkIcon sx={compactIconSx} />
-                    </IconButton>
-                  </Tooltip>
+                    />
+                    {draftKind === 'flyer' && selected.folderSlug ? (
+                      <Box sx={{ display: 'flex', gap: 0.5, mt: 0.75, justifyContent: 'flex-end' }}>
+                        <Tooltip title="Flyer Studio">
+                          <IconButton
+                            component="a"
+                            href={flyerStudioUrl(selected.folderSlug, draftTitle || selected.title)}
+                            aria-label="Flyer Studio"
+                            sx={{
+                              ...compactIconBtnSx,
+                              width: 28,
+                              height: 28,
+                              minWidth: 28,
+                              color: announcementPalette.primary,
+                              bgcolor: 'rgba(0,131,143,0.08)',
+                            }}
+                          >
+                            <AutoAwesomeIcon sx={{ fontSize: 17 }} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Flyer-Vorschau">
+                          <IconButton
+                            component="a"
+                            href={flyerPageUrl(selected.folderSlug)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="Flyer-Vorschau"
+                            sx={{
+                              ...compactIconBtnSx,
+                              width: 28,
+                              height: 28,
+                              minWidth: 28,
+                              bgcolor: announcementPalette.primary,
+                              color: '#fff',
+                            }}
+                          >
+                            <OpenInNewIcon sx={{ fontSize: 17 }} />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    ) : null}
+                  </Box>
+
+                  <Stack spacing={0.75} sx={{ order: { xs: 1, md: 2 }, minWidth: 0 }}>
+                    <TextField
+                      placeholder="Titel"
+                      value={draftTitle}
+                      onChange={(e) => setDraftTitle(e.target.value)}
+                      fullWidth
+                      size="small"
+                      hiddenLabel
+                      sx={announcementFieldSx}
+                    />
+                    <Box sx={usesVflLetterhead(activeTemplate) ? velProtokollDisplaySx : undefined}>
+                      <RichTextEditor
+                        key={`${selected.folderSlug}-${editorSeedKey}`}
+                        ref={bodyEditorRef}
+                        value={draftBody}
+                        onChange={setDraftBody}
+                        placeholder="Text"
+                        rows={8}
+                        compact
+                        allowPasteImages={editorAllowsInlineImages}
+                        showImageToolbar={editorAllowsInlineImages}
+                        imageStorage="dataUrl"
+                        showLessonMarkup={false}
+                        defaultTextAlign={isProtokollTemplate(activeTemplate) ? 'left' : 'justify'}
+                      />
+                    </Box>
+                  </Stack>
                 </Box>
-                {draftLinks.length === 0 ? (
-                  <Typography variant="caption" color="text.secondary">
-                    Dateien im Ordner ablegen und hier verlinken (z. B. Flyer.html)
-                  </Typography>
-                ) : (
-                  <Stack spacing={0.75}>
+
+                {hasDocTemplate ? <AnnouncementDocumentPreviewSection /> : null}
+
+                {draftLinks.length > 0 ? (
+                  <Stack spacing={0.5} sx={{ mt: 0.75 }}>
                     {draftLinks.map((link, index) => (
                       <Box
                         key={index}
@@ -521,60 +680,82 @@ export function AnnouncementTeacherView() {
                           display: 'grid',
                           gridTemplateColumns: '1fr 1fr auto',
                           gap: 0.5,
-                          alignItems: 'start',
+                          alignItems: 'center',
                         }}
                       >
                         <TextField
-                          label="Bezeichnung"
+                          placeholder="Bezeichnung"
                           value={link.label}
                           onChange={(e) => updateLink(index, 'label', e.target.value)}
                           size="small"
+                          hiddenLabel
                           sx={announcementFieldSx}
                         />
                         <TextField
-                          label="URL"
+                          placeholder="URL"
                           value={link.url}
                           onChange={(e) => updateLink(index, 'url', e.target.value)}
                           size="small"
+                          hiddenLabel
                           sx={announcementFieldSx}
                         />
-                        <Tooltip title="Link entfernen">
-                          <IconButton
-                            onClick={() => removeLink(index)}
-                            aria-label="Link entfernen"
-                            sx={{
-                              ...overlayIconBtnSx,
-                              mt: 0.75,
-                              color: 'error.main',
-                              '&:hover': { bgcolor: 'rgba(211,47,47,0.08)' },
-                            }}
-                          >
-                            <DeleteIcon sx={overlayIconSx} />
-                          </IconButton>
-                        </Tooltip>
+                        <IconButton
+                          onClick={() => removeLink(index)}
+                          aria-label="Entfernen"
+                          sx={{ ...overlayIconBtnSx, color: 'error.main' }}
+                        >
+                          <DeleteIcon sx={overlayIconSx} />
+                        </IconButton>
                       </Box>
                     ))}
                   </Stack>
-                )}
-              </Box>
+                ) : null}
 
-              <Box sx={announcementActionBarSx}>
-                <Button onClick={handleSave} disabled={saving || !draftTitle.trim()} sx={announcementBtnDraftSx}>
-                  {saving ? '…' : 'Speichern'}
-                </Button>
-                <Button
-                  onClick={handlePublish}
-                  disabled={publishing || !draftTitle.trim()}
-                  sx={announcementBtnPublishSx}
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.75 }}>
+                  <ButtonGroup size="small" sx={announcementActionButtonGroupSx}>
+                    <Button
+                      onClick={handleSave}
+                      disabled={saving || !draftTitle.trim()}
+                      sx={announcementBtnDraftSx}
+                    >
+                      {saving ? '…' : 'Speichern'}
+                    </Button>
+                    <Button
+                      onClick={handlePublish}
+                      disabled={publishing || !draftTitle.trim()}
+                      sx={{ ...announcementBtnPublishSx, boxShadow: 'none' }}
+                    >
+                      {publishing ? '…' : selected.isPublished ? 'Zurückziehen' : 'Veröffentlichen'}
+                    </Button>
+                    <Button onClick={handleDelete} sx={announcementBtnDangerSx}>
+                      Löschen
+                    </Button>
+                  </ButtonGroup>
+                </Box>
+              </CardContent>
+            );
+
+            const wrapWithDocumentProvider = (content: React.ReactNode) => {
+              if (!hasDocTemplate) return content;
+              return (
+                <AnnouncementDocumentProvider
+                  key={selected.folderSlug}
+                  title={draftTitle}
+                  sourceDocxUrl={activeTemplate!.sourceDocxUrl!}
+                  getBodyHtml={() => {
+                    bodyEditorRef.current?.flush();
+                    const html = bodyEditorRef.current?.getHtml() ?? draftBody;
+                    return prepareProtokollEditorHtml(html, activeTemplate);
+                  }}
+                  disabled={!draftTitle.trim()}
                 >
-                  {publishing ? '…' : selected.isPublished ? 'Zurückziehen' : 'Veröffentlichen'}
-                </Button>
-                <Button onClick={handleDelete} sx={announcementBtnDangerSx}>
-                  Löschen
-                </Button>
-              </Box>
-            </Stack>
-          </CardContent>
+                  {content}
+                </AnnouncementDocumentProvider>
+              );
+            };
+
+            return wrapWithDocumentProvider(editorContent);
+          })()}
         </Card>
       )}
 
@@ -585,18 +766,15 @@ export function AnnouncementTeacherView() {
           </Typography>
           <DialogCloseIconButton onClose={() => setNewDialogOpen(false)} />
         </DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-            Es wird ein neuer Ordner unter „Ankündigungen &amp; Briefe“ angelegt. Flyer, PDFs und andere Dateien
-            legst du dort ab.
-          </Typography>
+        <DialogContent sx={{ pt: 1 }}>
           <TextField
             autoFocus
-            label="Titel der Ankündigung"
+            placeholder="Name für Downloads"
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             fullWidth
             size="small"
+            hiddenLabel
             sx={announcementFieldSx}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && newTitle.trim()) void handleCreateFolder();

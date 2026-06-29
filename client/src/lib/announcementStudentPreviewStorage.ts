@@ -9,19 +9,25 @@ type StoredStudentPreview = {
 
 export function saveAnnouncementStudentPreview(item: AnnouncementStudentDisplayItem): void {
   const payload: StoredStudentPreview = { item, savedAt: Date.now() };
-  sessionStorage.setItem(ANNOUNCEMENT_STUDENT_PREVIEW_STORAGE_KEY, JSON.stringify(payload));
+  const json = JSON.stringify(payload);
+  // localStorage: im neuen Tab lesbar (sessionStorage ist tab-isoliert)
+  localStorage.setItem(ANNOUNCEMENT_STUDENT_PREVIEW_STORAGE_KEY, json);
+  sessionStorage.setItem(ANNOUNCEMENT_STUDENT_PREVIEW_STORAGE_KEY, json);
 }
 
 export function loadAnnouncementStudentPreview(): AnnouncementStudentDisplayItem | null {
-  try {
-    const raw = sessionStorage.getItem(ANNOUNCEMENT_STUDENT_PREVIEW_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as StoredStudentPreview;
-    if (!parsed?.item || typeof parsed.item.title !== 'string') return null;
-    return parsed.item;
-  } catch {
-    return null;
+  for (const store of [localStorage, sessionStorage]) {
+    try {
+      const raw = store.getItem(ANNOUNCEMENT_STUDENT_PREVIEW_STORAGE_KEY);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw) as StoredStudentPreview;
+      if (!parsed?.item || typeof parsed.item.title !== 'string') continue;
+      return parsed.item;
+    } catch {
+      /* try next store */
+    }
   }
+  return null;
 }
 
 export function openAnnouncementStudentPreviewTab(item: AnnouncementStudentDisplayItem): void {

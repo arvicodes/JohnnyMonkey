@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Typography } from '@mui/material';
 import { announcementPalette } from './announcementUi';
 import { hasAnnouncementLayout } from './announcementLayouts';
+import { velProtokollDisplaySx } from './vereinProtokollStyles';
 
 export function announcementBodyLooksLikeHtml(raw: string): boolean {
   return /<(p|br|div|span|strong|b|em|i|u|ul|ol|li|h[1-6]|font|img)\b/i.test((raw ?? '').trim());
@@ -39,18 +40,14 @@ export const announcementBodyDisplaySx = {
   '& .jm-layout-hero .jm-ann-hero': { lineHeight: 0 },
   '& .jm-layout-hero .jm-ann-hero-img': {
     width: '100%',
-    maxHeight: { xs: 280, md: 420 },
+    maxHeight: { xs: 180, md: 240 },
     objectFit: 'cover',
     borderRadius: 0,
     display: 'block',
   },
   '& .jm-layout-hero .jm-ann-body': { p: { xs: 1.5, md: 2 } },
-  '& .jm-ann-title': {
-    fontWeight: 800,
-    fontSize: { xs: '1.2rem', md: '1.45rem' },
-    color: announcementPalette.heading,
-    lineHeight: 1.25,
-    mb: 1,
+  '& .jm-ann-title, & .jm-ann-accent-bar': {
+    display: 'none',
   },
   '& .jm-ann-text': { fontSize: { xs: '0.9rem', md: '1rem' }, lineHeight: 1.6 },
   '& .jm-ann-thumb-row': {
@@ -247,6 +244,7 @@ export const announcementBodyDisplaySx = {
     borderRadius: 1.5,
     display: 'block',
   },
+  ...velProtokollDisplaySx,
 } as const;
 
 type AnnouncementBodyDisplayProps = {

@@ -21,6 +21,7 @@ import {
   announcementPalette,
   compactIconBtnSx,
   compactIconSx,
+  teacherPageShellSx,
   pageShellSx,
   studentPageShellSx,
 } from '../components/announcements/announcementUi';
@@ -117,7 +118,7 @@ export default function AnnouncementsPage() {
 
   return (
     <Box sx={announcementPageBgSx}>
-      <Box sx={{ ...(isTeacher ? pageShellSx : studentPageShellSx), py: { xs: 1.25, sm: 1.5 } }}>
+      <Box sx={{ ...(isTeacher ? teacherPageShellSx : studentPageShellSx), py: { xs: 1.25, sm: 1.5 } }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, width: '100%' }}>
           <Tooltip title="Dashboard">
             <IconButton

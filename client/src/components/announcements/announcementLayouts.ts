@@ -90,7 +90,6 @@ export const ANNOUNCEMENT_LAYOUTS: AnnouncementLayoutMeta[] = [
 
 export type LayoutBuildInput = {
   layoutId: AnnouncementLayoutId;
-  title: string;
   /** Plain text fallback (Absätze) */
   text: string;
   /** Formatierter HTML-Text — bleibt erhalten (Listen, Farben, …) */
@@ -145,31 +144,29 @@ function imgTag(url: string, alt: string, extraClass = ''): string {
   return `<img class="jm-ann-img ${extraClass}" src="${safeUrl}" alt="${esc(alt)}" loading="lazy" />`;
 }
 
-function thumbRow(rest: string[], title: string): string {
+function thumbRow(rest: string[]): string {
   if (!rest.length) return '';
   return `<div class="jm-ann-thumb-row">${rest.map((u, i) => imgTag(u, `Bild ${i + 2}`, 'jm-ann-thumb')).join('')}</div>`;
 }
 
-function imageGrid(allImgs: string[], title: string, className: string): string {
+function imageGrid(allImgs: string[], className: string): string {
   if (!allImgs.length) return '';
-  return `<div class="${className}">${allImgs.map((u, i) => `<figure class="jm-ann-figure">${imgTag(u, `${title} ${i + 1}`, 'jm-ann-gallery-img')}</figure>`).join('')}</div>`;
+  return `<div class="${className}">${allImgs.map((u, i) => `<figure class="jm-ann-figure">${imgTag(u, `Bild ${i + 1}`, 'jm-ann-gallery-img')}</figure>`).join('')}</div>`;
 }
 
 export function buildAnnouncementLayoutHtml(input: LayoutBuildInput): string {
-  const { layoutId, title, images } = input;
+  const { layoutId, images } = input;
   const textBlock = layoutTextContent(input);
   const hero = images[0];
   const rest = images.slice(1);
   const allImgs = images.length ? images : [];
-  const safeTitle = esc(title);
 
   if (layoutId === 'hero') {
     return `<div class="jm-announcement-layout jm-layout-hero" data-layout="hero">
-  ${hero ? `<div class="jm-ann-hero">${imgTag(hero, title, 'jm-ann-hero-img')}</div>` : ''}
+  ${hero ? `<div class="jm-ann-hero">${imgTag(hero, 'Bild 1', 'jm-ann-hero-img')}</div>` : ''}
   <div class="jm-ann-body">
-    <h2 class="jm-ann-title">${safeTitle}</h2>
     <div class="jm-ann-text">${textBlock}</div>
-    ${thumbRow(rest, title)}
+    ${thumbRow(rest)}
   </div>
 </div>`;
   }
@@ -177,30 +174,27 @@ export function buildAnnouncementLayoutHtml(input: LayoutBuildInput): string {
   if (layoutId === 'magazine') {
     return `<div class="jm-announcement-layout jm-layout-magazine" data-layout="magazine">
   <div class="jm-ann-split">
-    ${hero ? `<div class="jm-ann-split-media">${imgTag(hero, title, 'jm-ann-split-img')}</div>` : ''}
+    ${hero ? `<div class="jm-ann-split-media">${imgTag(hero, 'Bild 1', 'jm-ann-split-img')}</div>` : ''}
     <div class="jm-ann-split-content">
-      <h2 class="jm-ann-title">${safeTitle}</h2>
       <div class="jm-ann-text">${textBlock}</div>
     </div>
   </div>
-  ${thumbRow(rest, title)}
+  ${thumbRow(rest)}
 </div>`;
   }
 
   if (layoutId === 'gallery') {
     return `<div class="jm-announcement-layout jm-layout-gallery" data-layout="gallery">
-  <h2 class="jm-ann-title">${safeTitle}</h2>
   <div class="jm-ann-text">${textBlock}</div>
-  ${imageGrid(allImgs, title, 'jm-ann-gallery')}
+  ${imageGrid(allImgs, 'jm-ann-gallery')}
 </div>`;
   }
 
   if (layoutId === 'mosaic') {
     return `<div class="jm-announcement-layout jm-layout-mosaic" data-layout="mosaic">
-  <h2 class="jm-ann-title">${safeTitle}</h2>
   <div class="jm-ann-text">${textBlock}</div>
   ${allImgs.length ? `<div class="jm-ann-mosaic">
-    ${hero ? `<div class="jm-ann-mosaic-main">${imgTag(hero, title, 'jm-ann-mosaic-main-img')}</div>` : ''}
+    ${hero ? `<div class="jm-ann-mosaic-main">${imgTag(hero, 'Bild 1', 'jm-ann-mosaic-main-img')}</div>` : ''}
     ${rest.length ? `<div class="jm-ann-mosaic-side">${rest.map((u, i) => imgTag(u, `Bild ${i + 2}`, 'jm-ann-mosaic-thumb')).join('')}</div>` : ''}
   </div>` : ''}
 </div>`;
@@ -208,46 +202,41 @@ export function buildAnnouncementLayoutHtml(input: LayoutBuildInput): string {
 
   if (layoutId === 'grid2') {
     return `<div class="jm-announcement-layout jm-layout-grid2" data-layout="grid2">
-  <h2 class="jm-ann-title">${safeTitle}</h2>
   <div class="jm-ann-text">${textBlock}</div>
-  ${imageGrid(allImgs, title, 'jm-ann-gallery jm-ann-grid-2')}
+  ${imageGrid(allImgs, 'jm-ann-gallery jm-ann-grid-2')}
 </div>`;
   }
 
   if (layoutId === 'grid3') {
     return `<div class="jm-announcement-layout jm-layout-grid3" data-layout="grid3">
-  <h2 class="jm-ann-title">${safeTitle}</h2>
   <div class="jm-ann-text">${textBlock}</div>
-  ${imageGrid(allImgs, title, 'jm-ann-gallery jm-ann-grid-3')}
+  ${imageGrid(allImgs, 'jm-ann-gallery jm-ann-grid-3')}
 </div>`;
   }
 
   if (layoutId === 'strip') {
     return `<div class="jm-announcement-layout jm-layout-strip" data-layout="strip">
-  <h2 class="jm-ann-title">${safeTitle}</h2>
   <div class="jm-ann-text">${textBlock}</div>
-  ${allImgs.length ? `<div class="jm-ann-strip">${allImgs.map((u, i) => imgTag(u, `${title} ${i + 1}`, 'jm-ann-strip-img')).join('')}</div>` : ''}
+  ${allImgs.length ? `<div class="jm-ann-strip">${allImgs.map((u, i) => imgTag(u, `Bild ${i + 1}`, 'jm-ann-strip-img')).join('')}</div>` : ''}
 </div>`;
   }
 
   if (layoutId === 'stack') {
     return `<div class="jm-announcement-layout jm-layout-stack" data-layout="stack">
-  <h2 class="jm-ann-title">${safeTitle}</h2>
   <div class="jm-ann-text">${textBlock}</div>
-  ${allImgs.length ? `<div class="jm-ann-stack">${allImgs.map((u, i) => imgTag(u, `${title} ${i + 1}`, 'jm-ann-stack-img')).join('')}</div>` : ''}
+  ${allImgs.length ? `<div class="jm-ann-stack">${allImgs.map((u, i) => imgTag(u, `Bild ${i + 1}`, 'jm-ann-stack-img')).join('')}</div>` : ''}
 </div>`;
   }
 
   // accent
   return `<div class="jm-announcement-layout jm-layout-accent" data-layout="accent">
-  <div class="jm-ann-accent-bar"><span class="jm-ann-accent-title">${safeTitle}</span></div>
   <div class="jm-ann-accent-body">
-    ${hero ? `<div class="jm-ann-accent-media">${imgTag(hero, title, 'jm-ann-accent-img')}</div>` : ''}
+    ${hero ? `<div class="jm-ann-accent-media">${imgTag(hero, 'Bild 1', 'jm-ann-accent-img')}</div>` : ''}
     <div class="jm-ann-accent-card">
-      <div class="jm-ann-text">${textBlock || `<p>${safeTitle}</p>`}</div>
+      <div class="jm-ann-text">${textBlock}</div>
     </div>
   </div>
-  ${thumbRow(rest, title)}
+  ${thumbRow(rest)}
 </div>`;
 }
 
@@ -274,4 +263,70 @@ export function extractImageUrlsFromHtml(html: string): string[] {
 
 export function hasAnnouncementLayout(html: string): boolean {
   return /jm-announcement-layout/i.test(html ?? '');
+}
+
+const LAYOUT_ID_VALUES = new Set<string>(ANNOUNCEMENT_LAYOUTS.map((l) => l.id));
+
+export function extractLayoutIdFromStoredBody(html: string): AnnouncementLayoutId | null {
+  const match = html.match(/data-layout=["']([a-z0-9]+)["']/i);
+  const id = match?.[1];
+  return id && LAYOUT_ID_VALUES.has(id) ? (id as AnnouncementLayoutId) : null;
+}
+
+function isProtokollLogoImgTag(tag: string): boolean {
+  return /data-protokoll-logo/i.test(tag);
+}
+
+/** Entfernt Bilder und Editor-Hüllen — Protokoll-Logo (data-protokoll-logo) bleibt. */
+export function stripImagesFromEditorHtml(html: string): string {
+  if (!html?.trim()) return '';
+  let out = html
+    .replace(/<span[^>]*class="[^"]*editor-image-wrap[^"]*"[^>]*>[\s\S]*?<\/span>/gi, '')
+    .replace(/<img([^>]*)>/gi, (match, attrs) => (isProtokollLogoImgTag(attrs) ? `<img${attrs}>` : ''));
+  if (typeof document !== 'undefined') {
+    const div = document.createElement('div');
+    div.innerHTML = out;
+    div.querySelectorAll('img').forEach((img) => {
+      if (!img.hasAttribute('data-protokoll-logo')) img.remove();
+    });
+    out = div.innerHTML;
+  }
+  return out.trim();
+}
+
+/** Gespeicherter Ankündigungstext → reiner Editor-Inhalt (ohne Layout-Hülle & Bilder). */
+export function extractEditorHtmlFromStoredBody(storedBody: string): string {
+  const trimmed = (storedBody ?? '').trim();
+  if (!trimmed) return '';
+
+  if (hasAnnouncementLayout(trimmed)) {
+    if (typeof document !== 'undefined') {
+      const div = document.createElement('div');
+      div.innerHTML = trimmed;
+      const textEl = div.querySelector('.jm-ann-text');
+      if (textEl) return stripImagesFromEditorHtml(textEl.innerHTML);
+    }
+    const match = trimmed.match(/<div class="jm-ann-text"[^>]*>([\s\S]*?)<\/div>/i);
+    if (match?.[1]) return stripImagesFromEditorHtml(match[1]);
+  }
+
+  return stripImagesFromEditorHtml(trimmed);
+}
+
+/** Editor-Inhalt + Bilder/Layout → gespeichertes HTML für Schüler:innen. */
+export function composeStoredBodyFromEditor(input: {
+  editorHtml: string;
+  layoutId: AnnouncementLayoutId | null;
+  images: string[];
+}): string {
+  const editorHtml = stripImagesFromEditorHtml(input.editorHtml);
+  if (!input.layoutId) return editorHtml;
+
+  const content = bodyContentForLayout(editorHtml);
+  return buildAnnouncementLayoutHtml({
+    layoutId: input.layoutId,
+    text: content.text,
+    htmlBody: content.htmlBody,
+    images: input.images,
+  });
 }

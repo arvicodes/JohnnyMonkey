@@ -20,9 +20,10 @@ type Props = {
   onChange: (images: AnnouncementImage[]) => void;
   onUpload: (files: File[]) => Promise<void>;
   uploading?: boolean;
+  compact?: boolean;
 };
 
-export function AnnouncementImageManager({ images, onChange, onUpload, uploading }: Props) {
+export function AnnouncementImageManager({ images, onChange, onUpload, uploading, compact }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const pickFiles = useCallback(
@@ -49,10 +50,7 @@ export function AnnouncementImageManager({ images, onChange, onUpload, uploading
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.75 }}>
-        <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.primary', flex: 1, minWidth: 0 }}>
-          Bilder ({images.length}) — Reihenfolge = Anordnung in Layouts
-        </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5, mb: compact ? 0.5 : 0.75 }}>
         <Tooltip title="Bilder hinzufügen">
           <span>
             <IconButton
@@ -93,28 +91,27 @@ export function AnnouncementImageManager({ images, onChange, onUpload, uploading
         onDrop={onDrop}
         onClick={() => !uploading && images.length === 0 && inputRef.current?.click()}
         sx={{
-          border: '2px dashed',
+          border: '1px dashed',
           borderColor: images.length ? 'divider' : 'rgba(0,131,143,0.35)',
-          borderRadius: 2,
+          borderRadius: 1.25,
           bgcolor: images.length ? '#fafafa' : 'rgba(0,131,143,0.04)',
           cursor: images.length === 0 && !uploading ? 'pointer' : 'default',
           '&:hover': images.length === 0 && !uploading ? { borderColor: '#00838f', bgcolor: 'rgba(0,131,143,0.08)' } : {},
         }}
       >
         {images.length === 0 ? (
-          <Box sx={{ py: 2, textAlign: 'center' }}>
-            <AddPhotoIcon sx={{ fontSize: 28, color: '#00838f', mb: 0.5 }} />
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', px: 1 }}>
-              Mehrere Fotos auf einmal — klicken, ziehen oder +
-            </Typography>
+          <Box sx={{ py: compact ? 1.25 : 2, textAlign: 'center' }} onClick={() => !uploading && inputRef.current?.click()}>
+            <AddPhotoIcon sx={{ fontSize: compact ? 22 : 28, color: '#00838f' }} />
           </Box>
         ) : (
-          <Box sx={{ maxHeight: 280, overflowY: 'auto', overflowX: 'hidden', p: 0.75 }}>
+          <Box sx={{ maxHeight: compact ? 140 : 280, overflowY: 'auto', overflowX: 'hidden', p: 0.5 }}>
             <Box
               sx={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(68px, 1fr))',
-                gap: 0.75,
+                gridTemplateColumns: compact
+                  ? 'repeat(auto-fill, minmax(52px, 1fr))'
+                  : 'repeat(auto-fill, minmax(68px, 1fr))',
+                gap: 0.5,
               }}
             >
               {images.map((img, index) => (
