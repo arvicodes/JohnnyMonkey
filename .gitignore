@@ -55,6 +55,7 @@ db-checkpoint-*.db
 !backup_latest.db
 !db-latest.sqlite3
 !backup_current_state_20251021-085112.db
+!backup_current_state_20260704-juli2026.db
 
 # Temporary files
 *.tmp
