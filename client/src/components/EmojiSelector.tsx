@@ -18,6 +18,7 @@ interface EmojiSelectorProps {
   onClose: () => void;
   onSelect: (emoji: string) => void;
   currentEmoji?: string;
+  title?: string;
 }
 
 const emojiCategories = [
@@ -72,7 +73,8 @@ const EmojiSelector: React.FC<EmojiSelectorProps> = ({
   open,
   onClose,
   onSelect,
-  currentEmoji = '🧙‍♂️'
+  currentEmoji = '🧙‍♂️',
+  title = '🎭 Wähle dein Avatar-Emoji',
 }) => {
   const handleEmojiSelect = (emoji: string) => {
     onSelect(emoji);
@@ -100,7 +102,7 @@ const EmojiSelector: React.FC<EmojiSelectorProps> = ({
         py: 2
       }}>
         <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-          🎭 Wähle dein Avatar-Emoji
+          {title}
         </Typography>
       </DialogTitle>
 

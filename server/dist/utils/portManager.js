@@ -42,6 +42,9 @@ class PortManager {
             const server = app.listen(port, () => {
                 var _a;
                 const actualPort = ((_a = server.address()) === null || _a === void 0 ? void 0 : _a.port) || port;
+                server.timeout = 600000;
+                server.keepAliveTimeout = 650000;
+                server.headersTimeout = 660000;
                 console.log(`🚀 Server started successfully on port ${actualPort}`);
                 resolve({ server, port: actualPort });
             });

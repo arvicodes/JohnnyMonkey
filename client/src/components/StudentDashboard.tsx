@@ -71,6 +71,12 @@ import { RIDDLES, Riddle } from './riddles';
 import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
 import { gradeFromGroupNames } from '../lib/entryTicketGrade';
 import { apiGetSafe } from '../lib/api';
+import { sortLearningGroups } from '../lib/learningGroupSort';
+import {
+  folderTreeNodeKey,
+  isFolderTreeNodeExpanded,
+  sortAssignedFolderPaths,
+} from '../lib/folderAssignmentOrder';
 import type { ExcursionProtocolDashboardSession } from '../lib/excursionProtocolTypes';
 import type { AnnouncementDashboardSession } from '../lib/announcementTypes';
 import { openLessonFolderFile } from '../lib/openLessonFolderFile';
@@ -1343,6 +1349,7 @@ interface Teacher {
 interface LearningGroup {
   id: string;
   name: string;
+  displayOrder?: number | null;
   teacher: Teacher;
 }
 
@@ -1837,6 +1844,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 
   // Gemeinsame Leinwand pro Stunde aufklappbar (Schüleransicht)
   const [expandedSharedInputKeys, setExpandedSharedInputKeys] = useState<Record<string, boolean>>({});
+  const [expandedFolderNodes, setExpandedFolderNodes] = useState<Record<string, boolean>>({});
   const [studentStundeModal, setStudentStundeModal] = useState<null | {
     groupId: string;
     lessonPath: string;
@@ -2700,7 +2708,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       if (response.ok) {
         const folders = await response.json();
         console.log(`✅ Gefundene Ordner für Gruppe ${groupId}:`, folders);
-        const folderPaths = folders.map((f: any) => f.path);
+        const folderPaths = sortAssignedFolderPaths(folders);
         console.log(`📂 Ordner-Pfade:`, folderPaths);
         
         // Lösche alle alten Daten für diese Gruppe
@@ -2941,6 +2949,41 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       }
 
       const treeKey = `${item.path || item.name}-${level}-${view}`;
+      const dirPathKey =
+        item.type === 'directory' ? (item.path || '').replace(/\\/g, '/').trim() || item.name : '';
+      const hasDirChildren =
+        item.type === 'directory' && Array.isArray(item.children) && item.children.length > 0;
+      const branchExpanded = hasDirChildren
+        ? isFolderTreeNodeExpanded(
+            expandedFolderNodes,
+            folderTreeNodeKey(groupId, folderPath, dirPathKey),
+            true
+          )
+        : false;
+      const folderBranchToggle = (toggleColor: string) =>
+        hasDirChildren ? (
+          <IconButton
+            size="small"
+            aria-label={branchExpanded ? 'Zuklappen' : 'Aufklappen'}
+            onClick={(e) => {
+              e.stopPropagation();
+              const key = folderTreeNodeKey(groupId, folderPath, dirPathKey);
+              setExpandedFolderNodes((prev) => ({
+                ...prev,
+                [key]: !isFolderTreeNodeExpanded(prev, key, true),
+              }));
+            }}
+            sx={{ width: 20, height: 20, p: 0, flexShrink: 0, color: toggleColor }}
+          >
+            {branchExpanded ? (
+              <ExpandLessIcon sx={{ fontSize: 16 }} />
+            ) : (
+              <ExpandMoreIcon sx={{ fontSize: 16 }} />
+            )}
+          </IconButton>
+        ) : (
+          <Box sx={{ width: 20, flexShrink: 0 }} />
+        );
 
       if (view === 'dashboard' && item.type === 'directory' && directoryIsStundeFolderForStudentTree(item.name, level)) {
         const openModal = () =>
@@ -3101,7 +3144,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             (isSharedInputLesson(item.name) && (sharedInputSharePaths[groupId] || []).includes(item.path)) ? (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mb: 0.5 }}>
                 <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, flex: 1, minWidth: 0 }}>
-                  {level === 2 ? <span style={{ color: '#2e7d32' }}>▼</span> : level === 3 ? <span style={{ color: '#666' }}>▼</span> : <span style={{ color: level === 0 ? '#9c27b0' : level === 1 ? '#1976d2' : '#666' }}>▼</span>}
+                  {folderBranchToggle(color)}
                   <span style={{ fontSize: '1em', marginRight: '4px' }}>{icon}</span>
                   <Typography component="span" variant="body2" sx={{ color: color, fontSize: '0.75rem', fontWeight: fontWeight, wordBreak: 'break-word' }}>
                     {item.name}
@@ -3110,6 +3153,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
               </Box>
             ) : (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mb: 0.5, maxWidth: '100%' }}>
+                {folderBranchToggle(color)}
                 <Typography variant="body2" sx={{ 
                   color: color,
                   fontSize: '0.75rem',
@@ -3123,17 +3167,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   flex: 1,
                   minWidth: 0,
                 }}>
-                  {level === 0 ? (
-                    <span style={{ color: '#9c27b0' }}>▼</span>
-                  ) : level === 1 ? (
-                    <span style={{ color: '#1976d2' }}>▼</span>
-                  ) : level === 2 ? (
-                    <span style={{ color: '#2e7d32' }}>▼</span>
-                  ) : level === 3 ? (
-                    <span style={{ color: '#666' }}>▼</span>
-                  ) : (
-                    <span style={{ color: '#666' }}>▼</span>
-                  )}
                   <span style={{ fontSize: '1em', marginRight: '4px' }}>{icon}</span>
                   <span>{item.name}</span>
                 </Typography>
@@ -3206,7 +3239,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       )}
           
       {/* Rekursive Anzeige für ALLE Unterordner und Dateien - IMMER aufgeklappt */}
-      {item.type === 'directory' && item.children && item.children.length > 0 && (
+      {item.type === 'directory' && item.children && item.children.length > 0 && branchExpanded && (
         <Box sx={{ ml: 2, mb: 0.7 }}>
           {filterWbFilesForStudentPreview(item.children).map((child: any) =>
             renderItemRecursively(child, level + 1, view)
@@ -3228,10 +3261,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     const modalRoot = modalOpen ? studentStundeModal!.materialRoot : null;
     const modalGid = modalOpen ? studentStundeModal!.groupId : '';
 
+    const rootExpanded = isFolderTreeNodeExpanded(
+      expandedFolderNodes,
+      folderTreeNodeKey(groupId, folderPath),
+      true
+    );
+
     return (
       <React.Fragment key={folderPath}>
         <Box sx={{ mb: 1.4 }}>
-          {/* Hauptordner - Grauer Ordner mit rotem Dreieck (immer aufgeklappt) */}
           <Box
             sx={{
               p: 1.4,
@@ -3244,7 +3282,21 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
               },
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <IconButton
+                size="small"
+                aria-label={rootExpanded ? 'Ordner zuklappen' : 'Ordner aufklappen'}
+                onClick={() => {
+                  const key = folderTreeNodeKey(groupId, folderPath);
+                  setExpandedFolderNodes((prev) => ({
+                    ...prev,
+                    [key]: !isFolderTreeNodeExpanded(prev, key, true),
+                  }));
+                }}
+                sx={{ width: 24, height: 24, p: 0, color: '#D32F2F' }}
+              >
+                {rootExpanded ? <ExpandLessIcon sx={{ fontSize: 18 }} /> : <ExpandMoreIcon sx={{ fontSize: 18 }} />}
+              </IconButton>
               <Typography
                 variant="body2"
                 sx={{
@@ -3254,28 +3306,27 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   display: 'flex',
                   alignItems: 'center',
                   gap: 0.5,
+                  flex: 1,
                 }}
               >
-                ▼ 📁 {folderPath.split('/').pop() || folderPath}
+                📁 {folderPath.split('/').pop() || folderPath}
               </Typography>
             </Box>
           </Box>
 
+          {rootExpanded && (
           <Box sx={{ ml: 2, mt: 1 }}>
             {isLoading ? (
               <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
                 Lade Inhalt...
               </Typography>
-            ) : items.length === 0 ? (
-              <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
-                Ordner ist leer
-              </Typography>
-            ) : (
+            ) : items.length === 0 ? null : (
               <Box>
                 {filteredItems.map((item) => renderItemRecursively(item, 0, 'dashboard')).filter((el) => el !== null)}
               </Box>
             )}
           </Box>
+          )}
         </Box>
 
         <Dialog
@@ -5119,7 +5170,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           throw new Error(`Server-Fehler: Ungültige Antwort vom Server`);
         }
         console.log('✅ Loaded', data.length, 'learning groups');
-        setLerngruppen(data);
+        setLerngruppen(sortLearningGroups(data));
         
         // Wenn Lerngruppen geladen sind, lade die Zuweisungen und Inhalte
         if (data.length > 0) {

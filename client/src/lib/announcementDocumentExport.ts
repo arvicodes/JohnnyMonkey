@@ -10,7 +10,10 @@ function sanitizeFileName(name: string): string {
 }
 
 function escapeXml(text: string): string {
-  return text
+  const sanitized = text
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF]/g, '')
+    .replace(/[\uD800-\uDFFF]/g, '');
+  return sanitized
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -36,6 +39,7 @@ function firstRunProperties(pXml: string): string {
 }
 
 function setParagraphPlainText(pXml: string, text: string): string {
+  const openTag = pXml.match(/^<w:p(?:\s[^>]*)?>/)?.[0] ?? '<w:p>';
   const pPr = pXml.match(/<w:pPr[\s\S]*?<\/w:pPr>/)?.[0] ?? '';
   const rPr = firstRunProperties(pXml);
   const lines = text.split('\n');
@@ -49,7 +53,7 @@ function setParagraphPlainText(pXml: string, text: string): string {
     });
   });
   if (!runs) runs = `<w:r>${rPr}<w:t xml:space="preserve"></w:t></w:r>`;
-  return `<w:p>${pPr}${runs}</w:p>`;
+  return `${openTag}${pPr}${runs}</w:p>`;
 }
 
 function normalizeBlockText(value: string): string {
@@ -223,19 +227,117 @@ function patchProtokollVorstandDocx(paragraphs: string[], bodyHtml: string): str
   return patched;
 }
 
+type DocxBodyLayout = {
+  parts: Array<{ kind: 'p'; index: number } | { kind: 'other'; xml: string }>;
+  paragraphXml: string[];
+  sectPrXml: string;
+};
+
+/** Schließendes Tag finden — `<w:pPr` darf nicht als `<w:p` zählen. */
+function findMatchingCloseTag(xml: string, start: number, qualified: string): number {
+  const openRe = new RegExp(`<${qualified}(?=[\\s/>])`, 'g');
+  const closeTag = `</${qualified}>`;
+  let depth = 0;
+  let pos = start;
+
+  while (pos < xml.length) {
+    openRe.lastIndex = pos;
+    const openMatch = openRe.exec(xml);
+    const nextOpen = openMatch?.index ?? -1;
+    const nextClose = xml.indexOf(closeTag, pos);
+    if (nextClose === -1) {
+      throw new Error(`Word-Dokument unvollständig (${qualified}).`);
+    }
+
+    if (nextOpen !== -1 && nextOpen < nextClose) {
+      depth += 1;
+      pos = xml.indexOf('>', nextOpen);
+      if (pos === -1) throw new Error(`Word-Dokument unvollständig (${qualified}).`);
+      pos += 1;
+      continue;
+    }
+
+    depth -= 1;
+    pos = nextClose + closeTag.length;
+    if (depth === 0) return pos;
+  }
+
+  throw new Error(`Word-Dokument unvollständig (${qualified}).`);
+}
+
+function parseDocxBodyLayout(docXml: string): DocxBodyLayout {
+  const bodyMatch = docXml.match(/<w:body>([\s\S]*)<\/w:body>/);
+  if (!bodyMatch) throw new Error('Word-Dokument ohne Textkörper.');
+
+  const bodyInner = bodyMatch[1];
+  const sectMatch = bodyInner.match(/<w:sectPr[\s\S]*?<\/w:sectPr>\s*$/);
+  const sectPrXml = sectMatch?.[0] ?? '';
+  const content = sectMatch ? bodyInner.slice(0, sectMatch.index) : bodyInner;
+
+  const parts: DocxBodyLayout['parts'] = [];
+  const paragraphXml: string[] = [];
+  let pIndex = 0;
+  let i = 0;
+
+  while (i < content.length) {
+    while (i < content.length && /\s/.test(content[i])) i += 1;
+    if (i >= content.length) break;
+
+    if (content.startsWith('<w:p', i) && /^<w:p(?:[\s/>])/.test(content.slice(i))) {
+      const end = findMatchingCloseTag(content, i, 'w:p');
+      paragraphXml.push(content.slice(i, end));
+      parts.push({ kind: 'p', index: pIndex });
+      pIndex += 1;
+      i = end;
+      continue;
+    }
+
+    if (content.startsWith('<w:tbl', i) && /^<w:tbl(?:[\s/>])/.test(content.slice(i))) {
+      const end = findMatchingCloseTag(content, i, 'w:tbl');
+      parts.push({ kind: 'other', xml: content.slice(i, end) });
+      i = end;
+      continue;
+    }
+
+    const unknownOpen = content.slice(i).match(/^<(w:[A-Za-z0-9]+)/);
+    if (!unknownOpen) break;
+    const tag = unknownOpen[1];
+    const end = findMatchingCloseTag(content, i, tag);
+    parts.push({ kind: 'other', xml: content.slice(i, end) });
+    i = end;
+  }
+
+  return { parts, paragraphXml, sectPrXml };
+}
+
+function serializeDocxBody(layout: DocxBodyLayout, patchedParagraphs: string[]): string {
+  let pIdx = 0;
+  const inner = layout.parts
+    .map((part) => {
+      if (part.kind === 'other') return part.xml;
+      const next = patchedParagraphs[pIdx] ?? layout.paragraphXml[part.index];
+      pIdx += 1;
+      return next;
+    })
+    .join('');
+  return `<w:body>${inner}${layout.sectPrXml}</w:body>`;
+}
+
+function replaceDocxBody(docXml: string, layout: DocxBodyLayout, patchedParagraphs: string[]): string {
+  const newBody = serializeDocxBody(layout, patchedParagraphs);
+  const replaced = docXml.replace(/<w:body[\s\S]*?<\/w:body>/, newBody);
+  if (replaced === docXml) throw new Error('Word-Dokument konnte nicht aktualisiert werden.');
+  return replaced;
+}
+
 export function patchDocxBody(originalBuffer: ArrayBuffer, bodyHtml: string, options: PatchDocxOptions = {}): Blob {
   const zip = new PizZip(originalBuffer);
   const docFile = zip.file('word/document.xml');
   if (!docFile) throw new Error('Word-Datei ist ungültig.');
   let docXml = docFile.asText();
 
-  const bodyMatch = docXml.match(/<w:body>([\s\S]*)<\/w:body>/);
-  if (!bodyMatch) throw new Error('Word-Dokument ohne Textkörper.');
-  const bodyInner = bodyMatch[1];
-  const sectMatch = bodyInner.match(/<w:sectPr[\s\S]*?<\/w:sectPr>/);
-  const sectPr = sectMatch?.[0] ?? '';
-  const bodyWithoutSect = sectMatch ? bodyInner.slice(0, sectMatch.index) : bodyInner;
-  const paragraphs = bodyWithoutSect.match(/<w:p[\s\S]*?<\/w:p>/g) ?? [];
+  const layout = parseDocxBodyLayout(docXml);
+  const paragraphs = layout.paragraphXml;
 
   const useProtokollPatch = options.protokollVorstand ?? isProtokollBodyHtml(bodyHtml);
 
@@ -261,8 +363,7 @@ export function patchDocxBody(originalBuffer: ArrayBuffer, bodyHtml: string, opt
     });
   }
 
-  const newBody = `<w:body>${patched.join('')}${sectPr}</w:body>`;
-  docXml = docXml.replace(/<w:body[\s\S]*?<\/w:body>/, newBody);
+  docXml = replaceDocxBody(docXml, layout, patched);
 
   zip.file('word/document.xml', docXml);
   const bytes = zip.generate({ type: 'uint8array', compression: 'DEFLATE' });
@@ -333,8 +434,10 @@ export async function exportAnnouncementPdfPages(pages: HTMLElement[], fileName:
       logging: false,
       scrollX: 0,
       scrollY: 0,
-      windowWidth: pageEl.scrollWidth,
-      windowHeight: pageEl.scrollHeight,
+      width: pageEl.scrollWidth || pageEl.offsetWidth,
+      height: pageEl.scrollHeight || pageEl.offsetHeight,
+      windowWidth: pageEl.scrollWidth || pageEl.offsetWidth,
+      windowHeight: pageEl.scrollHeight || pageEl.offsetHeight,
     });
     const imgData = canvas.toDataURL('image/png');
     const imgHeight = (canvas.height * pageWidth) / canvas.width;
@@ -364,10 +467,14 @@ export async function waitForDocxRenderPages(host: HTMLElement, timeoutMs = 3000
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
-    const pages = Array.from(host.querySelectorAll('section.docx')) as HTMLElement[];
-    const ready = pages.length > 0 && pages.every((page) => page.offsetHeight > 8);
+    const pages = Array.from(
+      host.querySelectorAll('section.docx, section[class*="docx"]'),
+    ) as HTMLElement[];
+    const ready =
+      pages.length > 0 &&
+      pages.every((page) => Math.max(page.offsetHeight, page.scrollHeight, page.clientHeight) > 8);
     if (ready) {
-      await new Promise((resolve) => window.setTimeout(resolve, 350));
+      await new Promise((resolve) => window.setTimeout(resolve, 400));
       return pages;
     }
     await new Promise((resolve) => window.requestAnimationFrame(resolve));
@@ -398,6 +505,15 @@ function getOffscreenDocxRenderHost(): HTMLElement {
   return host;
 }
 
+function prepareHostForCanvasCapture(host: HTMLElement): () => void {
+  const backup = host.style.cssText;
+  host.style.cssText =
+    'position:fixed;left:0;top:0;width:794px;max-width:100vw;opacity:1;pointer-events:none;z-index:-1;overflow:visible;background:#fff;';
+  return () => {
+    host.style.cssText = backup;
+  };
+}
+
 export async function renderDocxBlobToPages(docxBlob: Blob): Promise<{ host: HTMLElement; pages: HTMLElement[] }> {
   const host = getOffscreenDocxRenderHost();
   await renderAsync(docxBlob, host, undefined, {
@@ -417,6 +533,15 @@ export async function renderDocxBlobToPages(docxBlob: Blob): Promise<{ host: HTM
 }
 
 export async function exportAnnouncementPdfFromDocxBlob(docxBlob: Blob, fileName: string): Promise<void> {
-  const { pages } = await renderDocxBlobToPages(docxBlob);
-  await exportAnnouncementPdfPages(pages, fileName);
+  const { host, pages } = await renderDocxBlobToPages(docxBlob);
+  if (pages.length === 0) throw new Error('Keine Seiten für PDF-Export gefunden.');
+
+  const restoreHost = prepareHostForCanvasCapture(host);
+  try {
+    await new Promise((resolve) => window.setTimeout(resolve, 120));
+    await exportAnnouncementPdfPages(pages, fileName);
+  } finally {
+    restoreHost();
+    host.innerHTML = '';
+  }
 }

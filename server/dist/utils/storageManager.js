@@ -187,6 +187,37 @@ class StorageManager {
             maxDepth: recursive ? 10 : 1 // Allow deeper nesting for recursive calls
         };
     }
+    static normalizeCompare(s) {
+        return s.normalize('NFC').toLowerCase();
+    }
+    /** macOS NFD/NFC-tolerant: Ordner- und Dateinamen segmentweise auflösen */
+    static resolveUnicodePath(baseDir, relativeParts) {
+        let current = baseDir;
+        for (const part of relativeParts) {
+            const target = this.normalizeCompare(part);
+            const direct = path_1.default.join(current, part);
+            if (fs_1.default.existsSync(direct)) {
+                current = direct;
+                continue;
+            }
+            let found = null;
+            try {
+                for (const entry of fs_1.default.readdirSync(current, { withFileTypes: true })) {
+                    if (this.normalizeCompare(entry.name) === target) {
+                        found = path_1.default.join(current, entry.name);
+                        break;
+                    }
+                }
+            }
+            catch {
+                return null;
+            }
+            if (!found)
+                return null;
+            current = found;
+        }
+        return current;
+    }
     /**
      * Absoluter Pfad zu einer Datei oder einem Ordner unter git-intern (Relativpfad ohne Präfix "git-intern/").
      * Gleiche Logik wie readFile — wichtig für saveFile, damit Speichern und Lesen dasselbe Verzeichnis nutzen.
@@ -194,10 +225,10 @@ class StorageManager {
     static resolveGitInternRelativePath(relativePath) {
         const rel = relativePath.replace(/\\/g, '/');
         const jmReihenPath = this.resolveJmReihenRoot();
-        if (rel.startsWith('J-M-Reihen/')) {
-            return path_1.default.join(jmReihenPath, rel.slice('J-M-Reihen/'.length));
-        }
-        return path_1.default.join(jmReihenPath, rel);
+        const inner = rel.startsWith('J-M-Reihen/') ? rel.slice('J-M-Reihen/'.length) : rel;
+        const parts = inner.split('/').filter(Boolean);
+        const resolved = this.resolveUnicodePath(jmReihenPath, parts);
+        return resolved !== null && resolved !== void 0 ? resolved : path_1.default.join(jmReihenPath, inner);
     }
     /**
      * Read file contents

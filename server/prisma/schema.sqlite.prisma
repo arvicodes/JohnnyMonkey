@@ -120,6 +120,10 @@ model GradeRelease {
 model LearningGroup {
   id                   String                     @id @default(uuid())
   name                 String
+  iconEmoji            String?
+  color                String?
+  displayOrder         Int?
+  isArchived           Boolean                    @default(false)
   createdAt            DateTime                   @default(now())
   updatedAt            DateTime                   @updatedAt
   teacherId            String
@@ -249,12 +253,13 @@ model Lesson {
 }
 
 model GroupAssignment {
-  id        String        @id @default(uuid())
-  groupId   String
-  type      String
-  refId     String
-  createdAt DateTime      @default(now())
-  group     LearningGroup @relation(fields: [groupId], references: [id])
+  id           String        @id @default(uuid())
+  groupId      String
+  type         String
+  refId        String
+  displayOrder Int           @default(0)
+  createdAt    DateTime      @default(now())
+  group        LearningGroup @relation(fields: [groupId], references: [id])
 }
 
 model Note {

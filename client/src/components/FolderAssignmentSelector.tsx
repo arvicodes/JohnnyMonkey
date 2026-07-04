@@ -22,6 +22,7 @@ import {
   Chip,
   Collapse
 } from '@mui/material';
+import { sortAssignedFolderPaths } from '../lib/folderAssignmentOrder';
 import {
   Folder as FolderIcon,
   Description as FileIcon,
@@ -157,7 +158,7 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
       
       if (response.ok) {
         const folders = await response.json();
-        const folderPaths: string[] = folders.map((f: any) => f.path);
+        const folderPaths: string[] = sortAssignedFolderPaths(folders);
         
         // Lösche alle alten Daten
         setAssignedFolders([]);
@@ -582,11 +583,7 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
             {/* Vorschau des Ordnerinhalts */}
             <Collapse in={isExpanded}>
               <Box sx={{ mt: 1, pl: 2, borderLeft: '2px solid #e0e0e0' }}>
-                {filteredItems.length === 0 ? (
-                  <Typography variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
-                    Ordner ist leer
-                  </Typography>
-                ) : (
+                {filteredItems.length === 0 ? null : (
                   <Box>
                     <Typography variant="caption" sx={{ color: 'text.secondary', mb: 1, display: 'block' }}>
                       Inhalt ({filteredItems.filter(item => item.type === 'directory').length} Ordner, {filteredItems.filter(item => item.type === 'file').length} Dateien):

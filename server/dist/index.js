@@ -32,8 +32,10 @@ const messages_1 = __importDefault(require("./routes/messages"));
 const exitTicket_1 = __importDefault(require("./routes/exitTicket"));
 const entryTicket_1 = __importDefault(require("./routes/entryTicket"));
 const excursionProtocol_1 = __importDefault(require("./routes/excursionProtocol"));
+const announcements_1 = __importDefault(require("./routes/announcements"));
 const journey_1 = __importDefault(require("./routes/journey"));
 const storySites_1 = __importDefault(require("./routes/storySites"));
+const beAHeroWorkouts_1 = __importDefault(require("./routes/beAHeroWorkouts"));
 const flashcards_1 = __importDefault(require("./routes/flashcards"));
 const submissions_1 = __importDefault(require("./routes/submissions"));
 const fileShares_1 = __importDefault(require("./routes/fileShares"));
@@ -56,8 +58,8 @@ app.use((0, cors_1.default)({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-login-code']
 }));
-app.use(express_1.default.json({ limit: '50mb' }));
-app.use(express_1.default.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express_1.default.json({ limit: '100mb' }));
+app.use(express_1.default.urlencoded({ extended: true, limit: '100mb' }));
 // Monitoring middleware (must be first)
 app.use(monitoring_1.default.requestMonitor());
 // API Routes - ALWAYS before static middleware
@@ -90,8 +92,10 @@ app.use('/api/messages', messages_1.default);
 app.use('/api/exit-ticket', exitTicket_1.default);
 app.use('/api/entry-ticket', entryTicket_1.default);
 app.use('/api/excursion-protocol', excursionProtocol_1.default);
+app.use('/api/announcements', announcements_1.default);
 app.use('/api/journey', journey_1.default);
 app.use('/api/story-sites', storySites_1.default);
+app.use('/api/be-a-hero/workouts', beAHeroWorkouts_1.default);
 // Material static files
 app.use('/material', express_1.default.static(path_1.default.join(__dirname, '../../material')));
 // Enhanced health check endpoint with monitoring
@@ -206,6 +210,9 @@ async function startServer() {
         if (process.env.NODE_ENV === 'production') {
             // Listen on 0.0.0.0 to accept connections from outside the container
             const server = app.listen(port, '0.0.0.0', () => {
+                server.timeout = 600000;
+                server.keepAliveTimeout = 650000;
+                server.headersTimeout = 660000;
                 console.log(`🎯 Server is running on port ${port}`);
                 console.log(`🌐 Environment: ${process.env.NODE_ENV}`);
                 console.log(`🔗 Health check: http://localhost:${port}/health`);

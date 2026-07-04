@@ -45,39 +45,56 @@ function safeMediaFilename(name) {
     return base;
 }
 /** Base64-Bilder als Dateien ablegen — kleines JSON, zuverlässigeres Speichern. */
-function externalizeDataUrls(siteId, raw) {
+async function externalizeDataUrls(siteId, raw) {
     const mediaDir = siteMediaDir(siteId);
-    if (!fs_1.default.existsSync(mediaDir)) {
-        fs_1.default.mkdirSync(mediaDir, { recursive: true });
-    }
-    const replaceInString = (input) => {
+    await fs_1.default.promises.mkdir(mediaDir, { recursive: true });
+    const replaceInString = async (input) => {
         if (!input || !input.includes('data:image'))
             return input;
-        return input.replace(DATA_URL_RE, (_match, mime, b64) => {
+        const parts = [];
+        let lastIndex = 0;
+        const re = new RegExp(DATA_URL_RE.source, DATA_URL_RE.flags);
+        let match;
+        while ((match = re.exec(input)) !== null) {
+            parts.push(input.slice(lastIndex, match.index));
+            const mime = match[1];
+            const b64 = match[2];
             const hash = crypto_1.default.createHash('sha256').update(b64).digest('hex').slice(0, 16);
             const ext = String(mime).toLowerCase().includes('png') ? 'png' : 'jpg';
             const filename = `${hash}.${ext}`;
             const filePath = path_1.default.join(mediaDir, filename);
-            if (!fs_1.default.existsSync(filePath)) {
-                fs_1.default.writeFileSync(filePath, Buffer.from(b64, 'base64'));
+            try {
+                await fs_1.default.promises.access(filePath);
             }
-            return `/api/story-sites/${siteId}/media/${filename}`;
-        });
+            catch {
+                await fs_1.default.promises.writeFile(filePath, Buffer.from(b64, 'base64'));
+            }
+            parts.push(`/api/story-sites/${siteId}/media/${filename}`);
+            lastIndex = match.index + match[0].length;
+        }
+        parts.push(input.slice(lastIndex));
+        return parts.join('');
     };
     const pages = Array.isArray(raw.pages) ? raw.pages : [];
-    const nextPages = pages.map((p) => {
+    const nextPages = await Promise.all(pages.map(async (p) => {
         if (!p || typeof p !== 'object')
             return p;
         const page = { ...p };
         if (typeof page.heroImage === 'string')
-            page.heroImage = replaceInString(page.heroImage);
+            page.heroImage = await replaceInString(page.heroImage);
         if (Array.isArray(page.galleryImages)) {
-            page.galleryImages = page.galleryImages.map((item) => typeof item === 'string' ? replaceInString(item) : item);
+            page.galleryImages = await Promise.all(page.galleryImages.map((item) => (typeof item === 'string' ? replaceInString(item) : item)));
+        }
+        if (typeof page.titleImageLeft === 'string') {
+            page.titleImageLeft = await replaceInString(page.titleImageLeft);
+        }
+        if (typeof page.titleImageRight === 'string') {
+            page.titleImageRight = await replaceInString(page.titleImageRight);
         }
         if (typeof page.bodyHtml === 'string')
-            page.bodyHtml = replaceInString(page.bodyHtml);
+            page.bodyHtml = await replaceInString(page.bodyHtml);
         return page;
-    });
+    }));
     return { ...raw, pages: nextPages };
 }
 router.get('/', (_req, res) => {
@@ -306,8 +323,9 @@ router.get('/:id', (req, res) => {
         res.status(400).json({ error: 'Ungültige Anfrage' });
     }
 });
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
     var _a, _b;
+    const started = Date.now();
     try {
         const id = req.params.id;
         safeSiteId(id);
@@ -317,8 +335,12 @@ router.put('/:id', (req, res) => {
         ensureDataDir();
         const body = { ...req.body, id };
         const { payload: withFolders, folderPath } = (0, erasmusSiteFolders_1.applyErasmusFoldersToSitePayload)(body);
-        const payload = externalizeDataUrls(id, withFolders);
-        fs_1.default.writeFileSync(sitePath(id), JSON.stringify(payload), 'utf8');
+        const payload = await externalizeDataUrls(id, withFolders);
+        await fs_1.default.promises.writeFile(sitePath(id), JSON.stringify(payload), 'utf8');
+        const ms = Date.now() - started;
+        if (ms > 8000) {
+            console.warn(`story-sites put ${id}: ${ms}ms (große Website)`);
+        }
         res.json({
             ok: true,
             id,

@@ -52,6 +52,10 @@ router.get('/teacher/:id', async (req: Request, res: Response) => {
         teacherId: true,
         period1Hours: true,
         period2Hours: true,
+        iconEmoji: true,
+        color: true,
+        displayOrder: true,
+        isArchived: true,
         // seatingOrder und statisticsOrder werden separat geladen (falls Prisma Client veraltet ist)
         // seatingOrder: true,
         // statisticsOrder: true,
@@ -172,8 +176,10 @@ router.get('/student/:id', async (req: Request, res: Response) => {
           some: {
             id: req.params.id
           }
-        }
+        },
+        isArchived: false,
       },
+      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
       include: {
         teacher: {
           select: {
@@ -441,18 +447,88 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
+// Reihenfolge der Lerngruppen für einen Lehrer speichern
+router.put('/reorder', async (req: Request, res: Response) => {
+  try {
+    const { teacherId, groupIds, archived } = req.body;
+
+    if (!teacherId || !Array.isArray(groupIds) || groupIds.length === 0) {
+      return res.status(400).json({ error: 'teacherId und groupIds sind erforderlich' });
+    }
+
+    const archivedFlag = archived === true;
+
+    const ownedGroups = await prisma.learningGroup.findMany({
+      where: { teacherId: String(teacherId), id: { in: groupIds.map(String) } },
+      select: { id: true },
+    });
+
+    if (ownedGroups.length !== groupIds.length) {
+      return res.status(403).json({ error: 'Ungültige Gruppen-IDs für diesen Lehrer' });
+    }
+
+    await prisma.$transaction(
+      groupIds.map((id: string, index: number) =>
+        prisma.learningGroup.update({
+          where: { id: String(id) },
+          data: { displayOrder: index, isArchived: archivedFlag },
+        })
+      )
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error reordering learning groups:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Update a learning group
 router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const { name } = req.body;
-    
-    if (!name || name.trim() === '') {
-      return res.status(400).json({ error: 'Name ist erforderlich' });
+    const { name, iconEmoji, color, displayOrder, isArchived } = req.body;
+
+    const data: {
+      name?: string;
+      iconEmoji?: string | null;
+      color?: string | null;
+      displayOrder?: number | null;
+      isArchived?: boolean;
+    } = {};
+
+    if (name !== undefined) {
+      if (!name || String(name).trim() === '') {
+        return res.status(400).json({ error: 'Name ist erforderlich' });
+      }
+      data.name = String(name).trim();
+    }
+
+    if (iconEmoji !== undefined) {
+      data.iconEmoji = iconEmoji ? String(iconEmoji).trim() : null;
+    }
+
+    if (color !== undefined) {
+      data.color = color ? String(color).trim() : null;
+    }
+
+    if (displayOrder !== undefined) {
+      data.displayOrder =
+        displayOrder === null || displayOrder === ''
+          ? null
+          : Number(displayOrder);
+    }
+
+    if (isArchived !== undefined) {
+      data.isArchived = Boolean(isArchived);
+    }
+
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ error: 'Keine Felder zum Aktualisieren' });
     }
 
     const group = await prisma.learningGroup.update({
       where: { id: req.params.id },
-      data: { name: name.trim() },
+      data,
       include: {
         teacher: true,
         students: {
@@ -476,11 +552,17 @@ router.put('/:id', async (req: Request, res: Response) => {
 
 // Create a new learning group
 router.post('/', async (req: Request, res: Response) => {
-  const { name, teacherId } = req.body;
+  const { name, teacherId, iconEmoji, color, displayOrder } = req.body;
   try {
     const group = await prisma.learningGroup.create({
       data: {
         name,
+        iconEmoji: iconEmoji ? String(iconEmoji).trim() : null,
+        color: color ? String(color).trim() : null,
+        displayOrder:
+          displayOrder === undefined || displayOrder === null || displayOrder === ''
+            ? null
+            : Number(displayOrder),
         teacher: {
           connect: { id: teacherId }
         }
@@ -627,18 +709,61 @@ router.get('/:id/folders', async (req: Request, res: Response) => {
         type: 'FOLDER'
       },
       select: {
-        refId: true
-      }
+        id: true,
+        refId: true,
+        displayOrder: true,
+      },
+      orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
     });
 
-    // Convert refId to folder paths
     const folders = assignments.map(assignment => ({
-      path: assignment.refId
+      id: assignment.id,
+      path: assignment.refId,
+      displayOrder: assignment.displayOrder,
     }));
 
     res.json(folders);
   } catch (error) {
     console.error('Error fetching assigned folders:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Reorder assigned folders for a learning group
+router.put('/:id/folders/reorder', async (req: Request, res: Response) => {
+  try {
+    const groupId = req.params.id;
+    const { paths } = req.body;
+
+    if (!Array.isArray(paths) || paths.length === 0) {
+      return res.status(400).json({ error: 'paths ist erforderlich' });
+    }
+
+    const assignments = await prisma.groupAssignment.findMany({
+      where: {
+        groupId,
+        type: 'FOLDER',
+        refId: { in: paths.map(String) },
+      },
+      select: { id: true, refId: true },
+    });
+
+    if (assignments.length !== paths.length) {
+      return res.status(403).json({ error: 'Ungültige Ordner-Pfade für diese Gruppe' });
+    }
+
+    await prisma.$transaction(
+      paths.map((path: string, index: number) =>
+        prisma.groupAssignment.updateMany({
+          where: { groupId, type: 'FOLDER', refId: String(path) },
+          data: { displayOrder: index },
+        })
+      )
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error reordering assigned folders:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -666,12 +791,19 @@ router.post('/:id/folders', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Ordner ist bereits zugeordnet' });
     }
 
+    const maxOrder = await prisma.groupAssignment.aggregate({
+      where: { groupId, type: 'FOLDER' },
+      _max: { displayOrder: true },
+    });
+    const nextOrder = (maxOrder._max.displayOrder ?? -1) + 1;
+
     // Create new assignment
     const assignment = await prisma.groupAssignment.create({
       data: {
         groupId: groupId,
         type: 'FOLDER',
-        refId: path
+        refId: path,
+        displayOrder: nextOrder,
       }
     });
 

@@ -1,22 +1,46 @@
 {
   "id": "calisthenics-ag",
   "title": "Die neue Calisthenics-AG am Johnny!",
-  "body": "Schluss mit langweiligem Geräteturnen!\n\nWillst du lernen, deinen eigenen Körper perfekt zu beherrschen? Suchst du nach einem Sport, der dich stark, fit und beweglich macht – ganz ohne Fitnessstudio? Dann bist du in der Calisthenics-AG genau richtig!\n\nWer? Alle Klassenstufen (5 bis MSS) – egal ob Anfänger oder Profi!\nWann? [Wochentag], [Uhrzeit] Uhr\nWo? [Schulhof / Turnhalle / Calisthenics-Park]\n\nWas dich erwartet:\n• Die Basics: Liegestütze, Kniebeugen und Klimmzüge – richtig ausgeführt.\n• Die Skills: Handstand, Human Flag, Muscle-Up – Schritt für Schritt.\n• Die Community: Gemeinsam trainieren, motivieren, wachsen.\n\nKeine Voraussetzungen! Bring Sportzeug, etwas zu trinken und gute Laune mit.",
+  "body": "<div class=\"jm-announcement-layout jm-layout-mosaic\" data-layout=\"mosaic\">\n  <div class=\"jm-ann-text\"><p>Schluss mit langweiligem Geräteturnen! Willst du lernen, deinen eigenen Körper perfekt zu beherrschen? Suchst du nach einem Sport, der dich stark, fit und beweglich macht – ganz ohne Fitnessstudio? Dann bist du in der Calisthenics-AG genau richtig! Wer? Alle Klassenstufen (5 bis MSS) – egal ob Anfänger oder Profi! Wann? [Wochentag], [Uhrzeit] Uhr Wo? [Schulhof / Turnhalle / Calisthenics-Park] Was dich erwartet: • Die Basics: Liegestütze, Kniebeugen und Klimmzüge – richtig ausgeführt. • Die Skills: Handstand, Human Flag, Muscle-Up – Schritt für Schritt. • Die Community: Gemeinsam trainieren, motivieren, wachsen. Keine Voraussetzungen! Bring Sportzeug, etwas zu trinken und gute Laune mit.</p></div>\n  <div class=\"jm-ann-mosaic\">\n    <div class=\"jm-ann-mosaic-main\"><img class=\"jm-ann-img jm-ann-mosaic-main-img\" src=\"/api/file-system-paths/static/Ank%C3%BCndigungen%20%26%20Briefe/Calisthenics/bild-1783140620157.jpg\" alt=\"Bild 1\" loading=\"lazy\" /></div>\n    <div class=\"jm-ann-mosaic-side\"><img class=\"jm-ann-img jm-ann-mosaic-thumb\" src=\"/api/file-system-paths/static/Ank%C3%BCndigungen%20%26%20Briefe/Calisthenics/bild-1783140620230.jpg\" alt=\"Bild 2\" loading=\"lazy\" /><img class=\"jm-ann-img jm-ann-mosaic-thumb\" src=\"/api/file-system-paths/static/Ank%C3%BCndigungen%20%26%20Briefe/Calisthenics/bild-1783140620256.jpg\" alt=\"Bild 3\" loading=\"lazy\" /><img class=\"jm-ann-img jm-ann-mosaic-thumb\" src=\"/api/file-system-paths/static/Ank%C3%BCndigungen%20%26%20Briefe/Calisthenics/bild-1783140620262.jpg\" alt=\"Bild 4\" loading=\"lazy\" /><img class=\"jm-ann-img jm-ann-mosaic-thumb\" src=\"/api/file-system-paths/static/Ank%C3%BCndigungen%20%26%20Briefe/Calisthenics/bild-1783140620274.jpg\" alt=\"Bild 5\" loading=\"lazy\" /><img class=\"jm-ann-img jm-ann-mosaic-thumb\" src=\"/api/file-system-paths/static/Ank%C3%BCndigungen%20%26%20Briefe/Calisthenics/bild-1783140620278.webp\" alt=\"Bild 6\" loading=\"lazy\" /><img class=\"jm-ann-img jm-ann-mosaic-thumb\" src=\"/api/file-system-paths/static/Ank%C3%BCndigungen%20%26%20Briefe/Calisthenics/bild-1783140620284.jpg\" alt=\"Bild 7\" loading=\"lazy\" /></div>\n  </div>\n</div>",
   "authorName": "Johannes-Gymnasium Lahnstein",
   "published": true,
   "publishedAt": "2026-06-10T14:02:13.506Z",
-  "updatedAt": "2026-06-10T14:02:13.506Z",
+  "updatedAt": "2026-07-04T04:50:28.017Z",
   "readBy": [
     "8cd7022f-9983-4ec0-a810-e5245ec7d7e0"
   ],
   "links": [
     {
       "label": "Flyer öffnen (Vorder- & Rückseite)",
-      "url": "/api/file-system-paths/static/Ank%C3%BCndigungen%20%26%20Briefe/Calisthenics/Calisthenics-Flyer.html"
+      "url": "/ankuendigungen/flyer/Calisthenics"
     },
     {
       "label": "AG-Text für Homepage / Wahlzettel",
       "url": "/api/file-system-paths/static/Ank%C3%BCndigungen%20%26%20Briefe/Calisthenics/Calisthenics-AG-Text.md"
     }
-  ]
+  ],
+  "images": [
+    {
+      "url": "/api/file-system-paths/static/Ank%C3%BCndigungen%20%26%20Briefe/Calisthenics/bild-1783140620157.jpg"
+    },
+    {
+      "url": "/api/file-system-paths/static/Ank%C3%BCndigungen%20%26%20Briefe/Calisthenics/bild-1783140620230.jpg"
+    },
+    {
+      "url": "/api/file-system-paths/static/Ank%C3%BCndigungen%20%26%20Briefe/Calisthenics/bild-1783140620256.jpg"
+    },
+    {
+      "url": "/api/file-system-paths/static/Ank%C3%BCndigungen%20%26%20Briefe/Calisthenics/bild-1783140620262.jpg"
+    },
+    {
+      "url": "/api/file-system-paths/static/Ank%C3%BCndigungen%20%26%20Briefe/Calisthenics/bild-1783140620274.jpg"
+    },
+    {
+      "url": "/api/file-system-paths/static/Ank%C3%BCndigungen%20%26%20Briefe/Calisthenics/bild-1783140620278.webp"
+    },
+    {
+      "url": "/api/file-system-paths/static/Ank%C3%BCndigungen%20%26%20Briefe/Calisthenics/bild-1783140620284.jpg"
+    }
+  ],
+  "layoutId": "mosaic"
 }

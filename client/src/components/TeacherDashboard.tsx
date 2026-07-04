@@ -337,6 +337,39 @@ import { FlashcardCreationModal } from './FlashcardCreationModal';
 import SubmissionViewer from './SubmissionViewer';
 import { openLessonFolderFile } from '../lib/openLessonFolderFile';
 import SpielMenuButton from './SpielMenuButton';
+import LearningGroupAppearanceFields from './LearningGroupAppearanceFields';
+import LearningGroupSortableShell from './LearningGroupSortableShell';
+import LearningGroupArchiveSection from './LearningGroupArchiveSection';
+import LearningGroupActiveListZone from './LearningGroupActiveListZone';
+import AssignedFolderSortableShell from './AssignedFolderSortableShell';
+import {
+  assignedFolderSortableId,
+  folderTreeNodeKey,
+  isFolderTreeNodeExpanded,
+  parseAssignedFolderSortableId,
+  sortAssignedFolderPaths,
+} from '../lib/folderAssignmentOrder';
+import {
+  DEFAULT_LEARNING_GROUP_COLOR,
+  DEFAULT_LEARNING_GROUP_ICON,
+  resolveLearningGroupDisplayStyle,
+} from '../lib/learningGroupAppearance';
+import { sortLearningGroups, nextLearningGroupDisplayOrder } from '../lib/learningGroupSort';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 
 /**
  * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, HÜ_, HU_)
@@ -361,21 +394,11 @@ interface Subject {
 interface LearningGroup {
   id: string;
   name: string;
+  iconEmoji?: string | null;
+  color?: string | null;
+  displayOrder?: number | null;
+  isArchived?: boolean;
   students: Student[];
-}
-
-/** Anzeigereihenfolge der Lerngruppen: 7a → 10c → Mathe LK 11 → GK 11 → GK 12 → rest */
-function sortLearningGroups(groups: LearningGroup[]): LearningGroup[] {
-  const order = (name: string): number => {
-    const n = name.toLowerCase();
-    if (n.includes('7a') || n === 'klasse 7a') return 0;
-    if (n.includes('10c') || n === 'klasse 10c') return 1;
-    if (n.includes('mathe lk 11')) return 2;
-    if (n.includes('gk 11') || n.includes('informatik gk 11')) return 3;
-    if (n.includes('gk 12') || n.includes('informatik gk 12')) return 4;
-    return 5;
-  };
-  return [...groups].sort((a, b) => order(a.name) - order(b.name));
 }
 
 interface Student {
@@ -5621,6 +5644,18 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   // Debug: Log userId
   
   const [groups, setGroups] = useState<LearningGroup[]>([]);
+  const learningGroupSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+  const activeGroups = useMemo(
+    () => sortLearningGroups(groups.filter((g) => !g.isArchived)),
+    [groups]
+  );
+  const archivedGroups = useMemo(
+    () => sortLearningGroups(groups.filter((g) => g.isArchived)),
+    [groups]
+  );
   const [teacherName, setTeacherName] = useState<string>('');
   const [subjectTabValue, setSubjectTabValue] = useState(0);
   const [blockTabValue, setBlockTabValue] = useState(0);
@@ -5751,6 +5786,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [openAddStudentsDialog, setOpenAddStudentsDialog] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupIcon, setNewGroupIcon] = useState(DEFAULT_LEARNING_GROUP_ICON);
+  const [newGroupColor, setNewGroupColor] = useState(DEFAULT_LEARNING_GROUP_COLOR);
   const [availableStudents, setAvailableStudents] = useState<Student[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [snackbar, setSnackbar] = useState({
@@ -5783,7 +5820,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [confirmDeleteWord, setConfirmDeleteWord] = useState('');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editGroupName, setEditGroupName] = useState('');
+  const [editGroupIcon, setEditGroupIcon] = useState(DEFAULT_LEARNING_GROUP_ICON);
+  const [editGroupColor, setEditGroupColor] = useState(DEFAULT_LEARNING_GROUP_COLOR);
   const [editGroupId, setEditGroupId] = useState<string | null>(null);
+  const [addStudentsGroupName, setAddStudentsGroupName] = useState('');
   const [gradingModalOpen, setGradingModalOpen] = useState(false);
   
   // Flashcard Progress State
@@ -5844,7 +5884,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [assignedFolderContents, setAssignedFolderContents] = useState<{[key: string]: any[]}>({});
   const [expandedAssignedFolders, setExpandedAssignedFolders] = useState<{[key: string]: Set<string>}>({});
   /** Dashboard-Ordnerbaum: Unterzweige von Rohmaterial-Archiv (ROhdateine/Rohdateien) per Pfad aufgeklappt; Standard leer = zu. */
-  const [dashboardRohArchivExpanded, setDashboardRohArchivExpanded] = useState<Record<string, Set<string>>>({});
+  const [expandedFolderNodes, setExpandedFolderNodes] = useState<Record<string, boolean>>({});
   const [loadingFolderContents, setLoadingFolderContents] = useState<{[key: string]: boolean}>({});
   
   // States für zugeordnete Karteikarten-Decks
@@ -7234,11 +7274,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     }
   }, [createExaminationModalOpen]);
 
-  const fetchGroups = async () => {
+  const fetchGroupsListOnly = async (): Promise<LearningGroup[] | null> => {
     try {
       const response = await fetch(`/api/learning-groups/teacher/${userId}`);
       if (!response.ok) {
-        // Check if response is JSON before parsing
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
           const errorData = await response.json();
@@ -7248,37 +7287,217 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
           console.error('❌ Non-JSON error response:', text);
         }
         showSnackbar('Fehler beim Laden der Gruppen', 'error');
-        return;
+        return null;
       }
-      
-      // Check if response is JSON before parsing
+
       const contentType = response.headers.get('content-type');
-      let groupsData;
-      if (contentType && contentType.includes('application/json')) {
-        groupsData = await response.json();
-      } else {
+      if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text();
         console.error('❌ Non-JSON response:', text);
         showSnackbar('Server-Fehler: Ungültige Antwort', 'error');
-        return;
+        return null;
       }
+
+      const groupsData: LearningGroup[] = await response.json();
       setGroups(sortLearningGroups(groupsData));
-      
-      // Lade zugeordnete Ordner für alle Gruppen
-      for (const group of groupsData) {
-        await fetchAssignedFolders(group.id);
-        await fetchAssignedFlashcardDecks(group.id);
-      }
-      
-      // Lade Karteikarten-Fortschritt für alle Schüler
-      for (const group of groupsData) {
-        for (const student of group.students) {
-          await fetchStudentFlashcardProgress(student.id);
-        }
-      }
+      return groupsData;
     } catch (error) {
       console.error('Fehler beim Laden der Gruppen:', error);
       showSnackbar('Fehler beim Laden der Gruppen', 'error');
+      return null;
+    }
+  };
+
+  const persistLearningGroupReorder = async (groupIds: string[], archived: boolean) => {
+    const response = await fetch('/api/learning-groups/reorder', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ teacherId: userId, groupIds, archived }),
+    });
+    if (!response.ok) throw new Error('Fehler beim Speichern der Reihenfolge');
+  };
+
+  const applySavedGroupFromApi = (groupId: string, saved: Partial<LearningGroup>) => {
+    setGroups((prev) =>
+      sortLearningGroups(
+        prev.map((g) =>
+          g.id === groupId
+            ? {
+                ...g,
+                name: saved.name ?? g.name,
+                iconEmoji: saved.iconEmoji ?? g.iconEmoji,
+                color: saved.color ?? g.color,
+                displayOrder: saved.displayOrder ?? g.displayOrder,
+                isArchived: saved.isArchived ?? g.isArchived,
+              }
+            : g
+        )
+      )
+    );
+  };
+
+  const setGroupArchived = async (groupId: string, isArchived: boolean, options?: { silent?: boolean }) => {
+    const group = groups.find((g) => g.id === groupId);
+    if (!group || Boolean(group.isArchived) === isArchived) return;
+
+    const activeList = sortLearningGroups(groups.filter((g) => !g.isArchived && g.id !== groupId));
+    const archivedList = sortLearningGroups(groups.filter((g) => g.isArchived && g.id !== groupId));
+
+    let nextActive = activeList;
+    let nextArchived = archivedList;
+
+    if (isArchived) {
+      nextArchived = [...archivedList, { ...group, isArchived: true, displayOrder: archivedList.length }];
+    } else {
+      nextActive = [...activeList, { ...group, isArchived: false, displayOrder: activeList.length }];
+    }
+
+    const nextActiveOrdered = nextActive.map((g, i) => ({ ...g, displayOrder: i }));
+    const nextArchivedOrdered = nextArchived.map((g, i) => ({ ...g, displayOrder: i }));
+    setGroups(sortLearningGroups([...nextActiveOrdered, ...nextArchivedOrdered]));
+
+    try {
+      const response = await fetch(`/api/learning-groups/${groupId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isArchived }),
+      });
+      if (!response.ok) throw new Error('Fehler beim Archivieren');
+      const saved: LearningGroup = await response.json();
+      applySavedGroupFromApi(groupId, saved);
+      await persistLearningGroupReorder(
+        nextActiveOrdered.map((g) => g.id),
+        false
+      );
+      await persistLearningGroupReorder(
+        nextArchivedOrdered.map((g) => g.id),
+        true
+      );
+      if (!options?.silent) {
+        showSnackbar(isArchived ? 'Lerngruppe archiviert' : 'Lerngruppe wiederhergestellt', 'success');
+      }
+    } catch (error) {
+      console.error('Fehler beim Archivieren:', error);
+      await fetchGroupsListOnly();
+      showSnackbar('Fehler beim Speichern', 'error');
+    }
+  };
+
+  const handleGroupsDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    if (activeId === overId) return;
+
+    const draggedGroup = groups.find((g) => g.id === activeId);
+    if (!draggedGroup) return;
+
+    if (overId === 'archive-drop-zone' && !draggedGroup.isArchived) {
+      await setGroupArchived(activeId, true, { silent: true });
+      showSnackbar('Lerngruppe archiviert', 'success');
+      return;
+    }
+
+    if (
+      draggedGroup.isArchived &&
+      (overId === 'active-list-zone' || activeGroups.some((g) => g.id === overId))
+    ) {
+      const targetActive = activeGroups.filter((g) => g.id !== activeId);
+      let insertIndex = targetActive.length;
+      if (overId !== 'active-list-zone') {
+        const overIndex = targetActive.findIndex((g) => g.id === overId);
+        if (overIndex >= 0) insertIndex = overIndex;
+      }
+
+      const unarchived = { ...draggedGroup, isArchived: false };
+      const reorderedActive = [
+        ...targetActive.slice(0, insertIndex),
+        unarchived,
+        ...targetActive.slice(insertIndex),
+      ].map((g, i) => ({ ...g, displayOrder: i, isArchived: false }));
+      const reorderedArchived = archivedGroups
+        .filter((g) => g.id !== activeId)
+        .map((g, i) => ({ ...g, displayOrder: i, isArchived: true }));
+
+      setGroups(sortLearningGroups([...reorderedActive, ...reorderedArchived]));
+
+      try {
+        const response = await fetch(`/api/learning-groups/${activeId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isArchived: false }),
+        });
+        if (!response.ok) throw new Error('Fehler beim Wiederherstellen');
+        const saved: LearningGroup = await response.json();
+        applySavedGroupFromApi(activeId, saved);
+        await persistLearningGroupReorder(
+          reorderedActive.map((g) => g.id),
+          false
+        );
+        if (reorderedArchived.length > 0) {
+          await persistLearningGroupReorder(
+            reorderedArchived.map((g) => g.id),
+            true
+          );
+        }
+        showSnackbar('Lerngruppe wiederhergestellt', 'success');
+      } catch (error) {
+        console.error('Fehler beim Wiederherstellen:', error);
+        await fetchGroupsListOnly();
+        showSnackbar('Fehler beim Wiederherstellen', 'error');
+      }
+      return;
+    }
+
+    if (!draggedGroup.isArchived && activeGroups.some((g) => g.id === overId)) {
+      const oldIndex = activeGroups.findIndex((g) => g.id === activeId);
+      const newIndex = activeGroups.findIndex((g) => g.id === overId);
+      if (oldIndex < 0 || newIndex < 0) return;
+
+      const reorderedActive = arrayMove(activeGroups, oldIndex, newIndex).map((group, index) => ({
+        ...group,
+        displayOrder: index,
+      }));
+      setGroups(sortLearningGroups([...reorderedActive, ...archivedGroups]));
+
+      try {
+        await persistLearningGroupReorder(
+          reorderedActive.map((g) => g.id),
+          false
+        );
+        showSnackbar('Reihenfolge gespeichert', 'success');
+      } catch (error) {
+        console.error('Fehler beim Speichern der Reihenfolge:', error);
+        await fetchGroupsListOnly();
+        showSnackbar('Fehler beim Speichern der Reihenfolge', 'error');
+      }
+      return;
+    }
+
+    if (draggedGroup.isArchived && archivedGroups.some((g) => g.id === overId)) {
+      const oldIndex = archivedGroups.findIndex((g) => g.id === activeId);
+      const newIndex = archivedGroups.findIndex((g) => g.id === overId);
+      if (oldIndex < 0 || newIndex < 0) return;
+
+      const reorderedArchived = arrayMove(archivedGroups, oldIndex, newIndex).map((group, index) => ({
+        ...group,
+        displayOrder: index,
+      }));
+      setGroups(sortLearningGroups([...activeGroups, ...reorderedArchived]));
+
+      try {
+        await persistLearningGroupReorder(
+          reorderedArchived.map((g) => g.id),
+          true
+        );
+        showSnackbar('Reihenfolge im Archiv gespeichert', 'success');
+      } catch (error) {
+        console.error('Fehler beim Speichern der Reihenfolge:', error);
+        await fetchGroupsListOnly();
+        showSnackbar('Fehler beim Speichern der Reihenfolge', 'error');
+      }
     }
   };
 
@@ -7391,7 +7610,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
       });
       if (response.ok) {
         const folders = await response.json();
-        const folderPaths = folders.map((f: any) => f.path);
+        const folderPaths = sortAssignedFolderPaths(folders);
         
         // Lösche alle alten Daten für diese Gruppe
         setAssignedFolders(prev => {
@@ -7455,6 +7674,64 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
       }));
     } finally {
       setLoadingFlashcardDecks(prev => ({ ...prev, [groupId]: false }));
+    }
+  };
+
+  const fetchGroupsSupplementaryData = async (groupsData: LearningGroup[]) => {
+    const tasks: Promise<unknown>[] = [];
+    for (const group of groupsData) {
+      tasks.push(fetchAssignedFolders(group.id));
+      tasks.push(fetchAssignedFlashcardDecks(group.id));
+      for (const student of group.students) {
+        tasks.push(fetchStudentFlashcardProgress(student.id));
+      }
+    }
+    await Promise.all(tasks);
+  };
+
+  const fetchGroups = async () => {
+    const groupsData = await fetchGroupsListOnly();
+    if (!groupsData) return;
+    await fetchGroupsSupplementaryData(groupsData);
+  };
+
+  const toggleFolderTreeNode = (key: string) => {
+    setExpandedFolderNodes((prev) => ({
+      ...prev,
+      [key]: !isFolderTreeNodeExpanded(prev, key),
+    }));
+  };
+
+  const handleAssignedFoldersDragEnd = async (groupId: string, event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const parsedActive = parseAssignedFolderSortableId(String(active.id));
+    const parsedOver = parseAssignedFolderSortableId(String(over.id));
+    if (!parsedActive || !parsedOver || parsedActive.groupId !== groupId || parsedOver.groupId !== groupId) {
+      return;
+    }
+
+    const currentPaths = assignedFolders[groupId] || [];
+    const oldIndex = currentPaths.indexOf(parsedActive.folderPath);
+    const newIndex = currentPaths.indexOf(parsedOver.folderPath);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const reordered = arrayMove(currentPaths, oldIndex, newIndex);
+    setAssignedFolders((prev) => ({ ...prev, [groupId]: reordered }));
+
+    try {
+      const response = await fetch(`/api/learning-groups/${groupId}/folders/reorder`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paths: reordered }),
+      });
+      if (!response.ok) throw new Error('Fehler beim Speichern der Ordner-Reihenfolge');
+      showSnackbar('Ordner-Reihenfolge gespeichert', 'success');
+    } catch (error) {
+      console.error('Fehler beim Speichern der Ordner-Reihenfolge:', error);
+      await fetchAssignedFolders(groupId);
+      showSnackbar('Fehler beim Speichern der Ordner-Reihenfolge', 'error');
     }
   };
 
@@ -9264,20 +9541,20 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     return true;
   };
 
-  const dashboardRohArchivKey = (gid: string, previewRoot: string) =>
-    `${gid}:${(previewRoot || '').replace(/\\/g, '/')}`;
-  const toggleDashboardRohArchivBranch = (gid: string, previewRoot: string, dirPath: string) => {
-    if (!dirPath) return;
-    const k = dashboardRohArchivKey(gid, previewRoot);
-    setDashboardRohArchivExpanded((prev) => {
-      const cur = prev[k] ? new Set(prev[k]) : new Set<string>();
-      if (cur.has(dirPath)) cur.delete(dirPath);
-      else cur.add(dirPath);
-      return { ...prev, [k]: cur };
-    });
+  const toggleFolderBranch = (groupId: string, previewRoot: string, nodePath: string, defaultExpanded: boolean) => {
+    const key = folderTreeNodeKey(groupId, previewRoot, nodePath);
+    setExpandedFolderNodes((prev) => ({
+      ...prev,
+      [key]: !isFolderTreeNodeExpanded(prev, key, defaultExpanded),
+    }));
   };
-  const isDashboardRohArchivBranchExpanded = (gid: string, previewRoot: string, dirPath: string) =>
-    !!(dirPath && dashboardRohArchivExpanded[dashboardRohArchivKey(gid, previewRoot)]?.has(dirPath));
+
+  const isFolderBranchExpanded = (
+    groupId: string,
+    previewRoot: string,
+    nodePath: string,
+    defaultExpanded: boolean
+  ) => isFolderTreeNodeExpanded(expandedFolderNodes, folderTreeNodeKey(groupId, previewRoot, nodePath), defaultExpanded);
 
   /** Wandelt eine Item-Liste (Ordner + Dateien) in Anzeige-Items um: Ordner unverändert, Dateien nach Basisname gruppiert. */
   const itemsToDisplayItems = (items: any[]): any[] => {
@@ -9415,8 +9692,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       }
       const dirPathKey = item.type === 'directory' ? (item.path || '').replace(/\\/g, '/').trim() : '';
       const isRohDir = item.type === 'directory' && isLessonRohdatArchiveFolderName(item.name);
-      const rohBranchExpanded =
-        !isRohDir || (dirPathKey ? isDashboardRohArchivBranchExpanded(groupId, folderPath, dirPathKey) : false);
+      const branchDefaultExpanded = isRohDir ? false : true;
+      const branchExpanded =
+        item.type === 'directory' && item.children && item.children.length > 0
+          ? isFolderBranchExpanded(groupId, folderPath, dirPathKey || item.name, branchDefaultExpanded)
+          : false;
 
       // Bestimme Icon und Farbe basierend auf dem Screenshot
       let icon = '📁';
@@ -9569,10 +9849,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               if (item.type === 'file') {
                 handleFileClick(item);
               } else if (item.type === 'directory') {
-                if (isLessonRohdatArchiveFolderName(item.name)) {
-                  if (dirPathKey) toggleDashboardRohArchivBranch(groupId, folderPath, dirPathKey);
-                  return;
-                }
                 if (!directoryOpensStundePage(item.name, level)) return;
                 const lp = item.path || `${folderPath}/${item.name}`;
                 const q = new URLSearchParams({
@@ -9593,22 +9869,25 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               }
             }}
             >
-            {/* Dreiecke für Ordner; Rohmaterial-Archiv: ▶/▼ je nach Aufklappzustand */}
-            {item.type === 'directory' ? (
-              isRohDir ? (
-                <span style={{ color: '#666' }}>{rohBranchExpanded ? '▼' : '▶'}</span>
-              ) : level === 0 ? (
-                <span style={{ color: '#9c27b0' }}>▼</span> // Lila für Level 0
-              ) : level === 1 ? (
-                <span style={{ color: '#1976d2' }}>▼</span> // Blau für Level 1
-              ) : level === 2 ? (
-                <span style={{ color: '#2e7d32' }}>▼</span> // Grün für Level 2
-              ) : level === 3 ? (
-                <span style={{ color: '#666' }}>▼</span> // Grau für Level 3
-              ) : (
-                <span style={{ color: '#666' }}>▼</span> // Grau für weitere Ebenen
-              )
-            ) : null} {/* Kein Dreieck für Dateien */}
+            {item.type === 'directory' && item.children && item.children.length > 0 ? (
+              <IconButton
+                size="small"
+                aria-label={branchExpanded ? 'Zuklappen' : 'Aufklappen'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleFolderBranch(groupId, folderPath, dirPathKey || item.name, branchDefaultExpanded);
+                }}
+                sx={{ width: 20, height: 20, p: 0, flexShrink: 0, color: color }}
+              >
+                {branchExpanded ? (
+                  <ExpandLessIcon sx={{ fontSize: 16 }} />
+                ) : (
+                  <ExpandMoreIcon sx={{ fontSize: 16 }} />
+                )}
+              </IconButton>
+            ) : item.type === 'directory' ? (
+              <Box sx={{ width: 20, flexShrink: 0 }} />
+            ) : null}
             <span style={{ fontSize: isCorrectionFile(item.name) ? '1.3em' : '1em', marginRight: '4px' }}>{icon}</span>
             <span style={{ 
               fontWeight: isCorrectionFile(item.name) ? 700 : fontWeight,
@@ -9710,10 +9989,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             
           </Box>
           
-          {/* Unterordner: sonst immer sichtbar; Rohmaterial-Archiv nur nach Aufklappen */}
-          {item.type === 'directory' && item.children && item.children.length > 0 && rohBranchExpanded && (
+          {/* Unterordner nur wenn aufgeklappt */}
+          {item.type === 'directory' && item.children && item.children.length > 0 && branchExpanded && (
             <Box sx={{ ml: 2, mb: 0.7 }}>
-              {itemsToDisplayItems(filterPdfFiles(item.children)).map((child: any, childIndex: number) => 
+              {itemsToDisplayItems(filterPdfFiles(item.children)).map((child: any) => 
                 renderItemRecursively(child, level + 1)
               )}
             </Box>
@@ -9722,9 +10001,17 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       );
     };
     
+    const rootExpanded = isFolderTreeNodeExpanded(
+      expandedFolderNodes,
+      folderTreeNodeKey(groupId, folderPath),
+      true
+    );
+
     return (
-      <Box key={folderPath} sx={{ mb: 1.4 }}>
-        {/* Hauptordner - Hellgrauer Ordner mit rotem Dreieck (immer aufgeklappt) */}
+      <AssignedFolderSortableShell key={folderPath} groupId={groupId} folderPath={folderPath}>
+        {(folderDragHandle) => (
+      <Box sx={{ mb: 0 }}>
+        {/* Hauptordner – auf-/zuklappbar */}
         <Box sx={{ 
           p: 1.4,
           borderRadius: 1.4,
@@ -9735,59 +10022,87 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             bgcolor: '#e9ecef'
           }
         }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.5 }}>
+            {folderDragHandle}
+            <IconButton
+              size="small"
+              aria-label={rootExpanded ? 'Ordner zuklappen' : 'Ordner aufklappen'}
+              onClick={() => toggleFolderTreeNode(folderTreeNodeKey(groupId, folderPath))}
+              sx={{ width: 24, height: 24, p: 0, color: '#D32F2F' }}
+            >
+              {rootExpanded ? <ExpandLessIcon sx={{ fontSize: 18 }} /> : <ExpandMoreIcon sx={{ fontSize: 18 }} />}
+            </IconButton>
             <Typography variant="body2" sx={{ 
-              color: '#D32F2F', // Rot wie im Screenshot
+              color: '#D32F2F',
               fontSize: '0.75rem',
               fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
-              gap: 0.5
+              gap: 0.5,
+              flex: 1,
+              minWidth: 0,
             }}>
-              ▼ 📁 {folderPath.split('/').pop() || folderPath}
+              📁 {folderPath.split('/').pop() || folderPath}
             </Typography>
           </Box>
         </Box>
         
-        {/* Vorschau des Ordnerinhalts - IMMER aufgeklappt */}
+        {/* Vorschau des Ordnerinhalts */}
+        {rootExpanded && (
         <Box sx={{ ml: 2, mt: 1 }}>
           {isLoading ? (
             <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
               Lade Inhalt...
             </Typography>
-          ) : items.length === 0 ? (
-            <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
-              Ordner ist leer (Debug: {items.length} Items geladen)
-            </Typography>
-          ) : (
+          ) : items.length === 0 ? null : (
             <Box>
-              {itemsToDisplayItems(filteredItems).map((item, index) => renderItemRecursively(item, 0))}
+              {itemsToDisplayItems(filteredItems).map((item) => renderItemRecursively(item, 0))}
             </Box>
           )}
         </Box>
+        )}
       </Box>
+        )}
+      </AssignedFolderSortableShell>
     );
   };
 
+  const resetNewGroupForm = () => {
+    setNewGroupName('');
+    setNewGroupIcon(DEFAULT_LEARNING_GROUP_ICON);
+    setNewGroupColor(DEFAULT_LEARNING_GROUP_COLOR);
+  };
+
   const handleCreateGroup = async () => {
+    if (!newGroupName.trim()) return;
+    const payload = {
+      name: newGroupName.trim(),
+      teacherId: userId,
+      iconEmoji: newGroupIcon,
+      color: newGroupColor,
+      displayOrder: nextLearningGroupDisplayOrder(activeGroups),
+    };
+    resetNewGroupForm();
+    setOpenNewGroupDialog(false);
     try {
       const response = await fetch('/api/learning-groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newGroupName, teacherId: userId }),
+        body: JSON.stringify(payload),
       });
       if (!response.ok) throw new Error('Fehler beim Erstellen der Gruppe');
-      await fetchGroups();
-      setNewGroupName('');
-      setOpenNewGroupDialog(false);
+      const created: LearningGroup = await response.json();
+      setGroups((prev) => sortLearningGroups([...prev, created]));
       showSnackbar('Lerngruppe erfolgreich erstellt', 'success');
     } catch (error) {
+      await fetchGroupsListOnly();
       showSnackbar('Fehler beim Erstellen der Lerngruppe', 'error');
     }
   };
 
   const handleOpenAddStudents = async (groupId: string) => {
     setSelectedGroupId(groupId);
+    setAddStudentsGroupName(groups.find((g) => g.id === groupId)?.name || '');
     setSelectedStudents([]); // Reset selected students when opening dialog
     try {
       const response = await fetch(`/api/learning-groups/${groupId}/available-students`);
@@ -9808,6 +10123,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     if (isAddingStudentsRef.current) return; // Verhindere Schließen während des Hinzufügens
     setOpenAddStudentsDialog(false);
     setSelectedStudents([]);
+    setAddStudentsGroupName('');
   }, []);
 
   const handleAddStudents = async () => {
@@ -11485,9 +11801,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     }
   };
 
-  const handleEditDialogOpen = (groupId: string, currentName: string) => {
-    setEditGroupId(groupId);
-    setEditGroupName(currentName);
+  const handleEditDialogOpen = (group: LearningGroup) => {
+    setEditGroupId(group.id);
+    setEditGroupName(group.name);
+    setEditGroupIcon(group.iconEmoji || DEFAULT_LEARNING_GROUP_ICON);
+    setEditGroupColor(group.color || DEFAULT_LEARNING_GROUP_COLOR);
     setEditDialogOpen(true);
     handleMenuClose();
   };
@@ -11496,23 +11814,109 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     setEditDialogOpen(false);
     setEditGroupId(null);
     setEditGroupName('');
+    setEditGroupIcon(DEFAULT_LEARNING_GROUP_ICON);
+    setEditGroupColor(DEFAULT_LEARNING_GROUP_COLOR);
   };
 
-  const handleEditGroup = async () => {
-    if (!editGroupId || !editGroupName.trim()) return;
+  const syncGroupNameInOpenViews = (groupId: string, trimmedName: string) => {
+    if (participationGroupId === groupId) setParticipationGroupName(trimmedName);
+    if (folderAssignmentGroupId === groupId) setFolderAssignmentGroupName(trimmedName);
+    if (gradingGroupId === groupId) setGradingGroupName(trimmedName);
+    if (gradesGroupId === groupId) setGradesGroupName(trimmedName);
+    if (selectedGroupId === groupId) setAddStudentsGroupName(trimmedName);
+    if (editGroupId === groupId) setEditGroupName(trimmedName);
+  };
+
+  const patchGroupInState = (groupId: string, patch: Partial<LearningGroup>) => {
+    setGroups((prev) =>
+      sortLearningGroups(prev.map((g) => (g.id === groupId ? { ...g, ...patch } : g)))
+    );
+  };
+
+  const updateLearningGroup = async (
+    groupId: string,
+    payload: { name?: string; iconEmoji?: string; color?: string },
+    options?: { closeEditDialog?: boolean; silent?: boolean; lightweight?: boolean }
+  ): Promise<boolean> => {
+    const currentGroup = groups.find((g) => g.id === groupId);
+    const trimmedName = payload.name?.trim();
+    const body: { name?: string; iconEmoji?: string; color?: string } = {};
+
+    if (trimmedName !== undefined) {
+      if (!trimmedName) return false;
+      body.name = trimmedName;
+    }
+    if (payload.iconEmoji !== undefined) body.iconEmoji = payload.iconEmoji;
+    if (payload.color !== undefined) body.color = payload.color;
+
+    const unchanged =
+      currentGroup &&
+      (body.name === undefined || currentGroup.name === body.name) &&
+      (body.iconEmoji === undefined || (currentGroup.iconEmoji || DEFAULT_LEARNING_GROUP_ICON) === body.iconEmoji) &&
+      (body.color === undefined || (currentGroup.color || DEFAULT_LEARNING_GROUP_COLOR) === body.color);
+
+    if (unchanged) {
+      if (options?.closeEditDialog) handleEditDialogClose();
+      return true;
+    }
+
+    if (options?.closeEditDialog) handleEditDialogClose();
+
+    if (options?.lightweight) {
+      patchGroupInState(groupId, {
+        ...(body.name !== undefined ? { name: body.name } : {}),
+        ...(body.iconEmoji !== undefined ? { iconEmoji: body.iconEmoji } : {}),
+        ...(body.color !== undefined ? { color: body.color } : {}),
+      });
+      if (body.name) syncGroupNameInOpenViews(groupId, body.name);
+    }
+
     try {
-      const response = await fetch(`/api/learning-groups/${editGroupId}`, {
+      const response = await fetch(`/api/learning-groups/${groupId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editGroupName.trim() }),
+        body: JSON.stringify(body),
       });
-      if (!response.ok) throw new Error('Fehler beim Bearbeiten der Lerngruppe');
-      await fetchGroups();
-      showSnackbar('Lerngruppe erfolgreich bearbeitet', 'success');
-      handleEditDialogClose();
+      if (!response.ok) throw new Error('Fehler beim Aktualisieren der Lerngruppe');
+
+      const saved: LearningGroup = await response.json();
+      applySavedGroupFromApi(groupId, saved);
+      if (body.name) syncGroupNameInOpenViews(groupId, saved.name);
+
+      if (options?.lightweight) {
+        if (!options?.silent) showSnackbar('Lerngruppe gespeichert', 'success');
+        return true;
+      }
+
+      if (!options?.silent) showSnackbar('Lerngruppe gespeichert', 'success');
+      return true;
     } catch (error) {
-      showSnackbar('Fehler beim Bearbeiten der Lerngruppe', 'error');
+      if (options?.lightweight) {
+        await fetchGroupsListOnly();
+      }
+      showSnackbar('Fehler beim Aktualisieren der Lerngruppe', 'error');
+      return false;
     }
+  };
+
+  const renameLearningGroup = async (
+    groupId: string,
+    newName: string,
+    options?: { closeEditDialog?: boolean; silent?: boolean }
+  ): Promise<boolean> =>
+    updateLearningGroup(groupId, { name: newName }, { ...options, lightweight: true });
+
+  const handleEditGroup = () => {
+    if (!editGroupId || !editGroupName.trim()) return;
+    void updateLearningGroup(
+      editGroupId,
+      {
+        name: editGroupName.trim(),
+        iconEmoji: editGroupIcon,
+        color: editGroupColor,
+      },
+      { closeEditDialog: true, lightweight: true }
+    );
   };
 
   const handleGradingDialogOpen = (groupId: string, groupName: string) => {
@@ -13722,43 +14126,29 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 bgcolor: colors.cardBg
               }}>
                 <CardContent>
-                  {groups.map((group) => {
-                    const isInformatik = /informatik|gk\s*11|gk\s*12/i.test(group.name);
-                    const isInformatikGK12 = /gk\s*12|informatik\s*gk\s*12/i.test(group.name);
-                    const isMatheLK = /mathe\s*lk\s*11/i.test(group.name);
-                    const is7a = /7a|klasse\s*7a/i.test(group.name);
-                    const is10c = /10c|klasse\s*10c/i.test(group.name);
-                    const groupColor = isInformatik ? (isInformatikGK12 ? '#0097A7' : '#006064')  // GK 12 mehr Cyan
-                      : isMatheLK ? '#2E7D32'   // grünlich
-                      : is7a ? '#F9A825'        // gelblich
-                      : is10c ? '#E65100'       // orange
-                      : colors.primary;
-                    const rowIconColor = isInformatik ? (isInformatikGK12 ? '#1976D2' : '#9C27B0')  // GK 12 Icons blau
-                      : isMatheLK ? '#2E7D32'   // Mathe-Icons in Grün
-                      : is7a ? '#F9A825'        // 7a Zeilen-Icons gelblich
-                      : is10c ? '#E65100'
-                      : colors.primary;
-                    const boxBg = isInformatik ? (isInformatikGK12 ? 'rgba(0, 151, 167, 0.16)' : 'rgba(0, 96, 100, 0.14)')
-                      : isMatheLK ? 'rgba(46, 125, 50, 0.14)'
-                      : is7a ? 'rgba(249, 168, 37, 0.16)'
-                      : is10c ? 'rgba(230, 81, 0, 0.12)'
-                      : `${groupColor}10`;
-                    const boxHover = isInformatik ? (isInformatikGK12 ? 'rgba(0, 151, 167, 0.28)' : 'rgba(0, 96, 100, 0.25)')
-                      : isMatheLK ? 'rgba(46, 125, 50, 0.25)'
-                      : is7a ? 'rgba(249, 168, 37, 0.28)'
-                      : is10c ? 'rgba(230, 81, 0, 0.22)'
-                      : `${groupColor}20`;
-                    const boxBorder = (isInformatik || isMatheLK || is7a || is10c)
-                      ? `1px solid ${groupColor}50`
-                      : 'none';
-                    const hasCustomStyle = isInformatik || isMatheLK || is7a || is10c;
-                    const prefixIcon = isInformatik ? (isInformatikGK12 ? <CodeIcon sx={{ fontSize: '1.35rem', color: rowIconColor }} /> : <ComputerIcon sx={{ fontSize: '1.35rem', color: rowIconColor }} />)
-                      : isMatheLK ? <FunctionsIcon sx={{ fontSize: '1.35rem', color: rowIconColor }} />
-                      : is7a ? <EmojiEmotionsIcon sx={{ fontSize: '1.35rem', color: '#FF9800' }} />
-                      : is10c ? <LessonIcon sx={{ fontSize: '1.35rem', color: rowIconColor }} />
-                      : null;
+                  <DndContext
+                    sensors={learningGroupSensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleGroupsDragEnd}
+                  >
+                    {(() => {
+                      const renderLearningGroupRows = (list: LearningGroup[]) =>
+                        list.map((group) => {
+                    const {
+                      groupColor,
+                      rowIconColor,
+                      boxBg,
+                      boxHover,
+                      boxBorder,
+                      hasCustomStyle,
+                      prefixIcon,
+                      titleFontWeight,
+                      titleFontSize,
+                    } = resolveLearningGroupDisplayStyle(group, colors.primary);
                     return (
-                    <Box key={group.id} sx={{ mb: 1.4 }}>
+                    <LearningGroupSortableShell key={group.id} groupId={group.id}>
+                      {(dragHandle) => (
+                    <>
                       <Box sx={{ 
                         display: 'flex', 
                         alignItems: 'center', 
@@ -13774,14 +14164,15 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         }
                       }} onClick={() => toggleGroupExpanded(group.id)}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+                          {dragHandle}
                           {prefixIcon}
                           <Typography variant="h6" sx={{ 
                             color: groupColor, 
-                            fontWeight: isMatheLK ? 800 : 'bold',
+                            fontWeight: titleFontWeight,
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
-                            fontSize: isMatheLK ? '0.9rem' : '0.72rem'
+                            fontSize: titleFontSize
                           }}>
                             {group.name}
                           </Typography>
@@ -14384,7 +14775,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                             <Typography variant="h6" sx={{ 
                               fontSize: '0.9rem', 
                               fontWeight: 600, 
-                              mb: 1.5, 
+                              mb: 0.5, 
                               color: colors.primary,
                               display: 'flex',
                               alignItems: 'center',
@@ -14401,11 +14792,22 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               border: '1px solid #f0f0f0'
                             }}>
                               {assignedFolders[group.id] && assignedFolders[group.id].length > 0 ? (
-                                <Box>
-                                  {assignedFolders[group.id].map((folderPath: string) => {
-                                    return renderAssignedFolderPreview(group.id, folderPath);
-                                  })}
-                                </Box>
+                                <DndContext
+                                  sensors={learningGroupSensors}
+                                  collisionDetection={closestCenter}
+                                  onDragEnd={(event) => handleAssignedFoldersDragEnd(group.id, event)}
+                                >
+                                  <SortableContext
+                                    items={assignedFolders[group.id].map((p) => assignedFolderSortableId(group.id, p))}
+                                    strategy={verticalListSortingStrategy}
+                                  >
+                                    <Box>
+                                      {assignedFolders[group.id].map((folderPath: string) =>
+                                        renderAssignedFolderPreview(group.id, folderPath)
+                                      )}
+                                    </Box>
+                                  </SortableContext>
+                                </DndContext>
                               ) : (
                                 <Typography variant="body2" sx={{ 
                                   color: colors.textSecondary,
@@ -14741,11 +15143,34 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           
                         </Grid>
                       </Grid>
-                      
-
-                    </Box>
+                    </>
+                      )}
+                    </LearningGroupSortableShell>
                   );
-                  })}
+                        });
+
+                      return (
+                        <>
+                          <LearningGroupActiveListZone>
+                            <SortableContext
+                              items={activeGroups.map((g) => g.id)}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              {renderLearningGroupRows(activeGroups)}
+                            </SortableContext>
+                          </LearningGroupActiveListZone>
+                          <LearningGroupArchiveSection isEmpty={archivedGroups.length === 0}>
+                            <SortableContext
+                              items={archivedGroups.map((g) => g.id)}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              {renderLearningGroupRows(archivedGroups)}
+                            </SortableContext>
+                          </LearningGroupArchiveSection>
+                        </>
+                      );
+                    })()}
+                  </DndContext>
                   <Button
                     variant="contained"
                     startIcon={<AddIcon />}
@@ -15664,8 +16089,61 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       </Grid>
 
       {/* New Group Dialog */}
-      <Dialog open={openNewGroupDialog} onClose={() => setOpenNewGroupDialog(false)}>
-        <DialogTitle>Neue Lerngruppe erstellen</DialogTitle>
+      <Dialog
+        open={openNewGroupDialog}
+        onClose={() => {
+          setOpenNewGroupDialog(false);
+          resetNewGroupForm();
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ ...dialogCloseTitleSx }}>
+          Neue Lerngruppe erstellen
+          <DialogCloseIconButton
+            onClose={() => {
+              setOpenNewGroupDialog(false);
+              resetNewGroupForm();
+            }}
+          />
+        </DialogTitle>
+        <DialogContent>
+          <LearningGroupAppearanceFields
+            name={newGroupName}
+            onNameChange={setNewGroupName}
+            iconEmoji={newGroupIcon}
+            onIconEmojiChange={setNewGroupIcon}
+            color={newGroupColor}
+            onColorChange={setNewGroupColor}
+            nameFieldProps={{
+              onKeyDown: (e) => {
+                if (e.key === 'Enter' && newGroupName.trim()) handleCreateGroup();
+              },
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setOpenNewGroupDialog(false);
+              resetNewGroupForm();
+            }}
+          >
+            Abbrechen
+          </Button>
+          <Button
+            onClick={handleCreateGroup}
+            variant="contained"
+            color="primary"
+            disabled={!newGroupName.trim()}
+          >
+            Erstellen
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* Add Students Dialog */}
+      <Dialog open={openAddStudentsDialog} onClose={handleCloseAddStudentsDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Schüler hinzufügen</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
@@ -15673,39 +16151,21 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             label="Name der Lerngruppe"
             type="text"
             fullWidth
-            value={newGroupName}
-            onChange={(e) => setNewGroupName(e.target.value)}
+            value={addStudentsGroupName}
+            onChange={(e) => setAddStudentsGroupName(e.target.value)}
+            onBlur={() => {
+              if (selectedGroupId && addStudentsGroupName.trim()) {
+                void renameLearningGroup(selectedGroupId, addStudentsGroupName, { silent: true });
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && selectedGroupId && addStudentsGroupName.trim()) {
+                void renameLearningGroup(selectedGroupId, addStudentsGroupName);
+              }
+            }}
+            sx={{ mb: 1.5 }}
+            helperText="Gruppe hier direkt umbenennen oder unten Schüler auswählen"
           />
-        </DialogContent>
-        <DialogActions>
-          <Button 
-            onClick={() => setOpenNewGroupDialog(false)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                setOpenNewGroupDialog(false);
-              }
-            }}
-          >
-            Abbrechen
-          </Button>
-          <Button 
-            onClick={handleCreateGroup} 
-            variant="contained" 
-            color="primary"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleCreateGroup();
-              }
-            }}
-          >
-            Erstellen
-          </Button>
-        </DialogActions>
-      </Dialog>
-      {/* Add Students Dialog */}
-      <Dialog open={openAddStudentsDialog} onClose={handleCloseAddStudentsDialog}>
-        <DialogTitle>Schüler hinzufügen</DialogTitle>
-        <DialogContent>
           <List>
             {availableStudents.map((student) => (
               <ListItem key={student.id}>
@@ -15794,9 +16254,25 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         <MenuItem onClick={() => handleFolderAssignmentOpen(menuGroupId!)}>
           <FolderIcon fontSize="small" sx={{ mr: 1 }} /> Ordner zuordnen
         </MenuItem>
-        <MenuItem onClick={() => handleEditDialogOpen(menuGroupId!, groups.find(g => g.id === menuGroupId!)?.name || '')}>
+        <MenuItem onClick={() => {
+          const group = groups.find(g => g.id === menuGroupId!);
+          if (group) handleEditDialogOpen(group);
+        }}>
           <EditIcon fontSize="small" sx={{ mr: 1 }} /> Bearbeiten
         </MenuItem>
+        {(() => {
+          const group = groups.find(g => g.id === menuGroupId!);
+          if (!group) return null;
+          return group.isArchived ? (
+            <MenuItem onClick={() => { void setGroupArchived(group.id, false); handleMenuClose(); }}>
+              <RestoreIcon fontSize="small" sx={{ mr: 1 }} /> Wiederherstellen
+            </MenuItem>
+          ) : (
+            <MenuItem onClick={() => { void setGroupArchived(group.id, true); handleMenuClose(); }}>
+              <ArchiveIcon fontSize="small" sx={{ mr: 1 }} /> Archivieren
+            </MenuItem>
+          );
+        })()}
         <MenuItem onClick={() => handleGradingDialogOpen(menuGroupId!, groups.find(g => g.id === menuGroupId!)?.name || '')}>
           <AssessmentIcon fontSize="small" sx={{ mr: 1 }} /> Benotung festlegen
         </MenuItem>
@@ -15813,21 +16289,23 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         </MenuItem>
       </Menu>
       {/* Bearbeitungsdialog für Lerngruppe */}
-      <Dialog open={editDialogOpen} onClose={handleEditDialogClose}>
-        <DialogTitle>Lerngruppe bearbeiten</DialogTitle>
+      <Dialog open={editDialogOpen} onClose={handleEditDialogClose} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ ...dialogCloseTitleSx }}>
+          Lerngruppe bearbeiten
+          <DialogCloseIconButton onClose={handleEditDialogClose} />
+        </DialogTitle>
         <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Name der Lerngruppe"
-            type="text"
-            fullWidth
-            value={editGroupName}
-            onChange={(e) => setEditGroupName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleEditGroup();
-              }
+          <LearningGroupAppearanceFields
+            name={editGroupName}
+            onNameChange={setEditGroupName}
+            iconEmoji={editGroupIcon}
+            onIconEmojiChange={setEditGroupIcon}
+            color={editGroupColor}
+            onColorChange={setEditGroupColor}
+            nameFieldProps={{
+              onKeyDown: (e) => {
+                if (e.key === 'Enter' && editGroupName.trim()) handleEditGroup();
+              },
             }}
           />
         </DialogContent>
@@ -15840,11 +16318,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             variant="contained" 
             color="primary"
             disabled={!editGroupName.trim()}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleEditGroup();
-              }
-            }}
           >
             Speichern
           </Button>
@@ -16014,10 +16487,31 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           }
         }}
       >
-        <DialogTitle>
-          Ordner zuordnen: {folderAssignmentGroupName}
+        <DialogTitle sx={{ ...dialogCloseTitleSx }}>
+          Ordner zuordnen
+          <DialogCloseIconButton onClose={handleFolderAssignmentClose} />
         </DialogTitle>
         <DialogContent>
+          <TextField
+            margin="dense"
+            label="Name der Lerngruppe"
+            type="text"
+            fullWidth
+            value={folderAssignmentGroupName}
+            onChange={(e) => setFolderAssignmentGroupName(e.target.value)}
+            onBlur={() => {
+              if (folderAssignmentGroupId && folderAssignmentGroupName.trim()) {
+                void renameLearningGroup(folderAssignmentGroupId, folderAssignmentGroupName, { silent: true });
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && folderAssignmentGroupId && folderAssignmentGroupName.trim()) {
+                void renameLearningGroup(folderAssignmentGroupId, folderAssignmentGroupName);
+              }
+            }}
+            sx={{ mb: 1.5, mt: 0.5 }}
+            helperText="Gruppe hier direkt umbenennen oder unten Ordner zuordnen"
+          />
           <FolderAssignmentSelector
             groupId={folderAssignmentGroupId || ''}
             onClose={handleFolderAssignmentClose}
