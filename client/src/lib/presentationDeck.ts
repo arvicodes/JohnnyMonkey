@@ -37,13 +37,20 @@ export interface SlideElement {
   imageFit?: 'contain' | 'cover';
 }
 
+export type PresentationStrokeMode = 'pen' | 'marker';
+
+export type PresentationShapeKind = 'line' | 'rect' | 'ellipse' | 'arrow';
+
 export interface PresentationStroke {
   id: string;
   points: { x: number; y: number }[];
   color: string;
   lineWidth: number;
-  mode?: 'pen' | 'marker';
+  mode?: PresentationStrokeMode;
   markerOpacity?: number;
+  shape?: PresentationShapeKind;
+  /** Rotation in radians for box shapes (rect, ellipse). */
+  rotation?: number;
 }
 
 export interface PresentationSlide {
@@ -67,6 +74,7 @@ export interface PresentationSlide {
   bodyLeftHtml?: string;
   bodyRightHtml?: string;
   imageCaptionHtml?: string;
+  speakerNotesHtml?: string;
   elements?: SlideElement[];
   transition?: SlideTransition;
   revealEnabled?: boolean;
@@ -96,6 +104,11 @@ export function deckFilePath(lessonPath: string): string {
 export function annotationsFilePath(lessonPath: string): string {
   const base = lessonPath.replace(/\\/g, '/').replace(/\/$/, '');
   return `${base}/${ANNOTATIONS_FILENAME}`;
+}
+
+export function deckOriginalFilePath(lessonPath: string): string {
+  const base = lessonPath.replace(/\\/g, '/').replace(/\/$/, '');
+  return `${base}/Praesentation.deck.original.json`;
 }
 
 export function lessonFolderPath(lessonPath: string): string {
@@ -153,6 +166,7 @@ export function normalizeSlide(slide: PresentationSlide): PresentationSlide {
     bodyLeftHtml: slide.bodyLeftHtml ?? textToHtml(slide.bodyLeft || ''),
     bodyRightHtml: slide.bodyRightHtml ?? textToHtml(slide.bodyRight || ''),
     imageCaptionHtml: slide.imageCaptionHtml ?? textToHtml(slide.imageCaption || ''),
+    speakerNotesHtml: slide.speakerNotesHtml ?? textToHtml(slide.speakerNotes || ''),
     elements: slide.elements ?? [],
     transition: slide.transition ?? 'fade',
     revealEnabled: slide.revealEnabled !== false,

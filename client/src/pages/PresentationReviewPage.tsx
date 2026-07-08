@@ -18,6 +18,7 @@ import {
   PresentationDeck,
   loadPresentationAnnotations,
   loadPresentationDeck,
+  normalizeSlide,
   sortSlides,
 } from '../lib/presentationDeck';
 
@@ -47,7 +48,7 @@ const PresentationReviewPage: React.FC = () => {
   }, [lessonPath]);
 
   const slides = useMemo(() => (deck ? sortSlides(deck.slides) : []), [deck]);
-  const currentSlide = slides[slideIndex];
+  const currentSlide = slides[slideIndex] ? normalizeSlide(slides[slideIndex]) : undefined;
   const strokes = currentSlide ? annotations?.bySlideId[currentSlide.id] ?? [] : [];
 
   if (!lessonPath) {
@@ -124,7 +125,6 @@ const PresentationReviewPage: React.FC = () => {
                 readOnly
                 tool="pen"
                 strokeColor="#000"
-                lineWidth={1}
                 scale={REVIEW_SCALE}
               />
             </Box>
@@ -144,9 +144,24 @@ const PresentationReviewPage: React.FC = () => {
           <Typography variant="overline" color="text.secondary">
             Sprecher-notizen
           </Typography>
-          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mb: 2 }}>
-            {currentSlide?.speakerNotes?.trim() || '—'}
-          </Typography>
+          {currentSlide?.speakerNotesHtml?.trim() &&
+          currentSlide.speakerNotesHtml !== '<p></p>' &&
+          currentSlide.speakerNotesHtml !== '<p><br></p>' ? (
+            <Box
+              sx={{
+                fontSize: 14,
+                lineHeight: 1.55,
+                mb: 2,
+                '& p': { m: 0, mb: 0.5 },
+                '& mark': { borderRadius: 0.5 },
+              }}
+              dangerouslySetInnerHTML={{ __html: currentSlide.speakerNotesHtml }}
+            />
+          ) : (
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mb: 2 }}>
+              {currentSlide?.speakerNotes?.trim() || '—'}
+            </Typography>
+          )}
           <Typography variant="overline" color="text.secondary">
             Tablet-Notizen
           </Typography>

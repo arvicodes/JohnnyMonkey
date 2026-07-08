@@ -1,0 +1,230 @@
+import type { PresentationShapeKind, PresentationStroke } from './presentationDeck';
+import { getBoxFrame, hitTestShapeBody } from './presentationShapeTransform';
+
+export type PresentationDrawTool =
+  | 'select'
+  | 'pen'
+  | 'marker'
+  | 'eraser'
+  | 'shape-line'
+  | 'shape-rect'
+  | 'shape-ellipse'
+  | 'shape-arrow';
+
+export const PEN_LINE_WIDTHS = [1.5, 3, 5, 8] as const;
+export const MARKER_LINE_WIDTHS = [6, 10, 16, 24] as const;
+export const SHAPE_LINE_WIDTHS = [2, 4, 6, 10] as const;
+
+export const PEN_COLORS = [
+  '#c62828',
+  '#1565c0',
+  '#2e7d32',
+  '#000000',
+  '#FF9800',
+  '#6A1B9A',
+  '#37474F',
+  '#FFFFFF',
+] as const;
+
+export const ERASER_RADIUS = 32;
+
+export function toolUsesColor(tool: PresentationDrawTool): boolean {
+  return tool !== 'eraser' && tool !== 'select';
+}
+
+export function toolUsesLineWidth(tool: PresentationDrawTool): boolean {
+  return tool !== 'eraser';
+}
+
+export function defaultLineWidthForTool(tool: PresentationDrawTool): number {
+  if (tool === 'marker') return 10;
+  if (tool === 'select' || isShapeTool(tool)) return 4;
+  return 3;
+}
+
+export function lineWidthsForTool(tool: PresentationDrawTool): readonly number[] {
+  if (tool === 'marker') return MARKER_LINE_WIDTHS;
+  if (tool === 'select' || isShapeTool(tool)) return SHAPE_LINE_WIDTHS;
+  return PEN_LINE_WIDTHS;
+}
+
+export function toolLineWidth(tool: PresentationDrawTool, customWidth?: number): number {
+  if (customWidth != null) return customWidth;
+  return defaultLineWidthForTool(tool);
+}
+
+export function toolToShape(tool: PresentationDrawTool): PresentationShapeKind | undefined {
+  switch (tool) {
+    case 'shape-line':
+      return 'line';
+    case 'shape-rect':
+      return 'rect';
+    case 'shape-ellipse':
+      return 'ellipse';
+    case 'shape-arrow':
+      return 'arrow';
+    default:
+      return undefined;
+  }
+}
+
+export function isShapeTool(tool: PresentationDrawTool): boolean {
+  return tool.startsWith('shape-');
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace('#', '').trim();
+  if (h.length !== 6) return `rgba(200,80,80,${alpha})`;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function distPointToSegment(
+  px: number,
+  py: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number
+): number {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq < 1e-6) return Math.hypot(px - x1, py - y1);
+  let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
+
+function strokeHitByEraser(
+  stroke: PresentationStroke,
+  eraserPoints: { x: number; y: number }[],
+  radius: number
+): boolean {
+  if (stroke.shape && stroke.points.length >= 2) {
+    const [p0, p1] = stroke.points;
+    for (const ep of eraserPoints) {
+      if (stroke.shape === 'rect' || stroke.shape === 'ellipse') {
+        if (hitTestShapeBody(stroke, ep, radius)) return true;
+        continue;
+      }
+      if (distPointToSegment(ep.x, ep.y, p0.x, p0.y, p1.x, p1.y) < radius) return true;
+    }
+    return false;
+  }
+
+  if (stroke.points.length < 2) return false;
+  for (const ep of eraserPoints) {
+    for (let i = 0; i < stroke.points.length - 1; i++) {
+      const a = stroke.points[i];
+      const b = stroke.points[i + 1];
+      if (distPointToSegment(ep.x, ep.y, a.x, a.y, b.x, b.y) < radius) return true;
+    }
+  }
+  return false;
+}
+
+export function applyEraserToStrokes(
+  strokes: PresentationStroke[],
+  eraserPoints: { x: number; y: number }[],
+  radius = ERASER_RADIUS
+): PresentationStroke[] {
+  if (eraserPoints.length === 0) return strokes;
+  return strokes.filter((s) => !strokeHitByEraser(s, eraserPoints, radius));
+}
+
+function drawArrowHead(
+  ctx: CanvasRenderingContext2D,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  headLen: number
+) {
+  const angle = Math.atan2(toY - fromY, toX - fromX);
+  ctx.beginPath();
+  ctx.moveTo(toX, toY);
+  ctx.lineTo(
+    toX - headLen * Math.cos(angle - Math.PI / 6),
+    toY - headLen * Math.sin(angle - Math.PI / 6)
+  );
+  ctx.moveTo(toX, toY);
+  ctx.lineTo(
+    toX - headLen * Math.cos(angle + Math.PI / 6),
+    toY - headLen * Math.sin(angle + Math.PI / 6)
+  );
+  ctx.stroke();
+}
+
+export function drawPresentationStroke(ctx: CanvasRenderingContext2D, stroke: PresentationStroke) {
+  if (stroke.points.length < 2) return;
+
+  if (stroke.shape) {
+    const [p0, p1] = stroke.points;
+    ctx.strokeStyle = stroke.color;
+    ctx.lineWidth = stroke.lineWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.beginPath();
+    switch (stroke.shape) {
+      case 'line':
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.stroke();
+        break;
+      case 'rect': {
+        const frame = getBoxFrame(stroke);
+        ctx.save();
+        ctx.translate(frame.cx, frame.cy);
+        ctx.rotate(frame.rotation);
+        ctx.strokeRect(-frame.w / 2, -frame.h / 2, frame.w, frame.h);
+        ctx.restore();
+        break;
+      }
+      case 'ellipse': {
+        const frame = getBoxFrame(stroke);
+        ctx.save();
+        ctx.translate(frame.cx, frame.cy);
+        ctx.rotate(frame.rotation);
+        ctx.ellipse(0, 0, Math.max(frame.w / 2, 1), Math.max(frame.h / 2, 1), 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+        break;
+      }
+      case 'arrow':
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.stroke();
+        drawArrowHead(ctx, p0.x, p0.y, p1.x, p1.y, Math.max(14, stroke.lineWidth * 4));
+        break;
+      default:
+        break;
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    return;
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+  for (let i = 1; i < stroke.points.length; i++) {
+    ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+  }
+  if (stroke.mode === 'marker') {
+    ctx.strokeStyle = hexToRgba(stroke.color, stroke.markerOpacity ?? 0.38);
+    ctx.lineWidth = stroke.lineWidth * 2.2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalCompositeOperation = 'multiply';
+  } else {
+    ctx.strokeStyle = stroke.color;
+    ctx.lineWidth = stroke.lineWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  ctx.stroke();
+  ctx.globalCompositeOperation = 'source-over';
+}

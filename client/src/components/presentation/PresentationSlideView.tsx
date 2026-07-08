@@ -16,6 +16,7 @@ interface PresentationSlideViewProps {
   slide: PresentationSlide;
   scale?: number;
   showLogo?: boolean;
+  showShadow?: boolean;
   editable?: boolean;
   onChange?: (patch: Partial<PresentationSlide>) => void;
   onEditorFocus?: (el: HTMLElement, fieldKey?: string) => void;
@@ -31,6 +32,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   slide: rawSlide,
   scale = 1,
   showLogo = true,
+  showShadow = true,
   editable = false,
   onChange,
   onEditorFocus,
@@ -140,8 +142,9 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#9e9e9e',
+              color: `${accent}99`,
               fontSize: `${18 * scale}px`,
+              bgcolor: `${accent}0a`,
             }}
           >
             {editable ? 'Bild über Toolbar einfügen →' : ''}
@@ -314,10 +317,12 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
         height: h,
         bgcolor: JOHNNY_PRESENTATION.slideBg,
         borderRadius: `${8 * scale}px`,
-        boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+        boxShadow: showShadow ? '0 8px 32px rgba(0,0,0,0.12)' : 'none',
         position: 'relative',
         overflow: 'hidden',
         flexShrink: 0,
+        minWidth: 0,
+        maxWidth: w,
       }}
     >
       {showLogo && (
@@ -359,15 +364,16 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           pb: `${48 * scale}px`,
           display: 'flex',
           flexDirection: 'column',
+          minWidth: 0,
+          overflow: 'hidden',
         }}
       >
         {renderContent()}
       </Box>
 
-      {(editable || (slide.elements?.length ?? 0) > 0) && (
+      {(slide.elements?.length ?? 0) > 0 && (
         <Box
-          sx={{ position: 'absolute', inset: 0, pointerEvents: editable ? 'auto' : 'none' }}
-          onPointerDown={(e) => e.stopPropagation()}
+          sx={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 5 }}
         >
           <PresentationSlideElements
             elements={slide.elements || []}

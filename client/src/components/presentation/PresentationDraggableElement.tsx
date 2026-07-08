@@ -142,6 +142,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         boxSizing: 'border-box',
         cursor: editable ? (dragging ? 'grabbing' : 'grab') : undefined,
         touchAction: 'none',
+        pointerEvents: editable ? 'auto' : 'none',
         bgcolor: element.type === 'text' && showEditChrome ? 'rgba(255,255,255,0.95)' : 'transparent',
       }}
     >
@@ -185,10 +186,11 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               outline: 'none',
               fontSize: `${22 * scale}px`,
               lineHeight: 1.45,
-              color: '#424242',
               p: `${6 * scale}px`,
               cursor: 'text',
+              color: '#424242',
               '& p': { m: 0, mb: `${4 * scale}px` },
+              '& li': { mb: `${2 * scale}px` },
               '& ul, & ol': { m: 0, pl: `${20 * scale}px` },
             }}
           />
@@ -200,9 +202,9 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               overflow: 'hidden',
               fontSize: `${22 * scale}px`,
               lineHeight: 1.45,
-              color: '#424242',
               p: `${6 * scale}px`,
               pointerEvents: 'none',
+              color: '#424242',
               '& p': { m: 0 },
             }}
             dangerouslySetInnerHTML={{ __html: element.html || '<p>Text</p>' }}

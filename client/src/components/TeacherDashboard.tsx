@@ -5641,6 +5641,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const navigate = useNavigate();
   const location = useLocation();
   const isLessonStundeRoute = location.pathname === '/teacher/stunde';
+  const focusGroupId = (location.state as { focusGroupId?: string } | null)?.focusGroupId;
   const subjectManagerRef = useRef<any>(null);
   const materialCreatorRef = useRef<any>(null);
   const isAddingStudentsRef = useRef(false);
@@ -5806,6 +5807,25 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     severity: 'success' as 'success' | 'error' | 'warning',
   });
   const [mainTabValue, setMainTabValue] = useState(0);
+
+  useEffect(() => {
+    if (!focusGroupId || groups.length === 0) return;
+    if (!groups.some((g) => g.id === focusGroupId)) return;
+
+    setMainTabValue(0);
+    setExpandedGroups((prev) => ({ ...prev, [focusGroupId]: true }));
+
+    const scrollToGroup = () => {
+      document.getElementById(`learning-group-row-${focusGroupId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    requestAnimationFrame(() => {
+      scrollToGroup();
+      if (!document.getElementById(`learning-group-row-${focusGroupId}`)) {
+        window.setTimeout(scrollToGroup, 150);
+      }
+    });
+  }, [focusGroupId, groups]);
+
   const [lessonMaterials, setLessonMaterials] = useState<{[key: string]: any[]}>({});
   const [lessonQuizzes, setLessonQuizzes] = useState<{[key: string]: any}>({});
 
@@ -14153,7 +14173,11 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                       titleFontSize,
                     } = resolveLearningGroupDisplayStyle(group, colors.primary);
                     return (
-                    <LearningGroupSortableShell key={group.id} groupId={group.id}>
+                    <LearningGroupSortableShell
+                      key={group.id}
+                      groupId={group.id}
+                      domId={`learning-group-row-${group.id}`}
+                    >
                       {(dragHandle) => (
                     <>
                       <Box sx={{ 

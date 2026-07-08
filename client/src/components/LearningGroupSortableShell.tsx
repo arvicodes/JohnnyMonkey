@@ -6,11 +6,13 @@ import { CSS } from '@dnd-kit/utilities';
 
 interface LearningGroupSortableShellProps {
   groupId: string;
+  domId?: string;
   children: (dragHandle: React.ReactNode) => React.ReactNode;
 }
 
 const LearningGroupSortableShell: React.FC<LearningGroupSortableShellProps> = ({
   groupId,
+  domId,
   children,
 }) => {
   const {
@@ -48,6 +50,7 @@ const LearningGroupSortableShell: React.FC<LearningGroupSortableShellProps> = ({
 
   return (
     <Box
+      id={domId}
       ref={setNodeRef}
       sx={{
         mb: 1.4,

@@ -9,6 +9,14 @@
   background-color: #f5f5f5;
 }
 
+.App--fullBleed {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
 .App-logo {
   height: 40vmin;
   pointer-events: none;

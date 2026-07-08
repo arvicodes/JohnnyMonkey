@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -24,8 +25,13 @@ import {
   SaveOutlined as SaveIcon,
   Slideshow as SlideshowIcon,
   TextFields as TextIcon,
+  Undo as UndoIcon,
+  Redo as RedoIcon,
+  VisibilityOutlined as PreviewIcon,
 } from '@mui/icons-material';
 import PresentationFormatBar from '../components/presentation/PresentationFormatBar';
+import PresentationFilmstrip from '../components/presentation/PresentationFilmstrip';
+import PresentationNotesPanel from '../components/presentation/PresentationNotesPanel';
 import PresentationSlideView from '../components/presentation/PresentationSlideView';
 import {
   createSlideFromLayout,
@@ -40,14 +46,26 @@ import {
   htmlToPlain,
   loadPresentationDeck,
   lessonFolderPath,
+  normalizeDeck,
   normalizeSlide,
   presentationPresentUrl,
   saveJsonFile,
   sortSlides,
   SLIDE_REF_HEIGHT,
+  SLIDE_REF_WIDTH,
   SLIDE_TRANSITIONS,
 } from '../lib/presentationDeck';
 import { JOHNNY_ACCENT_PRESETS, JOHNNY_PRESENTATION } from '../lib/presentationTheme';
+import { PRES_EDITOR_UI, presentationEditorBackTarget } from '../lib/presentationEditorUi';
+import {
+  canRedoDeck,
+  canUndoDeck,
+  createDeckHistory,
+  pushDeckHistory,
+  redoDeckHistory,
+  undoDeckHistory,
+  type DeckHistory,
+} from '../lib/presentationEditorHistory';
 import {
   assignRevealSteps,
   getSlideMaxRevealSteps,
@@ -55,10 +73,8 @@ import {
 } from '../lib/presentationReveal';
 import type { SlideTransition } from '../lib/presentationTransitions';
 
-const THUMB_SCALE = 0.105;
-const CANVAS_SCALE = 0.48;
-
 const PresentationEditorPage: React.FC = () => {
+  const navigate = useNavigate();
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const lessonPath = params.get('lessonPath') || '';
   const groupId = params.get('groupId') || '';
@@ -72,6 +88,60 @@ const PresentationEditorPage: React.FC = () => {
   const [activeEditor, setActiveEditor] = useState<HTMLElement | null>(null);
   const [activeHtmlField, setActiveHtmlField] = useState<string | null>(null);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const [previewMode, setPreviewMode] = useState(false);
+  const [canvasScale, setCanvasScale] = useState(0.4);
+  const [historyVersion, setHistoryVersion] = useState(0);
+  const canvasHostRef = useRef<HTMLDivElement>(null);
+  const slideShellRef = useRef<HTMLDivElement>(null);
+  const canvasHostObserverRef = useRef<ResizeObserver | null>(null);
+
+  const syncSlideViewport = useCallback(() => {
+    const host = canvasHostRef.current;
+    if (!host) return;
+    const width = host.clientWidth;
+    const height = host.clientHeight;
+    if (width < 40 || height < 40) return;
+
+    const scaleW = width / SLIDE_REF_WIDTH;
+    const scaleH = height / SLIDE_REF_HEIGHT;
+    const scale = previewMode ? Math.min(scaleW, scaleH) : scaleW;
+    setCanvasScale(scale);
+  }, [previewMode]);
+
+  useLayoutEffect(() => {
+    if (loading) return;
+
+    const host = canvasHostRef.current;
+    if (!host) return;
+
+    syncSlideViewport();
+    canvasHostObserverRef.current?.disconnect();
+    const ro = new ResizeObserver(syncSlideViewport);
+    ro.observe(host);
+    canvasHostObserverRef.current = ro;
+
+    return () => {
+      ro.disconnect();
+      if (canvasHostObserverRef.current === ro) {
+        canvasHostObserverRef.current = null;
+      }
+    };
+  }, [loading, syncSlideViewport]);
+
+  useLayoutEffect(() => {
+    if (loading) return;
+    syncSlideViewport();
+    const id = requestAnimationFrame(() => syncSlideViewport());
+    return () => cancelAnimationFrame(id);
+  }, [previewMode, activeId, loading, syncSlideViewport]);
+
+  useEffect(() => () => canvasHostObserverRef.current?.disconnect(), []);
+
+  const slideViewportW = previewMode ? SLIDE_REF_WIDTH * canvasScale : undefined;
+  const slideViewportH = SLIDE_REF_HEIGHT * canvasScale;
+  const historyRef = useRef<DeckHistory | null>(null);
+  const historyPushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const applyingHistoryRef = useRef(false);
 
   const HTML_TO_PLAIN: Record<string, keyof PresentationSlide> = {
     titleHtml: 'title',
@@ -80,6 +150,7 @@ const PresentationEditorPage: React.FC = () => {
     bodyLeftHtml: 'bodyLeft',
     bodyRightHtml: 'bodyRight',
     imageCaptionHtml: 'imageCaption',
+    speakerNotesHtml: 'speakerNotes',
   };
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -98,14 +169,27 @@ const PresentationEditorPage: React.FC = () => {
       return;
     }
     loadPresentationDeck(lessonPath).then((d) => {
-      setDeck(d);
-      setActiveId(d.slides[0]?.id ?? null);
+      const normalized = normalizeDeck(d);
+      historyRef.current = createDeckHistory(normalized);
+      setHistoryVersion((v) => v + 1);
+      setDeck(normalized);
+      deckRef.current = normalized;
+      setActiveId(normalized.slides[0]?.id ?? null);
       setLoading(false);
     });
   }, [lessonPath]);
 
   const activeSlide = deck?.slides.find((s) => s.id === activeId) ?? deck?.slides[0];
   const normalizedActive = activeSlide ? normalizeSlide(activeSlide) : null;
+
+  const selectSlide = (id: string) => {
+    if (id === activeId) return;
+    commitEditorState({ history: 'skip' });
+    setActiveId(id);
+    setSelectedElementId(null);
+    setActiveEditor(null);
+    setActiveHtmlField(null);
+  };
 
   const persistDeck = useCallback(
     async (next: PresentationDeck, version: number) => {
@@ -131,15 +215,141 @@ const PresentationEditorPage: React.FC = () => {
   );
 
   const scheduleSave = useCallback(
-    (next: PresentationDeck) => {
+    (
+      next: PresentationDeck,
+      options?: { history?: 'debounced' | 'immediate' | 'skip' }
+    ) => {
       setDeck(next);
       deckRef.current = next;
+
+      if (!applyingHistoryRef.current && options?.history !== 'skip' && historyRef.current) {
+        const push = () => {
+          if (!historyRef.current || !deckRef.current) return;
+          historyRef.current = pushDeckHistory(historyRef.current, deckRef.current);
+          setHistoryVersion((v) => v + 1);
+        };
+        const mode = options?.history ?? 'debounced';
+        if (mode === 'immediate') {
+          if (historyPushTimer.current) clearTimeout(historyPushTimer.current);
+          push();
+        } else if (mode === 'debounced') {
+          if (historyPushTimer.current) clearTimeout(historyPushTimer.current);
+          historyPushTimer.current = setTimeout(push, 700);
+        }
+      }
+
       const version = ++saveVersionRef.current;
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => void persistDeck(next, version), 600);
     },
     [persistDeck]
   );
+
+  const commitEditorState = useCallback(
+    (options?: { history?: 'debounced' | 'immediate' | 'skip' }) => {
+      if (!activeEditor || !activeHtmlField) return;
+      const current = deckRef.current;
+      if (!current || !activeId) return;
+
+      if (activeHtmlField.startsWith('element:')) {
+        const id = activeHtmlField.slice(8);
+        const html = activeEditor.innerHTML;
+        const slides = current.slides.map((s) => {
+          if (s.id !== activeId) return s;
+          const elements = (s.elements || []).map((e) => (e.id === id ? { ...e, html } : e));
+          return normalizeSlide({ ...s, elements });
+        });
+        scheduleSave({ ...current, slides }, options);
+        return;
+      }
+
+      const html = activeEditor.innerHTML;
+      const plainKey = HTML_TO_PLAIN[activeHtmlField];
+      const slides = current.slides.map((s) =>
+        s.id === activeId
+          ? normalizeSlide({
+              ...s,
+              [activeHtmlField]: html,
+              ...(plainKey ? { [plainKey]: htmlToPlain(html) } : {}),
+            })
+          : s
+      );
+      scheduleSave({ ...current, slides }, options);
+    },
+    [activeEditor, activeHtmlField, activeId, scheduleSave]
+  );
+
+  const restoreDeckSnapshot = useCallback(
+    (snapshot: PresentationDeck) => {
+      applyingHistoryRef.current = true;
+      if (historyPushTimer.current) clearTimeout(historyPushTimer.current);
+      deckRef.current = snapshot;
+      setDeck(snapshot);
+      setActiveEditor(null);
+      setActiveHtmlField(null);
+      setSelectedElementId(null);
+      setActiveId((current) =>
+        snapshot.slides.some((s) => s.id === current) ? current : snapshot.slides[0]?.id ?? null
+      );
+      setHistoryVersion((v) => v + 1);
+      const version = ++saveVersionRef.current;
+      void persistDeck(snapshot, version);
+      applyingHistoryRef.current = false;
+    },
+    [persistDeck]
+  );
+
+  const undo = useCallback(() => {
+    if (!historyRef.current || !canUndoDeck(historyRef.current)) return;
+    commitEditorState({ history: 'skip' });
+    const result = undoDeckHistory(historyRef.current);
+    if (!result) return;
+    historyRef.current = result.history;
+    restoreDeckSnapshot(result.deck);
+  }, [commitEditorState, restoreDeckSnapshot]);
+
+  const redo = useCallback(() => {
+    if (!historyRef.current || !canRedoDeck(historyRef.current)) return;
+    commitEditorState({ history: 'skip' });
+    const result = redoDeckHistory(historyRef.current);
+    if (!result) return;
+    historyRef.current = result.history;
+    restoreDeckSnapshot(result.deck);
+  }, [commitEditorState, restoreDeckSnapshot]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && previewMode) {
+        setPreviewMode(false);
+        return;
+      }
+
+      if (previewMode) return;
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+        return;
+      }
+
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+
+      if (e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') {
+        e.preventDefault();
+        redo();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [previewMode, undo, redo]);
+
+  const canUndo = canUndoDeck(historyRef.current);
+  const canRedo = canRedoDeck(historyRef.current);
+  void historyVersion;
 
   const updateSlide = (patch: Partial<PresentationSlide>) => {
     const current = deckRef.current;
@@ -151,19 +361,7 @@ const PresentationEditorPage: React.FC = () => {
   };
 
   const flushActiveEditor = () => {
-    if (!activeEditor) return;
-    if (activeHtmlField?.startsWith('element:')) {
-      const id = activeHtmlField.slice(8);
-      updateElement(id, { html: activeEditor.innerHTML });
-      return;
-    }
-    if (!activeHtmlField) return;
-    const html = activeEditor.innerHTML;
-    const plainKey = HTML_TO_PLAIN[activeHtmlField];
-    updateSlide({
-      [activeHtmlField]: html,
-      ...(plainKey ? { [plainKey]: htmlToPlain(html) } : {}),
-    } as Partial<PresentationSlide>);
+    commitEditorState();
   };
 
   const assignRevealToBody = () => {
@@ -245,9 +443,9 @@ const PresentationEditorPage: React.FC = () => {
   const addSlide = (layout: SlideLayout = 'title-content') => {
     const current = deckRef.current;
     if (!current) return;
-    const slide = createSlideFromLayout(current.slides.length, layout);
+    const slide = normalizeSlide(createSlideFromLayout(current.slides.length, layout));
     const next = { ...current, slides: [...current.slides, slide] };
-    scheduleSave(next);
+    scheduleSave(next, { history: 'immediate' });
     setActiveId(slide.id);
     setLayoutMenuAnchor(null);
     setSnackbar(`Folie ${next.slides.length} hinzugefügt`);
@@ -261,7 +459,7 @@ const PresentationEditorPage: React.FC = () => {
       id: `slide-${Date.now()}`,
       order: current.slides.length,
     };
-    scheduleSave({ ...current, slides: [...current.slides, copy] });
+    scheduleSave({ ...current, slides: [...current.slides, copy] }, { history: 'immediate' });
     setActiveId(copy.id);
   };
 
@@ -271,20 +469,8 @@ const PresentationEditorPage: React.FC = () => {
     const slides = current.slides
       .filter((s) => s.id !== activeSlide.id)
       .map((s, i) => ({ ...s, order: i }));
-    scheduleSave({ ...current, slides });
+    scheduleSave({ ...current, slides }, { history: 'immediate' });
     setActiveId(slides[0]?.id ?? null);
-  };
-
-  const moveSlide = (id: string, dir: -1 | 1) => {
-    const current = deckRef.current;
-    if (!current) return;
-    const sorted = sortSlides(current.slides);
-    const idx = sorted.findIndex((s) => s.id === id);
-    const target = idx + dir;
-    if (idx < 0 || target < 0 || target >= sorted.length) return;
-    const copy = [...sorted];
-    [copy[idx], copy[target]] = [copy[target], copy[idx]];
-    scheduleSave({ ...current, slides: copy.map((s, i) => ({ ...s, order: i })) });
   };
 
   const applyLayout = (layout: SlideLayout) => {
@@ -340,6 +526,17 @@ const PresentationEditorPage: React.FC = () => {
   const showLayoutImage =
     normalizedActive?.layout === 'image-left' || normalizedActive?.layout === 'image-right';
 
+  const handleBack = () => {
+    navigate(presentationEditorBackTarget(groupId));
+  };
+
+  const toolbarIconSx = {
+    color: PRES_EDITOR_UI.textMuted,
+    width: 30,
+    height: 30,
+    '&:hover': { bgcolor: PRES_EDITOR_UI.accentSoft, color: PRES_EDITOR_UI.accent },
+  };
+
   if (!lessonPath) {
     return (
       <Box sx={{ p: 4 }}>
@@ -350,138 +547,237 @@ const PresentationEditorPage: React.FC = () => {
 
   if (loading || !deck) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', bgcolor: PRES_EDITOR_UI.pageBg }}>
         <CircularProgress size={28} sx={{ color: JOHNNY_PRESENTATION.primary }} />
       </Box>
     );
   }
 
+  const formatContextLabel =
+    activeHtmlField === 'speakerNotesHtml'
+      ? 'Notizen'
+      : activeHtmlField?.startsWith('element:')
+        ? 'Element'
+        : activeHtmlField
+          ? 'Folie'
+          : undefined;
+
   const sortedSlides = sortSlides(deck.slides);
 
   return (
-    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#1e1e1e', overflow: 'hidden' }}>
-      {/* Ribbon */}
+    <Box
+      sx={{
+        height: '100vh',
+        width: '100%',
+        maxWidth: '100%',
+        mx: 0,
+        px: 0,
+        alignSelf: 'stretch',
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        bgcolor: PRES_EDITOR_UI.pageBg,
+        overflow: 'hidden',
+      }}
+    >
+      {/* Kompakte Kopfleiste */}
       <Box
         sx={{
-          bgcolor: '#252526',
-          borderBottom: '1px solid #333',
+          bgcolor: PRES_EDITOR_UI.barBg,
+          borderBottom: `1px solid ${PRES_EDITOR_UI.barBorder}`,
           flexShrink: 0,
+          boxShadow: '0 1px 0 rgba(46,125,50,0.06)',
         }}
       >
         <Box
           sx={{
-            height: 40,
-            px: 1,
+            minHeight: 44,
+            px: 1.25,
             display: 'flex',
             alignItems: 'center',
-            gap: 0.5,
+            gap: 0.75,
           }}
         >
-          <IconButton size="small" onClick={() => window.close()} sx={{ color: '#ccc' }}>
-            <ArrowBackIcon fontSize="small" />
-          </IconButton>
-          <SlideshowIcon sx={{ fontSize: 18, color: JOHNNY_PRESENTATION.primaryLight, mx: 0.5 }} />
-          <Typography variant="caption" sx={{ color: '#aaa', fontWeight: 600, mr: 1 }}>
-            Präsentation
+          <Tooltip title="Zurück zur Stunde">
+            <IconButton size="small" onClick={handleBack} sx={toolbarIconSx}>
+              <ArrowBackIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+          </Tooltip>
+
+          <SlideshowIcon sx={{ fontSize: 20, color: PRES_EDITOR_UI.accent, flexShrink: 0 }} />
+          <Typography
+            variant="subtitle2"
+            noWrap
+            sx={{ fontWeight: 700, color: PRES_EDITOR_UI.text, maxWidth: 200, flexShrink: 1 }}
+          >
+            {deck.title || 'Präsentation'}
           </Typography>
-          <Divider orientation="vertical" flexItem sx={{ borderColor: '#444', mx: 0.5 }} />
 
-          <Button
-            size="small"
-            startIcon={<AddIcon sx={{ fontSize: 16 }} />}
-            onClick={() => addSlide('title-content')}
-            sx={{ color: '#eee', fontSize: 11, minWidth: 0, px: 1, mr: 0.5 }}
-          >
-            Folie
-          </Button>
-          <Tooltip title="Folie mit Layout wählen">
-            <IconButton
-              size="small"
-              onClick={(e) => setLayoutMenuAnchor(e.currentTarget)}
-              sx={{ color: '#ddd' }}
-            >
-              <AddIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Menu
-            anchorEl={layoutMenuAnchor}
-            open={Boolean(layoutMenuAnchor)}
-            onClose={() => setLayoutMenuAnchor(null)}
-          >
-            {SLIDE_LAYOUTS.map((l) => (
-              <MenuItem
-                key={l.id}
-                onClick={() => addSlide(l.id)}
-                dense
-              >
-                <Box>
-                  <Typography variant="body2">{l.label}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {l.hint}
-                  </Typography>
-                </Box>
-              </MenuItem>
-            ))}
-          </Menu>
+          <Divider orientation="vertical" flexItem sx={{ borderColor: PRES_EDITOR_UI.barBorder, mx: 0.25 }} />
 
-          <Tooltip title="Duplizieren">
-            <IconButton size="small" onClick={duplicateSlide} sx={{ color: '#ddd' }}>
-              <CopyIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Löschen">
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.25,
+              bgcolor: PRES_EDITOR_UI.accentSoft,
+              borderRadius: 1.5,
+              px: 0.35,
+              py: 0.25,
+              border: `1px solid ${PRES_EDITOR_UI.barBorder}`,
+            }}
+          >
+            <Tooltip title="Folie hinzufügen">
+              <IconButton size="small" onClick={() => addSlide('title-content')} sx={toolbarIconSx}>
+                <AddIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Layout wählen">
+              <IconButton size="small" onClick={(e) => setLayoutMenuAnchor(e.currentTarget)} sx={toolbarIconSx}>
+                <SlideshowIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+            <Menu anchorEl={layoutMenuAnchor} open={Boolean(layoutMenuAnchor)} onClose={() => setLayoutMenuAnchor(null)}>
+              {SLIDE_LAYOUTS.map((l) => (
+                <MenuItem key={l.id} onClick={() => addSlide(l.id)} dense>
+                  <Box>
+                    <Typography variant="body2">{l.label}</Typography>
+                    <Typography variant="caption" color="text.secondary">{l.hint}</Typography>
+                  </Box>
+                </MenuItem>
+              ))}
+            </Menu>
+            <Tooltip title="Duplizieren">
+              <IconButton size="small" onClick={duplicateSlide} sx={toolbarIconSx}>
+                <CopyIcon sx={{ fontSize: 17 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Folie löschen">
+              <span>
+                <IconButton size="small" onClick={deleteSlide} disabled={deck.slides.length <= 1} sx={toolbarIconSx}>
+                  <DeleteIcon sx={{ fontSize: 17 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Box>
+
+          <Divider orientation="vertical" flexItem sx={{ borderColor: PRES_EDITOR_UI.barBorder, mx: 0.25 }} />
+
+          <Tooltip title="Rückgängig (Strg+Z)">
             <span>
               <IconButton
                 size="small"
-                onClick={deleteSlide}
-                disabled={deck.slides.length <= 1}
-                sx={{ color: '#ddd' }}
+                disabled={!canUndo || previewMode}
+                onClick={undo}
+                sx={toolbarIconSx}
               >
-                <DeleteIcon fontSize="small" />
+                <UndoIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title="Wiederholen (Strg+Umschalt+Z)">
+            <span>
+              <IconButton
+                size="small"
+                disabled={!canRedo || previewMode}
+                onClick={redo}
+                sx={toolbarIconSx}
+              >
+                <RedoIcon sx={{ fontSize: 18 }} />
               </IconButton>
             </span>
           </Tooltip>
 
           <Box sx={{ flex: 1 }} />
-          {saving && <CircularProgress size={16} sx={{ color: JOHNNY_PRESENTATION.primaryLight, mr: 1 }} />}
+
           <Button
             size="small"
-            startIcon={<SaveIcon sx={{ fontSize: 16 }} />}
+            variant={previewMode ? 'contained' : 'outlined'}
+            startIcon={<PreviewIcon sx={{ fontSize: 15 }} />}
+            onClick={() => setPreviewMode((v) => !v)}
+            sx={{
+              textTransform: 'none',
+              fontSize: 12,
+              minWidth: 0,
+              px: 1.25,
+              py: 0.35,
+              borderColor: PRES_EDITOR_UI.barBorder,
+              color: previewMode ? '#fff' : PRES_EDITOR_UI.textMuted,
+              bgcolor: previewMode ? PRES_EDITOR_UI.accent : 'transparent',
+              '&:hover': {
+                borderColor: PRES_EDITOR_UI.accent,
+                bgcolor: previewMode ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.accentSoft,
+              },
+            }}
+          >
+            Vorschau
+          </Button>
+
+          {saving && <CircularProgress size={16} sx={{ color: PRES_EDITOR_UI.accent, ml: 0.5 }} />}
+
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<SaveIcon sx={{ fontSize: 15 }} />}
             onClick={() => {
               const v = ++saveVersionRef.current;
               void persistDeck(deck, v);
             }}
-            sx={{ color: '#ccc', minWidth: 0, px: 1, fontSize: 12 }}
+            sx={{
+              textTransform: 'none',
+              fontSize: 12,
+              minWidth: 0,
+              px: 1.25,
+              borderColor: PRES_EDITOR_UI.barBorder,
+              color: PRES_EDITOR_UI.textMuted,
+              '&:hover': { borderColor: PRES_EDITOR_UI.accent, bgcolor: PRES_EDITOR_UI.accentSoft },
+            }}
           >
             Speichern
           </Button>
+
           <Button
             size="small"
             variant="contained"
-            startIcon={<PresentIcon sx={{ fontSize: 16 }} />}
+            startIcon={<PresentIcon sx={{ fontSize: 15 }} />}
             onClick={() => window.open(presentationPresentUrl(lessonPath, groupId || undefined), '_blank')}
             sx={{
-              bgcolor: JOHNNY_PRESENTATION.primary,
+              textTransform: 'none',
               fontSize: 12,
               px: 1.5,
-              '&:hover': { bgcolor: JOHNNY_PRESENTATION.primaryDark },
+              bgcolor: PRES_EDITOR_UI.accent,
+              boxShadow: 'none',
+              '&:hover': { bgcolor: JOHNNY_PRESENTATION.primaryDark, boxShadow: 'none' },
             }}
           >
             Präsentieren
           </Button>
         </Box>
 
-        {/* Formatierung */}
-        <Box sx={{ px: 1, py: 0.5, borderTop: '1px solid #333', bgcolor: '#2a2a2a' }}>
+        {!previewMode && (
+        <Box
+          sx={{
+            px: 1.25,
+            py: 0.45,
+            borderTop: `1px solid ${PRES_EDITOR_UI.barBorder}`,
+            bgcolor: PRES_EDITOR_UI.accentSoft,
+          }}
+        >
           <PresentationFormatBar
             activeEditor={activeEditor}
+            contextLabel={formatContextLabel}
             onEditorChanged={flushActiveEditor}
-            onInsertImage={() => {
-              imageTargetRef.current = 'inline';
-              imageInputRef.current?.click();
-            }}
+            onInsertImage={
+              activeHtmlField === 'speakerNotesHtml'
+                ? undefined
+                : () => {
+                    imageTargetRef.current = 'inline';
+                    imageInputRef.current?.click();
+                  }
+            }
           />
         </Box>
+        )}
       </Box>
 
       <input
@@ -496,109 +792,151 @@ const PresentationEditorPage: React.FC = () => {
         }}
       />
 
-      <Box sx={{ display: 'flex', flex: 1, minHeight: 0 }}>
-        {/* Filmstreifen */}
-        <Box
-          sx={{
-            width: 168,
-            bgcolor: '#252526',
-            borderRight: '1px solid #333',
-            overflowY: 'auto',
-            py: 1,
-            px: 0.75,
-            flexShrink: 0,
-          }}
-        >
-          <Button
-            fullWidth
-            size="small"
-            variant="outlined"
-            startIcon={<AddIcon sx={{ fontSize: 14 }} />}
-            onClick={() => addSlide('title-content')}
+      <Box sx={{ display: 'flex', flex: 1, minHeight: 0, bgcolor: PRES_EDITOR_UI.pageBg }}>
+        {!previewMode && (
+          <PresentationFilmstrip
+            slides={sortedSlides}
+            activeId={activeId}
+            onSelect={selectSlide}
+            onAdd={() => addSlide('title-content')}
+          />
+        )}
+
+        {/* Canvas + Notizen */}
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
+          <Box
+            ref={canvasHostRef}
             sx={{
-              mb: 1,
-              fontSize: 11,
-              color: JOHNNY_PRESENTATION.primaryLight,
-              borderColor: `${JOHNNY_PRESENTATION.primary}66`,
-              '&:hover': { borderColor: JOHNNY_PRESENTATION.primaryLight },
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'stretch',
+              justifyContent: 'center',
+              bgcolor: PRES_EDITOR_UI.pageBg,
+              overflow: 'hidden',
+              position: 'relative',
+              minHeight: 0,
+              minWidth: 0,
+              width: '100%',
             }}
           >
-            Neue Folie
-          </Button>
-          {sortedSlides.map((slide, idx) => (
-            <Box
-              key={slide.id}
-              onClick={() => setActiveId(slide.id)}
-              sx={{
-                mb: 0.75,
-                borderRadius: 1,
-                overflow: 'hidden',
-                cursor: 'pointer',
-                border: '2px solid',
-                borderColor: slide.id === activeId ? JOHNNY_PRESENTATION.primaryLight : 'transparent',
-                bgcolor: slide.id === activeId ? '#3c3c3c' : '#2d2d2d',
-                '&:hover': { borderColor: slide.id === activeId ? JOHNNY_PRESENTATION.primaryLight : '#555' },
-              }}
-            >
-              <Box sx={{ overflow: 'hidden', height: SLIDE_REF_HEIGHT * THUMB_SCALE, pointerEvents: 'none' }}>
-                <PresentationSlideView slide={slide} scale={THUMB_SCALE} showLogo={false} />
-              </Box>
+            {previewMode && (
               <Typography
                 variant="caption"
-                sx={{ display: 'block', textAlign: 'center', color: '#999', py: 0.25, fontSize: 10 }}
+                sx={{
+                  position: 'absolute',
+                  top: 8,
+                  left: 12,
+                  color: PRES_EDITOR_UI.accent,
+                  fontWeight: 700,
+                  fontSize: 11,
+                  zIndex: 2,
+                  pointerEvents: 'none',
+                }}
               >
-                {idx + 1}
+                Vorschau — Esc oder Button zum Beenden
               </Typography>
-            </Box>
-          ))}
-        </Box>
+            )}
+            {normalizedActive && canvasScale > 0 && (
+              <Box
+                ref={slideShellRef}
+                sx={{
+                  width: previewMode ? slideViewportW : '100%',
+                  height: slideViewportH,
+                  maxHeight: '100%',
+                  flexShrink: 0,
+                  overflow: 'hidden',
+                  bgcolor: '#fff',
+                  position: 'relative',
+                  alignSelf: previewMode ? 'center' : 'stretch',
+                  borderRadius: `${8 * canvasScale}px`,
+                  boxShadow: previewMode
+                    ? '0 12px 40px rgba(0,0,0,0.16)'
+                    : '0 8px 28px rgba(0,0,0,0.14)',
+                }}
+              >
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: SLIDE_REF_WIDTH,
+                    height: SLIDE_REF_HEIGHT,
+                    transform: `scale(${canvasScale})`,
+                    transformOrigin: 'top left',
+                    overflow: 'hidden',
+                    pointerEvents: 'auto',
+                  }}
+                >
+                  <PresentationSlideView
+                    key={normalizedActive.id}
+                    slide={normalizedActive}
+                    scale={1}
+                    showShadow={false}
+                    editable={!previewMode}
+                    revealStep={999}
+                    revealEnabled={false}
+                    selectedElementId={previewMode ? null : selectedElementId}
+                    onElementSelect={previewMode ? undefined : setSelectedElementId}
+                    onElementChange={previewMode ? undefined : updateElement}
+                    onTextElementFocus={
+                      previewMode
+                        ? undefined
+                        : (el, elementId) => {
+                            setActiveEditor(el);
+                            setActiveHtmlField(`element:${elementId}`);
+                            setSelectedElementId(elementId);
+                          }
+                    }
+                    onChange={previewMode ? undefined : (patch) => updateSlide(patch)}
+                    onEditorFocus={
+                      previewMode
+                        ? undefined
+                        : (el, fieldKey) => {
+                            setActiveEditor(el);
+                            setActiveHtmlField(fieldKey ?? null);
+                            setSelectedElementId(null);
+                          }
+                    }
+                  />
+                </Box>
+              </Box>
+            )}
+          </Box>
 
-        {/* Canvas */}
-        <Box
-          sx={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            bgcolor: '#323232',
-            overflow: 'auto',
-            p: 2,
-          }}
-        >
-          {normalizedActive && (
-            <PresentationSlideView
-              slide={normalizedActive}
-              scale={CANVAS_SCALE}
-              editable
-              revealStep={999}
-              revealEnabled={false}
-              selectedElementId={selectedElementId}
-              onElementSelect={setSelectedElementId}
-              onElementChange={updateElement}
-              onTextElementFocus={(el, elementId) => {
+          {normalizedActive && !previewMode && (
+            <PresentationNotesPanel
+              html={normalizedActive.speakerNotesHtml}
+              plain={normalizedActive.speakerNotes}
+              active={!previewMode && activeHtmlField === 'speakerNotesHtml'}
+              readOnly={previewMode}
+              onEditorFocus={(el) => {
                 setActiveEditor(el);
-                setActiveHtmlField(`element:${elementId}`);
-                setSelectedElementId(elementId);
-              }}
-              onChange={(patch) => updateSlide(patch)}
-              onEditorFocus={(el, fieldKey) => {
-                setActiveEditor(el);
-                setActiveHtmlField(fieldKey ?? null);
+                setActiveHtmlField('speakerNotesHtml');
                 setSelectedElementId(null);
               }}
+              onEditorBlur={() => {
+                if (activeHtmlField === 'speakerNotesHtml') {
+                  setActiveEditor(null);
+                  setActiveHtmlField(null);
+                }
+              }}
+              onChange={(html, plain) =>
+                updateSlide({ speakerNotesHtml: html, speakerNotes: plain })
+              }
             />
           )}
         </Box>
 
-        {/* Inspector */}
+        {!previewMode && (
         <Box
           sx={{
             width: 248,
-            bgcolor: '#252526',
-            borderLeft: '1px solid #333',
+            bgcolor: PRES_EDITOR_UI.panelBg,
+            borderLeft: `1px solid ${PRES_EDITOR_UI.panelBorder}`,
             overflowY: 'auto',
             flexShrink: 0,
-            color: '#ccc',
+            color: PRES_EDITOR_UI.text,
           }}
         >
           <Typography
@@ -615,13 +953,13 @@ const PresentationEditorPage: React.FC = () => {
               value={deck.title}
               onChange={(e) => scheduleSave({ ...deck, title: e.target.value })}
               sx={{
-                '& .MuiInputBase-root': { fontSize: 13, color: '#eee', bgcolor: '#1e1e1e' },
-                '& .MuiOutlinedInput-notchedOutline': { borderColor: '#444' },
+                '& .MuiInputBase-root': { fontSize: 13, color: '#333', bgcolor: '#fafafa' },
+                '& .MuiOutlinedInput-notchedOutline': { borderColor: '#ccc' },
               }}
             />
           </Box>
 
-          <Divider sx={{ borderColor: '#333' }} />
+          <Divider sx={{ borderColor: '#e0e0e0' }} />
 
           <Typography
             variant="overline"
@@ -641,21 +979,21 @@ const PresentationEditorPage: React.FC = () => {
                     borderRadius: 1,
                     cursor: 'pointer',
                     border: '1px solid',
-                    borderColor: active ? JOHNNY_PRESENTATION.primaryLight : '#444',
-                    bgcolor: active ? '#2a3d2c' : '#1e1e1e',
-                    '&:hover': { borderColor: JOHNNY_PRESENTATION.primaryLight },
+                    borderColor: active ? JOHNNY_PRESENTATION.primary : '#ccc',
+                    bgcolor: active ? '#e8f5e9' : '#fafafa',
+                    '&:hover': { borderColor: JOHNNY_PRESENTATION.primary },
                   }}
                 >
-                  <Typography sx={{ fontSize: 11, fontWeight: 600, color: active ? JOHNNY_PRESENTATION.primaryLight : '#bbb' }}>
+                  <Typography sx={{ fontSize: 11, fontWeight: 600, color: active ? JOHNNY_PRESENTATION.primary : '#444' }}>
                     {l.label}
                   </Typography>
-                  <Typography sx={{ fontSize: 9, color: '#777', lineHeight: 1.2 }}>{l.hint}</Typography>
+                  <Typography sx={{ fontSize: 9, color: '#888', lineHeight: 1.2 }}>{l.hint}</Typography>
                 </Box>
               );
             })}
           </Box>
 
-          <Divider sx={{ borderColor: '#333' }} />
+          <Divider sx={{ borderColor: '#e0e0e0' }} />
 
           <Typography
             variant="overline"
@@ -673,9 +1011,9 @@ const PresentationEditorPage: React.FC = () => {
               onChange={(e) => updateSlide({ transition: e.target.value as SlideTransition })}
               sx={{
                 mb: 1,
-                '& .MuiInputBase-root': { fontSize: 12, color: '#ddd', bgcolor: '#1e1e1e' },
-                '& .MuiInputLabel-root': { color: '#888', fontSize: 12 },
-                '& .MuiOutlinedInput-notchedOutline': { borderColor: '#444' },
+                '& .MuiInputBase-root': { fontSize: 12, color: '#333', bgcolor: '#fafafa' },
+                '& .MuiInputLabel-root': { color: '#666', fontSize: 12 },
+                '& .MuiOutlinedInput-notchedOutline': { borderColor: '#ccc' },
               }}
             >
               {SLIDE_TRANSITIONS.map((t) => (
@@ -694,9 +1032,9 @@ const PresentationEditorPage: React.FC = () => {
                 scheduleSave({ ...deck, defaultTransition: e.target.value as SlideTransition })
               }
               sx={{
-                '& .MuiInputBase-root': { fontSize: 12, color: '#ddd', bgcolor: '#1e1e1e' },
-                '& .MuiInputLabel-root': { color: '#888', fontSize: 12 },
-                '& .MuiOutlinedInput-notchedOutline': { borderColor: '#444' },
+                '& .MuiInputBase-root': { fontSize: 12, color: '#333', bgcolor: '#fafafa' },
+                '& .MuiInputLabel-root': { color: '#666', fontSize: 12 },
+                '& .MuiOutlinedInput-notchedOutline': { borderColor: '#ccc' },
               }}
             >
               {SLIDE_TRANSITIONS.map((t) => (
@@ -707,7 +1045,7 @@ const PresentationEditorPage: React.FC = () => {
             </TextField>
           </Box>
 
-          <Divider sx={{ borderColor: '#333' }} />
+          <Divider sx={{ borderColor: '#e0e0e0' }} />
 
           <Typography
             variant="overline"
@@ -724,14 +1062,14 @@ const PresentationEditorPage: React.FC = () => {
                   onChange={(e) => updateSlide({ revealEnabled: e.target.checked })}
                 />
               }
-              label={<Typography sx={{ fontSize: 12, color: '#bbb' }}>Schrittweise einblenden</Typography>}
+              label={<Typography sx={{ fontSize: 12, color: '#444' }}>Schrittweise einblenden</Typography>}
             />
             <Button
               fullWidth
               size="small"
               variant="outlined"
               onClick={assignRevealToBody}
-              sx={{ fontSize: 11, color: '#ccc', borderColor: '#555', mb: 0.5 }}
+              sx={{ fontSize: 11, color: '#555', borderColor: '#ccc', mb: 0.5 }}
             >
               Absätze auto-nummerieren
             </Button>
@@ -749,7 +1087,7 @@ const PresentationEditorPage: React.FC = () => {
                   ...(plainKey ? { [plainKey]: htmlToPlain(html) } : {}),
                 } as Partial<PresentationSlide>);
               }}
-              sx={{ fontSize: 11, color: '#888' }}
+              sx={{ fontSize: 11, color: '#666' }}
             >
               Schritte entfernen
             </Button>
@@ -760,7 +1098,7 @@ const PresentationEditorPage: React.FC = () => {
             </Typography>
           </Box>
 
-          <Divider sx={{ borderColor: '#333' }} />
+          <Divider sx={{ borderColor: '#e0e0e0' }} />
 
           <Typography
             variant="overline"
@@ -778,7 +1116,7 @@ const PresentationEditorPage: React.FC = () => {
               variant="outlined"
               startIcon={<TextIcon sx={{ fontSize: 16 }} />}
               onClick={addTextElement}
-              sx={{ fontSize: 11, color: '#ccc', borderColor: '#555', mb: 0.75 }}
+              sx={{ fontSize: 11, color: '#555', borderColor: '#ccc', mb: 0.75 }}
             >
               Textfeld
             </Button>
@@ -791,7 +1129,7 @@ const PresentationEditorPage: React.FC = () => {
                 imageTargetRef.current = 'element';
                 imageInputRef.current?.click();
               }}
-              sx={{ fontSize: 11, color: '#ccc', borderColor: '#555', mb: 1 }}
+              sx={{ fontSize: 11, color: '#555', borderColor: '#ccc', mb: 1 }}
             >
               Bild
             </Button>
@@ -804,12 +1142,12 @@ const PresentationEditorPage: React.FC = () => {
                   mb: 0.5,
                   borderRadius: 1,
                   border: '1px solid',
-                  borderColor: selectedElementId === el.id ? JOHNNY_PRESENTATION.primaryLight : '#444',
-                  bgcolor: '#1e1e1e',
+                  borderColor: selectedElementId === el.id ? JOHNNY_PRESENTATION.primary : '#ccc',
+                  bgcolor: '#fafafa',
                   cursor: 'pointer',
                 }}
               >
-                <Typography sx={{ fontSize: 11, color: '#bbb' }}>
+                <Typography sx={{ fontSize: 11, color: '#444' }}>
                   {el.type === 'image' ? '🖼 Bild' : el.type} · Schritt {el.revealStep ?? 0}
                 </Typography>
               </Box>
@@ -830,7 +1168,7 @@ const PresentationEditorPage: React.FC = () => {
                       width: '48%',
                       mr: key === 'x' || key === 'w' ? '4%' : 0,
                       mb: 0.5,
-                      '& .MuiInputBase-root': { fontSize: 11, color: '#ddd' },
+                      '& .MuiInputBase-root': { fontSize: 11, color: '#333' },
                       '& .MuiInputLabel-root': { fontSize: 11 },
                     }}
                   />
@@ -846,7 +1184,7 @@ const PresentationEditorPage: React.FC = () => {
                   }
                   sx={{
                     mb: 0.5,
-                    '& .MuiInputBase-root': { fontSize: 11, color: '#ddd' },
+                    '& .MuiInputBase-root': { fontSize: 11, color: PRES_EDITOR_UI.text },
                     '& .MuiInputLabel-root': { fontSize: 11 },
                   }}
                 />
@@ -865,7 +1203,7 @@ const PresentationEditorPage: React.FC = () => {
 
           {showLayoutImage && (
             <>
-              <Divider sx={{ borderColor: '#333' }} />
+              <Divider sx={{ borderColor: '#e0e0e0' }} />
               <Box sx={{ px: 1.5, py: 1 }}>
                 <Button
                   fullWidth
@@ -876,7 +1214,7 @@ const PresentationEditorPage: React.FC = () => {
                     imageTargetRef.current = 'layout';
                     imageInputRef.current?.click();
                   }}
-                  sx={{ fontSize: 11, color: '#ccc', borderColor: '#555' }}
+                  sx={{ fontSize: 11, color: '#555', borderColor: '#ccc' }}
                 >
                   Bild für Layout
                 </Button>
@@ -884,7 +1222,7 @@ const PresentationEditorPage: React.FC = () => {
             </>
           )}
 
-          <Divider sx={{ borderColor: '#333' }} />
+          <Divider sx={{ borderColor: '#e0e0e0' }} />
 
           <Typography
             variant="overline"
@@ -904,57 +1242,14 @@ const PresentationEditorPage: React.FC = () => {
                   bgcolor: c,
                   cursor: 'pointer',
                   border:
-                    normalizedActive?.accentColor === c ? '2px solid #fff' : '2px solid transparent',
+                    normalizedActive?.accentColor === c ? `2px solid ${PRES_EDITOR_UI.accent}` : '2px solid transparent',
                 }}
               />
             ))}
           </Box>
 
-          <Divider sx={{ borderColor: '#333' }} />
-
-          <Typography
-            variant="overline"
-            sx={{ display: 'block', px: 1.5, pt: 1.5, pb: 0.5, color: '#888', fontSize: 10, letterSpacing: 1 }}
-          >
-            Sprecher-notizen
-          </Typography>
-          <Box sx={{ px: 1.5, pb: 1.5 }}>
-            <TextField
-              size="small"
-              fullWidth
-              multiline
-              minRows={4}
-              placeholder="Nur im Laptop-Modus sichtbar"
-              value={normalizedActive?.speakerNotes ?? ''}
-              onChange={(e) => updateSlide({ speakerNotes: e.target.value })}
-              sx={{
-                '& .MuiInputBase-root': { fontSize: 12, color: '#ddd', bgcolor: '#1e1e1e' },
-                '& .MuiOutlinedInput-notchedOutline': { borderColor: '#444' },
-              }}
-            />
-          </Box>
-
-          <Box sx={{ display: 'flex', gap: 0.5, px: 1.5, py: 1 }}>
-            <Button
-              size="small"
-              fullWidth
-              onClick={() => activeSlide && moveSlide(activeSlide.id, -1)}
-              sx={{ color: '#aaa', fontSize: 11, borderColor: '#555' }}
-              variant="outlined"
-            >
-              ↑
-            </Button>
-            <Button
-              size="small"
-              fullWidth
-              onClick={() => activeSlide && moveSlide(activeSlide.id, 1)}
-              sx={{ color: '#aaa', fontSize: 11, borderColor: '#555' }}
-              variant="outlined"
-            >
-              ↓
-            </Button>
-          </Box>
         </Box>
+        )}
       </Box>
 
       <Snackbar

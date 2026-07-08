@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import './App.css';
 import TeacherDashboard from './components/TeacherDashboard';
 import StudentDashboard from './components/StudentDashboard';
@@ -60,6 +60,8 @@ function AppContent() {
   /** false bis Session aus localStorage geprüft — verhindert Redirect von /teacher/stunde → / vor Auto-Login */
   const [authReady, setAuthReady] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const isFullBleed = /^\/(presentation\/(edit|present|review)|whiteboard|folien-editor)/.test(location.pathname);
   const loginInputRef = useRef<HTMLInputElement>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -257,7 +259,7 @@ function AppContent() {
   };
 
   return (
-    <div className="App" onKeyDown={handleKeyDown}>
+    <div className={`App${isFullBleed ? ' App--fullBleed' : ''}`} onKeyDown={handleKeyDown}>
       <Routes>
         <Route
           path="/"

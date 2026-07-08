@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import { Box } from '@mui/material';
 import { htmlToPlain, textToHtml } from '../../lib/presentationDeck';
 import { filterHtmlByRevealStep } from '../../lib/presentationReveal';
+import { normalizeRichHtml } from '../../lib/presentationRichText';
 
 export type RichZoneVariant = 'title' | 'hero' | 'subtitle' | 'body' | 'quote' | 'caption';
 
@@ -12,6 +13,15 @@ const VARIANT_FONT: Record<RichZoneVariant, number> = {
   body: 26,
   quote: 34,
   caption: 16,
+};
+
+const VARIANT_DEFAULT_COLOR: Record<RichZoneVariant, string> = {
+  title: '#424242',
+  hero: '#424242',
+  subtitle: '#616161',
+  body: '#424242',
+  quote: '#424242',
+  caption: '#757575',
 };
 
 interface PresentationRichZoneProps {
@@ -48,7 +58,7 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
   const ref = useRef<HTMLDivElement>(null);
   const editingRef = useRef(false);
   const baseFont = VARIANT_FONT[variant] * scale;
-  const rawHtml = html || textToHtml(plain || '');
+  const rawHtml = normalizeRichHtml(html || textToHtml(plain || ''));
   const displayHtml =
     !editable && revealEnabled
       ? filterHtmlByRevealStep(rawHtml, revealStep, true)
@@ -76,17 +86,20 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
     lineHeight: variant === 'title' ? 1.15 : 1.55,
     fontWeight: variant === 'title' || variant === 'hero' ? 700 : 400,
     fontStyle: variant === 'quote' ? 'italic' : 'normal',
-    color: variant === 'caption' ? '#757575' : variant === 'subtitle' ? '#616161' : '#424242',
     textAlign: align,
     width: '100%',
+    minWidth: 0,
     minHeight: minHeight ? `${minHeight * scale}px` : undefined,
     flex: flex ?? undefined,
     outline: 'none',
     wordBreak: 'break-word' as const,
+    overflow: 'hidden',
+    color: VARIANT_DEFAULT_COLOR[variant],
     '& p': { m: 0, mb: `${6 * scale}px` },
     '& p:last-child': { mb: 0 },
     '& ul, & ol': { m: 0, pl: `${28 * scale}px`, mb: `${8 * scale}px` },
     '& li': { mb: `${4 * scale}px` },
+    '& span[style], & mark': { backgroundClip: 'padding-box' },
     '& img': {
       maxWidth: '100%',
       height: 'auto',
