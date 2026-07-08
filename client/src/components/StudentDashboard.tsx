@@ -5276,17 +5276,24 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
           }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, width: '100%', minWidth: 0, pr: 0.25 }}>
-              <Avatar 
-                sx={{ 
-                  width: 28, 
-                  height: 28,
-                  flexShrink: 0,
-                  bgcolor: '#1976d2',
-                  boxShadow: '0 1.4px 2.8px rgba(0,0,0,0.12)'
-                }}
-              >
-                {studentName.charAt(0)}
-              </Avatar>
+              <Tooltip title="Avatar ändern" placement="bottom">
+                <Avatar
+                  onClick={handleOpenEmojiSelector}
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    flexShrink: 0,
+                    bgcolor: '#87CEEB',
+                    fontSize: '1.2rem',
+                    boxShadow: '0 1.4px 2.8px rgba(0,0,0,0.12)',
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s ease',
+                    '&:hover': { transform: 'scale(1.05)' },
+                  }}
+                >
+                  {isUpdatingEmoji ? '⏳' : selectedEmoji}
+                </Avatar>
+              </Tooltip>
               <Box sx={{ flex: 1, minWidth: 8 }} />
               <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexShrink: 0, flexWrap: 'nowrap', ml: 'auto' }}>
                 {/* Exkursionsprotokoll */}

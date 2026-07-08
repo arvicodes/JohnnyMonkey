@@ -16,6 +16,7 @@ model User {
   createdAt                 DateTime                    @default(now())
   updatedAt                 DateTime                    @updatedAt
   avatarEmoji               String?
+  profileColor              String?
   teacherGroups             LearningGroup[]             @relation("TeacherGroups")
   notes                     Note[]
   quizzes                   Quiz[]
@@ -40,6 +41,10 @@ model User {
   gradeReleases             GradeRelease[]
   teacherLessonInstructions TeacherLessonInstruction[]
   journeyProgress         StudentJourneyProgress?
+  scheduleSettings          TeacherScheduleSettings?
+  timetableUploads          TeacherTimetableUpload[]
+  scheduleSlots             ScheduleSlot[]
+  autoLessonSessions        AutoLessonSession[]
 }
 
 // Gamification: „Reisebegleiter“ – Reisekräfte sammeln, Ei finden, ausbrüten, Begleiter wachsen lassen
@@ -140,6 +145,8 @@ model LearningGroup {
   lessonSharedInputs   LessonSharedInput[]
   lessonSharedInputShares LessonSharedInputShare[]
   lessonCollabFlashcardBeacons LessonCollabFlashcardBeacon[]
+  scheduleSlots                ScheduleSlot[]
+  autoLessonSessions           AutoLessonSession[]
   teacher              User                       @relation("TeacherGroups", fields: [teacherId], references: [id])
   students             User[]                     @relation("StudentGroups")
 }
@@ -681,4 +688,73 @@ model Message {
   @@index([teacherId])
   @@index([isRead])
   @@index([createdAt])
+}
+
+/// Lehrkraft-Einstellungen für Stundenplan (Zeitfenster, Zeittafel Johnny)
+model TeacherScheduleSettings {
+  id                 String   @id @default(uuid())
+  teacherId          String   @unique
+  startWindowMinutes Int      @default(5)
+  endWindowMinutes   Int      @default(5)
+  /// JSON: [{ period: 1, start: "08:00", end: "08:45" }, …]
+  periodTimes        String   @default("[]")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  teacher            User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+}
+
+/// Hochgeladene Stundenplan-Dateien (PDF/Bild)
+model TeacherTimetableUpload {
+  id         String   @id @default(uuid())
+  teacherId  String
+  filename   String
+  filePath   String
+  isCurrent  Boolean  @default(false)
+  uploadedAt DateTime @default(now())
+  teacher    User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId])
+}
+
+/// Zuordnung Lerngruppe → Wochentag + Unterrichtsstunde
+model ScheduleSlot {
+  id           String        @id @default(uuid())
+  teacherId    String
+  groupId      String
+  dayOfWeek    Int
+  periodNumber Int
+  lessonPath   String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  teacher      User          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  group        LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, dayOfWeek, periodNumber])
+  @@index([teacherId])
+  @@index([groupId])
+}
+
+/// Automatisch gestartete/beendete Unterrichtsstunde (pro Tag + Slot)
+model AutoLessonSession {
+  id           String        @id @default(uuid())
+  teacherId    String
+  groupId      String
+  sessionDate  String
+  dayOfWeek    Int
+  periodNumber Int
+  lessonPath   String?
+  opensAt      DateTime
+  startsAt     DateTime
+  endsAt       DateTime
+  closesAt     DateTime
+  status       String        @default("OPEN")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  teacher      User          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  group        LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, sessionDate, periodNumber])
+  @@index([teacherId, sessionDate])
+  @@index([groupId, status])
+  @@index([status, opensAt])
 }

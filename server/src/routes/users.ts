@@ -16,6 +16,7 @@ const getAllUsers: RequestHandler = async (req, res) => {
         role: true,
         loginCode: true,
         avatarEmoji: true,
+        profileColor: true,
         createdAt: true
       },
       orderBy: { name: 'asc' }
@@ -39,7 +40,8 @@ const getCurrentUser: RequestHandler = async (req, res) => {
         name: true,
         role: true,
         loginCode: true,
-        avatarEmoji: true
+        avatarEmoji: true,
+        profileColor: true
       }
     });
     
@@ -63,7 +65,8 @@ const getUserById: RequestHandler = async (req, res) => {
         name: true,
         role: true,
         loginCode: true,
-        avatarEmoji: true
+        avatarEmoji: true,
+        profileColor: true
       }
     });
     
@@ -127,7 +130,8 @@ const updateUserAvatarEmoji: RequestHandler = async (req, res) => {
         name: true,
         role: true,
         loginCode: true,
-        avatarEmoji: true
+        avatarEmoji: true,
+        profileColor: true,
       }
     });
     
@@ -138,10 +142,56 @@ const updateUserAvatarEmoji: RequestHandler = async (req, res) => {
   }
 };
 
+const updateProfileAppearance: RequestHandler = async (req, res) => {
+  try {
+    if (req.user.id !== req.params.id) {
+      return res.status(403).json({ error: 'Nur das eigene Profil kann bearbeitet werden' });
+    }
+
+    const { avatarEmoji, profileColor } = req.body as {
+      avatarEmoji?: string;
+      profileColor?: string | null;
+    };
+
+    const data: { avatarEmoji?: string; profileColor?: string | null } = {};
+    if (typeof avatarEmoji === 'string' && avatarEmoji.trim()) {
+      data.avatarEmoji = avatarEmoji.trim();
+    }
+    if (profileColor === null || profileColor === '') {
+      data.profileColor = null;
+    } else if (typeof profileColor === 'string' && /^#[0-9A-Fa-f]{6}$/.test(profileColor.trim())) {
+      data.profileColor = profileColor.trim();
+    }
+
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ error: 'Keine gültigen Profildaten' });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: req.params.id },
+      data,
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        loginCode: true,
+        avatarEmoji: true,
+        profileColor: true,
+      },
+    });
+
+    res.json(user);
+  } catch (error) {
+    console.error('Error updating profile appearance:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
 router.get('/', authenticateUser, requireTeacher, getAllUsers);
 router.get('/me', authenticateUser, getCurrentUser);
 router.get('/:id', authenticateUser, getUserById);
 router.put('/:id/avatar-emoji', authenticateUser, updateUserAvatarEmoji);
+router.put('/:id/profile-appearance', authenticateUser, updateProfileAppearance);
 router.get('/teacher/:id/groups', authenticateUser, requireTeacher, getTeacherGroups);
 router.get('/student/:id/groups', authenticateUser, getStudentGroups);
 

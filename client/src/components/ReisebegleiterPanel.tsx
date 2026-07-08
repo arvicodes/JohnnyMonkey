@@ -2,8 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Box,
   Button,
-  Card,
-  CardContent,
   CircularProgress,
   LinearProgress,
   Popover,
@@ -13,6 +11,7 @@ import {
 import { keyframes } from '@mui/system';
 import { apiGet, apiPost } from '../lib/api';
 import { determinateLinearProgressSx, linearGradientFromAccent } from '../lib/muiLinearProgressSx';
+import { glassCardSx, REISEBEGLEITER_BG, scenicFooterQuote } from '../lib/reisebegleiterScenic';
 
 export type JourneyState = {
   weitePoints: number;
@@ -279,6 +278,8 @@ type JourneyDetailProps = {
   state: JourneyState;
   careLoading: boolean;
   onCare: () => void;
+  scenic?: boolean;
+  compact?: boolean;
 };
 
 const WANDERKARTE_STEPS = [
@@ -294,7 +295,15 @@ const mapHerePulse = keyframes`
   50% { box-shadow: 0 0 0 7px rgba(25, 118, 210, 0); }
 `;
 
-function JourneyWanderkarte({ currentStage }: { currentStage: string }) {
+function JourneyWanderkarte({
+  currentStage,
+  scenic = false,
+  compact = false,
+}: {
+  currentStage: string;
+  scenic?: boolean;
+  compact?: boolean;
+}) {
   const currentIdx = Math.max(0, WANDERKARTE_STEPS.findIndex((s) => s.stage === currentStage));
   const accent = ringAccentColor(currentStage);
 
@@ -303,25 +312,43 @@ function JourneyWanderkarte({ currentStage }: { currentStage: string }) {
       component="section"
       aria-label="Wanderkarte der Reise"
       sx={{
-        mb: 2.25,
-        p: 1.5,
+        mb: scenic ? (compact ? 1.25 : 1.5) : 2.25,
+        p: scenic ? (compact ? 1.1 : 1.35) : 1.5,
         borderRadius: 2.5,
         position: 'relative',
         overflow: 'hidden',
-        border: '1px solid rgba(120, 90, 55, 0.18)',
-        background: `
-          linear-gradient(165deg, rgba(255, 252, 245, 0.97) 0%, rgba(236, 245, 236, 0.55) 42%, rgba(232, 240, 252, 0.65) 100%)
-        `,
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.85)',
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          inset: 0,
-          opacity: 0.07,
-          pointerEvents: 'none',
-          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cpath fill='%234a3728' d='M0 40h20l10-8 10 8 20-12v12H0z'/%3E%3C/svg%3E")`,
-          backgroundSize: '80px 80px',
-        },
+        ...(scenic
+          ? {
+              border: '1px solid rgba(255, 255, 255, 0.55)',
+              backgroundImage: `url(${REISEBEGLEITER_BG})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center 55%',
+              boxShadow: '0 4px 18px rgba(15, 23, 42, 0.12)',
+              '&::after': {
+                content: '""',
+                position: 'absolute',
+                inset: 0,
+                background:
+                  'linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.82) 55%, rgba(248,250,252,0.9) 100%)',
+                pointerEvents: 'none',
+              },
+            }
+          : {
+              border: '1px solid rgba(120, 90, 55, 0.18)',
+              background: `
+                linear-gradient(165deg, rgba(255, 252, 245, 0.97) 0%, rgba(236, 245, 236, 0.55) 42%, rgba(232, 240, 252, 0.65) 100%)
+              `,
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.85)',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                inset: 0,
+                opacity: 0.07,
+                pointerEvents: 'none',
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cpath fill='%234a3728' d='M0 40h20l10-8 10 8 20-12v12H0z'/%3E%3C/svg%3E")`,
+                backgroundSize: '80px 80px',
+              },
+            }),
       }}
     >
       <Typography
@@ -454,34 +481,45 @@ function JourneyWanderkarte({ currentStage }: { currentStage: string }) {
   );
 }
 
-export function ReisebegleiterDetailContent({ state, careLoading, onCare }: JourneyDetailProps) {
+export function ReisebegleiterDetailContent({
+  state,
+  careLoading,
+  onCare,
+  scenic = false,
+  compact = false,
+}: JourneyDetailProps) {
   const stage = STAGE_COPY[state.companionStage] || STAGE_COPY.JOURNEY;
   const th = state.journeyThreshold;
   const accent = ringAccentColor(state.companionStage);
   const isCompass = state.companionStage === 'JOURNEY';
   const thDetail = Math.max(1, state.journeyThreshold);
   const funkBoostDetail = 0.55 + 0.45 * Math.min(1, state.funkenPoints / thDetail);
+  const iconSize = compact ? 80 : scenic ? 96 : 108;
+  const iconEmojiSize = compact ? '2.75rem' : scenic ? '3.2rem' : '3.65rem';
 
-  return (
-    <>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 2,
-          mb: 2.5,
-          p: 2,
-          borderRadius: 2.5,
-          background: `linear-gradient(135deg, ${accent}10 0%, rgba(255,255,255,0.9) 100%)`,
-          border: '1px solid rgba(15, 23, 42, 0.06)',
-        }}
-      >
+  const heroBox = (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: compact ? 1.25 : 2,
+        mb: scenic ? (compact ? 1.25 : 1.5) : 2.5,
+        p: compact ? 1.35 : 2,
+        ...(scenic
+          ? glassCardSx
+          : {
+              borderRadius: 2.5,
+              background: `linear-gradient(135deg, ${accent}10 0%, rgba(255,255,255,0.9) 100%)`,
+              border: '1px solid rgba(15, 23, 42, 0.06)',
+            }),
+      }}
+    >
         <Box
           sx={{
             position: 'relative',
-            width: 108,
-            height: 108,
-            borderRadius: '20px',
+            width: iconSize,
+            height: iconSize,
+            borderRadius: scenic ? '18px' : '20px',
             bgcolor: 'rgba(255,255,255,0.95)',
             boxShadow: '0 3px 12px rgba(15,23,42,0.11)',
             display: 'flex',
@@ -523,7 +561,7 @@ export function ReisebegleiterDetailContent({ state, careLoading, onCare }: Jour
             sx={{
               position: 'relative',
               zIndex: 1,
-              fontSize: '3.65rem',
+              fontSize: iconEmojiSize,
               lineHeight: 1,
               ...(isCompass
                 ? compassEmojiMotion
@@ -541,25 +579,95 @@ export function ReisebegleiterDetailContent({ state, careLoading, onCare }: Jour
           </Typography>
         </Box>
         <Box sx={{ flex: 1, minWidth: 0, pt: 0.35 }}>
-          <Typography sx={{ fontWeight: 800, color: '#1e293b', fontSize: '1.2rem', lineHeight: 1.25 }}>
+          <Typography
+            sx={{
+              fontWeight: 800,
+              color: '#1e293b',
+              fontSize: compact ? '1rem' : scenic ? '1.1rem' : '1.2rem',
+              lineHeight: 1.25,
+            }}
+          >
             {stage.title}
           </Typography>
-          <Typography sx={{ color: 'text.secondary', mt: 0.65, lineHeight: 1.5, fontSize: '0.95rem' }}>
+          <Typography
+            sx={{
+              color: 'text.secondary',
+              mt: 0.65,
+              lineHeight: 1.5,
+              fontSize: compact ? '0.82rem' : scenic ? '0.88rem' : '0.95rem',
+            }}
+          >
             {stage.hint}
           </Typography>
         </Box>
-      </Box>
+    </Box>
+  );
 
-      <JourneyWanderkarte currentStage={state.companionStage} />
+  const statsSection = (
+    <>
+      <Typography
+        sx={{
+          display: 'block',
+          mb: 0.6,
+          color: scenic ? 'rgba(51, 65, 85, 0.85)' : 'text.secondary',
+          letterSpacing: '0.06em',
+          fontSize: '0.62rem',
+          fontWeight: 700,
+        }}
+      >
+        Reisekräfte · Ziel je {th}
+      </Typography>
+
+      {FORCE_META.map((f) => {
+        const v = state[f.key];
+        const pct = Math.min(100, (v / th) * 100);
+        return (
+          <Box key={f.key} sx={{ mb: compact ? 0.85 : 1.05 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 0.35 }}>
+              <Box component="span" sx={{ lineHeight: 1.22 }}>
+                <Typography component="span" sx={{ fontWeight: 800, color: f.color, fontSize: '0.82rem' }}>
+                  {f.label}
+                </Typography>
+                <Typography component="span" color="text.secondary" sx={{ ml: 0.45, fontSize: '0.68rem' }}>
+                  {f.sub}
+                </Typography>
+              </Box>
+              <Typography sx={{ fontWeight: 800, color: '#64748b', fontVariantNumeric: 'tabular-nums', fontSize: '0.78rem' }}>
+                {v} / {th}
+              </Typography>
+            </Box>
+            <LinearProgress
+              variant="determinate"
+              value={pct}
+              sx={determinateLinearProgressSx(linearGradientFromAccent(f.color), {
+                height: compact ? 7 : 8,
+                barGlow: `${f.color}28`,
+              })}
+            />
+          </Box>
+        );
+      })}
+    </>
+  );
+
+  return (
+    <>
+      {heroBox}
+
+      <JourneyWanderkarte currentStage={state.companionStage} scenic={scenic} compact={compact} />
 
       {state.companionStage === 'EGG' && (
         <Box
           sx={{
-            mb: 2.5,
+            mb: scenic ? 1.5 : 2.5,
             p: 1.75,
-            borderRadius: 2.5,
-            bgcolor: 'rgba(251, 140, 0, 0.06)',
-            border: '1px solid rgba(251, 140, 0, 0.2)',
+            ...(scenic
+              ? { ...glassCardSx, bgcolor: 'rgba(255, 252, 248, 0.88)' }
+              : {
+                  borderRadius: 2.5,
+                  bgcolor: 'rgba(251, 140, 0, 0.06)',
+                  border: '1px solid rgba(251, 140, 0, 0.2)',
+                }),
           }}
         >
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 1 }}>
@@ -605,70 +713,40 @@ export function ReisebegleiterDetailContent({ state, careLoading, onCare }: Jour
         <Typography
           sx={{
             display: 'block',
-            mb: 1.85,
+            mb: scenic ? 1.25 : 1.85,
             color: 'text.secondary',
-            fontSize: '0.98rem',
+            fontSize: compact ? '0.88rem' : '0.98rem',
             lineHeight: 1.45,
+            ...(scenic ? { ...glassCardSx, p: 1.25 } : {}),
           }}
         >
           <strong style={{ color: '#475569' }}>{state.postHatchXp}</strong> XP · Quiz, Karten, Abgaben
         </Typography>
       )}
 
-      <Typography
-        sx={{
-          display: 'block',
-          mb: 0.6,
-          color: 'text.secondary',
-          letterSpacing: '0.06em',
-          fontSize: '0.62rem',
-          fontWeight: 700,
-        }}
-      >
-        Reisekräfte · Ziel je {th}
-      </Typography>
-
-      {FORCE_META.map((f) => {
-        const v = state[f.key];
-        const pct = Math.min(100, (v / th) * 100);
-        return (
-          <Box key={f.key} sx={{ mb: 1.05 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 0.35 }}>
-              <Box component="span" sx={{ lineHeight: 1.22 }}>
-                <Typography component="span" sx={{ fontWeight: 800, color: f.color, fontSize: '0.82rem' }}>
-                  {f.label}
-                </Typography>
-                <Typography component="span" color="text.secondary" sx={{ ml: 0.45, fontSize: '0.68rem' }}>
-                  {f.sub}
-                </Typography>
-              </Box>
-              <Typography sx={{ fontWeight: 800, color: '#64748b', fontVariantNumeric: 'tabular-nums', fontSize: '0.78rem' }}>
-                {v} / {th}
-              </Typography>
-            </Box>
-            <LinearProgress
-              variant="determinate"
-              value={pct}
-              sx={determinateLinearProgressSx(linearGradientFromAccent(f.color), {
-                height: 8,
-                barGlow: `${f.color}28`,
-              })}
-            />
-          </Box>
-        );
-      })}
+      {scenic ? (
+        <Box sx={{ ...glassCardSx, p: compact ? 1.25 : 1.5 }}>{statsSection}</Box>
+      ) : (
+        statsSection
+      )}
     </>
   );
 }
 
 type BadgeProps = {
   refreshKey?: number;
+  compact?: boolean;
 };
+
+const BADGE_SIZES = {
+  default: { outer: 56, inner: 50, core: 34, emoji: '1.28rem', spark: 6, left: 6, bottom: 6 },
+  compact: { outer: 38, inner: 34, core: 23, emoji: '0.95rem', spark: 4, left: -2, bottom: -2 },
+} as const;
 
 /**
  * Kleines Ei/Begleiter-Icon am Avatar, Details im Popover.
  */
-export function ReisebegleiterAvatarBadge({ refreshKey = 0 }: BadgeProps) {
+export function ReisebegleiterAvatarBadge({ refreshKey = 0, compact = false }: BadgeProps) {
   const [state, setState] = useState<JourneyState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -722,6 +800,7 @@ export function ReisebegleiterAvatarBadge({ refreshKey = 0 }: BadgeProps) {
   const ringColor = state ? ringAccentColor(state.companionStage) : '#1976d2';
   const conicBg = state ? previewRingConicGradient(state) : '';
   const isCompass = state?.companionStage === 'JOURNEY';
+  const sz = compact ? BADGE_SIZES.compact : BADGE_SIZES.default;
 
   return (
     <>
@@ -751,11 +830,11 @@ export function ReisebegleiterAvatarBadge({ refreshKey = 0 }: BadgeProps) {
           }}
           sx={{
             position: 'absolute',
-            left: 6,
-            bottom: 6,
+            left: sz.left,
+            bottom: sz.bottom,
             zIndex: 4,
-            width: 56,
-            height: 56,
+            width: sz.outer,
+            height: sz.outer,
             overflow: 'visible',
             borderRadius: '50%',
             bgcolor: 'rgba(255,255,255,0.98)',
@@ -792,8 +871,8 @@ export function ReisebegleiterAvatarBadge({ refreshKey = 0 }: BadgeProps) {
                   aria-hidden
                   sx={{
                     position: 'absolute',
-                    width: 6,
-                    height: 6,
+                    width: sz.spark,
+                    height: sz.spark,
                     borderRadius: '50%',
                     pointerEvents: 'none',
                     zIndex: 6,
@@ -812,13 +891,13 @@ export function ReisebegleiterAvatarBadge({ refreshKey = 0 }: BadgeProps) {
               );
             })}
           {loading && !state ? (
-            <CircularProgress size={24} thickness={4} sx={{ color: '#1976d2' }} />
+            <CircularProgress size={compact ? 18 : 24} thickness={4} sx={{ color: '#1976d2' }} />
           ) : (
             <Box
               sx={{
                 position: 'relative',
-                width: 50,
-                height: 50,
+                width: sz.inner,
+                height: sz.inner,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -828,7 +907,7 @@ export function ReisebegleiterAvatarBadge({ refreshKey = 0 }: BadgeProps) {
               <CircularProgress
                 variant="determinate"
                 value={100}
-                size={50}
+                size={sz.inner}
                 thickness={3.4}
                 sx={{
                   position: 'absolute',
@@ -839,8 +918,8 @@ export function ReisebegleiterAvatarBadge({ refreshKey = 0 }: BadgeProps) {
                 aria-hidden
                 sx={{
                   position: 'absolute',
-                  width: 50,
-                  height: 50,
+                  width: sz.inner,
+                  height: sz.inner,
                   borderRadius: '50%',
                   background: conicBg,
                 }}
@@ -849,8 +928,8 @@ export function ReisebegleiterAvatarBadge({ refreshKey = 0 }: BadgeProps) {
                 aria-hidden
                 sx={{
                   position: 'absolute',
-                  width: 34,
-                  height: 34,
+                  width: sz.core,
+                  height: sz.core,
                   borderRadius: '50%',
                   bgcolor: 'rgba(255,255,255,0.98)',
                   zIndex: 1,
@@ -860,7 +939,7 @@ export function ReisebegleiterAvatarBadge({ refreshKey = 0 }: BadgeProps) {
               <Typography
                 component="span"
                 sx={{
-                  fontSize: '1.28rem',
+                  fontSize: sz.emoji,
                   lineHeight: 1,
                   position: 'relative',
                   zIndex: 2,
@@ -884,62 +963,76 @@ export function ReisebegleiterAvatarBadge({ refreshKey = 0 }: BadgeProps) {
         slotProps={{
           paper: {
             sx: {
-              maxWidth: 420,
-              width: 'min(92vw, 420px)',
+              maxWidth: 440,
+              width: 'min(92vw, 440px)',
               mt: 0.6,
               ml: 0,
               borderRadius: 3,
               overflow: 'hidden',
-              border: '1px solid rgba(15, 23, 42, 0.08)',
-              boxShadow: '0 16px 44px rgba(15, 23, 42, 0.14), 0 4px 14px rgba(15, 23, 42, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.35)',
+              boxShadow: '0 20px 48px rgba(15, 23, 42, 0.22), 0 6px 18px rgba(15, 23, 42, 0.12)',
+              bgcolor: 'transparent',
             },
           },
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {state && (
-          <Card elevation={0} sx={{ borderRadius: 0, bgcolor: 'transparent' }}>
+          <Box
+            sx={{
+              position: 'relative',
+              borderRadius: 3,
+              overflow: 'hidden',
+              backgroundImage: `url(${REISEBEGLEITER_BG})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center 40%',
+            }}
+          >
             <Box
               sx={{
-                background: 'linear-gradient(125deg, #1d4ed8 0%, #5b4fc9 42%, #7c3aed 100%)',
-                color: '#fff',
-                px: 2.5,
-                py: 1.5,
-                position: 'relative',
-                '&::after': {
-                  content: '""',
-                  position: 'absolute',
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  height: 1,
-                  background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)',
-                },
+                position: 'absolute',
+                inset: 0,
+                background:
+                  'linear-gradient(180deg, rgba(15, 40, 70, 0.45) 0%, rgba(10, 30, 55, 0.58) 100%)',
+                pointerEvents: 'none',
               }}
-            >
+            />
+            <Box sx={{ position: 'relative', zIndex: 1, p: 1.75 }}>
               <Typography
                 sx={{
+                  color: '#fff',
                   fontWeight: 800,
                   letterSpacing: '-0.02em',
-                  fontSize: '1.2rem',
+                  fontSize: '1.15rem',
                   lineHeight: 1.3,
+                  mb: 1.25,
+                  textShadow: '0 2px 8px rgba(0,0,0,0.35)',
                 }}
               >
                 Reisebegleiter
               </Typography>
+              <ReisebegleiterDetailContent
+                state={state}
+                careLoading={careLoading}
+                onCare={handleCare}
+                scenic
+                compact
+              />
+              <Box sx={{ ...glassCardSx, mt: 1.25, py: 1.1, px: 1.35, textAlign: 'center' }}>
+                <Typography
+                  sx={{
+                    fontSize: '0.72rem',
+                    color: 'rgba(51, 65, 85, 0.88)',
+                    fontStyle: 'italic',
+                    lineHeight: 1.45,
+                    fontWeight: 500,
+                  }}
+                >
+                  {scenicFooterQuote}
+                </Typography>
+              </Box>
             </Box>
-            <CardContent
-              sx={{
-                pt: 2.35,
-                pb: 2.5,
-                px: 2.35,
-                bgcolor: '#f8fafc',
-                '&:last-child': { pb: 2.5 },
-              }}
-            >
-              <ReisebegleiterDetailContent state={state} careLoading={careLoading} onCare={handleCare} />
-            </CardContent>
-          </Card>
+          </Box>
         )}
       </Popover>
     </>

@@ -4,6 +4,7 @@ import './App.css';
 import TeacherDashboard from './components/TeacherDashboard';
 import StudentDashboard from './components/StudentDashboard';
 import StudentLiveTicketAlerts from './components/StudentLiveTicketAlerts';
+import StudentAutoLessonAlerts from './components/StudentAutoLessonAlerts';
 import LearningGroupPage from './pages/LearningGroupPage';
 import QuizPlayerPage from './pages/QuizPlayerPage';
 import QuizSessionPage from './pages/QuizSessionPage';
@@ -13,6 +14,9 @@ import FlashcardImportExportPage from './pages/FlashcardImportExportPage';
 import SubmissionsGridPage from './pages/SubmissionsGridPage';
 import WhiteboardPage from './pages/WhiteboardPage';
 import SlideDeckEditorPage from './pages/SlideDeckEditorPage';
+import PresentationEditorPage from './pages/PresentationEditorPage';
+import PresentationPresentPage from './pages/PresentationPresentPage';
+import PresentationReviewPage from './pages/PresentationReviewPage';
 import JohnnyDemoPage from './pages/JohnnyDemoPage';
 import FlashcardStudyPage from './pages/FlashcardStudyPage';
 import JohnnyNavigationPage from './pages/JohnnyNavigationPage';
@@ -299,6 +303,9 @@ function AppContent() {
         <Route path="/submissions-grid" element={<SubmissionsGridPage />} />
         <Route path="/whiteboard" element={<WhiteboardPage />} />
         <Route path="/folien-editor" element={<SlideDeckEditorPage />} />
+        <Route path="/presentation/edit" element={<PresentationEditorPage />} />
+        <Route path="/presentation/present" element={<PresentationPresentPage />} />
+        <Route path="/presentation/review" element={<PresentationReviewPage />} />
         <Route path="/johnny-demo" element={<JohnnyDemoPage />} />
         <Route path="/flashcard-study" element={<FlashcardStudyPage />} />
         <Route path="/johnny" element={<JohnnyNavigationPage />} />
@@ -325,7 +332,10 @@ function AppContent() {
       </Routes>
 
       {authReady && user && String(user.role).toUpperCase() === 'STUDENT' && (
-        <StudentLiveTicketAlerts userId={user.id} />
+        <>
+          <StudentLiveTicketAlerts userId={user.id} />
+          <StudentAutoLessonAlerts userId={user.id} />
+        </>
       )}
       
       {/* Johnny Companion - Für alle sichtbar, wenn eingeblendet */}

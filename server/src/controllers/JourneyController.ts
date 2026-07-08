@@ -8,7 +8,7 @@ import {
 
 const prisma = new PrismaClient();
 
-async function getStudentFromRequest(req: Request) {
+async function getJourneyUserFromRequest(req: Request) {
   const loginCode = req.headers['x-login-code'] as string | undefined;
   if (!loginCode?.trim()) {
     return { error: 401 as const, message: 'Nicht angemeldet' };
@@ -17,15 +17,15 @@ async function getStudentFromRequest(req: Request) {
     where: { loginCode: loginCode.trim() },
     select: { id: true, role: true },
   });
-  if (!user || user.role !== 'STUDENT') {
-    return { error: 403 as const, message: 'Nur für Schülerkonten' };
+  if (!user || (user.role !== 'STUDENT' && user.role !== 'TEACHER')) {
+    return { error: 403 as const, message: 'Nur für Schüler- und Lehrkraftkonten' };
   }
   return { user };
 }
 
 export async function getJourney(req: Request, res: Response) {
   try {
-    const auth = await getStudentFromRequest(req);
+    const auth = await getJourneyUserFromRequest(req);
     if ('error' in auth) {
       return res.status(auth.error).json({ error: auth.message });
     }
@@ -39,7 +39,7 @@ export async function getJourney(req: Request, res: Response) {
 
 export async function postCare(req: Request, res: Response) {
   try {
-    const auth = await getStudentFromRequest(req);
+    const auth = await getJourneyUserFromRequest(req);
     if ('error' in auth) {
       return res.status(auth.error).json({ error: auth.message });
     }

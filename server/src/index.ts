@@ -37,7 +37,9 @@ import fileShareRoutes from './routes/fileShares';
 import participationRoutes from './routes/participation';
 import adventCalendarRoutes from './routes/adventCalendar';
 import lessonInstructionsRoutes from './routes/lessonInstructions';
+import teacherScheduleRoutes from './routes/teacherSchedule';
 import path from 'path';
+import { startAutoLessonScheduler } from './services/autoLessonScheduler';
 
 dotenv.config();
 
@@ -89,6 +91,7 @@ app.use('/api/file-shares', fileShareRoutes);
 app.use('/api/participation', participationRoutes);
 app.use('/api/advent-calendar', adventCalendarRoutes);
 app.use('/api/lesson-instructions', lessonInstructionsRoutes);
+app.use('/api/teacher-schedule', teacherScheduleRoutes);
 app.use('/api/ka-corrections', kaCorrectionsRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/exit-ticket', exitTicketRoutes);
@@ -242,6 +245,9 @@ async function startServer() {
       console.log(`📊 Monitoring: http://localhost:${managedPort}/api/monitoring/stats`);
       console.log('✅ Monitoring system initialized');
     }
+
+    startAutoLessonScheduler();
+    console.log('⏰ Auto-Lesson-Scheduler gestartet');
     
   } catch (error) {
     console.error('❌ Failed to start server:', error);

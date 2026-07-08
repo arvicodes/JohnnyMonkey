@@ -13,6 +13,10 @@ import {
 } from '../lib/folienVersions';
 import MaterialShareVersionControl from './MaterialShareVersionControl';
 import KACorrectionMode from './KACorrectionMode';
+import { DEFAULT_PROFILE_COLOR } from '../lib/profileColor';
+import TeacherSettingsMenu from './teacher-profile/TeacherSettingsMenu';
+import TeacherProfileDialog from './teacher-profile/TeacherProfileDialog';
+import TeacherScheduleDialog from './teacher-schedule/TeacherScheduleDialog';
 import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
 import { BeAHeroLogo } from './BeAHeroLogo';
 import TeacherMessageBox from './TeacherMessageBox';
@@ -5657,6 +5661,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     [groups]
   );
   const [teacherName, setTeacherName] = useState<string>('');
+  const [teacherAvatarEmoji, setTeacherAvatarEmoji] = useState<string | null>(null);
+  const [teacherProfileColor, setTeacherProfileColor] = useState<string | null>(null);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [subjectTabValue, setSubjectTabValue] = useState(0);
   const [blockTabValue, setBlockTabValue] = useState(0);
   useEffect(() => {
@@ -5675,6 +5683,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
         if (response.ok) {
           const user = await response.json();
           setTeacherName(user.name || '');
+          setTeacherAvatarEmoji(user.avatarEmoji || null);
+          setTeacherProfileColor(user.profileColor || null);
         }
       } catch (error) {
         console.error('Error fetching teacher name:', error);
@@ -5937,7 +5947,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     | 'input'
     | 'fortlaufend'
     | 'karteikarten-erstellen'
-    | 'karteikarten-gemeinsam-erstellen';
+    | 'karteikarten-gemeinsam-erstellen'
+    | 'praesentation';
   type LessonPlanItem = {
     id: string;
     type: LessonPlanItemType;
@@ -13781,19 +13792,15 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
           }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Avatar
-                  sx={{ 
-                    width: 28, 
-                    height: 28, 
-                    bgcolor: colors.accent1,
-                    boxShadow: '0 1.4px 2.8px rgba(0,0,0,0.12)',
-                    fontSize: '0.9rem',
-                    fontWeight: 'bold',
-                    color: 'white'
-                  }}
-                >
-                  {getInitials(teacherName) || userId.substring(0, 2).toUpperCase()}
-                </Avatar>
+                <TeacherSettingsMenu
+                  teacherName={teacherName}
+                  userId={userId}
+                  avatarColor={teacherProfileColor || colors.accent1}
+                  avatarEmoji={teacherAvatarEmoji}
+                  profileColor={teacherProfileColor}
+                  onOpenProfile={() => setProfileDialogOpen(true)}
+                  onOpenSchedule={() => setScheduleDialogOpen(true)}
+                />
               </Box>
               <Box display="flex" gap={0.5} alignItems="center">
                 <IconButton
@@ -18242,6 +18249,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                   if (type === 'fortlaufend') return 'Fortlaufende Aufgaben';
                   if (type === 'karteikarten-erstellen') return 'Karteikarten';
                   if (type === 'karteikarten-gemeinsam-erstellen') return 'Karteikarten gemeinsam erstellen';
+                  if (type === 'praesentation') return 'Pr√§sentation';
                   return 'Leinwand';
                 };
                 const getPlanTypeStyle = (type: LessonPlanItemType) => {
@@ -18256,6 +18264,8 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                     return { bg: '#f3e5f5', border: '#ba68c8', text: '#6a1b9a' }; // violett: Karteikarten
                   if (type === 'karteikarten-gemeinsam-erstellen')
                     return { bg: '#fff3e0', border: '#ffb74d', text: '#e65100' }; // orange: gemeinsam sammeln
+                  if (type === 'praesentation')
+                    return { bg: '#fff3e0', border: '#ff9800', text: '#e65100' }; // orange: Praesentation
                   return { bg: '#f3e5f5', border: '#ce93d8', text: '#7b1fa2' }; // leicht lila
                 };
                 const addPlanItems = async () => {
@@ -18530,6 +18540,24 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                     qs.set('groupId', lessonModalData.groupId);
                     qs.set('lessonPath', lessonModalData.lessonPath);
                     window.open(`${window.location.origin}/shared-overview?${qs.toString()}`, '_blank', 'noopener,noreferrer');
+                    return;
+                  }
+                  if (item.type === 'praesentation') {
+                    if (!lessonModalData.lessonPath) {
+                      showSnackbar('Kein Stundenordner f√ºr diese Stunde.', 'error');
+                      return;
+                    }
+                    const qs = new URLSearchParams();
+                    qs.set('lessonPath', lessonModalData.lessonPath);
+                    if (lessonModalData.groupId) qs.set('groupId', lessonModalData.groupId);
+                    const origin = window.location.origin;
+                    if (lessonPlanViewMode === 'create') {
+                      window.open(`${origin}/presentation/edit?${qs.toString()}`, '_blank', 'noopener,noreferrer');
+                    } else if (lessonPlanViewMode === 'run') {
+                      window.open(`${origin}/presentation/present?${qs.toString()}`, '_blank', 'noopener,noreferrer');
+                    } else {
+                      window.open(`${origin}/presentation/review?${qs.toString()}`, '_blank', 'noopener,noreferrer');
+                    }
                     return;
                   }
                 };
@@ -19070,7 +19098,8 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                           { id: 'tafel', label: 'Tafel' },
                           { id: 'quiz', label: 'Quiz' },
                           { id: 'karteikarten-erstellen', label: 'Karteikarten' },
-                          { id: 'karteikarten-gemeinsam-erstellen', label: 'Karteikarten gemeinsam erstellen' }
+                          { id: 'karteikarten-gemeinsam-erstellen', label: 'Karteikarten gemeinsam erstellen' },
+                          { id: 'praesentation', label: 'Pr√§sentation' }
                         ].map((option) => {
                           const optionId = option.id as LessonPlanItemType;
                           const style = getPlanTypeStyle(optionId);
@@ -19084,6 +19113,8 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                                 ? 118
                               : optionId === 'karteikarten-gemeinsam-erstellen'
                                 ? 200
+                              : optionId === 'praesentation'
+                                ? 130
                                 : optionId === 'fortlaufend'
                                   ? 118
                                   : optionId === 'input'
@@ -25300,6 +25331,30 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
           )}
         </DialogContent>
       </Dialog>
+
+      <TeacherProfileDialog
+        open={profileDialogOpen}
+        onClose={() => setProfileDialogOpen(false)}
+        userId={userId}
+        teacherName={teacherName}
+        avatarEmoji={teacherAvatarEmoji || 'üßë‚Äçüè´'}
+        profileColor={teacherProfileColor || DEFAULT_PROFILE_COLOR}
+        onAvatarChange={(emoji) => setTeacherAvatarEmoji(emoji)}
+        onProfileColorChange={(color) => setTeacherProfileColor(color)}
+        onOpenSchedule={() => setScheduleDialogOpen(true)}
+      />
+
+      <TeacherScheduleDialog
+        open={scheduleDialogOpen}
+        onClose={() => setScheduleDialogOpen(false)}
+        groups={groups.map((g) => ({
+          id: g.id,
+          name: g.name,
+          iconEmoji: g.iconEmoji,
+          color: g.color,
+          isArchived: g.isArchived,
+        }))}
+      />
       </>
     </Box>
   );
