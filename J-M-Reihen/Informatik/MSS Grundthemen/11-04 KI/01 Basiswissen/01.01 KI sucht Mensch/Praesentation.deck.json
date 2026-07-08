@@ -2,7 +2,7 @@
   "version": 1,
   "title": "KI sucht Mensch",
   "lessonPath": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.01 KI sucht Mensch",
-  "updatedAt": "2026-07-08T06:32:11.056Z",
+  "updatedAt": "2026-07-08T06:32:22.278Z",
   "slides": [
     {
       "id": "slide-1783231721623",
@@ -97,6 +97,18 @@
           "html": "<p data-reveal-step=\"1\"><b><font size=\"5\">Was ist das hier für ein Text?</font></b></p>",
           "zIndex": 4,
           "revealStep": 0
+        },
+        {
+          "id": "el-1783492340316",
+          "type": "image",
+          "x": 0,
+          "y": 21.884711024037376,
+          "w": 45,
+          "h": 40,
+          "src": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.01 KI sucht Mensch/a55ed133-a150-478c-81f5-665e7640d71a.png",
+          "zIndex": 5,
+          "revealStep": 0,
+          "imageFit": "contain"
         }
       ],
       "transition": "slide-left",
