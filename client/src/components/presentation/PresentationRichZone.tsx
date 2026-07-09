@@ -4,7 +4,7 @@ import { htmlToPlain, textToHtml } from '../../lib/presentationDeck';
 import { filterHtmlByRevealStep } from '../../lib/presentationReveal';
 import { isFormatBarInteracting, isPresentationFormatUiTarget } from '../../lib/presentationFormatBarGuard';
 import { captureEditorSelection, clearSavedSelection } from '../../lib/presentationFontSize';
-import { sanitizePastedHtml, sanitizePresentationHtml } from '../../lib/presentationRichText';
+import { sanitizePastedHtml, sanitizePresentationHtml, execFormat } from '../../lib/presentationRichText';
 
 export type RichZoneVariant = 'title' | 'hero' | 'subtitle' | 'body' | 'quote' | 'caption';
 
@@ -117,6 +117,14 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
     handleInput();
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    const el = ref.current;
+    if (!el || e.key !== 'Tab' || e.ctrlKey || e.metaKey || e.altKey) return;
+    e.preventDefault();
+    execFormat(el, e.shiftKey ? 'outdent' : 'indent');
+    handleInput();
+  };
+
   const richSx = {
     fontSize: `${baseFont}px`,
     lineHeight: variant === 'title' ? 1.15 : 1.55,
@@ -133,8 +141,26 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
     color: VARIANT_DEFAULT_COLOR[variant],
     '& p': { m: 0, mb: `${6 * scale}px` },
     '& p:last-child': { mb: 0 },
-    '& ul, & ol': { m: 0, pl: `${28 * scale}px`, mb: `${8 * scale}px` },
-    '& li': { mb: `${4 * scale}px` },
+    '& ul, & ol': {
+      m: 0,
+      pl: `${28 * scale}px`,
+      mb: `${8 * scale}px`,
+      listStylePosition: 'outside',
+    },
+    '& ul': { listStyleType: 'disc' },
+    '& ul ul': { listStyleType: 'circle' },
+    '& ul ul ul': { listStyleType: 'square' },
+    '& ol': { listStyleType: 'decimal' },
+    '& ol ol': { listStyleType: 'lower-alpha' },
+    '& ol ol ol': { listStyleType: 'lower-roman' },
+    '& li': {
+      mb: `${4 * scale}px`,
+      display: 'list-item',
+    },
+    '& li > ul, & li > ol': {
+      mt: `${4 * scale}px`,
+      mb: 0,
+    },
     '& span[style], & mark': { backgroundClip: 'padding-box' },
     '& [data-pres-fs]': { lineHeight: 'inherit' },
     '& [data-pres-color]': { lineHeight: 'inherit' },
@@ -191,6 +217,7 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
       }}
       onInput={handleInput}
       onPaste={handlePaste}
+      onKeyDown={handleKeyDown}
       onMouseDown={(e) => {
         e.stopPropagation();
         if (!isFormatBarInteracting()) clearSavedSelection();

@@ -15,6 +15,7 @@ import {
   restoreSavedEditorSelection,
   stashEditorSelection,
 } from './presentationFontSize';
+import { normalizeListsInPlace, normalizePresentationLists } from './presentationListNormalize';
 
 export {
   applyEditorFontSizePx,
@@ -132,6 +133,17 @@ function stripExternalFontSizing(root: ParentNode) {
   });
 }
 
+function stripExternalColors(root: ParentNode) {
+  root.querySelectorAll('*').forEach((node) => {
+    const el = node as HTMLElement;
+    if (el.hasAttribute('data-pres-color')) return;
+    el.style?.removeProperty('color');
+    if (el.tagName === 'FONT') el.removeAttribute('color');
+    const styleAttr = el.getAttribute('style')?.trim() ?? '';
+    if (!styleAttr) el.removeAttribute('style');
+  });
+}
+
 /** Bereinigt eingefügtes HTML (Pages/Word) für editierbare Zonen. */
 export function sanitizePastedHtml(html: string): string {
   if (!html || typeof document === 'undefined') return html;
@@ -145,6 +157,8 @@ export function sanitizePastedHtml(html: string): string {
   });
   unwrapIllegalSpanBlocks(doc.body);
   stripExternalFontSizing(doc.body);
+  stripExternalColors(doc.body);
+  normalizeListsInPlace(doc.body);
   doc.body.querySelectorAll('span.Apple-converted-space, br.Apple-interchange-newline').forEach((el) => {
     if (el.tagName === 'BR') {
       el.replaceWith(doc.createTextNode(' '));
@@ -161,6 +175,7 @@ export function sanitizePresentationHtml(html: string): string {
   const base = normalizeRichHtml(html);
   const doc = new DOMParser().parseFromString(base, 'text/html');
   unwrapIllegalSpanBlocks(doc.body);
+  normalizeListsInPlace(doc.body);
   return doc.body.innerHTML;
 }
 
@@ -177,9 +192,16 @@ export function stripNotesBlockIndent(html: string): string {
   const base = normalizeRichHtml(html);
   if (!base || typeof document === 'undefined') return base;
   const doc = new DOMParser().parseFromString(base, 'text/html');
-  doc.body.querySelectorAll('p, div, li, ul, ol, blockquote').forEach((node) => {
+  doc.body.querySelectorAll('p, div, blockquote').forEach((node) => {
     const el = node as HTMLElement;
     NOTES_INDENT_PROPS.forEach((prop) => el.style.removeProperty(prop));
+    if (!el.getAttribute('style')?.trim()) el.removeAttribute('style');
+  });
+  doc.body.querySelectorAll('li').forEach((node) => {
+    const el = node as HTMLElement;
+    ['margin', 'margin-left', 'margin-right', 'text-indent'].forEach((prop) =>
+      el.style.removeProperty(prop)
+    );
     if (!el.getAttribute('style')?.trim()) el.removeAttribute('style');
   });
   return doc.body.innerHTML;
@@ -187,8 +209,15 @@ export function stripNotesBlockIndent(html: string): string {
 
 /** @deprecated Alias */
 export function normalizeNotesHtml(html: string): string {
-  return stripNotesBlockIndent(html);
+  return normalizePresentationLists(stripNotesBlockIndent(html));
 }
+
+const LIST_FORMAT_COMMANDS = new Set([
+  'insertUnorderedList',
+  'insertOrderedList',
+  'indent',
+  'outdent',
+]);
 
 export function execFormat(editor: HTMLElement | null, cmd: string, value?: string) {
   if (!editor) return;
@@ -200,7 +229,11 @@ export function execFormat(editor: HTMLElement | null, cmd: string, value?: stri
     /* ignore */
   }
   document.execCommand(cmd, false, value);
-  collapseEditorSelection(editor);
+  if (LIST_FORMAT_COMMANDS.has(cmd)) {
+    normalizeListsInPlace(editor);
+  } else {
+    collapseEditorSelection(editor);
+  }
   editor.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
@@ -222,7 +255,154 @@ function makeStyleSpan(style: Record<string, string>): HTMLSpanElement {
   return span;
 }
 
-function wrapSelectionWithStyle(editor: HTMLElement, style: Record<string, string>): boolean {
+function unwrapNestedAttrSpans(root: DocumentFragment | ParentNode, attr: string) {
+  root.querySelectorAll?.(`span[${attr}]`)?.forEach((inner) => {
+    const parent = inner.parentNode;
+    if (!parent) return;
+    while (inner.firstChild) parent.insertBefore(inner.firstChild, inner);
+    parent.removeChild(inner);
+  });
+}
+
+function stripColorInRange(editor: HTMLElement, range: Range) {
+  const walker = document.createTreeWalker(editor, NodeFilter.SHOW_ELEMENT);
+  let node: Node | null;
+  while ((node = walker.nextNode())) {
+    const el = node as HTMLElement;
+    try {
+      if (!range.intersectsNode(el)) continue;
+    } catch {
+      continue;
+    }
+    el.style?.removeProperty('color');
+    el.removeAttribute('data-pres-color');
+    if (el.tagName === 'FONT') el.removeAttribute('color');
+    if (!el.getAttribute('style')?.trim()) el.removeAttribute('style');
+  }
+}
+
+function stripHighlightInRange(editor: HTMLElement, range: Range) {
+  const walker = document.createTreeWalker(editor, NodeFilter.SHOW_ELEMENT);
+  let node: Node | null;
+  while ((node = walker.nextNode())) {
+    const el = node as HTMLElement;
+    try {
+      if (!range.intersectsNode(el)) continue;
+    } catch {
+      continue;
+    }
+    if (el.tagName === 'MARK') {
+      unwrapElement(el);
+      continue;
+    }
+    el.style?.removeProperty('background-color');
+    el.removeAttribute('data-pres-highlight');
+    if (!el.getAttribute('style')?.trim() && el.tagName === 'SPAN') {
+      unwrapElement(el);
+    }
+  }
+}
+
+function stripColorFromFragment(root: DocumentFragment | HTMLElement) {
+  const nodes: HTMLElement[] = [];
+  if ('querySelectorAll' in root) {
+    root.querySelectorAll('*').forEach((el) => nodes.push(el as HTMLElement));
+    if (root instanceof HTMLElement) nodes.push(root);
+  }
+  nodes.forEach((el) => {
+    el.style?.removeProperty('color');
+    el.removeAttribute('data-pres-color');
+    if (el.tagName === 'FONT') el.removeAttribute('color');
+    if (!el.getAttribute('style')?.trim() && (el.tagName === 'SPAN' || el.tagName === 'FONT')) {
+      unwrapElement(el);
+    }
+  });
+  unwrapNestedAttrSpans(root, 'data-pres-color');
+}
+
+function stripHighlightFromFragment(root: DocumentFragment | HTMLElement) {
+  const nodes: HTMLElement[] = [];
+  if ('querySelectorAll' in root) {
+    root.querySelectorAll('*').forEach((el) => nodes.push(el as HTMLElement));
+    if (root instanceof HTMLElement) nodes.push(root);
+  }
+  nodes.forEach((el) => {
+    if (el.tagName === 'MARK') {
+      unwrapElement(el);
+      return;
+    }
+    el.style?.removeProperty('background-color');
+    el.removeAttribute('data-pres-highlight');
+    if (!el.getAttribute('style')?.trim() && el.tagName === 'SPAN') {
+      unwrapElement(el);
+    }
+  });
+  unwrapNestedAttrSpans(root, 'data-pres-highlight');
+}
+
+function textNodesInRange(editor: HTMLElement, range: Range): Text[] {
+  const nodes: Text[] = [];
+  const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const text = node.textContent ?? '';
+      if (!text.replace(/\u00a0/g, ' ').trim()) return NodeFilter.FILTER_REJECT;
+      try {
+        return range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      } catch {
+        return NodeFilter.FILTER_REJECT;
+      }
+    },
+  });
+  let current: Node | null;
+  while ((current = walker.nextNode())) nodes.push(current as Text);
+  return nodes;
+}
+
+function applyStyleToTextRange(range: Range, style: Record<string, string>): HTMLSpanElement | null {
+  const span = makeStyleSpan(style);
+  try {
+    const extracted = range.extractContents();
+    if (!fragmentHasText(extracted)) return null;
+    if (style.color) stripColorFromFragment(extracted);
+    if (style.backgroundColor) stripHighlightFromFragment(extracted);
+    span.appendChild(extracted);
+    range.insertNode(span);
+    return span;
+  } catch {
+    return null;
+  }
+}
+
+function applyStyleAcrossRange(
+  editor: HTMLElement,
+  range: Range,
+  style: Record<string, string>
+): HTMLSpanElement | null {
+  const textNodes = textNodesInRange(editor, range);
+  if (!textNodes.length) return null;
+
+  let firstSpan: HTMLSpanElement | null = null;
+  for (let i = textNodes.length - 1; i >= 0; i -= 1) {
+    const textNode = textNodes[i];
+    const sub = document.createRange();
+    const start =
+      textNode === range.startContainer && range.startContainer.nodeType === Node.TEXT_NODE
+        ? range.startOffset
+        : 0;
+    const end =
+      textNode === range.endContainer && range.endContainer.nodeType === Node.TEXT_NODE
+        ? range.endOffset
+        : textNode.length;
+    if (start >= end) continue;
+    sub.setStart(textNode, start);
+    sub.setEnd(textNode, end);
+    const span = applyStyleToTextRange(sub, style);
+    if (span && !firstSpan) firstSpan = span;
+  }
+  return firstSpan;
+}
+
+function applyInlineStyleToSelection(editor: HTMLElement, style: Record<string, string>): boolean {
   stashEditorSelection(editor);
   if (!ensureEditorSelection(editor)) return false;
   const sel = window.getSelection();
@@ -230,22 +410,21 @@ function wrapSelectionWithStyle(editor: HTMLElement, style: Record<string, strin
   const range = sel.getRangeAt(0);
   if (range.collapsed) return false;
 
-  const span = makeStyleSpan(style);
-  try {
-    const extracted = range.extractContents();
-    if (!fragmentHasText(extracted)) return false;
-    span.appendChild(extracted);
-    range.insertNode(span);
-  } catch {
-    try {
-      range.surroundContents(span);
-    } catch {
-      return false;
-    }
-  }
-  collapseEditorSelection(editor, span);
+  const work = range.cloneRange();
+  if (style.color) stripColorInRange(editor, work);
+  if (style.backgroundColor) stripHighlightInRange(editor, work);
+
+  const wrapped =
+    applyStyleToTextRange(work, style) ?? applyStyleAcrossRange(editor, work, style);
+  if (!wrapped) return false;
+
+  collapseEditorSelection(editor, wrapped);
   editor.dispatchEvent(new Event('input', { bubbles: true }));
   return true;
+}
+
+function wrapSelectionWithStyle(editor: HTMLElement, style: Record<string, string>): boolean {
+  return applyInlineStyleToSelection(editor, style);
 }
 
 function fragmentHasText(fragment: DocumentFragment | Node): boolean {
@@ -276,32 +455,12 @@ function applyInlineStyle(editor: HTMLElement, style: Record<string, string>) {
 
 export function applyTextColor(editor: HTMLElement | null, color: string) {
   if (!editor) return;
-  stashEditorSelection(editor);
-  if (wrapSelectionWithStyle(editor, { color })) return;
-  if (!ensureEditorSelection(editor)) focusEditor(editor);
-  try {
-    document.execCommand('styleWithCSS', false, 'true');
-  } catch {
-    /* ignore */
-  }
-  document.execCommand('foreColor', false, color);
-  collapseEditorSelection(editor);
-  editor.dispatchEvent(new Event('input', { bubbles: true }));
+  applyInlineStyleToSelection(editor, { color });
 }
 
 export function applyHighlightColor(editor: HTMLElement | null, color: string) {
   if (!editor) return;
-  stashEditorSelection(editor);
-  if (wrapSelectionWithStyle(editor, { backgroundColor: color })) return;
-  if (!ensureEditorSelection(editor)) focusEditor(editor);
-  try {
-    document.execCommand('styleWithCSS', false, 'true');
-  } catch {
-    /* ignore */
-  }
-  document.execCommand('backColor', false, color);
-  collapseEditorSelection(editor);
-  editor.dispatchEvent(new Event('input', { bubbles: true }));
+  applyInlineStyleToSelection(editor, { backgroundColor: color });
 }
 
 export function applyFontSize(editor: HTMLElement | null, sizeKey: string) {
@@ -354,10 +513,13 @@ export function clearInlineFormatting(
         unwrapElement(el);
         continue;
       }
-      el.style.backgroundColor = '';
+      el.style.removeProperty('background-color');
+      el.removeAttribute('data-pres-highlight');
     }
     if (mode === 'color' || mode === 'both') {
-      el.style.color = '';
+      el.style.removeProperty('color');
+      el.removeAttribute('data-pres-color');
+      if (el.tagName === 'FONT') el.removeAttribute('color');
     }
     const styleAttr = el.getAttribute('style')?.trim();
     if (

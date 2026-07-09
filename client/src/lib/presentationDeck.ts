@@ -1,5 +1,6 @@
 import { parentDirGitPath } from './folienVersions';
 import { JOHNNY_PRESENTATION } from './presentationTheme';
+import type { PresentationTrashItem } from './presentationTrash';
 import type { SlideTransition } from './presentationTransitions';
 export type { SlideTransition } from './presentationTransitions';
 export { SLIDE_TRANSITIONS } from './presentationTransitions';
@@ -89,6 +90,7 @@ export interface PresentationDeck {
   updatedAt: string;
   slides: PresentationSlide[];
   defaultTransition?: SlideTransition;
+  trash?: PresentationTrashItem[];
 }
 
 export interface PresentationAnnotations {
@@ -182,6 +184,7 @@ export function normalizeDeck(deck: PresentationDeck): PresentationDeck {
     ...deck,
     defaultTransition: deck.defaultTransition ?? 'fade',
     slides: sortSlides(deck.slides.map(normalizeSlide)),
+    trash: Array.isArray(deck.trash) ? deck.trash : [],
   };
 }
 

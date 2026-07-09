@@ -11,6 +11,7 @@ import {
   Snackbar,
   Tooltip,
   Typography,
+  Badge,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -18,6 +19,7 @@ import {
   ContentCopy as CopyIcon,
   DeleteOutline as DeleteIcon,
   PlayArrow as PresentIcon,
+  RestoreFromTrash as TrashBinIcon,
   SaveOutlined as SaveIcon,
   Slideshow as SlideshowIcon,
   Undo as UndoIcon,
@@ -30,7 +32,7 @@ import PresentationFilmstrip from '../components/presentation/PresentationFilmst
 import PresentationNotesPanel, {
   type NotesFieldKey,
 } from '../components/presentation/PresentationNotesPanel';
-import PresentationSlideView from '../components/presentation/PresentationSlideView';
+import PresentationTrashPanel from '../components/presentation/PresentationTrashPanel';
 import { isFormatBarInteracting } from '../lib/presentationFormatBarGuard';
 import {
   createSlideFromLayout,
@@ -64,11 +66,22 @@ import {
   undoDeckHistory,
   type DeckHistory,
 } from '../lib/presentationEditorHistory';
+import PresentationSlideView from '../components/presentation/PresentationSlideView';
+import {
+  addTrashItem,
+  createNotesTrashItem,
+  createSlideTrashItem,
+  normalizeTrash,
+  removeTrashItem,
+  restoreNotesFromTrash,
+  restoreSlideFromTrash,
+} from '../lib/presentationTrash';
 import {
   assignRevealSteps,
   getSlideMaxRevealSteps,
   stripAllRevealSteps,
 } from '../lib/presentationReveal';
+
 import {
   applyFontSizePresetIndex,
   bookmarkSelection,
@@ -94,6 +107,7 @@ const PresentationEditorPage: React.FC = () => {
   const [previewMode, setPreviewMode] = useState(false);
   const [canvasScale, setCanvasScale] = useState(0.4);
   const [historyVersion, setHistoryVersion] = useState(0);
+  const [trashAnchor, setTrashAnchor] = useState<HTMLElement | null>(null);
   const canvasHostRef = useRef<HTMLDivElement>(null);
   const slideShellRef = useRef<HTMLDivElement>(null);
   const canvasHostObserverRef = useRef<ResizeObserver | null>(null);
@@ -336,6 +350,11 @@ const PresentationEditorPage: React.FC = () => {
       }
 
       const mod = e.metaKey || e.ctrlKey;
+      const inRichEditor = !!target.closest('[data-pres-rich-zone]');
+
+      if (inRichEditor && mod && (e.key === 'z' || e.key === 'y')) {
+        return;
+      }
 
       const editorFocused =
         activeEditor &&
@@ -503,11 +522,82 @@ const PresentationEditorPage: React.FC = () => {
   const deleteSlide = () => {
     const current = deckRef.current;
     if (!current || !activeSlide || current.slides.length <= 1) return;
+    const trashItem = createSlideTrashItem(activeSlide);
     const slides = current.slides
       .filter((s) => s.id !== activeSlide.id)
       .map((s, i) => ({ ...s, order: i }));
-    scheduleSave({ ...current, slides }, { history: 'immediate' });
+    scheduleSave(
+      {
+        ...current,
+        slides,
+        trash: addTrashItem(current, trashItem),
+      },
+      { history: 'immediate' }
+    );
     setActiveId(slides[0]?.id ?? null);
+    setSnackbar('Folie in Papierkorb verschoben');
+  };
+
+  const moveNotesToTrash = (fieldKey: NotesFieldKey) => {
+    const current = deckRef.current;
+    if (!current || !normalizedActive) return;
+    const trashItem = createNotesTrashItem(normalizedActive, fieldKey);
+    if (!trashItem) {
+      setSnackbar('Notiz ist bereits leer');
+      return;
+    }
+
+    const patch =
+      fieldKey === 'preparationHtml'
+        ? { preparationHtml: '<p><br></p>', preparationNotes: '' }
+        : { speakerNotesHtml: '<p><br></p>', speakerNotes: '' };
+
+    const slides = current.slides.map((slide) =>
+      slide.id === normalizedActive.id ? normalizeSlide({ ...slide, ...patch }) : slide
+    );
+
+    scheduleSave(
+      {
+        ...current,
+        slides,
+        trash: addTrashItem(current, trashItem),
+      },
+      { history: 'immediate' }
+    );
+    setSnackbar('Notiz in Papierkorb verschoben');
+  };
+
+  const restoreTrashItem = (itemId: string) => {
+    const current = deckRef.current;
+    if (!current) return;
+    const item = normalizeTrash(current).find((entry) => entry.id === itemId);
+    if (!item) return;
+
+    if (item.type === 'slide') {
+      const { deck: next, restoredId } = restoreSlideFromTrash(current, itemId);
+      scheduleSave(next, { history: 'immediate' });
+      if (restoredId) setActiveId(restoredId);
+      setSnackbar('Folie wiederhergestellt');
+      return;
+    }
+
+    const next = restoreNotesFromTrash(current, itemId, activeId);
+    scheduleSave(next, { history: 'immediate' });
+    setSnackbar('Notiz wiederhergestellt');
+  };
+
+  const deleteTrashForever = (itemId: string) => {
+    const current = deckRef.current;
+    if (!current) return;
+    scheduleSave({ ...current, trash: removeTrashItem(current, itemId) }, { history: 'immediate' });
+    setSnackbar('Endgültig gelöscht');
+  };
+
+  const emptyTrash = () => {
+    const current = deckRef.current;
+    if (!current) return;
+    scheduleSave({ ...current, trash: [] }, { history: 'immediate' });
+    setSnackbar('Papierkorb geleert');
   };
 
   const applyLayout = (layout: SlideLayout) => {
@@ -696,18 +786,44 @@ const PresentationEditorPage: React.FC = () => {
                 <CopyIcon sx={{ fontSize: 17 }} />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Folie löschen">
+            <Tooltip title="Folie löschen (→ Papierkorb)">
               <span>
                 <IconButton size="small" onClick={deleteSlide} disabled={deck.slides.length <= 1} sx={toolbarIconSx}>
                   <DeleteIcon sx={{ fontSize: 17 }} />
                 </IconButton>
               </span>
             </Tooltip>
+            <Tooltip title="Papierkorb">
+              <IconButton
+                size="small"
+                onClick={(e) => setTrashAnchor(e.currentTarget)}
+                sx={toolbarIconSx}
+              >
+                <Badge
+                  badgeContent={normalizeTrash(deck).length}
+                  color="error"
+                  invisible={normalizeTrash(deck).length === 0}
+                  sx={{ '& .MuiBadge-badge': { fontSize: 9, height: 15, minWidth: 15 } }}
+                >
+                  <TrashBinIcon sx={{ fontSize: 17 }} />
+                </Badge>
+              </IconButton>
+            </Tooltip>
           </Box>
+
+          <PresentationTrashPanel
+            anchorEl={trashAnchor}
+            open={Boolean(trashAnchor)}
+            items={normalizeTrash(deck)}
+            onClose={() => setTrashAnchor(null)}
+            onRestore={restoreTrashItem}
+            onDeleteForever={deleteTrashForever}
+            onEmptyTrash={emptyTrash}
+          />
 
           <Divider orientation="vertical" flexItem sx={{ borderColor: PRES_EDITOR_UI.barBorder, mx: 0.25 }} />
 
-          <Tooltip title="Rückgängig (Strg+Z)">
+          <Tooltip title="Rückgängig — Folie/Deck (im Text: ⌘Z)">
             <span>
               <IconButton
                 size="small"
@@ -719,7 +835,7 @@ const PresentationEditorPage: React.FC = () => {
               </IconButton>
             </span>
           </Tooltip>
-          <Tooltip title="Wiederholen (Strg+Umschalt+Z)">
+          <Tooltip title="Wiederholen — Folie/Deck (im Text: ⌘⇧Z)">
             <span>
               <IconButton
                 size="small"
@@ -1025,6 +1141,7 @@ const PresentationEditorPage: React.FC = () => {
             onSpeakerChange={(html, plain) =>
               updateSlide({ speakerNotesHtml: html, speakerNotes: plain })
             }
+            onMoveNotesToTrash={moveNotesToTrash}
           />
         )}
       </Box>

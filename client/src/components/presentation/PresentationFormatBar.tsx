@@ -19,6 +19,8 @@ import {
   FormatAlignRight,
   FormatListBulleted,
   FormatListNumbered,
+  FormatIndentIncrease,
+  FormatIndentDecrease,
   FormatColorText,
   ImageOutlined,
   VisibilityOutlined,
@@ -193,6 +195,20 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
           </IconButton>
         </span>
       </Tooltip>
+      <Tooltip title="Einzug vergrößern (Tab)">
+        <span>
+          <IconButton size="small" disabled={disabled || !activeEditor} sx={btnSx} onMouseDown={(e) => e.preventDefault()} onClick={() => applyAndNotify(() => execFormat(activeEditor, 'indent'))}>
+            <FormatIndentIncrease sx={{ fontSize: 17 }} />
+          </IconButton>
+        </span>
+      </Tooltip>
+      <Tooltip title="Einzug verkleinern (Shift+Tab)">
+        <span>
+          <IconButton size="small" disabled={disabled || !activeEditor} sx={btnSx} onMouseDown={(e) => e.preventDefault()} onClick={() => applyAndNotify(() => execFormat(activeEditor, 'outdent'))}>
+            <FormatIndentDecrease sx={{ fontSize: 17 }} />
+          </IconButton>
+        </span>
+      </Tooltip>
 
       <Divider orientation="vertical" flexItem sx={{ borderColor: '#ccc', mx: 0.25 }} />
 
@@ -311,7 +327,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         }}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
       >
-        <Box data-presentation-format-ui sx={{ p: 1, maxWidth: 200 }}>
+        <Box data-presentation-format-ui sx={{ p: 1, maxWidth: 260 }}>
           <Box
             onMouseDown={(e) => {
               e.preventDefault();
@@ -383,7 +399,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         }}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
       >
-        <Box data-presentation-format-ui sx={{ p: 1, maxWidth: 200 }}>
+        <Box data-presentation-format-ui sx={{ p: 1, maxWidth: 260 }}>
           <Box
             onMouseDown={(e) => {
               e.preventDefault();

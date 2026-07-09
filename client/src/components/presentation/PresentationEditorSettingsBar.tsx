@@ -312,7 +312,7 @@ const PresentationEditorSettingsBar: React.FC<PresentationEditorSettingsBarProps
 
       <Divider orientation="vertical" flexItem sx={{ borderColor: PRES_EDITOR_UI.barBorder, mx: 0.15 }} />
 
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4, flexShrink: 0 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4, flexShrink: 0, flexWrap: 'wrap', maxWidth: 148 }}>
         {JOHNNY_ACCENT_PRESETS.map((c) => (
           <Box
             key={c}

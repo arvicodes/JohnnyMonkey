@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { Box, Typography } from '@mui/material';
+import { Box, IconButton, Tooltip, Typography } from '@mui/material';
+import { DeleteOutline as TrashIcon } from '@mui/icons-material';
 import { htmlToPlain, textToHtml } from '../../lib/presentationDeck';
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
 import { isFormatBarInteracting, isPresentationFormatUiTarget } from '../../lib/presentationFormatBarGuard';
 import { captureEditorSelection, clearSavedSelection } from '../../lib/presentationFontSize';
-import { sanitizePastedHtml, stripNotesBlockIndent } from '../../lib/presentationRichText';
+import { sanitizePastedHtml, normalizeNotesHtml, execFormat } from '../../lib/presentationRichText';
 
 export type NotesFieldKey = 'preparationHtml' | 'speakerNotesHtml';
 
@@ -19,6 +20,7 @@ interface NoteZoneProps {
   onChange: (html: string, plain: string) => void;
   onEditorFocus: (fieldKey: NotesFieldKey, el: HTMLElement) => void;
   onEditorBlur?: () => void;
+  onMoveToTrash?: (fieldKey: NotesFieldKey) => void;
 }
 
 const NoteZone: React.FC<NoteZoneProps> = ({
@@ -32,14 +34,15 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   onChange,
   onEditorFocus,
   onEditorBlur,
+  onMoveToTrash,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const editingRef = useRef(false);
-  const displayHtml = stripNotesBlockIndent(html || textToHtml(plain || ''));
+  const displayHtml = normalizeNotesHtml(html || textToHtml(plain || ''));
 
   const persistContent = useCallback(
     (rawHtml: string, normalize = false) => {
-      const nextHtml = normalize ? stripNotesBlockIndent(rawHtml) : rawHtml;
+      const nextHtml = normalize ? normalizeNotesHtml(rawHtml) : rawHtml;
       if (ref.current && nextHtml !== ref.current.innerHTML) {
         ref.current.innerHTML = nextHtml;
       }
@@ -93,6 +96,14 @@ const NoteZone: React.FC<NoteZoneProps> = ({
     persistContent(el.innerHTML, false);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    const el = ref.current;
+    if (!el || readOnly || e.key !== 'Tab' || e.ctrlKey || e.metaKey || e.altKey) return;
+    e.preventDefault();
+    execFormat(el, e.shiftKey ? 'outdent' : 'indent');
+    persistContent(el.innerHTML, false);
+  };
+
   return (
     <Box
       sx={{
@@ -104,22 +115,41 @@ const NoteZone: React.FC<NoteZoneProps> = ({
         '&:last-child': { borderBottom: 'none' },
       }}
     >
-      <Typography
-        variant="caption"
+      <Box
         sx={{
           px: 1.25,
           pt: 0.75,
           pb: 0.35,
-          color: active ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
-          fontSize: 10,
-          fontWeight: 700,
-          letterSpacing: 0.5,
-          textTransform: 'uppercase',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
           flexShrink: 0,
         }}
       >
-        {label}
-      </Typography>
+        <Typography
+          variant="caption"
+          sx={{
+            color: active ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: 0.5,
+            textTransform: 'uppercase',
+          }}
+        >
+          {label}
+        </Typography>
+        {!readOnly && onMoveToTrash && (
+          <Tooltip title="In Papierkorb verschieben">
+            <IconButton
+              size="small"
+              onClick={() => onMoveToTrash(fieldKey)}
+              sx={{ width: 22, height: 22, color: PRES_EDITOR_UI.textMuted }}
+            >
+              <TrashIcon sx={{ fontSize: 14 }} />
+            </IconButton>
+          </Tooltip>
+        )}
+      </Box>
       <Box
         ref={ref}
         contentEditable={!readOnly}
@@ -155,6 +185,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
         }}
         onInput={handleInput}
         onPaste={handlePaste}
+        onKeyDown={handleKeyDown}
         onMouseDown={() => {
           if (!isFormatBarInteracting()) clearSavedSelection();
         }}
@@ -178,8 +209,14 @@ const NoteZone: React.FC<NoteZoneProps> = ({
           wordBreak: 'break-word',
           '& p, & div': { m: 0, mb: 0.5, ml: 0, pl: 0, textIndent: 0 },
           '& blockquote': { m: 0, mb: 0.5, ml: 0, pl: '0.75em', borderLeft: '2px solid #ccc' },
-          '& ul, & ol': { m: 0, pl: '1.25em', mb: 0.5 },
-          '& li': { mb: 0.25 },
+          '& ul, & ol': { m: 0, pl: '1.25em', mb: 0.5, listStylePosition: 'outside' },
+          '& ul': { listStyleType: 'disc' },
+          '& ul ul': { listStyleType: 'circle' },
+          '& ul ul ul': { listStyleType: 'square' },
+          '& ol': { listStyleType: 'decimal' },
+          '& ol ol': { listStyleType: 'lower-alpha' },
+          '& li': { mb: 0.25, display: 'list-item' },
+          '& li > ul, & li > ol': { mt: 0.25, mb: 0 },
           '& mark': { borderRadius: 0.5 },
           '& [data-pres-fs]': { lineHeight: 'inherit' },
           '& [data-pres-color]': { lineHeight: 'inherit' },
@@ -209,6 +246,7 @@ interface PresentationNotesPanelProps {
   onEditorBlur?: () => void;
   onPreparationChange: (html: string, plain: string) => void;
   onSpeakerChange: (html: string, plain: string) => void;
+  onMoveNotesToTrash?: (fieldKey: NotesFieldKey) => void;
 }
 
 const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
@@ -222,6 +260,7 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
   onEditorBlur,
   onPreparationChange,
   onSpeakerChange,
+  onMoveNotesToTrash,
 }) => {
   return (
     <Box
@@ -247,6 +286,7 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
         onChange={onPreparationChange}
         onEditorFocus={onEditorFocus}
         onEditorBlur={onEditorBlur}
+        onMoveToTrash={onMoveNotesToTrash}
       />
       <NoteZone
         fieldKey="speakerNotesHtml"
@@ -259,6 +299,7 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
         onChange={onSpeakerChange}
         onEditorFocus={onEditorFocus}
         onEditorBlur={onEditorBlur}
+        onMoveToTrash={onMoveNotesToTrash}
       />
     </Box>
   );
