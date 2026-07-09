@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box } from '@mui/material';
 import { SlideElement, slideImageUrl } from '../../lib/presentationDeck';
+import { isFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
+import { captureEditorSelection } from '../../lib/presentationFontSize';
 import { isElementVisible } from '../../lib/presentationReveal';
 
 type DragMode = 'move' | 'resize';
@@ -55,6 +57,20 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       }
     }
   }, [element.type, element.html, editable, selected, element.id]);
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el || element.type !== 'text' || !editable || !selected) return undefined;
+    const capture = () => captureEditorSelection(el);
+    el.addEventListener('keyup', capture);
+    el.addEventListener('mouseup', capture);
+    document.addEventListener('selectionchange', capture);
+    return () => {
+      el.removeEventListener('keyup', capture);
+      el.removeEventListener('mouseup', capture);
+      document.removeEventListener('selectionchange', capture);
+    };
+  }, [element.type, editable, selected, element.id]);
 
   const pointerMove = useCallback(
     (e: PointerEvent) => {
@@ -168,12 +184,17 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
           <Box
             ref={textRef}
             data-text-edit
+            data-pres-rich-zone
+            data-pres-base-fs="22"
             contentEditable
             suppressContentEditableWarning
             onFocus={() => {
               if (textRef.current) onTextEditorFocus?.(textRef.current, element.id);
             }}
-            onBlur={() => {
+            onBlur={(e) => {
+              if (isFormatBarInteracting()) return;
+              const next = e.relatedTarget as HTMLElement | null;
+              if (next?.closest('[data-presentation-format-bar]')) return;
               if (textRef.current && onChange) {
                 onChange({ html: textRef.current.innerHTML });
               }
@@ -192,6 +213,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               '& p': { m: 0, mb: `${4 * scale}px` },
               '& li': { mb: `${2 * scale}px` },
               '& ul, & ol': { m: 0, pl: `${20 * scale}px` },
+              '& [data-pres-fs]': { lineHeight: 'inherit' },
             }}
           />
         ) : (
@@ -206,6 +228,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               pointerEvents: 'none',
               color: '#424242',
               '& p': { m: 0 },
+              '& [data-pres-fs]': { lineHeight: 'inherit' },
             }}
             dangerouslySetInnerHTML={{ __html: element.html || '<p>Text</p>' }}
           />

@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "title": "Präsentation",
+  "lessonPath": "J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.01 KI sucht Mensch",
+  "updatedAt": "2026-07-08T09:10:15.217Z",
+  "defaultTransition": "fade",
+  "slides": [
+    {
+      "id": "slide-1783501815217",
+      "title": "Folie 1",
+      "body": "",
+      "speakerNotes": "",
+      "order": 0,
+      "layout": "title-content",
+      "subtitle": "",
+      "bodyLeft": "",
+      "bodyRight": "",
+      "imagePath": "",
+      "imageCaption": "",
+      "bodyStyle": "plain",
+      "titleAlign": "left",
+      "accentColor": "#2E7D32",
+      "titleHtml": "<p>Folie 1</p>",
+      "bodyHtml": "",
+      "subtitleHtml": "",
+      "bodyLeftHtml": "",
+      "bodyRightHtml": "",
+      "imageCaptionHtml": "",
+      "speakerNotesHtml": "",
+      "elements": [],
+      "transition": "fade",
+      "revealEnabled": true
+    }
+  ]
+}

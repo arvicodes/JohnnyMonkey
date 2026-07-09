@@ -9,30 +9,29 @@ import {
   Menu,
   MenuItem,
   Snackbar,
-  TextField,
   Tooltip,
   Typography,
-  FormControlLabel,
-  Switch,
 } from '@mui/material';
 import {
   Add as AddIcon,
   ArrowBack as ArrowBackIcon,
   ContentCopy as CopyIcon,
   DeleteOutline as DeleteIcon,
-  ImageOutlined as ImageIcon,
   PlayArrow as PresentIcon,
   SaveOutlined as SaveIcon,
   Slideshow as SlideshowIcon,
-  TextFields as TextIcon,
   Undo as UndoIcon,
   Redo as RedoIcon,
   VisibilityOutlined as PreviewIcon,
 } from '@mui/icons-material';
+import PresentationEditorSettingsBar from '../components/presentation/PresentationEditorSettingsBar';
 import PresentationFormatBar from '../components/presentation/PresentationFormatBar';
 import PresentationFilmstrip from '../components/presentation/PresentationFilmstrip';
-import PresentationNotesPanel from '../components/presentation/PresentationNotesPanel';
+import PresentationNotesPanel, {
+  type NotesFieldKey,
+} from '../components/presentation/PresentationNotesPanel';
 import PresentationSlideView from '../components/presentation/PresentationSlideView';
+import { isFormatBarInteracting } from '../lib/presentationFormatBarGuard';
 import {
   createSlideFromLayout,
   SLIDE_LAYOUTS,
@@ -53,9 +52,8 @@ import {
   sortSlides,
   SLIDE_REF_HEIGHT,
   SLIDE_REF_WIDTH,
-  SLIDE_TRANSITIONS,
 } from '../lib/presentationDeck';
-import { JOHNNY_ACCENT_PRESETS, JOHNNY_PRESENTATION } from '../lib/presentationTheme';
+import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
 import { PRES_EDITOR_UI, presentationEditorBackTarget } from '../lib/presentationEditorUi';
 import {
   canRedoDeck,
@@ -71,7 +69,12 @@ import {
   getSlideMaxRevealSteps,
   stripAllRevealSteps,
 } from '../lib/presentationReveal';
-import type { SlideTransition } from '../lib/presentationTransitions';
+import {
+  applyFontSizePresetIndex,
+  bookmarkSelection,
+  getEditorFontSizeSteps,
+  nudgeFontSize,
+} from '../lib/presentationRichText';
 
 const PresentationEditorPage: React.FC = () => {
   const navigate = useNavigate();
@@ -151,6 +154,7 @@ const PresentationEditorPage: React.FC = () => {
     bodyRightHtml: 'bodyRight',
     imageCaptionHtml: 'imageCaption',
     speakerNotesHtml: 'speakerNotes',
+    preparationHtml: 'preparationNotes',
   };
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -332,6 +336,39 @@ const PresentationEditorPage: React.FC = () => {
       }
 
       const mod = e.metaKey || e.ctrlKey;
+
+      const editorFocused =
+        activeEditor &&
+        (target === activeEditor || activeEditor.contains(target) || target.isContentEditable);
+
+      if (editorFocused && mod && activeEditor) {
+        if (e.key === ']' && !e.altKey) {
+          e.preventDefault();
+          bookmarkSelection(activeEditor);
+          nudgeFontSize(activeEditor, 1);
+          commitEditorState();
+          return;
+        }
+        if (e.key === '[' && !e.altKey) {
+          e.preventDefault();
+          bookmarkSelection(activeEditor);
+          nudgeFontSize(activeEditor, -1);
+          commitEditorState();
+          return;
+        }
+        if (e.altKey && /^[1-9]$/.test(e.key)) {
+          const idx = parseInt(e.key, 10) - 1;
+          const steps = getEditorFontSizeSteps(activeEditor);
+          if (idx < steps.length) {
+            e.preventDefault();
+            bookmarkSelection(activeEditor);
+            applyFontSizePresetIndex(activeEditor, idx);
+            commitEditorState();
+          }
+          return;
+        }
+      }
+
       if (!mod) return;
 
       if (e.key === 'z' && !e.shiftKey) {
@@ -345,7 +382,7 @@ const PresentationEditorPage: React.FC = () => {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [previewMode, undo, redo]);
+  }, [previewMode, undo, redo, activeEditor, commitEditorState]);
 
   const canUndo = canUndoDeck(historyRef.current);
   const canRedo = canRedoDeck(historyRef.current);
@@ -554,13 +591,20 @@ const PresentationEditorPage: React.FC = () => {
   }
 
   const formatContextLabel =
-    activeHtmlField === 'speakerNotesHtml'
-      ? 'Notizen'
-      : activeHtmlField?.startsWith('element:')
-        ? 'Element'
-        : activeHtmlField
-          ? 'Folie'
-          : undefined;
+    activeHtmlField === 'preparationHtml'
+      ? 'Vorbereitung'
+      : activeHtmlField === 'speakerNotesHtml'
+        ? 'Sprechakte'
+        : activeHtmlField?.startsWith('element:')
+          ? 'Element'
+          : activeHtmlField
+            ? 'Folie'
+            : undefined;
+
+  const notesActiveField: NotesFieldKey | null =
+    activeHtmlField === 'preparationHtml' || activeHtmlField === 'speakerNotesHtml'
+      ? activeHtmlField
+      : null;
 
   const sortedSlides = sortSlides(deck.slides);
 
@@ -688,70 +732,117 @@ const PresentationEditorPage: React.FC = () => {
             </span>
           </Tooltip>
 
-          <Box sx={{ flex: 1 }} />
+          <Divider orientation="vertical" flexItem sx={{ borderColor: PRES_EDITOR_UI.barBorder, mx: 0.25 }} />
 
-          <Button
-            size="small"
-            variant={previewMode ? 'contained' : 'outlined'}
-            startIcon={<PreviewIcon sx={{ fontSize: 15 }} />}
-            onClick={() => setPreviewMode((v) => !v)}
+          {!previewMode && normalizedActive && (
+            <PresentationEditorSettingsBar
+              deck={deck}
+              slide={normalizedActive}
+              selectedElement={selectedElement ?? null}
+              selectedElementId={selectedElementId}
+              showLayoutImage={showLayoutImage}
+              onDeckTitleChange={(title) => scheduleSave({ ...deck, title })}
+              onApplyLayout={applyLayout}
+              onUpdateSlide={updateSlide}
+              onDeckTransitionChange={(t) => scheduleSave({ ...deck, defaultTransition: t })}
+              onAssignReveal={assignRevealToBody}
+              onStripReveal={() => {
+                if (!activeHtmlField || !normalizedActive) return;
+                const html = stripAllRevealSteps(
+                  (normalizedActive[activeHtmlField as keyof PresentationSlide] as string) || ''
+                );
+                const plainKey = HTML_TO_PLAIN[activeHtmlField];
+                updateSlide({
+                  [activeHtmlField]: html,
+                  ...(plainKey ? { [plainKey]: htmlToPlain(html) } : {}),
+                } as Partial<PresentationSlide>);
+              }}
+              onAddTextElement={addTextElement}
+              onAddImageElement={() => {
+                imageTargetRef.current = 'element';
+                imageInputRef.current?.click();
+              }}
+              onAddLayoutImage={() => {
+                imageTargetRef.current = 'layout';
+                imageInputRef.current?.click();
+              }}
+              onSelectElement={setSelectedElementId}
+              onUpdateElement={updateElement}
+              onDeleteElement={deleteElement}
+            />
+          )}
+
+          {saving && <CircularProgress size={14} sx={{ color: PRES_EDITOR_UI.accent, flexShrink: 0 }} />}
+
+          <Box
             sx={{
-              textTransform: 'none',
-              fontSize: 12,
-              minWidth: 0,
-              px: 1.25,
-              py: 0.35,
-              borderColor: PRES_EDITOR_UI.barBorder,
-              color: previewMode ? '#fff' : PRES_EDITOR_UI.textMuted,
-              bgcolor: previewMode ? PRES_EDITOR_UI.accent : 'transparent',
-              '&:hover': {
-                borderColor: PRES_EDITOR_UI.accent,
-                bgcolor: previewMode ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.accentSoft,
-              },
+              display: 'flex',
+              flexShrink: 0,
+              alignItems: 'stretch',
+              borderRadius: 1,
+              overflow: 'hidden',
+              border: `1px solid ${PRES_EDITOR_UI.barBorder}`,
+              bgcolor: '#fff',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
             }}
           >
-            Vorschau
-          </Button>
-
-          {saving && <CircularProgress size={16} sx={{ color: PRES_EDITOR_UI.accent, ml: 0.5 }} />}
-
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<SaveIcon sx={{ fontSize: 15 }} />}
-            onClick={() => {
-              const v = ++saveVersionRef.current;
-              void persistDeck(deck, v);
-            }}
-            sx={{
-              textTransform: 'none',
-              fontSize: 12,
-              minWidth: 0,
-              px: 1.25,
-              borderColor: PRES_EDITOR_UI.barBorder,
-              color: PRES_EDITOR_UI.textMuted,
-              '&:hover': { borderColor: PRES_EDITOR_UI.accent, bgcolor: PRES_EDITOR_UI.accentSoft },
-            }}
-          >
-            Speichern
-          </Button>
-
-          <Button
-            size="small"
-            variant="contained"
-            startIcon={<PresentIcon sx={{ fontSize: 15 }} />}
-            onClick={() => window.open(presentationPresentUrl(lessonPath, groupId || undefined), '_blank')}
-            sx={{
-              textTransform: 'none',
-              fontSize: 12,
-              px: 1.5,
-              bgcolor: PRES_EDITOR_UI.accent,
-              boxShadow: 'none',
-              '&:hover': { bgcolor: JOHNNY_PRESENTATION.primaryDark, boxShadow: 'none' },
-            }}
-          >
-            Präsentieren
-          </Button>
+            <Tooltip title={previewMode ? 'Vorschau beenden' : 'Vorschau'}>
+              <IconButton
+                size="small"
+                onClick={() => setPreviewMode((v) => !v)}
+                sx={{
+                  width: 34,
+                  height: 30,
+                  borderRadius: 0,
+                  color: previewMode ? '#fff' : PRES_EDITOR_UI.textMuted,
+                  bgcolor: previewMode ? PRES_EDITOR_UI.accent : 'transparent',
+                  '&:hover': {
+                    bgcolor: previewMode ? JOHNNY_PRESENTATION.primaryDark : PRES_EDITOR_UI.accentSoft,
+                  },
+                }}
+              >
+                <PreviewIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Divider orientation="vertical" flexItem sx={{ borderColor: PRES_EDITOR_UI.barBorder }} />
+            <Tooltip title="Speichern">
+              <IconButton
+                size="small"
+                onClick={() => {
+                  const v = ++saveVersionRef.current;
+                  void persistDeck(deck, v);
+                }}
+                sx={{
+                  width: 34,
+                  height: 30,
+                  borderRadius: 0,
+                  color: PRES_EDITOR_UI.textMuted,
+                  '&:hover': { bgcolor: PRES_EDITOR_UI.accentSoft, color: PRES_EDITOR_UI.accent },
+                }}
+              >
+                <SaveIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Divider orientation="vertical" flexItem sx={{ borderColor: PRES_EDITOR_UI.barBorder }} />
+            <Tooltip title="Präsentieren">
+              <IconButton
+                size="small"
+                onClick={() =>
+                  window.open(presentationPresentUrl(lessonPath, groupId || undefined), '_blank')
+                }
+                sx={{
+                  width: 34,
+                  height: 30,
+                  borderRadius: 0,
+                  color: '#fff',
+                  bgcolor: PRES_EDITOR_UI.accent,
+                  '&:hover': { bgcolor: JOHNNY_PRESENTATION.primaryDark },
+                }}
+              >
+                <PresentIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
         </Box>
 
         {!previewMode && (
@@ -768,7 +859,7 @@ const PresentationEditorPage: React.FC = () => {
             contextLabel={formatContextLabel}
             onEditorChanged={flushActiveEditor}
             onInsertImage={
-              activeHtmlField === 'speakerNotesHtml'
+              activeHtmlField === 'speakerNotesHtml' || activeHtmlField === 'preparationHtml'
                 ? undefined
                 : () => {
                     imageTargetRef.current = 'inline';
@@ -903,352 +994,38 @@ const PresentationEditorPage: React.FC = () => {
               </Box>
             )}
           </Box>
-
-          {normalizedActive && !previewMode && (
-            <PresentationNotesPanel
-              html={normalizedActive.speakerNotesHtml}
-              plain={normalizedActive.speakerNotes}
-              active={!previewMode && activeHtmlField === 'speakerNotesHtml'}
-              readOnly={previewMode}
-              onEditorFocus={(el) => {
-                setActiveEditor(el);
-                setActiveHtmlField('speakerNotesHtml');
-                setSelectedElementId(null);
-              }}
-              onEditorBlur={() => {
-                if (activeHtmlField === 'speakerNotesHtml') {
-                  setActiveEditor(null);
-                  setActiveHtmlField(null);
-                }
-              }}
-              onChange={(html, plain) =>
-                updateSlide({ speakerNotesHtml: html, speakerNotes: plain })
-              }
-            />
-          )}
         </Box>
 
-        {!previewMode && (
-        <Box
-          sx={{
-            width: 248,
-            bgcolor: PRES_EDITOR_UI.panelBg,
-            borderLeft: `1px solid ${PRES_EDITOR_UI.panelBorder}`,
-            overflowY: 'auto',
-            flexShrink: 0,
-            color: PRES_EDITOR_UI.text,
-          }}
-        >
-          <Typography
-            variant="overline"
-            sx={{ display: 'block', px: 1.5, pt: 1.5, pb: 0.5, color: '#888', fontSize: 10, letterSpacing: 1 }}
-          >
-            Präsentation
-          </Typography>
-          <Box sx={{ px: 1.5, pb: 1 }}>
-            <TextField
-              size="small"
-              fullWidth
-              placeholder="Titel der Präsentation"
-              value={deck.title}
-              onChange={(e) => scheduleSave({ ...deck, title: e.target.value })}
-              sx={{
-                '& .MuiInputBase-root': { fontSize: 13, color: '#333', bgcolor: '#fafafa' },
-                '& .MuiOutlinedInput-notchedOutline': { borderColor: '#ccc' },
-              }}
-            />
-          </Box>
-
-          <Divider sx={{ borderColor: '#e0e0e0' }} />
-
-          <Typography
-            variant="overline"
-            sx={{ display: 'block', px: 1.5, pt: 1.5, pb: 0.5, color: '#888', fontSize: 10, letterSpacing: 1 }}
-          >
-            Layout
-          </Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 0.5, px: 1.5, pb: 1 }}>
-            {SLIDE_LAYOUTS.map((l) => {
-              const active = normalizedActive?.layout === l.id;
-              return (
-                <Box
-                  key={l.id}
-                  onClick={() => applyLayout(l.id)}
-                  sx={{
-                    p: 0.75,
-                    borderRadius: 1,
-                    cursor: 'pointer',
-                    border: '1px solid',
-                    borderColor: active ? JOHNNY_PRESENTATION.primary : '#ccc',
-                    bgcolor: active ? '#e8f5e9' : '#fafafa',
-                    '&:hover': { borderColor: JOHNNY_PRESENTATION.primary },
-                  }}
-                >
-                  <Typography sx={{ fontSize: 11, fontWeight: 600, color: active ? JOHNNY_PRESENTATION.primary : '#444' }}>
-                    {l.label}
-                  </Typography>
-                  <Typography sx={{ fontSize: 9, color: '#888', lineHeight: 1.2 }}>{l.hint}</Typography>
-                </Box>
-              );
-            })}
-          </Box>
-
-          <Divider sx={{ borderColor: '#e0e0e0' }} />
-
-          <Typography
-            variant="overline"
-            sx={{ display: 'block', px: 1.5, pt: 1.5, pb: 0.5, color: '#888', fontSize: 10, letterSpacing: 1 }}
-          >
-            Übergang
-          </Typography>
-          <Box sx={{ px: 1.5, pb: 1 }}>
-            <TextField
-              select
-              size="small"
-              fullWidth
-              label="Folie"
-              value={normalizedActive?.transition || 'fade'}
-              onChange={(e) => updateSlide({ transition: e.target.value as SlideTransition })}
-              sx={{
-                mb: 1,
-                '& .MuiInputBase-root': { fontSize: 12, color: '#333', bgcolor: '#fafafa' },
-                '& .MuiInputLabel-root': { color: '#666', fontSize: 12 },
-                '& .MuiOutlinedInput-notchedOutline': { borderColor: '#ccc' },
-              }}
-            >
-              {SLIDE_TRANSITIONS.map((t) => (
-                <MenuItem key={t.id} value={t.id} dense>
-                  {t.label}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              select
-              size="small"
-              fullWidth
-              label="Standard"
-              value={deck.defaultTransition || 'fade'}
-              onChange={(e) =>
-                scheduleSave({ ...deck, defaultTransition: e.target.value as SlideTransition })
+        {normalizedActive && !previewMode && (
+          <PresentationNotesPanel
+            preparationHtml={normalizedActive.preparationHtml}
+            preparationPlain={normalizedActive.preparationNotes}
+            speakerHtml={normalizedActive.speakerNotesHtml}
+            speakerPlain={normalizedActive.speakerNotes}
+            activeField={notesActiveField}
+            readOnly={previewMode}
+            onEditorFocus={(fieldKey, el) => {
+              setActiveEditor(el);
+              setActiveHtmlField(fieldKey);
+              setSelectedElementId(null);
+            }}
+            onEditorBlur={() => {
+              if (isFormatBarInteracting()) return;
+              if (
+                activeHtmlField === 'speakerNotesHtml' ||
+                activeHtmlField === 'preparationHtml'
+              ) {
+                setActiveEditor(null);
+                setActiveHtmlField(null);
               }
-              sx={{
-                '& .MuiInputBase-root': { fontSize: 12, color: '#333', bgcolor: '#fafafa' },
-                '& .MuiInputLabel-root': { color: '#666', fontSize: 12 },
-                '& .MuiOutlinedInput-notchedOutline': { borderColor: '#ccc' },
-              }}
-            >
-              {SLIDE_TRANSITIONS.map((t) => (
-                <MenuItem key={t.id} value={t.id} dense>
-                  {t.label}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Box>
-
-          <Divider sx={{ borderColor: '#e0e0e0' }} />
-
-          <Typography
-            variant="overline"
-            sx={{ display: 'block', px: 1.5, pt: 1.5, pb: 0.5, color: '#888', fontSize: 10, letterSpacing: 1 }}
-          >
-            Einblenden
-          </Typography>
-          <Box sx={{ px: 1.5, pb: 1 }}>
-            <FormControlLabel
-              control={
-                <Switch
-                  size="small"
-                  checked={normalizedActive?.revealEnabled !== false}
-                  onChange={(e) => updateSlide({ revealEnabled: e.target.checked })}
-                />
-              }
-              label={<Typography sx={{ fontSize: 12, color: '#444' }}>Schrittweise einblenden</Typography>}
-            />
-            <Button
-              fullWidth
-              size="small"
-              variant="outlined"
-              onClick={assignRevealToBody}
-              sx={{ fontSize: 11, color: '#555', borderColor: '#ccc', mb: 0.5 }}
-            >
-              Absätze auto-nummerieren
-            </Button>
-            <Button
-              fullWidth
-              size="small"
-              onClick={() => {
-                if (!activeHtmlField || !normalizedActive) return;
-                const html = stripAllRevealSteps(
-                  (normalizedActive[activeHtmlField as keyof PresentationSlide] as string) || ''
-                );
-                const plainKey = HTML_TO_PLAIN[activeHtmlField];
-                updateSlide({
-                  [activeHtmlField]: html,
-                  ...(plainKey ? { [plainKey]: htmlToPlain(html) } : {}),
-                } as Partial<PresentationSlide>);
-              }}
-              sx={{ fontSize: 11, color: '#666' }}
-            >
-              Schritte entfernen
-            </Button>
-            <Typography sx={{ fontSize: 10, color: '#666', mt: 0.5 }}>
-              {normalizedActive
-                ? `${getSlideMaxRevealSteps(normalizedActive)} Einblend-Schritte auf dieser Folie`
-                : ''}
-            </Typography>
-          </Box>
-
-          <Divider sx={{ borderColor: '#e0e0e0' }} />
-
-          <Typography
-            variant="overline"
-            sx={{ display: 'block', px: 1.5, pt: 1.5, pb: 0.5, color: '#888', fontSize: 10, letterSpacing: 1 }}
-          >
-            Bilder & Elemente
-          </Typography>
-          <Box sx={{ px: 1.5, pb: 1 }}>
-            <Typography sx={{ fontSize: 10, color: '#777', mb: 0.75 }}>
-              Elemente auf der Folie ziehen · Ecke ziehen = Größe
-            </Typography>
-            <Button
-              fullWidth
-              size="small"
-              variant="outlined"
-              startIcon={<TextIcon sx={{ fontSize: 16 }} />}
-              onClick={addTextElement}
-              sx={{ fontSize: 11, color: '#555', borderColor: '#ccc', mb: 0.75 }}
-            >
-              Textfeld
-            </Button>
-            <Button
-              fullWidth
-              size="small"
-              variant="outlined"
-              startIcon={<ImageIcon sx={{ fontSize: 16 }} />}
-              onClick={() => {
-                imageTargetRef.current = 'element';
-                imageInputRef.current?.click();
-              }}
-              sx={{ fontSize: 11, color: '#555', borderColor: '#ccc', mb: 1 }}
-            >
-              Bild
-            </Button>
-            {(normalizedActive?.elements || []).map((el) => (
-              <Box
-                key={el.id}
-                onClick={() => setSelectedElementId(el.id)}
-                sx={{
-                  p: 0.75,
-                  mb: 0.5,
-                  borderRadius: 1,
-                  border: '1px solid',
-                  borderColor: selectedElementId === el.id ? JOHNNY_PRESENTATION.primary : '#ccc',
-                  bgcolor: '#fafafa',
-                  cursor: 'pointer',
-                }}
-              >
-                <Typography sx={{ fontSize: 11, color: '#444' }}>
-                  {el.type === 'image' ? '🖼 Bild' : el.type} · Schritt {el.revealStep ?? 0}
-                </Typography>
-              </Box>
-            ))}
-            {selectedElement && (
-              <Box sx={{ mt: 1 }}>
-                {(['x', 'y', 'w', 'h'] as const).map((key) => (
-                  <TextField
-                    key={key}
-                    size="small"
-                    type="number"
-                    label={key.toUpperCase()}
-                    value={selectedElement[key]}
-                    onChange={(e) =>
-                      updateElement(selectedElement.id, { [key]: Number(e.target.value) })
-                    }
-                    sx={{
-                      width: '48%',
-                      mr: key === 'x' || key === 'w' ? '4%' : 0,
-                      mb: 0.5,
-                      '& .MuiInputBase-root': { fontSize: 11, color: '#333' },
-                      '& .MuiInputLabel-root': { fontSize: 11 },
-                    }}
-                  />
-                ))}
-                <TextField
-                  size="small"
-                  type="number"
-                  fullWidth
-                  label="Einblend-Schritt"
-                  value={selectedElement.revealStep ?? 0}
-                  onChange={(e) =>
-                    updateElement(selectedElement.id, { revealStep: Number(e.target.value) })
-                  }
-                  sx={{
-                    mb: 0.5,
-                    '& .MuiInputBase-root': { fontSize: 11, color: PRES_EDITOR_UI.text },
-                    '& .MuiInputLabel-root': { fontSize: 11 },
-                  }}
-                />
-                <Button
-                  size="small"
-                  color="error"
-                  fullWidth
-                  onClick={() => deleteElement(selectedElement.id)}
-                  sx={{ fontSize: 11 }}
-                >
-                  Element löschen
-                </Button>
-              </Box>
-            )}
-          </Box>
-
-          {showLayoutImage && (
-            <>
-              <Divider sx={{ borderColor: '#e0e0e0' }} />
-              <Box sx={{ px: 1.5, py: 1 }}>
-                <Button
-                  fullWidth
-                  size="small"
-                  variant="outlined"
-                  startIcon={<ImageIcon sx={{ fontSize: 16 }} />}
-                  onClick={() => {
-                    imageTargetRef.current = 'layout';
-                    imageInputRef.current?.click();
-                  }}
-                  sx={{ fontSize: 11, color: '#555', borderColor: '#ccc' }}
-                >
-                  Bild für Layout
-                </Button>
-              </Box>
-            </>
-          )}
-
-          <Divider sx={{ borderColor: '#e0e0e0' }} />
-
-          <Typography
-            variant="overline"
-            sx={{ display: 'block', px: 1.5, pt: 1.5, pb: 0.5, color: '#888', fontSize: 10, letterSpacing: 1 }}
-          >
-            Akzentfarbe
-          </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, px: 1.5, pb: 1 }}>
-            {JOHNNY_ACCENT_PRESETS.map((c) => (
-              <Box
-                key={c}
-                onClick={() => updateSlide({ accentColor: c })}
-                sx={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: '50%',
-                  bgcolor: c,
-                  cursor: 'pointer',
-                  border:
-                    normalizedActive?.accentColor === c ? `2px solid ${PRES_EDITOR_UI.accent}` : '2px solid transparent',
-                }}
-              />
-            ))}
-          </Box>
-
-        </Box>
+            }}
+            onPreparationChange={(html, plain) =>
+              updateSlide({ preparationHtml: html, preparationNotes: plain })
+            }
+            onSpeakerChange={(html, plain) =>
+              updateSlide({ speakerNotesHtml: html, speakerNotes: plain })
+            }
+          />
         )}
       </Box>
 

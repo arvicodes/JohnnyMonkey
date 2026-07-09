@@ -5434,6 +5434,13 @@ const MOVEMENT_GAMES_OUTDOOR: MovementGameCard[] = [
 const LESSON_FOLDER_INPUT_DOCS_RE = /\.(pdf|pptx?|odp|docx?|odt|rtf)$/i;
 /** Gängige Bildformate – für die Stundenordner-Dokumentenliste. */
 const LESSON_FOLDER_IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|svg|bmp|heic|avif|tiff?)$/i;
+/** Interne Johnny-Präsentationsdateien – nicht als Arbeitsmaterial listen. */
+const LESSON_PRESENTATION_SYSTEM_FILE_RE =
+  /^Praesentation(\.|_)|^Praesentation_(Original|bearbeitet)\.pdf$/i;
+
+function isLessonPresentationSystemFile(name: string): boolean {
+  return LESSON_PRESENTATION_SYSTEM_FILE_RE.test((name || '').trim());
+}
 
 /** Rohmaterial-Archiv (z. B. „ROhdateine“ / „Rohdateien“) – Inhalt nicht in Stunden-Materiallisten. */
 const LESSON_ROHDATEI_ARCHIVE_FOLDER_NAMES = new Set(['rohdateine', 'rohdateien']);
@@ -18640,6 +18647,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 /** Materialien für den gelben Arbeitsauftrag-Block – nicht Input-Dokumente (PDF/Word/…) noch Bilder. */
                 const abFiles = allFiles.filter((f: any) => {
                   const name = f.name || '';
+                  if (isLessonPresentationSystemFile(name)) return false;
                   if (isABByName(name)) return true;
                   if (LESSON_FOLDER_INPUT_DOCS_RE.test(name)) return false;
                   if (LESSON_FOLDER_IMAGE_EXT_RE.test(name)) return false;
@@ -18647,10 +18655,15 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 });
                 /** Unterrichtsmaterialien im Stundenbaum: Präsentationen, Dokumente, Bilder (inkl. Unterordner wie 01a/01b). */
                 const lessonFolderPdfFiles = allFiles.filter(
-                  (f: any) => LESSON_FOLDER_INPUT_DOCS_RE.test(f.name || '') || LESSON_FOLDER_IMAGE_EXT_RE.test(f.name || '')
+                  (f: any) =>
+                    !isLessonPresentationSystemFile(f.name || '') &&
+                    (LESSON_FOLDER_INPUT_DOCS_RE.test(f.name || '') ||
+                      LESSON_FOLDER_IMAGE_EXT_RE.test(f.name || ''))
                 );
                 const planHasArbeitsauftrag = lessonPlan.some((i) => i.type === 'arbeitsauftrag');
                 const planHasInput = lessonPlan.some((i) => i.type === 'input');
+                const planOnlyPresentation =
+                  lessonPlan.length > 0 && lessonPlan.every((i) => i.type === 'praesentation');
                 const bgSteps = splitAnweisungenIntoBulletSteps(instructions?.anweisungen || '');
                 const bgAbPhaseSteps =
                   planHasArbeitsauftrag && planHasInput
@@ -19785,6 +19798,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     
                     {/* Lehrer-Anweisungen – im Erstellen-Modus mit Input-Baustein siehe grüne Input-Box */}
                     {instructions?.anweisungen &&
+                      !planOnlyPresentation &&
                       lessonPlanViewMode !== 'background' &&
                       !(planHasInput && (lessonPlanViewMode === 'create' || lessonPlanViewMode === 'run')) && (
                       <Box sx={{ fontSize: LESSON_MODAL_FONT_SIZE }}>
@@ -19868,7 +19882,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     {/* Folien/PDF-Listen nur bei Input-Baustein in der Input-Karte */}
     
                     {/* Arbeitsblatt (AB) – ausgeblendet, wenn „Arbeitsauftrag“ im Plan (dann oben im gelben Block; in „Laptop“ separat) */}
-                    {abFiles.length > 0 && !planHasArbeitsauftrag && lessonPlanViewMode !== 'background' && (
+                    {abFiles.length > 0 && !planHasArbeitsauftrag && !planOnlyPresentation && lessonPlanViewMode !== 'background' && (
                       <Box>
                         {(instructions?.abAnleitung || isEditing('abAnleitung')) && (
                           <Box sx={{ position: 'relative', bgcolor: '#fff8e1', borderRadius: 0, p: 1.5, pr: 5, border: '1px solid #ffe082', borderBottom: 'none' }}>

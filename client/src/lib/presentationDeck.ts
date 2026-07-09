@@ -58,6 +58,7 @@ export interface PresentationSlide {
   title: string;
   body: string;
   speakerNotes: string;
+  preparationNotes?: string;
   order: number;
   layout?: SlideLayout;
   subtitle?: string;
@@ -75,6 +76,7 @@ export interface PresentationSlide {
   bodyRightHtml?: string;
   imageCaptionHtml?: string;
   speakerNotesHtml?: string;
+  preparationHtml?: string;
   elements?: SlideElement[];
   transition?: SlideTransition;
   revealEnabled?: boolean;
@@ -167,6 +169,8 @@ export function normalizeSlide(slide: PresentationSlide): PresentationSlide {
     bodyRightHtml: slide.bodyRightHtml ?? textToHtml(slide.bodyRight || ''),
     imageCaptionHtml: slide.imageCaptionHtml ?? textToHtml(slide.imageCaption || ''),
     speakerNotesHtml: slide.speakerNotesHtml ?? textToHtml(slide.speakerNotes || ''),
+    preparationNotes: slide.preparationNotes ?? '',
+    preparationHtml: slide.preparationHtml ?? textToHtml(slide.preparationNotes || ''),
     elements: slide.elements ?? [],
     transition: slide.transition ?? 'fade',
     revealEnabled: slide.revealEnabled !== false,

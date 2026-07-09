@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Box,
   Divider,
@@ -22,26 +22,26 @@ import {
   FormatColorText,
   ImageOutlined,
   VisibilityOutlined,
+  Remove as RemoveIcon,
+  Add as AddIcon,
 } from '@mui/icons-material';
 import { HIGHLIGHT_PRESETS, TEXT_COLOR_PRESETS } from '../../lib/presentationTheme';
+import { setFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
 import { markSelectionRevealStep, nextRevealStepForEditor } from '../../lib/presentationReveal';
 import {
-  applyFontSize,
+  applyFontSizePx,
   applyHighlightColor,
   applyTextColor,
   bookmarkSelection,
   clearInlineFormatting,
   execFormat,
+  getEditorFontSizeSteps,
+  getSelectionFontSizePx,
+  nudgeFontSize,
+  stashEditorSelection,
 } from '../../lib/presentationRichText';
 
-const FONT_SIZES = [
-  { label: 'Klein', value: '2' },
-  { label: 'Normal', value: '3' },
-  { label: 'Groß', value: '4' },
-  { label: 'Titel', value: '5' },
-  { label: 'Hero', value: '6' },
-  { label: 'Riesig', value: '7' },
-];
+const MOD_LABEL = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform) ? '⌘' : 'Strg';
 
 interface PresentationFormatBarProps {
   activeEditor: HTMLElement | null;
@@ -60,6 +60,35 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
 }) => {
   const [colorAnchor, setColorAnchor] = useState<HTMLElement | null>(null);
   const [highlightAnchor, setHighlightAnchor] = useState<HTMLElement | null>(null);
+  const [fontPx, setFontPx] = useState<number | ''>('');
+
+  const fontSteps = activeEditor ? getEditorFontSizeSteps(activeEditor) : [];
+
+  const syncFontSize = useCallback(() => {
+    if (!activeEditor) {
+      setFontPx('');
+      return;
+    }
+    setFontPx(getSelectionFontSizePx(activeEditor) ?? '');
+  }, [activeEditor]);
+
+  useEffect(() => {
+    syncFontSize();
+    if (!activeEditor) return undefined;
+    const persistSelection = () => bookmarkSelection(activeEditor);
+    const onSelectionChange = () => {
+      bookmarkSelection(activeEditor);
+      syncFontSize();
+    };
+    activeEditor.addEventListener('keyup', persistSelection);
+    activeEditor.addEventListener('mouseup', persistSelection);
+    document.addEventListener('selectionchange', onSelectionChange);
+    return () => {
+      activeEditor.removeEventListener('keyup', persistSelection);
+      activeEditor.removeEventListener('mouseup', persistSelection);
+      document.removeEventListener('selectionchange', onSelectionChange);
+    };
+  }, [activeEditor, syncFontSize]);
 
   const btnSx = {
     color: disabled || !activeEditor ? '#999' : '#444',
@@ -67,16 +96,51 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     '&:hover': { bgcolor: '#e8e8e8' },
   };
 
-  const applyAndNotify = (fn: () => void) => {
-    bookmarkSelection(activeEditor);
+  const applyAndNotify = (fn: () => void, refreshSize = false) => {
+    if (!activeEditor) return;
+    setFormatBarInteracting(true);
+    stashEditorSelection(activeEditor);
     fn();
+    if (refreshSize) syncFontSize();
     onEditorChanged?.();
+    window.setTimeout(() => setFormatBarInteracting(false), 0);
+  };
+
+  const preventToolbarFocus = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const isSelectTarget = (target: EventTarget | null) => {
+    const el = target as HTMLElement | null;
+    return !!el?.closest('.MuiSelect-root, .MuiPopover-root, .MuiMenu-root, [role="listbox"]');
+  };
+
+  const handleNudge = (dir: 1 | -1) => {
+    setFormatBarInteracting(true);
+    stashEditorSelection(activeEditor);
+    const px = nudgeFontSize(activeEditor, dir);
+    if (px != null) {
+      syncFontSize();
+      onEditorChanged?.();
+    }
+    window.setTimeout(() => setFormatBarInteracting(false), 0);
+  };
+
+  const beginFormatBarInteraction = () => {
+    setFormatBarInteracting(true);
+    stashEditorSelection(activeEditor);
   };
 
   return (
     <Box
+      data-presentation-format-bar
       sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexWrap: 'wrap' }}
-      onMouseDown={() => bookmarkSelection(activeEditor)}
+      onPointerDownCapture={() => beginFormatBarInteraction()}
+      onMouseDownCapture={() => stashEditorSelection(activeEditor)}
+      onMouseDown={(e) => {
+        if (!isSelectTarget(e.target)) preventToolbarFocus(e);
+      }}
     >
       {contextLabel && (
         <Typography variant="caption" sx={{ color: '#2E7D32', fontSize: 10, fontWeight: 700, mr: 0.5, minWidth: 52 }}>
@@ -156,26 +220,71 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
 
       <Divider orientation="vertical" flexItem sx={{ borderColor: '#ccc', mx: 0.25 }} />
 
+      <Tooltip title={`Kleiner (${MOD_LABEL}+[)`}>
+        <span>
+          <IconButton
+            size="small"
+            disabled={disabled || !activeEditor}
+            sx={{ ...btnSx, width: 26, height: 26 }}
+            onMouseDown={(e) => {
+              preventToolbarFocus(e);
+              if (disabled || !activeEditor) return;
+              handleNudge(-1);
+            }}
+          >
+            <RemoveIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </span>
+      </Tooltip>
+
       <Select
         size="small"
-        defaultValue="3"
+        value={fontPx === '' ? '' : String(fontPx)}
+        displayEmpty
         disabled={disabled || !activeEditor}
-        onChange={(e) => applyAndNotify(() => applyFontSize(activeEditor, e.target.value))}
+        onChange={(e) => {
+          const px = parseInt(e.target.value, 10);
+          if (!Number.isFinite(px)) return;
+          applyAndNotify(() => applyFontSizePx(activeEditor, px), true);
+        }}
         onMouseDown={(e) => e.stopPropagation()}
+        renderValue={(v) => (v ? `${v} px` : 'Größe')}
         sx={{
           color: '#444',
           fontSize: 11,
           height: 28,
-          minWidth: 72,
+          minWidth: 76,
           '.MuiOutlinedInput-notchedOutline': { borderColor: '#ccc' },
         }}
       >
-        {FONT_SIZES.map((f) => (
-          <MenuItem key={f.value} value={f.value} dense>
-            {f.label}
+        <MenuItem value="" disabled dense>
+          Schriftgröße
+        </MenuItem>
+        {fontSteps.map((px) => (
+          <MenuItem key={px} value={String(px)} dense>
+            {px} px
           </MenuItem>
         ))}
       </Select>
+
+      <Tooltip title={`Größer (${MOD_LABEL}+])`}>
+        <span>
+          <IconButton
+            size="small"
+            disabled={disabled || !activeEditor}
+            sx={{ ...btnSx, width: 26, height: 26 }}
+            onMouseDown={(e) => {
+              preventToolbarFocus(e);
+              if (disabled || !activeEditor) return;
+              handleNudge(1);
+            }}
+          >
+            <AddIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </span>
+      </Tooltip>
+
+      <Divider orientation="vertical" flexItem sx={{ borderColor: '#ccc', mx: 0.25 }} />
 
       <Tooltip title="Textfarbe">
         <span>
@@ -196,10 +305,13 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
       <Popover
         open={Boolean(colorAnchor)}
         anchorEl={colorAnchor}
-        onClose={() => setColorAnchor(null)}
+        onClose={() => {
+          setColorAnchor(null);
+          setFormatBarInteracting(false);
+        }}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
       >
-        <Box sx={{ p: 1, maxWidth: 200 }}>
+        <Box data-presentation-format-ui sx={{ p: 1, maxWidth: 200 }}>
           <Box
             onMouseDown={(e) => {
               e.preventDefault();
@@ -265,10 +377,13 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
       <Popover
         open={Boolean(highlightAnchor)}
         anchorEl={highlightAnchor}
-        onClose={() => setHighlightAnchor(null)}
+        onClose={() => {
+          setHighlightAnchor(null);
+          setFormatBarInteracting(false);
+        }}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
       >
-        <Box sx={{ p: 1, maxWidth: 200 }}>
+        <Box data-presentation-format-ui sx={{ p: 1, maxWidth: 200 }}>
           <Box
             onMouseDown={(e) => {
               e.preventDefault();
@@ -355,11 +470,6 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         </span>
       </Tooltip>
 
-      {!activeEditor && (
-        <Typography variant="caption" sx={{ color: '#888', ml: 0.5, fontSize: 10 }}>
-          Folie oder Notizen anklicken
-        </Typography>
-      )}
     </Box>
   );
 };
