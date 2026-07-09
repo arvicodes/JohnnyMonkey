@@ -1,6 +1,22 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
+import {
+  closestCenter,
+  DndContext,
+  DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Box, IconButton, Tooltip } from '@mui/material';
-import { Add as AddIcon } from '@mui/icons-material';
+import { Add as AddIcon, DragIndicator as DragIcon } from '@mui/icons-material';
 import {
   normalizeSlide,
   PresentationSlide,
@@ -15,6 +31,7 @@ interface PresentationFilmstripProps {
   activeId: string | null;
   onSelect: (id: string) => void;
   onAdd: () => void;
+  onReorder: (activeId: string, overId: string) => void;
 }
 
 const THUMB_W = PRES_EDITOR_UI.filmstripThumbWidth;
@@ -22,20 +39,170 @@ const THUMB_SCALE = THUMB_W / SLIDE_REF_WIDTH;
 const THUMB_H = SLIDE_REF_HEIGHT * THUMB_SCALE;
 const STRIP_W = THUMB_W + 12;
 
+interface SortableThumbProps {
+  slide: PresentationSlide;
+  index: number;
+  active: boolean;
+  onSelect: () => void;
+  setItemRef: (node: HTMLDivElement | null) => void;
+}
+
+const SortableFilmstripThumb: React.FC<SortableThumbProps> = ({
+  slide,
+  index,
+  active,
+  onSelect,
+  setItemRef,
+}) => {
+  const normalized = normalizeSlide(slide);
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: slide.id });
+
+  const mergedRef = (node: HTMLDivElement | null) => {
+    setNodeRef(node);
+    setItemRef(node);
+  };
+
+  return (
+    <Box
+      ref={mergedRef}
+      onClick={onSelect}
+      sx={{
+        mb: 0.75,
+        position: 'relative',
+        width: THUMB_W,
+        mx: 'auto',
+        borderRadius: 1,
+        overflow: 'hidden',
+        flexShrink: 0,
+        cursor: isDragging ? 'grabbing' : 'grab',
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.82 : 1,
+        zIndex: isDragging ? 3 : 1,
+        boxShadow: active
+          ? `0 0 0 2px ${PRES_EDITOR_UI.accent}, 0 2px 8px rgba(46,125,50,0.15)`
+          : isDragging
+            ? '0 4px 14px rgba(0,0,0,0.18)'
+            : '0 1px 3px rgba(0,0,0,0.08)',
+        '&:hover': {
+          boxShadow: active
+            ? `0 0 0 2px ${PRES_EDITOR_UI.accent}, 0 2px 8px rgba(46,125,50,0.15)`
+            : `0 0 0 1px ${PRES_EDITOR_UI.accentHover}, 0 1px 3px rgba(0,0,0,0.08)`,
+        },
+      }}
+      {...attributes}
+      {...listeners}
+    >
+      <Box
+        sx={{
+          width: THUMB_W,
+          height: THUMB_H,
+          overflow: 'hidden',
+          bgcolor: '#fff',
+          position: 'relative',
+        }}
+      >
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: SLIDE_REF_WIDTH,
+            height: SLIDE_REF_HEIGHT,
+            transform: `scale(${THUMB_SCALE})`,
+            transformOrigin: 'top left',
+            pointerEvents: 'none',
+          }}
+        >
+          <PresentationSlideView
+            slide={normalized}
+            scale={1}
+            showLogo={false}
+            revealEnabled={false}
+            revealStep={999}
+          />
+        </Box>
+      </Box>
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 4,
+          left: 4,
+          minWidth: 18,
+          height: 18,
+          px: 0.5,
+          borderRadius: 0.75,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: active ? PRES_EDITOR_UI.accent : 'rgba(0,0,0,0.55)',
+          color: '#fff',
+          fontSize: 10,
+          fontWeight: 800,
+          lineHeight: 1,
+          pointerEvents: 'none',
+        }}
+      >
+        {index + 1}
+      </Box>
+      <Box
+        sx={{
+          position: 'absolute',
+          right: 3,
+          bottom: 3,
+          width: 18,
+          height: 18,
+          borderRadius: 0.5,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: 'rgba(255,255,255,0.88)',
+          color: PRES_EDITOR_UI.textMuted,
+          pointerEvents: 'none',
+          opacity: 0.85,
+        }}
+      >
+        <DragIcon sx={{ fontSize: 13 }} />
+      </Box>
+    </Box>
+  );
+};
+
 const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
   slides,
   activeId,
   onSelect,
   onAdd,
+  onReorder,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const slideIds = useMemo(() => slides.map((slide) => slide.id), [slides]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   useEffect(() => {
     if (!activeId) return;
     const el = itemRefs.current[activeId];
     el?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }, [activeId]);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    onReorder(String(active.id), String(over.id));
+  };
 
   return (
     <Box
@@ -63,93 +230,22 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
           '&::-webkit-scrollbar': { display: 'none' },
         }}
       >
-        {slides.map((slide, idx) => {
-          const active = slide.id === activeId;
-          const normalized = normalizeSlide(slide);
-
-          return (
-            <Box
-              key={slide.id}
-              ref={(node: HTMLDivElement | null) => {
-                itemRefs.current[slide.id] = node;
-              }}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => onSelect(slide.id)}
-              sx={{
-                mb: 0.75,
-                position: 'relative',
-                cursor: 'pointer',
-                width: THUMB_W,
-                mx: 'auto',
-                borderRadius: 1,
-                overflow: 'hidden',
-                flexShrink: 0,
-                boxShadow: active
-                  ? `0 0 0 2px ${PRES_EDITOR_UI.accent}, 0 2px 8px rgba(46,125,50,0.15)`
-                  : '0 1px 3px rgba(0,0,0,0.08)',
-                transition: 'box-shadow 0.15s',
-                '&:hover': {
-                  boxShadow: active
-                    ? `0 0 0 2px ${PRES_EDITOR_UI.accent}, 0 2px 8px rgba(46,125,50,0.15)`
-                    : `0 0 0 1px ${PRES_EDITOR_UI.accentHover}, 0 1px 3px rgba(0,0,0,0.08)`,
-                },
-              }}
-            >
-              <Box
-                sx={{
-                  width: THUMB_W,
-                  height: THUMB_H,
-                  overflow: 'hidden',
-                  bgcolor: '#fff',
-                  position: 'relative',
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={slideIds} strategy={verticalListSortingStrategy}>
+            {slides.map((slide, idx) => (
+              <SortableFilmstripThumb
+                key={slide.id}
+                slide={slide}
+                index={idx}
+                active={slide.id === activeId}
+                onSelect={() => onSelect(slide.id)}
+                setItemRef={(node) => {
+                  itemRefs.current[slide.id] = node;
                 }}
-              >
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: SLIDE_REF_WIDTH,
-                    height: SLIDE_REF_HEIGHT,
-                    transform: `scale(${THUMB_SCALE})`,
-                    transformOrigin: 'top left',
-                    pointerEvents: 'none',
-                  }}
-                >
-                  <PresentationSlideView
-                    slide={normalized}
-                    scale={1}
-                    showLogo={false}
-                    revealEnabled={false}
-                    revealStep={999}
-                  />
-                </Box>
-              </Box>
-              <Box
-                sx={{
-                  position: 'absolute',
-                  top: 4,
-                  left: 4,
-                  minWidth: 18,
-                  height: 18,
-                  px: 0.5,
-                  borderRadius: 0.75,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  bgcolor: active ? PRES_EDITOR_UI.accent : 'rgba(0,0,0,0.55)',
-                  color: '#fff',
-                  fontSize: 10,
-                  fontWeight: 800,
-                  lineHeight: 1,
-                  pointerEvents: 'none',
-                }}
-              >
-                {idx + 1}
-              </Box>
-            </Box>
-          );
-        })}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
       </Box>
 
       <Box sx={{ py: 0.75, display: 'flex', justifyContent: 'center', flexShrink: 0 }}>

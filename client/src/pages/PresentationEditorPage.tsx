@@ -81,6 +81,7 @@ import {
   getSlideMaxRevealSteps,
   stripAllRevealSteps,
 } from '../lib/presentationReveal';
+import { arrayMove } from '@dnd-kit/sortable';
 
 import {
   applyFontSizePresetIndex,
@@ -517,6 +518,20 @@ const PresentationEditorPage: React.FC = () => {
     };
     scheduleSave({ ...current, slides: [...current.slides, copy] }, { history: 'immediate' });
     setActiveId(copy.id);
+  };
+
+  const reorderSlides = (fromId: string, toId: string) => {
+    const current = deckRef.current;
+    if (!current) return;
+    const slides = sortSlides(current.slides);
+    const oldIndex = slides.findIndex((slide) => slide.id === fromId);
+    const newIndex = slides.findIndex((slide) => slide.id === toId);
+    if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return;
+    const reordered = arrayMove(slides, oldIndex, newIndex).map((slide, index) => ({
+      ...slide,
+      order: index,
+    }));
+    scheduleSave({ ...current, slides: reordered }, { history: 'immediate' });
   };
 
   const deleteSlide = () => {
@@ -1006,6 +1021,7 @@ const PresentationEditorPage: React.FC = () => {
             activeId={activeId}
             onSelect={selectSlide}
             onAdd={() => addSlide('title-content')}
+            onReorder={reorderSlides}
           />
         )}
 
