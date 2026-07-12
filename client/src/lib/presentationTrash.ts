@@ -2,6 +2,8 @@ import { htmlToPlain, normalizeSlide, PresentationDeck, PresentationSlide } from
 
 export type TrashItemType = 'slide' | 'notes';
 
+export type NotesTrashField = 'materialHtml' | 'preparationHtml' | 'speakerNotesHtml';
+
 export interface PresentationTrashItem {
   id: string;
   type: TrashItemType;
@@ -10,7 +12,9 @@ export interface PresentationTrashItem {
   slide?: PresentationSlide;
   slideId?: string;
   slideOrder?: number;
-  notesField?: 'preparationHtml' | 'speakerNotesHtml';
+  notesField?: NotesTrashField;
+  materialHtml?: string;
+  materialNotes?: string;
   preparationHtml?: string;
   preparationNotes?: string;
   speakerNotesHtml?: string;
@@ -27,6 +31,17 @@ function capTrash(items: PresentationTrashItem[]): PresentationTrashItem[] {
   return items.slice(0, MAX_TRASH_ITEMS);
 }
 
+function notesFieldLabel(field: NotesTrashField): string {
+  switch (field) {
+    case 'materialHtml':
+      return 'Material';
+    case 'preparationHtml':
+      return 'Setup';
+    default:
+      return 'Sprechakte';
+  }
+}
+
 export function createSlideTrashItem(slide: PresentationSlide): PresentationTrashItem {
   const normalized = normalizeSlide(slide);
   return {
@@ -37,6 +52,8 @@ export function createSlideTrashItem(slide: PresentationSlide): PresentationTras
     slide: JSON.parse(JSON.stringify(normalized)),
     slideId: normalized.id,
     slideOrder: normalized.order,
+    materialHtml: normalized.materialHtml,
+    materialNotes: normalized.materialNotes,
     preparationHtml: normalized.preparationHtml,
     preparationNotes: normalized.preparationNotes,
     speakerNotesHtml: normalized.speakerNotesHtml,
@@ -46,28 +63,37 @@ export function createSlideTrashItem(slide: PresentationSlide): PresentationTras
 
 export function createNotesTrashItem(
   slide: PresentationSlide,
-  field: 'preparationHtml' | 'speakerNotesHtml'
+  field: NotesTrashField
 ): PresentationTrashItem | null {
   const normalized = normalizeSlide(slide);
-  const isPrep = field === 'preparationHtml';
-  const html = isPrep ? normalized.preparationHtml : normalized.speakerNotesHtml;
-  const plain = isPrep ? normalized.preparationNotes : normalized.speakerNotes;
+  const html =
+    field === 'materialHtml'
+      ? normalized.materialHtml
+      : field === 'preparationHtml'
+        ? normalized.preparationHtml
+        : normalized.speakerNotesHtml;
+  const plain =
+    field === 'materialHtml'
+      ? normalized.materialNotes
+      : field === 'preparationHtml'
+        ? normalized.preparationNotes
+        : normalized.speakerNotes;
   if (!html?.replace(/<[^>]+>/g, '').trim() && !plain?.trim()) return null;
 
   return {
     id: `trash-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     type: 'notes',
     deletedAt: new Date().toISOString(),
-    label: isPrep
-      ? `Vorbereitung — ${normalized.title || `Folie ${normalized.order + 1}`}`
-      : `Sprechakte — ${normalized.title || `Folie ${normalized.order + 1}`}`,
+    label: `${notesFieldLabel(field)} — ${normalized.title || `Folie ${normalized.order + 1}`}`,
     slideId: normalized.id,
     slideOrder: normalized.order,
     notesField: field,
-    preparationHtml: isPrep ? normalized.preparationHtml : undefined,
-    preparationNotes: isPrep ? normalized.preparationNotes : undefined,
-    speakerNotesHtml: !isPrep ? normalized.speakerNotesHtml : undefined,
-    speakerNotes: !isPrep ? normalized.speakerNotes : undefined,
+    materialHtml: field === 'materialHtml' ? normalized.materialHtml : undefined,
+    materialNotes: field === 'materialHtml' ? normalized.materialNotes : undefined,
+    preparationHtml: field === 'preparationHtml' ? normalized.preparationHtml : undefined,
+    preparationNotes: field === 'preparationHtml' ? normalized.preparationNotes : undefined,
+    speakerNotesHtml: field === 'speakerNotesHtml' ? normalized.speakerNotesHtml : undefined,
+    speakerNotes: field === 'speakerNotesHtml' ? normalized.speakerNotes : undefined,
   };
 }
 
@@ -116,6 +142,13 @@ export function restoreNotesFromTrash(
   const slideId = targetSlideId || item.slideId;
   const slides = deck.slides.map((slide) => {
     if (slide.id !== slideId) return slide;
+    if (item.notesField === 'materialHtml') {
+      return normalizeSlide({
+        ...slide,
+        materialHtml: item.materialHtml || '',
+        materialNotes: item.materialNotes || htmlToPlain(item.materialHtml || ''),
+      });
+    }
     if (item.notesField === 'preparationHtml') {
       return normalizeSlide({
         ...slide,

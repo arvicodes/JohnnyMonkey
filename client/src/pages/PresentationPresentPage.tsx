@@ -463,18 +463,31 @@ const PresentationPresentPage: React.FC = () => {
           animation: resolveSlideTransitionAnimation(transition),
           willChange: 'transform, opacity, filter',
           cursor: drawActive ? 'default' : 'pointer',
+          overflow: 'hidden',
         }}
       >
-        <Box sx={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-          <PresentationSlideView
-            slide={currentSlide}
-            scale={displayScale}
-            revealStep={revealStep}
-            revealEnabled={currentSlide.revealEnabled !== false}
-            showSlideNumbers={deck?.showSlideNumbers === true}
-            slideNumber={slideIndex + 1}
-            slideTotal={slides.length}
-          />
+        <Box sx={{ position: 'absolute', inset: 0, zIndex: 0, overflow: 'hidden' }}>
+          <Box
+            sx={{
+              width: SLIDE_REF_WIDTH,
+              height: SLIDE_REF_HEIGHT,
+              transform: `scale(${displayScale})`,
+              transformOrigin: 'top left',
+            }}
+          >
+            <PresentationSlideView
+              slide={currentSlide}
+              scale={1}
+              revealStep={revealStep}
+              revealEnabled={currentSlide.revealEnabled !== false}
+              showSlideNumbers={deck?.showSlideNumbers !== false}
+              slideNumber={slideIndex + 1}
+              slideTotal={slides.length}
+              showSlideFooter={deck?.showSlideFooter !== false}
+              slideFooter={deck?.slideFooter}
+              deckTitle={deck?.title ?? ''}
+            />
+          </Box>
         </Box>
         <PresentationDrawOverlay
           strokes={currentStrokes}

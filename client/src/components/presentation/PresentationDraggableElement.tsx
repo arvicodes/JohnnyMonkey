@@ -1,6 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box } from '@mui/material';
 import { SlideElement, slideImageUrl } from '../../lib/presentationDeck';
+import {
+  animationBadgeBoxSx,
+  animationItemIdForElement,
+  animationItemIdForElementParagraph,
+  animationParagraphBadgeSx,
+  animBlockIndexInRoot,
+  collectAnimBlocksInRoot,
+  elementHasRevealAssignment,
+  findAnimBlockFromHit,
+} from '../../lib/presentationAnimation';
 import { isFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
 import { captureEditorSelection } from '../../lib/presentationFontSize';
 import { filterHtmlByRevealStep, hasVisibleRevealContent, isElementVisible, shouldAnimateReveal } from '../../lib/presentationReveal';
@@ -24,6 +34,9 @@ interface PresentationDraggableElementProps {
   selected?: boolean;
   revealStep?: number;
   revealEnabled?: boolean;
+  animationEditMode?: boolean;
+  selectedAnimationTarget?: string | null;
+  onAnimationTargetClick?: (itemId: string | null) => void;
   onSelect?: () => void;
   onChange?: (patch: Partial<SlideElement>) => void;
   onTextEditorFocus?: (el: HTMLElement, elementId: string) => void;
@@ -42,13 +55,26 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   selected = false,
   revealStep = 999,
   revealEnabled = true,
+  animationEditMode = false,
+  selectedAnimationTarget = null,
+  onAnimationTargetClick,
   onSelect,
   onChange,
   onTextEditorFocus,
 }) => {
   const textRef = useRef<HTMLDivElement>(null);
+  const displayRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
   const [dragging, setDragging] = useState(false);
+
+  const elementItemId = animationItemIdForElement(element.id);
+  const elementStep = element.revealStep ?? 0;
+  const hasInnerParagraphSteps =
+    element.type === 'text' && (element.html || '').includes('data-reveal-step');
+  const hasAnimTextBlocks = element.type === 'text' && Boolean(element.html?.trim());
+  const elementAnimSelected =
+    selectedAnimationTarget === elementItemId ||
+    selectedAnimationTarget?.startsWith(`elementParagraph:${element.id}:`);
 
   useEffect(() => {
     if (element.type === 'text' && editable && selected && textRef.current) {
@@ -73,6 +99,16 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       document.removeEventListener('selectionchange', capture);
     };
   }, [element.type, editable, selected, element.id]);
+
+  useEffect(() => {
+    const el = displayRef.current;
+    if (!el || !animationEditMode || element.type !== 'text') return;
+    el.querySelectorAll('[data-anim-selected]').forEach((node) => node.removeAttribute('data-anim-selected'));
+    if (!selectedAnimationTarget?.startsWith(`elementParagraph:${element.id}:`)) return;
+    const idx = parseInt(selectedAnimationTarget.split(':')[2] || '0', 10);
+    const block = collectAnimBlocksInRoot(el)[idx - 1];
+    if (block) block.setAttribute('data-anim-selected', 'true');
+  }, [animationEditMode, selectedAnimationTarget, element.id, element.html, element.type]);
 
   const pointerMove = useCallback(
     (e: PointerEvent) => {
@@ -125,13 +161,29 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     window.addEventListener('pointerup', pointerUp);
   };
 
-  if (!editable && !isElementVisible(element, revealStep, revealEnabled)) return null;
+  const handleAnimationClick = (e: React.PointerEvent) => {
+    if (!animationEditMode || !onAnimationTargetClick) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const hit = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+    if (element.type === 'text' && displayRef.current) {
+      const block = findAnimBlockFromHit(displayRef.current, hit);
+      if (block) {
+        const idx = animBlockIndexInRoot(displayRef.current, block);
+        if (idx > 0) {
+          onAnimationTargetClick(animationItemIdForElementParagraph(element.id, idx));
+          return;
+        }
+      }
+    }
+    onAnimationTargetClick(elementItemId);
+  };
 
-  const elementStep = element.revealStep ?? 0;
-  const hasInnerParagraphSteps =
-    element.type === 'text' && (element.html || '').includes('data-reveal-step');
+  if (!editable && !animationEditMode && !isElementVisible(element, revealStep, revealEnabled)) return null;
+
   if (
     !editable &&
+    !animationEditMode &&
     revealEnabled &&
     element.type === 'text' &&
     hasInnerParagraphSteps &&
@@ -142,16 +194,23 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   }
 
   const displayHtml =
-    element.type === 'text' && revealEnabled && hasInnerParagraphSteps && !editable
+    element.type === 'text' && revealEnabled && hasInnerParagraphSteps && !editable && !animationEditMode
       ? filterHtmlByRevealStep(element.html || '', revealStep, true)
       : element.html || '<p>Text</p>';
 
-  const showEditChrome = editable && selected;
+  const showTextEditor = editable && selected && !animationEditMode;
+  const showEditChrome = showTextEditor;
+  const showElementBadge =
+    animationEditMode && elementHasRevealAssignment(element) && element.type === 'image';
 
   return (
     <Box
       data-pres-element={element.id}
       onPointerDown={(e) => {
+        if (animationEditMode) {
+          handleAnimationClick(e);
+          return;
+        }
         if (!editable) return;
         if ((e.target as HTMLElement).closest('[data-resize-handle]')) return;
         if ((e.target as HTMLElement).closest('[data-text-edit]') && selected) return;
@@ -167,23 +226,33 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         top: `${element.y}%`,
         width: `${element.w}%`,
         height: `${element.h}%`,
-        zIndex: 10 + element.zIndex + (selected ? 100 : 0),
+        zIndex: 10 + element.zIndex + (selected || elementAnimSelected ? 100 : 0) + (animationEditMode ? 50 : 0),
         animation: shouldAnimateReveal(elementStep, revealStep, revealEnabled)
           ? 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1)'
           : undefined,
         borderRadius: `${6 * scale}px`,
         border: showEditChrome
           ? `${2 * scale}px solid #2E7D32`
-          : editable
-            ? `${1 * scale}px dashed rgba(46,125,50,0.3)`
-            : undefined,
+          : animationEditMode && elementAnimSelected
+            ? `${2 * scale}px solid #E65100`
+            : editable
+              ? `${1 * scale}px dashed rgba(46,125,50,0.3)`
+              : animationEditMode
+                ? `${1 * scale}px dashed rgba(255,152,0,0.45)`
+                : undefined,
         boxSizing: 'border-box',
-        cursor: editable ? (dragging ? 'grabbing' : 'grab') : undefined,
+        cursor: animationEditMode ? 'pointer' : editable ? (dragging ? 'grabbing' : 'grab') : undefined,
         touchAction: 'none',
-        pointerEvents: editable ? 'auto' : 'none',
+        pointerEvents: editable || animationEditMode ? 'auto' : 'none',
         bgcolor: element.type === 'text' && showEditChrome ? 'rgba(255,255,255,0.95)' : 'transparent',
       }}
     >
+      {showElementBadge && (
+        <Box sx={animationBadgeBoxSx(scale, selectedAnimationTarget === elementItemId)}>
+          {element.revealStep ?? 0}
+        </Box>
+      )}
+
       {element.type === 'image' && element.src && (
         <Box
           component="img"
@@ -202,7 +271,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       )}
 
       {element.type === 'text' &&
-        (editable && selected ? (
+        (showTextEditor ? (
           <Box
             ref={textRef}
             data-text-edit
@@ -248,6 +317,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
           />
         ) : (
           <Box
+            ref={displayRef}
             sx={{
               width: '100%',
               height: '100%',
@@ -255,7 +325,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               fontSize: `${22 * scale}px`,
               lineHeight: 1.45,
               p: `${6 * scale}px`,
-              pointerEvents: 'none',
+              pointerEvents: animationEditMode ? 'auto' : 'none',
               color: '#424242',
               '& p': { m: 0 },
               '& li': { mb: `${2 * scale}px` },
@@ -263,6 +333,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 animation: 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1)',
               },
               '& [data-pres-fs]': { lineHeight: 'inherit' },
+              ...animationParagraphBadgeSx(scale, animationEditMode && hasAnimTextBlocks),
             }}
             dangerouslySetInnerHTML={{ __html: displayHtml }}
           />

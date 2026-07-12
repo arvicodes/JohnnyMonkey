@@ -40,7 +40,10 @@ function waitFrames(n = 2): Promise<void> {
 }
 
 async function captureSlideCanvas(
+  deck: PresentationDeck,
   slide: PresentationSlide,
+  slideIndex: number,
+  slideTotal: number,
   strokes: PresentationStroke[],
   includeStrokes: boolean
 ): Promise<HTMLCanvasElement> {
@@ -66,6 +69,12 @@ async function captureSlideCanvas(
             revealStep={revealStep}
             revealEnabled={slide.revealEnabled !== false}
             showShadow={false}
+            showSlideNumbers={deck.showSlideNumbers !== false}
+            slideNumber={slideIndex + 1}
+            slideTotal={slideTotal}
+            showSlideFooter={deck.showSlideFooter !== false}
+            slideFooter={deck.slideFooter}
+            deckTitle={deck.title}
           />
         </ThemeProvider>
       );
@@ -116,7 +125,7 @@ async function buildPresentationPdfBlob(
     const slide = slides[i];
     const strokes = annotations.bySlideId[slide.id] ?? [];
     onProgress?.(i + 1, slides.length);
-    const canvas = await captureSlideCanvas(slide, strokes, includeStrokes);
+    const canvas = await captureSlideCanvas(deck, slide, i, slides.length, strokes, includeStrokes);
     const img = canvas.toDataURL('image/png');
     const w = canvas.width;
     const h = canvas.height;

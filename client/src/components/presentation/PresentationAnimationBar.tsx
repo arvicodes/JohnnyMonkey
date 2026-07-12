@@ -1,11 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Button,
-  Divider,
   FormControlLabel,
   IconButton,
-  MenuItem,
   Popover,
   Switch,
   TextField,
@@ -14,25 +12,10 @@ import {
 } from '@mui/material';
 import {
   AnimationOutlined as AnimationIcon,
-  ArrowDownward as DownIcon,
-  ArrowUpward as UpIcon,
-  ChevronLeft,
-  ChevronRight,
-  ImageOutlined as ImageIcon,
-  TextFields as TextIcon,
+  SettingsOutlined as FooterSettingsIcon,
   SwapHoriz as TransitionIcon,
 } from '@mui/icons-material';
-import {
-  ANIMATION_STEP_OPTIONS,
-  animationStepLabel,
-  collectAnimationItems,
-  compactAnimationSteps,
-  setAnimationItemStep,
-  swapAnimationItemSteps,
-  type AnimationItem,
-} from '../../lib/presentationAnimation';
-import { PresentationDeck, PresentationSlide } from '../../lib/presentationDeck';
-import { getSlideMaxRevealSteps } from '../../lib/presentationReveal';
+import { PresentationDeck, PresentationSlide, PresentationSlideFooter } from '../../lib/presentationDeck';
 import {
   getSlideTransitionMeta,
   SLIDE_TRANSITION_GROUPS,
@@ -41,18 +24,6 @@ import {
 } from '../../lib/presentationTransitions';
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
 
-const compactSelectSx = {
-  minWidth: 0,
-  '& .MuiInputBase-root': {
-    fontSize: 11,
-    height: 28,
-    bgcolor: '#fff',
-    color: PRES_EDITOR_UI.text,
-  },
-  '& .MuiOutlinedInput-notchedOutline': { borderColor: PRES_EDITOR_UI.barBorder },
-  '& .MuiSelect-select': { py: 0.5 },
-};
-
 const iconBtnSx = {
   width: 28,
   height: 28,
@@ -60,22 +31,14 @@ const iconBtnSx = {
   '&:hover': { bgcolor: '#fff', color: PRES_EDITOR_UI.accent },
 };
 
-function itemIcon(item: AnimationItem) {
-  if (item.kind === 'layoutImage' || item.label.startsWith('Bild')) {
-    return <ImageIcon sx={{ fontSize: 14 }} />;
-  }
-  return <TextIcon sx={{ fontSize: 14 }} />;
-}
-
 interface PresentationAnimationBarProps {
   deck: PresentationDeck;
   slide: PresentationSlide;
-  selectedElementId: string | null;
-  revealPreviewStep: number;
-  onRevealPreviewStepChange: (step: number) => void;
+  animationEditMode: boolean;
+  selectedAnimationTarget: string | null;
+  onAnimationEditModeChange: (enabled: boolean) => void;
   onUpdateSlide: (patch: Partial<PresentationSlide>) => void;
   onUpdateDeck: (patch: Partial<PresentationDeck>) => void;
-  onSelectElement: (id: string | null) => void;
   onAutoAssignParagraphs: () => void;
   onResetAllAnimations: () => void;
 }
@@ -83,63 +46,34 @@ interface PresentationAnimationBarProps {
 const PresentationAnimationBar: React.FC<PresentationAnimationBarProps> = ({
   deck,
   slide,
-  selectedElementId,
-  revealPreviewStep,
-  onRevealPreviewStepChange,
+  animationEditMode,
+  selectedAnimationTarget,
+  onAnimationEditModeChange,
   onUpdateSlide,
   onUpdateDeck,
-  onSelectElement,
   onAutoAssignParagraphs,
   onResetAllAnimations,
 }) => {
-  const [panelAnchor, setPanelAnchor] = useState<HTMLElement | null>(null);
   const [transitionAnchor, setTransitionAnchor] = useState<HTMLElement | null>(null);
+  const [toolsAnchor, setToolsAnchor] = useState<HTMLElement | null>(null);
+  const [footerAnchor, setFooterAnchor] = useState<HTMLElement | null>(null);
 
-  const items = useMemo(() => collectAnimationItems(slide), [slide]);
-  const maxReveal = useMemo(() => getSlideMaxRevealSteps(slide), [slide]);
   const revealOn = slide.revealEnabled !== false;
   const transitionMeta = getSlideTransitionMeta(slide.transition);
-  const sequencedCount = items.filter((item) => item.step > 0).length;
+  const footer = deck.slideFooter ?? {};
+
+  const patchFooter = (patch: Partial<PresentationSlideFooter>) => {
+    onUpdateDeck({ slideFooter: { ...footer, ...patch } });
+  };
 
   const pickTransition = (transition: SlideTransition) => {
     onUpdateSlide({ transition });
     setTransitionAnchor(null);
   };
 
-  const applySlideFromItems = (next: PresentationSlide) => {
-    onUpdateSlide({
-      titleHtml: next.titleHtml,
-      bodyHtml: next.bodyHtml,
-      subtitleHtml: next.subtitleHtml,
-      bodyLeftHtml: next.bodyLeftHtml,
-      bodyRightHtml: next.bodyRightHtml,
-      imageCaptionHtml: next.imageCaptionHtml,
-      zoneRevealSteps: next.zoneRevealSteps,
-      elements: next.elements,
-      revealEnabled: next.revealEnabled ?? slide.revealEnabled,
-    });
+  const toggleAnimationEdit = () => {
+    onAnimationEditModeChange(!animationEditMode);
   };
-
-  const applyItemStep = (itemId: string, step: number) => {
-    let next = setAnimationItemStep(slide, itemId, step);
-    next = compactAnimationSteps(next);
-    if (step > 0) next = { ...next, revealEnabled: true };
-    applySlideFromItems(next);
-  };
-
-  const moveItem = (itemId: string, direction: -1 | 1) => {
-    const next = swapAnimationItemSteps(slide, itemId, direction);
-    applySlideFromItems(next);
-  };
-
-  const handleItemClick = (item: AnimationItem) => {
-    if (item.elementId && item.kind === 'element') {
-      onSelectElement(item.elementId);
-    }
-  };
-
-  const stepBack = () => onRevealPreviewStepChange(Math.max(0, revealPreviewStep - 1));
-  const stepForward = () => onRevealPreviewStepChange(Math.min(maxReveal, revealPreviewStep + 1));
 
   return (
     <Box
@@ -244,16 +178,71 @@ const PresentationAnimationBar: React.FC<PresentationAnimationBarProps> = ({
         control={
           <Switch
             size="small"
-            checked={deck.showSlideNumbers === true}
-            onChange={(e) => onUpdateDeck({ showSlideNumbers: e.target.checked })}
+            checked={deck.showSlideFooter !== false}
+            onChange={(e) =>
+              onUpdateDeck({
+                showSlideFooter: e.target.checked,
+                showSlideNumbers: e.target.checked ? true : deck.showSlideNumbers,
+              })
+            }
           />
         }
         label={
           <Typography sx={{ fontSize: 10, color: PRES_EDITOR_UI.textMuted, whiteSpace: 'nowrap' }}>
-            Nummern
+            Fußleiste
           </Typography>
         }
       />
+
+      <Tooltip title="Fußleiste bearbeiten">
+        <span>
+          <IconButton
+            size="small"
+            disabled={deck.showSlideFooter === false}
+            onClick={(e) => setFooterAnchor(e.currentTarget)}
+            sx={{
+              ...iconBtnSx,
+              color: footerAnchor ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
+              bgcolor: footerAnchor ? '#fff' : 'transparent',
+            }}
+          >
+            <FooterSettingsIcon sx={{ fontSize: 15 }} />
+          </IconButton>
+        </span>
+      </Tooltip>
+
+      <Popover
+        open={Boolean(footerAnchor)}
+        anchorEl={footerAnchor}
+        onClose={() => setFooterAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+      >
+        <Box sx={{ p: 1.25, width: 280 }}>
+          <Typography sx={{ fontSize: 11, fontWeight: 700, color: PRES_EDITOR_UI.text, mb: 0.75 }}>
+            Fußleiste
+          </Typography>
+          <Typography sx={{ fontSize: 10, color: PRES_EDITOR_UI.textMuted, mb: 0.75 }}>
+            Titel und Foliennummer (z. B. 1 / 5) erscheinen standardmäßig auf jeder Folie.
+          </Typography>
+          <TextField
+            size="small"
+            fullWidth
+            label="Titel (leer = Präsentationstitel)"
+            value={footer.title ?? ''}
+            onChange={(e) => patchFooter({ title: e.target.value })}
+            sx={{ mb: 0.75, '& .MuiInputBase-root': { fontSize: 11 }, '& .MuiInputLabel-root': { fontSize: 11 } }}
+          />
+          <TextField
+            size="small"
+            fullWidth
+            label="Rechts (Schule, Datum, Fach …)"
+            value={footer.right ?? ''}
+            onChange={(e) => patchFooter({ right: e.target.value })}
+            sx={{ '& .MuiInputBase-root': { fontSize: 11 }, '& .MuiInputLabel-root': { fontSize: 11 } }}
+          />
+        </Box>
+      </Popover>
 
       <FormControlLabel
         sx={{ m: 0, gap: 0.35, flexShrink: 0 }}
@@ -261,10 +250,7 @@ const PresentationAnimationBar: React.FC<PresentationAnimationBarProps> = ({
           <Switch
             size="small"
             checked={revealOn}
-            onChange={(e) => {
-              onUpdateSlide({ revealEnabled: e.target.checked });
-              if (!e.target.checked) onRevealPreviewStepChange(0);
-            }}
+            onChange={(e) => onUpdateSlide({ revealEnabled: e.target.checked })}
           />
         }
         label={
@@ -274,192 +260,68 @@ const PresentationAnimationBar: React.FC<PresentationAnimationBarProps> = ({
         }
       />
 
-      {revealOn && maxReveal > 0 && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0 }}>
-          <IconButton size="small" onClick={stepBack} disabled={revealPreviewStep <= 0} sx={iconBtnSx}>
-            <ChevronLeft sx={{ fontSize: 18 }} />
-          </IconButton>
-          <Typography sx={{ fontSize: 10, color: PRES_EDITOR_UI.textMuted, minWidth: 52, textAlign: 'center' }}>
-            {revealPreviewStep}/{maxReveal}
-          </Typography>
-          <IconButton
-            size="small"
-            onClick={stepForward}
-            disabled={revealPreviewStep >= maxReveal}
-            sx={iconBtnSx}
-          >
-            <ChevronRight sx={{ fontSize: 18 }} />
-          </IconButton>
-        </Box>
-      )}
-
-      <Tooltip title="Einblend-Reihenfolge">
-        <IconButton
+      <Tooltip title={animationEditMode ? 'Animations-Bearbeitung beenden' : 'Animationen bearbeiten'}>
+        <Button
           size="small"
-          onClick={(e) => setPanelAnchor(e.currentTarget)}
+          onClick={toggleAnimationEdit}
+          startIcon={<AnimationIcon sx={{ fontSize: 16 }} />}
           sx={{
-            ...iconBtnSx,
-            color: panelAnchor ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
-            bgcolor: panelAnchor ? '#fff' : 'transparent',
+            minWidth: 0,
+            px: 1,
+            py: 0.25,
+            fontSize: 11,
+            textTransform: 'none',
+            color: animationEditMode ? '#fff' : PRES_EDITOR_UI.text,
+            border: `1px solid ${animationEditMode ? '#E65100' : PRES_EDITOR_UI.barBorder}`,
+            bgcolor: animationEditMode ? '#FF9800' : '#fff',
+            '&:hover': { bgcolor: animationEditMode ? '#F57C00' : PRES_EDITOR_UI.accentSoft },
           }}
         >
-          <AnimationIcon sx={{ fontSize: 16 }} />
+          Animation
+        </Button>
+      </Tooltip>
+
+      {animationEditMode && (
+        <Typography sx={{ fontSize: 10, color: '#E65100', fontWeight: 600, whiteSpace: 'nowrap' }}>
+          {selectedAnimationTarget ? 'Zahl 0–9 drücken' : 'Element anklicken'}
+        </Typography>
+      )}
+
+      <Tooltip title="Weitere Animations-Optionen">
+        <IconButton
+          size="small"
+          onClick={(e) => setToolsAnchor(e.currentTarget)}
+          sx={{
+            ...iconBtnSx,
+            color: toolsAnchor ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
+            bgcolor: toolsAnchor ? '#fff' : 'transparent',
+          }}
+        >
+          ···
         </IconButton>
       </Tooltip>
 
       <Popover
-        open={Boolean(panelAnchor)}
-        anchorEl={panelAnchor}
-        onClose={() => setPanelAnchor(null)}
+        open={Boolean(toolsAnchor)}
+        anchorEl={toolsAnchor}
+        onClose={() => setToolsAnchor(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Box sx={{ p: 1.25, width: 340, maxHeight: 480, overflowY: 'auto' }}>
+        <Box sx={{ p: 1.25, width: 260 }}>
           <Typography sx={{ fontSize: 11, fontWeight: 700, color: PRES_EDITOR_UI.text, mb: 0.5 }}>
-            Einblend-Reihenfolge
+            Animations-Hilfen
           </Typography>
           <Typography sx={{ fontSize: 10, color: PRES_EDITOR_UI.textMuted, mb: 1 }}>
-            Alle Textabsätze, Bilder und Textfelder in der Reihenfolge des Einblendens. Pfeile
-            verschieben, Schritt „Sofort“ = von Anfang an sichtbar.
+            Im Animations-Modus: Element anklicken, dann Zahl 0–9 (0 = sofort sichtbar).
           </Typography>
-
-          {revealOn && maxReveal > 0 && (
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 0.5,
-                mb: 1,
-                py: 0.5,
-                borderRadius: 1,
-                bgcolor: PRES_EDITOR_UI.accentSoft,
-              }}
-            >
-              <IconButton size="small" onClick={stepBack} disabled={revealPreviewStep <= 0} sx={iconBtnSx}>
-                <ChevronLeft sx={{ fontSize: 18 }} />
-              </IconButton>
-              <Typography sx={{ fontSize: 11, fontWeight: 600, color: PRES_EDITOR_UI.text }}>
-                Vorschau Schritt {revealPreviewStep} / {maxReveal}
-              </Typography>
-              <IconButton
-                size="small"
-                onClick={stepForward}
-                disabled={revealPreviewStep >= maxReveal}
-                sx={iconBtnSx}
-              >
-                <ChevronRight sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Box>
-          )}
-
-          {items.length === 0 ? (
-            <Typography sx={{ fontSize: 11, color: PRES_EDITOR_UI.textMuted, py: 1 }}>
-              Noch keine Schritte — „Alles automatisch nummerieren“ erzeugt die Reihenfolge.
-            </Typography>
-          ) : (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-              {items.map((item, index) => {
-                const selected = item.elementId === selectedElementId && item.kind === 'element';
-                const isActiveStep = revealOn && item.step > 0 && item.step === revealPreviewStep;
-                return (
-                  <Box
-                    key={item.id}
-                    onClick={() => handleItemClick(item)}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 0.5,
-                      px: 0.75,
-                      py: 0.45,
-                      borderRadius: 1,
-                      border: `1px solid ${
-                        isActiveStep
-                          ? '#E65100'
-                          : selected
-                            ? PRES_EDITOR_UI.accent
-                            : PRES_EDITOR_UI.barBorder
-                      }`,
-                      bgcolor: isActiveStep
-                        ? 'rgba(230,81,0,0.08)'
-                        : selected
-                          ? PRES_EDITOR_UI.accentSoft
-                          : '#fff',
-                      cursor: item.kind === 'element' ? 'pointer' : 'default',
-                    }}
-                  >
-                    <Box sx={{ color: PRES_EDITOR_UI.accent, display: 'flex', flexShrink: 0 }}>
-                      {itemIcon(item)}
-                    </Box>
-                    <Typography
-                      noWrap
-                      sx={{ fontSize: 11, flex: 1, minWidth: 0, color: PRES_EDITOR_UI.text }}
-                    >
-                      {item.label}
-                    </Typography>
-                    <TextField
-                      select
-                      size="small"
-                      value={String(item.step)}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => applyItemStep(item.id, Number(e.target.value))}
-                      sx={{
-                        width: 72,
-                        flexShrink: 0,
-                        ...compactSelectSx,
-                        '& .MuiInputBase-root': { height: 26, fontSize: 10 },
-                      }}
-                    >
-                      {ANIMATION_STEP_OPTIONS.map((step) => (
-                        <MenuItem key={step} value={String(step)} dense sx={{ fontSize: 11 }}>
-                          {animationStepLabel(step)}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-                      <IconButton
-                        size="small"
-                        disabled={index === 0}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          moveItem(item.id, -1);
-                        }}
-                        sx={{ width: 22, height: 18, p: 0 }}
-                      >
-                        <UpIcon sx={{ fontSize: 13 }} />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        disabled={index === items.length - 1}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          moveItem(item.id, 1);
-                        }}
-                        sx={{ width: 22, height: 18, p: 0 }}
-                      >
-                        <DownIcon sx={{ fontSize: 13 }} />
-                      </IconButton>
-                    </Box>
-                  </Box>
-                );
-              })}
-            </Box>
-          )}
-
-          {sequencedCount > 0 && (
-            <Typography sx={{ fontSize: 10, color: PRES_EDITOR_UI.accent, mt: 1, fontWeight: 600 }}>
-              {sequencedCount} Einblend-Schritte auf dieser Folie
-            </Typography>
-          )}
-
-          <Divider sx={{ my: 1 }} />
-
           <Button
             size="small"
             fullWidth
             variant="outlined"
             onClick={() => {
               onAutoAssignParagraphs();
+              setToolsAnchor(null);
             }}
             sx={{ fontSize: 11, textTransform: 'none', mb: 0.5 }}
           >
@@ -472,20 +334,12 @@ const PresentationAnimationBar: React.FC<PresentationAnimationBarProps> = ({
             variant="outlined"
             onClick={() => {
               onResetAllAnimations();
-              onRevealPreviewStepChange(0);
-              setPanelAnchor(null);
+              onAnimationEditModeChange(false);
+              setToolsAnchor(null);
             }}
-            sx={{ fontSize: 11, textTransform: 'none', mb: 0.5 }}
-          >
-            Alle Animationen zurücksetzen
-          </Button>
-          <Button
-            size="small"
-            fullWidth
-            onClick={() => setPanelAnchor(null)}
             sx={{ fontSize: 11, textTransform: 'none' }}
           >
-            Schließen
+            Alle Animationen zurücksetzen
           </Button>
         </Box>
       </Popover>

@@ -5,6 +5,8 @@ import { filterHtmlByRevealStep } from '../../lib/presentationReveal';
 import { isFormatBarInteracting, isPresentationFormatUiTarget } from '../../lib/presentationFormatBarGuard';
 import { captureEditorSelection, clearSavedSelection } from '../../lib/presentationFontSize';
 import { normalizeListsInPlace } from '../../lib/presentationListNormalize';
+import { animationParagraphBadgeSx, animBlockIndexInRoot, collectAnimBlocksInRoot, findAnimBlockFromHit } from '../../lib/presentationAnimation';
+import type { HtmlAnimField } from '../../lib/presentationAnimation';
 import { sanitizePastedHtml, sanitizePresentationHtml, handlePresentationTabKey } from '../../lib/presentationRichText';
 
 export type RichZoneVariant = 'title' | 'hero' | 'subtitle' | 'body' | 'quote' | 'caption';
@@ -41,6 +43,10 @@ interface PresentationRichZoneProps {
   flex?: number;
   revealStep?: number;
   revealEnabled?: boolean;
+  animationEditMode?: boolean;
+  animationFieldKey?: HtmlAnimField;
+  selectedAnimationTarget?: string | null;
+  onAnimationTargetClick?: (itemId: string | null) => void;
 }
 
 const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
@@ -57,13 +63,17 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
   flex,
   revealStep = 999,
   revealEnabled = true,
+  animationEditMode = false,
+  animationFieldKey,
+  selectedAnimationTarget,
+  onAnimationTargetClick,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const editingRef = useRef(false);
   const zoneBasePx = VARIANT_FONT[variant];
   const baseFont = zoneBasePx * scale;
   const rawHtml = sanitizePresentationHtml(html || textToHtml(plain || ''));
-  const applyRevealFilter = !editable && revealEnabled && revealStep < 999;
+  const applyRevealFilter = !editable && !animationEditMode && revealEnabled && revealStep < 999;
   const displayHtml = applyRevealFilter
     ? filterHtmlByRevealStep(rawHtml, revealStep, true)
     : rawHtml;
@@ -79,6 +89,27 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
   useEffect(() => {
     syncFromProps();
   }, [syncFromProps]);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !animationEditMode || !animationFieldKey) return;
+    el.querySelectorAll('[data-anim-selected]').forEach((node) => node.removeAttribute('data-anim-selected'));
+    if (!selectedAnimationTarget?.startsWith(`paragraph:${animationFieldKey}:`)) return;
+    const idx = parseInt(selectedAnimationTarget.split(':')[2] || '0', 10);
+    const block = collectAnimBlocksInRoot(el)[idx - 1];
+    if (block) block.setAttribute('data-anim-selected', 'true');
+  }, [animationEditMode, animationFieldKey, selectedAnimationTarget, displayHtml]);
+
+  const handleAnimationClick = (e: React.PointerEvent) => {
+    if (!animationEditMode || !animationFieldKey || !onAnimationTargetClick || !ref.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const hit = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+    const block = findAnimBlockFromHit(ref.current, hit);
+    if (!block) return;
+    const idx = animBlockIndexInRoot(ref.current, block);
+    if (idx > 0) onAnimationTargetClick(`paragraph:${animationFieldKey}:${idx}`);
+  };
 
   useEffect(() => {
     const el = ref.current;
@@ -180,6 +211,7 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
       animation: 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1)',
     },
     '& mark': { borderRadius: `${2 * scale}px`, px: `${2 * scale}px` },
+    ...animationParagraphBadgeSx(scale, animationEditMode),
     '&:empty:before': editable
       ? {
           content: `"${placeholder}"`,
@@ -195,20 +227,29 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
     }
     return (
       <Box
+        ref={ref}
+        data-pres-rich-zone
+        data-pres-base-fs={String(zoneBasePx)}
         sx={richSx}
         dangerouslySetInnerHTML={{ __html: displayHtml }}
       />
     );
   }
 
+  const textEditing = !animationEditMode;
+
   return (
     <Box
       ref={ref}
-      contentEditable
+      contentEditable={textEditing}
       suppressContentEditableWarning
       data-pres-rich-zone
       data-pres-base-fs={String(zoneBasePx)}
       onFocus={() => {
+        if (animationEditMode) {
+          ref.current?.blur();
+          return;
+        }
         editingRef.current = true;
         if (ref.current) {
           normalizeListsInPlace(ref.current);
@@ -216,26 +257,46 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
         }
       }}
       onBlur={(e) => {
+        if (animationEditMode) return;
         if (isFormatBarInteracting()) return;
         const next = e.relatedTarget as HTMLElement | null;
         if (isPresentationFormatUiTarget(next)) return;
         editingRef.current = false;
         handleInput();
       }}
-      onPaste={handlePaste}
-      onKeyDown={handleKeyDown}
-      onMouseDown={(e) => {
+      onPaste={(e) => {
+        if (animationEditMode) {
+          e.preventDefault();
+          return;
+        }
+        handlePaste(e);
+      }}
+      onKeyDown={(e) => {
+        if (animationEditMode) {
+          e.preventDefault();
+          return;
+        }
+        handleKeyDown(e);
+      }}
+      onPointerDown={(e) => {
+        if (animationEditMode) {
+          handleAnimationClick(e);
+          return;
+        }
         e.stopPropagation();
         if (!isFormatBarInteracting()) clearSavedSelection();
       }}
       sx={{
         ...richSx,
-        cursor: 'text',
+        cursor: animationEditMode ? 'pointer' : 'text',
         borderRadius: `${4 * scale}px`,
-        '&:focus': {
-          outline: `2px dashed rgba(46,125,50,0.45)`,
-          outlineOffset: `${2 * scale}px`,
-        },
+        userSelect: animationEditMode ? 'none' : undefined,
+        '&:focus': textEditing
+          ? {
+              outline: `2px dashed rgba(46,125,50,0.45)`,
+              outlineOffset: `${2 * scale}px`,
+            }
+          : undefined,
       }}
     />
   );

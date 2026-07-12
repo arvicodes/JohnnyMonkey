@@ -26,6 +26,7 @@ import {
   Redo as RedoIcon,
   ViewQuilt as LayoutIcon,
 } from '@mui/icons-material';
+import PresentationSlideTemplateBar from '../components/presentation/PresentationSlideTemplateBar';
 import PresentationSlideToolsBar from '../components/presentation/PresentationSlideToolsBar';
 import PresentationAnimationBar from '../components/presentation/PresentationAnimationBar';
 import PresentationFormatBar from '../components/presentation/PresentationFormatBar';
@@ -77,13 +78,20 @@ import {
   restoreNotesFromTrash,
   restoreSlideFromTrash,
 } from '../lib/presentationTrash';
-import {
-  getSlideMaxRevealSteps,
-} from '../lib/presentationReveal';
 import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../lib/presentationTransitions';
 
 import { arrayMove } from '@dnd-kit/sortable';
-import { assignSlideParagraphSteps, resetAllSlideAnimations } from '../lib/presentationAnimation';
+import { assignSlideParagraphSteps, resetAllSlideAnimations, slidePatchFromAnimationItem, slidePatchFromClearAnimationItem } from '../lib/presentationAnimation';
+import {
+  createDefaultTemplatesStore,
+  createSlideFromTemplateKind,
+  loadSlideTemplates,
+  saveSlideTemplates,
+  SLIDE_TEMPLATE_META,
+  slideToTemplatePayload,
+  type SlideTemplateKind,
+  type SlideTemplatesStore,
+} from '../lib/presentationSlideTemplates';
 
 import {
   applyFontSizePresetIndex,
@@ -107,11 +115,15 @@ const PresentationEditorPage: React.FC = () => {
   const [activeHtmlField, setActiveHtmlField] = useState<string | null>(null);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
-  const [revealPreviewStep, setRevealPreviewStep] = useState(0);
+  const [animationEditMode, setAnimationEditMode] = useState(false);
+  const [selectedAnimationTarget, setSelectedAnimationTarget] = useState<string | null>(null);
   const [canvasScale, setCanvasScale] = useState(0.4);
   const [historyVersion, setHistoryVersion] = useState(0);
   const [trashAnchor, setTrashAnchor] = useState<HTMLElement | null>(null);
   const [slideTransitionPreviewKey, setSlideTransitionPreviewKey] = useState(0);
+  const [slideTemplates, setSlideTemplates] = useState<SlideTemplatesStore>(
+    createDefaultTemplatesStore(),
+  );
   const canvasHostRef = useRef<HTMLDivElement>(null);
   const slideShellRef = useRef<HTMLDivElement>(null);
   const canvasHostObserverRef = useRef<ResizeObserver | null>(null);
@@ -168,8 +180,7 @@ const PresentationEditorPage: React.FC = () => {
 
   useEffect(() => {
     setSlideTransitionPreviewKey((key) => key + 1);
-    const slide = deckRef.current?.slides.find((s) => s.id === activeId);
-    setRevealPreviewStep(slide ? getSlideMaxRevealSteps(normalizeSlide(slide)) : 0);
+    setSelectedAnimationTarget(null);
   }, [activeId]);
 
   const slideViewportW = previewMode ? SLIDE_REF_WIDTH * canvasScale : undefined;
@@ -187,6 +198,7 @@ const PresentationEditorPage: React.FC = () => {
     imageCaptionHtml: 'imageCaption',
     speakerNotesHtml: 'speakerNotes',
     preparationHtml: 'preparationNotes',
+    materialHtml: 'materialNotes',
   };
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -213,6 +225,9 @@ const PresentationEditorPage: React.FC = () => {
       setActiveId(normalized.slides[0]?.id ?? null);
       setLoading(false);
     });
+    loadSlideTemplates(lessonPath)
+      .then(setSlideTemplates)
+      .catch(() => setSlideTemplates(createDefaultTemplatesStore()));
   }, [lessonPath]);
 
   const activeSlide = deck?.slides.find((s) => s.id === activeId) ?? deck?.slides[0];
@@ -434,6 +449,96 @@ const PresentationEditorPage: React.FC = () => {
     scheduleSave({ ...current, slides });
   };
 
+  const isAnimationKeyBlocked = useCallback(() => {
+    const active = document.activeElement;
+    if (!active) return false;
+    if (
+      active instanceof HTMLInputElement ||
+      active instanceof HTMLTextAreaElement ||
+      active instanceof HTMLSelectElement
+    ) {
+      return true;
+    }
+    const editable = active.closest('[contenteditable="true"]');
+    return Boolean(editable && !editable.closest('[data-pres-slide]'));
+  }, []);
+
+  const applyAnimationTargetStep = useCallback(
+    (itemId: string, step: number) => {
+      if (!normalizedActive) return;
+      const patch = slidePatchFromAnimationItem(normalizedActive, itemId, step);
+      for (const [htmlField, plainField] of Object.entries(HTML_TO_PLAIN)) {
+        const html = (patch as Record<string, string | undefined>)[htmlField];
+        if (html != null) {
+          (patch as Record<string, string>)[plainField] = htmlToPlain(html);
+        }
+      }
+      updateSlide(patch);
+      setSnackbar(step === 0 ? 'Schritt 0 — sofort sichtbar' : `Animations-Schritt ${step}`);
+    },
+    [normalizedActive]
+  );
+
+  const clearAnimationTarget = useCallback(
+    (itemId: string) => {
+      if (!normalizedActive) return;
+      const patch = slidePatchFromClearAnimationItem(normalizedActive, itemId);
+      for (const [htmlField, plainField] of Object.entries(HTML_TO_PLAIN)) {
+        const html = (patch as Record<string, string | undefined>)[htmlField];
+        if (html != null) {
+          (patch as Record<string, string>)[plainField] = htmlToPlain(html);
+        }
+      }
+      updateSlide(patch);
+      setSnackbar('Animations-Zuweisung entfernt');
+    },
+    [normalizedActive]
+  );
+
+  useEffect(() => {
+    if (!animationEditMode) return undefined;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (isAnimationKeyBlocked()) return;
+      if (e.key === 'Escape') {
+        if (selectedAnimationTarget) {
+          e.preventDefault();
+          setSelectedAnimationTarget(null);
+          return;
+        }
+        setAnimationEditMode(false);
+        return;
+      }
+      if (!selectedAnimationTarget) return;
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+        applyAnimationTargetStep(selectedAnimationTarget, parseInt(e.key, 10));
+        return;
+      }
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault();
+        clearAnimationTarget(selectedAnimationTarget);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [
+    animationEditMode,
+    selectedAnimationTarget,
+    isAnimationKeyBlocked,
+    applyAnimationTargetStep,
+    clearAnimationTarget,
+  ]);
+
+  const handleAnimationEditModeChange = (enabled: boolean) => {
+    setAnimationEditMode(enabled);
+    setSelectedAnimationTarget(null);
+    if (enabled) {
+      setActiveEditor(null);
+      setActiveHtmlField(null);
+      setSelectedElementId(null);
+    }
+  };
+
   const flushActiveEditor = () => {
     commitEditorState();
   };
@@ -449,7 +554,6 @@ const PresentationEditorPage: React.FC = () => {
       h,
       src: path,
       zIndex: (normalizedActive.elements?.length ?? 0) + 1,
-      revealStep: 0,
       imageFit: 'contain',
     };
     updateSlide({ elements: [...(normalizedActive.elements || []), el] });
@@ -474,7 +578,6 @@ const PresentationEditorPage: React.FC = () => {
       h: 22,
       html: '<p>Text hier…</p>',
       zIndex: (normalizedActive.elements?.length ?? 0) + 1,
-      revealStep: 0,
     };
     updateSlide({ elements: [...(normalizedActive.elements || []), el] });
     setSelectedElementId(el.id);
@@ -498,6 +601,48 @@ const PresentationEditorPage: React.FC = () => {
     if (selectedElementId === id) setSelectedElementId(null);
   };
 
+  useEffect(() => {
+    if (previewMode || animationEditMode) return undefined;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Backspace' && e.key !== 'Delete') return;
+      if (!selectedElementId) return;
+
+      const slide = deckRef.current?.slides.find((s) => s.id === activeId);
+      const element = slide?.elements?.find((el) => el.id === selectedElementId);
+      if (!element) return;
+
+      if (isFormatBarInteracting()) return;
+      if (isAnimationKeyBlocked()) return;
+
+      if (element.type === 'image') {
+        e.preventDefault();
+        deleteElement(selectedElementId);
+        setSnackbar('Bild entfernt');
+        return;
+      }
+
+      const active = document.activeElement;
+      if (active?.closest(`[data-pres-element="${selectedElementId}"]`)) return;
+      if (activeEditor?.closest('[data-pres-rich-zone]')) return;
+
+      e.preventDefault();
+      deleteElement(selectedElementId);
+      setSnackbar('Element entfernt');
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [
+    previewMode,
+    animationEditMode,
+    selectedElementId,
+    activeId,
+    activeEditor,
+    isAnimationKeyBlocked,
+    normalizedActive,
+  ]);
+
   const selectedElement = normalizedActive?.elements?.find((e) => e.id === selectedElementId);
 
   const addSlide = (layout: SlideLayout = 'title-content') => {
@@ -508,6 +653,46 @@ const PresentationEditorPage: React.FC = () => {
     scheduleSave(next, { history: 'immediate' });
     setActiveId(slide.id);
     setSnackbar(`Folie ${next.slides.length} hinzugefügt`);
+  };
+
+  const insertSlideFromTemplate = (kind: SlideTemplateKind) => {
+    const current = deckRef.current;
+    if (!current || !lessonPath) return;
+    const slides = sortSlides(current.slides);
+    const activeIndex = slides.findIndex((s) => s.id === activeId);
+
+    let insertIndex = slides.length;
+    if (kind === 'start') insertIndex = 0;
+    else if (kind === 'ha') insertIndex = slides.length;
+    else if (activeIndex >= 0) insertIndex = activeIndex + 1;
+
+    const slide = createSlideFromTemplateKind(kind, insertIndex, lessonPath, slideTemplates);
+    if (!slide) return;
+
+    const nextSlides = [...slides];
+    nextSlides.splice(insertIndex, 0, slide);
+    const reordered = nextSlides.map((s, i) => ({ ...s, order: i }));
+    scheduleSave({ ...current, slides: reordered }, { history: 'immediate' });
+    setActiveId(slide.id);
+    const label = SLIDE_TEMPLATE_META.find((m) => m.kind === kind)?.label ?? 'Vorlage';
+    setSnackbar(`${label}-Folie eingefügt`);
+  };
+
+  const saveCurrentAsTemplate = async (kind: SlideTemplateKind) => {
+    if (!normalizedActive || !lessonPath) return;
+    const payload = slideToTemplatePayload(normalizedActive, lessonPath);
+    const next: SlideTemplatesStore = {
+      ...slideTemplates,
+      templates: { ...slideTemplates.templates, [kind]: payload },
+    };
+    try {
+      await saveSlideTemplates(lessonPath, next);
+      setSlideTemplates(next);
+      const label = SLIDE_TEMPLATE_META.find((m) => m.kind === kind)?.label ?? kind;
+      setSnackbar(`${label}-Vorlage gespeichert`);
+    } catch (e) {
+      setSnackbar(e instanceof Error ? e.message : 'Vorlage speichern fehlgeschlagen');
+    }
   };
 
   const duplicateSlide = () => {
@@ -565,9 +750,11 @@ const PresentationEditorPage: React.FC = () => {
     }
 
     const patch =
-      fieldKey === 'preparationHtml'
-        ? { preparationHtml: '<p><br></p>', preparationNotes: '' }
-        : { speakerNotesHtml: '<p><br></p>', speakerNotes: '' };
+      fieldKey === 'materialHtml'
+        ? { materialHtml: '<p><br></p>', materialNotes: '' }
+        : fieldKey === 'preparationHtml'
+          ? { preparationHtml: '<p><br></p>', preparationNotes: '' }
+          : { speakerNotesHtml: '<p><br></p>', speakerNotes: '' };
 
     const slides = current.slides.map((slide) =>
       slide.id === normalizedActive.id ? normalizeSlide({ ...slide, ...patch }) : slide
@@ -690,7 +877,6 @@ const PresentationEditorPage: React.FC = () => {
       }
     }
     updateSlide(patch);
-    setRevealPreviewStep(0);
     setSnackbar('Einblend-Reihenfolge automatisch erstellt');
   };
 
@@ -750,18 +936,22 @@ const PresentationEditorPage: React.FC = () => {
   }
 
   const formatContextLabel =
-    activeHtmlField === 'preparationHtml'
-      ? 'Vorbereitung'
-      : activeHtmlField === 'speakerNotesHtml'
-        ? 'Sprechakte'
-        : activeHtmlField?.startsWith('element:')
-          ? 'Element'
-          : activeHtmlField
-            ? 'Folie'
-            : undefined;
+    activeHtmlField === 'materialHtml'
+      ? 'Material'
+      : activeHtmlField === 'preparationHtml'
+        ? 'Setup'
+        : activeHtmlField === 'speakerNotesHtml'
+          ? 'Sprechakte'
+          : activeHtmlField?.startsWith('element:')
+            ? 'Element'
+            : activeHtmlField
+              ? 'Folie'
+              : undefined;
 
   const notesActiveField: NotesFieldKey | null =
-    activeHtmlField === 'preparationHtml' || activeHtmlField === 'speakerNotesHtml'
+    activeHtmlField === 'materialHtml' ||
+    activeHtmlField === 'preparationHtml' ||
+    activeHtmlField === 'speakerNotesHtml'
       ? activeHtmlField
       : null;
 
@@ -880,6 +1070,17 @@ const PresentationEditorPage: React.FC = () => {
                 ))}
               </TextField>
             )}
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{ borderColor: PRES_EDITOR_UI.barBorder, mx: 0.15, height: 20, alignSelf: 'center' }}
+            />
+            <PresentationSlideTemplateBar
+              disabled={!normalizedActive}
+              templates={slideTemplates}
+              onInsert={insertSlideFromTemplate}
+              onSaveTemplate={(kind) => void saveCurrentAsTemplate(kind)}
+            />
             <Tooltip title="Duplizieren">
               <IconButton size="small" onClick={duplicateSlide} sx={toolbarIconSx}>
                 <CopyIcon sx={{ fontSize: 17 }} />
@@ -1027,14 +1228,25 @@ const PresentationEditorPage: React.FC = () => {
               borderRadius: 1,
               px: 0.75,
               py: 0.35,
-              ...PRES_EDITOR_UI.toolbarSection.text,
+              ...(animationEditMode
+                ? {
+                    bgcolor: 'rgba(255,152,0,0.12)',
+                    border: '1px solid rgba(255,152,0,0.35)',
+                  }
+                : PRES_EDITOR_UI.toolbarSection.text),
             }}
           >
-            <PresentationFormatBar
-              activeEditor={activeEditor}
-              contextLabel={formatContextLabel}
-              onEditorChanged={flushActiveEditor}
-            />
+            {animationEditMode ? (
+              <Typography sx={{ fontSize: 11, color: '#E65100', fontWeight: 600 }}>
+                Element anklicken → Zahl 0–9 (0 = sofort, Esc = abwählen)
+              </Typography>
+            ) : (
+              <PresentationFormatBar
+                activeEditor={activeEditor}
+                contextLabel={formatContextLabel}
+                onEditorChanged={flushActiveEditor}
+              />
+            )}
           </Box>
 
           {normalizedActive && (
@@ -1084,12 +1296,11 @@ const PresentationEditorPage: React.FC = () => {
                 <PresentationAnimationBar
                   deck={deck}
                   slide={normalizedActive}
-                  selectedElementId={selectedElementId}
-                  revealPreviewStep={revealPreviewStep}
-                  onRevealPreviewStepChange={setRevealPreviewStep}
+                  animationEditMode={animationEditMode}
+                  selectedAnimationTarget={selectedAnimationTarget}
+                  onAnimationEditModeChange={handleAnimationEditModeChange}
                   onUpdateSlide={updateSlide}
                   onUpdateDeck={(patch) => scheduleSave({ ...deck, ...patch })}
-                  onSelectElement={setSelectedElementId}
                   onAutoAssignParagraphs={autoAssignParagraphs}
                   onResetAllAnimations={resetAllAnimations}
                 />
@@ -1200,9 +1411,15 @@ const PresentationEditorPage: React.FC = () => {
                     editable={!previewMode}
                     revealStep={999}
                     revealEnabled={false}
-                    showSlideNumbers={deck.showSlideNumbers === true}
+                    animationEditMode={!previewMode && animationEditMode}
+                    selectedAnimationTarget={selectedAnimationTarget}
+                    onAnimationTargetClick={setSelectedAnimationTarget}
+                    showSlideNumbers={deck.showSlideNumbers !== false}
                     slideNumber={activeSlideNumber}
                     slideTotal={sortedSlides.length}
+                    showSlideFooter={deck.showSlideFooter !== false}
+                    slideFooter={deck.slideFooter}
+                    deckTitle={deck.title}
                     selectedElementId={previewMode ? null : selectedElementId}
                     onElementSelect={previewMode ? undefined : setSelectedElementId}
                     onElementChange={previewMode ? undefined : updateElement}
@@ -1234,6 +1451,8 @@ const PresentationEditorPage: React.FC = () => {
 
         {normalizedActive && !previewMode && (
           <PresentationNotesPanel
+            materialHtml={normalizedActive.materialHtml}
+            materialPlain={normalizedActive.materialNotes}
             preparationHtml={normalizedActive.preparationHtml}
             preparationPlain={normalizedActive.preparationNotes}
             speakerHtml={normalizedActive.speakerNotesHtml}
@@ -1248,6 +1467,7 @@ const PresentationEditorPage: React.FC = () => {
             onEditorBlur={() => {
               if (isFormatBarInteracting()) return;
               if (
+                activeHtmlField === 'materialHtml' ||
                 activeHtmlField === 'speakerNotesHtml' ||
                 activeHtmlField === 'preparationHtml'
               ) {
@@ -1255,6 +1475,9 @@ const PresentationEditorPage: React.FC = () => {
                 setActiveHtmlField(null);
               }
             }}
+            onMaterialChange={(html, plain) =>
+              updateSlide({ materialHtml: html, materialNotes: plain })
+            }
             onPreparationChange={(html, plain) =>
               updateSlide({ preparationHtml: html, preparationNotes: plain })
             }

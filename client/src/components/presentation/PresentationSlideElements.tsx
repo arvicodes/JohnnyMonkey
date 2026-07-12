@@ -9,6 +9,9 @@ interface PresentationSlideElementsProps {
   revealEnabled?: boolean;
   editable?: boolean;
   selectedId?: string | null;
+  animationEditMode?: boolean;
+  selectedAnimationTarget?: string | null;
+  onAnimationTargetClick?: (itemId: string | null) => void;
   onSelect?: (id: string) => void;
   onElementChange?: (id: string, patch: Partial<SlideElement>) => void;
   onTextEditorFocus?: (el: HTMLElement, elementId: string) => void;
@@ -21,6 +24,9 @@ const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
   revealEnabled = true,
   editable = false,
   selectedId,
+  animationEditMode = false,
+  selectedAnimationTarget = null,
+  onAnimationTargetClick,
   onSelect,
   onElementChange,
   onTextEditorFocus,
@@ -38,6 +44,9 @@ const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
           selected={selectedId === el.id}
           revealStep={revealStep}
           revealEnabled={revealEnabled}
+          animationEditMode={animationEditMode}
+          selectedAnimationTarget={selectedAnimationTarget}
+          onAnimationTargetClick={onAnimationTargetClick}
           onSelect={() => onSelect?.(el.id)}
           onChange={(patch) => onElementChange?.(el.id, patch)}
           onTextEditorFocus={onTextEditorFocus}

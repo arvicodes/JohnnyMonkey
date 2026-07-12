@@ -3,6 +3,7 @@ import { Box, Typography } from '@mui/material';
 import {
   normalizeSlide,
   PresentationSlide,
+  PresentationSlideFooter,
   SlideElement,
   SLIDE_REF_HEIGHT,
   SLIDE_REF_WIDTH,
@@ -10,6 +11,16 @@ import {
 } from '../../lib/presentationDeck';
 import { JOHNNY_PRESENTATION, accentGradient } from '../../lib/presentationTheme';
 import { getZoneRevealStep, isZoneVisible, shouldAnimateReveal } from '../../lib/presentationReveal';
+import {
+  ANIMATION_LAYOUT_IMAGE_ID,
+  animationBadgeBoxSx,
+  layoutImageHasRevealAssignment,
+  type HtmlAnimField,
+} from '../../lib/presentationAnimation';
+import {
+  normalizeSlideFooter,
+  SLIDE_FOOTER_HEIGHT,
+} from '../../lib/presentationSlideFooter';
 import PresentationRichZone from './PresentationRichZone';
 import PresentationSlideElements from './PresentationSlideElements';
 
@@ -30,6 +41,12 @@ interface PresentationSlideViewProps {
   showSlideNumbers?: boolean;
   slideNumber?: number;
   slideTotal?: number;
+  showSlideFooter?: boolean;
+  slideFooter?: PresentationSlideFooter;
+  deckTitle?: string;
+  animationEditMode?: boolean;
+  selectedAnimationTarget?: string | null;
+  onAnimationTargetClick?: (itemId: string | null) => void;
 }
 
 const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
@@ -49,6 +66,12 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   showSlideNumbers = false,
   slideNumber = 0,
   slideTotal = 0,
+  showSlideFooter = false,
+  slideFooter,
+  deckTitle = '',
+  animationEditMode = false,
+  selectedAnimationTarget = null,
+  onAnimationTargetClick,
 }) => {
   const slide = normalizeSlide(rawSlide);
   const effectiveReveal = revealEnabled && slide.revealEnabled !== false;
@@ -56,6 +79,17 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   const h = SLIDE_REF_HEIGHT * scale;
   const accent = slide.accentColor || JOHNNY_PRESENTATION.primary;
   const align = slide.titleAlign || 'left';
+  const footerOn = showSlideFooter;
+  const footer = normalizeSlideFooter(slideFooter, deckTitle);
+  const footerHeight = footerOn ? SLIDE_FOOTER_HEIGHT * scale : 0;
+  const slideNumberLabel =
+    slideNumber > 0
+      ? slideTotal > 0
+        ? `${slideNumber} / ${slideTotal}`
+        : String(slideNumber)
+      : '';
+  const showFooterNumbers = footerOn && slideNumberLabel.length > 0;
+  const showStandaloneNumbers = !footerOn && showSlideNumbers && slideNumberLabel.length > 0;
 
   const patchHtml = (
     fields: Partial<
@@ -89,11 +123,14 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
       zoneKey?: string;
     } = {}
   ) => {
+    const htmlField = String(fieldHtml) as HtmlAnimField;
     return (
       <Box
         sx={{
           minWidth: 0,
           flex: opts.flex,
+          position: 'relative',
+          zIndex: animationEditMode ? 1 : undefined,
         }}
       >
         <PresentationRichZone
@@ -109,6 +146,10 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           onEditorFocus={(el) => onEditorFocus?.(el, String(fieldHtml))}
           revealStep={revealStep}
           revealEnabled={effectiveReveal}
+          animationEditMode={animationEditMode}
+          animationFieldKey={htmlField}
+          selectedAnimationTarget={selectedAnimationTarget}
+          onAnimationTargetClick={onAnimationTargetClick}
           onChange={
             editable
               ? (html, plain) =>
@@ -125,7 +166,9 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
 
   const renderImage = () => {
     const url = slideImageUrl(slide.imagePath || '');
-    const imageVisible = isZoneVisible(slide, 'layoutImage', revealStep, effectiveReveal);
+    const imageVisible = animationEditMode || isZoneVisible(slide, 'layoutImage', revealStep, effectiveReveal);
+    const layoutImageStep = getZoneRevealStep(slide, 'layoutImage');
+    const layoutImageSelected = selectedAnimationTarget === ANIMATION_LAYOUT_IMAGE_ID;
     return (
       <Box
         sx={{
@@ -138,17 +181,31 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
         }}
       >
         <Box
+          onMouseDown={(e) => {
+            if (!animationEditMode || !onAnimationTargetClick) return;
+            e.preventDefault();
+            e.stopPropagation();
+            onAnimationTargetClick(ANIMATION_LAYOUT_IMAGE_ID);
+          }}
           sx={{
             display: imageVisible ? 'flex' : 'none',
             width: '100%',
             alignItems: 'center',
             justifyContent: 'center',
+            position: 'relative',
+            cursor: animationEditMode ? 'pointer' : undefined,
+            outline: layoutImageSelected ? `${2 * scale}px solid #E65100` : undefined,
+            outlineOffset: `${4 * scale}px`,
+            borderRadius: `${8 * scale}px`,
             animation:
               shouldAnimateReveal(getZoneRevealStep(slide, 'layoutImage'), revealStep, effectiveReveal)
                 ? 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1)'
                 : undefined,
           }}
         >
+          {animationEditMode && layoutImageHasRevealAssignment(slide) && (
+            <Box sx={animationBadgeBoxSx(scale, layoutImageSelected)}>{layoutImageStep}</Box>
+          )}
           {url ? (
             <Box
               component="img"
@@ -342,6 +399,10 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
     <Box
       data-pres-slide
       onPointerDown={(e) => {
+        if (animationEditMode && e.target === e.currentTarget) {
+          onAnimationTargetClick?.(null);
+          return;
+        }
         if (editable && e.target === e.currentTarget) onElementSelect?.(null);
       }}
       sx={{
@@ -378,7 +439,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
       <Box
         sx={{
           position: 'absolute',
-          bottom: `${32 * scale}px`,
+          bottom: footerOn ? `${footerHeight + 10 * scale}px` : `${32 * scale}px`,
           left: `${48 * scale}px`,
           right: `${48 * scale}px`,
           height: `${3 * scale}px`,
@@ -393,11 +454,12 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           inset: 0,
           pt: `${72 * scale}px`,
           px: `${64 * scale}px`,
-          pb: `${48 * scale}px`,
+          pb: `${(footerOn ? 56 : 48) * scale}px`,
           display: 'flex',
           flexDirection: 'column',
           minWidth: 0,
           overflow: 'hidden',
+          zIndex: animationEditMode ? 4 : undefined,
         }}
       >
         {renderContent()}
@@ -405,7 +467,12 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
 
       {(slide.elements?.length ?? 0) > 0 && (
         <Box
-          sx={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 5 }}
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            zIndex: animationEditMode ? 12 : 5,
+          }}
         >
           <PresentationSlideElements
             elements={slide.elements || []}
@@ -417,11 +484,96 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             onSelect={(id) => onElementSelect?.(id)}
             onElementChange={onElementChange}
             onTextEditorFocus={onTextElementFocus}
+            animationEditMode={animationEditMode}
+            selectedAnimationTarget={selectedAnimationTarget}
+            onAnimationTargetClick={onAnimationTargetClick}
           />
         </Box>
       )}
 
-      {showSlideNumbers && slideNumber > 0 && (
+      {footerOn && (
+        <Box
+          sx={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: footerHeight,
+            zIndex: 6,
+            bgcolor: 'rgba(255,255,255,0.97)',
+            borderTop: `1px solid ${accent}33`,
+            px: `${48 * scale}px`,
+            py: `${8 * scale}px`,
+            display: 'flex',
+            alignItems: 'center',
+            pointerEvents: 'none',
+            userSelect: 'none',
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'baseline',
+              gap: `${18 * scale}px`,
+              minWidth: 0,
+              width: '100%',
+            }}
+          >
+            {footer.title ? (
+              <Typography
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  fontSize: `${16 * scale}px`,
+                  fontWeight: 700,
+                  color: accent,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  lineHeight: 1.25,
+                }}
+              >
+                {footer.title}
+              </Typography>
+            ) : (
+              <Box sx={{ flex: 1 }} />
+            )}
+            {footer.right ? (
+              <Typography
+                sx={{
+                  flexShrink: 0,
+                  maxWidth: '42%',
+                  fontSize: `${14 * scale}px`,
+                  fontWeight: 500,
+                  color: JOHNNY_PRESENTATION.textSecondary,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  lineHeight: 1.25,
+                }}
+              >
+                {footer.right}
+              </Typography>
+            ) : null}
+            {showFooterNumbers ? (
+              <Typography
+                sx={{
+                  flexShrink: 0,
+                  fontSize: `${15 * scale}px`,
+                  fontWeight: 700,
+                  color: `${accent}cc`,
+                  letterSpacing: 0.4,
+                  lineHeight: 1.25,
+                }}
+              >
+                {slideNumberLabel}
+              </Typography>
+            ) : null}
+          </Box>
+        </Box>
+      )}
+
+      {showStandaloneNumbers && (
         <Typography
           sx={{
             position: 'absolute',
@@ -437,7 +589,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             lineHeight: 1,
           }}
         >
-          {slideTotal > 0 ? `${slideNumber} / ${slideTotal}` : slideNumber}
+          {slideNumberLabel}
         </Typography>
       )}
     </Box>

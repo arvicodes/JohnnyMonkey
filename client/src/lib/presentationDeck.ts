@@ -38,6 +38,8 @@ export interface SlideElement {
   html?: string;
   src?: string;
   revealStep?: number;
+  /** True wenn Animations-Schritt im Editor explizit gesetzt wurde (auch 0). */
+  animationSet?: boolean;
   zIndex: number;
   imageFit?: 'contain' | 'cover';
 }
@@ -64,6 +66,7 @@ export interface PresentationSlide {
   body: string;
   speakerNotes: string;
   preparationNotes?: string;
+  materialNotes?: string;
   order: number;
   layout?: SlideLayout;
   subtitle?: string;
@@ -82,11 +85,20 @@ export interface PresentationSlide {
   imageCaptionHtml?: string;
   speakerNotesHtml?: string;
   preparationHtml?: string;
+  materialHtml?: string;
   elements?: SlideElement[];
   transition?: SlideTransition;
   revealEnabled?: boolean;
   /** Einblend-Schritt pro Layout-Bereich (0 = sofort sichtbar). */
   zoneRevealSteps?: Partial<Record<string, number>>;
+}
+
+/** Inhalt der Folien-Fußleiste (deck-weit, auf jeder Folie). */
+export interface PresentationSlideFooter {
+  /** Linke Zeile — z. B. Stundentitel (leer = Präsentationstitel). */
+  title?: string;
+  /** Rechts — z. B. Schule, Datum, Fach. */
+  right?: string;
 }
 
 export interface PresentationDeck {
@@ -99,6 +111,9 @@ export interface PresentationDeck {
   trash?: PresentationTrashItem[];
   /** Foliennummer unten rechts auf jeder Folie anzeigen. */
   showSlideNumbers?: boolean;
+  /** Fußleiste mit Titel und Foliennummer. */
+  showSlideFooter?: boolean;
+  slideFooter?: PresentationSlideFooter;
 }
 
 export interface PresentationAnnotations {
@@ -181,6 +196,8 @@ export function normalizeSlide(slide: PresentationSlide): PresentationSlide {
     speakerNotesHtml: slide.speakerNotesHtml ?? textToHtml(slide.speakerNotes || ''),
     preparationNotes: slide.preparationNotes ?? '',
     preparationHtml: slide.preparationHtml ?? textToHtml(slide.preparationNotes || ''),
+    materialNotes: slide.materialNotes ?? '',
+    materialHtml: slide.materialHtml ?? textToHtml(slide.materialNotes || ''),
     elements: slide.elements ?? [],
     transition: normalizeSlideTransition(slide.transition),
     revealEnabled: slide.revealEnabled !== false,
@@ -194,7 +211,9 @@ export function normalizeDeck(deck: PresentationDeck): PresentationDeck {
     defaultTransition: deck.defaultTransition ?? 'fade',
     slides: sortSlides(deck.slides.map(normalizeSlide)),
     trash: Array.isArray(deck.trash) ? deck.trash : [],
-    showSlideNumbers: deck.showSlideNumbers === true,
+    showSlideNumbers: deck.showSlideNumbers !== false,
+    showSlideFooter: deck.showSlideFooter !== false,
+    slideFooter: deck.slideFooter ?? {},
   };
 }
 
@@ -267,7 +286,32 @@ export async function loadPresentationDeck(lessonPath: string): Promise<Presenta
   if (loaded?.slides?.length) {
     return normalizeDeck({ ...loaded, slides: sortSlides(loaded.slides) });
   }
-  const deck = createEmptyDeck(lessonPath);
+  const { createDefaultTemplatesStore, createSlideFromTemplateKind } = await import(
+    './presentationSlideTemplates'
+  );
+  const store = createDefaultTemplatesStore();
+  const start = createSlideFromTemplateKind('start', 0, lessonPath, store);
+  const ha = createSlideFromTemplateKind('ha', 1, lessonPath, store);
+  const slides = [start, ha].filter((s): s is PresentationSlide => Boolean(s));
+  const deck = normalizeDeck({
+    version: 1,
+    title: 'Präsentation',
+    lessonPath,
+    updatedAt: new Date().toISOString(),
+    defaultTransition: 'fade',
+    slides: slides.length
+      ? slides
+      : [
+          {
+            id: `slide-${Date.now()}`,
+            title: 'Folie 1',
+            body: '',
+            speakerNotes: '',
+            order: 0,
+            layout: 'title-content',
+          },
+        ],
+  });
   await saveJsonFile(lessonPath, DECK_FILENAME, deck);
   return deck;
 }

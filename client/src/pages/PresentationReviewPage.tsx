@@ -118,7 +118,16 @@ const PresentationReviewPage: React.FC = () => {
         >
           {currentSlide && (
             <Box sx={{ position: 'relative' }}>
-              <PresentationSlideView slide={currentSlide} scale={REVIEW_SCALE} />
+              <PresentationSlideView
+                slide={currentSlide}
+                scale={REVIEW_SCALE}
+                showSlideNumbers={deck?.showSlideNumbers !== false}
+                slideNumber={slideIndex + 1}
+                slideTotal={slides.length}
+                showSlideFooter={deck?.showSlideFooter !== false}
+                slideFooter={deck?.slideFooter}
+                deckTitle={deck?.title ?? ''}
+              />
               <PresentationDrawOverlay
                 strokes={strokes}
                 onStrokesChange={() => undefined}
