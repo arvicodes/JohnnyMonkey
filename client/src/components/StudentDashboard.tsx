@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
+import { wallOfFameStudentDashboardBtnSx } from '../lib/wallOfFameUi';
 import {
   Box,
   Typography,
@@ -49,6 +50,7 @@ import {
   Link as LinkIcon,
   OpenInNew as OpenInNewIcon,
   WbSunny as WbSunnyIcon,
+  PhotoLibrary as PhotoLibraryIcon,
   Logout as LogoutIcon,
 } from '@mui/icons-material';
 import {
@@ -5532,6 +5534,16 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     title="Stories & Tagebücher: Reiseberichte, Tagebuch, Fortbildung"
                   >
                     <WbSunnyIcon sx={{ fontSize: 28 }} />
+                  </IconButton>
+                </Box>
+                {/* Wall of Fame */}
+                <Box sx={{ position: 'relative' }}>
+                  <IconButton
+                    onClick={() => navigate('/wall-of-fame')}
+                    sx={wallOfFameStudentDashboardBtnSx}
+                    title="Wall of Fame – Unterrichtsbilder"
+                  >
+                    <PhotoLibraryIcon sx={{ fontSize: 20 }} />
                   </IconButton>
                 </Box>
                 <Tooltip title="Logout">

@@ -14,6 +14,20 @@ export const PRES_EDITOR_UI = {
   accentSoft: '#e8f5e9',
   accentHover: '#a5d6a7',
   filmstripThumbWidth: 88,
+  toolbarSection: {
+    text: {
+      border: '1px solid #64b5f6',
+      bgcolor: 'rgba(100, 181, 246, 0.08)',
+    },
+    slide: {
+      border: '1px solid #81c784',
+      bgcolor: 'rgba(129, 199, 132, 0.1)',
+    },
+    anim: {
+      border: '1px solid #ffb74d',
+      bgcolor: 'rgba(255, 183, 77, 0.1)',
+    },
+  },
 };
 
 export function presentationEditorBackTarget(groupId: string): string {

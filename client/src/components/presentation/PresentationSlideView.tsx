@@ -9,6 +9,7 @@ import {
   slideImageUrl,
 } from '../../lib/presentationDeck';
 import { JOHNNY_PRESENTATION, accentGradient } from '../../lib/presentationTheme';
+import { getZoneRevealStep, isZoneVisible, shouldAnimateReveal } from '../../lib/presentationReveal';
 import PresentationRichZone from './PresentationRichZone';
 import PresentationSlideElements from './PresentationSlideElements';
 
@@ -26,6 +27,9 @@ interface PresentationSlideViewProps {
   onElementSelect?: (id: string | null) => void;
   onElementChange?: (id: string, patch: Partial<SlideElement>) => void;
   onTextElementFocus?: (el: HTMLElement, elementId: string) => void;
+  showSlideNumbers?: boolean;
+  slideNumber?: number;
+  slideTotal?: number;
 }
 
 const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
@@ -42,6 +46,9 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   onElementSelect,
   onElementChange,
   onTextElementFocus,
+  showSlideNumbers = false,
+  slideNumber = 0,
+  slideTotal = 0,
 }) => {
   const slide = normalizeSlide(rawSlide);
   const effectiveReveal = revealEnabled && slide.revealEnabled !== false;
@@ -79,35 +86,46 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
       align?: 'left' | 'center' | 'right';
       minHeight?: number;
       flex?: number;
+      zoneKey?: string;
     } = {}
-  ) => (
-    <PresentationRichZone
-      html={slide[fieldHtml] as string | undefined}
-      plain={slide[fieldPlain] as string | undefined}
-      scale={scale}
-      editable={editable}
-      variant={opts.variant || 'body'}
-      align={opts.align || align}
-      placeholder={opts.placeholder}
-      minHeight={opts.minHeight}
-      flex={opts.flex}
-      onEditorFocus={(el) => onEditorFocus?.(el, String(fieldHtml))}
-      revealStep={revealStep}
-      revealEnabled={effectiveReveal}
-      onChange={
-        editable
-          ? (html, plain) =>
-              patchHtml({
-                [fieldHtml]: html,
-                [fieldPlain]: plain,
-              } as Partial<PresentationSlide>)
-          : undefined
-      }
-    />
-  );
+  ) => {
+    return (
+      <Box
+        sx={{
+          minWidth: 0,
+          flex: opts.flex,
+        }}
+      >
+        <PresentationRichZone
+          html={slide[fieldHtml] as string | undefined}
+          plain={slide[fieldPlain] as string | undefined}
+          scale={scale}
+          editable={editable}
+          variant={opts.variant || 'body'}
+          align={opts.align || align}
+          placeholder={opts.placeholder}
+          minHeight={opts.minHeight}
+          flex={opts.flex}
+          onEditorFocus={(el) => onEditorFocus?.(el, String(fieldHtml))}
+          revealStep={revealStep}
+          revealEnabled={effectiveReveal}
+          onChange={
+            editable
+              ? (html, plain) =>
+                  patchHtml({
+                    [fieldHtml]: html,
+                    [fieldPlain]: plain,
+                  } as Partial<PresentationSlide>)
+              : undefined
+          }
+        />
+      </Box>
+    );
+  };
 
   const renderImage = () => {
     const url = slideImageUrl(slide.imagePath || '');
+    const imageVisible = isZoneVisible(slide, 'layoutImage', revealStep, effectiveReveal);
     return (
       <Box
         sx={{
@@ -119,41 +137,55 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           gap: `${8 * scale}px`,
         }}
       >
-        {url ? (
-          <Box
-            component="img"
-            src={url}
-            alt=""
-            sx={{
-              maxWidth: '100%',
-              maxHeight: `${420 * scale}px`,
-              objectFit: 'contain',
-              borderRadius: `${8 * scale}px`,
-              boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
-            }}
-          />
-        ) : (
-          <Box
-            sx={{
-              width: '100%',
-              height: `${320 * scale}px`,
-              borderRadius: `${8 * scale}px`,
-              border: `${2 * scale}px dashed ${accent}55`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: `${accent}99`,
-              fontSize: `${18 * scale}px`,
-              bgcolor: `${accent}0a`,
-            }}
-          >
-            {editable ? 'Bild über Toolbar einfügen →' : ''}
-          </Box>
-        )}
+        <Box
+          sx={{
+            display: imageVisible ? 'flex' : 'none',
+            width: '100%',
+            alignItems: 'center',
+            justifyContent: 'center',
+            animation:
+              shouldAnimateReveal(getZoneRevealStep(slide, 'layoutImage'), revealStep, effectiveReveal)
+                ? 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1)'
+                : undefined,
+          }}
+        >
+          {url ? (
+            <Box
+              component="img"
+              src={url}
+              alt=""
+              sx={{
+                maxWidth: '100%',
+                maxHeight: `${420 * scale}px`,
+                objectFit: 'contain',
+                borderRadius: `${8 * scale}px`,
+                boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+              }}
+            />
+          ) : (
+            <Box
+              sx={{
+                width: '100%',
+                height: `${320 * scale}px`,
+                borderRadius: `${8 * scale}px`,
+                border: `${2 * scale}px dashed ${accent}55`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: `${accent}99`,
+                fontSize: `${18 * scale}px`,
+                bgcolor: `${accent}0a`,
+              }}
+            >
+              {editable ? 'Bild über Toolbar einfügen →' : ''}
+            </Box>
+          )}
+        </Box>
         {zone('imageCaptionHtml', 'imageCaption', {
           variant: 'caption',
           placeholder: 'Bildunterschrift',
           align: 'center',
+          zoneKey: 'imageCaptionHtml',
         })}
       </Box>
     );
@@ -387,6 +419,26 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             onTextEditorFocus={onTextElementFocus}
           />
         </Box>
+      )}
+
+      {showSlideNumbers && slideNumber > 0 && (
+        <Typography
+          sx={{
+            position: 'absolute',
+            right: `${28 * scale}px`,
+            bottom: `${18 * scale}px`,
+            zIndex: 6,
+            fontSize: `${15 * scale}px`,
+            fontWeight: 700,
+            color: `${accent}cc`,
+            letterSpacing: 0.4,
+            pointerEvents: 'none',
+            userSelect: 'none',
+            lineHeight: 1,
+          }}
+        >
+          {slideTotal > 0 ? `${slideNumber} / ${slideTotal}` : slideNumber}
+        </Typography>
       )}
     </Box>
   );

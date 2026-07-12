@@ -266,6 +266,22 @@ export class StorageManager {
     return resolved ?? path.join(jmReihenPath, inner);
   }
 
+  static resolveFilePath(filePath: string): string | null {
+    let norm = filePath.replace(/\\/g, '/');
+    if (norm === 'J-M-Reihen' || norm.startsWith('J-M-Reihen/')) {
+      norm =
+        norm === 'J-M-Reihen'
+          ? 'git-intern'
+          : `git-intern/${norm.slice('J-M-Reihen/'.length)}`;
+    }
+    if (norm.startsWith('git-intern/')) {
+      const full = this.resolveGitInternRelativePath(norm.replace('git-intern/', ''));
+      return fs.existsSync(full) ? full : null;
+    }
+    const resolved = path.resolve(norm);
+    return fs.existsSync(resolved) ? resolved : null;
+  }
+
   /**
    * Read file contents
    */

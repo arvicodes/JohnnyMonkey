@@ -25,7 +25,7 @@ import { PresentationDrawTool, defaultLineWidthForTool, lineWidthsForTool } from
 import { presentationEditorBackTarget } from '../lib/presentationEditorUi';
 import { savePresentationBothVersions } from '../lib/presentationExport';
 import { getSlideMaxRevealSteps } from '../lib/presentationReveal';
-import { PRESENTATION_KEYFRAMES, TRANSITION_CSS } from '../lib/presentationTransitions';
+import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../lib/presentationTransitions';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
 
 const MINI_BTN_SX = {
@@ -357,6 +357,27 @@ const PresentationPresentPage: React.FC = () => {
         </Tooltip>
       </Box>
 
+      {maxReveal > 0 && currentSlide.revealEnabled !== false && (
+        <Typography
+          sx={{
+            position: 'fixed',
+            bottom: 12,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 20,
+            fontSize: 11,
+            color: 'rgba(255,255,255,0.72)',
+            bgcolor: 'rgba(22,24,28,0.72)',
+            px: 1.25,
+            py: 0.35,
+            borderRadius: 1,
+            pointerEvents: 'none',
+          }}
+        >
+          Einblendung {revealStep}/{maxReveal}
+        </Typography>
+      )}
+
       {!drawActive && (
         <>
           <Box
@@ -439,7 +460,8 @@ const PresentationPresentPage: React.FC = () => {
           position: 'relative',
           width: displayW,
           height: displayH,
-          animation: TRANSITION_CSS[transition]?.in,
+          animation: resolveSlideTransitionAnimation(transition),
+          willChange: 'transform, opacity, filter',
           cursor: drawActive ? 'default' : 'pointer',
         }}
       >
@@ -449,6 +471,9 @@ const PresentationPresentPage: React.FC = () => {
             scale={displayScale}
             revealStep={revealStep}
             revealEnabled={currentSlide.revealEnabled !== false}
+            showSlideNumbers={deck?.showSlideNumbers === true}
+            slideNumber={slideIndex + 1}
+            slideTotal={slides.length}
           />
         </Box>
         <PresentationDrawOverlay

@@ -46,28 +46,78 @@ export function filterHtmlByRevealStep(html: string, visibleStep: number, reveal
   div.querySelectorAll('[data-reveal-step]').forEach((el) => {
     const step = parseInt(el.getAttribute('data-reveal-step') || '0', 10);
     const htmlEl = el as HTMLElement;
+    htmlEl.classList.remove('pres-reveal-enter', 'pres-reveal-shown');
     if (step > visibleStep) {
       htmlEl.style.display = 'none';
-      htmlEl.classList.remove('pres-reveal-visible');
     } else {
       htmlEl.style.display = '';
-      htmlEl.classList.add('pres-reveal-visible');
+      if (step > 0 && step === visibleStep) {
+        htmlEl.classList.add('pres-reveal-enter');
+      } else {
+        htmlEl.classList.add('pres-reveal-shown');
+      }
     }
   });
   return div.innerHTML;
 }
 
+export function getZoneRevealStep(slide: PresentationSlide, zoneKey: string): number {
+  return slide.zoneRevealSteps?.[zoneKey] ?? 0;
+}
+
+export function isZoneVisible(
+  slide: PresentationSlide,
+  zoneKey: string,
+  visibleStep: number,
+  revealEnabled: boolean
+): boolean {
+  if (!revealEnabled || slide.revealEnabled === false) return true;
+  const step = getZoneRevealStep(slide, zoneKey);
+  if (step <= 0) return true;
+  return step <= visibleStep;
+}
+
 export function getSlideMaxRevealSteps(slide: PresentationSlide): number {
   if (slide.revealEnabled === false) return 0;
-  let max = 0;
+  const steps = new Set<number>();
   for (const field of HTML_FIELDS) {
     const html = slide[field] as string | undefined;
-    if (html) max = Math.max(max, countRevealStepsInHtml(html));
+    if (!html) continue;
+    const div = parseHtmlContainer(html);
+    div.querySelectorAll('[data-reveal-step]').forEach((el) => {
+      const n = parseInt(el.getAttribute('data-reveal-step') || '0', 10);
+      if (n > 0) steps.add(n);
+    });
   }
+  const layoutStep = slide.zoneRevealSteps?.layoutImage;
+  if (typeof layoutStep === 'number' && layoutStep > 0) steps.add(layoutStep);
   for (const el of slide.elements || []) {
-    if (el.revealStep && el.revealStep > max) max = el.revealStep;
+    if (el.revealStep && el.revealStep > 0) steps.add(el.revealStep);
+    if (el.type === 'text' && el.html) {
+      const div = parseHtmlContainer(el.html);
+      div.querySelectorAll('[data-reveal-step]').forEach((node) => {
+        const n = parseInt(node.getAttribute('data-reveal-step') || '0', 10);
+        if (n > 0) steps.add(n);
+      });
+    }
   }
-  return max;
+  if (steps.size === 0) return 0;
+  return Math.max(...steps);
+}
+
+/** Prüft ob in nummeriertem HTML mindestens ein Absatz sichtbar ist. */
+export function hasVisibleRevealContent(html: string, visibleStep: number): boolean {
+  if (!html?.includes('data-reveal-step')) return true;
+  const div = parseHtmlContainer(html);
+  return Array.from(div.querySelectorAll('[data-reveal-step]')).some((node) => {
+    const step = parseInt(node.getAttribute('data-reveal-step') || '0', 10);
+    return step <= visibleStep;
+  });
+}
+/** True wenn das Element gerade in diesem Schritt eingeblendet wird. */
+export function shouldAnimateReveal(itemStep: number, visibleStep: number, revealEnabled: boolean): boolean {
+  if (!revealEnabled || itemStep <= 0) return false;
+  return itemStep === visibleStep;
 }
 
 export function isElementVisible(el: SlideElement, visibleStep: number, revealEnabled: boolean): boolean {

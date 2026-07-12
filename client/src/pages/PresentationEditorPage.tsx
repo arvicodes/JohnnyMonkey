@@ -6,9 +6,9 @@ import {
   CircularProgress,
   Divider,
   IconButton,
-  Menu,
   MenuItem,
   Snackbar,
+  TextField,
   Tooltip,
   Typography,
   Badge,
@@ -24,9 +24,10 @@ import {
   Slideshow as SlideshowIcon,
   Undo as UndoIcon,
   Redo as RedoIcon,
-  VisibilityOutlined as PreviewIcon,
+  ViewQuilt as LayoutIcon,
 } from '@mui/icons-material';
-import PresentationEditorSettingsBar from '../components/presentation/PresentationEditorSettingsBar';
+import PresentationSlideToolsBar from '../components/presentation/PresentationSlideToolsBar';
+import PresentationAnimationBar from '../components/presentation/PresentationAnimationBar';
 import PresentationFormatBar from '../components/presentation/PresentationFormatBar';
 import PresentationFilmstrip from '../components/presentation/PresentationFilmstrip';
 import PresentationNotesPanel, {
@@ -77,11 +78,12 @@ import {
   restoreSlideFromTrash,
 } from '../lib/presentationTrash';
 import {
-  assignRevealSteps,
   getSlideMaxRevealSteps,
-  stripAllRevealSteps,
 } from '../lib/presentationReveal';
+import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../lib/presentationTransitions';
+
 import { arrayMove } from '@dnd-kit/sortable';
+import { assignSlideParagraphSteps, resetAllSlideAnimations } from '../lib/presentationAnimation';
 
 import {
   applyFontSizePresetIndex,
@@ -101,14 +103,15 @@ const PresentationEditorPage: React.FC = () => {
   const [deck, setDeck] = useState<PresentationDeck | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [snackbar, setSnackbar] = useState('');
-  const [layoutMenuAnchor, setLayoutMenuAnchor] = useState<null | HTMLElement>(null);
   const [activeEditor, setActiveEditor] = useState<HTMLElement | null>(null);
   const [activeHtmlField, setActiveHtmlField] = useState<string | null>(null);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
+  const [revealPreviewStep, setRevealPreviewStep] = useState(0);
   const [canvasScale, setCanvasScale] = useState(0.4);
   const [historyVersion, setHistoryVersion] = useState(0);
   const [trashAnchor, setTrashAnchor] = useState<HTMLElement | null>(null);
+  const [slideTransitionPreviewKey, setSlideTransitionPreviewKey] = useState(0);
   const canvasHostRef = useRef<HTMLDivElement>(null);
   const slideShellRef = useRef<HTMLDivElement>(null);
   const canvasHostObserverRef = useRef<ResizeObserver | null>(null);
@@ -154,6 +157,20 @@ const PresentationEditorPage: React.FC = () => {
   }, [previewMode, activeId, loading, syncSlideViewport]);
 
   useEffect(() => () => canvasHostObserverRef.current?.disconnect(), []);
+
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.setAttribute('data-presentation-keyframes', 'true');
+    style.textContent = PRESENTATION_KEYFRAMES;
+    document.head.appendChild(style);
+    return () => style.remove();
+  }, []);
+
+  useEffect(() => {
+    setSlideTransitionPreviewKey((key) => key + 1);
+    const slide = deckRef.current?.slides.find((s) => s.id === activeId);
+    setRevealPreviewStep(slide ? getSlideMaxRevealSteps(normalizeSlide(slide)) : 0);
+  }, [activeId]);
 
   const slideViewportW = previewMode ? SLIDE_REF_WIDTH * canvasScale : undefined;
   const slideViewportH = SLIDE_REF_HEIGHT * canvasScale;
@@ -421,20 +438,6 @@ const PresentationEditorPage: React.FC = () => {
     commitEditorState();
   };
 
-  const assignRevealToBody = () => {
-    if (!normalizedActive) return;
-    const field = activeHtmlField || 'bodyHtml';
-    const plainKey = HTML_TO_PLAIN[field];
-    const currentHtml = (normalizedActive[field as keyof PresentationSlide] as string) || '';
-    const html = assignRevealSteps(currentHtml);
-    updateSlide({
-      [field]: html,
-      ...(plainKey ? { [plainKey]: htmlToPlain(html) } : {}),
-      revealEnabled: true,
-    } as Partial<PresentationSlide>);
-    setSnackbar('Einblend-Schritte gesetzt');
-  };
-
   const addFloatingImageAt = (path: string, x = 25, y = 22, w = 45, h = 40) => {
     if (!normalizedActive) return;
     const el: SlideElement = {
@@ -504,7 +507,6 @@ const PresentationEditorPage: React.FC = () => {
     const next = { ...current, slides: [...current.slides, slide] };
     scheduleSave(next, { history: 'immediate' });
     setActiveId(slide.id);
-    setLayoutMenuAnchor(null);
     setSnackbar(`Folie ${next.slides.length} hinzugefügt`);
   };
 
@@ -665,6 +667,46 @@ const PresentationEditorPage: React.FC = () => {
     }
   };
 
+  const applyAccentColor = (color: string, allSlides: boolean) => {
+    const current = deckRef.current;
+    if (!current || !activeId) return;
+    if (!allSlides) {
+      updateSlide({ accentColor: color });
+      return;
+    }
+    const slides = current.slides.map((slide) => ({ ...slide, accentColor: color }));
+    scheduleSave({ ...current, slides }, { history: 'immediate' });
+    setSnackbar('Akzentfarbe auf alle Folien angewendet');
+  };
+
+  const autoAssignParagraphs = () => {
+    if (!normalizedActive) return;
+    const patch = assignSlideParagraphSteps(normalizedActive);
+    for (const field of Object.keys(patch)) {
+      const plainKey = HTML_TO_PLAIN[field];
+      const html = (patch as Record<string, string>)[field];
+      if (plainKey && html != null) {
+        (patch as Record<string, string>)[plainKey] = htmlToPlain(html);
+      }
+    }
+    updateSlide(patch);
+    setRevealPreviewStep(0);
+    setSnackbar('Einblend-Reihenfolge automatisch erstellt');
+  };
+
+  const resetAllAnimations = () => {
+    if (!normalizedActive) return;
+    const patch = resetAllSlideAnimations(normalizedActive);
+    for (const [htmlField, plainField] of Object.entries(HTML_TO_PLAIN)) {
+      const html = (patch as Record<string, string | undefined>)[htmlField];
+      if (html != null) {
+        (patch as Record<string, string>)[plainField] = htmlToPlain(html);
+      }
+    }
+    updateSlide(patch);
+    setSnackbar('Alle Animationen der Folie zurückgesetzt');
+  };
+
   const showLayoutImage =
     normalizedActive?.layout === 'image-left' || normalizedActive?.layout === 'image-right';
 
@@ -677,6 +719,18 @@ const PresentationEditorPage: React.FC = () => {
     width: 30,
     height: 30,
     '&:hover': { bgcolor: PRES_EDITOR_UI.accentSoft, color: PRES_EDITOR_UI.accent },
+  };
+
+  const compactSelectSx = {
+    minWidth: 0,
+    '& .MuiInputBase-root': {
+      fontSize: 11,
+      height: 28,
+      bgcolor: '#fafafa',
+      color: PRES_EDITOR_UI.text,
+    },
+    '& .MuiOutlinedInput-notchedOutline': { borderColor: PRES_EDITOR_UI.barBorder },
+    '& .MuiSelect-select': { py: 0.5 },
   };
 
   if (!lessonPath) {
@@ -712,6 +766,10 @@ const PresentationEditorPage: React.FC = () => {
       : null;
 
   const sortedSlides = sortSlides(deck.slides);
+  const activeSlideNumber = Math.max(
+    1,
+    sortedSlides.findIndex((slide) => slide.id === activeId) + 1
+  );
 
   return (
     <Box
@@ -754,26 +812,44 @@ const PresentationEditorPage: React.FC = () => {
           </Tooltip>
 
           <SlideshowIcon sx={{ fontSize: 20, color: PRES_EDITOR_UI.accent, flexShrink: 0 }} />
-          <Typography
-            variant="subtitle2"
-            noWrap
-            sx={{ fontWeight: 700, color: PRES_EDITOR_UI.text, maxWidth: 200, flexShrink: 1 }}
-          >
-            {deck.title || 'Präsentation'}
-          </Typography>
+          <TextField
+            size="small"
+            placeholder="Präsentationstitel"
+            value={deck.title}
+            onChange={(e) => scheduleSave({ ...deck, title: e.target.value })}
+            sx={{
+              flex: 1,
+              minWidth: 120,
+              maxWidth: 320,
+              '& .MuiInputBase-root': {
+                fontSize: 14,
+                fontWeight: 700,
+                height: 32,
+                bgcolor: 'transparent',
+              },
+              '& .MuiOutlinedInput-notchedOutline': { borderColor: 'transparent' },
+              '& .MuiInputBase-root:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: PRES_EDITOR_UI.barBorder,
+              },
+              '& .MuiInputBase-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: PRES_EDITOR_UI.accent,
+              },
+            }}
+          />
 
-          <Divider orientation="vertical" flexItem sx={{ borderColor: PRES_EDITOR_UI.barBorder, mx: 0.25 }} />
+          <Box sx={{ flex: 1, minWidth: 8 }} />
 
           <Box
             sx={{
               display: 'flex',
               alignItems: 'center',
-              gap: 0.25,
+              gap: 0.35,
               bgcolor: PRES_EDITOR_UI.accentSoft,
               borderRadius: 1.5,
-              px: 0.35,
+              px: 0.5,
               py: 0.25,
               border: `1px solid ${PRES_EDITOR_UI.barBorder}`,
+              flexShrink: 0,
             }}
           >
             <Tooltip title="Folie hinzufügen">
@@ -781,21 +857,29 @@ const PresentationEditorPage: React.FC = () => {
                 <AddIcon sx={{ fontSize: 18 }} />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Layout wählen">
-              <IconButton size="small" onClick={(e) => setLayoutMenuAnchor(e.currentTarget)} sx={toolbarIconSx}>
-                <SlideshowIcon sx={{ fontSize: 16 }} />
-              </IconButton>
-            </Tooltip>
-            <Menu anchorEl={layoutMenuAnchor} open={Boolean(layoutMenuAnchor)} onClose={() => setLayoutMenuAnchor(null)}>
-              {SLIDE_LAYOUTS.map((l) => (
-                <MenuItem key={l.id} onClick={() => addSlide(l.id)} dense>
-                  <Box>
-                    <Typography variant="body2">{l.label}</Typography>
-                    <Typography variant="caption" color="text.secondary">{l.hint}</Typography>
-                  </Box>
-                </MenuItem>
-              ))}
-            </Menu>
+            {normalizedActive && (
+              <TextField
+                select
+                size="small"
+                value={normalizedActive.layout || 'title-content'}
+                onChange={(e) => applyLayout(e.target.value as SlideLayout)}
+                sx={{ width: 118, flexShrink: 0, ...compactSelectSx }}
+                SelectProps={{
+                  renderValue: () => (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <LayoutIcon sx={{ fontSize: 14, color: PRES_EDITOR_UI.accent }} />
+                      <Typography sx={{ fontSize: 11, fontWeight: 600 }}>Layout</Typography>
+                    </Box>
+                  ),
+                }}
+              >
+                {SLIDE_LAYOUTS.map((l) => (
+                  <MenuItem key={l.id} value={l.id} dense sx={{ fontSize: 12 }}>
+                    {l.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
             <Tooltip title="Duplizieren">
               <IconButton size="small" onClick={duplicateSlide} sx={toolbarIconSx}>
                 <CopyIcon sx={{ fontSize: 17 }} />
@@ -863,47 +947,9 @@ const PresentationEditorPage: React.FC = () => {
             </span>
           </Tooltip>
 
-          <Divider orientation="vertical" flexItem sx={{ borderColor: PRES_EDITOR_UI.barBorder, mx: 0.25 }} />
-
-          {!previewMode && normalizedActive && (
-            <PresentationEditorSettingsBar
-              deck={deck}
-              slide={normalizedActive}
-              selectedElement={selectedElement ?? null}
-              selectedElementId={selectedElementId}
-              showLayoutImage={showLayoutImage}
-              onDeckTitleChange={(title) => scheduleSave({ ...deck, title })}
-              onApplyLayout={applyLayout}
-              onUpdateSlide={updateSlide}
-              onDeckTransitionChange={(t) => scheduleSave({ ...deck, defaultTransition: t })}
-              onAssignReveal={assignRevealToBody}
-              onStripReveal={() => {
-                if (!activeHtmlField || !normalizedActive) return;
-                const html = stripAllRevealSteps(
-                  (normalizedActive[activeHtmlField as keyof PresentationSlide] as string) || ''
-                );
-                const plainKey = HTML_TO_PLAIN[activeHtmlField];
-                updateSlide({
-                  [activeHtmlField]: html,
-                  ...(plainKey ? { [plainKey]: htmlToPlain(html) } : {}),
-                } as Partial<PresentationSlide>);
-              }}
-              onAddTextElement={addTextElement}
-              onAddImageElement={() => {
-                imageTargetRef.current = 'element';
-                imageInputRef.current?.click();
-              }}
-              onAddLayoutImage={() => {
-                imageTargetRef.current = 'layout';
-                imageInputRef.current?.click();
-              }}
-              onSelectElement={setSelectedElementId}
-              onUpdateElement={updateElement}
-              onDeleteElement={deleteElement}
-            />
-          )}
-
           {saving && <CircularProgress size={14} sx={{ color: PRES_EDITOR_UI.accent, flexShrink: 0 }} />}
+
+          <Box sx={{ flex: 1, minWidth: 8 }} />
 
           <Box
             sx={{
@@ -917,25 +963,6 @@ const PresentationEditorPage: React.FC = () => {
               boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
             }}
           >
-            <Tooltip title={previewMode ? 'Vorschau beenden' : 'Vorschau'}>
-              <IconButton
-                size="small"
-                onClick={() => setPreviewMode((v) => !v)}
-                sx={{
-                  width: 34,
-                  height: 30,
-                  borderRadius: 0,
-                  color: previewMode ? '#fff' : PRES_EDITOR_UI.textMuted,
-                  bgcolor: previewMode ? PRES_EDITOR_UI.accent : 'transparent',
-                  '&:hover': {
-                    bgcolor: previewMode ? JOHNNY_PRESENTATION.primaryDark : PRES_EDITOR_UI.accentSoft,
-                  },
-                }}
-              >
-                <PreviewIcon sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-            <Divider orientation="vertical" flexItem sx={{ borderColor: PRES_EDITOR_UI.barBorder }} />
             <Tooltip title="Speichern">
               <IconButton
                 size="small"
@@ -944,7 +971,7 @@ const PresentationEditorPage: React.FC = () => {
                   void persistDeck(deck, v);
                 }}
                 sx={{
-                  width: 34,
+                  width: 38,
                   height: 30,
                   borderRadius: 0,
                   color: PRES_EDITOR_UI.textMuted,
@@ -962,7 +989,7 @@ const PresentationEditorPage: React.FC = () => {
                   window.open(presentationPresentUrl(lessonPath, groupId || undefined), '_blank')
                 }
                 sx={{
-                  width: 34,
+                  width: 38,
                   height: 30,
                   borderRadius: 0,
                   color: '#fff',
@@ -979,25 +1006,96 @@ const PresentationEditorPage: React.FC = () => {
         {!previewMode && (
         <Box
           sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.6,
             px: 1.25,
-            py: 0.45,
+            py: 0.5,
             borderTop: `1px solid ${PRES_EDITOR_UI.barBorder}`,
-            bgcolor: PRES_EDITOR_UI.accentSoft,
+            bgcolor: '#f7faf7',
           }}
         >
-          <PresentationFormatBar
-            activeEditor={activeEditor}
-            contextLabel={formatContextLabel}
-            onEditorChanged={flushActiveEditor}
-            onInsertImage={
-              activeHtmlField === 'speakerNotesHtml' || activeHtmlField === 'preparationHtml'
-                ? undefined
-                : () => {
-                    imageTargetRef.current = 'inline';
+          <Box
+            sx={{
+              flex: 1,
+              minWidth: 0,
+              display: 'flex',
+              alignItems: 'center',
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              scrollbarWidth: 'thin',
+              borderRadius: 1,
+              px: 0.75,
+              py: 0.35,
+              ...PRES_EDITOR_UI.toolbarSection.text,
+            }}
+          >
+            <PresentationFormatBar
+              activeEditor={activeEditor}
+              contextLabel={formatContextLabel}
+              onEditorChanged={flushActiveEditor}
+            />
+          </Box>
+
+          {normalizedActive && (
+            <>
+              <Box
+                sx={{
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  borderRadius: 1,
+                  px: 0.75,
+                  py: 0.35,
+                  ...PRES_EDITOR_UI.toolbarSection.slide,
+                }}
+              >
+                <PresentationSlideToolsBar
+                  slide={normalizedActive}
+                  selectedElement={selectedElement ?? null}
+                  selectedElementId={selectedElementId}
+                  showLayoutImage={showLayoutImage}
+                  onApplyAccentColor={applyAccentColor}
+                  onAddTextElement={addTextElement}
+                  onAddImageElement={() => {
+                    imageTargetRef.current = 'element';
                     imageInputRef.current?.click();
-                  }
-            }
-          />
+                  }}
+                  onAddLayoutImage={() => {
+                    imageTargetRef.current = 'layout';
+                    imageInputRef.current?.click();
+                  }}
+                  onSelectElement={setSelectedElementId}
+                  onUpdateElement={updateElement}
+                  onDeleteElement={deleteElement}
+                />
+              </Box>
+              <Box
+                sx={{
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  borderRadius: 1,
+                  px: 0.75,
+                  py: 0.35,
+                  ...PRES_EDITOR_UI.toolbarSection.anim,
+                }}
+              >
+                <PresentationAnimationBar
+                  deck={deck}
+                  slide={normalizedActive}
+                  selectedElementId={selectedElementId}
+                  revealPreviewStep={revealPreviewStep}
+                  onRevealPreviewStepChange={setRevealPreviewStep}
+                  onUpdateSlide={updateSlide}
+                  onUpdateDeck={(patch) => scheduleSave({ ...deck, ...patch })}
+                  onSelectElement={setSelectedElementId}
+                  onAutoAssignParagraphs={autoAssignParagraphs}
+                  onResetAllAnimations={resetAllAnimations}
+                />
+              </Box>
+            </>
+          )}
         </Box>
         )}
       </Box>
@@ -1062,6 +1160,7 @@ const PresentationEditorPage: React.FC = () => {
             )}
             {normalizedActive && canvasScale > 0 && (
               <Box
+                key={`${normalizedActive.id}-${slideTransitionPreviewKey}`}
                 ref={slideShellRef}
                 sx={{
                   width: previewMode ? slideViewportW : '100%',
@@ -1076,6 +1175,8 @@ const PresentationEditorPage: React.FC = () => {
                   boxShadow: previewMode
                     ? '0 12px 40px rgba(0,0,0,0.16)'
                     : '0 8px 28px rgba(0,0,0,0.14)',
+                  animation: resolveSlideTransitionAnimation(normalizedActive.transition),
+                  willChange: 'transform, opacity, filter',
                 }}
               >
                 <Box
@@ -1099,6 +1200,9 @@ const PresentationEditorPage: React.FC = () => {
                     editable={!previewMode}
                     revealStep={999}
                     revealEnabled={false}
+                    showSlideNumbers={deck.showSlideNumbers === true}
+                    slideNumber={activeSlideNumber}
+                    slideTotal={sortedSlides.length}
                     selectedElementId={previewMode ? null : selectedElementId}
                     onElementSelect={previewMode ? undefined : setSelectedElementId}
                     onElementChange={previewMode ? undefined : updateElement}

@@ -47,6 +47,35 @@ function fixDirectNestedLists(root: ParentNode) {
   }
 }
 
+function isMeaningfulOrphan(node: Node): boolean {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return Boolean(node.textContent?.replace(/\u00a0/g, ' ').trim());
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE) return false;
+  const el = node as Element;
+  if (el.tagName === 'BR') return false;
+  if (LIST_TAGS.has(el.tagName)) return true;
+  if (el.tagName === 'IMG') return true;
+  const text = el.textContent?.replace(/\u00a0/g, ' ').trim() ?? '';
+  if (text) return true;
+  return Boolean(el.querySelector('img, ul, ol'));
+}
+
+function removeStrayBlocksInLists(root: ParentNode) {
+  Array.from(root.querySelectorAll('ul, ol')).forEach((list) => {
+    Array.from(list.childNodes).forEach((node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        if (!node.textContent?.replace(/\u00a0/g, ' ').trim()) node.remove();
+        return;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+      const el = node as Element;
+      if (el.tagName === 'LI' || LIST_TAGS.has(el.tagName)) return;
+      if (!isMeaningfulOrphan(node)) el.remove();
+    });
+  });
+}
+
 function hoistOrphanListItems(root: ParentNode) {
   Array.from(root.querySelectorAll('ul, ol')).forEach((list) => {
     const orphanNodes: Node[] = [];
@@ -59,6 +88,7 @@ function hoistOrphanListItems(root: ParentNode) {
       const el = node as Element;
       if (el.tagName === 'LI') return;
       if (LIST_TAGS.has(el.tagName)) return;
+      if (!isMeaningfulOrphan(node)) return;
       orphanNodes.push(node);
     });
     if (!orphanNodes.length) return;
@@ -70,9 +100,7 @@ function hoistOrphanListItems(root: ParentNode) {
 
 function removeEmptyListItems(root: ParentNode) {
   Array.from(root.querySelectorAll('li')).forEach((li) => {
-    const text = li.textContent?.replace(/\u00a0/g, ' ').trim() ?? '';
-    if (text) return;
-    if (li.querySelector('ul, ol, img')) return;
+    if (liHasContent(li)) return;
     li.remove();
   });
 }
@@ -86,7 +114,9 @@ function stripListPasteClasses(root: ParentNode) {
 function normalizeListElementStyles(root: ParentNode) {
   root.querySelectorAll('ul, ol, li').forEach((node) => {
     const el = node as HTMLElement;
-    el.style.removeProperty('list-style-type');
+    if (!el.hasAttribute('data-pres-list-level')) {
+      el.style.removeProperty('list-style-type');
+    }
     el.style.removeProperty('list-style');
     if (el.tagName === 'UL' || el.tagName === 'OL') {
       el.style.removeProperty('margin');
@@ -105,11 +135,180 @@ function removeEmptyLists(root: ParentNode) {
   });
 }
 
+function liHasContent(li: Element): boolean {
+  const text = li.textContent?.replace(/\u00a0/g, ' ').trim() ?? '';
+  if (text) return true;
+  return Boolean(li.querySelector(':scope > ul, :scope > ol, img'));
+}
+
+function placeCaretInListItem(li: HTMLLIElement) {
+  const sel = window.getSelection();
+  if (!sel) return;
+  const range = document.createRange();
+  range.selectNodeContents(li);
+  range.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+export function getListItemFromSelection(editor: HTMLElement): HTMLLIElement | null {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return null;
+  let node: Node | null = sel.anchorNode;
+  if (node?.nodeType === Node.TEXT_NODE) node = node.parentNode;
+  if (!(node instanceof Element)) return null;
+  const li = node.closest('li');
+  if (!li || !editor.contains(li)) return null;
+  return li;
+}
+
+/** ul > li ohne eigenen Text, nur Unterliste → eine Ebene hochziehen (Doppel-Bullets). */
+function flattenRedundantListNesting(root: ParentNode) {
+  let changed = true;
+  while (changed) {
+    changed = false;
+    Array.from(root.querySelectorAll('li')).forEach((li) => {
+      const sub = li.querySelector(':scope > ul, :scope > ol');
+      if (!sub) return;
+
+      let ownText = '';
+      Array.from(li.childNodes).forEach((node) => {
+        if (node === sub) return;
+        if (node.nodeType === Node.TEXT_NODE) {
+          ownText += node.textContent ?? '';
+          return;
+        }
+        if (node.nodeType !== Node.ELEMENT_NODE) return;
+        const el = node as Element;
+        if (!LIST_TAGS.has(el.tagName)) ownText += el.textContent ?? '';
+      });
+      if (ownText.replace(/\u00a0/g, ' ').trim()) return;
+
+      const parent = li.parentElement;
+      if (!parent) return;
+      while (sub.firstChild) parent.insertBefore(sub.firstChild, li);
+      sub.remove();
+      li.remove();
+      changed = true;
+    });
+  }
+}
+
+const MAX_LIST_LEVEL = 8;
+const LIST_INDENT_PX = 28;
+const LIST_LEVEL_MARKERS = ['disc', 'circle', 'square', 'disc', 'circle', 'square', 'disc', 'circle'];
+
+export function getListItemLevel(li: HTMLLIElement): number {
+  const raw = parseInt(li.getAttribute('data-pres-list-level') || '', 10);
+  if (Number.isFinite(raw) && raw >= 0) return raw;
+  let depth = 0;
+  let parent = li.parentElement;
+  while (parent) {
+    if (isList(parent) && parent.parentElement?.closest('li')) depth += 1;
+    parent = parent.parentElement;
+  }
+  return depth;
+}
+
+export function applyListItemLevel(li: HTMLLIElement, level: number) {
+  const safe = Math.max(0, Math.min(MAX_LIST_LEVEL, level));
+  if (safe <= 0) {
+    li.removeAttribute('data-pres-list-level');
+    li.style.removeProperty('margin-left');
+    li.style.removeProperty('list-style-type');
+    return;
+  }
+  li.setAttribute('data-pres-list-level', String(safe));
+  li.style.marginLeft = `${safe * LIST_INDENT_PX}px`;
+  li.style.listStyleType = LIST_LEVEL_MARKERS[safe - 1] || 'disc';
+}
+
+function outermostListForItem(li: HTMLLIElement, editor: HTMLElement): HTMLUListElement | HTMLOListElement | null {
+  let outer: HTMLUListElement | HTMLOListElement | null = null;
+  let current: Element | null = li.parentElement;
+  while (current && editor.contains(current)) {
+    if (isList(current)) outer = current as HTMLUListElement | HTMLOListElement;
+    current = current.parentElement;
+  }
+  return outer;
+}
+
+/** Verschachtelte li in die Hauptliste heben (Outline-Level bleibt erhalten). */
+function hoistListItemToOuterList(li: HTMLLIElement, editor: HTMLElement) {
+  const outer = outermostListForItem(li, editor);
+  const parentList = li.parentElement;
+  if (!outer || !parentList || !isList(parentList) || parentList === outer) return;
+
+  const parentLi = parentList.closest('li');
+  const ref = parentLi?.nextSibling ?? null;
+  outer.insertBefore(li, ref);
+
+  if (!parentList.querySelector('li')) parentList.remove();
+}
+
+/** Einrücken per Outline-Level — funktioniert auch beim ersten Punkt. */
+export function indentListItemInEditor(editor: HTMLElement): boolean {
+  const li = getListItemFromSelection(editor);
+  if (!li) return false;
+
+  const level = getListItemLevel(li);
+  if (level >= MAX_LIST_LEVEL) {
+    placeCaretInListItem(li);
+    return true;
+  }
+
+  applyListItemLevel(li, level + 1);
+  hoistListItemToOuterList(li, editor);
+  normalizeListsInPlace(editor);
+  placeCaretInListItem(li);
+  return true;
+}
+
+/** Ausrücken per Outline-Level oder aus verschachtelter Liste heben. */
+export function outdentListItemInEditor(editor: HTMLElement): boolean {
+  const li = getListItemFromSelection(editor);
+  if (!li) return false;
+
+  const level = getListItemLevel(li);
+  if (level > 0) {
+    applyListItemLevel(li, level - 1);
+    placeCaretInListItem(li);
+    return true;
+  }
+
+  const parentList = li.parentElement;
+  if (!parentList || !isList(parentList)) return false;
+  const parentLi = parentList.closest('li');
+  if (!parentLi) return false;
+  const outerList = parentLi.parentElement;
+  if (!outerList || !isList(outerList)) return false;
+
+  const parentLevel = getListItemLevel(parentLi);
+  outerList.insertBefore(li, parentLi.nextSibling);
+  applyListItemLevel(li, parentLevel);
+
+  if (!parentList.querySelector('li')) parentList.remove();
+  normalizeListsInPlace(editor);
+  placeCaretInListItem(li);
+  return true;
+}
+
+function syncLegacyNestedListLevels(root: ParentNode) {
+  Array.from(root.querySelectorAll('li')).forEach((li) => {
+    if (li.hasAttribute('data-pres-list-level')) return;
+    const depth = getListItemLevel(li);
+    if (depth > 0) applyListItemLevel(li, depth);
+  });
+}
+
 export function normalizeListsInPlace(root: ParentNode) {
   if (typeof document === 'undefined') return;
   unwrapIllegalSpanBlocks(root);
+  removeStrayBlocksInLists(root);
   fixDirectNestedLists(root);
   hoistOrphanListItems(root);
+  flattenRedundantListNesting(root);
+  syncLegacyNestedListLevels(root);
   removeEmptyListItems(root);
   removeEmptyLists(root);
   stripListPasteClasses(root);

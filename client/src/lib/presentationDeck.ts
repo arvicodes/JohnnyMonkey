@@ -1,9 +1,13 @@
 import { parentDirGitPath } from './folienVersions';
 import { JOHNNY_PRESENTATION } from './presentationTheme';
 import type { PresentationTrashItem } from './presentationTrash';
-import type { SlideTransition } from './presentationTransitions';
+import {
+  normalizeSlideTransition,
+  SLIDE_TRANSITIONS,
+  type SlideTransition,
+} from './presentationTransitions';
 export type { SlideTransition } from './presentationTransitions';
-export { SLIDE_TRANSITIONS } from './presentationTransitions';
+export { SLIDE_TRANSITIONS };
 
 export const DECK_FILENAME = 'Praesentation.deck.json';
 export const ANNOTATIONS_FILENAME = 'Praesentation.annotations.json';
@@ -81,6 +85,8 @@ export interface PresentationSlide {
   elements?: SlideElement[];
   transition?: SlideTransition;
   revealEnabled?: boolean;
+  /** Einblend-Schritt pro Layout-Bereich (0 = sofort sichtbar). */
+  zoneRevealSteps?: Partial<Record<string, number>>;
 }
 
 export interface PresentationDeck {
@@ -91,6 +97,8 @@ export interface PresentationDeck {
   slides: PresentationSlide[];
   defaultTransition?: SlideTransition;
   trash?: PresentationTrashItem[];
+  /** Foliennummer unten rechts auf jeder Folie anzeigen. */
+  showSlideNumbers?: boolean;
 }
 
 export interface PresentationAnnotations {
@@ -174,8 +182,9 @@ export function normalizeSlide(slide: PresentationSlide): PresentationSlide {
     preparationNotes: slide.preparationNotes ?? '',
     preparationHtml: slide.preparationHtml ?? textToHtml(slide.preparationNotes || ''),
     elements: slide.elements ?? [],
-    transition: slide.transition ?? 'fade',
+    transition: normalizeSlideTransition(slide.transition),
     revealEnabled: slide.revealEnabled !== false,
+    zoneRevealSteps: slide.zoneRevealSteps ?? {},
   };
 }
 
@@ -185,6 +194,7 @@ export function normalizeDeck(deck: PresentationDeck): PresentationDeck {
     defaultTransition: deck.defaultTransition ?? 'fade',
     slides: sortSlides(deck.slides.map(normalizeSlide)),
     trash: Array.isArray(deck.trash) ? deck.trash : [],
+    showSlideNumbers: deck.showSlideNumbers === true,
   };
 }
 

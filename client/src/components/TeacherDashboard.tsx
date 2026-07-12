@@ -24,6 +24,7 @@ import { FlashcardLearningModal } from './StudentDashboard';
 import { RIDDLES } from './riddles';
 import { MOVEMENT_STORIES } from '../data/movementStories';
 import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
+import { wallOfFameDashboardBtnSx } from '../lib/wallOfFameUi';
 import {
   gradeFromGroupNames,
   ENTRY_TICKET_PLAN_GRADE_OPTIONS,
@@ -301,6 +302,7 @@ import {
   Quiz as QuizIcon,
   Assignment as AssignmentIcon,
   Campaign as CampaignIcon,
+  PhotoLibrary as PhotoLibraryIcon,
   CheckCircle as CheckCircleIcon,
   PlayArrow as PlayIcon,
   Stop as StopIcon,
@@ -14096,6 +14098,14 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   title="Stories & Tagebücher: Reiseberichte, Tagebuch, Fortbildung"
                 >
                   <WbSunnyIcon sx={{ fontSize: 28 }} />
+                </IconButton>
+                {/* Wall of Fame */}
+                <IconButton
+                  onClick={() => navigate('/wall-of-fame')}
+                  sx={wallOfFameDashboardBtnSx}
+                  title="Wall of Fame – Unterrichtsbilder"
+                >
+                  <PhotoLibraryIcon sx={{ fontSize: 18 }} />
                 </IconButton>
                 {/* Be a Hero – eigene Workouts & Kartei */}
                 <IconButton

@@ -3,7 +3,8 @@ import { Box } from '@mui/material';
 import { SlideElement, slideImageUrl } from '../../lib/presentationDeck';
 import { isFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
 import { captureEditorSelection } from '../../lib/presentationFontSize';
-import { isElementVisible } from '../../lib/presentationReveal';
+import { filterHtmlByRevealStep, hasVisibleRevealContent, isElementVisible, shouldAnimateReveal } from '../../lib/presentationReveal';
+import { handlePresentationTabKey } from '../../lib/presentationRichText';
 
 type DragMode = 'move' | 'resize';
 
@@ -52,6 +53,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   useEffect(() => {
     if (element.type === 'text' && editable && selected && textRef.current) {
       const el = textRef.current;
+      if (document.activeElement === el || el.contains(document.activeElement)) return;
       if (el.innerHTML !== (element.html || '')) {
         el.innerHTML = element.html || '<p>Text hier…</p>';
       }
@@ -123,7 +125,26 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     window.addEventListener('pointerup', pointerUp);
   };
 
-  if (!isElementVisible(element, revealStep, revealEnabled)) return null;
+  if (!editable && !isElementVisible(element, revealStep, revealEnabled)) return null;
+
+  const elementStep = element.revealStep ?? 0;
+  const hasInnerParagraphSteps =
+    element.type === 'text' && (element.html || '').includes('data-reveal-step');
+  if (
+    !editable &&
+    revealEnabled &&
+    element.type === 'text' &&
+    hasInnerParagraphSteps &&
+    elementStep <= 0 &&
+    !hasVisibleRevealContent(element.html || '', revealStep)
+  ) {
+    return null;
+  }
+
+  const displayHtml =
+    element.type === 'text' && revealEnabled && hasInnerParagraphSteps && !editable
+      ? filterHtmlByRevealStep(element.html || '', revealStep, true)
+      : element.html || '<p>Text</p>';
 
   const showEditChrome = editable && selected;
 
@@ -147,8 +168,9 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         width: `${element.w}%`,
         height: `${element.h}%`,
         zIndex: 10 + element.zIndex + (selected ? 100 : 0),
-        animation:
-          revealEnabled && (element.revealStep ?? 0) > 0 ? 'presRevealIn 0.35s ease-out' : undefined,
+        animation: shouldAnimateReveal(elementStep, revealStep, revealEnabled)
+          ? 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1)'
+          : undefined,
         borderRadius: `${6 * scale}px`,
         border: showEditChrome
           ? `${2 * scale}px solid #2E7D32`
@@ -200,6 +222,13 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               }
             }}
             onPointerDown={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              const el = textRef.current;
+              if (!el || e.key !== 'Tab' || e.ctrlKey || e.metaKey || e.altKey) return;
+              e.preventDefault();
+              e.stopPropagation();
+              handlePresentationTabKey(el, e.shiftKey);
+            }}
             sx={{
               width: '100%',
               height: '100%',
@@ -211,6 +240,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               cursor: 'text',
               color: '#424242',
               '& p': { m: 0, mb: `${4 * scale}px` },
+              '& li > p': { display: 'block', listStyle: 'none' },
               '& li': { mb: `${2 * scale}px` },
               '& ul, & ol': { m: 0, pl: `${20 * scale}px` },
               '& [data-pres-fs]': { lineHeight: 'inherit' },
@@ -228,9 +258,13 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               pointerEvents: 'none',
               color: '#424242',
               '& p': { m: 0 },
+              '& li': { mb: `${2 * scale}px` },
+              '& [data-reveal-step].pres-reveal-enter': {
+                animation: 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1)',
+              },
               '& [data-pres-fs]': { lineHeight: 'inherit' },
             }}
-            dangerouslySetInnerHTML={{ __html: element.html || '<p>Text</p>' }}
+            dangerouslySetInnerHTML={{ __html: displayHtml }}
           />
         ))}
 

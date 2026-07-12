@@ -5,7 +5,7 @@ import { htmlToPlain, textToHtml } from '../../lib/presentationDeck';
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
 import { isFormatBarInteracting, isPresentationFormatUiTarget } from '../../lib/presentationFormatBarGuard';
 import { captureEditorSelection, clearSavedSelection } from '../../lib/presentationFontSize';
-import { sanitizePastedHtml, normalizeNotesHtml, execFormat } from '../../lib/presentationRichText';
+import { sanitizePastedHtml, normalizeNotesHtml, handlePresentationTabKey } from '../../lib/presentationRichText';
 
 export type NotesFieldKey = 'preparationHtml' | 'speakerNotesHtml';
 
@@ -100,7 +100,8 @@ const NoteZone: React.FC<NoteZoneProps> = ({
     const el = ref.current;
     if (!el || readOnly || e.key !== 'Tab' || e.ctrlKey || e.metaKey || e.altKey) return;
     e.preventDefault();
-    execFormat(el, e.shiftKey ? 'outdent' : 'indent');
+    e.stopPropagation();
+    handlePresentationTabKey(el, e.shiftKey);
     persistContent(el.innerHTML, false);
   };
 

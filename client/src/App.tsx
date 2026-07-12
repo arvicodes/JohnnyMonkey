@@ -39,6 +39,7 @@ import AnnouncementsPage from './pages/AnnouncementsPage';
 import AnnouncementFlyerPage from './pages/AnnouncementFlyerPage';
 import FlyerStudioPage from './pages/FlyerStudioPage';
 import AnnouncementStudentPreviewPage from './pages/AnnouncementStudentPreviewPage';
+import WallOfFamePage from './pages/WallOfFamePage';
 
 import { Snackbar, Alert, Box, CircularProgress } from '@mui/material';
 import JohnnyCompanionSimple from './components/JohnnyCompanionSimple';
@@ -61,7 +62,7 @@ function AppContent() {
   const [authReady, setAuthReady] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const isFullBleed = /^\/(presentation\/(edit|present|review)|whiteboard|folien-editor)/.test(location.pathname);
+  const isFullBleed = /^\/(presentation\/(edit|present|review)|whiteboard|folien-editor|wall-of-fame)/.test(location.pathname);
   const loginInputRef = useRef<HTMLInputElement>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -330,6 +331,7 @@ function AppContent() {
         <Route path="/stories-tagebuecher/site/:siteId/vorschau" element={<StorySitePublicPreviewPage />} />
         <Route path="/stories-tagebuecher/site/:siteId/page" element={<StorySiteOverviewPage />} />
         <Route path="/stories-tagebuecher/site/:siteId" element={<StorySiteBuilderPage />} />
+        <Route path="/wall-of-fame" element={<WallOfFamePage />} />
 
       </Routes>
 

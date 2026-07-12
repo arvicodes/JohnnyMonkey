@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { StorageManager } from '../utils/storageManager';
+import { fileToJpegBuffer, isHeicPath } from '../utils/imageToJpeg';
 import fs from 'fs';
 import path from 'path';
 import mammoth from 'mammoth';
@@ -944,195 +945,73 @@ export class FileSystemPathController {
   // Image file handler
   static async readImageFile(req: Request, res: Response) {
     try {
-      let { filePath, preview } = req.query;
+      let { filePath, preview, max } = req.query;
 
-      if (!filePath) {
+      if (!filePath || typeof filePath !== 'string') {
         return res.status(400).json({ error: 'filePath is required' });
       }
 
-      // Dekodiere den Pfad falls er URL-kodiert ist
-      if (typeof filePath === 'string') {
-        filePath = decodeURIComponent(filePath);
-      }
-
-      console.log('Reading image file:', filePath);
-      console.log('File exists:', fs.existsSync(filePath as string));
-      
-      // Prüfe direkt mit fs, ob die Datei existiert
-      if (!fs.existsSync(filePath as string)) {
-        console.error('File does not exist at path:', filePath);
+      filePath = decodeURIComponent(filePath);
+      const fullPath = StorageManager.resolveFilePath(filePath);
+      if (!fullPath) {
         return res.status(404).json({ error: 'File not found', path: filePath });
       }
 
-      const fileContent = await StorageManager.readFile(filePath as string);
-      
-      if (!fileContent) {
-        console.error('StorageManager.readFile returned null for:', filePath);
-        // Versuche direkt mit fs zu lesen als Fallback
-        try {
-          const directContent = fs.readFileSync(filePath as string);
-          console.log('Successfully read file directly with fs');
-          // Verwende den direkten Inhalt weiter unten
-          const fileContentToUse = directContent;
-          
-          if (preview === 'true') {
-            // For preview, return JSON with base64 encoded image
-            const base64Image = fileContentToUse.toString('base64');
-            const fileExtension = path.extname(filePath as string).toLowerCase();
-            let mimeType = 'image/jpeg'; // default
-            
-            // Determine MIME type based on file extension
-            switch (fileExtension) {
-              case '.png':
-                mimeType = 'image/png';
-                break;
-              case '.gif':
-                mimeType = 'image/gif';
-                break;
-              case '.bmp':
-                mimeType = 'image/bmp';
-                break;
-              case '.webp':
-                mimeType = 'image/webp';
-                break;
-              case '.svg':
-                mimeType = 'image/svg+xml';
-                break;
-              case '.jpg':
-              case '.jpeg':
-              default:
-                mimeType = 'image/jpeg';
-                break;
-            }
+      const maxRaw = parseInt(String(max ?? ''), 10);
+      const maxEdge =
+        Number.isFinite(maxRaw) && maxRaw > 0 && maxRaw <= 2400 ? maxRaw : undefined;
 
-            const response = {
-              dataUrl: `data:${mimeType};base64,${base64Image}`,
-              url: `data:${mimeType};base64,${base64Image}`,
-              fileName: path.basename(filePath as string),
-              fileSize: fileContentToUse.length,
-              mimeType: mimeType
-            };
+      let buffer: Buffer;
+      let mimeType: string;
 
-            res.setHeader('Content-Type', 'application/json');
-            res.setHeader('Cache-Control', 'public, max-age=3600');
-            return res.json(response);
-          } else {
-            // For direct download, return the raw image
-            const fileExtension = path.extname(filePath as string).toLowerCase();
-            let mimeType = 'image/jpeg'; // default
-            
-            // Determine MIME type based on file extension
-            switch (fileExtension) {
-              case '.png':
-                mimeType = 'image/png';
-                break;
-              case '.gif':
-                mimeType = 'image/gif';
-                break;
-              case '.bmp':
-                mimeType = 'image/bmp';
-                break;
-              case '.webp':
-                mimeType = 'image/webp';
-                break;
-              case '.svg':
-                mimeType = 'image/svg+xml';
-                break;
-              case '.jpg':
-              case '.jpeg':
-              default:
-                mimeType = 'image/jpeg';
-                break;
-            }
-
-            res.setHeader('Content-Type', mimeType);
-            res.setHeader('Content-Disposition', `inline; filename="${path.basename(filePath as string)}"`);
-            res.setHeader('Cache-Control', 'public, max-age=3600');
-            return res.send(fileContentToUse);
-          }
-        } catch (error) {
-          console.error('Error reading file directly:', error);
-          return res.status(500).json({ error: 'Failed to read image file', details: error });
+      if (isHeicPath(fullPath)) {
+        buffer = await fileToJpegBuffer(fullPath, maxEdge ?? 1200);
+        mimeType = 'image/jpeg';
+      } else {
+        buffer = fs.readFileSync(fullPath);
+        const ext = path.extname(fullPath).toLowerCase();
+        switch (ext) {
+          case '.png':
+            mimeType = 'image/png';
+            break;
+          case '.gif':
+            mimeType = 'image/gif';
+            break;
+          case '.bmp':
+            mimeType = 'image/bmp';
+            break;
+          case '.webp':
+            mimeType = 'image/webp';
+            break;
+          case '.svg':
+            mimeType = 'image/svg+xml';
+            break;
+          case '.jpg':
+          case '.jpeg':
+          default:
+            mimeType = 'image/jpeg';
+            break;
         }
       }
 
       if (preview === 'true') {
-        // For preview, return JSON with base64 encoded image
-        const base64Image = fileContent.toString('base64');
-        const fileExtension = path.extname(filePath as string).toLowerCase();
-        let mimeType = 'image/jpeg'; // default
-        
-        // Determine MIME type based on file extension
-        switch (fileExtension) {
-          case '.png':
-            mimeType = 'image/png';
-            break;
-          case '.gif':
-            mimeType = 'image/gif';
-            break;
-          case '.bmp':
-            mimeType = 'image/bmp';
-            break;
-          case '.webp':
-            mimeType = 'image/webp';
-            break;
-          case '.svg':
-            mimeType = 'image/svg+xml';
-            break;
-          case '.jpg':
-          case '.jpeg':
-          default:
-            mimeType = 'image/jpeg';
-            break;
-        }
-
         const response = {
-          dataUrl: `data:${mimeType};base64,${base64Image}`,
-          url: `data:${mimeType};base64,${base64Image}`,
-          fileName: path.basename(filePath as string),
-          fileSize: fileContent.length,
-          mimeType: mimeType
+          dataUrl: `data:${mimeType};base64,${buffer.toString('base64')}`,
+          url: `data:${mimeType};base64,${buffer.toString('base64')}`,
+          fileName: path.basename(fullPath),
+          fileSize: buffer.length,
+          mimeType,
         };
-
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Cache-Control', 'public, max-age=3600');
-        res.json(response);
-      } else {
-        // For direct download, return the raw image
-        const fileExtension = path.extname(filePath as string).toLowerCase();
-        let mimeType = 'image/jpeg'; // default
-        
-        // Determine MIME type based on file extension
-        switch (fileExtension) {
-          case '.png':
-            mimeType = 'image/png';
-            break;
-          case '.gif':
-            mimeType = 'image/gif';
-            break;
-          case '.bmp':
-            mimeType = 'image/bmp';
-            break;
-          case '.webp':
-            mimeType = 'image/webp';
-            break;
-          case '.svg':
-            mimeType = 'image/svg+xml';
-            break;
-          case '.jpg':
-          case '.jpeg':
-          default:
-            mimeType = 'image/jpeg';
-            break;
-        }
-
-        res.setHeader('Content-Type', mimeType);
-        res.setHeader('Content-Disposition', `inline; filename="${path.basename(filePath as string)}"`);
-        res.setHeader('Cache-Control', 'public, max-age=3600');
-        res.send(fileContent);
+        return res.json(response);
       }
-                        
-                      } catch (error) {
+
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Content-Disposition', `inline; filename="${path.basename(fullPath)}"`);
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.send(buffer);
+    } catch (error) {
       console.error('Error reading image file:', error);
       res.status(500).json({ error: 'Failed to read image file' });
     }
@@ -1354,6 +1233,20 @@ export class FileSystemPathController {
 
       // Construct the git-intern path
       const gitInternPath = `git-intern/${filePath}`;
+      const fullPath = StorageManager.resolveFilePath(gitInternPath);
+      if (!fullPath) {
+        return res.status(404).json({ error: 'File not found' });
+      }
+
+      const ext = path.extname(filePath).toLowerCase();
+
+      if (isHeicPath(fullPath)) {
+        const buf = await fileToJpegBuffer(fullPath, 1200);
+        res.setHeader('Content-Type', 'image/jpeg');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        return res.send(buf);
+      }
+
       const fileContent = await StorageManager.readFile(gitInternPath);
       
       if (!fileContent) {
@@ -1361,7 +1254,6 @@ export class FileSystemPathController {
       }
 
       // Determine MIME type based on file extension
-      const ext = path.extname(filePath).toLowerCase();
       let mimeType = 'text/plain';
       
       switch (ext) {

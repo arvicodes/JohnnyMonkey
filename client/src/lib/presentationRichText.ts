@@ -15,7 +15,13 @@ import {
   restoreSavedEditorSelection,
   stashEditorSelection,
 } from './presentationFontSize';
-import { normalizeListsInPlace, normalizePresentationLists } from './presentationListNormalize';
+import {
+  normalizeListsInPlace,
+  normalizePresentationLists,
+  indentListItemInEditor,
+  outdentListItemInEditor,
+  getListItemFromSelection,
+} from './presentationListNormalize';
 
 export {
   applyEditorFontSizePx,
@@ -219,10 +225,77 @@ const LIST_FORMAT_COMMANDS = new Set([
   'outdent',
 ]);
 
+function getEditableBlock(editor: HTMLElement): HTMLElement | null {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return null;
+  let node: Node | null = sel.anchorNode;
+  if (node?.nodeType === Node.TEXT_NODE) node = node.parentNode;
+  if (!(node instanceof Element)) return null;
+  const block = node.closest('p, li, div, blockquote');
+  if (!block || !editor.contains(block)) return null;
+  return block as HTMLElement;
+}
+
+function isSelectionInList(editor: HTMLElement): boolean {
+  return !!getListItemFromSelection(editor);
+}
+
+function nudgeParagraphIndent(block: HTMLElement, shiftKey: boolean) {
+  const px = parseInt(block.style.marginLeft || '0', 10) || 0;
+  const next = shiftKey ? Math.max(0, px - 28) : px + 28;
+  if (next <= 0) block.style.removeProperty('margin-left');
+  else block.style.marginLeft = `${next}px`;
+}
+
+/** Tab in Präsentations-Editoren: Listen einrücken, sonst Absatz-Einzug (kein Browser-indent). */
+export function handlePresentationTabKey(editor: HTMLElement, shiftKey: boolean): void {
+  stashEditorSelection(editor);
+  ensureEditorSelection(editor) || focusEditor(editor);
+
+  if (isSelectionInList(editor)) {
+    if (shiftKey) {
+      outdentListItemInEditor(editor);
+    } else {
+      indentListItemInEditor(editor);
+    }
+    return;
+  }
+
+  const block = getEditableBlock(editor);
+  if (!block) return;
+  nudgeParagraphIndent(block, shiftKey);
+  collapseEditorSelection(editor);
+}
+
 export function execFormat(editor: HTMLElement | null, cmd: string, value?: string) {
   if (!editor) return;
   stashEditorSelection(editor);
   ensureEditorSelection(editor) || focusEditor(editor);
+
+  if (cmd === 'indent') {
+    if (getListItemFromSelection(editor)) {
+      indentListItemInEditor(editor);
+    } else {
+      const block = getEditableBlock(editor);
+      if (block) nudgeParagraphIndent(block, false);
+    }
+    collapseEditorSelection(editor);
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
+    return;
+  }
+
+  if (cmd === 'outdent') {
+    if (getListItemFromSelection(editor)) {
+      outdentListItemInEditor(editor);
+    } else {
+      const block = getEditableBlock(editor);
+      if (block) nudgeParagraphIndent(block, true);
+    }
+    collapseEditorSelection(editor);
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
+    return;
+  }
+
   try {
     document.execCommand('styleWithCSS', false, 'true');
   } catch {

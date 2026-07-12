@@ -4,7 +4,8 @@ import { htmlToPlain, textToHtml } from '../../lib/presentationDeck';
 import { filterHtmlByRevealStep } from '../../lib/presentationReveal';
 import { isFormatBarInteracting, isPresentationFormatUiTarget } from '../../lib/presentationFormatBarGuard';
 import { captureEditorSelection, clearSavedSelection } from '../../lib/presentationFontSize';
-import { sanitizePastedHtml, sanitizePresentationHtml, execFormat } from '../../lib/presentationRichText';
+import { normalizeListsInPlace } from '../../lib/presentationListNormalize';
+import { sanitizePastedHtml, sanitizePresentationHtml, handlePresentationTabKey } from '../../lib/presentationRichText';
 
 export type RichZoneVariant = 'title' | 'hero' | 'subtitle' | 'body' | 'quote' | 'caption';
 
@@ -62,14 +63,15 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
   const zoneBasePx = VARIANT_FONT[variant];
   const baseFont = zoneBasePx * scale;
   const rawHtml = sanitizePresentationHtml(html || textToHtml(plain || ''));
-  const displayHtml =
-    !editable && revealEnabled
-      ? filterHtmlByRevealStep(rawHtml, revealStep, true)
-      : rawHtml;
+  const applyRevealFilter = !editable && revealEnabled && revealStep < 999;
+  const displayHtml = applyRevealFilter
+    ? filterHtmlByRevealStep(rawHtml, revealStep, true)
+    : rawHtml;
 
   const syncFromProps = useCallback(() => {
     const el = ref.current;
     if (!el || editingRef.current) return;
+    if (document.activeElement === el || el.contains(document.activeElement)) return;
     const next = displayHtml || `<p><br></p>`;
     if (el.innerHTML !== next) el.innerHTML = next;
   }, [displayHtml]);
@@ -121,8 +123,8 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
     const el = ref.current;
     if (!el || e.key !== 'Tab' || e.ctrlKey || e.metaKey || e.altKey) return;
     e.preventDefault();
-    execFormat(el, e.shiftKey ? 'outdent' : 'indent');
-    handleInput();
+    e.stopPropagation();
+    handlePresentationTabKey(el, e.shiftKey);
   };
 
   const richSx = {
@@ -141,6 +143,7 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
     color: VARIANT_DEFAULT_COLOR[variant],
     '& p': { m: 0, mb: `${6 * scale}px` },
     '& p:last-child': { mb: 0 },
+    '& li > p': { display: 'block', listStyle: 'none' },
     '& ul, & ol': {
       m: 0,
       pl: `${28 * scale}px`,
@@ -156,6 +159,7 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
     '& li': {
       mb: `${4 * scale}px`,
       display: 'list-item',
+      listStylePosition: 'outside',
     },
     '& li > ul, & li > ol': {
       mt: `${4 * scale}px`,
@@ -172,8 +176,8 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
       display: 'block',
       my: `${8 * scale}px`,
     },
-    '& [data-reveal-step].pres-reveal-visible': {
-      animation: 'presRevealIn 0.35s ease-out',
+    '& [data-reveal-step].pres-reveal-enter': {
+      animation: 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1)',
     },
     '& mark': { borderRadius: `${2 * scale}px`, px: `${2 * scale}px` },
     '&:empty:before': editable
@@ -206,7 +210,10 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
       data-pres-base-fs={String(zoneBasePx)}
       onFocus={() => {
         editingRef.current = true;
-        if (ref.current) onEditorFocus?.(ref.current);
+        if (ref.current) {
+          normalizeListsInPlace(ref.current);
+          onEditorFocus?.(ref.current);
+        }
       }}
       onBlur={(e) => {
         if (isFormatBarInteracting()) return;
@@ -215,7 +222,6 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
         editingRef.current = false;
         handleInput();
       }}
-      onInput={handleInput}
       onPaste={handlePaste}
       onKeyDown={handleKeyDown}
       onMouseDown={(e) => {

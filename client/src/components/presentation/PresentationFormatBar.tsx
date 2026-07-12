@@ -23,13 +23,11 @@ import {
   FormatIndentDecrease,
   FormatColorText,
   ImageOutlined,
-  VisibilityOutlined,
   Remove as RemoveIcon,
   Add as AddIcon,
 } from '@mui/icons-material';
 import { HIGHLIGHT_PRESETS, TEXT_COLOR_PRESETS } from '../../lib/presentationTheme';
 import { setFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
-import { markSelectionRevealStep, nextRevealStepForEditor } from '../../lib/presentationReveal';
 import {
   applyFontSizePx,
   applyHighlightColor,
@@ -465,26 +463,6 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
           <Divider orientation="vertical" flexItem sx={{ borderColor: '#ccc', mx: 0.25 }} />
         </>
       )}
-
-      <Tooltip title="Als Einblend-Schritt markieren">
-        <span>
-          <IconButton
-            size="small"
-            disabled={disabled || !activeEditor}
-            sx={btnSx}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() =>
-              applyAndNotify(() => {
-                if (!activeEditor) return;
-                const step = nextRevealStepForEditor(activeEditor.innerHTML);
-                markSelectionRevealStep(activeEditor, step);
-              })
-            }
-          >
-            <VisibilityOutlined sx={{ fontSize: 17 }} />
-          </IconButton>
-        </span>
-      </Tooltip>
 
     </Box>
   );
