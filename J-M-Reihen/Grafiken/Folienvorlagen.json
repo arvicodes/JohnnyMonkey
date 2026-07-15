@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "updatedAt": "2026-07-12T06:22:26.791Z",
+  "version": 2,
+  "updatedAt": "2026-07-13T05:30:00.000Z",
   "templates": {
     "start": {
       "layout": "title-slide",
@@ -131,5 +131,169 @@
       "materialNotes": "",
       "materialHtml": ""
     }
-  }
+  },
+  "custom": [
+    {
+      "id": "custom-roboter-spielrunde",
+      "label": "Roboter-Spielrunde",
+      "shortLabel": "RoS",
+      "hint": "Phase 2 – Roboter erscheinen nacheinander, dann die Frage",
+      "createdAt": "2026-07-13T05:30:00.000Z",
+      "payload": {
+        "layout": "title-content",
+        "title": "Phase 2 – Wer erkennt wen?",
+        "body": "Eine Person zeigt nur die Bewegung einer Mitschülerin oder eines Mitschülers.\nDie Klasse ruft den Namen.\nRichtig erkannt: „Modell erfolgreich trainiert.“\nFalsch erkannt: „Fehlklassifikation.“\nWer von diesen Robotern ist der Mensch?",
+        "speakerNotes": "Roboter nacheinander einblenden (Leertaste). Nach dem fünften Roboter die Frage diskutieren. Bei Fehlern: Klasse nennt Ursache (zu ähnliche Trainingsdaten, zu wenig Wiederholung, Übergeneralisierung).",
+        "preparationNotes": "",
+        "materialNotes": "Für Phase 2: Zwei Karten – grünes Check, rotes X.",
+        "subtitle": "",
+        "bodyLeft": "",
+        "bodyRight": "",
+        "imagePath": "",
+        "imageCaption": "",
+        "bodyStyle": "plain",
+        "titleAlign": "left",
+        "accentColor": "#C62828",
+        "titleHtml": "<p><span data-pres-color=\"#C62828\" style=\"color: rgb(198, 40, 40) !important;\"><b>Phase 2 – Wer erkennt wen?</b></span></p>",
+        "bodyHtml": "<ul><li data-reveal-step=\"0\"><span data-pres-fs=\"26\" style=\"font-size: 26px !important;\">Eine Person zeigt nur die <b>Bewegung</b> einer Mitschülerin oder eines Mitschülers.</span></li><li data-reveal-step=\"0\"><span data-pres-fs=\"26\" style=\"font-size: 26px !important;\">Die Klasse ruft den <b>Namen</b>.</span></li><li data-reveal-step=\"0\"><span data-pres-fs=\"26\" style=\"font-size: 26px !important;\">Richtig: <i>„Modell erfolgreich trainiert.“</i> · Falsch: <i>„Fehlklassifikation.“</i></span></li></ul><p data-reveal-step=\"6\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><span data-pres-color=\"#6A1B9A\" style=\"color: rgb(106, 27, 154) !important;\"><b>Wer von diesen Robotern ist der Mensch?</b></span></span></p>",
+        "subtitleHtml": "",
+        "bodyLeftHtml": "",
+        "bodyRightHtml": "",
+        "imageCaptionHtml": "",
+        "speakerNotesHtml": "<p>Roboter nacheinander einblenden (Leertaste). Nach dem fünften Roboter die Frage diskutieren.</p>",
+        "preparationHtml": "",
+        "materialHtml": "<ul><li>Für Phase 2: Zwei Karten – <span data-pres-highlight=\"#C5E1A5\" style=\"background-color: rgb(197, 225, 165) !important;\">grünes Check</span>, <span data-pres-highlight=\"#F8BBD0\" style=\"background-color: rgb(248, 187, 208) !important;\">rotes X</span>.</li></ul>",
+        "elements": [
+          {
+            "id": "tpl-ros-gruen",
+            "type": "image",
+            "x": 52,
+            "y": 4,
+            "w": 16,
+            "h": 26,
+            "src": "__GRAFIKEN__/Roboter-Gruen.png",
+            "zIndex": 2,
+            "revealStep": 1,
+            "animationSet": true,
+            "imageFit": "contain"
+          },
+          {
+            "id": "tpl-ros-blau",
+            "type": "image",
+            "x": 70,
+            "y": 2,
+            "w": 14,
+            "h": 24,
+            "src": "__GRAFIKEN__/Roboter-Blau.png",
+            "zIndex": 3,
+            "revealStep": 2,
+            "animationSet": true,
+            "imageFit": "contain"
+          },
+          {
+            "id": "tpl-ros-kopf",
+            "type": "image",
+            "x": 68,
+            "y": 28,
+            "w": 15,
+            "h": 24,
+            "src": "__GRAFIKEN__/Roboter-Kopf-Gruen.png",
+            "zIndex": 4,
+            "revealStep": 3,
+            "animationSet": true,
+            "imageFit": "contain"
+          },
+          {
+            "id": "tpl-ros-super",
+            "type": "image",
+            "x": 48,
+            "y": 54,
+            "w": 26,
+            "h": 36,
+            "src": "__GRAFIKEN__/Roboter-Super.png",
+            "zIndex": 5,
+            "revealStep": 4,
+            "animationSet": true,
+            "imageFit": "contain"
+          },
+          {
+            "id": "tpl-ros-rot",
+            "type": "image",
+            "x": 76,
+            "y": 56,
+            "w": 15,
+            "h": 26,
+            "src": "__GRAFIKEN__/Roboter-Rot.png",
+            "zIndex": 6,
+            "revealStep": 5,
+            "animationSet": true,
+            "imageFit": "contain"
+          },
+          {
+            "id": "tpl-ros-trait-gruen",
+            "type": "text",
+            "x": 52,
+            "y": 30,
+            "w": 16,
+            "h": 5,
+            "html": "<p style=\"text-align: center; margin: 0;\"><span data-pres-fs=\"18\" style=\"font-size: 18px !important;\"><i>kann rechnen</i></span></p>",
+            "zIndex": 7,
+            "revealStep": 1,
+            "animationSet": true
+          },
+          {
+            "id": "tpl-ros-trait-blau",
+            "type": "text",
+            "x": 70,
+            "y": 26,
+            "w": 14,
+            "h": 5,
+            "html": "<p style=\"text-align: center; margin: 0;\"><span data-pres-fs=\"18\" style=\"font-size: 18px !important;\"><i>speichert alles</i></span></p>",
+            "zIndex": 8,
+            "revealStep": 2,
+            "animationSet": true
+          },
+          {
+            "id": "tpl-ros-trait-kopf",
+            "type": "text",
+            "x": 68,
+            "y": 52,
+            "w": 15,
+            "h": 5,
+            "html": "<p style=\"text-align: center; margin: 0;\"><span data-pres-fs=\"18\" style=\"font-size: 18px !important;\"><i>erkennt Gesichter</i></span></p>",
+            "zIndex": 9,
+            "revealStep": 3,
+            "animationSet": true
+          },
+          {
+            "id": "tpl-ros-trait-super",
+            "type": "text",
+            "x": 48,
+            "y": 90,
+            "w": 26,
+            "h": 4,
+            "html": "<p style=\"text-align: center; margin: 0;\"><span data-pres-fs=\"18\" style=\"font-size: 18px !important;\"><i>I AM A SUPER ROBOT!</i></span></p>",
+            "zIndex": 10,
+            "revealStep": 4,
+            "animationSet": true
+          },
+          {
+            "id": "tpl-ros-trait-rot",
+            "type": "text",
+            "x": 76,
+            "y": 82,
+            "w": 15,
+            "h": 5,
+            "html": "<p style=\"text-align: center; margin: 0;\"><span data-pres-fs=\"18\" style=\"font-size: 18px !important;\"><i>hat Gefühle?</i></span></p>",
+            "zIndex": 11,
+            "revealStep": 5,
+            "animationSet": true
+          }
+        ],
+        "transition": "slide-right",
+        "revealEnabled": true,
+        "zoneRevealSteps": {}
+      }
+    }
+  ]
 }

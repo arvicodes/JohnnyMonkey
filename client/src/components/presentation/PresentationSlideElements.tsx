@@ -15,6 +15,8 @@ interface PresentationSlideElementsProps {
   onSelect?: (id: string) => void;
   onElementChange?: (id: string, patch: Partial<SlideElement>) => void;
   onTextEditorFocus?: (el: HTMLElement, elementId: string) => void;
+  mediaInteractive?: boolean;
+  exportSnapshot?: boolean;
 }
 
 const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
@@ -30,6 +32,8 @@ const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
   onSelect,
   onElementChange,
   onTextEditorFocus,
+  mediaInteractive = false,
+  exportSnapshot = false,
 }) => {
   const sorted = [...elements].sort((a, b) => a.zIndex - b.zIndex);
 
@@ -50,6 +54,8 @@ const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
           onSelect={() => onSelect?.(el.id)}
           onChange={(patch) => onElementChange?.(el.id, patch)}
           onTextEditorFocus={onTextEditorFocus}
+          mediaInteractive={mediaInteractive}
+          exportSnapshot={exportSnapshot}
         />
       ))}
     </>

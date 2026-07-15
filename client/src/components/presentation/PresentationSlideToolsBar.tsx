@@ -118,7 +118,10 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
               renderValue: (v) => {
                 if (!v) return 'Element';
                 const el = slide?.elements?.find((e) => e.id === v);
-                return el?.type === 'image' ? 'Bild' : 'Text';
+                if (el?.type === 'image') return 'Bild';
+                if (el?.type === 'video') return 'Video';
+                if (el?.type === 'embed') return 'Referenz';
+                return 'Text';
               },
             }}
           >
@@ -127,7 +130,13 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
             </MenuItem>
             {(slide?.elements || []).map((el) => (
               <MenuItem key={el.id} value={el.id} dense sx={{ fontSize: 11 }}>
-                {el.type === 'image' ? 'Bild' : 'Text'}
+                {el.type === 'image'
+                  ? 'Bild'
+                  : el.type === 'video'
+                    ? 'Video'
+                    : el.type === 'embed'
+                      ? 'Referenz'
+                      : 'Text'}
               </MenuItem>
             ))}
           </TextField>
@@ -155,10 +164,29 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
             onClose={() => setElementAnchor(null)}
             anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
           >
-            <Box sx={{ p: 1.25, width: 200 }}>
+            <Box sx={{ p: 1.25, width: 280 }}>
               <Typography sx={{ fontSize: 10, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.75 }}>
                 Element
               </Typography>
+              {(selectedElement.type === 'video' || selectedElement.type === 'embed') && (
+                <TextField
+                  size="small"
+                  fullWidth
+                  label={selectedElement.type === 'video' ? 'Video-Link' : 'Referenz-URL'}
+                  placeholder={
+                    selectedElement.type === 'video'
+                      ? 'https://youtube.com/watch?v=… oder MP4-Pfad'
+                      : '/wall-of-fame oder https://…'
+                  }
+                  value={selectedElement.src ?? ''}
+                  onChange={(e) => onUpdateElement(selectedElement.id, { src: e.target.value })}
+                  sx={{
+                    mb: 0.75,
+                    '& .MuiInputBase-root': { fontSize: 11 },
+                    '& .MuiInputLabel-root': { fontSize: 11 },
+                  }}
+                />
+              )}
               {(['x', 'y', 'w', 'h'] as const).map((key) => (
                 <TextField
                   key={key}

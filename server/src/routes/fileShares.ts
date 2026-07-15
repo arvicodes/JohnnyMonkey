@@ -3,7 +3,8 @@ import {
   toggleFileShare,
   getSharedFilesForGroup,
   checkFileShare,
-  batchCheckFileShares
+  batchCheckFileShares,
+  syncLessonFolderFileShares,
 } from '../controllers/fileSharesController';
 
 const router = express.Router();
@@ -19,6 +20,9 @@ router.get('/check', checkFileShare);
 
 // Batch check file shares
 router.post('/batch-check', batchCheckFileShares);
+
+// Stundenordner: Bilder entfernen, Folien-PDFs freigeben
+router.post('/sync-lesson-folder', syncLessonFolderFileShares);
 
 export default router;
 

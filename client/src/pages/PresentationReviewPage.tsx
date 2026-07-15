@@ -12,17 +12,18 @@ import {
 } from '@mui/material';
 import { Slideshow as SlideshowIcon } from '@mui/icons-material';
 import PresentationSlideView from '../components/presentation/PresentationSlideView';
-import PresentationDrawOverlay from '../components/presentation/PresentationDrawOverlay';
+import PresentationStrokesPreview from '../components/presentation/PresentationStrokesPreview';
 import {
   PresentationAnnotations,
   PresentationDeck,
+  PresentationStroke,
   loadPresentationAnnotations,
   loadPresentationDeck,
-  normalizeSlide,
   sortSlides,
 } from '../lib/presentationDeck';
 
 const REVIEW_SCALE = 0.38;
+const EMPTY_STROKES: PresentationStroke[] = [];
 
 const PresentationReviewPage: React.FC = () => {
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
@@ -48,8 +49,19 @@ const PresentationReviewPage: React.FC = () => {
   }, [lessonPath]);
 
   const slides = useMemo(() => (deck ? sortSlides(deck.slides) : []), [deck]);
-  const currentSlide = slides[slideIndex] ? normalizeSlide(slides[slideIndex]) : undefined;
-  const strokes = currentSlide ? annotations?.bySlideId[currentSlide.id] ?? [] : [];
+  const currentSlide = slides[slideIndex];
+  const currentSlideId = currentSlide?.id ?? '';
+
+  useEffect(() => {
+    if (slides.length > 0 && slideIndex >= slides.length) {
+      setSlideIndex(slides.length - 1);
+    }
+  }, [slideIndex, slides.length]);
+
+  const strokes = useMemo(() => {
+    if (!currentSlideId || !annotations) return EMPTY_STROKES;
+    return annotations.bySlideId[currentSlideId] ?? EMPTY_STROKES;
+  }, [annotations, currentSlideId]);
 
   if (!lessonPath) {
     return (
@@ -127,15 +139,9 @@ const PresentationReviewPage: React.FC = () => {
                 showSlideFooter={deck?.showSlideFooter !== false}
                 slideFooter={deck?.slideFooter}
                 deckTitle={deck?.title ?? ''}
+                lessonPath={deck?.lessonPath ?? lessonPath}
               />
-              <PresentationDrawOverlay
-                strokes={strokes}
-                onStrokesChange={() => undefined}
-                readOnly
-                tool="pen"
-                strokeColor="#000"
-                scale={REVIEW_SCALE}
-              />
+              <PresentationStrokesPreview strokes={strokes} scale={REVIEW_SCALE} />
             </Box>
           )}
         </Box>

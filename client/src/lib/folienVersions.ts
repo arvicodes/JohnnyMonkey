@@ -1,3 +1,9 @@
+import {
+  isLessonPresentationMaterialPdf,
+  LESSON_PRESENTATION_PDF_ORIGINAL,
+  labelForLessonPresentationMaterialPdf,
+} from './presentationLessonAssets';
+
 /** Gespeicherte Bearbeitungen: „Stamm_Zusatz.pdf“ im gleichen Ordner (Legacy: „… [Bearbeitung: …].pdf“). */
 
 const BEARBEITUNG_SUFFIX_RE = /\[Bearbeitung:\s*(.+?)\]\s*\.pdf$/i;
@@ -144,6 +150,7 @@ export function computeCanonicalStemForFiles(files: { name: string }[]): Map<str
  * allFilesInFolder: alle Dateinamen derselben Ordner-Ebene (für Stammerkennung).
  */
 export function isDerivedFolienVersionFile(fileName: string, allFilesInFolder: { name: string }[]): boolean {
+  if (isLessonPresentationMaterialPdf(fileName)) return false;
   if (!allFilesInFolder.length) return false;
   const stemMap = computeCanonicalStemForFiles(allFilesInFolder);
   const canonical = stemMap.get(fileName) ?? fileName.replace(/\.[^.]+$/, '');
@@ -152,6 +159,8 @@ export function isDerivedFolienVersionFile(fileName: string, allFilesInFolder: {
 }
 
 export function labelForFolienOption(file: { name: string }, groupStem?: string): string {
+  const presLabel = labelForLessonPresentationMaterialPdf(file.name);
+  if (presLabel) return presLabel;
   const m1 = file.name.match(BEARBEITUNG_SUFFIX_RE);
   if (m1) return `Bearbeitung: ${m1[1].trim()}`;
   const ext = file.name.split('.').pop()?.toLowerCase();
@@ -221,6 +230,8 @@ export function groupFilesByBaseName(files: { name?: string }[]): {
 
 export function getPdfFromGroup(versions: { ext: string; file: any }[], groupBaseName: string) {
   const pdfs = versions.filter((v) => v.ext === 'pdf');
+  const presOriginal = pdfs.find((v) => v.file.name === LESSON_PRESENTATION_PDF_ORIGINAL);
+  if (presOriginal) return presOriginal.file;
   const exact = pdfs.find((v) => v.file.name.replace(/\.[^.]+$/, '') === groupBaseName);
   if (exact) return exact.file;
   const orig = pdfs.find(

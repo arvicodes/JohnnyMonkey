@@ -1,0 +1,64 @@
+/* Listen in Präsentations-Editoren — !important gegen Resets und contentEditable-Defaults */
+
+[data-pres-rich-zone] ul,
+[data-pres-rich-zone] ol {
+  list-style-position: outside !important;
+}
+
+[data-pres-rich-zone] ul {
+  list-style-type: disc !important;
+}
+
+[data-pres-rich-zone] ul ul {
+  list-style-type: circle !important;
+}
+
+[data-pres-rich-zone] ul ul ul {
+  list-style-type: square !important;
+}
+
+[data-pres-rich-zone] ul ul ul ul {
+  list-style-type: disc !important;
+}
+
+[data-pres-rich-zone] ul ul ul ul ul {
+  list-style-type: circle !important;
+}
+
+[data-pres-rich-zone] ul ul ul ul ul ul {
+  list-style-type: square !important;
+}
+
+[data-pres-rich-zone] ol {
+  list-style-type: decimal !important;
+}
+
+[data-pres-rich-zone] ol ol {
+  list-style-type: lower-alpha !important;
+}
+
+[data-pres-rich-zone] ol ol ol {
+  list-style-type: lower-roman !important;
+}
+
+[data-pres-rich-zone] ol ol ol ol {
+  list-style-type: decimal !important;
+}
+
+[data-pres-rich-zone] ol ol ol ol ol {
+  list-style-type: lower-alpha !important;
+}
+
+[data-pres-rich-zone] ol ol ol ol ol ol {
+  list-style-type: lower-roman !important;
+}
+
+[data-pres-rich-zone] li {
+  display: list-item !important;
+  list-style-position: outside !important;
+}
+
+[data-pres-rich-zone] li > p {
+  display: block;
+  list-style: none !important;
+}

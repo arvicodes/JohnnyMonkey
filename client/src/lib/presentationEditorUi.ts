@@ -1,4 +1,5 @@
 import { JOHNNY_PRESENTATION } from './presentationTheme';
+import { lessonFolderDisplayName } from './presentationSlideFooter';
 
 /** Dezentes Johnny-UI für den Präsentations-Editor */
 export const PRES_EDITOR_UI = {
@@ -30,7 +31,20 @@ export const PRES_EDITOR_UI = {
   },
 };
 
-export function presentationEditorBackTarget(groupId: string): string {
+/** Deep-Link zurück zur Stunden-Ansicht (/teacher/stunde). */
+export function presentationLessonBackUrl(lessonPath: string, groupId?: string): string {
+  if (!groupId || !lessonPath) return '/dashboard';
+  const qs = new URLSearchParams({
+    groupId,
+    lessonPath,
+    lessonName: lessonFolderDisplayName(lessonPath) || 'Stunde',
+  });
+  return `/teacher/stunde?${qs.toString()}`;
+}
+
+/** @deprecated use presentationLessonBackUrl */
+export function presentationEditorBackTarget(groupId: string, lessonPath?: string): string {
+  if (lessonPath && groupId) return presentationLessonBackUrl(lessonPath, groupId);
   if (groupId) return `/learning-group/${groupId}`;
-  return '/teacher/stunde';
+  return '/dashboard';
 }

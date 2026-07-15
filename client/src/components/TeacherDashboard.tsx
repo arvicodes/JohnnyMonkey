@@ -11,6 +11,10 @@ import {
   getShareFileForGroup,
   getPdfFromGroup,
 } from '../lib/folienVersions';
+import {
+  isLessonPresentationAssetFile,
+  isLessonPresentationSystemFile,
+} from '../lib/presentationLessonAssets';
 import MaterialShareVersionControl from './MaterialShareVersionControl';
 import KACorrectionMode from './KACorrectionMode';
 import { DEFAULT_PROFILE_COLOR } from '../lib/profileColor';
@@ -5436,13 +5440,6 @@ const MOVEMENT_GAMES_OUTDOOR: MovementGameCard[] = [
 const LESSON_FOLDER_INPUT_DOCS_RE = /\.(pdf|pptx?|odp|docx?|odt|rtf)$/i;
 /** Gängige Bildformate – für die Stundenordner-Dokumentenliste. */
 const LESSON_FOLDER_IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|svg|bmp|heic|avif|tiff?)$/i;
-/** Interne Johnny-Präsentationsdateien – nicht als Arbeitsmaterial listen. */
-const LESSON_PRESENTATION_SYSTEM_FILE_RE =
-  /^Praesentation(\.|_)|^Praesentation_(Original|bearbeitet)\.pdf$/i;
-
-function isLessonPresentationSystemFile(name: string): boolean {
-  return LESSON_PRESENTATION_SYSTEM_FILE_RE.test((name || '').trim());
-}
 
 /** Rohmaterial-Archiv (z. B. „ROhdateine“ / „Rohdateien“) – Inhalt nicht in Stunden-Materiallisten. */
 const LESSON_ROHDATEI_ARCHIVE_FOLDER_NAMES = new Set(['rohdateine', 'rohdateien']);
@@ -5963,6 +5960,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     groupId: string;
   } | null>(null);
   const [lessonStundeTabLoading, setLessonStundeTabLoading] = useState(false);
+  const [lessonStundeTabError, setLessonStundeTabError] = useState<string | null>(null);
   const [geheimtexteOpen, setGeheimtexteOpen] = useState(false);
   // Bearbeitbare Stunden-Texte und Ablaufplanung pro Stunde (lessonPath)
   type LessonBoxField = 'voraussetzungen' | 'materialliste' | 'anweisungen' | 'abAnleitung' | 'geheimtexte';
@@ -6789,6 +6787,18 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     }
   }, [isLessonStundeRoute, lessonModalData?.groupId]);
 
+  const openLessonStundePage = useCallback(
+    (groupId: string, lessonPath: string, lessonName: string) => {
+      const q = new URLSearchParams({ groupId, lessonPath, lessonName });
+      const stundeUrl = `/teacher/stunde?${q.toString()}`;
+      const w = window.open(stundeUrl, '_blank', 'noopener,noreferrer');
+      if (!w) {
+        navigate(stundeUrl);
+      }
+    },
+    [navigate],
+  );
+
   // /teacher/stunde?groupId=&lessonPath=&lessonName= — Stunde im eigenen Tab öffnen
   useEffect(() => {
     if (!isLessonStundeRoute) return;
@@ -6798,11 +6808,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     const lessonName = params.get('lessonName') || '';
     if (!groupId || !lessonPath) {
       setLessonStundeTabLoading(false);
+      setLessonStundeTabError(null);
       navigate('/dashboard', { replace: true });
       return;
     }
     let cancelled = false;
     setLessonStundeTabLoading(true);
+    setLessonStundeTabError(null);
     (async () => {
       try {
         const res = await fetch(
@@ -6813,9 +6825,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
           }
         );
         if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          const msg =
+            (errBody as { error?: string }).error ||
+            `Stundenordner konnte nicht geladen werden (${res.status}).`;
           if (!cancelled) {
             setLessonStundeTabLoading(false);
-            navigate('/dashboard', { replace: true });
+            setLessonStundeTabError(`${msg}\n\nPfad: ${lessonPath}`);
           }
           return;
         }
@@ -6830,9 +6846,19 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
           children,
           groupId
         });
+        setLessonStundeTabError(null);
+        void fetch('/api/file-shares/sync-lesson-folder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ groupId, lessonPath }),
+        }).catch(() => undefined);
       } catch (e) {
         console.error(e);
-        if (!cancelled) navigate('/dashboard', { replace: true });
+        if (!cancelled) {
+          setLessonStundeTabError(
+            `Stundenordner konnte nicht geladen werden.\n\nPfad: ${lessonPath}`,
+          );
+        }
       } finally {
         if (!cancelled) setLessonStundeTabLoading(false);
       }
@@ -8653,6 +8679,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
       .filter((item) => {
         if (item.type === 'file' && item.name.startsWith('~$')) return false;
         if (item.type === 'file' && item.name && pdfKeyToHide.has(item.name.toLowerCase())) return false;
+        if (item.type === 'file' && item.name && isLessonPresentationSystemFile(item.name)) return false;
+        if (item.type === 'file' && item.name && isLessonPresentationAssetFile(item.name)) return false;
         return true;
       })
       .map((item) => {
@@ -9891,21 +9919,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               } else if (item.type === 'directory') {
                 if (!directoryOpensStundePage(item.name, level)) return;
                 const lp = item.path || `${folderPath}/${item.name}`;
-                const q = new URLSearchParams({
-                  groupId,
-                  lessonPath: lp,
-                  lessonName: item.name
-                });
-                const stundeUrl = `/teacher/stunde?${q.toString()}`;
-                const w = window.open(stundeUrl, '_blank', 'noopener,noreferrer');
-                if (!w) {
-                  setSnackbar({
-                    open: true,
-                    message:
-                      'Neuer Tab wurde blockiert. Bitte Pop-ups für diese Seite erlauben – das Dashboard bleibt hier geöffnet.',
-                    severity: 'warning'
-                  });
-                }
+                openLessonStundePage(groupId, lp, item.name);
               }
             }}
             >
@@ -10640,21 +10654,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       setNewLessonFolderPath('');
       setFolderPickerMode('exam');
 
-      const q = new URLSearchParams({
-        groupId: modalGroupId,
-        lessonPath: data.lessonFolderPath,
-        lessonName: data.lessonFolderName
-      });
-      const stundeUrl = `/teacher/stunde?${q.toString()}`;
-      const w = window.open(stundeUrl, '_blank', 'noopener,noreferrer');
-      if (!w) {
-        showSnackbar(
-          `Stunde "${data.lessonFolderName}" erstellt. Neuer Tab blockiert – bitte Pop-ups erlauben und die Stunde im Ordner erneut öffnen. Das Dashboard bleibt in diesem Tab geöffnet.`,
-          'warning'
-        );
-      } else {
-        showSnackbar(`Stunde "${data.lessonFolderName}" erfolgreich erstellt!`, 'success');
-      }
+      openLessonStundePage(modalGroupId, data.lessonFolderPath, data.lessonFolderName);
+      showSnackbar(`Stunde "${data.lessonFolderName}" erfolgreich erstellt!`, 'success');
     } catch (error) {
       console.error('Fehler beim Erstellen der Stunde:', error);
       showSnackbar('Fehler beim Erstellen der Stunde', 'error');
@@ -14142,6 +14143,33 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           <Grid item xs={12}>
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
               <CircularProgress />
+            </Box>
+          </Grid>
+        )}
+
+        {isLessonStundeRoute && lessonStundeTabError && !lessonStundeTabLoading && (
+          <Grid item xs={12}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '40vh',
+                gap: 2,
+                px: 2,
+                textAlign: 'center',
+              }}
+            >
+              <Typography variant="h6" color="error">
+                Stunde konnte nicht geöffnet werden
+              </Typography>
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', maxWidth: 720, color: 'text.secondary' }}>
+                {lessonStundeTabError}
+              </Typography>
+              <Button variant="contained" onClick={() => navigate('/dashboard')}>
+                Zurück zum Dashboard
+              </Button>
             </Box>
           </Grid>
         )}
@@ -18667,8 +18695,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 const lessonFolderPdfFiles = allFiles.filter(
                   (f: any) =>
                     !isLessonPresentationSystemFile(f.name || '') &&
-                    (LESSON_FOLDER_INPUT_DOCS_RE.test(f.name || '') ||
-                      LESSON_FOLDER_IMAGE_EXT_RE.test(f.name || ''))
+                    !isLessonPresentationAssetFile(f.name || '') &&
+                    LESSON_FOLDER_INPUT_DOCS_RE.test(f.name || '')
                 );
                 const planHasArbeitsauftrag = lessonPlan.some((i) => i.type === 'arbeitsauftrag');
                 const planHasInput = lessonPlan.some((i) => i.type === 'input');
@@ -18783,7 +18811,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     if (runModeMinimal) return null;
                     return (
                       <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', py: 0.75 }}>
-                        Keine Materialdateien (PDF, Präsentation, Word, …) oder Bilder im Ordner dieser Stunde.
+                        Keine Materialdateien (PDF, Präsentation, Word, …) im Ordner dieser Stunde.
                       </Typography>
                     );
                   }

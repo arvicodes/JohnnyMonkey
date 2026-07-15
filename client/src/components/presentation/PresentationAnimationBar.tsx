@@ -16,6 +16,7 @@ import {
   SwapHoriz as TransitionIcon,
 } from '@mui/icons-material';
 import { PresentationDeck, PresentationSlide, PresentationSlideFooter } from '../../lib/presentationDeck';
+import { lessonFolderDisplayName, lessonParentFolderDisplayName, footerTitleForInput, footerRightForInput } from '../../lib/presentationSlideFooter';
 import {
   getSlideTransitionMeta,
   SLIDE_TRANSITION_GROUPS,
@@ -61,6 +62,12 @@ const PresentationAnimationBar: React.FC<PresentationAnimationBarProps> = ({
   const revealOn = slide.revealEnabled !== false;
   const transitionMeta = getSlideTransitionMeta(slide.transition);
   const footer = deck.slideFooter ?? {};
+  const lessonFolderLabel = lessonFolderDisplayName(deck.lessonPath);
+  const lessonParentLabel = lessonParentFolderDisplayName(deck.lessonPath);
+  const footerTitleValue = footerTitleForInput(footer, deck.lessonPath, deck.title);
+  const footerRightValue = footerRightForInput(footer, deck.lessonPath, deck.title);
+  const defaultFooterTitle = lessonFolderLabel || '';
+  const defaultFooterRight = lessonParentLabel || '';
 
   const patchFooter = (patch: Partial<PresentationSlideFooter>) => {
     onUpdateDeck({ slideFooter: { ...footer, ...patch } });
@@ -223,22 +230,29 @@ const PresentationAnimationBar: React.FC<PresentationAnimationBarProps> = ({
             Fußleiste
           </Typography>
           <Typography sx={{ fontSize: 10, color: PRES_EDITOR_UI.textMuted, mb: 0.75 }}>
-            Titel und Foliennummer (z. B. 1 / 5) erscheinen standardmäßig auf jeder Folie.
+            Standardwerte aus dem Stundenordner — bei Bedarf anpassen. Foliennummer (z. B. 1 / 5) erscheint
+            automatisch rechts.
           </Typography>
           <TextField
             size="small"
             fullWidth
-            label="Titel (leer = Präsentationstitel)"
-            value={footer.title ?? ''}
-            onChange={(e) => patchFooter({ title: e.target.value })}
+            label="Links (Stundenordner)"
+            value={footerTitleValue}
+            onChange={(e) => {
+              const v = e.target.value;
+              patchFooter({ title: v.trim() === defaultFooterTitle ? '' : v });
+            }}
             sx={{ mb: 0.75, '& .MuiInputBase-root': { fontSize: 11 }, '& .MuiInputLabel-root': { fontSize: 11 } }}
           />
           <TextField
             size="small"
             fullWidth
-            label="Rechts (Schule, Datum, Fach …)"
-            value={footer.right ?? ''}
-            onChange={(e) => patchFooter({ right: e.target.value })}
+            label="Rechts (Oberordner)"
+            value={footerRightValue}
+            onChange={(e) => {
+              const v = e.target.value;
+              patchFooter({ right: v.trim() === defaultFooterRight ? '' : v });
+            }}
             sx={{ '& .MuiInputBase-root': { fontSize: 11 }, '& .MuiInputLabel-root': { fontSize: 11 } }}
           />
         </Box>

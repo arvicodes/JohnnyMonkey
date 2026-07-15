@@ -17,6 +17,7 @@ import {
   FormatAlignLeft,
   FormatAlignCenter,
   FormatAlignRight,
+  FormatAlignJustify,
   FormatListBulleted,
   FormatListNumbered,
   FormatIndentIncrease,
@@ -29,10 +30,12 @@ import {
 import { HIGHLIGHT_PRESETS, TEXT_COLOR_PRESETS } from '../../lib/presentationTheme';
 import { setFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
 import {
+  applyFontFamily,
   applyFontSizePx,
   applyHighlightColor,
   applyTextColor,
   bookmarkSelection,
+  clearFontFamilyInSelection,
   clearInlineFormatting,
   execFormat,
   getEditorFontSizeSteps,
@@ -40,6 +43,11 @@ import {
   nudgeFontSize,
   stashEditorSelection,
 } from '../../lib/presentationRichText';
+import {
+  getEditorSelectionFontFamily,
+  PRESENTATION_FONT_FAMILIES,
+  presentationFontLabel,
+} from '../../lib/presentationFonts';
 
 const MOD_LABEL = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform) ? '⌘' : 'Strg';
 
@@ -61,24 +69,27 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   const [colorAnchor, setColorAnchor] = useState<HTMLElement | null>(null);
   const [highlightAnchor, setHighlightAnchor] = useState<HTMLElement | null>(null);
   const [fontPx, setFontPx] = useState<number | ''>('');
+  const [fontFamily, setFontFamily] = useState('');
 
   const fontSteps = activeEditor ? getEditorFontSizeSteps(activeEditor) : [];
 
-  const syncFontSize = useCallback(() => {
+  const syncFormatting = useCallback(() => {
     if (!activeEditor) {
       setFontPx('');
+      setFontFamily('');
       return;
     }
     setFontPx(getSelectionFontSizePx(activeEditor) ?? '');
+    setFontFamily(getEditorSelectionFontFamily(activeEditor));
   }, [activeEditor]);
 
   useEffect(() => {
-    syncFontSize();
+    syncFormatting();
     if (!activeEditor) return undefined;
     const persistSelection = () => bookmarkSelection(activeEditor);
     const onSelectionChange = () => {
       bookmarkSelection(activeEditor);
-      syncFontSize();
+      syncFormatting();
     };
     activeEditor.addEventListener('keyup', persistSelection);
     activeEditor.addEventListener('mouseup', persistSelection);
@@ -88,7 +99,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
       activeEditor.removeEventListener('mouseup', persistSelection);
       document.removeEventListener('selectionchange', onSelectionChange);
     };
-  }, [activeEditor, syncFontSize]);
+  }, [activeEditor, syncFormatting]);
 
   const btnSx = {
     color: disabled || !activeEditor ? '#999' : '#444',
@@ -101,7 +112,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     setFormatBarInteracting(true);
     stashEditorSelection(activeEditor);
     fn();
-    if (refreshSize) syncFontSize();
+    if (refreshSize) syncFormatting();
     onEditorChanged?.();
     window.setTimeout(() => setFormatBarInteracting(false), 0);
   };
@@ -121,7 +132,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     stashEditorSelection(activeEditor);
     const px = nudgeFontSize(activeEditor, dir);
     if (px != null) {
-      syncFontSize();
+      syncFormatting();
       onEditorChanged?.();
     }
     window.setTimeout(() => setFormatBarInteracting(false), 0);
@@ -231,8 +242,48 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
           </IconButton>
         </span>
       </Tooltip>
+      <Tooltip title="Blocksatz">
+        <span>
+          <IconButton size="small" disabled={disabled || !activeEditor} sx={btnSx} onMouseDown={(e) => e.preventDefault()} onClick={() => applyAndNotify(() => execFormat(activeEditor, 'justifyFull'))}>
+            <FormatAlignJustify sx={{ fontSize: 17 }} />
+          </IconButton>
+        </span>
+      </Tooltip>
 
       <Divider orientation="vertical" flexItem sx={{ borderColor: '#ccc', mx: 0.25 }} />
+
+      <Select
+        size="small"
+        value={fontFamily}
+        displayEmpty
+        disabled={disabled || !activeEditor}
+        onChange={(e) => {
+          const value = e.target.value;
+          if (!value) {
+            applyAndNotify(() => clearFontFamilyInSelection(activeEditor), true);
+            return;
+          }
+          applyAndNotify(() => applyFontFamily(activeEditor, value), true);
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        renderValue={(v) => presentationFontLabel(v)}
+        sx={{
+          color: '#444',
+          fontSize: 11,
+          height: 28,
+          minWidth: 88,
+          '.MuiOutlinedInput-notchedOutline': { borderColor: '#ccc' },
+        }}
+      >
+        <MenuItem value="" dense>
+          Standard
+        </MenuItem>
+        {PRESENTATION_FONT_FAMILIES.map((font) => (
+          <MenuItem key={font.value} value={font.value} dense sx={{ fontFamily: font.value }}>
+            {font.label}
+          </MenuItem>
+        ))}
+      </Select>
 
       <Tooltip title={`Kleiner (${MOD_LABEL}+[)`}>
         <span>

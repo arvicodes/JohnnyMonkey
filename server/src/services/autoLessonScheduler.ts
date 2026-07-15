@@ -6,48 +6,16 @@ import {
   getBerlinNow,
   parsePeriodTimes,
 } from '../lib/periodTimes';
-import { StorageManager } from '../utils/storageManager';
+import {
+  collectFilesInDirectory,
+  revokeNonMaterialSharesInTree,
+  syncLessonFolderShares,
+} from './lessonFolderShareSync';
 
 const prisma = new PrismaClient();
 
-const normalizeFilePath = (p: string) => (p || '').replace(/\\/g, '/').trim();
-
-async function collectFilesInDirectory(dirPath: string): Promise<string[]> {
-  const files: string[] = [];
-  try {
-    const content = await StorageManager.readDirectory(dirPath, true);
-    const walk = (node: any) => {
-      if (!node) return;
-      if (node.type === 'file' && node.path) {
-        files.push(normalizeFilePath(node.path));
-      }
-      if (node.children && Array.isArray(node.children)) {
-        node.children.forEach(walk);
-      }
-    };
-    if (content?.root) {
-      walk(content.root);
-    } else if (Array.isArray(content)) {
-      content.forEach(walk);
-    } else {
-      walk(content);
-    }
-  } catch (err) {
-    console.warn('[AutoLesson] Could not read lesson folder:', dirPath, err);
-  }
-  return files;
-}
-
 async function shareLessonFolder(groupId: string, lessonPath: string): Promise<void> {
-  const files = await collectFilesInDirectory(lessonPath);
-  for (const filePath of files) {
-    const existing = await prisma.fileShare.findUnique({
-      where: { filePath_groupId: { filePath, groupId } },
-    });
-    if (!existing) {
-      await prisma.fileShare.create({ data: { filePath, groupId } });
-    }
-  }
+  await syncLessonFolderShares(groupId, lessonPath);
 }
 
 async function shareGroupAssignedMaterials(groupId: string): Promise<void> {
@@ -55,15 +23,7 @@ async function shareGroupAssignedMaterials(groupId: string): Promise<void> {
     where: { groupId, type: 'FOLDER' },
   });
   for (const assignment of assignments) {
-    const files = await collectFilesInDirectory(assignment.refId);
-    for (const filePath of files) {
-      const existing = await prisma.fileShare.findUnique({
-        where: { filePath_groupId: { filePath, groupId } },
-      });
-      if (!existing) {
-        await prisma.fileShare.create({ data: { filePath, groupId } });
-      }
-    }
+    await revokeNonMaterialSharesInTree(groupId, assignment.refId);
   }
 }
 

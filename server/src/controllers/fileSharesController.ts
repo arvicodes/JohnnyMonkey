@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { syncLessonFolderShares } from '../services/lessonFolderShareSync';
 
 const prisma = new PrismaClient();
 
@@ -126,6 +127,21 @@ export const batchCheckFileShares = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error batch checking file shares:', error);
     res.status(500).json({ error: 'Serverfehler beim Prüfen der Datei-Freigaben' });
+  }
+};
+
+/** Lehrkraft: Freigaben im Stundenordner bereinigen (Bilder weg, Folien-PDFs an). */
+export const syncLessonFolderFileShares = async (req: Request, res: Response) => {
+  try {
+    const { groupId, lessonPath } = req.body as { groupId?: string; lessonPath?: string };
+    if (!groupId?.trim() || !lessonPath?.trim()) {
+      return res.status(400).json({ error: 'groupId und lessonPath sind erforderlich' });
+    }
+    await syncLessonFolderShares(groupId.trim(), lessonPath.trim().replace(/\\/g, '/').replace(/\/$/, ''));
+    return res.json({ ok: true });
+  } catch (error: any) {
+    console.error('Error syncing lesson folder shares:', error);
+    res.status(500).json({ error: error?.message || 'Serverfehler beim Synchronisieren der Freigaben' });
   }
 };
 

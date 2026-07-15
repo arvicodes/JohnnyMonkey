@@ -5,8 +5,10 @@
 
 import { isFormatBarInteracting } from './presentationFormatBarGuard';
 
+export const PRESENTATION_CONTENT_FONT_PX = 26;
+
 export const PRESENTATION_FONT_SIZE_STEPS = [
-  14, 16, 18, 20, 22, 24, 28, 32, 36, 40, 44, 48, 56, 64, 72, 84, 96,
+  14, 16, 18, 20, 22, 24, 26, 28, 32, 36, 40, 44, 48, 56, 64, 72, 84, 96,
 ] as const;
 
 export const NOTES_FONT_SIZE_STEPS = [10, 11, 12, 13, 14, 16, 18, 20, 22, 24] as const;
@@ -159,7 +161,7 @@ function parsePx(value: string | null | undefined): number | null {
 function zoneBasePx(editor: HTMLElement): number {
   const raw = editor.dataset.presBaseFs;
   const n = raw ? parseInt(raw, 10) : NaN;
-  return Number.isFinite(n) && n > 0 ? n : 26;
+  return Number.isFinite(n) && n > 0 ? n : PRESENTATION_CONTENT_FONT_PX;
 }
 
 function readPxFromNode(node: Node | null, editor: HTMLElement): number | null {
@@ -180,6 +182,7 @@ function readPxFromNode(node: Node | null, editor: HTMLElement): number | null {
 
 export function getEditorSelectionFontPx(editor: HTMLElement | null): number | null {
   if (!editor) return null;
+  const base = zoneBasePx(editor);
   const range = usableRange(editor);
   if (range) {
     const fromNode = readPxFromNode(range.commonAncestorContainer, editor);
@@ -189,15 +192,8 @@ export function getEditorSelectionFontPx(editor: HTMLElement | null): number | n
   if (sel?.anchorNode && editor.contains(sel.anchorNode)) {
     const fromAnchor = readPxFromNode(sel.anchorNode, editor);
     if (fromAnchor != null) return fromAnchor;
-    const el =
-      sel.anchorNode.nodeType === Node.TEXT_NODE
-        ? sel.anchorNode.parentElement
-        : (sel.anchorNode as HTMLElement);
-    if (el && editor.contains(el)) {
-      return parsePx(window.getComputedStyle(el).fontSize);
-    }
   }
-  return zoneBasePx(editor);
+  return base;
 }
 
 function nearestStepIndex(px: number, steps: readonly number[]): number {

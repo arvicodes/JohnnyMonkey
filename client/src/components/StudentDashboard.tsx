@@ -65,13 +65,16 @@ import { CSS } from '@dnd-kit/utilities';
 import { QuizResultsModal } from './QuizResultsModal';
 import EmojiSelector from './EmojiSelector';
 import InboxModal from './InboxModal';
-import QuizStartButton from './QuizStartButton';
+import StudentQuizFileItem from './StudentQuizFileItem';
+import {
+  isStudentVisibleLessonMaterialFile,
+  labelForLessonPresentationMaterialPdf,
+} from '../lib/presentationLessonAssets';
 import SubmissionUpload from './SubmissionUpload';
 import ReisebegleiterAvatarBadge from './ReisebegleiterPanel';
 import { StudentExitTicketMyAnswersBadge } from './exit-ticket/StudentExitTicketMyAnswersBadge';
 import { RIDDLES, Riddle } from './riddles';
 import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
-import { gradeFromGroupNames } from '../lib/entryTicketGrade';
 import { apiGetSafe } from '../lib/api';
 import { sortLearningGroups } from '../lib/learningGroupSort';
 import {
@@ -82,8 +85,9 @@ import {
 import type { ExcursionProtocolDashboardSession } from '../lib/excursionProtocolTypes';
 import type { AnnouncementDashboardSession } from '../lib/announcementTypes';
 import { openLessonFolderFile } from '../lib/openLessonFolderFile';
+import { openStudentLessonMaterialFile } from '../lib/openStudentLessonMaterial';
 import { CollaborativeFlashcardSessionModal } from './CollaborativeFlashcardSessionModal';
-import { StudentLessonActivityLine } from './StudentLessonActivityLine';
+import StudentLessonMaterialsPanel from './StudentLessonMaterialsPanel';
 import SpielMenuButton from './SpielMenuButton';
 
 const COLLAB_BEACON_LS_KEY = 'jm_collab_fc_beacon_seen_v1';
@@ -129,18 +133,25 @@ function directoryIsStundeFolderForStudentTree(name: string, level: number): boo
   return true;
 }
 
-/** .wb ausblenden, wenn passende PDF existiert (Schüleransicht). */
+/** .wb ausblenden, wenn passende PDF existiert; Präsentations-Bilder/Systemdateien ausblenden. */
 function filterWbFilesForStudentPreview(items: any[]): any[] {
   return items.filter((item) => {
-    if (item.type === 'file' && item.name.endsWith('.wb')) {
-      const pdfFileName = item.name.replace('.wb', '.pdf');
-      const hasCorrespondingPdf = items.some(
-        (otherItem) => otherItem.type === 'file' && otherItem.name === pdfFileName
-      );
-      if (hasCorrespondingPdf) return false;
+    if (item.type === 'file') {
+      if (!isStudentVisibleLessonMaterialFile(item.name || '')) return false;
+      if (item.name.endsWith('.wb')) {
+        const pdfFileName = item.name.replace('.wb', '.pdf');
+        const hasCorrespondingPdf = items.some(
+          (otherItem) => otherItem.type === 'file' && otherItem.name === pdfFileName
+        );
+        if (hasCorrespondingPdf) return false;
+      }
     }
     return true;
   });
+}
+
+function studentLessonMaterialLabel(name: string): string {
+  return labelForLessonPresentationMaterialPdf(name) || name;
 }
 
 export type TextFormatRange = { start: number; end: number; type: 'material' | 'term' | 'instruction' };
@@ -1847,15 +1858,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   // Gemeinsame Leinwand pro Stunde aufklappbar (Schüleransicht)
   const [expandedSharedInputKeys, setExpandedSharedInputKeys] = useState<Record<string, boolean>>({});
   const [expandedFolderNodes, setExpandedFolderNodes] = useState<Record<string, boolean>>({});
-  const [studentStundeModal, setStudentStundeModal] = useState<null | {
-    groupId: string;
-    lessonPath: string;
-    lessonName: string;
-    materialRoot: any;
-    /** Zugeordneter Wurzelordner dieser Vorschau — verhindert doppelte Modals bei mehreren Zuordnungen. */
-    previewRootFolder: string;
-    previewGroupId: string;
-  }>(null);
+  /** Aufgeklappte Stunden im Ordnerbaum (inline, kein Modal). */
+  const [expandedStudentLessons, setExpandedStudentLessons] = useState<Record<string, boolean>>({});
   /** Gemeinsame Karteikarten-Session (Modal, Live-Sync ins Lehrer-Deck) */
   const [collabFlashcardSession, setCollabFlashcardSession] = useState<{ groupId: string; lessonPath: string } | null>(null);
   const collabBeaconSeenRef = useRef<Record<string, string>>(loadCollabBeaconSeen());
@@ -2833,6 +2837,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       // Wenn es eine Datei ist, prüfe ob sie freigegeben ist
       // K_ Dateien müssen explizit freigegeben werden (über Checkbox im Lehrerdashboard)
       if (item.type === 'file') {
+        if (!isStudentVisibleLessonMaterialFile(item.name || '')) return false;
         let isFileShared = groupSharedFiles.includes(item.path);
         
         // Spezielle Logik für PDF-Dateien: Wenn die entsprechende .wb Datei freigegeben ist,
@@ -2878,8 +2883,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         }
       }
       
-      // Wenn es eine Datei ist und NICHT freigegeben, verberge sie
-      if (item.type === 'file' && !isFileShared) {
+      // Wenn es eine Datei ist und NICHT freigegeben oder kein Unterrichtsmaterial, verberge sie
+      if (item.type === 'file' && (!isFileShared || !isStudentVisibleLessonMaterialFile(item.name || ''))) {
         return null;
       }
 
@@ -2892,9 +2897,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       // Quiz-Dateien werden für Schüler als "Quiz starten" Button angezeigt
       if (item.type === 'file' && item.name.startsWith('Quiz')) {
         return (
-          <Box key={`${item.name}-${level}`} sx={{ mb: 0.7 }}>
-            <QuizStartButton quizFile={item} userId={userId} />
-          </Box>
+          <StudentQuizFileItem key={`${item.name}-${level}`} item={item} userId={userId} />
         );
       }
       
@@ -2988,100 +2991,92 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         );
 
       if (view === 'dashboard' && item.type === 'directory' && directoryIsStundeFolderForStudentTree(item.name, level)) {
-        const openModal = () =>
-          setStudentStundeModal({
-            groupId,
-            lessonPath: item.path,
-            lessonName: item.name,
-            materialRoot: item,
-            previewRootFolder: folderPath,
-            previewGroupId: groupId,
-          });
+        const lessonKey = `${groupId}::${item.path}`;
+        const lessonExpanded = expandedStudentLessons[lessonKey] === true;
+        const lessonFiles = filterWbFilesForStudentPreview(item.children || []);
+        const groupShared = sharedFiles[groupId] || [];
+        const toggleLesson = () => {
+          const next = !lessonExpanded;
+          setExpandedStudentLessons((prev) => ({ ...prev, [lessonKey]: next }));
+          if (next) {
+            void (async () => {
+              try {
+                await fetch('/api/file-shares/sync-lesson-folder', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ groupId, lessonPath: item.path }),
+                });
+                await fetchSharedFilesForGroup(groupId);
+              } catch {
+                /* ignore */
+              }
+            })();
+          }
+        };
+        const materialsBlock = (
+          <>
+            {isSharedInputLesson(item.name) && (sharedInputSharePaths[groupId] || []).includes(item.path) && (
+              <Box sx={{ mb: 1 }}>
+                <LessonSharedInputBox groupId={groupId} lessonPath={item.path} />
+              </Box>
+            )}
+            <StudentLessonMaterialsPanel
+              lessonName={item.name}
+              files={lessonFiles}
+              sharedPaths={groupShared}
+            />
+          </>
+        );
         return (
           <Box key={treeKey} sx={{ mb: 0.7 }}>
-            <Box
-              component="button"
-              type="button"
-              onClick={openModal}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  openModal();
-                }
-              }}
-              sx={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                border: 'none',
-                background: 'none',
-                p: 0,
-                m: 0,
-                cursor: 'pointer',
-                font: 'inherit',
-                '&:hover': { opacity: 0.88 },
-                '&:focus-visible': {
-                  outline: '2px solid',
-                  outlineColor: 'primary.main',
-                  outlineOffset: 2,
-                  borderRadius: 0.5,
-                },
-              }}
-            >
-              {isSharedInputLesson(item.name) && (sharedInputSharePaths[groupId] || []).includes(item.path) ? (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mb: 0.5 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, flex: 1, minWidth: 0 }}>
-                    {level === 2 ? (
-                      <span style={{ color: '#2e7d32' }}>▼</span>
-                    ) : level === 3 ? (
-                      <span style={{ color: '#666' }}>▼</span>
-                    ) : (
-                      <span style={{ color: level === 0 ? '#9c27b0' : level === 1 ? '#1976d2' : '#666' }}>▼</span>
-                    )}
-                    <span style={{ fontSize: '1em', marginRight: '4px' }}>{icon}</span>
-                    <Typography
-                      component="span"
-                      variant="body2"
-                      sx={{ color: color, fontSize: '0.75rem', fontWeight: fontWeight, wordBreak: 'break-word' }}
-                    >
-                      {item.name}
-                    </Typography>
-                  </Box>
-                </Box>
-              ) : (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mb: 0.5, maxWidth: '100%' }}>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      color: color,
-                      fontSize: '0.75rem',
-                      fontWeight: fontWeight,
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: 0.5,
-                      textDecoration: 'none',
-                      wordBreak: 'break-word',
-                      flex: 1,
-                      minWidth: 0,
-                    }}
-                  >
-                    {level === 0 ? (
-                      <span style={{ color: '#9c27b0' }}>▼</span>
-                    ) : level === 1 ? (
-                      <span style={{ color: '#1976d2' }}>▼</span>
-                    ) : level === 2 ? (
-                      <span style={{ color: '#2e7d32' }}>▼</span>
-                    ) : level === 3 ? (
-                      <span style={{ color: '#666' }}>▼</span>
-                    ) : (
-                      <span style={{ color: '#666' }}>▼</span>
-                    )}
-                    <span style={{ fontSize: '1em', marginRight: '4px' }}>{icon}</span>
-                    <span>{item.name}</span>
-                  </Typography>
-                </Box>
-              )}
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5 }}>
+              <IconButton
+                size="small"
+                aria-label={lessonExpanded ? 'Stunde zuklappen' : 'Stunde aufklappen'}
+                onClick={toggleLesson}
+                sx={{ width: 20, height: 20, p: 0, flexShrink: 0, color, mt: 0.15 }}
+              >
+                {lessonExpanded ? (
+                  <ExpandLessIcon sx={{ fontSize: 16 }} />
+                ) : (
+                  <ExpandMoreIcon sx={{ fontSize: 16 }} />
+                )}
+              </IconButton>
+              <Box
+                component="button"
+                type="button"
+                onClick={toggleLesson}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 0.5,
+                  flex: 1,
+                  minWidth: 0,
+                  border: 'none',
+                  background: 'none',
+                  p: 0,
+                  m: 0,
+                  cursor: 'pointer',
+                  font: 'inherit',
+                  textAlign: 'left',
+                  '&:hover': { opacity: 0.88 },
+                }}
+              >
+                <span style={{ fontSize: '1em', marginRight: '4px' }}>{icon}</span>
+                <Typography
+                  component="span"
+                  variant="body2"
+                  sx={{ color, fontSize: '0.75rem', fontWeight, wordBreak: 'break-word' }}
+                >
+                  {item.name}
+                </Typography>
+              </Box>
             </Box>
+            <Collapse in={lessonExpanded}>
+              <Box sx={{ ml: 2.5, pl: 1, borderLeft: '2px solid #e0e0e0', mb: 1, pb: 0.5 }}>
+                {materialsBlock}
+              </Box>
+            </Collapse>
           </Box>
         );
       }
@@ -3134,7 +3129,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 maxWidth: '100%',
                 textDecoration: 'none',
               }}>
-                {item.name}
+                {studentLessonMaterialLabel(item.name)}
               </Typography>
               {/* Check-Icon für H_ Dateien mit Abgabe */}
               {item.name.startsWith('H_') && submissionStatuses[item.path] && (
@@ -3256,13 +3251,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     // (damit Schüler sehen, welche Ordner zugeordnet sind)
     // Die Dateien darin müssen freigegeben werden, aber die Ordnerstruktur ist sichtbar
 
-    const modalOpen =
-      !!studentStundeModal &&
-      studentStundeModal.previewRootFolder === folderPath &&
-      studentStundeModal.previewGroupId === groupId;
-    const modalRoot = modalOpen ? studentStundeModal!.materialRoot : null;
-    const modalGid = modalOpen ? studentStundeModal!.groupId : '';
-
     const rootExpanded = isFolderTreeNodeExpanded(
       expandedFolderNodes,
       folderTreeNodeKey(groupId, folderPath),
@@ -3330,172 +3318,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           </Box>
           )}
         </Box>
-
-        <Dialog
-          open={modalOpen}
-          onClose={() => setStudentStundeModal(null)}
-          maxWidth="md"
-          fullWidth
-          scroll="paper"
-          aria-labelledby="student-stunde-modal-title"
-        >
-          <DialogTitle
-            id="student-stunde-modal-title"
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              py: 1,
-              px: 2,
-              pr: 1,
-              boxSizing: 'border-box',
-            }}
-          >
-            <Typography
-              component="span"
-              variant="subtitle2"
-              sx={{
-                flex: 1,
-                minWidth: 0,
-                fontWeight: 700,
-                lineHeight: 1.35,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                pr: 0.5,
-              }}
-            >
-              📁 {studentStundeModal?.lessonName}
-            </Typography>
-            <IconButton
-              aria-label="Schließen"
-              onClick={() => setStudentStundeModal(null)}
-              size="small"
-              sx={{ flexShrink: 0, width: 30, height: 30, p: 0.5, ml: 'auto' }}
-            >
-              <CloseIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent
-            dividers
-            sx={{
-              maxHeight: 'min(85vh, 760px)',
-              pb: 2,
-            }}
-          >
-            {modalOpen && modalRoot && (
-              <>
-                <StudentLessonActivityLine
-                  groupId={modalGid}
-                  lessonPath={studentStundeModal!.lessonPath}
-                  modalFlowActions={{
-                    userId,
-                    groupId: modalGid,
-                    onEntryTicket: () => {
-                      const g = lerngruppen.find((x) => x.id === modalGid);
-                      const band = gradeFromGroupNames(g ? [g.name] : lerngruppen.map((lg) => lg.name));
-                      navigate(`/entry-ticket?grade=${band}&autostart=1&r=${Date.now()}`);
-                    },
-                    onExitTicket: () => navigate('/exit-ticket'),
-                    exitTicketDisabled: !exitTicketPublishedForStudent,
-                    exitTicketTooltip: exitTicketPublishedForStudent
-                      ? 'Exit Ticket öffnen'
-                      : 'Noch nicht von der Lehrkraft freigegeben',
-                  }}
-                  modalMaterialsSlot={
-                    <>
-                      <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700, color: 'text.secondary' }}>
-                        Materialien
-                      </Typography>
-                      {modalRoot.type === 'directory' &&
-                        isSharedInputLesson(modalRoot.name) &&
-                        (sharedInputSharePaths[modalGid] || []).includes(modalRoot.path) &&
-                        (() => {
-                          const sharedKey = `${modalGid}-${modalRoot.path}`;
-                          const isExpanded = expandedSharedInputKeys[sharedKey] !== false;
-                          return (
-                            <Box sx={{ mt: 0.5, mb: 1.5 }}>
-                              <Box
-                                onClick={() =>
-                                  setExpandedSharedInputKeys((prev) => ({ ...prev, [sharedKey]: !isExpanded }))
-                                }
-                                sx={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 0.35,
-                                  cursor: 'pointer',
-                                  py: 0.25,
-                                  px: 0.5,
-                                  borderRadius: 0.75,
-                                  bgcolor: '#e8f5e9',
-                                  border: '1px solid #a5d6a7',
-                                  '&:hover': { bgcolor: '#c8e6c9' },
-                                }}
-                              >
-                                {isExpanded ? (
-                                  <ExpandLessIcon sx={{ fontSize: 16, color: '#2e7d32' }} />
-                                ) : (
-                                  <ExpandMoreIcon sx={{ fontSize: 16, color: '#2e7d32' }} />
-                                )}
-                                <Typography variant="caption" sx={{ fontWeight: 600, color: '#2e7d32', fontSize: '0.7rem' }}>
-                                  Gemeinsame Leinwand
-                                </Typography>
-                              </Box>
-                              <Collapse in={isExpanded}>
-                                <LessonSharedInputBox groupId={modalGid} lessonPath={modalRoot.path} />
-                              </Collapse>
-                            </Box>
-                          );
-                        })()}
-                      {modalRoot.type === 'directory' &&
-                        isSharedInputLesson(modalRoot.name) &&
-                        (sharedInputSharePaths[modalGid] || []).includes(modalRoot.path) && (
-                          <Box sx={{ mt: 0.5, mb: 1.5 }}>
-                            <Box
-                              role="button"
-                              tabIndex={0}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  e.preventDefault();
-                                  setCollabFlashcardSession({ groupId: modalGid, lessonPath: modalRoot.path });
-                                }
-                              }}
-                              onClick={() => setCollabFlashcardSession({ groupId: modalGid, lessonPath: modalRoot.path })}
-                              sx={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 0.35,
-                                cursor: 'pointer',
-                                py: 0.25,
-                                px: 0.5,
-                                borderRadius: 0.75,
-                                bgcolor: '#f3e5f5',
-                                border: '1px solid #ce93d8',
-                                '&:hover': { bgcolor: '#e1bee7' },
-                              }}
-                            >
-                              <Typography variant="caption" sx={{ fontWeight: 600, color: '#6a1b9a', fontSize: '0.7rem' }}>
-                                Karteikarten gemeinsam erstellen (Live)
-                              </Typography>
-                            </Box>
-                          </Box>
-                        )}
-                      <Box sx={{ mt: 0.5 }}>
-                        {modalRoot.type === 'directory' && (modalRoot.children?.length ?? 0) > 0
-                          ? filterWbFilesForStudentPreview(modalRoot.children).map((child: any) =>
-                              renderItemRecursively(child, 0, 'modalMaterials')
-                            )
-                          : null}
-                      </Box>
-                    </>
-                  }
-                />
-              </>
-            )}
-          </DialogContent>
-        </Dialog>
       </React.Fragment>
     );
   };
@@ -4211,6 +4033,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     }
 
     if (await checkStudentCorrectionHtmlBlocked(item)) return;
+
+    const ext = item.name.split('.').pop()?.toLowerCase();
+    if (ext === 'pdf') {
+      await openStudentLessonMaterialFile(item, 'open');
+      return;
+    }
+
     await openLessonFolderFile(item);
   };
 

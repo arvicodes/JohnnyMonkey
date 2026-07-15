@@ -34,6 +34,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import { jsPDF } from 'jspdf';
 import { buildStemSuffixPdfName, getStemForSave, parentDirGitPath } from '../lib/folienVersions';
 import { ensurePdfjsWorkerWithPolyfill } from '../lib/ensurePdfjsWorkerWithPolyfill';
+import { presentationImageCheckerboardBg } from '../lib/presentationImageUtils';
 
 type Stroke = {
   id: string;
@@ -1460,7 +1461,15 @@ const SlideDeckEditorPage: React.FC = () => {
         }}
       >
         <Box sx={{ width: '100%', maxWidth: 'min(100%, 920px)', mx: 'auto' }}>
-          <Box sx={{ position: 'relative', maxWidth: '100%', boxShadow: 3, bgcolor: '#fff', lineHeight: 0 }}>
+          <Box
+            sx={{
+              position: 'relative',
+              maxWidth: '100%',
+              boxShadow: 3,
+              lineHeight: 0,
+              ...(imageMode ? presentationImageCheckerboardBg : { bgcolor: '#fff' }),
+            }}
+          >
             <canvas
               ref={pdfCanvasRef}
               style={{

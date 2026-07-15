@@ -63,6 +63,7 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const isFullBleed = /^\/(presentation\/(edit|present|review)|whiteboard|folien-editor|wall-of-fame)/.test(location.pathname);
+  const hideCompanions = /^\/presentation\//.test(location.pathname);
   const loginInputRef = useRef<HTMLInputElement>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -343,7 +344,7 @@ function AppContent() {
       )}
       
       {/* Johnny Companion - Für alle sichtbar, wenn eingeblendet */}
-      {user && (
+      {user && !hideCompanions && (
         <JohnnyCompanionSimple 
           userId={user?.id || 'guest-user'}
           userRole={user?.role as 'TEACHER' | 'STUDENT' || 'STUDENT'}
@@ -353,7 +354,7 @@ function AppContent() {
       )}
       
       {/* FlutterElf - Für alle sichtbar, wenn eingeblendet */}
-      {user && (
+      {user && !hideCompanions && (
         <FlutterElf isVisible={elfVisible} />
       )}
       

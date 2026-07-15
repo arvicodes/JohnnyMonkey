@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   PresentationStroke,
   SLIDE_REF_HEIGHT,
@@ -81,18 +81,26 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   const strokesDuringEraseRef = useRef<PresentationStroke[]>(strokes);
   const manipRef = useRef<ManipState | null>(null);
   const previewStrokesRef = useRef<PresentationStroke[] | null>(null);
+  const strokesRef = useRef(strokes);
 
   useEffect(() => {
+    strokesRef.current = strokes;
     if (tool !== 'eraser') {
       strokesDuringEraseRef.current = strokes;
     }
   }, [strokes, tool]);
 
   useEffect(() => {
-    if (tool !== 'select') {
-      onSelectedStrokeIdChange?.(null);
+    if (!onSelectedStrokeIdChange) return;
+    if (tool !== 'select' && selectedStrokeId != null) {
+      onSelectedStrokeIdChange(null);
     }
-  }, [tool, onSelectedStrokeIdChange]);
+  }, [tool, selectedStrokeId, onSelectedStrokeIdChange]);
+
+  const strokesKey = useMemo(
+    () => strokes.map((s) => `${s.id}:${s.points.length}`).join('|'),
+    [strokes]
+  );
 
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -100,7 +108,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, SLIDE_REF_WIDTH, SLIDE_REF_HEIGHT);
-    const current = previewStrokesRef.current ?? strokes;
+    const current = previewStrokesRef.current ?? strokesRef.current;
     const base =
       tool === 'eraser' && eraserPathRef.current.length > 0
         ? strokesDuringEraseRef.current
@@ -129,7 +137,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       }
       ctx.restore();
     }
-  }, [strokes, tool, enabled, readOnly, selectedStrokeId]);
+  }, [strokesKey, tool, enabled, readOnly, selectedStrokeId]);
 
   useEffect(() => {
     redraw();

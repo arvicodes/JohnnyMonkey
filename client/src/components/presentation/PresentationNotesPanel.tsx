@@ -5,6 +5,7 @@ import { htmlToPlain, textToHtml } from '../../lib/presentationDeck';
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
 import { isFormatBarInteracting, isPresentationFormatUiTarget } from '../../lib/presentationFormatBarGuard';
 import { captureEditorSelection, clearSavedSelection } from '../../lib/presentationFontSize';
+import { presentationNestedListSx } from '../../lib/presentationListStyles';
 import { sanitizePastedHtml, normalizeNotesHtml, handlePresentationTabKey } from '../../lib/presentationRichText';
 
 export type NotesFieldKey = 'materialHtml' | 'preparationHtml' | 'speakerNotesHtml';
@@ -212,14 +213,13 @@ const NoteZone: React.FC<NoteZoneProps> = ({
           wordBreak: 'break-word',
           '& p, & div': { m: 0, mb: 0.5, ml: 0, pl: 0, textIndent: 0 },
           '& blockquote': { m: 0, mb: 0.5, ml: 0, pl: '0.75em', borderLeft: '2px solid #ccc' },
-          '& ul, & ol': { m: 0, pl: '1.25em', mb: 0.5, listStylePosition: 'outside' },
-          '& ul': { listStyleType: 'disc' },
-          '& ul ul': { listStyleType: 'circle' },
-          '& ul ul ul': { listStyleType: 'square' },
-          '& ol': { listStyleType: 'decimal' },
-          '& ol ol': { listStyleType: 'lower-alpha' },
-          '& li': { mb: 0.25, display: 'list-item' },
-          '& li > ul, & li > ol': { mt: 0.25, mb: 0 },
+          '& li > p': { display: 'block', listStyle: 'none' },
+          ...presentationNestedListSx({
+            scale: 1,
+            listPaddingPx: '1.25em',
+            itemGapPx: 2,
+            listGapPx: 4,
+          }),
           '& mark': { borderRadius: 0.5 },
           '& [data-pres-fs]': { lineHeight: 'inherit' },
           '& [data-pres-color]': { lineHeight: 'inherit' },

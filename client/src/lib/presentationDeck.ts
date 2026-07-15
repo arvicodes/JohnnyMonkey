@@ -1,3 +1,4 @@
+import { sanitizeStoredFooter } from './presentationSlideFooter';
 import { parentDirGitPath } from './folienVersions';
 import { JOHNNY_PRESENTATION } from './presentationTheme';
 import type { PresentationTrashItem } from './presentationTrash';
@@ -15,6 +16,33 @@ export const ANNOTATIONS_FILENAME = 'Praesentation.annotations.json';
 export const SLIDE_REF_WIDTH = 1920;
 export const SLIDE_REF_HEIGHT = 1080;
 
+/** Skalierung, damit die komplette Folie (16:9) in den Viewport passt — nicht nur nach Breite. */
+export function slideFitScale(
+  viewportWidth: number,
+  viewportHeight: number,
+  reserveBottom = 0,
+): number {
+  const w = Math.max(viewportWidth, 0);
+  const h = Math.max(viewportHeight - reserveBottom, 0);
+  if (w < 40 || h < 40) return 0;
+  return Math.min(w / SLIDE_REF_WIDTH, h / SLIDE_REF_HEIGHT);
+}
+
+/** Play-Modus: komplette Folie sichtbar, maximal groß, ohne Beschnitt oben/unten. */
+export function slidePresentScale(viewportWidth: number, viewportHeight: number): number {
+  return slideFitScale(viewportWidth, viewportHeight, 0);
+}
+
+const SCALE_EPSILON = 1e-4;
+
+/** Setzt Viewport-Skalierung nur bei echter Änderung (verhindert ResizeObserver-Schleifen). */
+export function nextViewportScale(prev: number, viewportWidth: number, viewportHeight: number, mode: 'fit' | 'present' = 'fit'): number {
+  const compute = mode === 'present' ? slidePresentScale : slideFitScale;
+  const next = compute(viewportWidth, viewportHeight);
+  if (next <= 0) return prev;
+  return Math.abs(prev - next) < SCALE_EPSILON ? prev : next;
+}
+
 export type SlideLayout =
   | 'title-slide'
   | 'title-content'
@@ -30,7 +58,7 @@ export type BodyStyle = 'plain' | 'bullets' | 'numbered';
 /** Frei platzierbare Elemente — Basis für Bilder, Animationen etc. */
 export interface SlideElement {
   id: string;
-  type: 'text' | 'image' | 'video';
+  type: 'text' | 'image' | 'video' | 'embed';
   x: number;
   y: number;
   w: number;
@@ -42,6 +70,8 @@ export interface SlideElement {
   animationSet?: boolean;
   zIndex: number;
   imageFit?: 'contain' | 'cover';
+  /** Standard-Zoom für Referenz-Embeds (1 = 100 %). */
+  mediaZoom?: number;
 }
 
 export type PresentationStrokeMode = 'pen' | 'marker';
@@ -213,7 +243,7 @@ export function normalizeDeck(deck: PresentationDeck): PresentationDeck {
     trash: Array.isArray(deck.trash) ? deck.trash : [],
     showSlideNumbers: deck.showSlideNumbers !== false,
     showSlideFooter: deck.showSlideFooter !== false,
-    slideFooter: deck.slideFooter ?? {},
+    slideFooter: sanitizeStoredFooter(deck.slideFooter, deck.lessonPath, deck.title),
   };
 }
 
@@ -284,7 +314,11 @@ export async function loadPresentationDeck(lessonPath: string): Promise<Presenta
   const path = deckFilePath(lessonPath);
   const loaded = await loadJsonFile<PresentationDeck>(path);
   if (loaded?.slides?.length) {
-    return normalizeDeck({ ...loaded, slides: sortSlides(loaded.slides) });
+    return normalizeDeck({
+      ...loaded,
+      lessonPath: loaded.lessonPath || lessonPath,
+      slides: sortSlides(loaded.slides),
+    });
   }
   const { createDefaultTemplatesStore, createSlideFromTemplateKind } = await import(
     './presentationSlideTemplates'

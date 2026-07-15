@@ -1,10 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, CircularProgress, IconButton, Snackbar, Tooltip, Typography } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
-  ChevronLeft,
-  ChevronRight,
 } from '@mui/icons-material';
 import PresentationSlideView from '../components/presentation/PresentationSlideView';
 import PresentationDrawOverlay from '../components/presentation/PresentationDrawOverlay';
@@ -18,26 +16,19 @@ import {
   SLIDE_REF_WIDTH,
   loadPresentationAnnotations,
   loadPresentationDeck,
+  nextViewportScale,
   saveJsonFile,
   sortSlides,
 } from '../lib/presentationDeck';
 import { PresentationDrawTool, defaultLineWidthForTool, lineWidthsForTool } from '../lib/presentationDrawTools';
-import { presentationEditorBackTarget } from '../lib/presentationEditorUi';
+import { presentationLessonBackUrl } from '../lib/presentationEditorUi';
 import { savePresentationBothVersions } from '../lib/presentationExport';
 import { getSlideMaxRevealSteps } from '../lib/presentationReveal';
 import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../lib/presentationTransitions';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
 
-const MINI_BTN_SX = {
-  width: 28,
-  height: 28,
-  p: 0,
-  color: 'rgba(255,255,255,0.9)',
-  '&:hover': { bgcolor: 'rgba(255,255,255,0.14)' },
-  '&.Mui-disabled': { color: 'rgba(255,255,255,0.28)' },
-} as const;
-
 const SWIPE_MIN_PX = 48;
+const EMPTY_STROKES: PresentationStroke[] = [];
 
 const PresentationPresentPage: React.FC = () => {
   const navigate = useNavigate();
@@ -59,6 +50,7 @@ const PresentationPresentPage: React.FC = () => {
   const [snackbar, setSnackbar] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState('');
+  const [displayScale, setDisplayScale] = useState(0.5);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const swipeRef = useRef<{ x: number; y: number } | null>(null);
@@ -105,7 +97,10 @@ const PresentationPresentPage: React.FC = () => {
     };
   }, []);
 
-  const currentStrokes = currentSlide ? annotations?.bySlideId[currentSlide.id] ?? [] : [];
+  const currentStrokes = useMemo(() => {
+    if (!currentSlide) return EMPTY_STROKES;
+    return annotations?.bySlideId[currentSlide.id] ?? EMPTY_STROKES;
+  }, [annotations, currentSlide]);
 
   const persistAnnotations = useCallback(
     async (next: PresentationAnnotations) => {
@@ -190,8 +185,9 @@ const PresentationPresentPage: React.FC = () => {
   }, [revealStep, slideIndex, slides]);
 
   const handleBack = () => {
+    const target = presentationLessonBackUrl(lessonPath, groupId);
     window.close();
-    navigate(presentationEditorBackTarget(groupId));
+    navigate(target);
   };
 
   const handleToggleDraw = () => {
@@ -223,12 +219,21 @@ const PresentationPresentPage: React.FC = () => {
 
   useEffect(() => {
     if (!selectedStrokeId) return;
-    const stroke = currentStrokes.find((s) => s.id === selectedStrokeId);
+    const stroke = annotations?.bySlideId[currentSlide?.id ?? '']?.find((s) => s.id === selectedStrokeId);
     if (stroke) setLineWidth(stroke.lineWidth);
-  }, [selectedStrokeId, currentStrokes]);
+  }, [selectedStrokeId, annotations, currentSlide?.id]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (drawActive) {
+          setDrawActive(false);
+          return;
+        }
+        handleBack();
+        return;
+      }
       if (drawActive) return;
       if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
         e.preventDefault();
@@ -241,20 +246,32 @@ const PresentationPresentPage: React.FC = () => {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [goNext, goPrev, drawActive]);
+  }, [goNext, goPrev, drawActive, groupId, navigate]);
 
-  const [displayScale, setDisplayScale] = useState(0.5);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const scaleReady = !loading && !!deck && !!annotations && !!currentSlide;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (!scaleReady) return;
+
     const updateScale = () => {
-      const maxW = window.innerWidth;
-      const maxH = window.innerHeight;
-      setDisplayScale(Math.min(maxW / SLIDE_REF_WIDTH, maxH / SLIDE_REF_HEIGHT));
+      const host = containerRef.current;
+      if (!host) return;
+      const width = host.clientWidth;
+      const height = host.clientHeight;
+      if (width < 80) return;
+      setDisplayScale((prev) => nextViewportScale(prev, width, height, 'present'));
     };
+
     updateScale();
+    const ro = new ResizeObserver(updateScale);
+    ro.observe(containerRef.current!);
     window.addEventListener('resize', updateScale);
-    return () => window.removeEventListener('resize', updateScale);
-  }, []);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', updateScale);
+    };
+  }, [scaleReady]);
 
   const onTouchStart = (e: React.TouchEvent) => {
     if (drawActive) return;
@@ -308,8 +325,23 @@ const PresentationPresentPage: React.FC = () => {
     );
   }
 
-  const displayW = SLIDE_REF_WIDTH * displayScale;
   const displayH = SLIDE_REF_HEIGHT * displayScale;
+  const displayW = SLIDE_REF_WIDTH * displayScale;
+
+  const presentBackBtnSx = {
+    position: 'fixed' as const,
+    left: 'max(8px, env(safe-area-inset-left))',
+    bottom: 'max(68px, calc(12px + env(safe-area-inset-bottom)))',
+    zIndex: 30,
+    width: 34,
+    height: 34,
+    p: 0,
+    bgcolor: 'rgba(22,24,28,0.9)',
+    border: '1px solid rgba(255,255,255,0.18)',
+    color: JOHNNY_PRESENTATION.warm,
+    boxShadow: '0 2px 10px rgba(0,0,0,0.35)',
+    '&:hover': { bgcolor: 'rgba(22,24,28,0.98)' },
+  };
 
   return (
     <Box
@@ -317,44 +349,103 @@ const PresentationPresentPage: React.FC = () => {
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
       sx={{
-        minHeight: '100vh',
-        bgcolor: '#111',
+        height: '100dvh',
+        width: '100vw',
+        maxWidth: '100vw',
+        bgcolor: '#000',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
         userSelect: 'none',
         position: 'relative',
-        pb: 'env(safe-area-inset-bottom)',
+        overflow: 'hidden',
       }}
     >
+      <Tooltip title="Zurück zur Stunde">
+        <IconButton
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleBack();
+          }}
+          aria-label="Zurück zur Stunde"
+          sx={presentBackBtnSx}
+        >
+          <ArrowBackIcon sx={{ fontSize: 18 }} />
+        </IconButton>
+      </Tooltip>
+
       <Box
+        ref={stageRef}
         sx={{
-          position: 'fixed',
-          top: 10,
-          left: 10,
-          zIndex: 20,
+          flex: 1,
+          minHeight: 0,
+          width: '100%',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'flex-start',
+          overflow: 'hidden',
         }}
-        onClick={(e) => e.stopPropagation()}
       >
-        <Tooltip title="Zurück zur Stunde">
-          <IconButton
-            size="small"
-            onClick={handleBack}
-            aria-label="Zurück zur Stunde"
+        <Box
+          sx={{
+            width: displayW,
+            height: displayH,
+            maxWidth: '100%',
+            flexShrink: 0,
+            overflow: 'hidden',
+          }}
+        >
+          <Box
+            key={animKey}
+            onClick={handleSlideTap}
             sx={{
-              width: 28,
-              height: 28,
-              p: 0,
-              bgcolor: 'rgba(22,24,28,0.88)',
-              border: '1px solid rgba(255,255,255,0.14)',
-              color: JOHNNY_PRESENTATION.warm,
-              '&:hover': { bgcolor: 'rgba(22,24,28,0.96)' },
+              position: 'relative',
+              width: '100%',
+              height: '100%',
+              animation: resolveSlideTransitionAnimation(transition),
+              willChange: 'transform, opacity, filter',
+              cursor: drawActive ? 'default' : 'pointer',
+              overflow: 'hidden',
             }}
           >
-            <ArrowBackIcon sx={{ fontSize: 17 }} />
-          </IconButton>
-        </Tooltip>
+            <Box sx={{ position: 'absolute', inset: 0, zIndex: 0, overflow: 'hidden' }}>
+              <Box
+                sx={{
+                  width: SLIDE_REF_WIDTH,
+                  height: SLIDE_REF_HEIGHT,
+                  transform: `scale(${displayScale})`,
+                  transformOrigin: 'top left',
+                }}
+              >
+                <PresentationSlideView
+                  slide={currentSlide}
+                  scale={1}
+                  revealStep={revealStep}
+                  revealEnabled={currentSlide.revealEnabled !== false}
+                  showSlideNumbers={deck?.showSlideNumbers !== false}
+                  slideNumber={slideIndex + 1}
+                  slideTotal={slides.length}
+                  showSlideFooter={deck?.showSlideFooter !== false}
+                  slideFooter={deck?.slideFooter}
+                  deckTitle={deck?.title ?? ''}
+                  lessonPath={deck?.lessonPath ?? lessonPath}
+                  mediaInteractive={!drawActive}
+                />
+              </Box>
+            </Box>
+            <PresentationDrawOverlay
+              strokes={currentStrokes}
+              onStrokesChange={updateStrokes}
+              enabled={drawActive}
+              tool={activeTool}
+              strokeColor={strokeColor}
+              lineWidth={lineWidth}
+              selectedStrokeId={selectedStrokeId}
+              onSelectedStrokeIdChange={setSelectedStrokeId}
+              scale={displayScale}
+            />
+          </Box>
+        </Box>
       </Box>
 
       {maxReveal > 0 && currentSlide.revealEnabled !== false && (
@@ -377,130 +468,6 @@ const PresentationPresentPage: React.FC = () => {
           Einblendung {revealStep}/{maxReveal}
         </Typography>
       )}
-
-      {!drawActive && (
-        <>
-          <Box
-            role="button"
-            tabIndex={0}
-            aria-label="Vorherige Folie"
-            onClick={(e) => {
-              e.stopPropagation();
-              goPrev();
-            }}
-            sx={{
-              position: 'fixed',
-              left: 0,
-              top: '18%',
-              bottom: '18%',
-              width: '12%',
-              minWidth: 44,
-              zIndex: 5,
-              cursor: canGoPrev ? 'pointer' : 'default',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'flex-start',
-              pl: 0.5,
-            }}
-          >
-            <IconButton
-              size="small"
-              disabled={!canGoPrev}
-              sx={{
-                ...MINI_BTN_SX,
-                bgcolor: 'rgba(30,30,30,0.55)',
-                '&:hover': { bgcolor: 'rgba(30,30,30,0.78)' },
-              }}
-            >
-              <ChevronLeft sx={{ fontSize: 22 }} />
-            </IconButton>
-          </Box>
-          <Box
-            role="button"
-            tabIndex={0}
-            aria-label="Nächste Folie"
-            onClick={(e) => {
-              e.stopPropagation();
-              goNext();
-            }}
-            sx={{
-              position: 'fixed',
-              right: 0,
-              top: '18%',
-              bottom: '18%',
-              width: '12%',
-              minWidth: 44,
-              zIndex: 5,
-              cursor: canGoNext ? 'pointer' : 'default',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'flex-end',
-              pr: 0.5,
-            }}
-          >
-            <IconButton
-              size="small"
-              disabled={!canGoNext}
-              sx={{
-                ...MINI_BTN_SX,
-                bgcolor: 'rgba(30,30,30,0.55)',
-                '&:hover': { bgcolor: 'rgba(30,30,30,0.78)' },
-              }}
-            >
-              <ChevronRight sx={{ fontSize: 22 }} />
-            </IconButton>
-          </Box>
-        </>
-      )}
-
-      <Box
-        key={animKey}
-        onClick={handleSlideTap}
-        sx={{
-          position: 'relative',
-          width: displayW,
-          height: displayH,
-          animation: resolveSlideTransitionAnimation(transition),
-          willChange: 'transform, opacity, filter',
-          cursor: drawActive ? 'default' : 'pointer',
-          overflow: 'hidden',
-        }}
-      >
-        <Box sx={{ position: 'absolute', inset: 0, zIndex: 0, overflow: 'hidden' }}>
-          <Box
-            sx={{
-              width: SLIDE_REF_WIDTH,
-              height: SLIDE_REF_HEIGHT,
-              transform: `scale(${displayScale})`,
-              transformOrigin: 'top left',
-            }}
-          >
-            <PresentationSlideView
-              slide={currentSlide}
-              scale={1}
-              revealStep={revealStep}
-              revealEnabled={currentSlide.revealEnabled !== false}
-              showSlideNumbers={deck?.showSlideNumbers !== false}
-              slideNumber={slideIndex + 1}
-              slideTotal={slides.length}
-              showSlideFooter={deck?.showSlideFooter !== false}
-              slideFooter={deck?.slideFooter}
-              deckTitle={deck?.title ?? ''}
-            />
-          </Box>
-        </Box>
-        <PresentationDrawOverlay
-          strokes={currentStrokes}
-          onStrokesChange={updateStrokes}
-          enabled={drawActive}
-          tool={activeTool}
-          strokeColor={strokeColor}
-          lineWidth={lineWidth}
-          selectedStrokeId={selectedStrokeId}
-          onSelectedStrokeIdChange={setSelectedStrokeId}
-          scale={displayScale}
-        />
-      </Box>
 
       <PresentationTabletToolbar
         drawActive={drawActive}
@@ -545,22 +512,6 @@ const PresentationPresentPage: React.FC = () => {
             {saveProgress}
           </Typography>
         </Box>
-      )}
-
-      {!drawActive && (
-        <Typography
-          variant="caption"
-          sx={{
-            position: 'fixed',
-            bottom: 6,
-            right: 12,
-            color: 'rgba(255,255,255,0.3)',
-            fontSize: '0.62rem',
-            pointerEvents: 'none',
-          }}
-        >
-          Tippen links/rechts · Wischen · ✎ für Werkzeuge
-        </Typography>
       )}
 
       <Snackbar

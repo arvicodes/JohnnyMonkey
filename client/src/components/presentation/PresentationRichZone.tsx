@@ -1,13 +1,21 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Box } from '@mui/material';
 import { htmlToPlain, textToHtml } from '../../lib/presentationDeck';
 import { filterHtmlByRevealStep } from '../../lib/presentationReveal';
 import { isFormatBarInteracting, isPresentationFormatUiTarget } from '../../lib/presentationFormatBarGuard';
 import { captureEditorSelection, clearSavedSelection } from '../../lib/presentationFontSize';
 import { normalizeListsInPlace } from '../../lib/presentationListNormalize';
-import { animationParagraphBadgeSx, animBlockIndexInRoot, collectAnimBlocksInRoot, findAnimBlockFromHit } from '../../lib/presentationAnimation';
+import {
+  animationParagraphBadgeSx,
+  animBlockIndexInRoot,
+  collectAnimBlocksInRoot,
+  findAnimBlockFromHit,
+} from '../../lib/presentationAnimation';
 import type { HtmlAnimField } from '../../lib/presentationAnimation';
 import { sanitizePastedHtml, sanitizePresentationHtml, handlePresentationTabKey } from '../../lib/presentationRichText';
+import { PRESENTATION_CONTENT_FONT_PX } from '../../lib/presentationFontSize';
+import { presentationNestedListSx } from '../../lib/presentationListStyles';
+import '../../styles/presentationLists.css';
 
 export type RichZoneVariant = 'title' | 'hero' | 'subtitle' | 'body' | 'quote' | 'caption';
 
@@ -15,7 +23,7 @@ const VARIANT_FONT: Record<RichZoneVariant, number> = {
   title: 42,
   hero: 64,
   subtitle: 28,
-  body: 26,
+  body: PRESENTATION_CONTENT_FONT_PX,
   quote: 34,
   caption: 16,
 };
@@ -37,6 +45,7 @@ interface PresentationRichZoneProps {
   editable?: boolean;
   placeholder?: string;
   variant?: RichZoneVariant;
+  italic?: boolean;
   align?: 'left' | 'center' | 'right';
   onEditorFocus?: (el: HTMLElement) => void;
   minHeight?: number;
@@ -47,9 +56,126 @@ interface PresentationRichZoneProps {
   animationFieldKey?: HtmlAnimField;
   selectedAnimationTarget?: string | null;
   onAnimationTargetClick?: (itemId: string | null) => void;
+  exportSnapshot?: boolean;
 }
 
-const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
+function isEmptyDisplayHtml(html: string): boolean {
+  const t = html.trim();
+  return !t || t === '<p></p>' || t === '<p><br></p>';
+}
+
+function buildRichSx(
+  variant: RichZoneVariant,
+  scale: number,
+  align: 'left' | 'center' | 'right',
+  minHeight: number | undefined,
+  flex: number | undefined,
+  animationEditMode: boolean,
+  editable: boolean,
+  placeholder: string,
+  zoneBasePx: number,
+  italic = false,
+  exportSnapshot = false
+) {
+  const baseFont = zoneBasePx * scale;
+  return {
+    fontSize: `${baseFont}px`,
+    lineHeight: variant === 'title' ? 1.15 : 1.55,
+    fontWeight: variant === 'title' || variant === 'hero' ? 700 : 400,
+    fontStyle: italic ? 'italic' : 'normal',
+    textAlign: align,
+    width: '100%',
+    minWidth: 0,
+    minHeight: minHeight ? `${minHeight * scale}px` : undefined,
+    flex: flex ?? undefined,
+    outline: 'none',
+    wordBreak: 'break-word' as const,
+    overflow: exportSnapshot ? 'visible' : 'hidden',
+    color: VARIANT_DEFAULT_COLOR[variant],
+    '& p': { m: 0, mb: `${6 * scale}px` },
+    '& p:last-child': { mb: 0 },
+    '& li > p': { display: 'block', listStyle: 'none' },
+    ...presentationNestedListSx({ scale }),
+    '& span[style], & mark': { backgroundClip: 'padding-box' },
+    '& [data-pres-fs]': { lineHeight: 'inherit' },
+    '& [data-pres-font]': { lineHeight: 'inherit' },
+    '& [data-pres-color]': { lineHeight: 'inherit' },
+    '& [data-pres-highlight]': { lineHeight: 'inherit' },
+    '& img': {
+      maxWidth: '100%',
+      height: 'auto',
+      borderRadius: `${6 * scale}px`,
+      display: 'block',
+      my: `${8 * scale}px`,
+      backgroundColor: 'transparent',
+      backgroundImage: 'none',
+    },
+    '& [data-reveal-step].pres-reveal-enter': {
+      animation: 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1)',
+    },
+    '& mark': { borderRadius: `${2 * scale}px`, px: `${2 * scale}px` },
+    ...animationParagraphBadgeSx(scale, animationEditMode),
+    '&:empty:before': editable
+      ? {
+          content: `"${placeholder}"`,
+          color: 'rgba(0,0,0,0.28)',
+          pointerEvents: 'none',
+        }
+      : undefined,
+  };
+}
+
+/** Pure display — no contentEditable sync, no effects (Laptop/review/play). */
+const PresentationRichZoneReadonly: React.FC<PresentationRichZoneProps> = ({
+  html,
+  plain,
+  scale,
+  variant = 'body',
+  italic = false,
+  align = 'left',
+  minHeight,
+  flex,
+  revealStep = 999,
+  revealEnabled = true,
+  exportSnapshot = false,
+}) => {
+  const zoneBasePx = VARIANT_FONT[variant];
+  const rawHtml = useMemo(
+    () => sanitizePresentationHtml(html || textToHtml(plain || '')),
+    [html, plain]
+  );
+  const displayHtml = useMemo(() => {
+    const applyRevealFilter = revealEnabled && revealStep < 999;
+    return applyRevealFilter ? filterHtmlByRevealStep(rawHtml, revealStep, true) : rawHtml;
+  }, [rawHtml, revealEnabled, revealStep]);
+
+  if (isEmptyDisplayHtml(displayHtml)) return null;
+
+  const richSx = buildRichSx(
+    variant,
+    scale,
+    align,
+    minHeight,
+    flex,
+    false,
+    false,
+    '',
+    zoneBasePx,
+    italic,
+    exportSnapshot
+  );
+
+  return (
+    <Box
+      data-pres-rich-zone
+      data-pres-base-fs={String(zoneBasePx)}
+      sx={richSx}
+      dangerouslySetInnerHTML={{ __html: displayHtml }}
+    />
+  );
+};
+
+const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
   html,
   plain,
   onChange,
@@ -57,6 +183,7 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
   editable = false,
   placeholder = 'Hier tippen…',
   variant = 'body',
+  italic = false,
   align = 'left',
   onEditorFocus,
   minHeight,
@@ -67,16 +194,21 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
   animationFieldKey,
   selectedAnimationTarget,
   onAnimationTargetClick,
+  exportSnapshot = false,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const editingRef = useRef(false);
   const zoneBasePx = VARIANT_FONT[variant];
-  const baseFont = zoneBasePx * scale;
-  const rawHtml = sanitizePresentationHtml(html || textToHtml(plain || ''));
+  const rawHtml = useMemo(
+    () => sanitizePresentationHtml(html || textToHtml(plain || '')),
+    [html, plain]
+  );
   const applyRevealFilter = !editable && !animationEditMode && revealEnabled && revealStep < 999;
-  const displayHtml = applyRevealFilter
-    ? filterHtmlByRevealStep(rawHtml, revealStep, true)
-    : rawHtml;
+  const displayHtml = useMemo(
+    () =>
+      applyRevealFilter ? filterHtmlByRevealStep(rawHtml, revealStep, true) : rawHtml,
+    [applyRevealFilter, rawHtml, revealStep]
+  );
 
   const syncFromProps = useCallback(() => {
     const el = ref.current;
@@ -87,8 +219,9 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
   }, [displayHtml]);
 
   useEffect(() => {
+    if (!editable) return;
     syncFromProps();
-  }, [syncFromProps]);
+  }, [editable, syncFromProps]);
 
   useEffect(() => {
     const el = ref.current;
@@ -137,9 +270,7 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
     if (!el) return;
     const pastedHtml = e.clipboardData.getData('text/html');
     const pastedText = e.clipboardData.getData('text/plain');
-    const content = pastedHtml
-      ? sanitizePastedHtml(pastedHtml)
-      : textToHtml(pastedText);
+    const content = pastedHtml ? sanitizePastedHtml(pastedHtml) : textToHtml(pastedText);
     el.focus();
     try {
       document.execCommand('styleWithCSS', false, 'true');
@@ -158,79 +289,33 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
     handlePresentationTabKey(el, e.shiftKey);
   };
 
-  const richSx = {
-    fontSize: `${baseFont}px`,
-    lineHeight: variant === 'title' ? 1.15 : 1.55,
-    fontWeight: variant === 'title' || variant === 'hero' ? 700 : 400,
-    fontStyle: variant === 'quote' ? 'italic' : 'normal',
-    textAlign: align,
-    width: '100%',
-    minWidth: 0,
-    minHeight: minHeight ? `${minHeight * scale}px` : undefined,
-    flex: flex ?? undefined,
-    outline: 'none',
-    wordBreak: 'break-word' as const,
-    overflow: 'hidden',
-    color: VARIANT_DEFAULT_COLOR[variant],
-    '& p': { m: 0, mb: `${6 * scale}px` },
-    '& p:last-child': { mb: 0 },
-    '& li > p': { display: 'block', listStyle: 'none' },
-    '& ul, & ol': {
-      m: 0,
-      pl: `${28 * scale}px`,
-      mb: `${8 * scale}px`,
-      listStylePosition: 'outside',
-    },
-    '& ul': { listStyleType: 'disc' },
-    '& ul ul': { listStyleType: 'circle' },
-    '& ul ul ul': { listStyleType: 'square' },
-    '& ol': { listStyleType: 'decimal' },
-    '& ol ol': { listStyleType: 'lower-alpha' },
-    '& ol ol ol': { listStyleType: 'lower-roman' },
-    '& li': {
-      mb: `${4 * scale}px`,
-      display: 'list-item',
-      listStylePosition: 'outside',
-    },
-    '& li > ul, & li > ol': {
-      mt: `${4 * scale}px`,
-      mb: 0,
-    },
-    '& span[style], & mark': { backgroundClip: 'padding-box' },
-    '& [data-pres-fs]': { lineHeight: 'inherit' },
-    '& [data-pres-color]': { lineHeight: 'inherit' },
-    '& [data-pres-highlight]': { lineHeight: 'inherit' },
-    '& img': {
-      maxWidth: '100%',
-      height: 'auto',
-      borderRadius: `${6 * scale}px`,
-      display: 'block',
-      my: `${8 * scale}px`,
-    },
-    '& [data-reveal-step].pres-reveal-enter': {
-      animation: 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1)',
-    },
-    '& mark': { borderRadius: `${2 * scale}px`, px: `${2 * scale}px` },
-    ...animationParagraphBadgeSx(scale, animationEditMode),
-    '&:empty:before': editable
-      ? {
-          content: `"${placeholder}"`,
-          color: 'rgba(0,0,0,0.28)',
-          pointerEvents: 'none',
-        }
-      : undefined,
-  };
+  const richSx = buildRichSx(
+    variant,
+    scale,
+    align,
+    minHeight,
+    flex,
+    animationEditMode,
+    editable,
+    placeholder,
+    zoneBasePx,
+    italic,
+    exportSnapshot
+  );
 
   if (!editable) {
-    if (!displayHtml.trim() || displayHtml === '<p></p>' || displayHtml === '<p><br></p>') {
-      return null;
-    }
+    if (isEmptyDisplayHtml(displayHtml)) return null;
     return (
       <Box
         ref={ref}
         data-pres-rich-zone
         data-pres-base-fs={String(zoneBasePx)}
-        sx={richSx}
+        onPointerDown={animationEditMode ? handleAnimationClick : undefined}
+        sx={{
+          ...richSx,
+          cursor: animationEditMode ? 'pointer' : undefined,
+          userSelect: animationEditMode ? 'none' : undefined,
+        }}
         dangerouslySetInnerHTML={{ __html: displayHtml }}
       />
     );
@@ -300,6 +385,13 @@ const PresentationRichZone: React.FC<PresentationRichZoneProps> = ({
       }}
     />
   );
+};
+
+const PresentationRichZone: React.FC<PresentationRichZoneProps> = (props) => {
+  if (!props.editable && !props.animationEditMode) {
+    return <PresentationRichZoneReadonly {...props} />;
+  }
+  return <PresentationRichZoneEditable {...props} />;
 };
 
 export default PresentationRichZone;

@@ -45,12 +45,13 @@ export class StorageManager {
    * UI/DB sometimes stores "J-M-Reihen/..." instead of "git-intern/..." — normalize for one code path.
    */
   private static normalizeDirRequestPath(raw: string): string {
-    const p = raw.replace(/\\/g, '/').trim();
-    if (p === 'J-M-Reihen' || p === './J-M-Reihen') {
+    const p = raw.replace(/\\/g, '/');
+    const trimmed = p.trim();
+    if (trimmed === 'J-M-Reihen' || trimmed === './J-M-Reihen') {
       return 'git-intern';
     }
-    if (p.startsWith('J-M-Reihen/')) {
-      return `git-intern/${p.slice('J-M-Reihen/'.length)}`;
+    if (trimmed.startsWith('J-M-Reihen/')) {
+      return `git-intern/${trimmed.slice('J-M-Reihen/'.length)}`;
     }
     return p;
   }

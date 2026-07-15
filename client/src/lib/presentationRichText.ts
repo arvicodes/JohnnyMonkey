@@ -89,7 +89,10 @@ export function normalizeRichHtml(html: string): string {
     const face = font.getAttribute('face');
     const size = font.getAttribute('size');
     if (color) span.style.color = color.startsWith('#') ? color : color;
-    if (face) span.style.fontFamily = face;
+    if (face) {
+      span.setAttribute('data-pres-font', face);
+      span.style.setProperty('font-family', face, 'important');
+    }
     if (size) {
       const px = FONT_SIZE_PX[size] || undefined;
       if (px) {
@@ -150,6 +153,17 @@ function stripExternalColors(root: ParentNode) {
   });
 }
 
+function stripExternalFontFamilies(root: ParentNode) {
+  root.querySelectorAll('*').forEach((node) => {
+    const el = node as HTMLElement;
+    if (el.hasAttribute('data-pres-font')) return;
+    el.style?.removeProperty('font-family');
+    if (el.tagName === 'FONT') el.removeAttribute('face');
+    const styleAttr = el.getAttribute('style')?.trim() ?? '';
+    if (!styleAttr) el.removeAttribute('style');
+  });
+}
+
 /** Bereinigt eingefügtes HTML (Pages/Word) für editierbare Zonen. */
 export function sanitizePastedHtml(html: string): string {
   if (!html || typeof document === 'undefined') return html;
@@ -163,6 +177,7 @@ export function sanitizePastedHtml(html: string): string {
   });
   unwrapIllegalSpanBlocks(doc.body);
   stripExternalFontSizing(doc.body);
+  stripExternalFontFamilies(doc.body);
   stripExternalColors(doc.body);
   normalizeListsInPlace(doc.body);
   doc.body.querySelectorAll('span.Apple-converted-space, br.Apple-interchange-newline').forEach((el) => {
@@ -253,10 +268,12 @@ export function handlePresentationTabKey(editor: HTMLElement, shiftKey: boolean)
   ensureEditorSelection(editor) || focusEditor(editor);
 
   if (isSelectionInList(editor)) {
-    if (shiftKey) {
-      outdentListItemInEditor(editor);
-    } else {
-      indentListItemInEditor(editor);
+    const changed = shiftKey
+      ? outdentListItemInEditor(editor)
+      : indentListItemInEditor(editor);
+    if (changed) {
+      collapseEditorSelection(editor);
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
     }
     return;
   }
@@ -321,6 +338,11 @@ function makeStyleSpan(style: Record<string, string>): HTMLSpanElement {
     if (key === 'backgroundColor') {
       span.setAttribute('data-pres-highlight', value);
       span.style.setProperty('background-color', value, 'important');
+      return;
+    }
+    if (key === 'fontFamily') {
+      span.setAttribute('data-pres-font', value);
+      span.style.setProperty('font-family', value, 'important');
       return;
     }
     (span.style as unknown as Record<string, string>)[key] = value;
@@ -393,6 +415,42 @@ function stripColorFromFragment(root: DocumentFragment | HTMLElement) {
   unwrapNestedAttrSpans(root, 'data-pres-color');
 }
 
+function stripFontInRange(editor: HTMLElement, range: Range) {
+  const walker = document.createTreeWalker(editor, NodeFilter.SHOW_ELEMENT);
+  let node: Node | null;
+  while ((node = walker.nextNode())) {
+    const el = node as HTMLElement;
+    try {
+      if (!range.intersectsNode(el)) continue;
+    } catch {
+      continue;
+    }
+    el.style?.removeProperty('font-family');
+    el.removeAttribute('data-pres-font');
+    if (el.tagName === 'FONT') el.removeAttribute('face');
+    if (!el.getAttribute('style')?.trim() && el.tagName === 'SPAN') {
+      unwrapElement(el);
+    }
+  }
+}
+
+function stripFontFromFragment(root: DocumentFragment | HTMLElement) {
+  const nodes: HTMLElement[] = [];
+  if ('querySelectorAll' in root) {
+    root.querySelectorAll('*').forEach((el) => nodes.push(el as HTMLElement));
+    if (root instanceof HTMLElement) nodes.push(root);
+  }
+  nodes.forEach((el) => {
+    el.style?.removeProperty('font-family');
+    el.removeAttribute('data-pres-font');
+    if (el.tagName === 'FONT') el.removeAttribute('face');
+    if (!el.getAttribute('style')?.trim() && (el.tagName === 'SPAN' || el.tagName === 'FONT')) {
+      unwrapElement(el);
+    }
+  });
+  unwrapNestedAttrSpans(root, 'data-pres-font');
+}
+
 function stripHighlightFromFragment(root: DocumentFragment | HTMLElement) {
   const nodes: HTMLElement[] = [];
   if ('querySelectorAll' in root) {
@@ -438,6 +496,7 @@ function applyStyleToTextRange(range: Range, style: Record<string, string>): HTM
     if (!fragmentHasText(extracted)) return null;
     if (style.color) stripColorFromFragment(extracted);
     if (style.backgroundColor) stripHighlightFromFragment(extracted);
+    if (style.fontFamily) stripFontFromFragment(extracted);
     span.appendChild(extracted);
     range.insertNode(span);
     return span;
@@ -486,6 +545,7 @@ function applyInlineStyleToSelection(editor: HTMLElement, style: Record<string, 
   const work = range.cloneRange();
   if (style.color) stripColorInRange(editor, work);
   if (style.backgroundColor) stripHighlightInRange(editor, work);
+  if (style.fontFamily) stripFontInRange(editor, work);
 
   const wrapped =
     applyStyleToTextRange(work, style) ?? applyStyleAcrossRange(editor, work, style);
@@ -534,6 +594,25 @@ export function applyTextColor(editor: HTMLElement | null, color: string) {
 export function applyHighlightColor(editor: HTMLElement | null, color: string) {
   if (!editor) return;
   applyInlineStyleToSelection(editor, { backgroundColor: color });
+}
+
+export function applyFontFamily(editor: HTMLElement | null, fontFamily: string) {
+  if (!editor || !fontFamily) return;
+  applyInlineStyleToSelection(editor, { fontFamily });
+}
+
+export function clearFontFamilyInSelection(editor: HTMLElement | null): boolean {
+  if (!editor) return false;
+  stashEditorSelection(editor);
+  if (!ensureEditorSelection(editor)) return false;
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || !editor.contains(sel.anchorNode)) return false;
+  const range = sel.getRangeAt(0);
+  if (range.collapsed) return false;
+  stripFontInRange(editor, range);
+  collapseEditorSelection(editor);
+  editor.dispatchEvent(new Event('input', { bubbles: true }));
+  return true;
 }
 
 export function applyFontSize(editor: HTMLElement | null, sizeKey: string) {

@@ -9,7 +9,7 @@ import { JOHNNY_PRESENTATION } from './presentationTheme';
 
 export const SLIDE_TEMPLATES_FILENAME = 'Folienvorlagen.json';
 
-export type SlideTemplateKind = 'start' | 'auftrag' | 'sicherung' | 'ha';
+export type SlideTemplateKind = 'start' | 'auftrag' | 'sicherung' | 'ha' | 'link' | 'referenz';
 
 export type SlideTemplatePayload = Omit<PresentationSlide, 'id' | 'order'>;
 
@@ -21,9 +21,20 @@ export type SlideTemplateMeta = {
 };
 
 export type SlideTemplatesStore = {
-  version: 1;
+  version: 1 | 2;
   updatedAt: string;
   templates: Partial<Record<SlideTemplateKind, SlideTemplatePayload>>;
+  /** Benutzerdefinierte Vorlagen (ab Version 2). */
+  custom?: CustomSlideTemplate[];
+};
+
+export type CustomSlideTemplate = {
+  id: string;
+  label: string;
+  shortLabel: string;
+  hint?: string;
+  payload: SlideTemplatePayload;
+  createdAt: string;
 };
 
 export const SLIDE_TEMPLATE_META: SlideTemplateMeta[] = [
@@ -31,6 +42,8 @@ export const SLIDE_TEMPLATE_META: SlideTemplateMeta[] = [
   { kind: 'auftrag', label: 'Auftrag', shortLabel: 'A', hint: 'Arbeitsauftrag' },
   { kind: 'sicherung', label: 'Sicherung', shortLabel: 'S', hint: 'Sicherung / Merksatz' },
   { kind: 'ha', label: 'Hausaufgabe', shortLabel: 'HA', hint: 'HA-Folie (immer mit HA-Bild)' },
+  { kind: 'link', label: 'Link', shortLabel: '▶', hint: 'Video im Vollbild (YouTube, MP4 …)' },
+  { kind: 'referenz', label: 'Referenz', shortLabel: '↗', hint: 'Webseite einbetten, zoombar (z. B. Wall of Fame)' },
 ];
 
 const GRAFIKEN_TOKEN = '__GRAFIKEN__';
@@ -250,26 +263,164 @@ function builtinTemplates(): SlideTemplatesStore['templates'] {
       revealEnabled: true,
       zoneRevealSteps: {},
     },
+    link: {
+      layout: 'blank',
+      title: 'Video / Link',
+      body: '',
+      speakerNotes: 'Video-URL im Element bearbeiten: Element wählen → ⚙ → Link/URL',
+      preparationNotes: '',
+      materialNotes: '',
+      subtitle: '',
+      bodyLeft: '',
+      bodyRight: '',
+      imagePath: '',
+      imageCaption: '',
+      bodyStyle: 'plain',
+      titleAlign: 'left',
+      accentColor: JOHNNY_PRESENTATION.primary,
+      titleHtml: '<p>Video / Link</p>',
+      bodyHtml: '',
+      subtitleHtml: '',
+      bodyLeftHtml: '',
+      bodyRightHtml: '',
+      imageCaptionHtml: '',
+      speakerNotesHtml: '',
+      preparationHtml: '',
+      materialHtml: '',
+      elements: [
+        {
+          id: 'tpl-link-media',
+          type: 'video',
+          x: 0,
+          y: 0,
+          w: 100,
+          h: 93,
+          src: '',
+          zIndex: 1,
+          revealStep: 0,
+        },
+      ],
+      transition: 'fade',
+      revealEnabled: true,
+      zoneRevealSteps: {},
+    },
+    referenz: {
+      layout: 'blank',
+      title: 'Referenz',
+      body: '',
+      speakerNotes: 'Referenz-URL im Element bearbeiten (z. B. /wall-of-fame). In der Präsentation zoombar.',
+      preparationNotes: '',
+      materialNotes: '',
+      subtitle: '',
+      bodyLeft: '',
+      bodyRight: '',
+      imagePath: '',
+      imageCaption: '',
+      bodyStyle: 'plain',
+      titleAlign: 'left',
+      accentColor: JOHNNY_PRESENTATION.primary,
+      titleHtml: '<p>Referenz</p>',
+      bodyHtml: '',
+      subtitleHtml: '',
+      bodyLeftHtml: '',
+      bodyRightHtml: '',
+      imageCaptionHtml: '',
+      speakerNotesHtml: '',
+      preparationHtml: '',
+      materialHtml: '',
+      elements: [
+        {
+          id: 'tpl-referenz-embed',
+          type: 'embed',
+          x: 0,
+          y: 0,
+          w: 100,
+          h: 93,
+          src: '/wall-of-fame',
+          zIndex: 1,
+          revealStep: 0,
+          mediaZoom: 1,
+        },
+      ],
+      transition: 'fade',
+      revealEnabled: true,
+      zoneRevealSteps: {},
+    },
   };
 }
 
 export function createDefaultTemplatesStore(): SlideTemplatesStore {
   return {
-    version: 1,
+    version: 2,
     updatedAt: new Date().toISOString(),
     templates: builtinTemplates(),
+    custom: [],
   };
+}
+
+export function normalizeTemplatesStore(raw?: SlideTemplatesStore | null): SlideTemplatesStore {
+  const builtins = builtinTemplates();
+  if (!raw?.templates || typeof raw.templates !== 'object') {
+    return createDefaultTemplatesStore();
+  }
+  return {
+    version: 2,
+    updatedAt: raw.updatedAt || new Date().toISOString(),
+    templates: { ...builtins, ...raw.templates },
+    custom: Array.isArray(raw.custom) ? raw.custom.filter((t) => t?.id && t?.label && t?.payload) : [],
+  };
+}
+
+export function shortLabelFromTemplateName(name: string): string {
+  const t = name.trim();
+  if (!t) return '?';
+  if (t.length <= 3) return t.slice(0, 3);
+  const words = t.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    return `${words[0][0] || ''}${words[1][0] || ''}`.toUpperCase().slice(0, 3);
+  }
+  return t.slice(0, 3);
+}
+
+export function updateCustomTemplate(
+  store: SlideTemplatesStore,
+  customId: string,
+  payload: SlideTemplatePayload,
+): SlideTemplatesStore {
+  const custom = (store.custom ?? []).map((entry) =>
+    entry.id === customId
+      ? { ...entry, payload, createdAt: new Date().toISOString() }
+      : entry,
+  );
+  return normalizeTemplatesStore({ ...store, custom });
+}
+
+export function addCustomTemplate(
+  store: SlideTemplatesStore,
+  label: string,
+  payload: SlideTemplatePayload,
+): SlideTemplatesStore {
+  const trimmed = label.trim();
+  if (!trimmed) return store;
+  const entry: CustomSlideTemplate = {
+    id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    label: trimmed,
+    shortLabel: shortLabelFromTemplateName(trimmed),
+    hint: 'Eigene Vorlage',
+    payload,
+    createdAt: new Date().toISOString(),
+  };
+  return normalizeTemplatesStore({
+    ...store,
+    custom: [...(store.custom ?? []), entry],
+  });
 }
 
 export async function loadSlideTemplates(lessonPath: string): Promise<SlideTemplatesStore> {
   const path = slideTemplatesFilePath(lessonPath);
   const loaded = await loadJsonFile<SlideTemplatesStore>(path);
   if (loaded?.templates && typeof loaded.templates === 'object') {
-    return {
-      version: 1,
-      updatedAt: loaded.updatedAt || new Date().toISOString(),
-      templates: { ...builtinTemplates(), ...loaded.templates },
-    };
+    return normalizeTemplatesStore(loaded);
   }
   const defaults = createDefaultTemplatesStore();
   try {
@@ -343,6 +494,17 @@ export function createSlideFromTemplateKind(
   const payload = getTemplatePayload(store, kind);
   if (!payload) return null;
   return instantiateTemplateSlide(payload, order, lessonPath);
+}
+
+export function createSlideFromCustomTemplate(
+  customId: string,
+  order: number,
+  lessonPath: string,
+  store: SlideTemplatesStore,
+): PresentationSlide | null {
+  const entry = (store.custom ?? []).find((t) => t.id === customId);
+  if (!entry?.payload) return null;
+  return instantiateTemplateSlide(entry.payload, order, lessonPath);
 }
 
 export function deckHasHaTemplateSlide(slides: PresentationSlide[], store: SlideTemplatesStore): boolean {

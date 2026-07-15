@@ -10,6 +10,11 @@ import {
   slideImageUrl,
 } from '../../lib/presentationDeck';
 import { JOHNNY_PRESENTATION, accentGradient } from '../../lib/presentationTheme';
+import {
+  effectivePresentationImageFit,
+  isAlphaFriendlyImageSrc,
+  presentationTransparentImageSx,
+} from '../../lib/presentationImageUtils';
 import { getZoneRevealStep, isZoneVisible, shouldAnimateReveal } from '../../lib/presentationReveal';
 import {
   ANIMATION_LAYOUT_IMAGE_ID,
@@ -21,6 +26,7 @@ import {
   normalizeSlideFooter,
   SLIDE_FOOTER_HEIGHT,
 } from '../../lib/presentationSlideFooter';
+import { slideHasFullscreenMedia } from '../../lib/presentationMediaEmbed';
 import PresentationRichZone from './PresentationRichZone';
 import PresentationSlideElements from './PresentationSlideElements';
 
@@ -44,9 +50,13 @@ interface PresentationSlideViewProps {
   showSlideFooter?: boolean;
   slideFooter?: PresentationSlideFooter;
   deckTitle?: string;
+  lessonPath?: string;
   animationEditMode?: boolean;
   selectedAnimationTarget?: string | null;
   onAnimationTargetClick?: (itemId: string | null) => void;
+  mediaInteractive?: boolean;
+  /** PDF-Export: Layout wie im Editor, ohne Animations-Artefakte. */
+  exportSnapshot?: boolean;
 }
 
 const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
@@ -69,9 +79,12 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   showSlideFooter = false,
   slideFooter,
   deckTitle = '',
+  lessonPath = '',
   animationEditMode = false,
   selectedAnimationTarget = null,
   onAnimationTargetClick,
+  mediaInteractive = false,
+  exportSnapshot = false,
 }) => {
   const slide = normalizeSlide(rawSlide);
   const effectiveReveal = revealEnabled && slide.revealEnabled !== false;
@@ -80,7 +93,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   const accent = slide.accentColor || JOHNNY_PRESENTATION.primary;
   const align = slide.titleAlign || 'left';
   const footerOn = showSlideFooter;
-  const footer = normalizeSlideFooter(slideFooter, deckTitle);
+  const footer = normalizeSlideFooter(slideFooter, deckTitle, lessonPath);
   const footerHeight = footerOn ? SLIDE_FOOTER_HEIGHT * scale : 0;
   const slideNumberLabel =
     slideNumber > 0
@@ -90,6 +103,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
       : '';
   const showFooterNumbers = footerOn && slideNumberLabel.length > 0;
   const showStandaloneNumbers = !footerOn && showSlideNumbers && slideNumberLabel.length > 0;
+  const fullscreenMedia = slideHasFullscreenMedia(slide);
 
   const patchHtml = (
     fields: Partial<
@@ -116,6 +130,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
     fieldPlain: keyof PresentationSlide,
     opts: {
       variant?: 'title' | 'hero' | 'subtitle' | 'body' | 'quote' | 'caption';
+      italic?: boolean;
       placeholder?: string;
       align?: 'left' | 'center' | 'right';
       minHeight?: number;
@@ -138,7 +153,9 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           plain={slide[fieldPlain] as string | undefined}
           scale={scale}
           editable={editable}
+          exportSnapshot={exportSnapshot}
           variant={opts.variant || 'body'}
+          italic={opts.italic}
           align={opts.align || align}
           placeholder={opts.placeholder}
           minHeight={opts.minHeight}
@@ -214,9 +231,14 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
               sx={{
                 maxWidth: '100%',
                 maxHeight: `${420 * scale}px`,
-                objectFit: 'contain',
+                width: isAlphaFriendlyImageSrc(slide.imagePath) ? 'auto' : undefined,
+                height: isAlphaFriendlyImageSrc(slide.imagePath) ? 'auto' : undefined,
+                objectFit: effectivePresentationImageFit(slide.imagePath, 'contain'),
                 borderRadius: `${8 * scale}px`,
-                boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+                boxShadow: isAlphaFriendlyImageSrc(slide.imagePath)
+                  ? 'none'
+                  : '0 4px 16px rgba(0,0,0,0.08)',
+                ...presentationTransparentImageSx,
               }}
             />
           ) : (
@@ -267,7 +289,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
               {zone('titleHtml', 'title', { variant: 'hero', placeholder: 'Titel', align: 'center' })}
             </Box>
             {zone('bodyHtml', 'body', {
-              variant: 'subtitle',
+              variant: 'body',
               placeholder: 'Untertitel',
               align: 'center',
             })}
@@ -309,10 +331,14 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             <Box sx={{ mb: `${28 * scale}px` }}>
               {zone('titleHtml', 'title', { variant: 'title', placeholder: 'Titel' })}
             </Box>
-            <Box sx={{ display: 'flex', gap: `${40 * scale}px`, flex: 1, minHeight: 0 }}>
-              <Box sx={{ flex: 1 }}>{zone('bodyLeftHtml', 'bodyLeft', { placeholder: 'Linke Spalte' })}</Box>
+            <Box sx={{ display: 'flex', gap: `${40 * scale}px`, flex: 1, minHeight: exportSnapshot ? 'auto' : 0 }}>
+              <Box sx={{ flex: 1, minHeight: exportSnapshot ? 'auto' : 0 }}>
+                {zone('bodyLeftHtml', 'bodyLeft', { variant: 'body', placeholder: 'Linke Spalte' })}
+              </Box>
               <Box sx={{ width: `${2 * scale}px`, bgcolor: `${accent}44`, flexShrink: 0 }} />
-              <Box sx={{ flex: 1 }}>{zone('bodyRightHtml', 'bodyRight', { placeholder: 'Rechte Spalte' })}</Box>
+              <Box sx={{ flex: 1, minHeight: exportSnapshot ? 'auto' : 0 }}>
+                {zone('bodyRightHtml', 'bodyRight', { variant: 'body', placeholder: 'Rechte Spalte' })}
+              </Box>
             </Box>
           </>
         );
@@ -323,8 +349,10 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             <Box sx={{ mb: `${24 * scale}px` }}>
               {zone('titleHtml', 'title', { variant: 'title', placeholder: 'Titel' })}
             </Box>
-            <Box sx={{ display: 'flex', gap: `${36 * scale}px`, flex: 1, minHeight: 0 }}>
-              <Box sx={{ flex: 1 }}>{zone('bodyHtml', 'body', { placeholder: 'Text…', flex: 1 })}</Box>
+            <Box sx={{ display: 'flex', gap: `${36 * scale}px`, flex: 1, minHeight: exportSnapshot ? 'auto' : 0 }}>
+              <Box sx={{ flex: 1, minHeight: exportSnapshot ? 'auto' : 0 }}>
+                {zone('bodyHtml', 'body', { variant: 'body', placeholder: 'Text…', flex: 1 })}
+              </Box>
               {renderImage()}
             </Box>
           </>
@@ -336,9 +364,11 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             <Box sx={{ mb: `${24 * scale}px` }}>
               {zone('titleHtml', 'title', { variant: 'title', placeholder: 'Titel' })}
             </Box>
-            <Box sx={{ display: 'flex', gap: `${36 * scale}px`, flex: 1, minHeight: 0 }}>
+            <Box sx={{ display: 'flex', gap: `${36 * scale}px`, flex: 1, minHeight: exportSnapshot ? 'auto' : 0 }}>
               {renderImage()}
-              <Box sx={{ flex: 1 }}>{zone('bodyHtml', 'body', { placeholder: 'Text…', flex: 1 })}</Box>
+              <Box sx={{ flex: 1, minHeight: exportSnapshot ? 'auto' : 0 }}>
+                {zone('bodyHtml', 'body', { variant: 'body', placeholder: 'Text…', flex: 1 })}
+              </Box>
             </Box>
           </>
         );
@@ -365,7 +395,12 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             >
               „
             </Typography>
-            {zone('bodyHtml', 'body', { variant: 'quote', placeholder: 'Zitat…', align: 'center' })}
+            {zone('bodyHtml', 'body', {
+              variant: 'body',
+              placeholder: 'Zitat…',
+              align: 'center',
+              italic: true,
+            })}
             <Box sx={{ mt: `${24 * scale}px`, width: '100%' }}>
               {zone('subtitleHtml', 'subtitle', {
                 variant: 'caption',
@@ -377,9 +412,9 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
         );
 
       case 'blank':
-        return (
+        return fullscreenMedia ? null : (
           <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            {zone('bodyHtml', 'body', { placeholder: 'Freier Inhalt…', flex: 1 })}
+            {zone('bodyHtml', 'body', { variant: 'body', placeholder: 'Freier Inhalt…', flex: 1 })}
           </Box>
         );
 
@@ -389,7 +424,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             <Box sx={{ mb: `${24 * scale}px` }}>
               {zone('titleHtml', 'title', { variant: 'title', placeholder: 'Titel' })}
             </Box>
-            {zone('bodyHtml', 'body', { placeholder: 'Inhalt…', flex: 1 })}
+            {zone('bodyHtml', 'body', { variant: 'body', placeholder: 'Inhalt…', flex: 1 })}
           </>
         );
     }
@@ -418,7 +453,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
         maxWidth: w,
       }}
     >
-      {showLogo && (
+      {showLogo && !fullscreenMedia && (
         <Box
           component="img"
           src={JOHNNY_PRESENTATION.logoUrl}
@@ -436,6 +471,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
         />
       )}
 
+      {!fullscreenMedia && (
       <Box
         sx={{
           position: 'absolute',
@@ -447,18 +483,20 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           background: accentGradient(accent),
         }}
       />
+      )}
 
       <Box
         sx={{
           position: 'absolute',
           inset: 0,
-          pt: `${72 * scale}px`,
-          px: `${64 * scale}px`,
-          pb: `${(footerOn ? 56 : 48) * scale}px`,
+          pt: fullscreenMedia ? 0 : `${72 * scale}px`,
+          px: fullscreenMedia ? 0 : `${64 * scale}px`,
+          pb: fullscreenMedia ? 0 : `${(footerOn ? 56 : 48) * scale}px`,
           display: 'flex',
           flexDirection: 'column',
           minWidth: 0,
-          overflow: 'hidden',
+          minHeight: exportSnapshot ? 'auto' : 0,
+          overflow: exportSnapshot ? 'visible' : 'hidden',
           zIndex: animationEditMode ? 4 : undefined,
         }}
       >
@@ -471,7 +509,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             position: 'absolute',
             inset: 0,
             pointerEvents: 'none',
-            zIndex: animationEditMode ? 12 : 5,
+            zIndex: editable ? 25 : animationEditMode ? 12 : 5,
           }}
         >
           <PresentationSlideElements
@@ -479,6 +517,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             scale={scale}
             revealStep={revealStep}
             revealEnabled={effectiveReveal}
+            exportSnapshot={exportSnapshot}
             editable={editable}
             selectedId={selectedElementId}
             onSelect={(id) => onElementSelect?.(id)}
@@ -487,6 +526,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             animationEditMode={animationEditMode}
             selectedAnimationTarget={selectedAnimationTarget}
             onAnimationTargetClick={onAnimationTargetClick}
+            mediaInteractive={mediaInteractive}
           />
         </Box>
       )}
@@ -499,7 +539,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             right: 0,
             bottom: 0,
             height: footerHeight,
-            zIndex: 6,
+            zIndex: 20,
             bgcolor: 'rgba(255,255,255,0.97)',
             borderTop: `1px solid ${accent}33`,
             px: `${48 * scale}px`,
