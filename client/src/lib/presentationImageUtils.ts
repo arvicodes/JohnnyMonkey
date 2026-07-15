@@ -1,3 +1,8 @@
+import { htmlToPlain, type PresentationSlide, type SlideElement } from './presentationDeck';
+
+/** Max. Bildhöhe auf Folien mit Fußleiste (Prozent), damit die Fußzeile frei bleibt. */
+export const SLIDE_HERO_IMAGE_HEIGHT_PCT = 93;
+
 /** Bildformate, die typischerweise einen Alpha-Kanal haben. */
 export function isAlphaFriendlyImageSrc(src?: string): boolean {
   if (!src) return false;
@@ -9,8 +14,75 @@ export function effectivePresentationImageFit(
   src: string | undefined,
   fit: 'contain' | 'cover' | undefined,
 ): 'contain' | 'cover' {
+  if (fit === 'cover' || fit === 'contain') return fit;
   if (isAlphaFriendlyImageSrc(src)) return 'contain';
-  return fit || 'contain';
+  return 'contain';
+}
+
+export const DEFAULT_IMAGE_OBJECT_POSITION = '50% 50%';
+
+export function parseImageObjectPosition(value?: string): { x: number; y: number } {
+  const v = (value || DEFAULT_IMAGE_OBJECT_POSITION).trim();
+  const parts = v.split(/\s+/);
+  const parsePart = (part: string, fallback: number) => {
+    const n = parseFloat(part.replace('%', ''));
+    return Number.isFinite(n)
+      ? clampPercent(n, IMAGE_CROP_POSITION_MIN, IMAGE_CROP_POSITION_MAX)
+      : fallback;
+  };
+  return {
+    x: parsePart(parts[0] ?? '50', 50),
+    y: parsePart(parts[1] ?? parts[0] ?? '50', 50),
+  };
+}
+
+export function formatImageObjectPosition(x: number, y: number): string {
+  return `${clampPercent(x, IMAGE_CROP_POSITION_MIN, IMAGE_CROP_POSITION_MAX)}% ${clampPercent(
+    y,
+    IMAGE_CROP_POSITION_MIN,
+    IMAGE_CROP_POSITION_MAX,
+  )}%`;
+}
+
+/** Bild im Beschneide-Modus (object-fit: cover + Ausschnitt verschieben). */
+export function isImageCropMode(element: SlideElement): boolean {
+  return element.type === 'image' && element.imageFit === 'cover' && Boolean(element.src?.trim());
+}
+
+/** Bildrahmen darf über den Folienrand hinausragen (Prozent). */
+export const IMAGE_FRAME_MIN = -40;
+export const IMAGE_FRAME_MAX = 100;
+export const IMAGE_FRAME_SIZE_MAX = 160;
+
+/** Ausschnitt bei Cover-Bildern (object-position). */
+export const IMAGE_CROP_POSITION_MIN = -20;
+export const IMAGE_CROP_POSITION_MAX = 120;
+
+/** Cover-Bilder: Alt+Ziehen verschiebt den Bildausschnitt; ohne Alt den Rahmen. */
+export function shouldPanCoverImageOnDrag(
+  element: SlideElement,
+  options?: { altKey?: boolean },
+): boolean {
+  return isImageCropMode(element) && Boolean(options?.altKey);
+}
+
+export function presentationImageElementSx(
+  src: string | undefined,
+  fit: 'contain' | 'cover' | undefined,
+  objectPosition?: string,
+) {
+  const effectiveFit = effectivePresentationImageFit(src, fit);
+  const useCoverLayout = effectiveFit === 'cover';
+  return {
+    maxWidth: '100%',
+    maxHeight: '100%',
+    width: useCoverLayout ? '100%' : isAlphaFriendlyImageSrc(src) ? 'auto' : '100%',
+    height: useCoverLayout ? '100%' : isAlphaFriendlyImageSrc(src) ? 'auto' : '100%',
+    objectFit: effectiveFit,
+    objectPosition: objectPosition || DEFAULT_IMAGE_OBJECT_POSITION,
+    userSelect: 'none' as const,
+    ...presentationTransparentImageSx,
+  };
 }
 
 export const presentationTransparentImageSx = {
@@ -75,3 +147,109 @@ export function slideDropPositionForImage(
 
 export const DEFAULT_FLOATING_IMAGE_W = 45;
 export const DEFAULT_FLOATING_IMAGE_H = 40;
+
+export function slideHasImageHeroLayout(slide: {
+  layout?: string;
+  bodyHtml?: string;
+  body?: string;
+  elements?: { type: string; w?: number; h?: number }[];
+}): boolean {
+  if (slide.layout !== 'blank') return false;
+  const hasLargeImage = slide.elements?.some(
+    (el) =>
+      el.type === 'image' &&
+      (el.w ?? 0) >= 80 &&
+      (el.h ?? 0) >= 80,
+  );
+  if (!hasLargeImage) return false;
+  return !htmlToPlain(slide.bodyHtml || slide.body || '').trim();
+}
+
+export function findEmptyFullscreenImageElement(
+  elements: SlideElement[] | undefined,
+): SlideElement | undefined {
+  return elements?.find(
+    (el) =>
+      el.type === 'image' &&
+      !el.src?.trim() &&
+      (el.w ?? 0) >= 80 &&
+      (el.h ?? 0) >= 80,
+  );
+}
+
+/** Vollbild-Bildslot (Vorlage B): oben links, volle Breite, hohe Fläche. */
+export function isHeroSlideImage(el: SlideElement): boolean {
+  return (
+    el.type === 'image' &&
+    (el.x ?? 0) <= 2 &&
+    (el.y ?? 0) <= 2 &&
+    (el.w ?? 0) >= 90 &&
+    (el.h ?? 0) >= 80
+  );
+}
+
+/** Vollbild-Hintergrundbilder auf blank-Folien: Fußzeile freihalten, Cover-Fit. */
+export function normalizeSlideHeroImageElements(slide: PresentationSlide): SlideElement[] {
+  const elements = slide.elements ?? [];
+  if (slide.layout !== 'blank' || elements.length === 0) return elements;
+
+  return elements.map((el) => {
+    if (el.type !== 'image') return el;
+
+    const isEmptySlot = !el.src?.trim() && (el.w ?? 0) >= 80 && (el.h ?? 0) >= 80;
+    if (isEmptySlot) {
+      return {
+        ...el,
+        x: 0,
+        y: 0,
+        w: 100,
+        h: SLIDE_HERO_IMAGE_HEIGHT_PCT,
+        imageFit: 'cover' as const,
+        stackLayer: 'background' as const,
+      };
+    }
+
+    if (!isHeroSlideImage(el)) return el;
+
+    const h = el.h ?? 100;
+    const patch: Partial<SlideElement> = {};
+    if (h > SLIDE_HERO_IMAGE_HEIGHT_PCT) patch.h = SLIDE_HERO_IMAGE_HEIGHT_PCT;
+    if (!el.stackLayer) patch.stackLayer = 'background';
+    if (el.imageFit !== 'cover' && el.imageFit !== 'contain') patch.imageFit = 'cover';
+    if (Object.keys(patch).length === 0) return el;
+    return { ...el, ...patch };
+  });
+}
+
+export function patchBildTemplateHeroElements(
+  elements: SlideElement[] | undefined,
+): SlideElement[] {
+  const list = [...(elements ?? [])];
+  const heroIdx = list.findIndex((el) => isHeroSlideImage(el) || (el.type === 'image' && (el.w ?? 0) >= 80));
+  if (heroIdx < 0) {
+    list.unshift({
+      id: 'tpl-bild-img',
+      type: 'image',
+      x: 0,
+      y: 0,
+      w: 100,
+      h: SLIDE_HERO_IMAGE_HEIGHT_PCT,
+      src: '',
+      zIndex: 1,
+      revealStep: 0,
+      stackLayer: 'background',
+      imageFit: 'cover',
+    });
+    return list;
+  }
+  list[heroIdx] = {
+    ...list[heroIdx],
+    x: 0,
+    y: 0,
+    w: 100,
+    h: SLIDE_HERO_IMAGE_HEIGHT_PCT,
+    stackLayer: 'background',
+    imageFit: 'cover',
+  };
+  return list;
+}

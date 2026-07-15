@@ -1142,7 +1142,26 @@ export class FileSystemPathController {
       // Save file
       const finalFilePath = path.join(fullTargetPath, file.originalname);
       console.log('Saving file to:', finalFilePath);
-      
+
+      if (
+        file.originalname === 'Praesentation.deck.json' &&
+        fs.existsSync(finalFilePath)
+      ) {
+        const backupDir = path.join(fullTargetPath, '.presentation-backups');
+        fs.mkdirSync(backupDir, { recursive: true });
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const backupPath = path.join(backupDir, `deck-${stamp}.json`);
+        fs.copyFileSync(finalFilePath, backupPath);
+        const backups = fs
+          .readdirSync(backupDir)
+          .filter((name) => name.startsWith('deck-') && name.endsWith('.json'))
+          .sort();
+        while (backups.length > 50) {
+          fs.unlinkSync(path.join(backupDir, backups.shift()!));
+        }
+        console.log('Deck backup written:', backupPath);
+      }
+
       fs.writeFileSync(finalFilePath, file.buffer);
 
       console.log('File saved successfully');

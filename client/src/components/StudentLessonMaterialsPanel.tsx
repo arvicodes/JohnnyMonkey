@@ -11,6 +11,7 @@ import {
   LESSON_PRESENTATION_PDF_EDITED,
   LESSON_PRESENTATION_PDF_ORIGINAL,
 } from '../lib/presentationLessonAssets';
+import { isLessonFileShared } from '../lib/lessonFileSharePath';
 import { openStudentLessonMaterialFile } from '../lib/openStudentLessonMaterial';
 
 type LessonFile = { type: string; name: string; path: string };
@@ -65,11 +66,16 @@ function PresentationCombinedActions({
   lessonName,
   original,
   edited,
+  sharedPaths,
 }: {
   lessonName: string;
   original?: LessonFile;
   edited?: LessonFile;
+  sharedPaths: string[];
 }) {
+  const originalShared = original ? isLessonFileShared(original.path, sharedPaths) : false;
+  const editedShared = edited ? isLessonFileShared(edited.path, sharedPaths) : false;
+
   const groupBtnSx = {
     ...iconActionBtnSx,
     borderRadius: 0,
@@ -104,8 +110,9 @@ function PresentationCombinedActions({
         <span style={{ display: 'inline-flex', lineHeight: 0 }}>
           <Button
             variant="outlined"
-            disabled={!original}
+            disabled={!originalShared}
             onClick={() =>
+              originalShared &&
               original &&
               void openStudentLessonMaterialFile(original, 'download', {
                 downloadName: lessonPresentationDownloadFilename(lessonName, 'original'),
@@ -120,8 +127,8 @@ function PresentationCombinedActions({
         <span style={{ display: 'inline-flex', lineHeight: 0 }}>
           <Button
             variant="outlined"
-            disabled={!edited}
-            onClick={() => edited && void openStudentLessonMaterialFile(edited, 'open')}
+            disabled={!editedShared}
+            onClick={() => editedShared && edited && void openStudentLessonMaterialFile(edited, 'open')}
           >
             <EditNoteOutlinedIcon sx={{ fontSize: 20 }} />
           </Button>
@@ -131,8 +138,9 @@ function PresentationCombinedActions({
         <span style={{ display: 'inline-flex', lineHeight: 0 }}>
           <Button
             variant="outlined"
-            disabled={!edited}
+            disabled={!editedShared}
             onClick={() =>
+              editedShared &&
               edited &&
               void openStudentLessonMaterialFile(edited, 'download', {
                 downloadName: lessonPresentationDownloadFilename(lessonName, 'edited'),
@@ -156,7 +164,6 @@ export default function StudentLessonMaterialsPanel({
   files: LessonFile[];
   sharedPaths: string[];
 }) {
-  const sharedSet = useMemo(() => new Set(sharedPaths), [sharedPaths]);
   const downloadLessonName = (lessonName || '').trim();
 
   const materials = useMemo(() => {
@@ -165,15 +172,18 @@ export default function StudentLessonMaterialsPanel({
         (f) =>
           f.type === 'file' &&
           isStudentVisibleLessonMaterialFile(f.name || '') &&
-          sharedSet.has(f.path)
+          isLessonFileShared(f.path, sharedPaths)
       )
       .sort((a, b) => a.name.localeCompare(b.name, 'de'));
-  }, [files, sharedSet]);
+  }, [files, sharedPaths]);
 
   const presentationOriginal = materials.find((f) => f.name === LESSON_PRESENTATION_PDF_ORIGINAL);
   const presentationEdited = materials.find((f) => f.name === LESSON_PRESENTATION_PDF_EDITED);
   const otherMaterials = materials.filter((f) => !isLessonPresentationMaterialPdf(f.name));
   const hasPresentation = !!(presentationOriginal || presentationEdited);
+  const originalShared = presentationOriginal
+    ? isLessonFileShared(presentationOriginal.path, sharedPaths)
+    : false;
 
   if (materials.length === 0) {
     return (
@@ -204,8 +214,9 @@ export default function StudentLessonMaterialsPanel({
               <Box
                 component="button"
                 type="button"
-                disabled={!presentationOriginal}
+                disabled={!originalShared}
                 onClick={() =>
+                  originalShared &&
                   presentationOriginal &&
                   void openStudentLessonMaterialFile(presentationOriginal, 'open')
                 }
@@ -218,11 +229,11 @@ export default function StudentLessonMaterialsPanel({
                   background: 'none',
                   p: 0,
                   m: 0,
-                  cursor: presentationOriginal ? 'pointer' : 'default',
-                  opacity: presentationOriginal ? 1 : 0.5,
+                  cursor: originalShared ? 'pointer' : 'default',
+                  opacity: originalShared ? 1 : 0.5,
                   font: 'inherit',
                   textAlign: 'left',
-                  '&:hover': presentationOriginal ? { opacity: 0.82 } : undefined,
+                  '&:hover': originalShared ? { opacity: 0.82 } : undefined,
                 }}
               >
                 <PictureAsPdfIcon sx={{ fontSize: 20, color: '#546e7a' }} />
@@ -245,6 +256,7 @@ export default function StudentLessonMaterialsPanel({
             lessonName={downloadLessonName}
             original={presentationOriginal}
             edited={presentationEdited}
+            sharedPaths={sharedPaths}
           />
         </Box>
       )}

@@ -70,6 +70,7 @@ import {
   isStudentVisibleLessonMaterialFile,
   labelForLessonPresentationMaterialPdf,
 } from '../lib/presentationLessonAssets';
+import { isLessonFileShared } from '../lib/lessonFileSharePath';
 import SubmissionUpload from './SubmissionUpload';
 import ReisebegleiterAvatarBadge from './ReisebegleiterPanel';
 import { StudentExitTicketMyAnswersBadge } from './exit-ticket/StudentExitTicketMyAnswersBadge';
@@ -152,6 +153,17 @@ function filterWbFilesForStudentPreview(items: any[]): any[] {
 
 function studentLessonMaterialLabel(name: string): string {
   return labelForLessonPresentationMaterialPdf(name) || name;
+}
+
+function isStudentSharedFile(
+  item: { path: string; name: string },
+  groupSharedFiles: string[]
+): boolean {
+  if (isLessonFileShared(item.path, groupSharedFiles)) return true;
+  if (item.name.endsWith('.pdf')) {
+    return isLessonFileShared(item.path.replace('.pdf', '.wb'), groupSharedFiles);
+  }
+  return false;
 }
 
 export type TextFormatRange = { start: number; end: number; type: 'material' | 'term' | 'instruction' };
@@ -2838,19 +2850,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       // K_ Dateien müssen explizit freigegeben werden (über Checkbox im Lehrerdashboard)
       if (item.type === 'file') {
         if (!isStudentVisibleLessonMaterialFile(item.name || '')) return false;
-        let isFileShared = groupSharedFiles.includes(item.path);
-        
-        // Spezielle Logik für PDF-Dateien: Wenn die entsprechende .wb Datei freigegeben ist,
-        // dann ist auch die PDF-Datei freigegeben
-        if (item.name.endsWith('.pdf') && !isFileShared) {
-          const wbFilePath = item.path.replace('.pdf', '.wb');
-          const isWbFileShared = groupSharedFiles.includes(wbFilePath);
-          if (isWbFileShared) {
-            isFileShared = true;
-          }
-        }
-        
-        return isFileShared;
+        return isStudentSharedFile(item, groupSharedFiles);
       }
       
       // Wenn es ein Ordner ist, prüfe rekursiv alle Kinder
@@ -2870,18 +2870,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       // Prüfe, ob die Datei für diese Gruppe freigegeben ist
       const groupSharedFiles = sharedFiles[groupId] || [];
       // K_ Dateien müssen explizit freigegeben werden (über Checkbox im Lehrerdashboard)
-      let isFileShared = groupSharedFiles.includes(item.path);
-      
-      // Spezielle Logik für PDF-Dateien: Wenn die entsprechende .wb Datei freigegeben ist,
-      // dann ist auch die PDF-Datei freigegeben
-      if (item.type === 'file' && item.name.endsWith('.pdf') && !isFileShared) {
-        const wbFileName = item.name.replace('.pdf', '.wb');
-        const wbFilePath = item.path.replace('.pdf', '.wb');
-        const isWbFileShared = groupSharedFiles.includes(wbFilePath);
-        if (isWbFileShared) {
-          isFileShared = true;
-        }
-      }
+      const isFileShared =
+        item.type === 'file' ? isStudentSharedFile(item, groupSharedFiles) : false;
       
       // Wenn es eine Datei ist und NICHT freigegeben oder kein Unterrichtsmaterial, verberge sie
       if (item.type === 'file' && (!isFileShared || !isStudentVisibleLessonMaterialFile(item.name || ''))) {

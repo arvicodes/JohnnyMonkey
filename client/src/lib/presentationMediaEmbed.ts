@@ -91,7 +91,10 @@ export function slideHasFullscreenMedia(slide: {
   if (slide.layout !== 'blank') return false;
   return (
     slide.elements?.some(
-      (el) => (el.type === 'video' || el.type === 'embed') && (el.w ?? 0) >= 80 && (el.h ?? 0) >= 80,
+      (el) =>
+        (el.type === 'video' || el.type === 'embed') &&
+        (el.w ?? 0) >= 80 &&
+        (el.h ?? 0) >= 80,
     ) ?? false
   );
 }

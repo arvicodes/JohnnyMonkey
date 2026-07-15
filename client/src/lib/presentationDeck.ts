@@ -1,3 +1,4 @@
+import { normalizeSlideHeroImageElements } from './presentationImageUtils';
 import { sanitizeStoredFooter } from './presentationSlideFooter';
 import { parentDirGitPath } from './folienVersions';
 import { JOHNNY_PRESENTATION } from './presentationTheme';
@@ -69,7 +70,11 @@ export interface SlideElement {
   /** True wenn Animations-Schritt im Editor explizit gesetzt wurde (auch 0). */
   animationSet?: boolean;
   zIndex: number;
+  /** Hintergrund = hinter Textinhalt, Vordergrund = darüber (Standard). */
+  stackLayer?: 'background' | 'foreground';
   imageFit?: 'contain' | 'cover';
+  /** Bildausschnitt bei object-fit: cover (z. B. "40% 60%"). */
+  imageObjectPosition?: string;
   /** Standard-Zoom für Referenz-Embeds (1 = 100 %). */
   mediaZoom?: number;
 }
@@ -202,9 +207,28 @@ export function slideImageUrl(imagePath: string): string {
   return `/api/file-system-paths/read-image?filePath=${encodeURIComponent(imagePath)}`;
 }
 
+const LEGACY_BILD_SLIDE_SPEAKER_HINT =
+  'Bild per Drag & Drop auf die Folie ziehen oder Element wählen → Bild einfügen.';
+
+function normalizedSpeakerNotesFields(slide: PresentationSlide): {
+  speakerNotes: string;
+  speakerNotesHtml: string;
+} {
+  const notes = (slide.speakerNotes || '').trim();
+  const htmlPlain = htmlToPlain(slide.speakerNotesHtml || '').trim();
+  if (notes === LEGACY_BILD_SLIDE_SPEAKER_HINT || htmlPlain === LEGACY_BILD_SLIDE_SPEAKER_HINT) {
+    return { speakerNotes: '', speakerNotesHtml: '' };
+  }
+  return {
+    speakerNotes: slide.speakerNotes ?? '',
+    speakerNotesHtml: slide.speakerNotesHtml ?? textToHtml(slide.speakerNotes || ''),
+  };
+}
+
 export function normalizeSlide(slide: PresentationSlide): PresentationSlide {
   const layout = slide.layout ?? 'title-content';
   const centerLayouts: SlideLayout[] = ['title-slide', 'section', 'quote'];
+  const speakerNotesFields = normalizedSpeakerNotesFields(slide);
   return {
     ...slide,
     layout,
@@ -223,12 +247,17 @@ export function normalizeSlide(slide: PresentationSlide): PresentationSlide {
     bodyLeftHtml: slide.bodyLeftHtml ?? textToHtml(slide.bodyLeft || ''),
     bodyRightHtml: slide.bodyRightHtml ?? textToHtml(slide.bodyRight || ''),
     imageCaptionHtml: slide.imageCaptionHtml ?? textToHtml(slide.imageCaption || ''),
-    speakerNotesHtml: slide.speakerNotesHtml ?? textToHtml(slide.speakerNotes || ''),
+    speakerNotes: speakerNotesFields.speakerNotes,
+    speakerNotesHtml: speakerNotesFields.speakerNotesHtml,
     preparationNotes: slide.preparationNotes ?? '',
     preparationHtml: slide.preparationHtml ?? textToHtml(slide.preparationNotes || ''),
     materialNotes: slide.materialNotes ?? '',
     materialHtml: slide.materialHtml ?? textToHtml(slide.materialNotes || ''),
-    elements: slide.elements ?? [],
+    elements: normalizeSlideHeroImageElements({
+      ...slide,
+      layout,
+      elements: slide.elements ?? [],
+    }),
     transition: normalizeSlideTransition(slide.transition),
     revealEnabled: slide.revealEnabled !== false,
     zoneRevealSteps: slide.zoneRevealSteps ?? {},

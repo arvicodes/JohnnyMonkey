@@ -15,6 +15,24 @@ export const PRES_EDITOR_UI = {
   accentSoft: '#e8f5e9',
   accentHover: '#a5d6a7',
   filmstripThumbWidth: 88,
+  toolbarIcon: {
+    width: 24,
+    height: 24,
+    p: 0.25,
+    borderRadius: '6px',
+    color: '#5f6368',
+    '&:hover': { bgcolor: '#fff', color: JOHNNY_PRESENTATION.primary },
+  },
+  toolbarChip: {
+    height: 24,
+    fontSize: 10,
+    fontWeight: 700,
+    textTransform: 'none' as const,
+    borderRadius: '6px',
+    px: 0.75,
+    minWidth: 0,
+    lineHeight: 1.2,
+  },
   toolbarSection: {
     text: {
       border: '1px solid #64b5f6',

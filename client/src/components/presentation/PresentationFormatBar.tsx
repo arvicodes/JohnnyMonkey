@@ -24,6 +24,7 @@ import {
   FormatIndentDecrease,
   FormatColorText,
   ImageOutlined,
+  EmojiEmotions,
   Remove as RemoveIcon,
   Add as AddIcon,
 } from '@mui/icons-material';
@@ -42,7 +43,9 @@ import {
   getSelectionFontSizePx,
   nudgeFontSize,
   stashEditorSelection,
+  insertTextAtCursor,
 } from '../../lib/presentationRichText';
+import { PRESENTATION_EMOJI_GROUPS } from '../../lib/presentationEmojis';
 import {
   getEditorSelectionFontFamily,
   PRESENTATION_FONT_FAMILIES,
@@ -68,6 +71,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
 }) => {
   const [colorAnchor, setColorAnchor] = useState<HTMLElement | null>(null);
   const [highlightAnchor, setHighlightAnchor] = useState<HTMLElement | null>(null);
+  const [emojiAnchor, setEmojiAnchor] = useState<HTMLElement | null>(null);
   const [fontPx, setFontPx] = useState<number | ''>('');
   const [fontFamily, setFontFamily] = useState('');
 
@@ -492,6 +496,86 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
             />
           ))}
           </Box>
+        </Box>
+      </Popover>
+
+      <Tooltip title="Emoji einfügen">
+        <span>
+          <IconButton
+            size="small"
+            disabled={disabled || !activeEditor}
+            sx={btnSx}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              bookmarkSelection(activeEditor);
+            }}
+            onClick={(e) => setEmojiAnchor(e.currentTarget)}
+          >
+            <EmojiEmotions sx={{ fontSize: 17 }} />
+          </IconButton>
+        </span>
+      </Tooltip>
+      <Popover
+        open={Boolean(emojiAnchor)}
+        anchorEl={emojiAnchor}
+        onClose={() => {
+          setEmojiAnchor(null);
+          setFormatBarInteracting(false);
+        }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+      >
+        <Box
+          data-presentation-format-ui
+          sx={{ p: 1, maxWidth: 280, maxHeight: 320, overflowY: 'auto', scrollbarWidth: 'thin' }}
+        >
+          {PRESENTATION_EMOJI_GROUPS.map((group, groupIndex) => (
+            <Box
+              key={group.label}
+              sx={{ mb: groupIndex < PRESENTATION_EMOJI_GROUPS.length - 1 ? 0.75 : 0 }}
+            >
+              <Typography
+                variant="caption"
+                sx={{ display: 'block', color: '#666', fontSize: 10, fontWeight: 600, mb: 0.35 }}
+              >
+                {group.label}
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.35 }}>
+                {group.emojis.map((emoji) => (
+                  <Box
+                    key={emoji}
+                    component="button"
+                    type="button"
+                    aria-label={`Emoji ${emoji}`}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      bookmarkSelection(activeEditor);
+                      applyAndNotify(() => {
+                        insertTextAtCursor(activeEditor, emoji);
+                      });
+                      setEmojiAnchor(null);
+                    }}
+                    sx={{
+                      width: 28,
+                      height: 28,
+                      p: 0,
+                      border: '1px solid transparent',
+                      borderRadius: 1,
+                      bgcolor: 'transparent',
+                      fontSize: 18,
+                      lineHeight: 1,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      '&:hover': { bgcolor: '#f0f0f0', borderColor: '#ddd' },
+                    }}
+                  >
+                    {emoji}
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          ))}
         </Box>
       </Popover>
 

@@ -11,9 +11,8 @@ import {
 } from '../../lib/presentationDeck';
 import { JOHNNY_PRESENTATION, accentGradient } from '../../lib/presentationTheme';
 import {
-  effectivePresentationImageFit,
-  isAlphaFriendlyImageSrc,
-  presentationTransparentImageSx,
+  presentationImageElementSx,
+  slideHasImageHeroLayout,
 } from '../../lib/presentationImageUtils';
 import { getZoneRevealStep, isZoneVisible, shouldAnimateReveal } from '../../lib/presentationReveal';
 import {
@@ -27,6 +26,7 @@ import {
   SLIDE_FOOTER_HEIGHT,
 } from '../../lib/presentationSlideFooter';
 import { slideHasFullscreenMedia } from '../../lib/presentationMediaEmbed';
+import { getElementStackLayer, splitElementsByStackLayer } from '../../lib/presentationElementLayers';
 import PresentationRichZone from './PresentationRichZone';
 import PresentationSlideElements from './PresentationSlideElements';
 
@@ -104,6 +104,53 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   const showFooterNumbers = footerOn && slideNumberLabel.length > 0;
   const showStandaloneNumbers = !footerOn && showSlideNumbers && slideNumberLabel.length > 0;
   const fullscreenMedia = slideHasFullscreenMedia(slide);
+  const imageHeroLayout = slideHasImageHeroLayout(slide);
+  const hideBlankContent = fullscreenMedia || imageHeroLayout;
+  const { background: backgroundElements, foreground: foregroundElements } = splitElementsByStackLayer(
+    slide.elements,
+  );
+  const selectedElement = slide.elements?.find((el) => el.id === selectedElementId);
+  const selectedBackground =
+    editable &&
+    selectedElement != null &&
+    getElementStackLayer(selectedElement) === 'background';
+  const hasBackgroundElements = backgroundElements.length > 0;
+  const heroSlide = imageHeroLayout;
+  const textZonesInteractive = editable;
+  /** Beim Auswählen: kurz nach vorne, damit es hinter Text liegt aber bearbeitbar bleibt. */
+  const backgroundLayerZ = selectedBackground && !heroSlide ? 30 : 1;
+  const logoZ = 38;
+
+  const renderElementLayer = (layerElements: SlideElement[], zIndex: number) => {
+    if (layerElements.length === 0) return null;
+    return (
+      <Box
+        sx={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          zIndex,
+        }}
+      >
+        <PresentationSlideElements
+          elements={layerElements}
+          scale={scale}
+          revealStep={revealStep}
+          revealEnabled={effectiveReveal}
+          exportSnapshot={exportSnapshot}
+          editable={editable}
+          selectedId={selectedElementId}
+          onSelect={(id) => onElementSelect?.(id)}
+          onElementChange={onElementChange}
+          onTextEditorFocus={onTextElementFocus}
+          animationEditMode={animationEditMode}
+          selectedAnimationTarget={selectedAnimationTarget}
+          onAnimationTargetClick={onAnimationTargetClick}
+          mediaInteractive={mediaInteractive}
+        />
+      </Box>
+    );
+  };
 
   const patchHtml = (
     fields: Partial<
@@ -154,6 +201,8 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           scale={scale}
           editable={editable}
           exportSnapshot={exportSnapshot}
+          htmlField={String(fieldHtml)}
+          slideId={slide.id}
           variant={opts.variant || 'body'}
           italic={opts.italic}
           align={opts.align || align}
@@ -161,6 +210,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           minHeight={opts.minHeight}
           flex={opts.flex}
           onEditorFocus={(el) => onEditorFocus?.(el, String(fieldHtml))}
+          pointerEvents={textZonesInteractive ? 'auto' : 'none'}
           revealStep={revealStep}
           revealEnabled={effectiveReveal}
           animationEditMode={animationEditMode}
@@ -229,16 +279,8 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
               src={url}
               alt=""
               sx={{
-                maxWidth: '100%',
+                ...presentationImageElementSx(slide.imagePath, 'contain'),
                 maxHeight: `${420 * scale}px`,
-                width: isAlphaFriendlyImageSrc(slide.imagePath) ? 'auto' : undefined,
-                height: isAlphaFriendlyImageSrc(slide.imagePath) ? 'auto' : undefined,
-                objectFit: effectivePresentationImageFit(slide.imagePath, 'contain'),
-                borderRadius: `${8 * scale}px`,
-                boxShadow: isAlphaFriendlyImageSrc(slide.imagePath)
-                  ? 'none'
-                  : '0 4px 16px rgba(0,0,0,0.08)',
-                ...presentationTransparentImageSx,
               }}
             />
           ) : (
@@ -412,7 +454,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
         );
 
       case 'blank':
-        return fullscreenMedia ? null : (
+        return hideBlankContent ? null : (
           <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             {zone('bodyHtml', 'body', { variant: 'body', placeholder: 'Freier Inhalt…', flex: 1 })}
           </Box>
@@ -433,12 +475,14 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   return (
     <Box
       data-pres-slide
+      data-pres-slide-id={slide.id}
       onPointerDown={(e) => {
         if (animationEditMode && e.target === e.currentTarget) {
           onAnimationTargetClick?.(null);
           return;
         }
-        if (editable && e.target === e.currentTarget) onElementSelect?.(null);
+        if (!editable || e.target !== e.currentTarget) return;
+        onElementSelect?.(null);
       }}
       sx={{
         width: w,
@@ -453,6 +497,8 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
         maxWidth: w,
       }}
     >
+      {renderElementLayer(backgroundElements, backgroundLayerZ)}
+
       {showLogo && !fullscreenMedia && (
         <Box
           component="img"
@@ -464,7 +510,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             left: `${18 * scale}px`,
             height: `${46 * scale}px`,
             width: 'auto',
-            zIndex: 2,
+            zIndex: logoZ,
             pointerEvents: 'none',
             userSelect: 'none',
           }}
@@ -481,6 +527,8 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           height: `${3 * scale}px`,
           borderRadius: 2,
           background: accentGradient(accent),
+          zIndex: logoZ - 1,
+          pointerEvents: 'none',
         }}
       />
       )}
@@ -497,38 +545,17 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           minWidth: 0,
           minHeight: exportSnapshot ? 'auto' : 0,
           overflow: exportSnapshot ? 'visible' : 'hidden',
-          zIndex: animationEditMode ? 4 : undefined,
+          zIndex:
+            animationEditMode || (hasBackgroundElements && !heroSlide) ? 4 : undefined,
+          pointerEvents: editable ? 'none' : 'auto',
         }}
       >
         {renderContent()}
       </Box>
 
-      {(slide.elements?.length ?? 0) > 0 && (
-        <Box
-          sx={{
-            position: 'absolute',
-            inset: 0,
-            pointerEvents: 'none',
-            zIndex: editable ? 25 : animationEditMode ? 12 : 5,
-          }}
-        >
-          <PresentationSlideElements
-            elements={slide.elements || []}
-            scale={scale}
-            revealStep={revealStep}
-            revealEnabled={effectiveReveal}
-            exportSnapshot={exportSnapshot}
-            editable={editable}
-            selectedId={selectedElementId}
-            onSelect={(id) => onElementSelect?.(id)}
-            onElementChange={onElementChange}
-            onTextEditorFocus={onTextElementFocus}
-            animationEditMode={animationEditMode}
-            selectedAnimationTarget={selectedAnimationTarget}
-            onAnimationTargetClick={onAnimationTargetClick}
-            mediaInteractive={mediaInteractive}
-          />
-        </Box>
+      {renderElementLayer(
+        foregroundElements,
+        editable ? 25 : animationEditMode ? 12 : 5,
       )}
 
       {footerOn && (

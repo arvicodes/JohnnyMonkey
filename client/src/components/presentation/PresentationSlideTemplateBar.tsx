@@ -89,6 +89,8 @@ export default function PresentationSlideTemplateBar({
         return '#1565C0';
       case 'sicherung':
         return '#C62828';
+      case 'bild':
+        return '#455A64';
       case 'ha':
         return '#EF6C00';
       case 'link':

@@ -70,6 +70,32 @@ export function focusEditor(editor: HTMLElement | null) {
   editor.focus({ preventScroll: true });
 }
 
+/** Emoji oder Text an der aktuellen Cursor-Position einfügen. */
+export function insertTextAtCursor(editor: HTMLElement | null, text: string): boolean {
+  if (!editor || !text) return false;
+  stashEditorSelection(editor);
+  ensureEditorSelection(editor) || focusEditor(editor);
+
+  try {
+    document.execCommand('insertText', false, text);
+  } catch {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || !editor.contains(sel.anchorNode)) return false;
+    const range = sel.getRangeAt(0);
+    const node = document.createTextNode(text);
+    range.deleteContents();
+    range.insertNode(node);
+    range.setStartAfter(node);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  collapseEditorSelection(editor);
+  editor.dispatchEvent(new Event('input', { bubbles: true }));
+  return true;
+}
+
 const FONT_SIZE_PX: Record<string, string> = {
   '1': '12px',
   '2': '14px',

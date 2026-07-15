@@ -6,10 +6,18 @@ import {
 } from './presentationDeck';
 import { loadJsonFile, type PresentationSlide } from './presentationDeck';
 import { JOHNNY_PRESENTATION } from './presentationTheme';
+import { patchBildTemplateHeroElements, SLIDE_HERO_IMAGE_HEIGHT_PCT } from './presentationImageUtils';
 
 export const SLIDE_TEMPLATES_FILENAME = 'Folienvorlagen.json';
 
-export type SlideTemplateKind = 'start' | 'auftrag' | 'sicherung' | 'ha' | 'link' | 'referenz';
+export type SlideTemplateKind =
+  | 'start'
+  | 'auftrag'
+  | 'sicherung'
+  | 'bild'
+  | 'ha'
+  | 'link'
+  | 'referenz';
 
 export type SlideTemplatePayload = Omit<PresentationSlide, 'id' | 'order'>;
 
@@ -41,6 +49,7 @@ export const SLIDE_TEMPLATE_META: SlideTemplateMeta[] = [
   { kind: 'start', label: 'Start', shortLabel: 'S', hint: 'Eröffnungsfolie' },
   { kind: 'auftrag', label: 'Auftrag', shortLabel: 'A', hint: 'Arbeitsauftrag' },
   { kind: 'sicherung', label: 'Sicherung', shortLabel: 'S', hint: 'Sicherung / Merksatz' },
+  { kind: 'bild', label: 'Bild', shortLabel: 'B', hint: 'Vollbild ohne Text — Bild reinziehen' },
   { kind: 'ha', label: 'Hausaufgabe', shortLabel: 'HA', hint: 'HA-Folie (immer mit HA-Bild)' },
   { kind: 'link', label: 'Link', shortLabel: '▶', hint: 'Video im Vollbild (YouTube, MP4 …)' },
   { kind: 'referenz', label: 'Referenz', shortLabel: '↗', hint: 'Webseite einbetten, zoombar (z. B. Wall of Fame)' },
@@ -232,6 +241,49 @@ function builtinTemplates(): SlideTemplatesStore['templates'] {
       revealEnabled: true,
       zoneRevealSteps: {},
     },
+    bild: {
+      layout: 'blank',
+      title: '',
+      body: '',
+      speakerNotes: '',
+      preparationNotes: '',
+      materialNotes: '',
+      subtitle: '',
+      bodyLeft: '',
+      bodyRight: '',
+      imagePath: '',
+      imageCaption: '',
+      bodyStyle: 'plain',
+      titleAlign: 'left',
+      accentColor: JOHNNY_PRESENTATION.primary,
+      titleHtml: '',
+      bodyHtml: '',
+      subtitleHtml: '',
+      bodyLeftHtml: '',
+      bodyRightHtml: '',
+      imageCaptionHtml: '',
+      speakerNotesHtml: '',
+      preparationHtml: '',
+      materialHtml: '',
+      elements: [
+        {
+          id: 'tpl-bild-img',
+          type: 'image',
+          x: 0,
+          y: 0,
+          w: 100,
+          h: SLIDE_HERO_IMAGE_HEIGHT_PCT,
+          src: '',
+          zIndex: 1,
+          revealStep: 0,
+          stackLayer: 'background',
+          imageFit: 'cover',
+        },
+      ],
+      transition: 'fade',
+      revealEnabled: true,
+      zoneRevealSteps: {},
+    },
     ha: {
       layout: 'title-content',
       title: 'Hausaufgabe: Wer bist du als Person?',
@@ -363,10 +415,17 @@ export function normalizeTemplatesStore(raw?: SlideTemplatesStore | null): Slide
   if (!raw?.templates || typeof raw.templates !== 'object') {
     return createDefaultTemplatesStore();
   }
+  const templates = { ...builtins, ...raw.templates };
+  if (templates.bild) {
+    templates.bild = {
+      ...templates.bild,
+      elements: patchBildTemplateHeroElements(templates.bild.elements),
+    };
+  }
   return {
     version: 2,
     updatedAt: raw.updatedAt || new Date().toISOString(),
-    templates: { ...builtins, ...raw.templates },
+    templates,
     custom: Array.isArray(raw.custom) ? raw.custom.filter((t) => t?.id && t?.label && t?.payload) : [],
   };
 }

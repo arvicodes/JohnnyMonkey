@@ -19,9 +19,15 @@ import { filterHtmlByRevealStep, hasVisibleRevealContent, isElementVisible, shou
 import { presentationNestedListSx } from '../../lib/presentationListStyles';
 import { handlePresentationTabKey } from '../../lib/presentationRichText';
 import {
-  effectivePresentationImageFit,
-  isAlphaFriendlyImageSrc,
-  presentationTransparentImageSx,
+  formatImageObjectPosition,
+  IMAGE_FRAME_MAX,
+  IMAGE_FRAME_MIN,
+  IMAGE_FRAME_SIZE_MAX,
+  isHeroSlideImage,
+  isImageCropMode,
+  parseImageObjectPosition,
+  presentationImageElementSx,
+  shouldPanCoverImageOnDrag,
 } from '../../lib/presentationImageUtils';
 
 type DragMode = 'move' | 'resize';
@@ -133,23 +139,34 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       const dyPct = ((e.clientY - d.startY) / d.slideH) * 100;
 
       if (d.mode === 'move') {
-        onChange({
-          x: clamp(d.orig.x + dxPct, 0, 100 - d.orig.w),
-          y: clamp(d.orig.y + dyPct, 0, 100 - d.orig.h),
-        });
+        if (shouldPanCoverImageOnDrag(d.orig, { altKey: e.altKey })) {
+          const pos = parseImageObjectPosition(d.orig.imageObjectPosition);
+          const panGain = 1.35;
+          onChange({
+            imageObjectPosition: formatImageObjectPosition(
+              pos.x - dxPct * panGain,
+              pos.y - dyPct * panGain,
+            ),
+          });
+        } else {
+          onChange({
+            x: clamp(d.orig.x + dxPct, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
+            y: clamp(d.orig.y + dyPct, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
+          });
+        }
       } else if (d.resizeCorner === 'tr') {
-        const nextW = clamp(d.orig.w + dxPct, MIN_SIZE, 100 - d.orig.x);
-        const nextH = clamp(d.orig.h - dyPct, MIN_SIZE, 100 - d.orig.y);
+        const nextW = clamp(d.orig.w + dxPct, MIN_SIZE, IMAGE_FRAME_SIZE_MAX);
+        const nextH = clamp(d.orig.h - dyPct, MIN_SIZE, IMAGE_FRAME_SIZE_MAX);
         const deltaH = d.orig.h - nextH;
         onChange({
           w: nextW,
           h: nextH,
-          y: clamp(d.orig.y + deltaH, 0, d.orig.y + d.orig.h - MIN_SIZE),
+          y: clamp(d.orig.y + deltaH, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
         });
       } else {
         onChange({
-          w: clamp(d.orig.w + dxPct, MIN_SIZE, 100 - d.orig.x),
-          h: clamp(d.orig.h + dyPct, MIN_SIZE, 100 - d.orig.y),
+          w: clamp(d.orig.w + dxPct, MIN_SIZE, IMAGE_FRAME_SIZE_MAX),
+          h: clamp(d.orig.h + dyPct, MIN_SIZE, IMAGE_FRAME_SIZE_MAX),
         });
       }
     },
@@ -207,6 +224,15 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   if (!editable && !animationEditMode && !isElementVisible(element, revealStep, revealEnabled)) return null;
 
   if (
+    element.type === 'image' &&
+    !element.src?.trim() &&
+    !editable &&
+    !animationEditMode
+  ) {
+    return null;
+  }
+
+  if (
     !editable &&
     !animationEditMode &&
     revealEnabled &&
@@ -223,12 +249,16 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       ? filterHtmlByRevealStep(element.html || '', revealStep, true)
       : element.html || '<p>Text</p>';
 
+  const isImageElement = element.type === 'image';
+  const heroImage = isImageElement && isHeroSlideImage(element);
+  const cropMode = isImageElement && isImageCropMode(element);
   const showSelectionChrome = editable && selected && !animationEditMode;
   const showTextEditor = showSelectionChrome && element.type === 'text';
   const showResizeHandle = showSelectionChrome && element.type !== 'text';
   const isFullscreenish = element.w >= 96 && element.h >= 96;
   const nearBottomEdge = element.y + element.h >= 88;
-  const handleOnTop = isFullscreenish || nearBottomEdge;
+  const handleOnTop = !heroImage && (isFullscreenish || nearBottomEdge);
+  const handleOnBottom = heroImage;
   const handleInsetPx = (isFullscreenish ? 12 : 8) * scale;
   const handleSizePx = (isFullscreenish ? 24 : 18) * scale;
 
@@ -250,10 +280,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         if (isMediaElement && mediaInteractive) return;
         if ((e.target as HTMLElement).closest('[data-resize-handle]')) return;
         if ((e.target as HTMLElement).closest('[data-text-edit]') && selected) return;
-        if (!selected) {
-          onSelect?.();
-          return;
-        }
+        if (!selected) onSelect?.();
         startDrag(e, 'move');
       }}
       sx={{
@@ -262,21 +289,29 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         top: `${element.y}%`,
         width: `${element.w}%`,
         height: `${element.h}%`,
-        zIndex: 10 + element.zIndex + (selected || elementAnimSelected ? 100 : 0) + (animationEditMode ? 50 : 0),
+        zIndex:
+          10 +
+          element.zIndex +
+          (dragging ? 200 : 0) +
+          (animationEditMode && elementAnimSelected ? 50 : 0),
         animation: shouldAnimateReveal(elementStep, revealStep, revealEnabled)
           ? 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1)'
           : undefined,
-        borderRadius: `${6 * scale}px`,
+        borderRadius: isImageElement ? 0 : `${6 * scale}px`,
         overflow: showSelectionChrome || exportSnapshot ? 'visible' : 'hidden',
-        border: showSelectionChrome
-          ? `${2 * scale}px solid #2E7D32`
-          : animationEditMode && elementAnimSelected
+        border: isImageElement
+          ? animationEditMode && elementAnimSelected
             ? `${2 * scale}px solid #E65100`
-            : editable
-              ? `${1 * scale}px dashed rgba(46,125,50,0.3)`
-              : animationEditMode
-                ? `${1 * scale}px dashed rgba(255,152,0,0.45)`
-                : undefined,
+            : undefined
+          : showSelectionChrome
+            ? `${2 * scale}px solid #2E7D32`
+            : animationEditMode && elementAnimSelected
+              ? `${2 * scale}px solid #E65100`
+              : editable
+                ? `${1 * scale}px dashed rgba(46,125,50,0.3)`
+                : animationEditMode
+                  ? `${1 * scale}px dashed rgba(255,152,0,0.45)`
+                  : undefined,
         boxSizing: 'border-box',
         cursor: animationEditMode
           ? 'pointer'
@@ -311,6 +346,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             justifyContent: 'center',
             bgcolor: 'transparent',
             pointerEvents: 'none',
+            ...(heroImage ? { position: 'absolute', inset: 0 } : undefined),
           }}
         >
           <Box
@@ -319,16 +355,49 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             alt=""
             draggable={false}
             sx={{
-              maxWidth: '100%',
-              maxHeight: '100%',
-              width: isAlphaFriendlyImageSrc(element.src) ? 'auto' : '100%',
-              height: isAlphaFriendlyImageSrc(element.src) ? 'auto' : '100%',
-              objectFit: effectivePresentationImageFit(element.src, element.imageFit),
-              borderRadius: `${4 * scale}px`,
-              userSelect: 'none',
-              ...presentationTransparentImageSx,
+              ...(heroImage
+                ? {
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                  }
+                : {
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                  }),
+              ...presentationImageElementSx(
+                element.src,
+                element.imageFit,
+                element.imageObjectPosition,
+              ),
             }}
           />
+        </Box>
+      )}
+
+      {element.type === 'image' && !element.src && editable && (
+        <Box
+          sx={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: `${8 * scale}px`,
+            bgcolor: 'transparent',
+            color: 'rgba(46,125,50,0.72)',
+            pointerEvents: 'none',
+            userSelect: 'none',
+            px: `${12 * scale}px`,
+            textAlign: 'center',
+            fontSize: `${14 * scale}px`,
+            fontWeight: 600,
+            lineHeight: 1.35,
+          }}
+        >
+          Bild hierher ziehen
         </Box>
       )}
 
@@ -420,7 +489,9 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       {showResizeHandle && (
         <Box
           data-resize-handle
-          onPointerDown={(e) => startDrag(e, 'resize', handleOnTop ? 'tr' : 'br')}
+          onPointerDown={(e) =>
+            startDrag(e, 'resize', handleOnTop ? 'tr' : handleOnBottom ? 'br' : 'br')
+          }
           sx={{
             position: 'absolute',
             ...(handleOnTop
@@ -428,39 +499,15 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               : { bottom: `${handleInsetPx}px`, right: `${handleInsetPx}px` }),
             width: `${handleSizePx}px`,
             height: `${handleSizePx}px`,
-            bgcolor: '#2E7D32',
+            bgcolor: heroImage ? 'rgba(46,125,50,0.82)' : '#2E7D32',
             borderRadius: `${3 * scale}px`,
             cursor: 'nwse-resize',
-            border: `${2 * scale}px solid #fff`,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
+            border: heroImage ? 'none' : `${2 * scale}px solid #fff`,
+            boxShadow: heroImage ? '0 1px 6px rgba(0,0,0,0.28)' : '0 2px 8px rgba(0,0,0,0.35)',
             zIndex: 30,
             pointerEvents: 'auto',
           }}
         />
-      )}
-      {showSelectionChrome && handleOnTop && element.type === 'image' && (
-        <Box
-          sx={{
-            position: 'absolute',
-            top: `${handleInsetPx + handleSizePx + 6 * scale}px`,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            px: `${10 * scale}px`,
-            py: `${4 * scale}px`,
-            bgcolor: 'rgba(46,125,50,0.92)',
-            color: '#fff',
-            fontSize: `${11 * scale}px`,
-            fontWeight: 600,
-            borderRadius: `${4 * scale}px`,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
-            zIndex: 30,
-            pointerEvents: 'none',
-            userSelect: 'none',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          Ziehen · oben rechts kleiner machen
-        </Box>
       )}
     </Box>
   );

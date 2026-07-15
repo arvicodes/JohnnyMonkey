@@ -63,9 +63,18 @@ import {
   DEFAULT_FLOATING_IMAGE_H,
   DEFAULT_FLOATING_IMAGE_W,
   extractImageFilesFromDataTransfer,
+  findEmptyFullscreenImageElement,
   isImageFileDragEvent,
   slideDropPositionForImage,
 } from '../lib/presentationImageUtils';
+import {
+  type ElementLayerAction,
+  type ElementStackLayer,
+  getElementStackLayer,
+  reorderSlideElements,
+  setElementStackLayerInSlide,
+  stepElementStackLayer,
+} from '../lib/presentationElementLayers';
 import {
   canRedoDeck,
   canUndoDeck,
@@ -350,6 +359,13 @@ const PresentationEditorPage: React.FC = () => {
   const commitEditorState = useCallback(
     (options?: { history?: 'debounced' | 'immediate' | 'skip' }) => {
       if (!activeEditor || !activeHtmlField) return;
+      if (!activeEditor.isConnected) return;
+      const editorSlideId = activeEditor.getAttribute('data-pres-slide-id');
+      const editorField = activeEditor.getAttribute('data-pres-html-field');
+      if (editorSlideId && editorSlideId !== activeId) return;
+      if (editorField && editorField !== activeHtmlField && !activeHtmlField.startsWith('element:')) {
+        return;
+      }
       const current = deckRef.current;
       if (!current || !activeId) return;
 
@@ -379,6 +395,14 @@ const PresentationEditorPage: React.FC = () => {
       scheduleSave({ ...current, slides }, options);
     },
     [activeEditor, activeHtmlField, activeId, scheduleSave]
+  );
+
+  const handleElementSelect = useCallback(
+    (id: string | null) => {
+      commitEditorState({ history: 'skip' });
+      setSelectedElementId(id);
+    },
+    [commitEditorState],
   );
 
   const restoreDeckSnapshot = useCallback(
@@ -618,7 +642,7 @@ const PresentationEditorPage: React.FC = () => {
     };
     updateSlide({ elements: [...(normalizedActive.elements || []), el] });
     setSelectedElementId(el.id);
-    setSnackbar('Bild eingefügt — ziehen & Größe am Eck anpassen');
+    setSnackbar('Bild eingefügt — in Einstellungen „Beschneiden“ oder auf der Folie ziehen');
   };
 
   const addFloatingImage = async (file: File) => {
@@ -659,6 +683,59 @@ const PresentationEditorPage: React.FC = () => {
     if (!normalizedActive) return;
     updateSlide({ elements: (normalizedActive.elements || []).filter((e) => e.id !== id) });
     if (selectedElementId === id) setSelectedElementId(null);
+  };
+
+  const reorderElementLayer = (id: string, action: ElementLayerAction) => {
+    const current = deckRef.current;
+    if (!current || !activeId) return;
+    const slide = current.slides.find((s) => s.id === activeId);
+    if (!slide) return;
+
+    let next: SlideElement[] | null = null;
+    let message = 'Ebene verschoben';
+
+    if (action === 'forward' || action === 'backward') {
+      next = stepElementStackLayer(slide.elements || [], id, action);
+      if (next) {
+        const moved = next.find((el) => el.id === id);
+        const before = slide.elements?.find((el) => el.id === id);
+        if (
+          moved &&
+          before &&
+          getElementStackLayer(moved) !== getElementStackLayer(before)
+        ) {
+          message =
+            getElementStackLayer(moved) === 'background'
+              ? 'Hinter den Text (Hintergrund)'
+              : 'Vor den Text (Vordergrund)';
+        }
+      }
+    } else {
+      next = reorderSlideElements(slide.elements || [], id, action);
+      message = action === 'front' ? 'Ganz nach vorne' : 'Ganz nach hinten';
+    }
+
+    if (!next) {
+      setSnackbar('Keine weitere Ebene in diese Richtung');
+      return;
+    }
+    updateSlide({ elements: next });
+    setSnackbar(message);
+  };
+
+  const setElementStackLayer = (id: string, layer: ElementStackLayer) => {
+    const current = deckRef.current;
+    if (!current || !activeId) return;
+    const slide = current.slides.find((s) => s.id === activeId);
+    if (!slide) return;
+    const next = setElementStackLayerInSlide(slide.elements || [], id, layer);
+    if (next === slide.elements) {
+      setSnackbar(layer === 'background' ? 'Bereits im Hintergrund' : 'Bereits im Vordergrund');
+      return;
+    }
+    updateSlide({ elements: next });
+    setSelectedElementId(id);
+    setSnackbar(layer === 'background' ? 'Hintergrund — hinter dem Text' : 'Vordergrund — vor dem Text');
   };
 
   useEffect(() => {
@@ -749,7 +826,9 @@ const PresentationEditorPage: React.FC = () => {
     scheduleSave({ ...current, slides: reordered }, { history: 'immediate' });
     setActiveId(slide.id);
     const label = SLIDE_TEMPLATE_META.find((m) => m.kind === kind)?.label ?? 'Vorlage';
-    setSnackbar(`${label}-Folie eingefügt`);
+    setSnackbar(
+      kind === 'bild' ? `${label}-Folie eingefügt — Bild reinziehen` : `${label}-Folie eingefügt`,
+    );
   };
 
   const insertCustomTemplate = (customId: string) => {
@@ -974,6 +1053,16 @@ const PresentationEditorPage: React.FC = () => {
       return;
     }
 
+    if (
+      selectedElement?.type === 'image' &&
+      !selectedElement.src?.trim() &&
+      selectedElementId
+    ) {
+      updateElement(selectedElementId, { src: imagePath });
+      setSnackbar('Bild eingefügt');
+      return;
+    }
+
     if (position) {
       addFloatingImageAt(imagePath, position.x, position.y);
       return;
@@ -1019,6 +1108,21 @@ const PresentationEditorPage: React.FC = () => {
 
     const slideEl = slideShellRef.current;
     if (!slideEl) return;
+
+    const emptySlot = findEmptyFullscreenImageElement(normalizedActive?.elements);
+    if (emptySlot && files.length === 1) {
+      imageTargetRef.current = 'element';
+      const path = await uploadImageFile(files[0]);
+      if (!path) return;
+      updateElement(emptySlot.id, {
+        src: path,
+        imageFit: 'cover',
+        imageObjectPosition: '50% 50%',
+      });
+      setSelectedElementId(emptySlot.id);
+      setSnackbar('Bild eingefügt — ziehen zum Positionieren');
+      return;
+    }
 
     imageTargetRef.current = 'element';
     const base = slideDropPositionForImage(
@@ -1404,9 +1508,9 @@ const PresentationEditorPage: React.FC = () => {
           sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: 0.6,
-            px: 1.25,
-            py: 0.5,
+            gap: 0.4,
+            px: 1,
+            py: 0.35,
             borderTop: `1px solid ${PRES_EDITOR_UI.barBorder}`,
             bgcolor: '#f7faf7',
           }}
@@ -1421,8 +1525,8 @@ const PresentationEditorPage: React.FC = () => {
               overflowY: 'hidden',
               scrollbarWidth: 'thin',
               borderRadius: 1,
-              px: 0.75,
-              py: 0.35,
+              px: 0.5,
+              py: 0.2,
               ...(animationEditMode
                 ? {
                     bgcolor: 'rgba(255,152,0,0.12)',
@@ -1452,15 +1556,14 @@ const PresentationEditorPage: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   borderRadius: 1,
-                  px: 0.75,
-                  py: 0.35,
+                  px: 0.45,
+                  py: 0.2,
                   ...PRES_EDITOR_UI.toolbarSection.slide,
                 }}
               >
                 <PresentationSlideToolsBar
                   slide={normalizedActive}
                   selectedElement={selectedElement ?? null}
-                  selectedElementId={selectedElementId}
                   showLayoutImage={showLayoutImage}
                   onApplyAccentColor={applyAccentColor}
                   onAddTextElement={addTextElement}
@@ -1472,9 +1575,10 @@ const PresentationEditorPage: React.FC = () => {
                     imageTargetRef.current = 'layout';
                     imageInputRef.current?.click();
                   }}
-                  onSelectElement={setSelectedElementId}
                   onUpdateElement={updateElement}
                   onDeleteElement={deleteElement}
+                  onReorderElementLayer={reorderElementLayer}
+                  onSetElementStackLayer={setElementStackLayer}
                 />
               </Box>
               <Box
@@ -1632,7 +1736,7 @@ const PresentationEditorPage: React.FC = () => {
                     deckTitle={deck.title}
                     lessonPath={deck.lessonPath}
                     selectedElementId={selectedElementId}
-                    onElementSelect={setSelectedElementId}
+                    onElementSelect={handleElementSelect}
                     onElementChange={updateElement}
                     onTextElementFocus={(el, elementId) => {
                       setActiveEditor(el);

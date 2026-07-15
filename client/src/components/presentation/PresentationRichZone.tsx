@@ -57,6 +57,9 @@ interface PresentationRichZoneProps {
   selectedAnimationTarget?: string | null;
   onAnimationTargetClick?: (itemId: string | null) => void;
   exportSnapshot?: boolean;
+  pointerEvents?: 'auto' | 'none';
+  htmlField?: string;
+  slideId?: string;
 }
 
 function isEmptyDisplayHtml(html: string): boolean {
@@ -104,7 +107,6 @@ function buildRichSx(
     '& img': {
       maxWidth: '100%',
       height: 'auto',
-      borderRadius: `${6 * scale}px`,
       display: 'block',
       my: `${8 * scale}px`,
       backgroundColor: 'transparent',
@@ -138,6 +140,7 @@ const PresentationRichZoneReadonly: React.FC<PresentationRichZoneProps> = ({
   revealStep = 999,
   revealEnabled = true,
   exportSnapshot = false,
+  pointerEvents,
 }) => {
   const zoneBasePx = VARIANT_FONT[variant];
   const rawHtml = useMemo(
@@ -195,6 +198,9 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
   selectedAnimationTarget,
   onAnimationTargetClick,
   exportSnapshot = false,
+  pointerEvents,
+  htmlField,
+  slideId,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const editingRef = useRef(false);
@@ -220,8 +226,9 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
 
   useEffect(() => {
     if (!editable) return;
+    editingRef.current = false;
     syncFromProps();
-  }, [editable, syncFromProps]);
+  }, [editable, slideId, syncFromProps]);
 
   useEffect(() => {
     const el = ref.current;
@@ -315,6 +322,7 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
           ...richSx,
           cursor: animationEditMode ? 'pointer' : undefined,
           userSelect: animationEditMode ? 'none' : undefined,
+          pointerEvents,
         }}
         dangerouslySetInnerHTML={{ __html: displayHtml }}
       />
@@ -330,6 +338,8 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
       suppressContentEditableWarning
       data-pres-rich-zone
       data-pres-base-fs={String(zoneBasePx)}
+      data-pres-html-field={htmlField}
+      data-pres-slide-id={slideId}
       onFocus={() => {
         if (animationEditMode) {
           ref.current?.blur();
@@ -376,6 +386,7 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
         cursor: animationEditMode ? 'pointer' : 'text',
         borderRadius: `${4 * scale}px`,
         userSelect: animationEditMode ? 'none' : undefined,
+        pointerEvents,
         '&:focus': textEditing
           ? {
               outline: `2px dashed rgba(46,125,50,0.45)`,
