@@ -17,6 +17,7 @@ model User {
   createdAt                 DateTime                    @default(now())
   updatedAt                 DateTime                    @updatedAt
   avatarEmoji               String?
+  avatarUrl                 String?
   profileColor              String?
   teacherGroups             LearningGroup[]             @relation("TeacherGroups")
   notes                     Note[]

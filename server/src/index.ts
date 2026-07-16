@@ -104,6 +104,10 @@ app.use('/api/be-a-hero/workouts', beAHeroWorkoutsRoutes);
 
 // Material static files
 app.use('/material', express.static(path.join(__dirname, '../../material')));
+// Avatar images ( /api/avatars works through CRA proxy; /uploads/avatars kept for legacy URLs )
+const avatarStaticDir = path.join(__dirname, '../uploads/avatars');
+app.use('/api/avatars', express.static(avatarStaticDir));
+app.use('/uploads/avatars', express.static(avatarStaticDir));
 
 // Enhanced health check endpoint with monitoring
 app.get('/health', (req, res) => {
@@ -141,8 +145,8 @@ if (process.env.NODE_ENV === 'production') {
 
   // React Router Fallback - ALWAYS last (but exclude API routes)
   app.get('*', (req, res) => {
-    // Don't serve React app for API routes
-    if (req.path.startsWith('/api/')) {
+    // Don't serve React app for API routes / static uploads
+    if (req.path.startsWith('/api/') || req.path.startsWith('/material/') || req.path.startsWith('/uploads/')) {
       return res.status(404).json({ error: 'API endpoint not found' });
     }
     if (!clientBuildPath) {
@@ -154,7 +158,7 @@ if (process.env.NODE_ENV === 'production') {
   // Development: don't serve a potentially stale client-build.
   // Provide a helpful hint when someone opens backend URLs in the browser.
   app.get('*', (req, res) => {
-    if (req.path.startsWith('/api/') || req.path === '/health' || req.path.startsWith('/material/')) {
+    if (req.path.startsWith('/api/') || req.path === '/health' || req.path.startsWith('/material/') || req.path.startsWith('/uploads/')) {
       return res.status(404).json({ error: 'Endpoint not found' });
     }
 

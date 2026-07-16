@@ -10,7 +10,6 @@ import {
   CardContent,
   Button,
   CircularProgress,
-  Avatar,
   IconButton,
   Tooltip,
   LinearProgress,
@@ -64,6 +63,8 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { QuizResultsModal } from './QuizResultsModal';
 import EmojiSelector from './EmojiSelector';
+import DualStudentAvatars from './DualStudentAvatars';
+import AvatarPhotoDialog from './AvatarPhotoDialog';
 import InboxModal from './InboxModal';
 import StudentQuizFileItem from './StudentQuizFileItem';
 import {
@@ -1848,8 +1849,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 
   // Emoji-Auswahl States
   const [selectedEmoji, setSelectedEmoji] = useState<string>('🧙‍♂️');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [showEmojiSelector, setShowEmojiSelector] = useState(false);
+  const [showPhotoDialog, setShowPhotoDialog] = useState(false);
   const [isUpdatingEmoji, setIsUpdatingEmoji] = useState(false);
+  const [isUploadingAvatarImage, setIsUploadingAvatarImage] = useState(false);
   
   // Noten-Sektion aufklappbar
   const [gradesExpanded, setGradesExpanded] = useState(false);
@@ -2112,11 +2116,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     textSecondary: '#7F8C8D', // Grauer Text für Sekundärinformationen
   };
 
-  // Emoji-Auswahl Handler
+  // Emoji-Auswahl (Bild bleibt parallel erhalten)
   const handleEmojiSelect = async (emoji: string) => {
+    const previousEmoji = selectedEmoji;
     setSelectedEmoji(emoji);
     setIsUpdatingEmoji(true);
-    
+
     try {
       const loginCode = localStorage.getItem('loginCode');
       const response = await fetch(`/api/users/${userId}/avatar-emoji`, {
@@ -2127,20 +2132,66 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         },
         body: JSON.stringify({ avatarEmoji: emoji }),
       });
-      
+
       if (response.ok) {
-        console.log('Avatar emoji saved successfully:', emoji);
+        const data = await response.json();
+        setSelectedEmoji(data.avatarEmoji || emoji);
+        if (data.avatarUrl !== undefined) setAvatarUrl(data.avatarUrl || null);
       } else {
         console.error('Failed to save avatar emoji');
-        // Fallback: Emoji zurücksetzen
-        setSelectedEmoji('🧙‍♂️');
+        setSelectedEmoji(previousEmoji);
       }
     } catch (error) {
       console.error('Error saving avatar emoji:', error);
-      // Fallback: Emoji zurücksetzen
-      setSelectedEmoji('🧙‍♂️');
+      setSelectedEmoji(previousEmoji);
     } finally {
       setIsUpdatingEmoji(false);
+    }
+  };
+
+  const handleAvatarImageUpload = async (file: File) => {
+    setIsUploadingAvatarImage(true);
+    try {
+      const loginCode = localStorage.getItem('loginCode');
+      const formData = new FormData();
+      formData.append('image', file);
+      const response = await fetch(`/api/users/${userId}/avatar-image`, {
+        method: 'POST',
+        headers: { 'x-login-code': loginCode || '' },
+        body: formData,
+      });
+      if (!response.ok) {
+        let message = 'Bild konnte nicht hochgeladen werden';
+        try {
+          const err = await response.json();
+          if (err?.error) message = err.error;
+        } catch { /* ignore */ }
+        throw new Error(message);
+      }
+      const data = await response.json();
+      setAvatarUrl(data.avatarUrl || null);
+      if (data.avatarEmoji) setSelectedEmoji(data.avatarEmoji);
+    } finally {
+      setIsUploadingAvatarImage(false);
+    }
+  };
+
+  const handleAvatarImageRemove = async () => {
+    setIsUploadingAvatarImage(true);
+    try {
+      const loginCode = localStorage.getItem('loginCode');
+      const response = await fetch(`/api/users/${userId}/avatar-image`, {
+        method: 'DELETE',
+        headers: { 'x-login-code': loginCode || '' },
+      });
+      if (!response.ok) {
+        throw new Error('Bild konnte nicht entfernt werden');
+      }
+      const data = await response.json();
+      setAvatarUrl(null);
+      if (data.avatarEmoji) setSelectedEmoji(data.avatarEmoji);
+    } finally {
+      setIsUploadingAvatarImage(false);
     }
   };
 
@@ -2150,6 +2201,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 
   const handleCloseEmojiSelector = () => {
     setShowEmojiSelector(false);
+  };
+
+  const handleOpenPhotoDialog = () => {
+    setShowPhotoDialog(true);
+  };
+
+  const handleClosePhotoDialog = () => {
+    setShowPhotoDialog(false);
   };
 
   // Scroll-Position beim Laden zurücksetzen
@@ -2577,6 +2636,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         if (userData.avatarEmoji) {
           setSelectedEmoji(userData.avatarEmoji);
         }
+        setAvatarUrl(userData.avatarUrl || null);
       } else {
         console.error('Failed to fetch student data:', response.status);
         setStudentName("Schüler"); // Fallback
@@ -5097,24 +5157,16 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
           }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, width: '100%', minWidth: 0, pr: 0.25 }}>
-              <Tooltip title="Avatar ändern" placement="bottom">
-                <Avatar
-                  onClick={handleOpenEmojiSelector}
-                  sx={{
-                    width: 32,
-                    height: 32,
-                    flexShrink: 0,
-                    bgcolor: '#87CEEB',
-                    fontSize: '1.2rem',
-                    boxShadow: '0 1.4px 2.8px rgba(0,0,0,0.12)',
-                    cursor: 'pointer',
-                    transition: 'transform 0.2s ease',
-                    '&:hover': { transform: 'scale(1.05)' },
-                  }}
-                >
-                  {isUpdatingEmoji ? '⏳' : selectedEmoji}
-                </Avatar>
-              </Tooltip>
+              <DualStudentAvatars
+                name={studentName}
+                avatarEmoji={selectedEmoji}
+                avatarUrl={avatarUrl}
+                emojiLoading={isUpdatingEmoji}
+                photoLoading={isUploadingAvatarImage}
+                size={32}
+                onEmojiClick={handleOpenEmojiSelector}
+                onPhotoClick={handleOpenPhotoDialog}
+              />
               <Box sx={{ flex: 1, minWidth: 8 }} />
               <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexShrink: 0, flexWrap: 'nowrap', ml: 'auto' }}>
                 {/* Exkursionsprotokoll */}
@@ -5411,38 +5463,25 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   mb: 2.1,
                   textAlign: 'center',
                   position: 'relative',
-                  cursor: 'pointer',
                   transition: 'all 0.2s ease-in-out',
                   '&:hover': {
-                    transform: 'scale(1.02)',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.12)'
                   }
                 }}
-                onClick={handleOpenEmojiSelector}
               >
-                <Typography variant="h1" sx={{ fontSize: '4rem', mb: 1 }}>
-                  {isUpdatingEmoji ? '⏳' : selectedEmoji}
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
+                  <DualStudentAvatars
+                    name={studentName}
+                    avatarEmoji={selectedEmoji}
+                    avatarUrl={avatarUrl}
+                    emojiLoading={isUpdatingEmoji}
+                    photoLoading={isUploadingAvatarImage}
+                    large
+                    onEmojiClick={handleOpenEmojiSelector}
+                    onPhotoClick={handleOpenPhotoDialog}
+                  />
+                </Box>
                 <ReisebegleiterAvatarBadge refreshKey={journeyRefreshKey} />
-                <Tooltip title="Avatar ändern" placement="top">
-                  <IconButton
-                    sx={{
-                      position: 'absolute',
-                      bottom: 8,
-                      right: 8,
-                      bgcolor: 'rgba(255,255,255,0.8)',
-                      width: 28,
-                      height: 28,
-                      '&:hover': {
-                        bgcolor: 'rgba(255,255,255,0.95)',
-                        transform: 'scale(1.05)'
-                      }
-                    }}
-                    size="small"
-                  >
-                    <EditIcon sx={{ fontSize: '0.9rem' }} />
-                  </IconButton>
-                </Tooltip>
               </Box>
 
                 {/* Character Name and Role */}
@@ -6321,6 +6360,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         onClose={handleCloseEmojiSelector}
         onSelect={handleEmojiSelect}
         currentEmoji={selectedEmoji}
+      />
+
+      <AvatarPhotoDialog
+        open={showPhotoDialog}
+        onClose={handleClosePhotoDialog}
+        currentImageUrl={avatarUrl}
+        onUpload={handleAvatarImageUpload}
+        onRemove={handleAvatarImageRemove}
+        isUploading={isUploadingAvatarImage}
       />
 
       {/* Flashcard Learning Modal */}

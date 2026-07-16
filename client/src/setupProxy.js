@@ -21,4 +21,5 @@ const proxyOpts = {
 module.exports = function setupProxy(app) {
   app.use('/api', createProxyMiddleware(proxyOpts));
   app.use('/material', createProxyMiddleware(proxyOpts));
+  app.use('/uploads', createProxyMiddleware(proxyOpts));
 };

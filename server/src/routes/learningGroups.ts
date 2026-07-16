@@ -4,6 +4,22 @@ import { PrismaClient } from '@prisma/client';
 const router = Router();
 const prisma = new PrismaClient();
 
+function normalizeStudentAvatarUrl<T extends { avatarUrl?: string | null }>(student: T): T {
+  if (!student.avatarUrl?.startsWith('/uploads/avatars/')) return student;
+  return {
+    ...student,
+    avatarUrl: student.avatarUrl.replace('/uploads/avatars/', '/api/avatars/'),
+  };
+}
+
+function normalizeGroupStudents<T extends { students?: Array<{ avatarUrl?: string | null }> }>(group: T): T {
+  if (!group.students) return group;
+  return {
+    ...group,
+    students: group.students.map(normalizeStudentAvatarUrl),
+  };
+}
+
 // Get all learning groups (for testing purposes)
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -15,12 +31,13 @@ router.get('/', async (req: Request, res: Response) => {
             id: true,
             name: true,
             loginCode: true,
-            avatarEmoji: true
+            avatarEmoji: true,
+            avatarUrl: true,
           }
         }
       }
     });
-    res.json(groups);
+    res.json(groups.map(normalizeGroupStudents));
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
@@ -65,7 +82,8 @@ router.get('/teacher/:id', async (req: Request, res: Response) => {
             id: true,
             name: true,
             loginCode: true,
-            avatarEmoji: true
+            avatarEmoji: true,
+            avatarUrl: true,
           }
         }
       }
@@ -150,7 +168,7 @@ router.get('/teacher/:id', async (req: Request, res: Response) => {
     });
     
     console.log('✅ Found', groupsWithStats.length, 'groups for teacher');
-    res.json(groupsWithStats);
+    res.json(groupsWithStats.map(normalizeGroupStudents));
   } catch (error: any) {
     console.error('❌ Error fetching teacher groups:', error);
     console.error('❌ Error details:', {
@@ -193,7 +211,8 @@ router.get('/student/:id', async (req: Request, res: Response) => {
             id: true,
             name: true,
             loginCode: true,
-            avatarEmoji: true
+            avatarEmoji: true,
+            avatarUrl: true,
           }
         }
       }
@@ -235,7 +254,8 @@ router.get('/:groupId/available-students', async (req: Request, res: Response) =
         id: true,
         name: true,
         loginCode: true,
-        avatarEmoji: true
+        avatarEmoji: true,
+        avatarUrl: true,
       },
       orderBy: { loginCode: 'asc' }
     });
@@ -427,7 +447,8 @@ router.get('/:id', async (req: Request, res: Response) => {
             id: true,
             name: true,
             loginCode: true,
-            avatarEmoji: true
+            avatarEmoji: true,
+            avatarUrl: true,
           }
         }
       }
@@ -537,7 +558,8 @@ router.put('/:id', async (req: Request, res: Response) => {
             id: true,
             name: true,
             loginCode: true,
-            avatarEmoji: true
+            avatarEmoji: true,
+            avatarUrl: true,
           }
         }
       }
@@ -574,7 +596,8 @@ router.post('/', async (req: Request, res: Response) => {
             id: true,
             name: true,
             loginCode: true,
-            avatarEmoji: true
+            avatarEmoji: true,
+            avatarUrl: true,
           }
         }
       }
@@ -603,7 +626,8 @@ router.post('/:id/students', async (req: Request, res: Response) => {
             id: true,
             name: true,
             loginCode: true,
-            avatarEmoji: true
+            avatarEmoji: true,
+            avatarUrl: true,
           }
         }
       }
@@ -631,7 +655,8 @@ router.delete('/:groupId/students/:studentId', async (req: Request, res: Respons
             id: true,
             name: true,
             loginCode: true,
-            avatarEmoji: true
+            avatarEmoji: true,
+            avatarUrl: true,
           }
         }
       }

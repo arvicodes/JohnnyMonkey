@@ -348,6 +348,7 @@ import SubmissionViewer from './SubmissionViewer';
 import { openLessonFolderFile } from '../lib/openLessonFolderFile';
 import SpielMenuButton from './SpielMenuButton';
 import LearningGroupAppearanceFields from './LearningGroupAppearanceFields';
+import DualStudentAvatars from './DualStudentAvatars';
 import LearningGroupSortableShell from './LearningGroupSortableShell';
 import LearningGroupArchiveSection from './LearningGroupArchiveSection';
 import LearningGroupActiveListZone from './LearningGroupActiveListZone';
@@ -416,6 +417,7 @@ interface Student {
   name: string;
   loginCode: string;
   avatarEmoji?: string;
+  avatarUrl?: string | null;
 }
 
 // Mini-Noten: Schema/Grade Typen
@@ -14412,16 +14414,14 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                       justifyContent: 'space-between',
                                       position: 'relative'
                                     }}>
-                                      {/* Avatar - Left */}
-                                      <Avatar sx={{ 
-                                        bgcolor: student.avatarEmoji ? 'transparent' : colors.accent1, 
-                                        width: 32, 
-                                        height: 32,
-                                        fontSize: student.avatarEmoji ? '1.1rem' : '0.9rem',
-                                        boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
-                                      }}>
-                                        {student.avatarEmoji || student.name.charAt(0)}
-                                      </Avatar>
+                                      {/* Avatar + Foto nebeneinander */}
+                                      <DualStudentAvatars
+                                        name={student.name}
+                                        avatarEmoji={student.avatarEmoji}
+                                        avatarUrl={student.avatarUrl}
+                                        fallbackEmoji={student.name.charAt(0) || '👤'}
+                                        size={28}
+                                      />
                                       
                                       {/* Name - Center */}
                                       <Typography variant="h6" sx={{ 
@@ -20864,16 +20864,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 return lastNameA.localeCompare(lastNameB, 'de');
               });
               
-              // Erstelle Standard-Reihenfolge aus sortierten Schülern
-              const standardOrder = standardSorted.map(s => s.id);
-              console.log('📋 Standard-Reihenfolge erstellt:', standardOrder.length, 'Schüler');
-              
-              // Setze diese als benutzerdefinierte Sitzordnung (wird beim ersten Speichern persistiert)
-              setCustomSeatingOrder(prev => ({
-                ...prev,
-                [participationGroupId || '']: standardOrder
-              }));
-              
+              // Nur für die Anzeige sortieren — kein setState im Render
+              // (sonst: Too many re-renders, besonders im Laptop-Modus mit Auto-Epochal).
+              console.log('📋 Standard-Reihenfolge für Anzeige:', standardSorted.length, 'Schüler');
               sortedStudents = standardSorted;
             } else if (customOrder && Array.isArray(customOrder) && customOrder.length > 0) {
               // Sortiere nach benutzerdefinierter Reihenfolge
@@ -22039,15 +22032,31 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       flex: 1,
                       minHeight: 0,
                       px: 0.15,
-                      pt: 0.45,
+                      pt: participationDocked ? 0.25 : 0.45,
                       pb: 0,
                     }}
                   >
+                    {participationDocked && (
+                      <Box
+                        sx={{ mb: 0.15, lineHeight: 0 }}
+                        onClick={(e) => e.stopPropagation()}
+                        onDoubleClick={(e) => e.stopPropagation()}
+                      >
+                        <DualStudentAvatars
+                          name={student.name}
+                          avatarEmoji={student.avatarEmoji}
+                          avatarUrl={student.avatarUrl}
+                          fallbackEmoji={student.name.charAt(0) || '👤'}
+                          size={20}
+                          sx={{ gap: 0.35 }}
+                        />
+                      </Box>
+                    )}
                     <Typography
                       variant="caption"
                       sx={{
                         fontWeight: 600,
-                        fontSize: '0.74rem',
+                        fontSize: participationDocked ? '0.62rem' : '0.74rem',
                         textAlign: 'center',
                         wordBreak: 'break-word',
                         lineHeight: 1.15,
@@ -22060,7 +22069,15 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     >
                       {formatStudentName(student.name)}
                     </Typography>
-                    <Typography variant="body2" sx={{ fontSize: '0.9rem', lineHeight: 1, flexShrink: 0, mt: 0.1 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontSize: participationDocked ? '0.72rem' : '0.9rem',
+                        lineHeight: 1,
+                        flexShrink: 0,
+                        mt: 0.1,
+                      }}
+                    >
                       {colors.emoji}
                     </Typography>
                   </Box>

@@ -10,8 +10,9 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Chip
+  Chip,
 } from '@mui/material';
+import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
 
 interface EmojiSelectorProps {
   open: boolean;
@@ -94,8 +95,9 @@ const EmojiSelector: React.FC<EmojiSelectorProps> = ({
         }
       }}
     >
-      <DialogTitle sx={{ 
-        textAlign: 'center', 
+      <DialogTitle sx={{
+        ...dialogCloseTitleSx,
+        textAlign: 'center',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         color: 'white',
         borderRadius: '8px 8px 0 0',
@@ -104,16 +106,21 @@ const EmojiSelector: React.FC<EmojiSelectorProps> = ({
         <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
           {title}
         </Typography>
+        <DialogCloseIconButton
+          onClose={onClose}
+          sx={{ color: '#fff', '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' } }}
+          iconSx={{ color: '#fff' }}
+        />
       </DialogTitle>
 
       <DialogContent sx={{ p: 2, maxHeight: '60vh', overflowY: 'auto' }}>
-        {emojiCategories.map((category, categoryIndex) => (
+        {emojiCategories.map((category) => (
           <Box key={category.name} sx={{ mb: 3 }}>
-            <Typography 
-              variant="subtitle1" 
-              sx={{ 
-                fontWeight: 'bold', 
-                color: '#1976d2', 
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontWeight: 'bold',
+                color: '#1976d2',
                 mb: 1.5,
                 fontSize: '0.9rem',
                 textTransform: 'uppercase',
@@ -140,10 +147,10 @@ const EmojiSelector: React.FC<EmojiSelectorProps> = ({
                     }}
                     onClick={() => handleEmojiSelect(emoji)}
                   >
-                    <CardContent sx={{ 
-                      p: 1, 
+                    <CardContent sx={{
+                      p: 1,
                       textAlign: 'center',
-                      background: emoji === currentEmoji 
+                      background: emoji === currentEmoji
                         ? 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)'
                         : 'white'
                     }}>
@@ -191,4 +198,4 @@ const EmojiSelector: React.FC<EmojiSelectorProps> = ({
   );
 };
 
-export default EmojiSelector; 
+export default EmojiSelector;
