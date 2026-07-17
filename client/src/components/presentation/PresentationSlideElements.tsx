@@ -17,6 +17,7 @@ interface PresentationSlideElementsProps {
   onTextEditorFocus?: (el: HTMLElement, elementId: string) => void;
   mediaInteractive?: boolean;
   exportSnapshot?: boolean;
+  imageMaxEdge?: number;
 }
 
 const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
@@ -34,6 +35,7 @@ const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
   onTextEditorFocus,
   mediaInteractive = false,
   exportSnapshot = false,
+  imageMaxEdge,
 }) => {
   const sorted = [...elements].sort((a, b) => a.zIndex - b.zIndex);
 
@@ -56,6 +58,7 @@ const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
           onTextEditorFocus={onTextEditorFocus}
           mediaInteractive={mediaInteractive}
           exportSnapshot={exportSnapshot}
+          imageMaxEdge={imageMaxEdge}
         />
       ))}
     </>

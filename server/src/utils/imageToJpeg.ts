@@ -7,9 +7,29 @@ import { promisify } from 'util';
 const execFileAsync = promisify(execFile);
 
 const HEIC_EXT = new Set(['.heic', '.heif']);
+const RASTER_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.tif', '.tiff']);
 
 export function isHeicPath(filePath: string): boolean {
   return HEIC_EXT.has(path.extname(filePath).toLowerCase());
+}
+
+function mimeForExt(ext: string): string {
+  switch (ext) {
+    case '.png':
+      return 'image/png';
+    case '.gif':
+      return 'image/gif';
+    case '.bmp':
+      return 'image/bmp';
+    case '.webp':
+      return 'image/webp';
+    case '.svg':
+      return 'image/svg+xml';
+    case '.jpg':
+    case '.jpeg':
+    default:
+      return 'image/jpeg';
+  }
 }
 
 async function sipsHeicToJpeg(
@@ -36,6 +56,53 @@ export async function fileToJpegBuffer(filePath: string, maxEdge?: number): Prom
   const tmpOut = path.join(os.tmpdir(), `heic-out-${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`);
   try {
     return await sipsHeicToJpeg(filePath, tmpOut, maxEdge);
+  } finally {
+    try {
+      if (fs.existsSync(tmpOut)) fs.unlinkSync(tmpOut);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/**
+ * Liest ein Bild; bei maxEdge auf macOS per sips verkleinern (JPEG),
+ * damit Editor/Filmstrip nicht Multi-MB-Originale laden.
+ */
+export async function readImageFileForServe(
+  filePath: string,
+  maxEdge?: number,
+): Promise<{ buffer: Buffer; mimeType: string }> {
+  const ext = path.extname(filePath).toLowerCase();
+
+  if (isHeicPath(filePath)) {
+    const buffer = await fileToJpegBuffer(filePath, maxEdge ?? 1200);
+    return { buffer, mimeType: 'image/jpeg' };
+  }
+
+  if (ext === '.svg' || !RASTER_EXT.has(ext) || !maxEdge || process.platform !== 'darwin') {
+    return { buffer: fs.readFileSync(filePath), mimeType: mimeForExt(ext) };
+  }
+
+  const tmpOut = path.join(
+    os.tmpdir(),
+    `img-max-${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`,
+  );
+  try {
+    await execFileAsync('sips', [
+      '-Z',
+      String(maxEdge),
+      '-s',
+      'format',
+      'jpeg',
+      filePath,
+      '--out',
+      tmpOut,
+    ]);
+    return { buffer: fs.readFileSync(tmpOut), mimeType: 'image/jpeg' };
+  } catch (e) {
+    console.warn('sips resize failed, serving original:', filePath, e);
+    return { buffer: fs.readFileSync(filePath), mimeType: mimeForExt(ext) };
   } finally {
     try {
       if (fs.existsSync(tmpOut)) fs.unlinkSync(tmpOut);

@@ -477,15 +477,23 @@ export function addCustomTemplate(
 
 export async function loadSlideTemplates(lessonPath: string): Promise<SlideTemplatesStore> {
   const path = slideTemplatesFilePath(lessonPath);
-  const loaded = await loadJsonFile<SlideTemplatesStore>(path);
+  let loaded: SlideTemplatesStore | null = null;
+  try {
+    loaded = await loadJsonFile<SlideTemplatesStore>(path);
+  } catch {
+    return createDefaultTemplatesStore();
+  }
   if (loaded?.templates && typeof loaded.templates === 'object') {
     return normalizeTemplatesStore(loaded);
   }
   const defaults = createDefaultTemplatesStore();
-  try {
-    await saveSlideTemplates(lessonPath, defaults);
-  } catch {
-    /* Grafiken-Ordner evtl. noch nicht beschreibbar */
+  // Only write defaults when the templates file is truly missing (404 → null).
+  if (loaded === null) {
+    try {
+      await saveSlideTemplates(lessonPath, defaults);
+    } catch {
+      /* Grafiken-Ordner evtl. noch nicht beschreibbar */
+    }
   }
   return defaults;
 }

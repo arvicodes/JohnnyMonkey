@@ -267,7 +267,8 @@ export function collectAnimationItems(slide: PresentationSlide): AnimationItem[]
   elements.forEach((el, idx) => {
     const hasInnerParagraphs = el.type === 'text' && el.html?.includes('data-reveal-step');
     if (hasInnerParagraphs) return;
-    const typeLabel = el.type === 'image' ? 'Bild' : 'Textfeld';
+    const typeLabel =
+      el.type === 'image' ? 'Bild' : el.type === 'shape' ? 'Form' : 'Textfeld';
     items.push({
       id: `element:${el.id}`,
       kind: 'element',

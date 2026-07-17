@@ -24,8 +24,14 @@ import {
   ArrowDownward as DownIcon,
   LayersOutlined as BackgroundLayerIcon,
   Layers as ForegroundLayerIcon,
+  CategoryOutlined as ShapeIcon,
+  TrendingFlat as ArrowShapeIcon,
+  HorizontalRule as LineShapeIcon,
+  CropSquare as RectShapeIcon,
+  CircleOutlined as EllipseShapeIcon,
 } from '@mui/icons-material';
 import {
+  PresentationShapeKind,
   PresentationSlide,
   SlideElement,
 } from '../../lib/presentationDeck';
@@ -35,6 +41,7 @@ import {
   getElementStackLayer,
 } from '../../lib/presentationElementLayers';
 import { isImageCropMode } from '../../lib/presentationImageUtils';
+import { SLIDE_SHAPE_LABELS } from '../../lib/presentationSlideShapes';
 import { JOHNNY_ACCENT_PRESETS } from '../../lib/presentationTheme';
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
 
@@ -64,6 +71,7 @@ interface PresentationSlideToolsBarProps {
   onAddTextElement: () => void;
   onAddImageElement: () => void;
   onAddLayoutImage: () => void;
+  onAddShapeElement: (kind: PresentationShapeKind) => void;
   onUpdateElement: (id: string, patch: Partial<SlideElement>) => void;
   onDeleteElement: (id: string) => void;
   onReorderElementLayer: (id: string, action: ElementLayerAction) => void;
@@ -78,6 +86,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
   onAddTextElement,
   onAddImageElement,
   onAddLayoutImage,
+  onAddShapeElement,
   onUpdateElement,
   onDeleteElement,
   onReorderElementLayer,
@@ -85,6 +94,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
 }) => {
   const [elementAnchor, setElementAnchor] = useState<HTMLElement | null>(null);
   const [accentAnchor, setAccentAnchor] = useState<HTMLElement | null>(null);
+  const [shapeAnchor, setShapeAnchor] = useState<HTMLElement | null>(null);
   const [accentForAll, setAccentForAll] = useState(false);
 
   const accentColor = slide?.accentColor || JOHNNY_ACCENT_PRESETS[0];
@@ -125,6 +135,57 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
             </IconButton>
           </Tooltip>
         )}
+        <Tooltip title="Form / Pfeil">
+          <IconButton
+            size="small"
+            onClick={(e) => setShapeAnchor(e.currentTarget)}
+            sx={iconBtnSx}
+            aria-label="Form einfügen"
+          >
+            <ShapeIcon sx={{ fontSize: 15 }} />
+          </IconButton>
+        </Tooltip>
+        <Popover
+          open={Boolean(shapeAnchor)}
+          anchorEl={shapeAnchor}
+          onClose={() => setShapeAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        >
+          <Box sx={{ p: 1, display: 'flex', flexDirection: 'column', gap: 0.35, minWidth: 160 }}>
+            <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, px: 0.5 }}>
+              Form einfügen
+            </Typography>
+            {(
+              [
+                ['arrow', <ArrowShapeIcon key="a" sx={{ fontSize: 18 }} />],
+                ['line', <LineShapeIcon key="l" sx={{ fontSize: 18 }} />],
+                ['rect', <RectShapeIcon key="r" sx={{ fontSize: 18 }} />],
+                ['ellipse', <EllipseShapeIcon key="e" sx={{ fontSize: 18 }} />],
+              ] as const
+            ).map(([kind, icon]) => (
+              <Button
+                key={kind}
+                size="small"
+                startIcon={icon}
+                onClick={() => {
+                  onAddShapeElement(kind);
+                  setShapeAnchor(null);
+                }}
+                sx={{
+                  ...miniBtnSx,
+                  justifyContent: 'flex-start',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                }}
+              >
+                {SLIDE_SHAPE_LABELS[kind]}
+              </Button>
+            ))}
+            <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, px: 0.5, pt: 0.35 }}>
+              Im Text: <code>--&gt;</code> → · <code>==&gt;</code> ⇒
+            </Typography>
+          </Box>
+        </Popover>
       </Box>
 
       {selectedElement && (
@@ -242,6 +303,81 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                       <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, lineHeight: 1.35, mb: 0.75 }}>
                         Ziehen: Bild verschieben · Alt+Ziehen: Ausschnitt (bei Füllen)
                       </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.35, mb: 0.5 }}>
+                        {(['x', 'y', 'w', 'h'] as const).map((key) => (
+                          <TextField
+                            key={key}
+                            size="small"
+                            type="number"
+                            label={key.toUpperCase()}
+                            value={selectedElement[key]}
+                            onChange={(e) =>
+                              onUpdateElement(selectedElement.id, { [key]: Number(e.target.value) })
+                            }
+                            sx={{
+                              width: '48%',
+                              '& .MuiInputBase-root': { fontSize: 10, height: 28 },
+                              '& .MuiInputLabel-root': { fontSize: 9 },
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </>
+                  )}
+
+                  {selectedElement.type === 'shape' && (
+                    <>
+                      <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.5 }}>
+                        Form · {SLIDE_SHAPE_LABELS[selectedElement.shapeKind || 'arrow']}
+                      </Typography>
+                      <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, mb: 0.35 }}>
+                        Farbe
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.35, mb: 0.5 }}>
+                        {JOHNNY_ACCENT_PRESETS.slice(0, 8).map((c) => (
+                          <Box
+                            key={c}
+                            onClick={() =>
+                              onUpdateElement(selectedElement.id, {
+                                strokeColor: c,
+                                fillColor:
+                                  selectedElement.shapeKind === 'rect' ||
+                                  selectedElement.shapeKind === 'ellipse'
+                                    ? `${c}33`
+                                    : selectedElement.fillColor,
+                              })
+                            }
+                            sx={{
+                              width: 18,
+                              height: 18,
+                              borderRadius: '4px',
+                              bgcolor: c,
+                              cursor: 'pointer',
+                              border:
+                                selectedElement.strokeColor === c
+                                  ? '2px solid #222'
+                                  : '1px solid #ccc',
+                            }}
+                          />
+                        ))}
+                      </Box>
+                      <TextField
+                        size="small"
+                        type="number"
+                        label="Linienstärke"
+                        value={selectedElement.strokeWidth ?? 3}
+                        onChange={(e) =>
+                          onUpdateElement(selectedElement.id, {
+                            strokeWidth: Math.max(1, Math.min(16, Number(e.target.value) || 3)),
+                          })
+                        }
+                        sx={{
+                          mb: 0.5,
+                          width: '100%',
+                          '& .MuiInputBase-root': { fontSize: 10, height: 28 },
+                          '& .MuiInputLabel-root': { fontSize: 9 },
+                        }}
+                      />
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.35, mb: 0.5 }}>
                         {(['x', 'y', 'w', 'h'] as const).map((key) => (
                           <TextField

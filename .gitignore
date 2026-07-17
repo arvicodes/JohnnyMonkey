@@ -57,12 +57,10 @@ db-checkpoint-*.db
 !backup_current_state_20251021-085112.db
 !backup_current_state_20260704-juli2026.db
 
-# Temporary files
-*.tmp
-*.temp
-*.pid
-server/uploads/
-server/story-sites-data/
+# Presentation safety copies (auto-generated; not for git)
+Presentation-Sicherheitskopien/
+**/.presentation-backups/
+
 
 # Zusammengefügte ZIP > 100 MB – Teile liegen als J-M-Reihen.zip.aa / .ab im Repo; siehe scripts/assemble-j-m-reihen-zip.sh
 /J-M-Reihen.zip

@@ -326,20 +326,13 @@ export function computeViewportLayout(
   });
 }
 
-export function wallOfFameImageUrl(gitInternPath: string, maxEdge = 1000): string {
-  const lower = gitInternPath.toLowerCase();
-  if (lower.endsWith('.heic') || lower.endsWith('.heif')) {
-    return `/api/file-system-paths/read-image?filePath=${encodeURIComponent(gitInternPath)}&max=${maxEdge}`;
-  }
-  const rel = gitInternPath
-    .replace(/^git-intern\//, '')
-    .replace(/^J-M-Reihen\//, '');
-  const encoded = rel
-    .split('/')
-    .filter(Boolean)
-    .map((part) => encodeURIComponent(part))
-    .join('/');
-  return `/api/file-system-paths/static/${encoded}`;
+/**
+ * URL für Wall-of-Fame-Vorschaubilder.
+ * Immer über read-image mit Größenlimit — volle Original-JPEGs (mehrere MB)
+ * über den CRA-Proxy erzeugen Failed-to-fetch und Socket-Erschöpfung.
+ */
+export function wallOfFameImageUrl(gitInternPath: string, maxEdge = 900): string {
+  return `/api/file-system-paths/read-image?filePath=${encodeURIComponent(gitInternPath)}&max=${maxEdge}`;
 }
 
 export function wallOfFameImageFallbackUrl(gitInternPath: string): string {

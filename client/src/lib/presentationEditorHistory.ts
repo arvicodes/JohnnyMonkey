@@ -1,30 +1,61 @@
-import { normalizeDeck, PresentationDeck } from './presentationDeck';
+import { PresentationDeck } from './presentationDeck';
 
-const MAX_HISTORY = 60;
+const MAX_HISTORY = 30;
 
 export function cloneDeck(deck: PresentationDeck): PresentationDeck {
-  return JSON.parse(JSON.stringify(normalizeDeck(deck)));
+  if (typeof structuredClone === 'function') {
+    try {
+      return structuredClone(deck);
+    } catch {
+      /* fall through */
+    }
+  }
+  return JSON.parse(JSON.stringify(deck)) as PresentationDeck;
 }
 
 export interface DeckHistory {
   stack: PresentationDeck[];
   index: number;
+  /** Fingerprints parallel zum Stack — kein teures JSON.stringify beim Push. */
+  fingerprints: string[];
+}
+
+function deckFingerprint(deck: PresentationDeck): string {
+  const slides = deck.slides ?? [];
+  let acc = `${slides.length}|${deck.title || ''}|${deck.showSlideNumbers ? 1 : 0}`;
+  for (const s of slides) {
+    const els = s.elements ?? [];
+    acc += `~${s.id}:${s.order}:${(s.title || '').length}:${(s.bodyHtml || '').length}:${els.length}`;
+    for (const el of els) {
+      acc += `/${el.id}:${el.type}:${el.x | 0}:${el.y | 0}:${el.w | 0}:${el.h | 0}:${(el.src || '').length}:${(el.html || '').length}`;
+    }
+  }
+  return acc;
 }
 
 export function createDeckHistory(initial: PresentationDeck): DeckHistory {
-  return { stack: [cloneDeck(initial)], index: 0 };
+  return {
+    stack: [cloneDeck(initial)],
+    index: 0,
+    fingerprints: [deckFingerprint(initial)],
+  };
 }
 
 export function pushDeckHistory(history: DeckHistory, deck: PresentationDeck): DeckHistory {
-  const snapshot = cloneDeck(deck);
-  const current = history.stack[history.index];
-  if (current && JSON.stringify(current) === JSON.stringify(snapshot)) {
+  const fp = deckFingerprint(deck);
+  if (history.fingerprints[history.index] === fp) {
     return history;
   }
+  const snapshot = cloneDeck(deck);
   const stack = history.stack.slice(0, history.index + 1);
+  const fingerprints = history.fingerprints.slice(0, history.index + 1);
   stack.push(snapshot);
-  while (stack.length > MAX_HISTORY) stack.shift();
-  return { stack, index: stack.length - 1 };
+  fingerprints.push(fp);
+  while (stack.length > MAX_HISTORY) {
+    stack.shift();
+    fingerprints.shift();
+  }
+  return { stack, index: stack.length - 1, fingerprints };
 }
 
 export function canUndoDeck(history: DeckHistory | null): boolean {

@@ -54,6 +54,9 @@ import {
 
 const MOD_LABEL = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform) ? '⌘' : 'Strg';
 
+/** Sentinel — never use value="" with a disabled MenuItem (MUI Select render loop). */
+const FONT_SIZE_PLACEHOLDER = '__pres_font_size__';
+
 interface PresentationFormatBarProps {
   activeEditor: HTMLElement | null;
   disabled?: boolean;
@@ -76,15 +79,20 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   const [fontFamily, setFontFamily] = useState('');
 
   const fontSteps = activeEditor ? getEditorFontSizeSteps(activeEditor) : [];
-
+  const fontSizeSelectValue =
+    fontPx !== '' && fontSteps.includes(Number(fontPx))
+      ? String(fontPx)
+      : FONT_SIZE_PLACEHOLDER;
   const syncFormatting = useCallback(() => {
     if (!activeEditor) {
-      setFontPx('');
-      setFontFamily('');
+      setFontPx((prev) => (prev === '' ? prev : ''));
+      setFontFamily((prev) => (prev === '' ? prev : ''));
       return;
     }
-    setFontPx(getSelectionFontSizePx(activeEditor) ?? '');
-    setFontFamily(getEditorSelectionFontFamily(activeEditor));
+    const nextPx = getSelectionFontSizePx(activeEditor) ?? '';
+    const nextFamily = getEditorSelectionFontFamily(activeEditor);
+    setFontPx((prev) => (prev === nextPx ? prev : nextPx));
+    setFontFamily((prev) => (prev === nextFamily ? prev : nextFamily));
   }, [activeEditor]);
 
   useEffect(() => {
@@ -258,7 +266,11 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
 
       <Select
         size="small"
-        value={fontFamily}
+        value={
+          fontFamily && PRESENTATION_FONT_FAMILIES.some((f) => f.value === fontFamily)
+            ? fontFamily
+            : ''
+        }
         displayEmpty
         disabled={disabled || !activeEditor}
         onChange={(e) => {
@@ -308,16 +320,19 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
 
       <Select
         size="small"
-        value={fontPx === '' ? '' : String(fontPx)}
-        displayEmpty
+        value={fontSizeSelectValue}
         disabled={disabled || !activeEditor}
         onChange={(e) => {
-          const px = parseInt(e.target.value, 10);
+          const raw = e.target.value;
+          if (raw === FONT_SIZE_PLACEHOLDER) return;
+          const px = parseInt(raw, 10);
           if (!Number.isFinite(px)) return;
           applyAndNotify(() => applyFontSizePx(activeEditor, px), true);
         }}
         onMouseDown={(e) => e.stopPropagation()}
-        renderValue={(v) => (v ? `${v} px` : 'Größe')}
+        renderValue={(v) =>
+          v && v !== FONT_SIZE_PLACEHOLDER ? `${v} px` : 'Größe'
+        }
         sx={{
           color: '#444',
           fontSize: 11,
@@ -326,8 +341,8 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
           '.MuiOutlinedInput-notchedOutline': { borderColor: '#ccc' },
         }}
       >
-        <MenuItem value="" disabled dense>
-          Schriftgröße
+        <MenuItem value={FONT_SIZE_PLACEHOLDER} dense sx={{ display: 'none' }}>
+          Größe
         </MenuItem>
         {fontSteps.map((px) => (
           <MenuItem key={px} value={String(px)} dense>

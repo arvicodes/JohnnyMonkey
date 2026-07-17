@@ -349,6 +349,7 @@ import { openLessonFolderFile } from '../lib/openLessonFolderFile';
 import SpielMenuButton from './SpielMenuButton';
 import LearningGroupAppearanceFields from './LearningGroupAppearanceFields';
 import DualStudentAvatars from './DualStudentAvatars';
+import PresentationLaptopPlayer from './presentation/PresentationLaptopPlayer';
 import LearningGroupSortableShell from './LearningGroupSortableShell';
 import LearningGroupArchiveSection from './LearningGroupArchiveSection';
 import LearningGroupActiveListZone from './LearningGroupActiveListZone';
@@ -6029,6 +6030,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [dragPlanIndex, setDragPlanIndex] = useState<number | null>(null);
   const [dragOverPlanIndex, setDragOverPlanIndex] = useState<number | null>(null);
   const [lessonPlanViewMode, setLessonPlanViewMode] = useState<'create' | 'run' | 'background'>('create');
+  const [laptopPresentationActive, setLaptopPresentationActive] = useState(false);
   const [showConfettiGame, setShowConfettiGame] = useState(false);
   const [showMaskMemory, setShowMaskMemory] = useState(false);
   const [showFoolQuiz, setShowFoolQuiz] = useState(false);
@@ -13652,10 +13654,12 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
     }
   };
 
-  /** Stunden-Seite: Epochal rechts andocken; links nur 50 % Breite */
+  /** Stunden-Seite: Epochal rechts andocken; PrÃ¤sentation links etwas breiter */
   const participationDocked =
     participationModalOpen && lessonPlanViewMode === 'background' && isLessonStundeRoute;
   const lessonSplitLeft = isLessonStundeRoute && lessonPlanViewMode === 'background';
+  const laptopLeftWidth = laptopPresentationActive ? '58%' : '50%';
+  const laptopRightWidth = laptopPresentationActive ? '42%' : '50%';
   /** Gemeinsame Mittellinie / FarbÃ¼bergang Laptop-Zweispalter */
   const laptopSplitSeam = alpha('#3949ab', 0.2);
   const laptopSplitGlow = alpha('#3949ab', 0.12);
@@ -13690,6 +13694,12 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
           marginLeft: 0,
         },
       };
+
+  useEffect(() => {
+    if (lessonPlanViewMode !== 'background') {
+      setLaptopPresentationActive(false);
+    }
+  }, [lessonPlanViewMode]);
 
   useEffect(() => {
     if (!isLessonStundeRoute) return;
@@ -13813,7 +13823,8 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
     >
       <>
       <Grid container spacing={0}>
-        {/* Header Section â€“ auch auf /teacher/stunde (eigener Tab) */}
+        {/* Header Section â€“ auch auf /teacher/stunde (eigener Tab); bei Laptop-PrÃ¤sentation ausgeblendet */}
+        {!laptopPresentationActive && (
         <Grid item xs={12}>
           <Box sx={{ 
             p: 1.05,
@@ -14140,6 +14151,7 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
             </Box>
           </Box>
         </Grid>
+        )}
 
         {isLessonStundeRoute && lessonStundeTabLoading && (
           <Grid item xs={12}>
@@ -18122,8 +18134,8 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
             // Daher muss die linke Seite als eigener Scroll-Container zuverlÃ¤ssig funktionieren (auch iPad).
             height: '100dvh',
             minHeight: '100vh',
-            width: lessonSplitLeft ? '50%' : '100%',
-            maxWidth: lessonSplitLeft ? '50%' : 'none',
+            width: lessonSplitLeft ? laptopLeftWidth : '100%',
+            maxWidth: lessonSplitLeft ? laptopLeftWidth : 'none',
             minWidth: lessonSplitLeft ? 0 : undefined,
             boxSizing: 'border-box',
             bgcolor: lessonSplitLeft ? 'transparent' : colors.background,
@@ -18135,7 +18147,7 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
             alignSelf: lessonSplitLeft ? 'flex-start' : 'stretch',
             position: 'relative',
             zIndex: 1,
-            overflowY: 'auto',
+            overflowY: laptopPresentationActive && lessonSplitLeft ? 'hidden' : 'auto',
             overflowX: 'hidden',
             WebkitOverflowScrolling: 'touch',
             ...(lessonSplitLeft && {
@@ -18148,6 +18160,7 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
               }),
           }}
         >
+          {!laptopPresentationActive && (
           <Box
             component="header"
             sx={{
@@ -18236,15 +18249,27 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
               }}
             />
           </Box>
+          )}
           <Box
             sx={{
               minWidth: 0,
-              pt: 2,
-              px: 2,
-              pb: 6,
+              pt: laptopPresentationActive && lessonPlanViewMode === 'background' ? 0 : 2,
+              px: laptopPresentationActive && lessonPlanViewMode === 'background' ? 0 : 2,
+              pb: laptopPresentationActive && lessonPlanViewMode === 'background' ? 0 : 6,
+              flex: laptopPresentationActive && lessonPlanViewMode === 'background' ? 1 : undefined,
+              minHeight: laptopPresentationActive && lessonPlanViewMode === 'background' ? 0 : undefined,
+              display: laptopPresentationActive && lessonPlanViewMode === 'background' ? 'flex' : undefined,
+              flexDirection: 'column',
+              overflow: laptopPresentationActive && lessonPlanViewMode === 'background' ? 'hidden' : undefined,
             }}
           >
-              {(() => {
+              {laptopPresentationActive && lessonPlanViewMode === 'background' && lessonModalData.lessonPath ? (
+                <PresentationLaptopPlayer
+                  lessonPath={lessonModalData.lessonPath}
+                  embedded
+                  onClose={() => setLaptopPresentationActive(false)}
+                />
+              ) : (() => {
                 const lessonName = lessonModalData.lessonName;
                 const lessonPath = lessonModalData.lessonPath;
                 const normalizedLessonName = (lessonName || '').replace(/_/g, ' ');
@@ -18625,7 +18650,8 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
                     } else if (lessonPlanViewMode === 'run') {
                       window.open(`${origin}/presentation/present?${qs.toString()}`, '_blank', 'noopener,noreferrer');
                     } else {
-                      window.open(`${origin}/presentation/review?${qs.toString()}`, '_blank', 'noopener,noreferrer');
+                      // Laptop: PrÃ¤sentation links in der Stunde (wie Tablet), SuS rechts
+                      setLaptopPresentationActive(true);
                     }
                     return;
                   }
@@ -20027,8 +20053,8 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
                 m: 0,
                 maxHeight: '100vh',
                 height: '100%',
-                maxWidth: '50%',
-                width: '50%',
+                maxWidth: laptopRightWidth,
+                width: laptopRightWidth,
                 minWidth: 0,
                 boxSizing: 'border-box',
                 borderRadius: 0,
@@ -20088,10 +20114,11 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
                 width: participationDocked ? '100%' : undefined,
               }}
             >
+              {!participationDocked && (
               <Box
                 sx={{
-                  width: participationDocked ? 22 : 28,
-                  height: participationDocked ? 22 : 28,
+                  width: 28,
+                  height: 28,
                   borderRadius: '50%',
                   bgcolor: '#FF6B35',
                   display: 'flex',
@@ -20099,8 +20126,9 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
                   justifyContent: 'center',
                 }}
               >
-                <HandRaiseIcon sx={{ color: 'white', fontSize: participationDocked ? 13 : 16 }} />
+                <HandRaiseIcon sx={{ color: 'white', fontSize: 16 }} />
               </Box>
+              )}
               <Box sx={{ minWidth: 0 }}>
                 <Typography
                   variant="h6"

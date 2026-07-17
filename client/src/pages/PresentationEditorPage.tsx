@@ -1,4 +1,12 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  startTransition,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -42,6 +50,7 @@ import {
 import {
   DECK_FILENAME,
   PresentationDeck,
+  PresentationShapeKind,
   PresentationSlide,
   SlideElement,
   SlideLayout,
@@ -75,6 +84,7 @@ import {
   setElementStackLayerInSlide,
   stepElementStackLayer,
 } from '../lib/presentationElementLayers';
+import { createShapeElement } from '../lib/presentationSlideShapes';
 import {
   canRedoDeck,
   canUndoDeck,
@@ -220,11 +230,14 @@ const PresentationEditorPage: React.FC = () => {
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pdfExportTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const initialPdfRefreshDoneRef = useRef<string | null>(null);
+  const quietUiTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const filmstripIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveVersionRef = useRef(0);
   const deckRef = useRef<PresentationDeck | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const imageTargetRef = useRef<'inline' | 'layout' | 'element'>('inline');
+  /** Filmstrip nur verzögert aktualisieren — sonst laggt Tippen/Ziehen. */
+  const [filmstripSlides, setFilmstripSlides] = useState<PresentationSlide[]>([]);
 
   useEffect(() => {
     deckRef.current = deck;
@@ -235,19 +248,33 @@ const PresentationEditorPage: React.FC = () => {
       setLoading(false);
       return;
     }
-    initialPdfRefreshDoneRef.current = null;
-    loadPresentationDeck(lessonPath).then((d) => {
-      const normalized = normalizeDeck(d);
-      historyRef.current = createDeckHistory(normalized);
-      setHistoryVersion((v) => v + 1);
-      setDeck(normalized);
-      deckRef.current = normalized;
-      setActiveId(normalized.slides[0]?.id ?? null);
-      setLoading(false);
-    });
+    let cancelled = false;
+    loadPresentationDeck(lessonPath)
+      .then((d) => {
+        if (cancelled) return;
+        const normalized = normalizeDeck(d);
+        historyRef.current = createDeckHistory(normalized);
+        setHistoryVersion((v) => v + 1);
+        setDeck(normalized);
+        deckRef.current = normalized;
+        setActiveId(normalized.slides[0]?.id ?? null);
+        setLoading(false);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setLoading(false);
+        setSnackbar(
+          e instanceof Error
+            ? e.message
+            : 'Präsentation konnte nicht geladen werden. Datei wurde nicht überschrieben.'
+        );
+      });
     loadSlideTemplates(lessonPath)
       .then(setSlideTemplates)
       .catch(() => setSlideTemplates(createDefaultTemplatesStore()));
+    return () => {
+      cancelled = true;
+    };
   }, [lessonPath]);
 
   const schedulePdfExport = useCallback(
@@ -272,13 +299,6 @@ const PresentationEditorPage: React.FC = () => {
   );
 
   useEffect(() => {
-    if (!lessonPath || loading || !deck) return;
-    if (initialPdfRefreshDoneRef.current === lessonPath) return;
-    initialPdfRefreshDoneRef.current = lessonPath;
-    schedulePdfExport({ delayMs: 6000 });
-  }, [deck, lessonPath, loading, schedulePdfExport]);
-
-  useEffect(() => {
     return () => {
       if (pdfExportTimer.current) clearTimeout(pdfExportTimer.current);
     };
@@ -287,15 +307,6 @@ const PresentationEditorPage: React.FC = () => {
   const activeSlide = deck?.slides.find((s) => s.id === activeId) ?? deck?.slides[0];
   const normalizedActive = activeSlide ? normalizeSlide(activeSlide) : null;
 
-  const selectSlide = (id: string) => {
-    if (id === activeId) return;
-    commitEditorState({ history: 'skip' });
-    setActiveId(id);
-    setSelectedElementId(null);
-    setActiveEditor(null);
-    setActiveHtmlField(null);
-  };
-
   const persistDeck = useCallback(
     async (
       next: PresentationDeck,
@@ -303,7 +314,9 @@ const PresentationEditorPage: React.FC = () => {
       options?: { schedulePdfExport?: boolean }
     ) => {
       if (!lessonPath) return;
-      setSaving(true);
+      const showSavingTimer = window.setTimeout(() => {
+        setSaving(true);
+      }, 400);
       try {
         const payload = {
           ...normalizeDeck(next),
@@ -311,14 +324,14 @@ const PresentationEditorPage: React.FC = () => {
         };
         await saveJsonFile(lessonPath, DECK_FILENAME, payload);
         if (version === saveVersionRef.current) {
-          setDeck(payload);
-          if (options?.schedulePdfExport !== false) {
-            schedulePdfExport();
+          if (options?.schedulePdfExport === true) {
+            schedulePdfExport({ delayMs: 800, notify: true });
           }
         }
       } catch (e) {
         setSnackbar(e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
       } finally {
+        window.clearTimeout(showSavingTimer);
         setSaving(false);
       }
     },
@@ -328,10 +341,31 @@ const PresentationEditorPage: React.FC = () => {
   const scheduleSave = useCallback(
     (
       next: PresentationDeck,
-      options?: { history?: 'debounced' | 'immediate' | 'skip' }
+      options?: {
+        history?: 'debounced' | 'immediate' | 'skip';
+        urgent?: boolean;
+        /** Tippen: React-State erst nach Pause — DOM bleibt führend. */
+        quiet?: boolean;
+      }
     ) => {
-      setDeck(next);
       deckRef.current = next;
+
+      if (options?.urgent) {
+        if (quietUiTimer.current) {
+          clearTimeout(quietUiTimer.current);
+          quietUiTimer.current = null;
+        }
+        setDeck(next);
+      } else if (options?.quiet) {
+        if (quietUiTimer.current) clearTimeout(quietUiTimer.current);
+        quietUiTimer.current = setTimeout(() => {
+          quietUiTimer.current = null;
+          const latest = deckRef.current;
+          if (latest) startTransition(() => setDeck(latest));
+        }, 750);
+      } else {
+        startTransition(() => setDeck(next));
+      }
 
       if (!applyingHistoryRef.current && options?.history !== 'skip' && historyRef.current) {
         const push = () => {
@@ -345,13 +379,13 @@ const PresentationEditorPage: React.FC = () => {
           push();
         } else if (mode === 'debounced') {
           if (historyPushTimer.current) clearTimeout(historyPushTimer.current);
-          historyPushTimer.current = setTimeout(push, 700);
+          historyPushTimer.current = setTimeout(push, 1000);
         }
       }
 
       const version = ++saveVersionRef.current;
       if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => void persistDeck(next, version), 600);
+      saveTimer.current = setTimeout(() => void persistDeck(next, version), 1000);
     },
     [persistDeck]
   );
@@ -377,7 +411,7 @@ const PresentationEditorPage: React.FC = () => {
           const elements = (s.elements || []).map((e) => (e.id === id ? { ...e, html } : e));
           return normalizeSlide({ ...s, elements });
         });
-        scheduleSave({ ...current, slides }, options);
+        scheduleSave({ ...current, slides }, { ...options, quiet: true });
         return;
       }
 
@@ -392,9 +426,36 @@ const PresentationEditorPage: React.FC = () => {
             })
           : s
       );
-      scheduleSave({ ...current, slides }, options);
+      scheduleSave({ ...current, slides }, { ...options, quiet: true });
     },
     [activeEditor, activeHtmlField, activeId, scheduleSave]
+  );
+
+  const selectSlide = useCallback(
+    (id: string) => {
+      if (id === activeId) return;
+      commitEditorState({ history: 'skip' });
+      setActiveId(id);
+      setSelectedElementId(null);
+      setActiveEditor(null);
+      setActiveHtmlField(null);
+    },
+    [activeId, commitEditorState]
+  );
+
+  const goToAdjacentSlide = useCallback(
+    (delta: number) => {
+      const current = deckRef.current;
+      if (!current) return;
+      const slides = sortSlides(current.slides);
+      if (slides.length < 2) return;
+      const idx = slides.findIndex((s) => s.id === activeId);
+      const from = idx < 0 ? 0 : idx;
+      const next = slides[Math.min(slides.length - 1, Math.max(0, from + delta))];
+      if (!next || next.id === activeId) return;
+      selectSlide(next.id);
+    },
+    [activeId, selectSlide]
   );
 
   const handleElementSelect = useCallback(
@@ -458,6 +519,20 @@ const PresentationEditorPage: React.FC = () => {
         return;
       }
 
+      // Folien wechseln mit ↑/↓ — nicht während Tippen im Text
+      if (
+        !mod &&
+        !e.altKey &&
+        (e.key === 'ArrowUp' || e.key === 'ArrowDown') &&
+        !inRichEditor &&
+        !target.isContentEditable &&
+        !target.closest('[contenteditable="true"]')
+      ) {
+        e.preventDefault();
+        goToAdjacentSlide(e.key === 'ArrowUp' ? -1 : 1);
+        return;
+      }
+
       const editorFocused =
         activeEditor &&
         (target === activeEditor || activeEditor.contains(target) || target.isContentEditable);
@@ -503,7 +578,7 @@ const PresentationEditorPage: React.FC = () => {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo, activeEditor, commitEditorState]);
+  }, [undo, redo, activeEditor, commitEditorState, goToAdjacentSlide]);
 
   const canUndo = canUndoDeck(historyRef.current);
   const canRedo = canRedoDeck(historyRef.current);
@@ -524,7 +599,20 @@ const PresentationEditorPage: React.FC = () => {
     const slides = current.slides.map((s) =>
       s.id === activeId ? normalizeSlide({ ...s, ...patch }) : s
     );
-    scheduleSave({ ...current, slides });
+    // Text-Änderungen: UI nicht bei jedem Keystroke neu zeichnen
+    const quiet =
+      'titleHtml' in patch ||
+      'bodyHtml' in patch ||
+      'subtitleHtml' in patch ||
+      'bodyLeftHtml' in patch ||
+      'bodyRightHtml' in patch ||
+      'imageCaptionHtml' in patch ||
+      'speakerNotesHtml' in patch ||
+      'preparationHtml' in patch ||
+      'materialHtml' in patch ||
+      'title' in patch ||
+      'body' in patch;
+    scheduleSave({ ...current, slides }, quiet ? { quiet: true } : undefined);
   };
 
   const isAnimationKeyBlocked = useCallback(() => {
@@ -665,7 +753,31 @@ const PresentationEditorPage: React.FC = () => {
     };
     updateSlide({ elements: [...(normalizedActive.elements || []), el] });
     setSelectedElementId(el.id);
-    setSnackbar('Textfeld — ziehen, anklicken zum Bearbeiten');
+    setSnackbar('Textfeld eingefügt — direkt tippen oder ziehen zum Verschieben');
+    // Fokus nach Mount (Toolbar-Button hält sonst den Fokus)
+    window.setTimeout(() => {
+      const node = document.querySelector(
+        `[data-pres-element="${el.id}"] [data-text-edit]`
+      ) as HTMLElement | null;
+      if (!node) return;
+      node.focus({ preventScroll: true });
+      setActiveEditor(node);
+      setActiveHtmlField(`element:${el.id}`);
+    }, 40);
+  };
+
+  const addShapeElement = (kind: PresentationShapeKind) => {
+    if (!normalizedActive) return;
+    const el = createShapeElement(
+      kind,
+      (normalizedActive.elements?.length ?? 0) + 1,
+      normalizedActive.accentColor
+    );
+    updateSlide({ elements: [...(normalizedActive.elements || []), el] });
+    setSelectedElementId(el.id);
+    setSnackbar(
+      `${kind === 'arrow' ? 'Pfeil' : kind === 'line' ? 'Linie' : 'Form'} eingefügt — ziehen zum Verschieben`
+    );
   };
 
   const updateElement = (id: string, patch: Partial<SlideElement>) => {
@@ -674,9 +786,15 @@ const PresentationEditorPage: React.FC = () => {
     const slides = current.slides.map((s) => {
       if (s.id !== activeId) return s;
       const elements = (s.elements || []).map((e) => (e.id === id ? { ...e, ...patch } : e));
-      return normalizeSlide({ ...s, elements });
+      // Kein normalizeSlide — spart teure HTML-Normalisierung bei jedem Move/Resize.
+      return { ...s, elements };
     });
-    scheduleSave({ ...current, slides });
+    const keys = Object.keys(patch);
+    const textOnly = keys.length > 0 && keys.every((k) => k === 'html');
+    scheduleSave(
+      { ...current, slides },
+      textOnly ? { quiet: true } : { urgent: true }
+    );
   };
 
   const deleteElement = (id: string) => {
@@ -752,10 +870,10 @@ const PresentationEditorPage: React.FC = () => {
       if (isFormatBarInteracting()) return;
       if (isAnimationKeyBlocked()) return;
 
-      if (element.type === 'image') {
+      if (element.type === 'image' || element.type === 'shape') {
         e.preventDefault();
         deleteElement(selectedElementId);
-        setSnackbar('Bild entfernt');
+        setSnackbar(element.type === 'shape' ? 'Form entfernt' : 'Bild entfernt');
         return;
       }
 
@@ -1035,7 +1153,13 @@ const PresentationEditorPage: React.FC = () => {
       if (!res.ok) throw new Error('Bild-Upload fehlgeschlagen');
       return `${folder}/${file.name}`;
     } catch (e) {
-      setSnackbar(e instanceof Error ? e.message : 'Upload fehlgeschlagen');
+      const msg =
+        e instanceof TypeError || (e instanceof Error && /Failed to fetch/i.test(e.message))
+          ? 'Server nicht erreichbar — App neu starten, dann Bild erneut einfügen.'
+          : e instanceof Error
+            ? e.message
+            : 'Upload fehlgeschlagen';
+      setSnackbar(msg);
       return null;
     }
   };
@@ -1209,6 +1333,39 @@ const PresentationEditorPage: React.FC = () => {
     '& .MuiSelect-select': { py: 0.5 },
   };
 
+  const sortedSlides = useMemo(
+    () => (deck ? sortSlides(deck.slides) : []),
+    [deck]
+  );
+  const activeSlideNumber = Math.max(
+    1,
+    sortedSlides.findIndex((slide) => slide.id === activeId) + 1
+  );
+
+  // Filmstrip: sofort bei Folienwechsel, sonst erst nach Pause (kein Lag beim Tippen)
+  useEffect(() => {
+    if (!deck) {
+      setFilmstripSlides([]);
+      return;
+    }
+    if (filmstripIdleTimer.current) clearTimeout(filmstripIdleTimer.current);
+    filmstripIdleTimer.current = setTimeout(() => {
+      setFilmstripSlides(sortSlides(deck.slides));
+    }, 1500);
+    return () => {
+      if (filmstripIdleTimer.current) clearTimeout(filmstripIdleTimer.current);
+    };
+  }, [deck]);
+
+  useEffect(() => {
+    if (!deck) return;
+    if (filmstripIdleTimer.current) {
+      clearTimeout(filmstripIdleTimer.current);
+      filmstripIdleTimer.current = null;
+    }
+    setFilmstripSlides(sortSlides(deck.slides));
+  }, [activeId]); // eslint-disable-line react-hooks/exhaustive-deps -- nur bei Folienwechsel sofort
+
   if (!lessonPath) {
     return (
       <Box sx={{ p: 4 }}>
@@ -1244,12 +1401,6 @@ const PresentationEditorPage: React.FC = () => {
     activeHtmlField === 'speakerNotesHtml'
       ? activeHtmlField
       : null;
-
-  const sortedSlides = sortSlides(deck.slides);
-  const activeSlideNumber = Math.max(
-    1,
-    sortedSlides.findIndex((slide) => slide.id === activeId) + 1
-  );
 
   return (
     <Box
@@ -1575,6 +1726,7 @@ const PresentationEditorPage: React.FC = () => {
                     imageTargetRef.current = 'layout';
                     imageInputRef.current?.click();
                   }}
+                  onAddShapeElement={addShapeElement}
                   onUpdateElement={updateElement}
                   onDeleteElement={deleteElement}
                   onReorderElementLayer={reorderElementLayer}
@@ -1623,7 +1775,7 @@ const PresentationEditorPage: React.FC = () => {
 
       <Box sx={{ display: 'flex', flex: 1, minHeight: 0, bgcolor: PRES_EDITOR_UI.pageBg }}>
         <PresentationFilmstrip
-          slides={sortedSlides}
+          slides={filmstripSlides.length ? filmstripSlides : sortedSlides}
           activeId={activeId}
           onSelect={selectSlide}
           onAdd={() => addSlide('title-content')}

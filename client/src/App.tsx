@@ -286,9 +286,6 @@ function AppContent() {
                   </div>
                   <button type="submit">Anmelden</button>
                   {message && <p className="message">{message}</p>}
-                  <p className="keyboard-help">
-                    Tastatur: Enter zum Anmelden, ESC zum Zurücksetzen
-                  </p>
                 </form>
               </div>
             ) : (

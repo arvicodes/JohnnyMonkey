@@ -53,6 +53,7 @@ export class PortManager {
         server.timeout = 600_000;
         server.keepAliveTimeout = 650_000;
         server.headersTimeout = 660_000;
+        server.requestTimeout = 600_000;
         console.log(`🚀 Server started successfully on port ${actualPort}`);
         
         resolve({ server, port: actualPort });

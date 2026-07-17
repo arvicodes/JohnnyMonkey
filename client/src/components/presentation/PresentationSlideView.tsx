@@ -7,6 +7,7 @@ import {
   SlideElement,
   SLIDE_REF_HEIGHT,
   SLIDE_REF_WIDTH,
+  SLIDE_IMAGE_EDITOR_MAX,
   slideImageUrl,
 } from '../../lib/presentationDeck';
 import { JOHNNY_PRESENTATION, accentGradient } from '../../lib/presentationTheme';
@@ -57,6 +58,8 @@ interface PresentationSlideViewProps {
   mediaInteractive?: boolean;
   /** PDF-Export: Layout wie im Editor, ohne Animations-Artefakte. */
   exportSnapshot?: boolean;
+  /** Bildgröße begrenzen (Editor). Ohne Wert: Original / Export. */
+  imageMaxEdge?: number;
 }
 
 const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
@@ -85,8 +88,11 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   onAnimationTargetClick,
   mediaInteractive = false,
   exportSnapshot = false,
+  imageMaxEdge,
 }) => {
   const slide = normalizeSlide(rawSlide);
+  const resolvedImageMax =
+    imageMaxEdge ?? (editable && !exportSnapshot ? SLIDE_IMAGE_EDITOR_MAX : undefined);
   const effectiveReveal = revealEnabled && slide.revealEnabled !== false;
   const w = SLIDE_REF_WIDTH * scale;
   const h = SLIDE_REF_HEIGHT * scale;
@@ -147,6 +153,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           selectedAnimationTarget={selectedAnimationTarget}
           onAnimationTargetClick={onAnimationTargetClick}
           mediaInteractive={mediaInteractive}
+          imageMaxEdge={resolvedImageMax}
         />
       </Box>
     );
@@ -193,6 +200,11 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           flex: opts.flex,
           position: 'relative',
           zIndex: animationEditMode ? 1 : undefined,
+          // Parent hat pointer-events:none — Zone muss selbst klickbar sein.
+          pointerEvents: textZonesInteractive || animationEditMode ? 'auto' : 'none',
+          display: opts.flex ? 'flex' : undefined,
+          flexDirection: opts.flex ? 'column' : undefined,
+          minHeight: opts.flex && editable ? `${80 * scale}px` : undefined,
         }}
       >
         <PresentationRichZone
@@ -232,7 +244,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   };
 
   const renderImage = () => {
-    const url = slideImageUrl(slide.imagePath || '');
+    const url = slideImageUrl(slide.imagePath || '', resolvedImageMax);
     const imageVisible = animationEditMode || isZoneVisible(slide, 'layoutImage', revealStep, effectiveReveal);
     const layoutImageStep = getZoneRevealStep(slide, 'layoutImage');
     const layoutImageSelected = selectedAnimationTarget === ANIMATION_LAYOUT_IMAGE_ID;
@@ -278,6 +290,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
               component="img"
               src={url}
               alt=""
+              decoding="async"
               sx={{
                 ...presentationImageElementSx(slide.imagePath, 'contain'),
                 maxHeight: `${420 * scale}px`,
@@ -513,6 +526,8 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             zIndex: logoZ,
             pointerEvents: 'none',
             userSelect: 'none',
+            bgcolor: 'transparent',
+            backgroundColor: 'transparent',
           }}
         />
       )}
@@ -537,7 +552,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
         sx={{
           position: 'absolute',
           inset: 0,
-          pt: fullscreenMedia ? 0 : `${72 * scale}px`,
+          pt: fullscreenMedia ? 0 : `${(showLogo ? 72 : 36) * scale}px`,
           px: fullscreenMedia ? 0 : `${64 * scale}px`,
           pb: fullscreenMedia ? 0 : `${(footerOn ? 56 : 48) * scale}px`,
           display: 'flex',

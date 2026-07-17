@@ -1,4 +1,9 @@
 import type { LessonFolderFileLike } from './openLessonFolderFile';
+import {
+  isLessonPresentationMaterialPdf,
+  LESSON_PRESENTATION_PDF_ORIGINAL,
+} from './presentationLessonAssets';
+import { presentationReviewUrl, type PresentationViewerVariant } from './presentationDeck';
 
 function tryOpenInNewTab(url: string): boolean {
   const w = window.open(url, '_blank');
@@ -19,7 +24,11 @@ async function downloadViaBrowser(filePath: string, downloadName: string): Promi
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** Schüler: PDF ansehen oder herunterladen — ohne Folien-Editor oder Präsentationsmodus. */
+function lessonPathFromMaterialFile(filePath: string): string {
+  return filePath.replace(/\\/g, '/').replace(/\/[^/]+$/, '');
+}
+
+/** Schüler: PDF ansehen oder herunterladen — Johnny-Folien als Folienplayer (Pfeiltasten). */
 export async function openStudentLessonMaterialFile(
   item: LessonFolderFileLike,
   mode: 'open' | 'download',
@@ -30,6 +39,16 @@ export async function openStudentLessonMaterialFile(
 
   if (mode === 'download') {
     await downloadViaBrowser(item.path, options?.downloadName || item.name);
+    return;
+  }
+
+  // Johnny-Präsentation: interaktive Folienansicht statt Roh-PDF
+  if (ext === 'pdf' && isLessonPresentationMaterialPdf(item.name)) {
+    const lessonPath = lessonPathFromMaterialFile(item.path);
+    const variant: PresentationViewerVariant =
+      item.name === LESSON_PRESENTATION_PDF_ORIGINAL ? 'original' : 'edited';
+    const url = `${presentationReviewUrl(lessonPath, undefined, variant)}&viewer=student`;
+    if (!tryOpenInNewTab(url)) window.location.assign(url);
     return;
   }
 

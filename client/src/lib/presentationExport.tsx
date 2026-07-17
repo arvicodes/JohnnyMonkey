@@ -6,7 +6,7 @@ import PresentationSlideView from '../components/presentation/PresentationSlideV
 import {
   ANNOTATIONS_FILENAME,
   DECK_FILENAME,
-  deckOriginalFilePath,
+  DECK_ORIGINAL_FILENAME,
   PresentationAnnotations,
   PresentationDeck,
   PresentationSlide,
@@ -14,12 +14,15 @@ import {
   SLIDE_REF_HEIGHT,
   SLIDE_REF_WIDTH,
   createEmptyAnnotations,
-  loadJsonFile,
+  isOriginalDeckFrozen,
   loadPresentationAnnotations,
+  loadPresentationOriginalDeck,
   normalizeDeck,
   normalizeSlide,
   saveJsonFile,
   sortSlides,
+  stripOriginalFreezeMeta,
+  writeOriginalDeckSnapshot,
 } from './presentationDeck';
 import { drawPresentationStroke } from './presentationDrawTools';
 import {
@@ -33,7 +36,7 @@ import {
 import { PRESENTATION_KEYFRAMES } from './presentationTransitions';
 import '../styles/presentationLists.css';
 
-export const DECK_ORIGINAL_SNAPSHOT = 'Praesentation.deck.original.json';
+export const DECK_ORIGINAL_SNAPSHOT = DECK_ORIGINAL_FILENAME;
 export const PDF_ORIGINAL_FILENAME = LESSON_PRESENTATION_PDF_ORIGINAL;
 export const PDF_EDITED_FILENAME = LESSON_PRESENTATION_PDF_EDITED;
 
@@ -270,38 +273,66 @@ export type PresentationSaveResult = {
   originalPdf: string;
   editedPdf: string;
   deckOriginalSnapshot: string;
+  originalFrozen: boolean;
 };
 
-/** Nur PDFs neu erzeugen (Deck/JSON unverändert lassen). */
+export type ExportPresentationPdfOptions = {
+  /** Original-PDF aus diesem Snapshot (Standard: gespeicherter Original-Stand). */
+  originalDeck?: PresentationDeck;
+  /** Nur Bearbeitet-PDF neu erzeugen (Original unverändert lassen). */
+  editedOnly?: boolean;
+};
+
+/** PDFs erzeugen: Original = Erstell-Stand ohne Striche, Bearbeitet = Live + Striche. */
 export async function exportPresentationPdfVersions(
   lessonPath: string,
-  deck: PresentationDeck,
+  workingDeck: PresentationDeck,
   annotations: PresentationAnnotations,
-  onProgress?: (label: string) => void
+  onProgress?: (label: string) => void,
+  options?: ExportPresentationPdfOptions
 ): Promise<PresentationSaveResult> {
   const folder = lessonPath.replace(/\\/g, '/').replace(/\/$/, '');
-  const normalized = normalizeDeck(deck);
+  const editedDeck = normalizeDeck(stripOriginalFreezeMeta(workingDeck));
+  const emptyAnn = createEmptyAnnotations(folder);
 
-  onProgress?.('Original-PDF…');
-  const originalBlob = await buildPresentationPdfBlob(normalized, annotations, false, (c, t) => {
-    onProgress?.(`Original ${c}/${t}`);
-  });
-  await savePdfBlob(folder, PDF_ORIGINAL_FILENAME, originalBlob);
+  let originalDeck: PresentationDeck;
+  if (options?.originalDeck) {
+    originalDeck = normalizeDeck(options.originalDeck);
+  } else {
+    const loaded = await loadPresentationOriginalDeck(folder);
+    originalDeck = isOriginalDeckFrozen(loaded) ? loaded! : editedDeck;
+  }
+  originalDeck = normalizeDeck(stripOriginalFreezeMeta(originalDeck));
+
+  if (!options?.editedOnly) {
+    onProgress?.('Original-PDF…');
+    const originalBlob = await buildPresentationPdfBlob(originalDeck, emptyAnn, false, (c, t) => {
+      onProgress?.(`Original ${c}/${t}`);
+    });
+    await savePdfBlob(folder, PDF_ORIGINAL_FILENAME, originalBlob);
+  }
 
   onProgress?.('Bearbeitet-PDF…');
-  const editedBlob = await buildPresentationPdfBlob(normalized, annotations, true, (c, t) => {
+  const editedBlob = await buildPresentationPdfBlob(editedDeck, annotations, true, (c, t) => {
     onProgress?.(`Bearbeitet ${c}/${t}`);
   });
   await savePdfBlob(folder, PDF_EDITED_FILENAME, editedBlob);
 
+  const snapshotMeta = await loadPresentationOriginalDeck(folder);
   return {
     originalPdf: PDF_ORIGINAL_FILENAME,
     editedPdf: PDF_EDITED_FILENAME,
     deckOriginalSnapshot: DECK_ORIGINAL_SNAPSHOT,
+    originalFrozen: isOriginalDeckFrozen(snapshotMeta),
   };
 }
 
-/** Speichert unbearbeitete + bearbeitete PDF und sichert Deck/Annotationen als JSON. */
+/**
+ * Live in der Stunde speichern:
+ * - Arbeitsdeck + Annotationen sichern
+ * - Original einfrieren (Erstell-Stand), falls noch nicht geschehen
+ * - Original-PDF aus Snapshot, Bearbeitet-PDF aus Live + Striche
+ */
 export async function savePresentationBothVersions(
   lessonPath: string,
   deck: PresentationDeck,
@@ -311,24 +342,38 @@ export async function savePresentationBothVersions(
   const folder = lessonPath.replace(/\\/g, '/').replace(/\/$/, '');
 
   onProgress?.('JSON sichern…');
-  const deckPayload = { ...normalizeDeck(deck), updatedAt: new Date().toISOString() };
+  const deckPayload = {
+    ...stripOriginalFreezeMeta(normalizeDeck(deck)),
+    updatedAt: new Date().toISOString(),
+  };
   const annPayload = { ...annotations, updatedAt: new Date().toISOString() };
   await saveJsonFile(folder, DECK_FILENAME, deckPayload);
   await saveJsonFile(folder, ANNOTATIONS_FILENAME, annPayload);
-  const existingOriginal = await loadJsonFile(deckOriginalFilePath(folder));
-  if (!existingOriginal) {
-    await saveJsonFile(folder, DECK_ORIGINAL_SNAPSHOT, deckPayload);
-  }
 
-  return exportPresentationPdfVersions(lessonPath, deckPayload, annPayload, onProgress);
+  onProgress?.('Original sichern…');
+  const originalSnapshot = await writeOriginalDeckSnapshot(folder, deckPayload, 'freeze');
+
+  return exportPresentationPdfVersions(lessonPath, deckPayload, annPayload, onProgress, {
+    originalDeck: originalSnapshot,
+  });
 }
 
-/** Nach dem Speichern im Editor: PDFs im Hintergrund aktualisieren. */
+/**
+ * Nach dem Speichern im Editor:
+ * - Solange Original nicht eingefroren: Snapshot = aktueller Erstell-Stand
+ * - Original-PDF aus Snapshot, Bearbeitet-PDF aus Arbeitsdeck (+ ggf. Striche)
+ */
 export async function refreshPresentationPdfsFromLessonFolder(lessonPath: string): Promise<void> {
   const { loadPresentationDeck } = await import('./presentationDeck');
   const deck = await loadPresentationDeck(lessonPath);
   if (!deck) return;
   const annotations =
     (await loadPresentationAnnotations(lessonPath)) ?? createEmptyAnnotations(lessonPath);
-  await exportPresentationPdfVersions(lessonPath, deck, annotations);
+  const existingOriginal = await loadPresentationOriginalDeck(lessonPath);
+  const originalSnapshot = isOriginalDeckFrozen(existingOriginal)
+    ? existingOriginal!
+    : await writeOriginalDeckSnapshot(lessonPath, deck, 'sync');
+  await exportPresentationPdfVersions(lessonPath, deck, annotations, undefined, {
+    originalDeck: originalSnapshot,
+  });
 }

@@ -96,6 +96,51 @@ export function insertTextAtCursor(editor: HTMLElement | null, text: string): bo
   return true;
 }
 
+/** Typografische Pfeile: `-->` → `→`, `==>` → `⇒`, usw. */
+const ARROW_SHORTCUTS: Array<{ from: string; to: string }> = [
+  { from: '<==>', to: '⇔' },
+  { from: '<->', to: '↔' },
+  { from: '==>', to: '⇒' },
+  { from: '<==', to: '⇐' },
+  { from: '-->', to: '→' },
+  { from: '<--', to: '←' },
+  { from: '->', to: '→' },
+  { from: '<-', to: '←' },
+];
+
+/**
+ * Ersetzt Pfeil-Kürzel links vom Cursor durch echte Pfeilzeichen.
+ * @returns true wenn etwas ersetzt wurde
+ */
+export function replaceArrowShortcutsNearCursor(editor: HTMLElement | null): boolean {
+  if (!editor) return false;
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return false;
+  const range = sel.getRangeAt(0);
+  if (!editor.contains(range.startContainer)) return false;
+
+  const node = range.startContainer;
+  if (node.nodeType !== Node.TEXT_NODE) return false;
+  const text = node.textContent || '';
+  const offset = range.startOffset;
+  const before = text.slice(0, offset);
+
+  for (const { from, to } of ARROW_SHORTCUTS) {
+    if (!before.endsWith(from)) continue;
+    const start = offset - from.length;
+    const next = text.slice(0, start) + to + text.slice(offset);
+    node.textContent = next;
+    const caret = start + to.length;
+    const nextRange = document.createRange();
+    nextRange.setStart(node, Math.min(caret, next.length));
+    nextRange.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(nextRange);
+    return true;
+  }
+  return false;
+}
+
 const FONT_SIZE_PX: Record<string, string> = {
   '1': '12px',
   '2': '14px',

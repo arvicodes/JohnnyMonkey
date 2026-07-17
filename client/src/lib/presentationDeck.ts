@@ -13,6 +13,10 @@ export { SLIDE_TRANSITIONS };
 
 export const DECK_FILENAME = 'Praesentation.deck.json';
 export const ANNOTATIONS_FILENAME = 'Praesentation.annotations.json';
+export const DECK_ORIGINAL_FILENAME = 'Praesentation.deck.original.json';
+
+/** SuS/Review: Original (Erstell-Stand) vs. bearbeitet (Live inkl. Striche). */
+export type PresentationViewerVariant = 'original' | 'edited';
 
 export const SLIDE_REF_WIDTH = 1920;
 export const SLIDE_REF_HEIGHT = 1080;
@@ -56,16 +60,25 @@ export type SlideLayout =
 
 export type BodyStyle = 'plain' | 'bullets' | 'numbered';
 
+export type PresentationStrokeMode = 'pen' | 'marker';
+
+export type PresentationShapeKind = 'line' | 'rect' | 'ellipse' | 'arrow';
+
 /** Frei platzierbare Elemente — Basis für Bilder, Animationen etc. */
 export interface SlideElement {
   id: string;
-  type: 'text' | 'image' | 'video' | 'embed';
+  type: 'text' | 'image' | 'video' | 'embed' | 'shape';
   x: number;
   y: number;
   w: number;
   h: number;
   html?: string;
   src?: string;
+  /** Form-Art (nur type === 'shape'). */
+  shapeKind?: PresentationShapeKind;
+  strokeColor?: string;
+  strokeWidth?: number;
+  fillColor?: string;
   revealStep?: number;
   /** True wenn Animations-Schritt im Editor explizit gesetzt wurde (auch 0). */
   animationSet?: boolean;
@@ -78,10 +91,6 @@ export interface SlideElement {
   /** Standard-Zoom für Referenz-Embeds (1 = 100 %). */
   mediaZoom?: number;
 }
-
-export type PresentationStrokeMode = 'pen' | 'marker';
-
-export type PresentationShapeKind = 'line' | 'rect' | 'ellipse' | 'arrow';
 
 export interface PresentationStroke {
   id: string;
@@ -149,6 +158,11 @@ export interface PresentationDeck {
   /** Fußleiste mit Titel und Foliennummer. */
   showSlideFooter?: boolean;
   slideFooter?: PresentationSlideFooter;
+  /**
+   * Nur in Praesentation.deck.original.json:
+   * gesetzt beim ersten Live-Speichern in der Stunde → Original ist eingefroren.
+   */
+  johnnyOriginalFrozenAt?: string;
 }
 
 export interface PresentationAnnotations {
@@ -170,7 +184,17 @@ export function annotationsFilePath(lessonPath: string): string {
 
 export function deckOriginalFilePath(lessonPath: string): string {
   const base = lessonPath.replace(/\\/g, '/').replace(/\/$/, '');
-  return `${base}/Praesentation.deck.original.json`;
+  return `${base}/${DECK_ORIGINAL_FILENAME}`;
+}
+
+export function isOriginalDeckFrozen(deck: PresentationDeck | null | undefined): boolean {
+  return Boolean(deck?.johnnyOriginalFrozenAt);
+}
+
+/** Arbeitsdeck ohne Freeze-Metadaten (die gehören nur in den Original-Snapshot). */
+export function stripOriginalFreezeMeta(deck: PresentationDeck): PresentationDeck {
+  const { johnnyOriginalFrozenAt: _frozen, ...rest } = deck;
+  return rest;
 }
 
 export function lessonFolderPath(lessonPath: string): string {
@@ -201,11 +225,19 @@ export function htmlToPlain(html: string): string {
   return (div.textContent || div.innerText || '').replace(/\u00a0/g, ' ').trim();
 }
 
-export function slideImageUrl(imagePath: string): string {
+export function slideImageUrl(imagePath: string, maxEdge?: number): string {
   if (!imagePath) return '';
   if (/^https?:\/\//i.test(imagePath)) return imagePath;
-  return `/api/file-system-paths/read-image?filePath=${encodeURIComponent(imagePath)}`;
+  const qs = new URLSearchParams({ filePath: imagePath });
+  if (maxEdge && maxEdge > 0) qs.set('max', String(Math.round(maxEdge)));
+  return `/api/file-system-paths/read-image?${qs.toString()}`;
 }
+
+/** Editor-Canvas: scharf genug, aber keine Multi-MB-Originale. */
+export const SLIDE_IMAGE_EDITOR_MAX = 1600;
+/** Filmstrip-Vorschau. */
+export const SLIDE_IMAGE_THUMB_MAX = 360;
+
 
 const LEGACY_BILD_SLIDE_SPEAKER_HINT =
   'Bild per Drag & Drop auf die Folie ziehen oder Element wählen → Bild einfügen.';
@@ -309,17 +341,21 @@ export function sortSlides(slides: PresentationSlide[]): PresentationSlide[] {
   return [...slides].sort((a, b) => a.order - b.order);
 }
 
+/** null = file missing (404). Throws on network/server errors so callers never treat failures as "empty". */
 export async function loadJsonFile<T>(filePath: string): Promise<T | null> {
+  let res: Response;
   try {
-    const res = await fetch(
+    res = await fetch(
       `/api/file-system-paths/load-whiteboard?filePath=${encodeURIComponent(filePath)}`
     );
-    if (res.status === 404) return null;
-    if (!res.ok) return null;
-    return (await res.json()) as T;
   } catch {
-    return null;
+    throw new Error('Server nicht erreichbar. Präsentation wurde nicht geladen.');
   }
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(`Präsentation konnte nicht geladen werden (${res.status}).`);
+  }
+  return (await res.json()) as T;
 }
 
 export async function saveJsonFile(
@@ -328,15 +364,92 @@ export async function saveJsonFile(
   data: unknown
 ): Promise<void> {
   const targetPath = lessonFolderPath(lessonPath);
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const formData = new FormData();
-  formData.append('file', blob, filename);
-  formData.append('targetPath', targetPath);
-  const res = await fetch('/api/file-system-paths/save-file', { method: 'POST', body: formData });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { error?: string }).error || 'Speichern fehlgeschlagen');
+  const body = JSON.stringify(data);
+
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const formData = new FormData();
+      formData.append(
+        'file',
+        new Blob([body], { type: 'application/json' }),
+        filename
+      );
+      formData.append('targetPath', targetPath);
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 45_000);
+      const res = await fetch('/api/file-system-paths/save-file', {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+      });
+      window.clearTimeout(timer);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error || 'Speichern fehlgeschlagen');
+      }
+      return;
+    } catch (e) {
+      const aborted = e instanceof DOMException && e.name === 'AbortError';
+      const networkFail =
+        aborted ||
+        e instanceof TypeError ||
+        (e instanceof Error && /Failed to fetch|NetworkError|aborted/i.test(e.message));
+      const msg = networkFail
+        ? 'Server kurz überlastet (Failed to fetch). Speichern wird wiederholt…'
+        : e instanceof Error
+          ? e.message
+          : 'Speichern fehlgeschlagen';
+      lastError = new Error(
+        networkFail && attempt >= 3
+          ? 'Server nicht erreichbar. Bitte App neu starten (npm run dev), dann erneut speichern.'
+          : msg
+      );
+      if (attempt < 3) {
+        await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+      }
+    }
   }
+  throw lastError ?? new Error('Speichern fehlgeschlagen');
+}
+
+function buildDefaultDeck(lessonPath: string): PresentationDeck {
+  return normalizeDeck({
+    version: 1,
+    title: 'Präsentation',
+    lessonPath,
+    updatedAt: new Date().toISOString(),
+    defaultTransition: 'fade',
+    slides: [
+      {
+        id: `slide-${Date.now()}`,
+        title: 'Folie 1',
+        body: '',
+        speakerNotes: '',
+        order: 0,
+        layout: 'title-content',
+      },
+    ],
+  });
+}
+
+async function buildStarterDeck(lessonPath: string): Promise<PresentationDeck> {
+  const { createDefaultTemplatesStore, createSlideFromTemplateKind } = await import(
+    './presentationSlideTemplates'
+  );
+  const store = createDefaultTemplatesStore();
+  const start = createSlideFromTemplateKind('start', 0, lessonPath, store);
+  const ha = createSlideFromTemplateKind('ha', 1, lessonPath, store);
+  const slides = [start, ha].filter((s): s is PresentationSlide => Boolean(s));
+  if (!slides.length) return buildDefaultDeck(lessonPath);
+  return normalizeDeck({
+    version: 1,
+    title: 'Präsentation',
+    lessonPath,
+    updatedAt: new Date().toISOString(),
+    defaultTransition: 'fade',
+    slides,
+  });
 }
 
 export async function loadPresentationDeck(lessonPath: string): Promise<PresentationDeck> {
@@ -349,32 +462,14 @@ export async function loadPresentationDeck(lessonPath: string): Promise<Presenta
       slides: sortSlides(loaded.slides),
     });
   }
-  const { createDefaultTemplatesStore, createSlideFromTemplateKind } = await import(
-    './presentationSlideTemplates'
-  );
-  const store = createDefaultTemplatesStore();
-  const start = createSlideFromTemplateKind('start', 0, lessonPath, store);
-  const ha = createSlideFromTemplateKind('ha', 1, lessonPath, store);
-  const slides = [start, ha].filter((s): s is PresentationSlide => Boolean(s));
-  const deck = normalizeDeck({
-    version: 1,
-    title: 'Präsentation',
-    lessonPath,
-    updatedAt: new Date().toISOString(),
-    defaultTransition: 'fade',
-    slides: slides.length
-      ? slides
-      : [
-          {
-            id: `slide-${Date.now()}`,
-            title: 'Folie 1',
-            body: '',
-            speakerNotes: '',
-            order: 0,
-            layout: 'title-content',
-          },
-        ],
-  });
+  // File exists but is corrupt/empty — never overwrite silently.
+  if (loaded) {
+    throw new Error(
+      'Präsentationsdatei ist leer oder beschädigt. Bestehende Datei wurde nicht überschrieben.'
+    );
+  }
+  // Truly missing (404): create starter deck once for new lessons only.
+  const deck = await buildStarterDeck(lessonPath);
   await saveJsonFile(lessonPath, DECK_FILENAME, deck);
   return deck;
 }
@@ -385,9 +480,64 @@ export async function loadPresentationAnnotations(
   const path = annotationsFilePath(lessonPath);
   const loaded = await loadJsonFile<PresentationAnnotations>(path);
   if (loaded?.bySlideId) return loaded;
+  // Missing file → create empty annotations. Corrupt/partial → keep empty in memory only.
+  if (loaded) return createEmptyAnnotations(lessonPath);
   const ann = createEmptyAnnotations(lessonPath);
   await saveJsonFile(lessonPath, ANNOTATIONS_FILENAME, ann);
   return ann;
+}
+
+/** Erstell-Stand der Folien (ohne Live-Striche). null wenn noch kein Snapshot existiert. */
+export async function loadPresentationOriginalDeck(
+  lessonPath: string
+): Promise<PresentationDeck | null> {
+  const loaded = await loadJsonFile<PresentationDeck>(deckOriginalFilePath(lessonPath));
+  if (!loaded?.slides?.length) return null;
+  return normalizeDeck({
+    ...loaded,
+    lessonPath: loaded.lessonPath || lessonPath,
+    slides: sortSlides(loaded.slides),
+  });
+}
+
+/**
+ * Original-Snapshot schreiben.
+ * - sync (Editor, noch nicht eingefroren): Inhalt = aktuelles Arbeitsdeck
+ * - freeze (erstes Live-Speichern): aktuelles Arbeitsdeck einfrieren (nie einen alten Snapshot behalten)
+ */
+export async function writeOriginalDeckSnapshot(
+  lessonPath: string,
+  workingDeck: PresentationDeck,
+  mode: 'sync' | 'freeze'
+): Promise<PresentationDeck> {
+  const folder = lessonFolderPath(lessonPath);
+  const existing = await loadPresentationOriginalDeck(folder);
+  if (isOriginalDeckFrozen(existing)) {
+    return existing!;
+  }
+  const snapshot: PresentationDeck = {
+    ...stripOriginalFreezeMeta(normalizeDeck(workingDeck)),
+    lessonPath: folder,
+    updatedAt: new Date().toISOString(),
+    ...(mode === 'freeze' ? { johnnyOriginalFrozenAt: new Date().toISOString() } : {}),
+  };
+  await saveJsonFile(folder, DECK_ORIGINAL_FILENAME, snapshot);
+  return snapshot;
+}
+
+/**
+ * Deck für SuS-/Review-Ansicht „Original“:
+ * - eingefroren → Snapshot
+ * - sonst → aktuelles Arbeitsdeck (ohne Striche), nie einen veralteten unfrozen Snapshot
+ */
+export async function loadPresentationDeckForOriginalView(
+  lessonPath: string
+): Promise<PresentationDeck> {
+  const existing = await loadPresentationOriginalDeck(lessonPath);
+  if (isOriginalDeckFrozen(existing)) {
+    return existing!;
+  }
+  return loadPresentationDeck(lessonPath);
 }
 
 export function presentationEditorUrl(lessonPath: string, groupId?: string): string {
@@ -402,9 +552,15 @@ export function presentationPresentUrl(lessonPath: string, groupId?: string): st
   return `/presentation/present?${qs.toString()}`;
 }
 
-export function presentationReviewUrl(lessonPath: string, groupId?: string): string {
+export function presentationReviewUrl(
+  lessonPath: string,
+  groupId?: string,
+  variant?: PresentationViewerVariant
+): string {
   const qs = new URLSearchParams({ lessonPath });
   if (groupId) qs.set('groupId', groupId);
+  if (variant === 'original') qs.set('variant', 'original');
+  else if (variant === 'edited') qs.set('variant', 'edited');
   return `/presentation/review?${qs.toString()}`;
 }
 

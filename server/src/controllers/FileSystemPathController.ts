@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { StorageManager } from '../utils/storageManager';
-import { fileToJpegBuffer, isHeicPath } from '../utils/imageToJpeg';
+import { fileToJpegBuffer, isHeicPath, readImageFileForServe } from '../utils/imageToJpeg';
+import { backupPresentationDeckBeforeOverwrite } from '../utils/presentationDeckBackup';
 import fs from 'fs';
 import path from 'path';
 import mammoth from 'mammoth';
@@ -961,38 +962,7 @@ export class FileSystemPathController {
       const maxEdge =
         Number.isFinite(maxRaw) && maxRaw > 0 && maxRaw <= 2400 ? maxRaw : undefined;
 
-      let buffer: Buffer;
-      let mimeType: string;
-
-      if (isHeicPath(fullPath)) {
-        buffer = await fileToJpegBuffer(fullPath, maxEdge ?? 1200);
-        mimeType = 'image/jpeg';
-      } else {
-        buffer = fs.readFileSync(fullPath);
-        const ext = path.extname(fullPath).toLowerCase();
-        switch (ext) {
-          case '.png':
-            mimeType = 'image/png';
-            break;
-          case '.gif':
-            mimeType = 'image/gif';
-            break;
-          case '.bmp':
-            mimeType = 'image/bmp';
-            break;
-          case '.webp':
-            mimeType = 'image/webp';
-            break;
-          case '.svg':
-            mimeType = 'image/svg+xml';
-            break;
-          case '.jpg':
-          case '.jpeg':
-          default:
-            mimeType = 'image/jpeg';
-            break;
-        }
-      }
+      const { buffer, mimeType } = await readImageFileForServe(fullPath, maxEdge);
 
       if (preview === 'true') {
         const response = {
@@ -1125,6 +1095,9 @@ export class FileSystemPathController {
           /* ignore */
         }
         fullTargetPath = StorageManager.resolveGitInternRelativePath(rel);
+      } else if (tp === 'J-M-Reihen' || tp.startsWith('J-M-Reihen/')) {
+        // Immer Projekt-Root — nicht process.cwd()/server/J-M-Reihen
+        fullTargetPath = StorageManager.resolveGitInternRelativePath(tp);
       } else if (tp.startsWith('/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/')) {
         fullTargetPath = tp;
       } else {
@@ -1147,19 +1120,42 @@ export class FileSystemPathController {
         file.originalname === 'Praesentation.deck.json' &&
         fs.existsSync(finalFilePath)
       ) {
-        const backupDir = path.join(fullTargetPath, '.presentation-backups');
-        fs.mkdirSync(backupDir, { recursive: true });
-        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const backupPath = path.join(backupDir, `deck-${stamp}.json`);
-        fs.copyFileSync(finalFilePath, backupPath);
-        const backups = fs
-          .readdirSync(backupDir)
-          .filter((name) => name.startsWith('deck-') && name.endsWith('.json'))
-          .sort();
-        while (backups.length > 50) {
-          fs.unlinkSync(path.join(backupDir, backups.shift()!));
+        // Never overwrite a rich deck with a near-empty default (e.g. after failed load + autosave).
+        try {
+          const existingRaw = fs.readFileSync(finalFilePath, 'utf8');
+          const incomingRaw = file.buffer.toString('utf8');
+          const existing = JSON.parse(existingRaw);
+          const incoming = JSON.parse(incomingRaw);
+          const existingSlides = Array.isArray(existing?.slides) ? existing.slides.length : 0;
+          const incomingSlides = Array.isArray(incoming?.slides) ? incoming.slides.length : 0;
+          const existingBytes = Buffer.byteLength(existingRaw, 'utf8');
+          const incomingBytes = Buffer.byteLength(incomingRaw, 'utf8');
+          const looksLikeWipe =
+            existingSlides >= 5 &&
+            incomingSlides <= 2 &&
+            existingBytes > 20_000 &&
+            incomingBytes < existingBytes * 0.25;
+          if (looksLikeWipe) {
+            backupPresentationDeckBeforeOverwrite(finalFilePath, {
+              force: true,
+              reason: 'blocked-wipe',
+            });
+            console.error(
+              'Blocked deck wipe:',
+              finalFilePath,
+              `existing=${existingSlides}slides/${existingBytes}B`,
+              `incoming=${incomingSlides}slides/${incomingBytes}B`
+            );
+            return res.status(409).json({
+              error:
+                'Speichern abgelehnt: leeres Deck würde eine umfangreiche Präsentation überschreiben. Bitte Seite neu laden.',
+            });
+          }
+        } catch (guardErr) {
+          console.warn('Deck wipe guard skipped:', guardErr);
         }
-        console.log('Deck backup written:', backupPath);
+
+        backupPresentationDeckBeforeOverwrite(finalFilePath, { reason: 'before-save' });
       }
 
       fs.writeFileSync(finalFilePath, file.buffer);
@@ -1202,16 +1198,15 @@ export class FileSystemPathController {
 
       // Determine the full path
       let fullFilePath: string;
+      const normPath = filePath.replace(/\\/g, '/');
       
-      if (filePath.startsWith('git-intern/')) {
-        // Handle git-intern paths
-        const relativePath = decodeURIComponent(filePath.replace('git-intern/', ''));
-        // Use absolute path to project root for development
-                const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
-        fullFilePath = path.join(projectRoot, 'J-M-Reihen', relativePath);
+      if (normPath.startsWith('git-intern/')) {
+        const relativePath = decodeURIComponent(normPath.replace('git-intern/', ''));
+        fullFilePath = StorageManager.resolveGitInternRelativePath(relativePath);
+      } else if (normPath === 'J-M-Reihen' || normPath.startsWith('J-M-Reihen/')) {
+        fullFilePath = StorageManager.resolveGitInternRelativePath(normPath);
       } else {
-        // Handle local paths
-        fullFilePath = path.resolve(filePath);
+        fullFilePath = path.resolve(normPath);
       }
 
       console.log('Full file path:', fullFilePath);

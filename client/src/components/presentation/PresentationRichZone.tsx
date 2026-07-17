@@ -12,7 +12,7 @@ import {
   findAnimBlockFromHit,
 } from '../../lib/presentationAnimation';
 import type { HtmlAnimField } from '../../lib/presentationAnimation';
-import { sanitizePastedHtml, sanitizePresentationHtml, handlePresentationTabKey } from '../../lib/presentationRichText';
+import { sanitizePastedHtml, sanitizePresentationHtml, handlePresentationTabKey, replaceArrowShortcutsNearCursor } from '../../lib/presentationRichText';
 import { PRESENTATION_CONTENT_FONT_PX } from '../../lib/presentationFontSize';
 import { presentationNestedListSx } from '../../lib/presentationListStyles';
 import '../../styles/presentationLists.css';
@@ -204,6 +204,7 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const editingRef = useRef(false);
+  const inputTimerRef = useRef<number | null>(null);
   const zoneBasePx = VARIANT_FONT[variant];
   const rawHtml = useMemo(
     () => sanitizePresentationHtml(html || textToHtml(plain || '')),
@@ -268,8 +269,29 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
   const handleInput = () => {
     const el = ref.current;
     if (!el || !onChange) return;
-    onChange(el.innerHTML, htmlToPlain(el.innerHTML));
+    const html = el.innerHTML;
+    // Tippen bleibt lokal im DOM; React-State nur verzögert → weniger Filmstrip-/Deck-Rerenders.
+    if (inputTimerRef.current) window.clearTimeout(inputTimerRef.current);
+    inputTimerRef.current = window.setTimeout(() => {
+      onChange(html, htmlToPlain(html));
+    }, 600);
   };
+
+  useEffect(() => {
+    return () => {
+      if (inputTimerRef.current) window.clearTimeout(inputTimerRef.current);
+    };
+  }, []);
+
+  const flushInput = useCallback(() => {
+    const el = ref.current;
+    if (!el || !onChange) return;
+    if (inputTimerRef.current) {
+      window.clearTimeout(inputTimerRef.current);
+      inputTimerRef.current = null;
+    }
+    onChange(el.innerHTML, htmlToPlain(el.innerHTML));
+  }, [onChange]);
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
@@ -357,7 +379,7 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
         const next = e.relatedTarget as HTMLElement | null;
         if (isPresentationFormatUiTarget(next)) return;
         editingRef.current = false;
-        handleInput();
+        flushInput();
       }}
       onPaste={(e) => {
         if (animationEditMode) {
@@ -365,6 +387,14 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
           return;
         }
         handlePaste(e);
+      }}
+      onInput={() => {
+        if (animationEditMode) return;
+        editingRef.current = true;
+        if (replaceArrowShortcutsNearCursor(ref.current)) {
+          /* caret already moved */
+        }
+        handleInput();
       }}
       onKeyDown={(e) => {
         if (animationEditMode) {

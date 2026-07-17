@@ -67,13 +67,15 @@ const PresentationPresentPage: React.FC = () => {
       setLoading(false);
       return;
     }
-    Promise.all([loadPresentationDeck(lessonPath), loadPresentationAnnotations(lessonPath)]).then(
-      ([d, a]) => {
+    Promise.all([loadPresentationDeck(lessonPath), loadPresentationAnnotations(lessonPath)])
+      .then(([d, a]) => {
         setDeck(d);
         setAnnotations(a);
         setLoading(false);
-      }
-    );
+      })
+      .catch(() => {
+        setLoading(false);
+      });
   }, [lessonPath]);
 
   useEffect(() => {
@@ -147,7 +149,11 @@ const PresentationPresentPage: React.FC = () => {
       const ann = await flushAnnotations();
       if (!ann) throw new Error('Annotationen fehlen');
       const result = await savePresentationBothVersions(lessonPath, deck, ann, setSaveProgress);
-      setSnackbar(`Gespeichert: ${result.originalPdf} + ${result.editedPdf}`);
+      setSnackbar(
+        result.originalFrozen
+          ? `Gespeichert: Original (fixiert) + ${result.editedPdf} für SuS`
+          : `Gespeichert: ${result.originalPdf} + ${result.editedPdf}`
+      );
     } catch (e) {
       setSnackbar(e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
     } finally {
@@ -224,7 +230,17 @@ const PresentationPresentPage: React.FC = () => {
   }, [selectedStrokeId, annotations, currentSlide?.id]);
 
   useEffect(() => {
+    const isTypingTarget = (el: EventTarget | null) => {
+      if (!(el instanceof HTMLElement)) return false;
+      const tag = el.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+      if (el.isContentEditable) return true;
+      return false;
+    };
+
     const onKey = (e: KeyboardEvent) => {
+      if (isTypingTarget(e.target)) return;
+
       if (e.key === 'Escape') {
         e.preventDefault();
         if (drawActive) {
@@ -234,19 +250,41 @@ const PresentationPresentPage: React.FC = () => {
         handleBack();
         return;
       }
-      if (drawActive) return;
-      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+
+      // Folien-Navigation auch mit aktivem Stift (Tablet-Modus)
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') {
         e.preventDefault();
         goNext();
+        return;
       }
-      if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
         e.preventDefault();
         goPrev();
+        return;
+      }
+      if (e.key === 'Home') {
+        e.preventDefault();
+        setSlideIndex(0);
+        setRevealStep(0);
+        return;
+      }
+      if (e.key === 'End' && slides.length > 0) {
+        e.preventDefault();
+        const last = slides.length - 1;
+        setSlideIndex(last);
+        setRevealStep(getSlideMaxRevealSteps(slides[last]));
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [goNext, goPrev, drawActive, groupId, navigate]);
+
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [goNext, goPrev, drawActive, groupId, navigate, slides]);
+
+  // Fokus auf die Bühne, damit Pfeiltasten sofort greifen
+  useEffect(() => {
+    if (loading) return;
+    containerRef.current?.focus({ preventScroll: true });
+  }, [loading]);
 
   const stageRef = useRef<HTMLDivElement>(null);
   const scaleReady = !loading && !!deck && !!annotations && !!currentSlide;
@@ -346,6 +384,7 @@ const PresentationPresentPage: React.FC = () => {
   return (
     <Box
       ref={containerRef}
+      tabIndex={0}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
       sx={{
@@ -358,6 +397,7 @@ const PresentationPresentPage: React.FC = () => {
         userSelect: 'none',
         position: 'relative',
         overflow: 'hidden',
+        outline: 'none',
       }}
     >
       <Tooltip title="Zurück zur Stunde">

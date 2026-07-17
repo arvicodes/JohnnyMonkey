@@ -355,7 +355,7 @@ export default function PresentationTabletToolbar({
 
         {onSave && (
           <ToolBtn
-            title="Als PDF speichern (Original + Bearbeitet)"
+            title="Speichern: Original einfrieren + Bearbeitet (mit Strichen) für SuS"
             disabled={saving}
             onClick={onSave}
           >

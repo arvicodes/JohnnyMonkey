@@ -6,7 +6,7 @@ import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
 import { isFormatBarInteracting, isPresentationFormatUiTarget } from '../../lib/presentationFormatBarGuard';
 import { captureEditorSelection, clearSavedSelection } from '../../lib/presentationFontSize';
 import { presentationNestedListSx } from '../../lib/presentationListStyles';
-import { sanitizePastedHtml, normalizeNotesHtml, handlePresentationTabKey } from '../../lib/presentationRichText';
+import { sanitizePastedHtml, normalizeNotesHtml, handlePresentationTabKey, replaceArrowShortcutsNearCursor } from '../../lib/presentationRichText';
 
 export type NotesFieldKey = 'materialHtml' | 'preparationHtml' | 'speakerNotesHtml';
 
@@ -77,6 +77,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
 
   const handleInput = () => {
     if (!ref.current || readOnly) return;
+    replaceArrowShortcutsNearCursor(ref.current);
     persistContent(ref.current.innerHTML, false);
   };
 
