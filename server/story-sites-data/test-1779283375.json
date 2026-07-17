@@ -1,0 +1,17 @@
+{
+  "id": "test-1779283375",
+  "name": "Test",
+  "pages": [
+    {
+      "id": "p1",
+      "title": "T",
+      "subtitle": "",
+      "dateStr": "",
+      "location": "",
+      "heroImage": "",
+      "bodyHtml": "<p>hi</p>"
+    }
+  ],
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
