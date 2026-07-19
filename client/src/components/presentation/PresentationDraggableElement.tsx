@@ -17,7 +17,7 @@ import { isFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
 import { captureEditorSelection } from '../../lib/presentationFontSize';
 import { filterHtmlByRevealStep, hasVisibleRevealContent, isElementVisible, shouldAnimateReveal } from '../../lib/presentationReveal';
 import { presentationNestedListSx } from '../../lib/presentationListStyles';
-import { handlePresentationTabKey, replaceArrowShortcutsNearCursor } from '../../lib/presentationRichText';
+import { handlePresentationTabKey, replaceArrowShortcutsNearCursor, tryMarkdownListShortcut } from '../../lib/presentationRichText';
 import {
   effectivePresentationImageFit,
   formatImageObjectPosition,
@@ -57,6 +57,8 @@ interface PresentationDraggableElementProps {
   onAnimationTargetClick?: (itemId: string | null) => void;
   onSelect?: () => void;
   onChange?: (patch: Partial<SlideElement>) => void;
+  /** Bild auf andere Folie legen: Drop über Filmstrip-Thumbnail. */
+  onMoveToSlide?: (targetSlideId: string) => void;
   onTextEditorFocus?: (el: HTMLElement, elementId: string) => void;
   /** Video/Embed in Präsentation bedienbar (Play, Zoom …). */
   mediaInteractive?: boolean;
@@ -82,6 +84,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   onAnimationTargetClick,
   onSelect,
   onChange,
+  onMoveToSlide,
   onTextEditorFocus,
   mediaInteractive = false,
   exportSnapshot = false,
@@ -204,6 +207,9 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       };
       pendingDragRef.current = null;
       setDragging(true);
+      if (pending.mode === 'move' && pending.orig.type === 'image') {
+        document.body.setAttribute('data-pres-element-drag', 'image');
+      }
     }
 
     const d = dragRef.current;
@@ -257,6 +263,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       const wasDragging = Boolean(dragRef.current);
       const pending = pendingDragRef.current;
       const finalPatch = livePatchRef.current;
+      const dragMode = dragRef.current?.mode;
       pendingDragRef.current = null;
       dragRef.current = null;
       livePatchRef.current = null;
@@ -266,8 +273,25 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       }
       setDragging(false);
       setLiveGeom(null);
+      document.body.removeAttribute('data-pres-element-drag');
       window.removeEventListener('pointermove', pointerMove);
       window.removeEventListener('pointerup', pointerUp);
+
+      // Bild auf Filmstrip-Folie fallen lassen → verschieben
+      if (wasDragging && dragMode === 'move' && element.type === 'image' && onMoveToSlide) {
+        const hit = document.elementFromPoint(e.clientX, e.clientY);
+        const thumb = hit?.closest('[data-pres-filmstrip-slide]') as HTMLElement | null;
+        const targetSlideId = thumb?.getAttribute('data-pres-filmstrip-slide');
+        if (targetSlideId) {
+          onMoveToSlide(targetSlideId);
+          try {
+            (e.target as HTMLElement)?.releasePointerCapture?.(e.pointerId);
+          } catch {
+            /* ignore */
+          }
+          return;
+        }
+      }
 
       if (wasDragging && finalPatch && onChange) {
         onChange(finalPatch);
@@ -296,7 +320,16 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         /* ignore */
       }
     },
-    [pointerMove, element.type, element.id, editable, animationEditMode, onTextEditorFocus, onChange]
+    [
+      pointerMove,
+      element.type,
+      element.id,
+      editable,
+      animationEditMode,
+      onTextEditorFocus,
+      onChange,
+      onMoveToSlide,
+    ]
   );
 
   const startDrag = (e: React.PointerEvent, mode: DragMode, resizeCorner: ResizeCorner = 'br') => {
@@ -516,10 +549,9 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               lineHeight: 0,
               boxSizing: 'border-box',
               border: hugImageChrome ? hugChromeBorder : undefined,
-              overflow: cropMode ? 'hidden' : 'visible',
-              ...(heroImage || !hugImageChrome
-                ? { width: '100%', height: '100%' }
-                : undefined),
+              overflow: cropMode || hugImageChrome ? 'hidden' : 'visible',
+              width: '100%',
+              height: '100%',
             }}
           >
             <Box
@@ -531,6 +563,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               alt=""
               draggable={false}
               decoding="async"
+              loading={exportSnapshot ? undefined : 'lazy'}
               sx={{
                 ...(heroImage
                   ? {
@@ -539,28 +572,12 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                       width: '100%',
                       height: '100%',
                     }
-                  : hugImageChrome
-                    ? {
-                        maxWidth: '100%',
-                        maxHeight: '100%',
-                        width: 'auto',
-                        height: 'auto',
-                        display: 'block',
-                        objectFit: 'contain',
-                        objectPosition: view.imageObjectPosition || '50% 50%',
-                        userSelect: 'none',
-                      }
-                    : {
-                        maxWidth: '100%',
-                        maxHeight: '100%',
-                      }),
-                ...(!hugImageChrome
-                  ? presentationImageElementSx(
-                      element.src,
-                      view.imageFit,
-                      view.imageObjectPosition,
-                    )
-                  : { backgroundColor: 'transparent' }),
+                  : undefined),
+                ...presentationImageElementSx(
+                  element.src,
+                  view.imageFit,
+                  view.imageObjectPosition,
+                ),
               }}
             />
             {showResizeHandle && hugImageChrome && (
@@ -667,7 +684,16 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             }}
             onKeyDown={(e) => {
               const el = textRef.current;
-              if (!el || e.key !== 'Tab' || e.ctrlKey || e.metaKey || e.altKey) return;
+              if (!el) return;
+              if (e.key === ' ' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                if (tryMarkdownListShortcut(el)) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onChange?.({ html: el.innerHTML });
+                  return;
+                }
+              }
+              if (e.key !== 'Tab' || e.ctrlKey || e.metaKey || e.altKey) return;
               e.preventDefault();
               e.stopPropagation();
               handlePresentationTabKey(el, e.shiftKey);

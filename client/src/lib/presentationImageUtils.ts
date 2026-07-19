@@ -72,12 +72,11 @@ export function presentationImageElementSx(
   objectPosition?: string,
 ) {
   const effectiveFit = effectivePresentationImageFit(src, fit);
-  const useCoverLayout = effectiveFit === 'cover';
   return {
     maxWidth: '100%',
     maxHeight: '100%',
-    width: useCoverLayout ? '100%' : isAlphaFriendlyImageSrc(src) ? 'auto' : '100%',
-    height: useCoverLayout ? '100%' : isAlphaFriendlyImageSrc(src) ? 'auto' : '100%',
+    width: '100%',
+    height: '100%',
     objectFit: effectiveFit,
     objectPosition: objectPosition || DEFAULT_IMAGE_OBJECT_POSITION,
     userSelect: 'none' as const,

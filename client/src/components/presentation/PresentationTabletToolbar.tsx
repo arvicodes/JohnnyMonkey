@@ -11,6 +11,7 @@ import {
   HorizontalRule as LineIcon,
   OpenWith as SelectIcon,
   Save as SaveIcon,
+  SaveAs as SaveAsIcon,
   Undo as UndoIcon,
 } from '@mui/icons-material';
 import {
@@ -106,6 +107,11 @@ interface PresentationTabletToolbarProps {
   onSelectLineWidth: (width: number) => void;
   onUndo: () => void;
   onSave?: () => void;
+  onSaveNamed?: () => void;
+  /** docked = im Layout unten (Tablet-Präsentieren); fixed = schwebend */
+  placement?: 'fixed' | 'docked';
+  /** Original-Ansicht: nur Navigation, kein Zeichnen/Speichern */
+  readOnly?: boolean;
 }
 
 export default function PresentationTabletToolbar({
@@ -125,24 +131,46 @@ export default function PresentationTabletToolbar({
   onSelectLineWidth,
   onUndo,
   onSave,
+  onSaveNamed,
+  placement = 'fixed',
+  readOnly = false,
 }: PresentationTabletToolbarProps) {
-  const showColors = drawActive && toolUsesColor(activeTool);
-  const showLineWidths = drawActive && toolUsesLineWidth(activeTool);
+  const showColors = !readOnly && drawActive && toolUsesColor(activeTool);
+  const showLineWidths = !readOnly && drawActive && toolUsesLineWidth(activeTool);
   const widthOptions = lineWidthsForTool(activeTool);
+  const docked = placement === 'docked';
 
   return (
     <Box
       sx={{
-        position: 'fixed',
-        bottom: 12,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 20,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 0.4,
-        maxWidth: 'calc(100vw - 16px)',
+        ...(docked
+          ? {
+              position: 'relative',
+              flexShrink: 0,
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 0.4,
+              px: 1,
+              pt: 0.5,
+              pb: 'max(10px, env(safe-area-inset-bottom))',
+              bgcolor: 'rgba(0,0,0,0.92)',
+              borderTop: '1px solid rgba(255,255,255,0.08)',
+              zIndex: 20,
+            }
+          : {
+              position: 'fixed',
+              bottom: 12,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 20,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 0.4,
+              maxWidth: 'calc(100vw - 16px)',
+            }),
       }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -254,15 +282,30 @@ export default function PresentationTabletToolbar({
           sx={{ mx: 0.15, borderColor: 'rgba(255,255,255,0.1)', height: 18, alignSelf: 'center' }}
         />
 
-        <ToolBtn
-          title={drawActive ? 'Werkzeuge aus' : 'Stift & Werkzeuge'}
-          active={drawActive}
-          onClick={onToggleDraw}
-        >
-          <DrawIcon sx={{ fontSize: 15 }} />
-        </ToolBtn>
+        {readOnly ? (
+          <Typography
+            sx={{
+              px: 1,
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: 0.4,
+              color: JOHNNY_PRESENTATION.warm,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Original
+          </Typography>
+        ) : (
+          <ToolBtn
+            title={drawActive ? 'Werkzeuge aus' : 'Stift & Werkzeuge'}
+            active={drawActive}
+            onClick={onToggleDraw}
+          >
+            <DrawIcon sx={{ fontSize: 15 }} />
+          </ToolBtn>
+        )}
 
-        {drawActive && (
+        {!readOnly && drawActive && (
           <>
             <ToolBtn
               title="Auswählen (Formen bewegen, drehen, skalieren)"
@@ -353,13 +396,22 @@ export default function PresentationTabletToolbar({
           sx={{ mx: 0.15, borderColor: 'rgba(255,255,255,0.1)', height: 18, alignSelf: 'center' }}
         />
 
-        {onSave && (
+        {!readOnly && onSave && (
           <ToolBtn
-            title="Speichern: Original einfrieren + Bearbeitet (mit Strichen) für SuS"
+            title="Speichern: Original bleibt (Erstell-Stand) + Bearbeitet (mit Strichen) für SuS"
             disabled={saving}
             onClick={onSave}
           >
             <SaveIcon sx={{ fontSize: 15 }} />
+          </ToolBtn>
+        )}
+        {!readOnly && onSaveNamed && (
+          <ToolBtn
+            title="Als benannte Version speichern (z. B. Praesentation_Klasse5.pdf)"
+            disabled={saving}
+            onClick={onSaveNamed}
+          >
+            <SaveAsIcon sx={{ fontSize: 15 }} />
           </ToolBtn>
         )}
 

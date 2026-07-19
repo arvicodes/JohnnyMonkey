@@ -32,19 +32,21 @@ import { HIGHLIGHT_PRESETS, TEXT_COLOR_PRESETS } from '../../lib/presentationThe
 import { setFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
 import {
   applyFontFamily,
-  applyFontSizePx,
   applyHighlightColor,
   applyTextColor,
   bookmarkSelection,
   clearFontFamilyInSelection,
   clearInlineFormatting,
   execFormat,
-  getEditorFontSizeSteps,
   getSelectionFontSizePx,
   nudgeFontSize,
   stashEditorSelection,
   insertTextAtCursor,
 } from '../../lib/presentationRichText';
+import {
+  applyEditorFontSizePx,
+  getEditorFontSizeSteps,
+} from '../../lib/presentationFontSize';
 import { PRESENTATION_EMOJI_GROUPS } from '../../lib/presentationEmojis';
 import {
   getEditorSelectionFontFamily,
@@ -327,7 +329,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
           if (raw === FONT_SIZE_PLACEHOLDER) return;
           const px = parseInt(raw, 10);
           if (!Number.isFinite(px)) return;
-          applyAndNotify(() => applyFontSizePx(activeEditor, px), true);
+          applyAndNotify(() => applyEditorFontSizePx(activeEditor, px), true);
         }}
         onMouseDown={(e) => e.stopPropagation()}
         renderValue={(v) =>

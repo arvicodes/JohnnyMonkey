@@ -30,6 +30,7 @@ import {
   waitForSlideRenderAssets,
 } from './presentationPdfExportScheduler';
 import {
+  buildNamedJohnnyPresentationPdfName,
   LESSON_PRESENTATION_PDF_EDITED,
   LESSON_PRESENTATION_PDF_ORIGINAL,
 } from './presentationLessonAssets';
@@ -125,7 +126,8 @@ async function captureSlideCanvas(
   slideIndex: number,
   slideTotal: number,
   strokes: PresentationStroke[],
-  includeStrokes: boolean
+  includeStrokes: boolean,
+  captureScale = EXPORT_CAPTURE_SCALE
 ): Promise<HTMLCanvasElement> {
   const host = document.createElement('div');
   host.setAttribute('data-pres-export-host', 'true');
@@ -189,7 +191,7 @@ async function captureSlideCanvas(
 
     const html2canvas = (await import('html2canvas')).default;
     const canvas = await html2canvas(target, {
-      scale: EXPORT_CAPTURE_SCALE,
+      scale: captureScale,
       useCORS: true,
       allowTaint: false,
       logging: false,
@@ -227,18 +229,33 @@ async function buildPresentationPdfBlob(
   deck: PresentationDeck,
   annotations: PresentationAnnotations,
   includeStrokes: boolean,
-  onProgress?: (current: number, total: number) => void
+  onProgress?: (current: number, total: number) => void,
+  options?: { captureScale?: number; imageFormat?: 'PNG' | 'JPEG'; jpegQuality?: number }
 ): Promise<Blob> {
   const normalized = normalizeDeck(deck);
   const slides = sortSlides(normalized.slides);
   let pdf: jsPDF | null = null;
+  const captureScale = options?.captureScale ?? EXPORT_CAPTURE_SCALE;
+  const imageFormat = options?.imageFormat ?? 'PNG';
+  const jpegQuality = options?.jpegQuality ?? 0.82;
 
   for (let i = 0; i < slides.length; i++) {
     const slide = slides[i];
     const strokes = annotations.bySlideId[slide.id] ?? [];
     onProgress?.(i + 1, slides.length);
-    const canvas = await captureSlideCanvas(normalized, slide, i, slides.length, strokes, includeStrokes);
-    const img = canvas.toDataURL('image/png');
+    const canvas = await captureSlideCanvas(
+      normalized,
+      slide,
+      i,
+      slides.length,
+      strokes,
+      includeStrokes,
+      captureScale
+    );
+    const img =
+      imageFormat === 'JPEG'
+        ? canvas.toDataURL('image/jpeg', jpegQuality)
+        : canvas.toDataURL('image/png');
     const w = canvas.width;
     const h = canvas.height;
 
@@ -251,7 +268,7 @@ async function buildPresentationPdfBlob(
     } else {
       pdf.addPage([w, h], w > h ? 'landscape' : 'portrait');
     }
-    pdf.addImage(img, 'PNG', 0, 0, w, h, undefined, 'FAST');
+    pdf.addImage(img, imageFormat, 0, 0, w, h, undefined, 'FAST');
   }
 
   if (!pdf) throw new Error('Keine Folien zum Export');
@@ -262,7 +279,11 @@ async function savePdfBlob(lessonPath: string, filename: string, blob: Blob): Pr
   const formData = new FormData();
   formData.append('file', blob, filename);
   formData.append('targetPath', lessonPath.replace(/\\/g, '/').replace(/\/$/, ''));
-  const res = await fetch('/api/file-system-paths/save-file', { method: 'POST', body: formData });
+  const res = await fetch('/api/file-system-paths/save-file', {
+    method: 'POST',
+    body: formData,
+    credentials: 'include',
+  });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { error?: string }).error || 'PDF konnte nicht gespeichert werden');
@@ -272,6 +293,7 @@ async function savePdfBlob(lessonPath: string, filename: string, blob: Blob): Pr
 export type PresentationSaveResult = {
   originalPdf: string;
   editedPdf: string;
+  namedPdf?: string;
   deckOriginalSnapshot: string;
   originalFrozen: boolean;
 };
@@ -281,6 +303,8 @@ export type ExportPresentationPdfOptions = {
   originalDeck?: PresentationDeck;
   /** Nur Bearbeitet-PDF neu erzeugen (Original unverändert lassen). */
   editedOnly?: boolean;
+  /** Zusätzlich Bearbeitet-PDF unter `Praesentation_<Label>.pdf` ablegen. */
+  namedLabel?: string;
 };
 
 /** PDFs erzeugen: Original = Erstell-Stand ohne Striche, Bearbeitet = Live + Striche. */
@@ -300,7 +324,8 @@ export async function exportPresentationPdfVersions(
     originalDeck = normalizeDeck(options.originalDeck);
   } else {
     const loaded = await loadPresentationOriginalDeck(folder);
-    originalDeck = isOriginalDeckFrozen(loaded) ? loaded! : editedDeck;
+    // Snapshot nutzen, sobald er existiert — nicht erst nach Freeze
+    originalDeck = loaded?.slides?.length ? loaded : editedDeck;
   }
   originalDeck = normalizeDeck(stripOriginalFreezeMeta(originalDeck));
 
@@ -313,15 +338,36 @@ export async function exportPresentationPdfVersions(
   }
 
   onProgress?.('Bearbeitet-PDF…');
-  const editedBlob = await buildPresentationPdfBlob(editedDeck, annotations, true, (c, t) => {
-    onProgress?.(`Bearbeitet ${c}/${t}`);
-  });
+  const editedBlob = await buildPresentationPdfBlob(
+    editedDeck,
+    annotations,
+    true,
+    (c, t) => {
+      onProgress?.(`Bearbeitet ${c}/${t}`);
+    },
+    options?.editedOnly
+      ? { captureScale: 1.25, imageFormat: 'JPEG', jpegQuality: 0.85 }
+      : undefined
+  );
   await savePdfBlob(folder, PDF_EDITED_FILENAME, editedBlob);
+
+  let namedPdf: string | undefined;
+  const namedName = options?.namedLabel
+    ? buildNamedJohnnyPresentationPdfName(options.namedLabel)
+    : null;
+  if (namedName && namedName !== PDF_EDITED_FILENAME && namedName !== PDF_ORIGINAL_FILENAME) {
+    onProgress?.(`Version ${namedName}…`);
+    await savePdfBlob(folder, namedName, editedBlob);
+    namedPdf = namedName;
+  } else if (options?.namedLabel && !namedName) {
+    throw new Error('Ungültiger Versionsname (nicht „Original“ verwenden)');
+  }
 
   const snapshotMeta = await loadPresentationOriginalDeck(folder);
   return {
     originalPdf: PDF_ORIGINAL_FILENAME,
     editedPdf: PDF_EDITED_FILENAME,
+    namedPdf,
     deckOriginalSnapshot: DECK_ORIGINAL_SNAPSHOT,
     originalFrozen: isOriginalDeckFrozen(snapshotMeta),
   };
@@ -337,7 +383,8 @@ export async function savePresentationBothVersions(
   lessonPath: string,
   deck: PresentationDeck,
   annotations: PresentationAnnotations,
-  onProgress?: (label: string) => void
+  onProgress?: (label: string) => void,
+  options?: { namedLabel?: string }
 ): Promise<PresentationSaveResult> {
   const folder = lessonPath.replace(/\\/g, '/').replace(/\/$/, '');
 
@@ -355,13 +402,83 @@ export async function savePresentationBothVersions(
 
   return exportPresentationPdfVersions(lessonPath, deckPayload, annPayload, onProgress, {
     originalDeck: originalSnapshot,
+    namedLabel: options?.namedLabel,
   });
 }
 
 /**
+ * Benannte Version: nur Bearbeitet-PDF einmal erzeugen + als bearbeitet und
+ * Praesentation_<Name>.pdf speichern (ohne erneutes schweres Original-PDF).
+ * Falls der Canvas-Export scheitert: Kopie der zuletzt gespeicherten Bearbeitet-PDF.
+ */
+export async function savePresentationNamedVersion(
+  lessonPath: string,
+  deck: PresentationDeck,
+  annotations: PresentationAnnotations,
+  namedLabel: string,
+  onProgress?: (label: string) => void
+): Promise<PresentationSaveResult> {
+  const label = (namedLabel || '').trim();
+  if (!label) throw new Error('Bitte einen Versionsnamen eingeben');
+  const namedName = buildNamedJohnnyPresentationPdfName(label);
+  if (!namedName) throw new Error('Ungültiger Versionsname (nicht „Original“ verwenden)');
+
+  const folder = lessonPath.replace(/\\/g, '/').replace(/\/$/, '');
+
+  onProgress?.('JSON sichern…');
+  const deckPayload = {
+    ...stripOriginalFreezeMeta(normalizeDeck(deck)),
+    updatedAt: new Date().toISOString(),
+  };
+  const annPayload = { ...annotations, updatedAt: new Date().toISOString() };
+  await saveJsonFile(folder, DECK_FILENAME, deckPayload);
+  await saveJsonFile(folder, ANNOTATIONS_FILENAME, annPayload);
+
+  onProgress?.('Original sichern…');
+  const originalSnapshot = await writeOriginalDeckSnapshot(folder, deckPayload, 'freeze');
+
+  try {
+    return await exportPresentationPdfVersions(lessonPath, deckPayload, annPayload, onProgress, {
+      editedOnly: true,
+      namedLabel: label,
+    });
+  } catch (exportErr) {
+    console.warn('Named PDF export failed, trying copy of existing bearbeitet.pdf', exportErr);
+    onProgress?.('Kopie der Bearbeitet-PDF…');
+    const copied = await copyExistingEditedPdfAsNamed(folder, namedName);
+    if (!copied) throw exportErr;
+    return {
+      originalPdf: PDF_ORIGINAL_FILENAME,
+      editedPdf: PDF_EDITED_FILENAME,
+      namedPdf: namedName,
+      deckOriginalSnapshot: DECK_ORIGINAL_SNAPSHOT,
+      originalFrozen: isOriginalDeckFrozen(originalSnapshot),
+    };
+  }
+}
+
+/** Bestehende Praesentation_bearbeitet.pdf unter neuem Namen speichern. */
+async function copyExistingEditedPdfAsNamed(
+  lessonPath: string,
+  namedFilename: string
+): Promise<boolean> {
+  const folder = lessonPath.replace(/\\/g, '/').replace(/\/$/, '');
+  const editedPath = `${folder}/${PDF_EDITED_FILENAME}`;
+  const res = await fetch(
+    `/api/file-system-paths/download?filePath=${encodeURIComponent(editedPath)}`,
+    { credentials: 'include' }
+  );
+  if (!res.ok) return false;
+  const blob = await res.blob();
+  if (!blob.size) return false;
+  await savePdfBlob(folder, namedFilename, blob);
+  return true;
+}
+
+/**
  * Nach dem Speichern im Editor:
- * - Solange Original nicht eingefroren: Snapshot = aktueller Erstell-Stand
- * - Original-PDF aus Snapshot, Bearbeitet-PDF aus Arbeitsdeck (+ ggf. Striche)
+ * - Original nur syncen, wenn noch nicht eingefroren
+ * - Original-PDF aus Snapshot (unbearbeitet), Bearbeitet-PDF aus Arbeitsdeck + Striche
  */
 export async function refreshPresentationPdfsFromLessonFolder(lessonPath: string): Promise<void> {
   const { loadPresentationDeck } = await import('./presentationDeck');

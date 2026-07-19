@@ -14,6 +14,7 @@ interface PresentationSlideElementsProps {
   onAnimationTargetClick?: (itemId: string | null) => void;
   onSelect?: (id: string) => void;
   onElementChange?: (id: string, patch: Partial<SlideElement>) => void;
+  onMoveElementToSlide?: (elementId: string, targetSlideId: string) => void;
   onTextEditorFocus?: (el: HTMLElement, elementId: string) => void;
   mediaInteractive?: boolean;
   exportSnapshot?: boolean;
@@ -32,6 +33,7 @@ const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
   onAnimationTargetClick,
   onSelect,
   onElementChange,
+  onMoveElementToSlide,
   onTextEditorFocus,
   mediaInteractive = false,
   exportSnapshot = false,
@@ -55,6 +57,9 @@ const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
           onAnimationTargetClick={onAnimationTargetClick}
           onSelect={() => onSelect?.(el.id)}
           onChange={(patch) => onElementChange?.(el.id, patch)}
+          onMoveToSlide={
+            onMoveElementToSlide ? (targetSlideId) => onMoveElementToSlide(el.id, targetSlideId) : undefined
+          }
           onTextEditorFocus={onTextEditorFocus}
           mediaInteractive={mediaInteractive}
           exportSnapshot={exportSnapshot}

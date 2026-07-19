@@ -1184,6 +1184,60 @@ export class FileSystemPathController {
   }
 
   /**
+   * Datei im Stundenordner löschen (nur unter J-M-Reihen / git-intern).
+   */
+  static async deleteFile(req: Request, res: Response) {
+    try {
+      const filePathRaw = (req.body?.filePath || req.query?.filePath) as string | undefined;
+      if (!filePathRaw || typeof filePathRaw !== 'string') {
+        return res.status(400).json({ error: 'filePath ist erforderlich' });
+      }
+
+      let fp = filePathRaw.replace(/\\/g, '/').trim();
+      if (fp.startsWith('git-intern//Users/')) {
+        fp = fp.replace(
+          'git-intern//Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/',
+          'git-intern/'
+        );
+      }
+
+      const fileName = path.basename(fp);
+      // Nur Johnny-Präsentations-PDF-Versionen (nicht Original)
+      if (!/^Praesentation_.+\.pdf$/i.test(fileName) || fileName === 'Praesentation_Original.pdf') {
+        return res.status(403).json({
+          error: 'Nur benannte Präsentations-Versionen (nicht Original) können so gelöscht werden.',
+        });
+      }
+
+      const fullPath = StorageManager.resolveFilePath(fp);
+      if (!fullPath) {
+        return res.status(404).json({ error: 'Datei nicht gefunden' });
+      }
+
+      const jmRoot = StorageManager.resolveGitInternRelativePath('');
+      const normalizedFull = path.resolve(fullPath);
+      const normalizedRoot = path.resolve(jmRoot);
+      if (
+        normalizedFull !== normalizedRoot &&
+        !normalizedFull.startsWith(normalizedRoot + path.sep)
+      ) {
+        return res.status(403).json({ error: 'Löschen außerhalb von J-M-Reihen nicht erlaubt' });
+      }
+
+      if (!fs.existsSync(normalizedFull) || !fs.statSync(normalizedFull).isFile()) {
+        return res.status(404).json({ error: 'Datei nicht gefunden' });
+      }
+
+      fs.unlinkSync(normalizedFull);
+      console.log('Deleted file:', normalizedFull);
+      res.json({ success: true, deleted: fileName });
+    } catch (error: any) {
+      console.error('Error deleting file:', error);
+      res.status(500).json({ error: 'Datei konnte nicht gelöscht werden: ' + (error.message || '') });
+    }
+  }
+
+  /**
    * Load whiteboard file (.wb) as JSON
    */
   static async loadWhiteboardFile(req: Request, res: Response) {

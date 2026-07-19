@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, CircularProgress, IconButton, Snackbar, Tooltip, Typography } from '@mui/material';
+import { Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Snackbar, TextField, Tooltip, Typography } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
@@ -12,17 +12,21 @@ import {
   PresentationAnnotations,
   PresentationDeck,
   PresentationStroke,
+  PresentationViewerVariant,
   SLIDE_REF_HEIGHT,
   SLIDE_REF_WIDTH,
+  createEmptyAnnotations,
   loadPresentationAnnotations,
   loadPresentationDeck,
+  loadPresentationDeckForOriginalView,
   nextViewportScale,
   saveJsonFile,
   sortSlides,
+  writeOriginalDeckSnapshot,
 } from '../lib/presentationDeck';
 import { PresentationDrawTool, defaultLineWidthForTool, lineWidthsForTool } from '../lib/presentationDrawTools';
 import { presentationLessonBackUrl } from '../lib/presentationEditorUi';
-import { savePresentationBothVersions } from '../lib/presentationExport';
+import { savePresentationBothVersions, savePresentationNamedVersion } from '../lib/presentationExport';
 import { getSlideMaxRevealSteps } from '../lib/presentationReveal';
 import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../lib/presentationTransitions';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
@@ -35,6 +39,9 @@ const PresentationPresentPage: React.FC = () => {
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const lessonPath = params.get('lessonPath') || '';
   const groupId = params.get('groupId') || '';
+  const viewerVariant: PresentationViewerVariant =
+    params.get('variant') === 'original' ? 'original' : 'edited';
+  const isOriginalView = viewerVariant === 'original';
 
   const [loading, setLoading] = useState(true);
   const [deck, setDeck] = useState<PresentationDeck | null>(null);
@@ -50,6 +57,8 @@ const PresentationPresentPage: React.FC = () => {
   const [snackbar, setSnackbar] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState('');
+  const [saveNamedOpen, setSaveNamedOpen] = useState(false);
+  const [saveNamedLabel, setSaveNamedLabel] = useState('');
   const [displayScale, setDisplayScale] = useState(0.5);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -67,16 +76,48 @@ const PresentationPresentPage: React.FC = () => {
       setLoading(false);
       return;
     }
-    Promise.all([loadPresentationDeck(lessonPath), loadPresentationAnnotations(lessonPath)])
-      .then(([d, a]) => {
+    let cancelled = false;
+    // Original = Erstell-Stand OHNE Striche, aber mit Handles zum Neu-Bearbeiten
+    // bearbeitet = Arbeitsdeck + gespeicherte Striche
+    const loadDeck = isOriginalView
+      ? loadPresentationDeckForOriginalView(lessonPath)
+      : loadPresentationDeck(lessonPath);
+    const loadAnn = isOriginalView
+      ? Promise.resolve(null as PresentationAnnotations | null)
+      : loadPresentationAnnotations(lessonPath);
+
+    Promise.all([loadDeck, loadAnn])
+      .then(async ([d, a]) => {
+        if (cancelled) return;
+        // Erstell-Stand einmalig einfrieren, bevor Live-Striche gespeichert werden
+        if (d) {
+          try {
+            await writeOriginalDeckSnapshot(lessonPath, d, 'freeze');
+          } catch {
+            /* Freeze ist Best-Effort */
+          }
+        }
+        if (cancelled) return;
         setDeck(d);
-        setAnnotations(a);
+        setAnnotations(
+          isOriginalView
+            ? createEmptyAnnotations(lessonPath)
+            : a ?? createEmptyAnnotations(lessonPath)
+        );
+        // Original öffnen → sofort zeichnen/Handles nutzbar (Folie bleibt erstmal blank)
+        if (isOriginalView) {
+          setDrawActive(true);
+          setActiveTool('select');
+        }
         setLoading(false);
       })
       .catch(() => {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       });
-  }, [lessonPath]);
+    return () => {
+      cancelled = true;
+    };
+  }, [lessonPath, isOriginalView]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -142,7 +183,11 @@ const PresentationPresentPage: React.FC = () => {
   }, [annotations, lessonPath]);
 
   const handleSaveBothVersions = useCallback(async () => {
-    if (!deck || !annotations || saving) return;
+    if (!deck || saving) return;
+    if (!annotations) {
+      setSnackbar('Annotationen fehlen — bitte kurz warten und erneut speichern');
+      return;
+    }
     setSaving(true);
     setSaveProgress('Vorbereiten…');
     try {
@@ -161,6 +206,41 @@ const PresentationPresentPage: React.FC = () => {
       setSaveProgress('');
     }
   }, [annotations, deck, flushAnnotations, lessonPath, saving]);
+
+  const handleSaveNamedVersion = useCallback(async () => {
+    const label = saveNamedLabel.trim();
+    if (!label || !deck || saving) return;
+    if (!annotations) {
+      setSnackbar('Annotationen fehlen — bitte kurz warten und erneut speichern');
+      return;
+    }
+    setSaving(true);
+    setSaveProgress('Vorbereiten…');
+    try {
+      const ann = await flushAnnotations();
+      if (!ann) throw new Error('Annotationen fehlen');
+      const result = await savePresentationNamedVersion(
+        lessonPath,
+        deck,
+        ann,
+        label,
+        setSaveProgress
+      );
+      setSnackbar(
+        result.namedPdf
+          ? `Version gespeichert: ${result.namedPdf}`
+          : `Gespeichert: ${result.editedPdf}`
+      );
+      setSaveNamedOpen(false);
+      setSaveNamedLabel('');
+    } catch (e) {
+      console.error('Named presentation save failed', e);
+      setSnackbar(e instanceof Error ? e.message : 'Version speichern fehlgeschlagen');
+    } finally {
+      setSaving(false);
+      setSaveProgress('');
+    }
+  }, [annotations, deck, flushAnnotations, lessonPath, saveNamedLabel, saving]);
 
   const undoStroke = () => {
     if (currentStrokes.length === 0) return;
@@ -292,22 +372,39 @@ const PresentationPresentPage: React.FC = () => {
   useLayoutEffect(() => {
     if (!scaleReady) return;
 
+    const measureStage = (host: HTMLElement) => {
+      // content-box ohne Padding — sonst ist die Folie zu groß und die Fußzeile abgeschnitten
+      const cs = getComputedStyle(host);
+      const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+      const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      const width = Math.max(0, host.clientWidth - padX);
+      const height = Math.max(0, host.clientHeight - padY);
+      return { width, height };
+    };
+
     const updateScale = () => {
-      const host = containerRef.current;
+      const host = stageRef.current;
       if (!host) return;
-      const width = host.clientWidth;
-      const height = host.clientHeight;
-      if (width < 80) return;
-      setDisplayScale((prev) => nextViewportScale(prev, width, height, 'present'));
+      const { width, height } = measureStage(host);
+      if (width < 40 || height < 40) return;
+      // 1px Sicherheitsabstand gegen Subpixel-Clipping der Fußzeile
+      setDisplayScale((prev) => nextViewportScale(prev, width - 1, height - 1, 'present'));
     };
 
     updateScale();
-    const ro = new ResizeObserver(updateScale);
-    ro.observe(containerRef.current!);
+    const host = stageRef.current;
+    if (!host) return undefined;
+    const ro = new ResizeObserver(() => updateScale());
+    ro.observe(host);
     window.addEventListener('resize', updateScale);
+    window.addEventListener('orientationchange', updateScale);
+    // Nach Layout der Toolbar nochmals messen (iPad/safe-area)
+    const raf = requestAnimationFrame(() => updateScale());
     return () => {
+      cancelAnimationFrame(raf);
       ro.disconnect();
       window.removeEventListener('resize', updateScale);
+      window.removeEventListener('orientationchange', updateScale);
     };
   }, [scaleReady]);
 
@@ -367,9 +464,9 @@ const PresentationPresentPage: React.FC = () => {
   const displayW = SLIDE_REF_WIDTH * displayScale;
 
   const presentBackBtnSx = {
-    position: 'fixed' as const,
+    position: 'absolute' as const,
     left: 'max(8px, env(safe-area-inset-left))',
-    bottom: 'max(68px, calc(12px + env(safe-area-inset-bottom)))',
+    top: 'max(8px, env(safe-area-inset-top))',
     zIndex: 30,
     width: 34,
     height: 34,
@@ -422,8 +519,11 @@ const PresentationPresentPage: React.FC = () => {
           width: '100%',
           display: 'flex',
           justifyContent: 'center',
-          alignItems: 'flex-start',
+          alignItems: 'center',
           overflow: 'hidden',
+          px: 0.5,
+          py: 0.5,
+          boxSizing: 'border-box',
         }}
       >
         <Box
@@ -431,6 +531,7 @@ const PresentationPresentPage: React.FC = () => {
             width: displayW,
             height: displayH,
             maxWidth: '100%',
+            maxHeight: '100%',
             flexShrink: 0,
             overflow: 'hidden',
           }}
@@ -491,11 +592,12 @@ const PresentationPresentPage: React.FC = () => {
       {maxReveal > 0 && currentSlide.revealEnabled !== false && (
         <Typography
           sx={{
-            position: 'fixed',
-            bottom: 12,
+            position: 'absolute',
+            // Über der docked Toolbar, nicht über der Folien-Fußzeile
+            bottom: 'max(72px, calc(56px + env(safe-area-inset-bottom)))',
             left: '50%',
             transform: 'translateX(-50%)',
-            zIndex: 20,
+            zIndex: 15,
             fontSize: 11,
             color: 'rgba(255,255,255,0.72)',
             bgcolor: 'rgba(22,24,28,0.72)',
@@ -518,6 +620,7 @@ const PresentationPresentPage: React.FC = () => {
         canGoNext={canGoNext}
         canUndo={currentStrokes.length > 0}
         saving={saving}
+        placement="docked"
         onGoPrev={goPrev}
         onGoNext={goNext}
         onToggleDraw={handleToggleDraw}
@@ -526,13 +629,67 @@ const PresentationPresentPage: React.FC = () => {
         onSelectLineWidth={handleSelectLineWidth}
         onUndo={undoStroke}
         onSave={() => void handleSaveBothVersions()}
+        onSaveNamed={() => setSaveNamedOpen(true)}
       />
 
-      {saving && saveProgress && (
+      <Dialog
+        open={saveNamedOpen}
+        onClose={() => !saving && setSaveNamedOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        // Über der Präsentations-Toolbar; Fortschritt im Dialog sichtbar
+        sx={{ zIndex: 1400 }}
+      >
+        <DialogTitle>Version speichern</DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            Speichert die aktuelle Bearbeitung unter einem Namen
+            (z.&nbsp;B. „2026“ → Praesentation_2026.pdf). Im Stundenablauf erscheint
+            Original | 2026 — gleiche Ansicht wie bisher „bearbeitet“, nur mit deinem Namen.
+          </Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            label="Zusatz im Dateinamen"
+            value={saveNamedLabel}
+            onChange={(e) => setSaveNamedLabel(e.target.value)}
+            placeholder="z. B. Klasse5 oder mitNotizen"
+            disabled={saving}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && saveNamedLabel.trim() && !saving) {
+                e.preventDefault();
+                void handleSaveNamedVersion();
+              }
+            }}
+          />
+          {saving && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2 }}>
+              <CircularProgress size={16} />
+              <Typography variant="caption" color="text.secondary">
+                {saveProgress || 'Speichern…'} (kann bei vielen Folien etwas dauern)
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSaveNamedOpen(false)} disabled={saving}>
+            Abbrechen
+          </Button>
+          <Button
+            variant="contained"
+            disabled={!saveNamedLabel.trim() || saving}
+            onClick={() => void handleSaveNamedVersion()}
+          >
+            Speichern
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {saving && saveProgress && !saveNamedOpen && (
         <Box
           sx={{
-            position: 'fixed',
-            bottom: 58,
+            position: 'absolute',
+            bottom: 8,
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 25,
@@ -545,6 +702,7 @@ const PresentationPresentPage: React.FC = () => {
             bgcolor: 'rgba(22,24,28,0.92)',
             border: '1px solid rgba(255,255,255,0.1)',
             color: 'rgba(255,255,255,0.85)',
+            pointerEvents: 'none',
           }}
         >
           <CircularProgress size={14} sx={{ color: JOHNNY_PRESENTATION.warm }} />

@@ -13,6 +13,9 @@ import {
   Typography,
 } from '@mui/material';
 import {
+  ContentCut as CutIcon,
+  ContentCopy as CopyIcon,
+  ContentPaste as PasteIcon,
   Crop as CropIcon,
   ImageOutlined as ImageIcon,
   PaletteOutlined as PaletteIcon,
@@ -74,6 +77,10 @@ interface PresentationSlideToolsBarProps {
   onAddShapeElement: (kind: PresentationShapeKind) => void;
   onUpdateElement: (id: string, patch: Partial<SlideElement>) => void;
   onDeleteElement: (id: string) => void;
+  onCutElement?: () => void;
+  onCopyElement?: () => void;
+  onPasteElement?: () => void;
+  canPasteElement?: boolean;
   onReorderElementLayer: (id: string, action: ElementLayerAction) => void;
   onSetElementStackLayer: (id: string, layer: ElementStackLayer) => void;
 }
@@ -89,6 +96,10 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
   onAddShapeElement,
   onUpdateElement,
   onDeleteElement,
+  onCutElement,
+  onCopyElement,
+  onPasteElement,
+  canPasteElement = false,
   onReorderElementLayer,
   onSetElementStackLayer,
 }) => {
@@ -145,6 +156,13 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
             <ShapeIcon sx={{ fontSize: 15 }} />
           </IconButton>
         </Tooltip>
+        {canPasteElement && (
+          <Tooltip title="Bild/Form einfügen (⌘V)">
+            <IconButton size="small" onClick={() => onPasteElement?.()} sx={iconBtnSx}>
+              <PasteIcon sx={{ fontSize: 14 }} />
+            </IconButton>
+          </Tooltip>
+        )}
         <Popover
           open={Boolean(shapeAnchor)}
           anchorEl={shapeAnchor}
@@ -190,6 +208,32 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
 
       {selectedElement && (
         <>
+          {(selectedElement.type === 'image' || selectedElement.type === 'shape') && (
+            <Box sx={toolGroupSx}>
+              <Tooltip title="Ausschneiden (⌘X) — dann andere Folie → Einfügen">
+                <IconButton size="small" onClick={() => onCutElement?.()} sx={iconBtnSx}>
+                  <CutIcon sx={{ fontSize: 14 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Kopieren (⌘C)">
+                <IconButton size="small" onClick={() => onCopyElement?.()} sx={iconBtnSx}>
+                  <CopyIcon sx={{ fontSize: 14 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Einfügen (⌘V)">
+                <span>
+                  <IconButton
+                    size="small"
+                    disabled={!canPasteElement}
+                    onClick={() => onPasteElement?.()}
+                    sx={iconBtnSx}
+                  >
+                    <PasteIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Box>
+          )}
           {layerIconGroup}
           <Tooltip title="Einstellungen">
                 <IconButton

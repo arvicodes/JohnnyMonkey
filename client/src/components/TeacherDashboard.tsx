@@ -14,7 +14,12 @@ import {
 import {
   isLessonPresentationAssetFile,
   isLessonPresentationSystemFile,
+  listJohnnyPresentationVersions,
+  canDeleteJohnnyPresentationVersion,
+  type JohnnyPresentationVersion,
 } from '../lib/presentationLessonAssets';
+import { presentationPresentUrl, presentationReviewUrl } from '../lib/presentationDeck';
+import { openLessonFolderFile } from '../lib/openLessonFolderFile';
 import MaterialShareVersionControl from './MaterialShareVersionControl';
 import KACorrectionMode from './KACorrectionMode';
 import { DEFAULT_PROFILE_COLOR } from '../lib/profileColor';
@@ -345,7 +350,6 @@ import { SubmissionStatistics } from './StudentDashboard';
 import { RichTextEditor } from './ui/rich-text-editor';
 import { FlashcardCreationModal } from './FlashcardCreationModal';
 import SubmissionViewer from './SubmissionViewer';
-import { openLessonFolderFile } from '../lib/openLessonFolderFile';
 import SpielMenuButton from './SpielMenuButton';
 import LearningGroupAppearanceFields from './LearningGroupAppearanceFields';
 import DualStudentAvatars from './DualStudentAvatars';
@@ -6031,6 +6035,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [dragOverPlanIndex, setDragOverPlanIndex] = useState<number | null>(null);
   const [lessonPlanViewMode, setLessonPlanViewMode] = useState<'create' | 'run' | 'background'>('create');
   const [laptopPresentationActive, setLaptopPresentationActive] = useState(false);
+  /** Laptop-Linksspalte: Deck (Original/bearbeitet) oder benannte PDF-Version */
+  const [laptopPresentationView, setLaptopPresentationView] = useState<
+    | { mode: 'deck'; variant: 'original' | 'edited' }
+    | { mode: 'pdf'; path: string; label: string }
+  >({ mode: 'deck', variant: 'edited' });
   const [showConfettiGame, setShowConfettiGame] = useState(false);
   const [showMaskMemory, setShowMaskMemory] = useState(false);
   const [showFoolQuiz, setShowFoolQuiz] = useState(false);
@@ -18264,11 +18273,68 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             }}
           >
               {laptopPresentationActive && lessonPlanViewMode === 'background' && lessonModalData.lessonPath ? (
-                <PresentationLaptopPlayer
-                  lessonPath={lessonModalData.lessonPath}
-                  embedded
-                  onClose={() => setLaptopPresentationActive(false)}
-                />
+                laptopPresentationView.mode === 'pdf' ? (
+                  <Box
+                    sx={{
+                      flex: 1,
+                      minHeight: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      bgcolor: '#111',
+                      position: 'relative',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        px: 1.25,
+                        py: 0.75,
+                        bgcolor: 'rgba(0,0,0,0.55)',
+                        borderBottom: '1px solid rgba(255,255,255,0.12)',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        sx={{ color: 'rgba(255,255,255,0.88)', fontWeight: 700, flex: 1, minWidth: 0 }}
+                        noWrap
+                      >
+                        {laptopPresentationView.label}
+                      </Typography>
+                      <IconButton
+                        size="small"
+                        onClick={() => setLaptopPresentationActive(false)}
+                        aria-label="Präsentation schließen"
+                        sx={{ color: 'rgba(255,255,255,0.85)' }}
+                      >
+                        <CloseIcon sx={{ fontSize: 18 }} />
+                      </IconButton>
+                    </Box>
+                    <Box
+                      component="iframe"
+                      title={laptopPresentationView.label}
+                      src={`/api/file-system-paths/read-pdf?filePath=${encodeURIComponent(laptopPresentationView.path)}`}
+                      sx={{
+                        flex: 1,
+                        minHeight: 0,
+                        width: '100%',
+                        border: 'none',
+                        bgcolor: '#525659',
+                      }}
+                    />
+                  </Box>
+                ) : (
+                  <PresentationLaptopPlayer
+                    key={`laptop-pres-${laptopPresentationView.variant}`}
+                    lessonPath={lessonModalData.lessonPath}
+                    embedded
+                    variant={laptopPresentationView.variant}
+                    onClose={() => setLaptopPresentationActive(false)}
+                  />
+                )
               ) : (() => {
                 const lessonName = lessonModalData.lessonName;
                 const lessonPath = lessonModalData.lessonPath;
@@ -18651,6 +18717,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       window.open(`${origin}/presentation/present?${qs.toString()}`, '_blank', 'noopener,noreferrer');
                     } else {
                       // Laptop: Präsentation links in der Stunde (wie Tablet), SuS rechts
+                      setLaptopPresentationView({ mode: 'deck', variant: 'edited' });
                       setLaptopPresentationActive(true);
                     }
                     return;
@@ -18708,6 +18775,131 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 };
                 const isABByName = (name: string) => /^AB_|Sicherheitsziele/i.test((name || '').replace(/\.[^.]+$/, ''));
                 const folienFiles = allFiles.filter((f: any) => /\.(pdf|pptx?|odp)$/i.test(f.name || '') && !isABByName(f.name));
+                const johnnyPresentationVersions = listJohnnyPresentationVersions(allFiles);
+
+                const openJohnnyPresentationVersion = (version: JohnnyPresentationVersion) => {
+                  if (!lessonModalData.lessonPath) {
+                    showSnackbar('Kein Stundenordner für diese Stunde.', 'error');
+                    return;
+                  }
+                  const origin = window.location.origin;
+                  const qsBase = () => {
+                    const qs = new URLSearchParams();
+                    qs.set('lessonPath', lessonModalData.lessonPath);
+                    if (lessonModalData.groupId) qs.set('groupId', lessonModalData.groupId);
+                    return qs;
+                  };
+                  // Laptop-Modus: alles in der linken Spalte (wie „bearbeitet“), nicht neuer Tab / Roh-PDF
+                  if (lessonPlanViewMode === 'background') {
+                    setLaptopPresentationView({
+                      mode: 'deck',
+                      variant: version.kind === 'original' ? 'original' : 'edited',
+                    });
+                    setLaptopPresentationActive(true);
+                    return;
+                  }
+                  if (version.kind === 'original') {
+                    if (lessonPlanViewMode === 'create') {
+                      window.open(`${origin}/presentation/edit?${qsBase().toString()}`, '_blank', 'noopener,noreferrer');
+                      return;
+                    }
+                    // TABLET: Original = Erstell-Stand als Basis, mit Handles zum Live-Bearbeiten;
+                    // Speichern → bearbeitete Version(en) für SuS
+                    if (lessonPlanViewMode === 'run') {
+                      window.open(
+                        `${origin}${presentationPresentUrl(lessonModalData.lessonPath, lessonModalData.groupId || undefined, 'original')}`,
+                        '_blank',
+                        'noopener,noreferrer'
+                      );
+                      return;
+                    }
+                    window.open(
+                      `${origin}${presentationReviewUrl(lessonModalData.lessonPath, lessonModalData.groupId || undefined, 'original')}`,
+                      '_blank',
+                      'noopener,noreferrer'
+                    );
+                    return;
+                  }
+                  if (version.kind === 'edited' || version.kind === 'named') {
+                    // bearbeitet und benannte Versionen (z. B. „2026“): gleiche Live-Ansicht mit Strichen
+                    if (lessonPlanViewMode === 'create') {
+                      window.open(`${origin}/presentation/edit?${qsBase().toString()}`, '_blank', 'noopener,noreferrer');
+                      return;
+                    }
+                    if (lessonPlanViewMode === 'run') {
+                      window.open(
+                        `${origin}${presentationPresentUrl(lessonModalData.lessonPath, lessonModalData.groupId || undefined)}`,
+                        '_blank',
+                        'noopener,noreferrer'
+                      );
+                      return;
+                    }
+                    setLaptopPresentationView({ mode: 'deck', variant: 'edited' });
+                    setLaptopPresentationActive(true);
+                    return;
+                  }
+                };
+
+                const removeFileFromLessonChildren = (nodes: any[], filePath: string): any[] => {
+                  const norm = (filePath || '').replace(/\\/g, '/');
+                  return (nodes || [])
+                    .filter((n) => (n.path || '').replace(/\\/g, '/') !== norm)
+                    .map((n) =>
+                      n.type === 'folder' && Array.isArray(n.children)
+                        ? { ...n, children: removeFileFromLessonChildren(n.children, filePath) }
+                        : n
+                    );
+                };
+
+                const deleteJohnnyPresentationVersion = async (version: JohnnyPresentationVersion) => {
+                  if (!canDeleteJohnnyPresentationVersion(version)) {
+                    showSnackbar('Original kann nicht gelöscht werden.', 'error');
+                    return;
+                  }
+                  if (!version.path) {
+                    showSnackbar('Kein Dateipfad für diese Version.', 'error');
+                    return;
+                  }
+                  if (
+                    !window.confirm(
+                      `Version „${version.label}“ wirklich löschen?\n\n${version.name}`
+                    )
+                  ) {
+                    return;
+                  }
+                  try {
+                    const res = await fetch('/api/file-system-paths/delete-file', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify({ filePath: version.path }),
+                    });
+                    if (!res.ok) {
+                      const err = await res.json().catch(() => ({}));
+                      throw new Error((err as { error?: string }).error || 'Löschen fehlgeschlagen');
+                    }
+                    setLessonModalData((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            children: removeFileFromLessonChildren(prev.children || [], version.path),
+                          }
+                        : prev
+                    );
+                    if (
+                      laptopPresentationActive &&
+                      laptopPresentationView.mode === 'pdf' &&
+                      (laptopPresentationView.path || '').replace(/\\/g, '/') ===
+                        version.path.replace(/\\/g, '/')
+                    ) {
+                      setLaptopPresentationActive(false);
+                    }
+                    showSnackbar(`Version „${version.label}“ gelöscht.`, 'success');
+                  } catch (e) {
+                    showSnackbar(e instanceof Error ? e.message : 'Löschen fehlgeschlagen', 'error');
+                  }
+                };
+
                 /** Materialien für den gelben Arbeitsauftrag-Block – nicht Input-Dokumente (PDF/Word/…) noch Bilder. */
                 const abFiles = allFiles.filter((f: any) => {
                   const name = f.name || '';
@@ -19443,6 +19635,120 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                             >
                               {(() => {
                                 const style = getPlanTypeStyle(item.type);
+                                if (item.type === 'praesentation') {
+                                  const versions =
+                                    johnnyPresentationVersions.length > 0
+                                      ? johnnyPresentationVersions
+                                      : [
+                                          {
+                                            name: 'Praesentation_Original.pdf',
+                                            path: '',
+                                            label: 'Original',
+                                            kind: 'original' as const,
+                                          },
+                                        ];
+                                  return (
+                                    <Box
+                                      sx={{
+                                        flex: 1,
+                                        minWidth: 0,
+                                        px: 0.8,
+                                        py: 0.25,
+                                        borderRadius: 0.75,
+                                        bgcolor: style.bg,
+                                        color: style.text,
+                                        border: `1px solid ${style.border}`,
+                                        fontSize: '0.78rem',
+                                        fontWeight: 700,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        flexWrap: 'wrap',
+                                        gap: 0.35,
+                                        lineHeight: 1.35,
+                                      }}
+                                    >
+                                      {versions.map((version, vIdx) => (
+                                        <React.Fragment key={version.name}>
+                                          {vIdx > 0 && (
+                                            <Box
+                                              component="span"
+                                              sx={{
+                                                px: 0.15,
+                                                color: style.border,
+                                                fontWeight: 800,
+                                                userSelect: 'none',
+                                              }}
+                                              aria-hidden
+                                            >
+                                              |
+                                            </Box>
+                                          )}
+                                          <Box
+                                            component="span"
+                                            sx={{
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: 0.15,
+                                              maxWidth: '100%',
+                                            }}
+                                          >
+                                            <Box
+                                              component="span"
+                                              title={`${version.label} öffnen`}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                openJohnnyPresentationVersion(version);
+                                              }}
+                                              sx={{
+                                                cursor: 'pointer',
+                                                textDecoration: 'underline',
+                                                textUnderlineOffset: '2px',
+                                                '&:hover': { opacity: 0.85 },
+                                              }}
+                                            >
+                                              {version.label}
+                                            </Box>
+                                            {canDeleteJohnnyPresentationVersion(version) && (
+                                              <Box
+                                                component="span"
+                                                role="button"
+                                                tabIndex={0}
+                                                title={`Version „${version.label}“ löschen`}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  void deleteJohnnyPresentationVersion(version);
+                                                }}
+                                                onKeyDown={(e) => {
+                                                  if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    void deleteJohnnyPresentationVersion(version);
+                                                  }
+                                                }}
+                                                sx={{
+                                                  cursor: 'pointer',
+                                                  ml: 0.15,
+                                                  px: 0.35,
+                                                  borderRadius: 0.5,
+                                                  fontSize: '0.85em',
+                                                  fontWeight: 800,
+                                                  lineHeight: 1,
+                                                  opacity: 0.75,
+                                                  '&:hover': {
+                                                    opacity: 1,
+                                                    bgcolor: 'rgba(0,0,0,0.08)',
+                                                  },
+                                                }}
+                                              >
+                                                ×
+                                              </Box>
+                                            )}
+                                          </Box>
+                                        </React.Fragment>
+                                      ))}
+                                    </Box>
+                                  );
+                                }
                                 return (
                                   <Typography
                                     variant="body2"

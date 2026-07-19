@@ -7,6 +7,7 @@ import CreateOutlinedIcon from '@mui/icons-material/CreateOutlined';
 import {
   isLessonPresentationMaterialPdf,
   isStudentVisibleLessonMaterialFile,
+  johnnyPresentationVersionLabel,
   lessonPresentationDownloadFilename,
   LESSON_PRESENTATION_PDF_EDITED,
   LESSON_PRESENTATION_PDF_ORIGINAL,
@@ -66,11 +67,13 @@ function PresentationCombinedActions({
   lessonName,
   original,
   edited,
+  editedLabel = 'bearbeitet',
   sharedPaths,
 }: {
   lessonName: string;
   original?: LessonFile;
   edited?: LessonFile;
+  editedLabel?: string;
   sharedPaths: string[];
 }) {
   const originalShared = original ? isLessonFileShared(original.path, sharedPaths) : false;
@@ -123,7 +126,7 @@ function PresentationCombinedActions({
           </Button>
         </span>
       </Tooltip>
-      <Tooltip title="Bearbeitet öffnen">
+      <Tooltip title={`${editedLabel} öffnen`}>
         <span style={{ display: 'inline-flex', lineHeight: 0 }}>
           <Button
             variant="outlined"
@@ -134,7 +137,7 @@ function PresentationCombinedActions({
           </Button>
         </span>
       </Tooltip>
-      <Tooltip title="Bearbeitet downloaden">
+      <Tooltip title={`${editedLabel} downloaden`}>
         <span style={{ display: 'inline-flex', lineHeight: 0 }}>
           <Button
             variant="outlined"
@@ -178,9 +181,29 @@ export default function StudentLessonMaterialsPanel({
   }, [files, sharedPaths]);
 
   const presentationOriginal = materials.find((f) => f.name === LESSON_PRESENTATION_PDF_ORIGINAL);
-  const presentationEdited = materials.find((f) => f.name === LESSON_PRESENTATION_PDF_EDITED);
-  const otherMaterials = materials.filter((f) => !isLessonPresentationMaterialPdf(f.name));
+  const namedPresentationPdfs = materials.filter(
+    (f) =>
+      isLessonPresentationMaterialPdf(f.name) &&
+      f.name !== LESSON_PRESENTATION_PDF_ORIGINAL &&
+      f.name !== LESSON_PRESENTATION_PDF_EDITED
+  );
+  // Benannte Version (z. B. 2026) ersetzt „bearbeitet“ — gleiche Ansicht, anderer Name
+  const presentationEdited =
+    namedPresentationPdfs[0] ??
+    materials.find((f) => f.name === LESSON_PRESENTATION_PDF_EDITED);
+  const otherMaterials = materials.filter((f) => {
+    if (!isLessonPresentationMaterialPdf(f.name)) return true;
+    if (f.name === LESSON_PRESENTATION_PDF_ORIGINAL || f.name === LESSON_PRESENTATION_PDF_EDITED) {
+      return false;
+    }
+    // Erste benannte Version steckt schon im Folien-Slot
+    if (presentationEdited && f.path === presentationEdited.path) return false;
+    return true;
+  });
   const hasPresentation = !!(presentationOriginal || presentationEdited);
+  const editedVersionLabel = presentationEdited
+    ? johnnyPresentationVersionLabel(presentationEdited.name)
+    : 'bearbeitet';
   const originalShared = presentationOriginal
     ? isLessonFileShared(presentationOriginal.path, sharedPaths)
     : false;
@@ -256,6 +279,7 @@ export default function StudentLessonMaterialsPanel({
             lessonName={downloadLessonName}
             original={presentationOriginal}
             edited={presentationEdited}
+            editedLabel={editedVersionLabel}
             sharedPaths={sharedPaths}
           />
         </Box>
@@ -290,7 +314,9 @@ export default function StudentLessonMaterialsPanel({
               whiteSpace: 'nowrap',
             }}
           >
-            {file.name}
+            {isLessonPresentationMaterialPdf(file.name)
+              ? johnnyPresentationVersionLabel(file.name)
+              : file.name}
           </Typography>
           <ButtonGroup
             size="small"

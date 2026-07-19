@@ -1,12 +1,16 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { Box, IconButton, Tooltip, Typography } from '@mui/material';
-import { DeleteOutline as TrashIcon } from '@mui/icons-material';
+import {
+  DeleteOutline as TrashIcon,
+  ChevronRight as HideNotesIcon,
+  StickyNote2Outlined as NotesIcon,
+} from '@mui/icons-material';
 import { htmlToPlain, textToHtml } from '../../lib/presentationDeck';
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
 import { isFormatBarInteracting, isPresentationFormatUiTarget } from '../../lib/presentationFormatBarGuard';
 import { captureEditorSelection, clearSavedSelection } from '../../lib/presentationFontSize';
 import { presentationNestedListSx } from '../../lib/presentationListStyles';
-import { sanitizePastedHtml, normalizeNotesHtml, handlePresentationTabKey, replaceArrowShortcutsNearCursor } from '../../lib/presentationRichText';
+import { sanitizePastedHtml, normalizeNotesHtml, handlePresentationTabKey, replaceArrowShortcutsNearCursor, tryMarkdownListShortcut } from '../../lib/presentationRichText';
 
 export type NotesFieldKey = 'materialHtml' | 'preparationHtml' | 'speakerNotesHtml';
 
@@ -102,7 +106,16 @@ const NoteZone: React.FC<NoteZoneProps> = ({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     const el = ref.current;
-    if (!el || readOnly || e.key !== 'Tab' || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!el || readOnly) return;
+    if (e.key === ' ' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (tryMarkdownListShortcut(el)) {
+        e.preventDefault();
+        e.stopPropagation();
+        persistContent(el.innerHTML, false);
+        return;
+      }
+    }
+    if (e.key !== 'Tab' || e.ctrlKey || e.metaKey || e.altKey) return;
     e.preventDefault();
     e.stopPropagation();
     handlePresentationTabKey(el, e.shiftKey);
@@ -254,6 +267,8 @@ interface PresentationNotesPanelProps {
   onPreparationChange: (html: string, plain: string) => void;
   onSpeakerChange: (html: string, plain: string) => void;
   onMoveNotesToTrash?: (fieldKey: NotesFieldKey) => void;
+  /** Notizleiste ausblenden (mehr Platz für die Folie). */
+  onHide?: () => void;
 }
 
 const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
@@ -271,6 +286,7 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
   onPreparationChange,
   onSpeakerChange,
   onMoveNotesToTrash,
+  onHide,
 }) => {
   return (
     <Box
@@ -285,6 +301,50 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
         overflow: 'hidden',
       }}
     >
+      <Box
+        sx={{
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 0.5,
+          px: 1,
+          py: 0.35,
+          borderBottom: `1px solid ${PRES_EDITOR_UI.panelBorder}`,
+          bgcolor: '#fff',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
+          <NotesIcon sx={{ fontSize: 14, color: PRES_EDITOR_UI.textMuted }} />
+          <Typography
+            sx={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: PRES_EDITOR_UI.textMuted,
+              letterSpacing: 0.02,
+            }}
+          >
+            Notizen
+          </Typography>
+        </Box>
+        {onHide && (
+          <Tooltip title="Notizen ausblenden">
+            <IconButton
+              size="small"
+              onClick={onHide}
+              aria-label="Notizen ausblenden"
+              sx={{
+                width: 26,
+                height: 26,
+                color: PRES_EDITOR_UI.textMuted,
+                '&:hover': { bgcolor: PRES_EDITOR_UI.accentSoft, color: PRES_EDITOR_UI.accent },
+              }}
+            >
+              <HideNotesIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+        )}
+      </Box>
       <NoteZone
         fieldKey="materialHtml"
         label="Material"

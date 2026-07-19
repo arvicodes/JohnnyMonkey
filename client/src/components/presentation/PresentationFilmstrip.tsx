@@ -99,6 +99,7 @@ const SortableFilmstripThumb = React.memo(
       <Box
         ref={mergedRef}
         onClick={onSelect}
+        data-pres-filmstrip-slide={slide.id}
         sx={{
           mb: 0.75,
           position: 'relative',
@@ -122,6 +123,10 @@ const SortableFilmstripThumb = React.memo(
               ? `0 0 0 2px ${PRES_EDITOR_UI.accent}, 0 2px 8px rgba(46,125,50,0.15)`
               : `0 0 0 1px ${PRES_EDITOR_UI.accentHover}, 0 1px 3px rgba(0,0,0,0.08)`,
           },
+          'body[data-pres-element-drag="image"] &': {
+            outline: `2px dashed ${PRES_EDITOR_UI.accent}`,
+            outlineOffset: 2,
+          },
         }}
         {...attributes}
         {...listeners}
@@ -133,6 +138,8 @@ const SortableFilmstripThumb = React.memo(
             overflow: 'hidden',
             bgcolor: '#fff',
             position: 'relative',
+            contentVisibility: 'auto',
+            containIntrinsicSize: `${THUMB_W}px ${THUMB_H}px`,
           }}
         >
           <Box

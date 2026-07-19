@@ -12,7 +12,7 @@ import {
   findAnimBlockFromHit,
 } from '../../lib/presentationAnimation';
 import type { HtmlAnimField } from '../../lib/presentationAnimation';
-import { sanitizePastedHtml, sanitizePresentationHtml, handlePresentationTabKey, replaceArrowShortcutsNearCursor } from '../../lib/presentationRichText';
+import { sanitizePastedHtml, sanitizePresentationHtml, handlePresentationTabKey, replaceArrowShortcutsNearCursor, tryMarkdownListShortcut } from '../../lib/presentationRichText';
 import { PRESENTATION_CONTENT_FONT_PX } from '../../lib/presentationFontSize';
 import { presentationNestedListSx } from '../../lib/presentationListStyles';
 import '../../styles/presentationLists.css';
@@ -312,7 +312,16 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     const el = ref.current;
-    if (!el || e.key !== 'Tab' || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!el) return;
+    if (e.key === ' ' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (tryMarkdownListShortcut(el)) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleInput();
+        return;
+      }
+    }
+    if (e.key !== 'Tab' || e.ctrlKey || e.metaKey || e.altKey) return;
     e.preventDefault();
     e.stopPropagation();
     handlePresentationTabKey(el, e.shiftKey);

@@ -44,6 +44,7 @@ interface PresentationSlideViewProps {
   selectedElementId?: string | null;
   onElementSelect?: (id: string | null) => void;
   onElementChange?: (id: string, patch: Partial<SlideElement>) => void;
+  onMoveElementToSlide?: (elementId: string, targetSlideId: string) => void;
   onTextElementFocus?: (el: HTMLElement, elementId: string) => void;
   showSlideNumbers?: boolean;
   slideNumber?: number;
@@ -75,6 +76,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   selectedElementId,
   onElementSelect,
   onElementChange,
+  onMoveElementToSlide,
   onTextElementFocus,
   showSlideNumbers = false,
   slideNumber = 0,
@@ -148,6 +150,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           selectedId={selectedElementId}
           onSelect={(id) => onElementSelect?.(id)}
           onElementChange={onElementChange}
+          onMoveElementToSlide={onMoveElementToSlide}
           onTextEditorFocus={onTextElementFocus}
           animationEditMode={animationEditMode}
           selectedAnimationTarget={selectedAnimationTarget}
@@ -291,9 +294,10 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
               src={url}
               alt=""
               decoding="async"
+              loading={exportSnapshot ? undefined : 'lazy'}
               sx={{
                 ...presentationImageElementSx(slide.imagePath, 'contain'),
-                maxHeight: `${420 * scale}px`,
+                maxHeight: `${720 * scale}px`,
               }}
             />
           ) : (

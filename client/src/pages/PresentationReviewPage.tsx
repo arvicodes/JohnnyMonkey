@@ -31,8 +31,8 @@ const PresentationReviewPage: React.FC = () => {
       <Box
         sx={{
           height: '100dvh',
-          width: studentViewer ? '100vw' : '58vw',
-          maxWidth: studentViewer ? '100vw' : '58vw',
+          width: '100vw',
+          maxWidth: '100vw',
           minWidth: 320,
           bgcolor: '#000',
           display: 'flex',

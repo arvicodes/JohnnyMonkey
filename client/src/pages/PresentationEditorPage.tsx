@@ -12,6 +12,10 @@ import {
   Box,
   Button,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   IconButton,
   MenuItem,
@@ -24,11 +28,14 @@ import {
 import {
   Add as AddIcon,
   ArrowBack as ArrowBackIcon,
+  ChevronLeft as ShowNotesIcon,
   ContentCopy as CopyIcon,
   DeleteOutline as DeleteIcon,
   PlayArrow as PresentIcon,
   RestoreFromTrash as TrashBinIcon,
+  SaveAsOutlined as SaveAsIcon,
   SaveOutlined as SaveIcon,
+  StickyNote2Outlined as NotesIcon,
   Undo as UndoIcon,
   Redo as RedoIcon,
   ViewQuilt as LayoutIcon,
@@ -54,7 +61,9 @@ import {
   PresentationSlide,
   SlideElement,
   SlideLayout,
+  createEmptyAnnotations,
   htmlToPlain,
+  loadPresentationAnnotations,
   loadPresentationDeck,
   lessonFolderPath,
   normalizeDeck,
@@ -63,6 +72,7 @@ import {
   saveJsonFile,
   nextViewportScale,
   sortSlides,
+  writeOriginalDeckSnapshot,
   SLIDE_REF_HEIGHT,
   SLIDE_REF_WIDTH,
 } from '../lib/presentationDeck';
@@ -105,7 +115,10 @@ import {
   restoreSlideFromTrash,
 } from '../lib/presentationTrash';
 import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../lib/presentationTransitions';
-import { refreshPresentationPdfsFromLessonFolder } from '../lib/presentationExport';
+import {
+  refreshPresentationPdfsFromLessonFolder,
+  savePresentationNamedVersion,
+} from '../lib/presentationExport';
 
 import { arrayMove } from '@dnd-kit/sortable';
 import { assignSlideParagraphSteps, resetAllSlideAnimations, slidePatchFromAnimationItem, slidePatchFromClearAnimationItem } from '../lib/presentationAnimation';
@@ -141,6 +154,9 @@ const PresentationEditorPage: React.FC = () => {
   const [deck, setDeck] = useState<PresentationDeck | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [snackbar, setSnackbar] = useState('');
+  const [saveNamedOpen, setSaveNamedOpen] = useState(false);
+  const [saveNamedLabel, setSaveNamedLabel] = useState('');
+  const [saveNamedBusy, setSaveNamedBusy] = useState(false);
   const [activeEditor, setActiveEditor] = useState<HTMLElement | null>(null);
   const [activeHtmlField, setActiveHtmlField] = useState<string | null>(null);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
@@ -154,6 +170,13 @@ const PresentationEditorPage: React.FC = () => {
     createDefaultTemplatesStore(),
   );
   const [imageDropActive, setImageDropActive] = useState(false);
+  const [notesPanelOpen, setNotesPanelOpen] = useState(() => {
+    try {
+      return localStorage.getItem('johnny-pres-notes-open') !== '0';
+    } catch {
+      return true;
+    }
+  });
   const canvasHostRef = useRef<HTMLDivElement>(null);
   const slideShellRef = useRef<HTMLDivElement>(null);
   const canvasHostObserverRef = useRef<ResizeObserver | null>(null);
@@ -186,7 +209,16 @@ const PresentationEditorPage: React.FC = () => {
         canvasHostObserverRef.current = null;
       }
     };
-  }, [loading, syncSlideViewport]);
+  }, [loading, syncSlideViewport, notesPanelOpen]);
+
+  const setNotesPanelOpenPersist = useCallback((open: boolean) => {
+    setNotesPanelOpen(open);
+    try {
+      localStorage.setItem('johnny-pres-notes-open', open ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useLayoutEffect(() => {
     if (loading) return;
@@ -236,6 +268,12 @@ const PresentationEditorPage: React.FC = () => {
   const deckRef = useRef<PresentationDeck | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const imageTargetRef = useRef<'inline' | 'layout' | 'element'>('inline');
+  const elementClipboardRef = useRef<{
+    mode: 'cut' | 'copy';
+    sourceSlideId: string;
+    element: SlideElement;
+  } | null>(null);
+  const [elementClipboardVersion, setElementClipboardVersion] = useState(0);
   /** Filmstrip nur verzögert aktualisieren — sonst laggt Tippen/Ziehen. */
   const [filmstripSlides, setFilmstripSlides] = useState<PresentationSlide[]>([]);
 
@@ -323,6 +361,8 @@ const PresentationEditorPage: React.FC = () => {
           updatedAt: new Date().toISOString(),
         };
         await saveJsonFile(lessonPath, DECK_FILENAME, payload);
+        // Original nur aktualisieren, solange noch nicht eingefroren (Erstell-Phase)
+        await writeOriginalDeckSnapshot(lessonPath, payload, 'sync');
         if (version === saveVersionRef.current) {
           if (options?.schedulePdfExport === true) {
             schedulePdfExport({ delayMs: 800, notify: true });
@@ -385,7 +425,7 @@ const PresentationEditorPage: React.FC = () => {
 
       const version = ++saveVersionRef.current;
       if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => void persistDeck(next, version), 1000);
+      saveTimer.current = setTimeout(() => void persistDeck(next, version), 2500);
     },
     [persistDeck]
   );
@@ -430,6 +470,41 @@ const PresentationEditorPage: React.FC = () => {
     },
     [activeEditor, activeHtmlField, activeId, scheduleSave]
   );
+
+  const saveNamedPresentationVersion = useCallback(async () => {
+    const label = saveNamedLabel.trim();
+    if (!label || !lessonPath) return;
+    const current = deckRef.current || deck;
+    if (!current) return;
+    setSaveNamedBusy(true);
+    try {
+      commitEditorState({ history: 'skip' });
+      const v = ++saveVersionRef.current;
+      await persistDeck(current, v, { schedulePdfExport: false });
+      if (pdfExportTimer.current) clearTimeout(pdfExportTimer.current);
+      const annotations =
+        (await loadPresentationAnnotations(lessonPath)) ?? createEmptyAnnotations(lessonPath);
+      const result = await savePresentationNamedVersion(
+        lessonPath,
+        deckRef.current || current,
+        annotations,
+        label,
+        (msg) => setSnackbar(msg)
+      );
+      setSaveNamedOpen(false);
+      setSaveNamedLabel('');
+      setSnackbar(
+        result.namedPdf
+          ? `Version gespeichert: ${result.namedPdf}`
+          : `Gespeichert: ${result.editedPdf}`
+      );
+    } catch (e) {
+      console.error('Named presentation save failed', e);
+      setSnackbar(e instanceof Error ? e.message : 'Version speichern fehlgeschlagen');
+    } finally {
+      setSaveNamedBusy(false);
+    }
+  }, [commitEditorState, deck, lessonPath, persistDeck, saveNamedLabel]);
 
   const selectSlide = useCallback(
     (id: string) => {
@@ -791,9 +866,10 @@ const PresentationEditorPage: React.FC = () => {
     });
     const keys = Object.keys(patch);
     const textOnly = keys.length > 0 && keys.every((k) => k === 'html');
+    // Geometrie sofort ins Deck — sonst springt das Element nach dem Loslassen zurück
     scheduleSave(
       { ...current, slides },
-      textOnly ? { quiet: true } : { urgent: true }
+      textOnly ? { quiet: true } : { urgent: true, history: 'debounced' }
     );
   };
 
@@ -802,6 +878,126 @@ const PresentationEditorPage: React.FC = () => {
     updateSlide({ elements: (normalizedActive.elements || []).filter((e) => e.id !== id) });
     if (selectedElementId === id) setSelectedElementId(null);
   };
+
+  const cloneElementForPaste = (el: SlideElement): SlideElement => ({
+    ...structuredClone(el),
+    id: `el-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  });
+
+  const moveElementToSlide = useCallback(
+    (elementId: string, targetSlideId: string) => {
+      const current = deckRef.current;
+      if (!current || !activeId) return;
+      if (targetSlideId === activeId) {
+        setSnackbar('Bild ist bereits auf dieser Folie');
+        return;
+      }
+      const sourceSlide = current.slides.find((s) => s.id === activeId);
+      const targetSlide = current.slides.find((s) => s.id === targetSlideId);
+      if (!sourceSlide || !targetSlide) return;
+      const element = sourceSlide.elements?.find((el) => el.id === elementId);
+      if (!element || element.type !== 'image') {
+        setSnackbar('Nur Bilder können so verschoben werden');
+        return;
+      }
+      const moved = cloneElementForPaste(element);
+      const slides = current.slides.map((s) => {
+        if (s.id === activeId) {
+          return { ...s, elements: (s.elements || []).filter((el) => el.id !== elementId) };
+        }
+        if (s.id === targetSlideId) {
+          return {
+            ...s,
+            elements: [...(s.elements || []), { ...moved, zIndex: (s.elements?.length ?? 0) + 1 }],
+          };
+        }
+        return s;
+      });
+      scheduleSave({ ...current, slides }, { history: 'immediate' });
+      setSelectedElementId(null);
+      setActiveId(targetSlideId);
+      setSelectedElementId(moved.id);
+      setSnackbar('Bild auf andere Folie verschoben');
+    },
+    [activeId, scheduleSave]
+  );
+
+  const copySelectedElement = useCallback(
+    (mode: 'cut' | 'copy') => {
+      const current = deckRef.current;
+      if (!current || !activeId || !selectedElementId) return false;
+      const slide = current.slides.find((s) => s.id === activeId);
+      const element = slide?.elements?.find((el) => el.id === selectedElementId);
+      if (!element || (element.type !== 'image' && element.type !== 'shape')) return false;
+      elementClipboardRef.current = {
+        mode,
+        sourceSlideId: activeId,
+        element: structuredClone(element),
+      };
+      setElementClipboardVersion((v) => v + 1);
+      if (mode === 'cut') {
+        const slides = current.slides.map((s) =>
+          s.id === activeId
+            ? { ...s, elements: (s.elements || []).filter((el) => el.id !== selectedElementId) }
+            : s
+        );
+        scheduleSave({ ...current, slides }, { history: 'immediate' });
+        setSelectedElementId(null);
+        setSnackbar('Ausgeschnitten — andere Folie wählen, dann Einfügen (⌘V)');
+      } else {
+        setSnackbar('Kopiert — andere Folie wählen, dann Einfügen (⌘V)');
+      }
+      return true;
+    },
+    [activeId, selectedElementId, scheduleSave]
+  );
+
+  const pasteClipboardElement = useCallback(() => {
+    const clip = elementClipboardRef.current;
+    const current = deckRef.current;
+    if (!clip || !current || !activeId) return false;
+    const pasted = cloneElementForPaste(clip.element);
+    const slides = current.slides.map((s) => {
+      if (s.id !== activeId) return s;
+      return {
+        ...s,
+        elements: [...(s.elements || []), { ...pasted, zIndex: (s.elements?.length ?? 0) + 1 }],
+      };
+    });
+    scheduleSave({ ...current, slides }, { history: 'immediate' });
+    setSelectedElementId(pasted.id);
+    if (clip.mode === 'cut') {
+      elementClipboardRef.current = { ...clip, mode: 'copy' };
+    }
+    setSnackbar(clip.element.type === 'shape' ? 'Form eingefügt' : 'Bild eingefügt');
+    return true;
+  }, [activeId, scheduleSave]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      if (e.key !== 'x' && e.key !== 'c' && e.key !== 'v') return;
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+        return;
+      }
+      if (target.isContentEditable || target.closest('[data-pres-rich-zone]')) return;
+      if (e.key === 'x' && copySelectedElement('cut')) {
+        e.preventDefault();
+        return;
+      }
+      if (e.key === 'c' && copySelectedElement('copy')) {
+        e.preventDefault();
+        return;
+      }
+      if (e.key === 'v' && pasteClipboardElement()) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [copySelectedElement, pasteClipboardElement]);
 
   const reorderElementLayer = (id: string, action: ElementLayerAction) => {
     const current = deckRef.current;
@@ -1043,7 +1239,13 @@ const PresentationEditorPage: React.FC = () => {
       ...slide,
       order: index,
     }));
-    scheduleSave({ ...current, slides: reordered }, { history: 'immediate' });
+    // Sofort in der Filmstrip spiegeln — sonst springt die Reihenfolge zurück (verzögerte filmstripSlides)
+    if (filmstripIdleTimer.current) {
+      clearTimeout(filmstripIdleTimer.current);
+      filmstripIdleTimer.current = null;
+    }
+    setFilmstripSlides(reordered);
+    scheduleSave({ ...current, slides: reordered }, { history: 'immediate', urgent: true });
   };
 
   const deleteSlide = () => {
@@ -1342,16 +1544,26 @@ const PresentationEditorPage: React.FC = () => {
     sortedSlides.findIndex((slide) => slide.id === activeId) + 1
   );
 
-  // Filmstrip: sofort bei Folienwechsel, sonst erst nach Pause (kein Lag beim Tippen)
+  // Filmstrip: Reihenfolge/Anzahl sofort; Inhalt erst nach Pause (kein Lag beim Tippen)
   useEffect(() => {
     if (!deck) {
       setFilmstripSlides([]);
       return;
     }
+    const nextSorted = sortSlides(deck.slides);
+    setFilmstripSlides((prev) => {
+      const prevIds = prev.map((s) => s.id).join(',');
+      const nextIds = nextSorted.map((s) => s.id).join(',');
+      // Struktur/Reihenfolge geändert → sofort übernehmen
+      if (prevIds !== nextIds || prev.length !== nextSorted.length) {
+        return nextSorted;
+      }
+      return prev;
+    });
     if (filmstripIdleTimer.current) clearTimeout(filmstripIdleTimer.current);
     filmstripIdleTimer.current = setTimeout(() => {
       setFilmstripSlides(sortSlides(deck.slides));
-    }, 1500);
+    }, 2800);
     return () => {
       if (filmstripIdleTimer.current) clearTimeout(filmstripIdleTimer.current);
     };
@@ -1607,19 +1819,20 @@ const PresentationEditorPage: React.FC = () => {
               boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
             }}
           >
-            <Tooltip title="Speichern">
+            <Tooltip title="Speichern (PDFs später im Hintergrund)">
               <IconButton
                 size="small"
                 onClick={() => {
+                  commitEditorState({ history: 'skip' });
+                  const current = deckRef.current || deck;
+                  if (!current) return;
                   if (pdfExportTimer.current) clearTimeout(pdfExportTimer.current);
                   const v = ++saveVersionRef.current;
-                  void persistDeck(deck, v, { schedulePdfExport: false }).then(() => {
-                    if (!lessonPath || v !== saveVersionRef.current) return;
-                    void refreshPresentationPdfsFromLessonFolder(lessonPath)
-                      .then(() => setSnackbar('Gespeichert · Folien-PDFs aktualisiert'))
-                      .catch((e) =>
-                        setSnackbar(e instanceof Error ? e.message : 'PDF-Export fehlgeschlagen')
-                      );
+                  void persistDeck(current, v, { schedulePdfExport: false }).then(() => {
+                    if (v !== saveVersionRef.current) return;
+                    setSnackbar('Gespeichert');
+                    // Schwere PDF-Exports nicht beim Speichern — idle im Hintergrund
+                    schedulePdfExport({ delayMs: 14000, notify: false });
                   });
                 }}
                 sx={{
@@ -1631,6 +1844,22 @@ const PresentationEditorPage: React.FC = () => {
                 }}
               >
                 <SaveIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Divider orientation="vertical" flexItem sx={{ borderColor: PRES_EDITOR_UI.barBorder }} />
+            <Tooltip title="Als benannte Version speichern (Praesentation_Name.pdf)">
+              <IconButton
+                size="small"
+                onClick={() => setSaveNamedOpen(true)}
+                sx={{
+                  width: 38,
+                  height: 30,
+                  borderRadius: 0,
+                  color: PRES_EDITOR_UI.textMuted,
+                  '&:hover': { bgcolor: PRES_EDITOR_UI.accentSoft, color: PRES_EDITOR_UI.accent },
+                }}
+              >
+                <SaveAsIcon sx={{ fontSize: 18 }} />
               </IconButton>
             </Tooltip>
             <Divider orientation="vertical" flexItem sx={{ borderColor: PRES_EDITOR_UI.barBorder }} />
@@ -1729,6 +1958,10 @@ const PresentationEditorPage: React.FC = () => {
                   onAddShapeElement={addShapeElement}
                   onUpdateElement={updateElement}
                   onDeleteElement={deleteElement}
+                  onCutElement={() => copySelectedElement('cut')}
+                  onCopyElement={() => copySelectedElement('copy')}
+                  onPasteElement={() => pasteClipboardElement()}
+                  canPasteElement={elementClipboardVersion > 0}
                   onReorderElementLayer={reorderElementLayer}
                   onSetElementStackLayer={setElementStackLayer}
                 />
@@ -1820,7 +2053,6 @@ const PresentationEditorPage: React.FC = () => {
                   borderRadius: `${8 * canvasScale}px`,
                   boxShadow: '0 8px 28px rgba(0,0,0,0.14)',
                   animation: resolveSlideTransitionAnimation(normalizedActive.transition),
-                  willChange: 'transform, opacity, filter',
                   outline: imageDropActive
                     ? `${3 * canvasScale}px dashed ${PRES_EDITOR_UI.accent}`
                     : undefined,
@@ -1890,6 +2122,7 @@ const PresentationEditorPage: React.FC = () => {
                     selectedElementId={selectedElementId}
                     onElementSelect={handleElementSelect}
                     onElementChange={updateElement}
+                    onMoveElementToSlide={moveElementToSlide}
                     onTextElementFocus={(el, elementId) => {
                       setActiveEditor(el);
                       setActiveHtmlField(`element:${elementId}`);
@@ -1908,7 +2141,7 @@ const PresentationEditorPage: React.FC = () => {
           </Box>
         </Box>
 
-        {normalizedActive && (
+        {normalizedActive && notesPanelOpen && (
           <PresentationNotesPanel
             materialHtml={normalizedActive.materialHtml}
             materialPlain={normalizedActive.materialNotes}
@@ -1918,6 +2151,7 @@ const PresentationEditorPage: React.FC = () => {
             speakerPlain={normalizedActive.speakerNotes}
             activeField={notesActiveField}
             readOnly={false}
+            onHide={() => setNotesPanelOpenPersist(false)}
             onEditorFocus={(fieldKey, el) => {
               setActiveEditor(el);
               setActiveHtmlField(fieldKey);
@@ -1946,7 +2180,83 @@ const PresentationEditorPage: React.FC = () => {
             onMoveNotesToTrash={moveNotesToTrash}
           />
         )}
+        {normalizedActive && !notesPanelOpen && (
+          <Box
+            sx={{
+              width: 36,
+              flexShrink: 0,
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              pt: 1,
+              gap: 0.5,
+              bgcolor: PRES_EDITOR_UI.panelBg,
+              borderLeft: `1px solid ${PRES_EDITOR_UI.panelBorder}`,
+            }}
+          >
+            <Tooltip title="Notizen einblenden" placement="left">
+              <IconButton
+                size="small"
+                onClick={() => setNotesPanelOpenPersist(true)}
+                aria-label="Notizen einblenden"
+                sx={{
+                  width: 28,
+                  height: 28,
+                  color: PRES_EDITOR_UI.textMuted,
+                  '&:hover': { bgcolor: PRES_EDITOR_UI.accentSoft, color: PRES_EDITOR_UI.accent },
+                }}
+              >
+                <ShowNotesIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <NotesIcon sx={{ fontSize: 14, color: PRES_EDITOR_UI.textMuted, opacity: 0.7 }} />
+          </Box>
+        )}
       </Box>
+
+      <Dialog
+        open={saveNamedOpen}
+        onClose={() => !saveNamedBusy && setSaveNamedOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Version speichern</DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            Speichert die Bearbeitung unter einem Namen
+            (z.&nbsp;B. „2026“ → Praesentation_2026.pdf). Im Stundenablauf:
+            Original | 2026 (statt „bearbeitet“).
+          </Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            label="Zusatz im Dateinamen"
+            value={saveNamedLabel}
+            onChange={(e) => setSaveNamedLabel(e.target.value)}
+            placeholder="z. B. Klasse5 oder mitNotizen"
+            disabled={saveNamedBusy}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && saveNamedLabel.trim() && !saveNamedBusy) {
+                e.preventDefault();
+                void saveNamedPresentationVersion();
+              }
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSaveNamedOpen(false)} disabled={saveNamedBusy}>
+            Abbrechen
+          </Button>
+          <Button
+            variant="contained"
+            disabled={!saveNamedLabel.trim() || saveNamedBusy}
+            onClick={() => void saveNamedPresentationVersion()}
+          >
+            Speichern
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={!!snackbar}

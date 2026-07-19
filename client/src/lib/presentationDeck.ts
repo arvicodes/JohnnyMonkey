@@ -33,7 +33,7 @@ export function slideFitScale(
   return Math.min(w / SLIDE_REF_WIDTH, h / SLIDE_REF_HEIGHT);
 }
 
-/** Play-Modus: komplette Folie sichtbar, maximal groß, ohne Beschnitt oben/unten. */
+/** Play-Modus: komplette Folie in der Bühne (Toolbar liegt im Layout darunter). */
 export function slidePresentScale(viewportWidth: number, viewportHeight: number): number {
   return slideFitScale(viewportWidth, viewportHeight, 0);
 }
@@ -234,9 +234,9 @@ export function slideImageUrl(imagePath: string, maxEdge?: number): string {
 }
 
 /** Editor-Canvas: scharf genug, aber keine Multi-MB-Originale. */
-export const SLIDE_IMAGE_EDITOR_MAX = 1600;
+export const SLIDE_IMAGE_EDITOR_MAX = 1280;
 /** Filmstrip-Vorschau. */
-export const SLIDE_IMAGE_THUMB_MAX = 360;
+export const SLIDE_IMAGE_THUMB_MAX = 280;
 
 
 const LEGACY_BILD_SLIDE_SPEAKER_HINT =
@@ -502,8 +502,11 @@ export async function loadPresentationOriginalDeck(
 
 /**
  * Original-Snapshot schreiben.
- * - sync (Editor, noch nicht eingefroren): Inhalt = aktuelles Arbeitsdeck
- * - freeze (erstes Live-Speichern): aktuelles Arbeitsdeck einfrieren (nie einen alten Snapshot behalten)
+ * - sync: Original = aktuelles Arbeitsdeck, nur solange noch nicht eingefroren
+ * - freeze: Original einfrieren (einmalig); danach nie mehr überschreiben
+ *
+ * Original = immer die komplett unbearbeitete Erstell-Version (ohne Live-Striche,
+ * ohne spätere Editor-Änderungen nach dem Freeze).
  */
 export async function writeOriginalDeckSnapshot(
   lessonPath: string,
@@ -512,14 +515,30 @@ export async function writeOriginalDeckSnapshot(
 ): Promise<PresentationDeck> {
   const folder = lessonFolderPath(lessonPath);
   const existing = await loadPresentationOriginalDeck(folder);
+
+  // Einmal eingefroren → Original bleibt für immer der unbearbeitete Stand
   if (isOriginalDeckFrozen(existing)) {
     return existing!;
   }
+
+  if (mode === 'freeze') {
+    // Beim Einfrieren: vorhandenen Sync-Stand behalten (Erstell-Phase), sonst Arbeitsdeck
+    const base = existing ?? stripOriginalFreezeMeta(normalizeDeck(workingDeck));
+    const snapshot: PresentationDeck = {
+      ...normalizeDeck(stripOriginalFreezeMeta(base)),
+      lessonPath: folder,
+      updatedAt: new Date().toISOString(),
+      johnnyOriginalFrozenAt: new Date().toISOString(),
+    };
+    await saveJsonFile(folder, DECK_ORIGINAL_FILENAME, snapshot);
+    return snapshot;
+  }
+
+  // sync: Erstell-Phase — Original folgt dem Arbeitsdeck
   const snapshot: PresentationDeck = {
     ...stripOriginalFreezeMeta(normalizeDeck(workingDeck)),
     lessonPath: folder,
     updatedAt: new Date().toISOString(),
-    ...(mode === 'freeze' ? { johnnyOriginalFrozenAt: new Date().toISOString() } : {}),
   };
   await saveJsonFile(folder, DECK_ORIGINAL_FILENAME, snapshot);
   return snapshot;
@@ -527,15 +546,15 @@ export async function writeOriginalDeckSnapshot(
 
 /**
  * Deck für SuS-/Review-Ansicht „Original“:
- * - eingefroren → Snapshot
- * - sonst → aktuelles Arbeitsdeck (ohne Striche), nie einen veralteten unfrozen Snapshot
+ * Immer Praesentation.deck.original.json, wenn vorhanden — nie das Arbeitsdeck
+ * (sonst sieht man die bearbeitete Version). Ohne Snapshot: Arbeitsdeck nur als Fallback.
  */
 export async function loadPresentationDeckForOriginalView(
   lessonPath: string
 ): Promise<PresentationDeck> {
   const existing = await loadPresentationOriginalDeck(lessonPath);
-  if (isOriginalDeckFrozen(existing)) {
-    return existing!;
+  if (existing?.slides?.length) {
+    return existing;
   }
   return loadPresentationDeck(lessonPath);
 }
@@ -546,9 +565,15 @@ export function presentationEditorUrl(lessonPath: string, groupId?: string): str
   return `/presentation/edit?${qs.toString()}`;
 }
 
-export function presentationPresentUrl(lessonPath: string, groupId?: string): string {
+export function presentationPresentUrl(
+  lessonPath: string,
+  groupId?: string,
+  variant?: PresentationViewerVariant
+): string {
   const qs = new URLSearchParams({ lessonPath });
   if (groupId) qs.set('groupId', groupId);
+  if (variant === 'original') qs.set('variant', 'original');
+  else if (variant === 'edited') qs.set('variant', 'edited');
   return `/presentation/present?${qs.toString()}`;
 }
 

@@ -98,6 +98,41 @@ export function ensureEditorSelection(editor: HTMLElement | null): boolean {
   }
 }
 
+/** Markierung nach Formatierung wiederherstellen / behalten. */
+export function keepEditorSelection(editor: HTMLElement, preferred?: Range | null) {
+  const sel = window.getSelection();
+  if (!sel) return;
+  editor.focus({ preventScroll: true });
+  if (preferred && !preferred.collapsed) {
+    try {
+      sel.removeAllRanges();
+      sel.addRange(preferred.cloneRange());
+      saved = { editor, range: preferred.cloneRange() };
+      return;
+    } catch {
+      /* fall through */
+    }
+  }
+  if (sel.rangeCount > 0) {
+    const live = sel.getRangeAt(0);
+    if (editor.contains(live.commonAncestorContainer)) {
+      if (!live.collapsed) {
+        saved = { editor, range: live.cloneRange() };
+      }
+      // Auch bei Cursor (collapsed): hier lassen — nicht in alte Markierung springen
+      return;
+    }
+  }
+  if (saved?.editor === editor && !saved.range.collapsed) {
+    try {
+      sel.removeAllRanges();
+      sel.addRange(saved.range.cloneRange());
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 /** Markierung aufheben, Cursor behalten. */
 export function collapseEditorSelection(editor: HTMLElement | null, afterNode?: Node) {
   if (!editor) return;
@@ -213,6 +248,26 @@ function fragmentHasText(fragment: DocumentFragment | Node): boolean {
   return Boolean(fragment.textContent?.replace(/\u00a0/g, ' ').trim());
 }
 
+/** True wenn die Range den Knoten vollständig einschließt (nicht nur anschneidet). */
+export function rangeFullyContainsNode(range: Range, node: Node): boolean {
+  try {
+    const nodeRange = document.createRange();
+    if (node.nodeType === Node.TEXT_NODE) {
+      const len = (node.textContent || '').length;
+      nodeRange.setStart(node, 0);
+      nodeRange.setEnd(node, len);
+    } else {
+      nodeRange.selectNodeContents(node);
+    }
+    return (
+      range.compareBoundaryPoints(Range.START_TO_START, nodeRange) <= 0 &&
+      range.compareBoundaryPoints(Range.END_TO_END, nodeRange) >= 0
+    );
+  } catch {
+    return false;
+  }
+}
+
 function stripNestedFontSpans(root: DocumentFragment | HTMLElement) {
   root.querySelectorAll?.('span[data-pres-fs]')?.forEach((inner) => {
     const parent = inner.parentNode;
@@ -222,21 +277,24 @@ function stripNestedFontSpans(root: DocumentFragment | HTMLElement) {
   });
 }
 
-/** Entfernt font-size / data-pres-fs in allen Elementen, die die Auswahl schneidet. */
+/** Entfernt font-size nur in Elementen, die vollständig in der Auswahl liegen. */
 export function stripFontSizingInRange(editor: HTMLElement, range: Range) {
   const walker = document.createTreeWalker(editor, NodeFilter.SHOW_ELEMENT);
+  const toStrip: HTMLElement[] = [];
   let node: Node | null;
   while ((node = walker.nextNode())) {
     const el = node as HTMLElement;
-    try {
-      if (!range.intersectsNode(el)) continue;
-    } catch {
+    if (!el.style?.fontSize && !el.hasAttribute('data-pres-fs') && !el.hasAttribute('size')) {
       continue;
     }
+    if (!rangeFullyContainsNode(range, el)) continue;
+    toStrip.push(el);
+  }
+  toStrip.forEach((el) => {
     el.style?.removeProperty('font-size');
     el.removeAttribute('data-pres-fs');
     el.removeAttribute('size');
-  }
+  });
 }
 
 function stripAllSizingFromFragment(root: DocumentFragment | HTMLElement) {
@@ -340,13 +398,20 @@ export function applyEditorFontSizePx(editor: HTMLElement | null, px: number): b
   const work = range.cloneRange();
   stripFontSizingInRange(editor, work);
 
+  // Pro Textknoten wrappen — verhindert, dass extractContents zu viel mitnimmt
   let wrapped =
-    applyPxToTextRange(work, px) ??
-    applyPxAcrossRange(editor, work, px);
+    applyPxAcrossRange(editor, work, px) ??
+    applyPxToTextRange(work, px);
 
   if (!wrapped) return false;
 
-  collapseEditorSelection(editor, wrapped);
+  try {
+    const keep = document.createRange();
+    keep.selectNodeContents(wrapped);
+    keepEditorSelection(editor, keep);
+  } catch {
+    keepEditorSelection(editor);
+  }
 
   editor.dispatchEvent(new Event('input', { bubbles: true }));
   return true;
