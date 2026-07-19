@@ -3072,8 +3072,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             )}
             <StudentLessonMaterialsPanel
               lessonName={item.name}
+              lessonPath={item.path}
               files={lessonFiles}
               sharedPaths={groupShared}
+              onHomeworkUploadSuccess={() => setJourneyRefreshKey((k) => k + 1)}
             />
           </>
         );

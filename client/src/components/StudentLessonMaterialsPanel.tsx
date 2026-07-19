@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Box, Button, ButtonGroup, Tooltip, Typography } from '@mui/material';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DownloadIcon from '@mui/icons-material/Download';
 import EditNoteOutlinedIcon from '@mui/icons-material/EditNoteOutlined';
 import CreateOutlinedIcon from '@mui/icons-material/CreateOutlined';
+import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
 import {
   isLessonPresentationMaterialPdf,
   isStudentVisibleLessonMaterialFile,
@@ -14,6 +15,8 @@ import {
 } from '../lib/presentationLessonAssets';
 import { isLessonFileShared } from '../lib/lessonFileSharePath';
 import { openStudentLessonMaterialFile } from '../lib/openStudentLessonMaterial';
+import PresentationHomeworkTodoModal from './presentation/PresentationHomeworkTodoModal';
+import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
 
 type LessonFile = { type: string; name: string; path: string };
 
@@ -160,13 +163,19 @@ function PresentationCombinedActions({
 
 export default function StudentLessonMaterialsPanel({
   lessonName,
+  lessonPath,
   files,
   sharedPaths,
+  onHomeworkUploadSuccess,
 }: {
   lessonName: string;
+  /** Stundenordner-Pfad — für ToDo/Hausaufgaben-Abgabe */
+  lessonPath: string;
   files: LessonFile[];
   sharedPaths: string[];
+  onHomeworkUploadSuccess?: () => void;
 }) {
+  const [todoOpen, setTodoOpen] = useState(false);
   const downloadLessonName = (lessonName || '').trim();
 
   const materials = useMemo(() => {
@@ -285,6 +294,30 @@ export default function StudentLessonMaterialsPanel({
         </Box>
       )}
 
+      {hasPresentation && lessonPath && (
+        <Button
+          size="small"
+          variant="contained"
+          startIcon={<AssignmentOutlinedIcon sx={{ fontSize: 14 }} />}
+          onClick={() => setTodoOpen(true)}
+          sx={{
+            alignSelf: 'flex-start',
+            minHeight: 26,
+            py: 0.25,
+            px: 1,
+            fontSize: '0.7rem',
+            fontWeight: 700,
+            textTransform: 'none',
+            bgcolor: JOHNNY_PRESENTATION.warm,
+            boxShadow: 'none',
+            '& .MuiButton-startIcon': { mr: 0.5 },
+            '&:hover': { bgcolor: '#F57C00', boxShadow: 'none' },
+          }}
+        >
+          ToDo
+        </Button>
+      )}
+
       {otherMaterials.map((file) => (
         <Box
           key={file.path}
@@ -343,6 +376,15 @@ export default function StudentLessonMaterialsPanel({
           </ButtonGroup>
         </Box>
       ))}
+
+      {todoOpen && lessonPath && (
+        <PresentationHomeworkTodoModal
+          open={todoOpen}
+          onClose={() => setTodoOpen(false)}
+          lessonPath={lessonPath}
+          onUploadSuccess={onHomeworkUploadSuccess}
+        />
+      )}
     </Box>
   );
 }

@@ -22,6 +22,7 @@ import {
   saveJsonFile,
   sortSlides,
   stripOriginalFreezeMeta,
+  writeNamedVersionSnapshot,
   writeOriginalDeckSnapshot,
 } from './presentationDeck';
 import { drawPresentationStroke } from './presentationDrawTools';
@@ -31,6 +32,7 @@ import {
 } from './presentationPdfExportScheduler';
 import {
   buildNamedJohnnyPresentationPdfName,
+  namedVersionSlugFromLabel,
   LESSON_PRESENTATION_PDF_EDITED,
   LESSON_PRESENTATION_PDF_ORIGINAL,
 } from './presentationLessonAssets';
@@ -303,6 +305,8 @@ export type ExportPresentationPdfOptions = {
   originalDeck?: PresentationDeck;
   /** Nur Bearbeitet-PDF neu erzeugen (Original unverändert lassen). */
   editedOnly?: boolean;
+  /** Nur die benannte PDF schreiben — andere Versionen (inkl. bearbeitet) unberührt. */
+  namedOnly?: boolean;
   /** Zusätzlich Bearbeitet-PDF unter `Praesentation_<Label>.pdf` ablegen. */
   namedLabel?: string;
 };
@@ -318,6 +322,34 @@ export async function exportPresentationPdfVersions(
   const folder = lessonPath.replace(/\\/g, '/').replace(/\/$/, '');
   const editedDeck = normalizeDeck(stripOriginalFreezeMeta(workingDeck));
   const emptyAnn = createEmptyAnnotations(folder);
+
+  const namedName = options?.namedLabel
+    ? buildNamedJohnnyPresentationPdfName(options.namedLabel)
+    : null;
+  if (options?.namedLabel && !namedName) {
+    throw new Error('Ungültiger Versionsname (nicht „Original“ verwenden)');
+  }
+
+  // Nur benannte Version: ausschließlich diese eine PDF — keine anderen anfassen
+  if (options?.namedOnly && namedName) {
+    onProgress?.(`Version ${namedName}…`);
+    const namedBlob = await buildPresentationPdfBlob(
+      editedDeck,
+      annotations,
+      true,
+      (c, t) => onProgress?.(`Version ${c}/${t}`),
+      { captureScale: 1.25, imageFormat: 'JPEG', jpegQuality: 0.85 }
+    );
+    await savePdfBlob(folder, namedName, namedBlob);
+    const snapshotMeta = await loadPresentationOriginalDeck(folder);
+    return {
+      originalPdf: PDF_ORIGINAL_FILENAME,
+      editedPdf: PDF_EDITED_FILENAME,
+      namedPdf: namedName,
+      deckOriginalSnapshot: DECK_ORIGINAL_SNAPSHOT,
+      originalFrozen: isOriginalDeckFrozen(snapshotMeta),
+    };
+  }
 
   let originalDeck: PresentationDeck;
   if (options?.originalDeck) {
@@ -352,15 +384,10 @@ export async function exportPresentationPdfVersions(
   await savePdfBlob(folder, PDF_EDITED_FILENAME, editedBlob);
 
   let namedPdf: string | undefined;
-  const namedName = options?.namedLabel
-    ? buildNamedJohnnyPresentationPdfName(options.namedLabel)
-    : null;
   if (namedName && namedName !== PDF_EDITED_FILENAME && namedName !== PDF_ORIGINAL_FILENAME) {
     onProgress?.(`Version ${namedName}…`);
     await savePdfBlob(folder, namedName, editedBlob);
     namedPdf = namedName;
-  } else if (options?.namedLabel && !namedName) {
-    throw new Error('Ungültiger Versionsname (nicht „Original“ verwenden)');
   }
 
   const snapshotMeta = await loadPresentationOriginalDeck(folder);
@@ -407,9 +434,10 @@ export async function savePresentationBothVersions(
 }
 
 /**
- * Benannte Version: nur Bearbeitet-PDF einmal erzeugen + als bearbeitet und
- * Praesentation_<Name>.pdf speichern (ohne erneutes schweres Original-PDF).
- * Falls der Canvas-Export scheitert: Kopie der zuletzt gespeicherten Bearbeitet-PDF.
+ * Benannte Version: eigener eingefrorener Snapshot + nur diese eine PDF.
+ * Andere benannte Versionen und deren PDFs bleiben unverändert.
+ * Arbeitsdeck/Annotationen werden aktualisiert (weiterarbeiten), aber nicht als
+ * „Bearbeitet“-PDF überschrieben — das wäre eine separate Speicherung.
  */
 export async function savePresentationNamedVersion(
   lessonPath: string,
@@ -421,7 +449,8 @@ export async function savePresentationNamedVersion(
   const label = (namedLabel || '').trim();
   if (!label) throw new Error('Bitte einen Versionsnamen eingeben');
   const namedName = buildNamedJohnnyPresentationPdfName(label);
-  if (!namedName) throw new Error('Ungültiger Versionsname (nicht „Original“ verwenden)');
+  const slug = namedVersionSlugFromLabel(label);
+  if (!namedName || !slug) throw new Error('Ungültiger Versionsname (nicht „Original“ verwenden)');
 
   const folder = lessonPath.replace(/\\/g, '/').replace(/\/$/, '');
 
@@ -437,9 +466,12 @@ export async function savePresentationNamedVersion(
   onProgress?.('Original sichern…');
   const originalSnapshot = await writeOriginalDeckSnapshot(folder, deckPayload, 'freeze');
 
+  onProgress?.(`Version „${label}“ einfrieren…`);
+  await writeNamedVersionSnapshot(folder, label, slug, deckPayload, annPayload);
+
   try {
     return await exportPresentationPdfVersions(lessonPath, deckPayload, annPayload, onProgress, {
-      editedOnly: true,
+      namedOnly: true,
       namedLabel: label,
     });
   } catch (exportErr) {

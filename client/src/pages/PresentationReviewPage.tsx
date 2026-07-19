@@ -8,11 +8,13 @@ import type { PresentationViewerVariant } from '../lib/presentationDeck';
  * Standalone Laptop-/SuS-Ansicht (/presentation/review):
  * - variant=original → Erstell-Stand ohne Striche
  * - variant=edited (Standard) → Live-Stand inkl. Annotationen
+ * - named=Slug → eingefrorene benannte Version
  * - viewer=student → Vollbild, keine Animationen
  */
 const PresentationReviewPage: React.FC = () => {
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const lessonPath = params.get('lessonPath') || '';
+  const namedSlug = (params.get('named') || '').trim() || undefined;
   const variantParam = params.get('variant');
   const variant: PresentationViewerVariant =
     variantParam === 'original' ? 'original' : 'edited';
@@ -43,6 +45,7 @@ const PresentationReviewPage: React.FC = () => {
         <PresentationLaptopPlayer
           lessonPath={lessonPath}
           variant={variant}
+          namedSlug={namedSlug}
           disableAnimations={studentViewer}
         />
       </Box>

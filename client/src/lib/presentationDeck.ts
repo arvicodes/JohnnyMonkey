@@ -3,6 +3,7 @@ import { sanitizeStoredFooter } from './presentationSlideFooter';
 import { parentDirGitPath } from './folienVersions';
 import { JOHNNY_PRESENTATION } from './presentationTheme';
 import type { PresentationTrashItem } from './presentationTrash';
+import { namedVersionSnapshotFilename } from './presentationLessonAssets';
 import {
   normalizeSlideTransition,
   SLIDE_TRANSITIONS,
@@ -171,6 +172,16 @@ export interface PresentationAnnotations {
   updatedAt: string;
   bySlideId: Record<string, PresentationStroke[]>;
 }
+
+/** Eingefrorene benannte Version (unabhängig vom Live-Arbeitsstand). */
+export type PresentationNamedVersionSnapshot = {
+  version: 1;
+  label: string;
+  slug: string;
+  savedAt: string;
+  deck: PresentationDeck;
+  annotations: PresentationAnnotations;
+};
 
 export function deckFilePath(lessonPath: string): string {
   const base = lessonPath.replace(/\\/g, '/').replace(/\/$/, '');
@@ -500,6 +511,90 @@ export async function loadPresentationOriginalDeck(
   });
 }
 
+export function namedVersionSnapshotFilePath(lessonPath: string, slug: string): string {
+  const folder = lessonFolderPath(lessonPath);
+  return `${folder}/${namedVersionSnapshotFilename(slug)}`;
+}
+
+/** Benannte Version laden (Deck + Striche zum Zeitpunkt des Speicherns). */
+export async function loadNamedVersionSnapshot(
+  lessonPath: string,
+  slug: string
+): Promise<PresentationNamedVersionSnapshot | null> {
+  const loaded = await loadJsonFile<PresentationNamedVersionSnapshot>(
+    namedVersionSnapshotFilePath(lessonPath, slug)
+  );
+  if (!loaded?.deck?.slides?.length) return null;
+  const folder = lessonFolderPath(lessonPath);
+  return {
+    version: 1,
+    label: loaded.label || slug,
+    slug: loaded.slug || slug,
+    savedAt: loaded.savedAt || '',
+    deck: normalizeDeck({
+      ...stripOriginalFreezeMeta(loaded.deck),
+      lessonPath: loaded.deck.lessonPath || folder,
+      slides: sortSlides(loaded.deck.slides),
+    }),
+    annotations: loaded.annotations?.bySlideId
+      ? {
+          ...loaded.annotations,
+          lessonPath: loaded.annotations.lessonPath || folder,
+        }
+      : createEmptyAnnotations(folder),
+  };
+}
+
+/**
+ * Snapshot laden; fehlt er (ältere PDFs vor Snapshot-System), aus dem aktuellen
+ * Live-Stand nachziehen und speichern — gleiche Present-Ansicht wie Original inkl. Striche.
+ * Überschreibt keine bereits vorhandenen Snapshots.
+ */
+export async function loadOrMigrateNamedVersionSnapshot(
+  lessonPath: string,
+  slug: string,
+  label?: string
+): Promise<PresentationNamedVersionSnapshot | null> {
+  const existing = await loadNamedVersionSnapshot(lessonPath, slug);
+  if (existing) return existing;
+
+  const deck = await loadPresentationDeck(lessonPath);
+  if (!deck?.slides?.length) return null;
+  const annotations =
+    (await loadPresentationAnnotations(lessonPath)) ?? createEmptyAnnotations(lessonPath);
+  const displayLabel = (label || slug.replace(/_/g, ' ')).trim() || slug;
+  return writeNamedVersionSnapshot(lessonPath, displayLabel, slug, deck, annotations);
+}
+
+/** Benannte Version einfrieren — überschreibt nur diese Version, nie andere. */
+export async function writeNamedVersionSnapshot(
+  lessonPath: string,
+  label: string,
+  slug: string,
+  deck: PresentationDeck,
+  annotations: PresentationAnnotations
+): Promise<PresentationNamedVersionSnapshot> {
+  const folder = lessonFolderPath(lessonPath);
+  const snapshot: PresentationNamedVersionSnapshot = {
+    version: 1,
+    label,
+    slug,
+    savedAt: new Date().toISOString(),
+    deck: {
+      ...stripOriginalFreezeMeta(normalizeDeck(deck)),
+      lessonPath: folder,
+      updatedAt: new Date().toISOString(),
+    },
+    annotations: {
+      ...annotations,
+      lessonPath: folder,
+      updatedAt: new Date().toISOString(),
+    },
+  };
+  await saveJsonFile(folder, namedVersionSnapshotFilename(slug), snapshot);
+  return snapshot;
+}
+
 /**
  * Original-Snapshot schreiben.
  * - sync: Original = aktuelles Arbeitsdeck, nur solange noch nicht eingefroren
@@ -568,11 +663,13 @@ export function presentationEditorUrl(lessonPath: string, groupId?: string): str
 export function presentationPresentUrl(
   lessonPath: string,
   groupId?: string,
-  variant?: PresentationViewerVariant
+  variant?: PresentationViewerVariant,
+  namedSlug?: string
 ): string {
   const qs = new URLSearchParams({ lessonPath });
   if (groupId) qs.set('groupId', groupId);
-  if (variant === 'original') qs.set('variant', 'original');
+  if (namedSlug) qs.set('named', namedSlug);
+  else if (variant === 'original') qs.set('variant', 'original');
   else if (variant === 'edited') qs.set('variant', 'edited');
   return `/presentation/present?${qs.toString()}`;
 }
@@ -580,11 +677,13 @@ export function presentationPresentUrl(
 export function presentationReviewUrl(
   lessonPath: string,
   groupId?: string,
-  variant?: PresentationViewerVariant
+  variant?: PresentationViewerVariant,
+  namedSlug?: string
 ): string {
   const qs = new URLSearchParams({ lessonPath });
   if (groupId) qs.set('groupId', groupId);
-  if (variant === 'original') qs.set('variant', 'original');
+  if (namedSlug) qs.set('named', namedSlug);
+  else if (variant === 'original') qs.set('variant', 'original');
   else if (variant === 'edited') qs.set('variant', 'edited');
   return `/presentation/review?${qs.toString()}`;
 }

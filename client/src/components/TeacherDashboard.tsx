@@ -16,6 +16,8 @@ import {
   isLessonPresentationSystemFile,
   listJohnnyPresentationVersions,
   canDeleteJohnnyPresentationVersion,
+  namedVersionSlugFromPdfName,
+  namedVersionSnapshotFilename,
   type JohnnyPresentationVersion,
 } from '../lib/presentationLessonAssets';
 import { presentationPresentUrl, presentationReviewUrl } from '../lib/presentationDeck';
@@ -6037,7 +6039,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [laptopPresentationActive, setLaptopPresentationActive] = useState(false);
   /** Laptop-Linksspalte: Deck (Original/bearbeitet) oder benannte PDF-Version */
   const [laptopPresentationView, setLaptopPresentationView] = useState<
-    | { mode: 'deck'; variant: 'original' | 'edited' }
+    | { mode: 'deck'; variant: 'original' | 'edited'; namedSlug?: string }
     | { mode: 'pdf'; path: string; label: string }
   >({ mode: 'deck', variant: 'edited' });
   const [showConfettiGame, setShowConfettiGame] = useState(false);
@@ -18328,10 +18330,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   </Box>
                 ) : (
                   <PresentationLaptopPlayer
-                    key={`laptop-pres-${laptopPresentationView.variant}`}
+                    key={`laptop-pres-${laptopPresentationView.namedSlug || laptopPresentationView.variant}`}
                     lessonPath={lessonModalData.lessonPath}
                     embedded
                     variant={laptopPresentationView.variant}
+                    namedSlug={laptopPresentationView.namedSlug}
                     onClose={() => setLaptopPresentationActive(false)}
                   />
                 )
@@ -18791,10 +18794,19 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   };
                   // Laptop-Modus: alles in der linken Spalte (wie „bearbeitet“), nicht neuer Tab / Roh-PDF
                   if (lessonPlanViewMode === 'background') {
-                    setLaptopPresentationView({
-                      mode: 'deck',
-                      variant: version.kind === 'original' ? 'original' : 'edited',
-                    });
+                    if (version.kind === 'named') {
+                      const slug = namedVersionSlugFromPdfName(version.name);
+                      setLaptopPresentationView({
+                        mode: 'deck',
+                        variant: 'edited',
+                        namedSlug: slug || undefined,
+                      });
+                    } else {
+                      setLaptopPresentationView({
+                        mode: 'deck',
+                        variant: version.kind === 'original' ? 'original' : 'edited',
+                      });
+                    }
                     setLaptopPresentationActive(true);
                     return;
                   }
@@ -18820,8 +18832,22 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     );
                     return;
                   }
-                  if (version.kind === 'edited' || version.kind === 'named') {
-                    // bearbeitet und benannte Versionen (z. B. „2026“): gleiche Live-Ansicht mit Strichen
+                  if (version.kind === 'named') {
+                    const slug = namedVersionSlugFromPdfName(version.name);
+                    if (!slug) {
+                      void openLessonFolderFile({ type: 'file', name: version.name, path: version.path });
+                      return;
+                    }
+                    // Gleiche Present-Ansicht wie Original, inkl. Bearbeitungen dieser Version
+                    window.open(
+                      `${origin}${presentationPresentUrl(lessonModalData.lessonPath, lessonModalData.groupId || undefined, undefined, slug)}`,
+                      '_blank',
+                      'noopener,noreferrer'
+                    );
+                    return;
+                  }
+                  if (version.kind === 'edited') {
+                    // bearbeitet: Live-Ansicht mit Strichen
                     if (lessonPlanViewMode === 'create') {
                       window.open(`${origin}/presentation/edit?${qsBase().toString()}`, '_blank', 'noopener,noreferrer');
                       return;
@@ -18877,6 +18903,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     if (!res.ok) {
                       const err = await res.json().catch(() => ({}));
                       throw new Error((err as { error?: string }).error || 'Löschen fehlgeschlagen');
+                    }
+                    const slug = namedVersionSlugFromPdfName(version.name);
+                    if (slug && lessonModalData.lessonPath) {
+                      const snapPath = `${lessonModalData.lessonPath.replace(/\\/g, '/').replace(/\/$/, '')}/${namedVersionSnapshotFilename(slug)}`;
+                      await fetch('/api/file-system-paths/delete-file', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ filePath: snapPath }),
+                      }).catch(() => undefined);
                     }
                     setLessonModalData((prev) =>
                       prev

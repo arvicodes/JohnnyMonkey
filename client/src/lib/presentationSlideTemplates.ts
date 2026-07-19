@@ -574,12 +574,45 @@ export function createSlideFromCustomTemplate(
   return instantiateTemplateSlide(entry.payload, order, lessonPath);
 }
 
+/** Erkennt die Hausaufgaben-Folie (HA-Vorlage mit HA.png). */
+export function isHomeworkSlide(slide: PresentationSlide): boolean {
+  return (slide.elements ?? []).some((el) => {
+    if (el.type !== 'image' || !el.src) return false;
+    const src = el.src.replace(/\\/g, '/');
+    return /(?:^|\/)HA\.png$/i.test(src) || src.includes(`${GRAFIKEN_TOKEN}/HA.png`);
+  });
+}
+
+export function findHomeworkSlides(slides: PresentationSlide[]): PresentationSlide[] {
+  const withBadge = slides.filter(isHomeworkSlide);
+  if (withBadge.length > 0) return withBadge;
+  // Fallback: Titel beginnt mit „Hausaufgabe“ (ältere Folien ohne HA.png)
+  return slides.filter((s) => {
+    const t = htmlToPlain(s.titleHtml || s.title || '').trim().toLowerCase();
+    return t.startsWith('hausaufgabe');
+  });
+}
+
 export function deckHasHaTemplateSlide(slides: PresentationSlide[], store: SlideTemplatesStore): boolean {
+  if (findHomeworkSlides(slides).length > 0) return true;
   const ha = getTemplatePayload(store, 'ha');
   if (!ha) return false;
   const haTitle = htmlToPlain(ha.titleHtml || ha.title || '').toLowerCase();
+  if (!haTitle) return false;
   return slides.some((s) => {
     const t = htmlToPlain(s.titleHtml || s.title || '').toLowerCase();
-    return t.includes('hausaufgabe') || (haTitle && t === haTitle);
+    return t === haTitle;
   });
+}
+
+/** Virtueller Abgabe-Schlüssel für Präsentations-Hausaufgaben (kein H_*-File nötig). */
+export function presentationHomeworkAssignmentKey(lessonPath: string): {
+  fileName: string;
+  filePath: string;
+} {
+  const normalized = lessonPath.replace(/\\/g, '/').replace(/\/+$/, '');
+  return {
+    fileName: 'H_Hausaufgabe',
+    filePath: `${normalized}/H_Hausaufgabe`,
+  };
 }

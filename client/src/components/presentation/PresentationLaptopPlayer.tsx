@@ -13,6 +13,7 @@ import {
   loadPresentationAnnotations,
   loadPresentationDeck,
   loadPresentationDeckForOriginalView,
+  loadOrMigrateNamedVersionSnapshot,
   sortSlides,
 } from '../../lib/presentationDeck';
 import { getSlideMaxRevealSteps } from '../../lib/presentationReveal';
@@ -40,6 +41,8 @@ export type PresentationLaptopPlayerProps = {
    * edited = Live inkl. Annotationen (SuS „Folien bearbeitet“)
    */
   variant?: PresentationViewerVariant;
+  /** Benannte eingefrorene Version (Slug, z. B. 2026_2) — unabhängig vom Live-Stand */
+  namedSlug?: string;
 };
 
 /**
@@ -52,6 +55,7 @@ export default function PresentationLaptopPlayer({
   embedded = false,
   disableAnimations = false,
   variant = 'edited',
+  namedSlug,
 }: PresentationLaptopPlayerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +77,41 @@ export default function PresentationLaptopPlayer({
     }
     setLoading(true);
     setError(null);
+
+    const apply = (d: PresentationDeck | null, a: PresentationAnnotations | null, err?: string) => {
+      if (cancelled) return;
+      if (!d) {
+        setError(err || 'Präsentation konnte nicht geladen werden.');
+        setDeck(null);
+        setAnnotations(EMPTY_ANNOTATIONS);
+      } else {
+        setDeck(d);
+        setAnnotations(a ?? { ...EMPTY_ANNOTATIONS, lessonPath });
+        setSlideIndex(0);
+        setRevealStep(0);
+      }
+      setLoading(false);
+    };
+
+    if (namedSlug) {
+      loadOrMigrateNamedVersionSnapshot(lessonPath, namedSlug)
+        .then((snap) => {
+          apply(
+            snap?.deck ?? null,
+            snap?.annotations ?? null,
+            `Version „${namedSlug.replace(/_/g, ' ')}“ konnte nicht geladen werden.`
+          );
+        })
+        .catch((e) => {
+          if (cancelled) return;
+          setError(e instanceof Error ? e.message : 'Laden fehlgeschlagen');
+          setLoading(false);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const load =
       variant === 'original'
         ? Promise.all([
@@ -83,26 +122,13 @@ export default function PresentationLaptopPlayer({
 
     load
       .then(([d, a]) => {
-        if (cancelled) return;
-        if (!d) {
-          setError(
-            variant === 'original'
-              ? 'Original-Version noch nicht gespeichert.'
-              : 'Präsentation konnte nicht geladen werden.'
-          );
-          setDeck(null);
-          setAnnotations(EMPTY_ANNOTATIONS);
-        } else {
-          setDeck(d);
-          setAnnotations(
-            variant === 'original'
-              ? { ...EMPTY_ANNOTATIONS, lessonPath }
-              : a ?? EMPTY_ANNOTATIONS
-          );
-          setSlideIndex(0);
-          setRevealStep(0);
-        }
-        setLoading(false);
+        apply(
+          d,
+          variant === 'original' ? { ...EMPTY_ANNOTATIONS, lessonPath } : a,
+          variant === 'original'
+            ? 'Original-Version noch nicht gespeichert.'
+            : 'Präsentation konnte nicht geladen werden.'
+        );
       })
       .catch((e) => {
         if (cancelled) return;
@@ -112,7 +138,7 @@ export default function PresentationLaptopPlayer({
     return () => {
       cancelled = true;
     };
-  }, [lessonPath, variant]);
+  }, [lessonPath, variant, namedSlug]);
 
   useEffect(() => {
     const style = document.createElement('style');
@@ -225,10 +251,11 @@ export default function PresentationLaptopPlayer({
     const updateScale = () => {
       const host = stageHostRef.current;
       if (!host) return;
-      // Volle Breite nutzen — Höhe folgt dem 16:9 der Folie (kein Letterboxing oben/unten)
+      // In verfügbaren Platz einpassen (Breite + Höhe), damit ToDo/Notizen nicht abgeschnitten werden
       const width = host.clientWidth;
-      if (width < 40) return;
-      const next = width / SLIDE_REF_WIDTH;
+      const height = host.clientHeight;
+      if (width < 40 || height < 40) return;
+      const next = Math.min(width / SLIDE_REF_WIDTH, height / SLIDE_REF_HEIGHT);
       setDisplayScale((prev) => (Math.abs(prev - next) < 1e-4 ? prev : next));
     };
     updateScale();
@@ -267,7 +294,7 @@ export default function PresentationLaptopPlayer({
 
   const displayH = SLIDE_REF_HEIGHT * displayScale;
   const displayW = SLIDE_REF_WIDTH * displayScale;
-  const notesPanelMin = embedded ? 72 : 80;
+  const notesPanelMin = embedded ? 56 : 64;
   const notesHtml = currentSlide.speakerNotesHtml?.trim();
   const hasHtmlNotes =
     !!notesHtml && notesHtml !== '<p></p>' && notesHtml !== '<p><br></p>';
@@ -313,13 +340,16 @@ export default function PresentationLaptopPlayer({
         </IconButton>
       )}
 
-      {/* Stage: exakt Folienhöhe bei voller Breite — kein schwarzer Rand */}
+      {/* Stage: restlicher Platz über ToDo/Notizen — Folie skaliert ein */}
       <Box
         ref={stageHostRef}
         sx={{
-          flex: '0 0 auto',
+          flex: '1 1 auto',
+          minHeight: 0,
           width: '100%',
-          height: displayH || 'auto',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           overflow: 'hidden',
           m: 0,
           p: 0,
@@ -377,7 +407,7 @@ export default function PresentationLaptopPlayer({
         <Typography
           sx={{
             position: 'absolute',
-            top: Math.max(8, displayH - 28),
+            top: 8,
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 4,
@@ -396,8 +426,9 @@ export default function PresentationLaptopPlayer({
 
       <Box
         sx={{
-          flex: '1 1 auto',
+          flex: '0 0 auto',
           minHeight: notesPanelMin,
+          maxHeight: embedded ? 100 : 140,
           overflowY: 'auto',
           bgcolor: '#fff',
           borderTop: '1px solid rgba(0,0,0,0.08)',

@@ -446,14 +446,13 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 ? `${1 * scale}px dashed rgba(255,152,0,0.45)`
                 : undefined;
 
+  /** Keine Dauer-Ränder um Bilder — Rahmen nur bei Auswahl / Animationsziel. */
   const hugChromeBorder =
     showSelectionChrome
       ? `${2 * scale}px solid #2E7D32`
       : animationEditMode && elementAnimSelected
         ? `${2 * scale}px solid #E65100`
-        : editable
-          ? `${1 * scale}px dashed rgba(46,125,50,0.35)`
-          : undefined;
+        : undefined;
 
   const resizeHandleSx = {
     position: 'absolute' as const,

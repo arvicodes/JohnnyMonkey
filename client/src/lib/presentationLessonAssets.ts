@@ -15,7 +15,7 @@ export function isJohnnyPresentationExportPdf(name: string): boolean {
 export function isLessonPresentationSystemFile(name: string): boolean {
   const n = (name || '').trim();
   if (!n) return false;
-  if (/^Praesentation\.(deck|annotations)(\.[^/\\]+)*\.json$/i.test(n)) return true;
+  if (/^Praesentation\.(deck|annotations|version)(\.[^/\\]+)*\.json$/i.test(n)) return true;
   return false;
 }
 
@@ -47,7 +47,30 @@ export function buildNamedJohnnyPresentationPdfName(label: string): string | nul
     .slice(0, 120);
   if (!s) return null;
   if (/^original$/i.test(s)) return null;
+  if (/^bearbeitet$/i.test(s)) return null;
   return `Praesentation_${s}.pdf`;
+}
+
+/** Slug aus PDF-Namen: Praesentation_2026_2.pdf → 2026_2 */
+export function namedVersionSlugFromPdfName(name: string): string | null {
+  const n = (name || '').trim();
+  if (!n || n === LESSON_PRESENTATION_PDF_ORIGINAL || n === LESSON_PRESENTATION_PDF_EDITED) {
+    return null;
+  }
+  const m = n.match(/^Praesentation_(.+)\.pdf$/i);
+  return m?.[1] || null;
+}
+
+/** Slug aus Anzeige-Label: „2026 2“ → 2026_2 */
+export function namedVersionSlugFromLabel(label: string): string | null {
+  const pdf = buildNamedJohnnyPresentationPdfName(label);
+  return pdf ? namedVersionSlugFromPdfName(pdf) : null;
+}
+
+/** Interner Snapshot: Praesentation.version.2026_2.json */
+export function namedVersionSnapshotFilename(slug: string): string {
+  const safe = (slug || '').replace(/[\\/]/g, '').trim();
+  return `Praesentation.version.${safe}.json`;
 }
 
 export type JohnnyPresentationVersion = {

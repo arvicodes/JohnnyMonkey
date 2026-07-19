@@ -16,17 +16,19 @@ import {
   SLIDE_REF_HEIGHT,
   SLIDE_REF_WIDTH,
   createEmptyAnnotations,
+  loadOrMigrateNamedVersionSnapshot,
   loadPresentationAnnotations,
   loadPresentationDeck,
   loadPresentationDeckForOriginalView,
   nextViewportScale,
   saveJsonFile,
   sortSlides,
+  writeNamedVersionSnapshot,
   writeOriginalDeckSnapshot,
 } from '../lib/presentationDeck';
 import { PresentationDrawTool, defaultLineWidthForTool, lineWidthsForTool } from '../lib/presentationDrawTools';
 import { presentationLessonBackUrl } from '../lib/presentationEditorUi';
-import { savePresentationBothVersions, savePresentationNamedVersion } from '../lib/presentationExport';
+import { savePresentationBothVersions, savePresentationNamedVersion, exportPresentationPdfVersions } from '../lib/presentationExport';
 import { getSlideMaxRevealSteps } from '../lib/presentationReveal';
 import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../lib/presentationTransitions';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
@@ -39,13 +41,16 @@ const PresentationPresentPage: React.FC = () => {
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const lessonPath = params.get('lessonPath') || '';
   const groupId = params.get('groupId') || '';
+  const namedSlug = (params.get('named') || '').trim();
+  const isNamedView = Boolean(namedSlug);
   const viewerVariant: PresentationViewerVariant =
     params.get('variant') === 'original' ? 'original' : 'edited';
-  const isOriginalView = viewerVariant === 'original';
+  const isOriginalView = !isNamedView && viewerVariant === 'original';
 
   const [loading, setLoading] = useState(true);
   const [deck, setDeck] = useState<PresentationDeck | null>(null);
   const [annotations, setAnnotations] = useState<PresentationAnnotations | null>(null);
+  const [namedLabel, setNamedLabel] = useState('');
   const [slideIndex, setSlideIndex] = useState(0);
   const [revealStep, setRevealStep] = useState(0);
   const [animKey, setAnimKey] = useState(0);
@@ -77,6 +82,46 @@ const PresentationPresentPage: React.FC = () => {
       return;
     }
     let cancelled = false;
+
+    const finish = (
+      d: PresentationDeck | null,
+      a: PresentationAnnotations | null,
+      opts?: { draw?: boolean; label?: string }
+    ) => {
+      if (cancelled) return;
+      setDeck(d);
+      setAnnotations(a ?? createEmptyAnnotations(lessonPath));
+      setNamedLabel(opts?.label || '');
+      if (opts?.draw) {
+        setDrawActive(true);
+        setActiveTool('select');
+      } else {
+        setDrawActive(false);
+      }
+      setLoading(false);
+    };
+
+    // Benannte Version = gleiche Present-Ansicht wie Original, inkl. gespeicherter Bearbeitungen
+    if (namedSlug) {
+      loadOrMigrateNamedVersionSnapshot(lessonPath, namedSlug)
+        .then((snap) => {
+          if (cancelled) return;
+          if (!snap) {
+            setSnackbar(`Version „${namedSlug.replace(/_/g, ' ')}“ konnte nicht geladen werden.`);
+            finish(null, null);
+            return;
+          }
+          // Wie Original: Handles/Werkzeuge an, mit Strichen der Version
+          finish(snap.deck, snap.annotations, { draw: true, label: snap.label });
+        })
+        .catch(() => {
+          if (!cancelled) finish(null, null);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
+
     // Original = Erstell-Stand OHNE Striche, aber mit Handles zum Neu-Bearbeiten
     // bearbeitet = Arbeitsdeck + gespeicherte Striche
     const loadDeck = isOriginalView
@@ -89,7 +134,6 @@ const PresentationPresentPage: React.FC = () => {
     Promise.all([loadDeck, loadAnn])
       .then(async ([d, a]) => {
         if (cancelled) return;
-        // Erstell-Stand einmalig einfrieren, bevor Live-Striche gespeichert werden
         if (d) {
           try {
             await writeOriginalDeckSnapshot(lessonPath, d, 'freeze');
@@ -98,18 +142,13 @@ const PresentationPresentPage: React.FC = () => {
           }
         }
         if (cancelled) return;
-        setDeck(d);
-        setAnnotations(
+        finish(
+          d,
           isOriginalView
             ? createEmptyAnnotations(lessonPath)
-            : a ?? createEmptyAnnotations(lessonPath)
+            : a ?? createEmptyAnnotations(lessonPath),
+          { draw: isOriginalView }
         );
-        // Original öffnen → sofort zeichnen/Handles nutzbar (Folie bleibt erstmal blank)
-        if (isOriginalView) {
-          setDrawActive(true);
-          setActiveTool('select');
-        }
-        setLoading(false);
       })
       .catch(() => {
         if (!cancelled) setLoading(false);
@@ -117,7 +156,7 @@ const PresentationPresentPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [lessonPath, isOriginalView]);
+  }, [lessonPath, isOriginalView, namedSlug]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -147,8 +186,20 @@ const PresentationPresentPage: React.FC = () => {
 
   const persistAnnotations = useCallback(
     async (next: PresentationAnnotations) => {
-      if (!lessonPath) return;
+      if (!lessonPath || !deck) return;
       try {
+        if (isNamedView && namedSlug) {
+          // Nur diese benannte Version aktualisieren — Live/andere Versionen bleiben
+          await writeNamedVersionSnapshot(
+            lessonPath,
+            namedLabel || namedSlug.replace(/_/g, ' '),
+            namedSlug,
+            deck,
+            next
+          );
+          setAnnotations(next);
+          return;
+        }
         const payload = { ...next, updatedAt: new Date().toISOString() };
         await saveJsonFile(lessonPath, ANNOTATIONS_FILENAME, payload);
         setAnnotations(payload);
@@ -156,7 +207,7 @@ const PresentationPresentPage: React.FC = () => {
         setSnackbar('Annotationen konnten nicht gespeichert werden');
       }
     },
-    [lessonPath]
+    [deck, isNamedView, lessonPath, namedLabel, namedSlug]
   );
 
   const updateStrokes = (strokes: PresentationStroke[]) => {
@@ -171,21 +222,62 @@ const PresentationPresentPage: React.FC = () => {
   };
 
   const flushAnnotations = useCallback(async (): Promise<PresentationAnnotations | null> => {
-    if (!annotations || !lessonPath) return null;
+    if (!annotations || !lessonPath || !deck) return null;
     if (saveTimer.current) {
       clearTimeout(saveTimer.current);
       saveTimer.current = null;
     }
     const payload = { ...annotations, updatedAt: new Date().toISOString() };
+    if (isNamedView && namedSlug) {
+      await writeNamedVersionSnapshot(
+        lessonPath,
+        namedLabel || namedSlug.replace(/_/g, ' '),
+        namedSlug,
+        deck,
+        payload
+      );
+      setAnnotations(payload);
+      return payload;
+    }
     await saveJsonFile(lessonPath, ANNOTATIONS_FILENAME, payload);
     setAnnotations(payload);
     return payload;
-  }, [annotations, lessonPath]);
+  }, [annotations, deck, isNamedView, lessonPath, namedLabel, namedSlug]);
 
   const handleSaveBothVersions = useCallback(async () => {
     if (!deck || saving) return;
     if (!annotations) {
       setSnackbar('Annotationen fehlen — bitte kurz warten und erneut speichern');
+      return;
+    }
+    // In benannter Version: nur diesen Snapshot + PDF aktualisieren (Live bleibt)
+    if (isNamedView && namedSlug) {
+      setSaving(true);
+      setSaveProgress('Vorbereiten…');
+      try {
+        const ann = await flushAnnotations();
+        if (!ann) throw new Error('Annotationen fehlen');
+        const label = namedLabel || namedSlug.replace(/_/g, ' ');
+        setSaveProgress(`Version „${label}“…`);
+        await writeNamedVersionSnapshot(lessonPath, label, namedSlug, deck, ann);
+        const result = await exportPresentationPdfVersions(
+          lessonPath,
+          deck,
+          ann,
+          setSaveProgress,
+          { namedOnly: true, namedLabel: label }
+        );
+        setSnackbar(
+          result.namedPdf
+            ? `Version gespeichert: ${result.namedPdf}`
+            : `Version „${label}“ gespeichert`
+        );
+      } catch (e) {
+        setSnackbar(e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
+      } finally {
+        setSaving(false);
+        setSaveProgress('');
+      }
       return;
     }
     setSaving(true);
@@ -205,7 +297,16 @@ const PresentationPresentPage: React.FC = () => {
       setSaving(false);
       setSaveProgress('');
     }
-  }, [annotations, deck, flushAnnotations, lessonPath, saving]);
+  }, [
+    annotations,
+    deck,
+    flushAnnotations,
+    isNamedView,
+    lessonPath,
+    namedLabel,
+    namedSlug,
+    saving,
+  ]);
 
   const handleSaveNamedVersion = useCallback(async () => {
     const label = saveNamedLabel.trim();
@@ -444,7 +545,7 @@ const PresentationPresentPage: React.FC = () => {
     );
   }
 
-  if (loading || !deck || !annotations || !currentSlide) {
+  if (loading) {
     return (
       <Box
         sx={{
@@ -456,6 +557,23 @@ const PresentationPresentPage: React.FC = () => {
         }}
       >
         <CircularProgress sx={{ color: JOHNNY_PRESENTATION.primaryLight }} />
+      </Box>
+    );
+  }
+
+  if (!deck || !annotations || !currentSlide) {
+    return (
+      <Box sx={{ p: 4, color: '#fff', maxWidth: 480 }}>
+        <Typography sx={{ mb: 1 }}>
+          {namedSlug
+            ? `Version „${namedLabel || namedSlug.replace(/_/g, ' ')}“ konnte nicht geladen werden.`
+            : 'Präsentation konnte nicht geladen werden.'}
+        </Typography>
+        {snackbar ? (
+          <Typography variant="body2" color="text.secondary">
+            {snackbar}
+          </Typography>
+        ) : null}
       </Box>
     );
   }
@@ -643,9 +761,9 @@ const PresentationPresentPage: React.FC = () => {
         <DialogTitle>Version speichern</DialogTitle>
         <DialogContent sx={{ pt: 1 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-            Speichert die aktuelle Bearbeitung unter einem Namen
-            (z.&nbsp;B. „2026“ → Praesentation_2026.pdf). Im Stundenablauf erscheint
-            Original | 2026 — gleiche Ansicht wie bisher „bearbeitet“, nur mit deinem Namen.
+            Speichert einen eigenen Snapshot unter diesem Namen
+            (z.&nbsp;B. „2026 2“). Frühere Versionen wie „2026“ bleiben unverändert.
+            Im Stundenablauf: Original | 2026 | 2026 2.
           </Typography>
           <TextField
             autoFocus

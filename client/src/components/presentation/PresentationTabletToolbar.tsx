@@ -293,7 +293,7 @@ export default function PresentationTabletToolbar({
               whiteSpace: 'nowrap',
             }}
           >
-            Original
+            Version
           </Typography>
         ) : (
           <ToolBtn

@@ -1,6 +1,7 @@
 import type { LessonFolderFileLike } from './openLessonFolderFile';
 import {
   isJohnnyPresentationExportPdf,
+  namedVersionSlugFromPdfName,
   LESSON_PRESENTATION_PDF_ORIGINAL,
 } from './presentationLessonAssets';
 import { presentationReviewUrl, type PresentationViewerVariant } from './presentationDeck';
@@ -42,9 +43,15 @@ export async function openStudentLessonMaterialFile(
     return;
   }
 
-  // Johnny-Folien: Original ohne Striche; bearbeitet und benannte Versionen (z. B. 2026) live mit Strichen
+  // Johnny-Folien: Original / Live / benannte Snapshots
   if (ext === 'pdf' && isJohnnyPresentationExportPdf(item.name)) {
     const lessonPath = lessonPathFromMaterialFile(item.path);
+    const namedSlug = namedVersionSlugFromPdfName(item.name);
+    if (namedSlug) {
+      const url = `${presentationReviewUrl(lessonPath, undefined, undefined, namedSlug)}&viewer=student`;
+      if (!tryOpenInNewTab(url)) window.location.assign(url);
+      return;
+    }
     const variant: PresentationViewerVariant =
       item.name === LESSON_PRESENTATION_PDF_ORIGINAL ? 'original' : 'edited';
     const url = `${presentationReviewUrl(lessonPath, undefined, variant)}&viewer=student`;

@@ -2224,9 +2224,8 @@ const PresentationEditorPage: React.FC = () => {
         <DialogTitle>Version speichern</DialogTitle>
         <DialogContent sx={{ pt: 1 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-            Speichert die Bearbeitung unter einem Namen
-            (z.&nbsp;B. „2026“ → Praesentation_2026.pdf). Im Stundenablauf:
-            Original | 2026 (statt „bearbeitet“).
+            Speichert einen eigenen Snapshot unter diesem Namen
+            (z.&nbsp;B. „2026 2“). Frühere Versionen bleiben unverändert.
           </Typography>
           <TextField
             autoFocus
