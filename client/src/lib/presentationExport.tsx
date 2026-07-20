@@ -44,6 +44,12 @@ export const PDF_ORIGINAL_FILENAME = LESSON_PRESENTATION_PDF_ORIGINAL;
 export const PDF_EDITED_FILENAME = LESSON_PRESENTATION_PDF_EDITED;
 
 const EXPORT_CAPTURE_SCALE = 2;
+/** Schneller Export für benannte/Bearbeitet-PDFs (Unterricht). */
+const EXPORT_FAST = {
+  captureScale: 1,
+  imageFormat: 'JPEG' as const,
+  jpegQuality: 0.8,
+};
 
 function waitFrames(n = 2): Promise<void> {
   return new Promise((resolve) => {
@@ -179,14 +185,17 @@ async function captureSlideCanvas(
       );
     });
 
-    await waitFrames(6);
+    await waitFrames(3);
     await waitForDomImages(mount);
     try {
       await document.fonts.ready;
     } catch {
       /* ignore */
     }
-    await new Promise<void>((r) => setTimeout(r, 420));
+    // Kurze Settle-Zeit nur wenn Bilder im DOM sind
+    if (mount.querySelector('img')) {
+      await new Promise<void>((r) => setTimeout(r, 120));
+    }
 
     const target = mount.querySelector('[data-pres-slide]') as HTMLElement | null;
     if (!target) throw new Error('Folie konnte nicht gerendert werden');
@@ -340,7 +349,7 @@ export async function exportPresentationPdfVersions(
       annotations,
       true,
       (c, t) => onProgress?.(`Version ${c}/${t}`),
-      { captureScale: 1.25, imageFormat: 'JPEG', jpegQuality: 0.85 }
+      EXPORT_FAST
     );
     await savePdfBlob(folder, namedName, namedBlob);
     const snapshotMeta = await loadPresentationOriginalDeck(folder);
@@ -395,9 +404,7 @@ export async function exportPresentationPdfVersions(
     (c, t) => {
       onProgress?.(`Bearbeitet ${c}/${t}`);
     },
-    options?.editedOnly
-      ? { captureScale: 1.25, imageFormat: 'JPEG', jpegQuality: 0.85 }
-      : undefined
+    EXPORT_FAST
   );
   await savePdfBlob(folder, PDF_EDITED_FILENAME, editedBlob);
 
@@ -452,12 +459,11 @@ export async function savePresentationBothVersions(
 }
 
 /**
- * Speichern als…: neue benannte Version (Snapshot + PDF).
+ * Speichern als…: neue benannte Version (Snapshot + optional PDF).
  * Andere Versionen bleiben unverändert.
  *
- * `updateLive` false (Standard für Speichern als…): Live/Original/aktuelle Dateien
- * werden nicht angefasst — nur die neue Version wird geschrieben.
- * `updateLive` true: zusätzlich Arbeitsdeck + Annotationen mitschreiben.
+ * `updateLive` false (Standard): Live/Original/aktuelle Dateien nicht anfassen.
+ * `exportPdf` false: nur JSON-Snapshot — PDF kann im Hintergrund folgen.
  */
 export async function savePresentationNamedVersion(
   lessonPath: string,
@@ -468,6 +474,7 @@ export async function savePresentationNamedVersion(
     | {
         onProgress?: (label: string) => void;
         updateLive?: boolean;
+        exportPdf?: boolean;
       }
     | ((label: string) => void)
 ): Promise<PresentationSaveResult> {
@@ -485,6 +492,7 @@ export async function savePresentationNamedVersion(
   const onProgress = options?.onProgress;
   // Speichern als…: Standard = aktuelle Version unverändert lassen
   const updateLive = options?.updateLive === true;
+  const exportPdf = options?.exportPdf !== false;
 
   onProgress?.('Neue Version anlegen…');
   const deckPayload = {
@@ -503,43 +511,71 @@ export async function savePresentationNamedVersion(
   onProgress?.(`Version „${label}“ anlegen…`);
   await writeNamedVersionSnapshot(folder, label, slug, deckPayload, annPayload);
 
+  const snapshotMeta = await loadPresentationOriginalDeck(folder);
+  const baseResult: PresentationSaveResult = {
+    originalPdf: PDF_ORIGINAL_FILENAME,
+    editedPdf: PDF_EDITED_FILENAME,
+    namedPdf: namedName,
+    deckOriginalSnapshot: DECK_ORIGINAL_SNAPSHOT,
+    originalFrozen: isOriginalDeckFrozen(snapshotMeta),
+  };
+
+  if (!exportPdf) {
+    return baseResult;
+  }
+
   try {
     return await exportPresentationPdfVersions(lessonPath, deckPayload, annPayload, onProgress, {
       namedOnly: true,
       namedLabel: label,
     });
   } catch (exportErr) {
-    console.warn('Named PDF export failed, trying copy of existing bearbeitet.pdf', exportErr);
-    onProgress?.('Kopie der Bearbeitet-PDF…');
-    const copied = await copyExistingEditedPdfAsNamed(folder, namedName);
+    console.warn('Named PDF export failed, trying copy of existing presentation PDF', exportErr);
+    onProgress?.('PDF-Kopie…');
+    const copied = await copyAnyPresentationPdfAsNamed(folder, namedName);
     if (!copied) throw exportErr;
-    const snapshotMeta = await loadPresentationOriginalDeck(folder);
-    return {
-      originalPdf: PDF_ORIGINAL_FILENAME,
-      editedPdf: PDF_EDITED_FILENAME,
-      namedPdf: namedName,
-      deckOriginalSnapshot: DECK_ORIGINAL_SNAPSHOT,
-      originalFrozen: isOriginalDeckFrozen(snapshotMeta),
-    };
+    return baseResult;
   }
 }
 
-/** Bestehende Praesentation_bearbeitet.pdf unter neuem Namen speichern. */
-async function copyExistingEditedPdfAsNamed(
+/** Bestehende Praesentation_*.pdf unter neuem Namen speichern (Fallback). */
+async function copyAnyPresentationPdfAsNamed(
   lessonPath: string,
   namedFilename: string
 ): Promise<boolean> {
   const folder = lessonPath.replace(/\\/g, '/').replace(/\/$/, '');
-  const editedPath = `${folder}/${PDF_EDITED_FILENAME}`;
+  const candidates = [PDF_EDITED_FILENAME, PDF_ORIGINAL_FILENAME];
+  for (const name of candidates) {
+    if (name === namedFilename) continue;
+    const ok = await copyPdfFile(folder, name, namedFilename);
+    if (ok) return true;
+  }
+  return false;
+}
+
+async function copyPdfFile(
+  folder: string,
+  sourceFilename: string,
+  destFilename: string
+): Promise<boolean> {
+  const sourcePath = `${folder}/${sourceFilename}`;
   const res = await fetch(
-    `/api/file-system-paths/download?filePath=${encodeURIComponent(editedPath)}`,
+    `/api/file-system-paths/download?filePath=${encodeURIComponent(sourcePath)}`,
     { credentials: 'include' }
   );
   if (!res.ok) return false;
   const blob = await res.blob();
   if (!blob.size) return false;
-  await savePdfBlob(folder, namedFilename, blob);
+  await savePdfBlob(folder, destFilename, blob);
   return true;
+}
+
+/** @deprecated use copyAnyPresentationPdfAsNamed */
+async function copyExistingEditedPdfAsNamed(
+  lessonPath: string,
+  namedFilename: string
+): Promise<boolean> {
+  return copyAnyPresentationPdfAsNamed(lessonPath, namedFilename);
 }
 
 /**

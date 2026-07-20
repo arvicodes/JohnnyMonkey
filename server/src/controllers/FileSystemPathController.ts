@@ -1202,8 +1202,11 @@ export class FileSystemPathController {
       }
 
       const fileName = path.basename(fp);
-      // Nur Johnny-Präsentations-PDF-Versionen (nicht Original)
-      if (!/^Praesentation_.+\.pdf$/i.test(fileName) || fileName === 'Praesentation_Original.pdf') {
+      const isNamedPdf =
+        /^Praesentation_.+\.pdf$/i.test(fileName) && fileName !== 'Praesentation_Original.pdf';
+      const isVersionSnapshot = /^Praesentation\.version\..+\.json$/i.test(fileName);
+      // Nur benannte Präsentations-Versionen (PDF und/oder Snapshot), nie Original
+      if (!isNamedPdf && !isVersionSnapshot) {
         return res.status(403).json({
           error: 'Nur benannte Präsentations-Versionen (nicht Original) können so gelöscht werden.',
         });

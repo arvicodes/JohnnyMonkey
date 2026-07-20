@@ -267,7 +267,7 @@ const PresentationPresentPage: React.FC = () => {
     // Sichern: nur die aktuell geöffnete Version aktualisieren
     if (isNamedView && namedSlug) {
       setSaving(true);
-      setSaveProgress('Vorbereiten…');
+      setSaveProgress('Sichern…');
       try {
         if (saveTimer.current) {
           clearTimeout(saveTimer.current);
@@ -275,28 +275,26 @@ const PresentationPresentPage: React.FC = () => {
         }
         const ann = { ...currentAnn, updatedAt: new Date().toISOString() };
         const label = namedLabel || namedSlug.replace(/_/g, ' ');
-        setSaveProgress(`Version „${label}“ sichern…`);
         await writeNamedVersionSnapshot(lessonPath, label, namedSlug, deck, ann);
         namedBaselineRef.current = {
           ...ann,
           bySlideId: { ...ann.bySlideId },
         };
         setAnnotations(ann);
-        const result = await exportPresentationPdfVersions(
-          lessonPath,
-          deck,
-          ann,
-          setSaveProgress,
-          { namedOnly: true, namedLabel: label }
-        );
+        setSaveProgress('PDF…');
+        const result = await exportPresentationPdfVersions(lessonPath, deck, ann, setSaveProgress, {
+          namedOnly: true,
+          namedLabel: label,
+        });
         setSnackbar(
           result.namedPdf
-            ? `Gesichert: Version „${label}“ (${result.namedPdf})`
+            ? `Version „${label}“ gesichert (${result.namedPdf})`
             : `Version „${label}“ gesichert`
         );
+        setSaving(false);
+        setSaveProgress('');
       } catch (e) {
         setSnackbar(e instanceof Error ? e.message : 'Sichern fehlgeschlagen');
-      } finally {
         setSaving(false);
         setSaveProgress('');
       }
@@ -307,36 +305,36 @@ const PresentationPresentPage: React.FC = () => {
       setSaveProgress('Original sichern…');
       try {
         const originalSnapshot = await writeOriginalDeckSnapshot(lessonPath, deck, 'freeze');
-        await exportPresentationPdfVersions(
+        setSnackbar('Original gesichert');
+        setSaving(false);
+        setSaveProgress('');
+        void exportPresentationPdfVersions(
           lessonPath,
           deck,
           createEmptyAnnotations(lessonPath),
-          setSaveProgress,
+          undefined,
           { originalDeck: originalSnapshot, originalOnly: true }
-        );
-        setSnackbar('Original gesichert. Striche: Speichern als…');
+        ).catch((e) => console.warn('Original PDF export failed', e));
       } catch (e) {
         setSnackbar(e instanceof Error ? e.message : 'Sichern fehlgeschlagen');
-      } finally {
         setSaving(false);
         setSaveProgress('');
       }
       return;
     }
     setSaving(true);
-    setSaveProgress('Vorbereiten…');
+    setSaveProgress('Sichern…');
     try {
       const ann = await flushAnnotations();
       if (!ann) throw new Error('Annotationen fehlen');
-      const result = await savePresentationBothVersions(lessonPath, deck, ann, setSaveProgress);
-      setSnackbar(
-        result.originalFrozen
-          ? `Gesichert: ${result.editedPdf}`
-          : `Gesichert: ${result.originalPdf} + ${result.editedPdf}`
-      );
+      setSnackbar('Gesichert');
+      setSaving(false);
+      setSaveProgress('');
+      void savePresentationBothVersions(lessonPath, deck, ann).catch((e) => {
+        console.warn('Live PDF export after save failed', e);
+      });
     } catch (e) {
       setSnackbar(e instanceof Error ? e.message : 'Sichern fehlgeschlagen');
-    } finally {
       setSaving(false);
       setSaveProgress('');
     }
@@ -370,41 +368,41 @@ const PresentationPresentPage: React.FC = () => {
       }
     }
     setSaving(true);
-    setSaveProgress('Vorbereiten…');
+    setSaveProgress('Anlegen…');
     try {
-      // Nur neue Version — aktuelle Version auf Disk nicht anfassen
       if (saveTimer.current) {
         clearTimeout(saveTimer.current);
         saveTimer.current = null;
       }
       const ann = { ...currentAnn, updatedAt: new Date().toISOString() };
+      // Snapshot + PDF abwarten — ohne PDF erscheint die Version in der Stundenliste nicht
       const result = await savePresentationNamedVersion(lessonPath, deck, ann, label, {
         onProgress: setSaveProgress,
         updateLive: false,
+        exportPdf: true,
       });
       setSaveNamedOpen(false);
       setSaveNamedLabel('');
       if (isNamedView && namedBaselineRef.current) {
-        // Aktuelle Version unverändert lassen: UI auf letzten gesicherten Stand zurück
         setAnnotations({
           ...namedBaselineRef.current,
           bySlideId: { ...namedBaselineRef.current.bySlideId },
         });
         setSelectedStrokeId(null);
       } else if (!isNamedView) {
-        // Original/Live: Striche gehören zur neuen Version — Leinwand leer
         setAnnotations(createEmptyAnnotations(lessonPath));
         setSelectedStrokeId(null);
       }
       setSnackbar(
         result.namedPdf
-          ? `Neue Version „${label}“ angelegt. Aktuelle Version unverändert.`
+          ? `Neue Version „${label}“ angelegt (${result.namedPdf}). Aktuelle Version unverändert.`
           : `Neue Version „${label}“ angelegt. Aktuelle Version unverändert.`
       );
+      setSaving(false);
+      setSaveProgress('');
     } catch (e) {
       console.error('Named presentation save failed', e);
       setSnackbar(e instanceof Error ? e.message : 'Speichern als… fehlgeschlagen');
-    } finally {
       setSaving(false);
       setSaveProgress('');
     }
@@ -859,7 +857,7 @@ const PresentationPresentPage: React.FC = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2 }}>
               <CircularProgress size={16} />
               <Typography variant="caption" color="text.secondary">
-                {saveProgress || 'Anlegen…'} (kann bei vielen Folien etwas dauern)
+                {saveProgress || 'Anlegen…'}
               </Typography>
             </Box>
           )}

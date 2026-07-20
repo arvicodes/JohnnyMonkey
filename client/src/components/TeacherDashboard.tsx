@@ -22,6 +22,8 @@ import {
   type JohnnyPresentationVersion,
 } from '../lib/presentationLessonAssets';
 import { presentationPresentUrl, presentationReviewUrl } from '../lib/presentationDeck';
+import { presentationHomeworkAssignmentKey } from '../lib/presentationSlideTemplates';
+import { resolvePreviousLessonFolder } from '../lib/previousLessonFolder';
 import { openLessonFolderFile } from '../lib/openLessonFolderFile';
 import MaterialShareVersionControl from './MaterialShareVersionControl';
 import KACorrectionMode from './KACorrectionMode';
@@ -18783,6 +18785,57 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 const folienFiles = allFiles.filter((f: any) => /\.(pdf|pptx?|odp)$/i.test(f.name || '') && !isABByName(f.name));
                 const johnnyPresentationVersions = listJohnnyPresentationVersions(allFiles);
 
+                const openPresentationHomeworkSubmissions = (e?: React.MouseEvent) => {
+                  e?.stopPropagation();
+                  if (!lessonModalData.lessonPath) {
+                    showSnackbar('Kein Stundenordner für diese Stunde.', 'error');
+                    return;
+                  }
+                  if (!userId || !lessonModalData.groupId) {
+                    showSnackbar('Lehrer oder Lerngruppe fehlt.', 'error');
+                    return;
+                  }
+                  const { fileName, filePath } = presentationHomeworkAssignmentKey(lessonModalData.lessonPath);
+                  const qs = new URLSearchParams({
+                    filePath,
+                    fileName,
+                    teacherId: userId,
+                    groupId: lessonModalData.groupId,
+                    lessonPath: lessonModalData.lessonPath,
+                  });
+                  window.open(`/submissions-grid?${qs.toString()}`, '_blank', 'noopener,noreferrer');
+                };
+
+                const openPreviousLessonHomeworkSubmissions = async (e?: React.MouseEvent) => {
+                  e?.stopPropagation();
+                  if (!lessonModalData.lessonPath) {
+                    showSnackbar('Kein Stundenordner für diese Stunde.', 'error');
+                    return;
+                  }
+                  if (!userId || !lessonModalData.groupId) {
+                    showSnackbar('Lehrer oder Lerngruppe fehlt.', 'error');
+                    return;
+                  }
+                  try {
+                    const prev = await resolvePreviousLessonFolder(lessonModalData.lessonPath);
+                    if (!prev) {
+                      showSnackbar('Keine vorherige Stunde in dieser Reihe.', 'warning');
+                      return;
+                    }
+                    const { fileName, filePath } = presentationHomeworkAssignmentKey(prev.path);
+                    const qs = new URLSearchParams({
+                      filePath,
+                      fileName,
+                      teacherId: userId,
+                      groupId: lessonModalData.groupId,
+                      lessonPath: prev.path,
+                    });
+                    window.open(`/submissions-grid?${qs.toString()}`, '_blank', 'noopener,noreferrer');
+                  } catch {
+                    showSnackbar('Vorherige Stunde konnte nicht ermittelt werden.', 'error');
+                  }
+                };
+
                 const openJohnnyPresentationVersion = (version: JohnnyPresentationVersion) => {
                   if (!lessonModalData.lessonPath) {
                     showSnackbar('Kein Stundenordner für diese Stunde.', 'error');
@@ -18885,8 +18938,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     showSnackbar('Original kann nicht gelöscht werden.', 'error');
                     return;
                   }
-                  if (!version.path) {
-                    showSnackbar('Kein Dateipfad für diese Version.', 'error');
+                  if (!lessonModalData.lessonPath) {
+                    showSnackbar('Kein Stundenordner für diese Stunde.', 'error');
                     return;
                   }
                   if (
@@ -18896,40 +18949,54 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   ) {
                     return;
                   }
-                  try {
+                  const folder = lessonModalData.lessonPath.replace(/\\/g, '/').replace(/\/$/, '');
+                  const slug =
+                    namedVersionSlugFromPdfName(version.name) ||
+                    (version.name.match(/^Praesentation\.version\.(.+)\.json$/i)?.[1] ?? null);
+                  const pdfPath =
+                    version.path && /\.pdf$/i.test(version.path)
+                      ? version.path.replace(/\\/g, '/')
+                      : `${folder}/${version.name}`;
+                  const snapPath = slug
+                    ? `${folder}/${namedVersionSnapshotFilename(slug)}`
+                    : version.path && /\.json$/i.test(version.path)
+                      ? version.path.replace(/\\/g, '/')
+                      : null;
+
+                  const deleteOne = async (filePath: string): Promise<void> => {
                     const res = await fetch('/api/file-system-paths/delete-file', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       credentials: 'include',
-                      body: JSON.stringify({ filePath: version.path }),
+                      body: JSON.stringify({ filePath }),
                     });
-                    if (!res.ok) {
-                      const err = await res.json().catch(() => ({}));
-                      throw new Error((err as { error?: string }).error || 'Löschen fehlgeschlagen');
+                    if (res.ok || res.status === 404) return;
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error((err as { error?: string }).error || 'Löschen fehlgeschlagen');
+                  };
+
+                  try {
+                    // PDF und Snapshot beide weg — sonst taucht die Version über die JSON wieder auf
+                    await deleteOne(pdfPath);
+                    if (snapPath && snapPath !== pdfPath) {
+                      await deleteOne(snapPath);
                     }
-                    const slug = namedVersionSlugFromPdfName(version.name);
-                    if (slug && lessonModalData.lessonPath) {
-                      const snapPath = `${lessonModalData.lessonPath.replace(/\\/g, '/').replace(/\/$/, '')}/${namedVersionSnapshotFilename(slug)}`;
-                      await fetch('/api/file-system-paths/delete-file', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ filePath: snapPath }),
-                      }).catch(() => undefined);
-                    }
-                    setLessonModalData((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            children: removeFileFromLessonChildren(prev.children || [], version.path),
-                          }
-                        : prev
-                    );
+                    setLessonModalData((prev) => {
+                      if (!prev) return prev;
+                      let children = removeFileFromLessonChildren(prev.children || [], pdfPath);
+                      if (snapPath) {
+                        children = removeFileFromLessonChildren(children, snapPath);
+                      }
+                      if (version.path) {
+                        children = removeFileFromLessonChildren(children, version.path);
+                      }
+                      return { ...prev, children };
+                    });
                     if (
                       laptopPresentationActive &&
                       laptopPresentationView.mode === 'pdf' &&
                       (laptopPresentationView.path || '').replace(/\\/g, '/') ===
-                        version.path.replace(/\\/g, '/')
+                        pdfPath.replace(/\\/g, '/')
                     ) {
                       setLaptopPresentationActive(false);
                     }
@@ -19706,6 +19773,55 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                         lineHeight: 1.35,
                                       }}
                                     >
+                                      <Box
+                                        component="span"
+                                        role="button"
+                                        tabIndex={0}
+                                        title="HA der vorherigen Stunde: Abgaben + HA-Folie"
+                                        onClick={(ev) => {
+                                          ev.stopPropagation();
+                                          void openPreviousLessonHomeworkSubmissions(ev);
+                                        }}
+                                        onKeyDown={(ev) => {
+                                          if (ev.key === 'Enter' || ev.key === ' ') {
+                                            ev.preventDefault();
+                                            ev.stopPropagation();
+                                            void openPreviousLessonHomeworkSubmissions();
+                                          }
+                                        }}
+                                        sx={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          px: 0.55,
+                                          py: 0.1,
+                                          borderRadius: 0.6,
+                                          bgcolor: '#5d4037',
+                                          color: '#fff',
+                                          fontSize: '0.68rem',
+                                          fontWeight: 800,
+                                          letterSpacing: '0.02em',
+                                          lineHeight: 1.35,
+                                          cursor: 'pointer',
+                                          userSelect: 'none',
+                                          boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+                                          '&:hover': { bgcolor: '#3e2723' },
+                                        }}
+                                      >
+                                        ←HA
+                                      </Box>
+                                      <Box
+                                        component="span"
+                                        sx={{
+                                          px: 0.15,
+                                          color: style.border,
+                                          fontWeight: 800,
+                                          userSelect: 'none',
+                                        }}
+                                        aria-hidden
+                                      >
+                                        |
+                                      </Box>
                                       {versions.map((version, vIdx) => (
                                         <React.Fragment key={version.name}>
                                           {vIdx > 0 && (
@@ -19785,6 +19901,53 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                           </Box>
                                         </React.Fragment>
                                       ))}
+                                      <Box
+                                        component="span"
+                                        sx={{
+                                          px: 0.15,
+                                          color: style.border,
+                                          fontWeight: 800,
+                                          userSelect: 'none',
+                                        }}
+                                        aria-hidden
+                                      >
+                                        |
+                                      </Box>
+                                      <Box
+                                        component="span"
+                                        role="button"
+                                        tabIndex={0}
+                                        title="Hausaufgaben-Abgaben dieser Stunde (+ HA-Folie)"
+                                        onClick={openPresentationHomeworkSubmissions}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            openPresentationHomeworkSubmissions();
+                                          }
+                                        }}
+                                        sx={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          ml: 0.15,
+                                          px: 0.55,
+                                          py: 0.1,
+                                          borderRadius: 0.6,
+                                          bgcolor: '#e65100',
+                                          color: '#fff',
+                                          fontSize: '0.68rem',
+                                          fontWeight: 800,
+                                          letterSpacing: '0.04em',
+                                          lineHeight: 1.35,
+                                          cursor: 'pointer',
+                                          userSelect: 'none',
+                                          boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+                                          '&:hover': { bgcolor: '#bf360c' },
+                                        }}
+                                      >
+                                        HA
+                                      </Box>
                                     </Box>
                                   );
                                 }

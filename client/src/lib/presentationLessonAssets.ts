@@ -147,16 +147,36 @@ export function listJohnnyPresentationVersions(
   files: FileNameLike[]
 ): JohnnyPresentationVersion[] {
   const list: JohnnyPresentationVersion[] = [];
+  const pdfNames = new Set<string>();
   for (const f of files) {
     const name = (f.name || '').trim();
     if (!isJohnnyPresentationExportPdf(name)) continue;
     if (f.type && f.type !== 'file') continue;
+    pdfNames.add(name);
     list.push({
       name,
       path: f.path || name,
       label: johnnyPresentationVersionLabel(name, files),
       kind: johnnyPresentationVersionKind(name),
     });
+  }
+  // Snapshots ohne PDF (z. B. Speichern als…, PDF noch nicht fertig) trotzdem anzeigen
+  for (const f of files) {
+    const name = (f.name || '').trim();
+    if (f.type && f.type !== 'file') continue;
+    const m = name.match(/^Praesentation\.version\.(.+)\.json$/i);
+    if (!m) continue;
+    const slug = m[1];
+    if (!slug || /^original$/i.test(slug)) continue;
+    const pdfName = `Praesentation_${slug}.pdf`;
+    if (pdfNames.has(pdfName)) continue;
+    list.push({
+      name: pdfName,
+      path: f.path || name,
+      label: slug.replace(/_/g, ' '),
+      kind: 'named',
+    });
+    pdfNames.add(pdfName);
   }
   // Benannte Version ersetzt „bearbeitet“ in der Anzeige (kein Doppel: bearbeitet | 2026)
   const hasNamed = list.some((v) => v.kind === 'named');

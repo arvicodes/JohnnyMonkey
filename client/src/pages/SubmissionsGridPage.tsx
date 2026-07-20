@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Box,
@@ -32,6 +32,18 @@ import {
   ContentCopy as ContentCopyIcon
 } from '@mui/icons-material';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
+import PresentationSlideView from '../components/presentation/PresentationSlideView';
+import {
+  PresentationDeck,
+  PresentationSlide,
+  SLIDE_REF_HEIGHT,
+  SLIDE_REF_WIDTH,
+  loadPresentationDeck,
+  sortSlides,
+} from '../lib/presentationDeck';
+import { findHomeworkSlides } from '../lib/presentationSlideTemplates';
+import { lessonPathFromHomeworkAssignmentPath } from '../lib/previousLessonFolder';
+import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
 
 interface Student {
   id: string;
@@ -49,6 +61,8 @@ interface Submission {
   missing?: boolean;
   teacherComment?: string;
   commentedAt?: string;
+  /** Weitere Dateien derselben Abgabe (Mehrfach-Upload) */
+  files?: Submission[];
 }
 
 const SubmissionsGridPage: React.FC = () => {
@@ -72,12 +86,74 @@ const SubmissionsGridPage: React.FC = () => {
   const [expandedPreview, setExpandedPreview] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const commentFieldRef = useRef<HTMLTextAreaElement>(null);
+  const haHostRef = useRef<HTMLDivElement>(null);
+  const [haDeck, setHaDeck] = useState<PresentationDeck | null>(null);
+  const [haSlide, setHaSlide] = useState<PresentationSlide | null>(null);
+  const [haScale, setHaScale] = useState(0.35);
+  const [haLoading, setHaLoading] = useState(false);
+  const [haError, setHaError] = useState<string | null>(null);
+
+  const homeworkLessonPath = useMemo(() => {
+    if (fileName !== 'H_Hausaufgabe' || !filePath) return null;
+    return (
+      searchParams.get('lessonPath') ||
+      lessonPathFromHomeworkAssignmentPath(filePath)
+    );
+  }, [fileName, filePath, searchParams]);
 
   useEffect(() => {
     if (filePath && teacherId && groupId) {
       loadSubmissions();
     }
   }, [filePath, teacherId, groupId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!homeworkLessonPath) {
+      setHaDeck(null);
+      setHaSlide(null);
+      setHaError(null);
+      return;
+    }
+    let cancelled = false;
+    setHaLoading(true);
+    setHaError(null);
+    (async () => {
+      try {
+        const d = await loadPresentationDeck(homeworkLessonPath);
+        if (cancelled) return;
+        const slides = findHomeworkSlides(sortSlides(d.slides));
+        setHaDeck(d);
+        setHaSlide(slides[slides.length - 1] ?? slides[0] ?? null);
+        if (slides.length === 0) {
+          setHaError('Keine HA-Folie in dieser Stunde.');
+        }
+      } catch {
+        if (!cancelled) setHaError('HA-Folie konnte nicht geladen werden.');
+      } finally {
+        if (!cancelled) setHaLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [homeworkLessonPath]);
+
+  useEffect(() => {
+    const el = haHostRef.current;
+    if (!el || !haSlide) return;
+    const update = () => {
+      const w = el.clientWidth || 0;
+      if (w > 0) setHaScale(w / SLIDE_REF_WIDTH);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener('resize', update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, [haSlide, haLoading]);
 
   // PDF als Blob laden für bessere Darstellung
   useEffect(() => {
@@ -220,13 +296,25 @@ const SubmissionsGridPage: React.FC = () => {
           
           setAllStudents(groupStudents);
           
-          // Erstelle Submissions für alle Schüler dieser Gruppe (auch die ohne Abgabe)
+          // Pro Schüler: alle Dateien bündeln (Mehrfach-Upload)
           const submissionsWithMissing = groupStudents.map((student: Student) => {
-            const existing = submissionsData.find((s: Submission) => s.student.id === student.id);
-            return existing || {
-              id: `missing-${student.id}`,
-              student: student,
-              missing: true
+            const existingList = (submissionsData as Submission[])
+              .filter((s) => s.student?.id === student.id)
+              .sort(
+                (a, b) =>
+                  new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime()
+              );
+            if (existingList.length === 0) {
+              return {
+                id: `missing-${student.id}`,
+                student,
+                missing: true,
+              };
+            }
+            const primary = existingList[0];
+            return {
+              ...primary,
+              files: existingList,
             };
           });
           
@@ -284,8 +372,10 @@ const SubmissionsGridPage: React.FC = () => {
   // Schüler ohne Abgabe
   const missingStudents = submissions.filter(s => s.missing);
 
-  // Nur Submissions mit tatsächlichen Abgaben für Bewertung
-  const submissionsToReview = sortedSubmissions.filter(s => !s.missing);
+  // Nur Submissions mit tatsächlichen Abgaben für Bewertung (jede Datei einzeln)
+  const submissionsToReview = sortedSubmissions
+    .filter((s) => !s.missing)
+    .flatMap((s) => (s.files && s.files.length > 0 ? s.files : [s]));
 
   const handleStartReview = () => {
     if (submissionsToReview.length === 0) {
@@ -471,7 +561,14 @@ const SubmissionsGridPage: React.FC = () => {
               📥 Schüler-Abgaben
             </Typography>
             <Typography variant="body2" color="textSecondary" sx={{ fontSize: '0.85rem' }}>
-              Aufgabe: {fileName}
+              Aufgabe:{' '}
+              {fileName === 'H_Hausaufgabe'
+                ? `Hausaufgabe (Präsentation)${
+                    homeworkLessonPath
+                      ? ` · ${homeworkLessonPath.split('/').pop() || ''}`
+                      : ''
+                  }`
+                : fileName}
             </Typography>
             <Typography variant="body2" color="textSecondary" sx={{ mt: 0.3, fontSize: '0.85rem' }}>
               {submissions.filter(s => !s.missing).length} von {submissions.length} Abgaben eingereicht
@@ -540,6 +637,73 @@ const SubmissionsGridPage: React.FC = () => {
           </Box>
         )}
       </Paper>
+
+      {homeworkLessonPath && (
+        <Paper
+          sx={{
+            mx: 1,
+            mb: 1,
+            p: 1.5,
+            borderRadius: 1,
+            border: `1px solid ${JOHNNY_PRESENTATION.warm}55`,
+            bgcolor: '#fff8f1',
+          }}
+        >
+          <Typography
+            variant="subtitle2"
+            sx={{ fontWeight: 800, mb: 1, color: JOHNNY_PRESENTATION.warm, fontSize: '0.85rem' }}
+          >
+            HA-Folie der Stunde
+          </Typography>
+          {haLoading && (
+            <Box sx={{ py: 2, textAlign: 'center' }}>
+              <CircularProgress size={22} />
+            </Box>
+          )}
+          {!haLoading && haError && (
+            <Typography variant="body2" color="text.secondary">
+              {haError}
+            </Typography>
+          )}
+          {!haLoading && haSlide && haDeck && (
+            <Box
+              ref={haHostRef}
+              sx={{
+                width: '100%',
+                maxWidth: 720,
+                aspectRatio: '16 / 9',
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: 1,
+                border: '1px solid rgba(0,0,0,0.12)',
+                bgcolor: '#111',
+                lineHeight: 0,
+              }}
+            >
+              <Box
+                sx={{
+                  width: SLIDE_REF_WIDTH,
+                  height: SLIDE_REF_HEIGHT,
+                  transform: `scale(${haScale})`,
+                  transformOrigin: 'top left',
+                  pointerEvents: 'none',
+                }}
+              >
+                <PresentationSlideView
+                  slide={haSlide}
+                  scale={1}
+                  revealStep={999}
+                  revealEnabled={false}
+                  showShadow={false}
+                  showSlideNumbers={false}
+                  deckTitle={haDeck.title}
+                  lessonPath={haDeck.lessonPath || homeworkLessonPath}
+                />
+              </Box>
+            </Box>
+          )}
+        </Paper>
+      )}
 
       {/* Grid mit Submissions */}
       <Box sx={{ p: 0, m: 0, width: '100%' }}>
@@ -672,15 +836,57 @@ const SubmissionsGridPage: React.FC = () => {
                     )}
                   </Box>
 
-                  {/* Datei-Info kompakt */}
+                  {/* Datei-Info + Mehrfach-Dateien */}
                   {!submission.missing && (
-                    <Typography variant="caption" sx={{ display: 'block', mb: 1, fontSize: '0.7rem', color: 'text.secondary' }} noWrap>
-                      📎 {submission.originalFileName}
-                    </Typography>
+                    <Box sx={{ mb: 1 }}>
+                      {(submission.files && submission.files.length > 1
+                        ? submission.files
+                        : [submission]
+                      ).map((file) => (
+                        <Box
+                          key={file.id}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            mb: 0.35,
+                          }}
+                        >
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              flex: 1,
+                              fontSize: '0.68rem',
+                              color: 'text.secondary',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                            title={file.originalFileName}
+                          >
+                            📎 {file.originalFileName}
+                          </Typography>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => handleViewSubmission(file)}
+                            sx={{
+                              minWidth: 0,
+                              px: 0.7,
+                              py: 0.15,
+                              fontSize: '0.65rem',
+                              lineHeight: 1.2,
+                            }}
+                          >
+                            Öffnen
+                          </Button>
+                        </Box>
+                      ))}
+                    </Box>
                   )}
 
-                  {/* Anzeigen Button */}
-                  {!submission.missing && (
+                  {/* Haupt-Öffnen für erste Datei (Kompatibilität) */}
+                  {!submission.missing && !(submission.files && submission.files.length > 1) && (
                     <Button
                       variant="contained"
                       fullWidth
@@ -690,6 +896,11 @@ const SubmissionsGridPage: React.FC = () => {
                     >
                       Öffnen
                     </Button>
+                  )}
+                  {!submission.missing && submission.files && submission.files.length > 1 && (
+                    <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                      {submission.files.length} Dateien
+                    </Typography>
                   )}
                 </CardContent>
               </Card>
@@ -717,7 +928,13 @@ const SubmissionsGridPage: React.FC = () => {
                 {submissionsToReview[currentReviewIndex]?.student.name}
               </Typography>
               <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.7rem' }}>
-                Abgabe {currentReviewIndex + 1} / {submissionsToReview.length} • {formatDate(submissionsToReview[currentReviewIndex]?.submittedAt!)}
+                Abgabe {currentReviewIndex + 1} / {submissionsToReview.length}
+                {submissionsToReview[currentReviewIndex]?.originalFileName
+                  ? ` • ${submissionsToReview[currentReviewIndex].originalFileName}`
+                  : ''}
+                {submissionsToReview[currentReviewIndex]?.submittedAt
+                  ? ` • ${formatDate(submissionsToReview[currentReviewIndex].submittedAt!)}`
+                  : ''}
               </Typography>
             </Box>
           </Box>
