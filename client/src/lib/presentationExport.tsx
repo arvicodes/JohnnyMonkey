@@ -305,6 +305,8 @@ export type ExportPresentationPdfOptions = {
   originalDeck?: PresentationDeck;
   /** Nur Bearbeitet-PDF neu erzeugen (Original unverändert lassen). */
   editedOnly?: boolean;
+  /** Nur Original-PDF neu erzeugen (Bearbeitet/benannte PDFs unberührt). */
+  originalOnly?: boolean;
   /** Nur die benannte PDF schreiben — andere Versionen (inkl. bearbeitet) unberührt. */
   namedOnly?: boolean;
   /** Zusätzlich Bearbeitet-PDF unter `Praesentation_<Label>.pdf` ablegen. */
@@ -360,6 +362,22 @@ export async function exportPresentationPdfVersions(
     originalDeck = loaded?.slides?.length ? loaded : editedDeck;
   }
   originalDeck = normalizeDeck(stripOriginalFreezeMeta(originalDeck));
+
+  // Nur Original-PDF — Bearbeitet/benannte Dateien unberührt
+  if (options?.originalOnly) {
+    onProgress?.('Original-PDF…');
+    const originalBlob = await buildPresentationPdfBlob(originalDeck, emptyAnn, false, (c, t) => {
+      onProgress?.(`Original ${c}/${t}`);
+    });
+    await savePdfBlob(folder, PDF_ORIGINAL_FILENAME, originalBlob);
+    const snapshotMeta = await loadPresentationOriginalDeck(folder);
+    return {
+      originalPdf: PDF_ORIGINAL_FILENAME,
+      editedPdf: PDF_EDITED_FILENAME,
+      deckOriginalSnapshot: DECK_ORIGINAL_SNAPSHOT,
+      originalFrozen: isOriginalDeckFrozen(snapshotMeta),
+    };
+  }
 
   if (!options?.editedOnly) {
     onProgress?.('Original-PDF…');
@@ -434,17 +452,24 @@ export async function savePresentationBothVersions(
 }
 
 /**
- * Benannte Version: eigener eingefrorener Snapshot + nur diese eine PDF.
- * Andere benannte Versionen und deren PDFs bleiben unverändert.
- * Arbeitsdeck/Annotationen werden aktualisiert (weiterarbeiten), aber nicht als
- * „Bearbeitet“-PDF überschrieben — das wäre eine separate Speicherung.
+ * Speichern als…: neue benannte Version (Snapshot + PDF).
+ * Andere Versionen bleiben unverändert.
+ *
+ * `updateLive` false (Standard für Speichern als…): Live/Original/aktuelle Dateien
+ * werden nicht angefasst — nur die neue Version wird geschrieben.
+ * `updateLive` true: zusätzlich Arbeitsdeck + Annotationen mitschreiben.
  */
 export async function savePresentationNamedVersion(
   lessonPath: string,
   deck: PresentationDeck,
   annotations: PresentationAnnotations,
   namedLabel: string,
-  onProgress?: (label: string) => void
+  optionsOrProgress?:
+    | {
+        onProgress?: (label: string) => void;
+        updateLive?: boolean;
+      }
+    | ((label: string) => void)
 ): Promise<PresentationSaveResult> {
   const label = (namedLabel || '').trim();
   if (!label) throw new Error('Bitte einen Versionsnamen eingeben');
@@ -453,20 +478,29 @@ export async function savePresentationNamedVersion(
   if (!namedName || !slug) throw new Error('Ungültiger Versionsname (nicht „Original“ verwenden)');
 
   const folder = lessonPath.replace(/\\/g, '/').replace(/\/$/, '');
+  const options =
+    typeof optionsOrProgress === 'function'
+      ? { onProgress: optionsOrProgress }
+      : optionsOrProgress;
+  const onProgress = options?.onProgress;
+  // Speichern als…: Standard = aktuelle Version unverändert lassen
+  const updateLive = options?.updateLive === true;
 
-  onProgress?.('JSON sichern…');
+  onProgress?.('Neue Version anlegen…');
   const deckPayload = {
     ...stripOriginalFreezeMeta(normalizeDeck(deck)),
     updatedAt: new Date().toISOString(),
   };
   const annPayload = { ...annotations, updatedAt: new Date().toISOString() };
-  await saveJsonFile(folder, DECK_FILENAME, deckPayload);
-  await saveJsonFile(folder, ANNOTATIONS_FILENAME, annPayload);
 
-  onProgress?.('Original sichern…');
-  const originalSnapshot = await writeOriginalDeckSnapshot(folder, deckPayload, 'freeze');
+  if (updateLive) {
+    await saveJsonFile(folder, DECK_FILENAME, deckPayload);
+    await saveJsonFile(folder, ANNOTATIONS_FILENAME, annPayload);
+    onProgress?.('Original sichern…');
+    await writeOriginalDeckSnapshot(folder, deckPayload, 'freeze');
+  }
 
-  onProgress?.(`Version „${label}“ einfrieren…`);
+  onProgress?.(`Version „${label}“ anlegen…`);
   await writeNamedVersionSnapshot(folder, label, slug, deckPayload, annPayload);
 
   try {
@@ -479,12 +513,13 @@ export async function savePresentationNamedVersion(
     onProgress?.('Kopie der Bearbeitet-PDF…');
     const copied = await copyExistingEditedPdfAsNamed(folder, namedName);
     if (!copied) throw exportErr;
+    const snapshotMeta = await loadPresentationOriginalDeck(folder);
     return {
       originalPdf: PDF_ORIGINAL_FILENAME,
       editedPdf: PDF_EDITED_FILENAME,
       namedPdf: namedName,
       deckOriginalSnapshot: DECK_ORIGINAL_SNAPSHOT,
-      originalFrozen: isOriginalDeckFrozen(originalSnapshot),
+      originalFrozen: isOriginalDeckFrozen(snapshotMeta),
     };
   }
 }

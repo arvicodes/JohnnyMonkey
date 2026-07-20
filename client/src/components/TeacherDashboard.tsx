@@ -7,6 +7,7 @@ import {
   isDerivedFolienVersionFile,
   sortFolienVariants,
   labelForFolienOption,
+  filterJohnnyPresentationShareVersions,
   groupFilesByBaseName,
   getShareFileForGroup,
   getPdfFromGroup,
@@ -5492,7 +5493,9 @@ function LessonFolderVersionSelect({
   const ordered = useMemo(() => {
     const folien = versions.filter((v) => isFolienFileName(v.file.name));
     const other = versions.filter((v) => !isFolienFileName(v.file.name));
-    const folienSorted = sortFolienVariants(folien, groupStem);
+    const folienSorted = filterJohnnyPresentationShareVersions(
+      sortFolienVariants(folien, groupStem)
+    );
     const otherSorted = [...other].sort((a, b) => a.file.name.localeCompare(b.file.name, 'de'));
     return [...folienSorted, ...otherSorted];
   }, [versions, groupStem]);
@@ -5612,7 +5615,7 @@ function LessonFolderVersionSelect({
             sx={{ fontSize: '0.75rem', justifyContent: 'flex-start', textAlign: 'left', whiteSpace: 'normal' }}
           >
             {isFolienFileName(file.name)
-              ? `${labelForFolienOption(file, groupStem)} · ${ext.toUpperCase()}`
+              ? `${labelForFolienOption(file, groupStem, ordered.map((v) => v.file))} · ${ext.toUpperCase()}`
               : file.name}
           </MenuItem>
         ))}

@@ -398,7 +398,7 @@ export default function PresentationTabletToolbar({
 
         {!readOnly && onSave && (
           <ToolBtn
-            title="Speichern: Original bleibt (Erstell-Stand) + Bearbeitet (mit Strichen) für SuS"
+            title="Sichern: aktuelle Version aktualisieren"
             disabled={saving}
             onClick={onSave}
           >
@@ -407,7 +407,7 @@ export default function PresentationTabletToolbar({
         )}
         {!readOnly && onSaveNamed && (
           <ToolBtn
-            title="Als benannte Version speichern (z. B. Praesentation_Klasse5.pdf)"
+            title="Speichern als…: neue Version anlegen, aktuelle bleibt unverändert"
             disabled={saving}
             onClick={onSaveNamed}
           >

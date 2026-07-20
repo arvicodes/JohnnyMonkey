@@ -1,7 +1,9 @@
 import {
   isLessonPresentationMaterialPdf,
+  LESSON_PRESENTATION_PDF_EDITED,
   LESSON_PRESENTATION_PDF_ORIGINAL,
   labelForLessonPresentationMaterialPdf,
+  listNamedJohnnyPresentationFiles,
 } from './presentationLessonAssets';
 
 /** Gespeicherte Bearbeitungen: „Stamm_Zusatz.pdf“ im gleichen Ordner (Legacy: „… [Bearbeitung: …].pdf“). */
@@ -158,8 +160,13 @@ export function isDerivedFolienVersionFile(fileName: string, allFilesInFolder: {
   return base.toLowerCase() !== canonical.toLowerCase();
 }
 
-export function labelForFolienOption(file: { name: string }, groupStem?: string): string {
-  const presLabel = labelForLessonPresentationMaterialPdf(file.name);
+export function labelForFolienOption(
+  file: { name: string },
+  groupStem?: string,
+  peerFiles?: { name: string }[]
+): string {
+  const peers = peerFiles?.length ? peerFiles : undefined;
+  const presLabel = labelForLessonPresentationMaterialPdf(file.name, peers);
   if (presLabel) return presLabel;
   const m1 = file.name.match(BEARBEITUNG_SUFFIX_RE);
   if (m1) return `Bearbeitung: ${m1[1].trim()}`;
@@ -174,6 +181,15 @@ export function labelForFolienOption(file: { name: string }, groupStem?: string)
     if (m2) return `Kopie: ${m2[2]}`;
   }
   return `Original (${file.name})`;
+}
+
+/** Johnny: Praesentation_bearbeitet.pdf ausblenden, sobald eine benannte Version existiert. */
+export function filterJohnnyPresentationShareVersions<T extends { file: { name: string } }>(
+  versions: T[]
+): T[] {
+  const peers = versions.map((v) => v.file);
+  if (listNamedJohnnyPresentationFiles(peers).length === 0) return versions;
+  return versions.filter((v) => v.file.name !== LESSON_PRESENTATION_PDF_EDITED);
 }
 
 export function isFolienFileName(name: string): boolean {

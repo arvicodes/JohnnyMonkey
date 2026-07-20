@@ -474,37 +474,43 @@ const PresentationEditorPage: React.FC = () => {
   const saveNamedPresentationVersion = useCallback(async () => {
     const label = saveNamedLabel.trim();
     if (!label || !lessonPath) return;
+    commitEditorState({ history: 'skip' });
     const current = deckRef.current || deck;
     if (!current) return;
     setSaveNamedBusy(true);
     try {
-      commitEditorState({ history: 'skip' });
-      const v = ++saveVersionRef.current;
-      await persistDeck(current, v, { schedulePdfExport: false });
+      // Speichern als…: aktuelle Arbeitsversion auf Disk nicht anfassen
       if (pdfExportTimer.current) clearTimeout(pdfExportTimer.current);
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+      }
       const annotations =
         (await loadPresentationAnnotations(lessonPath)) ?? createEmptyAnnotations(lessonPath);
       const result = await savePresentationNamedVersion(
         lessonPath,
-        deckRef.current || current,
+        current,
         annotations,
         label,
-        (msg) => setSnackbar(msg)
+        {
+          onProgress: (msg: string) => setSnackbar(msg),
+          updateLive: false,
+        }
       );
       setSaveNamedOpen(false);
       setSaveNamedLabel('');
       setSnackbar(
         result.namedPdf
-          ? `Version gespeichert: ${result.namedPdf}`
-          : `Gespeichert: ${result.editedPdf}`
+          ? `Neue Version angelegt: ${result.namedPdf}`
+          : `Neue Version „${label}“ angelegt`
       );
     } catch (e) {
       console.error('Named presentation save failed', e);
-      setSnackbar(e instanceof Error ? e.message : 'Version speichern fehlgeschlagen');
+      setSnackbar(e instanceof Error ? e.message : 'Speichern als… fehlgeschlagen');
     } finally {
       setSaveNamedBusy(false);
     }
-  }, [commitEditorState, deck, lessonPath, persistDeck, saveNamedLabel]);
+  }, [commitEditorState, deck, lessonPath, saveNamedLabel]);
 
   const selectSlide = useCallback(
     (id: string) => {
@@ -1819,7 +1825,7 @@ const PresentationEditorPage: React.FC = () => {
               boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
             }}
           >
-            <Tooltip title="Speichern (PDFs später im Hintergrund)">
+            <Tooltip title="Sichern: aktuelle Version aktualisieren (PDFs später im Hintergrund)">
               <IconButton
                 size="small"
                 onClick={() => {
@@ -1830,7 +1836,7 @@ const PresentationEditorPage: React.FC = () => {
                   const v = ++saveVersionRef.current;
                   void persistDeck(current, v, { schedulePdfExport: false }).then(() => {
                     if (v !== saveVersionRef.current) return;
-                    setSnackbar('Gespeichert');
+                    setSnackbar('Gesichert');
                     // Schwere PDF-Exports nicht beim Speichern — idle im Hintergrund
                     schedulePdfExport({ delayMs: 14000, notify: false });
                   });
@@ -1847,7 +1853,7 @@ const PresentationEditorPage: React.FC = () => {
               </IconButton>
             </Tooltip>
             <Divider orientation="vertical" flexItem sx={{ borderColor: PRES_EDITOR_UI.barBorder }} />
-            <Tooltip title="Als benannte Version speichern (Praesentation_Name.pdf)">
+            <Tooltip title="Speichern als…: neue Version anlegen, aktuelle bleibt unverändert">
               <IconButton
                 size="small"
                 onClick={() => setSaveNamedOpen(true)}
@@ -2221,19 +2227,19 @@ const PresentationEditorPage: React.FC = () => {
         maxWidth="xs"
         fullWidth
       >
-        <DialogTitle>Version speichern</DialogTitle>
+        <DialogTitle>Speichern als…</DialogTitle>
         <DialogContent sx={{ pt: 1 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-            Speichert einen eigenen Snapshot unter diesem Namen
-            (z.&nbsp;B. „2026 2“). Frühere Versionen bleiben unverändert.
+            Legt eine <strong>neue</strong> Version unter diesem Namen an
+            (z.&nbsp;B. „2026“). Die aktuelle Arbeitsversion bleibt unverändert.
           </Typography>
           <TextField
             autoFocus
             fullWidth
-            label="Zusatz im Dateinamen"
+            label="Name der neuen Version"
             value={saveNamedLabel}
             onChange={(e) => setSaveNamedLabel(e.target.value)}
-            placeholder="z. B. Klasse5 oder mitNotizen"
+            placeholder="z. B. 2026 oder Klasse5"
             disabled={saveNamedBusy}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && saveNamedLabel.trim() && !saveNamedBusy) {
@@ -2252,7 +2258,7 @@ const PresentationEditorPage: React.FC = () => {
             disabled={!saveNamedLabel.trim() || saveNamedBusy}
             onClick={() => void saveNamedPresentationVersion()}
           >
-            Speichern
+            Anlegen
           </Button>
         </DialogActions>
       </Dialog>

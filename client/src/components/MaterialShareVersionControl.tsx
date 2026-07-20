@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Checkbox, FormControlLabel, MenuItem, Select, Typography } from '@mui/material';
-import { getShareFileForGroup, labelForFolienOption } from '../lib/folienVersions';
+import { getShareFileForGroup, labelForFolienOption, filterJohnnyPresentationShareVersions } from '../lib/folienVersions';
 
 export function materialSharePickKey(groupId: string, baseName: string) {
   return `${(groupId || '').trim()}:${(baseName || '').trim()}`;
@@ -44,16 +44,30 @@ export default function MaterialShareVersionControl({
 
   if (!effectivePath || sortedVersions.length === 0) return null;
 
+  const visibleVersions = filterJohnnyPresentationShareVersions(sortedVersions);
+  const peerFiles = sortedVersions.map((v) => v.file);
+  const visiblePaths = new Set(visibleVersions.map((v) => v.file.path));
+  const selectValue = visiblePaths.has(effectivePath)
+    ? effectivePath
+    : visibleVersions[0]?.file.path || effectivePath;
+
   const handleSelectChange = async (newPath: string) => {
-    const oldPath = effectivePath;
+    const oldPath = selectValue;
     if (oldPath === newPath) return;
     if (oldPath && fileShares[fileShareKey(oldPath, groupId)]) {
       await toggleFileShare(oldPath, groupId);
     }
+    if (
+      effectivePath !== oldPath &&
+      effectivePath &&
+      fileShares[fileShareKey(effectivePath, groupId)]
+    ) {
+      await toggleFileShare(effectivePath, groupId);
+    }
     setMaterialSharePickPath((prev) => ({ ...prev, [pKey]: newPath }));
   };
 
-  const isShared = !!fileShares[fileShareKey(effectivePath, groupId)];
+  const isShared = !!fileShares[fileShareKey(selectValue, groupId)];
 
   /** Geschlossen nur Platzhalter; volle Bezeichnung steht in den MenuItems. */
   const selectClosedLabel = '…';
@@ -101,7 +115,7 @@ export default function MaterialShareVersionControl({
   const selectEl = (
     <Select
       size="small"
-      value={effectivePath}
+      value={selectValue}
       displayEmpty
       renderValue={() => (
         <Box
@@ -144,9 +158,9 @@ export default function MaterialShareVersionControl({
         },
       }}
     >
-      {sortedVersions.map(({ ext, file }) => (
+      {visibleVersions.map(({ ext, file }) => (
         <MenuItem key={file.path} value={file.path} sx={{ fontSize: '0.75rem' }}>
-          {labelForFolienOption(file, baseName)} · {ext.toUpperCase()}
+          {labelForFolienOption(file, baseName, peerFiles)} · {ext.toUpperCase()}
         </MenuItem>
       ))}
     </Select>
@@ -167,7 +181,7 @@ export default function MaterialShareVersionControl({
           <input
             type="checkbox"
             checked={isShared}
-            onChange={() => void toggleFileShare(effectivePath, groupId)}
+            onChange={() => void toggleFileShare(selectValue, groupId)}
             onClick={(e) => e.stopPropagation()}
             style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#4caf50' }}
           />
@@ -194,7 +208,7 @@ export default function MaterialShareVersionControl({
           <Checkbox
             size="small"
             checked={isShared}
-            onChange={() => void toggleFileShare(effectivePath, groupId)}
+            onChange={() => void toggleFileShare(selectValue, groupId)}
             sx={{ py: 0 }}
           />
         }

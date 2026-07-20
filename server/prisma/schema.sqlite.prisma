@@ -544,7 +544,7 @@ model Submission {
   assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   student    User       @relation("StudentSubmissions", fields: [studentId], references: [id], onDelete: Cascade)
 
-  @@unique([assignmentId, studentId])
+  @@index([assignmentId, studentId])
   @@index([studentId])
   @@index([assignmentId])
 }

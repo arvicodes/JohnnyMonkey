@@ -23,16 +23,56 @@ export function isLessonPresentationMaterialPdf(name: string): boolean {
   return isJohnnyPresentationExportPdf(name);
 }
 
-export function labelForLessonPresentationMaterialPdf(name: string): string | null {
-  if (!isJohnnyPresentationExportPdf(name)) return null;
-  return johnnyPresentationVersionLabel(name);
+type FileNameLike = { name?: string; path?: string; type?: string };
+
+/** Benannte Versionen (ohne Original/bearbeitet), sortiert nach Anzeigenamen. */
+export function listNamedJohnnyPresentationFiles(
+  files: FileNameLike[]
+): { name: string; label: string }[] {
+  const out: { name: string; label: string }[] = [];
+  for (const f of files) {
+    const name = (f.name || '').trim();
+    if (!isJohnnyPresentationExportPdf(name)) continue;
+    if (f.type && f.type !== 'file') continue;
+    if (name === LESSON_PRESENTATION_PDF_ORIGINAL || name === LESSON_PRESENTATION_PDF_EDITED) {
+      continue;
+    }
+    const m = name.match(/^Praesentation_(.+)\.pdf$/i);
+    const label = m ? m[1].replace(/_/g, ' ').trim() || name : name;
+    out.push({ name, label });
+  }
+  return out.sort((a, b) => a.label.localeCompare(b.label, 'de'));
 }
 
-/** Kurzlabel für Stundenablauf: Original | bearbeitet | Mein Name */
-export function johnnyPresentationVersionLabel(name: string): string {
+/** Label der ersten gespeicherten benannten Version (z. B. „2026“), sonst null. */
+export function firstNamedJohnnyPresentationLabel(files: FileNameLike[]): string | null {
+  return listNamedJohnnyPresentationFiles(files)[0]?.label ?? null;
+}
+
+export function labelForLessonPresentationMaterialPdf(
+  name: string,
+  peerFiles?: FileNameLike[]
+): string | null {
+  if (!isJohnnyPresentationExportPdf(name)) return null;
+  return johnnyPresentationVersionLabel(name, peerFiles);
+}
+
+/**
+ * Kurzlabel für Stundenablauf: Original | erste Version | …
+ * „bearbeitet“ wird durch den Namen der ersten benannten Version ersetzt, sobald eine existiert.
+ */
+export function johnnyPresentationVersionLabel(
+  name: string,
+  peerFiles?: FileNameLike[]
+): string {
   const n = (name || '').trim();
   if (n === LESSON_PRESENTATION_PDF_ORIGINAL) return 'Original';
-  if (n === LESSON_PRESENTATION_PDF_EDITED) return 'bearbeitet';
+  if (n === LESSON_PRESENTATION_PDF_EDITED) {
+    const firstNamed = peerFiles?.length
+      ? firstNamedJohnnyPresentationLabel(peerFiles)
+      : null;
+    return firstNamed || 'bearbeitet';
+  }
   const m = n.match(/^Praesentation_(.+)\.pdf$/i);
   if (m) return m[1].replace(/_/g, ' ').trim() || n;
   return n;
@@ -102,9 +142,9 @@ function johnnyPresentationVersionRank(name: string): number {
   return 1;
 }
 
-/** Sortiert: Original links, dann bearbeitet bzw. benannte Versionen. */
+/** Sortiert: Original links, dann erste Version bzw. benannte Versionen. */
 export function listJohnnyPresentationVersions(
-  files: { name?: string; path?: string; type?: string }[]
+  files: FileNameLike[]
 ): JohnnyPresentationVersion[] {
   const list: JohnnyPresentationVersion[] = [];
   for (const f of files) {
@@ -114,7 +154,7 @@ export function listJohnnyPresentationVersions(
     list.push({
       name,
       path: f.path || name,
-      label: johnnyPresentationVersionLabel(name),
+      label: johnnyPresentationVersionLabel(name, files),
       kind: johnnyPresentationVersionKind(name),
     });
   }
@@ -140,10 +180,13 @@ function sanitizeLessonFileStem(name: string): string {
 /** Download-Dateiname für Schüler: Stundenname statt Praesentation_*.pdf */
 export function lessonPresentationDownloadFilename(
   lessonName: string,
-  variant: 'original' | 'edited'
+  variant: 'original' | 'edited',
+  editedLabel?: string
 ): string {
   const stem = sanitizeLessonFileStem(lessonName) || 'Praesentation';
-  return variant === 'edited' ? `${stem} bearbeitet.pdf` : `${stem}.pdf`;
+  if (variant === 'original') return `${stem}.pdf`;
+  const suffix = (editedLabel || '').trim() || 'bearbeitet';
+  return `${stem} ${suffix}.pdf`;
 }
 
 /**

@@ -68,6 +68,10 @@ const PresentationPresentPage: React.FC = () => {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const swipeRef = useRef<{ x: number; y: number } | null>(null);
+  /** Letzter gesicherter Stand der aktuellen benannten Version (für Speichern als…). */
+  const namedBaselineRef = useRef<PresentationAnnotations | null>(null);
+  const annotationsRef = useRef<PresentationAnnotations | null>(null);
+  annotationsRef.current = annotations;
 
   const slides = useMemo(() => (deck ? sortSlides(deck.slides) : []), [deck]);
   const currentSlide = slides[slideIndex];
@@ -90,7 +94,16 @@ const PresentationPresentPage: React.FC = () => {
     ) => {
       if (cancelled) return;
       setDeck(d);
-      setAnnotations(a ?? createEmptyAnnotations(lessonPath));
+      const ann = a ?? createEmptyAnnotations(lessonPath);
+      setAnnotations(ann);
+      // Baseline = Stand auf Disk — Speichern als… stellt danach wieder her
+      namedBaselineRef.current = namedSlug
+        ? {
+            ...ann,
+            bySlideId: { ...ann.bySlideId },
+            updatedAt: ann.updatedAt,
+          }
+        : null;
       setNamedLabel(opts?.label || '');
       if (opts?.draw) {
         setDrawActive(true);
@@ -188,15 +201,14 @@ const PresentationPresentPage: React.FC = () => {
     async (next: PresentationAnnotations) => {
       if (!lessonPath || !deck) return;
       try {
+        // Benannte Version: erst bei „Sichern“ auf Disk — sonst würde Speichern als…
+        // die aktuelle Version schon per Autosave mitändern.
         if (isNamedView && namedSlug) {
-          // Nur diese benannte Version aktualisieren — Live/andere Versionen bleiben
-          await writeNamedVersionSnapshot(
-            lessonPath,
-            namedLabel || namedSlug.replace(/_/g, ' '),
-            namedSlug,
-            deck,
-            next
-          );
+          setAnnotations(next);
+          return;
+        }
+        // Original: Striche nur im Speicher — gehören zu „Speichern als…“
+        if (isOriginalView) {
           setAnnotations(next);
           return;
         }
@@ -207,7 +219,7 @@ const PresentationPresentPage: React.FC = () => {
         setSnackbar('Annotationen konnten nicht gespeichert werden');
       }
     },
-    [deck, isNamedView, lessonPath, namedLabel, namedSlug]
+    [deck, isNamedView, isOriginalView, lessonPath, namedSlug]
   );
 
   const updateStrokes = (strokes: PresentationStroke[]) => {
@@ -218,48 +230,58 @@ const PresentationPresentPage: React.FC = () => {
     };
     setAnnotations(next);
     if (saveTimer.current) clearTimeout(saveTimer.current);
+    // Named/Original: nur Speicher — kein Disk-Autosave
+    if (isNamedView || isOriginalView) return;
     saveTimer.current = setTimeout(() => void persistAnnotations(next), 500);
   };
 
   const flushAnnotations = useCallback(async (): Promise<PresentationAnnotations | null> => {
-    if (!annotations || !lessonPath || !deck) return null;
+    const current = annotationsRef.current;
+    if (!current || !lessonPath || !deck) return null;
     if (saveTimer.current) {
       clearTimeout(saveTimer.current);
       saveTimer.current = null;
     }
-    const payload = { ...annotations, updatedAt: new Date().toISOString() };
+    const payload = { ...current, updatedAt: new Date().toISOString() };
     if (isNamedView && namedSlug) {
-      await writeNamedVersionSnapshot(
-        lessonPath,
-        namedLabel || namedSlug.replace(/_/g, ' '),
-        namedSlug,
-        deck,
-        payload
-      );
+      // Sichern schreibt die benannte Version — flush allein noch nicht (Sichern macht das)
+      setAnnotations(payload);
+      return payload;
+    }
+    if (isOriginalView) {
       setAnnotations(payload);
       return payload;
     }
     await saveJsonFile(lessonPath, ANNOTATIONS_FILENAME, payload);
     setAnnotations(payload);
     return payload;
-  }, [annotations, deck, isNamedView, lessonPath, namedLabel, namedSlug]);
+  }, [deck, isNamedView, isOriginalView, lessonPath, namedSlug]);
 
   const handleSaveBothVersions = useCallback(async () => {
     if (!deck || saving) return;
-    if (!annotations) {
+    const currentAnn = annotationsRef.current;
+    if (!currentAnn) {
       setSnackbar('Annotationen fehlen — bitte kurz warten und erneut speichern');
       return;
     }
-    // In benannter Version: nur diesen Snapshot + PDF aktualisieren (Live bleibt)
+    // Sichern: nur die aktuell geöffnete Version aktualisieren
     if (isNamedView && namedSlug) {
       setSaving(true);
       setSaveProgress('Vorbereiten…');
       try {
-        const ann = await flushAnnotations();
-        if (!ann) throw new Error('Annotationen fehlen');
+        if (saveTimer.current) {
+          clearTimeout(saveTimer.current);
+          saveTimer.current = null;
+        }
+        const ann = { ...currentAnn, updatedAt: new Date().toISOString() };
         const label = namedLabel || namedSlug.replace(/_/g, ' ');
-        setSaveProgress(`Version „${label}“…`);
+        setSaveProgress(`Version „${label}“ sichern…`);
         await writeNamedVersionSnapshot(lessonPath, label, namedSlug, deck, ann);
+        namedBaselineRef.current = {
+          ...ann,
+          bySlideId: { ...ann.bySlideId },
+        };
+        setAnnotations(ann);
         const result = await exportPresentationPdfVersions(
           lessonPath,
           deck,
@@ -269,11 +291,32 @@ const PresentationPresentPage: React.FC = () => {
         );
         setSnackbar(
           result.namedPdf
-            ? `Version gespeichert: ${result.namedPdf}`
-            : `Version „${label}“ gespeichert`
+            ? `Gesichert: Version „${label}“ (${result.namedPdf})`
+            : `Version „${label}“ gesichert`
         );
       } catch (e) {
-        setSnackbar(e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
+        setSnackbar(e instanceof Error ? e.message : 'Sichern fehlgeschlagen');
+      } finally {
+        setSaving(false);
+        setSaveProgress('');
+      }
+      return;
+    }
+    if (isOriginalView) {
+      setSaving(true);
+      setSaveProgress('Original sichern…');
+      try {
+        const originalSnapshot = await writeOriginalDeckSnapshot(lessonPath, deck, 'freeze');
+        await exportPresentationPdfVersions(
+          lessonPath,
+          deck,
+          createEmptyAnnotations(lessonPath),
+          setSaveProgress,
+          { originalDeck: originalSnapshot, originalOnly: true }
+        );
+        setSnackbar('Original gesichert. Striche: Speichern als…');
+      } catch (e) {
+        setSnackbar(e instanceof Error ? e.message : 'Sichern fehlgeschlagen');
       } finally {
         setSaving(false);
         setSaveProgress('');
@@ -288,20 +331,20 @@ const PresentationPresentPage: React.FC = () => {
       const result = await savePresentationBothVersions(lessonPath, deck, ann, setSaveProgress);
       setSnackbar(
         result.originalFrozen
-          ? `Gespeichert: Original (fixiert) + ${result.editedPdf} für SuS`
-          : `Gespeichert: ${result.originalPdf} + ${result.editedPdf}`
+          ? `Gesichert: ${result.editedPdf}`
+          : `Gesichert: ${result.originalPdf} + ${result.editedPdf}`
       );
     } catch (e) {
-      setSnackbar(e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
+      setSnackbar(e instanceof Error ? e.message : 'Sichern fehlgeschlagen');
     } finally {
       setSaving(false);
       setSaveProgress('');
     }
   }, [
-    annotations,
     deck,
     flushAnnotations,
     isNamedView,
+    isOriginalView,
     lessonPath,
     namedLabel,
     namedSlug,
@@ -311,37 +354,70 @@ const PresentationPresentPage: React.FC = () => {
   const handleSaveNamedVersion = useCallback(async () => {
     const label = saveNamedLabel.trim();
     if (!label || !deck || saving) return;
-    if (!annotations) {
+    const currentAnn = annotationsRef.current;
+    if (!currentAnn) {
       setSnackbar('Annotationen fehlen — bitte kurz warten und erneut speichern');
       return;
+    }
+    // Speichern als… in die gleiche Version = normales Sichern
+    if (isNamedView && namedSlug) {
+      const currentLabel = (namedLabel || namedSlug.replace(/_/g, ' ')).trim();
+      if (label.toLowerCase() === currentLabel.toLowerCase() || label === namedSlug) {
+        setSaveNamedOpen(false);
+        setSaveNamedLabel('');
+        void handleSaveBothVersions();
+        return;
+      }
     }
     setSaving(true);
     setSaveProgress('Vorbereiten…');
     try {
-      const ann = await flushAnnotations();
-      if (!ann) throw new Error('Annotationen fehlen');
-      const result = await savePresentationNamedVersion(
-        lessonPath,
-        deck,
-        ann,
-        label,
-        setSaveProgress
-      );
-      setSnackbar(
-        result.namedPdf
-          ? `Version gespeichert: ${result.namedPdf}`
-          : `Gespeichert: ${result.editedPdf}`
-      );
+      // Nur neue Version — aktuelle Version auf Disk nicht anfassen
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+      }
+      const ann = { ...currentAnn, updatedAt: new Date().toISOString() };
+      const result = await savePresentationNamedVersion(lessonPath, deck, ann, label, {
+        onProgress: setSaveProgress,
+        updateLive: false,
+      });
       setSaveNamedOpen(false);
       setSaveNamedLabel('');
+      if (isNamedView && namedBaselineRef.current) {
+        // Aktuelle Version unverändert lassen: UI auf letzten gesicherten Stand zurück
+        setAnnotations({
+          ...namedBaselineRef.current,
+          bySlideId: { ...namedBaselineRef.current.bySlideId },
+        });
+        setSelectedStrokeId(null);
+      } else if (!isNamedView) {
+        // Original/Live: Striche gehören zur neuen Version — Leinwand leer
+        setAnnotations(createEmptyAnnotations(lessonPath));
+        setSelectedStrokeId(null);
+      }
+      setSnackbar(
+        result.namedPdf
+          ? `Neue Version „${label}“ angelegt. Aktuelle Version unverändert.`
+          : `Neue Version „${label}“ angelegt. Aktuelle Version unverändert.`
+      );
     } catch (e) {
       console.error('Named presentation save failed', e);
-      setSnackbar(e instanceof Error ? e.message : 'Version speichern fehlgeschlagen');
+      setSnackbar(e instanceof Error ? e.message : 'Speichern als… fehlgeschlagen');
     } finally {
       setSaving(false);
       setSaveProgress('');
     }
-  }, [annotations, deck, flushAnnotations, lessonPath, saveNamedLabel, saving]);
+  }, [
+    deck,
+    handleSaveBothVersions,
+    isNamedView,
+    lessonPath,
+    namedLabel,
+    namedSlug,
+    saveNamedLabel,
+    saving,
+  ]);
 
   const undoStroke = () => {
     if (currentStrokes.length === 0) return;
@@ -758,20 +834,19 @@ const PresentationPresentPage: React.FC = () => {
         // Über der Präsentations-Toolbar; Fortschritt im Dialog sichtbar
         sx={{ zIndex: 1400 }}
       >
-        <DialogTitle>Version speichern</DialogTitle>
+        <DialogTitle>Speichern als…</DialogTitle>
         <DialogContent sx={{ pt: 1 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-            Speichert einen eigenen Snapshot unter diesem Namen
-            (z.&nbsp;B. „2026 2“). Frühere Versionen wie „2026“ bleiben unverändert.
-            Im Stundenablauf: Original | 2026 | 2026 2.
+            Neue Version unter diesem Namen anlegen. Die Version, die du gerade offen hast
+            {isNamedView && namedLabel ? ` („${namedLabel}“)` : ''}, bleibt unverändert.
           </Typography>
           <TextField
             autoFocus
             fullWidth
-            label="Zusatz im Dateinamen"
+            label="Name der neuen Version"
             value={saveNamedLabel}
             onChange={(e) => setSaveNamedLabel(e.target.value)}
-            placeholder="z. B. Klasse5 oder mitNotizen"
+            placeholder="z. B. 2026 oder Klasse5"
             disabled={saving}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && saveNamedLabel.trim() && !saving) {
@@ -784,7 +859,7 @@ const PresentationPresentPage: React.FC = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2 }}>
               <CircularProgress size={16} />
               <Typography variant="caption" color="text.secondary">
-                {saveProgress || 'Speichern…'} (kann bei vielen Folien etwas dauern)
+                {saveProgress || 'Anlegen…'} (kann bei vielen Folien etwas dauern)
               </Typography>
             </Box>
           )}
@@ -798,7 +873,7 @@ const PresentationPresentPage: React.FC = () => {
             disabled={!saveNamedLabel.trim() || saving}
             onClick={() => void handleSaveNamedVersion()}
           >
-            Speichern
+            Anlegen
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Box, Button, ButtonGroup, Tooltip, Typography } from '@mui/material';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -9,13 +9,13 @@ import {
   isLessonPresentationMaterialPdf,
   isStudentVisibleLessonMaterialFile,
   johnnyPresentationVersionLabel,
+  firstNamedJohnnyPresentationLabel,
   lessonPresentationDownloadFilename,
   LESSON_PRESENTATION_PDF_EDITED,
   LESSON_PRESENTATION_PDF_ORIGINAL,
 } from '../lib/presentationLessonAssets';
 import { isLessonFileShared } from '../lib/lessonFileSharePath';
 import { openStudentLessonMaterialFile } from '../lib/openStudentLessonMaterial';
-import PresentationHomeworkTodoModal from './presentation/PresentationHomeworkTodoModal';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
 
 type LessonFile = { type: string; name: string; path: string };
@@ -70,7 +70,7 @@ function PresentationCombinedActions({
   lessonName,
   original,
   edited,
-  editedLabel = 'bearbeitet',
+  editedLabel = 'Version',
   sharedPaths,
 }: {
   lessonName: string;
@@ -149,7 +149,7 @@ function PresentationCombinedActions({
               editedShared &&
               edited &&
               void openStudentLessonMaterialFile(edited, 'download', {
-                downloadName: lessonPresentationDownloadFilename(lessonName, 'edited'),
+                downloadName: lessonPresentationDownloadFilename(lessonName, 'edited', editedLabel),
               })
             }
           >
@@ -166,16 +166,16 @@ export default function StudentLessonMaterialsPanel({
   lessonPath,
   files,
   sharedPaths,
-  onHomeworkUploadSuccess,
+  onOpenHomeworkTodo,
 }: {
   lessonName: string;
   /** Stundenordner-Pfad — für ToDo/Hausaufgaben-Abgabe */
   lessonPath: string;
   files: LessonFile[];
   sharedPaths: string[];
-  onHomeworkUploadSuccess?: () => void;
+  /** Öffnet das ToDo-Modal auf Dashboard-Ebene (überlebt Panel-Remounts) */
+  onOpenHomeworkTodo?: (lessonPath: string) => void;
 }) {
-  const [todoOpen, setTodoOpen] = useState(false);
   const downloadLessonName = (lessonName || '').trim();
 
   const materials = useMemo(() => {
@@ -211,8 +211,8 @@ export default function StudentLessonMaterialsPanel({
   });
   const hasPresentation = !!(presentationOriginal || presentationEdited);
   const editedVersionLabel = presentationEdited
-    ? johnnyPresentationVersionLabel(presentationEdited.name)
-    : 'bearbeitet';
+    ? johnnyPresentationVersionLabel(presentationEdited.name, files)
+    : firstNamedJohnnyPresentationLabel(files) || 'Version';
   const originalShared = presentationOriginal
     ? isLessonFileShared(presentationOriginal.path, sharedPaths)
     : false;
@@ -294,12 +294,13 @@ export default function StudentLessonMaterialsPanel({
         </Box>
       )}
 
-      {hasPresentation && lessonPath && (
+      {hasPresentation && lessonPath && onOpenHomeworkTodo && (
         <Button
+          type="button"
           size="small"
           variant="contained"
           startIcon={<AssignmentOutlinedIcon sx={{ fontSize: 14 }} />}
-          onClick={() => setTodoOpen(true)}
+          onClick={() => onOpenHomeworkTodo(lessonPath)}
           sx={{
             alignSelf: 'flex-start',
             minHeight: 26,
@@ -348,7 +349,7 @@ export default function StudentLessonMaterialsPanel({
             }}
           >
             {isLessonPresentationMaterialPdf(file.name)
-              ? johnnyPresentationVersionLabel(file.name)
+              ? johnnyPresentationVersionLabel(file.name, files)
               : file.name}
           </Typography>
           <ButtonGroup
@@ -377,14 +378,6 @@ export default function StudentLessonMaterialsPanel({
         </Box>
       ))}
 
-      {todoOpen && lessonPath && (
-        <PresentationHomeworkTodoModal
-          open={todoOpen}
-          onClose={() => setTodoOpen(false)}
-          lessonPath={lessonPath}
-          onUploadSuccess={onHomeworkUploadSuccess}
-        />
-      )}
     </Box>
   );
 }

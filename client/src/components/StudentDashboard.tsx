@@ -90,6 +90,7 @@ import { openLessonFolderFile } from '../lib/openLessonFolderFile';
 import { openStudentLessonMaterialFile } from '../lib/openStudentLessonMaterial';
 import { CollaborativeFlashcardSessionModal } from './CollaborativeFlashcardSessionModal';
 import StudentLessonMaterialsPanel from './StudentLessonMaterialsPanel';
+import PresentationHomeworkTodoModal from './presentation/PresentationHomeworkTodoModal';
 import SpielMenuButton from './SpielMenuButton';
 
 const COLLAB_BEACON_LS_KEY = 'jm_collab_fc_beacon_seen_v1';
@@ -1870,6 +1871,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
   const [journeyRefreshKey, setJourneyRefreshKey] = useState(0);
+  /** ToDo-Hausaufgaben-Modal — State hier, damit Panel-Remounts es nicht schließen */
+  const [homeworkTodoLessonPath, setHomeworkTodoLessonPath] = useState<string | null>(null);
 
   // Gemeinsame Leinwand pro Stunde aufklappbar (Schüleransicht)
   const [expandedSharedInputKeys, setExpandedSharedInputKeys] = useState<Record<string, boolean>>({});
@@ -3075,7 +3078,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
               lessonPath={item.path}
               files={lessonFiles}
               sharedPaths={groupShared}
-              onHomeworkUploadSuccess={() => setJourneyRefreshKey((k) => k + 1)}
+              onOpenHomeworkTodo={(path) => setHomeworkTodoLessonPath(path)}
             />
           </>
         );
@@ -6375,6 +6378,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 
       {/* Flashcard Learning Modal */}
       {/* Inbox Modal */}
+      {homeworkTodoLessonPath ? (
+        <PresentationHomeworkTodoModal
+          open
+          lessonPath={homeworkTodoLessonPath}
+          onClose={() => setHomeworkTodoLessonPath(null)}
+          onUploadSuccess={() => setJourneyRefreshKey((k) => k + 1)}
+        />
+      ) : null}
+
       <InboxModal
         open={showInbox}
         onClose={() => {
