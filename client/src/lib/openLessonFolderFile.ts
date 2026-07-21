@@ -23,6 +23,8 @@ export interface OpenLessonFolderFileOptions {
   preferEdit?: boolean;
   /** Tablet: immer aktuelle Arbeitsfolie (nicht Original-Snapshot). */
   preferLiveDeck?: boolean;
+  /** Erstellen / TABLET / Laptop — für Johnny-PDF-Öffnen und Esc-Rückkehr. */
+  planMode?: 'create' | 'run' | 'background';
 }
 
 export function isLessonCorrectionFileName(fileName: string): boolean {
@@ -75,25 +77,29 @@ export async function openLessonFolderFile(
       options.groupId ||
       new URLSearchParams(window.location.search).get('groupId') ||
       '';
+    const kind = johnnyPresentationKindFromPdfName(item.name);
+    const planMode = options.planMode;
+    // Erstellen: immer Folien-Editor (Live-Arbeitsdeck), egal welche PDF-Version angeklickt wurde
     if (options.preferEdit) {
-      window.location.assign(presentationEditorUrl(folder, groupId || undefined));
+      window.location.assign(presentationEditorUrl(folder, groupId || undefined, planMode || 'create'));
       return;
     }
     if (options.preferLiveDeck) {
-      window.location.assign(presentationPresentUrl(folder, groupId || undefined, 'edited'));
+      window.location.assign(
+        presentationPresentUrl(folder, groupId || undefined, 'edited', undefined, planMode || 'run')
+      );
       return;
     }
-    const kind = johnnyPresentationKindFromPdfName(item.name);
     let url: string;
     if (kind === 'original') {
-      url = presentationPresentUrl(folder, groupId || undefined, 'original');
+      url = presentationPresentUrl(folder, groupId || undefined, 'original', undefined, planMode);
     } else if (kind === 'named') {
       const slug = namedVersionSlugFromPdfName(item.name);
       url = slug
-        ? presentationPresentUrl(folder, groupId || undefined, undefined, slug)
-        : presentationEditorUrl(folder, groupId || undefined);
+        ? presentationPresentUrl(folder, groupId || undefined, undefined, slug, planMode)
+        : presentationEditorUrl(folder, groupId || undefined, planMode);
     } else {
-      url = presentationEditorUrl(folder, groupId || undefined);
+      url = presentationEditorUrl(folder, groupId || undefined, planMode);
     }
     window.location.assign(url);
     return;

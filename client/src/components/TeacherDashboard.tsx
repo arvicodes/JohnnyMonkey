@@ -6042,6 +6042,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [dragOverPlanIndex, setDragOverPlanIndex] = useState<number | null>(null);
   const [lessonPlanViewMode, setLessonPlanViewMode] = useState<'create' | 'run' | 'background'>('create');
   const [laptopPresentationActive, setLaptopPresentationActive] = useState(false);
+  /** Remount-Key: bei jedem Öffnen frisches Live-Deck laden */
+  const [laptopPresentationMountKey, setLaptopPresentationMountKey] = useState(0);
   /** Laptop-Linksspalte: Deck (Original/bearbeitet) oder benannte PDF-Version */
   const [laptopPresentationView, setLaptopPresentationView] = useState<
     | { mode: 'deck'; variant: 'original' | 'edited'; namedSlug?: string }
@@ -8581,6 +8583,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
       groupId: lessonModalData?.groupId || undefined,
       preferEdit: lessonPlanViewMode === 'create',
       preferLiveDeck: lessonPlanViewMode === 'run',
+      planMode: lessonPlanViewMode,
       onOpenCorrectionHtml: (p: string) => {
         setSelectedKAFilePath(p);
         setShowKACorrectionMode(true);
@@ -18326,7 +18329,13 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               exclusive
               value={lessonPlanViewMode}
               onChange={(_, v: 'create' | 'run' | 'background' | null) => {
-                if (v != null) setLessonPlanViewMode(v);
+                if (v == null) return;
+                setLessonPlanViewMode(v);
+                if (isLessonStundeRoute) {
+                  const qs = new URLSearchParams(location.search);
+                  qs.set('planMode', v);
+                  navigate(`/teacher/stunde?${qs.toString()}`, { replace: true });
+                }
               }}
               sx={{
                 flexShrink: 0,
@@ -18434,11 +18443,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   </Box>
                 ) : (
                   <PresentationLaptopPlayer
-                    key={`laptop-pres-${laptopPresentationView.namedSlug || laptopPresentationView.variant}`}
+                    key={`laptop-pres-live-${laptopPresentationMountKey}`}
                     lessonPath={lessonModalData.lessonPath}
                     embedded
-                    variant={laptopPresentationView.variant}
-                    namedSlug={laptopPresentationView.namedSlug}
+                    variant="edited"
                     onClose={() => setLaptopPresentationActive(false)}
                   />
                 )
@@ -18818,18 +18826,22 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     qs.set('lessonPath', lessonModalData.lessonPath);
                     if (lessonModalData.groupId) qs.set('groupId', lessonModalData.groupId);
                     if (lessonPlanViewMode === 'create') {
+                      qs.set('planMode', 'create');
                       navigate(`/presentation/edit?${qs.toString()}`);
                     } else if (lessonPlanViewMode === 'run') {
                       navigate(
                         presentationPresentUrl(
                           lessonModalData.lessonPath,
                           lessonModalData.groupId || undefined,
-                          'edited'
+                          'edited',
+                          undefined,
+                          'run'
                         )
                       );
                     } else {
-                      // Laptop: Präsentation links in der Stunde (wie Tablet), SuS rechts
+                      // Laptop: Präsentation links — immer aktuelles Live-Deck
                       setLaptopPresentationView({ mode: 'deck', variant: 'edited' });
+                      setLaptopPresentationMountKey((k) => k + 1);
                       setLaptopPresentationActive(true);
                     }
                     return;
@@ -18951,26 +18963,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     if (lessonModalData.groupId) qs.set('groupId', lessonModalData.groupId);
                     return qs;
                   };
-                  // Erstellen → immer Folien-Editor (nicht Präsentieren)
+                  // Erstellen → immer Folien-Editor (Live-Arbeitsdeck). Original/Named-Chips
+                  // sind hier nur Einstiege zum Bearbeiten — Sichern schreibt nur Live/Bearbeitet.
                   if (lessonPlanViewMode === 'create') {
-                    navigate(`/presentation/edit?${qsBase().toString()}`);
+                    const qs = qsBase();
+                    qs.set('planMode', 'create');
+                    navigate(`/presentation/edit?${qs.toString()}`);
                     return;
                   }
-                  // Laptop-Modus: alles in der linken Spalte (wie „bearbeitet“), nicht neuer Tab / Roh-PDF
+                  // Laptop: wie TABLET — immer aktuelle Arbeitsfolie (Live-Deck), nicht Original-/Named-Snapshot
                   if (lessonPlanViewMode === 'background') {
-                    if (version.kind === 'named') {
-                      const slug = namedVersionSlugFromPdfName(version.name);
-                      setLaptopPresentationView({
-                        mode: 'deck',
-                        variant: 'edited',
-                        namedSlug: slug || undefined,
-                      });
-                    } else {
-                      setLaptopPresentationView({
-                        mode: 'deck',
-                        variant: version.kind === 'original' ? 'original' : 'edited',
-                      });
-                    }
+                    setLaptopPresentationView({ mode: 'deck', variant: 'edited' });
+                    setLaptopPresentationMountKey((k) => k + 1);
                     setLaptopPresentationActive(true);
                     return;
                   }
@@ -18980,7 +18984,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       presentationPresentUrl(
                         lessonModalData.lessonPath,
                         lessonModalData.groupId || undefined,
-                        'edited'
+                        'edited',
+                        undefined,
+                        'run'
                       )
                     );
                     return;

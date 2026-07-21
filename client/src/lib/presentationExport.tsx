@@ -426,10 +426,11 @@ export async function exportPresentationPdfVersions(
 }
 
 /**
- * Live in der Stunde speichern:
- * - Arbeitsdeck + Annotationen sichern
- * - Original einfrieren (Erstell-Stand), falls noch nicht geschehen
- * - Original-PDF aus Snapshot, Bearbeitet-PDF aus Live + Striche
+ * Live („bearbeitet“) speichern:
+ * - Nur Arbeitsdeck + Annotationen (+ Bearbeitet-PDF)
+ * - Original und benannte Versionen bleiben unberührt
+ * - Original wird höchstens einmal eingefroren (ohne Original-PDF neu zu schreiben),
+ *   falls in der Erstell-Phase noch kein Freeze existiert
  */
 export async function savePresentationBothVersions(
   lessonPath: string,
@@ -449,11 +450,15 @@ export async function savePresentationBothVersions(
   await saveJsonFile(folder, DECK_FILENAME, deckPayload);
   await saveJsonFile(folder, ANNOTATIONS_FILENAME, annPayload);
 
-  onProgress?.('Original sichern…');
-  const originalSnapshot = await writeOriginalDeckSnapshot(folder, deckPayload, 'freeze');
+  // Freeze nur Best-Effort aus dem bestehenden Original-Stand — nie Live → Original-PDF
+  const existingOriginal = await loadPresentationOriginalDeck(folder);
+  if (!isOriginalDeckFrozen(existingOriginal)) {
+    onProgress?.('Original einfrieren…');
+    await writeOriginalDeckSnapshot(folder, existingOriginal ?? deckPayload, 'freeze');
+  }
 
   return exportPresentationPdfVersions(lessonPath, deckPayload, annPayload, onProgress, {
-    originalDeck: originalSnapshot,
+    editedOnly: true,
     namedLabel: options?.namedLabel,
   });
 }
@@ -580,8 +585,8 @@ async function copyExistingEditedPdfAsNamed(
 
 /**
  * Nach dem Speichern im Editor:
- * - Original nur syncen, wenn noch nicht eingefroren
- * - Original-PDF aus Snapshot (unbearbeitet), Bearbeitet-PDF aus Arbeitsdeck + Striche
+ * - Nur Bearbeitet-PDF aus Arbeitsdeck + Striche
+ * - Original-PDF nie anfassen (auch nicht in der Erstell-Phase — dort reicht JSON-Sync)
  */
 export async function refreshPresentationPdfsFromLessonFolder(lessonPath: string): Promise<void> {
   const { loadPresentationDeck } = await import('./presentationDeck');
@@ -590,10 +595,11 @@ export async function refreshPresentationPdfsFromLessonFolder(lessonPath: string
   const annotations =
     (await loadPresentationAnnotations(lessonPath)) ?? createEmptyAnnotations(lessonPath);
   const existingOriginal = await loadPresentationOriginalDeck(lessonPath);
-  const originalSnapshot = isOriginalDeckFrozen(existingOriginal)
-    ? existingOriginal!
-    : await writeOriginalDeckSnapshot(lessonPath, deck, 'sync');
+  // Sync nur JSON, solange Original noch nicht eingefroren — PDF bleibt unberührt
+  if (!isOriginalDeckFrozen(existingOriginal)) {
+    await writeOriginalDeckSnapshot(lessonPath, deck, 'sync');
+  }
   await exportPresentationPdfVersions(lessonPath, deck, annotations, undefined, {
-    originalDeck: originalSnapshot,
+    editedOnly: true,
   });
 }

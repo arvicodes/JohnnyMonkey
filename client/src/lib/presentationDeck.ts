@@ -543,9 +543,9 @@ export async function loadNamedVersionSnapshot(
 }
 
 /**
- * Snapshot laden; fehlt er (ältere PDFs vor Snapshot-System), aus dem aktuellen
- * Live-Stand nachziehen und speichern — gleiche Present-Ansicht wie Original inkl. Striche.
- * Überschreibt keine bereits vorhandenen Snapshots.
+ * Snapshot laden. Fehlt er (ältere PDFs vor Snapshot-System): nur In-Memory-Fallback
+ * aus dem Live-Stand — niemals still auf Disk schreiben (sonst würde Öffnen einer
+ * benannten Version Live-Inhalt in diese Version kopieren).
  */
 export async function loadOrMigrateNamedVersionSnapshot(
   lessonPath: string,
@@ -559,8 +559,23 @@ export async function loadOrMigrateNamedVersionSnapshot(
   if (!deck?.slides?.length) return null;
   const annotations =
     (await loadPresentationAnnotations(lessonPath)) ?? createEmptyAnnotations(lessonPath);
+  const folder = lessonFolderPath(lessonPath);
   const displayLabel = (label || slug.replace(/_/g, ' ')).trim() || slug;
-  return writeNamedVersionSnapshot(lessonPath, displayLabel, slug, deck, annotations);
+  return {
+    version: 1,
+    label: displayLabel,
+    slug,
+    savedAt: '',
+    deck: normalizeDeck({
+      ...stripOriginalFreezeMeta(deck),
+      lessonPath: folder,
+      slides: sortSlides(deck.slides),
+    }),
+    annotations: {
+      ...annotations,
+      lessonPath: folder,
+    },
+  };
 }
 
 /** Benannte Version einfrieren — überschreibt nur diese Version, nie andere. */
@@ -651,9 +666,25 @@ export async function loadPresentationDeckForOriginalView(
   return loadPresentationDeck(lessonPath);
 }
 
-export function presentationEditorUrl(lessonPath: string, groupId?: string): string {
+export type PresentationPlanMode = 'create' | 'run' | 'background';
+
+export function parsePresentationPlanMode(
+  raw: string | null | undefined
+): PresentationPlanMode | undefined {
+  if (raw === 'create' || raw === 'run' || raw === 'background') return raw;
+  return undefined;
+}
+
+export function presentationEditorUrl(
+  lessonPath: string,
+  groupId?: string,
+  planMode?: PresentationPlanMode
+): string {
   const qs = new URLSearchParams({ lessonPath });
   if (groupId) qs.set('groupId', groupId);
+  if (planMode === 'create' || planMode === 'run' || planMode === 'background') {
+    qs.set('planMode', planMode);
+  }
   return `/presentation/edit?${qs.toString()}`;
 }
 
@@ -661,13 +692,17 @@ export function presentationPresentUrl(
   lessonPath: string,
   groupId?: string,
   variant?: PresentationViewerVariant,
-  namedSlug?: string
+  namedSlug?: string,
+  planMode?: PresentationPlanMode
 ): string {
   const qs = new URLSearchParams({ lessonPath });
   if (groupId) qs.set('groupId', groupId);
   if (namedSlug) qs.set('named', namedSlug);
   else if (variant === 'original') qs.set('variant', 'original');
   else if (variant === 'edited') qs.set('variant', 'edited');
+  if (planMode === 'create' || planMode === 'run' || planMode === 'background') {
+    qs.set('planMode', planMode);
+  }
   return `/presentation/present?${qs.toString()}`;
 }
 
@@ -675,13 +710,17 @@ export function presentationReviewUrl(
   lessonPath: string,
   groupId?: string,
   variant?: PresentationViewerVariant,
-  namedSlug?: string
+  namedSlug?: string,
+  planMode?: PresentationPlanMode
 ): string {
   const qs = new URLSearchParams({ lessonPath });
   if (groupId) qs.set('groupId', groupId);
   if (namedSlug) qs.set('named', namedSlug);
   else if (variant === 'original') qs.set('variant', 'original');
   else if (variant === 'edited') qs.set('variant', 'edited');
+  if (planMode === 'create' || planMode === 'run' || planMode === 'background') {
+    qs.set('planMode', planMode);
+  }
   return `/presentation/review?${qs.toString()}`;
 }
 

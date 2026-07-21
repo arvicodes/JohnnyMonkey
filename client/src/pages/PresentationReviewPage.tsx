@@ -4,6 +4,7 @@ import { Box, Typography } from '@mui/material';
 import PresentationErrorBoundary from '../components/presentation/PresentationErrorBoundary';
 import PresentationLaptopPlayer from '../components/presentation/PresentationLaptopPlayer';
 import type { PresentationViewerVariant } from '../lib/presentationDeck';
+import { parsePresentationPlanMode } from '../lib/presentationDeck';
 import { presentationLessonBackUrl } from '../lib/presentationEditorUi';
 
 /**
@@ -23,6 +24,7 @@ const PresentationReviewPage: React.FC = () => {
   const variant: PresentationViewerVariant =
     variantParam === 'original' ? 'original' : 'edited';
   const studentViewer = params.get('viewer') === 'student';
+  const planMode = parsePresentationPlanMode(params.get('planMode'));
 
   if (!lessonPath) {
     return (
@@ -52,7 +54,7 @@ const PresentationReviewPage: React.FC = () => {
           namedSlug={namedSlug}
           disableAnimations={studentViewer}
           hideTeacherNotes={studentViewer}
-          onClose={() => navigate(presentationLessonBackUrl(lessonPath, groupId))}
+          onClose={() => navigate(presentationLessonBackUrl(lessonPath, groupId, planMode))}
         />
       </Box>
     </PresentationErrorBoundary>

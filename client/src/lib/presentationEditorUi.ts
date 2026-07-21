@@ -50,13 +50,20 @@ export const PRES_EDITOR_UI = {
 };
 
 /** Deep-Link zurück zur Stunden-Ansicht (/teacher/stunde). */
-export function presentationLessonBackUrl(lessonPath: string, groupId?: string): string {
+export function presentationLessonBackUrl(
+  lessonPath: string,
+  groupId?: string,
+  planMode?: 'create' | 'run' | 'background'
+): string {
   if (!groupId || !lessonPath) return '/dashboard';
   const qs = new URLSearchParams({
     groupId,
     lessonPath,
     lessonName: lessonFolderDisplayName(lessonPath) || 'Stunde',
   });
+  if (planMode === 'create' || planMode === 'run' || planMode === 'background') {
+    qs.set('planMode', planMode);
+  }
   return `/teacher/stunde?${qs.toString()}`;
 }
 

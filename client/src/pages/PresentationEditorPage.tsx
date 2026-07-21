@@ -69,6 +69,7 @@ import {
   normalizeDeck,
   normalizeSlide,
   presentationPresentUrl,
+  parsePresentationPlanMode,
   saveJsonFile,
   nextViewportScale,
   sortSlides,
@@ -148,6 +149,7 @@ const PresentationEditorPage: React.FC = () => {
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const lessonPath = params.get('lessonPath') || '';
   const groupId = params.get('groupId') || '';
+  const planMode = parsePresentationPlanMode(params.get('planMode'));
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1519,7 +1521,7 @@ const PresentationEditorPage: React.FC = () => {
     normalizedActive?.layout === 'image-left' || normalizedActive?.layout === 'image-right';
 
   const handleBack = () => {
-    navigate(presentationLessonBackUrl(lessonPath, groupId));
+    navigate(presentationLessonBackUrl(lessonPath, groupId, planMode));
   };
 
   // Esc → zurück zur Stundenplanung (nicht während Textbearbeitung / Dialog / Animationsmodus)
@@ -1540,11 +1542,11 @@ const PresentationEditorPage: React.FC = () => {
       if (document.querySelector('.MuiModal-root:not([aria-hidden="true"])')) return;
       e.preventDefault();
       e.stopPropagation();
-      navigate(presentationLessonBackUrl(lessonPath, groupId));
+      navigate(presentationLessonBackUrl(lessonPath, groupId, planMode));
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [animationEditMode, lessonPath, groupId, navigate]);
+  }, [animationEditMode, lessonPath, groupId, navigate, planMode]);
 
   const toolbarIconSx = {
     color: PRES_EDITOR_UI.textMuted,
@@ -1897,7 +1899,7 @@ const PresentationEditorPage: React.FC = () => {
               <IconButton
                 size="small"
                 onClick={() =>
-                  navigate(presentationPresentUrl(lessonPath, groupId || undefined))
+                  navigate(presentationPresentUrl(lessonPath, groupId || undefined, undefined, undefined, planMode))
                 }
                 sx={{
                   width: 38,

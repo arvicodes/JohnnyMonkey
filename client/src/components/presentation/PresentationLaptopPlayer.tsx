@@ -254,11 +254,16 @@ export default function PresentationLaptopPlayer({
     const updateScale = () => {
       const host = stageHostRef.current;
       if (!host) return;
-      // In verfügbaren Platz einpassen (Breite + Höhe), damit ToDo/Notizen nicht abgeschnitten werden
-      const width = host.clientWidth;
-      const height = host.clientHeight;
-      if (width < 40 || height < 40) return;
-      const next = Math.min(width / SLIDE_REF_WIDTH, height / SLIDE_REF_HEIGHT);
+      // Embedded: schmaler schwarzer Rahmen, Folie füllt Restbreite — Notizen behalten Platz
+      const framePad = embedded ? 16 : 0;
+      const width = Math.max(40, host.clientWidth - framePad);
+      if (width < 40) return;
+      let next = width / SLIDE_REF_WIDTH;
+      if (!embedded) {
+        const height = host.clientHeight;
+        if (height < 40) return;
+        next = Math.min(width / SLIDE_REF_WIDTH, height / SLIDE_REF_HEIGHT);
+      }
       setDisplayScale((prev) => (Math.abs(prev - next) < 1e-4 ? prev : next));
     };
     updateScale();
@@ -297,7 +302,7 @@ export default function PresentationLaptopPlayer({
 
   const displayH = SLIDE_REF_HEIGHT * displayScale;
   const displayW = SLIDE_REF_WIDTH * displayScale;
-  const notesPanelMin = hideTeacherNotes ? 40 : embedded ? 56 : 64;
+  const notesPanelMin = hideTeacherNotes ? 40 : embedded ? 120 : 64;
   const showNotes = !hideTeacherNotes;
   const notesHtml = showNotes ? currentSlide.speakerNotesHtml?.trim() : '';
   const hasHtmlNotes =
@@ -344,24 +349,36 @@ export default function PresentationLaptopPlayer({
         </IconButton>
       )}
 
-      {/* Stage: restlicher Platz über ToDo/Notizen — Folie skaliert ein */}
+      {/* Stage: dunkler Rahmen um die Folie; Embedded ohne großen Letterbox */}
       <Box
         ref={stageHostRef}
         sx={{
-          flex: '1 1 auto',
+          flex: embedded ? '0 0 auto' : '1 1 auto',
           minHeight: 0,
           width: '100%',
+          height: embedded && displayH > 0 ? displayH + 16 : undefined,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'hidden',
           m: 0,
-          p: 0,
+          p: embedded ? '8px' : 0,
           lineHeight: 0,
           bgcolor: '#111',
+          boxSizing: 'border-box',
         }}
       >
-        <Box sx={{ width: displayW || '100%', height: displayH || 'auto', overflow: 'hidden' }}>
+        <Box
+          sx={{
+            width: displayW || '100%',
+            height: displayH || 'auto',
+            overflow: 'hidden',
+            borderRadius: 0.5,
+            boxShadow: '0 2px 14px rgba(0,0,0,0.55)',
+            outline: '1px solid rgba(255,255,255,0.14)',
+            bgcolor: '#000',
+          }}
+        >
           <Box
             key={animKey}
             onClick={handleSlideTap}
@@ -430,33 +447,42 @@ export default function PresentationLaptopPlayer({
 
       <Box
         sx={{
-          flex: '0 0 auto',
+          flex: embedded && showNotes ? '1 1 auto' : '0 0 auto',
           minHeight: notesPanelMin,
-          maxHeight: hideTeacherNotes ? 48 : embedded ? 100 : 140,
+          maxHeight: hideTeacherNotes ? 48 : embedded ? 'none' : 140,
           overflowY: 'auto',
           bgcolor: '#fff',
           borderTop: '1px solid rgba(0,0,0,0.08)',
-          px: 1.25,
-          py: 0.75,
+          px: embedded ? 1.5 : 1.25,
+          py: embedded ? 1.25 : 0.75,
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, mb: showNotes ? 0.25 : 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, mb: showNotes ? 0.5 : 0 }}>
           <IconButton
             size="small"
             onClick={goPrev}
             disabled={!canGoPrev}
             aria-label="Vorherige Folie"
             sx={{
-              width: 22,
-              height: 22,
+              width: embedded ? 28 : 22,
+              height: embedded ? 28 : 22,
               p: 0,
               color: 'text.secondary',
               '&:hover': { bgcolor: 'rgba(0,0,0,0.06)' },
             }}
           >
-            <ChevronLeft sx={{ fontSize: 16 }} />
+            <ChevronLeft sx={{ fontSize: embedded ? 20 : 16 }} />
           </IconButton>
-          <Typography sx={{ fontSize: '0.62rem', fontWeight: 600, color: 'text.secondary', minWidth: 32, textAlign: 'center', lineHeight: 1 }}>
+          <Typography
+            sx={{
+              fontSize: embedded ? '0.75rem' : '0.62rem',
+              fontWeight: 600,
+              color: 'text.secondary',
+              minWidth: embedded ? 40 : 32,
+              textAlign: 'center',
+              lineHeight: 1,
+            }}
+          >
             {safeIndex + 1}/{slides.length}
           </Typography>
           <IconButton
@@ -465,21 +491,21 @@ export default function PresentationLaptopPlayer({
             disabled={!canGoNext}
             aria-label="Nächste Folie"
             sx={{
-              width: 22,
-              height: 22,
+              width: embedded ? 28 : 22,
+              height: embedded ? 28 : 22,
               p: 0,
               color: 'text.secondary',
               '&:hover': { bgcolor: 'rgba(0,0,0,0.06)' },
             }}
           >
-            <ChevronRight sx={{ fontSize: 16 }} />
+            <ChevronRight sx={{ fontSize: embedded ? 20 : 16 }} />
           </IconButton>
           {showNotes && (
             <Typography
               sx={{
                 color: 'text.secondary',
-                fontSize: '0.58rem',
-                fontWeight: 600,
+                fontSize: embedded ? '0.72rem' : '0.58rem',
+                fontWeight: 700,
                 letterSpacing: 0.06,
                 textTransform: 'uppercase',
                 lineHeight: 1,
@@ -494,15 +520,22 @@ export default function PresentationLaptopPlayer({
           (hasHtmlNotes ? (
             <Box
               sx={{
-                fontSize: 13,
-                lineHeight: 1.45,
-                '& p': { m: 0, mb: 0.5 },
+                fontSize: embedded ? 16.5 : 13,
+                lineHeight: embedded ? 1.55 : 1.45,
+                '& p': { m: 0, mb: 0.75 },
                 '& mark': { borderRadius: 0.5 },
               }}
               dangerouslySetInnerHTML={{ __html: notesHtml! }}
             />
           ) : (
-            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.45 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                whiteSpace: 'pre-wrap',
+                fontSize: embedded ? 16.5 : 13,
+                lineHeight: embedded ? 1.55 : 1.45,
+              }}
+            >
               {plainNotes || '—'}
             </Typography>
           ))}

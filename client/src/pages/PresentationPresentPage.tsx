@@ -25,6 +25,7 @@ import {
   sortSlides,
   writeNamedVersionSnapshot,
   writeOriginalDeckSnapshot,
+  parsePresentationPlanMode,
 } from '../lib/presentationDeck';
 import { PresentationDrawTool, defaultLineWidthForTool, lineWidthsForTool } from '../lib/presentationDrawTools';
 import { presentationLessonBackUrl } from '../lib/presentationEditorUi';
@@ -46,6 +47,7 @@ const PresentationPresentPage: React.FC = () => {
   const viewerVariant: PresentationViewerVariant =
     params.get('variant') === 'original' ? 'original' : 'edited';
   const isOriginalView = !isNamedView && viewerVariant === 'original';
+  const planMode = parsePresentationPlanMode(params.get('planMode'));
 
   const [loading, setLoading] = useState(true);
   const [deck, setDeck] = useState<PresentationDeck | null>(null);
@@ -145,16 +147,10 @@ const PresentationPresentPage: React.FC = () => {
       : loadPresentationAnnotations(lessonPath);
 
     Promise.all([loadDeck, loadAnn])
-      .then(async ([d, a]) => {
+      .then(([d, a]) => {
         if (cancelled) return;
-        if (d) {
-          try {
-            await writeOriginalDeckSnapshot(lessonPath, d, 'freeze');
-          } catch {
-            /* Freeze ist Best-Effort */
-          }
-        }
-        if (cancelled) return;
+        // Kein Auto-Freeze beim Öffnen: Live-Deck darf Original nicht überschreiben,
+        // und Original-Sichern bleibt die einzige Schreibstelle fürs Original.
         finish(
           d,
           isOriginalView
@@ -446,7 +442,7 @@ const PresentationPresentPage: React.FC = () => {
   }, [revealStep, slideIndex, slides]);
 
   const handleBack = () => {
-    navigate(presentationLessonBackUrl(lessonPath, groupId));
+    navigate(presentationLessonBackUrl(lessonPath, groupId, planMode));
   };
 
   const handleToggleDraw = () => {
@@ -504,7 +500,7 @@ const PresentationPresentPage: React.FC = () => {
           setSaveNamedOpen(false);
           return;
         }
-        navigate(presentationLessonBackUrl(lessonPath, groupId));
+        navigate(presentationLessonBackUrl(lessonPath, groupId, planMode));
         return;
       }
 
@@ -535,7 +531,7 @@ const PresentationPresentPage: React.FC = () => {
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [goNext, goPrev, drawActive, groupId, lessonPath, navigate, slides, saveNamedOpen]);
+  }, [goNext, goPrev, drawActive, groupId, lessonPath, navigate, planMode, slides, saveNamedOpen]);
 
   // Fokus auf die Bühne, damit Pfeiltasten sofort greifen
   useEffect(() => {
