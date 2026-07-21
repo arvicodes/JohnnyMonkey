@@ -46,11 +46,16 @@ export function filterHtmlByRevealStep(html: string, visibleStep: number, reveal
   div.querySelectorAll('[data-reveal-step]').forEach((el) => {
     const step = parseInt(el.getAttribute('data-reveal-step') || '0', 10);
     const htmlEl = el as HTMLElement;
-    htmlEl.classList.remove('pres-reveal-enter', 'pres-reveal-shown');
+    htmlEl.classList.remove('pres-reveal-enter', 'pres-reveal-shown', 'pres-reveal-hidden');
+    htmlEl.removeAttribute('hidden');
+    // Kein inline display:none — Listen nutzen display:list-item !important und würden das überschreiben.
+    htmlEl.style.removeProperty('display');
     if (step > visibleStep) {
-      htmlEl.style.display = 'none';
+      htmlEl.classList.add('pres-reveal-hidden');
+      htmlEl.setAttribute('hidden', '');
+      htmlEl.setAttribute('aria-hidden', 'true');
     } else {
-      htmlEl.style.display = '';
+      htmlEl.removeAttribute('aria-hidden');
       if (step > 0 && step === visibleStep) {
         htmlEl.classList.add('pres-reveal-enter');
       } else {

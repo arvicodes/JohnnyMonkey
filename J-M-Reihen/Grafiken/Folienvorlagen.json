@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-07-17T07:05:32.918Z",
+  "updatedAt": "2026-07-21T05:25:44.893Z",
   "templates": {
     "start": {
       "layout": "title-slide",
@@ -274,23 +274,23 @@
     {
       "id": "custom-1784271932917-khxh",
       "label": "Ende",
-      "shortLabel": "End",
+      "shortLabel": "E",
       "hint": "Eigene Vorlage",
       "payload": {
         "speakerNotes": "",
-        "layout": "title-content",
+        "layout": "title-slide",
         "subtitle": "",
         "bodyLeft": "",
         "bodyRight": "",
         "imagePath": "",
         "imageCaption": "",
         "bodyStyle": "plain",
-        "titleAlign": "left",
+        "titleAlign": "center",
         "accentColor": "#2E7D32",
-        "title": "",
+        "title": "Bis zur nächsten Stunde!",
         "body": "",
-        "titleHtml": "<p><br></p>",
-        "bodyHtml": "<p><br></p>",
+        "titleHtml": "<p>Bis zur nächsten Stunde!</p>",
+        "bodyHtml": "",
         "subtitleHtml": "",
         "bodyLeftHtml": "",
         "bodyRightHtml": "",
@@ -302,12 +302,12 @@
         "materialHtml": "",
         "elements": [
           {
-            "id": "el-1784271865582",
+            "id": "el-1784437657131-etc3g",
             "type": "image",
-            "x": 22.84743270188465,
-            "y": 15.071367341987758,
-            "w": 49.1799749922536,
-            "h": 58.964679621848745,
+            "x": 37.03093281248412,
+            "y": 12.792571918661075,
+            "w": 26.615334494745305,
+            "h": 33.21916135335253,
             "src": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.02 Orga/Endroboter.png",
             "zIndex": 1,
             "imageFit": "contain"
@@ -317,7 +317,7 @@
         "revealEnabled": true,
         "zoneRevealSteps": {}
       },
-      "createdAt": "2026-07-17T07:05:32.917Z"
+      "createdAt": "2026-07-21T05:25:44.893Z"
     }
   ]
 }

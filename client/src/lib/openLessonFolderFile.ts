@@ -2,13 +2,27 @@
  * Einheitliches Öffnen von Dateien aus Stundenordnern (Lehrer: Stundenansicht, Ordner-Zuordnung, …).
  * Entspricht dem Verhalten bei z. B. „Battleground“ in 6.01 Ritterduell: kein HTML-Konvertierungs-Modal für Office,
  * PDF/PPTX/Bild/DOCX → Folien-Editor, sonstige Office/Text → Download, HTML → echter Tab (bei Popup-Block: gleicher Tab).
+ * Johnny-Präsentations-PDFs (Praesentation_*.pdf) → Johnny-Viewer/Editor im gleichen Tab.
  */
+
+import {
+  isJohnnyPresentationExportPdf,
+  johnnyPresentationKindFromPdfName,
+  namedVersionSlugFromPdfName,
+} from './presentationLessonAssets';
+import { presentationEditorUrl, presentationPresentUrl } from './presentationDeck';
 
 export type LessonFolderFileLike = { type: string; name: string; path: string };
 
 export interface OpenLessonFolderFileOptions {
   /** KA_/HÜ_/HU_/QZ_ + .html/.htm → Lehrer-Korrekturmodus (nur TeacherDashboard). */
   onOpenCorrectionHtml?: (filePath: string) => void;
+  /** Lerngruppe für Rückweg aus der Johnny-Präsentation. */
+  groupId?: string;
+  /** Erstellen-Modus: Johnny-PDFs im Editor öffnen statt Präsentieren. */
+  preferEdit?: boolean;
+  /** Tablet: immer aktuelle Arbeitsfolie (nicht Original-Snapshot). */
+  preferLiveDeck?: boolean;
 }
 
 export function isLessonCorrectionFileName(fileName: string): boolean {
@@ -49,6 +63,41 @@ export async function openLessonFolderFile(
   if (item.type !== 'file') return;
 
   const fileExtension = item.name.split('.').pop()?.toLowerCase();
+
+  // Johnny-Folien-PDFs: Johnny-Präsentation im gleichen Tab (kein Folien-Editor / neuer Tab)
+  if (isJohnnyPresentationExportPdf(item.name)) {
+    const folder = (item.path || '').replace(/\\/g, '/').replace(/\/[^/]+$/, '');
+    if (!folder) {
+      await downloadViaBrowser(item.path, item.name);
+      return;
+    }
+    const groupId =
+      options.groupId ||
+      new URLSearchParams(window.location.search).get('groupId') ||
+      '';
+    if (options.preferEdit) {
+      window.location.assign(presentationEditorUrl(folder, groupId || undefined));
+      return;
+    }
+    if (options.preferLiveDeck) {
+      window.location.assign(presentationPresentUrl(folder, groupId || undefined, 'edited'));
+      return;
+    }
+    const kind = johnnyPresentationKindFromPdfName(item.name);
+    let url: string;
+    if (kind === 'original') {
+      url = presentationPresentUrl(folder, groupId || undefined, 'original');
+    } else if (kind === 'named') {
+      const slug = namedVersionSlugFromPdfName(item.name);
+      url = slug
+        ? presentationPresentUrl(folder, groupId || undefined, undefined, slug)
+        : presentationEditorUrl(folder, groupId || undefined);
+    } else {
+      url = presentationEditorUrl(folder, groupId || undefined);
+    }
+    window.location.assign(url);
+    return;
+  }
 
   if (
     (fileExtension === 'html' || fileExtension === 'htm') &&

@@ -11,6 +11,16 @@ export function isJohnnyPresentationExportPdf(name: string): boolean {
   return /^Praesentation_.+\.pdf$/i.test(n);
 }
 
+/** Original / bearbeitet / benannt — für Navigation aus Dateiklicks. */
+export function johnnyPresentationKindFromPdfName(
+  name: string
+): 'original' | 'edited' | 'named' {
+  const n = (name || '').trim();
+  if (n === LESSON_PRESENTATION_PDF_ORIGINAL) return 'original';
+  if (n === LESSON_PRESENTATION_PDF_EDITED) return 'edited';
+  return 'named';
+}
+
 /** Interne JSON — nicht als Arbeitsmaterial listen. */
 export function isLessonPresentationSystemFile(name: string): boolean {
   const n = (name || '').trim();
@@ -130,9 +140,7 @@ export function canDeleteJohnnyPresentationVersion(
 }
 
 function johnnyPresentationVersionKind(name: string): JohnnyPresentationVersion['kind'] {
-  if (name === LESSON_PRESENTATION_PDF_ORIGINAL) return 'original';
-  if (name === LESSON_PRESENTATION_PDF_EDITED) return 'edited';
-  return 'named';
+  return johnnyPresentationKindFromPdfName(name);
 }
 
 function johnnyPresentationVersionRank(name: string): number {

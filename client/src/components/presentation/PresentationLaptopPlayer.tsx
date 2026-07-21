@@ -36,6 +36,8 @@ export type PresentationLaptopPlayerProps = {
   embedded?: boolean;
   /** SuS-Ansicht: keine Einblendungs-Schritte, kein Folienübergang */
   disableAnimations?: boolean;
+  /** Lehrer-Notizen / Kommentare ausblenden (SuS) */
+  hideTeacherNotes?: boolean;
   /**
    * original = Erstell-Stand ohne Striche (SuS „Folien Original“)
    * edited = Live inkl. Annotationen (SuS „Folien bearbeitet“)
@@ -54,6 +56,7 @@ export default function PresentationLaptopPlayer({
   onClose,
   embedded = false,
   disableAnimations = false,
+  hideTeacherNotes = false,
   variant = 'edited',
   namedSlug,
 }: PresentationLaptopPlayerProps) {
@@ -294,11 +297,12 @@ export default function PresentationLaptopPlayer({
 
   const displayH = SLIDE_REF_HEIGHT * displayScale;
   const displayW = SLIDE_REF_WIDTH * displayScale;
-  const notesPanelMin = embedded ? 56 : 64;
-  const notesHtml = currentSlide.speakerNotesHtml?.trim();
+  const notesPanelMin = hideTeacherNotes ? 40 : embedded ? 56 : 64;
+  const showNotes = !hideTeacherNotes;
+  const notesHtml = showNotes ? currentSlide.speakerNotesHtml?.trim() : '';
   const hasHtmlNotes =
     !!notesHtml && notesHtml !== '<p></p>' && notesHtml !== '<p><br></p>';
-  const plainNotes = currentSlide.speakerNotes?.trim() || '';
+  const plainNotes = showNotes ? currentSlide.speakerNotes?.trim() || '' : '';
 
   return (
     <Box
@@ -428,7 +432,7 @@ export default function PresentationLaptopPlayer({
         sx={{
           flex: '0 0 auto',
           minHeight: notesPanelMin,
-          maxHeight: embedded ? 100 : 140,
+          maxHeight: hideTeacherNotes ? 48 : embedded ? 100 : 140,
           overflowY: 'auto',
           bgcolor: '#fff',
           borderTop: '1px solid rgba(0,0,0,0.08)',
@@ -436,7 +440,7 @@ export default function PresentationLaptopPlayer({
           py: 0.75,
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, mb: 0.25 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, mb: showNotes ? 0.25 : 0 }}>
           <IconButton
             size="small"
             onClick={goPrev}
@@ -470,36 +474,39 @@ export default function PresentationLaptopPlayer({
           >
             <ChevronRight sx={{ fontSize: 16 }} />
           </IconButton>
-          <Typography
-            sx={{
-              color: 'text.secondary',
-              fontSize: '0.58rem',
-              fontWeight: 600,
-              letterSpacing: 0.06,
-              textTransform: 'uppercase',
-              lineHeight: 1,
-              ml: 0.5,
-            }}
-          >
-            Notizen
-          </Typography>
+          {showNotes && (
+            <Typography
+              sx={{
+                color: 'text.secondary',
+                fontSize: '0.58rem',
+                fontWeight: 600,
+                letterSpacing: 0.06,
+                textTransform: 'uppercase',
+                lineHeight: 1,
+                ml: 0.5,
+              }}
+            >
+              Notizen
+            </Typography>
+          )}
         </Box>
-        {hasHtmlNotes ? (
-          <Box
-            sx={{
-              fontSize: 13,
-              lineHeight: 1.45,
-              '& p': { m: 0, mb: 0.5 },
-              '& mark': { borderRadius: 0.5 },
-            }}
-            dangerouslySetInnerHTML={{ __html: notesHtml! }}
-          />
-        ) : (
-          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.45 }}>
-            {plainNotes || '—'}
-          </Typography>
-        )}
-        {strokes.length > 0 && (
+        {showNotes &&
+          (hasHtmlNotes ? (
+            <Box
+              sx={{
+                fontSize: 13,
+                lineHeight: 1.45,
+                '& p': { m: 0, mb: 0.5 },
+                '& mark': { borderRadius: 0.5 },
+              }}
+              dangerouslySetInnerHTML={{ __html: notesHtml! }}
+            />
+          ) : (
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.45 }}>
+              {plainNotes || '—'}
+            </Typography>
+          ))}
+        {showNotes && strokes.length > 0 && (
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
             Tablet: {strokes.length} Strich{strokes.length === 1 ? '' : 'e'} auf dieser Folie
           </Typography>

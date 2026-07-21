@@ -16,6 +16,7 @@ export type SlideTemplateKind =
   | 'sicherung'
   | 'bild'
   | 'ha'
+  | 'ende'
   | 'link'
   | 'referenz';
 
@@ -48,11 +49,20 @@ export type CustomSlideTemplate = {
 export const SLIDE_TEMPLATE_META: SlideTemplateMeta[] = [
   { kind: 'start', label: 'Start', shortLabel: 'S', hint: 'Eröffnungsfolie' },
   { kind: 'auftrag', label: 'Auftrag', shortLabel: 'A', hint: 'Arbeitsauftrag' },
-  { kind: 'sicherung', label: 'Sicherung', shortLabel: 'S', hint: 'Sicherung / Merksatz' },
+  { kind: 'sicherung', label: 'Sicherung', shortLabel: 'Si', hint: 'Sicherung / Merksatz' },
   { kind: 'bild', label: 'Bild', shortLabel: 'B', hint: 'Vollbild ohne Text — Bild reinziehen' },
   { kind: 'ha', label: 'Hausaufgabe', shortLabel: 'HA', hint: 'HA-Folie (immer mit HA-Bild)' },
+  { kind: 'ende', label: 'Ende', shortLabel: 'E', hint: 'Abschlussfolie' },
   { kind: 'link', label: 'Link', shortLabel: '▶', hint: 'Video im Vollbild (YouTube, MP4 …)' },
   { kind: 'referenz', label: 'Referenz', shortLabel: '↗', hint: 'Webseite einbetten, zoombar (z. B. Wall of Fame)' },
+];
+
+/** Standard-Reihenfolge neuer Stunden-Foliensätze. */
+export const DEFAULT_LESSON_SLIDE_TEMPLATE_KINDS: SlideTemplateKind[] = [
+  'start',
+  'auftrag',
+  'ha',
+  'ende',
 ];
 
 const GRAFIKEN_TOKEN = '__GRAFIKEN__';
@@ -75,7 +85,7 @@ export function grafikenAssetPath(lessonPath: string, filename: string): string 
 
 function tokenizeGrafikenPath(absPath: string, grafikenPath: string): string {
   const file = absPath.split('/').pop() || absPath;
-  if (file === 'HA.png' || file === 'Kreis.png') {
+  if (file === 'HA.png' || file === 'Kreis.png' || file === 'Endroboter.png') {
     return `${GRAFIKEN_TOKEN}/${file}`;
   }
   if (absPath.includes('/Grafiken/')) {
@@ -91,7 +101,7 @@ function resolveGrafikenPath(src: string, grafikenPath: string): string {
     return `${grafikenPath}/${file}`;
   }
   const file = src.split('/').pop() || '';
-  if (file === 'HA.png' || file === 'Kreis.png') {
+  if (file === 'HA.png' || file === 'Kreis.png' || file === 'Endroboter.png') {
     return `${grafikenPath}/${file}`;
   }
   return src;
@@ -314,6 +324,48 @@ function builtinTemplates(): SlideTemplatesStore['templates'] {
       transition: 'zoom',
       revealEnabled: true,
       zoneRevealSteps: {},
+      homeworkSubmissionRequired: true,
+    },
+    ende: {
+      layout: 'title-slide',
+      title: 'Bis zur nächsten Stunde!',
+      body: '',
+      speakerNotes: '',
+      preparationNotes: '',
+      materialNotes: '',
+      subtitle: '',
+      bodyLeft: '',
+      bodyRight: '',
+      imagePath: '',
+      imageCaption: '',
+      bodyStyle: 'plain',
+      titleAlign: 'center',
+      accentColor: JOHNNY_PRESENTATION.primary,
+      titleHtml: '<p>Bis zur nächsten Stunde!</p>',
+      bodyHtml: '',
+      subtitleHtml: '',
+      bodyLeftHtml: '',
+      bodyRightHtml: '',
+      imageCaptionHtml: '',
+      speakerNotesHtml: '',
+      preparationHtml: '',
+      materialHtml: '',
+      elements: [
+        {
+          id: 'tpl-ende-img',
+          type: 'image',
+          x: 37,
+          y: 28,
+          w: 26,
+          h: 40,
+          src: `${GRAFIKEN_TOKEN}/Endroboter.png`,
+          zIndex: 1,
+          imageFit: 'contain',
+        },
+      ],
+      transition: 'fade',
+      revealEnabled: true,
+      zoneRevealSteps: {},
     },
     link: {
       layout: 'blank',
@@ -422,23 +474,59 @@ export function normalizeTemplatesStore(raw?: SlideTemplatesStore | null): Slide
       elements: patchBildTemplateHeroElements(templates.bild.elements),
     };
   }
+
+  let custom = Array.isArray(raw.custom)
+    ? raw.custom.filter((t) => t?.id && t?.label && t?.payload)
+    : [];
+
+  // Alte Custom-Vorlage „Ende“ (shortLabel „End“) in builtin ende übernehmen, Doppel vermeiden
+  const endeIdx = custom.findIndex((t) => /^ende$/i.test((t.label || '').trim()));
+  if (endeIdx >= 0) {
+    const endeCustom = custom[endeIdx];
+    if (!raw.templates?.ende && endeCustom.payload) {
+      templates.ende = {
+        ...endeCustom.payload,
+        elements: (endeCustom.payload.elements || []).map((el) => {
+          if (el.type !== 'image' || !el.src) return el;
+          const file = el.src.replace(/\\/g, '/').split('/').pop() || '';
+          if (/^Endroboter\.png$/i.test(file) || el.src.includes('/Grafiken/')) {
+            return { ...el, src: `${GRAFIKEN_TOKEN}/${file}` };
+          }
+          return el;
+        }),
+      };
+    }
+    custom = custom.filter((_, i) => i !== endeIdx);
+  }
+
+  custom = custom.map((t) => {
+    const short = (t.shortLabel || '').trim();
+    if (short === 'End' || /^end$/i.test(short)) {
+      return { ...t, shortLabel: shortLabelFromTemplateName(t.label) };
+    }
+    return t;
+  });
+
   return {
     version: 2,
     updatedAt: raw.updatedAt || new Date().toISOString(),
     templates,
-    custom: Array.isArray(raw.custom) ? raw.custom.filter((t) => t?.id && t?.label && t?.payload) : [],
+    custom,
   };
 }
 
 export function shortLabelFromTemplateName(name: string): string {
   const t = name.trim();
   if (!t) return '?';
-  if (t.length <= 3) return t.slice(0, 3);
+  if (/^ende$/i.test(t)) return 'E';
+  if (/^end$/i.test(t)) return 'E';
+  if (t.length <= 2) return t.toUpperCase();
   const words = t.split(/\s+/).filter(Boolean);
   if (words.length >= 2) {
     return `${words[0][0] || ''}${words[1][0] || ''}`.toUpperCase().slice(0, 3);
   }
-  return t.slice(0, 3);
+  // Ein Wort: erster Buchstabe (Ende → E, nicht „End“)
+  return (t[0] || '?').toUpperCase();
 }
 
 export function updateCustomTemplate(
@@ -560,7 +648,11 @@ export function createSlideFromTemplateKind(
 ): PresentationSlide | null {
   const payload = getTemplatePayload(store, kind);
   if (!payload) return null;
-  return instantiateTemplateSlide(payload, order, lessonPath);
+  const slide = instantiateTemplateSlide(payload, order, lessonPath);
+  if (kind === 'ha' && slide.homeworkSubmissionRequired === undefined) {
+    return { ...slide, homeworkSubmissionRequired: true };
+  }
+  return slide;
 }
 
 export function createSlideFromCustomTemplate(
@@ -581,6 +673,12 @@ export function isHomeworkSlide(slide: PresentationSlide): boolean {
     const src = el.src.replace(/\\/g, '/');
     return /(?:^|\/)HA\.png$/i.test(src) || src.includes(`${GRAFIKEN_TOKEN}/HA.png`);
   });
+}
+
+/** SuS dürfen hochladen, solange „Abgabe nötig“ nicht explizit aus ist. */
+export function isHomeworkSubmissionRequired(slide: PresentationSlide | null | undefined): boolean {
+  if (!slide) return false;
+  return slide.homeworkSubmissionRequired !== false;
 }
 
 export function findHomeworkSlides(slides: PresentationSlide[]): PresentationSlide[] {

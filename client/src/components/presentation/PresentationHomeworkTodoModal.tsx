@@ -32,6 +32,7 @@ import {
 } from '../../lib/presentationDeck';
 import {
   findHomeworkSlides,
+  isHomeworkSubmissionRequired,
   presentationHomeworkAssignmentKey,
 } from '../../lib/presentationSlideTemplates';
 import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
@@ -186,7 +187,8 @@ export default function PresentationHomeworkTodoModal({
 
   const slide = homeworkSlides[homeworkSlides.length - 1] ?? homeworkSlides[0] ?? null;
   const { fileName, filePath } = presentationHomeworkAssignmentKey(lessonPath);
-  const canUpload = Boolean(assignmentId && studentId);
+  const submissionRequired = isHomeworkSubmissionRequired(slide);
+  const canUpload = Boolean(assignmentId && studentId && submissionRequired);
 
   const revokeThumb = useCallback((id: string) => {
     const url = thumbUrlsRef.current[id];
@@ -366,7 +368,17 @@ export default function PresentationHomeworkTodoModal({
           setReady(true);
           return;
         }
-        await ensureAssignmentRef.current(gen);
+        const haSlide = slides[slides.length - 1] ?? slides[0];
+        if (isHomeworkSubmissionRequired(haSlide)) {
+          await ensureAssignmentRef.current(gen);
+        } else if (isLoadCurrent(gen)) {
+          const auth = readAuthIds();
+          if (auth.teacherId) {
+            setInfo(
+              'Keine Abgabe nötig (Häkchen „Abgabe nötig“ im Editor nicht gesetzt). SuS können nichts hochladen.'
+            );
+          }
+        }
       } catch (err) {
         if (isLoadCurrent(gen)) setError(friendlyError(err, 'Hausaufgabe konnte nicht geladen werden'));
       } finally {
@@ -616,6 +628,10 @@ export default function PresentationHomeworkTodoModal({
             borderRadius: 2,
             width: 'min(2016px, 98vw)',
             maxWidth: '98vw',
+            height: 'min(92vh, 980px)',
+            maxHeight: '92vh',
+            display: 'flex',
+            flexDirection: 'column',
           },
         }}
       >
@@ -626,6 +642,7 @@ export default function PresentationHomeworkTodoModal({
             color: '#fff',
             py: 1,
             px: 2,
+            flexShrink: 0,
           }}
         >
           <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: '0.95rem' }}>
@@ -639,7 +656,20 @@ export default function PresentationHomeworkTodoModal({
           />
         </DialogTitle>
 
-        <DialogContent sx={{ pt: 2, pb: 2, px: { xs: 1.5, sm: 2 } }}>
+        <DialogContent
+          sx={{
+            pt: { xs: 3, sm: 3.5 },
+            pb: 2,
+            px: { xs: 1.5, sm: 2 },
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            // MUI setzt sonst oft pt:0 nach DialogTitle
+            '&&': { pt: { xs: 3, sm: 3.5 } },
+          }}
+        >
           {deckLoading && (
             <Box sx={{ py: 3, textAlign: 'center' }}>
               <LinearProgress sx={indeterminateLinearProgressSx} />
@@ -655,14 +685,18 @@ export default function PresentationHomeworkTodoModal({
                 display: 'flex',
                 flexDirection: { xs: 'column', md: 'row' },
                 gap: 2,
-                alignItems: 'stretch',
+                alignItems: 'flex-start',
+                flex: 1,
+                minHeight: 0,
+                height: '100%',
+                overflow: 'auto',
               }}
             >
               {slide && deck && (
                 <Box
                   ref={hostRef}
                   sx={{
-                    flex: { xs: '1 1 auto', md: '1 1 62%' },
+                    flex: { xs: '0 0 auto', md: '1 1 62%' },
                     width: { xs: '100%', md: '62%' },
                     maxWidth: { md: '62%' },
                     aspectRatio: '16 / 9',
@@ -670,7 +704,7 @@ export default function PresentationHomeworkTodoModal({
                     overflow: 'hidden',
                     borderRadius: 1,
                     border: '1px solid rgba(0,0,0,0.12)',
-                    bgcolor: '#111',
+                    bgcolor: '#fff',
                     lineHeight: 0,
                     alignSelf: 'flex-start',
                   }}
@@ -713,7 +747,8 @@ export default function PresentationHomeworkTodoModal({
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 1,
-                  maxHeight: { md: 'min(78vh, 720px)' },
+                  maxHeight: { xs: 'none', md: '100%' },
+                  alignSelf: 'stretch',
                   overflow: 'auto',
                 }}
               >
@@ -740,8 +775,8 @@ export default function PresentationHomeworkTodoModal({
                       bgcolor: 'rgba(255,152,0,0.05)',
                     }}
                   >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, flex: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                      <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, width: '50%', pr: 0.5 }}>
                         {submissions.length > 0 ? 'Weitere Dateien' : 'Hochladen'}
                       </Typography>
                       <input
@@ -764,6 +799,7 @@ export default function PresentationHomeworkTodoModal({
                         }}
                         disabled={uploading}
                         sx={{
+                          width: '50%',
                           minHeight: 28,
                           minWidth: 0,
                           py: 0.25,

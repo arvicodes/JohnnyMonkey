@@ -136,6 +136,11 @@ export interface PresentationSlide {
   revealEnabled?: boolean;
   /** Einblend-Schritt pro Layout-Bereich (0 = sofort sichtbar). */
   zoneRevealSteps?: Partial<Record<string, number>>;
+  /**
+   * Nur HA-Folien: wenn true, dürfen SuS Dateien abgeben.
+   * Fehlt/false → Folie sichtbar, aber kein Upload.
+   */
+  homeworkSubmissionRequired?: boolean;
 }
 
 /** Inhalt der Folien-Fußleiste (deck-weit, auf jeder Folie). */
@@ -304,6 +309,9 @@ export function normalizeSlide(slide: PresentationSlide): PresentationSlide {
     transition: normalizeSlideTransition(slide.transition),
     revealEnabled: slide.revealEnabled !== false,
     zoneRevealSteps: slide.zoneRevealSteps ?? {},
+    ...(typeof slide.homeworkSubmissionRequired === 'boolean'
+      ? { homeworkSubmissionRequired: slide.homeworkSubmissionRequired }
+      : {}),
   };
 }
 
@@ -320,23 +328,9 @@ export function normalizeDeck(deck: PresentationDeck): PresentationDeck {
 }
 
 export function createEmptyDeck(lessonPath: string, title?: string): PresentationDeck {
-  return normalizeDeck({
-    version: 1,
-    title: title || 'Präsentation',
-    lessonPath,
-    updatedAt: new Date().toISOString(),
-    defaultTransition: 'fade',
-    slides: [
-      {
-        id: `slide-${Date.now()}`,
-        title: 'Folie 1',
-        body: '',
-        speakerNotes: '',
-        order: 0,
-        layout: 'title-content',
-      },
-    ],
-  });
+  const deck = buildDefaultDeck(lessonPath);
+  if (title) return normalizeDeck({ ...deck, title });
+  return deck;
 }
 
 export function createEmptyAnnotations(lessonPath: string): PresentationAnnotations {
@@ -357,7 +351,8 @@ export async function loadJsonFile<T>(filePath: string): Promise<T | null> {
   let res: Response;
   try {
     res = await fetch(
-      `/api/file-system-paths/load-whiteboard?filePath=${encodeURIComponent(filePath)}`
+      `/api/file-system-paths/load-whiteboard?filePath=${encodeURIComponent(filePath)}&t=${Date.now()}`,
+      { cache: 'no-store' }
     );
   } catch {
     throw new Error('Server nicht erreichbar. Präsentation wurde nicht geladen.');
@@ -445,13 +440,15 @@ function buildDefaultDeck(lessonPath: string): PresentationDeck {
 }
 
 async function buildStarterDeck(lessonPath: string): Promise<PresentationDeck> {
-  const { createDefaultTemplatesStore, createSlideFromTemplateKind } = await import(
-    './presentationSlideTemplates'
-  );
-  const store = createDefaultTemplatesStore();
-  const start = createSlideFromTemplateKind('start', 0, lessonPath, store);
-  const ha = createSlideFromTemplateKind('ha', 1, lessonPath, store);
-  const slides = [start, ha].filter((s): s is PresentationSlide => Boolean(s));
+  const {
+    DEFAULT_LESSON_SLIDE_TEMPLATE_KINDS,
+    createSlideFromTemplateKind,
+    loadSlideTemplates,
+  } = await import('./presentationSlideTemplates');
+  const store = await loadSlideTemplates(lessonPath);
+  const slides = DEFAULT_LESSON_SLIDE_TEMPLATE_KINDS.map((kind, order) =>
+    createSlideFromTemplateKind(kind, order, lessonPath, store)
+  ).filter((s): s is PresentationSlide => Boolean(s));
   if (!slides.length) return buildDefaultDeck(lessonPath);
   return normalizeDeck({
     version: 1,

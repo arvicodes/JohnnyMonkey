@@ -49,6 +49,11 @@ export function presentationNestedListSx(options: NestedListSxOptions = {}) {
       display: 'list-item',
       listStylePosition: 'outside' as const,
     },
+    '& .pres-reveal-hidden, & li.pres-reveal-hidden': {
+      display: 'none !important',
+      visibility: 'hidden',
+      pointerEvents: 'none',
+    },
     '& li > ul, & li > ol': {
       mt: `${4 * scale}px`,
       mb: 0,

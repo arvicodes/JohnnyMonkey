@@ -446,9 +446,7 @@ const PresentationPresentPage: React.FC = () => {
   }, [revealStep, slideIndex, slides]);
 
   const handleBack = () => {
-    const target = presentationLessonBackUrl(lessonPath, groupId);
-    window.close();
-    navigate(target);
+    navigate(presentationLessonBackUrl(lessonPath, groupId));
   };
 
   const handleToggleDraw = () => {
@@ -502,7 +500,11 @@ const PresentationPresentPage: React.FC = () => {
           setDrawActive(false);
           return;
         }
-        handleBack();
+        if (saveNamedOpen) {
+          setSaveNamedOpen(false);
+          return;
+        }
+        navigate(presentationLessonBackUrl(lessonPath, groupId));
         return;
       }
 
@@ -533,7 +535,7 @@ const PresentationPresentPage: React.FC = () => {
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [goNext, goPrev, drawActive, groupId, navigate, slides]);
+  }, [goNext, goPrev, drawActive, groupId, lessonPath, navigate, slides, saveNamedOpen]);
 
   // Fokus auf die Bühne, damit Pfeiltasten sofort greifen
   useEffect(() => {

@@ -1,8 +1,10 @@
 import React, { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Box, Typography } from '@mui/material';
 import PresentationErrorBoundary from '../components/presentation/PresentationErrorBoundary';
 import PresentationLaptopPlayer from '../components/presentation/PresentationLaptopPlayer';
 import type { PresentationViewerVariant } from '../lib/presentationDeck';
+import { presentationLessonBackUrl } from '../lib/presentationEditorUi';
 
 /**
  * Standalone Laptop-/SuS-Ansicht (/presentation/review):
@@ -12,8 +14,10 @@ import type { PresentationViewerVariant } from '../lib/presentationDeck';
  * - viewer=student → Vollbild, keine Animationen
  */
 const PresentationReviewPage: React.FC = () => {
+  const navigate = useNavigate();
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const lessonPath = params.get('lessonPath') || '';
+  const groupId = params.get('groupId') || '';
   const namedSlug = (params.get('named') || '').trim() || undefined;
   const variantParam = params.get('variant');
   const variant: PresentationViewerVariant =
@@ -47,6 +51,8 @@ const PresentationReviewPage: React.FC = () => {
           variant={variant}
           namedSlug={namedSlug}
           disableAnimations={studentViewer}
+          hideTeacherNotes={studentViewer}
+          onClose={() => navigate(presentationLessonBackUrl(lessonPath, groupId))}
         />
       </Box>
     </PresentationErrorBoundary>

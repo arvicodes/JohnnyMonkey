@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   ButtonGroup,
+  Checkbox,
   Divider,
   FormControlLabel,
   IconButton,
@@ -43,6 +44,7 @@ import {
   type ElementStackLayer,
   getElementStackLayer,
 } from '../../lib/presentationElementLayers';
+import { isHomeworkSlide } from '../../lib/presentationSlideTemplates';
 import { isImageCropMode } from '../../lib/presentationImageUtils';
 import { SLIDE_SHAPE_LABELS } from '../../lib/presentationSlideShapes';
 import { JOHNNY_ACCENT_PRESETS } from '../../lib/presentationTheme';
@@ -83,6 +85,7 @@ interface PresentationSlideToolsBarProps {
   canPasteElement?: boolean;
   onReorderElementLayer: (id: string, action: ElementLayerAction) => void;
   onSetElementStackLayer: (id: string, layer: ElementStackLayer) => void;
+  onUpdateSlide?: (patch: Partial<PresentationSlide>) => void;
 }
 
 const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
@@ -102,6 +105,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
   canPasteElement = false,
   onReorderElementLayer,
   onSetElementStackLayer,
+  onUpdateSlide,
 }) => {
   const [elementAnchor, setElementAnchor] = useState<HTMLElement | null>(null);
   const [accentAnchor, setAccentAnchor] = useState<HTMLElement | null>(null);
@@ -110,6 +114,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
 
   const accentColor = slide?.accentColor || JOHNNY_ACCENT_PRESETS[0];
   const stackLayer = selectedElement ? getElementStackLayer(selectedElement) : 'foreground';
+  const showHomeworkSubmissionToggle = Boolean(slide && isHomeworkSlide(slide) && onUpdateSlide);
 
   const layerIconGroup = selectedElement ? (
     <ButtonGroup size="small" variant="outlined" sx={{ '& .MuiButton-root': { ...miniBtnSx, minWidth: 26, px: 0.35 } }}>
@@ -128,6 +133,45 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
+      {showHomeworkSubmissionToggle && (
+        <>
+          <FormControlLabel
+            sx={{
+              m: 0,
+              mr: 0.15,
+              ml: 0.1,
+              gap: 0.1,
+              userSelect: 'none',
+              '& .MuiFormControlLabel-label': {
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                color: PRES_EDITOR_UI.textMuted,
+                whiteSpace: 'nowrap',
+              },
+            }}
+            control={
+              <Checkbox
+                size="small"
+                checked={slide?.homeworkSubmissionRequired !== false}
+                onChange={(e) =>
+                  onUpdateSlide?.({ homeworkSubmissionRequired: e.target.checked })
+                }
+                sx={{
+                  p: 0.35,
+                  color: PRES_EDITOR_UI.textMuted,
+                  '&.Mui-checked': { color: PRES_EDITOR_UI.accent },
+                }}
+              />
+            }
+            label="Abgabe nötig"
+          />
+          <Divider
+            orientation="vertical"
+            flexItem
+            sx={{ borderColor: PRES_EDITOR_UI.barBorder, mx: 0.1, height: 20 }}
+          />
+        </>
+      )}
       <Box sx={toolGroupSx}>
         <Tooltip title="Textfeld">
           <IconButton size="small" onClick={onAddTextElement} sx={iconBtnSx}>

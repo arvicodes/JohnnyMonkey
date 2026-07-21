@@ -113,7 +113,12 @@ function buildRichSx(
       backgroundImage: 'none',
     },
     '& [data-reveal-step].pres-reveal-enter': {
-      animation: 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1)',
+      animation: 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both',
+    },
+    '& .pres-reveal-hidden, & [data-reveal-step].pres-reveal-hidden': {
+      display: 'none !important',
+      visibility: 'hidden',
+      pointerEvents: 'none',
     },
     '& mark': { borderRadius: `${2 * scale}px`, px: `${2 * scale}px` },
     ...animationParagraphBadgeSx(scale, animationEditMode),

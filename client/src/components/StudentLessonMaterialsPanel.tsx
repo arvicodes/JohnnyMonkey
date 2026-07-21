@@ -216,6 +216,9 @@ export default function StudentLessonMaterialsPanel({
   const originalShared = presentationOriginal
     ? isLessonFileShared(presentationOriginal.path, sharedPaths)
     : false;
+  const editedShared = presentationEdited
+    ? isLessonFileShared(presentationEdited.path, sharedPaths)
+    : false;
 
   if (materials.length === 0) {
     return (
@@ -241,17 +244,21 @@ export default function StudentLessonMaterialsPanel({
             border: '1px solid rgba(0, 0, 0, 0.08)',
           }}
         >
-          <Tooltip title="Original öffnen">
+          <Tooltip title={editedShared ? `${editedVersionLabel} öffnen` : originalShared ? 'Original öffnen' : 'Folien'}>
             <Box component="span" sx={{ display: 'inline-flex', flexShrink: 0 }}>
               <Box
                 component="button"
                 type="button"
-                disabled={!originalShared}
-                onClick={() =>
-                  originalShared &&
-                  presentationOriginal &&
-                  void openStudentLessonMaterialFile(presentationOriginal, 'open')
-                }
+                disabled={!editedShared && !originalShared}
+                onClick={() => {
+                  if (editedShared && presentationEdited) {
+                    void openStudentLessonMaterialFile(presentationEdited, 'open');
+                    return;
+                  }
+                  if (originalShared && presentationOriginal) {
+                    void openStudentLessonMaterialFile(presentationOriginal, 'open');
+                  }
+                }}
                 sx={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -261,11 +268,12 @@ export default function StudentLessonMaterialsPanel({
                   background: 'none',
                   p: 0,
                   m: 0,
-                  cursor: originalShared ? 'pointer' : 'default',
-                  opacity: originalShared ? 1 : 0.5,
+                  cursor: editedShared || originalShared ? 'pointer' : 'default',
+                  opacity: editedShared || originalShared ? 1 : 0.5,
                   font: 'inherit',
                   textAlign: 'left',
-                  '&:hover': originalShared ? { opacity: 0.82 } : undefined,
+                  '&:hover':
+                    editedShared || originalShared ? { opacity: 0.82 } : undefined,
                 }}
               >
                 <PictureAsPdfIcon sx={{ fontSize: 20, color: '#546e7a' }} />

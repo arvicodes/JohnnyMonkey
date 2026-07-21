@@ -1119,7 +1119,7 @@ const PresentationEditorPage: React.FC = () => {
 
     let insertIndex = slides.length;
     if (kind === 'start') insertIndex = 0;
-    else if (kind === 'ha') insertIndex = slides.length;
+    else if (kind === 'ha' || kind === 'ende') insertIndex = slides.length;
     else if (activeIndex >= 0) insertIndex = activeIndex + 1;
 
     const slide = createSlideFromTemplateKind(kind, insertIndex, lessonPath, slideTemplates);
@@ -1522,6 +1522,30 @@ const PresentationEditorPage: React.FC = () => {
     navigate(presentationLessonBackUrl(lessonPath, groupId));
   };
 
+  // Esc → zurück zur Stundenplanung (nicht während Textbearbeitung / Dialog / Animationsmodus)
+  useEffect(() => {
+    const isTypingTarget = (el: EventTarget | null) => {
+      if (!(el instanceof HTMLElement)) return false;
+      const tag = el.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+      if (el.isContentEditable) return true;
+      return false;
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (animationEditMode) return; // eigener Handler im Animationsmodus
+      if (isTypingTarget(e.target)) return;
+      if (isFormatBarInteracting()) return;
+      if (document.querySelector('.MuiModal-root:not([aria-hidden="true"])')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      navigate(presentationLessonBackUrl(lessonPath, groupId));
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [animationEditMode, lessonPath, groupId, navigate]);
+
   const toolbarIconSx = {
     color: PRES_EDITOR_UI.textMuted,
     width: 30,
@@ -1873,7 +1897,7 @@ const PresentationEditorPage: React.FC = () => {
               <IconButton
                 size="small"
                 onClick={() =>
-                  window.open(presentationPresentUrl(lessonPath, groupId || undefined), '_blank')
+                  navigate(presentationPresentUrl(lessonPath, groupId || undefined))
                 }
                 sx={{
                   width: 38,
@@ -1970,6 +1994,7 @@ const PresentationEditorPage: React.FC = () => {
                   canPasteElement={elementClipboardVersion > 0}
                   onReorderElementLayer={reorderElementLayer}
                   onSetElementStackLayer={setElementStackLayer}
+                  onUpdateSlide={updateSlide}
                 />
               </Box>
               <Box

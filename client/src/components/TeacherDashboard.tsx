@@ -21,7 +21,7 @@ import {
   namedVersionSnapshotFilename,
   type JohnnyPresentationVersion,
 } from '../lib/presentationLessonAssets';
-import { presentationPresentUrl, presentationReviewUrl } from '../lib/presentationDeck';
+import { presentationPresentUrl, loadPresentationDeck } from '../lib/presentationDeck';
 import { presentationHomeworkAssignmentKey } from '../lib/presentationSlideTemplates';
 import { resolvePreviousLessonFolder } from '../lib/previousLessonFolder';
 import { openLessonFolderFile } from '../lib/openLessonFolderFile';
@@ -6810,16 +6810,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const openLessonStundePage = useCallback(
     (groupId: string, lessonPath: string, lessonName: string) => {
       const q = new URLSearchParams({ groupId, lessonPath, lessonName });
-      const stundeUrl = `/teacher/stunde?${q.toString()}`;
-      const w = window.open(stundeUrl, '_blank', 'noopener,noreferrer');
-      if (!w) {
-        navigate(stundeUrl);
-      }
+      navigate(`/teacher/stunde?${q.toString()}`);
     },
     [navigate],
   );
 
-  // /teacher/stunde?groupId=&lessonPath=&lessonName= — Stunde im eigenen Tab öffnen
+  // /teacher/stunde?groupId=&lessonPath=&lessonName= — Stunde im gleichen Tab (Esc → Dashboard)
   useEffect(() => {
     if (!isLessonStundeRoute) return;
     const params = new URLSearchParams(location.search);
@@ -8581,24 +8577,23 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
 
   /** Stundenordner-Dateien: einheitlich wie z. B. „Battleground“ (Folien-Editor / Download / Tab), siehe `openLessonFolderFile`. */
   const handleFileClick = async (item: any) => {
-    if (item?.folienPdfRedirect?.path && item?.folienPdfRedirect?.name) {
-      await openLessonFolderFile(
-        { type: 'file', name: item.folienPdfRedirect.name, path: item.folienPdfRedirect.path },
-        {
-          onOpenCorrectionHtml: (p) => {
-            setSelectedKAFilePath(p);
-            setShowKACorrectionMode(true);
-          },
-        }
-      );
-      return;
-    }
-    await openLessonFolderFile(item, {
-      onOpenCorrectionHtml: (p) => {
+    const opts = {
+      groupId: lessonModalData?.groupId || undefined,
+      preferEdit: lessonPlanViewMode === 'create',
+      preferLiveDeck: lessonPlanViewMode === 'run',
+      onOpenCorrectionHtml: (p: string) => {
         setSelectedKAFilePath(p);
         setShowKACorrectionMode(true);
       },
-    });
+    };
+    if (item?.folienPdfRedirect?.path && item?.folienPdfRedirect?.name) {
+      await openLessonFolderFile(
+        { type: 'file', name: item.folienPdfRedirect.name, path: item.folienPdfRedirect.path },
+        opts
+      );
+      return;
+    }
+    await openLessonFolderFile(item, opts);
   };
 
   // Whiteboard Functions
@@ -9613,8 +9608,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     /^(Kap\.?\s*\d+|Kapitel\s*\d+)/i.test((name || '').trim());
 
   /**
-   * Oberste Ebene im zugeordneten Ordner: „1 Rechnerarchitektur“ (Nummer + Leerzeichen) = Themenblock, keine Stundenseite.
-   * „2.01 Gatter“ (Nummer.nummer …) bleibt Stunden-Ebene und ist weiter klickbar.
+   * Oberste Ebene / Themenblock: „1 Rechnerarchitektur“, „01 Basiswissen“ — keine Stundenseite.
+   * „2.01 Gatter“ / „01.02 Orga“ bleibt Stunde.
    */
   const isTopicSectionFolderName = (name: string) => {
     const t = (name || '').trim();
@@ -9622,9 +9617,14 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     return /^\d+\s+/.test(t);
   };
 
+  /** Reihen-Überschrift wie „11-04 KI“ / „11 04 KI“ — Container, keine Stunde. */
+  const isSeriesHeadingFolderName = (name: string) =>
+    /^\d{1,2}[-–\s]\d{2}(\b|\s|$)/.test((name || '').trim());
+
   const directoryOpensStundePage = (name: string, level: number) => {
     if (isChapterHeadingFolderName(name)) return false;
-    if (level === 0 && isTopicSectionFolderName(name)) return false;
+    if (isSeriesHeadingFolderName(name)) return false;
+    if (isTopicSectionFolderName(name)) return false;
     if (isLessonRohdatArchiveFolderName(name)) return false;
     return true;
   };
@@ -9786,6 +9786,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           ? isFolderBranchExpanded(groupId, folderPath, dirPathKey || item.name, branchDefaultExpanded)
           : false;
 
+      const isStundeFolder =
+        item.type === 'directory' && directoryOpensStundePage(item.name, level);
+      const isContainerFolder =
+        item.type === 'directory' && !isStundeFolder && !isLessonRohdatArchiveFolderName(item.name);
+
       // Bestimme Icon und Farbe basierend auf dem Screenshot
       let icon = '📁';
       let color = '#666';
@@ -9795,37 +9800,30 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       let createTooltip = '';
       
       if (item.type === 'directory') {
-        // Exakte Icons und Farben aus dem Screenshot
-        if (level === 0) {
-          // Level 0: Top-Level (wie "3D Druck", "Micro Bit", "Ganze und rationale Zahlen")
-          icon = '📚'; // Bücher für Hauptthemen
-          color = '#9c27b0'; // Lila
+        if (isSeriesHeadingFolderName(item.name) || (level === 0 && isContainerFolder)) {
+          icon = '📚';
+          color = '#6a1b9a';
+          fontWeight = 700;
+        } else if (isTopicSectionFolderName(item.name) || isChapterHeadingFolderName(item.name)) {
+          icon = '📖';
+          color = '#1565c0';
           fontWeight = 600;
-
+        } else if (isStundeFolder) {
+          icon = '📘';
+          color = '#1976d2';
+          fontWeight = 500;
+        } else if (level === 0) {
+          icon = '📚';
+          color = '#9c27b0';
+          fontWeight = 600;
         } else if (level === 1) {
-          // Level 1: Second-Level (wie "1. Grundlagen", "Grundlagen")
-          icon = '📖'; // Buch für Unterkategorien
-          color = '#1976d2'; // Blau
+          icon = '📖';
+          color = '#1976d2';
           fontWeight = 500;
-
-        } else if (level === 2) {
-          // Level 2: Third-Level (wie "1. Blick in die Vergangenheit", "2. Technischer Aufbau")
-          icon = '📚'; // Grüner Bücherstapel
-          color = '#2e7d32'; // Grün
-          fontWeight = 500;
-
-        } else if (level === 3) {
-          // Level 3: Fourth-Level und weitere Ebenen
-          icon = '📁'; // Standard Ordner
-          color = '#666'; // Grau
-          fontWeight = 400;
-
         } else {
-          // Weitere Ebenen
-          icon = '📁'; // Standard Ordner
-          color = '#666'; // Grau
+          icon = '📁';
+          color = '#666';
           fontWeight = 400;
-
         }
       } else {
         // Dateien
@@ -9867,12 +9865,28 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       }
       
       return (
-        <Box key={`${item.name}-${level}`} sx={{ mb: 0.7 }}>
+        <Box
+          key={`${item.name}-${level}`}
+          sx={{
+            mb: isContainerFolder ? 0.75 : 0.15,
+            ...(isContainerFolder
+              ? {
+                  border: '1px solid #e8eaf0',
+                  borderRadius: 1.25,
+                  bgcolor: '#fafbfd',
+                  px: 0.75,
+                  pt: 0.55,
+                  pb: branchExpanded ? 0.45 : 0.55,
+                }
+              : {}),
+          }}
+        >
           <Box sx={{ 
             display: 'flex', 
-            alignItems: 'flex-start', 
+            alignItems: 'center', 
             justifyContent: 'space-between',
-            gap: 0.5
+            gap: 0.35,
+            minHeight: isStundeFolder ? 22 : undefined,
           }}>
             {/* Freigabe: Versionswahl (K_ = nur Hinweis, keine Checkbox) */}
             {item.type === 'file' &&
@@ -9910,18 +9924,27 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
             <Typography variant="body2" sx={{ 
               color: color,
-              fontSize: isCorrectionFile(item.name) ? '0.9rem' : '0.75rem',
+              fontSize: isStundeFolder
+                ? '0.72rem'
+                : isCorrectionFile(item.name)
+                  ? '0.9rem'
+                  : isContainerFolder
+                    ? '0.78rem'
+                    : '0.75rem',
               fontWeight: fontWeight,
               display: 'flex',
-              alignItems: 'flex-start',
-              gap: 0.5,
-              mb: 0.5,
+              alignItems: 'center',
+              gap: 0.4,
+              mb: 0,
+              py: isStundeFolder ? 0.15 : 0.2,
               cursor:
                 item.type === 'file' ||
                 (item.type === 'directory' &&
                   (directoryOpensStundePage(item.name, level) || isLessonRohdatArchiveFolderName(item.name)))
                   ? 'pointer'
-                  : 'default',
+                  : isContainerFolder
+                    ? 'pointer'
+                    : 'default',
               textDecoration: 'none',
               wordBreak: 'break-word',
               maxWidth: '100%',
@@ -9931,19 +9954,28 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 (item.type === 'directory' &&
                   (directoryOpensStundePage(item.name, level) || isLessonRohdatArchiveFolderName(item.name)))
                   ? { color: '#1976D2' }
-                  : {}
+                  : isContainerFolder
+                    ? { opacity: 0.9 }
+                    : {}
             }}
             onClick={() => {
               if (item.type === 'file') {
                 handleFileClick(item);
               } else if (item.type === 'directory') {
+                if (isContainerFolder) {
+                  toggleFolderBranch(groupId, folderPath, dirPathKey || item.name, branchDefaultExpanded);
+                  return;
+                }
                 if (!directoryOpensStundePage(item.name, level)) return;
                 const lp = item.path || `${folderPath}/${item.name}`;
                 openLessonStundePage(groupId, lp, item.name);
               }
             }}
             >
-            {item.type === 'directory' && item.children && item.children.length > 0 ? (
+            {item.type === 'directory' &&
+            !directoryOpensStundePage(item.name, level) &&
+            item.children &&
+            item.children.length > 0 ? (
               <IconButton
                 size="small"
                 aria-label={branchExpanded ? 'Zuklappen' : 'Aufklappen'}
@@ -10063,9 +10095,21 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             
           </Box>
           
-          {/* Unterordner nur wenn aufgeklappt */}
-          {item.type === 'directory' && item.children && item.children.length > 0 && branchExpanded && (
-            <Box sx={{ ml: 2, mb: 0.7 }}>
+          {/* Unterordner eingerückt in derselben Box — unter einer Stunde keine Dateien */}
+          {item.type === 'directory' &&
+            !directoryOpensStundePage(item.name, level) &&
+            item.children &&
+            item.children.length > 0 &&
+            branchExpanded && (
+            <Box
+              sx={{
+                ml: isContainerFolder ? 1.25 : 1.5,
+                mt: isContainerFolder ? 0.35 : 0.4,
+                mb: 0,
+                pl: isContainerFolder ? 0.75 : 0,
+                borderLeft: isContainerFolder ? '2px solid rgba(21, 101, 192, 0.18)' : 'none',
+              }}
+            >
               {itemsToDisplayItems(filterPdfFiles(item.children)).map((child: any) => 
                 renderItemRecursively(child, level + 1)
               )}
@@ -10083,58 +10127,73 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
     return (
       <AssignedFolderSortableShell key={folderPath} groupId={groupId} folderPath={folderPath}>
-        {(folderDragHandle) => (
-      <Box sx={{ mb: 0 }}>
-        {/* Hauptordner – auf-/zuklappbar */}
+        {({ attributes: folderDragAttributes, listeners: folderDragListeners }) => (
+      <Box sx={{ mb: 0.75 }}>
+        {/* Hauptordner + Inhalt in einer Box */}
         <Box sx={{ 
-          p: 1.4,
+          p: 1,
           borderRadius: 1.4,
           bgcolor: '#f8f9fa',
           border: '1px solid #e9ecef',
           transition: 'all 0.2s ease',
           '&:hover': {
-            bgcolor: '#e9ecef'
+            bgcolor: '#f3f4f6'
           }
         }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.5 }}>
-            {folderDragHandle}
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 0.5,
+              cursor: 'grab',
+              touchAction: 'none',
+              '&:active': { cursor: 'grabbing' },
+            }}
+            {...folderDragAttributes}
+            {...folderDragListeners}
+          >
             <IconButton
               size="small"
               aria-label={rootExpanded ? 'Ordner zuklappen' : 'Ordner aufklappen'}
               onClick={() => toggleFolderTreeNode(folderTreeNodeKey(groupId, folderPath))}
-              sx={{ width: 24, height: 24, p: 0, color: '#D32F2F' }}
+              sx={{ width: 22, height: 22, p: 0, color: '#D32F2F' }}
             >
               {rootExpanded ? <ExpandLessIcon sx={{ fontSize: 18 }} /> : <ExpandMoreIcon sx={{ fontSize: 18 }} />}
             </IconButton>
-            <Typography variant="body2" sx={{ 
+            <Typography
+              variant="body2"
+              onClick={() => toggleFolderTreeNode(folderTreeNodeKey(groupId, folderPath))}
+              sx={{ 
               color: '#D32F2F',
-              fontSize: '0.75rem',
-              fontWeight: 600,
+              fontSize: '0.8rem',
+              fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
               gap: 0.5,
               flex: 1,
               minWidth: 0,
+              cursor: 'inherit',
+              userSelect: 'none',
             }}>
               📁 {folderPath.split('/').pop() || folderPath}
             </Typography>
           </Box>
-        </Box>
         
-        {/* Vorschau des Ordnerinhalts */}
-        {rootExpanded && (
-        <Box sx={{ ml: 2, mt: 1 }}>
-          {isLoading ? (
-            <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
-              Lade Inhalt...
-            </Typography>
-          ) : items.length === 0 ? null : (
-            <Box>
-              {itemsToDisplayItems(filteredItems).map((item) => renderItemRecursively(item, 0))}
-            </Box>
+          {rootExpanded && (
+          <Box sx={{ mt: 0.65, pl: 1.25, borderLeft: '2px solid rgba(211, 47, 47, 0.2)' }}>
+            {isLoading ? (
+              <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
+                Lade Inhalt...
+              </Typography>
+            ) : items.length === 0 ? null : (
+              <Box>
+                {itemsToDisplayItems(filteredItems).map((item) => renderItemRecursively(item, 0))}
+              </Box>
+            )}
+          </Box>
           )}
         </Box>
-        )}
       </Box>
         )}
       </AssignedFolderSortableShell>
@@ -10668,6 +10727,13 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
       const data = await response.json();
       const modalGroupId = examinationLearningGroupId || getDefaultLearningGroupId() || groups[0]?.id || '';
+
+      // Standard-Foliensatz (Start, Auftrag, HA, Ende) anlegen
+      try {
+        await loadPresentationDeck(data.lessonFolderPath);
+      } catch (deckErr) {
+        console.warn('Standard-Foliensatz konnte nicht angelegt werden:', deckErr);
+      }
 
       setCreateLessonModalOpen(false);
       setNewLessonName('');
@@ -12026,6 +12092,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
+      if (isLessonStundeRoute) {
+        e.preventDefault();
+        handleCloseLessonPage();
+        return;
+      }
       onLogout();
       e.preventDefault();
     } else if (e.key === 'Tab') {
@@ -13670,6 +13741,34 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     }
   };
 
+  // Esc auf der Stunden-Seite → zurück zum Dashboard (nicht während Laptop-Präsentation)
+  useEffect(() => {
+    if (!isLessonStundeRoute) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (laptopPresentationActive) return;
+      const t = e.target as HTMLElement | null;
+      if (
+        t instanceof HTMLInputElement ||
+        t instanceof HTMLTextAreaElement ||
+        t instanceof HTMLSelectElement ||
+        (t && (t.isContentEditable || t.closest('[contenteditable="true"]')))
+      ) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      setLessonModalData(null);
+      lessonBoxDraftRef.current = null;
+      setLessonBoxEdit(null);
+      setLessonPlanViewMode('create');
+      setParticipationModalOpen(false);
+      navigate('/dashboard');
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [isLessonStundeRoute, laptopPresentationActive, navigate]);
+
   /** Stunden-Seite: Epochal rechts andocken; Präsentation links etwas breiter */
   const participationDocked =
     participationModalOpen && lessonPlanViewMode === 'background' && isLessonStundeRoute;
@@ -13839,7 +13938,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     >
       <>
       <Grid container spacing={0}>
-        {/* Header Section – auch auf /teacher/stunde (eigener Tab); bei Laptop-Präsentation ausgeblendet */}
+        {/* Header Section – auch auf /teacher/stunde; bei Laptop-Präsentation ausgeblendet */}
         {!laptopPresentationActive && (
         <Grid item xs={12}>
           <Box sx={{ 
@@ -18718,11 +18817,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     const qs = new URLSearchParams();
                     qs.set('lessonPath', lessonModalData.lessonPath);
                     if (lessonModalData.groupId) qs.set('groupId', lessonModalData.groupId);
-                    const origin = window.location.origin;
                     if (lessonPlanViewMode === 'create') {
-                      window.open(`${origin}/presentation/edit?${qs.toString()}`, '_blank', 'noopener,noreferrer');
+                      navigate(`/presentation/edit?${qs.toString()}`);
                     } else if (lessonPlanViewMode === 'run') {
-                      window.open(`${origin}/presentation/present?${qs.toString()}`, '_blank', 'noopener,noreferrer');
+                      navigate(
+                        presentationPresentUrl(
+                          lessonModalData.lessonPath,
+                          lessonModalData.groupId || undefined,
+                          'edited'
+                        )
+                      );
                     } else {
                       // Laptop: Präsentation links in der Stunde (wie Tablet), SuS rechts
                       setLaptopPresentationView({ mode: 'deck', variant: 'edited' });
@@ -18841,13 +18945,17 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     showSnackbar('Kein Stundenordner für diese Stunde.', 'error');
                     return;
                   }
-                  const origin = window.location.origin;
                   const qsBase = () => {
                     const qs = new URLSearchParams();
                     qs.set('lessonPath', lessonModalData.lessonPath);
                     if (lessonModalData.groupId) qs.set('groupId', lessonModalData.groupId);
                     return qs;
                   };
+                  // Erstellen → immer Folien-Editor (nicht Präsentieren)
+                  if (lessonPlanViewMode === 'create') {
+                    navigate(`/presentation/edit?${qsBase().toString()}`);
+                    return;
+                  }
                   // Laptop-Modus: alles in der linken Spalte (wie „bearbeitet“), nicht neuer Tab / Roh-PDF
                   if (lessonPlanViewMode === 'background') {
                     if (version.kind === 'named') {
@@ -18866,58 +18974,15 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     setLaptopPresentationActive(true);
                     return;
                   }
-                  if (version.kind === 'original') {
-                    if (lessonPlanViewMode === 'create') {
-                      window.open(`${origin}/presentation/edit?${qsBase().toString()}`, '_blank', 'noopener,noreferrer');
-                      return;
-                    }
-                    // TABLET: Original = Erstell-Stand als Basis, mit Handles zum Live-Bearbeiten;
-                    // Speichern → bearbeitete Version(en) für SuS
-                    if (lessonPlanViewMode === 'run') {
-                      window.open(
-                        `${origin}${presentationPresentUrl(lessonModalData.lessonPath, lessonModalData.groupId || undefined, 'original')}`,
-                        '_blank',
-                        'noopener,noreferrer'
-                      );
-                      return;
-                    }
-                    window.open(
-                      `${origin}${presentationReviewUrl(lessonModalData.lessonPath, lessonModalData.groupId || undefined, 'original')}`,
-                      '_blank',
-                      'noopener,noreferrer'
+                  // TABLET: immer aktuelle Arbeitsfolie (Praesentation.deck.json), nicht Original-/Named-Snapshot
+                  if (lessonPlanViewMode === 'run') {
+                    navigate(
+                      presentationPresentUrl(
+                        lessonModalData.lessonPath,
+                        lessonModalData.groupId || undefined,
+                        'edited'
+                      )
                     );
-                    return;
-                  }
-                  if (version.kind === 'named') {
-                    const slug = namedVersionSlugFromPdfName(version.name);
-                    if (!slug) {
-                      void openLessonFolderFile({ type: 'file', name: version.name, path: version.path });
-                      return;
-                    }
-                    // Gleiche Present-Ansicht wie Original, inkl. Bearbeitungen dieser Version
-                    window.open(
-                      `${origin}${presentationPresentUrl(lessonModalData.lessonPath, lessonModalData.groupId || undefined, undefined, slug)}`,
-                      '_blank',
-                      'noopener,noreferrer'
-                    );
-                    return;
-                  }
-                  if (version.kind === 'edited') {
-                    // bearbeitet: Live-Ansicht mit Strichen
-                    if (lessonPlanViewMode === 'create') {
-                      window.open(`${origin}/presentation/edit?${qsBase().toString()}`, '_blank', 'noopener,noreferrer');
-                      return;
-                    }
-                    if (lessonPlanViewMode === 'run') {
-                      window.open(
-                        `${origin}${presentationPresentUrl(lessonModalData.lessonPath, lessonModalData.groupId || undefined)}`,
-                        '_blank',
-                        'noopener,noreferrer'
-                      );
-                      return;
-                    }
-                    setLaptopPresentationView({ mode: 'deck', variant: 'edited' });
-                    setLaptopPresentationActive(true);
                     return;
                   }
                 };
@@ -19851,6 +19916,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                               component="span"
                                               title={`${version.label} öffnen`}
                                               onClick={(e) => {
+                                                e.preventDefault();
                                                 e.stopPropagation();
                                                 openJohnnyPresentationVersion(version);
                                               }}
@@ -20129,11 +20195,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                             {item.type === 'input' &&
                               (() => {
                                 const showTextPhasen = lessonPlanViewMode !== 'run';
-                                const showDocumentsSection =
-                                  index === firstInputPlanIndex &&
-                                  (lessonFolderPdfFiles.length > 0 ||
-                                    createInputReorder ||
-                                    lessonPlanViewMode === 'background');
+                                // Keine Dateiliste (PDF/JSON/…) unter der Stunde — nur Ablauf/Phasen
+                                const showDocumentsSection = false;
                                 if (!showTextPhasen && !showDocumentsSection) return null;
                                 return (
                                   <Box

@@ -497,7 +497,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
           (dragging ? 200 : 0) +
           (animationEditMode && elementAnimSelected ? 50 : 0),
         animation: shouldAnimateReveal(elementStep, revealStep, revealEnabled)
-          ? 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1)'
+          ? 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both'
           : undefined,
         borderRadius: isImageElement || isShapeElement ? 0 : `${6 * scale}px`,
         overflow: showSelectionChrome || exportSnapshot || isShapeElement ? 'visible' : 'hidden',
@@ -729,7 +729,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               '& li > p': { display: 'block', listStyle: 'none' },
               ...presentationNestedListSx({ scale, listPaddingPx: 20 * scale, itemGapPx: 2 * scale }),
               '& [data-reveal-step].pres-reveal-enter': {
-                animation: 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1)',
+                animation: 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both',
               },
               '& [data-pres-fs]': { lineHeight: 'inherit' },
               ...animationParagraphBadgeSx(scale, animationEditMode && hasAnimTextBlocks),

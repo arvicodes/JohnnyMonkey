@@ -1,10 +1,9 @@
 import type { LessonFolderFileLike } from './openLessonFolderFile';
 import {
   isJohnnyPresentationExportPdf,
-  namedVersionSlugFromPdfName,
   LESSON_PRESENTATION_PDF_ORIGINAL,
 } from './presentationLessonAssets';
-import { presentationReviewUrl, type PresentationViewerVariant } from './presentationDeck';
+import { presentationReviewUrl } from './presentationDeck';
 
 function tryOpenInNewTab(url: string): boolean {
   const w = window.open(url, '_blank');
@@ -43,18 +42,13 @@ export async function openStudentLessonMaterialFile(
     return;
   }
 
-  // Johnny-Folien: Original / Live / benannte Snapshots
+  // Johnny-Folien: Original = Erstell-Stand; alles andere = aktuelle Arbeitsfolie (nicht Snapshot)
   if (ext === 'pdf' && isJohnnyPresentationExportPdf(item.name)) {
     const lessonPath = lessonPathFromMaterialFile(item.path);
-    const namedSlug = namedVersionSlugFromPdfName(item.name);
-    if (namedSlug) {
-      const url = `${presentationReviewUrl(lessonPath, undefined, undefined, namedSlug)}&viewer=student`;
-      if (!tryOpenInNewTab(url)) window.location.assign(url);
-      return;
-    }
-    const variant: PresentationViewerVariant =
-      item.name === LESSON_PRESENTATION_PDF_ORIGINAL ? 'original' : 'edited';
-    const url = `${presentationReviewUrl(lessonPath, undefined, variant)}&viewer=student`;
+    const isOriginal = item.name === LESSON_PRESENTATION_PDF_ORIGINAL;
+    const url = isOriginal
+      ? `${presentationReviewUrl(lessonPath, undefined, 'original')}&viewer=student`
+      : `${presentationReviewUrl(lessonPath, undefined, 'edited')}&viewer=student`;
     if (!tryOpenInNewTab(url)) window.location.assign(url);
     return;
   }
