@@ -34,11 +34,11 @@ function capTrash(items: PresentationTrashItem[]): PresentationTrashItem[] {
 function notesFieldLabel(field: NotesTrashField): string {
   switch (field) {
     case 'materialHtml':
-      return 'Material';
+      return 'Notizen (Material)';
     case 'preparationHtml':
-      return 'Setup';
+      return 'Notizen (Setup)';
     default:
-      return 'Sprechakte';
+      return 'Notizen';
   }
 }
 
@@ -142,6 +142,7 @@ export function restoreNotesFromTrash(
   const slideId = targetSlideId || item.slideId;
   const slides = deck.slides.map((slide) => {
     if (slide.id !== slideId) return slide;
+    // Alte Papierkorb-Einträge (Material/Setup) → in das eine Notizfeld mergen
     if (item.notesField === 'materialHtml') {
       return normalizeSlide({
         ...slide,

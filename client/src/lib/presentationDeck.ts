@@ -258,6 +258,23 @@ export const SLIDE_IMAGE_THUMB_MAX = 280;
 const LEGACY_BILD_SLIDE_SPEAKER_HINT =
   'Bild per Drag & Drop auf die Folie ziehen oder Element wählen → Bild einfügen.';
 
+function notesHtmlIsEmpty(html?: string, plain?: string): boolean {
+  const text = (plain ?? htmlToPlain(html || '')).replace(/\u00a0/g, ' ').trim();
+  if (text) return false;
+  const stripped = (html || '')
+    .replace(/<br\s*\/?>/gi, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\u00a0/g, ' ')
+    .trim();
+  return !stripped;
+}
+
+function wrapNotesSection(label: string, html: string): string {
+  const body = (html || '').trim() || '<p><br></p>';
+  return `<p><strong>${label}</strong></p>${body}`;
+}
+
 function normalizedSpeakerNotesFields(slide: PresentationSlide): {
   speakerNotes: string;
   speakerNotesHtml: string;
@@ -273,10 +290,70 @@ function normalizedSpeakerNotesFields(slide: PresentationSlide): {
   };
 }
 
+/**
+ * Früher: drei Notizfelder (Material / Setup / Sprechakte).
+ * Jetzt: ein Feld. Vorhandene Inhalte werden mit Überschriften zusammengeführt,
+ * die alten Felder geleert — nichts geht verloren.
+ */
+export function consolidateSlideNotes(slide: PresentationSlide): Pick<
+  PresentationSlide,
+  | 'speakerNotes'
+  | 'speakerNotesHtml'
+  | 'materialNotes'
+  | 'materialHtml'
+  | 'preparationNotes'
+  | 'preparationHtml'
+> {
+  const materialHtml = slide.materialHtml ?? textToHtml(slide.materialNotes || '');
+  const preparationHtml = slide.preparationHtml ?? textToHtml(slide.preparationNotes || '');
+  const speakerFields = normalizedSpeakerNotesFields(slide);
+  const speakerNotesHtml =
+    speakerFields.speakerNotesHtml || textToHtml(speakerFields.speakerNotes || '');
+  const speakerNotes = speakerFields.speakerNotes;
+
+  const matEmpty = notesHtmlIsEmpty(materialHtml, slide.materialNotes);
+  const prepEmpty = notesHtmlIsEmpty(preparationHtml, slide.preparationNotes);
+  const speakEmpty = notesHtmlIsEmpty(speakerNotesHtml, speakerNotes);
+
+  if (matEmpty && prepEmpty) {
+    return {
+      speakerNotes,
+      speakerNotesHtml: speakerNotesHtml || '<p><br></p>',
+      materialNotes: '',
+      materialHtml: '<p><br></p>',
+      preparationNotes: '',
+      preparationHtml: '<p><br></p>',
+    };
+  }
+
+  const parts: string[] = [];
+  const multi = [!matEmpty, !prepEmpty, !speakEmpty].filter(Boolean).length > 1;
+
+  if (!matEmpty) {
+    parts.push(multi ? wrapNotesSection('Material', materialHtml) : materialHtml);
+  }
+  if (!prepEmpty) {
+    parts.push(multi ? wrapNotesSection('Setup', preparationHtml) : preparationHtml);
+  }
+  if (!speakEmpty) {
+    parts.push(multi ? wrapNotesSection('Sprechakte', speakerNotesHtml) : speakerNotesHtml);
+  }
+
+  const mergedHtml = parts.join('') || '<p><br></p>';
+  return {
+    speakerNotes: htmlToPlain(mergedHtml),
+    speakerNotesHtml: mergedHtml,
+    materialNotes: '',
+    materialHtml: '<p><br></p>',
+    preparationNotes: '',
+    preparationHtml: '<p><br></p>',
+  };
+}
+
 export function normalizeSlide(slide: PresentationSlide): PresentationSlide {
   const layout = slide.layout ?? 'title-content';
   const centerLayouts: SlideLayout[] = ['title-slide', 'section', 'quote'];
-  const speakerNotesFields = normalizedSpeakerNotesFields(slide);
+  const notes = consolidateSlideNotes(slide);
   return {
     ...slide,
     layout,
@@ -295,12 +372,12 @@ export function normalizeSlide(slide: PresentationSlide): PresentationSlide {
     bodyLeftHtml: slide.bodyLeftHtml ?? textToHtml(slide.bodyLeft || ''),
     bodyRightHtml: slide.bodyRightHtml ?? textToHtml(slide.bodyRight || ''),
     imageCaptionHtml: slide.imageCaptionHtml ?? textToHtml(slide.imageCaption || ''),
-    speakerNotes: speakerNotesFields.speakerNotes,
-    speakerNotesHtml: speakerNotesFields.speakerNotesHtml,
-    preparationNotes: slide.preparationNotes ?? '',
-    preparationHtml: slide.preparationHtml ?? textToHtml(slide.preparationNotes || ''),
-    materialNotes: slide.materialNotes ?? '',
-    materialHtml: slide.materialHtml ?? textToHtml(slide.materialNotes || ''),
+    speakerNotes: notes.speakerNotes,
+    speakerNotesHtml: notes.speakerNotesHtml,
+    preparationNotes: notes.preparationNotes,
+    preparationHtml: notes.preparationHtml,
+    materialNotes: notes.materialNotes,
+    materialHtml: notes.materialHtml,
     elements: normalizeSlideHeroImageElements({
       ...slide,
       layout,

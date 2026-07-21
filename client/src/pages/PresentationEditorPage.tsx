@@ -1275,21 +1275,17 @@ const PresentationEditorPage: React.FC = () => {
     setSnackbar('Folie in Papierkorb verschoben');
   };
 
-  const moveNotesToTrash = (fieldKey: NotesFieldKey) => {
+  const moveNotesToTrash = (_fieldKey: NotesFieldKey) => {
     const current = deckRef.current;
     if (!current || !normalizedActive) return;
-    const trashItem = createNotesTrashItem(normalizedActive, fieldKey);
+    // Ein Notizfeld — immer das zusammengeführte speakerNotesHtml
+    const trashItem = createNotesTrashItem(normalizedActive, 'speakerNotesHtml');
     if (!trashItem) {
       setSnackbar('Notiz ist bereits leer');
       return;
     }
 
-    const patch =
-      fieldKey === 'materialHtml'
-        ? { materialHtml: '<p><br></p>', materialNotes: '' }
-        : fieldKey === 'preparationHtml'
-          ? { preparationHtml: '<p><br></p>', preparationNotes: '' }
-          : { speakerNotesHtml: '<p><br></p>', speakerNotes: '' };
+    const patch = { speakerNotesHtml: '<p><br></p>', speakerNotes: '' };
 
     const slides = current.slides.map((slide) =>
       slide.id === normalizedActive.id ? normalizeSlide({ ...slide, ...patch }) : slide
@@ -1627,23 +1623,21 @@ const PresentationEditorPage: React.FC = () => {
   }
 
   const formatContextLabel =
-    activeHtmlField === 'materialHtml'
-      ? 'Material'
-      : activeHtmlField === 'preparationHtml'
-        ? 'Setup'
-        : activeHtmlField === 'speakerNotesHtml'
-          ? 'Sprechakte'
-          : activeHtmlField?.startsWith('element:')
-            ? 'Element'
-            : activeHtmlField
-              ? 'Folie'
-              : undefined;
+    activeHtmlField === 'speakerNotesHtml' ||
+    activeHtmlField === 'materialHtml' ||
+    activeHtmlField === 'preparationHtml'
+      ? 'Notizen'
+      : activeHtmlField?.startsWith('element:')
+        ? 'Element'
+        : activeHtmlField
+          ? 'Folie'
+          : undefined;
 
   const notesActiveField: NotesFieldKey | null =
+    activeHtmlField === 'speakerNotesHtml' ||
     activeHtmlField === 'materialHtml' ||
-    activeHtmlField === 'preparationHtml' ||
-    activeHtmlField === 'speakerNotesHtml'
-      ? activeHtmlField
+    activeHtmlField === 'preparationHtml'
+      ? 'speakerNotesHtml'
       : null;
 
   return (
@@ -2176,10 +2170,6 @@ const PresentationEditorPage: React.FC = () => {
 
         {normalizedActive && notesPanelOpen && (
           <PresentationNotesPanel
-            materialHtml={normalizedActive.materialHtml}
-            materialPlain={normalizedActive.materialNotes}
-            preparationHtml={normalizedActive.preparationHtml}
-            preparationPlain={normalizedActive.preparationNotes}
             speakerHtml={normalizedActive.speakerNotesHtml}
             speakerPlain={normalizedActive.speakerNotes}
             activeField={notesActiveField}
@@ -2201,12 +2191,6 @@ const PresentationEditorPage: React.FC = () => {
                 setActiveHtmlField(null);
               }
             }}
-            onMaterialChange={(html, plain) =>
-              updateSlide({ materialHtml: html, materialNotes: plain })
-            }
-            onPreparationChange={(html, plain) =>
-              updateSlide({ preparationHtml: html, preparationNotes: plain })
-            }
             onSpeakerChange={(html, plain) =>
               updateSlide({ speakerNotesHtml: html, speakerNotes: plain })
             }

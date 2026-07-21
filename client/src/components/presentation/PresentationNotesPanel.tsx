@@ -12,6 +12,7 @@ import { captureEditorSelection, clearSavedSelection } from '../../lib/presentat
 import { presentationNestedListSx } from '../../lib/presentationListStyles';
 import { sanitizePastedHtml, normalizeNotesHtml, handlePresentationTabKey, replaceArrowShortcutsNearCursor, tryMarkdownListShortcut } from '../../lib/presentationRichText';
 
+/** Ein Notizfeld (früher Material / Setup / Sprechakte). Legacy-Keys bleiben für Papierkorb. */
 export type NotesFieldKey = 'materialHtml' | 'preparationHtml' | 'speakerNotesHtml';
 
 interface NoteZoneProps {
@@ -22,7 +23,6 @@ interface NoteZoneProps {
   active?: boolean;
   readOnly?: boolean;
   placeholder: string;
-  flexGrow?: number;
   onChange: (html: string, plain: string) => void;
   onEditorFocus: (fieldKey: NotesFieldKey, el: HTMLElement) => void;
   onEditorBlur?: () => void;
@@ -37,7 +37,6 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   active,
   readOnly,
   placeholder,
-  flexGrow = 1,
   onChange,
   onEditorFocus,
   onEditorBlur,
@@ -125,12 +124,10 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   return (
     <Box
       sx={{
-        flex: `${flexGrow} 1 0`,
+        flex: '1 1 auto',
         minHeight: 0,
         display: 'flex',
         flexDirection: 'column',
-        borderBottom: `1px solid ${PRES_EDITOR_UI.panelBorder}`,
-        '&:last-child': { borderBottom: 'none' },
       }}
     >
       <Box
@@ -174,7 +171,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
         suppressContentEditableWarning
         data-pres-rich-zone
         data-pres-notes-zone="true"
-        data-pres-base-fs="12"
+        data-pres-base-fs="13"
         data-notes-field={fieldKey}
         onFocus={() => {
           if (readOnly) return;
@@ -187,7 +184,6 @@ const NoteZone: React.FC<NoteZoneProps> = ({
           const next = e.relatedTarget as HTMLElement | null;
           const toFormatBar =
             isFormatBarInteracting() || isPresentationFormatUiTarget(next);
-          const toSiblingNote = !!next?.closest('[data-notes-field]');
 
           if (toFormatBar) return;
 
@@ -196,9 +192,6 @@ const NoteZone: React.FC<NoteZoneProps> = ({
           }
 
           editingRef.current = false;
-
-          if (toSiblingNote) return;
-
           onEditorBlur?.();
         }}
         onInput={handleInput}
@@ -211,13 +204,13 @@ const NoteZone: React.FC<NoteZoneProps> = ({
           flex: 1,
           minHeight: 0,
           mx: 1,
-          mb: 0.75,
-          px: 1,
-          py: 0.5,
+          mb: 1,
+          px: 1.25,
+          py: 1,
           overflowY: 'auto',
           outline: 'none',
-          fontSize: 12,
-          lineHeight: 1.5,
+          fontSize: 13,
+          lineHeight: 1.55,
           borderRadius: 1,
           border: '1px solid',
           borderColor: active ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.barBorder,
@@ -253,18 +246,12 @@ const NoteZone: React.FC<NoteZoneProps> = ({
 };
 
 interface PresentationNotesPanelProps {
-  materialHtml?: string;
-  materialPlain?: string;
-  preparationHtml?: string;
-  preparationPlain?: string;
   speakerHtml?: string;
   speakerPlain?: string;
   activeField?: NotesFieldKey | null;
   readOnly?: boolean;
   onEditorFocus: (fieldKey: NotesFieldKey, el: HTMLElement) => void;
   onEditorBlur?: () => void;
-  onMaterialChange: (html: string, plain: string) => void;
-  onPreparationChange: (html: string, plain: string) => void;
   onSpeakerChange: (html: string, plain: string) => void;
   onMoveNotesToTrash?: (fieldKey: NotesFieldKey) => void;
   /** Notizleiste ausblenden (mehr Platz für die Folie). */
@@ -272,18 +259,12 @@ interface PresentationNotesPanelProps {
 }
 
 const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
-  materialHtml,
-  materialPlain,
-  preparationHtml,
-  preparationPlain,
   speakerHtml,
   speakerPlain,
   activeField,
   readOnly,
   onEditorFocus,
   onEditorBlur,
-  onMaterialChange,
-  onPreparationChange,
   onSpeakerChange,
   onMoveNotesToTrash,
   onHide,
@@ -291,7 +272,7 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
   return (
     <Box
       sx={{
-        width: 272,
+        width: 320,
         flexShrink: 0,
         minHeight: 0,
         display: 'flex',
@@ -346,42 +327,13 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
         )}
       </Box>
       <NoteZone
-        fieldKey="materialHtml"
-        label="Material"
-        html={materialHtml}
-        plain={materialPlain}
-        active={activeField === 'materialHtml'}
-        readOnly={readOnly}
-        flexGrow={1}
-        placeholder="Arbeitsblätter, Links, Dateien…"
-        onChange={onMaterialChange}
-        onEditorFocus={onEditorFocus}
-        onEditorBlur={onEditorBlur}
-        onMoveToTrash={onMoveNotesToTrash}
-      />
-      <NoteZone
-        fieldKey="preparationHtml"
-        label="Setup"
-        html={preparationHtml}
-        plain={preparationPlain}
-        active={activeField === 'preparationHtml'}
-        readOnly={readOnly}
-        flexGrow={1}
-        placeholder="Raum, Technik, Vorbereitung vor der Stunde…"
-        onChange={onPreparationChange}
-        onEditorFocus={onEditorFocus}
-        onEditorBlur={onEditorBlur}
-        onMoveToTrash={onMoveNotesToTrash}
-      />
-      <NoteZone
         fieldKey="speakerNotesHtml"
-        label="Sprechakte"
+        label="Notizen"
         html={speakerHtml}
         plain={speakerPlain}
         active={activeField === 'speakerNotesHtml'}
         readOnly={readOnly}
-        flexGrow={1.15}
-        placeholder="Was du sagst, Posen, Timing…"
+        placeholder="Material, Setup, Sprechakte, Timing…"
         onChange={onSpeakerChange}
         onEditorFocus={onEditorFocus}
         onEditorBlur={onEditorBlur}

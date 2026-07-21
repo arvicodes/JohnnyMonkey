@@ -440,3 +440,23 @@ export function applyEditorFontSizeStepIndex(editor: HTMLElement | null, index: 
   const px = steps[index];
   return applyEditorFontSizePx(editor, px) ? px : null;
 }
+
+/**
+ * Notiz-HTML für Anzeige (Laptop/Present): data-pres-fs → inline font-size,
+ * damit Editor-Schriftgrößen auch ohne contentEditable greifen.
+ */
+export function hydrateNotesHtmlFontSizes(html: string): string {
+  if (!html || typeof document === 'undefined') return html;
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.body.querySelectorAll('[data-pres-fs]').forEach((node) => {
+      const el = node as HTMLElement;
+      const n = parseInt(el.getAttribute('data-pres-fs') || '', 10);
+      if (!Number.isFinite(n) || n <= 0) return;
+      el.style.setProperty('font-size', `${Math.round(n)}px`, 'important');
+    });
+    return doc.body.innerHTML;
+  } catch {
+    return html;
+  }
+}

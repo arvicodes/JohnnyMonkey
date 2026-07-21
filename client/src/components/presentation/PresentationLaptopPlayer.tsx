@@ -19,6 +19,8 @@ import {
 import { getSlideMaxRevealSteps } from '../../lib/presentationReveal';
 import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../../lib/presentationTransitions';
 import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
+import { hydrateNotesHtmlFontSizes } from '../../lib/presentationFontSize';
+import { presentationNestedListSx } from '../../lib/presentationListStyles';
 
 const EMPTY_STROKES: PresentationStroke[] = [];
 const EMPTY_ANNOTATIONS: PresentationAnnotations = {
@@ -308,6 +310,7 @@ export default function PresentationLaptopPlayer({
   const hasHtmlNotes =
     !!notesHtml && notesHtml !== '<p></p>' && notesHtml !== '<p><br></p>';
   const plainNotes = showNotes ? currentSlide.speakerNotes?.trim() || '' : '';
+  const displayNotesHtml = hasHtmlNotes ? hydrateNotesHtmlFontSizes(notesHtml!) : '';
 
   return (
     <Box
@@ -520,20 +523,43 @@ export default function PresentationLaptopPlayer({
           (hasHtmlNotes ? (
             <Box
               sx={{
-                fontSize: embedded ? 16.5 : 13,
-                lineHeight: embedded ? 1.55 : 1.45,
-                '& p': { m: 0, mb: 0.75 },
+                // Basis wie Editor-Notizfeld; individuelle Größen via data-pres-fs / inline
+                fontSize: 13,
+                lineHeight: 1.55,
+                color: 'text.primary',
+                wordBreak: 'break-word',
+                '& p, & div': { m: 0, mb: 0.5, ml: 0, pl: 0, textIndent: 0 },
+                '& blockquote': {
+                  m: 0,
+                  mb: 0.5,
+                  ml: 0,
+                  pl: '0.75em',
+                  borderLeft: '2px solid #ccc',
+                },
+                '& li > p': { display: 'block', listStyle: 'none' },
+                ...presentationNestedListSx({
+                  scale: 1,
+                  listPaddingPx: '1.25em',
+                  itemGapPx: 2,
+                  listGapPx: 4,
+                }),
                 '& mark': { borderRadius: 0.5 },
+                '& [data-pres-fs]': { lineHeight: 'inherit' },
+                '& [data-pres-color]': { lineHeight: 'inherit' },
+                '& [data-pres-highlight]': { lineHeight: 'inherit' },
+                '& b, & strong': { fontWeight: 700 },
+                '& i, & em': { fontStyle: 'italic' },
+                '& u': { textDecoration: 'underline' },
               }}
-              dangerouslySetInnerHTML={{ __html: notesHtml! }}
+              dangerouslySetInnerHTML={{ __html: displayNotesHtml }}
             />
           ) : (
             <Typography
               variant="body2"
               sx={{
                 whiteSpace: 'pre-wrap',
-                fontSize: embedded ? 16.5 : 13,
-                lineHeight: embedded ? 1.55 : 1.45,
+                fontSize: 13,
+                lineHeight: 1.55,
               }}
             >
               {plainNotes || '—'}
