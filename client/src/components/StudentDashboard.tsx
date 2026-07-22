@@ -48,6 +48,8 @@ import {
   FormatUnderlined as FormatUnderlinedIcon,
   Link as LinkIcon,
   OpenInNew as OpenInNewIcon,
+  ContentCopy as ContentCopyIcon,
+  ContentPaste as ContentPasteIcon,
   WbSunny as WbSunnyIcon,
   PhotoLibrary as PhotoLibraryIcon,
   Logout as LogoutIcon,
@@ -231,27 +233,32 @@ function parseItem(x: any, i: number): SharedInputItem {
   };
 }
 
-export function parseSharedContent(raw: string): { items: SharedInputItem[]; connections: SharedInputConnection[] } {
-  if (!raw?.trim()) return { items: [], connections: [] };
+export function parseSharedContent(raw: string): {
+  items: SharedInputItem[];
+  connections: SharedInputConnection[];
+  prompt: string;
+} {
+  if (!raw?.trim()) return { items: [], connections: [], prompt: '' };
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
       const items = parsed.map((x: any, i: number) => parseItem(x, i)).filter((x: SharedInputItem) => x.text.trim() !== '');
-      return { items, connections: [] };
+      return { items, connections: [], prompt: '' };
     }
     if (parsed && Array.isArray(parsed.items)) {
       const items = parsed.items.map((x: any, i: number) => parseItem(x, i)).filter((x: SharedInputItem) => x.text.trim() !== '');
       const connections: SharedInputConnection[] = Array.isArray(parsed.connections)
         ? parsed.connections.filter((c: any) => c && typeof c.fromId === 'string' && typeof c.toId === 'string')
         : [];
-      return { items, connections };
+      const prompt = typeof parsed.prompt === 'string' ? parsed.prompt : typeof parsed.question === 'string' ? parsed.question : '';
+      return { items, connections, prompt };
     }
   } catch {
     const lines = raw.split(/\n/).filter(Boolean);
     const items = lines.map((line, i) => ({ ...parseItem({ text: line.trim() }, i), text: line.trim() }));
-    return { items, connections: [] };
+    return { items, connections: [], prompt: '' };
   }
-  return { items: [], connections: [] };
+  return { items: [], connections: [], prompt: '' };
 }
 
 const CARD_CENTER_OFFSET_X = 110;
@@ -570,15 +577,18 @@ export const LessonSharedInputBox: React.FC<{
   const isKarteikarten = variant === 'karteikarten';
   const [items, setItems] = useState<SharedInputItem[]>([]);
   const [connections, setConnections] = useState<SharedInputConnection[]>([]);
+  const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(true);
   const [newText, setNewText] = useState('');
   const [emptyAddHint, setEmptyAddHint] = useState(false);
   const [clipboardStatus, setClipboardStatus] = useState<string>('');
   const newTextRef = useRef('');
+  const promptRef = useRef('');
   const containerRef = useRef<HTMLDivElement>(null);
   const saveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => { newTextRef.current = newText; }, [newText]);
+  useEffect(() => { promptRef.current = prompt; }, [prompt]);
 
   useEffect(() => {
     let cancelled = false;
@@ -587,12 +597,13 @@ export const LessonSharedInputBox: React.FC<{
       .then((res) => res.ok ? res.json() : { content: '' })
       .then((data) => {
         if (!cancelled) {
-          const { items: parsedItems, connections: parsedConnections } = parseSharedContent(data.content ?? '');
+          const { items: parsedItems, connections: parsedConnections, prompt: parsedPrompt } = parseSharedContent(data.content ?? '');
           setItems(parsedItems);
           setConnections(parsedConnections);
+          setPrompt(parsedPrompt);
         }
       })
-      .catch(() => { if (!cancelled) { setItems([]); setConnections([]); } })
+      .catch(() => { if (!cancelled) { setItems([]); setConnections([]); setPrompt(''); } })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [groupId, lessonPath]);
@@ -603,20 +614,32 @@ export const LessonSharedInputBox: React.FC<{
     return () => window.clearTimeout(t);
   }, [loading, autoFocusAddField]);
 
-  const save = useCallback((payloadItems: SharedInputItem[], payloadConnections: SharedInputConnection[]) => {
+  const save = useCallback((
+    payloadItems: SharedInputItem[],
+    payloadConnections: SharedInputConnection[],
+    payloadPrompt: string,
+  ) => {
     fetch(`/api/learning-groups/${groupId}/lesson-shared-input`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lessonPath, content: JSON.stringify({ items: payloadItems, connections: payloadConnections }) })
+      body: JSON.stringify({
+        lessonPath,
+        content: JSON.stringify({
+          version: 1,
+          prompt: payloadPrompt,
+          items: payloadItems,
+          connections: payloadConnections,
+        }),
+      }),
     }).catch(() => {});
   }, [groupId, lessonPath]);
 
   useEffect(() => {
     if (loading) return;
     if (saveRef.current) clearTimeout(saveRef.current);
-    saveRef.current = setTimeout(() => save(items, connections), 600);
+    saveRef.current = setTimeout(() => save(items, connections, prompt), 600);
     return () => { if (saveRef.current) clearTimeout(saveRef.current); };
-  }, [items, connections, loading, save]);
+  }, [items, connections, prompt, loading, save]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, delta } = event;
@@ -681,10 +704,11 @@ export const LessonSharedInputBox: React.FC<{
     window.setTimeout(() => setClipboardStatus(''), 2000);
   };
 
-  // Kopieren/Übernehmen: kompletter Leinwandzustand (items + connections) als JSON
+  // Kopieren/Übernehmen: kompletter Leinwandzustand (prompt + items + connections) als JSON
   const handleCopyAllToClipboard = async () => {
     const payload = {
       version: 1,
+      prompt,
       items,
       connections,
     };
@@ -715,6 +739,8 @@ export const LessonSharedInputBox: React.FC<{
       }
       setItems(parsed.items);
       setConnections(parsed.connections);
+      if (typeof parsed.prompt === 'string') setPrompt(parsed.prompt);
+      else if (typeof parsed.question === 'string') setPrompt(parsed.question);
       setClipboardStatusTimed('Leinwand übernommen ✓');
     } catch (err: any) {
       console.error('Paste failed:', err);
@@ -756,81 +782,69 @@ export const LessonSharedInputBox: React.FC<{
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      {!fullScreen && (
-        <Tooltip title="Vergrößern (in neuem Tab)">
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              const u = new URL('/shared-overview', window.location.origin);
-              u.searchParams.set('groupId', groupId);
-              u.searchParams.set('lessonPath', lessonPath);
-              window.open(u.pathname + u.search, '_blank');
-            }}
-            onMouseDown={(e) => e.stopPropagation()}
-            sx={{
-              position: 'absolute',
-              top: 4,
-              right: 4,
-              p: 0,
-              minWidth: 28,
-              width: 28,
-              height: 28,
-              color: isKarteikarten ? '#6a1b9a' : '#2e7d32',
-              '&:hover': { bgcolor: isKarteikarten ? 'rgba(106, 27, 154, 0.12)' : 'rgba(46, 125, 50, 0.12)' },
-            }}
-            aria-label="Vergrößern in neuem Tab"
-          >
-            <OpenInNewIcon sx={{ fontSize: 20 }} />
-          </IconButton>
-        </Tooltip>
+      {isKarteikarten ? (
+        <Typography
+          variant="caption"
+          sx={{
+            display: 'block',
+            fontWeight: 600,
+            color: '#6a1b9a',
+            fontSize: '0.68rem',
+            mb: 0.5,
+            lineHeight: 1.2,
+          }}
+        >
+          Karteikarten gemeinsam erstellen
+        </Typography>
+      ) : (
+        <TextField
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Frage eingeben …"
+          disabled={loading}
+          fullWidth
+          multiline
+          maxRows={3}
+          variant="standard"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          sx={{
+            mb: 1,
+            '& .MuiInputBase-root': {
+              fontSize: fullScreen ? '1.65rem' : '1.25rem',
+              fontWeight: 800,
+              letterSpacing: '-0.02em',
+              lineHeight: 1.25,
+              color: '#1b5e20',
+              bgcolor: 'transparent',
+            },
+            '& .MuiInputBase-input': {
+              py: 0.35,
+              px: 0.15,
+              '::placeholder': {
+                color: 'rgba(27, 94, 32, 0.45)',
+                opacity: 1,
+                fontWeight: 700,
+              },
+            },
+            '& .MuiInput-underline:before': {
+              borderBottomColor: 'rgba(46, 125, 50, 0.35)',
+            },
+            '& .MuiInput-underline:hover:not(.Mui-disabled):before': {
+              borderBottomColor: 'rgba(46, 125, 50, 0.65)',
+            },
+            '& .MuiInput-underline:after': {
+              borderBottomColor: '#2e7d32',
+            },
+          }}
+          inputProps={{ 'aria-label': 'Frage für die Leinwand' }}
+        />
       )}
-      <Typography
-        variant="caption"
-        sx={{
-          display: 'block',
-          fontWeight: 600,
-          color: isKarteikarten ? '#6a1b9a' : '#2e7d32',
-          fontSize: '0.7rem',
-          mb: 0.5,
-          pr: 5,
-        }}
-      >
-        {isKarteikarten
-          ? 'Karteikarten gemeinsam erstellen (Einträge ziehen; optional Frage und Antwort verbinden)'
-          : 'Gemeinsame Leinwand (Einträge ziehen zum Verschieben)'}
-      </Typography>
-      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 0.75, flexWrap: 'wrap' }}>
-        <Button
-          size="small"
-          variant="outlined"
-          onClick={handleCopyAllToClipboard}
-          disabled={loading}
-          sx={{ fontSize: '0.7rem', textTransform: 'none', px: 1 }}
-        >
-          Alle kopieren
-        </Button>
-        <Button
-          size="small"
-          variant="outlined"
-          onClick={handlePasteAllFromClipboard}
-          disabled={loading}
-          sx={{ fontSize: '0.7rem', textTransform: 'none', px: 1 }}
-        >
-          Alles übernehmen
-        </Button>
-        {clipboardStatus && (
-          <Typography variant="caption" sx={{ color: '#2e7d32', fontWeight: 700, ml: 0.5 }}>
-            {clipboardStatus}
-          </Typography>
-        )}
-      </Box>
       <Box
         ref={containerRef}
         sx={{
           position: 'relative',
-          minHeight: fullScreen ? 'calc(95vh - 120px)' : 228,
+          minHeight: fullScreen ? 'calc(95vh - 100px)' : 228,
           ...(fullScreen && { flex: 1, minHeight: 0 }),
           borderRadius: 1.5,
           bgcolor: isKarteikarten ? '#faf5fc' : '#f1f8e9',
@@ -879,8 +893,6 @@ export const LessonSharedInputBox: React.FC<{
                 const y1 = from.y + CARD_CENTER_OFFSET_Y;
                 const x2 = to.x + CARD_CENTER_OFFSET_X;
                 const y2 = to.y + CARD_CENTER_OFFSET_Y;
-                const midX = (x1 + x2) / 2;
-                const midY = (y1 + y2) / 2;
                 return (
                   <Tooltip key={`${conn.fromId}-${conn.toId}`} title="Klicken zum Entfernen">
                     <Box
@@ -920,61 +932,177 @@ export const LessonSharedInputBox: React.FC<{
           </>
         )}
       </Box>
-      <TextField
-        inputRef={inputRef}
-        size="small"
-        value={newText}
-        onChange={(e) => setNewText(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); addItem(); } }}
-        placeholder={isKarteikarten ? 'Frage | Antwort — oder Begriff | Erklärung …' : 'Neuer Eintrag …'}
-        fullWidth
-        disabled={loading}
-        onClick={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
+      <Box
         sx={{
-          mt: 0.35,
-          '& .MuiOutlinedInput-root': {
-            fontSize: '0.8rem',
-            bgcolor: '#fff',
-            pr: 0,
-          },
+          mt: 0.5,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.5,
+          flexWrap: 'nowrap',
+          minWidth: 0,
         }}
-        InputProps={{
-          endAdornment: (
-            <InputAdornment position="end">
+      >
+        <TextField
+          inputRef={inputRef}
+          size="small"
+          value={newText}
+          onChange={(e) => setNewText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); addItem(); } }}
+          placeholder={isKarteikarten ? 'Frage | Antwort …' : 'Neuer Eintrag …'}
+          disabled={loading}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          sx={{
+            flex: '1 1 0%',
+            minWidth: 0,
+            '& .MuiOutlinedInput-root': {
+              height: 28,
+              fontSize: '0.7rem',
+              bgcolor: '#fff',
+              pr: 0,
+            },
+            '& .MuiOutlinedInput-input': {
+              py: 0.35,
+              px: 0.75,
+            },
+          }}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    addItem();
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                  }}
+                  disabled={loading}
+                  sx={{
+                    p: 0.25,
+                    minWidth: 26,
+                    width: 26,
+                    height: 26,
+                    color: '#fff',
+                    bgcolor: isKarteikarten ? '#6a1b9a' : '#2e7d32',
+                    borderRadius: '0 4px 4px 0',
+                    '&:hover': { bgcolor: isKarteikarten ? '#4a148c' : '#1b5e20' },
+                    '&.Mui-disabled': { bgcolor: isKarteikarten ? '#ce93d8' : '#81c784', opacity: 0.7 },
+                  }}
+                  aria-label="Eintrag hinzufügen"
+                >
+                  <AddIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
+        />
+        <Box
+          sx={{
+            flexShrink: 0,
+            display: 'inline-flex',
+            alignItems: 'center',
+            border: isKarteikarten ? '1px solid #ce93d8' : '1px solid #a5d6a7',
+            borderRadius: 0.75,
+            overflow: 'hidden',
+            height: 26,
+          }}
+        >
+          <Tooltip title="Alles kopieren">
+            <span>
+              <IconButton
+                size="small"
+                onClick={handleCopyAllToClipboard}
+                disabled={loading}
+                sx={{
+                  p: 0,
+                  minWidth: 26,
+                  width: 26,
+                  height: 26,
+                  borderRadius: 0,
+                  color: isKarteikarten ? '#6a1b9a' : '#2e7d32',
+                  borderRight: isKarteikarten ? '1px solid #ce93d8' : '1px solid #a5d6a7',
+                  '&:hover': { bgcolor: isKarteikarten ? 'rgba(106, 27, 154, 0.1)' : 'rgba(46, 125, 50, 0.1)' },
+                }}
+                aria-label="Alles kopieren"
+              >
+                <ContentCopyIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title="Alles übernehmen">
+            <span>
+              <IconButton
+                size="small"
+                onClick={handlePasteAllFromClipboard}
+                disabled={loading}
+                sx={{
+                  p: 0,
+                  minWidth: 26,
+                  width: 26,
+                  height: 26,
+                  borderRadius: 0,
+                  color: isKarteikarten ? '#6a1b9a' : '#2e7d32',
+                  ...(!fullScreen
+                    ? { borderRight: isKarteikarten ? '1px solid #ce93d8' : '1px solid #a5d6a7' }
+                    : null),
+                  '&:hover': { bgcolor: isKarteikarten ? 'rgba(106, 27, 154, 0.1)' : 'rgba(46, 125, 50, 0.1)' },
+                }}
+                aria-label="Alles übernehmen"
+              >
+                <ContentPasteIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+          {!fullScreen && (
+            <Tooltip title="Vergrößern (neuer Tab)">
               <IconButton
                 size="small"
                 onClick={(e) => {
                   e.stopPropagation();
                   e.preventDefault();
-                  addItem();
+                  const u = new URL('/shared-overview', window.location.origin);
+                  u.searchParams.set('groupId', groupId);
+                  u.searchParams.set('lessonPath', lessonPath);
+                  window.open(u.pathname + u.search, '_blank');
                 }}
-                onMouseDown={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                }}
-                disabled={loading}
+                onMouseDown={(e) => e.stopPropagation()}
                 sx={{
-                  p: 0.5,
-                  minWidth: 32,
-                  width: 32,
-                  height: 32,
-                  color: '#fff',
-                  bgcolor: isKarteikarten ? '#6a1b9a' : '#2e7d32',
-                  borderRadius: '0 4px 4px 0',
-                  '&:hover': { bgcolor: isKarteikarten ? '#4a148c' : '#1b5e20' },
-                  '&.Mui-disabled': { bgcolor: isKarteikarten ? '#ce93d8' : '#81c784', opacity: 0.7 },
+                  p: 0,
+                  minWidth: 26,
+                  width: 26,
+                  height: 26,
+                  borderRadius: 0,
+                  color: isKarteikarten ? '#6a1b9a' : '#2e7d32',
+                  '&:hover': { bgcolor: isKarteikarten ? 'rgba(106, 27, 154, 0.1)' : 'rgba(46, 125, 50, 0.1)' },
                 }}
-                aria-label="Eintrag hinzufügen"
+                aria-label="Vergrößern in neuem Tab"
               >
-                <AddIcon sx={{ fontSize: 18 }} />
+                <OpenInNewIcon sx={{ fontSize: 14 }} />
               </IconButton>
-            </InputAdornment>
-          ),
-        }}
-      />
+            </Tooltip>
+          )}
+        </Box>
+        {clipboardStatus && (
+          <Typography
+            variant="caption"
+            sx={{
+              flexShrink: 0,
+              color: '#2e7d32',
+              fontWeight: 700,
+              fontSize: '0.58rem',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {clipboardStatus}
+          </Typography>
+        )}
+      </Box>
       {emptyAddHint && (
-        <Typography variant="caption" sx={{ display: 'block', mt: 0.25, color: '#ed6c02' }}>
+        <Typography variant="caption" sx={{ display: 'block', mt: 0.25, color: '#ed6c02', fontSize: '0.65rem' }}>
           Bitte zuerst Text eingeben, dann auf + klicken.
         </Typography>
       )}
@@ -1956,7 +2084,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 
   // Dialog: Gemeinsames Eingabefeld beim Klick auf Stunde (z. B. 01 / 01 Einstieg / 01 Skytale)
 
-  /** Stunde mit gemeinsamem Eingabefeld (Skytale): Ordner 01, 01 Einstieg oder 01 Skytale */
+  /** Stunde mit freigegebener Leinwand / gemeinsamer Eingabe */
+  const isLessonSharedInputShared = (groupId: string, lessonPath: string) => {
+    const norm = (p: string) => (p || '').replace(/\\/g, '/').replace(/\/+$/, '').trim();
+    const target = norm(lessonPath);
+    return (sharedInputSharePaths[groupId] || []).some((p) => norm(p) === target);
+  };
+
+  /** Legacy: Skytale-Stunden (älteres Layout); Freigabe gilt jetzt für jede Stunde via isLessonSharedInputShared */
   const isSharedInputLesson = (name: string) =>
     name === '01' || name === '01 Einstieg' || name === '01 Skytale' || (name.includes('01') && name.toLowerCase().includes('skytale'));
 
@@ -3068,11 +3203,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         };
         const materialsBlock = (
           <>
-            {isSharedInputLesson(item.name) && (sharedInputSharePaths[groupId] || []).includes(item.path) && (
-              <Box sx={{ mb: 1 }}>
-                <LessonSharedInputBox groupId={groupId} lessonPath={item.path} />
-              </Box>
-            )}
             <StudentLessonMaterialsPanel
               lessonName={item.name}
               lessonPath={item.path}
@@ -3080,6 +3210,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
               sharedPaths={groupShared}
               onOpenHomeworkTodo={(path) => setHomeworkTodoLessonPath(path)}
             />
+            {isLessonSharedInputShared(groupId, item.path) && (
+              <Box sx={{ mt: 1 }}>
+                <LessonSharedInputBox groupId={groupId} lessonPath={item.path} />
+              </Box>
+            )}
           </>
         );
         return (
@@ -3192,8 +3327,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
               )}
             </Box>
           ) : (
-            // Ordner: bei Stunde 01/01 Einstieg/01 Skytale und freigegeben → wie normaler Ordner, Leinwand darunter
-            (isSharedInputLesson(item.name) && (sharedInputSharePaths[groupId] || []).includes(item.path)) ? (
+            // Ordner mit freigegebener Leinwand → wie normaler Ordner, Leinwand darunter
+            isLessonSharedInputShared(groupId, item.path) ? (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mb: 0.5 }}>
                 <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, flex: 1, minWidth: 0 }}>
                   {folderBranchToggle(color)}
@@ -3227,7 +3362,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           )}
 
       {/* Gemeinsame Leinwand nur wenn von Lehrkraft freigegeben – aufklappbar */}
-      {item.type === 'directory' && isSharedInputLesson(item.name) && (sharedInputSharePaths[groupId] || []).includes(item.path) && (() => {
+      {item.type === 'directory' && isLessonSharedInputShared(groupId, item.path) && (() => {
         const sharedKey = `${groupId}-${item.path}`;
         const isExpanded = expandedSharedInputKeys[sharedKey] !== false;
         return (
@@ -3249,7 +3384,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             >
               {isExpanded ? <ExpandLessIcon sx={{ fontSize: 16, color: '#2e7d32' }} /> : <ExpandMoreIcon sx={{ fontSize: 16, color: '#2e7d32' }} />}
               <Typography variant="caption" sx={{ fontWeight: 600, color: '#2e7d32', fontSize: '0.7rem' }}>
-                Gemeinsame Leinwand
+                Leinwand
               </Typography>
             </Box>
             <Collapse in={isExpanded}>
@@ -3258,7 +3393,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           </Box>
         );
       })()}
-      {item.type === 'directory' && isSharedInputLesson(item.name) && (sharedInputSharePaths[groupId] || []).includes(item.path) && (
+      {item.type === 'directory' && isSharedInputLesson(item.name) && isLessonSharedInputShared(groupId, item.path) && (
         <Box sx={{ mt: 0.5, mb: 0.5, ml: 1.5 }}>
           <Box
             role="button"

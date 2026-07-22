@@ -70,6 +70,7 @@ export function labelForLessonPresentationMaterialPdf(
 /**
  * Kurzlabel für Stundenablauf: Original | erste Version | …
  * „bearbeitet“ wird durch den Namen der ersten benannten Version ersetzt, sobald eine existiert.
+ * Fehlt Praesentation_Original.pdf, gilt die alleinige bearbeitet-PDF als „Original“.
  */
 export function johnnyPresentationVersionLabel(
   name: string,
@@ -81,7 +82,11 @@ export function johnnyPresentationVersionLabel(
     const firstNamed = peerFiles?.length
       ? firstNamedJohnnyPresentationLabel(peerFiles)
       : null;
-    return firstNamed || 'bearbeitet';
+    if (firstNamed) return firstNamed;
+    const hasOriginalPdf = (peerFiles || []).some(
+      (f) => (f.name || '').trim() === LESSON_PRESENTATION_PDF_ORIGINAL
+    );
+    return hasOriginalPdf ? 'bearbeitet' : 'Original';
   }
   const m = n.match(/^Praesentation_(.+)\.pdf$/i);
   if (m) return m[1].replace(/_/g, ' ').trim() || n;

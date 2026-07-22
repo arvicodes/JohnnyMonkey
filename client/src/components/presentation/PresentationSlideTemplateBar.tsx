@@ -15,6 +15,7 @@ import {
   Home as HomeIcon,
   Link as LinkIcon,
   OpenInNew as ReferenzIcon,
+  DashboardCustomize as LeinwandIcon,
   SaveOutlined as SaveIcon,
 } from '@mui/icons-material';
 import {
@@ -74,6 +75,9 @@ export default function PresentationSlideTemplateBar({
     if (kind === 'referenz') {
       return <ReferenzIcon sx={{ fontSize: 14 }} />;
     }
+    if (kind === 'leinwand') {
+      return <LeinwandIcon sx={{ fontSize: 14 }} />;
+    }
     return (
       <Typography component="span" sx={{ fontSize: 11, fontWeight: 800, lineHeight: 1 }}>
         {shortLabel}
@@ -99,6 +103,8 @@ export default function PresentationSlideTemplateBar({
         return '#6A1B9A';
       case 'referenz':
         return '#00838F';
+      case 'leinwand':
+        return '#2E7D32';
       default:
         return PRES_EDITOR_UI.accent;
     }

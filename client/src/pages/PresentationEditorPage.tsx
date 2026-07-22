@@ -126,6 +126,7 @@ import { assignSlideParagraphSteps, resetAllSlideAnimations, slidePatchFromAnima
 import {
   createDefaultTemplatesStore,
   addCustomTemplate,
+  buildLessonSharedOverviewUrl,
   createSlideFromCustomTemplate,
   createSlideFromTemplateKind,
   loadSlideTemplates,
@@ -1127,7 +1128,16 @@ const PresentationEditorPage: React.FC = () => {
     const slide = createSlideFromTemplateKind(kind, insertIndex, lessonPath, slideTemplates);
     if (!slide) return;
 
-    if (kind === 'link' || kind === 'referenz') {
+    if (kind === 'leinwand') {
+      if (!groupId.trim()) {
+        setSnackbar('Leinwand-Folie braucht eine Lerngruppe — bitte die Stunde über das Lehrer-Dashboard öffnen.');
+        return;
+      }
+      const mediaEl = slide.elements?.find((e) => e.type === 'embed');
+      if (mediaEl) {
+        mediaEl.src = buildLessonSharedOverviewUrl(groupId, lessonPath);
+      }
+    } else if (kind === 'link' || kind === 'referenz') {
       const defaultUrl = kind === 'referenz' ? '/wall-of-fame' : '';
       const url = window.prompt(
         kind === 'link'

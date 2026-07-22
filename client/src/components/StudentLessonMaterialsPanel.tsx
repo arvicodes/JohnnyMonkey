@@ -1,10 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Button, ButtonGroup, Tooltip, Typography } from '@mui/material';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DownloadIcon from '@mui/icons-material/Download';
 import EditNoteOutlinedIcon from '@mui/icons-material/EditNoteOutlined';
 import CreateOutlinedIcon from '@mui/icons-material/CreateOutlined';
-import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
 import {
   isLessonPresentationMaterialPdf,
   isStudentVisibleLessonMaterialFile,
@@ -17,6 +16,16 @@ import {
 import { isLessonFileShared } from '../lib/lessonFileSharePath';
 import { openStudentLessonMaterialFile } from '../lib/openStudentLessonMaterial';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
+import {
+  deckFilePath,
+  loadJsonFile,
+  sortSlides,
+  type PresentationDeck,
+} from '../lib/presentationDeck';
+import {
+  findHomeworkSlides,
+  isHomeworkSubmissionRequired,
+} from '../lib/presentationSlideTemplates';
 
 type LessonFile = { type: string; name: string; path: string };
 
@@ -31,11 +40,19 @@ const actionBtnSx = {
 };
 
 const iconActionBtnSx = {
-  minWidth: 31,
-  width: 31,
-  height: 29,
-  p: 0.25,
+  minWidth: 29,
+  width: 29,
+  height: 26,
+  p: 0.2,
 };
+
+/** Folien-Zeile */
+const FOLIEN_ROW_HEIGHT = 32;
+/** ToDo-HA-Button — etwas flacher als die Folien-Zeile */
+const TODO_HA_BTN_HEIGHT = 24;
+
+/** Rahmen nur bei ToDo HA mit Abgabe-Pflicht */
+const ABGABE_FRAME = '2px solid rgba(140, 60, 50, 0.95)';
 
 function EditDownloadComboIcon() {
   return (
@@ -220,6 +237,33 @@ export default function StudentLessonMaterialsPanel({
     ? isLessonFileShared(presentationEdited.path, sharedPaths)
     : false;
 
+  const [abgabeRequired, setAbgabeRequired] = useState(false);
+  useEffect(() => {
+    if (!lessonPath || !hasPresentation || !onOpenHomeworkTodo) {
+      setAbgabeRequired(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const loaded = await loadJsonFile<PresentationDeck>(deckFilePath(lessonPath));
+        if (cancelled) return;
+        if (!loaded?.slides?.length) {
+          setAbgabeRequired(false);
+          return;
+        }
+        const haSlides = findHomeworkSlides(sortSlides(loaded.slides));
+        const ha = haSlides[haSlides.length - 1] ?? haSlides[0];
+        setAbgabeRequired(isHomeworkSubmissionRequired(ha));
+      } catch {
+        if (!cancelled) setAbgabeRequired(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [lessonPath, hasPresentation, onOpenHomeworkTodo]);
+
   if (materials.length === 0) {
     return (
       <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', py: 0.5 }}>
@@ -237,15 +281,18 @@ export default function StudentLessonMaterialsPanel({
             alignItems: 'center',
             width: '100%',
             minWidth: 0,
-            py: 0.75,
-            px: 0.75,
-            borderRadius: 1,
-            bgcolor: 'rgba(255, 255, 255, 0.85)',
-            border: '1px solid rgba(0, 0, 0, 0.08)',
+            height: FOLIEN_ROW_HEIGHT,
+            boxSizing: 'border-box',
+            py: 0,
+            px: 1,
+            borderRadius: 1.5,
+            bgcolor: 'rgba(255, 255, 255, 0.92)',
+            border: '1px solid rgba(0, 0, 0, 0.06)',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
           }}
         >
           <Tooltip title={editedShared ? `${editedVersionLabel} öffnen` : originalShared ? 'Original öffnen' : 'Folien'}>
-            <Box component="span" sx={{ display: 'inline-flex', flexShrink: 0 }}>
+            <Box component="span" sx={{ display: 'inline-flex', flexShrink: 0, mr: 0.5 }}>
               <Box
                 component="button"
                 type="button"
@@ -262,7 +309,6 @@ export default function StudentLessonMaterialsPanel({
                 sx={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 0.5,
                   flexShrink: 0,
                   border: 'none',
                   background: 'none',
@@ -272,19 +318,27 @@ export default function StudentLessonMaterialsPanel({
                   opacity: editedShared || originalShared ? 1 : 0.5,
                   font: 'inherit',
                   textAlign: 'left',
+                  color: 'text.primary',
+                  borderBottom: '1.5px solid transparent',
+                  transition: 'color 0.15s ease, border-color 0.15s ease',
                   '&:hover':
-                    editedShared || originalShared ? { opacity: 0.82 } : undefined,
+                    editedShared || originalShared
+                      ? {
+                          color: JOHNNY_PRESENTATION.warm,
+                          borderBottomColor: JOHNNY_PRESENTATION.warm,
+                        }
+                      : undefined,
                 }}
               >
-                <PictureAsPdfIcon sx={{ fontSize: 20, color: '#546e7a' }} />
                 <Typography
                   variant="body2"
                   component="span"
                   sx={{
                     fontWeight: 700,
-                    fontSize: '0.8rem',
+                    fontSize: '0.82rem',
+                    letterSpacing: '0.01em',
                     whiteSpace: 'nowrap',
-                    color: 'text.primary',
+                    color: 'inherit',
                   }}
                 >
                   Folien
@@ -307,23 +361,34 @@ export default function StudentLessonMaterialsPanel({
           type="button"
           size="small"
           variant="contained"
-          startIcon={<AssignmentOutlinedIcon sx={{ fontSize: 14 }} />}
           onClick={() => onOpenHomeworkTodo(lessonPath)}
           sx={{
             alignSelf: 'flex-start',
-            minHeight: 26,
-            py: 0.25,
-            px: 1,
+            ml: 0,
+            minWidth: 0,
+            width: 'auto',
+            height: TODO_HA_BTN_HEIGHT,
+            minHeight: TODO_HA_BTN_HEIGHT,
+            py: 0,
+            px: 1.25,
             fontSize: '0.7rem',
             fontWeight: 700,
+            lineHeight: 1.2,
             textTransform: 'none',
+            borderRadius: 1.5,
+            boxSizing: 'border-box',
             bgcolor: JOHNNY_PRESENTATION.warm,
+            color: '#fff',
+            border: abgabeRequired ? ABGABE_FRAME : '2px solid transparent',
             boxShadow: 'none',
-            '& .MuiButton-startIcon': { mr: 0.5 },
-            '&:hover': { bgcolor: '#F57C00', boxShadow: 'none' },
+            '&:hover': {
+              bgcolor: '#F57C00',
+              boxShadow: 'none',
+              border: abgabeRequired ? ABGABE_FRAME : '2px solid transparent',
+            },
           }}
         >
-          ToDo
+          ToDo HA
         </Button>
       )}
 

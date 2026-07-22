@@ -15,10 +15,13 @@ import {
 import {
   isLessonPresentationAssetFile,
   isLessonPresentationSystemFile,
+  isLessonPresentationMaterialPdf,
   listJohnnyPresentationVersions,
   canDeleteJohnnyPresentationVersion,
   namedVersionSlugFromPdfName,
   namedVersionSnapshotFilename,
+  LESSON_PRESENTATION_PDF_ORIGINAL,
+  LESSON_PRESENTATION_PDF_EDITED,
   type JohnnyPresentationVersion,
 } from '../lib/presentationLessonAssets';
 import { presentationPresentUrl, loadPresentationDeck } from '../lib/presentationDeck';
@@ -8655,27 +8658,39 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
 
   const toggleLessonSharedInputShare = async (groupId: string, lessonPath: string) => {
     if (!groupId?.trim() || !lessonPath?.trim()) return;
+    const norm = (p: string) => (p || '').replace(/\\/g, '/').replace(/\/+$/, '').trim();
+    const target = norm(lessonPath);
     const paths = lessonSharedInputSharePaths[groupId] || [];
-    const wasShared = paths.includes(lessonPath);
-    setLessonSharedInputSharePaths(prev => ({
+    const wasShared = paths.some((p) => norm(p) === target);
+    setLessonSharedInputSharePaths((prev) => ({
       ...prev,
-      [groupId]: wasShared ? paths.filter(p => p !== lessonPath) : [...paths, lessonPath]
+      [groupId]: wasShared
+        ? (prev[groupId] || []).filter((p) => norm(p) !== target)
+        : [...(prev[groupId] || []).filter((p) => norm(p) !== target), lessonPath],
     }));
     try {
       const res = await fetch(`/api/learning-groups/${groupId}/lesson-shared-input-share/toggle`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lessonPath })
+        body: JSON.stringify({ lessonPath }),
       });
       if (res.ok) {
         const data = await res.json().catch(() => ({}));
-        showSnackbar(data.shared ? 'Gemeinsame Eingabe fÃ¼r SuS freigegeben' : 'Freigabe entfernt', 'success');
+        setLessonSharedInputSharePaths((prev) => {
+          const cur = prev[groupId] || [];
+          const without = cur.filter((p) => norm(p) !== target);
+          return {
+            ...prev,
+            [groupId]: data.shared ? [...without, lessonPath] : without,
+          };
+        });
+        showSnackbar(data.shared ? 'Leinwand fÃ¼r SuS freigegeben' : 'Leinwand-Freigabe entfernt', 'success');
       } else {
-        setLessonSharedInputSharePaths(prev => ({ ...prev, [groupId]: paths }));
-        showSnackbar('Fehler beim Umschalten', 'error');
+        setLessonSharedInputSharePaths((prev) => ({ ...prev, [groupId]: paths }));
+        showSnackbar('Fehler beim Umschalten der Leinwand', 'error');
       }
     } catch {
-      setLessonSharedInputSharePaths(prev => ({ ...prev, [groupId]: paths }));
+      setLessonSharedInputSharePaths((prev) => ({ ...prev, [groupId]: paths }));
       showSnackbar('Fehler (Netzwerk?)', 'error');
     }
   };
@@ -18900,6 +18915,129 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
                 const isABByName = (name: string) => /^AB_|Sicherheitsziele/i.test((name || '').replace(/\.[^.]+$/, ''));
                 const folienFiles = allFiles.filter((f: any) => /\.(pdf|pptx?|odp)$/i.test(f.name || '') && !isABByName(f.name));
                 const johnnyPresentationVersions = listJohnnyPresentationVersions(allFiles);
+                const presentationMaterialPdfs = allFiles.filter(
+                  (f: any) => f?.type === 'file' && isLessonPresentationMaterialPdf(f.name || '')
+                );
+                const planShareGroupId = lessonModalData.groupId || '';
+                const presentationShareActive =
+                  !!planShareGroupId &&
+                  presentationMaterialPdfs.some(
+                    (f: any) => !!fileShares[fileShareKey(f.path, planShareGroupId)]
+                  );
+                const leinwandShareActive =
+                  !!planShareGroupId &&
+                  !!lessonModalData.lessonPath &&
+                  (lessonSharedInputSharePaths[planShareGroupId] || []).some(
+                    (p) =>
+                      (p || '').replace(/\\/g, '/').replace(/\/+$/, '').trim() ===
+                      (lessonModalData.lessonPath || '').replace(/\\/g, '/').replace(/\/+$/, '').trim()
+                  );
+
+                const togglePresentationMaterialShare = async () => {
+                  if (!planShareGroupId) {
+                    showSnackbar('Keine Lerngruppe fÃ¼r diese Stunde.', 'error');
+                    return;
+                  }
+                  if (presentationMaterialPdfs.length === 0) {
+                    showSnackbar('Keine PrÃ¤sentations-PDF im Stundenordner.', 'warning');
+                    return;
+                  }
+                  if (presentationShareActive) {
+                    for (const f of presentationMaterialPdfs) {
+                      if (fileShares[fileShareKey(f.path, planShareGroupId)]) {
+                        await toggleFileShare(f.path, planShareGroupId);
+                      }
+                    }
+                    return;
+                  }
+                  const original = presentationMaterialPdfs.find(
+                    (f: any) => f.name === LESSON_PRESENTATION_PDF_ORIGINAL
+                  );
+                  const named = presentationMaterialPdfs.filter(
+                    (f: any) =>
+                      f.name !== LESSON_PRESENTATION_PDF_ORIGINAL &&
+                      f.name !== LESSON_PRESENTATION_PDF_EDITED
+                  );
+                  const edited = presentationMaterialPdfs.find(
+                    (f: any) => f.name === LESSON_PRESENTATION_PDF_EDITED
+                  );
+                  const targets = [original, named[0] ?? edited].filter(Boolean) as any[];
+                  const seen = new Set<string>();
+                  for (const f of targets) {
+                    const p = (f.path || '').replace(/\\/g, '/');
+                    if (!p || seen.has(p)) continue;
+                    seen.add(p);
+                    if (!fileShares[fileShareKey(p, planShareGroupId)]) {
+                      await toggleFileShare(p, planShareGroupId);
+                    }
+                  }
+                  if (seen.size === 0 && presentationMaterialPdfs[0]) {
+                    await toggleFileShare(presentationMaterialPdfs[0].path, planShareGroupId);
+                  }
+                };
+
+                const toggleLeinwandShare = async () => {
+                  if (!planShareGroupId || !lessonModalData.lessonPath) {
+                    showSnackbar('Keine Lerngruppe oder Stundenordner.', 'error');
+                    return;
+                  }
+                  await toggleLessonSharedInputShare(planShareGroupId, lessonModalData.lessonPath);
+                };
+
+                const renderPlanItemShareToggle = (itemType: string) => {
+                  if (itemType !== 'praesentation' && itemType !== 'leinwand') return null;
+                  const active = itemType === 'praesentation' ? presentationShareActive : leinwandShareActive;
+                  return (
+                    <Button
+                      type="button"
+                      size="small"
+                      variant={active ? 'contained' : 'outlined'}
+                      title={active ? 'Freigabe aus (AUS)' : 'FÃ¼r SuS freigeben (AN)'}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (itemType === 'praesentation') {
+                          void togglePresentationMaterialShare();
+                        } else {
+                          void toggleLeinwandShare();
+                        }
+                      }}
+                      sx={{
+                        flexShrink: 0,
+                        alignSelf: 'flex-start',
+                        mt: 0.15,
+                        minWidth: 0,
+                        width: 'auto',
+                        height: 22,
+                        px: 0.45,
+                        py: 0,
+                        fontSize: '0.6rem',
+                        fontWeight: 800,
+                        lineHeight: 1,
+                        letterSpacing: '-0.01em',
+                        textTransform: 'none',
+                        borderRadius: 0.5,
+                        boxShadow: 'none',
+                        whiteSpace: 'nowrap',
+                        ...(active
+                          ? {
+                              bgcolor: '#2e7d32',
+                              color: '#fff',
+                              border: '1px solid #2e7d32',
+                              '&:hover': { bgcolor: '#1b5e20', boxShadow: 'none' },
+                            }
+                          : {
+                              bgcolor: '#fff',
+                              color: '#546e7a',
+                              border: '1px solid #90a4ae',
+                              '&:hover': { bgcolor: '#eceff1', borderColor: '#78909c' },
+                            }),
+                      }}
+                    >
+                      {active ? 'AN' : 'AUS'}
+                    </Button>
+                  );
+                };
 
                 const openPresentationHomeworkSubmissions = (e?: React.MouseEvent) => {
                   e?.stopPropagation();
@@ -19242,7 +19380,8 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
                         borderRadius: 0.5,
                         py: 0,
                         border: runModeMinimal ? 'none' : '1px solid #e0e0e0',
-                        overflow: 'hidden'
+                        overflow: 'hidden',
+                        fontSize: '0.75rem',
                       }}
                     >
                       {groupFilesByBaseName(filesForRows).map(({ baseName, versions }) => {
@@ -19260,7 +19399,7 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
                           return sortLessonFolderVersions([...sortedVersions, versionForFile(lsgDirect)]);
                         })();
                         const folienIconBtnSx = {
-                          p: 0.35,
+                          p: 0.25,
                           color: docIconColor,
                           '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.06)' },
                         };
@@ -19270,8 +19409,8 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
                             disablePadding
                             sx={{
                               display: 'block',
-                              py: runModeMinimal ? 0.4 : 0.65,
-                              px: runModeMinimal ? 0 : 1,
+                              py: runModeMinimal ? 0.3 : 0.4,
+                              px: runModeMinimal ? 0 : 0.75,
                               borderBottom: runModeMinimal ? 'none' : '1px solid rgba(0, 0, 0, 0.08)',
                               '&:last-of-type': { borderBottom: 'none' },
                               '&:hover': { bgcolor: runModeMinimal ? 'rgba(0, 0, 0, 0.03)' : 'rgba(0, 0, 0, 0.04)' },
@@ -19285,7 +19424,7 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
                                 justifyContent: 'flex-start',
                                 width: '100%',
                                 minWidth: 0,
-                                gap: 1,
+                                gap: 0.75,
                                 flexWrap: 'nowrap',
                               }}
                             >
@@ -19306,7 +19445,7 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
                                   textOverflow: 'ellipsis',
                                   whiteSpace: 'nowrap',
                                   textAlign: 'left',
-                                  fontSize: LESSON_MODAL_FONT_SIZE,
+                                  fontSize: '0.75rem',
                                   color: '#333',
                                   fontWeight: runModeMinimal ? 400 : 500,
                                 }}
@@ -19780,7 +19919,7 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
                                 display: 'flex',
                                 flexDirection: 'row',
                                 alignItems: 'flex-start',
-                                gap: 1,
+                                gap: 0.5,
                                 width: '100%',
                               }}
                             >
@@ -19789,7 +19928,7 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
                                 sx={{
                                   color: '#455a64',
                                   fontWeight: 700,
-                                  minWidth: 22,
+                                  minWidth: 18,
                                   flexShrink: 0,
                                   pt: 0.2,
                                   lineHeight: 1.5,
@@ -19797,13 +19936,14 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
                               >
                                 {index + 1}.
                               </Typography>
+                              {renderPlanItemShareToggle(item.type)}
                               <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.35 }}>
                             <Box
                               onClick={() => openPlanItem(item)}
                               sx={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: 1,
+                                gap: 0.75,
                                 cursor: 'pointer',
                                 flex: 1,
                                 minWidth: 0,

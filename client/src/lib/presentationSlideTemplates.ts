@@ -18,7 +18,8 @@ export type SlideTemplateKind =
   | 'ha'
   | 'ende'
   | 'link'
-  | 'referenz';
+  | 'referenz'
+  | 'leinwand';
 
 export type SlideTemplatePayload = Omit<PresentationSlide, 'id' | 'order'>;
 
@@ -55,7 +56,21 @@ export const SLIDE_TEMPLATE_META: SlideTemplateMeta[] = [
   { kind: 'ende', label: 'Ende', shortLabel: 'E', hint: 'Abschlussfolie' },
   { kind: 'link', label: 'Link', shortLabel: '▶', hint: 'Video im Vollbild (YouTube, MP4 …)' },
   { kind: 'referenz', label: 'Referenz', shortLabel: '↗', hint: 'Webseite einbetten, zoombar (z. B. Wall of Fame)' },
+  {
+    kind: 'leinwand',
+    label: 'Leinwand',
+    shortLabel: 'L',
+    hint: 'Gemeinsame Leinwand dieser Stunde einbetten (ohne URL tippen)',
+  },
 ];
+
+/** URL für eingebettete Stunden-Leinwand (Referenz-/Leinwand-Folie). */
+export function buildLessonSharedOverviewUrl(groupId: string, lessonPath: string): string {
+  const qs = new URLSearchParams();
+  qs.set('groupId', (groupId || '').trim());
+  qs.set('lessonPath', (lessonPath || '').trim());
+  return `/shared-overview?${qs.toString()}`;
+}
 
 /** Standard-Reihenfolge neuer Stunden-Foliensätze. */
 export const DEFAULT_LESSON_SLIDE_TEMPLATE_KINDS: SlideTemplateKind[] = [
@@ -441,6 +456,48 @@ function builtinTemplates(): SlideTemplatesStore['templates'] {
           w: 100,
           h: 93,
           src: '/wall-of-fame',
+          zIndex: 1,
+          revealStep: 0,
+          mediaZoom: 1,
+        },
+      ],
+      transition: 'fade',
+      revealEnabled: true,
+      zoneRevealSteps: {},
+    },
+    leinwand: {
+      layout: 'blank',
+      title: 'Leinwand',
+      body: '',
+      speakerNotes: 'Gemeinsame Leinwand dieser Stunde (URL wird beim Einfügen gesetzt).',
+      preparationNotes: '',
+      materialNotes: '',
+      subtitle: '',
+      bodyLeft: '',
+      bodyRight: '',
+      imagePath: '',
+      imageCaption: '',
+      bodyStyle: 'plain',
+      titleAlign: 'left',
+      accentColor: '#2e7d32',
+      titleHtml: '<p>Leinwand</p>',
+      bodyHtml: '',
+      subtitleHtml: '',
+      bodyLeftHtml: '',
+      bodyRightHtml: '',
+      imageCaptionHtml: '',
+      speakerNotesHtml: '',
+      preparationHtml: '',
+      materialHtml: '',
+      elements: [
+        {
+          id: 'tpl-leinwand-embed',
+          type: 'embed',
+          x: 0,
+          y: 0,
+          w: 100,
+          h: 93,
+          src: '',
           zIndex: 1,
           revealStep: 0,
           mediaZoom: 1,
