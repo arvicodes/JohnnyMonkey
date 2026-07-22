@@ -2002,8 +2002,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   /** ToDo-Hausaufgaben-Modal — State hier, damit Panel-Remounts es nicht schließen */
   const [homeworkTodoLessonPath, setHomeworkTodoLessonPath] = useState<string | null>(null);
 
-  // Gemeinsame Leinwand pro Stunde aufklappbar (Schüleransicht)
-  const [expandedSharedInputKeys, setExpandedSharedInputKeys] = useState<Record<string, boolean>>({});
   const [expandedFolderNodes, setExpandedFolderNodes] = useState<Record<string, boolean>>({});
   /** Aufgeklappte Stunden im Ordnerbaum (inline, kein Modal). */
   const [expandedStudentLessons, setExpandedStudentLessons] = useState<Record<string, boolean>>({});
@@ -3076,10 +3074,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         return null;
       }
 
-      // Ordner werden angezeigt, wenn sie freigegebene Dateien enthalten oder wenn sie Unterordner mit freigegebenen Dateien haben
-      // Wenn ein Ordner keine freigegebenen Dateien enthält, wird er ausgeblendet
+      // Ordner ohne freigegebene Dateien ausblenden — außer Stunde mit freigegebener Leinwand
       if (item.type === 'directory' && !hasSharedFiles(item)) {
-        return null;
+        const stundeWithLeinwand =
+          view === 'dashboard' &&
+          directoryIsStundeFolderForStudentTree(item.name, level) &&
+          isLessonSharedInputShared(groupId, item.path);
+        if (!stundeWithLeinwand) return null;
       }
 
       // Quiz-Dateien werden für Schüler als "Quiz starten" Button angezeigt
@@ -3202,20 +3203,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           }
         };
         const materialsBlock = (
-          <>
-            <StudentLessonMaterialsPanel
-              lessonName={item.name}
-              lessonPath={item.path}
-              files={lessonFiles}
-              sharedPaths={groupShared}
-              onOpenHomeworkTodo={(path) => setHomeworkTodoLessonPath(path)}
-            />
-            {isLessonSharedInputShared(groupId, item.path) && (
-              <Box sx={{ mt: 1 }}>
-                <LessonSharedInputBox groupId={groupId} lessonPath={item.path} />
-              </Box>
-            )}
-          </>
+          <StudentLessonMaterialsPanel
+            lessonName={item.name}
+            lessonPath={item.path}
+            files={lessonFiles}
+            sharedPaths={groupShared}
+            groupId={groupId}
+            showLeinwand={isLessonSharedInputShared(groupId, item.path)}
+            onOpenHomeworkTodo={(path) => setHomeworkTodoLessonPath(path)}
+          />
         );
         return (
           <Box key={treeKey} sx={{ mb: 0.7 }}>
@@ -3361,38 +3357,37 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             )
           )}
 
-      {/* Gemeinsame Leinwand nur wenn von Lehrkraft freigegeben – aufklappbar */}
-      {item.type === 'directory' && isLessonSharedInputShared(groupId, item.path) && (() => {
-        const sharedKey = `${groupId}-${item.path}`;
-        const isExpanded = expandedSharedInputKeys[sharedKey] !== false;
-        return (
-          <Box sx={{ mt: 0.5, mb: 0.5, ml: 1.5 }}>
-            <Box
-              onClick={() => setExpandedSharedInputKeys((prev) => ({ ...prev, [sharedKey]: !isExpanded }))}
-              sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 0.35,
-                cursor: 'pointer',
-                py: 0.25,
-                px: 0.5,
-                borderRadius: 0.75,
-                bgcolor: '#e8f5e9',
-                border: '1px solid #a5d6a7',
-                '&:hover': { bgcolor: '#c8e6c9' },
-              }}
-            >
-              {isExpanded ? <ExpandLessIcon sx={{ fontSize: 16, color: '#2e7d32' }} /> : <ExpandMoreIcon sx={{ fontSize: 16, color: '#2e7d32' }} />}
-              <Typography variant="caption" sx={{ fontWeight: 600, color: '#2e7d32', fontSize: '0.7rem' }}>
-                Leinwand
-              </Typography>
-            </Box>
-            <Collapse in={isExpanded}>
-              <LessonSharedInputBox groupId={groupId} lessonPath={item.path} />
-            </Collapse>
-          </Box>
-        );
-      })()}
+      {/* Leinwand nur wenn freigegeben — öffnet Vollansicht */}
+      {item.type === 'directory' && isLessonSharedInputShared(groupId, item.path) && (
+        <Box sx={{ mt: 0.5, mb: 0.5, ml: 1.5 }}>
+          <Button
+            type="button"
+            size="small"
+            variant="contained"
+            onClick={() => {
+              const u = new URL('/shared-overview', window.location.origin);
+              u.searchParams.set('groupId', groupId);
+              u.searchParams.set('lessonPath', item.path);
+              window.open(u.pathname + u.search, '_blank', 'noopener,noreferrer');
+            }}
+            sx={{
+              minWidth: 0,
+              height: 24,
+              py: 0,
+              px: 1.25,
+              fontSize: '0.7rem',
+              fontWeight: 700,
+              textTransform: 'none',
+              borderRadius: 1.5,
+              bgcolor: '#2e7d32',
+              boxShadow: 'none',
+              '&:hover': { bgcolor: '#1b5e20', boxShadow: 'none' },
+            }}
+          >
+            Leinwand
+          </Button>
+        </Box>
+      )}
       {item.type === 'directory' && isSharedInputLesson(item.name) && isLessonSharedInputShared(groupId, item.path) && (
         <Box sx={{ mt: 0.5, mb: 0.5, ml: 1.5 }}>
           <Box

@@ -73,6 +73,7 @@ import {
   saveJsonFile,
   nextViewportScale,
   sortSlides,
+  slideImageUrl,
   writeOriginalDeckSnapshot,
   SLIDE_REF_HEIGHT,
   SLIDE_REF_WIDTH,
@@ -142,6 +143,7 @@ import {
   applyFontSizePresetIndex,
   bookmarkSelection,
   getEditorFontSizeSteps,
+  insertImageHtmlAtCursor,
   nudgeFontSize,
 } from '../lib/presentationRichText';
 
@@ -270,7 +272,7 @@ const PresentationEditorPage: React.FC = () => {
   const saveVersionRef = useRef(0);
   const deckRef = useRef<PresentationDeck | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const imageTargetRef = useRef<'inline' | 'layout' | 'element'>('inline');
+  const imageTargetRef = useRef<'inline' | 'layout' | 'element' | 'notes'>('inline');
   const elementClipboardRef = useRef<{
     mode: 'cut' | 'copy';
     sourceSlideId: string;
@@ -1380,10 +1382,40 @@ const PresentationEditorPage: React.FC = () => {
     }
   };
 
+  const uploadNotesImageSrc = async (file: File): Promise<string | null> => {
+    const safeBase = (file.name || 'bild.png').replace(/[^\w.\-äöüÄÖÜß]+/gi, '_');
+    const named = new File([file], `notes-${Date.now()}-${safeBase}`, {
+      type: file.type || 'image/png',
+    });
+    const path = await uploadImageFile(named);
+    if (!path) return null;
+    return slideImageUrl(path, 960);
+  };
+
   const handleImageFile = async (
     file: File,
     position?: { x: number; y: number },
   ) => {
+    if (imageTargetRef.current === 'notes') {
+      const editor =
+        activeEditor?.getAttribute('data-pres-notes-zone') === 'true'
+          ? activeEditor
+          : (document.querySelector(
+              '[data-pres-notes-zone="true"]'
+            ) as HTMLElement | null);
+      if (!editor) {
+        setSnackbar('Bitte zuerst ins Notizfeld klicken');
+        return;
+      }
+      const src = await uploadNotesImageSrc(file);
+      if (!src) return;
+      editor.focus();
+      insertImageHtmlAtCursor(editor, src, file.name);
+      flushActiveEditor();
+      setSnackbar('Bild in Notizen eingefügt');
+      return;
+    }
+
     const imagePath = await uploadImageFile(file);
     if (!imagePath) return;
 
@@ -1960,6 +1992,14 @@ const PresentationEditorPage: React.FC = () => {
                 activeEditor={activeEditor}
                 contextLabel={formatContextLabel}
                 onEditorChanged={flushActiveEditor}
+                onInsertImage={
+                  notesActiveField
+                    ? () => {
+                        imageTargetRef.current = 'notes';
+                        imageInputRef.current?.click();
+                      }
+                    : undefined
+                }
               />
             )}
           </Box>
@@ -2205,6 +2245,7 @@ const PresentationEditorPage: React.FC = () => {
               updateSlide({ speakerNotesHtml: html, speakerNotes: plain })
             }
             onMoveNotesToTrash={moveNotesToTrash}
+            onUploadImage={uploadNotesImageSrc}
           />
         )}
         {normalizedActive && !notesPanelOpen && (

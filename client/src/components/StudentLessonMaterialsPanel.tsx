@@ -183,6 +183,8 @@ export default function StudentLessonMaterialsPanel({
   lessonPath,
   files,
   sharedPaths,
+  groupId,
+  showLeinwand,
   onOpenHomeworkTodo,
 }: {
   lessonName: string;
@@ -190,10 +192,23 @@ export default function StudentLessonMaterialsPanel({
   lessonPath: string;
   files: LessonFile[];
   sharedPaths: string[];
+  /** Lerngruppe — für Leinwand-Vollansicht */
+  groupId?: string;
+  /** Leinwand freigegeben → grüner Button neben ToDo HA */
+  showLeinwand?: boolean;
   /** Öffnet das ToDo-Modal auf Dashboard-Ebene (überlebt Panel-Remounts) */
   onOpenHomeworkTodo?: (lessonPath: string) => void;
 }) {
   const downloadLessonName = (lessonName || '').trim();
+  const canOpenLeinwand = Boolean(showLeinwand && groupId && lessonPath);
+
+  const openLeinwandFullscreen = () => {
+    if (!groupId || !lessonPath) return;
+    const u = new URL('/shared-overview', window.location.origin);
+    u.searchParams.set('groupId', groupId);
+    u.searchParams.set('lessonPath', lessonPath);
+    window.open(u.pathname + u.search, '_blank', 'noopener,noreferrer');
+  };
 
   const materials = useMemo(() => {
     return files
@@ -264,13 +279,15 @@ export default function StudentLessonMaterialsPanel({
     };
   }, [lessonPath, hasPresentation, onOpenHomeworkTodo]);
 
-  if (materials.length === 0) {
+  if (materials.length === 0 && !canOpenLeinwand) {
     return (
       <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', py: 0.5 }}>
         Noch keine Materialien freigegeben.
       </Typography>
     );
   }
+
+  const showTodoHa = Boolean(hasPresentation && lessonPath && onOpenHomeworkTodo);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
@@ -356,40 +373,79 @@ export default function StudentLessonMaterialsPanel({
         </Box>
       )}
 
-      {hasPresentation && lessonPath && onOpenHomeworkTodo && (
-        <Button
-          type="button"
-          size="small"
-          variant="contained"
-          onClick={() => onOpenHomeworkTodo(lessonPath)}
+      {(canOpenLeinwand || showTodoHa) && (
+        <Box
           sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.75,
             alignSelf: 'flex-start',
-            ml: 0,
-            minWidth: 0,
-            width: 'auto',
-            height: TODO_HA_BTN_HEIGHT,
-            minHeight: TODO_HA_BTN_HEIGHT,
-            py: 0,
-            px: 1.25,
-            fontSize: '0.7rem',
-            fontWeight: 700,
-            lineHeight: 1.2,
-            textTransform: 'none',
-            borderRadius: 1.5,
-            boxSizing: 'border-box',
-            bgcolor: JOHNNY_PRESENTATION.warm,
-            color: '#fff',
-            border: abgabeRequired ? ABGABE_FRAME : '2px solid transparent',
-            boxShadow: 'none',
-            '&:hover': {
-              bgcolor: '#F57C00',
-              boxShadow: 'none',
-              border: abgabeRequired ? ABGABE_FRAME : '2px solid transparent',
-            },
+            flexWrap: 'nowrap',
           }}
         >
-          ToDo HA
-        </Button>
+          {canOpenLeinwand && (
+            <Button
+              type="button"
+              size="small"
+              variant="contained"
+              onClick={openLeinwandFullscreen}
+              sx={{
+                minWidth: 0,
+                width: 'auto',
+                height: TODO_HA_BTN_HEIGHT,
+                minHeight: TODO_HA_BTN_HEIGHT,
+                py: 0,
+                px: 1.25,
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                lineHeight: 1.2,
+                textTransform: 'none',
+                borderRadius: 1.5,
+                boxSizing: 'border-box',
+                bgcolor: '#2e7d32',
+                color: '#fff',
+                border: '2px solid transparent',
+                boxShadow: 'none',
+                '&:hover': { bgcolor: '#1b5e20', boxShadow: 'none' },
+              }}
+            >
+              Leinwand
+            </Button>
+          )}
+          {showTodoHa && (
+            <Button
+              type="button"
+              size="small"
+              variant="contained"
+              onClick={() => onOpenHomeworkTodo!(lessonPath)}
+              sx={{
+                minWidth: 0,
+                width: 'auto',
+                height: TODO_HA_BTN_HEIGHT,
+                minHeight: TODO_HA_BTN_HEIGHT,
+                py: 0,
+                px: 1.25,
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                lineHeight: 1.2,
+                textTransform: 'none',
+                borderRadius: 1.5,
+                boxSizing: 'border-box',
+                bgcolor: JOHNNY_PRESENTATION.warm,
+                color: '#fff',
+                border: abgabeRequired ? ABGABE_FRAME : '2px solid transparent',
+                boxShadow: 'none',
+                '&:hover': {
+                  bgcolor: '#F57C00',
+                  boxShadow: 'none',
+                  border: abgabeRequired ? ABGABE_FRAME : '2px solid transparent',
+                },
+              }}
+            >
+              ToDo HA
+            </Button>
+          )}
+        </Box>
       )}
 
       {otherMaterials.map((file) => (

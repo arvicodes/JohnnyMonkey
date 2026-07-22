@@ -100,6 +100,52 @@ export function insertTextAtCursor(editor: HTMLElement | null, text: string): bo
   return true;
 }
 
+/** Bild an Cursor-Position in contentEditable einfügen (Notizen). */
+export function insertImageHtmlAtCursor(
+  editor: HTMLElement | null,
+  src: string,
+  alt = ''
+): boolean {
+  if (!editor || !src.trim()) return false;
+  stashEditorSelection(editor);
+  ensureEditorSelection(editor) || focusEditor(editor);
+
+  const safeSrc = src.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const safeAlt = alt
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;');
+  const html =
+    `<img src="${safeSrc}" alt="${safeAlt}" data-pres-notes-img="1" ` +
+    `style="max-width:100%;height:auto;display:block;margin:0.5em 0;border-radius:4px;" />`;
+
+  try {
+    document.execCommand('styleWithCSS', false, 'true');
+  } catch {
+    /* ignore */
+  }
+  const ok = document.execCommand('insertHTML', false, html);
+  if (!ok) {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || !editor.contains(sel.anchorNode)) return false;
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    const tpl = document.createElement('template');
+    tpl.innerHTML = html;
+    const node = tpl.content.firstChild;
+    if (!node) return false;
+    range.insertNode(node);
+    range.setStartAfter(node);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  collapseEditorSelection(editor);
+  editor.dispatchEvent(new Event('input', { bubbles: true }));
+  return true;
+}
+
 /** Typografische Pfeile: `-->` → `→`, `==>` → `⇒`, usw. */
 const ARROW_SHORTCUTS: Array<{ from: string; to: string }> = [
   { from: '<==>', to: '⇔' },

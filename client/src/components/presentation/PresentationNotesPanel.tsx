@@ -10,7 +10,8 @@ import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
 import { isFormatBarInteracting, isPresentationFormatUiTarget } from '../../lib/presentationFormatBarGuard';
 import { captureEditorSelection, clearSavedSelection } from '../../lib/presentationFontSize';
 import { presentationNestedListSx } from '../../lib/presentationListStyles';
-import { sanitizePastedHtml, normalizeNotesHtml, handlePresentationTabKey, replaceArrowShortcutsNearCursor, tryMarkdownListShortcut } from '../../lib/presentationRichText';
+import { sanitizePastedHtml, normalizeNotesHtml, handlePresentationTabKey, replaceArrowShortcutsNearCursor, tryMarkdownListShortcut, insertImageHtmlAtCursor } from '../../lib/presentationRichText';
+import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 
 /** Ein Notizfeld (früher Material / Setup / Sprechakte). Legacy-Keys bleiben für Papierkorb. */
 export type NotesFieldKey = 'materialHtml' | 'preparationHtml' | 'speakerNotesHtml';
@@ -27,6 +28,8 @@ interface NoteZoneProps {
   onEditorFocus: (fieldKey: NotesFieldKey, el: HTMLElement) => void;
   onEditorBlur?: () => void;
   onMoveToTrash?: (fieldKey: NotesFieldKey) => void;
+  /** Bild hochladen → Anzeige-URL (read-image API) */
+  onUploadImage?: (file: File) => Promise<string | null>;
 }
 
 const NoteZone: React.FC<NoteZoneProps> = ({
@@ -41,8 +44,10 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   onEditorFocus,
   onEditorBlur,
   onMoveToTrash,
+  onUploadImage,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const editingRef = useRef(false);
   const displayHtml = normalizeNotesHtml(html || textToHtml(plain || ''));
 
@@ -55,6 +60,19 @@ const NoteZone: React.FC<NoteZoneProps> = ({
       onChange(nextHtml, htmlToPlain(nextHtml));
     },
     [onChange]
+  );
+
+  const insertImageFile = useCallback(
+    async (file: File) => {
+      if (!ref.current || readOnly || !onUploadImage) return;
+      if (!file.type.startsWith('image/')) return;
+      const src = await onUploadImage(file);
+      if (!src) return;
+      ref.current.focus();
+      insertImageHtmlAtCursor(ref.current, src, file.name);
+      persistContent(ref.current.innerHTML, false);
+    },
+    [onUploadImage, persistContent, readOnly]
   );
 
   const syncFromProps = useCallback(() => {
@@ -85,9 +103,23 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
     const el = ref.current;
     if (!el || readOnly) return;
+
+    const imageItem = Array.from(e.clipboardData.items || []).find(
+      (it) => it.kind === 'file' && it.type.startsWith('image/')
+    );
+    const imageFile =
+      imageItem?.getAsFile() ||
+      Array.from(e.clipboardData.files || []).find((f) => f.type.startsWith('image/'));
+
+    if (imageFile && onUploadImage) {
+      e.preventDefault();
+      void insertImageFile(imageFile);
+      return;
+    }
+
+    e.preventDefault();
     const pastedHtml = e.clipboardData.getData('text/html');
     const pastedText = e.clipboardData.getData('text/plain');
     const content = pastedHtml
@@ -153,17 +185,47 @@ const NoteZone: React.FC<NoteZoneProps> = ({
         >
           {label}
         </Typography>
-        {!readOnly && onMoveToTrash && (
-          <Tooltip title="In Papierkorb verschieben">
-            <IconButton
-              size="small"
-              onClick={() => onMoveToTrash(fieldKey)}
-              sx={{ width: 22, height: 22, color: PRES_EDITOR_UI.textMuted }}
-            >
-              <TrashIcon sx={{ fontSize: 14 }} />
-            </IconButton>
-          </Tooltip>
-        )}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+          {!readOnly && onUploadImage && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void insertImageFile(f);
+                  e.target.value = '';
+                }}
+              />
+              <Tooltip title="Bild einfügen">
+                <IconButton
+                  size="small"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    if (ref.current) onEditorFocus(fieldKey, ref.current);
+                    fileInputRef.current?.click();
+                  }}
+                  sx={{ width: 22, height: 22, color: PRES_EDITOR_UI.textMuted }}
+                >
+                  <ImageOutlinedIcon sx={{ fontSize: 14 }} />
+                </IconButton>
+              </Tooltip>
+            </>
+          )}
+          {!readOnly && onMoveToTrash && (
+            <Tooltip title="In Papierkorb verschieben">
+              <IconButton
+                size="small"
+                onClick={() => onMoveToTrash(fieldKey)}
+                sx={{ width: 22, height: 22, color: PRES_EDITOR_UI.textMuted }}
+              >
+                <TrashIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
       </Box>
       <Box
         ref={ref}
@@ -197,6 +259,22 @@ const NoteZone: React.FC<NoteZoneProps> = ({
         onInput={handleInput}
         onPaste={handlePaste}
         onKeyDown={handleKeyDown}
+        onDragOver={(e) => {
+          if (readOnly || !onUploadImage) return;
+          if (![...e.dataTransfer.types].includes('Files')) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'copy';
+        }}
+        onDrop={(e) => {
+          if (readOnly || !onUploadImage) return;
+          const file = Array.from(e.dataTransfer.files || []).find((f) =>
+            f.type.startsWith('image/')
+          );
+          if (!file) return;
+          e.preventDefault();
+          e.stopPropagation();
+          void insertImageFile(file);
+        }}
         onMouseDown={() => {
           if (!isFormatBarInteracting()) clearSavedSelection();
         }}
@@ -234,6 +312,13 @@ const NoteZone: React.FC<NoteZoneProps> = ({
           '& b, & strong': { fontWeight: 700 },
           '& i, & em': { fontStyle: 'italic' },
           '& u': { textDecoration: 'underline' },
+          '& img, & img[data-pres-notes-img]': {
+            maxWidth: '100%',
+            height: 'auto',
+            display: 'block',
+            my: 1,
+            borderRadius: 0.75,
+          },
           '&:empty:before': {
             content: `"${placeholder}"`,
             color: PRES_EDITOR_UI.textMuted,
@@ -254,6 +339,8 @@ interface PresentationNotesPanelProps {
   onEditorBlur?: () => void;
   onSpeakerChange: (html: string, plain: string) => void;
   onMoveNotesToTrash?: (fieldKey: NotesFieldKey) => void;
+  /** Bild hochladen → Anzeige-URL für Notizen */
+  onUploadImage?: (file: File) => Promise<string | null>;
   /** Notizleiste ausblenden (mehr Platz für die Folie). */
   onHide?: () => void;
 }
@@ -267,6 +354,7 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
   onEditorBlur,
   onSpeakerChange,
   onMoveNotesToTrash,
+  onUploadImage,
   onHide,
 }) => {
   return (
@@ -338,6 +426,7 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
         onEditorFocus={onEditorFocus}
         onEditorBlur={onEditorBlur}
         onMoveToTrash={onMoveNotesToTrash}
+        onUploadImage={onUploadImage}
       />
     </Box>
   );

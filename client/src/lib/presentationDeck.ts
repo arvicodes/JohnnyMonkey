@@ -261,6 +261,8 @@ const LEGACY_BILD_SLIDE_SPEAKER_HINT =
 function notesHtmlIsEmpty(html?: string, plain?: string): boolean {
   const text = (plain ?? htmlToPlain(html || '')).replace(/\u00a0/g, ' ').trim();
   if (text) return false;
+  // Bilder zählen als Inhalt (htmlToPlain liefert sonst leer)
+  if (/<img\b/i.test(html || '')) return false;
   const stripped = (html || '')
     .replace(/<br\s*\/?>/gi, '')
     .replace(/&nbsp;/gi, ' ')

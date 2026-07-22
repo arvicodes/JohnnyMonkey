@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Box, CircularProgress, IconButton, Typography } from '@mui/material';
+import { Box, CircularProgress, Dialog, IconButton, Typography } from '@mui/material';
 import { ChevronLeft, ChevronRight, Close as CloseIcon } from '@mui/icons-material';
 import PresentationSlideView from './PresentationSlideView';
 import PresentationStrokesPreview from './PresentationStrokesPreview';
@@ -70,8 +70,28 @@ export default function PresentationLaptopPlayer({
   const [revealStep, setRevealStep] = useState(0);
   const [animKey, setAnimKey] = useState(0);
   const [displayScale, setDisplayScale] = useState(0.35);
+  const [notesLightboxSrc, setNotesLightboxSrc] = useState<string | null>(null);
   const stageHostRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+
+  const openNotesImageLightbox = useCallback((rawSrc: string) => {
+    const src = rawSrc.trim();
+    if (!src) return;
+    // Vorschau oft mit max=960 — Lightbox so scharf wie der Server erlaubt
+    const hi = src.replace(/([?&]max=)\d+/i, '$12400');
+    setNotesLightboxSrc(hi);
+  }, []);
+
+  const onNotesHtmlClick = useCallback(
+    (e: React.MouseEvent<HTMLElement>) => {
+      const t = e.target;
+      if (!(t instanceof HTMLImageElement)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      openNotesImageLightbox(t.currentSrc || t.src || t.getAttribute('src') || '');
+    },
+    [openNotesImageLightbox]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -211,11 +231,20 @@ export default function PresentationLaptopPlayer({
 
     const onKey = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
-      if (e.key === 'Escape' && onClose) {
-        e.preventDefault();
-        onClose();
+      if (e.key === 'Escape') {
+        if (notesLightboxSrc) {
+          e.preventDefault();
+          e.stopPropagation();
+          setNotesLightboxSrc(null);
+          return;
+        }
+        if (onClose) {
+          e.preventDefault();
+          onClose();
+        }
         return;
       }
+      if (notesLightboxSrc) return;
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') {
         e.preventDefault();
         goNext();
@@ -242,7 +271,7 @@ export default function PresentationLaptopPlayer({
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [goNext, goPrev, onClose, slides]);
+  }, [goNext, goPrev, onClose, slides, notesLightboxSrc]);
 
   useEffect(() => {
     if (loading) return;
@@ -450,10 +479,15 @@ export default function PresentationLaptopPlayer({
 
       <Box
         sx={{
-          flex: embedded && showNotes ? '1 1 auto' : '0 0 auto',
-          minHeight: notesPanelMin,
+          // minHeight:0 + flexBasis:0: sonst wächst das Panel auf Bildhöhe,
+          // Parent (overflow:hidden) clippt — Bild in den Notizen unsichtbar.
+          flex: embedded && showNotes ? '1 1 0' : '0 0 auto',
+          flexBasis: embedded && showNotes ? 0 : undefined,
+          minHeight: embedded && showNotes ? 0 : notesPanelMin,
           maxHeight: hideTeacherNotes ? 48 : embedded ? 'none' : 140,
           overflowY: 'auto',
+          overflowX: 'hidden',
+          WebkitOverflowScrolling: 'touch',
           bgcolor: '#fff',
           borderTop: '1px solid rgba(0,0,0,0.08)',
           px: embedded ? 1.5 : 1.25,
@@ -550,7 +584,21 @@ export default function PresentationLaptopPlayer({
                 '& b, & strong': { fontWeight: 700 },
                 '& i, & em': { fontStyle: 'italic' },
                 '& u': { textDecoration: 'underline' },
+                '& img, & img[data-pres-notes-img]': {
+                  maxWidth: '100%',
+                  maxHeight: embedded ? 240 : 110,
+                  width: 'auto',
+                  height: 'auto',
+                  objectFit: 'contain',
+                  display: 'block',
+                  my: 1,
+                  borderRadius: 0.75,
+                  cursor: 'zoom-in',
+                  transition: 'opacity 0.15s ease',
+                  '&:hover': { opacity: 0.92 },
+                },
               }}
+              onClick={onNotesHtmlClick}
               dangerouslySetInnerHTML={{ __html: displayNotesHtml }}
             />
           ) : (
@@ -571,6 +619,85 @@ export default function PresentationLaptopPlayer({
           </Typography>
         )}
       </Box>
+
+      <Dialog
+        open={!!notesLightboxSrc}
+        onClose={() => setNotesLightboxSrc(null)}
+        maxWidth={false}
+        fullWidth
+        // Über Laptop-Spalte (oft modal+1) und andere Overlays legen
+        sx={{ zIndex: 20000 }}
+        slotProps={{
+          backdrop: { sx: { bgcolor: 'rgba(10,12,16,0.92)', zIndex: 20000 } },
+        }}
+        PaperProps={{
+          sx: {
+            m: 0,
+            width: '100vw',
+            maxWidth: '100vw',
+            height: '100vh',
+            maxHeight: '100vh',
+            bgcolor: 'transparent',
+            boxShadow: 'none',
+            overflow: 'hidden',
+            zIndex: 20001,
+            borderRadius: 0,
+          },
+        }}
+      >
+        <Box
+          sx={{
+            position: 'relative',
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            p: 0.5,
+            boxSizing: 'border-box',
+          }}
+          onClick={() => setNotesLightboxSrc(null)}
+        >
+          <IconButton
+            size="small"
+            onClick={() => setNotesLightboxSrc(null)}
+            aria-label="Schließen"
+            sx={{
+              position: 'fixed',
+              top: 8,
+              right: 8,
+              zIndex: 20002,
+              width: 22,
+              height: 22,
+              p: 0,
+              color: 'rgba(255,255,255,0.92)',
+              bgcolor: 'rgba(0,0,0,0.5)',
+              border: '1px solid rgba(255,255,255,0.22)',
+              '&:hover': { bgcolor: 'rgba(0,0,0,0.72)' },
+            }}
+          >
+            <CloseIcon sx={{ fontSize: 14 }} />
+          </IconButton>
+          {notesLightboxSrc && (
+            <Box
+              component="img"
+              src={notesLightboxSrc}
+              alt=""
+              onClick={(e) => e.stopPropagation()}
+              sx={{
+                maxWidth: '98vw',
+                maxHeight: '98vh',
+                width: 'auto',
+                height: 'auto',
+                objectFit: 'contain',
+                borderRadius: 0.5,
+                boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                cursor: 'zoom-out',
+              }}
+            />
+          )}
+        </Box>
+      </Dialog>
     </Box>
   );
 }
