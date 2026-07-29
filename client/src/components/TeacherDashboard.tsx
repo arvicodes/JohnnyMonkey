@@ -19219,6 +19219,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 const abFiles = allFiles.filter((f: any) => {
                   const name = f.name || '';
                   if (isLessonPresentationSystemFile(name)) return false;
+                  if (isLessonPresentationAssetFile(name)) return false;
+                  // Keine Roh-/Backup-/JSON-Reste (z. B. *.json.bak-wrong) als „Material“
+                  if (/\.(json|bak)(\.|$)/i.test(name) || /\.bak[-_.]/i.test(name)) return false;
                   if (isABByName(name)) return true;
                   if (LESSON_FOLDER_INPUT_DOCS_RE.test(name)) return false;
                   if (LESSON_FOLDER_IMAGE_EXT_RE.test(name)) return false;
@@ -19695,51 +19698,63 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         alignItems: 'stretch',
                       }}
                     >
-                      {lessonPlanViewMode === 'create' && (
-                      <Box sx={{ mb: 1.0, display: 'flex', alignItems: 'flex-start', gap: 0.6, flexWrap: 'wrap', width: '100%' }}>
-                        {[
+                      {lessonPlanViewMode === 'create' && (() => {
+                        const ticketOptions: { id: LessonPlanItemType; label: string; icon: string }[] = [
+                          { id: 'entry-ticket', label: 'Entry Ticket', icon: 'E' },
+                          { id: 'exit-ticket', label: 'Exit Ticket', icon: 'X' },
+                        ];
+                        const restOptions: { id: LessonPlanItemType; label: string }[] = [
                           { id: 'fortlaufend', label: 'Fortlaufend' },
-                          { id: 'entry-ticket', label: 'Entry Ticket' },
-                          { id: 'exit-ticket', label: 'Exit Ticket' },
                           { id: 'input', label: 'Input' },
                           { id: 'arbeitsauftrag', label: 'Arbeitsauftrag' },
                           { id: 'leinwand', label: 'Leinwand' },
                           { id: 'tafel', label: 'Tafel' },
                           { id: 'quiz', label: 'Quiz' },
                           { id: 'karteikarten-erstellen', label: 'Karteikarten' },
-                          { id: 'karteikarten-gemeinsam-erstellen', label: 'Karteikarten gemeinsam erstellen' },
-                          { id: 'praesentation', label: 'Präsentation' }
-                        ].map((option) => {
-                          const optionId = option.id as LessonPlanItemType;
-                          const style = getPlanTypeStyle(optionId);
+                          { id: 'karteikarten-gemeinsam-erstellen', label: 'Karten gemeinsam' },
+                        ];
+                        const togglePlanType = (optionId: LessonPlanItemType, checked: boolean) => {
+                          setSelectedPlanTypes((prev) => {
+                            if (checked) {
+                              return prev.includes(optionId) ? prev : [...prev, optionId];
+                            }
+                            return prev.filter((t) => t !== optionId);
+                          });
+                        };
+                        const ticketTheme = (optionId: LessonPlanItemType) =>
+                          optionId === 'entry-ticket'
+                            ? {
+                                idleBg: '#f3f8ff',
+                                selectedBg: '#e3f2fd',
+                                border: '#bbdefb',
+                                selectedBorder: '#64b5f6',
+                                text: '#1565c0',
+                                iconBg: 'linear-gradient(135deg, #1e88e5 0%, #3949ab 100%)',
+                              }
+                            : {
+                                idleBg: '#f3faf4',
+                                selectedBg: '#e8f5e9',
+                                border: '#c8e6c9',
+                                selectedBorder: '#81c784',
+                                text: '#1b5e20',
+                                iconBg: 'linear-gradient(135deg, #43a047 0%, #2e7d32 100%)',
+                              };
+                        const renderTicketOption = (option: {
+                          id: LessonPlanItemType;
+                          label: string;
+                          icon: string;
+                        }) => {
+                          const optionId = option.id;
+                          const theme = ticketTheme(optionId);
                           const isSelected = selectedPlanTypes.includes(optionId);
-                          const optionMinW =
-                            optionId === 'arbeitsauftrag'
-                              ? 150
-                              : optionId === 'leinwand'
-                                ? 115
-                              : optionId === 'karteikarten-erstellen'
-                                ? 118
-                              : optionId === 'karteikarten-gemeinsam-erstellen'
-                                ? 200
-                              : optionId === 'praesentation'
-                                ? 130
-                                : optionId === 'fortlaufend'
-                                  ? 118
-                                  : optionId === 'input'
-                                    ? 95
-                                    : 105;
                           return (
                             <Box
                               key={option.id}
                               sx={{
                                 display: 'inline-flex',
-                                alignItems: 'flex-start',
-                                gap: 0.3,
-                                overflow: 'visible',
+                                alignItems: 'center',
+                                gap: 0.35,
                                 flexShrink: 0,
-                                minWidth: optionMinW,
-                                paddingRight: 0.3
                               }}
                             >
                               <FormControlLabel
@@ -19747,47 +19762,55 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   <Checkbox
                                     size="small"
                                     checked={isSelected}
-                                    onChange={(e) => {
-                                      const checked = e.target.checked;
-                                      setSelectedPlanTypes((prev) =>
-                                        checked ? [...prev, optionId] : prev.filter((t) => t !== optionId)
-                                      );
-                                    }}
+                                    onChange={(e) => togglePlanType(optionId, e.target.checked)}
                                     sx={{
-                                      p: 0.25,
-                                      color: style.text,
-                                      '&.Mui-checked': { color: style.text }
+                                      p: 0.2,
+                                      color: theme.text,
+                                      '&.Mui-checked': { color: theme.text },
+                                      '& .MuiSvgIcon-root': { fontSize: 16 },
                                     }}
                                   />
                                 }
-                                label={option.label}
+                                label={
+                                  <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4 }}>
+                                    <Box
+                                      component="span"
+                                      sx={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: 16,
+                                        height: 16,
+                                        borderRadius: 0.6,
+                                        color: 'white',
+                                        fontSize: '0.65rem',
+                                        fontWeight: 800,
+                                        lineHeight: 1,
+                                        flexShrink: 0,
+                                        background: theme.iconBg,
+                                      }}
+                                    >
+                                      {option.icon}
+                                    </Box>
+                                    <Box component="span" sx={{ fontSize: '0.68rem', fontWeight: 700, lineHeight: 1, whiteSpace: 'nowrap' }}>
+                                      {option.label}
+                                    </Box>
+                                  </Box>
+                                }
                                 sx={{
                                   mr: 0,
-                                  px: 0.3,
-                                  py: 0.22,
-                                  flex: '0 0 auto',
-                                  overflow: 'visible',
-                                  minWidth: optionMinW,
+                                  ml: 0,
+                                  px: 0.4,
+                                  py: 0.15,
+                                  height: 24,
                                   borderRadius: 1,
-                                  bgcolor: isSelected ? style.bg : '#ffffff',
-                                  border: `1px solid ${isSelected ? style.border : '#e0e0e0'}`,
-                                  flexShrink: 0,
-                                  minHeight: 26,
-                                  '& .MuiFormControlLabel-label': {
-                                    fontSize: '0.7rem',
-                                    fontWeight: 700,
-                                    color: isSelected ? style.text : '#546e7a',
-                                    lineHeight: 1.05,
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'visible',
-                                    textOverflow: 'clip',
-                                    display: 'block',
-                                    maxWidth: 'none'
-                                  }
+                                  bgcolor: isSelected ? theme.selectedBg : theme.idleBg,
+                                  border: `1px solid ${isSelected ? theme.selectedBorder : theme.border}`,
+                                  '& .MuiFormControlLabel-label': { color: theme.text },
                                 }}
                               />
                               {optionId === 'entry-ticket' && isSelected && (
-                                <FormControl size="small" sx={{ minWidth: 128, maxWidth: 200 }}>
+                                <FormControl size="small" sx={{ minWidth: 110, maxWidth: 170 }}>
                                   <Select
                                     value={String(newPlanGrade)}
                                     onChange={(e) =>
@@ -19795,8 +19818,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                     }
                                     displayEmpty
                                     sx={{
-                                      fontSize: '0.68rem',
-                                      '& .MuiSelect-select': { py: 0.45, px: 0.7 },
+                                      fontSize: '0.62rem',
+                                      height: 24,
+                                      bgcolor: '#fff',
+                                      '& .MuiSelect-select': { py: 0.25, px: 0.6 },
                                     }}
                                     title="Fragenset / Klassenstufe für dieses Entry Ticket"
                                     MenuProps={{
@@ -19814,11 +19839,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 </FormControl>
                               )}
                               {optionId === 'exit-ticket' && isSelected && (
-                                <FormControl size="small" sx={{ minWidth: 132 }}>
+                                <FormControl size="small" sx={{ minWidth: 120 }}>
                                   <Select
                                     value={newExitType}
                                     onChange={(e) => setNewExitType(e.target.value as ExitPlanType)}
-                                    sx={{ fontSize: '0.68rem', '& .MuiSelect-select': { py: 0.45, px: 0.7 } }}
+                                    sx={{
+                                      fontSize: '0.62rem',
+                                      height: 24,
+                                      bgcolor: '#fff',
+                                      '& .MuiSelect-select': { py: 0.25, px: 0.6 },
+                                    }}
                                   >
                                     <MenuItem value="exam-question">Prüfungsfrage bauen</MenuItem>
                                     <MenuItem value="quick-check">Quick Check</MenuItem>
@@ -19832,31 +19862,165 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               )}
                             </Box>
                           );
-                        })}
-                        <Box sx={{ ml: 'auto', flexShrink: 0, overflow: 'visible' }}>
-                          <Button
-                            size="small"
-                            variant="contained"
-                            onClick={addPlanItems}
-                            sx={{
-                              fontWeight: 800,
-                              fontSize: '0.95rem',
-                              minWidth: 26,
-                              height: 24,
-                              px: 0.85,
-                              whiteSpace: 'nowrap',
-                              flexShrink: 0,
-                              bgcolor: '#1976d2',
-                              '&:hover': { bgcolor: '#1565c0' }
-                            }}
-                            aria-label="Ausgewählte hinzufügen"
-                            title="Ausgewählte hinzufügen"
-                          >
-                            +
-                          </Button>
-                        </Box>
-                      </Box>
-                      )}
+                        };
+                        const praesentationSelected = selectedPlanTypes.includes('praesentation');
+                        const praesentationStyle = getPlanTypeStyle('praesentation');
+                        return (
+                          <Box sx={{ mb: 0.85, display: 'flex', flexDirection: 'column', gap: 0.5, width: '100%' }}>
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.45,
+                                flexWrap: 'wrap',
+                                width: '100%',
+                              }}
+                            >
+                              {ticketOptions.map((option) => renderTicketOption(option))}
+                              <FormControlLabel
+                                control={
+                                  <Checkbox
+                                    size="small"
+                                    checked={praesentationSelected}
+                                    onChange={(e) => togglePlanType('praesentation', e.target.checked)}
+                                    sx={{
+                                      p: 0.2,
+                                      color: praesentationStyle.text,
+                                      '&.Mui-checked': { color: praesentationStyle.text },
+                                      '& .MuiSvgIcon-root': { fontSize: 16 },
+                                    }}
+                                  />
+                                }
+                                label={
+                                  <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.35 }}>
+                                    <Box
+                                      component="span"
+                                      sx={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: 14,
+                                        height: 14,
+                                        borderRadius: 0.5,
+                                        color: 'white',
+                                        flexShrink: 0,
+                                        background: 'linear-gradient(135deg, #fb8c00 0%, #ef6c00 100%)',
+                                      }}
+                                    >
+                                      <SlideshowIcon sx={{ fontSize: 10 }} />
+                                    </Box>
+                                    <Box component="span" sx={{ fontSize: '0.68rem', fontWeight: 700, lineHeight: 1, whiteSpace: 'nowrap' }}>
+                                      Präsentation
+                                    </Box>
+                                  </Box>
+                                }
+                                sx={{
+                                  mr: 0,
+                                  ml: 0,
+                                  px: 0.4,
+                                  py: 0.15,
+                                  height: 24,
+                                  width: 'fit-content',
+                                  minWidth: 0,
+                                  borderRadius: 1,
+                                  bgcolor: praesentationSelected ? '#fff3e0' : '#fffaf3',
+                                  border: `1px solid ${praesentationSelected ? '#ffb74d' : '#ffe0b2'}`,
+                                  flexShrink: 0,
+                                  '& .MuiFormControlLabel-label': { color: praesentationStyle.text },
+                                }}
+                              />
+                              <Box sx={{ ml: 'auto', flexShrink: 0 }}>
+                                <Button
+                                  type="button"
+                                  size="small"
+                                  variant="contained"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    void addPlanItems();
+                                  }}
+                                  sx={{
+                                    fontWeight: 800,
+                                    fontSize: '0.85rem',
+                                    minWidth: 24,
+                                    height: 22,
+                                    px: 0.7,
+                                    borderRadius: 1,
+                                    whiteSpace: 'nowrap',
+                                    flexShrink: 0,
+                                    bgcolor: '#1976d2',
+                                    boxShadow: 'none',
+                                    '&:hover': { bgcolor: '#1565c0', boxShadow: 'none' },
+                                  }}
+                                  aria-label="Ausgewählte hinzufügen"
+                                  title="Ausgewählte hinzufügen"
+                                >
+                                  +
+                                </Button>
+                              </Box>
+                            </Box>
+
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                flexWrap: 'nowrap',
+                                gap: 0.35,
+                                width: '100%',
+                                pt: 0.4,
+                                borderTop: '1px dashed rgba(120, 144, 156, 0.22)',
+                              }}
+                            >
+                              {restOptions.map((option) => {
+                                const optionId = option.id;
+                                const style = getPlanTypeStyle(optionId);
+                                const isSelected = selectedPlanTypes.includes(optionId);
+                                return (
+                                  <FormControlLabel
+                                    key={option.id}
+                                    title={
+                                      optionId === 'karteikarten-gemeinsam-erstellen'
+                                        ? 'Karteikarten gemeinsam erstellen'
+                                        : option.label
+                                    }
+                                    control={
+                                      <Checkbox
+                                        size="small"
+                                        checked={isSelected}
+                                        onChange={(e) => togglePlanType(optionId, e.target.checked)}
+                                        sx={{
+                                          p: 0.1,
+                                          color: style.text,
+                                          '&.Mui-checked': { color: style.text },
+                                          '& .MuiSvgIcon-root': { fontSize: 14 },
+                                        }}
+                                      />
+                                    }
+                                    label={option.label}
+                                    sx={{
+                                      mr: 0,
+                                      ml: 0,
+                                      px: 0.15,
+                                      py: 0,
+                                      flex: '0 0 auto',
+                                      minWidth: 0,
+                                      borderRadius: 0.5,
+                                      bgcolor: isSelected ? style.bg : 'transparent',
+                                      '& .MuiFormControlLabel-label': {
+                                        fontSize: '0.52rem',
+                                        fontWeight: isSelected ? 700 : 500,
+                                        color: isSelected ? style.text : '#90a4ae',
+                                        lineHeight: 1.15,
+                                        whiteSpace: 'nowrap',
+                                      },
+                                    }}
+                                  />
+                                );
+                              })}
+                            </Box>
+                          </Box>
+                        );
+                      })()}
 
                       {/* Input: Phasen-Texte (+ ggf. Dokumente) unter jedem Input-Baustein in allen Modi */}
                       {abPlanSection}
