@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { StorageManager } from '../utils/storageManager';
 import { fileToJpegBuffer, isHeicPath, readImageFileForServe } from '../utils/imageToJpeg';
-import { backupPresentationDeckBeforeOverwrite } from '../utils/presentationDeckBackup';
+import { backupPresentationDeckAfterSave, backupPresentationDeckBeforeOverwrite } from '../utils/presentationDeckBackup';
 import fs from 'fs';
 import path from 'path';
 import mammoth from 'mammoth';
@@ -1159,6 +1159,10 @@ export class FileSystemPathController {
       }
 
       fs.writeFileSync(finalFilePath, file.buffer);
+
+      if (file.originalname === 'Praesentation.deck.json') {
+        backupPresentationDeckAfterSave(finalFilePath, file.buffer);
+      }
 
       console.log('File saved successfully');
       res.json({ 

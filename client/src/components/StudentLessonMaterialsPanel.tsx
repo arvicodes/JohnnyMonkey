@@ -26,6 +26,7 @@ import {
   findHomeworkSlides,
   isHomeworkSubmissionRequired,
 } from '../lib/presentationSlideTemplates';
+import { resolvePreviousLessonFolder } from '../lib/previousLessonFolder';
 
 type LessonFile = { type: string; name: string; path: string };
 
@@ -196,8 +197,9 @@ export default function StudentLessonMaterialsPanel({
   groupId?: string;
   /** Leinwand freigegeben → grüner Button neben ToDo HA */
   showLeinwand?: boolean;
-  /** Öffnet das ToDo-Modal auf Dashboard-Ebene (überlebt Panel-Remounts) */
-  onOpenHomeworkTodo?: (lessonPath: string) => void;
+  /** Öffnet das ToDo-Modal auf Dashboard-Ebene (überlebt Panel-Remounts).
+   *  lessonPath = Stunde der HA-Folie (meist Vorstunde); contextLabel optional. */
+  onOpenHomeworkTodo?: (lessonPath: string, contextLabel?: string | null) => void;
 }) {
   const downloadLessonName = (lessonName || '').trim();
   const canOpenLeinwand = Boolean(showLeinwand && groupId && lessonPath);
@@ -253,25 +255,59 @@ export default function StudentLessonMaterialsPanel({
     : false;
 
   const [abgabeRequired, setAbgabeRequired] = useState(false);
+  /** ToDo HA = Vorstunden-HA (wie ←HA beim Lehrer); Fallback: aktuelle Stunde */
+  const [homeworkTodoPath, setHomeworkTodoPath] = useState<string | null>(null);
+  const [homeworkTodoLabel, setHomeworkTodoLabel] = useState<string | null>(null);
+
   useEffect(() => {
     if (!lessonPath || !hasPresentation || !onOpenHomeworkTodo) {
       setAbgabeRequired(false);
+      setHomeworkTodoPath(null);
+      setHomeworkTodoLabel(null);
       return;
     }
     let cancelled = false;
     (async () => {
       try {
-        const loaded = await loadJsonFile<PresentationDeck>(deckFilePath(lessonPath));
-        if (cancelled) return;
-        if (!loaded?.slides?.length) {
-          setAbgabeRequired(false);
-          return;
+        const prev = await resolvePreviousLessonFolder(lessonPath);
+        const candidates: { path: string; label: string | null }[] = [];
+        if (prev?.path) {
+          candidates.push({
+            path: prev.path,
+            label: prev.name ? `Vorstunde · ${prev.name}` : 'Vorstunde',
+          });
         }
-        const haSlides = findHomeworkSlides(sortSlides(loaded.slides));
-        const ha = haSlides[haSlides.length - 1] ?? haSlides[0];
-        setAbgabeRequired(isHomeworkSubmissionRequired(ha));
+        // Erste Stunde / keine Vorstunde: HA der aktuellen Stunde
+        candidates.push({ path: lessonPath, label: null });
+
+        for (const c of candidates) {
+          if (cancelled) return;
+          try {
+            const loaded = await loadJsonFile<PresentationDeck>(deckFilePath(c.path));
+            if (cancelled) return;
+            if (!loaded?.slides?.length) continue;
+            const haSlides = findHomeworkSlides(sortSlides(loaded.slides));
+            if (haSlides.length === 0) continue;
+            const ha = haSlides[haSlides.length - 1] ?? haSlides[0];
+            setHomeworkTodoPath(c.path);
+            setHomeworkTodoLabel(c.label);
+            setAbgabeRequired(isHomeworkSubmissionRequired(ha));
+            return;
+          } catch {
+            /* try next candidate */
+          }
+        }
+        if (!cancelled) {
+          setHomeworkTodoPath(null);
+          setHomeworkTodoLabel(null);
+          setAbgabeRequired(false);
+        }
       } catch {
-        if (!cancelled) setAbgabeRequired(false);
+        if (!cancelled) {
+          setHomeworkTodoPath(null);
+          setHomeworkTodoLabel(null);
+          setAbgabeRequired(false);
+        }
       }
     })();
     return () => {
@@ -287,7 +323,7 @@ export default function StudentLessonMaterialsPanel({
     );
   }
 
-  const showTodoHa = Boolean(hasPresentation && lessonPath && onOpenHomeworkTodo);
+  const showTodoHa = Boolean(hasPresentation && homeworkTodoPath && onOpenHomeworkTodo);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
@@ -417,7 +453,8 @@ export default function StudentLessonMaterialsPanel({
               type="button"
               size="small"
               variant="contained"
-              onClick={() => onOpenHomeworkTodo!(lessonPath)}
+              title={homeworkTodoLabel ? `ToDo HA (${homeworkTodoLabel})` : 'ToDo HA'}
+              onClick={() => onOpenHomeworkTodo!(homeworkTodoPath!, homeworkTodoLabel)}
               sx={{
                 minWidth: 0,
                 width: 'auto',

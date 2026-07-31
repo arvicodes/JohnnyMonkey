@@ -765,6 +765,7 @@ export function presentationHomeworkAssignmentKey(lessonPath: string): {
   fileName: string;
   filePath: string;
 } {
+  // Format bewusst beibehalten (absolut oder J-M-Reihen/…), damit Lehrer- und SuS-Abgaben denselben Schlüssel treffen.
   const normalized = lessonPath.replace(/\\/g, '/').replace(/\/+$/, '');
   return {
     fileName: 'H_Hausaufgabe',

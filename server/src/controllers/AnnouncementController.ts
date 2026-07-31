@@ -167,41 +167,16 @@ const syncIndexEntry = (index: AnnouncementIndexPayload, data: AnnouncementPaylo
 };
 
 const loadAllPublishedAnnouncements = async () => {
-  const rows = await prisma.teacherLessonInstruction.findMany({
-    where: { lessonPath: { startsWith: '__announcements_a_' } },
-    select: {
-      content: true,
-      teacherId: true,
-      teacher: { select: { name: true } },
-    },
-  });
-
-  const dbItems = rows
-    .map((row) => {
-      const data = parseAnnouncement(row.content);
-      if (!data?.publishedAt) return null;
-      return {
-        id: data.id,
-        title: data.title,
-        body: data.body,
-        links: data.links,
-        publishedAt: data.publishedAt,
-        createdAt: data.createdAt,
-        updatedAt: data.updatedAt,
-        authorId: row.teacherId,
-        authorName: row.teacher.name,
-        isRead: false,
-      };
-    })
-    .filter((item): item is NonNullable<typeof item> => Boolean(item));
-
+  // Nur Ordner-Ankündigungen (wie in der Lehrkraft-UI) — und nur wenn wirklich veröffentlicht.
+  // Legacy-DB-Einträge (__announcements_a_*) werden nicht mehr an SuS ausgeliefert,
+  // damit Entwürfe/Zurückziehen in den Ordnern zuverlässig greifen.
   const folderItems = loadFolderAnnouncements().map((item) => ({
     ...item,
     isRead: false,
   }));
 
-  return [...folderItems, ...dbItems].sort(
-    (a, b) => new Date(b.publishedAt!).getTime() - new Date(a.publishedAt!).getTime(),
+  return folderItems.sort(
+    (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
   );
 };
 
@@ -443,19 +418,7 @@ export class AnnouncementController {
         isRead: false,
       }));
 
-      const rows = await prisma.teacherLessonInstruction.findMany({
-        where: { lessonPath: { startsWith: '__announcements_a_' } },
-        select: { content: true, teacherId: true },
-      });
-
       const readIds = getFolderAnnouncementReadIds(user.id);
-      for (const row of rows) {
-        const data = parseAnnouncement(row.content);
-        if (!data?.publishedAt) continue;
-        if (data.readBy.includes(user.id)) {
-          readIds.add(`${row.teacherId}::${data.id}`);
-        }
-      }
 
       const withRead = announcements.map((a) => ({
         ...a,

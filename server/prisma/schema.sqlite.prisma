@@ -47,6 +47,7 @@ model User {
   timetableUploads          TeacherTimetableUpload[]
   scheduleSlots             ScheduleSlot[]
   autoLessonSessions        AutoLessonSession[]
+  moderatedGroups           LearningGroup[]             @relation("GroupModerator")
 }
 
 // Gamification: „Reisebegleiter“ – Reisekräfte sammeln, Ei finden, ausbrüten, Begleiter wachsen lassen
@@ -149,8 +150,13 @@ model LearningGroup {
   lessonCollabFlashcardBeacons LessonCollabFlashcardBeacon[]
   scheduleSlots                ScheduleSlot[]
   autoLessonSessions           AutoLessonSession[]
+  /** Aktueller Klassen-Moderator (z. B. für die Woche) — sieht volles Entry Ticket */
+  moderatorStudentId           String?
+  moderator                    User?                      @relation("GroupModerator", fields: [moderatorStudentId], references: [id], onDelete: SetNull)
   teacher              User                       @relation("TeacherGroups", fields: [teacherId], references: [id])
   students             User[]                     @relation("StudentGroups")
+
+  @@index([moderatorStudentId])
 }
 
 /// Lehrer-Klick „Karteikarten gemeinsam“ (Tablet): neues beaconId → SuS öffnen das Modal per Poll.

@@ -133,10 +133,27 @@ export const batchCheckFileShares = async (req: Request, res: Response) => {
 /** Lehrkraft: Freigaben im Stundenordner bereinigen (Bilder weg, Folien-PDFs an). */
 export const syncLessonFolderFileShares = async (req: Request, res: Response) => {
   try {
+    const loginCode = typeof req.headers['x-login-code'] === 'string' ? req.headers['x-login-code'].trim() : '';
+    if (!loginCode) return res.status(401).json({ error: 'Nicht autorisiert' });
+    const user = await prisma.user.findUnique({
+      where: { loginCode },
+      select: { id: true, role: true },
+    });
+    if (!user || user.role !== 'TEACHER') {
+      return res.status(403).json({ error: 'Nur Lehrkräfte' });
+    }
+
     const { groupId, lessonPath } = req.body as { groupId?: string; lessonPath?: string };
     if (!groupId?.trim() || !lessonPath?.trim()) {
       return res.status(400).json({ error: 'groupId und lessonPath sind erforderlich' });
     }
+
+    const owned = await prisma.learningGroup.findFirst({
+      where: { id: groupId.trim(), teacherId: user.id },
+      select: { id: true },
+    });
+    if (!owned) return res.status(403).json({ error: 'Keine Berechtigung für diese Gruppe' });
+
     await syncLessonFolderShares(groupId.trim(), lessonPath.trim().replace(/\\/g, '/').replace(/\/$/, ''));
     return res.json({ ok: true });
   } catch (error: any) {

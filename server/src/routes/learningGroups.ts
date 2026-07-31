@@ -73,6 +73,7 @@ router.get('/teacher/:id', async (req: Request, res: Response) => {
         color: true,
         displayOrder: true,
         isArchived: true,
+        moderatorStudentId: true,
         // seatingOrder und statisticsOrder werden separat geladen (falls Prisma Client veraltet ist)
         // seatingOrder: true,
         // statisticsOrder: true,
@@ -641,12 +642,19 @@ router.post('/:id/students', async (req: Request, res: Response) => {
 // Remove a student from a learning group
 router.delete('/:groupId/students/:studentId', async (req: Request, res: Response) => {
   try {
+    const existing = await prisma.learningGroup.findUnique({
+      where: { id: req.params.groupId },
+      select: { moderatorStudentId: true },
+    });
     const group = await prisma.learningGroup.update({
       where: { id: req.params.groupId },
       data: {
         students: {
           disconnect: { id: req.params.studentId }
-        }
+        },
+        ...(existing?.moderatorStudentId === req.params.studentId
+          ? { moderatorStudentId: null }
+          : {}),
       },
       include: { 
         students: {
@@ -664,6 +672,74 @@ router.delete('/:groupId/students/:studentId', async (req: Request, res: Respons
     res.json(group);
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/** Klassen-Moderator setzen oder entfernen (pro Lerngruppe einer) */
+router.put('/:id/moderator', async (req: Request, res: Response) => {
+  try {
+    const groupId = req.params.id;
+    const studentIdRaw = req.body?.studentId;
+    const studentId =
+      studentIdRaw === null || studentIdRaw === undefined || studentIdRaw === ''
+        ? null
+        : String(studentIdRaw).trim();
+
+    const loginCode = typeof req.headers['x-login-code'] === 'string' ? req.headers['x-login-code'].trim() : '';
+    if (!loginCode) return res.status(401).json({ error: 'Nicht autorisiert' });
+    const teacher = await prisma.user.findUnique({
+      where: { loginCode },
+      select: { id: true, role: true },
+    });
+    if (!teacher || teacher.role !== 'TEACHER') {
+      return res.status(403).json({ error: 'Nur Lehrkräfte' });
+    }
+
+    const group = await prisma.learningGroup.findFirst({
+      where: { id: groupId, teacherId: teacher.id },
+      select: {
+        id: true,
+        moderatorStudentId: true,
+        students: { select: { id: true } },
+      },
+    });
+    if (!group) return res.status(404).json({ error: 'Gruppe nicht gefunden' });
+
+    if (studentId) {
+      const isMember = group.students.some((s) => s.id === studentId);
+      if (!isMember) {
+        return res.status(400).json({ error: 'Schüler ist nicht in dieser Lerngruppe' });
+      }
+    }
+
+    // Gleicher Schüler erneut → Moderator entfernen (Toggle)
+    const nextId =
+      studentId && group.moderatorStudentId === studentId ? null : studentId;
+
+    const updated = await prisma.learningGroup.update({
+      where: { id: groupId },
+      data: { moderatorStudentId: nextId },
+      select: {
+        id: true,
+        name: true,
+        moderatorStudentId: true,
+        students: {
+          orderBy: { loginCode: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            loginCode: true,
+            avatarEmoji: true,
+            avatarUrl: true,
+          },
+        },
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('PUT /learning-groups/:id/moderator:', error);
+    res.status(500).json({ error: 'Serverfehler' });
   }
 });
 

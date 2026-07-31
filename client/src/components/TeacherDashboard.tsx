@@ -44,11 +44,12 @@ import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
 import { wallOfFameDashboardBtnSx } from '../lib/wallOfFameUi';
 import {
   gradeFromGroupNames,
-  ENTRY_TICKET_PLAN_GRADE_OPTIONS,
+  getEntryTicketPlanGradeOptions,
   formatEntryTicketPlanBandLabel,
   parseEntryTicketPlanBand,
   type EntryTicketPlanBand,
 } from '../lib/entryTicketGrade';
+import { loadCustomEntryTicketSets } from '../lib/entryTicketCustomSets';
 import {
   Box,
   Typography,
@@ -422,6 +423,7 @@ interface LearningGroup {
   color?: string | null;
   displayOrder?: number | null;
   isArchived?: boolean;
+  moderatorStudentId?: string | null;
   students: Student[];
 }
 
@@ -5456,10 +5458,12 @@ const LESSON_FOLDER_INPUT_DOCS_RE = /\.(pdf|pptx?|odp|docx?|odt|rtf)$/i;
 /** Gängige Bildformate – für die Stundenordner-Dokumentenliste. */
 const LESSON_FOLDER_IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|svg|bmp|heic|avif|tiff?)$/i;
 
-/** Rohmaterial-Archiv (z. B. „ROhdateine“ / „Rohdateien“) – Inhalt nicht in Stunden-Materiallisten. */
+/** Rohmaterial-Archiv / Backup-Ordner – Inhalt nicht in Stunden-Materiallisten. */
 const LESSON_ROHDATEI_ARCHIVE_FOLDER_NAMES = new Set(['rohdateine', 'rohdateien']);
 function isLessonRohdatArchiveFolderName(name: string): boolean {
-  return LESSON_ROHDATEI_ARCHIVE_FOLDER_NAMES.has((name || '').trim().toLowerCase());
+  const t = (name || '').trim();
+  if (LESSON_ROHDATEI_ARCHIVE_FOLDER_NAMES.has(t.toLowerCase())) return true;
+  return /Sicherheitskopie/i.test(t) || /BACKUP/i.test(t);
 }
 
 function isLsgFileName(name: string): boolean {
@@ -5978,6 +5982,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   } | null>(null);
   const [lessonStundeTabLoading, setLessonStundeTabLoading] = useState(false);
   const [lessonStundeTabError, setLessonStundeTabError] = useState<string | null>(null);
+  /** Laufende Stunden (manuell / Stundenplan) – für Play-Button & Blinken */
+  type ActiveLessonSessionRow = {
+    id: string;
+    groupId: string;
+    lessonPath: string | null;
+    status: string;
+    periodNumber: number;
+  };
+  const [activeLessonSessions, setActiveLessonSessions] = useState<ActiveLessonSessionRow[]>([]);
+  const [lessonRunBusyKey, setLessonRunBusyKey] = useState<string | null>(null);
   const [geheimtexteOpen, setGeheimtexteOpen] = useState(false);
   // Bearbeitbare Stunden-Texte und Ablaufplanung pro Stunde (lessonPath)
   type LessonBoxField = 'voraussetzungen' | 'materialliste' | 'anweisungen' | 'abAnleitung' | 'geheimtexte';
@@ -6820,6 +6834,152 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     [navigate],
   );
 
+  const normalizeLessonPathKey = useCallback((p: string) => {
+    return String(p ?? '')
+      .normalize('NFC')
+      .trim()
+      .replace(/\\/g, '/')
+      .replace(/\/+/g, '/')
+      .replace(/^\/+|\/+$/g, '');
+  }, []);
+
+  const refreshActiveLessonSessions = useCallback(async () => {
+    const loginCode = localStorage.getItem('loginCode') || '';
+    if (!loginCode) return;
+    try {
+      const res = await fetch('/api/teacher-schedule/active-lessons/teacher', {
+        headers: { 'x-login-code': loginCode },
+        cache: 'no-store',
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const sessions = Array.isArray(data?.sessions) ? data.sessions : [];
+      setActiveLessonSessions(
+        sessions.map((s: any) => ({
+          id: String(s.id),
+          groupId: String(s.groupId),
+          lessonPath: s.lessonPath != null ? String(s.lessonPath) : null,
+          status: String(s.status || ''),
+          periodNumber: Number(s.periodNumber) || 0,
+        })),
+      );
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!userId || userRole !== 'TEACHER') return;
+    void refreshActiveLessonSessions();
+    const id = window.setInterval(() => {
+      void refreshActiveLessonSessions();
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, [userId, userRole, refreshActiveLessonSessions]);
+
+  const findActiveSessionForLesson = useCallback(
+    (groupId: string, lessonPath: string) => {
+      const want = normalizeLessonPathKey(lessonPath);
+      return (
+        activeLessonSessions.find(
+          (s) =>
+            s.groupId === groupId &&
+            (s.status === 'ACTIVE' || s.status === 'OPEN') &&
+            normalizeLessonPathKey(s.lessonPath || '') === want,
+        ) || null
+      );
+    },
+    [activeLessonSessions, normalizeLessonPathKey],
+  );
+
+  const openEntryTicketForLesson = useCallback(
+    (groupId: string, lessonPath: string) => {
+      const group = groups.find((g) => g.id === groupId);
+      const bandFromGroup = group ? gradeFromGroupNames([group.name]) : 7;
+      const want = normalizeLessonPathKey(lessonPath);
+      const overrides =
+        editedLessonInstructions[lessonPath] ||
+        Object.entries(editedLessonInstructions).find(
+          ([k]) => normalizeLessonPathKey(k) === want,
+        )?.[1] ||
+        {};
+      const plan = Array.isArray(overrides.lessonPlan) ? overrides.lessonPlan : [];
+      const entryItem = plan.find((p: LessonPlanItem) => p.type === 'entry-ticket');
+      const band = entryItem?.grade != null ? parseEntryTicketPlanBand(entryItem.grade) : bandFromGroup;
+      const qs = new URLSearchParams();
+      qs.set('grade', String(band));
+      qs.set('autostart', '1');
+      qs.set('r', String(Date.now()));
+      qs.set('groupId', groupId);
+      if (lessonPath) qs.set('lessonPath', lessonPath);
+      const etUrl = `${window.location.origin}/entry-ticket?${qs.toString()}`;
+      const opened = window.open(etUrl, '_blank', 'noopener,noreferrer');
+      if (!opened) {
+        navigate(`/entry-ticket?${qs.toString()}`);
+      }
+    },
+    [editedLessonInstructions, groups, navigate, normalizeLessonPathKey],
+  );
+
+  const startLessonRun = useCallback(
+    async (groupId: string, lessonPath: string) => {
+      const key = `${groupId}::${lessonPath}`;
+      setLessonRunBusyKey(key);
+      const loginCode = localStorage.getItem('loginCode') || '';
+      try {
+        const res = await fetch('/api/teacher-schedule/lessons/start', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-login-code': loginCode,
+          },
+          body: JSON.stringify({ groupId, lessonPath }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          showSnackbar(err?.error || 'Stunde konnte nicht gestartet werden', 'error');
+          return;
+        }
+        await refreshActiveLessonSessions();
+        openEntryTicketForLesson(groupId, lessonPath);
+      } catch {
+        showSnackbar('Stunde konnte nicht gestartet werden', 'error');
+      } finally {
+        setLessonRunBusyKey(null);
+      }
+    },
+    [openEntryTicketForLesson, refreshActiveLessonSessions],
+  );
+
+  const endLessonRun = useCallback(
+    async (groupId: string, lessonPath: string, sessionId?: string) => {
+      const key = `${groupId}::${lessonPath}`;
+      setLessonRunBusyKey(key);
+      const loginCode = localStorage.getItem('loginCode') || '';
+      try {
+        const res = await fetch('/api/teacher-schedule/lessons/end', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-login-code': loginCode,
+          },
+          body: JSON.stringify({ groupId, lessonPath, sessionId }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          showSnackbar(err?.error || 'Stunde konnte nicht beendet werden', 'error');
+          return;
+        }
+        await refreshActiveLessonSessions();
+      } catch {
+        showSnackbar('Stunde konnte nicht beendet werden', 'error');
+      } finally {
+        setLessonRunBusyKey(null);
+      }
+    },
+    [refreshActiveLessonSessions],
+  );
+
   // /teacher/stunde?groupId=&lessonPath=&lessonName= — Stunde im gleichen Tab (Esc → Dashboard)
   useEffect(() => {
     if (!isLessonStundeRoute) return;
@@ -6868,11 +7028,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
           groupId
         });
         setLessonStundeTabError(null);
-        void fetch('/api/file-shares/sync-lesson-folder', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ groupId, lessonPath }),
-        }).catch(() => undefined);
+        // Freigabe nur noch über Play-Button / Scheduler — nicht beim bloßen Öffnen der Stunde
       } catch (e) {
         console.error(e);
         if (!cancelled) {
@@ -9808,6 +9964,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         item.type === 'directory' && directoryOpensStundePage(item.name, level);
       const isContainerFolder =
         item.type === 'directory' && !isStundeFolder && !isLessonRohdatArchiveFolderName(item.name);
+      const stundeLessonPath = isStundeFolder
+        ? item.path || `${folderPath}/${item.name}`
+        : '';
+      const activeStundeSession =
+        isStundeFolder && stundeLessonPath
+          ? findActiveSessionForLesson(groupId, stundeLessonPath)
+          : null;
+      const isStundeRunning = Boolean(activeStundeSession);
+      const stundeRunBusy =
+        isStundeFolder && lessonRunBusyKey === `${groupId}::${stundeLessonPath}`;
 
       // Bestimme Icon und Farbe basierend auf dem Screenshot
       let icon = '📁';
@@ -9828,8 +9994,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           fontWeight = 600;
         } else if (isStundeFolder) {
           icon = '📘';
-          color = '#1976d2';
-          fontWeight = 500;
+          color = isStundeRunning ? '#1565c0' : '#1976d2';
+          fontWeight = isStundeRunning ? 700 : 500;
         } else if (level === 0) {
           icon = '📚';
           color = '#9c27b0';
@@ -9895,6 +10061,17 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   px: 0.75,
                   pt: 0.55,
                   pb: branchExpanded ? 0.45 : 0.55,
+                }
+              : {}),
+            ...(isStundeRunning
+              ? {
+                  borderRadius: 1,
+                  px: 0.35,
+                  animation: 'lessonRunBlink 1.2s ease-in-out infinite',
+                  '@keyframes lessonRunBlink': {
+                    '0%, 100%': { backgroundColor: 'rgba(25, 118, 210, 0.08)' },
+                    '50%': { backgroundColor: 'rgba(25, 118, 210, 0.32)' },
+                  },
                 }
               : {}),
           }}
@@ -10046,6 +10223,53 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             )}
 
             </Typography>
+
+            {isStundeFolder && (
+              <Tooltip title={isStundeRunning ? 'Stunde beenden' : 'Stunde starten (inkl. Entry Ticket)'}>
+                <span>
+                  <IconButton
+                    size="small"
+                    disabled={stundeRunBusy}
+                    aria-label={isStundeRunning ? 'Stunde beenden' : 'Stunde starten'}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isStundeRunning) {
+                        void endLessonRun(groupId, stundeLessonPath, activeStundeSession?.id);
+                      } else {
+                        void startLessonRun(groupId, stundeLessonPath);
+                      }
+                    }}
+                    sx={{
+                      p: 0,
+                      ml: 0.15,
+                      minWidth: 18,
+                      width: 18,
+                      height: 18,
+                      flexShrink: 0,
+                      borderRadius: '50%',
+                      bgcolor: isStundeRunning ? '#c62828' : '#2e7d32',
+                      color: '#fff',
+                      boxShadow: isStundeRunning
+                        ? '0 0 0 2px rgba(198, 40, 40, 0.25)'
+                        : '0 0 0 1px rgba(46, 125, 50, 0.2)',
+                      '&:hover': {
+                        bgcolor: isStundeRunning ? '#b71c1c' : '#1b5e20',
+                      },
+                      '&.Mui-disabled': {
+                        bgcolor: isStundeRunning ? '#ef9a9a' : '#a5d6a7',
+                        color: '#fff',
+                      },
+                    }}
+                  >
+                    {isStundeRunning ? (
+                      <StopIcon sx={{ fontSize: 12 }} />
+                    ) : (
+                      <PlayIcon sx={{ fontSize: 12 }} />
+                    )}
+                  </IconButton>
+                </span>
+              </Tooltip>
+            )}
             
             {/* Erstellungs-Icons für Quiz- und Cards-Dateien */}
             {showCreateIcon && (
@@ -12329,6 +12553,48 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     setStudentMenuCtx(null);
   };
 
+  const MODERATOR_ICON_SRC = `/api/file-system-paths/static/${encodeURIComponent('J-M-Reihen/Grafiken/Moderator.png')}`;
+
+  const handleSetGroupModerator = async (groupId: string, student: Student) => {
+    handleStudentMenuClose();
+    const loginCode = localStorage.getItem('loginCode') || '';
+    const group = groups.find((g) => g.id === groupId);
+    const isAlready = group?.moderatorStudentId === student.id;
+    try {
+      const res = await fetch(`/api/learning-groups/${groupId}/moderator`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': loginCode,
+        },
+        body: JSON.stringify({ studentId: student.id }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showSnackbar(err?.error || 'Moderator konnte nicht gesetzt werden', 'error');
+        return;
+      }
+      const updated = await res.json();
+      setGroups((prev) =>
+        prev.map((g) =>
+          g.id === groupId
+            ? { ...g, moderatorStudentId: updated.moderatorStudentId ?? null }
+            : g,
+        ),
+      );
+      showSnackbar(
+        updated.moderatorStudentId
+          ? `${student.name} ist jetzt Moderator`
+          : isAlready
+            ? `Moderator-Rolle von ${student.name} entfernt`
+            : 'Moderator entfernt',
+        'success',
+      );
+    } catch {
+      showSnackbar('Moderator konnte nicht gesetzt werden', 'error');
+    }
+  };
+
   const handleRemoveStudentDialogOpen = (groupId: string, student: Student) => {
     setRemoveStudentCtx({ groupId, student });
     setRemoveStudentDialogOpen(true);
@@ -14504,18 +14770,24 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       <Grid container spacing={0.8} sx={{ display: expandedGroups[group.id] === false ? 'none' : 'flex' }}>
                         <Grid item xs={12} md={8} sx={{ display: 'flex', flexDirection: 'column' }}>
                           <Grid container spacing={0.8} sx={{ display: expandedStudents[group.id] ? 'flex' : 'none' }}>
-                            {group.students.map((student) => (
+                            {group.students.map((student) => {
+                              const isModerator = group.moderatorStudentId === student.id;
+                              return (
                               <Grid item xs={12} sm={6} md={6} lg={3} key={student.id}>
                                 <Card 
                                   variant="outlined" 
                                   sx={{ 
                                     borderRadius: 2.8,
-                                    border: '1px solid #e0e0e0',
-                                    bgcolor: '#ffffff',
-                                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                                    border: isModerator ? '2px solid #c62828' : '1px solid #e0e0e0',
+                                    bgcolor: isModerator ? '#ffebee' : '#ffffff',
+                                    boxShadow: isModerator
+                                      ? '0 2px 12px rgba(198, 40, 40, 0.28)'
+                                      : '0 2px 8px rgba(0,0,0,0.06)',
                                     transition: 'all 0.2s ease-in-out',
                                     cursor: 'pointer',
                                     p: 0,
+                                    position: 'relative',
+                                    overflow: 'visible',
                                     '& .MuiCardContent-root': {
                                       padding: '8px',
                                       '&:last-child': {
@@ -14523,7 +14795,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                       }
                                     },
                                     '&:hover': {
-                                      boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                                      boxShadow: isModerator
+                                        ? '0 4px 16px rgba(198, 40, 40, 0.35)'
+                                        : '0 4px 16px rgba(0,0,0,0.1)',
                                       transform: 'translateY(-1px)'
                                     },
                                     '@keyframes cardBlink': {
@@ -14549,10 +14823,31 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   data-student-id={student.id}
                                   id={`student-card-${student.id}`}
                                 >
+                                  {isModerator && (
+                                    <Box
+                                      component="img"
+                                      src={MODERATOR_ICON_SRC}
+                                      alt="Moderator"
+                                      title="Klassen-Moderator"
+                                      sx={{
+                                        position: 'absolute',
+                                        top: -10,
+                                        right: -8,
+                                        width: 52,
+                                        height: 52,
+                                        objectFit: 'contain',
+                                        zIndex: 2,
+                                        pointerEvents: 'none',
+                                        filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.25))',
+                                      }}
+                                    />
+                                  )}
                                   <CardContent sx={{ p: 0, pb: 0, pt: 0, pl: 0, pr: 0, overflow: 'hidden' }}>
                                     {/* Top Section - Avatar, Name and Overall Grade */}
                                     <Box sx={{ 
-                                      background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+                                      background: isModerator
+                                        ? 'linear-gradient(135deg, #ffcdd2 0%, #ef9a9a 100%)'
+                                        : 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
                                       p: 0.5,
                                       display: 'flex',
                                       alignItems: 'center',
@@ -14572,13 +14867,13 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                       <Typography variant="h6" sx={{ 
                                         fontWeight: 'bold', 
                                         fontSize: '0.7rem',
-                                        color: colors.textPrimary,
+                                        color: isModerator ? '#b71c1c' : colors.textPrimary,
                                         cursor: 'help',
                                         textAlign: 'center',
                                         flex: 1,
                                         mx: 0.5
                                       }}
-                                      title={`Code: ${student.loginCode}`}
+                                      title={`Code: ${student.loginCode}${isModerator ? ' · Moderator' : ''}`}
                                       >
                                         {formatStudentName(student.name)}
                                       </Typography>
@@ -14981,7 +15276,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   </CardContent>
                                 </Card>
                               </Grid>
-                            ))}
+                              );
+                            })}
                           </Grid>
                         </Grid>
                         <Grid item xs={12} md={4} sx={{ display: 'flex', flexDirection: 'column', gap: 1.4 }}>
@@ -16619,6 +16915,24 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           handleStudentMenuClose(); 
         }}>
           <EmailIcon fontSize="small" style={{ marginRight: 8 }} /> Nachricht senden
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (studentMenuCtx) {
+              void handleSetGroupModerator(studentMenuCtx.groupId, studentMenuCtx.student);
+            }
+          }}
+        >
+          <Box
+            component="img"
+            src={MODERATOR_ICON_SRC}
+            alt=""
+            sx={{ width: 20, height: 20, objectFit: 'contain', mr: 1, flexShrink: 0 }}
+          />
+          {studentMenuCtx &&
+          groups.find((g) => g.id === studentMenuCtx.groupId)?.moderatorStudentId === studentMenuCtx.student.id
+            ? 'Moderator entfernen'
+            : 'Moderator setzen'}
         </MenuItem>
         <MenuItem onClick={() => { if (studentMenuCtx) handleRemoveStudentDialogOpen(studentMenuCtx.groupId, studentMenuCtx.student); handleStudentMenuClose(); }}>
           <DeleteIcon fontSize="small" style={{ marginRight: 8 }} /> Entfernen
@@ -18585,12 +18899,12 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 };
                 const openPlanItem = async (item: LessonPlanItem) => {
                   if (item.type === 'entry-ticket') {
-                    const gid = lessonModalData.groupId ? encodeURIComponent(lessonModalData.groupId) : '';
                     const qs = new URLSearchParams();
                     qs.set('grade', String(item.grade ?? 7));
                     qs.set('autostart', '1');
                     qs.set('r', String(Date.now()));
                     if (lessonModalData.groupId) qs.set('groupId', lessonModalData.groupId);
+                    if (lessonPath) qs.set('lessonPath', lessonPath);
                     const etUrl = `${window.location.origin}/entry-ticket?${qs.toString()}`;
                     window.open(etUrl, '_blank', 'noopener,noreferrer');
                     return;
@@ -19830,7 +20144,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                       },
                                     }}
                                   >
-                                    {ENTRY_TICKET_PLAN_GRADE_OPTIONS.map((opt) => (
+                                    {getEntryTicketPlanGradeOptions().map((opt) => (
                                       <MenuItem key={opt.value} value={opt.value} sx={{ fontSize: '0.68rem' }}>
                                         {opt.label}
                                       </MenuItem>
@@ -20365,6 +20679,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                     {item.type === 'entry-ticket' &&
                                       ` (${formatEntryTicketPlanBandLabel(
                                         parseEntryTicketPlanBand(item.grade),
+                                        Object.fromEntries(
+                                          loadCustomEntryTicketSets().map((s) => [s.id, s.name]),
+                                        ),
                                       )})`}
                                     {item.type === 'exit-ticket' && ` (${item.exitType || 'exam-question'})`}
                                     {item.type === 'arbeitsauftrag' && item.linkedMaterialName

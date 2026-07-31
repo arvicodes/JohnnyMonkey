@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
-import { wallOfFameStudentDashboardBtnSx } from '../lib/wallOfFameUi';
 import {
   Box,
   Typography,
@@ -50,8 +49,6 @@ import {
   OpenInNew as OpenInNewIcon,
   ContentCopy as ContentCopyIcon,
   ContentPaste as ContentPasteIcon,
-  WbSunny as WbSunnyIcon,
-  PhotoLibrary as PhotoLibraryIcon,
   Logout as LogoutIcon,
 } from '@mui/icons-material';
 import {
@@ -73,13 +70,14 @@ import {
   isStudentVisibleLessonMaterialFile,
   labelForLessonPresentationMaterialPdf,
 } from '../lib/presentationLessonAssets';
-import { isLessonFileShared } from '../lib/lessonFileSharePath';
+import { isLessonFileShared, normalizeLessonMaterialPath } from '../lib/lessonFileSharePath';
 import SubmissionUpload from './SubmissionUpload';
 import ReisebegleiterAvatarBadge from './ReisebegleiterPanel';
 import { StudentExitTicketMyAnswersBadge } from './exit-ticket/StudentExitTicketMyAnswersBadge';
 import { RIDDLES, Riddle } from './riddles';
 import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
 import { apiGetSafe } from '../lib/api';
+import { MODERATOR_ICON_SRC } from '../lib/moderatorIcon';
 import { sortLearningGroups } from '../lib/learningGroupSort';
 import {
   folderTreeNodeKey,
@@ -93,8 +91,6 @@ import { openStudentLessonMaterialFile } from '../lib/openStudentLessonMaterial'
 import { CollaborativeFlashcardSessionModal } from './CollaborativeFlashcardSessionModal';
 import StudentLessonMaterialsPanel from './StudentLessonMaterialsPanel';
 import PresentationHomeworkTodoModal from './presentation/PresentationHomeworkTodoModal';
-import SpielMenuButton from './SpielMenuButton';
-
 const COLLAB_BEACON_LS_KEY = 'jm_collab_fc_beacon_seen_v1';
 function loadCollabBeaconSeen(): Record<string, string> {
   try {
@@ -113,7 +109,9 @@ const isCorrectionFile = (fileName: string): boolean => {
 
 const LESSON_ROHDATEI_ARCHIVE_FOLDER_NAMES_SD = new Set(['rohdateine', 'rohdateien']);
 function isLessonRohdatArchiveFolderNameStudent(name: string): boolean {
-  return LESSON_ROHDATEI_ARCHIVE_FOLDER_NAMES_SD.has((name || '').trim().toLowerCase());
+  const t = (name || '').trim();
+  if (LESSON_ROHDATEI_ARCHIVE_FOLDER_NAMES_SD.has(t.toLowerCase())) return true;
+  return /Sicherheitskopie/i.test(t) || /BACKUP/i.test(t);
 }
 
 /** Wie im TeacherDashboard: Kapitel-Container, keine Stunde. */
@@ -1950,6 +1948,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [studentName, setStudentName] = useState<string>("");
+  const [isClassModerator, setIsClassModerator] = useState(false);
+  const [moderatorGroupName, setModeratorGroupName] = useState<string | null>(null);
   
   // States für Inhalte
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -1986,6 +1986,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   
   // Noten-Sektion aufklappbar
   const [gradesExpanded, setGradesExpanded] = useState(false);
+  /** Kacheln unter dem Namen (Noten/EPO/…) vorerst hinter Häkchen versteckt */
+  const studentStatsSectionEnabled = false;
   
   // Flashcard Learning States
   const [flashcardLearningOpen, setFlashcardLearningOpen] = useState(false);
@@ -2000,7 +2002,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 
   const [journeyRefreshKey, setJourneyRefreshKey] = useState(0);
   /** ToDo-Hausaufgaben-Modal — State hier, damit Panel-Remounts es nicht schließen */
-  const [homeworkTodoLessonPath, setHomeworkTodoLessonPath] = useState<string | null>(null);
+  const [homeworkTodoModal, setHomeworkTodoModal] = useState<{
+    lessonPath: string;
+    contextLabel?: string | null;
+  } | null>(null);
 
   const [expandedFolderNodes, setExpandedFolderNodes] = useState<Record<string, boolean>>({});
   /** Aufgeklappte Stunden im Ordnerbaum (inline, kein Modal). */
@@ -2219,6 +2224,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   // File Share States (Datei-Freigaben für Lerngruppen)
   const [sharedFiles, setSharedFiles] = useState<{[groupId: string]: string[]}>({});
   const [sharedInputSharePaths, setSharedInputSharePaths] = useState<{[groupId: string]: string[]}>({});
+  /** Stundenordner, die per Play (oder Scheduler) freigeschaltet wurden */
+  const [releasedLessonsByGroup, setReleasedLessonsByGroup] = useState<{
+    [groupId: string]: { lessonPaths: string[]; useShareFallback: boolean };
+  }>({});
 
   // Mitarbeitsbewertung States
   const [participationData, setParticipationData] = useState<{[groupId: string]: {
@@ -2907,6 +2916,51 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     }
   };
 
+  const fetchReleasedLessons = useCallback(async () => {
+    const loginCode = localStorage.getItem('loginCode')?.trim();
+    if (!loginCode) return;
+    try {
+      const res = await fetch('/api/teacher-schedule/released-lessons/student', {
+        headers: { 'x-login-code': loginCode },
+        cache: 'no-store',
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const byGroup = data?.byGroup && typeof data.byGroup === 'object' ? data.byGroup : {};
+      const next: { [groupId: string]: { lessonPaths: string[]; useShareFallback: boolean } } = {};
+      for (const [gid, raw] of Object.entries(byGroup as Record<string, any>)) {
+        const paths = Array.isArray(raw?.lessonPaths)
+          ? raw.lessonPaths.map((p: string) =>
+              normalizeLessonMaterialPath(String(p)).replace(/\/+$/, ''),
+            )
+          : [];
+        next[gid] = {
+          lessonPaths: paths,
+          useShareFallback: Boolean(raw?.useShareFallback),
+        };
+      }
+      setReleasedLessonsByGroup(next);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const isStudentLessonReleased = useCallback(
+    (groupId: string, lessonPath: string, hasSharedMaterial: boolean) => {
+      const info = releasedLessonsByGroup[groupId];
+      const want = normalizeLessonMaterialPath(lessonPath).replace(/\/+$/, '');
+      if (!info) {
+        // Noch nicht geladen → nur anzeigen, wenn bereits Material-Freigaben existieren (Altverhalten)
+        return hasSharedMaterial;
+      }
+      if (info.useShareFallback) {
+        return hasSharedMaterial;
+      }
+      return info.lessonPaths.some((p) => p === want);
+    },
+    [releasedLessonsByGroup],
+  );
+
   // Neue Funktion zum Laden der zugeordneten Ordner (exakt wie im TeacherDashboard)
   const fetchAssignedFolders = async (groupId: string) => {
     try {
@@ -3083,6 +3137,18 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         if (!stundeWithLeinwand) return null;
       }
 
+      // Stunde erst sichtbar, wenn per Play gestartet (oder Legacy-Freigabe vor erstem Play)
+      if (
+        item.type === 'directory' &&
+        directoryIsStundeFolderForStudentTree(item.name, level)
+      ) {
+        const hasShared =
+          hasSharedFiles(item) || isLessonSharedInputShared(groupId, item.path);
+        if (!isStudentLessonReleased(groupId, item.path || '', hasShared)) {
+          return null;
+        }
+      }
+
       // Quiz-Dateien werden für Schüler als "Quiz starten" Button angezeigt
       if (item.type === 'file' && item.name.startsWith('Quiz')) {
         return (
@@ -3187,20 +3253,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         const toggleLesson = () => {
           const next = !lessonExpanded;
           setExpandedStudentLessons((prev) => ({ ...prev, [lessonKey]: next }));
-          if (next) {
-            void (async () => {
-              try {
-                await fetch('/api/file-shares/sync-lesson-folder', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ groupId, lessonPath: item.path }),
-                });
-                await fetchSharedFilesForGroup(groupId);
-              } catch {
-                /* ignore */
-              }
-            })();
-          }
         };
         const materialsBlock = (
           <StudentLessonMaterialsPanel
@@ -3210,7 +3262,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             sharedPaths={groupShared}
             groupId={groupId}
             showLeinwand={isLessonSharedInputShared(groupId, item.path)}
-            onOpenHomeworkTodo={(path) => setHomeworkTodoLessonPath(path)}
+            onOpenHomeworkTodo={(path, contextLabel) =>
+              setHomeworkTodoModal({ lessonPath: path, contextLabel })
+            }
           />
         );
         return (
@@ -5209,6 +5263,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             // Lade zugeordnete Ordner für jede Lerngruppe
             await fetchAssignedFolders(group.id);
           }
+          await fetchReleasedLessons();
           
           // Lade Mitarbeitsbewertungen
           await fetchParticipationData(userId);
@@ -5224,6 +5279,32 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     fetchLerngruppen();
   }, [userId]);
 
+  // Moderator-Status für Profil-Badge
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await apiGetSafe('/api/entry-ticket/current');
+        if (!res?.ok || cancelled) return;
+        const data = await res.json();
+        if (cancelled) return;
+        setIsClassModerator(data.isModerator === true);
+        setModeratorGroupName(
+          typeof data.groupName === 'string' && data.groupName ? data.groupName : null,
+        );
+      } catch {
+        /* ignore */
+      }
+    };
+    void poll();
+    const id = window.setInterval(poll, 15000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [userId]);
+
   // Lade Ordner neu, wenn das Fenster wieder fokussiert wird (z. B. nachdem Lehrer Ordner hinzugefügt hat)
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -5232,6 +5313,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         lerngruppen.forEach(group => {
           fetchAssignedFolders(group.id);
         });
+        void fetchReleasedLessons();
       }
     };
 
@@ -5241,6 +5323,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         lerngruppen.forEach(group => {
           fetchAssignedFolders(group.id);
         });
+        void fetchReleasedLessons();
       }
     };
 
@@ -5251,7 +5334,21 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [lerngruppen]);
+  }, [lerngruppen, fetchReleasedLessons]);
+
+  // Freigeschaltete Stunden regelmäßig aktualisieren (Play-Button der Lehrkraft)
+  useEffect(() => {
+    if (!userId || lerngruppen.length === 0) return;
+    const refresh = () => {
+      void fetchReleasedLessons();
+      lerngruppen.forEach((group) => {
+        void fetchSharedFilesForGroup(group.id);
+      });
+    };
+    refresh();
+    const id = window.setInterval(refresh, 5000);
+    return () => window.clearInterval(id);
+  }, [userId, lerngruppen, fetchReleasedLessons]);
 
   if (loading) return (
     <Box display="flex" justifyContent="center" alignItems="center" height="100vh" sx={{ bgcolor: colors.background }}>
@@ -5292,16 +5389,36 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
           }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, width: '100%', minWidth: 0, pr: 0.25 }}>
-              <DualStudentAvatars
-                name={studentName}
-                avatarEmoji={selectedEmoji}
-                avatarUrl={avatarUrl}
-                emojiLoading={isUpdatingEmoji}
-                photoLoading={isUploadingAvatarImage}
-                size={32}
-                onEmojiClick={handleOpenEmojiSelector}
-                onPhotoClick={handleOpenPhotoDialog}
-              />
+              <Box sx={{ position: 'relative', flexShrink: 0 }}>
+                <DualStudentAvatars
+                  name={studentName}
+                  avatarEmoji={selectedEmoji}
+                  avatarUrl={avatarUrl}
+                  emojiLoading={isUpdatingEmoji}
+                  photoLoading={isUploadingAvatarImage}
+                  size={32}
+                  onEmojiClick={handleOpenEmojiSelector}
+                  onPhotoClick={handleOpenPhotoDialog}
+                />
+                {isClassModerator && (
+                  <Box
+                    component="img"
+                    src={MODERATOR_ICON_SRC}
+                    alt="Moderator"
+                    title={moderatorGroupName ? `Moderator · ${moderatorGroupName}` : 'Klassen-Moderator'}
+                    sx={{
+                      position: 'absolute',
+                      top: -10,
+                      right: -12,
+                      width: 28,
+                      height: 28,
+                      objectFit: 'contain',
+                      filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.35))',
+                      pointerEvents: 'none',
+                    }}
+                  />
+                )}
+              </Box>
               <Box sx={{ flex: 1, minWidth: 8 }} />
               <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexShrink: 0, flexWrap: 'nowrap', ml: 'auto' }}>
                 {/* Exkursionsprotokoll */}
@@ -5487,71 +5604,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     </Box>
                   )}
                 </Box>
-                <SpielMenuButton
-                  compact={false}
-                  actions={{
-                    onAdventCalendar: () => navigate('/advent-calendar'),
-                    onRiddleYear: () => {
-                      const stats = getRiddleStats(userId);
-                      const result = getDailyRiddleForUser(userId, stats);
-                      if (result.isLocked) {
-                        alert('🔒 Du hast heute bereits 2 Versuche gehabt! Das Rätsel kommt morgen wieder. Komm morgen zurück für ein neues Rätsel!');
-                        return;
-                      }
-                      if (!result.riddle) {
-                        alert('🎉 Du hast das heutige Rätsel bereits gelöst! Komm morgen wieder für ein neues Rätsel!');
-                        return;
-                      }
-                      setCurrentRiddle(result.riddle);
-                      setAttemptsLeft(result.attemptsLeft);
-                      setRiddleAnswer('');
-                      setRiddleSolved(false);
-                      setShowHint(false);
-                      setShowNewYearRiddle(true);
-                    },
-                    onCarnivalGames: () => setShowCarnivalGames(true),
-                    onMinigameTest: () => setShowMinigame(true),
-                    onSevenMinuteWorkout: () => navigate('/seven-minute-workout'),
-                    onMovementStories: () => navigate('/bewegungsgeschichten-klassiker'),
-                    onKiGames: () => navigate('/ki-spiele'),
-                  }}
-                />
-                {/* Stories & Tagebücher */}
-                <Box sx={{ position: 'relative' }}>
-                  <IconButton
-                    onClick={() => navigate('/stories-tagebuecher')}
-                    sx={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 1.4,
-                      position: 'relative',
-                      overflow: 'visible',
-                      border: '2px solid rgba(255, 193, 7, 0.55)',
-                      background: 'linear-gradient(135deg, #fff8e1 0%, #ffca28 45%, #ff8f00 100%)',
-                      color: '#e65100',
-                      boxShadow: '0 2px 10px rgba(255, 152, 0, 0.45)',
-                      '&:hover': {
-                        transform: 'scale(1.06)',
-                        borderColor: 'rgba(255, 152, 0, 0.85)',
-                        boxShadow: '0 4px 14px rgba(255, 152, 0, 0.55)',
-                      },
-                      transition: 'all 0.2s ease',
-                    }}
-                    title="Stories & Tagebücher: Reiseberichte, Tagebuch, Fortbildung"
-                  >
-                    <WbSunnyIcon sx={{ fontSize: 28 }} />
-                  </IconButton>
-                </Box>
-                {/* Wall of Fame */}
-                <Box sx={{ position: 'relative' }}>
-                  <IconButton
-                    onClick={() => navigate('/wall-of-fame')}
-                    sx={wallOfFameStudentDashboardBtnSx}
-                    title="Wall of Fame – Unterrichtsbilder"
-                  >
-                    <PhotoLibraryIcon sx={{ fontSize: 20 }} />
-                  </IconButton>
-                </Box>
                 <Tooltip title="Logout">
                   <IconButton
                     onClick={onLogout}
@@ -5605,22 +5657,43 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 }}
               >
                 <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
-                  <DualStudentAvatars
-                    name={studentName}
-                    avatarEmoji={selectedEmoji}
-                    avatarUrl={avatarUrl}
-                    emojiLoading={isUpdatingEmoji}
-                    photoLoading={isUploadingAvatarImage}
-                    large
-                    onEmojiClick={handleOpenEmojiSelector}
-                    onPhotoClick={handleOpenPhotoDialog}
-                  />
+                  <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+                    <DualStudentAvatars
+                      name={studentName}
+                      avatarEmoji={selectedEmoji}
+                      avatarUrl={avatarUrl}
+                      emojiLoading={isUpdatingEmoji}
+                      photoLoading={isUploadingAvatarImage}
+                      large
+                      onEmojiClick={handleOpenEmojiSelector}
+                      onPhotoClick={handleOpenPhotoDialog}
+                    />
+                    {isClassModerator && (
+                      <Box
+                        component="img"
+                        src={MODERATOR_ICON_SRC}
+                        alt="Moderator"
+                        title={moderatorGroupName ? `Moderator · ${moderatorGroupName}` : 'Klassen-Moderator'}
+                        sx={{
+                          position: 'absolute',
+                          top: -14,
+                          right: -18,
+                          width: 56,
+                          height: 56,
+                          objectFit: 'contain',
+                          filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.3))',
+                          pointerEvents: 'none',
+                          zIndex: 2,
+                        }}
+                      />
+                    )}
+                  </Box>
                 </Box>
                 <ReisebegleiterAvatarBadge refreshKey={journeyRefreshKey} />
               </Box>
 
                 {/* Character Name and Role */}
-                <Box sx={{ textAlign: 'center', mb: 2.1 }}>
+                <Box sx={{ textAlign: 'center', mb: 1.1 }}>
                   <Typography variant="h5" component="h2" sx={{ 
                     fontWeight: 'bold', 
                     color: '#1976d2', 
@@ -5629,9 +5702,70 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   }}>
                     {studentName || "Schüler"}
                   </Typography>
-
+                  {isClassModerator && (
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: '#c62828',
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 0.75,
+                      }}
+                    >
+                      <Box
+                        component="img"
+                        src={MODERATOR_ICON_SRC}
+                        alt=""
+                        sx={{ width: 22, height: 22, objectFit: 'contain' }}
+                      />
+                      Moderator{moderatorGroupName ? ` · ${moderatorGroupName}` : ''}
+                    </Typography>
+                  )}
                 </Box>
 
+                {/* Noten / EPO / Kacheln — vorerst nur Aufklapp-Häkchen (noch nicht aktiv) */}
+                <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1.4 }}>
+                  <Tooltip title="Noten & Übersicht — kommt bald wieder">
+                    <Box
+                      component="span"
+                      aria-label="Noten und Übersicht (vorübergehend geschlossen)"
+                      aria-disabled
+                      sx={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 0.35,
+                        px: 1,
+                        py: 0.35,
+                        borderRadius: 1.25,
+                        border: '1px solid rgba(158,158,158,0.45)',
+                        bgcolor: 'rgba(245,245,245,0.95)',
+                        color: '#9e9e9e',
+                        opacity: 0.72,
+                        cursor: 'default',
+                        userSelect: 'none',
+                        filter: 'grayscale(0.35)',
+                      }}
+                    >
+                      <Typography
+                        component="span"
+                        sx={{
+                          fontSize: '0.68rem',
+                          fontWeight: 650,
+                          letterSpacing: 0.02,
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        Noten · EPO · mehr
+                      </Typography>
+                      <ExpandMoreIcon sx={{ fontSize: 18, opacity: 0.85 }} />
+                    </Box>
+                  </Tooltip>
+                </Box>
+
+                {studentStatsSectionEnabled && (
+                  <>
                 {/* Character Stats */}
                 <Grid container spacing={1.4} sx={{ mb: 2.1 }}>
                   <Grid item xs={4}>
@@ -5848,9 +5982,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     </Grid>
                   </Grid>
                 )}
+                  </>
+                )}
 
                 {/* Noten Anzeige */}
-                {lerngruppen.length > 0 && gradesExpanded && (
+                {studentStatsSectionEnabled && lerngruppen.length > 0 && gradesExpanded && (
                   <Box sx={{ mt: 2.1 }}>
                     {gradesLoading ? (
                           <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
@@ -5922,7 +6058,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 )}
 
                 {/* Mitarbeitsbewertungen Anzeige */}
-                {lerngruppen.length > 0 && participationExpanded && (
+                {studentStatsSectionEnabled && lerngruppen.length > 0 && participationExpanded && (
                   <Box sx={{ mt: 2.1 }}>
                     {participationLoading ? (
                           <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
@@ -6508,11 +6644,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 
       {/* Flashcard Learning Modal */}
       {/* Inbox Modal */}
-      {homeworkTodoLessonPath ? (
+      {homeworkTodoModal ? (
         <PresentationHomeworkTodoModal
           open
-          lessonPath={homeworkTodoLessonPath}
-          onClose={() => setHomeworkTodoLessonPath(null)}
+          lessonPath={homeworkTodoModal.lessonPath}
+          contextLabel={homeworkTodoModal.contextLabel}
+          onClose={() => setHomeworkTodoModal(null)}
           onUploadSuccess={() => setJourneyRefreshKey((k) => k + 1)}
         />
       ) : null}

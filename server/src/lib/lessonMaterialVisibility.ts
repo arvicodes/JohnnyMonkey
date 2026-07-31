@@ -6,10 +6,10 @@ const LESSON_IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|svg|bmp|heic|avif|tiff?)$/i;
 const LESSON_INPUT_DOCS_RE = /\.(pdf|pptx?|odp|docx?|odt|rtf)$/i;
 
 export function isLessonPresentationSystemFile(name: string): boolean {
-  const n = (name || '').trim();
+  const n = ((name || '').trim().split(/[/\\]/).pop() || '');
   if (!n) return false;
-  if (/^Praesentation\.(deck|annotations)(\.[^/\\]+)*\.json$/i.test(n)) return true;
-  return false;
+  // Praesentation.deck.json, .deck.original.json, .deck.*.json.bak*, annotations, version.*
+  return /^Praesentation\.(deck|annotations|version)(\.|$)/i.test(n);
 }
 
 export function isLessonPresentationMaterialPdf(name: string): boolean {

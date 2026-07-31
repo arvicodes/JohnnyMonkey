@@ -1,8 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Box, Dialog, DialogContent, DialogTitle, Typography } from '@mui/material';
+import { Box, Dialog, DialogContent, DialogTitle, IconButton, Typography } from '@mui/material';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { DialogCloseIconButton } from './ui/dialog-close-icon-button';
 import { apiGetSafe } from '../lib/api';
 import { entryTicketHeroSrc } from '../lib/ticketHeroImages';
+import { gradeFromGroupNames } from '../lib/entryTicketGrade';
+import { MODERATOR_ICON_SRC } from '../lib/moderatorIcon';
 import {
   StudentExitTicketRender,
   TEMPLATE_IMAGE_SRC as EXIT_TICKET_TEMPLATE_IMAGE_SRC,
@@ -48,6 +52,8 @@ function entryTicketModalDismissSig(
  * sonst fehlt Live-Feedback auf anderen Routen (Quiz, Entry-Ticket-Seite, …).
  */
 export default function StudentLiveTicketAlerts({ userId }: { userId: string }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [exitTicketModalOpen, setExitTicketModalOpen] = useState(false);
   const [exitTicketModalTemplate, setExitTicketModalTemplate] = useState<ExitTicketTemplate | null>(null);
   const [exitTicketModalPublishedAt, setExitTicketModalPublishedAt] = useState<string | null>(null);
@@ -59,6 +65,12 @@ export default function StudentLiveTicketAlerts({ userId }: { userId: string }) 
   const [entryTicketModalTeacherId, setEntryTicketModalTeacherId] = useState<string | null>(null);
   const [entryTicketModalLessonPath, setEntryTicketModalLessonPath] = useState<string | null>(null);
   const [entryTicketHeroImageIndex, setEntryTicketHeroImageIndex] = useState(0);
+  const [entryTicketIsModerator, setEntryTicketIsModerator] = useState(false);
+  const [entryTicketGroupId, setEntryTicketGroupId] = useState<string | null>(null);
+  const [entryTicketGroupName, setEntryTicketGroupName] = useState<string | null>(null);
+  const [entryTicketGrade, setEntryTicketGrade] = useState<string | null>(null);
+  const [entryTicketTaskSeed, setEntryTicketTaskSeed] = useState<number | null>(null);
+  const [entryTicketMaterialLessonPath, setEntryTicketMaterialLessonPath] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -106,6 +118,8 @@ export default function StudentLiveTicketAlerts({ userId }: { userId: string }) 
 
   const pollEntryTicketForModal = useCallback(async () => {
     if (!userId || !localStorage.getItem('loginCode')?.trim()) return;
+    // Auf der Ticket-Seite kein Startbild-Popup
+    if (location.pathname === '/entry-ticket') return;
     try {
       const res = await apiGetSafe('/api/entry-ticket/current');
       if (!res?.ok) return;
@@ -124,15 +138,52 @@ export default function StudentLiveTicketAlerts({ userId }: { userId: string }) 
       if (dismissed === sig) return;
 
       const hi = data.heroImageIndex;
-      setEntryTicketHeroImageIndex(typeof hi === 'number' ? hi : 0);
+      const heroIndex = typeof hi === 'number' ? hi : 0;
+
+      setEntryTicketHeroImageIndex(heroIndex);
       setEntryTicketModalStartedAt(startedAt);
       setEntryTicketModalTeacherId(tid || null);
       setEntryTicketModalLessonPath(lp || null);
+      setEntryTicketIsModerator(data.isModerator === true);
+      setEntryTicketGroupId(
+        typeof data.learningGroupId === 'string' && data.learningGroupId ? data.learningGroupId : null,
+      );
+      setEntryTicketGroupName(typeof data.groupName === 'string' ? data.groupName : null);
+      setEntryTicketGrade(typeof data.grade === 'string' && data.grade ? data.grade : null);
+      setEntryTicketTaskSeed(typeof data.taskSeed === 'number' ? data.taskSeed : null);
+      setEntryTicketMaterialLessonPath(
+        typeof data.materialLessonPath === 'string' && data.materialLessonPath
+          ? data.materialLessonPath
+          : null,
+      );
       setEntryTicketModalOpen(true);
     } catch {
       // ignore
     }
-  }, [userId]);
+  }, [userId, location.pathname]);
+
+  const openFullEntryTicketAsModerator = () => {
+    const sig = entryTicketModalDismissSig(
+      entryTicketModalStartedAt,
+      entryTicketModalTeacherId,
+      entryTicketModalLessonPath,
+    );
+    sessionStorage.setItem(ENTRY_TICKET_MODAL_DISMISS_KEY, sig);
+    setEntryTicketModalOpen(false);
+
+    const band =
+      entryTicketGrade ||
+      String(gradeFromGroupNames(entryTicketGroupName ? [entryTicketGroupName] : []));
+    const qs = new URLSearchParams();
+    qs.set('grade', band);
+    qs.set('autostart', '1');
+    qs.set('r', String(Date.now()));
+    qs.set('hero', String(entryTicketHeroImageIndex));
+    if (entryTicketTaskSeed != null) qs.set('seed', String(entryTicketTaskSeed));
+    if (entryTicketGroupId) qs.set('groupId', entryTicketGroupId);
+    if (entryTicketMaterialLessonPath) qs.set('lessonPath', entryTicketMaterialLessonPath);
+    navigate(`/entry-ticket?${qs.toString()}`);
+  };
 
   useEffect(() => {
     if (!userId) return;
@@ -320,9 +371,11 @@ export default function StudentLiveTicketAlerts({ userId }: { userId: string }) 
             mx: { xs: 1, sm: 2 },
             mb: { xs: 1, sm: 2 },
             borderRadius: 2,
-            boxShadow: '0 16px 48px rgba(30, 136, 229, 0.22)',
+            boxShadow: entryTicketIsModerator
+              ? '0 16px 48px rgba(198, 40, 40, 0.28)'
+              : '0 16px 48px rgba(30, 136, 229, 0.22)',
             border: '1px solid',
-            borderColor: 'rgba(30, 136, 229, 0.2)',
+            borderColor: entryTicketIsModerator ? 'rgba(198, 40, 40, 0.35)' : 'rgba(30, 136, 229, 0.2)',
             bgcolor: 'grey.100',
           },
         }}
@@ -354,6 +407,50 @@ export default function StudentLiveTicketAlerts({ userId }: { userId: string }) 
               objectPosition: 'center',
             }}
           />
+          {entryTicketIsModerator && (
+            <>
+              <Box
+                component="img"
+                src={MODERATOR_ICON_SRC}
+                alt="Moderator"
+                sx={{
+                  position: 'absolute',
+                  top: 12,
+                  left: 12,
+                  zIndex: 2,
+                  width: { xs: 64, sm: 80 },
+                  height: { xs: 64, sm: 80 },
+                  objectFit: 'contain',
+                  filter: 'drop-shadow(0 3px 10px rgba(0,0,0,0.4))',
+                  pointerEvents: 'none',
+                }}
+              />
+              <IconButton
+                onClick={openFullEntryTicketAsModerator}
+                aria-label="Entry Ticket starten"
+                title="Entry Ticket starten"
+                sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  zIndex: 3,
+                  transform: 'translate(-50%, -50%)',
+                  width: { xs: 72, sm: 88 },
+                  height: { xs: 72, sm: 88 },
+                  bgcolor: 'rgba(198, 40, 40, 0.92)',
+                  color: '#fff',
+                  border: '3px solid rgba(255,255,255,0.9)',
+                  boxShadow: '0 6px 24px rgba(0,0,0,0.35)',
+                  '&:hover': {
+                    bgcolor: '#b71c1c',
+                    transform: 'translate(-50%, -50%) scale(1.06)',
+                  },
+                }}
+              >
+                <PlayArrowIcon sx={{ fontSize: { xs: 42, sm: 52 } }} />
+              </IconButton>
+            </>
+          )}
           <Box
             sx={{
               position: 'absolute',
@@ -364,7 +461,9 @@ export default function StudentLiveTicketAlerts({ userId }: { userId: string }) 
               pt: 8,
               pb: 2.5,
               px: 2.5,
-              background: 'linear-gradient(to top, rgba(13,71,161,0.88) 0%, rgba(13,71,161,0.35) 55%, transparent 100%)',
+              background: entryTicketIsModerator
+                ? 'linear-gradient(to top, rgba(183,28,28,0.9) 0%, rgba(183,28,28,0.35) 55%, transparent 100%)'
+                : 'linear-gradient(to top, rgba(13,71,161,0.88) 0%, rgba(13,71,161,0.35) 55%, transparent 100%)',
             }}
           >
             <Typography
@@ -380,6 +479,7 @@ export default function StudentLiveTicketAlerts({ userId }: { userId: string }) 
               }}
             >
               Entry Ticket
+              {entryTicketIsModerator ? ' · Moderator' : ''}
             </Typography>
           </Box>
           <DialogCloseIconButton

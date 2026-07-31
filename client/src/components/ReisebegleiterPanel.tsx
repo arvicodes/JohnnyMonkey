@@ -736,7 +736,15 @@ export function ReisebegleiterDetailContent({
 type BadgeProps = {
   refreshKey?: number;
   compact?: boolean;
+  /**
+   * Temporär: Badge sichtbar, aber ausgegraut und ohne Interaktion
+   * (Feature kommt später wieder).
+   */
+  paused?: boolean;
 };
+
+/** Bis das Feature wieder aktiv ist: Platzhalter ausgegraut lassen. */
+const REISEBEGLEITER_PAUSED_BY_DEFAULT = true;
 
 const BADGE_SIZES = {
   default: { outer: 56, inner: 50, core: 34, emoji: '1.28rem', spark: 6, left: 6, bottom: 6 },
@@ -746,14 +754,24 @@ const BADGE_SIZES = {
 /**
  * Kleines Ei/Begleiter-Icon am Avatar, Details im Popover.
  */
-export function ReisebegleiterAvatarBadge({ refreshKey = 0, compact = false }: BadgeProps) {
+export function ReisebegleiterAvatarBadge({
+  refreshKey = 0,
+  compact = false,
+  paused = REISEBEGLEITER_PAUSED_BY_DEFAULT,
+}: BadgeProps) {
   const [state, setState] = useState<JourneyState | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!paused);
   const [error, setError] = useState<string | null>(null);
   const [careLoading, setCareLoading] = useState(false);
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
 
   const load = useCallback(async () => {
+    if (paused) {
+      setLoading(false);
+      setError(null);
+      setState(null);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -770,7 +788,7 @@ export function ReisebegleiterAvatarBadge({ refreshKey = 0, compact = false }: B
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [paused]);
 
   useEffect(() => {
     load();
@@ -792,36 +810,42 @@ export function ReisebegleiterAvatarBadge({ refreshKey = 0, compact = false }: B
     }
   };
 
-  if (error || (!loading && !state)) {
+  if (!paused && (error || (!loading && !state))) {
     return null;
   }
 
   const stage = state ? STAGE_COPY[state.companionStage] || STAGE_COPY.JOURNEY : STAGE_COPY.JOURNEY;
-  const ringColor = state ? ringAccentColor(state.companionStage) : '#1976d2';
-  const conicBg = state ? previewRingConicGradient(state) : '';
-  const isCompass = state?.companionStage === 'JOURNEY';
+  const ringColor = paused ? '#9e9e9e' : state ? ringAccentColor(state.companionStage) : '#1976d2';
+  const conicBg = !paused && state ? previewRingConicGradient(state) : '';
+  const isCompass = !paused && state?.companionStage === 'JOURNEY';
   const sz = compact ? BADGE_SIZES.compact : BADGE_SIZES.default;
+  const interactive = !paused && !(loading && !state);
 
   return (
     <>
       <Tooltip
         title={
-          state
-            ? `${stage.title} · W${state.weitePoints} F${state.funkenPoints} H${state.hingabePoints}`
-            : 'Reisebegleiter'
+          paused
+            ? 'Reisebegleiter — kommt bald wieder'
+            : state
+              ? `${stage.title} · W${state.weitePoints} F${state.funkenPoints} H${state.hingabePoints}`
+              : 'Reisebegleiter'
         }
         placement="left"
         enterDelay={400}
       >
         <Box
           role="button"
-          tabIndex={0}
-          aria-label="Reisebegleiter, Details anzeigen"
+          tabIndex={interactive ? 0 : -1}
+          aria-label={paused ? 'Reisebegleiter (vorübergehend pausiert)' : 'Reisebegleiter, Details anzeigen'}
+          aria-disabled={paused || undefined}
           onClick={(e) => {
+            if (!interactive) return;
             e.stopPropagation();
             setAnchor(e.currentTarget);
           }}
           onKeyDown={(e) => {
+            if (!interactive) return;
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
               e.stopPropagation();
@@ -837,30 +861,32 @@ export function ReisebegleiterAvatarBadge({ refreshKey = 0, compact = false }: B
             height: sz.outer,
             overflow: 'visible',
             borderRadius: '50%',
-            bgcolor: 'rgba(255,255,255,0.98)',
-            boxShadow:
-              '0 1px 2px rgba(15,23,42,0.06), 0 4px 12px rgba(15,23,42,0.1), inset 0 1px 0 rgba(255,255,255,0.9)',
-            border: '1px solid rgba(255,255,255,0.9)',
-            outline: '2px solid rgba(15, 23, 42, 0.07)',
+            bgcolor: paused ? 'rgba(245,245,245,0.98)' : 'rgba(255,255,255,0.98)',
+            boxShadow: paused
+              ? '0 1px 3px rgba(15,23,42,0.06)'
+              : '0 1px 2px rgba(15,23,42,0.06), 0 4px 12px rgba(15,23,42,0.1), inset 0 1px 0 rgba(255,255,255,0.9)',
+            border: paused ? '1px solid rgba(158,158,158,0.45)' : '1px solid rgba(255,255,255,0.9)',
+            outline: paused ? '2px solid rgba(158, 158, 158, 0.2)' : '2px solid rgba(15, 23, 42, 0.07)',
             outlineOffset: 0,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            cursor: loading && !state ? 'default' : 'pointer',
-            pointerEvents: loading && !state ? 'none' : 'auto',
-            opacity: loading && !state ? 0.9 : 1,
+            cursor: interactive ? 'pointer' : 'default',
+            pointerEvents: 'auto',
+            opacity: paused ? 0.48 : loading && !state ? 0.9 : 1,
+            filter: paused ? 'grayscale(1)' : 'none',
             transition: 'transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s ease',
-            '&:hover': {
-              transform: loading && !state ? 'none' : 'scale(1.05)',
-              boxShadow:
-                loading && !state
-                  ? undefined
-                  : `0 4px 16px ${ringColor}35, 0 2px 8px rgba(15,23,42,0.1)`,
-              outline: `2px solid ${ringColor}33`,
-            },
+            '&:hover': interactive
+              ? {
+                  transform: 'scale(1.05)',
+                  boxShadow: `0 4px 16px ${ringColor}35, 0 2px 8px rgba(15,23,42,0.1)`,
+                  outline: `2px solid ${ringColor}33`,
+                }
+              : {},
           }}
         >
-          {!loading &&
+          {!paused &&
+            !loading &&
             state &&
             PREVIEW_SPARKS.map((s) => {
               const th = Math.max(1, state.journeyThreshold);
@@ -890,7 +916,7 @@ export function ReisebegleiterAvatarBadge({ refreshKey = 0, compact = false }: B
                 />
               );
             })}
-          {loading && !state ? (
+          {!paused && loading && !state ? (
             <CircularProgress size={compact ? 18 : 24} thickness={4} sx={{ color: '#1976d2' }} />
           ) : (
             <Box
@@ -911,19 +937,21 @@ export function ReisebegleiterAvatarBadge({ refreshKey = 0, compact = false }: B
                 thickness={3.4}
                 sx={{
                   position: 'absolute',
-                  color: 'rgba(15, 23, 42, 0.09)',
+                  color: paused ? 'rgba(158, 158, 158, 0.28)' : 'rgba(15, 23, 42, 0.09)',
                 }}
               />
-              <Box
-                aria-hidden
-                sx={{
-                  position: 'absolute',
-                  width: sz.inner,
-                  height: sz.inner,
-                  borderRadius: '50%',
-                  background: conicBg,
-                }}
-              />
+              {!paused && (
+                <Box
+                  aria-hidden
+                  sx={{
+                    position: 'absolute',
+                    width: sz.inner,
+                    height: sz.inner,
+                    borderRadius: '50%',
+                    background: conicBg,
+                  }}
+                />
+              )}
               <Box
                 aria-hidden
                 sx={{
@@ -931,7 +959,7 @@ export function ReisebegleiterAvatarBadge({ refreshKey = 0, compact = false }: B
                   width: sz.core,
                   height: sz.core,
                   borderRadius: '50%',
-                  bgcolor: 'rgba(255,255,255,0.98)',
+                  bgcolor: paused ? 'rgba(238,238,238,0.98)' : 'rgba(255,255,255,0.98)',
                   zIndex: 1,
                   boxShadow: 'inset 0 0 0 1px rgba(15,23,42,0.04)',
                 }}
@@ -947,94 +975,96 @@ export function ReisebegleiterAvatarBadge({ refreshKey = 0, compact = false }: B
                   ...(isCompass ? compassEmojiMotion : {}),
                 }}
               >
-                {stage.emoji}
+                {paused ? '🧭' : stage.emoji}
               </Typography>
             </Box>
           )}
         </Box>
       </Tooltip>
 
-      <Popover
-        open={Boolean(anchor)}
-        anchorEl={anchor}
-        onClose={() => setAnchor(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-        slotProps={{
-          paper: {
-            sx: {
-              maxWidth: 440,
-              width: 'min(92vw, 440px)',
-              mt: 0.6,
-              ml: 0,
-              borderRadius: 3,
-              overflow: 'hidden',
-              border: '1px solid rgba(255, 255, 255, 0.35)',
-              boxShadow: '0 20px 48px rgba(15, 23, 42, 0.22), 0 6px 18px rgba(15, 23, 42, 0.12)',
-              bgcolor: 'transparent',
+      {!paused && (
+        <Popover
+          open={Boolean(anchor)}
+          anchorEl={anchor}
+          onClose={() => setAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+          slotProps={{
+            paper: {
+              sx: {
+                maxWidth: 440,
+                width: 'min(92vw, 440px)',
+                mt: 0.6,
+                ml: 0,
+                borderRadius: 3,
+                overflow: 'hidden',
+                border: '1px solid rgba(255, 255, 255, 0.35)',
+                boxShadow: '0 20px 48px rgba(15, 23, 42, 0.22), 0 6px 18px rgba(15, 23, 42, 0.12)',
+                bgcolor: 'transparent',
+              },
             },
-          },
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {state && (
-          <Box
-            sx={{
-              position: 'relative',
-              borderRadius: 3,
-              overflow: 'hidden',
-              backgroundImage: `url(${REISEBEGLEITER_BG})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center 40%',
-            }}
-          >
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {state && (
             <Box
               sx={{
-                position: 'absolute',
-                inset: 0,
-                background:
-                  'linear-gradient(180deg, rgba(15, 40, 70, 0.45) 0%, rgba(10, 30, 55, 0.58) 100%)',
-                pointerEvents: 'none',
+                position: 'relative',
+                borderRadius: 3,
+                overflow: 'hidden',
+                backgroundImage: `url(${REISEBEGLEITER_BG})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center 40%',
               }}
-            />
-            <Box sx={{ position: 'relative', zIndex: 1, p: 1.75 }}>
-              <Typography
+            >
+              <Box
                 sx={{
-                  color: '#fff',
-                  fontWeight: 800,
-                  letterSpacing: '-0.02em',
-                  fontSize: '1.15rem',
-                  lineHeight: 1.3,
-                  mb: 1.25,
-                  textShadow: '0 2px 8px rgba(0,0,0,0.35)',
+                  position: 'absolute',
+                  inset: 0,
+                  background:
+                    'linear-gradient(180deg, rgba(15, 40, 70, 0.45) 0%, rgba(10, 30, 55, 0.58) 100%)',
+                  pointerEvents: 'none',
                 }}
-              >
-                Reisebegleiter
-              </Typography>
-              <ReisebegleiterDetailContent
-                state={state}
-                careLoading={careLoading}
-                onCare={handleCare}
-                scenic
-                compact
               />
-              <Box sx={{ ...glassCardSx, mt: 1.25, py: 1.1, px: 1.35, textAlign: 'center' }}>
+              <Box sx={{ position: 'relative', zIndex: 1, p: 1.75 }}>
                 <Typography
                   sx={{
-                    fontSize: '0.72rem',
-                    color: 'rgba(51, 65, 85, 0.88)',
-                    fontStyle: 'italic',
-                    lineHeight: 1.45,
-                    fontWeight: 500,
+                    color: '#fff',
+                    fontWeight: 800,
+                    letterSpacing: '-0.02em',
+                    fontSize: '1.15rem',
+                    lineHeight: 1.3,
+                    mb: 1.25,
+                    textShadow: '0 2px 8px rgba(0,0,0,0.35)',
                   }}
                 >
-                  {scenicFooterQuote}
+                  Reisebegleiter
                 </Typography>
+                <ReisebegleiterDetailContent
+                  state={state}
+                  careLoading={careLoading}
+                  onCare={handleCare}
+                  scenic
+                  compact
+                />
+                <Box sx={{ ...glassCardSx, mt: 1.25, py: 1.1, px: 1.35, textAlign: 'center' }}>
+                  <Typography
+                    sx={{
+                      fontSize: '0.72rem',
+                      color: 'rgba(51, 65, 85, 0.88)',
+                      fontStyle: 'italic',
+                      lineHeight: 1.45,
+                      fontWeight: 500,
+                    }}
+                  >
+                    {scenicFooterQuote}
+                  </Typography>
+                </Box>
               </Box>
             </Box>
-          </Box>
-        )}
-      </Popover>
+          )}
+        </Popover>
+      )}
     </>
   );
 }

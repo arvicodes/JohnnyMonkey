@@ -5,6 +5,7 @@ import fs from 'fs';
 import { PrismaClient } from '@prisma/client';
 import {
   DEFAULT_JOHNNY_PERIOD_TIMES,
+  getBerlinNow,
   parsePeriodTimes,
   periodTimesToJson,
 } from '../lib/periodTimes';
@@ -12,11 +13,64 @@ import {
   ensureTimetableUploadDir,
   TIMETABLE_UPLOAD_DIR,
 } from '../services/autoLessonScheduler';
+import { syncLessonFolderShares } from '../services/lessonFolderShareSync';
 
 const router = Router();
 const prisma = new PrismaClient();
 
+/** periodNumber 0 = manuell gestartete Stunde (Play-Button im Dashboard) */
+const MANUAL_PERIOD_NUMBER = 0;
+const MANUAL_SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
+
 ensureTimetableUploadDir();
+
+function normalizeLessonPathKey(p: string): string {
+  return String(p ?? '')
+    .normalize('NFC')
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/\/+/g, '/')
+    .replace(/^\/+|\/+$/g, '');
+}
+
+/** Stunden-Geschwister wie im Client (previousLessonFolder). */
+function isLessonSiblingFolderName(name: string): boolean {
+  const t = (name || '').trim();
+  if (!t || t.startsWith('.')) return false;
+  if (/^Rohdat/i.test(t) || /Sicherheitskopie/i.test(t) || /BACKUP/i.test(t)) return false;
+  // Themenblock „01 Basiswissen“ — keine Stunde
+  if (/^\d+\s+/.test(t) && !/^\d+\.\d+/.test(t)) return false;
+  if (/^Kapitel\b/i.test(t)) return false;
+  return true;
+}
+
+/**
+ * Play freigibt Stunde N → SuS sehen auch 01…N−1 im selben Ordner
+ * (sonst fehlt z. B. 01.01, wenn nur 01.02/01.03 per Play gestartet wurden).
+ */
+function expandWithPreviousLessonFolders(lessonPath: string): string[] {
+  const raw = String(lessonPath || '')
+    .replace(/\\/g, '/')
+    .replace(/\/+$/, '');
+  if (!raw) return [];
+  const parent = path.dirname(raw);
+  const currentName = path.basename(raw);
+  if (!parent || parent === '.' || parent === raw) return [raw];
+  let names: string[] = [];
+  try {
+    if (!fs.existsSync(parent)) return [raw];
+    names = fs
+      .readdirSync(parent, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && isLessonSiblingFolderName(e.name))
+      .map((e) => e.name)
+      .sort((a, b) => a.localeCompare(b, 'de', { numeric: true }));
+  } catch {
+    return [raw];
+  }
+  const idx = names.indexOf(currentName);
+  if (idx < 0) return [raw];
+  return names.slice(0, idx + 1).map((name) => path.join(parent, name).replace(/\\/g, '/'));
+}
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
@@ -330,6 +384,208 @@ router.get('/active-lessons/teacher', async (req: Request, res: Response) => {
     res.json({ sessions });
   } catch (error) {
     console.error('GET /teacher-schedule/active-lessons/teacher:', error);
+    res.status(500).json({ error: 'Serverfehler' });
+  }
+});
+
+/**
+ * Für Schüler: welche Stundenordner bereits gestartet wurden (Play / Scheduler).
+ * ACTIVE + CLOSED → sichtbar; OPEN noch nicht. Ohne Sessions → Fallback auf FileShares.
+ */
+router.get('/released-lessons/student', async (req: Request, res: Response) => {
+  try {
+    const loginCode = req.headers['x-login-code'] as string;
+    if (!loginCode) return res.status(401).json({ error: 'Nicht autorisiert' });
+
+    const student = await prisma.user.findUnique({
+      where: { loginCode },
+      include: { learningGroups: { select: { id: true } } },
+    });
+    if (!student || student.role !== 'STUDENT') {
+      return res.status(401).json({ error: 'Nicht autorisiert' });
+    }
+
+    const groupIds = student.learningGroups.map((g) => g.id);
+    if (groupIds.length === 0) {
+      return res.json({ byGroup: {} });
+    }
+
+    const sessions = await prisma.autoLessonSession.findMany({
+      where: {
+        groupId: { in: groupIds },
+        status: { in: ['ACTIVE', 'CLOSED'] },
+        lessonPath: { not: null },
+      },
+      select: { groupId: true, lessonPath: true, status: true },
+    });
+
+    const byGroup: Record<
+      string,
+      { lessonPaths: string[]; useShareFallback: boolean }
+    > = {};
+
+    for (const gid of groupIds) {
+      byGroup[gid] = { lessonPaths: [], useShareFallback: true };
+    }
+
+    const pathSets: Record<string, Set<string>> = {};
+    for (const s of sessions) {
+      if (!s.lessonPath) continue;
+      const expanded = expandWithPreviousLessonFolders(s.lessonPath);
+      if (!pathSets[s.groupId]) pathSets[s.groupId] = new Set();
+      for (const lessonFolder of expanded) {
+        const norm = normalizeLessonPathKey(lessonFolder);
+        if (norm) pathSets[s.groupId].add(norm);
+      }
+      // Sobald eine Gruppe mindestens eine gestartete Stunde hat → kein Share-Fallback mehr
+      if (byGroup[s.groupId] && expanded.length > 0) {
+        byGroup[s.groupId].useShareFallback = false;
+      }
+    }
+
+    for (const gid of Object.keys(pathSets)) {
+      byGroup[gid] = {
+        lessonPaths: Array.from(pathSets[gid]),
+        useShareFallback: false,
+      };
+    }
+
+    res.json({ byGroup });
+  } catch (error) {
+    console.error('GET /teacher-schedule/released-lessons/student:', error);
+    res.status(500).json({ error: 'Serverfehler' });
+  }
+});
+
+/** Manueller Stundenstart (Play-Button): Session ACTIVE + Materialien freigeben */
+router.post('/lessons/start', async (req: Request, res: Response) => {
+  try {
+    const teacherId = await getTeacherIdFromLogin(req);
+    if (!teacherId) return res.status(401).json({ error: 'Nicht autorisiert' });
+
+    const groupId = typeof req.body?.groupId === 'string' ? req.body.groupId.trim() : '';
+    const lessonPath = typeof req.body?.lessonPath === 'string' ? req.body.lessonPath.trim() : '';
+    if (!groupId || !lessonPath) {
+      return res.status(400).json({ error: 'groupId und lessonPath sind erforderlich' });
+    }
+
+    const group = await prisma.learningGroup.findFirst({
+      where: { id: groupId, teacherId },
+      select: { id: true, name: true },
+    });
+    if (!group) return res.status(403).json({ error: 'Gruppe nicht gefunden' });
+
+    const { date, dayOfWeek } = getBerlinNow();
+    const now = new Date();
+    const endsAt = new Date(now.getTime() + MANUAL_SESSION_DURATION_MS);
+
+    const session = await prisma.autoLessonSession.upsert({
+      where: {
+        groupId_sessionDate_periodNumber: {
+          groupId,
+          sessionDate: date,
+          periodNumber: MANUAL_PERIOD_NUMBER,
+        },
+      },
+      create: {
+        teacherId,
+        groupId,
+        sessionDate: date,
+        dayOfWeek: dayOfWeek >= 1 && dayOfWeek <= 7 ? dayOfWeek : 1,
+        periodNumber: MANUAL_PERIOD_NUMBER,
+        lessonPath,
+        opensAt: now,
+        startsAt: now,
+        endsAt,
+        closesAt: endsAt,
+        status: 'ACTIVE',
+      },
+      update: {
+        teacherId,
+        lessonPath,
+        opensAt: now,
+        startsAt: now,
+        endsAt,
+        closesAt: endsAt,
+        status: 'ACTIVE',
+        updatedAt: now,
+      },
+      include: {
+        group: { select: { id: true, name: true, iconEmoji: true, color: true } },
+      },
+    });
+
+    try {
+      await syncLessonFolderShares(groupId, lessonPath);
+    } catch (shareErr) {
+      console.error('POST /teacher-schedule/lessons/start share sync:', shareErr);
+    }
+
+    res.json({ session });
+  } catch (error) {
+    console.error('POST /teacher-schedule/lessons/start:', error);
+    res.status(500).json({ error: 'Serverfehler' });
+  }
+});
+
+/** Manuelles Stundenende (Stop-Button) */
+router.post('/lessons/end', async (req: Request, res: Response) => {
+  try {
+    const teacherId = await getTeacherIdFromLogin(req);
+    if (!teacherId) return res.status(401).json({ error: 'Nicht autorisiert' });
+
+    const groupId = typeof req.body?.groupId === 'string' ? req.body.groupId.trim() : '';
+    const lessonPathRaw = typeof req.body?.lessonPath === 'string' ? req.body.lessonPath.trim() : '';
+    const sessionId = typeof req.body?.sessionId === 'string' ? req.body.sessionId.trim() : '';
+
+    if (!sessionId && !groupId) {
+      return res.status(400).json({ error: 'sessionId oder groupId ist erforderlich' });
+    }
+
+    let session = sessionId
+      ? await prisma.autoLessonSession.findFirst({
+          where: { id: sessionId, teacherId, status: { in: ['OPEN', 'ACTIVE'] } },
+        })
+      : null;
+
+    if (!session && groupId) {
+      const { date } = getBerlinNow();
+      const want = lessonPathRaw ? normalizeLessonPathKey(lessonPathRaw) : '';
+      const candidates = await prisma.autoLessonSession.findMany({
+        where: {
+          teacherId,
+          groupId,
+          status: { in: ['OPEN', 'ACTIVE'] },
+        },
+        orderBy: { updatedAt: 'desc' },
+      });
+      session =
+        candidates.find(
+          (s) =>
+            s.periodNumber === MANUAL_PERIOD_NUMBER &&
+            s.sessionDate === date &&
+            (!want || normalizeLessonPathKey(s.lessonPath || '') === want),
+        ) ||
+        candidates.find((s) => want && normalizeLessonPathKey(s.lessonPath || '') === want) ||
+        candidates.find((s) => s.periodNumber === MANUAL_PERIOD_NUMBER && s.sessionDate === date) ||
+        null;
+    }
+
+    if (!session) {
+      return res.status(404).json({ error: 'Keine laufende Stunde gefunden' });
+    }
+
+    const updated = await prisma.autoLessonSession.update({
+      where: { id: session.id },
+      data: { status: 'CLOSED', updatedAt: new Date(), closesAt: new Date() },
+      include: {
+        group: { select: { id: true, name: true, iconEmoji: true, color: true } },
+      },
+    });
+
+    res.json({ session: updated });
+  } catch (error) {
+    console.error('POST /teacher-schedule/lessons/end:', error);
     res.status(500).json({ error: 'Serverfehler' });
   }
 });

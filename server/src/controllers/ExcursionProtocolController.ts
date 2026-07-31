@@ -205,10 +205,11 @@ const countUniqueStudentsInGroups = (
   groups: Array<{ id: string; students: Array<{ id: string }> }>,
   groupIds: string[],
 ) => {
+  if (groupIds.length === 0) return 0;
   const idSet = new Set(groupIds);
   const ids = new Set<string>();
   for (const g of groups) {
-    if (groupIds.length > 0 && !idSet.has(g.id)) continue;
+    if (!idSet.has(g.id)) continue;
     for (const s of g.students) ids.add(s.id);
   }
   return ids.size;
@@ -404,7 +405,9 @@ const resolveExcursionForStudentGroup = async (
 
   const payload = await loadExcursion(teacherId, excursionId);
   if (!payload?.publishedAt) return null;
-  if (payload.groupIds.length > 0 && !payload.groupIds.includes(groupId)) return null;
+  // Nur bei expliziter Gruppenzuordnung sichtbar
+  if (!payload.groupIds || payload.groupIds.length === 0) return null;
+  if (!payload.groupIds.includes(groupId)) return null;
   return { excursionId, publishedAt: payload.publishedAt };
 };
 
@@ -438,9 +441,11 @@ const resolveStudentExcursions = async (studentId: string): Promise<ResolvedExcu
 
       const payload = await loadExcursion(teacherId, meta.id);
       if (!payload?.publishedAt) continue;
+      // Ohne explizite Gruppenzuordnung: für SuS unsichtbar (nicht „für alle“)
+      if (!payload.groupIds || payload.groupIds.length === 0) continue;
 
       for (const g of teacherGroups) {
-        if (payload.groupIds.length > 0 && !payload.groupIds.includes(g.id)) continue;
+        if (!payload.groupIds.includes(g.id)) continue;
 
         const key = `${meta.id}:${g.id}`;
         if (seen.has(key)) continue;
@@ -474,13 +479,13 @@ const assertStudentCanAccessExcursion = async (
 ): Promise<boolean> => {
   const payload = await loadExcursion(teacherId, excursionId);
   if (!payload?.publishedAt) return false;
+  if (!payload.groupIds || payload.groupIds.length === 0) return false;
 
   const studentGroups = await prisma.learningGroup.findMany({
     where: { teacherId, students: { some: { id: studentId } } },
     select: { id: true },
   });
 
-  if (payload.groupIds.length === 0) return true;
   return studentGroups.some((g) => payload.groupIds.includes(g.id));
 };
 
@@ -542,7 +547,7 @@ export class ExcursionProtocolController {
         index.excursions.map(async (meta) => {
           const data = await loadExcursion(user.id, meta.id);
           const submissionCount = data?.submissions.length ?? 0;
-          const targetGroups = meta.groupIds.length > 0 ? meta.groupIds : groups.map((g) => g.id);
+          const targetGroups = meta.groupIds;
           return {
             ...meta,
             groupNames: targetGroups.map((id) => groupNameById.get(id) || id),
@@ -658,10 +663,11 @@ export class ExcursionProtocolController {
       syncIndexEntry(index, next);
       if (next.publishedAt) {
         const owned = await loadTeacherGroupsWithStudents(user.id);
+        // Leere groupIds: Freigaben entfernen — nicht implizit an alle Gruppen
         await syncPublishedGroups(
           user.id,
           next,
-          next.groupIds.length > 0 ? next.groupIds : owned.map((g) => g.id),
+          next.groupIds,
           index,
           owned.map((g) => g.id),
         );
@@ -774,8 +780,10 @@ export class ExcursionProtocolController {
       const ownedIds = new Set(owned.map((g) => g.id));
       let groupIds = Array.isArray(req.body?.groupIds)
         ? (req.body.groupIds as string[]).map((g) => String(g).trim()).filter((id) => ownedIds.has(id))
-        : owned.map((g) => g.id);
-      if (groupIds.length === 0) groupIds = owned.map((g) => g.id);
+        : [];
+      if (groupIds.length === 0) {
+        return res.status(400).json({ error: 'Mindestens eine Lerngruppe auswählen' });
+      }
 
       const now = new Date().toISOString();
       const id = randomUUID();
@@ -1014,7 +1022,7 @@ export class ExcursionProtocolController {
         return res.json({ session: null, submissions: [], roster: [], totalStudents: 0 });
       }
 
-      const targetGroupIds = payload.groupIds.length > 0 ? payload.groupIds : groups.map((g) => g.id);
+      const targetGroupIds = payload.groupIds;
       const targetGroups = groups.filter((g) => targetGroupIds.includes(g.id));
 
       const submissionByStudent = new Map(payload.submissions.map((s) => [s.studentId, s]));

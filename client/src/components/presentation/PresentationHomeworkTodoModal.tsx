@@ -42,6 +42,8 @@ type Props = {
   open: boolean;
   onClose: () => void;
   lessonPath: string;
+  /** z. B. „Vorstunde · 01.01 …“ — zeigt an, aus welcher Stunde die HA stammt */
+  contextLabel?: string | null;
   onUploadSuccess?: () => void;
 };
 
@@ -156,6 +158,7 @@ export default function PresentationHomeworkTodoModal({
   open,
   onClose,
   lessonPath,
+  contextLabel,
   onUploadSuccess,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -645,9 +648,20 @@ export default function PresentationHomeworkTodoModal({
             flexShrink: 0,
           }}
         >
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: '0.95rem' }}>
-            ToDo · Hausaufgabe
-          </Typography>
+          <Box sx={{ minWidth: 0, pr: 1 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: '0.95rem' }}>
+              ToDo · Hausaufgabe
+            </Typography>
+            {(contextLabel || lessonPath) && (
+              <Typography
+                variant="caption"
+                sx={{ display: 'block', opacity: 0.92, fontSize: '0.72rem', lineHeight: 1.25, mt: 0.15 }}
+              >
+                {contextLabel ||
+                  (lessonPath.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? '')}
+              </Typography>
+            )}
+          </Box>
           <DialogCloseIconButton
             onClose={handleClose}
             disabled={uploading}

@@ -91,7 +91,9 @@ export default function StudentAutoLessonAlerts({ userId }: { userId: string }) 
             {session.group.name}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Stunde {session.periodNumber} – Die Unterrichtsstunde läuft jetzt.
+            {session.periodNumber > 0
+              ? `Stunde ${session.periodNumber} – Die Unterrichtsstunde läuft jetzt.`
+              : 'Die Unterrichtsstunde läuft jetzt.'}{' '}
             Materialien sind freigegeben.
           </Typography>
         </Box>

@@ -5,7 +5,7 @@ type DirItem = { name?: string; path?: string; type?: string };
 function isLessonSiblingFolderName(name: string): boolean {
   const t = (name || '').trim();
   if (!t || t.startsWith('.')) return false;
-  if (/^Rohdat/i.test(t) || /Sicherheitskopie/i.test(t)) return false;
+  if (/^Rohdat/i.test(t) || /Sicherheitskopie/i.test(t) || /BACKUP/i.test(t)) return false;
   // Themenblock „01 Basiswissen“ — keine Stunde
   if (/^\d+\s+/.test(t) && !/^\d+\.\d+/.test(t)) return false;
   // Kapitel-Überschriften o. ä.

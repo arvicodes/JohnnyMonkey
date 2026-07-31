@@ -23,10 +23,10 @@ export function johnnyPresentationKindFromPdfName(
 
 /** Interne JSON — nicht als Arbeitsmaterial listen. */
 export function isLessonPresentationSystemFile(name: string): boolean {
-  const n = (name || '').trim();
+  const n = ((name || '').trim().split(/[/\\]/).pop() || '');
   if (!n) return false;
-  if (/^Praesentation\.(deck|annotations|version)(\.[^/\\]+)*\.json$/i.test(n)) return true;
-  return false;
+  // Praesentation.deck.json, .deck.original.json, .deck.*.json.bak*, annotations, version.*
+  return /^Praesentation\.(deck|annotations|version)(\.|$)/i.test(n);
 }
 
 export function isLessonPresentationMaterialPdf(name: string): boolean {

@@ -1,21 +1,37 @@
+import {
+  isCustomEntryTicketSetId,
+  loadCustomEntryTicketSets,
+  type EntryTicketCustomSetId,
+} from './entryTicketCustomSets';
+
 /** Klassenstufen für EntryTicket-Fragensets (mathematische Minikarten). */
 export type EntryTicketGradeBand = 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
 
-/** Wie in EntryTicketPage: Klassenstufen + Inf-Kursbänder (URL-Parameter grade). */
-export type EntryTicketPlanBand = EntryTicketGradeBand | 'inf11' | 'inf12' | 'inf13';
+/**
+ * Wie in EntryTicketPage: Klassenstufen + Inf-Kursbänder + eigene Fragensätze (`c_…`).
+ * URL-Parameter: grade=7|inf11|… bzw. grade=c_….
+ */
+export type EntryTicketPlanBand = EntryTicketGradeBand | 'inf11' | 'inf12' | 'inf13' | EntryTicketCustomSetId;
 
 export function parseEntryTicketPlanBand(value: unknown): EntryTicketPlanBand {
+  if (isCustomEntryTicketSetId(value)) return value;
   if (value === 'inf11' || value === 'inf12' || value === 'inf13') return value;
   const n = typeof value === 'number' ? value : Number(value);
   if (Number.isFinite(n) && n >= 5 && n <= 13) return n as EntryTicketGradeBand;
   return 7;
 }
 
-export function formatEntryTicketPlanBandLabel(band: EntryTicketPlanBand | undefined | null): string {
+export function formatEntryTicketPlanBandLabel(
+  band: EntryTicketPlanBand | undefined | null,
+  customNameById?: Record<string, string>,
+): string {
   if (band === undefined || band === null) return 'Klasse 7';
   if (band === 'inf11') return 'Inf 11';
   if (band === 'inf12') return 'Inf 12';
   if (band === 'inf13') return 'Inf 13';
+  if (isCustomEntryTicketSetId(band)) {
+    return customNameById?.[band] ?? 'Eigenes Fragenset';
+  }
   return `Klasse ${band}`;
 }
 
@@ -25,6 +41,15 @@ export const ENTRY_TICKET_PLAN_GRADE_OPTIONS: { value: string; label: string }[]
   { value: 'inf12', label: 'Inf 12' },
   { value: 'inf13', label: 'Inf 13' },
 ];
+
+/** Eigene Fragensätze oben, dann feste Bänder (für Stundenplan-Select). */
+export function getEntryTicketPlanGradeOptions(): { value: string; label: string }[] {
+  const custom = loadCustomEntryTicketSets().map((s) => ({
+    value: s.id,
+    label: `${s.name} (${s.lessons.length} Std.)`,
+  }));
+  return [...custom, ...ENTRY_TICKET_PLAN_GRADE_OPTIONS];
+}
 
 /**
  * Klassenstufe 5–13 aus Gruppennamen ableiten (z. B. "7a", "Klasse 10", "MS2 9b").

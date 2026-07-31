@@ -5,7 +5,10 @@ import {
   Button,
   Card,
   CardContent,
-  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControlLabel,
   IconButton,
   LinearProgress,
@@ -15,6 +18,7 @@ import {
   Typography,
 } from '@mui/material';
 import {
+  Add as AddIcon,
   ArrowBack as ArrowBackIcon,
   Close as CloseIcon,
   Pause as PauseIcon,
@@ -23,9 +27,21 @@ import {
   SkipNext as SkipNextIcon,
   SkipPrevious as SkipPreviousIcon,
 } from '@mui/icons-material';
-import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
 import { apiGet, apiPost } from '../lib/api';
 import { entryTicketHeroSrc } from '../lib/ticketHeroImages';
+import {
+  type EntryTicketCustomSet,
+  countCustomSetTasks,
+  createEmptyCustomSet,
+  createLessonSection,
+  cumulativeTasksBeforeLesson,
+  isCustomEntryTicketSetId,
+  loadCustomEntryTicketSets,
+  saveCustomEntryTicketSets,
+} from '../lib/entryTicketCustomSets';
+import { discoverLessonsForReiheName } from '../lib/entryTicketReiheLessons';
+import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
+import { EntryTicketFragensetEditor } from '../components/entry-ticket/EntryTicketFragensetEditor';
 
 type EntryTicketTask = {
   category: string;
@@ -37,8 +53,8 @@ const SLIDE_DURATION_SEC = 20;
 /** Zufällige Auswahl aus dem klassenspezifischen Fragenset */
 const TARGET_TASK_COUNT = 10;
 const DISPLAY_BOX_WIDTH = 1320;
-const DISPLAY_BOX_HEIGHT = 340;
-const FINAL_DISPLAY_BOX_HEIGHT = 500;
+const DISPLAY_BOX_HEIGHT = 220;
+const FINAL_DISPLAY_BOX_HEIGHT = 360;
 const OPERATOR_COLOR = '#ef6c00';
 const QUESTION_COLOR = '#d32f2f';
 
@@ -48,7 +64,8 @@ type InfBand = 'inf11' | 'inf12' | 'inf13';
 type EntryBand = GradeNum | InfBand;
 type GradeQuestionSets = Record<EntryBand, EntryTicketTask[]>;
 
-function fragensetHeadingLabel(band: EntryBand): string {
+function fragensetHeadingLabel(band: EntryBand, customName?: string | null): string {
+  if (customName) return customName;
   if (band === 'inf11') return 'Inf 11';
   if (band === 'inf12') return 'Inf 12';
   if (band === 'inf13') return 'Inf 13';
@@ -585,11 +602,22 @@ function randomTaskSeed(): number {
   return (Date.now() ^ (Math.random() * 0x7fffffff)) >>> 0;
 }
 
-function parseEntryTicketSearch(search: string): { grade: EntryBand; autostart: boolean; groupId: string | null } {
+function parseEntryTicketSearch(search: string): {
+  grade: EntryBand;
+  customSetId: string | null;
+  lessonPath: string | null;
+  autostart: boolean;
+  groupId: string | null;
+  heroImageIndex: number | null;
+  taskSeed: number | null;
+} {
   const params = new URLSearchParams(search);
-  const rawG = params.get('grade');
+  const rawG = params.get('grade') || params.get('set');
   let grade: EntryBand = 7;
-  if (rawG === 'inf11' || rawG === 'inf12' || rawG === 'inf13') {
+  let customSetId: string | null = null;
+  if (isCustomEntryTicketSetId(rawG)) {
+    customSetId = rawG;
+  } else if (rawG === 'inf11' || rawG === 'inf12' || rawG === 'inf13') {
     grade = rawG;
   } else {
     const gradeParam = Number(rawG);
@@ -598,13 +626,20 @@ function parseEntryTicketSearch(search: string): { grade: EntryBand; autostart: 
         ? (gradeParam as GradeNum)
         : 7;
   }
+  const rawLesson = params.get('lessonPath') || params.get('lesson');
+  const lessonPath = rawLesson && rawLesson.trim() ? rawLesson.trim().replace(/\\/g, '/') : null;
   const autostart =
     params.get('autostart') === '1' ||
     params.get('autostart') === 'true' ||
     params.get('start') === '1';
   const rawGid = params.get('groupId') || params.get('learningGroupId');
   const groupId = rawGid && rawGid.trim() ? rawGid.trim() : null;
-  return { grade, autostart, groupId };
+  const heroRaw = Number(params.get('hero') ?? params.get('heroImageIndex'));
+  const heroImageIndex =
+    Number.isFinite(heroRaw) && heroRaw >= 0 && heroRaw <= 9 ? Math.floor(heroRaw) : null;
+  const seedRaw = Number(params.get('seed') ?? params.get('taskSeed'));
+  const taskSeed = Number.isFinite(seedRaw) ? (Math.floor(seedRaw) >>> 0) : null;
+  return { grade, customSetId, lessonPath, autostart, groupId, heroImageIndex, taskSeed };
 }
 
 const DEFAULT_QUESTION_SETS: GradeQuestionSets = {
@@ -806,8 +841,11 @@ const INF13_EDITOR_VISUALS: Record<string, { icon: string; bg: string; fg: strin
   '3D Druck': { icon: '🖨️', bg: '#fce4ec', fg: '#880e4f', border: '#f06292' },
 };
 
-function categoryForFragensetSave(grade: EntryBand, rawCat: string): string {
+function categoryForFragensetSave(grade: EntryBand, rawCat: string, isCustomSet = false): string {
   const t = rawCat.trim() || 'Zeit/Geld/Alltag';
+  if (isCustomSet) {
+    return t || 'Eigen';
+  }
   if (grade === 'inf11') {
     return INF11_CATEGORY_MARKERS.has(t) || coarseCategoryForTask(t) === 'Eigen' ? t : coarseCategoryForTask(t);
   }
@@ -890,10 +928,27 @@ export default function EntryTicketPage() {
   const initialRoute =
     typeof window !== 'undefined'
       ? parseEntryTicketSearch(window.location.search || '')
-      : { grade: 7 as EntryBand, autostart: false, groupId: null as string | null };
+      : {
+          grade: 7 as EntryBand,
+          customSetId: null as string | null,
+          lessonPath: null as string | null,
+          autostart: false,
+          groupId: null as string | null,
+          heroImageIndex: null as number | null,
+          taskSeed: null as number | null,
+        };
   const [sessionStarted, setSessionStarted] = useState(false);
   const [grade, setGrade] = useState<EntryBand>(() => initialRoute.grade);
-  const [taskSeed, setTaskSeed] = useState(() => randomTaskSeed());
+  const [customSetId, setCustomSetId] = useState<string | null>(() => initialRoute.customSetId);
+  const [entryLessonPath, setEntryLessonPath] = useState<string | null>(() => initialRoute.lessonPath);
+  const [customSets, setCustomSets] = useState<EntryTicketCustomSet[]>(() =>
+    typeof window !== 'undefined' ? loadCustomEntryTicketSets() : [],
+  );
+  const [createSetOpen, setCreateSetOpen] = useState(false);
+  const [createSetName, setCreateSetName] = useState('');
+  const [createSetBusy, setCreateSetBusy] = useState(false);
+  const [createSetError, setCreateSetError] = useState<string | null>(null);
+  const [taskSeed, setTaskSeed] = useState(() => initialRoute.taskSeed ?? randomTaskSeed());
   const [showSetEditor, setShowSetEditor] = useState(
     () => typeof window !== 'undefined' && Boolean(localStorage.getItem('teacherId')),
   );
@@ -970,17 +1025,29 @@ export default function EntryTicketPage() {
   const [autoStartPending, setAutoStartPending] = useState(() => initialRoute.autostart);
   const [entryTicketGroupId, setEntryTicketGroupId] = useState<string | null>(() => initialRoute.groupId);
   /** Motiv 0..9 — kommt vom Server (pro neuem Signal / neuer Stunden-Klick neu gewürfelt) */
-  const [entryHeroImageIndex, setEntryHeroImageIndex] = useState(0);
+  const [entryHeroImageIndex, setEntryHeroImageIndex] = useState(
+    () => initialRoute.heroImageIndex ?? 0,
+  );
   /** Autostart signalisiert sofort in useLayoutEffect; kein zweites Signal beim ersten startSession */
   const skipDuplicateEntrySignalRef = useRef(false);
+  /** Schüler-Moderator darf die volle Ticket-Session sehen */
+  const [isClassModerator, setIsClassModerator] = useState(false);
+  const [moderatorGateChecked, setModeratorGateChecked] = useState(
+    () => Boolean(typeof window !== 'undefined' && localStorage.getItem('teacherId')),
+  );
 
-  /** Klassenstufe aus URL; neuer Zufallssatz bei jedem Aufruf (inkl. &r=… vom Klick auf das Dashboard-Icon). */
+  /** Klassenstufe / eigenes Set aus URL; neuer Zufallssatz bei jedem Aufruf (inkl. &r=… vom Klick auf das Dashboard-Icon). */
   useLayoutEffect(() => {
-    const { grade: g, autostart, groupId } = parseEntryTicketSearch(location.search);
+    const { grade: g, customSetId: cId, lessonPath, autostart, groupId, heroImageIndex, taskSeed: urlSeed } =
+      parseEntryTicketSearch(location.search);
     setGrade(g);
+    setCustomSetId(cId);
+    setEntryLessonPath(lessonPath);
     setAutoStartPending(autostart);
     setEntryTicketGroupId(groupId);
-    setTaskSeed(randomTaskSeed());
+    if (heroImageIndex != null) setEntryHeroImageIndex(heroImageIndex);
+    const seedToUse = urlSeed != null ? urlSeed : randomTaskSeed();
+    setTaskSeed(seedToUse);
     setSessionStarted(false);
     setSessionDone(false);
     setCurrentIndex(0);
@@ -993,7 +1060,13 @@ export default function EntryTicketPage() {
       skipDuplicateEntrySignalRef.current = true;
       void (async () => {
         try {
-          const res = await apiPost('/api/entry-ticket/signal', groupId ? { learningGroupId: groupId } : {});
+          const gradeParam = cId || String(g);
+          const res = await apiPost('/api/entry-ticket/signal', {
+            ...(groupId ? { learningGroupId: groupId } : {}),
+            grade: gradeParam,
+            taskSeed: seedToUse,
+            lessonPath: lessonPath || undefined,
+          });
           if (res.ok) {
             const data = await res.json();
             if (typeof data.heroImageIndex === 'number') setEntryHeroImageIndex(data.heroImageIndex);
@@ -1008,6 +1081,52 @@ export default function EntryTicketPage() {
   }, [location.search]);
 
   const isTeacher = useMemo(() => Boolean(localStorage.getItem('teacherId')), []);
+
+  /** Nicht-Lehrkräfte: nur Klassen-Moderator darf die volle Ticket-Seite nutzen */
+  useEffect(() => {
+    if (isTeacher) {
+      setModeratorGateChecked(true);
+      setIsClassModerator(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await apiGet('/api/entry-ticket/current');
+        if (!res.ok || cancelled) {
+          if (!cancelled) {
+            setIsClassModerator(false);
+            setModeratorGateChecked(true);
+          }
+          return;
+        }
+        const data = (await res.json()) as {
+          isModerator?: boolean;
+          startedAt?: string | null;
+          heroImageIndex?: number | null;
+        };
+        if (cancelled) return;
+        const mod = data.isModerator === true;
+        setIsClassModerator(mod);
+        if (typeof data.heroImageIndex === 'number' && data.startedAt) {
+          setEntryHeroImageIndex(data.heroImageIndex);
+        }
+        if (!mod) {
+          navigate('/dashboard', { replace: true });
+        }
+      } catch {
+        if (!cancelled) {
+          setIsClassModerator(false);
+          navigate('/dashboard', { replace: true });
+        }
+      } finally {
+        if (!cancelled) setModeratorGateChecked(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isTeacher, navigate, location.search]);
 
   useEffect(() => {
     if (!isTeacher) return;
@@ -1043,15 +1162,37 @@ export default function EntryTicketPage() {
     return coarseCategoryForTask(category);
   };
 
-  const poolForBand = useMemo(() => questionSets[grade] ?? [], [questionSets, grade]);
+  const activeCustomSet = useMemo(
+    () => (customSetId ? customSets.find((s) => s.id === customSetId) ?? null : null),
+    [customSetId, customSets],
+  );
+  const isCustomSetActive = Boolean(customSetId && activeCustomSet);
+
+  const poolForBand = useMemo(() => {
+    if (customSetId && activeCustomSet) {
+      // Play: zufällig aus allen vorherigen Stunden dieser Reihe
+      return cumulativeTasksBeforeLesson(activeCustomSet, entryLessonPath).map((t) => ({
+        category: t.category,
+        prompt: t.prompt,
+        solution: t.solution,
+      }));
+    }
+    if (customSetId) return [];
+    return questionSets[grade] ?? [];
+  }, [customSetId, activeCustomSet, entryLessonPath, questionSets, grade]);
+
+  const activeSetLabel = isCustomSetActive
+    ? activeCustomSet!.name
+    : fragensetHeadingLabel(grade);
+
   const groupedSetQuestions = useMemo(() => {
-    if (grade === 'inf11') {
+    if (!isCustomSetActive && grade === 'inf11') {
       return groupPoolTasksByBandOrder(poolForBand, INF11_BAND_ORDER);
     }
-    if (grade === 'inf12') {
+    if (!isCustomSetActive && grade === 'inf12') {
       return groupPoolTasksByBandOrder(poolForBand, INF12_BAND_ORDER);
     }
-    if (grade === 'inf13') {
+    if (!isCustomSetActive && grade === 'inf13') {
       return groupPoolTasksByBandOrder(poolForBand, INF13_BAND_ORDER);
     }
 
@@ -1085,7 +1226,7 @@ export default function EntryTicketPage() {
     });
     const groups: Array<{ category: string; items: Array<{ q: EntryTicketTask; idx: number; displayNumber: number }> }> = [];
     for (const item of withDisplay) {
-      const coarse = toCoarseCategory(item.q.category);
+      const coarse = isCustomSetActive ? item.q.category : toCoarseCategory(item.q.category);
       const last = groups[groups.length - 1];
       if (!last || last.category !== coarse) {
         groups.push({ category: coarse, items: [item] });
@@ -1094,7 +1235,7 @@ export default function EntryTicketPage() {
       }
     }
     return groups;
-  }, [poolForBand, grade]);
+  }, [poolForBand, grade, isCustomSetActive]);
 
   const displayNumberByPoolIndex = useMemo(() => {
     const map = new Map<number, number>();
@@ -1117,16 +1258,21 @@ export default function EntryTicketPage() {
   };
 
   const visualForFragensetGroup = (groupCategory: string) => {
-    if (grade === 'inf11' && INF11_EDITOR_VISUALS[groupCategory]) {
+    if (!isCustomSetActive && grade === 'inf11' && INF11_EDITOR_VISUALS[groupCategory]) {
       return INF11_EDITOR_VISUALS[groupCategory];
     }
-    if (grade === 'inf12' && INF12_EDITOR_VISUALS[groupCategory]) {
+    if (!isCustomSetActive && grade === 'inf12' && INF12_EDITOR_VISUALS[groupCategory]) {
       return INF12_EDITOR_VISUALS[groupCategory];
     }
-    if (grade === 'inf13' && INF13_EDITOR_VISUALS[groupCategory]) {
+    if (!isCustomSetActive && grade === 'inf13' && INF13_EDITOR_VISUALS[groupCategory]) {
       return INF13_EDITOR_VISUALS[groupCategory];
     }
-    return categoryVisuals[groupCategory as CoarseCategory] ?? categoryVisuals.Grundrechenarten;
+    return categoryVisuals[groupCategory as CoarseCategory] ?? {
+      icon: '📝',
+      bg: '#f5f5f5',
+      fg: '#424242',
+      border: '#bdbdbd',
+    };
   };
 
   const skipInfNumberVary = (category: string) =>
@@ -1203,6 +1349,110 @@ export default function EntryTicketPage() {
   }, [questionSets]);
 
   useEffect(() => {
+    saveCustomEntryTicketSets(customSets);
+  }, [customSets]);
+
+  /** Gelöschtes / fremdes Custom-Set in der URL → zurück auf Klassenband. */
+  useEffect(() => {
+    if (customSetId && !customSets.some((s) => s.id === customSetId)) {
+      setCustomSetId(null);
+    }
+  }, [customSetId, customSets]);
+
+  const updateActivePool = (updater: (list: EntryTicketTask[]) => EntryTicketTask[]) => {
+    if (customSetId) return;
+    setQuestionSets((prev) => {
+      const list = [...(prev[grade] ?? [])];
+      return { ...prev, [grade]: updater(list) };
+    });
+  };
+
+  const selectBand = (band: EntryBand) => {
+    setCustomSetId(null);
+    setGrade(band);
+    setSetEditIndex(null);
+    setSetEditCategory('Alltag');
+    setSetEditPrompt('');
+    setSetEditSolution('');
+    setTaskSeed((s) => s + 1);
+  };
+
+  const selectCustomSet = (id: string) => {
+    setCustomSetId(id);
+    setShowSetEditor(true);
+    setSetEditIndex(null);
+    setSetEditCategory('Alltag');
+    setSetEditPrompt('');
+    setSetEditSolution('');
+    setTaskSeed((s) => s + 1);
+  };
+
+  const openCreateSetDialog = () => {
+    setCreateSetName('');
+    setCreateSetError(null);
+    setCreateSetOpen(true);
+  };
+
+  const createCustomSet = async () => {
+    const name = createSetName.trim() || 'Neue Reihe';
+    if (createSetBusy) return;
+    setCreateSetBusy(true);
+    setCreateSetError(null);
+    try {
+      const next = createEmptyCustomSet(name);
+      const discovered = await discoverLessonsForReiheName(name);
+      if (discovered.reihePath) {
+        next.reihePath = discovered.reihePath;
+      }
+      if (discovered.lessons.length > 0) {
+        next.lessons = discovered.lessons.map((l) =>
+          createLessonSection(l.lessonName, l.lessonKey, l.topicName),
+        );
+      } else if (entryLessonPath) {
+        const folder = entryLessonPath.split('/').pop() || entryLessonPath;
+        next.lessons = [createLessonSection(folder, entryLessonPath)];
+      }
+      setCustomSets((prev) => [...prev, next]);
+      setCreateSetOpen(false);
+      setCreateSetName('');
+      setCustomSetId(next.id);
+      setShowSetEditor(true);
+      setTaskSeed((s) => s + 1);
+      if (discovered.lessons.length === 0) {
+        setCreateSetError(null);
+      }
+    } catch {
+      setCreateSetError('Stunden der Reihe konnten nicht geladen werden.');
+    } finally {
+      setCreateSetBusy(false);
+    }
+  };
+
+  const patchActiveCustomSet = (next: EntryTicketCustomSet) => {
+    setCustomSets((prev) => prev.map((s) => (s.id === next.id ? next : s)));
+    setTaskSeed((s) => s + 1);
+  };
+
+  const renameActiveCustomSet = (name: string) => {
+    if (!customSetId) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setCustomSets((prev) => prev.map((s) => (s.id === customSetId ? { ...s, name: trimmed } : s)));
+  };
+
+  const deleteActiveCustomSet = () => {
+    if (!customSetId) return;
+    if (!window.confirm(`Fragenset „${activeCustomSet?.name ?? ''}“ wirklich löschen?`)) return;
+    setCustomSets((prev) => prev.filter((s) => s.id !== customSetId));
+    setCustomSetId(null);
+    setSetEditIndex(null);
+    setSetEditCategory('Alltag');
+    setSetEditPrompt('');
+    setSetEditSolution('');
+    setTaskSeed((s) => s + 1);
+  };
+
+  useEffect(() => {
     if (!sessionStarted || !isRunning || sessionDone || activeTasks.length === 0) return undefined;
     const timer = window.setInterval(() => {
       setSecondsLeft((prev) => {
@@ -1237,9 +1487,15 @@ export default function EntryTicketPage() {
         skipDuplicateEntrySignalRef.current = false;
       } else {
         const gid = entryTicketGroupId;
+        const gradeParam = customSetId || String(grade);
         void (async () => {
           try {
-            const res = await apiPost('/api/entry-ticket/signal', gid ? { learningGroupId: gid } : {});
+            const res = await apiPost('/api/entry-ticket/signal', {
+              ...(gid ? { learningGroupId: gid } : {}),
+              grade: gradeParam,
+              taskSeed,
+              lessonPath: entryLessonPath || undefined,
+            });
             if (res.ok) {
               const data = await res.json();
               if (typeof data.heroImageIndex === 'number') setEntryHeroImageIndex(data.heroImageIndex);
@@ -1264,9 +1520,17 @@ export default function EntryTicketPage() {
   useEffect(() => {
     if (!autoStartPending || sessionStarted) return;
     if (selectedTasks.length === 0) return;
+    if (!isTeacher && (!moderatorGateChecked || !isClassModerator)) return;
     startSession();
     setAutoStartPending(false);
-  }, [autoStartPending, sessionStarted, selectedTasks.length]);
+  }, [
+    autoStartPending,
+    sessionStarted,
+    selectedTasks.length,
+    isTeacher,
+    moderatorGateChecked,
+    isClassModerator,
+  ]);
 
   const pause = () => {
     setIsRunning(false);
@@ -1316,24 +1580,24 @@ export default function EntryTicketPage() {
     const prompt = setEditPrompt.trim();
     const solution = setEditSolution.trim();
     const rawCat = setEditCategory.trim() || 'Zeit/Geld/Alltag';
-    const category = categoryForFragensetSave(grade, rawCat);
+    const category = categoryForFragensetSave(grade, rawCat, isCustomSetActive);
     if (!prompt || !solution) return;
-    setQuestionSets((prev) => {
-      const list = [...(prev[grade] ?? [])];
-      if (setEditIndex < 0 || setEditIndex >= list.length) return prev;
-      list[setEditIndex] = { ...list[setEditIndex], category, prompt, solution };
-      return { ...prev, [grade]: list };
+    updateActivePool((list) => {
+      if (setEditIndex < 0 || setEditIndex >= list.length) return list;
+      const next = [...list];
+      next[setEditIndex] = { ...next[setEditIndex], category, prompt, solution };
+      return next;
     });
     cancelSetEditing();
     setTaskSeed((s) => s + 1);
   };
 
   const deleteSetQuestion = (index: number) => {
-    setQuestionSets((prev) => {
-      const list = [...(prev[grade] ?? [])];
-      if (index < 0 || index >= list.length) return prev;
-      list.splice(index, 1);
-      return { ...prev, [grade]: list };
+    updateActivePool((list) => {
+      if (index < 0 || index >= list.length) return list;
+      const next = [...list];
+      next.splice(index, 1);
+      return next;
     });
     setTaskSeed((s) => s + 1);
   };
@@ -1342,15 +1606,14 @@ export default function EntryTicketPage() {
     const prompt = newPrompt.trim();
     const solution = newSolution.trim();
     if (!prompt || !solution) return;
-    setQuestionSets((prev) => {
-      const list = [...(prev[grade] ?? [])];
-      list.push({
+    updateActivePool((list) => [
+      ...list,
+      {
         category: 'Eigen',
         prompt,
         solution,
-      });
-      return { ...prev, [grade]: list };
-    });
+      },
+    ]);
     setNewPrompt('');
     setNewSolution('');
     setTaskSeed((s) => s + 1);
@@ -1761,7 +2024,7 @@ export default function EntryTicketPage() {
           <Box
             component="span"
             key={`${keyPrefix}-q-${index}`}
-            sx={{ color: QUESTION_COLOR, fontWeight: 800, fontSize: '1.08em' }}
+            sx={{ color: QUESTION_COLOR, fontWeight: 600, fontSize: '1.02em' }}
           >
             ?
           </Box>
@@ -1773,10 +2036,9 @@ export default function EntryTicketPage() {
           key={`${keyPrefix}-o-${index}`}
           sx={{
             color: OPERATOR_COLOR,
-            fontWeight: 900,
-            mx: large ? 0.15 : 0.05,
+            fontWeight: 600,
+            mx: large ? 0.1 : 0.04,
             px: 0,
-            textShadow: '0 0 0.2px currentColor',
           }}
         >
           {part}
@@ -1795,7 +2057,7 @@ export default function EntryTicketPage() {
       if (singleLine) {
         return (
           <>
-            <Box component="span" sx={{ fontWeight: 700, color: '#37474f' }}>
+            <Box component="span" sx={{ fontWeight: 600, color: '#546e7a' }}>
               Wahr oder falsch?
             </Box>{' '}
             {colorizeOperators(statement, `${keyPrefix}-wf-inline`, large)}
@@ -1804,7 +2066,7 @@ export default function EntryTicketPage() {
       }
       return (
         <>
-          <Box component="span" sx={{ fontWeight: 700, color: '#37474f' }}>
+          <Box component="span" sx={{ fontWeight: 600, color: '#546e7a' }}>
             Wahr oder falsch?
           </Box>{' '}
           {colorizeOperators(statement, `${keyPrefix}-wf`, large)}
@@ -1870,7 +2132,39 @@ export default function EntryTicketPage() {
     }
 
     const questionIndex = cleaned.indexOf('?');
-    if (questionIndex < 0) return renderPrompt(cleaned, keyPrefix, false, true);
+    if (questionIndex < 0) {
+      // Kein „?“ im Prompt: Frage + Lösung trotzdem nebeneinander zeigen
+      if (rightAlignedSolution) {
+        return (
+          <Box
+            component="span"
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1fr) auto',
+              width: '100%',
+              alignItems: 'baseline',
+              columnGap: 1.5,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Box component="div" sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {renderPrompt(cleaned, keyPrefix, false, true)}
+            </Box>
+            <Box component="span" sx={{ color: 'success.dark', fontWeight: 800, whiteSpace: 'nowrap' }}>
+              {solution}
+            </Box>
+          </Box>
+        );
+      }
+      return (
+        <>
+          {renderPrompt(cleaned, keyPrefix, false, true)}{' '}
+          <Box component="span" sx={{ color: 'success.dark', fontWeight: 800 }}>
+            {solution}
+          </Box>
+        </>
+      );
+    }
 
     const before = cleaned.slice(0, questionIndex);
     const after = cleaned.slice(questionIndex + 1);
@@ -1935,10 +2229,33 @@ export default function EntryTicketPage() {
   const formattedPrompt = currentTask ? formatPromptForDisplay(cleanPrompt(currentTask.prompt)) : '';
   const finalSlideRows = Math.ceil(activeTasks.length / 2);
 
+  if (!isTeacher && !moderatorGateChecked) {
+    return (
+      <Box sx={{ minHeight: '40vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Typography variant="body2" color="text.secondary">
+          Entry Ticket wird geladen…
+        </Typography>
+      </Box>
+    );
+  }
+
+  if (!isTeacher && !isClassModerator) {
+    return null;
+  }
+
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f4f6fb', py: { xs: 2, sm: 3 }, px: { xs: 1.5, sm: 2.5 } }}>
-      <Box sx={{ maxWidth: 1400, mx: 'auto' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, gap: 1 }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        width: '100%',
+        bgcolor: '#f4f6fb',
+        py: { xs: 0.5, sm: 0.75 },
+        px: { xs: 0.4, sm: 0.6 },
+        boxSizing: 'border-box',
+      }}
+    >
+      <Box sx={{ width: '100%', maxWidth: '100%', mx: 0, minWidth: 0, boxSizing: 'border-box' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.65, gap: 0.75 }}>
           <Tooltip title="Zurück">
             <IconButton
               onClick={handleBack}
@@ -1946,16 +2263,16 @@ export default function EntryTicketPage() {
               aria-label="Zurück"
               sx={{
                 p: 0,
-                minWidth: 32,
-                width: 32,
-                height: 32,
+                minWidth: 26,
+                width: 26,
+                height: 26,
                 bgcolor: 'white',
                 border: '1px solid',
                 borderColor: 'divider',
                 flexShrink: 0,
               }}
             >
-              <ArrowBackIcon sx={{ fontSize: 20 }} />
+              <ArrowBackIcon sx={{ fontSize: 16 }} />
             </IconButton>
           </Tooltip>
 
@@ -1964,7 +2281,7 @@ export default function EntryTicketPage() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 1.25,
+              gap: 0.65,
               flex: 1,
               minWidth: 0,
             }}
@@ -1972,14 +2289,14 @@ export default function EntryTicketPage() {
             <Box
               title="Aktuelles Motiv (wie bei den Schüler:innen)"
               sx={{
-                width: 60,
-                height: 60,
+                width: 34,
+                height: 34,
                 flexShrink: 0,
-                borderRadius: 1.75,
+                borderRadius: 1,
                 overflow: 'hidden',
                 border: '1px solid',
                 borderColor: 'rgba(30, 136, 229, 0.28)',
-                boxShadow: '0 2px 8px rgba(15, 23, 42, 0.08)',
+                boxShadow: '0 1px 4px rgba(15, 23, 42, 0.06)',
                 bgcolor: 'grey.200',
               }}
             >
@@ -1990,7 +2307,7 @@ export default function EntryTicketPage() {
                 sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
               />
             </Box>
-            <Typography variant="h6" sx={{ color: '#1a237e', fontWeight: 700, lineHeight: 1.2 }}>
+            <Typography variant="h6" sx={{ color: '#1a237e', fontWeight: 700, lineHeight: 1.15, fontSize: { xs: '0.92rem', sm: '1rem' } }}>
               EntryTicket
             </Typography>
           </Box>
@@ -2001,67 +2318,184 @@ export default function EntryTicketPage() {
             size="small"
             sx={{
               p: 0,
-              minWidth: 32,
-              width: 32,
-              height: 32,
+              minWidth: 26,
+              width: 26,
+              height: 26,
               bgcolor: 'white',
               border: '1px solid',
               borderColor: 'divider',
               flexShrink: 0,
             }}
           >
-            <CloseIcon sx={{ fontSize: 20 }} />
+            <CloseIcon sx={{ fontSize: 16 }} />
           </IconButton>
         </Box>
 
-        <Card sx={{ borderRadius: 2, boxShadow: '0 6px 20px rgba(0,0,0,0.07)' }}>
-          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+        <Card
+          sx={{
+            width: '100%',
+            borderRadius: 1.25,
+            boxShadow: 'none',
+            border: '1px solid #e0e4f5',
+          }}
+        >
+          <CardContent
+            sx={{
+              p: { xs: 0.55, sm: 0.75 },
+              width: '100%',
+              boxSizing: 'border-box',
+              '&:last-child': { pb: { xs: 0.55, sm: 0.75 } },
+            }}
+          >
             {!sessionStarted ? (
               <Box
                 sx={{
                   width: '100%',
-                  maxWidth: DISPLAY_BOX_WIDTH,
                   minWidth: 0,
-                  borderRadius: 2,
+                  borderRadius: 1.25,
                   border: '1px solid #d9e0ff',
                   bgcolor: '#f8faff',
-                  p: 1.5,
+                  p: { xs: 0.6, sm: 0.75 },
                   boxSizing: 'border-box',
                 }}
               >
-                <Box sx={{ mb: 1, minWidth: 0 }}>
+                <Box sx={{ mb: 1, minWidth: 0, display: 'grid', gap: 0 }}>
+                  {/* Eigene Fragensets oben */}
                   <Box
                     component="div"
                     role="toolbar"
-                    aria-label="Klassenstufe und Aktionen"
+                    aria-label="Eigene Fragensets und Aktionen"
                     sx={{
-                      display: 'grid',
-                      gridAutoFlow: 'column',
-                      gridAutoColumns: 'max-content',
-                      gridTemplateRows: 'auto',
+                      display: 'flex',
+                      flexWrap: 'wrap',
                       alignItems: 'center',
                       gap: 0.5,
                       width: '100%',
-                      maxWidth: '100%',
                       minWidth: 0,
-                      overflowX: 'auto',
-                      overflowY: 'hidden',
                       py: 0.25,
-                      WebkitOverflowScrolling: 'touch',
-                      '&::-webkit-scrollbar': { height: 8 },
-                      '&::-webkit-scrollbar-thumb': {
-                        borderRadius: 1,
-                        bgcolor: 'rgba(25, 118, 210, 0.35)',
-                      },
+                    }}
+                  >
+                    {customSets.map((set) => (
+                      <Button
+                        key={set.id}
+                        size="small"
+                        variant={customSetId === set.id ? 'contained' : 'outlined'}
+                        onClick={() => selectCustomSet(set.id)}
+                        sx={{
+                          minWidth: 0,
+                          px: 0.85,
+                          height: 26,
+                          fontSize: '0.65rem',
+                          fontWeight: 700,
+                          lineHeight: 1.1,
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0,
+                          maxWidth: 140,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          ...(customSetId === set.id
+                            ? {
+                                bgcolor: '#5c6bc0',
+                                color: '#fff',
+                                borderColor: '#5c6bc0',
+                                '&:hover': { bgcolor: '#5c6bc0', filter: 'brightness(0.92)' },
+                              }
+                            : {
+                                color: '#3949ab',
+                                borderColor: '#7986cb',
+                                borderWidth: 2,
+                                bgcolor: 'rgba(255,255,255,0.85)',
+                                '&:hover': { bgcolor: 'rgba(92, 107, 192, 0.1)', borderColor: '#5c6bc0' },
+                              }),
+                        }}
+                        title={`${set.name} · ${set.lessons.length} Stunden · ${countCustomSetTasks(set)} Fragen`}
+                      >
+                        {set.name}
+                      </Button>
+                    ))}
+                    <Tooltip title="Neues Fragenset anlegen">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={openCreateSetDialog}
+                        sx={{
+                          minWidth: 28,
+                          width: 28,
+                          height: 26,
+                          p: 0,
+                          flexShrink: 0,
+                          borderStyle: 'dashed',
+                          borderColor: '#5c6bc0',
+                          color: '#3949ab',
+                        }}
+                        aria-label="Neues Fragenset anlegen"
+                      >
+                        <AddIcon sx={{ fontSize: 15 }} />
+                      </Button>
+                    </Tooltip>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => {
+                        setTaskSeed((s) => s + 1);
+                        cancelEditingTask();
+                      }}
+                      sx={{ flexShrink: 0, minWidth: 0, px: 0.65, height: 26, fontSize: '0.65rem' }}
+                    >
+                      Reset
+                    </Button>
+                    <Button
+                      size="small"
+                      variant={showSetEditor ? 'contained' : 'outlined'}
+                      onClick={() => setShowSetEditor((v) => !v)}
+                      sx={{ minWidth: 0, px: 0.7, height: 26, fontSize: '0.65rem', flexShrink: 0 }}
+                    >
+                      Fragenset
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      startIcon={<PlayArrowIcon sx={{ fontSize: 14 }} />}
+                      onClick={startSession}
+                      disabled={activeTasks.length === 0}
+                      sx={{ minWidth: 0, px: 0.85, height: 26, fontSize: '0.65rem', flexShrink: 0 }}
+                    >
+                      Start
+                    </Button>
+                  </Box>
+
+                  {/* Vordefinierte Klassenstufen darunter, kleiner */}
+                  <Box
+                    component="div"
+                    role="toolbar"
+                    aria-label="Klassenstufen"
+                    sx={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      gap: 0.35,
+                      width: '100%',
+                      minWidth: 0,
+                      mt: '1.15em',
+                      py: 0.15,
+                      opacity: 0.92,
                     }}
                   >
                     {([5, 6, 7, 8, 9, 10, 11, 12, 13] as const).map((g) => (
                       <Button
                         key={g}
                         size="small"
-                        variant={grade === g ? 'contained' : 'outlined'}
-                        onClick={() => setGrade(g)}
-                        sx={{ minWidth: 36, px: 0.6, flexShrink: 0 }}
+                        variant={!customSetId && grade === g ? 'contained' : 'outlined'}
+                        onClick={() => selectBand(g)}
+                        sx={{
+                          minWidth: 22,
+                          width: 22,
+                          height: 22,
+                          px: 0,
+                          flexShrink: 0,
+                          fontSize: '0.62rem',
+                          fontWeight: 650,
+                        }}
                       >
                         {g}
                       </Button>
@@ -2076,17 +2510,18 @@ export default function EntryTicketPage() {
                       <Button
                         key={band}
                         size="small"
-                        variant={grade === band ? 'contained' : 'outlined'}
-                        onClick={() => setGrade(band)}
+                        variant={!customSetId && grade === band ? 'contained' : 'outlined'}
+                        onClick={() => selectBand(band)}
                         sx={{
-                          minWidth: 48,
-                          px: 0.45,
-                          fontSize: '0.7rem',
+                          minWidth: 0,
+                          px: 0.4,
+                          height: 22,
+                          fontSize: '0.55rem',
                           fontWeight: 700,
-                          lineHeight: 1.15,
+                          lineHeight: 1.1,
                           whiteSpace: 'nowrap',
                           flexShrink: 0,
-                          ...(grade === band
+                          ...(!customSetId && grade === band
                             ? {
                                 bgcolor: main,
                                 color: '#fff',
@@ -2096,7 +2531,7 @@ export default function EntryTicketPage() {
                             : {
                                 color: main,
                                 borderColor: main,
-                                borderWidth: 2,
+                                borderWidth: 1.5,
                                 bgcolor: 'rgba(255,255,255,0.85)',
                                 '&:hover': { bgcolor: hoverBg, borderColor: main },
                               }),
@@ -2105,134 +2540,194 @@ export default function EntryTicketPage() {
                         {label}
                       </Button>
                     ))}
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={() => {
-                        setTaskSeed((s) => s + 1);
-                        cancelEditingTask();
-                      }}
-                      sx={{ flexShrink: 0 }}
-                    >
-                      Reset
-                    </Button>
-                    <Button
-                      size="small"
-                      variant={showSetEditor ? 'contained' : 'outlined'}
-                      onClick={() => setShowSetEditor((v) => !v)}
-                      sx={{ minWidth: 92, flexShrink: 0 }}
-                    >
-                      Fragenset
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      startIcon={<PlayArrowIcon sx={{ fontSize: 18 }} />}
-                      onClick={startSession}
-                      sx={{ minWidth: 96, flexShrink: 0 }}
-                    >
-                      Start
-                    </Button>
                   </Box>
                 </Box>
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: 0.65,
-                  }}
-                >
-                  {activeTasks.map((task, index) => (
-                    <Box
-                      key={`${index}-${task.prompt}`}
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 0.75,
-                        p: 0.7,
-                        borderRadius: 1.25,
-                        bgcolor: 'white',
-                        border: '1px solid',
-                        borderColor: 'divider',
-                      }}
-                    >
-                      {editingIndex === index ? (
-                        <>
-                          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.6 }}>
-                            <TextField
-                              size="small"
-                              value={editingPrompt}
-                              onChange={(e) => handleEditingPromptChange(e.target.value)}
-                              placeholder="Frage"
-                              onKeyDown={handleEditKeyDown}
-                            />
-                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                              Vorschau: {renderPromptWithInlineGreenSolution(editingPrompt, getLiveAutoSolution(editingPrompt), `preview-${index}`)}
-                            </Typography>
-                          </Box>
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                            <Button size="small" variant="contained" onClick={saveEditingTask} sx={{ minWidth: 44 }}>
-                              OK
-                            </Button>
-                            <Button size="small" variant="text" onClick={cancelEditingTask} sx={{ minWidth: 44 }}>
-                              Ab
-                            </Button>
-                          </Box>
-                        </>
-                      ) : (
-                        <>
-                      <Typography variant="body2" sx={{ fontSize: '1rem', lineHeight: 1.2 }}>
-                            <Box component="span" sx={{ fontWeight: 400 }}>
-                              {index + 1}.
-                            </Box>{' '}
-                            <Box component="span" sx={{ fontWeight: 700 }}>
+                {isCustomSetActive ? null : activeTasks.length === 0 ? (
+                  <Box
+                    sx={{
+                      width: '100%',
+                      py: 1.25,
+                      px: 1,
+                      borderRadius: 1.1,
+                      border: '1px dashed #c5cae9',
+                      bgcolor: 'rgba(255,255,255,0.7)',
+                      textAlign: 'center',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <Typography sx={{ color: '#5c6b8a', fontSize: '0.8rem', fontWeight: 600 }}>
+                      Keine Fragen im aktuellen Fragenset.
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                      gap: 0.45,
+                      width: '100%',
+                    }}
+                  >
+                    {activeTasks.map((task, index) => (
+                      <Box
+                        key={`${index}-${task.prompt}`}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.55,
+                          px: 0.65,
+                          py: 0.5,
+                          minWidth: 0,
+                          borderRadius: 1.1,
+                          bgcolor: 'white',
+                          border: '1px solid #d9e0ff',
+                          boxSizing: 'border-box',
+                          '&:hover': { borderColor: '#b6c4f0', bgcolor: '#fcfdff' },
+                        }}
+                      >
+                        {editingIndex === index ? (
+                          <>
+                            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.4, minWidth: 0 }}>
+                              <TextField
+                                size="small"
+                                value={editingPrompt}
+                                onChange={(e) => handleEditingPromptChange(e.target.value)}
+                                placeholder="Frage"
+                                onKeyDown={handleEditKeyDown}
+                                sx={{ '& .MuiInputBase-input': { py: 0.35, fontSize: '0.8rem' } }}
+                              />
+                              <Typography sx={{ color: 'text.secondary', fontSize: '0.68rem' }}>
+                                {renderPromptWithInlineGreenSolution(
+                                  editingPrompt,
+                                  getLiveAutoSolution(editingPrompt),
+                                  `preview-${index}`,
+                                )}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
+                              <Button
+                                size="small"
+                                variant="contained"
+                                onClick={saveEditingTask}
+                                sx={{ minWidth: 32, px: 0.6, height: 22, fontSize: '0.68rem' }}
+                              >
+                                OK
+                              </Button>
+                              <Button
+                                size="small"
+                                onClick={cancelEditingTask}
+                                sx={{ minWidth: 32, px: 0.6, height: 22, fontSize: '0.68rem' }}
+                              >
+                                Ab
+                              </Button>
+                            </Box>
+                          </>
+                        ) : (
+                          <>
+                            <Box
+                              sx={{
+                                minWidth: 22,
+                                height: 22,
+                                borderRadius: 0.75,
+                                display: 'grid',
+                                placeItems: 'center',
+                                flexShrink: 0,
+                                bgcolor: '#e8eaf6',
+                                color: '#3949ab',
+                                fontWeight: 800,
+                                fontSize: '0.68rem',
+                              }}
+                            >
+                              {index + 1}
+                            </Box>
+                            <Box
+                              sx={{
+                                flex: 1,
+                                minWidth: 0,
+                                fontSize: '0.82rem',
+                                lineHeight: 1.3,
+                                color: '#1a237e',
+                                fontWeight: 700,
+                              }}
+                            >
                               {renderPrompt(task.prompt, `selection-${index}`, false, true)}
                             </Box>
-                        {pickedListIndices[index] !== undefined && (
-                              <Box component="span" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-                                {' '}
-                            (List: {pickedListIndices[index]})
-                              </Box>
-                            )}
-                          </Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => startEditingTask(index)}
-                              sx={{ minWidth: 22, width: 22, height: 22, p: 0, lineHeight: 1 }}
-                            >
-                              ✎
-                            </Button>
-                            <Button
-                              size="small"
-                              color="error"
-                              variant="outlined"
-                              onClick={() => replaceTaskAtIndex(index)}
-                              sx={{ minWidth: 22, width: 22, height: 22, p: 0, lineHeight: 1 }}
-                            >
-                              ×
-                            </Button>
-                          </Box>
-                        </>
-                      )}
-                    </Box>
-                  ))}
-                </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3, flexShrink: 0 }}>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => startEditingTask(index)}
+                                sx={{
+                                  minWidth: 22,
+                                  width: 22,
+                                  height: 22,
+                                  p: 0,
+                                  lineHeight: 1,
+                                  borderColor: '#c5cae9',
+                                  color: '#3949ab',
+                                  fontSize: '0.72rem',
+                                }}
+                              >
+                                ✎
+                              </Button>
+                              <Button
+                                size="small"
+                                color="error"
+                                variant="outlined"
+                                onClick={() => replaceTaskAtIndex(index)}
+                                sx={{
+                                  minWidth: 22,
+                                  width: 22,
+                                  height: 22,
+                                  p: 0,
+                                  lineHeight: 1,
+                                  fontSize: '0.78rem',
+                                }}
+                              >
+                                ×
+                              </Button>
+                            </Box>
+                          </>
+                        )}
+                      </Box>
+                    ))}
+                  </Box>
+                )}
 
-                {showSetEditor && (
-                  <Box sx={{ mt: 1.5, p: 1, border: '1px solid', borderColor: '#bcd3ff', borderRadius: 1.25, bgcolor: '#eef4ff' }}>
-                    <Typography variant="subtitle2" sx={{ mb: 0.75, fontWeight: 700 }}>
-                      Fragenset {fragensetHeadingLabel(grade)} ({poolForBand.length} Fragen)
+                {showSetEditor && isCustomSetActive && activeCustomSet && (
+                  <Box sx={{ width: '100%', minWidth: 0 }}>
+                    <EntryTicketFragensetEditor
+                      set={activeCustomSet}
+                      activeLessonPath={entryLessonPath}
+                      onChange={patchActiveCustomSet}
+                      onRename={renameActiveCustomSet}
+                      onDeleteSet={deleteActiveCustomSet}
+                    />
+                  </Box>
+                )}
+
+                {showSetEditor && !isCustomSetActive && (
+                  <Box
+                    sx={{
+                      mt: 1,
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      p: 0.85,
+                      border: '1px solid #d9e0ff',
+                      borderRadius: 1.5,
+                      bgcolor: '#f8faff',
+                    }}
+                  >
+                    <Typography sx={{ mb: 0.65, fontWeight: 800, fontSize: '0.78rem', color: '#1a237e' }}>
+                      Fragenset {activeSetLabel} · {poolForBand.length} Fragen
                     </Typography>
-                    <Box sx={{ mt: 0.8, display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 140px 28px', gap: 0.45, alignItems: 'center', mb: 0.65 }}>
                       <TextField
                         size="small"
                         value={newPrompt}
                         onChange={(e) => setNewPrompt(e.target.value)}
                         placeholder="Neue Frage (mit ?)"
-                        sx={{ flex: 1 }}
+                        sx={{ '& .MuiInputBase-input': { py: 0.4, fontSize: '0.78rem' } }}
                         onKeyDown={handleAddQuestionKeyDown}
                       />
                       <TextField
@@ -2240,25 +2735,25 @@ export default function EntryTicketPage() {
                         value={newSolution}
                         onChange={(e) => setNewSolution(e.target.value)}
                         placeholder="Antwort"
-                        sx={{ width: 140 }}
+                        sx={{ '& .MuiInputBase-input': { py: 0.4, fontSize: '0.78rem' } }}
                         onKeyDown={handleAddQuestionKeyDown}
                       />
-                      <Button size="small" variant="contained" onClick={addSetQuestion} sx={{ minWidth: 34, width: 34, height: 30, p: 0 }}>
+                      <Button size="small" variant="contained" onClick={addSetQuestion} sx={{ minWidth: 28, width: 28, height: 28, p: 0 }}>
                         +
                       </Button>
                     </Box>
-                    <Box sx={{ display: 'grid', gap: 0.6, mt: 0.8 }}>
+                    <Box sx={{ display: 'grid', gap: 0.55, width: '100%' }}>
                       {groupedSetQuestions.map((group) => {
                         const vis = visualForFragensetGroup(group.category);
                         return (
-                        <Box key={group.category} sx={{ display: 'grid', gap: 0.45 }}>
+                        <Box key={group.category} sx={{ display: 'grid', gap: 0.35, width: '100%' }}>
                           <Box
                             sx={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: 0.5,
-                              px: 0.75,
-                              py: 0.35,
+                              gap: 0.4,
+                              px: 0.65,
+                              py: 0.25,
                               borderRadius: 1,
                               width: 'fit-content',
                               bgcolor: vis.bg,
@@ -2267,10 +2762,10 @@ export default function EntryTicketPage() {
                               borderColor: vis.border,
                             }}
                           >
-                            <Box component="span" sx={{ fontSize: '0.85rem', lineHeight: 1 }}>
+                            <Box component="span" sx={{ fontSize: '0.75rem', lineHeight: 1 }}>
                               {vis.icon}
                             </Box>
-                            <Typography variant="caption" sx={{ fontWeight: 800, color: 'inherit' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: 'inherit', fontSize: '0.68rem' }}>
                               {group.category}
                             </Typography>
                           </Box>
@@ -2280,8 +2775,10 @@ export default function EntryTicketPage() {
                               sx={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: 0.5,
-                                p: 0.5,
+                                gap: 0.45,
+                                p: 0.45,
+                                width: '100%',
+                                boxSizing: 'border-box',
                                 border: '1px solid',
                                 borderColor: vis.border,
                                 borderRadius: 1,
@@ -2295,39 +2792,39 @@ export default function EntryTicketPage() {
                                     value={setEditCategory}
                                     onChange={(e) => setSetEditCategory(e.target.value)}
                                     placeholder="Kategorie"
-                                    sx={{ width: 110 }}
+                                    sx={{ width: 100, '& .MuiInputBase-input': { py: 0.35, fontSize: '0.75rem' } }}
                                   />
                                   <TextField
                                     size="small"
                                     value={setEditPrompt}
                                     onChange={(e) => setSetEditPrompt(e.target.value)}
                                     placeholder="Frage"
-                                    sx={{ flex: 1 }}
+                                    sx={{ flex: 1, '& .MuiInputBase-input': { py: 0.35, fontSize: '0.75rem' } }}
                                   />
                                   <TextField
                                     size="small"
                                     value={setEditSolution}
                                     onChange={(e) => setSetEditSolution(e.target.value)}
                                     placeholder="Lösung"
-                                    sx={{ width: 130 }}
+                                    sx={{ width: 120, '& .MuiInputBase-input': { py: 0.35, fontSize: '0.75rem' } }}
                                   />
-                                  <Box sx={{ ml: 'auto', display: 'flex', gap: 0.35 }}>
-                                    <Button size="small" variant="contained" onClick={saveSetEditing} sx={{ minWidth: 26, px: 0.6 }}>OK</Button>
-                                    <Button size="small" onClick={cancelSetEditing} sx={{ minWidth: 26, px: 0.6 }}>Ab</Button>
+                                  <Box sx={{ ml: 'auto', display: 'flex', gap: 0.3 }}>
+                                    <Button size="small" variant="contained" onClick={saveSetEditing} sx={{ minWidth: 26, px: 0.5, height: 24 }}>OK</Button>
+                                    <Button size="small" onClick={cancelSetEditing} sx={{ minWidth: 26, px: 0.5, height: 24 }}>Ab</Button>
                                   </Box>
                                 </>
                               ) : (
                                 <>
-                                  <Typography variant="body2" sx={{ minWidth: 28, color: 'text.secondary', fontWeight: 700 }}>
+                                  <Typography variant="body2" sx={{ minWidth: 24, color: 'text.secondary', fontWeight: 700, fontSize: '0.75rem' }}>
                                     {displayNumber}.
                                   </Typography>
-                                  <Typography variant="body2" sx={{ flex: 1 }}>
+                                  <Typography variant="body2" sx={{ flex: 1, fontSize: '0.78rem', minWidth: 0 }}>
                                     {q.prompt}
                                   </Typography>
-                                  <Typography variant="body2" sx={{ minWidth: 90, color: 'success.dark', fontWeight: 700 }}>
+                                  <Typography variant="body2" sx={{ minWidth: 72, color: 'success.dark', fontWeight: 700, fontSize: '0.78rem' }}>
                                     {q.solution}
                                   </Typography>
-                                  <Box sx={{ ml: 'auto', display: 'flex', gap: 0.35 }}>
+                                  <Box sx={{ ml: 'auto', display: 'flex', gap: 0.3 }}>
                                     <Button size="small" variant="outlined" onClick={() => startSetEditing(idx)} sx={{ minWidth: 22, width: 22, height: 22, p: 0 }}>✎</Button>
                                     <Button size="small" color="error" variant="outlined" onClick={() => deleteSetQuestion(idx)} sx={{ minWidth: 22, width: 22, height: 22, p: 0 }}>×</Button>
                                   </Box>
@@ -2341,182 +2838,258 @@ export default function EntryTicketPage() {
                     </Box>
                   </Box>
                 )}
+
               </Box>
             ) : (
-              <>
-                <LinearProgress
-                  variant="determinate"
-                  value={progressPercent}
-                  sx={{
-                    ...determinateLinearProgressSx(
-                      'linear-gradient(90deg, #5c6bc0 0%, #3949ab 38%, #1565c0 100%)',
-                      { height: 11, barGlow: 'rgba(30, 136, 229, 0.35)' }
-                    ),
-                    mb: 1.25,
-                  }}
-                />
-
+              <Box sx={{ display: 'grid', gap: 0.55, width: '100%', minWidth: 0 }}>
+                {/* Steuerung — flach, ohne Boxen */}
                 <Box
                   sx={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     gap: 0.75,
-                    flexWrap: 'nowrap',
-                    mb: 1,
-                    overflowX: 'auto',
+                    flexWrap: 'wrap',
+                    px: 0.1,
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, whiteSpace: 'nowrap' }}>
-                    <Chip size="small" label={`${sessionDone ? activeTasks.length : currentIndex + 1}/${activeTasks.length}`} />
-                    <Chip size="small" label={formatMMSS(remainingSeconds)} color="info" />
-                    {!sessionDone && <Chip size="small" label={`${secondsLeft}s`} color="warning" />}
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, whiteSpace: 'nowrap' }}>
-                <Tooltip title="Vorherige Folie">
-                  <span>
-                    <IconButton
-                      size="small"
-                      onClick={goPrevious}
-                      aria-label="Vorherige Folie"
-                      disabled={currentIndex === 0 && !sessionDone}
-                      sx={{
-                        p: 0,
-                        minWidth: 24,
-                        width: 24,
-                        height: 24,
-                        border: '1px solid',
-                        borderColor: 'divider',
-                      }}
-                    >
-                      <SkipPreviousIcon sx={{ fontSize: 19 }} />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-                {!isRunning ? (
-                  <Button
-                    size="small"
-                    variant="contained"
-                    startIcon={<PlayArrowIcon sx={{ fontSize: 18 }} />}
-                    onClick={startOrResume}
-                    sx={{ minHeight: 24, py: 0, px: 0.75, minWidth: 64 }}
+                  <Typography
+                    sx={{
+                      fontSize: '0.72rem',
+                      fontWeight: 500,
+                      color: '#5c6b8a',
+                      fontVariantNumeric: 'tabular-nums',
+                      letterSpacing: 0.01,
+                    }}
                   >
-                    {sessionDone ? 'Neu' : 'Weiter'}
-                  </Button>
-                ) : (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    color="warning"
-                    startIcon={<PauseIcon sx={{ fontSize: 18 }} />}
-                    onClick={pause}
-                    sx={{ minHeight: 24, py: 0, px: 0.75, minWidth: 64 }}
-                  >
-                    Pause
-                  </Button>
-                )}
-                <Tooltip title="Nächste Folie">
-                  <span>
-                    <IconButton
-                      size="small"
-                      onClick={goNext}
-                      aria-label="Nächste Folie"
-                      disabled={sessionDone}
-                      sx={{
-                        p: 0,
-                        minWidth: 24,
-                        width: 24,
-                        height: 24,
-                        border: '1px solid',
-                        borderColor: 'divider',
-                      }}
-                    >
-                      <SkipNextIcon sx={{ fontSize: 19 }} />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-                <IconButton
-                  size="small"
-                  onClick={restart}
-                  aria-label="Zurücksetzen"
-                  sx={{
-                    p: 0,
-                    minWidth: 24,
-                    width: 24,
-                    height: 24,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                  }}
-                >
-                  <RestartAltIcon sx={{ fontSize: 19 }} />
-                </IconButton>
+                    <Box component="span" sx={{ color: '#3949ab', fontWeight: 600 }}>
+                      {sessionDone ? activeTasks.length : currentIndex + 1}
+                    </Box>
+                    /{activeTasks.length}
+                    <Box component="span" sx={{ mx: 0.7, color: '#c5cae9' }}>·</Box>
+                    {formatMMSS(remainingSeconds)}
+                    {!sessionDone && (
+                      <Box component="span" sx={{ color: '#90a4ae' }}>
+                        {' '}({secondsLeft}s)
+                      </Box>
+                    )}
+                  </Typography>
+
+                  <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.15 }}>
+                    <Tooltip title="Vorherige Karte">
+                      <span>
+                        <IconButton
+                          size="small"
+                          onClick={goPrevious}
+                          aria-label="Vorherige Karte"
+                          disabled={currentIndex === 0 && !sessionDone}
+                          sx={{ width: 24, height: 24, color: '#78909c' }}
+                        >
+                          <SkipPreviousIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                    {!isRunning ? (
+                      <Button
+                        size="small"
+                        variant="text"
+                        startIcon={<PlayArrowIcon sx={{ fontSize: 14 }} />}
+                        onClick={startOrResume}
+                        sx={{
+                          minHeight: 24,
+                          px: 0.7,
+                          fontWeight: 600,
+                          fontSize: '0.68rem',
+                          color: '#3949ab',
+                          textTransform: 'none',
+                        }}
+                      >
+                        {sessionDone ? 'Neu' : 'Weiter'}
+                      </Button>
+                    ) : (
+                      <Button
+                        size="small"
+                        variant="text"
+                        startIcon={<PauseIcon sx={{ fontSize: 14 }} />}
+                        onClick={pause}
+                        sx={{
+                          minHeight: 24,
+                          px: 0.7,
+                          fontWeight: 600,
+                          fontSize: '0.68rem',
+                          color: '#ef6c00',
+                          textTransform: 'none',
+                        }}
+                      >
+                        Pause
+                      </Button>
+                    )}
+                    <Tooltip title="Nächste Karte">
+                      <span>
+                        <IconButton
+                          size="small"
+                          onClick={goNext}
+                          aria-label="Nächste Karte"
+                          disabled={sessionDone}
+                          sx={{ width: 24, height: 24, color: '#78909c' }}
+                        >
+                          <SkipNextIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title="Neu starten">
+                      <IconButton
+                        size="small"
+                        onClick={restart}
+                        aria-label="Zurücksetzen"
+                        sx={{ width: 24, height: 24, color: '#90a4ae' }}
+                      >
+                        <RestartAltIcon sx={{ fontSize: 15 }} />
+                      </IconButton>
+                    </Tooltip>
                   </Box>
                 </Box>
+
+                <LinearProgress
+                  variant="determinate"
+                  value={progressPercent}
+                  sx={{
+                    height: 2,
+                    borderRadius: 1,
+                    bgcolor: '#e8eaf6',
+                    '& .MuiLinearProgress-bar': {
+                      bgcolor: '#9fa8da',
+                      borderRadius: 1,
+                    },
+                  }}
+                />
 
                 {!sessionDone ? (
                   <Box
                     sx={{
-                      width: DISPLAY_BOX_WIDTH,
-                      minWidth: DISPLAY_BOX_WIDTH,
-                      maxWidth: DISPLAY_BOX_WIDTH,
+                      position: 'relative',
+                      width: '100%',
+                      minWidth: 0,
                       height: DISPLAY_BOX_HEIGHT,
                       minHeight: DISPLAY_BOX_HEIGHT,
                       maxHeight: DISPLAY_BOX_HEIGHT,
-                      borderRadius: 2,
-                      p: { xs: 2, sm: 3 },
-                      border: '1px solid #d9e0ff',
-                      bgcolor: '#f8faff',
+                      borderRadius: 1.25,
+                      overflow: 'hidden',
+                      boxSizing: 'border-box',
+                      border: '1px solid #e0e4f5',
+                      bgcolor: '#fafbff',
                       display: 'flex',
                       flexDirection: 'column',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      textAlign: 'center',
-                      gap: 1.2,
                     }}
                   >
-                    <Typography
+                    <LinearProgress
+                      variant="determinate"
+                      value={(secondsLeft / SLIDE_DURATION_SEC) * 100}
                       sx={{
-                        width: '100%',
-                        maxWidth: DISPLAY_BOX_WIDTH - 40,
-                        fontSize: '4.5rem',
-                        lineHeight: 1.1,
-                        fontWeight: 500,
-                        whiteSpace: 'pre-line',
+                        height: 1.5,
+                        bgcolor: 'transparent',
+                        '& .MuiLinearProgress-bar': {
+                          bgcolor: secondsLeft <= 5 ? '#ffb74d' : '#c5cae9',
+                          transition: 'transform 0.9s linear, background-color 0.3s ease',
+                        },
+                      }}
+                    />
+
+                    <Box
+                      key={currentIndex}
+                      sx={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textAlign: 'center',
+                        gap: 0.6,
+                        px: { xs: 1.5, sm: 3 },
+                        py: 1,
+                        animation: 'etCardIn 200ms ease-out',
+                        '@keyframes etCardIn': {
+                          from: { opacity: 0 },
+                          to: { opacity: 1 },
+                        },
                       }}
                     >
-                      {renderPrompt(formattedPrompt, 'live', true)}
-                    </Typography>
+                      <Typography
+                        sx={{
+                          fontSize: '0.62rem',
+                          fontWeight: 500,
+                          color: '#90a4ae',
+                          letterSpacing: 0.04,
+                        }}
+                      >
+                        {currentTask?.category || 'Frage'}
+                        <Box component="span" sx={{ mx: 0.55, opacity: 0.5 }}>·</Box>
+                        {currentIndex + 1}/{activeTasks.length}
+                      </Typography>
+
+                      <Typography
+                        sx={{
+                          width: '100%',
+                          maxWidth: 720,
+                          fontSize: { xs: '1.25rem', sm: '1.65rem', md: '1.85rem' },
+                          lineHeight: 1.35,
+                          fontWeight: 400,
+                          color: '#283593',
+                          whiteSpace: 'pre-line',
+                          letterSpacing: 0,
+                        }}
+                      >
+                        {renderPrompt(formattedPrompt, 'live', true)}
+                      </Typography>
+                    </Box>
                   </Box>
                 ) : (
                   <Box
                     sx={{
-                      width: DISPLAY_BOX_WIDTH,
-                      minWidth: DISPLAY_BOX_WIDTH,
-                      maxWidth: DISPLAY_BOX_WIDTH,
+                      width: '100%',
+                      minWidth: 0,
                       height: FINAL_DISPLAY_BOX_HEIGHT,
                       minHeight: FINAL_DISPLAY_BOX_HEIGHT,
                       maxHeight: FINAL_DISPLAY_BOX_HEIGHT,
-                      borderRadius: 2,
-                      p: { xs: 1.5, sm: 2 },
-                      border: '1px solid #d9e0ff',
-                      bgcolor: '#f8faff',
-                      overflow: 'hidden',
+                      borderRadius: 1.25,
+                      px: { xs: 0.75, sm: 1 },
+                      py: 0.75,
+                      border: '1px solid #e0e4f5',
+                      bgcolor: '#fafbff',
+                      overflow: 'auto',
+                      boxSizing: 'border-box',
                     }}
                   >
-                    {isTeacher && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, flexWrap: 'wrap', mb: 0.75 }}>
-                        <FormControlLabel
-                          control={
-                            <Switch
-                              checked={showSolutions}
-                              onChange={(e) => setShowSolutions(e.target.checked)}
-                            />
-                          }
-                          label="Lösungen anzeigen"
-                          sx={{ mr: 0 }}
-                        />
-                      </Box>
-                    )}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 0.75,
+                        flexWrap: 'wrap',
+                        mb: 0.55,
+                        px: 0.25,
+                      }}
+                    >
+                      <Typography sx={{ fontWeight: 500, fontSize: '0.7rem', color: '#78909c' }}>
+                        Übersicht · {activeTasks.length}
+                      </Typography>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            size="small"
+                            checked={showSolutions}
+                            onChange={(e) => setShowSolutions(e.target.checked)}
+                          />
+                        }
+                        label={
+                          <Typography sx={{ fontSize: '0.65rem', fontWeight: 500, color: '#78909c' }}>
+                            Lösungen
+                          </Typography>
+                        }
+                        sx={{ mr: 0, '& .MuiFormControlLabel-label': { ml: 0.2 } }}
+                      />
+                    </Box>
 
                     <Box
                       sx={{
@@ -2524,50 +3097,128 @@ export default function EntryTicketPage() {
                         gridTemplateColumns: '1fr 1fr',
                         gridTemplateRows: `repeat(${finalSlideRows}, minmax(0, auto))`,
                         gridAutoFlow: 'column',
-                        gap: 0.8,
-                        mt: isTeacher ? 0 : 0.75,
+                        gap: '2px 12px',
                       }}
                     >
                       {activeTasks.map((task, index) => (
                         <Box
                           key={`${index}-${task.prompt}`}
                           sx={{
-                            p: 0.72,
-                            borderRadius: 1.5,
-                            bgcolor: 'white',
-                            border: '1px solid',
-                            borderColor: 'divider',
+                            display: 'grid',
+                            gridTemplateColumns: showSolutions
+                              ? '16px minmax(0, 1fr) auto'
+                              : '16px minmax(0, 1fr)',
+                            columnGap: 0.55,
+                            alignItems: 'baseline',
+                            px: 0.35,
+                            py: 0.35,
+                            borderBottom: '1px solid #eef0f8',
+                            minWidth: 0,
                           }}
                         >
-                          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, width: '100%', minWidth: 0 }}>
+                          <Typography
+                            sx={{
+                              fontSize: '0.68rem',
+                              fontWeight: 500,
+                              color: '#9fa8da',
+                              fontVariantNumeric: 'tabular-nums',
+                            }}
+                          >
+                            {index + 1}.
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontSize: '0.74rem',
+                              lineHeight: 1.25,
+                              fontWeight: 400,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              color: '#37474f',
+                              minWidth: 0,
+                            }}
+                          >
+                            {renderPrompt(task.prompt, `final-${index}`, false, true)}
+                          </Typography>
+                          {showSolutions && (
                             <Typography
                               component="span"
-                              variant="body2"
-                              sx={{ fontSize: '0.98rem', lineHeight: 1.16, whiteSpace: 'nowrap', flexShrink: 0 }}
+                              sx={{
+                                fontSize: '0.74rem',
+                                lineHeight: 1.25,
+                                fontWeight: 600,
+                                color: '#2e7d32',
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0,
+                              }}
                             >
-                              {index + 1}.
+                              {task.solution || '—'}
                             </Typography>
-                            <Box sx={{ flex: 1, minWidth: 0 }}>
-                              {showSolutions
-                                ? renderPromptWithInlineGreenSolution(task.prompt, task.solution, `final-${index}`, true)
-                                : (
-                                  <Typography variant="body2" sx={{ fontSize: '0.98rem', lineHeight: 1.16, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    {renderPrompt(task.prompt, `final-${index}`, false, true)}
-                                  </Typography>
-                                )}
-                            </Box>
-                          </Box>
+                          )}
                         </Box>
                       ))}
                     </Box>
                   </Box>
                 )}
-              </>
+              </Box>
             )}
 
           </CardContent>
         </Card>
       </Box>
+
+      <Dialog open={createSetOpen} onClose={() => !createSetBusy && setCreateSetOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle sx={{ ...dialogCloseTitleSx, bgcolor: '#3949ab', color: '#fff', py: 1.25 }}>
+          Fragenset für eine Reihe
+          <DialogCloseIconButton
+            onClose={() => setCreateSetOpen(false)}
+            disabled={createSetBusy}
+            sx={{ color: '#fff', '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' } }}
+            iconSx={{ color: '#fff' }}
+          />
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.25, mt: 1, fontSize: '0.82rem' }}>
+            Name wie im Ordner (z.&nbsp;B. <strong>11-04 KI</strong>). Alle Stunden werden automatisch als Unterüberschriften angelegt — Karten trägst du danach manuell ein.
+          </Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            size="small"
+            label="Name der Reihe"
+            placeholder="z. B. 11-04 KI"
+            value={createSetName}
+            disabled={createSetBusy}
+            onChange={(e) => setCreateSetName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                void createCustomSet();
+              }
+            }}
+          />
+          {createSetError && (
+            <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
+              {createSetError}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 1.5, gap: 0.5 }}>
+          <Button size="small" onClick={() => setCreateSetOpen(false)} disabled={createSetBusy} sx={{ minWidth: 0, px: 1 }}>
+            Abbrechen
+          </Button>
+          <Button
+            size="small"
+            variant="contained"
+            onClick={() => void createCustomSet()}
+            disabled={createSetBusy || !createSetName.trim()}
+            sx={{ minWidth: 0, px: 1.25, bgcolor: '#3949ab' }}
+          >
+            {createSetBusy ? 'Lade Stunden…' : 'Anlegen'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

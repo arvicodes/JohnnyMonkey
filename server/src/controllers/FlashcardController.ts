@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { SpacedRepetitionService } from '../services/SpacedRepetitionService';
 import { applyJourneyEvent } from '../services/journeyService';
 import { parseFlashcardWordFile, ParsedFlashcardDocument } from '../utils/flashcardWordParser';
+import { scheduleFlashcardDeckBackup } from '../utils/flashcardDeckBackup';
 
 const prisma = new PrismaClient();
 
@@ -30,6 +31,8 @@ export const createDeck = async (req: Request, res: Response) => {
         }
       }
     });
+
+    scheduleFlashcardDeckBackup(deck.id, true);
 
     res.status(201).json(deck);
   } catch (error) {
@@ -220,6 +223,8 @@ export const updateDeck = async (req: Request, res: Response) => {
       }
     });
 
+    scheduleFlashcardDeckBackup(updatedDeck.id, true);
+
     res.json(updatedDeck);
   } catch (error) {
     console.error('Fehler beim Aktualisieren des Karteidecks:', error);
@@ -301,6 +306,8 @@ export const createCard = async (req: Request, res: Response) => {
       }
     });
 
+    scheduleFlashcardDeckBackup(deckId);
+
     res.status(201).json(card);
   } catch (error) {
     console.error('Fehler beim Erstellen der Karte:', error);
@@ -339,6 +346,8 @@ export const updateCard = async (req: Request, res: Response) => {
       }
     });
 
+    scheduleFlashcardDeckBackup(card.deckId);
+
     res.json(updatedCard);
   } catch (error) {
     console.error('Fehler beim Aktualisieren der Karte:', error);
@@ -372,9 +381,13 @@ export const deleteCard = async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Keine Berechtigung zum Löschen dieser Karte' });
     }
 
+    const deckIdForBackup = card.deckId;
+
     await prisma.flashcard.delete({
       where: { id: cardId }
     });
+
+    scheduleFlashcardDeckBackup(deckIdForBackup, true);
 
     res.json({ message: 'Karte erfolgreich gelöscht' });
   } catch (error) {
@@ -956,6 +969,8 @@ export const createFlashcardDeckFromWord = async (req: Request, res: Response) =
       }
     });
 
+    scheduleFlashcardDeckBackup(deck.id, true);
+
     res.status(201).json({
       message: `Karteikarten-Deck erfolgreich erstellt mit ${createdCards.length} Karten`,
       deck: result
@@ -1068,6 +1083,8 @@ export const addFlashcardsToExistingDeck = async (req: Request, res: Response) =
         }
       }
     });
+
+    scheduleFlashcardDeckBackup(deckId, true);
 
     res.status(200).json({
       message: `${createdCards.length} Karteikarten erfolgreich zum bestehenden Deck hinzugefügt`,
@@ -1853,6 +1870,7 @@ export const createCollaborativeCard = async (req: Request, res: Response) => {
         order: nextOrder,
       },
     });
+    scheduleFlashcardDeckBackup(deckId);
     res.status(201).json(card);
   } catch (error) {
     console.error('createCollaborativeCard:', error);

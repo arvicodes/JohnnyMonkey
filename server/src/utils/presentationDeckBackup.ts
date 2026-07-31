@@ -1,6 +1,10 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import {
+  sanitizeBackupFilePart,
+  writeFolienAlleBackupFile,
+} from './folienAlleBackup';
 
 const LOCAL_BACKUP_DIR = '.presentation-backups';
 const CENTRAL_BACKUP_ROOT_NAME = 'Presentation-Sicherheitskopien';
@@ -86,16 +90,39 @@ function markBackup(deckFilePath: string, existingBuf: Buffer): void {
   });
 }
 
+function folienAllePresentationFileName(deckFilePath: string): string {
+  const key = sanitizeBackupFilePart(lessonKeyFromDeckPath(deckFilePath), 160);
+  return `Praesentation__${key}.json`;
+}
+
+/**
+ * Schreibt/aktualisiert die Sammel-Sicherheitskopie unter
+ * `J-M-Reihen/Folien - ALLE - BACKUP/Praesentation__<Stundenpfad>.json`
+ */
+export function backupPresentationDeckToFolienAlle(
+  deckFilePath: string,
+  content: Buffer | string
+): string | null {
+  const buf = typeof content === 'string' ? Buffer.from(content, 'utf8') : content;
+  if (buf.length < 50) return null;
+  const written = writeFolienAlleBackupFile(folienAllePresentationFileName(deckFilePath), buf);
+  if (written) {
+    console.log('Folien-ALLE presentation backup:', written);
+  }
+  return written;
+}
+
 /**
  * Schreibt Sicherheitskopien:
  * 1) lokal neben der Präsentation: `.presentation-backups/`
  * 2) zentral im Projekt: `Presentation-Sicherheitskopien/<Stundenpfad>/`
  *    plus immer `latest.json` als schnellste Wiederherstellung.
+ * 3) Sammelordner: `J-M-Reihen/Folien - ALLE - BACKUP/`
  */
 export function backupPresentationDeckBeforeOverwrite(
   deckFilePath: string,
   options?: { force?: boolean; reason?: string }
-): { local?: string; central?: string; latest?: string } {
+): { local?: string; central?: string; latest?: string; folienAlle?: string } {
   if (!fs.existsSync(deckFilePath)) return {};
 
   let existingBuf: Buffer;
@@ -111,7 +138,7 @@ export function backupPresentationDeckBeforeOverwrite(
   const force = Boolean(options?.force);
   const writeStamp = shouldWriteTimestampedBackup(deckFilePath, existingBuf, force);
   const stamp = stampNow();
-  const result: { local?: string; central?: string; latest?: string } = {};
+  const result: { local?: string; central?: string; latest?: string; folienAlle?: string } = {};
 
   const lessonDir = path.dirname(deckFilePath);
   const localDir = path.join(lessonDir, LOCAL_BACKUP_DIR);
@@ -133,6 +160,10 @@ export function backupPresentationDeckBeforeOverwrite(
   } catch (e) {
     console.warn('Presentation latest backup failed:', e);
   }
+
+  // Sammelordner immer aktualisieren
+  const folienAlle = backupPresentationDeckToFolienAlle(deckFilePath, existingBuf);
+  if (folienAlle) result.folienAlle = folienAlle;
 
   if (writeStamp) {
     try {
@@ -164,6 +195,17 @@ export function backupPresentationDeckBeforeOverwrite(
   }
 
   return result;
+}
+
+/**
+ * Nach erfolgreichem Speichern: aktuelle Version in den Sammelordner schreiben
+ * (auch bei Erst-Erstellung, wenn noch kein vorheriges Backup existierte).
+ */
+export function backupPresentationDeckAfterSave(
+  deckFilePath: string,
+  savedContent: Buffer | string
+): string | null {
+  return backupPresentationDeckToFolienAlle(deckFilePath, savedContent);
 }
 
 export function getCentralPresentationBackupRoot(): string {

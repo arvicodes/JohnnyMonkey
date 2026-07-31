@@ -11,11 +11,37 @@ type EntryTicketPayload = {
   startedAt: string;
   /** 0..9 — welches Motiv unter /entry-ticket/entry-NN.jpg; pro Signal neu gewürfelt, bleibt bis zum nächsten Signal */
   heroImageIndex?: number;
+  /** Fragenset: "7" | "inf11" | "c_…" — vom Lehrer beim Start gesetzt */
+  grade?: string;
+  /** Zufalls-Seed für dieselbe Aufgabenauswahl wie bei der Lehrkraft */
+  taskSeed?: number;
+  /** Echter Stundenordner-Pfad (nicht das Signal-Pseudo-Pfad) */
+  materialLessonPath?: string | null;
 };
 
 const clampHeroIndex = (n: unknown): number => {
   if (typeof n !== 'number' || !Number.isInteger(n)) return 0;
   return Math.min(9, Math.max(0, n));
+};
+
+const normalizeGradeParam = (raw: unknown): string | undefined => {
+  if (typeof raw !== 'string') return undefined;
+  const g = raw.trim();
+  if (!g || g.length > 120) return undefined;
+  return g;
+};
+
+const normalizeTaskSeed = (raw: unknown): number | undefined => {
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) return undefined;
+  return (Math.floor(raw) >>> 0);
+};
+
+const normalizeMaterialLessonPath = (raw: unknown): string | null | undefined => {
+  if (raw === null) return null;
+  if (typeof raw !== 'string') return undefined;
+  const p = raw.trim().replace(/\\/g, '/');
+  if (!p || p.startsWith('__')) return null;
+  return p;
 };
 
 const parsePayload = (raw: string | null | undefined): EntryTicketPayload | null => {
@@ -26,6 +52,9 @@ const parsePayload = (raw: string | null | undefined): EntryTicketPayload | null
     return {
       startedAt: parsed.startedAt,
       heroImageIndex: clampHeroIndex(parsed.heroImageIndex),
+      grade: normalizeGradeParam(parsed.grade),
+      taskSeed: normalizeTaskSeed(parsed.taskSeed),
+      materialLessonPath: normalizeMaterialLessonPath(parsed.materialLessonPath) ?? undefined,
     };
   } catch {
     return null;
@@ -54,7 +83,51 @@ type ResolvedEntryTicket = {
   teacherName: string;
   lessonPath: string;
   payload: EntryTicketPayload;
+  learningGroupId?: string | null;
 };
+
+const entryTicketGroupIdFromPath = (lessonPath: string): string | null => {
+  const m = /^__entry_ticket_g_(.+)__$/.exec(String(lessonPath || '').trim());
+  return m?.[1] || null;
+};
+
+async function resolveModeratorContext(
+  studentId: string,
+  opts?: { lessonPath?: string | null; teacherId?: string | null },
+): Promise<{ isModerator: boolean; learningGroupId: string | null; groupName: string | null }> {
+  const moderated = await prisma.learningGroup.findMany({
+    where: { moderatorStudentId: studentId },
+    select: { id: true, name: true, teacherId: true },
+  });
+  if (moderated.length === 0) {
+    return { isModerator: false, learningGroupId: null, groupName: null };
+  }
+
+  const fromPath = opts?.lessonPath ? entryTicketGroupIdFromPath(opts.lessonPath) : null;
+  if (fromPath) {
+    const hit = moderated.find((g) => g.id === fromPath);
+    if (hit) {
+      return { isModerator: true, learningGroupId: hit.id, groupName: hit.name };
+    }
+    // Scoped-Signal für andere Gruppe → kein Moderator-Recht für dieses Ticket
+    return { isModerator: false, learningGroupId: null, groupName: null };
+  }
+
+  if (opts?.teacherId) {
+    const hit = moderated.find((g) => g.teacherId === opts.teacherId);
+    if (hit) {
+      return { isModerator: true, learningGroupId: hit.id, groupName: hit.name };
+    }
+    return { isModerator: false, learningGroupId: null, groupName: null };
+  }
+
+  // Ohne aktives Ticket: allgemeiner Moderator-Status (für Seiten-Gate)
+  return {
+    isModerator: true,
+    learningGroupId: moderated[0].id,
+    groupName: moderated[0].name,
+  };
+}
 
 const resolveStudentEntryTicket = async (studentId: string): Promise<ResolvedEntryTicket | null> => {
   const groups = await prisma.learningGroup.findMany({
@@ -88,6 +161,7 @@ const resolveStudentEntryTicket = async (studentId: string): Promise<ResolvedEnt
         teacherName: tname,
         lessonPath: pathScoped,
         payload: scoped,
+        learningGroupId: g.id,
       });
     }
 
@@ -107,6 +181,7 @@ const resolveStudentEntryTicket = async (studentId: string): Promise<ResolvedEnt
           teacherName: tname,
           lessonPath: ENTRY_TICKET_LEGACY_PATH,
           payload: leg,
+          learningGroupId: g.id,
         });
       }
     }
@@ -163,11 +238,20 @@ export class EntryTicketController {
       if (user.role !== 'TEACHER') return res.status(403).json({ error: 'Nur Lehrkräfte' });
 
       const learningGroupId = typeof req.body?.learningGroupId === 'string' ? req.body.learningGroupId.trim() : '';
+      const grade = normalizeGradeParam(req.body?.grade);
+      const taskSeed = normalizeTaskSeed(
+        typeof req.body?.taskSeed === 'string' ? Number(req.body.taskSeed) : req.body?.taskSeed,
+      );
+      const materialLessonPath =
+        normalizeMaterialLessonPath(req.body?.lessonPath ?? req.body?.materialLessonPath) ?? null;
 
       const heroImageIndex = Math.floor(Math.random() * 10);
       const payload: EntryTicketPayload = {
         startedAt: new Date().toISOString(),
         heroImageIndex,
+        ...(grade ? { grade } : {}),
+        ...(taskSeed != null ? { taskSeed } : {}),
+        ...(materialLessonPath ? { materialLessonPath } : {}),
       };
       const content = JSON.stringify(payload);
 
@@ -200,6 +284,9 @@ export class EntryTicketController {
             startedAt: payload.startedAt,
             lessonPath: path,
             heroImageIndex: payload.heroImageIndex,
+            grade: payload.grade ?? null,
+            taskSeed: payload.taskSeed ?? null,
+            materialLessonPath: payload.materialLessonPath ?? null,
           });
         }
       }
@@ -218,6 +305,9 @@ export class EntryTicketController {
         startedAt: payload.startedAt,
         lessonPath: ENTRY_TICKET_LEGACY_PATH,
         heroImageIndex: payload.heroImageIndex,
+        grade: payload.grade ?? null,
+        taskSeed: payload.taskSeed ?? null,
+        materialLessonPath: payload.materialLessonPath ?? null,
       });
     } catch (error) {
       console.error('EntryTicket signal error:', error);
@@ -239,6 +329,7 @@ export class EntryTicketController {
             select: { teacherId: true, teacher: { select: { name: true } } },
             take: 1,
           });
+          const mod = await resolveModeratorContext(user.id);
           if (groups.length === 0) {
             return res.json({
               startedAt: null,
@@ -246,6 +337,12 @@ export class EntryTicketController {
               teacherName: null,
               lessonPath: null,
               heroImageIndex: null,
+              grade: null,
+              taskSeed: null,
+              materialLessonPath: null,
+              isModerator: mod.isModerator,
+              learningGroupId: mod.learningGroupId,
+              groupName: mod.groupName,
             });
           }
           return res.json({
@@ -254,14 +351,30 @@ export class EntryTicketController {
             teacherName: groups[0].teacher.name,
             lessonPath: null,
             heroImageIndex: null,
+            grade: null,
+            taskSeed: null,
+            materialLessonPath: null,
+            isModerator: mod.isModerator,
+            learningGroupId: mod.learningGroupId,
+            groupName: mod.groupName,
           });
         }
+        const mod = await resolveModeratorContext(user.id, {
+          lessonPath: resolved.lessonPath,
+          teacherId: resolved.teacherId,
+        });
         return res.json({
           startedAt: resolved.payload.startedAt,
           teacherId: resolved.teacherId,
           teacherName: resolved.teacherName,
           lessonPath: resolved.lessonPath,
           heroImageIndex: resolved.payload.heroImageIndex ?? 0,
+          grade: resolved.payload.grade ?? null,
+          taskSeed: resolved.payload.taskSeed ?? null,
+          materialLessonPath: resolved.payload.materialLessonPath ?? null,
+          isModerator: mod.isModerator,
+          learningGroupId: mod.learningGroupId || resolved.learningGroupId || null,
+          groupName: mod.groupName,
         });
       }
 
@@ -273,6 +386,9 @@ export class EntryTicketController {
           teacherName: user.name,
           lessonPath: null,
           heroImageIndex: null,
+          grade: null,
+          taskSeed: null,
+          materialLessonPath: null,
         });
       }
       return res.json({
@@ -281,6 +397,9 @@ export class EntryTicketController {
         teacherName: user.name,
         lessonPath: teacherResolved.lessonPath,
         heroImageIndex: teacherResolved.payload.heroImageIndex ?? 0,
+        grade: teacherResolved.payload.grade ?? null,
+        taskSeed: teacherResolved.payload.taskSeed ?? null,
+        materialLessonPath: teacherResolved.payload.materialLessonPath ?? null,
       });
     } catch (error) {
       console.error('EntryTicket getCurrent error:', error);

@@ -545,7 +545,8 @@ export async function loadPresentationDeck(lessonPath: string): Promise<Presenta
   if (loaded?.slides?.length) {
     return normalizeDeck({
       ...loaded,
-      lessonPath: loaded.lessonPath || lessonPath,
+      // Immer den angefragten Stundenordner nutzen (nicht eingebetteten Fremdpfad aus der JSON).
+      lessonPath,
       slides: sortSlides(loaded.slides),
     });
   }
