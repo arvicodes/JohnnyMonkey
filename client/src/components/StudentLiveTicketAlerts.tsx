@@ -34,7 +34,7 @@ function exitTicketModalDismissSig(
   return `${pubAt ?? ''}|${tpl?.id ?? ''}|${tpl?.title ?? ''}`;
 }
 
-const ENTRY_TICKET_MODAL_DISMISS_KEY = 'entryTicketModalDismissedSig';
+export const ENTRY_TICKET_MODAL_DISMISS_KEY = 'entryTicketModalDismissedSig';
 const ENTRY_TICKET_MAX_AGE_MS = 3 * 60 * 60 * 1000;
 const ENTRY_TICKET_POLL_MS = 400;
 const EXIT_TICKET_POLL_MS = 2500;
@@ -183,18 +183,44 @@ export default function StudentLiveTicketAlerts({ userId }: { userId: string }) 
     sessionStorage.setItem(ENTRY_TICKET_MODAL_DISMISS_KEY, sig);
     setEntryTicketModalOpen(false);
 
-    const band =
-      entryTicketGrade ||
-      String(entryTicketBandFromGroupNames(entryTicketGroupName ? [entryTicketGroupName] : []));
-    const qs = new URLSearchParams();
-    qs.set('grade', band);
-    qs.set('autostart', '1');
-    qs.set('r', String(Date.now()));
-    qs.set('hero', String(entryTicketHeroImageIndex));
-    if (entryTicketTaskSeed != null) qs.set('seed', String(entryTicketTaskSeed));
-    if (entryTicketGroupId) qs.set('groupId', entryTicketGroupId);
-    if (entryTicketMaterialLessonPath) qs.set('lessonPath', entryTicketMaterialLessonPath);
-    navigate(`/entry-ticket?${qs.toString()}`);
+    void (async () => {
+      let band =
+        entryTicketGrade ||
+        String(entryTicketBandFromGroupNames(entryTicketGroupName ? [entryTicketGroupName] : []));
+      let seed = entryTicketTaskSeed;
+      let hero = entryTicketHeroImageIndex;
+      let groupId = entryTicketGroupId;
+      let lessonPath = entryTicketMaterialLessonPath;
+      try {
+        const res = await apiGetSafe('/api/entry-ticket/current');
+        if (res?.ok) {
+          const data = await res.json();
+          if (typeof data.grade === 'string' && data.grade) band = data.grade;
+          if (typeof data.taskSeed === 'number' && Number.isFinite(data.taskSeed)) {
+            seed = Math.floor(data.taskSeed) >>> 0;
+          }
+          if (typeof data.heroImageIndex === 'number') hero = data.heroImageIndex;
+          if (typeof data.learningGroupId === 'string' && data.learningGroupId) {
+            groupId = data.learningGroupId;
+          }
+          if (typeof data.materialLessonPath === 'string' && data.materialLessonPath) {
+            lessonPath = data.materialLessonPath;
+          }
+        }
+      } catch {
+        /* ignore — URL-Params aus dem letzten Poll nutzen */
+      }
+
+      const qs = new URLSearchParams();
+      qs.set('grade', band);
+      qs.set('autostart', '1');
+      qs.set('r', String(Date.now()));
+      qs.set('hero', String(hero));
+      if (seed != null) qs.set('seed', String(seed));
+      if (groupId) qs.set('groupId', groupId);
+      if (lessonPath) qs.set('lessonPath', lessonPath);
+      navigate(`/entry-ticket?${qs.toString()}`);
+    })();
   };
 
   useEffect(() => {

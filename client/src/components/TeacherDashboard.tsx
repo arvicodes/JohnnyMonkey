@@ -6912,13 +6912,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
       qs.set('r', String(Date.now()));
       qs.set('groupId', groupId);
       if (lessonPath) qs.set('lessonPath', lessonPath);
+      if (groupId && lessonPath) {
+        const stundeParams = new URLSearchParams();
+        stundeParams.set('groupId', groupId);
+        stundeParams.set('lessonPath', lessonPath);
+        stundeParams.set('lessonName', lessonPath.split(/[/\\]/).pop() || 'Stunde');
+        stundeParams.set('planMode', lessonPlanViewMode);
+        qs.set('returnTo', `/teacher/stunde?${stundeParams.toString()}`);
+      }
       const etUrl = `${window.location.origin}/entry-ticket?${qs.toString()}`;
       const opened = window.open(etUrl, '_blank', 'noopener,noreferrer');
       if (!opened) {
         navigate(`/entry-ticket?${qs.toString()}`);
       }
     },
-    [editedLessonInstructions, groups, navigate, normalizeLessonPathKey],
+    [editedLessonInstructions, groups, lessonPlanViewMode, navigate, normalizeLessonPathKey],
   );
 
   const startLessonRun = useCallback(
@@ -18938,8 +18946,19 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                     qs.set('r', String(Date.now()));
                     if (lessonModalData.groupId) qs.set('groupId', lessonModalData.groupId);
                     if (lessonPath) qs.set('lessonPath', lessonPath);
+                    if (lessonModalData.groupId && lessonPath) {
+                      const stundeParams = new URLSearchParams();
+                      stundeParams.set('groupId', lessonModalData.groupId);
+                      stundeParams.set('lessonPath', lessonPath);
+                      stundeParams.set('lessonName', lessonName || '');
+                      stundeParams.set('planMode', lessonPlanViewMode);
+                      qs.set('returnTo', `/teacher/stunde?${stundeParams.toString()}`);
+                    }
                     const etUrl = `${window.location.origin}/entry-ticket?${qs.toString()}`;
-                    window.open(etUrl, '_blank', 'noopener,noreferrer');
+                    const opened = window.open(etUrl, '_blank', 'noopener,noreferrer');
+                    if (!opened) {
+                      navigate(`/entry-ticket?${qs.toString()}`);
+                    }
                     return;
                   }
                   if (item.type === 'exit-ticket') {

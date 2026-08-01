@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
+  ButtonGroup,
   Card,
   CardContent,
   Dialog,
@@ -85,6 +86,139 @@ function EntryTicketRichHtml({
   );
 }
 
+/** Kompakte MultiButton-Gruppen — Breite immer mindestens so groß, dass der Text vollständig lesbar ist. */
+const etBtnGroupBase = {
+  flexShrink: 0,
+  boxShadow: 'none',
+  overflow: 'visible',
+  '& .MuiButtonGroup-grouped': {
+    minWidth: 'auto',
+    flexShrink: 0,
+  },
+  '& .MuiButton-root': {
+    textTransform: 'none' as const,
+    fontWeight: 700,
+    fontSize: '0.62rem',
+    lineHeight: 1.15,
+    minHeight: 28,
+    minWidth: 'auto',
+    width: 'auto',
+    py: 0.4,
+    px: 0.85,
+    borderRadius: '0 !important',
+    boxShadow: 'none',
+    whiteSpace: 'nowrap' as const,
+    overflow: 'visible',
+    textOverflow: 'clip',
+    flexShrink: 0,
+    '&:hover': { boxShadow: 'none' },
+  },
+  '& .MuiButtonGroup-firstButton': {
+    borderTopLeftRadius: '5px !important',
+    borderBottomLeftRadius: '5px !important',
+  },
+  '& .MuiButtonGroup-lastButton': {
+    borderTopRightRadius: '5px !important',
+    borderBottomRightRadius: '5px !important',
+  },
+} as const;
+
+const etActionGroupSx = {
+  ...etBtnGroupBase,
+  '& .MuiButton-root': {
+    ...etBtnGroupBase['& .MuiButton-root'],
+    px: 1,
+    py: 0.45,
+    fontSize: '0.62rem',
+  },
+  '& .MuiButton-root .MuiButton-startIcon': {
+    mr: 0.35,
+    '& > svg': { fontSize: 14 },
+  },
+} as const;
+
+const etGradeGroupSx = {
+  ...etBtnGroupBase,
+  flexWrap: 'wrap' as const,
+  '& .MuiButton-root': {
+    ...etBtnGroupBase['& .MuiButton-root'],
+    minHeight: 26,
+    height: 26,
+    px: 0.65,
+    py: 0.25,
+    fontSize: '0.58rem',
+    fontWeight: 650,
+  },
+} as const;
+
+const etMiniPairGroupSx = {
+  ...etBtnGroupBase,
+  '& .MuiButton-root': {
+    ...etBtnGroupBase['& .MuiButton-root'],
+    minWidth: 26,
+    width: 26,
+    height: 26,
+    minHeight: 26,
+    p: 0.25,
+    px: 0.25,
+    fontSize: '0.7rem',
+    lineHeight: 1,
+  },
+} as const;
+
+const etOkAbGroupSx = {
+  ...etBtnGroupBase,
+  '& .MuiButton-root': {
+    ...etBtnGroupBase['& .MuiButton-root'],
+    px: 0.75,
+    py: 0.3,
+    height: 26,
+    minHeight: 26,
+    fontSize: '0.65rem',
+  },
+} as const;
+
+/** Einzelne Session-Buttons — kein ButtonGroup (vermeidet Rand-Überlappung). */
+const etSessionBtnSx = {
+  minWidth: 30,
+  width: 30,
+  height: 30,
+  p: 0.35,
+  borderRadius: '6px',
+  border: '1px solid #c5cae9',
+  color: '#546e7a',
+  bgcolor: '#fff',
+  flexShrink: 0,
+  '&:hover': {
+    bgcolor: '#eef1fb',
+    borderColor: '#9fa8da',
+  },
+  '&.Mui-disabled': {
+    borderColor: '#e0e4f5',
+    color: '#b0bec5',
+  },
+} as const;
+
+const etSessionPlayPauseSx = {
+  ...etSessionBtnSx,
+  width: 'auto',
+  minWidth: 'auto',
+  px: 1.1,
+  py: 0.4,
+  gap: 0.4,
+  fontSize: '0.68rem',
+  fontWeight: 650,
+  whiteSpace: 'nowrap' as const,
+  overflow: 'visible',
+  textTransform: 'none' as const,
+  lineHeight: 1,
+  '& .MuiButton-startIcon': {
+    margin: 0,
+    marginRight: 4,
+    '& > *:nth-of-type(1)': { fontSize: 15 },
+  },
+} as const;
+
 const SLIDE_DURATION_SEC = 20;
 /** Zufällige Auswahl aus dem klassenspezifischen Fragenset */
 const TARGET_TASK_COUNT = 10;
@@ -106,6 +240,16 @@ function fragensetHeadingLabel(band: EntryBand, customName?: string | null): str
   if (band === 'inf12') return 'Inf 12';
   if (band === 'inf13') return 'Inf 13';
   return `Klasse ${band}`;
+}
+
+/** Eigene Sets nach Fach trennen (Reihenpfad / Name). */
+function customSetIsInformatik(set: EntryTicketCustomSet): boolean {
+  const path = (set.reihePath || '').replace(/\\/g, '/').toLowerCase();
+  const name = (set.name || '').toLowerCase();
+  if (path.includes('/informatik/') || path.includes('/informatik')) return true;
+  if (/(^|[/\s_-])inf(ormatik)?([/\s_-]|$)/i.test(path)) return true;
+  if (/informatik|\binf\s*1[123]\b|^inf\b/i.test(name)) return true;
+  return false;
 }
 type CoarseCategory =
   | 'Grundrechenarten'
@@ -646,11 +790,14 @@ function parseEntryTicketSearch(search: string): {
   groupId: string | null;
   heroImageIndex: number | null;
   taskSeed: number | null;
+  /** true, wenn grade/set in der URL gesetzt ist (nicht nur Default 7). */
+  hasExplicitBand: boolean;
 } {
   const params = new URLSearchParams(search);
   const rawG = params.get('grade') || params.get('set');
   let grade: EntryBand = 7;
   let customSetId: string | null = null;
+  const hasExplicitBand = Boolean(rawG && String(rawG).trim());
   if (isCustomEntryTicketSetId(rawG)) {
     customSetId = rawG;
   } else if (rawG === 'inf11' || rawG === 'inf12' || rawG === 'inf13') {
@@ -675,7 +822,94 @@ function parseEntryTicketSearch(search: string): {
     Number.isFinite(heroRaw) && heroRaw >= 0 && heroRaw <= 9 ? Math.floor(heroRaw) : null;
   const seedRaw = Number(params.get('seed') ?? params.get('taskSeed'));
   const taskSeed = Number.isFinite(seedRaw) ? (Math.floor(seedRaw) >>> 0) : null;
-  return { grade, customSetId, lessonPath, autostart, groupId, heroImageIndex, taskSeed };
+  return { grade, customSetId, lessonPath, autostart, groupId, heroImageIndex, taskSeed, hasExplicitBand };
+}
+
+/** Nur gleiche Origin + /teacher/stunde mit groupId & lessonPath (Open-Redirect vermeiden) */
+function parseSafeStundeReturnTo(search: string): string | null {
+  const params = new URLSearchParams(search);
+  const raw = params.get('returnTo');
+  if (!raw) return null;
+  try {
+    const url = new URL(raw, window.location.origin);
+    if (url.origin !== window.location.origin) return null;
+    if (url.pathname !== '/teacher/stunde') return null;
+    const gid = url.searchParams.get('groupId');
+    const lp = url.searchParams.get('lessonPath');
+    if (!gid?.trim() || !lp?.trim()) return null;
+    const pm = url.searchParams.get('planMode');
+    if (pm !== null && pm !== 'create' && pm !== 'run' && pm !== 'background') {
+      url.searchParams.delete('planMode');
+    }
+    return `${url.pathname}${url.search}`;
+  } catch {
+    return null;
+  }
+}
+
+/** Snapshot fürs Server-Signal — Moderator kann dasselbe KI-/Reihen-Set laden. */
+function snapshotCustomSetForSignal(set: EntryTicketCustomSet | null | undefined) {
+  if (!set) return undefined;
+  return {
+    id: set.id,
+    name: set.name,
+    lessons: set.lessons.map((l) => ({
+      id: l.id,
+      lessonName: l.lessonName,
+      ...(l.lessonKey ? { lessonKey: l.lessonKey } : {}),
+      ...(l.topicName ? { topicName: l.topicName } : {}),
+      tasks: l.tasks.map((t) => ({
+        category: t.category,
+        prompt: t.prompt,
+        solution: t.solution,
+      })),
+    })),
+  };
+}
+
+function hydrateCustomSetFromSignal(raw: unknown): EntryTicketCustomSet | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const row = raw as Record<string, unknown>;
+  const id = typeof row.id === 'string' ? row.id : '';
+  if (!isCustomEntryTicketSetId(id)) return null;
+  const name = typeof row.name === 'string' && row.name.trim() ? row.name.trim() : 'Fragenset';
+  const lessonsRaw = Array.isArray(row.lessons) ? row.lessons : [];
+  const lessons = lessonsRaw
+    .map((lessonRaw, idx) => {
+      if (!lessonRaw || typeof lessonRaw !== 'object') return null;
+      const lesson = lessonRaw as Record<string, unknown>;
+      const lessonName =
+        typeof lesson.lessonName === 'string' && lesson.lessonName.trim()
+          ? lesson.lessonName.trim()
+          : '';
+      if (!lessonName) return null;
+      const tasksRaw = Array.isArray(lesson.tasks) ? lesson.tasks : [];
+      const tasks = tasksRaw
+        .map((taskRaw, tIdx) => {
+          if (!taskRaw || typeof taskRaw !== 'object') return null;
+          const t = taskRaw as Record<string, unknown>;
+          const prompt = typeof t.prompt === 'string' ? t.prompt : '';
+          const solution = typeof t.solution === 'string' ? t.solution : '';
+          if (!prompt || !solution) return null;
+          return {
+            id: `shared_q_${idx}_${tIdx}`,
+            category: typeof t.category === 'string' && t.category.trim() ? t.category.trim() : 'Eigen',
+            prompt,
+            solution,
+          };
+        })
+        .filter(Boolean) as EntryTicketCustomSet['lessons'][number]['tasks'];
+      return {
+        id: typeof lesson.id === 'string' && lesson.id ? lesson.id : `shared_ls_${idx}`,
+        lessonName,
+        lessonKey: typeof lesson.lessonKey === 'string' ? lesson.lessonKey : undefined,
+        topicName: typeof lesson.topicName === 'string' ? lesson.topicName : undefined,
+        tasks,
+      };
+    })
+    .filter(Boolean) as EntryTicketCustomSet['lessons'];
+  if (lessons.length === 0) return null;
+  return { id, name, lessons };
 }
 
 const DEFAULT_QUESTION_SETS: GradeQuestionSets = {
@@ -961,6 +1195,10 @@ const dedupeEigenQuestions = (list: EntryTicketTask[]): EntryTicketTask[] => {
 export default function EntryTicketPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const safeStundeReturnTo = useMemo(
+    () => parseSafeStundeReturnTo(location.search),
+    [location.search],
+  );
   const initialRoute =
     typeof window !== 'undefined'
       ? parseEntryTicketSearch(window.location.search || '')
@@ -972,10 +1210,15 @@ export default function EntryTicketPage() {
           groupId: null as string | null,
           heroImageIndex: null as number | null,
           taskSeed: null as number | null,
+          hasExplicitBand: false,
         };
   const [sessionStarted, setSessionStarted] = useState(false);
   const [grade, setGrade] = useState<EntryBand>(() => initialRoute.grade);
   const [customSetId, setCustomSetId] = useState<string | null>(() => initialRoute.customSetId);
+  /** Inhalte (Karten / Editor) erst nach Klick auf ein Set — außer URL/Autostart. */
+  const [bandChosen, setBandChosen] = useState(
+    () => Boolean(initialRoute.hasExplicitBand || initialRoute.customSetId || initialRoute.autostart),
+  );
   const [entryLessonPath, setEntryLessonPath] = useState<string | null>(() => initialRoute.lessonPath);
   const [customSets, setCustomSets] = useState<EntryTicketCustomSet[]>(() =>
     typeof window !== 'undefined' ? loadCustomEntryTicketSets() : [],
@@ -985,9 +1228,7 @@ export default function EntryTicketPage() {
   const [createSetBusy, setCreateSetBusy] = useState(false);
   const [createSetError, setCreateSetError] = useState<string | null>(null);
   const [taskSeed, setTaskSeed] = useState(() => initialRoute.taskSeed ?? randomTaskSeed());
-  const [showSetEditor, setShowSetEditor] = useState(
-    () => typeof window !== 'undefined' && Boolean(localStorage.getItem('teacherId')),
-  );
+  const [showSetEditor, setShowSetEditor] = useState(false);
   const [questionSets, setQuestionSets] = useState<GradeQuestionSets>(() => {
     try {
       const raw = localStorage.getItem(QUESTION_SET_STORAGE_KEY);
@@ -1078,10 +1319,19 @@ export default function EntryTicketPage() {
 
   /** Klassenstufe / eigenes Set aus URL; neuer Zufallssatz bei jedem Aufruf (inkl. &r=… vom Klick auf das Dashboard-Icon). */
   useLayoutEffect(() => {
-    const { grade: g, customSetId: cId, lessonPath, autostart, groupId, heroImageIndex, taskSeed: urlSeed } =
-      parseEntryTicketSearch(location.search);
+    const {
+      grade: g,
+      customSetId: cId,
+      lessonPath,
+      autostart,
+      groupId,
+      heroImageIndex,
+      taskSeed: urlSeed,
+      hasExplicitBand,
+    } = parseEntryTicketSearch(location.search);
     setGrade(g);
     setCustomSetId(cId);
+    setBandChosen(Boolean(hasExplicitBand || cId || autostart));
     setEntryLessonPath(lessonPath);
     setAutoStartPending(autostart);
     setEntryTicketGroupId(groupId);
@@ -1094,6 +1344,7 @@ export default function EntryTicketPage() {
     setSecondsLeft(SLIDE_DURATION_SEC);
     setIsRunning(false);
     setShowSolutions(false);
+    setShowSetEditor(false);
     setSharedTasksLocked(false);
     tasksSyncedRef.current = '';
 
@@ -1103,11 +1354,14 @@ export default function EntryTicketPage() {
       void (async () => {
         try {
           const gradeParam = cId || String(g);
+          const localSets = loadCustomEntryTicketSets();
+          const activeSet = cId ? localSets.find((s) => s.id === cId) ?? null : null;
           const res = await apiPost('/api/entry-ticket/signal', {
             ...(groupId ? { learningGroupId: groupId } : {}),
             grade: gradeParam,
             taskSeed: seedToUse,
             lessonPath: lessonPath || undefined,
+            ...(activeSet ? { customSet: snapshotCustomSetForSignal(activeSet) } : {}),
           });
           if (res.ok) {
             const data = await res.json();
@@ -1128,17 +1382,20 @@ export default function EntryTicketPage() {
     if (!raw) return;
     if (isCustomEntryTicketSetId(raw)) {
       setCustomSetId(raw);
+      setBandChosen(true);
       return;
     }
     if (raw === 'inf11' || raw === 'inf12' || raw === 'inf13') {
       setCustomSetId(null);
       setGrade(raw);
+      setBandChosen(true);
       return;
     }
     const n = Number(raw);
     if (Number.isFinite(n) && n >= 5 && n <= 13) {
       setCustomSetId(null);
       setGrade(n as GradeNum);
+      setBandChosen(true);
     }
   }, []);
 
@@ -1169,6 +1426,7 @@ export default function EntryTicketPage() {
           materialLessonPath?: string | null;
           learningGroupId?: string | null;
           tasks?: Array<{ category?: string; prompt?: string; solution?: string }> | null;
+          customSet?: unknown;
         };
         if (cancelled) return;
         const mod = data.isModerator === true;
@@ -1176,7 +1434,14 @@ export default function EntryTicketPage() {
         if (typeof data.heroImageIndex === 'number' && data.startedAt) {
           setEntryHeroImageIndex(data.heroImageIndex);
         }
-        if (typeof data.grade === 'string' && data.grade) {
+        const hydrated = hydrateCustomSetFromSignal(data.customSet);
+        if (hydrated) {
+          setCustomSets((prev) => {
+            const others = prev.filter((s) => s.id !== hydrated.id);
+            return [...others, hydrated];
+          });
+          setCustomSetId(hydrated.id);
+        } else if (typeof data.grade === 'string' && data.grade) {
           applyGradeParam(data.grade);
         }
         if (typeof data.taskSeed === 'number' && Number.isFinite(data.taskSeed)) {
@@ -1200,6 +1465,10 @@ export default function EntryTicketPage() {
         if (shared.length > 0) {
           setSelectedTasks(shared);
           setSharedTasksLocked(true);
+          setBandChosen(true);
+        } else if (hydrated) {
+          // KI-/Reihen-Set vom Server → lokale Auswahl mit gleichem Seed
+          setSharedTasksLocked(false);
         }
         if (!mod) {
           navigate('/dashboard', { replace: true });
@@ -1234,8 +1503,18 @@ export default function EntryTicketPage() {
           taskSeed?: number | null;
           materialLessonPath?: string | null;
           tasks?: Array<{ category?: string; prompt?: string; solution?: string }> | null;
+          customSet?: unknown;
         };
-        if (typeof data.grade === 'string' && data.grade) applyGradeParam(data.grade);
+        const hydrated = hydrateCustomSetFromSignal(data.customSet);
+        if (hydrated) {
+          setCustomSets((prev) => {
+            const others = prev.filter((s) => s.id !== hydrated.id);
+            return [...others, hydrated];
+          });
+          setCustomSetId(hydrated.id);
+        } else if (typeof data.grade === 'string' && data.grade) {
+          applyGradeParam(data.grade);
+        }
         if (typeof data.taskSeed === 'number' && Number.isFinite(data.taskSeed)) {
           setTaskSeed(Math.floor(data.taskSeed) >>> 0);
         }
@@ -1254,6 +1533,9 @@ export default function EntryTicketPage() {
         if (shared.length > 0) {
           setSelectedTasks(shared);
           setSharedTasksLocked(true);
+          setBandChosen(true);
+        } else if (hydrated) {
+          setSharedTasksLocked(false);
         }
       } catch {
         /* ignore */
@@ -1312,6 +1594,11 @@ export default function EntryTicketPage() {
     [customSetId, customSets],
   );
   const isCustomSetActive = Boolean(customSetId && activeCustomSet);
+  const infCustomSets = useMemo(() => customSets.filter(customSetIsInformatik), [customSets]);
+  const matheCustomSets = useMemo(
+    () => customSets.filter((s) => !customSetIsInformatik(s)),
+    [customSets],
+  );
 
   const poolForBand = useMemo(() => {
     if (customSetId && activeCustomSet) {
@@ -1481,10 +1768,15 @@ export default function EntryTicketPage() {
   useEffect(() => {
     if (sessionStarted) return;
     if (sharedTasksLocked) return;
+    if (!bandChosen) {
+      setSelectedTasks([]);
+      setPickedListIndices([]);
+      return;
+    }
     const picked = pickRandomTasks(poolForBand, TARGET_TASK_COUNT, taskSeed);
     setSelectedTasks(picked.tasks);
     setPickedListIndices(picked.indices.map((i) => displayNumberByPoolIndex.get(i) ?? i + 1));
-  }, [poolForBand, taskSeed, sessionStarted, displayNumberByPoolIndex, sharedTasksLocked]);
+  }, [poolForBand, taskSeed, sessionStarted, displayNumberByPoolIndex, sharedTasksLocked, bandChosen]);
 
   useEffect(() => {
     try {
@@ -1512,12 +1804,14 @@ export default function EntryTicketPage() {
     if (!sessionStarted && !autoStartPending) return;
     if (selectedTasks.length === 0) return;
     const gradeParam = customSetId || String(grade);
+    const activeSet = customSetId ? customSets.find((s) => s.id === customSetId) ?? null : null;
     const sig = JSON.stringify({
       grade: gradeParam,
       taskSeed,
       lessonPath: entryLessonPath || '',
       groupId: entryTicketGroupId || '',
       tasks: selectedTasks,
+      customSetId: activeSet?.id || '',
     });
     if (tasksSyncedRef.current === sig) return;
     tasksSyncedRef.current = sig;
@@ -1530,6 +1824,7 @@ export default function EntryTicketPage() {
             taskSeed,
             lessonPath: entryLessonPath || undefined,
             tasks: selectedTasks,
+            ...(activeSet ? { customSet: snapshotCustomSetForSignal(activeSet) } : {}),
             syncTasks: true,
           });
         } catch {
@@ -1544,6 +1839,7 @@ export default function EntryTicketPage() {
     autoStartPending,
     selectedTasks,
     customSetId,
+    customSets,
     grade,
     taskSeed,
     entryLessonPath,
@@ -1561,6 +1857,7 @@ export default function EntryTicketPage() {
   const selectBand = (band: EntryBand) => {
     setCustomSetId(null);
     setGrade(band);
+    setBandChosen(true);
     setSetEditIndex(null);
     setSetEditCategory('Alltag');
     setSetEditPrompt('');
@@ -1570,7 +1867,7 @@ export default function EntryTicketPage() {
 
   const selectCustomSet = (id: string) => {
     setCustomSetId(id);
-    setShowSetEditor(true);
+    setBandChosen(true);
     setSetEditIndex(null);
     setSetEditCategory('Alltag');
     setSetEditPrompt('');
@@ -1607,6 +1904,7 @@ export default function EntryTicketPage() {
       setCreateSetOpen(false);
       setCreateSetName('');
       setCustomSetId(next.id);
+      setBandChosen(true);
       setShowSetEditor(true);
       setTaskSeed((s) => s + 1);
       if (discovered.lessons.length === 0) {
@@ -1679,6 +1977,7 @@ export default function EntryTicketPage() {
       } else {
         const gid = entryTicketGroupId;
         const gradeParam = customSetId || String(grade);
+        const activeSet = customSetId ? customSets.find((s) => s.id === customSetId) ?? null : null;
         void (async () => {
           try {
             const res = await apiPost('/api/entry-ticket/signal', {
@@ -1686,6 +1985,8 @@ export default function EntryTicketPage() {
               grade: gradeParam,
               taskSeed,
               lessonPath: entryLessonPath || undefined,
+              tasks: selectedTasks,
+              ...(activeSet ? { customSet: snapshotCustomSetForSignal(activeSet) } : {}),
             });
             if (res.ok) {
               const data = await res.json();
@@ -1708,8 +2009,8 @@ export default function EntryTicketPage() {
     setIsRunning(true);
   };
 
-  /** Ticket beenden: Signal löschen → SuS-Popup zu; Lehrer weiter zur Stundenübersicht */
-  const markEntryTicketDone = async () => {
+  /** Ticket beenden: Signal löschen → SuS-Popup zu; Lehrer zurück in den Start-Modus (z. B. Tablet) */
+  const markEntryTicketDone = useCallback(async () => {
     if (completeBusy) return;
     setCompleteBusy(true);
     try {
@@ -1718,6 +2019,10 @@ export default function EntryTicketPage() {
       });
       if (!res.ok) {
         setCompleteBusy(false);
+        return;
+      }
+      if (safeStundeReturnTo) {
+        navigate(safeStundeReturnTo, { replace: true });
         return;
       }
       if (isTeacher && entryTicketGroupId && entryLessonPath) {
@@ -1732,7 +2037,14 @@ export default function EntryTicketPage() {
     } catch {
       setCompleteBusy(false);
     }
-  };
+  }, [
+    completeBusy,
+    entryLessonPath,
+    entryTicketGroupId,
+    isTeacher,
+    navigate,
+    safeStundeReturnTo,
+  ]);
 
   useEffect(() => {
     if (!autoStartPending || sessionStarted) return;
@@ -1930,6 +2242,10 @@ export default function EntryTicketPage() {
       setShowSolutions(false);
       return;
     }
+    if (safeStundeReturnTo) {
+      navigate(safeStundeReturnTo);
+      return;
+    }
     navigate(-1);
   };
 
@@ -2006,6 +2322,11 @@ export default function EntryTicketPage() {
       if (e.key === 'Enter') {
         if (!sessionStarted) return;
         e.preventDefault();
+        // Abschlussfolie: Enter = Erledigt (wie der Button)
+        if (sessionDone && (isTeacher || isClassModerator)) {
+          void markEntryTicketDone();
+          return;
+        }
         if (isRunning) {
           pause();
         } else {
@@ -2022,7 +2343,18 @@ export default function EntryTicketPage() {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [goNext, goPrevious, handleBack, isRunning, sessionStarted, startOrResume]);
+  }, [
+    goNext,
+    goPrevious,
+    handleBack,
+    isClassModerator,
+    isRunning,
+    isTeacher,
+    markEntryTicketDone,
+    sessionDone,
+    sessionStarted,
+    startOrResume,
+  ]);
 
   const formatPromptForDisplay = (prompt: string): string => {
     return prompt
@@ -2472,7 +2804,7 @@ export default function EntryTicketPage() {
       }}
     >
       <Box sx={{ width: '100%', maxWidth: '100%', mx: 0, minWidth: 0, boxSizing: 'border-box' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.65, gap: 0.75 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.45, gap: 0.5 }}>
           <Tooltip title="Zurück">
             <IconButton
               onClick={handleBack}
@@ -2480,16 +2812,16 @@ export default function EntryTicketPage() {
               aria-label="Zurück"
               sx={{
                 p: 0,
-                minWidth: 26,
-                width: 26,
-                height: 26,
+                minWidth: 24,
+                width: 24,
+                height: 24,
                 bgcolor: 'white',
                 border: '1px solid',
                 borderColor: 'divider',
                 flexShrink: 0,
               }}
             >
-              <ArrowBackIcon sx={{ fontSize: 16 }} />
+              <ArrowBackIcon sx={{ fontSize: 14 }} />
             </IconButton>
           </Tooltip>
 
@@ -2498,7 +2830,7 @@ export default function EntryTicketPage() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 0.65,
+              gap: 0.5,
               flex: 1,
               minWidth: 0,
             }}
@@ -2506,14 +2838,14 @@ export default function EntryTicketPage() {
             <Box
               title="Aktuelles Motiv (wie bei den Schüler:innen)"
               sx={{
-                width: 34,
-                height: 34,
+                width: 28,
+                height: 28,
                 flexShrink: 0,
-                borderRadius: 1,
+                borderRadius: 0.75,
                 overflow: 'hidden',
                 border: '1px solid',
                 borderColor: 'rgba(30, 136, 229, 0.28)',
-                boxShadow: '0 1px 4px rgba(15, 23, 42, 0.06)',
+                boxShadow: '0 1px 3px rgba(15, 23, 42, 0.06)',
                 bgcolor: 'grey.200',
               }}
             >
@@ -2524,7 +2856,7 @@ export default function EntryTicketPage() {
                 sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
               />
             </Box>
-            <Typography variant="h6" sx={{ color: '#1a237e', fontWeight: 700, lineHeight: 1.15, fontSize: { xs: '0.92rem', sm: '1rem' } }}>
+            <Typography variant="h6" sx={{ color: '#1a237e', fontWeight: 700, lineHeight: 1.1, fontSize: { xs: '0.85rem', sm: '0.92rem' } }}>
               EntryTicket
             </Typography>
           </Box>
@@ -2535,16 +2867,16 @@ export default function EntryTicketPage() {
             size="small"
             sx={{
               p: 0,
-              minWidth: 26,
-              width: 26,
-              height: 26,
+              minWidth: 24,
+              width: 24,
+              height: 24,
               bgcolor: 'white',
               border: '1px solid',
               borderColor: 'divider',
               flexShrink: 0,
             }}
           >
-            <CloseIcon sx={{ fontSize: 16 }} />
+            <CloseIcon sx={{ fontSize: 14 }} />
           </IconButton>
         </Box>
 
@@ -2569,15 +2901,84 @@ export default function EntryTicketPage() {
                 sx={{
                   width: '100%',
                   minWidth: 0,
-                  borderRadius: 1.25,
+                  borderRadius: 1,
                   border: '1px solid #d9e0ff',
                   bgcolor: '#f8faff',
-                  p: { xs: 0.6, sm: 0.75 },
+                  p: { xs: 0.45, sm: 0.55 },
                   boxSizing: 'border-box',
                 }}
               >
-                <Box sx={{ mb: 1, minWidth: 0, display: 'grid', gap: 0 }}>
-                  {/* Eigene Fragensets oben */}
+                <Box sx={{ mb: 0.55, minWidth: 0, display: 'grid', gap: 0 }}>
+                  {/* Eingebaute Bänder: links Informatik, rechts Mathe */}
+                  <Box
+                    component="div"
+                    role="toolbar"
+                    aria-label="Informatik und Mathe"
+                    sx={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 1,
+                      width: '100%',
+                      minWidth: 0,
+                    }}
+                  >
+                    <ButtonGroup size="small" variant="outlined" sx={etGradeGroupSx} aria-label="Informatik">
+                      {(
+                        [
+                          { band: 'inf11' as const, label: 'Inf11', main: '#00695c', hoverBg: 'rgba(0, 105, 92, 0.1)' },
+                          { band: 'inf12' as const, label: 'Inf12', main: '#e65100', hoverBg: 'rgba(230, 81, 0, 0.1)' },
+                          { band: 'inf13' as const, label: 'Inf13', main: '#4527a0', hoverBg: 'rgba(69, 39, 160, 0.1)' },
+                        ] as const
+                      ).map(({ band, label, main, hoverBg }) => (
+                        <Button
+                          key={band}
+                          onClick={() => selectBand(band)}
+                          sx={
+                            bandChosen && !customSetId && grade === band
+                              ? {
+                                  bgcolor: main,
+                                  color: '#fff',
+                                  borderColor: main,
+                                  '&:hover': { bgcolor: main, filter: 'brightness(0.92)' },
+                                }
+                              : {
+                                  color: main,
+                                  borderColor: main,
+                                  bgcolor: 'rgba(255,255,255,0.85)',
+                                  '&:hover': { bgcolor: hoverBg, borderColor: main },
+                                }
+                          }
+                        >
+                          {label}
+                        </Button>
+                      ))}
+                    </ButtonGroup>
+
+                    <ButtonGroup size="small" variant="outlined" sx={etGradeGroupSx} aria-label="Mathe">
+                      {([5, 6, 7, 8, 9, 10, 11, 12, 13] as const).map((g) => (
+                        <Button
+                          key={g}
+                          onClick={() => selectBand(g)}
+                          sx={
+                            bandChosen && !customSetId && grade === g
+                              ? {
+                                  bgcolor: '#3949ab',
+                                  color: '#fff',
+                                  borderColor: '#3949ab',
+                                  '&:hover': { bgcolor: '#303f9f' },
+                                }
+                              : undefined
+                          }
+                        >
+                          {g}
+                        </Button>
+                      ))}
+                    </ButtonGroup>
+                  </Box>
+
+                  {/* Automatisch generierte / eigene Reihen-Sets — mit Abstand darunter */}
                   <Box
                     component="div"
                     role="toolbar"
@@ -2586,180 +2987,175 @@ export default function EntryTicketPage() {
                       display: 'flex',
                       flexWrap: 'wrap',
                       alignItems: 'center',
-                      gap: 0.5,
+                      justifyContent: 'space-between',
+                      gap: 1,
                       width: '100%',
                       minWidth: 0,
-                      py: 0.25,
+                      mt: 2.75,
+                      pt: 1.25,
+                      borderTop: '1px solid',
+                      borderColor: 'rgba(57, 73, 171, 0.12)',
                     }}
                   >
-                    {customSets.map((set) => (
-                      <Button
-                        key={set.id}
-                        size="small"
-                        variant={customSetId === set.id ? 'contained' : 'outlined'}
-                        onClick={() => selectCustomSet(set.id)}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        gap: 0.75,
+                        flex: 1,
+                        minWidth: 0,
+                      }}
+                    >
+                      {/* Links: Informatik-Reihen */}
+                      <Box
                         sx={{
-                          minWidth: 0,
-                          px: 0.85,
-                          height: 26,
-                          fontSize: '0.65rem',
-                          fontWeight: 700,
-                          lineHeight: 1.1,
-                          whiteSpace: 'nowrap',
+                          display: 'inline-flex',
+                          flexWrap: 'wrap',
+                          alignItems: 'center',
+                          gap: 0.35,
                           flexShrink: 0,
-                          maxWidth: 140,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          ...(customSetId === set.id
+                        }}
+                      >
+                        {infCustomSets.map((set) => (
+                          <Button
+                            key={set.id}
+                            size="small"
+                            variant="outlined"
+                            onClick={() => selectCustomSet(set.id)}
+                            title={`${set.name} · ${set.lessons.length} Stunden · ${countCustomSetTasks(set)} Fragen`}
+                            sx={{
+                              ...etBtnGroupBase['& .MuiButton-root'],
+                              borderRadius: '5px !important',
+                              ...(bandChosen && customSetId === set.id
+                                ? {
+                                    bgcolor: '#00695c',
+                                    color: '#fff',
+                                    borderColor: '#00695c',
+                                    '&:hover': { bgcolor: '#00695c', filter: 'brightness(0.92)' },
+                                  }
+                                : {
+                                    color: '#00695c',
+                                    borderColor: '#26a69a',
+                                    bgcolor: 'rgba(255,255,255,0.85)',
+                                    '&:hover': { bgcolor: 'rgba(0, 105, 92, 0.1)', borderColor: '#00695c' },
+                                  }),
+                            }}
+                          >
+                            {set.name}
+                          </Button>
+                        ))}
+                      </Box>
+
+                      {/* Rechts: Mathe-Reihen */}
+                      <Box
+                        sx={{
+                          display: 'inline-flex',
+                          flexWrap: 'wrap',
+                          alignItems: 'center',
+                          gap: 0.35,
+                          flexShrink: 0,
+                          ml: { xs: 0, sm: 'auto' },
+                        }}
+                      >
+                        {matheCustomSets.map((set) => (
+                          <Button
+                            key={set.id}
+                            size="small"
+                            variant="outlined"
+                            onClick={() => selectCustomSet(set.id)}
+                            title={`${set.name} · ${set.lessons.length} Stunden · ${countCustomSetTasks(set)} Fragen`}
+                            sx={{
+                              ...etBtnGroupBase['& .MuiButton-root'],
+                              borderRadius: '5px !important',
+                              ...(bandChosen && customSetId === set.id
+                                ? {
+                                    bgcolor: '#5c6bc0',
+                                    color: '#fff',
+                                    borderColor: '#5c6bc0',
+                                    '&:hover': { bgcolor: '#5c6bc0', filter: 'brightness(0.92)' },
+                                  }
+                                : {
+                                    color: '#3949ab',
+                                    borderColor: '#7986cb',
+                                    bgcolor: 'rgba(255,255,255,0.85)',
+                                    '&:hover': { bgcolor: 'rgba(92, 107, 192, 0.1)', borderColor: '#5c6bc0' },
+                                  }),
+                            }}
+                          >
+                            {set.name}
+                          </Button>
+                        ))}
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={openCreateSetDialog}
+                          aria-label="Neues Fragenset anlegen"
+                          title="Neues Fragenset anlegen"
+                          sx={{
+                            ...etBtnGroupBase['& .MuiButton-root'],
+                            minWidth: 28,
+                            width: 28,
+                            height: 28,
+                            px: 0.35,
+                            py: 0.35,
+                            borderRadius: '5px !important',
+                            borderStyle: 'dashed',
+                            borderColor: '#5c6bc0',
+                            color: '#3949ab',
+                          }}
+                        >
+                          <AddIcon sx={{ fontSize: 14 }} />
+                        </Button>
+                      </Box>
+                    </Box>
+
+                    <ButtonGroup size="small" variant="outlined" sx={etActionGroupSx}>
+                      <Button
+                        onClick={() => {
+                          setTaskSeed((s) => s + 1);
+                          cancelEditingTask();
+                        }}
+                      >
+                        Reset
+                      </Button>
+                      <Button
+                        onClick={() => setShowSetEditor((v) => !v)}
+                        disabled={!bandChosen}
+                        sx={
+                          showSetEditor && bandChosen
                             ? {
                                 bgcolor: '#5c6bc0',
                                 color: '#fff',
                                 borderColor: '#5c6bc0',
                                 '&:hover': { bgcolor: '#5c6bc0', filter: 'brightness(0.92)' },
                               }
-                            : {
-                                color: '#3949ab',
-                                borderColor: '#7986cb',
-                                borderWidth: 2,
-                                bgcolor: 'rgba(255,255,255,0.85)',
-                                '&:hover': { bgcolor: 'rgba(92, 107, 192, 0.1)', borderColor: '#5c6bc0' },
-                              }),
-                        }}
-                        title={`${set.name} · ${set.lessons.length} Stunden · ${countCustomSetTasks(set)} Fragen`}
+                            : undefined
+                        }
                       >
-                        {set.name}
+                        Fragenset
                       </Button>
-                    ))}
-                    <Tooltip title="Neues Fragenset anlegen">
                       <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={openCreateSetDialog}
+                        variant="contained"
+                        startIcon={<PlayArrowIcon />}
+                        onClick={startSession}
+                        disabled={activeTasks.length === 0}
                         sx={{
-                          minWidth: 28,
-                          width: 28,
-                          height: 26,
-                          p: 0,
-                          flexShrink: 0,
-                          borderStyle: 'dashed',
-                          borderColor: '#5c6bc0',
-                          color: '#3949ab',
-                        }}
-                        aria-label="Neues Fragenset anlegen"
-                      >
-                        <AddIcon sx={{ fontSize: 15 }} />
-                      </Button>
-                    </Tooltip>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={() => {
-                        setTaskSeed((s) => s + 1);
-                        cancelEditingTask();
-                      }}
-                      sx={{ flexShrink: 0, minWidth: 0, px: 0.65, height: 26, fontSize: '0.65rem' }}
-                    >
-                      Reset
-                    </Button>
-                    <Button
-                      size="small"
-                      variant={showSetEditor ? 'contained' : 'outlined'}
-                      onClick={() => setShowSetEditor((v) => !v)}
-                      sx={{ minWidth: 0, px: 0.7, height: 26, fontSize: '0.65rem', flexShrink: 0 }}
-                    >
-                      Fragenset
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      startIcon={<PlayArrowIcon sx={{ fontSize: 14 }} />}
-                      onClick={startSession}
-                      disabled={activeTasks.length === 0}
-                      sx={{ minWidth: 0, px: 0.85, height: 26, fontSize: '0.65rem', flexShrink: 0 }}
-                    >
-                      Start
-                    </Button>
-                  </Box>
-
-                  {/* Vordefinierte Klassenstufen darunter, kleiner */}
-                  <Box
-                    component="div"
-                    role="toolbar"
-                    aria-label="Klassenstufen"
-                    sx={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      alignItems: 'center',
-                      gap: 0.35,
-                      width: '100%',
-                      minWidth: 0,
-                      mt: '1.15em',
-                      py: 0.15,
-                      opacity: 0.92,
-                    }}
-                  >
-                    {([5, 6, 7, 8, 9, 10, 11, 12, 13] as const).map((g) => (
-                      <Button
-                        key={g}
-                        size="small"
-                        variant={!customSetId && grade === g ? 'contained' : 'outlined'}
-                        onClick={() => selectBand(g)}
-                        sx={{
-                          minWidth: 22,
-                          width: 22,
-                          height: 22,
-                          px: 0,
-                          flexShrink: 0,
-                          fontSize: '0.62rem',
-                          fontWeight: 650,
+                          bgcolor: '#3949ab',
+                          borderColor: '#3949ab',
+                          color: '#fff',
+                          '&:hover': { bgcolor: '#303f9f' },
+                          '&.Mui-disabled': { bgcolor: '#c5cae9', borderColor: '#c5cae9', color: '#fff' },
                         }}
                       >
-                        {g}
+                        Start
                       </Button>
-                    ))}
-                    {(
-                      [
-                        { band: 'inf11' as const, label: 'Inf 11', main: '#00695c', hoverBg: 'rgba(0, 105, 92, 0.1)' },
-                        { band: 'inf12' as const, label: 'Inf 12', main: '#e65100', hoverBg: 'rgba(230, 81, 0, 0.1)' },
-                        { band: 'inf13' as const, label: 'Inf 13', main: '#4527a0', hoverBg: 'rgba(69, 39, 160, 0.1)' },
-                      ] as const
-                    ).map(({ band, label, main, hoverBg }) => (
-                      <Button
-                        key={band}
-                        size="small"
-                        variant={!customSetId && grade === band ? 'contained' : 'outlined'}
-                        onClick={() => selectBand(band)}
-                        sx={{
-                          minWidth: 0,
-                          px: 0.4,
-                          height: 22,
-                          fontSize: '0.55rem',
-                          fontWeight: 700,
-                          lineHeight: 1.1,
-                          whiteSpace: 'nowrap',
-                          flexShrink: 0,
-                          ...(!customSetId && grade === band
-                            ? {
-                                bgcolor: main,
-                                color: '#fff',
-                                borderColor: main,
-                                '&:hover': { bgcolor: main, filter: 'brightness(0.92)' },
-                              }
-                            : {
-                                color: main,
-                                borderColor: main,
-                                borderWidth: 1.5,
-                                bgcolor: 'rgba(255,255,255,0.85)',
-                                '&:hover': { bgcolor: hoverBg, borderColor: main },
-                              }),
-                        }}
-                      >
-                        {label}
-                      </Button>
-                    ))}
+                    </ButtonGroup>
                   </Box>
                 </Box>
-                {isCustomSetActive ? null : activeTasks.length === 0 ? (
+                {bandChosen ? (
+                  <>
+                {activeTasks.length === 0 ? (
                   <Box
                     sx={{
                       width: '100%',
@@ -2773,7 +3169,9 @@ export default function EntryTicketPage() {
                     }}
                   >
                     <Typography sx={{ color: '#5c6b8a', fontSize: '0.8rem', fontWeight: 600 }}>
-                      Keine Fragen im aktuellen Fragenset.
+                      {isCustomSetActive
+                        ? 'Keine Fragen in diesem Fragenset — unter „Fragenset“ Karten anlegen.'
+                        : 'Keine Fragen im aktuellen Fragenset.'}
                     </Typography>
                   </Box>
                 ) : (
@@ -2791,11 +3189,11 @@ export default function EntryTicketPage() {
                         sx={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 0.55,
-                          px: 0.65,
-                          py: 0.5,
+                          gap: 0.4,
+                          px: 0.5,
+                          py: 0.35,
                           minWidth: 0,
-                          borderRadius: 1.1,
+                          borderRadius: 1,
                           bgcolor: 'white',
                           border: '1px solid #d9e0ff',
                           boxSizing: 'border-box',
@@ -2821,22 +3219,13 @@ export default function EntryTicketPage() {
                                 )}
                               </Typography>
                             </Box>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
-                              <Button
-                                size="small"
-                                variant="contained"
-                                onClick={saveEditingTask}
-                                sx={{ minWidth: 32, px: 0.6, height: 22, fontSize: '0.68rem' }}
-                              >
-                                OK
-                              </Button>
-                              <Button
-                                size="small"
-                                onClick={cancelEditingTask}
-                                sx={{ minWidth: 32, px: 0.6, height: 22, fontSize: '0.68rem' }}
-                              >
-                                Ab
-                              </Button>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                              <ButtonGroup size="small" variant="outlined" orientation="vertical" sx={etOkAbGroupSx}>
+                                <Button variant="contained" onClick={saveEditingTask}>
+                                  OK
+                                </Button>
+                                <Button onClick={cancelEditingTask}>Ab</Button>
+                              </ButtonGroup>
                             </Box>
                           </>
                         ) : (
@@ -2874,41 +3263,17 @@ export default function EntryTicketPage() {
                                 renderPrompt(task.prompt, `selection-${index}`, false, true)
                               )}
                             </Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3, flexShrink: 0 }}>
+                            <ButtonGroup size="small" variant="outlined" sx={etMiniPairGroupSx}>
                               <Button
-                                size="small"
-                                variant="outlined"
                                 onClick={() => startEditingTask(index)}
-                                sx={{
-                                  minWidth: 22,
-                                  width: 22,
-                                  height: 22,
-                                  p: 0,
-                                  lineHeight: 1,
-                                  borderColor: '#c5cae9',
-                                  color: '#3949ab',
-                                  fontSize: '0.72rem',
-                                }}
+                                sx={{ borderColor: '#c5cae9', color: '#3949ab' }}
                               >
                                 ✎
                               </Button>
-                              <Button
-                                size="small"
-                                color="error"
-                                variant="outlined"
-                                onClick={() => replaceTaskAtIndex(index)}
-                                sx={{
-                                  minWidth: 22,
-                                  width: 22,
-                                  height: 22,
-                                  p: 0,
-                                  lineHeight: 1,
-                                  fontSize: '0.78rem',
-                                }}
-                              >
+                              <Button color="error" onClick={() => replaceTaskAtIndex(index)}>
                                 ×
                               </Button>
-                            </Box>
+                            </ButtonGroup>
                           </>
                         )}
                       </Box>
@@ -2931,25 +3296,25 @@ export default function EntryTicketPage() {
                 {showSetEditor && !isCustomSetActive && (
                   <Box
                     sx={{
-                      mt: 1,
+                      mt: 0.65,
                       width: '100%',
                       boxSizing: 'border-box',
-                      p: 0.85,
+                      p: 0.55,
                       border: '1px solid #d9e0ff',
-                      borderRadius: 1.5,
+                      borderRadius: 1.1,
                       bgcolor: '#f8faff',
                     }}
                   >
-                    <Typography sx={{ mb: 0.65, fontWeight: 800, fontSize: '0.78rem', color: '#1a237e' }}>
+                    <Typography sx={{ mb: 0.45, fontWeight: 800, fontSize: '0.72rem', color: '#1a237e' }}>
                       Fragenset {activeSetLabel} · {poolForBand.length} Fragen
                     </Typography>
-                    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 140px 28px', gap: 0.45, alignItems: 'center', mb: 0.65 }}>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 120px 24px', gap: 0.35, alignItems: 'center', mb: 0.5 }}>
                       <TextField
                         size="small"
                         value={newPrompt}
                         onChange={(e) => setNewPrompt(e.target.value)}
                         placeholder="Neue Frage (mit ?)"
-                        sx={{ '& .MuiInputBase-input': { py: 0.4, fontSize: '0.78rem' } }}
+                        sx={{ '& .MuiInputBase-input': { py: 0.3, fontSize: '0.72rem' } }}
                         onKeyDown={handleAddQuestionKeyDown}
                       />
                       <TextField
@@ -2957,10 +3322,15 @@ export default function EntryTicketPage() {
                         value={newSolution}
                         onChange={(e) => setNewSolution(e.target.value)}
                         placeholder="Antwort"
-                        sx={{ '& .MuiInputBase-input': { py: 0.4, fontSize: '0.78rem' } }}
+                        sx={{ '& .MuiInputBase-input': { py: 0.3, fontSize: '0.72rem' } }}
                         onKeyDown={handleAddQuestionKeyDown}
                       />
-                      <Button size="small" variant="contained" onClick={addSetQuestion} sx={{ minWidth: 28, width: 28, height: 28, p: 0 }}>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={addSetQuestion}
+                        sx={{ minWidth: 24, width: 24, height: 24, p: 0, fontSize: '0.85rem' }}
+                      >
                         +
                       </Button>
                     </Box>
@@ -3030,10 +3400,12 @@ export default function EntryTicketPage() {
                                     placeholder="Lösung"
                                     sx={{ width: 120, '& .MuiInputBase-input': { py: 0.35, fontSize: '0.75rem' } }}
                                   />
-                                  <Box sx={{ ml: 'auto', display: 'flex', gap: 0.3 }}>
-                                    <Button size="small" variant="contained" onClick={saveSetEditing} sx={{ minWidth: 26, px: 0.5, height: 24 }}>OK</Button>
-                                    <Button size="small" onClick={cancelSetEditing} sx={{ minWidth: 26, px: 0.5, height: 24 }}>Ab</Button>
-                                  </Box>
+                                  <ButtonGroup size="small" variant="outlined" sx={etOkAbGroupSx}>
+                                    <Button variant="contained" onClick={saveSetEditing}>
+                                      OK
+                                    </Button>
+                                    <Button onClick={cancelSetEditing}>Ab</Button>
+                                  </ButtonGroup>
                                 </>
                               ) : (
                                 <>
@@ -3056,10 +3428,12 @@ export default function EntryTicketPage() {
                                   >
                                     <EntryTicketRichHtml value={q.solution} />
                                   </Typography>
-                                  <Box sx={{ ml: 'auto', display: 'flex', gap: 0.3 }}>
-                                    <Button size="small" variant="outlined" onClick={() => startSetEditing(idx)} sx={{ minWidth: 22, width: 22, height: 22, p: 0 }}>✎</Button>
-                                    <Button size="small" color="error" variant="outlined" onClick={() => deleteSetQuestion(idx)} sx={{ minWidth: 22, width: 22, height: 22, p: 0 }}>×</Button>
-                                  </Box>
+                                  <ButtonGroup size="small" variant="outlined" sx={{ ...etMiniPairGroupSx, ml: 'auto' }}>
+                                    <Button onClick={() => startSetEditing(idx)}>✎</Button>
+                                    <Button color="error" onClick={() => deleteSetQuestion(idx)}>
+                                      ×
+                                    </Button>
+                                  </ButtonGroup>
                                 </>
                               )}
                             </Box>
@@ -3070,6 +3444,8 @@ export default function EntryTicketPage() {
                     </Box>
                   </Box>
                 )}
+                  </>
+                ) : null}
 
               </Box>
             ) : (
@@ -3107,7 +3483,7 @@ export default function EntryTicketPage() {
                     )}
                   </Typography>
 
-                  <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.15 }}>
+                  <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
                     <Tooltip title="Vorherige Karte">
                       <span>
                         <IconButton
@@ -3115,7 +3491,7 @@ export default function EntryTicketPage() {
                           onClick={goPrevious}
                           aria-label="Vorherige Karte"
                           disabled={currentIndex === 0 && !sessionDone}
-                          sx={{ width: 24, height: 24, color: '#78909c' }}
+                          sx={etSessionBtnSx}
                         >
                           <SkipPreviousIcon sx={{ fontSize: 16 }} />
                         </IconButton>
@@ -3124,34 +3500,20 @@ export default function EntryTicketPage() {
                     {!isRunning ? (
                       <Button
                         size="small"
-                        variant="text"
-                        startIcon={<PlayArrowIcon sx={{ fontSize: 14 }} />}
+                        variant="outlined"
+                        startIcon={<PlayArrowIcon sx={{ fontSize: '15px !important' }} />}
                         onClick={startOrResume}
-                        sx={{
-                          minHeight: 24,
-                          px: 0.7,
-                          fontWeight: 600,
-                          fontSize: '0.68rem',
-                          color: '#3949ab',
-                          textTransform: 'none',
-                        }}
+                        sx={{ ...etSessionPlayPauseSx, color: '#3949ab', borderColor: '#9fa8da' }}
                       >
                         {sessionDone ? 'Neu' : 'Weiter'}
                       </Button>
                     ) : (
                       <Button
                         size="small"
-                        variant="text"
-                        startIcon={<PauseIcon sx={{ fontSize: 14 }} />}
+                        variant="outlined"
+                        startIcon={<PauseIcon sx={{ fontSize: '15px !important' }} />}
                         onClick={pause}
-                        sx={{
-                          minHeight: 24,
-                          px: 0.7,
-                          fontWeight: 600,
-                          fontSize: '0.68rem',
-                          color: '#ef6c00',
-                          textTransform: 'none',
-                        }}
+                        sx={{ ...etSessionPlayPauseSx, color: '#ef6c00', borderColor: '#ffcc80' }}
                       >
                         Pause
                       </Button>
@@ -3163,7 +3525,7 @@ export default function EntryTicketPage() {
                           onClick={goNext}
                           aria-label="Nächste Karte"
                           disabled={sessionDone}
-                          sx={{ width: 24, height: 24, color: '#78909c' }}
+                          sx={etSessionBtnSx}
                         >
                           <SkipNextIcon sx={{ fontSize: 16 }} />
                         </IconButton>
@@ -3174,7 +3536,7 @@ export default function EntryTicketPage() {
                         size="small"
                         onClick={restart}
                         aria-label="Zurücksetzen"
-                        sx={{ width: 24, height: 24, color: '#90a4ae' }}
+                        sx={etSessionBtnSx}
                       >
                         <RestartAltIcon sx={{ fontSize: 15 }} />
                       </IconButton>
@@ -3335,26 +3697,28 @@ export default function EntryTicketPage() {
                           sx={{ mr: 0, '& .MuiFormControlLabel-label': { ml: 0.2 } }}
                         />
                         {(isTeacher || isClassModerator) && (
-                          <Button
-                            size="small"
-                            variant="contained"
-                            startIcon={<CheckIcon sx={{ fontSize: '0.9rem !important' }} />}
-                            disabled={completeBusy}
-                            onClick={() => void markEntryTicketDone()}
-                            sx={{
-                              minWidth: 0,
-                              px: 1.1,
-                              py: 0.25,
-                              fontSize: '0.72rem',
-                              fontWeight: 600,
-                              textTransform: 'none',
-                              bgcolor: '#2e7d32',
-                              boxShadow: 'none',
-                              '&:hover': { bgcolor: '#1b5e20', boxShadow: 'none' },
-                            }}
-                          >
-                            {completeBusy ? '…' : 'Erledigt'}
-                          </Button>
+                          <Tooltip title="Erledigt (Enter)">
+                            <span>
+                              <Button
+                                size="small"
+                                variant="contained"
+                                startIcon={<CheckIcon sx={{ fontSize: '0.85rem !important' }} />}
+                                disabled={completeBusy}
+                                onClick={() => void markEntryTicketDone()}
+                                sx={{
+                                  ...etActionGroupSx['& .MuiButton-root'],
+                                  borderRadius: '5px',
+                                  bgcolor: '#2e7d32',
+                                  borderColor: '#2e7d32',
+                                  color: '#fff',
+                                  boxShadow: 'none',
+                                  '&:hover': { bgcolor: '#1b5e20', boxShadow: 'none' },
+                                }}
+                              >
+                                {completeBusy ? '…' : 'Erledigt'}
+                              </Button>
+                            </span>
+                          </Tooltip>
                         )}
                       </Box>
                     </Box>
@@ -3477,19 +3841,20 @@ export default function EntryTicketPage() {
             </Typography>
           )}
         </DialogContent>
-        <DialogActions sx={{ px: 2, pb: 1.5, gap: 0.5 }}>
-          <Button size="small" onClick={() => setCreateSetOpen(false)} disabled={createSetBusy} sx={{ minWidth: 0, px: 1 }}>
-            Abbrechen
-          </Button>
-          <Button
-            size="small"
-            variant="contained"
-            onClick={() => void createCustomSet()}
-            disabled={createSetBusy || !createSetName.trim()}
-            sx={{ minWidth: 0, px: 1.25, bgcolor: '#3949ab' }}
-          >
-            {createSetBusy ? 'Lade Stunden…' : 'Anlegen'}
-          </Button>
+        <DialogActions sx={{ px: 1.5, pb: 1.25, gap: 0 }}>
+          <ButtonGroup size="small" variant="outlined" sx={etActionGroupSx}>
+            <Button onClick={() => setCreateSetOpen(false)} disabled={createSetBusy}>
+              Abbrechen
+            </Button>
+            <Button
+              variant="contained"
+              onClick={() => void createCustomSet()}
+              disabled={createSetBusy || !createSetName.trim()}
+              sx={{ bgcolor: '#3949ab', borderColor: '#3949ab', color: '#fff', '&:hover': { bgcolor: '#303f9f' } }}
+            >
+              {createSetBusy ? '…' : 'Anlegen'}
+            </Button>
+          </ButtonGroup>
         </DialogActions>
       </Dialog>
     </Box>

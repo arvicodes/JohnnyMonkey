@@ -13,6 +13,18 @@ type EntryTicketTaskPayload = {
   solution: string;
 };
 
+type EntryTicketCustomSetPayload = {
+  id: string;
+  name: string;
+  lessons: Array<{
+    id: string;
+    lessonName: string;
+    lessonKey?: string;
+    topicName?: string;
+    tasks: EntryTicketTaskPayload[];
+  }>;
+};
+
 type EntryTicketPayload = {
   startedAt: string;
   /** 0..9 — welches Motiv unter /entry-ticket/entry-NN.jpg; pro Signal neu gewürfelt, bleibt bis zum nächsten Signal */
@@ -25,6 +37,8 @@ type EntryTicketPayload = {
   materialLessonPath?: string | null;
   /** Konkrete Karten der laufenden Session (für Moderator ohne Lehrer-localStorage) */
   tasks?: EntryTicketTaskPayload[];
+  /** Snapshot des eigenen Fragensets (z. B. KI-Reihe), damit Moderator dasselbe Set hat */
+  customSet?: EntryTicketCustomSetPayload;
 };
 
 const clampHeroIndex = (n: unknown): number => {
@@ -64,12 +78,50 @@ const normalizeTasksPayload = (raw: unknown): EntryTicketTaskPayload[] | undefin
     out.push({
       category:
         typeof r.category === 'string' && r.category.trim() ? r.category.trim().slice(0, 80) : 'Eigen',
-      prompt: prompt.slice(0, 4000),
-      solution: solution.slice(0, 4000),
+      prompt: prompt.slice(0, 8000),
+      solution: solution.slice(0, 8000),
     });
-    if (out.length >= 40) break;
+    if (out.length >= 80) break;
   }
   return out.length > 0 ? out : undefined;
+};
+
+const normalizeCustomSetPayload = (raw: unknown): EntryTicketCustomSetPayload | undefined => {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const row = raw as Record<string, unknown>;
+  const id = typeof row.id === 'string' ? row.id.trim() : '';
+  if (!id.startsWith('c_') || id.length < 4) return undefined;
+  const name =
+    typeof row.name === 'string' && row.name.trim() ? row.name.trim().slice(0, 120) : 'Fragenset';
+  const lessonsRaw = Array.isArray(row.lessons) ? row.lessons : [];
+  const lessons: EntryTicketCustomSetPayload['lessons'] = [];
+  for (const lessonRaw of lessonsRaw) {
+    if (!lessonRaw || typeof lessonRaw !== 'object') continue;
+    const lesson = lessonRaw as Record<string, unknown>;
+    const lessonName =
+      typeof lesson.lessonName === 'string' && lesson.lessonName.trim()
+        ? lesson.lessonName.trim().slice(0, 160)
+        : '';
+    if (!lessonName) continue;
+    const tasks = normalizeTasksPayload(lesson.tasks) ?? [];
+    lessons.push({
+      id:
+        typeof lesson.id === 'string' && lesson.id.trim()
+          ? lesson.id.trim().slice(0, 80)
+          : `ls_${lessons.length + 1}`,
+      lessonName,
+      ...(typeof lesson.lessonKey === 'string' && lesson.lessonKey.trim()
+        ? { lessonKey: lesson.lessonKey.trim().replace(/\\/g, '/').slice(0, 500) }
+        : {}),
+      ...(typeof lesson.topicName === 'string' && lesson.topicName.trim()
+        ? { topicName: lesson.topicName.trim().slice(0, 120) }
+        : {}),
+      tasks,
+    });
+    if (lessons.length >= 40) break;
+  }
+  if (lessons.length === 0) return undefined;
+  return { id, name, lessons };
 };
 
 const parsePayload = (raw: string | null | undefined): EntryTicketPayload | null => {
@@ -84,6 +136,7 @@ const parsePayload = (raw: string | null | undefined): EntryTicketPayload | null
       taskSeed: normalizeTaskSeed(parsed.taskSeed),
       materialLessonPath: normalizeMaterialLessonPath(parsed.materialLessonPath) ?? undefined,
       tasks: normalizeTasksPayload(parsed.tasks),
+      customSet: normalizeCustomSetPayload(parsed.customSet),
     };
   } catch {
     return null;
@@ -274,6 +327,7 @@ export class EntryTicketController {
       const materialLessonPath =
         normalizeMaterialLessonPath(req.body?.lessonPath ?? req.body?.materialLessonPath) ?? null;
       const tasks = normalizeTasksPayload(req.body?.tasks);
+      const customSet = normalizeCustomSetPayload(req.body?.customSet);
       const syncTasks = req.body?.syncTasks === true || req.body?.preserveSession === true;
 
       const resolveExisting = async (lessonPath: string): Promise<EntryTicketPayload | null> => {
@@ -310,6 +364,11 @@ export class EntryTicketController {
             ? { tasks }
             : existing?.tasks
               ? { tasks: existing.tasks }
+              : {}),
+          ...(customSet
+            ? { customSet }
+            : existing?.customSet
+              ? { customSet: existing.customSet }
               : {}),
         };
       };
@@ -349,6 +408,7 @@ export class EntryTicketController {
             taskSeed: payload.taskSeed ?? null,
             materialLessonPath: payload.materialLessonPath ?? null,
             tasks: payload.tasks ?? null,
+            customSet: payload.customSet ?? null,
           });
         }
       }
@@ -373,6 +433,7 @@ export class EntryTicketController {
         taskSeed: payload.taskSeed ?? null,
         materialLessonPath: payload.materialLessonPath ?? null,
         tasks: payload.tasks ?? null,
+        customSet: payload.customSet ?? null,
       });
     } catch (error) {
       console.error('EntryTicket signal error:', error);
@@ -469,6 +530,7 @@ export class EntryTicketController {
               taskSeed: null,
               materialLessonPath: null,
               tasks: null,
+              customSet: null,
               isModerator: mod.isModerator,
               learningGroupId: mod.learningGroupId,
               groupName: mod.groupName,
@@ -484,6 +546,7 @@ export class EntryTicketController {
             taskSeed: null,
             materialLessonPath: null,
             tasks: null,
+            customSet: null,
             isModerator: mod.isModerator,
             learningGroupId: mod.learningGroupId,
             groupName: mod.groupName,
@@ -503,6 +566,7 @@ export class EntryTicketController {
           taskSeed: resolved.payload.taskSeed ?? null,
           materialLessonPath: resolved.payload.materialLessonPath ?? null,
           tasks: resolved.payload.tasks ?? null,
+          customSet: resolved.payload.customSet ?? null,
           isModerator: mod.isModerator,
           learningGroupId: mod.learningGroupId || resolved.learningGroupId || null,
           groupName: mod.groupName,
@@ -521,6 +585,7 @@ export class EntryTicketController {
           taskSeed: null,
           materialLessonPath: null,
           tasks: null,
+          customSet: null,
         });
       }
       return res.json({
@@ -533,6 +598,7 @@ export class EntryTicketController {
         taskSeed: teacherResolved.payload.taskSeed ?? null,
         materialLessonPath: teacherResolved.payload.materialLessonPath ?? null,
         tasks: teacherResolved.payload.tasks ?? null,
+        customSet: teacherResolved.payload.customSet ?? null,
       });
     } catch (error) {
       console.error('EntryTicket getCurrent error:', error);

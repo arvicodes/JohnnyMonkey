@@ -78,6 +78,8 @@ import { RIDDLES, Riddle } from './riddles';
 import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
 import { apiGetSafe } from '../lib/api';
 import { MODERATOR_ICON_SRC } from '../lib/moderatorIcon';
+import { entryTicketBandFromGroupNames } from '../lib/entryTicketGrade';
+import { ENTRY_TICKET_MODAL_DISMISS_KEY } from './StudentLiveTicketAlerts';
 import { sortLearningGroups } from '../lib/learningGroupSort';
 import {
   folderTreeNodeKey,
@@ -1957,6 +1959,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const [studentName, setStudentName] = useState<string>("");
   const [isClassModerator, setIsClassModerator] = useState(false);
   const [moderatorGroupName, setModeratorGroupName] = useState<string | null>(null);
+  const [moderatorGroupId, setModeratorGroupId] = useState<string | null>(null);
+  /** Vom Lehrer gestartete / laufende Stunde → Moderator-E bis Stundenende */
+  const [activeRunningLesson, setActiveRunningLesson] = useState<{
+    groupId: string;
+    lessonPath: string;
+  } | null>(null);
   
   // States für Inhalte
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -2968,6 +2976,107 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     [releasedLessonsByGroup],
   );
 
+  const entryTicketLessonPathsMatch = useCallback((a: string, b: string) => {
+    const norm = (p: string) =>
+      normalizeLessonMaterialPath(p)
+        .replace(/\/+$/, '')
+        .normalize('NFC')
+        .toLowerCase();
+    const na = norm(a);
+    const nb = norm(b);
+    if (!na || !nb) return false;
+    if (na === nb) return true;
+    if (na.endsWith(`/${nb}`) || nb.endsWith(`/${na}`)) return true;
+    const fa = na.split('/').filter(Boolean).pop() || '';
+    const fb = nb.split('/').filter(Boolean).pop() || '';
+    return Boolean(fa && fa === fb);
+  }, []);
+
+  /** E nur an der vom Lehrer gerade laufend gesetzten Stunde */
+  const lessonMatchesActiveRunningLesson = useCallback(
+    (groupId: string, lessonPath: string, lessonName: string) => {
+      if (!activeRunningLesson) return false;
+      if (activeRunningLesson.groupId !== groupId) return false;
+      if (entryTicketLessonPathsMatch(activeRunningLesson.lessonPath, lessonPath)) return true;
+      const runFolder =
+        normalizeLessonMaterialPath(activeRunningLesson.lessonPath)
+          .replace(/\/+$/, '')
+          .split('/')
+          .pop() || '';
+      const lessonFolder =
+        normalizeLessonMaterialPath(lessonPath).replace(/\/+$/, '').split('/').pop() || '';
+      if (runFolder && runFolder === lessonFolder) return true;
+      if (runFolder && runFolder === (lessonName || '').trim()) return true;
+      return false;
+    },
+    [activeRunningLesson, entryTicketLessonPathsMatch],
+  );
+
+  const moderatorEntryTicketButtonSx = {
+    width: 22,
+    height: 22,
+    p: 0,
+    bgcolor: 'rgba(198, 40, 40, 0.95)',
+    color: '#fff',
+    border: '1px solid rgba(255,255,255,0.9)',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+    fontSize: '0.7rem',
+    fontWeight: 800,
+    lineHeight: 1,
+    borderRadius: '50%',
+    '&:hover': { bgcolor: '#b71c1c' },
+  } as const;
+
+  /** Nach versehentlichem Schließen: Entry Ticket für Moderator erneut öffnen */
+  const openEntryTicketAsModerator = useCallback(
+    async (groupId: string, lessonPath: string) => {
+      try {
+        sessionStorage.removeItem(ENTRY_TICKET_MODAL_DISMISS_KEY);
+      } catch {
+        /* ignore */
+      }
+      const gid =
+        groupId ||
+        activeRunningLesson?.groupId ||
+        moderatorGroupId ||
+        lerngruppen[0]?.id ||
+        '';
+      const group = lerngruppen.find((g) => g.id === gid);
+      let band = String(
+        entryTicketBandFromGroupNames(group?.name ? [group.name] : moderatorGroupName ? [moderatorGroupName] : []),
+      );
+      let seed: number | null = null;
+      let hero = 0;
+      let materialPath = lessonPath || activeRunningLesson?.lessonPath || '';
+      try {
+        const res = await apiGetSafe('/api/entry-ticket/current');
+        if (res?.ok) {
+          const data = await res.json();
+          if (typeof data.grade === 'string' && data.grade) band = data.grade;
+          if (typeof data.taskSeed === 'number' && Number.isFinite(data.taskSeed)) {
+            seed = Math.floor(data.taskSeed) >>> 0;
+          }
+          if (typeof data.heroImageIndex === 'number') hero = data.heroImageIndex;
+          if (typeof data.materialLessonPath === 'string' && data.materialLessonPath) {
+            materialPath = data.materialLessonPath;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      const qs = new URLSearchParams();
+      qs.set('grade', band);
+      qs.set('autostart', '1');
+      qs.set('r', String(Date.now()));
+      qs.set('hero', String(hero));
+      if (seed != null) qs.set('seed', String(seed));
+      if (gid) qs.set('groupId', gid);
+      if (materialPath) qs.set('lessonPath', materialPath);
+      navigate(`/entry-ticket?${qs.toString()}`);
+    },
+    [activeRunningLesson, lerngruppen, moderatorGroupId, moderatorGroupName, navigate],
+  );
+
   // Neue Funktion zum Laden der zugeordneten Ordner (exakt wie im TeacherDashboard)
   const fetchAssignedFolders = async (groupId: string) => {
     try {
@@ -3118,6 +3227,17 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       return false;
     };
 
+    /** Parent-Ordner offen halten, wenn darunter die laufende Lehrer-Stunde liegt */
+    const hasActiveRunningLessonDescendant = (dir: any, lvl: number): boolean => {
+      if (!isClassModerator || !activeRunningLesson) return false;
+      if (dir?.type !== 'directory') return false;
+      if (directoryIsStundeFolderForStudentTree(dir.name, lvl)) {
+        if (lessonMatchesActiveRunningLesson(groupId, dir.path || '', dir.name || '')) return true;
+      }
+      if (!Array.isArray(dir.children)) return false;
+      return dir.children.some((child: any) => hasActiveRunningLessonDescendant(child, lvl + 1));
+    };
+
     // Rekursive Funktion zum Rendern aller Ebenen (dashboard: Stunden als Karte → Modal; modalMaterials: Inhalt im Modal)
     const renderItemRecursively = (
       item: any,
@@ -3136,22 +3256,35 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       }
 
       // Ordner ohne freigegebene Dateien ausblenden — außer Stunde mit freigegebener Leinwand
+      // oder die vom Lehrer gerade laufend gesetzte Stunde (Moderator-E)
       if (item.type === 'directory' && !hasSharedFiles(item)) {
         const stundeWithLeinwand =
           view === 'dashboard' &&
           directoryIsStundeFolderForStudentTree(item.name, level) &&
           isLessonSharedInputShared(groupId, item.path);
-        if (!stundeWithLeinwand) return null;
+        const stundeWithRunningLesson =
+          view === 'dashboard' &&
+          directoryIsStundeFolderForStudentTree(item.name, level) &&
+          isClassModerator &&
+          lessonMatchesActiveRunningLesson(groupId, item.path || '', item.name || '');
+        const ancestorOfRunningLesson =
+          view === 'dashboard' && hasActiveRunningLessonDescendant(item, level);
+        if (!stundeWithLeinwand && !stundeWithRunningLesson && !ancestorOfRunningLesson) return null;
       }
 
       // Stunde erst sichtbar, wenn per Play gestartet (oder Legacy-Freigabe vor erstem Play)
+      // Ausnahme: gerade laufende Lehrer-Stunde → Moderator-E sichtbar halten
       if (
         item.type === 'directory' &&
         directoryIsStundeFolderForStudentTree(item.name, level)
       ) {
         const hasShared =
           hasSharedFiles(item) || isLessonSharedInputShared(groupId, item.path);
-        if (!isStudentLessonReleased(groupId, item.path || '', hasShared)) {
+        const released = isStudentLessonReleased(groupId, item.path || '', hasShared);
+        const runningLesson =
+          isClassModerator &&
+          lessonMatchesActiveRunningLesson(groupId, item.path || '', item.name || '');
+        if (!released && !runningLesson) {
           return null;
         }
       }
@@ -3274,14 +3407,18 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             }
           />
         );
+        const showModeratorEtRestart =
+          isClassModerator &&
+          (!moderatorGroupId || moderatorGroupId === groupId) &&
+          lessonMatchesActiveRunningLesson(groupId, item.path || '', item.name || '');
         return (
           <Box key={treeKey} sx={{ mb: 0.7 }}>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
               <IconButton
                 size="small"
                 aria-label={lessonExpanded ? 'Stunde zuklappen' : 'Stunde aufklappen'}
                 onClick={toggleLesson}
-                sx={{ width: 20, height: 20, p: 0, flexShrink: 0, color, mt: 0.15 }}
+                sx={{ width: 20, height: 20, p: 0, flexShrink: 0, color }}
               >
                 {lessonExpanded ? (
                   <ExpandLessIcon sx={{ fontSize: 16 }} />
@@ -3295,7 +3432,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 onClick={toggleLesson}
                 sx={{
                   display: 'flex',
-                  alignItems: 'flex-start',
+                  alignItems: 'center',
                   gap: 0.5,
                   flex: 1,
                   minWidth: 0,
@@ -3318,6 +3455,24 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   {item.name}
                 </Typography>
               </Box>
+              {showModeratorEtRestart && (
+                  <Tooltip title="Entry Ticket nochmal starten">
+                    <IconButton
+                      size="small"
+                      aria-label="Entry Ticket nochmal starten"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void openEntryTicketAsModerator(groupId, item.path || '');
+                      }}
+                      sx={{
+                        flexShrink: 0,
+                        ...moderatorEntryTicketButtonSx,
+                      }}
+                    >
+                      E
+                    </IconButton>
+                  </Tooltip>
+                )}
             </Box>
             <Collapse in={lessonExpanded}>
               <Box sx={{ ml: 2.5, pl: 1, borderLeft: '2px solid #e0e0e0', mb: 1, pb: 0.5 }}>
@@ -5286,26 +5441,70 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     fetchLerngruppen();
   }, [userId]);
 
-  // Moderator-Status für Profil-Badge
+  // Moderator-Status + laufende Lehrer-Stunde (für E-Button bis Stundenende)
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
     const poll = async () => {
       try {
-        const res = await apiGetSafe('/api/entry-ticket/current');
-        if (!res?.ok || cancelled) return;
-        const data = await res.json();
+        const [modRes, lessonRes] = await Promise.all([
+          apiGetSafe('/api/entry-ticket/current'),
+          apiGetSafe('/api/teacher-schedule/active-lessons/student'),
+        ]);
         if (cancelled) return;
-        setIsClassModerator(data.isModerator === true);
-        setModeratorGroupName(
-          typeof data.groupName === 'string' && data.groupName ? data.groupName : null,
-        );
+
+        let modGid: string | null = null;
+        if (modRes?.ok) {
+          const data = await modRes.json();
+          if (cancelled) return;
+          setIsClassModerator(data.isModerator === true);
+          setModeratorGroupName(
+            typeof data.groupName === 'string' && data.groupName ? data.groupName : null,
+          );
+          modGid =
+            typeof data.learningGroupId === 'string' && data.learningGroupId
+              ? data.learningGroupId
+              : null;
+          setModeratorGroupId(modGid);
+        }
+
+        if (lessonRes?.ok) {
+          const data = await lessonRes.json();
+          if (cancelled) return;
+          const sessions = Array.isArray(data?.sessions) ? data.sessions : [];
+          const scoped = modGid
+            ? sessions.filter((s: { groupId?: string }) => s.groupId === modGid)
+            : sessions;
+          const pool = scoped.length > 0 ? scoped : sessions;
+          const active =
+            pool.find(
+              (s: { status?: string; lessonPath?: string | null }) =>
+                s.status === 'ACTIVE' && typeof s.lessonPath === 'string' && s.lessonPath.trim(),
+            ) ||
+            pool.find(
+              (s: { lessonPath?: string | null }) =>
+                typeof s.lessonPath === 'string' && s.lessonPath.trim(),
+            );
+          const lp =
+            typeof active?.lessonPath === 'string' && active.lessonPath.trim()
+              ? active.lessonPath.trim()
+              : '';
+          const gid =
+            typeof active?.groupId === 'string' && active.groupId.trim()
+              ? active.groupId.trim()
+              : '';
+          if (lp && gid) {
+            setActiveRunningLesson({ groupId: gid, lessonPath: lp });
+          } else {
+            setActiveRunningLesson(null);
+          }
+        }
       } catch {
         /* ignore */
       }
     };
     void poll();
-    const id = window.setInterval(poll, 15000);
+    const id = window.setInterval(poll, 2000);
     return () => {
       cancelled = true;
       window.clearInterval(id);
