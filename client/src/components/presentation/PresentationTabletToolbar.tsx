@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Divider, IconButton, Tooltip, Typography } from '@mui/material';
 import {
   ArrowForward as ArrowIcon,
+  Casino as CasinoIcon,
   ChevronLeft,
   ChevronRight,
   CircleOutlined as CircleIcon,
@@ -12,6 +13,7 @@ import {
   OpenWith as SelectIcon,
   Save as SaveIcon,
   SaveAs as SaveAsIcon,
+  Tag as TagIcon,
   Undo as UndoIcon,
 } from '@mui/icons-material';
 import {
@@ -48,6 +50,14 @@ const PANEL_SX = {
   boxShadow: '0 6px 22px rgba(0,0,0,0.38)',
 } as const;
 
+const RANDOM_NUMBER_RANGES = [
+  { max: 6, label: 'Würfel 1–6' },
+  { max: 10, label: '1–10' },
+  { max: 20, label: '1–20' },
+  { max: 30, label: '1–30' },
+  { max: 100, label: '1–100' },
+] as const;
+
 function EraserIcon() {
   return (
     <Box
@@ -69,7 +79,7 @@ type ToolBtnProps = {
   title: string;
   active?: boolean;
   disabled?: boolean;
-  onClick: () => void;
+  onClick: (e: React.MouseEvent<HTMLElement>) => void;
   children: React.ReactNode;
 };
 
@@ -108,6 +118,11 @@ interface PresentationTabletToolbarProps {
   onUndo: () => void;
   onSave?: () => void;
   onSaveNamed?: () => void;
+  /** Zufälligen SuS aus der Lerngruppe anzeigen (Würfel) */
+  onPickRandomStudent?: () => void;
+  canPickRandomStudent?: boolean;
+  /** Zufallszahl 1…max anzeigen */
+  onPickRandomNumber?: (max: number) => void;
   /** docked = im Layout unten (Tablet-Präsentieren); fixed = schwebend */
   placement?: 'fixed' | 'docked';
   /** Original-Ansicht: nur Navigation, kein Zeichnen/Speichern */
@@ -132,6 +147,9 @@ export default function PresentationTabletToolbar({
   onUndo,
   onSave,
   onSaveNamed,
+  onPickRandomStudent,
+  canPickRandomStudent = false,
+  onPickRandomNumber,
   placement = 'fixed',
   readOnly = false,
 }: PresentationTabletToolbarProps) {
@@ -139,6 +157,7 @@ export default function PresentationTabletToolbar({
   const showLineWidths = !readOnly && drawActive && toolUsesLineWidth(activeTool);
   const widthOptions = lineWidthsForTool(activeTool);
   const docked = placement === 'docked';
+  const [showNumberRanges, setShowNumberRanges] = useState(false);
 
   return (
     <Box
@@ -174,6 +193,59 @@ export default function PresentationTabletToolbar({
       }}
       onClick={(e) => e.stopPropagation()}
     >
+      {showNumberRanges && onPickRandomNumber && (
+        <Box
+          sx={{
+            ...PANEL_SX,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.35,
+            borderRadius: 2,
+            px: 0.55,
+            py: 0.35,
+          }}
+        >
+          {RANDOM_NUMBER_RANGES.map((r) => (
+            <Box
+              key={r.max}
+              role="button"
+              tabIndex={0}
+              aria-label={r.label}
+              onClick={() => {
+                setShowNumberRanges(false);
+                onPickRandomNumber(r.max);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setShowNumberRanges(false);
+                  onPickRandomNumber(r.max);
+                }
+              }}
+              sx={{
+                px: 0.75,
+                py: 0.35,
+                borderRadius: 1.25,
+                cursor: 'pointer',
+                fontSize: 11,
+                fontWeight: 700,
+                color: 'rgba(255,255,255,0.9)',
+                border: '1px solid rgba(255,255,255,0.16)',
+                whiteSpace: 'nowrap',
+                userSelect: 'none',
+                '&:hover': {
+                  bgcolor: 'rgba(255,152,0,0.18)',
+                  borderColor: 'rgba(255,152,0,0.45)',
+                  color: JOHNNY_PRESENTATION.warm,
+                },
+              }}
+            >
+              {r.label}
+            </Box>
+          ))}
+        </Box>
+      )}
+
       {showLineWidths && (
         <Box
           sx={{
@@ -302,6 +374,30 @@ export default function PresentationTabletToolbar({
             onClick={onToggleDraw}
           >
             <DrawIcon sx={{ fontSize: 15 }} />
+          </ToolBtn>
+        )}
+
+        {!readOnly && onPickRandomStudent && (
+          <ToolBtn
+            title={
+              canPickRandomStudent
+                ? 'Zufälligen Schüler wählen'
+                : 'Keine Schüler in der Lerngruppe'
+            }
+            disabled={!canPickRandomStudent}
+            onClick={onPickRandomStudent}
+          >
+            <CasinoIcon sx={{ fontSize: 15 }} />
+          </ToolBtn>
+        )}
+
+        {!readOnly && onPickRandomNumber && (
+          <ToolBtn
+            title="Zufallszahl"
+            active={showNumberRanges}
+            onClick={() => setShowNumberRanges((v) => !v)}
+          >
+            <TagIcon sx={{ fontSize: 15 }} />
           </ToolBtn>
         )}
 

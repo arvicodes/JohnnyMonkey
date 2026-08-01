@@ -22,6 +22,7 @@ import {
   type EntryTicketCustomTask,
   type EntryTicketLessonSection,
 } from '../../lib/entryTicketCustomSets';
+import { EntryTicketRichField } from './EntryTicketRichField';
 
 /** Passend zum EntryTicket, dezent bunt. */
 const ET = {
@@ -486,32 +487,27 @@ export function EntryTicketFragensetEditor({
                             sx={{
                               width: '100%',
                               display: 'grid',
-                              gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 22px',
+                              gridTemplateColumns: 'minmax(0, 1fr) 22px',
                               gap: 0.4,
-                              alignItems: 'center',
+                              alignItems: 'start',
                               boxSizing: 'border-box',
                             }}
                           >
-                            <TextField
-                              size="small"
-                              value={task.prompt}
-                              onChange={(e) => updateTask(lesson.id, task.id, { prompt: e.target.value })}
-                              placeholder={`${taskIndex + 1}. Frage`}
-                              sx={fieldSx}
-                            />
-                            <TextField
-                              size="small"
-                              value={task.solution}
-                              onChange={(e) => updateTask(lesson.id, task.id, { solution: e.target.value })}
-                              placeholder="Antwort"
-                              sx={{
-                                ...fieldSx,
-                                '& .MuiOutlinedInput-root': {
-                                  ...fieldSx['& .MuiOutlinedInput-root'],
-                                  bgcolor: 'rgba(232, 245, 233, 0.55)',
-                                },
-                              }}
-                            />
+                            <Box sx={{ display: 'grid', gap: 0.35, minWidth: 0 }}>
+                              <EntryTicketRichField
+                                value={task.prompt}
+                                onChange={(prompt) => updateTask(lesson.id, task.id, { prompt })}
+                                placeholder={`${taskIndex + 1}. Frage`}
+                                minHeight={44}
+                              />
+                              <EntryTicketRichField
+                                value={task.solution}
+                                onChange={(solution) => updateTask(lesson.id, task.id, { solution })}
+                                placeholder="Antwort / Lösung"
+                                softBg="rgba(232, 245, 233, 0.7)"
+                                minHeight={44}
+                              />
+                            </Box>
                             <Tooltip title="Karte löschen">
                               <IconButton
                                 size="small"
@@ -519,6 +515,7 @@ export function EntryTicketFragensetEditor({
                                 aria-label="Karte löschen"
                                 sx={{
                                   ...iconBtnSx,
+                                  mt: 0.35,
                                   color: ET.muted,
                                   '&:hover': { color: '#c62828', bgcolor: 'rgba(198,40,40,0.08)' },
                                 }}

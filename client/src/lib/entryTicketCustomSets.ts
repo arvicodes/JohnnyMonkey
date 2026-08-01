@@ -1,3 +1,8 @@
+import {
+  entryTicketHasText,
+  normalizeEntryTicketFieldValue,
+} from './entryTicketRichText';
+
 /** Eigene Entry-Ticket-Fragensätze: ein Set pro Reihe, Fragen pro Stunde, localStorage. */
 
 export type EntryTicketCustomTask = {
@@ -61,9 +66,9 @@ function normalizePath(p: string): string {
 function parseTask(raw: unknown): EntryTicketCustomTask | null {
   if (!raw || typeof raw !== 'object') return null;
   const q = raw as Record<string, unknown>;
-  const prompt = typeof q.prompt === 'string' ? q.prompt : '';
-  const solution = typeof q.solution === 'string' ? q.solution : '';
-  if (!prompt || !solution) return null;
+  const prompt = typeof q.prompt === 'string' ? normalizeEntryTicketFieldValue(q.prompt) : '';
+  const solution = typeof q.solution === 'string' ? normalizeEntryTicketFieldValue(q.solution) : '';
+  if (!entryTicketHasText(prompt) || !entryTicketHasText(solution)) return null;
   return {
     id: typeof q.id === 'string' && q.id ? q.id : makeEntryTicketEntityId('q'),
     category: typeof q.category === 'string' && q.category.trim() ? q.category.trim() : 'Eigen',
@@ -228,8 +233,8 @@ export function createCustomTask(prompt: string, solution: string, category = 'E
   return {
     id: makeEntryTicketEntityId('q'),
     category,
-    prompt: prompt.trim(),
-    solution: solution.trim(),
+    prompt: normalizeEntryTicketFieldValue(prompt),
+    solution: normalizeEntryTicketFieldValue(solution),
   };
 }
 
@@ -247,9 +252,9 @@ export function parseEntryTicketCardList(raw: string): Array<{ prompt: string; s
     if (!trimmed) continue;
     const sep = trimmed.indexOf(';');
     if (sep < 0) continue;
-    const prompt = trimmed.slice(0, sep).trim();
-    const solution = trimmed.slice(sep + 1).trim();
-    if (!prompt || !solution) continue;
+    const prompt = normalizeEntryTicketFieldValue(trimmed.slice(0, sep));
+    const solution = normalizeEntryTicketFieldValue(trimmed.slice(sep + 1));
+    if (!entryTicketHasText(prompt) || !entryTicketHasText(solution)) continue;
     out.push({ prompt, solution });
   }
   return out;

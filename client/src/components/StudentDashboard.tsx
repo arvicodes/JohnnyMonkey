@@ -120,7 +120,7 @@ function isChapterHeadingFolderNameStudent(name: string): boolean {
 }
 
 /**
- * Oberste Ebene: „1 Rechnerarchitektur“ = Themenblock; „2.01 …“ = Stunde.
+ * Oberste Ebene: „1 Rechnerarchitektur“ = Themenblock; „2.01 Gatter“ = Stunde.
  * Gleiche Regeln wie directoryOpensStundePage im Lehrkräfte-Dashboard.
  */
 function isTopicSectionFolderNameStudent(name: string): boolean {
@@ -129,9 +129,16 @@ function isTopicSectionFolderNameStudent(name: string): boolean {
   return /^\d+\s+/.test(t);
 }
 
-function directoryIsStundeFolderForStudentTree(name: string, level: number): boolean {
+/** Reihen-Überschrift wie „12-01 Matrizen“ / „11-04 KI“ — Container, keine Stunde. */
+function isSeriesHeadingFolderNameStudent(name: string): boolean {
+  return /^\d{1,2}[-–\s]\d{2}(\b|\s|$)/.test((name || '').trim());
+}
+
+function directoryIsStundeFolderForStudentTree(name: string, _level: number): boolean {
   if (isChapterHeadingFolderNameStudent(name)) return false;
-  if (level === 0 && isTopicSectionFolderNameStudent(name)) return false;
+  if (isSeriesHeadingFolderNameStudent(name)) return false;
+  // Themenblock „01 Basiswissen“ auf jeder Ebene — keine Stunde (wie Lehrer-Dashboard)
+  if (isTopicSectionFolderNameStudent(name)) return false;
   if (isLessonRohdatArchiveFolderNameStudent(name)) return false;
   return true;
 }

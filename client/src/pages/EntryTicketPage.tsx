@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -20,6 +20,7 @@ import {
 import {
   Add as AddIcon,
   ArrowBack as ArrowBackIcon,
+  Check as CheckIcon,
   Close as CloseIcon,
   Pause as PauseIcon,
   PlayArrow as PlayArrowIcon,
@@ -29,6 +30,7 @@ import {
 } from '@mui/icons-material';
 import { apiGet, apiPost } from '../lib/api';
 import { entryTicketHeroSrc } from '../lib/ticketHeroImages';
+import { presentationLessonBackUrl } from '../lib/presentationEditorUi';
 import {
   type EntryTicketCustomSet,
   countCustomSetTasks,
@@ -42,6 +44,11 @@ import {
 import { discoverLessonsForReiheName } from '../lib/entryTicketReiheLessons';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
 import { EntryTicketFragensetEditor } from '../components/entry-ticket/EntryTicketFragensetEditor';
+import {
+  entryTicketLooksLikeHtml,
+  entryTicketPlainText,
+  sanitizeEntryTicketHtml,
+} from '../lib/entryTicketRichText';
 
 type EntryTicketTask = {
   category: string;
@@ -49,12 +56,41 @@ type EntryTicketTask = {
   solution: string;
 };
 
+const richTextSx = {
+  '& p': { m: 0 },
+  '& b, & strong': { fontWeight: 800 },
+} as const;
+
+function EntryTicketRichHtml({
+  value,
+  sx,
+}: {
+  value: string;
+  sx?: Record<string, unknown>;
+}) {
+  if (!value) return null;
+  if (!entryTicketLooksLikeHtml(value)) {
+    return (
+      <Box component="span" sx={sx}>
+        {value}
+      </Box>
+    );
+  }
+  return (
+    <Box
+      component="span"
+      sx={{ display: 'block', ...richTextSx, ...sx }}
+      dangerouslySetInnerHTML={{ __html: sanitizeEntryTicketHtml(value) }}
+    />
+  );
+}
+
 const SLIDE_DURATION_SEC = 20;
 /** Zufällige Auswahl aus dem klassenspezifischen Fragenset */
 const TARGET_TASK_COUNT = 10;
 const DISPLAY_BOX_WIDTH = 1320;
 const DISPLAY_BOX_HEIGHT = 220;
-const FINAL_DISPLAY_BOX_HEIGHT = 360;
+const FINAL_DISPLAY_BOX_HEIGHT = 520;
 const OPERATOR_COLOR = '#ef6c00';
 const QUESTION_COLOR = '#d32f2f';
 
@@ -1013,6 +1049,7 @@ export default function EntryTicketPage() {
   const [showSolutions, setShowSolutions] = useState(false);
   const [teacherNotes, setTeacherNotes] = useState('');
   const [sessionDone, setSessionDone] = useState(false);
+  const [completeBusy, setCompleteBusy] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingPrompt, setEditingPrompt] = useState('');
   const [editingSolution, setEditingSolution] = useState('');
@@ -1035,6 +1072,9 @@ export default function EntryTicketPage() {
   const [moderatorGateChecked, setModeratorGateChecked] = useState(
     () => Boolean(typeof window !== 'undefined' && localStorage.getItem('teacherId')),
   );
+  /** Moderator: Karten kommen vom Lehrer-Signal (nicht aus lokalem Fragenset) */
+  const [sharedTasksLocked, setSharedTasksLocked] = useState(false);
+  const tasksSyncedRef = useRef('');
 
   /** Klassenstufe / eigenes Set aus URL; neuer Zufallssatz bei jedem Aufruf (inkl. &r=… vom Klick auf das Dashboard-Icon). */
   useLayoutEffect(() => {
@@ -1054,6 +1094,8 @@ export default function EntryTicketPage() {
     setSecondsLeft(SLIDE_DURATION_SEC);
     setIsRunning(false);
     setShowSolutions(false);
+    setSharedTasksLocked(false);
+    tasksSyncedRef.current = '';
 
     const teacher = Boolean(typeof window !== 'undefined' && localStorage.getItem('teacherId'));
     if (autostart && teacher) {
@@ -1082,6 +1124,24 @@ export default function EntryTicketPage() {
 
   const isTeacher = useMemo(() => Boolean(localStorage.getItem('teacherId')), []);
 
+  const applyGradeParam = useCallback((raw: string | null | undefined) => {
+    if (!raw) return;
+    if (isCustomEntryTicketSetId(raw)) {
+      setCustomSetId(raw);
+      return;
+    }
+    if (raw === 'inf11' || raw === 'inf12' || raw === 'inf13') {
+      setCustomSetId(null);
+      setGrade(raw);
+      return;
+    }
+    const n = Number(raw);
+    if (Number.isFinite(n) && n >= 5 && n <= 13) {
+      setCustomSetId(null);
+      setGrade(n as GradeNum);
+    }
+  }, []);
+
   /** Nicht-Lehrkräfte: nur Klassen-Moderator darf die volle Ticket-Seite nutzen */
   useEffect(() => {
     if (isTeacher) {
@@ -1104,12 +1164,42 @@ export default function EntryTicketPage() {
           isModerator?: boolean;
           startedAt?: string | null;
           heroImageIndex?: number | null;
+          grade?: string | null;
+          taskSeed?: number | null;
+          materialLessonPath?: string | null;
+          learningGroupId?: string | null;
+          tasks?: Array<{ category?: string; prompt?: string; solution?: string }> | null;
         };
         if (cancelled) return;
         const mod = data.isModerator === true;
         setIsClassModerator(mod);
         if (typeof data.heroImageIndex === 'number' && data.startedAt) {
           setEntryHeroImageIndex(data.heroImageIndex);
+        }
+        if (typeof data.grade === 'string' && data.grade) {
+          applyGradeParam(data.grade);
+        }
+        if (typeof data.taskSeed === 'number' && Number.isFinite(data.taskSeed)) {
+          setTaskSeed(Math.floor(data.taskSeed) >>> 0);
+        }
+        if (typeof data.materialLessonPath === 'string' && data.materialLessonPath.trim()) {
+          setEntryLessonPath(data.materialLessonPath.trim().replace(/\\/g, '/'));
+        }
+        if (typeof data.learningGroupId === 'string' && data.learningGroupId.trim()) {
+          setEntryTicketGroupId(data.learningGroupId.trim());
+        }
+        const shared = Array.isArray(data.tasks)
+          ? data.tasks
+              .map((t) => ({
+                category: typeof t.category === 'string' && t.category.trim() ? t.category.trim() : 'Eigen',
+                prompt: typeof t.prompt === 'string' ? t.prompt : '',
+                solution: typeof t.solution === 'string' ? t.solution : '',
+              }))
+              .filter((t) => t.prompt && t.solution)
+          : [];
+        if (shared.length > 0) {
+          setSelectedTasks(shared);
+          setSharedTasksLocked(true);
         }
         if (!mod) {
           navigate('/dashboard', { replace: true });
@@ -1126,7 +1216,62 @@ export default function EntryTicketPage() {
     return () => {
       cancelled = true;
     };
-  }, [isTeacher, navigate, location.search]);
+  }, [isTeacher, navigate, location.search, applyGradeParam]);
+
+  /** Moderator: ggf. nachziehen, falls die Lehrer-Karten erst kurz nach dem Öffnen synchronisiert werden */
+  useEffect(() => {
+    if (isTeacher || !isClassModerator || sharedTasksLocked) return;
+    let cancelled = false;
+    let attempts = 0;
+    const tick = async () => {
+      if (cancelled) return;
+      attempts += 1;
+      try {
+        const res = await apiGet('/api/entry-ticket/current');
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as {
+          grade?: string | null;
+          taskSeed?: number | null;
+          materialLessonPath?: string | null;
+          tasks?: Array<{ category?: string; prompt?: string; solution?: string }> | null;
+        };
+        if (typeof data.grade === 'string' && data.grade) applyGradeParam(data.grade);
+        if (typeof data.taskSeed === 'number' && Number.isFinite(data.taskSeed)) {
+          setTaskSeed(Math.floor(data.taskSeed) >>> 0);
+        }
+        if (typeof data.materialLessonPath === 'string' && data.materialLessonPath.trim()) {
+          setEntryLessonPath(data.materialLessonPath.trim().replace(/\\/g, '/'));
+        }
+        const shared = Array.isArray(data.tasks)
+          ? data.tasks
+              .map((t) => ({
+                category: typeof t.category === 'string' && t.category.trim() ? t.category.trim() : 'Eigen',
+                prompt: typeof t.prompt === 'string' ? t.prompt : '',
+                solution: typeof t.solution === 'string' ? t.solution : '',
+              }))
+              .filter((t) => t.prompt && t.solution)
+          : [];
+        if (shared.length > 0) {
+          setSelectedTasks(shared);
+          setSharedTasksLocked(true);
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+    void tick();
+    const id = window.setInterval(() => {
+      if (attempts >= 12) {
+        window.clearInterval(id);
+        return;
+      }
+      void tick();
+    }, 800);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [isTeacher, isClassModerator, sharedTasksLocked, applyGradeParam]);
 
   useEffect(() => {
     if (!isTeacher) return;
@@ -1335,10 +1480,11 @@ export default function EntryTicketPage() {
 
   useEffect(() => {
     if (sessionStarted) return;
+    if (sharedTasksLocked) return;
     const picked = pickRandomTasks(poolForBand, TARGET_TASK_COUNT, taskSeed);
     setSelectedTasks(picked.tasks);
     setPickedListIndices(picked.indices.map((i) => displayNumberByPoolIndex.get(i) ?? i + 1));
-  }, [poolForBand, taskSeed, sessionStarted, displayNumberByPoolIndex]);
+  }, [poolForBand, taskSeed, sessionStarted, displayNumberByPoolIndex, sharedTasksLocked]);
 
   useEffect(() => {
     try {
@@ -1352,12 +1498,57 @@ export default function EntryTicketPage() {
     saveCustomEntryTicketSets(customSets);
   }, [customSets]);
 
-  /** Gelöschtes / fremdes Custom-Set in der URL → zurück auf Klassenband. */
+  /** Gelöschtes Custom-Set (nur Lehrer): zurück auf Klassenband. Moderator behält URL/Server-Grade. */
   useEffect(() => {
+    if (!isTeacher) return;
     if (customSetId && !customSets.some((s) => s.id === customSetId)) {
       setCustomSetId(null);
     }
-  }, [customSetId, customSets]);
+  }, [customSetId, customSets, isTeacher]);
+
+  /** Lehrer: konkrete Karten in das Signal schreiben, damit der Moderator dasselbe Ticket sieht. */
+  useEffect(() => {
+    if (!isTeacher) return;
+    if (!sessionStarted && !autoStartPending) return;
+    if (selectedTasks.length === 0) return;
+    const gradeParam = customSetId || String(grade);
+    const sig = JSON.stringify({
+      grade: gradeParam,
+      taskSeed,
+      lessonPath: entryLessonPath || '',
+      groupId: entryTicketGroupId || '',
+      tasks: selectedTasks,
+    });
+    if (tasksSyncedRef.current === sig) return;
+    tasksSyncedRef.current = sig;
+    const t = window.setTimeout(() => {
+      void (async () => {
+        try {
+          await apiPost('/api/entry-ticket/signal', {
+            ...(entryTicketGroupId ? { learningGroupId: entryTicketGroupId } : {}),
+            grade: gradeParam,
+            taskSeed,
+            lessonPath: entryLessonPath || undefined,
+            tasks: selectedTasks,
+            syncTasks: true,
+          });
+        } catch {
+          /* ignore */
+        }
+      })();
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, [
+    isTeacher,
+    sessionStarted,
+    autoStartPending,
+    selectedTasks,
+    customSetId,
+    grade,
+    taskSeed,
+    entryLessonPath,
+    entryTicketGroupId,
+  ]);
 
   const updateActivePool = (updater: (list: EntryTicketTask[]) => EntryTicketTask[]) => {
     if (customSetId) return;
@@ -1515,6 +1706,32 @@ export default function EntryTicketPage() {
       setSecondsLeft(SLIDE_DURATION_SEC);
     }
     setIsRunning(true);
+  };
+
+  /** Ticket beenden: Signal löschen → SuS-Popup zu; Lehrer weiter zur Stundenübersicht */
+  const markEntryTicketDone = async () => {
+    if (completeBusy) return;
+    setCompleteBusy(true);
+    try {
+      const res = await apiPost('/api/entry-ticket/complete', {
+        ...(entryTicketGroupId ? { learningGroupId: entryTicketGroupId } : {}),
+      });
+      if (!res.ok) {
+        setCompleteBusy(false);
+        return;
+      }
+      if (isTeacher && entryTicketGroupId && entryLessonPath) {
+        navigate(presentationLessonBackUrl(entryLessonPath, entryTicketGroupId), { replace: true });
+        return;
+      }
+      if (isTeacher && entryTicketGroupId) {
+        navigate(`/teacher/stunde?groupId=${encodeURIComponent(entryTicketGroupId)}`, { replace: true });
+        return;
+      }
+      navigate('/dashboard', { replace: true });
+    } catch {
+      setCompleteBusy(false);
+    }
   };
 
   useEffect(() => {
@@ -1815,7 +2032,7 @@ export default function EntryTicketPage() {
   };
 
   const cleanPrompt = (prompt: string): string =>
-    prompt.replace(/\s{2,}/g, ' ').trim();
+    entryTicketPlainText(prompt).replace(/\s{2,}/g, ' ').trim();
 
   const toNumber = (value: string): number => Number(value.replace(',', '.'));
 
@@ -2648,9 +2865,14 @@ export default function EntryTicketPage() {
                                 lineHeight: 1.3,
                                 color: '#1a237e',
                                 fontWeight: 700,
+                                ...richTextSx,
                               }}
                             >
-                              {renderPrompt(task.prompt, `selection-${index}`, false, true)}
+                              {entryTicketLooksLikeHtml(task.prompt) ? (
+                                <EntryTicketRichHtml value={task.prompt} />
+                              ) : (
+                                renderPrompt(task.prompt, `selection-${index}`, false, true)
+                              )}
                             </Box>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3, flexShrink: 0 }}>
                               <Button
@@ -2818,11 +3040,21 @@ export default function EntryTicketPage() {
                                   <Typography variant="body2" sx={{ minWidth: 24, color: 'text.secondary', fontWeight: 700, fontSize: '0.75rem' }}>
                                     {displayNumber}.
                                   </Typography>
-                                  <Typography variant="body2" sx={{ flex: 1, fontSize: '0.78rem', minWidth: 0 }}>
-                                    {q.prompt}
+                                  <Typography variant="body2" sx={{ flex: 1, fontSize: '0.78rem', minWidth: 0, ...richTextSx }}>
+                                    <EntryTicketRichHtml value={q.prompt} />
                                   </Typography>
-                                  <Typography variant="body2" sx={{ minWidth: 72, color: 'success.dark', fontWeight: 700, fontSize: '0.78rem' }}>
-                                    {q.solution}
+                                  <Typography
+                                    variant="body2"
+                                    component="div"
+                                    sx={{
+                                      minWidth: 72,
+                                      color: 'success.dark',
+                                      fontWeight: 800,
+                                      fontSize: '0.95rem',
+                                      ...richTextSx,
+                                    }}
+                                  >
+                                    <EntryTicketRichHtml value={q.solution} />
                                   </Typography>
                                   <Box sx={{ ml: 'auto', display: 'flex', gap: 0.3 }}>
                                     <Button size="small" variant="outlined" onClick={() => startSetEditing(idx)} sx={{ minWidth: 22, width: 22, height: 22, p: 0 }}>✎</Button>
@@ -3039,7 +3271,19 @@ export default function EntryTicketPage() {
                           letterSpacing: 0,
                         }}
                       >
-                        {renderPrompt(formattedPrompt, 'live', true)}
+                        {currentTask && entryTicketLooksLikeHtml(currentTask.prompt) ? (
+                          <EntryTicketRichHtml
+                            value={currentTask.prompt}
+                            sx={{
+                              fontSize: 'inherit',
+                              lineHeight: 'inherit',
+                              color: 'inherit',
+                              whiteSpace: 'pre-line',
+                            }}
+                          />
+                        ) : (
+                          renderPrompt(formattedPrompt, 'live', true)
+                        )}
                       </Typography>
                     </Box>
                   </Box>
@@ -3074,21 +3318,45 @@ export default function EntryTicketPage() {
                       <Typography sx={{ fontWeight: 500, fontSize: '0.7rem', color: '#78909c' }}>
                         Übersicht · {activeTasks.length}
                       </Typography>
-                      <FormControlLabel
-                        control={
-                          <Switch
+                      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              size="small"
+                              checked={showSolutions}
+                              onChange={(e) => setShowSolutions(e.target.checked)}
+                            />
+                          }
+                          label={
+                            <Typography sx={{ fontSize: '0.65rem', fontWeight: 500, color: '#78909c' }}>
+                              Lösungen
+                            </Typography>
+                          }
+                          sx={{ mr: 0, '& .MuiFormControlLabel-label': { ml: 0.2 } }}
+                        />
+                        {(isTeacher || isClassModerator) && (
+                          <Button
                             size="small"
-                            checked={showSolutions}
-                            onChange={(e) => setShowSolutions(e.target.checked)}
-                          />
-                        }
-                        label={
-                          <Typography sx={{ fontSize: '0.65rem', fontWeight: 500, color: '#78909c' }}>
-                            Lösungen
-                          </Typography>
-                        }
-                        sx={{ mr: 0, '& .MuiFormControlLabel-label': { ml: 0.2 } }}
-                      />
+                            variant="contained"
+                            startIcon={<CheckIcon sx={{ fontSize: '0.9rem !important' }} />}
+                            disabled={completeBusy}
+                            onClick={() => void markEntryTicketDone()}
+                            sx={{
+                              minWidth: 0,
+                              px: 1.1,
+                              py: 0.25,
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              textTransform: 'none',
+                              bgcolor: '#2e7d32',
+                              boxShadow: 'none',
+                              '&:hover': { bgcolor: '#1b5e20', boxShadow: 'none' },
+                            }}
+                          >
+                            {completeBusy ? '…' : 'Erledigt'}
+                          </Button>
+                        )}
+                      </Box>
                     </Box>
 
                     <Box
@@ -3097,7 +3365,7 @@ export default function EntryTicketPage() {
                         gridTemplateColumns: '1fr 1fr',
                         gridTemplateRows: `repeat(${finalSlideRows}, minmax(0, auto))`,
                         gridAutoFlow: 'column',
-                        gap: '2px 12px',
+                        gap: '8px 16px',
                       }}
                     >
                       {activeTasks.map((task, index) => (
@@ -3105,57 +3373,62 @@ export default function EntryTicketPage() {
                           key={`${index}-${task.prompt}`}
                           sx={{
                             display: 'grid',
-                            gridTemplateColumns: showSolutions
-                              ? '16px minmax(0, 1fr) auto'
-                              : '16px minmax(0, 1fr)',
+                            gridTemplateColumns: '16px minmax(0, 1fr)',
                             columnGap: 0.55,
-                            alignItems: 'baseline',
+                            alignItems: 'start',
                             px: 0.35,
-                            py: 0.35,
+                            py: 0.45,
                             borderBottom: '1px solid #eef0f8',
                             minWidth: 0,
                           }}
                         >
                           <Typography
                             sx={{
-                              fontSize: '0.68rem',
-                              fontWeight: 500,
+                              fontSize: '0.85rem',
+                              fontWeight: 700,
                               color: '#9fa8da',
                               fontVariantNumeric: 'tabular-nums',
+                              pt: 0.25,
                             }}
                           >
                             {index + 1}.
                           </Typography>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              fontSize: '0.74rem',
-                              lineHeight: 1.25,
-                              fontWeight: 400,
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              color: '#37474f',
-                              minWidth: 0,
-                            }}
-                          >
-                            {renderPrompt(task.prompt, `final-${index}`, false, true)}
-                          </Typography>
-                          {showSolutions && (
+                          <Box sx={{ minWidth: 0, display: 'grid', gap: 0.35 }}>
                             <Typography
-                              component="span"
+                              variant="body2"
+                              component="div"
                               sx={{
-                                fontSize: '0.74rem',
-                                lineHeight: 1.25,
-                                fontWeight: 600,
-                                color: '#2e7d32',
-                                whiteSpace: 'nowrap',
-                                flexShrink: 0,
+                                fontSize: { xs: '1rem', sm: '1.15rem' },
+                                lineHeight: 1.3,
+                                fontWeight: 500,
+                                color: '#37474f',
+                                minWidth: 0,
+                                ...richTextSx,
                               }}
                             >
-                              {task.solution || '—'}
+                              {entryTicketLooksLikeHtml(task.prompt) ? (
+                                <EntryTicketRichHtml value={task.prompt} />
+                              ) : (
+                                renderPrompt(task.prompt, `final-${index}`, false, true)
+                              )}
                             </Typography>
-                          )}
+                            {showSolutions && (
+                              <Typography
+                                component="div"
+                                sx={{
+                                  fontSize: { xs: '1.45rem', sm: '1.75rem' },
+                                  lineHeight: 1.25,
+                                  fontWeight: 800,
+                                  color: '#1b5e20',
+                                  letterSpacing: 0.01,
+                                  mt: 0.1,
+                                  ...richTextSx,
+                                }}
+                              >
+                                <EntryTicketRichHtml value={task.solution || '—'} />
+                              </Typography>
+                            )}
+                          </Box>
                         </Box>
                       ))}
                     </Box>

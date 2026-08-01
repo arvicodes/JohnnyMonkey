@@ -13,7 +13,7 @@ import {
   LESSON_PRESENTATION_PDF_EDITED,
   LESSON_PRESENTATION_PDF_ORIGINAL,
 } from '../lib/presentationLessonAssets';
-import { isLessonFileShared } from '../lib/lessonFileSharePath';
+import { isLessonFileShared, normalizeLessonMaterialPath } from '../lib/lessonFileSharePath';
 import { openStudentLessonMaterialFile } from '../lib/openStudentLessonMaterial';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
 import {
@@ -213,15 +213,28 @@ export default function StudentLessonMaterialsPanel({
   };
 
   const materials = useMemo(() => {
-    return files
-      .filter(
-        (f) =>
-          f.type === 'file' &&
-          isStudentVisibleLessonMaterialFile(f.name || '') &&
-          isLessonFileShared(f.path, sharedPaths)
-      )
-      .sort((a, b) => a.name.localeCompare(b.name, 'de'));
-  }, [files, sharedPaths]);
+    const fromTree = files.filter(
+      (f) =>
+        f.type === 'file' &&
+        isStudentVisibleLessonMaterialFile(f.name || '') &&
+        isLessonFileShared(f.path, sharedPaths)
+    );
+    // Freigegebene Präsentations-PDFs auch dann anzeigen, wenn der Ordnerbaum
+    // noch nicht neu geladen wurde (z. B. PDF erst nach Stundenstart erzeugt).
+    const folderKey = normalizeLessonMaterialPath(lessonPath || '').replace(/\/+$/, '');
+    const byName = new Map(fromTree.map((f) => [f.name, f]));
+    if (folderKey) {
+      for (const sp of sharedPaths) {
+        const p = (sp || '').replace(/\\/g, '/');
+        const name = p.split('/').pop() || '';
+        if (!isLessonPresentationMaterialPdf(name) || byName.has(name)) continue;
+        const parentKey = normalizeLessonMaterialPath(p.replace(/\/[^/]+$/, '')).replace(/\/+$/, '');
+        if (parentKey !== folderKey) continue;
+        byName.set(name, { type: 'file', name, path: p });
+      }
+    }
+    return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name, 'de'));
+  }, [files, sharedPaths, lessonPath]);
 
   const presentationOriginal = materials.find((f) => f.name === LESSON_PRESENTATION_PDF_ORIGINAL);
   const namedPresentationPdfs = materials.filter(

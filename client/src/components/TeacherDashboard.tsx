@@ -43,7 +43,7 @@ import { MOVEMENT_STORIES } from '../data/movementStories';
 import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
 import { wallOfFameDashboardBtnSx } from '../lib/wallOfFameUi';
 import {
-  gradeFromGroupNames,
+  entryTicketBandFromGroupNames,
   getEntryTicketPlanGradeOptions,
   formatEntryTicketPlanBandLabel,
   parseEntryTicketPlanBand,
@@ -6895,7 +6895,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const openEntryTicketForLesson = useCallback(
     (groupId: string, lessonPath: string) => {
       const group = groups.find((g) => g.id === groupId);
-      const bandFromGroup = group ? gradeFromGroupNames([group.name]) : 7;
+      const bandFromGroup = group ? entryTicketBandFromGroupNames([group.name]) : 7;
       const want = normalizeLessonPathKey(lessonPath);
       const overrides =
         editedLessonInstructions[lessonPath] ||
@@ -12595,6 +12595,22 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     }
   };
 
+  const handleSetRandomGroupModerator = (groupId: string) => {
+    handleMenuClose();
+    const group = groups.find((g) => g.id === groupId);
+    if (!group || group.students.length === 0) {
+      handleStudentMenuClose();
+      showSnackbar('Keine Schüler in der Gruppe', 'error');
+      return;
+    }
+    const pool =
+      group.moderatorStudentId && group.students.length > 1
+        ? group.students.filter((s) => s.id !== group.moderatorStudentId)
+        : group.students;
+    const student = pool[Math.floor(Math.random() * pool.length)];
+    void handleSetGroupModerator(groupId, student);
+  };
+
   const handleRemoveStudentDialogOpen = (groupId: string, student: Student) => {
     setRemoveStudentCtx({ groupId, student });
     setRemoveStudentDialogOpen(true);
@@ -14354,7 +14370,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     const g = selectedGroupId
                       ? groups.find((x) => x.id === selectedGroupId)
                       : groups[0];
-                    const band = g ? gradeFromGroupNames([g.name]) : 7;
+                    const band = g ? entryTicketBandFromGroupNames([g.name]) : 7;
                     const gid = selectedGroupId || g?.id;
                     const qs = new URLSearchParams();
                     qs.set('grade', String(band));
@@ -16801,6 +16817,14 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             </MenuItem>
           ) : null;
         })()}
+        {(() => {
+          const group = groups.find(g => g.id === menuGroupId!);
+          return group && group.students.length > 0 ? (
+            <MenuItem onClick={() => handleSetRandomGroupModerator(group.id)}>
+              <ShuffleIcon fontSize="small" sx={{ mr: 1 }} /> Zufällig Moderator wählen
+            </MenuItem>
+          ) : null;
+        })()}
         <MenuItem onClick={() => handleDeleteDialogOpen(menuGroupId!)}>
           <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> Löschen
         </MenuItem>
@@ -16933,6 +16957,15 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           groups.find((g) => g.id === studentMenuCtx.groupId)?.moderatorStudentId === studentMenuCtx.student.id
             ? 'Moderator entfernen'
             : 'Moderator setzen'}
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (studentMenuCtx) {
+              handleSetRandomGroupModerator(studentMenuCtx.groupId);
+            }
+          }}
+        >
+          <ShuffleIcon fontSize="small" style={{ marginRight: 8 }} /> Zufällig Moderator wählen
         </MenuItem>
         <MenuItem onClick={() => { if (studentMenuCtx) handleRemoveStudentDialogOpen(studentMenuCtx.groupId, studentMenuCtx.student); handleStudentMenuClose(); }}>
           <DeleteIcon fontSize="small" style={{ marginRight: 8 }} /> Entfernen

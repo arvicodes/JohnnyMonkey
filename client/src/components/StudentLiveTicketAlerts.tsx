@@ -5,7 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { DialogCloseIconButton } from './ui/dialog-close-icon-button';
 import { apiGetSafe } from '../lib/api';
 import { entryTicketHeroSrc } from '../lib/ticketHeroImages';
-import { gradeFromGroupNames } from '../lib/entryTicketGrade';
+import { entryTicketBandFromGroupNames } from '../lib/entryTicketGrade';
 import { MODERATOR_ICON_SRC } from '../lib/moderatorIcon';
 import {
   StudentExitTicketRender,
@@ -125,7 +125,19 @@ export default function StudentLiveTicketAlerts({ userId }: { userId: string }) 
       if (!res?.ok) return;
       const data = await res.json();
       const startedAt = typeof data.startedAt === 'string' ? data.startedAt : '';
-      if (!startedAt) return;
+      if (!startedAt) {
+        /** Lehrer/Moderator hat „Erledigt“ markiert → Popup schließen, Dashboard wieder normal */
+        setEntryTicketModalOpen(false);
+        setEntryTicketModalStartedAt(null);
+        setEntryTicketModalTeacherId(null);
+        setEntryTicketModalLessonPath(null);
+        try {
+          sessionStorage.removeItem(ENTRY_TICKET_MODAL_DISMISS_KEY);
+        } catch {
+          /* ignore */
+        }
+        return;
+      }
 
       const startedMs = new Date(startedAt).getTime();
       if (Number.isNaN(startedMs)) return;
@@ -173,7 +185,7 @@ export default function StudentLiveTicketAlerts({ userId }: { userId: string }) 
 
     const band =
       entryTicketGrade ||
-      String(gradeFromGroupNames(entryTicketGroupName ? [entryTicketGroupName] : []));
+      String(entryTicketBandFromGroupNames(entryTicketGroupName ? [entryTicketGroupName] : []));
     const qs = new URLSearchParams();
     qs.set('grade', band);
     qs.set('autostart', '1');

@@ -5,5 +5,6 @@ const router = express.Router();
 
 router.get('/current', EntryTicketController.getCurrent);
 router.post('/signal', EntryTicketController.signal);
+router.post('/complete', EntryTicketController.complete);
 
 export default router;

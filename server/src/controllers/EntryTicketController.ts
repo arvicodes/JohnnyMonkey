@@ -7,6 +7,12 @@ const ENTRY_TICKET_LEGACY_PATH = '__entry_ticket_active__';
 
 const entryTicketPathForGroup = (groupId: string) => `__entry_ticket_g_${groupId}__`;
 
+type EntryTicketTaskPayload = {
+  category: string;
+  prompt: string;
+  solution: string;
+};
+
 type EntryTicketPayload = {
   startedAt: string;
   /** 0..9 — welches Motiv unter /entry-ticket/entry-NN.jpg; pro Signal neu gewürfelt, bleibt bis zum nächsten Signal */
@@ -17,6 +23,8 @@ type EntryTicketPayload = {
   taskSeed?: number;
   /** Echter Stundenordner-Pfad (nicht das Signal-Pseudo-Pfad) */
   materialLessonPath?: string | null;
+  /** Konkrete Karten der laufenden Session (für Moderator ohne Lehrer-localStorage) */
+  tasks?: EntryTicketTaskPayload[];
 };
 
 const clampHeroIndex = (n: unknown): number => {
@@ -44,6 +52,26 @@ const normalizeMaterialLessonPath = (raw: unknown): string | null | undefined =>
   return p;
 };
 
+const normalizeTasksPayload = (raw: unknown): EntryTicketTaskPayload[] | undefined => {
+  if (!Array.isArray(raw)) return undefined;
+  const out: EntryTicketTaskPayload[] = [];
+  for (const row of raw) {
+    if (!row || typeof row !== 'object') continue;
+    const r = row as Record<string, unknown>;
+    const prompt = typeof r.prompt === 'string' ? r.prompt.trim() : '';
+    const solution = typeof r.solution === 'string' ? r.solution.trim() : '';
+    if (!prompt || !solution) continue;
+    out.push({
+      category:
+        typeof r.category === 'string' && r.category.trim() ? r.category.trim().slice(0, 80) : 'Eigen',
+      prompt: prompt.slice(0, 4000),
+      solution: solution.slice(0, 4000),
+    });
+    if (out.length >= 40) break;
+  }
+  return out.length > 0 ? out : undefined;
+};
+
 const parsePayload = (raw: string | null | undefined): EntryTicketPayload | null => {
   if (!raw) return null;
   try {
@@ -55,6 +83,7 @@ const parsePayload = (raw: string | null | undefined): EntryTicketPayload | null
       grade: normalizeGradeParam(parsed.grade),
       taskSeed: normalizeTaskSeed(parsed.taskSeed),
       materialLessonPath: normalizeMaterialLessonPath(parsed.materialLessonPath) ?? undefined,
+      tasks: normalizeTasksPayload(parsed.tasks),
     };
   } catch {
     return null;
@@ -244,18 +273,48 @@ export class EntryTicketController {
       );
       const materialLessonPath =
         normalizeMaterialLessonPath(req.body?.lessonPath ?? req.body?.materialLessonPath) ?? null;
+      const tasks = normalizeTasksPayload(req.body?.tasks);
+      const syncTasks = req.body?.syncTasks === true || req.body?.preserveSession === true;
 
-      const heroImageIndex = Math.floor(Math.random() * 10);
-      const payload: EntryTicketPayload = {
-        startedAt: new Date().toISOString(),
-        heroImageIndex,
-        ...(grade ? { grade } : {}),
-        ...(taskSeed != null ? { taskSeed } : {}),
-        ...(materialLessonPath ? { materialLessonPath } : {}),
+      const resolveExisting = async (lessonPath: string): Promise<EntryTicketPayload | null> => {
+        const row = await prisma.teacherLessonInstruction.findUnique({
+          where: { teacherId_lessonPath: { teacherId: user.id, lessonPath } },
+          select: { content: true },
+        });
+        return parsePayload(row?.content);
       };
-      const content = JSON.stringify(payload);
 
-      const upsertRow = async (teacherId: string, lessonPath: string) => {
+      const buildPayload = (existing: EntryTicketPayload | null): EntryTicketPayload => {
+        const keepSession = Boolean(syncTasks && existing?.startedAt);
+        return {
+          startedAt: keepSession ? existing!.startedAt : new Date().toISOString(),
+          heroImageIndex: keepSession
+            ? clampHeroIndex(existing!.heroImageIndex)
+            : Math.floor(Math.random() * 10),
+          ...(grade
+            ? { grade }
+            : existing?.grade
+              ? { grade: existing.grade }
+              : {}),
+          ...(taskSeed != null
+            ? { taskSeed }
+            : existing?.taskSeed != null
+              ? { taskSeed: existing.taskSeed }
+              : {}),
+          ...(materialLessonPath
+            ? { materialLessonPath }
+            : existing?.materialLessonPath
+              ? { materialLessonPath: existing.materialLessonPath }
+              : {}),
+          ...(tasks
+            ? { tasks }
+            : existing?.tasks
+              ? { tasks: existing.tasks }
+              : {}),
+        };
+      };
+
+      const upsertRow = async (teacherId: string, lessonPath: string, payload: EntryTicketPayload) => {
         await prisma.teacherLessonInstruction.upsert({
           where: {
             teacherId_lessonPath: { teacherId, lessonPath },
@@ -263,9 +322,9 @@ export class EntryTicketController {
           create: {
             teacherId,
             lessonPath,
-            content,
+            content: JSON.stringify(payload),
           },
-          update: { content },
+          update: { content: JSON.stringify(payload) },
         });
       };
 
@@ -276,9 +335,11 @@ export class EntryTicketController {
         });
         if (owned) {
           const path = entryTicketPathForGroup(owned.id);
-          await upsertRow(user.id, path);
+          const existing = await resolveExisting(path);
+          const payload = buildPayload(existing);
+          await upsertRow(user.id, path, payload);
           /** Gleicher Zeitstempel auch in Legacy-Zeile: Auflösung pro Lehrkraft im Schüler-GET nutzt Legacy als Fallback — sonst fehlt das Signal, wenn nur der Gruppenpfad geschrieben wurde und die Zuordnung/ID nicht passt. */
-          await upsertRow(user.id, ENTRY_TICKET_LEGACY_PATH);
+          await upsertRow(user.id, ENTRY_TICKET_LEGACY_PATH, payload);
           return res.json({
             success: true,
             startedAt: payload.startedAt,
@@ -287,17 +348,20 @@ export class EntryTicketController {
             grade: payload.grade ?? null,
             taskSeed: payload.taskSeed ?? null,
             materialLessonPath: payload.materialLessonPath ?? null,
+            tasks: payload.tasks ?? null,
           });
         }
       }
 
-      await upsertRow(user.id, ENTRY_TICKET_LEGACY_PATH);
+      const existingLegacy = await resolveExisting(ENTRY_TICKET_LEGACY_PATH);
+      const payload = buildPayload(existingLegacy);
+      await upsertRow(user.id, ENTRY_TICKET_LEGACY_PATH, payload);
       const allGroups = await prisma.learningGroup.findMany({
         where: { teacherId: user.id },
         select: { id: true },
       });
       for (const g of allGroups) {
-        await upsertRow(user.id, entryTicketPathForGroup(g.id));
+        await upsertRow(user.id, entryTicketPathForGroup(g.id), payload);
       }
 
       return res.json({
@@ -308,10 +372,74 @@ export class EntryTicketController {
         grade: payload.grade ?? null,
         taskSeed: payload.taskSeed ?? null,
         materialLessonPath: payload.materialLessonPath ?? null,
+        tasks: payload.tasks ?? null,
       });
     } catch (error) {
       console.error('EntryTicket signal error:', error);
       return res.status(500).json({ error: 'Fehler beim Signalisieren' });
+    }
+  }
+
+  /** Lehrer oder Klassen-Moderator: Entry Ticket beenden → Schüler-Popup verschwindet */
+  static async complete(req: Request, res: Response) {
+    try {
+      const user = await getUserByLoginCode(req);
+      if (!user) return res.status(401).json({ error: 'Nicht angemeldet' });
+
+      let teacherId: string | null = null;
+      let learningGroupId =
+        typeof req.body?.learningGroupId === 'string' ? req.body.learningGroupId.trim() : '';
+
+      if (user.role === 'TEACHER') {
+        teacherId = user.id;
+        if (learningGroupId) {
+          const owned = await prisma.learningGroup.findFirst({
+            where: { id: learningGroupId, teacherId: user.id },
+            select: { id: true },
+          });
+          if (!owned) {
+            return res.status(403).json({ error: 'Lerngruppe nicht gefunden' });
+          }
+        }
+      } else if (user.role === 'STUDENT') {
+        const mod = await resolveModeratorContext(
+          user.id,
+          learningGroupId
+            ? { lessonPath: entryTicketPathForGroup(learningGroupId) }
+            : undefined,
+        );
+        if (!mod.isModerator || !mod.learningGroupId) {
+          return res.status(403).json({ error: 'Nur Lehrkräfte oder Klassen-Moderatoren' });
+        }
+        learningGroupId = mod.learningGroupId;
+        const group = await prisma.learningGroup.findUnique({
+          where: { id: learningGroupId },
+          select: { teacherId: true },
+        });
+        teacherId = group?.teacherId ?? null;
+      } else {
+        return res.status(403).json({ error: 'Nur Lehrkräfte oder Klassen-Moderatoren' });
+      }
+
+      if (!teacherId) {
+        return res.status(400).json({ error: 'Lehrer nicht gefunden' });
+      }
+
+      /** Alle aktiven Signale dieser Lehrkraft löschen (Scoped + Legacy), sonst bleibt Fallback. */
+      await prisma.teacherLessonInstruction.deleteMany({
+        where: {
+          teacherId,
+          OR: [
+            { lessonPath: ENTRY_TICKET_LEGACY_PATH },
+            { lessonPath: { startsWith: '__entry_ticket_g_' } },
+          ],
+        },
+      });
+
+      return res.json({ success: true, learningGroupId: learningGroupId || null });
+    } catch (error) {
+      console.error('EntryTicket complete error:', error);
+      return res.status(500).json({ error: 'Fehler beim Beenden' });
     }
   }
 
@@ -340,6 +468,7 @@ export class EntryTicketController {
               grade: null,
               taskSeed: null,
               materialLessonPath: null,
+              tasks: null,
               isModerator: mod.isModerator,
               learningGroupId: mod.learningGroupId,
               groupName: mod.groupName,
@@ -354,6 +483,7 @@ export class EntryTicketController {
             grade: null,
             taskSeed: null,
             materialLessonPath: null,
+            tasks: null,
             isModerator: mod.isModerator,
             learningGroupId: mod.learningGroupId,
             groupName: mod.groupName,
@@ -372,6 +502,7 @@ export class EntryTicketController {
           grade: resolved.payload.grade ?? null,
           taskSeed: resolved.payload.taskSeed ?? null,
           materialLessonPath: resolved.payload.materialLessonPath ?? null,
+          tasks: resolved.payload.tasks ?? null,
           isModerator: mod.isModerator,
           learningGroupId: mod.learningGroupId || resolved.learningGroupId || null,
           groupName: mod.groupName,
@@ -389,6 +520,7 @@ export class EntryTicketController {
           grade: null,
           taskSeed: null,
           materialLessonPath: null,
+          tasks: null,
         });
       }
       return res.json({
@@ -400,6 +532,7 @@ export class EntryTicketController {
         grade: teacherResolved.payload.grade ?? null,
         taskSeed: teacherResolved.payload.taskSeed ?? null,
         materialLessonPath: teacherResolved.payload.materialLessonPath ?? null,
+        tasks: teacherResolved.payload.tasks ?? null,
       });
     } catch (error) {
       console.error('EntryTicket getCurrent error:', error);

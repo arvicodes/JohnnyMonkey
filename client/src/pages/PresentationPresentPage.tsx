@@ -7,6 +7,7 @@ import {
 import PresentationSlideView from '../components/presentation/PresentationSlideView';
 import PresentationDrawOverlay from '../components/presentation/PresentationDrawOverlay';
 import PresentationTabletToolbar from '../components/presentation/PresentationTabletToolbar';
+import PresentationRandomStudentOverlay from '../components/presentation/PresentationRandomStudentOverlay';
 import {
   ANNOTATIONS_FILENAME,
   PresentationAnnotations,
@@ -67,6 +68,11 @@ const PresentationPresentPage: React.FC = () => {
   const [saveNamedOpen, setSaveNamedOpen] = useState(false);
   const [saveNamedLabel, setSaveNamedLabel] = useState('');
   const [displayScale, setDisplayScale] = useState(0.5);
+  const [groupStudents, setGroupStudents] = useState<Array<{ id: string; name: string }>>([]);
+  const [revealText, setRevealText] = useState<string | null>(null);
+  const [revealNonce, setRevealNonce] = useState(0);
+  const lastPickedStudentIdRef = useRef<string | null>(null);
+  const lastPickedNumberRef = useRef<{ max: number; value: number } | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const swipeRef = useRef<{ x: number; y: number } | null>(null);
@@ -445,6 +451,72 @@ const PresentationPresentPage: React.FC = () => {
     navigate(presentationLessonBackUrl(lessonPath, groupId, planMode));
   };
 
+  useEffect(() => {
+    if (!groupId) {
+      setGroupStudents([]);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/learning-groups/${encodeURIComponent(groupId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        const list = Array.isArray(data.students)
+          ? data.students
+              .map((s: { id?: string; name?: string }) => ({
+                id: String(s.id || ''),
+                name: String(s.name || '').trim(),
+              }))
+              .filter((s: { id: string; name: string }) => s.id && s.name)
+          : [];
+        setGroupStudents(list);
+      })
+      .catch(() => {
+        if (!cancelled) setGroupStudents([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [groupId]);
+
+  const clearRevealText = useCallback(() => {
+    setRevealText(null);
+  }, []);
+
+  const showReveal = useCallback((text: string) => {
+    setRevealText(text);
+    setRevealNonce((n) => n + 1);
+  }, []);
+
+  const handlePickRandomStudent = useCallback(() => {
+    if (groupStudents.length === 0) {
+      setSnackbar('Keine Schüler in der Lerngruppe');
+      return;
+    }
+    const pool =
+      lastPickedStudentIdRef.current && groupStudents.length > 1
+        ? groupStudents.filter((s) => s.id !== lastPickedStudentIdRef.current)
+        : groupStudents;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    lastPickedStudentIdRef.current = pick.id;
+    showReveal(pick.name);
+  }, [groupStudents, showReveal]);
+
+  const handlePickRandomNumber = useCallback(
+    (max: number) => {
+      const safeMax = Math.max(1, Math.floor(max));
+      const last = lastPickedNumberRef.current;
+      const candidates =
+        last && last.max === safeMax && safeMax > 1
+          ? Array.from({ length: safeMax }, (_, i) => i + 1).filter((n) => n !== last.value)
+          : Array.from({ length: safeMax }, (_, i) => i + 1);
+      const value = candidates[Math.floor(Math.random() * candidates.length)];
+      lastPickedNumberRef.current = { max: safeMax, value };
+      showReveal(String(value));
+    },
+    [showReveal]
+  );
+
   const handleToggleDraw = () => {
     setDrawActive((v) => {
       if (!v) setActiveTool('pen');
@@ -820,6 +892,15 @@ const PresentationPresentPage: React.FC = () => {
         onUndo={undoStroke}
         onSave={() => void handleSaveBothVersions()}
         onSaveNamed={() => setSaveNamedOpen(true)}
+        onPickRandomStudent={groupId ? handlePickRandomStudent : undefined}
+        canPickRandomStudent={groupStudents.length > 0}
+        onPickRandomNumber={handlePickRandomNumber}
+      />
+
+      <PresentationRandomStudentOverlay
+        text={revealText}
+        nonce={revealNonce}
+        onDone={clearRevealText}
       />
 
       <Dialog

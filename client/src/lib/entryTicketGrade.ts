@@ -66,3 +66,19 @@ export function gradeFromGroupNames(names: string[]): EntryTicketGradeBand {
   }
   return 7;
 }
+
+/**
+ * Entry-Ticket-Band aus Gruppennamen: Informatik-Gruppen → inf11/12/13, sonst Zahlenstufe.
+ */
+export function entryTicketBandFromGroupNames(names: string[]): EntryTicketPlanBand {
+  for (const name of names) {
+    const n = (name || '').trim();
+    if (!n) continue;
+    if (/informatik|\binf\b/i.test(n)) {
+      if (/\b13\b/.test(n) || /gk\s*13/i.test(n) || /lk\s*13/i.test(n)) return 'inf13';
+      if (/\b12\b/.test(n) || /gk\s*12/i.test(n) || /lk\s*12/i.test(n)) return 'inf12';
+      if (/\b11\b/.test(n) || /gk\s*11/i.test(n) || /lk\s*11/i.test(n)) return 'inf11';
+    }
+  }
+  return gradeFromGroupNames(names);
+}
