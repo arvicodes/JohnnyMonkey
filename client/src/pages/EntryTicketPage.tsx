@@ -4,15 +4,12 @@ import {
   Box,
   Button,
   ButtonGroup,
-  Card,
-  CardContent,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControlLabel,
   IconButton,
-  LinearProgress,
   Switch,
   TextField,
   Tooltip,
@@ -29,6 +26,22 @@ import {
   SkipNext as SkipNextIcon,
   SkipPrevious as SkipPreviousIcon,
 } from '@mui/icons-material';
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  type DragEndEvent,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  horizontalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { AnimatePresence, motion } from 'framer-motion';
 import { apiGet, apiPost } from '../lib/api';
 import { entryTicketHeroSrc } from '../lib/ticketHeroImages';
 import { presentationLessonBackUrl } from '../lib/presentationEditorUi';
@@ -46,20 +59,45 @@ import { discoverLessonsForReiheName } from '../lib/entryTicketReiheLessons';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
 import { EntryTicketFragensetEditor } from '../components/entry-ticket/EntryTicketFragensetEditor';
 import {
+  entryTicketHasImage,
+  entryTicketHasRichFormatting,
   entryTicketLooksLikeHtml,
   entryTicketPlainText,
+  entryTicketShowCountStyle,
+  readEntryTicketCardLayout,
   sanitizeEntryTicketHtml,
+  splitEntryTicketMediaAndText,
 } from '../lib/entryTicketRichText';
 
 type EntryTicketTask = {
   category: string;
   prompt: string;
   solution: string;
+  /** Stabile ID für „wie oft gezeigt“ (Pool-Index / Custom-Task-Id). */
+  sourceKey?: string;
 };
 
 const richTextSx = {
   '& p': { m: 0 },
+  '& div': { m: 0 },
   '& b, & strong': { fontWeight: 800 },
+  '& i, & em': { fontStyle: 'italic' },
+  '& u': { textDecoration: 'underline' },
+  '&::after': {
+    content: '""',
+    display: 'table',
+    clear: 'both',
+  },
+  '& img': {
+    // Breite kommt aus Inline-Style (data-et-width) — hier nicht überschreiben
+    maxWidth: '100%',
+    height: 'auto',
+    objectFit: 'contain',
+    borderRadius: 1,
+  },
+  '& img[data-et-place="block"]': {
+    my: 0.75,
+  },
 } as const;
 
 function EntryTicketRichHtml({
@@ -70,16 +108,88 @@ function EntryTicketRichHtml({
   sx?: Record<string, unknown>;
 }) {
   if (!value) return null;
-  if (!entryTicketLooksLikeHtml(value)) {
+  if (!entryTicketLooksLikeHtml(value) && !entryTicketHasImage(value)) {
     return (
-      <Box component="span" sx={sx}>
+      <Box component="div" sx={sx}>
         {value}
       </Box>
     );
   }
+
+  const layout = readEntryTicketCardLayout(value);
+  if (layout === 'split-left' || layout === 'split-right') {
+    const { mediaHtml, textHtml } = splitEntryTicketMediaAndText(value);
+    const mediaFirst = layout === 'split-left';
+    const mediaCol = mediaHtml ? (
+      <Box
+        key="media"
+        sx={{
+          minWidth: 0,
+          width: '100%',
+          alignSelf: 'stretch',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          '& img': {
+            width: '100% !important',
+            maxWidth: '100% !important',
+            height: 'auto !important',
+            maxHeight: 'min(78vh, 640px)',
+            objectFit: 'contain',
+            borderRadius: 1,
+            margin: '0 !important',
+            float: 'none !important',
+            display: 'block',
+          },
+        }}
+        dangerouslySetInnerHTML={{ __html: mediaHtml }}
+      />
+    ) : null;
+    const textCol = textHtml ? (
+      <Box
+        key="text"
+        component="div"
+        sx={{ display: 'block', minWidth: 0, textAlign: 'left', ...richTextSx, ...sx }}
+        dangerouslySetInnerHTML={{ __html: sanitizeEntryTicketHtml(textHtml) }}
+      />
+    ) : null;
+    return (
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: '1fr',
+            sm:
+              mediaHtml && textHtml
+                ? mediaFirst
+                  ? 'minmax(0, 1.15fr) minmax(0, 0.85fr)'
+                  : 'minmax(0, 0.85fr) minmax(0, 1.15fr)'
+                : '1fr',
+          },
+          gap: { xs: 1.25, sm: 2.5 },
+          alignItems: 'center',
+          width: '100%',
+          textAlign: 'left',
+        }}
+      >
+        {mediaFirst ? (
+          <>
+            {mediaCol}
+            {textCol}
+          </>
+        ) : (
+          <>
+            {textCol}
+            {mediaCol}
+          </>
+        )}
+      </Box>
+    );
+  }
+
   return (
     <Box
-      component="span"
+      component="div"
       sx={{ display: 'block', ...richTextSx, ...sx }}
       dangerouslySetInnerHTML={{ __html: sanitizeEntryTicketHtml(value) }}
     />
@@ -199,32 +309,73 @@ const etSessionBtnSx = {
   },
 } as const;
 
-const etSessionPlayPauseSx = {
-  ...etSessionBtnSx,
-  width: 'auto',
-  minWidth: 'auto',
-  px: 1.1,
-  py: 0.4,
-  gap: 0.4,
-  fontSize: '0.68rem',
-  fontWeight: 650,
-  whiteSpace: 'nowrap' as const,
-  overflow: 'visible',
-  textTransform: 'none' as const,
-  lineHeight: 1,
-  '& .MuiButton-startIcon': {
-    margin: 0,
-    marginRight: 4,
-    '& > *:nth-of-type(1)': { fontSize: 15 },
-  },
-} as const;
+const DEFAULT_SLIDE_DURATION_SEC = 20;
+const SLIDE_DURATION_STORAGE_KEY = 'entry-ticket-slide-duration-sec';
+const SHOW_COUNT_STORAGE_KEY = 'entry-ticket-card-show-counts-v1';
+const MIN_SLIDE_DURATION_SEC = 5;
+const MAX_SLIDE_DURATION_SEC = 120;
 
-const SLIDE_DURATION_SEC = 20;
+function simpleTaskHash(s: string): string {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i += 1) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(36);
+}
+
+function builtInTaskSourceKey(band: string, task: EntryTicketTask, index: number): string {
+  const body = `${task.category}\n${task.prompt}\n${task.solution}`;
+  return `g:${band}:${simpleTaskHash(body)}:${index}`;
+}
+
+function loadCardShowCounts(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(SHOW_COUNT_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object') return {};
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+      const n = typeof v === 'number' ? v : Number(v);
+      if (k && Number.isFinite(n) && n > 0) out[k] = Math.floor(n);
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function persistCardShowCounts(counts: Record<string, number>) {
+  try {
+    localStorage.setItem(SHOW_COUNT_STORAGE_KEY, JSON.stringify(counts));
+  } catch {
+    // ignore
+  }
+}
+
+function loadSlideDurationSec(): number {
+  try {
+    const raw = localStorage.getItem(SLIDE_DURATION_STORAGE_KEY);
+    const n = raw != null ? Number(raw) : NaN;
+    if (Number.isFinite(n) && n >= MIN_SLIDE_DURATION_SEC && n <= MAX_SLIDE_DURATION_SEC) {
+      return Math.round(n);
+    }
+  } catch {
+    // ignore
+  }
+  return DEFAULT_SLIDE_DURATION_SEC;
+}
+
+function clampSlideDurationSec(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_SLIDE_DURATION_SEC;
+  return Math.min(MAX_SLIDE_DURATION_SEC, Math.max(MIN_SLIDE_DURATION_SEC, Math.round(value)));
+}
+
 /** Zufällige Auswahl aus dem klassenspezifischen Fragenset */
 const TARGET_TASK_COUNT = 10;
 const DISPLAY_BOX_WIDTH = 1320;
-const DISPLAY_BOX_HEIGHT = 220;
-const FINAL_DISPLAY_BOX_HEIGHT = 520;
+const DISPLAY_BOX_MIN_HEIGHT = 260;
 const OPERATOR_COLOR = '#ef6c00';
 const QUESTION_COLOR = '#d32f2f';
 
@@ -251,6 +402,97 @@ function customSetIsInformatik(set: EntryTicketCustomSet): boolean {
   if (/informatik|\binf\s*1[123]\b|^inf\b/i.test(name)) return true;
   return false;
 }
+
+function reorderCustomSetsInGroup(
+  sets: EntryTicketCustomSet[],
+  groupIds: string[],
+  activeId: string,
+  overId: string,
+): EntryTicketCustomSet[] {
+  const from = groupIds.indexOf(activeId);
+  const to = groupIds.indexOf(overId);
+  if (from < 0 || to < 0 || from === to) return sets;
+  const nextGroupIds = arrayMove(groupIds, from, to);
+  const byId = new Map(sets.map((s) => [s.id, s] as const));
+  let gi = 0;
+  return sets.map((s) => {
+    if (!groupIds.includes(s.id)) return s;
+    const id = nextGroupIds[gi++];
+    return (id ? byId.get(id as EntryTicketCustomSet['id']) : undefined) ?? s;
+  });
+}
+
+function SortableCustomSetChip({
+  set,
+  selected,
+  accent,
+  onSelect,
+}: {
+  set: EntryTicketCustomSet;
+  selected: boolean;
+  accent: 'mathe' | 'inf';
+  onSelect: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: set.id,
+  });
+  const active =
+    accent === 'inf'
+      ? {
+          bgcolor: '#2e7d32',
+          color: '#fff',
+          borderColor: '#2e7d32',
+          '&:hover': { bgcolor: '#27692b' },
+        }
+      : {
+          bgcolor: '#455a64',
+          color: '#fff',
+          borderColor: '#455a64',
+          '&:hover': { bgcolor: '#37474f' },
+        };
+  const idle =
+    accent === 'inf'
+      ? {
+          color: '#2e7d32',
+          borderColor: '#81c784',
+          bgcolor: '#fff',
+          '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.08)', borderColor: '#2e7d32' },
+        }
+      : {
+          color: '#455a64',
+          borderColor: '#b0bec5',
+          bgcolor: '#fff',
+          '&:hover': { bgcolor: 'rgba(69, 90, 100, 0.08)', borderColor: '#78909c' },
+        };
+
+  return (
+    <Button
+      ref={setNodeRef}
+      size="small"
+      variant="outlined"
+      onClick={onSelect}
+      title={`${set.name} · ${set.lessons.length} Stunden · ${countCustomSetTasks(set)} Fragen — ziehen zum Sortieren`}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
+      {...attributes}
+      {...listeners}
+      sx={{
+        ...etBtnGroupBase['& .MuiButton-root'],
+        borderRadius: '5px !important',
+        cursor: isDragging ? 'grabbing' : 'grab',
+        opacity: isDragging ? 0.85 : 1,
+        zIndex: isDragging ? 2 : 0,
+        touchAction: 'none',
+        ...(selected ? active : idle),
+      }}
+    >
+      {set.name}
+    </Button>
+  );
+}
+
 type CoarseCategory =
   | 'Grundrechenarten'
   | 'Bruch/Dezimal/Prozent'
@@ -1283,9 +1525,24 @@ export default function EntryTicketPage() {
   const [selectedTasks, setSelectedTasks] = useState<EntryTicketTask[]>(
     [],
   );
+  const [cardShowCounts, setCardShowCounts] = useState<Record<string, number>>(() =>
+    typeof window !== 'undefined' ? loadCardShowCounts() : {},
+  );
+  const shownInSessionRef = useRef<Set<string>>(new Set());
   const [pickedListIndices, setPickedListIndices] = useState<number[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [secondsLeft, setSecondsLeft] = useState(SLIDE_DURATION_SEC);
+  const [cardSlideDir, setCardSlideDir] = useState<1 | -1>(1);
+  const [slideDurationSec, setSlideDurationSec] = useState(() =>
+    typeof window !== 'undefined' ? loadSlideDurationSec() : DEFAULT_SLIDE_DURATION_SEC,
+  );
+  const [durationDraft, setDurationDraft] = useState(() => String(
+    typeof window !== 'undefined' ? loadSlideDurationSec() : DEFAULT_SLIDE_DURATION_SEC,
+  ));
+  const slideDurationSecRef = useRef(slideDurationSec);
+  slideDurationSecRef.current = slideDurationSec;
+  const [secondsLeft, setSecondsLeft] = useState(() =>
+    typeof window !== 'undefined' ? loadSlideDurationSec() : DEFAULT_SLIDE_DURATION_SEC,
+  );
   const [isRunning, setIsRunning] = useState(false);
   const [showSolutions, setShowSolutions] = useState(false);
   const [teacherNotes, setTeacherNotes] = useState('');
@@ -1341,7 +1598,7 @@ export default function EntryTicketPage() {
     setSessionStarted(false);
     setSessionDone(false);
     setCurrentIndex(0);
-    setSecondsLeft(SLIDE_DURATION_SEC);
+    setSecondsLeft(slideDurationSecRef.current);
     setIsRunning(false);
     setShowSolutions(false);
     setShowSetEditor(false);
@@ -1425,7 +1682,7 @@ export default function EntryTicketPage() {
           taskSeed?: number | null;
           materialLessonPath?: string | null;
           learningGroupId?: string | null;
-          tasks?: Array<{ category?: string; prompt?: string; solution?: string }> | null;
+          tasks?: Array<{ category?: string; prompt?: string; solution?: string; sourceKey?: string }> | null;
           customSet?: unknown;
         };
         if (cancelled) return;
@@ -1459,6 +1716,7 @@ export default function EntryTicketPage() {
                 category: typeof t.category === 'string' && t.category.trim() ? t.category.trim() : 'Eigen',
                 prompt: typeof t.prompt === 'string' ? t.prompt : '',
                 solution: typeof t.solution === 'string' ? t.solution : '',
+                sourceKey: typeof t.sourceKey === 'string' && t.sourceKey ? t.sourceKey : undefined,
               }))
               .filter((t) => t.prompt && t.solution)
           : [];
@@ -1502,7 +1760,7 @@ export default function EntryTicketPage() {
           grade?: string | null;
           taskSeed?: number | null;
           materialLessonPath?: string | null;
-          tasks?: Array<{ category?: string; prompt?: string; solution?: string }> | null;
+          tasks?: Array<{ category?: string; prompt?: string; solution?: string; sourceKey?: string }> | null;
           customSet?: unknown;
         };
         const hydrated = hydrateCustomSetFromSignal(data.customSet);
@@ -1527,6 +1785,7 @@ export default function EntryTicketPage() {
                 category: typeof t.category === 'string' && t.category.trim() ? t.category.trim() : 'Eigen',
                 prompt: typeof t.prompt === 'string' ? t.prompt : '',
                 solution: typeof t.solution === 'string' ? t.solution : '',
+                sourceKey: typeof t.sourceKey === 'string' && t.sourceKey ? t.sourceKey : undefined,
               }))
               .filter((t) => t.prompt && t.solution)
           : [];
@@ -1577,13 +1836,7 @@ export default function EntryTicketPage() {
     };
   }, [isTeacher, location.search]);
   const activeTasks = selectedTasks;
-  const totalRunSeconds = activeTasks.length * SLIDE_DURATION_SEC;
   const currentTask = activeTasks[currentIndex] ?? activeTasks[0];
-  const completedSlides = currentIndex + (sessionDone ? 1 : 0);
-  const progressPercent =
-    activeTasks.length > 0 ? Math.min((completedSlides / activeTasks.length) * 100, 100) : 0;
-  const elapsedSeconds = currentIndex * SLIDE_DURATION_SEC + (SLIDE_DURATION_SEC - secondsLeft);
-  const remainingSeconds = Math.max(totalRunSeconds - elapsedSeconds, 0);
 
   const toCoarseCategory = (category: string): CoarseCategory => {
     return coarseCategoryForTask(category);
@@ -1599,6 +1852,37 @@ export default function EntryTicketPage() {
     () => customSets.filter((s) => !customSetIsInformatik(s)),
     [customSets],
   );
+  const matheCustomSetIds = useMemo(() => matheCustomSets.map((s) => s.id), [matheCustomSets]);
+  const infCustomSetIds = useMemo(() => infCustomSets.map((s) => s.id), [infCustomSets]);
+  const setSortSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  );
+
+  const handleMatheSetDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setCustomSets((prev) =>
+      reorderCustomSetsInGroup(
+        prev,
+        prev.filter((s) => !customSetIsInformatik(s)).map((s) => s.id),
+        String(active.id),
+        String(over.id),
+      ),
+    );
+  }, []);
+
+  const handleInfSetDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setCustomSets((prev) =>
+      reorderCustomSetsInGroup(
+        prev,
+        prev.filter((s) => customSetIsInformatik(s)).map((s) => s.id),
+        String(active.id),
+        String(over.id),
+      ),
+    );
+  }, []);
 
   const poolForBand = useMemo(() => {
     if (customSetId && activeCustomSet) {
@@ -1607,10 +1891,14 @@ export default function EntryTicketPage() {
         category: t.category,
         prompt: t.prompt,
         solution: t.solution,
+        sourceKey: `c:${activeCustomSet.id}:${t.id}`,
       }));
     }
     if (customSetId) return [];
-    return questionSets[grade] ?? [];
+    return (questionSets[grade] ?? []).map((t, i) => ({
+      ...t,
+      sourceKey: t.sourceKey || builtInTaskSourceKey(String(grade), t, i),
+    }));
   }, [customSetId, activeCustomSet, entryLessonPath, questionSets, grade]);
 
   const activeSetLabel = isCustomSetActive
@@ -1720,6 +2008,14 @@ export default function EntryTicketPage() {
     INF13_BAND_ORDER.includes(category);
 
   const varyNumbersOnly = (prompt: string, seed: number): string => {
+    // HTML/Bilder/Formatierung nicht anfassen
+    if (
+      entryTicketLooksLikeHtml(prompt) ||
+      entryTicketHasImage(prompt) ||
+      entryTicketHasRichFormatting(prompt)
+    ) {
+      return prompt;
+    }
     if (/wahr\s*oder\s*falsch/i.test(prompt)) return prompt;
     let localSeed = seed;
     const rnd = () => {
@@ -1858,21 +2154,23 @@ export default function EntryTicketPage() {
     setCustomSetId(null);
     setGrade(band);
     setBandChosen(true);
+    setShowSetEditor(false);
     setSetEditIndex(null);
     setSetEditCategory('Alltag');
     setSetEditPrompt('');
     setSetEditSolution('');
-    setTaskSeed((s) => s + 1);
+    setTaskSeed(randomTaskSeed());
   };
 
   const selectCustomSet = (id: string) => {
     setCustomSetId(id);
     setBandChosen(true);
+    setShowSetEditor(true);
     setSetEditIndex(null);
     setSetEditCategory('Alltag');
     setSetEditPrompt('');
     setSetEditSolution('');
-    setTaskSeed((s) => s + 1);
+    setTaskSeed(randomTaskSeed());
   };
 
   const openCreateSetDialog = () => {
@@ -1946,6 +2244,7 @@ export default function EntryTicketPage() {
     const timer = window.setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev > 1) return prev - 1;
+        setCardSlideDir(1);
         setCurrentIndex((prevIndex) => {
           const next = prevIndex + 1;
           if (next >= activeTasks.length) {
@@ -1955,22 +2254,72 @@ export default function EntryTicketPage() {
           }
           return next;
         });
-        return SLIDE_DURATION_SEC;
+        return slideDurationSecRef.current;
       });
     }, 1000);
 
     return () => window.clearInterval(timer);
   }, [activeTasks.length, isRunning, sessionDone, sessionStarted]);
 
+  /** Pro Session einmal zählen, wenn eine Karte tatsächlich gezeigt wird. */
+  useEffect(() => {
+    if (!sessionStarted || sessionDone) return;
+    const task = activeTasks[currentIndex];
+    const key = task?.sourceKey;
+    if (!key) return;
+    if (shownInSessionRef.current.has(key)) return;
+    shownInSessionRef.current.add(key);
+    setCardShowCounts((prev) => {
+      const next = { ...prev, [key]: (prev[key] || 0) + 1 };
+      persistCardShowCounts(next);
+      return next;
+    });
+  }, [sessionStarted, sessionDone, currentIndex, activeTasks]);
+
+  const applySlideDurationSec = useCallback((raw: number) => {
+    const next = clampSlideDurationSec(raw);
+    setSlideDurationSec(next);
+    setDurationDraft(String(next));
+    slideDurationSecRef.current = next;
+    setSecondsLeft((prev) => Math.min(prev, next));
+    try {
+      localStorage.setItem(SLIDE_DURATION_STORAGE_KEY, String(next));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const commitDurationDraft = useCallback(() => {
+    const n = Number(String(durationDraft).replace(',', '.'));
+    if (!Number.isFinite(n)) {
+      setDurationDraft(String(slideDurationSec));
+      return;
+    }
+    applySlideDurationSec(n);
+  }, [applySlideDurationSec, durationDraft, slideDurationSec]);
+
   const startSession = () => {
+    // Jeder Start neu mischen (außer Moderator mit gesperrten Lehrer-Karten)
+    let seedForStart = taskSeed;
+    let tasksForStart = selectedTasks;
+    if (!sharedTasksLocked && poolForBand.length > 0) {
+      seedForStart = randomTaskSeed();
+      const picked = pickRandomTasks(poolForBand, TARGET_TASK_COUNT, seedForStart);
+      tasksForStart = picked.tasks;
+      setTaskSeed(seedForStart);
+      setSelectedTasks(picked.tasks);
+      setPickedListIndices([]);
+    } else {
+      setPickedListIndices([]);
+    }
+    shownInSessionRef.current = new Set();
     setSessionStarted(true);
     setSessionDone(false);
     setCurrentIndex(0);
-    setSecondsLeft(SLIDE_DURATION_SEC);
+    setSecondsLeft(slideDurationSecRef.current);
     setShowSolutions(false);
     setTeacherNotes('');
     setIsRunning(true);
-    setPickedListIndices([]);
     if (isTeacher) {
       if (skipDuplicateEntrySignalRef.current) {
         skipDuplicateEntrySignalRef.current = false;
@@ -1983,9 +2332,9 @@ export default function EntryTicketPage() {
             const res = await apiPost('/api/entry-ticket/signal', {
               ...(gid ? { learningGroupId: gid } : {}),
               grade: gradeParam,
-              taskSeed,
+              taskSeed: seedForStart,
               lessonPath: entryLessonPath || undefined,
-              tasks: selectedTasks,
+              tasks: tasksForStart,
               ...(activeSet ? { customSet: snapshotCustomSetForSignal(activeSet) } : {}),
             });
             if (res.ok) {
@@ -2002,9 +2351,10 @@ export default function EntryTicketPage() {
 
   const startOrResume = () => {
     if (sessionDone) {
+      shownInSessionRef.current = new Set();
       setSessionDone(false);
       setCurrentIndex(0);
-      setSecondsLeft(SLIDE_DURATION_SEC);
+      setSecondsLeft(slideDurationSecRef.current);
     }
     setIsRunning(true);
   };
@@ -2238,8 +2588,20 @@ export default function EntryTicketPage() {
       setIsRunning(false);
       setSessionDone(false);
       setCurrentIndex(0);
-      setSecondsLeft(SLIDE_DURATION_SEC);
+      setSecondsLeft(slideDurationSecRef.current);
       setShowSolutions(false);
+      if (!sharedTasksLocked) setTaskSeed(randomTaskSeed());
+      return;
+    }
+    if (showSetEditor) {
+      setShowSetEditor(false);
+      return;
+    }
+    if (bandChosen) {
+      setBandChosen(false);
+      setCustomSetId(null);
+      setSelectedTasks([]);
+      setPickedListIndices([]);
       return;
     }
     if (safeStundeReturnTo) {
@@ -2253,38 +2615,34 @@ export default function EntryTicketPage() {
     setIsRunning(false);
     setSessionDone(false);
     setCurrentIndex(0);
-    setSecondsLeft(SLIDE_DURATION_SEC);
+    setSecondsLeft(slideDurationSecRef.current);
     setShowSolutions(false);
     setTeacherNotes('');
   };
 
   const goNext = () => {
     if (sessionDone) return;
+    setCardSlideDir(1);
     if (currentIndex >= activeTasks.length - 1) {
       setSessionDone(true);
       setIsRunning(false);
       return;
     }
     setCurrentIndex((prev) => prev + 1);
-    setSecondsLeft(SLIDE_DURATION_SEC);
+    setSecondsLeft(slideDurationSecRef.current);
   };
 
   const goPrevious = () => {
+    setCardSlideDir(-1);
     if (sessionDone) {
       setSessionDone(false);
       setCurrentIndex(activeTasks.length - 1);
-      setSecondsLeft(SLIDE_DURATION_SEC);
+      setSecondsLeft(slideDurationSecRef.current);
       return;
     }
     if (currentIndex === 0) return;
     setCurrentIndex((prev) => prev - 1);
-    setSecondsLeft(SLIDE_DURATION_SEC);
-  };
-
-  const formatMMSS = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    setSecondsLeft(slideDurationSecRef.current);
   };
 
   useEffect(() => {
@@ -2303,6 +2661,13 @@ export default function EntryTicketPage() {
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.altKey || e.ctrlKey || e.metaKey) return;
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        handleBack();
+        return;
+      }
+
       if (typingOrInField(e)) return;
 
       if (e.key === 'ArrowLeft') {
@@ -2332,12 +2697,6 @@ export default function EntryTicketPage() {
         } else {
           startOrResume();
         }
-        return;
-      }
-
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        handleBack();
       }
     };
 
@@ -2777,6 +3136,7 @@ export default function EntryTicketPage() {
 
   const formattedPrompt = currentTask ? formatPromptForDisplay(cleanPrompt(currentTask.prompt)) : '';
   const finalSlideRows = Math.ceil(activeTasks.length / 2);
+  const overviewCompact = activeTasks.length >= 8 || showSolutions;
 
   if (!isTeacher && !moderatorGateChecked) {
     return (
@@ -2856,80 +3216,169 @@ export default function EntryTicketPage() {
                 sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
               />
             </Box>
-            <Typography variant="h6" sx={{ color: '#1a237e', fontWeight: 700, lineHeight: 1.1, fontSize: { xs: '0.85rem', sm: '0.92rem' } }}>
+            <Typography variant="h6" sx={{ color: '#37474f', fontWeight: 700, lineHeight: 1.1, fontSize: { xs: '0.85rem', sm: '0.92rem' } }}>
               EntryTicket
             </Typography>
           </Box>
 
-          <IconButton
-            onClick={() => navigate('/dashboard')}
-            aria-label="Ins Dashboard"
-            size="small"
-            sx={{
-              p: 0,
-              minWidth: 24,
-              width: 24,
-              height: 24,
-              bgcolor: 'white',
-              border: '1px solid',
-              borderColor: 'divider',
-              flexShrink: 0,
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 14 }} />
-          </IconButton>
+          <Tooltip title="Schließen">
+            <IconButton
+              onClick={handleBack}
+              aria-label="Schließen"
+              size="small"
+              sx={{
+                p: 0,
+                minWidth: 24,
+                width: 24,
+                height: 24,
+                bgcolor: 'white',
+                border: '1px solid',
+                borderColor: 'divider',
+                flexShrink: 0,
+              }}
+            >
+              <CloseIcon sx={{ fontSize: 14 }} />
+            </IconButton>
+          </Tooltip>
         </Box>
 
-        <Card
-          sx={{
-            width: '100%',
-            borderRadius: 1.25,
-            boxShadow: 'none',
-            border: '1px solid #e0e4f5',
-          }}
-        >
-          <CardContent
-            sx={{
-              p: { xs: 0.55, sm: 0.75 },
-              width: '100%',
-              boxSizing: 'border-box',
-              '&:last-child': { pb: { xs: 0.55, sm: 0.75 } },
-            }}
-          >
+        <Box sx={{ width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
             {!sessionStarted ? (
-              <Box
-                sx={{
-                  width: '100%',
-                  minWidth: 0,
-                  borderRadius: 1,
-                  border: '1px solid #d9e0ff',
-                  bgcolor: '#f8faff',
-                  p: { xs: 0.45, sm: 0.55 },
-                  boxSizing: 'border-box',
-                }}
-              >
-                <Box sx={{ mb: 0.55, minWidth: 0, display: 'grid', gap: 0 }}>
-                  {/* Eingebaute Bänder: links Informatik, rechts Mathe */}
+              <Box sx={{ width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
+                <Box
+                  sx={{
+                    mb: 1.25,
+                    minWidth: 0,
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', md: 'minmax(0,1fr) auto minmax(0,1fr)' },
+                    gap: { xs: 1.5, md: 2.5 },
+                    alignItems: 'start',
+                    pb: 1.35,
+                    borderBottom: '3px solid #455a64',
+                  }}
+                >
+                  {/* Links: selbst erstellte Sets */}
                   <Box
-                    component="div"
-                    role="toolbar"
-                    aria-label="Informatik und Mathe"
                     sx={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 1,
-                      width: '100%',
+                      display: 'grid',
+                      gap: 1.25,
                       minWidth: 0,
+                      p: 0.85,
+                      borderRadius: 1.1,
+                      bgcolor: '#eceff1',
+                      border: '2px solid #78909c',
+                      boxSizing: 'border-box',
                     }}
                   >
-                    <ButtonGroup size="small" variant="outlined" sx={etGradeGroupSx} aria-label="Informatik">
+                    <DndContext sensors={setSortSensors} collisionDetection={closestCenter} onDragEnd={handleMatheSetDragEnd}>
+                      <SortableContext items={matheCustomSetIds} strategy={horizontalListSortingStrategy}>
+                        <Box
+                          role="toolbar"
+                          aria-label="Eigene Mathe-Fragensets"
+                          sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5, minHeight: 28 }}
+                        >
+                          {matheCustomSets.map((set) => (
+                            <SortableCustomSetChip
+                              key={set.id}
+                              set={set}
+                              selected={bandChosen && customSetId === set.id}
+                              accent="mathe"
+                              onSelect={() => selectCustomSet(set.id)}
+                            />
+                          ))}
+                        </Box>
+                      </SortableContext>
+                    </DndContext>
+                    <DndContext sensors={setSortSensors} collisionDetection={closestCenter} onDragEnd={handleInfSetDragEnd}>
+                      <SortableContext items={infCustomSetIds} strategy={horizontalListSortingStrategy}>
+                        <Box
+                          role="toolbar"
+                          aria-label="Eigene Informatik-Fragensets"
+                          sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5, minHeight: 28 }}
+                        >
+                          {infCustomSets.map((set) => (
+                            <SortableCustomSetChip
+                              key={set.id}
+                              set={set}
+                              selected={bandChosen && customSetId === set.id}
+                              accent="inf"
+                              onSelect={() => selectCustomSet(set.id)}
+                            />
+                          ))}
+                        </Box>
+                      </SortableContext>
+                    </DndContext>
+                  </Box>
+
+                  {/* Mitte: Arbeitsbuttons */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pt: 0.15 }}>
+                    <ButtonGroup size="small" variant="outlined" sx={etActionGroupSx}>
+                      <Button
+                        onClick={openCreateSetDialog}
+                        aria-label="Neues Fragenset anlegen"
+                        title="Neues Fragenset anlegen"
+                        sx={{ minWidth: 28, px: 0.45 }}
+                      >
+                        <AddIcon sx={{ fontSize: 15 }} />
+                      </Button>
+                      <Button
+                        variant="contained"
+                        startIcon={<PlayArrowIcon />}
+                        onClick={startSession}
+                        disabled={activeTasks.length === 0}
+                        sx={{
+                          bgcolor: '#455a64',
+                          borderColor: '#455a64',
+                          color: '#fff',
+                          '&:hover': { bgcolor: '#37474f' },
+                          '&.Mui-disabled': { bgcolor: '#cfd8dc', borderColor: '#cfd8dc', color: '#fff' },
+                        }}
+                      >
+                        Start
+                      </Button>
+                    </ButtonGroup>
+                  </Box>
+
+                  {/* Rechts: generierte Bänder */}
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gap: 1.25,
+                      justifyItems: { xs: 'start', md: 'end' },
+                      minWidth: 0,
+                      p: 0.85,
+                      borderRadius: 1.1,
+                      bgcolor: '#e8f5e9',
+                      border: '2px solid #43a047',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <ButtonGroup size="small" variant="outlined" sx={etGradeGroupSx} aria-label="Mathe generiert">
+                      {([5, 6, 7, 8, 9, 10, 11, 12, 13] as const).map((g) => (
+                        <Button
+                          key={g}
+                          onClick={() => selectBand(g)}
+                          sx={
+                            bandChosen && !customSetId && grade === g
+                              ? {
+                                  bgcolor: '#455a64',
+                                  color: '#fff',
+                                  borderColor: '#455a64',
+                                  '&:hover': { bgcolor: '#37474f' },
+                                }
+                              : undefined
+                          }
+                        >
+                          {g}
+                        </Button>
+                      ))}
+                    </ButtonGroup>
+                    <ButtonGroup size="small" variant="outlined" sx={etGradeGroupSx} aria-label="Informatik generiert">
                       {(
                         [
-                          { band: 'inf11' as const, label: 'Inf11', main: '#00695c', hoverBg: 'rgba(0, 105, 92, 0.1)' },
+                          { band: 'inf11' as const, label: 'Inf11', main: '#2e7d32', hoverBg: 'rgba(46, 125, 50, 0.1)' },
                           { band: 'inf12' as const, label: 'Inf12', main: '#e65100', hoverBg: 'rgba(230, 81, 0, 0.1)' },
-                          { band: 'inf13' as const, label: 'Inf13', main: '#4527a0', hoverBg: 'rgba(69, 39, 160, 0.1)' },
+                          { band: 'inf13' as const, label: 'Inf13', main: '#6d4c41', hoverBg: 'rgba(109, 76, 65, 0.1)' },
                         ] as const
                       ).map(({ band, label, main, hoverBg }) => (
                         <Button
@@ -2946,7 +3395,7 @@ export default function EntryTicketPage() {
                               : {
                                   color: main,
                                   borderColor: main,
-                                  bgcolor: 'rgba(255,255,255,0.85)',
+                                  bgcolor: '#fff',
                                   '&:hover': { bgcolor: hoverBg, borderColor: main },
                                 }
                           }
@@ -2955,222 +3404,27 @@ export default function EntryTicketPage() {
                         </Button>
                       ))}
                     </ButtonGroup>
-
-                    <ButtonGroup size="small" variant="outlined" sx={etGradeGroupSx} aria-label="Mathe">
-                      {([5, 6, 7, 8, 9, 10, 11, 12, 13] as const).map((g) => (
-                        <Button
-                          key={g}
-                          onClick={() => selectBand(g)}
-                          sx={
-                            bandChosen && !customSetId && grade === g
-                              ? {
-                                  bgcolor: '#3949ab',
-                                  color: '#fff',
-                                  borderColor: '#3949ab',
-                                  '&:hover': { bgcolor: '#303f9f' },
-                                }
-                              : undefined
-                          }
-                        >
-                          {g}
-                        </Button>
-                      ))}
-                    </ButtonGroup>
-                  </Box>
-
-                  {/* Automatisch generierte / eigene Reihen-Sets — mit Abstand darunter */}
-                  <Box
-                    component="div"
-                    role="toolbar"
-                    aria-label="Eigene Fragensets und Aktionen"
-                    sx={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 1,
-                      width: '100%',
-                      minWidth: 0,
-                      mt: 2.75,
-                      pt: 1.25,
-                      borderTop: '1px solid',
-                      borderColor: 'rgba(57, 73, 171, 0.12)',
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        alignItems: 'center',
-                        gap: 0.75,
-                        flex: 1,
-                        minWidth: 0,
-                      }}
-                    >
-                      {/* Links: Informatik-Reihen */}
-                      <Box
-                        sx={{
-                          display: 'inline-flex',
-                          flexWrap: 'wrap',
-                          alignItems: 'center',
-                          gap: 0.35,
-                          flexShrink: 0,
-                        }}
-                      >
-                        {infCustomSets.map((set) => (
-                          <Button
-                            key={set.id}
-                            size="small"
-                            variant="outlined"
-                            onClick={() => selectCustomSet(set.id)}
-                            title={`${set.name} · ${set.lessons.length} Stunden · ${countCustomSetTasks(set)} Fragen`}
-                            sx={{
-                              ...etBtnGroupBase['& .MuiButton-root'],
-                              borderRadius: '5px !important',
-                              ...(bandChosen && customSetId === set.id
-                                ? {
-                                    bgcolor: '#00695c',
-                                    color: '#fff',
-                                    borderColor: '#00695c',
-                                    '&:hover': { bgcolor: '#00695c', filter: 'brightness(0.92)' },
-                                  }
-                                : {
-                                    color: '#00695c',
-                                    borderColor: '#26a69a',
-                                    bgcolor: 'rgba(255,255,255,0.85)',
-                                    '&:hover': { bgcolor: 'rgba(0, 105, 92, 0.1)', borderColor: '#00695c' },
-                                  }),
-                            }}
-                          >
-                            {set.name}
-                          </Button>
-                        ))}
-                      </Box>
-
-                      {/* Rechts: Mathe-Reihen */}
-                      <Box
-                        sx={{
-                          display: 'inline-flex',
-                          flexWrap: 'wrap',
-                          alignItems: 'center',
-                          gap: 0.35,
-                          flexShrink: 0,
-                          ml: { xs: 0, sm: 'auto' },
-                        }}
-                      >
-                        {matheCustomSets.map((set) => (
-                          <Button
-                            key={set.id}
-                            size="small"
-                            variant="outlined"
-                            onClick={() => selectCustomSet(set.id)}
-                            title={`${set.name} · ${set.lessons.length} Stunden · ${countCustomSetTasks(set)} Fragen`}
-                            sx={{
-                              ...etBtnGroupBase['& .MuiButton-root'],
-                              borderRadius: '5px !important',
-                              ...(bandChosen && customSetId === set.id
-                                ? {
-                                    bgcolor: '#5c6bc0',
-                                    color: '#fff',
-                                    borderColor: '#5c6bc0',
-                                    '&:hover': { bgcolor: '#5c6bc0', filter: 'brightness(0.92)' },
-                                  }
-                                : {
-                                    color: '#3949ab',
-                                    borderColor: '#7986cb',
-                                    bgcolor: 'rgba(255,255,255,0.85)',
-                                    '&:hover': { bgcolor: 'rgba(92, 107, 192, 0.1)', borderColor: '#5c6bc0' },
-                                  }),
-                            }}
-                          >
-                            {set.name}
-                          </Button>
-                        ))}
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={openCreateSetDialog}
-                          aria-label="Neues Fragenset anlegen"
-                          title="Neues Fragenset anlegen"
-                          sx={{
-                            ...etBtnGroupBase['& .MuiButton-root'],
-                            minWidth: 28,
-                            width: 28,
-                            height: 28,
-                            px: 0.35,
-                            py: 0.35,
-                            borderRadius: '5px !important',
-                            borderStyle: 'dashed',
-                            borderColor: '#5c6bc0',
-                            color: '#3949ab',
-                          }}
-                        >
-                          <AddIcon sx={{ fontSize: 14 }} />
-                        </Button>
-                      </Box>
-                    </Box>
-
-                    <ButtonGroup size="small" variant="outlined" sx={etActionGroupSx}>
-                      <Button
-                        onClick={() => {
-                          setTaskSeed((s) => s + 1);
-                          cancelEditingTask();
-                        }}
-                      >
-                        Reset
-                      </Button>
-                      <Button
-                        onClick={() => setShowSetEditor((v) => !v)}
-                        disabled={!bandChosen}
-                        sx={
-                          showSetEditor && bandChosen
-                            ? {
-                                bgcolor: '#5c6bc0',
-                                color: '#fff',
-                                borderColor: '#5c6bc0',
-                                '&:hover': { bgcolor: '#5c6bc0', filter: 'brightness(0.92)' },
-                              }
-                            : undefined
-                        }
-                      >
-                        Fragenset
-                      </Button>
-                      <Button
-                        variant="contained"
-                        startIcon={<PlayArrowIcon />}
-                        onClick={startSession}
-                        disabled={activeTasks.length === 0}
-                        sx={{
-                          bgcolor: '#3949ab',
-                          borderColor: '#3949ab',
-                          color: '#fff',
-                          '&:hover': { bgcolor: '#303f9f' },
-                          '&.Mui-disabled': { bgcolor: '#c5cae9', borderColor: '#c5cae9', color: '#fff' },
-                        }}
-                      >
-                        Start
-                      </Button>
-                    </ButtonGroup>
                   </Box>
                 </Box>
+
                 {bandChosen ? (
                   <>
-                {activeTasks.length === 0 ? (
+                {!showSetEditor && (activeTasks.length === 0 ? (
                   <Box
                     sx={{
                       width: '100%',
                       py: 1.25,
                       px: 1,
                       borderRadius: 1.1,
-                      border: '1px dashed #c5cae9',
+                      border: '1px dashed #b0bec5',
                       bgcolor: 'rgba(255,255,255,0.7)',
                       textAlign: 'center',
                       boxSizing: 'border-box',
                     }}
                   >
-                    <Typography sx={{ color: '#5c6b8a', fontSize: '0.8rem', fontWeight: 600 }}>
+                    <Typography sx={{ color: '#78909c', fontSize: '0.8rem', fontWeight: 600 }}>
                       {isCustomSetActive
-                        ? 'Keine Fragen in diesem Fragenset — unter „Fragenset“ Karten anlegen.'
+                        ? 'Keine Fragen in diesem Fragenset — im Editor Karten anlegen.'
                         : 'Keine Fragen im aktuellen Fragenset.'}
                     </Typography>
                   </Box>
@@ -3183,10 +3437,19 @@ export default function EntryTicketPage() {
                       width: '100%',
                     }}
                   >
-                    {activeTasks.map((task, index) => (
+                    {(() => {
+                      const maxActiveShown = Math.max(
+                        1,
+                        ...activeTasks.map((t) => (t.sourceKey ? cardShowCounts[t.sourceKey] || 0 : 0)),
+                      );
+                      return activeTasks.map((task, index) => {
+                      const shown = task.sourceKey ? cardShowCounts[task.sourceKey] || 0 : 0;
+                      const tone = entryTicketShowCountStyle(shown, maxActiveShown);
+                      return (
                       <Box
                         key={`${index}-${task.prompt}`}
                         sx={{
+                          position: 'relative',
                           display: 'flex',
                           alignItems: 'center',
                           gap: 0.4,
@@ -3195,9 +3458,9 @@ export default function EntryTicketPage() {
                           minWidth: 0,
                           borderRadius: 1,
                           bgcolor: 'white',
-                          border: '1px solid #d9e0ff',
+                          border: '1px solid #cfd8dc',
                           boxSizing: 'border-box',
-                          '&:hover': { borderColor: '#b6c4f0', bgcolor: '#fcfdff' },
+                          '&:hover': { borderColor: '#90a4ae', bgcolor: '#fafafa' },
                         }}
                       >
                         {editingIndex === index ? (
@@ -3232,19 +3495,46 @@ export default function EntryTicketPage() {
                           <>
                             <Box
                               sx={{
-                                minWidth: 22,
-                                height: 22,
-                                borderRadius: 0.75,
-                                display: 'grid',
-                                placeItems: 'center',
+                                minWidth: 28,
                                 flexShrink: 0,
-                                bgcolor: '#e8eaf6',
-                                color: '#3949ab',
-                                fontWeight: 800,
-                                fontSize: '0.68rem',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: 0.15,
                               }}
                             >
-                              {index + 1}
+                              <Box
+                                sx={{
+                                  minWidth: 22,
+                                  height: 22,
+                                  borderRadius: 0.75,
+                                  display: 'grid',
+                                  placeItems: 'center',
+                                  bgcolor: '#eceff1',
+                                  color: '#455a64',
+                                  fontWeight: 800,
+                                  fontSize: '0.68rem',
+                                }}
+                              >
+                                {index + 1}
+                              </Box>
+                              <Typography
+                                component="span"
+                                title={`Schon ${shown}× gezeigt`}
+                                sx={{
+                                  fontSize: '0.62rem',
+                                  fontWeight: 800,
+                                  lineHeight: 1.15,
+                                  color: tone.color,
+                                  bgcolor: tone.bgcolor,
+                                  fontVariantNumeric: 'tabular-nums',
+                                  px: 0.35,
+                                  py: 0.1,
+                                  borderRadius: 0.5,
+                                }}
+                              >
+                                {shown}×
+                              </Typography>
                             </Box>
                             <Box
                               sx={{
@@ -3252,12 +3542,14 @@ export default function EntryTicketPage() {
                                 minWidth: 0,
                                 fontSize: '0.82rem',
                                 lineHeight: 1.3,
-                                color: '#1a237e',
-                                fontWeight: 700,
+                                color: '#37474f',
+                                fontWeight: 500,
                                 ...richTextSx,
                               }}
                             >
-                              {entryTicketLooksLikeHtml(task.prompt) ? (
+                              {entryTicketLooksLikeHtml(task.prompt) ||
+                              entryTicketHasImage(task.prompt) ||
+                              entryTicketHasRichFormatting(task.prompt) ? (
                                 <EntryTicketRichHtml value={task.prompt} />
                               ) : (
                                 renderPrompt(task.prompt, `selection-${index}`, false, true)
@@ -3266,7 +3558,7 @@ export default function EntryTicketPage() {
                             <ButtonGroup size="small" variant="outlined" sx={etMiniPairGroupSx}>
                               <Button
                                 onClick={() => startEditingTask(index)}
-                                sx={{ borderColor: '#c5cae9', color: '#3949ab' }}
+                                sx={{ borderColor: '#cfd8dc', color: '#546e7a' }}
                               >
                                 ✎
                               </Button>
@@ -3277,18 +3569,21 @@ export default function EntryTicketPage() {
                           </>
                         )}
                       </Box>
-                    ))}
+                      );
+                    });
+                    })()}
                   </Box>
-                )}
+                ))}
 
                 {showSetEditor && isCustomSetActive && activeCustomSet && (
-                  <Box sx={{ width: '100%', minWidth: 0 }}>
+                  <Box sx={{ width: '100%', minWidth: 0, mt: 2.5 }}>
                     <EntryTicketFragensetEditor
                       set={activeCustomSet}
                       activeLessonPath={entryLessonPath}
                       onChange={patchActiveCustomSet}
                       onRename={renameActiveCustomSet}
                       onDeleteSet={deleteActiveCustomSet}
+                      showCounts={cardShowCounts}
                     />
                   </Box>
                 )}
@@ -3296,16 +3591,16 @@ export default function EntryTicketPage() {
                 {showSetEditor && !isCustomSetActive && (
                   <Box
                     sx={{
-                      mt: 0.65,
+                      mt: 2.5,
                       width: '100%',
                       boxSizing: 'border-box',
-                      p: 0.55,
-                      border: '1px solid #d9e0ff',
-                      borderRadius: 1.1,
-                      bgcolor: '#f8faff',
+                      p: 1,
+                      border: '1px solid #cfd8dc',
+                      borderRadius: 1.5,
+                      bgcolor: '#fff',
                     }}
                   >
-                    <Typography sx={{ mb: 0.45, fontWeight: 800, fontSize: '0.72rem', color: '#1a237e' }}>
+                    <Typography sx={{ mb: 0.45, fontWeight: 800, fontSize: '0.72rem', color: '#37474f' }}>
                       Fragenset {activeSetLabel} · {poolForBand.length} Fragen
                     </Typography>
                     <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 120px 24px', gap: 0.35, alignItems: 'center', mb: 0.5 }}>
@@ -3361,10 +3656,20 @@ export default function EntryTicketPage() {
                               {group.category}
                             </Typography>
                           </Box>
-                          {group.items.map(({ q, idx, displayNumber }) => (
+                          {group.items.map(({ q, idx, displayNumber }) => {
+                            const shown = q.sourceKey ? cardShowCounts[q.sourceKey] || 0 : 0;
+                            const maxShown = Math.max(
+                              1,
+                              ...group.items.map((item) =>
+                                item.q.sourceKey ? cardShowCounts[item.q.sourceKey] || 0 : 0,
+                              ),
+                            );
+                            const tone = entryTicketShowCountStyle(shown, maxShown);
+                            return (
                             <Box
                               key={`${idx}-${q.prompt}`}
                               sx={{
+                                position: 'relative',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 0.45,
@@ -3409,9 +3714,37 @@ export default function EntryTicketPage() {
                                 </>
                               ) : (
                                 <>
-                                  <Typography variant="body2" sx={{ minWidth: 24, color: 'text.secondary', fontWeight: 700, fontSize: '0.75rem' }}>
-                                    {displayNumber}.
-                                  </Typography>
+                                  <Box
+                                    sx={{
+                                      minWidth: 36,
+                                      flexShrink: 0,
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      alignItems: 'center',
+                                      gap: 0.1,
+                                    }}
+                                  >
+                                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.75rem', lineHeight: 1.1 }}>
+                                      {displayNumber}.
+                                    </Typography>
+                                    <Typography
+                                      component="span"
+                                      title={`Schon ${shown}× gezeigt`}
+                                      sx={{
+                                        fontSize: '0.62rem',
+                                        fontWeight: 800,
+                                        lineHeight: 1.15,
+                                        color: tone.color,
+                                        bgcolor: tone.bgcolor,
+                                        fontVariantNumeric: 'tabular-nums',
+                                        px: 0.35,
+                                        py: 0.1,
+                                        borderRadius: 0.5,
+                                      }}
+                                    >
+                                      {shown}×
+                                    </Typography>
+                                  </Box>
                                   <Typography variant="body2" sx={{ flex: 1, fontSize: '0.78rem', minWidth: 0, ...richTextSx }}>
                                     <EntryTicketRichHtml value={q.prompt} />
                                   </Typography>
@@ -3437,7 +3770,8 @@ export default function EntryTicketPage() {
                                 </>
                               )}
                             </Box>
-                          ))}
+                            );
+                          })}
                         </Box>
                         );
                       })}
@@ -3449,287 +3783,379 @@ export default function EntryTicketPage() {
 
               </Box>
             ) : (
-              <Box sx={{ display: 'grid', gap: 0.55, width: '100%', minWidth: 0 }}>
-                {/* Steuerung — flach, ohne Boxen */}
+              <Box sx={{ display: 'grid', gap: 1.5, width: '100%', minWidth: 0 }}>
+                {/* Steuerung — minimal */}
                 <Box
                   sx={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    gap: 0.75,
+                    gap: 1,
                     flexWrap: 'wrap',
-                    px: 0.1,
+                    px: 0.5,
                   }}
                 >
                   <Typography
                     sx={{
-                      fontSize: '0.72rem',
-                      fontWeight: 500,
-                      color: '#5c6b8a',
+                      fontSize: '0.88rem',
+                      fontWeight: 600,
+                      color: '#78909c',
                       fontVariantNumeric: 'tabular-nums',
-                      letterSpacing: 0.01,
                     }}
                   >
-                    <Box component="span" sx={{ color: '#3949ab', fontWeight: 600 }}>
+                    <Box component="span" sx={{ color: '#455a64', fontWeight: 700 }}>
                       {sessionDone ? activeTasks.length : currentIndex + 1}
                     </Box>
                     /{activeTasks.length}
-                    <Box component="span" sx={{ mx: 0.7, color: '#c5cae9' }}>·</Box>
-                    {formatMMSS(remainingSeconds)}
-                    {!sessionDone && (
-                      <Box component="span" sx={{ color: '#90a4ae' }}>
-                        {' '}({secondsLeft}s)
-                      </Box>
-                    )}
                   </Typography>
 
-                  <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
-                    <Tooltip title="Vorherige Karte">
+                  <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.65, flexShrink: 0 }}>
+                    <TextField
+                      size="small"
+                      type="text"
+                      inputMode="numeric"
+                      value={durationDraft}
+                      onChange={(e) => setDurationDraft(e.target.value.replace(/[^\d]/g, ''))}
+                      onBlur={commitDurationDraft}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          commitDurationDraft();
+                          (e.target as HTMLInputElement).blur();
+                        }
+                        if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          applySlideDurationSec(slideDurationSec + 1);
+                        }
+                        if (e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          applySlideDurationSec(slideDurationSec - 1);
+                        }
+                      }}
+                      inputProps={{
+                        'aria-label': 'Sekunden pro Karte',
+                        inputMode: 'numeric',
+                        pattern: '[0-9]*',
+                      }}
+                      sx={{
+                        width: 48,
+                        '& .MuiInputBase-input': {
+                          py: 0.45,
+                          px: 0.5,
+                          fontSize: '0.85rem',
+                          fontWeight: 700,
+                          textAlign: 'center',
+                          fontVariantNumeric: 'tabular-nums',
+                          color: '#546e7a',
+                        },
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: 2,
+                          bgcolor: '#fff',
+                        },
+                        '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' },
+                      }}
+                    />
+                    <Tooltip title="Vorherige">
                       <span>
                         <IconButton
                           size="small"
                           onClick={goPrevious}
                           aria-label="Vorherige Karte"
                           disabled={currentIndex === 0 && !sessionDone}
-                          sx={etSessionBtnSx}
+                          sx={{
+                            ...etSessionBtnSx,
+                            border: 'none',
+                            bgcolor: 'transparent',
+                            '&:hover': { bgcolor: 'rgba(69,90,100,0.08)' },
+                          }}
                         >
-                          <SkipPreviousIcon sx={{ fontSize: 16 }} />
+                          <SkipPreviousIcon sx={{ fontSize: 20 }} />
                         </IconButton>
                       </span>
                     </Tooltip>
                     {!isRunning ? (
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<PlayArrowIcon sx={{ fontSize: '15px !important' }} />}
-                        onClick={startOrResume}
-                        sx={{ ...etSessionPlayPauseSx, color: '#3949ab', borderColor: '#9fa8da' }}
-                      >
-                        {sessionDone ? 'Neu' : 'Weiter'}
-                      </Button>
+                      <Tooltip title={sessionDone ? 'Neu starten' : 'Weiter'}>
+                        <IconButton
+                          size="small"
+                          onClick={startOrResume}
+                          aria-label={sessionDone ? 'Neu starten' : 'Weiter'}
+                          sx={{
+                            width: 40,
+                            height: 40,
+                            bgcolor: '#546e7a',
+                            color: '#fff',
+                            '&:hover': { bgcolor: '#455a64' },
+                          }}
+                        >
+                          <PlayArrowIcon sx={{ fontSize: 22 }} />
+                        </IconButton>
+                      </Tooltip>
                     ) : (
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<PauseIcon sx={{ fontSize: '15px !important' }} />}
-                        onClick={pause}
-                        sx={{ ...etSessionPlayPauseSx, color: '#ef6c00', borderColor: '#ffcc80' }}
-                      >
-                        Pause
-                      </Button>
+                      <Tooltip title="Pause">
+                        <IconButton
+                          size="small"
+                          onClick={pause}
+                          aria-label="Pause"
+                          sx={{
+                            width: 40,
+                            height: 40,
+                            bgcolor: '#eceff1',
+                            color: '#546e7a',
+                            '&:hover': { bgcolor: '#cfd8dc' },
+                          }}
+                        >
+                          <PauseIcon sx={{ fontSize: 20 }} />
+                        </IconButton>
+                      </Tooltip>
                     )}
-                    <Tooltip title="Nächste Karte">
+                    <Tooltip title="Nächste">
                       <span>
                         <IconButton
                           size="small"
                           onClick={goNext}
                           aria-label="Nächste Karte"
                           disabled={sessionDone}
-                          sx={etSessionBtnSx}
+                          sx={{
+                            ...etSessionBtnSx,
+                            border: 'none',
+                            bgcolor: 'transparent',
+                            '&:hover': { bgcolor: 'rgba(69,90,100,0.08)' },
+                          }}
                         >
-                          <SkipNextIcon sx={{ fontSize: 16 }} />
+                          <SkipNextIcon sx={{ fontSize: 20 }} />
                         </IconButton>
                       </span>
                     </Tooltip>
-                    <Tooltip title="Neu starten">
+                    <Tooltip title="Zurücksetzen">
                       <IconButton
                         size="small"
                         onClick={restart}
                         aria-label="Zurücksetzen"
-                        sx={etSessionBtnSx}
+                        sx={{
+                          ...etSessionBtnSx,
+                          border: 'none',
+                          bgcolor: 'transparent',
+                          color: '#90a4ae',
+                          '&:hover': { bgcolor: 'rgba(69,90,100,0.08)' },
+                        }}
                       >
-                        <RestartAltIcon sx={{ fontSize: 15 }} />
+                        <RestartAltIcon sx={{ fontSize: 18 }} />
                       </IconButton>
                     </Tooltip>
                   </Box>
                 </Box>
-
-                <LinearProgress
-                  variant="determinate"
-                  value={progressPercent}
-                  sx={{
-                    height: 2,
-                    borderRadius: 1,
-                    bgcolor: '#e8eaf6',
-                    '& .MuiLinearProgress-bar': {
-                      bgcolor: '#9fa8da',
-                      borderRadius: 1,
-                    },
-                  }}
-                />
 
                 {!sessionDone ? (
                   <Box
                     sx={{
                       position: 'relative',
                       width: '100%',
-                      minWidth: 0,
-                      height: DISPLAY_BOX_HEIGHT,
-                      minHeight: DISPLAY_BOX_HEIGHT,
-                      maxHeight: DISPLAY_BOX_HEIGHT,
-                      borderRadius: 1.25,
-                      overflow: 'hidden',
+                      maxWidth: 720,
+                      mx: 'auto',
                       boxSizing: 'border-box',
-                      border: '1px solid #e0e4f5',
-                      bgcolor: '#fafbff',
-                      display: 'flex',
-                      flexDirection: 'column',
                     }}
                   >
-                    <LinearProgress
-                      variant="determinate"
-                      value={(secondsLeft / SLIDE_DURATION_SEC) * 100}
-                      sx={{
-                        height: 1.5,
-                        bgcolor: 'transparent',
-                        '& .MuiLinearProgress-bar': {
-                          bgcolor: secondsLeft <= 5 ? '#ffb74d' : '#c5cae9',
-                          transition: 'transform 0.9s linear, background-color 0.3s ease',
-                        },
-                      }}
-                    />
-
-                    <Box
-                      key={currentIndex}
-                      sx={{
-                        flex: 1,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        textAlign: 'center',
-                        gap: 0.6,
-                        px: { xs: 1.5, sm: 3 },
-                        py: 1,
-                        animation: 'etCardIn 200ms ease-out',
-                        '@keyframes etCardIn': {
-                          from: { opacity: 0 },
-                          to: { opacity: 1 },
-                        },
-                      }}
-                    >
-                      <Typography
-                        sx={{
-                          fontSize: '0.62rem',
-                          fontWeight: 500,
-                          color: '#90a4ae',
-                          letterSpacing: 0.04,
+                    <AnimatePresence mode="wait" custom={cardSlideDir} initial={false}>
+                      <Box
+                        component={motion.div}
+                        key={currentIndex}
+                        custom={cardSlideDir}
+                        initial="enter"
+                        animate="center"
+                        exit="exit"
+                        variants={{
+                          enter: (dir: number) => ({
+                            x: dir > 0 ? 36 : -36,
+                            opacity: 0,
+                          }),
+                          center: { x: 0, opacity: 1 },
+                          exit: (dir: number) => ({
+                            x: dir > 0 ? -28 : 28,
+                            opacity: 0,
+                          }),
                         }}
-                      >
-                        {currentTask?.category || 'Frage'}
-                        <Box component="span" sx={{ mx: 0.55, opacity: 0.5 }}>·</Box>
-                        {currentIndex + 1}/{activeTasks.length}
-                      </Typography>
-
-                      <Typography
+                        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
                         sx={{
+                          position: 'relative',
                           width: '100%',
-                          maxWidth: 720,
-                          fontSize: { xs: '1.25rem', sm: '1.65rem', md: '1.85rem' },
-                          lineHeight: 1.35,
-                          fontWeight: 400,
-                          color: '#283593',
-                          whiteSpace: 'pre-line',
-                          letterSpacing: 0,
+                          borderRadius: 3,
+                          bgcolor: '#ffffff',
+                          boxShadow: '0 8px 28px rgba(55, 71, 79, 0.1)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          overflow: 'visible',
+                          minHeight: DISPLAY_BOX_MIN_HEIGHT,
                         }}
                       >
-                        {currentTask && entryTicketLooksLikeHtml(currentTask.prompt) ? (
-                          <EntryTicketRichHtml
-                            value={currentTask.prompt}
+                        <Box
+                          sx={{
+                            height: 3,
+                            width: '100%',
+                            bgcolor: 'rgba(120,144,156,0.12)',
+                            flexShrink: 0,
+                            borderTopLeftRadius: 12,
+                            borderTopRightRadius: 12,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <Box
                             sx={{
-                              fontSize: 'inherit',
-                              lineHeight: 'inherit',
-                              color: 'inherit',
-                              whiteSpace: 'pre-line',
+                              height: '100%',
+                              width: `${(secondsLeft / Math.max(slideDurationSec, 1)) * 100}%`,
+                              bgcolor: secondsLeft <= 5 ? '#ff8a65' : '#90a4ae',
+                              transition: 'width 0.95s linear, background-color 0.25s ease',
                             }}
                           />
-                        ) : (
-                          renderPrompt(formattedPrompt, 'live', true)
-                        )}
-                      </Typography>
-                    </Box>
+                        </Box>
+
+                          <Box
+                            sx={{
+                              flex: 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              textAlign:
+                                currentTask &&
+                                (entryTicketHasImage(currentTask.prompt) ||
+                                  readEntryTicketCardLayout(currentTask.prompt) !== 'flow')
+                                  ? 'left'
+                                  : 'center',
+                              px: { xs: 2.25, sm: 3.5 },
+                              py: 2.25,
+                              overflow: 'visible',
+                            }}
+                          >
+                          <Box
+                            sx={{
+                              width: '100%',
+                              fontSize: { xs: '1.3rem', sm: '1.6rem', md: '1.75rem' },
+                              lineHeight: 1.35,
+                              fontWeight: 500,
+                              color: '#37474f',
+                              whiteSpace: 'pre-line',
+                              letterSpacing: -0.01,
+                              ...richTextSx,
+                            }}
+                          >
+                            {currentTask &&
+                            (entryTicketLooksLikeHtml(currentTask.prompt) ||
+                              entryTicketHasImage(currentTask.prompt) ||
+                              entryTicketHasRichFormatting(currentTask.prompt)) ? (
+                              <EntryTicketRichHtml
+                                value={currentTask.prompt}
+                                sx={{
+                                  fontSize: 'inherit',
+                                  lineHeight: 'inherit',
+                                  color: 'inherit',
+                                  whiteSpace: 'pre-line',
+                                }}
+                              />
+                            ) : (
+                              renderPrompt(formattedPrompt, 'live', true)
+                            )}
+                          </Box>
+                        </Box>
+
+                        <Typography
+                          sx={{
+                            pb: 1.1,
+                            pt: 0.25,
+                            textAlign: 'center',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            color: secondsLeft <= 5 ? '#ff8a65' : '#b0bec5',
+                            fontVariantNumeric: 'tabular-nums',
+                          }}
+                        >
+                          {secondsLeft}
+                        </Typography>
+                      </Box>
+                    </AnimatePresence>
                   </Box>
                 ) : (
                   <Box
                     sx={{
                       width: '100%',
                       minWidth: 0,
-                      height: FINAL_DISPLAY_BOX_HEIGHT,
-                      minHeight: FINAL_DISPLAY_BOX_HEIGHT,
-                      maxHeight: FINAL_DISPLAY_BOX_HEIGHT,
-                      borderRadius: 1.25,
-                      px: { xs: 0.75, sm: 1 },
-                      py: 0.75,
-                      border: '1px solid #e0e4f5',
-                      bgcolor: '#fafbff',
-                      overflow: 'auto',
+                      height: { xs: 'calc(100vh - 150px)', sm: 'calc(100vh - 130px)' },
+                      maxHeight: { xs: 'calc(100vh - 150px)', sm: 'calc(100vh - 130px)' },
+                      borderRadius: 2,
+                      px: { xs: 0.5, sm: 0.75 },
+                      py: 0.5,
+                      bgcolor: 'transparent',
+                      overflow: 'hidden',
                       boxSizing: 'border-box',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 0.5,
                     }}
                   >
                     <Box
                       sx={{
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'space-between',
+                        justifyContent: 'flex-end',
                         gap: 0.75,
                         flexWrap: 'wrap',
-                        mb: 0.55,
-                        px: 0.25,
+                        flexShrink: 0,
+                        px: 0.15,
                       }}
                     >
-                      <Typography sx={{ fontWeight: 500, fontSize: '0.7rem', color: '#78909c' }}>
-                        Übersicht · {activeTasks.length}
-                      </Typography>
-                      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
-                        <FormControlLabel
-                          control={
-                            <Switch
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            size="small"
+                            checked={showSolutions}
+                            onChange={(e) => setShowSolutions(e.target.checked)}
+                          />
+                        }
+                        label={
+                          <Typography sx={{ fontSize: '0.65rem', fontWeight: 600, color: '#90a4ae' }}>
+                            Lösungen
+                          </Typography>
+                        }
+                        sx={{ mr: 0, '& .MuiFormControlLabel-label': { ml: 0.2 } }}
+                      />
+                      {(isTeacher || isClassModerator) && (
+                        <Tooltip title="Erledigt (Enter)">
+                          <span>
+                            <Button
                               size="small"
-                              checked={showSolutions}
-                              onChange={(e) => setShowSolutions(e.target.checked)}
-                            />
-                          }
-                          label={
-                            <Typography sx={{ fontSize: '0.65rem', fontWeight: 500, color: '#78909c' }}>
-                              Lösungen
-                            </Typography>
-                          }
-                          sx={{ mr: 0, '& .MuiFormControlLabel-label': { ml: 0.2 } }}
-                        />
-                        {(isTeacher || isClassModerator) && (
-                          <Tooltip title="Erledigt (Enter)">
-                            <span>
-                              <Button
-                                size="small"
-                                variant="contained"
-                                startIcon={<CheckIcon sx={{ fontSize: '0.85rem !important' }} />}
-                                disabled={completeBusy}
-                                onClick={() => void markEntryTicketDone()}
-                                sx={{
-                                  ...etActionGroupSx['& .MuiButton-root'],
-                                  borderRadius: '5px',
-                                  bgcolor: '#2e7d32',
-                                  borderColor: '#2e7d32',
-                                  color: '#fff',
-                                  boxShadow: 'none',
-                                  '&:hover': { bgcolor: '#1b5e20', boxShadow: 'none' },
-                                }}
-                              >
-                                {completeBusy ? '…' : 'Erledigt'}
-                              </Button>
-                            </span>
-                          </Tooltip>
-                        )}
-                      </Box>
+                              variant="contained"
+                              startIcon={<CheckIcon sx={{ fontSize: '0.85rem !important' }} />}
+                              disabled={completeBusy}
+                              onClick={() => void markEntryTicketDone()}
+                              sx={{
+                                ...etActionGroupSx['& .MuiButton-root'],
+                                borderRadius: '999px',
+                                bgcolor: '#66bb6a',
+                                borderColor: '#66bb6a',
+                                color: '#fff',
+                                boxShadow: 'none',
+                                px: 1.25,
+                                '&:hover': { bgcolor: '#43a047', boxShadow: 'none' },
+                              }}
+                            >
+                              {completeBusy ? '…' : 'Erledigt'}
+                            </Button>
+                          </span>
+                        </Tooltip>
+                      )}
                     </Box>
 
                     <Box
                       sx={{
+                        flex: 1,
+                        minHeight: 0,
                         display: 'grid',
-                        gridTemplateColumns: '1fr 1fr',
-                        gridTemplateRows: `repeat(${finalSlideRows}, minmax(0, auto))`,
-                        gridAutoFlow: 'column',
-                        gap: '8px 16px',
+                        gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                        gridTemplateRows: {
+                          xs: `repeat(${activeTasks.length}, minmax(0, 1fr))`,
+                          sm: `repeat(${finalSlideRows}, minmax(0, 1fr))`,
+                        },
+                        gridAutoFlow: { xs: 'row', sm: 'column' },
+                        gap: overviewCompact ? '4px 10px' : '6px 12px',
+                        overflow: 'hidden',
                       }}
                     >
                       {activeTasks.map((task, index) => (
@@ -3738,59 +4164,101 @@ export default function EntryTicketPage() {
                           sx={{
                             display: 'grid',
                             gridTemplateColumns: '16px minmax(0, 1fr)',
-                            columnGap: 0.55,
-                            alignItems: 'start',
-                            px: 0.35,
-                            py: 0.45,
-                            borderBottom: '1px solid #eef0f8',
+                            columnGap: 0.45,
+                            alignItems: 'center',
+                            px: 0.55,
+                            py: 0.15,
+                            borderRadius: 1,
+                            bgcolor: 'rgba(255,255,255,0.72)',
                             minWidth: 0,
+                            minHeight: 0,
+                            overflow: 'hidden',
                           }}
                         >
                           <Typography
                             sx={{
-                              fontSize: '0.85rem',
-                              fontWeight: 700,
-                              color: '#9fa8da',
+                              fontSize: overviewCompact ? '0.68rem' : '0.75rem',
+                              fontWeight: 800,
+                              color: '#b0bec5',
                               fontVariantNumeric: 'tabular-nums',
-                              pt: 0.25,
+                              lineHeight: 1,
                             }}
                           >
-                            {index + 1}.
+                            {index + 1}
                           </Typography>
-                          <Box sx={{ minWidth: 0, display: 'grid', gap: 0.35 }}>
-                            <Typography
-                              variant="body2"
-                              component="div"
+                          <Box
+                            sx={{
+                              minWidth: 0,
+                              minHeight: 0,
+                              overflow: 'hidden',
+                              display: 'grid',
+                              gap: 0.05,
+                              alignContent: 'center',
+                            }}
+                          >
+                            <Box
                               sx={{
-                                fontSize: { xs: '1rem', sm: '1.15rem' },
-                                lineHeight: 1.3,
+                                fontSize: showSolutions
+                                  ? { xs: '0.68rem', sm: '0.75rem' }
+                                  : overviewCompact
+                                    ? { xs: '0.72rem', sm: '0.8rem' }
+                                    : { xs: '0.82rem', sm: '0.92rem' },
+                                lineHeight: 1.15,
                                 fontWeight: 500,
-                                color: '#37474f',
+                                color: '#455a64',
                                 minWidth: 0,
+                                overflow: 'hidden',
                                 ...richTextSx,
+                                '& img': {
+                                  display: 'block',
+                                  maxWidth: '100%',
+                                  height: 'auto',
+                                  maxHeight: showSolutions ? 32 : overviewCompact ? 40 : 56,
+                                  width: 'auto',
+                                  my: 0.15,
+                                  borderRadius: 0.5,
+                                },
                               }}
                             >
-                              {entryTicketLooksLikeHtml(task.prompt) ? (
+                              {entryTicketLooksLikeHtml(task.prompt) ||
+                              entryTicketHasImage(task.prompt) ||
+                              entryTicketHasRichFormatting(task.prompt) ? (
                                 <EntryTicketRichHtml value={task.prompt} />
                               ) : (
                                 renderPrompt(task.prompt, `final-${index}`, false, true)
                               )}
-                            </Typography>
+                            </Box>
                             {showSolutions && (
-                              <Typography
-                                component="div"
+                              <Box
                                 sx={{
-                                  fontSize: { xs: '1.45rem', sm: '1.75rem' },
-                                  lineHeight: 1.25,
+                                  fontSize: { xs: '1.05rem', sm: '1.25rem' },
+                                  lineHeight: 1.2,
                                   fontWeight: 800,
                                   color: '#1b5e20',
-                                  letterSpacing: 0.01,
-                                  mt: 0.1,
+                                  minWidth: 0,
+                                  overflow: 'hidden',
+                                  mt: 0.2,
+                                  px: 0.55,
+                                  py: 0.3,
+                                  borderRadius: 1,
+                                  border: '2px solid #66bb6a',
+                                  bgcolor: '#e8f5e9',
+                                  boxSizing: 'border-box',
                                   ...richTextSx,
+                                  '& img': {
+                                    display: 'inline-block',
+                                    maxHeight: 36,
+                                    maxWidth: 80,
+                                    width: 'auto',
+                                    height: 'auto',
+                                    verticalAlign: 'middle',
+                                    my: 0,
+                                    borderRadius: 0.5,
+                                  },
                                 }}
                               >
                                 <EntryTicketRichHtml value={task.solution || '—'} />
-                              </Typography>
+                              </Box>
                             )}
                           </Box>
                         </Box>
@@ -3801,8 +4269,7 @@ export default function EntryTicketPage() {
               </Box>
             )}
 
-          </CardContent>
-        </Card>
+        </Box>
       </Box>
 
       <Dialog open={createSetOpen} onClose={() => !createSetBusy && setCreateSetOpen(false)} fullWidth maxWidth="xs">

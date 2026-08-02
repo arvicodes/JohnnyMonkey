@@ -1,4 +1,5 @@
 import {
+  entryTicketHasContent,
   entryTicketHasText,
   normalizeEntryTicketFieldValue,
 } from './entryTicketRichText';
@@ -68,7 +69,7 @@ function parseTask(raw: unknown): EntryTicketCustomTask | null {
   const q = raw as Record<string, unknown>;
   const prompt = typeof q.prompt === 'string' ? normalizeEntryTicketFieldValue(q.prompt) : '';
   const solution = typeof q.solution === 'string' ? normalizeEntryTicketFieldValue(q.solution) : '';
-  if (!entryTicketHasText(prompt) || !entryTicketHasText(solution)) return null;
+  if (!entryTicketHasContent(prompt) || !entryTicketHasContent(solution)) return null;
   return {
     id: typeof q.id === 'string' && q.id ? q.id : makeEntryTicketEntityId('q'),
     category: typeof q.category === 'string' && q.category.trim() ? q.category.trim() : 'Eigen',

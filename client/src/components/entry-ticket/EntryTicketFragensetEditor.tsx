@@ -14,7 +14,6 @@ import {
   ExpandMore as ExpandMoreIcon,
 } from '@mui/icons-material';
 import {
-  countCustomSetTasks,
   createCustomTask,
   createLessonSection,
   parseEntryTicketCardList,
@@ -22,17 +21,18 @@ import {
   type EntryTicketCustomTask,
   type EntryTicketLessonSection,
 } from '../../lib/entryTicketCustomSets';
+import { entryTicketShowCountStyle } from '../../lib/entryTicketRichText';
 import { EntryTicketRichField } from './EntryTicketRichField';
 
 /** Passend zum EntryTicket, dezent bunt. */
 const ET = {
-  ink: '#1a237e',
-  accent: '#3949ab',
-  accentSoft: '#5c6bc0',
-  border: '#d9e0ff',
-  surface: '#f8faff',
+  ink: '#263238',
+  accent: '#455a64',
+  accentSoft: '#78909c',
+  border: '#cfd8dc',
+  surface: '#fafafa',
   white: '#ffffff',
-  muted: '#5c6b8a',
+  muted: '#78909c',
 } as const;
 
 const iconBtnSx = {
@@ -53,20 +53,20 @@ const fieldSx = {
   '& .MuiInputBase-input': { py: 0.35, px: 0.75, fontSize: '0.78rem' },
 } as const;
 
-/** Sanfte Stunden-Farben */
+/** Sanfte Stunden-Farben (ohne Blau) */
 const LESSON_PALETTES = [
-  { bg: '#eef2ff', border: '#9fa8da', title: '#283593', chip: '#5c6bc0', soft: '#c5cae9' },
-  { bg: '#e3f7fc', border: '#4fc3f7', title: '#0277bd', chip: '#039be5', soft: '#b3e5fc' },
-  { bg: '#e8f5f1', border: '#4db6ac', title: '#00695c', chip: '#26a69a', soft: '#b2dfdb' },
-  { bg: '#f3eef8', border: '#ba68c8', title: '#6a1b9a', chip: '#ab47bc', soft: '#e1bee7' },
-  { bg: '#e8f1fb', border: '#64b5f6', title: '#1565c0', chip: '#42a5f5', soft: '#bbdefb' },
-  { bg: '#fceef3', border: '#f06292', title: '#ad1457', chip: '#ec407a', soft: '#f8bbd0' },
-  { bg: '#e5f7f8', border: '#4dd0e1', title: '#00838f', chip: '#26c6da', soft: '#b2ebf2' },
-  { bg: '#eeedf7', border: '#7e57c2', title: '#4527a0', chip: '#7e57c2', soft: '#d1c4e9' },
-  { bg: '#fff8e7', border: '#ffb74d', title: '#ef6c00', chip: '#ffa726', soft: '#ffe0b2' },
-  { bg: '#f1f7e9', border: '#9ccc65', title: '#558b2f', chip: '#8bc34a', soft: '#dcedc8' },
-  { bg: '#fff0ea', border: '#ff8a65', title: '#d84315', chip: '#ff7043', soft: '#ffccbc' },
-  { bg: '#e8f4f2', border: '#4db6ac', title: '#00695c', chip: '#26a69a', soft: '#b2dfdb' },
+  { bg: '#f5f5f5', border: '#bdbdbd', title: '#424242', chip: '#616161', soft: '#e0e0e0' },
+  { bg: '#e8f5e9', border: '#81c784', title: '#2e7d32', chip: '#43a047', soft: '#c8e6c9' },
+  { bg: '#fff3e0', border: '#ffb74d', title: '#ef6c00', chip: '#fb8c00', soft: '#ffe0b2' },
+  { bg: '#f3e5f5', border: '#ce93d8', title: '#6a1b9a', chip: '#ab47bc', soft: '#e1bee7' },
+  { bg: '#efebe9', border: '#a1887f', title: '#5d4037', chip: '#795548', soft: '#d7ccc8' },
+  { bg: '#fce4ec', border: '#f48fb1', title: '#ad1457', chip: '#ec407a', soft: '#f8bbd0' },
+  { bg: '#e0f2f1', border: '#80cbc4', title: '#00695c', chip: '#26a69a', soft: '#b2dfdb' },
+  { bg: '#fff8e1', border: '#ffe082', title: '#f9a825', chip: '#fbc02d', soft: '#ffecb3' },
+  { bg: '#f1f8e9', border: '#aed581', title: '#558b2f', chip: '#8bc34a', soft: '#dcedc8' },
+  { bg: '#fbe9e7', border: '#ffab91', title: '#d84315', chip: '#ff7043', soft: '#ffccbc' },
+  { bg: '#eceff1', border: '#90a4ae', title: '#455a64', chip: '#607d8b', soft: '#cfd8dc' },
+  { bg: '#e8f5e9', border: '#66bb6a', title: '#1b5e20', chip: '#43a047', soft: '#c8e6c9' },
 ];
 
 type Props = {
@@ -75,6 +75,8 @@ type Props = {
   onChange: (next: EntryTicketCustomSet) => void;
   onRename: (name: string) => void;
   onDeleteSet: () => void;
+  /** Wie oft die Karte schon im Play gezeigt wurde (sourceKey → count). */
+  showCounts?: Record<string, number>;
 };
 
 function lessonMatchesPath(lesson: EntryTicketLessonSection, lessonPath?: string | null): boolean {
@@ -116,12 +118,13 @@ export function EntryTicketFragensetEditor({
   onChange,
   onRename,
   onDeleteSet,
+  showCounts,
 }: Props) {
   const [nameDraft, setNameDraft] = useState(set.name);
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
     for (const lesson of set.lessons) {
-      init[lesson.id] = lessonMatchesPath(lesson, activeLessonPath) || lesson.tasks.length === 0;
+      init[lesson.id] = true;
     }
     return init;
   });
@@ -132,19 +135,40 @@ export function EntryTicketFragensetEditor({
     setNameDraft(set.name);
   }, [set.id, set.name]);
 
+  const maxShowCount = useMemo(() => {
+    if (!showCounts) return 0;
+    let max = 0;
+    for (const lesson of set.lessons) {
+      for (const task of lesson.tasks) {
+        const n = showCounts[`c:${set.id}:${task.id}`] || 0;
+        if (n > max) max = n;
+      }
+    }
+    return max;
+  }, [showCounts, set.id, set.lessons]);
+
+  useEffect(() => {
+    const init: Record<string, boolean> = {};
+    for (const lesson of set.lessons) {
+      init[lesson.id] = true;
+    }
+    setExpanded(init);
+  }, [set.id]);
+
   useEffect(() => {
     setExpanded((prev) => {
       const next = { ...prev };
+      let changed = false;
       for (const lesson of set.lessons) {
         if (next[lesson.id] === undefined) {
-          next[lesson.id] = lessonMatchesPath(lesson, activeLessonPath) || lesson.tasks.length === 0;
+          next[lesson.id] = true;
+          changed = true;
         }
       }
-      return next;
+      return changed ? next : prev;
     });
-  }, [set.lessons, activeLessonPath]);
+  }, [set.lessons]);
 
-  const totalQuestions = countCustomSetTasks(set);
   const topicGroups = useMemo(() => groupLessonsByTopic(set.lessons), [set.lessons]);
 
   const updateLessons = (lessons: EntryTicketLessonSection[]) => {
@@ -207,15 +231,15 @@ export function EntryTicketFragensetEditor({
   return (
     <Box
       sx={{
-        mt: 0.75,
+        mt: 0,
         width: '100%',
         minWidth: 0,
         boxSizing: 'border-box',
         borderRadius: 1.5,
-        border: `1px solid ${ET.border}`,
-        bgcolor: ET.surface,
+        border: `1.5px solid ${ET.border}`,
+        bgcolor: ET.white,
         overflow: 'hidden',
-        boxShadow: '0 2px 10px rgba(26, 35, 126, 0.06)',
+        boxShadow: 'none',
       }}
     >
       {/* Kopfzeile */}
@@ -227,22 +251,11 @@ export function EntryTicketFragensetEditor({
           gap: 0.75,
           px: 1,
           py: 0.55,
-          borderBottom: `1px solid ${ET.border}`,
-          bgcolor: 'rgba(57, 73, 171, 0.07)',
+          borderBottom: `2.5px solid ${ET.accent}`,
+          bgcolor: '#f5f5f5',
           boxSizing: 'border-box',
         }}
       >
-        <Typography
-          sx={{
-            fontWeight: 800,
-            fontSize: '0.72rem',
-            color: ET.ink,
-            letterSpacing: 0.02,
-            flexShrink: 0,
-          }}
-        >
-          Fragenset
-        </Typography>
         <TextField
           size="small"
           value={nameDraft}
@@ -266,20 +279,6 @@ export function EntryTicketFragensetEditor({
             '& .MuiInputBase-input': { ...fieldSx['& .MuiInputBase-input'], fontWeight: 700, color: ET.ink },
           }}
         />
-        <Typography
-          sx={{
-            flex: 1,
-            minWidth: 0,
-            fontSize: '0.68rem',
-            fontWeight: 650,
-            color: ET.muted,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {set.lessons.length} Std. · {totalQuestions} Karten · Play = vorherige Stunden
-        </Typography>
         <Tooltip title="Fragenset löschen">
           <IconButton
             size="small"
@@ -322,6 +321,7 @@ export function EntryTicketFragensetEditor({
                   }}
                 />
               )}
+              {!/^eigen\b/i.test(group.topic.trim()) && (
               <Box
                 sx={{
                   display: 'inline-flex',
@@ -339,6 +339,7 @@ export function EntryTicketFragensetEditor({
                   {group.topic}
                 </Typography>
               </Box>
+              )}
 
               <Box
                 sx={{
@@ -481,33 +482,105 @@ export function EntryTicketFragensetEditor({
                           </Typography>
                         )}
 
-                        {lesson.tasks.map((task, taskIndex) => (
+                        {lesson.tasks.length > 0 && (
                           <Box
-                            key={task.id}
                             sx={{
                               width: '100%',
                               display: 'grid',
-                              gridTemplateColumns: 'minmax(0, 1fr) 22px',
+                              gridTemplateColumns: '28px minmax(0, 1fr) minmax(0, 1fr) 22px',
+                              gap: 0.4,
+                              boxSizing: 'border-box',
+                            }}
+                          >
+                            <Box />
+                            <Typography
+                              sx={{
+                                fontSize: '0.62rem',
+                                fontWeight: 800,
+                                letterSpacing: 0.04,
+                                textTransform: 'uppercase',
+                                color: '#e65100',
+                                bgcolor: '#ffe0b2',
+                                border: '2px solid #ef6c00',
+                                borderRadius: 0.75,
+                                px: 0.6,
+                                py: 0.2,
+                                textAlign: 'center',
+                              }}
+                            >
+                              Frage
+                            </Typography>
+                            <Typography
+                              sx={{
+                                fontSize: '0.62rem',
+                                fontWeight: 800,
+                                letterSpacing: 0.04,
+                                textTransform: 'uppercase',
+                                color: '#1b5e20',
+                                bgcolor: '#c8e6c9',
+                                border: '2px solid #2e7d32',
+                                borderRadius: 0.75,
+                                px: 0.6,
+                                py: 0.2,
+                                textAlign: 'center',
+                              }}
+                            >
+                              Antwort
+                            </Typography>
+                            <Box />
+                          </Box>
+                        )}
+
+                        {lesson.tasks.map((task, taskIndex) => {
+                          const countKey = `c:${set.id}:${task.id}`;
+                          const shown = showCounts?.[countKey] || 0;
+                          const tone = entryTicketShowCountStyle(shown, maxShowCount);
+                          return (
+                          <Box
+                            key={task.id}
+                            sx={{
+                              position: 'relative',
+                              width: '100%',
+                              display: 'grid',
+                              gridTemplateColumns: '28px minmax(0, 1fr) minmax(0, 1fr) 22px',
                               gap: 0.4,
                               alignItems: 'start',
                               boxSizing: 'border-box',
                             }}
                           >
-                            <Box sx={{ display: 'grid', gap: 0.35, minWidth: 0 }}>
-                              <EntryTicketRichField
-                                value={task.prompt}
-                                onChange={(prompt) => updateTask(lesson.id, task.id, { prompt })}
-                                placeholder={`${taskIndex + 1}. Frage`}
-                                minHeight={44}
-                              />
-                              <EntryTicketRichField
-                                value={task.solution}
-                                onChange={(solution) => updateTask(lesson.id, task.id, { solution })}
-                                placeholder="Antwort / Lösung"
-                                softBg="rgba(232, 245, 233, 0.7)"
-                                minHeight={44}
-                              />
-                            </Box>
+                            <Typography
+                              component="span"
+                              title={`Schon ${shown}× gezeigt`}
+                              sx={{
+                                mt: 0.45,
+                                fontSize: '0.62rem',
+                                fontWeight: 800,
+                                lineHeight: 1.15,
+                                color: tone.color,
+                                bgcolor: tone.bgcolor,
+                                textAlign: 'center',
+                                fontVariantNumeric: 'tabular-nums',
+                                px: 0.3,
+                                py: 0.15,
+                                borderRadius: 0.5,
+                              }}
+                            >
+                              {shown}×
+                            </Typography>
+                            <EntryTicketRichField
+                              value={task.prompt}
+                              onChange={(prompt) => updateTask(lesson.id, task.id, { prompt })}
+                              placeholder={`${taskIndex + 1}. Frage`}
+                              tone="prompt"
+                              minHeight={56}
+                            />
+                            <EntryTicketRichField
+                              value={task.solution}
+                              onChange={(solution) => updateTask(lesson.id, task.id, { solution })}
+                              placeholder="Antwort / Lösung"
+                              tone="answer"
+                              minHeight={56}
+                            />
                             <Tooltip title="Karte löschen">
                               <IconButton
                                 size="small"
@@ -524,7 +597,8 @@ export function EntryTicketFragensetEditor({
                               </IconButton>
                             </Tooltip>
                           </Box>
-                        ))}
+                          );
+                        })}
 
                         {(() => {
                           const listDraft = listDraftByLesson[lesson.id] || '';
@@ -639,7 +713,7 @@ export function EntryTicketFragensetEditor({
                 color: ET.accent,
                 borderRadius: 0.75,
                 bgcolor: ET.white,
-                '&:hover': { bgcolor: 'rgba(57,73,171,0.06)', borderColor: ET.accentSoft },
+                '&:hover': { bgcolor: 'rgba(69,90,100,0.06)', borderColor: ET.accentSoft },
               }}
             >
               <AddIcon sx={{ fontSize: 15 }} />
