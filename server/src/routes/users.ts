@@ -303,9 +303,63 @@ const deleteAvatarImage: RequestHandler = async (req, res) => {
   }
 };
 
+const updateStudentCredentials: RequestHandler = async (req, res) => {
+  try {
+    if (req.user?.role !== 'TEACHER') {
+      return res.status(403).json({ error: 'Nur Lehrkräfte können Schülerdaten ändern' });
+    }
+
+    const { name, loginCode } = req.body as { name?: string; loginCode?: string };
+    const data: { name?: string; loginCode?: string } = {};
+
+    if (typeof name === 'string' && name.trim()) {
+      const parts = name.trim().split(/\s+/).filter(Boolean);
+      data.name =
+        parts.length <= 1 ? parts[0] : `${parts[0]} ${parts[parts.length - 1]}`;
+    }
+    if (typeof loginCode === 'string' && loginCode.trim()) {
+      data.loginCode = loginCode.trim();
+    }
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ error: 'Name oder Login-Code erforderlich' });
+    }
+
+    const existing = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, role: true },
+    });
+    if (!existing || existing.role !== 'STUDENT') {
+      return res.status(404).json({ error: 'Schüler nicht gefunden' });
+    }
+
+    if (data.loginCode) {
+      const conflict = await prisma.user.findFirst({
+        where: { loginCode: data.loginCode, NOT: { id: req.params.id } },
+        select: { id: true, name: true },
+      });
+      if (conflict) {
+        return res.status(409).json({
+          error: `Login-Code bereits vergeben (${conflict.name})`,
+        });
+      }
+    }
+
+    const user = await prisma.user.update({
+      where: { id: req.params.id },
+      data,
+      select: userSelect,
+    });
+    res.json(withNormalizedAvatar(user));
+  } catch (error) {
+    console.error('Error updating student credentials:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
 router.get('/', authenticateUser, requireTeacher, getAllUsers);
 router.get('/me', authenticateUser, getCurrentUser);
 router.get('/:id', authenticateUser, getUserById);
+router.put('/:id/credentials', authenticateUser, requireTeacher, updateStudentCredentials);
 router.put('/:id/avatar-emoji', authenticateUser, updateUserAvatarEmoji);
 router.put('/:id/profile-appearance', authenticateUser, updateProfileAppearance);
 router.post(

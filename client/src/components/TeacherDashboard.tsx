@@ -98,6 +98,7 @@ import {
   Switch,
   ToggleButton,
   ToggleButtonGroup,
+  ButtonGroup,
   FormControlLabel,
   FormGroup,
   Checkbox,
@@ -433,6 +434,8 @@ interface Student {
   loginCode: string;
   avatarEmoji?: string;
   avatarUrl?: string | null;
+  learningGroups?: Array<{ id: string; name: string; isArchived?: boolean }>;
+  inCurrentGroup?: boolean;
 }
 
 // Mini-Noten: Schema/Grade Typen
@@ -5880,7 +5883,19 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [editGroupIcon, setEditGroupIcon] = useState(DEFAULT_LEARNING_GROUP_ICON);
   const [editGroupColor, setEditGroupColor] = useState(DEFAULT_LEARNING_GROUP_COLOR);
   const [editGroupId, setEditGroupId] = useState<string | null>(null);
-  const [addStudentsGroupName, setAddStudentsGroupName] = useState('');
+  const [webUntisPreview, setWebUntisPreview] = useState<any | null>(null);
+  const [webUntisBusy, setWebUntisBusy] = useState(false);
+  const [webUntisPanelOpen, setWebUntisPanelOpen] = useState(false);
+  const [addStudentsSearch, setAddStudentsSearch] = useState('');
+  const [addStudentsLoading, setAddStudentsLoading] = useState(false);
+  const [addStudentsExpanded, setAddStudentsExpanded] = useState<Record<string, boolean>>({});
+  const [addStudentsSavingId, setAddStudentsSavingId] = useState<string | null>(null);
+  const [addStudentsDirectoryMeta, setAddStudentsDirectoryMeta] = useState<{ total: number; inGroup: number }>({
+    total: 0,
+    inGroup: 0,
+  });
+  const webUntisFileInputRef = useRef<HTMLInputElement | null>(null);
+  const availableStudentsRef = useRef<Student[]>([]);
   const [gradingModalOpen, setGradingModalOpen] = useState(false);
   
   // Flashcard Progress State
@@ -10483,47 +10498,308 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     }
   };
 
-  const handleOpenAddStudents = async (groupId: string) => {
-    setSelectedGroupId(groupId);
-    setAddStudentsGroupName(groups.find((g) => g.id === groupId)?.name || '');
-    setSelectedStudents([]); // Reset selected students when opening dialog
+  const loadAddStudentsDirectory = useCallback(async (groupId: string) => {
+    setAddStudentsLoading(true);
     try {
       const response = await fetch(`/api/learning-groups/${groupId}/available-students`);
-      if (!response.ok) throw new Error('Fehler beim Laden der verfügbaren Schüler');
+      if (!response.ok) throw new Error('Fehler beim Laden der Schüler');
       const data = await response.json();
-      // State-Updates in einem Batch durchführen, um Re-Render-Loops zu vermeiden
-      setAvailableStudents(data);
-      // Dialog erst nach dem State-Update öffnen
-      setTimeout(() => {
-        setOpenAddStudentsDialog(true);
-      }, 0);
+      const list: Student[] = Array.isArray(data) ? data : Array.isArray(data?.students) ? data.students : [];
+      setAvailableStudents(list);
+      availableStudentsRef.current = list;
+      setAddStudentsDirectoryMeta({
+        total: typeof data?.total === 'number' ? data.total : list.length,
+        inGroup:
+          typeof data?.inGroup === 'number'
+            ? data.inGroup
+            : list.filter((s) => s.inCurrentGroup).length,
+      });
+      // Aktuelle Gruppe aufgeklappt
+      setAddStudentsExpanded((prev) => {
+        if (Object.keys(prev).length > 0) return prev;
+        return { [groupId]: true };
+      });
+      return list;
+    } finally {
+      setAddStudentsLoading(false);
+    }
+  }, []);
+
+  const handleOpenAddStudents = async (groupId: string) => {
+    setSelectedGroupId(groupId);
+    setSelectedStudents([]);
+    setWebUntisPreview(null);
+    setWebUntisBusy(false);
+    setWebUntisPanelOpen(false);
+    setAddStudentsSearch('');
+    setAddStudentsExpanded({});
+    try {
+      await loadAddStudentsDirectory(groupId);
+      setOpenAddStudentsDialog(true);
     } catch (error) {
       showSnackbar('Fehler beim Laden der verfügbaren Schüler', 'error');
     }
   };
 
   const handleCloseAddStudentsDialog = useCallback(() => {
-    if (isAddingStudentsRef.current) return; // Verhindere Schließen während des Hinzufügens
+    if (isAddingStudentsRef.current) return;
     setOpenAddStudentsDialog(false);
     setSelectedStudents([]);
-    setAddStudentsGroupName('');
+    setWebUntisPreview(null);
+    setWebUntisBusy(false);
+    setWebUntisPanelOpen(false);
+    setAddStudentsSearch('');
   }, []);
 
+  const handleWebUntisFileSelected = async (file: File | null) => {
+    if (!file || !selectedGroupId) return;
+    setWebUntisBusy(true);
+    setWebUntisPreview(null);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const response = await fetch(`/api/learning-groups/${selectedGroupId}/import-webuntis/preview`, {
+        method: 'POST',
+        body: form,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || 'Fehler beim Lesen der WebUntis-Liste');
+      }
+      setWebUntisPreview(data);
+      setWebUntisPanelOpen(true);
+    } catch (error: any) {
+      showSnackbar(error?.message || 'Fehler beim WebUntis-Import', 'error');
+    } finally {
+      setWebUntisBusy(false);
+    }
+  };
+
+  const handleConfirmWebUntisImport = async () => {
+    if (!selectedGroupId || !webUntisPreview?.students?.length || webUntisBusy) return;
+    setWebUntisBusy(true);
+    try {
+      const response = await fetch(`/api/learning-groups/${selectedGroupId}/import-webuntis/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          groupNumber: webUntisPreview.groupNumber,
+          students: webUntisPreview.students.map((s: any) => ({
+            firstName: s.firstName,
+            lastName: s.lastName,
+            fullName: s.fullName,
+            loginCode: s.loginCode,
+            listIndex: s.listIndex,
+            existingUserId: s.existingUserId,
+            status: s.status,
+          })),
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || 'Fehler beim Anlegen der Schüler');
+      }
+      setWebUntisPreview(null);
+      setSelectedStudents([]);
+      await fetchGroups();
+      await loadAddStudentsDirectory(selectedGroupId);
+      const created = data.created ?? 0;
+      const connected = data.connected ?? 0;
+      showSnackbar(
+        `WebUntis: ${created} neu angelegt, ${connected} der Gruppe zugeordnet`,
+        'success',
+      );
+    } catch (error: any) {
+      showSnackbar(error?.message || 'Fehler beim WebUntis-Import', 'error');
+    } finally {
+      setWebUntisBusy(false);
+    }
+  };
+
+  const updateWebUntisPreviewRow = (index: number, patch: Record<string, unknown>) => {
+    setWebUntisPreview((prev: any) => {
+      if (!prev?.students) return prev;
+      const students = prev.students.map((row: any, i: number) => {
+        if (i !== index) return row;
+        const next = { ...row, ...patch };
+        if (typeof patch.fullName === 'string') {
+          const parts = patch.fullName.trim().split(/\s+/).filter(Boolean);
+          next.firstName = parts[0] || '';
+          next.lastName = parts.length > 1 ? parts[parts.length - 1] : '';
+          next.fullName =
+            parts.length <= 1 ? parts[0] || '' : `${parts[0]} ${parts[parts.length - 1]}`;
+        }
+        return next;
+      });
+      return { ...prev, students };
+    });
+  };
+
+  const handleAvailableStudentFieldChange = (
+    studentId: string,
+    field: 'name' | 'loginCode',
+    value: string,
+  ) => {
+    setAvailableStudents((prev) => {
+      const next = prev.map((s) => (s.id === studentId ? { ...s, [field]: value } : s));
+      availableStudentsRef.current = next;
+      return next;
+    });
+  };
+
+  const handleAvailableStudentCredentialsSave = async (studentId: string) => {
+    const student = availableStudentsRef.current.find((s) => s.id === studentId);
+    if (!student) return;
+    const name = formatStudentName(student.name) || student.name.trim();
+    const loginCode = student.loginCode.trim();
+    if (!name || !loginCode) {
+      showSnackbar('Name und Login-Code dürfen nicht leer sein', 'error');
+      return;
+    }
+    setAddStudentsSavingId(studentId);
+    try {
+      const response = await fetch(`/api/users/${studentId}/credentials`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': localStorage.getItem('loginCode') || '',
+        },
+        body: JSON.stringify({ name, loginCode }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || 'Speichern fehlgeschlagen');
+      }
+      setAvailableStudents((prev) => {
+        const next = prev.map((s) =>
+          s.id === studentId
+            ? { ...s, name: data.name ?? name, loginCode: data.loginCode ?? loginCode }
+            : s,
+        );
+        availableStudentsRef.current = next;
+        return next;
+      });
+      await fetchGroups();
+    } catch (error: any) {
+      showSnackbar(error?.message || 'Speichern fehlgeschlagen', 'error');
+      if (selectedGroupId) {
+        try {
+          await loadAddStudentsDirectory(selectedGroupId);
+        } catch {
+          // ignore reload error
+        }
+      }
+    } finally {
+      setAddStudentsSavingId(null);
+    }
+  };
+
+  const availableStudentsByGroup = useMemo(() => {
+    type Section = {
+      key: string;
+      title: string;
+      students: Student[];
+      isCurrent: boolean;
+      isArchived?: boolean;
+    };
+    const q = addStudentsSearch.trim().toLowerCase();
+    const matches = (s: Student) => {
+      if (!q) return true;
+      return (
+        s.name.toLowerCase().includes(q) ||
+        s.loginCode.toLowerCase().includes(q) ||
+        formatStudentName(s.name).toLowerCase().includes(q)
+      );
+    };
+
+    const filtered = availableStudents.filter(matches);
+    const byGroup = new Map<string, Section>();
+    const ungrouped: Student[] = [];
+    const currentId = selectedGroupId;
+
+    for (const student of filtered) {
+      const memberships = student.learningGroups || [];
+      if (memberships.length === 0) {
+        ungrouped.push(student);
+        continue;
+      }
+      for (const g of memberships) {
+        if (!byGroup.has(g.id)) {
+          byGroup.set(g.id, {
+            key: g.id,
+            title: g.name,
+            students: [],
+            isCurrent: g.id === currentId,
+            isArchived: Boolean(g.isArchived),
+          });
+        }
+        byGroup.get(g.id)!.students.push(student);
+      }
+    }
+
+    // Deduplicate within each section (safety)
+    for (const sec of byGroup.values()) {
+      const seen = new Set<string>();
+      sec.students = sec.students.filter((s) => {
+        if (seen.has(s.id)) return false;
+        seen.add(s.id);
+        return true;
+      });
+      sec.students.sort((a, b) =>
+        formatStudentName(a.name).localeCompare(formatStudentName(b.name), 'de'),
+      );
+    }
+
+    const sections = [...byGroup.values()].sort((a, b) => {
+      if (a.isCurrent && !b.isCurrent) return -1;
+      if (!a.isCurrent && b.isCurrent) return 1;
+      return a.title.localeCompare(b.title, 'de');
+    });
+
+    if (ungrouped.length > 0) {
+      ungrouped.sort((a, b) =>
+        formatStudentName(a.name).localeCompare(formatStudentName(b.name), 'de'),
+      );
+      sections.push({
+        key: '_none',
+        title: 'Ohne Lerngruppe',
+        students: ungrouped,
+        isCurrent: false,
+      });
+    }
+
+    // Unique student count for header (multi-group students counted once)
+    return sections;
+  }, [availableStudents, addStudentsSearch, selectedGroupId]);
+
+  const addStudentsUniqueVisibleCount = useMemo(() => {
+    const ids = new Set<string>();
+    for (const sec of availableStudentsByGroup) {
+      for (const s of sec.students) ids.add(s.id);
+    }
+    return ids.size;
+  }, [availableStudentsByGroup]);
+
   const handleAddStudents = async () => {
-    if (isAddingStudentsRef.current) return; // Verhindere mehrfache Aufrufe
+    if (isAddingStudentsRef.current) return;
     if (!selectedGroupId || selectedStudents.length === 0) {
       showSnackbar('Bitte wählen Sie mindestens einen Schüler aus', 'error');
       return;
     }
-    
+
+    const studentIdsToAdd = selectedStudents.filter((id) => {
+      const s = availableStudentsRef.current.find((x) => x.id === id);
+      return s && !s.inCurrentGroup;
+    });
+    if (studentIdsToAdd.length === 0) {
+      showSnackbar('Alle ausgewählten Schüler sind bereits in der Gruppe', 'error');
+      return;
+    }
+
     isAddingStudentsRef.current = true;
-    const studentIdsToAdd = [...selectedStudents]; // Kopie für async Operation
     const groupIdToUse = selectedGroupId;
-    
-    // Dialog sofort schließen, um Re-Render-Loops zu vermeiden
-    setOpenAddStudentsDialog(false);
     setSelectedStudents([]);
-    
+
     try {
       const response = await fetch(`/api/learning-groups/${groupIdToUse}/students`, {
         method: 'POST',
@@ -10532,7 +10808,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       });
       if (!response.ok) throw new Error('Fehler beim Hinzufügen der Schüler');
       await fetchGroups();
-      showSnackbar('Schüler erfolgreich hinzugefügt', 'success');
+      await loadAddStudentsDirectory(groupIdToUse);
+      showSnackbar(`${studentIdsToAdd.length} Schüler hinzugefügt`, 'success');
     } catch (error) {
       showSnackbar('Fehler beim Hinzufügen der Schüler', 'error');
     } finally {
@@ -12200,7 +12477,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     if (folderAssignmentGroupId === groupId) setFolderAssignmentGroupName(trimmedName);
     if (gradingGroupId === groupId) setGradingGroupName(trimmedName);
     if (gradesGroupId === groupId) setGradesGroupName(trimmedName);
-    if (selectedGroupId === groupId) setAddStudentsGroupName(trimmedName);
     if (editGroupId === groupId) setEditGroupName(trimmedName);
   };
 
@@ -14794,7 +15070,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       <Grid container spacing={0.8} sx={{ display: expandedGroups[group.id] === false ? 'none' : 'flex' }}>
                         <Grid item xs={12} md={8} sx={{ display: 'flex', flexDirection: 'column' }}>
                           <Grid container spacing={0.8} sx={{ display: expandedStudents[group.id] ? 'flex' : 'none' }}>
-                            {group.students.map((student) => {
+                            {group.students.map((student, studentIndex) => {
                               const isModerator = group.moderatorStudentId === student.id;
                               return (
                               <Grid item xs={12} sm={6} md={6} lg={3} key={student.id}>
@@ -14899,7 +15175,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                       }}
                                       title={`Code: ${student.loginCode}${isModerator ? ' · Moderator' : ''}`}
                                       >
-                                        {formatStudentName(student.name)}
+                                        {studentIndex + 1}. {formatStudentName(student.name)}
                                       </Typography>
                                       
                                       {/* Overall Grade - Right */}
@@ -16683,79 +16959,467 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         </DialogActions>
       </Dialog>
       {/* Add Students Dialog */}
-      <Dialog open={openAddStudentsDialog} onClose={handleCloseAddStudentsDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>Schüler hinzufügen</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Name der Lerngruppe"
-            type="text"
-            fullWidth
-            value={addStudentsGroupName}
-            onChange={(e) => setAddStudentsGroupName(e.target.value)}
-            onBlur={() => {
-              if (selectedGroupId && addStudentsGroupName.trim()) {
-                void renameLearningGroup(selectedGroupId, addStudentsGroupName, { silent: true });
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && selectedGroupId && addStudentsGroupName.trim()) {
-                void renameLearningGroup(selectedGroupId, addStudentsGroupName);
-              }
-            }}
-            sx={{ mb: 1.5 }}
-            helperText="Gruppe hier direkt umbenennen oder unten Schüler auswählen"
+      <Dialog
+        open={openAddStudentsDialog}
+        onClose={handleCloseAddStudentsDialog}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            overflow: 'hidden',
+            border: `1px solid ${colors.border}`,
+            boxShadow: '0 18px 48px rgba(44,62,80,0.18)',
+            maxHeight: '92vh',
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            ...dialogCloseTitleSx,
+            py: 1.5,
+            px: 2,
+            background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
+            color: '#fff',
+          }}
+        >
+          <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
+            Schüler verwalten
+          </Typography>
+          <Typography variant="caption" sx={{ opacity: 0.92, display: 'block' }}>
+            {groups.find((g) => g.id === selectedGroupId)?.name || 'Lerngruppe'}
+            {' · '}
+            {addStudentsDirectoryMeta.total} in DB
+            {' · '}
+            {addStudentsDirectoryMeta.inGroup} in dieser Gruppe
+            {addStudentsSearch.trim()
+              ? ` · ${addStudentsUniqueVisibleCount} Treffer`
+              : ''}
+          </Typography>
+          <DialogCloseIconButton
+            onClose={handleCloseAddStudentsDialog}
+            sx={{ color: '#fff' }}
+            iconSx={{ color: '#fff' }}
           />
-          <List>
-            {availableStudents.map((student) => (
-              <ListItem key={student.id}>
-                <ListItemText 
-                  primary={formatStudentName(student.name)}
-                  secondary={`Login-Code: ${student.loginCode}`}
-                />
-                <ListItemSecondaryAction>
-                  <Checkbox
-                    edge="end"
-                    onChange={(event) => {
-                      setSelectedStudents((prev) => {
-                        if (event.target.checked) {
-                          return [...prev, student.id];
-                        } else {
-                          return prev.filter(id => id !== student.id);
-                        }
-                      });
+        </DialogTitle>
+        <DialogContent sx={{ p: 0, bgcolor: colors.background, display: 'flex', flexDirection: 'column' }}>
+          <Box
+            sx={{
+              px: 1.5,
+              pt: 1,
+              pb: 0.75,
+              display: 'flex',
+              gap: 0.75,
+              alignItems: 'center',
+              flexWrap: 'nowrap',
+            }}
+          >
+            <TextField
+              size="small"
+              placeholder="Suchen…"
+              value={addStudentsSearch}
+              onChange={(e) => setAddStudentsSearch(e.target.value)}
+              InputProps={{
+                startAdornment: <SearchIcon sx={{ fontSize: 16, color: colors.textSecondary, mr: 0.5 }} />,
+              }}
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                bgcolor: colors.cardBg,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 1.5,
+                  height: 32,
+                },
+                '& .MuiInputBase-input': {
+                  py: 0.4,
+                  fontSize: '0.8rem',
+                },
+              }}
+            />
+            <ButtonGroup
+              size="small"
+              variant="outlined"
+              sx={{
+                flexShrink: 0,
+                height: 32,
+                '& .MuiButtonGroup-grouped': {
+                  minWidth: 0,
+                  px: 1,
+                  fontSize: '0.7rem',
+                  textTransform: 'none',
+                  whiteSpace: 'nowrap',
+                  borderColor: colors.border,
+                  color: colors.textPrimary,
+                  lineHeight: 1.2,
+                },
+              }}
+            >
+              <Button
+                disabled={addStudentsLoading || !selectedGroupId}
+                onClick={() => selectedGroupId && void loadAddStudentsDirectory(selectedGroupId)}
+                startIcon={<RefreshIcon sx={{ fontSize: 14 }} />}
+                sx={{ '& .MuiButton-startIcon': { mr: 0.35, ml: -0.15 } }}
+              >
+                Laden
+              </Button>
+              <Button
+                onClick={() => setWebUntisPanelOpen((v) => !v)}
+                startIcon={<CloudUploadIcon sx={{ fontSize: 14 }} />}
+                sx={{
+                  '& .MuiButton-startIcon': { mr: 0.35, ml: -0.15 },
+                  ...(webUntisPanelOpen
+                    ? {
+                        bgcolor: `${colors.secondary}22`,
+                        borderColor: colors.secondary,
+                        color: colors.secondary,
+                        '&:hover': { bgcolor: `${colors.secondary}33` },
+                      }
+                    : {}),
+                }}
+              >
+                Untis
+              </Button>
+            </ButtonGroup>
+          </Box>
+
+          <Collapse in={webUntisPanelOpen}>
+            <Box
+              sx={{
+                mx: 2,
+                mb: 1,
+                p: 1.25,
+                borderRadius: 2,
+                bgcolor: colors.cardBg,
+                border: `1px dashed ${colors.secondary}66`,
+              }}
+            >
+              <Typography variant="caption" sx={{ color: colors.textSecondary, display: 'block', mb: 1 }}>
+                PDF „Schüler*innen im Unterricht“ · ohne Mittelnamen · Name/Login vor dem Anlegen editierbar
+              </Typography>
+              <input
+                ref={webUntisFileInputRef}
+                type="file"
+                accept=".pdf,.txt,.csv,application/pdf,text/plain,text/csv"
+                hidden
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  e.target.value = '';
+                  void handleWebUntisFileSelected(file);
+                }}
+              />
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<CloudUploadIcon />}
+                  disabled={webUntisBusy || !selectedGroupId}
+                  onClick={() => webUntisFileInputRef.current?.click()}
+                  sx={{ textTransform: 'none', borderRadius: 2 }}
+                >
+                  {webUntisBusy ? 'Lädt…' : 'Liste hochladen'}
+                </Button>
+                {webUntisPreview?.students?.length ? (
+                  <Button
+                    size="small"
+                    variant="contained"
+                    disabled={webUntisBusy}
+                    onClick={() => void handleConfirmWebUntisImport()}
+                    sx={{
+                      textTransform: 'none',
+                      borderRadius: 2,
+                      bgcolor: colors.secondary,
+                      '&:hover': { bgcolor: colors.secondary },
                     }}
-                    checked={selectedStudents.includes(student.id)}
-                  />
-                </ListItemSecondaryAction>
-              </ListItem>
-            ))}
-          </List>
+                  >
+                    Anlegen & zuordnen ({webUntisPreview.students.length})
+                  </Button>
+                ) : null}
+              </Box>
+              {webUntisPreview?.students?.length ? (
+                <Box sx={{ mt: 1, maxHeight: 200, overflow: 'auto' }}>
+                  <Typography variant="caption" sx={{ color: colors.textSecondary }}>
+                    {webUntisPreview.summary?.neu ?? 0} neu · {webUntisPreview.summary?.vorhanden ?? 0} vorhanden ·{' '}
+                    {webUntisPreview.summary?.schonInGruppe ?? 0} schon in Gruppe
+                  </Typography>
+                  {webUntisPreview.students.map((row: any, idx: number) => (
+                    <Box
+                      key={`${row.existingUserId || row.fullName}-${idx}`}
+                      sx={{ display: 'flex', gap: 0.75, alignItems: 'center', mt: 0.75 }}
+                    >
+                      <Typography variant="caption" sx={{ width: 22, color: colors.textSecondary }}>
+                        {row.listIndex ?? idx + 1}.
+                      </Typography>
+                      <TextField
+                        size="small"
+                        value={row.fullName || ''}
+                        onChange={(e) => updateWebUntisPreviewRow(idx, { fullName: e.target.value })}
+                        placeholder="Name"
+                        sx={{ flex: 1, '& .MuiInputBase-input': { py: 0.6, fontSize: '0.8rem' } }}
+                      />
+                      <TextField
+                        size="small"
+                        value={row.loginCode || ''}
+                        onChange={(e) => updateWebUntisPreviewRow(idx, { loginCode: e.target.value })}
+                        placeholder="Login"
+                        sx={{ width: 118, '& .MuiInputBase-input': { py: 0.6, fontSize: '0.8rem' } }}
+                      />
+                    </Box>
+                  ))}
+                </Box>
+              ) : null}
+            </Box>
+          </Collapse>
+
+          <Box sx={{ px: 2, pb: 1.5, flex: 1, overflow: 'auto', minHeight: 280 }}>
+            {addStudentsLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+                <CircularProgress size={28} sx={{ color: colors.primary }} />
+              </Box>
+            ) : availableStudentsByGroup.length === 0 ? (
+              <Typography variant="body2" sx={{ color: colors.textSecondary, textAlign: 'center', py: 4 }}>
+                Keine Schüler gefunden.
+              </Typography>
+            ) : (
+              availableStudentsByGroup.map((section) => {
+                const expanded = addStudentsExpanded[section.key] ?? section.isCurrent;
+                const selectable = section.students.filter((s) => !s.inCurrentGroup);
+                const selectedInSection = selectable.filter((s) => selectedStudents.includes(s.id)).length;
+                return (
+                  <Box
+                    key={section.key}
+                    sx={{
+                      mb: 1,
+                      borderRadius: 2,
+                      bgcolor: colors.cardBg,
+                      border: `1px solid ${section.isCurrent ? colors.primary + '55' : colors.border}`,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <Box
+                      onClick={() =>
+                        setAddStudentsExpanded((prev) => ({
+                          ...prev,
+                          [section.key]: !expanded,
+                        }))
+                      }
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        px: 1.25,
+                        py: 0.75,
+                        cursor: 'pointer',
+                        bgcolor: section.isCurrent ? colors.primary + '12' : 'transparent',
+                        '&:hover': { bgcolor: section.isCurrent ? colors.primary + '18' : '#f1f5f9' },
+                      }}
+                    >
+                      {expanded ? (
+                        <ExpandLessIcon sx={{ fontSize: 18, color: colors.textSecondary }} />
+                      ) : (
+                        <ExpandMoreIcon sx={{ fontSize: 18, color: colors.textSecondary }} />
+                      )}
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 700,
+                          color: section.isCurrent ? colors.primary : colors.textPrimary,
+                          flex: 1,
+                        }}
+                      >
+                        {section.title}
+                        {section.isCurrent ? ' · diese Gruppe' : ''}
+                        {section.isArchived ? ' · archiviert' : ''}
+                      </Typography>
+                      <Chip
+                        size="small"
+                        label={section.students.length}
+                        sx={{
+                          height: 22,
+                          fontWeight: 700,
+                          bgcolor: section.isCurrent ? colors.primary : '#e2e8f0',
+                          color: section.isCurrent ? '#fff' : colors.textPrimary,
+                        }}
+                      />
+                      {selectable.length > 0 && !section.isCurrent ? (
+                        <Checkbox
+                          size="small"
+                          indeterminate={selectedInSection > 0 && selectedInSection < selectable.length}
+                          checked={selectable.length > 0 && selectedInSection === selectable.length}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            const ids = selectable.map((s) => s.id);
+                            setSelectedStudents((prev) => {
+                              if (e.target.checked) {
+                                return Array.from(new Set([...prev, ...ids]));
+                              }
+                              return prev.filter((id) => !ids.includes(id));
+                            });
+                          }}
+                          sx={{ p: 0.25 }}
+                        />
+                      ) : null}
+                    </Box>
+                    <Collapse in={expanded}>
+                      <Box sx={{ px: 1, pb: 0.75 }}>
+                        {section.students.map((student, index) => {
+                          const inGroup = Boolean(student.inCurrentGroup);
+                          const checked = inGroup || selectedStudents.includes(student.id);
+                          return (
+                            <Box
+                              key={`${section.key}-${student.id}`}
+                              sx={{
+                                display: 'grid',
+                                gridTemplateColumns: '28px minmax(0, 1fr) 112px 36px',
+                                gap: 0.75,
+                                alignItems: 'center',
+                                py: 0.4,
+                                borderTop: `1px solid ${colors.border}`,
+                                opacity: addStudentsSavingId === student.id ? 0.65 : 1,
+                              }}
+                            >
+                              <Typography
+                                variant="caption"
+                                sx={{ color: colors.textSecondary, textAlign: 'right', pr: 0.25 }}
+                              >
+                                {index + 1}.
+                              </Typography>
+                              <TextField
+                                size="small"
+                                value={student.name}
+                                onChange={(e) =>
+                                  handleAvailableStudentFieldChange(student.id, 'name', e.target.value)
+                                }
+                                onBlur={() => void handleAvailableStudentCredentialsSave(student.id)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    (e.target as HTMLInputElement).blur();
+                                  }
+                                }}
+                                fullWidth
+                                sx={{
+                                  '& .MuiInputBase-input': {
+                                    py: 0.55,
+                                    fontSize: '0.8rem',
+                                    fontWeight: 600,
+                                    color: colors.textPrimary,
+                                  },
+                                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'transparent' },
+                                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: colors.border,
+                                  },
+                                  '& .Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: colors.accent1,
+                                  },
+                                }}
+                              />
+                              <TextField
+                                size="small"
+                                value={student.loginCode}
+                                onChange={(e) =>
+                                  handleAvailableStudentFieldChange(student.id, 'loginCode', e.target.value)
+                                }
+                                onBlur={() => void handleAvailableStudentCredentialsSave(student.id)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    (e.target as HTMLInputElement).blur();
+                                  }
+                                }}
+                                sx={{
+                                  '& .MuiInputBase-input': {
+                                    py: 0.55,
+                                    fontSize: '0.75rem',
+                                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                                    color: colors.accent1,
+                                  },
+                                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'transparent' },
+                                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: colors.border,
+                                  },
+                                  '& .Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: colors.accent1,
+                                  },
+                                }}
+                              />
+                              <Checkbox
+                                size="small"
+                                disabled={inGroup}
+                                checked={checked}
+                                onChange={(event) => {
+                                  if (inGroup) return;
+                                  setSelectedStudents((prev) => {
+                                    if (event.target.checked) {
+                                      return prev.includes(student.id) ? prev : [...prev, student.id];
+                                    }
+                                    return prev.filter((id) => id !== student.id);
+                                  });
+                                }}
+                                sx={{
+                                  p: 0.25,
+                                  color: colors.border,
+                                  '&.Mui-checked': { color: inGroup ? colors.success : colors.primary },
+                                }}
+                              />
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                    </Collapse>
+                  </Box>
+                );
+              })
+            )}
+          </Box>
         </DialogContent>
-        <DialogActions>
-          <Button 
-            onClick={handleCloseAddStudentsDialog}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleCloseAddStudentsDialog();
-              }
+        <DialogActions
+          sx={{
+            px: 1.5,
+            py: 1,
+            bgcolor: colors.cardBg,
+            borderTop: `1px solid ${colors.border}`,
+            gap: 0.75,
+          }}
+        >
+          <Typography variant="caption" sx={{ color: colors.textSecondary, mr: 'auto', fontSize: '0.7rem' }}>
+            Name/Login → DB
+            {selectedStudents.length > 0 ? ` · ${selectedStudents.length} ausgewählt` : ''}
+          </Typography>
+          <ButtonGroup
+            size="small"
+            variant="outlined"
+            sx={{
+              flexShrink: 0,
+              height: 32,
+              '& .MuiButtonGroup-grouped': {
+                minWidth: 0,
+                px: 1,
+                fontSize: '0.7rem',
+                textTransform: 'none',
+                whiteSpace: 'nowrap',
+                borderColor: colors.border,
+                color: colors.textPrimary,
+                lineHeight: 1.2,
+              },
             }}
           >
-            Abbrechen
-          </Button>
-          <Button 
-            onClick={handleAddStudents} 
-            variant="contained" 
-            color="primary"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleAddStudents();
-              }
-            }}
-          >
-            Hinzufügen
-          </Button>
+            <Button onClick={handleCloseAddStudentsDialog}>
+              Schließen
+            </Button>
+            <Button
+              onClick={() => void handleAddStudents()}
+              disabled={selectedStudents.length === 0 || addStudentsLoading}
+              sx={{
+                fontWeight: 700,
+                bgcolor: selectedStudents.length > 0 ? `${colors.primary}18` : undefined,
+                borderColor: selectedStudents.length > 0 ? colors.primary : undefined,
+                color: selectedStudents.length > 0 ? colors.primary : undefined,
+                '&:hover': {
+                  bgcolor: selectedStudents.length > 0 ? `${colors.primary}28` : undefined,
+                },
+              }}
+            >
+              Hinzufügen{selectedStudents.length > 0 ? ` (${selectedStudents.length})` : ''}
+            </Button>
+          </ButtonGroup>
         </DialogActions>
       </Dialog>
 
