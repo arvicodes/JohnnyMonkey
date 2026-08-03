@@ -39,8 +39,12 @@ import {
   Undo as UndoIcon,
   Redo as RedoIcon,
   ViewQuilt as LayoutIcon,
+  UploadFile as UploadFileIcon,
 } from '@mui/icons-material';
 import PresentationSlideTemplateBar from '../components/presentation/PresentationSlideTemplateBar';
+import PresentationPptxImportDialog, {
+  type PptxImportSelection,
+} from '../components/presentation/PresentationPptxImportDialog';
 import PresentationSlideToolsBar from '../components/presentation/PresentationSlideToolsBar';
 import PresentationAnimationBar from '../components/presentation/PresentationAnimationBar';
 import PresentationFormatBar from '../components/presentation/PresentationFormatBar';
@@ -138,6 +142,10 @@ import {
   type SlideTemplateKind,
   type SlideTemplatesStore,
 } from '../lib/presentationSlideTemplates';
+import {
+  base64ToFile,
+  buildLayoutFaithfulSlideFromImport,
+} from '../lib/presentationPptxImport';
 
 import {
   applyFontSizePresetIndex,
@@ -174,6 +182,7 @@ const PresentationEditorPage: React.FC = () => {
   const [slideTemplates, setSlideTemplates] = useState<SlideTemplatesStore>(
     createDefaultTemplatesStore(),
   );
+  const [pptxImportOpen, setPptxImportOpen] = useState(false);
   const [imageDropActive, setImageDropActive] = useState(false);
   const [notesPanelOpen, setNotesPanelOpen] = useState(() => {
     try {
@@ -1184,6 +1193,62 @@ const PresentationEditorPage: React.FC = () => {
     setSnackbar(`„${label}“ eingefügt`);
   };
 
+  const importPptxSelections = async (items: PptxImportSelection[]) => {
+    const current = deckRef.current;
+    if (!current || !lessonPath || items.length === 0) return;
+
+    const slides = sortSlides(current.slides);
+    const activeIndex = slides.findIndex((s) => s.id === activeId);
+    const insertIndex = activeIndex >= 0 ? activeIndex + 1 : slides.length;
+    const built: PresentationSlide[] = [];
+
+    for (const item of items) {
+      const imagePathByKey = new Map<string, string>();
+      const imageBoxes = (item.slide.boxes || []).filter((b) => b.kind === 'image');
+      const legacyImages = item.slide.images || [];
+      const toUpload =
+        imageBoxes.length > 0
+          ? imageBoxes.map((b) => ({
+              name: b.name,
+              mime: b.mime,
+              base64: b.base64,
+            }))
+          : legacyImages;
+
+      for (let i = 0; i < toUpload.length; i++) {
+        const img = toUpload[i];
+        const file = base64ToFile(img, i);
+        const path = await uploadImageFile(file);
+        if (path) {
+          imagePathByKey.set(`${img.name}|${img.base64.slice(0, 32)}`, path);
+        }
+      }
+
+      built.push(
+        buildLayoutFaithfulSlideFromImport(
+          item.slide,
+          insertIndex + built.length,
+          imagePathByKey,
+        ),
+      );
+    }
+
+    if (built.length === 0) {
+      throw new Error('Keine Folien konnten erzeugt werden');
+    }
+
+    const nextSlides = [...slides];
+    nextSlides.splice(insertIndex, 0, ...built);
+    const reordered = nextSlides.map((s, i) => ({ ...s, order: i }));
+    scheduleSave({ ...current, slides: reordered }, { history: 'immediate' });
+    setActiveId(built[0].id);
+    setSnackbar(
+      built.length === 1
+        ? '1 Folie aus PPTX als Elemente eingefügt'
+        : `${built.length} Folien aus PPTX als Elemente eingefügt`,
+    );
+  };
+
   const saveCurrentAsTemplate = async (kind: SlideTemplateKind) => {
     if (!normalizedActive || !lessonPath) return;
     const payload = slideToTemplatePayload(normalizedActive, lessonPath);
@@ -1804,6 +1869,18 @@ const PresentationEditorPage: React.FC = () => {
               onSaveNewTemplate={() => void saveAsNewTemplate()}
               onUpdateCustomTemplate={(id) => void updateCustomTemplateFromSlide(id)}
             />
+            <Tooltip title="PPTX importieren — Boxen als Elemente">
+              <span>
+                <IconButton
+                  size="small"
+                  disabled={!lessonPath}
+                  onClick={() => setPptxImportOpen(true)}
+                  sx={toolbarIconSx}
+                >
+                  <UploadFileIcon sx={{ fontSize: 17 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
             <Tooltip title="Duplizieren">
               <IconButton size="small" onClick={duplicateSlide} sx={toolbarIconSx}>
                 <CopyIcon sx={{ fontSize: 17 }} />
@@ -2324,6 +2401,14 @@ const PresentationEditorPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <PresentationPptxImportDialog
+        open={pptxImportOpen}
+        onClose={() => setPptxImportOpen(false)}
+        lessonPath={lessonPath}
+        templates={slideTemplates}
+        onImport={importPptxSelections}
+      />
 
       <Snackbar
         open={!!snackbar}

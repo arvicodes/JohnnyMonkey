@@ -51,8 +51,11 @@ npm start
 ## Datenbank-Dateien
 
 - `dev.db` - Lokale SQLite-Datenbank
-- `backup_latest.db` - Neueste Backup-Datei
+- `backup_latest.db` - Neueste Backup-Datei (Kopie von `dev.db`)
 - `backup_commit_*.db` - Automatische Backups
+- `DB_SNAPSHOT.md` / `DB_SNAPSHOT.json` - dokumentierter Stand (Rollen, Lerngruppen, SuS mit Login-Codes, Tabellenzahlen)
+
+Aktueller Snapshot: siehe [`server/prisma/DB_SNAPSHOT.md`](server/prisma/DB_SNAPSHOT.md).
 
 ## Wichtige Hinweise
 

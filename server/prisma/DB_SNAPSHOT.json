@@ -1,0 +1,741 @@
+{
+  "generatedAt": "2026-08-03T06:37:56.721670+00:00",
+  "databaseFile": "server/prisma/dev.db",
+  "databaseBytes": 9433088,
+  "tableCounts": {
+    "AdventCalendarDoor": 312,
+    "AdventCalendarSubmission": 31,
+    "Assignment": 7,
+    "AutoLessonSession": 78,
+    "Block": 5,
+    "DocumentProcessingHistory": 7,
+    "FileShare": 63,
+    "FileSystemPath": 1,
+    "Flashcard": 28,
+    "FlashcardAssignment": 3,
+    "FlashcardDeck": 4,
+    "FlashcardLearningSession": 8,
+    "FlashcardProgress": 25,
+    "Grade": 11,
+    "GradeRelease": 6,
+    "GradingSchema": 2,
+    "GroupAssignment": 21,
+    "KACorrection": 36,
+    "KASubmission": 12,
+    "LearningGroup": 10,
+    "Lesson": 26,
+    "LessonCollabFlashcardBeacon": 1,
+    "LessonKeyword": 11,
+    "LessonMaterial": 4,
+    "LessonQuiz": 0,
+    "LessonSharedInput": 21,
+    "LessonSharedInputShare": 4,
+    "Material": 4,
+    "Message": 3,
+    "Note": 3,
+    "Participation": 882,
+    "ParticipationPeriodGrade": 85,
+    "Quiz": 1,
+    "QuizAnswer": 42,
+    "QuizParticipation": 4,
+    "QuizQuestion": 21,
+    "QuizSession": 1,
+    "ScheduleSlot": 24,
+    "StudentJourneyProgress": 8,
+    "Subject": 3,
+    "Submission": 7,
+    "TeacherLessonInstruction": 29,
+    "TeacherScheduleSettings": 1,
+    "TeacherTimetableUpload": 0,
+    "Topic": 15,
+    "Unit": 7,
+    "User": 141,
+    "_StudentGroups": 150
+  },
+  "roles": {
+    "STUDENT": 139,
+    "TEACHER": 2
+  },
+  "teachers": [
+    {
+      "name": "Frau Christ",
+      "loginCode": "Pan8"
+    },
+    {
+      "name": "Herr Kowalski",
+      "loginCode": "TEACH002"
+    }
+  ],
+  "studentsTotal": 139,
+  "studentsUngrouped": 4,
+  "learningGroups": [
+    {
+      "name": "Informatik AG",
+      "archived": false,
+      "students": 0,
+      "members": []
+    },
+    {
+      "name": "Informatik GK 11",
+      "archived": false,
+      "students": 22,
+      "members": [
+        {
+          "name": "Mateo Abas",
+          "loginCode": "AbaMat10"
+        },
+        {
+          "name": "Ben Bremann",
+          "loginCode": "BreBen11"
+        },
+        {
+          "name": "Levi Bröder",
+          "loginCode": "BroeLev11"
+        },
+        {
+          "name": "Lisanne Daubländer",
+          "loginCode": "DauLis11"
+        },
+        {
+          "name": "Amelie Heimes",
+          "loginCode": "HeiAme09"
+        },
+        {
+          "name": "Jan Jung",
+          "loginCode": "JunJan11"
+        },
+        {
+          "name": "Nikolaj Kotykov",
+          "loginCode": "KotNik11"
+        },
+        {
+          "name": "Charlotte Letschert",
+          "loginCode": "LetCha11"
+        },
+        {
+          "name": "Elisabeth May",
+          "loginCode": "MayEli11"
+        },
+        {
+          "name": "Melanie Mosgold",
+          "loginCode": "MosMel10"
+        },
+        {
+          "name": "Damien Reinhardt",
+          "loginCode": "ReiDam11"
+        },
+        {
+          "name": "Felix Reinhardt",
+          "loginCode": "ReiFel09"
+        },
+        {
+          "name": "Benedikt Roth",
+          "loginCode": "RotBen10"
+        },
+        {
+          "name": "Theo Rünz",
+          "loginCode": "RuenThe11"
+        },
+        {
+          "name": "Aaron Schröder",
+          "loginCode": "SchAar11"
+        },
+        {
+          "name": "Adrian Schröder",
+          "loginCode": "SchAdr11"
+        },
+        {
+          "name": "Samuel Schmitz",
+          "loginCode": "SchSam11"
+        },
+        {
+          "name": "Clemens Sievers",
+          "loginCode": "SieCle11"
+        },
+        {
+          "name": "Noah Theis",
+          "loginCode": "TheNoa09"
+        },
+        {
+          "name": "Paul Volk",
+          "loginCode": "VolPau09"
+        },
+        {
+          "name": "Romeh Wollweber",
+          "loginCode": "WolRom10"
+        },
+        {
+          "name": "Adam Zazvorka",
+          "loginCode": "ZazAda11"
+        }
+      ]
+    },
+    {
+      "name": "Informatik GK 12",
+      "archived": false,
+      "students": 23,
+      "members": [
+        {
+          "name": "Julia Beil",
+          "loginCode": "BeiJul11"
+        },
+        {
+          "name": "Yannis Luca Birro",
+          "loginCode": "BirYan11"
+        },
+        {
+          "name": "Emilian Florian Bischoff",
+          "loginCode": "BisEmi09"
+        },
+        {
+          "name": "Anton Böhm",
+          "loginCode": "BoehAnt11"
+        },
+        {
+          "name": "Jannis Breidert",
+          "loginCode": "BreJan09"
+        },
+        {
+          "name": "Sonea Malou Franz",
+          "loginCode": "FraSon11"
+        },
+        {
+          "name": "Lena Marie Friesenhahn",
+          "loginCode": "FriLen11"
+        },
+        {
+          "name": "Leon Gartlib",
+          "loginCode": "GarLeo11"
+        },
+        {
+          "name": "David Grenz",
+          "loginCode": "GreDav11"
+        },
+        {
+          "name": "Marie Günter",
+          "loginCode": "GuenMar11"
+        },
+        {
+          "name": "Oskar Jäckel",
+          "loginCode": "JaecOsk08"
+        },
+        {
+          "name": "Paul Jonas Köhler",
+          "loginCode": "KoehPau09"
+        },
+        {
+          "name": "Harald Korn",
+          "loginCode": "KorHar08"
+        },
+        {
+          "name": "Silas Martin Lindner",
+          "loginCode": "LinSil11"
+        },
+        {
+          "name": "Gentatsu Long",
+          "loginCode": "LonGen11"
+        },
+        {
+          "name": "Jasmin Mosgold",
+          "loginCode": "MosJas11"
+        },
+        {
+          "name": "Pia Sasse",
+          "loginCode": "SasPia11"
+        },
+        {
+          "name": "Henrik Aron Schmidt",
+          "loginCode": "SchHen11"
+        },
+        {
+          "name": "Milo Singhof",
+          "loginCode": "SinMil09"
+        },
+        {
+          "name": "Julian Stammer",
+          "loginCode": "StaJul11"
+        },
+        {
+          "name": "Thorben Emanuel Weinhold",
+          "loginCode": "WeiTho09"
+        },
+        {
+          "name": "Linus Samuel Wilke",
+          "loginCode": "WilLin11"
+        },
+        {
+          "name": "Paul Wöll",
+          "loginCode": "WoelPau11"
+        }
+      ]
+    },
+    {
+      "name": "Informatik GK 13",
+      "archived": false,
+      "students": 23,
+      "members": [
+        {
+          "name": "Duy Anh Trân",
+          "loginCode": "AnhDuy07"
+        },
+        {
+          "name": "Martin Bindewald",
+          "loginCode": "BinMar07"
+        },
+        {
+          "name": "Laureen Budka",
+          "loginCode": "BudLau07"
+        },
+        {
+          "name": "Benjamin Clos",
+          "loginCode": "CloBen07"
+        },
+        {
+          "name": "Justus Damm",
+          "loginCode": "DamJus07"
+        },
+        {
+          "name": "Stipe Drmic",
+          "loginCode": "DrmSti07"
+        },
+        {
+          "name": "Aaron Herrenkind",
+          "loginCode": "HerAar07"
+        },
+        {
+          "name": "Nikita Kling",
+          "loginCode": "KliNik07"
+        },
+        {
+          "name": "Alex Koch",
+          "loginCode": "KocAle07"
+        },
+        {
+          "name": "Tom Kup",
+          "loginCode": "KupTom07"
+        },
+        {
+          "name": "Erich König",
+          "loginCode": "KönEri07"
+        },
+        {
+          "name": "Helge Nebendahl",
+          "loginCode": "NebHel07"
+        },
+        {
+          "name": "Jana Schiffer",
+          "loginCode": "SchJan07"
+        },
+        {
+          "name": "Janic Schaaf",
+          "loginCode": "SchJan071"
+        },
+        {
+          "name": "Julius Schöning",
+          "loginCode": "SchJul07"
+        },
+        {
+          "name": "Louis Scheerer",
+          "loginCode": "SchLou07"
+        },
+        {
+          "name": "Sophie Schaaf",
+          "loginCode": "SchSop07"
+        },
+        {
+          "name": "Wiebke Schmidt",
+          "loginCode": "SchWie07"
+        },
+        {
+          "name": "Paul Ulrich",
+          "loginCode": "UlrPau07"
+        },
+        {
+          "name": "Jasper Wagner",
+          "loginCode": "WagJas07"
+        },
+        {
+          "name": "Julian Weitz",
+          "loginCode": "WeiJul07"
+        },
+        {
+          "name": "Lukas Wetzlar",
+          "loginCode": "WetLuk07"
+        },
+        {
+          "name": "Jakob Weyerhäuser",
+          "loginCode": "WeyJak07"
+        }
+      ]
+    },
+    {
+      "name": "Klasse 10c",
+      "archived": false,
+      "students": 1,
+      "members": [
+        {
+          "name": "Lea Bauer",
+          "loginCode": "STUD013_ORIG"
+        }
+      ]
+    },
+    {
+      "name": "Klasse 5a",
+      "archived": false,
+      "students": 0,
+      "members": []
+    },
+    {
+      "name": "Klasse 5c",
+      "archived": false,
+      "students": 0,
+      "members": []
+    },
+    {
+      "name": "Klasse 7a",
+      "archived": true,
+      "students": 31,
+      "members": [
+        {
+          "name": "Jakob Ackermann",
+          "loginCode": "AckJak13"
+        },
+        {
+          "name": "Josefine Baierl",
+          "loginCode": "BaiJos13"
+        },
+        {
+          "name": "Friederike Bremser",
+          "loginCode": "BreFri13"
+        },
+        {
+          "name": "Jonathan Dillmann",
+          "loginCode": "DilJon13"
+        },
+        {
+          "name": "Jasmin Farnung",
+          "loginCode": "FarJas13"
+        },
+        {
+          "name": "Marlene Geis",
+          "loginCode": "GeiMar13"
+        },
+        {
+          "name": "Louis Gerharz",
+          "loginCode": "GerLou13"
+        },
+        {
+          "name": "Luise Habach",
+          "loginCode": "HabLui13"
+        },
+        {
+          "name": "Hannah Hagedorn",
+          "loginCode": "HagHan13"
+        },
+        {
+          "name": "Kilian Jahnke",
+          "loginCode": "JahKil13"
+        },
+        {
+          "name": "Marlene Krall",
+          "loginCode": "KraMar13"
+        },
+        {
+          "name": "Robin Maas",
+          "loginCode": "MaaRob13"
+        },
+        {
+          "name": "Jonas Maxeiner",
+          "loginCode": "MaxJon13"
+        },
+        {
+          "name": "Samuel May",
+          "loginCode": "MaySam13"
+        },
+        {
+          "name": "Dennis Miller",
+          "loginCode": "MilDen13"
+        },
+        {
+          "name": "Miró Mohr",
+          "loginCode": "MohMir13"
+        },
+        {
+          "name": "Adela Mureşan",
+          "loginCode": "MurAde13"
+        },
+        {
+          "name": "Paul Pfeifer",
+          "loginCode": "PfePau13"
+        },
+        {
+          "name": "Louisa Plattes",
+          "loginCode": "PlaLou13"
+        },
+        {
+          "name": "Arthur Potemkin",
+          "loginCode": "PotArt13"
+        },
+        {
+          "name": "Julia Reiners",
+          "loginCode": "ReiJul13"
+        },
+        {
+          "name": "Bruno Scavio",
+          "loginCode": "ScaBru13"
+        },
+        {
+          "name": "Felix Schmelzlin",
+          "loginCode": "SchFel13"
+        },
+        {
+          "name": "Niklas Schmitz",
+          "loginCode": "SchNik13"
+        },
+        {
+          "name": "Vincent Schlag",
+          "loginCode": "SchVin13"
+        },
+        {
+          "name": "Andreas Thielen",
+          "loginCode": "ThiAnd13"
+        },
+        {
+          "name": "Fabio Urso",
+          "loginCode": "UrsFab13"
+        },
+        {
+          "name": "Lennas Weinem",
+          "loginCode": "WeiLen13"
+        },
+        {
+          "name": "Nils Weiß",
+          "loginCode": "WeiNil13"
+        },
+        {
+          "name": "Jan Wimmershoff",
+          "loginCode": "WimJan13"
+        },
+        {
+          "name": "Freya Zipper",
+          "loginCode": "ZipFre13"
+        }
+      ]
+    },
+    {
+      "name": "Mathe 10c",
+      "archived": true,
+      "students": 31,
+      "members": [
+        {
+          "name": "Mateo Abas",
+          "loginCode": "AbaMat10"
+        },
+        {
+          "name": "Anne Berres",
+          "loginCode": "BerAnn10"
+        },
+        {
+          "name": "Karoline Bremser",
+          "loginCode": "BreKar09"
+        },
+        {
+          "name": "Tim Brockmann",
+          "loginCode": "BroTim09"
+        },
+        {
+          "name": "Charlotte Doll",
+          "loginCode": "DolCha09"
+        },
+        {
+          "name": "Marie Fedrowitz",
+          "loginCode": "FedMar10"
+        },
+        {
+          "name": "Adriana Gruenewald",
+          "loginCode": "GruAdr09"
+        },
+        {
+          "name": "Amelie Heimes",
+          "loginCode": "HeiAme09"
+        },
+        {
+          "name": "Ole Hofmann",
+          "loginCode": "HofOle10"
+        },
+        {
+          "name": "Paul Jung",
+          "loginCode": "JunPau10"
+        },
+        {
+          "name": "Magdalena Kaschny",
+          "loginCode": "KasMag10"
+        },
+        {
+          "name": "Jonah May",
+          "loginCode": "MayJon10"
+        },
+        {
+          "name": "Nika Monschauer",
+          "loginCode": "MonNik10"
+        },
+        {
+          "name": "Melanie Mosgold",
+          "loginCode": "MosMel10"
+        },
+        {
+          "name": "Claudia Oellermann",
+          "loginCode": "OelCla09"
+        },
+        {
+          "name": "Moritz Paulik",
+          "loginCode": "PauMor10"
+        },
+        {
+          "name": "David Preygermann",
+          "loginCode": "PreDav09"
+        },
+        {
+          "name": "Felix Reinhardt",
+          "loginCode": "ReiFel09"
+        },
+        {
+          "name": "Benedikt Roth",
+          "loginCode": "RotBen10"
+        },
+        {
+          "name": "Hanna Ruess Mejias",
+          "loginCode": "RueHan10"
+        },
+        {
+          "name": "Aaron Schroeder",
+          "loginCode": "SchAar09"
+        },
+        {
+          "name": "Sarina Schulz",
+          "loginCode": "SchSar10"
+        },
+        {
+          "name": "Sophie Schaaf",
+          "loginCode": "SchSop10"
+        },
+        {
+          "name": "Anna-Sophia Spadi",
+          "loginCode": "SpaAnn10"
+        },
+        {
+          "name": "Noah Theis",
+          "loginCode": "TheNoa09"
+        },
+        {
+          "name": "Paul Volk",
+          "loginCode": "VolPau09"
+        },
+        {
+          "name": "Finley Wandtke",
+          "loginCode": "WanFin09"
+        },
+        {
+          "name": "Merle Weinem",
+          "loginCode": "WeiMer10"
+        },
+        {
+          "name": "Philipp Weinand",
+          "loginCode": "WeiPhi10"
+        },
+        {
+          "name": "Romeh Wollweber",
+          "loginCode": "WolRom10"
+        },
+        {
+          "name": "Julia Zimmermann",
+          "loginCode": "ZimJul09"
+        }
+      ]
+    },
+    {
+      "name": "Mathe LK 11 - Stammkurs",
+      "archived": false,
+      "students": 19,
+      "members": [
+        {
+          "name": "Moritz Friedrich Becker",
+          "loginCode": "BecMor08"
+        },
+        {
+          "name": "Emilian Florian Bischoff",
+          "loginCode": "BisEmi09"
+        },
+        {
+          "name": "Jannis Breidert",
+          "loginCode": "BreJan09"
+        },
+        {
+          "name": "Jannis Busch",
+          "loginCode": "BusJan09"
+        },
+        {
+          "name": "Roman Vladimirovich Eremeev",
+          "loginCode": "EreRom09"
+        },
+        {
+          "name": "Louisa Galler",
+          "loginCode": "GalLou09"
+        },
+        {
+          "name": "Anton Hahn",
+          "loginCode": "HahAnt09"
+        },
+        {
+          "name": "Gero Hanrath",
+          "loginCode": "HanGer09"
+        },
+        {
+          "name": "Oskar Jäckel",
+          "loginCode": "JaecOsk08"
+        },
+        {
+          "name": "Noah Juranovic",
+          "loginCode": "JurNoa08"
+        },
+        {
+          "name": "Paul Jonas Köhler",
+          "loginCode": "KoehPau09"
+        },
+        {
+          "name": "Harald Korn",
+          "loginCode": "KorHar08"
+        },
+        {
+          "name": "Maximilian Kux",
+          "loginCode": "KuxMax09"
+        },
+        {
+          "name": "Magnus Paul Rickert",
+          "loginCode": "RicMag09"
+        },
+        {
+          "name": "Annika Rojan",
+          "loginCode": "RojAnn08"
+        },
+        {
+          "name": "Johanna Schäfer",
+          "loginCode": "SchJoh09"
+        },
+        {
+          "name": "Elias Karl Simonis",
+          "loginCode": "SimEli09"
+        },
+        {
+          "name": "Milo Singhof",
+          "loginCode": "SinMil09"
+        },
+        {
+          "name": "Thorben Emanuel Weinhold",
+          "loginCode": "WeiTho09"
+        }
+      ]
+    }
+  ],
+  "joinTableHint": "_StudentGroups: A=LearningGroupId, B=UserId (verified by member queries)"
+}

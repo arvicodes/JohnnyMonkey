@@ -113,7 +113,9 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   const showStandaloneNumbers = !footerOn && showSlideNumbers && slideNumberLabel.length > 0;
   const fullscreenMedia = slideHasFullscreenMedia(slide);
   const imageHeroLayout = slideHasImageHeroLayout(slide);
-  const hideBlankContent = fullscreenMedia || imageHeroLayout;
+  const hasFreeElements = (slide.elements?.length ?? 0) > 0;
+  const hideBlankContent =
+    fullscreenMedia || imageHeroLayout || (slide.layout === 'blank' && hasFreeElements);
   const { background: backgroundElements, foreground: foregroundElements } = splitElementsByStackLayer(
     slide.elements,
   );
