@@ -57,6 +57,7 @@ interface PresentationDraggableElementProps {
   onAnimationTargetClick?: (itemId: string | null) => void;
   onSelect?: () => void;
   onChange?: (patch: Partial<SlideElement>) => void;
+  onDelete?: () => void;
   /** Bild auf andere Folie legen: Drop über Filmstrip-Thumbnail. */
   onMoveToSlide?: (targetSlideId: string) => void;
   onTextEditorFocus?: (el: HTMLElement, elementId: string) => void;
@@ -84,6 +85,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   onAnimationTargetClick,
   onSelect,
   onChange,
+  onDelete,
   onMoveToSlide,
   onTextEditorFocus,
   mediaInteractive = false,
@@ -109,6 +111,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   const livePatchRef = useRef<Partial<SlideElement> | null>(null);
   const rafMoveRef = useRef<number | null>(null);
   const textInputTimerRef = useRef<number | null>(null);
+  /** Text erst per Doppelklick editieren — sonst Blockiert Entf/Löschen der Box. */
+  const [textEditing, setTextEditing] = useState(false);
   const DRAG_THRESHOLD_PX = 5;
 
   const elementItemId = animationItemIdForElement(element.id);
@@ -130,9 +134,9 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     }
   }, [element.type, element.html, editable, selected, element.id]);
 
-  /** Nach Auswahl sofort tippbar — sonst fängt der erste Klick nur Drag ab. */
+  /** Nach Doppelklick tippbar (nicht schon bei Auswahl — sonst blockiert Entf die Box). */
   useEffect(() => {
-    if (element.type !== 'text' || !editable || !selected || animationEditMode) return;
+    if (element.type !== 'text' || !editable || !selected || animationEditMode || !textEditing) return;
     let cancelled = false;
     const focusEditor = () => {
       if (cancelled) return;
@@ -153,7 +157,6 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         /* ignore */
       }
     };
-    // Doppel-rAF + kurzer Timeout: nach Toolbar-Klick bleibt sonst der Button fokussiert.
     const raf1 = window.requestAnimationFrame(() => {
       window.requestAnimationFrame(focusEditor);
     });
@@ -163,9 +166,12 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       window.cancelAnimationFrame(raf1);
       window.clearTimeout(t);
     };
-    // absichtlich ohne onTextEditorFocus — Parent liefert oft Inline-Callbacks
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [element.type, element.id, editable, selected, animationEditMode]);
+  }, [element.type, element.id, editable, selected, animationEditMode, textEditing]);
+
+  useEffect(() => {
+    if (!selected) setTextEditing(false);
+  }, [selected]);
 
   useEffect(() => {
     const el = textRef.current;
@@ -411,8 +417,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   const hugImageChrome =
     isImageElement && Boolean(element.src?.trim()) && !heroImage && imageFit !== 'cover';
   const showSelectionChrome = editable && selected && !animationEditMode;
-  const showTextEditor = showSelectionChrome && element.type === 'text';
-  const showResizeHandle = showSelectionChrome && element.type !== 'text';
+  const showTextEditor = showSelectionChrome && element.type === 'text' && textEditing;
+  const showResizeHandle = showSelectionChrome && !(element.type === 'text' && textEditing);
   const isShapeElement = element.type === 'shape';
   const isFullscreenish = view.w >= 96 && view.h >= 96;
   const nearBottomEdge = view.y + view.h >= 88;
@@ -440,11 +446,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
           ? `${2 * scale}px solid #2E7D32`
           : animationEditMode && elementAnimSelected
             ? `${2 * scale}px solid #E65100`
-            : editable
-              ? `${1 * scale}px dashed rgba(46,125,50,0.3)`
-              : animationEditMode
-                ? `${1 * scale}px dashed rgba(255,152,0,0.45)`
-                : undefined;
+            : undefined;
 
   /** Keine Dauer-Ränder um Bilder — Rahmen nur bei Auswahl / Animationsziel. */
   const hugChromeBorder =
@@ -481,9 +483,16 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         if (!editable) return;
         if (isMediaElement && mediaInteractive) return;
         if ((e.target as HTMLElement).closest('[data-resize-handle]')) return;
-        if ((e.target as HTMLElement).closest('[data-text-edit]') && selected) return;
+        if ((e.target as HTMLElement).closest('[data-element-delete]')) return;
+        if ((e.target as HTMLElement).closest('[data-text-edit]') && selected && textEditing) return;
         if (!selected) onSelect?.();
         startDrag(e, 'move');
+      }}
+      onDoubleClick={(e) => {
+        if (!editable || animationEditMode || element.type !== 'text') return;
+        e.stopPropagation();
+        onSelect?.();
+        setTextEditing(true);
       }}
       sx={{
         position: 'absolute',
@@ -684,6 +693,23 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             onKeyDown={(e) => {
               const el = textRef.current;
               if (!el) return;
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (textInputTimerRef.current) {
+                  window.clearTimeout(textInputTimerRef.current);
+                  textInputTimerRef.current = null;
+                }
+                onChange?.({ html: el.innerHTML });
+                setTextEditing(false);
+                return;
+              }
+              if ((e.key === 'Backspace' || e.key === 'Delete') && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                e.stopPropagation();
+                onDelete?.();
+                return;
+              }
               if (e.key === ' ' && !e.ctrlKey && !e.metaKey && !e.altKey) {
                 if (tryMarkdownListShortcut(el)) {
                   e.preventDefault();
@@ -746,6 +772,49 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
           }
           sx={resizeHandleSx}
         />
+      )}
+
+      {showSelectionChrome && onDelete && (
+        <Box
+          data-element-delete
+          component="button"
+          type="button"
+          aria-label="Element löschen"
+          title="Löschen (Entf)"
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          sx={{
+            position: 'absolute',
+            top: `${-6 * scale}px`,
+            right: `${-6 * scale}px`,
+            width: `${22 * scale}px`,
+            height: `${22 * scale}px`,
+            borderRadius: '50%',
+            border: `${2 * scale}px solid #fff`,
+            bgcolor: '#c62828',
+            color: '#fff',
+            fontSize: `${14 * scale}px`,
+            fontWeight: 800,
+            lineHeight: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            zIndex: 40,
+            pointerEvents: 'auto',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
+            p: 0,
+            '&:hover': { bgcolor: '#b71c1c' },
+          }}
+        >
+          ×
+        </Box>
       )}
     </Box>
   );

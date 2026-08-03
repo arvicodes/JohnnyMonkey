@@ -227,12 +227,15 @@ export function isPptxFile(file: File): boolean {
   return n.endsWith('.pptx') || t.includes('presentation') || t.includes('powerpoint');
 }
 
-export async function parsePptxFile(file: File, loginCode: string): Promise<ImportedPptxResult> {
+export async function parsePptxFile(file: File, loginCode?: string): Promise<ImportedPptxResult> {
   const form = new FormData();
   form.append('file', file);
+  const headers: Record<string, string> = {};
+  const code = (loginCode || localStorage.getItem('loginCode') || '').trim();
+  if (code) headers['x-login-code'] = code;
   const res = await fetch('/api/presentation/parse-pptx', {
     method: 'POST',
-    headers: { 'x-login-code': loginCode },
+    headers,
     body: form,
   });
   if (!res.ok) {

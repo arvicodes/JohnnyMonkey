@@ -29,7 +29,8 @@ import PresentationSlideView from './PresentationSlideView';
 interface PresentationFilmstripProps {
   slides: PresentationSlide[];
   activeId: string | null;
-  onSelect: (id: string) => void;
+  selectedIds: string[];
+  onSelect: (id: string, event: React.MouseEvent) => void;
   onAdd: () => void;
   onReorder: (activeId: string, overId: string) => void;
 }
@@ -75,12 +76,13 @@ interface SortableThumbProps {
   slide: PresentationSlide;
   index: number;
   active: boolean;
-  onSelect: () => void;
+  selected: boolean;
+  onSelect: (event: React.MouseEvent) => void;
   setItemRef: (node: HTMLDivElement | null) => void;
 }
 
 const SortableFilmstripThumb = React.memo(
-  ({ slide, index, active, onSelect, setItemRef }: SortableThumbProps) => {
+  ({ slide, index, active, selected, onSelect, setItemRef }: SortableThumbProps) => {
     const {
       attributes,
       listeners,
@@ -94,6 +96,14 @@ const SortableFilmstripThumb = React.memo(
       setNodeRef(node);
       setItemRef(node);
     };
+
+    const ring = active
+      ? `0 0 0 2px ${PRES_EDITOR_UI.accent}, 0 2px 8px rgba(46,125,50,0.15)`
+      : selected
+        ? `0 0 0 2px rgba(46,125,50,0.55)`
+        : isDragging
+          ? '0 4px 14px rgba(0,0,0,0.18)'
+          : '0 1px 3px rgba(0,0,0,0.08)';
 
     return (
       <Box
@@ -111,16 +121,13 @@ const SortableFilmstripThumb = React.memo(
           cursor: isDragging ? 'grabbing' : 'grab',
           transform: CSS.Transform.toString(transform),
           transition,
-          opacity: isDragging ? 0.82 : 1,
+          opacity: isDragging ? 0.82 : selected || active ? 1 : 0.92,
           zIndex: isDragging ? 3 : 1,
-          boxShadow: active
-            ? `0 0 0 2px ${PRES_EDITOR_UI.accent}, 0 2px 8px rgba(46,125,50,0.15)`
-            : isDragging
-              ? '0 4px 14px rgba(0,0,0,0.18)'
-              : '0 1px 3px rgba(0,0,0,0.08)',
+          boxShadow: ring,
+          bgcolor: selected && !active ? 'rgba(46,125,50,0.06)' : undefined,
           '&:hover': {
-            boxShadow: active
-              ? `0 0 0 2px ${PRES_EDITOR_UI.accent}, 0 2px 8px rgba(46,125,50,0.15)`
+            boxShadow: active || selected
+              ? ring
               : `0 0 0 1px ${PRES_EDITOR_UI.accentHover}, 0 1px 3px rgba(0,0,0,0.08)`,
           },
           'body[data-pres-element-drag="image"] &': {
@@ -177,7 +184,7 @@ const SortableFilmstripThumb = React.memo(
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            bgcolor: active ? PRES_EDITOR_UI.accent : 'rgba(0,0,0,0.55)',
+            bgcolor: active || selected ? PRES_EDITOR_UI.accent : 'rgba(0,0,0,0.55)',
             color: '#fff',
             fontSize: 10,
             fontWeight: 800,
@@ -211,6 +218,7 @@ const SortableFilmstripThumb = React.memo(
   },
   (prev, next) =>
     prev.active === next.active &&
+    prev.selected === next.selected &&
     prev.index === next.index &&
     slideThumbSignature(prev.slide) === slideThumbSignature(next.slide)
 );
@@ -218,6 +226,7 @@ const SortableFilmstripThumb = React.memo(
 const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
   slides,
   activeId,
+  selectedIds,
   onSelect,
   onAdd,
   onReorder,
@@ -225,6 +234,7 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const slideIds = useMemo(() => slides.map((slide) => slide.id), [slides]);
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -276,7 +286,8 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
                 slide={slide}
                 index={idx}
                 active={slide.id === activeId}
-                onSelect={() => onSelect(slide.id)}
+                selected={selectedSet.has(slide.id)}
+                onSelect={(event) => onSelect(slide.id, event)}
                 setItemRef={(node) => {
                   itemRefs.current[slide.id] = node;
                 }}

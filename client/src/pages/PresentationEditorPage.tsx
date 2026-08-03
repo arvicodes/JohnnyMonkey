@@ -115,6 +115,7 @@ import {
   addTrashItem,
   createNotesTrashItem,
   createSlideTrashItem,
+  MAX_TRASH_ITEMS,
   normalizeTrash,
   removeTrashItem,
   restoreNotesFromTrash,
@@ -142,9 +143,11 @@ import {
   type SlideTemplateKind,
   type SlideTemplatesStore,
 } from '../lib/presentationSlideTemplates';
+import { removeNearWhiteBackgroundFromUrl } from '../lib/presentationRemoveWhiteBg';
 import {
   base64ToFile,
   buildLayoutFaithfulSlideFromImport,
+  type ImportedPptxBox,
 } from '../lib/presentationPptxImport';
 
 import {
@@ -166,6 +169,8 @@ const PresentationEditorPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [deck, setDeck] = useState<PresentationDeck | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [selectedSlideIds, setSelectedSlideIds] = useState<string[]>([]);
+  const slideSelectionAnchorRef = useRef<string | null>(null);
   const [snackbar, setSnackbar] = useState('');
   const [saveNamedOpen, setSaveNamedOpen] = useState(false);
   const [saveNamedLabel, setSaveNamedLabel] = useState('');
@@ -184,6 +189,7 @@ const PresentationEditorPage: React.FC = () => {
   );
   const [pptxImportOpen, setPptxImportOpen] = useState(false);
   const [imageDropActive, setImageDropActive] = useState(false);
+  const [removingImageBackground, setRemovingImageBackground] = useState(false);
   const [notesPanelOpen, setNotesPanelOpen] = useState(() => {
     try {
       return localStorage.getItem('johnny-pres-notes-open') !== '0';
@@ -254,6 +260,18 @@ const PresentationEditorPage: React.FC = () => {
   useEffect(() => {
     setSlideTransitionPreviewKey((key) => key + 1);
     setSelectedAnimationTarget(null);
+  }, [activeId]);
+
+  useEffect(() => {
+    if (!activeId) {
+      setSelectedSlideIds([]);
+      slideSelectionAnchorRef.current = null;
+      return;
+    }
+    setSelectedSlideIds((prev) => (prev.includes(activeId) ? prev : [activeId]));
+    if (!slideSelectionAnchorRef.current) {
+      slideSelectionAnchorRef.current = activeId;
+    }
   }, [activeId]);
 
   const slideViewportH = SLIDE_REF_HEIGHT * canvasScale;
@@ -527,7 +545,11 @@ const PresentationEditorPage: React.FC = () => {
   }, [commitEditorState, deck, lessonPath, saveNamedLabel]);
 
   const selectSlide = useCallback(
-    (id: string) => {
+    (id: string, opts?: { preserveMulti?: boolean }) => {
+      if (!opts?.preserveMulti) {
+        setSelectedSlideIds([id]);
+        slideSelectionAnchorRef.current = id;
+      }
       if (id === activeId) return;
       commitEditorState({ history: 'skip' });
       setActiveId(id);
@@ -536,6 +558,59 @@ const PresentationEditorPage: React.FC = () => {
       setActiveHtmlField(null);
     },
     [activeId, commitEditorState]
+  );
+
+  const handleFilmstripSelect = useCallback(
+    (id: string, event: React.MouseEvent) => {
+      const current = deckRef.current;
+      const slides = current ? sortSlides(current.slides) : [];
+      const additive = event.metaKey || event.ctrlKey;
+
+      if (event.shiftKey && slideSelectionAnchorRef.current) {
+        const a = slides.findIndex((s) => s.id === slideSelectionAnchorRef.current);
+        const b = slides.findIndex((s) => s.id === id);
+        if (a >= 0 && b >= 0) {
+          const lo = Math.min(a, b);
+          const hi = Math.max(a, b);
+          const range = slides.slice(lo, hi + 1).map((s) => s.id);
+          if (additive) {
+            setSelectedSlideIds((prev) => Array.from(new Set([...prev, ...range])));
+          } else {
+            setSelectedSlideIds(range);
+          }
+          selectSlide(id, { preserveMulti: true });
+          return;
+        }
+      }
+
+      if (additive) {
+        const base = selectedSlideIds.length
+          ? selectedSlideIds
+          : activeId
+            ? [activeId]
+            : [];
+        const set = new Set(base);
+        if (set.has(id) && set.size > 1) {
+          set.delete(id);
+          const remaining = Array.from(set);
+          setSelectedSlideIds(remaining);
+          if (id === activeId) {
+            selectSlide(remaining[remaining.length - 1], { preserveMulti: true });
+          }
+          return;
+        }
+        set.add(id);
+        setSelectedSlideIds(Array.from(set));
+        slideSelectionAnchorRef.current = id;
+        selectSlide(id, { preserveMulti: true });
+        return;
+      }
+
+      setSelectedSlideIds([id]);
+      slideSelectionAnchorRef.current = id;
+      selectSlide(id);
+    },
+    [activeId, selectSlide, selectedSlideIds]
   );
 
   const goToAdjacentSlide = useCallback(
@@ -899,6 +974,42 @@ const PresentationEditorPage: React.FC = () => {
     if (selectedElementId === id) setSelectedElementId(null);
   };
 
+  const removeSelectedImageBackground = async (id: string) => {
+    const current = deckRef.current;
+    if (!current || !lessonPath) return;
+    const slide = current.slides.find((s) => s.id === activeId);
+    const el = slide?.elements?.find((e) => e.id === id);
+    if (!el || el.type !== 'image' || !el.src?.trim()) {
+      setSnackbar('Kein Bild ausgewählt');
+      return;
+    }
+    setRemovingImageBackground(true);
+    setSnackbar('Hintergrund wird entfernt…');
+    try {
+      const url = slideImageUrl(el.src);
+      const base = el.src.split('/').pop() || 'bild';
+      const { file, removedRatio } = await removeNearWhiteBackgroundFromUrl(url, base, {
+        tolerance: 52,
+      });
+      if (removedRatio < 0.002) {
+        setSnackbar('Kaum hellen Hintergrund gefunden — Bild unverändert');
+        return;
+      }
+      const path = await uploadImageFile(file);
+      if (!path) return;
+      updateElement(id, { src: path, imageFit: 'contain' });
+      setSnackbar(
+        removedRatio > 0.15
+          ? 'Hintergrund entfernt (Schachbrett = Transparenz)'
+          : 'Hintergrund teilweise entfernt',
+      );
+    } catch (e) {
+      setSnackbar(e instanceof Error ? e.message : 'Hintergrund entfernen fehlgeschlagen');
+    } finally {
+      setRemovingImageBackground(false);
+    }
+  };
+
   const cloneElementForPaste = (el: SlideElement): SlideElement => ({
     ...structuredClone(el),
     id: `el-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -1094,12 +1205,13 @@ const PresentationEditorPage: React.FC = () => {
       }
 
       const active = document.activeElement;
-      if (active?.closest(`[data-pres-element="${selectedElementId}"]`)) return;
+      // Während Textbearbeitung: Entf löscht Zeichen — außer ⌘/Strg+Entf (siehe Element)
+      if (active?.closest(`[data-pres-element="${selectedElementId}"] [data-text-edit]`)) return;
       if (activeEditor?.closest('[data-pres-rich-zone]')) return;
 
       e.preventDefault();
       deleteElement(selectedElementId);
-      setSnackbar('Element entfernt');
+      setSnackbar(element.type === 'text' ? 'Textfeld entfernt' : 'Element entfernt');
     };
 
     window.addEventListener('keydown', onKeyDown);
@@ -1204,7 +1316,9 @@ const PresentationEditorPage: React.FC = () => {
 
     for (const item of items) {
       const imagePathByKey = new Map<string, string>();
-      const imageBoxes = (item.slide.boxes || []).filter((b) => b.kind === 'image');
+      const imageBoxes = (item.slide.boxes || []).filter(
+        (b): b is Extract<ImportedPptxBox, { kind: 'image' }> => b.kind === 'image',
+      );
       const legacyImages = item.slide.images || [];
       const toUpload =
         imageBoxes.length > 0
@@ -1335,21 +1449,59 @@ const PresentationEditorPage: React.FC = () => {
 
   const deleteSlide = () => {
     const current = deckRef.current;
-    if (!current || !activeSlide || current.slides.length <= 1) return;
-    const trashItem = createSlideTrashItem(activeSlide);
-    const slides = current.slides
-      .filter((s) => s.id !== activeSlide.id)
-      .map((s, i) => ({ ...s, order: i }));
+    if (!current || current.slides.length <= 1) return;
+
+    const requested =
+      selectedSlideIds.length > 0
+        ? selectedSlideIds
+        : activeSlide
+          ? [activeSlide.id]
+          : [];
+    if (requested.length === 0) return;
+
+    const deleteSet = new Set(requested);
+    let survivors = current.slides.filter((s) => !deleteSet.has(s.id));
+    if (survivors.length === 0) {
+      const keep =
+        current.slides.find((s) => s.id === activeId) || current.slides[0];
+      if (!keep) return;
+      deleteSet.delete(keep.id);
+      survivors = [keep];
+    }
+    if (deleteSet.size === 0) return;
+
+    const toDelete = current.slides.filter((s) => deleteSet.has(s.id));
+    let trash = normalizeTrash(current);
+    for (const slide of toDelete) {
+      trash = [createSlideTrashItem(slide), ...trash].slice(0, MAX_TRASH_ITEMS);
+    }
+
+    const slides = survivors.map((s, i) => ({ ...s, order: i }));
+    const nextActive =
+      (activeId && slides.some((s) => s.id === activeId) && activeId) ||
+      slides[Math.min(
+        Math.max(0, sortSlides(current.slides).findIndex((s) => s.id === activeId)),
+        slides.length - 1,
+      )]?.id ||
+      slides[0]?.id ||
+      null;
+
     scheduleSave(
       {
         ...current,
         slides,
-        trash: addTrashItem(current, trashItem),
+        trash,
       },
       { history: 'immediate' }
     );
-    setActiveId(slides[0]?.id ?? null);
-    setSnackbar('Folie in Papierkorb verschoben');
+    setActiveId(nextActive);
+    setSelectedSlideIds(nextActive ? [nextActive] : []);
+    slideSelectionAnchorRef.current = nextActive;
+    setSnackbar(
+      toDelete.length === 1
+        ? 'Folie in Papierkorb verschoben'
+        : `${toDelete.length} Folien in Papierkorb verschoben`,
+    );
   };
 
   const moveNotesToTrash = (_fieldKey: NotesFieldKey) => {
@@ -1886,9 +2038,20 @@ const PresentationEditorPage: React.FC = () => {
                 <CopyIcon sx={{ fontSize: 17 }} />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Folie löschen (→ Papierkorb)">
+            <Tooltip
+              title={
+                selectedSlideIds.length > 1
+                  ? `${selectedSlideIds.length} Folien löschen (→ Papierkorb)`
+                  : 'Folie löschen (→ Papierkorb) · Mehrfach: ⌘/Strg+Klick, Shift+Klick'
+              }
+            >
               <span>
-                <IconButton size="small" onClick={deleteSlide} disabled={deck.slides.length <= 1} sx={toolbarIconSx}>
+                <IconButton
+                  size="small"
+                  onClick={deleteSlide}
+                  disabled={deck.slides.length <= 1}
+                  sx={toolbarIconSx}
+                >
                   <DeleteIcon sx={{ fontSize: 17 }} />
                 </IconButton>
               </span>
@@ -2111,6 +2274,8 @@ const PresentationEditorPage: React.FC = () => {
                   onAddShapeElement={addShapeElement}
                   onUpdateElement={updateElement}
                   onDeleteElement={deleteElement}
+                  onRemoveImageBackground={(id) => void removeSelectedImageBackground(id)}
+                  removingImageBackground={removingImageBackground}
                   onCutElement={() => copySelectedElement('cut')}
                   onCopyElement={() => copySelectedElement('copy')}
                   onPasteElement={() => pasteClipboardElement()}
@@ -2164,7 +2329,8 @@ const PresentationEditorPage: React.FC = () => {
         <PresentationFilmstrip
           slides={filmstripSlides.length ? filmstripSlides : sortedSlides}
           activeId={activeId}
-          onSelect={selectSlide}
+          selectedIds={selectedSlideIds.length ? selectedSlideIds : activeId ? [activeId] : []}
+          onSelect={handleFilmstripSelect}
           onAdd={() => addSlide('title-content')}
           onReorder={reorderSlides}
         />
@@ -2276,6 +2442,7 @@ const PresentationEditorPage: React.FC = () => {
                     selectedElementId={selectedElementId}
                     onElementSelect={handleElementSelect}
                     onElementChange={updateElement}
+                    onDeleteElement={deleteElement}
                     onMoveElementToSlide={moveElementToSlide}
                     onTextElementFocus={(el, elementId) => {
                       setActiveEditor(el);

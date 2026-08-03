@@ -33,6 +33,7 @@ import {
   HorizontalRule as LineShapeIcon,
   CropSquare as RectShapeIcon,
   CircleOutlined as EllipseShapeIcon,
+  AutoFixHigh as RemoveBgIcon,
 } from '@mui/icons-material';
 import {
   PresentationShapeKind,
@@ -79,6 +80,8 @@ interface PresentationSlideToolsBarProps {
   onAddShapeElement: (kind: PresentationShapeKind) => void;
   onUpdateElement: (id: string, patch: Partial<SlideElement>) => void;
   onDeleteElement: (id: string) => void;
+  onRemoveImageBackground?: (id: string) => void;
+  removingImageBackground?: boolean;
   onCutElement?: () => void;
   onCopyElement?: () => void;
   onPasteElement?: () => void;
@@ -99,6 +102,8 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
   onAddShapeElement,
   onUpdateElement,
   onDeleteElement,
+  onRemoveImageBackground,
+  removingImageBackground = false,
   onCutElement,
   onCopyElement,
   onPasteElement,
@@ -391,6 +396,19 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                       <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, lineHeight: 1.35, mb: 0.75 }}>
                         Ziehen: Bild verschieben · Alt+Ziehen: Ausschnitt (bei Füllen)
                       </Typography>
+                      {onRemoveImageBackground && selectedElement.src?.trim() && (
+                        <Button
+                          size="small"
+                          fullWidth
+                          variant="outlined"
+                          disabled={removingImageBackground}
+                          startIcon={<RemoveBgIcon sx={{ fontSize: 14 }} />}
+                          onClick={() => onRemoveImageBackground(selectedElement.id)}
+                          sx={{ ...miniBtnSx, mb: 0.75 }}
+                        >
+                          {removingImageBackground ? 'Hintergrund…' : 'Weißen Hintergrund weg'}
+                        </Button>
+                      )}
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.35, mb: 0.5 }}>
                         {(['x', 'y', 'w', 'h'] as const).map((key) => (
                           <TextField

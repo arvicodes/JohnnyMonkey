@@ -79,7 +79,6 @@ export default function PresentationPptxImportDialog({
     setBusy(true);
     try {
       const loginCode = localStorage.getItem('loginCode')?.trim() || '';
-      if (!loginCode) throw new Error('Nicht angemeldet');
       const data = await parsePptxFile(file, loginCode);
       const sel: Record<number, boolean> = {};
       for (const s of data.slides) sel[s.index] = true;

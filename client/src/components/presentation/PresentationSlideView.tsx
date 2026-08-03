@@ -44,6 +44,7 @@ interface PresentationSlideViewProps {
   selectedElementId?: string | null;
   onElementSelect?: (id: string | null) => void;
   onElementChange?: (id: string, patch: Partial<SlideElement>) => void;
+  onDeleteElement?: (id: string) => void;
   onMoveElementToSlide?: (elementId: string, targetSlideId: string) => void;
   onTextElementFocus?: (el: HTMLElement, elementId: string) => void;
   showSlideNumbers?: boolean;
@@ -76,6 +77,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   selectedElementId,
   onElementSelect,
   onElementChange,
+  onDeleteElement,
   onMoveElementToSlide,
   onTextElementFocus,
   showSlideNumbers = false,
@@ -116,6 +118,9 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   const hasFreeElements = (slide.elements?.length ?? 0) > 0;
   const hideBlankContent =
     fullscreenMedia || imageHeroLayout || (slide.layout === 'blank' && hasFreeElements);
+  /** Freie Elemente (z. B. PPTX): ohne Johnny-Rahmen/Logo — sonst „Felder“ um alles herum. */
+  const freeformCanvas = slide.layout === 'blank' && hasFreeElements;
+  const showJohnnyChrome = showLogo && !fullscreenMedia && !freeformCanvas;
   const { background: backgroundElements, foreground: foregroundElements } = splitElementsByStackLayer(
     slide.elements,
   );
@@ -152,6 +157,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           selectedId={selectedElementId}
           onSelect={(id) => onElementSelect?.(id)}
           onElementChange={onElementChange}
+          onDeleteElement={onDeleteElement}
           onMoveElementToSlide={onMoveElementToSlide}
           onTextEditorFocus={onTextElementFocus}
           animationEditMode={animationEditMode}
@@ -518,7 +524,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
     >
       {renderElementLayer(backgroundElements, backgroundLayerZ)}
 
-      {showLogo && !fullscreenMedia && (
+      {showJohnnyChrome && (
         <Box
           component="img"
           src={JOHNNY_PRESENTATION.logoUrl}
@@ -538,7 +544,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
         />
       )}
 
-      {!fullscreenMedia && (
+      {showJohnnyChrome && (
       <Box
         sx={{
           position: 'absolute',
@@ -558,9 +564,9 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
         sx={{
           position: 'absolute',
           inset: 0,
-          pt: fullscreenMedia ? 0 : `${(showLogo ? 72 : 36) * scale}px`,
-          px: fullscreenMedia ? 0 : `${64 * scale}px`,
-          pb: fullscreenMedia ? 0 : `${(footerOn ? 56 : 48) * scale}px`,
+          pt: fullscreenMedia || freeformCanvas ? 0 : `${(showLogo ? 72 : 36) * scale}px`,
+          px: fullscreenMedia || freeformCanvas ? 0 : `${64 * scale}px`,
+          pb: fullscreenMedia || freeformCanvas ? 0 : `${(footerOn ? 56 : 48) * scale}px`,
           display: 'flex',
           flexDirection: 'column',
           minWidth: 0,

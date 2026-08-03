@@ -3,19 +3,10 @@ import fs from 'fs';
 import path from 'path';
 import { parsePptxBuffer } from '../lib/pptxParse';
 
-function getLoginCode(req: Request): string {
-  const raw = req.headers['x-login-code'];
-  return typeof raw === 'string' ? raw.trim() : '';
-}
-
 export class PresentationImportController {
   /** PPTX hochladen oder lokalen Pfad lesen → positionierte Boxen (Text/Bild/Form) */
   static async parsePptx(req: Request, res: Response) {
     try {
-      if (!getLoginCode(req)) {
-        return res.status(401).json({ error: 'Nicht angemeldet' });
-      }
-
       let buffer: Buffer | null = null;
       let fileName = 'import.pptx';
 
