@@ -6,21 +6,20 @@
 - Container `johnnymonkey-app` muss `running`/`healthy` sein.
 - Container `webserver` muss gestoppt sein (sonst kollidiert Port 80).
 
-## Pflicht-Mapping
+## Pflicht-Config (Host-Netz)
 
-Bei `johnnymonkey-app` muss in den Container-Details stehen:
+Compose nutzt jetzt `network_mode: host` und `PORT=80`.
 
-- `0.0.0.0:80 -> 3000/tcp`
-- optional zusätzlich: `:::80 -> 3000/tcp`
+Dadurch lauscht Node **direkt** auf Host-Port `80` (kein `80→3000`-Proxy mehr).
 
-In der Compose-Datei muss stehen:
+In Portainer kann unter Published ports ggf. nichts stehen — das ist bei Host-Netz normal.
+Entscheidend: Container `healthy`, Logs zeigen `Server is running on port 80`.
 
 ```yaml
-ports:
-  - "0.0.0.0:80:3000"
+network_mode: host
+environment:
+  - PORT=80
 ```
-
-Ohne dieses Mapping startet der Container zwar, ist aber von außen nicht erreichbar.
 
 ## Neustart-Reihenfolge (wichtig)
 
@@ -28,6 +27,7 @@ Ohne dieses Mapping startet der Container zwar, ist aber von außen nicht erreic
 2. `johnnymonkey-app` stoppen und entfernen (kill + remove).
 3. Stack `johnnymonkey` neu deployen (`Pull and redeploy` / `Recreate`).
 4. Prüfen, dass `johnnymonkey-app` wieder `healthy` ist.
+5. In den Logs: `running on port 80`.
 
 ## Korrekte URL (genau so)
 
@@ -38,11 +38,14 @@ Ohne dieses Mapping startet der Container zwar, ist aber von außen nicht erreic
   - ohne `www`
   - ohne Port
 
-## Warum es jetzt klappt
+## Wenn Safari „Verbindung abgelehnt“ zeigt
 
-- Der Container wurde wirklich neu gebaut und neu gestartet (`Recreate`), also mit den aktuellen Git-Änderungen.
-- `webserver` blockiert Port `80` nicht mehr, deshalb landet die Anfrage bei JohnnyMonkey.
-- Die App hört intern auf `3000`, und Portainer leitet `80 -> 3000` korrekt weiter.
-- Für `J-M-Reihen` wird jetzt der Inhalt aus dem Docker-Image genutzt (kein leerer Host-Ordner mehr darüber gemountet).
-- Gespeicherte Ordnerpfade wie `J-M-Reihen/...` werden im Backend auf `git-intern/...` umgebogen, deshalb werden die Inhalte wieder gefunden.
-- Die Datenbank-Verbindung zeigt stabil auf `./prisma/dev.db`, daher funktionieren Login und Karteikarten wieder.
+Portainer (`:9443`) erreichbar, App-Port `80` aber refused → oft VPN-/Host-Firewall.
+Dann muss TCP `80` für VPN-Clients auf `192.168.8.1` wirklich durchkommen
+(nicht nur Allow-Regel ohne Listener/DNAT).
+
+## Warum Host-Netz
+
+- Umgeht den Docker-Port-Proxy (`80→3000`), der Mapping anzeigen kann, obwohl von außen nichts antwortet.
+- `webserver` darf Port `80` nicht belegen.
+- DB und `J-M-Reihen` bleiben wie bisher über Volumes/Image verfügbar.

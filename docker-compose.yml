@@ -8,12 +8,12 @@ services:
     image: johnnymonkey:latest
     pull_policy: build
     container_name: johnnymonkey-app
-    # Port 80 für direkten Zugriff im LAN (explizit IPv4, sonst oft nicht erreichbar)
-    ports:
-      - "0.0.0.0:80:3000"  # Host Port 80 → Container Port 3000 (Node.js Server)
+    # Host-Netz: App bindet direkt auf Host-Port 80 (umgeht Docker-Port-Proxy).
+    # webserver/nginx auf Port 80 muss gestoppt sein.
+    network_mode: host
     environment:
       - NODE_ENV=production
-      - PORT=3000
+      - PORT=80
       - DATABASE_URL=file:./prisma/dev.db
       - LOCAL_MATERIALS_PATH=/app
       - JM_REIHEN_PATH=/app/J-M-Reihen
@@ -27,7 +27,7 @@ services:
       - johnnymonkey_logs:/app/logs
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:80/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -38,32 +38,9 @@ services:
       - "com.portainer.io.description=Educational Learning Platform"
       - "com.portainer.io.category=Application"
       - "com.portainer.io.managed=true"
-    networks:
-      - johnnymonkey-network
 
   # Nginx nicht mehr benötigt - Sophos Firewall übernimmt HTTPS-Terminierung
-  # Node.js Server läuft direkt auf Port 80
-
-  # Optional: Separate database service (for PostgreSQL)
-  # postgres:
-  #   image: postgres:15
-  #   environment:
-  #     POSTGRES_DB: johnnymonkey
-  #     POSTGRES_USER: johnnymonkey
-  #     POSTGRES_PASSWORD: your_password
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #   ports:
-  #     - "5432:5432"
-  #   restart: unless-stopped
-
-  # Portainer läuft bereits separat - nicht hier einbinden
-  # Portainer kann über http://localhost:9000 erreicht werden
-
-networks:
-  johnnymonkey-network:
-    driver: bridge
-    name: johnnymonkey-network
+  # Node.js Server läuft direkt auf Port 80 (host network)
 
 volumes:
   postgres_data:
