@@ -11,7 +11,16 @@
 Bei `johnnymonkey-app` muss in den Container-Details stehen:
 
 - `0.0.0.0:80 -> 3000/tcp`
-- `:::80 -> 3000/tcp`
+- optional zusätzlich: `:::80 -> 3000/tcp`
+
+In der Compose-Datei muss stehen:
+
+```yaml
+ports:
+  - "0.0.0.0:80:3000"
+```
+
+Ohne dieses Mapping startet der Container zwar, ist aber von außen nicht erreichbar.
 
 ## Neustart-Reihenfolge (wichtig)
 

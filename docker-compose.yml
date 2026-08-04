@@ -8,9 +8,9 @@ services:
     image: johnnymonkey:latest
     pull_policy: build
     container_name: johnnymonkey-app
-    # Port 80 für direkten Zugriff im LAN
+    # Port 80 für direkten Zugriff im LAN (explizit IPv4, sonst oft nicht erreichbar)
     ports:
-      - "80:3000"  # Host Port 80 → Container Port 3000 (Node.js Server)
+      - "0.0.0.0:80:3000"  # Host Port 80 → Container Port 3000 (Node.js Server)
     environment:
       - NODE_ENV=production
       - PORT=3000
