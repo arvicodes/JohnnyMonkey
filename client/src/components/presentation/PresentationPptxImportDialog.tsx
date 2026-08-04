@@ -143,8 +143,8 @@ export default function PresentationPptxImportDialog({
       </DialogTitle>
       <DialogContent sx={{ pt: 2 }}>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, mt: 0.5 }}>
-          Textboxen, Bilder und Formen werden mit Position und Größe als verschiebbare Elemente
-          übernommen (Johnny-Hintergrund).
+          Text, Bilder und Formen werden als editierbare Elemente übernommen. Textfelder sind
+          direkt tippbar (Klick → Auswahl, nochmal Klick oder Doppelklick → schreiben).
         </Typography>
 
         <input

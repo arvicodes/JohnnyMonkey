@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import {
   normalizeSlide,
@@ -28,6 +28,7 @@ import {
 } from '../../lib/presentationSlideFooter';
 import { slideHasFullscreenMedia } from '../../lib/presentationMediaEmbed';
 import { getElementStackLayer, splitElementsByStackLayer } from '../../lib/presentationElementLayers';
+import type { SnapGuide } from '../../lib/presentationElementSnap';
 import PresentationRichZone from './PresentationRichZone';
 import PresentationSlideElements from './PresentationSlideElements';
 
@@ -94,6 +95,10 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   exportSnapshot = false,
   imageMaxEdge,
 }) => {
+  const [snapGuides, setSnapGuides] = useState<SnapGuide[]>([]);
+  const handleSnapGuidesChange = useCallback((guides: SnapGuide[]) => {
+    setSnapGuides(guides);
+  }, []);
   const slide = normalizeSlide(rawSlide);
   const resolvedImageMax =
     imageMaxEdge ?? (editable && !exportSnapshot ? SLIDE_IMAGE_EDITOR_MAX : undefined);
@@ -132,8 +137,18 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   const hasBackgroundElements = backgroundElements.length > 0;
   const heroSlide = imageHeroLayout;
   const textZonesInteractive = editable;
-  /** Beim Auswählen: kurz nach vorne, damit es hinter Text liegt aber bearbeitbar bleibt. */
-  const backgroundLayerZ = selectedBackground && !heroSlide ? 30 : 1;
+  /**
+   * Editor: Hintergrund-Elemente über den Layout-Inhaltsfeldern (z≈4), sonst fängt
+   * title/body alle Klicks ab. Präsentation: weiter unter dem Folientext (z=1).
+   * Ausgewählt: kurz über Vordergrund, damit Formen hinter Textfeldern greifbar bleiben.
+   */
+  const backgroundLayerZ = heroSlide
+    ? 1
+    : editable && selectedBackground
+      ? 30
+      : editable
+        ? 12
+        : 1;
   const logoZ = 38;
 
   const renderElementLayer = (layerElements: SlideElement[], zIndex: number) => {
@@ -149,6 +164,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
       >
         <PresentationSlideElements
           elements={layerElements}
+          snapSourceElements={slide.elements}
           scale={scale}
           revealStep={revealStep}
           revealEnabled={effectiveReveal}
@@ -160,6 +176,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           onDeleteElement={onDeleteElement}
           onMoveElementToSlide={onMoveElementToSlide}
           onTextEditorFocus={onTextElementFocus}
+          onSnapGuidesChange={editable ? handleSnapGuidesChange : undefined}
           animationEditMode={animationEditMode}
           selectedAnimationTarget={selectedAnimationTarget}
           onAnimationTargetClick={onAnimationTargetClick}
@@ -583,6 +600,60 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
       {renderElementLayer(
         foregroundElements,
         editable ? 25 : animationEditMode ? 12 : 5,
+      )}
+
+      {editable && snapGuides.length > 0 && (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            zIndex: 120,
+            overflow: 'hidden',
+          }}
+        >
+          {snapGuides.map((g, i) =>
+            g.axis === 'x' ? (
+              <Box
+                key={`gx-${i}-${g.pos}`}
+                sx={{
+                  position: 'absolute',
+                  left: `${g.pos}%`,
+                  top: 0,
+                  bottom: 0,
+                  width: 0,
+                  borderLeft:
+                    g.kind === 'spacing'
+                      ? '1px dashed #00BCD4'
+                      : g.kind === 'center'
+                        ? '1px solid #FF6F00'
+                        : '1px solid #00E5FF',
+                  boxShadow: '0 0 0 0.5px rgba(255,255,255,0.7)',
+                  opacity: 0.95,
+                }}
+              />
+            ) : (
+              <Box
+                key={`gy-${i}-${g.pos}`}
+                sx={{
+                  position: 'absolute',
+                  top: `${g.pos}%`,
+                  left: 0,
+                  right: 0,
+                  height: 0,
+                  borderTop:
+                    g.kind === 'spacing'
+                      ? '1px dashed #00BCD4'
+                      : g.kind === 'center'
+                        ? '1px solid #FF6F00'
+                        : '1px solid #00E5FF',
+                  boxShadow: '0 0 0 0.5px rgba(255,255,255,0.7)',
+                  opacity: 0.95,
+                }}
+              />
+            ),
+          )}
+        </Box>
       )}
 
       {footerOn && (

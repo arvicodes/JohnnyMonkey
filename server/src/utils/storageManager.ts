@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { filenameLookupVariants } from './multerFilename';
 
 export interface StorageConfig {
   type: 'local' | 'git-intern';
@@ -275,12 +276,19 @@ export class StorageManager {
           ? 'git-intern'
           : `git-intern/${norm.slice('J-M-Reihen/'.length)}`;
     }
-    if (norm.startsWith('git-intern/')) {
-      const full = this.resolveGitInternRelativePath(norm.replace('git-intern/', ''));
-      return fs.existsSync(full) ? full : null;
+
+    const candidates = filenameLookupVariants(norm);
+
+    for (const candidate of candidates) {
+      if (candidate.startsWith('git-intern/')) {
+        const full = this.resolveGitInternRelativePath(candidate.replace('git-intern/', ''));
+        if (fs.existsSync(full)) return full;
+        continue;
+      }
+      const resolved = path.resolve(candidate);
+      if (fs.existsSync(resolved)) return resolved;
     }
-    const resolved = path.resolve(norm);
-    return fs.existsSync(resolved) ? resolved : null;
+    return null;
   }
 
   /**

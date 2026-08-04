@@ -1,9 +1,12 @@
 import React from 'react';
 import { SlideElement } from '../../lib/presentationDeck';
+import { elementToRect, type SnapGuide } from '../../lib/presentationElementSnap';
 import PresentationDraggableElement from './PresentationDraggableElement';
 
 interface PresentationSlideElementsProps {
   elements: SlideElement[];
+  /** Alle Folien-Elemente (beide Ebenen) für Snap-Ziele. */
+  snapSourceElements?: SlideElement[];
   scale: number;
   revealStep?: number;
   revealEnabled?: boolean;
@@ -17,6 +20,7 @@ interface PresentationSlideElementsProps {
   onDeleteElement?: (id: string) => void;
   onMoveElementToSlide?: (elementId: string, targetSlideId: string) => void;
   onTextEditorFocus?: (el: HTMLElement, elementId: string) => void;
+  onSnapGuidesChange?: (guides: SnapGuide[]) => void;
   mediaInteractive?: boolean;
   exportSnapshot?: boolean;
   imageMaxEdge?: number;
@@ -24,6 +28,7 @@ interface PresentationSlideElementsProps {
 
 const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
   elements,
+  snapSourceElements,
   scale,
   revealStep = 999,
   revealEnabled = true,
@@ -37,11 +42,13 @@ const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
   onDeleteElement,
   onMoveElementToSlide,
   onTextEditorFocus,
+  onSnapGuidesChange,
   mediaInteractive = false,
   exportSnapshot = false,
   imageMaxEdge,
 }) => {
   const sorted = [...elements].sort((a, b) => a.zIndex - b.zIndex);
+  const snapTargets = (snapSourceElements ?? elements).map(elementToRect);
 
   return (
     <>
@@ -64,6 +71,8 @@ const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
             onMoveElementToSlide ? (targetSlideId) => onMoveElementToSlide(el.id, targetSlideId) : undefined
           }
           onTextEditorFocus={onTextEditorFocus}
+          snapTargets={snapTargets}
+          onSnapGuidesChange={onSnapGuidesChange}
           mediaInteractive={mediaInteractive}
           exportSnapshot={exportSnapshot}
           imageMaxEdge={imageMaxEdge}

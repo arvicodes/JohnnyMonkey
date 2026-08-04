@@ -436,6 +436,10 @@ const PresentationEditorPage: React.FC = () => {
           if (latest) startTransition(() => setDeck(latest));
         }, 750);
       } else {
+        if (quietUiTimer.current) {
+          clearTimeout(quietUiTimer.current);
+          quietUiTimer.current = null;
+        }
         startTransition(() => setDeck(next));
       }
 
@@ -886,7 +890,10 @@ const PresentationEditorPage: React.FC = () => {
     w = DEFAULT_FLOATING_IMAGE_W,
     h = DEFAULT_FLOATING_IMAGE_H,
   ) => {
-    if (!normalizedActive) return;
+    const current = deckRef.current;
+    if (!current || !activeId) return;
+    const slide = current.slides.find((s) => s.id === activeId);
+    if (!slide) return;
     const el: SlideElement = {
       id: `el-${Date.now()}`,
       type: 'image',
@@ -895,10 +902,15 @@ const PresentationEditorPage: React.FC = () => {
       w,
       h,
       src: path,
-      zIndex: (normalizedActive.elements?.length ?? 0) + 1,
+      zIndex: (slide.elements?.length ?? 0) + 1,
       imageFit: 'contain',
     };
-    updateSlide({ elements: [...(normalizedActive.elements || []), el] });
+    const slides = current.slides.map((s) =>
+      s.id === activeId
+        ? normalizeSlide({ ...s, elements: [...(s.elements || []), el] })
+        : s,
+    );
+    scheduleSave({ ...current, slides }, { urgent: true, history: 'immediate' });
     setSelectedElementId(el.id);
     setSnackbar('Bild eingefügt — in Einstellungen „Beschneiden“ oder auf der Folie ziehen');
   };
@@ -1586,7 +1598,13 @@ const PresentationEditorPage: React.FC = () => {
         body: formData,
       });
       if (!res.ok) throw new Error('Bild-Upload fehlgeschlagen');
-      return `${folder}/${file.name}`;
+      const data = (await res.json()) as { path?: string; filename?: string };
+      // Server-Pfad verwenden (korrekt dekodierte Umlaute), nicht file.name
+      if (data.path && typeof data.path === 'string' && data.path.trim()) {
+        return data.path.replace(/\\/g, '/');
+      }
+      const name = (data.filename || file.name || 'bild.png').replace(/\\/g, '/');
+      return `${folder}/${name.split('/').pop()}`;
     } catch (e) {
       const msg =
         e instanceof TypeError || (e instanceof Error && /Failed to fetch/i.test(e.message))
@@ -1685,13 +1703,16 @@ const PresentationEditorPage: React.FC = () => {
   };
 
   const handleSlideImageDrop = async (e: React.DragEvent) => {
-    if (!isImageFileDragEvent(e)) return;
+    // Immer preventDefault bei Files-Drag, sonst „friert“ der Drop in manchen Browsern
+    const looksLikeFiles = Array.from(e.dataTransfer?.types ?? []).includes('Files');
+    if (!looksLikeFiles && !isImageFileDragEvent(e)) return;
     e.preventDefault();
+    e.stopPropagation();
     setImageDropActive(false);
 
     const files = extractImageFilesFromDataTransfer(e.dataTransfer);
     if (files.length === 0) {
-      setSnackbar('Keine Bilddatei erkannt');
+      setSnackbar('Keine Bilddatei erkannt (PNG/JPG/…).');
       return;
     }
 
@@ -1943,7 +1964,11 @@ const PresentationEditorPage: React.FC = () => {
             size="small"
             placeholder="Präsentationstitel"
             value={deck.title}
-            onChange={(e) => scheduleSave({ ...deck, title: e.target.value })}
+            onChange={(e) => {
+              const current = deckRef.current;
+              if (!current) return;
+              scheduleSave({ ...current, title: e.target.value });
+            }}
             sx={{
               flex: 1,
               minWidth: 120,
@@ -2339,6 +2364,10 @@ const PresentationEditorPage: React.FC = () => {
         <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
           <Box
             ref={canvasHostRef}
+            onDragEnter={handleSlideImageDragEnter}
+            onDragOver={handleSlideImageDragOver}
+            onDragLeave={handleSlideImageDragLeave}
+            onDrop={(e) => void handleSlideImageDrop(e)}
             sx={{
               flex: 1,
               display: 'flex',

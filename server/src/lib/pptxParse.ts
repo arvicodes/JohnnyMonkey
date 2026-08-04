@@ -365,7 +365,7 @@ function paragraphsToHtml(
       if (bold) inner = `<strong>${inner}</strong>`;
       if (italic) inner = `<em>${inner}</em>`;
       if (pt && pt >= 8 && pt <= 96) {
-        inner = `<span data-pres-fs="${pt}">${inner}</span>`;
+        inner = `<span data-pres-fs="${pt}" style="font-size:${pt}px">${inner}</span>`;
       }
       if (runColor) {
         inner = `<span data-pres-color="${runColor}" style="color:${runColor}">${inner}</span>`;
@@ -414,7 +414,7 @@ function paragraphsToHtml(
   if (html && fontSizePt && !/data-pres-fs=/.test(html)) {
     const pt = Math.round(fontSizePt);
     if (pt >= 8 && pt <= 96) {
-      html = `<div data-pres-fs="${pt}">${html}</div>`;
+      html = `<div data-pres-fs="${pt}" style="font-size:${pt}px">${html}</div>`;
     }
   }
 
@@ -724,21 +724,13 @@ function extractShapeBoxes(
         fallbackPt,
       );
       if (html.trim() || plainLines.length) {
-        if (shapeLooksLikeBox(sp, fill) && !(pct.w > 95 && pct.h > 95)) {
-          boxes.push({
-            kind: 'shape',
-            ...pct,
-            fillColor: fill,
-            strokeColor: stroke,
-            shapeKind: isEllipse ? 'ellipse' : 'rect',
-          });
-        }
+        // Fill gehört zum Textfeld selbst — keine Extra-Form darunter (sonst doppelte Boxen)
         boxes.push({
           kind: 'text',
           ...pct,
           html: html || plainLines.map((l) => `<p>${escapeHtml(l)}</p>`).join(''),
-          fillColor: null,
-          strokeColor: null,
+          fillColor: fill && !(pct.w > 95 && pct.h > 95) ? fill : null,
+          strokeColor: stroke,
           fontSizePt: fontSizePt || extractFontSizePt(sp) || fallbackPt,
           bold,
           color,

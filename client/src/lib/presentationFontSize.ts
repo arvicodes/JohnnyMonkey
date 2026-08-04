@@ -442,10 +442,10 @@ export function applyEditorFontSizeStepIndex(editor: HTMLElement | null, index: 
 }
 
 /**
- * Notiz-HTML für Anzeige (Laptop/Present): data-pres-fs → inline font-size,
- * damit Editor-Schriftgrößen auch ohne contentEditable greifen.
+ * HTML für Anzeige/Editor: data-pres-fs → sichtbare inline font-size
+ * (Import & Formatleiste speichern sonst nur das Attribut).
  */
-export function hydrateNotesHtmlFontSizes(html: string): string {
+export function hydratePresentationHtmlFontSizes(html: string): string {
   if (!html || typeof document === 'undefined') return html;
   try {
     const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -459,4 +459,9 @@ export function hydrateNotesHtmlFontSizes(html: string): string {
   } catch {
     return html;
   }
+}
+
+/** @deprecated Alias — nutze hydratePresentationHtmlFontSizes */
+export function hydrateNotesHtmlFontSizes(html: string): string {
+  return hydratePresentationHtmlFontSizes(html);
 }

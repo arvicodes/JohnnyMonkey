@@ -14,10 +14,15 @@ import {
 import PresentationMediaFrame from './PresentationMediaFrame';
 import { resolveMediaEmbed } from '../../lib/presentationMediaEmbed';
 import { isFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
-import { captureEditorSelection } from '../../lib/presentationFontSize';
+import { captureEditorSelection, hydratePresentationHtmlFontSizes, PRESENTATION_CONTENT_FONT_PX } from '../../lib/presentationFontSize';
 import { filterHtmlByRevealStep, hasVisibleRevealContent, isElementVisible, shouldAnimateReveal } from '../../lib/presentationReveal';
 import { presentationNestedListSx } from '../../lib/presentationListStyles';
-import { handlePresentationTabKey, replaceArrowShortcutsNearCursor, tryMarkdownListShortcut } from '../../lib/presentationRichText';
+import {
+  handlePresentationTabKey,
+  replaceArrowShortcutsNearCursor,
+  sanitizePresentationHtml,
+  tryMarkdownListShortcut,
+} from '../../lib/presentationRichText';
 import {
   effectivePresentationImageFit,
   formatImageObjectPosition,
@@ -31,6 +36,13 @@ import {
   shouldPanCoverImageOnDrag,
 } from '../../lib/presentationImageUtils';
 import { SlideShapeSvg } from '../../lib/presentationSlideShapes';
+import {
+  elementToRect,
+  snapElementMove,
+  snapElementResize,
+  type ElementRect,
+  type SnapGuide,
+} from '../../lib/presentationElementSnap';
 
 type DragMode = 'move' | 'resize';
 type ResizeCorner = 'br' | 'tr';
@@ -65,6 +77,9 @@ interface PresentationDraggableElementProps {
   mediaInteractive?: boolean;
   exportSnapshot?: boolean;
   imageMaxEdge?: number;
+  /** Andere Elemente für Smart-Guides / Snap. */
+  snapTargets?: ElementRect[];
+  onSnapGuidesChange?: (guides: SnapGuide[]) => void;
 }
 
 const MIN_SIZE = 4;
@@ -91,6 +106,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   mediaInteractive = false,
   exportSnapshot = false,
   imageMaxEdge,
+  snapTargets = [],
+  onSnapGuidesChange,
 }) => {
   const textRef = useRef<HTMLDivElement>(null);
   const displayRef = useRef<HTMLDivElement>(null);
@@ -111,6 +128,10 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   const livePatchRef = useRef<Partial<SlideElement> | null>(null);
   const rafMoveRef = useRef<number | null>(null);
   const textInputTimerRef = useRef<number | null>(null);
+  const snapTargetsRef = useRef(snapTargets);
+  snapTargetsRef.current = snapTargets;
+  const onSnapGuidesChangeRef = useRef(onSnapGuidesChange);
+  onSnapGuidesChangeRef.current = onSnapGuidesChange;
   /** Text erst per Doppelklick editieren — sonst Blockiert Entf/Löschen der Box. */
   const [textEditing, setTextEditing] = useState(false);
   const DRAG_THRESHOLD_PX = 5;
@@ -124,17 +145,19 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     selectedAnimationTarget === elementItemId ||
     selectedAnimationTarget?.startsWith(`elementParagraph:${element.id}:`);
 
+  // Beim Öffnen des Editors Inhalt setzen
   useEffect(() => {
-    if (element.type === 'text' && editable && selected && textRef.current) {
-      const el = textRef.current;
-      if (document.activeElement === el || el.contains(document.activeElement)) return;
-      if (el.innerHTML !== (element.html || '')) {
-        el.innerHTML = element.html || '<p>Text hier…</p>';
-      }
-    }
-  }, [element.type, element.html, editable, selected, element.id]);
+    if (!textEditing || element.type !== 'text') return;
+    const el = textRef.current;
+    if (!el) return;
+    el.innerHTML = hydratePresentationHtmlFontSizes(element.html || '<p></p>');
+    el.focus({ preventScroll: true });
+    onTextEditorFocus?.(el, element.id);
+    // nur beim Eintritt in den Edit-Modus
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [textEditing]);
 
-  /** Nach Doppelklick tippbar (nicht schon bei Auswahl — sonst blockiert Entf die Box). */
+  /** Nach Doppelklick / zweitem Klick tippbar — ohne Text alles zu markieren. */
   useEffect(() => {
     if (element.type !== 'text' || !editable || !selected || animationEditMode || !textEditing) return;
     let cancelled = false;
@@ -145,22 +168,11 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       if (document.activeElement === el || el.contains(document.activeElement)) return;
       el.focus({ preventScroll: true });
       onTextEditorFocus?.(el, element.id);
-      try {
-        const sel = window.getSelection();
-        if (!sel) return;
-        const range = document.createRange();
-        range.selectNodeContents(el);
-        range.collapse(false);
-        sel.removeAllRanges();
-        sel.addRange(range);
-      } catch {
-        /* ignore */
-      }
     };
     const raf1 = window.requestAnimationFrame(() => {
       window.requestAnimationFrame(focusEditor);
     });
-    const t = window.setTimeout(focusEditor, 30);
+    const t = window.setTimeout(focusEditor, 20);
     return () => {
       cancelled = true;
       window.cancelAnimationFrame(raf1);
@@ -222,8 +234,10 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     if (!d) return;
     const dxPct = ((e.clientX - d.startX) / d.slideW) * 100;
     const dyPct = ((e.clientY - d.startY) / d.slideH) * 100;
+    const snapEnabled = !e.metaKey && !e.ctrlKey;
 
     let patch: Partial<SlideElement>;
+    let guides: SnapGuide[] = [];
     if (d.mode === 'move') {
       if (shouldPanCoverImageOnDrag(d.orig, { altKey: e.altKey })) {
         const pos = parseImageObjectPosition(d.orig.imageObjectPosition);
@@ -235,28 +249,47 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
           ),
         };
       } else {
-        patch = {
+        const proposed = {
+          ...elementToRect(d.orig),
           x: clamp(d.orig.x + dxPct, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
           y: clamp(d.orig.y + dyPct, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
         };
+        const snapped = snapElementMove(proposed, snapTargetsRef.current, {
+          enabled: snapEnabled,
+        });
+        patch = { x: snapped.x, y: snapped.y };
+        guides = snapped.guides;
       }
     } else if (d.resizeCorner === 'tr') {
       const nextW = clamp(d.orig.w + dxPct, MIN_SIZE, IMAGE_FRAME_SIZE_MAX);
       const nextH = clamp(d.orig.h - dyPct, MIN_SIZE, IMAGE_FRAME_SIZE_MAX);
       const deltaH = d.orig.h - nextH;
-      patch = {
+      const proposed = {
+        ...elementToRect(d.orig),
         w: nextW,
         h: nextH,
         y: clamp(d.orig.y + deltaH, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
       };
+      const snapped = snapElementResize(proposed, 'tr', snapTargetsRef.current, {
+        enabled: snapEnabled,
+      });
+      patch = { x: snapped.x, y: snapped.y, w: snapped.w, h: snapped.h };
+      guides = snapped.guides;
     } else {
-      patch = {
+      const proposed = {
+        ...elementToRect(d.orig),
         w: clamp(d.orig.w + dxPct, MIN_SIZE, IMAGE_FRAME_SIZE_MAX),
         h: clamp(d.orig.h + dyPct, MIN_SIZE, IMAGE_FRAME_SIZE_MAX),
       };
+      const snapped = snapElementResize(proposed, 'br', snapTargetsRef.current, {
+        enabled: snapEnabled,
+      });
+      patch = { w: snapped.w, h: snapped.h };
+      guides = snapped.guides;
     }
 
     livePatchRef.current = patch;
+    onSnapGuidesChangeRef.current?.(guides);
     if (rafMoveRef.current != null) return;
     rafMoveRef.current = window.requestAnimationFrame(() => {
       rafMoveRef.current = null;
@@ -267,7 +300,6 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   const pointerUp = useCallback(
     (e: PointerEvent) => {
       const wasDragging = Boolean(dragRef.current);
-      const pending = pendingDragRef.current;
       const finalPatch = livePatchRef.current;
       const dragMode = dragRef.current?.mode;
       pendingDragRef.current = null;
@@ -280,6 +312,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       setDragging(false);
       setLiveGeom(null);
       document.body.removeAttribute('data-pres-element-drag');
+      onSnapGuidesChangeRef.current?.([]);
       window.removeEventListener('pointermove', pointerMove);
       window.removeEventListener('pointerup', pointerUp);
 
@@ -303,39 +336,13 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         onChange(finalPatch);
       }
 
-      // Klick ohne Ziehen auf Text → Editor fokussieren
-      if (
-        !wasDragging &&
-        pending &&
-        pending.mode === 'move' &&
-        element.type === 'text' &&
-        editable &&
-        !animationEditMode
-      ) {
-        window.requestAnimationFrame(() => {
-          const el = textRef.current;
-          if (!el) return;
-          el.focus();
-          onTextEditorFocus?.(el, element.id);
-        });
-      }
-
       try {
         (e.target as HTMLElement)?.releasePointerCapture?.(e.pointerId);
       } catch {
         /* ignore */
       }
     },
-    [
-      pointerMove,
-      element.type,
-      element.id,
-      editable,
-      animationEditMode,
-      onTextEditorFocus,
-      onChange,
-      onMoveToSlide,
-    ]
+    [pointerMove, element.type, onChange, onMoveToSlide]
   );
 
   const startDrag = (e: React.PointerEvent, mode: DragMode, resizeCorner: ResizeCorner = 'br') => {
@@ -345,6 +352,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     if (!rect) return;
     e.stopPropagation();
     // Kein preventDefault beim ersten Down — sonst bekommt contentEditable keinen Fokus.
+    if (textEditing) setTextEditing(false);
     onSelect?.();
     pendingDragRef.current = {
       mode,
@@ -356,7 +364,12 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       orig: { ...element },
       pointerId: e.pointerId,
     };
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    // currentTarget = Element-Box bzw. Resize-Handle — zuverlässiger als innere Targets
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    } catch {
+      /* ignore */
+    }
     window.addEventListener('pointermove', pointerMove);
     window.addEventListener('pointerup', pointerUp);
   };
@@ -404,10 +417,11 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     return null;
   }
 
-  const displayHtml =
+  const displayHtml = hydratePresentationHtmlFontSizes(
     element.type === 'text' && revealEnabled && hasInnerParagraphSteps && !editable && !animationEditMode
       ? filterHtmlByRevealStep(element.html || '', revealStep, true)
-      : element.html || '<p>Text</p>';
+      : element.html || '<p>Text</p>',
+  );
 
   const isImageElement = element.type === 'image';
   const heroImage = isImageElement && isHeroSlideImage(view);
@@ -418,8 +432,11 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     isImageElement && Boolean(element.src?.trim()) && !heroImage && imageFit !== 'cover';
   const showSelectionChrome = editable && selected && !animationEditMode;
   const showTextEditor = showSelectionChrome && element.type === 'text' && textEditing;
-  const showResizeHandle = showSelectionChrome && !(element.type === 'text' && textEditing);
+  /** Größe immer anpassen können — auch während Tippen (Handle außerhalb). */
+  const showResizeHandle = showSelectionChrome;
   const isShapeElement = element.type === 'shape';
+  const textFill = element.type === 'text' ? element.fillColor : undefined;
+  const textBaseFs = PRESENTATION_CONTENT_FONT_PX;
   const isFullscreenish = view.w >= 96 && view.h >= 96;
   const nearBottomEdge = view.y + view.h >= 88;
   const handleOnTop = !heroImage && (isFullscreenish || nearBottomEdge);
@@ -484,7 +501,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         if (isMediaElement && mediaInteractive) return;
         if ((e.target as HTMLElement).closest('[data-resize-handle]')) return;
         if ((e.target as HTMLElement).closest('[data-element-delete]')) return;
-        if ((e.target as HTMLElement).closest('[data-text-edit]') && selected && textEditing) return;
+        // Tippen im Editor nicht als Drag starten — Rahmen drumherum bleibt ziehbar.
+        if ((e.target as HTMLElement).closest('[data-text-edit]') && textEditing) return;
         if (!selected) onSelect?.();
         startDrag(e, 'move');
       }}
@@ -504,6 +522,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
           10 +
           element.zIndex +
           (dragging ? 200 : 0) +
+          (showSelectionChrome ? 80 : 0) +
           (animationEditMode && elementAnimSelected ? 50 : 0),
         animation: shouldAnimateReveal(elementStep, revealStep, revealEnabled)
           ? 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both'
@@ -512,21 +531,32 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         overflow: showSelectionChrome || exportSnapshot || isShapeElement ? 'visible' : 'hidden',
         border: imageSelectionBorder,
         boxSizing: 'border-box',
+        bgcolor:
+          element.type === 'text' && textFill
+            ? textFill
+            : element.type === 'text' && showTextEditor
+              ? 'rgba(255,255,255,0.97)'
+              : 'transparent',
+        boxShadow:
+          element.type === 'text' && element.strokeColor
+            ? `inset 0 0 0 ${Math.max(1, (element.strokeWidth || 2) * scale)}px ${element.strokeColor}`
+            : undefined,
         cursor: animationEditMode
           ? 'pointer'
           : editable
             ? dragging
               ? 'grabbing'
-              : showSelectionChrome
-                ? 'grab'
-                : 'pointer'
+              : showTextEditor
+                ? 'text'
+                : showSelectionChrome
+                  ? 'grab'
+                  : 'pointer'
             : isMediaElement && mediaInteractive
               ? 'default'
               : undefined,
         touchAction: isMediaElement && mediaInteractive ? 'manipulation' : 'none',
         pointerEvents:
           editable || animationEditMode || (isMediaElement && mediaInteractive) ? 'auto' : 'none',
-        bgcolor: element.type === 'text' && showTextEditor ? 'rgba(255,255,255,0.95)' : 'transparent',
         willChange: dragging ? 'left, top, width, height' : undefined,
       }}
     >
@@ -662,7 +692,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             ref={textRef}
             data-text-edit
             data-pres-rich-zone
-            data-pres-base-fs="22"
+            data-pres-base-fs={String(textBaseFs)}
             contentEditable
             suppressContentEditableWarning
             onFocus={() => {
@@ -677,10 +707,24 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 textInputTimerRef.current = null;
               }
               if (textRef.current && onChange) {
-                onChange({ html: textRef.current.innerHTML });
+                onChange({
+                  html: sanitizePresentationHtml(textRef.current.innerHTML),
+                });
               }
             }}
             onPointerDown={(e) => e.stopPropagation()}
+            onPaste={(e) => {
+              e.preventDefault();
+              const raw =
+                e.clipboardData.getData('text/html') ||
+                e.clipboardData.getData('text/plain') ||
+                '';
+              const cleaned = sanitizePresentationHtml(
+                raw.includes('<') ? raw : `<p>${raw.replace(/\n/g, '</p><p>')}</p>`,
+              );
+              document.execCommand('insertHTML', false, cleaned);
+              if (textRef.current) onChange?.({ html: textRef.current.innerHTML });
+            }}
             onInput={() => {
               if (!textRef.current || !onChange) return;
               replaceArrowShortcutsNearCursor(textRef.current);
@@ -700,7 +744,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   window.clearTimeout(textInputTimerRef.current);
                   textInputTimerRef.current = null;
                 }
-                onChange?.({ html: el.innerHTML });
+                onChange?.({ html: sanitizePresentationHtml(el.innerHTML) });
                 setTextEditing(false);
                 return;
               }
@@ -724,15 +768,17 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               handlePresentationTabKey(el, e.shiftKey);
             }}
             sx={{
-              width: '100%',
-              height: '100%',
+              // Etwas eingerückt: Rahmen der Box bleibt ziehbar, Tippen innen.
+              position: 'absolute',
+              inset: `${6 * scale}px`,
               overflow: 'auto',
               outline: 'none',
-              fontSize: `${22 * scale}px`,
-              lineHeight: 1.45,
-              p: `${6 * scale}px`,
+              fontSize: `${textBaseFs * scale}px`,
+              lineHeight: 1.4,
+              p: `${4 * scale}px`,
               cursor: 'text',
               color: '#424242',
+              boxSizing: 'border-box',
               '& p': { m: 0, mb: `${4 * scale}px` },
               '& li > p': { display: 'block', listStyle: 'none' },
               ...presentationNestedListSx({ scale, listPaddingPx: 20 * scale, itemGapPx: 2 * scale }),
@@ -746,12 +792,13 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               width: '100%',
               height: '100%',
               overflow: 'hidden',
-              fontSize: `${22 * scale}px`,
-              lineHeight: 1.45,
-              p: `${6 * scale}px`,
+              fontSize: `${textBaseFs * scale}px`,
+              lineHeight: 1.4,
+              p: `${8 * scale}px`,
               pointerEvents: animationEditMode ? 'auto' : 'none',
               color: '#424242',
-              '& p': { m: 0 },
+              boxSizing: 'border-box',
+              '& p': { m: 0, mb: `${4 * scale}px` },
               '& li > p': { display: 'block', listStyle: 'none' },
               ...presentationNestedListSx({ scale, listPaddingPx: 20 * scale, itemGapPx: 2 * scale }),
               '& [data-reveal-step].pres-reveal-enter': {

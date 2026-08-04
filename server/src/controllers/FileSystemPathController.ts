@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { StorageManager } from '../utils/storageManager';
 import { fileToJpegBuffer, isHeicPath, readImageFileForServe } from '../utils/imageToJpeg';
 import { backupPresentationDeckAfterSave, backupPresentationDeckBeforeOverwrite } from '../utils/presentationDeckBackup';
+import { decodeMulterFilename } from '../utils/multerFilename';
 import fs from 'fs';
 import path from 'path';
 import mammoth from 'mammoth';
@@ -1074,8 +1075,10 @@ export class FileSystemPathController {
         return res.status(400).json({ error: 'Zielverzeichnis fehlt' });
       }
 
+      const originalName = decodeMulterFilename(file.originalname || 'file');
+
       console.log('=== SAVE FILE REQUEST ===');
-      console.log('File:', file.originalname);
+      console.log('File:', originalName, file.originalname !== originalName ? `(raw: ${file.originalname})` : '');
       console.log('Target path:', targetPath);
 
       let tp = String(targetPath).replace(/\\/g, '/').trim();
@@ -1113,11 +1116,11 @@ export class FileSystemPathController {
       }
 
       // Save file
-      const finalFilePath = path.join(fullTargetPath, file.originalname);
+      const finalFilePath = path.join(fullTargetPath, originalName);
       console.log('Saving file to:', finalFilePath);
 
       if (
-        file.originalname === 'Praesentation.deck.json' &&
+        originalName === 'Praesentation.deck.json' &&
         fs.existsSync(finalFilePath)
       ) {
         // Never overwrite a rich deck with a near-empty default (e.g. after failed load + autosave).
@@ -1160,7 +1163,7 @@ export class FileSystemPathController {
 
       fs.writeFileSync(finalFilePath, file.buffer);
 
-      if (file.originalname === 'Praesentation.deck.json') {
+      if (originalName === 'Praesentation.deck.json') {
         backupPresentationDeckAfterSave(finalFilePath, file.buffer);
       }
 
@@ -1168,7 +1171,7 @@ export class FileSystemPathController {
       res.json({ 
         success: true, 
         path: finalFilePath,
-        filename: file.originalname
+        filename: originalName
       });
 
     } catch (error: any) {

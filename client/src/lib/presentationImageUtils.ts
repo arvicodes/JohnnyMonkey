@@ -105,18 +105,32 @@ export const presentationImageCheckerboardBg = {
 
 export function isImageFileDragEvent(e: React.DragEvent | DragEvent): boolean {
   const types = Array.from(e.dataTransfer?.types ?? []);
-  return types.includes('Files');
+  // Finder/macOS: oft nur "Files", ohne image/* vor dem Drop
+  return types.includes('Files') || types.includes('application/x-moz-file');
+}
+
+const IMAGE_EXT_RE = /\.(png|jpe?g|gif|webp|bmp|heic|heif|tif|tiff|svg)$/i;
+
+/** MIME kann unter macOS leer sein — dann Dateiname prüfen. */
+export function isLikelyImageFile(file: File): boolean {
+  const t = (file.type || '').toLowerCase();
+  if (t.startsWith('image/')) return true;
+  if (t && t !== 'application/octet-stream') return false;
+  return IMAGE_EXT_RE.test(file.name || '');
 }
 
 export function extractImageFilesFromDataTransfer(dt: DataTransfer): File[] {
-  const fromList = Array.from(dt.files).filter((f) => f.type.startsWith('image/'));
+  const fromList = Array.from(dt.files).filter(isLikelyImageFile);
   if (fromList.length > 0) return fromList;
 
   const fromItems: File[] = [];
   for (const item of Array.from(dt.items)) {
-    if (item.kind !== 'file' || !item.type.startsWith('image/')) continue;
+    if (item.kind !== 'file') continue;
+    const mime = (item.type || '').toLowerCase();
+    // Vor dem Drop ist type oft leer — File erst nach getAsFile prüfen
+    if (mime && !mime.startsWith('image/') && mime !== 'application/octet-stream') continue;
     const file = item.getAsFile();
-    if (file) fromItems.push(file);
+    if (file && isLikelyImageFile(file)) fromItems.push(file);
   }
   return fromItems;
 }

@@ -23,7 +23,7 @@ import { sanitizePresentationHtml } from '../../lib/presentationRichText';
 import { getElementStackLayer } from '../../lib/presentationElementLayers';
 import { slideHasImageHeroLayout } from '../../lib/presentationImageUtils';
 import { slideHasFullscreenMedia } from '../../lib/presentationMediaEmbed';
-import { PRESENTATION_CONTENT_FONT_PX } from '../../lib/presentationFontSize';
+import { hydratePresentationHtmlFontSizes, PRESENTATION_CONTENT_FONT_PX } from '../../lib/presentationFontSize';
 import { SlideShapeSvg } from '../../lib/presentationSlideShapes';
 import '../../styles/presentationLists.css';
 
@@ -116,7 +116,7 @@ function StaticElement({ el, scale }: { el: SlideElement; scale: number }) {
   }
 
   if (el.type === 'text') {
-    const display = sanitizePresentationHtml(el.html || '<p></p>');
+    const display = hydratePresentationHtmlFontSizes(sanitizePresentationHtml(el.html || '<p></p>'));
     if (isEmptyHtml(display)) return null;
     return (
       <div
@@ -131,8 +131,14 @@ function StaticElement({ el, scale }: { el: SlideElement; scale: number }) {
           boxSizing: 'border-box',
           pointerEvents: 'none',
           fontSize: `${PRESENTATION_CONTENT_FONT_PX * scale}px`,
-          lineHeight: 1.45,
+          lineHeight: 1.4,
           color: '#424242',
+          background: el.fillColor || 'transparent',
+          padding: `${8 * scale}px`,
+          borderRadius: `${6 * scale}px`,
+          boxShadow: el.strokeColor
+            ? `inset 0 0 0 ${Math.max(1, (el.strokeWidth || 2) * scale)}px ${el.strokeColor}`
+            : undefined,
         }}
         dangerouslySetInnerHTML={{ __html: display }}
       />
