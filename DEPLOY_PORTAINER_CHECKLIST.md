@@ -23,15 +23,21 @@ environment:
 
 ## Neustart-Reihenfolge (wichtig)
 
+**Nicht** über `Containers → johnnymonkey-app → Recreate` gehen  
+(das pullt weiter `johnnymonkey:latest` von Docker Hub → Fehler).
+
+Stattdessen:
+
 1. `webserver` stoppen.
-2. `johnnymonkey-app` stoppen und entfernen (kill + remove).
-3. Stack `johnnymonkey` neu deployen (`Pull and redeploy` / `Recreate`).
-4. **Wichtig bei Recreate/Update:**
-   - **Rebuild** / Build aktivieren
-   - **Re-pull image** / „Pull latest image“ **deaktivieren**
-   - Sonst versucht Docker Hub `johnnymonkey` zu pullen → `pull access denied`
-5. Prüfen, dass `johnnymonkey-app` wieder `healthy` ist.
-6. In den Logs: `running on port 80`.
+2. Links **Stacks** → Stack **`johnnymonkey`** öffnen.
+3. Branch/Reference: **`Juli-2026`**, Compose path: `docker-compose.yml`.
+4. **Pull and redeploy** / **Update the stack**:
+   - ✅ **Re-pull image** = **AUS**
+   - ✅ **Rebuild** / Build image = **AN**
+5. Warten bis Build fertig ist.
+6. Prüfen: Logs zeigen `running on port 80`, Status `healthy`.
+
+Falls der Stack noch `image: johnnymonkey:latest` zeigt: im Editor diese Zeile löschen, speichern, dann Update mit Rebuild.
 
 ## Korrekte URL (genau so)
 
