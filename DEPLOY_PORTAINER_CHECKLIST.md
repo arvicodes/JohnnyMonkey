@@ -6,56 +6,59 @@
 - Container `johnnymonkey-app` muss `running`/`healthy` sein.
 - Container `webserver` muss gestoppt sein (sonst kollidiert Port 80).
 
-## Pflicht-Config (Host-Netz)
+## Pflicht-Mapping
 
-Compose nutzt jetzt `network_mode: host` und `PORT=80`.
+Bei `johnnymonkey-app` muss in den Container-Details stehen:
 
-Dadurch lauscht Node **direkt** auf Host-Port `80` (kein `80→3000`-Proxy mehr).
+- `0.0.0.0:80 -> 3000/tcp`
+- optional zusätzlich: `:::80 -> 3000/tcp`
 
-In Portainer kann unter Published ports ggf. nichts stehen — das ist bei Host-Netz normal.
-Entscheidend: Container `healthy`, Logs zeigen `Server is running on port 80`.
+In der Compose-Datei:
 
 ```yaml
-network_mode: host
+ports:
+  - "0.0.0.0:80:3000"
 environment:
-  - PORT=80
+  - PORT=3000
+```
+
+## DB-Volume (wichtig)
+
+Nicht `prisma/` als Volume mounten (überschreibt `schema.prisma`).
+
+```yaml
+volumes:
+  - johnnymonkey_db:/app/server/data
+environment:
+  - DATABASE_URL=file:/app/server/data/dev.db
 ```
 
 ## Neustart-Reihenfolge (wichtig)
 
-**Nicht** über `Containers → johnnymonkey-app → Recreate` gehen  
-(das pullt weiter `johnnymonkey:latest` von Docker Hub → Fehler).
-
-Stattdessen:
+**Nicht** über `Containers → Recreate` (pullt oft `johnnymonkey:latest` von Docker Hub).
 
 1. `webserver` stoppen.
-2. Links **Stacks** → Stack **`johnnymonkey`** öffnen.
-3. Branch/Reference: **`Juli-2026`**, Compose path: `docker-compose.yml`.
-4. **Pull and redeploy** / **Update the stack**:
-   - ✅ **Re-pull image** = **AUS**
-   - ✅ **Rebuild** / Build image = **AN**
-5. Warten bis Build fertig ist.
-6. Prüfen: Logs zeigen `running on port 80`, Status `healthy`.
-
-Falls der Stack noch `image: johnnymonkey:latest` zeigt: im Editor diese Zeile löschen, speichern, dann Update mit Rebuild.
+2. Stacks → `johnnymonkey`
+3. Advanced configuration → Reference: `refs/heads/Juli-2026`
+4. **Pull and redeploy**
+   - Rebuild = **AN**
+   - Re-pull image = **AUS**
+5. Prüfen: `healthy`, Mapping `80 -> 3000`, Logs: `running on port 3000`
 
 ## Korrekte URL (genau so)
 
-- App aufrufen mit: `http://192.168.8.1/dashboard`
-- Basisaufruf: `http://192.168.8.1`
-- Nur `http://192.168.8.1` verwenden:
-  - ohne `https`
-  - ohne `www`
-  - ohne Port
+- `http://192.168.8.1/dashboard`
+- Basis: `http://192.168.8.1`
+- nur `http`, kein `https`, kein `www`, kein Port
 
-## Wenn Safari „Verbindung abgelehnt“ zeigt
+## Warum es klappt
 
-Portainer (`:9443`) erreichbar, App-Port `80` aber refused → oft VPN-/Host-Firewall.
-Dann muss TCP `80` für VPN-Clients auf `192.168.8.1` wirklich durchkommen
-(nicht nur Allow-Regel ohne Listener/DNAT).
+- Container neu gebaut (`Rebuild`), aktuelle Git-Änderungen.
+- `webserver` blockiert Port 80 nicht.
+- App intern auf `3000`, Portainer/Docker leitet `80 -> 3000`.
+- `J-M-Reihen` aus dem Image; DB unter `/app/server/data/dev.db`.
 
-## Warum Host-Netz
+## Wenn nur VPN und Safari „Verbindung abgelehnt“
 
-- Umgeht den Docker-Port-Proxy (`80→3000`), der Mapping anzeigen kann, obwohl von außen nichts antwortet.
-- `webserver` darf Port `80` nicht belegen.
-- DB und `J-M-Reihen` bleiben wie bisher über Volumes/Image verfügbar.
+Portainer `:9443` geht, Port `80` nicht → Firewall/VPN lässt 80 nicht durch.
+Die Checkliste gilt für Zugriff im Schul-LAN (bzw. wenn TCP 80 freigegeben ist).
