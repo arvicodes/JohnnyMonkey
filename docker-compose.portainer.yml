@@ -2,27 +2,21 @@ version: '3.8'
 
 services:
   johnnymonkey:
-    # Kein `image:`-Tag → Portainer/Docker versucht keinen Hub-Pull.
     build:
       context: .
       dockerfile: Dockerfile
     pull_policy: build
     container_name: johnnymonkey-app
-    # Host-Netz: App bindet direkt auf Host-Port 80 (umgeht Docker-Port-Proxy).
     network_mode: host
     environment:
       - NODE_ENV=production
       - PORT=80
-      - DATABASE_URL=file:./prisma/dev.db
+      - DATABASE_URL=file:/app/server/data/dev.db
       - LOCAL_MATERIALS_PATH=/app
       - JM_REIHEN_PATH=/app/J-M-Reihen
     volumes:
-      # Persistente Datenbank (wird beim Start aus backup_latest.db synchronisiert)
-      - johnnymonkey_db:/app/server/prisma
-      # Material-Dateien - für Portainer: absoluter Pfad oder Volume
+      - johnnymonkey_db:/app/server/data
       - johnnymonkey_material:/app/material:ro
-      # J-M-Reihen kommt aus dem Docker-Image
-      # Optional: Logs für einfacheren Zugriff
       - johnnymonkey_logs:/app/logs
     restart: unless-stopped
     healthcheck:
@@ -32,7 +26,6 @@ services:
       retries: 3
       start_period: 40s
     labels:
-      # Portainer Labels für bessere Organisation
       - "com.portainer.io.name=JohnnyMonkey"
       - "com.portainer.io.description=Educational Learning Platform"
       - "com.portainer.io.category=Application"

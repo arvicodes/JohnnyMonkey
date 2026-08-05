@@ -7,12 +7,27 @@ set -e
 
 echo "🐵 Starting JohnnyMonkey in Docker container..."
 
-# Prisma Client generieren - IMMER neu generieren, um sicherzustellen, dass Schema aktuell ist
 cd /app/server
-# Erzwinge einen stabilen SQLite-Pfad im Container (unabhängig von Compose-Overrides)
-export DATABASE_URL="file:./prisma/dev.db"
+
+# Persistente DB liegt im Volume /app/server/data — NICHT unter prisma/,
+# sonst überschreibt das Volume schema.prisma und der Prisma-Client wird unvollständig.
+mkdir -p /app/server/data
+
+# Migration: altes Volume hing früher auf prisma/ → Dateien liegen nach Remount unter data/
+if [ ! -f /app/server/data/dev.db ]; then
+  if [ -f /app/server/prisma/dev.db ]; then
+    echo "📦 Migriere dev.db von prisma/ nach data/..."
+    cp /app/server/prisma/dev.db /app/server/data/dev.db
+  elif [ -f /app/backup_latest.db ]; then
+    echo "📥 Importiere backup_latest.db nach data/..."
+    cp /app/backup_latest.db /app/server/data/dev.db
+  fi
+fi
+
+export DATABASE_URL="file:/app/server/data/dev.db"
+
 echo "📦 Generating Prisma client..."
-# Verwende explizit schema.prisma (enthält seatingOrder und statisticsOrder)
+# Schema kommt immer aus dem Image (prisma/ wird nicht mehr vom DB-Volume überdeckt)
 if [ -f "prisma/schema.prisma" ]; then
   npx prisma generate --schema=prisma/schema.prisma || {
     echo "⚠️  Prisma generate failed, trying without explicit schema..."
@@ -22,113 +37,107 @@ else
   echo "ℹ️  prisma/schema.prisma not found at runtime, using bundled Prisma Client"
 fi
 
-# Datenbank initialisieren oder aktualisieren
 SHOULD_IMPORT=false
-
-if [ ! -f "prisma/dev.db" ]; then
-    echo "🗄️  Database file not found, checking for backup..."
-    SHOULD_IMPORT=true
-elif [ -f "/app/backup_latest.db" ]; then
-    # Erzwinge Import wenn Umgebungsvariable gesetzt ist
-    if [ "$FORCE_DB_IMPORT" = "true" ]; then
-        echo "🔄 FORCE_DB_IMPORT=true, forcing import..."
-        SHOULD_IMPORT=true
-    fi
+if [ ! -f /app/server/data/dev.db ]; then
+  SHOULD_IMPORT=true
+elif [ "$FORCE_DB_IMPORT" = "true" ] && [ -f /app/backup_latest.db ]; then
+  echo "🔄 FORCE_DB_IMPORT=true, forcing import..."
+  SHOULD_IMPORT=true
 fi
 
-if [ "$SHOULD_IMPORT" = "true" ] && [ -f "/app/backup_latest.db" ]; then
-    echo "📥 Importing backup_latest.db..."
-    cp /app/backup_latest.db prisma/dev.db
-    echo "✅ Database imported from backup_latest.db"
-    echo "🔄 Adding missing columns if needed..."
-    # Füge nur fehlende Spalten hinzu - KEIN db push (würde Daten löschen!)
-    node -e "
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
-    (async () => {
-      try {
-        const columns = await prisma.\$queryRaw\`PRAGMA table_info(LearningGroup)\`;
-        const colNames = columns.map(c => c.name);
-        if (!colNames.includes('period1Hours')) {
-          await prisma.\$executeRaw\`ALTER TABLE LearningGroup ADD COLUMN period1Hours INTEGER\`;
-          console.log('✅ Added period1Hours');
+if [ "$SHOULD_IMPORT" = "true" ] && [ -f /app/backup_latest.db ]; then
+  echo "📥 Importing backup_latest.db..."
+  cp /app/backup_latest.db /app/server/data/dev.db
+fi
+
+if [ ! -f /app/server/data/dev.db ]; then
+  echo "🗄️  No database found, initializing..."
+  npx prisma db push --schema=prisma/schema.prisma --skip-generate || echo "⚠️  Database initialization skipped"
+fi
+
+if [ -f /app/server/data/dev.db ]; then
+  echo "✅ Database file exists at /app/server/data/dev.db"
+  echo "🔄 Adding missing columns/tables if needed..."
+  node -e "
+  const { PrismaClient } = require('@prisma/client');
+  const prisma = new PrismaClient();
+  (async () => {
+    try {
+      const columns = await prisma.\$queryRaw\`PRAGMA table_info(LearningGroup)\`;
+      const colNames = columns.map(c => c.name);
+      const addCol = async (name, sql) => {
+        if (!colNames.includes(name)) {
+          await prisma.\$executeRawUnsafe(sql);
+          console.log('✅ Added ' + name);
         } else {
-          console.log('ℹ️  period1Hours already exists');
+          console.log('ℹ️  ' + name + ' already exists');
         }
-        if (!colNames.includes('period2Hours')) {
-          await prisma.\$executeRaw\`ALTER TABLE LearningGroup ADD COLUMN period2Hours INTEGER\`;
-          console.log('✅ Added period2Hours');
-        } else {
-          console.log('ℹ️  period2Hours already exists');
-        }
-        // Prüfe Datenbank-Inhalt
-        const userCount = await prisma.user.count();
-        const groupCount = await prisma.learningGroup.count();
-        console.log('📊 Database contains:', userCount, 'users,', groupCount, 'groups');
-      } catch (e) {
-        if (!e.message.includes('duplicate')) console.error('Error:', e.message);
-      } finally {
-        await prisma.\$disconnect();
+      };
+      await addCol('period1Hours', 'ALTER TABLE LearningGroup ADD COLUMN period1Hours INTEGER');
+      await addCol('period2Hours', 'ALTER TABLE LearningGroup ADD COLUMN period2Hours INTEGER');
+      await addCol('seatingOrder', 'ALTER TABLE LearningGroup ADD COLUMN seatingOrder TEXT');
+      await addCol('statisticsOrder', 'ALTER TABLE LearningGroup ADD COLUMN statisticsOrder TEXT');
+
+      // Schedule-/AutoLesson-Tabellen (falls DB älter als Schema)
+      await prisma.\$executeRawUnsafe(\`
+        CREATE TABLE IF NOT EXISTS TeacherScheduleSettings (
+          id TEXT PRIMARY KEY NOT NULL,
+          teacherId TEXT NOT NULL UNIQUE,
+          startWindowMinutes INTEGER NOT NULL DEFAULT 5,
+          endWindowMinutes INTEGER NOT NULL DEFAULT 5,
+          periodTimes TEXT NOT NULL DEFAULT '[]',
+          createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+      \`);
+      await prisma.\$executeRawUnsafe(\`
+        CREATE TABLE IF NOT EXISTS ScheduleSlot (
+          id TEXT PRIMARY KEY NOT NULL,
+          teacherId TEXT NOT NULL,
+          groupId TEXT NOT NULL,
+          dayOfWeek INTEGER NOT NULL,
+          periodNumber INTEGER NOT NULL,
+          lessonPath TEXT,
+          createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+      \`);
+      await prisma.\$executeRawUnsafe(\`
+        CREATE TABLE IF NOT EXISTS AutoLessonSession (
+          id TEXT PRIMARY KEY NOT NULL,
+          teacherId TEXT NOT NULL,
+          groupId TEXT NOT NULL,
+          sessionDate TEXT NOT NULL,
+          dayOfWeek INTEGER NOT NULL,
+          periodNumber INTEGER NOT NULL,
+          lessonPath TEXT,
+          opensAt DATETIME NOT NULL,
+          startsAt DATETIME NOT NULL,
+          endsAt DATETIME NOT NULL,
+          closesAt DATETIME NOT NULL,
+          status TEXT NOT NULL DEFAULT 'OPEN',
+          createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+      \`);
+
+      const userCount = await prisma.user.count();
+      const groupCount = await prisma.learningGroup.count();
+      console.log('📊 Database contains:', userCount, 'users,', groupCount, 'groups');
+      if (prisma.teacherScheduleSettings) {
+        console.log('✅ Prisma model teacherScheduleSettings available');
+      } else {
+        console.warn('⚠️  Prisma model teacherScheduleSettings MISSING after generate');
       }
-    })();
-    " || echo "⚠️  Column addition skipped"
-    echo "✅ Database ready (no db push to preserve data)"
-elif [ ! -f "prisma/dev.db" ]; then
-    echo "🗄️  No backup found, initializing new database..."
-    npx prisma migrate deploy || npx prisma db push || echo "⚠️  Database initialization skipped"
+    } catch (e) {
+      if (!String(e.message || e).includes('duplicate')) console.error('Error:', e.message || e);
+    } finally {
+      await prisma.\$disconnect();
+    }
+  })();
+  " || echo "⚠️  Column/table addition skipped"
+  echo "✅ Database ready (no db push to preserve data)"
 fi
 
-# Wenn Datenbank existiert (entweder importiert oder bereits vorhanden)
-if [ -f "prisma/dev.db" ]; then
-    echo "✅ Database file exists"
-    echo "🔄 Adding missing columns if needed..."
-    # Füge nur fehlende Spalten hinzu - KEIN db push (würde Daten löschen!)
-    node -e "
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
-    (async () => {
-      try {
-        const columns = await prisma.\$queryRaw\`PRAGMA table_info(LearningGroup)\`;
-        const colNames = columns.map(c => c.name);
-        if (!colNames.includes('period1Hours')) {
-          await prisma.\$executeRaw\`ALTER TABLE LearningGroup ADD COLUMN period1Hours INTEGER\`;
-          console.log('✅ Added period1Hours');
-        } else {
-          console.log('ℹ️  period1Hours already exists');
-        }
-        if (!colNames.includes('period2Hours')) {
-          await prisma.\$executeRaw\`ALTER TABLE LearningGroup ADD COLUMN period2Hours INTEGER\`;
-          console.log('✅ Added period2Hours');
-        } else {
-          console.log('ℹ️  period2Hours already exists');
-        }
-        if (!colNames.includes('seatingOrder')) {
-          await prisma.\$executeRaw\`ALTER TABLE LearningGroup ADD COLUMN seatingOrder TEXT\`;
-          console.log('✅ Added seatingOrder');
-        } else {
-          console.log('ℹ️  seatingOrder already exists');
-        }
-        if (!colNames.includes('statisticsOrder')) {
-          await prisma.\$executeRaw\`ALTER TABLE LearningGroup ADD COLUMN statisticsOrder TEXT\`;
-          console.log('✅ Added statisticsOrder');
-        } else {
-          console.log('ℹ️  statisticsOrder already exists');
-        }
-        // Prüfe Datenbank-Inhalt
-        const userCount = await prisma.user.count();
-        const groupCount = await prisma.learningGroup.count();
-        console.log('📊 Database contains:', userCount, 'users,', groupCount, 'groups');
-      } catch (e) {
-        if (!e.message.includes('duplicate')) console.error('Error:', e.message);
-      } finally {
-        await prisma.\$disconnect();
-      }
-    })();
-    " || echo "⚠️  Column addition skipped"
-    echo "✅ Database ready (no db push to preserve data)"
-fi
-
-# Server starten
 echo "🚀 Starting server on port ${PORT:-3000}..."
-NODE_ENV=production node dist/index.js
-
+NODE_ENV=production DATABASE_URL="$DATABASE_URL" node dist/index.js

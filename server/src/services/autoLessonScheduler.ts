@@ -53,6 +53,14 @@ export async function runAutoLessonSchedulerTick(): Promise<void> {
   const { date, dayOfWeek, now } = getBerlinNow();
   if (dayOfWeek < 1 || dayOfWeek > 5) return;
 
+  // Prisma-Client kann unvollständig sein, wenn schema.prisma vom DB-Volume überdeckt wurde
+  if (!prisma.teacherScheduleSettings?.findMany) {
+    console.warn(
+      '[AutoLesson] teacherScheduleSettings fehlt im Prisma-Client — Tick übersprungen (DB-Volume darf prisma/ nicht mounten).'
+    );
+    return;
+  }
+
   const teachers = await prisma.teacherScheduleSettings.findMany({
     include: {
       teacher: {

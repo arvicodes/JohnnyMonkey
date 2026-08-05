@@ -15,16 +15,16 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=80
-      - DATABASE_URL=file:./prisma/dev.db
+      # DB-Volume nur auf data/ — prisma/schema.prisma bleibt aus dem Image
+      - DATABASE_URL=file:/app/server/data/dev.db
       - LOCAL_MATERIALS_PATH=/app
       - JM_REIHEN_PATH=/app/J-M-Reihen
     volumes:
-      # Persistente Datenbank (wird beim Start aus backup_latest.db synchronisiert)
-      - johnnymonkey_db:/app/server/prisma
+      # Persistente Datenbank (nicht über prisma/ mounten!)
+      - johnnymonkey_db:/app/server/data
       # Material-Dateien
       - ./material:/app/material:ro
       # J-M-Reihen kommt aus dem Docker-Image
-      # Optional: Logs für einfacheren Zugriff
       - johnnymonkey_logs:/app/logs
     restart: unless-stopped
     healthcheck:
@@ -34,14 +34,10 @@ services:
       retries: 3
       start_period: 40s
     labels:
-      # Portainer Labels für bessere Organisation
       - "com.portainer.io.name=JohnnyMonkey"
       - "com.portainer.io.description=Educational Learning Platform"
       - "com.portainer.io.category=Application"
       - "com.portainer.io.managed=true"
-
-  # Nginx nicht mehr benötigt - Sophos Firewall übernimmt HTTPS-Terminierung
-  # Node.js Server läuft direkt auf Port 80 (host network)
 
 volumes:
   postgres_data:
