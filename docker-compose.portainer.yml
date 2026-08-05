@@ -2,9 +2,12 @@ version: '3.8'
 
 services:
   johnnymonkey:
-    build: 
+    # Nur lokal bauen — kein Pull von Docker Hub (Image existiert dort nicht)
+    build:
       context: .
       dockerfile: Dockerfile
+    image: johnnymonkey:local
+    pull_policy: build
     container_name: johnnymonkey-app
     # Host-Netz: App bindet direkt auf Host-Port 80 (umgeht Docker-Port-Proxy).
     network_mode: host

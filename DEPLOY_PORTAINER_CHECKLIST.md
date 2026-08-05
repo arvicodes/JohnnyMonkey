@@ -26,8 +26,12 @@ environment:
 1. `webserver` stoppen.
 2. `johnnymonkey-app` stoppen und entfernen (kill + remove).
 3. Stack `johnnymonkey` neu deployen (`Pull and redeploy` / `Recreate`).
-4. Prüfen, dass `johnnymonkey-app` wieder `healthy` ist.
-5. In den Logs: `running on port 80`.
+4. **Wichtig bei Recreate/Update:**
+   - **Rebuild** / Build aktivieren
+   - **Re-pull image** / „Pull latest image“ **deaktivieren**
+   - Sonst versucht Docker Hub `johnnymonkey` zu pullen → `pull access denied`
+5. Prüfen, dass `johnnymonkey-app` wieder `healthy` ist.
+6. In den Logs: `running on port 80`.
 
 ## Korrekte URL (genau so)
 
