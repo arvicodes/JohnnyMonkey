@@ -31,6 +31,14 @@ services:
       - "com.portainer.io.category=Application"
       - "com.portainer.io.managed=true"
 
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    pull_policy: always
+    container_name: johnnymonkey-tunnel
+    network_mode: host
+    command: tunnel --no-autoupdate --url http://127.0.0.1:80
+    restart: unless-stopped
+
 volumes:
   postgres_data:
     name: johnnymonkey_postgres_data

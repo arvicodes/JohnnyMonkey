@@ -39,6 +39,20 @@ services:
       - "com.portainer.io.category=Application"
       - "com.portainer.io.managed=true"
 
+  # Outbound-Tunnel: Zugriff ohne offenen Port 80 (VPN blockiert 80, nur 9443 ist frei).
+  # URL steht in den Logs von johnnymonkey-tunnel (*.trycloudflare.com).
+  # Hinweis: Traffic geht über Cloudflare — nur nutzen, wenn das schulisch ok ist.
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    pull_policy: always
+    container_name: johnnymonkey-tunnel
+    network_mode: host
+    command: tunnel --no-autoupdate --url http://127.0.0.1:80
+    restart: unless-stopped
+    labels:
+      - "com.portainer.io.name=JohnnyMonkey Tunnel"
+      - "com.portainer.io.category=Application"
+
 volumes:
   postgres_data:
     name: johnnymonkey_postgres_data
