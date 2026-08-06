@@ -16,6 +16,9 @@ export const PRESENTATION_FONT_FAMILIES: PresentationFontOption[] = [
   { label: 'Courier New', value: '"Courier New", Courier, monospace' },
 ];
 
+/** Standard-Schrift für Tippen & Einfügen in Folien. */
+export const PRESENTATION_DEFAULT_FONT_FAMILY = PRESENTATION_FONT_FAMILIES[0].value;
+
 export function presentationFontLabel(value: string): string {
   if (!value) return 'Standard';
   return PRESENTATION_FONT_FAMILIES.find((f) => f.value === value)?.label ?? 'Schrift';

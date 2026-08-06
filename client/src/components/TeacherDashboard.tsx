@@ -16,6 +16,7 @@ import {
   isLessonPresentationAssetFile,
   isLessonPresentationSystemFile,
   isLessonPresentationMaterialPdf,
+  isPptxImportExtractedAssetFile,
   listJohnnyPresentationVersions,
   canDeleteJohnnyPresentationVersion,
   namedVersionSlugFromPdfName,
@@ -50,6 +51,11 @@ import {
   type EntryTicketPlanBand,
 } from '../lib/entryTicketGrade';
 import { loadCustomEntryTicketSets } from '../lib/entryTicketCustomSets';
+import {
+  ensureCoreLessonPlanItems,
+  isLessonPlanCoreType,
+  sortLessonPlanCoreOrder,
+} from '../lib/lessonPlanCore';
 import {
   Box,
   Typography,
@@ -6042,10 +6048,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     linkedCollaborativeDeckId?: string;
     linkedCollaborativeDeckTitle?: string;
   };
+  type MateriallisteFileEntry = {
+    id: string;
+    path: string;
+    name: string;
+    note?: string;
+  };
   type LessonInstructionContent = Partial<Record<LessonBoxField, string>> & {
     lessonPlan?: LessonPlanItem[];
+    /** Echte Stundenordner-Dateien in der Materialliste (öffnen / drucken). */
+    materiallisteFiles?: MateriallisteFileEntry[];
   };
   const [editedLessonInstructions, setEditedLessonInstructions] = useState<Record<string, LessonInstructionContent>>({});
+  /** true, sobald GET /lesson-instructions mindestens einmal durchgelaufen ist (auch bei leerem Ergebnis). */
+  const [lessonInstructionsHydrated, setLessonInstructionsHydrated] = useState(false);
   const [lessonBoxEdit, setLessonBoxEdit] = useState<{ lessonName: string; lessonPath: string; section: LessonBoxField; draft: string; originalDraft: string } | null>(null);
   /** Immer letzter Editor-HTML-Stand — verhindert, dass „Fertig“ einen veralteten draft aus dem Closure speichert (Blur/Click vor React-Commit). */
   const lessonBoxDraftRef = useRef<string | null>(null);
@@ -6072,6 +6088,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [newExitType, setNewExitType] = useState<ExitPlanType>('exam-question');
   const [dragPlanIndex, setDragPlanIndex] = useState<number | null>(null);
   const [dragOverPlanIndex, setDragOverPlanIndex] = useState<number | null>(null);
+  /** Anker für „Datei aus Stundenordner“ in der Materialliste */
+  const [materiallisteAddMenuAnchor, setMateriallisteAddMenuAnchor] = useState<null | HTMLElement>(null);
   const [lessonPlanViewMode, setLessonPlanViewMode] = useState<'create' | 'run' | 'background'>('create');
   const [laptopPresentationActive, setLaptopPresentationActive] = useState(false);
   /** Remount-Key: bei jedem Öffnen frisches Live-Deck laden */
@@ -7408,16 +7426,59 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
+    setLessonInstructionsHydrated(false);
     (async () => {
       try {
         const res = await fetch(`/api/lesson-instructions/teacher/${userId}`);
-        if (!res.ok || cancelled) return;
-        const data = await res.json();
-        if (!cancelled && data && typeof data === 'object') setEditedLessonInstructions(data);
-      } catch (_) {}
+        if (cancelled) return;
+        if (res.ok) {
+          const data = await res.json();
+          if (data && typeof data === 'object') setEditedLessonInstructions(data);
+        }
+      } catch (_) {
+        /* leer starten */
+      } finally {
+        if (!cancelled) setLessonInstructionsHydrated(true);
+      }
     })();
     return () => { cancelled = true; };
   }, [userId]);
+
+  // Jede Stunde: Entry Ticket → Präsentation → Exit Ticket (fehlende ergänzen, Reihenfolge fixieren)
+  useEffect(() => {
+    if (!lessonInstructionsHydrated || !userId || !isLessonStundeRoute) return;
+    const lessonPath = lessonModalData?.lessonPath;
+    if (!lessonPath) return;
+
+    const overrides = editedLessonInstructions[lessonPath] || {};
+    const plan = Array.isArray(overrides.lessonPlan) ? overrides.lessonPlan : [];
+    const { plan: nextPlan, changed } = ensureCoreLessonPlanItems({
+      plan,
+      makeId: (type, index) => `core-${type}-${Date.now()}-${index}`,
+      resolveLabel: (type) => {
+        if (type === 'entry-ticket') return 'Entry Ticket';
+        if (type === 'exit-ticket') return 'Exit Ticket';
+        return 'Präsentation';
+      },
+      entryDefaults: { grade: 7 as EntryTicketPlanBand },
+      exitDefaults: { exitType: 'exam-question' as const },
+    });
+    if (!changed) return;
+
+    const nextContent: LessonInstructionContent = { ...overrides, lessonPlan: nextPlan };
+    setEditedLessonInstructions((prev) => ({ ...prev, [lessonPath]: nextContent }));
+    void fetch('/api/lesson-instructions', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ teacherId: userId, lessonPath, content: nextContent }),
+    }).catch(() => {});
+  }, [
+    lessonInstructionsHydrated,
+    userId,
+    isLessonStundeRoute,
+    lessonModalData?.lessonPath,
+    editedLessonInstructions,
+  ]);
 
   // Lade Assignments nachdem Decks geladen wurden
   useEffect(() => {
@@ -9517,7 +9578,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
     return (
       <Box component="span" sx={{ display: 'inline', color: '#333', fontSize: LESSON_MODAL_FONT_SIZE, lineHeight: 1.5 }}>
-        Benötigt werden{' '}
         {parts.map((p, i) =>
           p.type === 'material' ? (
             <strong key={i} style={orangeStrongSx}>
@@ -9527,7 +9587,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             <span key={i}>{p.content}</span>
           )
         )}
-        .
       </Box>
     );
   };
@@ -9567,11 +9626,15 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               cursor: 'inherit'
             }
           }}
-          dangerouslySetInnerHTML={{ __html: sanitizeMateriallisteDisplayHtml(trimmed) }}
+          dangerouslySetInnerHTML={{
+            __html: sanitizeMateriallisteDisplayHtml(
+              trimmed.replace(/(?:^|>)(\s*)Benötigt\s+werden\s*/gi, '$1')
+            ),
+          }}
         />
       );
     }
-    return renderMaterialListContent(trimmed);
+    return renderMaterialListContent(stripBenotigtPrefix(trimmed));
   };
 
   // Icons als <img> mit Data-URI – strikt inline, damit sie in Listen und Fließtext sauber mitlaufen
@@ -9654,7 +9717,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         )
         .join('');
 
-      return `Benötigt werden ${styled}.`;
+      return styled;
     }
 
     const boldColor = (section === 'anweisungen' || section === 'abAnleitung') ? '#ed6c02' : undefined;
@@ -19522,9 +19585,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   }
                 };
                 const updateLessonPlan = async (nextPlan: LessonPlanItem[]) => {
+                  const sortedPlan = sortLessonPlanCoreOrder(nextPlan);
                   const nextContent: LessonInstructionContent = {
                     ...lessonOverrides,
-                    lessonPlan: nextPlan
+                    lessonPlan: sortedPlan
                   };
                   setEditedLessonInstructions(prev => ({ ...prev, [lessonPath]: nextContent }));
                   await persistLessonContent(nextContent);
@@ -19582,17 +19646,36 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     showSnackbar('Bitte mindestens einen Baustein auswählen.', 'error');
                     return;
                   }
-                  const newItems: LessonPlanItem[] = selectedPlanTypes.map((type, idx) => ({
-                    id: `${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 7)}`,
-                    type,
-                    label: resolvePlanLabel(type),
-                    ...(type === 'entry-ticket' ? { grade: newPlanGrade } : {}),
-                    ...(type === 'exit-ticket' ? { exitType: newExitType } : {})
-                  }));
-                  await updateLessonPlan([...lessonPlan, ...newItems]);
+                  let next = [...lessonPlan];
+                  let idx = 0;
+                  for (const type of selectedPlanTypes) {
+                    const existingIdx = next.findIndex((p) => p.type === type);
+                    if (existingIdx >= 0 && isLessonPlanCoreType(type)) {
+                      if (type === 'entry-ticket') {
+                        next[existingIdx] = { ...next[existingIdx], grade: newPlanGrade };
+                      } else if (type === 'exit-ticket') {
+                        next[existingIdx] = { ...next[existingIdx], exitType: newExitType };
+                      }
+                      continue;
+                    }
+                    next.push({
+                      id: `${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 7)}`,
+                      type,
+                      label: resolvePlanLabel(type),
+                      ...(type === 'entry-ticket' ? { grade: newPlanGrade } : {}),
+                      ...(type === 'exit-ticket' ? { exitType: newExitType } : {})
+                    });
+                    idx += 1;
+                  }
+                  await updateLessonPlan(next);
                   setSelectedPlanTypes([]);
                 };
                 const removePlanItem = async (id: string) => {
+                  const item = lessonPlan.find((p) => p.id === id);
+                  if (item && isLessonPlanCoreType(item.type)) {
+                    showSnackbar('Entry Ticket, Präsentation und Exit Ticket gehören fest zur Stunde.', 'warning');
+                    return;
+                  }
                   await updateLessonPlan(lessonPlan.filter((item) => item.id !== id));
                 };
                 const movePlanItem = async (fromIndex: number, toIndex: number) => {
@@ -20034,8 +20117,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       }}
                       sx={{
                         flexShrink: 0,
-                        alignSelf: 'flex-start',
-                        mt: 0.15,
                         minWidth: 0,
                         width: 'auto',
                         height: 22,
@@ -20533,13 +20614,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   editorKeySuffix,
                   showDocumentsSection,
                   documentsKeyPrefix,
-                  showTextPhasen
+                  showTextPhasen,
+                  includeMaterialliste = true,
                 }: {
                   editorKeySuffix: string;
                   showDocumentsSection: boolean;
                   documentsKeyPrefix: string;
                   /** Im Modus „TABLET“ nur Dokumente, keine drei Phasen-Textkästen (blau/gelb/grün) */
                   showTextPhasen: boolean;
+                  /** Materialliste wird oben im Ablauf separat gezeigt — unter Input dann weglassen */
+                  includeMaterialliste?: boolean;
                 }) => {
                   if (!showTextPhasen && !showDocumentsSection) return null;
                   return (
@@ -20598,7 +20682,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     </Box>
                     )}
 
-                    {showTextPhasen && (
+                    {showTextPhasen && includeMaterialliste && (
                     <Box sx={{ position: 'relative', bgcolor: '#fffde7', pl: 'max(8px, 1%)', pr: isEditing('materialliste') ? 0.75 : 3.5, pt: 0.65, pb: 0.65, borderBottom: '1px solid #ffd54f' }}>
                       {!isEditing('materialliste') && (
                         <Tooltip title="Text bearbeiten">
@@ -20715,10 +20799,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     <Box
                       sx={{
                         mb: 1.5,
-                        p: 1.5,
-                        border: isLessonLaptopMode ? '1px solid rgba(92, 107, 201, 0.28)' : '1px solid #d7e3f1',
-                        borderRadius: isLessonLaptopMode ? 2 : 1.5,
-                        bgcolor: isLessonLaptopMode ? '#f8f9fc' : '#f7fbff',
+                        p: isLessonLaptopMode ? 1.5 : 0,
+                        border: isLessonLaptopMode ? '1px solid rgba(92, 107, 201, 0.28)' : 'none',
+                        borderRadius: isLessonLaptopMode ? 2 : 0,
+                        bgcolor: isLessonLaptopMode ? '#f8f9fc' : 'transparent',
                         ...(isLessonLaptopMode && {
                           background: 'linear-gradient(165deg, #ebeffa 0%, #f5f6fb 38%, #fafbfd 100%)',
                           boxShadow: '0 4px 28px rgba(57, 73, 171, 0.08)',
@@ -20726,8 +20810,41 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'stretch',
+                        position: 'relative',
                       }}
                     >
+                      {lessonPlanViewMode === 'create' && (
+                        <Button
+                          type="button"
+                          size="small"
+                          variant="contained"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            void addPlanItems();
+                          }}
+                          sx={{
+                            position: 'absolute',
+                            top: isLessonLaptopMode ? 8 : 0,
+                            right: isLessonLaptopMode ? 8 : 0,
+                            zIndex: 2,
+                            fontWeight: 800,
+                            fontSize: '0.75rem',
+                            minWidth: 22,
+                            width: 22,
+                            height: 20,
+                            p: 0,
+                            borderRadius: 0.75,
+                            bgcolor: '#1976d2',
+                            boxShadow: 'none',
+                            '&:hover': { bgcolor: '#1565c0', boxShadow: 'none' },
+                          }}
+                          aria-label="Ausgewählte hinzufügen"
+                          title="Ausgewählte hinzufügen"
+                        >
+                          +
+                        </Button>
+                      )}
                       {lessonPlanViewMode === 'create' && (() => {
                         const ticketOptions: { id: LessonPlanItemType; label: string; icon: string }[] = [
                           { id: 'entry-ticket', label: 'Entry Ticket', icon: 'E' },
@@ -20783,7 +20900,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               sx={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: 0.35,
+                                gap: 0.25,
                                 flexShrink: 0,
                               }}
                             >
@@ -20794,26 +20911,26 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                     checked={isSelected}
                                     onChange={(e) => togglePlanType(optionId, e.target.checked)}
                                     sx={{
-                                      p: 0.2,
+                                      p: 0.1,
                                       color: theme.text,
                                       '&.Mui-checked': { color: theme.text },
-                                      '& .MuiSvgIcon-root': { fontSize: 16 },
+                                      '& .MuiSvgIcon-root': { fontSize: 13 },
                                     }}
                                   />
                                 }
                                 label={
-                                  <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4 }}>
+                                  <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.3 }}>
                                     <Box
                                       component="span"
                                       sx={{
                                         display: 'inline-flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        width: 16,
-                                        height: 16,
-                                        borderRadius: 0.6,
+                                        width: 13,
+                                        height: 13,
+                                        borderRadius: 0.45,
                                         color: 'white',
-                                        fontSize: '0.65rem',
+                                        fontSize: '0.55rem',
                                         fontWeight: 800,
                                         lineHeight: 1,
                                         flexShrink: 0,
@@ -20822,7 +20939,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                     >
                                       {option.icon}
                                     </Box>
-                                    <Box component="span" sx={{ fontSize: '0.68rem', fontWeight: 700, lineHeight: 1, whiteSpace: 'nowrap' }}>
+                                    <Box component="span" sx={{ fontSize: '0.58rem', fontWeight: 700, lineHeight: 1, whiteSpace: 'nowrap' }}>
                                       {option.label}
                                     </Box>
                                   </Box>
@@ -20830,17 +20947,17 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 sx={{
                                   mr: 0,
                                   ml: 0,
-                                  px: 0.4,
-                                  py: 0.15,
-                                  height: 24,
-                                  borderRadius: 1,
+                                  px: 0.3,
+                                  py: 0.1,
+                                  height: 20,
+                                  borderRadius: 0.75,
                                   bgcolor: isSelected ? theme.selectedBg : theme.idleBg,
                                   border: `1px solid ${isSelected ? theme.selectedBorder : theme.border}`,
                                   '& .MuiFormControlLabel-label': { color: theme.text },
                                 }}
                               />
                               {optionId === 'entry-ticket' && isSelected && (
-                                <FormControl size="small" sx={{ minWidth: 110, maxWidth: 170 }}>
+                                <FormControl size="small" sx={{ minWidth: 96, maxWidth: 150 }}>
                                   <Select
                                     value={String(newPlanGrade)}
                                     onChange={(e) =>
@@ -20848,10 +20965,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                     }
                                     displayEmpty
                                     sx={{
-                                      fontSize: '0.62rem',
-                                      height: 24,
+                                      fontSize: '0.55rem',
+                                      height: 20,
                                       bgcolor: '#fff',
-                                      '& .MuiSelect-select': { py: 0.25, px: 0.6 },
+                                      '& .MuiSelect-select': { py: 0.15, px: 0.5 },
                                     }}
                                     title="Fragenset / Klassenstufe für dieses Entry Ticket"
                                     MenuProps={{
@@ -20869,15 +20986,15 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 </FormControl>
                               )}
                               {optionId === 'exit-ticket' && isSelected && (
-                                <FormControl size="small" sx={{ minWidth: 120 }}>
+                                <FormControl size="small" sx={{ minWidth: 108 }}>
                                   <Select
                                     value={newExitType}
                                     onChange={(e) => setNewExitType(e.target.value as ExitPlanType)}
                                     sx={{
-                                      fontSize: '0.62rem',
-                                      height: 24,
+                                      fontSize: '0.55rem',
+                                      height: 20,
                                       bgcolor: '#fff',
-                                      '& .MuiSelect-select': { py: 0.25, px: 0.6 },
+                                      '& .MuiSelect-select': { py: 0.15, px: 0.5 },
                                     }}
                                   >
                                     <MenuItem value="exam-question">Prüfungsfrage bauen</MenuItem>
@@ -20896,16 +21013,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         const praesentationSelected = selectedPlanTypes.includes('praesentation');
                         const praesentationStyle = getPlanTypeStyle('praesentation');
                         return (
-                          <Box sx={{ mb: 0.85, display: 'flex', flexDirection: 'column', gap: 0.5, width: '100%' }}>
-                            <Box
-                              sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 0.45,
-                                flexWrap: 'wrap',
-                                width: '100%',
-                              }}
-                            >
+                          <Box
+                            sx={{
+                              mb: 0.65,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.3,
+                              flexWrap: 'wrap',
+                              width: '100%',
+                              rowGap: 0.3,
+                              pr: 3.2,
+                            }}
+                          >
                               {ticketOptions.map((option) => renderTicketOption(option))}
                               <FormControlLabel
                                 control={
@@ -20914,32 +21033,32 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                     checked={praesentationSelected}
                                     onChange={(e) => togglePlanType('praesentation', e.target.checked)}
                                     sx={{
-                                      p: 0.2,
+                                      p: 0.1,
                                       color: praesentationStyle.text,
                                       '&.Mui-checked': { color: praesentationStyle.text },
-                                      '& .MuiSvgIcon-root': { fontSize: 16 },
+                                      '& .MuiSvgIcon-root': { fontSize: 13 },
                                     }}
                                   />
                                 }
                                 label={
-                                  <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.35 }}>
+                                  <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
                                     <Box
                                       component="span"
                                       sx={{
                                         display: 'inline-flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        width: 14,
-                                        height: 14,
-                                        borderRadius: 0.5,
+                                        width: 12,
+                                        height: 12,
+                                        borderRadius: 0.4,
                                         color: 'white',
                                         flexShrink: 0,
                                         background: 'linear-gradient(135deg, #fb8c00 0%, #ef6c00 100%)',
                                       }}
                                     >
-                                      <SlideshowIcon sx={{ fontSize: 10 }} />
+                                      <SlideshowIcon sx={{ fontSize: 8 }} />
                                     </Box>
-                                    <Box component="span" sx={{ fontSize: '0.68rem', fontWeight: 700, lineHeight: 1, whiteSpace: 'nowrap' }}>
+                                    <Box component="span" sx={{ fontSize: '0.58rem', fontWeight: 700, lineHeight: 1, whiteSpace: 'nowrap' }}>
                                       Präsentation
                                     </Box>
                                   </Box>
@@ -20947,60 +21066,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 sx={{
                                   mr: 0,
                                   ml: 0,
-                                  px: 0.4,
-                                  py: 0.15,
-                                  height: 24,
+                                  px: 0.3,
+                                  py: 0.1,
+                                  height: 20,
                                   width: 'fit-content',
                                   minWidth: 0,
-                                  borderRadius: 1,
+                                  borderRadius: 0.75,
                                   bgcolor: praesentationSelected ? '#fff3e0' : '#fffaf3',
                                   border: `1px solid ${praesentationSelected ? '#ffb74d' : '#ffe0b2'}`,
                                   flexShrink: 0,
                                   '& .MuiFormControlLabel-label': { color: praesentationStyle.text },
                                 }}
                               />
-                              <Box sx={{ ml: 'auto', flexShrink: 0 }}>
-                                <Button
-                                  type="button"
-                                  size="small"
-                                  variant="contained"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    void addPlanItems();
-                                  }}
-                                  sx={{
-                                    fontWeight: 800,
-                                    fontSize: '0.85rem',
-                                    minWidth: 24,
-                                    height: 22,
-                                    px: 0.7,
-                                    borderRadius: 1,
-                                    whiteSpace: 'nowrap',
-                                    flexShrink: 0,
-                                    bgcolor: '#1976d2',
-                                    boxShadow: 'none',
-                                    '&:hover': { bgcolor: '#1565c0', boxShadow: 'none' },
-                                  }}
-                                  aria-label="Ausgewählte hinzufügen"
-                                  title="Ausgewählte hinzufügen"
-                                >
-                                  +
-                                </Button>
-                              </Box>
-                            </Box>
-
-                            <Box
-                              sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                flexWrap: 'nowrap',
-                                gap: 0.35,
-                                width: '100%',
-                                pt: 0.4,
-                                borderTop: '1px dashed rgba(120, 144, 156, 0.22)',
-                              }}
-                            >
                               {restOptions.map((option) => {
                                 const optionId = option.id;
                                 const style = getPlanTypeStyle(optionId);
@@ -21019,10 +21096,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                         checked={isSelected}
                                         onChange={(e) => togglePlanType(optionId, e.target.checked)}
                                         sx={{
-                                          p: 0.1,
+                                          p: 0.05,
                                           color: style.text,
                                           '&.Mui-checked': { color: style.text },
-                                          '& .MuiSvgIcon-root': { fontSize: 14 },
+                                          '& .MuiSvgIcon-root': { fontSize: 12 },
                                         }}
                                       />
                                     }
@@ -21030,24 +21107,24 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                     sx={{
                                       mr: 0,
                                       ml: 0,
-                                      px: 0.15,
+                                      px: 0.12,
                                       py: 0,
                                       flex: '0 0 auto',
                                       minWidth: 0,
-                                      borderRadius: 0.5,
+                                      height: 18,
+                                      borderRadius: 0.45,
                                       bgcolor: isSelected ? style.bg : 'transparent',
                                       '& .MuiFormControlLabel-label': {
-                                        fontSize: '0.52rem',
+                                        fontSize: '0.5rem',
                                         fontWeight: isSelected ? 700 : 500,
                                         color: isSelected ? style.text : '#90a4ae',
-                                        lineHeight: 1.15,
+                                        lineHeight: 1.1,
                                         whiteSpace: 'nowrap',
                                       },
                                     }}
                                   />
                                 );
                               })}
-                            </Box>
                           </Box>
                         );
                       })()}
@@ -21055,14 +21132,672 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       {/* Input: Phasen-Texte (+ ggf. Dokumente) unter jedem Input-Baustein in allen Modi */}
                       {abPlanSection}
 
+                      {/* Materialliste immer zuerst — Text + echte Dateien (öffnen/drucken) */}
+                      {lessonPlanViewMode !== 'run' && (() => {
+                        const materiallisteFiles: MateriallisteFileEntry[] = Array.isArray(
+                          (lessonOverrides as LessonInstructionContent).materiallisteFiles
+                        )
+                          ? ((lessonOverrides as LessonInstructionContent).materiallisteFiles as MateriallisteFileEntry[])
+                          : [];
+                        const persistMateriallisteFiles = async (nextFiles: MateriallisteFileEntry[]) => {
+                          const nextContent: LessonInstructionContent = {
+                            ...lessonOverrides,
+                            materiallisteFiles: nextFiles,
+                          };
+                          setEditedLessonInstructions((prev) => ({ ...prev, [lessonPath]: nextContent }));
+                          await persistLessonContent(nextContent);
+                        };
+                        const addMateriallisteFile = async (path: string) => {
+                          if (!path) return;
+                          if (materiallisteFiles.some((f) => (f.path || '').replace(/\\/g, '/') === path.replace(/\\/g, '/'))) {
+                            showSnackbar('Datei ist bereits in der Materialliste.', 'warning');
+                            return;
+                          }
+                          const f = allFiles.find((x: any) => x.path === path);
+                          const name = f?.name || path.split('/').pop() || 'Datei';
+                          const noteRaw = window.prompt(
+                            `Angabe zu „${name}“ (z. B. 50 × A4 gedruckt) — leer lassen für nur Dateiname:`,
+                            ''
+                          );
+                          if (noteRaw === null) return;
+                          const note = noteRaw.trim() || undefined;
+                          await persistMateriallisteFiles([
+                            ...materiallisteFiles,
+                            {
+                              id: `mf-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                              path,
+                              name,
+                              ...(note ? { note } : {}),
+                            },
+                          ]);
+                        };
+                        const printMateriallisteFile = async (entry: MateriallisteFileEntry) => {
+                          try {
+                            const res = await fetch(
+                              `/api/file-system-paths/download?filePath=${encodeURIComponent(entry.path)}`
+                            );
+                            if (!res.ok) throw new Error('download failed');
+                            const blob = await res.blob();
+                            const url = URL.createObjectURL(blob);
+                            const w = window.open(url, '_blank');
+                            if (!w) {
+                              showSnackbar('Popup blockiert – Datei wird zum Öffnen geladen.', 'warning');
+                              await handleFileClick({ type: 'file', path: entry.path, name: entry.name });
+                              URL.revokeObjectURL(url);
+                              return;
+                            }
+                            const tryPrint = () => {
+                              try {
+                                w.focus();
+                                w.print();
+                              } catch {
+                                /* Browser blockiert print ggf. bis PDF geladen ist */
+                              }
+                            };
+                            w.addEventListener('load', tryPrint);
+                            setTimeout(tryPrint, 600);
+                            setTimeout(() => URL.revokeObjectURL(url), 120_000);
+                          } catch {
+                            showSnackbar('Datei konnte nicht gedruckt werden.', 'error');
+                          }
+                        };
+                        const folderMaterials = [...allFiles]
+                          .filter((f: any) => {
+                            const name = f?.name || '';
+                            if (!name) return false;
+                            if (String(name).startsWith('~$')) return false;
+                            if (isLessonPresentationSystemFile(name)) return false;
+                            if (isPptxImportExtractedAssetFile(name)) return false;
+                            return true;
+                          })
+                          .sort((a: any, b: any) =>
+                            String(a.name || '').localeCompare(String(b.name || ''), 'de', { sensitivity: 'base' })
+                          );
+                        const availableToAdd = folderMaterials.filter(
+                          (f: any) =>
+                            !materiallisteFiles.some(
+                              (m) => (m.path || '').replace(/\\/g, '/') === (f.path || '').replace(/\\/g, '/')
+                            )
+                        );
+                        const hasText = !!instructions?.materialliste?.trim();
+                        const hasFiles = materiallisteFiles.length > 0;
+                        return (
+                        <>
+                        <Box
+                          sx={{
+                            mt: 4.25,
+                            mb: 1.35,
+                            height: 0,
+                            borderTop: `2px solid ${alpha('#546e7a', 0.35)}`,
+                            borderBottom: `1px solid ${alpha('#fff', 0.9)}`,
+                          }}
+                        />
+                        <Box
+                          sx={{
+                            mt: 0,
+                            mb: 0,
+                            px: 1.1,
+                            py: 0.85,
+                            borderRadius: 2,
+                            border: `1px solid ${alpha('#f9a825', 0.45)}`,
+                            background: `linear-gradient(145deg, ${alpha('#fff8e1', 0.95)} 0%, #fffef6 55%, #ffffff 100%)`,
+                            boxShadow: `0 2px 10px ${alpha('#f57f17', 0.1)}, 0 0 0 1px ${alpha('#ffecb3', 0.6)} inset`,
+                            position: 'relative',
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.6,
+                              mb: hasText || hasFiles || isEditing('materialliste') ? 0.55 : 0.35,
+                              pr: isEditing('materialliste') ? 0 : 4.2,
+                            }}
+                          >
+                            <Box
+                              component="span"
+                              sx={{
+                                width: 6,
+                                height: 6,
+                                borderRadius: '50%',
+                                bgcolor: '#f9a825',
+                                boxShadow: `0 0 0 3px ${alpha('#f9a825', 0.22)}`,
+                                flexShrink: 0,
+                              }}
+                            />
+                            <Typography
+                              component="span"
+                              sx={{
+                                fontSize: '0.68rem',
+                                fontWeight: 800,
+                                letterSpacing: '0.06em',
+                                textTransform: 'uppercase',
+                                color: '#ef6c00',
+                                lineHeight: 1,
+                              }}
+                            >
+                              Materialliste
+                            </Typography>
+                            <Box sx={{ position: 'absolute', top: 3, right: 3, display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
+                              <Tooltip title="Material aus Stundenordner wählen">
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => setMateriallisteAddMenuAnchor(e.currentTarget)}
+                                  sx={{
+                                    p: 0,
+                                    minWidth: 18,
+                                    width: 18,
+                                    height: 18,
+                                    borderRadius: 0.6,
+                                    bgcolor: '#ef6c00',
+                                    color: '#fff',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 800,
+                                    lineHeight: 1,
+                                    '&:hover': { bgcolor: '#e65100' },
+                                  }}
+                                  aria-label="Material aus Stundenordner wählen"
+                                >
+                                  +
+                                </IconButton>
+                              </Tooltip>
+                              <Menu
+                                anchorEl={materiallisteAddMenuAnchor}
+                                open={Boolean(materiallisteAddMenuAnchor)}
+                                onClose={() => setMateriallisteAddMenuAnchor(null)}
+                                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                                PaperProps={{
+                                  sx: {
+                                    maxHeight: 320,
+                                    minWidth: 220,
+                                    maxWidth: 360,
+                                    mt: 0.5,
+                                  },
+                                }}
+                              >
+                                <MenuItem disabled sx={{ fontSize: '0.68rem', opacity: 1, fontWeight: 700, color: '#ef6c00' }}>
+                                  Stundenordner
+                                </MenuItem>
+                                {availableToAdd.length === 0 ? (
+                                  <MenuItem disabled sx={{ fontSize: '0.72rem' }}>
+                                    {folderMaterials.length === 0
+                                      ? 'Keine Materialien im Ordner'
+                                      : 'Alle Materialien bereits hinzugefügt'}
+                                  </MenuItem>
+                                ) : (
+                                  availableToAdd.map((f: any) => (
+                                    <MenuItem
+                                      key={f.path}
+                                      onClick={() => {
+                                        setMateriallisteAddMenuAnchor(null);
+                                        void addMateriallisteFile(String(f.path || ''));
+                                      }}
+                                      sx={{ fontSize: '0.75rem', py: 0.55 }}
+                                    >
+                                      <DescriptionIcon sx={{ fontSize: 14, color: '#ef6c00', mr: 0.75, flexShrink: 0 }} />
+                                      <Box
+                                        component="span"
+                                        sx={{
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          whiteSpace: 'nowrap',
+                                        }}
+                                      >
+                                        {f.name}
+                                      </Box>
+                                    </MenuItem>
+                                  ))
+                                )}
+                              </Menu>
+                              {!isEditing('materialliste') && (
+                                <Tooltip title="Notiz bearbeiten">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => startEdit('materialliste')}
+                                    sx={{
+                                      p: 0.15,
+                                      minWidth: 18,
+                                      width: 18,
+                                      height: 18,
+                                      color: '#f9a825',
+                                      bgcolor: alpha('#fff', 0.7),
+                                      border: `1px solid ${alpha('#f9a825', 0.35)}`,
+                                      '&:hover': { bgcolor: alpha('#fff8e1', 0.95) },
+                                    }}
+                                  >
+                                    <EditIcon sx={{ fontSize: 11 }} />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                            </Box>
+                          </Box>
+
+                          {hasFiles && (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.4, mb: hasText || isEditing('materialliste') ? 0.65 : 0 }}>
+                              {materiallisteFiles.map((entry) => {
+                                const stillThere = allFiles.some(
+                                  (f: any) =>
+                                    (f.path || '').replace(/\\/g, '/') === (entry.path || '').replace(/\\/g, '/')
+                                );
+                                const isPdf = /\.pdf$/i.test(entry.name);
+                                return (
+                                  <Box
+                                    key={entry.id}
+                                    sx={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 0.45,
+                                      px: 0.65,
+                                      py: 0.35,
+                                      borderRadius: 1,
+                                      bgcolor: alpha('#fff', 0.72),
+                                      border: `1px solid ${alpha('#f9a825', 0.28)}`,
+                                    }}
+                                  >
+                                    <DescriptionIcon sx={{ fontSize: 14, color: stillThere ? '#ef6c00' : '#bdbdbd', flexShrink: 0 }} />
+                                    <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 0.5, overflow: 'hidden' }}>
+                                      <Typography
+                                        component="button"
+                                        type="button"
+                                        onClick={() => {
+                                          if (!stillThere) {
+                                            showSnackbar('Datei nicht mehr im Stundenordner gefunden.', 'warning');
+                                            return;
+                                          }
+                                          void handleFileClick({ type: 'file', path: entry.path, name: entry.name });
+                                        }}
+                                        title={stillThere ? 'Datei öffnen' : 'Datei fehlt im Ordner'}
+                                        sx={{
+                                          all: 'unset',
+                                          cursor: stillThere ? 'pointer' : 'not-allowed',
+                                          fontSize: '0.72rem',
+                                          fontWeight: 700,
+                                          color: stillThere ? '#e65100' : '#9e9e9e',
+                                          textDecoration: stillThere ? 'underline' : 'none',
+                                          textUnderlineOffset: '2px',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          whiteSpace: 'nowrap',
+                                          flexShrink: 1,
+                                          minWidth: 0,
+                                          '&:hover': stillThere ? { color: '#bf360c' } : undefined,
+                                        }}
+                                      >
+                                        {entry.name}
+                                      </Typography>
+                                      {entry.note ? (
+                                        <Typography
+                                          component="span"
+                                          sx={{
+                                            fontSize: '0.68rem',
+                                            color: '#78909c',
+                                            fontWeight: 500,
+                                            lineHeight: 1.25,
+                                            whiteSpace: 'nowrap',
+                                            flexShrink: 0,
+                                          }}
+                                        >
+                                          ({entry.note})
+                                        </Typography>
+                                      ) : null}
+                                    </Box>
+                                    <Tooltip title="Öffnen">
+                                      <span>
+                                        <IconButton
+                                          size="small"
+                                          disabled={!stillThere}
+                                          onClick={() =>
+                                            void handleFileClick({ type: 'file', path: entry.path, name: entry.name })
+                                          }
+                                          sx={{ p: 0.2, width: 22, height: 22, color: '#ef6c00' }}
+                                        >
+                                          <VisibilityIcon sx={{ fontSize: 13 }} />
+                                        </IconButton>
+                                      </span>
+                                    </Tooltip>
+                                    <Tooltip title={isPdf ? 'Drucken' : 'Öffnen & drucken'}>
+                                      <span>
+                                        <IconButton
+                                          size="small"
+                                          disabled={!stillThere}
+                                          onClick={() => void printMateriallisteFile(entry)}
+                                          sx={{ p: 0.2, width: 22, height: 22, color: '#ef6c00' }}
+                                        >
+                                          <PrintIcon sx={{ fontSize: 13 }} />
+                                        </IconButton>
+                                      </span>
+                                    </Tooltip>
+                                    {lessonPlanViewMode === 'create' && (
+                                      <Tooltip title="Aus Liste entfernen">
+                                        <IconButton
+                                          size="small"
+                                          onClick={() =>
+                                            void persistMateriallisteFiles(
+                                              materiallisteFiles.filter((x) => x.id !== entry.id)
+                                            )
+                                          }
+                                          sx={{ p: 0.2, width: 22, height: 22, color: '#c62828' }}
+                                        >
+                                          <DeleteIcon sx={{ fontSize: 13 }} />
+                                        </IconButton>
+                                      </Tooltip>
+                                    )}
+                                  </Box>
+                                );
+                              })}
+                            </Box>
+                          )}
+
+                          {isEditing('materialliste') ? (
+                            <>
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'flex-end',
+                                  gap: 0.5,
+                                  flexWrap: 'wrap',
+                                  mb: 0.35,
+                                }}
+                              >
+                                <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
+                                  <Button
+                                    size="small"
+                                    startIcon={<UndoIcon sx={{ fontSize: 12 }} />}
+                                    onClick={undoEdit}
+                                    sx={{
+                                      color: '#78909c',
+                                      minWidth: 0,
+                                      px: 0.45,
+                                      py: 0,
+                                      fontSize: '0.62rem',
+                                      '& .MuiButton-startIcon': { mr: 0.2 },
+                                    }}
+                                  >
+                                    Rückgängig
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="small"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      saveEdit(e);
+                                    }}
+                                    sx={{ color: '#ef6c00', minWidth: 0, px: 0.55, py: 0, fontSize: '0.62rem', fontWeight: 700 }}
+                                  >
+                                    Fertig
+                                  </Button>
+                                </Box>
+                              </Box>
+                              <RichTextEditor
+                                key={`edit-materialliste-top-${lessonPlanViewMode}-${lessonName}`}
+                                value={lessonBoxEdit?.draft ?? ''}
+                                onChange={patchLessonBoxDraftFromEditor}
+                                placeholder="Zusätzliche Notiz (ohne Datei), z. B. Scheren, Kleber …"
+                                rows={2}
+                                compact={true}
+                              />
+                            </>
+                          ) : hasText ? (
+                            <Box
+                              sx={{
+                                m: 0,
+                                color: '#455a64',
+                                fontSize: '0.78rem',
+                                lineHeight: 1.4,
+                                '& p': { m: 0 },
+                                '& ul, & ol': { m: 0, pl: 1.75 },
+                              }}
+                            >
+                              {renderMateriallisteDisplay(instructions.materialliste ?? '')}
+                            </Box>
+                          ) : !hasFiles ? (
+                            <Box
+                              sx={{
+                                borderRadius: 1,
+                                border: `1px dashed ${alpha('#f57f17', 0.35)}`,
+                                px: 0.85,
+                                py: 0.45,
+                                bgcolor: alpha('#fff', 0.55),
+                              }}
+                            >
+                              <Typography
+                                sx={{
+                                  color: alpha('#ef6c00', 0.75),
+                                  fontSize: '0.72rem',
+                                  fontStyle: 'italic',
+                                  lineHeight: 1.3,
+                                }}
+                              >
+                                „+“ — Material aus dem Stundenordner wählen
+                              </Typography>
+                            </Box>
+                          ) : null}
+                        </Box>
+                        <Box
+                          sx={{
+                            mt: 1.35,
+                            mb: 5.75,
+                            height: 0,
+                            borderTop: `2px solid ${alpha('#546e7a', 0.35)}`,
+                            borderBottom: `1px solid ${alpha('#fff', 0.9)}`,
+                          }}
+                        />
+                        </>
+                        );
+                      })()}
+
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
                         {lessonPlan.length === 0 ? (
                           <Typography variant="caption" sx={{ color: '#607d8b' }}>
                             Noch keine Bausteine geplant.
                           </Typography>
-                        ) : lessonPlan.map((item, index) => (
+                        ) : lessonPlan.map((item, index) => {
+                          const priorHaCount = lessonPlan
+                            .slice(0, index)
+                            .filter((p) => p.type === 'praesentation').length;
+                          const haDisplayNumber = index + 1 + priorHaCount;
+                          const itemDisplayNumber =
+                            index + 1 + priorHaCount + (item.type === 'praesentation' ? 1 : 0);
+                          return (
+                          <React.Fragment key={item.id}>
+                          {item.type === 'praesentation' && (
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 0.35,
+                                p: 0.75,
+                                border: isLessonLaptopMode
+                                  ? `1px solid ${alpha('#3949ab', 0.18)}`
+                                  : '1px solid #c9d7e6',
+                                borderRadius: isLessonLaptopMode ? 1.5 : 1,
+                                bgcolor: '#ffffff',
+                                width: '100%',
+                                boxSizing: 'border-box',
+                                boxShadow: isLessonLaptopMode
+                                  ? '0 2px 10px rgba(57, 73, 171, 0.06)'
+                                  : 'none',
+                                '&:hover': {
+                                  bgcolor: isLessonLaptopMode ? alpha('#3949ab', 0.035) : '#f8fbff',
+                                },
+                              }}
+                            >
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  flexDirection: 'row',
+                                  alignItems: 'center',
+                                  gap: 0.5,
+                                  width: '100%',
+                                }}
+                              >
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    color: '#455a64',
+                                    fontWeight: 700,
+                                    minWidth: 18,
+                                    flexShrink: 0,
+                                    lineHeight: 1.5,
+                                  }}
+                                >
+                                  {haDisplayNumber}.
+                                </Typography>
+                                <Box
+                                  sx={{
+                                    flex: 1,
+                                    minWidth: 0,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 0.5,
+                                    px: 0.8,
+                                    py: 0.25,
+                                    borderRadius: 0.75,
+                                    bgcolor: '#efebe9',
+                                    color: '#5d4037',
+                                    border: '1px solid #bcaaa4',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  <AssignmentIcon sx={{ fontSize: 14, color: '#5d4037', flexShrink: 0 }} />
+                                  <Box
+                                    component="span"
+                                    sx={{
+                                      flexShrink: 0,
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
+                                    HA
+                                  </Box>
+                                  <Box
+                                    sx={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 0.35,
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    <Box
+                                      component="span"
+                                      role="button"
+                                      tabIndex={0}
+                                      title="Hausaufgaben der vorherigen Stunde"
+                                      onClick={(ev) => {
+                                        ev.stopPropagation();
+                                        void openPreviousLessonHomeworkSubmissions(ev);
+                                      }}
+                                      onKeyDown={(ev) => {
+                                        if (ev.key === 'Enter' || ev.key === ' ') {
+                                          ev.preventDefault();
+                                          ev.stopPropagation();
+                                          void openPreviousLessonHomeworkSubmissions();
+                                        }
+                                      }}
+                                      sx={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: 0.2,
+                                        height: 18,
+                                        px: 0.55,
+                                        borderRadius: 0.5,
+                                        bgcolor: '#5d4037',
+                                        color: '#fff',
+                                        fontSize: '0.58rem',
+                                        fontWeight: 700,
+                                        lineHeight: 1,
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap',
+                                        userSelect: 'none',
+                                        '&:hover': { bgcolor: '#3e2723' },
+                                      }}
+                                    >
+                                      <ArrowBackIcon sx={{ fontSize: 10 }} />
+                                      Vorher
+                                    </Box>
+                                    <Box
+                                      component="span"
+                                      role="button"
+                                      tabIndex={0}
+                                      title="Hausaufgaben dieser Stunde"
+                                      onClick={(ev) => {
+                                        ev.stopPropagation();
+                                        openPresentationHomeworkSubmissions(ev);
+                                      }}
+                                      onKeyDown={(ev) => {
+                                        if (ev.key === 'Enter' || ev.key === ' ') {
+                                          ev.preventDefault();
+                                          ev.stopPropagation();
+                                          openPresentationHomeworkSubmissions();
+                                        }
+                                      }}
+                                      sx={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: 0.2,
+                                        height: 18,
+                                        px: 0.55,
+                                        borderRadius: 0.5,
+                                        bgcolor: '#e65100',
+                                        color: '#fff',
+                                        fontSize: '0.58rem',
+                                        fontWeight: 700,
+                                        lineHeight: 1,
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap',
+                                        userSelect: 'none',
+                                        '&:hover': { bgcolor: '#bf360c' },
+                                      }}
+                                    >
+                                      Diese
+                                      <ArrowForwardIcon sx={{ fontSize: 10 }} />
+                                    </Box>
+                                  </Box>
+                                </Box>
+                                {lessonPlanViewMode === 'create' && (
+                                  <Box
+                                    draggable
+                                    onDragStart={(e) => {
+                                      e.stopPropagation();
+                                      setDragPlanIndex(index);
+                                      setDragOverPlanIndex(index);
+                                    }}
+                                    onDragEnd={() => {
+                                      setDragPlanIndex(null);
+                                      setDragOverPlanIndex(null);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    sx={{
+                                      width: 16,
+                                      height: 16,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      borderRadius: 0.5,
+                                      color: '#607d8b',
+                                      cursor: 'grab',
+                                      userSelect: 'none',
+                                      flexShrink: 0,
+                                      ml: 'auto',
+                                      '&:active': { cursor: 'grabbing' },
+                                      '&:hover': { bgcolor: '#eceff1' },
+                                    }}
+                                    title="Ziehen zum Sortieren"
+                                  >
+                                    <Typography variant="caption" sx={{ fontSize: '0.75rem', lineHeight: 1 }}>
+                                      ⋮⋮
+                                    </Typography>
+                                  </Box>
+                                )}
+                              </Box>
+                            </Box>
+                          )}
                           <Box
-                            key={item.id}
+                            key={`${item.id}-row`}
                             onDragOver={(e) => {
                               if (lessonPlanViewMode !== 'create') return;
                               e.preventDefault();
@@ -21128,9 +21863,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   lineHeight: 1.5,
                                 }}
                               >
-                                {index + 1}.
+                                {itemDisplayNumber}.
                               </Typography>
-                              {renderPlanItemShareToggle(item.type)}
                               <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.35 }}>
                             <Box
                               onClick={() => openPlanItem(item)}
@@ -21178,42 +21912,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                         lineHeight: 1.35,
                                       }}
                                     >
-                                      <Box
-                                        component="span"
-                                        role="button"
-                                        tabIndex={0}
-                                        title="HA der vorherigen Stunde: Abgaben + HA-Folie"
-                                        onClick={(ev) => {
-                                          ev.stopPropagation();
-                                          void openPreviousLessonHomeworkSubmissions(ev);
-                                        }}
-                                        onKeyDown={(ev) => {
-                                          if (ev.key === 'Enter' || ev.key === ' ') {
-                                            ev.preventDefault();
-                                            ev.stopPropagation();
-                                            void openPreviousLessonHomeworkSubmissions();
-                                          }
-                                        }}
-                                        sx={{
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          px: 0.55,
-                                          py: 0.1,
-                                          borderRadius: 0.6,
-                                          bgcolor: '#5d4037',
-                                          color: '#fff',
-                                          fontSize: '0.68rem',
-                                          fontWeight: 800,
-                                          letterSpacing: '0.02em',
-                                          lineHeight: 1.35,
-                                          cursor: 'pointer',
-                                          userSelect: 'none',
-                                          boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
-                                          '&:hover': { bgcolor: '#3e2723' },
-                                        }}
-                                      >
-                                        ←HA
+                                      <Box component="span" sx={{ fontWeight: 800, mr: 0.15 }}>
+                                        Präsentation
                                       </Box>
                                       <Box
                                         component="span"
@@ -21307,53 +22007,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                           </Box>
                                         </React.Fragment>
                                       ))}
-                                      <Box
-                                        component="span"
-                                        sx={{
-                                          px: 0.15,
-                                          color: style.border,
-                                          fontWeight: 800,
-                                          userSelect: 'none',
-                                        }}
-                                        aria-hidden
-                                      >
-                                        |
-                                      </Box>
-                                      <Box
-                                        component="span"
-                                        role="button"
-                                        tabIndex={0}
-                                        title="Hausaufgaben-Abgaben dieser Stunde (+ HA-Folie)"
-                                        onClick={openPresentationHomeworkSubmissions}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter' || e.key === ' ') {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            openPresentationHomeworkSubmissions();
-                                          }
-                                        }}
-                                        sx={{
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          ml: 0.15,
-                                          px: 0.55,
-                                          py: 0.1,
-                                          borderRadius: 0.6,
-                                          bgcolor: '#e65100',
-                                          color: '#fff',
-                                          fontSize: '0.68rem',
-                                          fontWeight: 800,
-                                          letterSpacing: '0.04em',
-                                          lineHeight: 1.35,
-                                          cursor: 'pointer',
-                                          userSelect: 'none',
-                                          boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
-                                          '&:hover': { bgcolor: '#bf360c' },
-                                        }}
-                                      >
-                                        HA
-                                      </Box>
                                     </Box>
                                   );
                                 }
@@ -21409,8 +22062,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   </Typography>
                                 );
                               })()}
+                              <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.4, flexShrink: 0 }}>
+                                {renderPlanItemShareToggle(item.type)}
                               {lessonPlanViewMode === 'create' && (
-                                <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.4, flexShrink: 0 }}>
+                                <>
                                   <Box
                                     draggable
                                     onDragStart={(e) => {
@@ -21440,6 +22095,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   >
                                     <Typography variant="caption" sx={{ fontSize: '0.75rem', lineHeight: 1 }}>⋮⋮</Typography>
                                   </Box>
+                                  {!isLessonPlanCoreType(item.type) && (
                                   <Box sx={{ position: 'relative', width: 18, height: 18 }}>
                                     <IconButton
                                       size="small"
@@ -21460,8 +22116,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                       <DeleteIcon sx={{ fontSize: 14, color: '#c62828' }} />
                                     </IconButton>
                                   </Box>
-                                </Box>
+                                  )}
+                                </>
                               )}
+                              </Box>
                             </Box>
                             {/* Arbeitsauftrag: Material-Auswahl direkt unter der Karte */}
                             {lessonPlanViewMode === 'create' && item.type === 'arbeitsauftrag' && (
@@ -21558,6 +22216,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                       editorKeySuffix: `input-${lessonPlanViewMode}-${index}`,
                                       showTextPhasen,
                                       showDocumentsSection,
+                                      includeMaterialliste: false,
                                       documentsKeyPrefix:
                                         lessonPlanViewMode === 'run'
                                           ? 'lesson-run-docs'
@@ -21571,11 +22230,13 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                             </Box>
                             </Box>
                           </Box>
-                        ))}
+                          </React.Fragment>
+                          );
+                        })}
                       </Box>
                     </Box>
 
-                    {/* Obere Phasen-Karten nur in der Input-Karte (Baustein „Input“ im Stundenplan). Kein zweiter blau/gelb-Block ohne Input. */}
+                    {/* Materialliste steht oben im Ablauf; Input zeigt nur Voraussetzungen/Anweisungen. */}
 
                     {lessonPlanViewMode === 'background' && planHasArbeitsauftrag && (
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25, mt: 1 }}>

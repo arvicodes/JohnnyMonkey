@@ -19,8 +19,10 @@ interface PresentationSlideElementsProps {
   onElementChange?: (id: string, patch: Partial<SlideElement>) => void;
   onDeleteElement?: (id: string) => void;
   onMoveElementToSlide?: (elementId: string, targetSlideId: string) => void;
-  onTextEditorFocus?: (el: HTMLElement, elementId: string) => void;
+  onTextEditorFocus?: (el: HTMLElement, elementId: string, field?: 'html' | 'titleHtml') => void;
   onSnapGuidesChange?: (guides: SnapGuide[]) => void;
+  /** Karte gewählt → Bilder lassen Klicks durch. */
+  passPointerThrough?: boolean;
   mediaInteractive?: boolean;
   exportSnapshot?: boolean;
   imageMaxEdge?: number;
@@ -43,6 +45,7 @@ const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
   onMoveElementToSlide,
   onTextEditorFocus,
   onSnapGuidesChange,
+  passPointerThrough = false,
   mediaInteractive = false,
   exportSnapshot = false,
   imageMaxEdge,
@@ -73,6 +76,7 @@ const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
           onTextEditorFocus={onTextEditorFocus}
           snapTargets={snapTargets}
           onSnapGuidesChange={onSnapGuidesChange}
+          passPointerThrough={passPointerThrough}
           mediaInteractive={mediaInteractive}
           exportSnapshot={exportSnapshot}
           imageMaxEdge={imageMaxEdge}

@@ -29,6 +29,15 @@ export function isLessonPresentationSystemFile(name: string): boolean {
   return /^Praesentation\.(deck|annotations|version)(\.|$)/i.test(n);
 }
 
+/**
+ * Beim PPTX-Import erzeugte Bild-Assets (pptx-{timestamp}-{index}-…).
+ * Kein Unterrichtsmaterial — nur Folien-Interna.
+ */
+export function isPptxImportExtractedAssetFile(name: string): boolean {
+  const n = ((name || '').trim().split(/[/\\]/).pop() || '');
+  return /^pptx-\d+-\d+-/i.test(n);
+}
+
 export function isLessonPresentationMaterialPdf(name: string): boolean {
   return isJohnnyPresentationExportPdf(name);
 }
@@ -230,6 +239,7 @@ export function isLessonPresentationAssetFile(name: string): boolean {
   const n = (name || '').trim();
   if (!n) return false;
   if (isLessonPresentationSystemFile(n)) return true;
+  if (isPptxImportExtractedAssetFile(n)) return true;
   if (isLessonPresentationMaterialPdf(n)) return false;
   if (LESSON_IMAGE_EXT_RE.test(n)) return true;
   return false;
@@ -240,6 +250,7 @@ export function isStudentVisibleLessonMaterialFile(name: string): boolean {
   const n = (name || '').trim();
   if (!n || n.startsWith('~$')) return false;
   if (isLessonPresentationSystemFile(n)) return false;
+  if (isPptxImportExtractedAssetFile(n)) return false;
   if (isLessonPresentationMaterialPdf(n)) return true;
   if (LESSON_IMAGE_EXT_RE.test(n)) return false;
   if (LESSON_INPUT_DOCS_RE.test(n)) return true;

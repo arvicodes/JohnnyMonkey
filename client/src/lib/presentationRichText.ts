@@ -24,6 +24,7 @@ import {
   outdentListItemInEditor,
   getListItemFromSelection,
 } from './presentationListNormalize';
+import { PRESENTATION_DEFAULT_FONT_FAMILY } from './presentationFonts';
 
 // Explizite Re-Exports (HMR-sicherer als `import` + `export { … }`)
 export {
@@ -236,6 +237,28 @@ export function tryMarkdownListShortcut(editor: HTMLElement | null): boolean {
   return true;
 }
 
+/**
+ * Leertaste-Handler: `*` / `-` / `1.` → Liste.
+ * @returns true wenn umgewandelt (Event wurde preventDefault).
+ */
+export function handlePresentationListShortcutKey(
+  e: {
+    key: string;
+    ctrlKey: boolean;
+    metaKey: boolean;
+    altKey: boolean;
+    preventDefault: () => void;
+    stopPropagation: () => void;
+  },
+  editor: HTMLElement | null,
+): boolean {
+  if (e.key !== ' ' || e.ctrlKey || e.metaKey || e.altKey) return false;
+  if (!tryMarkdownListShortcut(editor)) return false;
+  e.preventDefault();
+  e.stopPropagation();
+  return true;
+}
+
 function normalizeMarkerText(s: string): string {
   return s.replace(/[\u00a0\u200B\uFEFF]/g, ' ').trim();
 }
@@ -251,8 +274,13 @@ function readListMarkerAtCaret(range: Range, editor: HTMLElement): ListMarkerHit
   const block = getBlockForListShortcut(range.startContainer, editor);
   if (block && block !== editor) {
     const full = normalizeMarkerText(block.textContent || '');
-    if (/^([*•\-])$/.test(full)) return { ordered: false, block, textNode: null };
-    if (/^(\d+)[.)]$/.test(full)) return { ordered: true, block, textNode: null };
+    // Genau Marker (Leertaste folgt noch) oder Marker + Leerzeichen (Rest leer)
+    if (/^([*•\-])$/.test(full) || /^([*•\-])\s*$/.test(full)) {
+      return { ordered: false, block, textNode: null };
+    }
+    if (/^(\d+)[.)]$/.test(full) || /^(\d+)[.)]\s*$/.test(full)) {
+      return { ordered: true, block, textNode: null };
+    }
     return null;
   }
 
@@ -263,8 +291,12 @@ function readListMarkerAtCaret(range: Range, editor: HTMLElement): ListMarkerHit
   const before = normalizeMarkerText(text.slice(0, range.startOffset));
   const after = normalizeMarkerText(text.slice(range.startOffset));
   if (after) return null;
-  if (/^([*•\-])$/.test(before)) return { ordered: false, block: null, textNode: node as Text };
-  if (/^(\d+)[.)]$/.test(before)) return { ordered: true, block: null, textNode: node as Text };
+  if (/^([*•\-])$/.test(before) || /^([*•\-])\s*$/.test(before)) {
+    return { ordered: false, block: null, textNode: node as Text };
+  }
+  if (/^(\d+)[.)]$/.test(before) || /^(\d+)[.)]\s*$/.test(before)) {
+    return { ordered: true, block: null, textNode: node as Text };
+  }
   return null;
 }
 
@@ -296,6 +328,148 @@ function placeCaretIn(el: HTMLElement, sel: Selection) {
   caret.collapse(true);
   sel.removeAllRanges();
   sel.addRange(caret);
+}
+
+/** Plain-Text-Zeile → Listen-Marker + Rest, oder null. */
+function parsePlainListLine(
+  line: string,
+): { ordered: boolean; rest: string } | null {
+  const t = line.replace(/\u00a0/g, ' ');
+  const bullet = t.match(/^\s*([*•\-])\s+(.*)$/);
+  if (bullet) return { ordered: false, rest: bullet[2] };
+  const ordered = t.match(/^\s*(\d+)[.)]\s+(.*)$/);
+  if (ordered) return { ordered: true, rest: ordered[2] };
+  // Nur Marker ohne Text (z. B. `*` allein)
+  if (/^\s*([*•\-])\s*$/.test(t)) return { ordered: false, rest: '' };
+  if (/^\s*(\d+)[.)]\s*$/.test(t)) return { ordered: true, rest: '' };
+  return null;
+}
+
+function escapeHtmlText(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
+ * Plain-Text → Folien-HTML: Zeilen mit `*` / `-` / `1.` werden zu Listen.
+ * Standard-Schrift Aptos wird gestempelt.
+ */
+export function plainTextToPresentationHtml(text: string): string {
+  if (!text) return '<p><br></p>';
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  const parts: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const parsed = parsePlainListLine(lines[i]);
+    if (!parsed) {
+      const line = lines[i];
+      parts.push(line.trim() ? `<p>${escapeHtmlText(line)}</p>` : '<p><br></p>');
+      i += 1;
+      continue;
+    }
+    const items = [parsed];
+    let j = i + 1;
+    while (j < lines.length) {
+      const next = parsePlainListLine(lines[j]);
+      if (!next || next.ordered !== parsed.ordered) break;
+      items.push(next);
+      j += 1;
+    }
+    const tag = parsed.ordered ? 'ol' : 'ul';
+    const lis = items
+      .map((it) => `<li>${it.rest.trim() ? escapeHtmlText(it.rest) : '<br>'}</li>`)
+      .join('');
+    parts.push(`<${tag}>${lis}</${tag}>`);
+    i = j;
+  }
+  return stampDefaultPresentationFontHtml(parts.join('') || '<p><br></p>');
+}
+
+/** Setzt Aptos auf Blöcke ohne eigene Folien-Schrift. */
+function stampDefaultPresentationFont(root: ParentNode) {
+  const face = PRESENTATION_DEFAULT_FONT_FAMILY;
+  root.querySelectorAll('p, li, h1, h2, h3, h4, td, th').forEach((node) => {
+    const el = node as HTMLElement;
+    if (el.hasAttribute('data-pres-font')) return;
+    if (el.querySelector('[data-pres-font]')) return;
+    // Direkte Text-/Inline-Kinder in Aptos-Span packen
+    const span = document.createElement('span');
+    span.setAttribute('data-pres-font', face);
+    span.style.setProperty('font-family', face, 'important');
+    while (el.firstChild) span.appendChild(el.firstChild);
+    if (!span.firstChild) span.appendChild(document.createElement('br'));
+    el.appendChild(span);
+  });
+}
+
+export function stampDefaultPresentationFontHtml(html: string): string {
+  if (!html || typeof document === 'undefined') return html;
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  stampDefaultPresentationFont(doc.body);
+  return doc.body.innerHTML || html;
+}
+
+/**
+ * Absatz-Blöcke mit Markdown-Aufzählung (`* …`) → echte Listen.
+ * Für eingefügtes HTML aus Word/Notizen.
+ */
+function convertMarkdownBulletParagraphs(root: HTMLElement) {
+  let guard = 0;
+  while (guard++ < 40) {
+    const blocks = Array.from(root.children) as HTMLElement[];
+    let converted = false;
+    for (let i = 0; i < blocks.length; i++) {
+      const el = blocks[i];
+      if (el.tagName !== 'P' && el.tagName !== 'DIV') continue;
+      const parsed = parsePlainListLine(el.textContent || '');
+      if (!parsed) continue;
+
+      const items: { ordered: boolean; rest: string; html: string }[] = [
+        {
+          ordered: parsed.ordered,
+          rest: parsed.rest,
+          html: stripListMarkerFromBlockHtml(el, parsed),
+        },
+      ];
+      let j = i + 1;
+      while (j < blocks.length) {
+        const nextEl = blocks[j];
+        if (nextEl.tagName !== 'P' && nextEl.tagName !== 'DIV') break;
+        const next = parsePlainListLine(nextEl.textContent || '');
+        if (!next || next.ordered !== parsed.ordered) break;
+        items.push({
+          ordered: next.ordered,
+          rest: next.rest,
+          html: stripListMarkerFromBlockHtml(nextEl, next),
+        });
+        j += 1;
+      }
+
+      const list = document.createElement(parsed.ordered ? 'ol' : 'ul');
+      items.forEach((it) => {
+        const li = document.createElement('li');
+        li.innerHTML = it.html.trim() ? it.html : '<br>';
+        list.appendChild(li);
+      });
+      el.replaceWith(list);
+      for (let k = i + 1; k < j; k++) blocks[k].remove();
+      converted = true;
+      break;
+    }
+    if (!converted) break;
+  }
+}
+
+function stripListMarkerFromBlockHtml(
+  el: HTMLElement,
+  parsed: { ordered: boolean; rest: string },
+): string {
+  // Einfacher Weg: Rest als Text (Formatierung der Marker-Zeile geht verloren — ok für Paste)
+  if (!parsed.rest.trim()) return '';
+  return escapeHtmlText(parsed.rest);
 }
 
 const FONT_SIZE_PX: Record<string, string> = {
@@ -407,7 +581,9 @@ export function sanitizePastedHtml(html: string): string {
   stripExternalFontSizing(doc.body);
   stripExternalFontFamilies(doc.body);
   stripExternalColors(doc.body);
+  convertMarkdownBulletParagraphs(doc.body);
   normalizeListsInPlace(doc.body);
+  stampDefaultPresentationFont(doc.body);
   doc.body.querySelectorAll('span.Apple-converted-space, br.Apple-interchange-newline').forEach((el) => {
     if (el.tagName === 'BR') {
       el.replaceWith(doc.createTextNode(' '));
@@ -416,6 +592,18 @@ export function sanitizePastedHtml(html: string): string {
     }
   });
   return normalizeRichHtml(doc.body.innerHTML);
+}
+
+/**
+ * Einfügen in Folien-Editoren: HTML oder Plain-Text → bereinigt, Listen, Aptos.
+ */
+export function presentationPasteHtml(clipboardData: DataTransfer): string {
+  const pastedHtml = clipboardData.getData('text/html');
+  const pastedText = clipboardData.getData('text/plain');
+  if (pastedHtml?.trim()) {
+    return sanitizePastedHtml(pastedHtml) || '<p><br></p>';
+  }
+  return plainTextToPresentationHtml(pastedText || '');
 }
 
 /** Struktur bereinigen ohne absichtliche data-pres-fs zu entfernen. */

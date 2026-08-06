@@ -5,6 +5,7 @@
  */
 import React from 'react';
 import {
+  isLayoutZoneHidden,
   normalizeSlide,
   PresentationSlide,
   PresentationSlideFooter,
@@ -24,7 +25,8 @@ import { getElementStackLayer } from '../../lib/presentationElementLayers';
 import { slideHasImageHeroLayout } from '../../lib/presentationImageUtils';
 import { slideHasFullscreenMedia } from '../../lib/presentationMediaEmbed';
 import { hydratePresentationHtmlFontSizes, PRESENTATION_CONTENT_FONT_PX } from '../../lib/presentationFontSize';
-import { SlideShapeSvg } from '../../lib/presentationSlideShapes';
+import { shapeSupportsText, SlideShapeSvg } from '../../lib/presentationSlideShapes';
+import { PRESENTATION_DEFAULT_FONT_FAMILY } from '../../lib/presentationFonts';
 import '../../styles/presentationLists.css';
 
 type ZoneVariant = 'title' | 'hero' | 'subtitle' | 'body' | 'quote' | 'caption';
@@ -40,7 +42,13 @@ const VARIANT_FONT: Record<ZoneVariant, number> = {
 
 function isEmptyHtml(html: string): boolean {
   const t = html.trim();
-  return !t || t === '<p></p>' || t === '<p><br></p>';
+  return (
+    !t ||
+    t === '<p></p>' ||
+    t === '<p><br></p>' ||
+    t === '<p style="text-align:center"><br></p>' ||
+    t === '<p style="text-align: center"><br></p>'
+  );
 }
 
 function StaticHtml({
@@ -66,6 +74,7 @@ function StaticHtml({
       data-pres-rich-zone
       style={{
         fontSize: `${base}px`,
+        fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
         lineHeight: variant === 'title' || variant === 'hero' ? 1.15 : 1.55,
         fontWeight: variant === 'title' || variant === 'hero' ? 700 : 400,
         fontStyle: italic ? 'italic' : 'normal',
@@ -131,6 +140,7 @@ function StaticElement({ el, scale }: { el: SlideElement; scale: number }) {
           boxSizing: 'border-box',
           pointerEvents: 'none',
           fontSize: `${PRESENTATION_CONTENT_FONT_PX * scale}px`,
+          fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
           lineHeight: 1.4,
           color: '#424242',
           background: el.fillColor || 'transparent',
@@ -145,7 +155,104 @@ function StaticElement({ el, scale }: { el: SlideElement; scale: number }) {
     );
   }
 
+  if (el.type === 'card') {
+    const accent = el.strokeColor || '#1565C0';
+    const headerBg = el.fillColor || 'rgba(21,101,192,0.14)';
+    const title = hydratePresentationHtmlFontSizes(
+      sanitizePresentationHtml(
+        el.titleHtml || '<p style="text-align:center"><strong>Titel</strong></p>',
+      ),
+    );
+    const body = hydratePresentationHtmlFontSizes(sanitizePresentationHtml(el.html || '<p></p>'));
+    const sw = Math.max(2, (el.strokeWidth || 2.5) * scale);
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          left: `${el.x}%`,
+          top: `${el.y}%`,
+          width: `${el.w}%`,
+          height: `${el.h}%`,
+          zIndex: 10 + (el.zIndex || 0),
+          boxSizing: 'border-box',
+          pointerEvents: 'none',
+          display: 'flex',
+          flexDirection: 'column',
+          borderRadius: `${10 * scale}px`,
+          overflow: 'hidden',
+          border: `${sw}px solid ${accent}`,
+          background: 'transparent',
+        }}
+      >
+        <div
+          style={{
+            flex: '0 0 auto',
+            minHeight: `${36 * scale}px`,
+            background: headerBg,
+            borderBottom: `${Math.max(1.5, scale)}px solid ${accent}`,
+            padding: `${8 * scale}px ${10 * scale}px`,
+            color: accent,
+            fontSize: `${PRESENTATION_CONTENT_FONT_PX * 1.05 * scale}px`,
+            fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
+            fontWeight: 700,
+            lineHeight: 1.25,
+            textAlign: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          dangerouslySetInnerHTML={{ __html: title }}
+        />
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            padding: `${10 * scale}px`,
+            fontSize: `${PRESENTATION_CONTENT_FONT_PX * scale}px`,
+            fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
+            lineHeight: 1.4,
+            color: '#424242',
+            overflow: 'hidden',
+            background: 'transparent',
+          }}
+          dangerouslySetInnerHTML={{ __html: body }}
+        />
+      </div>
+    );
+  }
+
+  if (el.type === 'table') {
+    const display = hydratePresentationHtmlFontSizes(
+      sanitizePresentationHtml(el.html || '<table></table>'),
+    );
+    const fs = Math.max(11, PRESENTATION_CONTENT_FONT_PX * 0.85) * scale;
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          left: `${el.x}%`,
+          top: `${el.y}%`,
+          width: `${el.w}%`,
+          height: `${el.h}%`,
+          zIndex: 10 + (el.zIndex || 0),
+          boxSizing: 'border-box',
+          pointerEvents: 'none',
+          overflow: 'hidden',
+          padding: `${4 * scale}px`,
+          fontSize: `${fs}px`,
+          lineHeight: 1.25,
+          color: '#424242',
+        }}
+        dangerouslySetInnerHTML={{ __html: display }}
+      />
+    );
+  }
+
   if (el.type === 'shape') {
+    const bodyHtml = shapeSupportsText(el)
+      ? hydratePresentationHtmlFontSizes(sanitizePresentationHtml(el.html || ''))
+      : '';
+    const showText = Boolean(bodyHtml && !isEmptyHtml(bodyHtml));
     return (
       <div
         style={{
@@ -166,6 +273,24 @@ function StaticElement({ el, scale }: { el: SlideElement; scale: number }) {
           fillColor={el.fillColor}
           strokeWidth={el.strokeWidth ?? 3}
         />
+        {showText ? (
+          <div
+            style={{
+              position: 'absolute',
+              inset: `${12 * scale}%`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              fontSize: `${PRESENTATION_CONTENT_FONT_PX * scale}px`,
+              fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
+              lineHeight: 1.35,
+              color: '#424242',
+              textAlign: 'center',
+            }}
+            dangerouslySetInnerHTML={{ __html: bodyHtml }}
+          />
+        ) : null}
       </div>
     );
   }
@@ -427,7 +552,9 @@ const PresentationLaptopSlide: React.FC<PresentationLaptopSlideProps> = ({
           <div style={{ marginBottom: `${24 * scale}px` }}>
             {zone(slide.titleHtml, slide.title, 'title')}
           </div>
-          {zone(slide.bodyHtml, slide.body, 'body')}
+          {!isLayoutZoneHidden(slide, 'bodyHtml')
+            ? zone(slide.bodyHtml, slide.body, 'body')
+            : null}
         </>
       );
   }

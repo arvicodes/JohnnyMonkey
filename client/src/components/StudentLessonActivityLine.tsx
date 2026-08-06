@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Typography, CircularProgress, Button, Tooltip } from '@mui/material';
 import { StudentExitTicketMyAnswersBadge } from './exit-ticket/StudentExitTicketMyAnswersBadge';
+import { sortLessonPlanCoreOrder } from '../lib/lessonPlanCore';
 
 type PlanItem = {
   id: string;
@@ -154,7 +155,7 @@ export const StudentLessonActivityLine: React.FC<StudentLessonActivityLineProps>
             linkedCollaborativeDeckTitle:
               typeof x.linkedCollaborativeDeckTitle === 'string' ? x.linkedCollaborativeDeckTitle : undefined,
           }));
-        if (!cancelled) setSteps(parsed);
+        if (!cancelled) setSteps(sortLessonPlanCoreOrder(parsed));
       } catch {
         if (!cancelled) setSteps([]);
       } finally {

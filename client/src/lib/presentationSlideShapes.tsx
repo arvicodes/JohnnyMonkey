@@ -35,6 +35,7 @@ export function createShapeElement(
 ): SlideElement {
   const size = defaultShapeSize(kind);
   const accent = accentColor || JOHNNY_PRESENTATION.primary;
+  const isBox = kind === 'rect' || kind === 'ellipse';
   return {
     id: `el-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     type: 'shape',
@@ -46,8 +47,17 @@ export function createShapeElement(
     zIndex,
     strokeColor: accent,
     strokeWidth: kind === 'line' || kind === 'arrow' ? 4 : 3,
-    fillColor: kind === 'rect' || kind === 'ellipse' ? `${accent}33` : 'transparent',
+    fillColor: isBox ? `${accent}33` : 'transparent',
+    // Boxen (Rechteck/Oval) kommen standardmäßig mit integriertem Textfeld
+    ...(isBox ? { html: '<p style="text-align:center"><br></p>' } : {}),
   };
+}
+
+/** Rechteck/Oval können integrierten Text haben. */
+export function shapeSupportsText(el: Pick<SlideElement, 'type' | 'shapeKind'>): boolean {
+  if (el.type !== 'shape') return false;
+  const kind = el.shapeKind || 'arrow';
+  return kind === 'rect' || kind === 'ellipse';
 }
 
 export function SlideShapeSvg({

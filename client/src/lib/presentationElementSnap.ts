@@ -458,11 +458,16 @@ export function elementAlignLabel(el: SlideElement, index: number): string {
         ? 'Bild'
         : el.type === 'shape'
           ? 'Form'
+          : el.type === 'card'
+            ? 'Karte'
+            : el.type === 'table'
+              ? 'Tabelle'
           : el.type === 'video'
             ? 'Video'
             : 'Element';
-  if (el.type === 'text' && el.html) {
-    const plain = el.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 22);
+  if ((el.type === 'text' || el.type === 'card' || el.type === 'table') && (el.titleHtml || el.html)) {
+    const src = el.type === 'card' ? el.titleHtml || el.html || '' : el.html || '';
+    const plain = src.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 22);
     if (plain) return `${typeLabel}: ${plain}${plain.length >= 22 ? '…' : ''}`;
   }
   return `${typeLabel} ${index + 1}`;

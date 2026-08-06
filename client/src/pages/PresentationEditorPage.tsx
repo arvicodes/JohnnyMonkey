@@ -79,6 +79,7 @@ import {
   sortSlides,
   slideImageUrl,
   writeOriginalDeckSnapshot,
+  withHiddenLayoutZone,
   SLIDE_REF_HEIGHT,
   SLIDE_REF_WIDTH,
 } from '../lib/presentationDeck';
@@ -89,6 +90,7 @@ import {
   DEFAULT_FLOATING_IMAGE_W,
   extractImageFilesFromDataTransfer,
   findEmptyFullscreenImageElement,
+  isHeroSlideImage,
   isImageFileDragEvent,
   slideDropPositionForImage,
 } from '../lib/presentationImageUtils';
@@ -101,6 +103,8 @@ import {
   stepElementStackLayer,
 } from '../lib/presentationElementLayers';
 import { createShapeElement } from '../lib/presentationSlideShapes';
+import { createCardElement, createCardPair } from '../lib/presentationSlideCards';
+import { createTableElement, type CreateTableOptions } from '../lib/presentationSlideTables';
 import {
   canRedoDeck,
   canUndoDeck,
@@ -416,7 +420,7 @@ const PresentationEditorPage: React.FC = () => {
       options?: {
         history?: 'debounced' | 'immediate' | 'skip';
         urgent?: boolean;
-        /** Tippen: React-State erst nach Pause — DOM bleibt führend. */
+        /** Tippen: setDeck in startTransition (ohne 750ms-Delay — sonst leert Sync den Editor). */
         quiet?: boolean;
       }
     ) => {
@@ -429,12 +433,13 @@ const PresentationEditorPage: React.FC = () => {
         }
         setDeck(next);
       } else if (options?.quiet) {
-        if (quietUiTimer.current) clearTimeout(quietUiTimer.current);
-        quietUiTimer.current = setTimeout(() => {
+        // Tippen: State zeitnah aktualisieren (sonst leert der Editor-Sync den DOM beim Klick
+        // mit veraltetem element.html). startTransition hält die Tipplast niedrig.
+        if (quietUiTimer.current) {
+          clearTimeout(quietUiTimer.current);
           quietUiTimer.current = null;
-          const latest = deckRef.current;
-          if (latest) startTransition(() => setDeck(latest));
-        }, 750);
+        }
+        startTransition(() => setDeck(next));
       } else {
         if (quietUiTimer.current) {
           clearTimeout(quietUiTimer.current);
@@ -478,6 +483,20 @@ const PresentationEditorPage: React.FC = () => {
       }
       const current = deckRef.current;
       if (!current || !activeId) return;
+
+      if (activeHtmlField.startsWith('element-title:')) {
+        const id = activeHtmlField.slice('element-title:'.length);
+        const titleHtml = activeEditor.innerHTML;
+        const slides = current.slides.map((s) => {
+          if (s.id !== activeId) return s;
+          const elements = (s.elements || []).map((e) =>
+            e.id === id ? { ...e, titleHtml } : e,
+          );
+          return normalizeSlide({ ...s, elements });
+        });
+        scheduleSave({ ...current, slides }, { ...options, quiet: true });
+        return;
+      }
 
       if (activeHtmlField.startsWith('element:')) {
         const id = activeHtmlField.slice(8);
@@ -636,8 +655,29 @@ const PresentationEditorPage: React.FC = () => {
     (id: string | null) => {
       commitEditorState({ history: 'skip' });
       setSelectedElementId(id);
+      // Bilder über Karten: beim Anklicken in den Vordergrund holen (außer Vollbild-Hero).
+      if (!id || !activeId) return;
+      const current = deckRef.current;
+      if (!current) return;
+      const slide = current.slides.find((s) => s.id === activeId);
+      if (!slide) return;
+      const el = slide.elements?.find((e) => e.id === id);
+      if (
+        !el ||
+        el.type !== 'image' ||
+        getElementStackLayer(el) !== 'background' ||
+        isHeroSlideImage(el)
+      ) {
+        return;
+      }
+      const nextEls = setElementStackLayerInSlide(slide.elements || [], id, 'foreground');
+      if (nextEls === slide.elements) return;
+      const slides = current.slides.map((s) =>
+        s.id === activeId ? { ...s, elements: nextEls } : s,
+      );
+      scheduleSave({ ...current, slides }, { quiet: true, history: 'skip' });
     },
-    [commitEditorState],
+    [commitEditorState, activeId, scheduleSave],
   );
 
   const restoreDeckSnapshot = useCallback(
@@ -904,6 +944,7 @@ const PresentationEditorPage: React.FC = () => {
       src: path,
       zIndex: (slide.elements?.length ?? 0) + 1,
       imageFit: 'contain',
+      stackLayer: 'foreground',
     };
     const slides = current.slides.map((s) =>
       s.id === activeId
@@ -958,8 +999,42 @@ const PresentationEditorPage: React.FC = () => {
     updateSlide({ elements: [...(normalizedActive.elements || []), el] });
     setSelectedElementId(el.id);
     setSnackbar(
-      `${kind === 'arrow' ? 'Pfeil' : kind === 'line' ? 'Linie' : 'Form'} eingefügt — ziehen zum Verschieben`
+      kind === 'arrow'
+        ? 'Pfeil eingefügt — ziehen zum Verschieben'
+        : kind === 'line'
+          ? 'Linie eingefügt — ziehen zum Verschieben'
+          : 'Box eingefügt — Doppelklick für Text, ziehen zum Verschieben',
     );
+  };
+
+  const addCardElement = (mode: 'single' | 'pair' = 'single') => {
+    if (!normalizedActive) return;
+    const z0 = (normalizedActive.elements?.length ?? 0) + 1;
+    const added =
+      mode === 'pair'
+        ? createCardPair(z0)
+        : [
+            createCardElement(z0, {
+              accent: normalizedActive.accentColor || '#1565C0',
+              title: 'Titel',
+            }),
+          ];
+    updateSlide({ elements: [...(normalizedActive.elements || []), ...added] });
+    setSelectedElementId(added[0]?.id ?? null);
+    setSnackbar(
+      mode === 'pair'
+        ? 'Zwei Karten eingefügt — Doppelklick auf Titel/Inhalt zum Tippen'
+        : 'Karte eingefügt — Doppelklick auf Titel oder Inhalt zum Tippen',
+    );
+  };
+
+  const addTableElement = (opts?: CreateTableOptions) => {
+    if (!normalizedActive) return;
+    const z0 = (normalizedActive.elements?.length ?? 0) + 1;
+    const el = createTableElement(z0, opts);
+    updateSlide({ elements: [...(normalizedActive.elements || []), el] });
+    setSelectedElementId(el.id);
+    setSnackbar('Tabelle eingefügt — tippen und Spaltenränder ziehen');
   };
 
   const updateElement = (id: string, patch: Partial<SlideElement>) => {
@@ -972,7 +1047,8 @@ const PresentationEditorPage: React.FC = () => {
       return { ...s, elements };
     });
     const keys = Object.keys(patch);
-    const textOnly = keys.length > 0 && keys.every((k) => k === 'html');
+    const textOnly =
+      keys.length > 0 && keys.every((k) => k === 'html' || k === 'titleHtml');
     // Geometrie sofort ins Deck — sonst springt das Element nach dem Loslassen zurück
     scheduleSave(
       { ...current, slides },
@@ -1071,7 +1147,8 @@ const PresentationEditorPage: React.FC = () => {
       if (!current || !activeId || !selectedElementId) return false;
       const slide = current.slides.find((s) => s.id === activeId);
       const element = slide?.elements?.find((el) => el.id === selectedElementId);
-      if (!element || (element.type !== 'image' && element.type !== 'shape')) return false;
+      if (!element || (element.type !== 'image' && element.type !== 'shape' && element.type !== 'card' && element.type !== 'table'))
+        return false;
       elementClipboardRef.current = {
         mode,
         sourceSlideId: activeId,
@@ -1112,7 +1189,15 @@ const PresentationEditorPage: React.FC = () => {
     if (clip.mode === 'cut') {
       elementClipboardRef.current = { ...clip, mode: 'copy' };
     }
-    setSnackbar(clip.element.type === 'shape' ? 'Form eingefügt' : 'Bild eingefügt');
+    setSnackbar(
+      clip.element.type === 'shape'
+        ? 'Form eingefügt'
+        : clip.element.type === 'card'
+          ? 'Karte eingefügt'
+          : clip.element.type === 'table'
+            ? 'Tabelle eingefügt'
+            : 'Bild eingefügt',
+    );
     return true;
   }, [activeId, scheduleSave]);
 
@@ -1200,16 +1285,54 @@ const PresentationEditorPage: React.FC = () => {
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Backspace' && e.key !== 'Delete') return;
+
+      if (isFormatBarInteracting()) return;
+      if (isAnimationKeyBlocked()) return;
+
+      // Inhaltsbox (Titel & Inhalt): Entf löscht die Zone, wenn leer / ohne Textauswahl
+      if (
+        !selectedElementId &&
+        activeHtmlField === 'bodyHtml' &&
+        normalizedActive &&
+        (normalizedActive.layout || 'title-content') === 'title-content'
+      ) {
+        const sel = window.getSelection();
+        const hasTextSelection = Boolean(sel && !sel.isCollapsed && sel.toString().length > 0);
+        if (hasTextSelection) return;
+        const plain = (normalizedActive.body || '').trim();
+        const html = (normalizedActive.bodyHtml || '').trim();
+        const empty =
+          !plain &&
+          (!html ||
+            html === '<p></p>' ||
+            html === '<p><br></p>' ||
+            html === '<p style="text-align:center"><br></p>');
+        // Delete-Taste: Zone immer entfernen; Backspace nur wenn leer
+        if (e.key === 'Backspace' && !empty) return;
+        e.preventDefault();
+        const next = withHiddenLayoutZone(normalizedActive, 'bodyHtml', true);
+        updateSlide({ hiddenLayoutZones: next.hiddenLayoutZones });
+        setActiveEditor(null);
+        setActiveHtmlField(null);
+        setSnackbar('Inhaltsbox entfernt');
+        return;
+      }
+
       if (!selectedElementId) return;
 
       const slide = deckRef.current?.slides.find((s) => s.id === activeId);
       const element = slide?.elements?.find((el) => el.id === selectedElementId);
       if (!element) return;
 
-      if (isFormatBarInteracting()) return;
-      if (isAnimationKeyBlocked()) return;
-
       if (element.type === 'image' || element.type === 'shape') {
+        if (
+          element.type === 'shape' &&
+          document.activeElement?.closest(
+            `[data-pres-element="${selectedElementId}"] [data-text-edit]`,
+          )
+        ) {
+          return;
+        }
         e.preventDefault();
         deleteElement(selectedElementId);
         setSnackbar(element.type === 'shape' ? 'Form entfernt' : 'Bild entfernt');
@@ -1223,7 +1346,15 @@ const PresentationEditorPage: React.FC = () => {
 
       e.preventDefault();
       deleteElement(selectedElementId);
-      setSnackbar(element.type === 'text' ? 'Textfeld entfernt' : 'Element entfernt');
+      setSnackbar(
+        element.type === 'text'
+          ? 'Textfeld entfernt'
+          : element.type === 'card'
+            ? 'Karte entfernt'
+            : element.type === 'table'
+              ? 'Tabelle entfernt'
+              : 'Element entfernt',
+      );
     };
 
     window.addEventListener('keydown', onKeyDown);
@@ -1233,6 +1364,7 @@ const PresentationEditorPage: React.FC = () => {
     selectedElementId,
     activeId,
     activeEditor,
+    activeHtmlField,
     isAnimationKeyBlocked,
     normalizedActive,
   ]);
@@ -1583,6 +1715,8 @@ const PresentationEditorPage: React.FC = () => {
       layout,
       titleAlign: fresh.titleAlign,
       accentColor: normalizedActive.accentColor,
+      // Layout-Wechsel: ausgeblendete Inhaltsboxen zurücksetzen
+      hiddenLayoutZones: undefined,
     });
   };
 
@@ -2274,8 +2408,9 @@ const PresentationEditorPage: React.FC = () => {
               <Box
                 sx={{
                   flexShrink: 0,
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
+                  width: 'fit-content',
                   borderRadius: 1,
                   px: 0.45,
                   py: 0.2,
@@ -2297,6 +2432,9 @@ const PresentationEditorPage: React.FC = () => {
                     imageInputRef.current?.click();
                   }}
                   onAddShapeElement={addShapeElement}
+                  onAddCardElement={addCardElement}
+                  onAddTableElement={addTableElement}
+                  activeEditor={activeEditor}
                   onUpdateElement={updateElement}
                   onDeleteElement={deleteElement}
                   onRemoveImageBackground={(id) => void removeSelectedImageBackground(id)}
@@ -2473,9 +2611,11 @@ const PresentationEditorPage: React.FC = () => {
                     onElementChange={updateElement}
                     onDeleteElement={deleteElement}
                     onMoveElementToSlide={moveElementToSlide}
-                    onTextElementFocus={(el, elementId) => {
+                    onTextElementFocus={(el, elementId, field) => {
                       setActiveEditor(el);
-                      setActiveHtmlField(`element:${elementId}`);
+                      setActiveHtmlField(
+                        field === 'titleHtml' ? `element-title:${elementId}` : `element:${elementId}`,
+                      );
                       setSelectedElementId(elementId);
                     }}
                     onChange={(patch) => updateSlide(patch)}

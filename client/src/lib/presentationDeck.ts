@@ -68,12 +68,14 @@ export type PresentationShapeKind = 'line' | 'rect' | 'ellipse' | 'arrow';
 /** Frei platzierbare Elemente — Basis für Bilder, Animationen etc. */
 export interface SlideElement {
   id: string;
-  type: 'text' | 'image' | 'video' | 'embed' | 'shape';
+  type: 'text' | 'image' | 'video' | 'embed' | 'shape' | 'card' | 'table';
   x: number;
   y: number;
   w: number;
   h: number;
   html?: string;
+  /** Titelkopf bei type === 'card'. */
+  titleHtml?: string;
   src?: string;
   /** Form-Art (nur type === 'shape'). */
   shapeKind?: PresentationShapeKind;
@@ -137,10 +139,37 @@ export interface PresentationSlide {
   /** Einblend-Schritt pro Layout-Bereich (0 = sofort sichtbar). */
   zoneRevealSteps?: Partial<Record<string, number>>;
   /**
+   * Ausgeblendete Layout-Textzonen (z. B. `bodyHtml` bei Titel & Inhalt).
+   * Die Zone bleibt im Deck, wird aber nicht gerendert — wiederherstellbar.
+   */
+  hiddenLayoutZones?: string[];
+  /**
    * Nur HA-Folien: wenn true, dürfen SuS Dateien abgeben.
    * Fehlt/false → Folie sichtbar, aber kein Upload.
    */
   homeworkSubmissionRequired?: boolean;
+}
+
+export function isLayoutZoneHidden(slide: PresentationSlide, zone: string): boolean {
+  return (slide.hiddenLayoutZones || []).includes(zone);
+}
+
+export function withHiddenLayoutZone(
+  slide: PresentationSlide,
+  zone: string,
+  hidden: boolean,
+): PresentationSlide {
+  const current = slide.hiddenLayoutZones || [];
+  if (hidden) {
+    if (current.includes(zone)) return slide;
+    return { ...slide, hiddenLayoutZones: [...current, zone] };
+  }
+  if (!current.includes(zone)) return slide;
+  const next = current.filter((z) => z !== zone);
+  return {
+    ...slide,
+    hiddenLayoutZones: next.length > 0 ? next : undefined,
+  };
 }
 
 /** Inhalt der Folien-Fußleiste (deck-weit, auf jeder Folie). */
@@ -388,6 +417,9 @@ export function normalizeSlide(slide: PresentationSlide): PresentationSlide {
     transition: normalizeSlideTransition(slide.transition),
     revealEnabled: slide.revealEnabled !== false,
     zoneRevealSteps: slide.zoneRevealSteps ?? {},
+    ...(Array.isArray(slide.hiddenLayoutZones) && slide.hiddenLayoutZones.length > 0
+      ? { hiddenLayoutZones: slide.hiddenLayoutZones.filter((z) => typeof z === 'string') }
+      : {}),
     ...(typeof slide.homeworkSubmissionRequired === 'boolean'
       ? { homeworkSubmissionRequired: slide.homeworkSubmissionRequired }
       : {}),

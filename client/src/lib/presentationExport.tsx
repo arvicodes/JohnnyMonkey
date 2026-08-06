@@ -37,6 +37,7 @@ import {
   LESSON_PRESENTATION_PDF_ORIGINAL,
 } from './presentationLessonAssets';
 import { PRESENTATION_KEYFRAMES } from './presentationTransitions';
+import { PRESENTATION_DEFAULT_FONT_FAMILY } from './presentationFonts';
 import '../styles/presentationLists.css';
 
 export const DECK_ORIGINAL_SNAPSHOT = DECK_ORIGINAL_FILENAME;
@@ -69,8 +70,7 @@ function injectExportStyles(host: HTMLElement): () => void {
   style.textContent = `
     ${PRESENTATION_KEYFRAMES}
     [data-pres-export-host] {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
-        'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      font-family: ${PRESENTATION_DEFAULT_FONT_FAMILY};
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }

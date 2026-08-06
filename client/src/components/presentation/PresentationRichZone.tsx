@@ -12,7 +12,8 @@ import {
   findAnimBlockFromHit,
 } from '../../lib/presentationAnimation';
 import type { HtmlAnimField } from '../../lib/presentationAnimation';
-import { sanitizePastedHtml, sanitizePresentationHtml, handlePresentationTabKey, replaceArrowShortcutsNearCursor, tryMarkdownListShortcut } from '../../lib/presentationRichText';
+import { sanitizePresentationHtml, handlePresentationTabKey, replaceArrowShortcutsNearCursor, handlePresentationListShortcutKey, presentationPasteHtml } from '../../lib/presentationRichText';
+import { PRESENTATION_DEFAULT_FONT_FAMILY } from '../../lib/presentationFonts';
 import { PRESENTATION_CONTENT_FONT_PX } from '../../lib/presentationFontSize';
 import { presentationNestedListSx } from '../../lib/presentationListStyles';
 import '../../styles/presentationLists.css';
@@ -83,6 +84,7 @@ function buildRichSx(
   const baseFont = zoneBasePx * scale;
   return {
     fontSize: `${baseFont}px`,
+    fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
     lineHeight: variant === 'title' ? 1.15 : 1.55,
     fontWeight: variant === 'title' || variant === 'hero' ? 700 : 400,
     fontStyle: italic ? 'italic' : 'normal',
@@ -302,9 +304,7 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
     e.preventDefault();
     const el = ref.current;
     if (!el) return;
-    const pastedHtml = e.clipboardData.getData('text/html');
-    const pastedText = e.clipboardData.getData('text/plain');
-    const content = pastedHtml ? sanitizePastedHtml(pastedHtml) : textToHtml(pastedText);
+    const content = presentationPasteHtml(e.clipboardData);
     el.focus();
     try {
       document.execCommand('styleWithCSS', false, 'true');
@@ -318,13 +318,9 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     const el = ref.current;
     if (!el) return;
-    if (e.key === ' ' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      if (tryMarkdownListShortcut(el)) {
-        e.preventDefault();
-        e.stopPropagation();
-        handleInput();
-        return;
-      }
+    if (handlePresentationListShortcutKey(e, el)) {
+      handleInput();
+      return;
     }
     if (e.key !== 'Tab' || e.ctrlKey || e.metaKey || e.altKey) return;
     e.preventDefault();

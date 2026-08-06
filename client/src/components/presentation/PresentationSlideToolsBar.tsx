@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Button,
@@ -43,6 +43,9 @@ import {
   WidthWide as MatchWidthIcon,
   Height as MatchHeightIcon,
   SquareFoot as AlignToIcon,
+  ViewAgendaOutlined as CardIcon,
+  ViewColumnOutlined as CardPairIcon,
+  TableChartOutlined as TableIcon,
 } from '@mui/icons-material';
 import {
   PresentationShapeKind,
@@ -63,11 +66,34 @@ import {
   matchElementSize,
   type AlignKind,
 } from '../../lib/presentationElementSnap';
+import { CARD_ACCENT_PRESETS, cardHeaderFill } from '../../lib/presentationSlideCards';
+import {
+  applyCellBackground,
+  applyTableMutation,
+  applyTableTheme,
+  applyZebraStriping,
+  getCellFromSelection,
+  readTableDimensions,
+  TABLE_CELL_BG_PRESETS,
+  TABLE_COLOR_THEMES,
+  tableAddColumn,
+  tableAddRow,
+  tableDeleteColumn,
+  tableDeleteLastColumn,
+  tableDeleteLastRow,
+  tableDeleteRow,
+  tableTranspose,
+  distributeColumnsEvenly,
+  distributeRowsEvenly,
+  type CreateTableOptions,
+} from '../../lib/presentationSlideTables';
 import { isHomeworkSlide } from '../../lib/presentationSlideTemplates';
 import { isImageCropMode } from '../../lib/presentationImageUtils';
 import { SLIDE_SHAPE_LABELS } from '../../lib/presentationSlideShapes';
 import { JOHNNY_ACCENT_PRESETS } from '../../lib/presentationTheme';
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
+import { sanitizePresentationHtml } from '../../lib/presentationRichText';
+import { setFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
 
 const iconBtnSx = PRES_EDITOR_UI.toolbarIcon;
 
@@ -96,6 +122,10 @@ interface PresentationSlideToolsBarProps {
   onAddImageElement: () => void;
   onAddLayoutImage: () => void;
   onAddShapeElement: (kind: PresentationShapeKind) => void;
+  onAddCardElement?: (mode?: 'single' | 'pair') => void;
+  onAddTableElement?: (opts?: CreateTableOptions) => void;
+  /** Live-Editor der aktuellen Tabelle (Zellen-Format). */
+  activeEditor?: HTMLElement | null;
   onUpdateElement: (id: string, patch: Partial<SlideElement>) => void;
   onDeleteElement: (id: string) => void;
   onRemoveImageBackground?: (id: string) => void;
@@ -127,6 +157,9 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
   onAddImageElement,
   onAddLayoutImage,
   onAddShapeElement,
+  onAddCardElement,
+  onAddTableElement,
+  activeEditor = null,
   onUpdateElement,
   onDeleteElement,
   onRemoveImageBackground,
@@ -142,9 +175,186 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
   const [elementAnchor, setElementAnchor] = useState<HTMLElement | null>(null);
   const [accentAnchor, setAccentAnchor] = useState<HTMLElement | null>(null);
   const [shapeAnchor, setShapeAnchor] = useState<HTMLElement | null>(null);
+  const [tableAnchor, setTableAnchor] = useState<HTMLElement | null>(null);
+  const [tableEditAnchor, setTableEditAnchor] = useState<HTMLElement | null>(null);
+  const [tableRows, setTableRows] = useState(4);
+  const [tableCols, setTableCols] = useState(4);
+  const [tableThemeId, setTableThemeId] = useState<string>('gelb');
   const [alignAnchor, setAlignAnchor] = useState<HTMLElement | null>(null);
   const [alignTargetId, setAlignTargetId] = useState<string>('');
   const [accentForAll, setAccentForAll] = useState(false);
+
+  useEffect(() => {
+    if (selectedElement?.type !== 'table') setTableEditAnchor(null);
+  }, [selectedElement?.id, selectedElement?.type]);
+
+  const resolveLiveTableEditor = (): HTMLElement | null => {
+    if (!selectedElement || selectedElement.type !== 'table') return null;
+    if (
+      activeEditor?.closest(`[data-pres-element="${selectedElement.id}"]`) &&
+      activeEditor.closest('[data-pres-table-edit]')
+    ) {
+      return activeEditor;
+    }
+    return document.querySelector(
+      `[data-pres-element="${selectedElement.id}"] [data-pres-table-edit]`,
+    ) as HTMLElement | null;
+  };
+
+  const runTableMutation = (
+    mutator: (
+      table: HTMLTableElement,
+      cell: HTMLTableCellElement | null,
+    ) => boolean | void,
+  ) => {
+    if (!selectedElement || selectedElement.type !== 'table') return;
+    const live = resolveLiveTableEditor();
+    const next = applyTableMutation({
+      html: selectedElement.html || '',
+      liveEditor: live,
+      mutator,
+    });
+    if (next == null) return;
+    onUpdateElement(selectedElement.id, { html: sanitizePresentationHtml(next) });
+  };
+
+  const renderTableEditPanel = () => {
+    if (selectedElement?.type !== 'table') return null;
+    const dim = readTableDimensions(selectedElement.html);
+    const btnSx = {
+      ...miniBtnSx,
+      textTransform: 'none' as const,
+      fontWeight: 700,
+      minWidth: 0,
+      px: 0.5,
+      py: 0.15,
+      fontSize: 10,
+      lineHeight: 1.2,
+    };
+    const swatchSx = {
+      width: 16,
+      height: 16,
+      borderRadius: '3px',
+      cursor: 'pointer' as const,
+      flexShrink: 0,
+    };
+    return (
+      <Box
+        data-presentation-table-tools
+        onPointerDown={() => setFormatBarInteracting(true)}
+        onPointerUp={() => window.setTimeout(() => setFormatBarInteracting(false), 0)}
+        sx={{ p: 0.85, width: 200, display: 'flex', flexDirection: 'column', gap: 0.45 }}
+      >
+        <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted }}>
+          Tabelle · {dim.rows}×{dim.cols}
+        </Typography>
+        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0.3 }}>
+          <Button size="small" onClick={() => runTableMutation((t) => tableAddRow(t))} sx={btnSx}>
+            +Zeile
+          </Button>
+          <Button size="small" onClick={() => runTableMutation((t) => tableAddColumn(t))} sx={btnSx}>
+            +Spalte
+          </Button>
+          <Tooltip title="Zeilen und Spalten vertauschen">
+            <Button
+              size="small"
+              onClick={() => runTableMutation((t) => tableTranspose(t))}
+              sx={btnSx}
+            >
+              ⇄
+            </Button>
+          </Tooltip>
+          <Button
+            size="small"
+            onClick={() =>
+              runTableMutation((t, cell) => {
+                if (cell && tableDeleteRow(t, cell)) return;
+                tableDeleteLastRow(t);
+              })
+            }
+            sx={btnSx}
+          >
+            −Zeile
+          </Button>
+          <Button
+            size="small"
+            onClick={() =>
+              runTableMutation((t, cell) => {
+                if (cell && tableDeleteColumn(t, cell)) return;
+                tableDeleteLastColumn(t);
+              })
+            }
+            sx={btnSx}
+          >
+            −Spalte
+          </Button>
+          <Tooltip title="Zebra: abwechselnd helle/dunkle Zeilenfarbe (Lesbarkeit)">
+            <Button
+              size="small"
+              onClick={() => runTableMutation((t) => applyZebraStriping(t))}
+              sx={btnSx}
+            >
+              Zebra
+            </Button>
+          </Tooltip>
+        </Box>
+        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.3 }}>
+          <Tooltip title="Alle Spalten gleich breit">
+            <Button
+              size="small"
+              onClick={() => runTableMutation((t) => distributeColumnsEvenly(t))}
+              sx={btnSx}
+            >
+              Spalten =
+            </Button>
+          </Tooltip>
+          <Tooltip title="Alle Zeilen gleich hoch">
+            <Button
+              size="small"
+              onClick={() => runTableMutation((t) => distributeRowsEvenly(t))}
+              sx={btnSx}
+            >
+              Zeilen =
+            </Button>
+          </Tooltip>
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexWrap: 'wrap' }}>
+          <Typography sx={{ fontSize: 8, color: PRES_EDITOR_UI.textMuted, mr: 0.15 }}>
+            Farbe
+          </Typography>
+          {TABLE_COLOR_THEMES.map((t) => (
+            <Tooltip key={t.id} title={`Tabelle: ${t.label}`}>
+              <Box
+                onClick={() => runTableMutation((table) => applyTableTheme(table, t))}
+                sx={{ ...swatchSx, bgcolor: t.headerBg, border: `1px solid ${t.border}` }}
+              />
+            </Tooltip>
+          ))}
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexWrap: 'wrap' }}>
+          <Typography sx={{ fontSize: 8, color: PRES_EDITOR_UI.textMuted, mr: 0.15 }}>
+            Zelle
+          </Typography>
+          {TABLE_CELL_BG_PRESETS.map((c) => (
+            <Tooltip key={c} title="Zelle einfärben">
+              <Box
+                onClick={() =>
+                  runTableMutation((table, cell) => {
+                    const target =
+                      cell ||
+                      getCellFromSelection(resolveLiveTableEditor()) ||
+                      (table.querySelector('td, th') as HTMLTableCellElement | null);
+                    if (target) applyCellBackground(target, c);
+                  })
+                }
+                sx={{ ...swatchSx, bgcolor: c, border: '1px solid #bbb' }}
+              />
+            </Tooltip>
+          ))}
+        </Box>
+      </Box>
+    );
+  };
 
   const accentColor = slide?.accentColor || JOHNNY_ACCENT_PRESETS[0];
   const stackLayer = selectedElement ? getElementStackLayer(selectedElement) : 'foreground';
@@ -199,7 +409,16 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
   ) : null;
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
+    <Box
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 0.35,
+        flexShrink: 0,
+        width: 'fit-content',
+        maxWidth: '100%',
+      }}
+    >
       {showHomeworkSubmissionToggle && (
         <>
           <FormControlLabel
@@ -267,13 +486,69 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
             <ShapeIcon sx={{ fontSize: 15 }} />
           </IconButton>
         </Tooltip>
-        {canPasteElement && (
-          <Tooltip title="Bild/Form einfügen (⌘V)">
-            <IconButton size="small" onClick={() => onPasteElement?.()} sx={iconBtnSx}>
+        <Tooltip title="Info-Karte (Titelkopf + Inhalt)">
+          <IconButton
+            size="small"
+            onClick={() => onAddCardElement?.('single')}
+            sx={iconBtnSx}
+            aria-label="Karte einfügen"
+          >
+            <CardIcon sx={{ fontSize: 15 }} />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Zwei Karten nebeneinander">
+          <IconButton
+            size="small"
+            onClick={() => onAddCardElement?.('pair')}
+            sx={iconBtnSx}
+            aria-label="Kartenpaar einfügen"
+          >
+            <CardPairIcon sx={{ fontSize: 15 }} />
+          </IconButton>
+        </Tooltip>
+        <Tooltip
+          title={
+            selectedElement?.type === 'table'
+              ? 'Tabelle bearbeiten (Zeilen, Spalten, Farben)'
+              : 'Tabelle einfügen'
+          }
+        >
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              if (selectedElement?.type === 'table') {
+                setTableAnchor(null);
+                setTableEditAnchor(e.currentTarget);
+              } else {
+                setTableEditAnchor(null);
+                setTableAnchor(e.currentTarget);
+              }
+            }}
+            sx={{
+              ...iconBtnSx,
+              ...(selectedElement?.type === 'table'
+                ? { color: PRES_EDITOR_UI.accent, bgcolor: 'rgba(46,125,50,0.12)' }
+                : {}),
+            }}
+            aria-label={
+              selectedElement?.type === 'table' ? 'Tabelle bearbeiten' : 'Tabelle einfügen'
+            }
+          >
+            <TableIcon sx={{ fontSize: 15 }} />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Einfügen (⌘V)">
+          <span>
+            <IconButton
+              size="small"
+              disabled={!canPasteElement}
+              onClick={() => onPasteElement?.()}
+              sx={iconBtnSx}
+            >
               <PasteIcon sx={{ fontSize: 14 }} />
             </IconButton>
-          </Tooltip>
-        )}
+          </span>
+        </Tooltip>
         <Popover
           open={Boolean(shapeAnchor)}
           anchorEl={shapeAnchor}
@@ -307,7 +582,11 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                   fontWeight: 600,
                 }}
               >
-                {SLIDE_SHAPE_LABELS[kind]}
+                {kind === 'rect'
+                  ? 'Rechteck-Box (mit Text)'
+                  : kind === 'ellipse'
+                    ? 'Oval-Box (mit Text)'
+                    : SLIDE_SHAPE_LABELS[kind]}
               </Button>
             ))}
             <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, px: 0.5, pt: 0.35 }}>
@@ -315,38 +594,126 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
             </Typography>
           </Box>
         </Popover>
+        <Popover
+          open={Boolean(tableAnchor)}
+          anchorEl={tableAnchor}
+          onClose={() => setTableAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        >
+          <Box
+            sx={{ p: 1.25, display: 'flex', flexDirection: 'column', gap: 0.75, minWidth: 220 }}
+            data-presentation-table-tools
+          >
+            <Typography sx={{ fontSize: 10, fontWeight: 700, color: PRES_EDITOR_UI.textMuted }}>
+              Tabelle einfügen
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 0.75 }}>
+              <TextField
+                size="small"
+                type="number"
+                label="Zeilen"
+                value={tableRows}
+                onChange={(e) => setTableRows(Math.max(2, Math.min(20, Number(e.target.value) || 2)))}
+                inputProps={{ min: 2, max: 20 }}
+                sx={{
+                  flex: 1,
+                  '& .MuiInputBase-root': { fontSize: 11, height: 32 },
+                  '& .MuiInputLabel-root': { fontSize: 10 },
+                }}
+              />
+              <TextField
+                size="small"
+                type="number"
+                label="Spalten"
+                value={tableCols}
+                onChange={(e) => setTableCols(Math.max(2, Math.min(12, Number(e.target.value) || 2)))}
+                inputProps={{ min: 2, max: 12 }}
+                sx={{
+                  flex: 1,
+                  '& .MuiInputBase-root': { fontSize: 11, height: 32 },
+                  '& .MuiInputLabel-root': { fontSize: 10 },
+                }}
+              />
+            </Box>
+            <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted }}>Farbe</Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.4 }}>
+              {TABLE_COLOR_THEMES.map((t) => (
+                <Tooltip key={t.id} title={t.label}>
+                  <Box
+                    onClick={() => setTableThemeId(t.id)}
+                    sx={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: '4px',
+                      bgcolor: t.headerBg,
+                      border:
+                        tableThemeId === t.id ? '2px solid #222' : `1px solid ${t.border}`,
+                      cursor: 'pointer',
+                    }}
+                  />
+                </Tooltip>
+              ))}
+            </Box>
+            <Button
+              size="small"
+              variant="contained"
+              onClick={() => {
+                onAddTableElement?.({
+                  rows: tableRows,
+                  cols: tableCols,
+                  themeId: tableThemeId,
+                });
+                setTableAnchor(null);
+              }}
+              sx={{
+                ...miniBtnSx,
+                textTransform: 'none',
+                fontWeight: 700,
+                bgcolor: PRES_EDITOR_UI.accent,
+                color: '#fff',
+                '&:hover': { bgcolor: PRES_EDITOR_UI.accent },
+              }}
+            >
+              Einfügen
+            </Button>
+            <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, lineHeight: 1.35 }}>
+              Danach: Zellen tippen, Spaltenränder ziehen für Breiten.
+            </Typography>
+          </Box>
+        </Popover>
+        <Popover
+          open={Boolean(tableEditAnchor) && selectedElement?.type === 'table'}
+          anchorEl={tableEditAnchor}
+          onClose={() => setTableEditAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        >
+          {renderTableEditPanel()}
+        </Popover>
       </Box>
 
-      {selectedElement && (
-        <>
-          {(selectedElement.type === 'image' || selectedElement.type === 'shape') && (
-            <Box sx={toolGroupSx}>
-              <Tooltip title="Ausschneiden (⌘X) — dann andere Folie → Einfügen">
-                <IconButton size="small" onClick={() => onCutElement?.()} sx={iconBtnSx}>
-                  <CutIcon sx={{ fontSize: 14 }} />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Kopieren (⌘C)">
-                <IconButton size="small" onClick={() => onCopyElement?.()} sx={iconBtnSx}>
-                  <CopyIcon sx={{ fontSize: 14 }} />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Einfügen (⌘V)">
-                <span>
-                  <IconButton
-                    size="small"
-                    disabled={!canPasteElement}
-                    onClick={() => onPasteElement?.()}
-                    sx={iconBtnSx}
-                  >
-                    <PasteIcon sx={{ fontSize: 14 }} />
-                  </IconButton>
-                </span>
-              </Tooltip>
-            </Box>
-          )}
-          {layerIconGroup}
+      {selectedElement &&
+        (selectedElement.type === 'image' ||
+          selectedElement.type === 'shape' ||
+          selectedElement.type === 'card' ||
+          selectedElement.type === 'table') && (
           <Box sx={toolGroupSx}>
+            <Tooltip title="Ausschneiden (⌘X)">
+              <IconButton size="small" onClick={() => onCutElement?.()} sx={iconBtnSx}>
+                <CutIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Kopieren (⌘C)">
+              <IconButton size="small" onClick={() => onCopyElement?.()} sx={iconBtnSx}>
+                <CopyIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        )}
+
+      {selectedElement && layerIconGroup}
+
+      {selectedElement && (
+        <Box sx={toolGroupSx}>
             {SLIDE_ALIGN_ACTIONS.map(({ kind, title, icon }) => (
               <Tooltip key={kind} title={title}>
                 <IconButton size="small" onClick={() => applySlideAlign(kind)} sx={iconBtnSx}>
@@ -476,6 +843,10 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
               </Box>
             </Popover>
           </Box>
+          )}
+
+      {selectedElement && (
+        <>
           <Tooltip title="Einstellungen">
                 <IconButton
                   size="small"
@@ -677,6 +1048,91 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                         }}
                       />
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.35, mb: 0.5 }}>
+                        {(['x', 'y', 'w', 'h'] as const).map((key) => (
+                          <TextField
+                            key={key}
+                            size="small"
+                            type="number"
+                            label={key.toUpperCase()}
+                            value={selectedElement[key]}
+                            onChange={(e) =>
+                              onUpdateElement(selectedElement.id, { [key]: Number(e.target.value) })
+                            }
+                            sx={{
+                              width: '48%',
+                              '& .MuiInputBase-root': { fontSize: 10, height: 28 },
+                              '& .MuiInputLabel-root': { fontSize: 9 },
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </>
+                  )}
+
+                  {selectedElement.type === 'card' && (
+                    <>
+                      <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.5 }}>
+                        Info-Karte
+                      </Typography>
+                      <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, mb: 0.35, lineHeight: 1.35 }}>
+                        Karte am Titelkopf wählen → Inhalt ist sofort tippbar (helles Feld). Doppelklick auf den Titelkopf für die Überschrift. Ziehen am Titelkopf.
+                      </Typography>
+                      <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, mb: 0.35 }}>
+                        Farbe
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.35, mb: 0.5 }}>
+                        {CARD_ACCENT_PRESETS.map((c) => (
+                          <Box
+                            key={c}
+                            onClick={() =>
+                              onUpdateElement(selectedElement.id, {
+                                strokeColor: c,
+                                fillColor: cardHeaderFill(c),
+                              })
+                            }
+                            sx={{
+                              width: 18,
+                              height: 18,
+                              borderRadius: '4px',
+                              bgcolor: c,
+                              cursor: 'pointer',
+                              border:
+                                selectedElement.strokeColor === c
+                                  ? '2px solid #222'
+                                  : '1px solid #ccc',
+                            }}
+                          />
+                        ))}
+                      </Box>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.35, mb: 0.5 }}>
+                        {(['x', 'y', 'w', 'h'] as const).map((key) => (
+                          <TextField
+                            key={key}
+                            size="small"
+                            type="number"
+                            label={key.toUpperCase()}
+                            value={selectedElement[key]}
+                            onChange={(e) =>
+                              onUpdateElement(selectedElement.id, { [key]: Number(e.target.value) })
+                            }
+                            sx={{
+                              width: '48%',
+                              '& .MuiInputBase-root': { fontSize: 10, height: 28 },
+                              '& .MuiInputLabel-root': { fontSize: 9 },
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </>
+                  )}
+
+                  {selectedElement.type === 'table' && (
+                    <>
+                      <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.5 }}>
+                        Tabelle
+                      </Typography>
+                      {renderTableEditPanel()}
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.35, mb: 0.5, mt: 0.5 }}>
                         {(['x', 'y', 'w', 'h'] as const).map((key) => (
                           <TextField
                             key={key}

@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import {
+  isLayoutZoneHidden,
   normalizeSlide,
   PresentationSlide,
   PresentationSlideFooter,
@@ -9,6 +10,7 @@ import {
   SLIDE_REF_WIDTH,
   SLIDE_IMAGE_EDITOR_MAX,
   slideImageUrl,
+  withHiddenLayoutZone,
 } from '../../lib/presentationDeck';
 import { JOHNNY_PRESENTATION, accentGradient } from '../../lib/presentationTheme';
 import {
@@ -47,7 +49,7 @@ interface PresentationSlideViewProps {
   onElementChange?: (id: string, patch: Partial<SlideElement>) => void;
   onDeleteElement?: (id: string) => void;
   onMoveElementToSlide?: (elementId: string, targetSlideId: string) => void;
-  onTextElementFocus?: (el: HTMLElement, elementId: string) => void;
+  onTextElementFocus?: (el: HTMLElement, elementId: string, field?: 'html' | 'titleHtml') => void;
   showSlideNumbers?: boolean;
   slideNumber?: number;
   slideTotal?: number;
@@ -130,10 +132,15 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
     slide.elements,
   );
   const selectedElement = slide.elements?.find((el) => el.id === selectedElementId);
+  /** Karten bleiben unter Vordergrund-Bildern — sonst blockieren sie das Verschieben. */
   const selectedBackground =
     editable &&
     selectedElement != null &&
+    selectedElement.type !== 'card' &&
     getElementStackLayer(selectedElement) === 'background';
+  /** Gewählte Karte: Bilder lassen Klicks durch → Inhalt tippbar. */
+  const passPointerThrough =
+    editable && selectedElement != null && selectedElement.type === 'card';
   const hasBackgroundElements = backgroundElements.length > 0;
   const heroSlide = imageHeroLayout;
   const textZonesInteractive = editable;
@@ -177,6 +184,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           onMoveElementToSlide={onMoveElementToSlide}
           onTextEditorFocus={onTextElementFocus}
           onSnapGuidesChange={editable ? handleSnapGuidesChange : undefined}
+          passPointerThrough={passPointerThrough}
           animationEditMode={animationEditMode}
           selectedAnimationTarget={selectedAnimationTarget}
           onAnimationTargetClick={onAnimationTargetClick}
@@ -207,6 +215,12 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
     >
   ) => onChange?.(fields);
 
+  const hideLayoutZone = (zoneKey: string) => {
+    if (!editable || !onChange) return;
+    const next = withHiddenLayoutZone(slide, zoneKey, true);
+    onChange({ hiddenLayoutZones: next.hiddenLayoutZones });
+  };
+
   const zone = (
     fieldHtml: keyof PresentationSlide,
     fieldPlain: keyof PresentationSlide,
@@ -218,9 +232,16 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
       minHeight?: number;
       flex?: number;
       zoneKey?: string;
+      /** Inhaltsbox darf gelöscht/ausgeblendet werden (Titel & Inhalt). */
+      deletable?: boolean;
     } = {}
   ) => {
     const htmlField = String(fieldHtml) as HtmlAnimField;
+    if (isLayoutZoneHidden(slide, htmlField)) return null;
+
+    const canDeleteZone =
+      Boolean(opts.deletable) && editable && !animationEditMode && !exportSnapshot && Boolean(onChange);
+
     return (
       <Box
         sx={{
@@ -233,8 +254,50 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           display: opts.flex ? 'flex' : undefined,
           flexDirection: opts.flex ? 'column' : undefined,
           minHeight: opts.flex && editable ? `${80 * scale}px` : undefined,
+          '&:hover .pres-zone-delete': { opacity: 1 },
         }}
       >
+        {canDeleteZone && (
+          <Box
+            className="pres-zone-delete"
+            component="button"
+            type="button"
+            title="Inhaltsbox löschen"
+            aria-label="Inhaltsbox löschen"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              hideLayoutZone(htmlField);
+            }}
+            sx={{
+              position: 'absolute',
+              top: `${-2 * scale}px`,
+              right: `${-2 * scale}px`,
+              zIndex: 4,
+              opacity: 0,
+              transition: 'opacity 0.12s ease',
+              width: `${22 * scale}px`,
+              height: `${22 * scale}px`,
+              minWidth: 0,
+              p: 0,
+              border: `1px solid ${accent}55`,
+              borderRadius: `${4 * scale}px`,
+              bgcolor: 'rgba(255,255,255,0.92)',
+              color: '#c62828',
+              fontSize: `${14 * scale}px`,
+              fontWeight: 700,
+              lineHeight: 1,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              pointerEvents: 'auto',
+              '&:hover': { bgcolor: '#ffebee', borderColor: '#c62828' },
+            }}
+          >
+            ×
+          </Box>
+        )}
         <PresentationRichZone
           html={slide[fieldHtml] as string | undefined}
           plain={slide[fieldPlain] as string | undefined}
@@ -508,7 +571,12 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             <Box sx={{ mb: `${24 * scale}px` }}>
               {zone('titleHtml', 'title', { variant: 'title', placeholder: 'Titel' })}
             </Box>
-            {zone('bodyHtml', 'body', { variant: 'body', placeholder: 'Inhalt…', flex: 1 })}
+            {zone('bodyHtml', 'body', {
+              variant: 'body',
+              placeholder: 'Inhalt…',
+              flex: 1,
+              deletable: true,
+            })}
           </>
         );
     }

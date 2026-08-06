@@ -156,7 +156,7 @@ export function layoutImageHasRevealAssignment(slide: PresentationSlide): boolea
 
 function collectParagraphItems(slide: PresentationSlide): AnimationItem[] {
   const items: AnimationItem[] = [];
-  const fields = textFieldsInRevealOrder(slide.layout ?? 'title-content');
+  const fields = textFieldsInRevealOrder(slide.layout ?? 'title-content', slide);
   for (const field of fields) {
     const html = slide[field];
     if (!html?.trim() || html === '<p><br></p>') continue;
@@ -203,24 +203,37 @@ function collectElementParagraphItems(slide: PresentationSlide): AnimationItem[]
   return items;
 }
 
-export function textFieldsInRevealOrder(layout: SlideLayout): HtmlAnimField[] {
+export function textFieldsInRevealOrder(
+  layout: SlideLayout,
+  slide?: PresentationSlide,
+): HtmlAnimField[] {
+  let fields: HtmlAnimField[];
   switch (layout) {
     case 'title-slide':
-      return ['titleHtml', 'bodyHtml'];
+      fields = ['titleHtml', 'bodyHtml'];
+      break;
     case 'section':
-      return ['titleHtml', 'subtitleHtml'];
+      fields = ['titleHtml', 'subtitleHtml'];
+      break;
     case 'two-column':
-      return ['titleHtml', 'bodyLeftHtml', 'bodyRightHtml'];
+      fields = ['titleHtml', 'bodyLeftHtml', 'bodyRightHtml'];
+      break;
     case 'image-right':
     case 'image-left':
-      return ['titleHtml', 'bodyHtml', 'imageCaptionHtml'];
+      fields = ['titleHtml', 'bodyHtml', 'imageCaptionHtml'];
+      break;
     case 'quote':
-      return ['bodyHtml', 'subtitleHtml'];
+      fields = ['bodyHtml', 'subtitleHtml'];
+      break;
     case 'blank':
-      return ['bodyHtml'];
+      fields = ['bodyHtml'];
+      break;
     default:
-      return ['titleHtml', 'bodyHtml'];
+      fields = ['titleHtml', 'bodyHtml'];
   }
+  const hidden = slide?.hiddenLayoutZones;
+  if (!hidden?.length) return fields;
+  return fields.filter((f) => !hidden.includes(f));
 }
 
 export function countSlideParagraphSteps(slide: PresentationSlide): number {
@@ -268,7 +281,15 @@ export function collectAnimationItems(slide: PresentationSlide): AnimationItem[]
     const hasInnerParagraphs = el.type === 'text' && el.html?.includes('data-reveal-step');
     if (hasInnerParagraphs) return;
     const typeLabel =
-      el.type === 'image' ? 'Bild' : el.type === 'shape' ? 'Form' : 'Textfeld';
+      el.type === 'image'
+        ? 'Bild'
+        : el.type === 'shape'
+          ? 'Form'
+          : el.type === 'card'
+            ? 'Karte'
+            : el.type === 'table'
+              ? 'Tabelle'
+              : 'Textfeld';
     items.push({
       id: `element:${el.id}`,
       kind: 'element',
@@ -424,7 +445,7 @@ export function swapAnimationItemSteps(
 
 /** Nummeriert Absätze, Bilder und Textfelder in Lesereihenfolge (1, 2, 3 …). */
 export function assignSlideParagraphSteps(slide: PresentationSlide): Partial<PresentationSlide> {
-  const fields = textFieldsInRevealOrder(slide.layout ?? 'title-content');
+  const fields = textFieldsInRevealOrder(slide.layout ?? 'title-content', slide);
   let step = 1;
   const patch: Partial<PresentationSlide> = { revealEnabled: true };
 
