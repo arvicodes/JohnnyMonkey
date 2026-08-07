@@ -12,7 +12,7 @@ import {
   findAnimBlockFromHit,
 } from '../../lib/presentationAnimation';
 import type { HtmlAnimField } from '../../lib/presentationAnimation';
-import { sanitizePresentationHtml, handlePresentationTabKey, replaceArrowShortcutsNearCursor, handlePresentationListShortcutKey, presentationPasteHtml } from '../../lib/presentationRichText';
+import { sanitizePresentationHtml, handlePresentationTabKey, replaceArrowShortcutsNearCursor, handlePresentationListShortcutKey, presentationPasteHtml, wrapOrphanRootInlineContent } from '../../lib/presentationRichText';
 import { PRESENTATION_DEFAULT_FONT_FAMILY } from '../../lib/presentationFonts';
 import { PRESENTATION_CONTENT_FONT_PX } from '../../lib/presentationFontSize';
 import { presentationNestedListSx } from '../../lib/presentationListStyles';
@@ -237,6 +237,14 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
     editingRef.current = false;
     syncFromProps();
   }, [editable, slideId, syncFromProps]);
+
+  /** Orphan-Inline (Text ohne &lt;p&gt;) für Animationsklicks in Absätze packen. */
+  useEffect(() => {
+    if (!animationEditMode || !ref.current) return;
+    const el = ref.current;
+    if (!wrapOrphanRootInlineContent(el)) return;
+    if (onChange) onChange(el.innerHTML, htmlToPlain(el.innerHTML));
+  }, [animationEditMode, animationFieldKey, onChange]);
 
   useEffect(() => {
     const el = ref.current;

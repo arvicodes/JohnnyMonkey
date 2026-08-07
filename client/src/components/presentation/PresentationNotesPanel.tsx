@@ -9,7 +9,7 @@ import { htmlToPlain, textToHtml } from '../../lib/presentationDeck';
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
 import { isFormatBarInteracting, isPresentationFormatUiTarget } from '../../lib/presentationFormatBarGuard';
 import { captureEditorSelection, clearSavedSelection } from '../../lib/presentationFontSize';
-import { presentationNestedListSx } from '../../lib/presentationListStyles';
+import { presentationNestedListSx, presentationNotesTableSx } from '../../lib/presentationListStyles';
 import { sanitizePastedHtml, normalizeNotesHtml, handlePresentationTabKey, replaceArrowShortcutsNearCursor, tryMarkdownListShortcut, insertImageHtmlAtCursor } from '../../lib/presentationRichText';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 
@@ -305,6 +305,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
             itemGapPx: 2,
             listGapPx: 4,
           }),
+          ...presentationNotesTableSx(),
           '& mark': { borderRadius: 0.5 },
           '& [data-pres-fs]': { lineHeight: 'inherit' },
           '& [data-pres-color]': { lineHeight: 'inherit' },

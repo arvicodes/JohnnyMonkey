@@ -25,6 +25,7 @@ import {
   getListItemFromSelection,
 } from './presentationListNormalize';
 import { PRESENTATION_DEFAULT_FONT_FAMILY } from './presentationFonts';
+import { ensureNotesTablesFormatted } from './presentationSlideTables';
 
 // Explizite Re-Exports (HMR-sicherer als `import` + `export { … }`)
 export {
@@ -643,6 +644,70 @@ export function isPresentationLinkClickTarget(target: EventTarget | null): boole
   return Boolean(target.closest('a[href]'));
 }
 
+/**
+ * Freistehende Inline-Inhalte (Text, &lt;b&gt;, …) auf Root-Ebene in &lt;p&gt; packen.
+ * Sonst sind sie weder als Absatz editier- noch als Animationsziel anklickbar
+ * (z. B. „→ Analysiere …“ direkt hinter &lt;/ul&gt;).
+ */
+const ROOT_BLOCK_TAGS = new Set([
+  'P',
+  'DIV',
+  'UL',
+  'OL',
+  'BLOCKQUOTE',
+  'H1',
+  'H2',
+  'H3',
+  'H4',
+  'H5',
+  'H6',
+  'TABLE',
+  'HR',
+  'PRE',
+  'SECTION',
+  'ARTICLE',
+]);
+
+function orphanNodeHasVisibleText(node: Node): boolean {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return Boolean((node.textContent || '').replace(/\u200b/g, '').trim());
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE) return false;
+  const el = node as Element;
+  if (el.tagName === 'BR') return false;
+  return Boolean((el.textContent || '').replace(/\u200b/g, '').replace(/\s+/g, ' ').trim());
+}
+
+/** @returns true wenn etwas gewrappt wurde */
+export function wrapOrphanRootInlineContent(root: HTMLElement): boolean {
+  const doc = root.ownerDocument;
+  let changed = false;
+  let run: Node[] = [];
+
+  const flush = () => {
+    if (run.length === 0) return;
+    if (!run.some(orphanNodeHasVisibleText)) {
+      run = [];
+      return;
+    }
+    const p = doc.createElement('p');
+    root.insertBefore(p, run[0]);
+    for (const n of run) p.appendChild(n);
+    run = [];
+    changed = true;
+  };
+
+  for (const node of Array.from(root.childNodes)) {
+    if (node.nodeType === Node.ELEMENT_NODE && ROOT_BLOCK_TAGS.has((node as Element).tagName)) {
+      flush();
+      continue;
+    }
+    run.push(node);
+  }
+  flush();
+  return changed;
+}
+
 /** Struktur bereinigen ohne absichtliche data-pres-fs zu entfernen. */
 export function sanitizePresentationHtml(html: string): string {
   if (!html || typeof document === 'undefined') return html;
@@ -651,6 +716,7 @@ export function sanitizePresentationHtml(html: string): string {
   unwrapIllegalSpanBlocks(doc.body);
   normalizeListsInPlace(doc.body);
   normalizePresentationAnchorsInPlace(doc.body);
+  wrapOrphanRootInlineContent(doc.body);
   return doc.body.innerHTML;
 }
 
@@ -684,7 +750,12 @@ export function stripNotesBlockIndent(html: string): string {
 
 /** @deprecated Alias */
 export function normalizeNotesHtml(html: string): string {
-  return normalizePresentationLists(stripNotesBlockIndent(html));
+  const base = normalizePresentationLists(stripNotesBlockIndent(html));
+  if (!base || typeof document === 'undefined') return base;
+  const doc = new DOMParser().parseFromString(base, 'text/html');
+  ensureNotesTablesFormatted(doc.body);
+  normalizePresentationAnchorsInPlace(doc.body);
+  return doc.body.innerHTML;
 }
 
 const LIST_FORMAT_COMMANDS = new Set([

@@ -1469,6 +1469,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             />
           ) : (
             <Box
+              data-pres-html
               sx={{
                 width: '100%',
                 height: '100%',
@@ -1652,6 +1653,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         ) : (
           <Box
             ref={displayRef}
+            data-pres-html
             sx={{
               width: '100%',
               height: '100%',

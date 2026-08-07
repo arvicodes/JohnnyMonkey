@@ -4,6 +4,7 @@ import {
   countRevealStepsInHtml,
   stripAllRevealSteps,
 } from './presentationReveal';
+import { wrapOrphanRootInlineContent } from './presentationRichText';
 
 const HTML_ANIM_FIELDS = [
   'titleHtml',
@@ -43,6 +44,7 @@ const FIELD_LABELS: Record<HtmlAnimField, string> = {
 function parseHtmlContainer(html: string): HTMLDivElement {
   const div = document.createElement('div');
   div.innerHTML = html || '';
+  wrapOrphanRootInlineContent(div);
   return div;
 }
 

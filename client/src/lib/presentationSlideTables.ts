@@ -477,6 +477,48 @@ export function getColumnWidthPercents(table: HTMLTableElement): number[] {
   return cols.map((col) => parseFloat(col.style.width) || 100 / Math.max(1, cols.length));
 }
 
+/**
+ * Unformatierte Notiz-Tabellen (z. B. aus PPTX/Paste) mit Rahmen, Padding und Kopfzeile versehen.
+ */
+export function ensureNotesTablesFormatted(root: ParentNode): void {
+  root.querySelectorAll('table').forEach((node) => {
+    const table = node as HTMLTableElement;
+    if (!table.getAttribute('data-pres-table')) table.setAttribute('data-pres-table', '1');
+    if (!table.getAttribute('data-pres-table-theme')) {
+      table.setAttribute('data-pres-table-theme', 'grau');
+    }
+    const theme = getTableTheme(table.getAttribute('data-pres-table-theme') || undefined);
+    table.style.width = '100%';
+    table.style.borderCollapse = 'collapse';
+    if (!table.style.tableLayout) table.style.tableLayout = 'fixed';
+    if (!table.style.fontSize) table.style.fontSize = 'inherit';
+    ensureColgroup(table);
+
+    table.querySelectorAll('th, td').forEach((cell) => {
+      const el = cell as HTMLElement;
+      const hasBorder =
+        Boolean(el.style.border) ||
+        Boolean(el.style.borderWidth) ||
+        Boolean(el.style.borderColor) ||
+        Boolean(el.style.borderTop) ||
+        Boolean(el.style.borderLeft);
+      if (!hasBorder) {
+        el.style.border = `1px solid ${theme.border}`;
+      } else if (!el.style.borderColor) {
+        el.style.borderColor = theme.border;
+      }
+      if (!el.style.padding) el.style.padding = '4px 6px';
+      if (!el.style.verticalAlign) el.style.verticalAlign = 'top';
+      if (!el.style.wordBreak) el.style.wordBreak = 'break-word';
+      if (el.tagName === 'TH') {
+        if (!el.style.backgroundColor) el.style.backgroundColor = theme.headerBg;
+        if (!el.style.fontWeight) el.style.fontWeight = '700';
+        if (!el.style.textAlign) el.style.textAlign = 'left';
+      }
+    });
+  });
+}
+
 export function mutateTableHtml(
   html: string,
   mutator: (table: HTMLTableElement) => void,

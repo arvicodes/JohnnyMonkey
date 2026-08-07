@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Box,
+  Button,
   Divider,
   IconButton,
   MenuItem,
@@ -27,6 +28,7 @@ import {
   EmojiEmotions,
   Remove as RemoveIcon,
   Add as AddIcon,
+  TableChartOutlined as TableIcon,
 } from '@mui/icons-material';
 import { HIGHLIGHT_PRESETS, TEXT_COLOR_PRESETS } from '../../lib/presentationTheme';
 import { setFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
@@ -53,6 +55,24 @@ import {
   PRESENTATION_FONT_FAMILIES,
   presentationFontLabel,
 } from '../../lib/presentationFonts';
+import {
+  TABLE_CELL_BG_PRESETS,
+  TABLE_COLOR_THEMES,
+  applyCellBackground,
+  applyTableTheme,
+  applyZebraStriping,
+  buildBlankTableHtml,
+  distributeColumnsEvenly,
+  findTableRoot,
+  getTableTheme,
+  tableAddColumn,
+  tableAddRow,
+  tableDeleteColumn,
+  tableDeleteLastColumn,
+  tableDeleteLastRow,
+  tableDeleteRow,
+  tableTranspose,
+} from '../../lib/presentationSlideTables';
 
 const MOD_LABEL = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform) ? '⌘' : 'Strg';
 
@@ -77,8 +97,32 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   const [colorAnchor, setColorAnchor] = useState<HTMLElement | null>(null);
   const [highlightAnchor, setHighlightAnchor] = useState<HTMLElement | null>(null);
   const [emojiAnchor, setEmojiAnchor] = useState<HTMLElement | null>(null);
+  const [tableAnchor, setTableAnchor] = useState<HTMLElement | null>(null);
   const [fontPx, setFontPx] = useState<number | ''>('');
   const [fontFamily, setFontFamily] = useState('');
+  const [notesTableTick, setNotesTableTick] = useState(0);
+
+  const isNotesEditor = Boolean(
+    activeEditor?.getAttribute('data-pres-notes-zone') === 'true' || contextLabel === 'Notizen',
+  );
+
+  const notesTableCtx = useMemo(() => {
+    void notesTableTick;
+    if (!activeEditor || !isNotesEditor) return null;
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return null;
+    let node: Node | null = sel.anchorNode;
+    if (node?.nodeType === Node.TEXT_NODE) node = node.parentNode;
+    if (!(node instanceof Element) || !activeEditor.contains(node)) {
+      const first = activeEditor.querySelector('table');
+      return first ? { table: first as HTMLTableElement, cell: null as HTMLTableCellElement | null } : null;
+    }
+    const cell = node.closest('td, th') as HTMLTableCellElement | null;
+    const table = (findTableRoot(cell || (node as HTMLElement)) ||
+      node.closest('table')) as HTMLTableElement | null;
+    if (!table || !activeEditor.contains(table)) return null;
+    return { table, cell };
+  }, [activeEditor, isNotesEditor, notesTableTick]);
 
   const fontSteps = activeEditor ? getEditorFontSizeSteps(activeEditor) : [];
   const fontSizeSelectValue =
@@ -95,6 +139,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     const nextFamily = getEditorSelectionFontFamily(activeEditor);
     setFontPx((prev) => (prev === nextPx ? prev : nextPx));
     setFontFamily((prev) => (prev === nextFamily ? prev : nextFamily));
+    setNotesTableTick((n) => n + 1);
   }, [activeEditor]);
 
   useEffect(() => {
@@ -612,7 +657,181 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
               </IconButton>
             </span>
           </Tooltip>
+        </>
+      )}
+
+      {isNotesEditor && (
+        <>
           <Divider orientation="vertical" flexItem sx={{ borderColor: '#ccc', mx: 0.25 }} />
+          <Tooltip title={notesTableCtx ? 'Tabelle formatieren' : 'Tabelle in Notizen einfügen'}>
+            <span>
+              <IconButton
+                size="small"
+                disabled={disabled || !activeEditor}
+                sx={{
+                  ...btnSx,
+                  ...(notesTableCtx ? { color: '#2E7D32', bgcolor: 'rgba(46,125,50,0.1)' } : {}),
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  bookmarkSelection(activeEditor);
+                }}
+                onClick={(e) => {
+                  if (!activeEditor) return;
+                  if (notesTableCtx) {
+                    setTableAnchor(e.currentTarget);
+                    return;
+                  }
+                  bookmarkSelection(activeEditor);
+                  applyAndNotify(() => {
+                    const html = buildBlankTableHtml(3, 3, getTableTheme('grau'));
+                    try {
+                      document.execCommand('styleWithCSS', false, 'true');
+                    } catch {
+                      /* ignore */
+                    }
+                    document.execCommand('insertHTML', false, html);
+                  });
+                  setNotesTableTick((n) => n + 1);
+                }}
+              >
+                <TableIcon sx={{ fontSize: 17 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Popover
+            open={Boolean(tableAnchor) && Boolean(notesTableCtx)}
+            anchorEl={tableAnchor}
+            onClose={() => {
+              setTableAnchor(null);
+              setFormatBarInteracting(false);
+            }}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          >
+            {notesTableCtx &&
+              (() => {
+                const { table, cell } = notesTableCtx;
+                const dim = {
+                  rows: table.rows.length,
+                  cols: table.rows[0]?.cells.length || 0,
+                };
+                const miniBtn = {
+                  minWidth: 0,
+                  px: 0.5,
+                  py: 0.15,
+                  fontSize: 10,
+                  lineHeight: 1.2,
+                  textTransform: 'none' as const,
+                };
+                const run = (fn: () => void) => {
+                  bookmarkSelection(activeEditor);
+                  setFormatBarInteracting(true);
+                  fn();
+                  onEditorChanged?.();
+                  setNotesTableTick((n) => n + 1);
+                  window.setTimeout(() => setFormatBarInteracting(false), 0);
+                };
+                return (
+                  <Box
+                    data-presentation-format-ui
+                    data-presentation-table-tools
+                    sx={{ p: 0.85, width: 210, display: 'flex', flexDirection: 'column', gap: 0.45 }}
+                  >
+                    <Typography sx={{ fontSize: 9, fontWeight: 700, color: '#78909c' }}>
+                      Notiz-Tabelle · {dim.rows}×{dim.cols}
+                    </Typography>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0.3 }}>
+                      <Button size="small" sx={miniBtn} onClick={() => run(() => tableAddRow(table))}>
+                        +Zeile
+                      </Button>
+                      <Button size="small" sx={miniBtn} onClick={() => run(() => tableAddColumn(table))}>
+                        +Spalte
+                      </Button>
+                      <Button size="small" sx={miniBtn} onClick={() => run(() => tableTranspose(table))}>
+                        ⇄
+                      </Button>
+                      <Button
+                        size="small"
+                        sx={miniBtn}
+                        onClick={() =>
+                          run(() => {
+                            if (cell && tableDeleteRow(table, cell)) return;
+                            tableDeleteLastRow(table);
+                          })
+                        }
+                      >
+                        −Zeile
+                      </Button>
+                      <Button
+                        size="small"
+                        sx={miniBtn}
+                        onClick={() =>
+                          run(() => {
+                            if (cell && tableDeleteColumn(table, cell)) return;
+                            tableDeleteLastColumn(table);
+                          })
+                        }
+                      >
+                        −Spalte
+                      </Button>
+                      <Button size="small" sx={miniBtn} onClick={() => run(() => applyZebraStriping(table))}>
+                        Zebra
+                      </Button>
+                    </Box>
+                    <Button
+                      size="small"
+                      sx={miniBtn}
+                      onClick={() => run(() => distributeColumnsEvenly(table))}
+                    >
+                      Spalten =
+                    </Button>
+                    <Typography sx={{ fontSize: 9, fontWeight: 700, color: '#78909c', mt: 0.25 }}>
+                      Farben
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.4 }}>
+                      {TABLE_COLOR_THEMES.map((t) => (
+                        <Tooltip key={t.id} title={t.label}>
+                          <Box
+                            onClick={() => run(() => applyTableTheme(table, t))}
+                            sx={{
+                              width: 18,
+                              height: 18,
+                              borderRadius: '3px',
+                              bgcolor: t.headerBg,
+                              border: `1px solid ${t.border}`,
+                              cursor: 'pointer',
+                            }}
+                          />
+                        </Tooltip>
+                      ))}
+                    </Box>
+                    {cell && (
+                      <>
+                        <Typography sx={{ fontSize: 9, fontWeight: 700, color: '#78909c' }}>
+                          Zelle
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.4 }}>
+                          {TABLE_CELL_BG_PRESETS.map((c) => (
+                            <Box
+                              key={c}
+                              onClick={() => run(() => applyCellBackground(cell, c))}
+                              sx={{
+                                width: 16,
+                                height: 16,
+                                borderRadius: '3px',
+                                bgcolor: c,
+                                border: '1px solid #bbb',
+                                cursor: 'pointer',
+                              }}
+                            />
+                          ))}
+                        </Box>
+                      </>
+                    )}
+                  </Box>
+                );
+              })()}
+          </Popover>
         </>
       )}
 

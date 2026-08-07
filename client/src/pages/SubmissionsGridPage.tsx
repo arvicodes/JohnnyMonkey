@@ -38,12 +38,42 @@ import {
   PresentationSlide,
   SLIDE_REF_HEIGHT,
   SLIDE_REF_WIDTH,
+  consolidateSlideNotes,
+  htmlToPlain,
   loadPresentationDeck,
   sortSlides,
 } from '../lib/presentationDeck';
+import { hydrateNotesHtmlFontSizes } from '../lib/presentationFontSize';
+import { presentationNestedListSx, presentationNotesTableSx } from '../lib/presentationListStyles';
 import { findHomeworkSlides } from '../lib/presentationSlideTemplates';
 import { lessonPathFromHomeworkAssignmentPath } from '../lib/previousLessonFolder';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
+
+function homeworkNotesAreEmpty(html?: string, plain?: string): boolean {
+  const text = (plain ?? htmlToPlain(html || '')).replace(/\u00a0/g, ' ').trim();
+  if (text) return false;
+  if (/<img\b/i.test(html || '')) return false;
+  const stripped = (html || '')
+    .replace(/<br\s*\/?>/gi, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\u00a0/g, ' ')
+    .trim();
+  return !stripped;
+}
+
+function notesContentFromHomeworkSlide(slide: PresentationSlide | null | undefined): {
+  html: string;
+  plain: string;
+} | null {
+  if (!slide) return null;
+  const notes = consolidateSlideNotes(slide);
+  if (homeworkNotesAreEmpty(notes.speakerNotesHtml, notes.speakerNotes)) return null;
+  return {
+    html: notes.speakerNotesHtml || '',
+    plain: notes.speakerNotes || '',
+  };
+}
 
 interface Student {
   id: string;
@@ -89,6 +119,9 @@ const SubmissionsGridPage: React.FC = () => {
   const haHostRef = useRef<HTMLDivElement>(null);
   const [haDeck, setHaDeck] = useState<PresentationDeck | null>(null);
   const [haSlide, setHaSlide] = useState<PresentationSlide | null>(null);
+  const [haNotesHtml, setHaNotesHtml] = useState<string | null>(null);
+  const [haNotesPlain, setHaNotesPlain] = useState('');
+  const [haNotesFromOtherLesson, setHaNotesFromOtherLesson] = useState(false);
   const [haScale, setHaScale] = useState(0.35);
   const [haLoading, setHaLoading] = useState(false);
   const [haError, setHaError] = useState<string | null>(null);
@@ -101,6 +134,12 @@ const SubmissionsGridPage: React.FC = () => {
     );
   }, [fileName, filePath, searchParams]);
 
+  const notesLessonPath = useMemo(() => {
+    const fromQuery = (searchParams.get('notesLessonPath') || '').replace(/\\/g, '/').replace(/\/+$/, '');
+    if (fromQuery) return fromQuery;
+    return homeworkLessonPath;
+  }, [searchParams, homeworkLessonPath]);
+
   useEffect(() => {
     if (filePath && teacherId && groupId) {
       loadSubmissions();
@@ -111,6 +150,9 @@ const SubmissionsGridPage: React.FC = () => {
     if (!homeworkLessonPath) {
       setHaDeck(null);
       setHaSlide(null);
+      setHaNotesHtml(null);
+      setHaNotesPlain('');
+      setHaNotesFromOtherLesson(false);
       setHaError(null);
       return;
     }
@@ -122,10 +164,42 @@ const SubmissionsGridPage: React.FC = () => {
         const d = await loadPresentationDeck(homeworkLessonPath);
         if (cancelled) return;
         const slides = findHomeworkSlides(sortSlides(d.slides));
+        const slide = slides[slides.length - 1] ?? slides[0] ?? null;
         setHaDeck(d);
-        setHaSlide(slides[slides.length - 1] ?? slides[0] ?? null);
+        setHaSlide(slide);
         if (slides.length === 0) {
           setHaError('Keine HA-Folie in dieser Stunde.');
+        }
+
+        const notesPathNorm = (notesLessonPath || '').replace(/\\/g, '/').replace(/\/+$/, '');
+        const hwPathNorm = homeworkLessonPath.replace(/\\/g, '/').replace(/\/+$/, '');
+        const useOtherLesson = Boolean(notesPathNorm && notesPathNorm !== hwPathNorm);
+        let notesSlide = slide;
+        if (useOtherLesson && notesPathNorm) {
+          try {
+            const notesDeck = await loadPresentationDeck(notesPathNorm);
+            if (cancelled) return;
+            const notesSlides = findHomeworkSlides(sortSlides(notesDeck.slides));
+            notesSlide = notesSlides[notesSlides.length - 1] ?? notesSlides[0] ?? null;
+          } catch {
+            // Fallback: Notizen der HA-Folie selbst
+            notesSlide = slide;
+          }
+        }
+        const notes = notesContentFromHomeworkSlide(notesSlide);
+        // Wenn Notizen nur in der anderen Stunde fehlen: nochmal HA-Folie versuchen
+        const resolved =
+          notes ||
+          (useOtherLesson && notesSlide !== slide ? notesContentFromHomeworkSlide(slide) : null);
+        if (cancelled) return;
+        if (resolved) {
+          setHaNotesHtml(resolved.html);
+          setHaNotesPlain(resolved.plain);
+          setHaNotesFromOtherLesson(Boolean(useOtherLesson && notes));
+        } else {
+          setHaNotesHtml(null);
+          setHaNotesPlain('');
+          setHaNotesFromOtherLesson(false);
         }
       } catch {
         if (!cancelled) setHaError('HA-Folie konnte nicht geladen werden.');
@@ -136,7 +210,7 @@ const SubmissionsGridPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [homeworkLessonPath]);
+  }, [homeworkLessonPath, notesLessonPath]);
 
   useEffect(() => {
     const el = haHostRef.current;
@@ -667,38 +741,118 @@ const SubmissionsGridPage: React.FC = () => {
           )}
           {!haLoading && haSlide && haDeck && (
             <Box
-              ref={haHostRef}
               sx={{
-                width: '100%',
-                maxWidth: 720,
-                aspectRatio: '16 / 9',
-                position: 'relative',
-                overflow: 'hidden',
-                borderRadius: 1,
-                border: '1px solid rgba(0,0,0,0.12)',
-                bgcolor: '#111',
-                lineHeight: 0,
+                display: 'flex',
+                flexDirection: { xs: 'column', md: 'row' },
+                gap: 1.5,
+                alignItems: 'stretch',
               }}
             >
               <Box
+                ref={haHostRef}
                 sx={{
-                  width: SLIDE_REF_WIDTH,
-                  height: SLIDE_REF_HEIGHT,
-                  transform: `scale(${haScale})`,
-                  transformOrigin: 'top left',
-                  pointerEvents: 'none',
+                  width: '100%',
+                  maxWidth: 720,
+                  flex: '1 1 58%',
+                  aspectRatio: '16 / 9',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  borderRadius: 1,
+                  border: '1px solid rgba(0,0,0,0.12)',
+                  bgcolor: '#111',
+                  lineHeight: 0,
                 }}
               >
-                <PresentationSlideView
-                  slide={haSlide}
-                  scale={1}
-                  revealStep={999}
-                  revealEnabled={false}
-                  showShadow={false}
-                  showSlideNumbers={false}
-                  deckTitle={haDeck.title}
-                  lessonPath={haDeck.lessonPath || homeworkLessonPath}
-                />
+                <Box
+                  sx={{
+                    width: SLIDE_REF_WIDTH,
+                    height: SLIDE_REF_HEIGHT,
+                    transform: `scale(${haScale})`,
+                    transformOrigin: 'top left',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  <PresentationSlideView
+                    slide={haSlide}
+                    scale={1}
+                    revealStep={999}
+                    revealEnabled={false}
+                    showShadow={false}
+                    showSlideNumbers={false}
+                    deckTitle={haDeck.title}
+                    lessonPath={haDeck.lessonPath || homeworkLessonPath}
+                  />
+                </Box>
+              </Box>
+              <Box
+                sx={{
+                  flex: '1 1 42%',
+                  minWidth: 0,
+                  p: 1.25,
+                  borderRadius: 1,
+                  border: '1px solid #c8e6c9',
+                  bgcolor: '#f1f8e9',
+                  maxHeight: { md: 320 },
+                  overflow: 'auto',
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  sx={{
+                    display: 'block',
+                    fontWeight: 800,
+                    color: '#2e7d32',
+                    letterSpacing: 0.04,
+                    textTransform: 'uppercase',
+                    mb: 0.75,
+                  }}
+                >
+                  Notizen{haNotesFromOtherLesson ? ' · Musterlösung (diese Stunde)' : ''}
+                </Typography>
+                {haNotesHtml ? (
+                  <Box
+                    sx={{
+                      fontSize: 13,
+                      lineHeight: 1.55,
+                      color: 'text.primary',
+                      wordBreak: 'break-word',
+                      '& p, & div': { m: 0, mb: 0.5, ml: 0, pl: 0, textIndent: 0 },
+                      '& blockquote': {
+                        m: 0,
+                        mb: 0.5,
+                        ml: 0,
+                        pl: '0.75em',
+                        borderLeft: '2px solid #a5d6a7',
+                      },
+                      ...presentationNestedListSx({
+                        scale: 1,
+                        listPaddingPx: '1.25em',
+                        itemGapPx: 2,
+                        listGapPx: 4,
+                      }),
+                      ...presentationNotesTableSx(),
+                      '& mark': { borderRadius: 0.5 },
+                      '& b, & strong': { fontWeight: 700 },
+                      '& img, & img[data-pres-notes-img]': {
+                        maxWidth: '100%',
+                        maxHeight: 180,
+                        width: 'auto',
+                        height: 'auto',
+                        objectFit: 'contain',
+                        display: 'block',
+                        my: 1,
+                        borderRadius: 0.75,
+                      },
+                    }}
+                    dangerouslySetInnerHTML={{
+                      __html: hydrateNotesHtmlFontSizes(haNotesHtml),
+                    }}
+                  />
+                ) : (
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
+                    {haNotesPlain || 'Keine Notizen / Musterlösung hinterlegt.'}
+                  </Typography>
+                )}
               </Box>
             </Box>
           )}

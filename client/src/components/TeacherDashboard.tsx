@@ -20239,6 +20239,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       teacherId: userId,
                       groupId: lessonModalData.groupId,
                       lessonPath: prev.path,
+                      // Musterlösung oft in den Notizen der aktuellen Stunden-HA
+                      notesLessonPath: lessonModalData.lessonPath,
                     });
                     window.open(`/submissions-grid?${qs.toString()}`, '_blank', 'noopener,noreferrer');
                   } catch {

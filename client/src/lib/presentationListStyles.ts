@@ -60,3 +60,31 @@ export function presentationNestedListSx(options: NestedListSxOptions = {}) {
     },
   };
 }
+
+/** Tabellen in Notizen (Editor + Laptop-Anzeige). */
+export function presentationNotesTableSx() {
+  return {
+    '& table, & table[data-pres-table]': {
+      width: '100%',
+      borderCollapse: 'collapse' as const,
+      tableLayout: 'fixed' as const,
+      my: 1,
+      fontSize: '0.92em',
+      lineHeight: 1.35,
+    },
+    '& th, & td': {
+      border: '1px solid #BDBDBD',
+      padding: '4px 6px',
+      verticalAlign: 'top' as const,
+      wordBreak: 'break-word' as const,
+    },
+    '& thead th, & th': {
+      backgroundColor: '#E8E8E8',
+      fontWeight: 700,
+      textAlign: 'left' as const,
+    },
+    '& tbody tr:nth-of-type(even) td': {
+      backgroundColor: 'rgba(0,0,0,0.03)',
+    },
+  };
+}

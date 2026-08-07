@@ -20,7 +20,7 @@ import { getSlideMaxRevealSteps } from '../../lib/presentationReveal';
 import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../../lib/presentationTransitions';
 import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
 import { hydrateNotesHtmlFontSizes } from '../../lib/presentationFontSize';
-import { presentationNestedListSx } from '../../lib/presentationListStyles';
+import { presentationNestedListSx, presentationNotesTableSx } from '../../lib/presentationListStyles';
 import { isPresentationLinkClickTarget } from '../../lib/presentationRichText';
 
 const EMPTY_STROKES: PresentationStroke[] = [];
@@ -579,6 +579,7 @@ export default function PresentationLaptopPlayer({
                   itemGapPx: 2,
                   listGapPx: 4,
                 }),
+                ...presentationNotesTableSx(),
                 '& mark': { borderRadius: 0.5 },
                 '& [data-pres-fs]': { lineHeight: 'inherit' },
                 '& [data-pres-color]': { lineHeight: 'inherit' },
