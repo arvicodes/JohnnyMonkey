@@ -255,6 +255,14 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           flexDirection: opts.flex ? 'column' : undefined,
           minHeight: opts.flex && editable ? `${80 * scale}px` : undefined,
           '&:hover .pres-zone-delete': { opacity: 1 },
+          '& a[href]': {
+            pointerEvents: 'auto',
+            cursor: 'pointer',
+            color: '#1565C0',
+            textDecoration: 'underline',
+            position: 'relative',
+            zIndex: 2,
+          },
         }}
       >
         {canDeleteZone && (
