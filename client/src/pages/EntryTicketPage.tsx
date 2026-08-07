@@ -54,6 +54,7 @@ import {
   isCustomEntryTicketSetId,
   loadCustomEntryTicketSets,
   saveCustomEntryTicketSets,
+  sortLessonsChronologically,
 } from '../lib/entryTicketCustomSets';
 import { discoverLessonsForReiheName } from '../lib/entryTicketReiheLessons';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
@@ -1886,7 +1887,7 @@ export default function EntryTicketPage() {
 
   const poolForBand = useMemo(() => {
     if (customSetId && activeCustomSet) {
-      // Play: zufällig aus allen vorherigen Stunden dieser Reihe
+      // Play: bis zu 10 zufällig aus allen Stunden *vor* der aktuellen (nie aktuelle)
       return cumulativeTasksBeforeLesson(activeCustomSet, entryLessonPath).map((t) => ({
         category: t.category,
         prompt: t.prompt,
@@ -1904,6 +1905,39 @@ export default function EntryTicketPage() {
   const activeSetLabel = isCustomSetActive
     ? activeCustomSet!.name
     : fragensetHeadingLabel(grade);
+
+  const customPlaySourceLabel = useMemo(() => {
+    if (!isCustomSetActive || !activeCustomSet) return null;
+    const total = countCustomSetTasks(activeCustomSet);
+    const prevCount = poolForBand.length;
+    const pickN = Math.min(TARGET_TASK_COUNT, prevCount);
+    if (!entryLessonPath) {
+      return `${prevCount} Fragen im Set · Spiel: ${pickN} (max. ${TARGET_TASK_COUNT})`;
+    }
+    const wantName = entryLessonPath.replace(/\\/g, '/').split('/').filter(Boolean).pop() || '';
+    const priorParts: string[] = [];
+    let currentCount = 0;
+    for (const lesson of sortLessonsChronologically(activeCustomSet.lessons)) {
+      const n = lesson.tasks.length;
+      if (!n) continue;
+      const leaf = (lesson.lessonKey || lesson.lessonName).replace(/\\/g, '/').split('/').pop() || '';
+      const isCurrent =
+        leaf === wantName || lesson.lessonName.trim() === wantName;
+      if (isCurrent) {
+        currentCount = n;
+        continue;
+      }
+      if (leaf.localeCompare(wantName, 'de', { numeric: true }) < 0) {
+        priorParts.push(`${n}× ${leaf}`);
+      }
+    }
+    const priorLabel = priorParts.length > 0 ? priorParts.join(', ') : 'keine';
+    const currentHint =
+      currentCount > 0
+        ? ` · ${currentCount} in der aktuellen Stunde zählen nicht`
+        : '';
+    return `Pool: ${prevCount} aus früheren (${priorLabel}) · Spiel: ${pickN}/${TARGET_TASK_COUNT}${currentHint} · Set gesamt ${total}`;
+  }, [isCustomSetActive, activeCustomSet, poolForBand.length, entryLessonPath]);
 
   const groupedSetQuestions = useMemo(() => {
     if (!isCustomSetActive && grade === 'inf11') {
@@ -3409,6 +3443,20 @@ export default function EntryTicketPage() {
 
                 {bandChosen ? (
                   <>
+                {isCustomSetActive && customPlaySourceLabel ? (
+                  <Typography
+                    sx={{
+                      width: '100%',
+                      mb: 0.6,
+                      color: '#546e7a',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      textAlign: 'center',
+                    }}
+                  >
+                    {customPlaySourceLabel}
+                  </Typography>
+                ) : null}
                 {!showSetEditor && (activeTasks.length === 0 ? (
                   <Box
                     sx={{
@@ -3424,7 +3472,9 @@ export default function EntryTicketPage() {
                   >
                     <Typography sx={{ color: '#78909c', fontSize: '0.8rem', fontWeight: 600 }}>
                       {isCustomSetActive
-                        ? 'Keine Fragen in diesem Fragenset — im Editor Karten anlegen.'
+                        ? countCustomSetTasks(activeCustomSet!) === 0
+                          ? 'Keine Fragen in diesem Fragenset — im Editor Karten anlegen.'
+                          : 'Noch keine Karten aus früheren Stunden — Entry Ticket nutzt nur vorausgegangene Stunden (Ziel: 10 Fragen).'
                         : 'Keine Fragen im aktuellen Fragenset.'}
                     </Typography>
                   </Box>

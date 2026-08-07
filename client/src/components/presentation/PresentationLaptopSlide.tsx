@@ -129,6 +129,7 @@ function StaticElement({ el, scale }: { el: SlideElement; scale: number }) {
     if (isEmptyHtml(display)) return null;
     return (
       <div
+        data-pres-html
         style={{
           position: 'absolute',
           left: `${el.x}%`,
@@ -185,6 +186,7 @@ function StaticElement({ el, scale }: { el: SlideElement; scale: number }) {
         }}
       >
         <div
+          data-pres-html
           style={{
             flex: '0 0 auto',
             minHeight: `${36 * scale}px`,
@@ -204,6 +206,7 @@ function StaticElement({ el, scale }: { el: SlideElement; scale: number }) {
           dangerouslySetInnerHTML={{ __html: title }}
         />
         <div
+          data-pres-html
           style={{
             flex: 1,
             minHeight: 0,
@@ -228,6 +231,7 @@ function StaticElement({ el, scale }: { el: SlideElement; scale: number }) {
     const fs = Math.max(11, PRESENTATION_CONTENT_FONT_PX * 0.85) * scale;
     return (
       <div
+        data-pres-html
         style={{
           position: 'absolute',
           left: `${el.x}%`,

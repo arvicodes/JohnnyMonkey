@@ -198,7 +198,7 @@ export default function StudentLessonMaterialsPanel({
   /** Leinwand freigegeben → grüner Button neben ToDo HA */
   showLeinwand?: boolean;
   /** Öffnet das ToDo-Modal auf Dashboard-Ebene (überlebt Panel-Remounts).
-   *  lessonPath = Stunde der HA-Folie (meist Vorstunde); contextLabel optional. */
+   *  lessonPath = Stunde der HA-Folie (aktuelle Stunde); contextLabel optional. */
   onOpenHomeworkTodo?: (lessonPath: string, contextLabel?: string | null) => void;
 }) {
   const downloadLessonName = (lessonName || '').trim();
@@ -268,7 +268,7 @@ export default function StudentLessonMaterialsPanel({
     : false;
 
   const [abgabeRequired, setAbgabeRequired] = useState(false);
-  /** ToDo HA = Vorstunden-HA (wie ←HA beim Lehrer); Fallback: aktuelle Stunde */
+  /** ToDo HA = HA dieser Stunde (Lehrer „Neue HA“); Fallback: Vorstunde */
   const [homeworkTodoPath, setHomeworkTodoPath] = useState<string | null>(null);
   const [homeworkTodoLabel, setHomeworkTodoLabel] = useState<string | null>(null);
 
@@ -283,15 +283,16 @@ export default function StudentLessonMaterialsPanel({
     (async () => {
       try {
         const prev = await resolvePreviousLessonFolder(lessonPath);
-        const candidates: { path: string; label: string | null }[] = [];
+        // Zuerst die HA dieser Stunde; nur wenn keine HA-Folie da ist → Vorstunde
+        const candidates: { path: string; label: string | null }[] = [
+          { path: lessonPath, label: null },
+        ];
         if (prev?.path) {
           candidates.push({
             path: prev.path,
             label: prev.name ? `Vorstunde · ${prev.name}` : 'Vorstunde',
           });
         }
-        // Erste Stunde / keine Vorstunde: HA der aktuellen Stunde
-        candidates.push({ path: lessonPath, label: null });
 
         for (const c of candidates) {
           if (cancelled) return;

@@ -34,6 +34,7 @@ import { savePresentationBothVersions, savePresentationNamedVersion, exportPrese
 import { getSlideMaxRevealSteps } from '../lib/presentationReveal';
 import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../lib/presentationTransitions';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
+import { isPresentationLinkClickTarget } from '../lib/presentationRichText';
 
 const SWIPE_MIN_PX = 48;
 const EMPTY_STROKES: PresentationStroke[] = [];
@@ -674,6 +675,7 @@ const PresentationPresentPage: React.FC = () => {
 
   const handleSlideTap = (e: React.MouseEvent) => {
     if (drawActive) return;
+    if (isPresentationLinkClickTarget(e.target)) return;
     e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const ratio = (e.clientX - rect.left) / rect.width;

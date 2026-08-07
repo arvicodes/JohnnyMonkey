@@ -21,6 +21,7 @@ import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../../l
 import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
 import { hydrateNotesHtmlFontSizes } from '../../lib/presentationFontSize';
 import { presentationNestedListSx } from '../../lib/presentationListStyles';
+import { isPresentationLinkClickTarget } from '../../lib/presentationRichText';
 
 const EMPTY_STROKES: PresentationStroke[] = [];
 const EMPTY_ANNOTATIONS: PresentationAnnotations = {
@@ -308,6 +309,7 @@ export default function PresentationLaptopPlayer({
   }, [scaleReady, embedded]);
 
   const handleSlideTap = (e: React.MouseEvent) => {
+    if (isPresentationLinkClickTarget(e.target)) return;
     e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const ratio = (e.clientX - rect.left) / rect.width;

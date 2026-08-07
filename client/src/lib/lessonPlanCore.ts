@@ -42,25 +42,28 @@ export type EnsureCoreLessonPlanOptions<T extends { id: string; type: string; la
 /**
  * Ergänzt fehlende Kernbausteine und sortiert in die Standardreihenfolge.
  * Bestehende Items (inkl. grade/exitType) bleiben erhalten.
+ * Mit `fillMissing: false` nur sortieren (z. B. nach manuellem Entfernen).
  */
 export function ensureCoreLessonPlanItems<T extends { id: string; type: string; label: string }>(
-  options: EnsureCoreLessonPlanOptions<T>
+  options: EnsureCoreLessonPlanOptions<T> & { fillMissing?: boolean }
 ): { plan: T[]; changed: boolean } {
-  const { plan, makeId, resolveLabel, entryDefaults, exitDefaults } = options;
+  const { plan, makeId, resolveLabel, entryDefaults, exitDefaults, fillMissing = true } = options;
   const next = [...plan];
   let changed = false;
 
-  for (const type of LESSON_PLAN_CORE_TYPES) {
-    if (next.some((p) => p.type === type)) continue;
-    const base = {
-      id: makeId(type, next.length),
-      type,
-      label: resolveLabel(type),
-    } as T;
-    if (type === 'entry-ticket' && entryDefaults) Object.assign(base, entryDefaults);
-    if (type === 'exit-ticket' && exitDefaults) Object.assign(base, exitDefaults);
-    next.push(base);
-    changed = true;
+  if (fillMissing) {
+    for (const type of LESSON_PLAN_CORE_TYPES) {
+      if (next.some((p) => p.type === type)) continue;
+      const base = {
+        id: makeId(type, next.length),
+        type,
+        label: resolveLabel(type),
+      } as T;
+      if (type === 'entry-ticket' && entryDefaults) Object.assign(base, entryDefaults);
+      if (type === 'exit-ticket' && exitDefaults) Object.assign(base, exitDefaults);
+      next.push(base);
+      changed = true;
+    }
   }
 
   const sorted = sortLessonPlanCoreOrder(next);

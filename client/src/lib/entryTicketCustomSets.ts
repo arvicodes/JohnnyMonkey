@@ -178,33 +178,65 @@ function lessonFolderName(lessonPathOrKey: string): string {
   return n.split('/').pop() || n;
 }
 
-/** Findet die Stunden-Sektion, die zum aktuellen lessonPath passt. */
+/** Findet die Stunden-Sektion, die zum aktuellen lessonPath passt (Index in `set.lessons`). */
 export function findLessonSectionIndex(set: EntryTicketCustomSet, lessonPath: string | null | undefined): number {
   if (!lessonPath) return -1;
+  return set.lessons.findIndex((l) => lessonMatchesPath(l, lessonPath));
+}
+
+/** Sortierschlüssel: Ordnername der Stunde (01.01 …), egal ob voller Pfad oder Anzeigename. */
+function lessonSortKey(lesson: EntryTicketLessonSection): string {
+  return lessonFolderName(lesson.lessonKey || lesson.lessonName || '');
+}
+
+function compareLessonSortKeys(a: string, b: string): number {
+  return a.localeCompare(b, 'de', { numeric: true });
+}
+
+/** Stunden einer Reihe in Ordner-/Pfad-Reihenfolge (01.01 vor 01.02 …). */
+export function sortLessonsChronologically(
+  lessons: EntryTicketLessonSection[],
+): EntryTicketLessonSection[] {
+  return [...lessons].sort((a, b) => compareLessonSortKeys(lessonSortKey(a), lessonSortKey(b)));
+}
+
+function lessonMatchesPath(lesson: EntryTicketLessonSection, lessonPath: string): boolean {
   const want = normalizePath(lessonPath);
   const wantName = lessonFolderName(want);
-  const byKey = set.lessons.findIndex((l) => {
-    if (!l.lessonKey) return false;
-    const key = normalizePath(l.lessonKey);
-    return key === want || key.endsWith(`/${wantName}`) || lessonFolderName(key) === wantName;
-  });
-  if (byKey >= 0) return byKey;
-  return set.lessons.findIndex((l) => l.lessonName.trim() === wantName || lessonFolderName(l.lessonName) === wantName);
+  if (lesson.lessonKey) {
+    const key = normalizePath(lesson.lessonKey);
+    if (key === want || key.endsWith(`/${wantName}`) || lessonFolderName(key) === wantName) {
+      return true;
+    }
+  }
+  return lesson.lessonName.trim() === wantName || lessonFolderName(lesson.lessonName) === wantName;
 }
 
 /**
- * Play-Pool: alle Fragen aus Stunden *vor* der aktuellen (kumulativ).
- * Ohne lessonPath oder ohne Treffer → alle Fragen des Sets.
+ * Play-Pool: alle Fragen aus *allen* Stunden vor der aktuellen (kumulativ), nie die aktuelle.
+ * Vergleich über chronologischen Ordnernamen (01.01 < 01.02 …), unabhängig von Editor-Reihenfolge.
+ * Ohne lessonPath: gesamtes Set (z. B. freies Spielen ohne Stundenkontext).
  */
 export function cumulativeTasksBeforeLesson(
   set: EntryTicketCustomSet,
   lessonPath: string | null | undefined,
 ): EntryTicketCustomTask[] {
-  const idx = findLessonSectionIndex(set, lessonPath);
-  if (idx < 0) {
-    return flattenCustomSetTasks(set);
+  const lessons = sortLessonsChronologically(set.lessons);
+  if (lessons.length === 0) return [];
+
+  const want = lessonPath ? normalizePath(lessonPath) : '';
+  if (!want) {
+    return lessons.flatMap((l) => l.tasks);
   }
-  return set.lessons.slice(0, idx).flatMap((l) => l.tasks);
+
+  const wantName = lessonFolderName(want);
+  // Aktuelle Stunde am Ordnernamen ausrichten — auch wenn sie noch keine Sektion im Set hat.
+  return lessons
+    .filter((l) => {
+      if (lessonMatchesPath(l, want)) return false;
+      return compareLessonSortKeys(lessonSortKey(l), wantName) < 0;
+    })
+    .flatMap((l) => l.tasks);
 }
 
 export function createEmptyCustomSet(name: string, reihePath?: string): EntryTicketCustomSet {

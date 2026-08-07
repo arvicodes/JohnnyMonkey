@@ -606,6 +606,43 @@ export function presentationPasteHtml(clipboardData: DataTransfer): string {
   return plainTextToPresentationHtml(pastedText || '');
 }
 
+/** Erlaubte Link-Ziele in Folien (http(s), mailto, relative App-Pfade, Anker). */
+export function isSafePresentationHref(href: string): boolean {
+  const raw = (href || '').trim();
+  if (!raw) return false;
+  if (raw.startsWith('#') || raw.startsWith('/')) return true;
+  if (/^mailto:[^\s]+$/i.test(raw)) return true;
+  try {
+    const u = new URL(raw, typeof window !== 'undefined' ? window.location.origin : 'https://example.local');
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+/** `<a>` absichern: nur sichere href, in neuem Tab öffnen. */
+export function normalizePresentationAnchorsInPlace(root: ParentNode): void {
+  root.querySelectorAll('a').forEach((node) => {
+    const a = node as HTMLAnchorElement;
+    const href = (a.getAttribute('href') || '').trim();
+    if (!isSafePresentationHref(href)) {
+      const span = a.ownerDocument.createElement('span');
+      while (a.firstChild) span.appendChild(a.firstChild);
+      a.replaceWith(span);
+      return;
+    }
+    a.setAttribute('href', href);
+    a.setAttribute('target', '_blank');
+    a.setAttribute('rel', 'noopener noreferrer');
+  });
+}
+
+/** Klick auf Folien-Navigation überspringen, wenn ein Link getroffen wurde. */
+export function isPresentationLinkClickTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  return Boolean(target.closest('a[href]'));
+}
+
 /** Struktur bereinigen ohne absichtliche data-pres-fs zu entfernen. */
 export function sanitizePresentationHtml(html: string): string {
   if (!html || typeof document === 'undefined') return html;
@@ -613,6 +650,7 @@ export function sanitizePresentationHtml(html: string): string {
   const doc = new DOMParser().parseFromString(base, 'text/html');
   unwrapIllegalSpanBlocks(doc.body);
   normalizeListsInPlace(doc.body);
+  normalizePresentationAnchorsInPlace(doc.body);
   return doc.body.innerHTML;
 }
 

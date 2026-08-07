@@ -25,8 +25,12 @@ import {
   LESSON_PRESENTATION_PDF_EDITED,
   type JohnnyPresentationVersion,
 } from '../lib/presentationLessonAssets';
-import { presentationPresentUrl, loadPresentationDeck } from '../lib/presentationDeck';
-import { presentationHomeworkAssignmentKey } from '../lib/presentationSlideTemplates';
+import { presentationPresentUrl, loadPresentationDeck, sortSlides } from '../lib/presentationDeck';
+import {
+  presentationHomeworkAssignmentKey,
+  findHomeworkSlides,
+  isHomeworkSubmissionRequired,
+} from '../lib/presentationSlideTemplates';
 import { resolvePreviousLessonFolder } from '../lib/previousLessonFolder';
 import { openLessonFolderFile } from '../lib/openLessonFolderFile';
 import MaterialShareVersionControl from './MaterialShareVersionControl';
@@ -6090,6 +6094,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [dragOverPlanIndex, setDragOverPlanIndex] = useState<number | null>(null);
   /** Anker für „Datei aus Stundenordner“ in der Materialliste */
   const [materiallisteAddMenuAnchor, setMateriallisteAddMenuAnchor] = useState<null | HTMLElement>(null);
+  /** Vorstunde: gibt es eine HA-Folie, und ist Abgabe nötig? */
+  const [previousLessonHaInfo, setPreviousLessonHaInfo] = useState<{
+    exists: boolean;
+    submissionRequired: boolean;
+  } | null>(null);
   const [lessonPlanViewMode, setLessonPlanViewMode] = useState<'create' | 'run' | 'background'>('create');
   const [laptopPresentationActive, setLaptopPresentationActive] = useState(false);
   /** Remount-Key: bei jedem Öffnen frisches Live-Deck laden */
@@ -7444,16 +7453,19 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     return () => { cancelled = true; };
   }, [userId]);
 
-  // Jede Stunde: Entry Ticket → Präsentation → Exit Ticket (fehlende ergänzen, Reihenfolge fixieren)
+  // Stunden ohne gespeicherten Plan: einmalig Entry → Präsentation → Exit anlegen.
+  // Bereits gespeicherte Pläne (auch leer/teilweise) nur sortieren — manuell Entferntes bleibt weg.
   useEffect(() => {
     if (!lessonInstructionsHydrated || !userId || !isLessonStundeRoute) return;
     const lessonPath = lessonModalData?.lessonPath;
     if (!lessonPath) return;
 
     const overrides = editedLessonInstructions[lessonPath] || {};
-    const plan = Array.isArray(overrides.lessonPlan) ? overrides.lessonPlan : [];
+    const planInitialized = Array.isArray(overrides.lessonPlan);
+    const plan = planInitialized ? overrides.lessonPlan! : [];
     const { plan: nextPlan, changed } = ensureCoreLessonPlanItems({
       plan,
+      fillMissing: !planInitialized,
       makeId: (type, index) => `core-${type}-${Date.now()}-${index}`,
       resolveLabel: (type) => {
         if (type === 'entry-ticket') return 'Entry Ticket';
@@ -7479,6 +7491,44 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     lessonModalData?.lessonPath,
     editedLessonInstructions,
   ]);
+
+  // Vorstunde: HA-Folie vorhanden? Abgabe nötig? → steuert „Vorher“-Button
+  useEffect(() => {
+    if (!isLessonStundeRoute || !lessonModalData?.lessonPath) {
+      setPreviousLessonHaInfo(null);
+      return;
+    }
+    const lessonPath = lessonModalData.lessonPath;
+    let cancelled = false;
+    setPreviousLessonHaInfo(null);
+    (async () => {
+      try {
+        const prev = await resolvePreviousLessonFolder(lessonPath);
+        if (cancelled) return;
+        if (!prev?.path) {
+          setPreviousLessonHaInfo({ exists: false, submissionRequired: false });
+          return;
+        }
+        const deck = await loadPresentationDeck(prev.path);
+        if (cancelled) return;
+        const haSlides = findHomeworkSlides(sortSlides(deck.slides || []));
+        if (haSlides.length === 0) {
+          setPreviousLessonHaInfo({ exists: false, submissionRequired: false });
+          return;
+        }
+        const ha = haSlides[haSlides.length - 1] ?? haSlides[0];
+        setPreviousLessonHaInfo({
+          exists: true,
+          submissionRequired: isHomeworkSubmissionRequired(ha),
+        });
+      } catch {
+        if (!cancelled) setPreviousLessonHaInfo({ exists: false, submissionRequired: false });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLessonStundeRoute, lessonModalData?.lessonPath]);
 
   // Lade Assignments nachdem Decks geladen wurden
   useEffect(() => {
@@ -19671,11 +19721,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   setSelectedPlanTypes([]);
                 };
                 const removePlanItem = async (id: string) => {
-                  const item = lessonPlan.find((p) => p.id === id);
-                  if (item && isLessonPlanCoreType(item.type)) {
-                    showSnackbar('Entry Ticket, Präsentation und Exit Ticket gehören fest zur Stunde.', 'warning');
-                    return;
-                  }
                   await updateLessonPlan(lessonPlan.filter((item) => item.id !== id));
                 };
                 const movePlanItem = async (fromIndex: number, toIndex: number) => {
@@ -21680,11 +21725,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                       flexShrink: 0,
                                     }}
                                   >
+                                    {previousLessonHaInfo?.exists ? (
                                     <Box
                                       component="span"
                                       role="button"
                                       tabIndex={0}
-                                      title="Hausaufgaben der vorherigen Stunde"
+                                      title={
+                                        previousLessonHaInfo.submissionRequired
+                                          ? 'Alte HA (Vorstunde, mit Abgabe)'
+                                          : 'Alte HA (Vorstunde)'
+                                      }
                                       onClick={(ev) => {
                                         ev.stopPropagation();
                                         void openPreviousLessonHomeworkSubmissions(ev);
@@ -21712,17 +21762,25 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                         cursor: 'pointer',
                                         whiteSpace: 'nowrap',
                                         userSelect: 'none',
+                                        boxSizing: 'border-box',
+                                        border: previousLessonHaInfo.submissionRequired
+                                          ? '2px solid #c62828'
+                                          : '2px solid transparent',
+                                        boxShadow: previousLessonHaInfo.submissionRequired
+                                          ? '0 0 0 1px rgba(198, 40, 40, 0.35)'
+                                          : 'none',
                                         '&:hover': { bgcolor: '#3e2723' },
                                       }}
                                     >
                                       <ArrowBackIcon sx={{ fontSize: 10 }} />
-                                      Vorher
+                                      Alte HA
                                     </Box>
+                                    ) : null}
                                     <Box
                                       component="span"
                                       role="button"
                                       tabIndex={0}
-                                      title="Hausaufgaben dieser Stunde"
+                                      title="Neue HA (diese Stunde)"
                                       onClick={(ev) => {
                                         ev.stopPropagation();
                                         openPresentationHomeworkSubmissions(ev);
@@ -21753,7 +21811,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                         '&:hover': { bgcolor: '#bf360c' },
                                       }}
                                     >
-                                      Diese
+                                      Neue HA
                                       <ArrowForwardIcon sx={{ fontSize: 10 }} />
                                     </Box>
                                   </Box>
@@ -22095,10 +22153,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   >
                                     <Typography variant="caption" sx={{ fontSize: '0.75rem', lineHeight: 1 }}>⋮⋮</Typography>
                                   </Box>
-                                  {!isLessonPlanCoreType(item.type) && (
                                   <Box sx={{ position: 'relative', width: 18, height: 18 }}>
                                     <IconButton
                                       size="small"
+                                      title="Baustein entfernen"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         removePlanItem(item.id);
@@ -22116,7 +22174,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                       <DeleteIcon sx={{ fontSize: 14, color: '#c62828' }} />
                                     </IconButton>
                                   </Box>
-                                  )}
                                 </>
                               )}
                               </Box>

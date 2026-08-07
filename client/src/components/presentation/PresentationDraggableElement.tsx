@@ -25,6 +25,7 @@ import {
   presentationPasteHtml,
 } from '../../lib/presentationRichText';
 import { PRESENTATION_DEFAULT_FONT_FAMILY } from '../../lib/presentationFonts';
+import '../../styles/presentationLists.css';
 import {
   effectivePresentationImageFit,
   formatImageObjectPosition,
@@ -845,6 +846,15 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               : editable || animationEditMode || (isMediaElement && mediaInteractive)
                 ? 'auto'
                 : 'none',
+        // Links in Folien-HTML bleiben klickbar (CSS: [data-pres-html] a)
+        '& a[href]': {
+          pointerEvents: 'auto',
+          cursor: 'pointer',
+          color: '#1565C0',
+          textDecoration: 'underline',
+          position: 'relative',
+          zIndex: 2,
+        },
         willChange: dragging ? 'left, top, width, height' : undefined,
         outline: isCardElement && showSelectionChrome ? `${2 * scale}px solid #2E7D32` : undefined,
         outlineOffset: isCardElement && showSelectionChrome ? `${2 * scale}px` : undefined,

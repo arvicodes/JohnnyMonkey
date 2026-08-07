@@ -78,3 +78,22 @@
   display: block;
   list-style: none !important;
 }
+
+/*
+ * Folien-HTML oft unter pointer-events:none (Klick = nächste Folie).
+ * Links müssen trotzdem anklickbar bleiben.
+ */
+[data-pres-rich-zone] a[href],
+[data-pres-html] a[href] {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  color: #1565c0;
+  text-decoration: underline;
+  position: relative;
+  z-index: 2;
+}
+
+[data-pres-rich-zone] a[href]:hover,
+[data-pres-html] a[href]:hover {
+  color: #0d47a1;
+}
