@@ -14635,8 +14635,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     >
       <>
       <Grid container spacing={0}>
-        {/* Header Section – auch auf /teacher/stunde; bei Laptop-Präsentation ausgeblendet */}
-        {!laptopPresentationActive && (
+        {/* Header Section – auch auf /teacher/stunde und während Laptop-Präsentation */}
         <Grid item xs={12}>
           <Box sx={{ 
             p: 1.05,
@@ -14963,7 +14962,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             </Box>
           </Box>
         </Grid>
-        )}
 
         {isLessonStundeRoute && lessonStundeTabLoading && (
           <Grid item xs={12}>
@@ -19425,7 +19423,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               }),
           }}
         >
-          {!laptopPresentationActive && (
           <Box
             component="header"
             sx={{
@@ -19520,7 +19517,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               }}
             />
           </Box>
-          )}
           <Box
             sx={{
               minWidth: 0,

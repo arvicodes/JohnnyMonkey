@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-07-29T06:43:42.931Z",
+  "updatedAt": "2026-08-08T05:29:57.140Z",
   "templates": {
     "start": {
       "layout": "title-slide",
@@ -449,6 +449,79 @@
         "zoneRevealSteps": {}
       },
       "createdAt": "2026-07-29T06:43:42.928Z"
+    },
+    {
+      "id": "custom-1786166997137-la4b",
+      "label": "Auf nach draußen ...",
+      "shortLabel": "AN",
+      "hint": "Eigene Vorlage",
+      "payload": {
+        "layout": "title-content",
+        "title": "Auf nach draußen ...",
+        "body": "Wir gehen frei herum .... Tausche dich mit so vielen Mitschüler:innen über dein Bild, deine KI aus. Beschreibe deine KI. Dein Gegenüber benennt mögliche Probleme. Diskutiert.Besuche alle 10 Stationen. Trefft je eine andere Person an einer der Stationen. Einigt euch  gemeinsam ein eine Begriffserklärung und ein Beispiel. Schreibt diese auf die vorliegenden Karteikarten.",
+        "speakerNotes": "Material:Karten mit den 10 Begriffen. Leere Karten pro Station",
+        "preparationNotes": "",
+        "materialNotes": "",
+        "subtitle": "",
+        "bodyLeft": "",
+        "bodyRight": "",
+        "imagePath": "",
+        "imageCaption": "",
+        "bodyStyle": "plain",
+        "titleAlign": "left",
+        "accentColor": "#2E7D32",
+        "titleHtml": "Auf nach draußen ...",
+        "bodyHtml": "<div style=\"\"><br></div><div style=\"\"><br></div><div style=\"\"><br></div><div style=\"\"><br></div><div style=\"\"><br></div><div style=\"\"><br></div><div style=\"\">Wir gehen frei herum ....&nbsp;<span style=\"font-weight: bold;\">Tausche</span> dich mit so vielen Mitschüler:innen über dein Bild, deine KI aus. <span style=\"font-weight: bold;\">Beschreibe</span> deine KI. Dein Gegenüber <span style=\"font-weight: bold;\">benennt</span> mögliche Probleme. <span style=\"font-weight: bold;\">Diskutiert</span>.</div><div><br></div><div><br></div><div><br></div><div><br></div><div><br></div><div><br></div><div><br></div><div><span style=\"font-weight: bold;\">Besuche</span> alle 10 Stationen.&nbsp;<span style=\"font-weight: bold;\">Trefft</span> je eine andere Person an einer der Stationen. <span style=\"font-weight: bold;\">Einigt</span> euch&nbsp; gemeinsam ein eine Begriffserklärung und ein Beispiel. <span style=\"font-weight: bold;\">Schreibt</span> diese auf die vorliegenden Karteikarten.</div>",
+        "subtitleHtml": "",
+        "bodyLeftHtml": "",
+        "bodyRightHtml": "",
+        "imageCaptionHtml": "",
+        "speakerNotesHtml": "<p><span style=\"font-weight: bold;\">Material:</span></p><p><br></p><p>Karten mit den 10 Begriffen. Leere Karten pro Station</p>",
+        "preparationHtml": "<p><br></p>",
+        "materialHtml": "<p><br></p>",
+        "elements": [
+          {
+            "id": "el-1786085931853",
+            "type": "image",
+            "x": 80.96617570385818,
+            "y": -4.8112906963271875,
+            "w": 19.033824296141816,
+            "h": 43.926254199976825,
+            "src": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.04 Merkmale, KI-Welt/ChatGPT Image 7. Aug. 2026, 08_58_43.png",
+            "zIndex": 1,
+            "imageFit": "contain",
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-1786086498523",
+            "type": "image",
+            "x": 2.8030500521376442,
+            "y": 21.028704669215617,
+            "w": 10.863692648592286,
+            "h": 15.612617309697603,
+            "src": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.04 Merkmale, KI-Welt/timer_10_min.png",
+            "zIndex": 2,
+            "imageFit": "contain",
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-1786086562829-5g729",
+            "type": "image",
+            "x": 2.8030500521376434,
+            "y": 50.10847526358475,
+            "w": 10.863692648592286,
+            "h": 15.612617309697603,
+            "src": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.04 Merkmale, KI-Welt/timer_10_min.png",
+            "zIndex": 3,
+            "imageFit": "contain",
+            "stackLayer": "foreground"
+          }
+        ],
+        "transition": "fade",
+        "revealEnabled": true,
+        "zoneRevealSteps": {}
+      },
+      "createdAt": "2026-08-08T05:29:57.137Z"
     }
   ]
 }

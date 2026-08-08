@@ -97,6 +97,10 @@ export type CreateTableOptions = {
   y?: number;
   w?: number;
   h?: number;
+  /** Fertiges Tabellen-HTML (z. B. aus Zwischenablage/Matrix). */
+  html?: string;
+  /** Zell-Matrix; erzeugt HTML inkl. Kopfzeile. */
+  matrix?: string[][];
 };
 
 export function getTableTheme(themeId?: string): TableColorTheme {
@@ -138,13 +142,236 @@ export function buildBlankTableHtml(
   );
 }
 
+/**
+ * Tabellarischer Plain-Text (Tabs, |, oder ≥2 Leerzeichen) → Zeilen/Spalten-Matrix.
+ * Mindestens 2×2, sonst null.
+ */
+export function parseTabularPlainText(text: string): string[][] | null {
+  const raw = (text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+  if (!raw) return null;
+  const lines = raw.split('\n').map((l) => l.trimEnd()).filter((l) => l.trim().length > 0);
+  if (lines.length < 2) return null;
+
+  const splitLine = (line: string): string[] => {
+    if (line.includes('\t')) {
+      return line.split('\t').map((c) => c.trim());
+    }
+    if (line.includes('|')) {
+      return line
+        .split('|')
+        .map((c) => c.trim())
+        .filter((c, i, arr) => !(c === '' && (i === 0 || i === arr.length - 1)));
+    }
+    // Mehrfach-Leerzeichen / Spalten wie in kopierten Word-Tabellen ohne Tabs
+    if (/\s{2,}/.test(line)) {
+      return line.split(/\s{2,}/).map((c) => c.trim()).filter(Boolean);
+    }
+    return [line.trim()];
+  };
+
+  const matrix = lines.map(splitLine);
+  const colCount = Math.max(...matrix.map((r) => r.length));
+  if (colCount < 2) return null;
+  // Zeilen auf gleiche Spaltenzahl auffüllen
+  const normalized = matrix.map((row) => {
+    const next = row.slice(0, colCount);
+    while (next.length < colCount) next.push('');
+    return next;
+  });
+  return normalized;
+}
+
+/** Matrix → Johnny-Tabellen-HTML (1. Zeile = Kopf). */
+export function buildTableHtmlFromMatrix(
+  matrix: string[][],
+  theme: TableColorTheme = TABLE_COLOR_THEMES[0],
+  opts?: { headerRow?: boolean },
+): string {
+  if (!matrix.length || !matrix[0]?.length) return buildBlankTableHtml(3, 3, theme);
+  const headerRow = opts?.headerRow !== false;
+  const cols = Math.max(...matrix.map((r) => r.length));
+  const pct = (100 / cols).toFixed(4);
+  const colgroup = Array.from({ length: cols }, () => `<col style="width:${pct}%" />`).join('');
+  const pad = (row: string[]) => {
+    const next = row.slice(0, cols);
+    while (next.length < cols) next.push('');
+    return next;
+  };
+
+  let headHtml = '';
+  let bodyStart = 0;
+  if (headerRow) {
+    const head = pad(matrix[0]);
+    headHtml =
+      `<thead><tr>` +
+      head
+        .map(
+          (cell) =>
+            `<th style="${cellStyle({ bg: theme.headerBg, border: theme.border, bold: true, align: 'left' })}">${esc(cell) || '<br>'}</th>`,
+        )
+        .join('') +
+      `</tr></thead>`;
+    bodyStart = 1;
+  }
+
+  const bodyRows = matrix.slice(bodyStart).map((row, ri) => {
+    const bg = ri % 2 === 1 ? theme.zebraBg : '#ffffff';
+    const cells = pad(row)
+      .map(
+        (cell) =>
+          `<td style="${cellStyle({ bg, border: theme.border, align: 'left' })}">${esc(cell) || '<br>'}</td>`,
+      )
+      .join('');
+    return `<tr>${cells}</tr>`;
+  });
+
+  return (
+    `<table data-pres-table="1" data-pres-table-theme="${theme.id}" ` +
+    `style="width:100%;border-collapse:collapse;table-layout:fixed;font-size:inherit">` +
+    `<colgroup>${colgroup}</colgroup>` +
+    headHtml +
+    `<tbody>${bodyRows.join('')}</tbody>` +
+    `</table>`
+  );
+}
+
+/**
+ * Bestehende HTML-Tabelle (z. B. Paste ohne Johnny-Styles) voll formatieren:
+ * Theme, Rahmen, Kopfzeile, Zebra, colgroup.
+ */
+export function applyJohnnyTableFormatting(
+  table: HTMLTableElement,
+  themeId?: string,
+): void {
+  const theme = getTableTheme(themeId || table.getAttribute('data-pres-table-theme') || 'gelb');
+  table.setAttribute('data-pres-table', '1');
+  table.setAttribute('data-pres-table-theme', theme.id);
+  table.style.width = '100%';
+  table.style.borderCollapse = 'collapse';
+  table.style.tableLayout = 'fixed';
+  table.style.fontSize = 'inherit';
+
+  // Erste Zeile ohne thead → zu thead befördern
+  if (!table.tHead && table.rows.length > 0) {
+    const first = table.rows[0];
+    const thead = table.createTHead();
+    const tr = table.ownerDocument.createElement('tr');
+    Array.from(first.cells).forEach((cell) => {
+      const th = table.ownerDocument.createElement('th');
+      th.innerHTML = cell.innerHTML;
+      tr.appendChild(th);
+    });
+    thead.appendChild(tr);
+    first.remove();
+  }
+  // Lose <tr> unter <table> in tbody legen
+  {
+    let body = table.tBodies[0];
+    if (!body) body = table.createTBody();
+    Array.from(table.children).forEach((child) => {
+      if (child.tagName === 'TR') body!.appendChild(child);
+    });
+  }
+
+  ensureColgroup(table);
+
+  table.querySelectorAll('th').forEach((cell) => {
+    const el = cell as HTMLElement;
+    el.style.border = `1px solid ${theme.border}`;
+    el.style.padding = el.style.padding || '8px 10px';
+    el.style.backgroundColor = theme.headerBg;
+    el.style.fontWeight = '700';
+    el.style.verticalAlign = 'middle';
+    el.style.wordBreak = 'break-word';
+    if (!el.style.textAlign) el.style.textAlign = 'left';
+  });
+
+  const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
+  bodyRows.forEach((tr, ri) => {
+    const bg = ri % 2 === 1 ? theme.zebraBg : '#ffffff';
+    tr.querySelectorAll('td').forEach((cell) => {
+      const el = cell as HTMLElement;
+      el.style.border = `1px solid ${theme.border}`;
+      el.style.padding = el.style.padding || '8px 10px';
+      el.style.backgroundColor = bg;
+      el.style.verticalAlign = 'middle';
+      el.style.wordBreak = 'break-word';
+    });
+  });
+}
+
+/**
+ * Editor-Inhalt / Auswahl → Johnny-Tabelle.
+ * 1) Vorhandene Tabellen stylen
+ * 2) Sonst tabellarischen Text (Auswahl oder ganzer Editor) umwandeln
+ */
+export function formatEditorContentAsTable(
+  editor: HTMLElement,
+  themeId = 'gelb',
+): { ok: boolean; message: string } {
+  if (!editor) return { ok: false, message: 'Kein Editor aktiv' };
+  const theme = getTableTheme(themeId);
+
+  const existing = Array.from(editor.querySelectorAll('table')) as HTMLTableElement[];
+  if (existing.length > 0) {
+    existing.forEach((t) => applyJohnnyTableFormatting(t, theme.id));
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
+    return { ok: true, message: existing.length === 1 ? 'Tabelle formatiert' : `${existing.length} Tabellen formatiert` };
+  }
+
+  const sel = window.getSelection();
+  let sourceText = '';
+  let replaceSelection = false;
+  if (sel && sel.rangeCount > 0 && !sel.isCollapsed && editor.contains(sel.anchorNode)) {
+    sourceText = sel.toString();
+    replaceSelection = true;
+  } else {
+    sourceText = editor.innerText || editor.textContent || '';
+  }
+
+  const matrix = parseTabularPlainText(sourceText);
+  if (!matrix) {
+    return {
+      ok: false,
+      message: 'Kein Tabellen-Text gefunden (mind. 2 Zeilen × 2 Spalten, Tabs oder |)',
+    };
+  }
+
+  const html = buildTableHtmlFromMatrix(matrix, theme);
+  if (replaceSelection && sel && sel.rangeCount > 0) {
+    try {
+      document.execCommand('styleWithCSS', false, 'true');
+    } catch {
+      /* ignore */
+    }
+    const inserted = document.execCommand('insertHTML', false, html);
+    if (!inserted) {
+      const range = sel.getRangeAt(0);
+      range.deleteContents();
+      const tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      const frag = document.createDocumentFragment();
+      while (tmp.firstChild) frag.appendChild(tmp.firstChild);
+      range.insertNode(frag);
+    }
+  } else {
+    editor.innerHTML = html;
+  }
+  editor.dispatchEvent(new Event('input', { bubbles: true }));
+  return { ok: true, message: 'Als Tabelle formatiert' };
+}
+
 export function createTableElement(
   zIndex: number,
   opts?: CreateTableOptions,
 ): SlideElement {
   const theme = getTableTheme(opts?.themeId);
-  const rows = opts?.rows ?? 4;
-  const cols = opts?.cols ?? 4;
+  const matrix = opts?.matrix;
+  const rows = matrix?.length ?? opts?.rows ?? 4;
+  const cols = matrix?.[0]?.length ?? opts?.cols ?? 4;
+  const html =
+    opts?.html ||
+    (matrix ? buildTableHtmlFromMatrix(matrix, theme) : buildBlankTableHtml(rows, cols, theme));
   return {
     id: `el-table-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     type: 'table',
@@ -153,7 +380,7 @@ export function createTableElement(
     w: opts?.w ?? 92,
     h: opts?.h ?? Math.min(70, 18 + rows * 8),
     zIndex,
-    html: buildBlankTableHtml(rows, cols, theme),
+    html,
     stackLayer: 'foreground',
   };
 }
@@ -482,40 +709,7 @@ export function getColumnWidthPercents(table: HTMLTableElement): number[] {
  */
 export function ensureNotesTablesFormatted(root: ParentNode): void {
   root.querySelectorAll('table').forEach((node) => {
-    const table = node as HTMLTableElement;
-    if (!table.getAttribute('data-pres-table')) table.setAttribute('data-pres-table', '1');
-    if (!table.getAttribute('data-pres-table-theme')) {
-      table.setAttribute('data-pres-table-theme', 'grau');
-    }
-    const theme = getTableTheme(table.getAttribute('data-pres-table-theme') || undefined);
-    table.style.width = '100%';
-    table.style.borderCollapse = 'collapse';
-    if (!table.style.tableLayout) table.style.tableLayout = 'fixed';
-    if (!table.style.fontSize) table.style.fontSize = 'inherit';
-    ensureColgroup(table);
-
-    table.querySelectorAll('th, td').forEach((cell) => {
-      const el = cell as HTMLElement;
-      const hasBorder =
-        Boolean(el.style.border) ||
-        Boolean(el.style.borderWidth) ||
-        Boolean(el.style.borderColor) ||
-        Boolean(el.style.borderTop) ||
-        Boolean(el.style.borderLeft);
-      if (!hasBorder) {
-        el.style.border = `1px solid ${theme.border}`;
-      } else if (!el.style.borderColor) {
-        el.style.borderColor = theme.border;
-      }
-      if (!el.style.padding) el.style.padding = '4px 6px';
-      if (!el.style.verticalAlign) el.style.verticalAlign = 'top';
-      if (!el.style.wordBreak) el.style.wordBreak = 'break-word';
-      if (el.tagName === 'TH') {
-        if (!el.style.backgroundColor) el.style.backgroundColor = theme.headerBg;
-        if (!el.style.fontWeight) el.style.fontWeight = '700';
-        if (!el.style.textAlign) el.style.textAlign = 'left';
-      }
-    });
+    applyJohnnyTableFormatting(node as HTMLTableElement);
   });
 }
 

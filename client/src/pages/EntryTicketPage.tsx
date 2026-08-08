@@ -1030,6 +1030,8 @@ function parseEntryTicketSearch(search: string): {
   customSetId: string | null;
   lessonPath: string | null;
   autostart: boolean;
+  /** Fragenset-Editor direkt öffnen (Bearbeitung, kein Play). */
+  openEditor: boolean;
   groupId: string | null;
   heroImageIndex: number | null;
   taskSeed: number | null;
@@ -1058,6 +1060,10 @@ function parseEntryTicketSearch(search: string): {
     params.get('autostart') === '1' ||
     params.get('autostart') === 'true' ||
     params.get('start') === '1';
+  const openEditor =
+    params.get('edit') === '1' ||
+    params.get('edit') === 'true' ||
+    params.get('editor') === '1';
   const rawGid = params.get('groupId') || params.get('learningGroupId');
   const groupId = rawGid && rawGid.trim() ? rawGid.trim() : null;
   const heroRaw = Number(params.get('hero') ?? params.get('heroImageIndex'));
@@ -1065,10 +1071,20 @@ function parseEntryTicketSearch(search: string): {
     Number.isFinite(heroRaw) && heroRaw >= 0 && heroRaw <= 9 ? Math.floor(heroRaw) : null;
   const seedRaw = Number(params.get('seed') ?? params.get('taskSeed'));
   const taskSeed = Number.isFinite(seedRaw) ? (Math.floor(seedRaw) >>> 0) : null;
-  return { grade, customSetId, lessonPath, autostart, groupId, heroImageIndex, taskSeed, hasExplicitBand };
+  return {
+    grade,
+    customSetId,
+    lessonPath,
+    autostart,
+    openEditor,
+    groupId,
+    heroImageIndex,
+    taskSeed,
+    hasExplicitBand,
+  };
 }
 
-/** Nur gleiche Origin + /teacher/stunde mit groupId & lessonPath (Open-Redirect vermeiden) */
+/** Gleiche Origin + sichere Rückwege (Stunde oder Präsentations-Editor). */
 function parseSafeStundeReturnTo(search: string): string | null {
   const params = new URLSearchParams(search);
   const raw = params.get('returnTo');
@@ -1076,15 +1092,37 @@ function parseSafeStundeReturnTo(search: string): string | null {
   try {
     const url = new URL(raw, window.location.origin);
     if (url.origin !== window.location.origin) return null;
-    if (url.pathname !== '/teacher/stunde') return null;
-    const gid = url.searchParams.get('groupId');
     const lp = url.searchParams.get('lessonPath');
-    if (!gid?.trim() || !lp?.trim()) return null;
-    const pm = url.searchParams.get('planMode');
-    if (pm !== null && pm !== 'create' && pm !== 'run' && pm !== 'background') {
-      url.searchParams.delete('planMode');
+    if (!lp?.trim()) return null;
+
+    if (url.pathname === '/teacher/stunde') {
+      const gid = url.searchParams.get('groupId');
+      if (!gid?.trim()) return null;
+      const pm = url.searchParams.get('planMode');
+      if (pm !== null && pm !== 'create' && pm !== 'run' && pm !== 'background') {
+        url.searchParams.delete('planMode');
+      }
+      return `${url.pathname}${url.search}`;
     }
-    return `${url.pathname}${url.search}`;
+
+    if (url.pathname === '/presentation/edit') {
+      const pm = url.searchParams.get('planMode');
+      if (pm !== null && pm !== 'create' && pm !== 'run' && pm !== 'background') {
+        url.searchParams.delete('planMode');
+      }
+      // Nur erlaubte Query-Keys behalten
+      const safe = new URLSearchParams();
+      safe.set('lessonPath', lp.trim());
+      const gid = url.searchParams.get('groupId');
+      if (gid?.trim()) safe.set('groupId', gid.trim());
+      const planMode = url.searchParams.get('planMode');
+      if (planMode === 'create' || planMode === 'run' || planMode === 'background') {
+        safe.set('planMode', planMode);
+      }
+      return `/presentation/edit?${safe.toString()}`;
+    }
+
+    return null;
   } catch {
     return null;
   }
@@ -1450,6 +1488,7 @@ export default function EntryTicketPage() {
           customSetId: null as string | null,
           lessonPath: null as string | null,
           autostart: false,
+          openEditor: false,
           groupId: null as string | null,
           heroImageIndex: null as number | null,
           taskSeed: null as number | null,
@@ -1471,7 +1510,7 @@ export default function EntryTicketPage() {
   const [createSetBusy, setCreateSetBusy] = useState(false);
   const [createSetError, setCreateSetError] = useState<string | null>(null);
   const [taskSeed, setTaskSeed] = useState(() => initialRoute.taskSeed ?? randomTaskSeed());
-  const [showSetEditor, setShowSetEditor] = useState(false);
+  const [showSetEditor, setShowSetEditor] = useState(() => Boolean(initialRoute.openEditor));
   const [questionSets, setQuestionSets] = useState<GradeQuestionSets>(() => {
     try {
       const raw = localStorage.getItem(QUESTION_SET_STORAGE_KEY);
@@ -1582,6 +1621,7 @@ export default function EntryTicketPage() {
       customSetId: cId,
       lessonPath,
       autostart,
+      openEditor,
       groupId,
       heroImageIndex,
       taskSeed: urlSeed,
@@ -1589,7 +1629,7 @@ export default function EntryTicketPage() {
     } = parseEntryTicketSearch(location.search);
     setGrade(g);
     setCustomSetId(cId);
-    setBandChosen(Boolean(hasExplicitBand || cId || autostart));
+    setBandChosen(Boolean(hasExplicitBand || cId || autostart || openEditor));
     setEntryLessonPath(lessonPath);
     setAutoStartPending(autostart);
     setEntryTicketGroupId(groupId);
@@ -1602,7 +1642,7 @@ export default function EntryTicketPage() {
     setSecondsLeft(slideDurationSecRef.current);
     setIsRunning(false);
     setShowSolutions(false);
-    setShowSetEditor(false);
+    setShowSetEditor(Boolean(openEditor && !autostart));
     setSharedTasksLocked(false);
     tasksSyncedRef.current = '';
 

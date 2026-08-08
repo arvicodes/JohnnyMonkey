@@ -22,6 +22,8 @@ import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
 import { hydrateNotesHtmlFontSizes } from '../../lib/presentationFontSize';
 import { presentationNestedListSx, presentationNotesTableSx } from '../../lib/presentationListStyles';
 import { isPresentationLinkClickTarget } from '../../lib/presentationRichText';
+import { clampPresentZoom, handlePresentZoomHotkey, attachPresentTrackpadZoom } from '../../lib/presentationPresentZoom';
+import PresentationPresentZoomControls from './PresentationPresentZoomControls';
 
 const EMPTY_STROKES: PresentationStroke[] = [];
 const EMPTY_ANNOTATIONS: PresentationAnnotations = {
@@ -71,6 +73,9 @@ export default function PresentationLaptopPlayer({
   const [revealStep, setRevealStep] = useState(0);
   const [animKey, setAnimKey] = useState(0);
   const [displayScale, setDisplayScale] = useState(0.35);
+  const [userZoom, setUserZoom] = useState(1);
+  const userZoomRef = useRef(1);
+  userZoomRef.current = userZoom;
   const [notesLightboxSrc, setNotesLightboxSrc] = useState<string | null>(null);
   const stageHostRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -232,6 +237,7 @@ export default function PresentationLaptopPlayer({
 
     const onKey = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
+      if (handlePresentZoomHotkey(e, userZoom, setUserZoom)) return;
       if (e.key === 'Escape') {
         if (notesLightboxSrc) {
           e.preventDefault();
@@ -272,7 +278,7 @@ export default function PresentationLaptopPlayer({
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [goNext, goPrev, onClose, slides, notesLightboxSrc]);
+  }, [goNext, goPrev, onClose, slides, notesLightboxSrc, userZoom]);
 
   useEffect(() => {
     if (loading) return;
@@ -308,6 +314,12 @@ export default function PresentationLaptopPlayer({
     };
   }, [scaleReady, embedded]);
 
+  // Trackpad-Pinch auf der Bühne
+  useEffect(() => {
+    if (!scaleReady) return undefined;
+    return attachPresentTrackpadZoom(stageHostRef.current, userZoomRef, setUserZoom);
+  }, [scaleReady]);
+
   const handleSlideTap = (e: React.MouseEvent) => {
     if (isPresentationLinkClickTarget(e.target)) return;
     e.stopPropagation();
@@ -333,8 +345,10 @@ export default function PresentationLaptopPlayer({
     );
   }
 
-  const displayH = SLIDE_REF_HEIGHT * displayScale;
-  const displayW = SLIDE_REF_WIDTH * displayScale;
+  const viewScale = displayScale * userZoom;
+  const zoomed = userZoom > 1.001;
+  const displayH = SLIDE_REF_HEIGHT * viewScale;
+  const displayW = SLIDE_REF_WIDTH * viewScale;
   const notesPanelMin = hideTeacherNotes ? 40 : embedded ? 120 : 64;
   const showNotes = !hideTeacherNotes;
   const notesHtml = showNotes ? currentSlide.speakerNotesHtml?.trim() : '';
@@ -390,16 +404,18 @@ export default function PresentationLaptopPlayer({
           flex: embedded ? '0 0 auto' : '1 1 auto',
           minHeight: 0,
           width: '100%',
-          height: embedded && displayH > 0 ? displayH + 16 : undefined,
+          height: embedded && displayH > 0 && !zoomed ? displayH + 16 : undefined,
+          maxHeight: embedded && zoomed ? '58vh' : undefined,
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'hidden',
+          alignItems: zoomed ? 'flex-start' : 'center',
+          justifyContent: zoomed ? 'flex-start' : 'center',
+          overflow: zoomed ? 'auto' : 'hidden',
           m: 0,
           p: embedded ? '8px' : 0,
           lineHeight: 0,
           bgcolor: '#111',
           boxSizing: 'border-box',
+          WebkitOverflowScrolling: 'touch',
         }}
       >
         <Box
@@ -411,6 +427,7 @@ export default function PresentationLaptopPlayer({
             boxShadow: '0 2px 14px rgba(0,0,0,0.55)',
             outline: '1px solid rgba(255,255,255,0.14)',
             bgcolor: '#000',
+            flexShrink: 0,
           }}
         >
           <Box
@@ -433,7 +450,7 @@ export default function PresentationLaptopPlayer({
                 sx={{
                   width: SLIDE_REF_WIDTH,
                   height: SLIDE_REF_HEIGHT,
-                  transform: `scale(${displayScale})`,
+                  transform: `scale(${viewScale})`,
                   transformOrigin: 'top left',
                 }}
               >
@@ -453,7 +470,7 @@ export default function PresentationLaptopPlayer({
                 />
               </Box>
             </Box>
-            <PresentationStrokesPreview strokes={strokes} scale={displayScale} />
+            <PresentationStrokesPreview strokes={strokes} scale={viewScale} />
           </Box>
         </Box>
       </Box>
@@ -539,6 +556,14 @@ export default function PresentationLaptopPlayer({
           >
             <ChevronRight sx={{ fontSize: embedded ? 20 : 16 }} />
           </IconButton>
+          <Box sx={{ ml: 0.75 }}>
+            <PresentationPresentZoomControls
+              zoom={userZoom}
+              onZoomChange={(z) => setUserZoom(clampPresentZoom(z))}
+              variant="light"
+              compact={embedded}
+            />
+          </Box>
           {showNotes && (
             <Typography
               sx={{

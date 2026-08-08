@@ -24,6 +24,7 @@ import {
   toolUsesLineWidth,
 } from '../../lib/presentationDrawTools';
 import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
+import PresentationPresentZoomControls from './PresentationPresentZoomControls';
 
 const MICRO_SX = {
   width: 24,
@@ -127,6 +128,9 @@ interface PresentationTabletToolbarProps {
   placement?: 'fixed' | 'docked';
   /** Original-Ansicht: nur Navigation, kein Zeichnen/Speichern */
   readOnly?: boolean;
+  /** Zoom über Fit-Scale (1 = passend, bis 3) */
+  zoom?: number;
+  onZoomChange?: (zoom: number) => void;
 }
 
 export default function PresentationTabletToolbar({
@@ -152,6 +156,8 @@ export default function PresentationTabletToolbar({
   onPickRandomNumber,
   placement = 'fixed',
   readOnly = false,
+  zoom,
+  onZoomChange,
 }: PresentationTabletToolbarProps) {
   const showColors = !readOnly && drawActive && toolUsesColor(activeTool);
   const showLineWidths = !readOnly && drawActive && toolUsesLineWidth(activeTool);
@@ -347,6 +353,17 @@ export default function PresentationTabletToolbar({
         <ToolBtn title="Zurück" disabled={!canGoPrev} onClick={onGoPrev}>
           <ChevronLeft sx={{ fontSize: 17 }} />
         </ToolBtn>
+
+        {typeof zoom === 'number' && onZoomChange && (
+          <>
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{ mx: 0.15, borderColor: 'rgba(255,255,255,0.1)', height: 18, alignSelf: 'center' }}
+            />
+            <PresentationPresentZoomControls zoom={zoom} onZoomChange={onZoomChange} variant="dark" />
+          </>
+        )}
 
         <Divider
           orientation="vertical"

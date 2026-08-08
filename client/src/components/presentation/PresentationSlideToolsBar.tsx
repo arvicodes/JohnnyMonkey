@@ -73,6 +73,7 @@ import {
   applyTableTheme,
   applyZebraStriping,
   getCellFromSelection,
+  parseTabularPlainText,
   readTableDimensions,
   TABLE_CELL_BG_PRESETS,
   TABLE_COLOR_THEMES,
@@ -676,8 +677,38 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
             >
               Einfügen
             </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={async () => {
+                try {
+                  const text = await navigator.clipboard.readText();
+                  const matrix = parseTabularPlainText(text);
+                  if (!matrix) {
+                    window.alert('Zwischenablage enthält keinen Tabellen-Text (Tabs oder |).');
+                    return;
+                  }
+                  onAddTableElement?.({
+                    matrix,
+                    rows: matrix.length,
+                    cols: matrix[0]?.length || 2,
+                    themeId: tableThemeId,
+                  });
+                  setTableAnchor(null);
+                } catch {
+                  window.alert('Zwischenablage konnte nicht gelesen werden.');
+                }
+              }}
+              sx={{
+                ...miniBtnSx,
+                textTransform: 'none',
+                fontWeight: 600,
+              }}
+            >
+              Aus Zwischenablage
+            </Button>
             <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, lineHeight: 1.35 }}>
-              Danach: Zellen tippen, Spaltenränder ziehen für Breiten.
+              Danach: Zellen tippen, Spaltenränder ziehen. Text auf Folie: Formatleiste → Tabelle / x².
             </Typography>
           </Box>
         </Popover>

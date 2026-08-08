@@ -1,5 +1,5 @@
 import { normalizeSlideHeroImageElements } from './presentationImageUtils';
-import { sanitizeStoredFooter } from './presentationSlideFooter';
+import { sanitizeStoredFooter, lessonFolderDisplayName } from './presentationSlideFooter';
 import { parentDirGitPath } from './folienVersions';
 import { JOHNNY_PRESENTATION } from './presentationTheme';
 import type { PresentationTrashItem } from './presentationTrash';
@@ -533,7 +533,7 @@ export async function saveJsonFile(
 function buildDefaultDeck(lessonPath: string): PresentationDeck {
   return normalizeDeck({
     version: 1,
-    title: 'Präsentation',
+    title: lessonFolderDisplayName(lessonPath) || 'Präsentation',
     lessonPath,
     updatedAt: new Date().toISOString(),
     defaultTransition: 'fade',
@@ -563,7 +563,7 @@ async function buildStarterDeck(lessonPath: string): Promise<PresentationDeck> {
   if (!slides.length) return buildDefaultDeck(lessonPath);
   return normalizeDeck({
     version: 1,
-    title: 'Präsentation',
+    title: lessonFolderDisplayName(lessonPath) || 'Präsentation',
     lessonPath,
     updatedAt: new Date().toISOString(),
     defaultTransition: 'fade',

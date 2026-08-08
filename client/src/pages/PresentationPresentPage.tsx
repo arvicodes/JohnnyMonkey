@@ -35,6 +35,7 @@ import { getSlideMaxRevealSteps } from '../lib/presentationReveal';
 import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../lib/presentationTransitions';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
 import { isPresentationLinkClickTarget } from '../lib/presentationRichText';
+import { clampPresentZoom, handlePresentZoomHotkey, attachPresentTrackpadZoom } from '../lib/presentationPresentZoom';
 
 const SWIPE_MIN_PX = 48;
 const EMPTY_STROKES: PresentationStroke[] = [];
@@ -69,6 +70,9 @@ const PresentationPresentPage: React.FC = () => {
   const [saveNamedOpen, setSaveNamedOpen] = useState(false);
   const [saveNamedLabel, setSaveNamedLabel] = useState('');
   const [displayScale, setDisplayScale] = useState(0.5);
+  const [userZoom, setUserZoom] = useState(1);
+  const userZoomRef = useRef(1);
+  userZoomRef.current = userZoom;
   const [groupStudents, setGroupStudents] = useState<Array<{ id: string; name: string }>>([]);
   const [revealText, setRevealText] = useState<string | null>(null);
   const [revealNonce, setRevealNonce] = useState(0);
@@ -563,6 +567,8 @@ const PresentationPresentPage: React.FC = () => {
     const onKey = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
 
+      if (handlePresentZoomHotkey(e, userZoom, setUserZoom)) return;
+
       if (e.key === 'Escape') {
         e.preventDefault();
         if (drawActive) {
@@ -604,7 +610,7 @@ const PresentationPresentPage: React.FC = () => {
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [goNext, goPrev, drawActive, groupId, lessonPath, navigate, planMode, slides, saveNamedOpen]);
+  }, [goNext, goPrev, drawActive, groupId, lessonPath, navigate, planMode, slides, saveNamedOpen, userZoom]);
 
   // Fokus auf die Bühne, damit Pfeiltasten sofort greifen
   useEffect(() => {
@@ -653,6 +659,15 @@ const PresentationPresentPage: React.FC = () => {
       window.removeEventListener('orientationchange', updateScale);
     };
   }, [scaleReady]);
+
+  // Trackpad-Pinch (macOS: wheel + ctrlKey) auf der Bühne
+  useEffect(() => {
+    if (!scaleReady) return undefined;
+    return attachPresentTrackpadZoom(stageRef.current, userZoomRef, setUserZoom);
+  }, [scaleReady]);
+
+  const viewScale = displayScale * userZoom;
+  const zoomed = userZoom > 1.001;
 
   const onTouchStart = (e: React.TouchEvent) => {
     if (drawActive) return;
@@ -724,8 +739,8 @@ const PresentationPresentPage: React.FC = () => {
     );
   }
 
-  const displayH = SLIDE_REF_HEIGHT * displayScale;
-  const displayW = SLIDE_REF_WIDTH * displayScale;
+  const displayH = SLIDE_REF_HEIGHT * viewScale;
+  const displayW = SLIDE_REF_WIDTH * viewScale;
 
   const presentBackBtnSx = {
     position: 'absolute' as const,
@@ -782,20 +797,21 @@ const PresentationPresentPage: React.FC = () => {
           minHeight: 0,
           width: '100%',
           display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          overflow: 'hidden',
+          justifyContent: zoomed ? 'flex-start' : 'center',
+          alignItems: zoomed ? 'flex-start' : 'center',
+          overflow: zoomed ? 'auto' : 'hidden',
           px: 0.5,
           py: 0.5,
           boxSizing: 'border-box',
+          WebkitOverflowScrolling: 'touch',
         }}
       >
         <Box
           sx={{
             width: displayW,
             height: displayH,
-            maxWidth: '100%',
-            maxHeight: '100%',
+            maxWidth: zoomed ? 'none' : '100%',
+            maxHeight: zoomed ? 'none' : '100%',
             flexShrink: 0,
             overflow: 'hidden',
           }}
@@ -818,7 +834,7 @@ const PresentationPresentPage: React.FC = () => {
                 sx={{
                   width: SLIDE_REF_WIDTH,
                   height: SLIDE_REF_HEIGHT,
-                  transform: `scale(${displayScale})`,
+                  transform: `scale(${viewScale})`,
                   transformOrigin: 'top left',
                 }}
               >
@@ -847,7 +863,7 @@ const PresentationPresentPage: React.FC = () => {
               lineWidth={lineWidth}
               selectedStrokeId={selectedStrokeId}
               onSelectedStrokeIdChange={setSelectedStrokeId}
-              scale={displayScale}
+              scale={viewScale}
             />
           </Box>
         </Box>
@@ -897,6 +913,8 @@ const PresentationPresentPage: React.FC = () => {
         onPickRandomStudent={groupId ? handlePickRandomStudent : undefined}
         canPickRandomStudent={groupStudents.length > 0}
         onPickRandomNumber={handlePickRandomNumber}
+        zoom={userZoom}
+        onZoomChange={(z) => setUserZoom(clampPresentZoom(z))}
       />
 
       <PresentationRandomStudentOverlay

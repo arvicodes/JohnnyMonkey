@@ -1,5 +1,7 @@
 import { JOHNNY_PRESENTATION } from './presentationTheme';
 import { lessonFolderDisplayName } from './presentationSlideFooter';
+import { findCustomSetForLessonPath } from './entryTicketCustomSets';
+import { presentationEditorUrl, type PresentationPlanMode } from './presentationDeck';
 
 /** Dezentes Johnny-UI für den Präsentations-Editor */
 export const PRES_EDITOR_UI = {
@@ -53,7 +55,7 @@ export const PRES_EDITOR_UI = {
 export function presentationLessonBackUrl(
   lessonPath: string,
   groupId?: string,
-  planMode?: 'create' | 'run' | 'background'
+  planMode?: PresentationPlanMode
 ): string {
   if (!groupId || !lessonPath) return '/dashboard';
   const qs = new URLSearchParams({
@@ -65,6 +67,27 @@ export function presentationLessonBackUrl(
     qs.set('planMode', planMode);
   }
   return `/teacher/stunde?${qs.toString()}`;
+}
+
+/**
+ * Entry-Ticket-Bearbeitung für diese Stunde (Fragenset-Editor, kein Autostart).
+ * returnTo zeigt zurück in den Präsentations-Editor.
+ */
+export function presentationEntryTicketEditUrl(
+  lessonPath: string,
+  groupId?: string,
+  planMode?: PresentationPlanMode,
+  gradeFallback: string | number = 7,
+): string {
+  const qs = new URLSearchParams();
+  const match = findCustomSetForLessonPath(lessonPath);
+  qs.set('grade', match ? match.id : String(gradeFallback));
+  qs.set('edit', '1');
+  qs.set('r', String(Date.now()));
+  if (lessonPath) qs.set('lessonPath', lessonPath);
+  if (groupId) qs.set('groupId', groupId);
+  qs.set('returnTo', presentationEditorUrl(lessonPath, groupId, planMode || 'create'));
+  return `/entry-ticket?${qs.toString()}`;
 }
 
 /** @deprecated use presentationLessonBackUrl */

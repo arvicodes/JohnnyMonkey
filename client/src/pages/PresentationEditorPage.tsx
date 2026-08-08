@@ -21,6 +21,8 @@ import {
   MenuItem,
   Snackbar,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
   Typography,
   Badge,
@@ -84,7 +86,8 @@ import {
   SLIDE_REF_WIDTH,
 } from '../lib/presentationDeck';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
-import { PRES_EDITOR_UI, presentationLessonBackUrl } from '../lib/presentationEditorUi';
+import { PRES_EDITOR_UI, presentationEntryTicketEditUrl, presentationLessonBackUrl } from '../lib/presentationEditorUi';
+import { lessonFolderDisplayName } from '../lib/presentationSlideFooter';
 import {
   DEFAULT_FLOATING_IMAGE_H,
   DEFAULT_FLOATING_IMAGE_W,
@@ -1034,7 +1037,11 @@ const PresentationEditorPage: React.FC = () => {
     const el = createTableElement(z0, opts);
     updateSlide({ elements: [...(normalizedActive.elements || []), el] });
     setSelectedElementId(el.id);
-    setSnackbar('Tabelle eingefügt — tippen und Spaltenränder ziehen');
+    setSnackbar(
+      opts?.matrix || opts?.html
+        ? 'Tabelle aus Text eingefügt'
+        : 'Tabelle eingefügt — tippen und Spaltenränder ziehen',
+    );
   };
 
   const updateElement = (id: string, patch: Partial<SlideElement>) => {
@@ -1934,6 +1941,32 @@ const PresentationEditorPage: React.FC = () => {
     navigate(presentationLessonBackUrl(lessonPath, groupId, planMode));
   };
 
+  const lessonDisplayName = useMemo(
+    () => lessonFolderDisplayName(lessonPath) || deck?.title || 'Stunde',
+    [lessonPath, deck?.title],
+  );
+
+  const openEntryTicketEdit = useCallback(() => {
+    if (!lessonPath) return;
+    navigate(presentationEntryTicketEditUrl(lessonPath, groupId || undefined, planMode || 'create'));
+  }, [groupId, lessonPath, navigate, planMode]);
+
+  const handlePlanModeChange = useCallback(
+    (_: React.MouseEvent<HTMLElement>, next: 'create' | 'run' | 'background' | null) => {
+      if (next == null || !lessonPath) return;
+      if (next === 'create') return;
+      if (next === 'run') {
+        navigate(
+          presentationPresentUrl(lessonPath, groupId || undefined, 'edited', undefined, 'run'),
+        );
+        return;
+      }
+      // Laptop → zurück in die Stundenansicht (Laptop-Modus)
+      navigate(presentationLessonBackUrl(lessonPath, groupId, 'background'));
+    },
+    [groupId, lessonPath, navigate],
+  );
+
   // Esc → zurück zur Stundenplanung (nicht während Textbearbeitung / Dialog / Animationsmodus)
   useEffect(() => {
     const isTypingTarget = (el: EventTarget | null) => {
@@ -2070,7 +2103,7 @@ const PresentationEditorPage: React.FC = () => {
         overflow: 'hidden',
       }}
     >
-      {/* Kompakte Kopfleiste */}
+      {/* Eine Menüleiste: Stunde + Werkzeuge + Modus */}
       <Box
         sx={{
           bgcolor: PRES_EDITOR_UI.barBg,
@@ -2093,37 +2126,61 @@ const PresentationEditorPage: React.FC = () => {
               <ArrowBackIcon sx={{ fontSize: 20 }} />
             </IconButton>
           </Tooltip>
-
-          <TextField
-            size="small"
-            placeholder="Präsentationstitel"
-            value={deck.title}
-            onChange={(e) => {
-              const current = deckRef.current;
-              if (!current) return;
-              scheduleSave({ ...current, title: e.target.value });
-            }}
+          <Typography
+            component="span"
             sx={{
-              flex: 1,
-              minWidth: 120,
-              maxWidth: 320,
-              '& .MuiInputBase-root': {
-                fontSize: 14,
-                fontWeight: 700,
-                height: 32,
-                bgcolor: 'transparent',
-              },
-              '& .MuiOutlinedInput-notchedOutline': { borderColor: 'transparent' },
-              '& .MuiInputBase-root:hover .MuiOutlinedInput-notchedOutline': {
-                borderColor: PRES_EDITOR_UI.barBorder,
-              },
-              '& .MuiInputBase-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                borderColor: PRES_EDITOR_UI.accent,
-              },
+              fontWeight: 700,
+              fontSize: 13,
+              display: '-webkit-box',
+              WebkitLineClamp: 1,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              wordBreak: 'break-word',
+              minWidth: 0,
+              maxWidth: 200,
+              lineHeight: 1.2,
+              flexShrink: 1,
             }}
-          />
+          >
+            {lessonDisplayName}
+          </Typography>
+          <Tooltip title="Entry Ticket dieser Stunde bearbeiten">
+            <IconButton
+              size="small"
+              onClick={openEntryTicketEdit}
+              disabled={!lessonPath}
+              sx={{
+                flexShrink: 0,
+                p: 0,
+                minWidth: 22,
+                width: 22,
+                height: 22,
+                borderRadius: 0.8,
+                border: '1.5px solid rgba(33, 150, 243, 0.5)',
+                background: 'linear-gradient(135deg, #1e88e5 0%, #3949ab 100%)',
+                color: 'white',
+                boxShadow: 'none',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #1976d2 0%, #303f9f 100%)',
+                },
+                '&.Mui-disabled': { opacity: 0.45 },
+              }}
+              aria-label="Entry Ticket bearbeiten"
+            >
+              <Typography
+                component="span"
+                sx={{ fontSize: '0.7rem', fontWeight: 800, lineHeight: 1, color: 'inherit' }}
+              >
+                E
+              </Typography>
+            </IconButton>
+          </Tooltip>
 
-          <Box sx={{ flex: 1, minWidth: 8 }} />
+          <Divider
+            orientation="vertical"
+            flexItem
+            sx={{ borderColor: PRES_EDITOR_UI.barBorder, mx: 0.15, height: 22, alignSelf: 'center' }}
+          />
 
           <Box
             sx={{
@@ -2349,6 +2406,41 @@ const PresentationEditorPage: React.FC = () => {
               </IconButton>
             </Tooltip>
           </Box>
+
+          <ToggleButtonGroup
+            size="small"
+            exclusive
+            value={planMode === 'run' || planMode === 'background' ? planMode : 'create'}
+            onChange={handlePlanModeChange}
+            sx={{
+              flexShrink: 0,
+              ml: 0.25,
+              '& .MuiToggleButton-root': {
+                py: 0.25,
+                px: 0.75,
+                fontSize: '0.65rem',
+                textTransform: 'none',
+                fontWeight: 600,
+                lineHeight: 1.2,
+              },
+            }}
+          >
+            <ToggleButton value="create">Erstellen</ToggleButton>
+            <ToggleButton value="run">TABLET</ToggleButton>
+            <ToggleButton
+              value="background"
+              sx={{
+                '&.Mui-selected': {
+                  bgcolor: 'rgba(57, 73, 171, 0.14)',
+                  color: '#283593',
+                  fontWeight: 700,
+                  '&:hover': { bgcolor: 'rgba(57, 73, 171, 0.2)' },
+                },
+              }}
+            >
+              Laptop
+            </ToggleButton>
+          </ToggleButtonGroup>
         </Box>
 
         <Box
@@ -2391,6 +2483,7 @@ const PresentationEditorPage: React.FC = () => {
                 activeEditor={activeEditor}
                 contextLabel={formatContextLabel}
                 onEditorChanged={flushActiveEditor}
+                onMessage={(msg) => setSnackbar(msg)}
                 onInsertImage={
                   notesActiveField
                     ? () => {

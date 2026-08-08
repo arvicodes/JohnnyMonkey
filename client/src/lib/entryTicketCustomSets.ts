@@ -184,6 +184,27 @@ export function findLessonSectionIndex(set: EntryTicketCustomSet, lessonPath: st
   return set.lessons.findIndex((l) => lessonMatchesPath(l, lessonPath));
 }
 
+/**
+ * Fragenset zur Stunde: zuerst Set mit passender Stunden-Sektion,
+ * sonst Set dessen Reihen-Pfad Präfix des lessonPath ist.
+ */
+export function findCustomSetForLessonPath(
+  lessonPath: string | null | undefined,
+  sets?: EntryTicketCustomSet[],
+): EntryTicketCustomSet | null {
+  if (!lessonPath?.trim()) return null;
+  const list = sets ?? loadCustomEntryTicketSets();
+  const withLesson = list.find((s) => findLessonSectionIndex(s, lessonPath) >= 0);
+  if (withLesson) return withLesson;
+  const want = normalizePath(lessonPath);
+  return (
+    list.find((s) => {
+      const rp = s.reihePath ? normalizePath(s.reihePath) : '';
+      return Boolean(rp) && (want === rp || want.startsWith(`${rp}/`));
+    }) ?? null
+  );
+}
+
 /** Sortierschlüssel: Ordnername der Stunde (01.01 …), egal ob voller Pfad oder Anzeigename. */
 function lessonSortKey(lesson: EntryTicketLessonSection): string {
   return lessonFolderName(lesson.lessonKey || lesson.lessonName || '');

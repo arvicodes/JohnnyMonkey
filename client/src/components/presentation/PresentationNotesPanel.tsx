@@ -11,6 +11,10 @@ import { isFormatBarInteracting, isPresentationFormatUiTarget } from '../../lib/
 import { captureEditorSelection, clearSavedSelection } from '../../lib/presentationFontSize';
 import { presentationNestedListSx, presentationNotesTableSx } from '../../lib/presentationListStyles';
 import { sanitizePastedHtml, normalizeNotesHtml, handlePresentationTabKey, replaceArrowShortcutsNearCursor, tryMarkdownListShortcut, insertImageHtmlAtCursor } from '../../lib/presentationRichText';
+import {
+  tryStartTableResizeFromPointer,
+  updateTableResizeHoverCursor,
+} from '../../lib/presentationTableResize';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 
 /** Ein Notizfeld (früher Material / Setup / Sprechakte). Legacy-Keys bleiben für Papierkorb. */
@@ -275,8 +279,26 @@ const NoteZone: React.FC<NoteZoneProps> = ({
           e.stopPropagation();
           void insertImageFile(file);
         }}
-        onMouseDown={() => {
+        onMouseDown={(e) => {
           if (!isFormatBarInteracting()) clearSavedSelection();
+          if (readOnly) return;
+          if (
+            tryStartTableResizeFromPointer(ref.current, e, {
+              onDone: () => {
+                if (ref.current) persistContent(ref.current.innerHTML, true);
+                if (ref.current) ref.current.style.cursor = '';
+              },
+            })
+          ) {
+            e.preventDefault();
+          }
+        }}
+        onMouseMove={(e) => {
+          if (readOnly) return;
+          updateTableResizeHoverCursor(ref.current, e.clientX, e.clientY);
+        }}
+        onMouseLeave={() => {
+          if (ref.current) ref.current.style.cursor = '';
         }}
         sx={{
           flex: 1,

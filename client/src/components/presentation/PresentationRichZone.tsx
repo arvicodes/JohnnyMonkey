@@ -13,6 +13,10 @@ import {
 } from '../../lib/presentationAnimation';
 import type { HtmlAnimField } from '../../lib/presentationAnimation';
 import { sanitizePresentationHtml, handlePresentationTabKey, replaceArrowShortcutsNearCursor, handlePresentationListShortcutKey, presentationPasteHtml, wrapOrphanRootInlineContent } from '../../lib/presentationRichText';
+import {
+  tryStartTableResizeFromPointer,
+  updateTableResizeHoverCursor,
+} from '../../lib/presentationTableResize';
 import { PRESENTATION_DEFAULT_FONT_FAMILY } from '../../lib/presentationFonts';
 import { PRESENTATION_CONTENT_FONT_PX } from '../../lib/presentationFontSize';
 import { presentationNestedListSx } from '../../lib/presentationListStyles';
@@ -113,6 +117,15 @@ function buildRichSx(
       my: `${8 * scale}px`,
       backgroundColor: 'transparent',
       backgroundImage: 'none',
+    },
+    '& table': {
+      width: '100%',
+      borderCollapse: 'collapse',
+      tableLayout: 'fixed',
+    },
+    '& th, & td': {
+      wordBreak: 'break-word',
+      position: 'relative',
     },
     '& [data-reveal-step].pres-reveal-enter': {
       animation: 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both',
@@ -428,6 +441,23 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
         }
         e.stopPropagation();
         if (!isFormatBarInteracting()) clearSavedSelection();
+        if (
+          tryStartTableResizeFromPointer(ref.current, e, {
+            onDone: () => {
+              flushInput();
+              if (ref.current) ref.current.style.cursor = '';
+            },
+          })
+        ) {
+          e.preventDefault();
+        }
+      }}
+      onMouseMove={(e) => {
+        if (animationEditMode) return;
+        updateTableResizeHoverCursor(ref.current, e.clientX, e.clientY);
+      }}
+      onMouseLeave={() => {
+        if (ref.current) ref.current.style.cursor = '';
       }}
       sx={{
         ...richSx,

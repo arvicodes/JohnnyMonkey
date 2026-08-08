@@ -25,7 +25,7 @@ import {
   getListItemFromSelection,
 } from './presentationListNormalize';
 import { PRESENTATION_DEFAULT_FONT_FAMILY } from './presentationFonts';
-import { ensureNotesTablesFormatted } from './presentationSlideTables';
+import { ensureNotesTablesFormatted, applyJohnnyTableFormatting } from './presentationSlideTables';
 
 // Explizite Re-Exports (HMR-sicherer als `import` + `export { … }`)
 export {
@@ -159,6 +159,139 @@ const ARROW_SHORTCUTS: Array<{ from: string; to: string }> = [
   { from: '->', to: '→' },
   { from: '<-', to: '←' },
 ];
+
+/**
+ * LaTeX-/Caret-Hochzahlen in einem Textstring → Unicode-taugliche Marker,
+ * die danach in echte `<sup>`-Knoten umgewandelt werden.
+ * Beispiele: `10^{11}`, `10^-3`, `(10^{-3},\text{s})`
+ */
+export function convertCaretSuperscriptsInText(text: string): string {
+  if (!text || !text.includes('^')) return text;
+  let s = text;
+  // \text{…} → Inhalt (mit Leerzeichen wenn nach Komma)
+  s = s.replace(/,\s*\\text\{([^}]*)\}/g, ', $1');
+  s = s.replace(/\\text\{([^}]*)\}/g, '$1');
+  // Basis^{Exponent} (auch negativ / Komma im Exponenten vermeiden: nur bis })
+  s = s.replace(/(\d+(?:[.,]\d+)?)\^\{([^}]+)\}/g, '$1\u0001sup\u0002$2\u0003');
+  // Basis^Exponent (einfache Zahl, optional Minus)
+  s = s.replace(/(\d+(?:[.,]\d+)?)\^(-?\d+)/g, '$1\u0001sup\u0002$2\u0003');
+  // Buchstabe^Zahl (x^2)
+  s = s.replace(/([A-Za-zα-ωΑ-Ω])\^(-?\d+)/g, '$1\u0001sup\u0002$2\u0003');
+  // Buchstabe^{…}
+  s = s.replace(/([A-Za-zα-ωΑ-Ω])\^\{([^}]+)\}/g, '$1\u0001sup\u0002$2\u0003');
+  return s;
+}
+
+function materializeSupMarkersInTextNode(node: Text): boolean {
+  const raw = node.textContent || '';
+  if (!raw.includes('\u0001sup\u0002') && !raw.includes('^') && !raw.includes('\\text{')) {
+    return false;
+  }
+  const marked = convertCaretSuperscriptsInText(raw);
+  if (marked === raw && !marked.includes('\u0001sup\u0002')) return false;
+
+  const parent = node.parentNode;
+  if (!parent) return false;
+  // Nicht innerhalb bestehender <sup>/<sub> nochmal wrappen
+  if (node.parentElement?.closest('sup, sub')) {
+    if (marked !== raw && !marked.includes('\u0001sup\u0002')) {
+      node.textContent = marked;
+      return true;
+    }
+    return false;
+  }
+
+  const parts = marked.split(/(\u0001sup\u0002[^\u0003]*\u0003)/);
+  if (parts.length === 1 && !marked.includes('\u0001sup\u0002')) {
+    if (marked !== raw) {
+      node.textContent = marked;
+      return true;
+    }
+    return false;
+  }
+
+  const frag = document.createDocumentFragment();
+  for (const part of parts) {
+    if (!part) continue;
+    const m = part.match(/^\u0001sup\u0002([^\u0003]*)\u0003$/);
+    if (m) {
+      const sup = document.createElement('sup');
+      sup.textContent = m[1];
+      frag.appendChild(sup);
+    } else {
+      frag.appendChild(document.createTextNode(part));
+    }
+  }
+  parent.replaceChild(frag, node);
+  return true;
+}
+
+/** Wandelt `^` / `^{…}` / `\text{…}` in Textknoten zu echten `<sup>` um. */
+export function convertCaretSuperscriptsInPlace(root: ParentNode): boolean {
+  if (typeof document === 'undefined') return false;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes: Text[] = [];
+  let n: Node | null;
+  while ((n = walker.nextNode())) {
+    const t = n.textContent || '';
+    if (t.includes('^') || t.includes('\\text{') || t.includes('\u0001sup\u0002')) {
+      nodes.push(n as Text);
+    }
+  }
+  let changed = false;
+  for (const node of nodes) {
+    if (materializeSupMarkersInTextNode(node)) changed = true;
+  }
+  return changed;
+}
+
+export function convertCaretSuperscriptsInHtml(html: string): string {
+  if (!html || typeof document === 'undefined') return html;
+  if (!html.includes('^') && !html.includes('\\text{')) return html;
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  convertCaretSuperscriptsInPlace(doc.body);
+  return doc.body.innerHTML;
+}
+
+/**
+ * Auswahl oder ganzer Editor: Hochzahlen formatieren.
+ * Mit Auswahl + execCommand('superscript') wenn keine `^`-Muster, sonst Caret-Konvertierung.
+ */
+export function formatEditorSuperscripts(editor: HTMLElement): { ok: boolean; message: string } {
+  if (!editor) return { ok: false, message: 'Kein Editor aktiv' };
+  const sel = window.getSelection();
+  const selectedText = sel && !sel.isCollapsed && editor.contains(sel.anchorNode) ? sel.toString() : '';
+
+  if (selectedText && (selectedText.includes('^') || selectedText.includes('\\text{'))) {
+    // Auswahl mit Caret-Mustern: über insertHTML ersetzen
+    const html = convertCaretSuperscriptsInHtml(`<span>${escapeHtmlText(selectedText)}</span>`);
+    stashEditorSelection(editor);
+    ensureEditorSelection(editor);
+    try {
+      document.execCommand('styleWithCSS', false, 'true');
+    } catch {
+      /* ignore */
+    }
+    document.execCommand('insertHTML', false, html);
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
+    return { ok: true, message: 'Hochzahlen formatiert' };
+  }
+
+  if (selectedText && sel && !sel.isCollapsed) {
+    stashEditorSelection(editor);
+    ensureEditorSelection(editor);
+    document.execCommand('superscript', false);
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
+    return { ok: true, message: 'Hochgestellt' };
+  }
+
+  const changed = convertCaretSuperscriptsInPlace(editor);
+  if (changed) {
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
+    return { ok: true, message: 'Hochzahlen im Text formatiert' };
+  }
+  return { ok: false, message: 'Keine ^-Hochzahlen gefunden — Text markieren und erneut klicken' };
+}
 
 /**
  * Ersetzt Pfeil-Kürzel links vom Cursor durch echte Pfeilzeichen.
@@ -717,6 +850,11 @@ export function sanitizePresentationHtml(html: string): string {
   normalizeListsInPlace(doc.body);
   normalizePresentationAnchorsInPlace(doc.body);
   wrapOrphanRootInlineContent(doc.body);
+  convertCaretSuperscriptsInPlace(doc.body);
+  // Nur ungestylte Paste-Tabellen einmalig mit Johnny-Theme versehen
+  doc.body.querySelectorAll('table:not([data-pres-table])').forEach((node) => {
+    applyJohnnyTableFormatting(node as HTMLTableElement);
+  });
   return doc.body.innerHTML;
 }
 

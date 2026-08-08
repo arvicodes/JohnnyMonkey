@@ -52,6 +52,10 @@ import {
   isValidPresentationTableHtml,
   setColumnWidthPercent,
 } from '../../lib/presentationSlideTables';
+import {
+  tryStartTableResizeFromPointer,
+  updateTableResizeHoverCursor,
+} from '../../lib/presentationTableResize';
 
 type DragMode = 'move' | 'resize';
 type ResizeCorner = 'br' | 'tr';
@@ -1401,7 +1405,40 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   onChange({ html });
                 }
               }}
-              onPointerDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                if (
+                  tryStartTableResizeFromPointer(tableRef.current, e, {
+                    onUpdate: () => {
+                      const tbl = tableRef.current?.querySelector(
+                        'table',
+                      ) as HTMLTableElement | null;
+                      if (tbl) setTableColWidths(getColumnWidthPercents(tbl));
+                    },
+                    onDone: () => {
+                      if (tableRef.current && onChange) {
+                        const html = sanitizePresentationHtml(tableRef.current.innerHTML);
+                        if (
+                          !isValidPresentationTableHtml(html) &&
+                          isValidPresentationTableHtml(element.html)
+                        ) {
+                          return;
+                        }
+                        onChange({ html });
+                      }
+                      if (tableRef.current) tableRef.current.style.cursor = '';
+                    },
+                  })
+                ) {
+                  e.preventDefault();
+                }
+              }}
+              onMouseMove={(e) => {
+                updateTableResizeHoverCursor(tableRef.current, e.clientX, e.clientY);
+              }}
+              onMouseLeave={() => {
+                if (tableRef.current) tableRef.current.style.cursor = '';
+              }}
               onPaste={(e) => {
                 e.preventDefault();
                 const raw =
