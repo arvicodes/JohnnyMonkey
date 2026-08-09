@@ -2,12 +2,9 @@ version: '3.8'
 
 services:
   johnnymonkey:
-    # Kein `image:`-Tag → Portainer versucht keinen Docker-Hub-Pull.
-    build:
-      context: .
-      dockerfile: Dockerfile
-    # Vorhandenes lokales Image nutzen (kein Full-Rebuild) — Server hatte ENOSPC/OOM.
-    # Für Code-/Material-Updates später wieder auf "build" stellen, wenn genug RAM/Disk da ist.
+    # Temporär nur lokales Image — kein Build (Server hatte ENOSPC/OOM).
+    # Später wieder build: + pull_policy: build, wenn genug RAM/Disk da ist.
+    image: johnnymonkey-johnnymonkey:latest
     pull_policy: never
     container_name: johnnymonkey-app
     # Host-Netz: App bindet direkt auf Host-Port 80 (umgeht Docker-Port-Proxy).
@@ -18,7 +15,6 @@ services:
       - PORT=80
       # DB-Volume nur auf data/ — prisma/schema.prisma bleibt aus dem Image
       - DATABASE_URL=file:/app/server/data/dev.db
-      # false: DB kommt per One-Shot-Import ins Volume (nicht aus dem alten Image-Backup).
       - FORCE_DB_IMPORT=false
       - LOCAL_MATERIALS_PATH=/app
       - JM_REIHEN_PATH=/app/J-M-Reihen
@@ -41,10 +37,9 @@ services:
 
   # Outbound-Tunnel: Zugriff ohne offenen Port 80 (VPN blockiert 80, nur 9443 ist frei).
   # URL steht in den Logs von johnnymonkey-tunnel (*.trycloudflare.com).
-  # Hinweis: Traffic geht über Cloudflare — nur nutzen, wenn das schulisch ok ist.
   tunnel:
     image: cloudflare/cloudflared:latest
-    pull_policy: always
+    pull_policy: never
     container_name: johnnymonkey-tunnel
     network_mode: host
     command: tunnel --no-autoupdate --url http://127.0.0.1:80
