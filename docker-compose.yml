@@ -6,7 +6,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    pull_policy: build
+    # Vorhandenes lokales Image nutzen (kein Full-Rebuild) — Server hatte ENOSPC/OOM.
+    # Für Code-/Material-Updates später wieder auf "build" stellen, wenn genug RAM/Disk da ist.
+    pull_policy: never
     container_name: johnnymonkey-app
     # Host-Netz: App bindet direkt auf Host-Port 80 (umgeht Docker-Port-Proxy).
     # webserver/nginx auf Port 80 muss gestoppt sein.
@@ -16,9 +18,8 @@ services:
       - PORT=80
       # DB-Volume nur auf data/ — prisma/schema.prisma bleibt aus dem Image
       - DATABASE_URL=file:/app/server/data/dev.db
-      # Einmalig true beim Deploy mit lokalem DB-Stand; danach wieder false/entfernen,
-      # sonst überschreibt jeder Restart das Volume mit backup_latest.db aus dem Image.
-      - FORCE_DB_IMPORT=true
+      # false: DB kommt per One-Shot-Import ins Volume (nicht aus dem alten Image-Backup).
+      - FORCE_DB_IMPORT=false
       - LOCAL_MATERIALS_PATH=/app
       - JM_REIHEN_PATH=/app/J-M-Reihen
     volumes:
