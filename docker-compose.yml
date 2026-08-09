@@ -8,12 +8,12 @@ services:
       dockerfile: Dockerfile
     pull_policy: build
     container_name: johnnymonkey-app
-    # Wie in DEPLOY_PORTAINER_CHECKLIST: Host 80 → Container 3000
-    ports:
-      - "0.0.0.0:80:3000"
+    # Host-Netz: App bindet direkt auf Host-Port 80 (umgeht Docker-Port-Proxy).
+    # webserver/nginx auf Port 80 muss gestoppt sein.
+    network_mode: host
     environment:
       - NODE_ENV=production
-      - PORT=3000
+      - PORT=80
       # DB-Volume nur auf data/ — prisma/schema.prisma bleibt aus dem Image
       - DATABASE_URL=file:/app/server/data/dev.db
       - LOCAL_MATERIALS_PATH=/app
@@ -24,7 +24,7 @@ services:
       - johnnymonkey_logs:/app/logs
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:80/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -34,13 +34,22 @@ services:
       - "com.portainer.io.description=Educational Learning Platform"
       - "com.portainer.io.category=Application"
       - "com.portainer.io.managed=true"
-    networks:
-      - johnnymonkey-network
 
-networks:
-  johnnymonkey-network:
-    driver: bridge
-    name: johnnymonkey-network
+  # Outbound-Tunnel: Zugriff ohne offenen Port 80 (VPN blockiert 80, nur 9443 ist frei).
+  # URL steht in den Logs von johnnymonkey-tunnel (*.trycloudflare.com).
+  # Hinweis: Traffic geht über Cloudflare — nur nutzen, wenn das schulisch ok ist.
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    pull_policy: always
+    container_name: johnnymonkey-tunnel
+    network_mode: host
+    command: tunnel --no-autoupdate --url http://127.0.0.1:80
+    depends_on:
+      - johnnymonkey
+    restart: unless-stopped
+    labels:
+      - "com.portainer.io.name=JohnnyMonkey Tunnel"
+      - "com.portainer.io.category=Application"
 
 volumes:
   postgres_data:

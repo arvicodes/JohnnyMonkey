@@ -6,21 +6,16 @@
 - Container `johnnymonkey-app` muss `running`/`healthy` sein.
 - Container `webserver` muss gestoppt sein (sonst kollidiert Port 80).
 
-## Pflicht-Mapping
+## Pflicht-Mapping / Netz
 
-Bei `johnnymonkey-app` muss in den Container-Details stehen:
+`johnnymonkey-app` nutzt **Host-Netz** (nicht Bridge-Port-Mapping):
 
-- `0.0.0.0:80 -> 3000/tcp`
-- optional zusätzlich: `:::80 -> 3000/tcp`
+- `network_mode: host`
+- `PORT=80` (App lauscht direkt auf dem Host)
+- Healthcheck: `http://127.0.0.1:80/health`
 
-In der Compose-Datei:
-
-```yaml
-ports:
-  - "0.0.0.0:80:3000"
-environment:
-  - PORT=3000
-```
+Zusätzlich: Container `johnnymonkey-tunnel` (Cloudflare quick tunnel) für VPN-Zugriff,
+weil die Firewall Port 80 per VPN blockiert. URL in den Tunnel-Logs (`*.trycloudflare.com`).
 
 ## DB-Volume (wichtig)
 
@@ -43,22 +38,24 @@ environment:
 4. **Pull and redeploy**
    - Rebuild = **AN**
    - Re-pull image = **AUS**
-5. Prüfen: `healthy`, Mapping `80 -> 3000`, Logs: `running on port 3000`
+5. Prüfen: `johnnymonkey-app` = `healthy`, Logs: `running on port 80`
+6. Tunnel-Logs: `johnnymonkey-tunnel` → `https://….trycloudflare.com`
 
-## Korrekte URL (genau so)
+## Korrekte URLs
 
-- `http://192.168.8.1/dashboard`
-- Basis: `http://192.168.8.1`
-- nur `http`, kein `https`, kein `www`, kein Port
+- Schul-LAN: `http://192.168.8.1/dashboard` (http, kein https/www/Port)
+- VPN: Cloudflare-URL aus Tunnel-Logs (`*.trycloudflare.com/dashboard`)
+- Portainer: `https://192.168.8.1:9443`
 
 ## Warum es klappt
 
 - Container neu gebaut (`Rebuild`), aktuelle Git-Änderungen.
 - `webserver` blockiert Port 80 nicht.
-- App intern auf `3000`, Portainer/Docker leitet `80 -> 3000`.
+- App mit Host-Netz direkt auf Port `80` (kein Docker-Port-Proxy).
+- VPN: Outbound-Tunnel über Cloudflare, weil TCP 80 eingehend blockiert ist.
 - `J-M-Reihen` aus dem Image; DB unter `/app/server/data/dev.db`.
 
 ## Wenn nur VPN und Safari „Verbindung abgelehnt“
 
 Portainer `:9443` geht, Port `80` nicht → Firewall/VPN lässt 80 nicht durch.
-Die Checkliste gilt für Zugriff im Schul-LAN (bzw. wenn TCP 80 freigegeben ist).
+Dann die `trycloudflare.com`-URL aus den Tunnel-Logs verwenden (nicht `192.168.8.1`).
