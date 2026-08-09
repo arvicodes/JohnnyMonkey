@@ -16,6 +16,9 @@ services:
       - PORT=80
       # DB-Volume nur auf data/ — prisma/schema.prisma bleibt aus dem Image
       - DATABASE_URL=file:/app/server/data/dev.db
+      # Einmalig true beim Deploy mit lokalem DB-Stand; danach wieder false/entfernen,
+      # sonst überschreibt jeder Restart das Volume mit backup_latest.db aus dem Image.
+      - FORCE_DB_IMPORT=true
       - LOCAL_MATERIALS_PATH=/app
       - JM_REIHEN_PATH=/app/J-M-Reihen
     volumes:

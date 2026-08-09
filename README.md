@@ -75,6 +75,39 @@ npm start
 
 ### Portainer.io Deployment
 
+Kurzcheck: siehe auch [`DEPLOY_PORTAINER_CHECKLIST.md`](./DEPLOY_PORTAINER_CHECKLIST.md).
+
+#### Problem: Website per VPN nicht erreichbar (Port 80)
+
+**Symptom:** Portainer unter `https://192.168.8.1:9443` geht, aber `http://192.168.8.1` / `/dashboard` schlägt fehl („Verbindung abgelehnt“ / Connection refused).
+
+**Ursache:** Die Schul-VPN-/Firewall lässt eingehend **Port 80 nicht durch**. Nur wenige Ports (u. a. Portainer **9443**) sind freigegeben. Die App kann im Container gesund laufen und trotzdem von außen unerreichbar sein.
+
+**Lösung (Stand in `docker-compose.yml`):**
+
+1. **Host-Netz für die App** — kein Bridge-Mapping `80→3000`, sondern:
+   - `network_mode: host`
+   - `PORT=80` (Node lauscht direkt auf dem Host)
+   - Healthcheck: `http://127.0.0.1:80/health`
+   - Container `webserver` (nginx) muss **gestoppt** bleiben, sonst Port-Konflikt
+2. **Cloudflare Quick Tunnel** für VPN-Zugriff — Service `tunnel` / Container `johnnymonkey-tunnel`:
+   - `cloudflared` mit Host-Netz
+   - leitet auf `http://127.0.0.1:80` weiter
+   - öffentliche URL steht in den **Logs** von `johnnymonkey-tunnel` (`https://….trycloudflare.com`)
+
+**URLs:**
+
+| Zugang | URL |
+|--------|-----|
+| Schul-LAN | `http://192.168.8.1/dashboard` |
+| VPN / von außerhalb | Cloudflare-URL aus Tunnel-Logs → `…/dashboard` |
+| Portainer | `https://192.168.8.1:9443` |
+
+**Tunnel-URL nachschauen:** Portainer → Containers → `johnnymonkey-tunnel` → Logs → nach `trycloudflare.com` suchen.  
+Hinweis: Bei Quick Tunnels ändert sich die URL nach jedem Neustart des Tunnel-Containers.
+
+**Redeploy nach Compose-Änderung:** Stacks → `johnnymonkey` → **Pull and redeploy** (Rebuild an, Re-pull image aus). Nicht über Containers → Recreate.
+
 #### Datenbank-Update in Portainer
 
 Wenn du die lokale Datenbank nach Portainer bringen möchtest:

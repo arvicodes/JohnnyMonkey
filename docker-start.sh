@@ -48,6 +48,8 @@ fi
 if [ "$SHOULD_IMPORT" = "true" ] && [ -f /app/backup_latest.db ]; then
   echo "📥 Importing backup_latest.db..."
   cp /app/backup_latest.db /app/server/data/dev.db
+  ls -lh /app/backup_latest.db /app/server/data/dev.db || true
+  echo "✅ Database imported from backup_latest.db"
 fi
 
 if [ ! -f /app/server/data/dev.db ]; then
