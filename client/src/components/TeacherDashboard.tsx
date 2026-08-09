@@ -33,6 +33,14 @@ import {
 } from '../lib/presentationSlideTemplates';
 import { resolvePreviousLessonFolder } from '../lib/previousLessonFolder';
 import { openLessonFolderFile } from '../lib/openLessonFolderFile';
+import {
+  defaultBrowseStartPath,
+  fetchFolderBrowseListing,
+  lessonFileDisplayLabel,
+  parentFolderPath,
+  PRESENTATION_FILE_BROWSER_ROOT,
+  type LessonFolderFsItem,
+} from '../lib/presentationLessonFileLink';
 import MaterialShareVersionControl from './MaterialShareVersionControl';
 import KACorrectionMode from './KACorrectionMode';
 import { DEFAULT_PROFILE_COLOR } from '../lib/profileColor';
@@ -71,6 +79,7 @@ import {
   Paper,
   List,
   ListItem,
+  ListItemButton,
   ListItemText,
   ListItemIcon,
   ListItemSecondaryAction,
@@ -6094,6 +6103,49 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [dragOverPlanIndex, setDragOverPlanIndex] = useState<number | null>(null);
   /** Anker für „Datei aus Stundenordner“ in der Materialliste */
   const [materiallisteAddMenuAnchor, setMateriallisteAddMenuAnchor] = useState<null | HTMLElement>(null);
+  /** Materialliste: Datei aus anderem Ordner wählen */
+  const [materiallisteBrowseOpen, setMateriallisteBrowseOpen] = useState(false);
+  const [materiallisteBrowsePath, setMateriallisteBrowsePath] = useState(PRESENTATION_FILE_BROWSER_ROOT);
+  const [materiallisteBrowseFolders, setMateriallisteBrowseFolders] = useState<LessonFolderFsItem[]>([]);
+  const [materiallisteBrowseFiles, setMateriallisteBrowseFiles] = useState<LessonFolderFsItem[]>([]);
+  const [materiallisteBrowseLoading, setMateriallisteBrowseLoading] = useState(false);
+  const [materiallisteBrowseError, setMateriallisteBrowseError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!materiallisteBrowseOpen || !materiallisteBrowsePath) {
+      if (!materiallisteBrowseOpen) {
+        setMateriallisteBrowseFolders([]);
+        setMateriallisteBrowseFiles([]);
+        setMateriallisteBrowseLoading(false);
+        setMateriallisteBrowseError(null);
+      }
+      return undefined;
+    }
+    let cancelled = false;
+    setMateriallisteBrowseLoading(true);
+    setMateriallisteBrowseError(null);
+    void fetchFolderBrowseListing(materiallisteBrowsePath)
+      .then((listing) => {
+        if (cancelled) return;
+        setMateriallisteBrowseFolders(listing.folders);
+        setMateriallisteBrowseFiles(listing.files);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setMateriallisteBrowseFolders([]);
+        setMateriallisteBrowseFiles([]);
+        setMateriallisteBrowseError(
+          err instanceof Error ? err.message : 'Ordner konnte nicht geladen werden',
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setMateriallisteBrowseLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [materiallisteBrowseOpen, materiallisteBrowsePath]);
+
   /** Vorstunde: gibt es eine HA-Folie, und ist Abgabe nötig? */
   const [previousLessonHaInfo, setPreviousLessonHaInfo] = useState<{
     exists: boolean;
@@ -21190,14 +21242,14 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                           setEditedLessonInstructions((prev) => ({ ...prev, [lessonPath]: nextContent }));
                           await persistLessonContent(nextContent);
                         };
-                        const addMateriallisteFile = async (path: string) => {
+                        const addMateriallisteFile = async (path: string, nameHint?: string) => {
                           if (!path) return;
                           if (materiallisteFiles.some((f) => (f.path || '').replace(/\\/g, '/') === path.replace(/\\/g, '/'))) {
                             showSnackbar('Datei ist bereits in der Materialliste.', 'warning');
                             return;
                           }
                           const f = allFiles.find((x: any) => x.path === path);
-                          const name = f?.name || path.split('/').pop() || 'Datei';
+                          const name = (nameHint || f?.name || path.split('/').pop() || 'Datei').trim();
                           const noteRaw = window.prompt(
                             `Angabe zu „${name}“ (z. B. 50 × A4 gedruckt) — leer lassen für nur Dateiname:`,
                             ''
@@ -21322,7 +21374,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               Materialliste
                             </Typography>
                             <Box sx={{ position: 'absolute', top: 3, right: 3, display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
-                              <Tooltip title="Material aus Stundenordner wählen">
+                              <Tooltip title="Material hinzufügen (Stundenordner oder anderer Ordner)">
                                 <IconButton
                                   size="small"
                                   onClick={(e) => setMateriallisteAddMenuAnchor(e.currentTarget)}
@@ -21339,7 +21391,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                     lineHeight: 1,
                                     '&:hover': { bgcolor: '#e65100' },
                                   }}
-                                  aria-label="Material aus Stundenordner wählen"
+                                  aria-label="Material hinzufügen"
                                 >
                                   +
                                 </IconButton>
@@ -21352,14 +21404,25 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 transformOrigin={{ vertical: 'top', horizontal: 'right' }}
                                 PaperProps={{
                                   sx: {
-                                    maxHeight: 320,
-                                    minWidth: 220,
-                                    maxWidth: 360,
+                                    maxHeight: 360,
+                                    minWidth: 240,
+                                    maxWidth: 380,
                                     mt: 0.5,
                                   },
                                 }}
                               >
-                                <MenuItem disabled sx={{ fontSize: '0.68rem', opacity: 1, fontWeight: 700, color: '#ef6c00' }}>
+                                <MenuItem
+                                  onClick={() => {
+                                    setMateriallisteAddMenuAnchor(null);
+                                    setMateriallisteBrowsePath(defaultBrowseStartPath(lessonPath));
+                                    setMateriallisteBrowseOpen(true);
+                                  }}
+                                  sx={{ fontSize: '0.75rem', py: 0.7, fontWeight: 700, color: '#ef6c00' }}
+                                >
+                                  <FolderIcon sx={{ fontSize: 15, color: '#ef6c00', mr: 0.75, flexShrink: 0 }} />
+                                  Anderer Ordner…
+                                </MenuItem>
+                                <MenuItem disabled sx={{ fontSize: '0.68rem', opacity: 1, fontWeight: 700, color: '#90a4ae' }}>
                                   Stundenordner
                                 </MenuItem>
                                 {availableToAdd.length === 0 ? (
@@ -21374,7 +21437,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                       key={f.path}
                                       onClick={() => {
                                         setMateriallisteAddMenuAnchor(null);
-                                        void addMateriallisteFile(String(f.path || ''));
+                                        void addMateriallisteFile(String(f.path || ''), String(f.name || ''));
                                       }}
                                       sx={{ fontSize: '0.75rem', py: 0.55 }}
                                     >
@@ -21393,6 +21456,154 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   ))
                                 )}
                               </Menu>
+                              <Dialog
+                                open={materiallisteBrowseOpen}
+                                onClose={() => setMateriallisteBrowseOpen(false)}
+                                fullWidth
+                                maxWidth="sm"
+                              >
+                                <DialogTitle sx={{ ...dialogCloseTitleSx, pb: 1, fontSize: 16 }}>
+                                  Material aus Ordner wählen
+                                  <DialogCloseIconButton onClose={() => setMateriallisteBrowseOpen(false)} />
+                                </DialogTitle>
+                                <DialogContent sx={{ pt: 1 }}>
+                                  {(() => {
+                                    const browseParent = parentFolderPath(materiallisteBrowsePath);
+                                    const browsePathLabel =
+                                      materiallisteBrowsePath === PRESENTATION_FILE_BROWSER_ROOT
+                                        ? PRESENTATION_FILE_BROWSER_ROOT
+                                        : lessonFileDisplayLabel(
+                                            materiallisteBrowsePath,
+                                            PRESENTATION_FILE_BROWSER_ROOT,
+                                          );
+                                    return (
+                                      <>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+                                          <Tooltip title="Überordner">
+                                            <span>
+                                              <IconButton
+                                                size="small"
+                                                disabled={!browseParent}
+                                                onClick={() =>
+                                                  browseParent && setMateriallisteBrowsePath(browseParent)
+                                                }
+                                              >
+                                                <ArrowUpIcon sx={{ fontSize: 18 }} />
+                                              </IconButton>
+                                            </span>
+                                          </Tooltip>
+                                          <Typography
+                                            sx={{
+                                              fontSize: 12,
+                                              fontWeight: 700,
+                                              color: '#37474f',
+                                              flex: 1,
+                                              minWidth: 0,
+                                              overflow: 'hidden',
+                                              textOverflow: 'ellipsis',
+                                              whiteSpace: 'nowrap',
+                                            }}
+                                            title={materiallisteBrowsePath}
+                                          >
+                                            {browsePathLabel}
+                                          </Typography>
+                                          {lessonPath ? (
+                                            <Button
+                                              size="small"
+                                              onClick={() => setMateriallisteBrowsePath(lessonPath)}
+                                              sx={{ textTransform: 'none', fontSize: 11, flexShrink: 0 }}
+                                            >
+                                              Zur Stunde
+                                            </Button>
+                                          ) : null}
+                                        </Box>
+                                        {materiallisteBrowseLoading ? (
+                                          <Typography sx={{ fontSize: 12, color: '#666', py: 1.5 }}>
+                                            Ordner wird geladen…
+                                          </Typography>
+                                        ) : materiallisteBrowseError ? (
+                                          <Typography sx={{ fontSize: 12, color: '#c62828' }}>
+                                            {materiallisteBrowseError}
+                                          </Typography>
+                                        ) : materiallisteBrowseFolders.length === 0 &&
+                                          materiallisteBrowseFiles.length === 0 ? (
+                                          <Typography sx={{ fontSize: 12, color: '#999' }}>
+                                            Dieser Ordner ist leer.
+                                          </Typography>
+                                        ) : (
+                                          <List
+                                            dense
+                                            sx={{
+                                              maxHeight: 360,
+                                              overflow: 'auto',
+                                              border: '1px solid #e0e0e0',
+                                              borderRadius: 1,
+                                              py: 0,
+                                            }}
+                                          >
+                                            {materiallisteBrowseFolders.map((folder) => (
+                                              <ListItemButton
+                                                key={folder.path}
+                                                onClick={() => setMateriallisteBrowsePath(folder.path)}
+                                                sx={{ py: 0.4 }}
+                                              >
+                                                <FolderIcon
+                                                  sx={{ fontSize: 18, color: '#f9a825', mr: 1, flexShrink: 0 }}
+                                                />
+                                                <ListItemText
+                                                  primary={folder.name}
+                                                  primaryTypographyProps={{ fontSize: 13, fontWeight: 600 }}
+                                                />
+                                              </ListItemButton>
+                                            ))}
+                                            {materiallisteBrowseFiles.map((file) => {
+                                              const already = materiallisteFiles.some(
+                                                (m) =>
+                                                  (m.path || '').replace(/\\/g, '/') ===
+                                                  (file.path || '').replace(/\\/g, '/'),
+                                              );
+                                              return (
+                                                <ListItemButton
+                                                  key={file.path}
+                                                  disabled={already}
+                                                  onClick={() => {
+                                                    setMateriallisteBrowseOpen(false);
+                                                    void addMateriallisteFile(file.path, file.name);
+                                                  }}
+                                                  sx={{ py: 0.4 }}
+                                                >
+                                                  <DescriptionIcon
+                                                    sx={{
+                                                      fontSize: 18,
+                                                      color: already ? '#bdbdbd' : '#ef6c00',
+                                                      mr: 1,
+                                                      flexShrink: 0,
+                                                    }}
+                                                  />
+                                                  <ListItemText
+                                                    primary={file.name}
+                                                    secondary={already ? 'Bereits in der Liste' : undefined}
+                                                    primaryTypographyProps={{ fontSize: 13 }}
+                                                    secondaryTypographyProps={{ fontSize: 10 }}
+                                                  />
+                                                </ListItemButton>
+                                              );
+                                            })}
+                                          </List>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
+                                </DialogContent>
+                                <DialogActions>
+                                  <Button
+                                    onClick={() => setMateriallisteBrowseOpen(false)}
+                                    sx={{ textTransform: 'none' }}
+                                  >
+                                    Abbrechen
+                                  </Button>
+                                </DialogActions>
+                              </Dialog>
                               {!isEditing('materialliste') && (
                                 <Tooltip title="Notiz bearbeiten">
                                   <IconButton
@@ -21419,10 +21630,17 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                           {hasFiles && (
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.4, mb: hasText || isEditing('materialliste') ? 0.65 : 0 }}>
                               {materiallisteFiles.map((entry) => {
-                                const stillThere = allFiles.some(
-                                  (f: any) =>
-                                    (f.path || '').replace(/\\/g, '/') === (entry.path || '').replace(/\\/g, '/')
-                                );
+                                const normEntry = (entry.path || '').replace(/\\/g, '/');
+                                const normLesson = (lessonPath || '').replace(/\\/g, '/').replace(/\/+$/, '');
+                                const isInLessonFolder =
+                                  !!normLesson &&
+                                  (normEntry === normLesson || normEntry.startsWith(`${normLesson}/`));
+                                const stillThere =
+                                  !isInLessonFolder ||
+                                  allFiles.some(
+                                    (f: any) =>
+                                      (f.path || '').replace(/\\/g, '/') === normEntry
+                                  );
                                 const isPdf = /\.pdf$/i.test(entry.name);
                                 return (
                                   <Box
@@ -21445,12 +21663,23 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                         type="button"
                                         onClick={() => {
                                           if (!stillThere) {
-                                            showSnackbar('Datei nicht mehr im Stundenordner gefunden.', 'warning');
+                                            showSnackbar(
+                                              isInLessonFolder
+                                                ? 'Datei nicht mehr im Stundenordner gefunden.'
+                                                : 'Datei nicht gefunden.',
+                                              'warning',
+                                            );
                                             return;
                                           }
                                           void handleFileClick({ type: 'file', path: entry.path, name: entry.name });
                                         }}
-                                        title={stillThere ? 'Datei öffnen' : 'Datei fehlt im Ordner'}
+                                        title={
+                                          stillThere
+                                            ? isInLessonFolder
+                                              ? 'Datei öffnen'
+                                              : `Datei öffnen (${lessonFileDisplayLabel(entry.path, PRESENTATION_FILE_BROWSER_ROOT)})`
+                                            : 'Datei fehlt'
+                                        }
                                         sx={{
                                           all: 'unset',
                                           cursor: stillThere ? 'pointer' : 'not-allowed',
@@ -21613,7 +21842,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   lineHeight: 1.3,
                                 }}
                               >
-                                „+“ — Material aus dem Stundenordner wählen
+                                „+“ — Material aus Stundenordner oder anderem Ordner wählen
                               </Typography>
                             </Box>
                           ) : null}

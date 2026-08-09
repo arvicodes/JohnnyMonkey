@@ -1,12 +1,21 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
   Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   IconButton,
+  List,
+  ListItemButton,
+  ListItemText,
   MenuItem,
   Popover,
   Select,
+  TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -30,20 +39,30 @@ import {
   Add as AddIcon,
   TableChartOutlined as TableIcon,
   Superscript as SuperscriptIcon,
+  InsertLink as InsertLinkIcon,
+  LinkOff as LinkOffIcon,
+  ArrowUpward as ArrowUpwardIcon,
+  FolderOpen as FolderOpenIcon,
+  InsertDriveFileOutlined as FileIcon,
 } from '@mui/icons-material';
 import { HIGHLIGHT_PRESETS, TEXT_COLOR_PRESETS } from '../../lib/presentationTheme';
 import { setFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
 import {
   applyFontFamily,
   applyHighlightColor,
+  applyPresentationLink,
   applyTextColor,
   bookmarkSelection,
   clearFontFamilyInSelection,
   clearInlineFormatting,
   execFormat,
   formatEditorSuperscripts,
+  getPresentationLinkAtSelection,
   getSelectionFontSizePx,
+  isSafePresentationHref,
+  normalizePresentationLinkInput,
   nudgeFontSize,
+  removePresentationLink,
   stashEditorSelection,
   insertTextAtCursor,
 } from '../../lib/presentationRichText';
@@ -76,6 +95,16 @@ import {
   tableDeleteRow,
   tableTranspose,
 } from '../../lib/presentationSlideTables';
+import {
+  defaultBrowseStartPath,
+  fetchFolderBrowseListing,
+  fetchLessonFolderLinkableFiles,
+  lessonFileDisplayLabel,
+  parentFolderPath,
+  PRESENTATION_FILE_BROWSER_ROOT,
+  presentationLessonFileHref,
+  type LessonFolderFsItem,
+} from '../../lib/presentationLessonFileLink';
 
 const MOD_LABEL = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform) ? '⌘' : 'Strg';
 
@@ -86,6 +115,8 @@ interface PresentationFormatBarProps {
   activeEditor: HTMLElement | null;
   disabled?: boolean;
   contextLabel?: string;
+  /** Stundenordner — für Verknüpfungen zu lokalen Dateien (PDF, …). */
+  lessonPath?: string;
   onInsertImage?: () => void;
   onEditorChanged?: () => void;
   onMessage?: (message: string) => void;
@@ -95,6 +126,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   activeEditor,
   disabled,
   contextLabel,
+  lessonPath,
   onInsertImage,
   onEditorChanged,
   onMessage,
@@ -106,6 +138,21 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   const [fontPx, setFontPx] = useState<number | ''>('');
   const [fontFamily, setFontFamily] = useState('');
   const [notesTableTick, setNotesTableTick] = useState(0);
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkHasExisting, setLinkHasExisting] = useState(false);
+  const [linkFileSource, setLinkFileSource] = useState<'lesson' | 'browse'>('lesson');
+  const [lessonFiles, setLessonFiles] = useState<LessonFolderFsItem[]>([]);
+  const [lessonFilesLoading, setLessonFilesLoading] = useState(false);
+  const [lessonFilesError, setLessonFilesError] = useState<string | null>(null);
+  const [browsePath, setBrowsePath] = useState(PRESENTATION_FILE_BROWSER_ROOT);
+  const [browseFolders, setBrowseFolders] = useState<LessonFolderFsItem[]>([]);
+  const [browseFiles, setBrowseFiles] = useState<LessonFolderFsItem[]>([]);
+  const [browseLoading, setBrowseLoading] = useState(false);
+  const [browseError, setBrowseError] = useState<string | null>(null);
+  const [selectedLessonFile, setSelectedLessonFile] = useState<string>('');
+  const [selectedFileMeta, setSelectedFileMeta] = useState<LessonFolderFsItem | null>(null);
+  const linkRangeRef = useRef<Range | null>(null);
 
   const isNotesEditor = Boolean(
     activeEditor?.getAttribute('data-pres-notes-zone') === 'true' || contextLabel === 'Notizen',
@@ -210,6 +257,197 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     stashEditorSelection(activeEditor);
   };
 
+  const closeLinkDialog = useCallback(() => {
+    setLinkDialogOpen(false);
+    linkRangeRef.current = null;
+    setLinkFileSource('lesson');
+    setSelectedFileMeta(null);
+    setFormatBarInteracting(false);
+  }, []);
+
+  const captureLinkSelection = useCallback(() => {
+    if (!activeEditor) {
+      linkRangeRef.current = null;
+      return;
+    }
+    stashEditorSelection(activeEditor);
+    bookmarkSelection(activeEditor);
+    const sel = window.getSelection();
+    if (sel?.rangeCount) {
+      const range = sel.getRangeAt(0);
+      if (activeEditor.contains(range.commonAncestorContainer)) {
+        linkRangeRef.current = range.cloneRange();
+        return;
+      }
+    }
+    linkRangeRef.current = null;
+  }, [activeEditor]);
+
+  const restoreLinkSelection = useCallback(() => {
+    if (!activeEditor || !linkRangeRef.current) return false;
+    try {
+      activeEditor.focus({ preventScroll: true });
+      const sel = window.getSelection();
+      if (!sel) return false;
+      sel.removeAllRanges();
+      sel.addRange(linkRangeRef.current.cloneRange());
+      stashEditorSelection(activeEditor);
+      bookmarkSelection(activeEditor);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [activeEditor]);
+
+  const openLinkDialog = useCallback(() => {
+    if (!activeEditor) return;
+    setFormatBarInteracting(true);
+    captureLinkSelection();
+    const existing = getPresentationLinkAtSelection(activeEditor);
+    setLinkHasExisting(Boolean(existing));
+    setLinkUrl(existing?.href || '');
+    setSelectedLessonFile(existing?.lessonFilePath || '');
+    setSelectedFileMeta(
+      existing?.lessonFilePath
+        ? {
+            type: 'file',
+            name: existing.lessonFilePath.split('/').pop() || existing.lessonFilePath,
+            path: existing.lessonFilePath,
+          }
+        : null,
+    );
+    setLinkFileSource('lesson');
+    setBrowsePath(defaultBrowseStartPath(lessonPath));
+    setBrowseError(null);
+    setLessonFilesError(null);
+    setLinkDialogOpen(true);
+  }, [activeEditor, captureLinkSelection, lessonPath]);
+
+  useEffect(() => {
+    if (!linkDialogOpen || linkFileSource !== 'lesson' || !lessonPath) {
+      if (!linkDialogOpen) {
+        setLessonFiles([]);
+        setLessonFilesLoading(false);
+      }
+      return undefined;
+    }
+    let cancelled = false;
+    setLessonFilesLoading(true);
+    setLessonFilesError(null);
+    void fetchLessonFolderLinkableFiles(lessonPath)
+      .then((files) => {
+        if (!cancelled) setLessonFiles(files);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setLessonFiles([]);
+          setLessonFilesError(err instanceof Error ? err.message : 'Dateien konnten nicht geladen werden');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLessonFilesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [linkDialogOpen, linkFileSource, lessonPath]);
+
+  useEffect(() => {
+    if (!linkDialogOpen || linkFileSource !== 'browse' || !browsePath) {
+      if (!linkDialogOpen) {
+        setBrowseFolders([]);
+        setBrowseFiles([]);
+        setBrowseLoading(false);
+      }
+      return undefined;
+    }
+    let cancelled = false;
+    setBrowseLoading(true);
+    setBrowseError(null);
+    void fetchFolderBrowseListing(browsePath)
+      .then((listing) => {
+        if (!cancelled) {
+          setBrowseFolders(listing.folders);
+          setBrowseFiles(listing.files);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setBrowseFolders([]);
+          setBrowseFiles([]);
+          setBrowseError(err instanceof Error ? err.message : 'Ordner konnte nicht geladen werden');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setBrowseLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [linkDialogOpen, linkFileSource, browsePath]);
+
+  const selectFileForLink = (file: LessonFolderFsItem) => {
+    setSelectedLessonFile(file.path);
+    setSelectedFileMeta(file);
+    setLinkUrl(presentationLessonFileHref(file.path, file.name));
+  };
+
+  const applyLinkFromDialog = (href: string, options?: { label?: string; lessonFilePath?: string }) => {
+    if (!activeEditor) return;
+    restoreLinkSelection();
+    applyAndNotify(() => {
+      restoreLinkSelection();
+      const ok = applyPresentationLink(activeEditor, href, options);
+      if (!ok) {
+        onMessage?.('Ungültige Verknüpfung');
+        return;
+      }
+      onMessage?.(
+        options?.lessonFilePath
+          ? `Verknüpfung zu „${options.label || options.lessonFilePath.split('/').pop() || options.lessonFilePath}“`
+          : 'Verknüpfung gesetzt',
+      );
+    });
+    closeLinkDialog();
+  };
+
+  const applyUrlLink = () => {
+    const href = normalizePresentationLinkInput(linkUrl);
+    if (!isSafePresentationHref(href)) {
+      onMessage?.('Bitte http(s)-URL, App-Pfad (/…) oder mailto: eingeben');
+      return;
+    }
+    applyLinkFromDialog(href);
+  };
+
+  const applySelectedLessonFile = (file?: LessonFolderFsItem) => {
+    const item =
+      file ||
+      selectedFileMeta ||
+      lessonFiles.find((f) => f.path === selectedLessonFile) ||
+      browseFiles.find((f) => f.path === selectedLessonFile) ||
+      null;
+    if (!item) {
+      onMessage?.('Bitte eine Datei wählen');
+      return;
+    }
+    const href = presentationLessonFileHref(item.path, item.name);
+    if (!href || !isSafePresentationHref(href)) {
+      onMessage?.('Datei konnte nicht verknüpft werden');
+      return;
+    }
+    applyLinkFromDialog(href, {
+      label: item.name,
+      lessonFilePath: item.path,
+    });
+  };
+
+  const browseParent = parentFolderPath(browsePath);
+  const browsePathLabel =
+    browsePath === PRESENTATION_FILE_BROWSER_ROOT
+      ? PRESENTATION_FILE_BROWSER_ROOT
+      : lessonFileDisplayLabel(browsePath, PRESENTATION_FILE_BROWSER_ROOT);
+
   return (
     <Box
       data-presentation-format-bar
@@ -270,6 +508,23 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
             }
           >
             <SuperscriptIcon sx={{ fontSize: 17 }} />
+          </IconButton>
+        </span>
+      </Tooltip>
+
+      <Tooltip title="Verknüpfung (URL oder lokale Datei)">
+        <span>
+          <IconButton
+            size="small"
+            disabled={disabled || !activeEditor}
+            sx={btnSx}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              bookmarkSelection(activeEditor);
+            }}
+            onClick={openLinkDialog}
+          >
+            <InsertLinkIcon sx={{ fontSize: 17 }} />
           </IconButton>
         </span>
       </Tooltip>
@@ -880,6 +1135,253 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
           })()}
       </Popover>
 
+      <Dialog
+        open={linkDialogOpen}
+        onClose={closeLinkDialog}
+        fullWidth
+        maxWidth="sm"
+        data-presentation-format-ui
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <DialogTitle sx={{ pb: 1, fontSize: 16 }}>Verknüpfung einfügen</DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <Typography sx={{ fontSize: 12, color: '#666', mb: 1 }}>
+            Text markieren, dann URL oder eine lokale Datei wählen. Beim Präsentieren öffnet der Link in
+            einem neuen Tab.
+          </Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            size="small"
+            label="URL (Webadresse)"
+            placeholder="https://… oder /api/…"
+            value={linkUrl}
+            onChange={(e) => {
+              setLinkUrl(e.target.value);
+              setSelectedLessonFile('');
+              setSelectedFileMeta(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                applyUrlLink();
+              }
+            }}
+            sx={{ mb: 1.5 }}
+          />
+
+          <Box sx={{ display: 'flex', gap: 0.75, mb: 1, flexWrap: 'wrap' }}>
+            <Button
+              size="small"
+              variant={linkFileSource === 'lesson' ? 'contained' : 'outlined'}
+              onClick={() => setLinkFileSource('lesson')}
+              sx={{ textTransform: 'none', fontSize: 12 }}
+            >
+              Stundenordner
+            </Button>
+            <Button
+              size="small"
+              variant={linkFileSource === 'browse' ? 'contained' : 'outlined'}
+              startIcon={<FolderOpenIcon sx={{ fontSize: 16 }} />}
+              onClick={() => {
+                setLinkFileSource('browse');
+                setBrowsePath((prev) => prev || defaultBrowseStartPath(lessonPath));
+              }}
+              sx={{ textTransform: 'none', fontSize: 12 }}
+            >
+              Anderer Ordner…
+            </Button>
+          </Box>
+
+          {linkFileSource === 'lesson' ? (
+            <>
+              <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#37474f', mb: 0.75 }}>
+                Datei im Stundenordner
+              </Typography>
+              {!lessonPath ? (
+                <Typography sx={{ fontSize: 12, color: '#999' }}>
+                  Kein Stundenordner — wechsle zu „Anderer Ordner…“ oder nutze eine Web-URL.
+                </Typography>
+              ) : lessonFilesLoading ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1.5 }}>
+                  <CircularProgress size={18} />
+                  <Typography sx={{ fontSize: 12, color: '#666' }}>Dateien werden geladen…</Typography>
+                </Box>
+              ) : lessonFilesError ? (
+                <Typography sx={{ fontSize: 12, color: '#c62828' }}>{lessonFilesError}</Typography>
+              ) : lessonFiles.length === 0 ? (
+                <Typography sx={{ fontSize: 12, color: '#999' }}>Keine Dateien im Stundenordner.</Typography>
+              ) : (
+                <List
+                  dense
+                  sx={{
+                    maxHeight: 240,
+                    overflow: 'auto',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: 1,
+                    py: 0,
+                  }}
+                >
+                  {lessonFiles.map((file) => {
+                    const selected = selectedLessonFile === file.path;
+                    return (
+                      <ListItemButton
+                        key={file.path}
+                        selected={selected}
+                        onClick={() => selectFileForLink(file)}
+                        onDoubleClick={() => applySelectedLessonFile(file)}
+                        sx={{ py: 0.35 }}
+                      >
+                        <ListItemText
+                          primary={file.name}
+                          secondary={lessonFileDisplayLabel(file.path, lessonPath)}
+                          primaryTypographyProps={{ fontSize: 13 }}
+                          secondaryTypographyProps={{ fontSize: 10, noWrap: true }}
+                        />
+                      </ListItemButton>
+                    );
+                  })}
+                </List>
+              )}
+            </>
+          ) : (
+            <>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.75 }}>
+                <Tooltip title="Überordner">
+                  <span>
+                    <IconButton
+                      size="small"
+                      disabled={!browseParent}
+                      onClick={() => browseParent && setBrowsePath(browseParent)}
+                      sx={{ p: 0.4 }}
+                    >
+                      <ArrowUpwardIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                <Typography
+                  sx={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: '#37474f',
+                    flex: 1,
+                    minWidth: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                  title={browsePath}
+                >
+                  {browsePathLabel}
+                </Typography>
+                {lessonPath ? (
+                  <Button
+                    size="small"
+                    onClick={() => setBrowsePath(lessonPath)}
+                    sx={{ textTransform: 'none', fontSize: 11, flexShrink: 0 }}
+                  >
+                    Zur Stunde
+                  </Button>
+                ) : null}
+              </Box>
+              {browseLoading ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1.5 }}>
+                  <CircularProgress size={18} />
+                  <Typography sx={{ fontSize: 12, color: '#666' }}>Ordner wird geladen…</Typography>
+                </Box>
+              ) : browseError ? (
+                <Typography sx={{ fontSize: 12, color: '#c62828' }}>{browseError}</Typography>
+              ) : browseFolders.length === 0 && browseFiles.length === 0 ? (
+                <Typography sx={{ fontSize: 12, color: '#999' }}>Dieser Ordner ist leer.</Typography>
+              ) : (
+                <List
+                  dense
+                  sx={{
+                    maxHeight: 260,
+                    overflow: 'auto',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: 1,
+                    py: 0,
+                  }}
+                >
+                  {browseFolders.map((folder) => (
+                    <ListItemButton
+                      key={folder.path}
+                      onClick={() => setBrowsePath(folder.path)}
+                      sx={{ py: 0.35 }}
+                    >
+                      <FolderOpenIcon sx={{ fontSize: 18, color: '#f9a825', mr: 1, flexShrink: 0 }} />
+                      <ListItemText
+                        primary={folder.name}
+                        primaryTypographyProps={{ fontSize: 13, fontWeight: 600 }}
+                      />
+                    </ListItemButton>
+                  ))}
+                  {browseFiles.map((file) => {
+                    const selected = selectedLessonFile === file.path;
+                    return (
+                      <ListItemButton
+                        key={file.path}
+                        selected={selected}
+                        onClick={() => selectFileForLink(file)}
+                        onDoubleClick={() => applySelectedLessonFile(file)}
+                        sx={{ py: 0.35 }}
+                      >
+                        <FileIcon sx={{ fontSize: 18, color: '#78909c', mr: 1, flexShrink: 0 }} />
+                        <ListItemText
+                          primary={file.name}
+                          primaryTypographyProps={{ fontSize: 13 }}
+                        />
+                      </ListItemButton>
+                    );
+                  })}
+                </List>
+              )}
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 1.5, gap: 0.5, flexWrap: 'wrap' }}>
+          {linkHasExisting ? (
+            <Button
+              color="inherit"
+              startIcon={<LinkOffIcon />}
+              onClick={() => {
+                restoreLinkSelection();
+                applyAndNotify(() => {
+                  restoreLinkSelection();
+                  if (!removePresentationLink(activeEditor)) {
+                    onMessage?.('Kein Link an der Auswahl');
+                    return;
+                  }
+                  onMessage?.('Verknüpfung entfernt');
+                });
+                closeLinkDialog();
+              }}
+              sx={{ mr: 'auto', textTransform: 'none' }}
+            >
+              Entfernen
+            </Button>
+          ) : (
+            <Box sx={{ mr: 'auto' }} />
+          )}
+          <Button onClick={closeLinkDialog} sx={{ textTransform: 'none' }}>
+            Abbrechen
+          </Button>
+          {selectedLessonFile ? (
+            <Button
+              variant="contained"
+              onClick={() => applySelectedLessonFile()}
+              sx={{ textTransform: 'none' }}
+            >
+              Datei verknüpfen
+            </Button>
+          ) : (
+            <Button variant="contained" onClick={applyUrlLink} sx={{ textTransform: 'none' }}>
+              URL verknüpfen
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

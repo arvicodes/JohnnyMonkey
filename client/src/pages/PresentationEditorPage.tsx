@@ -2482,6 +2482,7 @@ const PresentationEditorPage: React.FC = () => {
               <PresentationFormatBar
                 activeEditor={activeEditor}
                 contextLabel={formatContextLabel}
+                lessonPath={lessonPath}
                 onEditorChanged={flushActiveEditor}
                 onMessage={(msg) => setSnackbar(msg)}
                 onInsertImage={

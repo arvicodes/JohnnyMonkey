@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-08-08T05:29:57.140Z",
+  "updatedAt": "2026-08-09T06:41:59.111Z",
   "templates": {
     "start": {
       "layout": "title-slide",
@@ -522,6 +522,88 @@
         "zoneRevealSteps": {}
       },
       "createdAt": "2026-08-08T05:29:57.137Z"
+    },
+    {
+      "id": "custom-1786257437071-02vi",
+      "label": "Experimentell",
+      "shortLabel": "E",
+      "hint": "Eigene Vorlage",
+      "payload": {
+        "layout": "title-content",
+        "title": "Hausaufgabe: KI erleben - Was geht schon?",
+        "body": "Setzte dich intensiv mit einem der\nfolgenden Themen auseinander und probiere die Tools aus (siehe PDF). Charakterisiere das erprobte Tool nach\ndem vorgegebenen Schema: \n\n\n \n  KI\n  \n  „Welche Bezeichnung gibst du der\n  Künstlichen KI?“\n  \n   \n  \n \n  \n  Aufgabe\n  \n  \n  „Was macht die KI?“, \n  „Welches Problem löst\n  die KI?“,\n  „Wessen Aufgabe\n  übernimmt die KI?“\n  \n  \n   \n  \n \n \n  \n  Umgebung\n  \n  \n  „Welche\n  Umgebung findet die KI vor?“\n  \n  \n   \n  \n \n \n  \n  Eingabe-Daten\n  \n  \n  „Welche Daten benötigt\n  die KI?“\n  \n  \n   \n  \n \n \n  \n  Sensoren\n  \n  \n  „Woher\n  stammen diese Daten?“\n  \n  \n   \n  \n \n \n  \n  Ausgabe-Daten\n  \n  \n  „Welche Daten gibt die\n  KI aus?“\n  \n  \n   \n  \n \n \n  \n  Aktoren\n  \n  \n  „Wie\n  gibt die KI diese Daten aus?“\n  \n  \n   \n  \n \n \n  \n  wünschenswerte\n  Qualitäten\n  \n  \n  „Woran kann man die\n  Leistungsfähigkeit der KI bewerten?“",
+        "speakerNotes": "",
+        "preparationNotes": "",
+        "materialNotes": "",
+        "subtitle": "",
+        "bodyLeft": "",
+        "bodyRight": "",
+        "imagePath": "",
+        "imageCaption": "",
+        "bodyStyle": "plain",
+        "titleAlign": "left",
+        "accentColor": "#C62828",
+        "titleHtml": "<p><span data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important;\">Hausaufgabe:&nbsp;</span><span style=\"font-weight: 400;\">KI erleben - Was geht schon?&nbsp;</span></p>",
+        "bodyHtml": "<div style=\"margin-left: 560px;\"><b><br></b></div><div style=\"margin-left: 560px;\"><b><br></b></div><div style=\"margin-left: 560px;\"><b><br></b></div><div style=\"margin-left: 560px;\"><b>Setzte</b>&nbsp;dich intensiv mit <u>einem</u> der\nfolgenden Themen auseinander und probiere die Tools aus <span style=\"font-style: italic;\">(siehe PDF)</span>.&nbsp;<b style=\"text-align: justify; text-indent: -18pt;\">Charakterisiere</b><span style=\"text-align: justify; text-indent: -18pt;\">&nbsp;das erprobte Tool nach\ndem vorgegebenen Schema:</span><p class=\"MsoListParagraph\" style=\"text-align:justify\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><o:p>&nbsp;</o:p></span></p>\n\n<table class=\"Stundenverlaufsskizzen\" border=\"1\" cellspacing=\"0\" cellpadding=\"0\" style=\"margin-left: 35.2pt; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; width: 100%; border-collapse: collapse; table-layout: fixed; font-size: inherit;\" data-pres-table=\"1\" data-pres-table-theme=\"gelb\"><colgroup><col style=\"width: 17.8939%;\"><col style=\"width: 62.5661%;\"><col style=\"width: 19.5398%;\"></colgroup>\n <thead><tr><th style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 229, 153); font-weight: 700; vertical-align: middle; word-break: break-word; text-align: left;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  5\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><b>KI<o:p></o:p></b></span></p>\n  </th><th style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 229, 153); font-weight: 700; vertical-align: middle; word-break: break-word; text-align: left;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  1\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><i><span style=\"line-height: 120%;\">„Welche Bezeichnung gibst du der\n  Künstlichen KI?“</span></i><b><i><span style=\"line-height: 120%;\"><o:p></o:p></span></i></b></span></p>\n  </th><th style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 229, 153); font-weight: 700; vertical-align: middle; word-break: break-word; text-align: left;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  1\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><b><o:p>&nbsp;</o:p></b></span></p>\n  </th></tr></thead><tbody>\n <tr style=\"height: 95px;\">\n  <td width=\"74\" valign=\"top\" style=\"width: 55.15pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; height: 95px; min-height: 95px; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  68\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><b>Aufgabe<o:p></o:p></b></span></p>\n  </td>\n  <td width=\"139\" valign=\"top\" style=\"width: 104.5pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; height: 95px; min-height: 95px; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  64\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><i><span style=\"line-height: 120%;\">„Was macht die KI?“, </span></i><i><span style=\"line-height: 120%;\"><o:p></o:p></span></i></span></p>\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  64\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><i><span style=\"line-height: 120%;\">„Welches Problem löst\n  die KI?“,</span></i><i><span style=\"line-height: 120%;\"><o:p></o:p></span></i></span></p>\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  64\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><i><span style=\"line-height: 120%;\">„Wessen Aufgabe\n  übernimmt die KI?“</span></i><i><span style=\"line-height: 120%;\"><o:p></o:p></span></i></span></p>\n  </td>\n  <td width=\"329\" valign=\"top\" style=\"width: 246.85pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; height: 95px; min-height: 95px; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  64\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><o:p>&nbsp;</o:p></span></p>\n  </td>\n </tr>\n <tr>\n  <td width=\"74\" valign=\"top\" style=\"width: 55.15pt; border: 1px solid rgb(232, 192, 112); padding: 2.85pt; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  4\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><b>Umgebung<o:p></o:p></b></span></p>\n  </td>\n  <td width=\"139\" valign=\"top\" style=\"width: 104.5pt; border: 1px solid rgb(232, 192, 112); padding: 2.85pt; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><i><span style=\"line-height: 120%;\">„Welche\n  Umgebung findet die KI vor?“<o:p></o:p></span></i></span></p>\n  </td>\n  <td width=\"329\" valign=\"top\" style=\"width: 246.85pt; border: 1px solid rgb(232, 192, 112); padding: 2.85pt; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><o:p>&nbsp;</o:p></span></p>\n  </td>\n </tr>\n <tr>\n  <td width=\"74\" valign=\"top\" style=\"width: 55.15pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  68\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><b>Eingabe-Daten<o:p></o:p></b></span></p>\n  </td>\n  <td width=\"139\" valign=\"top\" style=\"width: 104.5pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  64\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><i><span style=\"line-height: 120%;\">„Welche Daten benötigt\n  die KI?“</span><o:p></o:p></i></span></p>\n  </td>\n  <td width=\"329\" valign=\"top\" style=\"width: 246.85pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  64\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><o:p>&nbsp;</o:p></span></p>\n  </td>\n </tr>\n <tr>\n  <td width=\"74\" valign=\"top\" style=\"width: 55.15pt; border: 1px solid rgb(232, 192, 112); padding: 2.85pt; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  4\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><b>Sensoren<o:p></o:p></b></span></p>\n  </td>\n  <td width=\"139\" valign=\"top\" style=\"width: 104.5pt; border: 1px solid rgb(232, 192, 112); padding: 2.85pt; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><i><span style=\"line-height: 120%;\">„Woher\n  stammen diese Daten?“</span><o:p></o:p></i></span></p>\n  </td>\n  <td width=\"329\" valign=\"top\" style=\"width: 246.85pt; border: 1px solid rgb(232, 192, 112); padding: 2.85pt; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><o:p>&nbsp;</o:p></span></p>\n  </td>\n </tr>\n <tr>\n  <td width=\"74\" valign=\"top\" style=\"width: 55.15pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  68\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><b>Ausgabe-Daten<o:p></o:p></b></span></p>\n  </td>\n  <td width=\"139\" valign=\"top\" style=\"width: 104.5pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  64\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><i><span style=\"line-height: 120%;\">„Welche Daten gibt die\n  KI aus?“</span><o:p></o:p></i></span></p>\n  </td>\n  <td width=\"329\" valign=\"top\" style=\"width: 246.85pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  64\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><o:p>&nbsp;</o:p></span></p>\n  </td>\n </tr>\n <tr>\n  <td width=\"74\" valign=\"top\" style=\"width: 55.15pt; border: 1px solid rgb(232, 192, 112); padding: 2.85pt; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  4\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><b>Aktoren<o:p></o:p></b></span></p>\n  </td>\n  <td width=\"139\" style=\"width: 104.5pt; border: 1px solid rgb(232, 192, 112); padding: 2.85pt; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><i><span style=\"line-height: 120%;\">„Wie\n  gibt die KI diese Daten aus?“</span><o:p></o:p></i></span></p>\n  </td>\n  <td width=\"329\" valign=\"top\" style=\"width: 246.85pt; border: 1px solid rgb(232, 192, 112); padding: 2.85pt; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><o:p>&nbsp;</o:p></span></p>\n  </td>\n </tr>\n <tr>\n  <td width=\"74\" valign=\"top\" style=\"width: 55.15pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  68\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><b>wünschenswerte\n  Qualitäten<o:p></o:p></b></span></p>\n  </td>\n  <td width=\"139\" valign=\"top\" style=\"width: 104.5pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  64\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><i><span style=\"line-height: 120%;\">„Woran kann man die\n  Leistungsfähigkeit der KI bewerten?“</span><o:p></o:p></i></span></p>\n  </td>\n  <td width=\"329\" valign=\"top\" style=\"width: 246.85pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  64\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><o:p>&nbsp;</o:p></span></p>\n  </td>\n </tr>\n</tbody></table>\n\n<!--EndFragment--></div><div style=\"margin-left: 644px;\">\n<p class=\"p2\"><br></p><p class=\"p2\"><br></p></div><div></div>",
+        "subtitleHtml": "",
+        "bodyLeftHtml": "",
+        "bodyRightHtml": "",
+        "imageCaptionHtml": "",
+        "speakerNotesHtml": "<p><br></p>",
+        "preparationHtml": "<p><br></p>",
+        "materialHtml": "<p><br></p>",
+        "elements": [
+          {
+            "id": "el-1786085516421-0-2f7",
+            "type": "image",
+            "x": 83.64998242736645,
+            "y": 0,
+            "w": 16.35001757263355,
+            "h": 17.753045923149017,
+            "src": "__GRAFIKEN__/HA.png",
+            "zIndex": 1,
+            "revealStep": 0,
+            "imageFit": "contain"
+          },
+          {
+            "id": "el-1786170593005",
+            "type": "image",
+            "x": 4.026213317557581,
+            "y": 16.359221583677858,
+            "w": 22.56384366467122,
+            "h": 42.009287821888414,
+            "src": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.04 Merkmale, KI-Welt/Experimentierzeit.png",
+            "zIndex": 2,
+            "imageFit": "contain",
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-1786170627952",
+            "type": "text",
+            "x": 4.026213317557581,
+            "y": 55.59661060821052,
+            "w": 22.56384366467122,
+            "h": 8.169925623800383,
+            "html": "<p><span style=\"font-weight: 700; background-color: rgb(255, 255, 255);\"><span style=\"\"><span style=\"\"><span style=\"\"><span style=\"\"><span data-pres-fs=\"44\" style=\"font-size: 44px !important;\">Experimentierzeit!</span></span></span></span></span></span></p>",
+            "zIndex": 3
+          },
+          {
+            "id": "el-1786257504693",
+            "type": "text",
+            "x": 10.871188222783852,
+            "y": 69.1665362320109,
+            "w": 38,
+            "h": 22,
+            "html": "<p><b><i><u><span data-pres-color=\"#1565C0\" style=\"color: rgb(21, 101, 192) !important;\">Themen (PDF)</span></u></i></b></p>",
+            "zIndex": 4
+          }
+        ],
+        "transition": "zoom",
+        "revealEnabled": true,
+        "zoneRevealSteps": {},
+        "homeworkSubmissionRequired": true
+      },
+      "createdAt": "2026-08-09T06:41:59.111Z"
     }
   ]
 }

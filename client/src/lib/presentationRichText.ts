@@ -768,6 +768,7 @@ export function normalizePresentationAnchorsInPlace(root: ParentNode): void {
     a.setAttribute('href', href);
     a.setAttribute('target', '_blank');
     a.setAttribute('rel', 'noopener noreferrer');
+    // data-pres-lesson-file bleibt erhalten (Datei-Verknüpfung aus dem Stundenordner)
   });
 }
 
@@ -775,6 +776,143 @@ export function normalizePresentationAnchorsInPlace(root: ParentNode): void {
 export function isPresentationLinkClickTarget(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
   return Boolean(target.closest('a[href]'));
+}
+
+const PRES_LESSON_FILE_ATTR = 'data-pres-lesson-file';
+
+/** URL-Eingabe normalisieren (www. → https://, Leerzeichen trimmen). */
+export function normalizePresentationLinkInput(raw: string): string {
+  let href = (raw || '').trim();
+  if (!href) return '';
+  if (/^www\./i.test(href)) href = `https://${href}`;
+  return href;
+}
+
+export function getPresentationLinkAtSelection(
+  editor: HTMLElement | null,
+): { anchor: HTMLAnchorElement; href: string; lessonFilePath: string } | null {
+  if (!editor) return null;
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return null;
+  let node: Node | null = sel.anchorNode;
+  if (node?.nodeType === Node.TEXT_NODE) node = node.parentNode;
+  if (!(node instanceof Element) || !editor.contains(node)) return null;
+  const anchor = node.closest('a[href]') as HTMLAnchorElement | null;
+  if (!anchor || !editor.contains(anchor)) return null;
+  return {
+    anchor,
+    href: (anchor.getAttribute('href') || '').trim(),
+    lessonFilePath: (anchor.getAttribute(PRES_LESSON_FILE_ATTR) || '').trim(),
+  };
+}
+
+/**
+ * Auswahl (oder Cursor) als Link setzen.
+ * Bei leerer Auswahl wird `label` bzw. der Dateiname/URL als Linktext eingefügt.
+ */
+export function applyPresentationLink(
+  editor: HTMLElement | null,
+  hrefRaw: string,
+  options?: { label?: string; lessonFilePath?: string },
+): boolean {
+  if (!editor) return false;
+  const href = normalizePresentationLinkInput(hrefRaw);
+  if (!isSafePresentationHref(href)) return false;
+
+  stashEditorSelection(editor);
+  // Live-Auswahl (auch Cursor) bevorzugen — sonst greift eine alte Markierung
+  const liveSel = window.getSelection();
+  const liveRange =
+    liveSel?.rangeCount &&
+    editor.contains(liveSel.getRangeAt(0).commonAncestorContainer)
+      ? liveSel.getRangeAt(0)
+      : null;
+  if (!liveRange) {
+    if (!ensureEditorSelection(editor)) focusEditor(editor);
+  } else {
+    editor.focus({ preventScroll: true });
+  }
+
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return false;
+  const range = sel.getRangeAt(0);
+  if (!editor.contains(range.commonAncestorContainer)) return false;
+
+  const existing = getPresentationLinkAtSelection(editor);
+  if (existing?.anchor) {
+    existing.anchor.setAttribute('href', href);
+    existing.anchor.setAttribute('target', '_blank');
+    existing.anchor.setAttribute('rel', 'noopener noreferrer');
+    if (options?.lessonFilePath) {
+      existing.anchor.setAttribute(PRES_LESSON_FILE_ATTR, options.lessonFilePath);
+    } else {
+      existing.anchor.removeAttribute(PRES_LESSON_FILE_ATTR);
+    }
+    keepEditorSelection(editor);
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  }
+
+  const label =
+    (options?.label || '').trim() ||
+    (sel.toString() || '').trim() ||
+    (options?.lessonFilePath || '').split('/').pop() ||
+    href;
+
+  const a = editor.ownerDocument.createElement('a');
+  a.setAttribute('href', href);
+  a.setAttribute('target', '_blank');
+  a.setAttribute('rel', 'noopener noreferrer');
+  if (options?.lessonFilePath) {
+    a.setAttribute(PRES_LESSON_FILE_ATTR, options.lessonFilePath);
+  }
+
+  if (sel.isCollapsed || !(sel.toString() || '').trim()) {
+    a.textContent = label;
+    range.insertNode(a);
+    range.setStartAfter(a);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  } else {
+    try {
+      range.surroundContents(a);
+    } catch {
+      const frag = range.extractContents();
+      if (!frag.textContent?.replace(/\u200b/g, '').trim()) {
+        a.textContent = label;
+      } else {
+        a.appendChild(frag);
+      }
+      range.insertNode(a);
+    }
+    sel.removeAllRanges();
+    const after = editor.ownerDocument.createRange();
+    after.selectNodeContents(a);
+    after.collapse(false);
+    sel.addRange(after);
+  }
+
+  keepEditorSelection(editor);
+  editor.dispatchEvent(new Event('input', { bubbles: true }));
+  return true;
+}
+
+/** Link um die Auswahl / den Cursor entfernen (Text behalten). */
+export function removePresentationLink(editor: HTMLElement | null): boolean {
+  if (!editor) return false;
+  stashEditorSelection(editor);
+  ensureEditorSelection(editor) || focusEditor(editor);
+  const found = getPresentationLinkAtSelection(editor);
+  if (!found?.anchor) return false;
+  const a = found.anchor;
+  const parent = a.parentNode;
+  if (!parent) return false;
+  while (a.firstChild) parent.insertBefore(a.firstChild, a);
+  parent.removeChild(a);
+  keepEditorSelection(editor);
+  editor.dispatchEvent(new Event('input', { bubbles: true }));
+  return true;
 }
 
 /**
