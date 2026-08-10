@@ -2,8 +2,8 @@ version: '3.8'
 
 services:
   johnnymonkey:
-    # Temporär nur lokales Image — kein Build (Server hatte ENOSPC/OOM).
-    # Später wieder build: + pull_policy: build, wenn genug RAM/Disk da ist.
+    # Image lokal (kein Full-Build auf dem 2-GB-Schulserver).
+    # Code-Updates: prebuilt ins Container kopieren + docker commit, oder leichtes Runtime-Dockerfile.
     image: johnnymonkey-johnnymonkey:latest
     pull_policy: never
     container_name: johnnymonkey-app
@@ -20,6 +20,8 @@ services:
       - JM_REIHEN_PATH=/app/J-M-Reihen
     volumes:
       - johnnymonkey_db:/app/server/data
+      # Aktuelle Materialien aus dem Git-Checkout des Stacks (ohne Image-Rebuild)
+      - ./J-M-Reihen:/app/J-M-Reihen:ro
       - ./material:/app/material:ro
       - johnnymonkey_logs:/app/logs
     restart: unless-stopped

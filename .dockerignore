@@ -7,11 +7,6 @@
 node_modules
 **/node_modules
 
-# Build outputs (werden im Container gebaut)
-client/build
-server/dist
-server/client-build
-
 # Logs
 *.log
 logs
@@ -33,44 +28,43 @@ logs
 .DS_Store
 Thumbs.db
 
-# Docker
-Dockerfile*
-docker-compose*.yml
-.dockerignore
-
-# Documentation
+# Docs (nicht nötig im Image)
 *.md
 !README.md
 
-# Backups
+# Backups außer Deploy-DB
 backups/
 *.db
 *.sqlite3
 backup_*.db
-# BUT: backup_latest.db is needed for container initialization
 !backup_latest.db
-!server/prisma/dev.db
 
-# Development scripts (nicht für Production)
+# Development scripts
 start-all.sh
 start-app.sh
 stop-app.sh
 restart-app.sh
 scripts/
 
-# Test files
+# Tests
 **/*.test.ts
 **/*.test.tsx
 **/*.spec.ts
 **/*.spec.tsx
 test/
 tests/
-
-# Coverage
 coverage/
 
-# Temporary files
+# Temp
 tmp/
 temp/
 *.tmp
 
+# Materialien liegen per Volume-Mount, nicht im Image (spart ~1.5 GB)
+J-M-Reihen/
+material/
+
+# Quellen nicht nötig wenn Dist/Build schon da sind (kleiner Context)
+client/src
+client/public
+server/src
