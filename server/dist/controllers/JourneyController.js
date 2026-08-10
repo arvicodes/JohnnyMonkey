@@ -5,7 +5,7 @@ exports.postCare = postCare;
 const client_1 = require("@prisma/client");
 const journeyService_1 = require("../services/journeyService");
 const prisma = new client_1.PrismaClient();
-async function getStudentFromRequest(req) {
+async function getJourneyUserFromRequest(req) {
     const loginCode = req.headers['x-login-code'];
     if (!(loginCode === null || loginCode === void 0 ? void 0 : loginCode.trim())) {
         return { error: 401, message: 'Nicht angemeldet' };
@@ -14,14 +14,14 @@ async function getStudentFromRequest(req) {
         where: { loginCode: loginCode.trim() },
         select: { id: true, role: true },
     });
-    if (!user || user.role !== 'STUDENT') {
-        return { error: 403, message: 'Nur für Schülerkonten' };
+    if (!user || (user.role !== 'STUDENT' && user.role !== 'TEACHER')) {
+        return { error: 403, message: 'Nur für Schüler- und Lehrkraftkonten' };
     }
     return { user };
 }
 async function getJourney(req, res) {
     try {
-        const auth = await getStudentFromRequest(req);
+        const auth = await getJourneyUserFromRequest(req);
         if ('error' in auth) {
             return res.status(auth.error).json({ error: auth.message });
         }
@@ -35,7 +35,7 @@ async function getJourney(req, res) {
 }
 async function postCare(req, res) {
     try {
-        const auth = await getStudentFromRequest(req);
+        const auth = await getJourneyUserFromRequest(req);
         if ('error' in auth) {
             return res.status(auth.error).json({ error: auth.message });
         }

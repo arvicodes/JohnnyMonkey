@@ -45,6 +45,7 @@ class PortManager {
                 server.timeout = 600000;
                 server.keepAliveTimeout = 650000;
                 server.headersTimeout = 660000;
+                server.requestTimeout = 600000;
                 console.log(`🚀 Server started successfully on port ${actualPort}`);
                 resolve({ server, port: actualPort });
             });

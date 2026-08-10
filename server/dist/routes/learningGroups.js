@@ -1,9 +1,46 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const client_1 = require("@prisma/client");
+const multer_1 = __importDefault(require("multer"));
+const pdf_parse_1 = __importDefault(require("pdf-parse"));
+const webUntisStudentList_1 = require("../utils/webUntisStudentList");
 const router = (0, express_1.Router)();
 const prisma = new client_1.PrismaClient();
+const webUntisUpload = (0, multer_1.default)({
+    storage: multer_1.default.memoryStorage(),
+    limits: { fileSize: 12 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+        const name = (file.originalname || '').toLowerCase();
+        const ok = file.mimetype === 'application/pdf' ||
+            file.mimetype === 'text/plain' ||
+            file.mimetype === 'text/csv' ||
+            name.endsWith('.pdf') ||
+            name.endsWith('.txt') ||
+            name.endsWith('.csv');
+        cb(null, ok);
+    },
+});
+function normalizeStudentAvatarUrl(student) {
+    var _a;
+    if (!((_a = student.avatarUrl) === null || _a === void 0 ? void 0 : _a.startsWith('/uploads/avatars/')))
+        return student;
+    return {
+        ...student,
+        avatarUrl: student.avatarUrl.replace('/uploads/avatars/', '/api/avatars/'),
+    };
+}
+function normalizeGroupStudents(group) {
+    if (!group.students)
+        return group;
+    return {
+        ...group,
+        students: group.students.map(normalizeStudentAvatarUrl),
+    };
+}
 // Get all learning groups (for testing purposes)
 router.get('/', async (req, res) => {
     try {
@@ -15,12 +52,13 @@ router.get('/', async (req, res) => {
                         id: true,
                         name: true,
                         loginCode: true,
-                        avatarEmoji: true
+                        avatarEmoji: true,
+                        avatarUrl: true,
                     }
                 }
             }
         });
-        res.json(groups);
+        res.json(groups.map(normalizeGroupStudents));
     }
     catch (error) {
         res.status(500).json({ error: 'Server error' });
@@ -51,6 +89,11 @@ router.get('/teacher/:id', async (req, res) => {
                 teacherId: true,
                 period1Hours: true,
                 period2Hours: true,
+                iconEmoji: true,
+                color: true,
+                displayOrder: true,
+                isArchived: true,
+                moderatorStudentId: true,
                 // seatingOrder und statisticsOrder werden separat geladen (falls Prisma Client veraltet ist)
                 // seatingOrder: true,
                 // statisticsOrder: true,
@@ -60,7 +103,8 @@ router.get('/teacher/:id', async (req, res) => {
                         id: true,
                         name: true,
                         loginCode: true,
-                        avatarEmoji: true
+                        avatarEmoji: true,
+                        avatarUrl: true,
                     }
                 }
             }
@@ -143,7 +187,7 @@ router.get('/teacher/:id', async (req, res) => {
             }
         });
         console.log('✅ Found', groupsWithStats.length, 'groups for teacher');
-        res.json(groupsWithStats);
+        res.json(groupsWithStats.map(normalizeGroupStudents));
     }
     catch (error) {
         console.error('❌ Error fetching teacher groups:', error);
@@ -170,8 +214,10 @@ router.get('/student/:id', async (req, res) => {
                     some: {
                         id: req.params.id
                     }
-                }
+                },
+                isArchived: false,
             },
+            orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
             include: {
                 teacher: {
                     select: {
@@ -185,7 +231,8 @@ router.get('/student/:id', async (req, res) => {
                         id: true,
                         name: true,
                         loginCode: true,
-                        avatarEmoji: true
+                        avatarEmoji: true,
+                        avatarUrl: true,
                     }
                 }
             }
@@ -206,8 +253,7 @@ router.get('/student/:id', async (req, res) => {
         });
     }
 });
-// WICHTIG: Alle spezifischen Routen müssen VOR der allgemeinen /:id Route kommen!
-// Get available students for a group (before /:id)
+// Alle SuS aus der DB (aktueller Stand), inkl. Mitglieder der Zielgruppe
 router.get('/:groupId/available-students', async (req, res) => {
     try {
         const { groupId } = req.params;
@@ -225,12 +271,26 @@ router.get('/:groupId/available-students', async (req, res) => {
                 id: true,
                 name: true,
                 loginCode: true,
-                avatarEmoji: true
+                avatarEmoji: true,
+                avatarUrl: true,
+                learningGroups: {
+                    select: { id: true, name: true, isArchived: true },
+                    orderBy: { name: 'asc' },
+                },
             },
-            orderBy: { loginCode: 'asc' }
+            orderBy: [{ name: 'asc' }, { loginCode: 'asc' }],
         });
-        const availableStudents = allStudents.filter(s => !studentIdsInGroup.has(s.id));
-        res.json(availableStudents);
+        const directory = allStudents.map((s) => ({
+            ...normalizeStudentAvatarUrl(s),
+            inCurrentGroup: studentIdsInGroup.has(s.id),
+        }));
+        res.json({
+            groupId: group.id,
+            groupName: group.name,
+            total: directory.length,
+            inGroup: studentIdsInGroup.size,
+            students: directory,
+        });
     }
     catch (error) {
         console.error('Error fetching available students:', error);
@@ -418,7 +478,8 @@ router.get('/:id', async (req, res) => {
                         id: true,
                         name: true,
                         loginCode: true,
-                        avatarEmoji: true
+                        avatarEmoji: true,
+                        avatarUrl: true,
                     }
                 }
             }
@@ -436,16 +497,64 @@ router.get('/:id', async (req, res) => {
         });
     }
 });
+// Reihenfolge der Lerngruppen für einen Lehrer speichern
+router.put('/reorder', async (req, res) => {
+    try {
+        const { teacherId, groupIds, archived } = req.body;
+        if (!teacherId || !Array.isArray(groupIds) || groupIds.length === 0) {
+            return res.status(400).json({ error: 'teacherId und groupIds sind erforderlich' });
+        }
+        const archivedFlag = archived === true;
+        const ownedGroups = await prisma.learningGroup.findMany({
+            where: { teacherId: String(teacherId), id: { in: groupIds.map(String) } },
+            select: { id: true },
+        });
+        if (ownedGroups.length !== groupIds.length) {
+            return res.status(403).json({ error: 'Ungültige Gruppen-IDs für diesen Lehrer' });
+        }
+        await prisma.$transaction(groupIds.map((id, index) => prisma.learningGroup.update({
+            where: { id: String(id) },
+            data: { displayOrder: index, isArchived: archivedFlag },
+        })));
+        res.json({ success: true });
+    }
+    catch (error) {
+        console.error('Error reordering learning groups:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 // Update a learning group
 router.put('/:id', async (req, res) => {
     try {
-        const { name } = req.body;
-        if (!name || name.trim() === '') {
-            return res.status(400).json({ error: 'Name ist erforderlich' });
+        const { name, iconEmoji, color, displayOrder, isArchived } = req.body;
+        const data = {};
+        if (name !== undefined) {
+            if (!name || String(name).trim() === '') {
+                return res.status(400).json({ error: 'Name ist erforderlich' });
+            }
+            data.name = String(name).trim();
+        }
+        if (iconEmoji !== undefined) {
+            data.iconEmoji = iconEmoji ? String(iconEmoji).trim() : null;
+        }
+        if (color !== undefined) {
+            data.color = color ? String(color).trim() : null;
+        }
+        if (displayOrder !== undefined) {
+            data.displayOrder =
+                displayOrder === null || displayOrder === ''
+                    ? null
+                    : Number(displayOrder);
+        }
+        if (isArchived !== undefined) {
+            data.isArchived = Boolean(isArchived);
+        }
+        if (Object.keys(data).length === 0) {
+            return res.status(400).json({ error: 'Keine Felder zum Aktualisieren' });
         }
         const group = await prisma.learningGroup.update({
             where: { id: req.params.id },
-            data: { name: name.trim() },
+            data,
             include: {
                 teacher: true,
                 students: {
@@ -454,7 +563,8 @@ router.put('/:id', async (req, res) => {
                         id: true,
                         name: true,
                         loginCode: true,
-                        avatarEmoji: true
+                        avatarEmoji: true,
+                        avatarUrl: true,
                     }
                 }
             }
@@ -468,11 +578,16 @@ router.put('/:id', async (req, res) => {
 });
 // Create a new learning group
 router.post('/', async (req, res) => {
-    const { name, teacherId } = req.body;
+    const { name, teacherId, iconEmoji, color, displayOrder } = req.body;
     try {
         const group = await prisma.learningGroup.create({
             data: {
                 name,
+                iconEmoji: iconEmoji ? String(iconEmoji).trim() : null,
+                color: color ? String(color).trim() : null,
+                displayOrder: displayOrder === undefined || displayOrder === null || displayOrder === ''
+                    ? null
+                    : Number(displayOrder),
                 teacher: {
                     connect: { id: teacherId }
                 }
@@ -484,7 +599,8 @@ router.post('/', async (req, res) => {
                         id: true,
                         name: true,
                         loginCode: true,
-                        avatarEmoji: true
+                        avatarEmoji: true,
+                        avatarUrl: true,
                     }
                 }
             }
@@ -513,7 +629,8 @@ router.post('/:id/students', async (req, res) => {
                         id: true,
                         name: true,
                         loginCode: true,
-                        avatarEmoji: true
+                        avatarEmoji: true,
+                        avatarUrl: true,
                     }
                 }
             }
@@ -524,15 +641,245 @@ router.post('/:id/students', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
+async function buildWebUntisPreview(groupId, parsedStudents, groupName, klasse) {
+    const groupNumber = klasse || (0, webUntisStudentList_1.groupNumberFromName)(groupName, '00');
+    const group = await prisma.learningGroup.findUnique({
+        where: { id: groupId },
+        include: { students: { select: { id: true, name: true, loginCode: true } } },
+    });
+    if (!group)
+        throw Object.assign(new Error('Lerngruppe nicht gefunden'), { status: 404 });
+    const allStudents = await prisma.user.findMany({
+        where: { role: 'STUDENT' },
+        select: { id: true, name: true, loginCode: true },
+    });
+    const inGroupIds = new Set(group.students.map((s) => s.id));
+    const byNormName = new Map();
+    for (const s of allStudents) {
+        byNormName.set((0, webUntisStudentList_1.stripMiddleNames)(s.name).toLowerCase(), s);
+    }
+    const usedCodes = new Set(allStudents.map((s) => s.loginCode));
+    const codeCounts = new Map();
+    const rows = [];
+    for (const st of parsedStudents) {
+        const existing = byNormName.get(st.fullName.toLowerCase());
+        let loginCode = (0, webUntisStudentList_1.generateLoginCode)(st.firstName, st.lastName, groupNumber);
+        if (!existing) {
+            if (codeCounts.has(loginCode) || usedCodes.has(loginCode)) {
+                const n = (codeCounts.get(loginCode) || 0) + 1;
+                codeCounts.set(loginCode, n);
+                let candidate = `${loginCode}${n}`;
+                while (usedCodes.has(candidate)) {
+                    const n2 = (codeCounts.get(loginCode) || n) + 1;
+                    codeCounts.set(loginCode, n2);
+                    candidate = `${loginCode}${n2}`;
+                }
+                loginCode = candidate;
+            }
+            else {
+                codeCounts.set(loginCode, 0);
+            }
+            usedCodes.add(loginCode);
+        }
+        else {
+            loginCode = existing.loginCode;
+        }
+        rows.push({
+            ...st,
+            loginCode,
+            status: existing ? (inGroupIds.has(existing.id) ? 'in_group' : 'exists') : 'new',
+            existingUserId: existing === null || existing === void 0 ? void 0 : existing.id,
+        });
+    }
+    return { rows, groupNumber };
+}
+async function extractTextFromWebUntisUpload(file) {
+    const name = (file.originalname || '').toLowerCase();
+    if (file.mimetype === 'application/pdf' || name.endsWith('.pdf')) {
+        const data = await (0, pdf_parse_1.default)(file.buffer);
+        return data.text || '';
+    }
+    return file.buffer.toString('utf8');
+}
+/** Vorschau: WebUntis-PDF/TXT parsen, ohne DB-Schreibzugriff. */
+router.post('/:groupId/import-webuntis/preview', webUntisUpload.single('file'), async (req, res) => {
+    try {
+        const { groupId } = req.params;
+        if (!req.file) {
+            return res.status(400).json({ error: 'Keine Datei hochgeladen (PDF oder TXT)' });
+        }
+        const group = await prisma.learningGroup.findUnique({
+            where: { id: groupId },
+            select: { id: true, name: true },
+        });
+        if (!group)
+            return res.status(404).json({ error: 'Lerngruppe nicht gefunden' });
+        const text = await extractTextFromWebUntisUpload(req.file);
+        const parsed = (0, webUntisStudentList_1.parseWebUntisStudentListText)(text);
+        if (parsed.students.length === 0) {
+            return res.status(400).json({
+                error: 'Keine Schülernamen erkannt. Bitte WebUntis-Schülerliste (PDF) verwenden.',
+            });
+        }
+        const { rows, groupNumber } = await buildWebUntisPreview(groupId, parsed.students, group.name, parsed.klasse);
+        res.json({
+            groupId,
+            groupName: group.name,
+            groupNumber,
+            klasse: parsed.klasse,
+            fach: parsed.fach,
+            schuelergruppe: parsed.schuelergruppe,
+            students: rows,
+            summary: {
+                total: rows.length,
+                neu: rows.filter((r) => r.status === 'new').length,
+                vorhanden: rows.filter((r) => r.status === 'exists').length,
+                schonInGruppe: rows.filter((r) => r.status === 'in_group').length,
+            },
+        });
+    }
+    catch (error) {
+        console.error('WebUntis preview error:', error);
+        res.status((error === null || error === void 0 ? void 0 : error.status) || 500).json({
+            error: (error === null || error === void 0 ? void 0 : error.message) || 'Fehler beim Lesen der WebUntis-Liste',
+        });
+    }
+});
+/** Bestätigen: Profile anlegen/aktualisieren (editierte Namen + Login-Codes) und zuordnen. */
+router.post('/:groupId/import-webuntis/confirm', async (req, res) => {
+    var _a, _b;
+    try {
+        const { groupId } = req.params;
+        const studentsRaw = Array.isArray((_a = req.body) === null || _a === void 0 ? void 0 : _a.students) ? req.body.students : [];
+        if (studentsRaw.length === 0) {
+            return res.status(400).json({ error: 'Keine Schüler in der Anfrage' });
+        }
+        const group = await prisma.learningGroup.findUnique({
+            where: { id: groupId },
+            include: { students: { select: { id: true } } },
+        });
+        if (!group)
+            return res.status(404).json({ error: 'Lerngruppe nicht gefunden' });
+        const inGroupIds = new Set(group.students.map((s) => s.id));
+        const created = [];
+        const reused = [];
+        const connectIds = [];
+        for (const raw of studentsRaw) {
+            const fullNameRaw = typeof raw.fullName === 'string' && raw.fullName.trim()
+                ? raw.fullName.trim()
+                : `${String(raw.firstName || '').trim()} ${String(raw.lastName || '').trim()}`.trim();
+            const fullName = (0, webUntisStudentList_1.stripMiddleNames)(fullNameRaw);
+            if (!fullName)
+                continue;
+            const parts = fullName.split(/\s+/);
+            const firstName = parts[0];
+            const lastName = parts[parts.length - 1];
+            let loginCode = String(raw.loginCode || '').trim();
+            if (!loginCode) {
+                const groupNumber = typeof ((_b = req.body) === null || _b === void 0 ? void 0 : _b.groupNumber) === 'string' && req.body.groupNumber.trim()
+                    ? req.body.groupNumber.trim()
+                    : (0, webUntisStudentList_1.groupNumberFromName)(group.name, '00');
+                loginCode = (0, webUntisStudentList_1.generateLoginCode)(firstName, lastName, groupNumber);
+            }
+            let userId = typeof raw.existingUserId === 'string' && raw.existingUserId ? raw.existingUserId : undefined;
+            if (!userId) {
+                const all = await prisma.user.findMany({
+                    where: { role: 'STUDENT' },
+                    select: { id: true, name: true },
+                });
+                const match = all.find((u) => (0, webUntisStudentList_1.stripMiddleNames)(u.name).toLowerCase() === fullName.toLowerCase());
+                if (match)
+                    userId = match.id;
+            }
+            if (userId) {
+                const conflict = await prisma.user.findFirst({
+                    where: { loginCode, NOT: { id: userId } },
+                    select: { id: true },
+                });
+                if (conflict) {
+                    return res.status(409).json({
+                        error: `Login-Code „${loginCode}“ ist bereits vergeben (${fullName})`,
+                    });
+                }
+                const updated = await prisma.user.update({
+                    where: { id: userId },
+                    data: { name: fullName, loginCode },
+                    select: { id: true, name: true, loginCode: true },
+                });
+                reused.push(updated);
+                if (!inGroupIds.has(userId))
+                    connectIds.push(userId);
+                continue;
+            }
+            let attempt = 0;
+            let candidate = loginCode;
+            while (await prisma.user.findUnique({ where: { loginCode: candidate } })) {
+                attempt += 1;
+                candidate = `${loginCode}${attempt}`;
+            }
+            const user = await prisma.user.create({
+                data: {
+                    name: fullName,
+                    loginCode: candidate,
+                    role: 'STUDENT',
+                },
+                select: { id: true, name: true, loginCode: true },
+            });
+            created.push(user);
+            connectIds.push(user.id);
+        }
+        if (connectIds.length > 0) {
+            await prisma.learningGroup.update({
+                where: { id: groupId },
+                data: { students: { connect: connectIds.map((id) => ({ id })) } },
+            });
+        }
+        const updated = await prisma.learningGroup.findUnique({
+            where: { id: groupId },
+            include: {
+                students: {
+                    orderBy: { loginCode: 'asc' },
+                    select: {
+                        id: true,
+                        name: true,
+                        loginCode: true,
+                        avatarEmoji: true,
+                        avatarUrl: true,
+                    },
+                },
+            },
+        });
+        res.json({
+            created: created.length,
+            connected: connectIds.length,
+            alreadyInGroup: reused.filter((r) => !connectIds.includes(r.id)).length,
+            students: created.concat(reused),
+            group: updated ? normalizeGroupStudents(updated) : null,
+        });
+    }
+    catch (error) {
+        console.error('WebUntis confirm error:', error);
+        res.status((error === null || error === void 0 ? void 0 : error.status) || 500).json({
+            error: (error === null || error === void 0 ? void 0 : error.message) || 'Fehler beim Importieren der Schüler',
+        });
+    }
+});
 // Remove a student from a learning group
 router.delete('/:groupId/students/:studentId', async (req, res) => {
     try {
+        const existing = await prisma.learningGroup.findUnique({
+            where: { id: req.params.groupId },
+            select: { moderatorStudentId: true },
+        });
         const group = await prisma.learningGroup.update({
             where: { id: req.params.groupId },
             data: {
                 students: {
                     disconnect: { id: req.params.studentId }
-                }
+                },
+                ...((existing === null || existing === void 0 ? void 0 : existing.moderatorStudentId) === req.params.studentId
+                    ? { moderatorStudentId: null }
+                    : {}),
             },
             include: {
                 students: {
@@ -541,7 +888,8 @@ router.delete('/:groupId/students/:studentId', async (req, res) => {
                         id: true,
                         name: true,
                         loginCode: true,
-                        avatarEmoji: true
+                        avatarEmoji: true,
+                        avatarUrl: true,
                     }
                 }
             }
@@ -550,6 +898,69 @@ router.delete('/:groupId/students/:studentId', async (req, res) => {
     }
     catch (error) {
         res.status(500).json({ error: 'Server error' });
+    }
+});
+/** Klassen-Moderator setzen oder entfernen (pro Lerngruppe einer) */
+router.put('/:id/moderator', async (req, res) => {
+    var _a;
+    try {
+        const groupId = req.params.id;
+        const studentIdRaw = (_a = req.body) === null || _a === void 0 ? void 0 : _a.studentId;
+        const studentId = studentIdRaw === null || studentIdRaw === undefined || studentIdRaw === ''
+            ? null
+            : String(studentIdRaw).trim();
+        const loginCode = typeof req.headers['x-login-code'] === 'string' ? req.headers['x-login-code'].trim() : '';
+        if (!loginCode)
+            return res.status(401).json({ error: 'Nicht autorisiert' });
+        const teacher = await prisma.user.findUnique({
+            where: { loginCode },
+            select: { id: true, role: true },
+        });
+        if (!teacher || teacher.role !== 'TEACHER') {
+            return res.status(403).json({ error: 'Nur Lehrkräfte' });
+        }
+        const group = await prisma.learningGroup.findFirst({
+            where: { id: groupId, teacherId: teacher.id },
+            select: {
+                id: true,
+                moderatorStudentId: true,
+                students: { select: { id: true } },
+            },
+        });
+        if (!group)
+            return res.status(404).json({ error: 'Gruppe nicht gefunden' });
+        if (studentId) {
+            const isMember = group.students.some((s) => s.id === studentId);
+            if (!isMember) {
+                return res.status(400).json({ error: 'Schüler ist nicht in dieser Lerngruppe' });
+            }
+        }
+        // Gleicher Schüler erneut → Moderator entfernen (Toggle)
+        const nextId = studentId && group.moderatorStudentId === studentId ? null : studentId;
+        const updated = await prisma.learningGroup.update({
+            where: { id: groupId },
+            data: { moderatorStudentId: nextId },
+            select: {
+                id: true,
+                name: true,
+                moderatorStudentId: true,
+                students: {
+                    orderBy: { loginCode: 'asc' },
+                    select: {
+                        id: true,
+                        name: true,
+                        loginCode: true,
+                        avatarEmoji: true,
+                        avatarUrl: true,
+                    },
+                },
+            },
+        });
+        res.json(updated);
+    }
+    catch (error) {
+        console.error('PUT /learning-groups/:id/moderator:', error);
+        res.status(500).json({ error: 'Serverfehler' });
     }
 });
 // Zuordnung von Inhalten zu Lerngruppen
@@ -618,12 +1029,16 @@ router.get('/:id/folders', async (req, res) => {
                 type: 'FOLDER'
             },
             select: {
-                refId: true
-            }
+                id: true,
+                refId: true,
+                displayOrder: true,
+            },
+            orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
         });
-        // Convert refId to folder paths
         const folders = assignments.map(assignment => ({
-            path: assignment.refId
+            id: assignment.id,
+            path: assignment.refId,
+            displayOrder: assignment.displayOrder,
         }));
         res.json(folders);
     }
@@ -632,8 +1047,39 @@ router.get('/:id/folders', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
+// Reorder assigned folders for a learning group
+router.put('/:id/folders/reorder', async (req, res) => {
+    try {
+        const groupId = req.params.id;
+        const { paths } = req.body;
+        if (!Array.isArray(paths) || paths.length === 0) {
+            return res.status(400).json({ error: 'paths ist erforderlich' });
+        }
+        const assignments = await prisma.groupAssignment.findMany({
+            where: {
+                groupId,
+                type: 'FOLDER',
+                refId: { in: paths.map(String) },
+            },
+            select: { id: true, refId: true },
+        });
+        if (assignments.length !== paths.length) {
+            return res.status(403).json({ error: 'Ungültige Ordner-Pfade für diese Gruppe' });
+        }
+        await prisma.$transaction(paths.map((path, index) => prisma.groupAssignment.updateMany({
+            where: { groupId, type: 'FOLDER', refId: String(path) },
+            data: { displayOrder: index },
+        })));
+        res.json({ success: true });
+    }
+    catch (error) {
+        console.error('Error reordering assigned folders:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 // Assign a folder to a learning group
 router.post('/:id/folders', async (req, res) => {
+    var _a;
     try {
         const groupId = req.params.id;
         const { path } = req.body;
@@ -651,12 +1097,18 @@ router.post('/:id/folders', async (req, res) => {
         if (existingAssignment) {
             return res.status(400).json({ error: 'Ordner ist bereits zugeordnet' });
         }
+        const maxOrder = await prisma.groupAssignment.aggregate({
+            where: { groupId, type: 'FOLDER' },
+            _max: { displayOrder: true },
+        });
+        const nextOrder = ((_a = maxOrder._max.displayOrder) !== null && _a !== void 0 ? _a : -1) + 1;
         // Create new assignment
         const assignment = await prisma.groupAssignment.create({
             data: {
                 groupId: groupId,
                 type: 'FOLDER',
-                refId: path
+                refId: path,
+                displayOrder: nextOrder,
             }
         });
         res.json(assignment);

@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Button, ButtonGroup, Tooltip, Typography } from '@mui/material';
+import { Box, Button, ButtonGroup, IconButton, Tooltip, Typography } from '@mui/material';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DownloadIcon from '@mui/icons-material/Download';
 import EditNoteOutlinedIcon from '@mui/icons-material/EditNoteOutlined';
 import CreateOutlinedIcon from '@mui/icons-material/CreateOutlined';
+import { apiGetSafe } from '../lib/api';
 import {
   isLessonPresentationMaterialPdf,
   isStudentVisibleLessonMaterialFile,
@@ -271,6 +272,45 @@ export default function StudentLessonMaterialsPanel({
   /** ToDo HA = HA dieser Stunde (Lehrer „Neue HA“); Fallback: Vorstunde */
   const [homeworkTodoPath, setHomeworkTodoPath] = useState<string | null>(null);
   const [homeworkTodoLabel, setHomeworkTodoLabel] = useState<string | null>(null);
+  const [completedEntryTicket, setCompletedEntryTicket] = useState(false);
+
+  useEffect(() => {
+    if (!lessonPath || !groupId) {
+      setCompletedEntryTicket(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const qs = new URLSearchParams({ lessonPath, groupId });
+        const res = await apiGetSafe(`/api/entry-ticket/completed?${qs.toString()}`);
+        if (!res || !res.ok || cancelled) {
+          if (!cancelled) setCompletedEntryTicket(false);
+          return;
+        }
+        const data = (await res.json()) as { completed?: boolean; tasks?: unknown[] | null };
+        if (cancelled) return;
+        setCompletedEntryTicket(
+          data.completed === true && Array.isArray(data.tasks) && data.tasks.length > 0,
+        );
+      } catch {
+        if (!cancelled) setCompletedEntryTicket(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [lessonPath, groupId]);
+
+  const openCompletedEntryTicket = () => {
+    if (!lessonPath || !groupId) return;
+    const u = new URL('/entry-ticket', window.location.origin);
+    u.searchParams.set('review', '1');
+    u.searchParams.set('lessonPath', lessonPath);
+    u.searchParams.set('groupId', groupId);
+    u.searchParams.set('returnTo', `${window.location.pathname}${window.location.search}`);
+    window.location.assign(u.pathname + u.search);
+  };
 
   useEffect(() => {
     if (!lessonPath || !hasPresentation || !onOpenHomeworkTodo) {
@@ -329,7 +369,7 @@ export default function StudentLessonMaterialsPanel({
     };
   }, [lessonPath, hasPresentation, onOpenHomeworkTodo]);
 
-  if (materials.length === 0 && !canOpenLeinwand) {
+  if (materials.length === 0 && !canOpenLeinwand && !completedEntryTicket) {
     return (
       <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', py: 0.5 }}>
         Noch keine Materialien freigegeben.
@@ -356,10 +396,11 @@ export default function StudentLessonMaterialsPanel({
             bgcolor: 'rgba(255, 255, 255, 0.92)',
             border: '1px solid rgba(0, 0, 0, 0.06)',
             boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+            gap: 0.45,
           }}
         >
           <Tooltip title={editedShared ? `${editedVersionLabel} öffnen` : originalShared ? 'Original öffnen' : 'Folien'}>
-            <Box component="span" sx={{ display: 'inline-flex', flexShrink: 0, mr: 0.5 }}>
+            <Box component="span" sx={{ display: 'inline-flex', flexShrink: 0 }}>
               <Box
                 component="button"
                 type="button"
@@ -413,6 +454,37 @@ export default function StudentLessonMaterialsPanel({
               </Box>
             </Box>
           </Tooltip>
+          {completedEntryTicket && (
+            <Tooltip title="Entry Ticket + Lösungen ansehen">
+              <IconButton
+                size="small"
+                onClick={openCompletedEntryTicket}
+                aria-label="Entry Ticket ansehen"
+                sx={{
+                  flexShrink: 0,
+                  p: 0,
+                  minWidth: 22,
+                  width: 22,
+                  height: 22,
+                  borderRadius: 0.8,
+                  border: '1.5px solid rgba(33, 150, 243, 0.5)',
+                  background: 'linear-gradient(135deg, #1e88e5 0%, #3949ab 100%)',
+                  color: 'white',
+                  boxShadow: 'none',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #1976d2 0%, #303f9f 100%)',
+                  },
+                }}
+              >
+                <Typography
+                  component="span"
+                  sx={{ fontSize: '0.7rem', fontWeight: 800, lineHeight: 1, color: 'inherit' }}
+                >
+                  E
+                </Typography>
+              </IconButton>
+            </Tooltip>
+          )}
           <PresentationCombinedActions
             lessonName={downloadLessonName}
             original={presentationOriginal}

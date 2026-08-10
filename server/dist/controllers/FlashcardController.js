@@ -5,6 +5,7 @@ const client_1 = require("@prisma/client");
 const SpacedRepetitionService_1 = require("../services/SpacedRepetitionService");
 const journeyService_1 = require("../services/journeyService");
 const flashcardWordParser_1 = require("../utils/flashcardWordParser");
+const flashcardDeckBackup_1 = require("../utils/flashcardDeckBackup");
 const prisma = new client_1.PrismaClient();
 // FlashcardDeck Controller
 const createDeck = async (req, res) => {
@@ -28,6 +29,7 @@ const createDeck = async (req, res) => {
                 }
             }
         });
+        (0, flashcardDeckBackup_1.scheduleFlashcardDeckBackup)(deck.id, true);
         res.status(201).json(deck);
     }
     catch (error) {
@@ -202,6 +204,7 @@ const updateDeck = async (req, res) => {
                 }
             }
         });
+        (0, flashcardDeckBackup_1.scheduleFlashcardDeckBackup)(updatedDeck.id, true);
         res.json(updatedDeck);
     }
     catch (error) {
@@ -273,6 +276,7 @@ const createCard = async (req, res) => {
                 order: order || 0
             }
         });
+        (0, flashcardDeckBackup_1.scheduleFlashcardDeckBackup)(deckId);
         res.status(201).json(card);
     }
     catch (error) {
@@ -308,6 +312,7 @@ const updateCard = async (req, res) => {
                 order
             }
         });
+        (0, flashcardDeckBackup_1.scheduleFlashcardDeckBackup)(card.deckId);
         res.json(updatedCard);
     }
     catch (error) {
@@ -337,9 +342,11 @@ const deleteCard = async (req, res) => {
         if (card.deck.teacherId !== userId) {
             return res.status(403).json({ error: 'Keine Berechtigung zum Löschen dieser Karte' });
         }
+        const deckIdForBackup = card.deckId;
         await prisma.flashcard.delete({
             where: { id: cardId }
         });
+        (0, flashcardDeckBackup_1.scheduleFlashcardDeckBackup)(deckIdForBackup, true);
         res.json({ message: 'Karte erfolgreich gelöscht' });
     }
     catch (error) {
@@ -848,6 +855,7 @@ const createFlashcardDeckFromWord = async (req, res) => {
                 }
             }
         });
+        (0, flashcardDeckBackup_1.scheduleFlashcardDeckBackup)(deck.id, true);
         res.status(201).json({
             message: `Karteikarten-Deck erfolgreich erstellt mit ${createdCards.length} Karten`,
             deck: result
@@ -941,6 +949,7 @@ const addFlashcardsToExistingDeck = async (req, res) => {
                 }
             }
         });
+        (0, flashcardDeckBackup_1.scheduleFlashcardDeckBackup)(deckId, true);
         res.status(200).json({
             message: `${createdCards.length} Karteikarten erfolgreich zum bestehenden Deck hinzugefügt`,
             deck: result
@@ -1694,6 +1703,7 @@ const createCollaborativeCard = async (req, res) => {
                 order: nextOrder,
             },
         });
+        (0, flashcardDeckBackup_1.scheduleFlashcardDeckBackup)(deckId);
         res.status(201).json(card);
     }
     catch (error) {

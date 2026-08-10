@@ -39,6 +39,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.FileSystemPathController = void 0;
 const client_1 = require("@prisma/client");
 const storageManager_1 = require("../utils/storageManager");
+const imageToJpeg_1 = require("../utils/imageToJpeg");
+const presentationDeckBackup_1 = require("../utils/presentationDeckBackup");
+const multerFilename_1 = require("../utils/multerFilename");
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const mammoth_1 = __importDefault(require("mammoth"));
@@ -882,178 +885,34 @@ class FileSystemPathController {
     // Image file handler
     static async readImageFile(req, res) {
         try {
-            let { filePath, preview } = req.query;
-            if (!filePath) {
+            let { filePath, preview, max } = req.query;
+            if (!filePath || typeof filePath !== 'string') {
                 return res.status(400).json({ error: 'filePath is required' });
             }
-            // Dekodiere den Pfad falls er URL-kodiert ist
-            if (typeof filePath === 'string') {
-                filePath = decodeURIComponent(filePath);
-            }
-            console.log('Reading image file:', filePath);
-            console.log('File exists:', fs_1.default.existsSync(filePath));
-            // Prüfe direkt mit fs, ob die Datei existiert
-            if (!fs_1.default.existsSync(filePath)) {
-                console.error('File does not exist at path:', filePath);
+            filePath = decodeURIComponent(filePath);
+            const fullPath = storageManager_1.StorageManager.resolveFilePath(filePath);
+            if (!fullPath) {
                 return res.status(404).json({ error: 'File not found', path: filePath });
             }
-            const fileContent = await storageManager_1.StorageManager.readFile(filePath);
-            if (!fileContent) {
-                console.error('StorageManager.readFile returned null for:', filePath);
-                // Versuche direkt mit fs zu lesen als Fallback
-                try {
-                    const directContent = fs_1.default.readFileSync(filePath);
-                    console.log('Successfully read file directly with fs');
-                    // Verwende den direkten Inhalt weiter unten
-                    const fileContentToUse = directContent;
-                    if (preview === 'true') {
-                        // For preview, return JSON with base64 encoded image
-                        const base64Image = fileContentToUse.toString('base64');
-                        const fileExtension = path_1.default.extname(filePath).toLowerCase();
-                        let mimeType = 'image/jpeg'; // default
-                        // Determine MIME type based on file extension
-                        switch (fileExtension) {
-                            case '.png':
-                                mimeType = 'image/png';
-                                break;
-                            case '.gif':
-                                mimeType = 'image/gif';
-                                break;
-                            case '.bmp':
-                                mimeType = 'image/bmp';
-                                break;
-                            case '.webp':
-                                mimeType = 'image/webp';
-                                break;
-                            case '.svg':
-                                mimeType = 'image/svg+xml';
-                                break;
-                            case '.jpg':
-                            case '.jpeg':
-                            default:
-                                mimeType = 'image/jpeg';
-                                break;
-                        }
-                        const response = {
-                            dataUrl: `data:${mimeType};base64,${base64Image}`,
-                            url: `data:${mimeType};base64,${base64Image}`,
-                            fileName: path_1.default.basename(filePath),
-                            fileSize: fileContentToUse.length,
-                            mimeType: mimeType
-                        };
-                        res.setHeader('Content-Type', 'application/json');
-                        res.setHeader('Cache-Control', 'public, max-age=3600');
-                        return res.json(response);
-                    }
-                    else {
-                        // For direct download, return the raw image
-                        const fileExtension = path_1.default.extname(filePath).toLowerCase();
-                        let mimeType = 'image/jpeg'; // default
-                        // Determine MIME type based on file extension
-                        switch (fileExtension) {
-                            case '.png':
-                                mimeType = 'image/png';
-                                break;
-                            case '.gif':
-                                mimeType = 'image/gif';
-                                break;
-                            case '.bmp':
-                                mimeType = 'image/bmp';
-                                break;
-                            case '.webp':
-                                mimeType = 'image/webp';
-                                break;
-                            case '.svg':
-                                mimeType = 'image/svg+xml';
-                                break;
-                            case '.jpg':
-                            case '.jpeg':
-                            default:
-                                mimeType = 'image/jpeg';
-                                break;
-                        }
-                        res.setHeader('Content-Type', mimeType);
-                        res.setHeader('Content-Disposition', `inline; filename="${path_1.default.basename(filePath)}"`);
-                        res.setHeader('Cache-Control', 'public, max-age=3600');
-                        return res.send(fileContentToUse);
-                    }
-                }
-                catch (error) {
-                    console.error('Error reading file directly:', error);
-                    return res.status(500).json({ error: 'Failed to read image file', details: error });
-                }
-            }
+            const maxRaw = parseInt(String(max !== null && max !== void 0 ? max : ''), 10);
+            const maxEdge = Number.isFinite(maxRaw) && maxRaw > 0 && maxRaw <= 2400 ? maxRaw : undefined;
+            const { buffer, mimeType } = await (0, imageToJpeg_1.readImageFileForServe)(fullPath, maxEdge);
             if (preview === 'true') {
-                // For preview, return JSON with base64 encoded image
-                const base64Image = fileContent.toString('base64');
-                const fileExtension = path_1.default.extname(filePath).toLowerCase();
-                let mimeType = 'image/jpeg'; // default
-                // Determine MIME type based on file extension
-                switch (fileExtension) {
-                    case '.png':
-                        mimeType = 'image/png';
-                        break;
-                    case '.gif':
-                        mimeType = 'image/gif';
-                        break;
-                    case '.bmp':
-                        mimeType = 'image/bmp';
-                        break;
-                    case '.webp':
-                        mimeType = 'image/webp';
-                        break;
-                    case '.svg':
-                        mimeType = 'image/svg+xml';
-                        break;
-                    case '.jpg':
-                    case '.jpeg':
-                    default:
-                        mimeType = 'image/jpeg';
-                        break;
-                }
                 const response = {
-                    dataUrl: `data:${mimeType};base64,${base64Image}`,
-                    url: `data:${mimeType};base64,${base64Image}`,
-                    fileName: path_1.default.basename(filePath),
-                    fileSize: fileContent.length,
-                    mimeType: mimeType
+                    dataUrl: `data:${mimeType};base64,${buffer.toString('base64')}`,
+                    url: `data:${mimeType};base64,${buffer.toString('base64')}`,
+                    fileName: path_1.default.basename(fullPath),
+                    fileSize: buffer.length,
+                    mimeType,
                 };
                 res.setHeader('Content-Type', 'application/json');
                 res.setHeader('Cache-Control', 'public, max-age=3600');
-                res.json(response);
+                return res.json(response);
             }
-            else {
-                // For direct download, return the raw image
-                const fileExtension = path_1.default.extname(filePath).toLowerCase();
-                let mimeType = 'image/jpeg'; // default
-                // Determine MIME type based on file extension
-                switch (fileExtension) {
-                    case '.png':
-                        mimeType = 'image/png';
-                        break;
-                    case '.gif':
-                        mimeType = 'image/gif';
-                        break;
-                    case '.bmp':
-                        mimeType = 'image/bmp';
-                        break;
-                    case '.webp':
-                        mimeType = 'image/webp';
-                        break;
-                    case '.svg':
-                        mimeType = 'image/svg+xml';
-                        break;
-                    case '.jpg':
-                    case '.jpeg':
-                    default:
-                        mimeType = 'image/jpeg';
-                        break;
-                }
-                res.setHeader('Content-Type', mimeType);
-                res.setHeader('Content-Disposition', `inline; filename="${path_1.default.basename(filePath)}"`);
-                res.setHeader('Cache-Control', 'public, max-age=3600');
-                res.send(fileContent);
-            }
+            res.setHeader('Content-Type', mimeType);
+            res.setHeader('Content-Disposition', `inline; filename="${path_1.default.basename(fullPath)}"`);
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+            return res.send(buffer);
         }
         catch (error) {
             console.error('Error reading image file:', error);
@@ -1131,8 +990,9 @@ class FileSystemPathController {
             if (!targetPath) {
                 return res.status(400).json({ error: 'Zielverzeichnis fehlt' });
             }
+            const originalName = (0, multerFilename_1.decodeMulterFilename)(file.originalname || 'file');
             console.log('=== SAVE FILE REQUEST ===');
-            console.log('File:', file.originalname);
+            console.log('File:', originalName, file.originalname !== originalName ? `(raw: ${file.originalname})` : '');
             console.log('Target path:', targetPath);
             let tp = String(targetPath).replace(/\\/g, '/').trim();
             if (tp.startsWith('git-intern//Users/')) {
@@ -1149,6 +1009,10 @@ class FileSystemPathController {
                 }
                 fullTargetPath = storageManager_1.StorageManager.resolveGitInternRelativePath(rel);
             }
+            else if (tp === 'J-M-Reihen' || tp.startsWith('J-M-Reihen/')) {
+                // Immer Projekt-Root — nicht process.cwd()/server/J-M-Reihen
+                fullTargetPath = storageManager_1.StorageManager.resolveGitInternRelativePath(tp);
+            }
             else if (tp.startsWith('/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/')) {
                 fullTargetPath = tp;
             }
@@ -1162,14 +1026,49 @@ class FileSystemPathController {
                 fs_1.default.mkdirSync(fullTargetPath, { recursive: true });
             }
             // Save file
-            const finalFilePath = path_1.default.join(fullTargetPath, file.originalname);
+            const finalFilePath = path_1.default.join(fullTargetPath, originalName);
             console.log('Saving file to:', finalFilePath);
+            if (originalName === 'Praesentation.deck.json' &&
+                fs_1.default.existsSync(finalFilePath)) {
+                // Never overwrite a rich deck with a near-empty default (e.g. after failed load + autosave).
+                try {
+                    const existingRaw = fs_1.default.readFileSync(finalFilePath, 'utf8');
+                    const incomingRaw = file.buffer.toString('utf8');
+                    const existing = JSON.parse(existingRaw);
+                    const incoming = JSON.parse(incomingRaw);
+                    const existingSlides = Array.isArray(existing === null || existing === void 0 ? void 0 : existing.slides) ? existing.slides.length : 0;
+                    const incomingSlides = Array.isArray(incoming === null || incoming === void 0 ? void 0 : incoming.slides) ? incoming.slides.length : 0;
+                    const existingBytes = Buffer.byteLength(existingRaw, 'utf8');
+                    const incomingBytes = Buffer.byteLength(incomingRaw, 'utf8');
+                    const looksLikeWipe = existingSlides >= 5 &&
+                        incomingSlides <= 2 &&
+                        existingBytes > 20000 &&
+                        incomingBytes < existingBytes * 0.25;
+                    if (looksLikeWipe) {
+                        (0, presentationDeckBackup_1.backupPresentationDeckBeforeOverwrite)(finalFilePath, {
+                            force: true,
+                            reason: 'blocked-wipe',
+                        });
+                        console.error('Blocked deck wipe:', finalFilePath, `existing=${existingSlides}slides/${existingBytes}B`, `incoming=${incomingSlides}slides/${incomingBytes}B`);
+                        return res.status(409).json({
+                            error: 'Speichern abgelehnt: leeres Deck würde eine umfangreiche Präsentation überschreiben. Bitte Seite neu laden.',
+                        });
+                    }
+                }
+                catch (guardErr) {
+                    console.warn('Deck wipe guard skipped:', guardErr);
+                }
+                (0, presentationDeckBackup_1.backupPresentationDeckBeforeOverwrite)(finalFilePath, { reason: 'before-save' });
+            }
             fs_1.default.writeFileSync(finalFilePath, file.buffer);
+            if (originalName === 'Praesentation.deck.json') {
+                (0, presentationDeckBackup_1.backupPresentationDeckAfterSave)(finalFilePath, file.buffer);
+            }
             console.log('File saved successfully');
             res.json({
                 success: true,
                 path: finalFilePath,
-                filename: file.originalname
+                filename: originalName
             });
         }
         catch (error) {
@@ -1185,6 +1084,52 @@ class FileSystemPathController {
         }
     }
     /**
+     * Datei im Stundenordner löschen (nur unter J-M-Reihen / git-intern).
+     */
+    static async deleteFile(req, res) {
+        var _a, _b;
+        try {
+            const filePathRaw = (((_a = req.body) === null || _a === void 0 ? void 0 : _a.filePath) || ((_b = req.query) === null || _b === void 0 ? void 0 : _b.filePath));
+            if (!filePathRaw || typeof filePathRaw !== 'string') {
+                return res.status(400).json({ error: 'filePath ist erforderlich' });
+            }
+            let fp = filePathRaw.replace(/\\/g, '/').trim();
+            if (fp.startsWith('git-intern//Users/')) {
+                fp = fp.replace('git-intern//Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/', 'git-intern/');
+            }
+            const fileName = path_1.default.basename(fp);
+            const isNamedPdf = /^Praesentation_.+\.pdf$/i.test(fileName) && fileName !== 'Praesentation_Original.pdf';
+            const isVersionSnapshot = /^Praesentation\.version\..+\.json$/i.test(fileName);
+            // Nur benannte Präsentations-Versionen (PDF und/oder Snapshot), nie Original
+            if (!isNamedPdf && !isVersionSnapshot) {
+                return res.status(403).json({
+                    error: 'Nur benannte Präsentations-Versionen (nicht Original) können so gelöscht werden.',
+                });
+            }
+            const fullPath = storageManager_1.StorageManager.resolveFilePath(fp);
+            if (!fullPath) {
+                return res.status(404).json({ error: 'Datei nicht gefunden' });
+            }
+            const jmRoot = storageManager_1.StorageManager.resolveGitInternRelativePath('');
+            const normalizedFull = path_1.default.resolve(fullPath);
+            const normalizedRoot = path_1.default.resolve(jmRoot);
+            if (normalizedFull !== normalizedRoot &&
+                !normalizedFull.startsWith(normalizedRoot + path_1.default.sep)) {
+                return res.status(403).json({ error: 'Löschen außerhalb von J-M-Reihen nicht erlaubt' });
+            }
+            if (!fs_1.default.existsSync(normalizedFull) || !fs_1.default.statSync(normalizedFull).isFile()) {
+                return res.status(404).json({ error: 'Datei nicht gefunden' });
+            }
+            fs_1.default.unlinkSync(normalizedFull);
+            console.log('Deleted file:', normalizedFull);
+            res.json({ success: true, deleted: fileName });
+        }
+        catch (error) {
+            console.error('Error deleting file:', error);
+            res.status(500).json({ error: 'Datei konnte nicht gelöscht werden: ' + (error.message || '') });
+        }
+    }
+    /**
      * Load whiteboard file (.wb) as JSON
      */
     static async loadWhiteboardFile(req, res) {
@@ -1196,16 +1141,16 @@ class FileSystemPathController {
             console.log('Loading whiteboard file:', filePath);
             // Determine the full path
             let fullFilePath;
-            if (filePath.startsWith('git-intern/')) {
-                // Handle git-intern paths
-                const relativePath = decodeURIComponent(filePath.replace('git-intern/', ''));
-                // Use absolute path to project root for development
-                const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
-                fullFilePath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+            const normPath = filePath.replace(/\\/g, '/');
+            if (normPath.startsWith('git-intern/')) {
+                const relativePath = decodeURIComponent(normPath.replace('git-intern/', ''));
+                fullFilePath = storageManager_1.StorageManager.resolveGitInternRelativePath(relativePath);
+            }
+            else if (normPath === 'J-M-Reihen' || normPath.startsWith('J-M-Reihen/')) {
+                fullFilePath = storageManager_1.StorageManager.resolveGitInternRelativePath(normPath);
             }
             else {
-                // Handle local paths
-                fullFilePath = path_1.default.resolve(filePath);
+                fullFilePath = path_1.default.resolve(normPath);
             }
             console.log('Full file path:', fullFilePath);
             // Check if file exists
@@ -1237,12 +1182,22 @@ class FileSystemPathController {
             console.log('Serving static file:', filePath);
             // Construct the git-intern path
             const gitInternPath = `git-intern/${filePath}`;
+            const fullPath = storageManager_1.StorageManager.resolveFilePath(gitInternPath);
+            if (!fullPath) {
+                return res.status(404).json({ error: 'File not found' });
+            }
+            const ext = path_1.default.extname(filePath).toLowerCase();
+            if ((0, imageToJpeg_1.isHeicPath)(fullPath)) {
+                const buf = await (0, imageToJpeg_1.fileToJpegBuffer)(fullPath, 1200);
+                res.setHeader('Content-Type', 'image/jpeg');
+                res.setHeader('Cache-Control', 'public, max-age=3600');
+                return res.send(buf);
+            }
             const fileContent = await storageManager_1.StorageManager.readFile(gitInternPath);
             if (!fileContent) {
                 return res.status(404).json({ error: 'File not found' });
             }
             // Determine MIME type based on file extension
-            const ext = path_1.default.extname(filePath).toLowerCase();
             let mimeType = 'text/plain';
             switch (ext) {
                 case '.css':

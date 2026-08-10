@@ -135,10 +135,12 @@ const loadTeacherGroupsWithStudents = async (teacherId) => prisma.learningGroup.
     orderBy: { name: 'asc' },
 });
 const countUniqueStudentsInGroups = (groups, groupIds) => {
+    if (groupIds.length === 0)
+        return 0;
     const idSet = new Set(groupIds);
     const ids = new Set();
     for (const g of groups) {
-        if (groupIds.length > 0 && !idSet.has(g.id))
+        if (!idSet.has(g.id))
             continue;
         for (const s of g.students)
             ids.add(s.id);
@@ -307,7 +309,10 @@ const resolveExcursionForStudentGroup = async (teacherId, groupId) => {
     const payload = await loadExcursion(teacherId, excursionId);
     if (!(payload === null || payload === void 0 ? void 0 : payload.publishedAt))
         return null;
-    if (payload.groupIds.length > 0 && !payload.groupIds.includes(groupId))
+    // Nur bei expliziter Gruppenzuordnung sichtbar
+    if (!payload.groupIds || payload.groupIds.length === 0)
+        return null;
+    if (!payload.groupIds.includes(groupId))
         return null;
     return { excursionId, publishedAt: payload.publishedAt };
 };
@@ -340,8 +345,11 @@ const resolveStudentExcursions = async (studentId) => {
             const payload = await loadExcursion(teacherId, meta.id);
             if (!(payload === null || payload === void 0 ? void 0 : payload.publishedAt))
                 continue;
+            // Ohne explizite Gruppenzuordnung: für SuS unsichtbar (nicht „für alle“)
+            if (!payload.groupIds || payload.groupIds.length === 0)
+                continue;
             for (const g of teacherGroups) {
-                if (payload.groupIds.length > 0 && !payload.groupIds.includes(g.id))
+                if (!payload.groupIds.includes(g.id))
                     continue;
                 const key = `${meta.id}:${g.id}`;
                 if (seen.has(key))
@@ -370,12 +378,12 @@ const assertStudentCanAccessExcursion = async (studentId, teacherId, excursionId
     const payload = await loadExcursion(teacherId, excursionId);
     if (!(payload === null || payload === void 0 ? void 0 : payload.publishedAt))
         return false;
+    if (!payload.groupIds || payload.groupIds.length === 0)
+        return false;
     const studentGroups = await prisma.learningGroup.findMany({
         where: { teacherId, students: { some: { id: studentId } } },
         select: { id: true },
     });
-    if (payload.groupIds.length === 0)
-        return true;
     return studentGroups.some((g) => payload.groupIds.includes(g.id));
 };
 const normalizeReflection = (raw) => {
@@ -439,7 +447,7 @@ class ExcursionProtocolController {
                 var _a, _b, _c, _d;
                 const data = await loadExcursion(user.id, meta.id);
                 const submissionCount = (_a = data === null || data === void 0 ? void 0 : data.submissions.length) !== null && _a !== void 0 ? _a : 0;
-                const targetGroups = meta.groupIds.length > 0 ? meta.groupIds : groups.map((g) => g.id);
+                const targetGroups = meta.groupIds;
                 return {
                     ...meta,
                     groupNames: targetGroups.map((id) => groupNameById.get(id) || id),
@@ -550,7 +558,8 @@ class ExcursionProtocolController {
             syncIndexEntry(index, next);
             if (next.publishedAt) {
                 const owned = await loadTeacherGroupsWithStudents(user.id);
-                await syncPublishedGroups(user.id, next, next.groupIds.length > 0 ? next.groupIds : owned.map((g) => g.id), index, owned.map((g) => g.id));
+                // Leere groupIds: Freigaben entfernen — nicht implizit an alle Gruppen
+                await syncPublishedGroups(user.id, next, next.groupIds, index, owned.map((g) => g.id));
             }
             await saveIndex(user.id, index);
             return res.json({ success: true, excursion: next });
@@ -658,9 +667,10 @@ class ExcursionProtocolController {
             const ownedIds = new Set(owned.map((g) => g.id));
             let groupIds = Array.isArray((_c = req.body) === null || _c === void 0 ? void 0 : _c.groupIds)
                 ? req.body.groupIds.map((g) => String(g).trim()).filter((id) => ownedIds.has(id))
-                : owned.map((g) => g.id);
-            if (groupIds.length === 0)
-                groupIds = owned.map((g) => g.id);
+                : [];
+            if (groupIds.length === 0) {
+                return res.status(400).json({ error: 'Mindestens eine Lerngruppe auswählen' });
+            }
             const now = new Date().toISOString();
             const id = (0, crypto_1.randomUUID)();
             const publishedAt = now;
@@ -886,7 +896,7 @@ class ExcursionProtocolController {
             if (!payload) {
                 return res.json({ session: null, submissions: [], roster: [], totalStudents: 0 });
             }
-            const targetGroupIds = payload.groupIds.length > 0 ? payload.groupIds : groups.map((g) => g.id);
+            const targetGroupIds = payload.groupIds;
             const targetGroups = groups.filter((g) => targetGroupIds.includes(g.id));
             const submissionByStudent = new Map(payload.submissions.map((s) => [s.studentId, s]));
             const roster = [];

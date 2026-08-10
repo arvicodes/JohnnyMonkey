@@ -42,7 +42,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { AnimatePresence, motion } from 'framer-motion';
-import { apiGet, apiPost } from '../lib/api';
+import { apiGet, apiPost, apiPut } from '../lib/api';
 import { entryTicketHeroSrc } from '../lib/ticketHeroImages';
 import { presentationLessonBackUrl } from '../lib/presentationEditorUi';
 import {
@@ -400,7 +400,7 @@ function customSetIsInformatik(set: EntryTicketCustomSet): boolean {
   const name = (set.name || '').toLowerCase();
   if (path.includes('/informatik/') || path.includes('/informatik')) return true;
   if (/(^|[/\s_-])inf(ormatik)?([/\s_-]|$)/i.test(path)) return true;
-  if (/informatik|\binf\s*1[123]\b|^inf\b/i.test(name)) return true;
+  if (/informatik|\binf\s*1[123]\b|^inf\b|\bki\b/i.test(name)) return true;
   return false;
 }
 
@@ -1032,6 +1032,8 @@ function parseEntryTicketSearch(search: string): {
   autostart: boolean;
   /** Fragenset-Editor direkt öffnen (Bearbeitung, kein Play). */
   openEditor: boolean;
+  /** SuS: abgeschlossenes Ticket inkl. Lösungen ansehen */
+  review: boolean;
   groupId: string | null;
   heroImageIndex: number | null;
   taskSeed: number | null;
@@ -1064,6 +1066,10 @@ function parseEntryTicketSearch(search: string): {
     params.get('edit') === '1' ||
     params.get('edit') === 'true' ||
     params.get('editor') === '1';
+  const review =
+    params.get('review') === '1' ||
+    params.get('review') === 'true' ||
+    params.get('solutions') === '1';
   const rawGid = params.get('groupId') || params.get('learningGroupId');
   const groupId = rawGid && rawGid.trim() ? rawGid.trim() : null;
   const heroRaw = Number(params.get('hero') ?? params.get('heroImageIndex'));
@@ -1077,6 +1083,7 @@ function parseEntryTicketSearch(search: string): {
     lessonPath,
     autostart,
     openEditor,
+    review,
     groupId,
     heroImageIndex,
     taskSeed,
@@ -1489,17 +1496,24 @@ export default function EntryTicketPage() {
           lessonPath: null as string | null,
           autostart: false,
           openEditor: false,
+          review: false,
           groupId: null as string | null,
           heroImageIndex: null as number | null,
           taskSeed: null as number | null,
           hasExplicitBand: false,
         };
-  const [sessionStarted, setSessionStarted] = useState(false);
+  const [sessionStarted, setSessionStarted] = useState(() => Boolean(initialRoute.review));
   const [grade, setGrade] = useState<EntryBand>(() => initialRoute.grade);
   const [customSetId, setCustomSetId] = useState<string | null>(() => initialRoute.customSetId);
   /** Inhalte (Karten / Editor) erst nach Klick auf ein Set — außer URL/Autostart. */
   const [bandChosen, setBandChosen] = useState(
-    () => Boolean(initialRoute.hasExplicitBand || initialRoute.customSetId || initialRoute.autostart),
+    () =>
+      Boolean(
+        initialRoute.hasExplicitBand ||
+          initialRoute.customSetId ||
+          initialRoute.autostart ||
+          initialRoute.review,
+      ),
   );
   const [entryLessonPath, setEntryLessonPath] = useState<string | null>(() => initialRoute.lessonPath);
   const [customSets, setCustomSets] = useState<EntryTicketCustomSet[]>(() =>
@@ -1584,10 +1598,13 @@ export default function EntryTicketPage() {
     typeof window !== 'undefined' ? loadSlideDurationSec() : DEFAULT_SLIDE_DURATION_SEC,
   );
   const [isRunning, setIsRunning] = useState(false);
-  const [showSolutions, setShowSolutions] = useState(false);
+  const [showSolutions, setShowSolutions] = useState(() => Boolean(initialRoute.review));
   const [teacherNotes, setTeacherNotes] = useState('');
-  const [sessionDone, setSessionDone] = useState(false);
+  const [sessionDone, setSessionDone] = useState(() => Boolean(initialRoute.review));
   const [completeBusy, setCompleteBusy] = useState(false);
+  const [studentReviewMode, setStudentReviewMode] = useState(() => Boolean(initialRoute.review));
+  const [studentReviewReady, setStudentReviewReady] = useState(false);
+  const [studentReviewError, setStudentReviewError] = useState<string | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingPrompt, setEditingPrompt] = useState('');
   const [editingSolution, setEditingSolution] = useState('');
@@ -1608,11 +1625,17 @@ export default function EntryTicketPage() {
   /** Schüler-Moderator darf die volle Ticket-Session sehen */
   const [isClassModerator, setIsClassModerator] = useState(false);
   const [moderatorGateChecked, setModeratorGateChecked] = useState(
-    () => Boolean(typeof window !== 'undefined' && localStorage.getItem('teacherId')),
+    () =>
+      Boolean(
+        (typeof window !== 'undefined' && localStorage.getItem('teacherId')) ||
+          initialRoute.review,
+      ),
   );
   /** Moderator: Karten kommen vom Lehrer-Signal (nicht aus lokalem Fragenset) */
   const [sharedTasksLocked, setSharedTasksLocked] = useState(false);
   const tasksSyncedRef = useRef('');
+  /** Erst nach Server-Sync Fragensets zurückschreiben (leeres localStorage nicht überschreiben). */
+  const customSetsServerSyncedRef = useRef(false);
 
   /** Klassenstufe / eigenes Set aus URL; neuer Zufallssatz bei jedem Aufruf (inkl. &r=… vom Klick auf das Dashboard-Icon). */
   useLayoutEffect(() => {
@@ -1622,6 +1645,7 @@ export default function EntryTicketPage() {
       lessonPath,
       autostart,
       openEditor,
+      review,
       groupId,
       heroImageIndex,
       taskSeed: urlSeed,
@@ -1629,21 +1653,26 @@ export default function EntryTicketPage() {
     } = parseEntryTicketSearch(location.search);
     setGrade(g);
     setCustomSetId(cId);
-    setBandChosen(Boolean(hasExplicitBand || cId || autostart || openEditor));
+    setBandChosen(Boolean(hasExplicitBand || cId || autostart || openEditor || review));
     setEntryLessonPath(lessonPath);
-    setAutoStartPending(autostart);
+    setAutoStartPending(review ? false : autostart);
     setEntryTicketGroupId(groupId);
     if (heroImageIndex != null) setEntryHeroImageIndex(heroImageIndex);
     const seedToUse = urlSeed != null ? urlSeed : randomTaskSeed();
     setTaskSeed(seedToUse);
-    setSessionStarted(false);
-    setSessionDone(false);
+    setSessionStarted(Boolean(review));
+    setSessionDone(Boolean(review));
     setCurrentIndex(0);
     setSecondsLeft(slideDurationSecRef.current);
     setIsRunning(false);
-    setShowSolutions(false);
-    setShowSetEditor(Boolean(openEditor && !autostart));
-    setSharedTasksLocked(false);
+    setShowSolutions(Boolean(review));
+    setShowSetEditor(Boolean(openEditor && !autostart && !review));
+    setSharedTasksLocked(Boolean(review));
+    setStudentReviewMode(Boolean(review));
+    if (!review) {
+      setStudentReviewReady(false);
+      setStudentReviewError(null);
+    }
     tasksSyncedRef.current = '';
 
     const teacher = Boolean(typeof window !== 'undefined' && localStorage.getItem('teacherId'));
@@ -1697,8 +1726,116 @@ export default function EntryTicketPage() {
     }
   }, []);
 
-  /** Nicht-Lehrkräfte: nur Klassen-Moderator darf die volle Ticket-Seite nutzen */
+  /** SuS-Review: abgeschlossenes Ticket inkl. Lösungen laden */
   useEffect(() => {
+    const route = parseEntryTicketSearch(location.search);
+    if (!route.review) {
+      setStudentReviewMode(false);
+      return;
+    }
+    if (!route.lessonPath || !route.groupId) {
+      setStudentReviewMode(true);
+      setStudentReviewError('Entry Ticket nicht gefunden (Stunde/Gruppe fehlt).');
+      setStudentReviewReady(true);
+      setModeratorGateChecked(true);
+      return;
+    }
+    let cancelled = false;
+    setStudentReviewMode(true);
+    setStudentReviewError(null);
+    setStudentReviewReady(false);
+    setModeratorGateChecked(true);
+    void (async () => {
+      try {
+        const qs = new URLSearchParams({
+          lessonPath: route.lessonPath!,
+          groupId: route.groupId!,
+        });
+        const res = await apiGet(`/api/entry-ticket/completed?${qs.toString()}`);
+        if (!res.ok || cancelled) {
+          if (!cancelled) {
+            setStudentReviewError('Entry Ticket konnte nicht geladen werden.');
+            setStudentReviewReady(true);
+          }
+          return;
+        }
+        const data = (await res.json()) as {
+          completed?: boolean;
+          heroImageIndex?: number | null;
+          grade?: string | null;
+          taskSeed?: number | null;
+          materialLessonPath?: string | null;
+          learningGroupId?: string | null;
+          tasks?: Array<{ category?: string; prompt?: string; solution?: string }> | null;
+          customSet?: unknown;
+        };
+        if (cancelled) return;
+        if (!data.completed || !Array.isArray(data.tasks) || data.tasks.length === 0) {
+          setStudentReviewError('Für diese Stunde liegt noch kein erledigtes Entry Ticket vor.');
+          setStudentReviewReady(true);
+          return;
+        }
+        const tasks = data.tasks
+          .map((t) => ({
+            category: typeof t.category === 'string' && t.category.trim() ? t.category.trim() : 'Eigen',
+            prompt: typeof t.prompt === 'string' ? t.prompt : '',
+            solution: typeof t.solution === 'string' ? t.solution : '',
+          }))
+          .filter((t) => t.prompt && t.solution);
+        if (tasks.length === 0) {
+          setStudentReviewError('Für diese Stunde liegt noch kein erledigtes Entry Ticket vor.');
+          setStudentReviewReady(true);
+          return;
+        }
+        const hydrated = hydrateCustomSetFromSignal(data.customSet);
+        if (hydrated) {
+          setCustomSets((prev) => {
+            const others = prev.filter((s) => s.id !== hydrated.id);
+            return [...others, hydrated];
+          });
+          setCustomSetId(hydrated.id);
+        } else if (typeof data.grade === 'string' && data.grade) {
+          applyGradeParam(data.grade);
+        }
+        if (typeof data.heroImageIndex === 'number') {
+          setEntryHeroImageIndex(data.heroImageIndex);
+        }
+        if (typeof data.taskSeed === 'number' && Number.isFinite(data.taskSeed)) {
+          setTaskSeed(Math.floor(data.taskSeed) >>> 0);
+        }
+        if (typeof data.materialLessonPath === 'string' && data.materialLessonPath.trim()) {
+          setEntryLessonPath(data.materialLessonPath.trim().replace(/\\/g, '/'));
+        } else if (route.lessonPath) {
+          setEntryLessonPath(route.lessonPath);
+        }
+        if (typeof data.learningGroupId === 'string' && data.learningGroupId.trim()) {
+          setEntryTicketGroupId(data.learningGroupId.trim());
+        } else if (route.groupId) {
+          setEntryTicketGroupId(route.groupId);
+        }
+        setSelectedTasks(tasks);
+        setSharedTasksLocked(true);
+        setBandChosen(true);
+        setSessionStarted(true);
+        setSessionDone(true);
+        setShowSolutions(true);
+        setIsRunning(false);
+        setStudentReviewReady(true);
+      } catch {
+        if (!cancelled) {
+          setStudentReviewError('Entry Ticket konnte nicht geladen werden.');
+          setStudentReviewReady(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [location.search, applyGradeParam]);
+
+  /** Nicht-Lehrkräfte: nur Klassen-Moderator darf die volle Ticket-Seite nutzen (außer Review) */
+  useEffect(() => {
+    if (parseEntryTicketSearch(location.search).review) return;
     if (isTeacher) {
       setModeratorGateChecked(true);
       setIsClassModerator(false);
@@ -2158,7 +2295,56 @@ export default function EntryTicketPage() {
 
   useEffect(() => {
     saveCustomEntryTicketSets(customSets);
-  }, [customSets]);
+    if (!isTeacher || !customSetsServerSyncedRef.current) return;
+    void apiPut('/api/entry-ticket/custom-sets', { sets: customSets }).catch(() => {});
+  }, [customSets, isTeacher]);
+
+  /** Lehrer: Fragensets vom Server laden / aus Signalen wiederherstellen (KI, Analysis, …). */
+  useEffect(() => {
+    if (!isTeacher) {
+      customSetsServerSyncedRef.current = true;
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await apiGet('/api/entry-ticket/custom-sets');
+        if (!res.ok || cancelled) {
+          if (!cancelled) customSetsServerSyncedRef.current = true;
+          return;
+        }
+        const data = (await res.json()) as { sets?: unknown };
+        const remoteRaw = Array.isArray(data.sets) ? data.sets : [];
+        const remote = remoteRaw
+          .map((row) => {
+            if (!row || typeof row !== 'object') return null;
+            const hydrated = hydrateCustomSetFromSignal(row);
+            return hydrated;
+          })
+          .filter(Boolean) as EntryTicketCustomSet[];
+        if (cancelled) return;
+        setCustomSets((local) => {
+          if (remote.length === 0) return local;
+          const byId = new Map(local.map((s) => [s.id, s] as const));
+          for (const s of remote) {
+            const prev = byId.get(s.id);
+            if (!prev || countCustomSetTasks(s) >= countCustomSetTasks(prev)) {
+              byId.set(s.id, s);
+            }
+          }
+          // Auch lokal vorhandene behalten
+          return Array.from(byId.values());
+        });
+      } catch {
+        /* ignore */
+      } finally {
+        if (!cancelled) customSetsServerSyncedRef.current = true;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isTeacher]);
 
   /** Gelöschtes Custom-Set (nur Lehrer): zurück auf Klassenband. Moderator behält URL/Server-Grade. */
   useEffect(() => {
@@ -2433,13 +2619,26 @@ export default function EntryTicketPage() {
     setIsRunning(true);
   };
 
-  /** Ticket beenden: Signal löschen → SuS-Popup zu; Lehrer zurück in den Start-Modus (z. B. Tablet) */
+  /** Ticket beenden: archivieren + Signal löschen → SuS-Popup zu; Lehrer zurück */
   const markEntryTicketDone = useCallback(async () => {
-    if (completeBusy) return;
+    if (completeBusy || studentReviewMode) return;
     setCompleteBusy(true);
     try {
       const res = await apiPost('/api/entry-ticket/complete', {
         ...(entryTicketGroupId ? { learningGroupId: entryTicketGroupId } : {}),
+        ...(entryLessonPath ? { materialLessonPath: entryLessonPath } : {}),
+        ...(selectedTasks.length > 0
+          ? {
+              tasks: selectedTasks.map((t) => ({
+                category: t.category,
+                prompt: t.prompt,
+                solution: t.solution,
+              })),
+            }
+          : {}),
+        grade: customSetId || String(grade),
+        taskSeed,
+        heroImageIndex: entryHeroImageIndex,
       });
       if (!res.ok) {
         setCompleteBusy(false);
@@ -2463,11 +2662,17 @@ export default function EntryTicketPage() {
     }
   }, [
     completeBusy,
+    customSetId,
+    entryHeroImageIndex,
     entryLessonPath,
     entryTicketGroupId,
+    grade,
     isTeacher,
     navigate,
     safeStundeReturnTo,
+    selectedTasks,
+    studentReviewMode,
+    taskSeed,
   ]);
 
   useEffect(() => {
@@ -2657,6 +2862,15 @@ export default function EntryTicketPage() {
     calculateAutoSolution(prompt);
 
   const handleBack = () => {
+    // SuS-Review: nur ansehen — X/Zurück führt zurück, nie in die Ticket-Steuerung
+    if (studentReviewMode) {
+      if (safeStundeReturnTo) {
+        navigate(safeStundeReturnTo);
+        return;
+      }
+      navigate('/dashboard');
+      return;
+    }
     if (sessionStarted) {
       setSessionStarted(false);
       setIsRunning(false);
@@ -2742,6 +2956,9 @@ export default function EntryTicketPage() {
         return;
       }
 
+      // SuS-Review: nur Überblick ansehen — keine Session-Steuerung per Tastatur
+      if (studentReviewMode) return;
+
       if (typingOrInField(e)) return;
 
       if (e.key === 'ArrowLeft') {
@@ -2762,7 +2979,7 @@ export default function EntryTicketPage() {
         if (!sessionStarted) return;
         e.preventDefault();
         // Abschlussfolie: Enter = Erledigt (wie der Button)
-        if (sessionDone && (isTeacher || isClassModerator)) {
+        if (sessionDone && (isTeacher || isClassModerator) && !studentReviewMode) {
           void markEntryTicketDone();
           return;
         }
@@ -2787,6 +3004,7 @@ export default function EntryTicketPage() {
     sessionDone,
     sessionStarted,
     startOrResume,
+    studentReviewMode,
   ]);
 
   const formatPromptForDisplay = (prompt: string): string => {
@@ -3212,7 +3430,7 @@ export default function EntryTicketPage() {
   const finalSlideRows = Math.ceil(activeTasks.length / 2);
   const overviewCompact = activeTasks.length >= 8 || showSolutions;
 
-  if (!isTeacher && !moderatorGateChecked) {
+  if (studentReviewMode && !studentReviewReady) {
     return (
       <Box sx={{ minHeight: '40vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Typography variant="body2" color="text.secondary">
@@ -3222,7 +3440,40 @@ export default function EntryTicketPage() {
     );
   }
 
-  if (!isTeacher && !isClassModerator) {
+  if (studentReviewMode && studentReviewError) {
+    return (
+      <Box
+        sx={{
+          minHeight: '40vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 1.5,
+          px: 2,
+        }}
+      >
+        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
+          {studentReviewError}
+        </Typography>
+        <Button size="small" variant="outlined" onClick={() => navigate('/dashboard')} sx={{ textTransform: 'none' }}>
+          Zurück
+        </Button>
+      </Box>
+    );
+  }
+
+  if (!isTeacher && !studentReviewMode && !moderatorGateChecked) {
+    return (
+      <Box sx={{ minHeight: '40vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Typography variant="body2" color="text.secondary">
+          Entry Ticket wird geladen…
+        </Typography>
+      </Box>
+    );
+  }
+
+  if (!isTeacher && !studentReviewMode && !isClassModerator) {
     return null;
   }
 
@@ -3317,7 +3568,7 @@ export default function EntryTicketPage() {
         </Box>
 
         <Box sx={{ width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
-            {!sessionStarted ? (
+            {!sessionStarted && !studentReviewMode ? (
               <Box sx={{ width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
                 <Box
                   sx={{
@@ -3874,7 +4125,8 @@ export default function EntryTicketPage() {
               </Box>
             ) : (
               <Box sx={{ display: 'grid', gap: 1.5, width: '100%', minWidth: 0 }}>
-                {/* Steuerung — minimal */}
+                {/* Steuerung — nur Lehrer/Moderator, nicht SuS-Review */}
+                {!studentReviewMode && (
                 <Box
                   sx={{
                     display: 'flex',
@@ -4034,6 +4286,7 @@ export default function EntryTicketPage() {
                     </Tooltip>
                   </Box>
                 </Box>
+                )}
 
                 {!sessionDone ? (
                   <Box
@@ -4206,7 +4459,7 @@ export default function EntryTicketPage() {
                         }
                         sx={{ mr: 0, '& .MuiFormControlLabel-label': { ml: 0.2 } }}
                       />
-                      {(isTeacher || isClassModerator) && (
+                      {(isTeacher || isClassModerator) && !studentReviewMode && (
                         <Tooltip title="Erledigt (Enter)">
                           <span>
                             <Button

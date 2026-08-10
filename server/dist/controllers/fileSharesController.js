@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.batchCheckFileShares = exports.checkFileShare = exports.getSharedFilesForGroup = exports.toggleFileShare = void 0;
+exports.syncLessonFolderFileShares = exports.batchCheckFileShares = exports.checkFileShare = exports.getSharedFilesForGroup = exports.toggleFileShare = void 0;
 const client_1 = require("@prisma/client");
+const lessonFolderShareSync_1 = require("../services/lessonFolderShareSync");
 const prisma = new client_1.PrismaClient();
 const normalizeFilePath = (p) => (p || '').replace(/\\/g, '/').trim();
 // Toggle file share for a learning group
@@ -118,4 +119,36 @@ const batchCheckFileShares = async (req, res) => {
     }
 };
 exports.batchCheckFileShares = batchCheckFileShares;
+/** Lehrkraft: Freigaben im Stundenordner bereinigen (Bilder weg, Folien-PDFs an). */
+const syncLessonFolderFileShares = async (req, res) => {
+    try {
+        const loginCode = typeof req.headers['x-login-code'] === 'string' ? req.headers['x-login-code'].trim() : '';
+        if (!loginCode)
+            return res.status(401).json({ error: 'Nicht autorisiert' });
+        const user = await prisma.user.findUnique({
+            where: { loginCode },
+            select: { id: true, role: true },
+        });
+        if (!user || user.role !== 'TEACHER') {
+            return res.status(403).json({ error: 'Nur Lehrkräfte' });
+        }
+        const { groupId, lessonPath } = req.body;
+        if (!(groupId === null || groupId === void 0 ? void 0 : groupId.trim()) || !(lessonPath === null || lessonPath === void 0 ? void 0 : lessonPath.trim())) {
+            return res.status(400).json({ error: 'groupId und lessonPath sind erforderlich' });
+        }
+        const owned = await prisma.learningGroup.findFirst({
+            where: { id: groupId.trim(), teacherId: user.id },
+            select: { id: true },
+        });
+        if (!owned)
+            return res.status(403).json({ error: 'Keine Berechtigung für diese Gruppe' });
+        await (0, lessonFolderShareSync_1.syncLessonFolderShares)(groupId.trim(), lessonPath.trim().replace(/\\/g, '/').replace(/\/$/, ''));
+        return res.json({ ok: true });
+    }
+    catch (error) {
+        console.error('Error syncing lesson folder shares:', error);
+        res.status(500).json({ error: (error === null || error === void 0 ? void 0 : error.message) || 'Serverfehler beim Synchronisieren der Freigaben' });
+    }
+};
+exports.syncLessonFolderFileShares = syncLessonFolderFileShares;
 //# sourceMappingURL=fileSharesController.js.map

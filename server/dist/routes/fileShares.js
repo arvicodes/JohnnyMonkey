@@ -14,5 +14,7 @@ router.get('/group/:groupId', fileSharesController_1.getSharedFilesForGroup);
 router.get('/check', fileSharesController_1.checkFileShare);
 // Batch check file shares
 router.post('/batch-check', fileSharesController_1.batchCheckFileShares);
+// Stundenordner: Bilder entfernen, Folien-PDFs freigeben
+router.post('/sync-lesson-folder', fileSharesController_1.syncLessonFolderFileShares);
 exports.default = router;
 //# sourceMappingURL=fileShares.js.map

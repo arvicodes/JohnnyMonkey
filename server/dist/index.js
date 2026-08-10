@@ -31,6 +31,7 @@ const kaCorrections_1 = __importDefault(require("./routes/kaCorrections"));
 const messages_1 = __importDefault(require("./routes/messages"));
 const exitTicket_1 = __importDefault(require("./routes/exitTicket"));
 const entryTicket_1 = __importDefault(require("./routes/entryTicket"));
+const presentationImport_1 = __importDefault(require("./routes/presentationImport"));
 const excursionProtocol_1 = __importDefault(require("./routes/excursionProtocol"));
 const announcements_1 = __importDefault(require("./routes/announcements"));
 const journey_1 = __importDefault(require("./routes/journey"));
@@ -42,7 +43,9 @@ const fileShares_1 = __importDefault(require("./routes/fileShares"));
 const participation_1 = __importDefault(require("./routes/participation"));
 const adventCalendar_1 = __importDefault(require("./routes/adventCalendar"));
 const lessonInstructions_1 = __importDefault(require("./routes/lessonInstructions"));
+const teacherSchedule_1 = __importDefault(require("./routes/teacherSchedule"));
 const path_1 = __importDefault(require("path"));
+const autoLessonScheduler_1 = require("./services/autoLessonScheduler");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const prisma = new client_1.PrismaClient();
@@ -87,10 +90,12 @@ app.use('/api/file-shares', fileShares_1.default);
 app.use('/api/participation', participation_1.default);
 app.use('/api/advent-calendar', adventCalendar_1.default);
 app.use('/api/lesson-instructions', lessonInstructions_1.default);
+app.use('/api/teacher-schedule', teacherSchedule_1.default);
 app.use('/api/ka-corrections', kaCorrections_1.default);
 app.use('/api/messages', messages_1.default);
 app.use('/api/exit-ticket', exitTicket_1.default);
 app.use('/api/entry-ticket', entryTicket_1.default);
+app.use('/api/presentation', presentationImport_1.default);
 app.use('/api/excursion-protocol', excursionProtocol_1.default);
 app.use('/api/announcements', announcements_1.default);
 app.use('/api/journey', journey_1.default);
@@ -98,6 +103,10 @@ app.use('/api/story-sites', storySites_1.default);
 app.use('/api/be-a-hero/workouts', beAHeroWorkouts_1.default);
 // Material static files
 app.use('/material', express_1.default.static(path_1.default.join(__dirname, '../../material')));
+// Avatar images ( /api/avatars works through CRA proxy; /uploads/avatars kept for legacy URLs )
+const avatarStaticDir = path_1.default.join(__dirname, '../uploads/avatars');
+app.use('/api/avatars', express_1.default.static(avatarStaticDir));
+app.use('/uploads/avatars', express_1.default.static(avatarStaticDir));
 // Enhanced health check endpoint with monitoring
 app.get('/health', (req, res) => {
     try {
@@ -132,8 +141,8 @@ if (process.env.NODE_ENV === 'production') {
     app.use(express_1.default.static(clientBuildPath));
     // React Router Fallback - ALWAYS last (but exclude API routes)
     app.get('*', (req, res) => {
-        // Don't serve React app for API routes
-        if (req.path.startsWith('/api/')) {
+        // Don't serve React app for API routes / static uploads
+        if (req.path.startsWith('/api/') || req.path.startsWith('/material/') || req.path.startsWith('/uploads/')) {
             return res.status(404).json({ error: 'API endpoint not found' });
         }
         if (!clientBuildPath) {
@@ -146,7 +155,7 @@ else {
     // Development: don't serve a potentially stale client-build.
     // Provide a helpful hint when someone opens backend URLs in the browser.
     app.get('*', (req, res) => {
-        if (req.path.startsWith('/api/') || req.path === '/health' || req.path.startsWith('/material/')) {
+        if (req.path.startsWith('/api/') || req.path === '/health' || req.path.startsWith('/material/') || req.path.startsWith('/uploads/')) {
             return res.status(404).json({ error: 'Endpoint not found' });
         }
         const acceptsHtml = String(req.headers.accept || '').includes('text/html');
@@ -228,6 +237,8 @@ async function startServer() {
             console.log(`📊 Monitoring: http://localhost:${managedPort}/api/monitoring/stats`);
             console.log('✅ Monitoring system initialized');
         }
+        (0, autoLessonScheduler_1.startAutoLessonScheduler)();
+        console.log('⏰ Auto-Lesson-Scheduler gestartet');
     }
     catch (error) {
         console.error('❌ Failed to start server:', error);

@@ -167,7 +167,7 @@ const getOrCreateAssignment = async (req, res) => {
 };
 exports.getOrCreateAssignment = getOrCreateAssignment;
 /**
- * Schüler lädt eine Abgabe hoch
+ * Schüler lädt eine Abgabe hoch (weitere Dateien möglich; optional ersetzen)
  */
 const submitAssignment = async (req, res) => {
     try {
@@ -175,13 +175,12 @@ const submitAssignment = async (req, res) => {
         if (!file) {
             return res.status(400).json({ error: 'Keine Datei hochgeladen' });
         }
-        const { assignmentId, studentId } = req.body;
+        const { assignmentId, studentId, displayName, replaceSubmissionId, allowMultiple } = req.body;
+        const multi = allowMultiple === true || allowMultiple === 'true';
         if (!assignmentId || !studentId) {
-            // Lösche hochgeladene Datei wenn Validierung fehlschlägt
             await promises_1.default.unlink(file.path);
             return res.status(400).json({ error: 'assignmentId und studentId sind erforderlich' });
         }
-        // Prüfe ob Assignment existiert
         const assignment = await prisma.assignment.findUnique({
             where: { id: assignmentId }
         });
@@ -189,59 +188,73 @@ const submitAssignment = async (req, res) => {
             await promises_1.default.unlink(file.path);
             return res.status(404).json({ error: 'Assignment nicht gefunden' });
         }
-        // Prüfe ob bereits eine Submission existiert
-        const existingSubmission = await prisma.submission.findUnique({
-            where: {
-                assignmentId_studentId: {
-                    assignmentId: assignmentId,
-                    studentId: studentId
+        const originalExt = path_1.default.extname(file.originalname);
+        let originalFileName = String(displayName || file.originalname || 'Abgabe').trim() || file.originalname;
+        // Endung beibehalten, falls beim Umbenennen weggelassen
+        if (originalExt && !path_1.default.extname(originalFileName)) {
+            originalFileName = `${originalFileName}${originalExt}`;
+        }
+        const studentInclude = {
+            student: {
+                select: {
+                    id: true,
+                    name: true,
+                    avatarEmoji: true
                 }
             }
-        });
-        // Lösche alte Datei wenn Submission existiert
-        if (existingSubmission) {
+        };
+        let submission;
+        let targetReplaceId = replaceSubmissionId ? String(replaceSubmissionId) : null;
+        // Alte H_-Uploads: ohne allowMultiple weiter ersetzen (eine Datei)
+        if (!targetReplaceId && !multi) {
+            const existing = await prisma.submission.findFirst({
+                where: { assignmentId, studentId },
+                orderBy: { submittedAt: 'desc' }
+            });
+            if (existing)
+                targetReplaceId = existing.id;
+        }
+        if (targetReplaceId) {
+            const existing = await prisma.submission.findUnique({
+                where: { id: targetReplaceId }
+            });
+            if (!existing || existing.studentId !== studentId || existing.assignmentId !== assignmentId) {
+                await promises_1.default.unlink(file.path);
+                return res.status(404).json({ error: 'Zu ersetzende Abgabe nicht gefunden' });
+            }
             try {
-                await promises_1.default.unlink(existingSubmission.filePath);
+                await promises_1.default.unlink(existing.filePath);
             }
             catch (error) {
                 console.error('Fehler beim Löschen der alten Datei:', error);
             }
+            submission = await prisma.submission.update({
+                where: { id: existing.id },
+                data: {
+                    originalFileName,
+                    storedFileName: file.filename,
+                    filePath: file.path,
+                    fileType: file.mimetype,
+                    fileSize: file.size,
+                    updatedAt: new Date()
+                },
+                include: studentInclude
+            });
         }
-        // Erstelle oder aktualisiere Submission
-        const submission = await prisma.submission.upsert({
-            where: {
-                assignmentId_studentId: {
-                    assignmentId: assignmentId,
-                    studentId: studentId
-                }
-            },
-            update: {
-                originalFileName: file.originalname,
-                storedFileName: file.filename,
-                filePath: file.path,
-                fileType: file.mimetype,
-                fileSize: file.size,
-                updatedAt: new Date()
-            },
-            create: {
-                assignmentId: assignmentId,
-                studentId: studentId,
-                originalFileName: file.originalname,
-                storedFileName: file.filename,
-                filePath: file.path,
-                fileType: file.mimetype,
-                fileSize: file.size
-            },
-            include: {
-                student: {
-                    select: {
-                        id: true,
-                        name: true,
-                        avatarEmoji: true
-                    }
-                }
-            }
-        });
+        else {
+            submission = await prisma.submission.create({
+                data: {
+                    assignmentId,
+                    studentId,
+                    originalFileName,
+                    storedFileName: file.filename,
+                    filePath: file.path,
+                    fileType: file.mimetype,
+                    fileSize: file.size
+                },
+                include: studentInclude
+            });
+        }
         try {
             await (0, journeyService_1.applyJourneyEvent)(studentId, 'homework_submit');
         }
@@ -252,7 +265,6 @@ const submitAssignment = async (req, res) => {
     }
     catch (error) {
         console.error('Fehler beim Hochladen der Abgabe:', error);
-        // Lösche Datei bei Fehler
         if (req.file) {
             try {
                 await promises_1.default.unlink(req.file.path);
@@ -266,17 +278,15 @@ const submitAssignment = async (req, res) => {
 };
 exports.submitAssignment = submitAssignment;
 /**
- * Ruft eine spezifische Submission ab (für Schüler oder Lehrer)
+ * Ruft Abgaben eines Schülers für ein Assignment ab (neueste zuerst)
  */
 const getSubmission = async (req, res) => {
     try {
         const { assignmentId, studentId } = req.params;
-        const submission = await prisma.submission.findUnique({
+        const submissions = await prisma.submission.findMany({
             where: {
-                assignmentId_studentId: {
-                    assignmentId: assignmentId,
-                    studentId: studentId
-                }
+                assignmentId,
+                studentId
             },
             include: {
                 student: {
@@ -287,12 +297,14 @@ const getSubmission = async (req, res) => {
                     }
                 },
                 assignment: true
-            }
+            },
+            orderBy: { submittedAt: 'desc' }
         });
-        if (!submission) {
+        if (submissions.length === 0) {
             return res.status(404).json({ error: 'Keine Abgabe gefunden' });
         }
-        res.json(submission);
+        // Rückwärtskompatibel: eine Datei + Liste
+        res.json({ ...submissions[0], submissions });
     }
     catch (error) {
         console.error('Fehler beim Abrufen der Abgabe:', error);
@@ -394,18 +406,18 @@ const checkStudentSubmission = async (req, res) => {
         if (!assignment) {
             return res.json({ hasSubmission: false, submission: null });
         }
-        // Finde Submission
-        const submission = await prisma.submission.findUnique({
+        // Finde Submissions (mehrere Dateien möglich)
+        const submissions = await prisma.submission.findMany({
             where: {
-                assignmentId_studentId: {
-                    assignmentId: assignment.id,
-                    studentId: studentId
-                }
-            }
+                assignmentId: assignment.id,
+                studentId: studentId
+            },
+            orderBy: { submittedAt: 'desc' }
         });
         res.json({
-            hasSubmission: !!submission,
-            submission: submission,
+            hasSubmission: submissions.length > 0,
+            submission: submissions[0] || null,
+            submissions,
             assignmentId: assignment.id
         });
     }

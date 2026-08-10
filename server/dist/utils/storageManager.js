@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.StorageManager = void 0;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const multerFilename_1 = require("./multerFilename");
 class StorageManager {
     /**
      * Physical root of J-M-Reihen (Docker: usually /app/J-M-Reihen when LOCAL_MATERIALS_PATH=/app).
@@ -39,12 +40,13 @@ class StorageManager {
      * UI/DB sometimes stores "J-M-Reihen/..." instead of "git-intern/..." — normalize for one code path.
      */
     static normalizeDirRequestPath(raw) {
-        const p = raw.replace(/\\/g, '/').trim();
-        if (p === 'J-M-Reihen' || p === './J-M-Reihen') {
+        const p = raw.replace(/\\/g, '/');
+        const trimmed = p.trim();
+        if (trimmed === 'J-M-Reihen' || trimmed === './J-M-Reihen') {
             return 'git-intern';
         }
-        if (p.startsWith('J-M-Reihen/')) {
-            return `git-intern/${p.slice('J-M-Reihen/'.length)}`;
+        if (trimmed.startsWith('J-M-Reihen/')) {
+            return `git-intern/${trimmed.slice('J-M-Reihen/'.length)}`;
         }
         return p;
     }
@@ -229,6 +231,28 @@ class StorageManager {
         const parts = inner.split('/').filter(Boolean);
         const resolved = this.resolveUnicodePath(jmReihenPath, parts);
         return resolved !== null && resolved !== void 0 ? resolved : path_1.default.join(jmReihenPath, inner);
+    }
+    static resolveFilePath(filePath) {
+        let norm = filePath.replace(/\\/g, '/');
+        if (norm === 'J-M-Reihen' || norm.startsWith('J-M-Reihen/')) {
+            norm =
+                norm === 'J-M-Reihen'
+                    ? 'git-intern'
+                    : `git-intern/${norm.slice('J-M-Reihen/'.length)}`;
+        }
+        const candidates = (0, multerFilename_1.filenameLookupVariants)(norm);
+        for (const candidate of candidates) {
+            if (candidate.startsWith('git-intern/')) {
+                const full = this.resolveGitInternRelativePath(candidate.replace('git-intern/', ''));
+                if (fs_1.default.existsSync(full))
+                    return full;
+                continue;
+            }
+            const resolved = path_1.default.resolve(candidate);
+            if (fs_1.default.existsSync(resolved))
+                return resolved;
+        }
+        return null;
     }
     /**
      * Read file contents

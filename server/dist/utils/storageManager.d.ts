@@ -32,6 +32,7 @@ export declare class StorageManager {
      * Gleiche Logik wie readFile — wichtig für saveFile, damit Speichern und Lesen dasselbe Verzeichnis nutzen.
      */
     static resolveGitInternRelativePath(relativePath: string): string;
+    static resolveFilePath(filePath: string): string | null;
     /**
      * Read file contents
      */

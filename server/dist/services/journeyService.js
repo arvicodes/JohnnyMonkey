@@ -58,19 +58,26 @@ async function ensureDailyVisitBonus(userId) {
     if (row.lastDailyVisitDate === key) {
         return row;
     }
-    const weite = row.weitePoints + 4;
-    const funken = row.funkenPoints + 2;
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+    });
+    const isTeacher = (user === null || user === void 0 ? void 0 : user.role) === 'TEACHER';
+    const weite = row.weitePoints + (isTeacher ? 3 : 4);
+    const funken = row.funkenPoints + (isTeacher ? 3 : 2);
+    const hingabe = row.hingabePoints + (isTeacher ? 3 : 0);
     const unlock = maybeUnlockEgg({
         ...row,
         weitePoints: weite,
         funkenPoints: funken,
-        hingabePoints: row.hingabePoints,
+        hingabePoints: hingabe,
     });
     const updated = await prisma.studentJourneyProgress.update({
         where: { userId },
         data: {
             weitePoints: weite,
             funkenPoints: funken,
+            hingabePoints: hingabe,
             lastDailyVisitDate: key,
             ...(unlock
                 ? {

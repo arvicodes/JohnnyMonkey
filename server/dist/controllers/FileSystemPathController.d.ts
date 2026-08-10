@@ -61,6 +61,10 @@ export declare class FileSystemPathController {
      */
     static saveFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /**
+     * Datei im Stundenordner löschen (nur unter J-M-Reihen / git-intern).
+     */
+    static deleteFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
      * Load whiteboard file (.wb) as JSON
      */
     static loadWhiteboardFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;

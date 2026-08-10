@@ -6,11 +6,11 @@ export declare const upload: multer.Multer;
  */
 export declare const getOrCreateAssignment: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
 /**
- * Schüler lädt eine Abgabe hoch
+ * Schüler lädt eine Abgabe hoch (weitere Dateien möglich; optional ersetzen)
  */
 export declare const submitAssignment: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
 /**
- * Ruft eine spezifische Submission ab (für Schüler oder Lehrer)
+ * Ruft Abgaben eines Schülers für ein Assignment ab (neueste zuerst)
  */
 export declare const getSubmission: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
 /**

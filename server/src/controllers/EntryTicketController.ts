@@ -4,8 +4,11 @@ import { Prisma, PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 const ENTRY_TICKET_LEGACY_PATH = '__entry_ticket_active__';
+/** Persistente eigene Fragensets der Lehrkraft (nicht nur Browser-localStorage). */
+const ENTRY_TICKET_CUSTOM_SETS_PATH = '__entry_ticket_custom_sets__';
 
 const entryTicketPathForGroup = (groupId: string) => `__entry_ticket_g_${groupId}__`;
+const entryTicketDonePathForGroup = (groupId: string) => `__entry_ticket_done_g_${groupId}__`;
 
 type EntryTicketTaskPayload = {
   category: string;
@@ -39,6 +42,12 @@ type EntryTicketPayload = {
   tasks?: EntryTicketTaskPayload[];
   /** Snapshot des eigenen Fragensets (z. B. KI-Reihe), damit Moderator dasselbe Set hat */
   customSet?: EntryTicketCustomSetPayload;
+  /** Nur Archive: wann „Erledigt“ gesetzt wurde */
+  completedAt?: string;
+};
+
+type EntryTicketArchiveStore = {
+  archives: EntryTicketPayload[];
 };
 
 const clampHeroIndex = (n: unknown): number => {
@@ -61,9 +70,26 @@ const normalizeTaskSeed = (raw: unknown): number | undefined => {
 const normalizeMaterialLessonPath = (raw: unknown): string | null | undefined => {
   if (raw === null) return null;
   if (typeof raw !== 'string') return undefined;
-  const p = raw.trim().replace(/\\/g, '/');
+  let p = raw.trim().replace(/\\/g, '/').replace(/\/+$/, '');
   if (!p || p.startsWith('__')) return null;
-  return p;
+  // Absolute / gemischte Pfade → kanonisch „J-M-Reihen/…“
+  if (p.startsWith('git-intern/')) {
+    p = `J-M-Reihen/${p.slice('git-intern/'.length)}`;
+  } else {
+    const marker = 'J-M-Reihen/';
+    const idx = p.indexOf(marker);
+    if (idx >= 0) p = p.slice(idx);
+  }
+  return p || null;
+};
+
+const sameLessonPath = (a?: string | null, b?: string | null): boolean => {
+  const na = normalizeMaterialLessonPath(a) || '';
+  const nb = normalizeMaterialLessonPath(b) || '';
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  // Fallback: ein Pfad endet mit dem anderen (verschiedene Präfixe)
+  return na.endsWith(`/${nb}`) || nb.endsWith(`/${na}`) || na.endsWith(nb) || nb.endsWith(na);
 };
 
 const normalizeTasksPayload = (raw: unknown): EntryTicketTaskPayload[] | undefined => {
@@ -137,11 +163,166 @@ const parsePayload = (raw: string | null | undefined): EntryTicketPayload | null
       materialLessonPath: normalizeMaterialLessonPath(parsed.materialLessonPath) ?? undefined,
       tasks: normalizeTasksPayload(parsed.tasks),
       customSet: normalizeCustomSetPayload(parsed.customSet),
+      ...(typeof parsed.completedAt === 'string' && parsed.completedAt.trim()
+        ? { completedAt: parsed.completedAt.trim() }
+        : {}),
     };
   } catch {
     return null;
   }
 };
+
+const parseArchiveStore = (raw: string | null | undefined): EntryTicketArchiveStore => {
+  if (!raw) return { archives: [] };
+  try {
+    const parsed = JSON.parse(raw) as EntryTicketArchiveStore & EntryTicketPayload;
+    if (Array.isArray(parsed?.archives)) {
+      const archives = parsed.archives
+        .map((row) => {
+          if (!row || typeof row !== 'object') return null;
+          const asPayload = parsePayload(JSON.stringify(row));
+          if (!asPayload) return null;
+          const completedAt =
+            typeof (row as EntryTicketPayload).completedAt === 'string'
+              ? (row as EntryTicketPayload).completedAt
+              : undefined;
+          return completedAt ? { ...asPayload, completedAt } : asPayload;
+        })
+        .filter(Boolean) as EntryTicketPayload[];
+      return { archives };
+    }
+    // Legacy: einzelne Payload-Zeile statt Store
+    const single = parsePayload(raw);
+    return single ? { archives: [single] } : { archives: [] };
+  } catch {
+    return { archives: [] };
+  }
+};
+
+async function upsertArchiveForGroup(
+  teacherId: string,
+  groupId: string,
+  payload: EntryTicketPayload,
+): Promise<void> {
+  const lessonPath = entryTicketDonePathForGroup(groupId);
+  const row = await prisma.teacherLessonInstruction.findUnique({
+    where: { teacherId_lessonPath: { teacherId, lessonPath } },
+    select: { content: true },
+  });
+  const store = parseArchiveStore(row?.content);
+  const completedAt = new Date().toISOString();
+  const entry: EntryTicketPayload = {
+    ...payload,
+    completedAt,
+    materialLessonPath: normalizeMaterialLessonPath(payload.materialLessonPath) ?? null,
+  };
+  const lessonKey = entry.materialLessonPath || '';
+  let archives = store.archives.filter((a) => {
+    if (!lessonKey) return true;
+    return !sameLessonPath(a.materialLessonPath, lessonKey);
+  });
+  archives.unshift(entry);
+  archives = archives.slice(0, 40);
+  const content = JSON.stringify({ archives });
+  await prisma.teacherLessonInstruction.upsert({
+    where: { teacherId_lessonPath: { teacherId, lessonPath } },
+    create: { teacherId, lessonPath, content },
+    update: { content },
+  });
+}
+
+function countCustomSetTasks(set: EntryTicketCustomSetPayload): number {
+  return (set.lessons || []).reduce((n, l) => n + (l.tasks?.length || 0), 0);
+}
+
+function mergeCustomSetMaps(
+  into: Map<string, EntryTicketCustomSetPayload>,
+  set: EntryTicketCustomSetPayload | null | undefined,
+) {
+  if (!set?.id || !set.id.startsWith('c_')) return;
+  const prev = into.get(set.id);
+  if (!prev || countCustomSetTasks(set) >= countCustomSetTasks(prev)) {
+    into.set(set.id, {
+      id: set.id,
+      name: set.name || 'Fragenset',
+      lessons: Array.isArray(set.lessons) ? set.lessons : [],
+    });
+  }
+}
+
+async function loadStoredCustomSets(teacherId: string): Promise<EntryTicketCustomSetPayload[]> {
+  const row = await prisma.teacherLessonInstruction.findUnique({
+    where: {
+      teacherId_lessonPath: { teacherId, lessonPath: ENTRY_TICKET_CUSTOM_SETS_PATH },
+    },
+    select: { content: true },
+  });
+  if (!row?.content) return [];
+  try {
+    const parsed = JSON.parse(row.content) as { sets?: unknown };
+    if (!Array.isArray(parsed?.sets)) return [];
+    return parsed.sets
+      .map((raw) => normalizeCustomSetPayload(raw))
+      .filter(Boolean) as EntryTicketCustomSetPayload[];
+  } catch {
+    return [];
+  }
+}
+
+async function saveStoredCustomSets(
+  teacherId: string,
+  sets: EntryTicketCustomSetPayload[],
+): Promise<void> {
+  const cleaned = sets
+    .map((s) => normalizeCustomSetPayload(s))
+    .filter(Boolean) as EntryTicketCustomSetPayload[];
+  await prisma.teacherLessonInstruction.upsert({
+    where: {
+      teacherId_lessonPath: { teacherId, lessonPath: ENTRY_TICKET_CUSTOM_SETS_PATH },
+    },
+    create: {
+      teacherId,
+      lessonPath: ENTRY_TICKET_CUSTOM_SETS_PATH,
+      content: JSON.stringify({ sets: cleaned }),
+    },
+    update: { content: JSON.stringify({ sets: cleaned }) },
+  });
+}
+
+/** Aus aktiven Signalen / Archiven Fragensets einsammeln (Wiederherstellung nach leerem localStorage). */
+async function recoverCustomSetsFromSignals(
+  teacherId: string,
+): Promise<EntryTicketCustomSetPayload[]> {
+  const rows = await prisma.teacherLessonInstruction.findMany({
+    where: {
+      teacherId,
+      OR: [
+        { lessonPath: ENTRY_TICKET_LEGACY_PATH },
+        { lessonPath: { startsWith: '__entry_ticket_g_' } },
+        { lessonPath: { startsWith: '__entry_ticket_done_' } },
+      ],
+    },
+    select: { content: true },
+  });
+  const byId = new Map<string, EntryTicketCustomSetPayload>();
+  for (const row of rows) {
+    try {
+      const parsed = JSON.parse(row.content) as {
+        customSet?: unknown;
+        archives?: Array<{ customSet?: unknown }>;
+      };
+      mergeCustomSetMaps(byId, normalizeCustomSetPayload(parsed.customSet));
+      if (Array.isArray(parsed.archives)) {
+        for (const a of parsed.archives) {
+          mergeCustomSetMaps(byId, normalizeCustomSetPayload(a?.customSet));
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return Array.from(byId.values());
+}
 
 const getUserByLoginCode = async (req: Request) => {
   const raw = req.headers['x-login-code'] as string | undefined;
@@ -441,7 +622,7 @@ export class EntryTicketController {
     }
   }
 
-  /** Lehrer oder Klassen-Moderator: Entry Ticket beenden → Schüler-Popup verschwindet */
+  /** Lehrer oder Klassen-Moderator: Entry Ticket beenden → archivieren für SuS-Materialien, Signal löschen */
   static async complete(req: Request, res: Response) {
     try {
       const user = await getUserByLoginCode(req);
@@ -486,8 +667,58 @@ export class EntryTicketController {
         return res.status(400).json({ error: 'Lehrer nicht gefunden' });
       }
 
-      /** Alle aktiven Signale dieser Lehrkraft löschen (Scoped + Legacy), sonst bleibt Fallback. */
-      await prisma.teacherLessonInstruction.deleteMany({
+      const bodyTasks = normalizeTasksPayload(req.body?.tasks);
+      const bodyMaterial =
+        normalizeMaterialLessonPath(req.body?.materialLessonPath ?? req.body?.lessonPath) ?? null;
+      const bodyGrade = normalizeGradeParam(req.body?.grade);
+      const bodySeed = normalizeTaskSeed(
+        typeof req.body?.taskSeed === 'string' ? Number(req.body.taskSeed) : req.body?.taskSeed,
+      );
+      const bodyHero =
+        typeof req.body?.heroImageIndex === 'number' || typeof req.body?.heroImageIndex === 'string'
+          ? clampHeroIndex(Number(req.body.heroImageIndex))
+          : undefined;
+      const bodyCustomSet = normalizeCustomSetPayload(req.body?.customSet);
+
+      const enrichPayload = (base: EntryTicketPayload | null): EntryTicketPayload => {
+        const startedAt = base?.startedAt || new Date().toISOString();
+        return {
+          startedAt,
+          heroImageIndex:
+            bodyHero != null
+              ? bodyHero
+              : base?.heroImageIndex != null
+                ? clampHeroIndex(base.heroImageIndex)
+                : 0,
+          ...(bodyGrade
+            ? { grade: bodyGrade }
+            : base?.grade
+              ? { grade: base.grade }
+              : {}),
+          ...(bodySeed != null
+            ? { taskSeed: bodySeed }
+            : base?.taskSeed != null
+              ? { taskSeed: base.taskSeed }
+              : {}),
+          ...(bodyMaterial
+            ? { materialLessonPath: bodyMaterial }
+            : base?.materialLessonPath
+              ? { materialLessonPath: base.materialLessonPath }
+              : {}),
+          ...(bodyTasks
+            ? { tasks: bodyTasks }
+            : base?.tasks
+              ? { tasks: base.tasks }
+              : {}),
+          ...(bodyCustomSet
+            ? { customSet: bodyCustomSet }
+            : base?.customSet
+              ? { customSet: base.customSet }
+              : {}),
+        };
+      };
+
+      const activeRows = await prisma.teacherLessonInstruction.findMany({
         where: {
           teacherId,
           OR: [
@@ -495,12 +726,165 @@ export class EntryTicketController {
             { lessonPath: { startsWith: '__entry_ticket_g_' } },
           ],
         },
+        select: { lessonPath: true, content: true },
       });
 
-      return res.json({ success: true, learningGroupId: learningGroupId || null });
+      const byGroup = new Map<string, EntryTicketPayload>();
+      let legacyPayload: EntryTicketPayload | null = null;
+
+      for (const row of activeRows) {
+        const parsed = parsePayload(row.content);
+        if (!parsed?.startedAt) continue;
+        const gid = entryTicketGroupIdFromPath(row.lessonPath);
+        if (gid) {
+          byGroup.set(gid, enrichPayload(parsed));
+        } else if (row.lessonPath === ENTRY_TICKET_LEGACY_PATH) {
+          legacyPayload = enrichPayload(parsed);
+        }
+      }
+
+      if (legacyPayload) {
+        if (learningGroupId) {
+          if (!byGroup.has(learningGroupId)) byGroup.set(learningGroupId, legacyPayload);
+        } else {
+          const allGroups = await prisma.learningGroup.findMany({
+            where: { teacherId },
+            select: { id: true },
+          });
+          for (const g of allGroups) {
+            if (!byGroup.has(g.id)) byGroup.set(g.id, legacyPayload);
+          }
+        }
+      }
+
+      if (byGroup.size === 0 && learningGroupId) {
+        const fallback = enrichPayload(null);
+        if (fallback.tasks?.length || fallback.materialLessonPath) {
+          byGroup.set(learningGroupId, fallback);
+        }
+      }
+
+      for (const [gid, payload] of byGroup.entries()) {
+        // Immer archivieren, sobald Karten oder Stundenpfad da sind (SuS-Materialien)
+        if (!payload.tasks?.length && !payload.materialLessonPath) continue;
+        await upsertArchiveForGroup(teacherId, gid, {
+          ...payload,
+          materialLessonPath:
+            normalizeMaterialLessonPath(payload.materialLessonPath) ??
+            normalizeMaterialLessonPath(bodyMaterial) ??
+            null,
+        });
+      }
+
+      /** Nur aktive Signale löschen — Archive (__entry_ticket_done_…) bleiben. */
+      await prisma.teacherLessonInstruction.deleteMany({
+        where: {
+          teacherId,
+          AND: [
+            {
+              OR: [
+                { lessonPath: ENTRY_TICKET_LEGACY_PATH },
+                { lessonPath: { startsWith: '__entry_ticket_g_' } },
+              ],
+            },
+            { NOT: { lessonPath: { startsWith: '__entry_ticket_done_' } } },
+          ],
+        },
+      });
+
+      return res.json({
+        success: true,
+        learningGroupId: learningGroupId || null,
+        archivedGroups: Array.from(byGroup.keys()),
+      });
     } catch (error) {
       console.error('EntryTicket complete error:', error);
       return res.status(500).json({ error: 'Fehler beim Beenden' });
+    }
+  }
+
+  /**
+   * Abgeschlossenes Entry Ticket einer Stunde (für SuS-Materialien inkl. Lösungen).
+   * Query: lessonPath, groupId
+   */
+  static async getCompleted(req: Request, res: Response) {
+    try {
+      res.set('Cache-Control', 'private, no-store, must-revalidate');
+      const user = await getUserByLoginCode(req);
+      if (!user) return res.status(401).json({ error: 'Nicht angemeldet' });
+
+      const lessonPathRaw = normalizeMaterialLessonPath(req.query.lessonPath);
+      const groupId =
+        typeof req.query.groupId === 'string' ? req.query.groupId.trim() : '';
+      if (!lessonPathRaw || !groupId) {
+        return res.status(400).json({ error: 'lessonPath und groupId erforderlich' });
+      }
+      const lessonPath = lessonPathRaw;
+
+      const group = await prisma.learningGroup.findUnique({
+        where: { id: groupId },
+        select: {
+          id: true,
+          name: true,
+          teacherId: true,
+          students: { where: { id: user.id }, select: { id: true }, take: 1 },
+        },
+      });
+      if (!group) return res.status(404).json({ error: 'Lerngruppe nicht gefunden' });
+
+      const isTeacherOwner = user.role === 'TEACHER' && user.id === group.teacherId;
+      const isStudentMember = user.role === 'STUDENT' && group.students.length > 0;
+      if (!isTeacherOwner && !isStudentMember) {
+        return res.status(403).json({ error: 'Kein Zugriff' });
+      }
+
+      const row = await prisma.teacherLessonInstruction.findUnique({
+        where: {
+          teacherId_lessonPath: {
+            teacherId: group.teacherId,
+            lessonPath: entryTicketDonePathForGroup(groupId),
+          },
+        },
+        select: { content: true },
+      });
+      const store = parseArchiveStore(row?.content);
+      const hit =
+        store.archives.find((a) => sameLessonPath(a.materialLessonPath, lessonPath)) || null;
+
+      if (!hit || !hit.tasks?.length) {
+        return res.json({
+          completed: false,
+          lessonPath,
+          learningGroupId: groupId,
+          groupName: group.name,
+          startedAt: null,
+          completedAt: null,
+          heroImageIndex: null,
+          grade: null,
+          taskSeed: null,
+          materialLessonPath: null,
+          tasks: null,
+          customSet: null,
+        });
+      }
+
+      return res.json({
+        completed: true,
+        lessonPath,
+        learningGroupId: groupId,
+        groupName: group.name,
+        startedAt: hit.startedAt,
+        completedAt: hit.completedAt || null,
+        heroImageIndex: hit.heroImageIndex ?? 0,
+        grade: hit.grade ?? null,
+        taskSeed: hit.taskSeed ?? null,
+        materialLessonPath: hit.materialLessonPath ?? lessonPath,
+        tasks: hit.tasks ?? null,
+        customSet: hit.customSet ?? null,
+      });
+    } catch (error) {
+      console.error('EntryTicket getCompleted error:', error);
+      return res.status(500).json({ error: 'Fehler beim Laden' });
     }
   }
 
@@ -603,6 +987,69 @@ export class EntryTicketController {
     } catch (error) {
       console.error('EntryTicket getCurrent error:', error);
       return res.status(500).json({ error: 'Fehler beim Laden' });
+    }
+  }
+
+  /** Eigene Fragensets der Lehrkraft (Server-Backup + Wiederherstellung aus Signalen). */
+  static async getCustomSets(req: Request, res: Response) {
+    try {
+      res.set('Cache-Control', 'private, no-store, must-revalidate');
+      const user = await getUserByLoginCode(req);
+      if (!user) return res.status(401).json({ error: 'Nicht angemeldet' });
+      if (user.role !== 'TEACHER') {
+        return res.status(403).json({ error: 'Nur Lehrkräfte' });
+      }
+
+      let sets = await loadStoredCustomSets(user.id);
+      if (sets.length === 0) {
+        const recovered = await recoverCustomSetsFromSignals(user.id);
+        if (recovered.length > 0) {
+          await saveStoredCustomSets(user.id, recovered);
+          sets = recovered;
+        }
+      } else {
+        // Fehlende Sets aus laufenden Signalen nachziehen (z. B. KI / Analysis)
+        const recovered = await recoverCustomSetsFromSignals(user.id);
+        if (recovered.length > 0) {
+          const byId = new Map(sets.map((s) => [s.id, s] as const));
+          let changed = false;
+          for (const s of recovered) {
+            const prev = byId.get(s.id);
+            if (!prev || countCustomSetTasks(s) > countCustomSetTasks(prev)) {
+              byId.set(s.id, s);
+              changed = true;
+            }
+          }
+          if (changed) {
+            sets = Array.from(byId.values());
+            await saveStoredCustomSets(user.id, sets);
+          }
+        }
+      }
+
+      return res.json({ sets });
+    } catch (error) {
+      console.error('EntryTicket getCustomSets error:', error);
+      return res.status(500).json({ error: 'Fehler beim Laden der Fragensets' });
+    }
+  }
+
+  static async saveCustomSets(req: Request, res: Response) {
+    try {
+      const user = await getUserByLoginCode(req);
+      if (!user) return res.status(401).json({ error: 'Nicht angemeldet' });
+      if (user.role !== 'TEACHER') {
+        return res.status(403).json({ error: 'Nur Lehrkräfte' });
+      }
+      const rawSets = Array.isArray(req.body?.sets) ? req.body.sets : [];
+      const sets = rawSets
+        .map((s: unknown) => normalizeCustomSetPayload(s))
+        .filter(Boolean) as EntryTicketCustomSetPayload[];
+      await saveStoredCustomSets(user.id, sets);
+      return res.json({ success: true, count: sets.length });
+    } catch (error) {
+      console.error('EntryTicket saveCustomSets error:', error);
+      return res.status(500).json({ error: 'Fehler beim Speichern der Fragensets' });
     }
   }
 }

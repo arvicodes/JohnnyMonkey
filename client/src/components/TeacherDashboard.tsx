@@ -5803,7 +5803,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     // Warten bis subjects-State existiert (weiter unten deklariert)
     // Dieser Effekt wird nach der Erst-Initialisierung erneut getriggert
   }, []);
-  // Track which groups are expanded (Standard: eingeklappt; Ausnahme: Informatik GK 11)
+  // Track which groups are expanded (Standard: alles eingeklappt)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   // Track which groups' student lists are expanded (default: collapsed)
   const [expandedStudents, setExpandedStudents] = useState<Record<string, boolean>>({});
@@ -5815,8 +5815,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
       const next: Record<string, boolean> = { ...prev };
       for (const g of groups) {
         if (next[g.id] === undefined) {
-          const isInformatikGk11 = /informatik\s*gk\s*11/i.test(g.name);
-          next[g.id] = isInformatikGk11;
+          next[g.id] = false; // default collapsed
         }
       }
       return next;

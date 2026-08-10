@@ -1,0 +1,542 @@
+[
+  {
+    "id": "c_0b71f55a-9ca8-4194-8b8d-caea35cd216c",
+    "name": "KI",
+    "lessons": [
+      {
+        "id": "ls_4b666f0d-68a1-4ede-afec-14b88d9cdf1a",
+        "lessonName": "01.01 KI sucht Mensch",
+        "lessonKey": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.01 KI sucht Mensch",
+        "topicName": "01 Basiswissen",
+        "tasks": []
+      },
+      {
+        "id": "ls_2b1343a5-433b-4bd5-b48b-f7b0e42b827e",
+        "lessonName": "01.02 Orga",
+        "lessonKey": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.02 Orga",
+        "topicName": "01 Basiswissen",
+        "tasks": [
+          {
+            "category": "Eigen",
+            "prompt": "<div data-et-layout=\"img-left\"><p><b>Ordne zu</b>:&nbsp;</p><p>Die Zuordnung eines Bildes zur Kategorie „Hund“ ist eine ___.</p><p><br></p><p></p><img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUoAAAENCAYAAABpdCzRAAAQAElEQVR4AXT9+a9tSXbfiX1XROy9z3Dvfe9lZhXZQkNoWOgW7B4INDWLFOd5FMVBA1sDJVKcyZqyWMUiWVUcJMpGG4b9i+G/yzDsttEWIEtdZGXme3c4w57Cn2+cex6ThL3zrdxTxIo1fNeKFbHvfS/96D/+b+rf/x++qf79f/zf1h/6yb9af+Sn/2r9qX/6TfUf/vNvqj/5s/91/al/8l/Xn/7Z/6b+7M/99/Vf/fLfqb/y699Wf+lXv7X+wi/9nfqv/vXfqv/8X/+1+s9+4Zvrv/jFv17/1a/8rfoLv/w368//0t+ov/zrf7d+5vPfXX/rd76vfu6L310/9f7fq7/5uW/l+jvrl77yA/ULX/ne+tkvfVf9tU9/S/3Nz35H/fT731U/+1vfUz/3he+tn//t76+f+eL31t94/zvrp7/wPfXXPvvt9dfe/476m1/47vqrn/v2+iuf/bb6G7/1Xe3+81/5kfrpL31//Yz7QL/5W99XP/WF76+/9bs/Wr/wez9Wv/TVn6i/8/v/oP7eH/2D+uV/85Pt/KXf//H6hS//cH3/936wfu53f6B+/is/XL/0hz9ev/zHP1m/+sc/Vb/yb3+yfuUP/0H9vd//+/UP//hn6r/53/6j+m//d/+4XV+f/94fut1P1d/9w59o7b/6xz994e8xoN/68o/V3/j899bf/uqP1fd/5wfrF6Cv0PaP4f9Hf/QT9cuM/zu/8wP1fXT/7Ke/rX7qU9BnvqN+jj6f/+0fqJ9Fl09ji1//3Hc0G/w2cn75yz9Yf/+rP1z/zR/8SP0//o8/Xf8v/+d/Xv9P/4d/XP/H//1P1z/6ox+vX/jd762f+a1vr5/+4nfUz2Dz93/7e+rnv/B99fd+70fo9xP1q1/5+/VLv/sj2PcH6qc+/331V9//7vorn/uu+ouf/c52/s0vfj8++aFGn0Pe93/3h6rp01/8vmZv2/xX8cO//tS31H/5m3+n/jy++5e+hn7+s99a//X73/aWfvnz31F/nfE//TvfU9/H35//6g/Wz/7e99XP4PPP/s53189/+fvqF7/6A/V3v/KD2OIH6+98+QfqF3/ne+v7v/1djb6ALr/95e+vv/v7P1K/+Hs/AGZ+CP2+v9oOX/mDH6tf/eqP1j/CX7/zR+gEfeGrP1S/+Ps/jD9+DN/+YP3cb31Hff8L31m/AH6+BD6+8pUfq3/wBz9R//APfvJC/wab/bufqX/4736ifuWPf7R+6Q9+CF2/p37+S9/bxnkfW3wK2/z6p7+9/gZ++cz731c//8Ufwp7Y6P3vqZ/+7HdVv29k3H7pB+rnbS/sZr+1563/t1Vj+quM/e/A0B/925+uX/7qj+Pn76m/+Mt/u/78L/yd+s//xd+sP/s/fHP9p//sr3P/LfVXfvU762/8+nfWX/+172j0qd/87vqZT1/o8+9/f/3tL/4w9IP1t37re+vv/c4P199lbOv5PvHyPs+++KUfrF/80g/V9x0Ln/nu+qvE7C/+0rfWX/rlv1d/9Ve+7UK/9Pfqr/zit9bPfeq762ch8//1T31n/ZVPfUf95U9/R/3VT39n/bXPfFf9Zdo3+tffUn/hX/6t+sucP/up763vf+4H6mc/8331Nz/9Xejxd+u//IW/TT74O/Vf/fK31F/89W+vP/+r317/yc/9jfoz//Sv1Z/4R99Uf/yn/tv693/6v6s//Q+/uf7jn/2b9Z/9s79bf+7nvqX+03/y39d/8U+/uf78z/3t+os//y31l37hW9v5F7DJv8Iev/DPvrl+Cp6/9WvfXr8A36+gz+9/Dr1/4+/VL/zKt9T3efab6Pabv/Rt9dd/AfzB8+d+9m/Vn/2Zv1l/8se+qf74j/x39R/+1N+o/+gf/c36Mz/zzfVn/tFfY/y/Xn/qZ76p/uCP/Vf1e3/kr9Tv+dG/Ur+f6x/48b9aTd/3o/9l/f4f/qv1B3/0f11/5Mf+N43SMAwybbdb3d7udXNzo81mo67rGvmdqe/7dl9KeXsuXdK2H1r7Tderz0UpJeWclRRalkV9ufDpnt9pre25FilVqYfvx8ljW5bdbtdk8bXJz69yuL3l8Diqq0pOSjmUGLsrSTlJtVblEsrIEQzUziGVSMo0sKw9somDx619XdZ2DmR0f15pXddGvo8IJcaIiPbM+jGSfPi92y7zrBkyL8HH11d+fuZ25pGxUY7krm1MPzf5gd/b/tZzv99rv9k+22nTzn4X9K3zooiQ+Zifbex3ts31LA7z8zPbz+R3ERcdIkIpC5tkoRr8aiPLUrXKR8K27p85+16x0iZon1S6LL8zzyvZrr7288YHX0REk9OymMRxfTfjQ9tpnCeN46jT6aTD4dDINjbR/O2Y7m+KiIZFj2VbebycszpTd8Gdn5vcJiKabzzG+XxuY3lc87fvLI/HWRfJ9/+/yO89tscaur7Fjnl3KTf8Ow4cE34WEYoqmNXmY/PzGBHx1mbm47b9cxz4upTU3vtdhP00a5qmJq9lt8ziyOhpWSKn1j5KbjbyGNexfC2OiGj+uvZJONtU12iy2Qbma/62jWk6neXzjE88/pWnzyvYm6azlnG6xDNYjwg5vsw3p9TG+4vjWyfLEBHyYX2vul/PbnOlnDuapeYPy0g4NnlTlKYzLxURjTxuiqxMH49hiogmn3W79r3IFE0+cfje762jaZlr42cZzNN8UqqrtMwMvjTQbZw4+yInp9vbW222faPt0GnD834oGjadtpteOwJ4O2x0Q5LdQxuc7Wf77U777aAOhw+l09DBo9sA4B5DFgmjJoUsQAegSylNad8Hzk5dkZ/38OuGXiZfu53bWPiIkI91nUnGGd5JOYU28OtwUtRFPu+QY2edeD44qHlXkpRAMOZHttL694zb5VDmuehbSfIrCW8ioBpNo1YiKCIUEapkehtVJFeTk6HPppW+5t17IN4nhUxBwhBHX7pmvwE73txiq5utNtizHwp2yMoZXQgC67vDvraFrz9OsNEC74hQRChlCdXom1vA9qU0G3qMrsvqeu4h29HU9R4n6FsltBFJsYKFynnBpvMyEZxnrdjC78w7bJuWJGsby8+SQpidJrUlBd9nntmOppa8M2NDfek02KelKKckHxWbXKkFIGh24hzB5JnEOXO/0GalcUXPwDYmGMjnDt1st6YTPs5MjmZdGGPA7742WfaKLjM0oZ/H8rjzvJI8Vzk4VO01KBjs+U/JPUN17c593rZfQAAUlVf4YZlmmTCYEvr77PvC4IkmFUwsJDtjSuiUIzSUTi2+8L39PwwdPsvK+N66rth6AWcL/rFNfD3XWaaFZ7bJyhn2igh8kuRjwnZt0sF+Zyc5cLzgW9OEzOdp0XmcdQbTx/NJx/Oow2kkKU4k4/nP0byM2MfYnxVgw3GzYr95Hpu+KwkT48m+9jvURQ7J9nb7FRw1InbUZF1Rf248RxKtOCICna+Uuc7wKFCSfWhfyr4hb8zWBR0WCDMqp04pFdFbPuyjBVv77PcRwVizpnFhXCwGD8ts3+dMv0jgNmT+lUljIUn+OR9z72epOQVnmLEAkRVMaGvg3d7s9PFKrgOIph4H+/0w9EpESUdCcJI07ahGb10FQQ5y8+8RyO23/SArXZgNsrK6ZxB6PCtp4S3HVVGf/TwifGoUEYyZGgnHVZzW5YBXCDFUuqScxKtVheeWz+dMAOXgXVQlHNYmCJxnmYeOAM5FJWXehZocAGEEZJ5RTRNgmgD6AghNvp5JoiOzrt85KBYcZHKyRAKllJDDkSRl5DZfhpdtMHQ9Cbqjir9t5Er+WjnmnJVxfUTI/FY8bnJ/O5Nb+dzG4H/mKQAQJBSfedTGtj63u33zoce0PDkn5b5rANxsBmRhrBxSLFhlkYOg1knCtgHjy/31ObZLUqZ9ypIrdb+3jDMAtk1WEsZbWZEn59xkSc/6RMTlHttkP0MepVBwtlwdMhlzpq7vZZ3FcT1zqYiQ+yR4mDxGo8RjzB0RbQzr7OcRgV7rWzIvk+X2+SpvRKBbxial0UCiNQ+PIQ63N1nXK7Vklzv1xk8kuaLytbFvf177exz3MaZ8FkdENN+4KLG+PROlx6rE47JOzffuZ0JVpZKbfNbdMluW43iUJ5QJLC91VUuSz7g9jueWJDye2/psLB+PRz0cnvT4cND9w5Oenp50ou1obMMD0d7+sf0yeuWUZNmygv/USCTynKSCj9s5EqKFMm9NXcrNHhEhH1eZr7IYL2dktU18fX3us9vWGo2TRMTCK+AsxlhJkguT00zC9zu3df8Tyd66eUUyMhFYX9vf9vM1JgJPxoLaOaGTY6Qrg5zXSukVkZvdzevx8VHm7/7pZr+lMhxaheMqcTN06rssJz+DwM7eAti+FJJRVmnMg+vUroPk6qQTGJj4kamk4J3bZlQMniX1pdNAcnByTMoKZoggg1vYSnsugUd9C2YrbxIJoJEuh9uXUhqQi42H9h47qert2CGuuefZPJ60AILK7Bq09axXklRo3HMRBLj8HPmbHlwLwKzMhBWyfgbtOJ00no86nQ86G5zMxAbdTP8LTVq5XplhnTQrjkwKoWkDi69NIfFU7XkGYJgTXZL6vpC8OvVDUemScoYkTS05k6hYDi4k4stYq5wsVeEYoQyJww5dmTiEDjmkgn7m2/xpfjzMnjC4LiWr6zptWDF4zA6fZ7+HCuO7n6vRVuX0We6Xsi48h66dXaElxvXE0BIkSXKmAlkIcuG3hKa2x8zyzLZyQFTsw07IxSYon3NWIIup6zpsMGhgsu1JUj1Jc0YXB/+fnVcttaqis0lO6PgO+FuSZ1rlJG8aqNot+4IvZyY/YR/7dAYPlscdKuCrNeiTVeKZcq+uDLxOjQJbJ2XahNKz3EPppFqVkCUkrfhnIvArzinotUUPr7gGcJ8DPtikggtTkNCt+9D07NQjZ8HOCf+0PSmMhCgy+R7xhJhaVeWkeLXJCWyfjEeqQ2PDGHHiPHE/gp1LJYp1GH9RaCbJTFTRI0lmRBa3O3O98FxKuupm2XzdpXx5Rt8MwQlxKEJCLZ57fFdsjwi12EK+jncbng990ZZiasvE3Jck/ki8r3VFj5VryTKbFmzn85UQTZgR/C/YVQoMUUqvnAb6BhNC1bImnQ9HHZ9Oenw86P7+nvOjnCiNuyY/fVJk8g0Gh2HFX1cSPvWKIaWiHEVJmXZJpDRyxqzpNLH9A//jWanvsjY4qy1R2Rf03qCTo/daMs521bG5VoLPBjEAIwIDSjZG58TVJRmQlypjlRW3QE52Jl/r+fC931/Pvr6Sn7mtyc1tuPbOQficiPw8KRQRyJC0WjNJOQdOVHtWLl7hWq2dAW2qGCqwWUTI4F1xkAherN76lkgaSifr7Ilj6AiYlNs7y+LguiSvCZcvciXQEeAJ25giQj7nnFWwy/V978kG+nhbtzG5nQPGbbfYust2WsiHeSUFTpTwM3atiIp9HTk8tQ5uU1KWfxQ26AAAEABJREFUqWPcDDWepZN1jqD/x+TzMikilJOQMUEFmdUoE6ju2w9FA7hoWwOsDq5Vz2Y7tOelZEVEI3HYrvad6Xptv/neZ5OvI6KNZzvYJhYiPcvWzshu+SMnuEpOkCb3v/I1H1N7hlGcmHxvcvJ2uyv5mf1lv5ncpzH2/0hcfv8XyX6+kptdKeKib8Tl7OcOSq8oTCeC1nurfub+lsG2tD6miHCXZjPfF2Kvg3ps3ZEk3TZlKWMD22fA/n5WE4mBCcM8W2JjJeOzK0A/s36mtk0BKldowS5OfiPYnpj4rffHSQpFyvi8yLb2GIQFeEn6+GEdGob8kjizrWzvFEHxk+VcYDxl7hMdk0LF8ufCNlivoWMSKBfKPBeHeUYEY0vW05TAgJ9/XEbr4MkhIitFkeBpnc6nRcfDREIcSY6Pun8DkSSfnihiDucWI5mxhq6XZfk473la1ZbWPp9nVAutLK/P54lCaNIyk8BrVshUdCAJH56cKGHofT1Th7CmvhAkKNjxLkeSjVAScoa4ljpu+pI19KXNGL7OOQiAJJHvp/msEVqpET3jXfdBzk52TBULACVfSQR75T64//9HFUe7WlmoSgxGnz1btOckzhzlohwj2yDNsMhW2Ntbkb2mLOygCQMc+UhgENso0/MsmpndTAEIAkI1nJvbHuvtfqf9biNPIl2XZR0xkXy922/aktkJxI6OCKsjPKrE+B0z6Wa3Vcf+U6Kvn+WuKOXcEp2rggj6XAyhnKRMksrPdixdku3shJ1zlkFkEkdEVgQduPYzX5WUsH9p1JeiDj7mJw63qfhiea6qfBZ+SvQxeXLIuaOvgdUz7tCo7zbqSe4tgW+3cuD23SDTtt/IST13nTJBbkpdgkeRedbwCFUJW0RO7VlKSeH7Z1K+PI8IRVwouQ3X4rDc1r1YH8bx2e/93InBic9nY2Khslqpoho2wFQlOayuGp+3Rlzpza6wwMwMBb72pO69q5mAWViqrWBi5PpIsD3eP+mBAHTyG+FxHWslwC40E3AzUqr5fVXVApYsm8kvfJ5JcH5uWmlju9geGSxk69QXbJaVc8IG+jMCiKnD70kcLUvhMSKKBDiix5nK9YTOC/gxliYmfCcxGrc/vl6QZ0LXmWrR+DeNtJvpsyrJyTFj2xDjEDi2i+1pG/hsW0YVMuEbKlz+yHE3YecZ24q4zZGE6CopIAnYUZXhdzq6wmyJFFyXktTRsNCAkxJ+Loy9ozgzrkrpJWSasa/HP7PVNRLzXl7P5ADTaN9Q3T09Han0Tm1P1f6byCsLvpvpu6BfyyVgKKUs3688M58TfY9H+lEpXqvQM74+H04aebewj+lVblZusmBqdEmN0g17WE3YrucBTgdktGrGSb5wawxio0SEclO6aOgLVVencCOMIg4Dww46e5mKI+1AJ6YDy1SfR57NOM7tIkIJY+WcL+dIaveR2tjPLOVx3d5nIVuFgqTX7pHLfTymjZxzJx+RC+ArwDI9zwgn3VOauzx/xMin4ygb1UAwH/MUhva9eXtsV3VD17Vk4GQ1kDCG0pFE+1ZF3u1v9PLlnZQrAK50n2XdLEtEyHo5gYrD8vs5ysjnNpFgi4nN7Cf2h7yv4qXpgsNpLicuj9UzpvlEROvnvoF9Mvr5eQ0Docr8I0K2RUlZOed2HXF5FhENMLb/RNBbTnEUgOo+bm9ZPd7Hyc+i4pcoKrm/UOrg36kjYQ7DJXka6E6mJl+735X3lX9EKCIYVU1eA9hyRER7HhFN5pwS/LNyJLmvbW8y36Hrm1/F4b4zNlyx2UTimAkq2898qwMDnPmZbUPzNobt52fNDvRxX9+bl/v57Hcn9vDsl4eHB71586aR96vOPPd7tzVf08nVHWT/nZHH73023g+0t2wm83Yyc5/VAj3r2T370vr6sd+bHOzXe58jp6a7fSUO8/SYXL7FhvutAg8MsCpUV9s2K8LncNO3FBHNvlIwhdaG35HJ4kTytQ6efCyzx+tSbpiMCMZaWJZOLIkn8D6qoIfx6rN1SPBL4iBOHVeJe/ffgOUeMjZMLZ6e8eP7BB/L7zE9vnUzNT8QI08ks4MrdmJ3pPoj1ytFVrb9Usd1UWIs8X+nrIXx7SfzM5mnfXKhM9XoWQdyghPnNR+4byaHpETuYEabyAnn80LbUWkhWCv7Ni6fuxwkgo4E2CtjFIPIyoqEJCRzye3rqLiBGdmCYBJeVa3MnI3sKPeljY3uZOmZbaH/SmN8J+WklLMyZAMLXkNH0LOHFFzf7LfqS1IHWa42M/EcNzErhRKpye16jNQRsB",
+            "solution": "Klassifikation."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "<p><b>Benenne </b>den Fachbegriff:&nbsp;</p><p>Eine KI ordnet ein Bild der falschen Kategorie zu.</p>",
+            "solution": "Fehlklassifikation."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "<p><b>Entscheide</b>:&nbsp;</p><p>Werden bestimmte Gruppen regelmäßig häufiger falsch erkannt, liegt Bias oder ein zufälliger Fehler vor?</p>",
+            "solution": "Bias."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "<p><b>Ergänze</b>:&nbsp;</p><p>Gute Trainingsdaten sollten korrekt, passend und ____ sein.</p>",
+            "solution": "vielfältig."
+          }
+        ]
+      },
+      {
+        "id": "ls_bc06e889-a504-47e8-9b88-bf1a6943b1f3",
+        "lessonName": "01.03 Was ist KI? Intelligenz?",
+        "lessonKey": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.03 Was ist KI? Intelligenz?",
+        "topicName": "01 Basiswissen",
+        "tasks": [
+          {
+            "category": "Eigen",
+            "prompt": "<p><b>Ergänze</b> die Merkmale von Intelligenz:&nbsp;</p><p><br></p><p>Intelligenz zeigt sich durch rationales und ________ Denken und Handeln sowie durch Lernen, Schlussfolgern und ________.</p>",
+            "solution": "zweckorientiertes, Problemlösen"
+          },
+          {
+            "category": "Eigen",
+            "prompt": "<p><b>Definiere</b> den Begriff künstliche Intelligenz.</p>",
+            "solution": "Künstliche Intelligenz bezeichnet die Nachahmung menschlicher Intelligenzleistungen durch Programme oder Maschinen."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "<p><b>Unterscheide</b> schwache und starke KI.</p>",
+            "solution": "Schwache KI ist auf bestimmte Aufgaben spezialisiert. Starke KI könnte unterschiedliche Probleme selbstständig erkennen und lösen."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "<p><b>Ergänze</b> zwei typische Arbeitsweisen schwacher KI:&nbsp;</p><p><br></p><p>Erkennen von ________ und Durchsuchen großer ________.</p>",
+            "solution": "Mustern, Datenmengen"
+          },
+          {
+            "category": "Eigen",
+            "prompt": "<p><b>Ordne</b> heutige KI Anwendungen einer Kategorie zu und begründe.</p>",
+            "solution": "Sie gehören zur schwachen KI, da sie auf bestimmte Aufgaben und Anwendungsbereiche begrenzt sind."
+          }
+        ]
+      },
+      {
+        "id": "ls_c5649148-064a-47a8-b3f5-5541e8a26406",
+        "lessonName": "01.04 Merkmale, KI-Welt",
+        "lessonKey": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.04 Merkmale, KI-Welt",
+        "topicName": "01 Basiswissen",
+        "tasks": [
+          {
+            "category": "Eigen",
+            "prompt": "Was ist ein kognitiver Agent?",
+            "solution": "Ein Akteur, der seine Umgebung wahrnimmt und in ihr handelt."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "<p><span style=\"font-weight: bold\">Unterscheide</span> Sensoren und Aktuatoren.</p>",
+            "solution": "Sensoren nehmen die Umgebung wahr, Aktuatoren verändern die Umgebung."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "<p><span style=\"font-weight: bold\">Nenne</span> vier Merkmale intelligenter Systeme.</p>",
+            "solution": "Zum Beispiel autonom, lernfähig, zielorientiert und adaptiv."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "<p><span style=\"font-weight: bold\">Nenne</span> drei Kerngebiete der KI.</p>",
+            "solution": "Zum Beispiel Sprachverstehen, Bildverstehen und Robotik."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Was bedeutet KI Vollständigkeit?",
+            "solution": "Einzelne kognitive Fähigkeiten sind mit weiteren kognitiven Fähigkeiten eng verknüpft."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "<p><span style=\"font-weight: bold\">Erkläre</span>, wie mehrere einfache Agenten gemeinsam intelligentes Verhalten erzeugen können.</p>",
+            "solution": "Durch Interaktion und das Zusammenführen lokaler Lösungen kann ein komplexes Gesamtverhalten entstehen."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Was bildet die Grundlage von Intelligenz nach Wahlster?",
+            "solution": "Die Verarbeitung von Wissen."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "<p><span style=\"font-weight: bold\">Unterscheide</span> symbolische und subsymbolische KI am Beispiel Autofahren.</p>",
+            "solution": "Symbolische KI nutzt zum Beispiel Regeln und Wissen, subsymbolische KI zum Beispiel neuronale Netze und Mustererkennung."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "<p><span style=\"font-weight: bold\">Nenne</span> vier Dimensionen von Intelligenz.</p>",
+            "solution": "Sensomotorische, kognitive, emotionale und soziale Intelligenz."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "<p><span style=\"font-weight: bold\">Vergleiche</span> menschliche und künstliche Intelligenz in einem Satz.</p>",
+            "solution": "KI kann Menschen in einzelnen Spezialgebieten übertreffen, ist ihnen aber bei allgemeiner Alltagsintelligenz sowie emotionaler und sozialer Intelligenz unterlegen."
+          }
+        ]
+      },
+      {
+        "id": "ls_730108a1-1298-430f-89d8-5835742b8cdc",
+        "lessonName": "01.05 Experimentell",
+        "lessonKey": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.05 Experimentell",
+        "topicName": "01 Basiswissen",
+        "tasks": []
+      },
+      {
+        "id": "ls_1b45a079-2d1e-4705-aa07-815f357f94c6",
+        "lessonName": "01.06 Der Turing Test",
+        "lessonKey": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.06 Der Turing Test",
+        "topicName": "01 Basiswissen",
+        "tasks": []
+      },
+      {
+        "id": "ls_2df6a133-dc42-4e19-a15b-521d6b85b8c1",
+        "lessonName": "02.01 Affenschach",
+        "lessonKey": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/02 Lernarten/02.01 Affenschach",
+        "topicName": "02 Lernarten",
+        "tasks": []
+      }
+    ]
+  },
+  {
+    "id": "c_0b464fa6-4342-4451-a85c-691c36e5b289",
+    "name": "Analysis",
+    "lessons": [
+      {
+        "id": "ls_1e6920c7-d3f1-4163-8d31-b9d0dd70da01",
+        "lessonName": "Wissen aus der 11",
+        "tasks": [
+          {
+            "category": "Eigen",
+            "prompt": "Was ist eine Funktion?",
+            "solution": "Eine Zuordnung, die jedem Wert x aus dem Definitionsbereich genau einen Wert f(x) zuordnet."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Was ist eine Zahlenfolge?",
+            "solution": "Eine geordnete Folge von Zahlen a₁, a₂, a₃ und so weiter."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Was ist der Grenzwert einer Folge?",
+            "solution": "Der Wert, dem sich die Folgenglieder für n gegen unendlich beliebig weit annähern."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Wann heißt eine Folge monoton steigend?",
+            "solution": "Wenn für alle n gilt: aₙ₊₁ ≥ aₙ."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Wann heißt eine Folge beschränkt?",
+            "solution": "Wenn alle Folgenglieder innerhalb einer festen unteren und oberen Grenze liegen."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Wann ist eine Funktion an der Stelle x₀ stetig?",
+            "solution": "Wenn der Grenzwert für x gegen x₀ existiert und mit f(x₀) übereinstimmt."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Was ist eine explizite Darstellung einer Folge?",
+            "solution": "Eine Formel, mit der aₙ direkt aus n berechnet wird."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Was ist eine rekursive Darstellung einer Folge?",
+            "solution": "Eine Darstellung mit einem Anfangswert und einer Vorschrift zur Berechnung des nächsten Folgenglieds."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Wie wird angegeben, dass eine Folge den Grenzwert L besitzt?",
+            "solution": "lim für n gegen unendlich von aₙ ist L."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Gib das Kriterium für die Stetigkeit von f an der Stelle x₀ an.",
+            "solution": "Der Grenzwert von f(x) für x gegen x₀ ist gleich f(x₀)."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Bestimme die ersten vier Glieder der Folge aₙ = 3n − 2.",
+            "solution": "a₁ = 1, a₂ = 4, a₃ = 7 und a₄ = 10."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Bestimme die ersten vier Glieder der Folge a₁ = 1 und aₙ₊₁ = 2aₙ + 1.",
+            "solution": "1, 3, 7 und 15."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Bestimme den Grenzwert von (5n² + 2) / (2n² − 3) für n gegen unendlich.",
+            "solution": "Der Grenzwert ist 5/2, da die Koeffizienten der höchsten Potenzen dividiert werden."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Bestimme den Grenzwert von (x² − 4) / (x − 2) für x gegen 2.",
+            "solution": "Der Grenzwert ist 4, da der Term zu x + 2 gekürzt werden kann."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Was gibt die Ableitung einer Funktion an?",
+            "solution": "Die momentane Änderungsrate und die Steigung des Funktionsgraphen."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Wie heißt eine Gerade, die einen Funktionsgraphen in einem Punkt berührt?",
+            "solution": "Tangente."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Wie heißt eine Gerade durch zwei Punkte eines Funktionsgraphen?",
+            "solution": "Sekante."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Was bedeutet f'(x) > 0 für den Graphen von f?",
+            "solution": "Der Graph steigt an dieser Stelle."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Was bedeutet f'(x) = 0?",
+            "solution": "<p class=\"p1\" style=\"font-style: normal; font-variant: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\">Die Tangente an den Graphen von <b>f</b> bei <b>x₀</b> hat eine <b>Steigung von 1</b>.</p><p class=\"p1\" style=\"font-style: normal; font-variant: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\">Das bedeutet, dass der Graph von <b>f</b> an dieser Stelle <b>steigt</b> (da die Steigung positiv ist).</p><p class=\"p2\" style=\"font-style: normal; font-variant: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-stretch: normal; font-size: 14px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; min-height: 16px; color: rgb(0, 0, 0);\"><br></p>"
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Worin unterscheiden sich durchschnittliche und momentane Änderungsrate?",
+            "solution": "Die durchschnittliche Änderungsrate bezieht sich auf ein Intervall, die momentane Änderungsrate auf eine einzelne Stelle."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Gib die Formel für die durchschnittliche Änderungsrate im Intervall [a,b] an.",
+            "solution": "(f(b) − f(a)) / (b − a)"
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Gib den Differenzenquotienten an.",
+            "solution": "(f(x + h) − f(x)) / h"
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Definiere die Ableitung f'(x) mithilfe eines Grenzwerts.",
+            "solution": "f'(x) ist der Grenzwert von (f(x + h) − f(x)) / h für h gegen 0."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Gib die Produktregel an.",
+            "solution": "(u · v)' = u' · v + u · v'"
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Bestimme die durchschnittliche Änderungsrate von f(x) = x² im Intervall [1,3].",
+            "solution": "Die durchschnittliche Änderungsrate ist (9 − 1) / (3 − 1) = 4."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Leite f(x) = 3x⁴ − 2x² + 5 ab.",
+            "solution": "f'(x) = 12x³ − 4x."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Leite f(x) = (x² + 1)(x − 3) ab.",
+            "solution": "f'(x) = 2x(x − 3) + x² + 1 = 3x² − 6x + 1."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Leite f(x) = (2x − 1)⁴ ab.",
+            "solution": "f'(x) = 8(2x − 1)³."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Bestimme die Tangente an f(x) = x² + 1 bei x = 1.",
+            "solution": "Die Tangente lautet y = 2x, da f'(1) = 2 und der Berührpunkt P(1|2) ist."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Was ist eine Nullstelle?",
+            "solution": "Eine Stelle x₀, an der f(x₀) = 0 gilt."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Was ist ein Extrempunkt?",
+            "solution": "<p>Ein <b>Hochpunkt</b> oder <b>Tiefpunkt</b> eines Funktionsgraphen.</p>"
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Was ist ein Wendepunkt?",
+            "solution": "<p>Ein Punkt, an dem sich das <b>Krümmungsverhalten</b> des Graphen <b>ändert</b>.</p>"
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Worin unterscheiden sich ein lokales und ein globales Maximum?",
+            "solution": "Ein lokales Maximum ist nur in einer Umgebung der größte Wert, ein globales Maximum im gesamten Definitionsbereich."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Was bedeutet f'(x₀) = 0?",
+            "solution": "<p>Der Graph besitzt bei x₀ eine <b>waagerechte Tangente</b>, aber nicht zwingend einen Extrempunkt.</p>"
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Warum reicht f''(x₀) = 0 nicht zum Nachweis eines Wendepunkts aus?",
+            "solution": "Weil zusätzlich ein Wechsel des Krümmungsverhaltens nachgewiesen werden muss."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Nenne eine notwendige Bedingung für einen inneren Extrempunkt einer differenzierbaren Funktion.",
+            "solution": "f'(x₀) = 0"
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Wie erkennt man einen Hochpunkt am Vorzeichenwechsel von f'?",
+            "solution": "f' wechselt von positiv zu negativ."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Wie erkennt man einen Tiefpunkt am Vorzeichenwechsel von f'?",
+            "solution": "f' wechselt von negativ zu positiv."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Wie kann ein Wendepunkt mithilfe von f'' nachgewiesen werden?",
+            "solution": "f'' wechselt an der Wendestelle das Vorzeichen."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Bestimme die Monotonieintervalle von f(x) = x³ − 3x.",
+            "solution": "Die Funktion steigt für x < −1 und x > 1 und fällt für −1 < x < 1."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Bestimme die Extrempunkte von f(x) = x³ − 3x.",
+            "solution": "Der Hochpunkt ist H(−1|2) und der Tiefpunkt ist T(1|−2)."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Bestimme den Wendepunkt von f(x) = x³ − 3x².",
+            "solution": "Der Wendepunkt ist W(1|−2), da f''(x) = 6x − 6 bei x = 1 das Vorzeichen wechselt."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Untersuche den stationären Punkt von f(x) = x⁴.",
+            "solution": "Bei T(0|0) liegt ein Tiefpunkt vor, da f' von negativ zu positiv wechselt."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Ein Rechteck hat einen Umfang von 20 cm. Bestimme die Seitenlängen mit maximalem Flächeninhalt.",
+            "solution": "Die Seitenlängen betragen jeweils 5 cm und der maximale Flächeninhalt beträgt 25 cm²."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Was ist eine Exponentialfunktion?",
+            "solution": "Eine Funktion, bei der die Variable im Exponenten steht."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Was gibt der Wachstumsfaktor an?",
+            "solution": "Mit welchem Faktor ein Bestand pro Zeiteinheit multipliziert wird."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Was ist der natürliche Logarithmus?",
+            "solution": "Der Logarithmus zur Basis e, der mit ln(x) bezeichnet wird."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Worin unterscheiden sich lineares und exponentielles Wachstum?",
+            "solution": "Bei linearem Wachstum kommt immer derselbe Betrag hinzu, bei exponentiellem Wachstum wird immer mit demselben Faktor multipliziert."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Für welche Werte von q beschreibt f(x) = c · qˣ Wachstum beziehungsweise Zerfall?",
+            "solution": "Für q > 1 liegt Wachstum und für 0 < q < 1 liegt Zerfall vor."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Was gibt der Parameter k in f(t) = c · eᵏᵗ an?",
+            "solution": "Die kontinuierliche Wachstumsrate, wobei k > 0 Wachstum und k < 0 Zerfall beschreibt."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Wie wird aus einer Wachstumsrate p der Wachstumsfaktor bestimmt?",
+            "solution": "q = 1 + p, wenn p als Dezimalzahl angegeben ist."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Gib die allgemeine Form eines exponentiellen Wachstumsmodells an.",
+            "solution": "f(t) = c · qᵗ, wobei c der Anfangswert und q der Wachstumsfaktor ist."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Wie hängen die Darstellungen c · qᵗ und c · eᵏᵗ zusammen?",
+            "solution": "Es gilt k = ln(q) und q = eᵏ."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Gib die Ableitungen von eˣ und aˣ an.",
+            "solution": "Die Ableitungen lauten (eˣ)' = eˣ und (aˣ)' = ln(a) · aˣ."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Ein Bestand von 500 wächst jährlich um 4 Prozent. Bestimme den Bestand nach drei Jahren.",
+            "solution": "500 · 1,04³ ≈ 562,43, der Bestand beträgt also ungefähr 562."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Bestimme den Wachstumsfaktor bei einer jährlichen Zunahme um 8 Prozent.",
+            "solution": "Der Wachstumsfaktor ist q = 1,08."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Löse die Gleichung 200e⁰˒³ᵗ = 400.",
+            "solution": "t = ln(2) / 0,3 ≈ 2,31."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Ein Bestand wird durch B(t) = 1000 · 0,85ᵗ beschrieben. Wann ist er auf 500 gesunken?",
+            "solution": "Nach t = ln(0,5) / ln(0,85) ≈ 4,27 Zeiteinheiten."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Leite f(x) = 3e²ˣ − 4 ab.",
+            "solution": "f'(x) = 6e²ˣ."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Was ist eine Stammfunktion von f?",
+            "solution": "Eine Funktion F, für die F'(x) = f(x) gilt."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Was beschreibt ein bestimmtes Integral?",
+            "solution": "Die orientierte Fläche zwischen einem Funktionsgraphen und der x Achse."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Was ist eine Integralfunktion?",
+            "solution": "Eine Funktion, die jedem x den Integralwert von einer festen unteren Grenze bis x zuordnet."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Worin unterscheiden sich Integralwert und Flächeninhalt?",
+            "solution": "Flächen unterhalb der x Achse zählen beim Integralwert negativ, beim Flächeninhalt positiv."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Was sagt der Hauptsatz der Differential und Integralrechnung aus?",
+            "solution": "Ein bestimmtes Integral kann mithilfe einer Stammfunktion durch F(b) − F(a) berechnet werden."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Warum unterscheiden sich zwei Stammfunktionen derselben Funktion nur durch eine Konstante?",
+            "solution": "Weil die Ableitung einer Konstanten 0 ist."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Gib die Potenzregel für Stammfunktionen an.",
+            "solution": "Das Integral von xⁿ ist xⁿ⁺¹ / (n + 1) + C für n ≠ −1."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Gib die Formel zur Berechnung eines bestimmten Integrals an.",
+            "solution": "Das Integral von a bis b über f(x) ist F(b) − F(a)."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Wie wird der Flächeninhalt zwischen einem Graphen und der x Achse berechnet?",
+            "solution": "A = Integral von a bis b über |f(x)|."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Wie wird der Flächeninhalt zwischen zwei Graphen berechnet, wenn f oberhalb von g liegt?",
+            "solution": "A = Integral von a bis b über f(x) − g(x)."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Bestimme eine Stammfunktion von f(x) = 6x² − 4x + 3.",
+            "solution": "F(x) = 2x³ − 2x² + 3x + C."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Berechne das Integral von 0 bis 2 über 3x² − 2x.",
+            "solution": "Der Integralwert ist 4, da eine Stammfunktion F(x) = x³ − x² ist."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Berechne den Flächeninhalt zwischen f(x) = x² und der x Achse im Intervall [0,2].",
+            "solution": "Der Flächeninhalt beträgt 8/3."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Berechne den Flächeninhalt zwischen f(x) = x und g(x) = x² im Intervall [0,1].",
+            "solution": "Der Flächeninhalt beträgt 1/6."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Die Geschwindigkeit eines Körpers wird durch v(t) = 3t² + 2 beschrieben. Bestimme den Weg in den ersten zwei Sekunden.",
+            "solution": "Der Weg beträgt 12 Längeneinheiten."
+          },
+          {
+            "category": "Eigen",
+            "prompt": "Ist die Funktion f(x) = x + 1 für x < 2 und f(x) = x? - 1 für x ≥ 3 bei x = 2 stetig?",
+            "solution": "Stimmt. Da x=2 nicht im Definitionsbereich liegt (Funktion ist für [2,3) nicht definiert), existiert f(2) nicht. Eine Funktion kann an Stellen außerhalb ihres Definitionsbereichs nicht stetig sein."
+          }
+        ]
+      }
+    ]
+  }
+]

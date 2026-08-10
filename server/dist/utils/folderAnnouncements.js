@@ -236,9 +236,12 @@ const loadFolderAnnouncements = () => {
         if (!fs_1.default.existsSync(jsonPath))
             continue;
         const data = parseFolderJson(fs_1.default.readFileSync(jsonPath, 'utf-8'), entry.name);
-        if (!(data === null || data === void 0 ? void 0 : data.published))
+        // Strikt: nur explizit veröffentlichte Einträge (Entwurf = published false / ohne Datum)
+        if ((data === null || data === void 0 ? void 0 : data.published) !== true)
             continue;
-        const publishedAt = data.publishedAt || new Date().toISOString();
+        if (!data.publishedAt || typeof data.publishedAt !== 'string')
+            continue;
+        const publishedAt = data.publishedAt;
         items.push({
             id: data.id,
             title: data.title.trim(),
@@ -248,7 +251,7 @@ const loadFolderAnnouncements = () => {
             layoutId: typeof data.layoutId === 'string' ? data.layoutId : null,
             publishedAt,
             createdAt: publishedAt,
-            updatedAt: publishedAt,
+            updatedAt: data.updatedAt || publishedAt,
             authorId: exports.FOLDER_ANNOUNCEMENT_AUTHOR_ID,
             authorName: ((_a = data.authorName) === null || _a === void 0 ? void 0 : _a.trim()) || 'Johannes-Gymnasium Lahnstein',
             isRead: false,

@@ -7,6 +7,8 @@ const express_1 = __importDefault(require("express"));
 const EntryTicketController_1 = require("../controllers/EntryTicketController");
 const router = express_1.default.Router();
 router.get('/current', EntryTicketController_1.EntryTicketController.getCurrent);
+router.get('/completed', EntryTicketController_1.EntryTicketController.getCompleted);
 router.post('/signal', EntryTicketController_1.EntryTicketController.signal);
+router.post('/complete', EntryTicketController_1.EntryTicketController.complete);
 exports.default = router;
 //# sourceMappingURL=entryTicket.js.map
