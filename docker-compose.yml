@@ -20,8 +20,8 @@ services:
       - JM_REIHEN_PATH=/app/J-M-Reihen
     volumes:
       - johnnymonkey_db:/app/server/data
-      # Aktuelle Materialien aus dem Git-Checkout des Stacks (ohne Image-Rebuild)
-      - ./J-M-Reihen:/app/J-M-Reihen:ro
+      # J-M-Reihen NICHT mounten: Portainer-Git-Checkout ist oft leer und würde
+      # die Materialien aus dem Image überdecken.
       - ./material:/app/material:ro
       - johnnymonkey_logs:/app/logs
     restart: unless-stopped
