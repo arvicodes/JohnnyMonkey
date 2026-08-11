@@ -417,10 +417,30 @@ import {
 } from '@dnd-kit/sortable';
 
 /**
- * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, HÜ_, HU_)
+ * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, KU_, HÜ_, HU_, QZ_)
  */
 const isCorrectionFile = (fileName: string): boolean => {
-  return fileName.startsWith('KA_') || fileName.startsWith('HÜ_') || fileName.startsWith('HU_') || fileName.startsWith('QZ_');
+  return (
+    fileName.startsWith('KA_') ||
+    fileName.startsWith('KU_') ||
+    fileName.startsWith('HÜ_') ||
+    fileName.startsWith('HU_') ||
+    fileName.startsWith('QZ_')
+  );
+};
+
+/** Rekursiv: enthält der Ordner eine Prüfungsdatei? */
+const folderContainsExamination = (item: { type?: string; name?: string; children?: any[] } | null | undefined): boolean => {
+  if (!item?.children?.length) return false;
+  for (const child of item.children) {
+    if (child?.type === 'file' && typeof child.name === 'string' && isCorrectionFile(child.name)) {
+      return true;
+    }
+    if (child?.type === 'directory' && folderContainsExamination(child)) {
+      return true;
+    }
+  }
+  return false;
 };
 
 interface TeacherDashboardProps {
@@ -6032,6 +6052,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     | 'entry-ticket'
     | 'exit-ticket'
     | 'quiz'
+    | 'pruefung'
     | 'arbeitsauftrag'
     | 'leinwand'
     | 'tafel'
@@ -6637,6 +6658,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
 
   // File Share States (Datei-Freigaben für Lerngruppen)
   const [fileShares, setFileShares] = useState<{[key: string]: boolean}>({});
+  /** Laufende Prüfung (Vollbild bei SuS) pro Lerngruppe */
+  const [activeExamBeacons, setActiveExamBeacons] = useState<
+    Record<string, { filePath: string; beaconId: string }>
+  >({});
   /** Gewählte Datei-Version für Freigabe-Dropdown (wenn noch keine Freigabe aktiv). Key: groupId:baseName */
   const [materialSharePickPath, setMaterialSharePickPath] = useState<Record<string, string>>({});
   // Freigabe „Gemeinsame Eingabe“ pro Gruppe: [groupId] = Liste der freigegebenen lessonPath
@@ -6651,7 +6676,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [examinationFolderPath, setExaminationFolderPath] = useState('');
   const [newLessonName, setNewLessonName] = useState('');
   const [newLessonFolderPath, setNewLessonFolderPath] = useState('');
-  const [examinationLearningGroupId, setExaminationLearningGroupId] = useState('');
+  const [newLessonWithPruefung, setNewLessonWithPruefung] = useState(false);
   const [availableFolders, setAvailableFolders] = useState<Array<{ path: string; name: string }>>([]);
   const [folderTree, setFolderTree] = useState<any>(null);
   const [expandedFolderPaths, setExpandedFolderPaths] = useState<Set<string>>(new Set());
@@ -6697,16 +6722,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     );
     return defaultGroup?.id || '';
   }, [groups]);
-
-  useEffect(() => {
-    if (!createExaminationModalOpen) return;
-    if (!examinationLearningGroupId) {
-      const defaultGroupId = getDefaultLearningGroupId();
-      if (defaultGroupId) {
-        setExaminationLearningGroupId(defaultGroupId);
-      }
-    }
-  }, [createExaminationModalOpen, examinationLearningGroupId, getDefaultLearningGroupId]);
   
   // Sortiere participationStats nach Sitzordnung
   const sortedParticipationStats = useMemo(() => {
@@ -6915,6 +6930,24 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
       fetch(`/api/learning-groups/${gid}/lesson-shared-input-shares`)
         .then(res => res.ok ? res.json() : [])
         .then((paths: string[]) => setLessonSharedInputSharePaths(prev => ({ ...prev, [gid]: paths })))
+        .catch(() => {});
+      fetch(`/api/learning-groups/exam-beacon/status/${encodeURIComponent(gid)}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { active?: boolean; beacon?: { filePath: string; beaconId: string } | null } | null) => {
+          if (data?.active && data.beacon?.filePath && data.beacon?.beaconId) {
+            setActiveExamBeacons((prev) => ({
+              ...prev,
+              [gid]: { filePath: data.beacon!.filePath, beaconId: data.beacon!.beaconId },
+            }));
+          } else {
+            setActiveExamBeacons((prev) => {
+              if (!prev[gid]) return prev;
+              const next = { ...prev };
+              delete next[gid];
+              return next;
+            });
+          }
+        })
         .catch(() => {});
     }
   }, [isLessonStundeRoute, lessonModalData?.groupId]);
@@ -10411,6 +10444,29 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
             </Typography>
 
+            {isStundeFolder && folderContainsExamination(item) && (
+              <Tooltip title="Diese Stunde enthält eine Prüfung">
+                <Box
+                  component="span"
+                  sx={{
+                    ml: 0.35,
+                    px: 0.45,
+                    py: 0.05,
+                    borderRadius: 0.5,
+                    bgcolor: '#c62828',
+                    color: '#fff',
+                    fontSize: '0.62rem',
+                    fontWeight: 900,
+                    lineHeight: 1.25,
+                    flexShrink: 0,
+                    letterSpacing: 0.2,
+                  }}
+                >
+                  P
+                </Box>
+              </Tooltip>
+            )}
+
             {isStundeFolder && (
               <Tooltip title={isStundeRunning ? 'Stunde beenden' : 'Stunde starten (inkl. Entry Ticket)'}>
                 <span>
@@ -11365,7 +11421,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           examType: examinationType,
           fileName: examinationFileName,
           folderPath: examinationFolderPath,
-          learningGroupId: examinationLearningGroupId || null,
           title: examinationFileName || null,
           durationMinutes: examDurationMinutes
         })
@@ -11375,13 +11430,25 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         const data = await response.json();
         showSnackbar(`Prüfung "${data.fileName}" erfolgreich erstellt!`, 'success');
         setCreateExaminationModalOpen(false);
+
+        // Fragen-Editor öffnen
+        const editPath = data.absolutePath || data.filePath;
+        if (editPath) {
+          await handleEditSingleQuestion({ path: editPath, name: data.fileName });
+        }
+
+        // Ordnerinhalte aktualisieren
+        Object.keys(assignedFolders).forEach((groupId) => {
+          (assignedFolders[groupId] || []).forEach((folderPath: string) => {
+            fetchAssignedFolderContent(groupId, folderPath);
+          });
+        });
         
-        // Reset form (aber nicht die Datei-Pfade, die werden für die Inhaltserstellung benötigt)
+        // Reset form
         setExaminationType('QZ');
         setExaminationFileName('');
         setExamDurationMinutes(5);
         setExaminationFolderPath('');
-        setExaminationLearningGroupId('');
       } else {
         const error = await response.json();
         showSnackbar(`Fehler: ${error.error || 'Unbekannter Fehler'}`, 'error');
@@ -11417,22 +11484,101 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       }
 
       const data = await response.json();
-      const modalGroupId = examinationLearningGroupId || getDefaultLearningGroupId() || groups[0]?.id || '';
+      const modalGroupId = getDefaultLearningGroupId() || groups[0]?.id || '';
+      const lessonPath = data.lessonFolderPath as string;
+      const lessonFolderName = data.lessonFolderName as string;
 
       // Standard-Foliensatz (Start, Auftrag, HA, Ende) anlegen
       try {
-        await loadPresentationDeck(data.lessonFolderPath);
+        await loadPresentationDeck(lessonPath);
       } catch (deckErr) {
         console.warn('Standard-Foliensatz konnte nicht angelegt werden:', deckErr);
+      }
+
+      let createdExam: { path: string; name: string } | null = null;
+      if (newLessonWithPruefung) {
+        try {
+          const examRes = await fetch('/api/file-system-paths/create-examination', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              examType: 'QZ',
+              fileName: lessonFolderName,
+              folderPath: lessonPath,
+              title: lessonFolderName,
+              durationMinutes: 5
+            })
+          });
+          if (examRes.ok) {
+            const examData = await examRes.json();
+            createdExam = {
+              path: examData.absolutePath || examData.filePath,
+              name: examData.fileName
+            };
+          } else {
+            const examErr = await examRes.json().catch(() => ({}));
+            showSnackbar(`Stunde erstellt, Prüfung fehlgeschlagen: ${examErr.error || 'Unbekannt'}`, 'warning');
+          }
+        } catch (examCreateErr) {
+          console.warn('Prüfung konnte nicht angelegt werden:', examCreateErr);
+          showSnackbar('Stunde erstellt, Prüfung konnte nicht angelegt werden', 'warning');
+        }
+      }
+
+      // Stundenverlauf: Kernbausteine + optional Prüfung
+      const makePlanId = (type: string, index: number) =>
+        `new-${type}-${Date.now()}-${index}`;
+      const initialPlan: LessonPlanItem[] = [
+        { id: makePlanId('entry-ticket', 0), type: 'entry-ticket', label: 'Entry Ticket', grade: 7 },
+        { id: makePlanId('praesentation', 1), type: 'praesentation', label: 'Präsentation' },
+      ];
+      if (createdExam) {
+        initialPlan.push({
+          id: makePlanId('pruefung', 2),
+          type: 'pruefung',
+          label: 'Prüfung',
+          linkedMaterialPath: createdExam.path,
+          linkedMaterialName: createdExam.name
+        });
+      }
+      initialPlan.push({
+        id: makePlanId('exit-ticket', 3),
+        type: 'exit-ticket',
+        label: 'Exit Ticket',
+        exitType: 'exam-question'
+      });
+
+      if (userId && lessonPath) {
+        const content: LessonInstructionContent = { lessonPlan: initialPlan };
+        setEditedLessonInstructions((prev) => ({ ...prev, [lessonPath]: content }));
+        try {
+          await fetch('/api/lesson-instructions', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ teacherId: userId, lessonPath, content })
+          });
+        } catch (planErr) {
+          console.warn('Stundenverlauf konnte nicht gespeichert werden:', planErr);
+        }
       }
 
       setCreateLessonModalOpen(false);
       setNewLessonName('');
       setNewLessonFolderPath('');
+      setNewLessonWithPruefung(false);
       setFolderPickerMode('exam');
 
-      openLessonStundePage(modalGroupId, data.lessonFolderPath, data.lessonFolderName);
-      showSnackbar(`Stunde "${data.lessonFolderName}" erfolgreich erstellt!`, 'success');
+      openLessonStundePage(modalGroupId, lessonPath, lessonFolderName);
+      showSnackbar(
+        createdExam
+          ? `Stunde "${lessonFolderName}" mit Prüfung erstellt!`
+          : `Stunde "${lessonFolderName}" erfolgreich erstellt!`,
+        'success'
+      );
+
+      if (createdExam) {
+        await handleEditSingleQuestion({ path: createdExam.path, name: createdExam.name });
+      }
     } catch (error) {
       console.error('Fehler beim Erstellen der Stunde:', error);
       showSnackbar('Fehler beim Erstellen der Stunde', 'error');
@@ -14755,26 +14901,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   >
                     S+
                   </Typography>
-                </IconButton>
-                <IconButton
-                  onClick={() => {
-                    setFolderPickerMode('exam');
-                    setCreateExaminationModalOpen(true);
-                    fetchAvailableFolders();
-                  }}
-                  sx={{
-                    p: 0.5,
-                    minWidth: 32,
-                    width: 32,
-                    height: 32,
-                    color: '#d32f2f',
-                    bgcolor: '#9e9e9e',
-                    borderRadius: 1.4,
-                    '&:hover': { bgcolor: '#757575' }
-                  }}
-                  title="Prüfung erstellen"
-                >
-                  <AssignmentIcon sx={{ fontSize: 18 }} />
                 </IconButton>
                 <Button 
                   variant="contained"
@@ -19712,6 +19838,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   if (type === 'entry-ticket') return 'Entry Ticket';
                   if (type === 'exit-ticket') return 'Exit Ticket';
                   if (type === 'quiz') return 'Quiz';
+                  if (type === 'pruefung') return 'Prüfung';
                   if (type === 'arbeitsauftrag') return 'Arbeitsauftrag';
                   if (type === 'leinwand') return 'Leinwand';
                   if (type === 'tafel') return 'Tafel';
@@ -19726,6 +19853,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   if (type === 'entry-ticket') return { bg: '#e3f2fd', border: '#90caf9', text: '#1565c0' }; // blau
                   if (type === 'exit-ticket') return { bg: '#c8e6c9', border: '#388e3c', text: '#1b5e20' }; // dunkler gruen
                   if (type === 'quiz') return { bg: '#ffebee', border: '#ef9a9a', text: '#c62828' }; // roetlich
+                  if (type === 'pruefung') return { bg: '#ffcdd2', border: '#e53935', text: '#b71c1c' }; // rot: Pruefung
                   if (type === 'leinwand') return { bg: '#e8f5e9', border: '#c8e6c9', text: '#2e7d32' }; // leicht gruenlich
                   if (type === 'tafel') return { bg: '#eceff1', border: '#b0bec5', text: '#37474f' }; // neutral
                   if (type === 'input') return { bg: '#fff8e1', border: '#ffcc80', text: '#e65100' }; // warm / input
@@ -19745,6 +19873,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   }
                   let next = [...lessonPlan];
                   let idx = 0;
+                  let openedExamEditor = false;
                   for (const type of selectedPlanTypes) {
                     const existingIdx = next.findIndex((p) => p.type === type);
                     if (existingIdx >= 0 && isLessonPlanCoreType(type)) {
@@ -19755,12 +19884,64 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       }
                       continue;
                     }
+                    if (type === 'pruefung' && next.some((p) => p.type === 'pruefung')) {
+                      continue;
+                    }
+
+                    let linkedMaterialPath: string | undefined;
+                    let linkedMaterialName: string | undefined;
+                    if (type === 'pruefung') {
+                      let examFile = allFiles.find(
+                        (f: any) => typeof f.name === 'string' && isCorrectionFile(f.name)
+                      );
+                      if (!examFile && lessonPath) {
+                        const examRes = await fetch('/api/file-system-paths/create-examination', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            examType: 'QZ',
+                            fileName: lessonName || 'Prüfung',
+                            folderPath: lessonPath,
+                            title: lessonName || 'Prüfung',
+                            durationMinutes: 5
+                          })
+                        });
+                        if (examRes.ok) {
+                          const examData = await examRes.json();
+                          examFile = {
+                            path: examData.absolutePath || examData.filePath,
+                            name: examData.fileName
+                          };
+                          if (lessonModalData?.groupId) {
+                            fetchAssignedFolderContent(lessonModalData.groupId, lessonPath);
+                          }
+                        } else {
+                          const examErr = await examRes.json().catch(() => ({}));
+                          showSnackbar(`Prüfung konnte nicht erstellt werden: ${examErr.error || 'Unbekannt'}`, 'error');
+                          continue;
+                        }
+                      }
+                      if (!examFile) {
+                        showSnackbar('Keine Prüfungsdatei im Stundenordner gefunden.', 'error');
+                        continue;
+                      }
+                      linkedMaterialPath = examFile.path;
+                      linkedMaterialName = examFile.name;
+                      if (!openedExamEditor) {
+                        openedExamEditor = true;
+                        void handleEditSingleQuestion({ path: examFile.path, name: examFile.name });
+                      }
+                    }
+
                     next.push({
                       id: `${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 7)}`,
                       type,
                       label: resolvePlanLabel(type),
                       ...(type === 'entry-ticket' ? { grade: newPlanGrade } : {}),
-                      ...(type === 'exit-ticket' ? { exitType: newExitType } : {})
+                      ...(type === 'exit-ticket' ? { exitType: newExitType } : {}),
+                      ...(linkedMaterialPath
+                        ? { linkedMaterialPath, linkedMaterialName }
+                        : {})
                     });
                     idx += 1;
                   }
@@ -19949,6 +20130,22 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     handleQuizDialogOpen(quizFile.path, quizFile.name);
                     return;
                   }
+                  if (item.type === 'pruefung') {
+                    const examFile = item.linkedMaterialPath
+                      ? { path: item.linkedMaterialPath, name: item.linkedMaterialName || item.linkedMaterialPath.split('/').pop() || 'Prüfung' }
+                      : allFiles.find((f: any) => typeof f.name === 'string' && isCorrectionFile(f.name));
+                    if (!examFile?.path) {
+                      showSnackbar('Keine Prüfungsdatei (KA_/KU_/HU_/QZ_) in diesem Stundenordner gefunden.', 'error');
+                      return;
+                    }
+                    if (lessonPlanViewMode === 'create') {
+                      await handleEditSingleQuestion({ path: examFile.path, name: examFile.name });
+                    } else {
+                      setSelectedKAFilePath(examFile.path);
+                      setShowKACorrectionMode(true);
+                    }
+                    return;
+                  }
                   if (item.type === 'arbeitsauftrag') {
                     const linked = item.linkedMaterialPath
                       ? allFiles.find((f: any) => f.path === item.linkedMaterialPath)
@@ -20124,6 +20321,33 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   (f: any) => f?.type === 'file' && isLessonPresentationMaterialPdf(f.name || '')
                 );
                 const planShareGroupId = lessonModalData.groupId || '';
+                const examFiles = allFiles.filter(
+                  (f: any) => typeof f.name === 'string' && isCorrectionFile(f.name)
+                );
+                const planHasPruefung = lessonPlan.some((i) => i.type === 'pruefung');
+                const resolveExamFileForPlanItem = (planItem: LessonPlanItem) => {
+                  if (planItem.linkedMaterialPath) {
+                    return {
+                      path: planItem.linkedMaterialPath,
+                      name:
+                        planItem.linkedMaterialName ||
+                        planItem.linkedMaterialPath.split('/').pop() ||
+                        'Prüfung',
+                    };
+                  }
+                  return examFiles[0] || null;
+                };
+                const openExamHtml = (filePath: string) => {
+                  window.open(
+                    `/api/file-system-paths/read-html?filePath=${encodeURIComponent(filePath)}`,
+                    '_blank',
+                    'noopener,noreferrer'
+                  );
+                };
+                const openExamCorrection = (filePath: string) => {
+                  setSelectedKAFilePath(filePath);
+                  setShowKACorrectionMode(true);
+                };
                 const presentationShareActive =
                   !!planShareGroupId &&
                   presentationMaterialPdfs.some(
@@ -20189,7 +20413,119 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   await toggleLessonSharedInputShare(planShareGroupId, lessonModalData.lessonPath);
                 };
 
-                const renderPlanItemShareToggle = (itemType: string) => {
+                const renderPlanItemShareToggle = (itemType: string, planItem?: LessonPlanItem) => {
+                  if (itemType === 'pruefung') {
+                    const exam = planItem ? resolveExamFileForPlanItem(planItem) : examFiles[0];
+                    if (!exam?.path || !planShareGroupId) return null;
+                    const running = activeExamBeacons[planShareGroupId];
+                    const active =
+                      !!running &&
+                      running.filePath.replace(/\\/g, '/') === String(exam.path).replace(/\\/g, '/');
+                    return (
+                      <Button
+                        type="button"
+                        size="small"
+                        variant={active ? 'contained' : 'outlined'}
+                        title={
+                          active
+                            ? 'Prüfung beenden (Overlay bei SuS schließen)'
+                            : 'Prüfung starten (Vollbild bei allen SuS)'
+                        }
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          void (async () => {
+                            try {
+                              if (active) {
+                                const res = await fetch('/api/learning-groups/exam-beacon/stop', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    teacherId: userId,
+                                    groupId: planShareGroupId,
+                                  }),
+                                });
+                                if (!res.ok) {
+                                  const err = await res.json().catch(() => ({}));
+                                  showSnackbar(err.error || 'Prüfung konnte nicht beendet werden', 'error');
+                                  return;
+                                }
+                                setActiveExamBeacons((prev) => {
+                                  const next = { ...prev };
+                                  delete next[planShareGroupId];
+                                  return next;
+                                });
+                                showSnackbar('Prüfung beendet', 'success');
+                              } else {
+                                const res = await fetch('/api/learning-groups/exam-beacon/start', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    teacherId: userId,
+                                    groupId: planShareGroupId,
+                                    filePath: exam.path,
+                                    lessonPath: lessonModalData.lessonPath || '',
+                                  }),
+                                });
+                                if (!res.ok) {
+                                  const err = await res.json().catch(() => ({}));
+                                  showSnackbar(err.error || 'Prüfung konnte nicht gestartet werden', 'error');
+                                  return;
+                                }
+                                const data = await res.json();
+                                setActiveExamBeacons((prev) => ({
+                                  ...prev,
+                                  [planShareGroupId]: {
+                                    filePath: data.filePath || exam.path,
+                                    beaconId: data.beaconId,
+                                  },
+                                }));
+                                // Freigabe-Status lokal aktualisieren
+                                setFileShares((prev) => ({
+                                  ...prev,
+                                  [fileShareKey(exam.path, planShareGroupId)]: true,
+                                }));
+                                showSnackbar('Prüfung gestartet — SuS sehen Vollbild', 'success');
+                              }
+                            } catch {
+                              showSnackbar('Netzwerkfehler beim Prüfungs-Start/Stop', 'error');
+                            }
+                          })();
+                        }}
+                        sx={{
+                          flexShrink: 0,
+                          minWidth: 0,
+                          width: 'auto',
+                          height: 22,
+                          px: 0.55,
+                          py: 0,
+                          fontSize: '0.58rem',
+                          fontWeight: 800,
+                          lineHeight: 1,
+                          letterSpacing: '-0.01em',
+                          textTransform: 'none',
+                          borderRadius: 0.5,
+                          boxShadow: 'none',
+                          whiteSpace: 'nowrap',
+                          ...(active
+                            ? {
+                                bgcolor: '#c62828',
+                                color: '#fff',
+                                border: '1px solid #c62828',
+                                '&:hover': { bgcolor: '#b71c1c', boxShadow: 'none' },
+                              }
+                            : {
+                                bgcolor: '#fff',
+                                color: '#c62828',
+                                border: '1px solid #ef9a9a',
+                                '&:hover': { bgcolor: '#ffebee', borderColor: '#e57373' },
+                              }),
+                        }}
+                      >
+                        {active ? 'STOP' : 'START'}
+                      </Button>
+                    );
+                  }
                   if (itemType !== 'praesentation' && itemType !== 'leinwand') return null;
                   const active = itemType === 'praesentation' ? presentationShareActive : leinwandShareActive;
                   return (
@@ -20425,6 +20761,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   const name = f.name || '';
                   if (isLessonPresentationSystemFile(name)) return false;
                   if (isLessonPresentationAssetFile(name)) return false;
+                  // Prüfungen gehören in den roten Prüfungs-Baustein, nicht in den orangen AB-Block
+                  if (isCorrectionFile(name)) return false;
                   // Keine Roh-/Backup-/JSON-Reste (z. B. *.json.bak-wrong) als „Material“
                   if (/\.(json|bak)(\.|$)/i.test(name) || /\.bak[-_.]/i.test(name)) return false;
                   if (isABByName(name)) return true;
@@ -21106,6 +21444,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         };
                         const praesentationSelected = selectedPlanTypes.includes('praesentation');
                         const praesentationStyle = getPlanTypeStyle('praesentation');
+                        const pruefungSelected = selectedPlanTypes.includes('pruefung');
+                        const pruefungStyle = getPlanTypeStyle('pruefung');
                         return (
                           <Box
                             sx={{
@@ -21172,6 +21512,61 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   '& .MuiFormControlLabel-label': { color: praesentationStyle.text },
                                 }}
                               />
+                              <FormControlLabel
+                                control={
+                                  <Checkbox
+                                    size="small"
+                                    checked={pruefungSelected}
+                                    onChange={(e) => togglePlanType('pruefung', e.target.checked)}
+                                    sx={{
+                                      p: 0.1,
+                                      color: pruefungStyle.text,
+                                      '&.Mui-checked': { color: pruefungStyle.text },
+                                      '& .MuiSvgIcon-root': { fontSize: 13 },
+                                    }}
+                                  />
+                                }
+                                label={
+                                  <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
+                                    <Box
+                                      component="span"
+                                      sx={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: 12,
+                                        height: 12,
+                                        borderRadius: 0.4,
+                                        color: 'white',
+                                        flexShrink: 0,
+                                        bgcolor: '#c62828',
+                                        fontSize: '0.5rem',
+                                        fontWeight: 900,
+                                        lineHeight: 1,
+                                      }}
+                                    >
+                                      P
+                                    </Box>
+                                    <Box component="span" sx={{ fontSize: '0.58rem', fontWeight: 700, lineHeight: 1, whiteSpace: 'nowrap' }}>
+                                      Prüfung
+                                    </Box>
+                                  </Box>
+                                }
+                                sx={{
+                                  mr: 0,
+                                  ml: 0,
+                                  px: 0.3,
+                                  py: 0.1,
+                                  height: 20,
+                                  width: 'fit-content',
+                                  minWidth: 0,
+                                  borderRadius: 0.75,
+                                  bgcolor: pruefungSelected ? '#ffebee' : '#fff5f5',
+                                  border: `1px solid ${pruefungSelected ? '#ef9a9a' : '#ffcdd2'}`,
+                                  flexShrink: 0,
+                                  '& .MuiFormControlLabel-label': { color: pruefungStyle.text },
+                                }}
+                              />
                               {restOptions.map((option) => {
                                 const optionId = option.id;
                                 const style = getPlanTypeStyle(optionId);
@@ -21226,639 +21621,17 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       {/* Input: Phasen-Texte (+ ggf. Dokumente) unter jedem Input-Baustein in allen Modi */}
                       {abPlanSection}
 
-                      {/* Materialliste immer zuerst — Text + echte Dateien (öffnen/drucken) */}
-                      {lessonPlanViewMode !== 'run' && (() => {
-                        const materiallisteFiles: MateriallisteFileEntry[] = Array.isArray(
-                          (lessonOverrides as LessonInstructionContent).materiallisteFiles
-                        )
-                          ? ((lessonOverrides as LessonInstructionContent).materiallisteFiles as MateriallisteFileEntry[])
-                          : [];
-                        const persistMateriallisteFiles = async (nextFiles: MateriallisteFileEntry[]) => {
-                          const nextContent: LessonInstructionContent = {
-                            ...lessonOverrides,
-                            materiallisteFiles: nextFiles,
-                          };
-                          setEditedLessonInstructions((prev) => ({ ...prev, [lessonPath]: nextContent }));
-                          await persistLessonContent(nextContent);
-                        };
-                        const addMateriallisteFile = async (path: string, nameHint?: string) => {
-                          if (!path) return;
-                          if (materiallisteFiles.some((f) => (f.path || '').replace(/\\/g, '/') === path.replace(/\\/g, '/'))) {
-                            showSnackbar('Datei ist bereits in der Materialliste.', 'warning');
-                            return;
-                          }
-                          const f = allFiles.find((x: any) => x.path === path);
-                          const name = (nameHint || f?.name || path.split('/').pop() || 'Datei').trim();
-                          const noteRaw = window.prompt(
-                            `Angabe zu „${name}“ (z. B. 50 × A4 gedruckt) — leer lassen für nur Dateiname:`,
-                            ''
-                          );
-                          if (noteRaw === null) return;
-                          const note = noteRaw.trim() || undefined;
-                          await persistMateriallisteFiles([
-                            ...materiallisteFiles,
-                            {
-                              id: `mf-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-                              path,
-                              name,
-                              ...(note ? { note } : {}),
-                            },
-                          ]);
-                        };
-                        const printMateriallisteFile = async (entry: MateriallisteFileEntry) => {
-                          try {
-                            const res = await fetch(
-                              `/api/file-system-paths/download?filePath=${encodeURIComponent(entry.path)}`
-                            );
-                            if (!res.ok) throw new Error('download failed');
-                            const blob = await res.blob();
-                            const url = URL.createObjectURL(blob);
-                            const w = window.open(url, '_blank');
-                            if (!w) {
-                              showSnackbar('Popup blockiert – Datei wird zum Öffnen geladen.', 'warning');
-                              await handleFileClick({ type: 'file', path: entry.path, name: entry.name });
-                              URL.revokeObjectURL(url);
-                              return;
-                            }
-                            const tryPrint = () => {
-                              try {
-                                w.focus();
-                                w.print();
-                              } catch {
-                                /* Browser blockiert print ggf. bis PDF geladen ist */
-                              }
-                            };
-                            w.addEventListener('load', tryPrint);
-                            setTimeout(tryPrint, 600);
-                            setTimeout(() => URL.revokeObjectURL(url), 120_000);
-                          } catch {
-                            showSnackbar('Datei konnte nicht gedruckt werden.', 'error');
-                          }
-                        };
-                        const folderMaterials = [...allFiles]
-                          .filter((f: any) => {
-                            const name = f?.name || '';
-                            if (!name) return false;
-                            if (String(name).startsWith('~$')) return false;
-                            if (isLessonPresentationSystemFile(name)) return false;
-                            if (isPptxImportExtractedAssetFile(name)) return false;
-                            return true;
-                          })
-                          .sort((a: any, b: any) =>
-                            String(a.name || '').localeCompare(String(b.name || ''), 'de', { sensitivity: 'base' })
-                          );
-                        const availableToAdd = folderMaterials.filter(
-                          (f: any) =>
-                            !materiallisteFiles.some(
-                              (m) => (m.path || '').replace(/\\/g, '/') === (f.path || '').replace(/\\/g, '/')
-                            )
-                        );
-                        const hasText = !!instructions?.materialliste?.trim();
-                        const hasFiles = materiallisteFiles.length > 0;
-                        return (
-                        <>
-                        <Box
-                          sx={{
-                            mt: 4.25,
-                            mb: 1.35,
-                            height: 0,
-                            borderTop: `2px solid ${alpha('#546e7a', 0.35)}`,
-                            borderBottom: `1px solid ${alpha('#fff', 0.9)}`,
-                          }}
-                        />
-                        <Box
-                          sx={{
-                            mt: 0,
-                            mb: 0,
-                            px: 1.1,
-                            py: 0.85,
-                            borderRadius: 2,
-                            border: `1px solid ${alpha('#f9a825', 0.45)}`,
-                            background: `linear-gradient(145deg, ${alpha('#fff8e1', 0.95)} 0%, #fffef6 55%, #ffffff 100%)`,
-                            boxShadow: `0 2px 10px ${alpha('#f57f17', 0.1)}, 0 0 0 1px ${alpha('#ffecb3', 0.6)} inset`,
-                            position: 'relative',
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 0.6,
-                              mb: hasText || hasFiles || isEditing('materialliste') ? 0.55 : 0.35,
-                              pr: isEditing('materialliste') ? 0 : 4.2,
-                            }}
-                          >
-                            <Box
-                              component="span"
-                              sx={{
-                                width: 6,
-                                height: 6,
-                                borderRadius: '50%',
-                                bgcolor: '#f9a825',
-                                boxShadow: `0 0 0 3px ${alpha('#f9a825', 0.22)}`,
-                                flexShrink: 0,
-                              }}
-                            />
-                            <Typography
-                              component="span"
-                              sx={{
-                                fontSize: '0.68rem',
-                                fontWeight: 800,
-                                letterSpacing: '0.06em',
-                                textTransform: 'uppercase',
-                                color: '#ef6c00',
-                                lineHeight: 1,
-                              }}
-                            >
-                              Materialliste
-                            </Typography>
-                            <Box sx={{ position: 'absolute', top: 3, right: 3, display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
-                              <Tooltip title="Material hinzufügen (Stundenordner oder anderer Ordner)">
-                                <IconButton
-                                  size="small"
-                                  onClick={(e) => setMateriallisteAddMenuAnchor(e.currentTarget)}
-                                  sx={{
-                                    p: 0,
-                                    minWidth: 18,
-                                    width: 18,
-                                    height: 18,
-                                    borderRadius: 0.6,
-                                    bgcolor: '#ef6c00',
-                                    color: '#fff',
-                                    fontSize: '0.72rem',
-                                    fontWeight: 800,
-                                    lineHeight: 1,
-                                    '&:hover': { bgcolor: '#e65100' },
-                                  }}
-                                  aria-label="Material hinzufügen"
-                                >
-                                  +
-                                </IconButton>
-                              </Tooltip>
-                              <Menu
-                                anchorEl={materiallisteAddMenuAnchor}
-                                open={Boolean(materiallisteAddMenuAnchor)}
-                                onClose={() => setMateriallisteAddMenuAnchor(null)}
-                                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                                PaperProps={{
-                                  sx: {
-                                    maxHeight: 360,
-                                    minWidth: 240,
-                                    maxWidth: 380,
-                                    mt: 0.5,
-                                  },
-                                }}
-                              >
-                                <MenuItem
-                                  onClick={() => {
-                                    setMateriallisteAddMenuAnchor(null);
-                                    setMateriallisteBrowsePath(defaultBrowseStartPath(lessonPath));
-                                    setMateriallisteBrowseOpen(true);
-                                  }}
-                                  sx={{ fontSize: '0.75rem', py: 0.7, fontWeight: 700, color: '#ef6c00' }}
-                                >
-                                  <FolderIcon sx={{ fontSize: 15, color: '#ef6c00', mr: 0.75, flexShrink: 0 }} />
-                                  Anderer Ordner…
-                                </MenuItem>
-                                <MenuItem disabled sx={{ fontSize: '0.68rem', opacity: 1, fontWeight: 700, color: '#90a4ae' }}>
-                                  Stundenordner
-                                </MenuItem>
-                                {availableToAdd.length === 0 ? (
-                                  <MenuItem disabled sx={{ fontSize: '0.72rem' }}>
-                                    {folderMaterials.length === 0
-                                      ? 'Keine Materialien im Ordner'
-                                      : 'Alle Materialien bereits hinzugefügt'}
-                                  </MenuItem>
-                                ) : (
-                                  availableToAdd.map((f: any) => (
-                                    <MenuItem
-                                      key={f.path}
-                                      onClick={() => {
-                                        setMateriallisteAddMenuAnchor(null);
-                                        void addMateriallisteFile(String(f.path || ''), String(f.name || ''));
-                                      }}
-                                      sx={{ fontSize: '0.75rem', py: 0.55 }}
-                                    >
-                                      <DescriptionIcon sx={{ fontSize: 14, color: '#ef6c00', mr: 0.75, flexShrink: 0 }} />
-                                      <Box
-                                        component="span"
-                                        sx={{
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis',
-                                          whiteSpace: 'nowrap',
-                                        }}
-                                      >
-                                        {f.name}
-                                      </Box>
-                                    </MenuItem>
-                                  ))
-                                )}
-                              </Menu>
-                              <Dialog
-                                open={materiallisteBrowseOpen}
-                                onClose={() => setMateriallisteBrowseOpen(false)}
-                                fullWidth
-                                maxWidth="sm"
-                              >
-                                <DialogTitle sx={{ ...dialogCloseTitleSx, pb: 1, fontSize: 16 }}>
-                                  Material aus Ordner wählen
-                                  <DialogCloseIconButton onClose={() => setMateriallisteBrowseOpen(false)} />
-                                </DialogTitle>
-                                <DialogContent sx={{ pt: 1 }}>
-                                  {(() => {
-                                    const browseParent = parentFolderPath(materiallisteBrowsePath);
-                                    const browsePathLabel =
-                                      materiallisteBrowsePath === PRESENTATION_FILE_BROWSER_ROOT
-                                        ? PRESENTATION_FILE_BROWSER_ROOT
-                                        : lessonFileDisplayLabel(
-                                            materiallisteBrowsePath,
-                                            PRESENTATION_FILE_BROWSER_ROOT,
-                                          );
-                                    return (
-                                      <>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
-                                          <Tooltip title="Überordner">
-                                            <span>
-                                              <IconButton
-                                                size="small"
-                                                disabled={!browseParent}
-                                                onClick={() =>
-                                                  browseParent && setMateriallisteBrowsePath(browseParent)
-                                                }
-                                              >
-                                                <ArrowUpIcon sx={{ fontSize: 18 }} />
-                                              </IconButton>
-                                            </span>
-                                          </Tooltip>
-                                          <Typography
-                                            sx={{
-                                              fontSize: 12,
-                                              fontWeight: 700,
-                                              color: '#37474f',
-                                              flex: 1,
-                                              minWidth: 0,
-                                              overflow: 'hidden',
-                                              textOverflow: 'ellipsis',
-                                              whiteSpace: 'nowrap',
-                                            }}
-                                            title={materiallisteBrowsePath}
-                                          >
-                                            {browsePathLabel}
-                                          </Typography>
-                                          {lessonPath ? (
-                                            <Button
-                                              size="small"
-                                              onClick={() => setMateriallisteBrowsePath(lessonPath)}
-                                              sx={{ textTransform: 'none', fontSize: 11, flexShrink: 0 }}
-                                            >
-                                              Zur Stunde
-                                            </Button>
-                                          ) : null}
-                                        </Box>
-                                        {materiallisteBrowseLoading ? (
-                                          <Typography sx={{ fontSize: 12, color: '#666', py: 1.5 }}>
-                                            Ordner wird geladen…
-                                          </Typography>
-                                        ) : materiallisteBrowseError ? (
-                                          <Typography sx={{ fontSize: 12, color: '#c62828' }}>
-                                            {materiallisteBrowseError}
-                                          </Typography>
-                                        ) : materiallisteBrowseFolders.length === 0 &&
-                                          materiallisteBrowseFiles.length === 0 ? (
-                                          <Typography sx={{ fontSize: 12, color: '#999' }}>
-                                            Dieser Ordner ist leer.
-                                          </Typography>
-                                        ) : (
-                                          <List
-                                            dense
-                                            sx={{
-                                              maxHeight: 360,
-                                              overflow: 'auto',
-                                              border: '1px solid #e0e0e0',
-                                              borderRadius: 1,
-                                              py: 0,
-                                            }}
-                                          >
-                                            {materiallisteBrowseFolders.map((folder) => (
-                                              <ListItemButton
-                                                key={folder.path}
-                                                onClick={() => setMateriallisteBrowsePath(folder.path)}
-                                                sx={{ py: 0.4 }}
-                                              >
-                                                <FolderIcon
-                                                  sx={{ fontSize: 18, color: '#f9a825', mr: 1, flexShrink: 0 }}
-                                                />
-                                                <ListItemText
-                                                  primary={folder.name}
-                                                  primaryTypographyProps={{ fontSize: 13, fontWeight: 600 }}
-                                                />
-                                              </ListItemButton>
-                                            ))}
-                                            {materiallisteBrowseFiles.map((file) => {
-                                              const already = materiallisteFiles.some(
-                                                (m) =>
-                                                  (m.path || '').replace(/\\/g, '/') ===
-                                                  (file.path || '').replace(/\\/g, '/'),
-                                              );
-                                              return (
-                                                <ListItemButton
-                                                  key={file.path}
-                                                  disabled={already}
-                                                  onClick={() => {
-                                                    setMateriallisteBrowseOpen(false);
-                                                    void addMateriallisteFile(file.path, file.name);
-                                                  }}
-                                                  sx={{ py: 0.4 }}
-                                                >
-                                                  <DescriptionIcon
-                                                    sx={{
-                                                      fontSize: 18,
-                                                      color: already ? '#bdbdbd' : '#ef6c00',
-                                                      mr: 1,
-                                                      flexShrink: 0,
-                                                    }}
-                                                  />
-                                                  <ListItemText
-                                                    primary={file.name}
-                                                    secondary={already ? 'Bereits in der Liste' : undefined}
-                                                    primaryTypographyProps={{ fontSize: 13 }}
-                                                    secondaryTypographyProps={{ fontSize: 10 }}
-                                                  />
-                                                </ListItemButton>
-                                              );
-                                            })}
-                                          </List>
-                                        )}
-                                      </>
-                                    );
-                                  })()}
-                                </DialogContent>
-                                <DialogActions>
-                                  <Button
-                                    onClick={() => setMateriallisteBrowseOpen(false)}
-                                    sx={{ textTransform: 'none' }}
-                                  >
-                                    Abbrechen
-                                  </Button>
-                                </DialogActions>
-                              </Dialog>
-                              {!isEditing('materialliste') && (
-                                <Tooltip title="Notiz bearbeiten">
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => startEdit('materialliste')}
-                                    sx={{
-                                      p: 0.15,
-                                      minWidth: 18,
-                                      width: 18,
-                                      height: 18,
-                                      color: '#f9a825',
-                                      bgcolor: alpha('#fff', 0.7),
-                                      border: `1px solid ${alpha('#f9a825', 0.35)}`,
-                                      '&:hover': { bgcolor: alpha('#fff8e1', 0.95) },
-                                    }}
-                                  >
-                                    <EditIcon sx={{ fontSize: 11 }} />
-                                  </IconButton>
-                                </Tooltip>
-                              )}
-                            </Box>
-                          </Box>
-
-                          {hasFiles && (
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.4, mb: hasText || isEditing('materialliste') ? 0.65 : 0 }}>
-                              {materiallisteFiles.map((entry) => {
-                                const normEntry = (entry.path || '').replace(/\\/g, '/');
-                                const normLesson = (lessonPath || '').replace(/\\/g, '/').replace(/\/+$/, '');
-                                const isInLessonFolder =
-                                  !!normLesson &&
-                                  (normEntry === normLesson || normEntry.startsWith(`${normLesson}/`));
-                                const stillThere =
-                                  !isInLessonFolder ||
-                                  allFiles.some(
-                                    (f: any) =>
-                                      (f.path || '').replace(/\\/g, '/') === normEntry
-                                  );
-                                const isPdf = /\.pdf$/i.test(entry.name);
-                                return (
-                                  <Box
-                                    key={entry.id}
-                                    sx={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: 0.45,
-                                      px: 0.65,
-                                      py: 0.35,
-                                      borderRadius: 1,
-                                      bgcolor: alpha('#fff', 0.72),
-                                      border: `1px solid ${alpha('#f9a825', 0.28)}`,
-                                    }}
-                                  >
-                                    <DescriptionIcon sx={{ fontSize: 14, color: stillThere ? '#ef6c00' : '#bdbdbd', flexShrink: 0 }} />
-                                    <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 0.5, overflow: 'hidden' }}>
-                                      <Typography
-                                        component="button"
-                                        type="button"
-                                        onClick={() => {
-                                          if (!stillThere) {
-                                            showSnackbar(
-                                              isInLessonFolder
-                                                ? 'Datei nicht mehr im Stundenordner gefunden.'
-                                                : 'Datei nicht gefunden.',
-                                              'warning',
-                                            );
-                                            return;
-                                          }
-                                          void handleFileClick({ type: 'file', path: entry.path, name: entry.name });
-                                        }}
-                                        title={
-                                          stillThere
-                                            ? isInLessonFolder
-                                              ? 'Datei öffnen'
-                                              : `Datei öffnen (${lessonFileDisplayLabel(entry.path, PRESENTATION_FILE_BROWSER_ROOT)})`
-                                            : 'Datei fehlt'
-                                        }
-                                        sx={{
-                                          all: 'unset',
-                                          cursor: stillThere ? 'pointer' : 'not-allowed',
-                                          fontSize: '0.72rem',
-                                          fontWeight: 700,
-                                          color: stillThere ? '#e65100' : '#9e9e9e',
-                                          textDecoration: stillThere ? 'underline' : 'none',
-                                          textUnderlineOffset: '2px',
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis',
-                                          whiteSpace: 'nowrap',
-                                          flexShrink: 1,
-                                          minWidth: 0,
-                                          '&:hover': stillThere ? { color: '#bf360c' } : undefined,
-                                        }}
-                                      >
-                                        {entry.name}
-                                      </Typography>
-                                      {entry.note ? (
-                                        <Typography
-                                          component="span"
-                                          sx={{
-                                            fontSize: '0.68rem',
-                                            color: '#78909c',
-                                            fontWeight: 500,
-                                            lineHeight: 1.25,
-                                            whiteSpace: 'nowrap',
-                                            flexShrink: 0,
-                                          }}
-                                        >
-                                          ({entry.note})
-                                        </Typography>
-                                      ) : null}
-                                    </Box>
-                                    <Tooltip title="Öffnen">
-                                      <span>
-                                        <IconButton
-                                          size="small"
-                                          disabled={!stillThere}
-                                          onClick={() =>
-                                            void handleFileClick({ type: 'file', path: entry.path, name: entry.name })
-                                          }
-                                          sx={{ p: 0.2, width: 22, height: 22, color: '#ef6c00' }}
-                                        >
-                                          <VisibilityIcon sx={{ fontSize: 13 }} />
-                                        </IconButton>
-                                      </span>
-                                    </Tooltip>
-                                    <Tooltip title={isPdf ? 'Drucken' : 'Öffnen & drucken'}>
-                                      <span>
-                                        <IconButton
-                                          size="small"
-                                          disabled={!stillThere}
-                                          onClick={() => void printMateriallisteFile(entry)}
-                                          sx={{ p: 0.2, width: 22, height: 22, color: '#ef6c00' }}
-                                        >
-                                          <PrintIcon sx={{ fontSize: 13 }} />
-                                        </IconButton>
-                                      </span>
-                                    </Tooltip>
-                                    {lessonPlanViewMode === 'create' && (
-                                      <Tooltip title="Aus Liste entfernen">
-                                        <IconButton
-                                          size="small"
-                                          onClick={() =>
-                                            void persistMateriallisteFiles(
-                                              materiallisteFiles.filter((x) => x.id !== entry.id)
-                                            )
-                                          }
-                                          sx={{ p: 0.2, width: 22, height: 22, color: '#c62828' }}
-                                        >
-                                          <DeleteIcon sx={{ fontSize: 13 }} />
-                                        </IconButton>
-                                      </Tooltip>
-                                    )}
-                                  </Box>
-                                );
-                              })}
-                            </Box>
-                          )}
-
-                          {isEditing('materialliste') ? (
-                            <>
-                              <Box
-                                sx={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'flex-end',
-                                  gap: 0.5,
-                                  flexWrap: 'wrap',
-                                  mb: 0.35,
-                                }}
-                              >
-                                <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
-                                  <Button
-                                    size="small"
-                                    startIcon={<UndoIcon sx={{ fontSize: 12 }} />}
-                                    onClick={undoEdit}
-                                    sx={{
-                                      color: '#78909c',
-                                      minWidth: 0,
-                                      px: 0.45,
-                                      py: 0,
-                                      fontSize: '0.62rem',
-                                      '& .MuiButton-startIcon': { mr: 0.2 },
-                                    }}
-                                  >
-                                    Rückgängig
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    size="small"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      saveEdit(e);
-                                    }}
-                                    sx={{ color: '#ef6c00', minWidth: 0, px: 0.55, py: 0, fontSize: '0.62rem', fontWeight: 700 }}
-                                  >
-                                    Fertig
-                                  </Button>
-                                </Box>
-                              </Box>
-                              <RichTextEditor
-                                key={`edit-materialliste-top-${lessonPlanViewMode}-${lessonName}`}
-                                value={lessonBoxEdit?.draft ?? ''}
-                                onChange={patchLessonBoxDraftFromEditor}
-                                placeholder="Zusätzliche Notiz (ohne Datei), z. B. Scheren, Kleber …"
-                                rows={2}
-                                compact={true}
-                              />
-                            </>
-                          ) : hasText ? (
-                            <Box
-                              sx={{
-                                m: 0,
-                                color: '#455a64',
-                                fontSize: '0.78rem',
-                                lineHeight: 1.4,
-                                '& p': { m: 0 },
-                                '& ul, & ol': { m: 0, pl: 1.75 },
-                              }}
-                            >
-                              {renderMateriallisteDisplay(instructions.materialliste ?? '')}
-                            </Box>
-                          ) : !hasFiles ? (
-                            <Box
-                              sx={{
-                                borderRadius: 1,
-                                border: `1px dashed ${alpha('#f57f17', 0.35)}`,
-                                px: 0.85,
-                                py: 0.45,
-                                bgcolor: alpha('#fff', 0.55),
-                              }}
-                            >
-                              <Typography
-                                sx={{
-                                  color: alpha('#ef6c00', 0.75),
-                                  fontSize: '0.72rem',
-                                  fontStyle: 'italic',
-                                  lineHeight: 1.3,
-                                }}
-                              >
-                                „+“ — Material aus Stundenordner oder anderem Ordner wählen
-                              </Typography>
-                            </Box>
-                          ) : null}
-                        </Box>
-                        <Box
-                          sx={{
-                            mt: 1.35,
-                            mb: 5.75,
-                            height: 0,
-                            borderTop: `2px solid ${alpha('#546e7a', 0.35)}`,
-                            borderBottom: `1px solid ${alpha('#fff', 0.9)}`,
-                          }}
-                        />
-                        </>
-                        );
-                      })()}
-
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          flexDirection: { xs: 'column', md: 'row' },
+                          alignItems: 'flex-start',
+                          gap: { xs: 4, md: 7 },
+                          mt: 0.75,
+                          mb: 0.75,
+                        }}
+                      >
+                        <Box sx={{ flex: 1, minWidth: 0, width: '100%' }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
                         {lessonPlan.length === 0 ? (
                           <Typography variant="caption" sx={{ color: '#607d8b' }}>
@@ -22294,6 +22067,143 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                     </Box>
                                   );
                                 }
+                                if (item.type === 'pruefung') {
+                                  const exam = resolveExamFileForPlanItem(item);
+                                  const shortName = (exam?.name || item.linkedMaterialName || '')
+                                    .replace(/\.(html|htm)$/i, '');
+                                  return (
+                                    <Box
+                                      sx={{
+                                        flex: 1,
+                                        minWidth: 0,
+                                        px: 0.8,
+                                        py: 0.25,
+                                        borderRadius: 0.75,
+                                        bgcolor: style.bg,
+                                        color: style.text,
+                                        border: `1px solid ${style.border}`,
+                                        fontSize: '0.78rem',
+                                        fontWeight: 700,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        flexWrap: 'wrap',
+                                        gap: 0.35,
+                                        lineHeight: 1.35,
+                                      }}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <Box component="span" sx={{ fontWeight: 800, mr: 0.15 }}>
+                                        Prüfung
+                                      </Box>
+                                      {shortName && (
+                                        <>
+                                          <Box
+                                            component="span"
+                                            sx={{ px: 0.15, color: style.border, fontWeight: 800 }}
+                                            aria-hidden
+                                          >
+                                            |
+                                          </Box>
+                                          <Box
+                                            component="span"
+                                            title="HTML öffnen"
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              if (exam?.path) openExamHtml(exam.path);
+                                            }}
+                                            sx={{
+                                              cursor: exam?.path ? 'pointer' : 'default',
+                                              textDecoration: exam?.path ? 'underline' : 'none',
+                                              textUnderlineOffset: '2px',
+                                              maxWidth: 160,
+                                              overflow: 'hidden',
+                                              textOverflow: 'ellipsis',
+                                              whiteSpace: 'nowrap',
+                                              '&:hover': exam?.path ? { opacity: 0.85 } : undefined,
+                                            }}
+                                          >
+                                            {shortName}
+                                          </Box>
+                                        </>
+                                      )}
+                                      {exam?.path && (
+                                        <Box
+                                          sx={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 0.15,
+                                            ml: 0.25,
+                                          }}
+                                        >
+                                          <Tooltip title="Fragen bearbeiten">
+                                            <IconButton
+                                              size="small"
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                void handleEditSingleQuestion({
+                                                  path: exam.path,
+                                                  name: exam.name,
+                                                });
+                                              }}
+                                              sx={{
+                                                p: 0.15,
+                                                minWidth: 20,
+                                                width: 20,
+                                                height: 20,
+                                                color: style.text,
+                                                '&:hover': { bgcolor: 'rgba(183, 28, 28, 0.08)' },
+                                              }}
+                                            >
+                                              <EditIcon sx={{ fontSize: 13 }} />
+                                            </IconButton>
+                                          </Tooltip>
+                                          <Tooltip title="Korrektur / Abgaben">
+                                            <IconButton
+                                              size="small"
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                openExamCorrection(exam.path);
+                                              }}
+                                              sx={{
+                                                p: 0.15,
+                                                minWidth: 20,
+                                                width: 20,
+                                                height: 20,
+                                                color: style.text,
+                                                '&:hover': { bgcolor: 'rgba(183, 28, 28, 0.08)' },
+                                              }}
+                                            >
+                                              <AssignmentIcon sx={{ fontSize: 13 }} />
+                                            </IconButton>
+                                          </Tooltip>
+                                          <Tooltip title="HTML öffnen">
+                                            <IconButton
+                                              size="small"
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                openExamHtml(exam.path);
+                                              }}
+                                              sx={{
+                                                p: 0.15,
+                                                minWidth: 20,
+                                                width: 20,
+                                                height: 20,
+                                                color: style.text,
+                                                '&:hover': { bgcolor: 'rgba(183, 28, 28, 0.08)' },
+                                              }}
+                                            >
+                                              <DescriptionIcon sx={{ fontSize: 13 }} />
+                                            </IconButton>
+                                          </Tooltip>
+                                        </Box>
+                                      )}
+                                    </Box>
+                                  );
+                                }
                                 return (
                                   <Typography
                                     variant="body2"
@@ -22347,7 +22257,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 );
                               })()}
                               <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.4, flexShrink: 0 }}>
-                                {renderPlanItemShareToggle(item.type)}
+                                {renderPlanItemShareToggle(item.type, item)}
                               {lessonPlanViewMode === 'create' && (
                                 <>
                                   <Box
@@ -22440,6 +22350,38 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 </Select>
                               </FormControl>
                             )}
+                            {lessonPlanViewMode === 'create' && item.type === 'pruefung' && examFiles.length > 1 && (
+                              <FormControl
+                                size="small"
+                                fullWidth
+                                sx={{ maxWidth: 420, mt: 0.25 }}
+                                onClick={(e) => e.stopPropagation()}
+                                onMouseDown={(e) => e.stopPropagation()}
+                              >
+                                <InputLabel id={`plan-exam-${item.id}`} shrink>
+                                  Prüfungsdatei
+                                </InputLabel>
+                                <Select
+                                  labelId={`plan-exam-${item.id}`}
+                                  label="Prüfungsdatei"
+                                  notched
+                                  displayEmpty
+                                  value={item.linkedMaterialPath || examFiles[0]?.path || ''}
+                                  onChange={(e) => {
+                                    const v = e.target.value as string;
+                                    const f = examFiles.find((x: any) => x.path === v);
+                                    void setPlanItemLinkedMaterial(item.id, v || undefined, f?.name);
+                                  }}
+                                  sx={{ fontSize: '0.75rem', '& .MuiSelect-select': { py: 0.65 } }}
+                                >
+                                  {examFiles.map((f: any) => (
+                                    <MenuItem key={f.path} value={f.path} sx={{ fontSize: '0.75rem' }}>
+                                      {f.name}
+                                    </MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
+                            )}
                             {lessonPlanViewMode === 'create' && item.type === 'karteikarten-gemeinsam-erstellen' && (
                               <FormControl
                                 size="small"
@@ -22516,10 +22458,895 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                           </React.Fragment>
                           );
                         })}
+                        {/* Fallback: Prüfungsdateien vorhanden, aber noch kein Baustein im Verlauf */}
+                        {examFiles.length > 0 && !planHasPruefung && (
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 0.5,
+                              p: 0.75,
+                              borderRadius: 1,
+                              bgcolor: '#ffebee',
+                              border: '1px solid #ef9a9a',
+                            }}
+                          >
+                            <Typography
+                              variant="caption"
+                              sx={{ fontWeight: 800, color: '#b71c1c', fontSize: '0.72rem' }}
+                            >
+                              Prüfung
+                            </Typography>
+                            {examFiles.map((exam: any) => {
+                              const shortName = String(exam.name || '').replace(/\.(html|htm)$/i, '');
+                              return (
+                                <Box
+                                  key={exam.path}
+                                  sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 0.5,
+                                    flexWrap: 'wrap',
+                                  }}
+                                >
+                                  <Box
+                                    component="span"
+                                    title="HTML öffnen"
+                                    onClick={() => openExamHtml(exam.path)}
+                                    sx={{
+                                      cursor: 'pointer',
+                                      textDecoration: 'underline',
+                                      textUnderlineOffset: '2px',
+                                      color: '#b71c1c',
+                                      fontWeight: 700,
+                                      fontSize: '0.75rem',
+                                      '&:hover': { opacity: 0.85 },
+                                    }}
+                                  >
+                                    {shortName}
+                                  </Box>
+                                  <Tooltip title="Fragen bearbeiten">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() =>
+                                        void handleEditSingleQuestion({
+                                          path: exam.path,
+                                          name: exam.name,
+                                        })
+                                      }
+                                      sx={{ p: 0.15, width: 20, height: 20, color: '#b71c1c' }}
+                                    >
+                                      <EditIcon sx={{ fontSize: 13 }} />
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Korrektur / Abgaben">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => openExamCorrection(exam.path)}
+                                      sx={{ p: 0.15, width: 20, height: 20, color: '#b71c1c' }}
+                                    >
+                                      <AssignmentIcon sx={{ fontSize: 13 }} />
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="HTML öffnen">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => openExamHtml(exam.path)}
+                                      sx={{ p: 0.15, width: 20, height: 20, color: '#b71c1c' }}
+                                    >
+                                      <DescriptionIcon sx={{ fontSize: 13 }} />
+                                    </IconButton>
+                                  </Tooltip>
+                                  {planShareGroupId && (
+                                    <Button
+                                      type="button"
+                                      size="small"
+                                      variant={
+                                        activeExamBeacons[planShareGroupId]?.filePath?.replace(/\\/g, '/') ===
+                                        String(exam.path).replace(/\\/g, '/')
+                                          ? 'contained'
+                                          : 'outlined'
+                                      }
+                                      title={
+                                        activeExamBeacons[planShareGroupId]?.filePath?.replace(/\\/g, '/') ===
+                                        String(exam.path).replace(/\\/g, '/')
+                                          ? 'Prüfung beenden'
+                                          : 'Prüfung starten (Vollbild bei SuS)'
+                                      }
+                                      onClick={() => {
+                                        void (async () => {
+                                          const isActive =
+                                            activeExamBeacons[planShareGroupId]?.filePath?.replace(/\\/g, '/') ===
+                                            String(exam.path).replace(/\\/g, '/');
+                                          try {
+                                            if (isActive) {
+                                              const res = await fetch('/api/learning-groups/exam-beacon/stop', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                  teacherId: userId,
+                                                  groupId: planShareGroupId,
+                                                }),
+                                              });
+                                              if (!res.ok) return;
+                                              setActiveExamBeacons((prev) => {
+                                                const next = { ...prev };
+                                                delete next[planShareGroupId];
+                                                return next;
+                                              });
+                                              showSnackbar('Prüfung beendet', 'success');
+                                            } else {
+                                              const res = await fetch('/api/learning-groups/exam-beacon/start', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                  teacherId: userId,
+                                                  groupId: planShareGroupId,
+                                                  filePath: exam.path,
+                                                  lessonPath: lessonModalData.lessonPath || '',
+                                                }),
+                                              });
+                                              if (!res.ok) return;
+                                              const data = await res.json();
+                                              setActiveExamBeacons((prev) => ({
+                                                ...prev,
+                                                [planShareGroupId]: {
+                                                  filePath: data.filePath || exam.path,
+                                                  beaconId: data.beaconId,
+                                                },
+                                              }));
+                                              setFileShares((prev) => ({
+                                                ...prev,
+                                                [fileShareKey(exam.path, planShareGroupId)]: true,
+                                              }));
+                                              showSnackbar('Prüfung gestartet — SuS sehen Vollbild', 'success');
+                                            }
+                                          } catch {
+                                            /* ignore */
+                                          }
+                                        })();
+                                      }}
+                                      sx={{
+                                        minWidth: 0,
+                                        height: 20,
+                                        px: 0.45,
+                                        fontSize: '0.58rem',
+                                        fontWeight: 800,
+                                        textTransform: 'none',
+                                        ...(activeExamBeacons[planShareGroupId]?.filePath?.replace(/\\/g, '/') ===
+                                        String(exam.path).replace(/\\/g, '/')
+                                          ? {
+                                              bgcolor: '#c62828',
+                                              color: '#fff',
+                                              border: '1px solid #c62828',
+                                            }
+                                          : {
+                                              bgcolor: '#fff',
+                                              color: '#c62828',
+                                              border: '1px solid #ef9a9a',
+                                            }),
+                                      }}
+                                    >
+                                      {activeExamBeacons[planShareGroupId]?.filePath?.replace(/\\/g, '/') ===
+                                      String(exam.path).replace(/\\/g, '/')
+                                        ? 'STOP'
+                                        : 'START'}
+                                    </Button>
+                                  )}
+                                </Box>
+                              );
+                            })}
+                            {lessonPlanViewMode === 'create' && (
+                              <Typography variant="caption" sx={{ color: '#8e0000', fontSize: '0.65rem' }}>
+                                Tipp: Oben „Prüfung“ anhaken und + — dann sitzt sie fest im Stundenverlauf.
+                              </Typography>
+                            )}
+                          </Box>
+                        )}
+                      </Box>
+                        </Box>
+                      {/* Material-Kiste — rechte Spalte neben Stundenablauf */}
+                      {lessonPlanViewMode !== 'run' && (() => {
+                        const materiallisteFiles: MateriallisteFileEntry[] = Array.isArray(
+                          (lessonOverrides as LessonInstructionContent).materiallisteFiles
+                        )
+                          ? ((lessonOverrides as LessonInstructionContent).materiallisteFiles as MateriallisteFileEntry[])
+                          : [];
+                        const persistMateriallisteFiles = async (nextFiles: MateriallisteFileEntry[]) => {
+                          const nextContent: LessonInstructionContent = {
+                            ...lessonOverrides,
+                            materiallisteFiles: nextFiles,
+                          };
+                          setEditedLessonInstructions((prev) => ({ ...prev, [lessonPath]: nextContent }));
+                          await persistLessonContent(nextContent);
+                        };
+                        const addMateriallisteFile = async (path: string, nameHint?: string) => {
+                          if (!path) return;
+                          if (materiallisteFiles.some((f) => (f.path || '').replace(/\\/g, '/') === path.replace(/\\/g, '/'))) {
+                            showSnackbar('Datei ist bereits in der Materialliste.', 'warning');
+                            return;
+                          }
+                          const f = allFiles.find((x: any) => x.path === path);
+                          const name = (nameHint || f?.name || path.split('/').pop() || 'Datei').trim();
+                          const noteRaw = window.prompt(
+                            `Angabe zu „${name}“ (z. B. 50 × A4 gedruckt) — leer lassen für nur Dateiname:`,
+                            ''
+                          );
+                          if (noteRaw === null) return;
+                          const note = noteRaw.trim() || undefined;
+                          await persistMateriallisteFiles([
+                            ...materiallisteFiles,
+                            {
+                              id: `mf-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                              path,
+                              name,
+                              ...(note ? { note } : {}),
+                            },
+                          ]);
+                        };
+                        const printMateriallisteFile = async (entry: MateriallisteFileEntry) => {
+                          try {
+                            const res = await fetch(
+                              `/api/file-system-paths/download?filePath=${encodeURIComponent(entry.path)}`
+                            );
+                            if (!res.ok) throw new Error('download failed');
+                            const blob = await res.blob();
+                            const url = URL.createObjectURL(blob);
+                            const w = window.open(url, '_blank');
+                            if (!w) {
+                              showSnackbar('Popup blockiert – Datei wird zum Öffnen geladen.', 'warning');
+                              await handleFileClick({ type: 'file', path: entry.path, name: entry.name });
+                              URL.revokeObjectURL(url);
+                              return;
+                            }
+                            const tryPrint = () => {
+                              try {
+                                w.focus();
+                                w.print();
+                              } catch {
+                                /* Browser blockiert print ggf. bis PDF geladen ist */
+                              }
+                            };
+                            w.addEventListener('load', tryPrint);
+                            setTimeout(tryPrint, 600);
+                            setTimeout(() => URL.revokeObjectURL(url), 120_000);
+                          } catch {
+                            showSnackbar('Datei konnte nicht gedruckt werden.', 'error');
+                          }
+                        };
+                        const folderMaterials = [...allFiles]
+                          .filter((f: any) => {
+                            const name = f?.name || '';
+                            if (!name) return false;
+                            if (String(name).startsWith('~$')) return false;
+                            if (isLessonPresentationSystemFile(name)) return false;
+                            if (isPptxImportExtractedAssetFile(name)) return false;
+                            return true;
+                          })
+                          .sort((a: any, b: any) =>
+                            String(a.name || '').localeCompare(String(b.name || ''), 'de', { sensitivity: 'base' })
+                          );
+                        const availableToAdd = folderMaterials.filter(
+                          (f: any) =>
+                            !materiallisteFiles.some(
+                              (m) => (m.path || '').replace(/\\/g, '/') === (f.path || '').replace(/\\/g, '/')
+                            )
+                        );
+                        const hasText = !!instructions?.materialliste?.trim();
+                        const hasFiles = materiallisteFiles.length > 0;
+                        return (
+                        <Box
+                          sx={{
+                            width: { xs: '100%', md: 292 },
+                            flexShrink: 0,
+                            alignSelf: { xs: 'stretch', md: 'flex-start' },
+                            position: { xs: 'relative', md: 'sticky' },
+                            top: { md: 12 },
+                            borderRadius: '14px 14px 10px 10px',
+                            overflow: 'hidden',
+                            border: `2px solid #5d4037`,
+                            background: 'linear-gradient(180deg, #6d4c41 0%, #4e342e 12%, #3e2723 100%)',
+                            boxShadow:
+                              '0 10px 28px rgba(62, 39, 35, 0.28), inset 0 1px 0 rgba(255, 224, 130, 0.22)',
+                          }}
+                        >
+                          {/* Deckel */}
+                          <Box
+                            sx={{
+                              position: 'relative',
+                              px: 1.25,
+                              pt: 1.1,
+                              pb: 1.0,
+                              background:
+                                'linear-gradient(180deg, #a1887f 0%, #8d6e63 38%, #6d4c41 100%)',
+                              borderBottom: '2px solid #3e2723',
+                              boxShadow: 'inset 0 1px 0 rgba(255,236,179,0.35)',
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                position: 'absolute',
+                                left: '50%',
+                                bottom: -9,
+                                transform: 'translateX(-50%)',
+                                width: 34,
+                                height: 16,
+                                borderRadius: '0 0 6px 6px',
+                                background: 'linear-gradient(180deg, #f0d78c 0%, #c9a227 55%, #8d6e1a 100%)',
+                                border: '1.5px solid #5d4037',
+                                borderTop: 'none',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.25)',
+                                zIndex: 1,
+                              }}
+                            />
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, pr: 5 }}>
+                              <Box
+                                sx={{
+                                  width: 30,
+                                  height: 30,
+                                  borderRadius: '50%',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  background: 'linear-gradient(145deg, #2c1810 0%, #1a0f0a 100%)',
+                                  border: '1.5px solid #c9a227',
+                                  boxShadow: 'inset 0 1px 0 rgba(255,224,130,0.25), 0 1px 3px rgba(0,0,0,0.35)',
+                                  flexShrink: 0,
+                                }}
+                                aria-hidden
+                              >
+                                <Box
+                                  component="svg"
+                                  viewBox="0 0 24 24"
+                                  sx={{ width: 18, height: 18, display: 'block' }}
+                                >
+                                  {/* Totenkopf + gekreuzte Knochen */}
+                                  <g fill="#ffe082">
+                                    <ellipse cx="12" cy="8.2" rx="5.2" ry="4.6" />
+                                    <path d="M8.6 11.2c.7 1.6 1.9 2.5 3.4 2.5s2.7-.9 3.4-2.5H8.6z" />
+                                    <circle cx="9.7" cy="7.8" r="1.15" fill="#1a0f0a" />
+                                    <circle cx="14.3" cy="7.8" r="1.15" fill="#1a0f0a" />
+                                    <path d="M11.2 10.1h1.6v1.35c0 .35-.25.55-.8.55s-.8-.2-.8-.55V10.1z" fill="#1a0f0a" />
+                                    <rect x="10.2" y="13.5" width="1.15" height="2.1" rx="0.35" />
+                                    <rect x="12.65" y="13.5" width="1.15" height="2.1" rx="0.35" />
+                                    <g transform="rotate(-38 12 18)">
+                                      <rect x="3.2" y="17.15" width="17.6" height="1.7" rx="0.85" />
+                                      <circle cx="3.5" cy="18" r="1.55" />
+                                      <circle cx="20.5" cy="18" r="1.55" />
+                                    </g>
+                                    <g transform="rotate(38 12 18)">
+                                      <rect x="3.2" y="17.15" width="17.6" height="1.7" rx="0.85" />
+                                      <circle cx="3.5" cy="18" r="1.55" />
+                                      <circle cx="20.5" cy="18" r="1.55" />
+                                    </g>
+                                  </g>
+                                </Box>
+                              </Box>
+                              <Typography
+                                component="div"
+                                sx={{
+                                  fontSize: '0.78rem',
+                                  fontWeight: 900,
+                                  letterSpacing: '0.06em',
+                                  textTransform: 'uppercase',
+                                  color: '#fff8e1',
+                                  lineHeight: 1.1,
+                                  textShadow: '0 1px 0 rgba(0,0,0,0.35)',
+                                }}
+                              >
+                                Material
+                              </Typography>
+                            </Box>
+                            <Box
+                              sx={{
+                                position: 'absolute',
+                                top: 8,
+                                right: 8,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 0.25,
+                                zIndex: 2,
+                              }}
+                            >
+                              <Tooltip title="Material hinzufügen (Stundenordner oder anderer Ordner)">
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => setMateriallisteAddMenuAnchor(e.currentTarget)}
+                                  sx={{
+                                    p: 0,
+                                    minWidth: 22,
+                                    width: 22,
+                                    height: 22,
+                                    borderRadius: 0.7,
+                                    bgcolor: '#5d4037',
+                                    color: '#ffe082',
+                                    fontSize: '0.82rem',
+                                    fontWeight: 800,
+                                    lineHeight: 1,
+                                    border: '1px solid #c9a227',
+                                    '&:hover': { bgcolor: '#3e2723', color: '#fff8e1' },
+                                  }}
+                                  aria-label="Material hinzufügen"
+                                >
+                                  +
+                                </IconButton>
+                              </Tooltip>
+                              <Menu
+                                anchorEl={materiallisteAddMenuAnchor}
+                                open={Boolean(materiallisteAddMenuAnchor)}
+                                onClose={() => setMateriallisteAddMenuAnchor(null)}
+                                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                                PaperProps={{
+                                  sx: {
+                                    maxHeight: 360,
+                                    minWidth: 240,
+                                    maxWidth: 380,
+                                    mt: 0.5,
+                                  },
+                                }}
+                              >
+                                <MenuItem
+                                  onClick={() => {
+                                    setMateriallisteAddMenuAnchor(null);
+                                    setMateriallisteBrowsePath(defaultBrowseStartPath(lessonPath));
+                                    setMateriallisteBrowseOpen(true);
+                                  }}
+                                  sx={{ fontSize: '0.75rem', py: 0.7, fontWeight: 700, color: '#ef6c00' }}
+                                >
+                                  <FolderIcon sx={{ fontSize: 15, color: '#ef6c00', mr: 0.75, flexShrink: 0 }} />
+                                  Anderer Ordner…
+                                </MenuItem>
+                                <MenuItem disabled sx={{ fontSize: '0.68rem', opacity: 1, fontWeight: 700, color: '#90a4ae' }}>
+                                  Stundenordner
+                                </MenuItem>
+                                {availableToAdd.length === 0 ? (
+                                  <MenuItem disabled sx={{ fontSize: '0.72rem' }}>
+                                    {folderMaterials.length === 0
+                                      ? 'Keine Materialien im Ordner'
+                                      : 'Alle Materialien bereits hinzugefügt'}
+                                  </MenuItem>
+                                ) : (
+                                  availableToAdd.map((f: any) => (
+                                    <MenuItem
+                                      key={f.path}
+                                      onClick={() => {
+                                        setMateriallisteAddMenuAnchor(null);
+                                        void addMateriallisteFile(String(f.path || ''), String(f.name || ''));
+                                      }}
+                                      sx={{ fontSize: '0.75rem', py: 0.55 }}
+                                    >
+                                      <DescriptionIcon sx={{ fontSize: 14, color: '#ef6c00', mr: 0.75, flexShrink: 0 }} />
+                                      <Box
+                                        component="span"
+                                        sx={{
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          whiteSpace: 'nowrap',
+                                        }}
+                                      >
+                                        {f.name}
+                                      </Box>
+                                    </MenuItem>
+                                  ))
+                                )}
+                              </Menu>
+                              <Dialog
+                                open={materiallisteBrowseOpen}
+                                onClose={() => setMateriallisteBrowseOpen(false)}
+                                fullWidth
+                                maxWidth="sm"
+                              >
+                                <DialogTitle sx={{ ...dialogCloseTitleSx, pb: 1, fontSize: 16 }}>
+                                  Material aus Ordner wählen
+                                  <DialogCloseIconButton onClose={() => setMateriallisteBrowseOpen(false)} />
+                                </DialogTitle>
+                                <DialogContent sx={{ pt: 1 }}>
+                                  {(() => {
+                                    const browseParent = parentFolderPath(materiallisteBrowsePath);
+                                    const browsePathLabel =
+                                      materiallisteBrowsePath === PRESENTATION_FILE_BROWSER_ROOT
+                                        ? PRESENTATION_FILE_BROWSER_ROOT
+                                        : lessonFileDisplayLabel(
+                                            materiallisteBrowsePath,
+                                            PRESENTATION_FILE_BROWSER_ROOT,
+                                          );
+                                    return (
+                                      <>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+                                          <Tooltip title="Überordner">
+                                            <span>
+                                              <IconButton
+                                                size="small"
+                                                disabled={!browseParent}
+                                                onClick={() =>
+                                                  browseParent && setMateriallisteBrowsePath(browseParent)
+                                                }
+                                              >
+                                                <ArrowUpIcon sx={{ fontSize: 18 }} />
+                                              </IconButton>
+                                            </span>
+                                          </Tooltip>
+                                          <Typography
+                                            sx={{
+                                              fontSize: 12,
+                                              fontWeight: 700,
+                                              color: '#37474f',
+                                              flex: 1,
+                                              minWidth: 0,
+                                              overflow: 'hidden',
+                                              textOverflow: 'ellipsis',
+                                              whiteSpace: 'nowrap',
+                                            }}
+                                            title={materiallisteBrowsePath}
+                                          >
+                                            {browsePathLabel}
+                                          </Typography>
+                                          {lessonPath ? (
+                                            <Button
+                                              size="small"
+                                              onClick={() => setMateriallisteBrowsePath(lessonPath)}
+                                              sx={{ textTransform: 'none', fontSize: 11, flexShrink: 0 }}
+                                            >
+                                              Zur Stunde
+                                            </Button>
+                                          ) : null}
+                                        </Box>
+                                        {materiallisteBrowseLoading ? (
+                                          <Typography sx={{ fontSize: 12, color: '#666', py: 1.5 }}>
+                                            Ordner wird geladen…
+                                          </Typography>
+                                        ) : materiallisteBrowseError ? (
+                                          <Typography sx={{ fontSize: 12, color: '#c62828' }}>
+                                            {materiallisteBrowseError}
+                                          </Typography>
+                                        ) : materiallisteBrowseFolders.length === 0 &&
+                                          materiallisteBrowseFiles.length === 0 ? (
+                                          <Typography sx={{ fontSize: 12, color: '#999' }}>
+                                            Dieser Ordner ist leer.
+                                          </Typography>
+                                        ) : (
+                                          <List
+                                            dense
+                                            sx={{
+                                              maxHeight: 360,
+                                              overflow: 'auto',
+                                              border: '1px solid #e0e0e0',
+                                              borderRadius: 1,
+                                              py: 0,
+                                            }}
+                                          >
+                                            {materiallisteBrowseFolders.map((folder) => (
+                                              <ListItemButton
+                                                key={folder.path}
+                                                onClick={() => setMateriallisteBrowsePath(folder.path)}
+                                                sx={{ py: 0.4 }}
+                                              >
+                                                <FolderIcon
+                                                  sx={{ fontSize: 18, color: '#f9a825', mr: 1, flexShrink: 0 }}
+                                                />
+                                                <ListItemText
+                                                  primary={folder.name}
+                                                  primaryTypographyProps={{ fontSize: 13, fontWeight: 600 }}
+                                                />
+                                              </ListItemButton>
+                                            ))}
+                                            {materiallisteBrowseFiles.map((file) => {
+                                              const already = materiallisteFiles.some(
+                                                (m) =>
+                                                  (m.path || '').replace(/\\/g, '/') ===
+                                                  (file.path || '').replace(/\\/g, '/'),
+                                              );
+                                              return (
+                                                <ListItemButton
+                                                  key={file.path}
+                                                  disabled={already}
+                                                  onClick={() => {
+                                                    setMateriallisteBrowseOpen(false);
+                                                    void addMateriallisteFile(file.path, file.name);
+                                                  }}
+                                                  sx={{ py: 0.4 }}
+                                                >
+                                                  <DescriptionIcon
+                                                    sx={{
+                                                      fontSize: 18,
+                                                      color: already ? '#bdbdbd' : '#ef6c00',
+                                                      mr: 1,
+                                                      flexShrink: 0,
+                                                    }}
+                                                  />
+                                                  <ListItemText
+                                                    primary={file.name}
+                                                    secondary={already ? 'Bereits in der Liste' : undefined}
+                                                    primaryTypographyProps={{ fontSize: 13 }}
+                                                    secondaryTypographyProps={{ fontSize: 10 }}
+                                                  />
+                                                </ListItemButton>
+                                              );
+                                            })}
+                                          </List>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
+                                </DialogContent>
+                                <DialogActions>
+                                  <Button
+                                    onClick={() => setMateriallisteBrowseOpen(false)}
+                                    sx={{ textTransform: 'none' }}
+                                  >
+                                    Abbrechen
+                                  </Button>
+                                </DialogActions>
+                              </Dialog>
+                              {!isEditing('materialliste') && (
+                                <Tooltip title="Notiz bearbeiten">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => startEdit('materialliste')}
+                                    sx={{
+                                      p: 0.15,
+                                      minWidth: 22,
+                                      width: 22,
+                                      height: 22,
+                                      color: '#5d4037',
+                                      bgcolor: alpha('#fff8e1', 0.9),
+                                      border: `1px solid ${alpha('#c9a227', 0.65)}`,
+                                      '&:hover': { bgcolor: '#fffde7' },
+                                    }}
+                                  >
+                                    <EditIcon sx={{ fontSize: 12 }} />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                            </Box>
+                          </Box>
+
+                          {/* Innenraum */}
+                          <Box
+                            sx={{
+                              mx: 0.85,
+                              mt: 1.15,
+                              mb: 0.95,
+                              px: 1,
+                              py: 0.9,
+                              borderRadius: 1.5,
+                              border: `1.5px solid ${alpha('#ffe082', 0.45)}`,
+                              background: `linear-gradient(165deg, #fff8e1 0%, #ffecb3 42%, #ffe082 100%)`,
+                              boxShadow: `inset 0 0 0 1px ${alpha('#5d4037', 0.12)}, inset 0 2px 10px ${alpha('#5d4037', 0.08)}`,
+                              position: 'relative',
+                              minHeight: 120,
+                            }}
+                          >
+                          {hasFiles && (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.4, mb: hasText || isEditing('materialliste') ? 0.65 : 0 }}>
+                              {materiallisteFiles.map((entry) => {
+                                const normEntry = (entry.path || '').replace(/\\/g, '/');
+                                const normLesson = (lessonPath || '').replace(/\\/g, '/').replace(/\/+$/, '');
+                                const isInLessonFolder =
+                                  !!normLesson &&
+                                  (normEntry === normLesson || normEntry.startsWith(`${normLesson}/`));
+                                const stillThere =
+                                  !isInLessonFolder ||
+                                  allFiles.some(
+                                    (f: any) =>
+                                      (f.path || '').replace(/\\/g, '/') === normEntry
+                                  );
+                                const isPdf = /\.pdf$/i.test(entry.name);
+                                return (
+                                  <Box
+                                    key={entry.id}
+                                    sx={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 0.45,
+                                      px: 0.65,
+                                      py: 0.4,
+                                      borderRadius: 1.1,
+                                      bgcolor: alpha('#fffef7', 0.92),
+                                      border: `1px solid ${alpha('#8d6e63', 0.35)}`,
+                                      boxShadow: `inset 0 1px 0 ${alpha('#fff', 0.7)}`,
+                                    }}
+                                  >
+                                    <DescriptionIcon sx={{ fontSize: 14, color: stillThere ? '#6d4c41' : '#bdbdbd', flexShrink: 0 }} />
+                                    <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 0.5, overflow: 'hidden' }}>
+                                      <Typography
+                                        component="button"
+                                        type="button"
+                                        onClick={() => {
+                                          if (!stillThere) {
+                                            showSnackbar(
+                                              isInLessonFolder
+                                                ? 'Datei nicht mehr im Stundenordner gefunden.'
+                                                : 'Datei nicht gefunden.',
+                                              'warning',
+                                            );
+                                            return;
+                                          }
+                                          void handleFileClick({ type: 'file', path: entry.path, name: entry.name });
+                                        }}
+                                        title={
+                                          stillThere
+                                            ? isInLessonFolder
+                                              ? 'Datei öffnen'
+                                              : `Datei öffnen (${lessonFileDisplayLabel(entry.path, PRESENTATION_FILE_BROWSER_ROOT)})`
+                                            : 'Datei fehlt'
+                                        }
+                                        sx={{
+                                          all: 'unset',
+                                          cursor: stillThere ? 'pointer' : 'not-allowed',
+                                          fontSize: '0.72rem',
+                                          fontWeight: 700,
+                                          color: stillThere ? '#4e342e' : '#9e9e9e',
+                                          textDecoration: stillThere ? 'underline' : 'none',
+                                          textUnderlineOffset: '2px',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          whiteSpace: 'nowrap',
+                                          flexShrink: 1,
+                                          minWidth: 0,
+                                          '&:hover': stillThere ? { color: '#3e2723' } : undefined,
+                                        }}
+                                      >
+                                        {entry.name}
+                                      </Typography>
+                                      {entry.note ? (
+                                        <Typography
+                                          component="span"
+                                          sx={{
+                                            fontSize: '0.68rem',
+                                            color: '#78909c',
+                                            fontWeight: 500,
+                                            lineHeight: 1.25,
+                                            whiteSpace: 'nowrap',
+                                            flexShrink: 0,
+                                          }}
+                                        >
+                                          ({entry.note})
+                                        </Typography>
+                                      ) : null}
+                                    </Box>
+                                    <Tooltip title="Öffnen">
+                                      <span>
+                                        <IconButton
+                                          size="small"
+                                          disabled={!stillThere}
+                                          onClick={() =>
+                                            void handleFileClick({ type: 'file', path: entry.path, name: entry.name })
+                                          }
+                                          sx={{ p: 0.2, width: 22, height: 22, color: '#6d4c41' }}
+                                        >
+                                          <VisibilityIcon sx={{ fontSize: 13 }} />
+                                        </IconButton>
+                                      </span>
+                                    </Tooltip>
+                                    <Tooltip title={isPdf ? 'Drucken' : 'Öffnen & drucken'}>
+                                      <span>
+                                        <IconButton
+                                          size="small"
+                                          disabled={!stillThere}
+                                          onClick={() => void printMateriallisteFile(entry)}
+                                          sx={{ p: 0.2, width: 22, height: 22, color: '#6d4c41' }}
+                                        >
+                                          <PrintIcon sx={{ fontSize: 13 }} />
+                                        </IconButton>
+                                      </span>
+                                    </Tooltip>
+                                    {lessonPlanViewMode === 'create' && (
+                                      <Tooltip title="Aus Liste entfernen">
+                                        <IconButton
+                                          size="small"
+                                          onClick={() =>
+                                            void persistMateriallisteFiles(
+                                              materiallisteFiles.filter((x) => x.id !== entry.id)
+                                            )
+                                          }
+                                          sx={{ p: 0.2, width: 22, height: 22, color: '#c62828' }}
+                                        >
+                                          <DeleteIcon sx={{ fontSize: 13 }} />
+                                        </IconButton>
+                                      </Tooltip>
+                                    )}
+                                  </Box>
+                                );
+                              })}
+                            </Box>
+                          )}
+
+                          {isEditing('materialliste') ? (
+                            <>
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'flex-end',
+                                  gap: 0.5,
+                                  flexWrap: 'wrap',
+                                  mb: 0.35,
+                                }}
+                              >
+                                <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
+                                  <Button
+                                    size="small"
+                                    startIcon={<UndoIcon sx={{ fontSize: 12 }} />}
+                                    onClick={undoEdit}
+                                    sx={{
+                                      color: '#78909c',
+                                      minWidth: 0,
+                                      px: 0.45,
+                                      py: 0,
+                                      fontSize: '0.62rem',
+                                      '& .MuiButton-startIcon': { mr: 0.2 },
+                                    }}
+                                  >
+                                    Rückgängig
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="small"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      saveEdit(e);
+                                    }}
+                                    sx={{ color: '#ef6c00', minWidth: 0, px: 0.55, py: 0, fontSize: '0.62rem', fontWeight: 700 }}
+                                  >
+                                    Fertig
+                                  </Button>
+                                </Box>
+                              </Box>
+                              <RichTextEditor
+                                key={`edit-materialliste-top-${lessonPlanViewMode}-${lessonName}`}
+                                value={lessonBoxEdit?.draft ?? ''}
+                                onChange={patchLessonBoxDraftFromEditor}
+                                placeholder="Zusätzliche Notiz (ohne Datei), z. B. Scheren, Kleber …"
+                                rows={2}
+                                compact={true}
+                              />
+                            </>
+                          ) : hasText ? (
+                            <Box
+                              sx={{
+                                m: 0,
+                                color: '#455a64',
+                                fontSize: '0.78rem',
+                                lineHeight: 1.4,
+                                '& p': { m: 0 },
+                                '& ul, & ol': { m: 0, pl: 1.75 },
+                              }}
+                            >
+                              {renderMateriallisteDisplay(instructions.materialliste ?? '')}
+                            </Box>
+                          ) : !hasFiles ? (
+                            <Box
+                              sx={{
+                                borderRadius: 1.25,
+                                border: `1.5px dashed ${alpha('#5d4037', 0.35)}`,
+                                px: 0.9,
+                                py: 0.75,
+                                bgcolor: alpha('#fffef7', 0.65),
+                                textAlign: 'center',
+                              }}
+                            >
+                              <Typography
+                                sx={{
+                                  color: alpha('#5d4037', 0.8),
+                                  fontSize: '0.72rem',
+                                  fontStyle: 'italic',
+                                  lineHeight: 1.35,
+                                }}
+                              >
+                                Noch leer — „+“ zum Hinzufügen
+                              </Typography>
+                            </Box>
+                          ) : null}
+                        </Box>
+                        </Box>
+                        );
+                      })()}
                       </Box>
                     </Box>
 
-                    {/* Materialliste steht oben im Ablauf; Input zeigt nur Voraussetzungen/Anweisungen. */}
+                    {/* Material-Kiste rechts neben dem Ablauf; Input zeigt nur Voraussetzungen/Anweisungen. */}
 
                     {lessonPlanViewMode === 'background' && planHasArbeitsauftrag && (
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25, mt: 1 }}>
@@ -27627,6 +28454,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           setCreateLessonModalOpen(false);
           setNewLessonName('');
           setNewLessonFolderPath('');
+          setNewLessonWithPruefung(false);
           setFolderPickerMode('exam');
         }}
         onKeyDown={(e) => {
@@ -27674,6 +28502,46 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               placeholder="z.B. Alan Turing"
               helperText="Es wird genau dieser Ordnername erstellt (ohne automatische Nummerierung)"
             />
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={newLessonWithPruefung}
+                  onChange={(e) => setNewLessonWithPruefung(e.target.checked)}
+                  sx={{ color: '#c62828', '&.Mui-checked': { color: '#c62828' } }}
+                />
+              }
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box
+                    component="span"
+                    sx={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 20,
+                      height: 20,
+                      borderRadius: 0.75,
+                      bgcolor: '#c62828',
+                      color: '#fff',
+                      fontSize: '0.75rem',
+                      fontWeight: 900,
+                    }}
+                  >
+                    P
+                  </Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    Prüfung in dieser Stunde
+                  </Typography>
+                </Box>
+              }
+            />
+            {newLessonWithPruefung && (
+              <Alert severity="info" sx={{ borderRadius: 2 }}>
+                Legt automatisch eine Quiz-Datei (QZ_) im Stundenordner an und nimmt sie in den Stundenverlauf auf.
+                Danach kannst du die Fragen direkt erstellen.
+              </Alert>
+            )}
 
             <Box>
               <Typography variant="body2" sx={{ mb: 1.5, fontWeight: 600, color: '#333', fontSize: '0.95rem' }}>
@@ -27725,6 +28593,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               setCreateLessonModalOpen(false);
               setNewLessonName('');
               setNewLessonFolderPath('');
+              setNewLessonWithPruefung(false);
               setFolderPickerMode('exam');
             }}
             sx={{
@@ -27759,7 +28628,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           setExaminationFileName('');
           setExamDurationMinutes(5);
           setExaminationFolderPath('');
-          setExaminationLearningGroupId('');
           setFolderPickerMode('exam');
         }}
         onKeyDown={(e) => {
@@ -27881,43 +28749,13 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               helperText="Wird im Timer der Prüfung übernommen"
             />
 
-            {/* Lerngruppe (optional) */}
-            <FormControl fullWidth>
-              <Typography variant="body2" sx={{ fontWeight: 600, color: '#666', mb: 0.5 }}>
-                Lerngruppe (optional)
-              </Typography>
-              <FormGroup row sx={{ gap: 1 }}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={examinationLearningGroupId === ''}
-                      onChange={() => setExaminationLearningGroupId('')}
-                    />
-                  }
-                  label="Keine Auswahl"
-                />
-                {groups.map((group) => (
-                  <FormControlLabel
-                    key={group.id}
-                    control={
-                      <Checkbox
-                        checked={examinationLearningGroupId === group.id}
-                        onChange={() =>
-                          setExaminationLearningGroupId(examinationLearningGroupId === group.id ? '' : group.id)
-                        }
-                      />
-                    }
-                    label={group.name}
-                    sx={{ mr: 1 }}
-                  />
-                ))}
-              </FormGroup>
-            </FormControl>
-
             {/* Ordner - Hierarchische Baumstruktur */}
             <Box>
               <Typography variant="body2" sx={{ mb: 1.5, fontWeight: 600, color: '#333', fontSize: '0.95rem' }}>
-                Ordner auswählen <span style={{ color: '#d32f2f' }}>*</span>
+                Stundenordner auswählen <span style={{ color: '#d32f2f' }}>*</span>
+              </Typography>
+              <Typography variant="caption" sx={{ display: 'block', color: '#666', mb: 1 }}>
+                Die Prüfung gehört zur Unterrichtsreihe (wie eine Präsentation) — ohne Lerngruppen-Zuweisung.
               </Typography>
               <Box
                 sx={{
@@ -27972,7 +28810,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               setExaminationFileName('');
               setExamDurationMinutes(5);
               setExaminationFolderPath('');
-              setExaminationLearningGroupId('');
               setFolderPickerMode('exam');
             }}
             sx={{ 
