@@ -1834,9 +1834,28 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
           <Typography variant="body1" sx={{ mb: 1, color: '#666' }}>
             📭 Noch keine Abgaben
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
-            Es wurden noch keine Abgaben für diese {getFileTypeName()} eingereicht.
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem', mb: 2 }}>
+            Das ist die Korrekturansicht. Solange niemand abgegeben hat, bleibt sie leer.
+            Zum Ansehen/Bearbeiten der {getFileTypeName()} nutze die Buttons unten oder das Stift-Icon im Dateibaum.
           </Typography>
+          <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap" useFlexGap>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => {
+                window.open(`/api/file-system-paths/read-html?filePath=${encodeURIComponent(kaFilePath)}`, '_blank');
+              }}
+            >
+              {getFileTypeName()} öffnen
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={onClose}
+            >
+              Schließen &amp; im Dateibaum Stift nutzen
+            </Button>
+          </Stack>
         </Box>
       )}
 

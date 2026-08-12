@@ -5,6 +5,7 @@ import TeacherDashboard from './components/TeacherDashboard';
 import StudentDashboard from './components/StudentDashboard';
 import StudentLiveTicketAlerts from './components/StudentLiveTicketAlerts';
 import StudentAutoLessonAlerts from './components/StudentAutoLessonAlerts';
+import StudentLiveExamAlert from './components/StudentLiveExamAlert';
 import LearningGroupPage from './pages/LearningGroupPage';
 import QuizPlayerPage from './pages/QuizPlayerPage';
 import QuizSessionPage from './pages/QuizSessionPage';
@@ -337,6 +338,7 @@ function AppContent() {
         <>
           <StudentLiveTicketAlerts userId={user.id} />
           <StudentAutoLessonAlerts userId={user.id} />
+          <StudentLiveExamAlert userId={user.id} />
         </>
       )}
       

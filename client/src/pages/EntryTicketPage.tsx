@@ -4,12 +4,15 @@ import {
   Box,
   Button,
   ButtonGroup,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControlLabel,
   IconButton,
+  Radio,
+  RadioGroup,
   Switch,
   TextField,
   Tooltip,
@@ -22,6 +25,7 @@ import {
   Close as CloseIcon,
   Pause as PauseIcon,
   PlayArrow as PlayArrowIcon,
+  Print as PrintIcon,
   RestartAlt as RestartAltIcon,
   SkipNext as SkipNextIcon,
   SkipPrevious as SkipPreviousIcon,
@@ -51,6 +55,7 @@ import {
   createEmptyCustomSet,
   createLessonSection,
   cumulativeTasksBeforeLesson,
+  findLessonSectionIndex,
   isCustomEntryTicketSetId,
   loadCustomEntryTicketSets,
   saveCustomEntryTicketSets,
@@ -59,6 +64,7 @@ import {
 import { discoverLessonsForReiheName } from '../lib/entryTicketReiheLessons';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
 import { EntryTicketFragensetEditor } from '../components/entry-ticket/EntryTicketFragensetEditor';
+import { openEntryTicketFlashcardPrint } from '../lib/entryTicketFlashcardPrint';
 import {
   entryTicketHasImage,
   entryTicketHasRichFormatting,
@@ -1520,6 +1526,9 @@ export default function EntryTicketPage() {
     typeof window !== 'undefined' ? loadCustomEntryTicketSets() : [],
   );
   const [createSetOpen, setCreateSetOpen] = useState(false);
+  const [printFlashcardsOpen, setPrintFlashcardsOpen] = useState(false);
+  const [printSource, setPrintSource] = useState<'session' | 'lessons'>('lessons');
+  const [printLessonIds, setPrintLessonIds] = useState<string[]>([]);
   const [createSetName, setCreateSetName] = useState('');
   const [createSetBusy, setCreateSetBusy] = useState(false);
   const [createSetError, setCreateSetError] = useState<string | null>(null);
@@ -2619,6 +2628,71 @@ export default function EntryTicketPage() {
     setIsRunning(true);
   };
 
+  const printLessonsAvailable = useMemo(() => {
+    if (!activeCustomSet) return [];
+    return sortLessonsChronologically(activeCustomSet.lessons).filter((l) => l.tasks.length > 0);
+  }, [activeCustomSet]);
+
+  const printSelectedLessonTaskCount = useMemo(() => {
+    if (!activeCustomSet || printSource !== 'lessons') return 0;
+    const idSet = new Set(printLessonIds);
+    return activeCustomSet.lessons
+      .filter((l) => idSet.has(l.id))
+      .reduce((n, l) => n + l.tasks.length, 0);
+  }, [activeCustomSet, printLessonIds, printSource]);
+
+  const openPrintFlashcardsDialog = useCallback(() => {
+    if (activeCustomSet && printLessonsAvailable.length > 0) {
+      const idx = findLessonSectionIndex(activeCustomSet, entryLessonPath);
+      const currentId =
+        idx >= 0 && activeCustomSet.lessons[idx]?.tasks.length > 0
+          ? activeCustomSet.lessons[idx].id
+          : null;
+      setPrintLessonIds(currentId ? [currentId] : printLessonsAvailable.map((l) => l.id));
+      setPrintSource('lessons');
+      setPrintFlashcardsOpen(true);
+      return;
+    }
+    if (activeTasks.length === 0) return;
+    openEntryTicketFlashcardPrint(activeTasks, {
+      title: 'Entry Ticket – Karteikarten',
+    });
+  }, [activeCustomSet, activeTasks, entryLessonPath, printLessonsAvailable]);
+
+  const confirmPrintFlashcards = useCallback(() => {
+    if (printSource === 'session') {
+      if (activeTasks.length === 0) return;
+      setPrintFlashcardsOpen(false);
+      openEntryTicketFlashcardPrint(activeTasks, {
+        title: 'Entry Ticket – Karteikarten',
+      });
+      return;
+    }
+    if (!activeCustomSet) return;
+    const idSet = new Set(printLessonIds);
+    const selected = sortLessonsChronologically(activeCustomSet.lessons).filter((l) => idSet.has(l.id));
+    const tasks = selected.flatMap((lesson) =>
+      lesson.tasks.map((t) => ({
+        category: lesson.lessonName || t.category,
+        prompt: t.prompt,
+        solution: t.solution,
+      })),
+    );
+    if (tasks.length === 0) return;
+    const lessonLabel =
+      selected.length === 1
+        ? selected[0].lessonName
+        : `${selected.length} Stunden`;
+    setPrintFlashcardsOpen(false);
+    openEntryTicketFlashcardPrint(tasks, {
+      title: `Entry Ticket – ${lessonLabel}`,
+    });
+  }, [activeCustomSet, activeTasks, printLessonIds, printSource]);
+
+  const printFlashcards = useCallback(() => {
+    openPrintFlashcardsDialog();
+  }, [openPrintFlashcardsDialog]);
+
   /** Ticket beenden: archivieren + Signal löschen → SuS-Popup zu; Lehrer zurück */
   const markEntryTicketDone = useCallback(async () => {
     if (completeBusy || studentReviewMode) return;
@@ -3647,6 +3721,15 @@ export default function EntryTicketPage() {
                         <AddIcon sx={{ fontSize: 15 }} />
                       </Button>
                       <Button
+                        onClick={printFlashcards}
+                        disabled={printLessonsAvailable.length === 0 && activeTasks.length === 0}
+                        aria-label="Als Karteikarten drucken"
+                        title="Als Karteikarten drucken"
+                        sx={{ minWidth: 28, px: 0.45 }}
+                      >
+                        <PrintIcon sx={{ fontSize: 15 }} />
+                      </Button>
+                      <Button
                         variant="contained"
                         startIcon={<PlayArrowIcon />}
                         onClick={startSession}
@@ -4459,6 +4542,27 @@ export default function EntryTicketPage() {
                         }
                         sx={{ mr: 0, '& .MuiFormControlLabel-label': { ml: 0.2 } }}
                       />
+                      <Tooltip title="Als Karteikarten drucken">
+                        <span>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<PrintIcon sx={{ fontSize: '0.85rem !important' }} />}
+                            disabled={printLessonsAvailable.length === 0 && activeTasks.length === 0}
+                            onClick={printFlashcards}
+                            sx={{
+                              ...etActionGroupSx['& .MuiButton-root'],
+                              borderRadius: '999px',
+                              borderColor: '#90a4ae',
+                              color: '#546e7a',
+                              px: 1.25,
+                              '&:hover': { borderColor: '#607d8b', bgcolor: 'rgba(96,125,139,0.08)' },
+                            }}
+                          >
+                            Karteikarten
+                          </Button>
+                        </span>
+                      </Tooltip>
                       {(isTeacher || isClassModerator) && !studentReviewMode && (
                         <Tooltip title="Erledigt (Enter)">
                           <span>
@@ -4614,6 +4718,175 @@ export default function EntryTicketPage() {
 
         </Box>
       </Box>
+
+      <Dialog
+        open={printFlashcardsOpen}
+        onClose={() => setPrintFlashcardsOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle sx={{ ...dialogCloseTitleSx, bgcolor: '#455a64', color: '#fff', py: 1.25 }}>
+          Karteikarten drucken
+          <DialogCloseIconButton
+            onClose={() => setPrintFlashcardsOpen(false)}
+            sx={{ color: '#fff', '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' } }}
+            iconSx={{ color: '#fff' }}
+          />
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1, mb: 1.5, fontSize: '0.82rem' }}>
+            Wähle das aktuelle Ticket oder eine bzw. mehrere Stunden aus dem Fragenset.
+          </Typography>
+
+          <RadioGroup
+            value={printSource}
+            onChange={(_, v) => setPrintSource(v as 'session' | 'lessons')}
+            sx={{ mb: 1.25 }}
+          >
+            <FormControlLabel
+              value="session"
+              disabled={activeTasks.length === 0}
+              control={<Radio size="small" />}
+              label={
+                <Typography sx={{ fontSize: '0.88rem', fontWeight: 600 }}>
+                  Aktuelles Ticket ({activeTasks.length} Karten)
+                </Typography>
+              }
+            />
+            <FormControlLabel
+              value="lessons"
+              control={<Radio size="small" />}
+              label={
+                <Typography sx={{ fontSize: '0.88rem', fontWeight: 600 }}>
+                  Stunden aus „{activeCustomSet?.name || 'Fragenset'}“
+                </Typography>
+              }
+            />
+          </RadioGroup>
+
+          <Box
+            sx={{
+              opacity: printSource === 'lessons' ? 1 : 0.45,
+              pointerEvents: printSource === 'lessons' ? 'auto' : 'none',
+              border: '1px solid #cfd8dc',
+              borderRadius: 1.5,
+              bgcolor: '#fafafa',
+              maxHeight: 320,
+              overflow: 'auto',
+              px: 1,
+              py: 0.5,
+            }}
+          >
+            <Box sx={{ display: 'flex', gap: 0.75, py: 0.5, position: 'sticky', top: 0, bgcolor: '#fafafa', zIndex: 1 }}>
+              <Button
+                size="small"
+                onClick={() => setPrintLessonIds(printLessonsAvailable.map((l) => l.id))}
+                sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+              >
+                Alle
+              </Button>
+              <Button
+                size="small"
+                onClick={() => setPrintLessonIds([])}
+                sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+              >
+                Keine
+              </Button>
+            </Box>
+            {printLessonsAvailable.map((lesson) => {
+              const checked = printLessonIds.includes(lesson.id);
+              return (
+                <FormControlLabel
+                  key={lesson.id}
+                  sx={{
+                    display: 'flex',
+                    mx: 0,
+                    py: 0.15,
+                    alignItems: 'flex-start',
+                    '& .MuiFormControlLabel-label': { width: '100%' },
+                  }}
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={checked}
+                      onChange={(e) => {
+                        const on = e.target.checked;
+                        setPrintLessonIds((prev) =>
+                          on ? [...prev, lesson.id] : prev.filter((id) => id !== lesson.id),
+                        );
+                        setPrintSource('lessons');
+                      }}
+                    />
+                  }
+                  label={
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: 1,
+                        width: '100%',
+                        pr: 0.5,
+                        pt: 0.35,
+                      }}
+                    >
+                      <Typography sx={{ fontSize: '0.84rem', lineHeight: 1.3 }}>
+                        {lesson.lessonName}
+                        {lesson.topicName ? (
+                          <Typography component="span" sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>
+                            {' '}
+                            · {lesson.topicName}
+                          </Typography>
+                        ) : null}
+                      </Typography>
+                      <Typography
+                        sx={{
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          color: '#78909c',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {lesson.tasks.length}
+                      </Typography>
+                    </Box>
+                  }
+                />
+              );
+            })}
+          </Box>
+
+          <Typography variant="caption" sx={{ display: 'block', mt: 1.25, color: 'text.secondary' }}>
+            {printSource === 'session'
+              ? `${activeTasks.length} Karten aus dem aktuellen Ticket`
+              : `${printSelectedLessonTaskCount} Karten aus ${printLessonIds.length} Stunde${
+                  printLessonIds.length === 1 ? '' : 'n'
+                }`}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 1.5, pb: 1.25, gap: 0 }}>
+          <ButtonGroup size="small" variant="outlined" sx={etActionGroupSx}>
+            <Button onClick={() => setPrintFlashcardsOpen(false)}>Abbrechen</Button>
+            <Button
+              variant="contained"
+              startIcon={<PrintIcon />}
+              onClick={confirmPrintFlashcards}
+              disabled={
+                printSource === 'session'
+                  ? activeTasks.length === 0
+                  : printSelectedLessonTaskCount === 0
+              }
+              sx={{
+                bgcolor: '#455a64',
+                borderColor: '#455a64',
+                color: '#fff',
+                '&:hover': { bgcolor: '#37474f' },
+              }}
+            >
+              Drucken
+            </Button>
+          </ButtonGroup>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={createSetOpen} onClose={() => !createSetBusy && setCreateSetOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle sx={{ ...dialogCloseTitleSx, bgcolor: '#3949ab', color: '#fff', py: 1.25 }}>

@@ -1,14 +1,23 @@
 /**
  * Feste Kernbausteine jeder Stunde (ohne Materialliste — die liegt als Textfeld oben):
  * Entry Ticket → Präsentation → Exit Ticket (weitere Bausteine dazwischen).
+ * Präsentation darf mehrfach vorkommen; Entry/Exit nur einmal.
  */
 
 export const LESSON_PLAN_CORE_TYPES = ['entry-ticket', 'praesentation', 'exit-ticket'] as const;
 
+/** Bausteine, die höchstens einmal pro Stunde existieren dürfen. */
+export const UNIQUE_LESSON_PLAN_CORE_TYPES = ['entry-ticket', 'exit-ticket'] as const;
+
 export type LessonPlanCoreType = (typeof LESSON_PLAN_CORE_TYPES)[number];
+export type UniqueLessonPlanCoreType = (typeof UNIQUE_LESSON_PLAN_CORE_TYPES)[number];
 
 export function isLessonPlanCoreType(type: string): type is LessonPlanCoreType {
   return (LESSON_PLAN_CORE_TYPES as readonly string[]).includes(type);
+}
+
+export function isUniqueLessonPlanCoreType(type: string): type is UniqueLessonPlanCoreType {
+  return (UNIQUE_LESSON_PLAN_CORE_TYPES as readonly string[]).includes(type);
 }
 
 function coreRank(type: string): number {

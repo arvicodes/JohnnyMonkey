@@ -1425,13 +1425,13 @@ class FileSystemPathController {
             let templatePath;
             if (process.env.NODE_ENV === 'production') {
                 // Production: Versuche verschiedene Pfade
-                const serverPath = path_1.default.join(process.cwd(), 'J-M-Reihen', 'Mathe', 'Klasse 7', 'Kap.3 - Geometrische Abbildungen', 'HU_geometrische-abbildungen.html');
-                const projectPath = path_1.default.join(process.cwd(), '..', 'J-M-Reihen', 'Mathe', 'Klasse 7', 'Kap.3 - Geometrische Abbildungen', 'HU_geometrische-abbildungen.html');
+                const serverPath = path_1.default.join(process.cwd(), 'J-M-Reihen', 'Mathe', 'Klasse 7', 'Kap 3 - Geometrische Abbildungen', 'HU_geometrische-abbildungen.html');
+                const projectPath = path_1.default.join(process.cwd(), '..', 'J-M-Reihen', 'Mathe', 'Klasse 7', 'Kap 3 - Geometrische Abbildungen', 'HU_geometrische-abbildungen.html');
                 templatePath = fs_1.default.existsSync(serverPath) ? serverPath : projectPath;
             }
             else {
                 // Development: Verwende absoluten Pfad
-                templatePath = path_1.default.join('/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey', 'J-M-Reihen', 'Mathe', 'Klasse 7', 'Kap.3 - Geometrische Abbildungen', 'HU_geometrische-abbildungen.html');
+                templatePath = path_1.default.join('/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey', 'J-M-Reihen', 'Mathe', 'Klasse 7', 'Kap 3 - Geometrische Abbildungen', 'HU_geometrische-abbildungen.html');
             }
             console.log('📄 Template-Pfad:', templatePath);
             console.log('📄 Template existiert:', fs_1.default.existsSync(templatePath));

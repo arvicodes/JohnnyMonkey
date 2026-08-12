@@ -1,6 +1,8 @@
 import {
+  findCustomSetForLessonPath,
   isCustomEntryTicketSetId,
   loadCustomEntryTicketSets,
+  type EntryTicketCustomSet,
   type EntryTicketCustomSetId,
 } from './entryTicketCustomSets';
 
@@ -81,4 +83,60 @@ export function entryTicketBandFromGroupNames(names: string[]): EntryTicketPlanB
     }
   }
   return gradeFromGroupNames(names);
+}
+
+function normalizeLessonPathKey(p: string): string {
+  return (p || '').replace(/\\/g, '/').replace(/\/+$/, '');
+}
+
+/**
+ * Feste Zuordnung Unterrichtsreihe (Pfadsegment) → Fragenset-Name,
+ * falls kein Set über lessonPath/reihePath gefunden wird.
+ * z. B. Matrizen-Ordner → Analysis-Set (Reihenpfad kann abweichen).
+ */
+const SERIES_PATH_TO_SET_NAME: { pathTest: RegExp; setNameTests: RegExp[] }[] = [
+  {
+    pathTest: /(?:^|\/)11[-–\s]?04[^/]*\bKI\b/i,
+    setNameTests: [/11[-–\s]?04.*\bKI\b/i, /^KI$/i, /\bKI\b/i],
+  },
+  {
+    pathTest: /Matrizen/i,
+    setNameTests: [/\bAnalysis\b/i, /^Analysis$/i],
+  },
+];
+
+function pickCustomSetByNameHints(
+  sets: EntryTicketCustomSet[],
+  nameTests: RegExp[],
+): EntryTicketCustomSet | null {
+  for (const test of nameTests) {
+    const hit = sets.find((s) => test.test((s.name || '').trim()));
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/**
+ * Default-Fragenset für eine Stunde: zuerst Set mit passender Stunde/Reihe,
+ * dann Pfad-Hinweise (11-04 KI → KI-Set, Matrizen → Analysis), sonst Fallback.
+ */
+export function resolveEntryTicketBandForLessonPath(
+  lessonPath: string | null | undefined,
+  fallback: EntryTicketPlanBand = 7,
+  sets?: EntryTicketCustomSet[],
+): EntryTicketPlanBand {
+  const path = normalizeLessonPathKey(lessonPath || '');
+  if (!path) return fallback;
+
+  const list = sets ?? loadCustomEntryTicketSets();
+  const byPath = findCustomSetForLessonPath(path, list);
+  if (byPath) return byPath.id;
+
+  for (const hint of SERIES_PATH_TO_SET_NAME) {
+    if (!hint.pathTest.test(path)) continue;
+    const byName = pickCustomSetByNameHints(list, hint.setNameTests);
+    if (byName) return byName.id;
+  }
+
+  return fallback;
 }

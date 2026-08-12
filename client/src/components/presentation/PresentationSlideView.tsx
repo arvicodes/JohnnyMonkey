@@ -124,7 +124,10 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   const imageHeroLayout = slideHasImageHeroLayout(slide);
   const hasFreeElements = (slide.elements?.length ?? 0) > 0;
   const hideBlankContent =
-    fullscreenMedia || imageHeroLayout || (slide.layout === 'blank' && hasFreeElements);
+    fullscreenMedia ||
+    imageHeroLayout ||
+    (slide.layout === 'blank' && hasFreeElements) ||
+    (slide.layout === 'blank' && isLayoutZoneHidden(slide, 'bodyHtml'));
   /** Freie Elemente (z. B. PPTX): ohne Johnny-Rahmen/Logo — sonst „Felder“ um alles herum. */
   const freeformCanvas = slide.layout === 'blank' && hasFreeElements;
   const showJohnnyChrome = showLogo && !fullscreenMedia && !freeformCanvas;

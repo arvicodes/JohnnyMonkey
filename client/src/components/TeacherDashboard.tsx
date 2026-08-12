@@ -31,7 +31,7 @@ import {
   findHomeworkSlides,
   isHomeworkSubmissionRequired,
 } from '../lib/presentationSlideTemplates';
-import { resolvePreviousLessonFolder } from '../lib/previousLessonFolder';
+import { resolveAdjacentLessonFolders, resolvePreviousLessonFolder } from '../lib/previousLessonFolder';
 import { openLessonFolderFile } from '../lib/openLessonFolderFile';
 import {
   defaultBrowseStartPath,
@@ -55,17 +55,18 @@ import { RIDDLES } from './riddles';
 import { MOVEMENT_STORIES } from '../data/movementStories';
 import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
 import { wallOfFameDashboardBtnSx } from '../lib/wallOfFameUi';
+import { fetchAndCacheCustomEntryTicketSets, loadCustomEntryTicketSets } from '../lib/entryTicketCustomSets';
 import {
   entryTicketBandFromGroupNames,
   getEntryTicketPlanGradeOptions,
   formatEntryTicketPlanBandLabel,
   parseEntryTicketPlanBand,
+  resolveEntryTicketBandForLessonPath,
   type EntryTicketPlanBand,
 } from '../lib/entryTicketGrade';
-import { loadCustomEntryTicketSets } from '../lib/entryTicketCustomSets';
 import {
   ensureCoreLessonPlanItems,
-  isLessonPlanCoreType,
+  isUniqueLessonPlanCoreType,
   sortLessonPlanCoreOrder,
 } from '../lib/lessonPlanCore';
 import {
@@ -201,7 +202,6 @@ import {
   ArrowDownward as ArrowDownIcon,
   DragIndicator as DragIcon,
   ContentCopy as CopyIcon,
-  ContentPaste as PasteIcon,
   Undo as UndoIcon,
   Redo as RedoIcon,
   ZoomIn as ZoomInIcon,
@@ -6033,6 +6033,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     children: any[];
     groupId: string;
   } | null>(null);
+  const [adjacentLessons, setAdjacentLessons] = useState<{
+    prev: { path: string; name: string } | null;
+    next: { path: string; name: string } | null;
+  }>({ prev: null, next: null });
   const [lessonStundeTabLoading, setLessonStundeTabLoading] = useState(false);
   const [lessonStundeTabError, setLessonStundeTabError] = useState<string | null>(null);
   /** Laufende Stunden (manuell / Stundenplan) – für Play-Button & Blinken */
@@ -6110,6 +6114,31 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   }, []);
   const [selectedPlanTypes, setSelectedPlanTypes] = useState<LessonPlanItemType[]>([]);
   const [newPlanGrade, setNewPlanGrade] = useState<EntryTicketPlanBand>(7);
+  const [entryTicketCustomSets, setEntryTicketCustomSets] = useState(() => loadCustomEntryTicketSets());
+  const [entryTicketSetsHydrated, setEntryTicketSetsHydrated] = useState(false);
+
+  // Fragensets vom Server (sonst greift resolve nur auf leeres localStorage → Klasse 7)
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    void (async () => {
+      const sets = await fetchAndCacheCustomEntryTicketSets();
+      if (cancelled) return;
+      setEntryTicketCustomSets(sets);
+      setEntryTicketSetsHydrated(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  // Select-Default: Fragenset der aktuellen Reihe (KI / Analysis / …)
+  useEffect(() => {
+    const lessonPath = lessonModalData?.lessonPath;
+    if (!lessonPath) return;
+    setNewPlanGrade(resolveEntryTicketBandForLessonPath(lessonPath, 7, entryTicketCustomSets));
+  }, [lessonModalData?.lessonPath, entryTicketCustomSets]);
+
   type ExitPlanType =
     | 'feedback'
     | 'quick-check'
@@ -6960,6 +6989,23 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     [navigate],
   );
 
+  const goToAdjacentLesson = useCallback(
+    (target: { path: string; name: string } | null) => {
+      if (!target || !lessonModalData?.groupId) return;
+      const q = new URLSearchParams({
+        groupId: lessonModalData.groupId,
+        lessonPath: target.path,
+        lessonName: target.name,
+      });
+      const planMode = new URLSearchParams(location.search).get('planMode');
+      if (planMode === 'create' || planMode === 'run' || planMode === 'background') {
+        q.set('planMode', planMode);
+      }
+      navigate(`/teacher/stunde?${q.toString()}`);
+    },
+    [lessonModalData?.groupId, location.search, navigate],
+  );
+
   const normalizeLessonPathKey = useCallback((p: string) => {
     return String(p ?? '')
       .normalize('NFC')
@@ -7539,15 +7585,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
 
   // Stunden ohne gespeicherten Plan: einmalig Entry → Präsentation → Exit anlegen.
   // Bereits gespeicherte Pläne (auch leer/teilweise) nur sortieren — manuell Entferntes bleibt weg.
+  // Klasse-7-Platzhalter → Reihen-Fragenset (KI / Analysis), sobald Sets geladen sind.
   useEffect(() => {
-    if (!lessonInstructionsHydrated || !userId || !isLessonStundeRoute) return;
+    if (!lessonInstructionsHydrated || !entryTicketSetsHydrated || !userId || !isLessonStundeRoute) return;
     const lessonPath = lessonModalData?.lessonPath;
     if (!lessonPath) return;
 
     const overrides = editedLessonInstructions[lessonPath] || {};
     const planInitialized = Array.isArray(overrides.lessonPlan);
-    const plan = planInitialized ? overrides.lessonPlan! : [];
-    const { plan: nextPlan, changed } = ensureCoreLessonPlanItems({
+    const plan = planInitialized ? [...(overrides.lessonPlan || [])] : [];
+    const defaultEntryGrade = resolveEntryTicketBandForLessonPath(
+      lessonPath,
+      7,
+      entryTicketCustomSets,
+    );
+    const { plan: ensuredPlan, changed: coreChanged } = ensureCoreLessonPlanItems({
       plan,
       fillMissing: !planInitialized,
       makeId: (type, index) => `core-${type}-${Date.now()}-${index}`,
@@ -7556,9 +7608,24 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
         if (type === 'exit-ticket') return 'Exit Ticket';
         return 'Präsentation';
       },
-      entryDefaults: { grade: 7 as EntryTicketPlanBand },
+      entryDefaults: { grade: defaultEntryGrade },
       exitDefaults: { exitType: 'exam-question' as const },
     });
+
+    let nextPlan = ensuredPlan;
+    let changed = coreChanged;
+    const entryItem = nextPlan.find((p) => p.type === 'entry-ticket') as LessonPlanItem | undefined;
+    if (
+      entryItem &&
+      defaultEntryGrade !== 7 &&
+      parseEntryTicketPlanBand(entryItem.grade) === 7
+    ) {
+      nextPlan = nextPlan.map((p) =>
+        p.type === 'entry-ticket' ? { ...p, grade: defaultEntryGrade } : p,
+      );
+      changed = true;
+    }
+
     if (!changed) return;
 
     const nextContent: LessonInstructionContent = { ...overrides, lessonPlan: nextPlan };
@@ -7570,11 +7637,35 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     }).catch(() => {});
   }, [
     lessonInstructionsHydrated,
+    entryTicketSetsHydrated,
+    entryTicketCustomSets,
     userId,
     isLessonStundeRoute,
     lessonModalData?.lessonPath,
     editedLessonInstructions,
   ]);
+
+  // Vor-/Nachfolgestunde für Pfeile in der Überschrift
+  useEffect(() => {
+    if (!isLessonStundeRoute || !lessonModalData?.lessonPath) {
+      setAdjacentLessons({ prev: null, next: null });
+      return;
+    }
+    const lessonPath = lessonModalData.lessonPath;
+    let cancelled = false;
+    setAdjacentLessons({ prev: null, next: null });
+    (async () => {
+      try {
+        const adj = await resolveAdjacentLessonFolders(lessonPath);
+        if (!cancelled) setAdjacentLessons(adj);
+      } catch {
+        if (!cancelled) setAdjacentLessons({ prev: null, next: null });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLessonStundeRoute, lessonModalData?.lessonPath]);
 
   // Vorstunde: HA-Folie vorhanden? Abgabe nötig? → steuert „Vorher“-Button
   useEffect(() => {
@@ -11528,8 +11619,12 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       // Stundenverlauf: Kernbausteine + optional Prüfung
       const makePlanId = (type: string, index: number) =>
         `new-${type}-${Date.now()}-${index}`;
+      const setsForGrade = await fetchAndCacheCustomEntryTicketSets();
+      setEntryTicketCustomSets(setsForGrade);
+      setEntryTicketSetsHydrated(true);
+      const defaultEntryGrade = resolveEntryTicketBandForLessonPath(lessonPath, 7, setsForGrade);
       const initialPlan: LessonPlanItem[] = [
-        { id: makePlanId('entry-ticket', 0), type: 'entry-ticket', label: 'Entry Ticket', grade: 7 },
+        { id: makePlanId('entry-ticket', 0), type: 'entry-ticket', label: 'Entry Ticket', grade: defaultEntryGrade },
         { id: makePlanId('praesentation', 1), type: 'praesentation', label: 'Präsentation' },
       ];
       if (createdExam) {
@@ -14662,6 +14757,39 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
   }, [isLessonStundeRoute, laptopPresentationActive, navigate]);
+
+  // ⌘/Ctrl + ←/→ → Vorgänger-/Nachfolgestunde
+  useEffect(() => {
+    if (!isLessonStundeRoute || !lessonModalData) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      if (laptopPresentationActive) return;
+      const t = e.target as HTMLElement | null;
+      if (
+        t instanceof HTMLInputElement ||
+        t instanceof HTMLTextAreaElement ||
+        t instanceof HTMLSelectElement ||
+        (t && (t.isContentEditable || t.closest('[contenteditable="true"]')))
+      ) {
+        return;
+      }
+      const target = e.key === 'ArrowLeft' ? adjacentLessons.prev : adjacentLessons.next;
+      if (!target) return;
+      e.preventDefault();
+      e.stopPropagation();
+      goToAdjacentLesson(target);
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [
+    isLessonStundeRoute,
+    lessonModalData,
+    laptopPresentationActive,
+    adjacentLessons.prev,
+    adjacentLessons.next,
+    goToAdjacentLesson,
+  ]);
 
   /** Stunden-Seite: Epochal rechts andocken; Präsentation links etwas breiter */
   const participationDocked =
@@ -19627,24 +19755,87 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               }),
             }}
           >
-            <Typography
-              variant="h6"
-              component="span"
+            <Box
               sx={{
-                fontWeight: 600,
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-                wordBreak: 'break-word',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.15,
                 flex: '1 1 140px',
                 minWidth: 0,
                 maxWidth: '100%',
                 pr: 1,
               }}
             >
-              {lessonModalData.lessonName}
-            </Typography>
+              <Tooltip
+                title={
+                  adjacentLessons.prev
+                    ? `Vorherige: ${adjacentLessons.prev.name} (⌘←)`
+                    : 'Keine vorherige Stunde'
+                }
+              >
+                <span>
+                  <IconButton
+                    size="small"
+                    disabled={!adjacentLessons.prev}
+                    onClick={() => goToAdjacentLesson(adjacentLessons.prev)}
+                    aria-label="Vorherige Stunde"
+                    sx={{
+                      p: 0.35,
+                      width: 32,
+                      height: 32,
+                      flexShrink: 0,
+                      color: '#455a64',
+                      '&.Mui-disabled': { color: '#cfd8dc' },
+                    }}
+                  >
+                    <ArrowBackIcon sx={{ fontSize: 20 }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Typography
+                variant="h6"
+                component="span"
+                sx={{
+                  fontWeight: 600,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  wordBreak: 'break-word',
+                  flex: '0 1 auto',
+                  minWidth: 0,
+                  maxWidth: '100%',
+                }}
+              >
+                {lessonModalData.lessonName}
+              </Typography>
+              <Tooltip
+                title={
+                  adjacentLessons.next
+                    ? `Nächste: ${adjacentLessons.next.name} (⌘→)`
+                    : 'Keine nächste Stunde'
+                }
+              >
+                <span>
+                  <IconButton
+                    size="small"
+                    disabled={!adjacentLessons.next}
+                    onClick={() => goToAdjacentLesson(adjacentLessons.next)}
+                    aria-label="Nächste Stunde"
+                    sx={{
+                      p: 0.35,
+                      width: 32,
+                      height: 32,
+                      flexShrink: 0,
+                      color: '#455a64',
+                      '&.Mui-disabled': { color: '#cfd8dc' },
+                    }}
+                  >
+                    <ArrowForwardIcon sx={{ fontSize: 20 }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Box>
             <ToggleButtonGroup
               size="small"
               exclusive
@@ -19876,7 +20067,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   let openedExamEditor = false;
                   for (const type of selectedPlanTypes) {
                     const existingIdx = next.findIndex((p) => p.type === type);
-                    if (existingIdx >= 0 && isLessonPlanCoreType(type)) {
+                    if (existingIdx >= 0 && isUniqueLessonPlanCoreType(type)) {
                       if (type === 'entry-ticket') {
                         next[existingIdx] = { ...next[existingIdx], grade: newPlanGrade };
                       } else if (type === 'exit-ticket') {
@@ -19950,6 +20141,26 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 };
                 const removePlanItem = async (id: string) => {
                   await updateLessonPlan(lessonPlan.filter((item) => item.id !== id));
+                };
+                const duplicatePlanItem = async (itemId: string) => {
+                  const idx = lessonPlan.findIndex((p) => p.id === itemId);
+                  if (idx < 0) return;
+                  const item = lessonPlan[idx];
+                  if (isUniqueLessonPlanCoreType(item.type) || item.type === 'pruefung') {
+                    showSnackbar(
+                      `„${item.label}“ gibt es nur einmal pro Stunde.`,
+                      'warning',
+                    );
+                    return;
+                  }
+                  const clone: LessonPlanItem = {
+                    ...item,
+                    id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                  };
+                  const next = [...lessonPlan];
+                  next.splice(idx + 1, 0, clone);
+                  await updateLessonPlan(next);
+                  showSnackbar('Baustein dupliziert.', 'success');
                 };
                 const movePlanItem = async (fromIndex: number, toIndex: number) => {
                   if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= lessonPlan.length || toIndex >= lessonPlan.length) return;
@@ -21226,6 +21437,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
                 const isLessonLaptopMode = lessonPlanViewMode === 'background';
                 return (
+                  <>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, fontSize: LESSON_MODAL_FONT_SIZE }}>
                     {/* Stundenablauf planen */}
                     <Box
@@ -21626,9 +21838,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                           display: 'flex',
                           flexDirection: { xs: 'column', md: 'row' },
                           alignItems: 'flex-start',
-                          gap: { xs: 4, md: 7 },
-                          mt: 0.75,
-                          mb: 0.75,
+                          gap: { xs: 4.5, md: 9 },
+                          mt: 1,
+                          mb: 1,
                         }}
                       >
                         <Box sx={{ flex: 1, minWidth: 0, width: '100%' }}>
@@ -22289,6 +22501,28 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   >
                                     <Typography variant="caption" sx={{ fontSize: '0.75rem', lineHeight: 1 }}>⋮⋮</Typography>
                                   </Box>
+                                  <Tooltip title="Baustein in dieser Stunde duplizieren">
+                                    <Box sx={{ position: 'relative', width: 18, height: 18 }}>
+                                      <IconButton
+                                        size="small"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          void duplicatePlanItem(item.id);
+                                        }}
+                                        sx={{
+                                          width: 18,
+                                          height: 18,
+                                          minWidth: 18,
+                                          p: 0,
+                                          bgcolor: '#e3f2fd',
+                                          border: '1px solid #90caf9',
+                                          '&:hover': { bgcolor: '#bbdefb' },
+                                        }}
+                                      >
+                                        <CopyIcon sx={{ fontSize: 12, color: '#1565c0' }} />
+                                      </IconButton>
+                                    </Box>
+                                  </Tooltip>
                                   <Box sx={{ position: 'relative', width: 18, height: 18 }}>
                                     <IconButton
                                       size="small"
@@ -22737,60 +22971,40 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         return (
                         <Box
                           sx={{
-                            width: { xs: '100%', md: 292 },
+                            width: { xs: '100%', md: 340 },
                             flexShrink: 0,
                             alignSelf: { xs: 'stretch', md: 'flex-start' },
                             position: { xs: 'relative', md: 'sticky' },
                             top: { md: 12 },
-                            borderRadius: '14px 14px 10px 10px',
+                            borderRadius: 2,
                             overflow: 'hidden',
-                            border: `2px solid #5d4037`,
-                            background: 'linear-gradient(180deg, #6d4c41 0%, #4e342e 12%, #3e2723 100%)',
-                            boxShadow:
-                              '0 10px 28px rgba(62, 39, 35, 0.28), inset 0 1px 0 rgba(255, 224, 130, 0.22)',
+                            border: `1px solid ${alpha('#5d4037', 0.45)}`,
+                            background: `linear-gradient(180deg, ${alpha('#8d6e63', 0.92)} 0%, #6d4c41 28%, #5d4037 100%)`,
+                            boxShadow: `0 4px 16px ${alpha('#3e2723', 0.14)}`,
                           }}
                         >
                           {/* Deckel */}
                           <Box
                             sx={{
                               position: 'relative',
-                              px: 1.25,
-                              pt: 1.1,
-                              pb: 1.0,
-                              background:
-                                'linear-gradient(180deg, #a1887f 0%, #8d6e63 38%, #6d4c41 100%)',
-                              borderBottom: '2px solid #3e2723',
-                              boxShadow: 'inset 0 1px 0 rgba(255,236,179,0.35)',
+                              px: 1.35,
+                              pt: 1,
+                              pb: 0.9,
+                              background: `linear-gradient(180deg, ${alpha('#a1887f', 0.95)} 0%, #8d6e63 100%)`,
+                              borderBottom: `1px solid ${alpha('#3e2723', 0.35)}`,
                             }}
                           >
-                            <Box
-                              sx={{
-                                position: 'absolute',
-                                left: '50%',
-                                bottom: -9,
-                                transform: 'translateX(-50%)',
-                                width: 34,
-                                height: 16,
-                                borderRadius: '0 0 6px 6px',
-                                background: 'linear-gradient(180deg, #f0d78c 0%, #c9a227 55%, #8d6e1a 100%)',
-                                border: '1.5px solid #5d4037',
-                                borderTop: 'none',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.25)',
-                                zIndex: 1,
-                              }}
-                            />
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, pr: 5 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.85, pr: 5.5 }}>
                               <Box
                                 sx={{
-                                  width: 30,
-                                  height: 30,
+                                  width: 26,
+                                  height: 26,
                                   borderRadius: '50%',
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  background: 'linear-gradient(145deg, #2c1810 0%, #1a0f0a 100%)',
-                                  border: '1.5px solid #c9a227',
-                                  boxShadow: 'inset 0 1px 0 rgba(255,224,130,0.25), 0 1px 3px rgba(0,0,0,0.35)',
+                                  background: alpha('#3e2723', 0.55),
+                                  border: `1px solid ${alpha('#d7ccc8', 0.35)}`,
                                   flexShrink: 0,
                                 }}
                                 aria-hidden
@@ -22798,15 +23012,15 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 <Box
                                   component="svg"
                                   viewBox="0 0 24 24"
-                                  sx={{ width: 18, height: 18, display: 'block' }}
+                                  sx={{ width: 15, height: 15, display: 'block', opacity: 0.9 }}
                                 >
                                   {/* Totenkopf + gekreuzte Knochen */}
-                                  <g fill="#ffe082">
+                                  <g fill="#efebe9">
                                     <ellipse cx="12" cy="8.2" rx="5.2" ry="4.6" />
                                     <path d="M8.6 11.2c.7 1.6 1.9 2.5 3.4 2.5s2.7-.9 3.4-2.5H8.6z" />
-                                    <circle cx="9.7" cy="7.8" r="1.15" fill="#1a0f0a" />
-                                    <circle cx="14.3" cy="7.8" r="1.15" fill="#1a0f0a" />
-                                    <path d="M11.2 10.1h1.6v1.35c0 .35-.25.55-.8.55s-.8-.2-.8-.55V10.1z" fill="#1a0f0a" />
+                                    <circle cx="9.7" cy="7.8" r="1.15" fill="#4e342e" />
+                                    <circle cx="14.3" cy="7.8" r="1.15" fill="#4e342e" />
+                                    <path d="M11.2 10.1h1.6v1.35c0 .35-.25.55-.8.55s-.8-.2-.8-.55V10.1z" fill="#4e342e" />
                                     <rect x="10.2" y="13.5" width="1.15" height="2.1" rx="0.35" />
                                     <rect x="12.65" y="13.5" width="1.15" height="2.1" rx="0.35" />
                                     <g transform="rotate(-38 12 18)">
@@ -22825,13 +23039,12 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               <Typography
                                 component="div"
                                 sx={{
-                                  fontSize: '0.78rem',
-                                  fontWeight: 900,
-                                  letterSpacing: '0.06em',
+                                  fontSize: '0.72rem',
+                                  fontWeight: 800,
+                                  letterSpacing: '0.08em',
                                   textTransform: 'uppercase',
-                                  color: '#fff8e1',
+                                  color: alpha('#efebe9', 0.95),
                                   lineHeight: 1.1,
-                                  textShadow: '0 1px 0 rgba(0,0,0,0.35)',
                                 }}
                               >
                                 Material
@@ -22858,13 +23071,13 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                     width: 22,
                                     height: 22,
                                     borderRadius: 0.7,
-                                    bgcolor: '#5d4037',
-                                    color: '#ffe082',
+                                    bgcolor: alpha('#3e2723', 0.45),
+                                    color: alpha('#efebe9', 0.95),
                                     fontSize: '0.82rem',
                                     fontWeight: 800,
                                     lineHeight: 1,
-                                    border: '1px solid #c9a227',
-                                    '&:hover': { bgcolor: '#3e2723', color: '#fff8e1' },
+                                    border: `1px solid ${alpha('#d7ccc8', 0.35)}`,
+                                    '&:hover': { bgcolor: alpha('#3e2723', 0.7), color: '#fff' },
                                   }}
                                   aria-label="Material hinzufügen"
                                 >
@@ -23089,10 +23302,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                       minWidth: 22,
                                       width: 22,
                                       height: 22,
-                                      color: '#5d4037',
-                                      bgcolor: alpha('#fff8e1', 0.9),
-                                      border: `1px solid ${alpha('#c9a227', 0.65)}`,
-                                      '&:hover': { bgcolor: '#fffde7' },
+                                      color: alpha('#efebe9', 0.9),
+                                      bgcolor: alpha('#3e2723', 0.35),
+                                      border: `1px solid ${alpha('#d7ccc8', 0.3)}`,
+                                      '&:hover': { bgcolor: alpha('#3e2723', 0.55) },
                                     }}
                                   >
                                     <EditIcon sx={{ fontSize: 12 }} />
@@ -23105,17 +23318,17 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                           {/* Innenraum */}
                           <Box
                             sx={{
-                              mx: 0.85,
-                              mt: 1.15,
-                              mb: 0.95,
-                              px: 1,
-                              py: 0.9,
+                              mx: 1.1,
+                              mt: 1.1,
+                              mb: 1.1,
+                              px: 1.15,
+                              py: 1.05,
                               borderRadius: 1.5,
-                              border: `1.5px solid ${alpha('#ffe082', 0.45)}`,
-                              background: `linear-gradient(165deg, #fff8e1 0%, #ffecb3 42%, #ffe082 100%)`,
-                              boxShadow: `inset 0 0 0 1px ${alpha('#5d4037', 0.12)}, inset 0 2px 10px ${alpha('#5d4037', 0.08)}`,
+                              border: `1px solid ${alpha('#5d4037', 0.18)}`,
+                              background: `linear-gradient(165deg, #faf8f5 0%, #f3efe8 55%, #ebe4da 100%)`,
+                              boxShadow: `inset 0 1px 0 ${alpha('#fff', 0.7)}`,
                               position: 'relative',
-                              minHeight: 120,
+                              minHeight: 128,
                             }}
                           >
                           {hasFiles && (
@@ -23143,9 +23356,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                       px: 0.65,
                                       py: 0.4,
                                       borderRadius: 1.1,
-                                      bgcolor: alpha('#fffef7', 0.92),
-                                      border: `1px solid ${alpha('#8d6e63', 0.35)}`,
-                                      boxShadow: `inset 0 1px 0 ${alpha('#fff', 0.7)}`,
+                                      bgcolor: alpha('#fff', 0.72),
+                                      border: `1px solid ${alpha('#8d6e63', 0.22)}`,
+                                      boxShadow: 'none',
                                     }}
                                   >
                                     <DescriptionIcon sx={{ fontSize: 14, color: stillThere ? '#6d4c41' : '#bdbdbd', flexShrink: 0 }} />
@@ -23320,10 +23533,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                             <Box
                               sx={{
                                 borderRadius: 1.25,
-                                border: `1.5px dashed ${alpha('#5d4037', 0.35)}`,
-                                px: 0.9,
-                                py: 0.75,
-                                bgcolor: alpha('#fffef7', 0.65),
+                                border: `1px dashed ${alpha('#5d4037', 0.28)}`,
+                                px: 1,
+                                py: 0.85,
+                                bgcolor: alpha('#fff', 0.45),
                                 textAlign: 'center',
                               }}
                             >
@@ -23708,6 +23921,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       </Typography>
                     )}
                   </Box>
+
+                  </>
                 );
               })()}
           </Box>

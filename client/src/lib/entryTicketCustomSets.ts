@@ -178,6 +178,32 @@ function lessonFolderName(lessonPathOrKey: string): string {
   return n.split('/').pop() || n;
 }
 
+/**
+ * Reihen-Ordner aus Stundenpfad, z. B. „…/11-04 KI/01 Basiswissen/01.01 …“ → „…/11-04 KI“.
+ * Erkennt „11-04 …“ / „12-01 Matrizen“-Segmente.
+ */
+export function seriesFolderPathFromLessonPath(lessonPath: string | null | undefined): string | null {
+  const want = normalizePath(lessonPath || '');
+  if (!want) return null;
+  const absolute = want.startsWith('/');
+  const parts = want.split('/').filter(Boolean);
+  for (let i = 0; i < parts.length; i++) {
+    const seg = parts[i];
+    if (/^\d{1,2}[-–\s]\d{2}(?:\b|\s|$)/.test(seg) || /Matrizen/i.test(seg)) {
+      const joined = parts.slice(0, i + 1).join('/');
+      return absolute ? `/${joined}` : joined;
+    }
+  }
+  return null;
+}
+
+function pathUnderSeries(path: string, seriesRoot: string): boolean {
+  const p = normalizePath(path);
+  const root = normalizePath(seriesRoot);
+  if (!p || !root) return false;
+  return p === root || p.startsWith(`${root}/`);
+}
+
 /** Findet die Stunden-Sektion, die zum aktuellen lessonPath passt (Index in `set.lessons`). */
 export function findLessonSectionIndex(set: EntryTicketCustomSet, lessonPath: string | null | undefined): number {
   if (!lessonPath) return -1;
@@ -186,7 +212,8 @@ export function findLessonSectionIndex(set: EntryTicketCustomSet, lessonPath: st
 
 /**
  * Fragenset zur Stunde: zuerst Set mit passender Stunden-Sektion,
- * sonst Set dessen Reihen-Pfad Präfix des lessonPath ist.
+ * sonst Set dessen Reihen-Pfad Präfix des lessonPath ist,
+ * sonst Set mit Stunden unter demselben Reihen-Ordner (z. B. neue Stunde in 11-04 KI).
  */
 export function findCustomSetForLessonPath(
   lessonPath: string | null | undefined,
@@ -197,12 +224,57 @@ export function findCustomSetForLessonPath(
   const withLesson = list.find((s) => findLessonSectionIndex(s, lessonPath) >= 0);
   if (withLesson) return withLesson;
   const want = normalizePath(lessonPath);
-  return (
-    list.find((s) => {
-      const rp = s.reihePath ? normalizePath(s.reihePath) : '';
-      return Boolean(rp) && (want === rp || want.startsWith(`${rp}/`));
-    }) ?? null
-  );
+  const byReihePath = list.find((s) => {
+    const rp = s.reihePath ? normalizePath(s.reihePath) : '';
+    return Boolean(rp) && (want === rp || want.startsWith(`${rp}/`));
+  });
+  if (byReihePath) return byReihePath;
+
+  const seriesRoot = seriesFolderPathFromLessonPath(want);
+  if (seriesRoot) {
+    const bySibling = list.find((s) =>
+      s.lessons.some((l) => {
+        const key = l.lessonKey ? normalizePath(l.lessonKey) : '';
+        return key ? pathUnderSeries(key, seriesRoot) : false;
+      }),
+    );
+    if (bySibling) return bySibling;
+  }
+  return null;
+}
+
+/**
+ * Fragensets vom Server laden und in localStorage cachen (TeacherDashboard / Defaults).
+ */
+export async function fetchAndCacheCustomEntryTicketSets(): Promise<EntryTicketCustomSet[]> {
+  const local = loadCustomEntryTicketSets();
+  try {
+    const res = await fetch('/api/entry-ticket/custom-sets', { credentials: 'include' });
+    if (!res.ok) return local;
+    const data = (await res.json()) as { sets?: unknown };
+    const remoteRaw = Array.isArray(data.sets) ? data.sets : [];
+    const remote = remoteRaw
+      .map(parseCustomSet)
+      .filter((s): s is EntryTicketCustomSet => Boolean(s));
+    if (remote.length === 0) return local;
+
+    const byId = new Map(local.map((s) => [s.id, s] as const));
+    for (const s of remote) {
+      const prev = byId.get(s.id);
+      if (!prev || countCustomSetTasks(s) >= countCustomSetTasks(prev)) {
+        byId.set(s.id, {
+          ...s,
+          // reihePath aus lokalem Stand behalten, falls Server ihn weglässt
+          reihePath: s.reihePath || prev?.reihePath,
+        });
+      }
+    }
+    const merged = Array.from(byId.values());
+    saveCustomEntryTicketSets(merged);
+    return merged;
+  } catch {
+    return local;
+  }
 }
 
 /** Sortierschlüssel: Ordnername der Stunde (01.01 …), egal ob voller Pfad oder Anzeigename. */

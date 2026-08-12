@@ -268,8 +268,28 @@ export class StorageManager {
     return resolved ?? path.join(jmReihenPath, inner);
   }
 
+  /**
+   * Folien speichern oft absolute macOS-Pfade. Auf dem Schulserver/Docker
+   * auf LOCAL_MATERIALS_PATH bzw. git-intern umbiegen.
+   */
+  private static remapLegacyAbsolutePath(filePath: string): string {
+    const norm = filePath.replace(/\\/g, '/');
+    const macRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+    if (!norm.startsWith(`${macRoot}/`) && norm !== macRoot) {
+      return norm;
+    }
+    const rest = norm === macRoot ? '' : norm.slice(macRoot.length + 1);
+    if (!rest || rest === 'J-M-Reihen' || rest.startsWith('J-M-Reihen/')) {
+      return !rest || rest === 'J-M-Reihen'
+        ? 'git-intern'
+        : `git-intern/${rest.slice('J-M-Reihen/'.length)}`;
+    }
+    const base = this.config.basePath || process.env.LOCAL_MATERIALS_PATH || '/app';
+    return path.posix.join(base.replace(/\\/g, '/'), rest);
+  }
+
   static resolveFilePath(filePath: string): string | null {
-    let norm = filePath.replace(/\\/g, '/');
+    let norm = this.remapLegacyAbsolutePath(filePath);
     if (norm === 'J-M-Reihen' || norm.startsWith('J-M-Reihen/')) {
       norm =
         norm === 'J-M-Reihen'
@@ -296,7 +316,7 @@ export class StorageManager {
    */
   static async readFile(filePath: string): Promise<Buffer | null> {
     try {
-      let filePathNorm = filePath.replace(/\\/g, '/');
+      let filePathNorm = this.remapLegacyAbsolutePath(filePath);
       if (filePathNorm === 'J-M-Reihen' || filePathNorm.startsWith('J-M-Reihen/')) {
         filePathNorm =
           filePathNorm === 'J-M-Reihen'

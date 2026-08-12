@@ -385,75 +385,13 @@ export default function StudentLessonMaterialsPanel({
         <Box
           sx={{
             display: 'flex',
+            flexDirection: 'row',
             alignItems: 'center',
             width: '100%',
             minWidth: 0,
-            height: FOLIEN_ROW_HEIGHT,
-            boxSizing: 'border-box',
-            py: 0,
-            px: 1,
-            borderRadius: 1.5,
-            bgcolor: 'rgba(255, 255, 255, 0.92)',
-            border: '1px solid rgba(0, 0, 0, 0.06)',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-            gap: 0.45,
+            gap: 0.65,
           }}
         >
-          <Tooltip title={editedShared ? `${editedVersionLabel} öffnen` : originalShared ? 'Original öffnen' : 'Folien'}>
-            <Box component="span" sx={{ display: 'inline-flex', flexShrink: 0 }}>
-              <Box
-                component="button"
-                type="button"
-                disabled={!editedShared && !originalShared}
-                onClick={() => {
-                  if (editedShared && presentationEdited) {
-                    void openStudentLessonMaterialFile(presentationEdited, 'open');
-                    return;
-                  }
-                  if (originalShared && presentationOriginal) {
-                    void openStudentLessonMaterialFile(presentationOriginal, 'open');
-                  }
-                }}
-                sx={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  flexShrink: 0,
-                  border: 'none',
-                  background: 'none',
-                  p: 0,
-                  m: 0,
-                  cursor: editedShared || originalShared ? 'pointer' : 'default',
-                  opacity: editedShared || originalShared ? 1 : 0.5,
-                  font: 'inherit',
-                  textAlign: 'left',
-                  color: 'text.primary',
-                  borderBottom: '1.5px solid transparent',
-                  transition: 'color 0.15s ease, border-color 0.15s ease',
-                  '&:hover':
-                    editedShared || originalShared
-                      ? {
-                          color: JOHNNY_PRESENTATION.warm,
-                          borderBottomColor: JOHNNY_PRESENTATION.warm,
-                        }
-                      : undefined,
-                }}
-              >
-                <Typography
-                  variant="body2"
-                  component="span"
-                  sx={{
-                    fontWeight: 700,
-                    fontSize: '0.82rem',
-                    letterSpacing: '0.01em',
-                    whiteSpace: 'nowrap',
-                    color: 'inherit',
-                  }}
-                >
-                  Folien
-                </Typography>
-              </Box>
-            </Box>
-          </Tooltip>
           {completedEntryTicket && (
             <Tooltip title="Entry Ticket + Lösungen ansehen">
               <IconButton
@@ -485,13 +423,86 @@ export default function StudentLessonMaterialsPanel({
               </IconButton>
             </Tooltip>
           )}
-          <PresentationCombinedActions
-            lessonName={downloadLessonName}
-            original={presentationOriginal}
-            edited={presentationEdited}
-            editedLabel={editedVersionLabel}
-            sharedPaths={sharedPaths}
-          />
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              flex: 1,
+              minWidth: 0,
+              height: FOLIEN_ROW_HEIGHT,
+              boxSizing: 'border-box',
+              py: 0,
+              px: 1,
+              borderRadius: 1.5,
+              bgcolor: 'rgba(255, 255, 255, 0.92)',
+              border: '1px solid rgba(0, 0, 0, 0.06)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+              gap: 0.45,
+            }}
+          >
+            <Tooltip title={editedShared ? `${editedVersionLabel} öffnen` : originalShared ? 'Original öffnen' : 'Folien'}>
+              <Box component="span" sx={{ display: 'inline-flex', flexShrink: 0 }}>
+                <Box
+                  component="button"
+                  type="button"
+                  disabled={!editedShared && !originalShared}
+                  onClick={() => {
+                    if (editedShared && presentationEdited) {
+                      void openStudentLessonMaterialFile(presentationEdited, 'open');
+                      return;
+                    }
+                    if (originalShared && presentationOriginal) {
+                      void openStudentLessonMaterialFile(presentationOriginal, 'open');
+                    }
+                  }}
+                  sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    flexShrink: 0,
+                    border: 'none',
+                    background: 'none',
+                    p: 0,
+                    m: 0,
+                    cursor: editedShared || originalShared ? 'pointer' : 'default',
+                    opacity: editedShared || originalShared ? 1 : 0.5,
+                    font: 'inherit',
+                    textAlign: 'left',
+                    color: 'text.primary',
+                    borderBottom: '1.5px solid transparent',
+                    transition: 'color 0.15s ease, border-color 0.15s ease',
+                    '&:hover':
+                      editedShared || originalShared
+                        ? {
+                            color: JOHNNY_PRESENTATION.warm,
+                            borderBottomColor: JOHNNY_PRESENTATION.warm,
+                          }
+                        : undefined,
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    component="span"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      letterSpacing: '0.01em',
+                      whiteSpace: 'nowrap',
+                      color: 'inherit',
+                    }}
+                  >
+                    Folien
+                  </Typography>
+                </Box>
+              </Box>
+            </Tooltip>
+            <PresentationCombinedActions
+              lessonName={downloadLessonName}
+              original={presentationOriginal}
+              edited={presentationEdited}
+              editedLabel={editedVersionLabel}
+              sharedPaths={sharedPaths}
+            />
+          </Box>
         </Box>
       )}
 

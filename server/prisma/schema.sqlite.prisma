@@ -148,6 +148,7 @@ model LearningGroup {
   lessonSharedInputs   LessonSharedInput[]
   lessonSharedInputShares LessonSharedInputShare[]
   lessonCollabFlashcardBeacons LessonCollabFlashcardBeacon[]
+  lessonExamBeacons            LessonExamBeacon[]
   scheduleSlots                ScheduleSlot[]
   autoLessonSessions           AutoLessonSession[]
   /** Aktueller Klassen-Moderator (z. B. für die Woche) — sieht volles Entry Ticket */
@@ -157,6 +158,17 @@ model LearningGroup {
   students             User[]                     @relation("StudentGroups")
 
   @@index([moderatorStudentId])
+}
+
+/// Lehrer startet Prüfung separat → SuS bekommen Vollbild-Overlay (Poll).
+model LessonExamBeacon {
+  groupId    String        @id
+  filePath   String
+  lessonPath String        @default("")
+  beaconId   String
+  active     Boolean       @default(true)
+  updatedAt  DateTime      @updatedAt
+  group      LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
 }
 
 /// Lehrer-Klick „Karteikarten gemeinsam“ (Tablet): neues beaconId → SuS öffnen das Modal per Poll.

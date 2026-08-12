@@ -372,7 +372,10 @@ const PresentationLaptopSlide: React.FC<PresentationLaptopSlideProps> = ({
   const showStandaloneNumbers = !footerOn && showSlideNumbers && slideNumberLabel.length > 0;
   const fullscreenMedia = slideHasFullscreenMedia(slide);
   const imageHeroLayout = slideHasImageHeroLayout(slide);
-  const hideBlankContent = fullscreenMedia || imageHeroLayout;
+  const hideBlankContent =
+    fullscreenMedia ||
+    imageHeroLayout ||
+    (slide.layout === 'blank' && isLayoutZoneHidden(slide, 'bodyHtml'));
 
   const backgroundElements = (slide.elements || []).filter(
     (el) => getElementStackLayer(el) === 'background',

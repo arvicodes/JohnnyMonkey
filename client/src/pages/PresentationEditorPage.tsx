@@ -32,6 +32,8 @@ import {
   ArrowBack as ArrowBackIcon,
   ChevronLeft as ShowNotesIcon,
   ContentCopy as CopyIcon,
+  ContentPaste as PasteIcon,
+  ContentPasteGo as PasteGoIcon,
   DeleteOutline as DeleteIcon,
   PlayArrow as PresentIcon,
   RestoreFromTrash as TrashBinIcon,
@@ -55,7 +57,18 @@ import PresentationNotesPanel, {
   type NotesFieldKey,
 } from '../components/presentation/PresentationNotesPanel';
 import PresentationTrashPanel from '../components/presentation/PresentationTrashPanel';
+import PresentationSlideClipboardPanel from '../components/presentation/PresentationSlideClipboardPanel';
 import { isFormatBarInteracting } from '../lib/presentationFormatBarGuard';
+import {
+  clearSlideClipboard,
+  cloneClipboardSlideForInsert,
+  loadSlideClipboard,
+  MAX_SLIDE_CLIPBOARD_ITEMS,
+  pushSlideToClipboard,
+  removeSlideFromClipboard,
+  SLIDE_CLIPBOARD_STORAGE_KEY,
+  type PresentationSlideClipboardItem,
+} from '../lib/presentationSlideClipboard';
 import {
   createSlideFromLayout,
   SLIDE_LAYOUTS,
@@ -190,6 +203,10 @@ const PresentationEditorPage: React.FC = () => {
   const [canvasScale, setCanvasScale] = useState(0.4);
   const [historyVersion, setHistoryVersion] = useState(0);
   const [trashAnchor, setTrashAnchor] = useState<HTMLElement | null>(null);
+  const [clipboardAnchor, setClipboardAnchor] = useState<HTMLElement | null>(null);
+  const [slideClipboard, setSlideClipboard] = useState<PresentationSlideClipboardItem[]>(() =>
+    typeof window !== 'undefined' ? loadSlideClipboard() : [],
+  );
   const [slideTransitionPreviewKey, setSlideTransitionPreviewKey] = useState(0);
   const [slideTemplates, setSlideTemplates] = useState<SlideTemplatesStore>(
     createDefaultTemplatesStore(),
@@ -1378,14 +1395,31 @@ const PresentationEditorPage: React.FC = () => {
 
   const selectedElement = normalizedActive?.elements?.find((e) => e.id === selectedElementId);
 
-  const addSlide = (layout: SlideLayout = 'title-content') => {
+  const insertIndexAfterActive = (slides: PresentationSlide[]) => {
+    const sorted = sortSlides(slides);
+    const activeIndex = sorted.findIndex((s) => s.id === activeId);
+    return {
+      sorted,
+      insertIndex: activeIndex >= 0 ? activeIndex + 1 : sorted.length,
+    };
+  };
+
+  const addSlide = (layout: SlideLayout = 'blank') => {
     const current = deckRef.current;
     if (!current) return;
-    const slide = normalizeSlide(createSlideFromLayout(current.slides.length, layout));
-    const next = { ...current, slides: [...current.slides, slide] };
-    scheduleSave(next, { history: 'immediate' });
+    const { sorted, insertIndex } = insertIndexAfterActive(current.slides);
+    // „+“: leere Folie ohne Titel-/Inhaltsfeld (freie Elemente nach Bedarf)
+    const slide = normalizeSlide({
+      ...createSlideFromLayout(insertIndex, layout),
+      ...(layout === 'blank' ? { hiddenLayoutZones: ['bodyHtml'] } : {}),
+    });
+    const nextSlides = [...sorted];
+    nextSlides.splice(insertIndex, 0, slide);
+    const reordered = nextSlides.map((s, i) => ({ ...s, order: i }));
+    scheduleSave({ ...current, slides: reordered }, { history: 'immediate' });
     setActiveId(slide.id);
-    setSnackbar(`Folie ${next.slides.length} hinzugefügt`);
+    setSelectedSlideIds([slide.id]);
+    setSnackbar(`Folie ${insertIndex + 1} eingefügt`);
   };
 
   const insertSlideFromTemplate = (kind: SlideTemplateKind) => {
@@ -1569,14 +1603,72 @@ const PresentationEditorPage: React.FC = () => {
   const duplicateSlide = () => {
     const current = deckRef.current;
     if (!current || !activeSlide) return;
+    const { sorted, insertIndex } = insertIndexAfterActive(current.slides);
     const copy: PresentationSlide = {
       ...normalizeSlide(activeSlide),
       id: `slide-${Date.now()}`,
-      order: current.slides.length,
+      order: insertIndex,
     };
-    scheduleSave({ ...current, slides: [...current.slides, copy] }, { history: 'immediate' });
+    const nextSlides = [...sorted];
+    nextSlides.splice(insertIndex, 0, copy);
+    const reordered = nextSlides.map((s, i) => ({ ...s, order: i }));
+    scheduleSave({ ...current, slides: reordered }, { history: 'immediate' });
     setActiveId(copy.id);
+    setSelectedSlideIds([copy.id]);
   };
+
+  const copyActiveSlideToClipboard = () => {
+    if (!activeSlide) return;
+    const next = pushSlideToClipboard(activeSlide, lessonPath || undefined);
+    setSlideClipboard(next);
+    setSnackbar(
+      next.length >= MAX_SLIDE_CLIPBOARD_ITEMS
+        ? `In Ablage (${MAX_SLIDE_CLIPBOARD_ITEMS}/${MAX_SLIDE_CLIPBOARD_ITEMS}, älteste ersetzt)`
+        : `In Ablage (${next.length}/${MAX_SLIDE_CLIPBOARD_ITEMS})`,
+    );
+  };
+
+  const pasteSlideFromClipboard = (itemId: string) => {
+    const current = deckRef.current;
+    if (!current) return;
+    const item = slideClipboard.find((x) => x.id === itemId) || loadSlideClipboard().find((x) => x.id === itemId);
+    if (!item?.slide) return;
+    const insertAt =
+      activeId != null
+        ? Math.max(0, sortSlides(current.slides).findIndex((s) => s.id === activeId) + 1)
+        : current.slides.length;
+    const copy = cloneClipboardSlideForInsert(item.slide, insertAt);
+    const slides = [...sortSlides(current.slides)];
+    slides.splice(insertAt, 0, copy);
+    const reordered = slides.map((s, i) => ({ ...s, order: i }));
+    scheduleSave({ ...current, slides: reordered }, { history: 'immediate' });
+    setActiveId(copy.id);
+    setSelectedSlideIds([copy.id]);
+    setClipboardAnchor(null);
+    setSnackbar('Folie aus Ablage eingefügt');
+  };
+
+  const removeClipboardItem = (itemId: string) => {
+    setSlideClipboard(removeSlideFromClipboard(itemId));
+  };
+
+  const emptyClipboard = () => {
+    setSlideClipboard(clearSlideClipboard());
+  };
+
+  // Ablage über Tabs/Fenster hinweg synchron halten
+  useEffect(() => {
+    const refresh = () => setSlideClipboard(loadSlideClipboard());
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === SLIDE_CLIPBOARD_STORAGE_KEY || e.key === null) refresh();
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('focus', refresh);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('focus', refresh);
+    };
+  }, []);
 
   const reorderSlides = (fromId: string, toId: string) => {
     const current = deckRef.current;
@@ -2196,7 +2288,7 @@ const PresentationEditorPage: React.FC = () => {
             }}
           >
             <Tooltip title="Folie hinzufügen">
-              <IconButton size="small" onClick={() => addSlide('title-content')} sx={toolbarIconSx}>
+              <IconButton size="small" onClick={() => addSlide('blank')} sx={toolbarIconSx}>
                 <AddIcon sx={{ fontSize: 18 }} />
               </IconButton>
             </Tooltip>
@@ -2254,6 +2346,18 @@ const PresentationEditorPage: React.FC = () => {
                 <CopyIcon sx={{ fontSize: 17 }} />
               </IconButton>
             </Tooltip>
+            <Tooltip title="In Folien-Ablage (über alle Präsentationen, max. 5)">
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={copyActiveSlideToClipboard}
+                  disabled={!activeSlide}
+                  sx={toolbarIconSx}
+                >
+                  <PasteGoIcon sx={{ fontSize: 17 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
             <Tooltip
               title={
                 selectedSlideIds.length > 1
@@ -2288,6 +2392,25 @@ const PresentationEditorPage: React.FC = () => {
                 </Badge>
               </IconButton>
             </Tooltip>
+            <Tooltip title="Folien-Ablage öffnen">
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  setSlideClipboard(loadSlideClipboard());
+                  setClipboardAnchor(e.currentTarget);
+                }}
+                sx={toolbarIconSx}
+              >
+                <Badge
+                  badgeContent={slideClipboard.length}
+                  color="primary"
+                  invisible={slideClipboard.length === 0}
+                  sx={{ '& .MuiBadge-badge': { fontSize: 9, height: 15, minWidth: 15 } }}
+                >
+                  <PasteIcon sx={{ fontSize: 17 }} />
+                </Badge>
+              </IconButton>
+            </Tooltip>
           </Box>
 
           <PresentationTrashPanel
@@ -2298,6 +2421,15 @@ const PresentationEditorPage: React.FC = () => {
             onRestore={restoreTrashItem}
             onDeleteForever={deleteTrashForever}
             onEmptyTrash={emptyTrash}
+          />
+          <PresentationSlideClipboardPanel
+            anchorEl={clipboardAnchor}
+            open={Boolean(clipboardAnchor)}
+            items={slideClipboard}
+            onClose={() => setClipboardAnchor(null)}
+            onPaste={pasteSlideFromClipboard}
+            onRemove={removeClipboardItem}
+            onClear={emptyClipboard}
           />
 
           <Divider orientation="vertical" flexItem sx={{ borderColor: PRES_EDITOR_UI.barBorder, mx: 0.25 }} />
@@ -2588,7 +2720,7 @@ const PresentationEditorPage: React.FC = () => {
           activeId={activeId}
           selectedIds={selectedSlideIds.length ? selectedSlideIds : activeId ? [activeId] : []}
           onSelect={handleFilmstripSelect}
-          onAdd={() => addSlide('title-content')}
+          onAdd={() => addSlide('blank')}
           onReorder={reorderSlides}
         />
 

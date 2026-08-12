@@ -30,6 +30,7 @@ export interface OpenLessonFolderFileOptions {
 export function isLessonCorrectionFileName(fileName: string): boolean {
   return (
     fileName.startsWith('KA_') ||
+    fileName.startsWith('KU_') ||
     fileName.startsWith('HÜ_') ||
     fileName.startsWith('HU_') ||
     fileName.startsWith('QZ_')

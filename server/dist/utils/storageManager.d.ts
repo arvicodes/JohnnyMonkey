@@ -32,6 +32,11 @@ export declare class StorageManager {
      * Gleiche Logik wie readFile — wichtig für saveFile, damit Speichern und Lesen dasselbe Verzeichnis nutzen.
      */
     static resolveGitInternRelativePath(relativePath: string): string;
+    /**
+     * Folien speichern oft absolute macOS-Pfade. Auf dem Schulserver/Docker
+     * auf LOCAL_MATERIALS_PATH bzw. git-intern umbiegen.
+     */
+    private static remapLegacyAbsolutePath;
     static resolveFilePath(filePath: string): string | null;
     /**
      * Read file contents

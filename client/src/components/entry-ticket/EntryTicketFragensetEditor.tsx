@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
+  Checkbox,
   Collapse,
   IconButton,
   TextField,
@@ -130,10 +131,30 @@ export function EntryTicketFragensetEditor({
   });
   const [newLessonName, setNewLessonName] = useState('');
   const [listDraftByLesson, setListDraftByLesson] = useState<Record<string, string>>({});
+  /** Markierte Karten pro Stunde (taskIds). */
+  const [selectedTaskIdsByLesson, setSelectedTaskIdsByLesson] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     setNameDraft(set.name);
   }, [set.id, set.name]);
+
+  // Auswahl bereinigen, wenn Karten wegfallen / Stunde wechselt
+  useEffect(() => {
+    setSelectedTaskIdsByLesson((prev) => {
+      let changed = false;
+      const next: Record<string, string[]> = {};
+      for (const lesson of set.lessons) {
+        const valid = new Set(lesson.tasks.map((t) => t.id));
+        const kept = (prev[lesson.id] || []).filter((id) => valid.has(id));
+        if (kept.length > 0) next[lesson.id] = kept;
+        if (kept.length !== (prev[lesson.id] || []).length) changed = true;
+      }
+      for (const id of Object.keys(prev)) {
+        if (!set.lessons.some((l) => l.id === id) && (prev[id] || []).length > 0) changed = true;
+      }
+      return changed || Object.keys(prev).length !== Object.keys(next).length ? next : prev;
+    });
+  }, [set.lessons]);
 
   const maxShowCount = useMemo(() => {
     if (!showCounts) return 0;
@@ -226,6 +247,61 @@ export function EntryTicketFragensetEditor({
         return { ...l, tasks: l.tasks.filter((t) => t.id !== taskId) };
       }),
     );
+    setSelectedTaskIdsByLesson((prev) => {
+      const kept = (prev[lessonId] || []).filter((id) => id !== taskId);
+      if (kept.length === (prev[lessonId] || []).length) return prev;
+      const next = { ...prev };
+      if (kept.length === 0) delete next[lessonId];
+      else next[lessonId] = kept;
+      return next;
+    });
+  };
+
+  const toggleTaskSelected = (lessonId: string, taskId: string) => {
+    setSelectedTaskIdsByLesson((prev) => {
+      const cur = prev[lessonId] || [];
+      const has = cur.includes(taskId);
+      const kept = has ? cur.filter((id) => id !== taskId) : [...cur, taskId];
+      const next = { ...prev };
+      if (kept.length === 0) delete next[lessonId];
+      else next[lessonId] = kept;
+      return next;
+    });
+  };
+
+  const setAllTasksSelected = (lessonId: string, taskIds: string[], selected: boolean) => {
+    setSelectedTaskIdsByLesson((prev) => {
+      const next = { ...prev };
+      if (!selected || taskIds.length === 0) delete next[lessonId];
+      else next[lessonId] = [...taskIds];
+      return next;
+    });
+  };
+
+  const deleteSelectedTasks = (lessonId: string) => {
+    const selected = selectedTaskIdsByLesson[lessonId] || [];
+    if (selected.length === 0) return;
+    const lesson = set.lessons.find((l) => l.id === lessonId);
+    if (!lesson) return;
+    if (
+      !window.confirm(
+        `${selected.length} markierte Karte${selected.length === 1 ? '' : 'n'} in „${lesson.lessonName}“ löschen?`,
+      )
+    ) {
+      return;
+    }
+    const remove = new Set(selected);
+    updateLessons(
+      set.lessons.map((l) => {
+        if (l.id !== lessonId) return l;
+        return { ...l, tasks: l.tasks.filter((t) => !remove.has(t.id)) };
+      }),
+    );
+    setSelectedTaskIdsByLesson((prev) => {
+      const next = { ...prev };
+      delete next[lessonId];
+      return next;
+    });
   };
 
   return (
@@ -355,6 +431,11 @@ export function EntryTicketFragensetEditor({
                 const isOpen = expanded[lesson.id] !== false;
                 const isActive = lessonMatchesPath(lesson, activeLessonPath);
                 const palette = LESSON_PALETTES[globalIndex % LESSON_PALETTES.length];
+                const selectedIds = selectedTaskIdsByLesson[lesson.id] || [];
+                const allTaskIds = lesson.tasks.map((t) => t.id);
+                const allSelected =
+                  allTaskIds.length > 0 && allTaskIds.every((id) => selectedIds.includes(id));
+                const someSelected = selectedIds.length > 0 && !allSelected;
 
                 return (
                   <Box
@@ -442,6 +523,34 @@ export function EntryTicketFragensetEditor({
                       >
                         {lesson.tasks.length}
                       </Typography>
+                      {selectedIds.length > 0 && (
+                        <Tooltip title={`${selectedIds.length} markierte Karten löschen`}>
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteSelectedTasks(lesson.id);
+                            }}
+                            aria-label="Markierte Karten löschen"
+                            sx={{
+                              ...iconBtnSx,
+                              width: 'auto',
+                              minWidth: 22,
+                              px: 0.45,
+                              borderRadius: 0.75,
+                              bgcolor: '#ffebee',
+                              border: '1px solid #ef9a9a',
+                              color: '#c62828',
+                              '&:hover': { bgcolor: '#ffcdd2' },
+                            }}
+                          >
+                            <DeleteOutlineIcon sx={{ fontSize: 14 }} />
+                            <Typography component="span" sx={{ fontSize: '0.58rem', fontWeight: 800, ml: 0.2 }}>
+                              {selectedIds.length}
+                            </Typography>
+                          </IconButton>
+                        </Tooltip>
+                      )}
                       <Tooltip title="Stunde löschen">
                         <IconButton
                           size="small"
@@ -452,7 +561,7 @@ export function EntryTicketFragensetEditor({
                           aria-label="Stunde löschen"
                           sx={{
                             ...iconBtnSx,
-                            ml: 'auto',
+                            ml: selectedIds.length > 0 ? 0 : 'auto',
                             color: ET.muted,
                             '&:hover': { color: '#c62828', bgcolor: 'rgba(198,40,40,0.08)' },
                           }}
@@ -487,11 +596,28 @@ export function EntryTicketFragensetEditor({
                             sx={{
                               width: '100%',
                               display: 'grid',
-                              gridTemplateColumns: '28px minmax(0, 1fr) minmax(0, 1fr) 22px',
+                              gridTemplateColumns: '22px 28px minmax(0, 1fr) minmax(0, 1fr) 22px',
                               gap: 0.4,
+                              alignItems: 'center',
                               boxSizing: 'border-box',
                             }}
                           >
+                            <Tooltip title={allSelected ? 'Auswahl aufheben' : 'Alle Karten markieren'}>
+                              <Checkbox
+                                size="small"
+                                checked={allSelected}
+                                indeterminate={someSelected}
+                                onChange={(e) =>
+                                  setAllTasksSelected(lesson.id, allTaskIds, e.target.checked)
+                                }
+                                inputProps={{ 'aria-label': 'Alle Karten dieser Stunde markieren' }}
+                                sx={{
+                                  p: 0.15,
+                                  color: palette.chip,
+                                  '&.Mui-checked, &.MuiCheckbox-indeterminate': { color: palette.title },
+                                }}
+                              />
+                            </Tooltip>
                             <Box />
                             <Typography
                               sx={{
@@ -535,6 +661,7 @@ export function EntryTicketFragensetEditor({
                           const countKey = `c:${set.id}:${task.id}`;
                           const shown = showCounts?.[countKey] || 0;
                           const tone = entryTicketShowCountStyle(shown, maxShowCount);
+                          const isSelected = selectedIds.includes(task.id);
                           return (
                           <Box
                             key={task.id}
@@ -542,12 +669,28 @@ export function EntryTicketFragensetEditor({
                               position: 'relative',
                               width: '100%',
                               display: 'grid',
-                              gridTemplateColumns: '28px minmax(0, 1fr) minmax(0, 1fr) 22px',
+                              gridTemplateColumns: '22px 28px minmax(0, 1fr) minmax(0, 1fr) 22px',
                               gap: 0.4,
                               alignItems: 'start',
                               boxSizing: 'border-box',
+                              borderRadius: 0.75,
+                              outline: isSelected ? `1.5px solid ${palette.chip}` : 'none',
+                              outlineOffset: 0,
+                              bgcolor: isSelected ? `${palette.chip}10` : 'transparent',
                             }}
                           >
+                            <Checkbox
+                              size="small"
+                              checked={isSelected}
+                              onChange={() => toggleTaskSelected(lesson.id, task.id)}
+                              inputProps={{ 'aria-label': `Karte ${taskIndex + 1} markieren` }}
+                              sx={{
+                                p: 0.15,
+                                mt: 0.35,
+                                color: palette.chip,
+                                '&.Mui-checked': { color: palette.title },
+                              }}
+                            />
                             <Typography
                               component="span"
                               title={`Schon ${shown}× gezeigt`}

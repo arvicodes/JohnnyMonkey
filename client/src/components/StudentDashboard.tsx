@@ -106,7 +106,7 @@ function loadCollabBeaconSeen(): Record<string, string> {
  * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, HÜ_, HU_)
  */
 const isCorrectionFile = (fileName: string): boolean => {
-  return fileName.startsWith('KA_') || fileName.startsWith('HÜ_') || fileName.startsWith('HU_') || fileName.startsWith('QZ_');
+  return fileName.startsWith('KA_') || fileName.startsWith('KU_') || fileName.startsWith('HÜ_') || fileName.startsWith('HU_') || fileName.startsWith('QZ_');
 };
 
 const LESSON_ROHDATEI_ARCHIVE_FOLDER_NAMES_SD = new Set(['rohdateine', 'rohdateien']);

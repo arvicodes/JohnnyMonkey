@@ -1542,7 +1542,13 @@ export class FileSystemPathController {
    */
   static async createExamination(req: Request, res: Response) {
     try {
-      const { examType, fileName, folderPath, learningGroupId, title, durationMinutes } = req.body;
+      const {
+        examType,
+        fileName,
+        folderPath,
+        title,
+        durationMinutes
+      } = req.body;
 
       if (!examType || !fileName || !folderPath) {
         return res.status(400).json({ error: 'examType, fileName und folderPath sind erforderlich' });
@@ -1589,8 +1595,8 @@ export class FileSystemPathController {
       let templatePath: string;
       if (process.env.NODE_ENV === 'production') {
         // Production: Versuche verschiedene Pfade
-        const serverPath = path.join(process.cwd(), 'J-M-Reihen', 'Mathe', 'Klasse 7', 'Kap.3 - Geometrische Abbildungen', 'HU_geometrische-abbildungen.html');
-        const projectPath = path.join(process.cwd(), '..', 'J-M-Reihen', 'Mathe', 'Klasse 7', 'Kap.3 - Geometrische Abbildungen', 'HU_geometrische-abbildungen.html');
+        const serverPath = path.join(process.cwd(), 'J-M-Reihen', 'Mathe', 'Klasse 7', 'Kap 3 - Geometrische Abbildungen', 'HU_geometrische-abbildungen.html');
+        const projectPath = path.join(process.cwd(), '..', 'J-M-Reihen', 'Mathe', 'Klasse 7', 'Kap 3 - Geometrische Abbildungen', 'HU_geometrische-abbildungen.html');
         templatePath = fs.existsSync(serverPath) ? serverPath : projectPath;
       } else {
         // Development: Verwende absoluten Pfad
@@ -1599,7 +1605,7 @@ export class FileSystemPathController {
           'J-M-Reihen',
           'Mathe',
           'Klasse 7',
-          'Kap.3 - Geometrische Abbildungen',
+          'Kap 3 - Geometrische Abbildungen',
           'HU_geometrische-abbildungen.html'
         );
       }
@@ -1695,9 +1701,12 @@ export class FileSystemPathController {
         gitInternPath = filePath;
       }
 
+      const absolutePath = filePath.replace(/\\/g, '/');
+
       res.json({
         success: true,
         filePath: gitInternPath,
+        absolutePath,
         fileName: `${finalFileName}.html`,
         kaKey
       });

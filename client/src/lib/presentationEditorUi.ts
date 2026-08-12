@@ -1,6 +1,6 @@
 import { JOHNNY_PRESENTATION } from './presentationTheme';
 import { lessonFolderDisplayName } from './presentationSlideFooter';
-import { findCustomSetForLessonPath } from './entryTicketCustomSets';
+import { parseEntryTicketPlanBand, resolveEntryTicketBandForLessonPath } from './entryTicketGrade';
 import { presentationEditorUrl, type PresentationPlanMode } from './presentationDeck';
 
 /** Dezentes Johnny-UI für den Präsentations-Editor */
@@ -80,8 +80,11 @@ export function presentationEntryTicketEditUrl(
   gradeFallback: string | number = 7,
 ): string {
   const qs = new URLSearchParams();
-  const match = findCustomSetForLessonPath(lessonPath);
-  qs.set('grade', match ? match.id : String(gradeFallback));
+  const band = resolveEntryTicketBandForLessonPath(
+    lessonPath,
+    parseEntryTicketPlanBand(gradeFallback),
+  );
+  qs.set('grade', String(band));
   qs.set('edit', '1');
   qs.set('r', String(Date.now()));
   if (lessonPath) qs.set('lessonPath', lessonPath);
