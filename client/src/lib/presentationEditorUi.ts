@@ -70,6 +70,27 @@ export function presentationLessonBackUrl(
 }
 
 /**
+ * Nach Entry Ticket: zurück zur Stunde, Laptop-Präsentation auf erster Folie.
+ * `openPresentation=1` wird im TeacherDashboard ausgewertet.
+ */
+export function presentationLessonReturnWithPresentationUrl(
+  lessonPath: string,
+  groupId?: string,
+): string {
+  if (!groupId || !lessonPath) {
+    return presentationLessonBackUrl(lessonPath, groupId, 'background');
+  }
+  const qs = new URLSearchParams({
+    groupId,
+    lessonPath,
+    lessonName: lessonFolderDisplayName(lessonPath) || 'Stunde',
+    planMode: 'background',
+    openPresentation: '1',
+  });
+  return `/teacher/stunde?${qs.toString()}`;
+}
+
+/**
  * Entry-Ticket-Bearbeitung für diese Stunde (Fragenset-Editor, kein Autostart).
  * returnTo zeigt zurück in den Präsentations-Editor.
  */
@@ -91,6 +112,87 @@ export function presentationEntryTicketEditUrl(
   if (groupId) qs.set('groupId', groupId);
   qs.set('returnTo', presentationEditorUrl(lessonPath, groupId, planMode || 'create'));
   return `/entry-ticket?${qs.toString()}`;
+}
+
+/** Platzhalter-Href auf der Startfolie — wird beim Klick zur Stunden-URL aufgelöst. */
+export const ENTRY_TICKET_SLIDE_HREF = '/entry-ticket?jm=lesson-entry';
+
+export function isLessonEntryTicketSlideHref(href: string | null | undefined): boolean {
+  const raw = (href || '').trim();
+  if (!raw) return false;
+  if (/[?&]jm=lesson-entry(?:&|$)/i.test(raw)) return true;
+  try {
+    const u = new URL(raw, typeof window !== 'undefined' ? window.location.origin : 'https://local');
+    return u.pathname === '/entry-ticket' && u.searchParams.get('jm') === 'lesson-entry';
+  } catch {
+    return false;
+  }
+}
+
+/** Startet das Entry Ticket dieser Stunde (wie im Stundenplan), optional mit returnTo. */
+export function buildLessonEntryTicketLaunchUrl(opts: {
+  lessonPath: string;
+  groupId?: string;
+  gradeFallback?: string | number;
+  autostart?: boolean;
+  returnTo?: string;
+}): string {
+  const qs = new URLSearchParams();
+  const band = resolveEntryTicketBandForLessonPath(
+    opts.lessonPath,
+    parseEntryTicketPlanBand(opts.gradeFallback ?? 7),
+  );
+  qs.set('grade', String(band));
+  if (opts.autostart !== false) qs.set('autostart', '1');
+  qs.set('r', String(Date.now()));
+  if (opts.lessonPath) qs.set('lessonPath', opts.lessonPath);
+  if (opts.groupId) qs.set('groupId', opts.groupId);
+  if (opts.returnTo) qs.set('returnTo', opts.returnTo);
+  return `/entry-ticket?${qs.toString()}`;
+}
+
+/**
+ * Klick auf den Startfolien-E-Button abfangen und Entry Ticket der Stunde öffnen.
+ * @returns true wenn der Klick verarbeitet wurde
+ */
+export function tryHandleLessonEntryTicketLinkClick(
+  event: { target: EventTarget | null; preventDefault: () => void; stopPropagation: () => void },
+  opts: {
+    lessonPath: string;
+    groupId?: string;
+    gradeFallback?: string | number;
+    returnTo?: string;
+    /** false = nur öffnen, ohne Autostart (z. B. im Editor) */
+    autostart?: boolean;
+  },
+): boolean {
+  if (!opts.lessonPath) return false;
+  const node = event.target instanceof Element ? event.target : null;
+  const anchor = node?.closest?.('a[href]') as HTMLAnchorElement | null;
+  if (!anchor) return false;
+  const href = anchor.getAttribute('href') || '';
+  const marked =
+    anchor.getAttribute('data-pres-entry-ticket') === '1' || isLessonEntryTicketSlideHref(href);
+  if (!marked) return false;
+  event.preventDefault();
+  event.stopPropagation();
+  const returnTo =
+    opts.returnTo ||
+    (opts.groupId
+      ? presentationLessonReturnWithPresentationUrl(opts.lessonPath, opts.groupId)
+      : undefined);
+  const url = buildLessonEntryTicketLaunchUrl({
+    lessonPath: opts.lessonPath,
+    groupId: opts.groupId,
+    gradeFallback: opts.gradeFallback,
+    autostart: opts.autostart !== false,
+    returnTo,
+  });
+  const opened = window.open(url, '_blank', 'noopener,noreferrer');
+  if (!opened) {
+    window.location.assign(url);
+  }
+  return true;
 }
 
 /** @deprecated use presentationLessonBackUrl */

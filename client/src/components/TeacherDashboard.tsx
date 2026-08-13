@@ -383,6 +383,7 @@ import SpielMenuButton from './SpielMenuButton';
 import LearningGroupAppearanceFields from './LearningGroupAppearanceFields';
 import DualStudentAvatars from './DualStudentAvatars';
 import PresentationLaptopPlayer from './presentation/PresentationLaptopPlayer';
+import { PresentationSoundSplitControl } from './presentation/PresentationSoundControls';
 import LearningGroupSortableShell from './LearningGroupSortableShell';
 import LearningGroupArchiveSection from './LearningGroupArchiveSection';
 import LearningGroupActiveListZone from './LearningGroupActiveListZone';
@@ -7234,6 +7235,31 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
       setLessonPlanViewMode(pm);
     }
   }, [isLessonStundeRoute, location.search]);
+
+  // Rückkehr vom Entry Ticket: Präsentation in der Stunde auf Folie 1 öffnen
+  useEffect(() => {
+    if (!isLessonStundeRoute || !lessonModalData?.lessonPath) return;
+    const params = new URLSearchParams(location.search);
+    if (params.get('openPresentation') !== '1') return;
+
+    setLessonPlanViewMode('background');
+    setLaptopPresentationView({ mode: 'deck', variant: 'edited' });
+    setLaptopPresentationMountKey((k) => k + 1);
+    setLaptopPresentationActive(true);
+
+    params.delete('openPresentation');
+    const next = params.toString();
+    navigate(
+      { pathname: location.pathname, search: next ? `?${next}` : '' },
+      { replace: true },
+    );
+  }, [
+    isLessonStundeRoute,
+    lessonModalData?.lessonPath,
+    location.pathname,
+    location.search,
+    navigate,
+  ]);
 
   // Fokussiere das Betreff-Feld beim Öffnen des Nachrichten-Dialogs
   useEffect(() => {
@@ -15065,6 +15091,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     onKiGames: () => navigate('/ki-spiele'),
                   }}
                 />
+                <PresentationSoundSplitControl variant="dashboard" />
                 {/* EntryTicket */}
                 <IconButton
                   onClick={() => {
@@ -19956,6 +19983,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   <PresentationLaptopPlayer
                     key={`laptop-pres-live-${laptopPresentationMountKey}`}
                     lessonPath={lessonModalData.lessonPath}
+                    groupId={lessonModalData.groupId}
                     embedded
                     variant="edited"
                     onClose={() => setLaptopPresentationActive(false)}

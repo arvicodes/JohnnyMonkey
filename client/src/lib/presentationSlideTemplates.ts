@@ -7,6 +7,7 @@ import {
 import { loadJsonFile, type PresentationSlide } from './presentationDeck';
 import { JOHNNY_PRESENTATION } from './presentationTheme';
 import { patchBildTemplateHeroElements, SLIDE_HERO_IMAGE_HEIGHT_PCT } from './presentationImageUtils';
+import { ENTRY_TICKET_SLIDE_HREF } from './presentationEditorUi';
 
 export const SLIDE_TEMPLATES_FILENAME = 'Folienvorlagen.json';
 
@@ -81,6 +82,73 @@ export const DEFAULT_LESSON_SLIDE_TEMPLATE_KINDS: SlideTemplateKind[] = [
 ];
 
 const GRAFIKEN_TOKEN = '__GRAFIKEN__';
+
+/** Stabiles Merkmal für den Entry-Ticket-Button auf der Startfolie. */
+export const START_ENTRY_TICKET_ELEMENT_ID = 'tpl-start-entry-ticket';
+
+/** Blauer „E“-Button (rechts oben) — Link wird zur Laufzeit zur Stunden-URL aufgelöst. */
+export function createStartEntryTicketButtonElement(): SlideElement {
+  return {
+    id: START_ENTRY_TICKET_ELEMENT_ID,
+    type: 'text',
+    x: 90.2,
+    y: 2.2,
+    w: 7.6,
+    h: 10.5,
+    zIndex: 40,
+    stackLayer: 'foreground',
+    html:
+      `<p style="text-align:center;margin:0;line-height:1">` +
+      `<a href="${ENTRY_TICKET_SLIDE_HREF}" data-pres-entry-ticket="1" ` +
+      `title="Entry Ticket dieser Stunde" ` +
+      `style="display:flex;align-items:center;justify-content:center;` +
+      `width:100%;height:100%;min-height:52px;border-radius:12px;` +
+      `background:linear-gradient(135deg,#1e88e5 0%,#3949ab 100%);` +
+      `color:#fff !important;text-decoration:none;font-weight:800;` +
+      `font-size:42px;border:2px solid rgba(33,150,243,0.55);` +
+      `box-sizing:border-box;box-shadow:0 2px 8px rgba(25,118,210,0.28)">E</a></p>`,
+  };
+}
+
+export function slideHasEntryTicketButton(slide: PresentationSlide | SlideElement[] | null | undefined): boolean {
+  const elements = Array.isArray(slide) ? slide : slide?.elements;
+  return (elements || []).some((el) => {
+    if (el.id === START_ENTRY_TICKET_ELEMENT_ID || String(el.id || '').includes('start-entry-ticket')) {
+      return true;
+    }
+    const html = el.html || '';
+    return html.includes('data-pres-entry-ticket') || html.includes('jm=lesson-entry');
+  });
+}
+
+/** Stellt sicher, dass die Start-Vorlage den E-Button enthält (auch bei gespeicherten Overrides). */
+export function ensureStartEntryTicketButton(
+  elements: SlideElement[] | undefined | null,
+): SlideElement[] {
+  const list = [...(elements || [])];
+  if (slideHasEntryTicketButton(list)) return list;
+  return [...list, createStartEntryTicketButtonElement()];
+}
+
+/**
+ * Bestehende Titelfolien (Start-Layout) ohne E-Button nachrüsten —
+ * damit ältere Decks den Entry-Ticket-Button sofort haben.
+ */
+export function ensureEntryTicketButtonsOnTitleSlides(
+  slides: PresentationSlide[],
+): PresentationSlide[] {
+  let changed = false;
+  const next = slides.map((slide) => {
+    if (slide.layout !== 'title-slide') return slide;
+    if (slideHasEntryTicketButton(slide)) return slide;
+    changed = true;
+    return {
+      ...slide,
+      elements: ensureStartEntryTicketButton(slide.elements),
+    };
+  });
+  return changed ? next : slides;
+}
 
 export function grafikenFolderPath(lessonPath: string): string {
   const p = lessonPath.replace(/\\/g, '/').replace(/\/$/, '');
@@ -201,7 +269,7 @@ function builtinTemplates(): SlideTemplatesStore['templates'] {
       speakerNotesHtml: '',
       preparationHtml: '',
       materialHtml: '',
-      elements: [],
+      elements: [createStartEntryTicketButtonElement()],
       transition: 'fade',
       revealEnabled: true,
       zoneRevealSteps: {},
@@ -531,6 +599,12 @@ export function normalizeTemplatesStore(raw?: SlideTemplatesStore | null): Slide
       elements: patchBildTemplateHeroElements(templates.bild.elements),
     };
   }
+  if (templates.start) {
+    templates.start = {
+      ...templates.start,
+      elements: ensureStartEntryTicketButton(templates.start.elements),
+    };
+  }
 
   let custom = Array.isArray(raw.custom)
     ? raw.custom.filter((t) => t?.id && t?.label && t?.payload)
@@ -706,6 +780,12 @@ export function createSlideFromTemplateKind(
   const payload = getTemplatePayload(store, kind);
   if (!payload) return null;
   const slide = instantiateTemplateSlide(payload, order, lessonPath);
+  if (kind === 'start') {
+    return {
+      ...slide,
+      elements: ensureStartEntryTicketButton(slide.elements),
+    };
+  }
   if (kind === 'ha' && slide.homeworkSubmissionRequired === undefined) {
     return { ...slide, homeworkSubmissionRequired: true };
   }

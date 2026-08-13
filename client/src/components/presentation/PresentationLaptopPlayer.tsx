@@ -22,8 +22,11 @@ import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
 import { hydrateNotesHtmlFontSizes } from '../../lib/presentationFontSize';
 import { presentationNestedListSx, presentationNotesTableSx } from '../../lib/presentationListStyles';
 import { isPresentationLinkClickTarget } from '../../lib/presentationRichText';
+import { tryHandleLessonEntryTicketLinkClick } from '../../lib/presentationEditorUi';
+import { ensureEntryTicketButtonsOnTitleSlides } from '../../lib/presentationSlideTemplates';
 import { clampPresentZoom, handlePresentZoomHotkey, attachPresentTrackpadZoom } from '../../lib/presentationPresentZoom';
 import PresentationPresentZoomControls from './PresentationPresentZoomControls';
+import { PresentationSoundPlayButton } from './PresentationSoundControls';
 
 const EMPTY_STROKES: PresentationStroke[] = [];
 const EMPTY_ANNOTATIONS: PresentationAnnotations = {
@@ -35,6 +38,8 @@ const EMPTY_ANNOTATIONS: PresentationAnnotations = {
 
 export type PresentationLaptopPlayerProps = {
   lessonPath: string;
+  /** Lerngruppe — für Entry-Ticket-Link auf der Startfolie */
+  groupId?: string;
   /** Optional: schließen (zurück zum Stundenplan-Inhalt) */
   onClose?: () => void;
   /** Kompakte Einbettung in der linken Stunden-Spalte */
@@ -58,6 +63,7 @@ export type PresentationLaptopPlayerProps = {
  */
 export default function PresentationLaptopPlayer({
   lessonPath,
+  groupId,
   onClose,
   embedded = false,
   disableAnimations = false,
@@ -116,7 +122,7 @@ export default function PresentationLaptopPlayer({
         setDeck(null);
         setAnnotations(EMPTY_ANNOTATIONS);
       } else {
-        setDeck(d);
+        setDeck({ ...d, slides: ensureEntryTicketButtonsOnTitleSlides(d.slides) });
         setAnnotations(a ?? { ...EMPTY_ANNOTATIONS, lessonPath });
         setSlideIndex(0);
         setRevealStep(0);
@@ -321,6 +327,15 @@ export default function PresentationLaptopPlayer({
   }, [scaleReady]);
 
   const handleSlideTap = (e: React.MouseEvent) => {
+    if (
+      tryHandleLessonEntryTicketLinkClick(e, {
+        lessonPath,
+        groupId,
+        autostart: true,
+      })
+    ) {
+      return;
+    }
     if (isPresentationLinkClickTarget(e.target)) return;
     e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -563,6 +578,9 @@ export default function PresentationLaptopPlayer({
               variant="light"
               compact={embedded}
             />
+          </Box>
+          <Box sx={{ ml: 0.35 }}>
+            <PresentationSoundPlayButton variant="laptop" />
           </Box>
           {showNotes && (
             <Typography

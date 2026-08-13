@@ -50,6 +50,7 @@ import PresentationPptxImportDialog, {
   type PptxImportSelection,
 } from '../components/presentation/PresentationPptxImportDialog';
 import PresentationSlideToolsBar from '../components/presentation/PresentationSlideToolsBar';
+import { PresentationSoundPlayButton } from '../components/presentation/PresentationSoundControls';
 import PresentationAnimationBar from '../components/presentation/PresentationAnimationBar';
 import PresentationFormatBar from '../components/presentation/PresentationFormatBar';
 import PresentationFilmstrip from '../components/presentation/PresentationFilmstrip';
@@ -99,7 +100,7 @@ import {
   SLIDE_REF_WIDTH,
 } from '../lib/presentationDeck';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
-import { PRES_EDITOR_UI, presentationEntryTicketEditUrl, presentationLessonBackUrl } from '../lib/presentationEditorUi';
+import { PRES_EDITOR_UI, presentationEntryTicketEditUrl, presentationLessonBackUrl, presentationLessonReturnWithPresentationUrl, tryHandleLessonEntryTicketLinkClick } from '../lib/presentationEditorUi';
 import { lessonFolderDisplayName } from '../lib/presentationSlideFooter';
 import {
   DEFAULT_FLOATING_IMAGE_H,
@@ -155,6 +156,7 @@ import {
   buildLessonSharedOverviewUrl,
   createSlideFromCustomTemplate,
   createSlideFromTemplateKind,
+  ensureEntryTicketButtonsOnTitleSlides,
   loadSlideTemplates,
   saveSlideTemplates,
   SLIDE_TEMPLATE_META,
@@ -347,11 +349,15 @@ const PresentationEditorPage: React.FC = () => {
       .then((d) => {
         if (cancelled) return;
         const normalized = normalizeDeck(d);
-        historyRef.current = createDeckHistory(normalized);
+        const withEntry = {
+          ...normalized,
+          slides: ensureEntryTicketButtonsOnTitleSlides(normalized.slides),
+        };
+        historyRef.current = createDeckHistory(withEntry);
         setHistoryVersion((v) => v + 1);
-        setDeck(normalized);
-        deckRef.current = normalized;
-        setActiveId(normalized.slides[0]?.id ?? null);
+        setDeck(withEntry);
+        deckRef.current = withEntry;
+        setActiveId(withEntry.slides[0]?.id ?? null);
         setLoading(false);
       })
       .catch((e) => {
@@ -2539,6 +2545,10 @@ const PresentationEditorPage: React.FC = () => {
             </Tooltip>
           </Box>
 
+          <Box sx={{ ml: 0.35, display: 'flex', alignItems: 'center' }}>
+            <PresentationSoundPlayButton variant="editor" />
+          </Box>
+
           <ToggleButtonGroup
             size="small"
             exclusive
@@ -2732,6 +2742,15 @@ const PresentationEditorPage: React.FC = () => {
             onDragOver={handleSlideImageDragOver}
             onDragLeave={handleSlideImageDragLeave}
             onDrop={(e) => void handleSlideImageDrop(e)}
+            onClickCapture={(e) => {
+              if (!lessonPath) return;
+              tryHandleLessonEntryTicketLinkClick(e, {
+                lessonPath,
+                groupId: groupId || undefined,
+                returnTo: presentationLessonReturnWithPresentationUrl(lessonPath, groupId || undefined),
+                autostart: true,
+              });
+            }}
             sx={{
               flex: 1,
               display: 'flex',

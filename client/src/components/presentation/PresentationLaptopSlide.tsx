@@ -586,6 +586,7 @@ const PresentationLaptopSlide: React.FC<PresentationLaptopSlideProps> = ({
         .pres-laptop-slide [data-pres-rich-zone] p { margin: 0 0 ${6 * scale}px; }
         .pres-laptop-slide [data-pres-rich-zone] p:last-child { margin-bottom: 0; }
         .pres-laptop-slide [data-pres-rich-zone] img { max-width: 100%; height: auto; display: block; }
+        .pres-laptop-slide [data-pres-html] a[href] { pointer-events: auto; cursor: pointer; }
       `}</style>
 
       {backgroundElements.map((el) => (

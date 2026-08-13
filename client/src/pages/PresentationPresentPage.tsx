@@ -29,13 +29,14 @@ import {
   parsePresentationPlanMode,
 } from '../lib/presentationDeck';
 import { PresentationDrawTool, defaultLineWidthForTool, lineWidthsForTool } from '../lib/presentationDrawTools';
-import { presentationLessonBackUrl } from '../lib/presentationEditorUi';
+import { presentationLessonBackUrl, presentationLessonReturnWithPresentationUrl, tryHandleLessonEntryTicketLinkClick } from '../lib/presentationEditorUi';
 import { savePresentationBothVersions, savePresentationNamedVersion, exportPresentationPdfVersions } from '../lib/presentationExport';
 import { getSlideMaxRevealSteps } from '../lib/presentationReveal';
 import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../lib/presentationTransitions';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
 import { isPresentationLinkClickTarget } from '../lib/presentationRichText';
 import { clampPresentZoom, handlePresentZoomHotkey, attachPresentTrackpadZoom } from '../lib/presentationPresentZoom';
+import { ensureEntryTicketButtonsOnTitleSlides } from '../lib/presentationSlideTemplates';
 
 const SWIPE_MIN_PX = 48;
 const EMPTY_STROKES: PresentationStroke[] = [];
@@ -106,7 +107,10 @@ const PresentationPresentPage: React.FC = () => {
       opts?: { draw?: boolean; label?: string }
     ) => {
       if (cancelled) return;
-      setDeck(d);
+      const deckWithEntry = d
+        ? { ...d, slides: ensureEntryTicketButtonsOnTitleSlides(d.slides) }
+        : null;
+      setDeck(deckWithEntry);
       const ann = a ?? createEmptyAnnotations(lessonPath);
       setAnnotations(ann);
       // Baseline = Stand auf Disk — Speichern als… stellt danach wieder her
@@ -690,6 +694,16 @@ const PresentationPresentPage: React.FC = () => {
 
   const handleSlideTap = (e: React.MouseEvent) => {
     if (drawActive) return;
+    if (
+      tryHandleLessonEntryTicketLinkClick(e, {
+        lessonPath,
+        groupId: groupId || undefined,
+        returnTo: presentationLessonReturnWithPresentationUrl(lessonPath, groupId || undefined),
+        autostart: true,
+      })
+    ) {
+      return;
+    }
     if (isPresentationLinkClickTarget(e.target)) return;
     e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();

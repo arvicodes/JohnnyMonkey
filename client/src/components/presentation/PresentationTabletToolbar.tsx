@@ -25,6 +25,7 @@ import {
 } from '../../lib/presentationDrawTools';
 import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
 import PresentationPresentZoomControls from './PresentationPresentZoomControls';
+import { PresentationSoundPlayButton } from './PresentationSoundControls';
 
 const MICRO_SX = {
   width: 24,
@@ -417,6 +418,8 @@ export default function PresentationTabletToolbar({
             <TagIcon sx={{ fontSize: 15 }} />
           </ToolBtn>
         )}
+
+        <PresentationSoundPlayButton variant="tablet" />
 
         {!readOnly && drawActive && (
           <>

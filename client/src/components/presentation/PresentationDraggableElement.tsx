@@ -1702,6 +1702,10 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               pointerEvents: animationEditMode ? 'auto' : 'none',
               color: '#424242',
               boxSizing: 'border-box',
+              '& a[href]': {
+                pointerEvents: 'auto',
+                cursor: 'pointer',
+              },
               '& p': { m: 0, mb: `${4 * scale}px` },
               '& li > p': { display: 'block', listStyle: 'none' },
               ...presentationNestedListSx({ scale, listPaddingPx: 20 * scale, itemGapPx: 2 * scale }),
