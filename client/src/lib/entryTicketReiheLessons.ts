@@ -1,5 +1,7 @@
 /** Stunden einer Unterrichtsreihe unter J-M-Reihen für Entry-Ticket-Fragensets finden. */
 
+import { isWochenaufgabenFolderName } from './wochenaufgabenFolder';
+
 export type DiscoveredReiheLesson = {
   lessonName: string;
   lessonKey: string;
@@ -52,6 +54,7 @@ export function isStundeFolderName(name: string): boolean {
   if (isSeriesHeadingFolderName(t)) return false;
   if (isTopicSectionFolderName(t)) return false;
   if (isLessonRohdatArchiveFolderName(t)) return false;
+  if (isWochenaufgabenFolderName(t)) return false;
   return true;
 }
 

@@ -41,6 +41,7 @@ function isLessonSiblingFolderName(name: string): boolean {
   // Themenblock „01 Basiswissen“ — keine Stunde
   if (/^\d+\s+/.test(t) && !/^\d+\.\d+/.test(t)) return false;
   if (/^Kapitel\b/i.test(t)) return false;
+  if (/wochenaufgaben?/i.test(t.toLowerCase())) return false;
   return true;
 }
 

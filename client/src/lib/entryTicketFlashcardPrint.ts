@@ -291,6 +291,9 @@ export function buildEntryTicketFlashcardPrintHtml(
     .card.back .body { font-weight: 700; color: #1b5e20; }
     .card .body .empty { color: #b0bec5; font-weight: 600; }
     .card .body .op { font-weight: 800; }
+    .card .body .et-op { font-weight: 800; color: #ef6c00; }
+    .card .body .et-q { font-weight: 800; color: #c62828; }
+    .card .body .et-task-op { font-weight: 800; }
     .card .body .q { font-weight: 800; color: #c62828; }
     .card .body p, .card .body div { margin: 0; max-width: 100%; }
     .card .body * { max-width: 100% !important; float: none !important; }

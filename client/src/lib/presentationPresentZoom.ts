@@ -121,11 +121,13 @@ function touchDistance(touches: TouchList): number {
 /**
  * Zwei-Finger-Pinch auf dem iPad (und anderen Touch-Geräten).
  * Capture-Phase: greift auch, wenn die Zeichen-Canvas oben liegt.
+ * `enabledRef`: z. B. aus während Zeichenmodus (Handauflage darf keinen Zoom starten).
  */
 export function attachPresentTouchPinchZoom(
   el: HTMLElement | null,
   zoomRef: { current: number },
   setZoom: (next: number) => void,
+  enabledRef?: { current: boolean },
 ): () => void {
   if (!el) return () => undefined;
 
@@ -133,7 +135,14 @@ export function attachPresentTouchPinchZoom(
   let pinchStartZoom = 1;
   let pinching = false;
 
+  const isEnabled = () => enabledRef?.current !== false;
+
   const onTouchStart = (e: TouchEvent) => {
+    if (!isEnabled()) {
+      pinching = false;
+      pinchStartDist = 0;
+      return;
+    }
     if (e.touches.length === 2) {
       pinchStartDist = touchDistance(e.touches);
       pinchStartZoom = zoomRef.current;
@@ -145,6 +154,10 @@ export function attachPresentTouchPinchZoom(
   };
 
   const onTouchMove = (e: TouchEvent) => {
+    if (!isEnabled()) {
+      pinching = false;
+      return;
+    }
     if (!pinching || e.touches.length !== 2 || pinchStartDist < 8) return;
     e.preventDefault();
     const d = touchDistance(e.touches);

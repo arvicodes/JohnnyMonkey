@@ -2,6 +2,7 @@ import { JOHNNY_PRESENTATION } from './presentationTheme';
 import { lessonFolderDisplayName } from './presentationSlideFooter';
 import { parseEntryTicketPlanBand, resolveEntryTicketBandForLessonPath } from './entryTicketGrade';
 import { presentationEditorUrl, type PresentationPlanMode } from './presentationDeck';
+import { isWochenaufgabenFolderPath } from './wochenaufgabenFolder';
 
 /** Dezentes Johnny-UI für den Präsentations-Editor */
 export const PRES_EDITOR_UI = {
@@ -51,13 +52,15 @@ export const PRES_EDITOR_UI = {
   },
 };
 
-/** Deep-Link zurück zur Stunden-Ansicht (/teacher/stunde). */
+/** Deep-Link zurück zur Stunden-Ansicht (/teacher/stunde) — Wochenaufgaben → Dashboard. */
 export function presentationLessonBackUrl(
   lessonPath: string,
   groupId?: string,
   planMode?: PresentationPlanMode
 ): string {
   if (!groupId || !lessonPath) return '/dashboard';
+  // Wochenaufgaben werden vom Dashboard geöffnet, nicht als normale Stunde
+  if (isWochenaufgabenFolderPath(lessonPath)) return '/dashboard';
   const qs = new URLSearchParams({
     groupId,
     lessonPath,

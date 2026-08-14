@@ -102,6 +102,7 @@ import {
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
 import { PRES_EDITOR_UI, presentationEntryTicketEditUrl, presentationLessonBackUrl, presentationLessonReturnWithPresentationUrl, tryHandleLessonEntryTicketLinkClick } from '../lib/presentationEditorUi';
 import { lessonFolderDisplayName } from '../lib/presentationSlideFooter';
+import { isWochenaufgabenFolderPath } from '../lib/wochenaufgabenFolder';
 import {
   DEFAULT_FLOATING_IMAGE_H,
   DEFAULT_FLOATING_IMAGE_W,
@@ -2219,7 +2220,7 @@ const PresentationEditorPage: React.FC = () => {
             gap: 0.75,
           }}
         >
-          <Tooltip title="Zurück zur Stunde">
+          <Tooltip title={isWochenaufgabenFolderPath(lessonPath) ? 'Zurück zum Dashboard' : 'Zurück zur Stunde'}>
             <IconButton size="small" onClick={handleBack} sx={toolbarIconSx}>
               <ArrowBackIcon sx={{ fontSize: 20 }} />
             </IconButton>

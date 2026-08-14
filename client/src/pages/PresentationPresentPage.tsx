@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Snackbar, TextField, Tooltip, Typography } from '@mui/material';
 import {
@@ -37,6 +37,7 @@ import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
 import { isPresentationLinkClickTarget } from '../lib/presentationRichText';
 import { clampPresentZoom, handlePresentZoomHotkey, attachPresentTrackpadZoom, attachPresentTouchPinchZoom } from '../lib/presentationPresentZoom';
 import { ensureEntryTicketButtonsOnTitleSlides } from '../lib/presentationSlideTemplates';
+import { isWochenaufgabenFolderPath } from '../lib/wochenaufgabenFolder';
 
 const SWIPE_MIN_PX = 48;
 const EMPTY_STROKES: PresentationStroke[] = [];
@@ -74,6 +75,9 @@ const PresentationPresentPage: React.FC = () => {
   const [userZoom, setUserZoom] = useState(1);
   const userZoomRef = useRef(1);
   userZoomRef.current = userZoom;
+  /** Pinch nur wenn nicht gezeichnet wird (Handauflage sonst als 2-Touch) */
+  const pinchEnabledRef = useRef(true);
+  pinchEnabledRef.current = !drawActive;
   const [groupStudents, setGroupStudents] = useState<Array<{ id: string; name: string }>>([]);
   const [revealText, setRevealText] = useState<string | null>(null);
   const [revealNonce, setRevealNonce] = useState(0);
@@ -235,11 +239,14 @@ const PresentationPresentPage: React.FC = () => {
 
   const updateStrokes = (strokes: PresentationStroke[]) => {
     if (!annotations || !currentSlide) return;
+    const base = annotationsRef.current ?? annotations;
     const next: PresentationAnnotations = {
-      ...annotations,
-      bySlideId: { ...annotations.bySlideId, [currentSlide.id]: strokes },
+      ...base,
+      bySlideId: { ...base.bySlideId, [currentSlide.id]: strokes },
     };
-    setAnnotations(next);
+    // Sofort für Flush/Persist; UI-Update nicht den nächsten Pencil-Strich blockieren
+    annotationsRef.current = next;
+    startTransition(() => setAnnotations(next));
     if (saveTimer.current) clearTimeout(saveTimer.current);
     // Named/Original: nur Speicher — kein Disk-Autosave
     if (isNamedView || isOriginalView) return;
@@ -669,7 +676,7 @@ const PresentationPresentPage: React.FC = () => {
     if (!scaleReady) return undefined;
     const el = stageRef.current;
     const offWheel = attachPresentTrackpadZoom(el, userZoomRef, setUserZoom);
-    const offTouch = attachPresentTouchPinchZoom(el, userZoomRef, setUserZoom);
+    const offTouch = attachPresentTouchPinchZoom(el, userZoomRef, setUserZoom, pinchEnabledRef);
     return () => {
       offWheel();
       offTouch();
@@ -796,14 +803,14 @@ const PresentationPresentPage: React.FC = () => {
         outline: 'none',
       }}
     >
-      <Tooltip title="Zurück zur Stunde">
+      <Tooltip title={isWochenaufgabenFolderPath(lessonPath) ? 'Zurück zum Dashboard' : 'Zurück zur Stunde'}>
         <IconButton
           size="small"
           onClick={(e) => {
             e.stopPropagation();
             handleBack();
           }}
-          aria-label="Zurück zur Stunde"
+          aria-label={isWochenaufgabenFolderPath(lessonPath) ? 'Zurück zum Dashboard' : 'Zurück zur Stunde'}
           sx={presentBackBtnSx}
         >
           <ArrowBackIcon sx={{ fontSize: 18 }} />
@@ -847,6 +854,8 @@ const PresentationPresentPage: React.FC = () => {
               willChange: 'transform, opacity, filter',
               cursor: drawActive ? 'default' : 'pointer',
               overflow: 'hidden',
+              // Beim Schreiben: keine Browser-Touch-Gesten / Delays
+              touchAction: drawActive ? 'none' : 'auto',
             }}
           >
             <Box sx={{ position: 'absolute', inset: 0, zIndex: 0, overflow: 'hidden' }}>

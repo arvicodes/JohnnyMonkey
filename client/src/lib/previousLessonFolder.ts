@@ -1,4 +1,5 @@
 import { parentDirGitPath } from './folienVersions';
+import { isWochenaufgabenFolderName } from './wochenaufgabenFolder';
 
 type DirItem = { name?: string; path?: string; type?: string };
 
@@ -12,6 +13,7 @@ function isLessonSiblingFolderName(name: string): boolean {
   if (/^\d+\s+/.test(t) && !/^\d+\.\d+/.test(t)) return false;
   // Kapitel-Überschriften o. ä.
   if (/^Kapitel\b/i.test(t)) return false;
+  if (isWochenaufgabenFolderName(t)) return false;
   return true;
 }
 

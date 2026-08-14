@@ -1,0 +1,147 @@
+/** Zentraler Wochenaufgaben-Ordner neben den Reihen (z. B. MSS 12 LK/Wochenaufgaben). */
+
+export const WOCHENAUFGABEN_COLOR = '#ffb74d';
+export const WOCHENAUFGABEN_TEXT_COLOR = '#ef6c00';
+export const WOCHENAUFGABEN_BG = '#fff8e1';
+export const WOCHENAUFGABEN_BORDER = '#ffe0b2';
+
+export type WochenaufgabenFsNode = {
+  name?: string;
+  path?: string;
+  type?: string;
+  children?: WochenaufgabenFsNode[];
+  [key: string]: unknown;
+};
+
+function normalizePath(p: string): string {
+  return (p || '').replace(/\\/g, '/').replace(/\/+$/, '');
+}
+
+function normalizeFolderLabel(name: string): string {
+  return (name || '').trim().toLowerCase().normalize('NFC');
+}
+
+export function isWochenaufgabenFolderName(name: string): boolean {
+  return /wochenaufgaben?/.test(normalizeFolderLabel(name));
+}
+
+export function isNumberedWochenaufgabeName(name: string): boolean {
+  return /^\d+$/.test((name || '').trim());
+}
+
+export function isNumberedWochenaufgabePath(path: string): boolean {
+  const parts = normalizePath(path).split('/').filter(Boolean);
+  const idx = parts.findIndex((seg) => isWochenaufgabenFolderName(seg));
+  if (idx < 0) return false;
+  return isNumberedWochenaufgabeName(parts[idx + 1] || '');
+}
+
+export function numberedWochenaufgabeDirs(children: WochenaufgabenFsNode[] | undefined): WochenaufgabenFsNode[] {
+  return (Array.isArray(children) ? children : [])
+    .filter((item) => item?.type === 'directory' && isNumberedWochenaufgabeName(String(item.name || '')))
+    .sort((a, b) => Number(a.name) - Number(b.name));
+}
+
+export function nextWochenaufgabeNumber(children: WochenaufgabenFsNode[] | undefined): number {
+  const nums = numberedWochenaufgabeDirs(children).map((item) => Number(item.name));
+  if (nums.length === 0) return 1;
+  return Math.max(...nums) + 1;
+}
+
+export function folderPathBasename(path: string): string {
+  const parts = normalizePath(path).split('/').filter(Boolean);
+  return parts[parts.length - 1] || path;
+}
+
+export function folderPathParent(path: string): string | null {
+  const n = normalizePath(path);
+  const idx = n.lastIndexOf('/');
+  if (idx <= 0) return null;
+  return n.slice(0, idx);
+}
+
+export function isWochenaufgabenFolderPath(path: string): boolean {
+  return normalizePath(path)
+    .split('/')
+    .some((seg) => isWochenaufgabenFolderName(seg));
+}
+
+function cloneNode(node: WochenaufgabenFsNode): WochenaufgabenFsNode {
+  return {
+    ...node,
+    children: Array.isArray(node.children) ? node.children.map(cloneNode) : node.children,
+  };
+}
+
+function injectWochenaufgabenChild(
+  children: WochenaufgabenFsNode[],
+  wochenNode: WochenaufgabenFsNode,
+): WochenaufgabenFsNode[] {
+  if (children.some((c) => c?.type === 'directory' && isWochenaufgabenFolderName(String(c.name || '')))) {
+    return children;
+  }
+  return [cloneNode(wochenNode), ...children];
+}
+
+function moveWochenaufgabenToTop(items: WochenaufgabenFsNode[]): WochenaufgabenFsNode[] {
+  const existing = items.find(
+    (item) => item?.type === 'directory' && isWochenaufgabenFolderName(String(item.name || '')),
+  );
+  if (!existing) return items;
+  const rest = items.filter((item) => item !== existing);
+  return [cloneNode(existing), ...rest];
+}
+
+/**
+ * Wochenaufgaben nur einmal ganz oben — nicht in jede Reihe spiegeln.
+ */
+export function mergeWochenaufgabenIntoFolderTree(
+  items: WochenaufgabenFsNode[],
+  folderPath: string,
+  siblingWochenNode?: WochenaufgabenFsNode | null,
+): WochenaufgabenFsNode[] {
+  const list = Array.isArray(items) ? items : [];
+  const folderName = folderPathBasename(folderPath);
+  if (isWochenaufgabenFolderName(folderName)) return list;
+
+  const existing = list.find(
+    (item) => item?.type === 'directory' && isWochenaufgabenFolderName(String(item.name || '')),
+  );
+  if (existing) return moveWochenaufgabenToTop(list);
+
+  if (!siblingWochenNode) return list;
+  return injectWochenaufgabenChild(list, siblingWochenNode);
+}
+
+export function findCachedWochenaufgabenSibling(
+  groupId: string,
+  folderPath: string,
+  contents: Record<string, WochenaufgabenFsNode[] | undefined>,
+): WochenaufgabenFsNode | null {
+  const parent = folderPathParent(folderPath);
+  if (!parent || isWochenaufgabenFolderName(folderPathBasename(folderPath))) return null;
+  const prefix = `${groupId}:`;
+  for (const [key, children] of Object.entries(contents)) {
+    if (!key.startsWith(prefix)) continue;
+    const path = key.slice(prefix.length);
+    const name = folderPathBasename(path);
+    if (folderPathParent(path) !== parent) continue;
+    if (!isWochenaufgabenFolderName(name)) continue;
+    return {
+      name,
+      path,
+      type: 'directory',
+      children: Array.isArray(children) ? children : [],
+    };
+  }
+  return null;
+}
+
+export function parseReadApiChildren(payload: unknown): WochenaufgabenFsNode[] {
+  if (!payload || typeof payload !== 'object') return [];
+  const row = payload as { root?: { children?: WochenaufgabenFsNode[] }; items?: WochenaufgabenFsNode[] };
+  const rootChildren = row.root?.children;
+  if (Array.isArray(rootChildren)) return rootChildren;
+  if (Array.isArray(row.items)) return row.items;
+  return [];
+}

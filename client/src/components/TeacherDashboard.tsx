@@ -25,7 +25,7 @@ import {
   LESSON_PRESENTATION_PDF_EDITED,
   type JohnnyPresentationVersion,
 } from '../lib/presentationLessonAssets';
-import { presentationPresentUrl, loadPresentationDeck, sortSlides } from '../lib/presentationDeck';
+import { presentationPresentUrl, presentationEditorUrl, loadPresentationDeck, sortSlides } from '../lib/presentationDeck';
 import {
   presentationHomeworkAssignmentKey,
   findHomeworkSlides,
@@ -78,6 +78,21 @@ import {
   saveWorkingReihenPaths,
   type WorkingReiheOption,
 } from '../lib/dashboardWorkingReihen';
+import {
+  WOCHENAUFGABEN_BG,
+  WOCHENAUFGABEN_BORDER,
+  WOCHENAUFGABEN_TEXT_COLOR,
+  findCachedWochenaufgabenSibling,
+  isNumberedWochenaufgabeName,
+  isNumberedWochenaufgabePath,
+  isWochenaufgabenFolderName,
+  isWochenaufgabenFolderPath,
+  mergeWochenaufgabenIntoFolderTree,
+  nextWochenaufgabeNumber,
+  numberedWochenaufgabeDirs,
+  parseReadApiChildren,
+} from '../lib/wochenaufgabenFolder';
+import { ensureWochenaufgabeDeck, INITIAL_WOCHENAUFGABE_NUMBERS } from '../lib/wochenaufgabenPresentation';
 import {
   Box,
   Typography,
@@ -7004,6 +7019,23 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     [navigate],
   );
 
+  const openWochenaufgabenPresentation = useCallback(
+    async (groupId: string, lessonPath: string) => {
+      try {
+        await ensureWochenaufgabeDeck(lessonPath);
+      } catch (err) {
+        setSnackbar({
+          open: true,
+          message: err instanceof Error ? err.message : 'Präsentation konnte nicht angelegt werden',
+          severity: 'error',
+        });
+        return;
+      }
+      navigate(presentationEditorUrl(lessonPath, groupId, 'create'));
+    },
+    [navigate],
+  );
+
   const goToAdjacentLesson = useCallback(
     (target: { path: string; name: string } | null) => {
       if (!target || !lessonModalData?.groupId) return;
@@ -8365,6 +8397,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
         }
 
         // Verarbeitungshistorie wird jetzt im useEffect geladen
+        void hydrateWochenaufgabenFolder(groupId, folderPath, items);
       }
     } catch (error) {
       console.error('Fehler beim Laden des Ordnerinhalts:', error);
@@ -8373,6 +8406,89 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
         ...prev,
         [`${groupId}:${folderPath}`]: false
       }));
+    }
+  };
+
+  const hydrateWochenaufgabenFolder = async (
+    groupId: string,
+    folderPath: string,
+    items: any[],
+  ) => {
+    const norm = (p: string) => (p || '').replace(/\\/g, '/').replace(/\/+$/, '');
+    const base = folderPath.split('/').pop() || '';
+    let wochenPath = '';
+    let existingChildren: any[] = [];
+
+    if (isWochenaufgabenFolderName(base)) {
+      wochenPath = norm(folderPath);
+      existingChildren = items;
+    } else {
+      const nested = items.find(
+        (item) => item?.type === 'directory' && isWochenaufgabenFolderName(item.name || ''),
+      );
+      if (nested) {
+        wochenPath = norm(nested.path || `${folderPath}/${nested.name}`);
+        existingChildren = Array.isArray(nested.children) ? nested.children : [];
+      } else {
+        const parent = norm(folderPath).split('/').slice(0, -1).join('/');
+        if (!parent) return;
+        try {
+          const parentRes = await fetch(
+            `/api/file-system-paths/read?path=${encodeURIComponent(parent)}&t=${Date.now()}`,
+            { cache: 'no-cache', headers: { 'Cache-Control': 'no-cache' } },
+          );
+          if (!parentRes.ok) return;
+          const siblings = parseReadApiChildren(await parentRes.json());
+          const wochen = siblings.find(
+            (item) => item?.type === 'directory' && isWochenaufgabenFolderName(String(item.name || '')),
+          );
+          wochenPath = norm(
+            (wochen?.path as string) || (wochen?.name ? `${parent}/${wochen.name}` : ''),
+          );
+        } catch {
+          return;
+        }
+      }
+    }
+    if (!wochenPath) return;
+
+    const cacheKey = `${groupId}:${wochenPath}`;
+    try {
+      if (existingChildren.length === 0) {
+        const wochenRes = await fetch(
+          `/api/file-system-paths/read?path=${encodeURIComponent(wochenPath)}&recursive=true&t=${Date.now()}`,
+          { cache: 'no-cache', headers: { 'Cache-Control': 'no-cache' } },
+        );
+        if (wochenRes.ok) existingChildren = parseReadApiChildren(await wochenRes.json());
+      }
+
+      const have = new Set(
+        numberedWochenaufgabeDirs(existingChildren).map((item) => Number(item.name)),
+      );
+      for (const n of INITIAL_WOCHENAUFGABE_NUMBERS) {
+        if (have.has(n)) continue;
+        await ensureWochenaufgabeDeck(`${wochenPath}/${n}`);
+      }
+
+      const wochenRes = await fetch(
+        `/api/file-system-paths/read?path=${encodeURIComponent(wochenPath)}&recursive=true&t=${Date.now()}`,
+        { cache: 'no-cache', headers: { 'Cache-Control': 'no-cache' } },
+      );
+      const seeded = wochenRes.ok ? parseReadApiChildren(await wochenRes.json()) : existingChildren;
+      const parentKey = `${groupId}:${norm(folderPath)}`;
+      setAssignedFolderContents((prev) => {
+        const next: typeof prev = { ...prev, [cacheKey]: seeded };
+        if (parentKey !== cacheKey && prev[parentKey]) {
+          next[parentKey] = prev[parentKey].map((item: any) =>
+            item?.type === 'directory' && isWochenaufgabenFolderName(item.name || '')
+              ? { ...item, path: item.path || wochenPath, children: seeded }
+              : item,
+          );
+        }
+        return next;
+      });
+    } catch (error) {
+      console.error('Wochenaufgaben-Ordner laden fehlgeschlagen:', error);
     }
   };
 
@@ -10160,6 +10276,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     if (isSeriesHeadingFolderName(name)) return false;
     if (isTopicSectionFolderName(name)) return false;
     if (isLessonRohdatArchiveFolderName(name)) return false;
+    if (isWochenaufgabenFolderName(name)) return false;
     return true;
   };
 
@@ -10196,8 +10313,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     opts?: { enableDrag?: boolean },
   ) => {
     const enableDrag = opts?.enableDrag !== false;
-    const items = assignedFolderContents[`${groupId}:${folderPath}`] || [];
+    const rawItems = assignedFolderContents[`${groupId}:${folderPath}`] || [];
+    const siblingWochen = findCachedWochenaufgabenSibling(groupId, folderPath, assignedFolderContents);
+    const items = mergeWochenaufgabenIntoFolderTree(rawItems, folderPath, siblingWochen);
     const isLoading = loadingFolderContents[`${groupId}:${folderPath}`] || false;
+    const rootIsWochenaufgaben = isWochenaufgabenFolderName(folderPath.split('/').pop() || '');
+    const rootHeaderColor = rootIsWochenaufgaben ? WOCHENAUFGABEN_TEXT_COLOR : '#D32F2F';
+    const rootHeaderIcon = rootIsWochenaufgaben ? '📅' : '📁';
+    const rootTreeBorder = rootIsWochenaufgaben
+      ? '2px solid rgba(255, 183, 77, 0.55)'
+      : '2px solid rgba(211, 47, 47, 0.2)';
+    const rootCardBg = rootIsWochenaufgaben ? WOCHENAUFGABEN_BG : '#f8f9fa';
+    const rootCardBorder = rootIsWochenaufgaben ? WOCHENAUFGABEN_BORDER : '#e9ecef';
     
     // Filtere PDF-Dateien aus, die zu .wb Dateien gehören - NUR für die Anzeige
     // Die ursprünglichen Daten bleiben unverändert für Schüler
@@ -10271,7 +10398,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 variant="dashboard"
               />
             )}
-            <Typography variant="body2" sx={{ color: '#03a9f4', fontSize: '0.75rem', flexShrink: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <Typography variant="body2" sx={{ color: group.versions.some((v: { file?: { path?: string } }) => isWochenaufgabenFolderPath(v.file?.path || '')) ? WOCHENAUFGABEN_TEXT_COLOR : '#03a9f4', fontSize: '0.75rem', flexShrink: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
               📄 {group.baseName}
             </Typography>
             {(pdfFile || presentationVersion || fallbackFile) && (
@@ -10309,7 +10436,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     };
 
     // Rekursive Funktion zum Rendern aller Ebenen
-    const renderItemRecursively = (item: any, level: number = 0) => {
+    const renderItemRecursively = (item: any, level: number = 0, inWochenaufgaben = false) => {
       if (item.type === 'fileGroup') {
         return renderFileGroupRow(item, level);
       }
@@ -10319,6 +10446,15 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       }
       const dirPathKey = item.type === 'directory' ? (item.path || '').replace(/\\/g, '/').trim() : '';
       const isRohDir = item.type === 'directory' && isLessonRohdatArchiveFolderName(item.name);
+      const isWochenaufgabenDir =
+        item.type === 'directory' && isWochenaufgabenFolderName(item.name || '');
+      const itemFullPath = (item.path || `${folderPath}/${item.name || ''}`).replace(/\\/g, '/');
+      const isNumberedWa =
+        item.type === 'directory' &&
+        (isNumberedWochenaufgabePath(itemFullPath) ||
+          (inWochenaufgaben && isNumberedWochenaufgabeName(item.name || '')));
+      const inWochenaufgabenBranch =
+        inWochenaufgaben || isWochenaufgabenDir || isWochenaufgabenFolderPath(item.path || '');
       const branchDefaultExpanded = isRohDir ? false : true;
       const branchExpanded =
         item.type === 'directory' && item.children && item.children.length > 0
@@ -10326,9 +10462,15 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           : false;
 
       const isStundeFolder =
-        item.type === 'directory' && directoryOpensStundePage(item.name, level);
+        item.type === 'directory' &&
+        directoryOpensStundePage(item.name, level) &&
+        !isWochenaufgabenDir &&
+        !isNumberedWa;
       const isContainerFolder =
-        item.type === 'directory' && !isStundeFolder && !isLessonRohdatArchiveFolderName(item.name);
+        item.type === 'directory' &&
+        !isStundeFolder &&
+        !isLessonRohdatArchiveFolderName(item.name) &&
+        !isNumberedWa;
       const stundeLessonPath = isStundeFolder
         ? item.path || `${folderPath}/${item.name}`
         : '';
@@ -10349,7 +10491,15 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       let createTooltip = '';
       
       if (item.type === 'directory') {
-        if (isSeriesHeadingFolderName(item.name) || (level === 0 && isContainerFolder)) {
+        if (isWochenaufgabenDir) {
+          icon = '📅';
+          color = WOCHENAUFGABEN_TEXT_COLOR;
+          fontWeight = 700;
+        } else if (isNumberedWa || inWochenaufgabenBranch) {
+          icon = '📝';
+          color = WOCHENAUFGABEN_TEXT_COLOR;
+          fontWeight = 700;
+        } else if (isSeriesHeadingFolderName(item.name) || (level === 0 && isContainerFolder)) {
           icon = '📚';
           color = '#6a1b9a';
           fontWeight = 700;
@@ -10376,7 +10526,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         }
       } else {
         // Dateien
-        if (isCorrectionFile(item.name)) {
+        if (inWochenaufgabenBranch) {
+          icon = '📄';
+          color = WOCHENAUFGABEN_TEXT_COLOR;
+          fontWeight = 600;
+        } else if (isCorrectionFile(item.name)) {
           // Klassenarbeiten/Hausaufgabenüberprüfungen bekommen ein spezielles, größeres Icon
           icon = '📝'; // Klassenarbeit/HÜ-Icon
           color = '#ff9800'; // Gelb-orange für Klassenarbeiten/HÜ
@@ -10420,9 +10574,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             mb: isContainerFolder ? 0.75 : 0.15,
             ...(isContainerFolder
               ? {
-                  border: '1px solid #e8eaf0',
+                  border: `1px solid ${isWochenaufgabenDir ? WOCHENAUFGABEN_BORDER : '#e8eaf0'}`,
                   borderRadius: 1.25,
-                  bgcolor: '#fafbfd',
+                  bgcolor: isWochenaufgabenDir ? WOCHENAUFGABEN_BG : '#fafbfd',
                   px: 0.75,
                   pt: 0.55,
                   pb: branchExpanded ? 0.45 : 0.55,
@@ -10499,6 +10653,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               py: isStundeFolder ? 0.15 : 0.2,
               cursor:
                 item.type === 'file' ||
+                isWochenaufgabenDir ||
+                isNumberedWa ||
                 (item.type === 'directory' &&
                   (directoryOpensStundePage(item.name, level) || isLessonRohdatArchiveFolderName(item.name)))
                   ? 'pointer'
@@ -10510,9 +10666,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               maxWidth: '100%',
               flex: 1,
               '&:hover':
-                item.type === 'file' ||
-                (item.type === 'directory' &&
-                  (directoryOpensStundePage(item.name, level) || isLessonRohdatArchiveFolderName(item.name)))
+                inWochenaufgabenBranch
+                  ? { color: WOCHENAUFGABEN_TEXT_COLOR }
+                  : item.type === 'file' ||
+                    (item.type === 'directory' &&
+                      (directoryOpensStundePage(item.name, level) || isLessonRohdatArchiveFolderName(item.name)))
                   ? { color: '#1976D2' }
                   : isContainerFolder
                     ? { opacity: 0.9 }
@@ -10522,6 +10680,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               if (item.type === 'file') {
                 handleFileClick(item);
               } else if (item.type === 'directory') {
+                if (isNumberedWa) {
+                  void openWochenaufgabenPresentation(groupId, itemFullPath);
+                  return;
+                }
                 if (isContainerFolder) {
                   toggleFolderBranch(groupId, folderPath, dirPathKey || item.name, branchDefaultExpanded);
                   return;
@@ -10533,9 +10695,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             }}
             >
             {item.type === 'directory' &&
-            !directoryOpensStundePage(item.name, level) &&
-            item.children &&
-            item.children.length > 0 ? (
+            !isNumberedWa &&
+            ((item.children && item.children.length > 0) || isWochenaufgabenDir) ? (
               <IconButton
                 size="small"
                 aria-label={branchExpanded ? 'Zuklappen' : 'Aufklappen'}
@@ -10560,6 +10721,39 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               fontSize: isCorrectionFile(item.name) ? '0.9rem' : '0.75rem',
               color: isCorrectionFile(item.name) ? '#ff9800' : color
             }}>{item.name}</span>
+            {isWochenaufgabenDir && (
+              <Tooltip title="Nächste Wochenaufgabe anlegen">
+                <IconButton
+                  size="small"
+                  aria-label="Wochenaufgabe hinzufügen"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const parentPath = itemFullPath;
+                    const n = nextWochenaufgabeNumber(item.children);
+                    void (async () => {
+                      const lessonPath = `${parentPath}/${n}`;
+                      await ensureWochenaufgabeDeck(lessonPath);
+                      await fetchAssignedFolderContent(groupId, parentPath);
+                      if (folderPath !== parentPath) {
+                        await fetchAssignedFolderContent(groupId, folderPath);
+                      }
+                      void openWochenaufgabenPresentation(groupId, lessonPath);
+                    })();
+                  }}
+                  sx={{
+                    p: 0,
+                    ml: 0.35,
+                    minWidth: 18,
+                    width: 18,
+                    height: 18,
+                    color: WOCHENAUFGABEN_TEXT_COLOR,
+                    '&:hover': { bgcolor: 'rgba(255, 183, 77, 0.25)' },
+                  }}
+                >
+                  <AddIcon sx={{ fontSize: 14 }} />
+                </IconButton>
+              </Tooltip>
+            )}
             
             {/* Icon für Bearbeitung von Prüfungsdateien */}
             {item.type === 'file' && isCorrectionFile(item.name) && (
@@ -10728,6 +10922,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           {/* Unterordner eingerückt in derselben Box — unter einer Stunde keine Dateien */}
           {item.type === 'directory' &&
             !directoryOpensStundePage(item.name, level) &&
+            !isNumberedWa &&
             item.children &&
             item.children.length > 0 &&
             branchExpanded && (
@@ -10737,11 +10932,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 mt: isContainerFolder ? 0.35 : 0.4,
                 mb: 0,
                 pl: isContainerFolder ? 0.75 : 0,
-                borderLeft: isContainerFolder ? '2px solid rgba(21, 101, 192, 0.18)' : 'none',
+                borderLeft: isContainerFolder
+                  ? `2px solid ${isWochenaufgabenDir ? 'rgba(255, 183, 77, 0.55)' : 'rgba(21, 101, 192, 0.18)'}`
+                  : 'none',
               }}
             >
-              {itemsToDisplayItems(filterPdfFiles(item.children)).map((child: any) => 
-                renderItemRecursively(child, level + 1)
+              {(isWochenaufgabenDir
+                ? numberedWochenaufgabeDirs(item.children)
+                : itemsToDisplayItems(filterPdfFiles(item.children))
+              ).map((child: any) =>
+                renderItemRecursively(child, level + 1, inWochenaufgabenBranch || isWochenaufgabenDir),
               )}
             </Box>
           )}
@@ -10761,8 +10961,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         <Box sx={{ 
           p: 1,
           borderRadius: 1.4,
-          bgcolor: '#f8f9fa',
-          border: '1px solid #e9ecef',
+          bgcolor: rootCardBg,
+          border: `1px solid ${rootCardBorder}`,
           transition: 'all 0.2s ease',
           '&:hover': {
             bgcolor: '#f3f4f6'
@@ -10787,7 +10987,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               size="small"
               aria-label={rootExpanded ? 'Ordner zuklappen' : 'Ordner aufklappen'}
               onClick={() => toggleFolderTreeNode(folderTreeNodeKey(groupId, folderPath))}
-              sx={{ width: 22, height: 22, p: 0, color: '#D32F2F' }}
+              sx={{ width: 22, height: 22, p: 0, color: rootHeaderColor }}
             >
               {rootExpanded ? <ExpandLessIcon sx={{ fontSize: 18 }} /> : <ExpandMoreIcon sx={{ fontSize: 18 }} />}
             </IconButton>
@@ -10795,7 +10995,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               variant="body2"
               onClick={() => toggleFolderTreeNode(folderTreeNodeKey(groupId, folderPath))}
               sx={{ 
-              color: '#D32F2F',
+              color: rootHeaderColor,
               fontSize: '0.8rem',
               fontWeight: 700,
               display: 'flex',
@@ -10806,19 +11006,19 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               cursor: 'pointer',
               userSelect: 'none',
             }}>
-              📁 {folderPath.split('/').pop() || folderPath}
+              {rootHeaderIcon} {folderPath.split('/').pop() || folderPath}
             </Typography>
           </Box>
         
           {rootExpanded && (
-          <Box sx={{ mt: 0.65, pl: 1.25, borderLeft: '2px solid rgba(211, 47, 47, 0.2)' }}>
+          <Box sx={{ mt: 0.65, pl: 1.25, borderLeft: rootTreeBorder }}>
             {isLoading ? (
               <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
                 Lade Inhalt...
               </Typography>
             ) : items.length === 0 ? null : (
               <Box>
-                {itemsToDisplayItems(filteredItems).map((item) => renderItemRecursively(item, 0))}
+                {itemsToDisplayItems(filteredItems).map((item) => renderItemRecursively(item, 0, rootIsWochenaufgaben))}
               </Box>
             )}
           </Box>
@@ -10839,8 +11039,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         <Box sx={{ 
           p: 1,
           borderRadius: 1.4,
-          bgcolor: '#f8f9fa',
-          border: '1px solid #e9ecef',
+          bgcolor: rootCardBg,
+          border: `1px solid ${rootCardBorder}`,
           transition: 'all 0.2s ease',
           '&:hover': {
             bgcolor: '#f3f4f6'
@@ -10863,7 +11063,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               size="small"
               aria-label={rootExpanded ? 'Ordner zuklappen' : 'Ordner aufklappen'}
               onClick={() => toggleFolderTreeNode(folderTreeNodeKey(groupId, folderPath))}
-              sx={{ width: 22, height: 22, p: 0, color: '#D32F2F' }}
+              sx={{ width: 22, height: 22, p: 0, color: rootHeaderColor }}
             >
               {rootExpanded ? <ExpandLessIcon sx={{ fontSize: 18 }} /> : <ExpandMoreIcon sx={{ fontSize: 18 }} />}
             </IconButton>
@@ -10871,7 +11071,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               variant="body2"
               onClick={() => toggleFolderTreeNode(folderTreeNodeKey(groupId, folderPath))}
               sx={{ 
-              color: '#D32F2F',
+              color: rootHeaderColor,
               fontSize: '0.8rem',
               fontWeight: 700,
               display: 'flex',
@@ -10882,19 +11082,19 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               cursor: 'inherit',
               userSelect: 'none',
             }}>
-              📁 {folderPath.split('/').pop() || folderPath}
+              {rootHeaderIcon} {folderPath.split('/').pop() || folderPath}
             </Typography>
           </Box>
         
           {rootExpanded && (
-          <Box sx={{ mt: 0.65, pl: 1.25, borderLeft: '2px solid rgba(211, 47, 47, 0.2)' }}>
+          <Box sx={{ mt: 0.65, pl: 1.25, borderLeft: rootTreeBorder }}>
             {isLoading ? (
               <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
                 Lade Inhalt...
               </Typography>
             ) : items.length === 0 ? null : (
               <Box>
-                {itemsToDisplayItems(filteredItems).map((item) => renderItemRecursively(item, 0))}
+                {itemsToDisplayItems(filteredItems).map((item) => renderItemRecursively(item, 0, rootIsWochenaufgaben))}
               </Box>
             )}
           </Box>
@@ -13475,6 +13675,64 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     [groups, assignedFolders],
   );
 
+  const isReiheAssignedToGroup = useCallback(
+    (folderPath: string, groupId: string) => {
+      const want = (folderPath || '').replace(/\\/g, '/');
+      return (assignedFolders[groupId] || []).some((p) => (p || '').replace(/\\/g, '/') === want);
+    },
+    [assignedFolders],
+  );
+
+  const [reiheAssignBusyKey, setReiheAssignBusyKey] = useState<string | null>(null);
+
+  const toggleReiheGroupAssignment = useCallback(
+    async (folderPath: string, groupId: string) => {
+      const busyKey = `${groupId}::${folderPath}`;
+      if (reiheAssignBusyKey === busyKey) return;
+      const currentlyOn = isReiheAssignedToGroup(folderPath, groupId);
+      setReiheAssignBusyKey(busyKey);
+      try {
+        if (currentlyOn) {
+          const res = await fetch(
+            `/api/learning-groups/${groupId}/folders/${encodeURIComponent(folderPath)}`,
+            { method: 'DELETE' },
+          );
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || 'Freigabe konnte nicht entfernt werden');
+          }
+          setAssignedFolders((prev) => ({
+            ...prev,
+            [groupId]: (prev[groupId] || []).filter(
+              (p) => (p || '').replace(/\\/g, '/') !== (folderPath || '').replace(/\\/g, '/'),
+            ),
+          }));
+        } else {
+          const res = await fetch(`/api/learning-groups/${groupId}/folders`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: folderPath }),
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || 'Freigabe konnte nicht gesetzt werden');
+          }
+          setAssignedFolders((prev) => {
+            const next = [...(prev[groupId] || [])];
+            const n = (folderPath || '').replace(/\\/g, '/');
+            if (!next.some((p) => (p || '').replace(/\\/g, '/') === n)) next.push(folderPath);
+            return { ...prev, [groupId]: next };
+          });
+        }
+      } catch (e: any) {
+        showSnackbar(e?.message || 'Freigabe konnte nicht geändert werden', 'error');
+      } finally {
+        setReiheAssignBusyKey(null);
+      }
+    },
+    [reiheAssignBusyKey, isReiheAssignedToGroup, showSnackbar],
+  );
+
   // Katalog der Reihen laden (J-M-Reihen + bereits zugeordnete Ordner)
   useEffect(() => {
     if (mainTabValue !== 0) return;
@@ -13516,7 +13774,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             blockNodes.push({
               ...block,
               type: 'directory',
-              children: units.filter((u: any) => u?.type === 'directory'),
+              children: units.filter(
+                (u: any) => u?.type === 'directory' && !isWochenaufgabenFolderName(u.name || ''),
+              ),
             });
           }
           treeChildren.push({
@@ -15551,66 +15811,104 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 }}
               >
                 <CardContent sx={{ pb: '12px !important' }}>
-                  <Typography
-                    variant="h6"
+                  <Box
                     sx={{
-                      fontSize: '0.9rem',
-                      fontWeight: 600,
-                      mb: 1,
-                      color: colors.primary,
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 0.5,
+                      gap: 1,
+                      flexWrap: 'wrap',
                     }}
                   >
-                    <AutoStoriesIcon sx={{ fontSize: 18 }} />
-                    Aktuelle Arbeits-Reihen
-                  </Typography>
-                  <Autocomplete
-                    multiple
-                    size="small"
-                    loading={reihenOptionsLoading}
-                    options={reihenOptions}
-                    value={workingReihenPaths.map(
-                      (path) =>
-                        reihenOptions.find((o) => o.path === path) || {
-                          path,
-                          label: reiheLabelFromPath(path),
-                        },
-                    )}
-                    onChange={(_e, value) => updateWorkingReihenPaths(value.map((v) => v.path))}
-                    getOptionLabel={(o) =>
-                      o.subject ? `${o.label} (${o.subject})` : o.label || reiheLabelFromPath(o.path)
-                    }
-                    isOptionEqualToValue={(a, b) => a.path === b.path}
-                    filterSelectedOptions
-                    renderTags={(value, getTagProps) =>
-                      value.map((option, index) => {
-                        const { key, ...tagProps } = getTagProps({ index });
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        color: colors.primary,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.4,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <AutoStoriesIcon sx={{ fontSize: 15 }} />
+                      Arbeits-Reihen
+                    </Typography>
+                    <Autocomplete
+                      multiple
+                      size="small"
+                      disableClearable
+                      loading={reihenOptionsLoading}
+                      options={reihenOptions}
+                      value={workingReihenPaths.map(
+                        (path) =>
+                          reihenOptions.find((o) => o.path === path) || {
+                            path,
+                            label: reiheLabelFromPath(path),
+                          },
+                      )}
+                      onChange={(_e, value) => updateWorkingReihenPaths(value.map((v) => v.path))}
+                      getOptionLabel={(o) => o.label || reiheLabelFromPath(o.path)}
+                      isOptionEqualToValue={(a, b) => a.path === b.path}
+                      disableCloseOnSelect
+                      renderTags={() => null}
+                      renderOption={(props, option, { selected }) => {
+                        const { key, ...rest } = props as React.HTMLAttributes<HTMLLIElement> & {
+                          key?: React.Key;
+                        };
                         return (
-                          <Chip
+                          <li
                             key={key}
-                            size="small"
-                            label={option.label}
-                            {...tagProps}
-                            sx={{ fontSize: '0.7rem' }}
-                          />
+                            {...rest}
+                            style={{
+                              ...((rest as { style?: React.CSSProperties }).style || {}),
+                              opacity: selected ? 0.55 : 1,
+                              fontWeight: selected ? 600 : 400,
+                            }}
+                          >
+                            {option.label}
+                            {option.subject ? (
+                              <Typography
+                                component="span"
+                                sx={{ ml: 1, fontSize: '0.7rem', color: 'text.secondary' }}
+                              >
+                                {option.subject}
+                              </Typography>
+                            ) : null}
+                            {selected ? (
+                              <Typography
+                                component="span"
+                                sx={{ ml: 1, fontSize: '0.7rem', color: 'text.secondary' }}
+                              >
+                                · gewählt
+                              </Typography>
+                            ) : null}
+                          </li>
                         );
-                      })
-                    }
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        placeholder={
-                          workingReihenPaths.length === 0
-                            ? 'Reihen auswählen, an denen du gerade arbeitest…'
-                            : 'Weitere Reihe hinzufügen…'
-                        }
-                        sx={{ '& .MuiInputBase-root': { fontSize: '0.8rem' } }}
-                      />
-                    )}
-                    sx={{ maxWidth: 720 }}
-                  />
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          placeholder="Reihe hinzufügen…"
+                        />
+                      )}
+                      sx={{
+                        width: 260,
+                        maxWidth: '100%',
+                        flexShrink: 0,
+                        '& .MuiInputBase-root': {
+                          fontSize: '0.8rem',
+                          pr: '40px !important',
+                        },
+                        '& .MuiAutocomplete-endAdornment': {
+                          right: 6,
+                        },
+                        '& .MuiAutocomplete-clearIndicator': {
+                          display: 'none',
+                        },
+                      }}
+                    />
+                  </Box>
                 </CardContent>
               </Card>
 
@@ -15635,11 +15933,146 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                             boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
                             border: '1px solid #e0e0e0',
                             height: '100%',
+                            position: 'relative',
                           }}
                         >
                           <Box
                             sx={{
+                              position: 'absolute',
+                              top: 6,
+                              right: 6,
+                              zIndex: 2,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.25,
+                            }}
+                          >
+                            {(() => {
+                              const assignedIds = groups
+                                .filter((g) => isReiheAssignedToGroup(folderPath, g.id))
+                                .map((g) => g.id);
+                              const busyHere = Boolean(
+                                reiheAssignBusyKey && reiheAssignBusyKey.endsWith(`::${folderPath}`),
+                              );
+                              return (
+                                <Tooltip title="Freigeschaltet für Lerngruppen">
+                                  <FormControl size="small" sx={{ minWidth: 0 }}>
+                                    <Select
+                                      multiple
+                                      displayEmpty
+                                      value={assignedIds}
+                                      disabled={busyHere || groups.length === 0}
+                                      onChange={(e) => {
+                                        const raw = e.target.value;
+                                        const next =
+                                          typeof raw === 'string'
+                                            ? raw.split(',').filter(Boolean)
+                                            : (raw as string[]);
+                                        const prev = assignedIds;
+                                        const toToggle = [
+                                          ...next.filter((id) => !prev.includes(id)),
+                                          ...prev.filter((id) => !next.includes(id)),
+                                        ];
+                                        void (async () => {
+                                          for (const id of toToggle) {
+                                            await toggleReiheGroupAssignment(folderPath, id);
+                                          }
+                                        })();
+                                      }}
+                                      renderValue={(selected) => {
+                                        const ids = selected as string[];
+                                        if (!ids.length) return '—';
+                                        if (ids.length === 1) {
+                                          return groups.find((g) => g.id === ids[0])?.name || '1';
+                                        }
+                                        return String(ids.length);
+                                      }}
+                                      sx={{
+                                        height: 22,
+                                        fontSize: '0.58rem',
+                                        bgcolor: 'rgba(255,255,255,0.95)',
+                                        '& .MuiOutlinedInput-notchedOutline': {
+                                          borderColor: '#e0e0e0',
+                                        },
+                                        '& .MuiSelect-select': {
+                                          py: 0,
+                                          px: 0.6,
+                                          pr: '18px !important',
+                                          minHeight: 'unset',
+                                          lineHeight: '20px',
+                                          maxWidth: 64,
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          whiteSpace: 'nowrap',
+                                        },
+                                        '& .MuiSelect-icon': {
+                                          right: 0,
+                                          fontSize: '0.9rem',
+                                        },
+                                      }}
+                                      MenuProps={{
+                                        PaperProps: {
+                                          sx: {
+                                            maxHeight: 280,
+                                            '& .MuiMenuItem-root': {
+                                              minHeight: 28,
+                                              py: 0.25,
+                                              fontSize: '0.75rem',
+                                            },
+                                          },
+                                        },
+                                      }}
+                                    >
+                                      {groups.map((g) => (
+                                        <MenuItem key={g.id} value={g.id} dense>
+                                          <Checkbox
+                                            size="small"
+                                            checked={assignedIds.includes(g.id)}
+                                            sx={{ p: 0.4, mr: 0.5 }}
+                                          />
+                                          <ListItemText
+                                            primary={g.name}
+                                            primaryTypographyProps={{ fontSize: '0.75rem' }}
+                                          />
+                                        </MenuItem>
+                                      ))}
+                                    </Select>
+                                  </FormControl>
+                                </Tooltip>
+                              );
+                            })()}
+                            <Tooltip title="Reihe aus Auswahl entfernen">
+                              <IconButton
+                                size="small"
+                                aria-label="Reihe entfernen"
+                                onClick={() =>
+                                  updateWorkingReihenPaths(
+                                    workingReihenPaths.filter((p) => p !== folderPath),
+                                  )
+                                }
+                                sx={{
+                                  flexShrink: 0,
+                                  width: 24,
+                                  height: 24,
+                                  color: '#9e9e9e',
+                                  bgcolor: 'rgba(255,255,255,0.92)',
+                                  border: '1px solid #eee',
+                                  '&:hover': {
+                                    color: '#c62828',
+                                    bgcolor: '#ffebee',
+                                    borderColor: '#ffcdd2',
+                                  },
+                                }}
+                              >
+                                <DeleteIcon sx={{ fontSize: 14 }} />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                          <Box
+                            sx={{
                               ml: 1,
+                              mr: 0.5,
+                              mt: 0.5,
                               p: 1.4,
                               bgcolor: '#fafbfc',
                               borderRadius: 1.4,
@@ -18709,70 +19142,87 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             </Grid>
 
             <Grid item xs={12}>
-              <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
-                <InputLabel>Lerngruppen zuweisen</InputLabel>
-                <Select
-                  multiple
-                  value={selectedGroupIds}
-                  onChange={(e) => {
-                    const value = e.target.value as string[];
-                    console.log('Gruppenauswahl geändert:', value);
-                    setSelectedGroupIds(value);
-                  }}
-                  label="Lerngruppen zuweisen"
-                  renderValue={(selected: string[]) => (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3 }}>
-                      {selected.map((value: string) => {
-                        const group = groups.find(g => g.id === value);
-                        return (
-                          <Chip 
-                            key={value} 
-                            label={group?.name || value} 
-                            size="small" 
-                            sx={{ fontSize: '0.65rem', height: 20 }}
-                          />
-                        );
-                      })}
-                    </Box>
-                  )}
-                >
-                  {groups && groups.length > 0 ? groups.map((group) => (
-                    <MenuItem key={group.id} value={group.id} dense>
-                      <Checkbox 
-                        checked={selectedGroupIds.includes(group.id)}
+              <Autocomplete
+                multiple
+                size="small"
+                options={groups || []}
+                value={(groups || []).filter((g) => selectedGroupIds.includes(g.id))}
+                onChange={(_e, value) => {
+                  setSelectedGroupIds(value.map((g) => g.id));
+                }}
+                getOptionLabel={(g) => g.name || g.id}
+                isOptionEqualToValue={(a, b) => a.id === b.id}
+                disableCloseOnSelect
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => {
+                    const { key, ...tagProps } = getTagProps({ index });
+                    return (
+                      <Chip
+                        key={key}
                         size="small"
+                        label={option.name}
+                        {...tagProps}
+                        sx={{ fontSize: '0.7rem', height: 22 }}
                       />
-                      <ListItemText 
-                        primary={group.name} 
-                        primaryTypographyProps={{ fontSize: '0.8rem' }}
-                      />
-                    </MenuItem>
-                  )) : (
-                    <MenuItem disabled>
-                      <Typography variant="body2" color="textSecondary">
-                        Keine Lerngruppen verfügbar
-                      </Typography>
-                    </MenuItem>
-                  )}
-                </Select>
-              </FormControl>
-              
-              {/* Anzeige der bereits zugewiesenen Lerngruppen */}
-              {false && (
-                <Box sx={{ mt: 1 }}>
-                  <Typography variant="body2" sx={{ 
-                    color: colors.textSecondary, 
-                    fontSize: '0.7rem', 
-                    mb: 0.5,
-                    fontWeight: '500'
-                  }}>
-                    Bereits zugewiesen:
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3 }}>
-                    {/* TODO: Implement assignment display */}
-                  </Box>
-                </Box>
-              )}
+                    );
+                  })
+                }
+                renderOption={(props, option, { selected }) => {
+                  const { key, ...rest } = props as React.HTMLAttributes<HTMLLIElement> & {
+                    key?: React.Key;
+                  };
+                  return (
+                    <li
+                      key={key}
+                      {...rest}
+                      style={{
+                        ...((rest as { style?: React.CSSProperties }).style || {}),
+                        opacity: selected ? 0.55 : 1,
+                        fontWeight: selected ? 600 : 400,
+                      }}
+                    >
+                      {option.name}
+                      {selected ? (
+                        <Typography
+                          component="span"
+                          sx={{ ml: 1, fontSize: '0.7rem', color: 'text.secondary' }}
+                        >
+                          · gewählt
+                        </Typography>
+                      ) : null}
+                    </li>
+                  );
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Lerngruppen zuweisen"
+                    placeholder={
+                      selectedGroupIds.length === 0
+                        ? 'Gruppen suchen und auswählen…'
+                        : 'Weitere Gruppe hinzufügen…'
+                    }
+                    size="small"
+                  />
+                )}
+                sx={{
+                  mb: 1.5,
+                  '& .MuiInputBase-root': {
+                    // Platz für Clear (×) + Dropdown-Pfeil nebeneinander
+                    pr: '66px !important',
+                  },
+                  '& .MuiAutocomplete-endAdornment': {
+                    right: 6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.25,
+                  },
+                  '& .MuiAutocomplete-clearIndicator': {
+                    visibility: 'visible',
+                    mr: 0.25,
+                  },
+                }}
+              />
             </Grid>
           </Grid>
         </DialogContent>

@@ -1,5 +1,7 @@
 /** Arbeits-Reihen im Dashboard-Tab „Reihen“ (localStorage). */
 
+import { isWochenaufgabenFolderName } from './wochenaufgabenFolder';
+
 export const DASHBOARD_WORKING_REIHEN_KEY = 'jm-dashboard-working-reihen-v1';
 
 /** Virtuelle groupId nur für Content-Cache im Reihen-Tab. */
@@ -73,6 +75,7 @@ export function collectReihenFromJmTree(root: FsNode | null | undefined): Workin
       if (block.type !== 'directory') continue;
       for (const unit of block.children || []) {
         if (unit.type !== 'directory') continue;
+        if (isWochenaufgabenFolderName(unit.name || '')) continue;
         const path = normalizePath(unit.path || `${subject.path || subjectName}/${block.name}/${unit.name}`);
         if (!path || seen.has(path)) continue;
         seen.add(path);
@@ -102,6 +105,7 @@ export function mergeReihenOptions(
   for (const raw of assignedPaths) {
     const path = normalizePath(raw);
     if (!path || map.has(path)) continue;
+    if (isWochenaufgabenFolderName(reiheLabelFromPath(path))) continue;
     map.set(path, { path, label: reiheLabelFromPath(path) });
   }
   return Array.from(map.values()).sort((a, b) => {

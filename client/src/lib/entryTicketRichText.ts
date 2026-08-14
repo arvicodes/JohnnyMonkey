@@ -41,6 +41,318 @@ export function entryTicketHasText(value: string): boolean {
   return entryTicketPlainText(value).length > 0;
 }
 
+/**
+ * Operatoren = Befehlswörter / Aufforderungen in Aufgaben (fett auf Karten).
+ * Längere Phrasen zuerst (Sortierung beim Regex).
+ */
+const ENTRY_TICKET_TASK_OPERATORS: readonly string[] = [
+  'Wahr oder falsch',
+  'Beweise oder widerlege',
+  'Nimm Stellung dazu',
+  'Nimm Stellung',
+  'Ziehe Schlussfolgerungen',
+  'Ziehe ein Fazit',
+  'Stelle einen Zusammenhang her',
+  'Stelle gegenüber',
+  'Stelle grafisch dar',
+  'Stelle dar',
+  'Stelle fest',
+  'Stelle auf',
+  'Fasse in eigenen Worten zusammen',
+  'Fasse in Worte',
+  'Fasse zusammen',
+  'Arbeite heraus',
+  'Geben Sie an',
+  'Nennen Sie',
+  'Berechnen Sie',
+  'Bestimmen Sie',
+  'Erklären Sie',
+  'Beschreiben Sie',
+  'Begründen Sie',
+  'Untersuchen Sie',
+  'Vergleichen Sie',
+  'Diskutieren Sie',
+  'Erörtern Sie',
+  'Leite her',
+  'Leite ab',
+  'Gib wieder',
+  'Gib an',
+  'Fülle aus',
+  'Kreuze an',
+  'Kreuz an',
+  'Rechne nach',
+  'Rechne aus',
+  'Rechne um',
+  'Schreibe nieder',
+  'Schreibe auf',
+  'Lies aus',
+  'Lies ab',
+  'Wandle um',
+  'Forme um',
+  'Trage ein',
+  'Trage ab',
+  'Trag ein',
+  'Finde heraus',
+  'Ordne zu',
+  'Ordne ein',
+  'Ordne an',
+  'Hebe hervor',
+  'Setze fort',
+  'Setze ein',
+  'Wende an',
+  'Klammere aus',
+  'Führe aus',
+  'Führe an',
+  'Zähle auf',
+  'Liste auf',
+  'Schätze ab',
+  'Runde auf',
+  'Runde ab',
+  'Weise nach',
+  'Werte aus',
+  'Nimm an',
+  'Sage voraus',
+  'Drücke aus',
+  'Berechne',
+  'Erläutere',
+  'Erkläre',
+  'Nenne',
+  'Beschreibe',
+  'Vergleiche',
+  'Skizziere',
+  'Zeichne',
+  'Löse',
+  'Bestimme',
+  'Ermittle',
+  'Ordne',
+  'Untersuche',
+  'Begründe',
+  'Zeige',
+  'Vereinfache',
+  'Vervollständige',
+  'Ergänze',
+  'Entscheide',
+  'Überprüfe',
+  'Prüfe',
+  'Interpretiere',
+  'Formuliere',
+  'Rechne',
+  'Addiere',
+  'Subtrahiere',
+  'Multipliziere',
+  'Dividiere',
+  'Runde',
+  'Schätze',
+  'Markiere',
+  'Identifiziere',
+  'Definiere',
+  'Analysiere',
+  'Konstruiere',
+  'Beweise',
+  'Widerlege',
+  'Diskutiere',
+  'Erörtere',
+  'Bewerte',
+  'Beurteile',
+  'Klassifiziere',
+  'Kategorisiere',
+  'Sortiere',
+  'Übertrage',
+  'Entwickle',
+  'Entwirf',
+  'Plane',
+  'Unterscheide',
+  'Belege',
+  'Charakterisiere',
+  'Verdeutliche',
+  'Veranschauliche',
+  'Kürze',
+  'Erweitere',
+  'Notiere',
+  'Verfasse',
+  'Erstelle',
+  'Erzeuge',
+  'Implementiere',
+  'Programmiere',
+  'Modelliere',
+  'Simuliere',
+  'Dokumentiere',
+  'Visualisiere',
+  'Teste',
+  'Kontrolliere',
+  'Beobachte',
+  'Betrachte',
+  'Messe',
+  'Miss',
+  'Zähle',
+  'Verbinde',
+  'Zerlege',
+  'Teile',
+  'Faktorisiere',
+  'Potenziere',
+  'Differenziere',
+  'Integriere',
+  'Formalisiere',
+  'Präzisiere',
+  'Verallgemeinere',
+  'Abstrahiere',
+  'Transformiere',
+  'Konvertiere',
+  'Extrahiere',
+  'Filtere',
+  'Gruppiere',
+  'Systematisiere',
+  'Strukturiere',
+  'Verknüpfe',
+  'Kombiniere',
+  'Generiere',
+  'Baue',
+  'Male',
+  'Färbe',
+  'Unterstreiche',
+  'Speichere',
+  'Deklariere',
+  'Initialisiere',
+  'Kommentiere',
+  'Kritisiere',
+  'Reflektiere',
+  'Hinterfrage',
+  'Deute',
+  'Folgere',
+  'Bestätige',
+  'Prognostiziere',
+  'Vermute',
+  'Wähle',
+  'Nutze',
+  'Verwende',
+  'Benutze',
+  'Suche',
+  'Finde',
+  'Erkenne',
+  'Entdecke',
+  'Wiederhole',
+  'Paraphrasiere',
+  'Übersetze',
+  'Überführe',
+  'Protokolliere',
+  'Führe',
+  'Werte',
+  'Arbeite',
+  'Ziehe',
+  'Weise',
+  'Fasse',
+  'Nimm',
+  'Setze',
+  'Wende',
+  'Klammere',
+  'Lies',
+  'Gib',
+  'Stelle',
+  'Leite',
+  'Forme',
+  'Wandle',
+  'Trage',
+  'Kreuze',
+  'Fülle',
+  'Schreibe',
+  'Hebe',
+];
+
+const GERMAN_WORD_CHARS = 'A-Za-zÄÖÜäöüß';
+
+const ENTRY_TICKET_TASK_OP_RE = new RegExp(
+  `(^|[^${GERMAN_WORD_CHARS}])(${[...ENTRY_TICKET_TASK_OPERATORS]
+    .sort((a, b) => b.length - a.length)
+    .map((op) => op.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|')})(?![${GERMAN_WORD_CHARS}])(\\s*:)?`,
+  'gi',
+);
+
+function escapeRegexLiteral(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Trennbare Operatoren (Satzklammer): „Gib den Term an“ → an am Satzende ebenfalls fett.
+ * Direkt benachbartes „Gib an“ bleibt der Phrasen-Erkennung überlassen.
+ */
+const SEPARABLE_OPERATOR_PARTICLES: ReadonlyArray<{ verb: string; particle: string }> = [
+  { verb: 'Geben Sie', particle: 'an' },
+  { verb: 'Gib', particle: 'an' },
+  { verb: 'Gib', particle: 'wieder' },
+  { verb: 'Stelle', particle: 'gegenüber' },
+  { verb: 'Stelle', particle: 'dar' },
+  { verb: 'Stelle', particle: 'fest' },
+  { verb: 'Stelle', particle: 'auf' },
+  { verb: 'Stelle', particle: 'her' },
+  { verb: 'Fasse', particle: 'zusammen' },
+  { verb: 'Leite', particle: 'ab' },
+  { verb: 'Leite', particle: 'her' },
+  { verb: 'Fülle', particle: 'aus' },
+  { verb: 'Kreuze', particle: 'an' },
+  { verb: 'Kreuz', particle: 'an' },
+  { verb: 'Rechne', particle: 'aus' },
+  { verb: 'Rechne', particle: 'um' },
+  { verb: 'Rechne', particle: 'nach' },
+  { verb: 'Schreibe', particle: 'nieder' },
+  { verb: 'Schreibe', particle: 'auf' },
+  { verb: 'Lies', particle: 'ab' },
+  { verb: 'Lies', particle: 'aus' },
+  { verb: 'Wandle', particle: 'um' },
+  { verb: 'Forme', particle: 'um' },
+  { verb: 'Trage', particle: 'ein' },
+  { verb: 'Trage', particle: 'ab' },
+  { verb: 'Trag', particle: 'ein' },
+  { verb: 'Finde', particle: 'heraus' },
+  { verb: 'Ordne', particle: 'zu' },
+  { verb: 'Ordne', particle: 'ein' },
+  { verb: 'Ordne', particle: 'an' },
+  { verb: 'Hebe', particle: 'hervor' },
+  { verb: 'Setze', particle: 'fort' },
+  { verb: 'Setze', particle: 'ein' },
+  { verb: 'Wende', particle: 'an' },
+  { verb: 'Klammere', particle: 'aus' },
+  { verb: 'Führe', particle: 'aus' },
+  { verb: 'Führe', particle: 'an' },
+  { verb: 'Zähle', particle: 'auf' },
+  { verb: 'Liste', particle: 'auf' },
+  { verb: 'Schätze', particle: 'ab' },
+  { verb: 'Runde', particle: 'auf' },
+  { verb: 'Runde', particle: 'ab' },
+  { verb: 'Weise', particle: 'nach' },
+  { verb: 'Werte', particle: 'aus' },
+  { verb: 'Nimm', particle: 'an' },
+  { verb: 'Drücke', particle: 'aus' },
+  { verb: 'Arbeite', particle: 'heraus' },
+  { verb: 'Sage', particle: 'voraus' },
+];
+
+function pushTaskOpMark(marks: string[], label: string): string {
+  const i = marks.length;
+  marks.push(
+    `<strong class="et-task-op" style="font-weight:800">${escapeEntryTicketDisplayText(label)}</strong>`,
+  );
+  return `\uE100${i}\uE101`;
+}
+
+function wrapSeparatedOperatorParticles(s: string, marks: string[]): string {
+  let out = s;
+  for (const { verb, particle } of SEPARABLE_OPERATOR_PARTICLES) {
+    const v = escapeRegexLiteral(verb);
+    const p = escapeRegexLiteral(particle);
+    const re = new RegExp(
+      `(^|[^${GERMAN_WORD_CHARS}])(${v})(?![${GERMAN_WORD_CHARS}])(?!\\s+${p}(?![${GERMAN_WORD_CHARS}]))([^\\n.!?]*)(\\s+)(${p})(?![${GERMAN_WORD_CHARS}])(\\s*:)?(?=\\s*[\\n.!?)"']|$)`,
+      'gi',
+    );
+    out = out.replace(
+      re,
+      (_m, prefix: string, verbPart: string, middle: string, ws: string, part: string, colon?: string) =>
+        `${prefix}${verbPart}${middle}${ws}${pushTaskOpMark(marks, `${part}${colon || ''}`)}`,
+    );
+  }
+  return out;
+}
+
 /** Zeilenumbrüche für Anzeige/Druck (Doppelpunkt → neue Zeile, außer Uhrzeiten). */
 export function formatEntryTicketPromptStructure(text: string): string {
   return (text || '')
@@ -60,14 +372,24 @@ function escapeEntryTicketDisplayText(text: string): string {
 }
 
 /**
- * Klartext → HTML: Operatoren fett, Zeilenumbrüche nach Doppelpunkt.
- * Für Kartenanzeige und Druck.
+ * Klartext → HTML: Befehlswörter (Operatoren) + Rechenzeichen fett, Zeilenumbrüche nach Doppelpunkt.
+ * Für Kartenanzeige im Play-Modus und Druck.
  */
 export function wrapEntryTicketOperatorsHtml(plainText: string): string {
   let s = formatEntryTicketPromptStructure(plainText);
   s = s.replace(/(\d+)\s*\/\s*(\d+)/g, '$1⁄$2');
+
+  // Getrennte Partikel zuerst (Gib … an), dann zusammenhängende Befehlswörter
+  const taskMarks: string[] = [];
+  s = wrapSeparatedOperatorParticles(s, taskMarks);
+  ENTRY_TICKET_TASK_OP_RE.lastIndex = 0;
+  s = s.replace(ENTRY_TICKET_TASK_OP_RE, (_m, prefix: string, op: string, colon?: string) => {
+    const label = `${op}${colon || ''}`;
+    return `${prefix}${pushTaskOpMark(taskMarks, label)}`;
+  });
+
   const parts = s.split(/([+\-−·×∗*÷:/=<>%?])/g);
-  return parts
+  const html = parts
     .map((part) => {
       if (!part) return '';
       if (/^[+\-−·×∗*÷:/=<>%]$/.test(part)) {
@@ -79,6 +401,8 @@ export function wrapEntryTicketOperatorsHtml(plainText: string): string {
       return escapeEntryTicketDisplayText(part).replace(/\n/g, '<br>');
     })
     .join('');
+
+  return html.replace(/\uE100(\d+)\uE101/g, (_m, i) => taskMarks[Number(i)] || '');
 }
 
 function decorateTextNodesForDisplay(root: ParentNode): void {
@@ -92,14 +416,20 @@ function decorateTextNodesForDisplay(root: ParentNode): void {
     if (node.nodeType !== Node.ELEMENT_NODE) return;
     const el = node as Element;
     if (skip.has(el.tagName)) return;
-    if (el.classList?.contains('et-op') || el.classList?.contains('et-q')) return;
+    if (
+      el.classList?.contains('et-op') ||
+      el.classList?.contains('et-q') ||
+      el.classList?.contains('et-task-op')
+    ) {
+      return;
+    }
     Array.from(node.childNodes).forEach(walk);
   };
   walk(root as unknown as Node);
   for (const textNode of nodes) {
     const raw = textNode.textContent || '';
     if (!raw.trim()) continue;
-    if (!/[+\-−·×∗*÷:/=<>%?]/.test(raw)) continue;
+    // Immer formatieren (Aufgabewörter auch ohne Rechenzeichen)
     const html = wrapEntryTicketOperatorsHtml(raw);
     const parent = textNode.parentNode;
     if (!parent) continue;

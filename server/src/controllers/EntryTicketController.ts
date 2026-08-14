@@ -167,6 +167,15 @@ const normalizeCustomSetPayload = (raw: unknown): EntryTicketCustomSetPayload | 
   };
 };
 
+/** Lehrer-Notizen nie in Play-/SuS-Payloads (nur im privaten Fragenset-Speicher). */
+function withoutCustomSetNotes(
+  set: EntryTicketCustomSetPayload | undefined | null,
+): EntryTicketCustomSetPayload | undefined {
+  if (!set) return undefined;
+  const { notes: _omit, ...rest } = set;
+  return rest;
+}
+
 const parsePayload = (raw: string | null | undefined): EntryTicketPayload | null => {
   if (!raw) return null;
   try {
@@ -179,7 +188,7 @@ const parsePayload = (raw: string | null | undefined): EntryTicketPayload | null
       taskSeed: normalizeTaskSeed(parsed.taskSeed),
       materialLessonPath: normalizeMaterialLessonPath(parsed.materialLessonPath) ?? undefined,
       tasks: normalizeTasksPayload(parsed.tasks),
-      customSet: normalizeCustomSetPayload(parsed.customSet),
+      customSet: withoutCustomSetNotes(normalizeCustomSetPayload(parsed.customSet)),
       ...(typeof parsed.completedAt === 'string' && parsed.completedAt.trim()
         ? { completedAt: parsed.completedAt.trim() }
         : {}),
@@ -525,7 +534,7 @@ export class EntryTicketController {
       const materialLessonPath =
         normalizeMaterialLessonPath(req.body?.lessonPath ?? req.body?.materialLessonPath) ?? null;
       const tasks = normalizeTasksPayload(req.body?.tasks);
-      const customSet = normalizeCustomSetPayload(req.body?.customSet);
+      const customSet = withoutCustomSetNotes(normalizeCustomSetPayload(req.body?.customSet));
       const syncTasks = req.body?.syncTasks === true || req.body?.preserveSession === true;
 
       const resolveExisting = async (lessonPath: string): Promise<EntryTicketPayload | null> => {
@@ -695,7 +704,7 @@ export class EntryTicketController {
         typeof req.body?.heroImageIndex === 'number' || typeof req.body?.heroImageIndex === 'string'
           ? clampHeroIndex(Number(req.body.heroImageIndex))
           : undefined;
-      const bodyCustomSet = normalizeCustomSetPayload(req.body?.customSet);
+      const bodyCustomSet = withoutCustomSetNotes(normalizeCustomSetPayload(req.body?.customSet));
 
       const enrichPayload = (base: EntryTicketPayload | null): EntryTicketPayload => {
         const startedAt = base?.startedAt || new Date().toISOString();

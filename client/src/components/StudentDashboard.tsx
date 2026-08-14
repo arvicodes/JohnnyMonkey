@@ -93,6 +93,19 @@ import { openStudentLessonMaterialFile } from '../lib/openStudentLessonMaterial'
 import { CollaborativeFlashcardSessionModal } from './CollaborativeFlashcardSessionModal';
 import StudentLessonMaterialsPanel from './StudentLessonMaterialsPanel';
 import PresentationHomeworkTodoModal from './presentation/PresentationHomeworkTodoModal';
+import {
+  WOCHENAUFGABEN_BG,
+  WOCHENAUFGABEN_BORDER,
+  WOCHENAUFGABEN_TEXT_COLOR,
+  findCachedWochenaufgabenSibling,
+  isNumberedWochenaufgabeName,
+  isNumberedWochenaufgabePath,
+  isWochenaufgabenFolderName,
+  isWochenaufgabenFolderPath,
+  mergeWochenaufgabenIntoFolderTree,
+  numberedWochenaufgabeDirs,
+  parseReadApiChildren,
+} from '../lib/wochenaufgabenFolder';
 const COLLAB_BEACON_LS_KEY = 'jm_collab_fc_beacon_seen_v1';
 function loadCollabBeaconSeen(): Record<string, string> {
   try {
@@ -137,6 +150,7 @@ function isSeriesHeadingFolderNameStudent(name: string): boolean {
 }
 
 function directoryIsStundeFolderForStudentTree(name: string, _level: number): boolean {
+  if (isWochenaufgabenFolderName(name)) return false;
   if (isChapterHeadingFolderNameStudent(name)) return false;
   if (isSeriesHeadingFolderNameStudent(name)) return false;
   // Themenblock „01 Basiswissen“ auf jeder Ebene — keine Stunde (wie Lehrer-Dashboard)
@@ -3168,6 +3182,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         // Lade die geteilten Dateien und Freigabe „Gemeinsame Eingabe“ für diese Gruppe
         fetchSharedFilesForGroup(groupId);
         fetchLessonSharedInputSharesForGroup(groupId);
+        void fetchSiblingWochenaufgabenFolder(groupId, folderPath, items);
       }
     } catch (error) {
       console.error('Fehler beim Laden des Ordnerinhalts:', error);
@@ -3176,6 +3191,45 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         ...prev,
         [`${groupId}:${folderPath}`]: false
       }));
+    }
+  };
+
+  const fetchSiblingWochenaufgabenFolder = async (
+    groupId: string,
+    folderPath: string,
+    items: any[],
+  ) => {
+    if (isWochenaufgabenFolderName(folderPath.split('/').pop() || '')) return;
+    if (items.some((item) => item?.type === 'directory' && isWochenaufgabenFolderName(item.name || ''))) return;
+    const parent = folderPath.replace(/\\/g, '/').replace(/\/+$/, '').split('/').slice(0, -1).join('/');
+    if (!parent) return;
+    try {
+      const timestamp = Date.now();
+      const parentRes = await fetch(
+        `/api/file-system-paths/read?path=${encodeURIComponent(parent)}&t=${timestamp}`,
+        { cache: 'no-cache', headers: { 'Cache-Control': 'no-cache' } },
+      );
+      if (!parentRes.ok) return;
+      const siblings = parseReadApiChildren(await parentRes.json());
+      const wochen = siblings.find(
+        (item) => item?.type === 'directory' && isWochenaufgabenFolderName(String(item.name || '')),
+      );
+      const wochenPath = ((wochen?.path as string) || (wochen?.name ? `${parent}/${wochen.name}` : ''))
+        .replace(/\\/g, '/');
+      if (!wochenPath) return;
+      const cacheKey = `${groupId}:${wochenPath}`;
+      const wochenRes = await fetch(
+        `/api/file-system-paths/read?path=${encodeURIComponent(wochenPath)}&recursive=true&t=${Date.now()}`,
+        { cache: 'no-cache', headers: { 'Cache-Control': 'no-cache' } },
+      );
+      if (!wochenRes.ok) return;
+      const wochenItems = parseReadApiChildren(await wochenRes.json());
+      setAssignedFolderContents((prev) => {
+        if (prev[cacheKey]) return prev;
+        return { ...prev, [cacheKey]: wochenItems };
+      });
+    } catch (error) {
+      console.error('Wochenaufgaben-Ordner laden fehlgeschlagen:', error);
     }
   };
 
@@ -3200,8 +3254,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 
   // Neue Funktion zum Rendern der echten Ordner-Vorschau (exakt wie im Screenshot)
   const renderAssignedFolderPreview = (groupId: string, folderPath: string) => {
-    const items = assignedFolderContents[`${groupId}:${folderPath}`] || [];
+    const rawItems = assignedFolderContents[`${groupId}:${folderPath}`] || [];
+    const siblingWochen = findCachedWochenaufgabenSibling(groupId, folderPath, assignedFolderContents);
+    const items = mergeWochenaufgabenIntoFolderTree(rawItems, folderPath, siblingWochen);
     const isLoading = loadingFolderContents[`${groupId}:${folderPath}`] || false;
+    const rootIsWochenaufgaben = isWochenaufgabenFolderName(folderPath.split('/').pop() || '');
     
     console.log(`🎨 Rendere Ordner-Vorschau für ${folderPath}, Items:`, items.length);
     
@@ -3242,13 +3299,22 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     const renderItemRecursively = (
       item: any,
       level: number = 0,
-      view: 'dashboard' | 'modalMaterials' = 'dashboard'
+      view: 'dashboard' | 'modalMaterials' = 'dashboard',
+      inWochenaufgaben = false,
     ) => {
       // Prüfe, ob die Datei für diese Gruppe freigegeben ist
       const groupSharedFiles = sharedFiles[groupId] || [];
       // K_ Dateien müssen explizit freigegeben werden (über Checkbox im Lehrerdashboard)
       const isFileShared =
         item.type === 'file' ? isStudentSharedFile(item, groupSharedFiles) : false;
+      const isWochenaufgabenDir =
+        item.type === 'directory' && isWochenaufgabenFolderName(item.name || '');
+      const isNumberedWa =
+        item.type === 'directory' &&
+        (isNumberedWochenaufgabePath(item.path || '') ||
+          (inWochenaufgaben && isNumberedWochenaufgabeName(item.name || '')));
+      const inWochenaufgabenBranch =
+        inWochenaufgaben || isWochenaufgabenDir || isWochenaufgabenFolderPath(item.path || '');
       
       // Wenn es eine Datei ist und NICHT freigegeben oder kein Unterrichtsmaterial, verberge sie
       if (item.type === 'file' && (!isFileShared || !isStudentVisibleLessonMaterialFile(item.name || ''))) {
@@ -3257,7 +3323,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 
       // Ordner ohne freigegebene Dateien ausblenden — außer Stunde mit freigegebener Leinwand
       // oder die vom Lehrer gerade laufend gesetzte Stunde (Moderator-E)
-      if (item.type === 'directory' && !hasSharedFiles(item)) {
+      if (item.type === 'directory' && !hasSharedFiles(item) && !isWochenaufgabenDir && !isNumberedWa) {
         const stundeWithLeinwand =
           view === 'dashboard' &&
           directoryIsStundeFolderForStudentTree(item.name, level) &&
@@ -3276,7 +3342,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       // Ausnahme: gerade laufende Lehrer-Stunde → Moderator-E sichtbar halten
       if (
         item.type === 'directory' &&
-        directoryIsStundeFolderForStudentTree(item.name, level)
+        directoryIsStundeFolderForStudentTree(item.name, level) &&
+        !isWochenaufgabenFolderName(item.name || '') &&
+        !isNumberedWa
       ) {
         const hasShared =
           hasSharedFiles(item) || isLessonSharedInputShared(groupId, item.path);
@@ -3307,8 +3375,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       let fontWeight = 400;
       
       if (item.type === 'directory') {
-        // Exakte Icons und Farben aus dem Screenshot
-        if (level === 0) {
+        if (isWochenaufgabenDir) {
+          icon = '📅';
+          color = WOCHENAUFGABEN_TEXT_COLOR;
+          fontWeight = 700;
+        } else if (isNumberedWa || inWochenaufgabenBranch) {
+          icon = '📝';
+          color = WOCHENAUFGABEN_TEXT_COLOR;
+          fontWeight = 700;
+        } else if (level === 0) {
           // Level 0: Top-Level (wie "3D Druck", "Micro Bit", "Ganze und rationale Zahlen")
           icon = '📚'; // Bücher für Hauptthemen
           color = '#9c27b0'; // Lila
@@ -3336,7 +3411,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         }
       } else {
         // Dateien
-        if (isCorrectionFile(item.name)) {
+        if (inWochenaufgabenBranch) {
+          icon = '📄';
+          color = WOCHENAUFGABEN_TEXT_COLOR;
+          fontWeight = 600;
+        } else if (isCorrectionFile(item.name)) {
           // Klassenarbeiten/Hausaufgabenüberprüfungen bekommen ein spezielles, größeres Icon
           icon = '📝'; // Klassenarbeit/HÜ-Icon
           color = '#ff9800'; // Gelb-orange für Klassenarbeiten/HÜ
@@ -3639,8 +3718,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       {/* Rekursive Anzeige für ALLE Unterordner und Dateien - IMMER aufgeklappt */}
       {item.type === 'directory' && item.children && item.children.length > 0 && branchExpanded && (
         <Box sx={{ ml: 2, mb: 0.7 }}>
-          {filterWbFilesForStudentPreview(item.children).map((child: any) =>
-            renderItemRecursively(child, level + 1, view)
+          {(isWochenaufgabenDir
+            ? numberedWochenaufgabeDirs(item.children)
+            : filterWbFilesForStudentPreview(item.children)
+          ).map((child: any) =>
+            renderItemRecursively(child, level + 1, view, inWochenaufgabenBranch || isWochenaufgabenDir),
           )}
         </Box>
       )}
@@ -3665,11 +3747,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             sx={{
               p: 1.4,
               borderRadius: 1.4,
-              bgcolor: '#f8f9fa',
-              border: '1px solid #e9ecef',
+              bgcolor: rootIsWochenaufgaben ? WOCHENAUFGABEN_BG : '#f8f9fa',
+              border: `1px solid ${rootIsWochenaufgaben ? WOCHENAUFGABEN_BORDER : '#e9ecef'}`,
               transition: 'all 0.2s ease',
               '&:hover': {
-                bgcolor: '#e9ecef',
+                bgcolor: rootIsWochenaufgaben ? '#fff3e0' : '#e9ecef',
               },
             }}
           >
@@ -3684,14 +3766,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     [key]: !isFolderTreeNodeExpanded(prev, key, true),
                   }));
                 }}
-                sx={{ width: 24, height: 24, p: 0, color: '#D32F2F' }}
+                sx={{ width: 24, height: 24, p: 0, color: rootIsWochenaufgaben ? WOCHENAUFGABEN_TEXT_COLOR : '#D32F2F' }}
               >
                 {rootExpanded ? <ExpandLessIcon sx={{ fontSize: 18 }} /> : <ExpandMoreIcon sx={{ fontSize: 18 }} />}
               </IconButton>
               <Typography
                 variant="body2"
                 sx={{
-                  color: '#D32F2F',
+                  color: rootIsWochenaufgaben ? WOCHENAUFGABEN_TEXT_COLOR : '#D32F2F',
                   fontSize: '0.75rem',
                   fontWeight: 600,
                   display: 'flex',
@@ -3700,7 +3782,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   flex: 1,
                 }}
               >
-                📁 {folderPath.split('/').pop() || folderPath}
+                {rootIsWochenaufgaben ? '📅' : '📁'} {folderPath.split('/').pop() || folderPath}
               </Typography>
             </Box>
           </Box>
@@ -3713,7 +3795,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
               </Typography>
             ) : items.length === 0 ? null : (
               <Box>
-                {filteredItems.map((item) => renderItemRecursively(item, 0, 'dashboard')).filter((el) => el !== null)}
+                {filteredItems.map((item) => renderItemRecursively(item, 0, 'dashboard', rootIsWochenaufgaben)).filter((el) => el !== null)}
               </Box>
             )}
           </Box>

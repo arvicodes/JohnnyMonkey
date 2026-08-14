@@ -94,6 +94,7 @@ const richTextSx = {
   '& u': { textDecoration: 'underline' },
   '& .et-op': { fontWeight: '800 !important', color: '#ef6c00' },
   '& .et-q': { fontWeight: '800 !important', color: '#d32f2f' },
+  '& .et-task-op': { fontWeight: '800 !important', color: 'inherit' },
   '&::after': {
     content: '""',
     display: 'table',
@@ -1138,7 +1139,7 @@ function parseSafeStundeReturnTo(search: string): string | null {
   }
 }
 
-/** Snapshot fürs Server-Signal — Moderator kann dasselbe KI-/Reihen-Set laden. */
+/** Snapshot fürs Server-Signal — ohne Lehrer-Notizen (die gehören nicht in den Play-Modus). */
 function snapshotCustomSetForSignal(set: EntryTicketCustomSet | null | undefined) {
   if (!set) return undefined;
   return {
@@ -4045,41 +4046,6 @@ export default function EntryTicketPage() {
                   </Box>
                 </Box>
                 )}
-
-                {isTeacher && isCustomSetActive && activeCustomSet ? (
-                  <TextField
-                    size="small"
-                    multiline
-                    minRows={1}
-                    maxRows={3}
-                    value={activeCustomSet.notes || ''}
-                    onChange={(e) =>
-                      patchActiveCustomSet({
-                        ...activeCustomSet,
-                        notes: e.target.value.slice(0, 4000),
-                      })
-                    }
-                    placeholder="Notizen nur für dich…"
-                    sx={{
-                      width: '100%',
-                      maxWidth: 864,
-                      mx: 'auto',
-                      '& .MuiOutlinedInput-root': {
-                        bgcolor: '#fffde7',
-                        '& fieldset': { borderColor: '#fff59d' },
-                        '&:hover fieldset': { borderColor: '#fbc02d' },
-                        '&.Mui-focused fieldset': { borderColor: '#f9a825' },
-                      },
-                      '& .MuiInputBase-input': {
-                        fontSize: '0.72rem',
-                        lineHeight: 1.35,
-                        color: '#5d4037',
-                        py: 0.6,
-                      },
-                    }}
-                    inputProps={{ 'aria-label': 'Persönliche Notizen' }}
-                  />
-                ) : null}
 
                 {!sessionDone ? (
                   <Box

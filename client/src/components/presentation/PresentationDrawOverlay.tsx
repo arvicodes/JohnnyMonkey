@@ -61,7 +61,7 @@ type ManipState =
       id: string;
       handle: ShapeHandle;
       snapshot: PresentationStroke;
-    };
+      };
 
 function getDrawCtx(canvas: HTMLCanvasElement): CanvasRenderingContext2D | null {
   // desynchronized: niedrigere Latenz auf unterstützten Browsern (iPad/Chrome)
@@ -95,7 +95,7 @@ function applyFreehandStyle(
   ctx.lineJoin = 'round';
 }
 
-/** Stift/Maus zeichnen; Finger bleiben für Pinch/Pan frei (Palm-Rejection). */
+/** Stift/Maus zeichnen; Finger/Handfläche bleiben für Pinch frei (Palm-Rejection). */
 function isInkPointer(tool: PresentationDrawTool, pointerType: string): boolean {
   if (tool === 'pen' || tool === 'marker') {
     return pointerType === 'pen' || pointerType === 'mouse';
@@ -120,6 +120,8 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawingRef = useRef<PresentationStroke | null>(null);
   const inkPointerIdRef = useRef<number | null>(null);
+  /** true solange ein Apple-Pencil-/Maus-Strich aktiv ist */
+  const inkIsPenRef = useRef(false);
   const lastInkPtRef = useRef<{ x: number; y: number } | null>(null);
   const eraserPathRef = useRef<{ x: number; y: number }[]>([]);
   const eraseBaseRef = useRef<PresentationStroke[]>(strokes);
@@ -127,9 +129,15 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   const manipRef = useRef<ManipState | null>(null);
   const previewStrokesRef = useRef<PresentationStroke[] | null>(null);
   const strokesRef = useRef(strokes);
-  const activeTouchIdsRef = useRef<Set<number>>(new Set());
+  const onStrokesChangeRef = useRef(onStrokesChange);
+  const commitRafRef = useRef<number | null>(null);
+  const pendingCommitRef = useRef<PresentationStroke[] | null>(null);
+
+  onStrokesChangeRef.current = onStrokesChange;
 
   useEffect(() => {
+    // Während aktivem Strich Props nicht überschreiben — sonst „verschwindet“ der Draft
+    if (drawingRef.current || inkPointerIdRef.current != null) return;
     strokesRef.current = strokes;
     if (tool !== 'eraser') {
       strokesDuringEraseRef.current = strokes;
@@ -186,8 +194,36 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   }, [strokesKey, tool, enabled, readOnly, selectedStrokeId]);
 
   useEffect(() => {
+    // Kein Full-Redraw mitten im Strich (würde Apple Pencil stocken lassen)
+    if (drawingRef.current || inkPointerIdRef.current != null) return;
     redraw();
   }, [redraw]);
+
+  useEffect(
+    () => () => {
+      if (commitRafRef.current != null) {
+        cancelAnimationFrame(commitRafRef.current);
+        commitRafRef.current = null;
+      }
+      if (pendingCommitRef.current) {
+        onStrokesChangeRef.current(pendingCommitRef.current);
+        pendingCommitRef.current = null;
+      }
+    },
+    [],
+  );
+
+  const scheduleStrokesCommit = (next: PresentationStroke[]) => {
+    strokesRef.current = next;
+    pendingCommitRef.current = next;
+    if (commitRafRef.current != null) return;
+    commitRafRef.current = requestAnimationFrame(() => {
+      commitRafRef.current = null;
+      const payload = pendingCommitRef.current;
+      pendingCommitRef.current = null;
+      if (payload) onStrokesChangeRef.current(payload);
+    });
+  };
 
   const replaceStroke = (list: PresentationStroke[], id: string, next: PresentationStroke) =>
     list.map((s) => (s.id === id ? next : s));
@@ -210,7 +246,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     const shape = toolToShape(tool);
     if (shape) {
       drawingRef.current = {
-        id: `s-${Date.now()}`,
+        id: `s-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         points: [pt, pt],
         color: strokeColor,
         lineWidth: currentLineWidth,
@@ -222,7 +258,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       return;
     }
     drawingRef.current = {
-      id: `s-${Date.now()}`,
+      id: `s-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       points: [pt],
       color: strokeColor,
       lineWidth: currentLineWidth,
@@ -268,7 +304,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
 
   const commitPreview = () => {
     if (previewStrokesRef.current) {
-      onStrokesChange(previewStrokesRef.current);
+      scheduleStrokesCommit(previewStrokesRef.current);
       previewStrokesRef.current = null;
     }
   };
@@ -293,6 +329,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
 
   const finishInkStroke = () => {
     inkPointerIdRef.current = null;
+    inkIsPenRef.current = false;
     lastInkPtRef.current = null;
     if (!drawingRef.current) return;
 
@@ -305,7 +342,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
         redraw();
         return;
       }
-      onStrokesChange([...strokesRef.current, draft]);
+      scheduleStrokesCommit([...strokesRef.current, draft]);
       onSelectedStrokeIdChange?.(draft.id);
       redraw();
       return;
@@ -315,41 +352,33 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       redraw();
       return;
     }
-    onStrokesChange([...strokesRef.current, draft]);
-    // Punkte sind schon inkrementell gezeichnet — Full-Redraw hält Layer konsistent
+    // Sofort lokal committen — React-Update erst im nächsten Frame (kein Pencil-Lag)
+    scheduleStrokesCommit([...strokesRef.current, draft]);
     redraw();
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (readOnly || !enabled) return;
 
-    if (e.pointerType === 'touch') {
-      activeTouchIdsRef.current.add(e.pointerId);
-      // Zwei Finger → Pinch-Zoom (Stage), kein Zeichnen / kein Capture
-      if (activeTouchIdsRef.current.size >= 2) {
-        if (inkPointerIdRef.current != null) {
-          try {
-            e.currentTarget.releasePointerCapture(inkPointerIdRef.current);
-          } catch {
-            /* ignore */
-          }
-          drawingRef.current = null;
-          inkPointerIdRef.current = null;
-          lastInkPtRef.current = null;
-          redraw();
-        }
-        return;
-      }
+    // Handfläche bei Stift/Marker: ignorieren, Strich nie abbrechen
+    if (e.pointerType === 'touch' && (tool === 'pen' || tool === 'marker')) {
+      e.preventDefault();
+      return;
     }
 
     if (!isInkPointer(tool, e.pointerType)) {
-      // Finger bei Stift/Marker: durchlassen für Pinch (kein Capture)
       return;
     }
 
     e.preventDefault();
-    e.currentTarget.setPointerCapture(e.pointerId);
+    e.stopPropagation();
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
     inkPointerIdRef.current = e.pointerId;
+    inkIsPenRef.current = e.pointerType === 'pen' || e.pointerType === 'mouse';
     const pt = toCanvasPoint(e);
 
     if (tool === 'select') {
@@ -406,8 +435,8 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (readOnly || !enabled) return;
 
-    // Multitouch während Zeichnen → abbrechen (Pinch hat Vorrang)
-    if (e.pointerType === 'touch' && activeTouchIdsRef.current.size >= 2) {
+    if (e.pointerType === 'touch' && (tool === 'pen' || tool === 'marker')) {
+      e.preventDefault();
       return;
     }
 
@@ -465,8 +494,9 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (e.pointerType === 'touch') {
-      activeTouchIdsRef.current.delete(e.pointerId);
+    if (e.pointerType === 'touch' && (tool === 'pen' || tool === 'marker')) {
+      e.preventDefault();
+      return;
     }
 
     if (readOnly || !enabled) return;
@@ -484,16 +514,18 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       commitPreview();
       manipRef.current = null;
       inkPointerIdRef.current = null;
+      inkIsPenRef.current = false;
       redraw();
       return;
     }
 
     if (tool === 'eraser') {
       if (eraserPathRef.current.length > 0) {
-        onStrokesChange(applyEraserToStrokes(eraseBaseRef.current, eraserPathRef.current));
+        scheduleStrokesCommit(applyEraserToStrokes(eraseBaseRef.current, eraserPathRef.current));
       }
       eraserPathRef.current = [];
       inkPointerIdRef.current = null;
+      inkIsPenRef.current = false;
       redraw();
       return;
     }
@@ -502,13 +534,20 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   };
 
   const onPointerCancel = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    // Handflächen-Touch-Cancel: ignorieren (Stiftstrich weiterlaufen lassen)
     if (e.pointerType === 'touch') {
-      activeTouchIdsRef.current.delete(e.pointerId);
+      e.preventDefault();
+      return;
+    }
+    // Stift-Cancel (selten, z. B. iOS Palm-Rejection): Strich behalten, nicht verwerfen
+    if (inkPointerIdRef.current === e.pointerId && inkIsPenRef.current && drawingRef.current) {
+      finishInkStroke();
+      return;
     }
     if (inkPointerIdRef.current === e.pointerId) {
-      // Abbruch: Entwurf verwerfen statt halb committen
       drawingRef.current = null;
       inkPointerIdRef.current = null;
+      inkIsPenRef.current = false;
       lastInkPtRef.current = null;
       manipRef.current = null;
       previewStrokesRef.current = null;
@@ -516,6 +555,26 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       redraw();
     }
   };
+
+  // Native Listener: preventDefault auf Touch muss non-passive sein (React ist oft passive)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !enabled || readOnly) return;
+
+    const blockTouch = (ev: TouchEvent) => {
+      // Handauflage (1+ Touches): keine Browser-Gesten/Scroll/Zoom — Stift bleibt frei
+      ev.preventDefault();
+    };
+
+    canvas.addEventListener('touchstart', blockTouch, { passive: false });
+    canvas.addEventListener('touchmove', blockTouch, { passive: false });
+    canvas.addEventListener('touchend', blockTouch, { passive: false });
+    return () => {
+      canvas.removeEventListener('touchstart', blockTouch);
+      canvas.removeEventListener('touchmove', blockTouch);
+      canvas.removeEventListener('touchend', blockTouch);
+    };
+  }, [enabled, readOnly]);
 
   const cursor =
     readOnly || !enabled
