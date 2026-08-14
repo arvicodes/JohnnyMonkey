@@ -110,3 +110,66 @@ export function attachPresentTrackpadZoom(
   el.addEventListener('wheel', onWheel, { passive: false });
   return () => el.removeEventListener('wheel', onWheel);
 }
+
+function touchDistance(touches: TouchList): number {
+  if (touches.length < 2) return 0;
+  const a = touches[0];
+  const b = touches[1];
+  return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+}
+
+/**
+ * Zwei-Finger-Pinch auf dem iPad (und anderen Touch-Geräten).
+ * Capture-Phase: greift auch, wenn die Zeichen-Canvas oben liegt.
+ */
+export function attachPresentTouchPinchZoom(
+  el: HTMLElement | null,
+  zoomRef: { current: number },
+  setZoom: (next: number) => void,
+): () => void {
+  if (!el) return () => undefined;
+
+  let pinchStartDist = 0;
+  let pinchStartZoom = 1;
+  let pinching = false;
+
+  const onTouchStart = (e: TouchEvent) => {
+    if (e.touches.length === 2) {
+      pinchStartDist = touchDistance(e.touches);
+      pinchStartZoom = zoomRef.current;
+      pinching = pinchStartDist > 8;
+    } else if (e.touches.length < 2) {
+      pinching = false;
+      pinchStartDist = 0;
+    }
+  };
+
+  const onTouchMove = (e: TouchEvent) => {
+    if (!pinching || e.touches.length !== 2 || pinchStartDist < 8) return;
+    e.preventDefault();
+    const d = touchDistance(e.touches);
+    if (d < 1) return;
+    const next = clampPresentZoomSmooth(pinchStartZoom * (d / pinchStartDist));
+    if (Math.abs(next - zoomRef.current) < 0.001) return;
+    setZoom(next);
+  };
+
+  const onTouchEnd = (e: TouchEvent) => {
+    if (e.touches.length < 2) {
+      pinching = false;
+      pinchStartDist = 0;
+    }
+  };
+
+  el.addEventListener('touchstart', onTouchStart, { passive: true, capture: true });
+  el.addEventListener('touchmove', onTouchMove, { passive: false, capture: true });
+  el.addEventListener('touchend', onTouchEnd, { passive: true, capture: true });
+  el.addEventListener('touchcancel', onTouchEnd, { passive: true, capture: true });
+
+  return () => {
+    el.removeEventListener('touchstart', onTouchStart, true);
+    el.removeEventListener('touchmove', onTouchMove, true);
+    el.removeEventListener('touchend', onTouchEnd, true);
+    el.removeEventListener('touchcancel', onTouchEnd, true);
+  };
+}

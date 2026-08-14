@@ -70,6 +70,15 @@ import {
   sortLessonPlanCoreOrder,
 } from '../lib/lessonPlanCore';
 import {
+  DASHBOARD_REIHEN_CONTENT_GROUP,
+  collectReihenFromJmTree,
+  loadWorkingReihenPaths,
+  mergeReihenOptions,
+  reiheLabelFromPath,
+  saveWorkingReihenPaths,
+  type WorkingReiheOption,
+} from '../lib/dashboardWorkingReihen';
+import {
   Box,
   Typography,
   Button,
@@ -96,6 +105,7 @@ import {
   Select,
   MenuItem,
   Chip,
+  Autocomplete,
   Avatar,
   Divider,
   Alert,
@@ -5876,12 +5886,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     severity: 'success' as 'success' | 'error' | 'warning',
   });
   const [mainTabValue, setMainTabValue] = useState(0);
+  /** Ausgewählte Arbeits-Reihen (Dashboard-Tab „Reihen“). */
+  const [workingReihenPaths, setWorkingReihenPaths] = useState<string[]>(() => loadWorkingReihenPaths());
+  const [reihenOptions, setReihenOptions] = useState<WorkingReiheOption[]>([]);
+  const [reihenOptionsLoading, setReihenOptionsLoading] = useState(false);
 
   useEffect(() => {
     if (!focusGroupId || groups.length === 0) return;
     if (!groups.some((g) => g.id === focusGroupId)) return;
 
-    setMainTabValue(0);
+    setMainTabValue(1); // Lerngruppen (Reihen = 0)
     setExpandedGroups((prev) => ({ ...prev, [focusGroupId]: true }));
 
     const scrollToGroup = () => {
@@ -8346,7 +8360,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
         }));
 
         // Lade die File Shares für diese Gruppe
-        fetchFileSharesForGroup(groupId);
+        if (groupId && groupId !== DASHBOARD_REIHEN_CONTENT_GROUP) {
+          fetchFileSharesForGroup(groupId);
+        }
 
         // Verarbeitungshistorie wird jetzt im useEffect geladen
       }
@@ -8378,6 +8394,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
       };
     });
   };
+
+  const updateWorkingReihenPaths = useCallback((paths: string[]) => {
+    const next = paths.map((p) => p.replace(/\\/g, '/').replace(/\/+$/, '')).filter(Boolean);
+    setWorkingReihenPaths(next);
+    saveWorkingReihenPaths(next);
+  }, []);
+
   function extractLessonKeywordFromComment(text: string | undefined | null): string {
     if (!text) return '';
     const m = text.match(/\[K:(.*?)\]/);
@@ -10167,7 +10190,12 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   };
 
   // Neue Funktion zum Rendern der echten Ordner-Vorschau
-  const renderAssignedFolderPreview = (groupId: string, folderPath: string) => {
+  const renderAssignedFolderPreview = (
+    groupId: string,
+    folderPath: string,
+    opts?: { enableDrag?: boolean },
+  ) => {
+    const enableDrag = opts?.enableDrag !== false;
     const items = assignedFolderContents[`${groupId}:${folderPath}`] || [];
     const isLoading = loadingFolderContents[`${groupId}:${folderPath}`] || false;
     
@@ -10726,6 +10754,82 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       folderTreeNodeKey(groupId, folderPath),
       true
     );
+
+    const folderCard = (
+      <Box sx={{ mb: enableDrag ? 0 : 0.75 }}>
+        {/* Hauptordner + Inhalt in einer Box */}
+        <Box sx={{ 
+          p: 1,
+          borderRadius: 1.4,
+          bgcolor: '#f8f9fa',
+          border: '1px solid #e9ecef',
+          transition: 'all 0.2s ease',
+          '&:hover': {
+            bgcolor: '#f3f4f6'
+          }
+        }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 0.5,
+              ...(enableDrag
+                ? {
+                    cursor: 'grab',
+                    touchAction: 'none',
+                    '&:active': { cursor: 'grabbing' },
+                  }
+                : {}),
+            }}
+          >
+            <IconButton
+              size="small"
+              aria-label={rootExpanded ? 'Ordner zuklappen' : 'Ordner aufklappen'}
+              onClick={() => toggleFolderTreeNode(folderTreeNodeKey(groupId, folderPath))}
+              sx={{ width: 22, height: 22, p: 0, color: '#D32F2F' }}
+            >
+              {rootExpanded ? <ExpandLessIcon sx={{ fontSize: 18 }} /> : <ExpandMoreIcon sx={{ fontSize: 18 }} />}
+            </IconButton>
+            <Typography
+              variant="body2"
+              onClick={() => toggleFolderTreeNode(folderTreeNodeKey(groupId, folderPath))}
+              sx={{ 
+              color: '#D32F2F',
+              fontSize: '0.8rem',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              flex: 1,
+              minWidth: 0,
+              cursor: 'pointer',
+              userSelect: 'none',
+            }}>
+              📁 {folderPath.split('/').pop() || folderPath}
+            </Typography>
+          </Box>
+        
+          {rootExpanded && (
+          <Box sx={{ mt: 0.65, pl: 1.25, borderLeft: '2px solid rgba(211, 47, 47, 0.2)' }}>
+            {isLoading ? (
+              <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
+                Lade Inhalt...
+              </Typography>
+            ) : items.length === 0 ? null : (
+              <Box>
+                {itemsToDisplayItems(filteredItems).map((item) => renderItemRecursively(item, 0))}
+              </Box>
+            )}
+          </Box>
+          )}
+        </Box>
+      </Box>
+    );
+
+    if (!enableDrag) {
+      return <React.Fragment key={folderPath}>{folderCard}</React.Fragment>;
+    }
 
     return (
       <AssignedFolderSortableShell key={folderPath} groupId={groupId} folderPath={folderPath}>
@@ -13058,7 +13162,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       e.preventDefault();
     } else if (e.key === 'Tab') {
       return; // Let Tab work normally for accessibility
-            } else if (e.key === 'ArrowRight' && mainTabValue < 3) {
+            } else if (e.key === 'ArrowRight' && mainTabValue < 5) {
       e.preventDefault();
       setMainTabValue(mainTabValue + 1);
     } else if (e.key === 'ArrowLeft' && mainTabValue > 0) {
@@ -13358,6 +13462,98 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   const [folderAssignmentGroupId, setFolderAssignmentGroupId] = useState<string | null>(null);
   const [folderAssignmentGroupName, setFolderAssignmentGroupName] = useState('');
   const [assignedFolders, setAssignedFolders] = useState<{[groupId: string]: string[]}>({});
+
+  const resolveGroupIdForReihe = useCallback(
+    (folderPath: string) => {
+      const want = (folderPath || '').replace(/\\/g, '/');
+      for (const g of groups) {
+        const paths = assignedFolders[g.id] || [];
+        if (paths.some((p) => (p || '').replace(/\\/g, '/') === want)) return g.id;
+      }
+      return groups[0]?.id || DASHBOARD_REIHEN_CONTENT_GROUP;
+    },
+    [groups, assignedFolders],
+  );
+
+  // Katalog der Reihen laden (J-M-Reihen + bereits zugeordnete Ordner)
+  useEffect(() => {
+    if (mainTabValue !== 0) return;
+    let cancelled = false;
+    (async () => {
+      setReihenOptionsLoading(true);
+      try {
+        const loginCode = localStorage.getItem('loginCode') || '';
+        const readShallow = async (path: string) => {
+          const res = await fetch(
+            `/api/file-system-paths/read?path=${encodeURIComponent(path)}&t=${Date.now()}`,
+            {
+              cache: 'no-cache',
+              headers: { 'Cache-Control': 'no-cache', 'x-login-code': loginCode },
+            },
+          );
+          if (!res.ok) return [] as any[];
+          const content = await res.json();
+          return (content.root?.children || content.items || []) as any[];
+        };
+
+        const skip = new Set([
+          'Grafiken',
+          'Folien - ALLE - BACKUP',
+          'Wall-of-fame',
+          'Erasmus',
+          'Ankündigungen & Briefe',
+          'Mini-Projekte',
+        ]);
+        const subjects = await readShallow('J-M-Reihen');
+        const treeChildren: any[] = [];
+        for (const subj of subjects) {
+          if (subj?.type !== 'directory' || !subj.name || skip.has(subj.name)) continue;
+          const blocks = await readShallow(subj.path || `J-M-Reihen/${subj.name}`);
+          const blockNodes: any[] = [];
+          for (const block of blocks) {
+            if (block?.type !== 'directory' || !block.name) continue;
+            const units = await readShallow(block.path || `${subj.path}/${block.name}`);
+            blockNodes.push({
+              ...block,
+              type: 'directory',
+              children: units.filter((u: any) => u?.type === 'directory'),
+            });
+          }
+          treeChildren.push({
+            ...subj,
+            type: 'directory',
+            children: blockNodes,
+          });
+        }
+        const discovered = collectReihenFromJmTree({ type: 'directory', children: treeChildren });
+        const assignedFlat = Object.values(assignedFolders).flat();
+        if (cancelled) return;
+        setReihenOptions(mergeReihenOptions(discovered, assignedFlat));
+      } catch (e) {
+        console.error('Reihen-Katalog laden fehlgeschlagen', e);
+        if (!cancelled) {
+          const assignedFlat = Object.values(assignedFolders).flat();
+          setReihenOptions(mergeReihenOptions([], assignedFlat));
+        }
+      } finally {
+        if (!cancelled) setReihenOptionsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mainTabValue, assignedFolders]);
+
+  // Inhalte der gewählten Arbeits-Reihen laden
+  useEffect(() => {
+    if (mainTabValue !== 0) return;
+    for (const path of workingReihenPaths) {
+      const gid = resolveGroupIdForReihe(path);
+      const key = `${gid}:${path}`;
+      if (assignedFolderContents[key] || loadingFolderContents[key]) continue;
+      void fetchAssignedFolderContent(gid, path);
+    }
+  }, [mainTabValue, workingReihenPaths, resolveGroupIdForReihe]);
 
   // Test-Funktion für den MaterialCreator-Ref
   const testMaterialCreatorRef = () => {
@@ -15098,10 +15294,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     const g = selectedGroupId
                       ? groups.find((x) => x.id === selectedGroupId)
                       : groups[0];
-                    const band = g ? entryTicketBandFromGroupNames([g.name]) : 7;
                     const gid = selectedGroupId || g?.id;
                     const qs = new URLSearchParams();
-                    qs.set('grade', String(band));
                     qs.set('r', String(Date.now()));
                     if (gid) qs.set('groupId', gid);
                     navigate(`/entry-ticket?${qs.toString()}`);
@@ -15126,7 +15320,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     },
                     transition: 'all 0.2s ease',
                   }}
-                  title="EntryTicket: Auswahl vor Start & Fragenset (Klasse aus gewählter Gruppe)"
+                  title="EntryTicket öffnen (kein Set vorausgewählt)"
                 >
                   <Typography
                     component="span"
@@ -15335,6 +15529,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         <Grid item xs={12}>
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 1.4 }}>
             <Tabs value={mainTabValue} onChange={handleMainTabChange} aria-label="dashboard tabs" sx={{ minHeight: 28 }}>
+              <Tab icon={<AutoStoriesIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Reihen</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
               <Tab icon={<GroupIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Lerngruppen</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
               <Tab icon={<BuildIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Verwalten</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
               <Tab icon={<StyleIcon sx={{ fontSize: 18 }} />} label={<span style={{ fontSize: '0.65rem' }}>Karteikarten</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
@@ -15346,6 +15541,122 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
         <Grid item xs={12}>
           <TabPanel value={mainTabValue} index={0}>
+            <Box sx={{ p: 1.4 }}>
+              <Card
+                sx={{
+                  borderRadius: 2.8,
+                  boxShadow: '0 2.8px 8.4px rgba(0,0,0,0.07)',
+                  bgcolor: colors.cardBg,
+                  mb: 1.5,
+                }}
+              >
+                <CardContent sx={{ pb: '12px !important' }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      mb: 1,
+                      color: colors.primary,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                    }}
+                  >
+                    <AutoStoriesIcon sx={{ fontSize: 18 }} />
+                    Aktuelle Arbeits-Reihen
+                  </Typography>
+                  <Autocomplete
+                    multiple
+                    size="small"
+                    loading={reihenOptionsLoading}
+                    options={reihenOptions}
+                    value={workingReihenPaths.map(
+                      (path) =>
+                        reihenOptions.find((o) => o.path === path) || {
+                          path,
+                          label: reiheLabelFromPath(path),
+                        },
+                    )}
+                    onChange={(_e, value) => updateWorkingReihenPaths(value.map((v) => v.path))}
+                    getOptionLabel={(o) =>
+                      o.subject ? `${o.label} (${o.subject})` : o.label || reiheLabelFromPath(o.path)
+                    }
+                    isOptionEqualToValue={(a, b) => a.path === b.path}
+                    filterSelectedOptions
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => {
+                        const { key, ...tagProps } = getTagProps({ index });
+                        return (
+                          <Chip
+                            key={key}
+                            size="small"
+                            label={option.label}
+                            {...tagProps}
+                            sx={{ fontSize: '0.7rem' }}
+                          />
+                        );
+                      })
+                    }
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder={
+                          workingReihenPaths.length === 0
+                            ? 'Reihen auswählen, an denen du gerade arbeitest…'
+                            : 'Weitere Reihe hinzufügen…'
+                        }
+                        sx={{ '& .MuiInputBase-root': { fontSize: '0.8rem' } }}
+                      />
+                    )}
+                    sx={{ maxWidth: 720 }}
+                  />
+                </CardContent>
+              </Card>
+
+              {workingReihenPaths.length === 0 ? (
+                <Typography
+                  variant="body2"
+                  sx={{ color: colors.textSecondary, fontStyle: 'italic', fontSize: '0.8rem', px: 0.5 }}
+                >
+                  Noch keine Reihe gewählt — oben auswählen, dann erscheinen sie nebeneinander wie „Zugeordnete Ordner“.
+                </Typography>
+              ) : (
+                <Grid container spacing={1.5} alignItems="flex-start">
+                  {workingReihenPaths.map((folderPath) => {
+                    const gid = resolveGroupIdForReihe(folderPath);
+                    return (
+                      <Grid item xs={12} sm={6} md={4} key={folderPath}>
+                        <Box
+                          sx={{
+                            p: 2.1,
+                            bgcolor: '#fff',
+                            borderRadius: 2.8,
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                            border: '1px solid #e0e0e0',
+                            height: '100%',
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              ml: 1,
+                              p: 1.4,
+                              bgcolor: '#fafbfc',
+                              borderRadius: 1.4,
+                              border: '1px solid #f0f0f0',
+                            }}
+                          >
+                            {renderAssignedFolderPreview(gid, folderPath, { enableDrag: false })}
+                          </Box>
+                        </Box>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              )}
+            </Box>
+          </TabPanel>
+          <TabPanel value={mainTabValue} index={1}>
             {/* Learning Groups Section */}
             <Box sx={{ p: 1.4 }}>
               <Card sx={{ 
@@ -16454,7 +16765,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               </Card>
             </Box>
           </TabPanel>
-          <TabPanel value={mainTabValue} index={1}>
+          <TabPanel value={mainTabValue} index={2}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {/* Dateisystem-Pfade verwalten */}
               <Box sx={{ mb: 2 }}>
@@ -16467,7 +16778,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               </Box>
             </Box>
           </TabPanel>
-          <TabPanel value={mainTabValue} index={2}>
+          <TabPanel value={mainTabValue} index={3}>
             {/* Karteikarten Section */}
             <Box sx={{ p: 1.4 }}>
               {/* Header */}
@@ -16773,12 +17084,12 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               </Grid>
             </Box>
           </TabPanel>
-          <TabPanel value={mainTabValue} index={3}>
+          <TabPanel value={mainTabValue} index={4}>
             <Box sx={{ fontSize: '0.7rem' }}>
               <DatabaseViewer />
             </Box>
           </TabPanel>
-          <TabPanel value={mainTabValue} index={4}>
+          <TabPanel value={mainTabValue} index={5}>
             {/* Subtabs: Fächer als Tabs */}
             <Box sx={{ mb: 0.15 }}>
               <Tabs
@@ -16973,8 +17284,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               onOpenSubjectDialog={handleOpenSubjectDialog}
             />
           </TabPanel>
-          <TabPanel value={mainTabValue} index={5}>
-            {/* Karteikarten Section */}
+          <TabPanel value={mainTabValue} index={99}>
+            {/* Legacy-Duplikat Karteikarten — ungenutzt */}
             <Box sx={{ p: 1.4 }}>
               {/* Header */}
               <Card sx={{ 

@@ -398,6 +398,145 @@ router.get('/:groupId/lesson-shared-input-shares', async (req, res) => {
         res.status(500).json({ error: (error === null || error === void 0 ? void 0 : error.message) || 'Serverfehler' });
     }
 });
+/** Lehrer: Prüfung für eine Lerngruppe starten (Vollbild bei SuS) */
+router.post('/exam-beacon/start', async (req, res) => {
+    try {
+        const { teacherId, groupId, filePath, lessonPath } = req.body;
+        if (!(teacherId === null || teacherId === void 0 ? void 0 : teacherId.trim()) || !(groupId === null || groupId === void 0 ? void 0 : groupId.trim()) || !(filePath === null || filePath === void 0 ? void 0 : filePath.trim())) {
+            return res.status(400).json({ error: 'teacherId, groupId und filePath sind erforderlich' });
+        }
+        const group = await prisma.learningGroup.findUnique({
+            where: { id: groupId },
+            select: { teacherId: true },
+        });
+        if (!group || group.teacherId !== teacherId) {
+            return res.status(403).json({ error: 'Keine Berechtigung' });
+        }
+        const normalizedPath = String(filePath).replace(/\\/g, '/').trim();
+        const beaconId = `exam-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+        await prisma.lessonExamBeacon.upsert({
+            where: { groupId },
+            create: {
+                groupId,
+                filePath: normalizedPath,
+                lessonPath: String(lessonPath || '').trim(),
+                beaconId,
+                active: true,
+            },
+            update: {
+                filePath: normalizedPath,
+                lessonPath: String(lessonPath || '').trim(),
+                beaconId,
+                active: true,
+            },
+        });
+        // Datei für SuS freigeben
+        await prisma.fileShare.upsert({
+            where: {
+                filePath_groupId: { filePath: normalizedPath, groupId },
+            },
+            create: { filePath: normalizedPath, groupId },
+            update: {},
+        });
+        return res.json({ ok: true, beaconId, filePath: normalizedPath, active: true });
+    }
+    catch (e) {
+        console.error('exam-beacon/start:', e);
+        return res.status(500).json({ error: (e === null || e === void 0 ? void 0 : e.message) || 'Serverfehler' });
+    }
+});
+/** Lehrer: Prüfung beenden → Overlay bei SuS schließen */
+router.post('/exam-beacon/stop', async (req, res) => {
+    try {
+        const { teacherId, groupId } = req.body;
+        if (!(teacherId === null || teacherId === void 0 ? void 0 : teacherId.trim()) || !(groupId === null || groupId === void 0 ? void 0 : groupId.trim())) {
+            return res.status(400).json({ error: 'teacherId und groupId sind erforderlich' });
+        }
+        const group = await prisma.learningGroup.findUnique({
+            where: { id: groupId },
+            select: { teacherId: true },
+        });
+        if (!group || group.teacherId !== teacherId) {
+            return res.status(403).json({ error: 'Keine Berechtigung' });
+        }
+        const existing = await prisma.lessonExamBeacon.findUnique({ where: { groupId } });
+        if (existing) {
+            await prisma.lessonExamBeacon.update({
+                where: { groupId },
+                data: { active: false },
+            });
+        }
+        return res.json({ ok: true, active: false, filePath: (existing === null || existing === void 0 ? void 0 : existing.filePath) || null });
+    }
+    catch (e) {
+        console.error('exam-beacon/stop:', e);
+        return res.status(500).json({ error: (e === null || e === void 0 ? void 0 : e.message) || 'Serverfehler' });
+    }
+});
+/** Lehrer: Status der laufenden Prüfung für eine Gruppe */
+router.get('/exam-beacon/status/:groupId', async (req, res) => {
+    try {
+        const groupId = req.params.groupId;
+        const row = await prisma.lessonExamBeacon.findUnique({
+            where: { groupId },
+            select: { groupId: true, filePath: true, lessonPath: true, beaconId: true, active: true, updatedAt: true },
+        });
+        if (!row || !row.active) {
+            return res.json({ active: false, beacon: null });
+        }
+        return res.json({ active: true, beacon: row });
+    }
+    catch (e) {
+        console.error('exam-beacon/status:', e);
+        return res.status(500).json({ error: (e === null || e === void 0 ? void 0 : e.message) || 'Serverfehler' });
+    }
+});
+/** SuS: Polling — aktive Prüfung → Vollbild-Overlay */
+router.get('/exam-beacon/student-poll', async (req, res) => {
+    try {
+        const raw = req.headers['x-login-code'];
+        const loginCode = typeof raw === 'string' ? raw.trim() : '';
+        if (!loginCode) {
+            return res.status(401).json({ error: 'Anmeldung erforderlich' });
+        }
+        const user = await prisma.user.findFirst({
+            where: { loginCode },
+            select: { id: true, role: true },
+        });
+        if (!user || user.role !== 'STUDENT') {
+            return res.status(403).json({ error: 'Nur für Schülerkonten' });
+        }
+        const rows = await prisma.lessonExamBeacon.findMany({
+            where: {
+                active: true,
+                group: { students: { some: { id: user.id } } },
+            },
+            select: {
+                groupId: true,
+                filePath: true,
+                lessonPath: true,
+                beaconId: true,
+                updatedAt: true,
+                group: { select: { name: true } },
+            },
+            orderBy: { updatedAt: 'desc' },
+        });
+        return res.json({
+            beacons: rows.map((r) => ({
+                groupId: r.groupId,
+                groupName: r.group.name,
+                filePath: r.filePath,
+                lessonPath: r.lessonPath,
+                beaconId: r.beaconId,
+                updatedAt: r.updatedAt,
+            })),
+        });
+    }
+    catch (e) {
+        console.error('exam-beacon/student-poll:', e);
+        return res.status(500).json({ error: (e === null || e === void 0 ? void 0 : e.message) || 'Serverfehler' });
+    }
+});
 /** Lehrer (z. B. Tablet-Modus): Signal an alle SuS dieser Gruppe — gemeinsames Karteikarten-Modal öffnen */
 router.post('/collab-flashcard-beacon', async (req, res) => {
     try {

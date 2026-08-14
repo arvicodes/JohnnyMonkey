@@ -35,7 +35,7 @@ import { getSlideMaxRevealSteps } from '../lib/presentationReveal';
 import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../lib/presentationTransitions';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
 import { isPresentationLinkClickTarget } from '../lib/presentationRichText';
-import { clampPresentZoom, handlePresentZoomHotkey, attachPresentTrackpadZoom } from '../lib/presentationPresentZoom';
+import { clampPresentZoom, handlePresentZoomHotkey, attachPresentTrackpadZoom, attachPresentTouchPinchZoom } from '../lib/presentationPresentZoom';
 import { ensureEntryTicketButtonsOnTitleSlides } from '../lib/presentationSlideTemplates';
 
 const SWIPE_MIN_PX = 48;
@@ -664,10 +664,16 @@ const PresentationPresentPage: React.FC = () => {
     };
   }, [scaleReady]);
 
-  // Trackpad-Pinch (macOS: wheel + ctrlKey) auf der Bühne
+  // Trackpad-Pinch + Zwei-Finger-Pinch (iPad) auf der Bühne
   useEffect(() => {
     if (!scaleReady) return undefined;
-    return attachPresentTrackpadZoom(stageRef.current, userZoomRef, setUserZoom);
+    const el = stageRef.current;
+    const offWheel = attachPresentTrackpadZoom(el, userZoomRef, setUserZoom);
+    const offTouch = attachPresentTouchPinchZoom(el, userZoomRef, setUserZoom);
+    return () => {
+      offWheel();
+      offTouch();
+    };
   }, [scaleReady]);
 
   const viewScale = displayScale * userZoom;

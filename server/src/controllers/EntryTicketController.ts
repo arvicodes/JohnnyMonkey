@@ -19,6 +19,9 @@ type EntryTicketTaskPayload = {
 type EntryTicketCustomSetPayload = {
   id: string;
   name: string;
+  reihePath?: string;
+  /** Persönliche Lehrer-Notizen */
+  notes?: string;
   lessons: Array<{
     id: string;
     lessonName: string;
@@ -147,7 +150,21 @@ const normalizeCustomSetPayload = (raw: unknown): EntryTicketCustomSetPayload | 
     if (lessons.length >= 40) break;
   }
   if (lessons.length === 0) return undefined;
-  return { id, name, lessons };
+  const reihePath =
+    typeof row.reihePath === 'string' && row.reihePath.trim()
+      ? row.reihePath.trim().replace(/\\/g, '/').slice(0, 500)
+      : undefined;
+  const notes =
+    typeof row.notes === 'string' && row.notes.trim()
+      ? row.notes.replace(/\r\n/g, '\n').slice(0, 4000)
+      : undefined;
+  return {
+    id,
+    name,
+    ...(reihePath ? { reihePath } : {}),
+    ...(notes ? { notes } : {}),
+    lessons,
+  };
 };
 
 const parsePayload = (raw: string | null | undefined): EntryTicketPayload | null => {

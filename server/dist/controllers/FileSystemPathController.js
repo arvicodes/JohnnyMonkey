@@ -1383,7 +1383,7 @@ class FileSystemPathController {
      */
     static async createExamination(req, res) {
         try {
-            const { examType, fileName, folderPath, learningGroupId, title, durationMinutes } = req.body;
+            const { examType, fileName, folderPath, title, durationMinutes } = req.body;
             if (!examType || !fileName || !folderPath) {
                 return res.status(400).json({ error: 'examType, fileName und folderPath sind erforderlich' });
             }
@@ -1495,9 +1495,11 @@ class FileSystemPathController {
                 // Falls kein git-intern Pfad, verwende den relativen Pfad
                 gitInternPath = filePath;
             }
+            const absolutePath = filePath.replace(/\\/g, '/');
             res.json({
                 success: true,
                 filePath: gitInternPath,
+                absolutePath,
                 fileName: `${finalFileName}.html`,
                 kaKey
             });

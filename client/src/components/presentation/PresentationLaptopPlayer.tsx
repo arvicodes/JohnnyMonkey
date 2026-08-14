@@ -24,7 +24,7 @@ import { presentationNestedListSx, presentationNotesTableSx } from '../../lib/pr
 import { isPresentationLinkClickTarget } from '../../lib/presentationRichText';
 import { tryHandleLessonEntryTicketLinkClick } from '../../lib/presentationEditorUi';
 import { ensureEntryTicketButtonsOnTitleSlides } from '../../lib/presentationSlideTemplates';
-import { clampPresentZoom, handlePresentZoomHotkey, attachPresentTrackpadZoom } from '../../lib/presentationPresentZoom';
+import { clampPresentZoom, handlePresentZoomHotkey, attachPresentTrackpadZoom, attachPresentTouchPinchZoom } from '../../lib/presentationPresentZoom';
 import PresentationPresentZoomControls from './PresentationPresentZoomControls';
 import { PresentationSoundPlayButton } from './PresentationSoundControls';
 
@@ -320,10 +320,16 @@ export default function PresentationLaptopPlayer({
     };
   }, [scaleReady, embedded]);
 
-  // Trackpad-Pinch auf der Bühne
+  // Trackpad-Pinch + Zwei-Finger-Pinch auf der Bühne
   useEffect(() => {
     if (!scaleReady) return undefined;
-    return attachPresentTrackpadZoom(stageHostRef.current, userZoomRef, setUserZoom);
+    const el = stageHostRef.current;
+    const offWheel = attachPresentTrackpadZoom(el, userZoomRef, setUserZoom);
+    const offTouch = attachPresentTouchPinchZoom(el, userZoomRef, setUserZoom);
+    return () => {
+      offWheel();
+      offTouch();
+    };
   }, [scaleReady]);
 
   const handleSlideTap = (e: React.MouseEvent) => {

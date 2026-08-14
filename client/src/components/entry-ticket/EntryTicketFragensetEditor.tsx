@@ -17,7 +17,10 @@ import {
 import {
   createCustomTask,
   createLessonSection,
+  ensureGeneralLessonSection,
+  isGeneralLessonSection,
   parseEntryTicketCardList,
+  sortLessonsChronologically,
   type EntryTicketCustomSet,
   type EntryTicketCustomTask,
   type EntryTicketLessonSection,
@@ -97,11 +100,14 @@ type TopicGroup = {
 };
 
 function groupLessonsByTopic(lessons: EntryTicketLessonSection[]): TopicGroup[] {
+  const ordered = sortLessonsChronologically(lessons);
   const groups: TopicGroup[] = [];
   const topicIndex = new Map<string, number>();
-  for (let i = 0; i < lessons.length; i += 1) {
-    const lesson = lessons[i];
-    const topic = lesson.topicName?.trim() || 'Stunden';
+  for (let i = 0; i < ordered.length; i += 1) {
+    const lesson = ordered[i];
+    const topic = isGeneralLessonSection(lesson)
+      ? 'Allgemein'
+      : lesson.topicName?.trim() || 'Stunden';
     let gi = topicIndex.get(topic);
     if (gi === undefined) {
       gi = groups.length;
@@ -137,6 +143,14 @@ export function EntryTicketFragensetEditor({
   useEffect(() => {
     setNameDraft(set.name);
   }, [set.id, set.name]);
+
+  // Bestehende Sets ohne „Allgemein“ nachziehen (Laden sorgt i. d. R. schon dafür)
+  useEffect(() => {
+    const ensured = ensureGeneralLessonSection(set);
+    if (ensured !== set) onChange(ensured);
+    // nur beim Wechsel des Sets; sonst Risiko von Update-Schleifen
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- set.id
+  }, [set.id]);
 
   // Auswahl bereinigen, wenn Karten wegfallen / Stunde wechselt
   useEffect(() => {
@@ -211,6 +225,10 @@ export function EntryTicketFragensetEditor({
   const deleteLesson = (lessonId: string) => {
     const lesson = set.lessons.find((l) => l.id === lessonId);
     if (!lesson) return;
+    if (isGeneralLessonSection(lesson)) {
+      window.alert('„Allgemein“ kann nicht gelöscht werden — dort liegen klassenübergreifende Karten vor der ersten Stunde.');
+      return;
+    }
     if (
       lesson.tasks.length > 0 &&
       !window.confirm(`Stunde „${lesson.lessonName}“ mit ${lesson.tasks.length} Fragen löschen?`)
@@ -372,6 +390,40 @@ export function EntryTicketFragensetEditor({
         </Tooltip>
       </Box>
 
+      <Box sx={{ width: '100%', px: 0.6, pt: 0.55, pb: 0, boxSizing: 'border-box' }}>
+        <TextField
+          size="small"
+          multiline
+          minRows={2}
+          maxRows={5}
+          value={set.notes || ''}
+          onChange={(e) =>
+            onChange({
+              ...set,
+              notes: e.target.value.slice(0, 4000),
+            })
+          }
+          placeholder="Notizen nur für dich (nicht sichtbar für SuS)…"
+          sx={{
+            ...fieldSx,
+            '& .MuiOutlinedInput-root': {
+              ...fieldSx['& .MuiOutlinedInput-root'],
+              bgcolor: '#fffde7',
+              '& fieldset': { borderColor: '#fff59d' },
+              '&:hover fieldset': { borderColor: '#fbc02d' },
+              '&.Mui-focused fieldset': { borderColor: '#f9a825' },
+            },
+            '& .MuiInputBase-input': {
+              ...fieldSx['& .MuiInputBase-input'],
+              fontSize: '0.72rem',
+              lineHeight: 1.35,
+              color: '#5d4037',
+            },
+          }}
+          inputProps={{ 'aria-label': 'Persönliche Notizen zum Fragenset' }}
+        />
+      </Box>
+
       <Box sx={{ width: '100%', p: 0.6, display: 'grid', gap: 0.55, boxSizing: 'border-box' }}>
         {set.lessons.length === 0 && (
           <Typography sx={{ color: ET.muted, fontSize: '0.75rem', textAlign: 'center', py: 1.25 }}>
@@ -397,7 +449,7 @@ export function EntryTicketFragensetEditor({
                   }}
                 />
               )}
-              {!/^eigen\b/i.test(group.topic.trim()) && (
+              {!/^eigen\b/i.test(group.topic.trim()) && !/^allgemein$/i.test(group.topic.trim()) && (
               <Box
                 sx={{
                   display: 'inline-flex',
@@ -430,6 +482,7 @@ export function EntryTicketFragensetEditor({
               {group.lessons.map(({ lesson, globalIndex }) => {
                 const isOpen = expanded[lesson.id] !== false;
                 const isActive = lessonMatchesPath(lesson, activeLessonPath);
+                const isGeneral = isGeneralLessonSection(lesson);
                 const palette = LESSON_PALETTES[globalIndex % LESSON_PALETTES.length];
                 const selectedIds = selectedTaskIdsByLesson[lesson.id] || [];
                 const allTaskIds = lesson.tasks.map((t) => t.id);
@@ -489,7 +542,7 @@ export function EntryTicketFragensetEditor({
                           fontSize: '0.6rem',
                         }}
                       >
-                        {globalIndex + 1}
+                        {isGeneral ? 'A' : globalIndex}
                       </Box>
                       <Typography
                         sx={{
@@ -551,24 +604,26 @@ export function EntryTicketFragensetEditor({
                           </IconButton>
                         </Tooltip>
                       )}
-                      <Tooltip title="Stunde löschen">
-                        <IconButton
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteLesson(lesson.id);
-                          }}
-                          aria-label="Stunde löschen"
-                          sx={{
-                            ...iconBtnSx,
-                            ml: selectedIds.length > 0 ? 0 : 'auto',
-                            color: ET.muted,
-                            '&:hover': { color: '#c62828', bgcolor: 'rgba(198,40,40,0.08)' },
-                          }}
-                        >
-                          <DeleteOutlineIcon sx={{ fontSize: 14 }} />
-                        </IconButton>
-                      </Tooltip>
+                      {!isGeneral && (
+                        <Tooltip title="Stunde löschen">
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteLesson(lesson.id);
+                            }}
+                            aria-label="Stunde löschen"
+                            sx={{
+                              ...iconBtnSx,
+                              ml: selectedIds.length > 0 ? 0 : 'auto',
+                              color: ET.muted,
+                              '&:hover': { color: '#c62828', bgcolor: 'rgba(198,40,40,0.08)' },
+                            }}
+                          >
+                            <DeleteOutlineIcon sx={{ fontSize: 14 }} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                     </Box>
 
                     <Collapse in={isOpen}>
@@ -585,9 +640,79 @@ export function EntryTicketFragensetEditor({
                           boxSizing: 'border-box',
                         }}
                       >
+                        {(() => {
+                          const listDraft = listDraftByLesson[lesson.id] || '';
+                          const previewCount = parseEntryTicketCardList(listDraft).length;
+                          return (
+                            <Box
+                              sx={{
+                                width: '100%',
+                                display: 'grid',
+                                gridTemplateColumns: 'minmax(0, 1fr) 22px',
+                                gap: 0.4,
+                                alignItems: 'start',
+                                boxSizing: 'border-box',
+                              }}
+                            >
+                              <TextField
+                                size="small"
+                                multiline
+                                minRows={2}
+                                maxRows={8}
+                                value={listDraft}
+                                onChange={(e) =>
+                                  setListDraftByLesson((prev) => ({
+                                    ...prev,
+                                    [lesson.id]: e.target.value,
+                                  }))
+                                }
+                                placeholder={'Frage; Antwort\nNächste Frage; Nächste Antwort'}
+                                sx={{
+                                  ...fieldSx,
+                                  '& .MuiInputBase-input': {
+                                    ...fieldSx['& .MuiInputBase-input'],
+                                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                                    lineHeight: 1.35,
+                                  },
+                                }}
+                                onKeyDown={(e) => {
+                                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                                    e.preventDefault();
+                                    addTasksFromList(lesson.id);
+                                  }
+                                }}
+                              />
+                              <Tooltip title={previewCount > 0 ? `${previewCount} Karten übernehmen (⌘/Ctrl+Enter)` : 'Liste: Frage; Antwort'}>
+                                <span>
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => addTasksFromList(lesson.id)}
+                                    disabled={previewCount === 0}
+                                    aria-label="Karten aus Liste hinzufügen"
+                                    sx={{
+                                      ...iconBtnSx,
+                                      mt: 0.35,
+                                      bgcolor: palette.chip,
+                                      color: '#fff',
+                                      borderRadius: 0.75,
+                                      '&:hover': { bgcolor: palette.title },
+                                      '&.Mui-disabled': {
+                                        bgcolor: palette.soft,
+                                        color: 'rgba(255,255,255,0.85)',
+                                      },
+                                    }}
+                                  >
+                                    <AddIcon sx={{ fontSize: 15 }} />
+                                  </IconButton>
+                                </span>
+                              </Tooltip>
+                            </Box>
+                          );
+                        })()}
+
                         {lesson.tasks.length === 0 && (
                           <Typography sx={{ color: ET.muted, fontSize: '0.65rem', px: 0.15 }}>
-                            Noch keine Karten — Liste: <strong>Frage; Antwort</strong>
+                            Noch keine Karten — Liste oben: <strong>Frage; Antwort</strong>
                           </Typography>
                         )}
 
@@ -742,76 +867,6 @@ export function EntryTicketFragensetEditor({
                           </Box>
                           );
                         })}
-
-                        {(() => {
-                          const listDraft = listDraftByLesson[lesson.id] || '';
-                          const previewCount = parseEntryTicketCardList(listDraft).length;
-                          return (
-                            <Box
-                              sx={{
-                                width: '100%',
-                                display: 'grid',
-                                gridTemplateColumns: 'minmax(0, 1fr) 22px',
-                                gap: 0.4,
-                                alignItems: 'start',
-                                boxSizing: 'border-box',
-                              }}
-                            >
-                              <TextField
-                                size="small"
-                                multiline
-                                minRows={2}
-                                maxRows={8}
-                                value={listDraft}
-                                onChange={(e) =>
-                                  setListDraftByLesson((prev) => ({
-                                    ...prev,
-                                    [lesson.id]: e.target.value,
-                                  }))
-                                }
-                                placeholder={'Frage; Antwort\nNächste Frage; Nächste Antwort'}
-                                sx={{
-                                  ...fieldSx,
-                                  '& .MuiInputBase-input': {
-                                    ...fieldSx['& .MuiInputBase-input'],
-                                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                                    lineHeight: 1.35,
-                                  },
-                                }}
-                                onKeyDown={(e) => {
-                                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                                    e.preventDefault();
-                                    addTasksFromList(lesson.id);
-                                  }
-                                }}
-                              />
-                              <Tooltip title={previewCount > 0 ? `${previewCount} Karten übernehmen (⌘/Ctrl+Enter)` : 'Liste: Frage; Antwort'}>
-                                <span>
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => addTasksFromList(lesson.id)}
-                                    disabled={previewCount === 0}
-                                    aria-label="Karten aus Liste hinzufügen"
-                                    sx={{
-                                      ...iconBtnSx,
-                                      mt: 0.35,
-                                      bgcolor: palette.chip,
-                                      color: '#fff',
-                                      borderRadius: 0.75,
-                                      '&:hover': { bgcolor: palette.title },
-                                      '&.Mui-disabled': {
-                                        bgcolor: palette.soft,
-                                        color: 'rgba(255,255,255,0.85)',
-                                      },
-                                    }}
-                                  >
-                                    <AddIcon sx={{ fontSize: 15 }} />
-                                  </IconButton>
-                                </span>
-                              </Tooltip>
-                            </Box>
-                          );
-                        })()}
                       </Box>
                     </Collapse>
                   </Box>

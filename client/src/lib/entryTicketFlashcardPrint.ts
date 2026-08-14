@@ -1,6 +1,7 @@
 import {
+  decorateEntryTicketDisplayHtml,
+  entryTicketHasImage,
   entryTicketLooksLikeHtml,
-  entryTicketPlainText,
   sanitizeEntryTicketHtml,
   unwrapEntryTicketCardLayout,
 } from './entryTicketRichText';
@@ -32,12 +33,12 @@ function sealHtmlForPrintCard(value: string): string {
   if (!raw.trim()) return '<span class="empty">—</span>';
 
   if (!entryTicketLooksLikeHtml(raw) && !/<img\b/i.test(raw)) {
-    return escapeHtml(entryTicketPlainText(raw)).replace(/\n/g, '<br>');
+    return decorateEntryTicketDisplayHtml(raw) || '<span class="empty">—</span>';
   }
 
   const sanitized = unwrapEntryTicketCardLayout(sanitizeEntryTicketHtml(raw));
   if (typeof document === 'undefined') {
-    return sanitized || escapeHtml(entryTicketPlainText(raw)).replace(/\n/g, '<br>');
+    return decorateEntryTicketDisplayHtml(raw) || '<span class="empty">—</span>';
   }
 
   const holder = document.createElement('div');
@@ -76,7 +77,13 @@ function sealHtmlForPrintCard(value: string): string {
 }
 
 function fieldToHtml(value: string): string {
-  return sealHtmlForPrintCard(value);
+  const raw = value || '';
+  if (!raw.trim()) return '<span class="empty">—</span>';
+  // Zuerst Operatoren/Umbrüche, bei Bildern zusätzlich Druck-Siegel
+  const decorated = decorateEntryTicketDisplayHtml(raw);
+  if (!decorated) return '<span class="empty">—</span>';
+  if (!entryTicketHasImage(raw)) return decorated;
+  return sealHtmlForPrintCard(decorated);
 }
 
 function chunk<T>(items: T[], size: number): T[][] {
@@ -283,6 +290,8 @@ export function buildEntryTicketFlashcardPrintHtml(
     }
     .card.back .body { font-weight: 700; color: #1b5e20; }
     .card .body .empty { color: #b0bec5; font-weight: 600; }
+    .card .body .op { font-weight: 800; }
+    .card .body .q { font-weight: 800; color: #c62828; }
     .card .body p, .card .body div { margin: 0; max-width: 100%; }
     .card .body * { max-width: 100% !important; float: none !important; }
     .card .body img {

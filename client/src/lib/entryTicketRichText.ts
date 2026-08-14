@@ -41,6 +41,98 @@ export function entryTicketHasText(value: string): boolean {
   return entryTicketPlainText(value).length > 0;
 }
 
+/** Zeilenumbrüche für Anzeige/Druck (Doppelpunkt → neue Zeile, außer Uhrzeiten). */
+export function formatEntryTicketPromptStructure(text: string): string {
+  return (text || '')
+    .replace(/\. /g, '.\n')
+    .replace(/, Dauer /g, ',\nDauer ')
+    .replace(/ bis /g, '\nbis ')
+    // „Label: Rest“ → Umbruch; nicht bei 09:35 oder 2:1
+    .replace(/(?<!\d):\s*(?=[A-Za-zÄÖÜäöü„"«])/g, ':\n');
+}
+
+function escapeEntryTicketDisplayText(text: string): string {
+  return (text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
+ * Klartext → HTML: Operatoren fett, Zeilenumbrüche nach Doppelpunkt.
+ * Für Kartenanzeige und Druck.
+ */
+export function wrapEntryTicketOperatorsHtml(plainText: string): string {
+  let s = formatEntryTicketPromptStructure(plainText);
+  s = s.replace(/(\d+)\s*\/\s*(\d+)/g, '$1⁄$2');
+  const parts = s.split(/([+\-−·×∗*÷:/=<>%?])/g);
+  return parts
+    .map((part) => {
+      if (!part) return '';
+      if (/^[+\-−·×∗*÷:/=<>%]$/.test(part)) {
+        return `<strong class="et-op" style="font-weight:800;color:#ef6c00">${escapeEntryTicketDisplayText(part)}</strong>`;
+      }
+      if (part === '?') {
+        return `<strong class="et-q" style="font-weight:800;color:#d32f2f">${escapeEntryTicketDisplayText(part)}</strong>`;
+      }
+      return escapeEntryTicketDisplayText(part).replace(/\n/g, '<br>');
+    })
+    .join('');
+}
+
+function decorateTextNodesForDisplay(root: ParentNode): void {
+  const skip = new Set(['SCRIPT', 'STYLE', 'IMG', 'STRONG', 'B']);
+  const nodes: Text[] = [];
+  const walk = (node: Node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      nodes.push(node as Text);
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const el = node as Element;
+    if (skip.has(el.tagName)) return;
+    if (el.classList?.contains('et-op') || el.classList?.contains('et-q')) return;
+    Array.from(node.childNodes).forEach(walk);
+  };
+  walk(root as unknown as Node);
+  for (const textNode of nodes) {
+    const raw = textNode.textContent || '';
+    if (!raw.trim()) continue;
+    if (!/[+\-−·×∗*÷:/=<>%?]/.test(raw)) continue;
+    const html = wrapEntryTicketOperatorsHtml(raw);
+    const parent = textNode.parentNode;
+    if (!parent) continue;
+    const holder = document.createElement('span');
+    holder.innerHTML = html;
+    while (holder.firstChild) parent.insertBefore(holder.firstChild, textNode);
+    parent.removeChild(textNode);
+  }
+}
+
+/**
+ * Anzeige-HTML: sanitizen + Operatoren fett + Umbruch nach Doppelpunkt.
+ * Funktioniert für Klartext und Rich-HTML (Textknoten).
+ */
+export function decorateEntryTicketDisplayHtml(value: string): string {
+  const raw = value || '';
+  if (!raw.trim()) return '';
+
+  if (!entryTicketLooksLikeHtml(raw) && !entryTicketHasImage(raw)) {
+    return wrapEntryTicketOperatorsHtml(entryTicketPlainText(raw));
+  }
+
+  const sanitized = sanitizeEntryTicketHtml(raw);
+  if (typeof document === 'undefined') {
+    return wrapEntryTicketOperatorsHtml(entryTicketPlainText(sanitized));
+  }
+
+  const holder = document.createElement('div');
+  holder.innerHTML = sanitized;
+  decorateTextNodesForDisplay(holder);
+  return holder.innerHTML;
+}
+
 /** Text oder eingebettetes Bild zählt als Inhalt. */
 export function entryTicketHasContent(value: string): boolean {
   return entryTicketHasText(value) || entryTicketHasImage(value);

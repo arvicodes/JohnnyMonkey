@@ -55,6 +55,7 @@ import {
   createEmptyCustomSet,
   createLessonSection,
   cumulativeTasksBeforeLesson,
+  ensureGeneralLessonSection,
   findLessonSectionIndex,
   isCustomEntryTicketSetId,
   loadCustomEntryTicketSets,
@@ -72,7 +73,8 @@ import {
   entryTicketPlainText,
   entryTicketShowCountStyle,
   readEntryTicketCardLayout,
-  sanitizeEntryTicketHtml,
+  decorateEntryTicketDisplayHtml,
+  formatEntryTicketPromptStructure,
   splitEntryTicketMediaAndText,
 } from '../lib/entryTicketRichText';
 
@@ -90,6 +92,8 @@ const richTextSx = {
   '& b, & strong': { fontWeight: 800 },
   '& i, & em': { fontStyle: 'italic' },
   '& u': { textDecoration: 'underline' },
+  '& .et-op': { fontWeight: '800 !important', color: '#ef6c00' },
+  '& .et-q': { fontWeight: '800 !important', color: '#d32f2f' },
   '&::after': {
     content: '""',
     display: 'table',
@@ -115,11 +119,16 @@ function EntryTicketRichHtml({
   sx?: Record<string, unknown>;
 }) {
   if (!value) return null;
+  const decorated = decorateEntryTicketDisplayHtml(value);
+  if (!decorated) return null;
+
   if (!entryTicketLooksLikeHtml(value) && !entryTicketHasImage(value)) {
     return (
-      <Box component="div" sx={sx}>
-        {value}
-      </Box>
+      <Box
+        component="div"
+        sx={{ display: 'block', whiteSpace: 'pre-line', ...richTextSx, ...sx }}
+        dangerouslySetInnerHTML={{ __html: decorated }}
+      />
     );
   }
 
@@ -156,8 +165,8 @@ function EntryTicketRichHtml({
       <Box
         key="text"
         component="div"
-        sx={{ display: 'block', minWidth: 0, textAlign: 'left', ...richTextSx, ...sx }}
-        dangerouslySetInnerHTML={{ __html: sanitizeEntryTicketHtml(textHtml) }}
+        sx={{ display: 'block', minWidth: 0, textAlign: 'left', whiteSpace: 'pre-line', ...richTextSx, ...sx }}
+        dangerouslySetInnerHTML={{ __html: decorateEntryTicketDisplayHtml(textHtml) }}
       />
     ) : null;
     return (
@@ -197,8 +206,8 @@ function EntryTicketRichHtml({
   return (
     <Box
       component="div"
-      sx={{ display: 'block', ...richTextSx, ...sx }}
-      dangerouslySetInnerHTML={{ __html: sanitizeEntryTicketHtml(value) }}
+      sx={{ display: 'block', whiteSpace: 'pre-line', ...richTextSx, ...sx }}
+      dangerouslySetInnerHTML={{ __html: decorated }}
     />
   );
 }
@@ -251,20 +260,6 @@ const etActionGroupSx = {
   '& .MuiButton-root .MuiButton-startIcon': {
     mr: 0.35,
     '& > svg': { fontSize: 14 },
-  },
-} as const;
-
-const etGradeGroupSx = {
-  ...etBtnGroupBase,
-  flexWrap: 'wrap' as const,
-  '& .MuiButton-root': {
-    ...etBtnGroupBase['& .MuiButton-root'],
-    minHeight: 26,
-    height: 26,
-    px: 0.65,
-    py: 0.25,
-    fontSize: '0.58rem',
-    fontWeight: 650,
   },
 } as const;
 
@@ -382,7 +377,7 @@ function clampSlideDurationSec(value: number): number {
 /** Zufällige Auswahl aus dem klassenspezifischen Fragenset */
 const TARGET_TASK_COUNT = 10;
 const DISPLAY_BOX_WIDTH = 1320;
-const DISPLAY_BOX_MIN_HEIGHT = 260;
+const DISPLAY_BOX_MIN_HEIGHT = 312;
 const OPERATOR_COLOR = '#ef6c00';
 const QUESTION_COLOR = '#d32f2f';
 
@@ -400,11 +395,13 @@ function fragensetHeadingLabel(band: EntryBand, customName?: string | null): str
   return `Klasse ${band}`;
 }
 
-/** Eigene Sets nach Fach trennen (Reihenpfad / Name). */
+/** Eigene Sets nach Fach trennen (Reihenpfad / Name). Mathe = rechts, Informatik = links. */
 function customSetIsInformatik(set: EntryTicketCustomSet): boolean {
   const path = (set.reihePath || '').replace(/\\/g, '/').toLowerCase();
   const name = (set.name || '').toLowerCase();
-  if (path.includes('/informatik/') || path.includes('/informatik')) return true;
+  // Mathe-Reihen klar als Mathe (auch wenn Name zufällig „KI“ enthält)
+  if (path.includes('/mathe/') || /(^|\/)mathe(\/|$)/i.test(path)) return false;
+  if (path.includes('/informatik/') || /(^|\/)informatik(\/|$)/i.test(path)) return true;
   if (/(^|[/\s_-])inf(ormatik)?([/\s_-]|$)/i.test(path)) return true;
   if (/informatik|\binf\s*1[123]\b|^inf\b|\bki\b/i.test(name)) return true;
   return false;
@@ -2081,12 +2078,9 @@ export default function EntryTicketPage() {
         sourceKey: `c:${activeCustomSet.id}:${t.id}`,
       }));
     }
-    if (customSetId) return [];
-    return (questionSets[grade] ?? []).map((t, i) => ({
-      ...t,
-      sourceKey: t.sourceKey || builtInTaskSourceKey(String(grade), t, i),
-    }));
-  }, [customSetId, activeCustomSet, entryLessonPath, questionSets, grade]);
+    // Generierte Klassen-/Inf-Pools werden nicht mehr genutzt
+    return [];
+  }, [customSetId, activeCustomSet, entryLessonPath]);
 
   const activeSetLabel = isCustomSetActive
     ? activeCustomSet!.name
@@ -2419,18 +2413,6 @@ export default function EntryTicketPage() {
     });
   };
 
-  const selectBand = (band: EntryBand) => {
-    setCustomSetId(null);
-    setGrade(band);
-    setBandChosen(true);
-    setShowSetEditor(false);
-    setSetEditIndex(null);
-    setSetEditCategory('Alltag');
-    setSetEditPrompt('');
-    setSetEditSolution('');
-    setTaskSeed(randomTaskSeed());
-  };
-
   const selectCustomSet = (id: string) => {
     setCustomSetId(id);
     setBandChosen(true);
@@ -2454,7 +2436,7 @@ export default function EntryTicketPage() {
     setCreateSetBusy(true);
     setCreateSetError(null);
     try {
-      const next = createEmptyCustomSet(name);
+      let next = createEmptyCustomSet(name);
       const discovered = await discoverLessonsForReiheName(name);
       if (discovered.reihePath) {
         next.reihePath = discovered.reihePath;
@@ -2467,6 +2449,7 @@ export default function EntryTicketPage() {
         const folder = entryLessonPath.split('/').pop() || entryLessonPath;
         next.lessons = [createLessonSection(folder, entryLessonPath)];
       }
+      next = ensureGeneralLessonSection(next);
       setCustomSets((prev) => [...prev, next]);
       setCreateSetOpen(false);
       setCreateSetName('');
@@ -2953,13 +2936,11 @@ export default function EntryTicketPage() {
       setSecondsLeft(slideDurationSecRef.current);
       setShowSolutions(false);
       if (!sharedTasksLocked) setTaskSeed(randomTaskSeed());
+      if (customSetId) setShowSetEditor(true);
       return;
     }
-    if (showSetEditor) {
+    if (showSetEditor || bandChosen) {
       setShowSetEditor(false);
-      return;
-    }
-    if (bandChosen) {
       setBandChosen(false);
       setCustomSetId(null);
       setSelectedTasks([]);
@@ -3081,12 +3062,7 @@ export default function EntryTicketPage() {
     studentReviewMode,
   ]);
 
-  const formatPromptForDisplay = (prompt: string): string => {
-    return prompt
-      .replace(/\. /g, '.\n')
-      .replace(/, Dauer /g, ',\nDauer ')
-      .replace(/ bis /g, '\nbis ');
-  };
+  const formatPromptForDisplay = (prompt: string): string => formatEntryTicketPromptStructure(prompt);
 
   const cleanPrompt = (prompt: string): string =>
     entryTicketPlainText(prompt).replace(/\s{2,}/g, ' ').trim();
@@ -3288,17 +3264,31 @@ export default function EntryTicketPage() {
 
   const colorizeOperators = (text: string, keyPrefix: string, large = false) => {
     const formattedText = text.replace(/(\d+)\s*\/\s*(\d+)/g, '$1⁄$2');
-    const parts = formattedText.split(/([+\-·:÷=<>%?])/g);
+    const parts = formattedText.split(/([+\-−·×∗*÷:/=<>%?])/g);
     return parts.map((part, index) => {
-      const isOperator = /^[+\-·:÷=<>%]$/.test(part);
+      if (!part) return null;
+      if (part === '\n' || part.includes('\n')) {
+        return (
+          <Box component="span" key={`${keyPrefix}-n-${index}`} sx={{ whiteSpace: 'pre-line' }}>
+            {part}
+          </Box>
+        );
+      }
+      const isOperator = /^[+\-−·×∗*÷:/=<>%]$/.test(part);
       const isQuestionMark = part === '?';
-      if (!isOperator && !isQuestionMark) return <Box component="span" key={`${keyPrefix}-t-${index}`}>{part}</Box>;
+      if (!isOperator && !isQuestionMark) {
+        return (
+          <Box component="span" key={`${keyPrefix}-t-${index}`}>
+            {part}
+          </Box>
+        );
+      }
       if (isQuestionMark) {
         return (
           <Box
             component="span"
             key={`${keyPrefix}-q-${index}`}
-            sx={{ color: QUESTION_COLOR, fontWeight: 600, fontSize: '1.02em' }}
+            sx={{ color: QUESTION_COLOR, fontWeight: 800, fontSize: '1.02em' }}
           >
             ?
           </Box>
@@ -3310,7 +3300,7 @@ export default function EntryTicketPage() {
           key={`${keyPrefix}-o-${index}`}
           sx={{
             color: OPERATOR_COLOR,
-            fontWeight: 600,
+            fontWeight: 800,
             mx: large ? 0.1 : 0.04,
             px: 0,
           }}
@@ -3322,16 +3312,16 @@ export default function EntryTicketPage() {
   };
 
   const renderPrompt = (prompt: string, keyPrefix: string, large = false, singleLine = false) => {
-    const text = cleanPrompt(prompt);
+    const text = formatPromptForDisplay(cleanPrompt(prompt));
     const normalized = text.toLowerCase();
     const wfPrefix = 'wahr oder falsch:';
 
-    if (normalized.startsWith(wfPrefix)) {
-      const statement = text.slice(wfPrefix.length).trim();
+    if (normalized.startsWith(wfPrefix) || normalized.startsWith('wahr oder falsch:\n')) {
+      const statement = text.replace(/^wahr oder falsch:\s*/i, '').trim();
       if (singleLine) {
         return (
           <>
-            <Box component="span" sx={{ fontWeight: 600, color: '#546e7a' }}>
+            <Box component="span" sx={{ fontWeight: 800, color: '#546e7a' }}>
               Wahr oder falsch?
             </Box>{' '}
             {colorizeOperators(statement, `${keyPrefix}-wf-inline`, large)}
@@ -3340,9 +3330,10 @@ export default function EntryTicketPage() {
       }
       return (
         <>
-          <Box component="span" sx={{ fontWeight: 600, color: '#546e7a' }}>
+          <Box component="span" sx={{ fontWeight: 800, color: '#546e7a' }}>
             Wahr oder falsch?
-          </Box>{' '}
+          </Box>
+          <Box component="br" />
           {colorizeOperators(statement, `${keyPrefix}-wf`, large)}
         </>
       );
@@ -3500,7 +3491,6 @@ export default function EntryTicketPage() {
     );
   };
 
-  const formattedPrompt = currentTask ? formatPromptForDisplay(cleanPrompt(currentTask.prompt)) : '';
   const finalSlideRows = Math.ceil(activeTasks.length / 2);
   const overviewCompact = activeTasks.length >= 8 || showSolutions;
 
@@ -3615,9 +3605,45 @@ export default function EntryTicketPage() {
                 sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
               />
             </Box>
-            <Typography variant="h6" sx={{ color: '#37474f', fontWeight: 700, lineHeight: 1.1, fontSize: { xs: '0.85rem', sm: '0.92rem' } }}>
-              EntryTicket
-            </Typography>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                minWidth: 0,
+                maxWidth: '100%',
+              }}
+            >
+              <Typography
+                variant="h6"
+                sx={{
+                  color: '#37474f',
+                  fontWeight: 700,
+                  lineHeight: 1.1,
+                  fontSize: { xs: '0.85rem', sm: '0.92rem' },
+                }}
+              >
+                EntryTicket
+              </Typography>
+              {sessionStarted && (
+                <Typography
+                  title={activeSetLabel}
+                  sx={{
+                    mt: 0.15,
+                    maxWidth: { xs: '52vw', sm: '40vw' },
+                    fontSize: { xs: '0.68rem', sm: '0.72rem' },
+                    fontWeight: 700,
+                    lineHeight: 1.15,
+                    color: '#546e7a',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {activeSetLabel}
+                </Typography>
+              )}
+            </Box>
           </Box>
 
           <Tooltip title="Schließen">
@@ -3656,54 +3682,41 @@ export default function EntryTicketPage() {
                     borderBottom: '3px solid #455a64',
                   }}
                 >
-                  {/* Links: selbst erstellte Sets */}
+                  {/* Links: Informatik-Sets */}
                   <Box
                     sx={{
                       display: 'grid',
-                      gap: 1.25,
+                      gap: 0.55,
                       minWidth: 0,
                       p: 0.85,
                       borderRadius: 1.1,
-                      bgcolor: '#eceff1',
-                      border: '2px solid #78909c',
+                      bgcolor: '#e8f5e9',
+                      border: '2px solid #43a047',
                       boxSizing: 'border-box',
                     }}
                   >
-                    <DndContext sensors={setSortSensors} collisionDetection={closestCenter} onDragEnd={handleMatheSetDragEnd}>
-                      <SortableContext items={matheCustomSetIds} strategy={horizontalListSortingStrategy}>
-                        <Box
-                          role="toolbar"
-                          aria-label="Eigene Mathe-Fragensets"
-                          sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5, minHeight: 28 }}
-                        >
-                          {matheCustomSets.map((set) => (
-                            <SortableCustomSetChip
-                              key={set.id}
-                              set={set}
-                              selected={bandChosen && customSetId === set.id}
-                              accent="mathe"
-                              onSelect={() => selectCustomSet(set.id)}
-                            />
-                          ))}
-                        </Box>
-                      </SortableContext>
-                    </DndContext>
                     <DndContext sensors={setSortSensors} collisionDetection={closestCenter} onDragEnd={handleInfSetDragEnd}>
                       <SortableContext items={infCustomSetIds} strategy={horizontalListSortingStrategy}>
                         <Box
                           role="toolbar"
-                          aria-label="Eigene Informatik-Fragensets"
+                          aria-label="Informatik-Fragensets"
                           sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5, minHeight: 28 }}
                         >
-                          {infCustomSets.map((set) => (
-                            <SortableCustomSetChip
-                              key={set.id}
-                              set={set}
-                              selected={bandChosen && customSetId === set.id}
-                              accent="inf"
-                              onSelect={() => selectCustomSet(set.id)}
-                            />
-                          ))}
+                          {infCustomSets.length === 0 ? (
+                            <Typography sx={{ color: '#81c784', fontSize: '0.7rem', fontWeight: 600 }}>
+                              Noch keine Sets
+                            </Typography>
+                          ) : (
+                            infCustomSets.map((set) => (
+                              <SortableCustomSetChip
+                                key={set.id}
+                                set={set}
+                                selected={bandChosen && customSetId === set.id}
+                                accent="inf"
+                                onSelect={() => selectCustomSet(set.id)}
+                              />
+                            ))
+                          )}
                         </Box>
                       </SortableContext>
                     </DndContext>
@@ -3747,71 +3760,52 @@ export default function EntryTicketPage() {
                     </ButtonGroup>
                   </Box>
 
-                  {/* Rechts: generierte Bänder */}
+                  {/* Rechts: Mathe-Sets */}
                   <Box
                     sx={{
                       display: 'grid',
-                      gap: 1.25,
+                      gap: 0.55,
                       justifyItems: { xs: 'start', md: 'end' },
                       minWidth: 0,
                       p: 0.85,
                       borderRadius: 1.1,
-                      bgcolor: '#e8f5e9',
-                      border: '2px solid #43a047',
+                      bgcolor: '#eceff1',
+                      border: '2px solid #78909c',
                       boxSizing: 'border-box',
                     }}
                   >
-                    <ButtonGroup size="small" variant="outlined" sx={etGradeGroupSx} aria-label="Mathe generiert">
-                      {([5, 6, 7, 8, 9, 10, 11, 12, 13] as const).map((g) => (
-                        <Button
-                          key={g}
-                          onClick={() => selectBand(g)}
-                          sx={
-                            bandChosen && !customSetId && grade === g
-                              ? {
-                                  bgcolor: '#455a64',
-                                  color: '#fff',
-                                  borderColor: '#455a64',
-                                  '&:hover': { bgcolor: '#37474f' },
-                                }
-                              : undefined
-                          }
+                    <DndContext sensors={setSortSensors} collisionDetection={closestCenter} onDragEnd={handleMatheSetDragEnd}>
+                      <SortableContext items={matheCustomSetIds} strategy={horizontalListSortingStrategy}>
+                        <Box
+                          role="toolbar"
+                          aria-label="Mathe-Fragensets"
+                          sx={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            alignItems: 'center',
+                            justifyContent: { xs: 'flex-start', md: 'flex-end' },
+                            gap: 0.5,
+                            minHeight: 28,
+                          }}
                         >
-                          {g}
-                        </Button>
-                      ))}
-                    </ButtonGroup>
-                    <ButtonGroup size="small" variant="outlined" sx={etGradeGroupSx} aria-label="Informatik generiert">
-                      {(
-                        [
-                          { band: 'inf11' as const, label: 'Inf11', main: '#2e7d32', hoverBg: 'rgba(46, 125, 50, 0.1)' },
-                          { band: 'inf12' as const, label: 'Inf12', main: '#e65100', hoverBg: 'rgba(230, 81, 0, 0.1)' },
-                          { band: 'inf13' as const, label: 'Inf13', main: '#6d4c41', hoverBg: 'rgba(109, 76, 65, 0.1)' },
-                        ] as const
-                      ).map(({ band, label, main, hoverBg }) => (
-                        <Button
-                          key={band}
-                          onClick={() => selectBand(band)}
-                          sx={
-                            bandChosen && !customSetId && grade === band
-                              ? {
-                                  bgcolor: main,
-                                  color: '#fff',
-                                  borderColor: main,
-                                  '&:hover': { bgcolor: main, filter: 'brightness(0.92)' },
-                                }
-                              : {
-                                  color: main,
-                                  borderColor: main,
-                                  bgcolor: '#fff',
-                                  '&:hover': { bgcolor: hoverBg, borderColor: main },
-                                }
-                          }
-                        >
-                          {label}
-                        </Button>
-                      ))}
-                    </ButtonGroup>
+                          {matheCustomSets.length === 0 ? (
+                            <Typography sx={{ color: '#90a4ae', fontSize: '0.7rem', fontWeight: 600 }}>
+                              Noch keine Sets
+                            </Typography>
+                          ) : (
+                            matheCustomSets.map((set) => (
+                              <SortableCustomSetChip
+                                key={set.id}
+                                set={set}
+                                selected={bandChosen && customSetId === set.id}
+                                accent="mathe"
+                                onSelect={() => selectCustomSet(set.id)}
+                              />
+                            ))
+                          )}
+                        </Box>
+                      </SortableContext>
+                    </DndContext>
                   </Box>
                 </Box>
 
@@ -3831,7 +3825,41 @@ export default function EntryTicketPage() {
                     {customPlaySourceLabel}
                   </Typography>
                 ) : null}
-                {!showSetEditor && (activeTasks.length === 0 ? (
+                {isCustomSetActive && activeCustomSet ? (
+                  <>
+                    {poolForBand.length === 0 ? (
+                      <Box
+                        sx={{
+                          width: '100%',
+                          mb: 1,
+                          py: 1.25,
+                          px: 1,
+                          borderRadius: 1.1,
+                          border: '1px dashed #b0bec5',
+                          bgcolor: 'rgba(255,255,255,0.7)',
+                          textAlign: 'center',
+                          boxSizing: 'border-box',
+                        }}
+                      >
+                        <Typography sx={{ color: '#78909c', fontSize: '0.8rem', fontWeight: 600 }}>
+                          {countCustomSetTasks(activeCustomSet) === 0
+                            ? 'Keine Fragen in diesem Fragenset — unten Karten anlegen.'
+                            : 'Noch keine Karten aus früheren Stunden — Entry Ticket nutzt nur vorausgegangene Stunden (Ziel: 10 Fragen).'}
+                        </Typography>
+                      </Box>
+                    ) : null}
+                    <Box sx={{ width: '100%', minWidth: 0, mt: poolForBand.length === 0 ? 0 : 0.5 }}>
+                      <EntryTicketFragensetEditor
+                        set={activeCustomSet}
+                        activeLessonPath={entryLessonPath}
+                        onChange={patchActiveCustomSet}
+                        onRename={renameActiveCustomSet}
+                        onDeleteSet={deleteActiveCustomSet}
+                        showCounts={cardShowCounts}
+                      />
+                    </Box>
+                  </>
+                ) : (
                   <Box
                     sx={{
                       width: '100%',
@@ -3845,361 +3873,8 @@ export default function EntryTicketPage() {
                     }}
                   >
                     <Typography sx={{ color: '#78909c', fontSize: '0.8rem', fontWeight: 600 }}>
-                      {isCustomSetActive
-                        ? countCustomSetTasks(activeCustomSet!) === 0
-                          ? 'Keine Fragen in diesem Fragenset — im Editor Karten anlegen.'
-                          : 'Noch keine Karten aus früheren Stunden — Entry Ticket nutzt nur vorausgegangene Stunden (Ziel: 10 Fragen).'
-                        : 'Keine Fragen im aktuellen Fragenset.'}
+                      Bitte ein Fragenset links oder rechts wählen.
                     </Typography>
-                  </Box>
-                ) : (
-                  <Box
-                    sx={{
-                      display: 'grid',
-                      gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                      gap: 0.45,
-                      width: '100%',
-                    }}
-                  >
-                    {(() => {
-                      const maxActiveShown = Math.max(
-                        1,
-                        ...activeTasks.map((t) => (t.sourceKey ? cardShowCounts[t.sourceKey] || 0 : 0)),
-                      );
-                      return activeTasks.map((task, index) => {
-                      const shown = task.sourceKey ? cardShowCounts[task.sourceKey] || 0 : 0;
-                      const tone = entryTicketShowCountStyle(shown, maxActiveShown);
-                      return (
-                      <Box
-                        key={`${index}-${task.prompt}`}
-                        sx={{
-                          position: 'relative',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 0.4,
-                          px: 0.5,
-                          py: 0.35,
-                          minWidth: 0,
-                          borderRadius: 1,
-                          bgcolor: 'white',
-                          border: '1px solid #cfd8dc',
-                          boxSizing: 'border-box',
-                          '&:hover': { borderColor: '#90a4ae', bgcolor: '#fafafa' },
-                        }}
-                      >
-                        {editingIndex === index ? (
-                          <>
-                            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.4, minWidth: 0 }}>
-                              <TextField
-                                size="small"
-                                value={editingPrompt}
-                                onChange={(e) => handleEditingPromptChange(e.target.value)}
-                                placeholder="Frage"
-                                onKeyDown={handleEditKeyDown}
-                                sx={{ '& .MuiInputBase-input': { py: 0.35, fontSize: '0.8rem' } }}
-                              />
-                              <Typography sx={{ color: 'text.secondary', fontSize: '0.68rem' }}>
-                                {renderPromptWithInlineGreenSolution(
-                                  editingPrompt,
-                                  getLiveAutoSolution(editingPrompt),
-                                  `preview-${index}`,
-                                )}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-                              <ButtonGroup size="small" variant="outlined" orientation="vertical" sx={etOkAbGroupSx}>
-                                <Button variant="contained" onClick={saveEditingTask}>
-                                  OK
-                                </Button>
-                                <Button onClick={cancelEditingTask}>Ab</Button>
-                              </ButtonGroup>
-                            </Box>
-                          </>
-                        ) : (
-                          <>
-                            <Box
-                              sx={{
-                                minWidth: 28,
-                                flexShrink: 0,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                gap: 0.15,
-                              }}
-                            >
-                              <Box
-                                sx={{
-                                  minWidth: 22,
-                                  height: 22,
-                                  borderRadius: 0.75,
-                                  display: 'grid',
-                                  placeItems: 'center',
-                                  bgcolor: '#eceff1',
-                                  color: '#455a64',
-                                  fontWeight: 800,
-                                  fontSize: '0.68rem',
-                                }}
-                              >
-                                {index + 1}
-                              </Box>
-                              <Typography
-                                component="span"
-                                title={`Schon ${shown}× gezeigt`}
-                                sx={{
-                                  fontSize: '0.62rem',
-                                  fontWeight: 800,
-                                  lineHeight: 1.15,
-                                  color: tone.color,
-                                  bgcolor: tone.bgcolor,
-                                  fontVariantNumeric: 'tabular-nums',
-                                  px: 0.35,
-                                  py: 0.1,
-                                  borderRadius: 0.5,
-                                }}
-                              >
-                                {shown}×
-                              </Typography>
-                            </Box>
-                            <Box
-                              sx={{
-                                flex: 1,
-                                minWidth: 0,
-                                fontSize: '0.82rem',
-                                lineHeight: 1.3,
-                                color: '#37474f',
-                                fontWeight: 500,
-                                ...richTextSx,
-                              }}
-                            >
-                              {entryTicketLooksLikeHtml(task.prompt) ||
-                              entryTicketHasImage(task.prompt) ||
-                              entryTicketHasRichFormatting(task.prompt) ? (
-                                <EntryTicketRichHtml value={task.prompt} />
-                              ) : (
-                                renderPrompt(task.prompt, `selection-${index}`, false, true)
-                              )}
-                            </Box>
-                            <ButtonGroup size="small" variant="outlined" sx={etMiniPairGroupSx}>
-                              <Button
-                                onClick={() => startEditingTask(index)}
-                                sx={{ borderColor: '#cfd8dc', color: '#546e7a' }}
-                              >
-                                ✎
-                              </Button>
-                              <Button color="error" onClick={() => replaceTaskAtIndex(index)}>
-                                ×
-                              </Button>
-                            </ButtonGroup>
-                          </>
-                        )}
-                      </Box>
-                      );
-                    });
-                    })()}
-                  </Box>
-                ))}
-
-                {showSetEditor && isCustomSetActive && activeCustomSet && (
-                  <Box sx={{ width: '100%', minWidth: 0, mt: 2.5 }}>
-                    <EntryTicketFragensetEditor
-                      set={activeCustomSet}
-                      activeLessonPath={entryLessonPath}
-                      onChange={patchActiveCustomSet}
-                      onRename={renameActiveCustomSet}
-                      onDeleteSet={deleteActiveCustomSet}
-                      showCounts={cardShowCounts}
-                    />
-                  </Box>
-                )}
-
-                {showSetEditor && !isCustomSetActive && (
-                  <Box
-                    sx={{
-                      mt: 2.5,
-                      width: '100%',
-                      boxSizing: 'border-box',
-                      p: 1,
-                      border: '1px solid #cfd8dc',
-                      borderRadius: 1.5,
-                      bgcolor: '#fff',
-                    }}
-                  >
-                    <Typography sx={{ mb: 0.45, fontWeight: 800, fontSize: '0.72rem', color: '#37474f' }}>
-                      Fragenset {activeSetLabel} · {poolForBand.length} Fragen
-                    </Typography>
-                    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 120px 24px', gap: 0.35, alignItems: 'center', mb: 0.5 }}>
-                      <TextField
-                        size="small"
-                        value={newPrompt}
-                        onChange={(e) => setNewPrompt(e.target.value)}
-                        placeholder="Neue Frage (mit ?)"
-                        sx={{ '& .MuiInputBase-input': { py: 0.3, fontSize: '0.72rem' } }}
-                        onKeyDown={handleAddQuestionKeyDown}
-                      />
-                      <TextField
-                        size="small"
-                        value={newSolution}
-                        onChange={(e) => setNewSolution(e.target.value)}
-                        placeholder="Antwort"
-                        sx={{ '& .MuiInputBase-input': { py: 0.3, fontSize: '0.72rem' } }}
-                        onKeyDown={handleAddQuestionKeyDown}
-                      />
-                      <Button
-                        size="small"
-                        variant="contained"
-                        onClick={addSetQuestion}
-                        sx={{ minWidth: 24, width: 24, height: 24, p: 0, fontSize: '0.85rem' }}
-                      >
-                        +
-                      </Button>
-                    </Box>
-                    <Box sx={{ display: 'grid', gap: 0.55, width: '100%' }}>
-                      {groupedSetQuestions.map((group) => {
-                        const vis = visualForFragensetGroup(group.category);
-                        return (
-                        <Box key={group.category} sx={{ display: 'grid', gap: 0.35, width: '100%' }}>
-                          <Box
-                            sx={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 0.4,
-                              px: 0.65,
-                              py: 0.25,
-                              borderRadius: 1,
-                              width: 'fit-content',
-                              bgcolor: vis.bg,
-                              color: vis.fg,
-                              border: '1px solid',
-                              borderColor: vis.border,
-                            }}
-                          >
-                            <Box component="span" sx={{ fontSize: '0.75rem', lineHeight: 1 }}>
-                              {vis.icon}
-                            </Box>
-                            <Typography variant="caption" sx={{ fontWeight: 800, color: 'inherit', fontSize: '0.68rem' }}>
-                              {group.category}
-                            </Typography>
-                          </Box>
-                          {group.items.map(({ q, idx, displayNumber }) => {
-                            const shown = q.sourceKey ? cardShowCounts[q.sourceKey] || 0 : 0;
-                            const maxShown = Math.max(
-                              1,
-                              ...group.items.map((item) =>
-                                item.q.sourceKey ? cardShowCounts[item.q.sourceKey] || 0 : 0,
-                              ),
-                            );
-                            const tone = entryTicketShowCountStyle(shown, maxShown);
-                            return (
-                            <Box
-                              key={`${idx}-${q.prompt}`}
-                              sx={{
-                                position: 'relative',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 0.45,
-                                p: 0.45,
-                                width: '100%',
-                                boxSizing: 'border-box',
-                                border: '1px solid',
-                                borderColor: vis.border,
-                                borderRadius: 1,
-                                bgcolor: vis.bg,
-                              }}
-                            >
-                              {setEditIndex === idx ? (
-                                <>
-                                  <TextField
-                                    size="small"
-                                    value={setEditCategory}
-                                    onChange={(e) => setSetEditCategory(e.target.value)}
-                                    placeholder="Kategorie"
-                                    sx={{ width: 100, '& .MuiInputBase-input': { py: 0.35, fontSize: '0.75rem' } }}
-                                  />
-                                  <TextField
-                                    size="small"
-                                    value={setEditPrompt}
-                                    onChange={(e) => setSetEditPrompt(e.target.value)}
-                                    placeholder="Frage"
-                                    sx={{ flex: 1, '& .MuiInputBase-input': { py: 0.35, fontSize: '0.75rem' } }}
-                                  />
-                                  <TextField
-                                    size="small"
-                                    value={setEditSolution}
-                                    onChange={(e) => setSetEditSolution(e.target.value)}
-                                    placeholder="Lösung"
-                                    sx={{ width: 120, '& .MuiInputBase-input': { py: 0.35, fontSize: '0.75rem' } }}
-                                  />
-                                  <ButtonGroup size="small" variant="outlined" sx={etOkAbGroupSx}>
-                                    <Button variant="contained" onClick={saveSetEditing}>
-                                      OK
-                                    </Button>
-                                    <Button onClick={cancelSetEditing}>Ab</Button>
-                                  </ButtonGroup>
-                                </>
-                              ) : (
-                                <>
-                                  <Box
-                                    sx={{
-                                      minWidth: 36,
-                                      flexShrink: 0,
-                                      display: 'flex',
-                                      flexDirection: 'column',
-                                      alignItems: 'center',
-                                      gap: 0.1,
-                                    }}
-                                  >
-                                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.75rem', lineHeight: 1.1 }}>
-                                      {displayNumber}.
-                                    </Typography>
-                                    <Typography
-                                      component="span"
-                                      title={`Schon ${shown}× gezeigt`}
-                                      sx={{
-                                        fontSize: '0.62rem',
-                                        fontWeight: 800,
-                                        lineHeight: 1.15,
-                                        color: tone.color,
-                                        bgcolor: tone.bgcolor,
-                                        fontVariantNumeric: 'tabular-nums',
-                                        px: 0.35,
-                                        py: 0.1,
-                                        borderRadius: 0.5,
-                                      }}
-                                    >
-                                      {shown}×
-                                    </Typography>
-                                  </Box>
-                                  <Typography variant="body2" sx={{ flex: 1, fontSize: '0.78rem', minWidth: 0, ...richTextSx }}>
-                                    <EntryTicketRichHtml value={q.prompt} />
-                                  </Typography>
-                                  <Typography
-                                    variant="body2"
-                                    component="div"
-                                    sx={{
-                                      minWidth: 72,
-                                      color: 'success.dark',
-                                      fontWeight: 800,
-                                      fontSize: '0.95rem',
-                                      ...richTextSx,
-                                    }}
-                                  >
-                                    <EntryTicketRichHtml value={q.solution} />
-                                  </Typography>
-                                  <ButtonGroup size="small" variant="outlined" sx={{ ...etMiniPairGroupSx, ml: 'auto' }}>
-                                    <Button onClick={() => startSetEditing(idx)}>✎</Button>
-                                    <Button color="error" onClick={() => deleteSetQuestion(idx)}>
-                                      ×
-                                    </Button>
-                                  </ButtonGroup>
-                                </>
-                              )}
-                            </Box>
-                            );
-                          })}
-                        </Box>
-                        );
-                      })}
-                    </Box>
                   </Box>
                 )}
                   </>
@@ -4371,12 +4046,47 @@ export default function EntryTicketPage() {
                 </Box>
                 )}
 
+                {isTeacher && isCustomSetActive && activeCustomSet ? (
+                  <TextField
+                    size="small"
+                    multiline
+                    minRows={1}
+                    maxRows={3}
+                    value={activeCustomSet.notes || ''}
+                    onChange={(e) =>
+                      patchActiveCustomSet({
+                        ...activeCustomSet,
+                        notes: e.target.value.slice(0, 4000),
+                      })
+                    }
+                    placeholder="Notizen nur für dich…"
+                    sx={{
+                      width: '100%',
+                      maxWidth: 864,
+                      mx: 'auto',
+                      '& .MuiOutlinedInput-root': {
+                        bgcolor: '#fffde7',
+                        '& fieldset': { borderColor: '#fff59d' },
+                        '&:hover fieldset': { borderColor: '#fbc02d' },
+                        '&.Mui-focused fieldset': { borderColor: '#f9a825' },
+                      },
+                      '& .MuiInputBase-input': {
+                        fontSize: '0.72rem',
+                        lineHeight: 1.35,
+                        color: '#5d4037',
+                        py: 0.6,
+                      },
+                    }}
+                    inputProps={{ 'aria-label': 'Persönliche Notizen' }}
+                  />
+                ) : null}
+
                 {!sessionDone ? (
                   <Box
                     sx={{
                       position: 'relative',
                       width: '100%',
-                      maxWidth: 720,
+                      maxWidth: 864,
                       mx: 'auto',
                       boxSizing: 'border-box',
                     }}
@@ -4446,15 +4156,15 @@ export default function EntryTicketPage() {
                                   readEntryTicketCardLayout(currentTask.prompt) !== 'flow')
                                   ? 'left'
                                   : 'center',
-                              px: { xs: 2.25, sm: 3.5 },
-                              py: 2.25,
+                              px: { xs: 2.7, sm: 4.2 },
+                              py: 2.7,
                               overflow: 'visible',
                             }}
                           >
                           <Box
                             sx={{
                               width: '100%',
-                              fontSize: { xs: '1.3rem', sm: '1.6rem', md: '1.75rem' },
+                              fontSize: { xs: '1.56rem', sm: '1.92rem', md: '2.1rem' },
                               lineHeight: 1.35,
                               fontWeight: 500,
                               color: '#37474f',
@@ -4463,10 +4173,7 @@ export default function EntryTicketPage() {
                               ...richTextSx,
                             }}
                           >
-                            {currentTask &&
-                            (entryTicketLooksLikeHtml(currentTask.prompt) ||
-                              entryTicketHasImage(currentTask.prompt) ||
-                              entryTicketHasRichFormatting(currentTask.prompt)) ? (
+                            {currentTask ? (
                               <EntryTicketRichHtml
                                 value={currentTask.prompt}
                                 sx={{
@@ -4476,9 +4183,7 @@ export default function EntryTicketPage() {
                                   whiteSpace: 'pre-line',
                                 }}
                               />
-                            ) : (
-                              renderPrompt(formattedPrompt, 'live', true)
-                            )}
+                            ) : null}
                           </Box>
                         </Box>
 
@@ -4610,11 +4315,11 @@ export default function EntryTicketPage() {
                           key={`${index}-${task.prompt}`}
                           sx={{
                             display: 'grid',
-                            gridTemplateColumns: '16px minmax(0, 1fr)',
-                            columnGap: 0.45,
+                            gridTemplateColumns: '19px minmax(0, 1fr)',
+                            columnGap: 0.55,
                             alignItems: 'center',
-                            px: 0.55,
-                            py: 0.15,
+                            px: 0.66,
+                            py: 0.2,
                             borderRadius: 1,
                             bgcolor: 'rgba(255,255,255,0.72)',
                             minWidth: 0,
@@ -4624,7 +4329,7 @@ export default function EntryTicketPage() {
                         >
                           <Typography
                             sx={{
-                              fontSize: overviewCompact ? '0.68rem' : '0.75rem',
+                              fontSize: overviewCompact ? '0.82rem' : '0.9rem',
                               fontWeight: 800,
                               color: '#b0bec5',
                               fontVariantNumeric: 'tabular-nums',
@@ -4646,39 +4351,34 @@ export default function EntryTicketPage() {
                             <Box
                               sx={{
                                 fontSize: showSolutions
-                                  ? { xs: '0.68rem', sm: '0.75rem' }
+                                  ? { xs: '0.82rem', sm: '0.9rem' }
                                   : overviewCompact
-                                    ? { xs: '0.72rem', sm: '0.8rem' }
-                                    : { xs: '0.82rem', sm: '0.92rem' },
+                                    ? { xs: '0.86rem', sm: '0.96rem' }
+                                    : { xs: '0.98rem', sm: '1.1rem' },
                                 lineHeight: 1.15,
                                 fontWeight: 500,
                                 color: '#455a64',
                                 minWidth: 0,
                                 overflow: 'hidden',
+                                whiteSpace: 'pre-line',
                                 ...richTextSx,
                                 '& img': {
                                   display: 'block',
                                   maxWidth: '100%',
                                   height: 'auto',
-                                  maxHeight: showSolutions ? 32 : overviewCompact ? 40 : 56,
+                                  maxHeight: showSolutions ? 38 : overviewCompact ? 48 : 67,
                                   width: 'auto',
                                   my: 0.15,
                                   borderRadius: 0.5,
                                 },
                               }}
                             >
-                              {entryTicketLooksLikeHtml(task.prompt) ||
-                              entryTicketHasImage(task.prompt) ||
-                              entryTicketHasRichFormatting(task.prompt) ? (
-                                <EntryTicketRichHtml value={task.prompt} />
-                              ) : (
-                                renderPrompt(task.prompt, `final-${index}`, false, true)
-                              )}
+                              <EntryTicketRichHtml value={task.prompt} />
                             </Box>
                             {showSolutions && (
                               <Box
                                 sx={{
-                                  fontSize: { xs: '1.05rem', sm: '1.25rem' },
+                                  fontSize: { xs: '1.26rem', sm: '1.5rem' },
                                   lineHeight: 1.2,
                                   fontWeight: 800,
                                   color: '#1b5e20',
@@ -4694,8 +4394,8 @@ export default function EntryTicketPage() {
                                   ...richTextSx,
                                   '& img': {
                                     display: 'inline-block',
-                                    maxHeight: 36,
-                                    maxWidth: 80,
+                                    maxHeight: 43,
+                                    maxWidth: 96,
                                     width: 'auto',
                                     height: 'auto',
                                     verticalAlign: 'middle',
