@@ -82,10 +82,17 @@ import { entryTicketBandFromGroupNames } from '../lib/entryTicketGrade';
 import { ENTRY_TICKET_MODAL_DISMISS_KEY } from './StudentLiveTicketAlerts';
 import { sortLearningGroups } from '../lib/learningGroupSort';
 import {
+  filterOutNestedAssignedFolderPaths,
   folderTreeNodeKey,
   isFolderTreeNodeExpanded,
   sortAssignedFolderPaths,
 } from '../lib/folderAssignmentOrder';
+import {
+  INFORMATIK_FOLDER_BG,
+  INFORMATIK_FOLDER_BORDER,
+  isInformatikFolderPath,
+  resolveLearningGroupDisplayStyle,
+} from '../lib/learningGroupAppearance';
 import type { ExcursionProtocolDashboardSession } from '../lib/excursionProtocolTypes';
 import type { AnnouncementDashboardSession } from '../lib/announcementTypes';
 import { openLessonFolderFile } from '../lib/openLessonFolderFile';
@@ -106,6 +113,7 @@ import {
   numberedWochenaufgabeDirs,
   parseReadApiChildren,
 } from '../lib/wochenaufgabenFolder';
+import WochenaufgabenNumberChips from './wochenaufgaben/WochenaufgabenNumberChips';
 const COLLAB_BEACON_LS_KEY = 'jm_collab_fc_beacon_seen_v1';
 function loadCollabBeaconSeen(): Record<string, string> {
   try {
@@ -3259,6 +3267,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     const items = mergeWochenaufgabenIntoFolderTree(rawItems, folderPath, siblingWochen);
     const isLoading = loadingFolderContents[`${groupId}:${folderPath}`] || false;
     const rootIsWochenaufgaben = isWochenaufgabenFolderName(folderPath.split('/').pop() || '');
+    const rootIsInformatik = isInformatikFolderPath(folderPath);
     
     console.log(`🎨 Rendere Ordner-Vorschau für ${folderPath}, Items:`, items.length);
     
@@ -3718,11 +3727,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       {/* Rekursive Anzeige für ALLE Unterordner und Dateien - IMMER aufgeklappt */}
       {item.type === 'directory' && item.children && item.children.length > 0 && branchExpanded && (
         <Box sx={{ ml: 2, mb: 0.7 }}>
-          {(isWochenaufgabenDir
-            ? numberedWochenaufgabeDirs(item.children)
-            : filterWbFilesForStudentPreview(item.children)
-          ).map((child: any) =>
-            renderItemRecursively(child, level + 1, view, inWochenaufgabenBranch || isWochenaufgabenDir),
+          {isWochenaufgabenDir ? (
+            <WochenaufgabenNumberChips
+              children={item.children}
+              parentPath={(item.path || `${folderPath}/${item.name || ''}`).replace(/\\/g, '/')}
+            />
+          ) : (
+            filterWbFilesForStudentPreview(item.children).map((child: any) =>
+              renderItemRecursively(child, level + 1, view, inWochenaufgabenBranch || isWochenaufgabenDir),
+            )
           )}
         </Box>
       )}
@@ -3747,11 +3760,23 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             sx={{
               p: 1.4,
               borderRadius: 1.4,
-              bgcolor: rootIsWochenaufgaben ? WOCHENAUFGABEN_BG : '#f8f9fa',
-              border: `1px solid ${rootIsWochenaufgaben ? WOCHENAUFGABEN_BORDER : '#e9ecef'}`,
+              bgcolor: rootIsWochenaufgaben
+                ? WOCHENAUFGABEN_BG
+                : rootIsInformatik
+                  ? INFORMATIK_FOLDER_BG
+                  : '#f8f9fa',
+              border: rootIsWochenaufgaben
+                ? `1px solid ${WOCHENAUFGABEN_BORDER}`
+                : rootIsInformatik
+                  ? INFORMATIK_FOLDER_BORDER
+                  : '1px solid #e9ecef',
               transition: 'all 0.2s ease',
               '&:hover': {
-                bgcolor: rootIsWochenaufgaben ? '#fff3e0' : '#e9ecef',
+                bgcolor: rootIsWochenaufgaben
+                  ? '#fff3e0'
+                  : rootIsInformatik
+                    ? 'rgba(0, 96, 100, 0.12)'
+                    : '#e9ecef',
               },
             }}
           >
@@ -3793,9 +3818,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
               <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
                 Lade Inhalt...
               </Typography>
-            ) : items.length === 0 ? null : (
+            ) : items.length === 0 ? null : rootIsWochenaufgaben ? (
+              <WochenaufgabenNumberChips children={filteredItems} parentPath={folderPath} />
+            ) : (
               <Box>
-                {filteredItems.map((item) => renderItemRecursively(item, 0, 'dashboard', rootIsWochenaufgaben)).filter((el) => el !== null)}
+                {filteredItems.map((item) => renderItemRecursively(item, 0, 'dashboard', false)).filter((el) => el !== null)}
               </Box>
             )}
           </Box>
@@ -6703,14 +6730,28 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 <Grid container spacing={1.4}>
                   {lerngruppen
                     .filter(gruppe => !gruppe.name.toLowerCase().includes("unter") || !gruppe.name.toLowerCase().includes("mittelstufe"))
-                    .map((gruppe) => (
+                    .map((gruppe) => {
+                    const {
+                      groupColor,
+                      boxBg,
+                      boxBorder,
+                      hasCustomStyle,
+                    } = resolveLearningGroupDisplayStyle(gruppe, colors.primary);
+                    const isInformatikGroup = /informatik|gk\s*11|gk\s*12/i.test(gruppe.name);
+                    return (
                     <Grid item xs={12} key={gruppe.id}>
                       <Card variant="outlined" sx={{ 
                         borderRadius: 2.8,
-                        border: '1px solid #e0e0e0',
-                        bgcolor: '#ffffff',
+                        border: isInformatikGroup
+                          ? boxBorder
+                          : hasCustomStyle
+                            ? boxBorder
+                            : '1px solid #e0e0e0',
+                        bgcolor: isInformatikGroup ? boxBg : '#ffffff',
                         boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
                         transition: 'all 0.2s ease-in-out',
+                        outline: isInformatikGroup ? `1px solid ${groupColor}` : undefined,
+                        outlineOffset: isInformatikGroup ? 1 : undefined,
                         '&:hover': {
                           boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
                           transform: 'translateY(-1px)'
@@ -6722,7 +6763,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                           {/* Zugeordnete Ordner - direkt unterhalb des Headers, exakt wie im TeacherDashboard */}
                           {assignedFolders[gruppe.id] && assignedFolders[gruppe.id].length > 0 ? (
                             <Box>
-                              {assignedFolders[gruppe.id]
+                              {filterOutNestedAssignedFolderPaths(assignedFolders[gruppe.id])
                                 .filter((folderPath: string) => {
                                   // Filtere Ordner mit dem Namen "Karteikarten" aus
                                   const folderName = folderPath.split('/').pop() || folderPath;
@@ -6897,7 +6938,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         </CardContent>
                       </Card>
                     </Grid>
-                  ))}
+                    );
+                  })}
                 </Grid>
               </CardContent>
             </Card>

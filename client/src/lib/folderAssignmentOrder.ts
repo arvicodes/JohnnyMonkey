@@ -15,6 +15,34 @@ export function sortAssignedFolderPaths(folders: AssignedFolderEntry[]): string[
     .map((f) => f.path);
 }
 
+/** Normalisierter Pfadvergleich für Zuordnungen. */
+export function normalizeAssignedFolderPath(path: string): string {
+  return String(path || '')
+    .replace(/\\/g, '/')
+    .replace(/\/+/g, '/')
+    .replace(/^\/+|\/+$/g, '');
+}
+
+/**
+ * Unterordner-Zuordnungen ausblenden, wenn der Elternordner bereits zugewiesen ist
+ * (z. B. „MSS 12 LK“ + „MSS 12 LK/12-01 Matrizen“ → nur Elternkarte).
+ */
+export function filterOutNestedAssignedFolderPaths(paths: string[]): string[] {
+  const normalized = paths.map((p) => normalizeAssignedFolderPath(p));
+  const seen = new Set<string>();
+  return paths.filter((path, i) => {
+    const n = normalized[i];
+    if (!n || seen.has(n)) return false;
+    const nestedUnderOther = normalized.some((other, j) => {
+      if (i === j || !other || other === n) return false;
+      return n.startsWith(`${other}/`);
+    });
+    if (nestedUnderOther) return false;
+    seen.add(n);
+    return true;
+  });
+}
+
 export function assignedFolderSortableId(groupId: string, folderPath: string): string {
   return `assignedFolder:${groupId}:${folderPath}`;
 }

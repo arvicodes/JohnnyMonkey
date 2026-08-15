@@ -158,10 +158,23 @@ export function resolveLearningGroupDisplayStyle(
           : is10c
             ? 'rgba(230, 81, 0, 0.22)'
             : `${groupColor}20`,
-    boxBorder: isInformatik || isMatheLK || is7a || is10c ? `1px solid ${groupColor}50` : 'none',
+    boxBorder: isInformatik
+      ? `2px solid ${groupColor}`
+      : isMatheLK || is7a || is10c
+        ? `1px solid ${groupColor}50`
+        : 'none',
     hasCustomStyle: Boolean(group.iconEmoji) || isInformatik || isMatheLK || is7a || is10c,
     prefixIcon,
     titleFontWeight: isMatheLK ? 800 : 'bold',
     titleFontSize: isMatheLK ? '0.9rem' : '0.72rem',
   };
 }
+
+/** Pfade unter J-M-Reihen/Informatik (und Varianten). */
+export function isInformatikFolderPath(path: string): boolean {
+  return /(^|\/)Informatik(\/|$)/i.test(String(path || '').replace(/\\/g, '/'));
+}
+
+export const INFORMATIK_FOLDER_BORDER = '2px solid #006064';
+export const INFORMATIK_FOLDER_BORDER_SOFT = '#80cbc4';
+export const INFORMATIK_FOLDER_BG = 'rgba(0, 96, 100, 0.06)';

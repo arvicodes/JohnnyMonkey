@@ -237,21 +237,28 @@ const PresentationPresentPage: React.FC = () => {
     [deck, isNamedView, isOriginalView, lessonPath, namedSlug]
   );
 
-  const updateStrokes = (strokes: PresentationStroke[]) => {
-    if (!annotations || !currentSlide) return;
-    const base = annotationsRef.current ?? annotations;
+  const currentSlideIdRef = useRef<string | undefined>(undefined);
+  currentSlideIdRef.current = currentSlide?.id;
+  const isNamedViewRef = useRef(isNamedView);
+  isNamedViewRef.current = isNamedView;
+  const isOriginalViewRef = useRef(isOriginalView);
+  isOriginalViewRef.current = isOriginalView;
+
+  const updateStrokes = useCallback((strokes: PresentationStroke[]) => {
+    const slideId = currentSlideIdRef.current;
+    const base = annotationsRef.current;
+    if (!slideId || !base) return;
     const next: PresentationAnnotations = {
       ...base,
-      bySlideId: { ...base.bySlideId, [currentSlide.id]: strokes },
+      bySlideId: { ...base.bySlideId, [slideId]: strokes },
     };
-    // Sofort für Flush/Persist; UI-Update nicht den nächsten Pencil-Strich blockieren
+    // Sofort für Flush/Persist — setState nicht den Pencil blockieren
     annotationsRef.current = next;
     startTransition(() => setAnnotations(next));
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    // Named/Original: nur Speicher — kein Disk-Autosave
-    if (isNamedView || isOriginalView) return;
-    saveTimer.current = setTimeout(() => void persistAnnotations(next), 500);
-  };
+    if (isNamedViewRef.current || isOriginalViewRef.current) return;
+    saveTimer.current = setTimeout(() => void persistAnnotations(next), 1600);
+  }, [persistAnnotations]);
 
   const flushAnnotations = useCallback(async (): Promise<PresentationAnnotations | null> => {
     const current = annotationsRef.current;
@@ -887,6 +894,7 @@ const PresentationPresentPage: React.FC = () => {
               strokes={currentStrokes}
               onStrokesChange={updateStrokes}
               enabled={drawActive}
+              slideId={currentSlide.id}
               tool={activeTool}
               strokeColor={strokeColor}
               lineWidth={lineWidth}

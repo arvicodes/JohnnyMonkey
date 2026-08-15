@@ -93,6 +93,7 @@ import {
   parseReadApiChildren,
 } from '../lib/wochenaufgabenFolder';
 import { ensureWochenaufgabeDeck, INITIAL_WOCHENAUFGABE_NUMBERS } from '../lib/wochenaufgabenPresentation';
+import WochenaufgabenNumberChips from './wochenaufgaben/WochenaufgabenNumberChips';
 import {
   Box,
   Typography,
@@ -423,6 +424,9 @@ import {
 import {
   DEFAULT_LEARNING_GROUP_COLOR,
   DEFAULT_LEARNING_GROUP_ICON,
+  INFORMATIK_FOLDER_BG,
+  INFORMATIK_FOLDER_BORDER,
+  isInformatikFolderPath,
   resolveLearningGroupDisplayStyle,
 } from '../lib/learningGroupAppearance';
 import { sortLearningGroups, nextLearningGroupDisplayOrder } from '../lib/learningGroupSort';
@@ -10318,13 +10322,31 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     const items = mergeWochenaufgabenIntoFolderTree(rawItems, folderPath, siblingWochen);
     const isLoading = loadingFolderContents[`${groupId}:${folderPath}`] || false;
     const rootIsWochenaufgaben = isWochenaufgabenFolderName(folderPath.split('/').pop() || '');
-    const rootHeaderColor = rootIsWochenaufgaben ? WOCHENAUFGABEN_TEXT_COLOR : '#D32F2F';
+    const rootIsInformatik = isInformatikFolderPath(folderPath);
+    const rootHeaderColor = rootIsWochenaufgaben
+      ? WOCHENAUFGABEN_TEXT_COLOR
+      : rootIsInformatik
+        ? '#006064'
+        : '#D32F2F';
     const rootHeaderIcon = rootIsWochenaufgaben ? '📅' : '📁';
     const rootTreeBorder = rootIsWochenaufgaben
       ? '2px solid rgba(255, 183, 77, 0.55)'
-      : '2px solid rgba(211, 47, 47, 0.2)';
-    const rootCardBg = rootIsWochenaufgaben ? WOCHENAUFGABEN_BG : '#f8f9fa';
-    const rootCardBorder = rootIsWochenaufgaben ? WOCHENAUFGABEN_BORDER : '#e9ecef';
+      : rootIsInformatik
+        ? '2px solid rgba(0, 96, 100, 0.4)'
+        : '2px solid rgba(211, 47, 47, 0.2)';
+    const rootCardBg = rootIsWochenaufgaben
+      ? WOCHENAUFGABEN_BG
+      : rootIsInformatik
+        ? INFORMATIK_FOLDER_BG
+        : '#f8f9fa';
+    const rootCardBorder = rootIsWochenaufgaben
+      ? WOCHENAUFGABEN_BORDER
+      : rootIsInformatik
+        ? '#006064'
+        : '#e9ecef';
+    const rootCardBorderCss = rootIsInformatik
+      ? INFORMATIK_FOLDER_BORDER
+      : `1px solid ${rootCardBorder}`;
     
     // Filtere PDF-Dateien aus, die zu .wb Dateien gehören - NUR für die Anzeige
     // Die ursprünglichen Daten bleiben unverändert für Schüler
@@ -10937,11 +10959,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   : 'none',
               }}
             >
-              {(isWochenaufgabenDir
-                ? numberedWochenaufgabeDirs(item.children)
-                : itemsToDisplayItems(filterPdfFiles(item.children))
-              ).map((child: any) =>
-                renderItemRecursively(child, level + 1, inWochenaufgabenBranch || isWochenaufgabenDir),
+              {isWochenaufgabenDir ? (
+                <WochenaufgabenNumberChips
+                  children={item.children}
+                  parentPath={itemFullPath}
+                  onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
+                />
+              ) : (
+                itemsToDisplayItems(filterPdfFiles(item.children)).map((child: any) =>
+                  renderItemRecursively(child, level + 1, inWochenaufgabenBranch || isWochenaufgabenDir),
+                )
               )}
             </Box>
           )}
@@ -10962,7 +10989,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           p: 1,
           borderRadius: 1.4,
           bgcolor: rootCardBg,
-          border: `1px solid ${rootCardBorder}`,
+          border: rootCardBorderCss,
           transition: 'all 0.2s ease',
           '&:hover': {
             bgcolor: '#f3f4f6'
@@ -11016,9 +11043,15 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
                 Lade Inhalt...
               </Typography>
-            ) : items.length === 0 ? null : (
+            ) : items.length === 0 ? null : rootIsWochenaufgaben ? (
+              <WochenaufgabenNumberChips
+                children={filteredItems}
+                parentPath={folderPath}
+                onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
+              />
+            ) : (
               <Box>
-                {itemsToDisplayItems(filteredItems).map((item) => renderItemRecursively(item, 0, rootIsWochenaufgaben))}
+                {itemsToDisplayItems(filteredItems).map((item) => renderItemRecursively(item, 0, false))}
               </Box>
             )}
           </Box>
@@ -11040,7 +11073,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           p: 1,
           borderRadius: 1.4,
           bgcolor: rootCardBg,
-          border: `1px solid ${rootCardBorder}`,
+          border: rootCardBorderCss,
           transition: 'all 0.2s ease',
           '&:hover': {
             bgcolor: '#f3f4f6'
@@ -11092,9 +11125,15 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
                 Lade Inhalt...
               </Typography>
-            ) : items.length === 0 ? null : (
+            ) : items.length === 0 ? null : rootIsWochenaufgaben ? (
+              <WochenaufgabenNumberChips
+                children={filteredItems}
+                parentPath={folderPath}
+                onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
+              />
+            ) : (
               <Box>
-                {itemsToDisplayItems(filteredItems).map((item) => renderItemRecursively(item, 0, rootIsWochenaufgaben))}
+                {itemsToDisplayItems(filteredItems).map((item) => renderItemRecursively(item, 0, false))}
               </Box>
             )}
           </Box>
@@ -15923,15 +15962,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 <Grid container spacing={1.5} alignItems="flex-start">
                   {workingReihenPaths.map((folderPath) => {
                     const gid = resolveGroupIdForReihe(folderPath);
+                    const isInfReihe = isInformatikFolderPath(folderPath);
                     return (
                       <Grid item xs={12} sm={6} md={4} key={folderPath}>
                         <Box
                           sx={{
                             p: 2.1,
-                            bgcolor: '#fff',
+                            bgcolor: isInfReihe ? INFORMATIK_FOLDER_BG : '#fff',
                             borderRadius: 2.8,
                             boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                            border: '1px solid #e0e0e0',
+                            border: isInfReihe ? INFORMATIK_FOLDER_BORDER : '1px solid #e0e0e0',
                             height: '100%',
                             position: 'relative',
                           }}

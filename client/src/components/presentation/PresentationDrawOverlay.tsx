@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import {
   PresentationStroke,
   SLIDE_REF_HEIGHT,
@@ -29,6 +29,8 @@ interface PresentationDrawOverlayProps {
   onStrokesChange: (strokes: PresentationStroke[]) => void;
   readOnly?: boolean;
   enabled?: boolean;
+  /** Folienwechsel → Overlay übernimmt Props neu */
+  slideId?: string;
   tool: PresentationDrawTool;
   strokeColor: string;
   lineWidth?: number;
@@ -39,8 +41,10 @@ interface PresentationDrawOverlayProps {
 }
 
 const SHAPE_MIN_PX = 6;
-/** Mindestabstand zwischen Ink-Punkten (Slide-Koordinaten) — reduziert Rauschen, hält Kurven glatt. */
-const MIN_POINT_DIST_SQ = 0.8 * 0.8;
+/** Mindestabstand zwischen Ink-Punkten (Slide-Koordinaten). */
+const MIN_POINT_DIST_SQ = 0.55 * 0.55;
+/** React/Parent erst nach Pause — sonst blockiert jeder Strich den nächsten Pencil. */
+const COMMIT_IDLE_MS = 420;
 
 type ManipState =
   | {
@@ -61,12 +65,9 @@ type ManipState =
       id: string;
       handle: ShapeHandle;
       snapshot: PresentationStroke;
-      };
+    };
 
-function getDrawCtx(canvas: HTMLCanvasElement): CanvasRenderingContext2D | null {
-  // desynchronized: niedrigere Latenz auf unterstützten Browsern (iPad/Chrome)
-  return canvas.getContext('2d', { alpha: true, desynchronized: true }) as CanvasRenderingContext2D | null;
-}
+type CanvasRect = { left: number; top: number; width: number; height: number };
 
 function hexToRgba(hex: string, alpha: number): string {
   const h = hex.replace('#', '').trim();
@@ -77,10 +78,7 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-function applyFreehandStyle(
-  ctx: CanvasRenderingContext2D,
-  stroke: PresentationStroke,
-) {
+function applyFreehandStyle(ctx: CanvasRenderingContext2D, stroke: PresentationStroke) {
   if (stroke.mode === 'marker') {
     ctx.strokeStyle = hexToRgba(stroke.color, stroke.markerOpacity ?? 0.38);
     ctx.lineWidth = stroke.lineWidth * 2.2;
@@ -100,7 +98,6 @@ function isInkPointer(tool: PresentationDrawTool, pointerType: string): boolean 
   if (tool === 'pen' || tool === 'marker') {
     return pointerType === 'pen' || pointerType === 'mouse';
   }
-  // Radierer / Formen / Select: auch Finger ok
   return true;
 }
 
@@ -109,6 +106,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   onStrokesChange,
   readOnly = false,
   enabled = true,
+  slideId,
   tool,
   strokeColor,
   lineWidth,
@@ -118,9 +116,10 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   scale = 1,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const rectRef = useRef<CanvasRect | null>(null);
   const drawingRef = useRef<PresentationStroke | null>(null);
   const inkPointerIdRef = useRef<number | null>(null);
-  /** true solange ein Apple-Pencil-/Maus-Strich aktiv ist */
   const inkIsPenRef = useRef(false);
   const lastInkPtRef = useRef<{ x: number; y: number } | null>(null);
   const eraserPathRef = useRef<{ x: number; y: number }[]>([]);
@@ -130,52 +129,106 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   const previewStrokesRef = useRef<PresentationStroke[] | null>(null);
   const strokesRef = useRef(strokes);
   const onStrokesChangeRef = useRef(onStrokesChange);
-  const commitRafRef = useRef<number | null>(null);
+  const commitTimerRef = useRef<number | null>(null);
   const pendingCommitRef = useRef<PresentationStroke[] | null>(null);
+  const toolRef = useRef(tool);
+  const enabledRef = useRef(enabled);
+  const readOnlyRef = useRef(readOnly);
+  const strokeColorRef = useRef(strokeColor);
+  const lineWidthRef = useRef(lineWidth);
+  const markerOpacityRef = useRef(markerOpacity);
+  const selectedStrokeIdRef = useRef(selectedStrokeId);
+  const onSelectedStrokeIdChangeRef = useRef(onSelectedStrokeIdChange);
 
   onStrokesChangeRef.current = onStrokesChange;
+  toolRef.current = tool;
+  enabledRef.current = enabled;
+  readOnlyRef.current = readOnly;
+  strokeColorRef.current = strokeColor;
+  lineWidthRef.current = lineWidth;
+  markerOpacityRef.current = markerOpacity;
+  selectedStrokeIdRef.current = selectedStrokeId;
+  onSelectedStrokeIdChangeRef.current = onSelectedStrokeIdChange;
 
-  useEffect(() => {
-    // Während aktivem Strich Props nicht überschreiben — sonst „verschwindet“ der Draft
-    if (drawingRef.current || inkPointerIdRef.current != null) return;
-    strokesRef.current = strokes;
-    if (tool !== 'eraser') {
-      strokesDuringEraseRef.current = strokes;
+  const ensureCtx = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    if (!ctxRef.current) {
+      ctxRef.current = canvas.getContext('2d', {
+        alpha: true,
+        desynchronized: true,
+      }) as CanvasRenderingContext2D | null;
     }
-  }, [strokes, tool]);
+    return ctxRef.current;
+  };
 
-  useEffect(() => {
-    if (!onSelectedStrokeIdChange) return;
-    if (tool !== 'select' && selectedStrokeId != null) {
-      onSelectedStrokeIdChange(null);
+  const refreshRect = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const r = canvas.getBoundingClientRect();
+    rectRef.current = { left: r.left, top: r.top, width: r.width, height: r.height };
+    return rectRef.current;
+  };
+
+  const clientToCanvasPoint = (clientX: number, clientY: number) => {
+    const rect = rectRef.current ?? refreshRect();
+    if (!rect || rect.width < 1 || rect.height < 1) {
+      return { x: 0, y: 0 };
     }
-  }, [tool, selectedStrokeId, onSelectedStrokeIdChange]);
+    return {
+      x: ((clientX - rect.left) / rect.width) * SLIDE_REF_WIDTH,
+      y: ((clientY - rect.top) / rect.height) * SLIDE_REF_HEIGHT,
+    };
+  };
 
-  const strokesKey = useMemo(
-    () => strokes.map((s) => `${s.id}:${s.points.length}`).join('|'),
-    [strokes]
-  );
+  const flushStrokesCommit = useCallback(() => {
+    if (commitTimerRef.current != null) {
+      window.clearTimeout(commitTimerRef.current);
+      commitTimerRef.current = null;
+    }
+    const payload = pendingCommitRef.current;
+    pendingCommitRef.current = null;
+    if (payload) onStrokesChangeRef.current(payload);
+  }, []);
+
+  const scheduleStrokesCommit = (next: PresentationStroke[]) => {
+    strokesRef.current = next;
+    pendingCommitRef.current = next;
+    if (commitTimerRef.current != null) window.clearTimeout(commitTimerRef.current);
+    commitTimerRef.current = window.setTimeout(() => {
+      commitTimerRef.current = null;
+      const payload = pendingCommitRef.current;
+      pendingCommitRef.current = null;
+      if (payload) onStrokesChangeRef.current(payload);
+    }, COMMIT_IDLE_MS);
+  };
 
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = getDrawCtx(canvas);
-    if (!ctx) return;
+    const ctx = ensureCtx();
+    if (!canvas || !ctx) return;
     ctx.clearRect(0, 0, SLIDE_REF_WIDTH, SLIDE_REF_HEIGHT);
     const current = previewStrokesRef.current ?? strokesRef.current;
     const base =
-      tool === 'eraser' && eraserPathRef.current.length > 0
+      toolRef.current === 'eraser' && eraserPathRef.current.length > 0
         ? strokesDuringEraseRef.current
         : current;
-    const all = drawingRef.current ? [...base, drawingRef.current] : base;
-    for (const s of all) drawPresentationStroke(ctx, s);
+    const draft = drawingRef.current;
+    for (const s of base) drawPresentationStroke(ctx, s);
+    if (draft) drawPresentationStroke(ctx, draft);
 
-    if (tool === 'select' && selectedStrokeId && enabled && !readOnly) {
-      const selected = all.find((s) => s.id === selectedStrokeId);
+    const selId = selectedStrokeIdRef.current;
+    if (toolRef.current === 'select' && selId && enabledRef.current && !readOnlyRef.current) {
+      const selected = (draft && draft.id === selId ? draft : null) ?? base.find((s) => s.id === selId);
       if (selected) drawShapeSelection(ctx, selected);
     }
 
-    if (tool === 'eraser' && eraserPathRef.current.length > 0 && enabled && !readOnly) {
+    if (
+      toolRef.current === 'eraser' &&
+      eraserPathRef.current.length > 0 &&
+      enabledRef.current &&
+      !readOnlyRef.current
+    ) {
       const path = eraserPathRef.current;
       const r = ERASER_RADIUS;
       ctx.save();
@@ -191,65 +244,99 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       }
       ctx.restore();
     }
-  }, [strokesKey, tool, enabled, readOnly, selectedStrokeId]);
+  }, []);
+
+  // Folienwechsel / Erstladen: Props übernehmen
+  useEffect(() => {
+    flushStrokesCommit();
+    strokesRef.current = strokes;
+    eraseBaseRef.current = strokes;
+    strokesDuringEraseRef.current = strokes;
+    drawingRef.current = null;
+    inkPointerIdRef.current = null;
+    previewStrokesRef.current = null;
+    eraserPathRef.current = [];
+    redraw();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur Folie / externe Strokes-Quelle
+  }, [slideId]);
+
+  // Zeichenmodus aus: pending flush + Props sync
+  useEffect(() => {
+    if (enabled) return;
+    flushStrokesCommit();
+    if (!drawingRef.current && inkPointerIdRef.current == null) {
+      strokesRef.current = strokes;
+      redraw();
+    }
+  }, [enabled, strokes, flushStrokesCommit, redraw]);
+
+  // Props eingeholt (nach Idle-Commit): lokal angleichen, kein Full-Redraw nötig wenn schon gezeichnet
+  useEffect(() => {
+    if (!enabled) return;
+    if (drawingRef.current || inkPointerIdRef.current != null) return;
+    if (pendingCommitRef.current) return;
+    const local = strokesRef.current;
+    if (
+      local.length === strokes.length &&
+      local[local.length - 1]?.id === strokes[strokes.length - 1]?.id
+    ) {
+      strokesRef.current = strokes;
+      return;
+    }
+    strokesRef.current = strokes;
+    redraw();
+  }, [strokes, enabled, redraw]);
 
   useEffect(() => {
-    // Kein Full-Redraw mitten im Strich (würde Apple Pencil stocken lassen)
-    if (drawingRef.current || inkPointerIdRef.current != null) return;
+    if (!onSelectedStrokeIdChange) return;
+    if (tool !== 'select' && selectedStrokeId != null) {
+      onSelectedStrokeIdChange(null);
+    }
+  }, [tool, selectedStrokeId, onSelectedStrokeIdChange]);
+
+  useEffect(() => {
     redraw();
-  }, [redraw]);
+  }, [tool, selectedStrokeId, redraw]);
 
   useEffect(
     () => () => {
-      if (commitRafRef.current != null) {
-        cancelAnimationFrame(commitRafRef.current);
-        commitRafRef.current = null;
-      }
-      if (pendingCommitRef.current) {
-        onStrokesChangeRef.current(pendingCommitRef.current);
-        pendingCommitRef.current = null;
-      }
+      flushStrokesCommit();
     },
-    [],
+    [flushStrokesCommit],
   );
 
-  const scheduleStrokesCommit = (next: PresentationStroke[]) => {
-    strokesRef.current = next;
-    pendingCommitRef.current = next;
-    if (commitRafRef.current != null) return;
-    commitRafRef.current = requestAnimationFrame(() => {
-      commitRafRef.current = null;
-      const payload = pendingCommitRef.current;
-      pendingCommitRef.current = null;
-      if (payload) onStrokesChangeRef.current(payload);
-    });
-  };
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    refreshRect();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => refreshRect()) : null;
+    ro?.observe(canvas);
+    const onScroll = () => {
+      rectRef.current = null;
+    };
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onScroll);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [scale, enabled]);
 
   const replaceStroke = (list: PresentationStroke[], id: string, next: PresentationStroke) =>
     list.map((s) => (s.id === id ? next : s));
 
-  const clientToCanvasPoint = (clientX: number, clientY: number) => {
-    const canvas = canvasRef.current!;
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: ((clientX - rect.left) / rect.width) * SLIDE_REF_WIDTH,
-      y: ((clientY - rect.top) / rect.height) * SLIDE_REF_HEIGHT,
-    };
-  };
-
-  const toCanvasPoint = (e: { clientX: number; clientY: number }) =>
-    clientToCanvasPoint(e.clientX, e.clientY);
-
-  const currentLineWidth = toolLineWidth(tool, lineWidth);
+  const currentLineWidth = () => toolLineWidth(toolRef.current, lineWidthRef.current);
 
   const startFreehand = (pt: { x: number; y: number }) => {
-    const shape = toolToShape(tool);
+    const t = toolRef.current;
+    const shape = toolToShape(t);
     if (shape) {
       drawingRef.current = {
         id: `s-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         points: [pt, pt],
-        color: strokeColor,
-        lineWidth: currentLineWidth,
+        color: strokeColorRef.current,
+        lineWidth: currentLineWidth(),
         mode: 'pen',
         shape,
         rotation: 0,
@@ -260,21 +347,19 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     drawingRef.current = {
       id: `s-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       points: [pt],
-      color: strokeColor,
-      lineWidth: currentLineWidth,
-      mode: tool === 'marker' ? 'marker' : 'pen',
-      markerOpacity: tool === 'marker' ? markerOpacity : undefined,
+      color: strokeColorRef.current,
+      lineWidth: currentLineWidth(),
+      mode: t === 'marker' ? 'marker' : 'pen',
+      markerOpacity: t === 'marker' ? markerOpacityRef.current : undefined,
     };
     lastInkPtRef.current = pt;
   };
 
-  /** Nur neues Segment zeichnen — kein Full-Clear (entscheidend für Apple Pencil). */
+  /** Nur neues Segment — kein Full-Clear (entscheidend für Apple Pencil). */
   const strokeInkSegment = (from: { x: number; y: number }, to: { x: number; y: number }) => {
     const draft = drawingRef.current;
-    const canvas = canvasRef.current;
-    if (!draft || draft.shape || !canvas) return;
-    const ctx = getDrawCtx(canvas);
-    if (!ctx) return;
+    const ctx = ensureCtx();
+    if (!draft || draft.shape || !ctx) return;
     applyFreehandStyle(ctx, draft);
     ctx.beginPath();
     ctx.moveTo(from.x, from.y);
@@ -343,7 +428,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
         return;
       }
       scheduleStrokesCommit([...strokesRef.current, draft]);
-      onSelectedStrokeIdChange?.(draft.id);
+      onSelectedStrokeIdChangeRef.current?.(draft.id);
       redraw();
       return;
     }
@@ -352,43 +437,41 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       redraw();
       return;
     }
-    // Sofort lokal committen — React-Update erst im nächsten Frame (kein Pencil-Lag)
+    // Ink liegt schon auf dem Canvas — kein Full-Redraw; React erst nach Idle
     scheduleStrokesCommit([...strokesRef.current, draft]);
-    redraw();
   };
 
-  const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (readOnly || !enabled) return;
+  const onPointerDown = (e: PointerEvent) => {
+    if (readOnlyRef.current || !enabledRef.current) return;
+    const t = toolRef.current;
 
-    // Handfläche bei Stift/Marker: ignorieren, Strich nie abbrechen
-    if (e.pointerType === 'touch' && (tool === 'pen' || tool === 'marker')) {
+    if (e.pointerType === 'touch' && (t === 'pen' || t === 'marker')) {
       e.preventDefault();
       return;
     }
 
-    if (!isInkPointer(tool, e.pointerType)) {
-      return;
-    }
+    if (!isInkPointer(t, e.pointerType)) return;
 
     e.preventDefault();
     e.stopPropagation();
+    refreshRect();
     try {
-      e.currentTarget.setPointerCapture(e.pointerId);
+      (e.currentTarget as HTMLCanvasElement).setPointerCapture(e.pointerId);
     } catch {
       /* ignore */
     }
     inkPointerIdRef.current = e.pointerId;
     inkIsPenRef.current = e.pointerType === 'pen' || e.pointerType === 'mouse';
-    const pt = toCanvasPoint(e);
+    const pt = clientToCanvasPoint(e.clientX, e.clientY);
 
-    if (tool === 'select') {
+    if (t === 'select') {
       const target = findShapeAtPoint(strokesRef.current, pt);
       if (!target) {
-        onSelectedStrokeIdChange?.(null);
+        onSelectedStrokeIdChangeRef.current?.(null);
         redraw();
         return;
       }
-      onSelectedStrokeIdChange?.(target.id);
+      onSelectedStrokeIdChangeRef.current?.(target.id);
       const handle = pickShapeHandle(target, pt);
       if (!handle || handle === 'move') {
         manipRef.current = { kind: 'move', id: target.id, lastPt: pt, snapshot: target };
@@ -402,23 +485,21 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       return;
     }
 
-    if (tool === 'eraser') {
+    if (t === 'eraser') {
       eraseBaseRef.current = strokesRef.current;
       strokesDuringEraseRef.current = strokesRef.current;
       eraserPathRef.current = [pt];
       strokesDuringEraseRef.current = applyEraserToStrokes(
         eraseBaseRef.current,
-        eraserPathRef.current
+        eraserPathRef.current,
       );
       redraw();
       return;
     }
 
     startFreehand(pt);
-    // Erster Punkt: kleiner Dot, damit der Strich sofort sichtbar ist
     if (!drawingRef.current?.shape) {
-      const canvas = canvasRef.current;
-      const ctx = canvas ? getDrawCtx(canvas) : null;
+      const ctx = ensureCtx();
       const draft = drawingRef.current;
       if (ctx && draft) {
         applyFreehandStyle(ctx, draft);
@@ -432,20 +513,19 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     }
   };
 
-  const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (readOnly || !enabled) return;
+  const onPointerMove = (e: PointerEvent) => {
+    if (readOnlyRef.current || !enabledRef.current) return;
+    const t = toolRef.current;
 
-    if (e.pointerType === 'touch' && (tool === 'pen' || tool === 'marker')) {
+    if (e.pointerType === 'touch' && (t === 'pen' || t === 'marker')) {
       e.preventDefault();
       return;
     }
 
-    if (inkPointerIdRef.current != null && e.pointerId !== inkPointerIdRef.current) {
-      return;
-    }
+    if (inkPointerIdRef.current != null && e.pointerId !== inkPointerIdRef.current) return;
 
-    if (tool === 'select' && manipRef.current && previewStrokesRef.current) {
-      const pt = toCanvasPoint(e);
+    if (t === 'select' && manipRef.current && previewStrokesRef.current) {
+      const pt = clientToCanvasPoint(e.clientX, e.clientY);
       const m = manipRef.current;
       let next = m.snapshot;
       if (m.kind === 'move') {
@@ -465,14 +545,14 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       return;
     }
 
-    if (tool === 'eraser') {
+    if (t === 'eraser') {
       if (eraserPathRef.current.length === 0) return;
       if (inkPointerIdRef.current == null) return;
-      const pt = toCanvasPoint(e);
+      const pt = clientToCanvasPoint(e.clientX, e.clientY);
       eraserPathRef.current.push(pt);
       strokesDuringEraseRef.current = applyEraserToStrokes(
         eraseBaseRef.current,
-        eraserPathRef.current
+        eraserPathRef.current,
       );
       redraw();
       return;
@@ -481,36 +561,34 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     if (!drawingRef.current || inkPointerIdRef.current == null) return;
     e.preventDefault();
 
-    const native = e.nativeEvent as PointerEvent;
     const coalesced =
-      typeof native.getCoalescedEvents === 'function' ? native.getCoalescedEvents() : null;
+      typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : null;
     if (coalesced && coalesced.length > 0) {
       for (const ce of coalesced) {
         appendInkPoint(clientToCanvasPoint(ce.clientX, ce.clientY));
       }
     } else {
-      appendInkPoint(toCanvasPoint(e));
+      appendInkPoint(clientToCanvasPoint(e.clientX, e.clientY));
     }
   };
 
-  const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (e.pointerType === 'touch' && (tool === 'pen' || tool === 'marker')) {
+  const onPointerUp = (e: PointerEvent) => {
+    const t = toolRef.current;
+    if (e.pointerType === 'touch' && (t === 'pen' || t === 'marker')) {
       e.preventDefault();
       return;
     }
 
-    if (readOnly || !enabled) return;
-    if (inkPointerIdRef.current != null && e.pointerId !== inkPointerIdRef.current) {
-      return;
-    }
+    if (readOnlyRef.current || !enabledRef.current) return;
+    if (inkPointerIdRef.current != null && e.pointerId !== inkPointerIdRef.current) return;
 
     try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
+      (e.currentTarget as HTMLCanvasElement).releasePointerCapture(e.pointerId);
     } catch {
       /* ignore */
     }
 
-    if (tool === 'select') {
+    if (t === 'select') {
       commitPreview();
       manipRef.current = null;
       inkPointerIdRef.current = null;
@@ -519,7 +597,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       return;
     }
 
-    if (tool === 'eraser') {
+    if (t === 'eraser') {
       if (eraserPathRef.current.length > 0) {
         scheduleStrokesCommit(applyEraserToStrokes(eraseBaseRef.current, eraserPathRef.current));
       }
@@ -533,13 +611,11 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     finishInkStroke();
   };
 
-  const onPointerCancel = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    // Handflächen-Touch-Cancel: ignorieren (Stiftstrich weiterlaufen lassen)
+  const onPointerCancel = (e: PointerEvent) => {
     if (e.pointerType === 'touch') {
       e.preventDefault();
       return;
     }
-    // Stift-Cancel (selten, z. B. iOS Palm-Rejection): Strich behalten, nicht verwerfen
     if (inkPointerIdRef.current === e.pointerId && inkIsPenRef.current && drawingRef.current) {
       finishInkStroke();
       return;
@@ -556,33 +632,42 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     }
   };
 
-  // Native Listener: preventDefault auf Touch muss non-passive sein (React ist oft passive)
+  // Native Pointer-Events: deutlich niedrigerer Overhead als React-Synthetic auf dem iPad
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !enabled || readOnly) return;
 
+    const opts: AddEventListenerOptions = { passive: false };
+    canvas.addEventListener('pointerdown', onPointerDown, opts);
+    canvas.addEventListener('pointermove', onPointerMove, opts);
+    canvas.addEventListener('pointerup', onPointerUp, opts);
+    canvas.addEventListener('pointercancel', onPointerCancel, opts);
+
     const blockTouch = (ev: TouchEvent) => {
-      // Handauflage (1+ Touches): keine Browser-Gesten/Scroll/Zoom — Stift bleibt frei
       ev.preventDefault();
     };
+    canvas.addEventListener('touchstart', blockTouch, opts);
+    canvas.addEventListener('touchmove', blockTouch, opts);
+    canvas.addEventListener('touchend', blockTouch, opts);
 
-    canvas.addEventListener('touchstart', blockTouch, { passive: false });
-    canvas.addEventListener('touchmove', blockTouch, { passive: false });
-    canvas.addEventListener('touchend', blockTouch, { passive: false });
     return () => {
+      canvas.removeEventListener('pointerdown', onPointerDown);
+      canvas.removeEventListener('pointermove', onPointerMove);
+      canvas.removeEventListener('pointerup', onPointerUp);
+      canvas.removeEventListener('pointercancel', onPointerCancel);
       canvas.removeEventListener('touchstart', blockTouch);
       canvas.removeEventListener('touchmove', blockTouch);
       canvas.removeEventListener('touchend', blockTouch);
     };
+    // Handler schließen über Refs — nur enable/readOnly neu binden
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, readOnly]);
 
   const cursor =
     readOnly || !enabled
       ? 'default'
       : tool === 'select'
-        ? manipRef.current
-          ? 'grabbing'
-          : 'grab'
+        ? 'grab'
         : tool === 'eraser'
           ? 'grab'
           : tool === 'marker'
@@ -593,7 +678,6 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
 
   const displayW = SLIDE_REF_WIDTH * scale;
   const displayH = SLIDE_REF_HEIGHT * scale;
-  // Stift/Marker: Touch nicht capturen → Pinch auf der Stage; Canvas blockiert Browser-Scroll
   const touchAction = enabled && !readOnly ? 'none' : 'auto';
 
   return (
@@ -601,10 +685,6 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       ref={canvasRef}
       width={SLIDE_REF_WIDTH}
       height={SLIDE_REF_HEIGHT}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerCancel}
       style={{
         position: 'absolute',
         top: 0,
@@ -615,7 +695,6 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
         cursor,
         pointerEvents: enabled && !readOnly ? 'auto' : 'none',
         zIndex: 2,
-        // Verhindert Browser-Callouts / Textauswahl beim Schreiben
         WebkitUserSelect: 'none',
         userSelect: 'none',
         WebkitTouchCallout: 'none',
@@ -624,4 +703,4 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   );
 };
 
-export default PresentationDrawOverlay;
+export default React.memo(PresentationDrawOverlay);
