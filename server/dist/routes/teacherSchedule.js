@@ -37,6 +37,8 @@ function isLessonSiblingFolderName(name) {
         return false;
     if (/^Kapitel\b/i.test(t))
         return false;
+    if (/wochenaufgaben?/i.test(t.toLowerCase()))
+        return false;
     return true;
 }
 /**

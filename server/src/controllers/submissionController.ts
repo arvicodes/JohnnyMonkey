@@ -50,6 +50,7 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
     'image/webp',
     'image/bmp',
     'video/mp4',
+    'video/x-msvideo',
     'video/webm',
     'video/quicktime',
     'audio/mpeg',

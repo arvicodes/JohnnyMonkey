@@ -132,6 +132,13 @@ const normalizeCustomSetPayload = (raw) => {
         lessons,
     };
 };
+/** Lehrer-Notizen nie in Play-/SuS-Payloads (nur im privaten Fragenset-Speicher). */
+function withoutCustomSetNotes(set) {
+    if (!set)
+        return undefined;
+    const { notes: _omit, ...rest } = set;
+    return rest;
+}
 const parsePayload = (raw) => {
     var _a;
     if (!raw)
@@ -147,7 +154,7 @@ const parsePayload = (raw) => {
             taskSeed: normalizeTaskSeed(parsed.taskSeed),
             materialLessonPath: (_a = normalizeMaterialLessonPath(parsed.materialLessonPath)) !== null && _a !== void 0 ? _a : undefined,
             tasks: normalizeTasksPayload(parsed.tasks),
-            customSet: normalizeCustomSetPayload(parsed.customSet),
+            customSet: withoutCustomSetNotes(normalizeCustomSetPayload(parsed.customSet)),
             ...(typeof parsed.completedAt === 'string' && parsed.completedAt.trim()
                 ? { completedAt: parsed.completedAt.trim() }
                 : {}),
@@ -458,7 +465,7 @@ class EntryTicketController {
             const taskSeed = normalizeTaskSeed(typeof ((_c = req.body) === null || _c === void 0 ? void 0 : _c.taskSeed) === 'string' ? Number(req.body.taskSeed) : (_d = req.body) === null || _d === void 0 ? void 0 : _d.taskSeed);
             const materialLessonPath = (_h = normalizeMaterialLessonPath((_f = (_e = req.body) === null || _e === void 0 ? void 0 : _e.lessonPath) !== null && _f !== void 0 ? _f : (_g = req.body) === null || _g === void 0 ? void 0 : _g.materialLessonPath)) !== null && _h !== void 0 ? _h : null;
             const tasks = normalizeTasksPayload((_j = req.body) === null || _j === void 0 ? void 0 : _j.tasks);
-            const customSet = normalizeCustomSetPayload((_k = req.body) === null || _k === void 0 ? void 0 : _k.customSet);
+            const customSet = withoutCustomSetNotes(normalizeCustomSetPayload((_k = req.body) === null || _k === void 0 ? void 0 : _k.customSet));
             const syncTasks = ((_l = req.body) === null || _l === void 0 ? void 0 : _l.syncTasks) === true || ((_m = req.body) === null || _m === void 0 ? void 0 : _m.preserveSession) === true;
             const resolveExisting = async (lessonPath) => {
                 const row = await prisma.teacherLessonInstruction.findUnique({
@@ -614,7 +621,7 @@ class EntryTicketController {
             const bodyHero = typeof ((_l = req.body) === null || _l === void 0 ? void 0 : _l.heroImageIndex) === 'number' || typeof ((_m = req.body) === null || _m === void 0 ? void 0 : _m.heroImageIndex) === 'string'
                 ? clampHeroIndex(Number(req.body.heroImageIndex))
                 : undefined;
-            const bodyCustomSet = normalizeCustomSetPayload((_o = req.body) === null || _o === void 0 ? void 0 : _o.customSet);
+            const bodyCustomSet = withoutCustomSetNotes(normalizeCustomSetPayload((_o = req.body) === null || _o === void 0 ? void 0 : _o.customSet));
             const enrichPayload = (base) => {
                 const startedAt = (base === null || base === void 0 ? void 0 : base.startedAt) || new Date().toISOString();
                 return {

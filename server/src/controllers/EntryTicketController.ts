@@ -272,6 +272,10 @@ function mergeCustomSetMaps(
       id: set.id,
       name: set.name || 'Fragenset',
       lessons: Array.isArray(set.lessons) ? set.lessons : [],
+      ...(set.reihePath || prev?.reihePath
+        ? { reihePath: set.reihePath || prev?.reihePath }
+        : {}),
+      ...(set.notes || prev?.notes ? { notes: set.notes ?? prev?.notes } : {}),
     });
   }
 }

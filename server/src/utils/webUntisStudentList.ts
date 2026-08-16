@@ -11,18 +11,24 @@ export type ParsedWebUntisStudent = {
 
 export type WebUntisParseResult = {
   students: ParsedWebUntisStudent[];
+  /** z. B. „05a“, „11“ */
   klasse?: string;
   fach?: string;
   schuelergruppe?: string;
 };
 
+/** Nur echte Kopfzeilen — nicht Namen wie „SchülerFelix…“. */
 const HEADER_SKIP =
-  /^(Vorname|Familienname|Schüler|Klasse|D-|JOHANNES|Schuljahr|WebUntis|Untis|Seite|christvera|\d{2}\.\d{2}\.\d{4})/i;
+  /^(VornameFamilienname|Vorname\b|Familienname\b|Schüler\*innen|Schülergruppe:|Klasse:|Klasse$|D-\d|JOHANNES|Schuljahr|WebUntis|Untis\b|Seite\b|christvera|\d{2}\.\d{2}\.\d{4})/i;
 
-/** Nur erster Vorname + Nachname. */
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Erster Vorname + vollständiger Nachname (Mittelnamen nur beim Vornamen streichen). */
 export function studentDisplayName(firstName: string, lastName: string): string {
   const first = (firstName || '').trim().split(/\s+/).filter(Boolean)[0] || '';
-  const last = (lastName || '').trim().split(/\s+/).filter(Boolean).pop() || '';
+  const last = (lastName || '').trim();
   return [first, last].filter(Boolean).join(' ');
 }
 
@@ -34,10 +40,18 @@ export function stripMiddleNames(fullName: string): string {
 }
 
 export function generateLoginCode(firstName: string, lastName: string, groupNumber: string): string {
-  const lastNameFirst = lastName.substring(0, 1).toUpperCase();
-  const lastNameRest = lastName.substring(1, 3).toLowerCase().padEnd(2, lastName[1] || lastName[0] || 'x');
-  const firstNameFirst = firstName.substring(0, 1).toUpperCase();
-  const firstNameRest = firstName.substring(1, 3).toLowerCase().padEnd(2, firstName[1] || firstName[0] || 'x');
+  const lastForCode = (lastName || '').trim().split(/\s+/).filter(Boolean).pop() || lastName || '';
+  const firstForCode = (firstName || '').trim().split(/\s+/).filter(Boolean)[0] || firstName || '';
+  const lastNameFirst = lastForCode.substring(0, 1).toUpperCase();
+  const lastNameRest = lastForCode
+    .substring(1, 3)
+    .toLowerCase()
+    .padEnd(2, lastForCode[1] || lastForCode[0] || 'x');
+  const firstNameFirst = firstForCode.substring(0, 1).toUpperCase();
+  const firstNameRest = firstForCode
+    .substring(1, 3)
+    .toLowerCase()
+    .padEnd(2, firstForCode[1] || firstForCode[0] || 'x');
   return normalizeLoginCode(`${lastNameFirst}${lastNameRest}${firstNameFirst}${firstNameRest}${groupNumber}`);
 }
 
@@ -49,7 +63,12 @@ export function normalizeLoginCode(code: string): string {
     .replace(/Ä/g, 'Ae')
     .replace(/Ö/g, 'Oe')
     .replace(/Ü/g, 'Ue')
-    .replace(/ß/g, 'ss');
+    .replace(/ß/g, 'ss')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Za-z0-9]/g, '');
 }
 
 /** Ziffern aus Gruppennamen, z. B. „Informatik GK 11“ → „11“. */
@@ -58,16 +77,35 @@ export function groupNumberFromName(groupName: string, fallback = '00'): string 
   return m ? m[1] : fallback;
 }
 
+/** Login-Code-Suffix: nur Ziffern aus „05a“ → „05“. */
+export function loginGroupNumberFromKlasse(klasse: string | undefined, fallback = '00'): string {
+  const digits = (klasse || '').match(/\d{1,2}/)?.[0];
+  return digits || fallback;
+}
+
+/** „NachnameVorname(n)“ an CamelCase-Grenze (Unicode) trennen. */
+export function splitGluedLastFirst(namePart: string): { lastName: string; firstName: string } | null {
+  const s = (namePart || '').trim();
+  if (!s) return null;
+  // erstes Kleinbuchstaben → Großbuchstaben (Nachname endet, Vorname beginnt)
+  const m = s.match(/^(.+\p{Ll})(\p{Lu}.*)$/u);
+  if (!m) return null;
+  const lastName = m[1].trim();
+  const firstName = m[2].trim();
+  if (!lastName || !firstName) return null;
+  return { lastName, firstName };
+}
+
 /**
- * pdf-parse liefert Zeilen wie „AbasMateo111“ / „BröderLevi Shaman311“.
+ * pdf-parse liefert Zeilen wie „BaumeisterDamian105a“ / „BröderLevi Shaman311“.
  * Tab-getrennte Exports: „Abas Mateo\\t1 11“.
  */
 export function parseWebUntisStudentListText(rawText: string): WebUntisParseResult {
   const text = (rawText || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const klasse = text.match(/Klasse:\s*(\d+)/i)?.[1];
+  // „Klasse: 05a“ / „Klasse: 11“ / „Klasse: 5“
+  const klasse = text.match(/Klasse:\s*([0-9]{1,2}[a-zA-Z]?)/i)?.[1];
   const fach = text.match(/Fach:\s*([^,\n]+)/i)?.[1]?.trim();
   const schuelergruppe = text.match(/Schülergruppe:\s*([^\n]+)/i)?.[1]?.trim();
-  const grade = klasse || '11';
 
   const students: ParsedWebUntisStudent[] = [];
   const seen = new Set<string>();
@@ -83,28 +121,45 @@ export function parseWebUntisStudentListText(rawText: string): WebUntisParseResu
     students.push({ firstName, lastName: last, fullName, listIndex });
   };
 
+  const tryGluedWithKlasse = (line: string, klasseToken: string): boolean => {
+    const m = line.match(new RegExp(`^(.+?)(\\d+)${escapeRegExp(klasseToken)}$`, 'u'));
+    if (!m) return false;
+    const split = splitGluedLastFirst(m[1]);
+    if (!split) return false;
+    pushStudent(split.lastName, split.firstName, Number(m[2]));
+    return true;
+  };
+
   for (const rawLine of text.split('\n')) {
     const line = rawLine.trim();
     if (!line || HEADER_SKIP.test(line)) continue;
 
-    // Tab / Mehrfachleerzeichen: „Nachname Vorname(n)  12 11“
+    // Tab / Mehrfachleerzeichen: „Nachname Vorname(n)  12 11“ bzw. „… 12 05a“
     const spaced = line.match(
-      /^([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+)\s+([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]*(?:\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]*)*)\s+(\d+)\s+(\d{1,2})\s*$/,
+      /^(\p{Lu}[\p{L}\-]*(?:\s+\p{L}[\p{L}\-]*)*)\s+(\p{Lu}[\p{L}\-]*(?:\s+\p{Lu}[\p{L}\-]*)*)\s+(\d+)\s+([0-9]{1,2}[a-zA-Z]?)\s*$/u,
     );
     if (spaced) {
       pushStudent(spaced[1], spaced[2], Number(spaced[3]));
       continue;
     }
 
-    // pdf-parse: „NachnameVorname(n){idx}{klasse}“
-    const glued = line.match(
-      new RegExp(
-        `^([A-ZÄÖÜ][a-zäöüß]*)([A-ZÄÖÜ][\\sA-Za-zÄÖÜäöüß\\-]*)(\\d+)${grade}$`,
-      ),
-    );
-    if (glued) {
-      pushStudent(glued[1], glued[2], Number(glued[3]));
-      continue;
+    // pdf-parse: „NachnameVorname(n){idx}{klasse}“ — zuerst mit erkanntem Klassen-Token
+    if (klasse && tryGluedWithKlasse(line, klasse)) continue;
+
+    // Fallback: Klassen-Suffix am Zeilenende (z. B. 05a / 11), falls Header fehlt/anders
+    const fallback = line.match(/^(.+?)(\d+)([0-9]{2}[a-zA-Z]|[0-9]{1,2}[a-zA-Z]|[0-9]{1,2})$/u);
+    if (fallback) {
+      const split = splitGluedLastFirst(fallback[1]);
+      if (split) {
+        pushStudent(split.lastName, split.firstName, Number(fallback[2]));
+        continue;
+      }
+    }
+
+    // Älteres Format ohne Buchstaben in der Klasse, grade aus Header-Ziffern
+    if (klasse) {
+      const digitsOnly = klasse.match(/^\d+$/) ? klasse : klasse.match(/\d{1,2}/)?.[0];
+      if (digitsOnly && digitsOnly !== klasse && tryGluedWithKlasse(line, digitsOnly)) continue;
     }
   }
 

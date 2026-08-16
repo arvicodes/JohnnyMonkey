@@ -67,7 +67,8 @@ async function calculateEpoGradesForGroup(groupId: string): Promise<void> {
       where: { id: groupId },
       select: {
         period1Hours: true,
-        period2Hours: true
+        period2Hours: true,
+        passiveStudentIds: true,
       }
     });
     
@@ -78,6 +79,18 @@ async function calculateEpoGradesForGroup(groupId: string): Promise<void> {
     
     const period1Hours = group.period1Hours;
     const period2Hours = group.period2Hours;
+    let passiveIds: string[] = [];
+    if (group.passiveStudentIds) {
+      try {
+        const parsed = JSON.parse(group.passiveStudentIds);
+        if (Array.isArray(parsed)) {
+          passiveIds = parsed.map((id: unknown) => String(id)).filter(Boolean);
+        }
+      } catch {
+        passiveIds = [];
+      }
+    }
+    const passiveSet = new Set(passiveIds);
     
     // Lade alle Teilnahmen für diese Gruppe
     const participations = await prisma.participation.findMany({
@@ -94,6 +107,7 @@ async function calculateEpoGradesForGroup(groupId: string): Promise<void> {
     }} = {};
     
     participations.forEach(p => {
+      if (passiveSet.has(p.studentId)) return;
       if (!studentData[p.studentId]) {
         studentData[p.studentId] = {
           period1: { values: [], count: 0 },
@@ -1043,12 +1057,25 @@ router.get('/:groupId/stats', async (req: Request, res: Response) => {
       where: { id: groupId },
       select: {
         period1Hours: true,
-        period2Hours: true
+        period2Hours: true,
+        passiveStudentIds: true,
       }
     });
     
     const period1Hours = group?.period1Hours || null;
     const period2Hours = group?.period2Hours || null;
+    let passiveIds: string[] = [];
+    if (group?.passiveStudentIds) {
+      try {
+        const parsed = JSON.parse(group.passiveStudentIds);
+        if (Array.isArray(parsed)) {
+          passiveIds = parsed.map((id: unknown) => String(id)).filter(Boolean);
+        }
+      } catch {
+        passiveIds = [];
+      }
+    }
+    const passiveSet = new Set(passiveIds);
     
     const participations = await prisma.participation.findMany({
       where: { groupId },
@@ -1085,6 +1112,7 @@ router.get('/:groupId/stats', async (req: Request, res: Response) => {
     }} = {};
 
     participations.forEach(p => {
+      if (passiveSet.has(p.studentId)) return;
       if (!studentStats[p.studentId]) {
         studentStats[p.studentId] = {
           student: p.student,
