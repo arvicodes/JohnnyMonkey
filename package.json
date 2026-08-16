@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "concurrently -n API,WEB -c blue,green \"npm run dev --prefix server\" \"npm start --prefix client\"",
+    "fix:local-db": "bash scripts/fix-local-db.sh",
     "check:local": "node scripts/check-local.js",
     "backup": "bash scripts/backup-manager.sh create",
     "backup:list": "bash scripts/backup-manager.sh list",
