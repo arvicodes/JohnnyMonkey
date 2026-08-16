@@ -29,6 +29,10 @@ tail -n +10 prisma/schema.prisma >> prisma/schema.sqlite.prisma
 echo "📦 Generating Prisma client for SQLite..."
 npx prisma generate --schema=prisma/schema.sqlite.prisma
 
+# Schema in lokale SQLite-DB übernehmen (WochenaufgabeTask etc.)
+echo "🗄️ Synchronisiere SQLite-Schema (prisma db push)..."
+npx prisma db push --schema=prisma/schema.sqlite.prisma --skip-generate
+
 echo "✅ Local development setup complete!"
 echo "🗄️ Using SQLite database: dev.db"
 echo "🚀 Ready to run: npm run dev"

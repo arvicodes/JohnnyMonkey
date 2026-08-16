@@ -10291,9 +10291,10 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
   const renderAssignedFolderPreview = (
     groupId: string,
     folderPath: string,
-    opts?: { enableDrag?: boolean },
+    opts?: { enableDrag?: boolean; workflowGroupIds?: string[] },
   ) => {
     const enableDrag = opts?.enableDrag !== false;
+    const workflowGroupIds = opts?.workflowGroupIds;
     const rawItems = assignedFolderContents[`${groupId}:${folderPath}`] || [];
     const siblingWochen = findCachedWochenaufgabenSibling(groupId, folderPath, assignedFolderContents);
     const items = mergeWochenaufgabenIntoFolderTree(rawItems, folderPath, siblingWochen);
@@ -10466,6 +10467,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
             children={item.children}
             parentPath={itemFullPath}
             groupId={groupId}
+            workflowGroupIds={workflowGroupIds}
             onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
             onAdd={() => {
               const n = nextWochenaufgabeNumber(item.children);
@@ -11015,6 +11017,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                 children={waDisplay.children}
                 parentPath={waDisplay.parentPath}
                 groupId={groupId}
+                workflowGroupIds={workflowGroupIds}
                 onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
                 onAdd={() => addWochenaufgabe(waDisplay.parentPath)}
               />
@@ -11098,6 +11101,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                 children={waDisplay.children}
                 parentPath={waDisplay.parentPath}
                 groupId={groupId}
+                workflowGroupIds={workflowGroupIds}
                 onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
                 onAdd={() => addWochenaufgabe(waDisplay.parentPath)}
               />
@@ -15689,6 +15693,9 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                 <Grid container spacing={1.5} alignItems="flex-start">
                   {filterOutNestedAssignedFolderPaths(workingReihenPaths).map((folderPath) => {
                     const gid = resolveGroupIdForReihe(folderPath);
+                    const workflowGroupIds = groups
+                      .filter((g) => isReiheAssignedToGroup(folderPath, g.id))
+                      .map((g) => g.id);
                     const isInfReihe = isInformatikFolderPath(folderPath);
                     return (
                       <Grid item xs={12} sm={6} md={4} key={folderPath}>
@@ -15846,7 +15853,10 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                               border: '1px solid #f0f0f0',
                             }}
                           >
-                            {renderAssignedFolderPreview(gid, folderPath, { enableDrag: false })}
+                            {renderAssignedFolderPreview(gid, folderPath, {
+                              enableDrag: false,
+                              workflowGroupIds,
+                            })}
                           </Box>
                         </Box>
                       </Grid>
@@ -16610,7 +16620,9 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                                     <Box>
                                       {filterOutNestedAssignedFolderPaths(assignedFolders[group.id]).map(
                                         (folderPath: string) =>
-                                          renderAssignedFolderPreview(group.id, folderPath),
+                                          renderAssignedFolderPreview(group.id, folderPath, {
+                                            workflowGroupIds: [group.id],
+                                          }),
                                       )}
                                     </Box>
                                   </SortableContext>

@@ -85,7 +85,10 @@ export async function hydrateWochenaufgabenFolderContents(
     }
 
     const seeded = await readFolder(wochenPath, true);
-    const patch: WochenaufgabenContentsPatch = { [cacheKey]: seeded };
+    const patch: WochenaufgabenContentsPatch = {
+      [cacheKey]: seeded,
+      [`${groupId}:${defaultWochenaufgabenFolderPath(normFolder)}`]: seeded,
+    };
 
     if (parentKey !== cacheKey && items.length > 0) {
       patch[parentKey] = items.map((item) =>

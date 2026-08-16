@@ -14,6 +14,7 @@ import {
   formatWaRemaining,
   waSubmissionDownloadUrl,
 } from '../../lib/wochenaufgabenWorkflow';
+import { INITIAL_WOCHENAUFGABE_NUMBERS } from '../../lib/wochenaufgabenPresentation';
 
 type Props = {
   children: WochenaufgabenFsNode[] | undefined;
@@ -83,7 +84,17 @@ export default function WochenaufgabenNumberChips({
   onUpload,
   onAdd,
 }: Props) {
-  const dirs = numberedWochenaufgabeDirs(children);
+  const dirsFromFs = numberedWochenaufgabeDirs(children);
+  const dirs =
+    dirsFromFs.length > 0
+      ? dirsFromFs
+      : isTeacher || onAdd
+        ? INITIAL_WOCHENAUFGABE_NUMBERS.map((n) => ({
+            name: String(n),
+            type: 'directory' as const,
+            path: `${normPath(parentPath)}/${n}`,
+          }))
+        : [];
 
   const openDownload = (submissionId: string) => {
     window.open(waSubmissionDownloadUrl(submissionId), '_blank');

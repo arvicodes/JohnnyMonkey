@@ -67,7 +67,10 @@ export async function fetchWochenaufgabeStates(
   return res.json();
 }
 
-export async function activateWochenaufgabe(groupId: string, lessonPath: string): Promise<void> {
+export async function activateWochenaufgabe(
+  groupId: string,
+  lessonPath: string,
+): Promise<WochenaufgabeTaskState> {
   const res = await fetch('/api/wochenaufgaben/activate', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -75,8 +78,11 @@ export async function activateWochenaufgabe(groupId: string, lessonPath: string)
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Freigabe fehlgeschlagen');
+    throw new Error((err as { error?: string }).error || 'Freigabe fehlgeschlagen');
   }
+  const data = (await res.json()) as { state?: WochenaufgabeTaskState };
+  if (!data.state) throw new Error('Freigabe fehlgeschlagen (keine Antwort vom Server)');
+  return data.state;
 }
 
 export async function claimWochenaufgabeVideo(
