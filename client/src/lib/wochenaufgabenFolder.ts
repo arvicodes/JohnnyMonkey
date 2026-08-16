@@ -57,6 +57,31 @@ export function isWochenaufgabenFolderName(name: string): boolean {
   return /wochenaufgaben?/.test(normalizeFolderLabel(name));
 }
 
+/** Interne Präsentations-Ordner (Grafiken etc.) — nicht im Dashboard-Baum anzeigen. */
+export function isPresentationInternalFolderName(name: string): boolean {
+  const t = normalizeFolderLabel(name);
+  return t === 'grafiken';
+}
+
+/** Ordner/Dateien für die Baum-Vorschau filtern (Wochenaufgaben, Grafiken, nummerierte WA). */
+export function filterVisibleFolderChildren(items: WochenaufgabenFsNode[]): WochenaufgabenFsNode[] {
+  return (Array.isArray(items) ? items : [])
+    .filter((item) => {
+      if (item?.type !== 'directory') return true;
+      const name = String(item.name || '');
+      if (isWochenaufgabenFolderName(name)) return false;
+      if (isNumberedWochenaufgabeName(name)) return false;
+      if (isPresentationInternalFolderName(name)) return false;
+      return true;
+    })
+    .map((item) => {
+      if (item?.type === 'directory' && Array.isArray(item.children)) {
+        return { ...item, children: filterVisibleFolderChildren(item.children) };
+      }
+      return item;
+    });
+}
+
 export function isNumberedWochenaufgabeName(name: string): boolean {
   return /^\d+$/.test((name || '').trim());
 }
