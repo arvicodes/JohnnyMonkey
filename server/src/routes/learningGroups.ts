@@ -5,6 +5,7 @@ import pdfParse from 'pdf-parse';
 import {
   generateLoginCode,
   groupNumberFromName,
+  loginGroupNumberFromKlasse,
   parseWebUntisStudentListText,
   stripMiddleNames,
   type ParsedWebUntisStudent,
@@ -128,13 +129,15 @@ router.get('/teacher/:id', async (req: Request, res: Response) => {
           where: { id: group.id },
           select: { 
             seatingOrder: true,
-            statisticsOrder: true
+            statisticsOrder: true,
+            passiveStudentIds: true,
           }
         });
         return {
           ...group,
           seatingOrder: fullGroup?.seatingOrder || null,
-          statisticsOrder: fullGroup?.statisticsOrder || null
+          statisticsOrder: fullGroup?.statisticsOrder || null,
+          passiveStudentIds: fullGroup?.passiveStudentIds || null,
         };
       } catch (e: any) {
         // Prüfe ob es ein "Unknown field" Fehler ist (Prisma Client veraltet)
@@ -148,7 +151,8 @@ router.get('/teacher/:id', async (req: Request, res: Response) => {
           return {
             ...group,
             seatingOrder: null,
-            statisticsOrder: null
+            statisticsOrder: null,
+            passiveStudentIds: null,
           };
         }
         
@@ -162,17 +166,29 @@ router.get('/teacher/:id', async (req: Request, res: Response) => {
             where: { id: group.id },
             select: { statisticsOrder: true }
           });
+          let passiveStudentIds: string | null = null;
+          try {
+            const passiveGroup = await prisma.learningGroup.findUnique({
+              where: { id: group.id },
+              select: { passiveStudentIds: true },
+            });
+            passiveStudentIds = passiveGroup?.passiveStudentIds || null;
+          } catch {
+            passiveStudentIds = null;
+          }
           return {
             ...group,
             seatingOrder: seatingOrderGroup?.seatingOrder || null,
-            statisticsOrder: statisticsOrderGroup?.statisticsOrder || null
+            statisticsOrder: statisticsOrderGroup?.statisticsOrder || null,
+            passiveStudentIds,
           };
         } catch (e2: any) {
           // Wenn auch das fehlschlägt, setze beide auf null
           return {
             ...group,
             seatingOrder: null,
-            statisticsOrder: null
+            statisticsOrder: null,
+            passiveStudentIds: null,
           };
         }
       }
@@ -832,7 +848,8 @@ async function buildWebUntisPreview(
   groupName: string,
   klasse?: string,
 ): Promise<{ rows: WebUntisPreviewRow[]; groupNumber: string }> {
-  const groupNumber = klasse || groupNumberFromName(groupName, '00');
+  const groupNumber =
+    loginGroupNumberFromKlasse(klasse, '') || groupNumberFromName(groupName, '00');
   const group = await prisma.learningGroup.findUnique({
     where: { id: groupId },
     include: { students: { select: { id: true, name: true, loginCode: true } } },
@@ -969,21 +986,29 @@ router.post('/:groupId/import-webuntis/confirm', async (req: Request, res: Respo
     const connectIds: string[] = [];
 
     for (const raw of studentsRaw) {
+      const rawFirst = typeof raw.firstName === 'string' ? raw.firstName.trim() : '';
+      const rawLast = typeof raw.lastName === 'string' ? raw.lastName.trim() : '';
       const fullNameRaw =
         typeof raw.fullName === 'string' && raw.fullName.trim()
           ? raw.fullName.trim()
-          : `${String(raw.firstName || '').trim()} ${String(raw.lastName || '').trim()}`.trim();
-      const fullName = stripMiddleNames(fullNameRaw);
+          : `${rawFirst} ${rawLast}`.trim();
+      if (!fullNameRaw) continue;
+
+      // Mehrteilige Nachnamen (z. B. „De Donatis“) erhalten; nur erster Vorname
+      const nameParts = fullNameRaw.split(/\s+/).filter(Boolean);
+      const firstName =
+        (rawFirst.split(/\s+/).filter(Boolean)[0] || nameParts[0] || '').trim();
+      const lastName =
+        (rawLast || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '')).trim();
+      const fullName = [firstName, lastName].filter(Boolean).join(' ');
       if (!fullName) continue;
 
-      const parts = fullName.split(/\s+/);
-      const firstName = parts[0];
-      const lastName = parts[parts.length - 1];
       let loginCode = String(raw.loginCode || '').trim();
       if (!loginCode) {
         const groupNumber =
           typeof req.body?.groupNumber === 'string' && req.body.groupNumber.trim()
-            ? req.body.groupNumber.trim()
+            ? loginGroupNumberFromKlasse(req.body.groupNumber.trim(), '') ||
+              groupNumberFromName(group.name, '00')
             : groupNumberFromName(group.name, '00');
         loginCode = generateLoginCode(firstName, lastName, groupNumber);
       }
@@ -996,7 +1021,9 @@ router.post('/:groupId/import-webuntis/confirm', async (req: Request, res: Respo
           where: { role: 'STUDENT' },
           select: { id: true, name: true },
         });
-        const match = all.find((u) => stripMiddleNames(u.name).toLowerCase() === fullName.toLowerCase());
+        const match = all.find(
+          (u) => stripMiddleNames(u.name).toLowerCase() === stripMiddleNames(fullName).toLowerCase(),
+        );
         if (match) userId = match.id;
       }
 
@@ -1176,6 +1203,65 @@ router.put('/:id/moderator', async (req: Request, res: Response) => {
     res.json(updated);
   } catch (error) {
     console.error('PUT /learning-groups/:id/moderator:', error);
+    res.status(500).json({ error: 'Serverfehler' });
+  }
+});
+
+/** Passive-Schüler setzen (z. B. Auslandsaufenthalt) — JSON-Array studentIds */
+router.put('/:id/passive-students', async (req: Request, res: Response) => {
+  try {
+    const groupId = req.params.id;
+    const raw = req.body?.studentIds;
+    if (!Array.isArray(raw)) {
+      return res.status(400).json({ error: 'studentIds (Array) ist erforderlich' });
+    }
+    const studentIds = [...new Set(raw.map((id: unknown) => String(id || '').trim()).filter(Boolean))];
+
+    const loginCode = typeof req.headers['x-login-code'] === 'string' ? req.headers['x-login-code'].trim() : '';
+    if (!loginCode) return res.status(401).json({ error: 'Nicht autorisiert' });
+    const teacher = await prisma.user.findUnique({
+      where: { loginCode },
+      select: { id: true, role: true },
+    });
+    if (!teacher || teacher.role !== 'TEACHER') {
+      return res.status(403).json({ error: 'Nur Lehrkräfte' });
+    }
+
+    const group = await prisma.learningGroup.findFirst({
+      where: { id: groupId, teacherId: teacher.id },
+      select: {
+        id: true,
+        students: { select: { id: true } },
+      },
+    });
+    if (!group) return res.status(404).json({ error: 'Gruppe nicht gefunden' });
+
+    const memberIds = new Set(group.students.map((s) => s.id));
+    const validIds = studentIds.filter((id) => memberIds.has(id));
+
+    const updated = await prisma.learningGroup.update({
+      where: { id: groupId },
+      data: { passiveStudentIds: JSON.stringify(validIds) },
+      select: {
+        id: true,
+        name: true,
+        passiveStudentIds: true,
+        students: {
+          orderBy: { loginCode: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            loginCode: true,
+            avatarEmoji: true,
+            avatarUrl: true,
+          },
+        },
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('PUT /learning-groups/:id/passive-students:', error);
     res.status(500).json({ error: 'Serverfehler' });
   }
 });

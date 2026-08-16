@@ -17,10 +17,16 @@ export function sortAssignedFolderPaths(folders: AssignedFolderEntry[]): string[
 
 /** Normalisierter Pfadvergleich für Zuordnungen. */
 export function normalizeAssignedFolderPath(path: string): string {
-  return String(path || '')
+  let p = String(path || '')
     .replace(/\\/g, '/')
     .replace(/\/+/g, '/')
     .replace(/^\/+|\/+$/g, '');
+  const jm = p.indexOf('J-M-Reihen/');
+  if (jm >= 0) p = p.slice(jm);
+  if (p.startsWith('git-intern/')) {
+    p = `J-M-Reihen/${p.slice('git-intern/'.length)}`;
+  }
+  return p;
 }
 
 /**
@@ -41,6 +47,18 @@ export function filterOutNestedAssignedFolderPaths(paths: string[]): string[] {
     seen.add(n);
     return true;
   });
+}
+
+/** Anzeigename für zugeordnete Ordner, z. B. „Informatik > 11-04 KI“. */
+export function assignedFolderDisplayLabel(path: string): string {
+  const parts = normalizeAssignedFolderPath(path).split('/').filter(Boolean);
+  const base = parts[parts.length - 1] || path;
+  if (!base) return path;
+  const hasInformatik = parts.some((p) => /^Informatik$/i.test(p));
+  if (hasInformatik && !/^Informatik$/i.test(base)) {
+    return `Informatik > ${base}`;
+  }
+  return base;
 }
 
 export function assignedFolderSortableId(groupId: string, folderPath: string): string {

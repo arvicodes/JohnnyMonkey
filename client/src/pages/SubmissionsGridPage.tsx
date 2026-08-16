@@ -32,6 +32,7 @@ import {
   ContentCopy as ContentCopyIcon
 } from '@mui/icons-material';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
+import { activeStudentsOfGroup, parsePassiveStudentIds } from '../lib/passiveStudents';
 import PresentationSlideView from '../components/presentation/PresentationSlideView';
 import {
   PresentationDeck,
@@ -366,7 +367,10 @@ const SubmissionsGridPage: React.FC = () => {
         const groupResponse = await fetch(`/api/learning-groups/${groupId}`);
         if (groupResponse.ok) {
           const group = await groupResponse.json();
-          const groupStudents = group.students || [];
+          const groupStudents = activeStudentsOfGroup(
+            (group.students || []) as Student[],
+            parsePassiveStudentIds(group.passiveStudentIds),
+          );
           
           setAllStudents(groupStudents);
           

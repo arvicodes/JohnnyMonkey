@@ -58,6 +58,7 @@ import {
   ensureGeneralLessonSection,
   findLessonSectionIndex,
   isCustomEntryTicketSetId,
+  fetchAndCacheCustomEntryTicketSets,
   loadCustomEntryTicketSets,
   saveCustomEntryTicketSets,
   sortLessonsChronologically,
@@ -1201,7 +1202,34 @@ function hydrateCustomSetFromSignal(raw: unknown): EntryTicketCustomSet | null {
     })
     .filter(Boolean) as EntryTicketCustomSet['lessons'];
   if (lessons.length === 0) return null;
-  return { id, name, lessons };
+  const notes =
+    typeof row.notes === 'string' && row.notes.trim()
+      ? row.notes.replace(/\r\n/g, '\n').slice(0, 4000)
+      : undefined;
+  const reihePath =
+    typeof row.reihePath === 'string' && row.reihePath.trim()
+      ? row.reihePath.trim().replace(/\\/g, '/')
+      : undefined;
+  return {
+    id,
+    name,
+    lessons,
+    ...(reihePath ? { reihePath } : {}),
+    ...(notes ? { notes } : {}),
+  };
+}
+
+function mergeHydratedCustomSet(
+  prev: EntryTicketCustomSet[],
+  hydrated: EntryTicketCustomSet,
+): EntryTicketCustomSet[] {
+  const existing = prev.find((s) => s.id === hydrated.id);
+  const merged: EntryTicketCustomSet = {
+    ...hydrated,
+    reihePath: hydrated.reihePath || existing?.reihePath,
+    notes: hydrated.notes ?? existing?.notes,
+  };
+  return [...prev.filter((s) => s.id !== hydrated.id), merged];
 }
 
 const DEFAULT_QUESTION_SETS: GradeQuestionSets = {
@@ -1796,10 +1824,7 @@ export default function EntryTicketPage() {
         }
         const hydrated = hydrateCustomSetFromSignal(data.customSet);
         if (hydrated) {
-          setCustomSets((prev) => {
-            const others = prev.filter((s) => s.id !== hydrated.id);
-            return [...others, hydrated];
-          });
+          setCustomSets((prev) => mergeHydratedCustomSet(prev, hydrated));
           setCustomSetId(hydrated.id);
         } else if (typeof data.grade === 'string' && data.grade) {
           applyGradeParam(data.grade);
@@ -1878,10 +1903,7 @@ export default function EntryTicketPage() {
         }
         const hydrated = hydrateCustomSetFromSignal(data.customSet);
         if (hydrated) {
-          setCustomSets((prev) => {
-            const others = prev.filter((s) => s.id !== hydrated.id);
-            return [...others, hydrated];
-          });
+          setCustomSets((prev) => mergeHydratedCustomSet(prev, hydrated));
           setCustomSetId(hydrated.id);
         } else if (typeof data.grade === 'string' && data.grade) {
           applyGradeParam(data.grade);
@@ -1950,10 +1972,7 @@ export default function EntryTicketPage() {
         };
         const hydrated = hydrateCustomSetFromSignal(data.customSet);
         if (hydrated) {
-          setCustomSets((prev) => {
-            const others = prev.filter((s) => s.id !== hydrated.id);
-            return [...others, hydrated];
-          });
+          setCustomSets((prev) => mergeHydratedCustomSet(prev, hydrated));
           setCustomSetId(hydrated.id);
         } else if (typeof data.grade === 'string' && data.grade) {
           applyGradeParam(data.grade);
@@ -2303,7 +2322,7 @@ export default function EntryTicketPage() {
     void apiPut('/api/entry-ticket/custom-sets', { sets: customSets }).catch(() => {});
   }, [customSets, isTeacher]);
 
-  /** Lehrer: Fragensets vom Server laden / aus Signalen wiederherstellen (KI, Analysis, …). */
+  /** Lehrer: Fragensets vom Server laden — Notizen/reihePath bleiben erhalten. */
   useEffect(() => {
     if (!isTeacher) {
       customSetsServerSyncedRef.current = true;
@@ -2312,31 +2331,19 @@ export default function EntryTicketPage() {
     let cancelled = false;
     void (async () => {
       try {
-        const res = await apiGet('/api/entry-ticket/custom-sets');
-        if (!res.ok || cancelled) {
-          if (!cancelled) customSetsServerSyncedRef.current = true;
-          return;
-        }
-        const data = (await res.json()) as { sets?: unknown };
-        const remoteRaw = Array.isArray(data.sets) ? data.sets : [];
-        const remote = remoteRaw
-          .map((row) => {
-            if (!row || typeof row !== 'object') return null;
-            const hydrated = hydrateCustomSetFromSignal(row);
-            return hydrated;
-          })
-          .filter(Boolean) as EntryTicketCustomSet[];
+        const merged = await fetchAndCacheCustomEntryTicketSets();
         if (cancelled) return;
         setCustomSets((local) => {
-          if (remote.length === 0) return local;
+          if (merged.length === 0) return local;
           const byId = new Map(local.map((s) => [s.id, s] as const));
-          for (const s of remote) {
+          for (const s of merged) {
             const prev = byId.get(s.id);
-            if (!prev || countCustomSetTasks(s) >= countCustomSetTasks(prev)) {
-              byId.set(s.id, s);
-            }
+            byId.set(s.id, {
+              ...s,
+              reihePath: s.reihePath || prev?.reihePath,
+              notes: s.notes ?? prev?.notes,
+            });
           }
-          // Auch lokal vorhandene behalten
           return Array.from(byId.values());
         });
       } catch {
@@ -4046,6 +4053,41 @@ export default function EntryTicketPage() {
                   </Box>
                 </Box>
                 )}
+
+                {isTeacher && isCustomSetActive && activeCustomSet && !studentReviewMode ? (
+                  <TextField
+                    size="small"
+                    multiline
+                    minRows={1}
+                    maxRows={3}
+                    value={activeCustomSet.notes || ''}
+                    onChange={(e) =>
+                      patchActiveCustomSet({
+                        ...activeCustomSet,
+                        notes: e.target.value.slice(0, 4000),
+                      })
+                    }
+                    placeholder="Notizen nur für dich…"
+                    sx={{
+                      width: '100%',
+                      maxWidth: 864,
+                      mx: 'auto',
+                      '& .MuiOutlinedInput-root': {
+                        bgcolor: '#fffde7',
+                        '& fieldset': { borderColor: '#fff59d' },
+                        '&:hover fieldset': { borderColor: '#fbc02d' },
+                        '&.Mui-focused fieldset': { borderColor: '#f9a825' },
+                      },
+                      '& .MuiInputBase-input': {
+                        fontSize: '0.72rem',
+                        lineHeight: 1.35,
+                        color: '#5d4037',
+                        py: 0.6,
+                      },
+                    }}
+                    inputProps={{ 'aria-label': 'Persönliche Notizen' }}
+                  />
+                ) : null}
 
                 {!sessionDone ? (
                   <Box

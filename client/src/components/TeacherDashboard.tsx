@@ -48,6 +48,7 @@ import TeacherSettingsMenu from './teacher-profile/TeacherSettingsMenu';
 import TeacherProfileDialog from './teacher-profile/TeacherProfileDialog';
 import TeacherScheduleDialog from './teacher-schedule/TeacherScheduleDialog';
 import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
+import AddStudentsDialog from './AddStudentsDialog';
 import { BeAHeroLogo } from './BeAHeroLogo';
 import TeacherMessageBox from './TeacherMessageBox';
 import { FlashcardLearningModal } from './StudentDashboard';
@@ -82,9 +83,11 @@ import {
   WOCHENAUFGABEN_BG,
   WOCHENAUFGABEN_BORDER,
   WOCHENAUFGABEN_TEXT_COLOR,
+  filterVisibleFolderChildren,
   findCachedWochenaufgabenSibling,
   isNumberedWochenaufgabeName,
   isNumberedWochenaufgabePath,
+  isPresentationInternalFolderName,
   isWochenaufgabenFolderName,
   isWochenaufgabenFolderPath,
   mergeWochenaufgabenIntoFolderTree,
@@ -415,7 +418,9 @@ import LearningGroupArchiveSection from './LearningGroupArchiveSection';
 import LearningGroupActiveListZone from './LearningGroupActiveListZone';
 import AssignedFolderSortableShell from './AssignedFolderSortableShell';
 import {
+  assignedFolderDisplayLabel,
   assignedFolderSortableId,
+  filterOutNestedAssignedFolderPaths,
   folderTreeNodeKey,
   isFolderTreeNodeExpanded,
   parseAssignedFolderSortableId,
@@ -430,6 +435,11 @@ import {
   resolveLearningGroupDisplayStyle,
 } from '../lib/learningGroupAppearance';
 import { sortLearningGroups, nextLearningGroupDisplayOrder } from '../lib/learningGroupSort';
+import {
+  activeStudentsOfGroup,
+  isPassiveStudentId,
+  parsePassiveStudentIds,
+} from '../lib/passiveStudents';
 import {
   DndContext,
   closestCenter,
@@ -494,6 +504,8 @@ interface LearningGroup {
   displayOrder?: number | null;
   isArchived?: boolean;
   moderatorStudentId?: string | null;
+  /** Schüler-IDs, die in dieser Gruppe passiv sind (Ausland etc.) */
+  passiveStudentIds?: string[] | string | null;
   students: Student[];
 }
 
@@ -5743,8 +5755,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const focusGroupId = (location.state as { focusGroupId?: string } | null)?.focusGroupId;
   const subjectManagerRef = useRef<any>(null);
   const materialCreatorRef = useRef<any>(null);
-  const isAddingStudentsRef = useRef(false);
-  
   // Debug: Log userId
   
   const [groups, setGroups] = useState<LearningGroup[]>([]);
@@ -5894,11 +5904,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [openNewGroupDialog, setOpenNewGroupDialog] = useState(false);
   const [openAddStudentsDialog, setOpenAddStudentsDialog] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
+  const [passiveStudentsDialogOpen, setPassiveStudentsDialogOpen] = useState(false);
+  const [passiveStudentsGroupId, setPassiveStudentsGroupId] = useState<string>('');
+  const [passiveStudentsDraftIds, setPassiveStudentsDraftIds] = useState<string[]>([]);
+  const [passiveStudentsSaving, setPassiveStudentsSaving] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupIcon, setNewGroupIcon] = useState(DEFAULT_LEARNING_GROUP_ICON);
   const [newGroupColor, setNewGroupColor] = useState(DEFAULT_LEARNING_GROUP_COLOR);
-  const [availableStudents, setAvailableStudents] = useState<Student[]>([]);
-  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -5955,19 +5967,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [editGroupIcon, setEditGroupIcon] = useState(DEFAULT_LEARNING_GROUP_ICON);
   const [editGroupColor, setEditGroupColor] = useState(DEFAULT_LEARNING_GROUP_COLOR);
   const [editGroupId, setEditGroupId] = useState<string | null>(null);
-  const [webUntisPreview, setWebUntisPreview] = useState<any | null>(null);
-  const [webUntisBusy, setWebUntisBusy] = useState(false);
-  const [webUntisPanelOpen, setWebUntisPanelOpen] = useState(false);
-  const [addStudentsSearch, setAddStudentsSearch] = useState('');
-  const [addStudentsLoading, setAddStudentsLoading] = useState(false);
-  const [addStudentsExpanded, setAddStudentsExpanded] = useState<Record<string, boolean>>({});
-  const [addStudentsSavingId, setAddStudentsSavingId] = useState<string | null>(null);
-  const [addStudentsDirectoryMeta, setAddStudentsDirectoryMeta] = useState<{ total: number; inGroup: number }>({
-    total: 0,
-    inGroup: 0,
-  });
-  const webUntisFileInputRef = useRef<HTMLInputElement | null>(null);
-  const availableStudentsRef = useRef<Student[]>([]);
   const [gradingModalOpen, setGradingModalOpen] = useState(false);
   
   // Flashcard Progress State
@@ -6786,9 +6785,19 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     return defaultGroup?.id || '';
   }, [groups]);
   
-  // Sortiere participationStats nach Sitzordnung
+  // Sortiere participationStats nach Sitzordnung (passive Schüler raus)
   const sortedParticipationStats = useMemo(() => {
     if (!participationStats.length) return [];
+    const statsGroup = groups.find((g) => g.id === participationGroupId);
+    const passiveIds = parsePassiveStudentIds(statsGroup?.passiveStudentIds);
+    const activeStats =
+      passiveIds.length === 0
+        ? participationStats
+        : participationStats.filter(
+            (stat) => !isPassiveStudentId(String(stat.student?.id || stat.studentId || ''), passiveIds),
+          );
+
+    if (!activeStats.length) return [];
     
     const getSeatingOrder = (fullName: string): number => {
       if (!fullName) return 999;
@@ -6881,7 +6890,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     };
     
     // Erstelle eine Kopie des Arrays und sortiere es
-    const sorted = [...participationStats].sort((a, b) => {
+    const sorted = [...activeStats].sort((a, b) => {
       const nameA = a.student?.name || '';
       const nameB = b.student?.name || '';
       const orderA = getSeatingOrder(nameA);
@@ -6907,7 +6916,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     });
     
     return sorted;
-  }, [participationStats]);
+  }, [participationStats, groups, participationGroupId]);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetConfirmationText, setResetConfirmationText] = useState('');
   const [commentModalOpen, setCommentModalOpen] = useState(false);
@@ -7173,13 +7182,23 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
         }
         await refreshActiveLessonSessions();
         openEntryTicketForLesson(groupId, lessonPath);
+        // Automatisch in TABLET-Modus der Stunde + Präsentation ab Folie 1
+        const lessonName = lessonPath.split(/[/\\]/).pop() || 'Stunde';
+        const stundeParams = new URLSearchParams({
+          groupId,
+          lessonPath,
+          lessonName,
+          planMode: 'run',
+          openPresentation: '1',
+        });
+        navigate(`/teacher/stunde?${stundeParams.toString()}`);
       } catch {
         showSnackbar('Stunde konnte nicht gestartet werden', 'error');
       } finally {
         setLessonRunBusyKey(null);
       }
     },
-    [openEntryTicketForLesson, refreshActiveLessonSessions],
+    [navigate, openEntryTicketForLesson, refreshActiveLessonSessions],
   );
 
   const endLessonRun = useCallback(
@@ -7286,26 +7305,44 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     }
   }, [isLessonStundeRoute, location.search]);
 
-  // Rückkehr vom Entry Ticket: Präsentation in der Stunde auf Folie 1 öffnen
+  // Rückkehr vom Entry Ticket / Play: Präsentation öffnen (Laptop links oder TABLET Present)
   useEffect(() => {
     if (!isLessonStundeRoute || !lessonModalData?.lessonPath) return;
     const params = new URLSearchParams(location.search);
     if (params.get('openPresentation') !== '1') return;
 
+    const groupId = lessonModalData.groupId || params.get('groupId') || '';
+    const lessonPath = lessonModalData.lessonPath;
+    const pm = params.get('planMode');
+    const planMode =
+      pm === 'create' || pm === 'run' || pm === 'background' ? pm : lessonPlanViewMode;
+
+    params.delete('openPresentation');
+    const cleanedSearch = params.toString();
+    const cleanedUrl = {
+      pathname: location.pathname,
+      search: cleanedSearch ? `?${cleanedSearch}` : '',
+    };
+
+    if (planMode === 'run') {
+      setLessonPlanViewMode('run');
+      navigate(
+        presentationPresentUrl(lessonPath, groupId || undefined, 'edited', undefined, 'run'),
+        { replace: true },
+      );
+      return;
+    }
+
     setLessonPlanViewMode('background');
     setLaptopPresentationView({ mode: 'deck', variant: 'edited' });
     setLaptopPresentationMountKey((k) => k + 1);
     setLaptopPresentationActive(true);
-
-    params.delete('openPresentation');
-    const next = params.toString();
-    navigate(
-      { pathname: location.pathname, search: next ? `?${next}` : '' },
-      { replace: true },
-    );
+    navigate(cleanedUrl, { replace: true });
   }, [
     isLessonStundeRoute,
+    lessonModalData?.groupId,
     lessonModalData?.lessonPath,
+    lessonPlanViewMode,
     location.pathname,
     location.search,
     navigate,
@@ -7902,6 +7939,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     }
   }, [createExaminationModalOpen]);
 
+  const normalizeLearningGroup = (g: LearningGroup): LearningGroup => ({
+    ...g,
+    passiveStudentIds: parsePassiveStudentIds(g.passiveStudentIds),
+  });
+
   const fetchGroupsListOnly = async (): Promise<LearningGroup[] | null> => {
     try {
       const response = await fetch(`/api/learning-groups/teacher/${userId}`);
@@ -7926,7 +7968,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
         return null;
       }
 
-      const groupsData: LearningGroup[] = await response.json();
+      const groupsData: LearningGroup[] = (await response.json()).map(normalizeLearningGroup);
       setGroups(sortLearningGroups(groupsData));
       return groupsData;
     } catch (error) {
@@ -10301,7 +10343,12 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
   /** Wandelt eine Item-Liste (Ordner + Dateien) in Anzeige-Items um: Ordner unverändert, Dateien nach Basisname gruppiert. */
   const itemsToDisplayItems = (items: any[]): any[] => {
-    const dirs = items.filter((i: any) => i.type === 'directory');
+    const dirs = items.filter(
+      (i: any) =>
+        i.type === 'directory' &&
+        !isPresentationInternalFolderName(i.name || '') &&
+        !isNumberedWochenaufgabeName(i.name || ''),
+    );
     const files = items.filter((i: any) => i.type === 'file');
     const groups = groupFilesByBaseName(files);
     return [
@@ -10322,35 +10369,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     const items = mergeWochenaufgabenIntoFolderTree(rawItems, folderPath, siblingWochen);
     const isLoading = loadingFolderContents[`${groupId}:${folderPath}`] || false;
     const rootIsWochenaufgaben = isWochenaufgabenFolderName(folderPath.split('/').pop() || '');
-    const rootIsInformatik = isInformatikFolderPath(folderPath);
-    const rootHeaderColor = rootIsWochenaufgaben
-      ? WOCHENAUFGABEN_TEXT_COLOR
-      : rootIsInformatik
-        ? '#006064'
-        : '#D32F2F';
+    const rootHeaderColor = rootIsWochenaufgaben ? WOCHENAUFGABEN_TEXT_COLOR : '#D32F2F';
     const rootHeaderIcon = rootIsWochenaufgaben ? '📅' : '📁';
     const rootTreeBorder = rootIsWochenaufgaben
       ? '2px solid rgba(255, 183, 77, 0.55)'
-      : rootIsInformatik
-        ? '2px solid rgba(0, 96, 100, 0.4)'
-        : '2px solid rgba(211, 47, 47, 0.2)';
-    const rootCardBg = rootIsWochenaufgaben
-      ? WOCHENAUFGABEN_BG
-      : rootIsInformatik
-        ? INFORMATIK_FOLDER_BG
-        : '#f8f9fa';
-    const rootCardBorder = rootIsWochenaufgaben
-      ? WOCHENAUFGABEN_BORDER
-      : rootIsInformatik
-        ? '#006064'
-        : '#e9ecef';
-    const rootCardBorderCss = rootIsInformatik
-      ? INFORMATIK_FOLDER_BORDER
-      : `1px solid ${rootCardBorder}`;
+      : '2px solid rgba(211, 47, 47, 0.2)';
+    const rootCardBg = '#f8f9fa';
+    const rootCardBorder = '#e9ecef';
+    const rootCardBorderCss = `1px solid ${rootCardBorder}`;
     
     // Filtere PDF-Dateien aus, die zu .wb Dateien gehören - NUR für die Anzeige
     // Die ursprünglichen Daten bleiben unverändert für Schüler
-    const filteredItems = filterPdfFiles(items);
+    const filteredItems = filterPdfFiles(filterVisibleFolderChildren(items));
     const folderFilesForStem = filteredItems
       .filter((i: any) => i.type === 'file')
       .map((f: any) => ({ name: f.name || '' }));
@@ -10466,6 +10496,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       if (item.type === 'file' && item.name.startsWith('~$')) {
         return null;
       }
+      if (item.type === 'directory' && isPresentationInternalFolderName(item.name || '')) {
+        return null;
+      }
       const dirPathKey = item.type === 'directory' ? (item.path || '').replace(/\\/g, '/').trim() : '';
       const isRohDir = item.type === 'directory' && isLessonRohdatArchiveFolderName(item.name);
       const isWochenaufgabenDir =
@@ -10475,8 +10508,34 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         item.type === 'directory' &&
         (isNumberedWochenaufgabePath(itemFullPath) ||
           (inWochenaufgaben && isNumberedWochenaufgabeName(item.name || '')));
+      if (isNumberedWa) {
+        return null;
+      }
+      if (isWochenaufgabenDir) {
+        return (
+          <WochenaufgabenFolderRow
+            key={`wochen-${itemFullPath}`}
+            children={item.children}
+            parentPath={itemFullPath}
+            groupId={groupId}
+            onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
+            onAdd={() => {
+              const n = nextWochenaufgabeNumber(item.children);
+              void (async () => {
+                const lessonPath = `${itemFullPath}/${n}`;
+                await ensureWochenaufgabeDeck(lessonPath);
+                await fetchAssignedFolderContent(groupId, itemFullPath);
+                if (folderPath !== itemFullPath) {
+                  await fetchAssignedFolderContent(groupId, folderPath);
+                }
+                void openWochenaufgabenPresentation(groupId, lessonPath);
+              })();
+            }}
+          />
+        );
+      }
       const inWochenaufgabenBranch =
-        inWochenaufgaben || isWochenaufgabenDir || isWochenaufgabenFolderPath(item.path || '');
+        inWochenaufgaben || isWochenaufgabenFolderPath(item.path || '');
       const branchDefaultExpanded = isRohDir ? false : true;
       const branchExpanded =
         item.type === 'directory' && item.children && item.children.length > 0
@@ -10718,7 +10777,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             >
             {item.type === 'directory' &&
             !isNumberedWa &&
-            ((item.children && item.children.length > 0) || isWochenaufgabenDir) ? (
+            !isWochenaufgabenDir &&
+            item.children &&
+            item.children.length > 0 ? (
               <IconButton
                 size="small"
                 aria-label={branchExpanded ? 'Zuklappen' : 'Aufklappen'}
@@ -10743,39 +10804,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               fontSize: isCorrectionFile(item.name) ? '0.9rem' : '0.75rem',
               color: isCorrectionFile(item.name) ? '#ff9800' : color
             }}>{item.name}</span>
-            {isWochenaufgabenDir && (
-              <Tooltip title="Nächste Wochenaufgabe anlegen">
-                <IconButton
-                  size="small"
-                  aria-label="Wochenaufgabe hinzufügen"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const parentPath = itemFullPath;
-                    const n = nextWochenaufgabeNumber(item.children);
-                    void (async () => {
-                      const lessonPath = `${parentPath}/${n}`;
-                      await ensureWochenaufgabeDeck(lessonPath);
-                      await fetchAssignedFolderContent(groupId, parentPath);
-                      if (folderPath !== parentPath) {
-                        await fetchAssignedFolderContent(groupId, folderPath);
-                      }
-                      void openWochenaufgabenPresentation(groupId, lessonPath);
-                    })();
-                  }}
-                  sx={{
-                    p: 0,
-                    ml: 0.35,
-                    minWidth: 18,
-                    width: 18,
-                    height: 18,
-                    color: WOCHENAUFGABEN_TEXT_COLOR,
-                    '&:hover': { bgcolor: 'rgba(255, 183, 77, 0.25)' },
-                  }}
-                >
-                  <AddIcon sx={{ fontSize: 14 }} />
-                </IconButton>
-              </Tooltip>
-            )}
             
             {/* Icon für Bearbeitung von Prüfungsdateien */}
             {item.type === 'file' && isCorrectionFile(item.name) && (
@@ -10945,6 +10973,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           {item.type === 'directory' &&
             !directoryOpensStundePage(item.name, level) &&
             !isNumberedWa &&
+            !isWochenaufgabenDir &&
             item.children &&
             item.children.length > 0 &&
             branchExpanded && (
@@ -10955,21 +10984,12 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 mb: 0,
                 pl: isContainerFolder ? 0.75 : 0,
                 borderLeft: isContainerFolder
-                  ? `2px solid ${isWochenaufgabenDir ? 'rgba(255, 183, 77, 0.55)' : 'rgba(21, 101, 192, 0.18)'}`
+                  ? `2px solid rgba(21, 101, 192, 0.18)`
                   : 'none',
               }}
             >
-              {isWochenaufgabenDir ? (
-                <WochenaufgabenFolderRow
-                  children={item.children}
-                  parentPath={itemFullPath}
-                  groupId={groupId}
-                  onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
-                />
-              ) : (
-                itemsToDisplayItems(filterPdfFiles(item.children)).map((child: any) =>
-                  renderItemRecursively(child, level + 1, inWochenaufgabenBranch || isWochenaufgabenDir),
-                )
+              {itemsToDisplayItems(filterPdfFiles(item.children)).map((child: any) =>
+                renderItemRecursively(child, level + 1, inWochenaufgabenBranch || isWochenaufgabenDir),
               )}
             </Box>
           )}
@@ -11034,7 +11054,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               cursor: 'pointer',
               userSelect: 'none',
             }}>
-              {rootHeaderIcon} {folderPath.split('/').pop() || folderPath}
+              {rootHeaderIcon} {assignedFolderDisplayLabel(folderPath)}
             </Typography>
           </Box>
         
@@ -11050,6 +11070,15 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 parentPath={folderPath}
                 groupId={groupId}
                 onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
+                onAdd={() => {
+                  const n = nextWochenaufgabeNumber(filteredItems);
+                  void (async () => {
+                    const lessonPath = `${folderPath}/${n}`;
+                    await ensureWochenaufgabeDeck(lessonPath);
+                    await fetchAssignedFolderContent(groupId, folderPath);
+                    void openWochenaufgabenPresentation(groupId, lessonPath);
+                  })();
+                }}
               />
             ) : (
               <Box>
@@ -11117,7 +11146,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               cursor: 'inherit',
               userSelect: 'none',
             }}>
-              {rootHeaderIcon} {folderPath.split('/').pop() || folderPath}
+              {rootHeaderIcon} {assignedFolderDisplayLabel(folderPath)}
             </Typography>
           </Box>
         
@@ -11133,6 +11162,15 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 parentPath={folderPath}
                 groupId={groupId}
                 onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
+                onAdd={() => {
+                  const n = nextWochenaufgabeNumber(filteredItems);
+                  void (async () => {
+                    const lessonPath = `${folderPath}/${n}`;
+                    await ensureWochenaufgabeDeck(lessonPath);
+                    await fetchAssignedFolderContent(groupId, folderPath);
+                    void openWochenaufgabenPresentation(groupId, lessonPath);
+                  })();
+                }}
               />
             ) : (
               <Box>
@@ -11181,322 +11219,69 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     }
   };
 
-  const loadAddStudentsDirectory = useCallback(async (groupId: string) => {
-    setAddStudentsLoading(true);
-    try {
-      const response = await fetch(`/api/learning-groups/${groupId}/available-students`);
-      if (!response.ok) throw new Error('Fehler beim Laden der Schüler');
-      const data = await response.json();
-      const list: Student[] = Array.isArray(data) ? data : Array.isArray(data?.students) ? data.students : [];
-      setAvailableStudents(list);
-      availableStudentsRef.current = list;
-      setAddStudentsDirectoryMeta({
-        total: typeof data?.total === 'number' ? data.total : list.length,
-        inGroup:
-          typeof data?.inGroup === 'number'
-            ? data.inGroup
-            : list.filter((s) => s.inCurrentGroup).length,
-      });
-      // Aktuelle Gruppe aufgeklappt
-      setAddStudentsExpanded((prev) => {
-        if (Object.keys(prev).length > 0) return prev;
-        return { [groupId]: true };
-      });
-      return list;
-    } finally {
-      setAddStudentsLoading(false);
-    }
-  }, []);
-
-  const handleOpenAddStudents = async (groupId: string) => {
+  const handleOpenAddStudents = (groupId: string) => {
     setSelectedGroupId(groupId);
-    setSelectedStudents([]);
-    setWebUntisPreview(null);
-    setWebUntisBusy(false);
-    setWebUntisPanelOpen(false);
-    setAddStudentsSearch('');
-    setAddStudentsExpanded({});
-    try {
-      await loadAddStudentsDirectory(groupId);
-      setOpenAddStudentsDialog(true);
-    } catch (error) {
-      showSnackbar('Fehler beim Laden der verfügbaren Schüler', 'error');
-    }
+    setOpenAddStudentsDialog(true);
   };
 
-  const handleCloseAddStudentsDialog = useCallback(() => {
-    if (isAddingStudentsRef.current) return;
+  const handleCloseAddStudentsDialog = () => {
     setOpenAddStudentsDialog(false);
-    setSelectedStudents([]);
-    setWebUntisPreview(null);
-    setWebUntisBusy(false);
-    setWebUntisPanelOpen(false);
-    setAddStudentsSearch('');
-  }, []);
-
-  const handleWebUntisFileSelected = async (file: File | null) => {
-    if (!file || !selectedGroupId) return;
-    setWebUntisBusy(true);
-    setWebUntisPreview(null);
-    try {
-      const form = new FormData();
-      form.append('file', file);
-      const response = await fetch(`/api/learning-groups/${selectedGroupId}/import-webuntis/preview`, {
-        method: 'POST',
-        body: form,
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.error || 'Fehler beim Lesen der WebUntis-Liste');
-      }
-      setWebUntisPreview(data);
-      setWebUntisPanelOpen(true);
-    } catch (error: any) {
-      showSnackbar(error?.message || 'Fehler beim WebUntis-Import', 'error');
-    } finally {
-      setWebUntisBusy(false);
-    }
   };
 
-  const handleConfirmWebUntisImport = async () => {
-    if (!selectedGroupId || !webUntisPreview?.students?.length || webUntisBusy) return;
-    setWebUntisBusy(true);
+  const handleOpenPassiveStudentsDialog = (groupId: string) => {
+    const group = groups.find((g) => g.id === groupId);
+    if (!group) return;
+    setPassiveStudentsGroupId(groupId);
+    setPassiveStudentsDraftIds(parsePassiveStudentIds(group.passiveStudentIds));
+    setPassiveStudentsDialogOpen(true);
+    handleMenuClose();
+  };
+
+  const handleClosePassiveStudentsDialog = (force = false) => {
+    if (passiveStudentsSaving && !force) return;
+    setPassiveStudentsDialogOpen(false);
+    setPassiveStudentsGroupId('');
+    setPassiveStudentsDraftIds([]);
+  };
+
+  const handleSavePassiveStudents = async () => {
+    if (!passiveStudentsGroupId) return;
+    setPassiveStudentsSaving(true);
     try {
-      const response = await fetch(`/api/learning-groups/${selectedGroupId}/import-webuntis/confirm`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          groupNumber: webUntisPreview.groupNumber,
-          students: webUntisPreview.students.map((s: any) => ({
-            firstName: s.firstName,
-            lastName: s.lastName,
-            fullName: s.fullName,
-            loginCode: s.loginCode,
-            listIndex: s.listIndex,
-            existingUserId: s.existingUserId,
-            status: s.status,
-          })),
-        }),
-      });
-      const data = await response.json().catch(() => ({}));
+      const loginCode = localStorage.getItem('loginCode') || '';
+      const response = await fetch(
+        `/api/learning-groups/${passiveStudentsGroupId}/passive-students`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-login-code': loginCode,
+          },
+          body: JSON.stringify({ studentIds: passiveStudentsDraftIds }),
+        },
+      );
       if (!response.ok) {
-        throw new Error(data.error || 'Fehler beim Anlegen der Schüler');
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Speichern fehlgeschlagen');
       }
-      setWebUntisPreview(null);
-      setSelectedStudents([]);
-      await fetchGroups();
-      await loadAddStudentsDirectory(selectedGroupId);
-      const created = data.created ?? 0;
-      const connected = data.connected ?? 0;
+      const updated = await response.json();
+      const nextIds = parsePassiveStudentIds(updated.passiveStudentIds);
+      setGroups((prev) =>
+        prev.map((g) =>
+          g.id === passiveStudentsGroupId ? { ...g, passiveStudentIds: nextIds } : g,
+        ),
+      );
       showSnackbar(
-        `WebUntis: ${created} neu angelegt, ${connected} der Gruppe zugeordnet`,
+        nextIds.length === 0
+          ? 'Keine passiven Schüler'
+          : `${nextIds.length} Schüler passiv gesetzt`,
         'success',
       );
-    } catch (error: any) {
-      showSnackbar(error?.message || 'Fehler beim WebUntis-Import', 'error');
+      handleClosePassiveStudentsDialog(true);
+    } catch (e: any) {
+      showSnackbar(e?.message || 'Fehler beim Speichern', 'error');
     } finally {
-      setWebUntisBusy(false);
-    }
-  };
-
-  const updateWebUntisPreviewRow = (index: number, patch: Record<string, unknown>) => {
-    setWebUntisPreview((prev: any) => {
-      if (!prev?.students) return prev;
-      const students = prev.students.map((row: any, i: number) => {
-        if (i !== index) return row;
-        const next = { ...row, ...patch };
-        if (typeof patch.fullName === 'string') {
-          const parts = patch.fullName.trim().split(/\s+/).filter(Boolean);
-          next.firstName = parts[0] || '';
-          next.lastName = parts.length > 1 ? parts[parts.length - 1] : '';
-          next.fullName =
-            parts.length <= 1 ? parts[0] || '' : `${parts[0]} ${parts[parts.length - 1]}`;
-        }
-        return next;
-      });
-      return { ...prev, students };
-    });
-  };
-
-  const handleAvailableStudentFieldChange = (
-    studentId: string,
-    field: 'name' | 'loginCode',
-    value: string,
-  ) => {
-    setAvailableStudents((prev) => {
-      const next = prev.map((s) => (s.id === studentId ? { ...s, [field]: value } : s));
-      availableStudentsRef.current = next;
-      return next;
-    });
-  };
-
-  const handleAvailableStudentCredentialsSave = async (studentId: string) => {
-    const student = availableStudentsRef.current.find((s) => s.id === studentId);
-    if (!student) return;
-    const name = formatStudentName(student.name) || student.name.trim();
-    const loginCode = student.loginCode.trim();
-    if (!name || !loginCode) {
-      showSnackbar('Name und Login-Code dürfen nicht leer sein', 'error');
-      return;
-    }
-    setAddStudentsSavingId(studentId);
-    try {
-      const response = await fetch(`/api/users/${studentId}/credentials`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-login-code': localStorage.getItem('loginCode') || '',
-        },
-        body: JSON.stringify({ name, loginCode }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.error || 'Speichern fehlgeschlagen');
-      }
-      setAvailableStudents((prev) => {
-        const next = prev.map((s) =>
-          s.id === studentId
-            ? { ...s, name: data.name ?? name, loginCode: data.loginCode ?? loginCode }
-            : s,
-        );
-        availableStudentsRef.current = next;
-        return next;
-      });
-      await fetchGroups();
-    } catch (error: any) {
-      showSnackbar(error?.message || 'Speichern fehlgeschlagen', 'error');
-      if (selectedGroupId) {
-        try {
-          await loadAddStudentsDirectory(selectedGroupId);
-        } catch {
-          // ignore reload error
-        }
-      }
-    } finally {
-      setAddStudentsSavingId(null);
-    }
-  };
-
-  const availableStudentsByGroup = useMemo(() => {
-    type Section = {
-      key: string;
-      title: string;
-      students: Student[];
-      isCurrent: boolean;
-      isArchived?: boolean;
-    };
-    const q = addStudentsSearch.trim().toLowerCase();
-    const matches = (s: Student) => {
-      if (!q) return true;
-      return (
-        s.name.toLowerCase().includes(q) ||
-        s.loginCode.toLowerCase().includes(q) ||
-        formatStudentName(s.name).toLowerCase().includes(q)
-      );
-    };
-
-    const filtered = availableStudents.filter(matches);
-    const byGroup = new Map<string, Section>();
-    const ungrouped: Student[] = [];
-    const currentId = selectedGroupId;
-
-    for (const student of filtered) {
-      const memberships = student.learningGroups || [];
-      if (memberships.length === 0) {
-        ungrouped.push(student);
-        continue;
-      }
-      for (const g of memberships) {
-        if (!byGroup.has(g.id)) {
-          byGroup.set(g.id, {
-            key: g.id,
-            title: g.name,
-            students: [],
-            isCurrent: g.id === currentId,
-            isArchived: Boolean(g.isArchived),
-          });
-        }
-        byGroup.get(g.id)!.students.push(student);
-      }
-    }
-
-    // Deduplicate within each section (safety)
-    for (const sec of byGroup.values()) {
-      const seen = new Set<string>();
-      sec.students = sec.students.filter((s) => {
-        if (seen.has(s.id)) return false;
-        seen.add(s.id);
-        return true;
-      });
-      sec.students.sort((a, b) =>
-        formatStudentName(a.name).localeCompare(formatStudentName(b.name), 'de'),
-      );
-    }
-
-    const sections = [...byGroup.values()].sort((a, b) => {
-      if (a.isCurrent && !b.isCurrent) return -1;
-      if (!a.isCurrent && b.isCurrent) return 1;
-      return a.title.localeCompare(b.title, 'de');
-    });
-
-    if (ungrouped.length > 0) {
-      ungrouped.sort((a, b) =>
-        formatStudentName(a.name).localeCompare(formatStudentName(b.name), 'de'),
-      );
-      sections.push({
-        key: '_none',
-        title: 'Ohne Lerngruppe',
-        students: ungrouped,
-        isCurrent: false,
-      });
-    }
-
-    // Unique student count for header (multi-group students counted once)
-    return sections;
-  }, [availableStudents, addStudentsSearch, selectedGroupId]);
-
-  const addStudentsUniqueVisibleCount = useMemo(() => {
-    const ids = new Set<string>();
-    for (const sec of availableStudentsByGroup) {
-      for (const s of sec.students) ids.add(s.id);
-    }
-    return ids.size;
-  }, [availableStudentsByGroup]);
-
-  const handleAddStudents = async () => {
-    if (isAddingStudentsRef.current) return;
-    if (!selectedGroupId || selectedStudents.length === 0) {
-      showSnackbar('Bitte wählen Sie mindestens einen Schüler aus', 'error');
-      return;
-    }
-
-    const studentIdsToAdd = selectedStudents.filter((id) => {
-      const s = availableStudentsRef.current.find((x) => x.id === id);
-      return s && !s.inCurrentGroup;
-    });
-    if (studentIdsToAdd.length === 0) {
-      showSnackbar('Alle ausgewählten Schüler sind bereits in der Gruppe', 'error');
-      return;
-    }
-
-    isAddingStudentsRef.current = true;
-    const groupIdToUse = selectedGroupId;
-    setSelectedStudents([]);
-
-    try {
-      const response = await fetch(`/api/learning-groups/${groupIdToUse}/students`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentIds: studentIdsToAdd }),
-      });
-      if (!response.ok) throw new Error('Fehler beim Hinzufügen der Schüler');
-      await fetchGroups();
-      await loadAddStudentsDirectory(groupIdToUse);
-      showSnackbar(`${studentIdsToAdd.length} Schüler hinzugefügt`, 'success');
-    } catch (error) {
-      showSnackbar('Fehler beim Hinzufügen der Schüler', 'error');
-    } finally {
-      isAddingStudentsRef.current = false;
+      setPassiveStudentsSaving(false);
     }
   };
 
@@ -12876,8 +12661,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     const groupData = participations[groupId] || {};
     const lessonData = groupData[lessonIndex] || {};
     
-    // Initialisiere alle Schüler, die noch keine Bewertung haben, mit 0 (neutral)
-    for (const student of group.students) {
+    // Initialisiere aktive Schüler, die noch keine Bewertung haben, mit 0 (neutral)
+    for (const student of activeStudentsOfGroup(
+      group.students,
+      parsePassiveStudentIds(group.passiveStudentIds),
+    )) {
       if (lessonData[student.id] === undefined) {
         // Speichere neutrale Bewertung in der Datenbank
         await saveParticipation(groupId, lessonIndex, student.id, 0);
@@ -13659,15 +13447,19 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   const handleSetRandomGroupModerator = (groupId: string) => {
     handleMenuClose();
     const group = groups.find((g) => g.id === groupId);
-    if (!group || group.students.length === 0) {
+    const activeStudents = activeStudentsOfGroup(
+      group?.students,
+      parsePassiveStudentIds(group?.passiveStudentIds),
+    );
+    if (!group || activeStudents.length === 0) {
       handleStudentMenuClose();
-      showSnackbar('Keine Schüler in der Gruppe', 'error');
+      showSnackbar('Keine aktiven Schüler in der Gruppe', 'error');
       return;
     }
     const pool =
-      group.moderatorStudentId && group.students.length > 1
-        ? group.students.filter((s) => s.id !== group.moderatorStudentId)
-        : group.students;
+      group.moderatorStudentId && activeStudents.length > 1
+        ? activeStudents.filter((s) => s.id !== group.moderatorStudentId)
+        : activeStudents;
     const student = pool[Math.floor(Math.random() * pool.length)];
     void handleSetGroupModerator(groupId, student);
   };
@@ -15963,7 +15755,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 </Typography>
               ) : (
                 <Grid container spacing={1.5} alignItems="flex-start">
-                  {workingReihenPaths.map((folderPath) => {
+                  {filterOutNestedAssignedFolderPaths(workingReihenPaths).map((folderPath) => {
                     const gid = resolveGroupIdForReihe(folderPath);
                     const isInfReihe = isInformatikFolderPath(folderPath);
                     return (
@@ -16196,7 +15988,13 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                             {group.name}
                           </Typography>
                           <Chip 
-                            label={`${group.students.length} Schüler`}
+                            label={(() => {
+                              const passiveCount = parsePassiveStudentIds(group.passiveStudentIds).length;
+                              const activeCount = Math.max(0, group.students.length - passiveCount);
+                              return passiveCount > 0
+                                ? `${activeCount} aktiv · ${passiveCount} passiv`
+                                : `${group.students.length} Schüler`;
+                            })()}
                             size="small" 
                             sx={{ 
                               ml: 1.0, 
@@ -16302,6 +16100,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                           <Grid container spacing={0.8} sx={{ display: expandedStudents[group.id] ? 'flex' : 'none' }}>
                             {group.students.map((student, studentIndex) => {
                               const isModerator = group.moderatorStudentId === student.id;
+                              const isPassive = isPassiveStudentId(
+                                student.id,
+                                parsePassiveStudentIds(group.passiveStudentIds),
+                              );
                               return (
                               <Grid item xs={12} sm={6} md={6} lg={3} key={student.id}>
                                 <Card 
@@ -16309,7 +16111,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   sx={{ 
                                     borderRadius: 2.8,
                                     border: isModerator ? '2px solid #c62828' : '1px solid #e0e0e0',
-                                    bgcolor: isModerator ? '#ffebee' : '#ffffff',
+                                    bgcolor: isPassive
+                                      ? '#f5f5f5'
+                                      : isModerator
+                                        ? '#ffebee'
+                                        : '#ffffff',
                                     boxShadow: isModerator
                                       ? '0 2px 12px rgba(198, 40, 40, 0.28)'
                                       : '0 2px 8px rgba(0,0,0,0.06)',
@@ -16318,6 +16124,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                     p: 0,
                                     position: 'relative',
                                     overflow: 'visible',
+                                    opacity: isPassive ? 0.48 : 1,
+                                    filter: isPassive ? 'grayscale(0.85)' : 'none',
                                     '& .MuiCardContent-root': {
                                       padding: '8px',
                                       '&:last-child': {
@@ -16369,6 +16177,23 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                         zIndex: 2,
                                         pointerEvents: 'none',
                                         filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.25))',
+                                      }}
+                                    />
+                                  )}
+                                  {isPassive && (
+                                    <Chip
+                                      label="Passiv"
+                                      size="small"
+                                      sx={{
+                                        position: 'absolute',
+                                        top: 4,
+                                        left: 4,
+                                        zIndex: 2,
+                                        height: 18,
+                                        fontSize: '0.65rem',
+                                        fontWeight: 700,
+                                        bgcolor: '#9e9e9e',
+                                        color: '#fff',
                                       }}
                                     />
                                   )}
@@ -16845,12 +16670,15 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   onDragEnd={(event) => handleAssignedFoldersDragEnd(group.id, event)}
                                 >
                                   <SortableContext
-                                    items={assignedFolders[group.id].map((p) => assignedFolderSortableId(group.id, p))}
+                                    items={filterOutNestedAssignedFolderPaths(assignedFolders[group.id]).map((p) =>
+                                      assignedFolderSortableId(group.id, p),
+                                    )}
                                     strategy={verticalListSortingStrategy}
                                   >
                                     <Box>
-                                      {assignedFolders[group.id].map((folderPath: string) =>
-                                        renderAssignedFolderPreview(group.id, folderPath)
+                                      {filterOutNestedAssignedFolderPaths(assignedFolders[group.id]).map(
+                                        (folderPath: string) =>
+                                          renderAssignedFolderPreview(group.id, folderPath),
                                       )}
                                     </Box>
                                   </SortableContext>
@@ -18188,468 +18016,90 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           </Button>
         </DialogActions>
       </Dialog>
-      {/* Add Students Dialog */}
-      <Dialog
+      <AddStudentsDialog
         open={openAddStudentsDialog}
+        groupId={selectedGroupId}
+        groupName={groups.find((g) => g.id === selectedGroupId)?.name || 'Lerngruppe'}
         onClose={handleCloseAddStudentsDialog}
-        maxWidth="md"
+        onChanged={fetchGroups}
+        onNotify={showSnackbar}
+      />
+
+      <Dialog
+        open={passiveStudentsDialogOpen}
+        onClose={() => handleClosePassiveStudentsDialog()}
+        maxWidth="sm"
         fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            overflow: 'hidden',
-            border: `1px solid ${colors.border}`,
-            boxShadow: '0 18px 48px rgba(44,62,80,0.18)',
-            maxHeight: '92vh',
-          },
-        }}
       >
-        <DialogTitle
-          sx={{
-            ...dialogCloseTitleSx,
-            py: 1.5,
-            px: 2,
-            background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
-            color: '#fff',
-          }}
-        >
-          <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
-            Schüler verwalten
-          </Typography>
-          <Typography variant="caption" sx={{ opacity: 0.92, display: 'block' }}>
-            {groups.find((g) => g.id === selectedGroupId)?.name || 'Lerngruppe'}
-            {' · '}
-            {addStudentsDirectoryMeta.total} in DB
-            {' · '}
-            {addStudentsDirectoryMeta.inGroup} in dieser Gruppe
-            {addStudentsSearch.trim()
-              ? ` · ${addStudentsUniqueVisibleCount} Treffer`
-              : ''}
-          </Typography>
-          <DialogCloseIconButton
-            onClose={handleCloseAddStudentsDialog}
-            sx={{ color: '#fff' }}
-            iconSx={{ color: '#fff' }}
-          />
+        <DialogTitle sx={{ ...dialogCloseTitleSx, pr: 6 }}>
+          Schüler passiv setzen
+          <DialogCloseIconButton onClose={() => handleClosePassiveStudentsDialog()} disabled={passiveStudentsSaving} />
         </DialogTitle>
-        <DialogContent sx={{ p: 0, bgcolor: colors.background, display: 'flex', flexDirection: 'column' }}>
-          <Box
-            sx={{
-              px: 1.5,
-              pt: 1,
-              pb: 0.75,
-              display: 'flex',
-              gap: 0.75,
-              alignItems: 'center',
-              flexWrap: 'nowrap',
-            }}
-          >
-            <TextField
-              size="small"
-              placeholder="Suchen…"
-              value={addStudentsSearch}
-              onChange={(e) => setAddStudentsSearch(e.target.value)}
-              InputProps={{
-                startAdornment: <SearchIcon sx={{ fontSize: 16, color: colors.textSecondary, mr: 0.5 }} />,
-              }}
-              sx={{
-                flex: 1,
-                minWidth: 0,
-                bgcolor: colors.cardBg,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: 1.5,
-                  height: 32,
-                },
-                '& .MuiInputBase-input': {
-                  py: 0.4,
-                  fontSize: '0.8rem',
-                },
-              }}
-            />
-            <ButtonGroup
-              size="small"
-              variant="outlined"
-              sx={{
-                flexShrink: 0,
-                height: 32,
-                '& .MuiButtonGroup-grouped': {
-                  minWidth: 0,
-                  px: 1,
-                  fontSize: '0.7rem',
-                  textTransform: 'none',
-                  whiteSpace: 'nowrap',
-                  borderColor: colors.border,
-                  color: colors.textPrimary,
-                  lineHeight: 1.2,
-                },
-              }}
-            >
-              <Button
-                disabled={addStudentsLoading || !selectedGroupId}
-                onClick={() => selectedGroupId && void loadAddStudentsDirectory(selectedGroupId)}
-                startIcon={<RefreshIcon sx={{ fontSize: 14 }} />}
-                sx={{ '& .MuiButton-startIcon': { mr: 0.35, ml: -0.15 } }}
-              >
-                Laden
-              </Button>
-              <Button
-                onClick={() => setWebUntisPanelOpen((v) => !v)}
-                startIcon={<CloudUploadIcon sx={{ fontSize: 14 }} />}
-                sx={{
-                  '& .MuiButton-startIcon': { mr: 0.35, ml: -0.15 },
-                  ...(webUntisPanelOpen
-                    ? {
-                        bgcolor: `${colors.secondary}22`,
-                        borderColor: colors.secondary,
-                        color: colors.secondary,
-                        '&:hover': { bgcolor: `${colors.secondary}33` },
-                      }
-                    : {}),
-                }}
-              >
-                Untis
-              </Button>
-            </ButtonGroup>
-          </Box>
-
-          <Collapse in={webUntisPanelOpen}>
-            <Box
-              sx={{
-                mx: 2,
-                mb: 1,
-                p: 1.25,
-                borderRadius: 2,
-                bgcolor: colors.cardBg,
-                border: `1px dashed ${colors.secondary}66`,
-              }}
-            >
-              <Typography variant="caption" sx={{ color: colors.textSecondary, display: 'block', mb: 1 }}>
-                PDF „Schüler*innen im Unterricht“ · ohne Mittelnamen · Name/Login vor dem Anlegen editierbar
-              </Typography>
-              <input
-                ref={webUntisFileInputRef}
-                type="file"
-                accept=".pdf,.txt,.csv,application/pdf,text/plain,text/csv"
-                hidden
-                onChange={(e) => {
-                  const file = e.target.files?.[0] || null;
-                  e.target.value = '';
-                  void handleWebUntisFileSelected(file);
-                }}
-              />
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={<CloudUploadIcon />}
-                  disabled={webUntisBusy || !selectedGroupId}
-                  onClick={() => webUntisFileInputRef.current?.click()}
-                  sx={{ textTransform: 'none', borderRadius: 2 }}
-                >
-                  {webUntisBusy ? 'Lädt…' : 'Liste hochladen'}
-                </Button>
-                {webUntisPreview?.students?.length ? (
-                  <Button
-                    size="small"
-                    variant="contained"
-                    disabled={webUntisBusy}
-                    onClick={() => void handleConfirmWebUntisImport()}
-                    sx={{
-                      textTransform: 'none',
-                      borderRadius: 2,
-                      bgcolor: colors.secondary,
-                      '&:hover': { bgcolor: colors.secondary },
-                    }}
-                  >
-                    Anlegen & zuordnen ({webUntisPreview.students.length})
-                  </Button>
-                ) : null}
-              </Box>
-              {webUntisPreview?.students?.length ? (
-                <Box sx={{ mt: 1, maxHeight: 200, overflow: 'auto' }}>
-                  <Typography variant="caption" sx={{ color: colors.textSecondary }}>
-                    {webUntisPreview.summary?.neu ?? 0} neu · {webUntisPreview.summary?.vorhanden ?? 0} vorhanden ·{' '}
-                    {webUntisPreview.summary?.schonInGruppe ?? 0} schon in Gruppe
-                  </Typography>
-                  {webUntisPreview.students.map((row: any, idx: number) => (
-                    <Box
-                      key={`${row.existingUserId || row.fullName}-${idx}`}
-                      sx={{ display: 'flex', gap: 0.75, alignItems: 'center', mt: 0.75 }}
-                    >
-                      <Typography variant="caption" sx={{ width: 22, color: colors.textSecondary }}>
-                        {row.listIndex ?? idx + 1}.
-                      </Typography>
-                      <TextField
-                        size="small"
-                        value={row.fullName || ''}
-                        onChange={(e) => updateWebUntisPreviewRow(idx, { fullName: e.target.value })}
-                        placeholder="Name"
-                        sx={{ flex: 1, '& .MuiInputBase-input': { py: 0.6, fontSize: '0.8rem' } }}
-                      />
-                      <TextField
-                        size="small"
-                        value={row.loginCode || ''}
-                        onChange={(e) => updateWebUntisPreviewRow(idx, { loginCode: e.target.value })}
-                        placeholder="Login"
-                        sx={{ width: 118, '& .MuiInputBase-input': { py: 0.6, fontSize: '0.8rem' } }}
-                      />
-                    </Box>
-                  ))}
-                </Box>
-              ) : null}
-            </Box>
-          </Collapse>
-
-          <Box sx={{ px: 2, pb: 1.5, flex: 1, overflow: 'auto', minHeight: 280 }}>
-            {addStudentsLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-                <CircularProgress size={28} sx={{ color: colors.primary }} />
-              </Box>
-            ) : availableStudentsByGroup.length === 0 ? (
-              <Typography variant="body2" sx={{ color: colors.textSecondary, textAlign: 'center', py: 4 }}>
-                Keine Schüler gefunden.
-              </Typography>
-            ) : (
-              availableStudentsByGroup.map((section) => {
-                const expanded = addStudentsExpanded[section.key] ?? section.isCurrent;
-                const selectable = section.students.filter((s) => !s.inCurrentGroup);
-                const selectedInSection = selectable.filter((s) => selectedStudents.includes(s.id)).length;
-                return (
-                  <Box
-                    key={section.key}
-                    sx={{
-                      mb: 1,
-                      borderRadius: 2,
-                      bgcolor: colors.cardBg,
-                      border: `1px solid ${section.isCurrent ? colors.primary + '55' : colors.border}`,
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <Box
-                      onClick={() =>
-                        setAddStudentsExpanded((prev) => ({
-                          ...prev,
-                          [section.key]: !expanded,
-                        }))
-                      }
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1,
-                        px: 1.25,
-                        py: 0.75,
-                        cursor: 'pointer',
-                        bgcolor: section.isCurrent ? colors.primary + '12' : 'transparent',
-                        '&:hover': { bgcolor: section.isCurrent ? colors.primary + '18' : '#f1f5f9' },
-                      }}
-                    >
-                      {expanded ? (
-                        <ExpandLessIcon sx={{ fontSize: 18, color: colors.textSecondary }} />
-                      ) : (
-                        <ExpandMoreIcon sx={{ fontSize: 18, color: colors.textSecondary }} />
-                      )}
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          fontWeight: 700,
-                          color: section.isCurrent ? colors.primary : colors.textPrimary,
-                          flex: 1,
-                        }}
-                      >
-                        {section.title}
-                        {section.isCurrent ? ' · diese Gruppe' : ''}
-                        {section.isArchived ? ' · archiviert' : ''}
-                      </Typography>
-                      <Chip
-                        size="small"
-                        label={section.students.length}
-                        sx={{
-                          height: 22,
-                          fontWeight: 700,
-                          bgcolor: section.isCurrent ? colors.primary : '#e2e8f0',
-                          color: section.isCurrent ? '#fff' : colors.textPrimary,
-                        }}
-                      />
-                      {selectable.length > 0 && !section.isCurrent ? (
-                        <Checkbox
-                          size="small"
-                          indeterminate={selectedInSection > 0 && selectedInSection < selectable.length}
-                          checked={selectable.length > 0 && selectedInSection === selectable.length}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => {
-                            const ids = selectable.map((s) => s.id);
-                            setSelectedStudents((prev) => {
-                              if (e.target.checked) {
-                                return Array.from(new Set([...prev, ...ids]));
-                              }
-                              return prev.filter((id) => !ids.includes(id));
-                            });
-                          }}
-                          sx={{ p: 0.25 }}
-                        />
-                      ) : null}
-                    </Box>
-                    <Collapse in={expanded}>
-                      <Box sx={{ px: 1, pb: 0.75 }}>
-                        {section.students.map((student, index) => {
-                          const inGroup = Boolean(student.inCurrentGroup);
-                          const checked = inGroup || selectedStudents.includes(student.id);
-                          return (
-                            <Box
-                              key={`${section.key}-${student.id}`}
-                              sx={{
-                                display: 'grid',
-                                gridTemplateColumns: '28px minmax(0, 1fr) 112px 36px',
-                                gap: 0.75,
-                                alignItems: 'center',
-                                py: 0.4,
-                                borderTop: `1px solid ${colors.border}`,
-                                opacity: addStudentsSavingId === student.id ? 0.65 : 1,
-                              }}
-                            >
-                              <Typography
-                                variant="caption"
-                                sx={{ color: colors.textSecondary, textAlign: 'right', pr: 0.25 }}
-                              >
-                                {index + 1}.
-                              </Typography>
-                              <TextField
-                                size="small"
-                                value={student.name}
-                                onChange={(e) =>
-                                  handleAvailableStudentFieldChange(student.id, 'name', e.target.value)
-                                }
-                                onBlur={() => void handleAvailableStudentCredentialsSave(student.id)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    (e.target as HTMLInputElement).blur();
-                                  }
-                                }}
-                                fullWidth
-                                sx={{
-                                  '& .MuiInputBase-input': {
-                                    py: 0.55,
-                                    fontSize: '0.8rem',
-                                    fontWeight: 600,
-                                    color: colors.textPrimary,
-                                  },
-                                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'transparent' },
-                                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: colors.border,
-                                  },
-                                  '& .Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: colors.accent1,
-                                  },
-                                }}
-                              />
-                              <TextField
-                                size="small"
-                                value={student.loginCode}
-                                onChange={(e) =>
-                                  handleAvailableStudentFieldChange(student.id, 'loginCode', e.target.value)
-                                }
-                                onBlur={() => void handleAvailableStudentCredentialsSave(student.id)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    (e.target as HTMLInputElement).blur();
-                                  }
-                                }}
-                                sx={{
-                                  '& .MuiInputBase-input': {
-                                    py: 0.55,
-                                    fontSize: '0.75rem',
-                                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-                                    color: colors.accent1,
-                                  },
-                                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'transparent' },
-                                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: colors.border,
-                                  },
-                                  '& .Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: colors.accent1,
-                                  },
-                                }}
-                              />
-                              <Checkbox
-                                size="small"
-                                disabled={inGroup}
-                                checked={checked}
-                                onChange={(event) => {
-                                  if (inGroup) return;
-                                  setSelectedStudents((prev) => {
-                                    if (event.target.checked) {
-                                      return prev.includes(student.id) ? prev : [...prev, student.id];
-                                    }
-                                    return prev.filter((id) => id !== student.id);
-                                  });
-                                }}
-                                sx={{
-                                  p: 0.25,
-                                  color: colors.border,
-                                  '&.Mui-checked': { color: inGroup ? colors.success : colors.primary },
-                                }}
-                              />
-                            </Box>
-                          );
-                        })}
-                      </Box>
-                    </Collapse>
-                  </Box>
-                );
-              })
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions
-          sx={{
-            px: 1.5,
-            py: 1,
-            bgcolor: colors.cardBg,
-            borderTop: `1px solid ${colors.border}`,
-            gap: 0.75,
-          }}
-        >
-          <Typography variant="caption" sx={{ color: colors.textSecondary, mr: 'auto', fontSize: '0.7rem' }}>
-            Name/Login → DB
-            {selectedStudents.length > 0 ? ` · ${selectedStudents.length} ausgewählt` : ''}
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            Passive Schüler (z.&nbsp;B. länger im Ausland) erscheinen ausgegraut und fließen nicht in
+            Statistik, Teilnahme und Abgaben ein.
           </Typography>
-          <ButtonGroup
-            size="small"
-            variant="outlined"
-            sx={{
-              flexShrink: 0,
-              height: 32,
-              '& .MuiButtonGroup-grouped': {
-                minWidth: 0,
-                px: 1,
-                fontSize: '0.7rem',
-                textTransform: 'none',
-                whiteSpace: 'nowrap',
-                borderColor: colors.border,
-                color: colors.textPrimary,
-                lineHeight: 1.2,
-              },
-            }}
+          {(() => {
+            const group = groups.find((g) => g.id === passiveStudentsGroupId);
+            const students = [...(group?.students || [])].sort((a, b) =>
+              (a.name || '').localeCompare(b.name || '', 'de'),
+            );
+            if (students.length === 0) {
+              return (
+                <Typography variant="body2" color="text.secondary">
+                  Keine Schüler in dieser Lerngruppe.
+                </Typography>
+              );
+            }
+            return (
+              <List dense disablePadding>
+                {students.map((student) => {
+                  const checked = passiveStudentsDraftIds.includes(student.id);
+                  return (
+                    <ListItem key={student.id} disablePadding>
+                      <ListItemButton
+                        onClick={() => {
+                          setPassiveStudentsDraftIds((prev) =>
+                            checked
+                              ? prev.filter((id) => id !== student.id)
+                              : [...prev, student.id],
+                          );
+                        }}
+                        disabled={passiveStudentsSaving}
+                        dense
+                      >
+                        <ListItemIcon sx={{ minWidth: 36 }}>
+                          <Checkbox
+                            edge="start"
+                            checked={checked}
+                            tabIndex={-1}
+                            disableRipple
+                          />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={student.name}
+                          secondary={student.loginCode || undefined}
+                        />
+                      </ListItemButton>
+                    </ListItem>
+                  );
+                })}
+              </List>
+            );
+          })()}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => handleClosePassiveStudentsDialog()} disabled={passiveStudentsSaving}>
+            Abbrechen
+          </Button>
+          <Button
+            onClick={() => void handleSavePassiveStudents()}
+            variant="contained"
+            disabled={passiveStudentsSaving}
           >
-            <Button onClick={handleCloseAddStudentsDialog}>
-              Schließen
-            </Button>
-            <Button
-              onClick={() => void handleAddStudents()}
-              disabled={selectedStudents.length === 0 || addStudentsLoading}
-              sx={{
-                fontWeight: 700,
-                bgcolor: selectedStudents.length > 0 ? `${colors.primary}18` : undefined,
-                borderColor: selectedStudents.length > 0 ? colors.primary : undefined,
-                color: selectedStudents.length > 0 ? colors.primary : undefined,
-                '&:hover': {
-                  bgcolor: selectedStudents.length > 0 ? `${colors.primary}28` : undefined,
-                },
-              }}
-            >
-              Hinzufügen{selectedStudents.length > 0 ? ` (${selectedStudents.length})` : ''}
-            </Button>
-          </ButtonGroup>
+            {passiveStudentsSaving ? 'Speichern…' : 'Speichern'}
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -18685,6 +18135,12 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       >
         <MenuItem onClick={() => { handleOpenAddStudents(menuGroupId!); handleMenuClose(); }}>
           <PersonAddIcon fontSize="small" sx={{ mr: 1 }} /> Schüler hinzufügen
+        </MenuItem>
+        <MenuItem
+          onClick={() => handleOpenPassiveStudentsDialog(menuGroupId!)}
+          disabled={!groups.find((g) => g.id === menuGroupId!)?.students?.length}
+        >
+          <VisibilityOffIcon fontSize="small" sx={{ mr: 1 }} /> Schüler passiv setzen
         </MenuItem>
         <MenuItem onClick={() => handleFolderAssignmentOpen(menuGroupId!)}>
           <FolderIcon fontSize="small" sx={{ mr: 1 }} /> Ordner zuordnen
@@ -25486,7 +24942,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
            {/* Schüler-Kacheln */}
           {/* Schüler-Kacheln */}
           {participationGroupId && groups.find(g => g.id === participationGroupId)?.students && (() => {
-            const students = groups.find(g => g.id === participationGroupId)!.students;
+            const groupForPart = groups.find(g => g.id === participationGroupId)!;
+            const students = activeStudentsOfGroup(
+              groupForPart.students,
+              parsePassiveStudentIds(groupForPart.passiveStudentIds),
+            );
             
             // Sortiere Schüler nach Sitzordnung - exakt wie im Screenshot
             const getSeatingOrder = (fullName: string): number => {
