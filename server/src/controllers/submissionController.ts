@@ -48,7 +48,16 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
     'image/png',
     'image/gif',
     'image/webp',
-    'image/bmp'
+    'image/bmp',
+    'video/mp4',
+    'video/webm',
+    'video/quicktime',
+    'audio/mpeg',
+    'audio/mp4',
+    'audio/wav',
+    'audio/x-wav',
+    'audio/webm',
+    'audio/ogg',
   ];
 
   if (allowedMimes.includes(file.mimetype)) {
@@ -62,7 +71,7 @@ export const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 50 * 1024 * 1024 // 50 MB Limit
+    fileSize: 150 * 1024 * 1024 // 150 MB (Videos)
   }
 });
 
@@ -77,9 +86,11 @@ export const getOrCreateAssignment = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'filePath, fileName und teacherId sind erforderlich' });
     }
 
-    // Prüfe ob die Datei mit H_ beginnt
-    if (!fileName.startsWith('H_')) {
-      return res.status(400).json({ error: 'Nur Dateien die mit H_ beginnen sind Abgabedateien' });
+    // Prüfe ob die Datei mit H_ oder WA_ beginnt (Wochenaufgaben-Abgaben)
+    const isHomework = fileName.startsWith('H_');
+    const isWochenaufgabe = fileName.startsWith('WA_');
+    if (!isHomework && !isWochenaufgabe) {
+      return res.status(400).json({ error: 'Nur H_- oder WA_-Abgabedateien sind erlaubt' });
     }
 
     // Prüfe ob der Teacher existiert

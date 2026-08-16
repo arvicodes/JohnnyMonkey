@@ -1,9 +1,41 @@
 /** Zentraler Wochenaufgaben-Ordner neben den Reihen (z. B. MSS 12 LK/Wochenaufgaben). */
 
+import {
+  LESSON_PRESENTATION_PDF_EDITED,
+  LESSON_PRESENTATION_PDF_ORIGINAL,
+} from './presentationLessonAssets';
+
 export const WOCHENAUFGABEN_COLOR = '#ffb74d';
 export const WOCHENAUFGABEN_TEXT_COLOR = '#ef6c00';
 export const WOCHENAUFGABEN_BG = '#fff8e1';
 export const WOCHENAUFGABEN_BORDER = '#ffe0b2';
+export const WOCHENAUFGABEN_BOX_BG = '#fafbfd';
+export const WOCHENAUFGABEN_BOX_BORDER = '#e8eaf0';
+
+export function wochenaufgabePdfFileCandidates(lessonPath: string): { path: string; name: string }[] {
+  const base = normalizePath(lessonPath);
+  return [
+    { path: `${base}/${LESSON_PRESENTATION_PDF_EDITED}`, name: LESSON_PRESENTATION_PDF_EDITED },
+    { path: `${base}/${LESSON_PRESENTATION_PDF_ORIGINAL}`, name: LESSON_PRESENTATION_PDF_ORIGINAL },
+  ];
+}
+
+export async function resolveWochenaufgabePdfFile(
+  lessonPath: string,
+): Promise<{ path: string; name: string } | null> {
+  for (const candidate of wochenaufgabePdfFileCandidates(lessonPath)) {
+    try {
+      const res = await fetch(
+        `/api/file-system-paths/read-pdf?filePath=${encodeURIComponent(candidate.path)}`,
+        { method: 'HEAD' },
+      );
+      if (res.ok) return candidate;
+    } catch {
+      /* next */
+    }
+  }
+  return null;
+}
 
 export type WochenaufgabenFsNode = {
   name?: string;

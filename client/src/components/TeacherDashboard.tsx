@@ -93,7 +93,7 @@ import {
   parseReadApiChildren,
 } from '../lib/wochenaufgabenFolder';
 import { ensureWochenaufgabeDeck, INITIAL_WOCHENAUFGABE_NUMBERS } from '../lib/wochenaufgabenPresentation';
-import WochenaufgabenNumberChips from './wochenaufgaben/WochenaufgabenNumberChips';
+import WochenaufgabenFolderRow from './wochenaufgaben/WochenaufgabenFolderRow';
 import {
   Box,
   Typography,
@@ -10960,9 +10960,10 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
               }}
             >
               {isWochenaufgabenDir ? (
-                <WochenaufgabenNumberChips
+                <WochenaufgabenFolderRow
                   children={item.children}
                   parentPath={itemFullPath}
+                  groupId={groupId}
                   onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
                 />
               ) : (
@@ -11044,9 +11045,10 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                 Lade Inhalt...
               </Typography>
             ) : items.length === 0 ? null : rootIsWochenaufgaben ? (
-              <WochenaufgabenNumberChips
+              <WochenaufgabenFolderRow
                 children={filteredItems}
                 parentPath={folderPath}
+                groupId={groupId}
                 onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
               />
             ) : (
@@ -11126,9 +11128,10 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                 Lade Inhalt...
               </Typography>
             ) : items.length === 0 ? null : rootIsWochenaufgaben ? (
-              <WochenaufgabenNumberChips
+              <WochenaufgabenFolderRow
                 children={filteredItems}
                 parentPath={folderPath}
+                groupId={groupId}
                 onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
               />
             ) : (

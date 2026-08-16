@@ -47,6 +47,9 @@ model User {
   timetableUploads          TeacherTimetableUpload[]
   scheduleSlots             ScheduleSlot[]
   autoLessonSessions        AutoLessonSession[]
+  wochenaufgabeVideoClaims  WochenaufgabeTask[]      @relation("WaVideoClaim")
+  wochenaufgabePeerReviews  WochenaufgabePeerPair[]  @relation("WaPeerReviewer")
+  wochenaufgabePeerSolutions WochenaufgabePeerPair[] @relation("WaPeerSolution")
   moderatedGroups           LearningGroup[]             @relation("GroupModerator")
 }
 
@@ -151,6 +154,7 @@ model LearningGroup {
   lessonExamBeacons            LessonExamBeacon[]
   scheduleSlots                ScheduleSlot[]
   autoLessonSessions           AutoLessonSession[]
+  wochenaufgabeTasks           WochenaufgabeTask[]
   /** Aktueller Klassen-Moderator (z. B. für die Woche) — sieht volles Entry Ticket */
   moderatorStudentId           String?
   moderator                    User?                      @relation("GroupModerator", fields: [moderatorStudentId], references: [id], onDelete: SetNull)
@@ -565,6 +569,39 @@ model Submission {
   @@index([assignmentId, studentId])
   @@index([studentId])
   @@index([assignmentId])
+}
+
+model WochenaufgabeTask {
+  id                  String    @id @default(uuid())
+  groupId             String
+  lessonPath          String
+  activatedAt         DateTime?
+  videoClaimStudentId String?
+  videoClaimedAt      DateTime?
+  peerAssignedAt      DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  group             LearningGroup           @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  videoClaimStudent User?                   @relation("WaVideoClaim", fields: [videoClaimStudentId], references: [id], onDelete: SetNull)
+  peerPairs         WochenaufgabePeerPair[]
+
+  @@unique([groupId, lessonPath])
+  @@index([groupId])
+}
+
+model WochenaufgabePeerPair {
+  id                  String @id @default(uuid())
+  taskId              String
+  reviewerStudentId   String
+  solutionStudentId   String
+
+  task            WochenaufgabeTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  reviewer        User              @relation("WaPeerReviewer", fields: [reviewerStudentId], references: [id], onDelete: Cascade)
+  solutionOwner   User              @relation("WaPeerSolution", fields: [solutionStudentId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, reviewerStudentId])
+  @@index([taskId])
 }
 
 model Participation {

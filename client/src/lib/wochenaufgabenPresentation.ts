@@ -73,14 +73,11 @@ export function buildWochenaufgabeDeck(lessonPath: string): PresentationDeck {
     defaultTransition: 'fade',
     showSlideNumbers: true,
     showSlideFooter: true,
-    slides: [
-      makeEmptyTitleContentSlide(0, lessonPath, ''),
-      makeEmptyTitleContentSlide(1, lessonPath, 'Lösung'),
-    ],
+    slides: [makeEmptyTitleContentSlide(0, lessonPath, '')],
   });
 }
 
-/** Eigene 2-Folien-Präsentation — nicht der Stunden-Starter (Start/Auftrag/HA/Ende). */
+/** Eigene 1-Folien-Präsentation. */
 export async function ensureWochenaufgabeDeck(lessonPath: string): Promise<PresentationDeck> {
   const path = `${lessonPath.replace(/\\/g, '/').replace(/\/+$/, '')}/${DECK_FILENAME}`;
   const loaded = await loadJsonFile<PresentationDeck>(path);

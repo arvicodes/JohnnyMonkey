@@ -112,8 +112,9 @@ import {
   mergeWochenaufgabenIntoFolderTree,
   numberedWochenaufgabeDirs,
   parseReadApiChildren,
+  resolveWochenaufgabePdfFile,
 } from '../lib/wochenaufgabenFolder';
-import WochenaufgabenNumberChips from './wochenaufgaben/WochenaufgabenNumberChips';
+import WochenaufgabenFolderRow from './wochenaufgaben/WochenaufgabenFolderRow';
 const COLLAB_BEACON_LS_KEY = 'jm_collab_fc_beacon_seen_v1';
 function loadCollabBeaconSeen(): Record<string, string> {
   try {
@@ -3273,6 +3274,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     
     // Filtere .wb-Dateien aus, damit Schüler nur PDF-Dateien sehen
     const filteredItems = filterWbFilesForStudentPreview(items);
+    const openWaPdf = async (lessonPath: string) => {
+      const pdf = await resolveWochenaufgabePdfFile(lessonPath);
+      if (!pdf) {
+        alert('Für diese Wochenaufgabe ist noch keine PDF verfügbar.');
+        return;
+      }
+      await openLessonFolderFile({ ...pdf, type: 'file' });
+    };
     
     // Hilfsfunktion: Prüft rekursiv, ob ein Ordner mindestens eine freigegebene Datei enthält
     const hasSharedFiles = (item: any): boolean => {
@@ -3728,9 +3737,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       {item.type === 'directory' && item.children && item.children.length > 0 && branchExpanded && (
         <Box sx={{ ml: 2, mb: 0.7 }}>
           {isWochenaufgabenDir ? (
-            <WochenaufgabenNumberChips
+            <WochenaufgabenFolderRow
               children={item.children}
               parentPath={(item.path || `${folderPath}/${item.name || ''}`).replace(/\\/g, '/')}
+              groupId={groupId}
+              studentId={userId}
+              onOpenPdf={(lessonPath) => void openWaPdf(lessonPath)}
             />
           ) : (
             filterWbFilesForStudentPreview(item.children).map((child: any) =>
@@ -3819,7 +3831,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 Lade Inhalt...
               </Typography>
             ) : items.length === 0 ? null : rootIsWochenaufgaben ? (
-              <WochenaufgabenNumberChips children={filteredItems} parentPath={folderPath} />
+              <WochenaufgabenFolderRow
+                children={filteredItems}
+                parentPath={folderPath}
+                groupId={groupId}
+                studentId={userId}
+                onOpenPdf={(lessonPath) => void openWaPdf(lessonPath)}
+              />
             ) : (
               <Box>
                 {filteredItems.map((item) => renderItemRecursively(item, 0, 'dashboard', false)).filter((el) => el !== null)}
