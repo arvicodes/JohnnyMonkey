@@ -145,6 +145,37 @@ export function mergeWochenaufgabenIntoFolderTree(
   return injectWochenaufgabenChild(list, siblingWochenNode);
 }
 
+export function resolveWochenaufgabenBlock(
+  groupId: string,
+  folderPath: string,
+  mergedItems: WochenaufgabenFsNode[],
+  contents: Record<string, WochenaufgabenFsNode[] | undefined>,
+): { parentPath: string; children: WochenaufgabenFsNode[] } | null {
+  const normFolder = normalizePath(folderPath);
+  if (isWochenaufgabenFolderName(folderPathBasename(normFolder))) {
+    return {
+      parentPath: normFolder,
+      children: contents[`${groupId}:${normFolder}`] || mergedItems,
+    };
+  }
+  const node = mergedItems.find(
+    (item) => item?.type === 'directory' && isWochenaufgabenFolderName(String(item.name || '')),
+  );
+  if (!node) return null;
+  const parentPath = normalizePath(String(node.path || `${normFolder}/${node.name || 'Wochenaufgaben'}`));
+  return {
+    parentPath,
+    children: contents[`${groupId}:${parentPath}`] || (Array.isArray(node.children) ? node.children : []),
+  };
+}
+
+/** Wochenaufgaben-Ordner aus Baumliste ausblenden (eigene Box oben). */
+export function stripWochenaufgabenFolderFromTree(items: WochenaufgabenFsNode[]): WochenaufgabenFsNode[] {
+  return (Array.isArray(items) ? items : []).filter(
+    (item) => !(item?.type === 'directory' && isWochenaufgabenFolderName(String(item.name || ''))),
+  );
+}
+
 export function findCachedWochenaufgabenSibling(
   groupId: string,
   folderPath: string,

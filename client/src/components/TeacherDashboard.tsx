@@ -91,6 +91,8 @@ import {
   nextWochenaufgabeNumber,
   numberedWochenaufgabeDirs,
   parseReadApiChildren,
+  resolveWochenaufgabenBlock,
+  stripWochenaufgabenFolderFromTree,
 } from '../lib/wochenaufgabenFolder';
 import { ensureWochenaufgabeDeck, INITIAL_WOCHENAUFGABE_NUMBERS } from '../lib/wochenaufgabenPresentation';
 import WochenaufgabenFolderRow from './wochenaufgaben/WochenaufgabenFolderRow';
@@ -10351,6 +10353,24 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     // Filtere PDF-Dateien aus, die zu .wb Dateien gehören - NUR für die Anzeige
     // Die ursprünglichen Daten bleiben unverändert für Schüler
     const filteredItems = filterPdfFiles(items);
+    const normAssignedPath = (p: string) => (p || '').replace(/\\/g, '/').replace(/\/+$/, '');
+    const waBlock = resolveWochenaufgabenBlock(groupId, folderPath, items, assignedFolderContents);
+    const treeItems = rootIsWochenaufgaben
+      ? filteredItems
+      : stripWochenaufgabenFolderFromTree(filteredItems);
+    const addWochenaufgabe = (waParentPath: string) => {
+      void (async () => {
+        const cached = assignedFolderContents[`${groupId}:${waParentPath}`] || waBlock?.children || [];
+        const n = nextWochenaufgabeNumber(cached);
+        const lessonPath = `${waParentPath}/${n}`;
+        await ensureWochenaufgabeDeck(lessonPath);
+        await fetchAssignedFolderContent(groupId, waParentPath);
+        if (normAssignedPath(folderPath) !== normAssignedPath(waParentPath)) {
+          await fetchAssignedFolderContent(groupId, folderPath);
+        }
+        void openWochenaufgabenPresentation(groupId, lessonPath);
+      })();
+    };
     const folderFilesForStem = filteredItems
       .filter((i: any) => i.type === 'file')
       .map((f: any) => ({ name: f.name || '' }));
@@ -10959,14 +10979,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   : 'none',
               }}
             >
-              {isWochenaufgabenDir ? (
-                <WochenaufgabenFolderRow
-                  children={item.children}
-                  parentPath={itemFullPath}
-                  groupId={groupId}
-                  onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
-                />
-              ) : (
+              {isWochenaufgabenDir ? null : (
                 itemsToDisplayItems(filterPdfFiles(item.children)).map((child: any) =>
                   renderItemRecursively(child, level + 1, inWochenaufgabenBranch || isWochenaufgabenDir),
                 )
@@ -11044,16 +11057,20 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
                 Lade Inhalt...
               </Typography>
-            ) : items.length === 0 ? null : rootIsWochenaufgaben ? (
-              <WochenaufgabenFolderRow
-                children={filteredItems}
-                parentPath={folderPath}
-                groupId={groupId}
-                onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
-              />
             ) : (
               <Box>
-                {itemsToDisplayItems(filteredItems).map((item) => renderItemRecursively(item, 0, false))}
+                {waBlock || rootIsWochenaufgaben ? (
+                  <WochenaufgabenFolderRow
+                    children={waBlock?.children || filteredItems}
+                    parentPath={waBlock?.parentPath || folderPath}
+                    groupId={groupId}
+                    onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
+                    onAdd={() => addWochenaufgabe(waBlock?.parentPath || folderPath)}
+                  />
+                ) : null}
+                {!rootIsWochenaufgaben && treeItems.length > 0 ? (
+                  itemsToDisplayItems(treeItems).map((item) => renderItemRecursively(item, 0, false))
+                ) : null}
               </Box>
             )}
           </Box>
@@ -11127,16 +11144,20 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
                 Lade Inhalt...
               </Typography>
-            ) : items.length === 0 ? null : rootIsWochenaufgaben ? (
-              <WochenaufgabenFolderRow
-                children={filteredItems}
-                parentPath={folderPath}
-                groupId={groupId}
-                onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
-              />
             ) : (
               <Box>
-                {itemsToDisplayItems(filteredItems).map((item) => renderItemRecursively(item, 0, false))}
+                {waBlock || rootIsWochenaufgaben ? (
+                  <WochenaufgabenFolderRow
+                    children={waBlock?.children || filteredItems}
+                    parentPath={waBlock?.parentPath || folderPath}
+                    groupId={groupId}
+                    onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
+                    onAdd={() => addWochenaufgabe(waBlock?.parentPath || folderPath)}
+                  />
+                ) : null}
+                {!rootIsWochenaufgaben && treeItems.length > 0 ? (
+                  itemsToDisplayItems(treeItems).map((item) => renderItemRecursively(item, 0, false))
+                ) : null}
               </Box>
             )}
           </Box>

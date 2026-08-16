@@ -113,6 +113,8 @@ import {
   numberedWochenaufgabeDirs,
   parseReadApiChildren,
   resolveWochenaufgabePdfFile,
+  resolveWochenaufgabenBlock,
+  stripWochenaufgabenFolderFromTree,
 } from '../lib/wochenaufgabenFolder';
 import WochenaufgabenFolderRow from './wochenaufgaben/WochenaufgabenFolderRow';
 const COLLAB_BEACON_LS_KEY = 'jm_collab_fc_beacon_seen_v1';
@@ -3274,6 +3276,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     
     // Filtere .wb-Dateien aus, damit Schüler nur PDF-Dateien sehen
     const filteredItems = filterWbFilesForStudentPreview(items);
+    const waBlock = resolveWochenaufgabenBlock(groupId, folderPath, items, assignedFolderContents);
+    const treeItems = rootIsWochenaufgaben
+      ? filteredItems
+      : stripWochenaufgabenFolderFromTree(filteredItems);
     const openWaPdf = async (lessonPath: string) => {
       const pdf = await resolveWochenaufgabePdfFile(lessonPath);
       if (!pdf) {
@@ -3736,15 +3742,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       {/* Rekursive Anzeige für ALLE Unterordner und Dateien - IMMER aufgeklappt */}
       {item.type === 'directory' && item.children && item.children.length > 0 && branchExpanded && (
         <Box sx={{ ml: 2, mb: 0.7 }}>
-          {isWochenaufgabenDir ? (
-            <WochenaufgabenFolderRow
-              children={item.children}
-              parentPath={(item.path || `${folderPath}/${item.name || ''}`).replace(/\\/g, '/')}
-              groupId={groupId}
-              studentId={userId}
-              onOpenPdf={(lessonPath) => void openWaPdf(lessonPath)}
-            />
-          ) : (
+          {isWochenaufgabenDir ? null : (
             filterWbFilesForStudentPreview(item.children).map((child: any) =>
               renderItemRecursively(child, level + 1, view, inWochenaufgabenBranch || isWochenaufgabenDir),
             )
@@ -3830,17 +3828,20 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
               <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
                 Lade Inhalt...
               </Typography>
-            ) : items.length === 0 ? null : rootIsWochenaufgaben ? (
-              <WochenaufgabenFolderRow
-                children={filteredItems}
-                parentPath={folderPath}
-                groupId={groupId}
-                studentId={userId}
-                onOpenPdf={(lessonPath) => void openWaPdf(lessonPath)}
-              />
             ) : (
               <Box>
-                {filteredItems.map((item) => renderItemRecursively(item, 0, 'dashboard', false)).filter((el) => el !== null)}
+                {waBlock || rootIsWochenaufgaben ? (
+                  <WochenaufgabenFolderRow
+                    children={waBlock?.children || filteredItems}
+                    parentPath={waBlock?.parentPath || folderPath}
+                    groupId={groupId}
+                    studentId={userId}
+                    onOpenPdf={(lessonPath) => void openWaPdf(lessonPath)}
+                  />
+                ) : null}
+                {!rootIsWochenaufgaben && treeItems.length > 0 ? (
+                  treeItems.map((item) => renderItemRecursively(item, 0, 'dashboard', false)).filter((el) => el !== null)
+                ) : null}
               </Box>
             )}
           </Box>

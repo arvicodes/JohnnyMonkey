@@ -84,11 +84,18 @@ export default function WochenaufgabenNumberChips({
   onAdd,
 }: Props) {
   const dirs = numberedWochenaufgabeDirs(children);
-  if (dirs.length === 0 && !onAdd) return null;
 
   const openDownload = (submissionId: string) => {
     window.open(waSubmissionDownloadUrl(submissionId), '_blank');
   };
+
+  if (dirs.length === 0 && !onAdd) {
+    return (
+      <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.62rem', mt: 0.35 }}>
+        Noch keine Wochenaufgaben — bitte warten, bis der Lehrer welche anlegt.
+      </Typography>
+    );
+  }
 
   return (
     <Box sx={{ display: 'inline-flex', alignItems: 'flex-end', gap: 0.5, flexWrap: 'wrap', mt: 0.35 }}>
