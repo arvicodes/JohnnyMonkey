@@ -113,9 +113,10 @@ import {
   numberedWochenaufgabeDirs,
   parseReadApiChildren,
   resolveWochenaufgabePdfFile,
-  resolveWochenaufgabenBlock,
+  resolveWochenaufgabenDisplayBlock,
   stripWochenaufgabenFolderFromTree,
 } from '../lib/wochenaufgabenFolder';
+import { hydrateWochenaufgabenFolderContents } from '../lib/wochenaufgabenHydrate';
 import WochenaufgabenFolderRow from './wochenaufgaben/WochenaufgabenFolderRow';
 const COLLAB_BEACON_LS_KEY = 'jm_collab_fc_beacon_seen_v1';
 function loadCollabBeaconSeen(): Record<string, string> {
@@ -3193,7 +3194,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         // Lade die geteilten Dateien und Freigabe „Gemeinsame Eingabe“ für diese Gruppe
         fetchSharedFilesForGroup(groupId);
         fetchLessonSharedInputSharesForGroup(groupId);
-        void fetchSiblingWochenaufgabenFolder(groupId, folderPath, items);
+        void (async () => {
+          const { patch } = await hydrateWochenaufgabenFolderContents(groupId, folderPath, items);
+          if (Object.keys(patch).length === 0) return;
+          setAssignedFolderContents((prev) => ({ ...prev, ...patch }));
+        })();
       }
     } catch (error) {
       console.error('Fehler beim Laden des Ordnerinhalts:', error);
@@ -3205,44 +3210,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     }
   };
 
-  const fetchSiblingWochenaufgabenFolder = async (
-    groupId: string,
-    folderPath: string,
-    items: any[],
-  ) => {
-    if (isWochenaufgabenFolderName(folderPath.split('/').pop() || '')) return;
-    if (items.some((item) => item?.type === 'directory' && isWochenaufgabenFolderName(item.name || ''))) return;
-    const parent = folderPath.replace(/\\/g, '/').replace(/\/+$/, '').split('/').slice(0, -1).join('/');
-    if (!parent) return;
-    try {
-      const timestamp = Date.now();
-      const parentRes = await fetch(
-        `/api/file-system-paths/read?path=${encodeURIComponent(parent)}&t=${timestamp}`,
-        { cache: 'no-cache', headers: { 'Cache-Control': 'no-cache' } },
-      );
-      if (!parentRes.ok) return;
-      const siblings = parseReadApiChildren(await parentRes.json());
-      const wochen = siblings.find(
-        (item) => item?.type === 'directory' && isWochenaufgabenFolderName(String(item.name || '')),
-      );
-      const wochenPath = ((wochen?.path as string) || (wochen?.name ? `${parent}/${wochen.name}` : ''))
-        .replace(/\\/g, '/');
-      if (!wochenPath) return;
-      const cacheKey = `${groupId}:${wochenPath}`;
-      const wochenRes = await fetch(
-        `/api/file-system-paths/read?path=${encodeURIComponent(wochenPath)}&recursive=true&t=${Date.now()}`,
-        { cache: 'no-cache', headers: { 'Cache-Control': 'no-cache' } },
-      );
-      if (!wochenRes.ok) return;
-      const wochenItems = parseReadApiChildren(await wochenRes.json());
-      setAssignedFolderContents((prev) => {
-        if (prev[cacheKey]) return prev;
-        return { ...prev, [cacheKey]: wochenItems };
-      });
-    } catch (error) {
-      console.error('Wochenaufgaben-Ordner laden fehlgeschlagen:', error);
-    }
-  };
 
   // Neue Funktion zum Umschalten der Vorschau zugeordneter Ordner (exakt wie im TeacherDashboard)
   const toggleAssignedFolderExpanded = (groupId: string, folderPath: string) => {
@@ -3276,7 +3243,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     
     // Filtere .wb-Dateien aus, damit Schüler nur PDF-Dateien sehen
     const filteredItems = filterWbFilesForStudentPreview(items);
-    const waBlock = resolveWochenaufgabenBlock(groupId, folderPath, items, assignedFolderContents);
+    const waDisplay = resolveWochenaufgabenDisplayBlock(groupId, folderPath, items, assignedFolderContents);
     const treeItems = rootIsWochenaufgaben
       ? filteredItems
       : stripWochenaufgabenFolderFromTree(filteredItems);
@@ -3824,26 +3791,22 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 
           {rootExpanded && (
           <Box sx={{ ml: 2, mt: 1 }}>
+            <Box sx={{ mb: isLoading ? 0.5 : 0 }}>
+              <WochenaufgabenFolderRow
+                children={waDisplay.children}
+                parentPath={waDisplay.parentPath}
+                groupId={groupId}
+                studentId={userId}
+                onOpenPdf={(lessonPath) => void openWaPdf(lessonPath)}
+              />
+            </Box>
             {isLoading ? (
               <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
                 Lade Inhalt...
               </Typography>
-            ) : (
-              <Box>
-                {waBlock || rootIsWochenaufgaben ? (
-                  <WochenaufgabenFolderRow
-                    children={waBlock?.children || filteredItems}
-                    parentPath={waBlock?.parentPath || folderPath}
-                    groupId={groupId}
-                    studentId={userId}
-                    onOpenPdf={(lessonPath) => void openWaPdf(lessonPath)}
-                  />
-                ) : null}
-                {!rootIsWochenaufgaben && treeItems.length > 0 ? (
-                  treeItems.map((item) => renderItemRecursively(item, 0, 'dashboard', false)).filter((el) => el !== null)
-                ) : null}
-              </Box>
-            )}
+            ) : !rootIsWochenaufgaben && treeItems.length > 0 ? (
+              treeItems.map((item) => renderItemRecursively(item, 0, 'dashboard', false)).filter((el) => el !== null)
+            ) : null}
           </Box>
           )}
         </Box>

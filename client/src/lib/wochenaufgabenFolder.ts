@@ -85,6 +85,54 @@ export function folderPathBasename(path: string): string {
   return parts[parts.length - 1] || path;
 }
 
+/** Standard-Ort: Wochenaufgaben als Unterordner der Reihe. */
+export function defaultWochenaufgabenFolderPath(reihePath: string): string {
+  return `${normalizePath(reihePath)}/Wochenaufgaben`;
+}
+
+export type WochenaufgabenDisplayBlock = {
+  parentPath: string;
+  children: WochenaufgabenFsNode[];
+};
+
+/**
+ * Block für die Dashboard-Box — immer sichtbar bei zugeordneten Reihen,
+ * auch wenn der Ordner noch nicht existiert (dann leere Liste + „+“).
+ */
+export function resolveWochenaufgabenDisplayBlock(
+  groupId: string,
+  folderPath: string,
+  mergedItems: WochenaufgabenFsNode[],
+  contents: Record<string, WochenaufgabenFsNode[] | undefined>,
+): WochenaufgabenDisplayBlock {
+  const normFolder = normalizePath(folderPath);
+  const base = folderPathBasename(normFolder);
+
+  if (isWochenaufgabenFolderName(base)) {
+    return {
+      parentPath: normFolder,
+      children: contents[`${groupId}:${normFolder}`] || mergedItems,
+    };
+  }
+
+  const fromTree = resolveWochenaufgabenBlock(groupId, folderPath, mergedItems, contents);
+  if (fromTree) {
+    return {
+      parentPath: fromTree.parentPath,
+      children:
+        contents[`${groupId}:${fromTree.parentPath}`] ||
+        fromTree.children ||
+        [],
+    };
+  }
+
+  const defaultPath = defaultWochenaufgabenFolderPath(normFolder);
+  return {
+    parentPath: defaultPath,
+    children: contents[`${groupId}:${defaultPath}`] || [],
+  };
+}
+
 export function folderPathParent(path: string): string | null {
   const n = normalizePath(path);
   const idx = n.lastIndexOf('/');

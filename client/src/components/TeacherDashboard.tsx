@@ -91,10 +91,11 @@ import {
   nextWochenaufgabeNumber,
   numberedWochenaufgabeDirs,
   parseReadApiChildren,
-  resolveWochenaufgabenBlock,
+  resolveWochenaufgabenDisplayBlock,
   stripWochenaufgabenFolderFromTree,
 } from '../lib/wochenaufgabenFolder';
-import { ensureWochenaufgabeDeck, INITIAL_WOCHENAUFGABE_NUMBERS } from '../lib/wochenaufgabenPresentation';
+import { hydrateWochenaufgabenFolderContents } from '../lib/wochenaufgabenHydrate';
+import { ensureWochenaufgabeDeck } from '../lib/wochenaufgabenPresentation';
 import WochenaufgabenFolderRow from './wochenaufgaben/WochenaufgabenFolderRow';
 import {
   Box,
@@ -8420,82 +8421,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     folderPath: string,
     items: any[],
   ) => {
-    const norm = (p: string) => (p || '').replace(/\\/g, '/').replace(/\/+$/, '');
-    const base = folderPath.split('/').pop() || '';
-    let wochenPath = '';
-    let existingChildren: any[] = [];
-
-    if (isWochenaufgabenFolderName(base)) {
-      wochenPath = norm(folderPath);
-      existingChildren = items;
-    } else {
-      const nested = items.find(
-        (item) => item?.type === 'directory' && isWochenaufgabenFolderName(item.name || ''),
-      );
-      if (nested) {
-        wochenPath = norm(nested.path || `${folderPath}/${nested.name}`);
-        existingChildren = Array.isArray(nested.children) ? nested.children : [];
-      } else {
-        const parent = norm(folderPath).split('/').slice(0, -1).join('/');
-        if (!parent) return;
-        try {
-          const parentRes = await fetch(
-            `/api/file-system-paths/read?path=${encodeURIComponent(parent)}&t=${Date.now()}`,
-            { cache: 'no-cache', headers: { 'Cache-Control': 'no-cache' } },
-          );
-          if (!parentRes.ok) return;
-          const siblings = parseReadApiChildren(await parentRes.json());
-          const wochen = siblings.find(
-            (item) => item?.type === 'directory' && isWochenaufgabenFolderName(String(item.name || '')),
-          );
-          wochenPath = norm(
-            (wochen?.path as string) || (wochen?.name ? `${parent}/${wochen.name}` : ''),
-          );
-        } catch {
-          return;
-        }
-      }
-    }
-    if (!wochenPath) return;
-
-    const cacheKey = `${groupId}:${wochenPath}`;
-    try {
-      if (existingChildren.length === 0) {
-        const wochenRes = await fetch(
-          `/api/file-system-paths/read?path=${encodeURIComponent(wochenPath)}&recursive=true&t=${Date.now()}`,
-          { cache: 'no-cache', headers: { 'Cache-Control': 'no-cache' } },
-        );
-        if (wochenRes.ok) existingChildren = parseReadApiChildren(await wochenRes.json());
-      }
-
-      const have = new Set(
-        numberedWochenaufgabeDirs(existingChildren).map((item) => Number(item.name)),
-      );
-      for (const n of INITIAL_WOCHENAUFGABE_NUMBERS) {
-        if (have.has(n)) continue;
-        await ensureWochenaufgabeDeck(`${wochenPath}/${n}`);
-      }
-
-      const wochenRes = await fetch(
-        `/api/file-system-paths/read?path=${encodeURIComponent(wochenPath)}&recursive=true&t=${Date.now()}`,
-        { cache: 'no-cache', headers: { 'Cache-Control': 'no-cache' } },
-      );
-      const seeded = wochenRes.ok ? parseReadApiChildren(await wochenRes.json()) : existingChildren;
-      const parentKey = `${groupId}:${norm(folderPath)}`;
-      setAssignedFolderContents((prev) => {
-        const next: typeof prev = { ...prev, [cacheKey]: seeded };
-        if (parentKey !== cacheKey && prev[parentKey]) {
-          next[parentKey] = prev[parentKey].map((item: any) =>
-            item?.type === 'directory' && isWochenaufgabenFolderName(item.name || '')
-              ? { ...item, path: item.path || wochenPath, children: seeded }
-              : item,
-          );
-        }
-        return next;
-      });
-    } catch (error) {
-      console.error('Wochenaufgaben-Ordner laden fehlgeschlagen:', error);
-    }
+    const { patch } = await hydrateWochenaufgabenFolderContents(groupId, folderPath, items);
+    if (Object.keys(patch).length === 0) return;
+    setAssignedFolderContents((prev) => ({ ...prev, ...patch }));
   };
 
   // Neue Funktion zum Umschalten der Vorschau zugeordneter Ordner
@@ -10354,13 +10282,13 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     // Die ursprünglichen Daten bleiben unverändert für Schüler
     const filteredItems = filterPdfFiles(items);
     const normAssignedPath = (p: string) => (p || '').replace(/\\/g, '/').replace(/\/+$/, '');
-    const waBlock = resolveWochenaufgabenBlock(groupId, folderPath, items, assignedFolderContents);
+    const waDisplay = resolveWochenaufgabenDisplayBlock(groupId, folderPath, items, assignedFolderContents);
     const treeItems = rootIsWochenaufgaben
       ? filteredItems
       : stripWochenaufgabenFolderFromTree(filteredItems);
     const addWochenaufgabe = (waParentPath: string) => {
       void (async () => {
-        const cached = assignedFolderContents[`${groupId}:${waParentPath}`] || waBlock?.children || [];
+        const cached = assignedFolderContents[`${groupId}:${waParentPath}`] || waDisplay.children || [];
         const n = nextWochenaufgabeNumber(cached);
         const lessonPath = `${waParentPath}/${n}`;
         await ensureWochenaufgabeDeck(lessonPath);
@@ -11053,26 +10981,22 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         
           {rootExpanded && (
           <Box sx={{ mt: 0.65, pl: 1.25, borderLeft: rootTreeBorder }}>
+            <Box sx={{ mb: isLoading ? 0.5 : 0 }}>
+              <WochenaufgabenFolderRow
+                children={waDisplay.children}
+                parentPath={waDisplay.parentPath}
+                groupId={groupId}
+                onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
+                onAdd={() => addWochenaufgabe(waDisplay.parentPath)}
+              />
+            </Box>
             {isLoading ? (
               <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
                 Lade Inhalt...
               </Typography>
-            ) : (
-              <Box>
-                {waBlock || rootIsWochenaufgaben ? (
-                  <WochenaufgabenFolderRow
-                    children={waBlock?.children || filteredItems}
-                    parentPath={waBlock?.parentPath || folderPath}
-                    groupId={groupId}
-                    onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
-                    onAdd={() => addWochenaufgabe(waBlock?.parentPath || folderPath)}
-                  />
-                ) : null}
-                {!rootIsWochenaufgaben && treeItems.length > 0 ? (
-                  itemsToDisplayItems(treeItems).map((item) => renderItemRecursively(item, 0, false))
-                ) : null}
-              </Box>
-            )}
+            ) : !rootIsWochenaufgaben && treeItems.length > 0 ? (
+              itemsToDisplayItems(treeItems).map((item) => renderItemRecursively(item, 0, false))
+            ) : null}
           </Box>
           )}
         </Box>
@@ -11140,26 +11064,22 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         
           {rootExpanded && (
           <Box sx={{ mt: 0.65, pl: 1.25, borderLeft: rootTreeBorder }}>
+            <Box sx={{ mb: isLoading ? 0.5 : 0 }}>
+              <WochenaufgabenFolderRow
+                children={waDisplay.children}
+                parentPath={waDisplay.parentPath}
+                groupId={groupId}
+                onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
+                onAdd={() => addWochenaufgabe(waDisplay.parentPath)}
+              />
+            </Box>
             {isLoading ? (
               <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
                 Lade Inhalt...
               </Typography>
-            ) : (
-              <Box>
-                {waBlock || rootIsWochenaufgaben ? (
-                  <WochenaufgabenFolderRow
-                    children={waBlock?.children || filteredItems}
-                    parentPath={waBlock?.parentPath || folderPath}
-                    groupId={groupId}
-                    onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
-                    onAdd={() => addWochenaufgabe(waBlock?.parentPath || folderPath)}
-                  />
-                ) : null}
-                {!rootIsWochenaufgaben && treeItems.length > 0 ? (
-                  itemsToDisplayItems(treeItems).map((item) => renderItemRecursively(item, 0, false))
-                ) : null}
-              </Box>
-            )}
+            ) : !rootIsWochenaufgaben && treeItems.length > 0 ? (
+              itemsToDisplayItems(treeItems).map((item) => renderItemRecursively(item, 0, false))
+            ) : null}
           </Box>
           )}
         </Box>
