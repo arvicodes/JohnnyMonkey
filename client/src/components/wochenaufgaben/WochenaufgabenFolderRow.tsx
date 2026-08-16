@@ -17,6 +17,7 @@ import WochenaufgabenNumberChips from './WochenaufgabenNumberChips';
 import WochenaufgabeUploadModal from './WochenaufgabeUploadModal';
 import WochenaufgabenInfoButton from './WochenaufgabenInfoDialog';
 import { DASHBOARD_REIHEN_CONTENT_GROUP } from '../../lib/dashboardWorkingReihen';
+import { ensureWochenaufgabeDeck } from '../../lib/wochenaufgabenPresentation';
 
 type Props = {
   children: WochenaufgabenFsNode[] | undefined;
@@ -76,11 +77,19 @@ export default function WochenaufgabenFolderRow({
   }, [reload, children]);
 
   const handleActivate = async (lessonPath: string) => {
-    if (!loadGroupId) return;
-    if (!window.confirm('Wochenaufgabe für Schüler freigeben? (5 Tage Phase 1)')) return;
+    if (!window.confirm('Wochenaufgabe anlegen und für Schüler freigeben? (5 Tage Phase 1)')) return;
     try {
+      await ensureWochenaufgabeDeck(lessonPath);
+      if (!loadGroupId) {
+        alert(
+          'Wochenaufgabe wurde angelegt. Bitte ordne die Reihe mindestens einer Lerngruppe zu, um sie freizugeben.',
+        );
+        onSelect?.(lessonPath);
+        return;
+      }
       await activateWochenaufgabe(loadGroupId, lessonPath);
       await reload();
+      onSelect?.(lessonPath);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Freigabe fehlgeschlagen');
     }

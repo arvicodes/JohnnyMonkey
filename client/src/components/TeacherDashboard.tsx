@@ -13436,7 +13436,7 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
         const paths = assignedFolders[g.id] || [];
         if (paths.some((p) => (p || '').replace(/\\/g, '/') === want)) return g.id;
       }
-      return groups[0]?.id || DASHBOARD_REIHEN_CONTENT_GROUP;
+      return DASHBOARD_REIHEN_CONTENT_GROUP;
     },
     [groups, assignedFolders],
   );

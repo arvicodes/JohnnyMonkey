@@ -49,6 +49,19 @@ async function getTeacherIdForGroup(groupId: string): Promise<string | null> {
   return group?.teacherId ?? null;
 }
 
+async function requireLearningGroup(groupId: string) {
+  const group = await prisma.learningGroup.findUnique({
+    where: { id: groupId },
+    select: { id: true, teacherId: true },
+  });
+  if (!group) {
+    const err = new Error('Lerngruppe nicht gefunden');
+    (err as Error & { status: number }).status = 404;
+    throw err;
+  }
+  return group;
+}
+
 async function findSubmission(
   teacherId: string,
   virtualFilePath: string,
@@ -266,11 +279,14 @@ async function buildTaskState(
 export const listWochenaufgabeStates = async (req: Request, res: Response) => {
   try {
     const { groupId } = req.params;
+    if (groupId.startsWith('__')) {
+      return res.json({ states: [], teacherId: null });
+    }
     const parentPath = normalizePath(String(req.query.parentPath || ''));
     const studentId = req.query.studentId ? String(req.query.studentId) : undefined;
 
-    const teacherId = await getTeacherIdForGroup(groupId);
-    if (!teacherId) return res.status(404).json({ error: 'Lerngruppe nicht gefunden' });
+    const group = await requireLearningGroup(groupId);
+    const teacherId = group.teacherId;
 
     const whereParent = parentPath ? { startsWith: `${parentPath}/` } : undefined;
     const tasks = await prisma.wochenaufgabeTask.findMany({
@@ -295,32 +311,55 @@ export const listWochenaufgabeStates = async (req: Request, res: Response) => {
 
     res.json({ states, teacherId });
   } catch (error) {
+    const status = (error as Error & { status?: number })?.status;
+    if (status === 404) {
+      return res.status(404).json({ error: (error as Error).message });
+    }
     console.error('Wochenaufgaben-Status:', error);
     res.status(500).json({ error: 'Interner Serverfehler' });
   }
 };
 
-/** Lehrer schaltet Wochenaufgabe frei (grau → gelb). */
+/** Lehrer schaltet Wochenaufgabe frei (grau → gelb). Legt DB-Eintrag an bzw. setzt Phase zurück. */
 export const activateWochenaufgabe = async (req: Request, res: Response) => {
   try {
     const { groupId, lessonPath } = req.body as { groupId?: string; lessonPath?: string };
     if (!groupId || !lessonPath) {
       return res.status(400).json({ error: 'groupId und lessonPath sind erforderlich' });
     }
+    if (groupId.startsWith('__')) {
+      return res.status(400).json({
+        error: 'Reihe ist keiner Lerngruppe zugeordnet — bitte zuerst im Reihen-Tab freischalten.',
+      });
+    }
+
     const path = normalizePath(lessonPath);
+    const group = await requireLearningGroup(groupId);
 
     const task = await prisma.wochenaufgabeTask.upsert({
       where: { groupId_lessonPath: { groupId, lessonPath: path } },
       create: { groupId, lessonPath: path, activatedAt: new Date() },
-      update: { activatedAt: new Date(), peerAssignedAt: null },
+      update: {
+        activatedAt: new Date(),
+        peerAssignedAt: null,
+        videoClaimStudentId: null,
+        videoClaimedAt: null,
+      },
     });
 
     await prisma.wochenaufgabePeerPair.deleteMany({ where: { taskId: task.id } });
 
-    const teacherId = await getTeacherIdForGroup(groupId);
-    const state = teacherId ? await buildTaskState(task, teacherId) : null;
+    const state = await buildTaskState(task, group.teacherId);
     res.json({ task, state });
   } catch (error) {
+    const prismaCode = (error as { code?: string })?.code;
+    if (prismaCode === 'P2003') {
+      return res.status(400).json({ error: 'Ungültige Lerngruppe — bitte Seite neu laden.' });
+    }
+    const status = (error as Error & { status?: number })?.status;
+    if (status === 404) {
+      return res.status(404).json({ error: (error as Error).message });
+    }
     console.error('Wochenaufgabe aktivieren:', error);
     res.status(500).json({ error: 'Interner Serverfehler' });
   }
