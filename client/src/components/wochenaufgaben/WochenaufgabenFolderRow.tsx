@@ -15,6 +15,7 @@ import {
 } from '../../lib/wochenaufgabenWorkflow';
 import WochenaufgabenNumberChips from './WochenaufgabenNumberChips';
 import WochenaufgabeUploadModal from './WochenaufgabeUploadModal';
+import WochenaufgabenInfoButton from './WochenaufgabenInfoDialog';
 import { DASHBOARD_REIHEN_CONTENT_GROUP } from '../../lib/dashboardWorkingReihen';
 
 type Props = {
@@ -111,18 +112,27 @@ export default function WochenaufgabenFolderRow({
       }}
     >
       {showLabel ? (
-        <Typography
-          component="div"
-          sx={{
-            fontSize: '0.72rem',
-            fontWeight: 700,
-            color: WOCHENAUFGABEN_TEXT_COLOR,
-            lineHeight: 1.25,
-            mb: 0.35,
-          }}
-        >
-          📅 Wochenaufgaben
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.35 }}>
+          <Typography
+            component="div"
+            sx={{
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              color: WOCHENAUFGABEN_TEXT_COLOR,
+              lineHeight: 1.25,
+            }}
+          >
+            📅 Wochenaufgaben
+          </Typography>
+          {studentId ? <WochenaufgabenInfoButton /> : null}
+        </Box>
+      ) : studentId ? (
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.35 }}>
+          <WochenaufgabenInfoButton />
+          <Typography sx={{ fontSize: '0.58rem', color: 'text.secondary', ml: 0.25 }}>
+            So funktionieren Wochenaufgaben
+          </Typography>
+        </Box>
       ) : null}
 
       <WochenaufgabenNumberChips
