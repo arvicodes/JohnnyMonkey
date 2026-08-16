@@ -5,7 +5,7 @@ echo "🏠 Setting up for local development..."
 
 # Set local environment variables
 export NODE_ENV=development
-export DATABASE_URL="file:./dev.db"
+export DATABASE_URL="file:./prisma/dev.db"
 
 # Create a temporary schema for SQLite
 echo "📝 Creating temporary SQLite schema..."

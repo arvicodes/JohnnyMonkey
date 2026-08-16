@@ -361,7 +361,11 @@ export const activateWochenaufgabe = async (req: Request, res: Response) => {
       return res.status(404).json({ error: (error as Error).message });
     }
     console.error('Wochenaufgabe aktivieren:', error);
-    res.status(500).json({ error: 'Interner Serverfehler' });
+    const detail = error instanceof Error ? error.message : String(error);
+    res.status(500).json({
+      error: 'Interner Serverfehler',
+      detail: process.env.NODE_ENV !== 'production' ? detail : undefined,
+    });
   }
 };
 

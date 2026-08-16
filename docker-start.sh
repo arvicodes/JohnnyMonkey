@@ -131,6 +131,39 @@ if [ -f /app/server/data/dev.db ]; then
       } else {
         console.warn('⚠️  Prisma model teacherScheduleSettings MISSING after generate');
       }
+
+      // Wochenaufgaben-Workflow (neues Schema — fehlte in älteren backup_latest.db)
+      await prisma.\$executeRawUnsafe(\`
+        CREATE TABLE IF NOT EXISTS "WochenaufgabeTask" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "groupId" TEXT NOT NULL,
+          "lessonPath" TEXT NOT NULL,
+          "activatedAt" DATETIME,
+          "videoClaimStudentId" TEXT,
+          "videoClaimedAt" DATETIME,
+          "peerAssignedAt" DATETIME,
+          "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" DATETIME NOT NULL,
+          FOREIGN KEY ("groupId") REFERENCES "LearningGroup"("id") ON DELETE CASCADE,
+          FOREIGN KEY ("videoClaimStudentId") REFERENCES "User"("id") ON DELETE SET NULL
+        )
+      \`);
+      await prisma.\$executeRawUnsafe(\`
+        CREATE UNIQUE INDEX IF NOT EXISTS "WochenaufgabeTask_groupId_lessonPath_key"
+          ON "WochenaufgabeTask"("groupId", "lessonPath")
+      \`);
+      await prisma.\$executeRawUnsafe(\`
+        CREATE TABLE IF NOT EXISTS "WochenaufgabePeerPair" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "taskId" TEXT NOT NULL,
+          "reviewerStudentId" TEXT NOT NULL,
+          "solutionStudentId" TEXT NOT NULL,
+          FOREIGN KEY ("taskId") REFERENCES "WochenaufgabeTask"("id") ON DELETE CASCADE,
+          FOREIGN KEY ("reviewerStudentId") REFERENCES "User"("id") ON DELETE CASCADE,
+          FOREIGN KEY ("solutionStudentId") REFERENCES "User"("id") ON DELETE CASCADE
+        )
+      \`);
+      console.log('✅ Wochenaufgaben-Tabellen bereit');
     } catch (e) {
       if (!String(e.message || e).includes('duplicate')) console.error('Error:', e.message || e);
     } finally {

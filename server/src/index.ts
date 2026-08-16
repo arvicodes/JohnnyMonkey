@@ -42,6 +42,7 @@ import teacherScheduleRoutes from './routes/teacherSchedule';
 import wochenaufgabenRoutes from './routes/wochenaufgaben';
 import path from 'path';
 import { startAutoLessonScheduler } from './services/autoLessonScheduler';
+import { ensureWochenaufgabenSchema } from './utils/ensureWochenaufgabenSchema';
 
 dotenv.config();
 
@@ -229,6 +230,9 @@ process.on('unhandledRejection', (reason, promise) => {
 // Start server with Render compatibility
 async function startServer() {
   try {
+    console.log('🗄️ DATABASE_URL:', process.env.DATABASE_URL || '(from schema)');
+    await ensureWochenaufgabenSchema(prisma);
+    console.log('✅ Wochenaufgaben-Schema bereit');
     // Lokal: 3003 (React nutzt 3000). Ohne PORT kein Konflikt mit dem Frontend.
     const port = parseInt(process.env.PORT || '3003', 10);
     

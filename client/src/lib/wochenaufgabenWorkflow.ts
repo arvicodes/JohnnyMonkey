@@ -78,7 +78,8 @@ export async function activateWochenaufgabe(
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error((err as { error?: string }).error || 'Freigabe fehlgeschlagen');
+    const row = err as { error?: string; detail?: string };
+    throw new Error(row.detail || row.error || 'Freigabe fehlgeschlagen');
   }
   const data = (await res.json()) as { state?: WochenaufgabeTaskState };
   if (!data.state) throw new Error('Freigabe fehlgeschlagen (keine Antwort vom Server)');
