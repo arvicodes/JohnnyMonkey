@@ -406,3 +406,37 @@ export function playPresentationSound(override?: Partial<PresentationSoundSettin
 export function presentationSoundLabel(id: PresentationSoundId): string {
   return PRESENTATION_SOUND_PRESETS.find((p) => p.id === id)?.label || id;
 }
+
+function isSoundHotkeyTypingTarget(t: EventTarget | null): boolean {
+  if (!(t instanceof HTMLElement)) return false;
+  if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) {
+    return true;
+  }
+  return Boolean(t.isContentEditable || t.closest('[contenteditable="true"]'));
+}
+
+function onPresentationSoundHotkey(e: KeyboardEvent) {
+  if (e.key !== 's' && e.key !== 'S') return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (isSoundHotkeyTypingTarget(e.target)) return;
+  e.preventDefault();
+  e.stopPropagation();
+  playPresentationSound();
+}
+
+let soundHotkeyUsers = 0;
+
+/** Taste S — global für Lehrer (Dashboard, Editor, Präsentation). */
+export function ensurePresentationSoundHotkey(): () => void {
+  if (typeof window === 'undefined') return () => {};
+  soundHotkeyUsers += 1;
+  if (soundHotkeyUsers === 1) {
+    window.addEventListener('keydown', onPresentationSoundHotkey, true);
+  }
+  return () => {
+    soundHotkeyUsers = Math.max(0, soundHotkeyUsers - 1);
+    if (soundHotkeyUsers === 0) {
+      window.removeEventListener('keydown', onPresentationSoundHotkey, true);
+    }
+  };
+}
