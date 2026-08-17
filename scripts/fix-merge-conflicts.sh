@@ -31,5 +31,8 @@ if [[ "$found" -eq 0 ]]; then
   echo "Keine Konflikt-Marker in den Standard-Dateien — stelle trotzdem saubere Versionen wieder her."
 fi
 
-git checkout "$REF" -- "${FILES[@]}"
+git checkout "$REF" -- "${FILES[@]}" 2>/dev/null || {
+  echo "⚠ git checkout fehlgeschlagen — Dateien manuell prüfen"
+  exit 1
+}
 echo "✅ Fertig. Bitte: npm run dev"
