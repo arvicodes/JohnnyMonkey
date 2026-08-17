@@ -1,12 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
-  Chip,
   Divider,
   IconButton,
-  List,
-  ListItemButton,
-  ListItemText,
   Popover,
   Slider,
   Tooltip,
@@ -14,13 +10,12 @@ import {
 } from '@mui/material';
 import {
   ArrowDropDown as ArrowDropDownIcon,
-  Keyboard as KeyboardIcon,
+  PlayArrow as PlayArrowIcon,
   Star as StarIcon,
   StarBorder as StarBorderIcon,
   VolumeUp as VolumeUpIcon,
 } from '@mui/icons-material';
 import {
-  PRESENTATION_SOUND_CATEGORIES,
   PRESENTATION_SOUND_DURATIONS,
   PRESENTATION_SOUND_PRESETS,
   PRESENTATION_SOUND_STORAGE_KEY,
@@ -36,12 +31,32 @@ import {
   type PresentationSoundSettings,
 } from '../../lib/presentationSound';
 
-/** Sichtbar im Menü — wenn das fehlt, läuft noch die alte Version. */
-export const PRESENTATION_SOUND_MENU_VERSION = 2;
+export const PRESENTATION_SOUND_MENU_VERSION = 3;
 
 export type PresentationSoundVariant = 'dashboard' | 'editor' | 'tablet' | 'laptop';
 
 type SoundTab = 'favorites' | PresentationSoundCategory;
+
+const TAB_LABELS: Record<SoundTab, string> = {
+  favorites: '★',
+  attention: 'Aufm.',
+  bells: 'Glocken',
+  gentle: 'Sanft',
+  quirky: 'Fun',
+};
+
+const CHIP_LABELS: Partial<Record<PresentationSoundId, string>> = {
+  attention: 'Aufmerks.',
+  classbell: 'Schule',
+  singingbowl: 'Schale',
+  windchime: 'Wind',
+  retro: 'Retro',
+  magic: 'Zauber',
+};
+
+function chipLabel(id: PresentationSoundId, fallback: string): string {
+  return CHIP_LABELS[id] || fallback;
+}
 
 type PlayProps = {
   variant?: PresentationSoundVariant;
@@ -190,15 +205,23 @@ function variantStyles(variant: PresentationSoundVariant) {
   };
 }
 
-const TAB_LABELS: Record<SoundTab, string> = {
-  favorites: '★ Favoriten',
-  attention: 'Aufmerksamkeit',
-  bells: 'Glocken',
-  gentle: 'Sanft',
-  quirky: 'Fun',
-};
+const miniBtnSx = (active: boolean, accent?: 'gold') => ({
+  border: active ? '1px solid #455a64' : '1px solid #d0d7de',
+  bgcolor: active ? (accent === 'gold' ? '#fff8e1' : '#eceff1') : '#fff',
+  color: active ? (accent === 'gold' ? '#e65100' : '#37474f') : '#607d8b',
+  borderRadius: 0.75,
+  px: 0.55,
+  py: 0.2,
+  minWidth: 0,
+  fontSize: '0.62rem',
+  fontWeight: active ? 700 : 500,
+  lineHeight: 1.2,
+  cursor: 'pointer',
+  whiteSpace: 'nowrap' as const,
+  '&:hover': { bgcolor: accent === 'gold' ? '#fff8e1' : '#eceff1' },
+});
 
-type SoundRowProps = {
+type SoundChipProps = {
   preset: (typeof PRESENTATION_SOUND_PRESETS)[number];
   selected: boolean;
   favorite: boolean;
@@ -206,46 +229,62 @@ type SoundRowProps = {
   onToggleFavorite: (e: React.MouseEvent) => void;
 };
 
-function SoundPresetRow({ preset, selected, favorite, onSelect, onToggleFavorite }: SoundRowProps) {
+function SoundChip({ preset, selected, favorite, onSelect, onToggleFavorite }: SoundChipProps) {
   return (
-    <ListItemButton
-      selected={selected}
-      onClick={onSelect}
-      sx={{
-        py: 0.65,
-        pl: 1.5,
-        pr: 0.75,
-        '&.Mui-selected': { bgcolor: 'rgba(84,110,122,0.14)' },
-      }}
-    >
-      <ListItemText
-        primary={preset.label}
-        secondary={preset.hint}
-        primaryTypographyProps={{ fontSize: '0.82rem', fontWeight: selected ? 800 : 600 }}
-        secondaryTypographyProps={{ fontSize: '0.68rem', lineHeight: 1.25 }}
-      />
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0 }}>
-        {selected && <VolumeUpIcon sx={{ fontSize: 16, color: '#546e7a' }} />}
-        <Tooltip title={favorite ? 'Aus Favoriten entfernen' : 'Als Favorit speichern'}>
-          <IconButton
-            size="small"
-            onClick={onToggleFavorite}
-            aria-label={favorite ? 'Favorit entfernen' : 'Favorit setzen'}
-            sx={{ p: 0.35, color: favorite ? '#f9a825' : '#b0bec5' }}
-          >
-            {favorite ? <StarIcon sx={{ fontSize: 18 }} /> : <StarBorderIcon sx={{ fontSize: 18 }} />}
-          </IconButton>
-        </Tooltip>
+    <Tooltip title={preset.hint} enterDelay={400}>
+      <Box
+        sx={{
+          display: 'inline-flex',
+          alignItems: 'stretch',
+          borderRadius: 0.75,
+          overflow: 'hidden',
+          border: selected ? '1px solid #455a64' : '1px solid #d0d7de',
+          bgcolor: selected ? '#546e7a' : '#fff',
+        }}
+      >
+        <Box
+          component="button"
+          onClick={onSelect}
+          sx={{
+            border: 'none',
+            bgcolor: 'transparent',
+            color: selected ? '#fff' : '#37474f',
+            px: 0.55,
+            py: 0.28,
+            fontSize: '0.62rem',
+            fontWeight: selected ? 700 : 500,
+            cursor: 'pointer',
+            lineHeight: 1.2,
+            '&:hover': { bgcolor: selected ? 'rgba(255,255,255,0.08)' : '#f5f5f5' },
+          }}
+        >
+          {chipLabel(preset.id, preset.label)}
+        </Box>
+        <Box
+          component="button"
+          onClick={onToggleFavorite}
+          aria-label={favorite ? 'Favorit entfernen' : 'Favorit'}
+          sx={{
+            border: 'none',
+            borderLeft: selected ? '1px solid rgba(255,255,255,0.2)' : '1px solid #eceff1',
+            bgcolor: 'transparent',
+            px: 0.25,
+            minWidth: 18,
+            cursor: 'pointer',
+            color: favorite ? '#ffb300' : selected ? 'rgba(255,255,255,0.55)' : '#b0bec5',
+            display: 'flex',
+            alignItems: 'center',
+            '&:hover': { color: '#ffb300' },
+          }}
+        >
+          {favorite ? <StarIcon sx={{ fontSize: 11 }} /> : <StarBorderIcon sx={{ fontSize: 11 }} />}
+        </Box>
       </Box>
-    </ListItemButton>
+    </Tooltip>
   );
 }
 
-/** Nur abspielen — für einfache Toolbars ohne Einstellungs-Pfeil. */
-export function PresentationSoundPlayButton({
-  variant = 'editor',
-  title,
-}: PlayProps) {
+export function PresentationSoundPlayButton({ variant = 'editor', title }: PlayProps) {
   const [settings] = usePresentationSoundSettings();
   const styles = variantStyles(variant);
   const label = presentationSoundLabel(settings.soundId);
@@ -267,7 +306,6 @@ type SplitProps = {
   variant?: PresentationSoundVariant;
 };
 
-/** Abspielen + Einstellungsmenü (Kategorien, Favoriten, Taste S). */
 export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitProps) {
   const [settings, updateSettings, refreshSettings] = usePresentationSoundSettings();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
@@ -306,7 +344,7 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
           ...styles.group,
         }}
       >
-        <Tooltip title={`Sound abspielen (${label}) — Taste S`}>
+        <Tooltip title={`Abspielen: ${label} — Taste S`}>
           <IconButton
             size="small"
             onClick={() => playPresentationSound()}
@@ -323,7 +361,7 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
             borderColor: variant === 'dashboard' ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.12)',
           }}
         />
-        <Tooltip title="Sound einstellen — Kategorien, Favoriten, 18 Klänge, Taste S">
+        <Tooltip title="Sound einstellen">
           <IconButton
             size="small"
             onClick={(e) => setAnchor(e.currentTarget)}
@@ -345,144 +383,150 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         PaperProps={{
           sx: {
-            mt: 0.75,
-            width: 340,
-            borderRadius: 1.5,
+            mt: 0.5,
+            width: 268,
+            borderRadius: 1.25,
             overflow: 'hidden',
-            boxShadow: '0 8px 28px rgba(0,0,0,0.14)',
+            boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
           },
         }}
       >
-        <Box sx={{ px: 1.5, pt: 1.25, pb: 1, bgcolor: '#eceff1' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-            <Typography sx={{ fontWeight: 800, fontSize: '0.84rem', color: '#37474f' }}>
-              Sound-Menü · {PRESENTATION_SOUND_PRESETS.length} Klänge
-            </Typography>
-            <Chip
-              size="small"
-              icon={<KeyboardIcon sx={{ fontSize: '14px !important' }} />}
-              label="Taste S"
-              sx={{
-                height: 24,
-                fontWeight: 800,
-                fontSize: '0.68rem',
-                bgcolor: '#455a64',
-                color: '#fff',
-                '& .MuiChip-icon': { color: '#fff' },
-              }}
-            />
-          </Box>
-          <Typography sx={{ fontSize: '0.7rem', color: '#607d8b', mt: 0.5 }}>
-            Aktuell: <strong>{label}</strong> · Stern = Favorit · Menü v{PRESENTATION_SOUND_MENU_VERSION}
+        {/* Kopfzeile */}
+        <Box
+          sx={{
+            px: 1,
+            py: 0.65,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+            bgcolor: '#f5f7f8',
+            borderBottom: '1px solid #eceff1',
+          }}
+        >
+          <Typography
+            sx={{
+              flex: 1,
+              fontSize: '0.68rem',
+              fontWeight: 700,
+              color: '#37474f',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {label}
           </Typography>
+          <Typography
+            component="span"
+            sx={{
+              fontSize: '0.58rem',
+              fontWeight: 700,
+              color: '#78909c',
+              bgcolor: '#eceff1',
+              px: 0.45,
+              py: 0.1,
+              borderRadius: 0.5,
+            }}
+          >
+            S
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={() => playPresentationSound()}
+            sx={{ p: 0.2, color: '#546e7a' }}
+            aria-label="Testen"
+          >
+            <PlayArrowIcon sx={{ fontSize: 16 }} />
+          </IconButton>
         </Box>
 
-        <Box sx={{ px: 1.5, pt: 0.85, pb: 0.35 }}>
-          <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: '#607d8b', mb: 0.25 }}>
-            Lautstärke
-          </Typography>
+        {/* Lautstärke + Dauer in einer Zeile */}
+        <Box sx={{ px: 1, py: 0.65, display: 'flex', alignItems: 'center', gap: 0.75 }}>
           <Slider
             size="small"
             value={Math.round(settings.volume * 100)}
             min={0}
             max={100}
-            valueLabelDisplay="auto"
-            valueLabelFormat={(v) => `${v}%`}
             onChange={(_, v) => updateSettings({ volume: (v as number) / 100 })}
-            sx={{ color: '#546e7a', py: 0.5 }}
+            sx={{ flex: 1, color: '#78909c', py: 0, height: 20, minWidth: 0 }}
           />
-        </Box>
-
-        <Box sx={{ px: 1.5, pt: 0.15, pb: 0.75 }}>
-          <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: '#607d8b', mb: 0.45 }}>
-            Dauer
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 0.5 }}>
-            {PRESENTATION_SOUND_DURATIONS.map((d) => {
-              const active = settings.duration === d.id;
-              return (
-                <Typography
-                  key={d.id}
-                  component="button"
-                  onClick={() => {
-                    updateSettings({ duration: d.id });
-                    playPresentationSound({ duration: d.id });
-                  }}
-                  sx={{
-                    flex: 1,
-                    border: active ? '1.5px solid #455a64' : '1px solid #cfd8dc',
-                    bgcolor: active ? '#eceff1' : '#fff',
-                    color: '#37474f',
-                    borderRadius: 1,
-                    px: 0.5,
-                    py: 0.45,
-                    fontSize: '0.68rem',
-                    fontWeight: active ? 800 : 600,
-                    cursor: 'pointer',
-                    '&:hover': { bgcolor: '#eceff1' },
-                  }}
-                >
-                  {d.label}
-                </Typography>
-              );
-            })}
-          </Box>
-        </Box>
-
-        <Divider />
-
-        <Box sx={{ px: 1, pt: 0.75, pb: 0.5, display: 'flex', flexWrap: 'wrap', gap: 0.45 }}>
-          {tabs.map((tab) => {
-            const active = activeTab === tab;
-            const count =
-              tab === 'favorites'
-                ? settings.favoriteIds.length
-                : presetsForCategory(tab).length;
+          {PRESENTATION_SOUND_DURATIONS.map((d) => {
+            const active = settings.duration === d.id;
+            const short = d.id === 'normal' ? 'Kurz' : d.id === 'long' ? 'Lang' : 'XL';
             return (
               <Typography
-                key={tab}
+                key={d.id}
                 component="button"
-                onClick={() => setActiveTab(tab)}
-                sx={{
-                  border: active ? '1.5px solid #455a64' : '1px solid #cfd8dc',
-                  bgcolor: active ? (tab === 'favorites' ? '#fff8e1' : '#eceff1') : '#fff',
-                  color: tab === 'favorites' && active ? '#f57f17' : '#37474f',
-                  borderRadius: 1,
-                  px: 0.75,
-                  py: 0.35,
-                  fontSize: '0.66rem',
-                  fontWeight: active ? 800 : 600,
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  '&:hover': { bgcolor: tab === 'favorites' ? '#fff8e1' : '#eceff1' },
+                onClick={() => {
+                  updateSettings({ duration: d.id });
+                  playPresentationSound({ duration: d.id });
                 }}
+                sx={miniBtnSx(active)}
               >
-                {TAB_LABELS[tab]} ({count})
+                {short}
               </Typography>
             );
           })}
         </Box>
 
-        {activeTab !== 'favorites' && (
-          <Typography sx={{ px: 1.5, pb: 0.35, fontSize: '0.64rem', color: '#90a4ae' }}>
-            {PRESENTATION_SOUND_CATEGORIES.find((c) => c.id === activeTab)?.hint}
-          </Typography>
-        )}
+        <Divider />
 
-        <List dense disablePadding sx={{ maxHeight: 280, overflow: 'auto', pb: 0.5 }}>
+        {/* Kategorie-Tabs — eine Zeile */}
+        <Box sx={{ px: 1, py: 0.55, display: 'flex', gap: 0.35 }}>
+          {tabs.map((tab) => {
+            const active = activeTab === tab;
+            const isFav = tab === 'favorites';
+            return (
+              <Tooltip
+                key={tab}
+                title={
+                  isFav
+                    ? 'Favoriten'
+                    : tab === 'attention'
+                      ? 'Aufmerksamkeit'
+                      : tab === 'bells'
+                        ? 'Glocken & Klänge'
+                        : tab === 'gentle'
+                          ? 'Sanft'
+                          : 'Fun'
+                }
+              >
+                <Typography
+                  component="button"
+                  onClick={() => setActiveTab(tab)}
+                  sx={{
+                    ...miniBtnSx(active, isFav ? 'gold' : undefined),
+                    flex: 1,
+                    textAlign: 'center',
+                  }}
+                >
+                  {TAB_LABELS[tab]}
+                </Typography>
+              </Tooltip>
+            );
+          })}
+        </Box>
+
+        {/* Sound-Chips — kompaktes Grid */}
+        <Box
+          sx={{
+            px: 1,
+            pb: 0.85,
+            pt: 0.35,
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 0.4,
+            maxHeight: 200,
+            overflowY: 'auto',
+          }}
+        >
           {tabPresets.length === 0 ? (
-            <Box sx={{ px: 1.5, py: 2, textAlign: 'center' }}>
-              <StarBorderIcon sx={{ fontSize: 28, color: '#cfd8dc', mb: 0.5 }} />
-              <Typography sx={{ fontSize: '0.75rem', color: '#78909c', fontWeight: 600 }}>
-                Noch keine Favoriten
-              </Typography>
-              <Typography sx={{ fontSize: '0.68rem', color: '#90a4ae', mt: 0.35 }}>
-                In Glocken, Sanft oder Fun einen Stern antippen
-              </Typography>
-            </Box>
+            <Typography sx={{ width: '100%', textAlign: 'center', fontSize: '0.65rem', color: '#90a4ae', py: 1 }}>
+              Stern ★ an einem Klang setzen
+            </Typography>
           ) : (
             tabPresets.map((preset) => (
-              <SoundPresetRow
+              <SoundChip
                 key={`${activeTab}-${preset.id}`}
                 preset={preset}
                 selected={settings.soundId === preset.id}
@@ -492,28 +536,6 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
               />
             ))
           )}
-        </List>
-
-        <Box sx={{ px: 1.5, py: 1, borderTop: '1px solid #eceff1', bgcolor: '#fafbfd' }}>
-          <Typography
-            component="button"
-            onClick={() => playPresentationSound()}
-            sx={{
-              border: '1px solid #90a4ae',
-              bgcolor: '#fff',
-              color: '#455a64',
-              borderRadius: 1,
-              px: 1,
-              py: 0.5,
-              fontSize: '0.72rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              width: '100%',
-              '&:hover': { bgcolor: '#eceff1' },
-            }}
-          >
-            ▶ Testen: {label} (oder Taste S)
-          </Typography>
         </Box>
       </Popover>
     </>
