@@ -16,6 +16,7 @@ import {
   PresentationViewerVariant,
   SLIDE_REF_HEIGHT,
   SLIDE_REF_WIDTH,
+  SlideElement,
   createEmptyAnnotations,
   loadOrMigrateNamedVersionSnapshot,
   loadPresentationAnnotations,
@@ -68,6 +69,7 @@ const PresentationPresentPage: React.FC = () => {
   const [strokeColor, setStrokeColor] = useState('#c62828');
   const [lineWidth, setLineWidth] = useState(3);
   const [selectedStrokeId, setSelectedStrokeId] = useState<string | null>(null);
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [snackbar, setSnackbar] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState('');
@@ -294,6 +296,25 @@ const PresentationPresentPage: React.FC = () => {
     if (isNamedViewRef.current || isOriginalViewRef.current) return;
     saveTimer.current = setTimeout(() => void persistAnnotations(next), 1600);
   }, [persistAnnotations]);
+
+  const updateSlideElement = useCallback((id: string, patch: Partial<SlideElement>) => {
+    setDeck((prev) => {
+      if (!prev) return prev;
+      const slideId = currentSlideIdRef.current;
+      if (!slideId) return prev;
+      return {
+        ...prev,
+        slides: prev.slides.map((s) =>
+          s.id !== slideId
+            ? s
+            : {
+                ...s,
+                elements: (s.elements || []).map((el) => (el.id === id ? { ...el, ...patch } : el)),
+              }
+        ),
+      };
+    });
+  }, []);
 
   const flushAnnotations = useCallback(async (): Promise<PresentationAnnotations | null> => {
     const current = annotationsRef.current;
@@ -981,6 +1002,10 @@ const PresentationPresentPage: React.FC = () => {
                   deckTitle={deck?.title ?? ''}
                   lessonPath={deck?.lessonPath ?? lessonPath}
                   mediaInteractive={!drawActive}
+                  editable={drawActive && activeTool === 'select'}
+                  selectedElementId={selectedElementId}
+                  onElementSelect={setSelectedElementId}
+                  onElementChange={updateSlideElement}
                 />
               </Box>
             </Box>

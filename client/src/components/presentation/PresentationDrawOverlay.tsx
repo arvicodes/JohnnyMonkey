@@ -452,25 +452,50 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
 
     if (!isInkPointer(t, e.pointerType)) return;
 
-    e.preventDefault();
-    e.stopPropagation();
     refreshRect();
-    try {
-      (e.currentTarget as HTMLCanvasElement).setPointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-    inkPointerIdRef.current = e.pointerId;
-    inkIsPenRef.current = e.pointerType === 'pen' || e.pointerType === 'mouse';
     const pt = clientToCanvasPoint(e.clientX, e.clientY);
+    const canvas = e.currentTarget as HTMLCanvasElement;
 
     if (t === 'select') {
       const target = findShapeAtPoint(strokesRef.current, pt);
       if (!target) {
         onSelectedStrokeIdChangeRef.current?.(null);
         redraw();
+        const prev = canvas.style.pointerEvents;
+        canvas.style.pointerEvents = 'none';
+        const below = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+        canvas.style.pointerEvents = prev;
+        const host = below?.closest?.('[data-pres-element]') as HTMLElement | null;
+        if (host) {
+          host.dispatchEvent(
+            new PointerEvent('pointerdown', {
+              bubbles: true,
+              cancelable: true,
+              composed: true,
+              pointerId: e.pointerId,
+              pointerType: e.pointerType,
+              clientX: e.clientX,
+              clientY: e.clientY,
+              screenX: e.screenX,
+              screenY: e.screenY,
+              button: e.button,
+              buttons: e.buttons,
+              isPrimary: e.isPrimary,
+              pressure: e.pressure,
+            }),
+          );
+        }
         return;
       }
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        canvas.setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      inkPointerIdRef.current = e.pointerId;
+      inkIsPenRef.current = e.pointerType === 'pen' || e.pointerType === 'mouse';
       onSelectedStrokeIdChangeRef.current?.(target.id);
       const handle = pickShapeHandle(target, pt);
       if (!handle || handle === 'move') {
@@ -484,6 +509,16 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       redraw();
       return;
     }
+
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      canvas.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    inkPointerIdRef.current = e.pointerId;
+    inkIsPenRef.current = e.pointerType === 'pen' || e.pointerType === 'mouse';
 
     if (t === 'eraser') {
       eraseBaseRef.current = strokesRef.current;

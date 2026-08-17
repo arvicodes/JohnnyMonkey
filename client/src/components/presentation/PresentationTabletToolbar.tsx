@@ -451,7 +451,7 @@ export default function PresentationTabletToolbar({
         {!readOnly && drawActive && (
           <>
             <ToolBtn
-              title="Auswählen (Formen bewegen, drehen, skalieren)"
+              title="Auswählen (Elemente & Formen bewegen)"
               active={activeTool === 'select'}
               onClick={() => onSelectTool('select')}
             >

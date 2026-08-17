@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
+  Divider,
+  IconButton,
   Popover,
   Slider,
   Tooltip,
   Typography,
 } from '@mui/material';
 import {
-  PlayArrow as PlayArrowIcon,
+  ArrowDropDown as ArrowDropDownIcon,
   VolumeUp as VolumeUpIcon,
 } from '@mui/icons-material';
 import {
@@ -25,7 +27,7 @@ import {
   type PresentationSoundSettings,
 } from '../../lib/presentationSound';
 
-export const PRESENTATION_SOUND_MENU_VERSION = 5;
+export const PRESENTATION_SOUND_MENU_VERSION = 6;
 
 export type PresentationSoundVariant = 'dashboard' | 'editor' | 'tablet' | 'laptop';
 
@@ -80,69 +82,120 @@ function usePresentationSoundSettings(): [
   return [settings, update, refresh];
 }
 
-function shellSx(variant: PresentationSoundVariant) {
-  const base = {
-    position: 'relative' as const,
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    border: 'none',
-    cursor: 'pointer',
-    p: 0,
-  };
+function variantStyles(variant: PresentationSoundVariant) {
   if (variant === 'tablet') {
     return {
-      ...base,
-      width: 26,
-      height: 26,
-      borderRadius: 1.25,
-      color: 'rgba(255,255,255,0.75)',
-      bgcolor: 'rgba(255,255,255,0.06)',
-      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.14)',
-      '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' },
-      bgIcon: 13,
-      playSize: 20,
+      play: {
+        width: 24,
+        height: 24,
+        p: 0,
+        borderRadius: 0,
+        color: 'rgba(255,255,255,0.88)',
+        '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' },
+      },
+      settings: {
+        width: 16,
+        height: 24,
+        p: 0,
+        borderRadius: 0,
+        color: 'rgba(255,255,255,0.72)',
+        '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' },
+      },
+      group: {
+        border: '1px solid rgba(255,255,255,0.12)',
+        bgcolor: 'rgba(255,255,255,0.04)',
+        borderRadius: 1.25,
+        overflow: 'hidden',
+      },
+      icon: 15,
+      drop: 16,
     };
   }
   if (variant === 'laptop') {
     return {
-      ...base,
-      width: 28,
-      height: 28,
-      borderRadius: 1,
-      color: '#78909c',
-      bgcolor: '#fff',
-      boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)',
-      '&:hover': { bgcolor: '#f5f5f5' },
-      bgIcon: 14,
-      playSize: 22,
+      play: {
+        width: 28,
+        height: 28,
+        p: 0,
+        borderRadius: 0,
+        color: 'text.secondary',
+        '&:hover': { bgcolor: 'rgba(0,0,0,0.06)' },
+      },
+      settings: {
+        width: 18,
+        height: 28,
+        p: 0,
+        borderRadius: 0,
+        color: 'text.secondary',
+        '&:hover': { bgcolor: 'rgba(0,0,0,0.06)' },
+      },
+      group: {
+        border: '1px solid rgba(0,0,0,0.1)',
+        bgcolor: '#fff',
+        borderRadius: 1,
+        overflow: 'hidden',
+      },
+      icon: 18,
+      drop: 18,
     };
   }
   if (variant === 'editor') {
     return {
-      ...base,
-      width: 28,
-      height: 28,
-      borderRadius: '7px',
-      color: '#90a4ae',
-      bgcolor: '#fff',
-      boxShadow: 'inset 0 0 0 1px #cfd8dc',
-      '&:hover': { bgcolor: 'rgba(67,160,71,0.08)', color: '#2e7d32' },
-      bgIcon: 14,
-      playSize: 22,
+      play: {
+        width: 32,
+        height: 28,
+        p: 0,
+        borderRadius: 0,
+        color: '#546e7a',
+        '&:hover': { bgcolor: 'rgba(67,160,71,0.12)', color: '#2e7d32' },
+      },
+      settings: {
+        width: 20,
+        height: 28,
+        p: 0,
+        borderRadius: 0,
+        color: '#78909c',
+        '&:hover': { bgcolor: 'rgba(67,160,71,0.12)', color: '#2e7d32' },
+      },
+      group: {
+        border: '1px solid #cfd8dc',
+        bgcolor: '#fff',
+        borderRadius: '7px',
+        overflow: 'hidden',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+      },
+      icon: 17,
+      drop: 18,
     };
   }
   return {
-    ...base,
-    width: 30,
-    height: 30,
-    borderRadius: 1.4,
-    color: 'rgba(255,255,255,0.55)',
-    bgcolor: '#607d8b',
-    '&:hover': { bgcolor: '#546e7a' },
-    bgIcon: 15,
-    playSize: 24,
+    play: {
+      width: 22,
+      height: 32,
+      p: 0,
+      borderRadius: 0,
+      color: '#fff',
+      bgcolor: 'transparent',
+      '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' },
+    },
+    settings: {
+      width: 16,
+      height: 32,
+      p: 0,
+      borderRadius: 0,
+      color: 'rgba(255,255,255,0.9)',
+      bgcolor: 'transparent',
+      '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' },
+    },
+    group: {
+      border: 'none',
+      bgcolor: '#607d8b',
+      borderRadius: 1.4,
+      overflow: 'hidden',
+      '&:hover': { bgcolor: '#546e7a' },
+    },
+    icon: 17,
+    drop: 16,
   };
 }
 
@@ -191,8 +244,8 @@ function SoundPill({ preset, selected, favorite, onSelect, onToggleFavorite }: S
   );
 }
 
-/** Kompakter Button: Lautsprecher dahinter, kleines ▶ darüber. Rand-Klick = Menü, ▶ = abspielen. */
-function SoundCompactButton({
+/** Kompakter Button: Lautsprecher = abspielen, Pfeil = Menü. */
+function SoundSplitButton({
   variant,
   label,
   onOpenMenu,
@@ -201,80 +254,63 @@ function SoundCompactButton({
   label: string;
   onOpenMenu: (el: HTMLElement) => void;
 }) {
-  const sx = shellSx(variant);
-  const isDashboard = variant === 'dashboard';
+  const styles = variantStyles(variant);
 
   return (
-    <Tooltip title={`▶ = abspielen (${label}) · Button = wählen · Taste S`}>
-      <Box
-        component="button"
-        onClick={(e) => onOpenMenu(e.currentTarget)}
-        aria-label="Sound einstellen"
-        sx={sx}
-      >
-        <VolumeUpIcon
-          sx={{
-            fontSize: sx.bgIcon,
-            opacity: 0.4,
-            pointerEvents: 'none',
-          }}
-        />
-        <Box
-          component="span"
-          onClick={(e) => {
-            e.stopPropagation();
-            playPresentationSound();
-          }}
+    <Box
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'stretch',
+        flexShrink: 0,
+        ...styles.group,
+      }}
+    >
+      <Tooltip title={`Sound abspielen (${label}) · Taste S`}>
+        <IconButton
+          size="small"
+          onClick={() => playPresentationSound()}
           aria-label="Sound abspielen"
-          sx={{
-            position: 'absolute',
-            inset: 0,
-            m: 'auto',
-            width: sx.playSize,
-            height: sx.playSize,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: isDashboard ? '#fff' : '#37474f',
-            borderRadius: '50%',
-            bgcolor: isDashboard ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.92)',
-            boxShadow: isDashboard ? 'none' : '0 0 0 1px rgba(0,0,0,0.08)',
-            '&:hover': {
-              bgcolor: isDashboard ? 'rgba(255,255,255,0.32)' : '#fff',
-              transform: 'scale(1.06)',
-            },
-          }}
+          sx={styles.play}
         >
-          <PlayArrowIcon sx={{ fontSize: sx.playSize * 0.72, ml: 0.1 }} />
-        </Box>
-      </Box>
-    </Tooltip>
+          <VolumeUpIcon sx={{ fontSize: styles.icon }} />
+        </IconButton>
+      </Tooltip>
+      <Divider
+        orientation="vertical"
+        flexItem
+        sx={{
+          borderColor: variant === 'dashboard' ? 'rgba(255,255,255,0.22)' : variant === 'tablet' ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.12)',
+        }}
+      />
+      <Tooltip title="Sound einstellen">
+        <IconButton
+          size="small"
+          onClick={(e) => onOpenMenu(e.currentTarget)}
+          aria-label="Sound einstellen"
+          aria-haspopup="true"
+          sx={styles.settings}
+        >
+          <ArrowDropDownIcon sx={{ fontSize: styles.drop }} />
+        </IconButton>
+      </Tooltip>
+    </Box>
   );
 }
 
 export function PresentationSoundPlayButton({ variant = 'editor', title }: PlayProps) {
   const [settings] = usePresentationSoundSettings();
-  const sx = shellSx(variant);
+  const styles = variantStyles(variant);
   const label = presentationSoundLabel(settings.soundId);
-  const isDashboard = variant === 'dashboard';
   return (
     <Tooltip title={title || `Sound abspielen (${label}) — Taste S`}>
-      <Box
-        component="button"
+      <IconButton
+        size="small"
         onClick={() => playPresentationSound()}
         aria-label="Sound abspielen"
-        sx={sx}
+        sx={{ ...styles.play, ...styles.group, width: styles.play.width, height: styles.play.height }}
       >
-        <VolumeUpIcon sx={{ fontSize: sx.bgIcon, opacity: 0.4, pointerEvents: 'none' }} />
-        <PlayArrowIcon
-          sx={{
-            position: 'absolute',
-            fontSize: sx.playSize * 0.72,
-            color: isDashboard ? '#fff' : '#37474f',
-            ml: 0.1,
-          }}
-        />
-      </Box>
+        <VolumeUpIcon sx={{ fontSize: styles.icon }} />
+      </IconButton>
     </Tooltip>
   );
 }
@@ -312,7 +348,7 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
 
   return (
     <>
-      <SoundCompactButton
+      <SoundSplitButton
         variant={variant}
         label={label}
         onOpenMenu={(el) => setAnchor(el)}
@@ -399,7 +435,7 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
         ))}
 
         <Typography sx={{ px: 0.85, pb: 0.5, fontSize: '0.56rem', color: '#b0bec5', textAlign: 'center' }}>
-          ▶ Mitte = abspielen · Rand = Menü · S · Rechtsklick = ★
+          ▶ = abspielen · ▼ = Menü · S · Rechtsklick = ★
         </Typography>
       </Popover>
     </>

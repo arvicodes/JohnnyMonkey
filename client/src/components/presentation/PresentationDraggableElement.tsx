@@ -163,6 +163,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     orig: SlideElement;
     pointerId: number;
     cardZone?: 'title' | 'body' | null;
+    /** Tippen ohne Zug → Text/Form-Box bearbeiten (Stift: Ziehen verschiebt). */
+    editOnClick?: 'text' | 'shape' | null;
   } | null>(null);
   const [dragging, setDragging] = useState(false);
   /** Während Drag nur lokal — kein setDeck pro Pointer-Move. */
@@ -485,8 +487,9 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       setLiveGeom(null);
       document.body.removeAttribute('data-pres-element-drag');
       onSnapGuidesChangeRef.current?.([]);
-      window.removeEventListener('pointermove', pointerMove);
-      window.removeEventListener('pointerup', pointerUp);
+      window.removeEventListener('pointermove', pointerMove, true);
+      window.removeEventListener('pointerup', pointerUp, true);
+      window.removeEventListener('pointercancel', pointerUp, true);
 
       // Element auf Filmstrip-Folie fallen lassen → verschieben
       if (wasDragging && dragMode === 'move' && onMoveToSlide) {
@@ -522,13 +525,31 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         setCardTitleEditing(true);
       }
 
+      // Text/Form: Klick ohne Zug → tippen; Ziehen (auch Stift) → verschieben
+      if (!wasDragging && pending?.editOnClick === 'text' && editable && !animationEditMode) {
+        setTextEditing(true);
+      }
+      if (!wasDragging && pending?.editOnClick === 'shape' && editable && !animationEditMode) {
+        window.setTimeout(() => {
+          const el = textRef.current;
+          if (!el) return;
+          if (isEffectivelyEmptyHtml(el.innerHTML)) {
+            el.innerHTML = hydratePresentationHtmlFontSizes(
+              element.html || '<p style="text-align:center"><br></p>',
+            );
+          }
+          el.focus({ preventScroll: true });
+          onTextEditorFocus?.(el, element.id, 'html');
+        }, 50);
+      }
+
       try {
         (e.target as HTMLElement)?.releasePointerCapture?.(e.pointerId);
       } catch {
         /* ignore */
       }
     },
-    [pointerMove, element.type, editable, animationEditMode, onChange, onMoveToSlide]
+    [pointerMove, element.type, element.html, editable, animationEditMode, onChange, onMoveToSlide, onTextEditorFocus, element.id]
   );
 
   const startDrag = (
@@ -536,6 +557,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     mode: DragMode,
     resizeCorner: ResizeCorner = 'br',
     cardZone: 'title' | 'body' | null = null,
+    editOnClick: 'text' | 'shape' | null = null,
   ) => {
     if (!editable || !onChange) return;
     const slide = (e.currentTarget as HTMLElement).closest('[data-pres-slide]') as HTMLElement | null;
@@ -555,6 +577,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       orig: { ...element },
       pointerId: e.pointerId,
       cardZone,
+      editOnClick,
     };
     // currentTarget = Element-Box bzw. Resize-Handle — zuverlässiger als innere Targets
     try {
@@ -562,8 +585,9 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     } catch {
       /* ignore */
     }
-    window.addEventListener('pointermove', pointerMove);
-    window.addEventListener('pointerup', pointerUp);
+    window.addEventListener('pointermove', pointerMove, true);
+    window.addEventListener('pointerup', pointerUp, true);
+    window.addEventListener('pointercancel', pointerUp, true);
   };
 
   const handleAnimationClick = (e: React.PointerEvent) => {
@@ -729,11 +753,15 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         if ((e.target as HTMLElement).closest('[data-resize-handle]')) return;
         if ((e.target as HTMLElement).closest('[data-col-resize]')) return;
         if ((e.target as HTMLElement).closest('[data-element-delete]')) return;
-        if ((e.target as HTMLElement).closest('[data-text-edit]')) return;
         const hit = e.target as HTMLElement;
         const onCardTitle = Boolean(hit.closest('[data-card-title]'));
         const onCardBody = Boolean(hit.closest('[data-card-body]'));
         const onTableDrag = Boolean(hit.closest('[data-table-drag]'));
+        const onTextEdit = Boolean(hit.closest('[data-text-edit], [data-shape-body]'));
+        const mouseSelectingText =
+          e.pointerType === 'mouse' &&
+          onTextEdit &&
+          (textEditing || document.activeElement === textRef.current);
 
         // Textfeld: Doppelklick → tippen
         if (e.detail >= 2 && element.type === 'text') {
@@ -743,23 +771,12 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
           return;
         }
 
-        // Form-Box: Klick auf Text → tippen, Rahmen ziehen
+        // Form-Box: Ziehen (auch Stift) verschiebt; Tippen ohne Zug → tippen
         if (isShapeBox) {
           const onShapeText = Boolean(hit.closest('[data-shape-body], [data-text-edit]'));
-          if (onShapeText) {
-            e.stopPropagation();
-            onSelect?.();
-            window.setTimeout(() => {
-              const el = textRef.current;
-              if (!el) return;
-              if (isEffectivelyEmptyHtml(el.innerHTML)) {
-                el.innerHTML = hydratePresentationHtmlFontSizes(
-                  element.html || '<p style="text-align:center"><br></p>',
-                );
-              }
-              el.focus({ preventScroll: true });
-              onTextEditorFocus?.(el, element.id, 'html');
-            }, 50);
+          if (onShapeText && !mouseSelectingText) {
+            e.preventDefault();
+            startDrag(e, 'move', 'br', null, 'shape');
             return;
           }
         }
@@ -797,12 +814,21 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
           return;
         }
 
+        if (mouseSelectingText) return;
+
+        if (element.type === 'text' && onTextEdit && !mouseSelectingText) {
+          e.preventDefault();
+          startDrag(e, 'move', 'br', null, 'text');
+          return;
+        }
+
         if (!selected) onSelect?.();
         startDrag(
           e,
           'move',
           'br',
           isCardElement ? (onCardTitle ? 'title' : onCardBody ? 'body' : null) : null,
+          element.type === 'text' ? 'text' : isShapeBox ? 'shape' : null,
         );
       }}
       onDoubleClick={(e) => {
@@ -1051,7 +1077,15 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 }}
                 onPointerDown={(e) => {
                   if (!showSelectionChrome) return;
-                  e.stopPropagation();
+                  const mouseSelecting =
+                    e.pointerType === 'mouse' &&
+                    (document.activeElement === textRef.current || e.currentTarget.contains(document.activeElement));
+                  if (mouseSelecting) {
+                    e.stopPropagation();
+                    return;
+                  }
+                  e.preventDefault();
+                  startDrag(e, 'move', 'br', null, 'shape');
                 }}
                 onPaste={(e) => {
                   if (!showSelectionChrome) return;
@@ -1221,7 +1255,14 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   }
                   setCardTitleEditing(false);
                 }}
-                onPointerDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => {
+                  if (e.pointerType === 'pen' || e.pointerType === 'touch') {
+                    e.preventDefault();
+                    startDrag(e, 'move', 'br', 'title');
+                    return;
+                  }
+                  e.stopPropagation();
+                }}
                 onInput={() => {
                   if (!cardTitleRef.current || !onChange) return;
                   const titleHtml = cardTitleRef.current.innerHTML;
@@ -1676,7 +1717,17 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 });
               }
             }}
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => {
+              const mouseSelecting =
+                e.pointerType === 'mouse' &&
+                (textEditing || document.activeElement === textRef.current);
+              if (mouseSelecting) {
+                e.stopPropagation();
+                return;
+              }
+              e.preventDefault();
+              startDrag(e, 'move', 'br', null, 'text');
+            }}
             onPaste={(e) => {
               e.preventDefault();
               const cleaned = presentationPasteHtml(e.clipboardData);
