@@ -27,7 +27,7 @@ import EntryTicketPage from '../../pages/EntryTicketPage';
 import { ensureEntryTicketButtonsOnTitleSlides } from '../../lib/presentationSlideTemplates';
 import { clampPresentZoom, handlePresentZoomHotkey, attachPresentTrackpadZoom, attachPresentTouchPinchZoom } from '../../lib/presentationPresentZoom';
 import PresentationPresentZoomControls from './PresentationPresentZoomControls';
-import { PresentationSoundPlayButton } from './PresentationSoundControls';
+import { PresentationSoundSplitControl } from './PresentationSoundControls';
 
 const EMPTY_STROKES: PresentationStroke[] = [];
 const EMPTY_ANNOTATIONS: PresentationAnnotations = {
@@ -611,7 +611,7 @@ export default function PresentationLaptopPlayer({
             />
           </Box>
           <Box sx={{ ml: 0.35 }}>
-            <PresentationSoundPlayButton variant="laptop" />
+            <PresentationSoundSplitControl variant="laptop" />
           </Box>
           {showNotes && (
             <Typography

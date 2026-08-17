@@ -50,7 +50,7 @@ import PresentationPptxImportDialog, {
   type PptxImportSelection,
 } from '../components/presentation/PresentationPptxImportDialog';
 import PresentationSlideToolsBar from '../components/presentation/PresentationSlideToolsBar';
-import { PresentationSoundPlayButton } from '../components/presentation/PresentationSoundControls';
+import { PresentationSoundSplitControl } from '../components/presentation/PresentationSoundControls';
 import PresentationAnimationBar from '../components/presentation/PresentationAnimationBar';
 import PresentationFormatBar from '../components/presentation/PresentationFormatBar';
 import PresentationFilmstrip from '../components/presentation/PresentationFilmstrip';
@@ -2595,7 +2595,7 @@ const PresentationEditorPage: React.FC = () => {
           </Box>
 
           <Box sx={{ ml: 0.35, display: 'flex', alignItems: 'center' }}>
-            <PresentationSoundPlayButton variant="editor" />
+            <PresentationSoundSplitControl variant="editor" />
           </Box>
 
           <ToggleButtonGroup
