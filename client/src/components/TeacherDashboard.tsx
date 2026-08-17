@@ -75,6 +75,8 @@ import {
   DASHBOARD_REIHEN_CONTENT_GROUP,
   collectReihenFromJmTree,
   fetchAndCacheWorkingReihenPaths,
+  folderPathCovers,
+  folderPathsEquivalent,
   loadWorkingReihenPaths,
   mergeReihenOptions,
   persistWorkingReihenPaths,
@@ -7201,6 +7203,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
 
   const startLessonRun = useCallback(
     async (groupId: string, lessonPath: string) => {
+      if (!groupId || groupId === DASHBOARD_REIHEN_CONTENT_GROUP) {
+        showSnackbar(
+          'Keine Lerngruppe für diese Reihe freigeschaltet — oben rechts bei der Reihe eine Gruppe wählen.',
+          'warning',
+        );
+        return;
+      }
       const key = `${groupId}::${lessonPath}`;
       setLessonRunBusyKey(key);
       const loginCode = localStorage.getItem('loginCode') || '';
@@ -8331,15 +8340,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
           return newState;
         });
 
-        // Setze die neuen Daten
+        // Setze die neuen Daten (portable Pfade → Schule/lokal vergleichbar)
         setAssignedFolders(prev => ({
           ...prev,
-          [groupId]: folderPaths
+          [groupId]: folderPaths.map((p: string) => toPortableWorkingReihePath(p) || p),
         }));
 
         // Lade den Inhalt aller zugeordneten Ordner
         folderPaths.forEach((folderPath: string) => {
-          fetchAssignedFolderContent(groupId, folderPath);
+          fetchAssignedFolderContent(groupId, toPortableWorkingReihePath(folderPath) || folderPath);
         });
       }
     } catch (error) {
@@ -13504,20 +13513,38 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
   const resolveGroupIdForReihe = useCallback(
     (folderPath: string) => {
-      const want = (folderPath || '').replace(/\\/g, '/');
+      const want = folderPath || '';
       for (const g of groups) {
         const paths = assignedFolders[g.id] || [];
-        if (paths.some((p) => (p || '').replace(/\\/g, '/') === want)) return g.id;
+        if (paths.some((p) => folderPathsEquivalent(p, want) || folderPathCovers(p, want))) {
+          return g.id;
+        }
       }
       return DASHBOARD_REIHEN_CONTENT_GROUP;
     },
     [groups, assignedFolders],
   );
 
+  const resolveGroupIdsForReihe = useCallback(
+    (folderPath: string) => {
+      const want = folderPath || '';
+      return groups
+        .filter((g) =>
+          (assignedFolders[g.id] || []).some(
+            (p) => folderPathsEquivalent(p, want) || folderPathCovers(p, want),
+          ),
+        )
+        .map((g) => g.id);
+    },
+    [groups, assignedFolders],
+  );
+
   const isReiheAssignedToGroup = useCallback(
     (folderPath: string, groupId: string) => {
-      const want = (folderPath || '').replace(/\\/g, '/');
-      return (assignedFolders[groupId] || []).some((p) => (p || '').replace(/\\/g, '/') === want);
+      const want = folderPath || '';
+      return (assignedFolders[groupId] || []).some(
+        (p) => folderPathsEquivalent(p, want) || folderPathCovers(p, want),
+      );
     },
     [assignedFolders],
   );
@@ -15796,10 +15823,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               ) : (
                 <Grid container spacing={1.5} alignItems="flex-start">
                   {filterOutNestedAssignedFolderPaths(workingReihenPaths).map((folderPath) => {
-                    const gid = resolveGroupIdForReihe(folderPath);
-                    const workflowGroupIds = groups
-                      .filter((g) => isReiheAssignedToGroup(folderPath, g.id))
-                      .map((g) => g.id);
+                    const assignedIds = resolveGroupIdsForReihe(folderPath);
+                    const gid = assignedIds[0] || resolveGroupIdForReihe(folderPath);
+                    const workflowGroupIds = assignedIds;
                     const isInfReihe = isInformatikFolderPath(folderPath);
                     return (
                       <Grid item xs={12} sm={6} md={4} key={folderPath}>
@@ -15826,9 +15852,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                             }}
                           >
                             {(() => {
-                              const assignedIds = groups
-                                .filter((g) => isReiheAssignedToGroup(folderPath, g.id))
-                                .map((g) => g.id);
                               const busyHere = Boolean(
                                 reiheAssignBusyKey && reiheAssignBusyKey.endsWith(`::${folderPath}`),
                               );

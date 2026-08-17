@@ -210,3 +210,23 @@ export function mergeReihenOptions(
     return a.label.localeCompare(b.label, 'de');
   });
 }
+
+/** Vergleich unabhängig von Mac-/Absolut-/git-intern-Schreibweise. */
+export function portableFolderKey(raw: string): string {
+  const p = toPortableWorkingReihePath(raw) || normalizePath(raw);
+  return p.replace(/^git-intern\//, '').replace(/^J-M-Reihen\//, '');
+}
+
+export function folderPathsEquivalent(a: string, b: string): boolean {
+  const ka = portableFolderKey(a);
+  const kb = portableFolderKey(b);
+  return Boolean(ka && kb && ka === kb);
+}
+
+/** true, wenn assigned den target-Ordner ist oder ihn enthält (Reihe → Stunde). */
+export function folderPathCovers(assigned: string, target: string): boolean {
+  const a = portableFolderKey(assigned);
+  const t = portableFolderKey(target);
+  if (!a || !t) return false;
+  return t === a || t.startsWith(`${a}/`);
+}

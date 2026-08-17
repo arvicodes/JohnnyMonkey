@@ -1300,17 +1300,32 @@ router.post('/:id/folders', async (req, res) => {
     var _a;
     try {
         const groupId = req.params.id;
-        const { path } = req.body;
-        if (!path) {
+        let { path } = req.body;
+        if (!path || typeof path !== 'string') {
             return res.status(400).json({ error: 'Pfad ist erforderlich' });
         }
-        // Check if folder is already assigned
+        // Portable speichern (Mac-Absolut → git-intern/…)
+        const markers = ['/J-M-Reihen/', 'J-M-Reihen/', '/git-intern/', 'git-intern/'];
+        let portable = String(path).replace(/\\/g, '/').replace(/\/+$/, '');
+        for (const m of markers) {
+            const i = portable.indexOf(m);
+            if (i >= 0) {
+                const rest = portable.slice(i + m.length).replace(/^\/+/, '');
+                portable = rest ? `git-intern/${rest}` : 'git-intern';
+                break;
+            }
+        }
+        path = portable;
+        // Check if folder is already assigned (auch Alt-Schreibweisen)
         const existingAssignment = await prisma.groupAssignment.findFirst({
             where: {
                 groupId: groupId,
                 type: 'FOLDER',
-                refId: path
-            }
+                OR: [
+                    { refId: path },
+                    { refId: { endsWith: path.replace(/^git-intern\//, '') } },
+                ],
+            },
         });
         if (existingAssignment) {
             return res.status(400).json({ error: 'Ordner ist bereits zugeordnet' });
