@@ -1,5 +1,6 @@
 /** Arbeits-Reihen im Dashboard-Tab „Reihen“ — localStorage + Server-DB. */
 
+import { apiGet, apiPut } from './api';
 import { isWochenaufgabenFolderName } from './wochenaufgabenFolder';
 
 export const DASHBOARD_WORKING_REIHEN_KEY = 'jm-dashboard-working-reihen-v1';
@@ -81,13 +82,12 @@ export function saveWorkingReihenPaths(paths: string[]): void {
 export async function fetchAndCacheWorkingReihenPaths(): Promise<string[]> {
   const local = loadWorkingReihenPaths();
   try {
-    const res = await fetch('/api/teacher-dashboard-prefs/working-reihen', {
-      credentials: 'include',
-    });
+    const res = await apiGet('/api/teacher-dashboard-prefs/working-reihen');
     if (!res.ok) return local;
     const data = (await res.json()) as { paths?: unknown };
     const remoteRaw = Array.isArray(data.paths) ? data.paths : [];
     const remote = remoteRaw.map((p) => toPortableWorkingReihePath(String(p))).filter(Boolean);
+    // Server-Stand hat Vorrang, lokale Zusatz-Reihen bleiben erhalten
     const seen = new Set<string>();
     const merged: string[] = [];
     for (const p of [...remote, ...local]) {
@@ -106,12 +106,7 @@ export async function persistWorkingReihenPaths(paths: string[]): Promise<string
   const next = paths.map(toPortableWorkingReihePath).filter(Boolean);
   saveWorkingReihenPaths(next);
   try {
-    const res = await fetch('/api/teacher-dashboard-prefs/working-reihen', {
-      method: 'PUT',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paths: next }),
-    });
+    const res = await apiPut('/api/teacher-dashboard-prefs/working-reihen', { paths: next });
     if (res.ok) {
       const data = (await res.json()) as { paths?: unknown };
       if (Array.isArray(data.paths)) {

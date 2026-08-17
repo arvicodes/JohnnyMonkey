@@ -3,6 +3,7 @@ import {
   entryTicketHasText,
   normalizeEntryTicketFieldValue,
 } from './entryTicketRichText';
+import { apiGet } from './api';
 
 /** Eigene Entry-Ticket-Fragensätze: ein Set pro Reihe, Fragen pro Stunde, localStorage. */
 
@@ -448,7 +449,7 @@ export function findCustomSetForLessonPath(
 export async function fetchAndCacheCustomEntryTicketSets(): Promise<EntryTicketCustomSet[]> {
   const local = loadCustomEntryTicketSets();
   try {
-    const res = await fetch('/api/entry-ticket/custom-sets', { credentials: 'include' });
+    const res = await apiGet('/api/entry-ticket/custom-sets');
     if (!res.ok) return local;
     const data = (await res.json()) as { sets?: unknown };
     const remoteRaw = Array.isArray(data.sets) ? data.sets : [];

@@ -79,6 +79,7 @@ import {
   mergeReihenOptions,
   persistWorkingReihenPaths,
   reiheLabelFromPath,
+  toPortableWorkingReihePath,
   type WorkingReiheOption,
 } from '../lib/dashboardWorkingReihen';
 import {
@@ -8526,14 +8527,25 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   /** Arbeits-Reihen vom Server (DB) — damit Schule denselben Stand wie lokal hat. */
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
+    let tries = 0;
+    const load = async () => {
+      tries += 1;
       const merged = await fetchAndCacheWorkingReihenPaths();
-      if (!cancelled && merged.length > 0) {
+      if (cancelled) return;
+      if (merged.length > 0) {
         setWorkingReihenPaths(merged);
         // Union aus lokal+Server zurückschreiben, falls Server noch leer war
         void persistWorkingReihenPaths(merged);
+        return;
       }
-    })();
+      // Login-Code ggf. noch nicht gesetzt — kurz erneut versuchen
+      if (tries < 8 && !localStorage.getItem('loginCode')) {
+        window.setTimeout(() => {
+          if (!cancelled) void load();
+        }, 400 * tries);
+      }
+    };
+    void load();
     return () => {
       cancelled = true;
     };
@@ -15696,16 +15708,22 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       disableClearable
                       loading={reihenOptionsLoading}
                       options={reihenOptions}
-                      value={workingReihenPaths.map(
-                        (path) =>
-                          reihenOptions.find((o) => o.path === path) || {
-                            path,
-                            label: reiheLabelFromPath(path),
-                          },
-                      )}
+                      value={workingReihenPaths.map((path) => {
+                        const portable = toPortableWorkingReihePath(path) || path;
+                        return (
+                          reihenOptions.find(
+                            (o) => toPortableWorkingReihePath(o.path) === portable || o.path === portable,
+                          ) || {
+                            path: portable,
+                            label: reiheLabelFromPath(portable),
+                          }
+                        );
+                      })}
                       onChange={(_e, value) => updateWorkingReihenPaths(value.map((v) => v.path))}
                       getOptionLabel={(o) => o.label || reiheLabelFromPath(o.path)}
-                      isOptionEqualToValue={(a, b) => a.path === b.path}
+                      isOptionEqualToValue={(a, b) =>
+                        toPortableWorkingReihePath(a.path) === toPortableWorkingReihePath(b.path)
+                      }
                       disableCloseOnSelect
                       renderTags={() => null}
                       renderOption={(props, option, { selected }) => {
