@@ -24,7 +24,6 @@ import {
   Bookmark as BookmarkIcon,
   BookmarkAdd as BookmarkAddIcon,
   Check as CheckIcon,
-  Close as CloseIcon,
   History as HistoryIcon,
   Pause as PauseIcon,
   PlayArrow as PlayArrowIcon,
@@ -326,6 +325,10 @@ const SLIDE_DURATION_STORAGE_KEY = 'entry-ticket-slide-duration-sec';
 const SHOW_COUNT_STORAGE_KEY = 'entry-ticket-card-show-counts-v1';
 const MIN_SLIDE_DURATION_SEC = 5;
 const MAX_SLIDE_DURATION_SEC = 120;
+const DEFAULT_SOLUTION_DURATION_SEC = 120;
+const SOLUTION_DURATION_STORAGE_KEY = 'entry-ticket-solution-duration-sec';
+const MIN_SOLUTION_DURATION_SEC = 30;
+const MAX_SOLUTION_DURATION_SEC = 15 * 60;
 
 function simpleTaskHash(s: string): string {
   let h = 2166136261;
@@ -382,6 +385,128 @@ function loadSlideDurationSec(): number {
 function clampSlideDurationSec(value: number): number {
   if (!Number.isFinite(value)) return DEFAULT_SLIDE_DURATION_SEC;
   return Math.min(MAX_SLIDE_DURATION_SEC, Math.max(MIN_SLIDE_DURATION_SEC, Math.round(value)));
+}
+
+function loadSolutionDurationSec(): number {
+  try {
+    const raw = localStorage.getItem(SOLUTION_DURATION_STORAGE_KEY);
+    const n = raw != null ? Number(raw) : NaN;
+    if (Number.isFinite(n) && n >= MIN_SOLUTION_DURATION_SEC && n <= MAX_SOLUTION_DURATION_SEC) {
+      return Math.round(n);
+    }
+  } catch {
+    // ignore
+  }
+  return DEFAULT_SOLUTION_DURATION_SEC;
+}
+
+function clampSolutionDurationSec(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_SOLUTION_DURATION_SEC;
+  return Math.min(MAX_SOLUTION_DURATION_SEC, Math.max(MIN_SOLUTION_DURATION_SEC, Math.round(value)));
+}
+
+function formatMmSs(totalSec: number): string {
+  const s = Math.max(0, Math.round(totalSec));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${String(r).padStart(2, '0')}`;
+}
+
+function SolutionSlideClock({
+  secondsLeft,
+  totalSec,
+  running,
+  onToggle,
+}: {
+  secondsLeft: number;
+  totalSec: number;
+  running: boolean;
+  onToggle?: () => void;
+}) {
+  const frac = Math.max(0, Math.min(1, secondsLeft / Math.max(totalSec, 1)));
+  const done = secondsLeft <= 0;
+  const urgent = secondsLeft > 0 && secondsLeft <= 15;
+  const diskColor = done ? '#e53935' : urgent ? '#ff8a65' : '#43a047';
+
+  return (
+    <Box
+      component={onToggle ? 'button' : 'div'}
+      type={onToggle ? 'button' : undefined}
+      onClick={onToggle}
+      aria-label={
+        onToggle
+          ? running
+            ? 'Lösungsuhr pausieren'
+            : secondsLeft <= 0
+              ? 'Lösungsuhr neu starten'
+              : 'Lösungsuhr starten'
+          : 'Lösungsuhr'
+      }
+      sx={{
+        position: 'relative',
+        width: 92,
+        height: 92,
+        flexShrink: 0,
+        p: 0,
+        border: 'none',
+        borderRadius: '50%',
+        cursor: onToggle ? 'pointer' : 'default',
+        background: `conic-gradient(${diskColor} 0deg ${frac * 360}deg, #eceff1 ${frac * 360}deg 360deg)`,
+        boxShadow: '0 2px 10px rgba(55, 71, 79, 0.18)',
+        appearance: 'none',
+        WebkitAppearance: 'none',
+        '&:hover': onToggle ? { filter: 'brightness(0.97)' } : undefined,
+      }}
+    >
+      {[0, 90, 180, 270].map((deg) => (
+        <Box
+          key={deg}
+          sx={{
+            position: 'absolute',
+            left: '50%',
+            top: 4,
+            width: 2,
+            height: 7,
+            bgcolor: 'rgba(69,90,100,0.45)',
+            transformOrigin: `1px 42px`,
+            transform: `translateX(-50%) rotate(${deg}deg)`,
+            pointerEvents: 'none',
+          }}
+        />
+      ))}
+      <Box
+        sx={{
+          position: 'absolute',
+          inset: 10,
+          borderRadius: '50%',
+          bgcolor: '#fff',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: 'inset 0 0 0 1px rgba(176,190,197,0.35)',
+        }}
+      >
+        <Typography
+          sx={{
+            fontWeight: 800,
+            fontVariantNumeric: 'tabular-nums',
+            fontSize: '1.2rem',
+            lineHeight: 1,
+            color: diskColor,
+            letterSpacing: 0.2,
+          }}
+        >
+          {formatMmSs(secondsLeft)}
+        </Typography>
+        {!running && !done ? (
+          <Typography sx={{ mt: 0.15, fontSize: '0.55rem', fontWeight: 700, color: '#90a4ae', letterSpacing: 0.4 }}>
+            PAUSE
+          </Typography>
+        ) : null}
+      </Box>
+    </Box>
+  );
 }
 
 /** Zufällige Auswahl aus dem klassenspezifischen Fragenset */
@@ -1725,6 +1850,18 @@ export default function EntryTicketPage({
   const [secondsLeft, setSecondsLeft] = useState(() =>
     typeof window !== 'undefined' ? loadSlideDurationSec() : DEFAULT_SLIDE_DURATION_SEC,
   );
+  const [solutionDurationSec, setSolutionDurationSec] = useState(() =>
+    typeof window !== 'undefined' ? loadSolutionDurationSec() : DEFAULT_SOLUTION_DURATION_SEC,
+  );
+  const [solutionDurationMinDraft, setSolutionDurationMinDraft] = useState(() =>
+    String(Math.max(1, Math.round((typeof window !== 'undefined' ? loadSolutionDurationSec() : DEFAULT_SOLUTION_DURATION_SEC) / 60))),
+  );
+  const solutionDurationSecRef = useRef(solutionDurationSec);
+  solutionDurationSecRef.current = solutionDurationSec;
+  const [solutionSecondsLeft, setSolutionSecondsLeft] = useState(() =>
+    typeof window !== 'undefined' ? loadSolutionDurationSec() : DEFAULT_SOLUTION_DURATION_SEC,
+  );
+  const [solutionRunning, setSolutionRunning] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [showSolutions, setShowSolutions] = useState(() => Boolean(initialRoute.review));
   const [teacherNotes, setTeacherNotes] = useState('');
@@ -1797,6 +1934,8 @@ export default function EntryTicketPage({
     setCurrentIndex(0);
     setSecondsLeft(slideDurationSecRef.current);
     setIsRunning(false);
+    setSolutionRunning(false);
+    setSolutionSecondsLeft(solutionDurationSecRef.current);
     setShowSolutions(Boolean(review));
     setShowSetEditor(Boolean(openEditor && !autostart && !review));
     setSharedTasksLocked(Boolean(review));
@@ -2392,7 +2531,11 @@ export default function EntryTicketPage({
     return {
       tasks: sliced.map(({ task }, idx) => ({
         ...task,
-        prompt: skipInfNumberVary(task.category) ? task.prompt : varyNumbersOnly(task.prompt, seed + idx * 31),
+        // Eigene Fragensets: Zahlen NICHT variieren — sonst passt die gespeicherte Lösung nicht mehr.
+        prompt:
+          isCustomSetActive || skipInfNumberVary(task.category)
+            ? task.prompt
+            : varyNumbersOnly(task.prompt, seed + idx * 31),
       })),
       indices: sliced.map(({ i }) => i),
     };
@@ -2957,9 +3100,10 @@ export default function EntryTicketPage({
       const baseIndex = poolForBand.indexOf(pickBase);
       const replacement = {
         ...pickBase,
-        prompt: skipInfNumberVary(pickBase.category)
-          ? pickBase.prompt
-          : varyNumbersOnly(pickBase.prompt, Date.now() + index),
+        prompt:
+          isCustomSetActive || skipInfNumberVary(pickBase.category)
+            ? pickBase.prompt
+            : varyNumbersOnly(pickBase.prompt, Date.now() + index),
       };
       const next = [...prev];
       next[index] = replacement;
@@ -3850,7 +3994,7 @@ export default function EntryTicketPage({
             </Box>
           </Box>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0, minWidth: 24 }}>
             {isTeacher && !studentReviewMode && sessionStarted && customSetId ? (
               <Button
                 size="small"
@@ -3873,25 +4017,6 @@ export default function EntryTicketPage({
                 Historie
               </Button>
             ) : null}
-            <Tooltip title="Schließen">
-              <IconButton
-                onClick={handleBack}
-                aria-label="Schließen"
-                size="small"
-                sx={{
-                  p: 0,
-                  minWidth: 24,
-                  width: 24,
-                  height: 24,
-                  bgcolor: 'white',
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  flexShrink: 0,
-                }}
-              >
-                <CloseIcon sx={{ fontSize: 14 }} />
-              </IconButton>
-            </Tooltip>
           </Box>
         </Box>
 
@@ -4127,8 +4252,7 @@ export default function EntryTicketPage({
               </Box>
             ) : (
               <Box sx={{ display: 'grid', gap: 1.5, width: '100%', minWidth: 0 }}>
-                {/* Steuerung — nur Lehrer/Moderator, nicht SuS-Review */}
-                {!studentReviewMode && (
+                {/* Kartennummer immer sichtbar (auch SuS-Review); Steuerung nur Lehrer/Moderator */}
                 <Box
                   sx={{
                     display: 'flex',
@@ -4141,17 +4265,19 @@ export default function EntryTicketPage({
                 >
                   <Typography
                     sx={{
-                      fontSize: '0.88rem',
+                      fontSize: studentReviewMode ? '1.15rem' : '0.88rem',
                       fontWeight: 600,
                       color: '#78909c',
                       fontVariantNumeric: 'tabular-nums',
                     }}
                   >
-                    <Box component="span" sx={{ color: '#455a64', fontWeight: 700 }}>
+                    <Box component="span" sx={{ color: '#455a64', fontWeight: 800 }}>
                       {sessionDone ? activeTasks.length : currentIndex + 1}
                     </Box>
                     /{activeTasks.length}
                   </Typography>
+
+                  {!studentReviewMode && (
 
                   <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.65, flexShrink: 0 }}>
                     <TextField
@@ -4287,8 +4413,8 @@ export default function EntryTicketPage({
                       </IconButton>
                     </Tooltip>
                   </Box>
+                  )}
                 </Box>
-                )}
 
                 {!sessionDone ? (
                   <Box
