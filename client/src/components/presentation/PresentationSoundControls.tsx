@@ -323,11 +323,11 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
             borderColor: variant === 'dashboard' ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.12)',
           }}
         />
-        <Tooltip title="Sound-Menü: Kategorien, Favoriten, Klangschale, Gong …">
+        <Tooltip title="Sound einstellen — Kategorien, Favoriten, 18 Klänge, Taste S">
           <IconButton
             size="small"
             onClick={(e) => setAnchor(e.currentTarget)}
-            aria-label="Sound-Menü öffnen"
+            aria-label="Sound einstellen"
             aria-haspopup="true"
             aria-expanded={Boolean(anchor)}
             sx={styles.settings}
