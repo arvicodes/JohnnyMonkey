@@ -46,7 +46,7 @@ import {
   ViewColumnOutlined as CardPairIcon,
   TableChartOutlined as TableIcon,
 } from '@mui/icons-material';
-import { PresentationSoundPlayButton } from './PresentationSoundControls';
+import { PresentationSoundSplitControl } from './PresentationSoundControls';
 import {
   PresentationShapeKind,
   PresentationSlide,
@@ -1217,7 +1217,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
 
       <Divider orientation="vertical" flexItem sx={{ borderColor: PRES_EDITOR_UI.barBorder, mx: 0.1, height: 20 }} />
 
-      <PresentationSoundPlayButton variant="editor" />
+      <PresentationSoundSplitControl variant="editor" />
 
       <Divider orientation="vertical" flexItem sx={{ borderColor: PRES_EDITOR_UI.barBorder, mx: 0.1, height: 20 }} />
 

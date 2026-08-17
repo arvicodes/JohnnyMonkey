@@ -384,10 +384,10 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
       >
         <Box sx={{ px: 1.5, pt: 1.25, pb: 0.5 }}>
           <Typography sx={{ fontWeight: 800, fontSize: '0.82rem', color: '#37474f' }}>
-            Präsentations-Sound
+            Präsentations-Sound · {PRESENTATION_SOUND_PRESETS.length} Klänge
           </Typography>
           <Typography sx={{ fontSize: '0.7rem', color: '#78909c', mt: 0.15 }}>
-            Gilt für Tablet, Laptop, Editor und Hauptmenü · Stern = Favorit
+            ▼ Pfeil antippen für Kategorien & Favoriten · Taste S = abspielen
           </Typography>
         </Box>
 
