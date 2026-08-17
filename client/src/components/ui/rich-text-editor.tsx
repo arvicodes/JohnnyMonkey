@@ -35,6 +35,7 @@ import {
 import { velProtokollDisplaySx } from '../announcements/vereinProtokollStyles';
 import { RICH_TEXT_EDITOR_FONT_FAMILY } from '../../lib/richTextEditorFont';
 import { moveProtokollTabStop } from '../../lib/protokollTabNavigation';
+import { handlePresentationListShortcutKey } from '../../lib/presentationRichText';
 
 const EmojiPicker = lazy(() => import('emoji-picker-react'));
 
@@ -1489,6 +1490,10 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
   }, [value, makeImageResizable]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (handlePresentationListShortcutKey(e, editorRef.current)) {
+      handleInput();
+      return;
+    }
     if (
       enableStorySnippets &&
       (e.key === 'Backspace' || e.key === 'Delete') &&

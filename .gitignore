@@ -62,6 +62,10 @@ Presentation-Sicherheitskopien/
 **/.presentation-backups/
 J-M-Reihen/Folien - ALLE - BACKUP/
 
+# Lehrer-Schnellnotizen (Live + Sicherheitskopien)
+J-M-Reihen/Lehrer-Schnellnotizen/
+Notizen-Sicherheitskopien/
+
 
 # Zusammengefügte ZIP > 100 MB – Teile liegen als J-M-Reihen.zip.aa / .ab im Repo; siehe scripts/assemble-j-m-reihen-zip.sh
 /J-M-Reihen.zip

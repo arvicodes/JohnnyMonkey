@@ -40,9 +40,11 @@ import adventCalendarRoutes from './routes/adventCalendar';
 import lessonInstructionsRoutes from './routes/lessonInstructions';
 import teacherScheduleRoutes from './routes/teacherSchedule';
 import wochenaufgabenRoutes from './routes/wochenaufgaben';
+import teacherScratchPadRoutes from './routes/teacherScratchPad';
 import path from 'path';
 import { startAutoLessonScheduler } from './services/autoLessonScheduler';
 import { ensureWochenaufgabenSchema } from './utils/ensureWochenaufgabenSchema';
+import { ensureScratchPadRoots } from './utils/teacherScratchPadStore';
 
 dotenv.config();
 
@@ -96,6 +98,7 @@ app.use('/api/advent-calendar', adventCalendarRoutes);
 app.use('/api/lesson-instructions', lessonInstructionsRoutes);
 app.use('/api/teacher-schedule', teacherScheduleRoutes);
 app.use('/api/wochenaufgaben', wochenaufgabenRoutes);
+app.use('/api/teacher-scratch-pad', teacherScratchPadRoutes);
 app.use('/api/ka-corrections', kaCorrectionsRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/exit-ticket', exitTicketRoutes);
@@ -233,6 +236,13 @@ async function startServer() {
     console.log('🗄️ DATABASE_URL:', process.env.DATABASE_URL || '(from schema)');
     await ensureWochenaufgabenSchema(prisma);
     console.log('✅ Wochenaufgaben-Schema bereit');
+    try {
+      const roots = ensureScratchPadRoots();
+      console.log('✅ Notizen-Ordner bereit:', roots.liveRoot);
+      console.log('✅ Notizen-Sicherheitskopien:', roots.backupRoot);
+    } catch (e) {
+      console.warn('Notizen-Ordner konnten nicht angelegt werden:', e);
+    }
     // Lokal: 3003 (React nutzt 3000). Ohne PORT kein Konflikt mit dem Frontend.
     const port = parseInt(process.env.PORT || '3003', 10);
     

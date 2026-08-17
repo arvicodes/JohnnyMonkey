@@ -46,6 +46,9 @@ import { Snackbar, Alert, Box, CircularProgress } from '@mui/material';
 import { ensurePresentationSoundHotkey } from './lib/presentationSound';
 import JohnnyCompanionSimple from './components/JohnnyCompanionSimple';
 import FlutterElf from './components/FlutterElf';
+import GlobalMarkdownListShortcut from './components/GlobalMarkdownListShortcut';
+import GlobalDashboardShortcut from './components/GlobalDashboardShortcut';
+import TeacherQuickNotes from './components/TeacherQuickNotes';
 
 interface User {
   id: string;
@@ -339,6 +342,13 @@ function AppContent() {
         <Route path="/wall-of-fame" element={<WallOfFamePage />} />
 
       </Routes>
+
+      <GlobalMarkdownListShortcut />
+      {authReady && user && <GlobalDashboardShortcut />}
+
+      {authReady && user && String(user.role).toUpperCase() === 'TEACHER' && (
+        <TeacherQuickNotes userId={user.id} floating />
+      )}
 
       {authReady && user && String(user.role).toUpperCase() === 'STUDENT' && (
         <>
