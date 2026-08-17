@@ -73,6 +73,42 @@ export function apiPostSafe(url: string, data?: unknown): void {
   }).catch(() => {});
 }
 
+/** PUT Fire-and-forget (z. B. Lehrer-Schnellnotizen → Server + Sicherheitskopie). */
+export function apiPutSafe(url: string, data?: unknown): void {
+  const loginCode = localStorage.getItem('loginCode')?.trim();
+  if (!loginCode) return;
+  const base = getApiBaseUrl();
+  const fullUrl = url.startsWith('http') ? url : `${base}${url}`;
+  void fetch(fullUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'x-login-code': loginCode },
+    body: data !== undefined ? JSON.stringify(data) : undefined,
+    cache: 'no-store',
+  }).catch(() => {});
+}
+
+/** PUT mit Response (für Flush beim Schließen). */
+export async function apiPutSafeAwait(
+  url: string,
+  data?: unknown
+): Promise<Response | null> {
+  const loginCode = localStorage.getItem('loginCode')?.trim();
+  if (!loginCode) return null;
+  const base = getApiBaseUrl();
+  const fullUrl = url.startsWith('http') ? url : `${base}${url}`;
+  try {
+    return await fetch(fullUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'x-login-code': loginCode },
+      body: data !== undefined ? JSON.stringify(data) : undefined,
+      cache: 'no-store',
+      keepalive: true,
+    });
+  } catch {
+    return null;
+  }
+}
+
 // Hilfsfunktion zum Überprüfen des Login-Status
 export const isLoggedIn = () => {
   return !!localStorage.getItem('loginCode');

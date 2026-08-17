@@ -64,6 +64,10 @@ export function isPresentationInternalFolderName(name: string): boolean {
   return normalizeFolderLabel(n) === 'grafiken';
 }
 
+export function isNumberedWochenaufgabeName(name: string): boolean {
+  return /^\d+$/.test((name || '').trim());
+}
+
 /** Ordner/Dateien für die Baum-Vorschau filtern (Wochenaufgaben, Grafiken, nummerierte WA). */
 export function filterVisibleFolderChildren(items: WochenaufgabenFsNode[] | undefined): WochenaufgabenFsNode[] {
   return (Array.isArray(items) ? items : [])
@@ -81,10 +85,6 @@ export function filterVisibleFolderChildren(items: WochenaufgabenFsNode[] | unde
       }
       return item;
     });
-}
-
-export function isNumberedWochenaufgabeName(name: string): boolean {
-  return /^\d+$/.test((name || '').trim());
 }
 
 export function isNumberedWochenaufgabePath(path: string): boolean {

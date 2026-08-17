@@ -45,7 +45,7 @@ import MaterialShareVersionControl from './MaterialShareVersionControl';
 import KACorrectionMode from './KACorrectionMode';
 import { DEFAULT_PROFILE_COLOR } from '../lib/profileColor';
 import TeacherSettingsMenu from './teacher-profile/TeacherSettingsMenu';
-import TeacherQuickNotes from './TeacherQuickNotes';
+import { OPEN_TEACHER_NOTES_EVENT } from './TeacherQuickNotes';
 import TeacherProfileDialog from './teacher-profile/TeacherProfileDialog';
 import TeacherScheduleDialog from './teacher-schedule/TeacherScheduleDialog';
 import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
@@ -15272,7 +15272,34 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
                 />
               </Box>
               <Box display="flex" gap={0.5} alignItems="center">
-                <TeacherQuickNotes userId={userId} />
+                <IconButton
+                  onClick={() => window.dispatchEvent(new Event(OPEN_TEACHER_NOTES_EVENT))}
+                  sx={{
+                    p: 0.5,
+                    minWidth: 32,
+                    width: 32,
+                    height: 32,
+                    color: '#f9a825',
+                    bgcolor: '#9e9e9e',
+                    borderRadius: 1.4,
+                    '&:hover': { bgcolor: '#757575' },
+                  }}
+                  title="Notizen (Taste N)"
+                  aria-label="Notizen"
+                >
+                  <Typography
+                    component="span"
+                    sx={{
+                      fontSize: '1.05rem',
+                      fontWeight: 900,
+                      lineHeight: 1,
+                      color: '#fbc02d',
+                      textShadow: '0 1px 0 rgba(0,0,0,0.25)',
+                    }}
+                  >
+                    N
+                  </Typography>
+                </IconButton>
                 <IconButton
                   onClick={() => setShowTeacherMessageBox(true)}
                   sx={{

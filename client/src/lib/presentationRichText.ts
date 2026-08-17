@@ -328,6 +328,7 @@ export function replaceArrowShortcutsNearCursor(editor: HTMLElement | null): boo
 
 /**
  * `*` / `-` / `1.` + Leertaste → Aufzählung / nummerierte Liste.
+ * Appweit auch über GlobalMarkdownListShortcut; hier für Folien-Editoren.
  * Nur der aktuelle Block/die aktuelle Zeile — Cursor bleibt im neuen Listenpunkt.
  */
 export function tryMarkdownListShortcut(editor: HTMLElement | null): boolean {
@@ -338,41 +339,69 @@ export function tryMarkdownListShortcut(editor: HTMLElement | null): boolean {
   const range = sel.getRangeAt(0);
   if (!editor.contains(range.startContainer)) return false;
 
-  const marker = readListMarkerAtCaret(range, editor);
-  if (!marker) return false;
+  const parsed = parseListMarkerBeforeCaret(range, editor);
+  if (!parsed) return false;
 
   clearSavedSelection();
+  editor.focus({ preventScroll: true });
 
-  const list = document.createElement(marker.ordered ? 'ol' : 'ul');
-  const li = document.createElement('li');
-  li.appendChild(document.createElement('br'));
-  list.appendChild(li);
+  // Marker entfernen, dann Browser-Liste (zuverlässiger als manuelles <ul>)
+  const delStart = parsed.deleteRange.startContainer;
+  const delOffset = parsed.deleteRange.startOffset;
+  parsed.deleteRange.deleteContents();
+  sel.removeAllRanges();
+  try {
+    const caret = document.createRange();
+    if (delStart.isConnected) {
+      const max =
+        delStart.nodeType === Node.TEXT_NODE
+          ? (delStart.textContent || '').length
+          : delStart.childNodes.length;
+      caret.setStart(delStart, Math.min(delOffset, max));
+    } else if (parsed.block?.isConnected) {
+      caret.selectNodeContents(parsed.block);
+    } else {
+      caret.selectNodeContents(editor);
+    }
+    caret.collapse(true);
+    sel.addRange(caret);
+  } catch {
+    const caret = document.createRange();
+    caret.selectNodeContents(editor);
+    caret.collapse(true);
+    sel.addRange(caret);
+  }
 
-  if (marker.block) {
-    marker.block.replaceWith(list);
-  } else if (marker.textNode) {
-    // Text direkt im Editor / in Spans: Knoten durch Liste ersetzen
-    const parent = marker.textNode.parentNode;
-    if (!parent) return false;
-    parent.replaceChild(list, marker.textNode);
-  } else {
-    return false;
+  const ok = document.execCommand(
+    parsed.ordered ? 'insertOrderedList' : 'insertUnorderedList',
+  );
+  if (!ok) {
+    // Fallback: manuelles Ersetzen des Blocks
+    const list = document.createElement(parsed.ordered ? 'ol' : 'ul');
+    const li = document.createElement('li');
+    li.appendChild(document.createElement('br'));
+    list.appendChild(li);
+    if (parsed.block && parsed.block !== editor) {
+      parsed.block.replaceWith(list);
+    } else {
+      const empty = editor.childNodes.length === 0 || editor.textContent === '';
+      if (empty) {
+        editor.innerHTML = '';
+        editor.appendChild(list);
+      } else {
+        return false;
+      }
+    }
+    placeCaretIn(li, sel);
   }
 
   normalizeListsInPlace(editor);
-
-  const targetLi =
-    (list.isConnected ? list.querySelector('li') : null) ||
-    editor.querySelector(`${marker.ordered ? 'ol' : 'ul'} > li`);
-  if (targetLi) {
-    placeCaretIn(targetLi, sel);
-  }
   editor.focus({ preventScroll: true });
   return true;
 }
 
 /**
- * Leertaste-Handler: `*` / `-` / `1.` → Liste.
+ * Leertaste-Handler: `*` / `-` / `1.` → Liste (appweite Regel).
  * @returns true wenn umgewandelt (Event wurde preventDefault).
  */
 export function handlePresentationListShortcutKey(
@@ -393,45 +422,101 @@ export function handlePresentationListShortcutKey(
   return true;
 }
 
+/** Alias — gleiche Regel in der gesamten App. */
+export const handleMarkdownListShortcutKey = handlePresentationListShortcutKey;
+
 function normalizeMarkerText(s: string): string {
   return s.replace(/[\u00a0\u200B\uFEFF]/g, ' ').trim();
 }
 
-type ListMarkerHit = {
+type ParsedListMarker = {
   ordered: boolean;
   block: HTMLElement | null;
-  textNode: Text | null;
+  /** Range, die den Marker (ohne trailing Space) abdeckt — zum Löschen. */
+  deleteRange: Range;
 };
 
-/** Erkennt `*` / `-` / `1.` am Cursor — Block oder reiner Textknoten. */
-function readListMarkerAtCaret(range: Range, editor: HTMLElement): ListMarkerHit | null {
+/**
+ * Erkennt `*` / `-` / `1.` unmittelbar vor dem Cursor (Zeilenanfang).
+ * Leertaste ist noch nicht eingefügt (keydown).
+ */
+function parseListMarkerBeforeCaret(range: Range, editor: HTMLElement): ParsedListMarker | null {
   const block = getBlockForListShortcut(range.startContainer, editor);
-  if (block && block !== editor) {
-    const full = normalizeMarkerText(block.textContent || '');
-    // Genau Marker (Leertaste folgt noch) oder Marker + Leerzeichen (Rest leer)
-    if (/^([*•\-])$/.test(full) || /^([*•\-])\s*$/.test(full)) {
-      return { ordered: false, block, textNode: null };
-    }
-    if (/^(\d+)[.)]$/.test(full) || /^(\d+)[.)]\s*$/.test(full)) {
-      return { ordered: true, block, textNode: null };
-    }
+  const scope = block && block !== editor ? block : editor;
+
+  const pre = document.createRange();
+  try {
+    pre.selectNodeContents(scope);
+    pre.setEnd(range.startContainer, range.startOffset);
+  } catch {
     return null;
   }
 
-  // Fallback: Textknoten (z. B. ohne umschließendes <p>)
+  const rawBefore = pre.toString().replace(/[\u00a0\u200B\uFEFF]/g, ' ');
+  // Chrome hängt oft `\n` wegen <br> an — leere letzte Zeile ignorieren
+  const lines = rawBefore.split(/\r?\n/);
+  while (lines.length > 1 && normalizeMarkerText(lines[lines.length - 1] || '') === '') {
+    lines.pop();
+  }
+  const lineRaw = lines.pop() ?? '';
+  const line = lineRaw.replace(/[ \t]+$/g, '');
+  const trimmed = normalizeMarkerText(line);
+
+  let ordered: boolean | null = null;
+  let markerLen = 0;
+  if (/^([*•\-])$/.test(trimmed)) {
+    ordered = false;
+    markerLen = 1;
+  } else {
+    const m = trimmed.match(/^(\d+)[.)]$/);
+    if (m) {
+      ordered = true;
+      markerLen = m[0].length;
+    }
+  }
+  if (ordered === null || markerLen <= 0) return null;
+
+  const deleteRange = document.createRange();
   const node = range.startContainer;
-  if (node.nodeType !== Node.TEXT_NODE) return null;
-  const text = node.textContent || '';
-  const before = normalizeMarkerText(text.slice(0, range.startOffset));
-  const after = normalizeMarkerText(text.slice(range.startOffset));
-  if (after) return null;
-  if (/^([*•\-])$/.test(before) || /^([*•\-])\s*$/.test(before)) {
-    return { ordered: false, block: null, textNode: node as Text };
+  if (node.nodeType === Node.TEXT_NODE) {
+    const text = node.textContent || '';
+    const offset = range.startOffset;
+    let end = offset;
+    while (end > 0 && /[ \t]/.test(text[end - 1]!)) end -= 1;
+    const start = end - markerLen;
+    if (start < 0) return null;
+    const slice = text.slice(start, end);
+    if (normalizeMarkerText(slice) !== trimmed) return null;
+    deleteRange.setStart(node, start);
+    deleteRange.setEnd(node, offset);
+  } else {
+    const full = normalizeMarkerText(scope.textContent || '');
+    const onlyMarker = full === trimmed || new RegExp(
+      `^${trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`,
+    ).test(full);
+    if (onlyMarker) {
+      deleteRange.selectNodeContents(scope);
+    } else {
+      const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
+      let lastText: Text | null = null;
+      let n: Node | null;
+      while ((n = walker.nextNode())) lastText = n as Text;
+      if (!lastText) return null;
+      const t = lastText.textContent || '';
+      let end = t.length;
+      while (end > 0 && /[ \t]/.test(t[end - 1]!)) end -= 1;
+      const start = end - markerLen;
+      if (start < 0) return null;
+      deleteRange.setStart(lastText, start);
+      deleteRange.setEnd(lastText, end);
+    }
   }
-  if (/^(\d+)[.)]$/.test(before) || /^(\d+)[.)]\s*$/.test(before)) {
-    return { ordered: true, block: null, textNode: node as Text };
-  }
-  return null;
+
+  return {
+    ordered,
+    block: block && block !== editor ? block : null,
+    deleteRange,
+  };
 }
 
 function getBlockForListShortcut(node: Node, root: HTMLElement): HTMLElement | null {
