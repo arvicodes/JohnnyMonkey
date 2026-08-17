@@ -1,14 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
-  IconButton,
   Popover,
   Slider,
   Tooltip,
   Typography,
 } from '@mui/material';
 import {
-  ArrowDropDown as ArrowDropDownIcon,
+  PlayArrow as PlayArrowIcon,
   VolumeUp as VolumeUpIcon,
 } from '@mui/icons-material';
 import {
@@ -26,7 +25,7 @@ import {
   type PresentationSoundSettings,
 } from '../../lib/presentationSound';
 
-export const PRESENTATION_SOUND_MENU_VERSION = 4;
+export const PRESENTATION_SOUND_MENU_VERSION = 5;
 
 export type PresentationSoundVariant = 'dashboard' | 'editor' | 'tablet' | 'laptop';
 
@@ -81,12 +80,12 @@ function usePresentationSoundSettings(): [
   return [settings, update, refresh];
 }
 
-function combinedButtonSx(variant: PresentationSoundVariant) {
+function shellSx(variant: PresentationSoundVariant) {
   const base = {
+    position: 'relative' as const,
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 0,
     flexShrink: 0,
     border: 'none',
     cursor: 'pointer',
@@ -95,56 +94,55 @@ function combinedButtonSx(variant: PresentationSoundVariant) {
   if (variant === 'tablet') {
     return {
       ...base,
-      height: 24,
-      px: 0.5,
+      width: 26,
+      height: 26,
       borderRadius: 1.25,
-      color: 'rgba(255,255,255,0.88)',
-      bgcolor: 'rgba(255,255,255,0.04)',
-      border: '1px solid rgba(255,255,255,0.12)',
-      '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' },
-      icon: 15,
-      drop: 14,
+      color: 'rgba(255,255,255,0.75)',
+      bgcolor: 'rgba(255,255,255,0.06)',
+      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.14)',
+      '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' },
+      bgIcon: 13,
+      playSize: 20,
     };
   }
   if (variant === 'laptop') {
     return {
       ...base,
+      width: 28,
       height: 28,
-      px: 0.5,
       borderRadius: 1,
-      color: 'text.secondary',
+      color: '#78909c',
       bgcolor: '#fff',
-      border: '1px solid rgba(0,0,0,0.1)',
-      '&:hover': { bgcolor: 'rgba(0,0,0,0.06)' },
-      icon: 18,
-      drop: 16,
+      boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)',
+      '&:hover': { bgcolor: '#f5f5f5' },
+      bgIcon: 14,
+      playSize: 22,
     };
   }
   if (variant === 'editor') {
     return {
       ...base,
+      width: 28,
       height: 28,
-      px: 0.35,
       borderRadius: '7px',
-      color: '#546e7a',
+      color: '#90a4ae',
       bgcolor: '#fff',
-      border: '1px solid #cfd8dc',
-      boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-      '&:hover': { bgcolor: 'rgba(67,160,71,0.12)', color: '#2e7d32' },
-      icon: 17,
-      drop: 16,
+      boxShadow: 'inset 0 0 0 1px #cfd8dc',
+      '&:hover': { bgcolor: 'rgba(67,160,71,0.08)', color: '#2e7d32' },
+      bgIcon: 14,
+      playSize: 22,
     };
   }
   return {
     ...base,
-    height: 32,
-    px: 0.45,
+    width: 30,
+    height: 30,
     borderRadius: 1.4,
-    color: '#fff',
+    color: 'rgba(255,255,255,0.55)',
     bgcolor: '#607d8b',
     '&:hover': { bgcolor: '#546e7a' },
-    icon: 17,
-    drop: 15,
+    bgIcon: 15,
+    playSize: 24,
   };
 }
 
@@ -153,8 +151,8 @@ const pillSx = (active: boolean, favorite?: boolean) => ({
   bgcolor: active ? '#546e7a' : favorite ? '#fffde7' : '#fff',
   color: active ? '#fff' : favorite ? '#e65100' : '#37474f',
   borderRadius: 0.75,
-  px: 0.6,
-  py: 0.25,
+  px: 0.55,
+  py: 0.2,
   fontSize: '0.62rem',
   fontWeight: active ? 700 : 500,
   lineHeight: 1.2,
@@ -174,7 +172,6 @@ type SoundPillProps = {
   onToggleFavorite: () => void;
 };
 
-/** Ein Button pro Klang — Klick = wählen/abspielen, Rechtsklick = Favorit. */
 function SoundPill({ preset, selected, favorite, onSelect, onToggleFavorite }: SoundPillProps) {
   const text = `${favorite ? '★ ' : ''}${chipLabel(preset.id, preset.label)}`;
   return (
@@ -194,19 +191,89 @@ function SoundPill({ preset, selected, favorite, onSelect, onToggleFavorite }: S
   );
 }
 
+/** Kompakter Button: Lautsprecher dahinter, kleines ▶ darüber. Rand-Klick = Menü, ▶ = abspielen. */
+function SoundCompactButton({
+  variant,
+  label,
+  onOpenMenu,
+}: {
+  variant: PresentationSoundVariant;
+  label: string;
+  onOpenMenu: (el: HTMLElement) => void;
+}) {
+  const sx = shellSx(variant);
+  const isDashboard = variant === 'dashboard';
+
+  return (
+    <Tooltip title={`▶ = abspielen (${label}) · Button = wählen · Taste S`}>
+      <Box
+        component="button"
+        onClick={(e) => onOpenMenu(e.currentTarget)}
+        aria-label="Sound einstellen"
+        sx={sx}
+      >
+        <VolumeUpIcon
+          sx={{
+            fontSize: sx.bgIcon,
+            opacity: 0.4,
+            pointerEvents: 'none',
+          }}
+        />
+        <Box
+          component="span"
+          onClick={(e) => {
+            e.stopPropagation();
+            playPresentationSound();
+          }}
+          aria-label="Sound abspielen"
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            m: 'auto',
+            width: sx.playSize,
+            height: sx.playSize,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: isDashboard ? '#fff' : '#37474f',
+            borderRadius: '50%',
+            bgcolor: isDashboard ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.92)',
+            boxShadow: isDashboard ? 'none' : '0 0 0 1px rgba(0,0,0,0.08)',
+            '&:hover': {
+              bgcolor: isDashboard ? 'rgba(255,255,255,0.32)' : '#fff',
+              transform: 'scale(1.06)',
+            },
+          }}
+        >
+          <PlayArrowIcon sx={{ fontSize: sx.playSize * 0.72, ml: 0.1 }} />
+        </Box>
+      </Box>
+    </Tooltip>
+  );
+}
+
 export function PresentationSoundPlayButton({ variant = 'editor', title }: PlayProps) {
   const [settings] = usePresentationSoundSettings();
-  const sx = combinedButtonSx(variant);
+  const sx = shellSx(variant);
   const label = presentationSoundLabel(settings.soundId);
+  const isDashboard = variant === 'dashboard';
   return (
-    <Tooltip title={title || `Sound (${label}) — Taste S`}>
+    <Tooltip title={title || `Sound abspielen (${label}) — Taste S`}>
       <Box
         component="button"
         onClick={() => playPresentationSound()}
         aria-label="Sound abspielen"
         sx={sx}
       >
-        <VolumeUpIcon sx={{ fontSize: sx.icon }} />
+        <VolumeUpIcon sx={{ fontSize: sx.bgIcon, opacity: 0.4, pointerEvents: 'none' }} />
+        <PlayArrowIcon
+          sx={{
+            position: 'absolute',
+            fontSize: sx.playSize * 0.72,
+            color: isDashboard ? '#fff' : '#37474f',
+            ml: 0.1,
+          }}
+        />
       </Box>
     </Tooltip>
   );
@@ -216,11 +283,9 @@ type SplitProps = {
   variant?: PresentationSoundVariant;
 };
 
-/** Ein Toolbar-Button — öffnet kompaktes Menü mit allen Klängen nebeneinander. */
 export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitProps) {
   const [settings, updateSettings, refreshSettings] = usePresentationSoundSettings();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
-  const btnSx = combinedButtonSx(variant);
   const label = presentationSoundLabel(settings.soundId);
   const favoriteSet = useMemo(() => new Set(settings.favoriteIds), [settings.favoriteIds]);
 
@@ -247,19 +312,11 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
 
   return (
     <>
-      <Tooltip title={`Sound einstellen (${label}) · Taste S = abspielen`}>
-        <Box
-          component="button"
-          onClick={(e) => setAnchor(e.currentTarget)}
-          aria-label="Sound einstellen"
-          aria-haspopup="true"
-          aria-expanded={Boolean(anchor)}
-          sx={btnSx}
-        >
-          <VolumeUpIcon sx={{ fontSize: btnSx.icon }} />
-          <ArrowDropDownIcon sx={{ fontSize: btnSx.drop, ml: -0.15, opacity: 0.85 }} />
-        </Box>
-      </Tooltip>
+      <SoundCompactButton
+        variant={variant}
+        label={label}
+        onOpenMenu={(el) => setAnchor(el)}
+      />
 
       <Popover
         open={Boolean(anchor)}
@@ -270,18 +327,17 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
         PaperProps={{
           sx: {
             mt: 0.5,
-            width: 300,
+            width: 292,
             maxWidth: '92vw',
             borderRadius: 1.25,
             boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
           },
         }}
       >
-        {/* Zeile 1: Lautstärke + Dauer — alles nebeneinander */}
         <Box
           sx={{
             px: 0.85,
-            py: 0.6,
+            py: 0.55,
             display: 'flex',
             alignItems: 'center',
             gap: 0.4,
@@ -295,7 +351,14 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
             min={0}
             max={100}
             onChange={(_, v) => updateSettings({ volume: (v as number) / 100 })}
-            sx={{ flex: '1 1 80px', color: '#78909c', py: 0, height: 18, minWidth: 70 }}
+            sx={{
+              flex: '1 1 72px',
+              color: '#78909c',
+              py: 0,
+              height: 16,
+              minWidth: 64,
+              '& .MuiSlider-thumb': { width: 10, height: 10 },
+            }}
           />
           {PRESENTATION_SOUND_DURATIONS.map((d) => {
             const active = settings.duration === d.id;
@@ -314,56 +377,29 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
               </Box>
             );
           })}
-          <Box
-            component="button"
-            onClick={() => playPresentationSound()}
-            sx={{ ...pillSx(false), color: '#546e7a', fontWeight: 700 }}
-          >
-            S ▶
-          </Box>
         </Box>
 
-        {/* Alle Klänge nebeneinander — ein Button pro Klang, ★ = Favorit */}
-        <Box
-          sx={{
-            px: 0.85,
-            py: 0.65,
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 0.35,
-            alignItems: 'center',
-            maxHeight: 220,
-            overflowY: 'auto',
-          }}
-        >
-          {PRESENTATION_SOUND_CATEGORIES.map((cat, idx) => (
-            <React.Fragment key={cat.id}>
-              {idx > 0 && (
-                <Box
-                  sx={{
-                    width: 1,
-                    height: 14,
-                    bgcolor: '#cfd8dc',
-                    alignSelf: 'center',
-                    flexShrink: 0,
-                  }}
-                />
-              )}
+        {PRESENTATION_SOUND_CATEGORIES.map((cat) => (
+          <Box key={cat.id} sx={{ px: 0.85, pt: 0.5, pb: cat.id === 'quirky' ? 0.65 : 0.15 }}>
+            <Typography
+              sx={{
+                fontSize: '0.58rem',
+                fontWeight: 700,
+                color: '#90a4ae',
+                mb: 0.35,
+                letterSpacing: 0.02,
+              }}
+            >
+              {cat.label}
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.35 }}>
               {presetsForCategory(cat.id).map(renderPill)}
-            </React.Fragment>
-          ))}
-        </Box>
+            </Box>
+          </Box>
+        ))}
 
-        <Typography
-          sx={{
-            px: 0.85,
-            pb: 0.55,
-            fontSize: '0.58rem',
-            color: '#90a4ae',
-            textAlign: 'center',
-          }}
-        >
-          Rechtsklick auf Klang = Favorit · {label}
+        <Typography sx={{ px: 0.85, pb: 0.5, fontSize: '0.56rem', color: '#b0bec5', textAlign: 'center' }}>
+          ▶ Mitte = abspielen · Rand = Menü · S · Rechtsklick = ★
         </Typography>
       </Popover>
     </>
