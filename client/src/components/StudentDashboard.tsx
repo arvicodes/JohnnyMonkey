@@ -116,7 +116,7 @@ import {
   resolveWochenaufgabenDisplayBlock,
   stripWochenaufgabenFolderFromTree,
 } from '../lib/wochenaufgabenFolder';
-import { hydrateWochenaufgabenFolderContents } from '../lib/wochenaufgabenHydrate';
+import { hydrateWochenaufgabenFolderContents, mergeWochenaufgabenContentsPatch } from '../lib/wochenaufgabenHydrate';
 import WochenaufgabenFolderRow from './wochenaufgaben/WochenaufgabenFolderRow';
 const COLLAB_BEACON_LS_KEY = 'jm_collab_fc_beacon_seen_v1';
 function loadCollabBeaconSeen(): Record<string, string> {
@@ -3197,7 +3197,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         void (async () => {
           const { patch } = await hydrateWochenaufgabenFolderContents(groupId, folderPath, items);
           if (Object.keys(patch).length === 0) return;
-          setAssignedFolderContents((prev) => ({ ...prev, ...patch }));
+          setAssignedFolderContents((prev) => mergeWochenaufgabenContentsPatch(prev, patch));
         })();
       }
     } catch (error) {

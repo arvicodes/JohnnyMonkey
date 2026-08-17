@@ -97,7 +97,7 @@ import {
   resolveWochenaufgabenDisplayBlock,
   stripWochenaufgabenFolderFromTree,
 } from '../lib/wochenaufgabenFolder';
-import { hydrateWochenaufgabenFolderContents } from '../lib/wochenaufgabenHydrate';
+import { hydrateWochenaufgabenFolderContents, mergeWochenaufgabenContentsPatch } from '../lib/wochenaufgabenHydrate';
 import { ensureWochenaufgabeDeck } from '../lib/wochenaufgabenPresentation';
 import WochenaufgabenFolderRow from './wochenaufgaben/WochenaufgabenFolderRow';
 import {
@@ -8465,7 +8465,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   ) => {
     const { patch } = await hydrateWochenaufgabenFolderContents(groupId, folderPath, items);
     if (Object.keys(patch).length === 0) return;
-    setAssignedFolderContents((prev) => ({ ...prev, ...patch }));
+    setAssignedFolderContents((prev) => mergeWochenaufgabenContentsPatch(prev, patch));
   };
 
   // Neue Funktion zum Umschalten der Vorschau zugeordneter Ordner
