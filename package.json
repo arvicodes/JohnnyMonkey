@@ -7,6 +7,7 @@
     "dev": "concurrently -n API,WEB -c blue,green \"npm run dev --prefix server\" \"npm start --prefix client\"",
     "fix:local-db": "bash scripts/fix-local-db.sh",
     "sync:sounds": "git fetch origin main && git checkout origin/main -- client/src/lib/presentationSound.ts client/src/components/presentation/PresentationSoundControls.tsx client/src/App.tsx client/src/pages/PresentationEditorPage.tsx client/src/components/presentation/PresentationSlideToolsBar.tsx client/src/components/presentation/PresentationTabletToolbar.tsx client/src/components/presentation/PresentationLaptopPlayer.tsx",
+    "fix:compile": "bash scripts/fix-merge-conflicts.sh origin/main",
     "check:local": "node scripts/check-local.js",
     "backup": "bash scripts/backup-manager.sh create",
     "backup:list": "bash scripts/backup-manager.sh list",
