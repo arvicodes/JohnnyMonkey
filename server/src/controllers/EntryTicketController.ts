@@ -242,13 +242,10 @@ async function upsertArchiveForGroup(
     completedAt,
     materialLessonPath: normalizeMaterialLessonPath(payload.materialLessonPath) ?? null,
   };
-  const lessonKey = entry.materialLessonPath || '';
-  let archives = store.archives.filter((a) => {
-    if (!lessonKey) return true;
-    return !sameLessonPath(a.materialLessonPath, lessonKey);
-  });
-  archives.unshift(entry);
-  archives = archives.slice(0, 40);
+  // Append-only Historie: jedes „Erledigt“ behalten (1. Set, 2. Set, …).
+  // getCompleted nutzt weiterhin den neuesten Treffer je Stundenpfad (.find auf unshift-Liste).
+  let archives = [entry, ...store.archives];
+  archives = archives.slice(0, 200);
   const content = JSON.stringify({ archives });
   await prisma.teacherLessonInstruction.upsert({
     where: { teacherId_lessonPath: { teacherId, lessonPath } },
@@ -836,6 +833,7 @@ export class EntryTicketController {
   /**
    * Abgeschlossenes Entry Ticket einer Stunde (für SuS-Materialien inkl. Lösungen).
    * Query: lessonPath, groupId
+   * Bei mehreren Durchläufen derselben Stunde: neuestes Archiv.
    */
   static async getCompleted(req: Request, res: Response) {
     try {
@@ -878,6 +876,7 @@ export class EntryTicketController {
         select: { content: true },
       });
       const store = parseArchiveStore(row?.content);
+      // archives: neueste zuerst → erster Treffer = letzter Durchlauf dieser Stunde
       const hit =
         store.archives.find((a) => sameLessonPath(a.materialLessonPath, lessonPath)) || null;
 
@@ -915,6 +914,115 @@ export class EntryTicketController {
     } catch (error) {
       console.error('EntryTicket getCompleted error:', error);
       return res.status(500).json({ error: 'Fehler beim Laden' });
+    }
+  }
+
+  /**
+   * Lehrer-Historie: erledigte Entry-Ticket-Durchläufe.
+   * Query optional: groupId, setId (Fragenset) — Nummerierung jeweils 1 = zuerst.
+   */
+  static async getHistory(req: Request, res: Response) {
+    try {
+      res.set('Cache-Control', 'private, no-store, must-revalidate');
+      const user = await getUserByLoginCode(req);
+      if (!user) return res.status(401).json({ error: 'Nicht angemeldet' });
+      if (user.role !== 'TEACHER') {
+        return res.status(403).json({ error: 'Nur Lehrkräfte' });
+      }
+
+      const groupIdFilter =
+        typeof req.query.groupId === 'string' ? req.query.groupId.trim() : '';
+      const setIdFilter =
+        typeof req.query.setId === 'string' ? req.query.setId.trim() : '';
+
+      const groups = await prisma.learningGroup.findMany({
+        where: {
+          teacherId: user.id,
+          ...(groupIdFilter ? { id: groupIdFilter } : {}),
+        },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      });
+
+      type HistoryRaw = {
+        learningGroupId: string;
+        groupName: string;
+        startedAt: string;
+        completedAt: string;
+        grade?: string;
+        customSetId: string | null;
+        setName: string;
+        materialLessonPath?: string | null;
+        tasks: EntryTicketTaskPayload[];
+        sortMs: number;
+      };
+
+      const raw: HistoryRaw[] = [];
+      for (const g of groups) {
+        const row = await prisma.teacherLessonInstruction.findUnique({
+          where: {
+            teacherId_lessonPath: {
+              teacherId: user.id,
+              lessonPath: entryTicketDonePathForGroup(g.id),
+            },
+          },
+          select: { content: true },
+        });
+        const store = parseArchiveStore(row?.content);
+        for (const a of store.archives) {
+          if (!a.tasks?.length) continue;
+          const completedAt = a.completedAt || a.startedAt;
+          const sortMs = new Date(completedAt).getTime();
+          const customSetId =
+            (a.customSet?.id && a.customSet.id.trim()) ||
+            (typeof a.grade === 'string' && a.grade.startsWith('c_') ? a.grade : null);
+          if (setIdFilter && customSetId !== setIdFilter && a.grade !== setIdFilter) {
+            continue;
+          }
+          raw.push({
+            learningGroupId: g.id,
+            groupName: g.name,
+            startedAt: a.startedAt,
+            completedAt,
+            grade: a.grade,
+            customSetId,
+            setName:
+              (a.customSet?.name && a.customSet.name.trim()) ||
+              (typeof a.grade === 'string' && a.grade.startsWith('c_')
+                ? 'Fragenset'
+                : a.grade
+                  ? `Klasse ${a.grade}`
+                  : 'Entry Ticket'),
+            materialLessonPath: a.materialLessonPath ?? null,
+            tasks: a.tasks,
+            sortMs: Number.isFinite(sortMs) ? sortMs : 0,
+          });
+        }
+      }
+
+      raw.sort((a, b) => a.sortMs - b.sortMs || a.startedAt.localeCompare(b.startedAt));
+
+      const items = raw.map((row, i) => ({
+        index: i + 1,
+        learningGroupId: row.learningGroupId,
+        groupName: row.groupName,
+        startedAt: row.startedAt,
+        completedAt: row.completedAt,
+        grade: row.grade ?? null,
+        customSetId: row.customSetId,
+        setName: row.setName,
+        materialLessonPath: row.materialLessonPath,
+        tasks: row.tasks,
+      }));
+
+      return res.json({
+        items,
+        learningGroupId: groupIdFilter || null,
+        setId: setIdFilter || null,
+      });
+    } catch (error) {
+      console.error('EntryTicket getHistory error:', error);
+      return res.status(500).json({ error: 'Fehler beim Laden der Historie' });
     }
   }
 

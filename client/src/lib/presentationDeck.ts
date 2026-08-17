@@ -57,7 +57,9 @@ export type SlideLayout =
   | 'image-right'
   | 'image-left'
   | 'quote'
-  | 'blank';
+  | 'blank'
+  /** Freie Fläche ohne Logo/Fußzeile/Akzentlinie. */
+  | 'blank-full';
 
 export type BodyStyle = 'plain' | 'bullets' | 'numbered';
 

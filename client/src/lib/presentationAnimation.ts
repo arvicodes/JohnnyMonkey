@@ -228,6 +228,7 @@ export function textFieldsInRevealOrder(
       fields = ['bodyHtml', 'subtitleHtml'];
       break;
     case 'blank':
+    case 'blank-full':
       fields = ['bodyHtml'];
       break;
     default:

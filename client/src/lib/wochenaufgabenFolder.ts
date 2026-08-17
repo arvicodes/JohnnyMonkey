@@ -87,6 +87,21 @@ export function isNumberedWochenaufgabeName(name: string): boolean {
   return /^\d+$/.test((name || '').trim());
 }
 
+/** Technische Ordner (Grafiken, Backups) — nicht im Dashboard anzeigen. */
+export function isPresentationInternalFolderName(name: string): boolean {
+  const n = (name || '').trim();
+  if (!n || n.startsWith('.')) return true;
+  return normalizeFolderLabel(n) === 'grafiken';
+}
+
+export function filterVisibleFolderChildren(children: WochenaufgabenFsNode[] | undefined): WochenaufgabenFsNode[] {
+  return (Array.isArray(children) ? children : []).filter((item) => {
+    if (item?.type === 'directory' && isPresentationInternalFolderName(String(item.name || ''))) return false;
+    if (item?.type === 'directory' && isNumberedWochenaufgabeName(String(item.name || ''))) return false;
+    return true;
+  });
+}
+
 export function isNumberedWochenaufgabePath(path: string): boolean {
   const parts = normalizePath(path).split('/').filter(Boolean);
   const idx = parts.findIndex((seg) => isWochenaufgabenFolderName(seg));

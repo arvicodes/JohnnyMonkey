@@ -23,6 +23,7 @@ import {
   ArrowBack as ArrowBackIcon,
   Check as CheckIcon,
   Close as CloseIcon,
+  History as HistoryIcon,
   Pause as PauseIcon,
   PlayArrow as PlayArrowIcon,
   Print as PrintIcon,
@@ -64,8 +65,10 @@ import {
   sortLessonsChronologically,
 } from '../lib/entryTicketCustomSets';
 import { discoverLessonsForReiheName } from '../lib/entryTicketReiheLessons';
+import { resolveEntryTicketBandForLessonPath } from '../lib/entryTicketGrade';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
 import { EntryTicketFragensetEditor } from '../components/entry-ticket/EntryTicketFragensetEditor';
+import { EntryTicketHistoryDialog } from '../components/entry-ticket/EntryTicketHistoryDialog';
 import { openEntryTicketFlashcardPrint } from '../lib/entryTicketFlashcardPrint';
 import {
   entryTicketHasImage,
@@ -378,6 +381,7 @@ function clampSlideDurationSec(value: number): number {
 
 /** Zufällige Auswahl aus dem klassenspezifischen Fragenset */
 const TARGET_TASK_COUNT = 10;
+const DONE_CELEBRATE_MS = 2000;
 const DISPLAY_BOX_WIDTH = 1320;
 const DISPLAY_BOX_MIN_HEIGHT = 312;
 const OPERATOR_COLOR = '#ef6c00';
@@ -496,6 +500,47 @@ function SortableCustomSetChip({
     >
       {set.name}
     </Button>
+  );
+}
+
+function CustomSetChipRow({
+  set,
+  selected,
+  accent,
+  onSelect,
+  onHistory,
+}: {
+  set: EntryTicketCustomSet;
+  selected: boolean;
+  accent: 'mathe' | 'inf';
+  onSelect: () => void;
+  onHistory: () => void;
+}) {
+  return (
+    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.05 }}>
+      <SortableCustomSetChip set={set} selected={selected} accent={accent} onSelect={onSelect} />
+      <Tooltip title={`Historie: ${set.name}`}>
+        <IconButton
+          size="small"
+          aria-label={`Historie ${set.name}`}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onHistory();
+          }}
+          sx={{
+            width: 22,
+            height: 22,
+            p: 0,
+            color: accent === 'inf' ? '#2e7d32' : '#607d8b',
+            '&:hover': { bgcolor: accent === 'inf' ? 'rgba(46,125,50,0.1)' : 'rgba(69,90,100,0.1)' },
+          }}
+        >
+          <HistoryIcon sx={{ fontSize: 14 }} />
+        </IconButton>
+      </Tooltip>
+    </Box>
   );
 }
 
@@ -1096,7 +1141,25 @@ function parseEntryTicketSearch(search: string): {
   };
 }
 
-/** Gleiche Origin + sichere Rückwege (Stunde oder Präsentations-Editor). */
+const PRESENTATION_RETURN_PLAN_MODES = new Set(['create', 'run', 'background']);
+
+function sanitizePresentationReturnSearch(url: URL, lessonPath: string): string {
+  const safe = new URLSearchParams();
+  safe.set('lessonPath', lessonPath);
+  const gid = url.searchParams.get('groupId');
+  if (gid?.trim()) safe.set('groupId', gid.trim());
+  const planMode = url.searchParams.get('planMode');
+  if (planMode && PRESENTATION_RETURN_PLAN_MODES.has(planMode)) {
+    safe.set('planMode', planMode);
+  }
+  const variant = url.searchParams.get('variant');
+  if (variant === 'original' || variant === 'edited') safe.set('variant', variant);
+  const named = url.searchParams.get('named');
+  if (named?.trim()) safe.set('named', named.trim());
+  return safe.toString();
+}
+
+/** Gleiche Origin + sichere Rückwege (Stunde, Present-Play oder Präsentations-Editor). */
 function parseSafeStundeReturnTo(search: string): string | null {
   const params = new URLSearchParams(search);
   const raw = params.get('returnTo');
@@ -1115,6 +1178,10 @@ function parseSafeStundeReturnTo(search: string): string | null {
         url.searchParams.delete('planMode');
       }
       return `${url.pathname}${url.search}`;
+    }
+
+    if (url.pathname === '/presentation/present') {
+      return `/presentation/present?${sanitizePresentationReturnSearch(url, lp.trim())}`;
     }
 
     if (url.pathname === '/presentation/edit') {
@@ -1512,16 +1579,37 @@ const dedupeEigenQuestions = (list: EntryTicketTask[]): EntryTicketTask[] => {
   });
 };
 
-export default function EntryTicketPage() {
+export type EntryTicketEmbeddedPlay = {
+  lessonPath: string;
+  groupId?: string;
+  onExit: () => void;
+};
+
+function embeddedPlaySearch(play: EntryTicketEmbeddedPlay): string {
+  const qs = new URLSearchParams();
+  const band = resolveEntryTicketBandForLessonPath(play.lessonPath, 7);
+  qs.set('grade', String(band));
+  qs.set('autostart', '1');
+  qs.set('lessonPath', play.lessonPath);
+  if (play.groupId) qs.set('groupId', play.groupId);
+  return `?${qs.toString()}`;
+}
+
+export default function EntryTicketPage({
+  embeddedPlay,
+}: {
+  embeddedPlay?: EntryTicketEmbeddedPlay;
+} = {}) {
   const navigate = useNavigate();
   const location = useLocation();
+  const routeSearch = embeddedPlay ? embeddedPlaySearch(embeddedPlay) : location.search;
   const safeStundeReturnTo = useMemo(
-    () => parseSafeStundeReturnTo(location.search),
-    [location.search],
+    () => (embeddedPlay ? null : parseSafeStundeReturnTo(location.search)),
+    [embeddedPlay, location.search],
   );
   const initialRoute =
-    typeof window !== 'undefined'
-      ? parseEntryTicketSearch(window.location.search || '')
+    typeof window !== 'undefined' || embeddedPlay
+      ? parseEntryTicketSearch(routeSearch || (typeof window !== 'undefined' ? window.location.search : '') || '')
       : {
           grade: 7 as EntryBand,
           customSetId: null as string | null,
@@ -1637,6 +1725,9 @@ export default function EntryTicketPage() {
   const [teacherNotes, setTeacherNotes] = useState('');
   const [sessionDone, setSessionDone] = useState(() => Boolean(initialRoute.review));
   const [completeBusy, setCompleteBusy] = useState(false);
+  const [historyTarget, setHistoryTarget] = useState<{ id: string; name: string } | null>(null);
+  const [doneCelebrate, setDoneCelebrate] = useState(false);
+  const doneCelebrateTimerRef = useRef<number | null>(null);
   const [studentReviewMode, setStudentReviewMode] = useState(() => Boolean(initialRoute.review));
   const [studentReviewReady, setStudentReviewReady] = useState(false);
   const [studentReviewError, setStudentReviewError] = useState<string | null>(null);
@@ -1674,6 +1765,7 @@ export default function EntryTicketPage() {
 
   /** Klassenstufe / eigenes Set aus URL; neuer Zufallssatz bei jedem Aufruf (inkl. &r=… vom Klick auf das Dashboard-Icon). */
   useLayoutEffect(() => {
+    if (embeddedPlay) return;
     const {
       grade: g,
       customSetId: cId,
@@ -1736,7 +1828,7 @@ export default function EntryTicketPage() {
     } else {
       skipDuplicateEntrySignalRef.current = false;
     }
-  }, [location.search]);
+  }, [location.search, embeddedPlay]);
 
   const isTeacher = useMemo(() => Boolean(localStorage.getItem('teacherId')), []);
 
@@ -2019,6 +2111,7 @@ export default function EntryTicketPage() {
   }, [isTeacher, isClassModerator, sharedTasksLocked, applyGradeParam]);
 
   useEffect(() => {
+    if (embeddedPlay) return;
     if (!isTeacher) return;
     const { autostart } = parseEntryTicketSearch(location.search);
     if (autostart) return;
@@ -2038,7 +2131,7 @@ export default function EntryTicketPage() {
     return () => {
       cancelled = true;
     };
-  }, [isTeacher, location.search]);
+  }, [embeddedPlay, isTeacher, location.search]);
   const activeTasks = selectedTasks;
   const currentTask = activeTasks[currentIndex] ?? activeTasks[0];
 
@@ -2360,10 +2453,23 @@ export default function EntryTicketPage() {
   /** Gelöschtes Custom-Set (nur Lehrer): zurück auf Klassenband. Moderator behält URL/Server-Grade. */
   useEffect(() => {
     if (!isTeacher) return;
-    if (customSetId && !customSets.some((s) => s.id === customSetId)) {
+    if (!customSetId) return;
+    if (customSets.length === 0) return;
+    if (!customSets.some((s) => s.id === customSetId)) {
       setCustomSetId(null);
     }
   }, [customSetId, customSets, isTeacher]);
+
+  /** Autostart aus der Präsentation: passendes Fragenset zur Stunde wählen, dann Play. */
+  useEffect(() => {
+    if (!autoStartPending) return;
+    if (customSetId) return;
+    if (!entryLessonPath) return;
+    const band = resolveEntryTicketBandForLessonPath(entryLessonPath, grade, customSets);
+    if (!isCustomEntryTicketSetId(band)) return;
+    setCustomSetId(band);
+    setBandChosen(true);
+  }, [autoStartPending, customSetId, customSets, entryLessonPath, grade]);
 
   /** Lehrer: konkrete Karten in das Signal schreiben, damit der Moderator dasselbe Ticket sieht. */
   useEffect(() => {
@@ -2509,6 +2615,7 @@ export default function EntryTicketPage() {
           const next = prevIndex + 1;
           if (next >= activeTasks.length) {
             setSessionDone(true);
+            setShowSolutions(true);
             setIsRunning(false);
             return prevIndex;
           }
@@ -2609,6 +2716,9 @@ export default function EntryTicketPage() {
     }
   };
 
+  const startSessionRef = useRef(startSession);
+  startSessionRef.current = startSession;
+
   const startOrResume = () => {
     if (sessionDone) {
       shownInSessionRef.current = new Set();
@@ -2685,10 +2795,31 @@ export default function EntryTicketPage() {
   }, [openPrintFlashcardsDialog]);
 
   /** Ticket beenden: archivieren + Signal löschen → SuS-Popup zu; Lehrer zurück */
+  const leaveAfterComplete = useCallback(() => {
+    if (embeddedPlay) {
+      embeddedPlay.onExit();
+      return;
+    }
+    if (safeStundeReturnTo) {
+      navigate(safeStundeReturnTo, { replace: true });
+      return;
+    }
+    if (isTeacher && entryTicketGroupId && entryLessonPath) {
+      navigate(presentationLessonBackUrl(entryLessonPath, entryTicketGroupId), { replace: true });
+      return;
+    }
+    if (isTeacher && entryTicketGroupId) {
+      navigate(`/teacher/stunde?groupId=${encodeURIComponent(entryTicketGroupId)}`, { replace: true });
+      return;
+    }
+    navigate('/dashboard', { replace: true });
+  }, [embeddedPlay, entryLessonPath, entryTicketGroupId, isTeacher, navigate, safeStundeReturnTo]);
+
   const markEntryTicketDone = useCallback(async () => {
-    if (completeBusy || studentReviewMode) return;
+    if (completeBusy || studentReviewMode || doneCelebrate) return;
     setCompleteBusy(true);
     try {
+      const activeSet = customSetId ? customSets.find((s) => s.id === customSetId) ?? null : null;
       const res = await apiPost('/api/entry-ticket/complete', {
         ...(entryTicketGroupId ? { learningGroupId: entryTicketGroupId } : {}),
         ...(entryLessonPath ? { materialLessonPath: entryLessonPath } : {}),
@@ -2701,6 +2832,7 @@ export default function EntryTicketPage() {
               })),
             }
           : {}),
+        ...(activeSet ? { customSet: snapshotCustomSetForSignal(activeSet) } : {}),
         grade: customSetId || String(grade),
         taskSeed,
         heroImageIndex: entryHeroImageIndex,
@@ -2709,47 +2841,62 @@ export default function EntryTicketPage() {
         setCompleteBusy(false);
         return;
       }
-      if (safeStundeReturnTo) {
-        navigate(safeStundeReturnTo, { replace: true });
-        return;
+      setDoneCelebrate(true);
+      if (doneCelebrateTimerRef.current != null) {
+        window.clearTimeout(doneCelebrateTimerRef.current);
       }
-      if (isTeacher && entryTicketGroupId && entryLessonPath) {
-        navigate(presentationLessonBackUrl(entryLessonPath, entryTicketGroupId), { replace: true });
-        return;
-      }
-      if (isTeacher && entryTicketGroupId) {
-        navigate(`/teacher/stunde?groupId=${encodeURIComponent(entryTicketGroupId)}`, { replace: true });
-        return;
-      }
-      navigate('/dashboard', { replace: true });
+      doneCelebrateTimerRef.current = window.setTimeout(() => {
+        doneCelebrateTimerRef.current = null;
+        leaveAfterComplete();
+      }, DONE_CELEBRATE_MS);
     } catch {
       setCompleteBusy(false);
     }
   }, [
     completeBusy,
     customSetId,
+    customSets,
+    doneCelebrate,
     entryHeroImageIndex,
     entryLessonPath,
     entryTicketGroupId,
     grade,
-    isTeacher,
-    navigate,
-    safeStundeReturnTo,
+    leaveAfterComplete,
     selectedTasks,
     studentReviewMode,
     taskSeed,
   ]);
 
   useEffect(() => {
+    return () => {
+      if (doneCelebrateTimerRef.current != null) {
+        window.clearTimeout(doneCelebrateTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!autoStartPending || sessionStarted) return;
-    if (selectedTasks.length === 0) return;
     if (!isTeacher && (!moderatorGateChecked || !isClassModerator)) return;
-    startSession();
+
+    if (!customSetId && entryLessonPath) {
+      if (customSets.length === 0) return;
+      const band = resolveEntryTicketBandForLessonPath(entryLessonPath, grade, customSets);
+      if (isCustomEntryTicketSetId(band)) return;
+      setAutoStartPending(false);
+      return;
+    }
+
+    startSessionRef.current();
     setAutoStartPending(false);
   }, [
     autoStartPending,
     sessionStarted,
-    selectedTasks.length,
+    customSetId,
+    customSets,
+    entryLessonPath,
+    grade,
+    poolForBand.length,
     isTeacher,
     moderatorGateChecked,
     isClassModerator,
@@ -2927,6 +3074,10 @@ export default function EntryTicketPage() {
     calculateAutoSolution(prompt);
 
   const handleBack = () => {
+    if (embeddedPlay) {
+      embeddedPlay.onExit();
+      return;
+    }
     // SuS-Review: nur ansehen — X/Zurück führt zurück, nie in die Ticket-Steuerung
     if (studentReviewMode) {
       if (safeStundeReturnTo) {
@@ -2976,6 +3127,7 @@ export default function EntryTicketPage() {
     setCardSlideDir(1);
     if (currentIndex >= activeTasks.length - 1) {
       setSessionDone(true);
+      setShowSolutions(true);
       setIsRunning(false);
       return;
     }
@@ -3552,7 +3704,8 @@ export default function EntryTicketPage() {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        minHeight: embeddedPlay ? '100%' : '100vh',
+        height: embeddedPlay ? '100%' : undefined,
         width: '100%',
         bgcolor: '#f4f6fb',
         py: { xs: 0.5, sm: 0.75 },
@@ -3654,29 +3807,67 @@ export default function EntryTicketPage() {
             </Box>
           </Box>
 
-          <Tooltip title="Schließen">
-            <IconButton
-              onClick={handleBack}
-              aria-label="Schließen"
-              size="small"
-              sx={{
-                p: 0,
-                minWidth: 24,
-                width: 24,
-                height: 24,
-                bgcolor: 'white',
-                border: '1px solid',
-                borderColor: 'divider',
-                flexShrink: 0,
-              }}
-            >
-              <CloseIcon sx={{ fontSize: 14 }} />
-            </IconButton>
-          </Tooltip>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
+            {isTeacher && !studentReviewMode && sessionStarted && customSetId ? (
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<HistoryIcon sx={{ fontSize: 16 }} />}
+                onClick={() => setHistoryTarget({ id: customSetId, name: activeSetLabel })}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  fontSize: '0.72rem',
+                  py: 0.15,
+                  px: 0.85,
+                  minHeight: 26,
+                  borderColor: '#90a4ae',
+                  color: '#455a64',
+                  bgcolor: 'white',
+                  '&:hover': { borderColor: '#607d8b', bgcolor: '#eceff1' },
+                }}
+              >
+                Historie
+              </Button>
+            ) : null}
+            <Tooltip title="Schließen">
+              <IconButton
+                onClick={handleBack}
+                aria-label="Schließen"
+                size="small"
+                sx={{
+                  p: 0,
+                  minWidth: 24,
+                  width: 24,
+                  height: 24,
+                  bgcolor: 'white',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  flexShrink: 0,
+                }}
+              >
+                <CloseIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
         </Box>
 
         <Box sx={{ width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
-            {!sessionStarted && !studentReviewMode ? (
+            {!sessionStarted && !studentReviewMode && autoStartPending ? (
+              <Box
+                sx={{
+                  width: '100%',
+                  minHeight: '52vh',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Typography sx={{ color: '#78909c', fontWeight: 700, fontSize: '0.95rem' }}>
+                  Entry Ticket startet…
+                </Typography>
+              </Box>
+            ) : !sessionStarted && !studentReviewMode ? (
               <Box sx={{ width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
                 <Box
                   sx={{
@@ -3716,12 +3907,13 @@ export default function EntryTicketPage() {
                             </Typography>
                           ) : (
                             infCustomSets.map((set) => (
-                              <SortableCustomSetChip
+                              <CustomSetChipRow
                                 key={set.id}
                                 set={set}
                                 selected={bandChosen && customSetId === set.id}
                                 accent="inf"
                                 onSelect={() => selectCustomSet(set.id)}
+                                onHistory={() => setHistoryTarget({ id: set.id, name: set.name })}
                               />
                             ))
                           )}
@@ -3802,12 +3994,13 @@ export default function EntryTicketPage() {
                             </Typography>
                           ) : (
                             matheCustomSets.map((set) => (
-                              <SortableCustomSetChip
+                              <CustomSetChipRow
                                 key={set.id}
                                 set={set}
                                 selected={bandChosen && customSetId === set.id}
                                 accent="mathe"
                                 onSelect={() => selectCustomSet(set.id)}
+                                onHistory={() => setHistoryTarget({ id: set.id, name: set.name })}
                               />
                             ))
                           )}
@@ -4054,41 +4247,6 @@ export default function EntryTicketPage() {
                 </Box>
                 )}
 
-                {isTeacher && isCustomSetActive && activeCustomSet && !studentReviewMode ? (
-                  <TextField
-                    size="small"
-                    multiline
-                    minRows={1}
-                    maxRows={3}
-                    value={activeCustomSet.notes || ''}
-                    onChange={(e) =>
-                      patchActiveCustomSet({
-                        ...activeCustomSet,
-                        notes: e.target.value.slice(0, 4000),
-                      })
-                    }
-                    placeholder="Notizen nur für dich…"
-                    sx={{
-                      width: '100%',
-                      maxWidth: 864,
-                      mx: 'auto',
-                      '& .MuiOutlinedInput-root': {
-                        bgcolor: '#fffde7',
-                        '& fieldset': { borderColor: '#fff59d' },
-                        '&:hover fieldset': { borderColor: '#fbc02d' },
-                        '&.Mui-focused fieldset': { borderColor: '#f9a825' },
-                      },
-                      '& .MuiInputBase-input': {
-                        fontSize: '0.72rem',
-                        lineHeight: 1.35,
-                        color: '#5d4037',
-                        py: 0.6,
-                      },
-                    }}
-                    inputProps={{ 'aria-label': 'Persönliche Notizen' }}
-                  />
-                ) : null}
-
                 {!sessionDone ? (
                   <Box
                     sx={{
@@ -4283,7 +4441,7 @@ export default function EntryTicketPage() {
                               size="small"
                               variant="contained"
                               startIcon={<CheckIcon sx={{ fontSize: '0.85rem !important' }} />}
-                              disabled={completeBusy}
+                              disabled={completeBusy || doneCelebrate}
                               onClick={() => void markEntryTicketDone()}
                               sx={{
                                 ...etActionGroupSx['& .MuiButton-root'],
@@ -4426,6 +4584,14 @@ export default function EntryTicketPage() {
 
         </Box>
       </Box>
+
+      <EntryTicketHistoryDialog
+        open={Boolean(historyTarget)}
+        onClose={() => setHistoryTarget(null)}
+        groupId={entryTicketGroupId}
+        customSetId={historyTarget?.id}
+        setName={historyTarget?.name}
+      />
 
       <Dialog
         open={printFlashcardsOpen}
@@ -4648,6 +4814,119 @@ export default function EntryTicketPage() {
           </ButtonGroup>
         </DialogActions>
       </Dialog>
+
+      {doneCelebrate ? (
+        <Box
+          role="status"
+          aria-live="polite"
+          sx={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 20000,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 2.5,
+            bgcolor: 'rgba(232, 245, 233, 0.94)',
+            backdropFilter: 'blur(10px)',
+            '@keyframes etDoneFade': {
+              '0%': { opacity: 0 },
+              '18%': { opacity: 1 },
+              '100%': { opacity: 1 },
+            },
+            animation: 'etDoneFade 2s ease-out both',
+          }}
+        >
+          <Box
+            sx={{
+              position: 'relative',
+              width: 168,
+              height: 168,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Box
+              sx={{
+                position: 'absolute',
+                width: 168,
+                height: 168,
+                borderRadius: '50%',
+                border: '3px solid rgba(102, 187, 106, 0.55)',
+                '@keyframes etDoneRing': {
+                  '0%': { transform: 'scale(0.55)', opacity: 0.85 },
+                  '100%': { transform: 'scale(1.7)', opacity: 0 },
+                },
+                animation: 'etDoneRing 1.65s ease-out both',
+              }}
+            />
+            <Box
+              sx={{
+                position: 'absolute',
+                width: 168,
+                height: 168,
+                borderRadius: '50%',
+                border: '2px solid rgba(67, 160, 71, 0.35)',
+                '@keyframes etDoneRing2': {
+                  '0%': { transform: 'scale(0.55)', opacity: 0 },
+                  '25%': { opacity: 0.7 },
+                  '100%': { transform: 'scale(2.05)', opacity: 0 },
+                },
+                animation: 'etDoneRing2 1.85s 0.12s ease-out both',
+              }}
+            />
+            <Box
+              sx={{
+                width: 118,
+                height: 118,
+                borderRadius: '50%',
+                bgcolor: '#66bb6a',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 16px 48px rgba(67, 160, 71, 0.42)',
+                '@keyframes etDonePop': {
+                  '0%': { transform: 'scale(0.15)', opacity: 0 },
+                  '42%': { transform: 'scale(1.12)', opacity: 1 },
+                  '68%': { transform: 'scale(0.96)' },
+                  '100%': { transform: 'scale(1)' },
+                },
+                animation: 'etDonePop 0.72s cubic-bezier(0.22, 1.15, 0.36, 1) both',
+              }}
+            >
+              <CheckIcon
+                sx={{
+                  fontSize: 68,
+                  color: '#fff',
+                  '@keyframes etDoneCheck': {
+                    '0%': { transform: 'scale(0) rotate(-28deg)', opacity: 0 },
+                    '55%': { transform: 'scale(1.12) rotate(0deg)', opacity: 1 },
+                    '100%': { transform: 'scale(1) rotate(0deg)', opacity: 1 },
+                  },
+                  animation: 'etDoneCheck 0.55s 0.16s cubic-bezier(0.22, 1.2, 0.36, 1) both',
+                }}
+              />
+            </Box>
+          </Box>
+          <Typography
+            sx={{
+              fontWeight: 800,
+              fontSize: '1.45rem',
+              letterSpacing: 0.6,
+              color: '#2e7d32',
+              '@keyframes etDoneLabel': {
+                '0%': { opacity: 0, transform: 'translateY(12px)' },
+                '100%': { opacity: 1, transform: 'translateY(0)' },
+              },
+              animation: 'etDoneLabel 0.45s 0.32s ease-out both',
+            }}
+          >
+            Erledigt
+          </Typography>
+        </Box>
+      ) : null}
     </Box>
   );
 }

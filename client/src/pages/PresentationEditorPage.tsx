@@ -73,6 +73,7 @@ import {
 import {
   createSlideFromLayout,
   SLIDE_LAYOUTS,
+  isBlankLayout,
 } from '../lib/presentationLayouts';
 import {
   DECK_FILENAME,
@@ -107,9 +108,11 @@ import {
   DEFAULT_FLOATING_IMAGE_H,
   DEFAULT_FLOATING_IMAGE_W,
   extractImageFilesFromDataTransfer,
-  findEmptyFullscreenImageElement,
+  extractImageUrlFromDataTransfer,
+  extractImageUrlFromDataTransferAsync,
   isHeroSlideImage,
-  isImageFileDragEvent,
+  isPresentationImageDragEvent,
+  saveImageUrlToLessonFolder,
   slideDropPositionForImage,
 } from '../lib/presentationImageUtils';
 import {
@@ -327,6 +330,7 @@ const PresentationEditorPage: React.FC = () => {
   const deckRef = useRef<PresentationDeck | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const imageTargetRef = useRef<'inline' | 'layout' | 'element' | 'notes'>('inline');
+  const imageDropBusyRef = useRef(false);
   const elementClipboardRef = useRef<{
     mode: 'cut' | 'copy';
     sourceSlideId: string;
@@ -952,8 +956,8 @@ const PresentationEditorPage: React.FC = () => {
 
   const addFloatingImageAt = (
     path: string,
-    x = 25,
-    y = 22,
+    x = 36,
+    y = 30,
     w = DEFAULT_FLOATING_IMAGE_W,
     h = DEFAULT_FLOATING_IMAGE_H,
   ) => {
@@ -1139,17 +1143,14 @@ const PresentationEditorPage: React.FC = () => {
       const current = deckRef.current;
       if (!current || !activeId) return;
       if (targetSlideId === activeId) {
-        setSnackbar('Bild ist bereits auf dieser Folie');
+        setSnackbar('Element ist bereits auf dieser Folie');
         return;
       }
       const sourceSlide = current.slides.find((s) => s.id === activeId);
       const targetSlide = current.slides.find((s) => s.id === targetSlideId);
       if (!sourceSlide || !targetSlide) return;
       const element = sourceSlide.elements?.find((el) => el.id === elementId);
-      if (!element || element.type !== 'image') {
-        setSnackbar('Nur Bilder können so verschoben werden');
-        return;
-      }
+      if (!element) return;
       const moved = cloneElementForPaste(element);
       const slides = current.slides.map((s) => {
         if (s.id === activeId) {
@@ -1167,7 +1168,21 @@ const PresentationEditorPage: React.FC = () => {
       setSelectedElementId(null);
       setActiveId(targetSlideId);
       setSelectedElementId(moved.id);
-      setSnackbar('Bild auf andere Folie verschoben');
+      const label =
+        element.type === 'card'
+          ? 'Infobox'
+          : element.type === 'text'
+            ? 'Text'
+            : element.type === 'shape'
+              ? 'Form'
+              : element.type === 'table'
+                ? 'Tabelle'
+                : element.type === 'image'
+                  ? 'Bild'
+                  : element.type === 'video' || element.type === 'embed'
+                    ? 'Medien'
+                    : 'Element';
+      setSnackbar(`${label} auf andere Folie verschoben`);
     },
     [activeId, scheduleSave]
   );
@@ -1178,8 +1193,7 @@ const PresentationEditorPage: React.FC = () => {
       if (!current || !activeId || !selectedElementId) return false;
       const slide = current.slides.find((s) => s.id === activeId);
       const element = slide?.elements?.find((el) => el.id === selectedElementId);
-      if (!element || (element.type !== 'image' && element.type !== 'shape' && element.type !== 'card' && element.type !== 'table'))
-        return false;
+      if (!element) return false;
       elementClipboardRef.current = {
         mode,
         sourceSlideId: activeId,
@@ -1224,10 +1238,14 @@ const PresentationEditorPage: React.FC = () => {
       clip.element.type === 'shape'
         ? 'Form eingefügt'
         : clip.element.type === 'card'
-          ? 'Karte eingefügt'
+          ? 'Infobox eingefügt'
           : clip.element.type === 'table'
             ? 'Tabelle eingefügt'
-            : 'Bild eingefügt',
+            : clip.element.type === 'text'
+              ? 'Text eingefügt'
+              : clip.element.type === 'video' || clip.element.type === 'embed'
+                ? 'Medien eingefügt'
+                : 'Bild eingefügt',
     );
     return true;
   }, [activeId, scheduleSave]);
@@ -1418,7 +1436,7 @@ const PresentationEditorPage: React.FC = () => {
     // „+“: leere Folie ohne Titel-/Inhaltsfeld (freie Elemente nach Bedarf)
     const slide = normalizeSlide({
       ...createSlideFromLayout(insertIndex, layout),
-      ...(layout === 'blank' ? { hiddenLayoutZones: ['bodyHtml'] } : {}),
+      ...(isBlankLayout(layout) ? { hiddenLayoutZones: ['bodyHtml'] } : {}),
     });
     const nextSlides = [...sorted];
     nextSlides.splice(insertIndex, 0, slide);
@@ -1821,8 +1839,8 @@ const PresentationEditorPage: React.FC = () => {
       layout,
       titleAlign: fresh.titleAlign,
       accentColor: normalizedActive.accentColor,
-      // Layout-Wechsel: ausgeblendete Inhaltsboxen zurücksetzen
-      hiddenLayoutZones: undefined,
+      // Leer / ganz leer: Inhaltsbox aus; sonst ausgeblendete Zonen zurücksetzen
+      hiddenLayoutZones: isBlankLayout(layout) ? ['bodyHtml'] : undefined,
     });
   };
 
@@ -1900,6 +1918,12 @@ const PresentationEditorPage: React.FC = () => {
       return;
     }
 
+    // Drop-Position hat Vorrang: immer freies Element, nicht in leeren Vollbild-Slot/Text
+    if (position) {
+      addFloatingImageAt(imagePath, position.x, position.y);
+      return;
+    }
+
     if (
       selectedElement?.type === 'image' &&
       !selectedElement.src?.trim() &&
@@ -1907,11 +1931,6 @@ const PresentationEditorPage: React.FC = () => {
     ) {
       updateElement(selectedElementId, { src: imagePath });
       setSnackbar('Bild eingefügt');
-      return;
-    }
-
-    if (position) {
-      addFloatingImageAt(imagePath, position.x, position.y);
       return;
     }
 
@@ -1923,74 +1942,103 @@ const PresentationEditorPage: React.FC = () => {
   };
 
   const handleSlideImageDragEnter = (e: React.DragEvent) => {
-    if (!isImageFileDragEvent(e)) return;
+    if (!isPresentationImageDragEvent(e)) return;
     e.preventDefault();
+    e.stopPropagation();
     setImageDropActive(true);
+    const ae = document.activeElement;
+    if (ae instanceof HTMLElement && ae.isContentEditable) {
+      ae.blur();
+    }
   };
 
   const handleSlideImageDragOver = (e: React.DragEvent) => {
-    if (!isImageFileDragEvent(e)) return;
+    if (!isPresentationImageDragEvent(e)) return;
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = 'copy';
     setImageDropActive(true);
   };
 
   const handleSlideImageDragLeave = (e: React.DragEvent) => {
-    if (!isImageFileDragEvent(e)) return;
+    if (!isPresentationImageDragEvent(e)) return;
     const next = e.relatedTarget as Node | null;
     if (next && slideShellRef.current?.contains(next)) return;
+    if (!next && slideShellRef.current) {
+      const r = slideShellRef.current.getBoundingClientRect();
+      if (
+        e.clientX >= r.left &&
+        e.clientX <= r.right &&
+        e.clientY >= r.top &&
+        e.clientY <= r.bottom
+      ) {
+        return;
+      }
+    }
     setImageDropActive(false);
   };
 
   const handleSlideImageDrop = async (e: React.DragEvent) => {
-    // Immer preventDefault bei Files-Drag, sonst „friert“ der Drop in manchen Browsern
-    const looksLikeFiles = Array.from(e.dataTransfer?.types ?? []).includes('Files');
-    if (!looksLikeFiles && !isImageFileDragEvent(e)) return;
+    if (!isPresentationImageDragEvent(e)) return;
     e.preventDefault();
     e.stopPropagation();
     setImageDropActive(false);
+    if (imageDropBusyRef.current) return;
+    imageDropBusyRef.current = true;
 
-    const files = extractImageFilesFromDataTransfer(e.dataTransfer);
-    if (files.length === 0) {
-      setSnackbar('Keine Bilddatei erkannt (PNG/JPG/…).');
-      return;
-    }
+    try {
+      const slideEl = slideShellRef.current;
+      if (!slideEl || !lessonPath) {
+        setSnackbar('Keine Folie aktiv');
+        return;
+      }
 
-    const slideEl = slideShellRef.current;
-    if (!slideEl) return;
-
-    const emptySlot = findEmptyFullscreenImageElement(normalizedActive?.elements);
-    if (emptySlot && files.length === 1) {
       imageTargetRef.current = 'element';
-      const path = await uploadImageFile(files[0]);
-      if (!path) return;
-      updateElement(emptySlot.id, {
-        src: path,
-        imageFit: 'cover',
-        imageObjectPosition: '50% 50%',
-      });
-      setSelectedElementId(emptySlot.id);
-      setSnackbar('Bild eingefügt — ziehen zum Positionieren');
-      return;
-    }
+      const base = slideDropPositionForImage(
+        e.clientX,
+        e.clientY,
+        slideEl,
+        DEFAULT_FLOATING_IMAGE_W,
+        DEFAULT_FLOATING_IMAGE_H,
+      );
+      const pos = {
+        x: Math.min(base.x, 100 - DEFAULT_FLOATING_IMAGE_W - 1.5),
+        y: Math.min(base.y, 100 - DEFAULT_FLOATING_IMAGE_H - 1.5),
+      };
 
-    imageTargetRef.current = 'element';
-    const base = slideDropPositionForImage(
-      e.clientX,
-      e.clientY,
-      slideEl,
-      DEFAULT_FLOATING_IMAGE_W,
-      DEFAULT_FLOATING_IMAGE_H,
-    );
+      const files = extractImageFilesFromDataTransfer(e.dataTransfer);
+      if (files.length > 0) {
+        setSnackbar(files.length > 1 ? `${files.length} Bilder werden eingefügt…` : 'Bild wird eingefügt…');
+        for (let i = 0; i < files.length; i += 1) {
+          const offset = i * 3;
+          await handleImageFile(files[i], {
+            x: Math.min(pos.x + offset, 100 - DEFAULT_FLOATING_IMAGE_W - 1.5),
+            y: Math.min(pos.y + offset, 100 - DEFAULT_FLOATING_IMAGE_H - 1.5),
+          });
+        }
+        return;
+      }
 
-    setSnackbar(files.length > 1 ? `${files.length} Bilder werden eingefügt…` : 'Bild wird eingefügt…');
+      // Drag aus anderem Browser-Tab: URL / HTML <img> / DownloadURL
+      const imageUrl =
+        extractImageUrlFromDataTransfer(e.dataTransfer) ||
+        (await extractImageUrlFromDataTransferAsync(e.dataTransfer));
+      if (!imageUrl) {
+        setSnackbar('Kein Bild erkannt — Bild mit Rechtsklick speichern und Datei hierher ziehen');
+        return;
+      }
 
-    for (let i = 0; i < files.length; i += 1) {
-      const offset = i * 4;
-      await handleImageFile(files[i], {
-        x: Math.min(base.x + offset, 100 - DEFAULT_FLOATING_IMAGE_W),
-        y: Math.min(base.y + offset, 100 - DEFAULT_FLOATING_IMAGE_H),
-      });
+      setSnackbar('Bild aus Tab wird übernommen…');
+      try {
+        const folder = lessonFolderPath(lessonPath);
+        const savedPath = await saveImageUrlToLessonFolder(imageUrl, folder);
+        addFloatingImageAt(savedPath, pos.x, pos.y);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Bild aus Tab konnte nicht geladen werden';
+        setSnackbar(msg);
+      }
+    } finally {
+      imageDropBusyRef.current = false;
     }
   };
 
@@ -2609,6 +2657,7 @@ const PresentationEditorPage: React.FC = () => {
               borderRadius: 1,
               px: 0.5,
               py: 0.2,
+              maxHeight: 40,
               ...(animationEditMode
                 ? {
                     bgcolor: 'rgba(255,152,0,0.12)',
@@ -2739,10 +2788,12 @@ const PresentationEditorPage: React.FC = () => {
         <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
           <Box
             ref={canvasHostRef}
+            onDragEnterCapture={handleSlideImageDragEnter}
+            onDragOverCapture={handleSlideImageDragOver}
             onDragEnter={handleSlideImageDragEnter}
             onDragOver={handleSlideImageDragOver}
             onDragLeave={handleSlideImageDragLeave}
-            onDrop={(e) => void handleSlideImageDrop(e)}
+            onDropCapture={(e) => void handleSlideImageDrop(e)}
             onClickCapture={(e) => {
               if (!lessonPath) return;
               tryHandleLessonEntryTicketLinkClick(e, {
@@ -2770,10 +2821,11 @@ const PresentationEditorPage: React.FC = () => {
               <Box
                 key={`${normalizedActive.id}-${slideTransitionPreviewKey}`}
                 ref={slideShellRef}
-                onDragEnter={handleSlideImageDragEnter}
-                onDragOver={handleSlideImageDragOver}
+                onDragEnterCapture={handleSlideImageDragEnter}
+                onDragOverCapture={handleSlideImageDragOver}
                 onDragLeave={handleSlideImageDragLeave}
-                onDrop={(e) => void handleSlideImageDrop(e)}
+                onDropCapture={(e) => void handleSlideImageDrop(e)}
+                data-pres-slide-shell
                 sx={{
                   width: slideViewportW,
                   height: slideViewportH,
@@ -2790,19 +2842,39 @@ const PresentationEditorPage: React.FC = () => {
                     ? `${3 * canvasScale}px dashed ${PRES_EDITOR_UI.accent}`
                     : undefined,
                   outlineOffset: imageDropActive ? `${2 * canvasScale}px` : undefined,
+                  // Text/Rich-Zones während Datei-Drag nicht als Drop-Ziel
+                  ...(imageDropActive
+                    ? {
+                        '& [contenteditable="true"], & [data-pres-rich-zone]': {
+                          pointerEvents: 'none !important',
+                        },
+                      }
+                    : null),
                 }}
               >
                 {imageDropActive && (
                   <Box
+                    onDragEnter={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.dataTransfer.dropEffect = 'copy';
+                    }}
+                    onDrop={(e) => void handleSlideImageDrop(e)}
                     sx={{
                       position: 'absolute',
                       inset: 0,
-                      zIndex: 50,
-                      bgcolor: 'rgba(46,125,50,0.1)',
+                      zIndex: 5000,
+                      bgcolor: 'rgba(46,125,50,0.12)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      pointerEvents: 'none',
+                      // Muss Events fangen — sonst landet der Drop im contentEditable darunter
+                      pointerEvents: 'auto',
+                      cursor: 'copy',
                     }}
                   >
                     <Typography
@@ -2815,6 +2887,7 @@ const PresentationEditorPage: React.FC = () => {
                         fontSize: `${14 * canvasScale}px`,
                         fontWeight: 600,
                         boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+                        pointerEvents: 'none',
                       }}
                     >
                       Bild hier ablegen
@@ -2832,6 +2905,14 @@ const PresentationEditorPage: React.FC = () => {
                     transformOrigin: 'top left',
                     overflow: 'hidden',
                     pointerEvents: 'auto',
+                    // Während Datei-Drag: Textfelder durchlässig machen (Drop → Overlay/Folie)
+                    ...(imageDropActive
+                      ? {
+                          '& [contenteditable="true"], & [data-pres-rich-zone]': {
+                            pointerEvents: 'none !important',
+                          },
+                        }
+                      : null),
                   }}
                 >
                   <PresentationSlideView

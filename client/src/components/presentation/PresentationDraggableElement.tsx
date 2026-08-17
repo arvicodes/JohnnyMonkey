@@ -57,6 +57,21 @@ import {
   updateTableResizeHoverCursor,
 } from '../../lib/presentationTableResize';
 
+/** Verhindert Inline-Bilder in contentEditable beim Datei-/URL-Drop (Folie fängt den Drop ab). */
+function blockFileDropIntoText(e: React.DragEvent) {
+  const types = Array.from(e.dataTransfer?.types ?? []).map((t) => t.toLowerCase());
+  if (
+    types.includes('files') ||
+    types.includes('text/uri-list') ||
+    types.includes('text/html') ||
+    types.includes('text/x-moz-url') ||
+    types.includes('url') ||
+    types.includes('application/x-moz-file')
+  ) {
+    e.preventDefault();
+  }
+}
+
 type DragMode = 'move' | 'resize';
 type ResizeCorner = 'br' | 'tr';
 
@@ -357,8 +372,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       };
       pendingDragRef.current = null;
       setDragging(true);
-      if (pending.mode === 'move' && pending.orig.type === 'image') {
-        document.body.setAttribute('data-pres-element-drag', 'image');
+      if (pending.mode === 'move') {
+        document.body.setAttribute('data-pres-element-drag', pending.orig.type || 'element');
       }
     }
 
@@ -449,8 +464,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       window.removeEventListener('pointermove', pointerMove);
       window.removeEventListener('pointerup', pointerUp);
 
-      // Bild auf Filmstrip-Folie fallen lassen → verschieben
-      if (wasDragging && dragMode === 'move' && element.type === 'image' && onMoveToSlide) {
+      // Element auf Filmstrip-Folie fallen lassen → verschieben
+      if (wasDragging && dragMode === 'move' && onMoveToSlide) {
         const hit = document.elementFromPoint(e.clientX, e.clientY);
         const thumb = hit?.closest('[data-pres-filmstrip-slide]') as HTMLElement | null;
         const targetSlideId = thumb?.getAttribute('data-pres-filmstrip-slide');
@@ -670,6 +685,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   return (
     <Box
       data-pres-element={element.id}
+      onDragOver={blockFileDropIntoText}
+      onDrop={blockFileDropIntoText}
       onPointerDown={(e) => {
         if (animationEditMode) {
           handleAnimationClick(e);

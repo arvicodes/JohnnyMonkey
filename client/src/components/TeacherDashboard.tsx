@@ -45,6 +45,7 @@ import MaterialShareVersionControl from './MaterialShareVersionControl';
 import KACorrectionMode from './KACorrectionMode';
 import { DEFAULT_PROFILE_COLOR } from '../lib/profileColor';
 import TeacherSettingsMenu from './teacher-profile/TeacherSettingsMenu';
+import TeacherQuickNotes from './TeacherQuickNotes';
 import TeacherProfileDialog from './teacher-profile/TeacherProfileDialog';
 import TeacherScheduleDialog from './teacher-schedule/TeacherScheduleDialog';
 import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
@@ -79,6 +80,12 @@ import {
   saveWorkingReihenPaths,
   type WorkingReiheOption,
 } from '../lib/dashboardWorkingReihen';
+import {
+  loadPlayedLessonKeys,
+  markLessonPlayed,
+  mergePlayedLessonKeys,
+  playedLessonKey,
+} from '../lib/playedLessons';
 import {
   WOCHENAUFGABEN_BG,
   WOCHENAUFGABEN_BORDER,
@@ -5922,6 +5929,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [mainTabValue, setMainTabValue] = useState(0);
   /** Ausgewählte Arbeits-Reihen (Dashboard-Tab „Reihen“). */
   const [workingReihenPaths, setWorkingReihenPaths] = useState<string[]>(() => loadWorkingReihenPaths());
+  const [playedLessonKeys, setPlayedLessonKeys] = useState<string[]>(() => loadPlayedLessonKeys());
+  const playedLessonKeySet = useMemo(() => new Set(playedLessonKeys), [playedLessonKeys]);
   const [reihenOptions, setReihenOptions] = useState<WorkingReiheOption[]>([]);
   const [reihenOptionsLoading, setReihenOptionsLoading] = useState(false);
 
@@ -7103,14 +7112,38 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     }
   }, []);
 
+  const refreshPlayedLessons = useCallback(async () => {
+    const loginCode = localStorage.getItem('loginCode') || '';
+    if (!loginCode) return;
+    try {
+      const res = await fetch('/api/teacher-schedule/played-lessons/teacher', {
+        headers: { 'x-login-code': loginCode },
+        cache: 'no-store',
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const rows = Array.isArray(data?.lessons) ? data.lessons : [];
+      const extra = rows
+        .map((row: { groupId?: string; lessonPath?: string }) =>
+          row?.groupId && row?.lessonPath ? playedLessonKey(String(row.groupId), String(row.lessonPath)) : '',
+        )
+        .filter(Boolean);
+      if (extra.length === 0) return;
+      setPlayedLessonKeys(mergePlayedLessonKeys(extra));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   useEffect(() => {
     if (!userId || userRole !== 'TEACHER') return;
     void refreshActiveLessonSessions();
+    void refreshPlayedLessons();
     const id = window.setInterval(() => {
       void refreshActiveLessonSessions();
     }, 5000);
     return () => window.clearInterval(id);
-  }, [userId, userRole, refreshActiveLessonSessions]);
+  }, [userId, userRole, refreshActiveLessonSessions, refreshPlayedLessons]);
 
   const findActiveSessionForLesson = useCallback(
     (groupId: string, lessonPath: string) => {
@@ -7184,24 +7217,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
           return;
         }
         await refreshActiveLessonSessions();
-        openEntryTicketForLesson(groupId, lessonPath);
-        // Automatisch in TABLET-Modus der Stunde + Präsentation ab Folie 1
-        const lessonName = lessonPath.split(/[/\\]/).pop() || 'Stunde';
-        const stundeParams = new URLSearchParams({
-          groupId,
-          lessonPath,
-          lessonName,
-          planMode: 'run',
-          openPresentation: '1',
-        });
-        navigate(`/teacher/stunde?${stundeParams.toString()}`);
+        // Direkt in TABLET-Play der Stunde, erste Folie (Entry Ticket startet über den E-Button)
+        navigate(
+          presentationPresentUrl(lessonPath, groupId, 'edited', undefined, 'run'),
+        );
       } catch {
         showSnackbar('Stunde konnte nicht gestartet werden', 'error');
       } finally {
         setLessonRunBusyKey(null);
       }
     },
-    [navigate, openEntryTicketForLesson, refreshActiveLessonSessions],
+    [navigate, refreshActiveLessonSessions],
   );
 
   const endLessonRun = useCallback(
@@ -7224,6 +7250,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
           return;
         }
         await refreshActiveLessonSessions();
+        setPlayedLessonKeys(markLessonPlayed(groupId, lessonPath));
       } catch {
         showSnackbar('Stunde konnte nicht beendet werden', 'error');
       } finally {
@@ -10510,6 +10537,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           ? findActiveSessionForLesson(groupId, stundeLessonPath)
           : null;
       const isStundeRunning = Boolean(activeStundeSession);
+      const wasStundePlayed = playedLessonKeySet.has(playedLessonKey(groupId, stundeLessonPath));
       const stundeRunBusy =
         isStundeFolder && lessonRunBusyKey === `${groupId}::${stundeLessonPath}`;
 
@@ -10807,7 +10835,15 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             )}
 
             {isStundeFolder && (
-              <Tooltip title={isStundeRunning ? 'Stunde beenden' : 'Stunde starten (inkl. Entry Ticket)'}>
+              <Tooltip
+                title={
+                  isStundeRunning
+                    ? 'Stunde beenden'
+                    : wasStundePlayed
+                      ? 'Stunde starten (bereits gehalten)'
+                      : 'Stunde starten (Tablet-Play, erste Folie)'
+                }
+              >
                 <span>
                   <IconButton
                     size="small"
@@ -10833,7 +10869,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       color: '#fff',
                       boxShadow: isStundeRunning
                         ? '0 0 0 2px rgba(198, 40, 40, 0.25)'
-                        : '0 0 0 1px rgba(46, 125, 50, 0.2)',
+                        : wasStundePlayed
+                          ? '0 0 0 2px #f9a825'
+                          : '0 0 0 1px rgba(46, 125, 50, 0.2)',
                       '&:hover': {
                         bgcolor: isStundeRunning ? '#b71c1c' : '#1b5e20',
                       },
@@ -15234,6 +15272,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 />
               </Box>
               <Box display="flex" gap={0.5} alignItems="center">
+                <TeacherQuickNotes userId={userId} />
                 <IconButton
                   onClick={() => setShowTeacherMessageBox(true)}
                   sx={{

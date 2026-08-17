@@ -29,6 +29,7 @@ import {
   SLIDE_FOOTER_HEIGHT,
 } from '../../lib/presentationSlideFooter';
 import { slideHasFullscreenMedia } from '../../lib/presentationMediaEmbed';
+import { isBareBlankLayout, isBlankLayout } from '../../lib/presentationLayouts';
 import { getElementStackLayer, splitElementsByStackLayer } from '../../lib/presentationElementLayers';
 import type { SnapGuide } from '../../lib/presentationElementSnap';
 import PresentationRichZone from './PresentationRichZone';
@@ -109,7 +110,8 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   const h = SLIDE_REF_HEIGHT * scale;
   const accent = slide.accentColor || JOHNNY_PRESENTATION.primary;
   const align = slide.titleAlign || 'left';
-  const footerOn = showSlideFooter;
+  const bareBlank = isBareBlankLayout(slide.layout);
+  const footerOn = showSlideFooter && !bareBlank;
   const footer = normalizeSlideFooter(slideFooter, deckTitle, lessonPath);
   const footerHeight = footerOn ? SLIDE_FOOTER_HEIGHT * scale : 0;
   const slideNumberLabel =
@@ -119,18 +121,18 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
         : String(slideNumber)
       : '';
   const showFooterNumbers = footerOn && slideNumberLabel.length > 0;
-  const showStandaloneNumbers = !footerOn && showSlideNumbers && slideNumberLabel.length > 0;
+  const showStandaloneNumbers = !footerOn && !bareBlank && showSlideNumbers && slideNumberLabel.length > 0;
   const fullscreenMedia = slideHasFullscreenMedia(slide);
   const imageHeroLayout = slideHasImageHeroLayout(slide);
   const hasFreeElements = (slide.elements?.length ?? 0) > 0;
   const hideBlankContent =
     fullscreenMedia ||
     imageHeroLayout ||
-    (slide.layout === 'blank' && hasFreeElements) ||
-    (slide.layout === 'blank' && isLayoutZoneHidden(slide, 'bodyHtml'));
-  /** Freie Elemente (z. B. PPTX): ohne Johnny-Rahmen/Logo — sonst „Felder“ um alles herum. */
-  const freeformCanvas = slide.layout === 'blank' && hasFreeElements;
-  const showJohnnyChrome = showLogo && !fullscreenMedia && !freeformCanvas;
+    (isBlankLayout(slide.layout) && hasFreeElements) ||
+    (isBlankLayout(slide.layout) && isLayoutZoneHidden(slide, 'bodyHtml'));
+  /** Ganz leer / Vollbild-Medien: kein Padding, kein Johnny-Rahmen. */
+  const bareCanvas = bareBlank || fullscreenMedia;
+  const showJohnnyChrome = showLogo && !fullscreenMedia && !bareBlank;
   const { background: backgroundElements, foreground: foregroundElements } = splitElementsByStackLayer(
     slide.elements,
   );
@@ -570,6 +572,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
         );
 
       case 'blank':
+      case 'blank-full':
         return hideBlankContent ? null : (
           <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             {zone('bodyHtml', 'body', { variant: 'body', placeholder: 'Freier Inhalt…', flex: 1 })}
@@ -660,9 +663,9 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
         sx={{
           position: 'absolute',
           inset: 0,
-          pt: fullscreenMedia || freeformCanvas ? 0 : `${(showLogo ? 72 : 36) * scale}px`,
-          px: fullscreenMedia || freeformCanvas ? 0 : `${64 * scale}px`,
-          pb: fullscreenMedia || freeformCanvas ? 0 : `${(footerOn ? 56 : 48) * scale}px`,
+          pt: bareCanvas ? 0 : `${(showLogo ? 72 : 36) * scale}px`,
+          px: bareCanvas ? 0 : `${64 * scale}px`,
+          pb: bareCanvas ? 0 : `${(footerOn ? 56 : 48) * scale}px`,
           display: 'flex',
           flexDirection: 'column',
           minWidth: 0,

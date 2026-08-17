@@ -113,6 +113,7 @@ interface PresentationTabletToolbarProps {
   saving?: boolean;
   onGoPrev: () => void;
   onGoNext: () => void;
+  nextButtonTitle?: string;
   onToggleDraw: () => void;
   onSelectTool: (tool: PresentationDrawTool) => void;
   onSelectColor: (color: string) => void;
@@ -145,6 +146,7 @@ export default function PresentationTabletToolbar({
   saving = false,
   onGoPrev,
   onGoNext,
+  nextButtonTitle = 'Weiter',
   onToggleDraw,
   onSelectTool,
   onSelectColor,
@@ -531,7 +533,7 @@ export default function PresentationTabletToolbar({
           </ToolBtn>
         )}
 
-        <ToolBtn title="Weiter" disabled={!canGoNext} onClick={onGoNext}>
+        <ToolBtn title={nextButtonTitle} disabled={!canGoNext} onClick={onGoNext}>
           <ChevronRight sx={{ fontSize: 17 }} />
         </ToolBtn>
       </Box>

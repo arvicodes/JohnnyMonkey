@@ -88,7 +88,7 @@ export function slideHasFullscreenMedia(slide: {
   layout?: string;
   elements?: { type: string; w?: number; h?: number }[];
 }): boolean {
-  if (slide.layout !== 'blank') return false;
+  if (slide.layout !== 'blank' && slide.layout !== 'blank-full') return false;
   return (
     slide.elements?.some(
       (el) =>

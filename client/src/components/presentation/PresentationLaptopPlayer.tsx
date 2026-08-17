@@ -22,7 +22,8 @@ import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
 import { hydrateNotesHtmlFontSizes } from '../../lib/presentationFontSize';
 import { presentationNestedListSx, presentationNotesTableSx } from '../../lib/presentationListStyles';
 import { isPresentationLinkClickTarget } from '../../lib/presentationRichText';
-import { tryHandleLessonEntryTicketLinkClick } from '../../lib/presentationEditorUi';
+import { tryHandleLessonEntryTicketLinkClick, isLessonEntryTicketSlideHref } from '../../lib/presentationEditorUi';
+import EntryTicketPage from '../../pages/EntryTicketPage';
 import { ensureEntryTicketButtonsOnTitleSlides } from '../../lib/presentationSlideTemplates';
 import { clampPresentZoom, handlePresentZoomHotkey, attachPresentTrackpadZoom, attachPresentTouchPinchZoom } from '../../lib/presentationPresentZoom';
 import PresentationPresentZoomControls from './PresentationPresentZoomControls';
@@ -83,6 +84,7 @@ export default function PresentationLaptopPlayer({
   const userZoomRef = useRef(1);
   userZoomRef.current = userZoom;
   const [notesLightboxSrc, setNotesLightboxSrc] = useState<string | null>(null);
+  const [entryTicketOpen, setEntryTicketOpen] = useState(false);
   const stageHostRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -243,6 +245,7 @@ export default function PresentationLaptopPlayer({
 
     const onKey = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
+      if (entryTicketOpen) return;
       if (handlePresentZoomHotkey(e, userZoom, setUserZoom)) return;
       if (e.key === 'Escape') {
         if (notesLightboxSrc) {
@@ -284,7 +287,27 @@ export default function PresentationLaptopPlayer({
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [goNext, goPrev, onClose, slides, notesLightboxSrc, userZoom]);
+  }, [goNext, goPrev, onClose, slides, notesLightboxSrc, userZoom, entryTicketOpen]);
+
+  useEffect(() => {
+    const host = rootRef.current;
+    if (!host || loading) return undefined;
+    const onClick = (e: MouseEvent) => {
+      const t = e.target instanceof Element ? e.target : null;
+      const a = t?.closest?.('a[href]') as HTMLAnchorElement | null;
+      if (!a) return;
+      const href = a.getAttribute('href') || '';
+      if (a.getAttribute('data-pres-entry-ticket') !== '1' && !isLessonEntryTicketSlideHref(href)) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      setEntryTicketOpen(true);
+    };
+    host.addEventListener('click', onClick, true);
+    return () => host.removeEventListener('click', onClick, true);
+  }, [loading]);
 
   useEffect(() => {
     if (loading) return;
@@ -333,11 +356,13 @@ export default function PresentationLaptopPlayer({
   }, [scaleReady]);
 
   const handleSlideTap = (e: React.MouseEvent) => {
+    if (entryTicketOpen) return;
     if (
       tryHandleLessonEntryTicketLinkClick(e, {
         lessonPath,
         groupId,
         autostart: true,
+        onOpen: () => setEntryTicketOpen(true),
       })
     ) {
       return;
@@ -750,6 +775,25 @@ export default function PresentationLaptopPlayer({
           )}
         </Box>
       </Dialog>
+      {entryTicketOpen ? (
+        <Box
+          sx={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 20000,
+            bgcolor: '#f4f6fb',
+            overflow: 'auto',
+          }}
+        >
+          <EntryTicketPage
+            embeddedPlay={{
+              lessonPath,
+              groupId,
+              onExit: () => setEntryTicketOpen(false),
+            }}
+          />
+        </Box>
+      ) : null}
     </Box>
   );
 }
