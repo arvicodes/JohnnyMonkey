@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Divider,
@@ -6,6 +6,7 @@ import {
   List,
   ListItemButton,
   ListItemText,
+  ListSubheader,
   Popover,
   Slider,
   Tooltip,
@@ -13,15 +14,22 @@ import {
 } from '@mui/material';
 import {
   ArrowDropDown as ArrowDropDownIcon,
+  Star as StarIcon,
+  StarBorder as StarBorderIcon,
   VolumeUp as VolumeUpIcon,
 } from '@mui/icons-material';
 import {
+  PRESENTATION_SOUND_CATEGORIES,
   PRESENTATION_SOUND_DURATIONS,
   PRESENTATION_SOUND_PRESETS,
+  PRESENTATION_SOUND_STORAGE_KEY,
+  favoritePresets,
   loadPresentationSoundSettings,
   playPresentationSound,
   presentationSoundLabel,
+  presetsForCategory,
   savePresentationSoundSettings,
+  togglePresentationSoundFavorite,
   type PresentationSoundId,
   type PresentationSoundSettings,
 } from '../../lib/presentationSound';
@@ -74,6 +82,7 @@ type PlayProps = {
 function usePresentationSoundSettings(): [
   PresentationSoundSettings,
   (patch: Partial<PresentationSoundSettings>) => void,
+  () => void,
 ] {
   const [settings, setSettings] = useState<PresentationSoundSettings>(() =>
     loadPresentationSoundSettings(),
@@ -82,7 +91,7 @@ function usePresentationSoundSettings(): [
   useEffect(() => {
     const sync = () => setSettings(loadPresentationSoundSettings());
     const onStorage = (e: StorageEvent) => {
-      if (e.key === 'jm-presentation-sound-v1') sync();
+      if (e.key === PRESENTATION_SOUND_STORAGE_KEY || e.key === 'jm-presentation-sound-v1') sync();
     };
     window.addEventListener('storage', onStorage);
     window.addEventListener('jm-presentation-sound-changed', sync as EventListener);
@@ -98,7 +107,9 @@ function usePresentationSoundSettings(): [
     setSettings(next);
   };
 
-  return [settings, update];
+  const refresh = () => setSettings(loadPresentationSoundSettings());
+
+  return [settings, update, refresh];
 }
 
 function variantStyles(variant: PresentationSoundVariant) {
@@ -179,7 +190,6 @@ function variantStyles(variant: PresentationSoundVariant) {
       drop: 18,
     };
   }
-  // dashboard
   return {
     play: {
       width: 22,
@@ -209,6 +219,49 @@ function variantStyles(variant: PresentationSoundVariant) {
     icon: 17,
     drop: 16,
   };
+}
+
+type SoundRowProps = {
+  preset: (typeof PRESENTATION_SOUND_PRESETS)[number];
+  selected: boolean;
+  favorite: boolean;
+  onSelect: () => void;
+  onToggleFavorite: (e: React.MouseEvent) => void;
+};
+
+function SoundPresetRow({ preset, selected, favorite, onSelect, onToggleFavorite }: SoundRowProps) {
+  return (
+    <ListItemButton
+      selected={selected}
+      onClick={onSelect}
+      sx={{
+        py: 0.55,
+        pl: 1.5,
+        pr: 0.75,
+        '&.Mui-selected': { bgcolor: 'rgba(84,110,122,0.12)' },
+      }}
+    >
+      <ListItemText
+        primary={preset.label}
+        secondary={preset.hint}
+        primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: selected ? 800 : 600 }}
+        secondaryTypographyProps={{ fontSize: '0.68rem', lineHeight: 1.25 }}
+      />
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0 }}>
+        {selected && <VolumeUpIcon sx={{ fontSize: 16, color: '#546e7a' }} />}
+        <Tooltip title={favorite ? 'Aus Favoriten entfernen' : 'Als Favorit markieren'}>
+          <IconButton
+            size="small"
+            onClick={onToggleFavorite}
+            aria-label={favorite ? 'Favorit entfernen' : 'Favorit setzen'}
+            sx={{ p: 0.35, color: favorite ? '#f9a825' : '#b0bec5' }}
+          >
+            {favorite ? <StarIcon sx={{ fontSize: 17 }} /> : <StarBorderIcon sx={{ fontSize: 17 }} />}
+          </IconButton>
+        </Tooltip>
+      </Box>
+    </ListItemButton>
+  );
 }
 
 /** Nur abspielen — für Tablet / Laptop / Folienleiste / Editor. */
@@ -241,10 +294,35 @@ type SplitProps = {
 /** Hauptmenü: links abspielen, rechts Einstellungen (Sound + Lautstärke). */
 export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitProps) {
   usePresentationSoundHotkey();
-  const [settings, updateSettings] = usePresentationSoundSettings();
+  const [settings, updateSettings, refreshSettings] = usePresentationSoundSettings();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const styles = variantStyles(variant);
   const label = presentationSoundLabel(settings.soundId);
+  const favoriteSet = useMemo(() => new Set(settings.favoriteIds), [settings.favoriteIds]);
+  const favorites = useMemo(() => favoritePresets(), [settings.favoriteIds]);
+
+  const selectSound = (id: PresentationSoundId) => {
+    updateSettings({ soundId: id });
+    playPresentationSound({ soundId: id });
+  };
+
+  const toggleFavorite = (id: PresentationSoundId, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    togglePresentationSoundFavorite(id);
+    refreshSettings();
+  };
+
+  const renderPreset = (preset: (typeof PRESENTATION_SOUND_PRESETS)[number]) => (
+    <SoundPresetRow
+      key={preset.id}
+      preset={preset}
+      selected={settings.soundId === preset.id}
+      favorite={favoriteSet.has(preset.id)}
+      onSelect={() => selectSound(preset.id)}
+      onToggleFavorite={(e) => toggleFavorite(preset.id, e)}
+    />
+  );
 
   return (
     <>
@@ -297,7 +375,7 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
         PaperProps={{
           sx: {
             mt: 0.75,
-            width: 280,
+            width: 320,
             borderRadius: 1.5,
             overflow: 'hidden',
             boxShadow: '0 8px 28px rgba(0,0,0,0.14)',
@@ -309,7 +387,7 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
             Präsentations-Sound
           </Typography>
           <Typography sx={{ fontSize: '0.7rem', color: '#78909c', mt: 0.15 }}>
-            Gilt für Tablet, Laptop, Editor und Hauptmenü
+            Gilt für Tablet, Laptop, Editor und Hauptmenü · Stern = Favorit
           </Typography>
         </Box>
 
@@ -329,64 +407,87 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
           />
         </Box>
 
-        <Box sx={{ px: 1.5, pt: 0.25, pb: 0.75, display: 'flex', gap: 0.5 }}>
-          {PRESENTATION_SOUND_DURATIONS.map((d) => {
-            const active = settings.duration === d.id;
-            return (
-              <Typography
-                key={d.id}
-                component="button"
-                onClick={() => {
-                  updateSettings({ duration: d.id });
-                  playPresentationSound({ duration: d.id });
-                }}
-                sx={{
-                  flex: 1,
-                  border: active ? '1.5px solid #455a64' : '1px solid #cfd8dc',
-                  bgcolor: active ? '#eceff1' : '#fff',
-                  color: '#37474f',
-                  borderRadius: 1,
-                  px: 0.5,
-                  py: 0.45,
-                  fontSize: '0.68rem',
-                  fontWeight: active ? 800 : 600,
-                  cursor: 'pointer',
-                  '&:hover': { bgcolor: '#eceff1' },
-                }}
-              >
-                {d.label}
-              </Typography>
-            );
-          })}
+        <Box sx={{ px: 1.5, pt: 0.25, pb: 0.75 }}>
+          <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: '#607d8b', mb: 0.45 }}>
+            Dauer
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 0.5 }}>
+            {PRESENTATION_SOUND_DURATIONS.map((d) => {
+              const active = settings.duration === d.id;
+              return (
+                <Typography
+                  key={d.id}
+                  component="button"
+                  onClick={() => {
+                    updateSettings({ duration: d.id });
+                    playPresentationSound({ duration: d.id });
+                  }}
+                  sx={{
+                    flex: 1,
+                    border: active ? '1.5px solid #455a64' : '1px solid #cfd8dc',
+                    bgcolor: active ? '#eceff1' : '#fff',
+                    color: '#37474f',
+                    borderRadius: 1,
+                    px: 0.5,
+                    py: 0.45,
+                    fontSize: '0.68rem',
+                    fontWeight: active ? 800 : 600,
+                    cursor: 'pointer',
+                    '&:hover': { bgcolor: '#eceff1' },
+                  }}
+                >
+                  {d.label}
+                </Typography>
+              );
+            })}
+          </Box>
         </Box>
 
-        <List dense disablePadding sx={{ maxHeight: 240, overflow: 'auto', pb: 0.5 }}>
-          {PRESENTATION_SOUND_PRESETS.map((preset) => {
-            const selected = settings.soundId === preset.id;
-            return (
-              <ListItemButton
-                key={preset.id}
-                selected={selected}
-                onClick={() => {
-                  updateSettings({ soundId: preset.id });
-                  playPresentationSound({ soundId: preset.id });
-                }}
+        <Divider />
+
+        <List dense disablePadding sx={{ maxHeight: 360, overflow: 'auto', pb: 0.5 }}>
+          {favorites.length > 0 && (
+            <>
+              <ListSubheader
                 sx={{
-                  py: 0.55,
-                  px: 1.5,
-                  '&.Mui-selected': { bgcolor: 'rgba(84,110,122,0.12)' },
+                  lineHeight: 1.8,
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  color: '#f57f17',
+                  bgcolor: '#fffde7',
+                  borderBottom: '1px solid #fff9c4',
                 }}
               >
-                <ListItemText
-                  primary={preset.label}
-                  secondary={preset.hint}
-                  primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: selected ? 800 : 600 }}
-                  secondaryTypographyProps={{ fontSize: '0.68rem' }}
-                />
-                {selected && (
-                  <VolumeUpIcon sx={{ fontSize: 16, color: '#546e7a' }} />
-                )}
-              </ListItemButton>
+                ★ Favoriten
+              </ListSubheader>
+              {favorites.map(renderPreset)}
+              <Divider sx={{ my: 0.5 }} />
+            </>
+          )}
+
+          {PRESENTATION_SOUND_CATEGORIES.map((cat, index) => {
+            const presets = presetsForCategory(cat.id);
+            if (presets.length === 0) return null;
+            return (
+              <Box key={cat.id}>
+                {index > 0 && <Divider sx={{ my: 0.5 }} />}
+                <ListSubheader
+                  sx={{
+                    lineHeight: 1.8,
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                    color: '#455a64',
+                    bgcolor: '#f5f7f8',
+                    borderBottom: '1px solid #eceff1',
+                  }}
+                >
+                  {cat.label}
+                  <Typography component="span" sx={{ display: 'block', fontSize: '0.64rem', fontWeight: 500, color: '#90a4ae' }}>
+                    {cat.hint}
+                  </Typography>
+                </ListSubheader>
+                {presets.map(renderPreset)}
+              </Box>
             );
           })}
         </List>
