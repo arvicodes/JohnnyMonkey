@@ -36,44 +36,6 @@ import {
 
 export type PresentationSoundVariant = 'dashboard' | 'editor' | 'tablet' | 'laptop';
 
-/** Ein globaler Listener — auch wenn mehrere Sound-Buttons gemountet sind. */
-let soundHotkeyUsers = 0;
-let soundHotkeyAttached = false;
-
-function isTypingTarget(t: EventTarget | null): boolean {
-  if (!(t instanceof HTMLElement)) return false;
-  if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) {
-    return true;
-  }
-  return Boolean(t.isContentEditable || t.closest('[contenteditable="true"]'));
-}
-
-function onPresentationSoundHotkey(e: KeyboardEvent) {
-  if (e.key !== 's' && e.key !== 'S') return;
-  if (e.metaKey || e.ctrlKey || e.altKey) return;
-  if (isTypingTarget(e.target)) return;
-  e.preventDefault();
-  e.stopPropagation();
-  playPresentationSound();
-}
-
-function usePresentationSoundHotkey() {
-  useEffect(() => {
-    soundHotkeyUsers += 1;
-    if (!soundHotkeyAttached) {
-      window.addEventListener('keydown', onPresentationSoundHotkey, true);
-      soundHotkeyAttached = true;
-    }
-    return () => {
-      soundHotkeyUsers = Math.max(0, soundHotkeyUsers - 1);
-      if (soundHotkeyUsers === 0 && soundHotkeyAttached) {
-        window.removeEventListener('keydown', onPresentationSoundHotkey, true);
-        soundHotkeyAttached = false;
-      }
-    };
-  }, []);
-}
-
 type PlayProps = {
   variant?: PresentationSoundVariant;
   title?: string;
@@ -269,12 +231,11 @@ export function PresentationSoundPlayButton({
   variant = 'editor',
   title,
 }: PlayProps) {
-  usePresentationSoundHotkey();
   const [settings] = usePresentationSoundSettings();
   const styles = variantStyles(variant);
   const label = presentationSoundLabel(settings.soundId);
   return (
-    <Tooltip title={title || `Sound abspielen (${label}) · Taste S`}>
+    <Tooltip title={title || `Sound abspielen (${label}) — Taste S`}>
       <IconButton
         size="small"
         onClick={() => playPresentationSound()}
@@ -293,7 +254,6 @@ type SplitProps = {
 
 /** Hauptmenü: links abspielen, rechts Einstellungen (Sound + Lautstärke). */
 export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitProps) {
-  usePresentationSoundHotkey();
   const [settings, updateSettings, refreshSettings] = usePresentationSoundSettings();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const styles = variantStyles(variant);
@@ -335,7 +295,7 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
           ...styles.group,
         }}
       >
-        <Tooltip title={`Sound abspielen (${label}) · Taste S`}>
+        <Tooltip title={`Sound abspielen (${label}) — Taste S`}>
           <IconButton
             size="small"
             onClick={() => playPresentationSound()}
@@ -387,7 +347,7 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
             Präsentations-Sound · {PRESENTATION_SOUND_PRESETS.length} Klänge
           </Typography>
           <Typography sx={{ fontSize: '0.7rem', color: '#78909c', mt: 0.15 }}>
-            ▼ Pfeil antippen für Kategorien & Favoriten · Taste S = abspielen
+            Taste S = abspielen · ▼ = Kategorien & Favoriten
           </Typography>
         </Box>
 

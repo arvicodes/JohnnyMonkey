@@ -43,6 +43,7 @@ import AnnouncementStudentPreviewPage from './pages/AnnouncementStudentPreviewPa
 import WallOfFamePage from './pages/WallOfFamePage';
 
 import { Snackbar, Alert, Box, CircularProgress } from '@mui/material';
+import { ensurePresentationSoundHotkey } from './lib/presentationSound';
 import JohnnyCompanionSimple from './components/JohnnyCompanionSimple';
 import FlutterElf from './components/FlutterElf';
 
@@ -229,6 +230,11 @@ function AppContent() {
 
     checkExistingLogin();
   }, [navigate]);
+
+  useEffect(() => {
+    if (user?.role !== 'TEACHER') return;
+    return ensurePresentationSoundHotkey();
+  }, [user?.role]);
 
   useEffect(() => {
     if (!user && authReady) {
