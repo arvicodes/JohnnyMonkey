@@ -21,6 +21,8 @@ import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
 import TitleIcon from '@mui/icons-material/Title';
 import FormatClearIcon from '@mui/icons-material/FormatClear';
+import TextDecreaseIcon from '@mui/icons-material/TextDecrease';
+import TextIncreaseIcon from '@mui/icons-material/TextIncrease';
 import AddIcon from '@mui/icons-material/Add';
 import AutoFixOffIcon from '@mui/icons-material/AutoFixOff';
 import UndoIcon from '@mui/icons-material/Undo';
@@ -29,7 +31,7 @@ import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
 import { DialogCloseIconButton } from './ui/dialog-close-icon-button';
-import { handlePresentationListShortcutKey } from '../lib/presentationRichText';
+import { handlePresentationListShortcutKey, handlePresentationTabKey } from '../lib/presentationRichText';
 import { apiGetSafe, apiPutSafe, apiPutSafeAwait } from '../lib/api';
 import type { EmojiClickData } from 'emoji-picker-react';
 import { EmojiStyle } from 'emoji-picker-react';
@@ -663,6 +665,74 @@ const NOTE_COLORS = [
   { label: 'Violett', value: '#6a1b9a' },
 ] as const;
 
+/** Stufen für A− / A+ in den Notizen. */
+const NOTE_FONT_SIZE_STEPS = [12, 14, 16, 18, 20, 24, 28, 36, 48] as const;
+const NOTE_DEFAULT_FONT_PX = 18;
+
+function nearestFontSizeStep(px: number): number {
+  let best: number = NOTE_FONT_SIZE_STEPS[0];
+  let bestDist = Math.abs(px - best);
+  for (const step of NOTE_FONT_SIZE_STEPS) {
+    const d = Math.abs(px - step);
+    if (d < bestDist) {
+      best = step;
+      bestDist = d;
+    }
+  }
+  return best;
+}
+
+function readSelectionFontSizePx(editor: HTMLElement): number {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return NOTE_DEFAULT_FONT_PX;
+  let node: Node | null = sel.focusNode;
+  if (node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+  if (!(node instanceof Element) || !editor.contains(node)) return NOTE_DEFAULT_FONT_PX;
+  const raw = window.getComputedStyle(node).fontSize;
+  const px = parseFloat(raw);
+  return Number.isFinite(px) && px > 0 ? px : NOTE_DEFAULT_FONT_PX;
+}
+
+/** Schriftgröße auf Auswahl (oder ab Cursor für Weiterschreiben). */
+function applyNotesFontSize(editor: HTMLElement | null, sizePx: number): boolean {
+  if (!editor) return false;
+  const size = `${Math.round(sizePx)}px`;
+  editor.focus({ preventScroll: true });
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return false;
+  const range = sel.getRangeAt(0);
+  if (!editor.contains(range.commonAncestorContainer)) return false;
+
+  try {
+    if (!range.collapsed) {
+      const fragment = range.extractContents();
+      const span = document.createElement('span');
+      span.style.fontSize = size;
+      span.appendChild(fragment);
+      range.insertNode(span);
+      sel.removeAllRanges();
+      const after = document.createRange();
+      after.selectNodeContents(span);
+      after.collapse(false);
+      sel.addRange(after);
+    } else {
+      const span = document.createElement('span');
+      span.style.fontSize = size;
+      span.appendChild(document.createTextNode('\u200b'));
+      range.insertNode(span);
+      sel.removeAllRanges();
+      const inside = document.createRange();
+      inside.setStart(span.firstChild || span, span.firstChild ? 1 : 0);
+      inside.collapse(true);
+      sel.addRange(inside);
+    }
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 type TeacherQuickNotesProps = {
   userId: string;
   /** N-Button fest am Bildschirm — für globale Nutzung außerhalb des Dashboards */
@@ -1079,6 +1149,25 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     runFormat('foreColor', next);
   };
 
+  const bumpFontSize = (direction: -1 | 1) => {
+    if (mode !== 'text') {
+      modeRef.current = 'text';
+      setMode('text');
+    }
+    const editor = editorRef.current;
+    if (!editor) return;
+    pushHistorySnapshot();
+    editor.focus({ preventScroll: true });
+    const current = nearestFontSizeStep(readSelectionFontSizePx(editor));
+    const idx = NOTE_FONT_SIZE_STEPS.findIndex((s) => s === current);
+    const safeIdx = idx >= 0 ? idx : NOTE_FONT_SIZE_STEPS.findIndex((s) => s === NOTE_DEFAULT_FONT_PX);
+    const nextIdx = Math.max(0, Math.min(NOTE_FONT_SIZE_STEPS.length - 1, (safeIdx >= 0 ? safeIdx : 3) + direction));
+    const nextPx = NOTE_FONT_SIZE_STEPS[nextIdx] ?? NOTE_DEFAULT_FONT_PX;
+    if (applyNotesFontSize(editor, nextPx)) {
+      syncEditorToState();
+    }
+  };
+
   const insertImagesFromFiles = useCallback(
     async (files: FileList | File[]) => {
       const list = Array.from(files).filter((f) => f.type.startsWith('image/'));
@@ -1465,6 +1554,24 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
         redo();
         return;
       }
+      // Tab / Shift+Tab im Texteditor: einrücken (Liste oder Absatz)
+      if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (renamingIndex != null) return;
+        const editor = editorRef.current;
+        const sel = window.getSelection();
+        const inNotesEditor =
+          !!editor &&
+          modeRef.current === 'text' &&
+          !!sel?.anchorNode &&
+          editor.contains(sel.anchorNode);
+        if (!inNotesEditor) return;
+        e.preventDefault();
+        e.stopPropagation();
+        pushHistorySnapshot();
+        handlePresentationTabKey(editor, e.shiftKey);
+        syncEditorToStateRef.current?.();
+        return;
+      }
       // ⌘/Ctrl + ←/→ : durch Notiz-Tabs blättern (auch im Texteditor)
       if (mod && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
         if (renamingIndex != null) return;
@@ -1504,7 +1611,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [open, goToPage, redo, undo, closeModal, emojiOpen, renamingIndex]);
+  }, [open, goToPage, redo, undo, closeModal, emojiOpen, renamingIndex, pushHistorySnapshot]);
 
   const canUndo = historyTick >= 0 && historyRef.current.length > 0;
   const canRedo = historyTick >= 0 && redoRef.current.length > 0;
@@ -1716,6 +1823,26 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
               <Tooltip title="Durchgestrichen">
                 <IconButton size="small" onClick={() => runFormat('strikeThrough')} sx={fmtBtnSx()}>
                   <StrikethroughSIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Kleiner">
+                <IconButton
+                  size="small"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => bumpFontSize(-1)}
+                  sx={fmtBtnSx()}
+                >
+                  <TextDecreaseIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Größer">
+                <IconButton
+                  size="small"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => bumpFontSize(1)}
+                  sx={fmtBtnSx()}
+                >
+                  <TextIncreaseIcon sx={{ fontSize: 16 }} />
                 </IconButton>
               </Tooltip>
               <Divider orientation="vertical" flexItem sx={{ mx: 0.35, my: 0.4, borderColor: '#ffe082' }} />
@@ -2056,6 +2183,20 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
               onBeforeInput={onBeforeEditorInput}
               onKeyDown={(e) => {
                 if (handlePresentationListShortcutKey(e, editorRef.current)) {
+                  syncEditorToState();
+                  return;
+                }
+                if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (mode !== 'text') {
+                    modeRef.current = 'text';
+                    setMode('text');
+                  }
+                  const editor = editorRef.current;
+                  if (!editor) return;
+                  pushHistorySnapshot();
+                  handlePresentationTabKey(editor, e.shiftKey);
                   syncEditorToState();
                 }
               }}

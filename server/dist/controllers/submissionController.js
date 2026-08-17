@@ -48,7 +48,17 @@ const fileFilter = (req, file, cb) => {
         'image/png',
         'image/gif',
         'image/webp',
-        'image/bmp'
+        'image/bmp',
+        'video/mp4',
+        'video/x-msvideo',
+        'video/webm',
+        'video/quicktime',
+        'audio/mpeg',
+        'audio/mp4',
+        'audio/wav',
+        'audio/x-wav',
+        'audio/webm',
+        'audio/ogg',
     ];
     if (allowedMimes.includes(file.mimetype)) {
         cb(null, true);
@@ -61,7 +71,7 @@ exports.upload = (0, multer_1.default)({
     storage: storage,
     fileFilter: fileFilter,
     limits: {
-        fileSize: 50 * 1024 * 1024 // 50 MB Limit
+        fileSize: 150 * 1024 * 1024 // 150 MB (Videos)
     }
 });
 /**
@@ -73,9 +83,11 @@ const getOrCreateAssignment = async (req, res) => {
         if (!filePath || !fileName || !teacherId) {
             return res.status(400).json({ error: 'filePath, fileName und teacherId sind erforderlich' });
         }
-        // Prüfe ob die Datei mit H_ beginnt
-        if (!fileName.startsWith('H_')) {
-            return res.status(400).json({ error: 'Nur Dateien die mit H_ beginnen sind Abgabedateien' });
+        // Prüfe ob die Datei mit H_ oder WA_ beginnt (Wochenaufgaben-Abgaben)
+        const isHomework = fileName.startsWith('H_');
+        const isWochenaufgabe = fileName.startsWith('WA_');
+        if (!isHomework && !isWochenaufgabe) {
+            return res.status(400).json({ error: 'Nur H_- oder WA_-Abgabedateien sind erlaubt' });
         }
         // Prüfe ob der Teacher existiert
         const teacher = await prisma.user.findUnique({

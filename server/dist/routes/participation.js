@@ -59,7 +59,8 @@ async function calculateEpoGradesForGroup(groupId) {
             where: { id: groupId },
             select: {
                 period1Hours: true,
-                period2Hours: true
+                period2Hours: true,
+                passiveStudentIds: true,
             }
         });
         if (!group || !group.period1Hours || !group.period2Hours) {
@@ -68,6 +69,19 @@ async function calculateEpoGradesForGroup(groupId) {
         }
         const period1Hours = group.period1Hours;
         const period2Hours = group.period2Hours;
+        let passiveIds = [];
+        if (group.passiveStudentIds) {
+            try {
+                const parsed = JSON.parse(group.passiveStudentIds);
+                if (Array.isArray(parsed)) {
+                    passiveIds = parsed.map((id) => String(id)).filter(Boolean);
+                }
+            }
+            catch {
+                passiveIds = [];
+            }
+        }
+        const passiveSet = new Set(passiveIds);
         // Lade alle Teilnahmen für diese Gruppe
         const participations = await prisma.participation.findMany({
             where: { groupId },
@@ -78,6 +92,8 @@ async function calculateEpoGradesForGroup(groupId) {
         // Berechne EPO-Noten für jeden Schüler
         const studentData = {};
         participations.forEach(p => {
+            if (passiveSet.has(p.studentId))
+                return;
             if (!studentData[p.studentId]) {
                 studentData[p.studentId] = {
                     period1: { values: [], count: 0 },
@@ -956,11 +972,25 @@ router.get('/:groupId/stats', async (req, res) => {
             where: { id: groupId },
             select: {
                 period1Hours: true,
-                period2Hours: true
+                period2Hours: true,
+                passiveStudentIds: true,
             }
         });
         const period1Hours = (group === null || group === void 0 ? void 0 : group.period1Hours) || null;
         const period2Hours = (group === null || group === void 0 ? void 0 : group.period2Hours) || null;
+        let passiveIds = [];
+        if (group === null || group === void 0 ? void 0 : group.passiveStudentIds) {
+            try {
+                const parsed = JSON.parse(group.passiveStudentIds);
+                if (Array.isArray(parsed)) {
+                    passiveIds = parsed.map((id) => String(id)).filter(Boolean);
+                }
+            }
+            catch {
+                passiveIds = [];
+            }
+        }
+        const passiveSet = new Set(passiveIds);
         const participations = await prisma.participation.findMany({
             where: { groupId },
             include: {
@@ -979,6 +1009,8 @@ router.get('/:groupId/stats', async (req, res) => {
         // Berechne Durchschnitte pro Schüler und kategorisiere nach Zeiträumen
         const studentStats = {};
         participations.forEach(p => {
+            if (passiveSet.has(p.studentId))
+                return;
             if (!studentStats[p.studentId]) {
                 studentStats[p.studentId] = {
                     student: p.student,

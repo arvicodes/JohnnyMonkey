@@ -61,6 +61,10 @@ export declare class FileSystemPathController {
      */
     static saveFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /**
+     * Bild-URL (z. B. Drag aus anderem Browser-Tab) herunterladen und im Stundenordner speichern.
+     */
+    static saveFromUrl(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
      * Datei im Stundenordner löschen (nur unter J-M-Reihen / git-intern).
      */
     static deleteFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;

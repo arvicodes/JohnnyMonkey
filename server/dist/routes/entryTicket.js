@@ -8,6 +8,7 @@ const EntryTicketController_1 = require("../controllers/EntryTicketController");
 const router = express_1.default.Router();
 router.get('/current', EntryTicketController_1.EntryTicketController.getCurrent);
 router.get('/completed', EntryTicketController_1.EntryTicketController.getCompleted);
+router.get('/history', EntryTicketController_1.EntryTicketController.getHistory);
 router.get('/custom-sets', EntryTicketController_1.EntryTicketController.getCustomSets);
 router.put('/custom-sets', EntryTicketController_1.EntryTicketController.saveCustomSets);
 router.post('/signal', EntryTicketController_1.EntryTicketController.signal);

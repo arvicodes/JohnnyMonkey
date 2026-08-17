@@ -52,6 +52,8 @@ router.get('/download', FileSystemPathController_1.FileSystemPathController.down
 router.delete('/:id', FileSystemPathController_1.FileSystemPathController.deletePath);
 // Datei speichern (z.B. Whiteboard)
 router.post('/save-file', upload.single('file'), FileSystemPathController_1.FileSystemPathController.saveFile);
+// Bild-URL speichern (Drag aus anderem Browser-Tab)
+router.post('/save-from-url', FileSystemPathController_1.FileSystemPathController.saveFromUrl);
 // Datei speichern mit sendBeacon (für automatisches Speichern beim Schließen)
 router.post('/save-file-beacon', FileSystemPathController_1.FileSystemPathController.saveFileBeacon);
 // Datei löschen (Stundenordner)

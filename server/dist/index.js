@@ -44,8 +44,12 @@ const participation_1 = __importDefault(require("./routes/participation"));
 const adventCalendar_1 = __importDefault(require("./routes/adventCalendar"));
 const lessonInstructions_1 = __importDefault(require("./routes/lessonInstructions"));
 const teacherSchedule_1 = __importDefault(require("./routes/teacherSchedule"));
+const wochenaufgaben_1 = __importDefault(require("./routes/wochenaufgaben"));
+const teacherScratchPad_1 = __importDefault(require("./routes/teacherScratchPad"));
 const path_1 = __importDefault(require("path"));
 const autoLessonScheduler_1 = require("./services/autoLessonScheduler");
+const ensureWochenaufgabenSchema_1 = require("./utils/ensureWochenaufgabenSchema");
+const teacherScratchPadStore_1 = require("./utils/teacherScratchPadStore");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const prisma = new client_1.PrismaClient();
@@ -91,6 +95,8 @@ app.use('/api/participation', participation_1.default);
 app.use('/api/advent-calendar', adventCalendar_1.default);
 app.use('/api/lesson-instructions', lessonInstructions_1.default);
 app.use('/api/teacher-schedule', teacherSchedule_1.default);
+app.use('/api/wochenaufgaben', wochenaufgaben_1.default);
+app.use('/api/teacher-scratch-pad', teacherScratchPad_1.default);
 app.use('/api/ka-corrections', kaCorrections_1.default);
 app.use('/api/messages', messages_1.default);
 app.use('/api/exit-ticket', exitTicket_1.default);
@@ -213,6 +219,17 @@ process.on('unhandledRejection', (reason, promise) => {
 // Start server with Render compatibility
 async function startServer() {
     try {
+        console.log('🗄️ DATABASE_URL:', process.env.DATABASE_URL || '(from schema)');
+        await (0, ensureWochenaufgabenSchema_1.ensureWochenaufgabenSchema)(prisma);
+        console.log('✅ Wochenaufgaben-Schema bereit');
+        try {
+            const roots = (0, teacherScratchPadStore_1.ensureScratchPadRoots)();
+            console.log('✅ Notizen-Ordner bereit:', roots.liveRoot);
+            console.log('✅ Notizen-Sicherheitskopien:', roots.backupRoot);
+        }
+        catch (e) {
+            console.warn('Notizen-Ordner konnten nicht angelegt werden:', e);
+        }
         // Lokal: 3003 (React nutzt 3000). Ohne PORT kein Konflikt mit dem Frontend.
         const port = parseInt(process.env.PORT || '3003', 10);
         // For Render, use simple server start
