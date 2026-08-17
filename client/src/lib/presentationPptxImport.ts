@@ -216,7 +216,7 @@ export function buildLayoutFaithfulSlideFromImport(
   order: number,
   imagePathByKey: Map<string, string>,
 ): PresentationSlide {
-  const base = createSlideFromLayout(order, 'blank');
+  const base = createSlideFromLayout(order, 'blank-full');
   const notes = imported.notes.trim();
   const elements: SlideElement[] = [];
   let z = 1;

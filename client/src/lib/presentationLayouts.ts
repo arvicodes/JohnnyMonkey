@@ -15,10 +15,21 @@ export const SLIDE_LAYOUTS: LayoutMeta[] = [
   { id: 'image-right', label: 'Bild rechts', hint: 'Text links, Bild rechts' },
   { id: 'image-left', label: 'Bild links', hint: 'Bild links, Text rechts' },
   { id: 'quote', label: 'Zitat', hint: 'Hervorgehobenes Zitat' },
-  { id: 'blank', label: 'Leer', hint: 'Minimale Folie' },
+  { id: 'blank', label: 'Leer', hint: 'Logo & Fußzeile, freie Fläche' },
+  { id: 'blank-full', label: 'Ganz leer', hint: 'Ohne Logo und Fußzeile' },
 ];
 
 export const ACCENT_PRESETS = JOHNNY_ACCENT_PRESETS;
+
+/** Leer oder ganz leer (kein Titel-/Zweispalt-Layout). */
+export function isBlankLayout(layout?: string | null): layout is 'blank' | 'blank-full' {
+  return layout === 'blank' || layout === 'blank-full';
+}
+
+/** Ganz leer: kein Johnny-Chrome (Logo, Akzentlinie, Fußzeile). */
+export function isBareBlankLayout(layout?: string | null): boolean {
+  return layout === 'blank-full';
+}
 
 export function defaultTitleAlign(layout: SlideLayout): 'left' | 'center' {
   if (layout === 'title-slide' || layout === 'section' || layout === 'quote') return 'center';
@@ -61,6 +72,7 @@ export function createSlideFromLayout(order: number, layout: SlideLayout = 'titl
     case 'quote':
       return { ...base, title: '', body: '„Ein Zitat oder eine Kernaussage."', subtitle: '— Quelle' };
     case 'blank':
+    case 'blank-full':
       return { ...base, title: '', body: '' };
     default:
       return { ...base, title: `Folie ${n}`, body: '' };

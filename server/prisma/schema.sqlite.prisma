@@ -573,6 +573,7 @@ model Submission {
   @@index([assignmentId])
 }
 
+/// Wochenaufgaben-Workflow pro nummeriertem Ordner (1, 2, 3 …).
 model WochenaufgabeTask {
   id                  String    @id @default(uuid())
   groupId             String
@@ -592,6 +593,7 @@ model WochenaufgabeTask {
   @@index([groupId])
 }
 
+/// Nach Phase 1: wer bekommt wessen Lösung (Button 2) und gibt Audio-Rückmeldung (Button 3→4).
 model WochenaufgabePeerPair {
   id                  String @id @default(uuid())
   taskId              String

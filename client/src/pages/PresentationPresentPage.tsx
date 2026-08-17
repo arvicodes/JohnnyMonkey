@@ -29,7 +29,8 @@ import {
   parsePresentationPlanMode,
 } from '../lib/presentationDeck';
 import { PresentationDrawTool, defaultLineWidthForTool, lineWidthsForTool } from '../lib/presentationDrawTools';
-import { presentationLessonBackUrl, presentationLessonReturnWithPresentationUrl, tryHandleLessonEntryTicketLinkClick } from '../lib/presentationEditorUi';
+import { presentationLessonBackUrl, tryHandleLessonEntryTicketLinkClick, isLessonEntryTicketSlideHref } from '../lib/presentationEditorUi';
+import { markLessonPlayed } from '../lib/playedLessons';
 import { savePresentationBothVersions, savePresentationNamedVersion, exportPresentationPdfVersions } from '../lib/presentationExport';
 import { getSlideMaxRevealSteps } from '../lib/presentationReveal';
 import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../lib/presentationTransitions';
@@ -38,6 +39,7 @@ import { isPresentationLinkClickTarget } from '../lib/presentationRichText';
 import { clampPresentZoom, handlePresentZoomHotkey, attachPresentTrackpadZoom, attachPresentTouchPinchZoom } from '../lib/presentationPresentZoom';
 import { ensureEntryTicketButtonsOnTitleSlides } from '../lib/presentationSlideTemplates';
 import { isWochenaufgabenFolderPath } from '../lib/wochenaufgabenFolder';
+import EntryTicketPage from './EntryTicketPage';
 
 const SWIPE_MIN_PX = 48;
 const EMPTY_STROKES: PresentationStroke[] = [];
@@ -70,6 +72,7 @@ const PresentationPresentPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState('');
   const [saveNamedOpen, setSaveNamedOpen] = useState(false);
+  const [entryTicketOpen, setEntryTicketOpen] = useState(false);
   const [saveNamedLabel, setSaveNamedLabel] = useState('');
   const [displayScale, setDisplayScale] = useState(0.5);
   const [userZoom, setUserZoom] = useState(1);
@@ -96,7 +99,9 @@ const PresentationPresentPage: React.FC = () => {
   const maxReveal = currentSlide ? getSlideMaxRevealSteps(currentSlide) : 0;
   const transition = currentSlide?.transition || deck?.defaultTransition || 'fade';
   const canGoPrev = slideIndex > 0 || revealStep > 0;
-  const canGoNext = slideIndex < slides.length - 1 || revealStep < maxReveal;
+  const canAdvanceSlide = slideIndex < slides.length - 1 || revealStep < maxReveal;
+  const canFinishToDashboard = planMode === 'run' && slides.length > 0 && !canAdvanceSlide;
+  const canGoNext = canAdvanceSlide || canFinishToDashboard;
 
   useEffect(() => {
     if (!lessonPath) {
@@ -189,8 +194,38 @@ const PresentationPresentPage: React.FC = () => {
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const req = el.requestFullscreen?.();
-    if (req && typeof req.catch === 'function') req.catch(() => undefined);
+    const req = el.requestFullscreen?.() ?? (el as HTMLElement & { webkitRequestFullscreen?: () => void }).webkitRequestFullscreen?.();
+    if (req && typeof (req as Promise<void>).catch === 'function') {
+      (req as Promise<void>).catch(() => undefined);
+    }
+  }, [loading]);
+
+  useEffect(() => {
+    const host = containerRef.current;
+    if (!host || loading) return undefined;
+    const onClick = (e: MouseEvent) => {
+      const t = e.target instanceof Element ? e.target : null;
+      const a = t?.closest?.('a[href]') as HTMLAnchorElement | null;
+      if (!a) return;
+      const href = a.getAttribute('href') || '';
+      if (a.getAttribute('data-pres-entry-ticket') !== '1' && !isLessonEntryTicketSlideHref(href)) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      setEntryTicketOpen(true);
+      if (document.fullscreenElement !== host) {
+        const req =
+          host.requestFullscreen?.() ??
+          (host as HTMLElement & { webkitRequestFullscreen?: () => void }).webkitRequestFullscreen?.();
+        if (req && typeof (req as Promise<void>).catch === 'function') {
+          (req as Promise<void>).catch(() => undefined);
+        }
+      }
+    };
+    host.addEventListener('click', onClick, true);
+    return () => host.removeEventListener('click', onClick, true);
   }, [loading]);
 
   useEffect(() => {
@@ -447,6 +482,30 @@ const PresentationPresentPage: React.FC = () => {
     updateStrokes(currentStrokes.slice(0, -1));
   };
 
+  const finishingRunRef = useRef(false);
+
+  const finishPresentationRun = useCallback(async () => {
+    if (finishingRunRef.current) return;
+    finishingRunRef.current = true;
+    if (groupId && lessonPath) {
+      markLessonPlayed(groupId, lessonPath);
+      try {
+        const loginCode = localStorage.getItem('loginCode') || '';
+        await fetch('/api/teacher-schedule/lessons/end', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-login-code': loginCode,
+          },
+          body: JSON.stringify({ groupId, lessonPath }),
+        });
+      } catch {
+        /* trotzdem zurück ins Dashboard */
+      }
+    }
+    navigate('/dashboard', { replace: true });
+  }, [groupId, lessonPath, navigate]);
+
   const goNext = useCallback(() => {
     if (revealStep < maxReveal) {
       setRevealStep((s) => s + 1);
@@ -455,8 +514,12 @@ const PresentationPresentPage: React.FC = () => {
     if (slideIndex < slides.length - 1) {
       setSlideIndex((i) => i + 1);
       setRevealStep(0);
+      return;
     }
-  }, [revealStep, maxReveal, slideIndex, slides.length]);
+    if (planMode === 'run' && slides.length > 0) {
+      void finishPresentationRun();
+    }
+  }, [revealStep, maxReveal, slideIndex, slides.length, planMode, finishPresentationRun]);
 
   const goPrev = useCallback(() => {
     if (revealStep > 0) {
@@ -584,6 +647,7 @@ const PresentationPresentPage: React.FC = () => {
 
     const onKey = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
+      if (entryTicketOpen) return;
 
       if (handlePresentZoomHotkey(e, userZoom, setUserZoom)) return;
 
@@ -628,7 +692,7 @@ const PresentationPresentPage: React.FC = () => {
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [goNext, goPrev, drawActive, groupId, lessonPath, navigate, planMode, slides, saveNamedOpen, userZoom]);
+  }, [goNext, goPrev, drawActive, groupId, lessonPath, navigate, planMode, slides, saveNamedOpen, userZoom, entryTicketOpen]);
 
   // Fokus auf die Bühne, damit Pfeiltasten sofort greifen
   useEffect(() => {
@@ -694,14 +758,14 @@ const PresentationPresentPage: React.FC = () => {
   const zoomed = userZoom > 1.001;
 
   const onTouchStart = (e: React.TouchEvent) => {
-    if (drawActive) return;
+    if (drawActive || entryTicketOpen) return;
     const t = e.touches[0];
     if (!t) return;
     swipeRef.current = { x: t.clientX, y: t.clientY };
   };
 
   const onTouchEnd = (e: React.TouchEvent) => {
-    if (drawActive || !swipeRef.current) return;
+    if (drawActive || entryTicketOpen || !swipeRef.current) return;
     const t = e.changedTouches[0];
     if (!t) return;
     const dx = t.clientX - swipeRef.current.x;
@@ -714,12 +778,13 @@ const PresentationPresentPage: React.FC = () => {
 
   const handleSlideTap = (e: React.MouseEvent) => {
     if (drawActive) return;
+    if (entryTicketOpen) return;
     if (
       tryHandleLessonEntryTicketLinkClick(e, {
         lessonPath,
         groupId: groupId || undefined,
-        returnTo: presentationLessonReturnWithPresentationUrl(lessonPath, groupId || undefined),
         autostart: true,
+        onOpen: () => setEntryTicketOpen(true),
       })
     ) {
       return;
@@ -797,6 +862,25 @@ const PresentationPresentPage: React.FC = () => {
       tabIndex={0}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
+      onClickCapture={(e) => {
+        if (entryTicketOpen) return;
+        tryHandleLessonEntryTicketLinkClick(e, {
+          lessonPath,
+          groupId: groupId || undefined,
+          autostart: true,
+          onOpen: () => {
+            setEntryTicketOpen(true);
+            const host = containerRef.current;
+            if (!host || document.fullscreenElement === host) return;
+            const req =
+              host.requestFullscreen?.() ??
+              (host as HTMLElement & { webkitRequestFullscreen?: () => void }).webkitRequestFullscreen?.();
+            if (req && typeof (req as Promise<void>).catch === 'function') {
+              (req as Promise<void>).catch(() => undefined);
+            }
+          },
+        });
+      }}
       sx={{
         height: '100dvh',
         width: '100vw',
@@ -935,6 +1019,7 @@ const PresentationPresentPage: React.FC = () => {
         lineWidth={lineWidth}
         canGoPrev={canGoPrev}
         canGoNext={canGoNext}
+        nextButtonTitle={canFinishToDashboard ? 'Zurück zum Dashboard' : 'Weiter'}
         canUndo={currentStrokes.length > 0}
         saving={saving}
         placement="docked"
@@ -1045,6 +1130,26 @@ const PresentationPresentPage: React.FC = () => {
         message={snackbar}
         onClose={() => setSnackbar('')}
       />
+
+      {entryTicketOpen ? (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 80,
+            bgcolor: '#f4f6fb',
+            overflow: 'auto',
+          }}
+        >
+          <EntryTicketPage
+            embeddedPlay={{
+              lessonPath,
+              groupId: groupId || undefined,
+              onExit: () => setEntryTicketOpen(false),
+            }}
+          />
+        </Box>
+      ) : null}
     </Box>
   );
 };

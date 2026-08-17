@@ -167,6 +167,10 @@ export function tryHandleLessonEntryTicketLinkClick(
     returnTo?: string;
     /** false = nur öffnen, ohne Autostart (z. B. im Editor) */
     autostart?: boolean;
+    /** true = im gleichen Tab (Play → Ticket → zurück in denselben Play-Modus) */
+    sameTab?: boolean;
+    /** Wird statt Navigation aufgerufen (Overlay im Play, Vollbild bleibt). */
+    onOpen?: () => void;
   },
 ): boolean {
   if (!opts.lessonPath) return false;
@@ -179,6 +183,12 @@ export function tryHandleLessonEntryTicketLinkClick(
   if (!marked) return false;
   event.preventDefault();
   event.stopPropagation();
+  const native = 'nativeEvent' in event ? (event as { nativeEvent?: Event }).nativeEvent : undefined;
+  native?.stopImmediatePropagation?.();
+  if (opts.onOpen) {
+    opts.onOpen();
+    return true;
+  }
   const returnTo =
     opts.returnTo ||
     (opts.groupId
@@ -191,6 +201,10 @@ export function tryHandleLessonEntryTicketLinkClick(
     autostart: opts.autostart !== false,
     returnTo,
   });
+  if (opts.sameTab) {
+    window.location.assign(url);
+    return true;
+  }
   const opened = window.open(url, '_blank', 'noopener,noreferrer');
   if (!opened) {
     window.location.assign(url);

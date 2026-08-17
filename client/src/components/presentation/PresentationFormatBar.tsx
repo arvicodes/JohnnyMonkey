@@ -451,7 +451,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   return (
     <Box
       data-presentation-format-bar
-      sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexWrap: 'wrap' }}
+      sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexWrap: 'nowrap', minWidth: 0 }}
       onPointerDownCapture={() => beginFormatBarInteraction()}
       onMouseDownCapture={() => stashEditorSelection(activeEditor)}
       onMouseDown={(e) => {

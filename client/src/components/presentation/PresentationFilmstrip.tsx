@@ -130,7 +130,7 @@ const SortableFilmstripThumb = React.memo(
               ? ring
               : `0 0 0 1px ${PRES_EDITOR_UI.accentHover}, 0 1px 3px rgba(0,0,0,0.08)`,
           },
-          'body[data-pres-element-drag="image"] &': {
+          'body[data-pres-element-drag] &': {
             outline: `2px dashed ${PRES_EDITOR_UI.accent}`,
             outlineOffset: 2,
           },

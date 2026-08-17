@@ -24,6 +24,7 @@ import { sanitizePresentationHtml } from '../../lib/presentationRichText';
 import { getElementStackLayer } from '../../lib/presentationElementLayers';
 import { slideHasImageHeroLayout } from '../../lib/presentationImageUtils';
 import { slideHasFullscreenMedia } from '../../lib/presentationMediaEmbed';
+import { isBareBlankLayout, isBlankLayout } from '../../lib/presentationLayouts';
 import { hydratePresentationHtmlFontSizes, PRESENTATION_CONTENT_FONT_PX } from '../../lib/presentationFontSize';
 import { shapeSupportsText, SlideShapeSvg } from '../../lib/presentationSlideShapes';
 import { PRESENTATION_DEFAULT_FONT_FAMILY } from '../../lib/presentationFonts';
@@ -359,7 +360,8 @@ const PresentationLaptopSlide: React.FC<PresentationLaptopSlideProps> = ({
   const h = SLIDE_REF_HEIGHT * scale;
   const accent = slide.accentColor || JOHNNY_PRESENTATION.primary;
   const align = slide.titleAlign || 'left';
-  const footerOn = showSlideFooter;
+  const bareBlank = isBareBlankLayout(slide.layout);
+  const footerOn = showSlideFooter && !bareBlank;
   const footer = normalizeSlideFooter(slideFooter, deckTitle, lessonPath);
   const footerHeight = footerOn ? SLIDE_FOOTER_HEIGHT * scale : 0;
   const slideNumberLabel =
@@ -369,13 +371,15 @@ const PresentationLaptopSlide: React.FC<PresentationLaptopSlideProps> = ({
         : String(slideNumber)
       : '';
   const showFooterNumbers = footerOn && slideNumberLabel.length > 0;
-  const showStandaloneNumbers = !footerOn && showSlideNumbers && slideNumberLabel.length > 0;
+  const showStandaloneNumbers = !footerOn && !bareBlank && showSlideNumbers && slideNumberLabel.length > 0;
   const fullscreenMedia = slideHasFullscreenMedia(slide);
   const imageHeroLayout = slideHasImageHeroLayout(slide);
+  const bareCanvas = bareBlank || fullscreenMedia;
+  const showJohnnyChrome = showLogo && !fullscreenMedia && !bareBlank;
   const hideBlankContent =
     fullscreenMedia ||
     imageHeroLayout ||
-    (slide.layout === 'blank' && isLayoutZoneHidden(slide, 'bodyHtml'));
+    (isBlankLayout(slide.layout) && isLayoutZoneHidden(slide, 'bodyHtml'));
 
   const backgroundElements = (slide.elements || []).filter(
     (el) => getElementStackLayer(el) === 'background',
@@ -547,6 +551,7 @@ const PresentationLaptopSlide: React.FC<PresentationLaptopSlideProps> = ({
       );
       break;
     case 'blank':
+    case 'blank-full':
       content = hideBlankContent ? null : (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           {zone(slide.bodyHtml, slide.body, 'body')}
@@ -593,7 +598,7 @@ const PresentationLaptopSlide: React.FC<PresentationLaptopSlideProps> = ({
         <StaticElement key={el.id} el={el} scale={scale} />
       ))}
 
-      {showLogo && !fullscreenMedia && (
+      {showJohnnyChrome && (
         <img
           src={JOHNNY_PRESENTATION.logoUrl}
           alt="Johnny"
@@ -611,7 +616,7 @@ const PresentationLaptopSlide: React.FC<PresentationLaptopSlideProps> = ({
         />
       )}
 
-      {!fullscreenMedia && (
+      {showJohnnyChrome && (
         <div
           style={{
             position: 'absolute',
@@ -631,10 +636,10 @@ const PresentationLaptopSlide: React.FC<PresentationLaptopSlideProps> = ({
         style={{
           position: 'absolute',
           inset: 0,
-          paddingTop: fullscreenMedia ? 0 : `${72 * scale}px`,
-          paddingLeft: fullscreenMedia ? 0 : `${64 * scale}px`,
-          paddingRight: fullscreenMedia ? 0 : `${64 * scale}px`,
-          paddingBottom: fullscreenMedia ? 0 : `${(footerOn ? 56 : 48) * scale}px`,
+          paddingTop: bareCanvas ? 0 : `${72 * scale}px`,
+          paddingLeft: bareCanvas ? 0 : `${64 * scale}px`,
+          paddingRight: bareCanvas ? 0 : `${64 * scale}px`,
+          paddingBottom: bareCanvas ? 0 : `${(footerOn ? 56 : 48) * scale}px`,
           display: 'flex',
           flexDirection: 'column',
           minWidth: 0,

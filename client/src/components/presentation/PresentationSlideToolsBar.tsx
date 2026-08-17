@@ -42,7 +42,6 @@ import {
   AlignVerticalBottom as AlignBottomIcon,
   WidthWide as MatchWidthIcon,
   Height as MatchHeightIcon,
-  SquareFoot as AlignToIcon,
   ViewAgendaOutlined as CardIcon,
   ViewColumnOutlined as CardPairIcon,
   TableChartOutlined as TableIcon,
@@ -395,20 +394,6 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
     );
   };
 
-  const layerIconGroup = selectedElement ? (
-    <ButtonGroup size="small" variant="outlined" sx={{ '& .MuiButton-root': { ...miniBtnSx, minWidth: 26, px: 0.35 } }}>
-      {(
-        [
-          ['backward', <DownIcon key="d" sx={{ fontSize: 14 }} />, 'Schritt hinten'],
-          ['forward', <UpIcon key="u" sx={{ fontSize: 14 }} />, 'Schritt vorne'],
-        ] as const
-      ).map(([action, icon, title]) => (
-        <Tooltip key={action} title={title}>
-          <Button onClick={() => onReorderElementLayer(selectedElement.id, action)}>{icon}</Button>
-        </Tooltip>
-      ))}
-    </ButtonGroup>
-  ) : null;
 
   return (
     <Box
@@ -418,7 +403,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
         gap: 0.35,
         flexShrink: 0,
         width: 'fit-content',
-        maxWidth: '100%',
+        flexWrap: 'nowrap',
       }}
     >
       {showHomeworkSubmissionToggle && (
@@ -727,7 +712,8 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
         (selectedElement.type === 'image' ||
           selectedElement.type === 'shape' ||
           selectedElement.type === 'card' ||
-          selectedElement.type === 'table') && (
+          selectedElement.type === 'table' ||
+          selectedElement.type === 'text') && (
           <Box sx={toolGroupSx}>
             <Tooltip title="Ausschneiden (⌘X)">
               <IconButton size="small" onClick={() => onCutElement?.()} sx={iconBtnSx}>
@@ -742,152 +728,140 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
           </Box>
         )}
 
-      {selectedElement && layerIconGroup}
-
       {selectedElement && (
         <Box sx={toolGroupSx}>
-            {SLIDE_ALIGN_ACTIONS.map(({ kind, title, icon }) => (
-              <Tooltip key={kind} title={title}>
-                <IconButton size="small" onClick={() => applySlideAlign(kind)} sx={iconBtnSx}>
-                  {icon}
-                </IconButton>
-              </Tooltip>
-            ))}
-            <Tooltip title="Gleiche Breite (nächstes Element)">
-              <span>
-                <IconButton
+          <Tooltip title="Ausrichten & Größe">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                if (!alignTargetId && alignTarget) setAlignTargetId(alignTarget.id);
+                setAlignAnchor(e.currentTarget);
+              }}
+              sx={{ ...iconBtnSx, color: PRES_EDITOR_UI.accent }}
+            >
+              <AlignCenterHIcon sx={{ fontSize: 14 }} />
+            </IconButton>
+          </Tooltip>
+          <Popover
+            open={Boolean(alignAnchor)}
+            anchorEl={alignAnchor}
+            onClose={() => setAlignAnchor(null)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          >
+            <Box sx={{ p: 1, width: 268 }}>
+              <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.35 }}>
+                An Folie ausrichten
+              </Typography>
+              <ButtonGroup
+                size="small"
+                variant="outlined"
+                fullWidth
+                sx={{ mb: 0.75, '& .MuiButton-root': { ...miniBtnSx, flex: 1, px: 0.15 } }}
+              >
+                {SLIDE_ALIGN_ACTIONS.map(({ kind, title, icon }) => (
+                  <Tooltip key={kind} title={title}>
+                    <Button onClick={() => applySlideAlign(kind)}>{icon}</Button>
+                  </Tooltip>
+                ))}
+              </ButtonGroup>
+
+              <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.35 }}>
+                Größe (nächstes Element)
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.35, mb: 0.75 }}>
+                <Button
                   size="small"
+                  variant="outlined"
                   disabled={!alignTarget}
                   onClick={() => applyMatchSize('w')}
-                  sx={iconBtnSx}
+                  sx={{ ...miniBtnSx, flex: 1 }}
+                  startIcon={<MatchWidthIcon sx={{ fontSize: 14 }} />}
                 >
-                  <MatchWidthIcon sx={{ fontSize: 14 }} />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title="Gleiche Höhe (nächstes Element)">
-              <span>
-                <IconButton
+                  Breite
+                </Button>
+                <Button
                   size="small"
+                  variant="outlined"
                   disabled={!alignTarget}
                   onClick={() => applyMatchSize('h')}
-                  sx={iconBtnSx}
+                  sx={{ ...miniBtnSx, flex: 1 }}
+                  startIcon={<MatchHeightIcon sx={{ fontSize: 14 }} />}
                 >
-                  <MatchHeightIcon sx={{ fontSize: 14 }} />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title="An anderes Element ausrichten…">
-              <span>
-                <IconButton
-                  size="small"
-                  disabled={siblingElements.length === 0}
-                  onClick={(e) => {
-                    if (!alignTargetId && alignTarget) setAlignTargetId(alignTarget.id);
-                    setAlignAnchor(e.currentTarget);
-                  }}
-                  sx={{ ...iconBtnSx, color: PRES_EDITOR_UI.accent }}
-                >
-                  <AlignToIcon sx={{ fontSize: 14 }} />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Popover
-              open={Boolean(alignAnchor)}
-              anchorEl={alignAnchor}
-              onClose={() => setAlignAnchor(null)}
-              anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-            >
-              <Box sx={{ p: 1, width: 260 }}>
-                <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.5 }}>
-                  Bezugselement
-                </Typography>
-                <TextField
-                  select
-                  size="small"
-                  fullWidth
-                  value={alignTarget?.id || ''}
-                  onChange={(e) => setAlignTargetId(e.target.value)}
-                  SelectProps={{ native: true }}
-                  sx={{
-                    mb: 0.75,
-                    '& .MuiInputBase-root': { fontSize: 11, height: 30 },
-                  }}
-                >
-                  {siblingElements.map((el, i) => (
+                  Höhe
+                </Button>
+              </Box>
+
+              <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.5 }}>
+                Bezugselement
+              </Typography>
+              <TextField
+                select
+                size="small"
+                fullWidth
+                disabled={siblingElements.length === 0}
+                value={alignTarget?.id || ''}
+                onChange={(e) => setAlignTargetId(e.target.value)}
+                SelectProps={{ native: true }}
+                sx={{
+                  mb: 0.75,
+                  '& .MuiInputBase-root': { fontSize: 11, height: 30 },
+                }}
+              >
+                {siblingElements.length === 0 ? (
+                  <option value="">Kein weiteres Element</option>
+                ) : (
+                  siblingElements.map((el, i) => (
                     <option key={el.id} value={el.id}>
                       {elementAlignLabel(el, i)}
                     </option>
-                  ))}
-                </TextField>
-                <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.35 }}>
-                  Kanten ausrichten
-                </Typography>
-                <ButtonGroup
-                  size="small"
-                  variant="outlined"
-                  fullWidth
-                  sx={{ mb: 0.5, '& .MuiButton-root': { ...miniBtnSx, flex: 1, px: 0.15 } }}
-                >
-                  {SLIDE_ALIGN_ACTIONS.map(({ kind, title, icon }) => (
-                    <Tooltip key={kind} title={title.replace(' (Folie)', '').replace(' an Folie', '')}>
-                      <Button disabled={!alignTarget} onClick={() => applyTargetAlign(kind)}>
-                        {icon}
-                      </Button>
-                    </Tooltip>
-                  ))}
-                </ButtonGroup>
-                <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.35 }}>
-                  Größe übernehmen
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 0.35 }}>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    disabled={!alignTarget}
-                    onClick={() => applyMatchSize('w')}
-                    sx={{ ...miniBtnSx, flex: 1 }}
-                  >
-                    Breite
-                  </Button>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    disabled={!alignTarget}
-                    onClick={() => applyMatchSize('h')}
-                    sx={{ ...miniBtnSx, flex: 1 }}
-                  >
-                    Höhe
-                  </Button>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    disabled={!alignTarget}
-                    onClick={() => applyMatchSize('both')}
-                    sx={{ ...miniBtnSx, flex: 1 }}
-                  >
-                    Beides
-                  </Button>
-                </Box>
-                <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, mt: 0.75, lineHeight: 1.35 }}>
-                  Beim Ziehen: Hilfslinien · ⌘/Ctrl halten = ohne Magnet
-                </Typography>
-              </Box>
-            </Popover>
-          </Box>
-          )}
+                  ))
+                )}
+              </TextField>
+              <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.35 }}>
+                Kanten am Bezug
+              </Typography>
+              <ButtonGroup
+                size="small"
+                variant="outlined"
+                fullWidth
+                sx={{ mb: 0.5, '& .MuiButton-root': { ...miniBtnSx, flex: 1, px: 0.15 } }}
+              >
+                {SLIDE_ALIGN_ACTIONS.map(({ kind, title, icon }) => (
+                  <Tooltip key={kind} title={title.replace(' (Folie)', '').replace(' an Folie', '')}>
+                    <Button disabled={!alignTarget} onClick={() => applyTargetAlign(kind)}>
+                      {icon}
+                    </Button>
+                  </Tooltip>
+                ))}
+              </ButtonGroup>
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={!alignTarget}
+                onClick={() => applyMatchSize('both')}
+                sx={{ ...miniBtnSx, width: '100%' }}
+              >
+                Breite + Höhe vom Bezug
+              </Button>
+              <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, mt: 0.75, lineHeight: 1.35 }}>
+                Beim Ziehen: Hilfslinien · ⌘/Ctrl halten = ohne Magnet
+              </Typography>
+            </Box>
+          </Popover>
+          <Tooltip title="Einstellungen">
+            <IconButton
+              size="small"
+              onClick={(e) => setElementAnchor(e.currentTarget)}
+              sx={{ ...iconBtnSx, color: PRES_EDITOR_UI.accent }}
+            >
+              <SettingsIcon sx={{ fontSize: 14 }} />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      )}
 
       {selectedElement && (
         <>
-          <Tooltip title="Einstellungen">
-                <IconButton
-                  size="small"
-                  onClick={(e) => setElementAnchor(e.currentTarget)}
-                  sx={{ ...iconBtnSx, color: PRES_EDITOR_UI.accent }}
-                >
-                  <SettingsIcon sx={{ fontSize: 14 }} />
-                </IconButton>
-              </Tooltip>
               <Popover
                 open={Boolean(elementAnchor)}
                 anchorEl={elementAnchor}
@@ -927,12 +901,12 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                         <BackIcon sx={{ fontSize: 14 }} />
                       </Button>
                     </Tooltip>
-                    <Tooltip title="Schritt hinten">
+                    <Tooltip title="Eine hinten">
                       <Button onClick={() => onReorderElementLayer(selectedElement.id, 'backward')}>
                         <DownIcon sx={{ fontSize: 14 }} />
                       </Button>
                     </Tooltip>
-                    <Tooltip title="Schritt vorne">
+                    <Tooltip title="Eine vorne">
                       <Button onClick={() => onReorderElementLayer(selectedElement.id, 'forward')}>
                         <UpIcon sx={{ fontSize: 14 }} />
                       </Button>

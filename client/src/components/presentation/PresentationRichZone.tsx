@@ -419,6 +419,31 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
         }
         handlePaste(e);
       }}
+      onDragOver={(e) => {
+        // Datei-/URL-Drops gehören auf die Folie als Element — nicht als Inline-Bild im Text
+        const types = Array.from(e.dataTransfer?.types ?? []).map((t) => t.toLowerCase());
+        if (
+          types.includes('files') ||
+          types.includes('text/uri-list') ||
+          types.includes('text/html') ||
+          types.includes('text/x-moz-url') ||
+          types.includes('url')
+        ) {
+          e.preventDefault();
+        }
+      }}
+      onDrop={(e) => {
+        const types = Array.from(e.dataTransfer?.types ?? []).map((t) => t.toLowerCase());
+        if (
+          types.includes('files') ||
+          types.includes('text/uri-list') ||
+          types.includes('text/html') ||
+          types.includes('text/x-moz-url') ||
+          types.includes('url')
+        ) {
+          e.preventDefault();
+        }
+      }}
       onInput={() => {
         if (animationEditMode) return;
         editingRef.current = true;

@@ -1191,6 +1191,246 @@ export class FileSystemPathController {
   }
 
   /**
+   * Bild-URL (z. B. Drag aus anderem Browser-Tab) herunterladen und im Stundenordner speichern.
+   */
+  static async saveFromUrl(req: Request, res: Response) {
+    try {
+      const urlRaw = typeof req.body?.url === 'string' ? req.body.url.trim() : '';
+      const targetPath = req.body?.targetPath || req.query?.targetPath;
+      if (!urlRaw) {
+        return res.status(400).json({ error: 'URL fehlt' });
+      }
+      if (!targetPath) {
+        return res.status(400).json({ error: 'Zielverzeichnis fehlt' });
+      }
+      if (!/^https?:\/\//i.test(urlRaw) && !urlRaw.startsWith('data:image/')) {
+        return res.status(400).json({ error: 'Nur http(s)- oder data:image-URLs erlaubt' });
+      }
+
+      let buffer: Buffer;
+      let contentType = 'image/png';
+      let originalName = `web-image-${Date.now()}.png`;
+
+      if (urlRaw.startsWith('data:image/')) {
+        const m = urlRaw.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+        if (!m) return res.status(400).json({ error: 'Ungültige data:-URL' });
+        contentType = m[1];
+        buffer = Buffer.from(m[2], 'base64');
+        const ext =
+          contentType.includes('jpeg') || contentType.includes('jpg')
+            ? 'jpg'
+            : contentType.includes('gif')
+              ? 'gif'
+              : contentType.includes('webp')
+                ? 'webp'
+                : contentType.includes('svg')
+                  ? 'svg'
+                  : 'png';
+        originalName = `web-image-${Date.now()}.${ext}`;
+      } else {
+        const upstream = await fetch(urlRaw, {
+          redirect: 'follow',
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+            'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
+            // Manche CDNs erwarten einen Referer von der Bild-Domain
+            Referer: (() => {
+              try {
+                return new URL(urlRaw).origin + '/';
+              } catch {
+                return 'https://www.google.com/';
+              }
+            })(),
+          },
+        });
+        if (!upstream.ok) {
+          return res.status(502).json({
+            error: `Bild-Server antwortete mit ${upstream.status} — bitte Bild speichern und Datei ziehen`,
+          });
+        }
+        contentType = (upstream.headers.get('content-type') || '').split(';')[0].trim() || '';
+        const arr = await upstream.arrayBuffer();
+        buffer = Buffer.from(arr);
+        if (buffer.length < 24) {
+          return res.status(400).json({ error: 'Bilddaten zu klein' });
+        }
+        if (buffer.length > 50 * 1024 * 1024) {
+          return res.status(413).json({ error: 'Bild ist zu groß (max. 50MB)' });
+        }
+
+        // Content-Type fehlt/HTML: Magic-Bytes prüfen
+        const magic = buffer.subarray(0, 12);
+        const isPng = magic[0] === 0x89 && magic[1] === 0x50 && magic[2] === 0x4e && magic[3] === 0x47;
+        const isJpg = magic[0] === 0xff && magic[1] === 0xd8 && magic[2] === 0xff;
+        const isGif = magic[0] === 0x47 && magic[1] === 0x49 && magic[2] === 0x46;
+        const isWebp =
+          magic[0] === 0x52 &&
+          magic[1] === 0x49 &&
+          magic[2] === 0x46 &&
+          magic[3] === 0x46 &&
+          magic[8] === 0x57 &&
+          magic[9] === 0x45 &&
+          magic[10] === 0x42 &&
+          magic[11] === 0x50;
+        const headText = buffer.subarray(0, Math.min(buffer.length, 8000)).toString('utf8');
+        // Nicht nur <?xml — XHTML/Seiten starten oft damit und sind keine SVG
+        const isSvg =
+          contentType.includes('svg') ||
+          (/<svg[\s>]/i.test(headText) && !/<html[\s>]/i.test(headText));
+        const looksLikeHtml =
+          contentType.includes('text/html') ||
+          (/^\s*</.test(headText) && /<html|<head|<body|<meta/i.test(headText));
+
+        // Seiten-URL statt Bild: og:image / twitter:image / img[src] nachladen
+        if (looksLikeHtml && !isPng && !isJpg && !isGif && !isWebp && !isSvg) {
+          const html = buffer.toString('utf8');
+          const pick =
+            html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)?.[1] ||
+            html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)?.[1] ||
+            html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i)?.[1] ||
+            html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i)?.[1] ||
+            html.match(/<link[^>]+rel=["']image_src["'][^>]+href=["']([^"']+)["']/i)?.[1] ||
+            html.match(/<img[^>]+src=["'](https?:\/\/[^"']+\.(?:png|jpe?g|gif|webp)[^"']*)["']/i)?.[1] ||
+            html.match(/<img[^>]+src=["'](https?:\/\/[^"']+)["']/i)?.[1];
+          if (!pick) {
+            return res.status(400).json({
+              error:
+                'Es wurde eine Webseite statt eines Bildes erkannt — bitte das Bild selbst (nicht die Seite) ziehen oder speichern',
+            });
+          }
+          let imageUrl = pick.replace(/&amp;/g, '&').trim();
+          if (imageUrl.startsWith('//')) imageUrl = `https:${imageUrl}`;
+          try {
+            imageUrl = new URL(imageUrl, urlRaw).href;
+          } catch {
+            /* keep */
+          }
+          const imgRes = await fetch(imageUrl, {
+            redirect: 'follow',
+            headers: {
+              'User-Agent':
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+              Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+              Referer: urlRaw,
+            },
+          });
+          if (!imgRes.ok) {
+            return res.status(502).json({
+              error: `Bild aus Seite nicht ladbar (${imgRes.status}) — bitte Bilddatei speichern und ziehen`,
+            });
+          }
+          contentType = (imgRes.headers.get('content-type') || '').split(';')[0].trim() || 'image/png';
+          buffer = Buffer.from(await imgRes.arrayBuffer());
+          if (buffer.length < 24) {
+            return res.status(400).json({ error: 'Bilddaten aus Seite zu klein' });
+          }
+        }
+
+        const magic2 = buffer.subarray(0, 12);
+        const isPng2 = magic2[0] === 0x89 && magic2[1] === 0x50 && magic2[2] === 0x4e && magic2[3] === 0x47;
+        const isJpg2 = magic2[0] === 0xff && magic2[1] === 0xd8 && magic2[2] === 0xff;
+        const isGif2 = magic2[0] === 0x47 && magic2[1] === 0x49 && magic2[2] === 0x46;
+        const isWebp2 =
+          magic2[0] === 0x52 &&
+          magic2[1] === 0x49 &&
+          magic2[2] === 0x46 &&
+          magic2[3] === 0x46 &&
+          magic2[8] === 0x57 &&
+          magic2[9] === 0x45 &&
+          magic2[10] === 0x42 &&
+          magic2[11] === 0x50;
+        const head2 = buffer.subarray(0, Math.min(buffer.length, 512)).toString('utf8');
+        const isSvg2 = /<svg[\s>]/i.test(head2) && !/<html[\s>]/i.test(head2);
+
+        if (!contentType.startsWith('image/') && contentType !== 'application/octet-stream') {
+          if (isPng2) contentType = 'image/png';
+          else if (isJpg2) contentType = 'image/jpeg';
+          else if (isGif2) contentType = 'image/gif';
+          else if (isWebp2) contentType = 'image/webp';
+          else if (isSvg2) contentType = 'image/svg+xml';
+          else {
+            return res.status(400).json({
+              error: `Keine Bilddatei erkannt (${contentType || 'unbekannt'})`,
+            });
+          }
+        } else if (!contentType.startsWith('image/')) {
+          if (isPng2) contentType = 'image/png';
+          else if (isJpg2) contentType = 'image/jpeg';
+          else if (isGif2) contentType = 'image/gif';
+          else if (isWebp2) contentType = 'image/webp';
+          else contentType = 'image/png';
+        }
+
+        try {
+          const u = new URL(urlRaw);
+          const base = (u.pathname.split('/').pop() || '').split('?')[0];
+          if (base && /\.(png|jpe?g|gif|webp|svg)$/i.test(base)) {
+            originalName = base.replace(/[^\w.\-äöüÄÖÜß]+/gi, '_');
+          } else {
+            const ext =
+              contentType.includes('jpeg') || contentType.includes('jpg')
+                ? 'jpg'
+                : contentType.includes('gif')
+                  ? 'gif'
+                  : contentType.includes('webp')
+                    ? 'webp'
+                    : contentType.includes('svg')
+                      ? 'svg'
+                      : 'png';
+            originalName = `web-image-${Date.now()}.${ext}`;
+          }
+        } catch {
+          originalName = `web-image-${Date.now()}.png`;
+        }
+      }
+
+      let tp = String(targetPath).replace(/\\/g, '/').trim();
+      let fullTargetPath: string;
+      if (tp.startsWith('git-intern/')) {
+        let rel = tp.replace(/^git-intern\//, '');
+        try {
+          rel = decodeURIComponent(rel);
+        } catch {
+          /* ignore */
+        }
+        fullTargetPath = StorageManager.resolveGitInternRelativePath(rel);
+      } else if (tp === 'J-M-Reihen' || tp.startsWith('J-M-Reihen/')) {
+        fullTargetPath = StorageManager.resolveGitInternRelativePath(tp);
+      } else if (tp.startsWith('/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/')) {
+        fullTargetPath = tp;
+      } else {
+        fullTargetPath = path.resolve(tp);
+      }
+
+      if (!fs.existsSync(fullTargetPath)) {
+        fs.mkdirSync(fullTargetPath, { recursive: true });
+      }
+
+      let finalFilePath = path.join(fullTargetPath, originalName);
+      if (fs.existsSync(finalFilePath)) {
+        const ext = path.extname(originalName);
+        const stem = path.basename(originalName, ext);
+        finalFilePath = path.join(fullTargetPath, `${stem}-${Date.now()}${ext}`);
+        originalName = path.basename(finalFilePath);
+      }
+      fs.writeFileSync(finalFilePath, buffer);
+
+      res.json({
+        success: true,
+        path: finalFilePath,
+        filename: originalName,
+      });
+    } catch (error: any) {
+      console.error('Error saveFromUrl:', error);
+      res.status(500).json({
+        error: 'Fehler beim Laden der Bild-URL: ' + (error?.message || 'Unbekannter Fehler'),
+      });
+    }
+  }
+
+  /**
    * Datei im Stundenordner löschen (nur unter J-M-Reihen / git-intern).
    */
   static async deleteFile(req: Request, res: Response) {
