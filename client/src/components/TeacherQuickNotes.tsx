@@ -781,6 +781,8 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   const textBurstArmedRef = useRef(true);
   const erasingRef = useRef(false);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const colorRef = useRef(color);
+  const inkPointerIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     pagesRef.current = pages;
@@ -791,6 +793,9 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   useEffect(() => {
     modeRef.current = mode;
   }, [mode]);
+  useEffect(() => {
+    colorRef.current = color;
+  }, [color]);
   useEffect(() => {
     inkRef.current = ink;
   }, [ink]);
@@ -1315,31 +1320,44 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     }
   }, [open, text, pageIndex]);
 
-  const pointFromEvent = (e: React.PointerEvent<HTMLCanvasElement>): InkPoint => {
-    const canvas = canvasRef.current!;
-    const rect = canvas.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  const pointFromClient = (clientX: number, clientY: number): InkPoint => {
+    const canvas = canvasRef.current;
+    const host = containerRef.current;
+    const rect = (canvas || host)?.getBoundingClientRect();
+    if (!rect) return { x: clientX, y: clientY };
+    return { x: clientX - rect.left, y: clientY - rect.top };
   };
 
-  const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (mode !== 'pen' && mode !== 'eraser' && e.pointerType !== 'pen') return;
-    e.preventDefault();
-    (e.target as HTMLCanvasElement).setPointerCapture(e.pointerId);
-    drawingRef.current = true;
-    const pt = pointFromEvent(e);
-    if (mode === 'eraser') {
-      erasingRef.current = true;
-      pushHistorySnapshot();
-      eraseAt(pt);
-      return;
+  /** Wie auf den Folien: Apple Pencil immer Tinte; Maus nur im Stift/Radierer; Finger = Palm-Rejection. */
+  const shouldInkPointer = (pointerType: string): boolean => {
+    if (pointerType === 'pen') return true;
+    const m = modeRef.current;
+    return (m === 'pen' || m === 'eraser') && pointerType === 'mouse';
+  };
+
+  const appendInkPoint = (pt: InkPoint) => {
+    const stroke = currentStrokeRef.current;
+    if (!stroke) return;
+    const last = stroke.points[stroke.points.length - 1];
+    if (last) {
+      const dx = pt.x - last.x;
+      const dy = pt.y - last.y;
+      if (dx * dx + dy * dy < 0.35 * 0.35) return;
     }
-    erasingRef.current = false;
-    const stroke: InkStroke = {
-      points: [pt],
-      color,
-      width: e.pointerType === 'pen' ? Math.max(1.5, Math.min(4, (e.pressure || 0.5) * 4)) : 2.25,
-    };
-    currentStrokeRef.current = stroke;
+    stroke.points.push(pt);
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!ctx || stroke.points.length < 2) return;
+    const a = stroke.points[stroke.points.length - 2];
+    const b = stroke.points[stroke.points.length - 1];
+    ctx.strokeStyle = stroke.color;
+    ctx.lineWidth = stroke.width;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
   };
 
   const eraseAt = (pt: InkPoint) => {
@@ -1356,41 +1374,86 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     redrawCanvas();
   };
 
-  const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!drawingRef.current) return;
-    e.preventDefault();
-    const pt = pointFromEvent(e);
-    if (erasingRef.current || mode === 'eraser') {
-      eraseAt(pt);
+  const onInkPointerDown = (e: PointerEvent) => {
+    if (e.pointerType === 'touch' && (modeRef.current === 'pen' || modeRef.current === 'eraser')) {
+      e.preventDefault();
       return;
     }
-    if (!currentStrokeRef.current) return;
-    currentStrokeRef.current.points.push(pt);
+    if (!shouldInkPointer(e.pointerType)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.pointerType === 'pen') {
+      editorRef.current?.blur();
+    }
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    const stroke = currentStrokeRef.current;
-    if (!ctx || stroke.points.length < 2) return;
-    const a = stroke.points[stroke.points.length - 2];
-    const b = stroke.points[stroke.points.length - 1];
-    ctx.strokeStyle = stroke.color;
-    ctx.lineWidth = stroke.width;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
-  };
-
-  const endStroke = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!drawingRef.current) return;
-    drawingRef.current = false;
+    if (!canvas) return;
     try {
-      (e.target as HTMLCanvasElement).releasePointerCapture(e.pointerId);
+      canvas.setPointerCapture(e.pointerId);
     } catch {
       /* ignore */
     }
-    if (erasingRef.current || mode === 'eraser') {
+    inkPointerIdRef.current = e.pointerId;
+    drawingRef.current = true;
+    const pt = pointFromClient(e.clientX, e.clientY);
+    if (modeRef.current === 'eraser') {
+      erasingRef.current = true;
+      pushHistorySnapshot();
+      eraseAt(pt);
+      return;
+    }
+    erasingRef.current = false;
+    const stroke: InkStroke = {
+      points: [pt],
+      color: colorRef.current,
+      width: e.pointerType === 'pen' ? Math.max(1.5, Math.min(4, (e.pressure || 0.5) * 4)) : 2.25,
+    };
+    currentStrokeRef.current = stroke;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = stroke.color;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, Math.max(0.6, stroke.width / 2), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
+
+  const onInkPointerMove = (e: PointerEvent) => {
+    if (inkPointerIdRef.current != null && e.pointerId !== inkPointerIdRef.current) return;
+    if (e.pointerType === 'touch' && (modeRef.current === 'pen' || modeRef.current === 'eraser')) {
+      e.preventDefault();
+      return;
+    }
+    if (!drawingRef.current) return;
+    if (!shouldInkPointer(e.pointerType) && inkPointerIdRef.current == null) return;
+    e.preventDefault();
+    const applyPt = (clientX: number, clientY: number) => {
+      const pt = pointFromClient(clientX, clientY);
+      if (erasingRef.current || modeRef.current === 'eraser') {
+        eraseAt(pt);
+        return;
+      }
+      appendInkPoint(pt);
+    };
+    const coalesced = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : null;
+    if (coalesced && coalesced.length > 0) {
+      for (const ce of coalesced) applyPt(ce.clientX, ce.clientY);
+    } else {
+      applyPt(e.clientX, e.clientY);
+    }
+  };
+
+  const endInkStroke = (e: PointerEvent) => {
+    if (inkPointerIdRef.current != null && e.pointerId !== inkPointerIdRef.current) return;
+    if (!drawingRef.current) return;
+    drawingRef.current = false;
+    inkPointerIdRef.current = null;
+    const canvas = canvasRef.current;
+    try {
+      canvas?.releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    if (erasingRef.current || modeRef.current === 'eraser') {
       erasingRef.current = false;
       currentStrokeRef.current = null;
       return;
@@ -1409,6 +1472,33 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     setPages(nextPages);
     persistBook(nextPages, pageIndexRef.current);
   };
+
+  useEffect(() => {
+    if (!open) return;
+    const host = containerRef.current;
+    if (!host) return;
+    const opts: AddEventListenerOptions = { capture: true, passive: false };
+    host.addEventListener('pointerdown', onInkPointerDown, opts);
+    host.addEventListener('pointermove', onInkPointerMove, opts);
+    host.addEventListener('pointerup', endInkStroke, opts);
+    host.addEventListener('pointercancel', endInkStroke, opts);
+    const blockPenTouch = (ev: TouchEvent) => {
+      if (modeRef.current !== 'pen' && modeRef.current !== 'eraser') return;
+      ev.preventDefault();
+    };
+    host.addEventListener('touchstart', blockPenTouch, opts);
+    host.addEventListener('touchmove', blockPenTouch, opts);
+    return () => {
+      host.removeEventListener('pointerdown', onInkPointerDown, opts);
+      host.removeEventListener('pointermove', onInkPointerMove, opts);
+      host.removeEventListener('pointerup', endInkStroke, opts);
+      host.removeEventListener('pointercancel', endInkStroke, opts);
+      host.removeEventListener('touchstart', blockPenTouch, opts);
+      host.removeEventListener('touchmove', blockPenTouch, opts);
+    };
+    // Native Listener wie auf den Folien — Handler lesen Refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const clearInk = () => {
     pushHistorySnapshot();
@@ -2242,6 +2332,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                 zIndex: 1,
                 outline: 'none',
                 pointerEvents: mode === 'text' ? 'auto' : 'none',
+                touchAction: 'pan-y',
                 '&:empty:before': {
                   content: 'attr(data-placeholder)',
                   color: '#bdbdbd',
@@ -2305,11 +2396,6 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
             <Box
               component="canvas"
               ref={canvasRef}
-              onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={endStroke}
-              onPointerCancel={endStroke}
-              onPointerLeave={endStroke}
               sx={{
                 position: 'absolute',
                 inset: 0,
@@ -2320,6 +2406,9 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                 cursor:
                   mode === 'eraser' ? 'cell' : mode === 'pen' ? 'crosshair' : 'text',
                 pointerEvents: mode === 'pen' || mode === 'eraser' ? 'auto' : 'none',
+                WebkitUserSelect: 'none',
+                userSelect: 'none',
+                WebkitTouchCallout: 'none',
               }}
             />
           </Box>

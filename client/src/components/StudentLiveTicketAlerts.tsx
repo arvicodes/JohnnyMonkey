@@ -520,30 +520,6 @@ export default function StudentLiveTicketAlerts({ userId }: { userId: string }) 
               {entryTicketIsModerator ? ' · Moderator' : ''}
             </Typography>
           </Box>
-          <DialogCloseIconButton
-            onClose={() => {
-              setEntryTicketModalOpen(false);
-              sessionStorage.setItem(
-                ENTRY_TICKET_MODAL_DISMISS_KEY,
-                entryTicketModalDismissSig(
-                  entryTicketModalStartedAt,
-                  entryTicketModalTeacherId,
-                  entryTicketModalLessonPath,
-                ),
-              );
-            }}
-            sx={{
-              position: 'absolute',
-              top: 10,
-              right: 10,
-              zIndex: 2,
-              transform: 'none',
-              bgcolor: 'rgba(255,255,255,0.92)',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.98)' },
-            }}
-            iconSx={{ color: 'text.primary' }}
-          />
         </Box>
       </Dialog>
     </>

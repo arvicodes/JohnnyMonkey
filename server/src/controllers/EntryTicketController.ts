@@ -9,11 +9,18 @@ const ENTRY_TICKET_CUSTOM_SETS_PATH = '__entry_ticket_custom_sets__';
 
 const entryTicketPathForGroup = (groupId: string) => `__entry_ticket_g_${groupId}__`;
 const entryTicketDonePathForGroup = (groupId: string) => `__entry_ticket_done_g_${groupId}__`;
+const groupIdFromEntryTicketPath = (path: string | null | undefined): string | null => {
+  if (!path) return null;
+  const m = /^__entry_ticket_g_(.+)__$/.exec(path);
+  return m?.[1] ?? null;
+};
 
 type EntryTicketTaskPayload = {
   category: string;
   prompt: string;
   solution: string;
+  sourceKey?: string;
+  id?: string;
 };
 
 type EntryTicketCustomSetPayload = {
@@ -104,11 +111,19 @@ const normalizeTasksPayload = (raw: unknown): EntryTicketTaskPayload[] | undefin
     const prompt = typeof r.prompt === 'string' ? r.prompt.trim() : '';
     const solution = typeof r.solution === 'string' ? r.solution.trim() : '';
     if (!prompt || !solution) continue;
+    const sourceKey =
+      typeof r.sourceKey === 'string' && r.sourceKey.trim().startsWith('c:')
+        ? r.sourceKey.trim().slice(0, 160)
+        : undefined;
+    const id =
+      typeof r.id === 'string' && r.id.trim() ? r.id.trim().slice(0, 80) : undefined;
     out.push({
       category:
         typeof r.category === 'string' && r.category.trim() ? r.category.trim().slice(0, 80) : 'Eigen',
       prompt: prompt.slice(0, 8000),
       solution: solution.slice(0, 8000),
+      ...(sourceKey ? { sourceKey } : {}),
+      ...(id ? { id } : {}),
     });
     if (out.length >= 80) break;
   }
@@ -1108,6 +1123,7 @@ export class EntryTicketController {
           materialLessonPath: null,
           tasks: null,
           customSet: null,
+          learningGroupId: null,
         });
       }
       return res.json({
@@ -1121,6 +1137,7 @@ export class EntryTicketController {
         materialLessonPath: teacherResolved.payload.materialLessonPath ?? null,
         tasks: teacherResolved.payload.tasks ?? null,
         customSet: teacherResolved.payload.customSet ?? null,
+        learningGroupId: groupIdFromEntryTicketPath(teacherResolved.lessonPath),
       });
     } catch (error) {
       console.error('EntryTicket getCurrent error:', error);

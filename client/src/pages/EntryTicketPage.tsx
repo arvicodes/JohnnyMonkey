@@ -24,6 +24,7 @@ import {
   Bookmark as BookmarkIcon,
   BookmarkAdd as BookmarkAddIcon,
   Check as CheckIcon,
+  Create as CreateIcon,
   History as HistoryIcon,
   Pause as PauseIcon,
   PlayArrow as PlayArrowIcon,
@@ -67,11 +68,13 @@ import {
   loadCustomEntryTicketSets,
   saveCustomEntryTicketSets,
   sortLessonsChronologically,
+  patchCustomSetTaskContent,
 } from '../lib/entryTicketCustomSets';
 import { discoverLessonsForReiheName } from '../lib/entryTicketReiheLessons';
-import { resolveEntryTicketBandForLessonPath } from '../lib/entryTicketGrade';
+import { resolveEntryTicketBandForLessonPath, fetchAssignedEntryTicketGrade, parseEntryTicketPlanBand } from '../lib/entryTicketGrade';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
 import { EntryTicketFragensetEditor } from '../components/entry-ticket/EntryTicketFragensetEditor';
+import { EntryTicketRichField } from '../components/entry-ticket/EntryTicketRichField';
 import { EntryTicketHistoryDialog } from '../components/entry-ticket/EntryTicketHistoryDialog';
 import { openEntryTicketFlashcardPrint } from '../lib/entryTicketFlashcardPrint';
 import {
@@ -444,8 +447,8 @@ function SolutionSlideClock({
       }
       sx={{
         position: 'relative',
-        width: 92,
-        height: 92,
+        width: 108,
+        height: 108,
         flexShrink: 0,
         p: 0,
         border: 'none',
@@ -468,7 +471,7 @@ function SolutionSlideClock({
             width: 2,
             height: 7,
             bgcolor: 'rgba(69,90,100,0.45)',
-            transformOrigin: `1px 42px`,
+            transformOrigin: `1px 50px`,
             transform: `translateX(-50%) rotate(${deg}deg)`,
             pointerEvents: 'none',
           }}
@@ -491,7 +494,7 @@ function SolutionSlideClock({
           sx={{
             fontWeight: 800,
             fontVariantNumeric: 'tabular-nums',
-            fontSize: '1.2rem',
+            fontSize: '1.35rem',
             lineHeight: 1,
             color: diskColor,
             letterSpacing: 0.2,
@@ -1214,6 +1217,8 @@ function parseEntryTicketSearch(search: string): {
   openEditor: boolean;
   /** SuS: abgeschlossenes Ticket inkl. Lösungen ansehen */
   review: boolean;
+  /** Laptop: Lösungsfolie der laufenden Session, kein neuer Start. */
+  companion: boolean;
   groupId: string | null;
   heroImageIndex: number | null;
   taskSeed: number | null;
@@ -1238,14 +1243,20 @@ function parseEntryTicketSearch(search: string): {
   }
   const rawLesson = params.get('lessonPath') || params.get('lesson');
   const lessonPath = rawLesson && rawLesson.trim() ? rawLesson.trim().replace(/\\/g, '/') : null;
-  const autostart =
-    params.get('autostart') === '1' ||
-    params.get('autostart') === 'true' ||
-    params.get('start') === '1';
   const openEditor =
     params.get('edit') === '1' ||
     params.get('edit') === 'true' ||
     params.get('editor') === '1';
+  const companion =
+    params.get('companion') === '1' ||
+    params.get('companion') === 'true' ||
+    params.get('laptop') === '1';
+  const autostart =
+    !openEditor &&
+    !companion &&
+    (params.get('autostart') === '1' ||
+      params.get('autostart') === 'true' ||
+      params.get('start') === '1');
   const review =
     params.get('review') === '1' ||
     params.get('review') === 'true' ||
@@ -1264,6 +1275,7 @@ function parseEntryTicketSearch(search: string): {
     autostart,
     openEditor,
     review,
+    companion,
     groupId,
     heroImageIndex,
     taskSeed,
@@ -1349,6 +1361,7 @@ function snapshotCustomSetForSignal(set: EntryTicketCustomSet | null | undefined
       ...(l.lessonKey ? { lessonKey: l.lessonKey } : {}),
       ...(l.topicName ? { topicName: l.topicName } : {}),
       tasks: l.tasks.map((t) => ({
+        id: t.id,
         category: t.category,
         prompt: t.prompt,
         solution: t.solution,
@@ -1382,7 +1395,7 @@ function hydrateCustomSetFromSignal(raw: unknown): EntryTicketCustomSet | null {
           const solution = typeof t.solution === 'string' ? t.solution : '';
           if (!prompt || !solution) return null;
           return {
-            id: `shared_q_${idx}_${tIdx}`,
+            id: typeof t.id === 'string' && t.id.trim() ? t.id.trim() : `shared_q_${idx}_${tIdx}`,
             category: typeof t.category === 'string' && t.category.trim() ? t.category.trim() : 'Eigen',
             prompt,
             solution,
@@ -1421,12 +1434,18 @@ function mergeHydratedCustomSet(
   hydrated: EntryTicketCustomSet,
 ): EntryTicketCustomSet[] {
   const existing = prev.find((s) => s.id === hydrated.id);
-  const merged: EntryTicketCustomSet = {
-    ...hydrated,
-    reihePath: hydrated.reihePath || existing?.reihePath,
-    notes: hydrated.notes ?? existing?.notes,
-  };
-  return [...prev.filter((s) => s.id !== hydrated.id), merged];
+  if (existing) {
+    return prev.map((s) =>
+      s.id === hydrated.id
+        ? {
+            ...existing,
+            reihePath: existing.reihePath || hydrated.reihePath,
+            notes: existing.notes ?? hydrated.notes,
+          }
+        : s,
+    );
+  }
+  return [...prev, hydrated];
 }
 
 const DEFAULT_QUESTION_SETS: GradeQuestionSets = {
@@ -1712,14 +1731,67 @@ const dedupeEigenQuestions = (list: EntryTicketTask[]): EntryTicketTask[] => {
 export type EntryTicketEmbeddedPlay = {
   lessonPath: string;
   groupId?: string;
+  /** Zugewiesenes Fragenset aus dem Stundenplan, falls schon bekannt. */
+  grade?: string | number;
   onExit: () => void;
+  /** Laptop: Lösungsfolie + Live-Stift, kein neuer Ticket-Start. */
+  companion?: 'laptop-solutions';
 };
+
+function parseLiveTicketTasks(
+  raw: unknown,
+): Array<{ category: string; prompt: string; solution: string; sourceKey?: string }> {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((t) => {
+      if (!t || typeof t !== 'object') return null;
+      const row = t as Record<string, unknown>;
+      const prompt = typeof row.prompt === 'string' ? row.prompt : '';
+      const solution = typeof row.solution === 'string' ? row.solution : '';
+      if (!prompt || !solution) return null;
+      return {
+        category:
+          typeof row.category === 'string' && row.category.trim() ? row.category.trim() : 'Eigen',
+        prompt,
+        solution,
+        sourceKey: typeof row.sourceKey === 'string' && row.sourceKey ? row.sourceKey : undefined,
+      };
+    })
+    .filter(Boolean) as Array<{ category: string; prompt: string; solution: string; sourceKey?: string }>;
+}
+
+function liveTasksFingerprint(
+  tasks: Array<{ prompt: string; solution: string; sourceKey?: string }>,
+): string {
+  return JSON.stringify(tasks.map((t) => ({ p: t.prompt, s: t.solution, k: t.sourceKey || '' })));
+}
+
+function attachSourceKeysFromSet(
+  tasks: Array<{ category: string; prompt: string; solution: string; sourceKey?: string }>,
+  set: EntryTicketCustomSet | null,
+): Array<{ category: string; prompt: string; solution: string; sourceKey?: string }> {
+  if (!set) return tasks;
+  const prefix = `c:${set.id}:`;
+  return tasks.map((task) => {
+    if (task.sourceKey?.startsWith(prefix)) return task;
+    for (const lesson of set.lessons) {
+      const found = lesson.tasks.find(
+        (t) => t.prompt === task.prompt && t.solution === task.solution,
+      );
+      if (found) return { ...task, sourceKey: `${prefix}${found.id}` };
+    }
+    return task;
+  });
+}
 
 function embeddedPlaySearch(play: EntryTicketEmbeddedPlay): string {
   const qs = new URLSearchParams();
-  const band = resolveEntryTicketBandForLessonPath(play.lessonPath, 7);
+  const band = play.grade != null
+    ? parseEntryTicketPlanBand(play.grade)
+    : resolveEntryTicketBandForLessonPath(play.lessonPath, 7);
   qs.set('grade', String(band));
-  qs.set('autostart', '1');
+  if (play.companion === 'laptop-solutions') qs.set('companion', '1');
+  else qs.set('autostart', '1');
   qs.set('lessonPath', play.lessonPath);
   if (play.groupId) qs.set('groupId', play.groupId);
   return `?${qs.toString()}`;
@@ -1747,6 +1819,7 @@ export default function EntryTicketPage({
           autostart: false,
           openEditor: false,
           review: false,
+          companion: false,
           groupId: null as string | null,
           heroImageIndex: null as number | null,
           taskSeed: null as number | null,
@@ -1902,12 +1975,23 @@ export default function EntryTicketPage({
   /** Moderator: Karten kommen vom Lehrer-Signal (nicht aus lokalem Fragenset) */
   const [sharedTasksLocked, setSharedTasksLocked] = useState(false);
   const tasksSyncedRef = useRef('');
+  const selectedTasksRef = useRef<EntryTicketTask[]>([]);
+  const editingIndexRef = useRef<number | null>(null);
+  const customSetsRef = useRef<EntryTicketCustomSet[]>([]);
   /** Erst nach Server-Sync Fragensets zurückschreiben (leeres localStorage nicht überschreiben). */
   const customSetsServerSyncedRef = useRef(false);
+  const [customSetsReady, setCustomSetsReady] = useState(
+    () => !(typeof window !== 'undefined' && localStorage.getItem('teacherId')),
+  );
+  const [assignedGradeResolved, setAssignedGradeResolved] = useState(() => !initialRoute.autostart);
+
+  const laptopCompanion =
+    embeddedPlay?.companion === 'laptop-solutions' ||
+    parseEntryTicketSearch(routeSearch).companion;
 
   /** Klassenstufe / eigenes Set aus URL; neuer Zufallssatz bei jedem Aufruf (inkl. &r=… vom Klick auf das Dashboard-Icon). */
   useLayoutEffect(() => {
-    if (embeddedPlay) return;
+    const search = embeddedPlay ? embeddedPlaySearch(embeddedPlay) : location.search;
     const {
       grade: g,
       customSetId: cId,
@@ -1915,30 +1999,31 @@ export default function EntryTicketPage({
       autostart,
       openEditor,
       review,
+      companion,
       groupId,
       heroImageIndex,
       taskSeed: urlSeed,
       hasExplicitBand,
-    } = parseEntryTicketSearch(location.search);
+    } = parseEntryTicketSearch(search);
     setGrade(g);
     setCustomSetId(cId);
-    setBandChosen(Boolean(hasExplicitBand || cId || autostart || openEditor || review));
+    setBandChosen(Boolean(hasExplicitBand || cId || autostart || openEditor || review || companion));
     setEntryLessonPath(lessonPath);
-    setAutoStartPending(review ? false : autostart);
+    setAutoStartPending(review || companion ? false : autostart);
     setEntryTicketGroupId(groupId);
     if (heroImageIndex != null) setEntryHeroImageIndex(heroImageIndex);
     const seedToUse = urlSeed != null ? urlSeed : randomTaskSeed();
     setTaskSeed(seedToUse);
-    setSessionStarted(Boolean(review));
-    setSessionDone(Boolean(review));
+    setSessionStarted(Boolean(review || companion));
+    setSessionDone(Boolean(review || companion));
     setCurrentIndex(0);
     setSecondsLeft(slideDurationSecRef.current);
     setIsRunning(false);
     setSolutionRunning(false);
     setSolutionSecondsLeft(solutionDurationSecRef.current);
-    setShowSolutions(Boolean(review));
-    setShowSetEditor(Boolean(openEditor && !autostart && !review));
-    setSharedTasksLocked(Boolean(review));
+    setShowSolutions(Boolean(review || companion));
+    setShowSetEditor(Boolean(openEditor && !autostart && !review && !companion));
+    setSharedTasksLocked(Boolean(review || companion));
     setStudentReviewMode(Boolean(review));
     if (!review) {
       setStudentReviewReady(false);
@@ -1947,7 +2032,7 @@ export default function EntryTicketPage({
     tasksSyncedRef.current = '';
 
     const teacher = Boolean(typeof window !== 'undefined' && localStorage.getItem('teacherId'));
-    if (autostart && teacher) {
+    if (autostart && teacher && !companion) {
       skipDuplicateEntrySignalRef.current = true;
       void (async () => {
         try {
@@ -1972,7 +2057,13 @@ export default function EntryTicketPage({
     } else {
       skipDuplicateEntrySignalRef.current = false;
     }
-  }, [location.search, embeddedPlay]);
+  }, [
+    location.search,
+    embeddedPlay?.lessonPath,
+    embeddedPlay?.groupId,
+    embeddedPlay?.companion,
+    embeddedPlay?.grade,
+  ]);
 
   const isTeacher = useMemo(() => {
     if (typeof window === 'undefined') return false;
@@ -2281,6 +2372,89 @@ export default function EntryTicketPage({
       cancelled = true;
     };
   }, [embeddedPlay, isTeacher, location.search]);
+
+  selectedTasksRef.current = selectedTasks;
+  editingIndexRef.current = editingIndex;
+  customSetsRef.current = customSets;
+
+  /** Lehrer: laufendes Ticket zwischen Tablet (Play) und Laptop (Lösungsfolie) synchron halten. */
+  useEffect(() => {
+    if (!isTeacher || studentReviewMode) return;
+    if (!sessionStarted && !laptopCompanion) return;
+    let cancelled = false;
+    let sawLive = false;
+    const tick = async () => {
+      if (cancelled) return;
+      try {
+        const res = await apiGet('/api/entry-ticket/current');
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as {
+          startedAt?: string | null;
+          grade?: string | null;
+          taskSeed?: number | null;
+          materialLessonPath?: string | null;
+          learningGroupId?: string | null;
+          tasks?: unknown;
+          customSet?: unknown;
+          heroImageIndex?: number | null;
+        };
+        if (data.startedAt) sawLive = true;
+        if (!data.startedAt) {
+          if (laptopCompanion && sawLive) embeddedPlay?.onExit();
+          return;
+        }
+        if (typeof data.heroImageIndex === 'number') setEntryHeroImageIndex(data.heroImageIndex);
+        const hydrated = hydrateCustomSetFromSignal(data.customSet);
+        if (hydrated) {
+          setCustomSets((prev) => {
+            if (prev.some((s) => s.id === hydrated.id)) return prev;
+            return mergeHydratedCustomSet(prev, hydrated);
+          });
+          setCustomSetId((prev) => prev || hydrated.id);
+        } else if (typeof data.grade === 'string' && data.grade) {
+          applyGradeParam(data.grade);
+        }
+        if (typeof data.taskSeed === 'number' && Number.isFinite(data.taskSeed)) {
+          setTaskSeed(Math.floor(data.taskSeed) >>> 0);
+        }
+        if (typeof data.materialLessonPath === 'string' && data.materialLessonPath.trim()) {
+          setEntryLessonPath(data.materialLessonPath.trim().replace(/\\/g, '/'));
+        }
+        if (typeof data.learningGroupId === 'string' && data.learningGroupId.trim()) {
+          setEntryTicketGroupId((prev) => prev || data.learningGroupId!.trim());
+        }
+        if (editingIndexRef.current !== null) return;
+        const sets = customSetsRef.current;
+        const setForKeys =
+          (customSetId ? sets.find((s) => s.id === customSetId) : null) ||
+          (hydrated ? sets.find((s) => s.id === hydrated.id) : null) ||
+          null;
+        const incoming = attachSourceKeysFromSet(parseLiveTicketTasks(data.tasks), setForKeys);
+        if (incoming.length === 0) return;
+        if (liveTasksFingerprint(incoming) === liveTasksFingerprint(selectedTasksRef.current)) return;
+        setSelectedTasks(incoming);
+        setSharedTasksLocked(true);
+        setBandChosen(true);
+      } catch {
+        /* ignore */
+      }
+    };
+    void tick();
+    const id = window.setInterval(() => void tick(), 1500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [
+    isTeacher,
+    studentReviewMode,
+    sessionStarted,
+    laptopCompanion,
+    customSetId,
+    applyGradeParam,
+    embeddedPlay,
+  ]);
+
   const activeTasks = selectedTasks;
   const currentTask = activeTasks[currentIndex] ?? activeTasks[0];
 
@@ -2572,6 +2746,7 @@ export default function EntryTicketPage({
   useEffect(() => {
     if (!isTeacher) {
       customSetsServerSyncedRef.current = true;
+      setCustomSetsReady(true);
       return;
     }
     let cancelled = false;
@@ -2595,7 +2770,10 @@ export default function EntryTicketPage({
       } catch {
         /* ignore */
       } finally {
-        if (!cancelled) customSetsServerSyncedRef.current = true;
+        if (!cancelled) {
+          customSetsServerSyncedRef.current = true;
+          setCustomSetsReady(true);
+        }
       }
     })();
     return () => {
@@ -2607,22 +2785,94 @@ export default function EntryTicketPage({
   useEffect(() => {
     if (!isTeacher) return;
     if (!customSetId) return;
+    if (!customSetsReady) return;
     if (customSets.length === 0) return;
     if (!customSets.some((s) => s.id === customSetId)) {
       setCustomSetId(null);
     }
-  }, [customSetId, customSets, isTeacher]);
+  }, [customSetId, customSets, customSetsReady, isTeacher]);
 
-  /** Autostart aus der Präsentation: passendes Fragenset zur Stunde wählen, dann Play. */
+  /** Autostart / Editor: zugewiesenes Fragenset (Stundenplan) + Pfad (z. B. Mathe 5 / Klasse 5). */
   useEffect(() => {
-    if (!autoStartPending) return;
-    if (customSetId) return;
-    if (!entryLessonPath) return;
-    const band = resolveEntryTicketBandForLessonPath(entryLessonPath, grade, customSets);
-    if (!isCustomEntryTicketSetId(band)) return;
-    setCustomSetId(band);
-    setBandChosen(true);
-  }, [autoStartPending, customSetId, customSets, entryLessonPath, grade]);
+    const wantAssignedSet = (autoStartPending || showSetEditor) && !customSetId && Boolean(entryLessonPath);
+    if (!wantAssignedSet) {
+      if (!autoStartPending) setAssignedGradeResolved(true);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const assigned = await fetchAssignedEntryTicketGrade(entryLessonPath);
+      if (cancelled) return;
+      if (assigned != null && isCustomEntryTicketSetId(assigned)) {
+        setCustomSetId(assigned);
+        setBandChosen(true);
+      } else {
+        const band = resolveEntryTicketBandForLessonPath(
+          entryLessonPath,
+          assigned ?? grade,
+          customSets,
+        );
+        if (isCustomEntryTicketSetId(band)) {
+          setCustomSetId(band);
+          setBandChosen(true);
+        } else if (assigned != null && assigned !== grade) {
+          setGrade(assigned as typeof grade);
+          setBandChosen(true);
+        }
+      }
+      setAssignedGradeResolved(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [autoStartPending, showSetEditor, customSetId, entryLessonPath, grade, customSets]);
+
+  /** Autostart: Play starten, sobald das Set da ist — nicht abbrechen, wenn noch geladen wird. */
+  useEffect(() => {
+    if (!autoStartPending || sessionStarted) return;
+    if (!isTeacher && (!moderatorGateChecked || !isClassModerator)) return;
+    if (!customSetsReady) return;
+    if (!assignedGradeResolved) return;
+
+    if (!customSetId && entryLessonPath) {
+      const band = resolveEntryTicketBandForLessonPath(entryLessonPath, grade, customSets);
+      if (isCustomEntryTicketSetId(band)) {
+        setCustomSetId(band);
+        setBandChosen(true);
+        return;
+      }
+    }
+
+    if (customSetId && !customSets.some((s) => s.id === customSetId)) {
+      const band = entryLessonPath
+        ? resolveEntryTicketBandForLessonPath(entryLessonPath, grade, customSets)
+        : null;
+      if (isCustomEntryTicketSetId(band) && band !== customSetId) {
+        setCustomSetId(band);
+        setBandChosen(true);
+        return;
+      }
+      setCustomSetId(null);
+      setAutoStartPending(false);
+      return;
+    }
+
+    startSessionRef.current();
+    setAutoStartPending(false);
+  }, [
+    autoStartPending,
+    sessionStarted,
+    customSetId,
+    customSets,
+    customSetsReady,
+    assignedGradeResolved,
+    entryLessonPath,
+    grade,
+    poolForBand.length,
+    isTeacher,
+    moderatorGateChecked,
+    isClassModerator,
+  ]);
 
   /** Lehrer: konkrete Karten in das Signal schreiben, damit der Moderator dasselbe Ticket sieht. */
   useEffect(() => {
@@ -2791,6 +3041,14 @@ export default function EntryTicketPage({
     setTaskSeed((s) => s + 1);
   };
 
+  const beginSolutionSlide = () => {
+    setSessionDone(true);
+    setShowSolutions(true);
+    setIsRunning(false);
+    setSolutionSecondsLeft(solutionDurationSecRef.current);
+    setSolutionRunning(true);
+  };
+
   useEffect(() => {
     if (!sessionStarted || !isRunning || sessionDone || activeTasks.length === 0) return undefined;
     const timer = window.setInterval(() => {
@@ -2800,9 +3058,7 @@ export default function EntryTicketPage({
         setCurrentIndex((prevIndex) => {
           const next = prevIndex + 1;
           if (next >= activeTasks.length) {
-            setSessionDone(true);
-            setShowSolutions(true);
-            setIsRunning(false);
+            beginSolutionSlide();
             return prevIndex;
           }
           return next;
@@ -2813,6 +3069,20 @@ export default function EntryTicketPage({
 
     return () => window.clearInterval(timer);
   }, [activeTasks.length, isRunning, sessionDone, sessionStarted]);
+
+  useEffect(() => {
+    if (!sessionStarted || !sessionDone || !solutionRunning || studentReviewMode) return undefined;
+    const timer = window.setInterval(() => {
+      setSolutionSecondsLeft((prev) => {
+        if (prev <= 1) {
+          setSolutionRunning(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [sessionStarted, sessionDone, solutionRunning, studentReviewMode]);
 
   /** Pro Session einmal zählen, wenn eine Karte tatsächlich gezeigt wird. */
   useEffect(() => {
@@ -2851,6 +3121,28 @@ export default function EntryTicketPage({
     applySlideDurationSec(n);
   }, [applySlideDurationSec, durationDraft, slideDurationSec]);
 
+  const applySolutionDurationSec = useCallback((raw: number) => {
+    const next = clampSolutionDurationSec(raw);
+    setSolutionDurationSec(next);
+    setSolutionDurationMinDraft(String(Math.max(1, Math.round(next / 60))));
+    solutionDurationSecRef.current = next;
+    setSolutionSecondsLeft(next);
+    try {
+      localStorage.setItem(SOLUTION_DURATION_STORAGE_KEY, String(next));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const commitSolutionDurationDraft = useCallback(() => {
+    const n = Number(String(solutionDurationMinDraft).replace(',', '.'));
+    if (!Number.isFinite(n) || n <= 0) {
+      setSolutionDurationMinDraft(String(Math.max(1, Math.round(solutionDurationSec / 60))));
+      return;
+    }
+    applySolutionDurationSec(n * 60);
+  }, [applySolutionDurationSec, solutionDurationMinDraft, solutionDurationSec]);
+
   const startSession = () => {
     // Jeder Start neu mischen (außer Moderator mit gesperrten Lehrer-Karten)
     let seedForStart = taskSeed;
@@ -2870,6 +3162,8 @@ export default function EntryTicketPage({
     setSessionDone(false);
     setCurrentIndex(0);
     setSecondsLeft(slideDurationSecRef.current);
+    setSolutionRunning(false);
+    setSolutionSecondsLeft(solutionDurationSecRef.current);
     setShowSolutions(false);
     setTeacherNotes('');
     setIsRunning(true);
@@ -2907,10 +3201,11 @@ export default function EntryTicketPage({
 
   const startOrResume = () => {
     if (sessionDone) {
-      shownInSessionRef.current = new Set();
-      setSessionDone(false);
-      setCurrentIndex(0);
-      setSecondsLeft(slideDurationSecRef.current);
+      if (solutionSecondsLeft <= 0) {
+        setSolutionSecondsLeft(solutionDurationSecRef.current);
+      }
+      setSolutionRunning(true);
+      return;
     }
     setIsRunning(true);
   };
@@ -3061,34 +3356,11 @@ export default function EntryTicketPage({
     };
   }, []);
 
-  useEffect(() => {
-    if (!autoStartPending || sessionStarted) return;
-    if (!isTeacher && (!moderatorGateChecked || !isClassModerator)) return;
-
-    if (!customSetId && entryLessonPath) {
-      if (customSets.length === 0) return;
-      const band = resolveEntryTicketBandForLessonPath(entryLessonPath, grade, customSets);
-      if (isCustomEntryTicketSetId(band)) return;
-      setAutoStartPending(false);
+  const pause = () => {
+    if (sessionDone) {
+      setSolutionRunning(false);
       return;
     }
-
-    startSessionRef.current();
-    setAutoStartPending(false);
-  }, [
-    autoStartPending,
-    sessionStarted,
-    customSetId,
-    customSets,
-    entryLessonPath,
-    grade,
-    poolForBand.length,
-    isTeacher,
-    moderatorGateChecked,
-    isClassModerator,
-  ]);
-
-  const pause = () => {
     setIsRunning(false);
   };
 
@@ -3236,14 +3508,31 @@ export default function EntryTicketPage({
   const saveEditingTask = () => {
     if (editingIndex === null) return;
     const prompt = editingPrompt.trim();
-    const solution = calculateAutoSolution(prompt).trim();
+    const typedSolution = editingSolution.trim();
+    const solution = (typedSolution || calculateAutoSolution(prompt)).trim();
     if (!prompt || !solution) return;
+    const idx = editingIndex;
+    const prevTask = selectedTasks[idx];
+    if (!prevTask) return;
     setSelectedTasks((prev) => {
-      if (editingIndex < 0 || editingIndex >= prev.length) return prev;
+      if (idx < 0 || idx >= prev.length) return prev;
       const next = [...prev];
-      next[editingIndex] = { ...next[editingIndex], prompt, solution };
+      next[idx] = { ...next[idx], prompt, solution };
       return next;
     });
+    const prefix = activeCustomSet ? `c:${activeCustomSet.id}:` : '';
+    const taskId = prevTask.sourceKey?.startsWith(prefix)
+      ? prevTask.sourceKey.slice(prefix.length)
+      : '';
+    if (activeCustomSet && taskId) {
+      setCustomSets((sets) =>
+        sets.map((s) =>
+          s.id === activeCustomSet.id
+            ? patchCustomSetTaskContent(s, taskId, { prompt, solution })
+            : s,
+        ),
+      );
+    }
     cancelEditingTask();
   };
 
@@ -3277,9 +3566,11 @@ export default function EntryTicketPage({
     if (sessionStarted) {
       setSessionStarted(false);
       setIsRunning(false);
+      setSolutionRunning(false);
       setSessionDone(false);
       setCurrentIndex(0);
       setSecondsLeft(slideDurationSecRef.current);
+      setSolutionSecondsLeft(solutionDurationSecRef.current);
       setShowSolutions(false);
       if (!sharedTasksLocked) setTaskSeed(randomTaskSeed());
       if (customSetId) setShowSetEditor(true);
@@ -3302,9 +3593,11 @@ export default function EntryTicketPage({
 
   const restart = () => {
     setIsRunning(false);
+    setSolutionRunning(false);
     setSessionDone(false);
     setCurrentIndex(0);
     setSecondsLeft(slideDurationSecRef.current);
+    setSolutionSecondsLeft(solutionDurationSecRef.current);
     setShowSolutions(false);
     setTeacherNotes('');
   };
@@ -3313,9 +3606,7 @@ export default function EntryTicketPage({
     if (sessionDone) return;
     setCardSlideDir(1);
     if (currentIndex >= activeTasks.length - 1) {
-      setSessionDone(true);
-      setShowSolutions(true);
-      setIsRunning(false);
+      beginSolutionSlide();
       return;
     }
     setCurrentIndex((prev) => prev + 1);
@@ -3325,6 +3616,7 @@ export default function EntryTicketPage({
   const goPrevious = () => {
     setCardSlideDir(-1);
     if (sessionDone) {
+      setSolutionRunning(false);
       setSessionDone(false);
       setCurrentIndex(activeTasks.length - 1);
       setSecondsLeft(slideDurationSecRef.current);
@@ -3360,6 +3652,8 @@ export default function EntryTicketPage({
 
       // SuS-Review: nur Überblick ansehen — keine Session-Steuerung per Tastatur
       if (studentReviewMode) return;
+      if (laptopCompanion) return;
+      if (editingIndex !== null) return;
 
       if (typingOrInField(e)) return;
 
@@ -3407,6 +3701,8 @@ export default function EntryTicketPage({
     sessionStarted,
     startOrResume,
     studentReviewMode,
+    laptopCompanion,
+    editingIndex,
   ]);
 
   const formatPromptForDisplay = (prompt: string): string => formatEntryTicketPromptStructure(prompt);
@@ -3839,7 +4135,7 @@ export default function EntryTicketPage({
   };
 
   const finalSlideRows = Math.ceil(activeTasks.length / 2);
-  const overviewCompact = activeTasks.length >= 8 || showSolutions;
+  const overviewCompact = activeTasks.length >= 8 || showSolutions || laptopCompanion;
 
   if (studentReviewMode && !studentReviewReady) {
     return (
@@ -3898,9 +4194,12 @@ export default function EntryTicketPage({
         py: { xs: 0.5, sm: 0.75 },
         px: { xs: 0.4, sm: 0.6 },
         boxSizing: 'border-box',
+        display: embeddedPlay ? 'flex' : undefined,
+        flexDirection: embeddedPlay ? 'column' : undefined,
+        overflow: embeddedPlay ? 'hidden' : undefined,
       }}
     >
-      <Box sx={{ width: '100%', maxWidth: '100%', mx: 0, minWidth: 0, boxSizing: 'border-box' }}>
+      <Box sx={{ width: '100%', maxWidth: '100%', mx: 0, minWidth: 0, boxSizing: 'border-box', flex: embeddedPlay ? 1 : undefined, minHeight: embeddedPlay ? 0 : undefined, display: embeddedPlay ? 'flex' : undefined, flexDirection: embeddedPlay ? 'column' : undefined }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.45, gap: 0.5 }}>
           <Tooltip title="Zurück">
             <IconButton
@@ -4020,7 +4319,7 @@ export default function EntryTicketPage({
           </Box>
         </Box>
 
-        <Box sx={{ width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
+        <Box sx={{ width: '100%', minWidth: 0, boxSizing: 'border-box', flex: embeddedPlay ? 1 : undefined, minHeight: embeddedPlay ? 0 : undefined, display: embeddedPlay ? 'flex' : undefined, flexDirection: embeddedPlay ? 'column' : undefined }}>
             {!sessionStarted && !studentReviewMode && autoStartPending ? (
               <Box
                 sx={{
@@ -4251,7 +4550,7 @@ export default function EntryTicketPage({
 
               </Box>
             ) : (
-              <Box sx={{ display: 'grid', gap: 1.5, width: '100%', minWidth: 0 }}>
+              <Box sx={{ display: 'grid', gap: 1.5, width: '100%', minWidth: 0, flex: embeddedPlay ? 1 : undefined, minHeight: embeddedPlay ? 0 : undefined }}>
                 {/* Kartennummer immer sichtbar (auch SuS-Review); Steuerung nur Lehrer/Moderator */}
                 <Box
                   sx={{
@@ -4277,9 +4576,10 @@ export default function EntryTicketPage({
                     /{activeTasks.length}
                   </Typography>
 
-                  {!studentReviewMode && (
+                  {!studentReviewMode && !laptopCompanion && (
 
                   <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.65, flexShrink: 0 }}>
+                    {!sessionDone ? (
                     <TextField
                       size="small"
                       type="text"
@@ -4325,6 +4625,7 @@ export default function EntryTicketPage({
                         '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' },
                       }}
                     />
+                    ) : null}
                     <Tooltip title="Vorherige">
                       <span>
                         <IconButton
@@ -4343,12 +4644,12 @@ export default function EntryTicketPage({
                         </IconButton>
                       </span>
                     </Tooltip>
-                    {!isRunning ? (
-                      <Tooltip title={sessionDone ? 'Neu starten' : 'Weiter'}>
+                    {!(sessionDone ? solutionRunning : isRunning) ? (
+                      <Tooltip title={sessionDone ? (solutionSecondsLeft <= 0 ? 'Uhr neu starten' : 'Uhr starten') : 'Weiter'}>
                         <IconButton
                           size="small"
                           onClick={startOrResume}
-                          aria-label={sessionDone ? 'Neu starten' : 'Weiter'}
+                          aria-label={sessionDone ? 'Lösungsuhr starten' : 'Weiter'}
                           sx={{
                             width: 40,
                             height: 40,
@@ -4585,8 +4886,13 @@ export default function EntryTicketPage({
                     sx={{
                       width: '100%',
                       minWidth: 0,
-                      height: { xs: 'calc(100vh - 150px)', sm: 'calc(100vh - 130px)' },
-                      maxHeight: { xs: 'calc(100vh - 150px)', sm: 'calc(100vh - 130px)' },
+                      height: embeddedPlay
+                        ? '100%'
+                        : { xs: 'calc(100vh - 150px)', sm: 'calc(100vh - 130px)' },
+                      maxHeight: embeddedPlay
+                        ? '100%'
+                        : { xs: 'calc(100vh - 150px)', sm: 'calc(100vh - 130px)' },
+                      flex: embeddedPlay ? 1 : undefined,
                       borderRadius: 2,
                       px: { xs: 0.5, sm: 0.75 },
                       py: 0.5,
@@ -4602,13 +4908,81 @@ export default function EntryTicketPage({
                       sx={{
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'flex-end',
+                        justifyContent: studentReviewMode ? 'flex-end' : 'space-between',
                         gap: 0.75,
                         flexWrap: 'wrap',
                         flexShrink: 0,
                         px: 0.15,
                       }}
                     >
+                      {!studentReviewMode && !laptopCompanion ? (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                          <SolutionSlideClock
+                            secondsLeft={solutionSecondsLeft}
+                            totalSec={solutionDurationSec}
+                            running={solutionRunning}
+                            onToggle={() => {
+                              if (solutionRunning) pause();
+                              else startOrResume();
+                            }}
+                          />
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
+                            <Tooltip title="Minuten auf der Lösungsfolie">
+                            <TextField
+                              size="small"
+                              type="text"
+                              inputMode="numeric"
+                              value={solutionDurationMinDraft}
+                              onChange={(e) => setSolutionDurationMinDraft(e.target.value.replace(/[^\d]/g, ''))}
+                              onBlur={commitSolutionDurationDraft}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  commitSolutionDurationDraft();
+                                  (e.target as HTMLInputElement).blur();
+                                }
+                                if (e.key === 'ArrowUp') {
+                                  e.preventDefault();
+                                  applySolutionDurationSec(solutionDurationSec + 60);
+                                }
+                                if (e.key === 'ArrowDown') {
+                                  e.preventDefault();
+                                  applySolutionDurationSec(solutionDurationSec - 60);
+                                }
+                              }}
+                              inputProps={{
+                                'aria-label': 'Minuten auf der Lösungsfolie',
+                                inputMode: 'numeric',
+                                pattern: '[0-9]*',
+                              }}
+                              sx={{
+                                width: 44,
+                                '& .MuiInputBase-input': {
+                                  py: 0.45,
+                                  px: 0.5,
+                                  fontSize: '0.85rem',
+                                  fontWeight: 700,
+                                  textAlign: 'center',
+                                  fontVariantNumeric: 'tabular-nums',
+                                  color: '#546e7a',
+                                },
+                                '& .MuiOutlinedInput-root': {
+                                  borderRadius: 2,
+                                  bgcolor: '#fff',
+                                },
+                                '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' },
+                              }}
+                            />
+                            </Tooltip>
+                            <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: '#90a4ae' }}>
+                              Min.
+                            </Typography>
+                          </Box>
+                        </Box>
+                      ) : (
+                        <Box />
+                      )}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
                       <FormControlLabel
                         control={
                           <Switch
@@ -4645,7 +5019,7 @@ export default function EntryTicketPage({
                           </Button>
                         </span>
                       </Tooltip>
-                      {(isTeacher || isClassModerator) && !studentReviewMode && (
+                      {(isTeacher || isClassModerator) && !studentReviewMode && !laptopCompanion && (
                         <Tooltip title="Erledigt (Enter)">
                           <span>
                             <Button
@@ -4670,6 +5044,7 @@ export default function EntryTicketPage({
                           </span>
                         </Tooltip>
                       )}
+                      </Box>
                     </Box>
 
                     <Box
@@ -4687,6 +5062,11 @@ export default function EntryTicketPage({
                         overflow: 'hidden',
                       }}
                     >
+                      {activeTasks.length === 0 && laptopCompanion ? (
+                        <Typography sx={{ color: '#78909c', fontSize: '0.85rem', fontWeight: 600, px: 1, py: 2 }}>
+                          Entry Ticket startet… Karten erscheinen hier mit Lösungen.
+                        </Typography>
+                      ) : null}
                       {activeTasks.map((task, index) => (
                         <Box
                           key={`${index}-${task.prompt}`}
@@ -4694,8 +5074,10 @@ export default function EntryTicketPage({
                             display: 'grid',
                             gridTemplateColumns:
                               isTeacher && isCustomSetActive
-                                ? '19px minmax(0, 1fr) 22px'
-                                : '19px minmax(0, 1fr)',
+                                ? '19px minmax(0, 1fr) 22px 22px'
+                                : isTeacher
+                                  ? '19px minmax(0, 1fr) 22px'
+                                  : '19px minmax(0, 1fr)',
                             columnGap: 0.55,
                             alignItems: 'center',
                             px: 0.66,
@@ -4755,7 +5137,7 @@ export default function EntryTicketPage({
                             >
                               <EntryTicketRichHtml value={task.prompt} />
                             </Box>
-                            {showSolutions && (
+                            {showSolutions || laptopCompanion ? (
                               <Box
                                 sx={{
                                   fontSize: { xs: '1.26rem', sm: '1.5rem' },
@@ -4786,8 +5168,27 @@ export default function EntryTicketPage({
                               >
                                 <EntryTicketRichHtml value={task.solution || '—'} />
                               </Box>
-                            )}
+                            ) : null}
                           </Box>
+                          {isTeacher ? (
+                            <Tooltip title="Karte bearbeiten (wird gespeichert)">
+                              <IconButton
+                                size="small"
+                                onClick={() => startEditingTask(index)}
+                                aria-label="Karte bearbeiten"
+                                sx={{
+                                  p: 0,
+                                  minWidth: 22,
+                                  width: 22,
+                                  height: 22,
+                                  color: '#546e7a',
+                                  '&:hover': { color: '#263238', bgcolor: 'rgba(69,90,100,0.12)' },
+                                }}
+                              >
+                                <CreateIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </Tooltip>
+                          ) : null}
                           {isTeacher && isCustomSetActive ? (
                             <Tooltip
                               title={
@@ -4831,6 +5232,50 @@ export default function EntryTicketPage({
 
         </Box>
       </Box>
+
+      <Dialog
+        open={editingIndex !== null}
+        onClose={cancelEditingTask}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle sx={{ ...dialogCloseTitleSx, bgcolor: '#455a64', color: '#fff', py: 1.25 }}>
+          {editingIndex !== null ? `Karte ${editingIndex + 1} bearbeiten` : 'Karte bearbeiten'}
+          <DialogCloseIconButton
+            onClose={cancelEditingTask}
+            sx={{ color: '#fff', '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' } }}
+            iconSx={{ color: '#fff' }}
+          />
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, display: 'grid', gap: 1.25 }}>
+          <EntryTicketRichField
+            value={editingPrompt}
+            onChange={setEditingPrompt}
+            placeholder="Frage"
+            tone="prompt"
+            minHeight={88}
+          />
+          <EntryTicketRichField
+            value={editingSolution}
+            onChange={setEditingSolution}
+            placeholder="Lösung"
+            tone="answer"
+            minHeight={72}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 1.5 }}>
+          <Button onClick={cancelEditingTask} sx={{ color: '#546e7a' }}>
+            Abbrechen
+          </Button>
+          <Button
+            variant="contained"
+            onClick={saveEditingTask}
+            sx={{ bgcolor: '#455a64', '&:hover': { bgcolor: '#37474f' } }}
+          >
+            Speichern
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <EntryTicketHistoryDialog
         open={Boolean(historyTarget)}

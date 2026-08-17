@@ -40,10 +40,23 @@ import { isPresentationLinkClickTarget } from '../lib/presentationRichText';
 import { clampPresentZoom, handlePresentZoomHotkey, attachPresentTrackpadZoom, attachPresentTouchPinchZoom } from '../lib/presentationPresentZoom';
 import { ensureEntryTicketButtonsOnTitleSlides } from '../lib/presentationSlideTemplates';
 import { isWochenaufgabenFolderPath } from '../lib/wochenaufgabenFolder';
+import { markTeacherPlayHost, clearTeacherPlayHost } from '../lib/teacherLiveLesson';
 import EntryTicketPage from './EntryTicketPage';
 
 const SWIPE_MIN_PX = 48;
 const EMPTY_STROKES: PresentationStroke[] = [];
+
+function requestPresentFullscreen(el: HTMLElement | null) {
+  if (!el) return;
+  const doc = document as Document & { webkitFullscreenElement?: Element };
+  if (document.fullscreenElement === el || doc.webkitFullscreenElement === el) return;
+  const req =
+    el.requestFullscreen?.() ??
+    (el as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void }).webkitRequestFullscreen?.();
+  if (req && typeof (req as Promise<void>).catch === 'function') {
+    (req as Promise<void>).catch(() => undefined);
+  }
+}
 
 const PresentationPresentPage: React.FC = () => {
   const navigate = useNavigate();
@@ -91,6 +104,7 @@ const PresentationPresentPage: React.FC = () => {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const swipeRef = useRef<{ x: number; y: number } | null>(null);
+  const entryTicketAutoOpenedRef = useRef(false);
   /** Letzter gesicherter Stand der aktuellen benannten Version (für Speichern als…). */
   const namedBaselineRef = useRef<PresentationAnnotations | null>(null);
   const annotationsRef = useRef<PresentationAnnotations | null>(null);
@@ -104,6 +118,15 @@ const PresentationPresentPage: React.FC = () => {
   const canAdvanceSlide = slideIndex < slides.length - 1 || revealStep < maxReveal;
   const canFinishToDashboard = planMode === 'run' && slides.length > 0 && !canAdvanceSlide;
   const canGoNext = canAdvanceSlide || canFinishToDashboard;
+
+  useEffect(() => {
+    if (planMode === 'run' && groupId && lessonPath) {
+      markTeacherPlayHost(groupId, lessonPath);
+    }
+    return () => {
+      if (planMode === 'run') clearTeacherPlayHost();
+    };
+  }, [planMode, groupId, lessonPath]);
 
   useEffect(() => {
     if (!lessonPath) {
@@ -195,12 +218,17 @@ const PresentationPresentPage: React.FC = () => {
 
   useEffect(() => {
     const el = containerRef.current;
-    if (!el) return;
-    const req = el.requestFullscreen?.() ?? (el as HTMLElement & { webkitRequestFullscreen?: () => void }).webkitRequestFullscreen?.();
-    if (req && typeof (req as Promise<void>).catch === 'function') {
-      (req as Promise<void>).catch(() => undefined);
-    }
+    if (!el || loading) return;
+    requestPresentFullscreen(el);
   }, [loading]);
+
+  useEffect(() => {
+    if (loading || !deck) return;
+    if (planMode === 'create') return;
+    if (entryTicketAutoOpenedRef.current) return;
+    entryTicketAutoOpenedRef.current = true;
+    setEntryTicketOpen(true);
+  }, [loading, deck, planMode]);
 
   useEffect(() => {
     const host = containerRef.current;
@@ -217,14 +245,7 @@ const PresentationPresentPage: React.FC = () => {
       e.stopPropagation();
       e.stopImmediatePropagation();
       setEntryTicketOpen(true);
-      if (document.fullscreenElement !== host) {
-        const req =
-          host.requestFullscreen?.() ??
-          (host as HTMLElement & { webkitRequestFullscreen?: () => void }).webkitRequestFullscreen?.();
-        if (req && typeof (req as Promise<void>).catch === 'function') {
-          (req as Promise<void>).catch(() => undefined);
-        }
-      }
+      requestPresentFullscreen(host);
     };
     host.addEventListener('click', onClick, true);
     return () => host.removeEventListener('click', onClick, true);
@@ -753,13 +774,18 @@ const PresentationPresentPage: React.FC = () => {
     ro.observe(host);
     window.addEventListener('resize', updateScale);
     window.addEventListener('orientationchange', updateScale);
-    // Nach Layout der Toolbar nochmals messen (iPad/safe-area)
+    window.visualViewport?.addEventListener('resize', updateScale);
+    document.addEventListener('fullscreenchange', updateScale);
     const raf = requestAnimationFrame(() => updateScale());
+    const raf2 = requestAnimationFrame(() => updateScale());
     return () => {
       cancelAnimationFrame(raf);
+      cancelAnimationFrame(raf2);
       ro.disconnect();
       window.removeEventListener('resize', updateScale);
       window.removeEventListener('orientationchange', updateScale);
+      window.visualViewport?.removeEventListener('resize', updateScale);
+      document.removeEventListener('fullscreenchange', updateScale);
     };
   }, [scaleReady]);
 
@@ -891,6 +917,7 @@ const PresentationPresentPage: React.FC = () => {
     <Box
       ref={containerRef}
       tabIndex={0}
+      onPointerDown={() => requestPresentFullscreen(containerRef.current)}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
       onClickCapture={(e) => {
@@ -901,19 +928,13 @@ const PresentationPresentPage: React.FC = () => {
           autostart: true,
           onOpen: () => {
             setEntryTicketOpen(true);
-            const host = containerRef.current;
-            if (!host || document.fullscreenElement === host) return;
-            const req =
-              host.requestFullscreen?.() ??
-              (host as HTMLElement & { webkitRequestFullscreen?: () => void }).webkitRequestFullscreen?.();
-            if (req && typeof (req as Promise<void>).catch === 'function') {
-              (req as Promise<void>).catch(() => undefined);
-            }
+            requestPresentFullscreen(containerRef.current);
           },
         });
       }}
       sx={{
-        height: '100dvh',
+        height: '100svh',
+        '@supports (height: 100dvh)': { height: '100dvh' },
         width: '100vw',
         maxWidth: '100vw',
         bgcolor: '#000',
@@ -949,8 +970,8 @@ const PresentationPresentPage: React.FC = () => {
           justifyContent: zoomed ? 'flex-start' : 'center',
           alignItems: zoomed ? 'flex-start' : 'center',
           overflow: zoomed ? 'auto' : 'hidden',
-          px: 0.5,
-          py: 0.5,
+          px: 0,
+          py: 0,
           boxSizing: 'border-box',
           WebkitOverflowScrolling: 'touch',
         }}
@@ -1057,7 +1078,7 @@ const PresentationPresentPage: React.FC = () => {
         nextButtonTitle={canFinishToDashboard ? 'Zurück zum Dashboard' : 'Weiter'}
         canUndo={currentStrokes.length > 0}
         saving={saving}
-        placement="docked"
+        placement="fixed"
         onGoPrev={goPrev}
         onGoNext={goNext}
         onToggleDraw={handleToggleDraw}

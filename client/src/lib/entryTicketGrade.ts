@@ -1,3 +1,4 @@
+import { apiGet } from './api';
 import {
   findCustomSetForLessonPath,
   isCustomEntryTicketSetId,
@@ -139,4 +140,43 @@ export function resolveEntryTicketBandForLessonPath(
   }
 
   return fallback;
+}
+
+/** Zugewiesenes Entry-Ticket-Fragenset aus dem Stundenplan (z. B. „Mathe 5“). */
+export function assignedEntryTicketGradeFromInstructions(
+  byPath: Record<string, { lessonPlan?: Array<{ type?: string; grade?: unknown }> }>,
+  lessonPath: string,
+): EntryTicketPlanBand | null {
+  const want = normalizeLessonPathKey(lessonPath);
+  if (!want) return null;
+  const content =
+    byPath[lessonPath] ||
+    Object.entries(byPath).find(([k]) => normalizeLessonPathKey(k) === want)?.[1] ||
+    Object.entries(byPath).find(([k]) => {
+      const nk = normalizeLessonPathKey(k);
+      return nk && (want.startsWith(`${nk}/`) || nk.startsWith(`${want}/`));
+    })?.[1];
+  const plan = content?.lessonPlan;
+  if (!Array.isArray(plan)) return null;
+  const item = plan.find((p) => p?.type === 'entry-ticket');
+  if (item?.grade == null || item.grade === '') return null;
+  return parseEntryTicketPlanBand(item.grade);
+}
+
+export async function fetchAssignedEntryTicketGrade(
+  lessonPath: string | null | undefined,
+): Promise<EntryTicketPlanBand | null> {
+  const path = (lessonPath || '').trim();
+  if (!path) return null;
+  const teacherId = typeof window !== 'undefined' ? localStorage.getItem('teacherId') : null;
+  if (!teacherId) return null;
+  try {
+    const res = await apiGet(`/api/lesson-instructions/teacher/${encodeURIComponent(teacherId)}`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as Record<string, { lessonPlan?: Array<{ type?: string; grade?: unknown }> }>;
+    if (!data || typeof data !== 'object') return null;
+    return assignedEntryTicketGradeFromInstructions(data, path);
+  } catch {
+    return null;
+  }
 }

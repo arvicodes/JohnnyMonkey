@@ -26,6 +26,7 @@ import {
   type JohnnyPresentationVersion,
 } from '../lib/presentationLessonAssets';
 import { presentationPresentUrl, presentationEditorUrl, loadPresentationDeck, sortSlides } from '../lib/presentationDeck';
+import { markTeacherPlayHost } from '../lib/teacherLiveLesson';
 import {
   presentationHomeworkAssignmentKey,
   findHomeworkSlides,
@@ -7227,6 +7228,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
           showSnackbar(err?.error || 'Stunde konnte nicht gestartet werden', 'error');
           return;
         }
+        markTeacherPlayHost(groupId, lessonPath);
         await refreshActiveLessonSessions();
         // Direkt in TABLET-Play der Stunde, erste Folie (Entry Ticket startet über den E-Button)
         navigate(
@@ -20544,8 +20546,12 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   if (item.type === 'entry-ticket') {
                     const qs = new URLSearchParams();
                     qs.set('grade', String(item.grade ?? 7));
-                    qs.set('autostart', '1');
                     qs.set('r', String(Date.now()));
+                    if (lessonPlanViewMode === 'create') {
+                      qs.set('edit', '1');
+                    } else {
+                      qs.set('autostart', '1');
+                    }
                     if (lessonModalData.groupId) qs.set('groupId', lessonModalData.groupId);
                     if (lessonPath) qs.set('lessonPath', lessonPath);
                     if (lessonModalData.groupId && lessonPath) {

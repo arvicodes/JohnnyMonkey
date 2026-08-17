@@ -24,6 +24,8 @@ import { presentationNestedListSx, presentationNotesTableSx } from '../../lib/pr
 import { isPresentationLinkClickTarget } from '../../lib/presentationRichText';
 import { tryHandleLessonEntryTicketLinkClick, isLessonEntryTicketSlideHref } from '../../lib/presentationEditorUi';
 import EntryTicketPage from '../../pages/EntryTicketPage';
+import { apiGetSafe } from '../../lib/api';
+import { teacherLessonPathsMatch } from '../../lib/teacherLiveLesson';
 import { ensureEntryTicketButtonsOnTitleSlides } from '../../lib/presentationSlideTemplates';
 import { clampPresentZoom, handlePresentZoomHotkey, attachPresentTrackpadZoom, attachPresentTouchPinchZoom } from '../../lib/presentationPresentZoom';
 import PresentationPresentZoomControls from './PresentationPresentZoomControls';
@@ -85,6 +87,10 @@ export default function PresentationLaptopPlayer({
   userZoomRef.current = userZoom;
   const [notesLightboxSrc, setNotesLightboxSrc] = useState<string | null>(null);
   const [entryTicketOpen, setEntryTicketOpen] = useState(false);
+  const [entryTicketCompanion, setEntryTicketCompanion] = useState(false);
+  const dismissedTicketStartedAtRef = useRef<string | null>(null);
+  const liveTicketStartedAtRef = useRef<string | null>(null);
+  const autoOpenedCompanionRef = useRef(false);
   const stageHostRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -106,6 +112,52 @@ export default function PresentationLaptopPlayer({
     },
     [openNotesImageLightbox]
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    const tick = async () => {
+      const res = await apiGetSafe('/api/entry-ticket/current');
+      if (!res || cancelled) return;
+      if (!res.ok) return;
+      try {
+        const data = (await res.json()) as {
+          startedAt?: string | null;
+          materialLessonPath?: string | null;
+          learningGroupId?: string | null;
+          lessonPath?: string | null;
+        };
+        const startedAt = typeof data.startedAt === 'string' && data.startedAt ? data.startedAt : null;
+        liveTicketStartedAtRef.current = startedAt;
+        if (!startedAt) {
+          if (autoOpenedCompanionRef.current) {
+            autoOpenedCompanionRef.current = false;
+            setEntryTicketOpen(false);
+            setEntryTicketCompanion(false);
+          }
+          return;
+        }
+        const pathGroup = /^__entry_ticket_g_(.+)__$/.exec(String(data.lessonPath || ''))?.[1] || null;
+        const sameGroup = Boolean(
+          groupId && (data.learningGroupId === groupId || pathGroup === groupId),
+        );
+        const samePath = teacherLessonPathsMatch(data.materialLessonPath, lessonPath);
+        const unknownTarget = !data.materialLessonPath && !data.learningGroupId && !pathGroup;
+        if (!sameGroup && !samePath && !unknownTarget) return;
+        if (dismissedTicketStartedAtRef.current === startedAt) return;
+        autoOpenedCompanionRef.current = true;
+        setEntryTicketCompanion(true);
+        setEntryTicketOpen(true);
+      } catch {
+        /* ignore */
+      }
+    };
+    void tick();
+    const id = window.setInterval(() => void tick(), 1500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [lessonPath, groupId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -778,18 +830,26 @@ export default function PresentationLaptopPlayer({
       {entryTicketOpen ? (
         <Box
           sx={{
-            position: 'fixed',
+            position: 'absolute',
             inset: 0,
-            zIndex: 20000,
+            zIndex: 20,
             bgcolor: '#f4f6fb',
-            overflow: 'auto',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
           }}
         >
           <EntryTicketPage
             embeddedPlay={{
               lessonPath,
               groupId,
-              onExit: () => setEntryTicketOpen(false),
+              companion: entryTicketCompanion ? 'laptop-solutions' : undefined,
+              onExit: () => {
+                autoOpenedCompanionRef.current = false;
+                dismissedTicketStartedAtRef.current = liveTicketStartedAtRef.current;
+                setEntryTicketOpen(false);
+                setEntryTicketCompanion(false);
+              },
             }}
           />
         </Box>

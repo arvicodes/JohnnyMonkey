@@ -260,6 +260,27 @@ export function copyTasksToLaterSection(
   return { ...ensured, lessons };
 }
 
+/** Live-Play: Frage/Lösung einer Karte im Fragenset speichern (ohne Seed-Reset). */
+export function patchCustomSetTaskContent(
+  set: EntryTicketCustomSet,
+  taskId: string,
+  patch: { prompt: string; solution: string },
+): EntryTicketCustomSet {
+  if (!taskId) return set;
+  let changed = false;
+  const lessons = set.lessons.map((lesson) => {
+    let lessonChanged = false;
+    const tasks = lesson.tasks.map((t) => {
+      if (t.id !== taskId) return t;
+      lessonChanged = true;
+      changed = true;
+      return { ...t, prompt: patch.prompt, solution: patch.solution };
+    });
+    return lessonChanged ? { ...lesson, tasks } : lesson;
+  });
+  return changed ? { ...set, lessons } : set;
+}
+
 export function copyTaskIdsToLaterSection(
   set: EntryTicketCustomSet,
   lessonId: string,
@@ -389,10 +410,32 @@ export function seriesFolderPathFromLessonPath(lessonPath: string | null | undef
   const parts = want.split('/').filter(Boolean);
   for (let i = 0; i < parts.length; i++) {
     const seg = parts[i];
-    if (/^\d{1,2}[-–\s]\d{2}(?:\b|\s|$)/.test(seg) || /Matrizen/i.test(seg)) {
+    if (
+      /^\d{1,2}[-–\s]\d{2}(?:\b|\s|$)/.test(seg) ||
+      /Matrizen/i.test(seg) ||
+      /^(?:klasse|mathe|m)\s*\d{1,2}$/i.test(seg)
+    ) {
       const joined = parts.slice(0, i + 1).join('/');
       return absolute ? `/${joined}` : joined;
     }
+  }
+  return null;
+}
+
+/** „Mathe 5“ / „M5“ / „Klasse 5“ aus Set-Namen oder Pfadsegment. */
+export function klasseNumberFromEntryTicketLabel(label: string | null | undefined): string | null {
+  const m = String(label || '').trim().match(/^(?:mathe|m|klasse)\s*0*(\d{1,2})$/i);
+  if (!m) return null;
+  const n = Number(m[1]);
+  if (!Number.isFinite(n) || n < 5 || n > 13) return null;
+  return String(n);
+}
+
+function klasseNumberFromLessonPath(lessonPath: string): string | null {
+  const parts = normalizePath(lessonPath).split('/').filter(Boolean);
+  for (const seg of parts) {
+    const n = klasseNumberFromEntryTicketLabel(seg);
+    if (n) return n;
   }
   return null;
 }
@@ -439,8 +482,29 @@ export function findCustomSetForLessonPath(
       }),
     );
     if (bySibling) return bySibling;
+    const seriesName = seriesRoot.split('/').pop() || '';
+    const bySeriesName = list.find((s) => {
+      const setKlasse = klasseNumberFromEntryTicketLabel(s.name);
+      const pathKlasse = klasseNumberFromEntryTicketLabel(seriesName);
+      if (setKlasse && pathKlasse) return setKlasse === pathKlasse;
+      return normalizeFolderLabel(s.name) === normalizeFolderLabel(seriesName);
+    });
+    if (bySeriesName) return bySeriesName;
+  }
+
+  const pathKlasse = klasseNumberFromLessonPath(want);
+  if (pathKlasse) {
+    const byKlasseName = list.find((s) => klasseNumberFromEntryTicketLabel(s.name) === pathKlasse);
+    if (byKlasseName) return byKlasseName;
   }
   return null;
+}
+
+function normalizeFolderLabel(name: string): string {
+  return (name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
 }
 
 /**

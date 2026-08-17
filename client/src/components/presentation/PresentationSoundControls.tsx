@@ -6,42 +6,51 @@ import {
   Popover,
   Slider,
   Tooltip,
-  Typography,
 } from '@mui/material';
 import {
   ArrowDropDown as ArrowDropDownIcon,
   VolumeUp as VolumeUpIcon,
 } from '@mui/icons-material';
 import {
-  PRESENTATION_SOUND_CATEGORIES,
   PRESENTATION_SOUND_DURATIONS,
   PRESENTATION_SOUND_PRESETS,
   PRESENTATION_SOUND_STORAGE_KEY,
   loadPresentationSoundSettings,
   playPresentationSound,
   presentationSoundLabel,
-  presetsForCategory,
   savePresentationSoundSettings,
   togglePresentationSoundFavorite,
   type PresentationSoundId,
   type PresentationSoundSettings,
 } from '../../lib/presentationSound';
 
-export const PRESENTATION_SOUND_MENU_VERSION = 6;
+export const PRESENTATION_SOUND_MENU_VERSION = 7;
 
 export type PresentationSoundVariant = 'dashboard' | 'editor' | 'tablet' | 'laptop';
 
-const CHIP_LABELS: Partial<Record<PresentationSoundId, string>> = {
-  attention: 'Aufmerks.',
+const CHIP_LABELS: Record<PresentationSoundId, string> = {
+  attention: 'Aufm.',
+  alert: 'Alarm',
   classbell: 'Schule',
+  double: 'Doppel',
+  chime: 'Glocke',
   singingbowl: 'Schale',
+  gong: 'Gong',
+  temple: 'Tempel',
   windchime: 'Wind',
+  soft: 'Sanft',
+  ping: 'Ping',
+  wood: 'Holz',
+  rise: 'Anstieg',
+  boing: 'Boing',
+  ufo: 'UFO',
   retro: 'Retro',
   magic: 'Zauber',
+  fanfare: 'Fanfare',
 };
 
-function chipLabel(id: PresentationSoundId, fallback: string): string {
-  return CHIP_LABELS[id] || fallback;
+function chipLabel(id: PresentationSoundId): string {
+  return CHIP_LABELS[id];
 }
 
 type PlayProps = {
@@ -200,15 +209,24 @@ function variantStyles(variant: PresentationSoundVariant) {
 }
 
 const pillSx = (active: boolean, favorite?: boolean) => ({
-  border: active ? '1px solid #455a64' : '1px solid #d0d7de',
-  bgcolor: active ? '#546e7a' : favorite ? '#fffde7' : '#fff',
-  color: active ? '#fff' : favorite ? '#e65100' : '#37474f',
-  borderRadius: 0.75,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  height: 22,
+  minWidth: 0,
+  flexShrink: 0,
+  m: 0,
+  fontFamily: 'inherit',
+  appearance: 'none',
+  border: active ? '1px solid #546e7a' : '1px solid #cfd8dc',
+  bgcolor: active ? '#546e7a' : favorite ? '#fff8e1' : '#fff',
+  color: active ? '#fff' : favorite ? '#e65100' : '#455a64',
+  borderRadius: 0.6,
   px: 0.55,
-  py: 0.2,
-  fontSize: '0.62rem',
-  fontWeight: active ? 700 : 500,
-  lineHeight: 1.2,
+  py: 0,
+  fontSize: '0.6rem',
+  fontWeight: active ? 700 : 600,
+  lineHeight: 1,
   cursor: 'pointer',
   whiteSpace: 'nowrap' as const,
   '&:hover': {
@@ -226,11 +244,12 @@ type SoundPillProps = {
 };
 
 function SoundPill({ preset, selected, favorite, onSelect, onToggleFavorite }: SoundPillProps) {
-  const text = `${favorite ? '★ ' : ''}${chipLabel(preset.id, preset.label)}`;
+  const text = `${favorite ? '★ ' : ''}${chipLabel(preset.id)}`;
   return (
     <Tooltip title={`${preset.hint} · Rechtsklick = Favorit`} enterDelay={350}>
       <Box
         component="button"
+        type="button"
         onClick={onSelect}
         onContextMenu={(e) => {
           e.preventDefault();
@@ -363,22 +382,21 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
         PaperProps={{
           sx: {
             mt: 0.5,
-            width: 292,
-            maxWidth: '92vw',
-            borderRadius: 1.25,
+            width: 'auto',
+            maxWidth: 'min(560px, 96vw)',
+            borderRadius: 1.1,
             boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
           },
         }}
       >
         <Box
           sx={{
-            px: 0.85,
-            py: 0.55,
             display: 'flex',
-            alignItems: 'center',
-            gap: 0.4,
-            borderBottom: '1px solid #eceff1',
             flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 0.35,
+            px: 0.65,
+            py: 0.55,
           }}
         >
           <Slider
@@ -388,11 +406,12 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
             max={100}
             onChange={(_, v) => updateSettings({ volume: (v as number) / 100 })}
             sx={{
-              flex: '1 1 72px',
+              width: 64,
+              flex: '0 0 64px',
               color: '#78909c',
               py: 0,
-              height: 16,
-              minWidth: 64,
+              height: 18,
+              mx: 0.35,
               '& .MuiSlider-thumb': { width: 10, height: 10 },
             }}
           />
@@ -403,6 +422,7 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
               <Box
                 key={d.id}
                 component="button"
+                type="button"
                 onClick={() => {
                   updateSettings({ duration: d.id });
                   playPresentationSound({ duration: d.id });
@@ -413,30 +433,17 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
               </Box>
             );
           })}
+          <Box
+            sx={{
+              width: '1px',
+              height: 16,
+              bgcolor: '#cfd8dc',
+              flexShrink: 0,
+              mx: 0.15,
+            }}
+          />
+          {PRESENTATION_SOUND_PRESETS.map(renderPill)}
         </Box>
-
-        {PRESENTATION_SOUND_CATEGORIES.map((cat) => (
-          <Box key={cat.id} sx={{ px: 0.85, pt: 0.5, pb: cat.id === 'quirky' ? 0.65 : 0.15 }}>
-            <Typography
-              sx={{
-                fontSize: '0.58rem',
-                fontWeight: 700,
-                color: '#90a4ae',
-                mb: 0.35,
-                letterSpacing: 0.02,
-              }}
-            >
-              {cat.label}
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.35 }}>
-              {presetsForCategory(cat.id).map(renderPill)}
-            </Box>
-          </Box>
-        ))}
-
-        <Typography sx={{ px: 0.85, pb: 0.5, fontSize: '0.56rem', color: '#b0bec5', textAlign: 'center' }}>
-          ▶ = abspielen · ▼ = Menü · S · Rechtsklick = ★
-        </Typography>
       </Popover>
     </>
   );
