@@ -9,6 +9,7 @@
     "sync:sounds": "git fetch origin main && git checkout origin/main -- client/src/lib/presentationSound.ts client/src/components/presentation/PresentationSoundControls.tsx client/src/App.tsx client/src/pages/PresentationEditorPage.tsx client/src/components/presentation/PresentationSlideToolsBar.tsx client/src/components/presentation/PresentationTabletToolbar.tsx client/src/components/presentation/PresentationLaptopPlayer.tsx",
     "fix:compile": "bash scripts/fix-merge-conflicts.sh origin/main",
     "start:local": "bash scripts/start-local.sh",
+    "diagnose:local": "bash scripts/diagnose-local.sh",
     "check:local": "node scripts/check-local.js",
     "backup": "bash scripts/backup-manager.sh create",
     "backup:list": "bash scripts/backup-manager.sh list",
