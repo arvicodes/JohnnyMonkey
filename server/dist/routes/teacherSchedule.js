@@ -568,5 +568,38 @@ router.post('/lessons/end', async (req, res) => {
         res.status(500).json({ error: 'Serverfehler' });
     }
 });
+/** Bereits gehaltene Stunden (CLOSED) — für gelben Rand am Play-Button. */
+router.get('/played-lessons/teacher', async (req, res) => {
+    try {
+        const teacherId = await getTeacherIdFromLogin(req);
+        if (!teacherId)
+            return res.status(401).json({ error: 'Nicht autorisiert' });
+        const sessions = await prisma.autoLessonSession.findMany({
+            where: {
+                teacherId,
+                status: 'CLOSED',
+                lessonPath: { not: null },
+            },
+            select: { groupId: true, lessonPath: true },
+        });
+        const seen = new Set();
+        const lessons = [];
+        for (const s of sessions) {
+            const path = typeof s.lessonPath === 'string' ? s.lessonPath.trim() : '';
+            if (!path)
+                continue;
+            const key = `${s.groupId}::${normalizeLessonPathKey(path)}`;
+            if (seen.has(key))
+                continue;
+            seen.add(key);
+            lessons.push({ groupId: s.groupId, lessonPath: path });
+        }
+        res.json({ lessons });
+    }
+    catch (error) {
+        console.error('GET /teacher-schedule/played-lessons/teacher:', error);
+        res.status(500).json({ error: 'Serverfehler' });
+    }
+});
 exports.default = router;
 //# sourceMappingURL=teacherSchedule.js.map

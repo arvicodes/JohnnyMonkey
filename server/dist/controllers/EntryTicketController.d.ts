@@ -7,8 +7,14 @@ export declare class EntryTicketController {
     /**
      * Abgeschlossenes Entry Ticket einer Stunde (für SuS-Materialien inkl. Lösungen).
      * Query: lessonPath, groupId
+     * Bei mehreren Durchläufen derselben Stunde: neuestes Archiv.
      */
     static getCompleted(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
+     * Lehrer-Historie: erledigte Entry-Ticket-Durchläufe.
+     * Query optional: groupId, setId (Fragenset) — Nummerierung jeweils 1 = zuerst.
+     */
+    static getHistory(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static getCurrent(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /** Eigene Fragensets der Lehrkraft (Server-Backup + Wiederherstellung aus Signalen). */
     static getCustomSets(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;

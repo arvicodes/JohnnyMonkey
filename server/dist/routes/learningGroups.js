@@ -122,13 +122,15 @@ router.get('/teacher/:id', async (req, res) => {
                     where: { id: group.id },
                     select: {
                         seatingOrder: true,
-                        statisticsOrder: true
+                        statisticsOrder: true,
+                        passiveStudentIds: true,
                     }
                 });
                 return {
                     ...group,
                     seatingOrder: (fullGroup === null || fullGroup === void 0 ? void 0 : fullGroup.seatingOrder) || null,
-                    statisticsOrder: (fullGroup === null || fullGroup === void 0 ? void 0 : fullGroup.statisticsOrder) || null
+                    statisticsOrder: (fullGroup === null || fullGroup === void 0 ? void 0 : fullGroup.statisticsOrder) || null,
+                    passiveStudentIds: (fullGroup === null || fullGroup === void 0 ? void 0 : fullGroup.passiveStudentIds) || null,
                 };
             }
             catch (e) {
@@ -142,7 +144,8 @@ router.get('/teacher/:id', async (req, res) => {
                     return {
                         ...group,
                         seatingOrder: null,
-                        statisticsOrder: null
+                        statisticsOrder: null,
+                        passiveStudentIds: null,
                     };
                 }
                 // Für andere Fehler: Versuche einzeln zu laden (Fallback)
@@ -155,10 +158,22 @@ router.get('/teacher/:id', async (req, res) => {
                         where: { id: group.id },
                         select: { statisticsOrder: true }
                     });
+                    let passiveStudentIds = null;
+                    try {
+                        const passiveGroup = await prisma.learningGroup.findUnique({
+                            where: { id: group.id },
+                            select: { passiveStudentIds: true },
+                        });
+                        passiveStudentIds = (passiveGroup === null || passiveGroup === void 0 ? void 0 : passiveGroup.passiveStudentIds) || null;
+                    }
+                    catch {
+                        passiveStudentIds = null;
+                    }
                     return {
                         ...group,
                         seatingOrder: (seatingOrderGroup === null || seatingOrderGroup === void 0 ? void 0 : seatingOrderGroup.seatingOrder) || null,
-                        statisticsOrder: (statisticsOrderGroup === null || statisticsOrderGroup === void 0 ? void 0 : statisticsOrderGroup.statisticsOrder) || null
+                        statisticsOrder: (statisticsOrderGroup === null || statisticsOrderGroup === void 0 ? void 0 : statisticsOrderGroup.statisticsOrder) || null,
+                        passiveStudentIds,
                     };
                 }
                 catch (e2) {
@@ -166,7 +181,8 @@ router.get('/teacher/:id', async (req, res) => {
                     return {
                         ...group,
                         seatingOrder: null,
-                        statisticsOrder: null
+                        statisticsOrder: null,
+                        passiveStudentIds: null,
                     };
                 }
             }
@@ -781,7 +797,7 @@ router.post('/:id/students', async (req, res) => {
     }
 });
 async function buildWebUntisPreview(groupId, parsedStudents, groupName, klasse) {
-    const groupNumber = klasse || (0, webUntisStudentList_1.groupNumberFromName)(groupName, '00');
+    const groupNumber = (0, webUntisStudentList_1.loginGroupNumberFromKlasse)(klasse, '') || (0, webUntisStudentList_1.groupNumberFromName)(groupName, '00');
     const group = await prisma.learningGroup.findUnique({
         where: { id: groupId },
         include: { students: { select: { id: true, name: true, loginCode: true } } },
@@ -904,19 +920,25 @@ router.post('/:groupId/import-webuntis/confirm', async (req, res) => {
         const reused = [];
         const connectIds = [];
         for (const raw of studentsRaw) {
+            const rawFirst = typeof raw.firstName === 'string' ? raw.firstName.trim() : '';
+            const rawLast = typeof raw.lastName === 'string' ? raw.lastName.trim() : '';
             const fullNameRaw = typeof raw.fullName === 'string' && raw.fullName.trim()
                 ? raw.fullName.trim()
-                : `${String(raw.firstName || '').trim()} ${String(raw.lastName || '').trim()}`.trim();
-            const fullName = (0, webUntisStudentList_1.stripMiddleNames)(fullNameRaw);
+                : `${rawFirst} ${rawLast}`.trim();
+            if (!fullNameRaw)
+                continue;
+            // Mehrteilige Nachnamen (z. B. „De Donatis“) erhalten; nur erster Vorname
+            const nameParts = fullNameRaw.split(/\s+/).filter(Boolean);
+            const firstName = (rawFirst.split(/\s+/).filter(Boolean)[0] || nameParts[0] || '').trim();
+            const lastName = (rawLast || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '')).trim();
+            const fullName = [firstName, lastName].filter(Boolean).join(' ');
             if (!fullName)
                 continue;
-            const parts = fullName.split(/\s+/);
-            const firstName = parts[0];
-            const lastName = parts[parts.length - 1];
             let loginCode = String(raw.loginCode || '').trim();
             if (!loginCode) {
                 const groupNumber = typeof ((_b = req.body) === null || _b === void 0 ? void 0 : _b.groupNumber) === 'string' && req.body.groupNumber.trim()
-                    ? req.body.groupNumber.trim()
+                    ? (0, webUntisStudentList_1.loginGroupNumberFromKlasse)(req.body.groupNumber.trim(), '') ||
+                        (0, webUntisStudentList_1.groupNumberFromName)(group.name, '00')
                     : (0, webUntisStudentList_1.groupNumberFromName)(group.name, '00');
                 loginCode = (0, webUntisStudentList_1.generateLoginCode)(firstName, lastName, groupNumber);
             }
@@ -926,7 +948,7 @@ router.post('/:groupId/import-webuntis/confirm', async (req, res) => {
                     where: { role: 'STUDENT' },
                     select: { id: true, name: true },
                 });
-                const match = all.find((u) => (0, webUntisStudentList_1.stripMiddleNames)(u.name).toLowerCase() === fullName.toLowerCase());
+                const match = all.find((u) => (0, webUntisStudentList_1.stripMiddleNames)(u.name).toLowerCase() === (0, webUntisStudentList_1.stripMiddleNames)(fullName).toLowerCase());
                 if (match)
                     userId = match.id;
             }
@@ -1099,6 +1121,63 @@ router.put('/:id/moderator', async (req, res) => {
     }
     catch (error) {
         console.error('PUT /learning-groups/:id/moderator:', error);
+        res.status(500).json({ error: 'Serverfehler' });
+    }
+});
+/** Passive-Schüler setzen (z. B. Auslandsaufenthalt) — JSON-Array studentIds */
+router.put('/:id/passive-students', async (req, res) => {
+    var _a;
+    try {
+        const groupId = req.params.id;
+        const raw = (_a = req.body) === null || _a === void 0 ? void 0 : _a.studentIds;
+        if (!Array.isArray(raw)) {
+            return res.status(400).json({ error: 'studentIds (Array) ist erforderlich' });
+        }
+        const studentIds = [...new Set(raw.map((id) => String(id || '').trim()).filter(Boolean))];
+        const loginCode = typeof req.headers['x-login-code'] === 'string' ? req.headers['x-login-code'].trim() : '';
+        if (!loginCode)
+            return res.status(401).json({ error: 'Nicht autorisiert' });
+        const teacher = await prisma.user.findUnique({
+            where: { loginCode },
+            select: { id: true, role: true },
+        });
+        if (!teacher || teacher.role !== 'TEACHER') {
+            return res.status(403).json({ error: 'Nur Lehrkräfte' });
+        }
+        const group = await prisma.learningGroup.findFirst({
+            where: { id: groupId, teacherId: teacher.id },
+            select: {
+                id: true,
+                students: { select: { id: true } },
+            },
+        });
+        if (!group)
+            return res.status(404).json({ error: 'Gruppe nicht gefunden' });
+        const memberIds = new Set(group.students.map((s) => s.id));
+        const validIds = studentIds.filter((id) => memberIds.has(id));
+        const updated = await prisma.learningGroup.update({
+            where: { id: groupId },
+            data: { passiveStudentIds: JSON.stringify(validIds) },
+            select: {
+                id: true,
+                name: true,
+                passiveStudentIds: true,
+                students: {
+                    orderBy: { loginCode: 'asc' },
+                    select: {
+                        id: true,
+                        name: true,
+                        loginCode: true,
+                        avatarEmoji: true,
+                        avatarUrl: true,
+                    },
+                },
+            },
+        });
+        res.json(updated);
+    }
+    catch (error) {
+        console.error('PUT /learning-groups/:id/passive-students:', error);
         res.status(500).json({ error: 'Serverfehler' });
     }
 });

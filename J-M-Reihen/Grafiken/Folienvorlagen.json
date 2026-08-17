@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-08-16T07:30:07.104Z",
+  "updatedAt": "2026-08-17T06:12:58.279117Z",
   "templates": {
     "start": {
       "layout": "title-slide",
@@ -55,12 +55,8 @@
       "zoneRevealSteps": {}
     },
     "auftrag": {
-      "layout": "title-content",
-      "title": "Auftrag",
-      "body": "Formuliere hier den Arbeitsauftrag für die Schülerinnen und Schüler.",
       "speakerNotes": "",
-      "preparationNotes": "",
-      "materialNotes": "",
+      "layout": "blank",
       "subtitle": "",
       "bodyLeft": "",
       "bodyRight": "",
@@ -69,16 +65,41 @@
       "bodyStyle": "plain",
       "titleAlign": "left",
       "accentColor": "#2E7D32",
-      "titleHtml": "<p><b>Auftrag</b></p>",
-      "bodyHtml": "<ul><li>Formuliere hier den Arbeitsauftrag für die Schülerinnen und Schüler.</li></ul>",
+      "title": "",
+      "body": "",
+      "hiddenLayoutZones": [
+        "bodyHtml"
+      ],
+      "titleHtml": "",
+      "bodyHtml": "",
       "subtitleHtml": "",
       "bodyLeftHtml": "",
       "bodyRightHtml": "",
       "imageCaptionHtml": "",
-      "speakerNotesHtml": "",
-      "preparationHtml": "",
-      "materialHtml": "",
-      "elements": [],
+      "speakerNotesHtml": "<p><br></p>",
+      "preparationNotes": "",
+      "preparationHtml": "<p><br></p>",
+      "materialNotes": "",
+      "materialHtml": "<p><br></p>",
+      "elements": [
+        {
+          "id": "tpl-auftrag-card",
+          "type": "card",
+          "x": 82.15857144406507,
+          "y": 67.06377484309624,
+          "w": 16.18731186828703,
+          "h": 24.687892259414223,
+          "zIndex": 1,
+          "strokeColor": "#2E7D32",
+          "strokeWidth": 2.5,
+          "fillColor": "rgba(46,125,50,0.14)",
+          "titleHtml": "<p style=\"text-align:center\"><strong>Arbeitsauftrag</strong></p>",
+          "html": "<p style=\"text-align: left;\"><b>Mathebuch:</b></p><p style=\"text-align: left;\">Seite , Nummer</p>",
+          "stackLayer": "foreground",
+          "revealStep": 1,
+          "animationSet": true
+        }
+      ],
       "transition": "fade",
       "revealEnabled": true,
       "zoneRevealSteps": {}
@@ -156,9 +177,9 @@
       "zoneRevealSteps": {}
     },
     "ha": {
-      "layout": "title-content",
-      "title": "Hausaufgabe: Wer bist du als Person?",
-      "body": "Schreibe einen kurzen Steckbrief zu dir.\nBringe ein leeres, kariertes A4-Heft mit.",
+      "layout": "blank",
+      "title": "Hausaufgabe",
+      "body": "",
       "speakerNotes": "",
       "preparationNotes": "",
       "materialNotes": "",
@@ -170,32 +191,72 @@
       "bodyStyle": "plain",
       "titleAlign": "left",
       "accentColor": "#C62828",
-      "titleHtml": "<p><span data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important;\">Hausaufgabe: Wer bist du als Person?</span></p>",
-      "bodyHtml": "<ul><li><span style=\"font-weight: bold;\">Schreibe</span> einen kurzen Steckbrief zu dir.</li><li><span style=\"font-weight: bold;\">Bringe</span> ein <span data-pres-highlight=\"#C5E1A5\" style=\"background-color: rgb(197, 225, 165) !important;\">leeres, kariertes A4-Heft</span> mit.</li></ul>",
+      "titleHtml": "<p><span data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important;\">Hausaufgabe</span></p><p><span data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important;\"><br></span></p>",
+      "bodyHtml": "<p><br></p>",
       "subtitleHtml": "",
       "bodyLeftHtml": "",
       "bodyRightHtml": "",
       "imageCaptionHtml": "",
-      "speakerNotesHtml": "",
+      "speakerNotesHtml": "<p><br></p>",
       "preparationHtml": "<p><br></p>",
-      "materialHtml": "",
+      "materialHtml": "<p><br></p>",
       "elements": [
         {
           "id": "tpl-ha-img",
           "type": "image",
-          "x": 83.64998242736645,
-          "y": 0,
-          "w": 16.35001757263355,
-          "h": 17.753045923149017,
+          "x": 34.82752190813671,
+          "y": 9.81815147429894,
+          "w": 6.234590934783087,
+          "h": 7.532135501524438,
           "src": "__GRAFIKEN__/HA.png",
           "zIndex": 1,
           "revealStep": 0,
           "imageFit": "contain"
+        },
+        {
+          "id": "tpl-ha-bye-text",
+          "type": "text",
+          "x": 81.35841393849206,
+          "y": 88.3222828483245,
+          "w": 18.641586061507937,
+          "h": 6.796626984126986,
+          "html": "<p><span style=\"font-weight: 700; text-align: center; background-color: rgb(255, 255, 255);\">Bis zur nächsten Stunde!</span></p>",
+          "zIndex": 2
+        },
+        {
+          "id": "tpl-ha-endroboter",
+          "type": "image",
+          "x": 76.0521128429198,
+          "y": 60.259519334795975,
+          "w": 26.615334494745305,
+          "h": 33.21916135335253,
+          "src": "__GRAFIKEN__/Endroboter.png",
+          "zIndex": 3,
+          "imageFit": "contain"
+        },
+        {
+          "id": "tpl-ha-card",
+          "type": "card",
+          "x": 1.85512377684924,
+          "y": 9.129772046836543,
+          "w": 39.206989066070555,
+          "h": 45.847606628756274,
+          "zIndex": 5,
+          "strokeColor": "#EF6C00",
+          "strokeWidth": 2.5,
+          "fillColor": "rgba(239,108,0,0.14)",
+          "titleHtml": "<p style=\"text-align:center\"><strong style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\">Hausaufgabe</strong></p><p style=\"text-align:center\"><strong style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\"><br></strong></p>",
+          "html": "<p style=\"text-align: left;\"><b>Mathebuch:</b></p><p style=\"text-align: left;\">Seite , Nummer</p>",
+          "stackLayer": "foreground"
         }
       ],
       "transition": "zoom",
       "revealEnabled": true,
-      "zoneRevealSteps": {}
+      "zoneRevealSteps": {},
+      "homeworkSubmissionRequired": true,
+      "hiddenLayoutZones": [
+        "bodyHtml"
+      ]
     },
     "ende": {
       "speakerNotes": "",
@@ -692,7 +753,7 @@
             "fillColor": "rgba(239,108,0,0.14)",
             "titleHtml": "<p style=\"text-align:center\"><strong style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\">Hausaufgabe</strong></p><p style=\"text-align:center\"><strong style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\"><br></strong></p>",
             "html": "<p style=\"text-align: left;\"><b>Mathebuch:</b></p><p style=\"text-align: left;\">Seite , Nummer</p>",
-            "stackLayer": "background"
+            "stackLayer": "foreground"
           }
         ],
         "transition": "zoom",
@@ -751,7 +812,7 @@
             "fillColor": "rgba(46,125,50,0.14)",
             "titleHtml": "<p style=\"text-align:center\"><strong>Arbeitsauftrag</strong></p>",
             "html": "<p style=\"text-align: left;\"><b>Mathebuch:</b></p><p style=\"text-align: left;\">Seite , Nummer</p>",
-            "stackLayer": "background"
+            "stackLayer": "foreground"
           }
         ],
         "transition": "fade",
@@ -759,6 +820,63 @@
         "zoneRevealSteps": {}
       },
       "createdAt": "2026-08-16T07:30:07.103Z"
+    },
+    {
+      "id": "custom-1786946336548-m5nw",
+      "label": "Perfekt",
+      "shortLabel": "P",
+      "hint": "Eigene Vorlage",
+      "payload": {
+        "speakerNotes": "",
+        "layout": "blank",
+        "subtitle": "",
+        "bodyLeft": "",
+        "bodyRight": "",
+        "imagePath": "",
+        "imageCaption": "",
+        "bodyStyle": "plain",
+        "titleAlign": "left",
+        "accentColor": "#2E7D32",
+        "title": "",
+        "body": "",
+        "hiddenLayoutZones": [
+          "bodyHtml"
+        ],
+        "titleHtml": "",
+        "bodyHtml": "",
+        "subtitleHtml": "",
+        "bodyLeftHtml": "",
+        "bodyRightHtml": "",
+        "imageCaptionHtml": "",
+        "speakerNotesHtml": "<p><br></p>",
+        "preparationNotes": "",
+        "preparationHtml": "<p><br></p>",
+        "materialNotes": "",
+        "materialHtml": "<p><br></p>",
+        "elements": [
+          {
+            "id": "el-card-1786864570511-7oa1",
+            "type": "card",
+            "x": 82.15857144406507,
+            "y": 67.06377484309624,
+            "w": 16.18731186828703,
+            "h": 24.687892259414223,
+            "zIndex": 1,
+            "strokeColor": "#2E7D32",
+            "strokeWidth": 2.5,
+            "fillColor": "rgba(46,125,50,0.14)",
+            "titleHtml": "<p style=\"text-align:center\"><strong>Arbeitsauftrag</strong></p>",
+            "html": "<p style=\"text-align: left;\"><b>Mathebuch:</b></p><p style=\"text-align: left;\">Seite , Nummer</p>",
+            "stackLayer": "foreground",
+            "revealStep": 1,
+            "animationSet": true
+          }
+        ],
+        "transition": "fade",
+        "revealEnabled": true,
+        "zoneRevealSteps": {}
+      },
+      "createdAt": "2026-08-17T06:11:31.968Z"
     }
   ]
 }

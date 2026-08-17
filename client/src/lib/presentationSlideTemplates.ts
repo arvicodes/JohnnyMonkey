@@ -73,12 +73,11 @@ export function buildLessonSharedOverviewUrl(groupId: string, lessonPath: string
   return `/shared-overview?${qs.toString()}`;
 }
 
-/** Standard-Reihenfolge neuer Stunden-Foliensätze. */
+/** Standard-Reihenfolge neuer Stunden-Foliensätze (HA = Vorlage „Perfekt“ inkl. Abschluss). */
 export const DEFAULT_LESSON_SLIDE_TEMPLATE_KINDS: SlideTemplateKind[] = [
   'start',
   'auftrag',
   'ha',
-  'ende',
 ];
 
 const GRAFIKEN_TOKEN = '__GRAFIKEN__';
@@ -231,19 +230,6 @@ export function slideToTemplatePayload(
 }
 
 function builtinTemplates(): SlideTemplatesStore['templates'] {
-  const haElement: SlideElement = {
-    id: 'tpl-ha-img',
-    type: 'image',
-    x: 83.64998242736645,
-    y: 0,
-    w: 16.35001757263355,
-    h: 17.753045923149017,
-    src: `${GRAFIKEN_TOKEN}/HA.png`,
-    zIndex: 1,
-    revealStep: 0,
-    imageFit: 'contain',
-  };
-
   return {
     start: {
       layout: 'title-slide',
@@ -275,10 +261,10 @@ function builtinTemplates(): SlideTemplatesStore['templates'] {
       zoneRevealSteps: {},
     },
     auftrag: {
-      layout: 'title-content',
-      title: 'Auftrag',
-      body: 'Formuliere hier den Arbeitsauftrag für die Schülerinnen und Schüler.',
-      speakerNotes: '',
+      layout: 'blank',
+      title: '',
+      body: '',
+      speakerNotes: "",
       preparationNotes: '',
       materialNotes: '',
       subtitle: '',
@@ -288,21 +274,37 @@ function builtinTemplates(): SlideTemplatesStore['templates'] {
       imageCaption: '',
       bodyStyle: 'plain',
       titleAlign: 'left',
-      accentColor: JOHNNY_PRESENTATION.primary,
-      titleHtml: '<p><b>Auftrag</b></p>',
-      bodyHtml:
-        '<ul><li>Formuliere hier den Arbeitsauftrag für die Schülerinnen und Schüler.</li></ul>',
+      accentColor: '#2E7D32',
+      titleHtml: '',
+      bodyHtml: '',
       subtitleHtml: '',
       bodyLeftHtml: '',
       bodyRightHtml: '',
       imageCaptionHtml: '',
-      speakerNotesHtml: '',
+      speakerNotesHtml: "<p><br></p>",
       preparationHtml: '',
       materialHtml: '',
-      elements: [],
+      elements: [
+        {
+          id: 'tpl-auftrag-card',
+          type: 'card',
+          x: 82.15857144406507,
+          y: 67.06377484309624,
+          w: 16.18731186828703,
+          h: 24.687892259414223,
+          zIndex: 1,
+          strokeColor: "#2E7D32",
+          strokeWidth: 2.5,
+          fillColor: "rgba(46,125,50,0.14)",
+          titleHtml: "<p style=\"text-align:center\"><strong>Arbeitsauftrag</strong></p>",
+          html: "<p style=\"text-align: left;\"><b>Mathebuch:</b></p><p style=\"text-align: left;\">Seite , Nummer</p>",
+          stackLayer: 'foreground',
+        },
+      ],
       transition: 'fade',
       revealEnabled: true,
       zoneRevealSteps: {},
+      hiddenLayoutZones: ['bodyHtml'],
     },
     sicherung: {
       layout: 'title-content',
@@ -377,10 +379,11 @@ function builtinTemplates(): SlideTemplatesStore['templates'] {
       revealEnabled: true,
       zoneRevealSteps: {},
     },
+    /** Standard-HA („Perfekt“): Infobox + HA-Icon + Endroboter + Abschied. */
     ha: {
-      layout: 'title-content',
-      title: 'Hausaufgabe: Wer bist du als Person?',
-      body: 'Schreibe einen kurzen Steckbrief zu dir.\nBringe ein leeres, kariertes A4-Heft mit.',
+      layout: 'blank',
+      title: 'Hausaufgabe',
+      body: '',
       speakerNotes: '',
       preparationNotes: '',
       materialNotes: '',
@@ -393,21 +396,71 @@ function builtinTemplates(): SlideTemplatesStore['templates'] {
       titleAlign: 'left',
       accentColor: '#C62828',
       titleHtml:
-        '<p><span data-pres-color="#1a1a2e" style="color: rgb(26, 26, 46) !important;">Hausaufgabe: Wer bist du als Person?</span></p>',
-      bodyHtml:
-        '<ul><li><span style="font-weight: bold;">Schreibe</span> einen kurzen Steckbrief zu dir.</li><li><span style="font-weight: bold;">Bringe</span> ein <span data-pres-highlight="#C5E1A5" style="background-color: rgb(197, 225, 165) !important;">leeres, kariertes A4-Heft</span> mit.</li></ul>',
+        '<p><span data-pres-color="#1a1a2e" style="color: rgb(26, 26, 46) !important;">Hausaufgabe</span></p><p><span data-pres-color="#1a1a2e" style="color: rgb(26, 26, 46) !important;"><br></span></p>',
+      bodyHtml: '<p><br></p>',
       subtitleHtml: '',
       bodyLeftHtml: '',
       bodyRightHtml: '',
       imageCaptionHtml: '',
-      speakerNotesHtml: '',
+      speakerNotesHtml: '<p><br></p>',
       preparationHtml: '<p><br></p>',
-      materialHtml: '',
-      elements: [haElement],
+      materialHtml: '<p><br></p>',
+      elements: [
+        {
+          id: 'tpl-ha-img',
+          type: 'image',
+          x: 34.82752190813671,
+          y: 9.81815147429894,
+          w: 6.234590934783087,
+          h: 7.532135501524438,
+          src: `${GRAFIKEN_TOKEN}/HA.png`,
+          zIndex: 1,
+          revealStep: 0,
+          imageFit: 'contain',
+        },
+        {
+          id: 'tpl-ha-bye-text',
+          type: 'text',
+          x: 81.35841393849206,
+          y: 88.3222828483245,
+          w: 18.641586061507937,
+          h: 6.796626984126986,
+          html: '<p><span style="font-weight: 700; text-align: center; background-color: rgb(255, 255, 255);">Bis zur nächsten Stunde!</span></p>',
+          zIndex: 2,
+        },
+        {
+          id: 'tpl-ha-endroboter',
+          type: 'image',
+          x: 76.0521128429198,
+          y: 60.259519334795975,
+          w: 26.615334494745305,
+          h: 33.21916135335253,
+          src: `${GRAFIKEN_TOKEN}/Endroboter.png`,
+          zIndex: 3,
+          imageFit: 'contain',
+        },
+        {
+          id: 'tpl-ha-card',
+          type: 'card',
+          x: 1.85512377684924,
+          y: 9.129772046836543,
+          w: 39.206989066070555,
+          h: 45.847606628756274,
+          zIndex: 5,
+          strokeColor: '#EF6C00',
+          strokeWidth: 2.5,
+          fillColor: 'rgba(239,108,0,0.14)',
+          titleHtml:
+            '<p style="text-align:center"><strong>Hausaufgabe</strong></p><p style="text-align:center"><strong><br></strong></p>',
+          html: '<p style="text-align: left;"><b>Mathebuch:</b></p><p style="text-align: left;">Seite , Nummer</p>',
+          stackLayer: 'foreground',
+        },
+      ],
       transition: 'zoom',
       revealEnabled: true,
       zoneRevealSteps: {},
       homeworkSubmissionRequired: true,
+      hiddenLayoutZones: ['bodyHtml'],
     },
     ende: {
       layout: 'title-slide',

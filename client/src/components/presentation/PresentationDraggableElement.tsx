@@ -252,6 +252,30 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [element.id, element.type, editable, animationEditMode]);
 
+  /** Infobox gewählt → Inhalt fokussieren (sonst wirkt contentEditable erst nach 2. Klick). */
+  useEffect(() => {
+    if (element.type !== 'card' || !editable || !selected || animationEditMode || cardTitleEditing)
+      return;
+    let cancelled = false;
+    const focusBody = () => {
+      if (cancelled) return;
+      const el = cardBodyRef.current;
+      if (!el) return;
+      if (document.activeElement === el || el.contains(document.activeElement)) return;
+      if (isEffectivelyEmptyHtml(el.innerHTML)) {
+        el.innerHTML = hydratePresentationHtmlFontSizes(element.html || '<p></p>');
+      }
+      el.focus({ preventScroll: true });
+      onTextEditorFocus?.(el, element.id, 'html');
+    };
+    const t = window.setTimeout(focusBody, 40);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [element.type, element.id, editable, selected, animationEditMode, cardTitleEditing]);
+
   useEffect(() => {
     if (!selected) {
       setTextEditing(false);
@@ -852,17 +876,14 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               ? 'default'
               : undefined,
         touchAction: isMediaElement && mediaInteractive ? 'manipulation' : 'none',
-        // Karten: Klicks im transparenten Bereich durchlassen → Bilder darüber greifbar.
-        // Titelkopf bleibt klickbar (Kind mit pointer-events:auto).
+        // Karten: Rahmen durchlässig für Bilder darüber; Titel+Inhalt immer greifbar.
         // Bilder: durchlassen, wenn eine Karte gewählt ist (Inhalt tippen).
         pointerEvents:
           passPointerThrough && isImageElement && !selected
             ? 'none'
             : isCardElement
               ? editable || animationEditMode
-                ? showCardTitleEditor || showCardBodyEditor || selected
-                  ? 'auto'
-                  : 'none'
+                ? 'auto'
                 : 'none'
               : editable || animationEditMode || (isMediaElement && mediaInteractive)
                 ? 'auto'
@@ -1129,7 +1150,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             bgcolor: 'transparent',
             boxSizing: 'border-box',
             pointerEvents: 'none',
-            '& [data-card-title], & [data-text-edit]': {
+            '& [data-card-title], & [data-card-body], & [data-text-edit]': {
               pointerEvents: 'auto',
             },
           }}
@@ -1242,8 +1263,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               bgcolor: 'transparent',
               px: `${8 * scale}px`,
               py: `${8 * scale}px`,
-              // Nur bei Auswahl klickbar — sonst liegen Bilder darüber greifbar
-              pointerEvents: showCardBodyEditor ? 'auto' : 'none',
+              // Immer greifbar zum Auswählen/Tippen — sonst geht der Klick „durch“ die Box
+              pointerEvents: editable && !animationEditMode ? 'auto' : 'none',
               position: 'relative',
             }}
           >
@@ -1326,12 +1347,12 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
                   lineHeight: 1.4,
                   color: '#424242',
-                  cursor: showCardBodyEditor ? 'text' : 'inherit',
+                  cursor: showCardBodyEditor ? 'text' : editable ? 'pointer' : 'inherit',
                   boxSizing: 'border-box',
                   bgcolor: showCardBodyEditor ? 'rgba(255,255,255,0.55)' : 'transparent',
                   borderRadius: `${4 * scale}px`,
                   p: `${6 * scale}px`,
-                  pointerEvents: showCardBodyEditor ? 'auto' : 'none',
+                  pointerEvents: editable && !animationEditMode ? 'auto' : 'none',
                   '& p': { m: 0, mb: `${4 * scale}px` },
                 }}
               />
