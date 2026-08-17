@@ -126,6 +126,8 @@ interface PresentationTabletToolbarProps {
   canPickRandomStudent?: boolean;
   /** Zufallszahl 1…max anzeigen */
   onPickRandomNumber?: (max: number) => void;
+  /** Entry Ticket dieser Stunde öffnen (TABLET-Play) */
+  onOpenEntryTicket?: () => void;
   /** docked = im Layout unten (Tablet-Präsentieren); fixed = schwebend */
   placement?: 'fixed' | 'docked';
   /** Original-Ansicht: nur Navigation, kein Zeichnen/Speichern */
@@ -157,6 +159,7 @@ export default function PresentationTabletToolbar({
   onPickRandomStudent,
   canPickRandomStudent = false,
   onPickRandomNumber,
+  onOpenEntryTicket,
   placement = 'fixed',
   readOnly = false,
   zoom,
@@ -394,6 +397,28 @@ export default function PresentationTabletToolbar({
             onClick={onToggleDraw}
           >
             <DrawIcon sx={{ fontSize: 15 }} />
+          </ToolBtn>
+        )}
+
+        {!readOnly && onOpenEntryTicket && (
+          <ToolBtn title="Entry Ticket" onClick={onOpenEntryTicket}>
+            <Box
+              component="span"
+              sx={{
+                width: 15,
+                height: 15,
+                borderRadius: '4px',
+                bgcolor: '#1e88e5',
+                color: '#fff',
+                fontSize: 10,
+                fontWeight: 800,
+                lineHeight: '15px',
+                textAlign: 'center',
+                display: 'block',
+              }}
+            >
+              E
+            </Box>
           </ToolBtn>
         )}
 

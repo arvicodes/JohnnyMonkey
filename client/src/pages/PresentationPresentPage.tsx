@@ -761,11 +761,21 @@ const PresentationPresentPage: React.FC = () => {
     if (drawActive || entryTicketOpen) return;
     const t = e.touches[0];
     if (!t) return;
+    const target = e.target instanceof Element ? e.target : null;
+    if (target?.closest?.('a[href][data-pres-entry-ticket], a[href*="jm=lesson-entry"]')) {
+      swipeRef.current = null;
+      return;
+    }
     swipeRef.current = { x: t.clientX, y: t.clientY };
   };
 
   const onTouchEnd = (e: React.TouchEvent) => {
     if (drawActive || entryTicketOpen || !swipeRef.current) return;
+    const target = e.target instanceof Element ? e.target : null;
+    if (target?.closest?.('a[href][data-pres-entry-ticket], a[href*="jm=lesson-entry"]')) {
+      swipeRef.current = null;
+      return;
+    }
     const t = e.changedTouches[0];
     if (!t) return;
     const dx = t.clientX - swipeRef.current.x;
@@ -1035,6 +1045,7 @@ const PresentationPresentPage: React.FC = () => {
         onPickRandomStudent={groupId ? handlePickRandomStudent : undefined}
         canPickRandomStudent={groupStudents.length > 0}
         onPickRandomNumber={handlePickRandomNumber}
+        onOpenEntryTicket={() => setEntryTicketOpen(true)}
         zoom={userZoom}
         onZoomChange={(z) => setUserZoom(clampPresentZoom(z))}
       />

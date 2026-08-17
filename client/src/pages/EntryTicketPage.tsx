@@ -1835,7 +1835,12 @@ export default function EntryTicketPage({
     }
   }, [location.search, embeddedPlay]);
 
-  const isTeacher = useMemo(() => Boolean(localStorage.getItem('teacherId')), []);
+  const isTeacher = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    if (localStorage.getItem('teacherId')) return true;
+    const role = (localStorage.getItem('userRole') || '').toUpperCase();
+    return role === 'TEACHER';
+  }, []);
 
   const applyGradeParam = useCallback((raw: string | null | undefined) => {
     if (!raw) return;

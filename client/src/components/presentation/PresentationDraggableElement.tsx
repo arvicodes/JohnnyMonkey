@@ -666,6 +666,14 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   const isMediaElement = element.type === 'video' || element.type === 'embed';
   const mediaInteract = isMediaElement && mediaInteractive && !editable;
   const mediaAllowZoom = element.type === 'embed' && mediaInteractive && !editable;
+  const htmlHasEntryTicketLink =
+    typeof element.html === 'string' &&
+    (/data-pres-entry-ticket/.test(element.html) || /jm=lesson-entry/.test(element.html));
+  const htmlHasClickableLink =
+    htmlHasEntryTicketLink ||
+    (typeof element.html === 'string' && /<a\s[^>]*href=/i.test(element.html));
+  /** Play/TABLET: Links (v. a. Entry-Ticket-E) müssen tippbar sein — auch unter pointer-events:none-Ahnen. */
+  const playLinkHitTarget = !editable && !animationEditMode && htmlHasClickableLink;
 
   const imageSelectionBorder =
     hugImageChrome
@@ -875,7 +883,12 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             : isMediaElement && mediaInteractive
               ? 'default'
               : undefined,
-        touchAction: isMediaElement && mediaInteractive ? 'manipulation' : 'none',
+        touchAction:
+          isMediaElement && mediaInteractive
+            ? 'manipulation'
+            : playLinkHitTarget
+              ? 'manipulation'
+              : 'none',
         // Karten: Rahmen durchlässig für Bilder darüber; Titel+Inhalt immer greifbar.
         // Bilder: durchlassen, wenn eine Karte gewählt ist (Inhalt tippen).
         pointerEvents:
@@ -885,17 +898,19 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               ? editable || animationEditMode
                 ? 'auto'
                 : 'none'
-              : editable || animationEditMode || (isMediaElement && mediaInteractive)
+              : editable || animationEditMode || (isMediaElement && mediaInteractive) || playLinkHitTarget
                 ? 'auto'
                 : 'none',
         // Links in Folien-HTML bleiben klickbar (CSS: [data-pres-html] a)
         '& a[href]': {
           pointerEvents: 'auto',
           cursor: 'pointer',
-          color: '#1565C0',
-          textDecoration: 'underline',
+          color: htmlHasEntryTicketLink ? '#fff' : '#1565C0',
+          textDecoration: htmlHasEntryTicketLink ? 'none' : 'underline',
           position: 'relative',
           zIndex: 2,
+          WebkitTapHighlightColor: 'rgba(30,136,229,0.35)',
+          touchAction: 'manipulation',
         },
         willChange: dragging ? 'left, top, width, height' : undefined,
         outline: isCardElement && showSelectionChrome ? `${2 * scale}px solid #2E7D32` : undefined,
@@ -1737,12 +1752,13 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
               lineHeight: 1.4,
               p: `${8 * scale}px`,
-              pointerEvents: animationEditMode ? 'auto' : 'none',
+              pointerEvents: animationEditMode || playLinkHitTarget ? 'auto' : 'none',
               color: '#424242',
               boxSizing: 'border-box',
               '& a[href]': {
                 pointerEvents: 'auto',
                 cursor: 'pointer',
+                touchAction: 'manipulation',
               },
               '& p': { m: 0, mb: `${4 * scale}px` },
               '& li > p': { display: 'block', listStyle: 'none' },

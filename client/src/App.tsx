@@ -111,6 +111,7 @@ function AppContent() {
         } else {
           localStorage.setItem('studentId', data.user.id);
         }
+        localStorage.setItem('userRole', data.user.role || '');
         localStorage.setItem('loginCode', loginCode); // Speichere den Login-Code
         localStorage.setItem('userName', data.user.name); // Speichere den Benutzernamen
         
@@ -138,6 +139,7 @@ function AppContent() {
     // Clear stored user IDs and login code
     localStorage.removeItem('teacherId');
     localStorage.removeItem('studentId');
+    localStorage.removeItem('userRole');
     localStorage.removeItem('loginCode'); // Lösche auch den Login-Code
     navigate('/');
   };
@@ -207,6 +209,14 @@ function AppContent() {
               const data = await response.json();
               console.log('✅ Auto-Login erfolgreich:', data.user.name);
               setUser(data.user);
+              if (data.user.role === 'TEACHER') {
+                localStorage.setItem('teacherId', data.user.id);
+                localStorage.removeItem('studentId');
+              } else {
+                localStorage.setItem('studentId', data.user.id);
+                localStorage.removeItem('teacherId');
+              }
+              localStorage.setItem('userRole', data.user.role || '');
               // Nur Startseite / nach Login auf Dashboard schicken, Deep-Links (z. B. /teacher/stunde) behalten
               if (window.location.pathname === '/') {
                 navigate('/dashboard');
@@ -215,6 +225,7 @@ function AppContent() {
               console.log('⚠️ Auto-Login fehlgeschlagen, lösche gespeicherte Daten');
               localStorage.removeItem('teacherId');
               localStorage.removeItem('studentId');
+              localStorage.removeItem('userRole');
               localStorage.removeItem('loginCode');
               localStorage.removeItem('userName');
             }
@@ -222,6 +233,7 @@ function AppContent() {
             console.error('❌ Auto-Login Fehler:', error);
             localStorage.removeItem('teacherId');
             localStorage.removeItem('studentId');
+            localStorage.removeItem('userRole');
             localStorage.removeItem('loginCode');
             localStorage.removeItem('userName');
           }
