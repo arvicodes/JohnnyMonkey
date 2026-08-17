@@ -74,10 +74,11 @@ import {
 import {
   DASHBOARD_REIHEN_CONTENT_GROUP,
   collectReihenFromJmTree,
+  fetchAndCacheWorkingReihenPaths,
   loadWorkingReihenPaths,
   mergeReihenOptions,
+  persistWorkingReihenPaths,
   reiheLabelFromPath,
-  saveWorkingReihenPaths,
   type WorkingReiheOption,
 } from '../lib/dashboardWorkingReihen';
 import {
@@ -8517,7 +8518,25 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const updateWorkingReihenPaths = useCallback((paths: string[]) => {
     const next = paths.map((p) => p.replace(/\\/g, '/').replace(/\/+$/, '')).filter(Boolean);
     setWorkingReihenPaths(next);
-    saveWorkingReihenPaths(next);
+    void persistWorkingReihenPaths(next).then((saved) => {
+      setWorkingReihenPaths(saved);
+    });
+  }, []);
+
+  /** Arbeits-Reihen vom Server (DB) — damit Schule denselben Stand wie lokal hat. */
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const merged = await fetchAndCacheWorkingReihenPaths();
+      if (!cancelled && merged.length > 0) {
+        setWorkingReihenPaths(merged);
+        // Union aus lokal+Server zurückschreiben, falls Server noch leer war
+        void persistWorkingReihenPaths(merged);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function extractLessonKeywordFromComment(text: string | undefined | null): string {
@@ -15269,6 +15288,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   profileColor={teacherProfileColor}
                   onOpenProfile={() => setProfileDialogOpen(true)}
                   onOpenSchedule={() => setScheduleDialogOpen(true)}
+                  onGoToDashboard={handleCloseLessonPage}
                 />
               </Box>
               <Box display="flex" gap={0.5} alignItems="center">
@@ -20063,6 +20083,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 pr: 1,
               }}
             >
+              <Box sx={{ mr: 0.75, flexShrink: 0 }}>
+                <TeacherSettingsMenu
+                  teacherName={teacherName}
+                  userId={userId}
+                  avatarColor={teacherProfileColor || colors.accent1}
+                  avatarEmoji={teacherAvatarEmoji}
+                  profileColor={teacherProfileColor}
+                  onOpenProfile={() => setProfileDialogOpen(true)}
+                  onOpenSchedule={() => setScheduleDialogOpen(true)}
+                  onGoToDashboard={handleCloseLessonPage}
+                />
+              </Box>
               <Tooltip
                 title={
                   adjacentLessons.prev

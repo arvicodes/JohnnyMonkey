@@ -103,10 +103,20 @@ function parseLessonSection(raw: unknown): EntryTicketLessonSection | null {
 export const ENTRY_TICKET_GENERAL_LESSON_NAME = 'Allgemein';
 export const ENTRY_TICKET_GENERAL_LESSON_KEY = '__allgemein__';
 
+/** Parkplatz: Kopien einzelner Karten, die nicht in den Spiel-Pool der Stunde gehen. */
+export const ENTRY_TICKET_LATER_LESSON_NAME = 'Für später';
+export const ENTRY_TICKET_LATER_LESSON_KEY = '__fuer_spaeter__';
+
 export function isGeneralLessonSection(lesson: EntryTicketLessonSection): boolean {
   if (lesson.lessonKey === ENTRY_TICKET_GENERAL_LESSON_KEY) return true;
   const name = (lesson.lessonName || '').trim().toLowerCase();
   return name === 'allgemein' || name === 'allgemeines';
+}
+
+export function isLaterLessonSection(lesson: EntryTicketLessonSection): boolean {
+  if (lesson.lessonKey === ENTRY_TICKET_LATER_LESSON_KEY) return true;
+  const name = (lesson.lessonName || '').trim().toLowerCase();
+  return name === 'für später' || name === 'fuer spaeter' || name === 'für spaeter';
 }
 
 export function createGeneralLessonSection(tasks: EntryTicketCustomTask[] = []): EntryTicketLessonSection {
@@ -119,42 +129,150 @@ export function createGeneralLessonSection(tasks: EntryTicketCustomTask[] = []):
   };
 }
 
+export function createLaterLessonSection(tasks: EntryTicketCustomTask[] = []): EntryTicketLessonSection {
+  return {
+    id: makeEntryTicketEntityId('ls'),
+    lessonName: ENTRY_TICKET_LATER_LESSON_NAME,
+    lessonKey: ENTRY_TICKET_LATER_LESSON_KEY,
+    topicName: ENTRY_TICKET_LATER_LESSON_NAME,
+    tasks,
+  };
+}
+
+function normalizeGeneralSection(lesson: EntryTicketLessonSection): EntryTicketLessonSection {
+  return {
+    ...lesson,
+    lessonName: ENTRY_TICKET_GENERAL_LESSON_NAME,
+    lessonKey: ENTRY_TICKET_GENERAL_LESSON_KEY,
+    topicName: ENTRY_TICKET_GENERAL_LESSON_NAME,
+  };
+}
+
+function normalizeLaterSection(lesson: EntryTicketLessonSection): EntryTicketLessonSection {
+  return {
+    ...lesson,
+    lessonName: ENTRY_TICKET_LATER_LESSON_NAME,
+    lessonKey: ENTRY_TICKET_LATER_LESSON_KEY,
+    topicName: ENTRY_TICKET_LATER_LESSON_NAME,
+  };
+}
+
+function isNormalizedGeneralSection(lesson: EntryTicketLessonSection): boolean {
+  return (
+    lesson.lessonKey === ENTRY_TICKET_GENERAL_LESSON_KEY &&
+    lesson.topicName === ENTRY_TICKET_GENERAL_LESSON_NAME &&
+    lesson.lessonName === ENTRY_TICKET_GENERAL_LESSON_NAME
+  );
+}
+
+function isNormalizedLaterSection(lesson: EntryTicketLessonSection): boolean {
+  return (
+    lesson.lessonKey === ENTRY_TICKET_LATER_LESSON_KEY &&
+    lesson.topicName === ENTRY_TICKET_LATER_LESSON_NAME &&
+    lesson.lessonName === ENTRY_TICKET_LATER_LESSON_NAME
+  );
+}
+
 /** Stellt sicher, dass „Allgemein“ existiert und vor allen Stunden steht. */
 export function ensureGeneralLessonSection(set: EntryTicketCustomSet): EntryTicketCustomSet {
   const idx = set.lessons.findIndex(isGeneralLessonSection);
   if (idx === 0) {
     const g = set.lessons[0];
-    // Schlüssel/Topic nachziehen, falls ältere Sets nur den Namen hatten
-    if (
-      g.lessonKey === ENTRY_TICKET_GENERAL_LESSON_KEY &&
-      g.topicName === ENTRY_TICKET_GENERAL_LESSON_NAME &&
-      g.lessonName === ENTRY_TICKET_GENERAL_LESSON_NAME
-    ) {
-      return set;
-    }
-    const normalized: EntryTicketLessonSection = {
-      ...g,
-      lessonName: ENTRY_TICKET_GENERAL_LESSON_NAME,
-      lessonKey: ENTRY_TICKET_GENERAL_LESSON_KEY,
-      topicName: ENTRY_TICKET_GENERAL_LESSON_NAME,
-    };
-    return { ...set, lessons: [normalized, ...set.lessons.slice(1)] };
+    if (isNormalizedGeneralSection(g)) return set;
+    return { ...set, lessons: [normalizeGeneralSection(g), ...set.lessons.slice(1)] };
   }
   if (idx > 0) {
     const lessons = [...set.lessons];
     const [g] = lessons.splice(idx, 1);
-    const normalized: EntryTicketLessonSection = {
-      ...g,
-      lessonName: ENTRY_TICKET_GENERAL_LESSON_NAME,
-      lessonKey: ENTRY_TICKET_GENERAL_LESSON_KEY,
-      topicName: ENTRY_TICKET_GENERAL_LESSON_NAME,
-    };
-    return { ...set, lessons: [normalized, ...lessons] };
+    return { ...set, lessons: [normalizeGeneralSection(g), ...lessons] };
   }
   return {
     ...set,
     lessons: [createGeneralLessonSection(), ...set.lessons],
   };
+}
+
+/** Stellt sicher, dass „Für später“ existiert und nach allen Stunden steht. */
+export function ensureLaterLessonSection(set: EntryTicketCustomSet): EntryTicketCustomSet {
+  const idx = set.lessons.findIndex(isLaterLessonSection);
+  const last = set.lessons.length - 1;
+  if (idx >= 0 && idx === last) {
+    const g = set.lessons[idx];
+    if (isNormalizedLaterSection(g)) return set;
+    return { ...set, lessons: [...set.lessons.slice(0, idx), normalizeLaterSection(g)] };
+  }
+  if (idx >= 0) {
+    const lessons = [...set.lessons];
+    const [g] = lessons.splice(idx, 1);
+    return { ...set, lessons: [...lessons, normalizeLaterSection(g)] };
+  }
+  return {
+    ...set,
+    lessons: [...set.lessons, createLaterLessonSection()],
+  };
+}
+
+/** Allgemein zuerst, „Für später“ zuletzt. */
+export function ensureSpecialLessonSections(set: EntryTicketCustomSet): EntryTicketCustomSet {
+  return ensureLaterLessonSection(ensureGeneralLessonSection(set));
+}
+
+function taskCopyKey(task: Pick<EntryTicketCustomTask, 'prompt' | 'solution'>): string {
+  return `${normalizeEntryTicketFieldValue(task.prompt)}\n${normalizeEntryTicketFieldValue(task.solution)}`;
+}
+
+export function laterSectionContainsTask(
+  set: EntryTicketCustomSet,
+  task: Pick<EntryTicketCustomTask, 'prompt' | 'solution'>,
+): boolean {
+  const later = set.lessons.find(isLaterLessonSection);
+  if (!later) return false;
+  const key = taskCopyKey(task);
+  return later.tasks.some((t) => taskCopyKey(t) === key);
+}
+
+/**
+ * Kopiert Karten (neue IDs) nach „Für später“. Originale bleiben.
+ * Bereits vorhandene gleiche Frage/Antwort werden übersprungen.
+ */
+export function copyTasksToLaterSection(
+  set: EntryTicketCustomSet,
+  tasks: EntryTicketCustomTask[],
+): EntryTicketCustomSet {
+  const ensured = ensureSpecialLessonSections(set);
+  if (tasks.length === 0) return ensured;
+  const laterIdx = ensured.lessons.findIndex(isLaterLessonSection);
+  if (laterIdx < 0) return ensured;
+  const later = ensured.lessons[laterIdx];
+  const seen = new Set(later.tasks.map(taskCopyKey));
+  const copies: EntryTicketCustomTask[] = [];
+  for (const task of tasks) {
+    const key = taskCopyKey(task);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    copies.push(createCustomTask(task.prompt, task.solution, ENTRY_TICKET_LATER_LESSON_NAME));
+  }
+  if (copies.length === 0) return ensured;
+  const lessons = ensured.lessons.map((l, i) =>
+    i === laterIdx ? { ...l, tasks: [...l.tasks, ...copies] } : l,
+  );
+  return { ...ensured, lessons };
+}
+
+export function copyTaskIdsToLaterSection(
+  set: EntryTicketCustomSet,
+  lessonId: string,
+  taskIds: string[],
+): EntryTicketCustomSet {
+  const lesson = set.lessons.find((l) => l.id === lessonId);
+  if (!lesson || isLaterLessonSection(lesson) || taskIds.length === 0) {
+    return ensureSpecialLessonSections(set);
+  }
+  const want = new Set(taskIds);
+  return copyTasksToLaterSection(
+    set,
+    lesson.tasks.filter((t) => want.has(t.id)),
+  );
 }
 
 /** Altformat `{ id, name, tasks[] }` → eine Stunden-Sektion „Allgemein“. */
@@ -164,7 +282,7 @@ function migrateV1Set(raw: Record<string, unknown>): EntryTicketCustomSet | null
   if (!isCustomEntryTicketSetId(id) || !name) return null;
   if (Array.isArray(raw.lessons)) {
     const lessons = raw.lessons.map(parseLessonSection).filter((l): l is EntryTicketLessonSection => Boolean(l));
-    return ensureGeneralLessonSection({
+    return ensureSpecialLessonSections({
       id,
       name,
       reihePath: typeof raw.reihePath === 'string' ? normalizePath(raw.reihePath) : undefined,
@@ -177,7 +295,7 @@ function migrateV1Set(raw: Record<string, unknown>): EntryTicketCustomSet | null
   }
   const tasksRaw = Array.isArray(raw.tasks) ? raw.tasks : [];
   const tasks = tasksRaw.map(parseTask).filter((t): t is EntryTicketCustomTask => Boolean(t));
-  return ensureGeneralLessonSection({
+  return ensureSpecialLessonSections({
     id,
     name,
     reihePath: typeof raw.reihePath === 'string' ? normalizePath(raw.reihePath) : undefined,
@@ -194,7 +312,7 @@ function parseCustomSet(raw: unknown): EntryTicketCustomSet | null {
   return migrateV1Set(raw as Record<string, unknown>);
 }
 
-function setsNeedGeneralPersist(before: EntryTicketCustomSet[], after: EntryTicketCustomSet[]): boolean {
+function setsNeedSpecialPersist(before: EntryTicketCustomSet[], after: EntryTicketCustomSet[]): boolean {
   if (before.length !== after.length) return true;
   for (let i = 0; i < after.length; i += 1) {
     const a = before[i];
@@ -203,6 +321,10 @@ function setsNeedGeneralPersist(before: EntryTicketCustomSet[], after: EntryTick
     if (a.lessons.length !== b.lessons.length) return true;
     if (!b.lessons[0] || !isGeneralLessonSection(b.lessons[0])) return true;
     if (!a.lessons[0] || a.lessons[0].lessonKey !== b.lessons[0].lessonKey) return true;
+    const last = b.lessons[b.lessons.length - 1];
+    if (!last || !isLaterLessonSection(last)) return true;
+    const prevLast = a.lessons[a.lessons.length - 1];
+    if (!prevLast || prevLast.lessonKey !== last.lessonKey) return true;
   }
   return false;
 }
@@ -214,8 +336,8 @@ export function loadCustomEntryTicketSets(): EntryTicketCustomSet[] {
       const parsed = JSON.parse(rawV2) as unknown;
       if (!Array.isArray(parsed)) return [];
       const loaded = parsed.map(parseCustomSet).filter((s): s is EntryTicketCustomSet => Boolean(s));
-      const ensured = loaded.map(ensureGeneralLessonSection);
-      if (setsNeedGeneralPersist(loaded, ensured)) {
+      const ensured = loaded.map(ensureSpecialLessonSections);
+      if (setsNeedSpecialPersist(loaded, ensured)) {
         saveCustomEntryTicketSets(ensured);
       }
       return ensured;
@@ -347,7 +469,7 @@ export async function fetchAndCacheCustomEntryTicketSets(): Promise<EntryTicketC
         });
       }
     }
-    const merged = Array.from(byId.values()).map(ensureGeneralLessonSection);
+    const merged = Array.from(byId.values()).map(ensureSpecialLessonSections);
     saveCustomEntryTicketSets(merged);
     return merged;
   } catch {
@@ -364,7 +486,7 @@ function compareLessonSortKeys(a: string, b: string): number {
   return a.localeCompare(b, 'de', { numeric: true });
 }
 
-/** Stunden einer Reihe in Ordner-/Pfad-Reihenfolge; „Allgemein“ immer zuerst. */
+/** Stunden einer Reihe in Ordner-/Pfad-Reihenfolge; „Allgemein“ zuerst, „Für später“ zuletzt. */
 export function sortLessonsChronologically(
   lessons: EntryTicketLessonSection[],
 ): EntryTicketLessonSection[] {
@@ -373,6 +495,10 @@ export function sortLessonsChronologically(
     const bG = isGeneralLessonSection(b);
     if (aG && !bG) return -1;
     if (!aG && bG) return 1;
+    const aL = isLaterLessonSection(a);
+    const bL = isLaterLessonSection(b);
+    if (aL && !bL) return 1;
+    if (!aL && bL) return -1;
     return compareLessonSortKeys(lessonSortKey(a), lessonSortKey(b));
   });
 }
@@ -403,7 +529,7 @@ export function cumulativeTasksBeforeLesson(
 
   const want = lessonPath ? normalizePath(lessonPath) : '';
   if (!want) {
-    return lessons.flatMap((l) => l.tasks);
+    return lessons.filter((l) => !isLaterLessonSection(l)).flatMap((l) => l.tasks);
   }
 
   const wantName = lessonFolderName(want);
@@ -411,6 +537,7 @@ export function cumulativeTasksBeforeLesson(
   // „Allgemein“ zählt immer als vor der ersten Stunde (auch wenn localeCompare sonst anders sortiert).
   return lessons
     .filter((l) => {
+      if (isLaterLessonSection(l)) return false;
       if (isGeneralLessonSection(l)) return true;
       if (lessonMatchesPath(l, want)) return false;
       return compareLessonSortKeys(lessonSortKey(l), wantName) < 0;
@@ -423,7 +550,7 @@ export function createEmptyCustomSet(name: string, reihePath?: string): EntryTic
     id: makeCustomEntryTicketSetId(),
     name: name.trim() || 'Neues Fragenset',
     reihePath: reihePath ? normalizePath(reihePath) : undefined,
-    lessons: [createGeneralLessonSection()],
+    lessons: [createGeneralLessonSection(), createLaterLessonSection()],
   };
 }
 

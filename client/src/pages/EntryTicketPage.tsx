@@ -21,6 +21,8 @@ import {
 import {
   Add as AddIcon,
   ArrowBack as ArrowBackIcon,
+  Bookmark as BookmarkIcon,
+  BookmarkAdd as BookmarkAddIcon,
   Check as CheckIcon,
   Close as CloseIcon,
   History as HistoryIcon,
@@ -52,13 +54,16 @@ import { entryTicketHeroSrc } from '../lib/ticketHeroImages';
 import { presentationLessonBackUrl } from '../lib/presentationEditorUi';
 import {
   type EntryTicketCustomSet,
+  type EntryTicketCustomTask,
+  copyTasksToLaterSection,
   countCustomSetTasks,
   createEmptyCustomSet,
   createLessonSection,
   cumulativeTasksBeforeLesson,
-  ensureGeneralLessonSection,
+  ensureSpecialLessonSections,
   findLessonSectionIndex,
   isCustomEntryTicketSetId,
+  laterSectionContainsTask,
   fetchAndCacheCustomEntryTicketSets,
   loadCustomEntryTicketSets,
   saveCustomEntryTicketSets,
@@ -2563,7 +2568,7 @@ export default function EntryTicketPage({
         const folder = entryLessonPath.split('/').pop() || entryLessonPath;
         next.lessons = [createLessonSection(folder, entryLessonPath)];
       }
-      next = ensureGeneralLessonSection(next);
+      next = ensureSpecialLessonSections(next);
       setCustomSets((prev) => [...prev, next]);
       setCreateSetOpen(false);
       setCreateSetName('');
@@ -2584,6 +2589,39 @@ export default function EntryTicketPage({
   const patchActiveCustomSet = (next: EntryTicketCustomSet) => {
     setCustomSets((prev) => prev.map((s) => (s.id === next.id ? next : s)));
     setTaskSeed((s) => s + 1);
+  };
+
+  const resolveCustomTaskFromPlay = (task: EntryTicketTask): EntryTicketCustomTask | null => {
+    if (!activeCustomSet) return null;
+    const prefix = `c:${activeCustomSet.id}:`;
+    const id = task.sourceKey?.startsWith(prefix) ? task.sourceKey.slice(prefix.length) : '';
+    if (id) {
+      for (const lesson of activeCustomSet.lessons) {
+        const found = lesson.tasks.find((t) => t.id === id);
+        if (found) return found;
+      }
+    }
+    if (!task.prompt || !task.solution) return null;
+    return {
+      id: task.sourceKey || 'play',
+      category: task.category || 'Für später',
+      prompt: task.prompt,
+      solution: task.solution,
+    };
+  };
+
+  const copyPlayTaskToLater = (task: EntryTicketTask) => {
+    if (!activeCustomSet || !isTeacher) return;
+    const original = resolveCustomTaskFromPlay(task);
+    if (!original) return;
+    const next = copyTasksToLaterSection(activeCustomSet, [original]);
+    setCustomSets((prev) => prev.map((s) => (s.id === next.id ? next : s)));
+  };
+
+  const playTaskIsSavedForLater = (task: EntryTicketTask) => {
+    if (!activeCustomSet) return false;
+    const original = resolveCustomTaskFromPlay(task);
+    return laterSectionContainsTask(activeCustomSet, original ?? task);
   };
 
   const renameActiveCustomSet = (name: string) => {
@@ -4310,6 +4348,44 @@ export default function EntryTicketPage({
                           />
                         </Box>
 
+                        {isTeacher && isCustomSetActive && currentTask ? (
+                          <Tooltip
+                            title={
+                              playTaskIsSavedForLater(currentTask)
+                                ? 'Bereits in „Für später“'
+                                : 'Nach „Für später“ kopieren'
+                            }
+                          >
+                            <span>
+                              <IconButton
+                                size="small"
+                                onClick={() => copyPlayTaskToLater(currentTask)}
+                                disabled={playTaskIsSavedForLater(currentTask)}
+                                aria-label="Nach Für später kopieren"
+                                sx={{
+                                  position: 'absolute',
+                                  top: 8,
+                                  right: 4,
+                                  p: 0,
+                                  minWidth: 28,
+                                  width: 28,
+                                  height: 28,
+                                  zIndex: 1,
+                                  color: playTaskIsSavedForLater(currentTask) ? '#fb8c00' : '#90a4ae',
+                                  '&:hover': { color: '#e65100', bgcolor: 'rgba(251,140,0,0.12)' },
+                                  '&.Mui-disabled': { color: '#fb8c00', opacity: 1 },
+                                }}
+                              >
+                                {playTaskIsSavedForLater(currentTask) ? (
+                                  <BookmarkIcon sx={{ fontSize: 20 }} />
+                                ) : (
+                                  <BookmarkAddIcon sx={{ fontSize: 20 }} />
+                                )}
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                        ) : null}
+
                           <Box
                             sx={{
                               flex: 1,
@@ -4323,6 +4399,10 @@ export default function EntryTicketPage({
                                   ? 'left'
                                   : 'center',
                               px: { xs: 2.7, sm: 4.2 },
+                              pr:
+                                isTeacher && isCustomSetActive
+                                  ? { xs: 4.5, sm: 5.5 }
+                                  : { xs: 2.7, sm: 4.2 },
                               py: 2.7,
                               overflow: 'visible',
                             }}
@@ -4481,7 +4561,10 @@ export default function EntryTicketPage({
                           key={`${index}-${task.prompt}`}
                           sx={{
                             display: 'grid',
-                            gridTemplateColumns: '19px minmax(0, 1fr)',
+                            gridTemplateColumns:
+                              isTeacher && isCustomSetActive
+                                ? '19px minmax(0, 1fr) 22px'
+                                : '19px minmax(0, 1fr)',
                             columnGap: 0.55,
                             alignItems: 'center',
                             px: 0.66,
@@ -4574,6 +4657,39 @@ export default function EntryTicketPage({
                               </Box>
                             )}
                           </Box>
+                          {isTeacher && isCustomSetActive ? (
+                            <Tooltip
+                              title={
+                                playTaskIsSavedForLater(task)
+                                  ? 'Bereits in „Für später“'
+                                  : 'Nach „Für später“ kopieren'
+                              }
+                            >
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => copyPlayTaskToLater(task)}
+                                  disabled={playTaskIsSavedForLater(task)}
+                                  aria-label="Nach Für später kopieren"
+                                  sx={{
+                                    p: 0,
+                                    minWidth: 22,
+                                    width: 22,
+                                    height: 22,
+                                    color: playTaskIsSavedForLater(task) ? '#fb8c00' : '#90a4ae',
+                                    '&:hover': { color: '#e65100', bgcolor: 'rgba(251,140,0,0.12)' },
+                                    '&.Mui-disabled': { color: '#fb8c00', opacity: 1 },
+                                  }}
+                                >
+                                  {playTaskIsSavedForLater(task) ? (
+                                    <BookmarkIcon sx={{ fontSize: 16 }} />
+                                  ) : (
+                                    <BookmarkAddIcon sx={{ fontSize: 16 }} />
+                                  )}
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                          ) : null}
                         </Box>
                       ))}
                     </Box>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Avatar,
   IconButton,
@@ -30,6 +31,8 @@ interface TeacherSettingsMenuProps {
   profileColor?: string | null;
   onOpenProfile: () => void;
   onOpenSchedule: () => void;
+  /** Zusätzlich zum Navigieren: Stunde schließen, State zurücksetzen. */
+  onGoToDashboard?: () => void;
 }
 
 export default function TeacherSettingsMenu({
@@ -40,9 +43,13 @@ export default function TeacherSettingsMenu({
   profileColor,
   onOpenProfile,
   onOpenSchedule,
+  onGoToDashboard,
 }: TeacherSettingsMenuProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
+  const isOnDashboard = location.pathname === '/dashboard';
 
   const accent = profileColor || avatarColor || DEFAULT_PROFILE_COLOR;
 
@@ -59,10 +66,17 @@ export default function TeacherSettingsMenu({
   return (
     <>
       <IconButton
-        onClick={(e) => setAnchorEl(e.currentTarget)}
+        onClick={(e) => {
+          if (!isOnDashboard) {
+            if (onGoToDashboard) onGoToDashboard();
+            else navigate('/dashboard');
+            return;
+          }
+          setAnchorEl(e.currentTarget);
+        }}
         sx={{ p: 0 }}
-        aria-label="Profil und Einstellungen"
-        title="Profil"
+        aria-label={isOnDashboard ? 'Profil und Einstellungen' : 'Zum Dashboard'}
+        title={isOnDashboard ? 'Profil' : 'Zum Dashboard'}
       >
         <Avatar
           sx={{

@@ -109,6 +109,10 @@ function collectStundeFolders(
       continue;
     }
 
+    if (isWochenaufgabenFolderName(name) || /^Grafiken$/i.test(name) || isLessonRohdatArchiveFolderName(name)) {
+      continue;
+    }
+
     if (isStundeFolderName(name)) {
       out.push({
         lessonName: name,
@@ -134,6 +138,24 @@ async function readFolderTree(folderPath: string): Promise<DirNode[]> {
   return extractChildren(data);
 }
 
+/** Anzeigenamen → Ordnernamen unter J-M-Reihen (Entry-Ticket-Sets). */
+function reiheNameLookupCandidates(reiheName: string): string[] {
+  const want = (reiheName || '').trim();
+  if (!want) return [];
+  const out: string[] = [want];
+  const lower = want.toLowerCase().replace(/\s+/g, ' ');
+  // „Mathe 5“ / „M5“ → Ordner „Klasse 5“
+  const matheKlasse = lower.match(/^(?:mathe|m)\s*(\d{1,2})$/);
+  if (matheKlasse) out.push(`Klasse ${matheKlasse[1]}`);
+  if (/^klasse\s*\d+/i.test(want)) out.push(want.replace(/^klasse\s*/i, 'Klasse '));
+  // „LK Mathe“ / „Matrizen“ oft unter MSS 12 LK
+  if (/^lk\s*mathe$/i.test(want) || /^matrizen$/i.test(want)) {
+    out.push('12-01 Matrizen', 'Matrizen');
+  }
+  if (/^ki$/i.test(want)) out.push('11-04 KI');
+  return out.filter((v, i, a) => a.findIndex((x) => normalizeFolderLabel(x) === normalizeFolderLabel(v)) === i);
+}
+
 /**
  * Sucht unter J-M-Reihen den Ordner mit dem Reihennamen und liefert alle Stundenordner
  * (z. B. „01.01 KI sucht Mensch“) in Anzeigereihenfolge.
@@ -142,8 +164,8 @@ export async function discoverLessonsForReiheName(reiheName: string): Promise<{
   reihePath: string | null;
   lessons: DiscoveredReiheLesson[];
 }> {
-  const want = (reiheName || '').trim();
-  if (!want) return { reihePath: null, lessons: [] };
+  const candidates = reiheNameLookupCandidates(reiheName);
+  if (candidates.length === 0) return { reihePath: null, lessons: [] };
 
   let rootPath = 'J-M-Reihen';
   try {
@@ -157,9 +179,12 @@ export async function discoverLessonsForReiheName(reiheName: string): Promise<{
   }
 
   const tree = await readFolderTree(rootPath);
-  const series = walkFindSeriesFolder(tree, normalizeFolderLabel(want), rootPath);
+  let series: DirNode | null = null;
+  for (const cand of candidates) {
+    series = walkFindSeriesFolder(tree, normalizeFolderLabel(cand), rootPath);
+    if (series?.path) break;
+  }
   if (!series?.path) {
-    // Direkter Versuch mit bekanntem Relativpfad-Muster
     return { reihePath: null, lessons: [] };
   }
 

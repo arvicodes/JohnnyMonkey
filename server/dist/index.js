@@ -46,6 +46,7 @@ const lessonInstructions_1 = __importDefault(require("./routes/lessonInstruction
 const teacherSchedule_1 = __importDefault(require("./routes/teacherSchedule"));
 const wochenaufgaben_1 = __importDefault(require("./routes/wochenaufgaben"));
 const teacherScratchPad_1 = __importDefault(require("./routes/teacherScratchPad"));
+const teacherDashboardPrefs_1 = __importDefault(require("./routes/teacherDashboardPrefs"));
 const path_1 = __importDefault(require("path"));
 const autoLessonScheduler_1 = require("./services/autoLessonScheduler");
 const ensureWochenaufgabenSchema_1 = require("./utils/ensureWochenaufgabenSchema");
@@ -97,6 +98,7 @@ app.use('/api/lesson-instructions', lessonInstructions_1.default);
 app.use('/api/teacher-schedule', teacherSchedule_1.default);
 app.use('/api/wochenaufgaben', wochenaufgaben_1.default);
 app.use('/api/teacher-scratch-pad', teacherScratchPad_1.default);
+app.use('/api/teacher-dashboard-prefs', teacherDashboardPrefs_1.default);
 app.use('/api/ka-corrections', kaCorrections_1.default);
 app.use('/api/messages', messages_1.default);
 app.use('/api/exit-ticket', exitTicket_1.default);

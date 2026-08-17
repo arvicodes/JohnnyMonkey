@@ -10,15 +10,20 @@ import {
 } from '@mui/material';
 import {
   Add as AddIcon,
+  Bookmark as BookmarkIcon,
+  BookmarkAdd as BookmarkAddIcon,
   DeleteOutline as DeleteOutlineIcon,
   ExpandLess as ExpandLessIcon,
   ExpandMore as ExpandMoreIcon,
 } from '@mui/icons-material';
 import {
+  copyTaskIdsToLaterSection,
   createCustomTask,
   createLessonSection,
-  ensureGeneralLessonSection,
+  ensureSpecialLessonSections,
   isGeneralLessonSection,
+  isLaterLessonSection,
+  laterSectionContainsTask,
   parseEntryTicketCardList,
   sortLessonsChronologically,
   type EntryTicketCustomSet,
@@ -73,6 +78,14 @@ const LESSON_PALETTES = [
   { bg: '#e8f5e9', border: '#66bb6a', title: '#1b5e20', chip: '#43a047', soft: '#c8e6c9' },
 ];
 
+const LATER_PALETTE = {
+  bg: '#fff8e1',
+  border: '#ffcc02',
+  title: '#e65100',
+  chip: '#fb8c00',
+  soft: '#ffe082',
+} as const;
+
 type Props = {
   set: EntryTicketCustomSet;
   activeLessonPath?: string | null;
@@ -107,7 +120,9 @@ function groupLessonsByTopic(lessons: EntryTicketLessonSection[]): TopicGroup[] 
     const lesson = ordered[i];
     const topic = isGeneralLessonSection(lesson)
       ? 'Allgemein'
-      : lesson.topicName?.trim() || 'Stunden';
+      : isLaterLessonSection(lesson)
+        ? 'Für später'
+        : lesson.topicName?.trim() || 'Stunden';
     let gi = topicIndex.get(topic);
     if (gi === undefined) {
       gi = groups.length;
@@ -144,9 +159,9 @@ export function EntryTicketFragensetEditor({
     setNameDraft(set.name);
   }, [set.id, set.name]);
 
-  // Bestehende Sets ohne „Allgemein“ nachziehen (Laden sorgt i. d. R. schon dafür)
+  // Bestehende Sets ohne „Allgemein“ / „Für später“ nachziehen (Laden sorgt i. d. R. schon dafür)
   useEffect(() => {
-    const ensured = ensureGeneralLessonSection(set);
+    const ensured = ensureSpecialLessonSections(set);
     if (ensured !== set) onChange(ensured);
     // nur beim Wechsel des Sets; sonst Risiko von Update-Schleifen
     // eslint-disable-next-line react-hooks/exhaustive-deps -- set.id
@@ -227,6 +242,10 @@ export function EntryTicketFragensetEditor({
     if (!lesson) return;
     if (isGeneralLessonSection(lesson)) {
       window.alert('„Allgemein“ kann nicht gelöscht werden — dort liegen klassenübergreifende Karten vor der ersten Stunde.');
+      return;
+    }
+    if (isLaterLessonSection(lesson)) {
+      window.alert('„Für später“ kann nicht gelöscht werden — einzelne Karten kannst du dort entfernen.');
       return;
     }
     if (
@@ -320,6 +339,30 @@ export function EntryTicketFragensetEditor({
       delete next[lessonId];
       return next;
     });
+  };
+
+  const copySelectedTasksToLater = (lessonId: string) => {
+    const selected = selectedTaskIdsByLesson[lessonId] || [];
+    if (selected.length === 0) return;
+    const lesson = set.lessons.find((l) => l.id === lessonId);
+    if (!lesson || isLaterLessonSection(lesson)) return;
+    const next = copyTaskIdsToLaterSection(set, lessonId, selected);
+    if (next !== set) {
+      const later = next.lessons.find(isLaterLessonSection);
+      if (later) setExpanded((prev) => ({ ...prev, [later.id]: true }));
+      onChange(next);
+    }
+  };
+
+  const copyTaskToLater = (lessonId: string, taskId: string) => {
+    const lesson = set.lessons.find((l) => l.id === lessonId);
+    if (!lesson || isLaterLessonSection(lesson)) return;
+    const next = copyTaskIdsToLaterSection(set, lessonId, [taskId]);
+    if (next !== set) {
+      const later = next.lessons.find(isLaterLessonSection);
+      if (later) setExpanded((prev) => ({ ...prev, [later.id]: true }));
+      onChange(next);
+    }
   };
 
   return (
@@ -449,7 +492,9 @@ export function EntryTicketFragensetEditor({
                   }}
                 />
               )}
-              {!/^eigen\b/i.test(group.topic.trim()) && !/^allgemein$/i.test(group.topic.trim()) && (
+              {!/^eigen\b/i.test(group.topic.trim()) &&
+                !/^allgemein$/i.test(group.topic.trim()) &&
+                !/^für später$/i.test(group.topic.trim()) && (
               <Box
                 sx={{
                   display: 'inline-flex',
@@ -483,7 +528,8 @@ export function EntryTicketFragensetEditor({
                 const isOpen = expanded[lesson.id] !== false;
                 const isActive = lessonMatchesPath(lesson, activeLessonPath);
                 const isGeneral = isGeneralLessonSection(lesson);
-                const palette = LESSON_PALETTES[globalIndex % LESSON_PALETTES.length];
+                const isLater = isLaterLessonSection(lesson);
+                const palette = isLater ? LATER_PALETTE : LESSON_PALETTES[globalIndex % LESSON_PALETTES.length];
                 const selectedIds = selectedTaskIdsByLesson[lesson.id] || [];
                 const allTaskIds = lesson.tasks.map((t) => t.id);
                 const allSelected =
@@ -502,6 +548,7 @@ export function EntryTicketFragensetEditor({
                       bgcolor: palette.bg,
                       overflow: 'hidden',
                       boxShadow: isActive ? `0 0 0 2px ${palette.chip}22` : 'none',
+                      gridColumn: isLater ? { sm: '1 / -1' } : undefined,
                     }}
                   >
                     <Box
@@ -542,7 +589,13 @@ export function EntryTicketFragensetEditor({
                           fontSize: '0.6rem',
                         }}
                       >
-                        {isGeneral ? 'A' : globalIndex}
+                        {isLater ? (
+                          <BookmarkIcon sx={{ fontSize: 12 }} />
+                        ) : isGeneral ? (
+                          'A'
+                        ) : (
+                          globalIndex
+                        )}
                       </Box>
                       <Typography
                         sx={{
@@ -576,6 +629,34 @@ export function EntryTicketFragensetEditor({
                       >
                         {lesson.tasks.length}
                       </Typography>
+                      {selectedIds.length > 0 && !isLater && (
+                        <Tooltip title={`${selectedIds.length} markierte Karte${selectedIds.length === 1 ? '' : 'n'} nach „Für später“ kopieren`}>
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copySelectedTasksToLater(lesson.id);
+                            }}
+                            aria-label="Markierte Karten nach Für später kopieren"
+                            sx={{
+                              ...iconBtnSx,
+                              width: 'auto',
+                              minWidth: 22,
+                              px: 0.45,
+                              borderRadius: 0.75,
+                              bgcolor: '#fff8e1',
+                              border: '1px solid #ffcc02',
+                              color: '#e65100',
+                              '&:hover': { bgcolor: '#ffe082' },
+                            }}
+                          >
+                            <BookmarkAddIcon sx={{ fontSize: 14 }} />
+                            <Typography component="span" sx={{ fontSize: '0.58rem', fontWeight: 800, ml: 0.2 }}>
+                              {selectedIds.length}
+                            </Typography>
+                          </IconButton>
+                        </Tooltip>
+                      )}
                       {selectedIds.length > 0 && (
                         <Tooltip title={`${selectedIds.length} markierte Karten löschen`}>
                           <IconButton
@@ -604,7 +685,7 @@ export function EntryTicketFragensetEditor({
                           </IconButton>
                         </Tooltip>
                       )}
-                      {!isGeneral && (
+                      {!isGeneral && !isLater && (
                         <Tooltip title="Stunde löschen">
                           <IconButton
                             size="small"
@@ -712,7 +793,13 @@ export function EntryTicketFragensetEditor({
 
                         {lesson.tasks.length === 0 && (
                           <Typography sx={{ color: ET.muted, fontSize: '0.65rem', px: 0.15 }}>
-                            Noch keine Karten — Liste oben: <strong>Frage; Antwort</strong>
+                            {isLater
+                              ? 'Noch keine Karten — über das Lesezeichen an einer Karte hierher kopieren.'
+                              : (
+                                <>
+                                  Noch keine Karten — Liste oben: <strong>Frage; Antwort</strong>
+                                </>
+                              )}
                           </Typography>
                         )}
 
@@ -721,7 +808,7 @@ export function EntryTicketFragensetEditor({
                             sx={{
                               width: '100%',
                               display: 'grid',
-                              gridTemplateColumns: '22px 28px minmax(0, 1fr) minmax(0, 1fr) 22px',
+                              gridTemplateColumns: '22px 28px minmax(0, 1fr) minmax(0, 1fr) 22px 22px',
                               gap: 0.4,
                               alignItems: 'center',
                               boxSizing: 'border-box',
@@ -779,6 +866,7 @@ export function EntryTicketFragensetEditor({
                               Antwort
                             </Typography>
                             <Box />
+                            <Box />
                           </Box>
                         )}
 
@@ -787,6 +875,7 @@ export function EntryTicketFragensetEditor({
                           const shown = showCounts?.[countKey] || 0;
                           const tone = entryTicketShowCountStyle(shown, maxShowCount);
                           const isSelected = selectedIds.includes(task.id);
+                          const alreadyLater = isLater || laterSectionContainsTask(set, task);
                           return (
                           <Box
                             key={task.id}
@@ -794,7 +883,7 @@ export function EntryTicketFragensetEditor({
                               position: 'relative',
                               width: '100%',
                               display: 'grid',
-                              gridTemplateColumns: '22px 28px minmax(0, 1fr) minmax(0, 1fr) 22px',
+                              gridTemplateColumns: '22px 28px minmax(0, 1fr) minmax(0, 1fr) 22px 22px',
                               gap: 0.4,
                               alignItems: 'start',
                               boxSizing: 'border-box',
@@ -849,6 +938,39 @@ export function EntryTicketFragensetEditor({
                               tone="answer"
                               minHeight={56}
                             />
+                            {isLater ? (
+                              <Box />
+                            ) : (
+                              <Tooltip
+                                title={
+                                  alreadyLater
+                                    ? 'Bereits in „Für später“'
+                                    : 'Nach „Für später“ kopieren'
+                                }
+                              >
+                                <span>
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => copyTaskToLater(lesson.id, task.id)}
+                                    disabled={alreadyLater}
+                                    aria-label="Nach Für später kopieren"
+                                    sx={{
+                                      ...iconBtnSx,
+                                      mt: 0.35,
+                                      color: alreadyLater ? '#fb8c00' : ET.muted,
+                                      '&:hover': { color: '#e65100', bgcolor: 'rgba(251,140,0,0.12)' },
+                                      '&.Mui-disabled': { color: '#fb8c00', opacity: 1 },
+                                    }}
+                                  >
+                                    {alreadyLater ? (
+                                      <BookmarkIcon sx={{ fontSize: 14 }} />
+                                    ) : (
+                                      <BookmarkAddIcon sx={{ fontSize: 14 }} />
+                                    )}
+                                  </IconButton>
+                                </span>
+                              </Tooltip>
+                            )}
                             <Tooltip title="Karte löschen">
                               <IconButton
                                 size="small"
