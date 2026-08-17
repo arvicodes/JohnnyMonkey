@@ -57,14 +57,15 @@ export function isWochenaufgabenFolderName(name: string): boolean {
   return /wochenaufgaben?/.test(normalizeFolderLabel(name));
 }
 
-/** Interne Präsentations-Ordner (Grafiken etc.) — nicht im Dashboard-Baum anzeigen. */
+/** Technische Ordner (Grafiken, versteckte) — nicht im Dashboard-Baum anzeigen. */
 export function isPresentationInternalFolderName(name: string): boolean {
-  const t = normalizeFolderLabel(name);
-  return t === 'grafiken';
+  const n = (name || '').trim();
+  if (!n || n.startsWith('.')) return true;
+  return normalizeFolderLabel(n) === 'grafiken';
 }
 
 /** Ordner/Dateien für die Baum-Vorschau filtern (Wochenaufgaben, Grafiken, nummerierte WA). */
-export function filterVisibleFolderChildren(items: WochenaufgabenFsNode[]): WochenaufgabenFsNode[] {
+export function filterVisibleFolderChildren(items: WochenaufgabenFsNode[] | undefined): WochenaufgabenFsNode[] {
   return (Array.isArray(items) ? items : [])
     .filter((item) => {
       if (item?.type !== 'directory') return true;
@@ -84,21 +85,6 @@ export function filterVisibleFolderChildren(items: WochenaufgabenFsNode[]): Woch
 
 export function isNumberedWochenaufgabeName(name: string): boolean {
   return /^\d+$/.test((name || '').trim());
-}
-
-/** Technische Ordner (Grafiken, Backups) — nicht im Dashboard anzeigen. */
-export function isPresentationInternalFolderName(name: string): boolean {
-  const n = (name || '').trim();
-  if (!n || n.startsWith('.')) return true;
-  return normalizeFolderLabel(n) === 'grafiken';
-}
-
-export function filterVisibleFolderChildren(children: WochenaufgabenFsNode[] | undefined): WochenaufgabenFsNode[] {
-  return (Array.isArray(children) ? children : []).filter((item) => {
-    if (item?.type === 'directory' && isPresentationInternalFolderName(String(item.name || ''))) return false;
-    if (item?.type === 'directory' && isNumberedWochenaufgabeName(String(item.name || ''))) return false;
-    return true;
-  });
 }
 
 export function isNumberedWochenaufgabePath(path: string): boolean {

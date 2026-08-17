@@ -14,7 +14,19 @@ function norm(p: string): string {
   return (p || '').replace(/\\/g, '/').replace(/\/+$/, '');
 }
 
-export type WochenaufgabenContentsPatch = Record<string, WochenaufgabenFsNode[] | undefined>;
+export type WochenaufgabenContentsPatch = Record<string, WochenaufgabenFsNode[]>;
+
+/** Patch in assignedFolderContents-State mergen (nur definierte Arrays). */
+export function mergeWochenaufgabenContentsPatch(
+  prev: Record<string, any[]>,
+  patch: WochenaufgabenContentsPatch,
+): Record<string, any[]> {
+  const next = { ...prev };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value !== undefined) next[key] = value;
+  }
+  return next;
+}
 
 export type HydrateWochenaufgabenResult = {
   patch: WochenaufgabenContentsPatch;
