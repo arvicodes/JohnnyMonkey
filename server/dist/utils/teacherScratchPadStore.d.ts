@@ -2,6 +2,8 @@
 export declare const SCRATCH_PAD_LIVE_DIR_NAME = "Lehrer-Schnellnotizen";
 /** Separater Ordner für regelmäßige Sicherheitskopien (Projektwurzel). */
 export declare const SCRATCH_PAD_BACKUP_ROOT_NAME = "Notizen-Sicherheitskopien";
+/** DB-Schlüssel in TeacherLessonInstruction.lessonPath (pro Lehrkraft). */
+export declare const SCRATCH_PAD_DB_PATH = "__teacher_scratch_pad__";
 export declare function sanitizeScratchPadFolderPart(raw: string, maxLen?: number): string;
 export declare function scratchPadUserFolderKey(userId: string, userName?: string): string;
 /** Live-Ordner: `J-M-Reihen/Lehrer-Schnellnotizen/<user>/` */

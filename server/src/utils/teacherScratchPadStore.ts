@@ -8,6 +8,9 @@ export const SCRATCH_PAD_LIVE_DIR_NAME = 'Lehrer-Schnellnotizen';
 /** Separater Ordner für regelmäßige Sicherheitskopien (Projektwurzel). */
 export const SCRATCH_PAD_BACKUP_ROOT_NAME = 'Notizen-Sicherheitskopien';
 
+/** DB-Schlüssel in TeacherLessonInstruction.lessonPath (pro Lehrkraft). */
+export const SCRATCH_PAD_DB_PATH = '__teacher_scratch_pad__';
+
 const BACKUP_KEEP = 60;
 const MIN_BACKUP_INTERVAL_MS = 60_000;
 

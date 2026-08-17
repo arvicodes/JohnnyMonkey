@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SCRATCH_PAD_BACKUP_ROOT_NAME = exports.SCRATCH_PAD_LIVE_DIR_NAME = void 0;
+exports.SCRATCH_PAD_DB_PATH = exports.SCRATCH_PAD_BACKUP_ROOT_NAME = exports.SCRATCH_PAD_LIVE_DIR_NAME = void 0;
 exports.sanitizeScratchPadFolderPart = sanitizeScratchPadFolderPart;
 exports.scratchPadUserFolderKey = scratchPadUserFolderKey;
 exports.ensureScratchPadLiveDir = ensureScratchPadLiveDir;
@@ -18,6 +18,8 @@ const path_1 = __importDefault(require("path"));
 exports.SCRATCH_PAD_LIVE_DIR_NAME = 'Lehrer-Schnellnotizen';
 /** Separater Ordner für regelmäßige Sicherheitskopien (Projektwurzel). */
 exports.SCRATCH_PAD_BACKUP_ROOT_NAME = 'Notizen-Sicherheitskopien';
+/** DB-Schlüssel in TeacherLessonInstruction.lessonPath (pro Lehrkraft). */
+exports.SCRATCH_PAD_DB_PATH = '__teacher_scratch_pad__';
 const BACKUP_KEEP = 60;
 const MIN_BACKUP_INTERVAL_MS = 60000;
 const recentByUser = new Map();
