@@ -29,7 +29,7 @@ import {
   writeOriginalDeckSnapshot,
   parsePresentationPlanMode,
 } from '../lib/presentationDeck';
-import { PresentationDrawTool, defaultLineWidthForTool, lineWidthsForTool } from '../lib/presentationDrawTools';
+import { PresentationDrawTool, DEFAULT_MARKER_COLOR, DEFAULT_PEN_COLOR, defaultColorForTool, defaultLineWidthForTool, lineWidthsForTool, toolUsesColor } from '../lib/presentationDrawTools';
 import { presentationLessonBackUrl, tryHandleLessonEntryTicketLinkClick, isLessonEntryTicketSlideHref } from '../lib/presentationEditorUi';
 import { markLessonPlayed } from '../lib/playedLessons';
 import { savePresentationBothVersions, savePresentationNamedVersion, exportPresentationPdfVersions } from '../lib/presentationExport';
@@ -73,7 +73,9 @@ const PresentationPresentPage: React.FC = () => {
   const [animKey, setAnimKey] = useState(0);
   const [drawActive, setDrawActive] = useState(false);
   const [activeTool, setActiveTool] = useState<PresentationDrawTool>('pen');
-  const [strokeColor, setStrokeColor] = useState('#c62828');
+  const [strokeColor, setStrokeColor] = useState(DEFAULT_PEN_COLOR);
+  const penColorRef = useRef(DEFAULT_PEN_COLOR);
+  const markerColorRef = useRef(DEFAULT_MARKER_COLOR);
   const [lineWidth, setLineWidth] = useState(3);
   const [selectedStrokeId, setSelectedStrokeId] = useState<string | null>(null);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
@@ -674,7 +676,10 @@ const PresentationPresentPage: React.FC = () => {
 
   const handleToggleDraw = () => {
     setDrawActive((v) => {
-      if (!v) setActiveTool('pen');
+      if (!v) {
+        setActiveTool('pen');
+        setStrokeColor(penColorRef.current);
+      }
       return !v;
     });
   };
@@ -696,7 +701,18 @@ const PresentationPresentPage: React.FC = () => {
     if (!options.some((w) => Math.abs(w - lineWidth) < 0.01)) {
       setLineWidth(defaultLineWidthForTool(tool));
     }
+    if (tool === 'marker') {
+      setStrokeColor(markerColorRef.current || defaultColorForTool(tool));
+    } else if (toolUsesColor(tool)) {
+      setStrokeColor(penColorRef.current || defaultColorForTool(tool));
+    }
     if (tool !== 'select') setSelectedStrokeId(null);
+  };
+
+  const handleSelectColor = (c: string) => {
+    setStrokeColor(c);
+    if (activeTool === 'marker') markerColorRef.current = c;
+    else penColorRef.current = c;
   };
 
   useEffect(() => {
@@ -1208,7 +1224,7 @@ const PresentationPresentPage: React.FC = () => {
         onGoNext={goNext}
         onToggleDraw={handleToggleDraw}
         onSelectTool={handleSelectTool}
-        onSelectColor={setStrokeColor}
+        onSelectColor={handleSelectColor}
         onSelectLineWidth={handleSelectLineWidth}
         onUndo={undoStroke}
         onSave={() => void handleSaveBothVersions()}

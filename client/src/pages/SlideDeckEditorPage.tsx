@@ -35,6 +35,7 @@ import { jsPDF } from 'jspdf';
 import { buildStemSuffixPdfName, getStemForSave, parentDirGitPath } from '../lib/folienVersions';
 import { ensurePdfjsWorkerWithPolyfill } from '../lib/ensurePdfjsWorkerWithPolyfill';
 import { presentationImageCheckerboardBg } from '../lib/presentationImageUtils';
+import { DEFAULT_MARKER_COLOR, DEFAULT_PEN_COLOR } from '../lib/presentationDrawTools';
 
 type Stroke = {
   id: string;
@@ -46,7 +47,7 @@ type Stroke = {
   markerOpacity?: number;
 };
 
-const MARKER_PRESET_COLORS = ['#ffeb3b', '#69f0ae', '#ff80ab', '#ffcc80', '#80d8ff'] as const;
+const MARKER_PRESET_COLORS = [DEFAULT_MARKER_COLOR, '#69f0ae', '#ff80ab', '#ffcc80', '#80d8ff'] as const;
 
 function hexToRgba(hex: string, alpha: number): string {
   const h = hex.replace('#', '').trim();
@@ -213,7 +214,10 @@ const SlideDeckEditorPage: React.FC = () => {
   const [pageNum, setPageNum] = useState(1);
   const [numPages, setNumPages] = useState(0);
   const [tool, setTool] = useState<'pen' | 'marker' | 'text' | 'laser'>('pen');
-  const [strokeColor, setStrokeColor] = useState('#c62828');
+  const [strokeColor, setStrokeColor] = useState(DEFAULT_PEN_COLOR);
+  const penColorRef = useRef(DEFAULT_PEN_COLOR);
+  const markerColorRef = useRef(DEFAULT_MARKER_COLOR);
+  const textColorRef = useRef(DEFAULT_PEN_COLOR);
   const [lineWidth, setLineWidth] = useState(2.5);
   const [markerOpacity, setMarkerOpacity] = useState(0.14);
   const [strokesByPage, setStrokesByPage] = useState<Record<number, Stroke[]>>({});
@@ -221,6 +225,20 @@ const SlideDeckEditorPage: React.FC = () => {
   const [undoStack, setUndoStack] = useState<{ strokes: Record<number, Stroke[]>; text: Record<number, TextAnn[]> }[]>(
     []
   );
+
+  const applyStrokeColor = (c: string) => {
+    setStrokeColor(c);
+    if (tool === 'marker') markerColorRef.current = c;
+    else if (tool === 'text') textColorRef.current = c;
+    else penColorRef.current = c;
+  };
+
+  const selectTool = (next: 'pen' | 'marker' | 'text' | 'laser') => {
+    setTool(next);
+    if (next === 'marker') setStrokeColor(markerColorRef.current);
+    else if (next === 'text') setStrokeColor(textColorRef.current);
+    else if (next === 'pen') setStrokeColor(penColorRef.current);
+  };
 
   const pdfCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -1283,17 +1301,17 @@ const SlideDeckEditorPage: React.FC = () => {
           <Divider orientation="vertical" flexItem sx={{ height: 22, alignSelf: 'center' }} />
 
           <Tooltip title="Stift">
-            <IconButton size="small" color={tool === 'pen' ? 'primary' : 'default'} onClick={() => setTool('pen')}>
+            <IconButton size="small" color={tool === 'pen' ? 'primary' : 'default'} onClick={() => selectTool('pen')}>
               <DrawIcon />
             </IconButton>
           </Tooltip>
           <Tooltip title="Marker (transparent, breit)">
-            <IconButton size="small" color={tool === 'marker' ? 'primary' : 'default'} onClick={() => setTool('marker')}>
+            <IconButton size="small" color={tool === 'marker' ? 'primary' : 'default'} onClick={() => selectTool('marker')}>
               <HighlightIcon />
             </IconButton>
           </Tooltip>
           <Tooltip title="Text — Klick: neu. Auf Text ziehen: verschieben (auch mit Stift/Marker). Klick ohne Zug: bearbeiten">
-            <IconButton size="small" color={tool === 'text' ? 'primary' : 'default'} onClick={() => setTool('text')}>
+            <IconButton size="small" color={tool === 'text' ? 'primary' : 'default'} onClick={() => selectTool('text')}>
               <TextIcon />
             </IconButton>
           </Tooltip>
@@ -1360,7 +1378,7 @@ const SlideDeckEditorPage: React.FC = () => {
                   key={c}
                   component="button"
                   type="button"
-                  onClick={() => setStrokeColor(c)}
+                  onClick={() => applyStrokeColor(c)}
                   sx={{
                     width: 16,
                     height: 16,
@@ -1381,7 +1399,7 @@ const SlideDeckEditorPage: React.FC = () => {
             <input
               type="color"
               value={strokeColor}
-              onChange={(e) => setStrokeColor(e.target.value)}
+              onChange={(e) => applyStrokeColor(e.target.value)}
               style={{
                 width: 22,
                 height: 22,

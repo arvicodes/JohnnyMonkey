@@ -15,16 +15,25 @@ export const PEN_LINE_WIDTHS = [1.5, 3, 5, 8] as const;
 export const MARKER_LINE_WIDTHS = [6, 10, 16, 24] as const;
 export const SHAPE_LINE_WIDTHS = [2, 4, 6, 10] as const;
 
+/** Stift / Schrift auf der Folie */
+export const DEFAULT_PEN_COLOR = '#1565c0';
+/** Textmarker / Markierung */
+export const DEFAULT_MARKER_COLOR = '#FDD835';
+
 export const PEN_COLORS = [
+  DEFAULT_PEN_COLOR,
+  DEFAULT_MARKER_COLOR,
   '#c62828',
-  '#1565c0',
   '#2e7d32',
   '#000000',
   '#FF9800',
   '#6A1B9A',
-  '#37474F',
   '#FFFFFF',
 ] as const;
+
+export function defaultColorForTool(tool: PresentationDrawTool): string {
+  return tool === 'marker' ? DEFAULT_MARKER_COLOR : DEFAULT_PEN_COLOR;
+}
 
 export const ERASER_RADIUS = 32;
 /** Textmarker auf der Folie — Wort muss durchscheinen. */
