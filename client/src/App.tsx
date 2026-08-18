@@ -48,7 +48,6 @@ import JohnnyCompanionSimple from './components/JohnnyCompanionSimple';
 import FlutterElf from './components/FlutterElf';
 import GlobalMarkdownListShortcut from './components/GlobalMarkdownListShortcut';
 import GlobalDashboardShortcut from './components/GlobalDashboardShortcut';
-import TeacherLiveLessonFollow from './components/TeacherLiveLessonFollow';
 import TeacherQuickNotes from './components/TeacherQuickNotes';
 
 interface User {
@@ -360,10 +359,7 @@ function AppContent() {
       {authReady && user && <GlobalDashboardShortcut />}
 
       {authReady && user && String(user.role).toUpperCase() === 'TEACHER' && (
-        <>
-          <TeacherLiveLessonFollow />
-          <TeacherQuickNotes userId={user.id} floating />
-        </>
+        <TeacherQuickNotes userId={user.id} floating />
       )}
 
       {authReady && user && String(user.role).toUpperCase() === 'STUDENT' && (

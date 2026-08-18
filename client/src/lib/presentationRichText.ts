@@ -25,6 +25,7 @@ import {
   getListItemFromSelection,
 } from './presentationListNormalize';
 import { PRESENTATION_DEFAULT_FONT_FAMILY } from './presentationFonts';
+import { toHighlightFill } from './presentationTheme';
 import { ensureNotesTablesFormatted, applyJohnnyTableFormatting } from './presentationSlideTables';
 
 // Explizite Re-Exports (HMR-sicherer als `import` + `export { … }`)
@@ -1223,7 +1224,7 @@ function makeStyleSpan(style: Record<string, string>): HTMLSpanElement {
     }
     if (key === 'backgroundColor') {
       span.setAttribute('data-pres-highlight', value);
-      span.style.setProperty('background-color', value, 'important');
+      span.style.setProperty('background-color', toHighlightFill(value), 'important');
       return;
     }
     if (key === 'fontFamily') {

@@ -530,21 +530,28 @@ function padHasContent(data: ScratchPadData): boolean {
   return data.pages.some((p) => stripHtml(p.text).length > 0 || p.ink.length > 0);
 }
 
+function padPlainLen(data: ScratchPadData): number {
+  return data.pages.reduce((n, p) => n + stripHtml(p.text).length + (p.ink?.length || 0), 0);
+}
+
 function padUpdatedMs(data: ScratchPadData | null | undefined): number {
   if (!data?.updatedAt) return 0;
   const t = Date.parse(data.updatedAt);
   return Number.isFinite(t) ? t : 0;
 }
 
-/** Neueren Stand wählen (Server vs. localStorage). */
+/** Neueren Stand wählen — nie einen vollen Block durch eine fast leere neuere Kopie ersetzen. */
 function pickNewerPad(a: ScratchPadData, b: ScratchPadData | null): ScratchPadData {
   if (!b) return a;
+  const aLen = padPlainLen(a);
+  const bLen = padPlainLen(b);
+  if (aLen >= 40 && bLen < 12) return a;
+  if (bLen >= 40 && aLen < 12) return b;
   const aMs = padUpdatedMs(a);
   const bMs = padUpdatedMs(b);
   if (bMs > aMs) return b;
   if (aMs > bMs) return a;
-  // Gleicher Zeitstempel: den mit mehr Inhalt bevorzugen
-  if (padHasContent(b) && !padHasContent(a)) return b;
+  if (bLen > aLen) return b;
   return a;
 }
 
@@ -607,6 +614,10 @@ function savePad(userId: string, data: ScratchPadData, opts?: { syncServer?: boo
         // Nur nicht-leere Stände als Backup merken (Schutz vor versehentlichem Löschen)
         if (padHasContent(old)) {
           localStorage.setItem(prevStorageKey(userId), prevRaw);
+        }
+        if (padPlainLen(old) >= 40 && padPlainLen(payload) < 12) {
+          console.warn('Lehrer-Notizen: leeren Stand nicht über bestehenden Inhalt geschrieben');
+          return old;
         }
       } catch {
         /* ignore backup failure */

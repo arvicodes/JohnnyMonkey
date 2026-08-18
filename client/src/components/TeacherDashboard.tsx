@@ -26,7 +26,7 @@ import {
   type JohnnyPresentationVersion,
 } from '../lib/presentationLessonAssets';
 import { presentationPresentUrl, presentationEditorUrl, loadPresentationDeck, sortSlides } from '../lib/presentationDeck';
-import { markTeacherPlayHost } from '../lib/teacherLiveLesson';
+import { markTeacherWantsDashboard } from '../lib/teacherLiveLesson';
 import {
   presentationHomeworkAssignmentKey,
   findHomeworkSlides,
@@ -7228,7 +7228,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
           showSnackbar(err?.error || 'Stunde konnte nicht gestartet werden', 'error');
           return;
         }
-        markTeacherPlayHost(groupId, lessonPath);
         await refreshActiveLessonSessions();
         // Direkt in TABLET-Play der Stunde, erste Folie (Entry Ticket startet √ºber den E-Button)
         navigate(
@@ -15076,6 +15075,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
     setLessonPlanViewMode('create');
     setParticipationModalOpen(false);
     if (isLessonStundeRoute) {
+      markTeacherWantsDashboard();
       navigate('/dashboard');
     }
   };
@@ -15102,6 +15102,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
       setLessonBoxEdit(null);
       setLessonPlanViewMode('create');
       setParticipationModalOpen(false);
+      markTeacherWantsDashboard();
       navigate('/dashboard');
     };
     window.addEventListener('keydown', onKey, true);

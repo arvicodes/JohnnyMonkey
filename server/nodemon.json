@@ -1,0 +1,11 @@
+{
+  "watch": ["src"],
+  "ext": "ts",
+  "ignore": [
+    "prisma/*",
+    "dist/*",
+    "uploads/*",
+    "client-build/*",
+    "node_modules/*"
+  ]
+}

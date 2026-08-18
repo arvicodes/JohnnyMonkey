@@ -22,6 +22,7 @@ import {
   profileHeaderGradient,
   profileSoftBg,
 } from '../../lib/profileColor';
+import { markTeacherWantsDashboard } from '../../lib/teacherLiveLesson';
 
 interface TeacherSettingsMenuProps {
   teacherName: string;
@@ -68,6 +69,7 @@ export default function TeacherSettingsMenu({
       <IconButton
         onClick={(e) => {
           if (!isOnDashboard) {
+            markTeacherWantsDashboard();
             if (onGoToDashboard) onGoToDashboard();
             else navigate('/dashboard');
             return;

@@ -27,6 +27,15 @@ export const PEN_COLORS = [
 ] as const;
 
 export const ERASER_RADIUS = 32;
+/** Textmarker auf der Folie — Wort muss durchscheinen. */
+export const DEFAULT_MARKER_OPACITY = 0.14;
+const LEGACY_MARKER_OPACITY = 0.38;
+
+export function resolveMarkerOpacity(stored?: number): number {
+  if (stored == null || !Number.isFinite(stored)) return DEFAULT_MARKER_OPACITY;
+  if (Math.abs(stored - LEGACY_MARKER_OPACITY) < 0.02) return DEFAULT_MARKER_OPACITY;
+  return Math.min(0.4, Math.max(0.06, stored));
+}
 
 export function toolUsesColor(tool: PresentationDrawTool): boolean {
   return tool !== 'eraser' && tool !== 'select';
@@ -207,24 +216,48 @@ export function drawPresentationStroke(ctx: CanvasRenderingContext2D, stroke: Pr
     return;
   }
 
-  ctx.beginPath();
-  ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-  for (let i = 1; i < stroke.points.length; i++) {
-    ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
-  }
   if (stroke.mode === 'marker') {
-    ctx.strokeStyle = hexToRgba(stroke.color, stroke.markerOpacity ?? 0.38);
+    ctx.strokeStyle = hexToRgba(stroke.color, resolveMarkerOpacity(stroke.markerOpacity));
     ctx.lineWidth = stroke.lineWidth * 2.2;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
     ctx.globalCompositeOperation = 'multiply';
   } else {
     ctx.strokeStyle = stroke.color;
     ctx.lineWidth = stroke.lineWidth;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
     ctx.globalCompositeOperation = 'source-over';
   }
-  ctx.stroke();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.miterLimit = 1.5;
+  strokeSmoothFreehand(ctx, stroke.points);
   ctx.globalCompositeOperation = 'source-over';
+}
+
+/** Catmull-Rom durch die Punkte — Schrift bleibt rund, nicht eckig. */
+export function strokeSmoothFreehand(
+  ctx: CanvasRenderingContext2D,
+  points: Array<{ x: number; y: number }>,
+) {
+  if (points.length < 2) return;
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  if (points.length === 2) {
+    ctx.lineTo(points[1].x, points[1].y);
+    ctx.stroke();
+    return;
+  }
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i === 0 ? 0 : i - 1];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[Math.min(i + 2, points.length - 1)];
+    ctx.bezierCurveTo(
+      p1.x + (p2.x - p0.x) / 6,
+      p1.y + (p2.y - p0.y) / 6,
+      p2.x - (p3.x - p1.x) / 6,
+      p2.y - (p3.y - p1.y) / 6,
+      p2.x,
+      p2.y,
+    );
+  }
+  ctx.stroke();
 }

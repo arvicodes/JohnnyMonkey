@@ -160,6 +160,32 @@ export type ScratchPadPayload = {
   savedAt?: string;
 };
 
+function stripHtmlLite(html: string): string {
+  return String(html || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Sichtbare Text-/Tintenmenge — zum Schutz vor versehentlichem Leerlauf-Überschreiben. */
+export function scratchPadContentLen(payload: ScratchPadPayload | null | undefined): number {
+  if (!payload || !Array.isArray(payload.pages)) return 0;
+  return payload.pages.reduce<number>((n, raw) => {
+    const p = raw as { text?: unknown; ink?: unknown };
+    const text = typeof p.text === 'string' ? stripHtmlLite(p.text) : '';
+    const ink = Array.isArray(p.ink) ? p.ink.length : 0;
+    return n + text.length + ink;
+  }, 0);
+}
+
+export function wouldWipeScratchPad(
+  existing: ScratchPadPayload | null | undefined,
+  incoming: ScratchPadPayload | null | undefined
+): boolean {
+  return scratchPadContentLen(existing) >= 40 && scratchPadContentLen(incoming) < 12;
+}
+
 export function readScratchPadLive(userKey: string): ScratchPadPayload | null {
   try {
     const livePath = path.join(ensureScratchPadLiveDir(userKey), 'latest.json');
@@ -187,6 +213,17 @@ export function writeScratchPad(
   const liveDir = ensureScratchPadLiveDir(userKey);
   const backupDir = ensureScratchPadBackupDir(userKey);
 
+  const livePath = path.join(liveDir, 'latest.json');
+  const existing = readScratchPadLive(userKey);
+  if (wouldWipeScratchPad(existing, payload)) {
+    console.warn('Scratch pad: refusing to overwrite substantial notes with near-empty payload', userKey);
+    return {
+      live: livePath,
+      backupLatest: path.join(backupDir, 'latest.json'),
+      backupStamp: null,
+    };
+  }
+
   const body: ScratchPadPayload = {
     ...payload,
     savedAt: new Date().toISOString(),
@@ -194,7 +231,6 @@ export function writeScratchPad(
   const json = JSON.stringify(body, null, 2);
   const buf = Buffer.from(json, 'utf8');
 
-  const livePath = path.join(liveDir, 'latest.json');
   const backupLatestPath = path.join(backupDir, 'latest.json');
   fs.writeFileSync(livePath, buf);
   fs.writeFileSync(backupLatestPath, buf);

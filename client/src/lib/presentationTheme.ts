@@ -81,6 +81,23 @@ export const HIGHLIGHT_PRESETS = [
   '#CFD8DC',
 ];
 
+/** Textmarker-Hintergrund: Wort bleibt lesbar. */
+export const PRESENTATION_HIGHLIGHT_ALPHA = 0.22;
+
+export function toHighlightFill(color: string, alpha = PRESENTATION_HIGHLIGHT_ALPHA): string {
+  const c = (color || '').trim();
+  const rgb = c.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  if (rgb) return `rgba(${rgb[1]},${rgb[2]},${rgb[3]},${alpha})`;
+  let h = c.replace('#', '');
+  if (h.length === 3) h = `${h[0]}${h[0]}${h[1]}${h[1]}${h[2]}${h[2]}`;
+  if (h.length !== 6) return `rgba(255,245,157,${alpha})`;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  if ([r, g, b].some((n) => Number.isNaN(n))) return `rgba(255,245,157,${alpha})`;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 export function accentGradient(color: string): string {
   return `linear-gradient(90deg, ${color} 0%, ${color}88 45%, transparent 100%)`;
 }

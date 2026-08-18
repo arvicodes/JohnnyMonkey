@@ -149,7 +149,7 @@ function drawStrokeSmooth(ctx: CanvasRenderingContext2D, s: Stroke) {
   ctx.lineJoin = 'round';
   ctx.lineWidth = s.lineWidth;
   if (mode === 'marker') {
-    const a = s.markerOpacity ?? 0.38;
+    const a = Math.abs((s.markerOpacity ?? 0.14) - 0.38) < 0.02 ? 0.14 : (s.markerOpacity ?? 0.14);
     ctx.strokeStyle = hexToRgba(s.color, a);
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
@@ -190,7 +190,7 @@ function drawStrokeSegment(
   ctx.lineJoin = 'round';
   ctx.lineWidth = s.lineWidth;
   if (mode === 'marker') {
-    ctx.strokeStyle = hexToRgba(s.color, s.markerOpacity ?? 0.38);
+    ctx.strokeStyle = hexToRgba(s.color, s.markerOpacity ?? 0.14);
   } else {
     ctx.strokeStyle = s.color;
   }
@@ -215,7 +215,7 @@ const SlideDeckEditorPage: React.FC = () => {
   const [tool, setTool] = useState<'pen' | 'marker' | 'text' | 'laser'>('pen');
   const [strokeColor, setStrokeColor] = useState('#c62828');
   const [lineWidth, setLineWidth] = useState(2.5);
-  const [markerOpacity, setMarkerOpacity] = useState(0.38);
+  const [markerOpacity, setMarkerOpacity] = useState(0.14);
   const [strokesByPage, setStrokesByPage] = useState<Record<number, Stroke[]>>({});
   const [textByPage, setTextByPage] = useState<Record<number, TextAnn[]>>({});
   const [undoStack, setUndoStack] = useState<{ strokes: Record<number, Stroke[]>; text: Record<number, TextAnn[]> }[]>(

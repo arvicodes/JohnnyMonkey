@@ -37,26 +37,20 @@ import { getSlideMaxRevealSteps } from '../lib/presentationReveal';
 import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../lib/presentationTransitions';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
 import { isPresentationLinkClickTarget } from '../lib/presentationRichText';
-import { clampPresentZoom, handlePresentZoomHotkey, attachPresentTrackpadZoom, attachPresentTouchPinchZoom } from '../lib/presentationPresentZoom';
+import { clampPresentZoomSmooth, handlePresentZoomHotkey, attachPresentTrackpadZoom, attachPresentTouchPinchZoom, centerPresentPan, panAfterPresentZoom, clampPresentPan, type PresentZoomOrigin } from '../lib/presentationPresentZoom';
 import { ensureEntryTicketButtonsOnTitleSlides } from '../lib/presentationSlideTemplates';
 import { isWochenaufgabenFolderPath } from '../lib/wochenaufgabenFolder';
-import { markTeacherPlayHost, clearTeacherPlayHost } from '../lib/teacherLiveLesson';
+import { markTeacherWantsDashboard } from '../lib/teacherLiveLesson';
+import {
+  attachPresentViewportFill,
+  exitPresentFullscreen,
+  isIosSafariLike,
+  requestPresentFullscreen,
+} from '../lib/presentationPresentFullscreen';
 import EntryTicketPage from './EntryTicketPage';
 
 const SWIPE_MIN_PX = 48;
 const EMPTY_STROKES: PresentationStroke[] = [];
-
-function requestPresentFullscreen(el: HTMLElement | null) {
-  if (!el) return;
-  const doc = document as Document & { webkitFullscreenElement?: Element };
-  if (document.fullscreenElement === el || doc.webkitFullscreenElement === el) return;
-  const req =
-    el.requestFullscreen?.() ??
-    (el as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void }).webkitRequestFullscreen?.();
-  if (req && typeof (req as Promise<void>).catch === 'function') {
-    (req as Promise<void>).catch(() => undefined);
-  }
-}
 
 const PresentationPresentPage: React.FC = () => {
   const navigate = useNavigate();
@@ -93,18 +87,64 @@ const PresentationPresentPage: React.FC = () => {
   const [userZoom, setUserZoom] = useState(1);
   const userZoomRef = useRef(1);
   userZoomRef.current = userZoom;
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const panRef = useRef(pan);
+  panRef.current = pan;
+  const displayScaleRef = useRef(displayScale);
+  displayScaleRef.current = displayScale;
+  const panDragRef = useRef<{ x: number; y: number; panX: number; panY: number; moved: boolean } | null>(null);
+  const didPanRef = useRef(false);
+  const [panning, setPanning] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   /** Pinch nur wenn nicht gezeichnet wird (Handauflage sonst als 2-Touch) */
   const pinchEnabledRef = useRef(true);
   pinchEnabledRef.current = !drawActive;
+
+  const applyUserZoom = useCallback((next: number, origin?: PresentZoomOrigin) => {
+    const clamped = clampPresentZoomSmooth(next);
+    const host = stageRef.current;
+    if (!host) {
+      setUserZoom(clamped <= 1.001 ? 1 : clamped);
+      return;
+    }
+    const hostW = host.clientWidth;
+    const hostH = host.clientHeight;
+    const slideW = SLIDE_REF_WIDTH * displayScaleRef.current;
+    const slideH = SLIDE_REF_HEIGHT * displayScaleRef.current;
+    if (clamped <= 1.001) {
+      setUserZoom(1);
+      setPan(centerPresentPan(hostW, hostH, slideW, slideH, 1));
+      return;
+    }
+    const rect = host.getBoundingClientRect();
+    const originInHost = origin
+      ? { x: origin.clientX - rect.left, y: origin.clientY - rect.top }
+      : { x: hostW / 2, y: hostH / 2 };
+    const nextPan = clampPresentPan(
+      panAfterPresentZoom({
+        pan: panRef.current,
+        oldZoom: Math.max(0.001, userZoomRef.current),
+        newZoom: clamped,
+        originInHost,
+      }),
+      hostW,
+      hostH,
+      slideW,
+      slideH,
+      clamped,
+    );
+    setUserZoom(clamped);
+    setPan(nextPan);
+  }, []);
   const [groupStudents, setGroupStudents] = useState<Array<{ id: string; name: string }>>([]);
   const [revealText, setRevealText] = useState<string | null>(null);
   const [revealNonce, setRevealNonce] = useState(0);
   const lastPickedStudentIdRef = useRef<string | null>(null);
   const lastPickedNumberRef = useRef<{ max: number; value: number } | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const swipeRef = useRef<{ x: number; y: number } | null>(null);
-  const entryTicketAutoOpenedRef = useRef(false);
+  const nativeFsAttemptedRef = useRef(false);
   /** Letzter gesicherter Stand der aktuellen benannten Version (für Speichern als…). */
   const namedBaselineRef = useRef<PresentationAnnotations | null>(null);
   const annotationsRef = useRef<PresentationAnnotations | null>(null);
@@ -118,15 +158,6 @@ const PresentationPresentPage: React.FC = () => {
   const canAdvanceSlide = slideIndex < slides.length - 1 || revealStep < maxReveal;
   const canFinishToDashboard = planMode === 'run' && slides.length > 0 && !canAdvanceSlide;
   const canGoNext = canAdvanceSlide || canFinishToDashboard;
-
-  useEffect(() => {
-    if (planMode === 'run' && groupId && lessonPath) {
-      markTeacherPlayHost(groupId, lessonPath);
-    }
-    return () => {
-      if (planMode === 'run') clearTeacherPlayHost();
-    };
-  }, [planMode, groupId, lessonPath]);
 
   useEffect(() => {
     if (!lessonPath) {
@@ -217,20 +248,6 @@ const PresentationPresentPage: React.FC = () => {
   }, [lessonPath, isOriginalView, namedSlug]);
 
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el || loading) return;
-    requestPresentFullscreen(el);
-  }, [loading]);
-
-  useEffect(() => {
-    if (loading || !deck) return;
-    if (planMode === 'create') return;
-    if (entryTicketAutoOpenedRef.current) return;
-    entryTicketAutoOpenedRef.current = true;
-    setEntryTicketOpen(true);
-  }, [loading, deck, planMode]);
-
-  useEffect(() => {
     const host = containerRef.current;
     if (!host || loading) return undefined;
     const onClick = (e: MouseEvent) => {
@@ -245,11 +262,19 @@ const PresentationPresentPage: React.FC = () => {
       e.stopPropagation();
       e.stopImmediatePropagation();
       setEntryTicketOpen(true);
-      requestPresentFullscreen(host);
     };
     host.addEventListener('click', onClick, true);
     return () => host.removeEventListener('click', onClick, true);
   }, [loading]);
+
+  useLayoutEffect(() => {
+    if (!lessonPath) return undefined;
+    const stop = attachPresentViewportFill(containerRef.current);
+    return () => {
+      stop();
+      exitPresentFullscreen();
+    };
+  }, [lessonPath]);
 
   useEffect(() => {
     setAnimKey((k) => k + 1);
@@ -545,6 +570,7 @@ const PresentationPresentPage: React.FC = () => {
         /* trotzdem zurück ins Dashboard */
       }
     }
+    markTeacherWantsDashboard();
     navigate('/dashboard', { replace: true });
   }, [groupId, lessonPath, navigate]);
 
@@ -576,6 +602,7 @@ const PresentationPresentPage: React.FC = () => {
   }, [revealStep, slideIndex, slides]);
 
   const handleBack = () => {
+    markTeacherWantsDashboard();
     navigate(presentationLessonBackUrl(lessonPath, groupId, planMode));
   };
 
@@ -691,7 +718,7 @@ const PresentationPresentPage: React.FC = () => {
       if (isTypingTarget(e.target)) return;
       if (entryTicketOpen) return;
 
-      if (handlePresentZoomHotkey(e, userZoom, setUserZoom)) return;
+      if (handlePresentZoomHotkey(e, userZoom, applyUserZoom)) return;
 
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -734,7 +761,7 @@ const PresentationPresentPage: React.FC = () => {
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [goNext, goPrev, drawActive, groupId, lessonPath, navigate, planMode, slides, saveNamedOpen, userZoom, entryTicketOpen]);
+  }, [goNext, goPrev, drawActive, groupId, lessonPath, navigate, planMode, slides, saveNamedOpen, userZoom, entryTicketOpen, applyUserZoom]);
 
   // Fokus auf die Bühne, damit Pfeiltasten sofort greifen
   useEffect(() => {
@@ -742,7 +769,6 @@ const PresentationPresentPage: React.FC = () => {
     containerRef.current?.focus({ preventScroll: true });
   }, [loading]);
 
-  const stageRef = useRef<HTMLDivElement>(null);
   const scaleReady = !loading && !!deck && !!annotations && !!currentSlide;
 
   useLayoutEffect(() => {
@@ -767,25 +793,41 @@ const PresentationPresentPage: React.FC = () => {
       setDisplayScale((prev) => nextViewportScale(prev, width - 1, height - 1, 'present'));
     };
 
+    let scaleRaf = 0;
+    const updateScaleSoon = () => {
+      if (scaleRaf) return;
+      scaleRaf = requestAnimationFrame(() => {
+        scaleRaf = 0;
+        updateScale();
+      });
+    };
+
     updateScale();
     const host = stageRef.current;
     if (!host) return undefined;
-    const ro = new ResizeObserver(() => updateScale());
+    const ro = new ResizeObserver(() => updateScaleSoon());
     ro.observe(host);
-    window.addEventListener('resize', updateScale);
-    window.addEventListener('orientationchange', updateScale);
-    window.visualViewport?.addEventListener('resize', updateScale);
-    document.addEventListener('fullscreenchange', updateScale);
+    window.addEventListener('resize', updateScaleSoon);
+    window.addEventListener('orientationchange', updateScaleSoon);
+    window.visualViewport?.addEventListener('resize', updateScaleSoon);
+    window.visualViewport?.addEventListener('scroll', updateScaleSoon);
+    document.addEventListener('fullscreenchange', updateScaleSoon);
+    document.addEventListener('webkitfullscreenchange' as 'fullscreenchange', updateScaleSoon);
     const raf = requestAnimationFrame(() => updateScale());
     const raf2 = requestAnimationFrame(() => updateScale());
+    const orientTimers = [80, 250, 500].map((ms) => window.setTimeout(updateScale, ms));
     return () => {
+      if (scaleRaf) cancelAnimationFrame(scaleRaf);
       cancelAnimationFrame(raf);
       cancelAnimationFrame(raf2);
+      orientTimers.forEach((id) => window.clearTimeout(id));
       ro.disconnect();
-      window.removeEventListener('resize', updateScale);
-      window.removeEventListener('orientationchange', updateScale);
-      window.visualViewport?.removeEventListener('resize', updateScale);
-      document.removeEventListener('fullscreenchange', updateScale);
+      window.removeEventListener('resize', updateScaleSoon);
+      window.removeEventListener('orientationchange', updateScaleSoon);
+      window.visualViewport?.removeEventListener('resize', updateScaleSoon);
+      window.visualViewport?.removeEventListener('scroll', updateScaleSoon);
+      document.removeEventListener('fullscreenchange', updateScaleSoon);
+      document.removeEventListener('webkitfullscreenchange' as 'fullscreenchange', updateScaleSoon);
     };
   }, [scaleReady]);
 
@@ -793,19 +835,84 @@ const PresentationPresentPage: React.FC = () => {
   useEffect(() => {
     if (!scaleReady) return undefined;
     const el = stageRef.current;
-    const offWheel = attachPresentTrackpadZoom(el, userZoomRef, setUserZoom);
-    const offTouch = attachPresentTouchPinchZoom(el, userZoomRef, setUserZoom, pinchEnabledRef);
+    const offWheel = attachPresentTrackpadZoom(el, userZoomRef, applyUserZoom);
+    const offTouch = attachPresentTouchPinchZoom(el, userZoomRef, applyUserZoom, pinchEnabledRef);
     return () => {
       offWheel();
       offTouch();
     };
-  }, [scaleReady]);
+  }, [scaleReady, applyUserZoom]);
 
-  const viewScale = displayScale * userZoom;
+  useLayoutEffect(() => {
+    const host = stageRef.current;
+    if (!host || !scaleReady) return;
+    const slideW = SLIDE_REF_WIDTH * displayScale;
+    const slideH = SLIDE_REF_HEIGHT * displayScale;
+    if (userZoomRef.current <= 1.001) {
+      setPan(centerPresentPan(host.clientWidth, host.clientHeight, slideW, slideH, 1));
+      return;
+    }
+    setPan((p) =>
+      clampPresentPan(p, host.clientWidth, host.clientHeight, slideW, slideH, userZoomRef.current),
+    );
+  }, [scaleReady, displayScale, slideIndex]);
+
   const zoomed = userZoom > 1.001;
+  const fitW = SLIDE_REF_WIDTH * displayScale;
+  const fitH = SLIDE_REF_HEIGHT * displayScale;
+
+  const onStagePointerDown = (e: React.PointerEvent) => {
+    if (drawActive || entryTicketOpen || userZoomRef.current <= 1.001) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    const t = e.target instanceof Element ? e.target : null;
+    if (t?.closest?.('[data-pres-zoom-controls], [data-pres-toolbar], button, a, input, textarea')) return;
+    if (panDragRef.current) {
+      panDragRef.current = null;
+      setPanning(false);
+      return;
+    }
+    panDragRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      panX: panRef.current.x,
+      panY: panRef.current.y,
+      moved: false,
+    };
+    didPanRef.current = false;
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+  };
+
+  const onStagePointerMove = (e: React.PointerEvent) => {
+    const drag = panDragRef.current;
+    if (!drag) return;
+    const dx = e.clientX - drag.x;
+    const dy = e.clientY - drag.y;
+    if (!drag.moved && Math.hypot(dx, dy) < 4) return;
+    drag.moved = true;
+    didPanRef.current = true;
+    if (!panning) setPanning(true);
+    const host = stageRef.current;
+    if (!host) return;
+    setPan(
+      clampPresentPan(
+        { x: drag.panX + dx, y: drag.panY + dy },
+        host.clientWidth,
+        host.clientHeight,
+        SLIDE_REF_WIDTH * displayScaleRef.current,
+        SLIDE_REF_HEIGHT * displayScaleRef.current,
+        userZoomRef.current,
+      ),
+    );
+  };
+
+  const onStagePointerUp = () => {
+    panDragRef.current = null;
+    setPanning(false);
+  };
 
   const onTouchStart = (e: React.TouchEvent) => {
-    if (drawActive || entryTicketOpen) return;
+    if (drawActive || entryTicketOpen || userZoomRef.current > 1.001) return;
     const t = e.touches[0];
     if (!t) return;
     const target = e.target instanceof Element ? e.target : null;
@@ -836,6 +943,10 @@ const PresentationPresentPage: React.FC = () => {
   const handleSlideTap = (e: React.MouseEvent) => {
     if (drawActive) return;
     if (entryTicketOpen) return;
+    if (!nativeFsAttemptedRef.current && !isIosSafariLike()) {
+      nativeFsAttemptedRef.current = true;
+      requestPresentFullscreen(containerRef.current);
+    }
     if (
       tryHandleLessonEntryTicketLinkClick(e, {
         lessonPath,
@@ -847,11 +958,37 @@ const PresentationPresentPage: React.FC = () => {
       return;
     }
     if (isPresentationLinkClickTarget(e.target)) return;
+    if (didPanRef.current) {
+      didPanRef.current = false;
+      return;
+    }
+    if (userZoomRef.current > 1.001) return;
     e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const ratio = (e.clientX - rect.left) / rect.width;
     if (ratio < 0.28) goPrev();
     else goNext();
+  };
+
+  const presentShellSx = {
+    position: 'fixed' as const,
+    left: 'var(--present-vv-left, 0px)',
+    top: 'var(--present-vv-top, 0px)',
+    width: 'var(--present-vv-width, 100%)',
+    height: 'var(--present-vv-height, 100svh)',
+    right: 'auto',
+    bottom: 'auto',
+    maxWidth: '100%',
+    bgcolor: '#000',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    userSelect: 'none',
+    overflow: 'hidden',
+    outline: 'none',
+    overscrollBehavior: 'none',
+    WebkitTapHighlightColor: 'transparent',
+    touchAction: 'manipulation',
+    boxSizing: 'border-box' as const,
   };
 
   if (!lessonPath) {
@@ -865,12 +1002,12 @@ const PresentationPresentPage: React.FC = () => {
   if (loading) {
     return (
       <Box
+        ref={containerRef}
         sx={{
-          minHeight: '100vh',
-          bgcolor: '#111',
-          display: 'flex',
+          ...presentShellSx,
           alignItems: 'center',
           justifyContent: 'center',
+          bgcolor: '#111',
         }}
       >
         <CircularProgress sx={{ color: JOHNNY_PRESENTATION.primaryLight }} />
@@ -880,23 +1017,22 @@ const PresentationPresentPage: React.FC = () => {
 
   if (!deck || !annotations || !currentSlide) {
     return (
-      <Box sx={{ p: 4, color: '#fff', maxWidth: 480 }}>
-        <Typography sx={{ mb: 1 }}>
-          {namedSlug
-            ? `Version „${namedLabel || namedSlug.replace(/_/g, ' ')}“ konnte nicht geladen werden.`
-            : 'Präsentation konnte nicht geladen werden.'}
-        </Typography>
-        {snackbar ? (
-          <Typography variant="body2" color="text.secondary">
-            {snackbar}
+      <Box ref={containerRef} sx={presentShellSx}>
+        <Box sx={{ p: 4, color: '#fff', maxWidth: 480 }}>
+          <Typography sx={{ mb: 1 }}>
+            {namedSlug
+              ? `Version „${namedLabel || namedSlug.replace(/_/g, ' ')}“ konnte nicht geladen werden.`
+              : 'Präsentation konnte nicht geladen werden.'}
           </Typography>
-        ) : null}
+          {snackbar ? (
+            <Typography variant="body2" color="text.secondary">
+              {snackbar}
+            </Typography>
+          ) : null}
+        </Box>
       </Box>
     );
   }
-
-  const displayH = SLIDE_REF_HEIGHT * viewScale;
-  const displayW = SLIDE_REF_WIDTH * viewScale;
 
   const presentBackBtnSx = {
     position: 'absolute' as const,
@@ -917,7 +1053,6 @@ const PresentationPresentPage: React.FC = () => {
     <Box
       ref={containerRef}
       tabIndex={0}
-      onPointerDown={() => requestPresentFullscreen(containerRef.current)}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
       onClickCapture={(e) => {
@@ -926,64 +1061,55 @@ const PresentationPresentPage: React.FC = () => {
           lessonPath,
           groupId: groupId || undefined,
           autostart: true,
-          onOpen: () => {
-            setEntryTicketOpen(true);
-            requestPresentFullscreen(containerRef.current);
-          },
+          onOpen: () => setEntryTicketOpen(true),
         });
       }}
-      sx={{
-        height: '100svh',
-        '@supports (height: 100dvh)': { height: '100dvh' },
-        width: '100vw',
-        maxWidth: '100vw',
-        bgcolor: '#000',
-        display: 'flex',
-        flexDirection: 'column',
-        userSelect: 'none',
-        position: 'relative',
-        overflow: 'hidden',
-        outline: 'none',
-      }}
+      sx={presentShellSx}
     >
-      <Tooltip title={isWochenaufgabenFolderPath(lessonPath) ? 'Zurück zum Dashboard' : 'Zurück zur Stunde'}>
-        <IconButton
-          size="small"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleBack();
-          }}
-          aria-label={isWochenaufgabenFolderPath(lessonPath) ? 'Zurück zum Dashboard' : 'Zurück zur Stunde'}
-          sx={presentBackBtnSx}
-        >
-          <ArrowBackIcon sx={{ fontSize: 18 }} />
-        </IconButton>
-      </Tooltip>
+      {!entryTicketOpen ? (
+        <Tooltip title={isWochenaufgabenFolderPath(lessonPath) ? 'Zurück zum Dashboard' : 'Zurück zur Stunde'}>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleBack();
+            }}
+            aria-label={isWochenaufgabenFolderPath(lessonPath) ? 'Zurück zum Dashboard' : 'Zurück zur Stunde'}
+            sx={presentBackBtnSx}
+          >
+            <ArrowBackIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Tooltip>
+      ) : null}
 
       <Box
         ref={stageRef}
+        data-pres-stage=""
+        onPointerDown={onStagePointerDown}
+        onPointerMove={onStagePointerMove}
+        onPointerUp={onStagePointerUp}
+        onPointerCancel={onStagePointerUp}
         sx={{
           flex: 1,
           minHeight: 0,
           width: '100%',
-          display: 'flex',
-          justifyContent: zoomed ? 'flex-start' : 'center',
-          alignItems: zoomed ? 'flex-start' : 'center',
-          overflow: zoomed ? 'auto' : 'hidden',
+          position: 'relative',
+          overflow: 'hidden',
+          touchAction: 'none',
+          cursor: drawActive ? 'default' : zoomed ? (panning ? 'grabbing' : 'grab') : 'pointer',
           px: 0,
           py: 0,
           boxSizing: 'border-box',
-          WebkitOverflowScrolling: 'touch',
         }}
       >
         <Box
           sx={{
-            width: displayW,
-            height: displayH,
-            maxWidth: zoomed ? 'none' : '100%',
-            maxHeight: zoomed ? 'none' : '100%',
-            flexShrink: 0,
-            overflow: 'hidden',
+            position: 'absolute',
+            width: fitW,
+            height: fitH,
+            transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${userZoom})`,
+            transformOrigin: '0 0',
+            willChange: 'transform',
           }}
         >
           <Box
@@ -995,10 +1121,9 @@ const PresentationPresentPage: React.FC = () => {
               height: '100%',
               animation: resolveSlideTransitionAnimation(transition),
               willChange: 'transform, opacity, filter',
-              cursor: drawActive ? 'default' : 'pointer',
+              cursor: 'inherit',
               overflow: 'hidden',
-              // Beim Schreiben: keine Browser-Touch-Gesten / Delays
-              touchAction: drawActive ? 'none' : 'auto',
+              touchAction: 'none',
             }}
           >
             <Box sx={{ position: 'absolute', inset: 0, zIndex: 0, overflow: 'hidden' }}>
@@ -1006,7 +1131,7 @@ const PresentationPresentPage: React.FC = () => {
                 sx={{
                   width: SLIDE_REF_WIDTH,
                   height: SLIDE_REF_HEIGHT,
-                  transform: `scale(${viewScale})`,
+                  transform: `scale(${displayScale})`,
                   transformOrigin: 'top left',
                 }}
               >
@@ -1022,7 +1147,7 @@ const PresentationPresentPage: React.FC = () => {
                   slideFooter={deck?.slideFooter}
                   deckTitle={deck?.title ?? ''}
                   lessonPath={deck?.lessonPath ?? lessonPath}
-                  mediaInteractive={!drawActive}
+                  mediaInteractive={!drawActive && !zoomed}
                   editable={drawActive && activeTool === 'select'}
                   selectedElementId={selectedElementId}
                   onElementSelect={setSelectedElementId}
@@ -1040,7 +1165,7 @@ const PresentationPresentPage: React.FC = () => {
               lineWidth={lineWidth}
               selectedStrokeId={selectedStrokeId}
               onSelectedStrokeIdChange={setSelectedStrokeId}
-              scale={viewScale}
+              scale={displayScale}
             />
           </Box>
         </Box>
@@ -1078,7 +1203,7 @@ const PresentationPresentPage: React.FC = () => {
         nextButtonTitle={canFinishToDashboard ? 'Zurück zum Dashboard' : 'Weiter'}
         canUndo={currentStrokes.length > 0}
         saving={saving}
-        placement="fixed"
+        placement="overlay"
         onGoPrev={goPrev}
         onGoNext={goNext}
         onToggleDraw={handleToggleDraw}
@@ -1093,7 +1218,7 @@ const PresentationPresentPage: React.FC = () => {
         onPickRandomNumber={handlePickRandomNumber}
         onOpenEntryTicket={() => setEntryTicketOpen(true)}
         zoom={userZoom}
-        onZoomChange={(z) => setUserZoom(clampPresentZoom(z))}
+        onZoomChange={applyUserZoom}
       />
 
       <PresentationRandomStudentOverlay
@@ -1190,12 +1315,16 @@ const PresentationPresentPage: React.FC = () => {
 
       {entryTicketOpen ? (
         <Box
+          data-present-scroll
           sx={{
             position: 'absolute',
             inset: 0,
             zIndex: 80,
             bgcolor: '#f4f6fb',
             overflow: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y',
+            overscrollBehavior: 'contain',
           }}
         >
           <EntryTicketPage

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { markTeacherWantsDashboard } from '../lib/teacherLiveLesson';
 
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -25,6 +26,7 @@ export default function GlobalDashboardShortcut() {
       if (isTypingTarget(e.target)) return;
       e.preventDefault();
       e.stopPropagation();
+      markTeacherWantsDashboard();
       navigate('/dashboard');
     };
     window.addEventListener('keydown', onKeyDown, true);

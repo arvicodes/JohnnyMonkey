@@ -4,6 +4,7 @@
  */
 
 import { isFormatBarInteracting } from './presentationFormatBarGuard';
+import { toHighlightFill } from './presentationTheme';
 
 export const PRESENTATION_CONTENT_FONT_PX = 26;
 
@@ -454,6 +455,12 @@ export function hydratePresentationHtmlFontSizes(html: string): string {
       const n = parseInt(el.getAttribute('data-pres-fs') || '', 10);
       if (!Number.isFinite(n) || n <= 0) return;
       el.style.setProperty('font-size', `${Math.round(n)}px`, 'important');
+    });
+    doc.body.querySelectorAll('[data-pres-highlight], mark').forEach((node) => {
+      const el = node as HTMLElement;
+      const raw = el.getAttribute('data-pres-highlight') || el.style.backgroundColor || '';
+      if (!raw) return;
+      el.style.setProperty('background-color', toHighlightFill(raw), 'important');
     });
     return doc.body.innerHTML;
   } catch {

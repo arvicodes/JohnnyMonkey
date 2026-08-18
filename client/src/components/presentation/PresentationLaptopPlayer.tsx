@@ -24,10 +24,8 @@ import { presentationNestedListSx, presentationNotesTableSx } from '../../lib/pr
 import { isPresentationLinkClickTarget } from '../../lib/presentationRichText';
 import { tryHandleLessonEntryTicketLinkClick, isLessonEntryTicketSlideHref } from '../../lib/presentationEditorUi';
 import EntryTicketPage from '../../pages/EntryTicketPage';
-import { apiGetSafe } from '../../lib/api';
-import { teacherLessonPathsMatch } from '../../lib/teacherLiveLesson';
 import { ensureEntryTicketButtonsOnTitleSlides } from '../../lib/presentationSlideTemplates';
-import { clampPresentZoom, handlePresentZoomHotkey, attachPresentTrackpadZoom, attachPresentTouchPinchZoom } from '../../lib/presentationPresentZoom';
+import { clampPresentZoomSmooth, handlePresentZoomHotkey, attachPresentTrackpadZoom, attachPresentTouchPinchZoom, centerPresentPan, panAfterPresentZoom, clampPresentPan, type PresentZoomOrigin } from '../../lib/presentationPresentZoom';
 import PresentationPresentZoomControls from './PresentationPresentZoomControls';
 import { PresentationSoundSplitControl } from './PresentationSoundControls';
 
@@ -85,14 +83,55 @@ export default function PresentationLaptopPlayer({
   const [userZoom, setUserZoom] = useState(1);
   const userZoomRef = useRef(1);
   userZoomRef.current = userZoom;
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const panRef = useRef(pan);
+  panRef.current = pan;
+  const displayScaleRef = useRef(displayScale);
+  displayScaleRef.current = displayScale;
+  const panDragRef = useRef<{ x: number; y: number; panX: number; panY: number; moved: boolean } | null>(null);
+  const didPanRef = useRef(false);
+  const [panning, setPanning] = useState(false);
   const [notesLightboxSrc, setNotesLightboxSrc] = useState<string | null>(null);
   const [entryTicketOpen, setEntryTicketOpen] = useState(false);
-  const [entryTicketCompanion, setEntryTicketCompanion] = useState(false);
-  const dismissedTicketStartedAtRef = useRef<string | null>(null);
-  const liveTicketStartedAtRef = useRef<string | null>(null);
-  const autoOpenedCompanionRef = useRef(false);
   const stageHostRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+
+  const applyUserZoom = useCallback((next: number, origin?: PresentZoomOrigin) => {
+    const clamped = clampPresentZoomSmooth(next);
+    const host = stageHostRef.current;
+    if (!host) {
+      setUserZoom(clamped <= 1.001 ? 1 : clamped);
+      return;
+    }
+    const hostW = host.clientWidth;
+    const hostH = host.clientHeight;
+    const slideW = SLIDE_REF_WIDTH * displayScaleRef.current;
+    const slideH = SLIDE_REF_HEIGHT * displayScaleRef.current;
+    if (clamped <= 1.001) {
+      setUserZoom(1);
+      setPan(centerPresentPan(hostW, hostH, slideW, slideH, 1));
+      return;
+    }
+    const rect = host.getBoundingClientRect();
+    const originInHost = origin
+      ? { x: origin.clientX - rect.left, y: origin.clientY - rect.top }
+      : { x: hostW / 2, y: hostH / 2 };
+    const nextPan = clampPresentPan(
+      panAfterPresentZoom({
+        pan: panRef.current,
+        oldZoom: Math.max(0.001, userZoomRef.current),
+        newZoom: clamped,
+        originInHost,
+      }),
+      hostW,
+      hostH,
+      slideW,
+      slideH,
+      clamped,
+    );
+    setUserZoom(clamped);
+    setPan(nextPan);
+  }, []);
 
   const openNotesImageLightbox = useCallback((rawSrc: string) => {
     const src = rawSrc.trim();
@@ -112,52 +151,6 @@ export default function PresentationLaptopPlayer({
     },
     [openNotesImageLightbox]
   );
-
-  useEffect(() => {
-    let cancelled = false;
-    const tick = async () => {
-      const res = await apiGetSafe('/api/entry-ticket/current');
-      if (!res || cancelled) return;
-      if (!res.ok) return;
-      try {
-        const data = (await res.json()) as {
-          startedAt?: string | null;
-          materialLessonPath?: string | null;
-          learningGroupId?: string | null;
-          lessonPath?: string | null;
-        };
-        const startedAt = typeof data.startedAt === 'string' && data.startedAt ? data.startedAt : null;
-        liveTicketStartedAtRef.current = startedAt;
-        if (!startedAt) {
-          if (autoOpenedCompanionRef.current) {
-            autoOpenedCompanionRef.current = false;
-            setEntryTicketOpen(false);
-            setEntryTicketCompanion(false);
-          }
-          return;
-        }
-        const pathGroup = /^__entry_ticket_g_(.+)__$/.exec(String(data.lessonPath || ''))?.[1] || null;
-        const sameGroup = Boolean(
-          groupId && (data.learningGroupId === groupId || pathGroup === groupId),
-        );
-        const samePath = teacherLessonPathsMatch(data.materialLessonPath, lessonPath);
-        const unknownTarget = !data.materialLessonPath && !data.learningGroupId && !pathGroup;
-        if (!sameGroup && !samePath && !unknownTarget) return;
-        if (dismissedTicketStartedAtRef.current === startedAt) return;
-        autoOpenedCompanionRef.current = true;
-        setEntryTicketCompanion(true);
-        setEntryTicketOpen(true);
-      } catch {
-        /* ignore */
-      }
-    };
-    void tick();
-    const id = window.setInterval(() => void tick(), 1500);
-    return () => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
-  }, [lessonPath, groupId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -298,7 +291,7 @@ export default function PresentationLaptopPlayer({
     const onKey = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
       if (entryTicketOpen) return;
-      if (handlePresentZoomHotkey(e, userZoom, setUserZoom)) return;
+      if (handlePresentZoomHotkey(e, userZoom, applyUserZoom)) return;
       if (e.key === 'Escape') {
         if (notesLightboxSrc) {
           e.preventDefault();
@@ -339,7 +332,7 @@ export default function PresentationLaptopPlayer({
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [goNext, goPrev, onClose, slides, notesLightboxSrc, userZoom, entryTicketOpen]);
+  }, [goNext, goPrev, onClose, slides, notesLightboxSrc, userZoom, entryTicketOpen, applyUserZoom]);
 
   useEffect(() => {
     const host = rootRef.current;
@@ -399,13 +392,77 @@ export default function PresentationLaptopPlayer({
   useEffect(() => {
     if (!scaleReady) return undefined;
     const el = stageHostRef.current;
-    const offWheel = attachPresentTrackpadZoom(el, userZoomRef, setUserZoom);
-    const offTouch = attachPresentTouchPinchZoom(el, userZoomRef, setUserZoom);
+    const offWheel = attachPresentTrackpadZoom(el, userZoomRef, applyUserZoom);
+    const offTouch = attachPresentTouchPinchZoom(el, userZoomRef, applyUserZoom);
     return () => {
       offWheel();
       offTouch();
     };
-  }, [scaleReady]);
+  }, [scaleReady, applyUserZoom]);
+
+  useLayoutEffect(() => {
+    const host = stageHostRef.current;
+    if (!host || !scaleReady) return;
+    const slideW = SLIDE_REF_WIDTH * displayScale;
+    const slideH = SLIDE_REF_HEIGHT * displayScale;
+    if (userZoomRef.current <= 1.001) {
+      setPan(centerPresentPan(host.clientWidth, host.clientHeight, slideW, slideH, 1));
+      return;
+    }
+    setPan((p) =>
+      clampPresentPan(p, host.clientWidth, host.clientHeight, slideW, slideH, userZoomRef.current),
+    );
+  }, [scaleReady, displayScale, safeIndex]);
+
+  const onStagePointerDown = (e: React.PointerEvent) => {
+    if (entryTicketOpen || userZoomRef.current <= 1.001) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    const t = e.target instanceof Element ? e.target : null;
+    if (t?.closest?.('[data-pres-zoom-controls], button, a, input, textarea')) return;
+    if (panDragRef.current) {
+      panDragRef.current = null;
+      setPanning(false);
+      return;
+    }
+    panDragRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      panX: panRef.current.x,
+      panY: panRef.current.y,
+      moved: false,
+    };
+    didPanRef.current = false;
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+  };
+
+  const onStagePointerMove = (e: React.PointerEvent) => {
+    const drag = panDragRef.current;
+    if (!drag) return;
+    const dx = e.clientX - drag.x;
+    const dy = e.clientY - drag.y;
+    if (!drag.moved && Math.hypot(dx, dy) < 4) return;
+    drag.moved = true;
+    didPanRef.current = true;
+    if (!panning) setPanning(true);
+    const host = stageHostRef.current;
+    if (!host) return;
+    setPan(
+      clampPresentPan(
+        { x: drag.panX + dx, y: drag.panY + dy },
+        host.clientWidth,
+        host.clientHeight,
+        SLIDE_REF_WIDTH * displayScaleRef.current,
+        SLIDE_REF_HEIGHT * displayScaleRef.current,
+        userZoomRef.current,
+      ),
+    );
+  };
+
+  const onStagePointerUp = () => {
+    panDragRef.current = null;
+    setPanning(false);
+  };
 
   const handleSlideTap = (e: React.MouseEvent) => {
     if (entryTicketOpen) return;
@@ -420,6 +477,11 @@ export default function PresentationLaptopPlayer({
       return;
     }
     if (isPresentationLinkClickTarget(e.target)) return;
+    if (didPanRef.current) {
+      didPanRef.current = false;
+      return;
+    }
+    if (userZoomRef.current > 1.001) return;
     e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const ratio = (e.clientX - rect.left) / rect.width;
@@ -443,10 +505,9 @@ export default function PresentationLaptopPlayer({
     );
   }
 
-  const viewScale = displayScale * userZoom;
   const zoomed = userZoom > 1.001;
-  const displayH = SLIDE_REF_HEIGHT * viewScale;
-  const displayW = SLIDE_REF_WIDTH * viewScale;
+  const fitW = SLIDE_REF_WIDTH * displayScale;
+  const fitH = SLIDE_REF_HEIGHT * displayScale;
   const notesPanelMin = hideTeacherNotes ? 40 : embedded ? 120 : 64;
   const showNotes = !hideTeacherNotes;
   const notesHtml = showNotes ? currentSlide.speakerNotesHtml?.trim() : '';
@@ -472,7 +533,7 @@ export default function PresentationLaptopPlayer({
         ...(embedded ? {} : { height: '100%', minHeight: '100dvh' }),
       }}
     >
-      {onClose && (
+      {onClose && !entryTicketOpen ? (
         <IconButton
           size="small"
           onClick={onClose}
@@ -493,39 +554,44 @@ export default function PresentationLaptopPlayer({
         >
           <CloseIcon sx={{ fontSize: 16 }} />
         </IconButton>
-      )}
+      ) : null}
 
       {/* Stage: dunkler Rahmen um die Folie; Embedded ohne großen Letterbox */}
       <Box
         ref={stageHostRef}
+        onPointerDown={onStagePointerDown}
+        onPointerMove={onStagePointerMove}
+        onPointerUp={onStagePointerUp}
+        onPointerCancel={onStagePointerUp}
         sx={{
           flex: embedded ? '0 0 auto' : '1 1 auto',
           minHeight: 0,
           width: '100%',
-          height: embedded && displayH > 0 && !zoomed ? displayH + 16 : undefined,
-          maxHeight: embedded && zoomed ? '58vh' : undefined,
-          display: 'flex',
-          alignItems: zoomed ? 'flex-start' : 'center',
-          justifyContent: zoomed ? 'flex-start' : 'center',
-          overflow: zoomed ? 'auto' : 'hidden',
+          height: embedded && fitH > 0 ? fitH + 16 : undefined,
+          position: 'relative',
+          overflow: 'hidden',
+          touchAction: 'none',
+          cursor: zoomed ? (panning ? 'grabbing' : 'grab') : 'pointer',
           m: 0,
-          p: embedded ? '8px' : 0,
+          p: 0,
           lineHeight: 0,
           bgcolor: '#111',
           boxSizing: 'border-box',
-          WebkitOverflowScrolling: 'touch',
         }}
       >
         <Box
           sx={{
-            width: displayW || '100%',
-            height: displayH || 'auto',
+            position: 'absolute',
+            width: fitW,
+            height: fitH,
+            transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${userZoom})`,
+            transformOrigin: '0 0',
+            willChange: 'transform',
             overflow: 'hidden',
             borderRadius: 0.5,
             boxShadow: '0 2px 14px rgba(0,0,0,0.55)',
             outline: '1px solid rgba(255,255,255,0.14)',
             bgcolor: '#000',
-            flexShrink: 0,
           }}
         >
           <Box
@@ -539,7 +605,7 @@ export default function PresentationLaptopPlayer({
                 ? undefined
                 : resolveSlideTransitionAnimation(transition),
               willChange: disableAnimations ? undefined : 'transform, opacity, filter',
-              cursor: 'pointer',
+              cursor: 'inherit',
               overflow: 'hidden',
             }}
           >
@@ -548,7 +614,7 @@ export default function PresentationLaptopPlayer({
                 sx={{
                   width: SLIDE_REF_WIDTH,
                   height: SLIDE_REF_HEIGHT,
-                  transform: `scale(${viewScale})`,
+                  transform: `scale(${displayScale})`,
                   transformOrigin: 'top left',
                 }}
               >
@@ -564,11 +630,11 @@ export default function PresentationLaptopPlayer({
                   slideFooter={deck.slideFooter}
                   deckTitle={deck.title ?? ''}
                   lessonPath={deck.lessonPath ?? lessonPath}
-                  mediaInteractive
+                  mediaInteractive={!zoomed}
                 />
               </Box>
             </Box>
-            <PresentationStrokesPreview strokes={strokes} scale={viewScale} />
+            <PresentationStrokesPreview strokes={strokes} scale={displayScale} />
           </Box>
         </Box>
       </Box>
@@ -657,7 +723,7 @@ export default function PresentationLaptopPlayer({
           <Box sx={{ ml: 0.75 }}>
             <PresentationPresentZoomControls
               zoom={userZoom}
-              onZoomChange={(z) => setUserZoom(clampPresentZoom(z))}
+              onZoomChange={applyUserZoom}
               variant="light"
               compact={embedded}
             />
@@ -843,12 +909,8 @@ export default function PresentationLaptopPlayer({
             embeddedPlay={{
               lessonPath,
               groupId,
-              companion: entryTicketCompanion ? 'laptop-solutions' : undefined,
               onExit: () => {
-                autoOpenedCompanionRef.current = false;
-                dismissedTicketStartedAtRef.current = liveTicketStartedAtRef.current;
                 setEntryTicketOpen(false);
-                setEntryTicketCompanion(false);
               },
             }}
           />

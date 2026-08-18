@@ -17,6 +17,36 @@
   justify-content: flex-start;
 }
 
+/* Folien-Play: Safari iPad darf Seite nicht mitziehen */
+html.present-immersive,
+html.present-immersive body {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+}
+html.present-immersive body {
+  margin: 0 !important;
+}
+html.present-immersive #root,
+html.present-immersive .App,
+html.present-immersive .App--fullBleed {
+  overflow: hidden !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  min-height: 100% !important;
+  height: 100% !important;
+}
+html.present-immersive [data-present-scroll] {
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 .App-logo {
   height: 40vmin;
   pointer-events: none;

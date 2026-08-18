@@ -128,8 +128,8 @@ interface PresentationTabletToolbarProps {
   onPickRandomNumber?: (max: number) => void;
   /** Entry Ticket dieser Stunde öffnen (TABLET-Play) */
   onOpenEntryTicket?: () => void;
-  /** docked = im Layout unten (Tablet-Präsentieren); fixed = schwebend */
-  placement?: 'fixed' | 'docked';
+  /** overlay = absolut in der Present-Bühne (Safari iPad); fixed = Viewport; docked = Layout unten */
+  placement?: 'fixed' | 'docked' | 'overlay';
   /** Original-Ansicht: nur Navigation, kein Zeichnen/Speichern */
   readOnly?: boolean;
   /** Zoom über Fit-Scale (1 = passend, bis 3) */
@@ -169,6 +169,7 @@ export default function PresentationTabletToolbar({
   const showLineWidths = !readOnly && drawActive && toolUsesLineWidth(activeTool);
   const widthOptions = lineWidthsForTool(activeTool);
   const docked = placement === 'docked';
+  const overlay = placement === 'overlay';
   const [showNumberRanges, setShowNumberRanges] = useState(false);
 
   return (
@@ -191,8 +192,8 @@ export default function PresentationTabletToolbar({
               zIndex: 20,
             }
           : {
-              position: 'fixed',
-              bottom: 12,
+              position: overlay ? 'absolute' : 'fixed',
+              bottom: overlay ? 'max(10px, env(safe-area-inset-bottom))' : 12,
               left: '50%',
               transform: 'translateX(-50%)',
               zIndex: 20,
@@ -200,7 +201,9 @@ export default function PresentationTabletToolbar({
               flexDirection: 'column',
               alignItems: 'center',
               gap: 0.4,
-              maxWidth: 'calc(100vw - 16px)',
+              maxWidth: overlay ? 'calc(100% - 16px)' : 'calc(100vw - 16px)',
+              touchAction: 'manipulation',
+              pointerEvents: 'auto',
             }),
       }}
       onClick={(e) => e.stopPropagation()}

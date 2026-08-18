@@ -1983,11 +1983,15 @@ export default function EntryTicketPage({
   const [customSetsReady, setCustomSetsReady] = useState(
     () => !(typeof window !== 'undefined' && localStorage.getItem('teacherId')),
   );
-  const [assignedGradeResolved, setAssignedGradeResolved] = useState(() => !initialRoute.autostart);
+  const [assignedGradeResolved, setAssignedGradeResolved] = useState(
+    () => !initialRoute.autostart || Boolean(initialRoute.customSetId) || !initialRoute.lessonPath,
+  );
 
   const laptopCompanion =
     embeddedPlay?.companion === 'laptop-solutions' ||
     parseEntryTicketSearch(routeSearch).companion;
+
+  const appliedPlayKeyRef = useRef<string | null>(null);
 
   /** Klassenstufe / eigenes Set aus URL; neuer Zufallssatz bei jedem Aufruf (inkl. &r=… vom Klick auf das Dashboard-Icon). */
   useLayoutEffect(() => {
@@ -2005,6 +2009,13 @@ export default function EntryTicketPage({
       taskSeed: urlSeed,
       hasExplicitBand,
     } = parseEntryTicketSearch(search);
+    const playKey = `${lessonPath || ''}|${autostart ? 1 : 0}|${companion ? 1 : 0}|${review ? 1 : 0}|${openEditor ? 1 : 0}`;
+    if (appliedPlayKeyRef.current === playKey) {
+      setEntryTicketGroupId(groupId);
+      if (heroImageIndex != null) setEntryHeroImageIndex(heroImageIndex);
+      return;
+    }
+    appliedPlayKeyRef.current = playKey;
     setGrade(g);
     setCustomSetId(cId);
     setBandChosen(Boolean(hasExplicitBand || cId || autostart || openEditor || review || companion));
@@ -2796,7 +2807,7 @@ export default function EntryTicketPage({
   useEffect(() => {
     const wantAssignedSet = (autoStartPending || showSetEditor) && !customSetId && Boolean(entryLessonPath);
     if (!wantAssignedSet) {
-      if (!autoStartPending) setAssignedGradeResolved(true);
+      setAssignedGradeResolved(true);
       return;
     }
     let cancelled = false;
@@ -2827,12 +2838,20 @@ export default function EntryTicketPage({
     };
   }, [autoStartPending, showSetEditor, customSetId, entryLessonPath, grade, customSets]);
 
+  /** Autostart darf nicht ewig auf den Stundenplan-Fetch warten. */
+  useEffect(() => {
+    if (!autoStartPending || sessionStarted || assignedGradeResolved) return undefined;
+    const t = window.setTimeout(() => setAssignedGradeResolved(true), 1600);
+    return () => window.clearTimeout(t);
+  }, [autoStartPending, sessionStarted, assignedGradeResolved]);
+
   /** Autostart: Play starten, sobald das Set da ist — nicht abbrechen, wenn noch geladen wird. */
   useEffect(() => {
     if (!autoStartPending || sessionStarted) return;
     if (!isTeacher && (!moderatorGateChecked || !isClassModerator)) return;
-    if (!customSetsReady) return;
-    if (!assignedGradeResolved) return;
+    const haveLocalSet = !customSetId || customSets.some((s) => s.id === customSetId);
+    if (!customSetsReady && !haveLocalSet) return;
+    if (!assignedGradeResolved && !customSetId) return;
 
     if (!customSetId && entryLessonPath) {
       const band = resolveEntryTicketBandForLessonPath(entryLessonPath, grade, customSets);
@@ -4201,25 +4220,47 @@ export default function EntryTicketPage({
     >
       <Box sx={{ width: '100%', maxWidth: '100%', mx: 0, minWidth: 0, boxSizing: 'border-box', flex: embeddedPlay ? 1 : undefined, minHeight: embeddedPlay ? 0 : undefined, display: embeddedPlay ? 'flex' : undefined, flexDirection: embeddedPlay ? 'column' : undefined }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.45, gap: 0.5 }}>
-          <Tooltip title="Zurück">
-            <IconButton
-              onClick={handleBack}
-              size="small"
-              aria-label="Zurück"
+          {sessionStarted || studentReviewMode ? (
+            <Typography
+              aria-label={`Karte ${sessionDone ? activeTasks.length : currentIndex + 1} von ${activeTasks.length}`}
               sx={{
-                p: 0,
-                minWidth: 24,
-                width: 24,
-                height: 24,
-                bgcolor: 'white',
-                border: '1px solid',
-                borderColor: 'divider',
+                fontSize: { xs: '1.4rem', sm: '1.7rem' },
+                fontWeight: 800,
+                color: '#263238',
+                fontVariantNumeric: 'tabular-nums',
+                lineHeight: 1,
+                letterSpacing: -0.03,
                 flexShrink: 0,
+                minWidth: 40,
+                px: 0.4,
               }}
             >
-              <ArrowBackIcon sx={{ fontSize: 14 }} />
-            </IconButton>
-          </Tooltip>
+              {sessionDone ? activeTasks.length : currentIndex + 1}
+              <Box component="span" sx={{ color: '#90a4ae', fontWeight: 700, fontSize: '0.58em' }}>
+                /{activeTasks.length}
+              </Box>
+            </Typography>
+          ) : (
+            <Tooltip title="Zurück">
+              <IconButton
+                onClick={handleBack}
+                size="small"
+                aria-label="Zurück"
+                sx={{
+                  p: 0,
+                  minWidth: 24,
+                  width: 24,
+                  height: 24,
+                  bgcolor: 'white',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  flexShrink: 0,
+                }}
+              >
+                <ArrowBackIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            </Tooltip>
+          )}
 
           <Box
             sx={{
@@ -4315,6 +4356,27 @@ export default function EntryTicketPage({
               >
                 Historie
               </Button>
+            ) : null}
+            {sessionStarted || studentReviewMode ? (
+              <Tooltip title="Zurück">
+                <IconButton
+                  onClick={handleBack}
+                  size="small"
+                  aria-label="Zurück"
+                  sx={{
+                    p: 0,
+                    minWidth: 24,
+                    width: 24,
+                    height: 24,
+                    bgcolor: 'white',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    flexShrink: 0,
+                  }}
+                >
+                  <ArrowBackIcon sx={{ fontSize: 14 }} />
+                </IconButton>
+              </Tooltip>
             ) : null}
           </Box>
         </Box>
@@ -4551,33 +4613,18 @@ export default function EntryTicketPage({
               </Box>
             ) : (
               <Box sx={{ display: 'grid', gap: 1.5, width: '100%', minWidth: 0, flex: embeddedPlay ? 1 : undefined, minHeight: embeddedPlay ? 0 : undefined }}>
-                {/* Kartennummer immer sichtbar (auch SuS-Review); Steuerung nur Lehrer/Moderator */}
+                {/* Kartennummer sitzt oben links in der Kopfzeile — hier nur Lehrer-Steuerung */}
+                {!studentReviewMode && !laptopCompanion ? (
                 <Box
                   sx={{
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
+                    justifyContent: 'flex-end',
                     gap: 1,
                     flexWrap: 'wrap',
                     px: 0.5,
                   }}
                 >
-                  <Typography
-                    sx={{
-                      fontSize: studentReviewMode ? '1.15rem' : '0.88rem',
-                      fontWeight: 600,
-                      color: '#78909c',
-                      fontVariantNumeric: 'tabular-nums',
-                    }}
-                  >
-                    <Box component="span" sx={{ color: '#455a64', fontWeight: 800 }}>
-                      {sessionDone ? activeTasks.length : currentIndex + 1}
-                    </Box>
-                    /{activeTasks.length}
-                  </Typography>
-
-                  {!studentReviewMode && !laptopCompanion && (
-
                   <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.65, flexShrink: 0 }}>
                     {!sessionDone ? (
                     <TextField
@@ -4714,8 +4761,8 @@ export default function EntryTicketPage({
                       </IconButton>
                     </Tooltip>
                   </Box>
-                  )}
                 </Box>
+                ) : null}
 
                 {!sessionDone ? (
                   <Box

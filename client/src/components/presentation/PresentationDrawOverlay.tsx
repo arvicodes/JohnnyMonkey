@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   PresentationStroke,
   SLIDE_REF_HEIGHT,
@@ -8,6 +8,8 @@ import {
   ERASER_RADIUS,
   PresentationDrawTool,
   applyEraserToStrokes,
+  DEFAULT_MARKER_OPACITY,
+  resolveMarkerOpacity,
   drawPresentationStroke,
   isShapeTool,
   toolLineWidth,
@@ -80,7 +82,7 @@ function hexToRgba(hex: string, alpha: number): string {
 
 function applyFreehandStyle(ctx: CanvasRenderingContext2D, stroke: PresentationStroke) {
   if (stroke.mode === 'marker') {
-    ctx.strokeStyle = hexToRgba(stroke.color, stroke.markerOpacity ?? 0.38);
+    ctx.strokeStyle = hexToRgba(stroke.color, resolveMarkerOpacity(stroke.markerOpacity));
     ctx.lineWidth = stroke.lineWidth * 2.2;
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
@@ -112,7 +114,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   lineWidth,
   selectedStrokeId = null,
   onSelectedStrokeIdChange,
-  markerOpacity = 0.38,
+  markerOpacity = DEFAULT_MARKER_OPACITY,
   scale = 1,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -122,6 +124,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   const inkPointerIdRef = useRef<number | null>(null);
   const inkIsPenRef = useRef(false);
   const lastInkPtRef = useRef<{ x: number; y: number } | null>(null);
+  const lastSmoothMidRef = useRef<{ x: number; y: number } | null>(null);
   const eraserPathRef = useRef<{ x: number; y: number }[]>([]);
   const eraseBaseRef = useRef<PresentationStroke[]>(strokes);
   const strokesDuringEraseRef = useRef<PresentationStroke[]>(strokes);
@@ -150,8 +153,35 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   selectedStrokeIdRef.current = selectedStrokeId;
   onSelectedStrokeIdChangeRef.current = onSelectedStrokeIdChange;
 
-  const ensureCtx = () => {
+  const applySlideTransform = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
+    ctx.setTransform(
+      canvas.width / SLIDE_REF_WIDTH,
+      0,
+      0,
+      canvas.height / SLIDE_REF_HEIGHT,
+      0,
+      0,
+    );
+    ctx.imageSmoothingEnabled = true;
+    if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+  };
+
+  const syncCanvasBuffer = () => {
     const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const dpr = Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, 3);
+    const bufW = Math.max(1, Math.round(SLIDE_REF_WIDTH * scale * dpr));
+    const bufH = Math.max(1, Math.round(SLIDE_REF_HEIGHT * scale * dpr));
+    if (canvas.width !== bufW || canvas.height !== bufH) {
+      canvas.width = bufW;
+      canvas.height = bufH;
+      ctxRef.current = null;
+    }
+    return canvas;
+  };
+
+  const ensureCtx = () => {
+    const canvas = syncCanvasBuffer();
     if (!canvas) return null;
     if (!ctxRef.current) {
       ctxRef.current = canvas.getContext('2d', {
@@ -159,7 +189,9 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
         desynchronized: true,
       }) as CanvasRenderingContext2D | null;
     }
-    return ctxRef.current;
+    const ctx = ctxRef.current;
+    if (ctx) applySlideTransform(ctx, canvas);
+    return ctx;
   };
 
   const refreshRect = () => {
@@ -255,6 +287,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     drawingRef.current = null;
     inkPointerIdRef.current = null;
     previewStrokesRef.current = null;
+    lastSmoothMidRef.current = null;
     eraserPathRef.current = [];
     redraw();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nur Folie / externe Strokes-Quelle
@@ -297,6 +330,14 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   useEffect(() => {
     redraw();
   }, [tool, selectedStrokeId, redraw]);
+
+  useLayoutEffect(() => {
+    syncCanvasBuffer();
+    const canvas = canvasRef.current;
+    const ctx = ctxRef.current;
+    if (canvas && ctx) applySlideTransform(ctx, canvas);
+    redraw();
+  }, [scale, redraw]);
 
   useEffect(
     () => () => {
@@ -353,6 +394,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       markerOpacity: t === 'marker' ? markerOpacityRef.current : undefined,
     };
     lastInkPtRef.current = pt;
+    lastSmoothMidRef.current = pt;
   };
 
   /** Nur neues Segment — kein Full-Clear (entscheidend für Apple Pencil). */
@@ -361,10 +403,13 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     const ctx = ensureCtx();
     if (!draft || draft.shape || !ctx) return;
     applyFreehandStyle(ctx, draft);
+    const mid = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
+    const start = lastSmoothMidRef.current ?? from;
     ctx.beginPath();
-    ctx.moveTo(from.x, from.y);
-    ctx.lineTo(to.x, to.y);
+    ctx.moveTo(start.x, start.y);
+    ctx.quadraticCurveTo(from.x, from.y, mid.x, mid.y);
     ctx.stroke();
+    lastSmoothMidRef.current = mid;
   };
 
   const appendInkPoint = (pt: { x: number; y: number }, force = false) => {
@@ -416,6 +461,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     inkPointerIdRef.current = null;
     inkIsPenRef.current = false;
     lastInkPtRef.current = null;
+    lastSmoothMidRef.current = null;
     if (!drawingRef.current) return;
 
     const draft = drawingRef.current;
@@ -437,8 +483,8 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       redraw();
       return;
     }
-    // Ink liegt schon auf dem Canvas — kein Full-Redraw; React erst nach Idle
     scheduleStrokesCommit([...strokesRef.current, draft]);
+    redraw();
   };
 
   const onPointerDown = (e: PointerEvent) => {
@@ -660,6 +706,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       inkPointerIdRef.current = null;
       inkIsPenRef.current = false;
       lastInkPtRef.current = null;
+      lastSmoothMidRef.current = null;
       manipRef.current = null;
       previewStrokesRef.current = null;
       eraserPathRef.current = [];
@@ -718,8 +765,6 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   return (
     <canvas
       ref={canvasRef}
-      width={SLIDE_REF_WIDTH}
-      height={SLIDE_REF_HEIGHT}
       style={{
         position: 'absolute',
         top: 0,
