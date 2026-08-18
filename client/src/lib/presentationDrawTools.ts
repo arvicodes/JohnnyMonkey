@@ -39,11 +39,13 @@ export const ERASER_RADIUS = 32;
 /** Textmarker auf der Folie — Wort muss durchscheinen. */
 export const DEFAULT_MARKER_OPACITY = 0.14;
 const LEGACY_MARKER_OPACITY = 0.38;
+/** Stufen in der Play-Leiste (Deckkraft). */
+export const MARKER_OPACITY_PRESETS = [0.08, 0.14, 0.22, 0.32, 0.48] as const;
 
 export function resolveMarkerOpacity(stored?: number): number {
   if (stored == null || !Number.isFinite(stored)) return DEFAULT_MARKER_OPACITY;
   if (Math.abs(stored - LEGACY_MARKER_OPACITY) < 0.02) return DEFAULT_MARKER_OPACITY;
-  return Math.min(0.4, Math.max(0.06, stored));
+  return Math.min(0.6, Math.max(0.06, stored));
 }
 
 export function toolUsesColor(tool: PresentationDrawTool): boolean {

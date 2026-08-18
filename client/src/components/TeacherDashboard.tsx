@@ -26,6 +26,7 @@ import {
   type JohnnyPresentationVersion,
 } from '../lib/presentationLessonAssets';
 import { presentationPresentUrl, presentationEditorUrl, loadPresentationDeck, sortSlides } from '../lib/presentationDeck';
+import { requestPresentFullscreen } from '../lib/presentationPresentFullscreen';
 import { markTeacherWantsDashboard } from '../lib/teacherLiveLesson';
 import {
   presentationHomeworkAssignmentKey,
@@ -7211,6 +7212,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
         );
         return;
       }
+      requestPresentFullscreen();
       const key = `${groupId}::${lessonPath}`;
       setLessonRunBusyKey(key);
       const loginCode = localStorage.getItem('loginCode') || '';
@@ -20835,6 +20837,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                       qs.set('planMode', 'create');
                       navigate(`/presentation/edit?${qs.toString()}`);
                     } else if (lessonPlanViewMode === 'run') {
+                      requestPresentFullscreen();
                       navigate(
                         presentationPresentUrl(
                           lessonModalData.lessonPath,
@@ -21248,6 +21251,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                   }
                   // TABLET: immer aktuelle Arbeitsfolie (Praesentation.deck.json), nicht Original-/Named-Snapshot
                   if (lessonPlanViewMode === 'run') {
+                    requestPresentFullscreen();
                     navigate(
                       presentationPresentUrl(
                         lessonModalData.lessonPath,

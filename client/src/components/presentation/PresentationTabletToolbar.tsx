@@ -17,13 +17,14 @@ import {
   Undo as UndoIcon,
 } from '@mui/icons-material';
 import {
+  MARKER_OPACITY_PRESETS,
   PEN_COLORS,
   PresentationDrawTool,
   lineWidthsForTool,
   toolUsesColor,
   toolUsesLineWidth,
 } from '../../lib/presentationDrawTools';
-import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
+import { JOHNNY_PRESENTATION, toHighlightFill } from '../../lib/presentationTheme';
 import PresentationPresentZoomControls from './PresentationPresentZoomControls';
 import { PresentationSoundSplitControl } from './PresentationSoundControls';
 
@@ -118,6 +119,10 @@ interface PresentationTabletToolbarProps {
   onSelectTool: (tool: PresentationDrawTool) => void;
   onSelectColor: (color: string) => void;
   onSelectLineWidth: (width: number) => void;
+  markerOpacity?: number;
+  onSelectMarkerOpacity?: (opacity: number) => void;
+  selectedCount?: number;
+  selectionIsMarker?: boolean;
   onUndo: () => void;
   onSave?: () => void;
   onSaveNamed?: () => void;
@@ -153,6 +158,10 @@ export default function PresentationTabletToolbar({
   onSelectTool,
   onSelectColor,
   onSelectLineWidth,
+  markerOpacity,
+  onSelectMarkerOpacity,
+  selectedCount = 0,
+  selectionIsMarker = false,
   onUndo,
   onSave,
   onSaveNamed,
@@ -165,15 +174,29 @@ export default function PresentationTabletToolbar({
   zoom,
   onZoomChange,
 }: PresentationTabletToolbarProps) {
-  const showColors = !readOnly && drawActive && toolUsesColor(activeTool);
-  const showLineWidths = !readOnly && drawActive && toolUsesLineWidth(activeTool);
-  const widthOptions = lineWidthsForTool(activeTool);
+  const showColors =
+    !readOnly &&
+    drawActive &&
+    (toolUsesColor(activeTool) || (activeTool === 'select' && selectedCount > 0));
+  const showLineWidths =
+    !readOnly &&
+    drawActive &&
+    (toolUsesLineWidth(activeTool) || (activeTool === 'select' && selectedCount > 0));
+  const showMarkerOpacity =
+    !readOnly &&
+    drawActive &&
+    typeof onSelectMarkerOpacity === 'function' &&
+    (activeTool === 'marker' || (activeTool === 'select' && selectionIsMarker));
+  const widthOptions = lineWidthsForTool(
+    activeTool === 'select' ? (selectionIsMarker ? 'marker' : 'pen') : activeTool
+  );
   const docked = placement === 'docked';
   const overlay = placement === 'overlay';
   const [showNumberRanges, setShowNumberRanges] = useState(false);
 
   return (
     <Box
+      data-pres-toolbar=""
       sx={{
         ...(docked
           ? {
@@ -189,14 +212,14 @@ export default function PresentationTabletToolbar({
               pb: 'max(10px, env(safe-area-inset-bottom))',
               bgcolor: 'rgba(0,0,0,0.92)',
               borderTop: '1px solid rgba(255,255,255,0.08)',
-              zIndex: 20,
+              zIndex: 40,
             }
           : {
               position: overlay ? 'absolute' : 'fixed',
               bottom: overlay ? 'max(10px, env(safe-area-inset-bottom))' : 12,
               left: '50%',
               transform: 'translateX(-50%)',
-              zIndex: 20,
+              zIndex: 40,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -206,6 +229,8 @@ export default function PresentationTabletToolbar({
               pointerEvents: 'auto',
             }),
       }}
+      onPointerDown={(e) => e.stopPropagation()}
+      onPointerUp={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
       {showNumberRanges && onPickRandomNumber && (
@@ -305,6 +330,60 @@ export default function PresentationTabletToolbar({
               />
             </Box>
           ))}
+        </Box>
+      )}
+
+      {showMarkerOpacity && (
+        <Box
+          sx={{
+            ...PANEL_SX,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.45,
+            borderRadius: 2,
+            px: 0.65,
+            py: 0.35,
+          }}
+        >
+          <Typography sx={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.62)', mr: 0.15 }}>
+            Transparenz
+          </Typography>
+          {MARKER_OPACITY_PRESETS.map((a) => {
+            const selected = Math.abs((markerOpacity ?? 0.14) - a) < 0.02;
+            return (
+              <Box
+                key={a}
+                role="button"
+                tabIndex={0}
+                aria-label={`Deckkraft ${Math.round(a * 100)} Prozent`}
+                title={`${Math.round(a * 100)} %`}
+                onClick={() => onSelectMarkerOpacity?.(a)}
+                sx={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  bgcolor: '#eceff1',
+                  border: selected
+                    ? `2px solid ${JOHNNY_PRESENTATION.warm}`
+                    : '1px solid rgba(255,255,255,0.22)',
+                  boxShadow: selected ? `0 0 0 1px ${JOHNNY_PRESENTATION.warm}` : 'none',
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 14,
+                    height: 14,
+                    borderRadius: '50%',
+                    bgcolor: toHighlightFill(strokeColor, a),
+                  }}
+                />
+              </Box>
+            );
+          })}
         </Box>
       )}
 
@@ -454,7 +533,7 @@ export default function PresentationTabletToolbar({
         {!readOnly && drawActive && (
           <>
             <ToolBtn
-              title="Auswählen (Elemente & Formen bewegen)"
+              title="Auswählen / Lasso (Stift umfahren, dann schieben & Größe)"
               active={activeTool === 'select'}
               onClick={() => onSelectTool('select')}
             >

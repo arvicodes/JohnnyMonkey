@@ -9,6 +9,13 @@ const ENTRY_TICKET_LEGACY_PATH = '__entry_ticket_active__';
 const ENTRY_TICKET_CUSTOM_SETS_PATH = '__entry_ticket_custom_sets__';
 const entryTicketPathForGroup = (groupId) => `__entry_ticket_g_${groupId}__`;
 const entryTicketDonePathForGroup = (groupId) => `__entry_ticket_done_g_${groupId}__`;
+const groupIdFromEntryTicketPath = (path) => {
+    var _a;
+    if (!path)
+        return null;
+    const m = /^__entry_ticket_g_(.+)__$/.exec(path);
+    return (_a = m === null || m === void 0 ? void 0 : m[1]) !== null && _a !== void 0 ? _a : null;
+};
 const clampHeroIndex = (n) => {
     if (typeof n !== 'number' || !Number.isInteger(n))
         return 0;
@@ -69,10 +76,16 @@ const normalizeTasksPayload = (raw) => {
         const solution = typeof r.solution === 'string' ? r.solution.trim() : '';
         if (!prompt || !solution)
             continue;
+        const sourceKey = typeof r.sourceKey === 'string' && r.sourceKey.trim().startsWith('c:')
+            ? r.sourceKey.trim().slice(0, 160)
+            : undefined;
+        const id = typeof r.id === 'string' && r.id.trim() ? r.id.trim().slice(0, 80) : undefined;
         out.push({
             category: typeof r.category === 'string' && r.category.trim() ? r.category.trim().slice(0, 80) : 'Eigen',
             prompt: prompt.slice(0, 8000),
             solution: solution.slice(0, 8000),
+            ...(sourceKey ? { sourceKey } : {}),
+            ...(id ? { id } : {}),
         });
         if (out.length >= 80)
             break;
@@ -996,6 +1009,7 @@ class EntryTicketController {
                     materialLessonPath: null,
                     tasks: null,
                     customSet: null,
+                    learningGroupId: null,
                 });
             }
             return res.json({
@@ -1009,6 +1023,7 @@ class EntryTicketController {
                 materialLessonPath: (_l = teacherResolved.payload.materialLessonPath) !== null && _l !== void 0 ? _l : null,
                 tasks: (_m = teacherResolved.payload.tasks) !== null && _m !== void 0 ? _m : null,
                 customSet: (_o = teacherResolved.payload.customSet) !== null && _o !== void 0 ? _o : null,
+                learningGroupId: groupIdFromEntryTicketPath(teacherResolved.lessonPath),
             });
         }
         catch (error) {

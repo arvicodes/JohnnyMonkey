@@ -1355,8 +1355,8 @@ const SlideDeckEditorPage: React.FC = () => {
               <Box sx={{ width: 44, flexShrink: 0, py: 0, display: 'flex', alignItems: 'center' }}>
                 <Slider
                   size="small"
-                  min={0.12}
-                  max={0.55}
+                  min={0.08}
+                  max={0.6}
                   step={0.02}
                   value={markerOpacity}
                   onChange={(_, v) => setMarkerOpacity(v as number)}

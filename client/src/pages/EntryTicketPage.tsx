@@ -126,13 +126,25 @@ const richTextSx = {
 function EntryTicketRichHtml({
   value,
   sx,
+  compact,
 }: {
   value: string;
   sx?: Record<string, unknown>;
+  compact?: boolean;
 }) {
   if (!value) return null;
   const decorated = decorateEntryTicketDisplayHtml(value);
   if (!decorated) return null;
+
+  if (compact) {
+    return (
+      <Box
+        component="div"
+        sx={{ display: 'block', whiteSpace: 'pre-wrap', overflow: 'hidden', ...richTextSx, ...sx }}
+        dangerouslySetInnerHTML={{ __html: decorated }}
+      />
+    );
+  }
 
   if (!entryTicketLooksLikeHtml(value) && !entryTicketHasImage(value)) {
     return (
@@ -328,9 +340,9 @@ const SLIDE_DURATION_STORAGE_KEY = 'entry-ticket-slide-duration-sec';
 const SHOW_COUNT_STORAGE_KEY = 'entry-ticket-card-show-counts-v1';
 const MIN_SLIDE_DURATION_SEC = 5;
 const MAX_SLIDE_DURATION_SEC = 120;
-const DEFAULT_SOLUTION_DURATION_SEC = 120;
-const SOLUTION_DURATION_STORAGE_KEY = 'entry-ticket-solution-duration-sec';
-const MIN_SOLUTION_DURATION_SEC = 30;
+const DEFAULT_SOLUTION_DURATION_SEC = 60;
+const SOLUTION_DURATION_STORAGE_KEY = 'entry-ticket-solution-duration-sec-v2';
+const MIN_SOLUTION_DURATION_SEC = 15;
 const MAX_SOLUTION_DURATION_SEC = 15 * 60;
 
 function simpleTaskHash(s: string): string {
@@ -415,6 +427,43 @@ function formatMmSs(totalSec: number): string {
   return `${m}:${String(r).padStart(2, '0')}`;
 }
 
+function htmlPlainLen(html: string): number {
+  return String(html || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim().length;
+}
+
+function overviewFitFont(len: number, rows: number, kind: 'prompt' | 'solution'): { xs: string; sm: string } {
+  const density = rows >= 5 ? 1.25 : rows >= 4 ? 1.08 : 1;
+  const score = len * density;
+  if (kind === 'solution') {
+    if (score >= 260) return { xs: '0.58rem', sm: '0.64rem' };
+    if (score >= 170) return { xs: '0.68rem', sm: '0.76rem' };
+    if (score >= 100) return { xs: '0.8rem', sm: '0.9rem' };
+    if (score >= 48) return { xs: '0.95rem', sm: '1.08rem' };
+    if (score >= 22) return { xs: '1.08rem', sm: '1.22rem' };
+    return { xs: '1.18rem', sm: '1.34rem' };
+  }
+  if (score >= 220) return { xs: '0.58rem', sm: '0.64rem' };
+  if (score >= 140) return { xs: '0.66rem', sm: '0.72rem' };
+  if (score >= 80) return { xs: '0.74rem', sm: '0.82rem' };
+  return { xs: '0.82rem', sm: '0.9rem' };
+}
+
+const overviewRichFitSx = {
+  '& *': {
+    fontSize: 'inherit',
+    lineHeight: 'inherit',
+    maxWidth: '100%',
+    boxSizing: 'border-box',
+  },
+  '& p, & div, & li, & h1, & h2, & h3': { margin: 0 },
+  wordBreak: 'break-word',
+  overflowWrap: 'anywhere',
+} as const;
+
 function SolutionSlideClock({
   secondsLeft,
   totalSec,
@@ -429,7 +478,10 @@ function SolutionSlideClock({
   const frac = Math.max(0, Math.min(1, secondsLeft / Math.max(totalSec, 1)));
   const done = secondsLeft <= 0;
   const urgent = secondsLeft > 0 && secondsLeft <= 15;
-  const diskColor = done ? '#e53935' : urgent ? '#ff8a65' : '#43a047';
+  const diskColor = done ? '#d50000' : urgent ? '#ff6d00' : '#00c853';
+  const size = 52;
+  const inner = 6;
+  const tickOrigin = `${1}px ${size / 2 - 3}px`;
 
   return (
     <Box
@@ -447,18 +499,18 @@ function SolutionSlideClock({
       }
       sx={{
         position: 'relative',
-        width: 108,
-        height: 108,
+        width: size,
+        height: size,
         flexShrink: 0,
         p: 0,
         border: 'none',
         borderRadius: '50%',
         cursor: onToggle ? 'pointer' : 'default',
         background: `conic-gradient(${diskColor} 0deg ${frac * 360}deg, #eceff1 ${frac * 360}deg 360deg)`,
-        boxShadow: '0 2px 10px rgba(55, 71, 79, 0.18)',
+        boxShadow: `0 0 0 2px ${diskColor}, 0 0 10px ${diskColor}66`,
         appearance: 'none',
         WebkitAppearance: 'none',
-        '&:hover': onToggle ? { filter: 'brightness(0.97)' } : undefined,
+        '&:hover': onToggle ? { filter: 'brightness(0.96)' } : undefined,
       }}
     >
       {[0, 90, 180, 270].map((deg) => (
@@ -467,11 +519,11 @@ function SolutionSlideClock({
           sx={{
             position: 'absolute',
             left: '50%',
-            top: 4,
+            top: 3,
             width: 2,
-            height: 7,
-            bgcolor: 'rgba(69,90,100,0.45)',
-            transformOrigin: `1px 50px`,
+            height: 5,
+            bgcolor: 'rgba(38,50,56,0.5)',
+            transformOrigin: tickOrigin,
             transform: `translateX(-50%) rotate(${deg}deg)`,
             pointerEvents: 'none',
           }}
@@ -480,33 +532,27 @@ function SolutionSlideClock({
       <Box
         sx={{
           position: 'absolute',
-          inset: 10,
+          inset: inner,
           borderRadius: '50%',
           bgcolor: '#fff',
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: 'inset 0 0 0 1px rgba(176,190,197,0.35)',
+          boxShadow: 'inset 0 0 0 1px rgba(69,90,100,0.12)',
         }}
       >
         <Typography
           sx={{
-            fontWeight: 800,
+            fontWeight: 900,
             fontVariantNumeric: 'tabular-nums',
-            fontSize: '1.35rem',
+            fontSize: '0.72rem',
             lineHeight: 1,
             color: diskColor,
-            letterSpacing: 0.2,
+            letterSpacing: -0.35,
           }}
         >
           {formatMmSs(secondsLeft)}
         </Typography>
-        {!running && !done ? (
-          <Typography sx={{ mt: 0.15, fontSize: '0.55rem', fontWeight: 700, color: '#90a4ae', letterSpacing: 0.4 }}>
-            PAUSE
-          </Typography>
-        ) : null}
       </Box>
     </Box>
   );
@@ -4210,8 +4256,8 @@ export default function EntryTicketPage({
         height: embeddedPlay ? '100%' : undefined,
         width: '100%',
         bgcolor: '#f4f6fb',
-        py: { xs: 0.5, sm: 0.75 },
-        px: { xs: 0.4, sm: 0.6 },
+        py: 0,
+        px: { xs: 0.3, sm: 0.4 },
         boxSizing: 'border-box',
         display: embeddedPlay ? 'flex' : undefined,
         flexDirection: embeddedPlay ? 'column' : undefined,
@@ -4219,27 +4265,89 @@ export default function EntryTicketPage({
       }}
     >
       <Box sx={{ width: '100%', maxWidth: '100%', mx: 0, minWidth: 0, boxSizing: 'border-box', flex: embeddedPlay ? 1 : undefined, minHeight: embeddedPlay ? 0 : undefined, display: embeddedPlay ? 'flex' : undefined, flexDirection: embeddedPlay ? 'column' : undefined }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.45, gap: 0.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0, gap: 0.5, minHeight: 0, height: sessionDone && !studentReviewMode && !laptopCompanion ? 54 : 28 }}>
           {sessionStarted || studentReviewMode ? (
-            <Typography
-              aria-label={`Karte ${sessionDone ? activeTasks.length : currentIndex + 1} von ${activeTasks.length}`}
-              sx={{
-                fontSize: { xs: '1.4rem', sm: '1.7rem' },
-                fontWeight: 800,
-                color: '#263238',
-                fontVariantNumeric: 'tabular-nums',
-                lineHeight: 1,
-                letterSpacing: -0.03,
-                flexShrink: 0,
-                minWidth: 40,
-                px: 0.4,
-              }}
-            >
-              {sessionDone ? activeTasks.length : currentIndex + 1}
-              <Box component="span" sx={{ color: '#90a4ae', fontWeight: 700, fontSize: '0.58em' }}>
-                /{activeTasks.length}
-              </Box>
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, flexShrink: 0 }}>
+              {sessionDone && !studentReviewMode && !laptopCompanion ? (
+                <>
+                <SolutionSlideClock
+                  secondsLeft={solutionSecondsLeft}
+                  totalSec={solutionDurationSec}
+                  running={solutionRunning}
+                  onToggle={() => {
+                    if (solutionRunning) pause();
+                    else startOrResume();
+                  }}
+                />
+                <Tooltip title="Minuten auf der Lösungsfolie">
+                  <TextField
+                    size="small"
+                    type="text"
+                    inputMode="numeric"
+                    value={solutionDurationMinDraft}
+                    onChange={(e) => setSolutionDurationMinDraft(e.target.value.replace(/[^\d]/g, ''))}
+                    onBlur={commitSolutionDurationDraft}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        commitSolutionDurationDraft();
+                        (e.target as HTMLInputElement).blur();
+                      }
+                      if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        applySolutionDurationSec(solutionDurationSec + 60);
+                      }
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        applySolutionDurationSec(solutionDurationSec - 60);
+                      }
+                    }}
+                    inputProps={{
+                      'aria-label': 'Minuten auf der Lösungsfolie',
+                      inputMode: 'numeric',
+                      pattern: '[0-9]*',
+                    }}
+                    sx={{
+                      width: 28,
+                      '& .MuiInputBase-input': {
+                        py: 0.15,
+                        px: 0.25,
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        textAlign: 'center',
+                        fontVariantNumeric: 'tabular-nums',
+                        color: '#546e7a',
+                      },
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 1,
+                        bgcolor: '#fff',
+                        height: 22,
+                      },
+                      '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' },
+                    }}
+                  />
+                </Tooltip>
+                </>
+              ) : null}
+              <Typography
+                aria-label={`Karte ${sessionDone ? activeTasks.length : currentIndex + 1} von ${activeTasks.length}`}
+                sx={{
+                  fontSize: '0.95rem',
+                  fontWeight: 800,
+                  color: '#263238',
+                  fontVariantNumeric: 'tabular-nums',
+                  lineHeight: 1,
+                  letterSpacing: -0.03,
+                  flexShrink: 0,
+                  minWidth: 28,
+                }}
+              >
+                {sessionDone ? activeTasks.length : currentIndex + 1}
+                <Box component="span" sx={{ color: '#90a4ae', fontWeight: 700, fontSize: '0.58em' }}>
+                  /{activeTasks.length}
+                </Box>
+              </Typography>
+            </Box>
           ) : (
             <Tooltip title="Zurück">
               <IconButton
@@ -4267,22 +4375,22 @@ export default function EntryTicketPage({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 0.5,
+              gap: 0.4,
               flex: 1,
               minWidth: 0,
             }}
           >
+            {!sessionStarted ? (
             <Box
               title="Aktuelles Motiv (wie bei den Schüler:innen)"
               sx={{
-                width: 28,
-                height: 28,
+                width: 20,
+                height: 20,
                 flexShrink: 0,
-                borderRadius: 0.75,
+                borderRadius: 0.5,
                 overflow: 'hidden',
                 border: '1px solid',
                 borderColor: 'rgba(30, 136, 229, 0.28)',
-                boxShadow: '0 1px 3px rgba(15, 23, 42, 0.06)',
                 bgcolor: 'grey.200',
               }}
             >
@@ -4293,64 +4401,105 @@ export default function EntryTicketPage({
                 sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
               />
             </Box>
-            <Box
+            ) : null}
+            <Typography
+              title={sessionStarted ? activeSetLabel : undefined}
               sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                minWidth: 0,
-                maxWidth: '100%',
+                color: '#37474f',
+                fontWeight: 700,
+                lineHeight: 1,
+                fontSize: '0.78rem',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: { xs: '36vw', sm: '28vw' },
               }}
             >
-              <Typography
-                variant="h6"
-                sx={{
-                  color: '#37474f',
-                  fontWeight: 700,
-                  lineHeight: 1.1,
-                  fontSize: { xs: '0.85rem', sm: '0.92rem' },
-                }}
-              >
-                EntryTicket
-              </Typography>
-              {sessionStarted && (
-                <Typography
-                  title={activeSetLabel}
-                  sx={{
-                    mt: 0.15,
-                    maxWidth: { xs: '52vw', sm: '40vw' },
-                    fontSize: { xs: '0.68rem', sm: '0.72rem' },
-                    fontWeight: 700,
-                    lineHeight: 1.15,
-                    color: '#546e7a',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {activeSetLabel}
-                </Typography>
-              )}
-            </Box>
+              EntryTicket
+              {sessionStarted ? (
+                <Box component="span" sx={{ color: '#78909c', fontWeight: 600, fontSize: '0.85em' }}>
+                  {` · ${activeSetLabel}`}
+                </Box>
+              ) : null}
+            </Typography>
           </Box>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0, minWidth: 24 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3, flexShrink: 0, minWidth: 24 }}>
+            {sessionDone ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, mr: 0.15 }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      size="small"
+                      checked={showSolutions}
+                      onChange={(e) => setShowSolutions(e.target.checked)}
+                      sx={{ transform: 'scale(0.78)', transformOrigin: 'center right' }}
+                    />
+                  }
+                  label={
+                    <Typography sx={{ fontSize: '0.58rem', fontWeight: 700, color: '#78909c' }}>
+                      Lösungen
+                    </Typography>
+                  }
+                  sx={{ mr: 0, ml: 0, '& .MuiFormControlLabel-label': { ml: 0 } }}
+                />
+                <Tooltip title="Als Karteikarten drucken">
+                  <span>
+                    <IconButton
+                      size="small"
+                      disabled={printLessonsAvailable.length === 0 && activeTasks.length === 0}
+                      onClick={printFlashcards}
+                      aria-label="Karteikarten drucken"
+                      sx={{ p: 0.25, color: '#546e7a' }}
+                    >
+                      <PrintIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                {(isTeacher || isClassModerator) && !studentReviewMode && !laptopCompanion ? (
+                  <Tooltip title="Erledigt (Enter)">
+                    <span>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        disabled={completeBusy || doneCelebrate}
+                        onClick={() => void markEntryTicketDone()}
+                        sx={{
+                          textTransform: 'none',
+                          fontWeight: 800,
+                          fontSize: '0.62rem',
+                          minHeight: 22,
+                          py: 0,
+                          px: 0.7,
+                          bgcolor: '#66bb6a',
+                          boxShadow: 'none',
+                          '&:hover': { bgcolor: '#43a047', boxShadow: 'none' },
+                        }}
+                      >
+                        {completeBusy ? '…' : 'Erledigt'}
+                      </Button>
+                    </span>
+                  </Tooltip>
+                ) : null}
+              </Box>
+            ) : null}
             {isTeacher && !studentReviewMode && sessionStarted && customSetId ? (
               <Button
                 size="small"
                 variant="outlined"
-                startIcon={<HistoryIcon sx={{ fontSize: 16 }} />}
+                startIcon={<HistoryIcon sx={{ fontSize: 13 }} />}
                 onClick={() => setHistoryTarget({ id: customSetId, name: activeSetLabel })}
                 sx={{
                   textTransform: 'none',
                   fontWeight: 700,
-                  fontSize: '0.72rem',
-                  py: 0.15,
-                  px: 0.85,
-                  minHeight: 26,
+                  fontSize: '0.68rem',
+                  py: 0,
+                  px: 0.65,
+                  minHeight: 22,
                   borderColor: '#90a4ae',
                   color: '#455a64',
                   bgcolor: 'white',
+                  '& .MuiButton-startIcon': { mr: 0.35 },
                   '&:hover': { borderColor: '#607d8b', bgcolor: '#eceff1' },
                 }}
               >
@@ -4612,20 +4761,21 @@ export default function EntryTicketPage({
 
               </Box>
             ) : (
-              <Box sx={{ display: 'grid', gap: 1.5, width: '100%', minWidth: 0, flex: embeddedPlay ? 1 : undefined, minHeight: embeddedPlay ? 0 : undefined }}>
+              <Box sx={{ display: 'grid', gap: 0, width: '100%', minWidth: 0, flex: embeddedPlay ? 1 : undefined, minHeight: embeddedPlay ? 0 : undefined }}>
                 {/* Kartennummer sitzt oben links in der Kopfzeile — hier nur Lehrer-Steuerung */}
-                {!studentReviewMode && !laptopCompanion ? (
+                {!studentReviewMode && !laptopCompanion && !sessionDone ? (
                 <Box
                   sx={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'flex-end',
-                    gap: 1,
+                    gap: 0.5,
                     flexWrap: 'wrap',
-                    px: 0.5,
+                    px: 0.25,
+                    minHeight: 28,
                   }}
                 >
-                  <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.65, flexShrink: 0 }}>
+                  <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4, flexShrink: 0 }}>
                     {!sessionDone ? (
                     <TextField
                       size="small"
@@ -4687,7 +4837,7 @@ export default function EntryTicketPage({
                             '&:hover': { bgcolor: 'rgba(69,90,100,0.08)' },
                           }}
                         >
-                          <SkipPreviousIcon sx={{ fontSize: 20 }} />
+                          <SkipPreviousIcon sx={{ fontSize: 16 }} />
                         </IconButton>
                       </span>
                     </Tooltip>
@@ -4698,14 +4848,14 @@ export default function EntryTicketPage({
                           onClick={startOrResume}
                           aria-label={sessionDone ? 'Lösungsuhr starten' : 'Weiter'}
                           sx={{
-                            width: 40,
-                            height: 40,
+                            width: 28,
+                            height: 28,
                             bgcolor: '#546e7a',
                             color: '#fff',
                             '&:hover': { bgcolor: '#455a64' },
                           }}
                         >
-                          <PlayArrowIcon sx={{ fontSize: 22 }} />
+                          <PlayArrowIcon sx={{ fontSize: 18 }} />
                         </IconButton>
                       </Tooltip>
                     ) : (
@@ -4715,14 +4865,14 @@ export default function EntryTicketPage({
                           onClick={pause}
                           aria-label="Pause"
                           sx={{
-                            width: 40,
-                            height: 40,
+                            width: 28,
+                            height: 28,
                             bgcolor: '#eceff1',
                             color: '#546e7a',
                             '&:hover': { bgcolor: '#cfd8dc' },
                           }}
                         >
-                          <PauseIcon sx={{ fontSize: 20 }} />
+                          <PauseIcon sx={{ fontSize: 16 }} />
                         </IconButton>
                       </Tooltip>
                     )}
@@ -4740,7 +4890,7 @@ export default function EntryTicketPage({
                             '&:hover': { bgcolor: 'rgba(69,90,100,0.08)' },
                           }}
                         >
-                          <SkipNextIcon sx={{ fontSize: 20 }} />
+                          <SkipNextIcon sx={{ fontSize: 16 }} />
                         </IconButton>
                       </span>
                     </Tooltip>
@@ -4935,165 +5085,22 @@ export default function EntryTicketPage({
                       minWidth: 0,
                       height: embeddedPlay
                         ? '100%'
-                        : { xs: 'calc(100vh - 150px)', sm: 'calc(100vh - 130px)' },
+                        : { xs: 'calc(100vh - 58px)', sm: 'calc(100vh - 56px)' },
                       maxHeight: embeddedPlay
                         ? '100%'
-                        : { xs: 'calc(100vh - 150px)', sm: 'calc(100vh - 130px)' },
+                        : { xs: 'calc(100vh - 58px)', sm: 'calc(100vh - 56px)' },
                       flex: embeddedPlay ? 1 : undefined,
                       borderRadius: 2,
-                      px: { xs: 0.5, sm: 0.75 },
-                      py: 0.5,
+                      px: { xs: 0.25, sm: 0.4 },
+                      py: 0,
                       bgcolor: 'transparent',
                       overflow: 'hidden',
                       boxSizing: 'border-box',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: 0.5,
+                      gap: 0,
                     }}
                   >
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: studentReviewMode ? 'flex-end' : 'space-between',
-                        gap: 0.75,
-                        flexWrap: 'wrap',
-                        flexShrink: 0,
-                        px: 0.15,
-                      }}
-                    >
-                      {!studentReviewMode && !laptopCompanion ? (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-                          <SolutionSlideClock
-                            secondsLeft={solutionSecondsLeft}
-                            totalSec={solutionDurationSec}
-                            running={solutionRunning}
-                            onToggle={() => {
-                              if (solutionRunning) pause();
-                              else startOrResume();
-                            }}
-                          />
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
-                            <Tooltip title="Minuten auf der Lösungsfolie">
-                            <TextField
-                              size="small"
-                              type="text"
-                              inputMode="numeric"
-                              value={solutionDurationMinDraft}
-                              onChange={(e) => setSolutionDurationMinDraft(e.target.value.replace(/[^\d]/g, ''))}
-                              onBlur={commitSolutionDurationDraft}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  commitSolutionDurationDraft();
-                                  (e.target as HTMLInputElement).blur();
-                                }
-                                if (e.key === 'ArrowUp') {
-                                  e.preventDefault();
-                                  applySolutionDurationSec(solutionDurationSec + 60);
-                                }
-                                if (e.key === 'ArrowDown') {
-                                  e.preventDefault();
-                                  applySolutionDurationSec(solutionDurationSec - 60);
-                                }
-                              }}
-                              inputProps={{
-                                'aria-label': 'Minuten auf der Lösungsfolie',
-                                inputMode: 'numeric',
-                                pattern: '[0-9]*',
-                              }}
-                              sx={{
-                                width: 44,
-                                '& .MuiInputBase-input': {
-                                  py: 0.45,
-                                  px: 0.5,
-                                  fontSize: '0.85rem',
-                                  fontWeight: 700,
-                                  textAlign: 'center',
-                                  fontVariantNumeric: 'tabular-nums',
-                                  color: '#546e7a',
-                                },
-                                '& .MuiOutlinedInput-root': {
-                                  borderRadius: 2,
-                                  bgcolor: '#fff',
-                                },
-                                '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' },
-                              }}
-                            />
-                            </Tooltip>
-                            <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: '#90a4ae' }}>
-                              Min.
-                            </Typography>
-                          </Box>
-                        </Box>
-                      ) : (
-                        <Box />
-                      )}
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            size="small"
-                            checked={showSolutions}
-                            onChange={(e) => setShowSolutions(e.target.checked)}
-                          />
-                        }
-                        label={
-                          <Typography sx={{ fontSize: '0.65rem', fontWeight: 600, color: '#90a4ae' }}>
-                            Lösungen
-                          </Typography>
-                        }
-                        sx={{ mr: 0, '& .MuiFormControlLabel-label': { ml: 0.2 } }}
-                      />
-                      <Tooltip title="Als Karteikarten drucken">
-                        <span>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            startIcon={<PrintIcon sx={{ fontSize: '0.85rem !important' }} />}
-                            disabled={printLessonsAvailable.length === 0 && activeTasks.length === 0}
-                            onClick={printFlashcards}
-                            sx={{
-                              ...etActionGroupSx['& .MuiButton-root'],
-                              borderRadius: '999px',
-                              borderColor: '#90a4ae',
-                              color: '#546e7a',
-                              px: 1.25,
-                              '&:hover': { borderColor: '#607d8b', bgcolor: 'rgba(96,125,139,0.08)' },
-                            }}
-                          >
-                            Karteikarten
-                          </Button>
-                        </span>
-                      </Tooltip>
-                      {(isTeacher || isClassModerator) && !studentReviewMode && !laptopCompanion && (
-                        <Tooltip title="Erledigt (Enter)">
-                          <span>
-                            <Button
-                              size="small"
-                              variant="contained"
-                              startIcon={<CheckIcon sx={{ fontSize: '0.85rem !important' }} />}
-                              disabled={completeBusy || doneCelebrate}
-                              onClick={() => void markEntryTicketDone()}
-                              sx={{
-                                ...etActionGroupSx['& .MuiButton-root'],
-                                borderRadius: '999px',
-                                bgcolor: '#66bb6a',
-                                borderColor: '#66bb6a',
-                                color: '#fff',
-                                boxShadow: 'none',
-                                px: 1.25,
-                                '&:hover': { bgcolor: '#43a047', boxShadow: 'none' },
-                              }}
-                            >
-                              {completeBusy ? '…' : 'Erledigt'}
-                            </Button>
-                          </span>
-                        </Tooltip>
-                      )}
-                      </Box>
-                    </Box>
-
                     <Box
                       sx={{
                         flex: 1,
@@ -5126,13 +5133,14 @@ export default function EntryTicketPage({
                                   ? '19px minmax(0, 1fr) 22px'
                                   : '19px minmax(0, 1fr)',
                             columnGap: 0.55,
-                            alignItems: 'center',
-                            px: 0.66,
-                            py: 0.2,
+                            alignItems: 'stretch',
+                            px: 0.5,
+                            py: 0.12,
                             borderRadius: 1,
                             bgcolor: 'rgba(255,255,255,0.72)',
                             minWidth: 0,
                             minHeight: 0,
+                            height: '100%',
                             overflow: 'hidden',
                           }}
                         >
@@ -5151,69 +5159,81 @@ export default function EntryTicketPage({
                             sx={{
                               minWidth: 0,
                               minHeight: 0,
+                              height: '100%',
                               overflow: 'hidden',
                               display: 'grid',
-                              gap: 0.05,
-                              alignContent: 'center',
+                              gridTemplateRows:
+                                showSolutions || laptopCompanion ? 'minmax(0, 0.42fr) minmax(0, 0.58fr)' : 'minmax(0, 1fr)',
+                              gap: 0.15,
+                              alignContent: 'stretch',
                             }}
                           >
                             <Box
                               sx={{
-                                fontSize: showSolutions
-                                  ? { xs: '0.82rem', sm: '0.9rem' }
-                                  : overviewCompact
-                                    ? { xs: '0.86rem', sm: '0.96rem' }
-                                    : { xs: '0.98rem', sm: '1.1rem' },
-                                lineHeight: 1.15,
+                                fontSize: overviewFitFont(
+                                  htmlPlainLen(task.prompt),
+                                  finalSlideRows,
+                                  'prompt',
+                                ),
+                                lineHeight: 1.12,
                                 fontWeight: 500,
                                 color: '#455a64',
                                 minWidth: 0,
+                                minHeight: 0,
                                 overflow: 'hidden',
-                                whiteSpace: 'pre-line',
+                                whiteSpace: 'pre-wrap',
                                 ...richTextSx,
+                                ...overviewRichFitSx,
                                 '& img': {
                                   display: 'block',
-                                  maxWidth: '100%',
-                                  height: 'auto',
-                                  maxHeight: showSolutions ? 38 : overviewCompact ? 48 : 67,
-                                  width: 'auto',
-                                  my: 0.15,
+                                  maxWidth: '100% !important',
+                                  height: 'auto !important',
+                                  maxHeight: showSolutions || laptopCompanion ? '1.35em !important' : '2.1em !important',
+                                  width: 'auto !important',
+                                  my: 0.05,
                                   borderRadius: 0.5,
                                 },
                               }}
                             >
-                              <EntryTicketRichHtml value={task.prompt} />
+                              <EntryTicketRichHtml compact value={task.prompt} />
                             </Box>
                             {showSolutions || laptopCompanion ? (
                               <Box
                                 sx={{
-                                  fontSize: { xs: '1.26rem', sm: '1.5rem' },
-                                  lineHeight: 1.2,
+                                  fontSize: overviewFitFont(
+                                    htmlPlainLen(task.solution || ''),
+                                    finalSlideRows,
+                                    'solution',
+                                  ),
+                                  lineHeight: 1.15,
                                   fontWeight: 800,
                                   color: '#1b5e20',
                                   minWidth: 0,
+                                  minHeight: 0,
                                   overflow: 'hidden',
-                                  mt: 0.2,
-                                  px: 0.55,
-                                  py: 0.3,
-                                  borderRadius: 1,
+                                  mt: 0,
+                                  px: 0.45,
+                                  py: 0.15,
+                                  borderRadius: 0.75,
                                   border: '2px solid #66bb6a',
                                   bgcolor: '#e8f5e9',
                                   boxSizing: 'border-box',
+                                  whiteSpace: 'pre-wrap',
                                   ...richTextSx,
+                                  ...overviewRichFitSx,
                                   '& img': {
                                     display: 'inline-block',
-                                    maxHeight: 43,
-                                    maxWidth: 96,
-                                    width: 'auto',
-                                    height: 'auto',
+                                    maxHeight: '1.25em !important',
+                                    maxWidth: '4.2em !important',
+                                    width: 'auto !important',
+                                    height: 'auto !important',
                                     verticalAlign: 'middle',
                                     my: 0,
                                     borderRadius: 0.5,
                                   },
                                 }}
                               >
-                                <EntryTicketRichHtml value={task.solution || '—'} />
+                                <EntryTicketRichHtml compact value={task.solution || '—'} />
                               </Box>
                             ) : null}
                           </Box>

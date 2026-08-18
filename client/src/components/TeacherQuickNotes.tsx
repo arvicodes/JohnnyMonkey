@@ -32,6 +32,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
 import { DialogCloseIconButton } from './ui/dialog-close-icon-button';
 import { handlePresentationListShortcutKey, handlePresentationTabKey } from '../lib/presentationRichText';
+import { strokeSmoothFreehand } from '../lib/presentationDrawTools';
 import { apiGetSafe, apiPutSafe, apiPutSafeAwait } from '../lib/api';
 import type { EmojiClickData } from 'emoji-picker-react';
 import { EmojiStyle } from 'emoji-picker-react';
@@ -57,6 +58,8 @@ type ScratchPadData = {
 };
 
 const ERASER_RADIUS = 16;
+const MIN_INK_DIST_SQ = 0.45 * 0.45;
+const INK_COMMIT_IDLE_MS = 420;
 const MAX_HISTORY = 40;
 const MAX_IMAGE_WIDTH = 1200;
 const MAX_IMAGE_CHARS = 900_000;
@@ -794,6 +797,11 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const colorRef = useRef(color);
   const inkPointerIdRef = useRef<number | null>(null);
+  const lastInkPtRef = useRef<InkPoint | null>(null);
+  const lastSmoothMidRef = useRef<InkPoint | null>(null);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const persistInkTimerRef = useRef<number | null>(null);
+  const canvasPassThroughRef = useRef(false);
 
   useEffect(() => {
     pagesRef.current = pages;
@@ -1013,6 +1021,10 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     if (textHistoryTimerRef.current != null) {
       window.clearTimeout(textHistoryTimerRef.current);
       textHistoryTimerRef.current = null;
+    }
+    if (persistInkTimerRef.current != null) {
+      window.clearTimeout(persistInkTimerRef.current);
+      persistInkTimerRef.current = null;
     }
     const nextPages = flushCurrentPage();
     const payload = savePad(
@@ -1266,25 +1278,65 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     void insertImagesFromFiles(files);
   };
 
+  const applyInkStyle = (ctx: CanvasRenderingContext2D, stroke: InkStroke) => {
+    ctx.strokeStyle = stroke.color;
+    ctx.fillStyle = stroke.color;
+    ctx.lineWidth = stroke.width;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.miterLimit = 1.5;
+    ctx.globalCompositeOperation = 'source-over';
+  };
+
+  const applyCanvasTransform = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    const cssW = Math.max(1, rect?.width || canvas.clientWidth || 1);
+    const cssH = Math.max(1, rect?.height || canvas.clientHeight || 1);
+    ctx.setTransform(canvas.width / cssW, 0, 0, canvas.height / cssH, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+  };
+
+  const ensureNotesCtx = (): CanvasRenderingContext2D | null => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    if (!ctxRef.current) {
+      ctxRef.current = canvas.getContext('2d', {
+        alpha: true,
+        desynchronized: true,
+      }) as CanvasRenderingContext2D | null;
+    }
+    const ctx = ctxRef.current;
+    if (ctx) applyCanvasTransform(ctx, canvas);
+    return ctx;
+  };
+
+  const drawInkStroke = (ctx: CanvasRenderingContext2D, stroke: InkStroke) => {
+    if (stroke.points.length === 1) {
+      applyInkStyle(ctx, stroke);
+      const p = stroke.points[0];
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(0.6, stroke.width / 2), 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
+    if (stroke.points.length < 2) return;
+    applyInkStyle(ctx, stroke);
+    strokeSmoothFreehand(ctx, stroke.points);
+  };
+
   const redrawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (const stroke of inkRef.current) {
-      if (stroke.points.length < 2) continue;
-      ctx.strokeStyle = stroke.color;
-      ctx.lineWidth = stroke.width;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.beginPath();
-      ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-      for (let i = 1; i < stroke.points.length; i++) {
-        ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
-      }
-      ctx.stroke();
-    }
+    const ctx = ensureNotesCtx();
+    if (!canvas || !ctx) return;
+    const rect = containerRef.current?.getBoundingClientRect();
+    const cssW = Math.max(1, rect?.width || canvas.clientWidth || 1);
+    const cssH = Math.max(1, rect?.height || canvas.clientHeight || 1);
+    ctx.clearRect(0, 0, cssW, cssH);
+    for (const stroke of inkRef.current) drawInkStroke(ctx, stroke);
+    if (currentStrokeRef.current) drawInkStroke(ctx, currentStrokeRef.current);
+    // Handler/Zeichnen lesen nur Refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const resizeCanvas = useCallback(() => {
@@ -1292,23 +1344,43 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     const container = containerRef.current;
     if (!canvas || !container) return;
     const rect = container.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.max(1, Math.floor(rect.width * dpr));
-    canvas.height = Math.max(1, Math.floor(rect.height * dpr));
-    canvas.style.width = `${rect.width}px`;
-    canvas.style.height = `${rect.height}px`;
-    const ctx = canvas.getContext('2d');
-    if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (rect.width < 2 || rect.height < 2) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    const bufW = Math.max(1, Math.round(rect.width * dpr));
+    const bufH = Math.max(1, Math.round(rect.height * dpr));
+    if (canvas.width !== bufW || canvas.height !== bufH) {
+      canvas.width = bufW;
+      canvas.height = bufH;
+      ctxRef.current = null;
+    }
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
     redrawCanvas();
   }, [redrawCanvas]);
 
   useEffect(() => {
     if (!open) return;
-    const id = window.requestAnimationFrame(() => resizeCanvas());
+    let cancelled = false;
+    let ro: ResizeObserver | null = null;
     const onResize = () => resizeCanvas();
     window.addEventListener('resize', onResize);
+    const tryObserve = () => {
+      if (cancelled) return;
+      const host = containerRef.current;
+      if (!host) {
+        window.requestAnimationFrame(tryObserve);
+        return;
+      }
+      resizeCanvas();
+      if (typeof ResizeObserver !== 'undefined') {
+        ro = new ResizeObserver(() => resizeCanvas());
+        ro.observe(host);
+      }
+    };
+    tryObserve();
     return () => {
-      window.cancelAnimationFrame(id);
+      cancelled = true;
+      ro?.disconnect();
       window.removeEventListener('resize', onResize);
     };
   }, [open, pageIndex, resizeCanvas]);
@@ -1332,11 +1404,70 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   }, [open, text, pageIndex]);
 
   const pointFromClient = (clientX: number, clientY: number): InkPoint => {
-    const canvas = canvasRef.current;
-    const host = containerRef.current;
-    const rect = (canvas || host)?.getBoundingClientRect();
-    if (!rect) return { x: clientX, y: clientY };
+    const host = containerRef.current || canvasRef.current;
+    const rect = host?.getBoundingClientRect();
+    if (!rect || rect.width < 1 || rect.height < 1) return { x: clientX, y: clientY };
     return { x: clientX - rect.left, y: clientY - rect.top };
+  };
+
+  const scheduleInkCommit = (nextInk: InkStroke[]) => {
+    inkRef.current = nextInk;
+    if (persistInkTimerRef.current != null) window.clearTimeout(persistInkTimerRef.current);
+    persistInkTimerRef.current = window.setTimeout(() => {
+      persistInkTimerRef.current = null;
+      setInk(nextInk);
+      const nextPages = pagesRef.current.map((p, i) =>
+        i === pageIndexRef.current ? { ...p, text: textRef.current, ink: nextInk } : p
+      );
+      pagesRef.current = nextPages;
+      setPages(nextPages);
+      persistBook(nextPages, pageIndexRef.current);
+    }, INK_COMMIT_IDLE_MS);
+  };
+
+  const restoreCanvasPointerEvents = () => {
+    canvasPassThroughRef.current = false;
+    const canvas = canvasRef.current;
+    if (canvas) canvas.style.pointerEvents = 'auto';
+  };
+
+  const passThroughToEditor = (e: PointerEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvasPassThroughRef.current = true;
+    canvas.style.pointerEvents = 'none';
+    const below = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+    const restore = () => {
+      restoreCanvasPointerEvents();
+      window.removeEventListener('pointerup', restore, true);
+      window.removeEventListener('pointercancel', restore, true);
+    };
+    window.addEventListener('pointerup', restore, true);
+    window.addEventListener('pointercancel', restore, true);
+    if (below && below !== canvas) {
+      try {
+        below.dispatchEvent(
+          new PointerEvent('pointerdown', {
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            pointerId: e.pointerId,
+            pointerType: e.pointerType,
+            clientX: e.clientX,
+            clientY: e.clientY,
+            screenX: e.screenX,
+            screenY: e.screenY,
+            button: e.button,
+            buttons: e.buttons,
+            isPrimary: e.isPrimary,
+            pressure: e.pressure,
+          })
+        );
+      } catch {
+        /* ignore */
+      }
+      if (typeof below.focus === 'function') below.focus();
+    }
   };
 
   /** Wie auf den Folien: Apple Pencil immer Tinte; Maus nur im Stift/Radierer; Finger = Palm-Rejection. */
@@ -1346,60 +1477,66 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     return (m === 'pen' || m === 'eraser') && pointerType === 'mouse';
   };
 
+  const strokeInkSegment = (from: InkPoint, to: InkPoint) => {
+    const stroke = currentStrokeRef.current;
+    const ctx = ensureNotesCtx();
+    if (!stroke || !ctx) return;
+    applyInkStyle(ctx, stroke);
+    const mid = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
+    const start = lastSmoothMidRef.current ?? from;
+    ctx.beginPath();
+    ctx.moveTo(start.x, start.y);
+    ctx.quadraticCurveTo(from.x, from.y, mid.x, mid.y);
+    ctx.stroke();
+    lastSmoothMidRef.current = mid;
+  };
+
   const appendInkPoint = (pt: InkPoint) => {
     const stroke = currentStrokeRef.current;
     if (!stroke) return;
-    const last = stroke.points[stroke.points.length - 1];
+    const last = lastInkPtRef.current ?? stroke.points[stroke.points.length - 1];
     if (last) {
       const dx = pt.x - last.x;
       const dy = pt.y - last.y;
-      if (dx * dx + dy * dy < 0.35 * 0.35) return;
+      if (dx * dx + dy * dy < MIN_INK_DIST_SQ) return;
     }
     stroke.points.push(pt);
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (!ctx || stroke.points.length < 2) return;
-    const a = stroke.points[stroke.points.length - 2];
-    const b = stroke.points[stroke.points.length - 1];
-    ctx.strokeStyle = stroke.color;
-    ctx.lineWidth = stroke.width;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
+    if (last) strokeInkSegment(last, pt);
+    lastInkPtRef.current = pt;
   };
 
   const eraseAt = (pt: InkPoint) => {
     const next = inkRef.current.filter((s) => !strokeHitsPoint(s, pt, ERASER_RADIUS));
     if (next.length === inkRef.current.length) return;
-    inkRef.current = next;
-    setInk(next);
-    const nextPages = pagesRef.current.map((p, i) =>
-      i === pageIndexRef.current ? { ...p, text: textRef.current, ink: next } : p
-    );
-    pagesRef.current = nextPages;
-    setPages(nextPages);
-    persistBook(nextPages, pageIndexRef.current);
+    scheduleInkCommit(next);
     redrawCanvas();
   };
 
   const onInkPointerDown = (e: PointerEvent) => {
-    if (e.pointerType === 'touch' && (modeRef.current === 'pen' || modeRef.current === 'eraser')) {
+    if (canvasPassThroughRef.current) return;
+    if (e.pointerType === 'touch') {
+      if (modeRef.current === 'text') {
+        passThroughToEditor(e);
+        return;
+      }
       e.preventDefault();
       return;
     }
-    if (!shouldInkPointer(e.pointerType)) return;
+    if (!shouldInkPointer(e.pointerType)) {
+      if (modeRef.current === 'text' && (e.pointerType === 'mouse' || e.pointerType === 'touch')) {
+        passThroughToEditor(e);
+      }
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
-    if (e.pointerType === 'pen') {
-      editorRef.current?.blur();
-    }
+    editorRef.current?.blur();
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const host = containerRef.current;
+    const captureEl = canvas || host;
+    if (!captureEl) return;
     try {
-      canvas.setPointerCapture(e.pointerId);
+      captureEl.setPointerCapture(e.pointerId);
     } catch {
       /* ignore */
     }
@@ -1413,15 +1550,18 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
       return;
     }
     erasingRef.current = false;
+    const pressure = e.pressure > 0 ? e.pressure : 0.5;
     const stroke: InkStroke = {
       points: [pt],
       color: colorRef.current,
-      width: e.pointerType === 'pen' ? Math.max(1.5, Math.min(4, (e.pressure || 0.5) * 4)) : 2.25,
+      width: e.pointerType === 'pen' ? Math.max(2, Math.min(4.2, pressure * 4.2)) : 3,
     };
     currentStrokeRef.current = stroke;
-    const ctx = canvas.getContext('2d');
+    lastInkPtRef.current = pt;
+    lastSmoothMidRef.current = pt;
+    const ctx = ensureNotesCtx();
     if (ctx) {
-      ctx.fillStyle = stroke.color;
+      applyInkStyle(ctx, stroke);
       ctx.beginPath();
       ctx.arc(pt.x, pt.y, Math.max(0.6, stroke.width / 2), 0, Math.PI * 2);
       ctx.fill();
@@ -1429,6 +1569,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   };
 
   const onInkPointerMove = (e: PointerEvent) => {
+    if (canvasPassThroughRef.current) return;
     if (inkPointerIdRef.current != null && e.pointerId !== inkPointerIdRef.current) return;
     if (e.pointerType === 'touch' && (modeRef.current === 'pen' || modeRef.current === 'eraser')) {
       e.preventDefault();
@@ -1454,13 +1595,20 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   };
 
   const endInkStroke = (e: PointerEvent) => {
+    if (canvasPassThroughRef.current && e.type !== 'pointercancel') {
+      restoreCanvasPointerEvents();
+    }
     if (inkPointerIdRef.current != null && e.pointerId !== inkPointerIdRef.current) return;
     if (!drawingRef.current) return;
     drawingRef.current = false;
     inkPointerIdRef.current = null;
+    lastInkPtRef.current = null;
+    lastSmoothMidRef.current = null;
     const canvas = canvasRef.current;
+    const host = containerRef.current;
     try {
       canvas?.releasePointerCapture(e.pointerId);
+      host?.releasePointerCapture(e.pointerId);
     } catch {
       /* ignore */
     }
@@ -1471,47 +1619,66 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     }
     const stroke = currentStrokeRef.current;
     currentStrokeRef.current = null;
-    if (!stroke || stroke.points.length < 2) return;
+    if (!stroke || stroke.points.length < 1) return;
+    if (stroke.points.length === 1) {
+      stroke.points.push({ x: stroke.points[0].x + 0.01, y: stroke.points[0].y });
+    }
     pushHistorySnapshot();
-    const nextInk = [...inkRef.current, stroke];
-    setInk(nextInk);
-    inkRef.current = nextInk;
-    const nextPages = pagesRef.current.map((p, i) =>
-      i === pageIndexRef.current ? { ...p, text: textRef.current, ink: nextInk } : p
-    );
-    pagesRef.current = nextPages;
-    setPages(nextPages);
-    persistBook(nextPages, pageIndexRef.current);
+    scheduleInkCommit([...inkRef.current, stroke]);
+    redrawCanvas();
   };
 
   useEffect(() => {
     if (!open) return;
-    const host = containerRef.current;
-    if (!host) return;
-    const opts: AddEventListenerOptions = { capture: true, passive: false };
-    host.addEventListener('pointerdown', onInkPointerDown, opts);
-    host.addEventListener('pointermove', onInkPointerMove, opts);
-    host.addEventListener('pointerup', endInkStroke, opts);
-    host.addEventListener('pointercancel', endInkStroke, opts);
-    const blockPenTouch = (ev: TouchEvent) => {
-      if (modeRef.current !== 'pen' && modeRef.current !== 'eraser') return;
-      ev.preventDefault();
+    let cancelled = false;
+    let unbind: (() => void) | null = null;
+
+    const tryBind = () => {
+      if (cancelled) return;
+      const canvas = canvasRef.current;
+      const host = containerRef.current;
+      if (!canvas || !host) {
+        window.requestAnimationFrame(tryBind);
+        return;
+      }
+      resizeCanvas();
+      const listenOpts: AddEventListenerOptions = { passive: false };
+      canvas.addEventListener('pointerdown', onInkPointerDown, listenOpts);
+      canvas.addEventListener('pointermove', onInkPointerMove, listenOpts);
+      canvas.addEventListener('pointerup', endInkStroke, listenOpts);
+      canvas.addEventListener('pointercancel', endInkStroke, listenOpts);
+      const blockStylusTouch = (ev: TouchEvent) => {
+        const touches = Array.from(ev.touches) as Array<Touch & { touchType?: string }>;
+        const stylus = touches.some((t) => t.touchType === 'stylus');
+        if (stylus || modeRef.current === 'pen' || modeRef.current === 'eraser') {
+          ev.preventDefault();
+        }
+      };
+      canvas.addEventListener('touchstart', blockStylusTouch, listenOpts);
+      canvas.addEventListener('touchmove', blockStylusTouch, listenOpts);
+      unbind = () => {
+        canvas.removeEventListener('pointerdown', onInkPointerDown);
+        canvas.removeEventListener('pointermove', onInkPointerMove);
+        canvas.removeEventListener('pointerup', endInkStroke);
+        canvas.removeEventListener('pointercancel', endInkStroke);
+        canvas.removeEventListener('touchstart', blockStylusTouch);
+        canvas.removeEventListener('touchmove', blockStylusTouch);
+      };
     };
-    host.addEventListener('touchstart', blockPenTouch, opts);
-    host.addEventListener('touchmove', blockPenTouch, opts);
+    tryBind();
     return () => {
-      host.removeEventListener('pointerdown', onInkPointerDown, opts);
-      host.removeEventListener('pointermove', onInkPointerMove, opts);
-      host.removeEventListener('pointerup', endInkStroke, opts);
-      host.removeEventListener('pointercancel', endInkStroke, opts);
-      host.removeEventListener('touchstart', blockPenTouch, opts);
-      host.removeEventListener('touchmove', blockPenTouch, opts);
+      cancelled = true;
+      unbind?.();
     };
     // Native Listener wie auf den Folien — Handler lesen Refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const clearInk = () => {
+    if (persistInkTimerRef.current != null) {
+      window.clearTimeout(persistInkTimerRef.current);
+      persistInkTimerRef.current = null;
+    }
     pushHistorySnapshot();
     setInk([]);
     inkRef.current = [];
@@ -1850,6 +2017,8 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
             overflow: 'hidden',
             minHeight: '90vh',
             maxHeight: '96vh',
+            display: 'flex',
+            flexDirection: 'column',
             boxShadow: '0 12px 40px rgba(0,0,0,0.28)',
           },
         }}
@@ -2037,6 +2206,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                 <IconButton
                   size="small"
                   onClick={() => {
+                    modeRef.current = 'text';
                     setMode('text');
                     window.requestAnimationFrame(() => editorRef.current?.focus());
                   }}
@@ -2045,15 +2215,25 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                   <KeyboardIcon sx={{ fontSize: 16, color: '#f57f17' }} />
                 </IconButton>
               </Tooltip>
-              <Tooltip title="Stift">
-                <IconButton size="small" onClick={() => setMode('pen')} sx={fmtBtnSx(mode === 'pen')}>
+              <Tooltip title="Stift (Apple Pencil schreibt immer)">
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    modeRef.current = 'pen';
+                    setMode('pen');
+                  }}
+                  sx={fmtBtnSx(mode === 'pen')}
+                >
                   <EditIcon sx={{ fontSize: 16, color: '#f57f17' }} />
                 </IconButton>
               </Tooltip>
               <Tooltip title="Radierer">
                 <IconButton
                   size="small"
-                  onClick={() => setMode('eraser')}
+                  onClick={() => {
+                    modeRef.current = 'eraser';
+                    setMode('eraser');
+                  }}
                   sx={fmtBtnSx(mode === 'eraser')}
                 >
                   <AutoFixOffIcon sx={{ fontSize: 16, color: '#f57f17' }} />
@@ -2262,7 +2442,9 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
             </IconButton>
           </Tooltip>
         </Box>
-        <DialogContent sx={{ p: 0, bgcolor: '#fafafa', display: 'flex', flexDirection: 'column', flex: 1 }}>
+        <DialogContent
+          sx={{ p: 0, bgcolor: '#fafafa', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}
+        >
           <Box
             ref={containerRef}
             sx={{
@@ -2275,6 +2457,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
               border: '1px solid #eceff1',
               boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.8)',
               overflow: 'hidden',
+              touchAction: 'none',
             }}
           >
             <Box
@@ -2404,40 +2587,40 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                 },
               }}
             />
-            <Box
-              component="canvas"
+            <canvas
               ref={canvasRef}
-              sx={{
+              style={{
                 position: 'absolute',
                 inset: 0,
                 width: '100%',
                 height: '100%',
                 zIndex: 2,
                 touchAction: 'none',
-                cursor:
-                  mode === 'eraser' ? 'cell' : mode === 'pen' ? 'crosshair' : 'text',
-                pointerEvents: mode === 'pen' || mode === 'eraser' ? 'auto' : 'none',
+                cursor: mode === 'eraser' ? 'cell' : mode === 'pen' ? 'crosshair' : 'text',
+                pointerEvents: 'auto',
                 WebkitUserSelect: 'none',
                 userSelect: 'none',
                 WebkitTouchCallout: 'none',
               }}
             />
           </Box>
-          {(mode === 'eraser' || mode === 'pen') && (
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                px: 2,
-                pb: 1,
-                pt: 0.15,
-              }}
-            >
-              <Typography sx={{ fontSize: '0.68rem', color: '#90a4ae' }}>
-                {mode === 'eraser' ? 'Radierer · ⌘Z rückgängig' : 'Stift · ⌘Z rückgängig'}
-              </Typography>
-            </Box>
-          )}
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              px: 2,
+              pb: 1,
+              pt: 0.15,
+            }}
+          >
+            <Typography sx={{ fontSize: '0.68rem', color: '#90a4ae' }}>
+              {mode === 'eraser'
+                ? 'Radierer · ⌘Z rückgängig'
+                : mode === 'pen'
+                  ? 'Stift · rund wie auf den Folien · ⌘Z rückgängig'
+                  : 'Apple Pencil schreibt direkt · Finger/Maus zum Tippen'}
+            </Typography>
+          </Box>
         </DialogContent>
       </Dialog>
     </>

@@ -18,13 +18,26 @@ import {
 import {
   ShapeHandle,
   drawShapeSelection,
-  findShapeAtPoint,
   getBoxFrame,
   moveShape,
   pickShapeHandle,
   resizeShapeWithHandle,
   rotateShapeByDelta,
 } from '../../lib/presentationShapeTransform';
+import {
+  Bounds,
+  BoundsHandle,
+  drawBoundsSelection,
+  drawLassoPath,
+  findStrokeAtPoint,
+  getStrokesBounds,
+  lassoIsMeaningful,
+  moveStroke,
+  pickBoundsHandle,
+  pointInBounds,
+  scaleStrokesFromHandle,
+  strokeHitsLasso,
+} from '../../lib/presentationInkSelect';
 
 interface PresentationDrawOverlayProps {
   strokes: PresentationStroke[];
@@ -37,7 +50,9 @@ interface PresentationDrawOverlayProps {
   strokeColor: string;
   lineWidth?: number;
   selectedStrokeId?: string | null;
+  selectedStrokeIds?: string[];
   onSelectedStrokeIdChange?: (id: string | null) => void;
+  onSelectedStrokeIdsChange?: (ids: string[]) => void;
   markerOpacity?: number;
   scale?: number;
 }
@@ -67,6 +82,18 @@ type ManipState =
       id: string;
       handle: ShapeHandle;
       snapshot: PresentationStroke;
+    }
+  | { kind: 'lasso'; points: { x: number; y: number }[] }
+  | {
+      kind: 'group-move';
+      lastPt: { x: number; y: number };
+      snapshots: PresentationStroke[];
+    }
+  | {
+      kind: 'group-resize';
+      handle: Exclude<BoundsHandle, 'move'>;
+      startBounds: Bounds;
+      snapshots: PresentationStroke[];
     };
 
 type CanvasRect = { left: number; top: number; width: number; height: number };
@@ -95,7 +122,26 @@ function applyFreehandStyle(ctx: CanvasRenderingContext2D, stroke: PresentationS
   ctx.lineJoin = 'round';
 }
 
-/** Stift/Maus zeichnen; Finger/Handfläche bleiben für Pinch frei (Palm-Rejection). */
+/** UI über der Folie — Stift soll dort Werkzeuge wählen, nicht zeichnen. */
+const PRES_CHROME_HIT =
+  '[data-pres-toolbar], [data-pres-zoom-controls], [data-pres-back], [data-pres-chrome]';
+
+function elementUnderCanvas(canvas: HTMLCanvasElement, clientX: number, clientY: number): HTMLElement | null {
+  const prev = canvas.style.pointerEvents;
+  canvas.style.pointerEvents = 'none';
+  const el = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
+  canvas.style.pointerEvents = prev;
+  return el;
+}
+
+function isPresChrome(el: HTMLElement | null): boolean {
+  return !!el?.closest?.(PRES_CHROME_HIT);
+}
+
+function clickableInChrome(el: HTMLElement | null): HTMLElement | null {
+  if (!el || !isPresChrome(el)) return null;
+  return (el.closest('button, [role="button"], a') as HTMLElement | null) || el;
+}
 function isInkPointer(tool: PresentationDrawTool, pointerType: string): boolean {
   if (tool === 'pen' || tool === 'marker') {
     return pointerType === 'pen' || pointerType === 'mouse';
@@ -113,7 +159,9 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   strokeColor,
   lineWidth,
   selectedStrokeId = null,
+  selectedStrokeIds,
   onSelectedStrokeIdChange,
+  onSelectedStrokeIdsChange,
   markerOpacity = DEFAULT_MARKER_OPACITY,
   scale = 1,
 }) => {
@@ -141,7 +189,12 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   const lineWidthRef = useRef(lineWidth);
   const markerOpacityRef = useRef(markerOpacity);
   const selectedStrokeIdRef = useRef(selectedStrokeId);
+  const selectedStrokeIdsRef = useRef<string[]>(
+    selectedStrokeIds ?? (selectedStrokeId ? [selectedStrokeId] : [])
+  );
   const onSelectedStrokeIdChangeRef = useRef(onSelectedStrokeIdChange);
+  const onSelectedStrokeIdsChangeRef = useRef(onSelectedStrokeIdsChange);
+  const chromeTapRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
 
   onStrokesChangeRef.current = onStrokesChange;
   toolRef.current = tool;
@@ -151,7 +204,15 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   lineWidthRef.current = lineWidth;
   markerOpacityRef.current = markerOpacity;
   selectedStrokeIdRef.current = selectedStrokeId;
+  selectedStrokeIdsRef.current = selectedStrokeIds ?? (selectedStrokeId ? [selectedStrokeId] : []);
   onSelectedStrokeIdChangeRef.current = onSelectedStrokeIdChange;
+  onSelectedStrokeIdsChangeRef.current = onSelectedStrokeIdsChange;
+
+  const emitSelection = (ids: string[]) => {
+    selectedStrokeIdsRef.current = ids;
+    onSelectedStrokeIdsChangeRef.current?.(ids);
+    onSelectedStrokeIdChangeRef.current?.(ids[0] ?? null);
+  };
 
   const applySlideTransform = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
     ctx.setTransform(
@@ -249,11 +310,18 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     for (const s of base) drawPresentationStroke(ctx, s);
     if (draft) drawPresentationStroke(ctx, draft);
 
-    const selId = selectedStrokeIdRef.current;
-    if (toolRef.current === 'select' && selId && enabledRef.current && !readOnlyRef.current) {
-      const selected = (draft && draft.id === selId ? draft : null) ?? base.find((s) => s.id === selId);
-      if (selected) drawShapeSelection(ctx, selected);
+    const selIds = selectedStrokeIdsRef.current;
+    if (toolRef.current === 'select' && selIds.length > 0 && enabledRef.current && !readOnlyRef.current) {
+      const selected = base.filter((s) => selIds.includes(s.id));
+      if (selected.length === 1 && selected[0].shape) {
+        drawShapeSelection(ctx, selected[0]);
+      } else {
+        const bounds = getStrokesBounds(selected);
+        if (bounds) drawBoundsSelection(ctx, bounds);
+      }
     }
+    const lasso = manipRef.current?.kind === 'lasso' ? manipRef.current.points : null;
+    if (lasso && lasso.length > 1) drawLassoPath(ctx, lasso);
 
     if (
       toolRef.current === 'eraser' &&
@@ -321,15 +389,16 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   }, [strokes, enabled, redraw]);
 
   useEffect(() => {
-    if (!onSelectedStrokeIdChange) return;
-    if (tool !== 'select' && selectedStrokeId != null) {
-      onSelectedStrokeIdChange(null);
+    if (!onSelectedStrokeIdsChange && !onSelectedStrokeIdChange) return;
+    if (tool !== 'select' && selectedStrokeIdsRef.current.length > 0) {
+      emitSelection([]);
     }
-  }, [tool, selectedStrokeId, onSelectedStrokeIdChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tool, selectedStrokeId, selectedStrokeIds, onSelectedStrokeIdChange, onSelectedStrokeIdsChange]);
 
   useEffect(() => {
     redraw();
-  }, [tool, selectedStrokeId, redraw]);
+  }, [tool, selectedStrokeId, selectedStrokeIds, redraw]);
 
   useLayoutEffect(() => {
     syncCanvasBuffer();
@@ -366,6 +435,9 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
 
   const replaceStroke = (list: PresentationStroke[], id: string, next: PresentationStroke) =>
     list.map((s) => (s.id === id ? next : s));
+
+  const replaceStrokesById = (list: PresentationStroke[], nextById: Map<string, PresentationStroke>) =>
+    list.map((s) => nextById.get(s.id) ?? s);
 
   const currentLineWidth = () => toolLineWidth(toolRef.current, lineWidthRef.current);
 
@@ -490,8 +562,24 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   const onPointerDown = (e: PointerEvent) => {
     if (readOnlyRef.current || !enabledRef.current) return;
     const t = toolRef.current;
+    const canvas = e.currentTarget as HTMLCanvasElement;
 
-    if (e.pointerType === 'touch' && (t === 'pen' || t === 'marker')) {
+    // Apple Pencil trifft oft das Canvas statt der Leiste — dann Werkzeug-Klick, nicht Tinte.
+    const overChrome = clickableInChrome(elementUnderCanvas(canvas, e.clientX, e.clientY));
+    if (overChrome) {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        canvas.setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      chromeTapRef.current = { pointerId: e.pointerId, x: e.clientX, y: e.clientY };
+      inkPointerIdRef.current = e.pointerId;
+      return;
+    }
+
+    if (e.pointerType === 'touch' && (t === 'pen' || t === 'marker' || !e.isPrimary)) {
       e.preventDefault();
       return;
     }
@@ -500,13 +588,76 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
 
     refreshRect();
     const pt = clientToCanvasPoint(e.clientX, e.clientY);
-    const canvas = e.currentTarget as HTMLCanvasElement;
 
     if (t === 'select') {
-      const target = findShapeAtPoint(strokesRef.current, pt);
-      if (!target) {
-        onSelectedStrokeIdChangeRef.current?.(null);
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        canvas.setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      inkPointerIdRef.current = e.pointerId;
+      inkIsPenRef.current = e.pointerType === 'pen' || e.pointerType === 'mouse';
+
+      const ids = selectedStrokeIdsRef.current;
+      const selected = strokesRef.current.filter((s) => ids.includes(s.id));
+      const bounds = getStrokesBounds(selected);
+
+      if (bounds && inkIsPenRef.current) {
+        const bh = pickBoundsHandle(bounds, pt);
+        if (bh && bh !== 'move') {
+          manipRef.current = {
+            kind: 'group-resize',
+            handle: bh,
+            startBounds: bounds,
+            snapshots: selected,
+          };
+          previewStrokesRef.current = [...strokesRef.current];
+          redraw();
+          return;
+        }
+        if (selected.length === 1 && selected[0].shape) {
+          const sh = pickShapeHandle(selected[0], pt);
+          if (sh === 'rotate') {
+            manipRef.current = beginRotate(selected[0], pt);
+            previewStrokesRef.current = [...strokesRef.current];
+            redraw();
+            return;
+          }
+          if (sh && sh !== 'move') {
+            manipRef.current = { kind: 'resize', id: selected[0].id, handle: sh, snapshot: selected[0] };
+            previewStrokesRef.current = [...strokesRef.current];
+            redraw();
+            return;
+          }
+        }
+        if (bh === 'move' || pointInBounds(pt, bounds, 4)) {
+          manipRef.current = { kind: 'group-move', lastPt: pt, snapshots: selected };
+          previewStrokesRef.current = [...strokesRef.current];
+          redraw();
+          return;
+        }
+      }
+
+      const hit = findStrokeAtPoint(strokesRef.current, pt);
+      if (hit && inkIsPenRef.current) {
+        const nextIds = ids.includes(hit.id) ? ids : [hit.id];
+        emitSelection(nextIds);
+        const snaps = strokesRef.current.filter((s) => nextIds.includes(s.id));
+        manipRef.current = { kind: 'group-move', lastPt: pt, snapshots: snaps };
+        previewStrokesRef.current = [...strokesRef.current];
         redraw();
+        return;
+      }
+
+      if (e.pointerType === 'touch') {
+        inkPointerIdRef.current = null;
+        try {
+          canvas.releasePointerCapture(e.pointerId);
+        } catch {
+          /* ignore */
+        }
         const prev = canvas.style.pointerEvents;
         canvas.style.pointerEvents = 'none';
         const below = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
@@ -533,25 +684,10 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
         }
         return;
       }
-      e.preventDefault();
-      e.stopPropagation();
-      try {
-        canvas.setPointerCapture(e.pointerId);
-      } catch {
-        /* ignore */
-      }
-      inkPointerIdRef.current = e.pointerId;
-      inkIsPenRef.current = e.pointerType === 'pen' || e.pointerType === 'mouse';
-      onSelectedStrokeIdChangeRef.current?.(target.id);
-      const handle = pickShapeHandle(target, pt);
-      if (!handle || handle === 'move') {
-        manipRef.current = { kind: 'move', id: target.id, lastPt: pt, snapshot: target };
-      } else if (handle === 'rotate') {
-        manipRef.current = beginRotate(target, pt);
-      } else {
-        manipRef.current = { kind: 'resize', id: target.id, handle, snapshot: target };
-      }
-      previewStrokesRef.current = [...strokesRef.current];
+
+      // Stift/Maus auf leerer Fläche = Lasso
+      emitSelection([]);
+      manipRef.current = { kind: 'lasso', points: [pt] };
       redraw();
       return;
     }
@@ -597,6 +733,8 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   const onPointerMove = (e: PointerEvent) => {
     if (readOnlyRef.current || !enabledRef.current) return;
     const t = toolRef.current;
+    const chrome = chromeTapRef.current;
+    if (chrome && e.pointerId === chrome.pointerId) return;
 
     if (e.pointerType === 'touch' && (t === 'pen' || t === 'marker')) {
       e.preventDefault();
@@ -605,24 +743,49 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
 
     if (inkPointerIdRef.current != null && e.pointerId !== inkPointerIdRef.current) return;
 
-    if (t === 'select' && manipRef.current && previewStrokesRef.current) {
+    if (t === 'select' && manipRef.current) {
       const pt = clientToCanvasPoint(e.clientX, e.clientY);
       const m = manipRef.current;
-      let next = m.snapshot;
-      if (m.kind === 'move') {
+      if (m.kind === 'lasso') {
+        m.points.push(pt);
+        redraw();
+        return;
+      }
+      if (!previewStrokesRef.current) return;
+      if (m.kind === 'group-move') {
         const dx = pt.x - m.lastPt.x;
         const dy = pt.y - m.lastPt.y;
-        next = moveShape(m.snapshot, dx, dy);
-        manipRef.current = { ...m, lastPt: pt, snapshot: next };
-      } else if (m.kind === 'rotate') {
-        const angle = Math.atan2(pt.y - m.center.y, pt.x - m.center.x);
-        const delta = angle - m.startPointerAngle;
-        next = rotateShapeByDelta(m.snapshot, delta);
-      } else if (m.kind === 'resize') {
-        next = resizeShapeWithHandle(m.snapshot, m.handle, pt);
+        const moved = m.snapshots.map((s) => moveStroke(s, dx, dy));
+        const byId = new Map(moved.map((s) => [s.id, s]));
+        previewStrokesRef.current = replaceStrokesById(previewStrokesRef.current, byId);
+        manipRef.current = { ...m, lastPt: pt, snapshots: moved };
+        redraw();
+        return;
       }
-      previewStrokesRef.current = replaceStroke(previewStrokesRef.current, m.id, next);
-      redraw();
+      if (m.kind === 'group-resize') {
+        const scaled = scaleStrokesFromHandle(m.snapshots, m.startBounds, m.handle, pt);
+        const byId = new Map(scaled.map((s) => [s.id, s]));
+        previewStrokesRef.current = replaceStrokesById(previewStrokesRef.current, byId);
+        redraw();
+        return;
+      }
+      if (m.kind === 'move' || m.kind === 'rotate' || m.kind === 'resize') {
+        let next = m.snapshot;
+        if (m.kind === 'move') {
+          const dx = pt.x - m.lastPt.x;
+          const dy = pt.y - m.lastPt.y;
+          next = moveShape(m.snapshot, dx, dy);
+          manipRef.current = { ...m, lastPt: pt, snapshot: next };
+        } else if (m.kind === 'rotate') {
+          const angle = Math.atan2(pt.y - m.center.y, pt.x - m.center.x);
+          const delta = angle - m.startPointerAngle;
+          next = rotateShapeByDelta(m.snapshot, delta);
+        } else {
+          next = resizeShapeWithHandle(m.snapshot, m.handle, pt);
+        }
+        previewStrokesRef.current = replaceStroke(previewStrokesRef.current, m.id, next);
+        redraw();
+      }
       return;
     }
 
@@ -653,7 +816,26 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     }
   };
 
+  const finishChromeTap = (e: PointerEvent) => {
+    const chrome = chromeTapRef.current;
+    if (!chrome || e.pointerId !== chrome.pointerId) return false;
+    chromeTapRef.current = null;
+    inkPointerIdRef.current = null;
+    const canvas = (e.currentTarget as HTMLCanvasElement) || canvasRef.current;
+    try {
+      canvas?.releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    if (!canvas) return true;
+    if (Math.hypot(e.clientX - chrome.x, e.clientY - chrome.y) > 14) return true;
+    const target = clickableInChrome(elementUnderCanvas(canvas, e.clientX, e.clientY));
+    if (target && typeof target.click === 'function') target.click();
+    return true;
+  };
+
   const onPointerUp = (e: PointerEvent) => {
+    if (finishChromeTap(e)) return;
     const t = toolRef.current;
     if (e.pointerType === 'touch' && (t === 'pen' || t === 'marker')) {
       e.preventDefault();
@@ -670,7 +852,41 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     }
 
     if (t === 'select') {
-      commitPreview();
+      const m = manipRef.current;
+      if (m?.kind === 'lasso') {
+        if (lassoIsMeaningful(m.points)) {
+          const ids = strokesRef.current.filter((s) => strokeHitsLasso(s, m.points)).map((s) => s.id);
+          emitSelection(ids);
+        } else {
+          emitSelection([]);
+          const canvas = canvasRef.current;
+          if (canvas) {
+            const below = elementUnderCanvas(canvas, e.clientX, e.clientY);
+            const host = below?.closest?.('[data-pres-element]') as HTMLElement | null;
+            if (host) {
+              host.dispatchEvent(
+                new PointerEvent('pointerdown', {
+                  bubbles: true,
+                  cancelable: true,
+                  composed: true,
+                  pointerId: e.pointerId,
+                  pointerType: e.pointerType,
+                  clientX: e.clientX,
+                  clientY: e.clientY,
+                  screenX: e.screenX,
+                  screenY: e.screenY,
+                  button: e.button,
+                  buttons: 0,
+                  isPrimary: true,
+                  pressure: e.pressure,
+                }),
+              );
+            }
+          }
+        }
+      } else {
+        commitPreview();
+      }
       manipRef.current = null;
       inkPointerIdRef.current = null;
       inkIsPenRef.current = false;
@@ -693,6 +909,16 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   };
 
   const onPointerCancel = (e: PointerEvent) => {
+    if (chromeTapRef.current && e.pointerId === chromeTapRef.current.pointerId) {
+      chromeTapRef.current = null;
+      inkPointerIdRef.current = null;
+      try {
+        (e.currentTarget as HTMLCanvasElement).releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
     if (e.pointerType === 'touch') {
       e.preventDefault();
       return;
@@ -726,6 +952,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     canvas.addEventListener('pointercancel', onPointerCancel, opts);
 
     const blockTouch = (ev: TouchEvent) => {
+      if (ev.touches.length >= 2) return;
       ev.preventDefault();
     };
     canvas.addEventListener('touchstart', blockTouch, opts);

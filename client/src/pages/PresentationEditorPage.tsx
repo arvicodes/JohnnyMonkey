@@ -101,6 +101,7 @@ import {
   SLIDE_REF_WIDTH,
 } from '../lib/presentationDeck';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
+import { requestPresentFullscreen } from '../lib/presentationPresentFullscreen';
 import { PRES_EDITOR_UI, presentationEntryTicketEditUrl, presentationLessonBackUrl, presentationLessonReturnWithPresentationUrl, tryHandleLessonEntryTicketLinkClick } from '../lib/presentationEditorUi';
 import { lessonFolderDisplayName } from '../lib/presentationSlideFooter';
 import { isWochenaufgabenFolderPath } from '../lib/wochenaufgabenFolder';
@@ -2103,6 +2104,7 @@ const PresentationEditorPage: React.FC = () => {
       if (next == null || !lessonPath) return;
       if (next === 'create') return;
       if (next === 'run') {
+        requestPresentFullscreen();
         navigate(
           presentationPresentUrl(lessonPath, groupId || undefined, 'edited', undefined, 'run'),
         );
@@ -2577,9 +2579,10 @@ const PresentationEditorPage: React.FC = () => {
             <Tooltip title="Präsentieren">
               <IconButton
                 size="small"
-                onClick={() =>
-                  navigate(presentationPresentUrl(lessonPath, groupId || undefined, undefined, undefined, planMode))
-                }
+                onClick={() => {
+                  requestPresentFullscreen();
+                  navigate(presentationPresentUrl(lessonPath, groupId || undefined, undefined, undefined, planMode));
+                }}
                 sx={{
                   width: 38,
                   height: 30,

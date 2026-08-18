@@ -9,6 +9,8 @@ exports.scratchPadUserFolderKey = scratchPadUserFolderKey;
 exports.ensureScratchPadLiveDir = ensureScratchPadLiveDir;
 exports.ensureScratchPadBackupDir = ensureScratchPadBackupDir;
 exports.ensureScratchPadRoots = ensureScratchPadRoots;
+exports.scratchPadContentLen = scratchPadContentLen;
+exports.wouldWipeScratchPad = wouldWipeScratchPad;
 exports.readScratchPadLive = readScratchPadLive;
 exports.writeScratchPad = writeScratchPad;
 const crypto_1 = __importDefault(require("crypto"));
@@ -144,6 +146,27 @@ function shouldWriteTimestampedBackup(userKey, buf) {
 function markBackup(userKey, buf) {
     recentByUser.set(userKey, { lastAt: Date.now(), lastHash: fileHash(buf) });
 }
+function stripHtmlLite(html) {
+    return String(html || '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+/** Sichtbare Text-/Tintenmenge — zum Schutz vor versehentlichem Leerlauf-Überschreiben. */
+function scratchPadContentLen(payload) {
+    if (!payload || !Array.isArray(payload.pages))
+        return 0;
+    return payload.pages.reduce((n, raw) => {
+        const p = raw;
+        const text = typeof p.text === 'string' ? stripHtmlLite(p.text) : '';
+        const ink = Array.isArray(p.ink) ? p.ink.length : 0;
+        return n + text.length + ink;
+    }, 0);
+}
+function wouldWipeScratchPad(existing, incoming) {
+    return scratchPadContentLen(existing) >= 40 && scratchPadContentLen(incoming) < 12;
+}
 function readScratchPadLive(userKey) {
     try {
         const livePath = path_1.default.join(ensureScratchPadLiveDir(userKey), 'latest.json');
@@ -169,13 +192,22 @@ function writeScratchPad(userKey, payload) {
     ensureScratchPadRoots();
     const liveDir = ensureScratchPadLiveDir(userKey);
     const backupDir = ensureScratchPadBackupDir(userKey);
+    const livePath = path_1.default.join(liveDir, 'latest.json');
+    const existing = readScratchPadLive(userKey);
+    if (wouldWipeScratchPad(existing, payload)) {
+        console.warn('Scratch pad: refusing to overwrite substantial notes with near-empty payload', userKey);
+        return {
+            live: livePath,
+            backupLatest: path_1.default.join(backupDir, 'latest.json'),
+            backupStamp: null,
+        };
+    }
     const body = {
         ...payload,
         savedAt: new Date().toISOString(),
     };
     const json = JSON.stringify(body, null, 2);
     const buf = Buffer.from(json, 'utf8');
-    const livePath = path_1.default.join(liveDir, 'latest.json');
     const backupLatestPath = path_1.default.join(backupDir, 'latest.json');
     fs_1.default.writeFileSync(livePath, buf);
     fs_1.default.writeFileSync(backupLatestPath, buf);

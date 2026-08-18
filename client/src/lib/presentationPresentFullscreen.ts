@@ -26,25 +26,39 @@ export function exitPresentFullscreen(): void {
   if (webkitFsElement()) doc.webkitExitFullscreen?.();
 }
 
+export function isAnyNativeFullscreen(): boolean {
+  if (typeof document === 'undefined') return false;
+  return Boolean(document.fullscreenElement || webkitFsElement());
+}
+
 /**
- * Desktop: einmalig Fullscreen nach User-Geste.
- * iPad/iPhone Safari: nicht aufrufen — dort flackert/bricht FS oft ab.
+ * Natives Fullscreen — muss in derselben User-Geste (Klick/Play) laufen.
+ * Ohne Geste lehnt der Browser ab. Bereits aktiver FS wird nicht gewechselt.
  */
-export function requestPresentFullscreen(el: HTMLElement | null): void {
-  if (!el || isIosSafariLike()) return;
-  if (isPresentNativeFullscreen(el)) return;
-  const node = el as HTMLElement & {
-    webkitRequestFullscreen?: () => Promise<void> | void;
+export function requestPresentFullscreen(el?: HTMLElement | null): void {
+  if (typeof document === 'undefined') return;
+  if (isAnyNativeFullscreen()) return;
+  const target = el ?? document.documentElement;
+  const node = target as HTMLElement & {
+    webkitRequestFullscreen?: (opts?: FullscreenOptions) => Promise<void> | void;
   };
-  const req = el.requestFullscreen?.bind(el) ?? node.webkitRequestFullscreen?.bind(el);
-  if (!req) return;
+  const opts: FullscreenOptions = { navigationUI: 'hide' };
   try {
-    const result = req.call(el);
+    if (typeof target.requestFullscreen === 'function') {
+      const result = target.requestFullscreen(opts);
+      if (result && typeof result.catch === 'function') {
+        void result.catch(() => undefined);
+      }
+      return;
+    }
+    const webkit = node.webkitRequestFullscreen?.bind(target);
+    if (!webkit) return;
+    const result = webkit(opts);
     if (result && typeof (result as Promise<void>).catch === 'function') {
-      (result as Promise<void>).catch(() => undefined);
+      void (result as Promise<void>).catch(() => undefined);
     }
   } catch {
-    /* Safari wirft oft NotAllowedError */
+    /* Safari: NotAllowedError / iOS ohne Support */
   }
 }
 

@@ -83,7 +83,14 @@ router.get('/', async (req, res) => {
         const fromFile = (0, teacherScratchPadStore_1.readScratchPadLive)(key);
         let data = null;
         if (fromDb && fromFile) {
-            data = padUpdatedMs(fromFile) > padUpdatedMs(fromDb) ? fromFile : fromDb;
+            const dbLen = (0, teacherScratchPadStore_1.scratchPadContentLen)(fromDb);
+            const fileLen = (0, teacherScratchPadStore_1.scratchPadContentLen)(fromFile);
+            if (fileLen >= 40 && dbLen < 12)
+                data = fromFile;
+            else if (dbLen >= 40 && fileLen < 12)
+                data = fromDb;
+            else
+                data = padUpdatedMs(fromFile) > padUpdatedMs(fromDb) ? fromFile : fromDb;
         }
         else {
             data = fromDb || fromFile;
@@ -130,6 +137,18 @@ router.put('/', async (req, res) => {
             userId: user.id,
             userName: user.name,
         };
+        const existingDb = await readScratchPadFromDb(user.id);
+        const existingFile = (0, teacherScratchPadStore_1.readScratchPadLive)(key);
+        const existing = (0, teacherScratchPadStore_1.scratchPadContentLen)(existingFile) >= (0, teacherScratchPadStore_1.scratchPadContentLen)(existingDb) ? existingFile : existingDb;
+        if ((0, teacherScratchPadStore_1.wouldWipeScratchPad)(existing, payload)) {
+            return res.json({
+                ok: true,
+                keptExisting: true,
+                userKey: key,
+                storedIn: 'db',
+                updatedAt: existing === null || existing === void 0 ? void 0 : existing.updatedAt,
+            });
+        }
         await writeScratchPadToDb(user.id, payload);
         const written = (0, teacherScratchPadStore_1.writeScratchPad)(key, payload);
         res.json({

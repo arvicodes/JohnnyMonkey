@@ -23,6 +23,9 @@ export type ScratchPadPayload = {
     userName?: string;
     savedAt?: string;
 };
+/** Sichtbare Text-/Tintenmenge — zum Schutz vor versehentlichem Leerlauf-Überschreiben. */
+export declare function scratchPadContentLen(payload: ScratchPadPayload | null | undefined): number;
+export declare function wouldWipeScratchPad(existing: ScratchPadPayload | null | undefined, incoming: ScratchPadPayload | null | undefined): boolean;
 export declare function readScratchPadLive(userKey: string): ScratchPadPayload | null;
 /**
  * Speichert den aktuellen Stand und schreibt Sicherheitskopien.

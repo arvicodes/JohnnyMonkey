@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Snackbar, TextField, Tooltip, Typography } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
+  Fullscreen as FullscreenIcon,
+  FullscreenExit as FullscreenExitIcon,
 } from '@mui/icons-material';
 import PresentationSlideView from '../components/presentation/PresentationSlideView';
 import PresentationDrawOverlay from '../components/presentation/PresentationDrawOverlay';
@@ -29,7 +31,7 @@ import {
   writeOriginalDeckSnapshot,
   parsePresentationPlanMode,
 } from '../lib/presentationDeck';
-import { PresentationDrawTool, DEFAULT_MARKER_COLOR, DEFAULT_PEN_COLOR, defaultColorForTool, defaultLineWidthForTool, lineWidthsForTool, toolUsesColor } from '../lib/presentationDrawTools';
+import { PresentationDrawTool, DEFAULT_MARKER_COLOR, DEFAULT_MARKER_OPACITY, DEFAULT_PEN_COLOR, defaultColorForTool, defaultLineWidthForTool, lineWidthsForTool, toolUsesColor } from '../lib/presentationDrawTools';
 import { presentationLessonBackUrl, tryHandleLessonEntryTicketLinkClick, isLessonEntryTicketSlideHref } from '../lib/presentationEditorUi';
 import { markLessonPlayed } from '../lib/playedLessons';
 import { savePresentationBothVersions, savePresentationNamedVersion, exportPresentationPdfVersions } from '../lib/presentationExport';
@@ -44,7 +46,7 @@ import { markTeacherWantsDashboard } from '../lib/teacherLiveLesson';
 import {
   attachPresentViewportFill,
   exitPresentFullscreen,
-  isIosSafariLike,
+  isAnyNativeFullscreen,
   requestPresentFullscreen,
 } from '../lib/presentationPresentFullscreen';
 import EntryTicketPage from './EntryTicketPage';
@@ -77,7 +79,8 @@ const PresentationPresentPage: React.FC = () => {
   const penColorRef = useRef(DEFAULT_PEN_COLOR);
   const markerColorRef = useRef(DEFAULT_MARKER_COLOR);
   const [lineWidth, setLineWidth] = useState(3);
-  const [selectedStrokeId, setSelectedStrokeId] = useState<string | null>(null);
+  const [markerOpacity, setMarkerOpacity] = useState(DEFAULT_MARKER_OPACITY);
+  const [selectedStrokeIds, setSelectedStrokeIds] = useState<string[]>([]);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [snackbar, setSnackbar] = useState('');
   const [saving, setSaving] = useState(false);
@@ -99,9 +102,9 @@ const PresentationPresentPage: React.FC = () => {
   const [panning, setPanning] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-  /** Pinch nur wenn nicht gezeichnet wird (Handauflage sonst als 2-Touch) */
+  /** Pinch immer — auch beim Zeichnen; nur Stift schreibt, Finger zoomen. */
   const pinchEnabledRef = useRef(true);
-  pinchEnabledRef.current = !drawActive;
+  pinchEnabledRef.current = true;
 
   const applyUserZoom = useCallback((next: number, origin?: PresentZoomOrigin) => {
     const clamped = clampPresentZoomSmooth(next);
@@ -146,7 +149,7 @@ const PresentationPresentPage: React.FC = () => {
   const lastPickedNumberRef = useRef<{ max: number; value: number } | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const swipeRef = useRef<{ x: number; y: number } | null>(null);
-  const nativeFsAttemptedRef = useRef(false);
+  const [nativeFs, setNativeFs] = useState(() => isAnyNativeFullscreen());
   /** Letzter gesicherter Stand der aktuellen benannten Version (für Speichern als…). */
   const namedBaselineRef = useRef<PresentationAnnotations | null>(null);
   const annotationsRef = useRef<PresentationAnnotations | null>(null);
@@ -272,7 +275,13 @@ const PresentationPresentPage: React.FC = () => {
   useLayoutEffect(() => {
     if (!lessonPath) return undefined;
     const stop = attachPresentViewportFill(containerRef.current);
+    const syncFs = () => setNativeFs(isAnyNativeFullscreen());
+    syncFs();
+    document.addEventListener('fullscreenchange', syncFs);
+    document.addEventListener('webkitfullscreenchange' as 'fullscreenchange', syncFs);
     return () => {
+      document.removeEventListener('fullscreenchange', syncFs);
+      document.removeEventListener('webkitfullscreenchange' as 'fullscreenchange', syncFs);
       stop();
       exitPresentFullscreen();
     };
@@ -324,6 +333,11 @@ const PresentationPresentPage: React.FC = () => {
 
   const currentSlideIdRef = useRef<string | undefined>(undefined);
   currentSlideIdRef.current = currentSlide?.id;
+
+  useEffect(() => {
+    setSelectedStrokeIds([]);
+    setSelectedElementId(null);
+  }, [slideIndex]);
   const isNamedViewRef = useRef(isNamedView);
   isNamedViewRef.current = isNamedView;
   const isOriginalViewRef = useRef(isOriginalView);
@@ -603,6 +617,15 @@ const PresentationPresentPage: React.FC = () => {
     }
   }, [revealStep, slideIndex, slides]);
 
+  const handleToggleNativeFullscreen = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isAnyNativeFullscreen()) {
+      exitPresentFullscreen();
+      return;
+    }
+    requestPresentFullscreen(containerRef.current);
+  };
+
   const handleBack = () => {
     markTeacherWantsDashboard();
     navigate(presentationLessonBackUrl(lessonPath, groupId, planMode));
@@ -686,9 +709,19 @@ const PresentationPresentPage: React.FC = () => {
 
   const handleSelectLineWidth = (w: number) => {
     setLineWidth(w);
-    if (activeTool === 'select' && selectedStrokeId && annotations && currentSlide) {
+    if (selectedStrokeIds.length && annotations && currentSlide) {
+      const idSet = new Set(selectedStrokeIds);
+      const next = currentStrokes.map((s) => (idSet.has(s.id) ? { ...s, lineWidth: w } : s));
+      updateStrokes(next);
+    }
+  };
+
+  const handleSelectMarkerOpacity = (opacity: number) => {
+    setMarkerOpacity(opacity);
+    if (selectedStrokeIds.length && annotations && currentSlide) {
+      const idSet = new Set(selectedStrokeIds);
       const next = currentStrokes.map((s) =>
-        s.id === selectedStrokeId ? { ...s, lineWidth: w } : s
+        idSet.has(s.id) && s.mode === 'marker' ? { ...s, markerOpacity: opacity } : s
       );
       updateStrokes(next);
     }
@@ -706,20 +739,32 @@ const PresentationPresentPage: React.FC = () => {
     } else if (toolUsesColor(tool)) {
       setStrokeColor(penColorRef.current || defaultColorForTool(tool));
     }
-    if (tool !== 'select') setSelectedStrokeId(null);
+    if (tool !== 'select') setSelectedStrokeIds([]);
   };
 
   const handleSelectColor = (c: string) => {
     setStrokeColor(c);
     if (activeTool === 'marker') markerColorRef.current = c;
     else penColorRef.current = c;
+    if (selectedStrokeIds.length && annotations && currentSlide) {
+      const idSet = new Set(selectedStrokeIds);
+      const next = currentStrokes.map((s) => (idSet.has(s.id) ? { ...s, color: c } : s));
+      updateStrokes(next);
+    }
   };
 
   useEffect(() => {
-    if (!selectedStrokeId) return;
-    const stroke = annotations?.bySlideId[currentSlide?.id ?? '']?.find((s) => s.id === selectedStrokeId);
-    if (stroke) setLineWidth(stroke.lineWidth);
-  }, [selectedStrokeId, annotations, currentSlide?.id]);
+    if (selectedStrokeIds.length === 0) return;
+    const idSet = new Set(selectedStrokeIds);
+    const selected = annotations?.bySlideId[currentSlide?.id ?? '']?.filter((s) => idSet.has(s.id)) ?? [];
+    const first = selected[0];
+    if (!first) return;
+    setLineWidth(first.lineWidth);
+    setStrokeColor(first.color);
+    if (first.mode === 'marker' && first.markerOpacity != null) {
+      setMarkerOpacity(first.markerOpacity);
+    }
+  }, [selectedStrokeIds, annotations, currentSlide?.id]);
 
   useEffect(() => {
     const isTypingTarget = (el: EventTarget | null) => {
@@ -959,10 +1004,7 @@ const PresentationPresentPage: React.FC = () => {
   const handleSlideTap = (e: React.MouseEvent) => {
     if (drawActive) return;
     if (entryTicketOpen) return;
-    if (!nativeFsAttemptedRef.current && !isIosSafariLike()) {
-      nativeFsAttemptedRef.current = true;
-      requestPresentFullscreen(containerRef.current);
-    }
+    requestPresentFullscreen(containerRef.current);
     if (
       tryHandleLessonEntryTicketLinkClick(e, {
         lessonPath,
@@ -1071,6 +1113,12 @@ const PresentationPresentPage: React.FC = () => {
       tabIndex={0}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
+      onPointerDownCapture={(e) => {
+        if (entryTicketOpen) return;
+        const t = e.target instanceof Element ? e.target : null;
+        if (t?.closest?.('[data-pres-fs], [data-pres-back]')) return;
+        requestPresentFullscreen(containerRef.current);
+      }}
       onClickCapture={(e) => {
         if (entryTicketOpen) return;
         tryHandleLessonEntryTicketLinkClick(e, {
@@ -1083,19 +1131,40 @@ const PresentationPresentPage: React.FC = () => {
       sx={presentShellSx}
     >
       {!entryTicketOpen ? (
-        <Tooltip title={isWochenaufgabenFolderPath(lessonPath) ? 'Zurück zum Dashboard' : 'Zurück zur Stunde'}>
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleBack();
-            }}
-            aria-label={isWochenaufgabenFolderPath(lessonPath) ? 'Zurück zum Dashboard' : 'Zurück zur Stunde'}
-            sx={presentBackBtnSx}
-          >
-            <ArrowBackIcon sx={{ fontSize: 18 }} />
-          </IconButton>
-        </Tooltip>
+        <>
+          <Tooltip title={isWochenaufgabenFolderPath(lessonPath) ? 'Zurück zum Dashboard' : 'Zurück zur Stunde'}>
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleBack();
+              }}
+              aria-label={isWochenaufgabenFolderPath(lessonPath) ? 'Zurück zum Dashboard' : 'Zurück zur Stunde'}
+              data-pres-back=""
+              sx={presentBackBtnSx}
+            >
+              <ArrowBackIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title={nativeFs ? 'Vollbild beenden' : 'Vollbild'}>
+            <IconButton
+              size="small"
+              onClick={handleToggleNativeFullscreen}
+              aria-label={nativeFs ? 'Vollbild beenden' : 'Vollbild'}
+              data-pres-fs=""
+              sx={{
+                ...presentBackBtnSx,
+                left: 'max(46px, calc(env(safe-area-inset-left) + 46px))',
+              }}
+            >
+              {nativeFs ? (
+                <FullscreenExitIcon sx={{ fontSize: 18 }} />
+              ) : (
+                <FullscreenIcon sx={{ fontSize: 18 }} />
+              )}
+            </IconButton>
+          </Tooltip>
+        </>
       ) : null}
 
       <Box
@@ -1179,8 +1248,9 @@ const PresentationPresentPage: React.FC = () => {
               tool={activeTool}
               strokeColor={strokeColor}
               lineWidth={lineWidth}
-              selectedStrokeId={selectedStrokeId}
-              onSelectedStrokeIdChange={setSelectedStrokeId}
+              markerOpacity={markerOpacity}
+              selectedStrokeIds={selectedStrokeIds}
+              onSelectedStrokeIdsChange={setSelectedStrokeIds}
               scale={displayScale}
             />
           </Box>
@@ -1226,6 +1296,13 @@ const PresentationPresentPage: React.FC = () => {
         onSelectTool={handleSelectTool}
         onSelectColor={handleSelectColor}
         onSelectLineWidth={handleSelectLineWidth}
+        markerOpacity={markerOpacity}
+        onSelectMarkerOpacity={handleSelectMarkerOpacity}
+        selectedCount={selectedStrokeIds.length}
+        selectionIsMarker={
+          selectedStrokeIds.length > 0 &&
+          currentStrokes.filter((s) => selectedStrokeIds.includes(s.id)).every((s) => s.mode === 'marker')
+        }
         onUndo={undoStroke}
         onSave={() => void handleSaveBothVersions()}
         onSaveNamed={() => setSaveNamedOpen(true)}
