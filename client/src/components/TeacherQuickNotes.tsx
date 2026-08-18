@@ -1340,6 +1340,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   }, []);
 
   const resizeCanvas = useCallback(() => {
+    if (currentStrokeRef.current) return;
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
@@ -1386,7 +1387,9 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   }, [open, pageIndex, resizeCanvas]);
 
   useEffect(() => {
-    if (open) redrawCanvas();
+    if (!open) return;
+    if (currentStrokeRef.current) return;
+    redrawCanvas();
   }, [open, ink, pageIndex, redrawCanvas]);
 
   useEffect(() => {

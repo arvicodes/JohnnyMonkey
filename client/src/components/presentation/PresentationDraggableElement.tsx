@@ -682,8 +682,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   const nearBottomEdge = view.y + view.h >= 88;
   const handleOnTop = !heroImage && (isFullscreenish || nearBottomEdge);
   const handleOnBottom = heroImage;
-  const handleInsetPx = (isFullscreenish ? 12 : 8) * scale;
-  const handleSizePx = (isFullscreenish ? 24 : 18) * scale;
+  const handleInsetPx = (isFullscreenish ? 10 : 6) * scale;
+  const handleSizePx = (isFullscreenish ? 52 : 40) * scale;
 
   const showElementBadge =
     animationEditMode && elementHasRevealAssignment(element) && element.type === 'image';
@@ -736,6 +736,11 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     boxShadow: heroImage ? '0 1px 6px rgba(0,0,0,0.28)' : '0 2px 8px rgba(0,0,0,0.35)',
     zIndex: 30,
     pointerEvents: 'auto' as const,
+    '&::after': {
+      content: '""',
+      position: 'absolute',
+      inset: `${-14 * scale}px`,
+    },
   };
 
   return (

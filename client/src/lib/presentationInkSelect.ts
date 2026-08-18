@@ -4,7 +4,8 @@ import { hitTestShapeBody, isSelectableShape, type Pt } from './presentationShap
 export type Bounds = { x: number; y: number; w: number; h: number };
 export type BoundsHandle = 'move' | 'nw' | 'ne' | 'se' | 'sw';
 
-const HANDLE_R = 16;
+/** Slide-Koordinaten — Stift braucht mehr als Finger-Hit-Slop. */
+const HANDLE_R = 44;
 const INK_HIT_PAD = 10;
 const LASSO_MIN_SPAN = 28;
 
@@ -237,11 +238,13 @@ export function drawBoundsSelection(ctx: CanvasRenderingContext2D, b: Bounds, ac
     { x: b.x + b.w, y: b.y + b.h },
     { x: b.x, y: b.y + b.h },
   ];
+  const hs = 11;
   for (const c of corners) {
     ctx.beginPath();
-    ctx.rect(c.x - 6, c.y - 6, 12, 12);
+    ctx.rect(c.x - hs, c.y - hs, hs * 2, hs * 2);
     ctx.fill();
     ctx.strokeStyle = accent;
+    ctx.lineWidth = 2.5;
     ctx.stroke();
   }
   ctx.restore();

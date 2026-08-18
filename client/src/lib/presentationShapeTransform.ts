@@ -16,7 +16,7 @@ export type ShapeHandle =
   | 'start'
   | 'end';
 
-export const HANDLE_HIT_RADIUS = 18;
+export const HANDLE_HIT_RADIUS = 40;
 export const ROTATE_HANDLE_OFFSET = 36;
 
 export interface BoxFrame {

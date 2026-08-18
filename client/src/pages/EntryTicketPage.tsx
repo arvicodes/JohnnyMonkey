@@ -341,7 +341,9 @@ const SHOW_COUNT_STORAGE_KEY = 'entry-ticket-card-show-counts-v1';
 const MIN_SLIDE_DURATION_SEC = 5;
 const MAX_SLIDE_DURATION_SEC = 120;
 const DEFAULT_SOLUTION_DURATION_SEC = 60;
+const MATHE_LK_SOLUTION_DURATION_SEC = 180;
 const SOLUTION_DURATION_STORAGE_KEY = 'entry-ticket-solution-duration-sec-v2';
+const SOLUTION_DURATION_MATHE_LK_KEY = 'entry-ticket-solution-duration-sec-mathe-lk';
 const MIN_SOLUTION_DURATION_SEC = 15;
 const MAX_SOLUTION_DURATION_SEC = 15 * 60;
 
@@ -402,9 +404,34 @@ function clampSlideDurationSec(value: number): number {
   return Math.min(MAX_SLIDE_DURATION_SEC, Math.max(MIN_SLIDE_DURATION_SEC, Math.round(value)));
 }
 
-function loadSolutionDurationSec(): number {
+function isMatheLkEntryContext(
+  setName?: string | null,
+  reihePath?: string | null,
+  lessonPath?: string | null,
+): boolean {
+  const blob = [setName, reihePath, lessonPath]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\\/g, '/')
+    .toLowerCase();
+  if (!blob) return false;
+  const hasMathe = blob.includes('/mathe/') || /(^|[/\s_-])mathe([/\s_-]|$)/.test(blob);
+  const hasLk = /(^|[/\s_-])lk([/\s_-]|$)|leistungskurs/.test(blob);
+  return hasMathe && hasLk;
+}
+
+function solutionDurationStorageKey(matheLk: boolean): string {
+  return matheLk ? SOLUTION_DURATION_MATHE_LK_KEY : SOLUTION_DURATION_STORAGE_KEY;
+}
+
+function defaultSolutionDurationSec(matheLk: boolean): number {
+  return matheLk ? MATHE_LK_SOLUTION_DURATION_SEC : DEFAULT_SOLUTION_DURATION_SEC;
+}
+
+function loadSolutionDurationSec(matheLk = false): number {
+  const fallback = defaultSolutionDurationSec(matheLk);
   try {
-    const raw = localStorage.getItem(SOLUTION_DURATION_STORAGE_KEY);
+    const raw = localStorage.getItem(solutionDurationStorageKey(matheLk));
     const n = raw != null ? Number(raw) : NaN;
     if (Number.isFinite(n) && n >= MIN_SOLUTION_DURATION_SEC && n <= MAX_SOLUTION_DURATION_SEC) {
       return Math.round(n);
@@ -412,11 +439,11 @@ function loadSolutionDurationSec(): number {
   } catch {
     // ignore
   }
-  return DEFAULT_SOLUTION_DURATION_SEC;
+  return fallback;
 }
 
-function clampSolutionDurationSec(value: number): number {
-  if (!Number.isFinite(value)) return DEFAULT_SOLUTION_DURATION_SEC;
+function clampSolutionDurationSec(value: number, matheLk = false): number {
+  if (!Number.isFinite(value)) return defaultSolutionDurationSec(matheLk);
   return Math.min(MAX_SOLUTION_DURATION_SEC, Math.max(MIN_SOLUTION_DURATION_SEC, Math.round(value)));
 }
 
@@ -435,21 +462,17 @@ function htmlPlainLen(html: string): number {
     .trim().length;
 }
 
-function overviewFitFont(len: number, rows: number, kind: 'prompt' | 'solution'): { xs: string; sm: string } {
-  const density = rows >= 5 ? 1.25 : rows >= 4 ? 1.08 : 1;
-  const score = len * density;
+function overviewFitFont(len: number, _rows: number, kind: 'prompt' | 'solution'): { xs: string; sm: string } {
   if (kind === 'solution') {
-    if (score >= 260) return { xs: '0.58rem', sm: '0.64rem' };
-    if (score >= 170) return { xs: '0.68rem', sm: '0.76rem' };
-    if (score >= 100) return { xs: '0.8rem', sm: '0.9rem' };
-    if (score >= 48) return { xs: '0.95rem', sm: '1.08rem' };
-    if (score >= 22) return { xs: '1.08rem', sm: '1.22rem' };
-    return { xs: '1.18rem', sm: '1.34rem' };
+    if (len >= 280) return { xs: '0.82rem', sm: '0.92rem' };
+    if (len >= 170) return { xs: '0.95rem', sm: '1.08rem' };
+    if (len >= 90) return { xs: '1.12rem', sm: '1.26rem' };
+    if (len >= 36) return { xs: '1.22rem', sm: '1.38rem' };
+    return { xs: '1.32rem', sm: '1.52rem' };
   }
-  if (score >= 220) return { xs: '0.58rem', sm: '0.64rem' };
-  if (score >= 140) return { xs: '0.66rem', sm: '0.72rem' };
-  if (score >= 80) return { xs: '0.74rem', sm: '0.82rem' };
-  return { xs: '0.82rem', sm: '0.9rem' };
+  if (len >= 200) return { xs: '0.82rem', sm: '0.9rem' };
+  if (len >= 110) return { xs: '0.9rem', sm: '0.98rem' };
+  return { xs: '0.98rem', sm: '1.08rem' };
 }
 
 const overviewRichFitSx = {
@@ -2524,6 +2547,21 @@ export default function EntryTicketPage({
     [customSetId, customSets],
   );
   const isCustomSetActive = Boolean(customSetId && activeCustomSet);
+  const isMatheLkSet = useMemo(
+    () => isMatheLkEntryContext(activeCustomSet?.name, activeCustomSet?.reihePath, entryLessonPath),
+    [activeCustomSet?.name, activeCustomSet?.reihePath, entryLessonPath],
+  );
+  const solutionDurationProfileRef = useRef<'default' | 'mathe-lk' | null>(null);
+  useEffect(() => {
+    const profile = isMatheLkSet ? 'mathe-lk' : 'default';
+    if (solutionDurationProfileRef.current === profile) return;
+    solutionDurationProfileRef.current = profile;
+    const next = loadSolutionDurationSec(isMatheLkSet);
+    setSolutionDurationSec(next);
+    setSolutionDurationMinDraft(String(Math.max(1, Math.round(next / 60))));
+    solutionDurationSecRef.current = next;
+    if (!solutionRunning) setSolutionSecondsLeft(next);
+  }, [isMatheLkSet, solutionRunning]);
   const infCustomSets = useMemo(() => customSets.filter(customSetIsInformatik), [customSets]);
   const matheCustomSets = useMemo(
     () => customSets.filter((s) => !customSetIsInformatik(s)),
@@ -3187,17 +3225,17 @@ export default function EntryTicketPage({
   }, [applySlideDurationSec, durationDraft, slideDurationSec]);
 
   const applySolutionDurationSec = useCallback((raw: number) => {
-    const next = clampSolutionDurationSec(raw);
+    const next = clampSolutionDurationSec(raw, isMatheLkSet);
     setSolutionDurationSec(next);
     setSolutionDurationMinDraft(String(Math.max(1, Math.round(next / 60))));
     solutionDurationSecRef.current = next;
     setSolutionSecondsLeft(next);
     try {
-      localStorage.setItem(SOLUTION_DURATION_STORAGE_KEY, String(next));
+      localStorage.setItem(solutionDurationStorageKey(isMatheLkSet), String(next));
     } catch {
       // ignore
     }
-  }, []);
+  }, [isMatheLkSet]);
 
   const commitSolutionDurationDraft = useCallback(() => {
     const n = Number(String(solutionDurationMinDraft).replace(',', '.'));
@@ -4265,7 +4303,7 @@ export default function EntryTicketPage({
       }}
     >
       <Box sx={{ width: '100%', maxWidth: '100%', mx: 0, minWidth: 0, boxSizing: 'border-box', flex: embeddedPlay ? 1 : undefined, minHeight: embeddedPlay ? 0 : undefined, display: embeddedPlay ? 'flex' : undefined, flexDirection: embeddedPlay ? 'column' : undefined }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0, gap: 0.5, minHeight: 0, height: sessionDone && !studentReviewMode && !laptopCompanion ? 54 : 28 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: sessionDone ? 1.5 : 0, pb: sessionDone ? 0.5 : 0, gap: 0.5, minHeight: 0, height: sessionDone && !studentReviewMode && !laptopCompanion ? 54 : 28 }}>
           {sessionStarted || studentReviewMode ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, flexShrink: 0 }}>
               {sessionDone && !studentReviewMode && !laptopCompanion ? (
@@ -5093,6 +5131,7 @@ export default function EntryTicketPage({
                       borderRadius: 2,
                       px: { xs: 0.25, sm: 0.4 },
                       py: 0,
+                      pt: 0.75,
                       bgcolor: 'transparent',
                       overflow: 'hidden',
                       boxSizing: 'border-box',
@@ -5108,12 +5147,14 @@ export default function EntryTicketPage({
                         display: 'grid',
                         gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
                         gridTemplateRows: {
-                          xs: `repeat(${activeTasks.length}, minmax(0, 1fr))`,
-                          sm: `repeat(${finalSlideRows}, minmax(0, 1fr))`,
+                          xs: `repeat(${activeTasks.length}, auto)`,
+                          sm: `repeat(${Math.max(1, finalSlideRows)}, auto)`,
                         },
                         gridAutoFlow: { xs: 'row', sm: 'column' },
-                        gap: overviewCompact ? '4px 10px' : '6px 12px',
-                        overflow: 'hidden',
+                        alignItems: 'start',
+                        alignContent: 'start',
+                        gap: overviewCompact ? '6px 12px' : '8px 14px',
+                        overflow: 'auto',
                       }}
                     >
                       {activeTasks.length === 0 && laptopCompanion ? (
@@ -5133,14 +5174,14 @@ export default function EntryTicketPage({
                                   ? '19px minmax(0, 1fr) 22px'
                                   : '19px minmax(0, 1fr)',
                             columnGap: 0.55,
-                            alignItems: 'stretch',
+                            alignItems: 'start',
                             px: 0.5,
-                            py: 0.12,
+                            py: 0.2,
                             borderRadius: 1,
                             bgcolor: 'rgba(255,255,255,0.72)',
                             minWidth: 0,
-                            minHeight: 0,
-                            height: '100%',
+                            width: '100%',
+                            height: 'fit-content',
                             overflow: 'hidden',
                           }}
                         >
@@ -5158,14 +5199,14 @@ export default function EntryTicketPage({
                           <Box
                             sx={{
                               minWidth: 0,
-                              minHeight: 0,
-                              height: '100%',
-                              overflow: 'hidden',
+                              height: 'fit-content',
+                              overflow: 'visible',
                               display: 'grid',
                               gridTemplateRows:
-                                showSolutions || laptopCompanion ? 'minmax(0, 0.42fr) minmax(0, 0.58fr)' : 'minmax(0, 1fr)',
-                              gap: 0.15,
-                              alignContent: 'stretch',
+                                showSolutions || laptopCompanion ? 'auto auto' : 'auto',
+                              gap: 0,
+                              alignContent: 'start',
+                              alignItems: 'start',
                             }}
                           >
                             <Box
@@ -5208,12 +5249,14 @@ export default function EntryTicketPage({
                                   lineHeight: 1.15,
                                   fontWeight: 800,
                                   color: '#1b5e20',
+                                  width: '100%',
+                                  height: 'fit-content',
+                                  alignSelf: 'start',
                                   minWidth: 0,
-                                  minHeight: 0,
                                   overflow: 'hidden',
-                                  mt: 0,
-                                  px: 0.45,
-                                  py: 0.15,
+                                  mt: 0.05,
+                                  px: 0.4,
+                                  py: 0.05,
                                   borderRadius: 0.75,
                                   border: '2px solid #66bb6a',
                                   bgcolor: '#e8f5e9',

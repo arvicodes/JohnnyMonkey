@@ -289,7 +289,7 @@ const PresentationPresentPage: React.FC = () => {
 
   useEffect(() => {
     setAnimKey((k) => k + 1);
-    setSelectedStrokeId(null);
+    setSelectedStrokeIds([]);
   }, [slideIndex]);
 
   useEffect(() => {
@@ -531,10 +531,10 @@ const PresentationPresentPage: React.FC = () => {
           ...namedBaselineRef.current,
           bySlideId: { ...namedBaselineRef.current.bySlideId },
         });
-        setSelectedStrokeId(null);
+        setSelectedStrokeIds([]);
       } else if (!isNamedView) {
         setAnnotations(createEmptyAnnotations(lessonPath));
-        setSelectedStrokeId(null);
+        setSelectedStrokeIds([]);
       }
       setSnackbar(
         result.namedPdf

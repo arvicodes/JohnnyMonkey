@@ -9,8 +9,8 @@ import {
   CropSquare as RectIcon,
   Draw as DrawIcon,
   Highlight as HighlightIcon,
+  HighlightAlt as LassoIcon,
   HorizontalRule as LineIcon,
-  OpenWith as SelectIcon,
   Save as SaveIcon,
   SaveAs as SaveAsIcon,
   Tag as TagIcon,
@@ -533,11 +533,11 @@ export default function PresentationTabletToolbar({
         {!readOnly && drawActive && (
           <>
             <ToolBtn
-              title="Auswählen / Lasso (Stift umfahren, dann schieben & Größe)"
+              title="Lasso: Schrift umfahren, dann verschieben und Größe ändern"
               active={activeTool === 'select'}
               onClick={() => onSelectTool('select')}
             >
-              <SelectIcon sx={{ fontSize: 15 }} />
+              <LassoIcon sx={{ fontSize: 15 }} />
             </ToolBtn>
 
             <Divider
