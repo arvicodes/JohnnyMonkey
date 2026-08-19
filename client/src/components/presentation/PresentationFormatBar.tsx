@@ -231,6 +231,52 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     window.setTimeout(() => setFormatBarInteracting(false), 0);
   };
 
+  useEffect(() => {
+    if (disabled || !activeEditor) return undefined;
+    const editor = activeEditor;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.tagName === 'SELECT') {
+        return;
+      }
+      const sel = window.getSelection();
+      const inEditor =
+        target === editor ||
+        (target != null && editor.contains(target)) ||
+        (sel?.anchorNode != null && editor.contains(sel.anchorNode));
+      if (!inEditor) return;
+      const key = e.key.toLowerCase();
+      if (key === 'b' && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        applyAndNotify(() => execFormat(editor, 'bold'));
+        return;
+      }
+      if (key === 'i' && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        applyAndNotify(() => execFormat(editor, 'italic'));
+        return;
+      }
+      if (key === 'u' && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        applyAndNotify(() => execFormat(editor, 'underline'));
+        return;
+      }
+      if (key === 'x' && e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        applyAndNotify(() => execFormat(editor, 'strikeThrough'));
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+    // applyAndNotify closes over the current editor; rebind when it changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeEditor, disabled]);
+
   const preventToolbarFocus = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -464,28 +510,28 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         </Typography>
       )}
 
-      <Tooltip title="Fett">
+      <Tooltip title={`Fett (${MOD_LABEL}+B)`}>
         <span>
           <IconButton size="small" disabled={disabled || !activeEditor} sx={btnSx} onMouseDown={(e) => e.preventDefault()} onClick={() => applyAndNotify(() => execFormat(activeEditor, 'bold'))}>
             <FormatBold sx={{ fontSize: 17 }} />
           </IconButton>
         </span>
       </Tooltip>
-      <Tooltip title="Kursiv">
+      <Tooltip title={`Kursiv (${MOD_LABEL}+I)`}>
         <span>
           <IconButton size="small" disabled={disabled || !activeEditor} sx={btnSx} onMouseDown={(e) => e.preventDefault()} onClick={() => applyAndNotify(() => execFormat(activeEditor, 'italic'))}>
             <FormatItalic sx={{ fontSize: 17 }} />
           </IconButton>
         </span>
       </Tooltip>
-      <Tooltip title="Unterstrichen">
+      <Tooltip title={`Unterstrichen (${MOD_LABEL}+U)`}>
         <span>
           <IconButton size="small" disabled={disabled || !activeEditor} sx={btnSx} onMouseDown={(e) => e.preventDefault()} onClick={() => applyAndNotify(() => execFormat(activeEditor, 'underline'))}>
             <FormatUnderlined sx={{ fontSize: 17 }} />
           </IconButton>
         </span>
       </Tooltip>
-      <Tooltip title="Durchgestrichen">
+      <Tooltip title={`Durchgestrichen (⇧${MOD_LABEL}+X)`}>
         <span>
           <IconButton size="small" disabled={disabled || !activeEditor} sx={btnSx} onMouseDown={(e) => e.preventDefault()} onClick={() => applyAndNotify(() => execFormat(activeEditor, 'strikeThrough'))}>
             <FormatStrikethrough sx={{ fontSize: 17 }} />

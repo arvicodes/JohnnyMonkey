@@ -320,22 +320,34 @@ function makeFontSpan(px: number): HTMLSpanElement {
   return span;
 }
 
-function textNodesInRange(editor: HTMLElement, range: Range): Text[] {
-  const nodes: Text[] = [];
-  const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, {
-    acceptNode(node) {
-      const text = node.textContent ?? '';
-      if (!text.replace(/\u00a0/g, ' ').trim()) return NodeFilter.FILTER_REJECT;
-      try {
-        return range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
-      } catch {
-        return NodeFilter.FILTER_REJECT;
-      }
-    },
-  });
+function textSlicesInRange(range: Range): { node: Text; start: number; end: number }[] {
+  const root = range.commonAncestorContainer;
+  const walkRoot =
+    root.nodeType === Node.ELEMENT_NODE ? (root as Node) : root.parentNode;
+  if (!walkRoot) return [];
+
+  const walker = document.createTreeWalker(walkRoot, NodeFilter.SHOW_TEXT);
+  const slices: { node: Text; start: number; end: number }[] = [];
   let current: Node | null;
-  while ((current = walker.nextNode())) nodes.push(current as Text);
-  return nodes;
+  while ((current = walker.nextNode())) {
+    const text = current as Text;
+    if (!text.length) continue;
+    let start = 0;
+    let end = text.length;
+    try {
+      if (range.comparePoint(text, 0) > 0) continue;
+      if (range.comparePoint(text, text.length) < 0) continue;
+      if (range.startContainer === text) start = range.startOffset;
+      if (range.endContainer === text) end = range.endOffset;
+    } catch {
+      continue;
+    }
+    start = Math.max(0, Math.min(start, text.length));
+    end = Math.max(0, Math.min(end, text.length));
+    if (start >= end) continue;
+    slices.push({ node: text, start, end });
+  }
+  return slices;
 }
 
 function applyPxToTextRange(range: Range, px: number): HTMLSpanElement | null {
@@ -352,38 +364,61 @@ function applyPxToTextRange(range: Range, px: number): HTMLSpanElement | null {
   }
 }
 
-function applyPxAcrossRange(editor: HTMLElement, range: Range, px: number): HTMLSpanElement | null {
-  const textNodes = textNodesInRange(editor, range);
-  if (!textNodes.length) return null;
+function applyPxAcrossRange(range: Range, px: number): HTMLSpanElement[] {
+  const slices = textSlicesInRange(range);
+  if (!slices.length) return [];
 
-  let firstSpan: HTMLSpanElement | null = null;
-  for (let i = textNodes.length - 1; i >= 0; i -= 1) {
-    const textNode = textNodes[i];
+  const spans: HTMLSpanElement[] = [];
+  for (let i = slices.length - 1; i >= 0; i -= 1) {
+    const { node, start, end } = slices[i];
+    if (!node.isConnected) continue;
     const sub = document.createRange();
-    const start =
-      textNode === range.startContainer && range.startContainer.nodeType === Node.TEXT_NODE
-        ? range.startOffset
-        : 0;
-    const end =
-      textNode === range.endContainer && range.endContainer.nodeType === Node.TEXT_NODE
-        ? range.endOffset
-        : textNode.length;
-    if (start >= end) continue;
-    sub.setStart(textNode, start);
-    sub.setEnd(textNode, end);
+    try {
+      sub.setStart(node, start);
+      sub.setEnd(node, end);
+    } catch {
+      continue;
+    }
     const span = applyPxToTextRange(sub, px);
-    if (span && !firstSpan) firstSpan = span;
+    if (span) spans.unshift(span);
   }
-  return firstSpan;
+  return spans;
 }
 
-/** Wendet Folien-Pixel-Größe auf die aktuelle Auswahl an. */
-export function applyEditorFontSizePx(editor: HTMLElement | null, px: number): boolean {
+function rangeFromSpans(spans: HTMLSpanElement[]): Range | null {
+  if (!spans.length) return null;
+  const keep = document.createRange();
+  try {
+    keep.selectNodeContents(spans[0]);
+    if (spans.length > 1) {
+      const last = spans[spans.length - 1];
+      const end = document.createRange();
+      end.selectNodeContents(last);
+      keep.setEnd(end.endContainer, end.endOffset);
+    }
+    return keep;
+  } catch {
+    return null;
+  }
+}
+
+/** Wendet Pixel-Größe nur auf die Markierung an und behält sie. */
+export function applyEditorFontSizePx(
+  editor: HTMLElement | null,
+  px: number,
+  explicitRange?: Range | null,
+): boolean {
   if (!editor || !Number.isFinite(px) || px < 8) return false;
 
-  stashEditorSelection(editor);
-  const range = usableRange(editor);
-  if (!range) return false;
+  const range =
+    explicitRange && !explicitRange.collapsed
+      ? explicitRange.cloneRange()
+      : liveRange(editor) ??
+        (saved?.editor === editor && !saved.range.collapsed ? saved.range.cloneRange() : null);
+  if (!range || range.collapsed) return false;
+  if (!editor.contains(range.commonAncestorContainer)) return false;
+
+  saved = { editor, range: range.cloneRange() };
 
   editor.focus({ preventScroll: true });
   const sel = window.getSelection();
@@ -399,22 +434,12 @@ export function applyEditorFontSizePx(editor: HTMLElement | null, px: number): b
   const work = range.cloneRange();
   stripFontSizingInRange(editor, work);
 
-  // Pro Textknoten wrappen — verhindert, dass extractContents zu viel mitnimmt
-  let wrapped =
-    applyPxAcrossRange(editor, work, px) ??
-    applyPxToTextRange(work, px);
-
-  if (!wrapped) return false;
-
-  try {
-    const keep = document.createRange();
-    keep.selectNodeContents(wrapped);
-    keepEditorSelection(editor, keep);
-  } catch {
-    keepEditorSelection(editor);
-  }
+  const spans = applyPxAcrossRange(work, px);
+  const keep = rangeFromSpans(spans);
+  if (!keep) return false;
 
   editor.dispatchEvent(new Event('input', { bubbles: true }));
+  keepEditorSelection(editor, keep);
   return true;
 }
 

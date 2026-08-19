@@ -32,6 +32,8 @@ import CloseIcon from '@mui/icons-material/Close';
 import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
 import { DialogCloseIconButton } from './ui/dialog-close-icon-button';
 import { handlePresentationListShortcutKey, handlePresentationTabKey } from '../lib/presentationRichText';
+import { applyEditorFontSizePx, stashEditorSelection } from '../lib/presentationFontSize';
+import { isFormatBarInteracting, setFormatBarInteracting } from '../lib/presentationFormatBarGuard';
 import { strokeSmoothFreehand } from '../lib/presentationDrawTools';
 import { apiGetSafe, apiPutSafe, apiPutSafeAwait } from '../lib/api';
 import type { EmojiClickData } from 'emoji-picker-react';
@@ -696,55 +698,23 @@ function nearestFontSizeStep(px: number): number {
   return best;
 }
 
-function readSelectionFontSizePx(editor: HTMLElement): number {
-  const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0) return NOTE_DEFAULT_FONT_PX;
-  let node: Node | null = sel.focusNode;
-  if (node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
-  if (!(node instanceof Element) || !editor.contains(node)) return NOTE_DEFAULT_FONT_PX;
-  const raw = window.getComputedStyle(node).fontSize;
-  const px = parseFloat(raw);
+function readRangeFontSizePx(editor: HTMLElement, range: Range | null): number {
+  const node = range?.startContainer ?? window.getSelection()?.focusNode ?? null;
+  let el: Node | null = node;
+  if (el && el.nodeType === Node.TEXT_NODE) el = el.parentElement;
+  if (!(el instanceof Element) || !editor.contains(el)) return NOTE_DEFAULT_FONT_PX;
+  const px = parseFloat(window.getComputedStyle(el).fontSize);
   return Number.isFinite(px) && px > 0 ? px : NOTE_DEFAULT_FONT_PX;
 }
 
-/** Schriftgröße auf Auswahl (oder ab Cursor für Weiterschreiben). */
-function applyNotesFontSize(editor: HTMLElement | null, sizePx: number): boolean {
-  if (!editor) return false;
-  const size = `${Math.round(sizePx)}px`;
-  editor.focus({ preventScroll: true });
+function cloneLiveNotesRange(editor: HTMLElement | null): Range | null {
+  if (!editor) return null;
   const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0) return false;
+  if (!sel || sel.rangeCount === 0) return null;
   const range = sel.getRangeAt(0);
-  if (!editor.contains(range.commonAncestorContainer)) return false;
-
-  try {
-    if (!range.collapsed) {
-      const fragment = range.extractContents();
-      const span = document.createElement('span');
-      span.style.fontSize = size;
-      span.appendChild(fragment);
-      range.insertNode(span);
-      sel.removeAllRanges();
-      const after = document.createRange();
-      after.selectNodeContents(span);
-      after.collapse(false);
-      sel.addRange(after);
-    } else {
-      const span = document.createElement('span');
-      span.style.fontSize = size;
-      span.appendChild(document.createTextNode('\u200b'));
-      range.insertNode(span);
-      sel.removeAllRanges();
-      const inside = document.createRange();
-      inside.setStart(span.firstChild || span, span.firstChild ? 1 : 0);
-      inside.collapse(true);
-      sel.addRange(inside);
-    }
-    editor.dispatchEvent(new Event('input', { bubbles: true }));
-    return true;
-  } catch {
-    return false;
-  }
+  if (range.collapsed) return null;
+  if (!editor.contains(range.commonAncestorContainer)) return null;
+  return range.cloneRange();
 }
 
 type TeacherQuickNotesProps = {
@@ -776,6 +746,8 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   const renameInputRef = useRef<HTMLInputElement | null>(null);
   const emojiAnchorRef = useRef<HTMLButtonElement | null>(null);
   const emojiCaretRef = useRef<Range | null>(null);
+  const notesSelectionRef = useRef<Range | null>(null);
+  const formatToolbarRef = useRef<HTMLDivElement | null>(null);
   const tabClickTimerRef = useRef<number | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -801,7 +773,6 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   const lastSmoothMidRef = useRef<InkPoint | null>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const persistInkTimerRef = useRef<number | null>(null);
-  const canvasPassThroughRef = useRef(false);
 
   useEffect(() => {
     pagesRef.current = pages;
@@ -1148,10 +1119,24 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     syncEditorToStateRef.current = syncEditorToState;
   }, [syncEditorToState]);
 
-  const runFormat = (cmd: FmtCmd, value?: string) => {
-    if (mode !== 'text') setMode('text');
+  const runFormat = useCallback((cmd: FmtCmd, value?: string) => {
+    if (modeRef.current !== 'text') {
+      modeRef.current = 'text';
+      setMode('text');
+    }
+    const editor = editorRef.current;
+    if (!editor) return;
     pushHistorySnapshot();
-    editorRef.current?.focus();
+    const sel = window.getSelection();
+    const range =
+      sel && sel.rangeCount > 0 && editor.contains(sel.anchorNode)
+        ? sel.getRangeAt(0).cloneRange()
+        : null;
+    editor.focus({ preventScroll: true });
+    if (range && sel) {
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
     try {
       if (cmd === 'formatBlock') {
         document.execCommand('formatBlock', false, value || 'h3');
@@ -1165,7 +1150,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
       /* older browsers */
     }
     syncEditorToState();
-  };
+  }, [color, pushHistorySnapshot, syncEditorToState]);
 
   const applyColor = (next: string) => {
     setColor(next);
@@ -1177,24 +1162,79 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     runFormat('foreColor', next);
   };
 
-  const bumpFontSize = (direction: -1 | 1) => {
-    if (mode !== 'text') {
+  const rememberNotesSelection = useCallback(() => {
+    const live = cloneLiveNotesRange(editorRef.current);
+    if (live) notesSelectionRef.current = live;
+    stashEditorSelection(editorRef.current);
+    return live;
+  }, []);
+
+  const bumpFontSize = useCallback((direction: -1 | 1) => {
+    if (modeRef.current !== 'text') {
       modeRef.current = 'text';
       setMode('text');
     }
     const editor = editorRef.current;
     if (!editor) return;
+    setFormatBarInteracting(true);
+    const range =
+      cloneLiveNotesRange(editor) ||
+      notesSelectionRef.current ||
+      rememberNotesSelection();
+    if (!range || range.collapsed) {
+      window.setTimeout(() => setFormatBarInteracting(false), 0);
+      return;
+    }
+    notesSelectionRef.current = range.cloneRange();
+    stashEditorSelection(editor);
     pushHistorySnapshot();
-    editor.focus({ preventScroll: true });
-    const current = nearestFontSizeStep(readSelectionFontSizePx(editor));
+    const current = nearestFontSizeStep(readRangeFontSizePx(editor, range));
     const idx = NOTE_FONT_SIZE_STEPS.findIndex((s) => s === current);
     const safeIdx = idx >= 0 ? idx : NOTE_FONT_SIZE_STEPS.findIndex((s) => s === NOTE_DEFAULT_FONT_PX);
     const nextIdx = Math.max(0, Math.min(NOTE_FONT_SIZE_STEPS.length - 1, (safeIdx >= 0 ? safeIdx : 3) + direction));
     const nextPx = NOTE_FONT_SIZE_STEPS[nextIdx] ?? NOTE_DEFAULT_FONT_PX;
-    if (applyNotesFontSize(editor, nextPx)) {
+    const ok = applyEditorFontSizePx(editor, nextPx, range);
+    if (ok) {
       syncEditorToState();
+      const kept = cloneLiveNotesRange(editor);
+      if (kept) notesSelectionRef.current = kept;
     }
-  };
+    window.requestAnimationFrame(() => {
+      const editorNow = editorRef.current;
+      const kept = cloneLiveNotesRange(editorNow);
+      if (editorNow && kept) {
+        try {
+          const sel = window.getSelection();
+          sel?.removeAllRanges();
+          sel?.addRange(kept);
+          notesSelectionRef.current = kept;
+        } catch {
+          /* ignore */
+        }
+      }
+      setFormatBarInteracting(false);
+    });
+  }, [pushHistorySnapshot, rememberNotesSelection, syncEditorToState]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onSelectionChange = () => {
+      const editor = editorRef.current;
+      if (!editor) return;
+      const live = cloneLiveNotesRange(editor);
+      if (live) {
+        notesSelectionRef.current = live;
+        stashEditorSelection(editor);
+        return;
+      }
+      if (isFormatBarInteracting()) return;
+      const active = document.activeElement;
+      if (active && formatToolbarRef.current?.contains(active)) return;
+      if (active && editor.contains(active)) notesSelectionRef.current = null;
+    };
+    document.addEventListener('selectionchange', onSelectionChange);
+    return () => document.removeEventListener('selectionchange', onSelectionChange);
+  }, [open]);
 
   const insertImagesFromFiles = useCallback(
     async (files: FileList | File[]) => {
@@ -1428,51 +1468,6 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     }, INK_COMMIT_IDLE_MS);
   };
 
-  const restoreCanvasPointerEvents = () => {
-    canvasPassThroughRef.current = false;
-    const canvas = canvasRef.current;
-    if (canvas) canvas.style.pointerEvents = 'auto';
-  };
-
-  const passThroughToEditor = (e: PointerEvent) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    canvasPassThroughRef.current = true;
-    canvas.style.pointerEvents = 'none';
-    const below = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
-    const restore = () => {
-      restoreCanvasPointerEvents();
-      window.removeEventListener('pointerup', restore, true);
-      window.removeEventListener('pointercancel', restore, true);
-    };
-    window.addEventListener('pointerup', restore, true);
-    window.addEventListener('pointercancel', restore, true);
-    if (below && below !== canvas) {
-      try {
-        below.dispatchEvent(
-          new PointerEvent('pointerdown', {
-            bubbles: true,
-            cancelable: true,
-            composed: true,
-            pointerId: e.pointerId,
-            pointerType: e.pointerType,
-            clientX: e.clientX,
-            clientY: e.clientY,
-            screenX: e.screenX,
-            screenY: e.screenY,
-            button: e.button,
-            buttons: e.buttons,
-            isPrimary: e.isPrimary,
-            pressure: e.pressure,
-          })
-        );
-      } catch {
-        /* ignore */
-      }
-      if (typeof below.focus === 'function') below.focus();
-    }
-  };
-
   /** Wie auf den Folien: Apple Pencil immer Tinte; Maus nur im Stift/Radierer; Finger = Palm-Rejection. */
   const shouldInkPointer = (pointerType: string): boolean => {
     if (pointerType === 'pen') return true;
@@ -1516,27 +1511,21 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   };
 
   const onInkPointerDown = (e: PointerEvent) => {
-    if (canvasPassThroughRef.current) return;
     if (e.pointerType === 'touch') {
-      if (modeRef.current === 'text') {
-        passThroughToEditor(e);
-        return;
-      }
+      if (modeRef.current === 'text') return;
       e.preventDefault();
       return;
     }
-    if (!shouldInkPointer(e.pointerType)) {
-      if (modeRef.current === 'text' && (e.pointerType === 'mouse' || e.pointerType === 'touch')) {
-        passThroughToEditor(e);
-      }
-      return;
-    }
+    if (!shouldInkPointer(e.pointerType)) return;
     e.preventDefault();
     e.stopPropagation();
+    e.stopImmediatePropagation();
     editorRef.current?.blur();
     const canvas = canvasRef.current;
     const host = containerRef.current;
-    const captureEl = canvas || host;
+    // Host, nicht Canvas: im Textmodus hat die Leinwand pointer-events:none
+    // und würde die Capture sofort wieder verlieren.
+    const captureEl = host || canvas;
     if (!captureEl) return;
     try {
       captureEl.setPointerCapture(e.pointerId);
@@ -1572,7 +1561,6 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   };
 
   const onInkPointerMove = (e: PointerEvent) => {
-    if (canvasPassThroughRef.current) return;
     if (inkPointerIdRef.current != null && e.pointerId !== inkPointerIdRef.current) return;
     if (e.pointerType === 'touch' && (modeRef.current === 'pen' || modeRef.current === 'eraser')) {
       e.preventDefault();
@@ -1598,9 +1586,6 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   };
 
   const endInkStroke = (e: PointerEvent) => {
-    if (canvasPassThroughRef.current && e.type !== 'pointercancel') {
-      restoreCanvasPointerEvents();
-    }
     if (inkPointerIdRef.current != null && e.pointerId !== inkPointerIdRef.current) return;
     if (!drawingRef.current) return;
     drawingRef.current = false;
@@ -1645,11 +1630,13 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
         return;
       }
       resizeCanvas();
-      const listenOpts: AddEventListenerOptions = { passive: false };
-      canvas.addEventListener('pointerdown', onInkPointerDown, listenOpts);
-      canvas.addEventListener('pointermove', onInkPointerMove, listenOpts);
-      canvas.addEventListener('pointerup', endInkStroke, listenOpts);
-      canvas.addEventListener('pointercancel', endInkStroke, listenOpts);
+      // Capture auf dem Host: Pencil kommt an, auch wenn die Leinwand im Textmodus
+      // pointer-events:none hat (sonst blockiert sie Maus/Finger zum Tippen).
+      const listenOpts: AddEventListenerOptions = { capture: true, passive: false };
+      host.addEventListener('pointerdown', onInkPointerDown, listenOpts);
+      host.addEventListener('pointermove', onInkPointerMove, listenOpts);
+      host.addEventListener('pointerup', endInkStroke, listenOpts);
+      host.addEventListener('pointercancel', endInkStroke, listenOpts);
       const blockStylusTouch = (ev: TouchEvent) => {
         const touches = Array.from(ev.touches) as Array<Touch & { touchType?: string }>;
         const stylus = touches.some((t) => t.touchType === 'stylus');
@@ -1657,15 +1644,15 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
           ev.preventDefault();
         }
       };
-      canvas.addEventListener('touchstart', blockStylusTouch, listenOpts);
-      canvas.addEventListener('touchmove', blockStylusTouch, listenOpts);
+      host.addEventListener('touchstart', blockStylusTouch, listenOpts);
+      host.addEventListener('touchmove', blockStylusTouch, listenOpts);
       unbind = () => {
-        canvas.removeEventListener('pointerdown', onInkPointerDown);
-        canvas.removeEventListener('pointermove', onInkPointerMove);
-        canvas.removeEventListener('pointerup', endInkStroke);
-        canvas.removeEventListener('pointercancel', endInkStroke);
-        canvas.removeEventListener('touchstart', blockStylusTouch);
-        canvas.removeEventListener('touchmove', blockStylusTouch);
+        host.removeEventListener('pointerdown', onInkPointerDown, listenOpts);
+        host.removeEventListener('pointermove', onInkPointerMove, listenOpts);
+        host.removeEventListener('pointerup', endInkStroke, listenOpts);
+        host.removeEventListener('pointercancel', endInkStroke, listenOpts);
+        host.removeEventListener('touchstart', blockStylusTouch, listenOpts);
+        host.removeEventListener('touchmove', blockStylusTouch, listenOpts);
       };
     };
     tryBind();
@@ -1825,6 +1812,49 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
         redo();
         return;
       }
+      // ⌘B/I/U/[ /] — Capture, sonst nimmt der Browser ⌘B als Lesezeichen.
+      if (mod && !e.altKey && modeRef.current === 'text' && renamingIndex == null) {
+        const target = e.target as HTMLElement | null;
+        if (target?.tagName !== 'INPUT' && target?.tagName !== 'TEXTAREA') {
+          const key = e.key.toLowerCase();
+          if (key === 'b' && !e.shiftKey) {
+            e.preventDefault();
+            e.stopPropagation();
+            runFormat('bold');
+            return;
+          }
+          if (key === 'i' && !e.shiftKey) {
+            e.preventDefault();
+            e.stopPropagation();
+            runFormat('italic');
+            return;
+          }
+          if (key === 'u' && !e.shiftKey) {
+            e.preventDefault();
+            e.stopPropagation();
+            runFormat('underline');
+            return;
+          }
+          if (key === 'x' && e.shiftKey) {
+            e.preventDefault();
+            e.stopPropagation();
+            runFormat('strikeThrough');
+            return;
+          }
+          if (key === ']' && !e.shiftKey) {
+            e.preventDefault();
+            e.stopPropagation();
+            bumpFontSize(1);
+            return;
+          }
+          if (key === '[' && !e.shiftKey) {
+            e.preventDefault();
+            e.stopPropagation();
+            bumpFontSize(-1);
+            return;
+          }
+        }
+      }
       // Tab / Shift+Tab im Texteditor: einrücken (Liste oder Absatz)
       if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         if (renamingIndex != null) return;
@@ -1882,7 +1912,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [open, goToPage, redo, undo, closeModal, emojiOpen, renamingIndex, pushHistorySnapshot]);
+  }, [open, goToPage, redo, undo, closeModal, emojiOpen, renamingIndex, pushHistorySnapshot, runFormat, bumpFontSize]);
 
   const canUndo = historyTick >= 0 && historyRef.current.length > 0;
   const canRedo = historyTick >= 0 && redoRef.current.length > 0;
@@ -2068,6 +2098,8 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
             </Typography>
 
             <Box
+              ref={formatToolbarRef}
+              data-presentation-format-bar
               sx={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -2077,28 +2109,60 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                 minWidth: 0,
                 pr: 0.5,
               }}
+              onPointerDownCapture={() => {
+                setFormatBarInteracting(true);
+                rememberNotesSelection();
+              }}
+              onMouseDown={(e) => {
+                const t = e.target as HTMLElement | null;
+                if (t?.closest('button, [role="button"]')) e.preventDefault();
+                rememberNotesSelection();
+              }}
+              onPointerUp={() => {
+                window.setTimeout(() => setFormatBarInteracting(false), 0);
+              }}
             >
-              <Tooltip title="Fett">
-                <IconButton size="small" onClick={() => runFormat('bold')} sx={fmtBtnSx()}>
+              <Tooltip title="Fett (⌘B)">
+                <IconButton
+                  size="small"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => runFormat('bold')}
+                  sx={fmtBtnSx()}
+                >
                   <FormatBoldIcon sx={{ fontSize: 16 }} />
                 </IconButton>
               </Tooltip>
-              <Tooltip title="Kursiv">
-                <IconButton size="small" onClick={() => runFormat('italic')} sx={fmtBtnSx()}>
+              <Tooltip title="Kursiv (⌘I)">
+                <IconButton
+                  size="small"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => runFormat('italic')}
+                  sx={fmtBtnSx()}
+                >
                   <FormatItalicIcon sx={{ fontSize: 16 }} />
                 </IconButton>
               </Tooltip>
-              <Tooltip title="Unterstrichen">
-                <IconButton size="small" onClick={() => runFormat('underline')} sx={fmtBtnSx()}>
+              <Tooltip title="Unterstrichen (⌘U)">
+                <IconButton
+                  size="small"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => runFormat('underline')}
+                  sx={fmtBtnSx()}
+                >
                   <FormatUnderlinedIcon sx={{ fontSize: 16 }} />
                 </IconButton>
               </Tooltip>
-              <Tooltip title="Durchgestrichen">
-                <IconButton size="small" onClick={() => runFormat('strikeThrough')} sx={fmtBtnSx()}>
+              <Tooltip title="Durchgestrichen (⇧⌘X)">
+                <IconButton
+                  size="small"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => runFormat('strikeThrough')}
+                  sx={fmtBtnSx()}
+                >
                   <StrikethroughSIcon sx={{ fontSize: 16 }} />
                 </IconButton>
               </Tooltip>
-              <Tooltip title="Kleiner">
+              <Tooltip title="Kleiner (⌘[)">
                 <IconButton
                   size="small"
                   onMouseDown={(e) => e.preventDefault()}
@@ -2108,7 +2172,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                   <TextDecreaseIcon sx={{ fontSize: 16 }} />
                 </IconButton>
               </Tooltip>
-              <Tooltip title="Größer">
+              <Tooltip title="Größer (⌘])">
                 <IconButton
                   size="small"
                   onMouseDown={(e) => e.preventDefault()}
@@ -2460,13 +2524,15 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
               border: '1px solid #eceff1',
               boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.8)',
               overflow: 'hidden',
-              touchAction: 'none',
+              touchAction: mode === 'text' ? 'auto' : 'none',
             }}
           >
             <Box
               ref={editorRef}
               contentEditable={mode === 'text'}
               suppressContentEditableWarning
+              data-pres-notes-zone="true"
+              data-pres-base-fs={String(NOTE_DEFAULT_FONT_PX)}
               onBeforeInput={onBeforeEditorInput}
               onKeyDown={(e) => {
                 if (handlePresentationListShortcutKey(e, editorRef.current)) {
@@ -2600,7 +2666,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                 zIndex: 2,
                 touchAction: 'none',
                 cursor: mode === 'eraser' ? 'cell' : mode === 'pen' ? 'crosshair' : 'text',
-                pointerEvents: 'auto',
+                pointerEvents: mode === 'text' ? 'none' : 'auto',
                 WebkitUserSelect: 'none',
                 userSelect: 'none',
                 WebkitTouchCallout: 'none',
