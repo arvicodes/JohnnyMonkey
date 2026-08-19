@@ -1289,6 +1289,8 @@ function parseEntryTicketSearch(search: string): {
   /** Laptop: Lösungsfolie der laufenden Session, kein neuer Start. */
   companion: boolean;
   groupId: string | null;
+  /** 1 = zuerst erledigtes Ticket der Gruppe (Review-Archiv). */
+  archiveIndex: number | null;
   heroImageIndex: number | null;
   taskSeed: number | null;
   /** true, wenn grade/set in der URL gesetzt ist (nicht nur Default 7). */
@@ -1332,6 +1334,8 @@ function parseEntryTicketSearch(search: string): {
     params.get('solutions') === '1';
   const rawGid = params.get('groupId') || params.get('learningGroupId');
   const groupId = rawGid && rawGid.trim() ? rawGid.trim() : null;
+  const indexRaw = Number.parseInt(params.get('index') || params.get('archiveIndex') || '', 10);
+  const archiveIndex = Number.isInteger(indexRaw) && indexRaw >= 1 ? indexRaw : null;
   const heroRaw = Number(params.get('hero') ?? params.get('heroImageIndex'));
   const heroImageIndex =
     Number.isFinite(heroRaw) && heroRaw >= 0 && heroRaw <= 9 ? Math.floor(heroRaw) : null;
@@ -1346,6 +1350,7 @@ function parseEntryTicketSearch(search: string): {
     review,
     companion,
     groupId,
+    archiveIndex,
     heroImageIndex,
     taskSeed,
     hasExplicitBand,
@@ -1378,6 +1383,11 @@ function parseSafeStundeReturnTo(search: string): string | null {
   try {
     const url = new URL(raw, window.location.origin);
     if (url.origin !== window.location.origin) return null;
+
+    if (url.pathname === '/' || url.pathname === '/dashboard') {
+      return url.pathname;
+    }
+
     const lp = url.searchParams.get('lessonPath');
     if (!lp?.trim()) return null;
 
@@ -1890,6 +1900,7 @@ export default function EntryTicketPage({
           review: false,
           companion: false,
           groupId: null as string | null,
+          archiveIndex: null as number | null,
           heroImageIndex: null as number | null,
           taskSeed: null as number | null,
           hasExplicitBand: false,
@@ -2074,11 +2085,12 @@ export default function EntryTicketPage({
       review,
       companion,
       groupId,
+      archiveIndex,
       heroImageIndex,
       taskSeed: urlSeed,
       hasExplicitBand,
     } = parseEntryTicketSearch(search);
-    const playKey = `${lessonPath || ''}|${autostart ? 1 : 0}|${companion ? 1 : 0}|${review ? 1 : 0}|${openEditor ? 1 : 0}`;
+    const playKey = `${lessonPath || ''}|${autostart ? 1 : 0}|${companion ? 1 : 0}|${review ? 1 : 0}|${openEditor ? 1 : 0}|${groupId || ''}|${archiveIndex || 0}`;
     if (appliedPlayKeyRef.current === playKey) {
       setEntryTicketGroupId(groupId);
       if (heroImageIndex != null) setEntryHeroImageIndex(heroImageIndex);
@@ -2180,7 +2192,7 @@ export default function EntryTicketPage({
       setStudentReviewMode(false);
       return;
     }
-    if (!route.lessonPath || !route.groupId) {
+    if (!route.groupId || (!route.lessonPath && !route.archiveIndex)) {
       setStudentReviewMode(true);
       setStudentReviewError('Entry Ticket nicht gefunden (Stunde/Gruppe fehlt).');
       setStudentReviewReady(true);
@@ -2195,9 +2207,10 @@ export default function EntryTicketPage({
     void (async () => {
       try {
         const qs = new URLSearchParams({
-          lessonPath: route.lessonPath!,
           groupId: route.groupId!,
         });
+        if (route.archiveIndex) qs.set('index', String(route.archiveIndex));
+        else if (route.lessonPath) qs.set('lessonPath', route.lessonPath);
         const res = await apiGet(`/api/entry-ticket/completed?${qs.toString()}`);
         if (!res.ok || cancelled) {
           if (!cancelled) {

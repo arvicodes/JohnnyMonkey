@@ -1,7 +1,10 @@
 /** Bereinigt und repariert Listen-HTML (Paste, Einzug, Unterpunkte). */
 
 import {
+  isPresentationOlStyleId,
+  PRES_OL_ATTR,
   PRESENTATION_MAX_LIST_LEVEL,
+  type PresentationOlStyleId,
 } from './presentationListStyles';
 
 const LIST_TAGS = new Set(['UL', 'OL']);
@@ -315,6 +318,344 @@ export function outdentListItemInEditor(editor: HTMLElement): boolean {
   normalizeListsInPlace(editor);
   placeCaretInListItem(li);
   return true;
+}
+
+export function getCurrentPresentationOlStyle(editor: HTMLElement | null): PresentationOlStyleId | null {
+  if (!editor) return null;
+  const li = getListItemFromSelection(editor);
+  const list = li?.parentElement;
+  if (!list || list.tagName !== 'OL' || !editor.contains(list)) return null;
+  const raw = list.getAttribute(PRES_OL_ATTR);
+  if (isPresentationOlStyleId(raw)) return raw;
+  return 'decimal';
+}
+
+/** Nummerierte Liste anlegen oder Nummerierungsart der aktuellen Liste setzen. */
+export function applyOrderedListStyle(editor: HTMLElement, styleId: PresentationOlStyleId): boolean {
+  if (!editor) return false;
+  const existingLi = getListItemFromSelection(editor);
+  const existingList = existingLi?.parentElement;
+  if (!existingList || existingList.tagName !== 'OL') {
+    try {
+      document.execCommand('styleWithCSS', false, 'true');
+    } catch {
+      /* ignore */
+    }
+    document.execCommand('insertOrderedList', false);
+    normalizeListsInPlace(editor);
+  }
+  const li = getListItemFromSelection(editor);
+  const list = li?.parentElement;
+  if (!list || list.tagName !== 'OL') return false;
+  list.setAttribute(PRES_OL_ATTR, styleId);
+  normalizeListsInPlace(editor);
+  if (li) placeCaretInListItem(li);
+  return true;
+}
+
+export type PastedListLine = {
+  ordered: boolean;
+  rest: string;
+  level: number;
+  olStyle?: PresentationOlStyleId;
+};
+
+const UNORDERED_MARKER_RE = /^\s*([*•●○◦▪▫·∙‣■□–—\-])\s+(.*)$/;
+const UNORDERED_MARKER_ONLY_RE = /^\s*([*•●○◦▪▫·∙‣■□–—\-])\s*$/;
+const ORDERED_MARKER_RE = /^\s*(\d+)[.)]\s+(.*)$/;
+const ORDERED_MARKER_ONLY_RE = /^\s*(\d+)[.)]\s*$/;
+const PAREN_ALPHA_RE = /^\s*\(([a-zA-Z])\)\s+(.*)$/;
+const PAREN_ALPHA_ONLY_RE = /^\s*\(([a-zA-Z])\)\s*$/;
+const ALPHA_PAREN_RE = /^\s*([a-zA-Z])\)\s+(.*)$/;
+const ALPHA_PAREN_ONLY_RE = /^\s*([a-zA-Z])\)\s*$/;
+const ALPHA_DOT_RE = /^\s*([a-zA-Z])\.\s+(.*)$/;
+const ALPHA_DOT_ONLY_RE = /^\s*([a-zA-Z])\.\s*$/;
+
+function indentLevelFromLeadingWhitespace(line: string): number {
+  const expanded = line.replace(/\t/g, '    ');
+  const spaces = expanded.match(/^( *)/)?.[1].length ?? 0;
+  return Math.min(MAX_LIST_LEVEL - 1, Math.floor(spaces / 2));
+}
+
+function alphaOlStyle(letter: string, kind: 'dot' | 'paren' | 'paren-wrap'): PresentationOlStyleId {
+  if (kind === 'paren-wrap') return 'paren-alpha';
+  if (kind === 'paren') return 'alpha-paren';
+  return letter === letter.toUpperCase() ? 'upper-alpha' : 'lower-alpha';
+}
+
+/** Plain-Text- oder Absatzzeile → Listen-Marker, sonst null. */
+export function parsePastedListLine(line: string): PastedListLine | null {
+  const t = line.replace(/\u00a0/g, ' ');
+  const level = indentLevelFromLeadingWhitespace(t);
+  const bullet = t.match(UNORDERED_MARKER_RE);
+  if (bullet) return { ordered: false, rest: bullet[2], level };
+  const parenAlpha = t.match(PAREN_ALPHA_RE);
+  if (parenAlpha) {
+    return { ordered: true, rest: parenAlpha[2], level, olStyle: 'paren-alpha' };
+  }
+  const alphaParen = t.match(ALPHA_PAREN_RE);
+  if (alphaParen) {
+    return { ordered: true, rest: alphaParen[2], level, olStyle: 'alpha-paren' };
+  }
+  const ordered = t.match(ORDERED_MARKER_RE);
+  if (ordered) return { ordered: true, rest: ordered[2], level, olStyle: 'decimal' };
+  const alphaDot = t.match(ALPHA_DOT_RE);
+  if (alphaDot) {
+    return {
+      ordered: true,
+      rest: alphaDot[2],
+      level,
+      olStyle: alphaOlStyle(alphaDot[1], 'dot'),
+    };
+  }
+  if (UNORDERED_MARKER_ONLY_RE.test(t)) return { ordered: false, rest: '', level };
+  if (PAREN_ALPHA_ONLY_RE.test(t)) return { ordered: true, rest: '', level, olStyle: 'paren-alpha' };
+  if (ALPHA_PAREN_ONLY_RE.test(t)) return { ordered: true, rest: '', level, olStyle: 'alpha-paren' };
+  if (ORDERED_MARKER_ONLY_RE.test(t)) return { ordered: true, rest: '', level, olStyle: 'decimal' };
+  const alphaOnly = t.match(ALPHA_DOT_ONLY_RE);
+  if (alphaOnly) {
+    return { ordered: true, rest: '', level, olStyle: alphaOlStyle(alphaOnly[1], 'dot') };
+  }
+  return null;
+}
+
+export function olStyleFromMarker(raw: string): PresentationOlStyleId | null {
+  const t = raw.replace(/\u00a0/g, ' ').trim();
+  if (!t) return null;
+  if (/^\(\d+\)$/.test(t) || /^\d+[.)]$/.test(t)) return 'decimal';
+  if (/^\([a-zA-Z]\)$/.test(t)) return 'paren-alpha';
+  if (/^[a-zA-Z]\)$/.test(t)) return 'alpha-paren';
+  if (/^[a-z]\.$/.test(t)) return 'lower-alpha';
+  if (/^[A-Z]\.$/.test(t)) return 'upper-alpha';
+  if (/^[ivxlcdm]+\.$/i.test(t) && t.length > 2) return 'lower-roman';
+  return null;
+}
+
+function parseMarginToLevel(style: string): number | null {
+  const m = style.match(/margin-left:\s*([\d.]+)\s*(pt|px|cm|mm)?/i);
+  if (!m) return null;
+  const n = parseFloat(m[1]);
+  if (!Number.isFinite(n) || n < 12) return null;
+  const unit = (m[2] || 'pt').toLowerCase();
+  let pt = n;
+  if (unit === 'px') pt = n * 0.75;
+  else if (unit === 'cm') pt = n * 28.35;
+  else if (unit === 'mm') pt = n * 2.835;
+  return Math.min(MAX_LIST_LEVEL - 1, Math.max(0, Math.round(pt / 36) - 1));
+}
+
+function looksLikeListMarkerText(raw: string): boolean {
+  const s = raw.replace(/\u00a0/g, ' ').trim();
+  if (!s) return false;
+  if (/^[•●○◦▪▫·∙‣■□–—*]$/.test(s)) return true;
+  if (/^\d+[.)]$/.test(s) || /^\(\d+\)$/.test(s)) return true;
+  if (/^\([a-zA-Z]\)$/.test(s) || /^[a-zA-Z][.)]$/.test(s)) return true;
+  return false;
+}
+
+function isMsoIgnoreMarker(el: HTMLElement): boolean {
+  const st = `${el.getAttribute('style') || ''} ${el.getAttribute('class') || ''}`;
+  const text = (el.textContent || '').replace(/\u00a0/g, ' ').trim();
+  if (/mso-list:\s*Ignore/i.test(st) && text.length <= 12) return true;
+  if (!el.children.length && looksLikeListMarkerText(text)) return true;
+  return false;
+}
+
+function extractMarkerText(el: HTMLElement): string {
+  const ignore = Array.from(el.querySelectorAll('span')).find((span) =>
+    isMsoIgnoreMarker(span as HTMLElement),
+  );
+  const raw = (ignore?.textContent || el.textContent || '').replace(/\u00a0/g, ' ');
+  return raw.trim();
+}
+
+function isListCandidateBlock(el: HTMLElement): boolean {
+  const tag = el.tagName;
+  if (tag !== 'P' && tag !== 'DIV') return false;
+  if (tag === 'DIV') {
+    const hasBlockChild = Array.from(el.children).some((child) =>
+      BLOCK_TAGS.has(child.tagName),
+    );
+    if (hasBlockChild) return false;
+  }
+  if (el.querySelector('ul, ol, table')) return false;
+  return true;
+}
+
+function pastedListInfo(
+  el: HTMLElement,
+): { ordered: boolean; level: number; olStyle?: PresentationOlStyleId } | null {
+  if (!isListCandidateBlock(el)) return null;
+  const cls = el.getAttribute('class') || '';
+  const style = `${el.getAttribute('style') || ''} ${(el as HTMLElement).style?.cssText || ''}`;
+  const isMso = /MsoList/i.test(cls) || /mso-list\s*:/i.test(style);
+
+  let level = 0;
+  const lm = style.match(/level\s*(\d+)/i) || cls.match(/level(\d+)/i);
+  if (lm) level = Math.max(0, parseInt(lm[1], 10) - 1);
+  else {
+    const fromMargin = parseMarginToLevel(style);
+    if (fromMargin != null) level = fromMargin;
+  }
+  level = Math.min(MAX_LIST_LEVEL - 1, level);
+
+  if (isMso) {
+    const marker = extractMarkerText(el);
+    const olStyle = olStyleFromMarker(marker);
+    const ordered =
+      olStyle != null || /^\(?\d+[.)]?/.test(marker) || /^\d+\s/.test(marker);
+    return { ordered, level, olStyle: olStyle || undefined };
+  }
+
+  const parsed = parsePastedListLine(el.textContent || '');
+  if (!parsed) return null;
+  return { ordered: parsed.ordered, level: parsed.level || level, olStyle: parsed.olStyle };
+}
+
+function stripListMarkerHtml(el: HTMLElement): string {
+  const clone = el.cloneNode(true) as HTMLElement;
+  clone.querySelectorAll('span').forEach((span) => {
+    if (isMsoIgnoreMarker(span as HTMLElement)) span.remove();
+  });
+  const walker = document.createTreeWalker(clone, NodeFilter.SHOW_TEXT);
+  const first = walker.nextNode();
+  if (first?.textContent) {
+    first.textContent = first.textContent
+      .replace(/^[\s\u00a0]*/, '')
+      .replace(/^[*•●○◦▪▫·∙‣■□–—\-]\s+/, '')
+      .replace(/^\([a-zA-Z0-9]+\)\s+/, '')
+      .replace(/^[a-zA-Z]\)\s+/, '')
+      .replace(/^\(?\d+[.)]\s+/, '')
+      .replace(/^[a-zA-Z]\.\s+/, '');
+  }
+  return clone.innerHTML.trim();
+}
+
+export type NestedListItem = {
+  ordered: boolean;
+  level: number;
+  html: string;
+  olStyle?: PresentationOlStyleId;
+};
+
+function setOlStyle(list: HTMLElement, style?: PresentationOlStyleId) {
+  if (list.tagName !== 'OL') return;
+  if (style && style !== 'decimal') list.setAttribute(PRES_OL_ATTR, style);
+  else list.removeAttribute(PRES_OL_ATTR);
+}
+
+export function buildNestedListFromItems(items: NestedListItem[]): HTMLElement {
+  const minLevel = Math.min(...items.map((it) => it.level));
+  const normalized = items.map((it) => ({
+    ...it,
+    level: Math.max(0, it.level - minLevel),
+  }));
+  const root = document.createElement(normalized[0].ordered ? 'ol' : 'ul');
+  const stack: { list: HTMLElement; ordered: boolean; level: number }[] = [
+    { list: root, ordered: normalized[0].ordered, level: 0 },
+  ];
+  setOlStyle(root, normalized[0].olStyle);
+  let lastLi: HTMLLIElement | null = null;
+
+  for (const item of normalized) {
+    while (stack.length > 1 && stack[stack.length - 1].level > item.level) {
+      stack.pop();
+    }
+
+    let top = stack[stack.length - 1];
+    if (item.level > top.level) {
+      if (!lastLi) {
+        lastLi = document.createElement('li');
+        lastLi.innerHTML = '<br>';
+        top.list.appendChild(lastLi);
+      }
+      const sub = document.createElement(item.ordered ? 'ol' : 'ul');
+      setOlStyle(sub, item.olStyle);
+      lastLi.appendChild(sub);
+      stack.push({ list: sub, ordered: item.ordered, level: item.level });
+      top = stack[stack.length - 1];
+    } else if (top.ordered !== item.ordered) {
+      const sibling = document.createElement(item.ordered ? 'ol' : 'ul');
+      setOlStyle(sibling, item.olStyle);
+      const host = top.list.parentElement;
+      if (host && host.tagName === 'LI') host.appendChild(sibling);
+      else top.list.after(sibling);
+      stack[stack.length - 1] = {
+        list: sibling,
+        ordered: item.ordered,
+        level: top.level,
+      };
+      top = stack[stack.length - 1];
+    }
+
+    const li = document.createElement('li');
+    li.innerHTML = item.html.trim() ? item.html : '<br>';
+    top.list.appendChild(li);
+    lastLi = li;
+  }
+  return root;
+}
+
+function nodeDepth(el: Element): number {
+  let d = 0;
+  let parent = el.parentElement;
+  while (parent) {
+    d += 1;
+    parent = parent.parentElement;
+  }
+  return d;
+}
+
+function convertSiblingListBlocks(container: HTMLElement): boolean {
+  const children = Array.from(container.children) as HTMLElement[];
+  for (let i = 0; i < children.length; i++) {
+    const info = pastedListInfo(children[i]);
+    if (!info) continue;
+
+    const items: NestedListItem[] = [];
+    let j = i;
+    while (j < children.length) {
+      const next = pastedListInfo(children[j]);
+      if (!next) break;
+      items.push({
+        ordered: next.ordered,
+        level: next.level,
+        html: stripListMarkerHtml(children[j]),
+        olStyle: next.olStyle,
+      });
+      j += 1;
+    }
+    if (!items.length) continue;
+
+    const list = buildNestedListFromItems(items);
+    children[i].replaceWith(list);
+    for (let k = i + 1; k < j; k++) children[k].remove();
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Word (`MsoListParagraph` / `mso-list`) und Textmarker (`•`, `1.`) → echte ul/ol.
+ * Vor dem Entfernen der Word-Klassen aufrufen.
+ */
+export function convertPastedListParagraphs(root: HTMLElement) {
+  if (typeof document === 'undefined') return;
+  const containers = [
+    root,
+    ...Array.from(root.querySelectorAll('div, td, th, blockquote')),
+  ].filter((el): el is HTMLElement => {
+    if (!(el instanceof HTMLElement)) return false;
+    if (el.tagName === 'UL' || el.tagName === 'OL') return false;
+    return true;
+  });
+  containers.sort((a, b) => nodeDepth(b) - nodeDepth(a));
+  containers.forEach((container) => {
+    let guard = 0;
+    while (guard++ < 80 && convertSiblingListBlocks(container)) {
+      /* weitere Geschwistergruppen */
+    }
+  });
 }
 
 export function normalizeListsInPlace(root: ParentNode) {

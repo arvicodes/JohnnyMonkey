@@ -1,7 +1,9 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import {
+  clampLayoutZoneBox,
   isLayoutZoneHidden,
+  LayoutZoneBox,
   normalizeSlide,
   PresentationSlide,
   PresentationSlideFooter,
@@ -34,6 +36,20 @@ import { getElementStackLayer, splitElementsByStackLayer } from '../../lib/prese
 import type { SnapGuide } from '../../lib/presentationElementSnap';
 import PresentationRichZone from './PresentationRichZone';
 import PresentationSlideElements from './PresentationSlideElements';
+
+function measureLayoutZoneBox(zoneEl: HTMLElement): LayoutZoneBox | null {
+  const slideEl = zoneEl.closest('[data-pres-slide]') as HTMLElement | null;
+  if (!slideEl) return null;
+  const sr = slideEl.getBoundingClientRect();
+  const zr = zoneEl.getBoundingClientRect();
+  if (sr.width < 8 || sr.height < 8) return null;
+  return clampLayoutZoneBox({
+    x: ((zr.left - sr.left) / sr.width) * 100,
+    y: ((zr.top - sr.top) / sr.height) * 100,
+    w: (zr.width / sr.width) * 100,
+    h: (zr.height / sr.height) * 100,
+  });
+}
 
 interface PresentationSlideViewProps {
   slide: PresentationSlide;
@@ -102,6 +118,14 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   const handleSnapGuidesChange = useCallback((guides: SnapGuide[]) => {
     setSnapGuides(guides);
   }, []);
+  const zoneResizeRef = useRef<{
+    field: string;
+    start: LayoutZoneBox;
+    pointerX: number;
+    pointerY: number;
+    slideW: number;
+    slideH: number;
+  } | null>(null);
   const slide = normalizeSlide(rawSlide);
   const resolvedImageMax =
     imageMaxEdge ?? (editable && !exportSnapshot ? SLIDE_IMAGE_EDITOR_MAX : undefined);
@@ -195,6 +219,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           onAnimationTargetClick={onAnimationTargetClick}
           mediaInteractive={mediaInteractive}
           imageMaxEdge={resolvedImageMax}
+          accentColor={slide.accentColor}
         />
       </Box>
     );
@@ -226,40 +251,94 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
     onChange({ hiddenLayoutZones: next.hiddenLayoutZones });
   };
 
-  const zone = (
+  const beginLayoutZoneResize = (e: React.PointerEvent, htmlField: string, zoneEl: HTMLElement) => {
+    if (!editable || !onChange) return;
+    const slideEl = zoneEl.closest('[data-pres-slide]') as HTMLElement | null;
+    if (!slideEl) return;
+    const sr = slideEl.getBoundingClientRect();
+    const existing = slide.layoutZoneBoxes?.[htmlField];
+    const start = existing || measureLayoutZoneBox(zoneEl);
+    if (!start) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const boxes = { ...(slide.layoutZoneBoxes || {}), [htmlField]: start };
+    zoneResizeRef.current = {
+      field: htmlField,
+      start,
+      pointerX: e.clientX,
+      pointerY: e.clientY,
+      slideW: sr.width,
+      slideH: sr.height,
+    };
+    if (!existing) onChange({ layoutZoneBoxes: boxes });
+    const onMove = (ev: PointerEvent) => {
+      const session = zoneResizeRef.current;
+      if (!session) return;
+      const dw = ((ev.clientX - session.pointerX) / session.slideW) * 100;
+      const dh = ((ev.clientY - session.pointerY) / session.slideH) * 100;
+      const next = clampLayoutZoneBox({
+        ...session.start,
+        w: session.start.w + dw,
+        h: session.start.h + dh,
+      });
+      onChange({
+        layoutZoneBoxes: { ...boxes, [session.field]: next },
+      });
+    };
+    const onUp = () => {
+      zoneResizeRef.current = null;
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+
+  const renderZoneFrame = (
     fieldHtml: keyof PresentationSlide,
     fieldPlain: keyof PresentationSlide,
     opts: {
       variant?: 'title' | 'hero' | 'subtitle' | 'body' | 'quote' | 'caption';
       italic?: boolean;
       placeholder?: string;
-      align?: 'left' | 'center' | 'right';
+      align?: 'left' | 'center' | 'right' | 'justify';
       minHeight?: number;
       flex?: number;
-      zoneKey?: string;
-      /** Inhaltsbox darf gelöscht/ausgeblendet werden (Titel & Inhalt). */
       deletable?: boolean;
-    } = {}
+      resizable?: boolean;
+    },
+    box: LayoutZoneBox | null,
   ) => {
     const htmlField = String(fieldHtml) as HtmlAnimField;
     if (isLayoutZoneHidden(slide, htmlField)) return null;
 
     const canDeleteZone =
       Boolean(opts.deletable) && editable && !animationEditMode && !exportSnapshot && Boolean(onChange);
+    const canResizeZone =
+      Boolean(opts.resizable) && editable && !animationEditMode && !exportSnapshot && Boolean(onChange);
+    const boxed = Boolean(box);
 
     return (
       <Box
+        data-pres-layout-zone={htmlField}
         sx={{
           minWidth: 0,
-          flex: opts.flex,
-          position: 'relative',
-          zIndex: animationEditMode ? 1 : undefined,
-          // Parent hat pointer-events:none — Zone muss selbst klickbar sein.
+          flex: boxed ? undefined : opts.flex,
+          position: boxed ? 'absolute' : 'relative',
+          left: boxed && box ? `${box.x}%` : undefined,
+          top: boxed && box ? `${box.y}%` : undefined,
+          width: boxed && box ? `${box.w}%` : undefined,
+          height: boxed && box ? `${box.h}%` : undefined,
+          zIndex: boxed ? 8 : animationEditMode ? 1 : undefined,
+          overflow: boxed ? 'auto' : undefined,
+          boxSizing: 'border-box',
           pointerEvents: textZonesInteractive || animationEditMode ? 'auto' : 'none',
-          display: opts.flex ? 'flex' : undefined,
-          flexDirection: opts.flex ? 'column' : undefined,
-          minHeight: opts.flex && editable ? `${80 * scale}px` : undefined,
-          '&:hover .pres-zone-delete': { opacity: 1 },
+          display: opts.flex || boxed ? 'flex' : undefined,
+          flexDirection: opts.flex || boxed ? 'column' : undefined,
+          minHeight: !boxed && opts.flex && editable ? `${80 * scale}px` : undefined,
+          outline:
+            canResizeZone && boxed ? `${1 * scale}px dashed ${accent}66` : undefined,
+          '&:hover .pres-zone-delete, &:hover .pres-zone-resize': { opacity: 1 },
           '& a[href]': {
             pointerEvents: 'auto',
             cursor: 'pointer',
@@ -321,10 +400,14 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           slideId={slide.id}
           variant={opts.variant || 'body'}
           italic={opts.italic}
-          align={opts.align || align}
+          align={
+            opts.align ??
+            ((opts.variant || 'body') === 'body' ? 'justify' : align)
+          }
           placeholder={opts.placeholder}
           minHeight={opts.minHeight}
-          flex={opts.flex}
+          flex={opts.flex || (boxed ? 1 : undefined)}
+          allowScroll
           onEditorFocus={(el) => onEditorFocus?.(el, String(fieldHtml))}
           pointerEvents={textZonesInteractive ? 'auto' : 'none'}
           revealStep={revealStep}
@@ -343,8 +426,58 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
               : undefined
           }
         />
+        {canResizeZone && (
+          <Box
+            className="pres-zone-resize"
+            data-resize-handle
+            title="Inhaltsfeld größer/kleiner ziehen"
+            onPointerDown={(e) => {
+              beginLayoutZoneResize(e, htmlField, e.currentTarget.parentElement as HTMLElement);
+            }}
+            sx={{
+              position: 'absolute',
+              bottom: `${2 * scale}px`,
+              right: `${2 * scale}px`,
+              width: `${18 * scale}px`,
+              height: `${18 * scale}px`,
+              bgcolor: '#2E7D32',
+              borderRadius: `${3 * scale}px`,
+              cursor: 'nwse-resize',
+              border: `${2 * scale}px solid #fff`,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
+              zIndex: 6,
+              opacity: boxed ? 1 : 0,
+              pointerEvents: 'auto',
+              '&::after': {
+                content: '""',
+                position: 'absolute',
+                inset: `${-12 * scale}px`,
+              },
+            }}
+          />
+        )}
       </Box>
     );
+  };
+
+  const zone = (
+    fieldHtml: keyof PresentationSlide,
+    fieldPlain: keyof PresentationSlide,
+    opts: {
+      variant?: 'title' | 'hero' | 'subtitle' | 'body' | 'quote' | 'caption';
+      italic?: boolean;
+      placeholder?: string;
+      align?: 'left' | 'center' | 'right' | 'justify';
+      minHeight?: number;
+      flex?: number;
+      zoneKey?: string;
+      deletable?: boolean;
+      resizable?: boolean;
+    } = {}
+  ) => {
+    const htmlField = String(fieldHtml);
+    if (slide.layoutZoneBoxes?.[htmlField]) return null;
+    return renderZoneFrame(fieldHtml, fieldPlain, opts, null);
   };
 
   const renderImage = () => {
@@ -493,11 +626,21 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             </Box>
             <Box sx={{ display: 'flex', gap: `${40 * scale}px`, flex: 1, minHeight: exportSnapshot ? 'auto' : 0 }}>
               <Box sx={{ flex: 1, minHeight: exportSnapshot ? 'auto' : 0 }}>
-                {zone('bodyLeftHtml', 'bodyLeft', { variant: 'body', placeholder: 'Linke Spalte' })}
+                {zone('bodyLeftHtml', 'bodyLeft', {
+                  variant: 'body',
+                  placeholder: 'Linke Spalte',
+                  resizable: true,
+                  flex: 1,
+                })}
               </Box>
               <Box sx={{ width: `${2 * scale}px`, bgcolor: `${accent}44`, flexShrink: 0 }} />
               <Box sx={{ flex: 1, minHeight: exportSnapshot ? 'auto' : 0 }}>
-                {zone('bodyRightHtml', 'bodyRight', { variant: 'body', placeholder: 'Rechte Spalte' })}
+                {zone('bodyRightHtml', 'bodyRight', {
+                  variant: 'body',
+                  placeholder: 'Rechte Spalte',
+                  resizable: true,
+                  flex: 1,
+                })}
               </Box>
             </Box>
           </>
@@ -511,7 +654,12 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             </Box>
             <Box sx={{ display: 'flex', gap: `${36 * scale}px`, flex: 1, minHeight: exportSnapshot ? 'auto' : 0 }}>
               <Box sx={{ flex: 1, minHeight: exportSnapshot ? 'auto' : 0 }}>
-                {zone('bodyHtml', 'body', { variant: 'body', placeholder: 'Text…', flex: 1 })}
+                {zone('bodyHtml', 'body', {
+                  variant: 'body',
+                  placeholder: 'Text…',
+                  flex: 1,
+                  resizable: true,
+                })}
               </Box>
               {renderImage()}
             </Box>
@@ -527,7 +675,12 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             <Box sx={{ display: 'flex', gap: `${36 * scale}px`, flex: 1, minHeight: exportSnapshot ? 'auto' : 0 }}>
               {renderImage()}
               <Box sx={{ flex: 1, minHeight: exportSnapshot ? 'auto' : 0 }}>
-                {zone('bodyHtml', 'body', { variant: 'body', placeholder: 'Text…', flex: 1 })}
+                {zone('bodyHtml', 'body', {
+                  variant: 'body',
+                  placeholder: 'Text…',
+                  flex: 1,
+                  resizable: true,
+                })}
               </Box>
             </Box>
           </>
@@ -590,6 +743,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
               placeholder: 'Inhalt…',
               flex: 1,
               deletable: true,
+              resizable: true,
             })}
           </>
         );
@@ -678,6 +832,29 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
       >
         {renderContent()}
       </Box>
+
+      {(['bodyHtml', 'bodyLeftHtml', 'bodyRightHtml'] as const).map((field) => {
+        const box = slide.layoutZoneBoxes?.[field];
+        if (!box) return null;
+        const plain =
+          field === 'bodyHtml' ? 'body' : field === 'bodyLeftHtml' ? 'bodyLeft' : 'bodyRight';
+        return (
+          <React.Fragment key={`boxed-${field}`}>
+            {renderZoneFrame(
+              field,
+              plain,
+              {
+                variant: 'body',
+                placeholder: 'Inhalt…',
+                flex: 1,
+                deletable: field === 'bodyHtml',
+                resizable: true,
+              },
+              box,
+            )}
+          </React.Fragment>
+        );
+      })}
 
       {renderElementLayer(
         foregroundElements,

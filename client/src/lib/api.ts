@@ -46,17 +46,21 @@ export const apiPut = (url: string, data?: any) => apiCall(url, {
 });
 export const apiDelete = (url: string) => apiCall(url, { method: 'DELETE' });
 
-/** GET ohne Exception bei fehlendem Login (Polling, Hintergrund). */
+/** GET ohne Exception (kein Login, Netz weg, Server down — für Polling/Hintergrund). */
 export async function apiGetSafe(url: string): Promise<Response | null> {
   const loginCode = localStorage.getItem('loginCode')?.trim();
   if (!loginCode) return null;
   const base = getApiBaseUrl();
   const fullUrl = url.startsWith('http') ? url : `${base}${url}`;
-  return fetch(fullUrl, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json', 'x-login-code': loginCode },
-    cache: 'no-store',
-  });
+  try {
+    return await fetch(fullUrl, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json', 'x-login-code': loginCode },
+      cache: 'no-store',
+    });
+  } catch {
+    return null;
+  }
 }
 
 /** POST Fire-and-forget, ohne throw (z. B. Entry-Ticket-Signal für Lehrkräfte). */

@@ -18,11 +18,13 @@ import {
   updateTableResizeHoverCursor,
 } from '../../lib/presentationTableResize';
 import { PRESENTATION_DEFAULT_FONT_FAMILY } from '../../lib/presentationFonts';
+import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
 import { PRESENTATION_CONTENT_FONT_PX } from '../../lib/presentationFontSize';
 import { presentationNestedListSx } from '../../lib/presentationListStyles';
 import '../../styles/presentationLists.css';
 
 export type RichZoneVariant = 'title' | 'hero' | 'subtitle' | 'body' | 'quote' | 'caption';
+export type RichZoneAlign = 'left' | 'center' | 'right' | 'justify';
 
 const VARIANT_FONT: Record<RichZoneVariant, number> = {
   title: 42,
@@ -34,13 +36,23 @@ const VARIANT_FONT: Record<RichZoneVariant, number> = {
 };
 
 const VARIANT_DEFAULT_COLOR: Record<RichZoneVariant, string> = {
-  title: '#424242',
-  hero: '#424242',
-  subtitle: '#616161',
-  body: '#424242',
-  quote: '#424242',
-  caption: '#757575',
+  title: JOHNNY_PRESENTATION.textPrimary,
+  hero: JOHNNY_PRESENTATION.textPrimary,
+  subtitle: JOHNNY_PRESENTATION.textPrimary,
+  body: JOHNNY_PRESENTATION.textPrimary,
+  quote: JOHNNY_PRESENTATION.textPrimary,
+  caption: JOHNNY_PRESENTATION.textMuted,
 };
+
+/** Inhaltsfelder: Blocksatz. Titel/Hero behalten links/zentriert. */
+export function resolveRichZoneAlign(
+  variant: RichZoneVariant,
+  align?: RichZoneAlign,
+): RichZoneAlign {
+  if (align === 'center' || align === 'right' || align === 'justify') return align;
+  if (variant === 'body') return 'justify';
+  return align || 'left';
+}
 
 interface PresentationRichZoneProps {
   html?: string;
@@ -51,7 +63,7 @@ interface PresentationRichZoneProps {
   placeholder?: string;
   variant?: RichZoneVariant;
   italic?: boolean;
-  align?: 'left' | 'center' | 'right';
+  align?: RichZoneAlign;
   onEditorFocus?: (el: HTMLElement) => void;
   minHeight?: number;
   flex?: number;
@@ -65,6 +77,7 @@ interface PresentationRichZoneProps {
   pointerEvents?: 'auto' | 'none';
   htmlField?: string;
   slideId?: string;
+  allowScroll?: boolean;
 }
 
 function isEmptyDisplayHtml(html: string): boolean {
@@ -75,7 +88,7 @@ function isEmptyDisplayHtml(html: string): boolean {
 function buildRichSx(
   variant: RichZoneVariant,
   scale: number,
-  align: 'left' | 'center' | 'right',
+  align: RichZoneAlign,
   minHeight: number | undefined,
   flex: number | undefined,
   animationEditMode: boolean,
@@ -83,28 +96,38 @@ function buildRichSx(
   placeholder: string,
   zoneBasePx: number,
   italic = false,
-  exportSnapshot = false
+  exportSnapshot = false,
+  allowScroll = false,
 ) {
   const baseFont = zoneBasePx * scale;
+  const resolvedAlign = resolveRichZoneAlign(variant, align);
   return {
     fontSize: `${baseFont}px`,
     fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
     lineHeight: variant === 'title' ? 1.15 : 1.55,
     fontWeight: variant === 'title' || variant === 'hero' ? 700 : 400,
     fontStyle: italic ? 'italic' : 'normal',
-    textAlign: align,
+    textAlign: resolvedAlign,
     width: '100%',
     minWidth: 0,
     minHeight: minHeight ? `${minHeight * scale}px` : undefined,
     flex: flex ?? undefined,
     outline: 'none',
     wordBreak: 'break-word' as const,
-    overflow: exportSnapshot ? 'visible' : 'hidden',
+    overflow: exportSnapshot ? 'visible' : allowScroll ? 'auto' : 'hidden',
     color: VARIANT_DEFAULT_COLOR[variant],
-    '& p': { m: 0, mb: `${6 * scale}px` },
+    '& p': {
+      m: 0,
+      mb: `${6 * scale}px`,
+      textAlign: resolvedAlign === 'justify' ? 'justify' : undefined,
+    },
     '& p:last-child': { mb: 0 },
     '& li > p': { display: 'block', listStyle: 'none' },
-    ...presentationNestedListSx({ scale }),
+    ...presentationNestedListSx({
+      scale,
+      listTextAlign: 'start',
+      itemTextAlign: resolvedAlign === 'justify' ? 'justify' : undefined,
+    }),
     '& span[style], & mark': { backgroundClip: 'padding-box' },
     '& [data-pres-fs]': { lineHeight: 'inherit' },
     '& [data-pres-font]': { lineHeight: 'inherit' },
@@ -161,6 +184,7 @@ const PresentationRichZoneReadonly: React.FC<PresentationRichZoneProps> = ({
   revealEnabled = true,
   exportSnapshot = false,
   pointerEvents,
+  allowScroll = false,
 }) => {
   const zoneBasePx = VARIANT_FONT[variant];
   const rawHtml = useMemo(
@@ -185,12 +209,15 @@ const PresentationRichZoneReadonly: React.FC<PresentationRichZoneProps> = ({
     '',
     zoneBasePx,
     italic,
-    exportSnapshot
+    exportSnapshot,
+    allowScroll,
   );
 
   return (
     <Box
       data-pres-rich-zone
+      data-pres-variant={variant}
+      data-pres-align={resolveRichZoneAlign(variant, align)}
       data-pres-base-fs={String(zoneBasePx)}
       sx={richSx}
       dangerouslySetInnerHTML={{ __html: displayHtml }}
@@ -221,6 +248,7 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
   pointerEvents,
   htmlField,
   slideId,
+  allowScroll = false,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const editingRef = useRef(false);
@@ -325,7 +353,10 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
     e.preventDefault();
     const el = ref.current;
     if (!el) return;
-    const content = presentationPasteHtml(e.clipboardData);
+    const content = presentationPasteHtml(e.clipboardData, {
+      fontPx: VARIANT_FONT[variant],
+      textAlign: resolveRichZoneAlign(variant, align),
+    });
     el.focus();
     try {
       document.execCommand('styleWithCSS', false, 'true');
@@ -360,7 +391,8 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
     placeholder,
     zoneBasePx,
     italic,
-    exportSnapshot
+    exportSnapshot,
+    allowScroll,
   );
 
   if (!editable) {
@@ -369,6 +401,8 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
       <Box
         ref={ref}
         data-pres-rich-zone
+        data-pres-variant={variant}
+        data-pres-align={resolveRichZoneAlign(variant, align)}
         data-pres-base-fs={String(zoneBasePx)}
         onPointerDown={animationEditMode ? handleAnimationClick : undefined}
         sx={{
@@ -390,6 +424,8 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
       contentEditable={textEditing}
       suppressContentEditableWarning
       data-pres-rich-zone
+      data-pres-variant={variant}
+      data-pres-align={resolveRichZoneAlign(variant, align)}
       data-pres-base-fs={String(zoneBasePx)}
       data-pres-html-field={htmlField}
       data-pres-slide-id={slideId}

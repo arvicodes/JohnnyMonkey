@@ -4,6 +4,7 @@ import { parentDirGitPath } from './folienVersions';
 import { JOHNNY_PRESENTATION } from './presentationTheme';
 import type { PresentationTrashItem } from './presentationTrash';
 import { namedVersionSnapshotFilename } from './presentationLessonAssets';
+import type { SlideImageFrame } from './presentationImageFrames';
 import {
   normalizeSlideTransition,
   SLIDE_TRANSITIONS,
@@ -93,6 +94,8 @@ export interface SlideElement {
   imageFit?: 'contain' | 'cover';
   /** Bildausschnitt bei object-fit: cover (z. B. "40% 60%"). */
   imageObjectPosition?: string;
+  /** Bildrahmen (PowerPoint-ähnlich: Linie, Passepartout, Schatten). */
+  imageFrame?: SlideImageFrame;
   /** Standard-Zoom für Referenz-Embeds (1 = 100 %). */
   mediaZoom?: number;
 }
@@ -108,6 +111,8 @@ export interface PresentationStroke {
   /** Rotation in radians for box shapes (rect, ellipse). */
   rotation?: number;
 }
+
+export type LayoutZoneBox = { x: number; y: number; w: number; h: number };
 
 export interface PresentationSlide {
   id: string;
@@ -146,10 +151,57 @@ export interface PresentationSlide {
    */
   hiddenLayoutZones?: string[];
   /**
+   * Freie Größe/Position der Layout-Textfelder in Folien-Prozent (1920×1080).
+   * Fehlt der Eintrag, bleibt die Zone im normalen Flex-Layout.
+   */
+  layoutZoneBoxes?: Partial<Record<string, LayoutZoneBox>>;
+  /**
    * Nur HA-Folien: wenn true, dürfen SuS Dateien abgeben.
    * Fehlt/false → Folie sichtbar, aber kein Upload.
    */
   homeworkSubmissionRequired?: boolean;
+}
+
+export function clampLayoutZoneBox(box: LayoutZoneBox): LayoutZoneBox {
+  const x = Math.min(90, Math.max(0, box.x));
+  const y = Math.min(90, Math.max(0, box.y));
+  return {
+    x,
+    y,
+    w: Math.min(100 - x, Math.max(10, box.w)),
+    h: Math.min(100 - y, Math.max(8, box.h)),
+  };
+}
+
+export function sanitizeLayoutZoneBoxes(
+  raw?: PresentationSlide['layoutZoneBoxes'],
+): PresentationSlide['layoutZoneBoxes'] | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const next: NonNullable<PresentationSlide['layoutZoneBoxes']> = {};
+  for (const [key, box] of Object.entries(raw)) {
+    if (!key || !box || typeof box !== 'object') continue;
+    const x = Number((box as LayoutZoneBox).x);
+    const y = Number((box as LayoutZoneBox).y);
+    const w = Number((box as LayoutZoneBox).w);
+    const h = Number((box as LayoutZoneBox).h);
+    if (![x, y, w, h].every((n) => Number.isFinite(n))) continue;
+    next[key] = clampLayoutZoneBox({ x, y, w, h });
+  }
+  return Object.keys(next).length ? next : undefined;
+}
+
+export function withLayoutZoneBox(
+  slide: PresentationSlide,
+  zone: string,
+  box: LayoutZoneBox,
+): PresentationSlide {
+  return {
+    ...slide,
+    layoutZoneBoxes: {
+      ...(slide.layoutZoneBoxes || {}),
+      [zone]: clampLayoutZoneBox(box),
+    },
+  };
 }
 
 export function isLayoutZoneHidden(slide: PresentationSlide, zone: string): boolean {
@@ -422,6 +474,10 @@ export function normalizeSlide(slide: PresentationSlide): PresentationSlide {
     ...(Array.isArray(slide.hiddenLayoutZones) && slide.hiddenLayoutZones.length > 0
       ? { hiddenLayoutZones: slide.hiddenLayoutZones.filter((z) => typeof z === 'string') }
       : {}),
+    ...(() => {
+      const boxes = sanitizeLayoutZoneBoxes(slide.layoutZoneBoxes);
+      return boxes ? { layoutZoneBoxes: boxes } : {};
+    })(),
     ...(typeof slide.homeworkSubmissionRequired === 'boolean'
       ? { homeworkSubmissionRequired: slide.homeworkSubmissionRequired }
       : {}),

@@ -3,6 +3,21 @@
 [data-pres-rich-zone] ul,
 [data-pres-rich-zone] ol {
   list-style-position: outside !important;
+  text-align: start;
+}
+
+[data-pres-rich-zone][data-pres-align="justify"] {
+  text-align: justify;
+}
+
+[data-pres-rich-zone][data-pres-align="justify"] p,
+[data-pres-rich-zone][data-pres-align="justify"] li {
+  text-align: justify;
+}
+
+[data-pres-rich-zone][data-pres-align="justify"] ul,
+[data-pres-rich-zone][data-pres-align="justify"] ol {
+  text-align: start;
 }
 
 [data-pres-rich-zone] ul {
@@ -51,6 +66,42 @@
 
 [data-pres-rich-zone] ol ol ol ol ol ol {
   list-style-type: lower-roman !important;
+}
+
+[data-pres-rich-zone] ol[data-pres-list="decimal"] {
+  list-style-type: decimal !important;
+}
+
+[data-pres-rich-zone] ol[data-pres-list="lower-alpha"] {
+  list-style-type: lower-alpha !important;
+}
+
+[data-pres-rich-zone] ol[data-pres-list="upper-alpha"] {
+  list-style-type: upper-alpha !important;
+}
+
+[data-pres-rich-zone] ol[data-pres-list="lower-roman"] {
+  list-style-type: lower-roman !important;
+}
+
+[data-pres-rich-zone] ol[data-pres-list="upper-roman"] {
+  list-style-type: upper-roman !important;
+}
+
+[data-pres-rich-zone] ol[data-pres-list="paren-alpha"] {
+  list-style-type: lower-alpha !important;
+}
+
+[data-pres-rich-zone] ol[data-pres-list="paren-alpha"] > li::marker {
+  content: "(" counter(list-item, lower-alpha) ") ";
+}
+
+[data-pres-rich-zone] ol[data-pres-list="alpha-paren"] {
+  list-style-type: lower-alpha !important;
+}
+
+[data-pres-rich-zone] ol[data-pres-list="alpha-paren"] > li::marker {
+  content: counter(list-item, lower-alpha) ") ";
 }
 
 [data-pres-rich-zone] li {

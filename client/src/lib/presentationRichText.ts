@@ -12,6 +12,7 @@ import {
   keepEditorSelection,
   nudgeEditorFontSize,
   NOTES_FONT_SIZE_STEPS,
+  PRESENTATION_CONTENT_FONT_PX,
   PRESENTATION_FONT_SIZE_STEPS,
   rangeFullyContainsNode,
   restoreSavedEditorSelection,
@@ -23,9 +24,12 @@ import {
   indentListItemInEditor,
   outdentListItemInEditor,
   getListItemFromSelection,
+  convertPastedListParagraphs,
+  parsePastedListLine,
+  buildNestedListFromItems,
 } from './presentationListNormalize';
 import { PRESENTATION_DEFAULT_FONT_FAMILY } from './presentationFonts';
-import { toHighlightFill } from './presentationTheme';
+import { JOHNNY_PRESENTATION, toHighlightFill } from './presentationTheme';
 import { ensureNotesTablesFormatted, applyJohnnyTableFormatting } from './presentationSlideTables';
 
 // Explizite Re-Exports (HMR-sicherer als `import` + `export { … }`)
@@ -41,6 +45,7 @@ export {
   keepEditorSelection,
   nudgeEditorFontSize,
   NOTES_FONT_SIZE_STEPS,
+  PRESENTATION_CONTENT_FONT_PX,
   PRESENTATION_FONT_SIZE_STEPS,
   stashEditorSelection,
 } from './presentationFontSize';
@@ -551,18 +556,8 @@ function placeCaretIn(el: HTMLElement, sel: Selection) {
 }
 
 /** Plain-Text-Zeile → Listen-Marker + Rest, oder null. */
-function parsePlainListLine(
-  line: string,
-): { ordered: boolean; rest: string } | null {
-  const t = line.replace(/\u00a0/g, ' ');
-  const bullet = t.match(/^\s*([*•\-])\s+(.*)$/);
-  if (bullet) return { ordered: false, rest: bullet[2] };
-  const ordered = t.match(/^\s*(\d+)[.)]\s+(.*)$/);
-  if (ordered) return { ordered: true, rest: ordered[2] };
-  // Nur Marker ohne Text (z. B. `*` allein)
-  if (/^\s*([*•\-])\s*$/.test(t)) return { ordered: false, rest: '' };
-  if (/^\s*(\d+)[.)]\s*$/.test(t)) return { ordered: true, rest: '' };
-  return null;
+function parsePlainListLine(line: string) {
+  return parsePastedListLine(line);
 }
 
 function escapeHtmlText(text: string): string {
@@ -594,102 +589,178 @@ export function plainTextToPresentationHtml(text: string): string {
     let j = i + 1;
     while (j < lines.length) {
       const next = parsePlainListLine(lines[j]);
-      if (!next || next.ordered !== parsed.ordered) break;
+      if (!next) break;
       items.push(next);
       j += 1;
     }
-    const tag = parsed.ordered ? 'ol' : 'ul';
-    const lis = items
-      .map((it) => `<li>${it.rest.trim() ? escapeHtmlText(it.rest) : '<br>'}</li>`)
-      .join('');
-    parts.push(`<${tag}>${lis}</${tag}>`);
+    const list = buildNestedListFromItems(
+      items.map((it) => ({
+        ordered: it.ordered,
+        level: it.level,
+        html: it.rest.trim() ? escapeHtmlText(it.rest) : '<br>',
+        olStyle: it.olStyle,
+      })),
+    );
+    parts.push(list.outerHTML);
     i = j;
   }
   return stampDefaultPresentationFontHtml(parts.join('') || '<p><br></p>');
 }
 
-/** Setzt Aptos auf Blöcke ohne eigene Folien-Schrift. */
-function stampDefaultPresentationFont(root: ParentNode) {
+function unwrapElementKeepChildren(el: Element) {
+  const parent = el.parentNode;
+  if (!parent) {
+    el.remove();
+    return;
+  }
+  while (el.firstChild) parent.insertBefore(el.firstChild, el);
+  parent.removeChild(el);
+}
+
+function removeHtmlComments(root: ParentNode) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
+  const comments: Comment[] = [];
+  let current: Node | null;
+  while ((current = walker.nextNode())) comments.push(current as Comment);
+  comments.forEach((c) => c.remove());
+}
+
+/** Word/Pages/Google-Docs: o:p, Klassen, Zeilenhöhen, Ränder, Fremd-Ausrichtung. */
+function stripForeignPasteChrome(root: ParentNode) {
+  removeHtmlComments(root);
+  root.querySelectorAll('style, script, meta, link, xml, title').forEach((el) => el.remove());
+  Array.from(root.querySelectorAll('*')).forEach((node) => {
+    const tag = node.tagName || '';
+    if (tag.includes(':')) unwrapElementKeepChildren(node);
+  });
+  root.querySelectorAll('*').forEach((node) => {
+    const el = node as HTMLElement;
+    el.removeAttribute('class');
+    el.removeAttribute('lang');
+    el.removeAttribute('align');
+    el.removeAttribute('dir');
+    if (el.tagName !== 'IMG') {
+      el.removeAttribute('width');
+      el.removeAttribute('height');
+      el.removeAttribute('valign');
+      el.removeAttribute('border');
+      el.removeAttribute('cellspacing');
+      el.removeAttribute('cellpadding');
+    }
+    const style = el.style;
+    if (!style) return;
+    const keep = new Set<string>();
+    if (el.tagName === 'IMG') {
+      keep.add('width');
+      keep.add('height');
+    }
+    const toRemove: string[] = [];
+    for (let i = 0; i < style.length; i++) {
+      const prop = style.item(i);
+      if (!keep.has(prop) && !prop.startsWith('--')) toRemove.push(prop);
+    }
+    toRemove.forEach((prop) => style.removeProperty(prop));
+    if (!el.getAttribute('style')?.trim()) el.removeAttribute('style');
+  });
+}
+
+function unwrapPointlessSpans(root: ParentNode) {
+  let changed = true;
+  while (changed) {
+    changed = false;
+    Array.from(root.querySelectorAll('span')).forEach((span) => {
+      if (
+        span.hasAttribute('data-pres-font') ||
+        span.hasAttribute('data-pres-fs') ||
+        span.hasAttribute('data-pres-color') ||
+        span.hasAttribute('data-pres-highlight') ||
+        span.hasAttribute('data-pres-back')
+      ) {
+        return;
+      }
+      if (span.getAttribute('style')?.trim()) return;
+      unwrapElementKeepChildren(span);
+      changed = true;
+    });
+  }
+}
+
+function demoteHeadingsToParagraphs(root: ParentNode) {
+  root.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach((heading) => {
+    const p = heading.ownerDocument.createElement('p');
+    const bold = heading.ownerDocument.createElement('b');
+    while (heading.firstChild) bold.appendChild(heading.firstChild);
+    p.appendChild(bold);
+    heading.replaceWith(p);
+  });
+}
+
+/**
+ * Setzt Aptos (und optional Folien-Schriftgröße) auf Textblöcke.
+ * `force`: vorhandene Paste-Schriften/-Größen überschreiben.
+ */
+function stampDefaultPresentationFont(root: ParentNode, fontPx?: number, force = false) {
   const face = PRESENTATION_DEFAULT_FONT_FAMILY;
+  const color = JOHNNY_PRESENTATION.textPrimary;
+  const stampColor = fontPx != null;
+  if (force) {
+    root.querySelectorAll('[data-pres-font], [data-pres-fs], [data-pres-color]').forEach((node) => {
+      const el = node as HTMLElement;
+      el.removeAttribute('data-pres-font');
+      el.removeAttribute('data-pres-fs');
+      if (stampColor) el.removeAttribute('data-pres-color');
+      el.style?.removeProperty('font-family');
+      el.style?.removeProperty('font-size');
+      if (stampColor) el.style?.removeProperty('color');
+      if (!el.getAttribute('style')?.trim()) el.removeAttribute('style');
+    });
+    unwrapPointlessSpans(root);
+  }
   root.querySelectorAll('p, li, h1, h2, h3, h4, td, th').forEach((node) => {
     const el = node as HTMLElement;
-    if (el.hasAttribute('data-pres-font')) return;
-    if (el.querySelector('[data-pres-font]')) return;
-    // Direkte Text-/Inline-Kinder in Aptos-Span packen
+    if ((el.tagName === 'TD' || el.tagName === 'TH') && el.querySelector('p, li, table')) {
+      return;
+    }
+    if (!force) {
+      if (el.hasAttribute('data-pres-font') && (fontPx == null || el.hasAttribute('data-pres-fs'))) return;
+      if (el.querySelector('[data-pres-font]') && (fontPx == null || el.querySelector('[data-pres-fs]'))) {
+        return;
+      }
+    }
     const span = document.createElement('span');
     span.setAttribute('data-pres-font', face);
     span.style.setProperty('font-family', face, 'important');
+    if (fontPx != null && Number.isFinite(fontPx)) {
+      const px = Math.round(fontPx);
+      span.setAttribute('data-pres-fs', String(px));
+      span.style.setProperty('font-size', `${px}px`, 'important');
+    }
+    if (stampColor) {
+      span.setAttribute('data-pres-color', color);
+      span.style.setProperty('color', color, 'important');
+    }
     while (el.firstChild) span.appendChild(el.firstChild);
     if (!span.firstChild) span.appendChild(document.createElement('br'));
     el.appendChild(span);
   });
 }
 
-export function stampDefaultPresentationFontHtml(html: string): string {
+export function stampDefaultPresentationFontHtml(
+  html: string,
+  fontPx: number = PRESENTATION_CONTENT_FONT_PX,
+): string {
   if (!html || typeof document === 'undefined') return html;
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  stampDefaultPresentationFont(doc.body);
+  stampDefaultPresentationFont(doc.body, fontPx, true);
   return doc.body.innerHTML || html;
 }
 
-/**
- * Absatz-Blöcke mit Markdown-Aufzählung (`* …`) → echte Listen.
- * Für eingefügtes HTML aus Word/Notizen.
- */
-function convertMarkdownBulletParagraphs(root: HTMLElement) {
-  let guard = 0;
-  while (guard++ < 40) {
-    const blocks = Array.from(root.children) as HTMLElement[];
-    let converted = false;
-    for (let i = 0; i < blocks.length; i++) {
-      const el = blocks[i];
-      if (el.tagName !== 'P' && el.tagName !== 'DIV') continue;
-      const parsed = parsePlainListLine(el.textContent || '');
-      if (!parsed) continue;
-
-      const items: { ordered: boolean; rest: string; html: string }[] = [
-        {
-          ordered: parsed.ordered,
-          rest: parsed.rest,
-          html: stripListMarkerFromBlockHtml(el, parsed),
-        },
-      ];
-      let j = i + 1;
-      while (j < blocks.length) {
-        const nextEl = blocks[j];
-        if (nextEl.tagName !== 'P' && nextEl.tagName !== 'DIV') break;
-        const next = parsePlainListLine(nextEl.textContent || '');
-        if (!next || next.ordered !== parsed.ordered) break;
-        items.push({
-          ordered: next.ordered,
-          rest: next.rest,
-          html: stripListMarkerFromBlockHtml(nextEl, next),
-        });
-        j += 1;
-      }
-
-      const list = document.createElement(parsed.ordered ? 'ol' : 'ul');
-      items.forEach((it) => {
-        const li = document.createElement('li');
-        li.innerHTML = it.html.trim() ? it.html : '<br>';
-        list.appendChild(li);
-      });
-      el.replaceWith(list);
-      for (let k = i + 1; k < j; k++) blocks[k].remove();
-      converted = true;
-      break;
-    }
-    if (!converted) break;
-  }
-}
-
-function stripListMarkerFromBlockHtml(
-  el: HTMLElement,
-  parsed: { ordered: boolean; rest: string },
-): string {
-  // Einfacher Weg: Rest als Text (Formatierung der Marker-Zeile geht verloren — ok für Paste)
-  if (!parsed.rest.trim()) return '';
-  return escapeHtmlText(parsed.rest);
+function stampSlideTextAlign(root: ParentNode, align: 'justify' | 'left' | 'center' | 'right') {
+  root.querySelectorAll('p, li').forEach((node) => {
+    const el = node as HTMLElement;
+    if (el.closest('th')) return;
+    el.style.setProperty('text-align', align);
+  });
 }
 
 const FONT_SIZE_PX: Record<string, string> = {
@@ -786,44 +857,71 @@ function stripExternalFontFamilies(root: ParentNode) {
   });
 }
 
+export type PasteSanitizeOptions = {
+  /** Folien: Aptos + Standardgröße, Word-Formatierung verwerfen. */
+  slideDefaults?: boolean;
+  fontPx?: number;
+  /** Folien-Text: Standard Blocksatz. */
+  textAlign?: 'justify' | 'left' | 'center' | 'right';
+};
+
 /** Bereinigt eingefügtes HTML (Pages/Word) für editierbare Zonen. */
-export function sanitizePastedHtml(html: string): string {
+export function sanitizePastedHtml(html: string, options?: PasteSanitizeOptions): string {
   if (!html || typeof document === 'undefined') return html;
+  const slideDefaults = options?.slideDefaults === true;
+  const fontPx = slideDefaults
+    ? options?.fontPx ?? PRESENTATION_CONTENT_FONT_PX
+    : options?.fontPx;
   const doc = new DOMParser().parseFromString(html, 'text/html');
   doc.body.querySelectorAll('font').forEach((font) => {
     const span = doc.createElement('span');
-    const color = font.getAttribute('color');
-    if (color) span.style.color = color;
     span.innerHTML = font.innerHTML;
     font.replaceWith(span);
   });
   unwrapIllegalSpanBlocks(doc.body);
+  convertPastedListParagraphs(doc.body);
+  stripForeignPasteChrome(doc.body);
   stripExternalFontSizing(doc.body);
   stripExternalFontFamilies(doc.body);
   stripExternalColors(doc.body);
-  convertMarkdownBulletParagraphs(doc.body);
+  unwrapPointlessSpans(doc.body);
+  demoteHeadingsToParagraphs(doc.body);
+  convertPastedListParagraphs(doc.body);
   normalizeListsInPlace(doc.body);
-  stampDefaultPresentationFont(doc.body);
+  stampDefaultPresentationFont(doc.body, fontPx, slideDefaults);
+  if (slideDefaults) {
+    stampSlideTextAlign(doc.body, options?.textAlign ?? 'justify');
+  }
+  doc.body.querySelectorAll('table').forEach((node) => {
+    applyJohnnyTableFormatting(node as HTMLTableElement);
+  });
   doc.body.querySelectorAll('span.Apple-converted-space, br.Apple-interchange-newline').forEach((el) => {
-    if (el.tagName === 'BR') {
-      el.replaceWith(doc.createTextNode(' '));
-    } else {
-      el.replaceWith(doc.createTextNode(' '));
-    }
+    el.replaceWith(doc.createTextNode(' '));
   });
   return normalizeRichHtml(doc.body.innerHTML);
 }
 
 /**
- * Einfügen in Folien-Editoren: HTML oder Plain-Text → bereinigt, Listen, Aptos.
+ * Einfügen in Folien-Editoren: HTML oder Plain-Text → bereinigt, Listen, Aptos 26, Blocksatz.
  */
-export function presentationPasteHtml(clipboardData: DataTransfer): string {
+export function presentationPasteHtml(
+  clipboardData: DataTransfer,
+  options?: { fontPx?: number; textAlign?: 'justify' | 'left' | 'center' | 'right' },
+): string {
   const pastedHtml = clipboardData.getData('text/html');
   const pastedText = clipboardData.getData('text/plain');
+  const fontPx = options?.fontPx ?? PRESENTATION_CONTENT_FONT_PX;
+  const textAlign = options?.textAlign ?? 'justify';
   if (pastedHtml?.trim()) {
-    return sanitizePastedHtml(pastedHtml) || '<p><br></p>';
+    return sanitizePastedHtml(pastedHtml, { slideDefaults: true, fontPx, textAlign }) || '<p><br></p>';
   }
-  return plainTextToPresentationHtml(pastedText || '');
+  const html = stampDefaultPresentationFontHtml(
+    plainTextToPresentationHtml(pastedText || ''),
+    fontPx,
+  );
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  stampSlideTextAlign(doc.body, textAlign);
+  return doc.body.innerHTML || '<p><br></p>';
 }
 
 /** Erlaubte Link-Ziele in Folien (http(s), mailto, relative App-Pfade, Anker). */

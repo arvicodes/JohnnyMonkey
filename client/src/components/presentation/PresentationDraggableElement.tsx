@@ -25,6 +25,8 @@ import {
   presentationPasteHtml,
 } from '../../lib/presentationRichText';
 import { PRESENTATION_DEFAULT_FONT_FAMILY } from '../../lib/presentationFonts';
+import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
+import { imageFrameParts } from '../../lib/presentationImageFrames';
 import '../../styles/presentationLists.css';
 import {
   effectivePresentationImageFit,
@@ -110,6 +112,8 @@ interface PresentationDraggableElementProps {
   onSnapGuidesChange?: (guides: SnapGuide[]) => void;
   /** Wenn eine Karte gewählt ist: Bilder lassen Klicks durch (Inhalt tippen). */
   passPointerThrough?: boolean;
+  /** Folien-Akzent für Bildrahmen-Vorlage „Akzent“. */
+  accentColor?: string;
 }
 
 const MIN_SIZE = 4;
@@ -149,6 +153,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   snapTargets = [],
   onSnapGuidesChange,
   passPointerThrough = false,
+  accentColor,
 }) => {
   const textRef = useRef<HTMLDivElement>(null);
   const displayRef = useRef<HTMLDivElement>(null);
@@ -642,6 +647,12 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   );
 
   const isImageElement = element.type === 'image';
+  const pictureFrame = imageFrameParts(
+    element.imageFrame,
+    scale,
+    accentColor || JOHNNY_PRESENTATION.primary,
+  );
+  const pictureFrameOn = isImageElement && pictureFrame.active;
   const heroImage = isImageElement && isHeroSlideImage(view);
   const cropMode = isImageElement && isImageCropMode(view);
   const imageFit = effectivePresentationImageFit(view.src, view.imageFit);
@@ -700,7 +711,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   const playLinkHitTarget = !editable && !animationEditMode && htmlHasClickableLink;
 
   const imageSelectionBorder =
-    hugImageChrome
+    hugImageChrome || pictureFrameOn
       ? undefined
       : isImageElement || isShapeElement
         ? animationEditMode && elementAnimSelected
@@ -714,13 +725,20 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             ? `${2 * scale}px solid #E65100`
             : undefined;
 
-  /** Keine Dauer-Ränder um Bilder — Rahmen nur bei Auswahl / Animationsziel. */
+  /** Keine Dauer-Ränder um Bilder — Rahmen nur bei Auswahl / Animationsziel, außer Bildrahmen. */
   const hugChromeBorder =
-    showSelectionChrome
-      ? `${2 * scale}px solid #2E7D32`
-      : animationEditMode && elementAnimSelected
-        ? `${2 * scale}px solid #E65100`
-        : undefined;
+    pictureFrameOn
+      ? undefined
+      : showSelectionChrome
+        ? `${2 * scale}px solid #2E7D32`
+        : animationEditMode && elementAnimSelected
+          ? `${2 * scale}px solid #E65100`
+          : undefined;
+
+  const pictureSelectOutline =
+    pictureFrameOn && (showSelectionChrome || (animationEditMode && elementAnimSelected))
+      ? `${2 * scale}px solid ${animationEditMode && elementAnimSelected ? '#E65100' : '#2E7D32'}`
+      : undefined;
 
   const resizeHandleSx = {
     position: 'absolute' as const,
@@ -881,7 +899,14 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
           ? 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both'
           : undefined,
         borderRadius: isImageElement || isShapeElement ? 0 : isCardElement ? `${10 * scale}px` : `${6 * scale}px`,
-        overflow: showSelectionChrome || exportSnapshot || isShapeElement || isCardElement ? 'visible' : 'hidden',
+        overflow:
+          showSelectionChrome ||
+          exportSnapshot ||
+          isShapeElement ||
+          isCardElement ||
+          pictureFrameOn
+            ? 'visible'
+            : 'hidden',
         border: isCardElement
           ? undefined
           : imageSelectionBorder,
@@ -975,11 +1000,21 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               lineHeight: 0,
               boxSizing: 'border-box',
               border: hugImageChrome ? hugChromeBorder : undefined,
-              overflow: cropMode || hugImageChrome ? 'hidden' : 'visible',
+              overflow: pictureFrameOn ? 'visible' : cropMode || hugImageChrome ? 'hidden' : 'visible',
               width: '100%',
               height: '100%',
+              ...(pictureFrameOn ? pictureFrame.wrap : undefined),
+              outline: pictureSelectOutline,
+              outlineOffset: pictureSelectOutline ? `${2 * scale}px` : undefined,
             }}
           >
+            <Box
+              sx={{
+                width: '100%',
+                height: '100%',
+                ...(pictureFrameOn ? pictureFrame.inner : undefined),
+              }}
+            >
             <Box
               component="img"
               src={slideImageUrl(
@@ -1004,8 +1039,10 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   view.imageFit,
                   view.imageObjectPosition,
                 ),
+                ...(pictureFrameOn ? pictureFrame.img : undefined),
               }}
             />
+            </Box>
             {showResizeHandle && hugImageChrome && (
               <Box
                 data-resize-handle
@@ -1139,7 +1176,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   fontSize: `${textBaseFs * scale}px`,
                   fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
                   lineHeight: 1.35,
-                  color: '#424242',
+                  color: JOHNNY_PRESENTATION.textPrimary,
                   textAlign: 'center',
                   overflow: 'auto',
                   cursor: showSelectionChrome ? 'text' : 'inherit',
@@ -1164,7 +1201,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   fontSize: `${textBaseFs * scale}px`,
                   fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
                   lineHeight: 1.35,
-                  color: '#424242',
+                  color: JOHNNY_PRESENTATION.textPrimary,
                   textAlign: 'center',
                   pointerEvents: 'none',
                   '& p': { m: 0, mb: `${2 * scale}px` },
@@ -1407,7 +1444,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   fontSize: `${textBaseFs * scale}px`,
                   fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
                   lineHeight: 1.4,
-                  color: '#424242',
+                  color: JOHNNY_PRESENTATION.textPrimary,
                   cursor: showCardBodyEditor ? 'text' : editable ? 'pointer' : 'inherit',
                   boxSizing: 'border-box',
                   bgcolor: showCardBodyEditor ? 'rgba(255,255,255,0.55)' : 'transparent',
@@ -1428,7 +1465,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   fontSize: `${textBaseFs * scale}px`,
                   fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
                   lineHeight: 1.4,
-                  color: '#424242',
+                  color: JOHNNY_PRESENTATION.textPrimary,
                   pointerEvents: 'none',
                   '& p': { m: 0, mb: `${4 * scale}px` },
                 }}
@@ -1590,7 +1627,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 fontSize: `${Math.max(11, textBaseFs * 0.85) * scale}px`,
                 lineHeight: 1.25,
                 cursor: 'text',
-                color: '#424242',
+                color: JOHNNY_PRESENTATION.textPrimary,
                 boxSizing: 'border-box',
                 '& table': {
                   width: '100%',
@@ -1614,7 +1651,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 lineHeight: 1.25,
                 p: `${4 * scale}px`,
                 pointerEvents: animationEditMode ? 'auto' : 'none',
-                color: '#424242',
+                color: JOHNNY_PRESENTATION.textPrimary,
                 boxSizing: 'border-box',
                 '& table': {
                   width: '100%',
@@ -1788,7 +1825,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               lineHeight: 1.4,
               p: `${4 * scale}px`,
               cursor: 'text',
-              color: '#424242',
+              color: JOHNNY_PRESENTATION.textPrimary,
               boxSizing: 'border-box',
               '& p': { m: 0, mb: `${4 * scale}px` },
               '& li > p': { display: 'block', listStyle: 'none' },
@@ -1809,7 +1846,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               lineHeight: 1.4,
               p: `${8 * scale}px`,
               pointerEvents: animationEditMode || playLinkHitTarget ? 'auto' : 'none',
-              color: '#424242',
+              color: JOHNNY_PRESENTATION.textPrimary,
               boxSizing: 'border-box',
               '& a[href]': {
                 pointerEvents: 'auto',

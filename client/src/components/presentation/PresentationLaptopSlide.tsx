@@ -28,6 +28,7 @@ import { isBareBlankLayout, isBlankLayout } from '../../lib/presentationLayouts'
 import { hydratePresentationHtmlFontSizes, PRESENTATION_CONTENT_FONT_PX } from '../../lib/presentationFontSize';
 import { shapeSupportsText, SlideShapeSvg } from '../../lib/presentationSlideShapes';
 import { PRESENTATION_DEFAULT_FONT_FAMILY } from '../../lib/presentationFonts';
+import { imageFrameParts } from '../../lib/presentationImageFrames';
 import '../../styles/presentationLists.css';
 
 type ZoneVariant = 'title' | 'hero' | 'subtitle' | 'body' | 'quote' | 'caption';
@@ -64,37 +65,46 @@ function StaticHtml({
   plain?: string;
   scale: number;
   variant: ZoneVariant;
-  align?: 'left' | 'center' | 'right';
+  align?: 'left' | 'center' | 'right' | 'justify';
   italic?: boolean;
 }) {
   const display = sanitizePresentationHtml(html || textToHtml(plain || ''));
   if (isEmptyHtml(display)) return null;
   const base = VARIANT_FONT[variant] * scale;
+  const resolvedAlign =
+    align === 'center' || align === 'right' || align === 'justify'
+      ? align
+      : variant === 'body'
+        ? 'justify'
+        : align;
   return (
     <div
       data-pres-rich-zone
+      data-pres-variant={variant}
+      data-pres-align={resolvedAlign}
       style={{
         fontSize: `${base}px`,
         fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
         lineHeight: variant === 'title' || variant === 'hero' ? 1.15 : 1.55,
         fontWeight: variant === 'title' || variant === 'hero' ? 700 : 400,
         fontStyle: italic ? 'italic' : 'normal',
-        textAlign: align,
+        textAlign: resolvedAlign,
         width: '100%',
         minWidth: 0,
         wordBreak: 'break-word',
         overflow: 'hidden',
-        color: '#424242',
+        color: JOHNNY_PRESENTATION.textPrimary,
       }}
       dangerouslySetInnerHTML={{ __html: display }}
     />
   );
 }
 
-function StaticElement({ el, scale }: { el: SlideElement; scale: number }) {
+function StaticElement({ el, scale, accent }: { el: SlideElement; scale: number; accent: string }) {
   if (el.type === 'image') {
     if (!el.src?.trim()) return null;
     const url = slideImageUrl(el.src);
+    const frame = imageFrameParts(el.imageFrame, scale, accent);
     return (
       <div
         style={{
@@ -104,23 +114,28 @@ function StaticElement({ el, scale }: { el: SlideElement; scale: number }) {
           width: `${el.w}%`,
           height: `${el.h}%`,
           zIndex: 10 + (el.zIndex || 0),
-          overflow: 'hidden',
+          overflow: frame.active ? 'visible' : 'hidden',
           boxSizing: 'border-box',
           pointerEvents: 'none',
         }}
       >
-        <img
-          src={url}
-          alt=""
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: el.imageFit === 'cover' ? 'cover' : 'contain',
-            objectPosition: el.imageObjectPosition || '50% 50%',
-            display: 'block',
-            background: 'transparent',
-          }}
-        />
+        <div style={frame.active ? frame.wrap : { width: '100%', height: '100%' }}>
+          <div style={frame.active ? frame.inner : { width: '100%', height: '100%' }}>
+            <img
+              src={url}
+              alt=""
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: el.imageFit === 'cover' ? 'cover' : 'contain',
+                objectPosition: el.imageObjectPosition || '50% 50%',
+                display: 'block',
+                background: 'transparent',
+                ...(frame.active ? frame.img : {}),
+              }}
+            />
+          </div>
+        </div>
       </div>
     );
   }
@@ -144,7 +159,7 @@ function StaticElement({ el, scale }: { el: SlideElement; scale: number }) {
           fontSize: `${PRESENTATION_CONTENT_FONT_PX * scale}px`,
           fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
           lineHeight: 1.4,
-          color: '#424242',
+          color: JOHNNY_PRESENTATION.textPrimary,
           background: el.fillColor || 'transparent',
           padding: `${8 * scale}px`,
           borderRadius: `${6 * scale}px`,
@@ -215,7 +230,7 @@ function StaticElement({ el, scale }: { el: SlideElement; scale: number }) {
             fontSize: `${PRESENTATION_CONTENT_FONT_PX * scale}px`,
             fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
             lineHeight: 1.4,
-            color: '#424242',
+            color: JOHNNY_PRESENTATION.textPrimary,
             overflow: 'hidden',
             background: 'transparent',
           }}
@@ -246,7 +261,7 @@ function StaticElement({ el, scale }: { el: SlideElement; scale: number }) {
           padding: `${4 * scale}px`,
           fontSize: `${fs}px`,
           lineHeight: 1.25,
-          color: '#424242',
+          color: JOHNNY_PRESENTATION.textPrimary,
         }}
         dangerouslySetInnerHTML={{ __html: display }}
       />
@@ -290,7 +305,7 @@ function StaticElement({ el, scale }: { el: SlideElement; scale: number }) {
               fontSize: `${PRESENTATION_CONTENT_FONT_PX * scale}px`,
               fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
               lineHeight: 1.35,
-              color: '#424242',
+              color: JOHNNY_PRESENTATION.textPrimary,
               textAlign: 'center',
             }}
             dangerouslySetInnerHTML={{ __html: bodyHtml }}
@@ -388,18 +403,21 @@ const PresentationLaptopSlide: React.FC<PresentationLaptopSlideProps> = ({
     (el) => getElementStackLayer(el) !== 'background',
   );
 
+  const skipFlexZone = (field: string) =>
+    Boolean(slide.layoutZoneBoxes?.[field]) || isLayoutZoneHidden(slide, field);
+
   const zone = (
     html: string | undefined,
     plain: string | undefined,
     variant: ZoneVariant,
-    opts: { align?: 'left' | 'center' | 'right'; italic?: boolean } = {},
+    opts: { align?: 'left' | 'center' | 'right' | 'justify'; italic?: boolean } = {},
   ) => (
     <StaticHtml
       html={html}
       plain={plain}
       scale={scale}
       variant={variant}
-      align={opts.align || align}
+      align={opts.align ?? (variant === 'body' ? 'justify' : align)}
       italic={opts.italic}
     />
   );
@@ -492,11 +510,15 @@ const PresentationLaptopSlide: React.FC<PresentationLaptopSlideProps> = ({
           </div>
           <div style={{ display: 'flex', gap: `${40 * scale}px`, flex: 1, minHeight: 0 }}>
             <div style={{ flex: 1, minHeight: 0 }}>
-              {zone(slide.bodyLeftHtml, slide.bodyLeft, 'body')}
+              {skipFlexZone('bodyLeftHtml')
+                ? null
+                : zone(slide.bodyLeftHtml, slide.bodyLeft, 'body')}
             </div>
             <div style={{ width: `${2 * scale}px`, background: `${accent}44`, flexShrink: 0 }} />
             <div style={{ flex: 1, minHeight: 0 }}>
-              {zone(slide.bodyRightHtml, slide.bodyRight, 'body')}
+              {skipFlexZone('bodyRightHtml')
+                ? null
+                : zone(slide.bodyRightHtml, slide.bodyRight, 'body')}
             </div>
           </div>
         </>
@@ -509,7 +531,9 @@ const PresentationLaptopSlide: React.FC<PresentationLaptopSlideProps> = ({
             {zone(slide.titleHtml, slide.title, 'title')}
           </div>
           <div style={{ display: 'flex', gap: `${36 * scale}px`, flex: 1, minHeight: 0 }}>
-            <div style={{ flex: 1, minHeight: 0 }}>{zone(slide.bodyHtml, slide.body, 'body')}</div>
+            <div style={{ flex: 1, minHeight: 0 }}>
+              {skipFlexZone('bodyHtml') ? null : zone(slide.bodyHtml, slide.body, 'body')}
+            </div>
             {layoutImage()}
           </div>
         </>
@@ -523,7 +547,9 @@ const PresentationLaptopSlide: React.FC<PresentationLaptopSlideProps> = ({
           </div>
           <div style={{ display: 'flex', gap: `${36 * scale}px`, flex: 1, minHeight: 0 }}>
             {layoutImage()}
-            <div style={{ flex: 1, minHeight: 0 }}>{zone(slide.bodyHtml, slide.body, 'body')}</div>
+            <div style={{ flex: 1, minHeight: 0 }}>
+              {skipFlexZone('bodyHtml') ? null : zone(slide.bodyHtml, slide.body, 'body')}
+            </div>
           </div>
         </>
       );
@@ -564,9 +590,7 @@ const PresentationLaptopSlide: React.FC<PresentationLaptopSlideProps> = ({
           <div style={{ marginBottom: `${24 * scale}px` }}>
             {zone(slide.titleHtml, slide.title, 'title')}
           </div>
-          {!isLayoutZoneHidden(slide, 'bodyHtml')
-            ? zone(slide.bodyHtml, slide.body, 'body')
-            : null}
+          {!skipFlexZone('bodyHtml') ? zone(slide.bodyHtml, slide.body, 'body') : null}
         </>
       );
   }
@@ -595,7 +619,7 @@ const PresentationLaptopSlide: React.FC<PresentationLaptopSlideProps> = ({
       `}</style>
 
       {backgroundElements.map((el) => (
-        <StaticElement key={el.id} el={el} scale={scale} />
+        <StaticElement key={el.id} el={el} scale={scale} accent={accent} />
       ))}
 
       {showJohnnyChrome && (
@@ -651,8 +675,34 @@ const PresentationLaptopSlide: React.FC<PresentationLaptopSlideProps> = ({
         {content}
       </div>
 
+      {(['bodyHtml', 'bodyLeftHtml', 'bodyRightHtml'] as const).map((field) => {
+        const box = slide.layoutZoneBoxes?.[field];
+        if (!box || isLayoutZoneHidden(slide, field)) return null;
+        const html = slide[field];
+        const plain =
+          field === 'bodyHtml' ? slide.body : field === 'bodyLeftHtml' ? slide.bodyLeft : slide.bodyRight;
+        return (
+          <div
+            key={`boxed-${field}`}
+            style={{
+              position: 'absolute',
+              left: `${box.x}%`,
+              top: `${box.y}%`,
+              width: `${box.w}%`,
+              height: `${box.h}%`,
+              overflow: 'auto',
+              zIndex: 8,
+              pointerEvents: 'none',
+              boxSizing: 'border-box',
+            }}
+          >
+            {zone(html, plain, 'body')}
+          </div>
+        );
+      })}
+
       {foregroundElements.map((el) => (
-        <StaticElement key={el.id} el={el} scale={scale} />
+        <StaticElement key={el.id} el={el} scale={scale} accent={accent} />
       ))}
 
       {footerOn && (

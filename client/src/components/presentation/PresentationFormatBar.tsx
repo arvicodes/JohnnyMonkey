@@ -42,6 +42,7 @@ import {
   InsertLink as InsertLinkIcon,
   LinkOff as LinkOffIcon,
   ArrowUpward as ArrowUpwardIcon,
+  ArrowDropDown as ArrowDropDownIcon,
   FolderOpen as FolderOpenIcon,
   InsertDriveFileOutlined as FileIcon,
 } from '@mui/icons-material';
@@ -66,6 +67,11 @@ import {
   stashEditorSelection,
   insertTextAtCursor,
 } from '../../lib/presentationRichText';
+import {
+  applyOrderedListStyle,
+  getCurrentPresentationOlStyle,
+} from '../../lib/presentationListNormalize';
+import { PRESENTATION_OL_STYLES } from '../../lib/presentationListStyles';
 import {
   applyEditorFontSizePx,
   getEditorFontSizeSteps,
@@ -135,6 +141,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   const [highlightAnchor, setHighlightAnchor] = useState<HTMLElement | null>(null);
   const [emojiAnchor, setEmojiAnchor] = useState<HTMLElement | null>(null);
   const [tableAnchor, setTableAnchor] = useState<HTMLElement | null>(null);
+  const [olStyleAnchor, setOlStyleAnchor] = useState<HTMLElement | null>(null);
   const [fontPx, setFontPx] = useState<number | ''>('');
   const [fontFamily, setFontFamily] = useState('');
   const [notesTableTick, setNotesTableTick] = useState(0);
@@ -630,13 +637,77 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
           </IconButton>
         </span>
       </Tooltip>
-      <Tooltip title="Nummerierung">
-        <span>
-          <IconButton size="small" disabled={disabled || !activeEditor} sx={btnSx} onMouseDown={(e) => e.preventDefault()} onClick={() => applyAndNotify(() => execFormat(activeEditor, 'insertOrderedList'))}>
-            <FormatListNumbered sx={{ fontSize: 17 }} />
-          </IconButton>
-        </span>
-      </Tooltip>
+      <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+        <Tooltip title="Nummerierung (1, 2, 3)">
+          <span>
+            <IconButton
+              size="small"
+              disabled={disabled || !activeEditor}
+              sx={{ ...btnSx, pr: 0 }}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => applyAndNotify(() => execFormat(activeEditor, 'insertOrderedList'))}
+            >
+              <FormatListNumbered sx={{ fontSize: 17 }} />
+            </IconButton>
+          </span>
+        </Tooltip>
+        <Tooltip title="Nummerierungsart (a, b, …)">
+          <span>
+            <IconButton
+              size="small"
+              disabled={disabled || !activeEditor}
+              sx={{ ...btnSx, p: 0, width: 16, minWidth: 16 }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                bookmarkSelection(activeEditor);
+              }}
+              onClick={(e) => {
+                if (!activeEditor) return;
+                setOlStyleAnchor(e.currentTarget);
+              }}
+            >
+              <ArrowDropDownIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </span>
+        </Tooltip>
+      </Box>
+      <Popover
+        open={Boolean(olStyleAnchor)}
+        anchorEl={olStyleAnchor}
+        onClose={() => {
+          setOlStyleAnchor(null);
+          setFormatBarInteracting(false);
+        }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+      >
+        <Box sx={{ py: 0.5, minWidth: 148 }}>
+          {PRESENTATION_OL_STYLES.map((style) => {
+            const current = getCurrentPresentationOlStyle(activeEditor);
+            const selected = current === style.id;
+            return (
+              <MenuItem
+                key={style.id}
+                dense
+                selected={selected}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  applyAndNotify(() => {
+                    if (!activeEditor) return;
+                    applyOrderedListStyle(activeEditor, style.id);
+                  });
+                  setOlStyleAnchor(null);
+                }}
+                sx={{ fontSize: 13, gap: 1.25 }}
+              >
+                <Box component="span" sx={{ minWidth: 36, fontWeight: 700, color: '#2E7D32' }}>
+                  {style.sample}
+                </Box>
+                {style.label}
+              </MenuItem>
+            );
+          })}
+        </Box>
+      </Popover>
       <Tooltip title="Einzug vergrößern (Tab)">
         <span>
           <IconButton size="small" disabled={disabled || !activeEditor} sx={btnSx} onMouseDown={(e) => e.preventDefault()} onClick={() => applyAndNotify(() => execFormat(activeEditor, 'indent'))}>

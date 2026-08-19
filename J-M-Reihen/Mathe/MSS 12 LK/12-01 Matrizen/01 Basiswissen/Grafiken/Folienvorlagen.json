@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "updatedAt": "2026-08-18T13:46:35.444Z",
+  "updatedAt": "2026-08-17T06:12:58.279117Z",
   "templates": {
     "start": {
       "layout": "title-slide",
-      "title": "Thema der Stunde",
-      "body": "Untertitel / Einstieg",
+      "title": "Guten Morgen!",
+      "body": "",
       "speakerNotes": "",
       "preparationNotes": "",
       "materialNotes": "",
@@ -17,8 +17,8 @@
       "bodyStyle": "plain",
       "titleAlign": "center",
       "accentColor": "#2E7D32",
-      "titleHtml": "<p>Thema der Stunde</p>",
-      "bodyHtml": "<p>Untertitel / Einstieg</p>",
+      "titleHtml": "<p>Guten Morgen!</p>",
+      "bodyHtml": "<p><br></p>",
       "subtitleHtml": "",
       "bodyLeftHtml": "",
       "bodyRightHtml": "",
@@ -27,6 +27,17 @@
       "preparationHtml": "",
       "materialHtml": "",
       "elements": [
+        {
+          "id": "el-1784270070628",
+          "type": "image",
+          "x": 31.720945573258426,
+          "y": 6.555859751303066,
+          "w": 31.831176939326497,
+          "h": 37.65493697478992,
+          "src": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.02 Orga/Adobe Express - file.png",
+          "zIndex": 1,
+          "imageFit": "contain"
+        },
         {
           "id": "tpl-start-entry-ticket",
           "type": "text",
@@ -44,12 +55,8 @@
       "zoneRevealSteps": {}
     },
     "auftrag": {
-      "layout": "blank",
-      "title": "",
-      "body": "",
       "speakerNotes": "",
-      "preparationNotes": "",
-      "materialNotes": "",
+      "layout": "blank",
       "subtitle": "",
       "bodyLeft": "",
       "bodyRight": "",
@@ -58,6 +65,11 @@
       "bodyStyle": "plain",
       "titleAlign": "left",
       "accentColor": "#2E7D32",
+      "title": "",
+      "body": "",
+      "hiddenLayoutZones": [
+        "bodyHtml"
+      ],
       "titleHtml": "",
       "bodyHtml": "",
       "subtitleHtml": "",
@@ -65,8 +77,10 @@
       "bodyRightHtml": "",
       "imageCaptionHtml": "",
       "speakerNotesHtml": "<p><br></p>",
-      "preparationHtml": "",
-      "materialHtml": "",
+      "preparationNotes": "",
+      "preparationHtml": "<p><br></p>",
+      "materialNotes": "",
+      "materialHtml": "<p><br></p>",
       "elements": [
         {
           "id": "tpl-auftrag-card",
@@ -81,15 +95,14 @@
           "fillColor": "rgba(46,125,50,0.14)",
           "titleHtml": "<p style=\"text-align:center\"><strong>Arbeitsauftrag</strong></p>",
           "html": "<p style=\"text-align: left;\"><b>Mathebuch:</b></p><p style=\"text-align: left;\">Seite , Nummer</p>",
-          "stackLayer": "foreground"
+          "stackLayer": "foreground",
+          "revealStep": 1,
+          "animationSet": true
         }
       ],
       "transition": "fade",
       "revealEnabled": true,
-      "zoneRevealSteps": {},
-      "hiddenLayoutZones": [
-        "bodyHtml"
-      ]
+      "zoneRevealSteps": {}
     },
     "sicherung": {
       "layout": "title-content",
@@ -232,7 +245,7 @@
           "strokeColor": "#EF6C00",
           "strokeWidth": 2.5,
           "fillColor": "rgba(239,108,0,0.14)",
-          "titleHtml": "<p style=\"text-align:center\"><strong>Hausaufgabe</strong></p><p style=\"text-align:center\"><strong><br></strong></p>",
+          "titleHtml": "<p style=\"text-align:center\"><strong style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\">Hausaufgabe</strong></p><p style=\"text-align:center\"><strong style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\"><br></strong></p>",
           "html": "<p style=\"text-align: left;\"><b>Mathebuch:</b></p><p style=\"text-align: left;\">Seite , Nummer</p>",
           "stackLayer": "foreground"
         }
@@ -246,12 +259,8 @@
       ]
     },
     "ende": {
-      "layout": "title-slide",
-      "title": "Bis zur nächsten Stunde!",
-      "body": "",
       "speakerNotes": "",
-      "preparationNotes": "",
-      "materialNotes": "",
+      "layout": "title-slide",
       "subtitle": "",
       "bodyLeft": "",
       "bodyRight": "",
@@ -260,6 +269,8 @@
       "bodyStyle": "plain",
       "titleAlign": "center",
       "accentColor": "#2E7D32",
+      "title": "Bis zur nächsten Stunde!",
+      "body": "",
       "titleHtml": "<p>Bis zur nächsten Stunde!</p>",
       "bodyHtml": "",
       "subtitleHtml": "",
@@ -267,16 +278,18 @@
       "bodyRightHtml": "",
       "imageCaptionHtml": "",
       "speakerNotesHtml": "",
+      "preparationNotes": "",
       "preparationHtml": "",
+      "materialNotes": "",
       "materialHtml": "",
       "elements": [
         {
-          "id": "tpl-ende-img",
+          "id": "el-1784437657131-etc3g",
           "type": "image",
-          "x": 37,
-          "y": 28,
-          "w": 26,
-          "h": 40,
+          "x": 37.03093281248412,
+          "y": 12.792571918661075,
+          "w": 26.615334494745305,
+          "h": 33.21916135335253,
           "src": "__GRAFIKEN__/Endroboter.png",
           "zIndex": 1,
           "imageFit": "contain"
@@ -412,5 +425,458 @@
       "zoneRevealSteps": {}
     }
   },
-  "custom": []
+  "custom": [
+    {
+      "id": "custom-1785307422928-0yhi",
+      "label": "Orga",
+      "shortLabel": "O",
+      "hint": "Eigene Vorlage",
+      "payload": {
+        "speakerNotes": "",
+        "layout": "title-content",
+        "subtitle": "",
+        "bodyLeft": "",
+        "bodyRight": "",
+        "imagePath": "",
+        "imageCaption": "",
+        "bodyStyle": "plain",
+        "titleAlign": "left",
+        "accentColor": "#0288D1",
+        "title": "Organisatorisches - Material und Technik",
+        "body": "​​Die Johnny Monkey AppWir arbeiten mit der App Johnny Monkey, erreichbar durch folgende Eingabe in der Browsersuchleiste: 192.168.8.1Login mit Schulcomputerlogin.→ Logge dich IMMER sofort zu Stundenbeginn ein und lege direkt los!Das Materialheft​Notiere die IP Adresse und deine Login Daten im Materialheft auf Seite 1.Starte nächste Stunde auf Seite 2.Beschrifte das Materialheft mit Namen und designe das Cover nach Belieben.Unser Moderator, unsere ModeratorinPro Woche Startet und Beendet die Stunde mit Entry- und Exit-Ticket",
+        "titleHtml": "<p>Organisatorisches - Material und Technik</p>",
+        "bodyHtml": "<div><span style=\"font-weight: bold;\"></span></div><div><span style=\"font-weight: bold;\"></span></div><div><span style=\"font-weight: bold;\"></span></div><div><span style=\"font-weight: bold;\"></span></div><div><span style=\"font-weight: bold;\"><span data-pres-color=\"#1565C0\" style=\"color: rgb(21, 101, 192) !important;\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><span data-pres-color=\"#1976D2\" style=\"color: rgb(25, 118, 210) !important;\"><span data-pres-color=\"#1976D2\" style=\"color: rgb(25, 118, 210) !important;\">​</span>​</span>Die Johnny Monkey App</span></span></span></div><ul><li><span style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\">Wir arbeiten mit der App&nbsp;</span><span style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif; font-size: 26px; font-weight: bold;\">Johnny Monkey</span><span style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif; font-size: 26px;\">, erreichbar durch folgende Eingabe in der Browsersuchleiste: </span><b style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif; font-size: 26px;\">192.168.8.1</b></li><li><span style=\"font-weight: bold;\">Login</span> mit Schulcomputerlogin.</li></ul><div><br></div><div style=\"margin-left: 56px;\"><b></b></div><div style=\"margin-left: 56px;\">→ <b>Logge</b> dich <u>IMMER</u> sofort zu Stundenbeginn <b>ein</b> und <b>lege</b> direkt <b>los</b>!</div><div style=\"margin-left: 56px;\"><br></div><div style=\"\"></div><div></div><div><br></div><div><br></div><div><br></div><div><span style=\"font-weight: bold;\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><span data-pres-color=\"#1565C0\" style=\"color: rgb(21, 101, 192) !important;\">Das Materialheft</span><span><span data-pres-color=\"#1565C0\" style=\"color: rgb(21, 101, 192) !important;\">​</span></span></span></span></div><div><ul><li><b>Notiere</b>&nbsp;die IP Adresse und deine Login Daten im Materialheft auf Seite 1.</li><li><span style=\"font-weight: bold;\">Starte</span> nächste Stunde auf Seite 2.</li><li><span style=\"font-weight: bold;\">Beschrifte</span> das Materialheft mit Namen und <span style=\"font-weight: bold;\">designe</span> das Cover nach Belieben.</li></ul></div><div><br></div><div><br></div><div><br></div><div><span style=\"font-weight: bold;\"><span data-pres-color=\"#1565C0\" style=\"color: rgb(21, 101, 192) !important;\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\">Unser Moderator, unsere Moderatorin</span></span></span></div><div><ul><li>Pro Woche&nbsp;</li><li><b>Startet</b> und <b>Beendet</b> die Stunde mit <span data-pres-color=\"#1976D2\" style=\"color: rgb(25, 118, 210) !important;\">Entry</span>- und <span data-pres-color=\"#1976D2\" style=\"color: rgb(25, 118, 210) !important;\">Exit</span>-Ticket</li></ul></div>",
+        "subtitleHtml": "",
+        "bodyLeftHtml": "",
+        "bodyRightHtml": "",
+        "imageCaptionHtml": "",
+        "speakerNotesHtml": "<p><br></p>",
+        "preparationNotes": "",
+        "preparationHtml": "<p><br></p>",
+        "materialNotes": "",
+        "materialHtml": "<p><br></p>",
+        "elements": [
+          {
+            "id": "el-1784179590130",
+            "type": "image",
+            "x": 58.043849488760806,
+            "y": 23.454414447453548,
+            "w": 43.77617836166371,
+            "h": 18.38957457983193,
+            "src": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.02 Orga/Bildschirmfoto 2026-07-16 um 07.26.08.png",
+            "zIndex": 2,
+            "imageFit": "contain"
+          },
+          {
+            "id": "el-1784268944402",
+            "type": "image",
+            "x": 79.78789824950447,
+            "y": 46.252916745399425,
+            "w": 17.084753987593068,
+            "h": 27.54464285714285,
+            "src": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.02 Orga/notebook.png",
+            "zIndex": 3,
+            "imageFit": "contain"
+          },
+          {
+            "id": "el-1784439424565-idau",
+            "type": "shape",
+            "shapeKind": "line",
+            "x": -2.1677988624764324,
+            "y": 40.638786764705884,
+            "w": 103.5523371048831,
+            "h": 9.230567226890756,
+            "zIndex": 4,
+            "strokeColor": "#2E7D32",
+            "strokeWidth": 4,
+            "fillColor": "transparent"
+          },
+          {
+            "id": "el-1784439730979-76p8m",
+            "type": "image",
+            "x": 82.97119564071065,
+            "y": 74.85035527424168,
+            "w": 11.568693694343485,
+            "h": 20.121454831932773,
+            "src": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.02 Orga/Moderator.png",
+            "zIndex": 5,
+            "imageFit": "contain"
+          },
+          {
+            "id": "el-1784439747967-d6ere",
+            "type": "shape",
+            "shapeKind": "line",
+            "x": -1.263411659010661,
+            "y": 68.24579831932773,
+            "w": 103.5523371048831,
+            "h": 9.230567226890756,
+            "zIndex": 6,
+            "strokeColor": "#2E7D32",
+            "strokeWidth": 4,
+            "fillColor": "transparent"
+          }
+        ],
+        "transition": "fade",
+        "revealEnabled": true,
+        "zoneRevealSteps": {}
+      },
+      "createdAt": "2026-07-29T06:43:42.928Z"
+    },
+    {
+      "id": "custom-1786166997137-la4b",
+      "label": "Auf nach draußen ...",
+      "shortLabel": "AN",
+      "hint": "Eigene Vorlage",
+      "payload": {
+        "layout": "title-content",
+        "title": "Auf nach draußen ...",
+        "body": "Wir gehen frei herum .... Tausche dich mit so vielen Mitschüler:innen über dein Bild, deine KI aus. Beschreibe deine KI. Dein Gegenüber benennt mögliche Probleme. Diskutiert.Besuche alle 10 Stationen. Trefft je eine andere Person an einer der Stationen. Einigt euch  gemeinsam ein eine Begriffserklärung und ein Beispiel. Schreibt diese auf die vorliegenden Karteikarten.",
+        "speakerNotes": "Material:Karten mit den 10 Begriffen. Leere Karten pro Station",
+        "preparationNotes": "",
+        "materialNotes": "",
+        "subtitle": "",
+        "bodyLeft": "",
+        "bodyRight": "",
+        "imagePath": "",
+        "imageCaption": "",
+        "bodyStyle": "plain",
+        "titleAlign": "left",
+        "accentColor": "#2E7D32",
+        "titleHtml": "Auf nach draußen ...",
+        "bodyHtml": "<div style=\"\"><br></div><div style=\"\"><br></div><div style=\"\"><br></div><div style=\"\"><br></div><div style=\"\"><br></div><div style=\"\"><br></div><div style=\"\">Wir gehen frei herum ....&nbsp;<span style=\"font-weight: bold;\">Tausche</span> dich mit so vielen Mitschüler:innen über dein Bild, deine KI aus. <span style=\"font-weight: bold;\">Beschreibe</span> deine KI. Dein Gegenüber <span style=\"font-weight: bold;\">benennt</span> mögliche Probleme. <span style=\"font-weight: bold;\">Diskutiert</span>.</div><div><br></div><div><br></div><div><br></div><div><br></div><div><br></div><div><br></div><div><br></div><div><span style=\"font-weight: bold;\">Besuche</span> alle 10 Stationen.&nbsp;<span style=\"font-weight: bold;\">Trefft</span> je eine andere Person an einer der Stationen. <span style=\"font-weight: bold;\">Einigt</span> euch&nbsp; gemeinsam ein eine Begriffserklärung und ein Beispiel. <span style=\"font-weight: bold;\">Schreibt</span> diese auf die vorliegenden Karteikarten.</div>",
+        "subtitleHtml": "",
+        "bodyLeftHtml": "",
+        "bodyRightHtml": "",
+        "imageCaptionHtml": "",
+        "speakerNotesHtml": "<p><span style=\"font-weight: bold;\">Material:</span></p><p><br></p><p>Karten mit den 10 Begriffen. Leere Karten pro Station</p>",
+        "preparationHtml": "<p><br></p>",
+        "materialHtml": "<p><br></p>",
+        "elements": [
+          {
+            "id": "el-1786085931853",
+            "type": "image",
+            "x": 80.96617570385818,
+            "y": -4.8112906963271875,
+            "w": 19.033824296141816,
+            "h": 43.926254199976825,
+            "src": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.04 Merkmale, KI-Welt/ChatGPT Image 7. Aug. 2026, 08_58_43.png",
+            "zIndex": 1,
+            "imageFit": "contain",
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-1786086498523",
+            "type": "image",
+            "x": 2.8030500521376442,
+            "y": 21.028704669215617,
+            "w": 10.863692648592286,
+            "h": 15.612617309697603,
+            "src": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.04 Merkmale, KI-Welt/timer_10_min.png",
+            "zIndex": 2,
+            "imageFit": "contain",
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-1786086562829-5g729",
+            "type": "image",
+            "x": 2.8030500521376434,
+            "y": 50.10847526358475,
+            "w": 10.863692648592286,
+            "h": 15.612617309697603,
+            "src": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.04 Merkmale, KI-Welt/timer_10_min.png",
+            "zIndex": 3,
+            "imageFit": "contain",
+            "stackLayer": "foreground"
+          }
+        ],
+        "transition": "fade",
+        "revealEnabled": true,
+        "zoneRevealSteps": {}
+      },
+      "createdAt": "2026-08-08T05:29:57.137Z"
+    },
+    {
+      "id": "custom-1786257437071-02vi",
+      "label": "Experimentell",
+      "shortLabel": "E",
+      "hint": "Eigene Vorlage",
+      "payload": {
+        "layout": "title-content",
+        "title": "Hausaufgabe: KI erleben - Was geht schon?",
+        "body": "Setzte dich intensiv mit einem der\nfolgenden Themen auseinander und probiere die Tools aus (siehe PDF). Charakterisiere das erprobte Tool nach\ndem vorgegebenen Schema: \n\n\n \n  KI\n  \n  „Welche Bezeichnung gibst du der\n  Künstlichen KI?“\n  \n   \n  \n \n  \n  Aufgabe\n  \n  \n  „Was macht die KI?“, \n  „Welches Problem löst\n  die KI?“,\n  „Wessen Aufgabe\n  übernimmt die KI?“\n  \n  \n   \n  \n \n \n  \n  Umgebung\n  \n  \n  „Welche\n  Umgebung findet die KI vor?“\n  \n  \n   \n  \n \n \n  \n  Eingabe-Daten\n  \n  \n  „Welche Daten benötigt\n  die KI?“\n  \n  \n   \n  \n \n \n  \n  Sensoren\n  \n  \n  „Woher\n  stammen diese Daten?“\n  \n  \n   \n  \n \n \n  \n  Ausgabe-Daten\n  \n  \n  „Welche Daten gibt die\n  KI aus?“\n  \n  \n   \n  \n \n \n  \n  Aktoren\n  \n  \n  „Wie\n  gibt die KI diese Daten aus?“\n  \n  \n   \n  \n \n \n  \n  wünschenswerte\n  Qualitäten\n  \n  \n  „Woran kann man die\n  Leistungsfähigkeit der KI bewerten?“",
+        "speakerNotes": "",
+        "preparationNotes": "",
+        "materialNotes": "",
+        "subtitle": "",
+        "bodyLeft": "",
+        "bodyRight": "",
+        "imagePath": "",
+        "imageCaption": "",
+        "bodyStyle": "plain",
+        "titleAlign": "left",
+        "accentColor": "#C62828",
+        "titleHtml": "<p><span data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important;\">Hausaufgabe:&nbsp;</span><span style=\"font-weight: 400;\">KI erleben - Was geht schon?&nbsp;</span></p>",
+        "bodyHtml": "<div style=\"margin-left: 560px;\"><b><br></b></div><div style=\"margin-left: 560px;\"><b><br></b></div><div style=\"margin-left: 560px;\"><b><br></b></div><div style=\"margin-left: 560px;\"><b>Setzte</b>&nbsp;dich intensiv mit <u>einem</u> der\nfolgenden Themen auseinander und probiere die Tools aus <span style=\"font-style: italic;\">(siehe PDF)</span>.&nbsp;<b style=\"text-align: justify; text-indent: -18pt;\">Charakterisiere</b><span style=\"text-align: justify; text-indent: -18pt;\">&nbsp;das erprobte Tool nach\ndem vorgegebenen Schema:</span><p class=\"MsoListParagraph\" style=\"text-align:justify\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><o:p>&nbsp;</o:p></span></p>\n\n<table class=\"Stundenverlaufsskizzen\" border=\"1\" cellspacing=\"0\" cellpadding=\"0\" style=\"margin-left: 35.2pt; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; width: 100%; border-collapse: collapse; table-layout: fixed; font-size: inherit;\" data-pres-table=\"1\" data-pres-table-theme=\"gelb\"><colgroup><col style=\"width: 17.8939%;\"><col style=\"width: 62.5661%;\"><col style=\"width: 19.5398%;\"></colgroup>\n <thead><tr><th style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 229, 153); font-weight: 700; vertical-align: middle; word-break: break-word; text-align: left;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  5\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><b>KI<o:p></o:p></b></span></p>\n  </th><th style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 229, 153); font-weight: 700; vertical-align: middle; word-break: break-word; text-align: left;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  1\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><i><span style=\"line-height: 120%;\">„Welche Bezeichnung gibst du der\n  Künstlichen KI?“</span></i><b><i><span style=\"line-height: 120%;\"><o:p></o:p></span></i></b></span></p>\n  </th><th style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 229, 153); font-weight: 700; vertical-align: middle; word-break: break-word; text-align: left;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  1\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><b><o:p>&nbsp;</o:p></b></span></p>\n  </th></tr></thead><tbody>\n <tr style=\"height: 95px;\">\n  <td width=\"74\" valign=\"top\" style=\"width: 55.15pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; height: 95px; min-height: 95px; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  68\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><b>Aufgabe<o:p></o:p></b></span></p>\n  </td>\n  <td width=\"139\" valign=\"top\" style=\"width: 104.5pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; height: 95px; min-height: 95px; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  64\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><i><span style=\"line-height: 120%;\">„Was macht die KI?“, </span></i><i><span style=\"line-height: 120%;\"><o:p></o:p></span></i></span></p>\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  64\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><i><span style=\"line-height: 120%;\">„Welches Problem löst\n  die KI?“,</span></i><i><span style=\"line-height: 120%;\"><o:p></o:p></span></i></span></p>\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  64\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><i><span style=\"line-height: 120%;\">„Wessen Aufgabe\n  übernimmt die KI?“</span></i><i><span style=\"line-height: 120%;\"><o:p></o:p></span></i></span></p>\n  </td>\n  <td width=\"329\" valign=\"top\" style=\"width: 246.85pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; height: 95px; min-height: 95px; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  64\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><o:p>&nbsp;</o:p></span></p>\n  </td>\n </tr>\n <tr>\n  <td width=\"74\" valign=\"top\" style=\"width: 55.15pt; border: 1px solid rgb(232, 192, 112); padding: 2.85pt; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  4\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><b>Umgebung<o:p></o:p></b></span></p>\n  </td>\n  <td width=\"139\" valign=\"top\" style=\"width: 104.5pt; border: 1px solid rgb(232, 192, 112); padding: 2.85pt; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><i><span style=\"line-height: 120%;\">„Welche\n  Umgebung findet die KI vor?“<o:p></o:p></span></i></span></p>\n  </td>\n  <td width=\"329\" valign=\"top\" style=\"width: 246.85pt; border: 1px solid rgb(232, 192, 112); padding: 2.85pt; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><o:p>&nbsp;</o:p></span></p>\n  </td>\n </tr>\n <tr>\n  <td width=\"74\" valign=\"top\" style=\"width: 55.15pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  68\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><b>Eingabe-Daten<o:p></o:p></b></span></p>\n  </td>\n  <td width=\"139\" valign=\"top\" style=\"width: 104.5pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  64\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><i><span style=\"line-height: 120%;\">„Welche Daten benötigt\n  die KI?“</span><o:p></o:p></i></span></p>\n  </td>\n  <td width=\"329\" valign=\"top\" style=\"width: 246.85pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  64\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><o:p>&nbsp;</o:p></span></p>\n  </td>\n </tr>\n <tr>\n  <td width=\"74\" valign=\"top\" style=\"width: 55.15pt; border: 1px solid rgb(232, 192, 112); padding: 2.85pt; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  4\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><b>Sensoren<o:p></o:p></b></span></p>\n  </td>\n  <td width=\"139\" valign=\"top\" style=\"width: 104.5pt; border: 1px solid rgb(232, 192, 112); padding: 2.85pt; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><i><span style=\"line-height: 120%;\">„Woher\n  stammen diese Daten?“</span><o:p></o:p></i></span></p>\n  </td>\n  <td width=\"329\" valign=\"top\" style=\"width: 246.85pt; border: 1px solid rgb(232, 192, 112); padding: 2.85pt; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><o:p>&nbsp;</o:p></span></p>\n  </td>\n </tr>\n <tr>\n  <td width=\"74\" valign=\"top\" style=\"width: 55.15pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  68\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><b>Ausgabe-Daten<o:p></o:p></b></span></p>\n  </td>\n  <td width=\"139\" valign=\"top\" style=\"width: 104.5pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  64\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><i><span style=\"line-height: 120%;\">„Welche Daten gibt die\n  KI aus?“</span><o:p></o:p></i></span></p>\n  </td>\n  <td width=\"329\" valign=\"top\" style=\"width: 246.85pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  64\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><o:p>&nbsp;</o:p></span></p>\n  </td>\n </tr>\n <tr>\n  <td width=\"74\" valign=\"top\" style=\"width: 55.15pt; border: 1px solid rgb(232, 192, 112); padding: 2.85pt; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  4\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><b>Aktoren<o:p></o:p></b></span></p>\n  </td>\n  <td width=\"139\" style=\"width: 104.5pt; border: 1px solid rgb(232, 192, 112); padding: 2.85pt; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><i><span style=\"line-height: 120%;\">„Wie\n  gibt die KI diese Daten aus?“</span><o:p></o:p></i></span></p>\n  </td>\n  <td width=\"329\" valign=\"top\" style=\"width: 246.85pt; border: 1px solid rgb(232, 192, 112); padding: 2.85pt; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><o:p>&nbsp;</o:p></span></p>\n  </td>\n </tr>\n <tr>\n  <td width=\"74\" valign=\"top\" style=\"width: 55.15pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  68\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><b>wünschenswerte\n  Qualitäten<o:p></o:p></b></span></p>\n  </td>\n  <td width=\"139\" valign=\"top\" style=\"width: 104.5pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  64\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><i><span style=\"line-height: 120%;\">„Woran kann man die\n  Leistungsfähigkeit der KI bewerten?“</span><o:p></o:p></i></span></p>\n  </td>\n  <td width=\"329\" valign=\"top\" style=\"width: 246.85pt; border: 1px solid rgb(232, 192, 112); background: rgb(255, 255, 255); padding: 2.85pt; vertical-align: middle; word-break: break-word;\">\n  <p class=\"MsoNormal\" style=\"margin-bottom:0cm;text-align:justify;mso-yfti-cnfc:\n  64\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\"><o:p>&nbsp;</o:p></span></p>\n  </td>\n </tr>\n</tbody></table>\n\n<!--EndFragment--></div><div style=\"margin-left: 644px;\">\n<p class=\"p2\"><br></p><p class=\"p2\"><br></p></div><div></div>",
+        "subtitleHtml": "",
+        "bodyLeftHtml": "",
+        "bodyRightHtml": "",
+        "imageCaptionHtml": "",
+        "speakerNotesHtml": "<p><br></p>",
+        "preparationHtml": "<p><br></p>",
+        "materialHtml": "<p><br></p>",
+        "elements": [
+          {
+            "id": "el-1786085516421-0-2f7",
+            "type": "image",
+            "x": 83.64998242736645,
+            "y": 0,
+            "w": 16.35001757263355,
+            "h": 17.753045923149017,
+            "src": "__GRAFIKEN__/HA.png",
+            "zIndex": 1,
+            "revealStep": 0,
+            "imageFit": "contain"
+          },
+          {
+            "id": "el-1786170593005",
+            "type": "image",
+            "x": 4.026213317557581,
+            "y": 16.359221583677858,
+            "w": 22.56384366467122,
+            "h": 42.009287821888414,
+            "src": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.04 Merkmale, KI-Welt/Experimentierzeit.png",
+            "zIndex": 2,
+            "imageFit": "contain",
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-1786170627952",
+            "type": "text",
+            "x": 4.026213317557581,
+            "y": 55.59661060821052,
+            "w": 22.56384366467122,
+            "h": 8.169925623800383,
+            "html": "<p><span style=\"font-weight: 700; background-color: rgb(255, 255, 255);\"><span style=\"\"><span style=\"\"><span style=\"\"><span style=\"\"><span data-pres-fs=\"44\" style=\"font-size: 44px !important;\">Experimentierzeit!</span></span></span></span></span></span></p>",
+            "zIndex": 3
+          },
+          {
+            "id": "el-1786257504693",
+            "type": "text",
+            "x": 10.871188222783852,
+            "y": 69.1665362320109,
+            "w": 38,
+            "h": 22,
+            "html": "<p><b><i><u><span data-pres-color=\"#1565C0\" style=\"color: rgb(21, 101, 192) !important;\">Themen (PDF)</span></u></i></b></p>",
+            "zIndex": 4
+          }
+        ],
+        "transition": "zoom",
+        "revealEnabled": true,
+        "zoneRevealSteps": {},
+        "homeworkSubmissionRequired": true
+      },
+      "createdAt": "2026-08-09T06:41:59.111Z"
+    },
+    {
+      "id": "custom-1786863818636-wkz9",
+      "label": "Tschüss",
+      "shortLabel": "T",
+      "hint": "Eigene Vorlage",
+      "payload": {
+        "layout": "blank",
+        "title": "Hausaufgabe",
+        "body": "",
+        "speakerNotes": "",
+        "preparationNotes": "",
+        "materialNotes": "",
+        "subtitle": "",
+        "bodyLeft": "",
+        "bodyRight": "",
+        "imagePath": "",
+        "imageCaption": "",
+        "bodyStyle": "plain",
+        "titleAlign": "left",
+        "accentColor": "#C62828",
+        "titleHtml": "<p><span data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important;\">Hausaufgabe</span></p><p><span data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important;\"><br></span></p>",
+        "bodyHtml": "<p><br></p>",
+        "subtitleHtml": "",
+        "bodyLeftHtml": "",
+        "bodyRightHtml": "",
+        "imageCaptionHtml": "",
+        "speakerNotesHtml": "<p><br></p>",
+        "preparationHtml": "<p><br></p>",
+        "materialHtml": "<p><br></p>",
+        "elements": [
+          {
+            "id": "el-1786610158789-0-lyj",
+            "type": "image",
+            "x": 34.82752190813671,
+            "y": 9.81815147429894,
+            "w": 6.234590934783087,
+            "h": 7.532135501524438,
+            "src": "__GRAFIKEN__/HA.png",
+            "zIndex": 1,
+            "revealStep": 0,
+            "imageFit": "contain"
+          },
+          {
+            "id": "el-1786863626441",
+            "type": "text",
+            "x": 81.35841393849206,
+            "y": 88.3222828483245,
+            "w": 18.641586061507937,
+            "h": 6.796626984126986,
+            "html": "<p><span style=\"font-weight: 700; text-align: center; background-color: rgb(255, 255, 255);\">Bis zur nächsten Stunde!</span></p>",
+            "zIndex": 2
+          },
+          {
+            "id": "el-1786863661919-7xz8o",
+            "type": "image",
+            "x": 76.0521128429198,
+            "y": 60.259519334795975,
+            "w": 26.615334494745305,
+            "h": 33.21916135335253,
+            "src": "__GRAFIKEN__/Endroboter.png",
+            "zIndex": 3,
+            "imageFit": "contain"
+          },
+          {
+            "id": "el-1786864988832-pswg4",
+            "type": "card",
+            "x": 1.85512377684924,
+            "y": 9.129772046836543,
+            "w": 39.206989066070555,
+            "h": 45.847606628756274,
+            "zIndex": 5,
+            "strokeColor": "#EF6C00",
+            "strokeWidth": 2.5,
+            "fillColor": "rgba(239,108,0,0.14)",
+            "titleHtml": "<p style=\"text-align:center\"><strong style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\">Hausaufgabe</strong></p><p style=\"text-align:center\"><strong style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\"><br></strong></p>",
+            "html": "<p style=\"text-align: left;\"><b>Mathebuch:</b></p><p style=\"text-align: left;\">Seite , Nummer</p>",
+            "stackLayer": "foreground"
+          }
+        ],
+        "transition": "zoom",
+        "revealEnabled": true,
+        "zoneRevealSteps": {},
+        "homeworkSubmissionRequired": true,
+        "hiddenLayoutZones": [
+          "bodyHtml"
+        ]
+      },
+      "createdAt": "2026-08-16T07:29:52.357Z"
+    },
+    {
+      "id": "custom-1786865407103-9zvi",
+      "label": "Arbeit",
+      "shortLabel": "A",
+      "hint": "Eigene Vorlage",
+      "payload": {
+        "speakerNotes": "",
+        "layout": "blank",
+        "subtitle": "",
+        "bodyLeft": "",
+        "bodyRight": "",
+        "imagePath": "",
+        "imageCaption": "",
+        "bodyStyle": "plain",
+        "titleAlign": "left",
+        "accentColor": "#2E7D32",
+        "title": "",
+        "body": "",
+        "hiddenLayoutZones": [
+          "bodyHtml"
+        ],
+        "titleHtml": "",
+        "bodyHtml": "",
+        "subtitleHtml": "",
+        "bodyLeftHtml": "",
+        "bodyRightHtml": "",
+        "imageCaptionHtml": "",
+        "speakerNotesHtml": "<p><br></p>",
+        "preparationNotes": "",
+        "preparationHtml": "<p><br></p>",
+        "materialNotes": "",
+        "materialHtml": "<p><br></p>",
+        "elements": [
+          {
+            "id": "el-card-1786864570511-7oa1",
+            "type": "card",
+            "x": 82.15857144406507,
+            "y": 67.06377484309624,
+            "w": 16.18731186828703,
+            "h": 24.687892259414223,
+            "zIndex": 1,
+            "strokeColor": "#2E7D32",
+            "strokeWidth": 2.5,
+            "fillColor": "rgba(46,125,50,0.14)",
+            "titleHtml": "<p style=\"text-align:center\"><strong>Arbeitsauftrag</strong></p>",
+            "html": "<p style=\"text-align: left;\"><b>Mathebuch:</b></p><p style=\"text-align: left;\">Seite , Nummer</p>",
+            "stackLayer": "foreground"
+          }
+        ],
+        "transition": "fade",
+        "revealEnabled": true,
+        "zoneRevealSteps": {}
+      },
+      "createdAt": "2026-08-16T07:30:07.103Z"
+    },
+    {
+      "id": "custom-1786946336548-m5nw",
+      "label": "Perfekt",
+      "shortLabel": "P",
+      "hint": "Eigene Vorlage",
+      "payload": {
+        "speakerNotes": "",
+        "layout": "blank",
+        "subtitle": "",
+        "bodyLeft": "",
+        "bodyRight": "",
+        "imagePath": "",
+        "imageCaption": "",
+        "bodyStyle": "plain",
+        "titleAlign": "left",
+        "accentColor": "#2E7D32",
+        "title": "",
+        "body": "",
+        "hiddenLayoutZones": [
+          "bodyHtml"
+        ],
+        "titleHtml": "",
+        "bodyHtml": "",
+        "subtitleHtml": "",
+        "bodyLeftHtml": "",
+        "bodyRightHtml": "",
+        "imageCaptionHtml": "",
+        "speakerNotesHtml": "<p><br></p>",
+        "preparationNotes": "",
+        "preparationHtml": "<p><br></p>",
+        "materialNotes": "",
+        "materialHtml": "<p><br></p>",
+        "elements": [
+          {
+            "id": "el-card-1786864570511-7oa1",
+            "type": "card",
+            "x": 82.15857144406507,
+            "y": 67.06377484309624,
+            "w": 16.18731186828703,
+            "h": 24.687892259414223,
+            "zIndex": 1,
+            "strokeColor": "#2E7D32",
+            "strokeWidth": 2.5,
+            "fillColor": "rgba(46,125,50,0.14)",
+            "titleHtml": "<p style=\"text-align:center\"><strong>Arbeitsauftrag</strong></p>",
+            "html": "<p style=\"text-align: left;\"><b>Mathebuch:</b></p><p style=\"text-align: left;\">Seite , Nummer</p>",
+            "stackLayer": "foreground",
+            "revealStep": 1,
+            "animationSet": true
+          }
+        ],
+        "transition": "fade",
+        "revealEnabled": true,
+        "zoneRevealSteps": {}
+      },
+      "createdAt": "2026-08-17T06:11:31.968Z"
+    }
+  ]
 }

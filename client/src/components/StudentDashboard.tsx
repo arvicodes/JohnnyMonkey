@@ -118,6 +118,7 @@ import {
 } from '../lib/wochenaufgabenFolder';
 import { hydrateWochenaufgabenFolderContents, mergeWochenaufgabenContentsPatch } from '../lib/wochenaufgabenHydrate';
 import WochenaufgabenFolderRow from './wochenaufgaben/WochenaufgabenFolderRow';
+import EntryTicketCompletedRow from './entry-ticket/EntryTicketCompletedRow';
 const COLLAB_BEACON_LS_KEY = 'jm_collab_fc_beacon_seen_v1';
 function loadCollabBeaconSeen(): Record<string, string> {
   try {
@@ -2411,18 +2412,22 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   useEffect(() => {
     let cancelled = false;
     const tick = async () => {
-      const res = await apiGetSafe('/api/exit-ticket/current');
-      if (!res?.ok) return;
-      let data: { publishedAt?: unknown; template?: unknown } = {};
       try {
-        data = (await res.json()) as typeof data;
+        const res = await apiGetSafe('/api/exit-ticket/current');
+        if (!res?.ok) return;
+        let data: { publishedAt?: unknown; template?: unknown } = {};
+        try {
+          data = (await res.json()) as typeof data;
+        } catch {
+          return;
+        }
+        if (cancelled) return;
+        const pub = typeof data.publishedAt === 'string' && data.publishedAt.trim() !== '';
+        const tpl = data.template && typeof data.template === 'object';
+        setExitTicketPublishedForStudent(Boolean(pub && tpl));
       } catch {
-        return;
+        /* Polling: Server kurz nicht erreichbar */
       }
-      if (cancelled) return;
-      const pub = typeof data.publishedAt === 'string' && data.publishedAt.trim() !== '';
-      const tpl = data.template && typeof data.template === 'object';
-      setExitTicketPublishedForStudent(Boolean(pub && tpl));
     };
     void tick();
     const id = window.setInterval(() => void tick(), 5000);
@@ -2440,29 +2445,33 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   useEffect(() => {
     let cancelled = false;
     const tick = async () => {
-      const res = await apiGetSafe('/api/excursion-protocol/current');
-      if (!res?.ok) return;
-      let data: { publishedAt?: unknown; session?: unknown; sessions?: unknown } = {};
       try {
-        data = (await res.json()) as typeof data;
+        const res = await apiGetSafe('/api/excursion-protocol/current');
+        if (!res?.ok) return;
+        let data: { publishedAt?: unknown; session?: unknown; sessions?: unknown } = {};
+        try {
+          data = (await res.json()) as typeof data;
+        } catch {
+          return;
+        }
+        if (cancelled) return;
+        const rawSessions = Array.isArray(data.sessions) ? data.sessions : [];
+        const sessions = rawSessions
+          .filter((s): s is Record<string, unknown> => Boolean(s) && typeof s === 'object')
+          .map((s) => ({
+            id: typeof s.id === 'string' ? s.id : '',
+            title: typeof s.title === 'string' ? s.title : 'Tagesexkursion',
+            date: typeof s.date === 'string' ? s.date : '',
+            groupName: typeof s.groupName === 'string' ? s.groupName : '',
+            studentSubmitted: Boolean(s.studentSubmitted),
+            studentSubmittedAt:
+              typeof s.studentSubmittedAt === 'string' ? s.studentSubmittedAt : null,
+          }))
+          .filter((s) => s.id);
+        setExcursionProtocolSessions(sessions);
       } catch {
-        return;
+        /* Polling: Server kurz nicht erreichbar */
       }
-      if (cancelled) return;
-      const rawSessions = Array.isArray(data.sessions) ? data.sessions : [];
-      const sessions = rawSessions
-        .filter((s): s is Record<string, unknown> => Boolean(s) && typeof s === 'object')
-        .map((s) => ({
-          id: typeof s.id === 'string' ? s.id : '',
-          title: typeof s.title === 'string' ? s.title : 'Tagesexkursion',
-          date: typeof s.date === 'string' ? s.date : '',
-          groupName: typeof s.groupName === 'string' ? s.groupName : '',
-          studentSubmitted: Boolean(s.studentSubmitted),
-          studentSubmittedAt:
-            typeof s.studentSubmittedAt === 'string' ? s.studentSubmittedAt : null,
-        }))
-        .filter((s) => s.id);
-      setExcursionProtocolSessions(sessions);
     };
     void tick();
     const id = window.setInterval(() => void tick(), 5000);
@@ -2480,26 +2489,30 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   useEffect(() => {
     let cancelled = false;
     const tick = async () => {
-      const res = await apiGetSafe('/api/announcements/current');
-      if (!res?.ok) return;
-      let data: { announcements?: unknown } = {};
       try {
-        data = (await res.json()) as typeof data;
+        const res = await apiGetSafe('/api/announcements/current');
+        if (!res?.ok) return;
+        let data: { announcements?: unknown } = {};
+        try {
+          data = (await res.json()) as typeof data;
+        } catch {
+          return;
+        }
+        if (cancelled) return;
+        const raw = Array.isArray(data.announcements) ? data.announcements : [];
+        const sessions = raw
+          .filter((s): s is Record<string, unknown> => Boolean(s) && typeof s === 'object')
+          .map((s) => ({
+            id: typeof s.id === 'string' ? s.id : '',
+            title: typeof s.title === 'string' ? s.title : 'Ankündigung',
+            authorName: typeof s.authorName === 'string' ? s.authorName : '',
+            isRead: Boolean(s.isRead),
+          }))
+          .filter((s) => s.id);
+        setAnnouncementSessions(sessions);
       } catch {
-        return;
+        /* Polling: Server kurz nicht erreichbar */
       }
-      if (cancelled) return;
-      const raw = Array.isArray(data.announcements) ? data.announcements : [];
-      const sessions = raw
-        .filter((s): s is Record<string, unknown> => Boolean(s) && typeof s === 'object')
-        .map((s) => ({
-          id: typeof s.id === 'string' ? s.id : '',
-          title: typeof s.title === 'string' ? s.title : 'Ankündigung',
-          authorName: typeof s.authorName === 'string' ? s.authorName : '',
-          isRead: Boolean(s.isRead),
-        }))
-        .filter((s) => s.id);
-      setAnnouncementSessions(sessions);
     };
     void tick();
     const id = window.setInterval(() => void tick(), 5000);
@@ -3799,6 +3812,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 studentId={userId}
                 onOpenPdf={(lessonPath) => void openWaPdf(lessonPath)}
               />
+              <EntryTicketCompletedRow groupId={groupId} />
             </Box>
             {isLoading ? (
               <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>

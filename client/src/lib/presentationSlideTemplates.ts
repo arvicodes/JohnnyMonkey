@@ -149,11 +149,27 @@ export function ensureEntryTicketButtonsOnTitleSlides(
   return changed ? next : slides;
 }
 
+/**
+ * Gemeinsamer Grafiken-Ordner (HA.png, Endroboter, Folienvorlagen.json / „Perfekt“).
+ * `git-intern/…`-Stundenpfade enthalten kein „J-M-Reihen“ — sonst würde fälschlich
+ * `Kapitel/Grafiken` genommen und neue Stunden bekämen die Builtin-Vorlage
+ * statt `J-M-Reihen/Grafiken/Folienvorlagen.json`.
+ */
 export function grafikenFolderPath(lessonPath: string): string {
-  const p = lessonPath.replace(/\\/g, '/').replace(/\/$/, '');
-  const match = p.match(/^(.*\/J-M-Reihen)\//);
-  if (match) return `${match[1]}/Grafiken`;
-  const parent = p.replace(/\/[^/]+$/, '');
+  const p = (lessonPath || '').replace(/\\/g, '/').replace(/\/$/, '');
+
+  const absJm = p.match(/^(.*\/J-M-Reihen)(?:\/|$)/);
+  if (absJm) return `${absJm[1]}/Grafiken`;
+
+  if (p === 'J-M-Reihen' || p.startsWith('J-M-Reihen/')) {
+    return 'J-M-Reihen/Grafiken';
+  }
+
+  if (p === 'git-intern' || p.startsWith('git-intern/')) {
+    return 'git-intern/Grafiken';
+  }
+
+  const parent = p.replace(/\/[^/]+$/, '') || p;
   return `${parent}/Grafiken`;
 }
 
@@ -297,7 +313,7 @@ function builtinTemplates(): SlideTemplatesStore['templates'] {
           strokeWidth: 2.5,
           fillColor: "rgba(46,125,50,0.14)",
           titleHtml: "<p style=\"text-align:center\"><strong>Arbeitsauftrag</strong></p>",
-          html: "<p style=\"text-align: left;\"><b>Mathebuch:</b></p><p style=\"text-align: left;\">Seite , Nummer</p>",
+          html: "<p style=\"text-align: justify;\"><b>Mathebuch:</b></p><p style=\"text-align: justify;\">Seite , Nummer</p>",
           stackLayer: 'foreground',
         },
       ],
@@ -452,7 +468,7 @@ function builtinTemplates(): SlideTemplatesStore['templates'] {
           fillColor: 'rgba(239,108,0,0.14)',
           titleHtml:
             '<p style="text-align:center"><strong>Hausaufgabe</strong></p><p style="text-align:center"><strong><br></strong></p>',
-          html: '<p style="text-align: left;"><b>Mathebuch:</b></p><p style="text-align: left;">Seite , Nummer</p>',
+          html: '<p style="text-align: justify;"><b>Mathebuch:</b></p><p style="text-align: justify;">Seite , Nummer</p>',
           stackLayer: 'foreground',
         },
       ],

@@ -113,6 +113,7 @@ import {
 import { hydrateWochenaufgabenFolderContents, mergeWochenaufgabenContentsPatch } from '../lib/wochenaufgabenHydrate';
 import { ensureWochenaufgabeDeck } from '../lib/wochenaufgabenPresentation';
 import WochenaufgabenFolderRow from './wochenaufgaben/WochenaufgabenFolderRow';
+import EntryTicketCompletedRow from './entry-ticket/EntryTicketCompletedRow';
 import {
   Box,
   Typography,
@@ -11102,6 +11103,7 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
                 onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
                 onAdd={() => addWochenaufgabe(waDisplay.parentPath)}
               />
+              <EntryTicketCompletedRow groupId={groupId} />
             </Box>
             {isLoading ? (
               <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
@@ -11186,6 +11188,7 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
                 onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
                 onAdd={() => addWochenaufgabe(waDisplay.parentPath)}
               />
+              <EntryTicketCompletedRow groupId={groupId} />
             </Box>
             {isLoading ? (
               <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>

@@ -90,6 +90,19 @@ import {
 } from '../../lib/presentationSlideTables';
 import { isHomeworkSlide } from '../../lib/presentationSlideTemplates';
 import { isImageCropMode } from '../../lib/presentationImageUtils';
+import {
+  IMAGE_FRAME_COLORS,
+  IMAGE_FRAME_DASHES,
+  IMAGE_FRAME_PRESET_LABELS,
+  IMAGE_FRAME_PRESET_ORDER,
+  IMAGE_FRAME_PRESETS,
+  IMAGE_FRAME_WIDTHS,
+  imageFrameIsActive,
+  imageFrameParts,
+  withImageFrameColor,
+  withImageFrameDash,
+  withImageFrameWidth,
+} from '../../lib/presentationImageFrames';
 import { SLIDE_SHAPE_LABELS } from '../../lib/presentationSlideShapes';
 import { JOHNNY_ACCENT_PRESETS } from '../../lib/presentationTheme';
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
@@ -965,6 +978,154 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                       <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, lineHeight: 1.35, mb: 0.75 }}>
                         Ziehen: Bild verschieben · Alt+Ziehen: Ausschnitt (bei Füllen)
                       </Typography>
+                      <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.4 }}>
+                        Rahmen
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.4, mb: 0.55 }}>
+                        {IMAGE_FRAME_PRESET_ORDER.map((id) => {
+                          const preview = imageFrameParts(IMAGE_FRAME_PRESETS[id], 0.28, accentColor);
+                          const current = selectedElement.imageFrame?.preset || 'none';
+                          const selected =
+                            id === 'none'
+                              ? !imageFrameIsActive(selectedElement.imageFrame)
+                              : current === id;
+                          return (
+                            <Tooltip key={id} title={IMAGE_FRAME_PRESET_LABELS[id]} placement="top">
+                              <Box
+                                onClick={() =>
+                                  onUpdateElement(selectedElement.id, {
+                                    imageFrame:
+                                      id === 'none'
+                                        ? undefined
+                                        : {
+                                            ...IMAGE_FRAME_PRESETS[id],
+                                            color:
+                                              IMAGE_FRAME_PRESETS[id].color === 'accent'
+                                                ? accentColor
+                                                : IMAGE_FRAME_PRESETS[id].color,
+                                          },
+                                  })
+                                }
+                                sx={{
+                                  width: 34,
+                                  height: 26,
+                                  cursor: 'pointer',
+                                  bgcolor: '#eceff1',
+                                  p: '3px',
+                                  boxSizing: 'border-box',
+                                  outline: selected
+                                    ? `2px solid ${PRES_EDITOR_UI.accent}`
+                                    : '1px solid #cfd8dc',
+                                  outlineOffset: 0,
+                                  '&:hover': { outlineColor: PRES_EDITOR_UI.accent },
+                                }}
+                              >
+                                <Box
+                                  sx={{
+                                    width: '100%',
+                                    height: '100%',
+                                    ...preview.wrap,
+                                    boxShadow: preview.wrap.boxShadow || 'none',
+                                  }}
+                                >
+                                  <Box
+                                    sx={{
+                                      width: '100%',
+                                      height: '100%',
+                                      ...preview.inner,
+                                      background:
+                                        preview.inner.background ||
+                                        'linear-gradient(135deg, #90caf9 0%, #42a5f5 100%)',
+                                    }}
+                                  />
+                                </Box>
+                              </Box>
+                            </Tooltip>
+                          );
+                        })}
+                      </Box>
+                      {imageFrameIsActive(selectedElement.imageFrame) && (
+                        <>
+                          <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, mb: 0.3 }}>
+                            Farbe
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3, mb: 0.45 }}>
+                            {[accentColor, ...IMAGE_FRAME_COLORS, ...JOHNNY_ACCENT_PRESETS.slice(0, 8)]
+                              .filter((c, i, arr) => arr.indexOf(c) === i)
+                              .map((c) => (
+                                <Box
+                                  key={c}
+                                  onClick={() =>
+                                    onUpdateElement(selectedElement.id, {
+                                      imageFrame: withImageFrameColor(selectedElement.imageFrame, c),
+                                    })
+                                  }
+                                  sx={{
+                                    width: 16,
+                                    height: 16,
+                                    borderRadius: '3px',
+                                    bgcolor: c,
+                                    border:
+                                      (selectedElement.imageFrame?.color || '') === c
+                                        ? `2px solid ${PRES_EDITOR_UI.accent}`
+                                        : c === '#ffffff'
+                                          ? '1px solid #bdbdbd'
+                                          : '1px solid rgba(0,0,0,0.15)',
+                                    cursor: 'pointer',
+                                  }}
+                                />
+                              ))}
+                          </Box>
+                          <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, mb: 0.3 }}>
+                            Stärke
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3, mb: 0.45 }}>
+                            {IMAGE_FRAME_WIDTHS.map((w) => (
+                              <Button
+                                key={w}
+                                size="small"
+                                variant={
+                                  (selectedElement.imageFrame?.width || 0) === w
+                                    ? 'contained'
+                                    : 'outlined'
+                                }
+                                onClick={() =>
+                                  onUpdateElement(selectedElement.id, {
+                                    imageFrame: withImageFrameWidth(selectedElement.imageFrame, w),
+                                  })
+                                }
+                                sx={{ ...miniBtnSx, minWidth: 28, px: 0.4 }}
+                              >
+                                {w}
+                              </Button>
+                            ))}
+                          </Box>
+                          <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, mb: 0.3 }}>
+                            Strich
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3, mb: 0.75 }}>
+                            {IMAGE_FRAME_DASHES.map((d) => (
+                              <Button
+                                key={d.id}
+                                size="small"
+                                variant={
+                                  (selectedElement.imageFrame?.dash || 'solid') === d.id
+                                    ? 'contained'
+                                    : 'outlined'
+                                }
+                                onClick={() =>
+                                  onUpdateElement(selectedElement.id, {
+                                    imageFrame: withImageFrameDash(selectedElement.imageFrame, d.id),
+                                  })
+                                }
+                                sx={{ ...miniBtnSx, px: 0.45 }}
+                              >
+                                {d.label}
+                              </Button>
+                            ))}
+                          </Box>
+                        </>
+                      )}
                       {onRemoveImageBackground && selectedElement.src?.trim() && (
                         <Button
                           size="small"
