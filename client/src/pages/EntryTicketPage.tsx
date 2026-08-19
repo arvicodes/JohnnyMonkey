@@ -63,6 +63,9 @@ import {
   ensureSpecialLessonSections,
   findLessonSectionIndex,
   isCustomEntryTicketSetId,
+  isGeneralLessonSection,
+  isLaterLessonSection,
+  isUnboundPriorLessonSection,
   laterSectionContainsTask,
   fetchAndCacheCustomEntryTicketSets,
   loadCustomEntryTicketSets,
@@ -2647,16 +2650,18 @@ export default function EntryTicketPage({
     for (const lesson of sortLessonsChronologically(activeCustomSet.lessons)) {
       const n = lesson.tasks.length;
       if (!n) continue;
+      if (isLaterLessonSection(lesson)) continue;
       const leaf = (lesson.lessonKey || lesson.lessonName).replace(/\\/g, '/').split('/').pop() || '';
-      const isCurrent =
-        leaf === wantName || lesson.lessonName.trim() === wantName;
+      const isCurrent = leaf === wantName || lesson.lessonName.trim() === wantName;
       if (isCurrent) {
         currentCount = n;
         continue;
       }
-      if (leaf.localeCompare(wantName, 'de', { numeric: true }) < 0) {
-        priorParts.push(`${n}× ${leaf}`);
-      }
+      const prior =
+        isGeneralLessonSection(lesson) ||
+        isUnboundPriorLessonSection(lesson) ||
+        leaf.localeCompare(wantName, 'de', { numeric: true }) < 0;
+      if (prior) priorParts.push(`${n}× ${leaf}`);
     }
     const priorLabel = priorParts.length > 0 ? priorParts.join(', ') : 'keine';
     const currentHint =

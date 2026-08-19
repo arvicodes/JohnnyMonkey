@@ -120,6 +120,20 @@ export function isLaterLessonSection(lesson: EntryTicketLessonSection): boolean 
   return name === 'für später' || name === 'fuer spaeter' || name === 'für spaeter';
 }
 
+function isFolderBoundLessonSection(lesson: EntryTicketLessonSection): boolean {
+  const key = (lesson.lessonKey || '').trim();
+  return Boolean(key) && !key.startsWith('__');
+}
+
+/**
+ * Extra-Blöcke ohne Stundenordner (z. B. „Wissen aus der 11“) — zählen immer zum Spiel-Pool,
+ * analog zu „Allgemein“. Sonst sortiert localeCompare sie hinter 01.05 … und der Pool ist leer.
+ */
+export function isUnboundPriorLessonSection(lesson: EntryTicketLessonSection): boolean {
+  if (isLaterLessonSection(lesson) || isGeneralLessonSection(lesson)) return false;
+  return !isFolderBoundLessonSection(lesson);
+}
+
 export function createGeneralLessonSection(tasks: EntryTicketCustomTask[] = []): EntryTicketLessonSection {
   return {
     id: makeEntryTicketEntityId('ls'),
@@ -564,6 +578,10 @@ export function sortLessonsChronologically(
     const bL = isLaterLessonSection(b);
     if (aL && !bL) return 1;
     if (!aL && bL) return -1;
+    const aU = isUnboundPriorLessonSection(a);
+    const bU = isUnboundPriorLessonSection(b);
+    if (aU && !bU) return -1;
+    if (!aU && bU) return 1;
     return compareLessonSortKeys(lessonSortKey(a), lessonSortKey(b));
   });
 }
@@ -603,7 +621,7 @@ export function cumulativeTasksBeforeLesson(
   return lessons
     .filter((l) => {
       if (isLaterLessonSection(l)) return false;
-      if (isGeneralLessonSection(l)) return true;
+      if (isGeneralLessonSection(l) || isUnboundPriorLessonSection(l)) return true;
       if (lessonMatchesPath(l, want)) return false;
       return compareLessonSortKeys(lessonSortKey(l), wantName) < 0;
     })

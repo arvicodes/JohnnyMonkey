@@ -102,7 +102,7 @@ const SERIES_PATH_TO_SET_NAME: { pathTest: RegExp; setNameTests: RegExp[] }[] = 
   },
   {
     pathTest: /Matrizen/i,
-    setNameTests: [/\bAnalysis\b/i, /^Analysis$/i],
+    setNameTests: [/\bAnalysis\b/i, /^Analysis$/i, /^lk\s*mathe$/i, /^mathe\s*lk$/i],
   },
 ];
 

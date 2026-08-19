@@ -169,8 +169,14 @@ function reiheDirectPathCandidates(reiheName: string, knownReihePath?: string | 
     out.push(`J-M-Reihen/Mathe/Klasse ${klasse}`);
   }
   const lower = (reiheName || '').trim().toLowerCase().replace(/\s+/g, ' ');
-  if (/^lk\s*mathe$/i.test(reiheName) || /^matrizen$/i.test(reiheName)) {
+  if (
+    /^lk\s*mathe$/i.test(reiheName) ||
+    /^mathe\s*lk$/i.test(reiheName) ||
+    /^matrizen$/i.test(reiheName) ||
+    /^analysis$/i.test(reiheName)
+  ) {
     out.push('git-intern/Mathe/MSS 12 LK/12-01 Matrizen');
+    out.push('J-M-Reihen/Mathe/MSS 12 LK/12-01 Matrizen');
   }
   if (lower === 'ki') out.push('git-intern/Informatik/MSS Grundthemen/11-04 KI');
   return out.filter((v, i, a) => v && a.indexOf(v) === i);
@@ -187,8 +193,13 @@ function reiheNameLookupCandidates(reiheName: string): string[] {
   if (matheKlasse) out.push(`Klasse ${matheKlasse[1]}`);
   if (/^klasse\s*\d+/i.test(want)) out.push(want.replace(/^klasse\s*/i, 'Klasse '));
   // „LK Mathe“ / „Matrizen“ oft unter MSS 12 LK
-  if (/^lk\s*mathe$/i.test(want) || /^matrizen$/i.test(want)) {
-    out.push('12-01 Matrizen', 'Matrizen');
+  if (
+    /^lk\s*mathe$/i.test(want) ||
+    /^mathe\s*lk$/i.test(want) ||
+    /^matrizen$/i.test(want) ||
+    /^analysis$/i.test(want)
+  ) {
+    out.push('12-01 Matrizen', 'Matrizen', 'MSS 12 LK');
   }
   if (/^ki$/i.test(want)) out.push('11-04 KI');
   return out.filter((v, i, a) => a.findIndex((x) => normalizeFolderLabel(x) === normalizeFolderLabel(v)) === i);
