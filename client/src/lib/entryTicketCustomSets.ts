@@ -610,6 +610,78 @@ export function cumulativeTasksBeforeLesson(
     .flatMap((l) => l.tasks);
 }
 
+function lessonMatchKey(lessonName: string, lessonKey?: string): string {
+  return lessonFolderName(lessonKey || lessonName)
+    .trim()
+    .toLowerCase()
+    .normalize('NFC');
+}
+
+/**
+ * Stundenordner der Reihe in ein bestehendes Set mergen.
+ * Vorhandene Karten bleiben; fehlende Stunden (z. B. Klasse 5: 1.0 / 1.1 / …) werden ergänzt.
+ */
+export function mergeDiscoveredLessonsIntoSet(
+  set: EntryTicketCustomSet,
+  discovered: {
+    reihePath: string | null;
+    lessons: Array<{ lessonName: string; lessonKey: string; topicName?: string }>;
+  },
+): EntryTicketCustomSet {
+  const ensured = ensureSpecialLessonSections(set);
+  let changed = false;
+  let reihePath = ensured.reihePath;
+  if (discovered.reihePath && reihePath !== discovered.reihePath) {
+    reihePath = discovered.reihePath;
+    changed = true;
+  }
+  if (discovered.lessons.length === 0) {
+    return changed ? { ...ensured, reihePath } : set;
+  }
+
+  const general = ensured.lessons.filter(isGeneralLessonSection);
+  const later = ensured.lessons.filter(isLaterLessonSection);
+  const middle = ensured.lessons.filter((l) => !isGeneralLessonSection(l) && !isLaterLessonSection(l));
+  const byKey = new Map(middle.map((l) => [lessonMatchKey(l.lessonName, l.lessonKey), l] as const));
+  const mergedMiddle: EntryTicketLessonSection[] = [];
+  const seen = new Set<string>();
+
+  for (const d of discovered.lessons) {
+    const key = lessonMatchKey(d.lessonName, d.lessonKey);
+    seen.add(key);
+    const prev = byKey.get(key);
+    if (!prev) {
+      mergedMiddle.push(createLessonSection(d.lessonName, d.lessonKey, d.topicName));
+      changed = true;
+      continue;
+    }
+    let row = prev;
+    if (d.lessonKey && prev.lessonKey !== d.lessonKey) {
+      row = { ...row, lessonKey: d.lessonKey };
+      changed = true;
+    }
+    if (d.topicName && prev.topicName !== d.topicName) {
+      row = { ...row, topicName: d.topicName };
+      changed = true;
+    }
+    if (d.lessonName && prev.lessonName !== d.lessonName) {
+      row = { ...row, lessonName: d.lessonName };
+      changed = true;
+    }
+    mergedMiddle.push(row);
+  }
+  for (const l of middle) {
+    if (!seen.has(lessonMatchKey(l.lessonName, l.lessonKey))) mergedMiddle.push(l);
+  }
+
+  if (!changed) return set;
+  return ensureSpecialLessonSections({
+    ...ensured,
+    reihePath,
+    lessons: [...general, ...mergedMiddle, ...later],
+  });
+}
+
 export function createEmptyCustomSet(name: string, reihePath?: string): EntryTicketCustomSet {
   return {
     id: makeCustomEntryTicketSetId(),

@@ -66,6 +66,7 @@ import {
   laterSectionContainsTask,
   fetchAndCacheCustomEntryTicketSets,
   loadCustomEntryTicketSets,
+  mergeDiscoveredLessonsIntoSet,
   saveCustomEntryTicketSets,
   sortLessonsChronologically,
   patchCustomSetTaskContent,
@@ -127,10 +128,12 @@ function EntryTicketRichHtml({
   value,
   sx,
   compact,
+  contain,
 }: {
   value: string;
   sx?: Record<string, unknown>;
   compact?: boolean;
+  contain?: boolean;
 }) {
   if (!value) return null;
   const decorated = decorateEntryTicketDisplayHtml(value);
@@ -174,7 +177,7 @@ function EntryTicketRichHtml({
             width: '100% !important',
             maxWidth: '100% !important',
             height: 'auto !important',
-            maxHeight: 'min(78vh, 640px)',
+            maxHeight: contain ? '100%' : 'min(78vh, 640px)',
             objectFit: 'contain',
             borderRadius: 1,
             margin: '0 !important',
@@ -2889,6 +2892,55 @@ export default function EntryTicketPage({
     };
   }, [isTeacher]);
 
+  /** Bestehende Sets (z. B. Mathe 5) um fehlende Stundenordner aus der Reihe ergänzen. */
+  useEffect(() => {
+    if (!isTeacher || !customSetsReady) return;
+    let cancelled = false;
+    void (async () => {
+      const current = customSetsRef.current;
+      if (current.length === 0) return;
+      const next: EntryTicketCustomSet[] = [];
+      let changed = false;
+      for (const set of current) {
+        try {
+          const discovered = await discoverLessonsForReiheName(set.name, set.reihePath);
+          const merged = mergeDiscoveredLessonsIntoSet(set, discovered);
+          if (merged !== set) changed = true;
+          next.push(merged);
+        } catch {
+          next.push(set);
+        }
+      }
+      if (!cancelled && changed) setCustomSets(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isTeacher, customSetsReady]);
+
+  /** Aktives Set beim Öffnen noch einmal gegen die Reihenordner abgleichen. */
+  useEffect(() => {
+    if (!isTeacher || !customSetsReady || !customSetId) return;
+    let cancelled = false;
+    void (async () => {
+      const set = customSetsRef.current.find((s) => s.id === customSetId);
+      if (!set) return;
+      try {
+        const discovered = await discoverLessonsForReiheName(set.name, set.reihePath);
+        if (cancelled) return;
+        const merged = mergeDiscoveredLessonsIntoSet(set, discovered);
+        if (merged !== set) {
+          setCustomSets((prev) => prev.map((s) => (s.id === merged.id ? merged : s)));
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isTeacher, customSetsReady, customSetId]);
+
   /** Gelöschtes Custom-Set (nur Lehrer): zurück auf Klassenband. Moderator behält URL/Server-Grade. */
   useEffect(() => {
     if (!isTeacher) return;
@@ -3070,7 +3122,7 @@ export default function EntryTicketPage({
     setCreateSetError(null);
     try {
       let next = createEmptyCustomSet(name);
-      const discovered = await discoverLessonsForReiheName(name);
+      const discovered = await discoverLessonsForReiheName(name, null);
       if (discovered.reihePath) {
         next.reihePath = discovered.reihePath;
       }
@@ -4308,7 +4360,7 @@ export default function EntryTicketPage({
         width: '100%',
         bgcolor: '#f4f6fb',
         py: 0,
-        px: { xs: 0.3, sm: 0.4 },
+        px: embeddedPlay ? 0 : { xs: 0.3, sm: 0.4 },
         boxSizing: 'border-box',
         display: embeddedPlay ? 'flex' : undefined,
         flexDirection: embeddedPlay ? 'column' : undefined,
@@ -4316,7 +4368,7 @@ export default function EntryTicketPage({
       }}
     >
       <Box sx={{ width: '100%', maxWidth: '100%', mx: 0, minWidth: 0, boxSizing: 'border-box', flex: embeddedPlay ? 1 : undefined, minHeight: embeddedPlay ? 0 : undefined, display: embeddedPlay ? 'flex' : undefined, flexDirection: embeddedPlay ? 'column' : undefined }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: sessionDone ? 1.5 : 0, pb: sessionDone ? 0.5 : 0, gap: 0.5, minHeight: 0, flexShrink: 0, height: sessionDone && !studentReviewMode && !laptopCompanion ? 54 : 28 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: embeddedPlay ? 0 : sessionDone ? 1.5 : 0, pb: embeddedPlay ? 0 : sessionDone ? 0.5 : 0, gap: 0.35, minHeight: 0, flexShrink: 0, flexWrap: 'nowrap', overflow: 'hidden', height: !embeddedPlay && sessionDone && !studentReviewMode && !laptopCompanion ? 54 : 28, px: embeddedPlay ? 0.4 : 0 }}>
           {sessionStarted || studentReviewMode ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, flexShrink: 0 }}>
               {sessionDone && !studentReviewMode && !laptopCompanion ? (
@@ -4459,15 +4511,15 @@ export default function EntryTicketPage({
                 color: '#37474f',
                 fontWeight: 700,
                 lineHeight: 1,
-                fontSize: '0.78rem',
+                fontSize: embeddedPlay ? '0.72rem' : '0.78rem',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
-                maxWidth: { xs: '36vw', sm: '28vw' },
+                maxWidth: embeddedPlay ? { xs: '28vw', sm: '22vw' } : { xs: '36vw', sm: '28vw' },
               }}
             >
               EntryTicket
-              {sessionStarted ? (
+              {sessionStarted && !embeddedPlay ? (
                 <Box component="span" sx={{ color: '#78909c', fontWeight: 600, fontSize: '0.85em' }}>
                   {` · ${activeSetLabel}`}
                 </Box>
@@ -4534,7 +4586,7 @@ export default function EntryTicketPage({
                 ) : null}
               </Box>
             ) : null}
-            {isTeacher && !studentReviewMode && sessionStarted && customSetId ? (
+            {isTeacher && !studentReviewMode && sessionStarted && customSetId && !embeddedPlay ? (
               <Button
                 size="small"
                 variant="outlined"
@@ -4586,9 +4638,10 @@ export default function EntryTicketPage({
               <Box
                 sx={{
                   width: '100%',
-                  minHeight: '52vh',
+                  flex: embeddedPlay ? 1 : undefined,
+                  minHeight: embeddedPlay ? 0 : '52vh',
                   display: 'flex',
-                  alignItems: 'center',
+                  alignItems: embeddedPlay ? 'flex-start' : 'center',
                   justifyContent: 'center',
                 }}
               >
@@ -4814,14 +4867,13 @@ export default function EntryTicketPage({
             ) : (
               <Box
                 sx={{
-                  display: 'grid',
+                  display: embeddedPlay ? 'flex' : 'grid',
+                  flexDirection: embeddedPlay ? 'column' : undefined,
                   gap: 0,
                   width: '100%',
                   minWidth: 0,
                   flex: embeddedPlay ? 1 : undefined,
                   minHeight: embeddedPlay ? 0 : undefined,
-                  // Play füllt die Folienfläche: Extra-Höhe darf die Steuerzeile nicht strecken,
-                  // sonst rutschen die Karten nach unten.
                   alignContent: 'start',
                   alignItems: 'start',
                   justifyItems: 'stretch',
@@ -4835,7 +4887,8 @@ export default function EntryTicketPage({
                     alignItems: 'center',
                     justifyContent: 'flex-end',
                     gap: 0.5,
-                    flexWrap: 'wrap',
+                    flexWrap: 'nowrap',
+                    overflow: 'hidden',
                     px: 0.25,
                     minHeight: 28,
                     height: 28,
@@ -4993,6 +5046,15 @@ export default function EntryTicketPage({
                       boxSizing: 'border-box',
                       alignSelf: 'start',
                       justifySelf: 'center',
+                      ...(embeddedPlay
+                        ? {
+                            flex: 1,
+                            minHeight: 0,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            overflow: 'hidden',
+                          }
+                        : {}),
                     }}
                   >
                     <AnimatePresence mode="wait" custom={cardSlideDir} initial={false}>
@@ -5023,8 +5085,9 @@ export default function EntryTicketPage({
                           boxShadow: '0 8px 28px rgba(55, 71, 79, 0.1)',
                           display: 'flex',
                           flexDirection: 'column',
-                          overflow: 'visible',
-                          minHeight: DISPLAY_BOX_MIN_HEIGHT,
+                          overflow: embeddedPlay ? 'hidden' : 'visible',
+                          minHeight: embeddedPlay ? 0 : DISPLAY_BOX_MIN_HEIGHT,
+                          ...(embeddedPlay ? { flex: 1, height: '100%' } : {}),
                         }}
                       >
                         <Box
@@ -5103,13 +5166,17 @@ export default function EntryTicketPage({
                                 isTeacher && isCustomSetActive
                                   ? { xs: 4.5, sm: 5.5 }
                                   : { xs: 2.7, sm: 4.2 },
-                              py: 2.7,
-                              overflow: 'visible',
+                              py: embeddedPlay ? 1.25 : 2.7,
+                              overflow: embeddedPlay ? 'hidden' : 'visible',
+                              minHeight: 0,
                             }}
                           >
                           <Box
                             sx={{
                               width: '100%',
+                              height: embeddedPlay ? '100%' : undefined,
+                              minHeight: 0,
+                              overflow: embeddedPlay ? 'hidden' : undefined,
                               fontSize: { xs: '1.56rem', sm: '1.92rem', md: '2.1rem' },
                               lineHeight: 1.35,
                               fontWeight: 500,
@@ -5117,10 +5184,22 @@ export default function EntryTicketPage({
                               whiteSpace: 'pre-line',
                               letterSpacing: -0.01,
                               ...richTextSx,
+                              ...(embeddedPlay
+                                ? {
+                                    '& img': {
+                                      maxHeight: '100% !important',
+                                      width: 'auto !important',
+                                      maxWidth: '100% !important',
+                                      height: 'auto !important',
+                                      objectFit: 'contain',
+                                    },
+                                  }
+                                : {}),
                             }}
                           >
                             {currentTask ? (
                               <EntryTicketRichHtml
+                                contain={Boolean(embeddedPlay)}
                                 value={currentTask.prompt}
                                 sx={{
                                   fontSize: 'inherit',
@@ -5164,7 +5243,7 @@ export default function EntryTicketPage({
                       borderRadius: 2,
                       px: { xs: 0.25, sm: 0.4 },
                       py: 0,
-                      pt: 0.75,
+                      pt: embeddedPlay ? 0 : 0.75,
                       bgcolor: 'transparent',
                       overflow: 'hidden',
                       boxSizing: 'border-box',

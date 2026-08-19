@@ -356,7 +356,11 @@ function AppContent() {
       </Routes>
 
       <GlobalMarkdownListShortcut />
-      {authReady && user && <GlobalDashboardShortcut />}
+      {authReady && user && (
+        <GlobalDashboardShortcut
+          buttonRight={String(user.role).toUpperCase() === 'TEACHER' ? 68 : 20}
+        />
+      )}
 
       {authReady && user && String(user.role).toUpperCase() === 'TEACHER' && (
         <TeacherQuickNotes userId={user.id} floating />

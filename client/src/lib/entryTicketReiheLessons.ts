@@ -138,6 +138,44 @@ async function readFolderTree(folderPath: string): Promise<DirNode[]> {
   return extractChildren(data);
 }
 
+function toGitInternPath(p: string): string {
+  const n = (p || '').replace(/\\/g, '/').replace(/\/+$/, '');
+  if (!n) return n;
+  if (n === 'git-intern' || n.startsWith('git-intern/')) return n;
+  const marker = '/J-M-Reihen/';
+  const idx = n.indexOf(marker);
+  if (idx >= 0) return `git-intern/${n.slice(idx + marker.length)}`;
+  if (n.endsWith('/J-M-Reihen')) return 'git-intern';
+  if (n === 'J-M-Reihen') return 'git-intern';
+  if (n.startsWith('J-M-Reihen/')) return `git-intern/${n.slice('J-M-Reihen/'.length)}`;
+  return n;
+}
+
+function klasseNumberFromReiheName(reiheName: string): string | null {
+  const m = (reiheName || '').trim().match(/^(?:mathe|m|klasse)\s*0*(\d{1,2})$/i);
+  if (!m) return null;
+  const n = Number(m[1]);
+  if (!Number.isFinite(n) || n < 5 || n > 13) return null;
+  return String(n);
+}
+
+/** Direkte Reihen-Pfade, ohne den ganzen J-M-Reihen-Baum zu durchsuchen. */
+function reiheDirectPathCandidates(reiheName: string, knownReihePath?: string | null): string[] {
+  const out: string[] = [];
+  if (knownReihePath?.trim()) out.push(toGitInternPath(knownReihePath.trim()));
+  const klasse = klasseNumberFromReiheName(reiheName);
+  if (klasse) {
+    out.push(`git-intern/Mathe/Klasse ${klasse}`);
+    out.push(`J-M-Reihen/Mathe/Klasse ${klasse}`);
+  }
+  const lower = (reiheName || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  if (/^lk\s*mathe$/i.test(reiheName) || /^matrizen$/i.test(reiheName)) {
+    out.push('git-intern/Mathe/MSS 12 LK/12-01 Matrizen');
+  }
+  if (lower === 'ki') out.push('git-intern/Informatik/MSS Grundthemen/11-04 KI');
+  return out.filter((v, i, a) => v && a.indexOf(v) === i);
+}
+
 /** Anzeigenamen → Ordnernamen unter J-M-Reihen (Entry-Ticket-Sets). */
 function reiheNameLookupCandidates(reiheName: string): string[] {
   const want = (reiheName || '').trim();
@@ -156,23 +194,46 @@ function reiheNameLookupCandidates(reiheName: string): string[] {
   return out.filter((v, i, a) => a.findIndex((x) => normalizeFolderLabel(x) === normalizeFolderLabel(v)) === i);
 }
 
+function lessonsFromSeriesFolder(
+  seriesPath: string,
+  children: DirNode[],
+): { reihePath: string; lessons: DiscoveredReiheLesson[] } {
+  const reihePath = toGitInternPath(seriesPath);
+  const lessons: DiscoveredReiheLesson[] = [];
+  collectStundeFolders(children, reihePath, undefined, lessons);
+  for (const lesson of lessons) {
+    lesson.lessonKey = toGitInternPath(lesson.lessonKey);
+  }
+  lessons.sort((a, b) => a.lessonName.localeCompare(b.lessonName, 'de', { numeric: true }));
+  return { reihePath, lessons };
+}
+
 /**
  * Sucht unter J-M-Reihen den Ordner mit dem Reihennamen und liefert alle Stundenordner
- * (z. B. „01.01 KI sucht Mensch“) in Anzeigereihenfolge.
+ * (z. B. „01.01 KI sucht Mensch“ oder „1.0 Zählen …“) in Anzeigereihenfolge.
  */
-export async function discoverLessonsForReiheName(reiheName: string): Promise<{
+export async function discoverLessonsForReiheName(
+  reiheName: string,
+  knownReihePath?: string | null,
+): Promise<{
   reihePath: string | null;
   lessons: DiscoveredReiheLesson[];
 }> {
+  for (const direct of reiheDirectPathCandidates(reiheName, knownReihePath)) {
+    const children = await readFolderTree(direct);
+    if (children.length === 0) continue;
+    return lessonsFromSeriesFolder(direct, children);
+  }
+
   const candidates = reiheNameLookupCandidates(reiheName);
   if (candidates.length === 0) return { reihePath: null, lessons: [] };
 
-  let rootPath = 'J-M-Reihen';
+  let rootPath = 'git-intern';
   try {
     const pathRes = await fetch('/api/file-system-paths/jm-reihen-path', { credentials: 'include' });
     if (pathRes.ok) {
       const data = (await pathRes.json()) as { path?: string };
-      if (data.path) rootPath = data.path;
+      if (data.path) rootPath = toGitInternPath(data.path) || 'git-intern';
     }
   } catch {
     // fallback rootPath
@@ -189,8 +250,6 @@ export async function discoverLessonsForReiheName(reiheName: string): Promise<{
   }
 
   const children = series.children?.length ? series.children : await readFolderTree(series.path);
-  const lessons: DiscoveredReiheLesson[] = [];
-  collectStundeFolders(children, series.path, undefined, lessons);
-  lessons.sort((a, b) => a.lessonName.localeCompare(b.lessonName, 'de', { numeric: true }));
-  return { reihePath: series.path, lessons };
+  if (children.length === 0) return { reihePath: toGitInternPath(series.path), lessons: [] };
+  return lessonsFromSeriesFolder(series.path, children);
 }

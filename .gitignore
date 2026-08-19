@@ -76,3 +76,6 @@ sync-backups/
 .school-sync.log
 app_url.b64
 mat_url.b64
+
+.auto-git.log
+.disable-auto-git

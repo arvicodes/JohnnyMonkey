@@ -1,6 +1,11 @@
 {
   "version": 1,
   "hooks": {
+    "stop": [
+      {
+        "command": ".cursor/hooks/auto-commit-push-on-stop.sh"
+      }
+    ],
     "afterShellExecution": [
       {
         "command": ".cursor/hooks/after-git-push-school-deploy.sh",

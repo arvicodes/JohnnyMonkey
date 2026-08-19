@@ -1,4 +1,5 @@
 import React, { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Snackbar, TextField, Tooltip, Typography } from '@mui/material';
 import {
@@ -45,6 +46,7 @@ import { markTeacherWantsDashboard } from '../lib/teacherLiveLesson';
 import {
   attachPresentViewportFill,
   exitPresentFullscreen,
+  freezePresentViewport,
   isAnyNativeFullscreen,
   isIosSafariLike,
   requestPresentFullscreen,
@@ -87,6 +89,14 @@ const PresentationPresentPage: React.FC = () => {
   const [saveProgress, setSaveProgress] = useState('');
   const [saveNamedOpen, setSaveNamedOpen] = useState(false);
   const [entryTicketOpen, setEntryTicketOpen] = useState(false);
+  const openEntryTicket = useCallback(() => {
+    freezePresentViewport(true);
+    setEntryTicketOpen(true);
+  }, []);
+  const closeEntryTicket = useCallback(() => {
+    setEntryTicketOpen(false);
+    freezePresentViewport(false);
+  }, []);
   const [saveNamedLabel, setSaveNamedLabel] = useState('');
   const [displayScale, setDisplayScale] = useState(0.5);
   const [userZoom, setUserZoom] = useState(1);
@@ -266,11 +276,13 @@ const PresentationPresentPage: React.FC = () => {
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-      setEntryTicketOpen(true);
+      openEntryTicket();
     };
     host.addEventListener('click', onClick, true);
     return () => host.removeEventListener('click', onClick, true);
-  }, [loading]);
+  }, [loading, openEntryTicket]);
+
+  useEffect(() => () => freezePresentViewport(false), []);
 
   useLayoutEffect(() => {
     if (!lessonPath) return undefined;
@@ -1005,17 +1017,17 @@ const PresentationPresentPage: React.FC = () => {
   const handleSlideTap = (e: React.MouseEvent) => {
     if (drawActive) return;
     if (entryTicketOpen) return;
-    requestPresentFullscreen(containerRef.current);
     if (
       tryHandleLessonEntryTicketLinkClick(e, {
         lessonPath,
         groupId: groupId || undefined,
         autostart: true,
-        onOpen: () => setEntryTicketOpen(true),
+        onOpen: openEntryTicket,
       })
     ) {
       return;
     }
+    requestPresentFullscreen(containerRef.current);
     if (isPresentationLinkClickTarget(e.target)) return;
     if (didPanRef.current) {
       didPanRef.current = false;
@@ -1031,7 +1043,7 @@ const PresentationPresentPage: React.FC = () => {
 
   const presentShellSx = {
     position: 'fixed' as const,
-    ...(nativeFs
+    ...(nativeFs || entryTicketOpen
       ? { left: 0, top: 0, width: '100%', height: '100%' }
       : {
           left: 'var(--present-vv-left, 0px)',
@@ -1131,7 +1143,7 @@ const PresentationPresentPage: React.FC = () => {
           lessonPath,
           groupId: groupId || undefined,
           autostart: true,
-          onOpen: () => setEntryTicketOpen(true),
+          onOpen: () => openEntryTicket(),
         });
       }}
       sx={presentShellSx}
@@ -1318,7 +1330,7 @@ const PresentationPresentPage: React.FC = () => {
         onPickRandomStudent={groupId ? handlePickRandomStudent : undefined}
         canPickRandomStudent={groupStudents.length > 0}
         onPickRandomNumber={handlePickRandomNumber}
-        onOpenEntryTicket={() => setEntryTicketOpen(true)}
+        onOpenEntryTicket={openEntryTicket}
         onExitToDashboard={entryTicketOpen ? undefined : goToDashboard}
         zoom={userZoom}
         onZoomChange={applyUserZoom}
@@ -1416,29 +1428,36 @@ const PresentationPresentPage: React.FC = () => {
         onClose={() => setSnackbar('')}
       />
 
-      {entryTicketOpen ? (
-        <Box
-          data-present-scroll
-          sx={{
-            position: 'absolute',
-            inset: 0,
-            zIndex: 80,
-            bgcolor: '#f4f6fb',
-            overflow: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            touchAction: 'pan-y',
-            overscrollBehavior: 'contain',
-          }}
-        >
-          <EntryTicketPage
-            embeddedPlay={{
-              lessonPath,
-              groupId: groupId || undefined,
-              onExit: () => setEntryTicketOpen(false),
-            }}
-          />
-        </Box>
-      ) : null}
+      {entryTicketOpen && typeof document !== 'undefined'
+        ? createPortal(
+            <Box
+              data-present-scroll
+              data-entry-ticket-open=""
+              sx={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                width: '100%',
+                height: '100svh',
+                maxHeight: '100svh',
+                zIndex: 1200,
+                bgcolor: '#f4f6fb',
+                overflow: 'hidden',
+                overscrollBehavior: 'none',
+              }}
+            >
+              <EntryTicketPage
+                embeddedPlay={{
+                  lessonPath,
+                  groupId: groupId || undefined,
+                  onExit: closeEntryTicket,
+                }}
+              />
+            </Box>,
+            document.body,
+          )
+        : null}
     </Box>
   );
 };

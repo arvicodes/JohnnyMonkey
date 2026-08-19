@@ -132,6 +132,7 @@ function createViewportStabilizer(onCommit: (box: VvBox) => void) {
 
   return {
     push(raw: VvBox) {
+      if (viewportFrozen) return;
       if (!stable) {
         commit(raw);
         return;
@@ -168,6 +169,7 @@ function createViewportStabilizer(onCommit: (box: VvBox) => void) {
       if (shrinkTimer) window.clearTimeout(shrinkTimer);
       shrinkTimer = window.setTimeout(() => {
         shrinkTimer = 0;
+        if (viewportFrozen) return;
         commit(raw);
       }, 320);
     },
@@ -175,6 +177,27 @@ function createViewportStabilizer(onCommit: (box: VvBox) => void) {
       if (shrinkTimer) window.clearTimeout(shrinkTimer);
     },
   };
+}
+
+let viewportFrozen = false;
+
+/** Entry Ticket / Overlay: Viewport nicht mehr nachziehen (Safari-Leiste). */
+export function freezePresentViewport(frozen: boolean): void {
+  viewportFrozen = frozen;
+  if (!frozen || typeof document === 'undefined') return;
+  const vv = window.visualViewport;
+  writeViewportVars({
+    left: 0,
+    top: 0,
+    width: Math.max(1, Math.round(vv?.width || window.innerWidth)),
+    height: Math.max(1, Math.round(vv?.height || window.innerHeight)),
+  });
+  const body = document.body;
+  body.style.top = '0px';
+}
+
+export function isPresentViewportFrozen(): boolean {
+  return viewportFrozen;
 }
 
 const IMMERSIVE_CLASS = 'present-immersive';
@@ -245,6 +268,7 @@ export function attachPresentViewportFill(
   });
 
   const applyRaw = () => {
+    if (viewportFrozen) return;
     if (window.scrollY !== 0 || window.scrollX !== 0) {
       window.scrollTo(0, 0);
     }

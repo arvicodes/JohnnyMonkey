@@ -895,6 +895,7 @@ export default function PresentationLaptopPlayer({
       </Dialog>
       {entryTicketOpen ? (
         <Box
+          data-entry-ticket-open=""
           sx={{
             position: 'absolute',
             inset: 0,

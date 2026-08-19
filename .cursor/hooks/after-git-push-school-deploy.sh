@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# After a successful `git push` to main, kick off school-deploy in the background.
+# After a successful `git push` to main → school-sync (bidirektional + Backups).
 set -euo pipefail
 
 input="$(cat)"
@@ -28,21 +28,21 @@ if [[ "$targets_main" != 1 ]]; then
   exit 0
 fi
 
-SCRIPT="$ROOT/scripts/school-deploy.sh"
-LOG="$ROOT/.school-deploy.log"
+SCRIPT="$ROOT/scripts/school-sync.sh"
+LOG="$ROOT/.school-sync.log"
 
 if [[ ! -x "$SCRIPT" ]]; then
-  python3 -c 'import json; print(json.dumps({"additional_context":"school-deploy: Script fehlt (scripts/school-deploy.sh)."}))'
+  python3 -c 'import json; print(json.dumps({"additional_context":"school-sync: Script fehlt (scripts/school-sync.sh)."}))'
   exit 0
 fi
 
 if [[ ! -f "$ROOT/.env.school" ]]; then
-  python3 -c 'import json; print(json.dumps({"additional_context":"school-deploy: .env.school fehlt — Passwort setzen (siehe .env.school.example), dann erneut pushen."}))'
+  python3 -c 'import json; print(json.dumps({"additional_context":"school-sync: .env.school fehlt — Passwort setzen (siehe .env.school.example)."}))'
   exit 0
 fi
 
 if ! curl -sk -m 4 -o /dev/null "https://192.168.8.1:9443/"; then
-  python3 -c 'import json; print(json.dumps({"additional_context":"school-deploy: Portainer nicht erreichbar (VPN?) — Deploy übersprungen."}))'
+  python3 -c 'import json; print(json.dumps({"additional_context":"school-sync: Portainer nicht erreichbar (VPN?) — Sync übersprungen."}))'
   exit 0
 fi
 
@@ -52,5 +52,5 @@ fi
   "$SCRIPT"
 ) >>"$LOG" 2>&1 &
 
-python3 -c 'import json; print(json.dumps({"additional_context":"school-deploy: Push auf main erkannt — kompletter Schul-Deploy läuft im Hintergrund (Log: .school-deploy.log)."}))'
+python3 -c 'import json; print(json.dumps({"additional_context":"school-sync: Push auf main — Sync inkl. Backups läuft im Hintergrund (Log: .school-sync.log)."}))'
 exit 0
