@@ -238,7 +238,7 @@ export function drawBoundsSelection(ctx: CanvasRenderingContext2D, b: Bounds, ac
     { x: b.x + b.w, y: b.y + b.h },
     { x: b.x, y: b.y + b.h },
   ];
-  const hs = 11;
+  const hs = 7;
   for (const c of corners) {
     ctx.beginPath();
     ctx.rect(c.x - hs, c.y - hs, hs * 2, hs * 2);

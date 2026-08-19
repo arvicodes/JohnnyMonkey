@@ -693,8 +693,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   const nearBottomEdge = view.y + view.h >= 88;
   const handleOnTop = !heroImage && (isFullscreenish || nearBottomEdge);
   const handleOnBottom = heroImage;
-  const handleInsetPx = (isFullscreenish ? 10 : 6) * scale;
-  const handleSizePx = (isFullscreenish ? 52 : 40) * scale;
+  const handleInsetPx = (isFullscreenish ? 6 : 4) * scale;
+  const handleSizePx = (isFullscreenish ? 20 : 16) * scale;
 
   const showElementBadge =
     animationEditMode && elementHasRevealAssignment(element) && element.type === 'image';
@@ -748,16 +748,17 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     width: `${handleSizePx}px`,
     height: `${handleSizePx}px`,
     bgcolor: heroImage ? 'rgba(46,125,50,0.82)' : '#2E7D32',
-    borderRadius: `${3 * scale}px`,
+    borderRadius: `${2 * scale}px`,
     cursor: 'nwse-resize' as const,
-    border: heroImage ? 'none' : `${2 * scale}px solid #fff`,
-    boxShadow: heroImage ? '0 1px 6px rgba(0,0,0,0.28)' : '0 2px 8px rgba(0,0,0,0.35)',
+    border: heroImage ? 'none' : `${1.5 * scale}px solid #fff`,
+    boxShadow: heroImage ? '0 1px 4px rgba(0,0,0,0.28)' : '0 1px 4px rgba(0,0,0,0.35)',
     zIndex: 30,
     pointerEvents: 'auto' as const,
+    touchAction: 'none' as const,
     '&::after': {
       content: '""',
       position: 'absolute',
-      inset: `${-14 * scale}px`,
+      inset: `${-18 * scale}px`,
     },
   };
 
@@ -1050,8 +1051,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 sx={{
                   ...resizeHandleSx,
                   top: 'auto',
-                  bottom: `${4 * scale}px`,
-                  right: `${4 * scale}px`,
+                  bottom: `${3 * scale}px`,
+                  right: `${3 * scale}px`,
                 }}
               />
             )}

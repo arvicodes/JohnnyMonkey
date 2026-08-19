@@ -164,10 +164,19 @@ export function attachPresentTrackpadZoom(
   return () => el.removeEventListener('wheel', onWheel);
 }
 
-function touchDistance(touches: TouchList): number {
-  if (touches.length < 2) return 0;
-  const a = touches[0];
-  const b = touches[1];
+function isStylusTouch(t: Touch): boolean {
+  return (t as Touch & { touchType?: string }).touchType === 'stylus';
+}
+
+function fingerTouchList(touches: TouchList): Touch[] {
+  return Array.from(touches).filter((t) => !isStylusTouch(t));
+}
+
+function touchDistance(touches: Touch[] | TouchList): number {
+  const list = Array.isArray(touches) ? touches : fingerTouchList(touches);
+  if (list.length < 2) return 0;
+  const a = list[0];
+  const b = list[1];
   return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
 }
 
@@ -190,25 +199,18 @@ export function attachPresentTouchPinchZoom(
 
   const isEnabled = () => enabledRef?.current !== false;
 
-  const pinchOrigin = (touches: TouchList): PresentZoomOrigin | undefined => {
-    if (touches.length < 2) return undefined;
-    return {
-      clientX: (touches[0].clientX + touches[1].clientX) / 2,
-      clientY: (touches[0].clientY + touches[1].clientY) / 2,
-    };
-  };
-
   const onTouchStart = (e: TouchEvent) => {
     if (!isEnabled()) {
       pinching = false;
       pinchStartDist = 0;
       return;
     }
-    if (e.touches.length === 2) {
-      pinchStartDist = touchDistance(e.touches);
+    const fingers = fingerTouchList(e.touches);
+    if (fingers.length === 2) {
+      pinchStartDist = touchDistance(fingers);
       pinchStartZoom = zoomRef.current;
       pinching = pinchStartDist > 8;
-    } else if (e.touches.length < 2) {
+    } else if (fingers.length < 2) {
       pinching = false;
       pinchStartDist = 0;
     }
@@ -219,17 +221,21 @@ export function attachPresentTouchPinchZoom(
       pinching = false;
       return;
     }
-    if (!pinching || e.touches.length !== 2 || pinchStartDist < 8) return;
+    const fingers = fingerTouchList(e.touches);
+    if (!pinching || fingers.length !== 2 || pinchStartDist < 8) return;
     e.preventDefault();
-    const d = touchDistance(e.touches);
+    const d = touchDistance(fingers);
     if (d < 1) return;
     const next = clampPresentZoomSmooth(pinchStartZoom * (d / pinchStartDist));
     if (Math.abs(next - zoomRef.current) < 0.001) return;
-    setZoom(next, pinchOrigin(e.touches));
+    setZoom(next, {
+      clientX: (fingers[0].clientX + fingers[1].clientX) / 2,
+      clientY: (fingers[0].clientY + fingers[1].clientY) / 2,
+    });
   };
 
   const onTouchEnd = (e: TouchEvent) => {
-    if (e.touches.length < 2) {
+    if (fingerTouchList(e.touches).length < 2) {
       pinching = false;
       pinchStartDist = 0;
     }

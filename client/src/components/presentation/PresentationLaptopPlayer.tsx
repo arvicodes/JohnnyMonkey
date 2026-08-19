@@ -416,6 +416,7 @@ export default function PresentationLaptopPlayer({
 
   const onStagePointerDown = (e: React.PointerEvent) => {
     if (entryTicketOpen || userZoomRef.current <= 1.001) return;
+    if (e.pointerType === 'pen') return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     const t = e.target instanceof Element ? e.target : null;
     if (t?.closest?.('[data-pres-zoom-controls], button, a, input, textarea')) return;

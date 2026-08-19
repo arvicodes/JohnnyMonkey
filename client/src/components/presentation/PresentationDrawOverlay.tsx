@@ -62,6 +62,26 @@ const SHAPE_MIN_PX = 6;
 const MIN_POINT_DIST_SQ = 0.55 * 0.55;
 /** React/Parent erst nach Pause — sonst blockiert jeder Strich den nächsten Pencil. */
 const COMMIT_IDLE_MS = 420;
+/** GoodNotes: halten ohne Bewegung → Strich wird zur Geraden. */
+const STRAIGHT_HOLD_MS = 380;
+const STRAIGHT_MOVE_EPS_SQ = 2.4 * 2.4;
+const STRAIGHT_ANGLE_STEP = Math.PI / 12;
+
+function snapStraightEnd(
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+): { x: number; y: number } {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 8) return end;
+  const angle = Math.atan2(dy, dx);
+  const snapped = Math.round(angle / STRAIGHT_ANGLE_STEP) * STRAIGHT_ANGLE_STEP;
+  return {
+    x: start.x + Math.cos(snapped) * len,
+    y: start.y + Math.sin(snapped) * len,
+  };
+}
 
 type ManipState =
   | {
@@ -226,6 +246,12 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   const onSelectedStrokeIdChangeRef = useRef(onSelectedStrokeIdChange);
   const onSelectedStrokeIdsChangeRef = useRef(onSelectedStrokeIdsChange);
   const chromeTapRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+  const straightRef = useRef<{
+    timer: number | null;
+    snapped: boolean;
+    origin: { x: number; y: number };
+    lastMovePt: { x: number; y: number };
+  } | null>(null);
 
   onStrokesChangeRef.current = onStrokesChange;
   toolRef.current = tool;
@@ -484,6 +510,41 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
 
   const currentLineWidth = () => toolLineWidth(toolRef.current, lineWidthRef.current);
 
+  const clearStraightHold = () => {
+    const s = straightRef.current;
+    if (s?.timer != null) {
+      window.clearTimeout(s.timer);
+      s.timer = null;
+    }
+  };
+
+  const applyStraightDraft = (end: { x: number; y: number }) => {
+    const draft = drawingRef.current;
+    const snap = straightRef.current;
+    if (!draft || draft.shape || !snap) return;
+    const next = snapStraightEnd(snap.origin, end);
+    draft.points = [snap.origin, next];
+    lastInkPtRef.current = next;
+    lastSmoothMidRef.current = next;
+    redraw();
+  };
+
+  const armStraightHold = () => {
+    const snap = straightRef.current;
+    const draft = drawingRef.current;
+    if (!snap || snap.snapped || !draft || draft.shape) return;
+    clearStraightHold();
+    snap.timer = window.setTimeout(() => {
+      const s = straightRef.current;
+      const d = drawingRef.current;
+      if (!s || !d || d.shape) return;
+      s.snapped = true;
+      s.timer = null;
+      const last = d.points[d.points.length - 1] || s.origin;
+      applyStraightDraft(last);
+    }, STRAIGHT_HOLD_MS);
+  };
+
   const startFreehand = (pt: { x: number; y: number }) => {
     const t = toolRef.current;
     const shape = toolToShape(t);
@@ -510,6 +571,9 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     };
     lastInkPtRef.current = pt;
     lastSmoothMidRef.current = pt;
+    clearStraightHold();
+    straightRef.current = { timer: null, snapped: false, origin: pt, lastMovePt: pt };
+    armStraightHold();
   };
 
   /** Nur neues Segment — kein Full-Clear (entscheidend für Apple Pencil). */
@@ -536,6 +600,11 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       redraw();
       return;
     }
+    const snap = straightRef.current;
+    if (snap?.snapped) {
+      applyStraightDraft(pt);
+      return;
+    }
     const last = lastInkPtRef.current;
     if (!force && last) {
       const dx = pt.x - last.x;
@@ -545,6 +614,14 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     draft.points.push(pt);
     if (last) strokeInkSegment(last, pt);
     lastInkPtRef.current = pt;
+    if (snap) {
+      const mx = pt.x - snap.lastMovePt.x;
+      const my = pt.y - snap.lastMovePt.y;
+      if (mx * mx + my * my >= STRAIGHT_MOVE_EPS_SQ) {
+        snap.lastMovePt = pt;
+        armStraightHold();
+      }
+    }
   };
 
   const commitPreview = () => {
@@ -573,6 +650,9 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   };
 
   const finishInkStroke = () => {
+    clearStraightHold();
+    const snap = straightRef.current;
+    straightRef.current = null;
     inkPointerIdRef.current = null;
     inkIsPenRef.current = false;
     lastInkPtRef.current = null;
@@ -590,6 +670,12 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       }
       scheduleStrokesCommit([...strokesRef.current, draft]);
       onSelectedStrokeIdChangeRef.current?.(draft.id);
+      redraw();
+      return;
+    }
+
+    if (snap?.snapped && draft.points.length >= 2) {
+      scheduleStrokesCommit([...strokesRef.current, draft]);
       redraw();
       return;
     }
@@ -622,6 +708,20 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       return;
     }
 
+    // Element-Griffe (unten) auch mit Stift: Canvas liegt darüber.
+    const under = hitUnderCanvas(canvas, e.clientX, e.clientY);
+    if (under.handle) {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        under.handle.setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      dispatchPointerTo(under.handle, e);
+      return;
+    }
+
     if (e.pointerType === 'touch' && (t === 'pen' || t === 'marker' || !e.isPrimary)) {
       e.preventDefault();
       return;
@@ -639,7 +739,6 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       const ids = selectedStrokeIdsRef.current;
       const selected = strokesRef.current.filter((s) => ids.includes(s.id));
       const bounds = getStrokesBounds(selected);
-      const under = hitUnderCanvas(canvas, e.clientX, e.clientY);
 
       const beginManip = () => {
         try {
@@ -691,11 +790,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
         }
       }
 
-      // Stift auf Element-Griff (unten rechts): durchreichen, sonst nur Finger trifft.
-      if (under.handle) {
-        dispatchPointerTo(under.handle, e);
-        return;
-      }
+      // Stift auf Element-Griff: schon oben durchgereicht.
 
       const hit = findStrokeAtPoint(strokesRef.current, pt);
       if (hit) {
@@ -709,7 +804,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
         return;
       }
 
-      if (e.pointerType === 'touch' && under.host) {
+      if (under.host && (e.pointerType === 'touch' || e.pointerType === 'pen')) {
         dispatchPointerTo(under.host, e);
         return;
       }
@@ -939,6 +1034,8 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       return;
     }
     if (inkPointerIdRef.current === e.pointerId) {
+      clearStraightHold();
+      straightRef.current = null;
       drawingRef.current = null;
       inkPointerIdRef.current = null;
       inkIsPenRef.current = false;

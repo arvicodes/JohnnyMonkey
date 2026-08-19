@@ -937,6 +937,7 @@ const PresentationPresentPage: React.FC = () => {
 
   const onStagePointerDown = (e: React.PointerEvent) => {
     if (drawActive || entryTicketOpen || userZoomRef.current <= 1.001) return;
+    if (e.pointerType === 'pen') return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     const t = e.target instanceof Element ? e.target : null;
     if (t?.closest?.('[data-pres-zoom-controls], [data-pres-toolbar], button, a, input, textarea')) return;
@@ -989,6 +990,10 @@ const PresentationPresentPage: React.FC = () => {
     if (drawActive || entryTicketOpen || userZoomRef.current > 1.001) return;
     const t = e.touches[0];
     if (!t) return;
+    if ((t as Touch & { touchType?: string }).touchType === 'stylus') {
+      swipeRef.current = null;
+      return;
+    }
     const target = e.target instanceof Element ? e.target : null;
     if (target?.closest?.('a[href][data-pres-entry-ticket], a[href*="jm=lesson-entry"]')) {
       swipeRef.current = null;
@@ -1254,7 +1259,7 @@ const PresentationPresentPage: React.FC = () => {
                   deckTitle={deck?.title ?? ''}
                   lessonPath={deck?.lessonPath ?? lessonPath}
                   mediaInteractive={!drawActive && !zoomed}
-                  editable={drawActive && activeTool === 'select'}
+                  editable={drawActive}
                   selectedElementId={selectedElementId}
                   onElementSelect={setSelectedElementId}
                   onElementChange={updateSlideElement}
