@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterShellExecution": [
+      {
+        "command": ".cursor/hooks/after-git-push-school-deploy.sh",
+        "matcher": "git\\s+push"
+      }
+    ]
+  }
+}

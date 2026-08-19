@@ -5,11 +5,16 @@ export declare class EntryTicketController {
     /** Lehrer oder Klassen-Moderator: Entry Ticket beenden → archivieren für SuS-Materialien, Signal löschen */
     static complete(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /**
-     * Abgeschlossenes Entry Ticket einer Stunde (für SuS-Materialien inkl. Lösungen).
-     * Query: lessonPath, groupId
-     * Bei mehreren Durchläufen derselben Stunde: neuestes Archiv.
+     * Abgeschlossenes Entry Ticket (für SuS-Materialien inkl. Lösungen).
+     * Query: groupId, und lessonPath und/oder index (1 = zuerst erledigt).
+     * Ohne index: neuestes Archiv dieser Stunde.
      */
     static getCompleted(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
+     * Alle erledigten Entry Tickets einer Lerngruppe (SuS-Dashboard).
+     * Query: groupId — Nummerierung 1 = zuerst erledigt.
+     */
+    static getCompletedList(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /**
      * Lehrer-Historie: erledigte Entry-Ticket-Durchläufe.
      * Query optional: groupId, setId (Fragenset) — Nummerierung jeweils 1 = zuerst.
