@@ -68,6 +68,18 @@ const PresentationPresentZoomControls: React.FC<PresentationPresentZoomControlsP
             size="small"
             disabled={zoom <= PRESENT_ZOOM_MIN}
             onClick={() => onZoomChange(presentZoomOut(zoom))}
+            onPointerDown={(e) => {
+              if (e.pointerType === 'pen') {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            }}
+            onPointerUp={(e) => {
+              if (e.pointerType !== 'pen' || zoom <= PRESENT_ZOOM_MIN) return;
+              e.preventDefault();
+              e.stopPropagation();
+              onZoomChange(presentZoomOut(zoom));
+            }}
             sx={btnSx}
             aria-label="Herauszoomen"
           >
@@ -97,6 +109,18 @@ const PresentationPresentZoomControls: React.FC<PresentationPresentZoomControlsP
             size="small"
             disabled={zoom >= PRESENT_ZOOM_MAX}
             onClick={() => onZoomChange(presentZoomIn(zoom))}
+            onPointerDown={(e) => {
+              if (e.pointerType === 'pen') {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            }}
+            onPointerUp={(e) => {
+              if (e.pointerType !== 'pen' || zoom >= PRESENT_ZOOM_MAX) return;
+              e.preventDefault();
+              e.stopPropagation();
+              onZoomChange(presentZoomIn(zoom));
+            }}
             sx={btnSx}
             aria-label="Hineinzoomen"
           >
@@ -110,6 +134,18 @@ const PresentationPresentZoomControls: React.FC<PresentationPresentZoomControlsP
             size="small"
             disabled={zoom === 1}
             onClick={() => onZoomChange(1)}
+            onPointerDown={(e) => {
+              if (e.pointerType === 'pen') {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            }}
+            onPointerUp={(e) => {
+              if (e.pointerType !== 'pen' || zoom === 1) return;
+              e.preventDefault();
+              e.stopPropagation();
+              onZoomChange(1);
+            }}
             sx={btnSx}
             aria-label="Zoom zurücksetzen"
           >

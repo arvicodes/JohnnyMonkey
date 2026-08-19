@@ -2578,7 +2578,6 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                 }
               }}
               onDrop={onEditorDrop}
-              data-placeholder="Hier tippen … oder Bild einfügen"
               sx={{
                 position: 'absolute',
                 inset: 0,
@@ -2596,11 +2595,6 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                 outline: 'none',
                 pointerEvents: mode === 'text' ? 'auto' : 'none',
                 touchAction: 'pan-y',
-                '&:empty:before': {
-                  content: 'attr(data-placeholder)',
-                  color: '#bdbdbd',
-                  pointerEvents: 'none',
-                },
                 '& h3': {
                   fontSize: '1.35rem',
                   fontWeight: 800,

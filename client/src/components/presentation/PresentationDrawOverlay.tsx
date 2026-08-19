@@ -160,7 +160,7 @@ function isPresChrome(el: HTMLElement | null): boolean {
 
 function clickableInChrome(el: HTMLElement | null): HTMLElement | null {
   if (!el || !isPresChrome(el)) return null;
-  return (el.closest('button, [role="button"], a') as HTMLElement | null) || el;
+  return (el.closest('button, [role="button"], a, [data-pres-swatch]') as HTMLElement | null) || el;
 }
 
 function hitUnderCanvas(canvas: HTMLCanvasElement, clientX: number, clientY: number) {

@@ -88,6 +88,7 @@ const PresentationPresentPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState('');
   const [saveNamedOpen, setSaveNamedOpen] = useState(false);
+  const [clearInkOpen, setClearInkOpen] = useState(false);
   const [entryTicketOpen, setEntryTicketOpen] = useState(false);
   const openEntryTicket = useCallback(() => {
     freezePresentViewport(true);
@@ -577,6 +578,13 @@ const PresentationPresentPage: React.FC = () => {
     updateStrokes(currentStrokes.slice(0, -1));
   };
 
+  const clearAllInkOnSlide = () => {
+    if (currentStrokes.length === 0) return;
+    setSelectedStrokeIds([]);
+    updateStrokes([]);
+    setClearInkOpen(false);
+  };
+
   const finishingRunRef = useRef(false);
 
   const finishPresentationRun = useCallback(async () => {
@@ -791,6 +799,14 @@ const PresentationPresentPage: React.FC = () => {
     const onKey = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
       if (entryTicketOpen) return;
+      if (saveNamedOpen || clearInkOpen) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setSaveNamedOpen(false);
+          setClearInkOpen(false);
+        }
+        return;
+      }
 
       if (handlePresentZoomHotkey(e, userZoom, applyUserZoom)) return;
 
@@ -798,10 +814,6 @@ const PresentationPresentPage: React.FC = () => {
         e.preventDefault();
         if (drawActive) {
           setDrawActive(false);
-          return;
-        }
-        if (saveNamedOpen) {
-          setSaveNamedOpen(false);
           return;
         }
         navigate(presentationLessonBackUrl(lessonPath, groupId, planMode));
@@ -835,7 +847,7 @@ const PresentationPresentPage: React.FC = () => {
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [goNext, goPrev, drawActive, groupId, lessonPath, navigate, planMode, slides, saveNamedOpen, userZoom, entryTicketOpen, applyUserZoom]);
+  }, [goNext, goPrev, drawActive, groupId, lessonPath, navigate, planMode, slides, saveNamedOpen, clearInkOpen, userZoom, entryTicketOpen, applyUserZoom]);
 
   // Fokus auf die Bühne, damit Pfeiltasten sofort greifen
   useEffect(() => {
@@ -1206,6 +1218,7 @@ const PresentationPresentPage: React.FC = () => {
           width: '100%',
           position: 'relative',
           overflow: 'hidden',
+          zIndex: 1,
           touchAction: 'none',
           cursor: drawActive ? 'default' : zoomed ? (panning ? 'grabbing' : 'grab') : 'pointer',
           px: 0,
@@ -1330,6 +1343,7 @@ const PresentationPresentPage: React.FC = () => {
           currentStrokes.filter((s) => selectedStrokeIds.includes(s.id)).every((s) => s.mode === 'marker')
         }
         onUndo={undoStroke}
+        onClearAllInk={() => setClearInkOpen(true)}
         onSave={() => void handleSaveBothVersions()}
         onSaveNamed={() => setSaveNamedOpen(true)}
         onPickRandomStudent={groupId ? handlePickRandomStudent : undefined}
@@ -1346,6 +1360,28 @@ const PresentationPresentPage: React.FC = () => {
         nonce={revealNonce}
         onDone={clearRevealText}
       />
+
+      <Dialog
+        open={clearInkOpen}
+        onClose={() => setClearInkOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        sx={{ zIndex: 1400 }}
+      >
+        <DialogTitle>Alle Stiftstriche löschen?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Alle Stift-, Marker- und Formzeichnungen auf dieser Folie werden entfernt. Das lässt
+            sich nicht rückgängig machen.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setClearInkOpen(false)}>Abbrechen</Button>
+          <Button color="error" variant="contained" onClick={clearAllInkOnSlide}>
+            Löschen
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={saveNamedOpen}

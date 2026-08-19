@@ -310,6 +310,18 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
           <IconButton
             size="small"
             onClick={() => playPresentationSound()}
+            onPointerDown={(e) => {
+              if (e.pointerType === 'pen') {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            }}
+            onPointerUp={(e) => {
+              if (e.pointerType !== 'pen') return;
+              e.preventDefault();
+              e.stopPropagation();
+              playPresentationSound();
+            }}
             aria-label="Sound abspielen"
             sx={styles.play}
           >
@@ -327,6 +339,18 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
           <IconButton
             size="small"
             onClick={(e) => setAnchor(e.currentTarget)}
+            onPointerDown={(e) => {
+              if (e.pointerType === 'pen') {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            }}
+            onPointerUp={(e) => {
+              if (e.pointerType !== 'pen') return;
+              e.preventDefault();
+              e.stopPropagation();
+              setAnchor(e.currentTarget);
+            }}
             aria-label="Sound-Menü öffnen"
             aria-haspopup="true"
             aria-expanded={Boolean(anchor)}

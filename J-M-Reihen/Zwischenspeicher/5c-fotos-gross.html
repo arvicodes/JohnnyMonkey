@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Klasse 5c – Fotos</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+         background: #121212; color: #f2f2f2; }
+  h1 { font-size: 1.15rem; font-weight: 600; margin: 0; padding: 16px 18px 8px; }
+  p.hint { margin: 0 18px 14px; color: #bbb; font-size: 0.9rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+           gap: 12px; padding: 0 18px 40px; }
+  .card { appearance: none; border: 0; padding: 0; margin: 0; background: #1e1e1e;
+          border-radius: 10px; overflow: hidden; cursor: pointer; text-align: left;
+          color: inherit; font: inherit; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+  .card:hover { transform: translateY(-2px); }
+  .card img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #000; }
+  .card span, .missing span { display: block; padding: 8px 10px 10px; font-size: 0.82rem; line-height: 1.25; }
+  .missing { cursor: default; opacity: .7; }
+  .placeholder { aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+                  background: #2a2a2a; color: #888; font-size: 0.85rem; }
+  #lb { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.88);
+        z-index: 20; align-items: center; justify-content: center; padding: 24px; }
+  #lb.open { display: flex; }
+  #lb img { max-width: min(92vw, 900px); max-height: 86vh; object-fit: contain;
+             border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,.5); }
+  #lb .cap { position: absolute; left: 0; right: 0; bottom: 12px; text-align: center;
+              font-size: 1.05rem; }
+  #lb .x { position: absolute; top: 10px; right: 14px; width: 36px; height: 36px;
+            border: 0; border-radius: 8px; background: rgba(255,255,255,.12); color: #fff;
+            font-size: 22px; cursor: pointer; }
+</style>
+</head>
+<body>
+  <h1>Klasse 5c – Fotos</h1>
+  <p class="hint">Auf ein Foto klicken, um es groß anzuzeigen. Nochmal klicken oder Esc schließt.</p>
+  <div class="grid">
+    
+    <button class="card" data-i="0" data-src="5c-portraits/Ben_Sonntag.jpg" data-name="Ben Sonntag">
+      <img src="5c-portraits/Ben_Sonntag.jpg" alt="Ben Sonntag">
+      <span>Ben Sonntag</span>
+    </button>
+    <div class="card missing">
+      <div class="placeholder">kein Foto</div>
+      <span>Benno Noll</span>
+    </div>
+    <button class="card" data-i="2" data-src="5c-portraits/Casper_Neubusch.jpg" data-name="Casper Neubusch">
+      <img src="5c-portraits/Casper_Neubusch.jpg" alt="Casper Neubusch">
+      <span>Casper Neubusch</span>
+    </button>
+    <button class="card" data-i="3" data-src="5c-portraits/David_Nguyen.jpg" data-name="David Nguyen">
+      <img src="5c-portraits/David_Nguyen.jpg" alt="David Nguyen">
+      <span>David Nguyen</span>
+    </button>
+    <button class="card" data-i="4" data-src="5c-portraits/David_Schulte.jpg" data-name="David Schulte">
+      <img src="5c-portraits/David_Schulte.jpg" alt="David Schulte">
+      <span>David Schulte</span>
+    </button>
+    <button class="card" data-i="5" data-src="5c-portraits/Elias_Muno.jpg" data-name="Elias Muno">
+      <img src="5c-portraits/Elias_Muno.jpg" alt="Elias Muno">
+      <span>Elias Muno</span>
+    </button>
+    <button class="card" data-i="6" data-src="5c-portraits/Elisabeth_Croonenberg.jpg" data-name="Elisabeth Croonenberg">
+      <img src="5c-portraits/Elisabeth_Croonenberg.jpg" alt="Elisabeth Croonenberg">
+      <span>Elisabeth Croonenberg</span>
+    </button>
+    <button class="card" data-i="7" data-src="5c-portraits/Elisabeth_Eming.jpg" data-name="Elisabeth Eming">
+      <img src="5c-portraits/Elisabeth_Eming.jpg" alt="Elisabeth Eming">
+      <span>Elisabeth Eming</span>
+    </button>
+    <button class="card" data-i="8" data-src="5c-portraits/Emily_Müller.jpg" data-name="Emily Müller">
+      <img src="5c-portraits/Emily_Müller.jpg" alt="Emily Müller">
+      <span>Emily Müller</span>
+    </button>
+    <button class="card" data-i="9" data-src="5c-portraits/Enie_Klütsch.jpg" data-name="Enie Klütsch">
+      <img src="5c-portraits/Enie_Klütsch.jpg" alt="Enie Klütsch">
+      <span>Enie Klütsch</span>
+    </button>
+    <button class="card" data-i="10" data-src="5c-portraits/Eric_Föhlinger.jpg" data-name="Eric Föhlinger">
+      <img src="5c-portraits/Eric_Föhlinger.jpg" alt="Eric Föhlinger">
+      <span>Eric Föhlinger</span>
+    </button>
+    <button class="card" data-i="11" data-src="5c-portraits/Felix_Pohl.jpg" data-name="Felix Pohl">
+      <img src="5c-portraits/Felix_Pohl.jpg" alt="Felix Pohl">
+      <span>Felix Pohl</span>
+    </button>
+    <div class="card missing">
+      <div class="placeholder">kein Foto</div>
+      <span>Frida Bittner</span>
+    </div>
+    <button class="card" data-i="13" data-src="5c-portraits/Fränzi_Bröder.jpg" data-name="Fränzi Bröder">
+      <img src="5c-portraits/Fränzi_Bröder.jpg" alt="Fränzi Bröder">
+      <span>Fränzi Bröder</span>
+    </button>
+    <button class="card" data-i="14" data-src="5c-portraits/Greta_Nacke.jpg" data-name="Greta Nacke">
+      <img src="5c-portraits/Greta_Nacke.jpg" alt="Greta Nacke">
+      <span>Greta Nacke</span>
+    </button>
+    <button class="card" data-i="15" data-src="5c-portraits/Jan_Pfefferl.jpg" data-name="Jan Pfefferl">
+      <img src="5c-portraits/Jan_Pfefferl.jpg" alt="Jan Pfefferl">
+      <span>Jan Pfefferl</span>
+    </button>
+    <button class="card" data-i="16" data-src="5c-portraits/Julien_Schmidt.jpg" data-name="Julien Schmidt">
+      <img src="5c-portraits/Julien_Schmidt.jpg" alt="Julien Schmidt">
+      <span>Julien Schmidt</span>
+    </button>
+    <button class="card" data-i="17" data-src="5c-portraits/Julius_Weyer.jpg" data-name="Julius Weyer">
+      <img src="5c-portraits/Julius_Weyer.jpg" alt="Julius Weyer">
+      <span>Julius Weyer</span>
+    </button>
+    <button class="card" data-i="18" data-src="5c-portraits/Laura_Malina.jpg" data-name="Laura Malina">
+      <img src="5c-portraits/Laura_Malina.jpg" alt="Laura Malina">
+      <span>Laura Malina</span>
+    </button>
+    <button class="card" data-i="19" data-src="5c-portraits/Lennard_Sunaga.jpg" data-name="Lennard Sunaga">
+      <img src="5c-portraits/Lennard_Sunaga.jpg" alt="Lennard Sunaga">
+      <span>Lennard Sunaga</span>
+    </button>
+    <div class="card missing">
+      <div class="placeholder">kein Foto</div>
+      <span>Leonard Schmitt</span>
+    </div>
+    <button class="card" data-i="21" data-src="5c-portraits/Levin_Demirci.jpg" data-name="Levin Demirci">
+      <img src="5c-portraits/Levin_Demirci.jpg" alt="Levin Demirci">
+      <span>Levin Demirci</span>
+    </button>
+    <div class="card missing">
+      <div class="placeholder">kein Foto</div>
+      <span>León Fernández de la Peña</span>
+    </div>
+    <button class="card" data-i="23" data-src="5c-portraits/Luthien_Thomé.jpg" data-name="Luthien Thomé">
+      <img src="5c-portraits/Luthien_Thomé.jpg" alt="Luthien Thomé">
+      <span>Luthien Thomé</span>
+    </button>
+    <button class="card" data-i="24" data-src="5c-portraits/Magdalena_Hessel.jpg" data-name="Magdalena Hessel">
+      <img src="5c-portraits/Magdalena_Hessel.jpg" alt="Magdalena Hessel">
+      <span>Magdalena Hessel</span>
+    </button>
+    <button class="card" data-i="25" data-src="5c-portraits/Marie_Sprechert.jpg" data-name="Marie Sprechert">
+      <img src="5c-portraits/Marie_Sprechert.jpg" alt="Marie Sprechert">
+      <span>Marie Sprechert</span>
+    </button>
+    <button class="card" data-i="26" data-src="5c-portraits/Marleen_Hannes.jpg" data-name="Marleen Hannes">
+      <img src="5c-portraits/Marleen_Hannes.jpg" alt="Marleen Hannes">
+      <span>Marleen Hannes</span>
+    </button>
+    <button class="card" data-i="27" data-src="5c-portraits/Melissa_Fandiño_Geisen.jpg" data-name="Melissa Fandiño Geisen">
+      <img src="5c-portraits/Melissa_Fandiño_Geisen.jpg" alt="Melissa Fandiño Geisen">
+      <span>Melissa Fandiño Geisen</span>
+    </button>
+    <div class="card missing">
+      <div class="placeholder">kein Foto</div>
+      <span>Nele Koch</span>
+    </div>
+    <button class="card" data-i="29" data-src="5c-portraits/Oskar_Mueller.jpg" data-name="Oskar Mueller">
+      <img src="5c-portraits/Oskar_Mueller.jpg" alt="Oskar Mueller">
+      <span>Oskar Mueller</span>
+    </button>
+    <button class="card" data-i="30" data-src="5c-portraits/Philipp_Beuler.jpg" data-name="Philipp Beuler">
+      <img src="5c-portraits/Philipp_Beuler.jpg" alt="Philipp Beuler">
+      <span>Philipp Beuler</span>
+    </button>
+    <button class="card" data-i="31" data-src="5c-portraits/Tim_Simon.jpg" data-name="Tim Simon">
+      <img src="5c-portraits/Tim_Simon.jpg" alt="Tim Simon">
+      <span>Tim Simon</span>
+    </button>
+  </div>
+  <div id="lb" role="dialog" aria-modal="true">
+    <button class="x" type="button" aria-label="Schließen">×</button>
+    <img alt="">
+    <div class="cap"></div>
+  </div>
+<script>
+const lb = document.getElementById('lb');
+const img = lb.querySelector('img');
+const cap = lb.querySelector('.cap');
+function openLb(src, name) {
+  img.src = src; img.alt = name; cap.textContent = name;
+  lb.classList.add('open');
+}
+function closeLb() { lb.classList.remove('open'); img.src = ''; }
+document.querySelectorAll('.card[data-src]').forEach(btn => {
+  btn.addEventListener('click', () => openLb(btn.dataset.src, btn.dataset.name));
+});
+lb.addEventListener('click', closeLb);
+lb.querySelector('.x').addEventListener('click', e => { e.stopPropagation(); closeLb(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLb(); });
+</script>
+</body>
+</html>

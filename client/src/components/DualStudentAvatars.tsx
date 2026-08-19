@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Avatar, Box, SxProps, Theme, Tooltip } from '@mui/material';
+import { Avatar, Box, Dialog, DialogContent, DialogTitle, SxProps, Theme, Tooltip } from '@mui/material';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import AddAPhotoIcon from '@mui/icons-material/AddAPhoto';
 import { resolveAvatarUrl } from '../lib/avatarUrl';
+import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
 
 type DualStudentAvatarsProps = {
   name?: string;
@@ -43,6 +44,7 @@ export function DualStudentAvatars({
   const emoji = avatarEmoji?.trim() || fallbackEmoji;
   const resolvedUrl = resolveAvatarUrl(avatarUrl);
   const [imgFailed, setImgFailed] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   useEffect(() => {
     setImgFailed(false);
   }, [resolvedUrl]);
@@ -50,6 +52,7 @@ export function DualStudentAvatars({
   const showPhoto = alwaysShowPhotoSlot || hasPhoto;
   const emojiEditable = Boolean(onEmojiClick);
   const photoEditable = Boolean(onPhotoClick);
+  const photoPreviewable = hasPhoto && !photoEditable;
   const compact = !large && size <= 18;
   const borderWidth = large ? 3 : compact ? 1 : 2;
   const defaultGap = large ? 1.5 : compact ? 0.25 : 0.6;
@@ -59,9 +62,11 @@ export function DualStudentAvatars({
     ? hasPhoto
       ? 'Eigenes Bild ändern'
       : 'Eigenes Bild hochladen'
-    : hasPhoto
-      ? 'Eigenes Bild'
-      : 'Kein eigenes Bild';
+    : photoPreviewable
+      ? 'Foto vergrößern'
+      : hasPhoto
+        ? 'Eigenes Bild'
+        : 'Kein eigenes Bild';
 
   const emojiAvatar = (
     <Avatar
@@ -106,22 +111,32 @@ export function DualStudentAvatars({
     border: hasPhoto
       ? `${borderWidth}px solid rgba(255,255,255,0.9)`
       : `${borderWidth}px dashed rgba(92, 107, 192, 0.45)`,
-    cursor: photoEditable ? 'pointer' : 'default',
+    cursor: photoEditable || photoPreviewable ? 'pointer' : 'default',
     transition: 'transform 0.2s ease',
-    '&:hover': photoEditable ? { transform: 'scale(1.05)' } : undefined,
+    '&:hover': photoEditable || photoPreviewable ? { transform: 'scale(1.05)' } : undefined,
     p: 0,
   };
 
+  const handlePhotoClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (photoEditable) {
+      onPhotoClick?.();
+      return;
+    }
+    if (photoPreviewable) setPreviewOpen(true);
+  };
+
+  const photoClickable = photoEditable || photoPreviewable;
   const photoAvatar = (
     <Box
-      component={photoEditable ? 'button' : 'div'}
-      type={photoEditable ? 'button' : undefined}
-      onClick={photoEditable ? onPhotoClick : undefined}
+      component={photoClickable ? 'button' : 'div'}
+      type={photoClickable ? 'button' : undefined}
+      onClick={photoClickable ? handlePhotoClick : undefined}
       aria-label={photoTooltip}
       sx={{
         ...photoCircleSx,
         borderStyle: hasPhoto ? 'solid' : 'dashed',
-        ...(photoEditable
+        ...(photoClickable
           ? { appearance: 'none', WebkitAppearance: 'none', m: 0, font: 'inherit' }
           : {}),
       }}
@@ -150,31 +165,80 @@ export function DualStudentAvatars({
   );
 
   return (
-    <Box
-      sx={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: defaultGap,
-        ...((typeof sx === 'object' && sx !== null && !Array.isArray(sx) ? sx : {}) as object),
-      }}
-    >
-      {compact ? (
-        emojiAvatar
-      ) : (
-        <Tooltip title={emojiTooltip} placement="bottom">
-          {emojiAvatar}
-        </Tooltip>
-      )}
-
-      {showPhoto &&
-        (compact ? (
-          photoAvatar
+    <>
+      <Box
+        sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: defaultGap,
+          ...((typeof sx === 'object' && sx !== null && !Array.isArray(sx) ? sx : {}) as object),
+        }}
+      >
+        {compact ? (
+          emojiAvatar
         ) : (
-          <Tooltip title={photoTooltip} placement="bottom">
-            <span style={{ display: 'inline-flex', lineHeight: 0 }}>{photoAvatar}</span>
+          <Tooltip title={emojiTooltip} placement="bottom">
+            {emojiAvatar}
           </Tooltip>
-        ))}
-    </Box>
+        )}
+
+        {showPhoto &&
+          (compact ? (
+            photoAvatar
+          ) : (
+            <Tooltip title={photoTooltip} placement="bottom">
+              <span style={{ display: 'inline-flex', lineHeight: 0 }}>{photoAvatar}</span>
+            </Tooltip>
+          ))}
+      </Box>
+
+      {photoPreviewable && resolvedUrl && (
+        <Dialog
+          open={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+          maxWidth="md"
+          fullWidth
+          onClick={(e) => e.stopPropagation()}
+          PaperProps={{
+            sx: {
+              bgcolor: '#111',
+              backgroundImage: 'none',
+              borderRadius: 2,
+              overflow: 'hidden',
+            },
+          }}
+        >
+          <DialogTitle
+            sx={{
+              ...dialogCloseTitleSx,
+              color: '#fff',
+              bgcolor: '#1a1a1a',
+              py: 1.25,
+            }}
+          >
+            {name || 'Foto'}
+            <DialogCloseIconButton
+              onClose={() => setPreviewOpen(false)}
+              sx={{ color: '#fff', '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' } }}
+              iconSx={{ color: '#fff' }}
+            />
+          </DialogTitle>
+          <DialogContent sx={{ p: 0, bgcolor: '#000', display: 'flex', justifyContent: 'center' }}>
+            <Box
+              component="img"
+              src={resolvedUrl}
+              alt={name ? `${name} Foto` : 'Foto'}
+              sx={{
+                width: '100%',
+                maxHeight: '80vh',
+                objectFit: 'contain',
+                display: 'block',
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 }
 

@@ -15,6 +15,7 @@ import {
   SaveAs as SaveAsIcon,
   Tag as TagIcon,
   Undo as UndoIcon,
+  DeleteSweep as DeleteSweepIcon,
   Close as CloseIcon,
 } from '@mui/icons-material';
 import {
@@ -97,8 +98,6 @@ function stylusActivateHandlers(action: () => void, disabled?: boolean) {
     },
     onPointerUp: (e: React.PointerEvent) => {
       if (disabled || e.pointerType !== 'pen') return;
-      const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
       e.preventDefault();
       e.stopPropagation();
       action();
@@ -145,6 +144,8 @@ interface PresentationTabletToolbarProps {
   selectedCount?: number;
   selectionIsMarker?: boolean;
   onUndo: () => void;
+  /** Alle Stiftstriche der aktuellen Folie löschen (nach Bestätigung in der Seite). */
+  onClearAllInk?: () => void;
   onSave?: () => void;
   onSaveNamed?: () => void;
   /** Zufälligen SuS aus der Lerngruppe anzeigen (Würfel) */
@@ -186,6 +187,7 @@ export default function PresentationTabletToolbar({
   selectedCount = 0,
   selectionIsMarker = false,
   onUndo,
+  onClearAllInk,
   onSave,
   onSaveNamed,
   onPickRandomStudent,
@@ -280,6 +282,10 @@ export default function PresentationTabletToolbar({
                 setShowNumberRanges(false);
                 onPickRandomNumber(r.max);
               }}
+              {...stylusActivateHandlers(() => {
+                setShowNumberRanges(false);
+                onPickRandomNumber(r.max);
+              })}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
@@ -311,144 +317,159 @@ export default function PresentationTabletToolbar({
         </Box>
       )}
 
-      {showLineWidths && (
+      {(showColors || showLineWidths || showMarkerOpacity) && (
         <Box
           sx={{
             ...PANEL_SX,
             display: 'flex',
+            flexDirection: 'row',
             alignItems: 'center',
-            gap: 0.45,
+            flexWrap: 'nowrap',
+            gap: 0.4,
             borderRadius: 2,
-            px: 0.65,
-            py: 0.35,
+            px: 0.55,
+            py: 0.3,
           }}
         >
-          {widthOptions.map((w) => (
-            <Box
-              key={w}
-              role="button"
-              tabIndex={0}
-              aria-label={`Stärke ${w}`}
-              onClick={() => onSelectLineWidth(w)}
-              sx={{
-                width: 18,
-                height: 18,
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                border:
-                  lineWidth === w
-                    ? `2px solid ${JOHNNY_PRESENTATION.warm}`
-                    : '1px solid rgba(255,255,255,0.18)',
-                bgcolor: lineWidth === w ? 'rgba(255,152,0,0.14)' : 'transparent',
-              }}
-            >
+          {showColors &&
+            PEN_COLORS.map((c) => (
               <Box
-                sx={{
-                  width: Math.min(12, Math.max(3, w * (activeTool === 'marker' ? 0.45 : 1.2))),
-                  height: Math.min(12, Math.max(3, w * (activeTool === 'marker' ? 0.45 : 1.2))),
-                  borderRadius: '50%',
-                  bgcolor: 'rgba(255,255,255,0.88)',
-                }}
-              />
-            </Box>
-          ))}
-        </Box>
-      )}
-
-      {showMarkerOpacity && (
-        <Box
-          sx={{
-            ...PANEL_SX,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 0.45,
-            borderRadius: 2,
-            px: 0.65,
-            py: 0.35,
-          }}
-        >
-          <Typography sx={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.62)', mr: 0.15 }}>
-            Transparenz
-          </Typography>
-          {MARKER_OPACITY_PRESETS.map((a) => {
-            const selected = Math.abs((markerOpacity ?? 0.14) - a) < 0.02;
-            return (
-              <Box
-                key={a}
+                key={c}
+                data-pres-swatch=""
                 role="button"
                 tabIndex={0}
-                aria-label={`Deckkraft ${Math.round(a * 100)} Prozent`}
-                title={`${Math.round(a * 100)} %`}
-                onClick={() => onSelectMarkerOpacity?.(a)}
+                aria-label={`Farbe ${c}`}
+                onClick={() => onSelectColor(c)}
+                {...stylusActivateHandlers(() => onSelectColor(c))}
                 sx={{
-                  width: 20,
-                  height: 20,
+                  position: 'relative',
+                  width: 16,
+                  height: 16,
+                  borderRadius: '50%',
+                  bgcolor: c,
+                  flexShrink: 0,
+                  cursor: 'pointer',
+                  touchAction: 'manipulation',
+                  border:
+                    strokeColor === c
+                      ? `2px solid ${JOHNNY_PRESENTATION.warm}`
+                      : c === '#FFFFFF'
+                        ? '1px solid rgba(255,255,255,0.35)'
+                        : '1px solid rgba(0,0,0,0.15)',
+                  '&::after': {
+                    content: '""',
+                    position: 'absolute',
+                    inset: -6,
+                  },
+                }}
+              />
+            ))}
+          {showColors && (showLineWidths || showMarkerOpacity) && (
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{ mx: 0.15, borderColor: 'rgba(255,255,255,0.16)', height: 16, alignSelf: 'center' }}
+            />
+          )}
+          {showLineWidths &&
+            widthOptions.map((w) => (
+              <Box
+                key={w}
+                data-pres-swatch=""
+                role="button"
+                tabIndex={0}
+                aria-label={`Stärke ${w}`}
+                onClick={() => onSelectLineWidth(w)}
+                {...stylusActivateHandlers(() => onSelectLineWidth(w))}
+                sx={{
+                  position: 'relative',
+                  width: 18,
+                  height: 18,
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  bgcolor: '#eceff1',
-                  border: selected
-                    ? `2px solid ${JOHNNY_PRESENTATION.warm}`
-                    : '1px solid rgba(255,255,255,0.22)',
-                  boxShadow: selected ? `0 0 0 1px ${JOHNNY_PRESENTATION.warm}` : 'none',
+                  flexShrink: 0,
+                  touchAction: 'manipulation',
+                  border:
+                    lineWidth === w
+                      ? `2px solid ${JOHNNY_PRESENTATION.warm}`
+                      : '1px solid rgba(255,255,255,0.18)',
+                  bgcolor: lineWidth === w ? 'rgba(255,152,0,0.14)' : 'transparent',
+                  '&::after': {
+                    content: '""',
+                    position: 'absolute',
+                    inset: -5,
+                  },
                 }}
               >
                 <Box
                   sx={{
-                    width: 14,
-                    height: 14,
+                    width: Math.min(12, Math.max(3, w * (activeTool === 'marker' ? 0.45 : 1.2))),
+                    height: Math.min(12, Math.max(3, w * (activeTool === 'marker' ? 0.45 : 1.2))),
                     borderRadius: '50%',
-                    bgcolor: toHighlightFill(strokeColor, a),
+                    bgcolor: 'rgba(255,255,255,0.88)',
+                    pointerEvents: 'none',
                   }}
                 />
               </Box>
-            );
-          })}
-        </Box>
-      )}
-
-      {showColors && (
-        <Box
-          sx={{
-            ...PANEL_SX,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 0.35,
-            borderRadius: 2,
-            px: 0.55,
-            py: 0.35,
-          }}
-        >
-          {PEN_COLORS.map((c) => (
-            <Box
-              key={c}
-              role="button"
-              tabIndex={0}
-              aria-label={`Farbe ${c}`}
-              onClick={() => onSelectColor(c)}
-              sx={{
-                width: 14,
-                height: 14,
-                borderRadius: '50%',
-                bgcolor: c,
-                flexShrink: 0,
-                cursor: 'pointer',
-                border:
-                  strokeColor === c
-                    ? `2px solid ${JOHNNY_PRESENTATION.warm}`
-                    : c === '#FFFFFF'
-                      ? '1px solid rgba(255,255,255,0.35)'
-                      : '1px solid rgba(0,0,0,0.15)',
-                transition: 'transform 0.12s ease',
-                '&:hover': { transform: 'scale(1.12)' },
-              }}
+            ))}
+          {showLineWidths && showMarkerOpacity && (
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{ mx: 0.15, borderColor: 'rgba(255,255,255,0.16)', height: 16, alignSelf: 'center' }}
             />
-          ))}
+          )}
+          {showMarkerOpacity &&
+            MARKER_OPACITY_PRESETS.map((a) => {
+              const selected = Math.abs((markerOpacity ?? 0.14) - a) < 0.02;
+              return (
+                <Box
+                  key={a}
+                  data-pres-swatch=""
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Deckkraft ${Math.round(a * 100)} Prozent`}
+                  title={`${Math.round(a * 100)} %`}
+                  onClick={() => onSelectMarkerOpacity?.(a)}
+                  {...stylusActivateHandlers(() => onSelectMarkerOpacity?.(a))}
+                  sx={{
+                    position: 'relative',
+                    width: 18,
+                    height: 18,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    touchAction: 'manipulation',
+                    bgcolor: '#eceff1',
+                    border: selected
+                      ? `2px solid ${JOHNNY_PRESENTATION.warm}`
+                      : '1px solid rgba(255,255,255,0.22)',
+                    boxShadow: selected ? `0 0 0 1px ${JOHNNY_PRESENTATION.warm}` : 'none',
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      inset: -5,
+                    },
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: '50%',
+                      bgcolor: toHighlightFill(strokeColor, a),
+                      pointerEvents: 'none',
+                    }}
+                  />
+                </Box>
+              );
+            })}
         </Box>
       )}
 
@@ -637,6 +658,15 @@ export default function PresentationTabletToolbar({
             <ToolBtn title="Rückgängig" disabled={!canUndo} onClick={onUndo}>
               <UndoIcon sx={{ fontSize: 15 }} />
             </ToolBtn>
+            {onClearAllInk && (
+              <ToolBtn
+                title="Alle Stiftstriche auf dieser Folie löschen"
+                disabled={!canUndo}
+                onClick={onClearAllInk}
+              >
+                <DeleteSweepIcon sx={{ fontSize: 15 }} />
+              </ToolBtn>
+            )}
           </>
         )}
 
