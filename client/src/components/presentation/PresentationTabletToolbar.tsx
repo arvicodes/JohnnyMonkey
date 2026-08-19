@@ -83,9 +83,28 @@ type ToolBtnProps = {
   title: string;
   active?: boolean;
   disabled?: boolean;
-  onClick: (e: React.MouseEvent<HTMLElement>) => void;
+  onClick: (e: React.MouseEvent<HTMLElement> | React.PointerEvent<HTMLElement>) => void;
   children: React.ReactNode;
 };
+
+/** Apple Pencil löst oft kein click aus — Pointer-Up zählt als Tippen. */
+function stylusActivateHandlers(action: () => void, disabled?: boolean) {
+  return {
+    onPointerDown: (e: React.PointerEvent) => {
+      if (e.pointerType !== 'pen') return;
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    onPointerUp: (e: React.PointerEvent) => {
+      if (disabled || e.pointerType !== 'pen') return;
+      const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+      e.preventDefault();
+      e.stopPropagation();
+      action();
+    },
+  };
+}
 
 function ToolBtn({ title, active, disabled, onClick, children }: ToolBtnProps) {
   return (
@@ -95,6 +114,7 @@ function ToolBtn({ title, active, disabled, onClick, children }: ToolBtnProps) {
           size="small"
           disabled={disabled}
           onClick={onClick}
+          {...stylusActivateHandlers(() => onClick({} as React.MouseEvent<HTMLElement>), disabled)}
           sx={{ ...MICRO_SX, ...(active ? TOOL_ACTIVE : {}) }}
         >
           {children}
@@ -209,25 +229,26 @@ export default function PresentationTabletToolbar({
               width: '100%',
               display: 'flex',
               flexDirection: 'column',
-              alignItems: 'center',
+              alignItems: 'flex-start',
               gap: 0.4,
               px: 1,
               pt: 0.5,
               pb: 'max(10px, env(safe-area-inset-bottom))',
               bgcolor: 'rgba(0,0,0,0.92)',
               borderTop: '1px solid rgba(255,255,255,0.08)',
-              zIndex: 40,
+              zIndex: 80,
             }
           : {
               position: overlay ? 'absolute' : 'fixed',
-              bottom: overlay ? 'max(10px, env(safe-area-inset-bottom))' : 12,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 40,
+              bottom: overlay ? 'max(8px, env(safe-area-inset-bottom))' : 12,
+              left: overlay
+                ? 'max(8px, env(safe-area-inset-left))'
+                : 'max(12px, env(safe-area-inset-left))',
+              zIndex: 80,
               display: 'flex',
               flexDirection: 'column',
-              alignItems: 'center',
-              gap: 0.4,
+              alignItems: 'flex-start',
+              gap: 0.35,
               maxWidth: overlay ? 'calc(100% - 16px)' : 'calc(100vw - 16px)',
               touchAction: 'manipulation',
               pointerEvents: 'auto',
