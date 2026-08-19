@@ -15,6 +15,7 @@ import {
   SaveAs as SaveAsIcon,
   Tag as TagIcon,
   Undo as UndoIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import {
   MARKER_OPACITY_PRESETS,
@@ -133,6 +134,8 @@ interface PresentationTabletToolbarProps {
   onPickRandomNumber?: (max: number) => void;
   /** Entry Ticket dieser Stunde öffnen (TABLET-Play) */
   onOpenEntryTicket?: () => void;
+  /** Sofort zum Dashboard (wie Taste D) */
+  onExitToDashboard?: () => void;
   /** overlay = absolut in der Present-Bühne (Safari iPad); fixed = Viewport; docked = Layout unten */
   placement?: 'fixed' | 'docked' | 'overlay';
   /** Original-Ansicht: nur Navigation, kein Zeichnen/Speichern */
@@ -169,6 +172,7 @@ export default function PresentationTabletToolbar({
   canPickRandomStudent = false,
   onPickRandomNumber,
   onOpenEntryTicket,
+  onExitToDashboard,
   placement = 'fixed',
   readOnly = false,
   zoom,
@@ -643,6 +647,19 @@ export default function PresentationTabletToolbar({
         <ToolBtn title={nextButtonTitle} disabled={!canGoNext} onClick={onGoNext}>
           <ChevronRight sx={{ fontSize: 17 }} />
         </ToolBtn>
+
+        {onExitToDashboard && (
+          <>
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{ mx: 0.15, borderColor: 'rgba(255,255,255,0.1)', height: 18, alignSelf: 'center' }}
+            />
+            <ToolBtn title="Zum Dashboard (D)" onClick={onExitToDashboard}>
+              <CloseIcon sx={{ fontSize: 16 }} />
+            </ToolBtn>
+          </>
+        )}
       </Box>
     </Box>
   );

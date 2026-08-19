@@ -1,6 +1,6 @@
 /** Arbeits-Reihen im Dashboard-Tab „Reihen“ — localStorage + Server-DB. */
 
-import { apiGet, apiPut } from './api';
+import { apiGetSafe, apiPut } from './api';
 import { isWochenaufgabenFolderName } from './wochenaufgabenFolder';
 
 export const DASHBOARD_WORKING_REIHEN_KEY = 'jm-dashboard-working-reihen-v1';
@@ -28,20 +28,29 @@ function normalizePath(p: string): string {
   return (p || '').replace(/\\/g, '/').replace(/\/+$/, '');
 }
 
+/** NFC, damit Mac-NFD und Schul-NFC denselben Schlüssel ergeben. */
+function nfcPath(p: string): string {
+  try {
+    return p.normalize('NFC');
+  } catch {
+    return p;
+  }
+}
+
 /** Mac-/Absolutpfade → git-intern/… für Schule + lokal. */
 export function toPortableWorkingReihePath(raw: string): string {
-  let p = normalizePath(raw);
+  let p = nfcPath(normalizePath(raw));
   if (!p) return '';
   const markers = ['/J-M-Reihen/', 'J-M-Reihen/', '/git-intern/', 'git-intern/'];
   for (const m of markers) {
     const i = p.indexOf(m);
     if (i >= 0) {
       const rest = p.slice(i + m.length).replace(/^\/+/, '');
-      return rest ? `git-intern/${rest}` : 'git-intern';
+      return rest ? `git-intern/${nfcPath(rest)}` : 'git-intern';
     }
   }
   if (p.startsWith('/app/J-M-Reihen/')) {
-    return `git-intern/${p.slice('/app/J-M-Reihen/'.length)}`;
+    return `git-intern/${nfcPath(p.slice('/app/J-M-Reihen/'.length))}`;
   }
   if (p.startsWith('Mathe/') || p.startsWith('Informatik/')) {
     return `git-intern/${p}`;
@@ -82,8 +91,8 @@ export function saveWorkingReihenPaths(paths: string[]): void {
 export async function fetchAndCacheWorkingReihenPaths(): Promise<string[]> {
   const local = loadWorkingReihenPaths();
   try {
-    const res = await apiGet('/api/teacher-dashboard-prefs/working-reihen');
-    if (!res.ok) return local;
+    const res = await apiGetSafe('/api/teacher-dashboard-prefs/working-reihen');
+    if (!res || !res.ok) return local;
     const data = (await res.json()) as { paths?: unknown };
     const remoteRaw = Array.isArray(data.paths) ? data.paths : [];
     const remote = remoteRaw.map((p) => toPortableWorkingReihePath(String(p))).filter(Boolean);

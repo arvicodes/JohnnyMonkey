@@ -2,7 +2,7 @@
   "version": 1,
   "title": "1.2 Große Zahlen - Stellenwerttafel",
   "lessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/1.2 Große Zahlen - Stellenwerttafel",
-  "updatedAt": "2026-08-18T13:43:39.071Z",
+  "updatedAt": "2026-08-19T08:34:07.003Z",
   "defaultTransition": "fade",
   "slides": [
     {
@@ -100,53 +100,20 @@
           "zIndex": 1,
           "imageFit": "contain",
           "stackLayer": "foreground"
-        }
-      ],
-      "transition": "fade",
-      "revealEnabled": true,
-      "zoneRevealSteps": {}
-    },
-    {
-      "id": "slide-1787059643108-ee3aj",
-      "order": 2,
-      "speakerNotes": "",
-      "layout": "blank",
-      "subtitle": "",
-      "bodyLeft": "",
-      "bodyRight": "",
-      "imagePath": "",
-      "imageCaption": "",
-      "bodyStyle": "plain",
-      "titleAlign": "left",
-      "accentColor": "#2E7D32",
-      "title": "",
-      "body": "",
-      "hiddenLayoutZones": [
-        "bodyHtml"
-      ],
-      "titleHtml": "",
-      "bodyHtml": "",
-      "subtitleHtml": "",
-      "bodyLeftHtml": "",
-      "bodyRightHtml": "",
-      "imageCaptionHtml": "",
-      "speakerNotesHtml": "<p><br></p>",
-      "preparationNotes": "",
-      "preparationHtml": "<p><br></p>",
-      "materialNotes": "",
-      "materialHtml": "<p><br></p>",
-      "elements": [
+        },
         {
-          "id": "el-1787059667357",
+          "id": "el-1787128315707-p4bz2",
           "type": "image",
-          "x": 2.602422907488986,
-          "y": 7.258779980420952,
-          "w": 61.87295223017621,
-          "h": 36.22812652961332,
-          "src": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/1.2 Große Zahlen - Stellenwerttafel/Bildschirmfoto 2026-08-18 um 15.27.43.png",
-          "zIndex": 1,
+          "x": 32.25091980793562,
+          "y": 15.287552006852664,
+          "w": 66.72698488347595,
+          "h": 45.01802240151741,
+          "src": "/app/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/1.2 Große Zahlen - Stellenwerttafel/Bildschirmfoto 2026-08-19 um 10.31.47.png",
+          "zIndex": 2,
           "imageFit": "contain",
-          "stackLayer": "foreground"
+          "stackLayer": "foreground",
+          "revealStep": 2,
+          "animationSet": true
         }
       ],
       "transition": "fade",
@@ -199,13 +166,13 @@
           "animationSet": true
         },
         {
-          "id": "el-1787060311450",
+          "id": "el-1787128259036",
           "type": "image",
-          "x": 0,
-          "y": 17.561704601076848,
-          "w": 28,
-          "h": 25,
-          "src": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/1.2 Große Zahlen - Stellenwerttafel/Bildschirmfoto 2026-08-18 um 15.38.27.png",
+          "x": 5.404302805263894,
+          "y": 14.071535200145398,
+          "w": 78.35349567949726,
+          "h": 48.88059701492537,
+          "src": "/app/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/1.2 Große Zahlen - Stellenwerttafel/Stellenwerttafel.png",
           "zIndex": 2,
           "imageFit": "contain",
           "stackLayer": "foreground"
@@ -215,7 +182,7 @@
       "revealEnabled": true,
       "zoneRevealSteps": {},
       "id": "slide-1786947178281-1-2zx66",
-      "order": 3
+      "order": 2
     },
     {
       "layout": "blank",
@@ -299,10 +266,72 @@
         "bodyHtml"
       ],
       "id": "slide-1786947178281-2-4tufu",
-      "order": 4
+      "order": 3
     }
   ],
-  "trash": [],
+  "trash": [
+    {
+      "id": "trash-1787128249128-tcue",
+      "type": "slide",
+      "deletedAt": "2026-08-19T08:30:49.128Z",
+      "label": "Folie 4",
+      "slide": {
+        "id": "slide-1787059643108-ee3aj",
+        "order": 3,
+        "speakerNotes": "",
+        "layout": "blank",
+        "subtitle": "",
+        "bodyLeft": "",
+        "bodyRight": "",
+        "imagePath": "",
+        "imageCaption": "",
+        "bodyStyle": "plain",
+        "titleAlign": "left",
+        "accentColor": "#2E7D32",
+        "title": "",
+        "body": "",
+        "hiddenLayoutZones": [
+          "bodyHtml"
+        ],
+        "titleHtml": "",
+        "bodyHtml": "",
+        "subtitleHtml": "",
+        "bodyLeftHtml": "",
+        "bodyRightHtml": "",
+        "imageCaptionHtml": "",
+        "speakerNotesHtml": "<p><br></p>",
+        "preparationNotes": "",
+        "preparationHtml": "<p><br></p>",
+        "materialNotes": "",
+        "materialHtml": "<p><br></p>",
+        "elements": [
+          {
+            "id": "el-1787059667357",
+            "type": "image",
+            "x": 2.602422907488986,
+            "y": 7.258779980420952,
+            "w": 61.87295223017621,
+            "h": 36.22812652961332,
+            "src": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/1.2 Große Zahlen - Stellenwerttafel/Bildschirmfoto 2026-08-18 um 15.27.43.png",
+            "zIndex": 1,
+            "imageFit": "contain",
+            "stackLayer": "foreground"
+          }
+        ],
+        "transition": "fade",
+        "revealEnabled": true,
+        "zoneRevealSteps": {}
+      },
+      "slideId": "slide-1787059643108-ee3aj",
+      "slideOrder": 3,
+      "materialHtml": "<p><br></p>",
+      "materialNotes": "",
+      "preparationHtml": "<p><br></p>",
+      "preparationNotes": "",
+      "speakerNotesHtml": "<p><br></p>",
+      "speakerNotes": ""
+    }
+  ],
   "showSlideNumbers": true,
   "showSlideFooter": true,
   "slideFooter": {}

@@ -115,15 +115,27 @@ export class StorageManager {
     // Recursive function to build directory tree
     const buildDirectoryTree = (currentPath: string, currentDisplayPath: string, currentDepth: number = 0): any => {
       const items = fs.readdirSync(currentPath);
-      const children = items
-        .filter(item => !item.startsWith('.')) // Filter out hidden files like .DS_Store
+      // NFC-Dedupe: Mac legt manchmal NFD- und NFC-Ordner parallel an (sieht aus wie Doppel-Kap 1).
+      const visible: string[] = [];
+      const seenNfc = new Set<string>();
+      for (const item of items) {
+        if (item.startsWith('.')) continue;
+        const key = item.normalize('NFC');
+        if (seenNfc.has(key)) continue;
+        seenNfc.add(key);
+        // NFC-Namen bevorzugen, wenn beide existieren
+        const nfcName = key;
+        const prefer = items.includes(nfcName) ? nfcName : item;
+        visible.push(prefer);
+      }
+      const children = visible
         .map(item => {
           const itemPath = path.join(currentPath, item);
           const itemStats = fs.statSync(itemPath);
-          const itemDisplayPath = `${currentDisplayPath}/${item}`;
+          const itemDisplayPath = `${currentDisplayPath}/${item.normalize('NFC')}`;
           
           const result: any = {
-            name: item,
+            name: item.normalize('NFC'),
             path: itemDisplayPath,
             type: itemStats.isDirectory() ? 'directory' : 'file',
             size: itemStats.size,

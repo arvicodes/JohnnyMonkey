@@ -4316,7 +4316,7 @@ export default function EntryTicketPage({
       }}
     >
       <Box sx={{ width: '100%', maxWidth: '100%', mx: 0, minWidth: 0, boxSizing: 'border-box', flex: embeddedPlay ? 1 : undefined, minHeight: embeddedPlay ? 0 : undefined, display: embeddedPlay ? 'flex' : undefined, flexDirection: embeddedPlay ? 'column' : undefined }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: sessionDone ? 1.5 : 0, pb: sessionDone ? 0.5 : 0, gap: 0.5, minHeight: 0, height: sessionDone && !studentReviewMode && !laptopCompanion ? 54 : 28 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: sessionDone ? 1.5 : 0, pb: sessionDone ? 0.5 : 0, gap: 0.5, minHeight: 0, flexShrink: 0, height: sessionDone && !studentReviewMode && !laptopCompanion ? 54 : 28 }}>
           {sessionStarted || studentReviewMode ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, flexShrink: 0 }}>
               {sessionDone && !studentReviewMode && !laptopCompanion ? (
@@ -4812,7 +4812,21 @@ export default function EntryTicketPage({
 
               </Box>
             ) : (
-              <Box sx={{ display: 'grid', gap: 0, width: '100%', minWidth: 0, flex: embeddedPlay ? 1 : undefined, minHeight: embeddedPlay ? 0 : undefined }}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gap: 0,
+                  width: '100%',
+                  minWidth: 0,
+                  flex: embeddedPlay ? 1 : undefined,
+                  minHeight: embeddedPlay ? 0 : undefined,
+                  // Play füllt die Folienfläche: Extra-Höhe darf die Steuerzeile nicht strecken,
+                  // sonst rutschen die Karten nach unten.
+                  alignContent: 'start',
+                  alignItems: 'start',
+                  justifyItems: 'stretch',
+                }}
+              >
                 {/* Kartennummer sitzt oben links in der Kopfzeile — hier nur Lehrer-Steuerung */}
                 {!studentReviewMode && !laptopCompanion && !sessionDone ? (
                 <Box
@@ -4824,6 +4838,10 @@ export default function EntryTicketPage({
                     flexWrap: 'wrap',
                     px: 0.25,
                     minHeight: 28,
+                    height: 28,
+                    width: '100%',
+                    flexShrink: 0,
+                    alignSelf: 'start',
                   }}
                 >
                   <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4, flexShrink: 0 }}>
@@ -4973,6 +4991,8 @@ export default function EntryTicketPage({
                       maxWidth: 864,
                       mx: 'auto',
                       boxSizing: 'border-box',
+                      alignSelf: 'start',
+                      justifySelf: 'center',
                     }}
                   >
                     <AnimatePresence mode="wait" custom={cardSlideDir} initial={false}>
@@ -5070,7 +5090,7 @@ export default function EntryTicketPage({
                             sx={{
                               flex: 1,
                               display: 'flex',
-                              alignItems: 'center',
+                              alignItems: 'flex-start',
                               justifyContent: 'center',
                               textAlign:
                                 currentTask &&

@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Pack changed J-M-Reihen lessons for school deploy (NFC paths + portable deck URLs)."""
+"""Pack J-M-Reihen lessons for school deploy (NFC paths + portable deck URLs).
+
+Modes:
+  (default)  only lesson folders with git dirty/untracked files
+  --full     entire Mathe tree + Lehrer-Schnellnotizen (recommended for school sync)
+  --all      entire J-M-Reihen (large; use only when needed)
+"""
 from __future__ import annotations
 
 import json
@@ -18,6 +24,9 @@ ROOT = Path(__file__).resolve().parents[1]
 JM = ROOT / "J-M-Reihen"
 MAC_ROOT = str(ROOT) + "/"
 JM_PREFIX = "J-M-Reihen/"
+
+SKIP_DIR_NAMES = {".presentation-backups", ".git", "__pycache__", "node_modules"}
+SKIP_FILE_NAMES = {".DS_Store"}
 
 
 def nfc(p: str) -> str:
@@ -90,7 +99,6 @@ def changed_lesson_dirs() -> set[Path]:
     if not path.startswith("J-M-Reihen/"):
       continue
     p = ROOT / path
-    # climb to a folder that looks like a lesson (has Praesentation.deck.json nearby or is deep enough)
     cur = p if p.is_dir() else p.parent
     for _ in range(6):
       if (cur / "Praesentation.deck.json").exists() or list(cur.glob("Praesentation*.pdf")):
@@ -102,53 +110,108 @@ def changed_lesson_dirs() -> set[Path]:
   return lessons
 
 
-def copy_lesson(src: Path, dst: Path) -> None:
-  dst.mkdir(parents=True, exist_ok=True)
-  for item in src.iterdir():
-    name = item.name
-    if name.startswith("._") or name in (".DS_Store", ".presentation-backups"):
-      continue
-    if item.is_dir():
-      continue  # only flat lesson files; nested handled separately if needed
-    target = dst / unicodedata.normalize("NFC", name)
-    if item.suffix == ".json":
-      try:
-        data = walk_port(json.loads(item.read_text(encoding="utf-8")))
-      except Exception:
-        shutil.copy2(item, target)
+def should_skip_file(name: str) -> bool:
+  return name.startswith("._") or name in SKIP_FILE_NAMES
+
+
+def copy_file_ported(src: Path, target: Path) -> None:
+  target.parent.mkdir(parents=True, exist_ok=True)
+  if src.suffix == ".json":
+    try:
+      data = walk_port(json.loads(src.read_text(encoding="utf-8")))
+    except Exception:
+      shutil.copy2(src, target)
+      return
+    if isinstance(data, dict) and "lessonPath" in data and isinstance(data["lessonPath"], str):
+      data["lessonPath"] = portabilize_path(data["lessonPath"])
+    target.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+  else:
+    shutil.copy2(src, target)
+
+
+def copy_tree(src: Path, dst: Path) -> int:
+  """Recursive copy with NFC names + JSON portabilize. Returns file count."""
+  n = 0
+  if not src.exists():
+    return 0
+  for dirpath, dirnames, filenames in os.walk(src):
+    dirnames[:] = [d for d in dirnames if d not in SKIP_DIR_NAMES and not d.startswith("._")]
+    rel = Path(dirpath).relative_to(src)
+    out_dir = dst / Path(*[unicodedata.normalize("NFC", x) for x in rel.parts]) if rel.parts else dst
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for name in filenames:
+      if should_skip_file(name):
         continue
-      if isinstance(data, dict) and "lessonPath" in data and isinstance(data["lessonPath"], str):
-        data["lessonPath"] = portabilize_path(data["lessonPath"])
-      target.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    else:
-      shutil.copy2(item, target)
+      src_f = Path(dirpath) / name
+      if not src_f.is_file():
+        continue
+      dst_f = out_dir / unicodedata.normalize("NFC", name)
+      copy_file_ported(src_f, dst_f)
+      n += 1
+  return n
+
+
+def copy_lesson(src: Path, dst: Path) -> int:
+  """Flat lesson copy (legacy). Prefer copy_tree for full sync."""
+  return copy_tree(src, dst)
+
+
+def stage_paths(mode: str) -> list[tuple[Path, Path]]:
+  """Return list of (src, relative-to-JM) to pack."""
+  if mode == "all":
+    return [(JM, Path("."))]
+  if mode == "full":
+    items: list[tuple[Path, Path]] = []
+    mathe = JM / "Mathe"
+    if mathe.exists():
+      items.append((mathe, Path("Mathe")))
+    schnell = JM / "Lehrer-Schnellnotizen"
+    if schnell.exists():
+      items.append((schnell, Path("Lehrer-Schnellnotizen")))
+    return items
+  # default: dirty lessons only
+  return [(lesson, lesson.relative_to(JM)) for lesson in sorted(changed_lesson_dirs())]
 
 
 def main() -> int:
-  out = Path(sys.argv[1] if len(sys.argv) > 1 else "/tmp/jm-mat-update.tar.gz")
-  lessons = changed_lesson_dirs()
-  if not lessons:
-    print("no lesson changes")
+  args = [a for a in sys.argv[1:] if a]
+  mode = "dirty"
+  out = Path("/tmp/jm-mat-update.tar.gz")
+  for a in args:
+    if a in ("--full", "--all", "--dirty"):
+      mode = a.lstrip("-")
+    elif not a.startswith("-"):
+      out = Path(a)
+
+  pairs = stage_paths(mode)
+  if not pairs:
+    print("no lesson changes" if mode == "dirty" else "nothing to pack")
     if out.exists():
       out.unlink()
     return 0
 
   with tempfile.TemporaryDirectory() as td:
     stage = Path(td) / "J-M-Reihen"
-    for lesson in sorted(lessons):
+    total = 0
+    for src, rel in pairs:
       try:
-        rel = lesson.relative_to(JM)
+        if rel == Path("."):
+          rel_nfc = Path(".")
+          dest = stage
+        else:
+          rel_nfc = Path(*[unicodedata.normalize("NFC", x) for x in rel.parts])
+          dest = stage / rel_nfc
+        print("pack", rel_nfc if rel != Path(".") else "J-M-Reihen")
+        total += copy_tree(src, dest)
       except ValueError:
         continue
-      rel_nfc = Path(*[unicodedata.normalize("NFC", x) for x in rel.parts])
-      print("pack", rel_nfc)
-      copy_lesson(lesson, stage / rel_nfc)
-    if not any(stage.rglob("*")):
+    if total == 0:
       print("empty stage")
       return 0
     out.parent.mkdir(parents=True, exist_ok=True)
     with tarfile.open(out, "w:gz", format=tarfile.PAX_FORMAT) as tar:
       tar.add(stage, arcname="J-M-Reihen")
+  print("files", total)
   print("wrote", out, out.stat().st_size)
   return 0
 

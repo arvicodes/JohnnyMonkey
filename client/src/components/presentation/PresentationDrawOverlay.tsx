@@ -456,15 +456,23 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     refreshRect();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => refreshRect()) : null;
     ro?.observe(canvas);
-    const onScroll = () => {
+    const invalidate = () => {
       rectRef.current = null;
     };
-    window.addEventListener('scroll', onScroll, true);
-    window.addEventListener('resize', onScroll);
+    window.addEventListener('scroll', invalidate, true);
+    window.addEventListener('resize', invalidate);
+    window.visualViewport?.addEventListener('resize', invalidate);
+    window.visualViewport?.addEventListener('scroll', invalidate);
+    document.addEventListener('fullscreenchange', invalidate);
+    document.addEventListener('webkitfullscreenchange' as 'fullscreenchange', invalidate);
     return () => {
       ro?.disconnect();
-      window.removeEventListener('scroll', onScroll, true);
-      window.removeEventListener('resize', onScroll);
+      window.removeEventListener('scroll', invalidate, true);
+      window.removeEventListener('resize', invalidate);
+      window.visualViewport?.removeEventListener('resize', invalidate);
+      window.visualViewport?.removeEventListener('scroll', invalidate);
+      document.removeEventListener('fullscreenchange', invalidate);
+      document.removeEventListener('webkitfullscreenchange' as 'fullscreenchange', invalidate);
     };
   }, [scale, enabled]);
 

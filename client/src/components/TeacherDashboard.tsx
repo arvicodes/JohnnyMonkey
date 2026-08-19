@@ -8551,11 +8551,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
         void persistWorkingReihenPaths(merged);
         return;
       }
-      // Login-Code ggf. noch nicht gesetzt — kurz erneut versuchen
-      if (tries < 8 && !localStorage.getItem('loginCode')) {
+      // Login noch nicht da oder API kurz nicht bereit — erneut versuchen
+      if (tries < 12) {
         window.setTimeout(() => {
           if (!cancelled) void load();
-        }, 400 * tries);
+        }, 350 * tries);
       }
     };
     void load();
@@ -20310,8 +20310,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       </Typography>
                       <IconButton
                         size="small"
-                        onClick={() => setLaptopPresentationActive(false)}
-                        aria-label="Präsentation schließen"
+                        onClick={handleCloseLessonPage}
+                        aria-label="Zum Dashboard"
                         sx={{ color: 'rgba(255,255,255,0.85)' }}
                       >
                         <CloseIcon sx={{ fontSize: 18 }} />
@@ -20337,7 +20337,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     groupId={lessonModalData.groupId}
                     embedded
                     variant="edited"
-                    onClose={() => setLaptopPresentationActive(false)}
+                    onClose={handleCloseLessonPage}
                   />
                 )
               ) : (() => {

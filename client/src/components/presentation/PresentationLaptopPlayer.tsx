@@ -537,7 +537,7 @@ export default function PresentationLaptopPlayer({
         <IconButton
           size="small"
           onClick={onClose}
-          aria-label="Präsentation schließen"
+          aria-label="Zum Dashboard"
           sx={{
             position: 'absolute',
             top: 6,

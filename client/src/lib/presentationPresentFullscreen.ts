@@ -34,9 +34,11 @@ export function isAnyNativeFullscreen(): boolean {
 /**
  * Natives Fullscreen — muss in derselben User-Geste (Klick/Play) laufen.
  * Ohne Geste lehnt der Browser ab. Bereits aktiver FS wird nicht gewechselt.
+ * iPad/iPhone: API ist unzuverlässig und reißt Stiftstriche ab — nur visualViewport.
  */
 export function requestPresentFullscreen(el?: HTMLElement | null): void {
   if (typeof document === 'undefined') return;
+  if (isIosSafariLike()) return;
   if (isAnyNativeFullscreen()) return;
   const target = el ?? document.documentElement;
   const node = target as HTMLElement & {
@@ -65,6 +67,12 @@ export function requestPresentFullscreen(el?: HTMLElement | null): void {
 type VvBox = { left: number; top: number; width: number; height: number };
 
 function readRawViewportBox(): VvBox {
+  if (isAnyNativeFullscreen()) {
+    const fs = (document.fullscreenElement || webkitFsElement()) as HTMLElement | null;
+    const width = Math.max(1, fs?.clientWidth || window.innerWidth);
+    const height = Math.max(1, fs?.clientHeight || window.innerHeight);
+    return { left: 0, top: 0, width, height };
+  }
   const vv = window.visualViewport;
   const innerW = Math.max(1, window.innerWidth);
   const innerH = Math.max(1, window.innerHeight);
@@ -261,6 +269,8 @@ export function attachPresentViewportFill(
 
   const onTouchMove = (e: TouchEvent) => {
     if (e.touches.length === 1 && isPresentScrollTarget(e.target)) return;
+    // Canvas/Stift: preventDefault hier bricht Pointer-Events (Fullscreen + Zeichnen).
+    if (e.target instanceof Element && e.target.closest('canvas, [data-pres-stage]')) return;
     e.preventDefault();
   };
   const onGesture = (e: Event) => {

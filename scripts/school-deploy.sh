@@ -94,13 +94,14 @@ tar -czf /tmp/jm-app-prebuilt.tar.gz -C /tmp/jm-prebuilt-stage .
 
 MAT_TAR=""
 if [[ "$SKIP_MAT" != 1 ]]; then
-  log "==> Pack Material (geänderte J-M-Reihen)"
-  python3 "$ROOT/scripts/pack-school-materials.py" /tmp/jm-mat-update.tar.gz || true
+  log "==> Pack Material (Mathe + Lehrer-Schnellnotizen, --full)"
+  # Always pack full Mathe tree: git-dirty-only missed committed Reihen/Notizen on main.
+  python3 "$ROOT/scripts/pack-school-materials.py" --full /tmp/jm-mat-update.tar.gz || true
   if [[ -f /tmp/jm-mat-update.tar.gz ]] && [[ -s /tmp/jm-mat-update.tar.gz ]]; then
     MAT_TAR=/tmp/jm-mat-update.tar.gz
     log "Material-Tar: $(ls -lh "$MAT_TAR" | awk '{print $5}')"
   else
-    log "Kein Material-Update (nichts Relevantes geändert)."
+    log "Kein Material-Update."
   fi
 fi
 

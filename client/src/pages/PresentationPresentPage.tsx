@@ -2,7 +2,7 @@ import React, { startTransition, useCallback, useEffect, useLayoutEffect, useMem
 import { useNavigate } from 'react-router-dom';
 import { Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Snackbar, TextField, Tooltip, Typography } from '@mui/material';
 import {
-  ArrowBack as ArrowBackIcon,
+  Close as CloseIcon,
   Fullscreen as FullscreenIcon,
   FullscreenExit as FullscreenExitIcon,
 } from '@mui/icons-material';
@@ -41,12 +41,12 @@ import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
 import { isPresentationLinkClickTarget } from '../lib/presentationRichText';
 import { clampPresentZoomSmooth, handlePresentZoomHotkey, attachPresentTrackpadZoom, attachPresentTouchPinchZoom, centerPresentPan, panAfterPresentZoom, clampPresentPan, type PresentZoomOrigin } from '../lib/presentationPresentZoom';
 import { ensureEntryTicketButtonsOnTitleSlides } from '../lib/presentationSlideTemplates';
-import { isWochenaufgabenFolderPath } from '../lib/wochenaufgabenFolder';
 import { markTeacherWantsDashboard } from '../lib/teacherLiveLesson';
 import {
   attachPresentViewportFill,
   exitPresentFullscreen,
   isAnyNativeFullscreen,
+  isIosSafariLike,
   requestPresentFullscreen,
 } from '../lib/presentationPresentFullscreen';
 import EntryTicketPage from './EntryTicketPage';
@@ -619,6 +619,7 @@ const PresentationPresentPage: React.FC = () => {
 
   const handleToggleNativeFullscreen = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isIosSafariLike()) return;
     if (isAnyNativeFullscreen()) {
       exitPresentFullscreen();
       return;
@@ -626,10 +627,10 @@ const PresentationPresentPage: React.FC = () => {
     requestPresentFullscreen(containerRef.current);
   };
 
-  const handleBack = () => {
+  const goToDashboard = useCallback(() => {
     markTeacherWantsDashboard();
-    navigate(presentationLessonBackUrl(lessonPath, groupId, planMode));
-  };
+    navigate('/dashboard');
+  }, [navigate]);
 
   useEffect(() => {
     if (!groupId) {
@@ -1030,10 +1031,14 @@ const PresentationPresentPage: React.FC = () => {
 
   const presentShellSx = {
     position: 'fixed' as const,
-    left: 'var(--present-vv-left, 0px)',
-    top: 'var(--present-vv-top, 0px)',
-    width: 'var(--present-vv-width, 100%)',
-    height: 'var(--present-vv-height, 100svh)',
+    ...(nativeFs
+      ? { left: 0, top: 0, width: '100%', height: '100%' }
+      : {
+          left: 'var(--present-vv-left, 0px)',
+          top: 'var(--present-vv-top, 0px)',
+          width: 'var(--present-vv-width, 100%)',
+          height: 'var(--present-vv-height, 100svh)',
+        }),
     right: 'auto',
     bottom: 'auto',
     maxWidth: '100%',
@@ -1045,7 +1050,7 @@ const PresentationPresentPage: React.FC = () => {
     outline: 'none',
     overscrollBehavior: 'none',
     WebkitTapHighlightColor: 'transparent',
-    touchAction: 'manipulation',
+    touchAction: drawActive ? 'none' : 'manipulation',
     boxSizing: 'border-box' as const,
   };
 
@@ -1114,9 +1119,10 @@ const PresentationPresentPage: React.FC = () => {
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
       onPointerDownCapture={(e) => {
-        if (entryTicketOpen) return;
+        if (entryTicketOpen || drawActive) return;
+        if (e.pointerType === 'pen') return;
         const t = e.target instanceof Element ? e.target : null;
-        if (t?.closest?.('[data-pres-fs], [data-pres-back]')) return;
+        if (t?.closest?.('[data-pres-fs], [data-pres-back], [data-pres-toolbar], canvas')) return;
         requestPresentFullscreen(containerRef.current);
       }}
       onClickCapture={(e) => {
@@ -1132,36 +1138,39 @@ const PresentationPresentPage: React.FC = () => {
     >
       {!entryTicketOpen ? (
         <>
-          <Tooltip title={isWochenaufgabenFolderPath(lessonPath) ? 'Zurück zum Dashboard' : 'Zurück zur Stunde'}>
+          {!isIosSafariLike() ? (
+            <Tooltip title={nativeFs ? 'Vollbild beenden' : 'Vollbild'}>
+              <IconButton
+                size="small"
+                onClick={handleToggleNativeFullscreen}
+                aria-label={nativeFs ? 'Vollbild beenden' : 'Vollbild'}
+                data-pres-fs=""
+                sx={presentBackBtnSx}
+              >
+                {nativeFs ? (
+                  <FullscreenExitIcon sx={{ fontSize: 18 }} />
+                ) : (
+                  <FullscreenIcon sx={{ fontSize: 18 }} />
+                )}
+              </IconButton>
+            </Tooltip>
+          ) : null}
+          <Tooltip title="Zum Dashboard (D)">
             <IconButton
               size="small"
               onClick={(e) => {
                 e.stopPropagation();
-                handleBack();
+                goToDashboard();
               }}
-              aria-label={isWochenaufgabenFolderPath(lessonPath) ? 'Zurück zum Dashboard' : 'Zurück zur Stunde'}
+              aria-label="Zum Dashboard"
               data-pres-back=""
-              sx={presentBackBtnSx}
-            >
-              <ArrowBackIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title={nativeFs ? 'Vollbild beenden' : 'Vollbild'}>
-            <IconButton
-              size="small"
-              onClick={handleToggleNativeFullscreen}
-              aria-label={nativeFs ? 'Vollbild beenden' : 'Vollbild'}
-              data-pres-fs=""
               sx={{
                 ...presentBackBtnSx,
-                left: 'max(46px, calc(env(safe-area-inset-left) + 46px))',
+                left: 'auto',
+                right: 'max(8px, env(safe-area-inset-right))',
               }}
             >
-              {nativeFs ? (
-                <FullscreenExitIcon sx={{ fontSize: 18 }} />
-              ) : (
-                <FullscreenIcon sx={{ fontSize: 18 }} />
-              )}
+              <CloseIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
         </>
@@ -1194,7 +1203,7 @@ const PresentationPresentPage: React.FC = () => {
             height: fitH,
             transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${userZoom})`,
             transformOrigin: '0 0',
-            willChange: 'transform',
+            willChange: drawActive ? 'auto' : 'transform',
           }}
         >
           <Box
@@ -1310,6 +1319,7 @@ const PresentationPresentPage: React.FC = () => {
         canPickRandomStudent={groupStudents.length > 0}
         onPickRandomNumber={handlePickRandomNumber}
         onOpenEntryTicket={() => setEntryTicketOpen(true)}
+        onExitToDashboard={entryTicketOpen ? undefined : goToDashboard}
         zoom={userZoom}
         onZoomChange={applyUserZoom}
       />
