@@ -1,7 +1,28 @@
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
+
+type AuthUser = { id: string; name: string; role: string };
+
+async function findUserByLoginCode(raw: unknown): Promise<AuthUser | null> {
+  const loginCode = String(raw ?? '').trim();
+  if (!loginCode) return null;
+  const exact = await prisma.user.findUnique({
+    where: { loginCode },
+    select: { id: true, name: true, role: true },
+  });
+  if (exact) return exact;
+  const rows = await prisma.$queryRaw<Array<{ id: string }>>(
+    Prisma.sql`SELECT id FROM User WHERE lower(loginCode) = lower(${loginCode}) LIMIT 1`,
+  );
+  const id = rows[0]?.id;
+  if (!id) return null;
+  return prisma.user.findUnique({
+    where: { id },
+    select: { id: true, name: true, role: true },
+  });
+}
 
 // Extend Request interface to include user
 declare global {
@@ -20,16 +41,11 @@ declare global {
 export const authenticateUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const loginCode = req.headers['x-login-code'] || req.query.loginCode || req.body.loginCode;
-    
-    if (!loginCode) {
+    if (!String(loginCode ?? '').trim()) {
       return res.status(401).json({ error: 'Login-Code erforderlich' });
     }
-    
-    const user = await prisma.user.findUnique({
-      where: { loginCode: String(loginCode) },
-      select: { id: true, name: true, role: true }
-    });
-    
+
+    const user = await findUserByLoginCode(loginCode);
     if (!user) {
       return res.status(401).json({ error: 'Ungültiger Login-Code' });
     }

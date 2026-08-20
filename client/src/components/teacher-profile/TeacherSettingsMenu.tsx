@@ -86,8 +86,12 @@ export default function TeacherSettingsMenu({
             height: 32,
             bgcolor: displayEmoji ? profileSoftBg(accent) : accent,
             boxShadow: `0 2px 8px ${accent}40`,
-            fontSize: displayEmoji ? '1.15rem' : '0.85rem',
-            fontWeight: 'bold',
+            fontSize: displayEmoji ? '1.25rem' : '0.85rem',
+            fontWeight: displayEmoji ? 400 : 700,
+            lineHeight: 1,
+            fontFamily: displayEmoji
+              ? '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'
+              : 'inherit',
             color: displayEmoji ? 'inherit' : 'white',
             cursor: 'pointer',
             border: `2px solid ${accent}`,
@@ -131,7 +135,12 @@ export default function TeacherSettingsMenu({
                 width: 44,
                 height: 44,
                 bgcolor: profileSoftBg(accent),
-                fontSize: '1.6rem',
+                fontSize: displayEmoji ? '1.7rem' : '1.05rem',
+                fontWeight: displayEmoji ? 400 : 700,
+                lineHeight: 1,
+                fontFamily: displayEmoji
+                  ? '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'
+                  : 'inherit',
                 border: `2px solid ${accent}`,
                 boxShadow: `0 2px 8px ${accent}35`,
               }}
