@@ -27,6 +27,7 @@ import {
 } from '../lib/presentationLessonAssets';
 import { presentationPresentUrl, presentationEditorUrl, loadPresentationDeck, sortSlides } from '../lib/presentationDeck';
 import { requestPresentFullscreen } from '../lib/presentationPresentFullscreen';
+import { preparePresentationAudioForPlay } from '../lib/presentationSound';
 import { markTeacherWantsDashboard } from '../lib/teacherLiveLesson';
 import {
   presentationHomeworkAssignmentKey,
@@ -7217,6 +7218,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
         );
         return;
       }
+      preparePresentationAudioForPlay();
       requestPresentFullscreen();
       const key = `${groupId}::${lessonPath}`;
       setLessonRunBusyKey(key);
@@ -20880,6 +20882,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                       qs.set('planMode', 'create');
                       navigate(`/presentation/edit?${qs.toString()}`);
                     } else if (lessonPlanViewMode === 'run') {
+                      preparePresentationAudioForPlay();
                       requestPresentFullscreen();
                       navigate(
                         presentationPresentUrl(
@@ -20892,6 +20895,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                       );
                     } else {
                       // Laptop: Pr√§sentation links ‚Äî immer aktuelles Live-Deck
+                      preparePresentationAudioForPlay();
                       setLaptopPresentationView({ mode: 'deck', variant: 'edited' });
                       setLaptopPresentationMountKey((k) => k + 1);
                       setLaptopPresentationActive(true);
@@ -21287,6 +21291,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                   }
                   // Laptop: wie TABLET ‚Äî immer aktuelle Arbeitsfolie (Live-Deck), nicht Original-/Named-Snapshot
                   if (lessonPlanViewMode === 'background') {
+                    preparePresentationAudioForPlay();
                     setLaptopPresentationView({ mode: 'deck', variant: 'edited' });
                     setLaptopPresentationMountKey((k) => k + 1);
                     setLaptopPresentationActive(true);
@@ -21294,6 +21299,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                   }
                   // TABLET: immer aktuelle Arbeitsfolie (Praesentation.deck.json), nicht Original-/Named-Snapshot
                   if (lessonPlanViewMode === 'run') {
+                    preparePresentationAudioForPlay();
                     requestPresentFullscreen();
                     navigate(
                       presentationPresentUrl(

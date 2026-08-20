@@ -16,6 +16,7 @@ import {
   Tag as TagIcon,
   Undo as UndoIcon,
   DeleteSweep as DeleteSweepIcon,
+  SelfImprovement as QuietWorkIcon,
   Close as CloseIcon,
 } from '@mui/icons-material';
 import {
@@ -29,6 +30,10 @@ import {
 import { JOHNNY_PRESENTATION, toHighlightFill } from '../../lib/presentationTheme';
 import PresentationPresentZoomControls from './PresentationPresentZoomControls';
 import { PresentationSoundSplitControl } from './PresentationSoundControls';
+import {
+  QuietWorkToolbarPanel,
+  type QuietWorkController,
+} from './PresentationQuietWorkOverlay';
 
 const MICRO_SX = {
   width: 24,
@@ -164,6 +169,7 @@ interface PresentationTabletToolbarProps {
   /** Zoom über Fit-Scale (1 = passend, bis 3) */
   zoom?: number;
   onZoomChange?: (zoom: number) => void;
+  quietWork?: QuietWorkController;
 }
 
 export default function PresentationTabletToolbar({
@@ -199,6 +205,7 @@ export default function PresentationTabletToolbar({
   readOnly = false,
   zoom,
   onZoomChange,
+  quietWork,
 }: PresentationTabletToolbarProps) {
   const showColors =
     !readOnly &&
@@ -260,6 +267,8 @@ export default function PresentationTabletToolbar({
       onPointerUp={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
+      {quietWork?.pickerOpen && <QuietWorkToolbarPanel quietWork={quietWork} />}
+
       {showNumberRanges && onPickRandomNumber && (
         <Box
           sx={{
@@ -575,6 +584,20 @@ export default function PresentationTabletToolbar({
         )}
 
         <PresentationSoundSplitControl variant="tablet" />
+
+        {quietWork && (
+          <ToolBtn
+            title={
+              quietWork.running || quietWork.finished
+                ? 'Stillarbeit beenden'
+                : 'Stillarbeit mit Timer'
+            }
+            active={quietWork.running || quietWork.pickerOpen || quietWork.finished}
+            onClick={quietWork.togglePicker}
+          >
+            <QuietWorkIcon sx={{ fontSize: 16 }} />
+          </ToolBtn>
+        )}
 
         {!readOnly && drawActive && (
           <>

@@ -102,6 +102,7 @@ import {
 } from '../lib/presentationDeck';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
 import { requestPresentFullscreen } from '../lib/presentationPresentFullscreen';
+import { preparePresentationAudioForPlay } from '../lib/presentationSound';
 import { PRES_EDITOR_UI, presentationEntryTicketEditUrl, presentationLessonBackUrl, presentationLessonReturnWithPresentationUrl, tryHandleLessonEntryTicketLinkClick } from '../lib/presentationEditorUi';
 import { lessonFolderDisplayName } from '../lib/presentationSlideFooter';
 import { isWochenaufgabenFolderPath } from '../lib/wochenaufgabenFolder';
@@ -2104,6 +2105,7 @@ const PresentationEditorPage: React.FC = () => {
       if (next == null || !lessonPath) return;
       if (next === 'create') return;
       if (next === 'run') {
+        preparePresentationAudioForPlay();
         requestPresentFullscreen();
         navigate(
           presentationPresentUrl(lessonPath, groupId || undefined, 'edited', undefined, 'run'),
@@ -2580,6 +2582,7 @@ const PresentationEditorPage: React.FC = () => {
               <IconButton
                 size="small"
                 onClick={() => {
+                  preparePresentationAudioForPlay();
                   requestPresentFullscreen();
                   navigate(presentationPresentUrl(lessonPath, groupId || undefined, undefined, undefined, planMode));
                 }}

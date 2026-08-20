@@ -11,6 +11,9 @@ import PresentationSlideView from '../components/presentation/PresentationSlideV
 import PresentationDrawOverlay from '../components/presentation/PresentationDrawOverlay';
 import PresentationTabletToolbar from '../components/presentation/PresentationTabletToolbar';
 import PresentationRandomStudentOverlay from '../components/presentation/PresentationRandomStudentOverlay';
+import PresentationQuietWorkOverlay, {
+  useQuietWorkController,
+} from '../components/presentation/PresentationQuietWorkOverlay';
 import {
   ANNOTATIONS_FILENAME,
   PresentationAnnotations,
@@ -98,6 +101,7 @@ const PresentationPresentPage: React.FC = () => {
     setEntryTicketOpen(false);
     freezePresentViewport(false);
   }, []);
+  const quietWork = useQuietWorkController();
   const [saveNamedLabel, setSaveNamedLabel] = useState('');
   const [displayScale, setDisplayScale] = useState(0.5);
   const [userZoom, setUserZoom] = useState(1);
@@ -799,6 +803,13 @@ const PresentationPresentPage: React.FC = () => {
     const onKey = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
       if (entryTicketOpen) return;
+      if (quietWork.running || quietWork.finished) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          quietWork.stop();
+        }
+        return;
+      }
       if (saveNamedOpen || clearInkOpen) {
         if (e.key === 'Escape') {
           e.preventDefault();
@@ -847,7 +858,7 @@ const PresentationPresentPage: React.FC = () => {
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [goNext, goPrev, drawActive, groupId, lessonPath, navigate, planMode, slides, saveNamedOpen, clearInkOpen, userZoom, entryTicketOpen, applyUserZoom]);
+  }, [goNext, goPrev, drawActive, groupId, lessonPath, navigate, planMode, slides, saveNamedOpen, clearInkOpen, userZoom, entryTicketOpen, applyUserZoom, quietWork]);
 
   // Fokus auf die Bühne, damit Pfeiltasten sofort greifen
   useEffect(() => {
@@ -999,7 +1010,7 @@ const PresentationPresentPage: React.FC = () => {
   };
 
   const onTouchStart = (e: React.TouchEvent) => {
-    if (drawActive || entryTicketOpen || userZoomRef.current > 1.001) return;
+    if (drawActive || entryTicketOpen || quietWork.running || quietWork.finished || userZoomRef.current > 1.001) return;
     const t = e.touches[0];
     if (!t) return;
     if ((t as Touch & { touchType?: string }).touchType === 'stylus') {
@@ -1353,7 +1364,10 @@ const PresentationPresentPage: React.FC = () => {
         onExitToDashboard={entryTicketOpen ? undefined : goToDashboard}
         zoom={userZoom}
         onZoomChange={applyUserZoom}
+        quietWork={quietWork}
       />
+
+      <PresentationQuietWorkOverlay quietWork={quietWork} />
 
       <PresentationRandomStudentOverlay
         text={revealText}

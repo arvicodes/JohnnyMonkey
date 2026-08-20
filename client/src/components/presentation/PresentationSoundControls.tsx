@@ -37,7 +37,9 @@ import {
 } from '../../lib/presentationSound';
 
 /** Sichtbar im Menü — wenn das fehlt, läuft noch die alte Version. */
-export const PRESENTATION_SOUND_MENU_VERSION = 2;
+export const PRESENTATION_SOUND_MENU_VERSION = 3;
+
+type SoundAssignSlot = 'startSlide' | 'entryDone';
 
 export type PresentationSoundVariant = 'dashboard' | 'editor' | 'tablet' | 'laptop';
 
@@ -272,8 +274,12 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
   const [settings, updateSettings, refreshSettings] = usePresentationSoundSettings();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const [activeTab, setActiveTab] = useState<SoundTab>('bells');
+  const [assignSlot, setAssignSlot] = useState<SoundAssignSlot>('startSlide');
   const styles = variantStyles(variant);
-  const label = presentationSoundLabel(settings.soundId);
+  const startLabel = presentationSoundLabel(settings.soundId);
+  const entryLabel = presentationSoundLabel(settings.entryDoneSoundId);
+  const activeSoundId = assignSlot === 'entryDone' ? settings.entryDoneSoundId : settings.soundId;
+  const activeLabel = assignSlot === 'entryDone' ? entryLabel : startLabel;
   const favoriteSet = useMemo(() => new Set(settings.favoriteIds), [settings.favoriteIds]);
 
   const tabPresets = useMemo(() => {
@@ -282,8 +288,13 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
   }, [activeTab, settings.favoriteIds]);
 
   const selectSound = (id: PresentationSoundId) => {
-    updateSettings({ soundId: id });
+    if (assignSlot === 'entryDone') updateSettings({ entryDoneSoundId: id });
+    else updateSettings({ soundId: id });
     playPresentationSound({ soundId: id });
+  };
+
+  const previewActiveSound = (patch?: Partial<PresentationSoundSettings>) => {
+    playPresentationSound({ soundId: activeSoundId, ...patch });
   };
 
   const toggleFavorite = (id: PresentationSoundId, e: React.MouseEvent) => {
@@ -306,7 +317,7 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
           ...styles.group,
         }}
       >
-        <Tooltip title={`Sound abspielen (${label}) — Taste S`}>
+        <Tooltip title={`Startfolie: ${startLabel} · Entry erledigt: ${entryLabel} — Taste S = Startfolie`}>
           <IconButton
             size="small"
             onClick={() => playPresentationSound()}
@@ -396,8 +407,45 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
               }}
             />
           </Box>
-          <Typography sx={{ fontSize: '0.7rem', color: '#607d8b', mt: 0.5 }}>
-            Aktuell: <strong>{label}</strong> · Stern = Favorit · Menü v{PRESENTATION_SOUND_MENU_VERSION}
+          <Box sx={{ display: 'flex', gap: 0.5, mt: 0.85 }}>
+            {(
+              [
+                { id: 'startSlide' as const, title: 'Startfolie', sub: startLabel },
+                { id: 'entryDone' as const, title: 'Entry erledigt', sub: entryLabel },
+              ] as const
+            ).map((slot) => {
+              const active = assignSlot === slot.id;
+              return (
+                <Typography
+                  key={slot.id}
+                  component="button"
+                  onClick={() => setAssignSlot(slot.id)}
+                  sx={{
+                    flex: 1,
+                    textAlign: 'left',
+                    border: active ? '1.5px solid #455a64' : '1px solid #cfd8dc',
+                    bgcolor: active ? '#fff' : '#eceff1',
+                    color: '#37474f',
+                    borderRadius: 1,
+                    px: 0.75,
+                    py: 0.45,
+                    cursor: 'pointer',
+                    '&:hover': { bgcolor: '#fff' },
+                  }}
+                >
+                  <Box component="span" sx={{ display: 'block', fontSize: '0.68rem', fontWeight: 800 }}>
+                    {slot.title}
+                  </Box>
+                  <Box component="span" sx={{ display: 'block', fontSize: '0.62rem', color: '#607d8b', fontWeight: 600 }}>
+                    {slot.sub}
+                  </Box>
+                </Typography>
+              );
+            })}
+          </Box>
+          <Typography sx={{ fontSize: '0.68rem', color: '#607d8b', mt: 0.65 }}>
+            Tippe einen Klang — er gilt für <strong>{assignSlot === 'entryDone' ? 'Entry erledigt' : 'Startfolie'}</strong>
+            {' · '}Menü v{PRESENTATION_SOUND_MENU_VERSION}
           </Typography>
         </Box>
 
@@ -430,7 +478,7 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
                   component="button"
                   onClick={() => {
                     updateSettings({ duration: d.id });
-                    playPresentationSound({ duration: d.id });
+                    previewActiveSound({ duration: d.id });
                   }}
                   sx={{
                     flex: 1,
@@ -509,7 +557,7 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
               <SoundPresetRow
                 key={`${activeTab}-${preset.id}`}
                 preset={preset}
-                selected={settings.soundId === preset.id}
+                selected={activeSoundId === preset.id}
                 favorite={favoriteSet.has(preset.id)}
                 onSelect={() => selectSound(preset.id)}
                 onToggleFavorite={(e) => toggleFavorite(preset.id, e)}
@@ -521,7 +569,7 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
         <Box sx={{ px: 1.5, py: 1, borderTop: '1px solid #eceff1', bgcolor: '#fafbfd' }}>
           <Typography
             component="button"
-            onClick={() => playPresentationSound()}
+            onClick={() => previewActiveSound()}
             sx={{
               border: '1px solid #90a4ae',
               bgcolor: '#fff',
@@ -536,7 +584,8 @@ export function PresentationSoundSplitControl({ variant = 'dashboard' }: SplitPr
               '&:hover': { bgcolor: '#eceff1' },
             }}
           >
-            ▶ Testen: {label} (oder Taste S)
+            ▶ Testen: {activeLabel}
+            {assignSlot === 'startSlide' ? ' (Taste S)' : ''}
           </Typography>
         </Box>
       </Popover>

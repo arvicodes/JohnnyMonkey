@@ -24,8 +24,13 @@ export type PresentationSoundId =
 
 export type PresentationSoundDuration = 'normal' | 'long' | 'extra';
 
+export type PresentationSoundEvent = 'startSlide' | 'entryDone' | 'hotkey';
+
 export type PresentationSoundSettings = {
+  /** Startfolie + Taste S */
   soundId: PresentationSoundId;
+  /** Entry Ticket „Erledigt“ */
+  entryDoneSoundId: PresentationSoundId;
   /** 0–1 */
   volume: number;
   duration: PresentationSoundDuration;
@@ -84,10 +89,15 @@ export const PRESENTATION_SOUND_DURATIONS: Array<{
 
 const DEFAULT_SETTINGS: PresentationSoundSettings = {
   soundId: 'attention',
+  entryDoneSoundId: 'fanfare',
   volume: 0.9,
   duration: 'long',
   favoriteIds: [],
 };
+
+const START_SOUND_ARM_KEY = 'jm-play-start-sound';
+
+let sharedAudioCtx: AudioContext | null = null;
 
 function clampVolume(v: number): number {
   if (!Number.isFinite(v)) return DEFAULT_SETTINGS.volume;
@@ -124,6 +134,9 @@ function parseStoredSettings(raw: string | null): PresentationSoundSettings | nu
     const parsed = JSON.parse(raw) as Partial<PresentationSoundSettings>;
     return {
       soundId: isSoundId(parsed.soundId) ? parsed.soundId : DEFAULT_SETTINGS.soundId,
+      entryDoneSoundId: isSoundId(parsed.entryDoneSoundId)
+        ? parsed.entryDoneSoundId
+        : DEFAULT_SETTINGS.entryDoneSoundId,
       volume: clampVolume(typeof parsed.volume === 'number' ? parsed.volume : DEFAULT_SETTINGS.volume),
       duration: isDuration(parsed.duration) ? parsed.duration : DEFAULT_SETTINGS.duration,
       favoriteIds: sanitizeFavoriteIds(parsed.favoriteIds),
@@ -152,6 +165,9 @@ export function loadPresentationSoundSettings(): PresentationSoundSettings {
 export function savePresentationSoundSettings(next: PresentationSoundSettings): void {
   const clean: PresentationSoundSettings = {
     soundId: isSoundId(next.soundId) ? next.soundId : DEFAULT_SETTINGS.soundId,
+    entryDoneSoundId: isSoundId(next.entryDoneSoundId)
+      ? next.entryDoneSoundId
+      : DEFAULT_SETTINGS.entryDoneSoundId,
     volume: clampVolume(next.volume),
     duration: isDuration(next.duration) ? next.duration : DEFAULT_SETTINGS.duration,
     favoriteIds: sanitizeFavoriteIds(next.favoriteIds),
@@ -361,18 +377,85 @@ const LAYERED_SOUNDS = new Set<PresentationSoundId>([
   'fanfare',
 ]);
 
+function audioContextCtor(): typeof AudioContext | null {
+  const Win = typeof window !== 'undefined' ? window : null;
+  if (!Win) return null;
+  return Win.AudioContext || (Win as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext || null;
+}
+
+/** Safari: Audio darf erst nach einer User-Geste starten — beim Play-Klick aufrufen. */
+export function unlockPresentationAudio(): void {
+  const AC = audioContextCtor();
+  if (!AC) return;
+  if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
+    try {
+      sharedAudioCtx = new AC();
+    } catch {
+      sharedAudioCtx = null;
+      return;
+    }
+  }
+  if (sharedAudioCtx.state === 'suspended') {
+    void sharedAudioCtx.resume().catch(() => {});
+  }
+}
+
+function getSoundContext(): AudioContext | null {
+  unlockPresentationAudio();
+  return sharedAudioCtx;
+}
+
+/** Beim Start der Präsentation: Audio entsperren + Startfolien-Ton merken. */
+export function preparePresentationAudioForPlay(): void {
+  unlockPresentationAudio();
+  try {
+    sessionStorage.setItem(START_SOUND_ARM_KEY, '1');
+  } catch {
+    // ignore
+  }
+}
+
+export function isPresentationStartSoundArmed(): boolean {
+  try {
+    return sessionStorage.getItem(START_SOUND_ARM_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function clearArmedStartSlideSound(): void {
+  try {
+    sessionStorage.removeItem(START_SOUND_ARM_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+/** Startfolien-Ton, wenn Play ihn vorbereitet hat. Safari: bei Bedarf nach erstem Tippen erneut. */
+export function tryPlayArmedStartSlideSound(): boolean {
+  if (!isPresentationStartSoundArmed()) return false;
+  unlockPresentationAudio();
+  playPresentationSoundFor('startSlide');
+  if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') return false;
+  clearArmedStartSlideSound();
+  return true;
+}
+
+export function playPresentationSoundFor(event: PresentationSoundEvent): void {
+  const settings = loadPresentationSoundSettings();
+  const soundId = event === 'entryDone' ? settings.entryDoneSoundId : settings.soundId;
+  playPresentationSound({ soundId });
+}
+
 /** Spielt den konfigurierten (oder übergebenen) Präsentations-Sound. */
 export function playPresentationSound(override?: Partial<PresentationSoundSettings>): void {
-  const Win = typeof window !== 'undefined' ? window : null;
-  if (!Win) return;
-  const AC = Win.AudioContext || (Win as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AC) return;
+  const ctx = getSoundContext();
+  if (!ctx) return;
 
   const settings = { ...loadPresentationSoundSettings(), ...override };
   const volume = clampVolume(settings.volume);
   if (volume <= 0.001) return;
 
-  const ctx = new AC();
   const master = ctx.createGain();
   master.gain.value = 0.18 + volume * 0.77;
   master.connect(ctx.destination);
@@ -399,7 +482,11 @@ export function playPresentationSound(override?: Partial<PresentationSoundSettin
 
   const endMs = Math.ceil((Math.max(...steps.map((s) => s.start + s.dur), 0.4) + 0.25) * 1000);
   window.setTimeout(() => {
-    ctx.close().catch(() => {});
+    try {
+      master.disconnect();
+    } catch {
+      // ignore
+    }
   }, endMs);
 }
 

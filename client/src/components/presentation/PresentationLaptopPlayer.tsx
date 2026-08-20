@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Box, CircularProgress, Dialog, IconButton, Typography } from '@mui/material';
-import { ChevronLeft, ChevronRight, Close as CloseIcon } from '@mui/icons-material';
+import { ChevronLeft, ChevronRight, Close as CloseIcon, SelfImprovement as QuietWorkIcon } from '@mui/icons-material';
 import PresentationSlideView from './PresentationSlideView';
 import PresentationStrokesPreview from './PresentationStrokesPreview';
 import {
@@ -28,6 +28,11 @@ import { ensureEntryTicketButtonsOnTitleSlides } from '../../lib/presentationSli
 import { clampPresentZoomSmooth, handlePresentZoomHotkey, attachPresentTrackpadZoom, attachPresentTouchPinchZoom, centerPresentPan, panAfterPresentZoom, clampPresentPan, type PresentZoomOrigin } from '../../lib/presentationPresentZoom';
 import PresentationPresentZoomControls from './PresentationPresentZoomControls';
 import { PresentationSoundSplitControl } from './PresentationSoundControls';
+import PresentationQuietWorkOverlay, {
+  QuietWorkToolbarPanel,
+  useQuietWorkController,
+} from './PresentationQuietWorkOverlay';
+import { tryPlayArmedStartSlideSound, unlockPresentationAudio } from '../../lib/presentationSound';
 
 const EMPTY_STROKES: PresentationStroke[] = [];
 const EMPTY_ANNOTATIONS: PresentationAnnotations = {
@@ -93,6 +98,7 @@ export default function PresentationLaptopPlayer({
   const [panning, setPanning] = useState(false);
   const [notesLightboxSrc, setNotesLightboxSrc] = useState<string | null>(null);
   const [entryTicketOpen, setEntryTicketOpen] = useState(false);
+  const quietWork = useQuietWorkController();
   const stageHostRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -361,6 +367,14 @@ export default function PresentationLaptopPlayer({
 
   const scaleReady = !loading && !!deck && !!currentSlide;
 
+  useEffect(() => {
+    if (loading || !deck || slideIndex !== 0 || disableAnimations || entryTicketOpen) return;
+    const t = window.setTimeout(() => {
+      tryPlayArmedStartSlideSound();
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [loading, deck, slideIndex, disableAnimations, entryTicketOpen]);
+
   useLayoutEffect(() => {
     if (!scaleReady) return;
     const updateScale = () => {
@@ -522,6 +536,12 @@ export default function PresentationLaptopPlayer({
       ref={rootRef}
       tabIndex={0}
       data-laptop-player
+      onPointerDownCapture={() => {
+        unlockPresentationAudio();
+        if (slideIndex === 0 && !entryTicketOpen && !disableAnimations) {
+          tryPlayArmedStartSlideSound();
+        }
+      }}
       sx={{
         flex: 1,
         minHeight: 0,

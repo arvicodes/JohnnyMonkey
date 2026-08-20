@@ -11,6 +11,7 @@ import {
   namedVersionSlugFromPdfName,
 } from './presentationLessonAssets';
 import { presentationEditorUrl, presentationPresentUrl } from './presentationDeck';
+import { preparePresentationAudioForPlay } from './presentationSound';
 
 export type LessonFolderFileLike = { type: string; name: string; path: string };
 
@@ -86,6 +87,7 @@ export async function openLessonFolderFile(
       return;
     }
     if (options.preferLiveDeck) {
+      preparePresentationAudioForPlay();
       window.location.assign(
         presentationPresentUrl(folder, groupId || undefined, 'edited', undefined, planMode || 'run')
       );
@@ -93,12 +95,14 @@ export async function openLessonFolderFile(
     }
     let url: string;
     if (kind === 'original') {
+      preparePresentationAudioForPlay();
       url = presentationPresentUrl(folder, groupId || undefined, 'original', undefined, planMode);
     } else if (kind === 'named') {
       const slug = namedVersionSlugFromPdfName(item.name);
       url = slug
         ? presentationPresentUrl(folder, groupId || undefined, undefined, slug, planMode)
         : presentationEditorUrl(folder, groupId || undefined, planMode);
+      if (slug) preparePresentationAudioForPlay();
     } else {
       url = presentationEditorUrl(folder, groupId || undefined, planMode);
     }

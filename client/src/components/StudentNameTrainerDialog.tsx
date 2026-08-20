@@ -1,14 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Box,
-  Button,
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  Tooltip,
-  Typography,
-} from '@mui/material';
+import { Box, Dialog, DialogContent, DialogTitle, IconButton, Typography } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ShuffleIcon from '@mui/icons-material/Shuffle';
@@ -51,14 +42,15 @@ export default function StudentNameTrainerDialog({ open, onClose, groupName, stu
   const [index, setIndex] = useState(0);
   const [showName, setShowName] = useState(false);
   const [randomMode, setRandomMode] = useState(false);
+  const [photoVisible, setPhotoVisible] = useState(true);
 
   useEffect(() => {
     if (!open) return;
-    const ids = withPhoto.map((s) => s.id);
-    setOrderIds(ids);
+    setOrderIds(withPhoto.map((s) => s.id));
     setIndex(0);
     setShowName(false);
     setRandomMode(false);
+    setPhotoVisible(true);
   }, [open, withPhoto]);
 
   const ordered = useMemo(() => {
@@ -70,22 +62,36 @@ export default function StudentNameTrainerDialog({ open, onClose, groupName, stu
   const photoUrl = resolveAvatarUrl(current?.avatarUrl);
   const total = ordered.length;
 
+  useEffect(() => {
+    if (!open || !total) return;
+    [index + 1, index - 1].forEach((i) => {
+      const s = ordered[(i + total) % total];
+      const url = resolveAvatarUrl(s?.avatarUrl);
+      if (!url) return;
+      const img = new Image();
+      img.src = url;
+    });
+  }, [open, index, ordered, total]);
+
   const go = useCallback(
     (dir: 1 | -1) => {
       if (!total) return;
-      setIndex((i) => (i + dir + total) % total);
+      setPhotoVisible(false);
       setShowName(false);
+      window.setTimeout(() => {
+        setIndex((i) => (i + dir + total) % total);
+        setPhotoVisible(true);
+      }, 120);
     },
     [total],
   );
 
   const toggleRandom = useCallback(() => {
+    const currentId = ordered[index]?.id;
     setRandomMode((on) => {
       const next = !on;
-      const currentId = ordered[index]?.id;
       if (next) {
-        const shuffled = shuffleIds(withPhoto.map((s) => s.id));
-        setOrderIds(shuffled);
+        setOrderIds(shuffleIds(withPhoto.map((s) => s.id)));
         setIndex(0);
       } else {
         const sorted = withPhoto.map((s) => s.id);
@@ -128,11 +134,10 @@ export default function StudentNameTrainerDialog({ open, onClose, groupName, stu
       fullWidth
       PaperProps={{
         sx: {
-          bgcolor: '#111',
+          bgcolor: '#0d0d0d',
           backgroundImage: 'none',
           borderRadius: 2,
           overflow: 'hidden',
-          minHeight: '70vh',
         },
       }}
     >
@@ -140,15 +145,13 @@ export default function StudentNameTrainerDialog({ open, onClose, groupName, stu
         sx={{
           ...dialogCloseTitleSx,
           color: '#fff',
-          bgcolor: '#1a1a1a',
-          py: 1.25,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
+          bgcolor: 'transparent',
+          py: 1,
         }}
       >
-        <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.05rem', flex: 1, pr: 4 }}>
-          Namen lernen · {groupName}
+        <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '0.95rem', opacity: 0.7, pr: 4 }}>
+          {groupName}
+          {total ? `  ${index + 1}/${total}` : ''}
         </Typography>
         <DialogCloseIconButton
           onClose={onClose}
@@ -158,12 +161,12 @@ export default function StudentNameTrainerDialog({ open, onClose, groupName, stu
       </DialogTitle>
       <DialogContent
         sx={{
-          p: 2,
-          bgcolor: '#000',
+          px: 2,
+          pb: 2.5,
+          pt: 0,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: 1.5,
         }}
       >
         {!total || !current || !photoUrl ? (
@@ -172,77 +175,71 @@ export default function StudentNameTrainerDialog({ open, onClose, groupName, stu
           </Typography>
         ) : (
           <>
-            <Typography sx={{ color: '#9e9e9e', fontSize: '0.85rem' }}>
-              {index + 1} / {total}
-              {randomMode ? ' · zufällig' : ''}
-            </Typography>
             <Box
               onClick={() => setShowName((v) => !v)}
               sx={{
-                width: 'min(72vh, 100%)',
-                maxWidth: 560,
+                width: 'min(68vh, 100%)',
+                maxWidth: 540,
                 aspectRatio: '1',
                 borderRadius: 2,
                 overflow: 'hidden',
                 cursor: 'pointer',
                 bgcolor: '#111',
-                boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
               }}
             >
               <Box
                 component="img"
                 src={photoUrl}
-                alt={showName ? current.name : 'Schülerfoto'}
-                sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                alt=""
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                  opacity: photoVisible ? 1 : 0,
+                  transition: 'opacity 0.14s ease',
+                }}
               />
             </Box>
             <Box
               sx={{
-                minHeight: 52,
+                height: 56,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                mt: 1,
               }}
             >
-              {showName ? (
-                <Typography sx={{ color: '#fff', fontSize: '1.85rem', fontWeight: 800, textAlign: 'center' }}>
-                  {current.name}
-                </Typography>
-              ) : (
-                <Typography sx={{ color: '#666', fontSize: '0.95rem' }}>Leertaste: Name anzeigen</Typography>
-              )}
+              <Typography
+                sx={{
+                  color: '#fff',
+                  fontSize: '1.7rem',
+                  fontWeight: 700,
+                  textAlign: 'center',
+                  opacity: showName ? 1 : 0,
+                  transform: showName ? 'translateY(0)' : 'translateY(6px)',
+                  transition: 'opacity 0.18s ease, transform 0.18s ease',
+                  pointerEvents: 'none',
+                }}
+              >
+                {current.name}
+              </Typography>
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pb: 1 }}>
-              <IconButton onClick={() => go(-1)} sx={{ color: '#fff' }} aria-label="Vorheriges Foto">
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <IconButton onClick={() => go(-1)} sx={{ color: '#fff' }} aria-label="Zurück">
                 <ChevronLeftIcon />
               </IconButton>
-              <Tooltip title={randomMode ? 'Reihenfolge A–Z' : 'Zufällige Reihenfolge'}>
-                <Button
-                  variant={randomMode ? 'contained' : 'outlined'}
-                  size="small"
-                  startIcon={<ShuffleIcon />}
-                  onClick={toggleRandom}
-                  sx={{
-                    textTransform: 'none',
-                    color: randomMode ? '#111' : '#fff',
-                    borderColor: 'rgba(255,255,255,0.35)',
-                    bgcolor: randomMode ? '#fff' : 'transparent',
-                    '&:hover': {
-                      bgcolor: randomMode ? '#eee' : 'rgba(255,255,255,0.08)',
-                      borderColor: '#fff',
-                    },
-                  }}
-                >
-                  Zufall
-                </Button>
-              </Tooltip>
-              <IconButton onClick={() => go(1)} sx={{ color: '#fff' }} aria-label="Nächstes Foto">
+              <IconButton
+                onClick={toggleRandom}
+                aria-label="Zufall"
+                sx={{ color: randomMode ? '#fff' : 'rgba(255,255,255,0.4)' }}
+              >
+                <ShuffleIcon />
+              </IconButton>
+              <IconButton onClick={() => go(1)} sx={{ color: '#fff' }} aria-label="Weiter">
                 <ChevronRightIcon />
               </IconButton>
             </Box>
-            <Typography sx={{ color: '#555', fontSize: '0.75rem', pb: 0.5 }}>
-              ← → blättern · Leertaste Name · Esc schließen
-            </Typography>
           </>
         )}
       </DialogContent>

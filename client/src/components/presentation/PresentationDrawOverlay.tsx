@@ -698,13 +698,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     if (overChrome) {
       e.preventDefault();
       e.stopPropagation();
-      try {
-        canvas.setPointerCapture(e.pointerId);
-      } catch {
-        /* ignore */
-      }
-      chromeTapRef.current = { pointerId: e.pointerId, x: e.clientX, y: e.clientY };
-      inkPointerIdRef.current = e.pointerId;
+      if (typeof overChrome.click === 'function') overChrome.click();
       return;
     }
 
