@@ -33,7 +33,7 @@ export type ParsedPptxBox =
       h: number;
       fillColor?: string | null;
       strokeColor?: string | null;
-      shapeKind: 'rect' | 'ellipse';
+      shapeKind: 'rect' | 'ellipse' | 'line' | 'arrow';
     };
 
 export type ParsedPptxSlide = {
@@ -116,9 +116,10 @@ function parseAttrNumber(tag: string, name: string): number | null {
 }
 
 function parseXfrmBlock(xml: string): RectEmu | null {
-  // off/ext Attribute können in beliebiger Reihenfolge stehen
-  const off = xml.match(/<a:off\b[^>]*\/?>/i)?.[0];
-  const ext = xml.match(/<a:ext\b[^>]*\/?>/i)?.[0];
+  // Nur das echte a:xfrm — nicht a:extLst/a:ext (Office speichert dort uris ohne cx/cy).
+  const xfrm = xml.match(/<a:xfrm\b[^>]*>[\s\S]*?<\/a:xfrm>/i)?.[0] || xml;
+  const off = xfrm.match(/<a:off\b[^>]*\/?>/i)?.[0];
+  const ext = xfrm.match(/<a:ext\b[^>]*\/?>/i)?.[0];
   if (!off || !ext) return null;
   const x = parseAttrNumber(off, 'x');
   const y = parseAttrNumber(off, 'y');
@@ -410,6 +411,18 @@ function paragraphsToHtml(
   }
   if (inList) html += '</ul>';
 
+  if (!htmlParts.length) {
+    const math = [...txBodyXml.matchAll(/<m:t(?:\s[^>]*)?>([\s\S]*?)<\/m:t>/gi)]
+      .map((m) => decodeXmlEntities(m[1]).replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+    if (math.length) {
+      const joined = math.join('');
+      html = `<p style="text-align:center"><span data-pres-fs="20" style="font-size:20px">${escapeHtml(joined)}</span></p>`;
+      plainLines.push(joined);
+      if (fontSizePt == null) fontSizePt = 20;
+    }
+  }
+
   // Wenn gar keine data-pres-fs gesetzt: gesamten Block mit Fallback wrappen
   if (html && fontSizePt && !/data-pres-fs=/.test(html)) {
     const pt = Math.round(fontSizePt);
@@ -593,7 +606,9 @@ function extractTopLevelBlocks(xml: string, tag: 'p:sp' | 'p:pic' | 'p:grpSp' | 
   return blocks;
 }
 
-/** Entfernt alle grpSp-Blöcke, damit Top-Level-Shapes nicht doppelt aus Gruppen kommen. */
+function stripMcFallback(xml: string): string {
+  return xml.replace(/<mc:Fallback\b[^>]*>[\s\S]*?<\/mc:Fallback>/gi, '');
+}
 function stripGroupBlocks(xml: string): string {
   let out = xml;
   const blocks = extractTopLevelBlocks(xml, 'p:grpSp');
@@ -672,6 +687,26 @@ function extractShapeBoxes(
       name: path.basename(media.entryName),
       mime,
       base64: data.toString('base64'),
+    });
+  }
+
+  for (const cxn of extractTopLevelBlocks(flat, 'p:cxnSp')) {
+    let rect = parseXfrmBlock(cxn);
+    if (!rect || rect.w <= 0 || rect.h <= 0) continue;
+    rect = applyGroupTransform(rect, group);
+    const pct = emuToPct(rect, slideCx, slideCy);
+    if (pct.w < 0.2 && pct.h < 0.2) continue;
+    const stroke = extractStrokeColor(cxn, theme) || '#212121';
+    const hasArrow = /<a:tailEnd|<a:headEnd/i.test(cxn);
+    boxes.push({
+      kind: 'shape',
+      x: pct.x,
+      y: pct.y,
+      w: Math.max(pct.w, 0.6),
+      h: Math.max(pct.h, 0.6),
+      fillColor: null,
+      strokeColor: stroke,
+      shapeKind: hasArrow ? 'arrow' : 'line',
     });
   }
 
@@ -794,7 +829,8 @@ export function parsePptxBuffer(buffer: Buffer, fileName = 'import.pptx'): Parse
   for (let i = 0; i < slideEntries.length; i++) {
     const entry = slideEntries[i];
     const slidePath = entry.entryName.replace(/\\/g, '/');
-    const slideXml = entry.getData().toString('utf8');
+    const slideXmlRaw = entry.getData().toString('utf8');
+    const slideXml = stripMcFallback(slideXmlRaw);
     const slideNum = (slidePath.match(/slide(\d+)/i) || [])[1] || String(i + 1);
 
     const relsPath = `ppt/slides/_rels/slide${slideNum}.xml.rels`;

@@ -48,7 +48,7 @@ export type ImportedPptxBox =
       h: number;
       fillColor?: string | null;
       strokeColor?: string | null;
-      shapeKind: 'rect' | 'ellipse';
+      shapeKind: 'rect' | 'ellipse' | 'line' | 'arrow';
     };
 
 export type ImportedPptxSlide = {

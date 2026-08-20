@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Box, Typography } from '@mui/material';
+import { Box, TextField, Typography } from '@mui/material';
 import {
   MusicNote as MusicIcon,
   PauseCircle as PauseIcon,
@@ -7,12 +7,14 @@ import {
 import { playPresentationSound } from '../../lib/presentationSound';
 import {
   MUSIC_GAME_ACTIVE_TRACKS,
+  MUSIC_GAME_BURSTS,
   MUSIC_GAME_SPOTIFY_PRESETS,
   createSpotifyGameController,
   isMusicGameSpotifyTrack,
   loadMusicGameSettings,
+  musicGameActiveUri,
   musicGameSpotifyEmbedUrl,
-  musicGameSpotifyUri,
+  parseSpotifyUri,
   randomMusicGameBurstMs,
   saveMusicGameSettings,
   setMusicGameLoopMuted,
@@ -21,6 +23,7 @@ import {
   startMusicGameLoop,
   stopMusicGameLoop,
   type MusicGameBuiltInId,
+  type MusicGameBurstId,
   type MusicGameSettings,
   type MusicGameTrackId,
   type SpotifyEmbedController,
@@ -54,6 +57,8 @@ export type MusicGameController = {
   freeze: () => void;
   stop: () => void;
   setTrackId: (id: MusicGameTrackId) => void;
+  setBurst: (id: MusicGameBurstId) => void;
+  setSpotifyUrl: (url: string) => void;
   spotifyRef: React.MutableRefObject<SpotifyEmbedController | null>;
 };
 
@@ -177,6 +182,27 @@ export function useMusicGameController(): MusicGameController {
     [armBurst, beginPlayback, persist],
   );
 
+  const setBurst = useCallback(
+    (id: MusicGameBurstId) => {
+      persist({ burst: id });
+      if (runningRef.current && !frozenRef.current) armBurst();
+    },
+    [armBurst, persist],
+  );
+
+  const setSpotifyUrl = useCallback(
+    (url: string) => {
+      persist({ spotifyUrl: url, trackId: 'custom' });
+      if (!runningRef.current) return;
+      frozenRef.current = false;
+      setFrozen(false);
+      void beginPlayback('custom').then(() => {
+        if (runningRef.current) armBurst();
+      });
+    },
+    [armBurst, beginPlayback, persist],
+  );
+
   const togglePicker = useCallback(() => {
     if (running) {
       stop();
@@ -204,6 +230,8 @@ export function useMusicGameController(): MusicGameController {
     freeze,
     stop,
     setTrackId,
+    setBurst,
+    setSpotifyUrl,
     spotifyRef,
   };
 }
@@ -223,7 +251,8 @@ const CHIP = {
 };
 
 export function MusicGameToolbarPanel({ musicGame }: { musicGame: MusicGameController }) {
-  const { settings, setTrackId, start } = musicGame;
+  const { settings, setTrackId, setBurst, setSpotifyUrl, start } = musicGame;
+  const customOk = Boolean(parseSpotifyUri(settings.spotifyUrl));
   return (
     <Box
       data-pres-chrome=""
@@ -236,11 +265,34 @@ export function MusicGameToolbarPanel({ musicGame }: { musicGame: MusicGameContr
         borderRadius: 2,
         px: 0.7,
         py: 0.5,
-        maxWidth: 'min(540px, calc(100vw - 24px))',
+        maxWidth: 'min(640px, calc(100vw - 24px))',
       }}
     >
       <Typography sx={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.55)', px: 0.2 }}>
-        Musikspiel — aktive Klänge
+        Stop-Intervall
+      </Typography>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.4 }}>
+        {MUSIC_GAME_BURSTS.map((b) => (
+          <Box
+            key={b.id}
+            role="button"
+            tabIndex={0}
+            title={b.hint}
+            onClick={() => setBurst(b.id)}
+            {...stylusTap(() => setBurst(b.id))}
+            sx={{
+              ...CHIP,
+              bgcolor: settings.burst === b.id ? 'rgba(255,152,0,0.22)' : 'transparent',
+              borderColor: settings.burst === b.id ? 'rgba(255,152,0,0.5)' : 'rgba(255,255,255,0.16)',
+              color: settings.burst === b.id ? JOHNNY_PRESENTATION.warm : 'rgba(255,255,255,0.9)',
+            }}
+          >
+            {b.label}
+          </Box>
+        ))}
+      </Box>
+      <Typography sx={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.55)', px: 0.2, mt: 0.15 }}>
+        Aktive Klänge
       </Typography>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.4 }}>
         {MUSIC_GAME_ACTIVE_TRACKS.map((t) => (
@@ -263,7 +315,7 @@ export function MusicGameToolbarPanel({ musicGame }: { musicGame: MusicGameContr
         ))}
       </Box>
       <Typography sx={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.55)', px: 0.2, mt: 0.15 }}>
-        Spotify-Presets
+        Spotify
       </Typography>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.4 }}>
         {MUSIC_GAME_SPOTIFY_PRESETS.map((t) => (
@@ -284,9 +336,47 @@ export function MusicGameToolbarPanel({ musicGame }: { musicGame: MusicGameContr
             {t.label}
           </Box>
         ))}
+        <Box
+          role="button"
+          tabIndex={0}
+          title="Eigene Playlist oder Track"
+          onClick={() => setTrackId('custom')}
+          {...stylusTap(() => setTrackId('custom'))}
+          sx={{
+            ...CHIP,
+            bgcolor: settings.trackId === 'custom' ? 'rgba(255,152,0,0.22)' : 'transparent',
+            borderColor: settings.trackId === 'custom' ? 'rgba(255,152,0,0.5)' : 'rgba(255,255,255,0.16)',
+            color: settings.trackId === 'custom' ? JOHNNY_PRESENTATION.warm : 'rgba(255,255,255,0.9)',
+          }}
+        >
+          Eigene
+        </Box>
       </Box>
+      {settings.trackId === 'custom' && (
+        <TextField
+          size="small"
+          placeholder="Spotify-Link (Playlist oder Track) einfügen"
+          value={settings.spotifyUrl}
+          onChange={(e) => setSpotifyUrl(e.target.value)}
+          onPointerDown={(e) => e.stopPropagation()}
+          sx={{
+            mt: 0.2,
+            '& .MuiInputBase-root': {
+              color: '#fff',
+              fontSize: 12,
+              bgcolor: 'rgba(255,255,255,0.06)',
+            },
+            '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.18)' },
+          }}
+        />
+      )}
+      {settings.trackId === 'custom' && settings.spotifyUrl.trim() && !customOk && (
+        <Typography sx={{ fontSize: 10, color: '#ef9a9a' }}>
+          Bitte einen Spotify-Playlist- oder Track-Link verwenden.
+        </Typography>
+      )}
       <Typography sx={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', px: 0.2 }}>
-        Musik läuft und stoppt zufällig nach 3–10 Sekunden. Stop hält sofort an.
+        Musik stoppt zufällig im gewählten Intervall. Stop hält sofort an.
       </Typography>
       <Box
         role="button"
@@ -309,8 +399,8 @@ export function MusicGameToolbarPanel({ musicGame }: { musicGame: MusicGameContr
   );
 }
 
-function mountFallbackEmbed(host: HTMLElement, trackId: MusicGameTrackId) {
-  const embed = musicGameSpotifyEmbedUrl(trackId);
+function mountFallbackEmbed(host: HTMLElement, settings: MusicGameSettings) {
+  const embed = musicGameSpotifyEmbedUrl(settings.trackId, settings.spotifyUrl);
   if (!embed) return;
   host.innerHTML = '';
   const iframe = document.createElement('iframe');
@@ -333,7 +423,7 @@ export default function PresentationMusicGameOverlay({
   const frozenRef = useRef(frozen);
   const spotifySetupRef = useRef<'wait' | 'api' | 'fallback'>('wait');
   frozenRef.current = frozen;
-  const uri = isMusicGameSpotifyTrack(settings.trackId) ? musicGameSpotifyUri(settings.trackId) : null;
+  const uri = musicGameActiveUri(settings);
 
   useEffect(() => {
     if (!running || !uri || !hostRef.current) return undefined;
@@ -350,7 +440,7 @@ export default function PresentationMusicGameOverlay({
         return;
       }
       spotifySetupRef.current = 'fallback';
-      if (!frozenRef.current) mountFallbackEmbed(host, settings.trackId);
+      if (!frozenRef.current) mountFallbackEmbed(host, settings);
     });
     return () => {
       alive = false;
@@ -363,7 +453,7 @@ export default function PresentationMusicGameOverlay({
       spotifyRef.current = null;
       host.innerHTML = '';
     };
-  }, [running, settings.trackId, spotifyRef, uri]);
+  }, [running, settings.spotifyUrl, settings.trackId, spotifyRef, uri]);
 
   useEffect(() => {
     if (!running || !uri) return;
@@ -376,8 +466,8 @@ export default function PresentationMusicGameOverlay({
     const host = hostRef.current;
     if (!host) return;
     if (frozen) host.innerHTML = '';
-    else if (!host.querySelector('iframe')) mountFallbackEmbed(host, settings.trackId);
-  }, [frozen, running, settings.trackId, spotifyRef, uri]);
+    else if (!host.querySelector('iframe')) mountFallbackEmbed(host, settings);
+  }, [frozen, running, settings.spotifyUrl, settings.trackId, spotifyRef, uri]);
 
   if (!running) return null;
 
