@@ -574,7 +574,7 @@ function tableToHtml(tblXml: string, theme: ThemeColors): string {
   return html;
 }
 
-function extractTopLevelBlocks(xml: string, tag: 'p:sp' | 'p:pic' | 'p:grpSp' | 'p:graphicFrame'): string[] {
+function extractTopLevelBlocks(xml: string, tag: 'p:sp' | 'p:pic' | 'p:grpSp' | 'p:graphicFrame' | 'p:cxnSp'): string[] {
   const open = new RegExp(`<${tag}([\\s>])`, 'gi');
   const closeTag = `</${tag}>`;
   const blocks: string[] = [];
