@@ -2657,9 +2657,11 @@ const PresentationEditorPage: React.FC = () => {
         >
           <Box
             sx={{
-              flex: 1,
+              flex: '0 1 auto',
+              width: 'fit-content',
+              maxWidth: '100%',
               minWidth: 0,
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
               overflowX: 'auto',
               overflowY: 'hidden',
