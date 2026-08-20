@@ -356,6 +356,33 @@ async function loadStoredCustomSets(teacherId: string): Promise<EntryTicketCusto
   }
 }
 
+function lessonFolderKey(lesson: { lessonName?: string; lessonKey?: string }): string {
+  const raw = (lesson.lessonKey || lesson.lessonName || '').replace(/\\/g, '/').replace(/\/+$/, '');
+  const name = raw.split('/').pop() || raw;
+  return name.trim().toLowerCase();
+}
+
+/** Leere Stunden im PUT dürfen gespeicherte Karten nicht löschen. */
+function preserveNonEmptyLessons(
+  existing: EntryTicketCustomSetPayload[],
+  incoming: EntryTicketCustomSetPayload[],
+): EntryTicketCustomSetPayload[] {
+  const prevById = new Map(existing.map((s) => [s.id, s] as const));
+  return incoming.map((set) => {
+    const prev = prevById.get(set.id);
+    if (!prev) return set;
+    const prevLesson = new Map(prev.lessons.map((l) => [lessonFolderKey(l), l] as const));
+    const lessons = set.lessons.map((lesson) => {
+      const stored = prevLesson.get(lessonFolderKey(lesson));
+      if (stored && (lesson.tasks?.length || 0) === 0 && (stored.tasks?.length || 0) > 0) {
+        return { ...lesson, tasks: stored.tasks };
+      }
+      return lesson;
+    });
+    return { ...set, lessons };
+  });
+}
+
 async function saveStoredCustomSets(
   teacherId: string,
   sets: EntryTicketCustomSetPayload[],
@@ -363,6 +390,8 @@ async function saveStoredCustomSets(
   const cleaned = sets
     .map((s) => normalizeCustomSetPayload(s))
     .filter(Boolean) as EntryTicketCustomSetPayload[];
+  const existing = await loadStoredCustomSets(teacherId);
+  const merged = preserveNonEmptyLessons(existing, cleaned);
   await prisma.teacherLessonInstruction.upsert({
     where: {
       teacherId_lessonPath: { teacherId, lessonPath: ENTRY_TICKET_CUSTOM_SETS_PATH },
@@ -370,9 +399,9 @@ async function saveStoredCustomSets(
     create: {
       teacherId,
       lessonPath: ENTRY_TICKET_CUSTOM_SETS_PATH,
-      content: JSON.stringify({ sets: cleaned }),
+      content: JSON.stringify({ sets: merged }),
     },
-    update: { content: JSON.stringify({ sets: cleaned }) },
+    update: { content: JSON.stringify({ sets: merged }) },
   });
 }
 
