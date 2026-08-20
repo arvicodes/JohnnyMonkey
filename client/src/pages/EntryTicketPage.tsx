@@ -181,7 +181,7 @@ function EntryTicketRichHtml({
             width: '100% !important',
             maxWidth: '100% !important',
             height: 'auto !important',
-            maxHeight: contain ? '100%' : 'min(78vh, 640px)',
+            maxHeight: contain ? 'min(38vh, 260px)' : 'min(78vh, 640px)',
             objectFit: 'contain',
             borderRadius: 1,
             margin: '0 !important',
@@ -196,7 +196,7 @@ function EntryTicketRichHtml({
       <Box
         key="text"
         component="div"
-        sx={{ display: 'block', minWidth: 0, textAlign: 'left', whiteSpace: 'pre-line', ...richTextSx, ...sx }}
+        sx={{ display: 'block', minWidth: 0, textAlign: 'left', whiteSpace: 'normal', ...richTextSx, ...sx }}
         dangerouslySetInnerHTML={{ __html: decorateEntryTicketDisplayHtml(textHtml) }}
       />
     ) : null;
@@ -237,7 +237,7 @@ function EntryTicketRichHtml({
   return (
     <Box
       component="div"
-      sx={{ display: 'block', whiteSpace: 'pre-line', ...richTextSx, ...sx }}
+      sx={{ display: 'block', whiteSpace: 'normal', ...richTextSx, ...sx }}
       dangerouslySetInnerHTML={{ __html: decorated }}
     />
   );
@@ -343,13 +343,17 @@ const etSessionBtnSx = {
 } as const;
 
 const DEFAULT_SLIDE_DURATION_SEC = 20;
+const KLASSE5_SLIDE_DURATION_SEC = 90;
 const SLIDE_DURATION_STORAGE_KEY = 'entry-ticket-slide-duration-sec';
+const SLIDE_DURATION_KLASSE5_KEY = 'entry-ticket-slide-duration-sec-klasse-5';
 const SHOW_COUNT_STORAGE_KEY = 'entry-ticket-card-show-counts-v1';
 const MIN_SLIDE_DURATION_SEC = 5;
-const MAX_SLIDE_DURATION_SEC = 120;
+const MAX_SLIDE_DURATION_SEC = 180;
 const DEFAULT_SOLUTION_DURATION_SEC = 60;
+const KLASSE5_SOLUTION_DURATION_SEC = 90;
 const MATHE_LK_SOLUTION_DURATION_SEC = 180;
 const SOLUTION_DURATION_STORAGE_KEY = 'entry-ticket-solution-duration-sec-v2';
+const SOLUTION_DURATION_KLASSE5_KEY = 'entry-ticket-solution-duration-sec-klasse-5';
 const SOLUTION_DURATION_MATHE_LK_KEY = 'entry-ticket-solution-duration-sec-mathe-lk';
 const MIN_SOLUTION_DURATION_SEC = 15;
 const MAX_SOLUTION_DURATION_SEC = 15 * 60;
@@ -393,9 +397,10 @@ function persistCardShowCounts(counts: Record<string, number>) {
   }
 }
 
-function loadSlideDurationSec(): number {
+function loadSlideDurationSec(klasse5 = false): number {
+  const fallback = klasse5 ? KLASSE5_SLIDE_DURATION_SEC : DEFAULT_SLIDE_DURATION_SEC;
   try {
-    const raw = localStorage.getItem(SLIDE_DURATION_STORAGE_KEY);
+    const raw = localStorage.getItem(klasse5 ? SLIDE_DURATION_KLASSE5_KEY : SLIDE_DURATION_STORAGE_KEY);
     const n = raw != null ? Number(raw) : NaN;
     if (Number.isFinite(n) && n >= MIN_SLIDE_DURATION_SEC && n <= MAX_SLIDE_DURATION_SEC) {
       return Math.round(n);
@@ -403,11 +408,11 @@ function loadSlideDurationSec(): number {
   } catch {
     // ignore
   }
-  return DEFAULT_SLIDE_DURATION_SEC;
+  return fallback;
 }
 
-function clampSlideDurationSec(value: number): number {
-  if (!Number.isFinite(value)) return DEFAULT_SLIDE_DURATION_SEC;
+function clampSlideDurationSec(value: number, klasse5 = false): number {
+  if (!Number.isFinite(value)) return klasse5 ? KLASSE5_SLIDE_DURATION_SEC : DEFAULT_SLIDE_DURATION_SEC;
   return Math.min(MAX_SLIDE_DURATION_SEC, Math.max(MIN_SLIDE_DURATION_SEC, Math.round(value)));
 }
 
@@ -427,18 +432,47 @@ function isMatheLkEntryContext(
   return hasMathe && hasLk;
 }
 
-function solutionDurationStorageKey(matheLk: boolean): string {
-  return matheLk ? SOLUTION_DURATION_MATHE_LK_KEY : SOLUTION_DURATION_STORAGE_KEY;
+function isKlasse5EntryContext(
+  grade?: unknown,
+  setName?: string | null,
+  reihePath?: string | null,
+  lessonPath?: string | null,
+): boolean {
+  if (grade === 5 || grade === '5') return true;
+  const blob = [setName, reihePath, lessonPath]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\\/g, '/');
+  if (!blob) return false;
+  if (/klasse\s*5\b/i.test(blob)) return true;
+  if (/(^|[/\s_-])(?:mathe|m)\s*5\b/i.test(blob)) return true;
+  return false;
 }
 
-function defaultSolutionDurationSec(matheLk: boolean): number {
-  return matheLk ? MATHE_LK_SOLUTION_DURATION_SEC : DEFAULT_SOLUTION_DURATION_SEC;
+type SolutionDurationProfile = 'mathe-lk' | 'klasse-5' | 'default';
+
+function solutionDurationProfile(matheLk: boolean, klasse5: boolean): SolutionDurationProfile {
+  if (matheLk) return 'mathe-lk';
+  if (klasse5) return 'klasse-5';
+  return 'default';
 }
 
-function loadSolutionDurationSec(matheLk = false): number {
-  const fallback = defaultSolutionDurationSec(matheLk);
+function solutionDurationStorageKey(profile: SolutionDurationProfile): string {
+  if (profile === 'mathe-lk') return SOLUTION_DURATION_MATHE_LK_KEY;
+  if (profile === 'klasse-5') return SOLUTION_DURATION_KLASSE5_KEY;
+  return SOLUTION_DURATION_STORAGE_KEY;
+}
+
+function defaultSolutionDurationSec(profile: SolutionDurationProfile): number {
+  if (profile === 'mathe-lk') return MATHE_LK_SOLUTION_DURATION_SEC;
+  if (profile === 'klasse-5') return KLASSE5_SOLUTION_DURATION_SEC;
+  return DEFAULT_SOLUTION_DURATION_SEC;
+}
+
+function loadSolutionDurationSec(profile: SolutionDurationProfile = 'default'): number {
+  const fallback = defaultSolutionDurationSec(profile);
   try {
-    const raw = localStorage.getItem(solutionDurationStorageKey(matheLk));
+    const raw = localStorage.getItem(solutionDurationStorageKey(profile));
     const n = raw != null ? Number(raw) : NaN;
     if (Number.isFinite(n) && n >= MIN_SOLUTION_DURATION_SEC && n <= MAX_SOLUTION_DURATION_SEC) {
       return Math.round(n);
@@ -449,8 +483,8 @@ function loadSolutionDurationSec(matheLk = false): number {
   return fallback;
 }
 
-function clampSolutionDurationSec(value: number, matheLk = false): number {
-  if (!Number.isFinite(value)) return defaultSolutionDurationSec(matheLk);
+function clampSolutionDurationSec(value: number, profile: SolutionDurationProfile = 'default'): number {
+  if (!Number.isFinite(value)) return defaultSolutionDurationSec(profile);
   return Math.min(MAX_SOLUTION_DURATION_SEC, Math.max(MIN_SOLUTION_DURATION_SEC, Math.round(value)));
 }
 
@@ -499,18 +533,19 @@ function SolutionSlideClock({
   totalSec,
   running,
   onToggle,
+  size = 88,
 }: {
   secondsLeft: number;
   totalSec: number;
   running: boolean;
   onToggle?: () => void;
+  size?: number;
 }) {
   const frac = Math.max(0, Math.min(1, secondsLeft / Math.max(totalSec, 1)));
   const done = secondsLeft <= 0;
   const urgent = secondsLeft > 0 && secondsLeft <= 15;
   const diskColor = done ? '#d50000' : urgent ? '#ff6d00' : '#00c853';
-  const size = 52;
-  const inner = 6;
+  const inner = Math.max(6, Math.round(size * 0.12));
   const tickOrigin = `${1}px ${size / 2 - 3}px`;
 
   return (
@@ -575,7 +610,7 @@ function SolutionSlideClock({
           sx={{
             fontWeight: 900,
             fontVariantNumeric: 'tabular-nums',
-            fontSize: '0.72rem',
+            fontSize: size >= 80 ? '1.15rem' : '0.72rem',
             lineHeight: 1,
             color: diskColor,
             letterSpacing: -0.35,
@@ -2571,17 +2606,37 @@ export default function EntryTicketPage({
     () => isMatheLkEntryContext(activeCustomSet?.name, activeCustomSet?.reihePath, entryLessonPath),
     [activeCustomSet?.name, activeCustomSet?.reihePath, entryLessonPath],
   );
-  const solutionDurationProfileRef = useRef<'default' | 'mathe-lk' | null>(null);
+  const isKlasse5Set = useMemo(
+    () =>
+      isKlasse5EntryContext(
+        grade,
+        activeCustomSet?.name,
+        activeCustomSet?.reihePath,
+        entryLessonPath,
+      ),
+    [grade, activeCustomSet?.name, activeCustomSet?.reihePath, entryLessonPath],
+  );
+  const durationProfile = solutionDurationProfile(isMatheLkSet, isKlasse5Set);
+  const solutionDurationProfileRef = useRef<SolutionDurationProfile | null>(null);
   useEffect(() => {
-    const profile = isMatheLkSet ? 'mathe-lk' : 'default';
-    if (solutionDurationProfileRef.current === profile) return;
-    solutionDurationProfileRef.current = profile;
-    const next = loadSolutionDurationSec(isMatheLkSet);
+    if (solutionDurationProfileRef.current === durationProfile) return;
+    solutionDurationProfileRef.current = durationProfile;
+    const next = loadSolutionDurationSec(durationProfile);
     setSolutionDurationSec(next);
     setSolutionDurationMinDraft(String(Math.max(1, Math.round(next / 60))));
     solutionDurationSecRef.current = next;
     if (!solutionRunning) setSolutionSecondsLeft(next);
-  }, [isMatheLkSet, solutionRunning]);
+  }, [durationProfile, solutionRunning]);
+  const slideDurationProfileRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (slideDurationProfileRef.current === isKlasse5Set) return;
+    slideDurationProfileRef.current = isKlasse5Set;
+    const next = loadSlideDurationSec(isKlasse5Set);
+    setSlideDurationSec(next);
+    setDurationDraft(String(next));
+    slideDurationSecRef.current = next;
+    setSecondsLeft(next);
+  }, [isKlasse5Set]);
   const infCustomSets = useMemo(() => customSets.filter(customSetIsInformatik), [customSets]);
   const matheCustomSets = useMemo(
     () => customSets.filter((s) => !customSetIsInformatik(s)),
@@ -3274,17 +3329,17 @@ export default function EntryTicketPage({
   }, [sessionStarted, sessionDone, currentIndex, activeTasks]);
 
   const applySlideDurationSec = useCallback((raw: number) => {
-    const next = clampSlideDurationSec(raw);
+    const next = clampSlideDurationSec(raw, isKlasse5Set);
     setSlideDurationSec(next);
     setDurationDraft(String(next));
     slideDurationSecRef.current = next;
     setSecondsLeft((prev) => Math.min(prev, next));
     try {
-      localStorage.setItem(SLIDE_DURATION_STORAGE_KEY, String(next));
+      localStorage.setItem(isKlasse5Set ? SLIDE_DURATION_KLASSE5_KEY : SLIDE_DURATION_STORAGE_KEY, String(next));
     } catch {
       // ignore
     }
-  }, []);
+  }, [isKlasse5Set]);
 
   const commitDurationDraft = useCallback(() => {
     const n = Number(String(durationDraft).replace(',', '.'));
@@ -3296,17 +3351,17 @@ export default function EntryTicketPage({
   }, [applySlideDurationSec, durationDraft, slideDurationSec]);
 
   const applySolutionDurationSec = useCallback((raw: number) => {
-    const next = clampSolutionDurationSec(raw, isMatheLkSet);
+    const next = clampSolutionDurationSec(raw, durationProfile);
     setSolutionDurationSec(next);
     setSolutionDurationMinDraft(String(Math.max(1, Math.round(next / 60))));
     solutionDurationSecRef.current = next;
     setSolutionSecondsLeft(next);
     try {
-      localStorage.setItem(solutionDurationStorageKey(isMatheLkSet), String(next));
+      localStorage.setItem(solutionDurationStorageKey(durationProfile), String(next));
     } catch {
       // ignore
     }
-  }, [isMatheLkSet]);
+  }, [durationProfile]);
 
   const commitSolutionDurationDraft = useCallback(() => {
     const n = Number(String(solutionDurationMinDraft).replace(',', '.'));
@@ -4375,7 +4430,7 @@ export default function EntryTicketPage({
       }}
     >
       <Box sx={{ width: '100%', maxWidth: '100%', mx: 0, minWidth: 0, boxSizing: 'border-box', flex: embeddedPlay ? 1 : undefined, minHeight: embeddedPlay ? 0 : undefined, display: embeddedPlay ? 'flex' : undefined, flexDirection: embeddedPlay ? 'column' : undefined }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: embeddedPlay ? 0 : sessionDone ? 1.5 : 0, pb: embeddedPlay ? 0 : sessionDone ? 0.5 : 0, gap: 0.35, minHeight: 0, flexShrink: 0, flexWrap: 'nowrap', overflow: 'hidden', height: !embeddedPlay && sessionDone && !studentReviewMode && !laptopCompanion ? 54 : 28, px: embeddedPlay ? 0.4 : 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: embeddedPlay ? 0 : sessionDone ? 1.5 : 0, pb: embeddedPlay ? 0 : sessionDone ? 0.5 : 0, gap: 0.35, minHeight: 0, flexShrink: 0, flexWrap: 'nowrap', overflow: 'hidden', height: sessionDone && !studentReviewMode && !laptopCompanion ? (embeddedPlay ? 96 : 92) : 28, px: embeddedPlay ? 0.4 : 0 }}>
           {sessionStarted || studentReviewMode ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, flexShrink: 0 }}>
               {sessionDone && !studentReviewMode && !laptopCompanion ? (
@@ -4384,6 +4439,7 @@ export default function EntryTicketPage({
                   secondsLeft={solutionSecondsLeft}
                   totalSec={solutionDurationSec}
                   running={solutionRunning}
+                  size={embeddedPlay ? 92 : 84}
                   onToggle={() => {
                     if (solutionRunning) pause();
                     else startOrResume();
@@ -5051,7 +5107,7 @@ export default function EntryTicketPage({
                       maxWidth: 864,
                       mx: 'auto',
                       boxSizing: 'border-box',
-                      alignSelf: 'start',
+                      alignSelf: 'center',
                       justifySelf: 'center',
                       ...(embeddedPlay
                         ? {
@@ -5059,6 +5115,7 @@ export default function EntryTicketPage({
                             minHeight: 0,
                             display: 'flex',
                             flexDirection: 'column',
+                            justifyContent: 'center',
                             overflow: 'hidden',
                           }
                         : {}),
@@ -5092,9 +5149,10 @@ export default function EntryTicketPage({
                           boxShadow: '0 8px 28px rgba(55, 71, 79, 0.1)',
                           display: 'flex',
                           flexDirection: 'column',
-                          overflow: embeddedPlay ? 'hidden' : 'visible',
+                          overflow: embeddedPlay ? 'auto' : 'visible',
                           minHeight: embeddedPlay ? 0 : DISPLAY_BOX_MIN_HEIGHT,
-                          ...(embeddedPlay ? { flex: 1, height: '100%' } : {}),
+                          maxHeight: embeddedPlay ? '100%' : undefined,
+                          ...(embeddedPlay ? { flex: '0 1 auto', height: 'auto' } : {}),
                         }}
                       >
                         <Box
@@ -5158,7 +5216,7 @@ export default function EntryTicketPage({
 
                           <Box
                             sx={{
-                              flex: 1,
+                              flex: embeddedPlay ? '0 1 auto' : 1,
                               display: 'flex',
                               alignItems: 'flex-start',
                               justifyContent: 'center',
@@ -5173,28 +5231,30 @@ export default function EntryTicketPage({
                                 isTeacher && isCustomSetActive
                                   ? { xs: 4.5, sm: 5.5 }
                                   : { xs: 2.7, sm: 4.2 },
-                              py: embeddedPlay ? 1.25 : 2.7,
-                              overflow: embeddedPlay ? 'hidden' : 'visible',
+                              py: embeddedPlay ? 1.6 : 2.7,
+                              overflow: embeddedPlay ? 'auto' : 'visible',
                               minHeight: 0,
                             }}
                           >
                           <Box
                             sx={{
                               width: '100%',
-                              height: embeddedPlay ? '100%' : undefined,
+                              height: 'auto',
                               minHeight: 0,
-                              overflow: embeddedPlay ? 'hidden' : undefined,
-                              fontSize: { xs: '1.56rem', sm: '1.92rem', md: '2.1rem' },
-                              lineHeight: 1.35,
+                              overflow: embeddedPlay ? 'visible' : undefined,
+                              fontSize: embeddedPlay
+                                ? { xs: '1.28rem', sm: '1.52rem', md: '1.68rem' }
+                                : { xs: '1.56rem', sm: '1.92rem', md: '2.1rem' },
+                              lineHeight: 1.28,
                               fontWeight: 500,
                               color: '#37474f',
-                              whiteSpace: 'pre-line',
+                              whiteSpace: 'normal',
                               letterSpacing: -0.01,
                               ...richTextSx,
                               ...(embeddedPlay
                                 ? {
                                     '& img': {
-                                      maxHeight: '100% !important',
+                                      maxHeight: 'min(36vh, 240px) !important',
                                       width: 'auto !important',
                                       maxWidth: '100% !important',
                                       height: 'auto !important',
@@ -5212,7 +5272,7 @@ export default function EntryTicketPage({
                                   fontSize: 'inherit',
                                   lineHeight: 'inherit',
                                   color: 'inherit',
-                                  whiteSpace: 'pre-line',
+                                  whiteSpace: 'normal',
                                 }}
                               />
                             ) : null}
@@ -5221,16 +5281,19 @@ export default function EntryTicketPage({
 
                         <Typography
                           sx={{
-                            pb: 1.1,
-                            pt: 0.25,
+                            pb: embeddedPlay ? 1.4 : 1.1,
+                            pt: embeddedPlay ? 0.4 : 0.25,
                             textAlign: 'center',
-                            fontSize: '0.72rem',
-                            fontWeight: 700,
-                            color: secondsLeft <= 5 ? '#ff8a65' : '#b0bec5',
+                            flexShrink: 0,
+                            fontSize: embeddedPlay ? { xs: '2.05rem', sm: '2.45rem' } : { xs: '1.35rem', sm: '1.55rem' },
+                            fontWeight: 900,
+                            lineHeight: 1,
+                            color: secondsLeft <= 5 ? '#ff8a65' : '#546e7a',
                             fontVariantNumeric: 'tabular-nums',
+                            letterSpacing: -0.04,
                           }}
                         >
-                          {secondsLeft}
+                          {formatMmSs(secondsLeft)}
                         </Typography>
                       </Box>
                     </AnimatePresence>
