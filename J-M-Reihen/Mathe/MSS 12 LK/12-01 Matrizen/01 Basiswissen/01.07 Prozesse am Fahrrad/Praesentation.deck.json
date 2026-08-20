@@ -1,18 +1,18 @@
 {
   "version": 1,
-  "title": "01.07 Prozesse Fahrrad",
-  "lessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse Fahrrad",
-  "updatedAt": "2026-08-20T09:42:45.480Z",
+  "title": "01.07 Prozesse am Fahrrad",
+  "lessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad",
+  "updatedAt": "2026-08-20T09:48:00.000Z",
   "defaultTransition": "fade",
   "slides": [
     {
       "layout": "title-slide",
       "title": "Guten Morgen!",
-      "body": "Prozesse Fahrrad",
+      "body": "",
       "speakerNotes": "",
       "preparationNotes": "",
       "materialNotes": "",
-      "subtitle": "Prozesse Fahrrad",
+      "subtitle": "",
       "bodyLeft": "",
       "bodyRight": "",
       "imagePath": "",
@@ -21,28 +21,28 @@
       "titleAlign": "center",
       "accentColor": "#2E7D32",
       "titleHtml": "<p>Guten Morgen!</p>",
-      "bodyHtml": "<p>Prozesse Fahrrad</p>",
-      "subtitleHtml": "<p>Prozesse Fahrrad</p>",
+      "bodyHtml": "<p><br></p>",
+      "subtitleHtml": "",
       "bodyLeftHtml": "",
       "bodyRightHtml": "",
       "imageCaptionHtml": "",
-      "speakerNotesHtml": "",
-      "preparationHtml": "",
-      "materialHtml": "",
+      "speakerNotesHtml": "<p><br></p>",
+      "preparationHtml": "<p><br></p>",
+      "materialHtml": "<p><br></p>",
       "elements": [
         {
-          "id": "el-start-img-mt1c0zjc-sinda",
+          "id": "el-1787219258001-0-zm2",
           "type": "image",
           "x": 31.720945573258426,
           "y": 6.555859751303066,
           "w": 31.831176939326497,
           "h": 37.65493697478992,
-          "src": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.02 Orga/Adobe Express - file.png",
+          "src": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.02 Orga/Adobe Express - file.png",
           "zIndex": 1,
           "imageFit": "contain"
         },
         {
-          "id": "el-start-entry-ticket",
+          "id": "el-1787219258001-1-8r0",
           "type": "text",
           "x": 90.2,
           "y": 2.2,
@@ -56,7 +56,7 @@
       "transition": "fade",
       "revealEnabled": true,
       "zoneRevealSteps": {},
-      "id": "slide-mt1c0zjc-gsn9h",
+      "id": "slide-1787219258001-rr62o",
       "order": 0
     },
     {
@@ -70,7 +70,7 @@
       "bodyStyle": "plain",
       "titleAlign": "left",
       "accentColor": "#2E7D32",
-      "title": "Prozesse Fahrrad",
+      "title": "Prozesse am Fahrrad",
       "body": "",
       "hiddenLayoutZones": [
         "bodyHtml"
@@ -92,7 +92,7 @@
           "y": 69.87,
           "w": 18.08,
           "h": 20.33,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse Fahrrad/pptx-1-image1.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-1-image1.png",
           "imageFit": "contain",
           "zIndex": 1,
           "stackLayer": "foreground"
@@ -104,7 +104,7 @@
           "y": 68.95,
           "w": 14.48,
           "h": 24.66,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse Fahrrad/pptx-2-image2.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-2-image2.png",
           "imageFit": "contain",
           "zIndex": 2,
           "stackLayer": "foreground"
@@ -116,7 +116,7 @@
           "y": 71.2,
           "w": 16.8,
           "h": 20.45,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse Fahrrad/pptx-3-image3.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-3-image3.png",
           "imageFit": "contain",
           "zIndex": 3,
           "stackLayer": "foreground"
@@ -128,7 +128,7 @@
           "y": 69.87,
           "w": 16.51,
           "h": 20.82,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse Fahrrad/pptx-4-image4.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-4-image4.png",
           "imageFit": "contain",
           "zIndex": 4,
           "stackLayer": "foreground"
@@ -140,7 +140,7 @@
           "y": 32.91,
           "w": 7.96,
           "h": 8.75,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse Fahrrad/pptx-5-image5.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-5-image5.png",
           "imageFit": "contain",
           "zIndex": 5,
           "stackLayer": "foreground"
@@ -152,7 +152,7 @@
           "y": 32.14,
           "w": 9.77,
           "h": 9.91,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse Fahrrad/pptx-6-image6.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-6-image6.png",
           "imageFit": "contain",
           "zIndex": 6,
           "stackLayer": "foreground"
@@ -164,7 +164,7 @@
           "y": 31.9,
           "w": 8.77,
           "h": 10.39,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse Fahrrad/pptx-7-image7.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-7-image7.png",
           "imageFit": "contain",
           "zIndex": 7,
           "stackLayer": "foreground"
@@ -176,7 +176,7 @@
           "y": 28.81,
           "w": 9.75,
           "h": 16.77,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse Fahrrad/pptx-8-image8.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-8-image8.png",
           "imageFit": "contain",
           "zIndex": 8,
           "stackLayer": "foreground"
@@ -188,7 +188,7 @@
           "y": 29.19,
           "w": 9.97,
           "h": 15.81,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse Fahrrad/pptx-9-image9.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-9-image9.png",
           "imageFit": "contain",
           "zIndex": 9,
           "stackLayer": "foreground"
@@ -200,7 +200,7 @@
           "y": 0.37,
           "w": 17.33,
           "h": 15.84,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse Fahrrad/pptx-10-image10.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-10-image10.png",
           "imageFit": "contain",
           "zIndex": 10,
           "stackLayer": "foreground"
@@ -212,7 +212,7 @@
           "y": 32.97,
           "w": 7.96,
           "h": 8.75,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse Fahrrad/pptx-5-image5.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-5-image5.png",
           "imageFit": "contain",
           "zIndex": 11,
           "stackLayer": "foreground"
@@ -224,7 +224,7 @@
           "y": 32.39,
           "w": 9.77,
           "h": 9.91,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse Fahrrad/pptx-6-image6.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-6-image6.png",
           "imageFit": "contain",
           "zIndex": 12,
           "stackLayer": "foreground"
@@ -236,7 +236,7 @@
           "y": 32.15,
           "w": 8.77,
           "h": 10.39,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse Fahrrad/pptx-7-image7.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-7-image7.png",
           "imageFit": "contain",
           "zIndex": 13,
           "stackLayer": "foreground"
@@ -248,7 +248,7 @@
           "y": 29.06,
           "w": 9.75,
           "h": 16.77,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse Fahrrad/pptx-8-image8.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-8-image8.png",
           "imageFit": "contain",
           "zIndex": 14,
           "stackLayer": "foreground"
@@ -260,7 +260,7 @@
           "y": 29.62,
           "w": 9.97,
           "h": 15.81,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse Fahrrad/pptx-9-image9.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-9-image9.png",
           "imageFit": "contain",
           "zIndex": 15,
           "stackLayer": "foreground"
@@ -272,7 +272,7 @@
           "y": 1.01,
           "w": 13.19,
           "h": 16.2,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse Fahrrad/pptx-11-image27.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-11-image27.png",
           "imageFit": "contain",
           "zIndex": 16,
           "stackLayer": "foreground"
@@ -830,8 +830,148 @@
       "transition": "fade",
       "revealEnabled": true,
       "zoneRevealSteps": {},
-      "id": "slide-mt1c0zjc-qjz9a",
+      "id": "slide-pptx-prozesse-fahrrad",
       "order": 1
+    },
+    {
+      "speakerNotes": "",
+      "layout": "blank",
+      "subtitle": "",
+      "bodyLeft": "",
+      "bodyRight": "",
+      "imagePath": "",
+      "imageCaption": "",
+      "bodyStyle": "plain",
+      "titleAlign": "left",
+      "accentColor": "#2E7D32",
+      "title": "Start",
+      "body": "",
+      "hiddenLayoutZones": [
+        "bodyHtml"
+      ],
+      "titleHtml": "",
+      "bodyHtml": "",
+      "subtitleHtml": "",
+      "bodyLeftHtml": "",
+      "bodyRightHtml": "",
+      "imageCaptionHtml": "",
+      "speakerNotesHtml": "<p><br></p>",
+      "preparationNotes": "",
+      "preparationHtml": "<p><br></p>",
+      "materialNotes": "",
+      "materialHtml": "<p><br></p>",
+      "elements": [
+        {
+          "id": "el-1787219258001-0-iya",
+          "type": "card",
+          "x": 82.15857144406507,
+          "y": 67.06377484309624,
+          "w": 16.18731186828703,
+          "h": 24.687892259414223,
+          "zIndex": 1,
+          "strokeColor": "#2E7D32",
+          "strokeWidth": 2.5,
+          "fillColor": "rgba(46,125,50,0.14)",
+          "titleHtml": "<p style=\"text-align:center\"><strong>Arbeitsauftrag</strong></p>",
+          "html": "<p style=\"text-align: justify;\"><b>Mathebuch:</b></p><p style=\"text-align: justify;\">Seite , Nummer</p>",
+          "stackLayer": "foreground",
+          "revealStep": 1,
+          "animationSet": true
+        }
+      ],
+      "transition": "fade",
+      "revealEnabled": true,
+      "zoneRevealSteps": {},
+      "id": "slide-1787219258001-au92k",
+      "order": 2
+    },
+    {
+      "layout": "blank",
+      "title": "Hausaufgabe",
+      "body": "",
+      "speakerNotes": "",
+      "preparationNotes": "",
+      "materialNotes": "",
+      "subtitle": "",
+      "bodyLeft": "",
+      "bodyRight": "",
+      "imagePath": "",
+      "imageCaption": "",
+      "bodyStyle": "plain",
+      "titleAlign": "left",
+      "accentColor": "#C62828",
+      "titleHtml": "<p><span data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important;\">Hausaufgabe</span></p><p><span data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important;\"><br></span></p>",
+      "bodyHtml": "<p><br></p>",
+      "subtitleHtml": "",
+      "bodyLeftHtml": "",
+      "bodyRightHtml": "",
+      "imageCaptionHtml": "",
+      "speakerNotesHtml": "<p><br></p>",
+      "preparationHtml": "<p><br></p>",
+      "materialHtml": "<p><br></p>",
+      "elements": [
+        {
+          "id": "el-1787219258001-0-evq",
+          "type": "image",
+          "x": 34.82752190813671,
+          "y": 9.81815147429894,
+          "w": 6.234590934783087,
+          "h": 7.532135501524438,
+          "src": "git-intern/Grafiken/HA.png",
+          "zIndex": 1,
+          "revealStep": 0,
+          "imageFit": "contain"
+        },
+        {
+          "id": "el-1787219258001-1-jz4",
+          "type": "text",
+          "x": 81.35841393849206,
+          "y": 88.3222828483245,
+          "w": 18.641586061507937,
+          "h": 6.796626984126986,
+          "html": "<p><span style=\"font-weight: 700; text-align: center; background-color: rgb(255, 255, 255);\">Bis zur nächsten Stunde!</span></p>",
+          "zIndex": 2
+        },
+        {
+          "id": "el-1787219258001-2-kcq",
+          "type": "image",
+          "x": 76.0521128429198,
+          "y": 60.259519334795975,
+          "w": 26.615334494745305,
+          "h": 33.21916135335253,
+          "src": "git-intern/Grafiken/Endroboter.png",
+          "zIndex": 3,
+          "imageFit": "contain"
+        },
+        {
+          "id": "el-1787219258001-3-vku",
+          "type": "card",
+          "x": 1.85512377684924,
+          "y": 9.129772046836543,
+          "w": 39.206989066070555,
+          "h": 45.847606628756274,
+          "zIndex": 5,
+          "strokeColor": "#EF6C00",
+          "strokeWidth": 2.5,
+          "fillColor": "rgba(239,108,0,0.14)",
+          "titleHtml": "<p style=\"text-align:center\"><strong style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\">Hausaufgabe</strong></p><p style=\"text-align:center\"><strong style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\"><br></strong></p>",
+          "html": "<p style=\"text-align: justify;\"><b>Mathebuch:</b></p><p style=\"text-align: justify;\">Seite , Nummer</p>",
+          "stackLayer": "foreground"
+        }
+      ],
+      "transition": "zoom",
+      "revealEnabled": true,
+      "zoneRevealSteps": {},
+      "homeworkSubmissionRequired": true,
+      "hiddenLayoutZones": [
+        "bodyHtml"
+      ],
+      "id": "slide-1787219258001-tt2dx",
+      "order": 3
     }
-  ]
+  ],
+  "trash": [],
+  "showSlideNumbers": true,
+  "showSlideFooter": true,
+  "slideFooter": {}
 }
