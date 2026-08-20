@@ -560,7 +560,7 @@ function SolutionSlideClock({
         WebkitAppearance: 'none',
         fontWeight: 900,
         fontVariantNumeric: 'tabular-nums',
-        fontSize: { xs: '1.7rem', sm: '2.05rem' },
+        fontSize: { xs: '2.6rem', sm: '3.4rem' },
         lineHeight: 1,
         letterSpacing: -0.04,
         color,
@@ -4593,61 +4593,6 @@ export default function EntryTicketPage({
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.45, flexShrink: 0, minWidth: 24, ml: 'auto' }}>
-            {sessionStarted && !sessionDone && !studentReviewMode && !laptopCompanion ? (
-              <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.15, flexShrink: 0 }}>
-                <Tooltip title="Vorherige">
-                  <span>
-                    <IconButton
-                      size="small"
-                      onClick={goPrevious}
-                      aria-label="Vorherige Karte"
-                      disabled={currentIndex === 0}
-                      sx={{
-                        ...etSessionBtnSx,
-                        border: 'none',
-                        bgcolor: 'transparent',
-                        '&:hover': { bgcolor: 'rgba(69,90,100,0.08)' },
-                      }}
-                    >
-                      <SkipPreviousIcon sx={{ fontSize: 18 }} />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-                <Tooltip title="Nächste">
-                  <span>
-                    <IconButton
-                      size="small"
-                      onClick={goNext}
-                      aria-label="Nächste Karte"
-                      sx={{
-                        ...etSessionBtnSx,
-                        border: 'none',
-                        bgcolor: 'transparent',
-                        '&:hover': { bgcolor: 'rgba(69,90,100,0.08)' },
-                      }}
-                    >
-                      <SkipNextIcon sx={{ fontSize: 18 }} />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-                <Tooltip title="Zurücksetzen">
-                  <IconButton
-                    size="small"
-                    onClick={restart}
-                    aria-label="Zurücksetzen"
-                    sx={{
-                      ...etSessionBtnSx,
-                      border: 'none',
-                      bgcolor: 'transparent',
-                      color: '#90a4ae',
-                      '&:hover': { bgcolor: 'rgba(69,90,100,0.08)' },
-                    }}
-                  >
-                    <RestartAltIcon sx={{ fontSize: 18 }} />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-            ) : null}
             {sessionDone ? (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, mr: 0.15 }}>
                 <FormControlLabel
@@ -4994,6 +4939,7 @@ export default function EntryTicketPage({
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'flex-start',
+                      gap: 1,
                     }}
                   >
                     <AnimatePresence mode="wait" custom={cardSlideDir} initial={false}>
@@ -5019,22 +4965,23 @@ export default function EntryTicketPage({
                         sx={{
                           position: 'relative',
                           width: '100%',
+                          height: '33vh',
+                          minHeight: 180,
+                          maxHeight: 360,
                           borderRadius: 1.5,
                           bgcolor: '#ffffff',
                           boxShadow: '0 2px 10px rgba(55, 71, 79, 0.08)',
                           display: 'flex',
                           flexDirection: 'column',
-                          overflow: 'visible',
-                          minHeight: 0,
-                          height: 'auto',
+                          overflow: 'hidden',
                           flex: '0 0 auto',
                         }}
                       >
                           <Box
                             sx={{
-                              flex: '0 0 auto',
+                              flex: 1,
                               display: 'flex',
-                              alignItems: 'flex-start',
+                              alignItems: 'center',
                               justifyContent: 'center',
                               textAlign:
                                 currentTask &&
@@ -5042,9 +4989,9 @@ export default function EntryTicketPage({
                                   readEntryTicketCardLayout(currentTask.prompt) !== 'flow')
                                   ? 'left'
                                   : 'center',
-                              px: { xs: 1.1, sm: 1.6 },
-                              py: { xs: 0.55, sm: 0.75 },
-                              overflow: 'visible',
+                              px: { xs: 1.4, sm: 2 },
+                              py: { xs: 1, sm: 1.25 },
+                              overflow: 'auto',
                               minHeight: 0,
                             }}
                           >
@@ -5053,7 +5000,7 @@ export default function EntryTicketPage({
                               width: '100%',
                               height: 'auto',
                               minHeight: 0,
-                              overflow: embeddedPlay ? 'visible' : undefined,
+                              overflow: 'visible',
                               fontSize: embeddedPlay
                                 ? { xs: '1.28rem', sm: '1.52rem', md: '1.68rem' }
                                 : { xs: '1.56rem', sm: '1.92rem', md: '2.1rem' },
@@ -5063,22 +5010,18 @@ export default function EntryTicketPage({
                               whiteSpace: 'normal',
                               letterSpacing: -0.01,
                               ...richTextSx,
-                              ...(embeddedPlay
-                                ? {
-                                    '& img': {
-                                      maxHeight: 'min(36vh, 240px) !important',
-                                      width: 'auto !important',
-                                      maxWidth: '100% !important',
-                                      height: 'auto !important',
-                                      objectFit: 'contain',
-                                    },
-                                  }
-                                : {}),
+                              '& img': {
+                                maxHeight: '22vh !important',
+                                width: 'auto !important',
+                                maxWidth: '100% !important',
+                                height: 'auto !important',
+                                objectFit: 'contain',
+                              },
                             }}
                           >
                             {currentTask ? (
                               <EntryTicketRichHtml
-                                contain={Boolean(embeddedPlay)}
+                                contain
                                 value={currentTask.prompt}
                                 sx={{
                                   fontSize: 'inherit',
@@ -5092,6 +5035,70 @@ export default function EntryTicketPage({
                         </Box>
                       </Box>
                     </AnimatePresence>
+                    {!studentReviewMode && !laptopCompanion ? (
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 1.25,
+                          flexShrink: 0,
+                          py: 0.25,
+                        }}
+                      >
+                        <Tooltip title="Vorherige Karte">
+                          <span>
+                            <IconButton
+                              onClick={goPrevious}
+                              aria-label="Vorherige Karte"
+                              disabled={currentIndex === 0}
+                              sx={{
+                                width: 52,
+                                height: 52,
+                                bgcolor: '#fff',
+                                border: '1px solid #cfd8dc',
+                                color: '#455a64',
+                                '&:hover': { bgcolor: '#eceff1', borderColor: '#90a4ae' },
+                                '&.Mui-disabled': { color: '#b0bec5', bgcolor: '#f5f5f5' },
+                              }}
+                            >
+                              <SkipPreviousIcon sx={{ fontSize: 32 }} />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title="Nächste Karte">
+                          <span>
+                            <IconButton
+                              onClick={goNext}
+                              aria-label="Nächste Karte"
+                              sx={{
+                                width: 52,
+                                height: 52,
+                                bgcolor: '#455a64',
+                                color: '#fff',
+                                '&:hover': { bgcolor: '#37474f' },
+                              }}
+                            >
+                              <SkipNextIcon sx={{ fontSize: 32 }} />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title="Zurücksetzen">
+                          <IconButton
+                            onClick={restart}
+                            aria-label="Zurücksetzen"
+                            sx={{
+                              width: 40,
+                              height: 40,
+                              color: '#90a4ae',
+                              '&:hover': { bgcolor: 'rgba(69,90,100,0.08)', color: '#546e7a' },
+                            }}
+                          >
+                            <RestartAltIcon sx={{ fontSize: 22 }} />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    ) : null}
                   </Box>
                 ) : (
                   <Box
@@ -5109,7 +5116,7 @@ export default function EntryTicketPage({
                       borderRadius: 2,
                       px: { xs: 0.25, sm: 0.4 },
                       py: 0,
-                      pt: sessionDone && !studentReviewMode && !laptopCompanion ? 5.25 : 0,
+                      pt: sessionDone && !studentReviewMode && !laptopCompanion ? 7 : 0,
                       bgcolor: 'transparent',
                       overflow: 'hidden',
                       boxSizing: 'border-box',
