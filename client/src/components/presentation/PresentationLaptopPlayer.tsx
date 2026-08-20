@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Box, CircularProgress, Dialog, IconButton, Typography } from '@mui/material';
+import { Box, CircularProgress, Dialog, IconButton, Tooltip, Typography } from '@mui/material';
 import { ChevronLeft, ChevronRight, Close as CloseIcon, SelfImprovement as QuietWorkIcon } from '@mui/icons-material';
 import PresentationSlideView from './PresentationSlideView';
 import PresentationStrokesPreview from './PresentationStrokesPreview';
@@ -658,6 +658,12 @@ export default function PresentationLaptopPlayer({
             <PresentationStrokesPreview strokes={strokes} scale={displayScale} />
           </Box>
         </Box>
+        <PresentationQuietWorkOverlay quietWork={quietWork} />
+        {quietWork.pickerOpen && (
+          <Box sx={{ position: 'absolute', left: 8, bottom: 8, zIndex: 80, maxWidth: 'calc(100% - 16px)' }}>
+            <QuietWorkToolbarPanel quietWork={quietWork} />
+          </Box>
+        )}
       </Box>
 
       {!disableAnimations && maxReveal > 0 && currentSlide.revealEnabled !== false && (
@@ -752,6 +758,23 @@ export default function PresentationLaptopPlayer({
           <Box sx={{ ml: 0.35 }}>
             <PresentationSoundSplitControl variant="laptop" />
           </Box>
+          <Tooltip title={quietWork.running ? 'Stillarbeit beenden' : 'Stillarbeit'}>
+            <IconButton
+              size="small"
+              aria-label="Stillarbeit"
+              onClick={quietWork.togglePicker}
+              sx={{
+                ml: 0.25,
+                width: embedded ? 28 : 22,
+                height: embedded ? 28 : 22,
+                p: 0,
+                color: quietWork.running || quietWork.pickerOpen ? '#2E7D32' : 'text.secondary',
+                '&:hover': { bgcolor: 'rgba(0,0,0,0.06)' },
+              }}
+            >
+              <QuietWorkIcon sx={{ fontSize: embedded ? 18 : 16 }} />
+            </IconButton>
+          </Tooltip>
           {showNotes && (
             <Typography
               sx={{
