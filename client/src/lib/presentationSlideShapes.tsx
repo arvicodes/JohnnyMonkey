@@ -100,6 +100,25 @@ function visualAngleDeg(
   return (Math.atan2(dy, dx) * 180) / Math.PI;
 }
 
+/** Linie nur um die Spitzenlänge zurückziehen — nicht um Prozent der ganzen Strecke. */
+function shaftEnd(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  boxW: number,
+  boxH: number,
+  pullPx: number,
+): { x: number; y: number } {
+  const pxW = (Math.max(boxW, 0.01) / 100) * 1920;
+  const pxH = (Math.max(boxH, 0.01) / 100) * 1080;
+  const dxPx = ((x2 - x1) / 100) * pxW;
+  const dyPx = ((y2 - y1) / 100) * pxH;
+  const len = Math.hypot(dxPx, dyPx) || 1;
+  const t = Math.min(0.4, Math.max(0, pullPx / len));
+  return { x: x1 + (x2 - x1) * (1 - t), y: y1 + (y2 - y1) * (1 - t) };
+}
+
 export function SlideShapeSvg({
   kind,
   strokeColor,
@@ -130,9 +149,13 @@ export function SlideShapeSvg({
   const ends = rawEnds
     ? straightenConnector(rawEnds, boxW ?? 1, boxH ?? 1, Boolean(flipH), Boolean(flipV))
     : null;
+  const w = boxW ?? 1;
+  const h = boxH ?? 1;
+  const shaft = ends ? shaftEnd(ends.x1, ends.y1, ends.x2, ends.y2, w, h, 12) : null;
+  const headDeg = ends ? visualAngleDeg(ends.x1, ends.y1, ends.x2, ends.y2, w, h) : 0;
 
   const connectorArrow =
-    kind === 'arrow' && ends ? (
+    kind === 'arrow' && ends && shaft ? (
       <div
         style={{
           position: 'relative',
@@ -153,11 +176,11 @@ export function SlideShapeSvg({
           <line
             x1={ends.x1}
             y1={ends.y1}
-            x2={ends.x1 + (ends.x2 - ends.x1) * 0.9}
-            y2={ends.y1 + (ends.y2 - ends.y1) * 0.9}
+            x2={shaft.x}
+            y2={shaft.y}
             stroke={stroke}
             strokeWidth={Math.max(sw, 4)}
-            strokeLinecap="round"
+            strokeLinecap="butt"
             vectorEffect="non-scaling-stroke"
           />
         </svg>
@@ -170,14 +193,8 @@ export function SlideShapeSvg({
             position: 'absolute',
             left: `${ends.x2}%`,
             top: `${ends.y2}%`,
-            transform: `translate(-50%, -50%) rotate(${visualAngleDeg(
-              ends.x1,
-              ends.y1,
-              ends.x2,
-              ends.y2,
-              boxW ?? 1,
-              boxH ?? 1,
-            )}deg)`,
+            transformOrigin: '15px 8px',
+            transform: `translate(-15px, -8px) rotate(${headDeg}deg)`,
             overflow: 'visible',
             pointerEvents: 'none',
           }}
