@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Box, CircularProgress, Dialog, IconButton, Tooltip, Typography } from '@mui/material';
-import { ChevronLeft, ChevronRight, Close as CloseIcon, SelfImprovement as QuietWorkIcon } from '@mui/icons-material';
+import { ChevronLeft, ChevronRight, Close as CloseIcon, SelfImprovement as QuietWorkIcon, MusicNote as MusicGameIcon } from '@mui/icons-material';
 import PresentationSlideView from './PresentationSlideView';
 import PresentationStrokesPreview from './PresentationStrokesPreview';
 import {
@@ -32,6 +32,10 @@ import PresentationQuietWorkOverlay, {
   QuietWorkToolbarPanel,
   useQuietWorkController,
 } from './PresentationQuietWorkOverlay';
+import PresentationMusicGameOverlay, {
+  MusicGameToolbarPanel,
+  useMusicGameController,
+} from './PresentationMusicGameOverlay';
 import { tryPlayArmedStartSlideSound, unlockPresentationAudio } from '../../lib/presentationSound';
 
 const EMPTY_STROKES: PresentationStroke[] = [];
@@ -99,6 +103,7 @@ export default function PresentationLaptopPlayer({
   const [notesLightboxSrc, setNotesLightboxSrc] = useState<string | null>(null);
   const [entryTicketOpen, setEntryTicketOpen] = useState(false);
   const quietWork = useQuietWorkController();
+  const musicGame = useMusicGameController();
   const stageHostRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -297,6 +302,25 @@ export default function PresentationLaptopPlayer({
     const onKey = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
       if (entryTicketOpen) return;
+      if (quietWork.running || quietWork.finished) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          quietWork.stop();
+        }
+        return;
+      }
+      if (musicGame.running) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          musicGame.stop();
+        }
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          if (musicGame.frozen) musicGame.resume();
+          else musicGame.freeze();
+        }
+        return;
+      }
       if (handlePresentZoomHotkey(e, userZoom, applyUserZoom)) return;
       if (e.key === 'Escape') {
         if (notesLightboxSrc) {
@@ -338,7 +362,7 @@ export default function PresentationLaptopPlayer({
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [goNext, goPrev, onClose, slides, notesLightboxSrc, userZoom, entryTicketOpen, applyUserZoom]);
+  }, [goNext, goPrev, onClose, slides, notesLightboxSrc, userZoom, entryTicketOpen, applyUserZoom, quietWork, musicGame]);
 
   useEffect(() => {
     const host = rootRef.current;
@@ -659,9 +683,22 @@ export default function PresentationLaptopPlayer({
           </Box>
         </Box>
         <PresentationQuietWorkOverlay quietWork={quietWork} />
-        {quietWork.pickerOpen && (
-          <Box sx={{ position: 'absolute', left: 8, bottom: 8, zIndex: 80, maxWidth: 'calc(100% - 16px)' }}>
-            <QuietWorkToolbarPanel quietWork={quietWork} />
+        <PresentationMusicGameOverlay musicGame={musicGame} />
+        {(musicGame.pickerOpen || quietWork.pickerOpen) && (
+          <Box
+            sx={{
+              position: 'absolute',
+              left: 8,
+              bottom: 8,
+              zIndex: 80,
+              maxWidth: 'calc(100% - 16px)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 0.6,
+            }}
+          >
+            {musicGame.pickerOpen && <MusicGameToolbarPanel musicGame={musicGame} />}
+            {quietWork.pickerOpen && <QuietWorkToolbarPanel quietWork={quietWork} />}
           </Box>
         )}
       </Box>
@@ -773,6 +810,23 @@ export default function PresentationLaptopPlayer({
               }}
             >
               <QuietWorkIcon sx={{ fontSize: embedded ? 18 : 16 }} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title={musicGame.running ? 'Musikspiel beenden' : 'Musikspiel'}>
+            <IconButton
+              size="small"
+              aria-label="Musikspiel"
+              onClick={musicGame.togglePicker}
+              sx={{
+                ml: 0.15,
+                width: embedded ? 28 : 22,
+                height: embedded ? 28 : 22,
+                p: 0,
+                color: musicGame.running || musicGame.pickerOpen ? '#E65100' : 'text.secondary',
+                '&:hover': { bgcolor: 'rgba(0,0,0,0.06)' },
+              }}
+            >
+              <MusicGameIcon sx={{ fontSize: embedded ? 18 : 16 }} />
             </IconButton>
           </Tooltip>
           {showNotes && (

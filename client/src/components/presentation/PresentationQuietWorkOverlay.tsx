@@ -95,6 +95,7 @@ export function useQuietWorkController(): QuietWorkController {
 
   const start = useCallback(
     (minutes: number) => {
+      window.dispatchEvent(new Event('jm-stop-music-game'));
       const next = persist({ durationMin: minutes });
       const ms = Math.max(1, minutes) * 60 * 1000;
       endedRef.current = false;
@@ -127,6 +128,12 @@ export function useQuietWorkController(): QuietWorkController {
   }, [running, endsAt, stopAudio]);
 
   useEffect(() => () => stopQuietWorkAmbient(), []);
+
+  useEffect(() => {
+    const onForeignStop = () => stop();
+    window.addEventListener('jm-stop-quiet-work', onForeignStop);
+    return () => window.removeEventListener('jm-stop-quiet-work', onForeignStop);
+  }, [stop]);
 
   const setMusicOn = useCallback(
     (on: boolean) => {

@@ -14,6 +14,9 @@ import PresentationRandomStudentOverlay from '../components/presentation/Present
 import PresentationQuietWorkOverlay, {
   useQuietWorkController,
 } from '../components/presentation/PresentationQuietWorkOverlay';
+import PresentationMusicGameOverlay, {
+  useMusicGameController,
+} from '../components/presentation/PresentationMusicGameOverlay';
 import {
   ANNOTATIONS_FILENAME,
   PresentationAnnotations,
@@ -102,6 +105,7 @@ const PresentationPresentPage: React.FC = () => {
     freezePresentViewport(false);
   }, []);
   const quietWork = useQuietWorkController();
+  const musicGame = useMusicGameController();
   const [saveNamedLabel, setSaveNamedLabel] = useState('');
   const [displayScale, setDisplayScale] = useState(0.5);
   const [userZoom, setUserZoom] = useState(1);
@@ -810,6 +814,18 @@ const PresentationPresentPage: React.FC = () => {
         }
         return;
       }
+      if (musicGame.running) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          musicGame.stop();
+        }
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          if (musicGame.frozen) musicGame.resume();
+          else musicGame.freeze();
+        }
+        return;
+      }
       if (saveNamedOpen || clearInkOpen) {
         if (e.key === 'Escape') {
           e.preventDefault();
@@ -858,7 +874,7 @@ const PresentationPresentPage: React.FC = () => {
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [goNext, goPrev, drawActive, groupId, lessonPath, navigate, planMode, slides, saveNamedOpen, clearInkOpen, userZoom, entryTicketOpen, applyUserZoom, quietWork]);
+  }, [goNext, goPrev, drawActive, groupId, lessonPath, navigate, planMode, slides, saveNamedOpen, clearInkOpen, userZoom, entryTicketOpen, applyUserZoom, quietWork, musicGame]);
 
   // Fokus auf die Bühne, damit Pfeiltasten sofort greifen
   useEffect(() => {
@@ -1010,7 +1026,7 @@ const PresentationPresentPage: React.FC = () => {
   };
 
   const onTouchStart = (e: React.TouchEvent) => {
-    if (drawActive || entryTicketOpen || quietWork.running || quietWork.finished || userZoomRef.current > 1.001) return;
+    if (drawActive || entryTicketOpen || quietWork.running || quietWork.finished || musicGame.running || userZoomRef.current > 1.001) return;
     const t = e.touches[0];
     if (!t) return;
     if ((t as Touch & { touchType?: string }).touchType === 'stylus') {
@@ -1045,6 +1061,7 @@ const PresentationPresentPage: React.FC = () => {
   const handleSlideTap = (e: React.MouseEvent) => {
     if (drawActive) return;
     if (entryTicketOpen) return;
+    if (quietWork.running || quietWork.finished || musicGame.running) return;
     if (
       tryHandleLessonEntryTicketLinkClick(e, {
         lessonPath,
@@ -1365,9 +1382,11 @@ const PresentationPresentPage: React.FC = () => {
         zoom={userZoom}
         onZoomChange={applyUserZoom}
         quietWork={quietWork}
+        musicGame={musicGame}
       />
 
       <PresentationQuietWorkOverlay quietWork={quietWork} />
+      <PresentationMusicGameOverlay musicGame={musicGame} />
 
       <PresentationRandomStudentOverlay
         text={revealText}

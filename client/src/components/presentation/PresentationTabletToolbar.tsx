@@ -17,6 +17,7 @@ import {
   Undo as UndoIcon,
   DeleteSweep as DeleteSweepIcon,
   SelfImprovement as QuietWorkIcon,
+  MusicNote as MusicGameIcon,
   Close as CloseIcon,
 } from '@mui/icons-material';
 import {
@@ -34,6 +35,10 @@ import {
   QuietWorkToolbarPanel,
   type QuietWorkController,
 } from './PresentationQuietWorkOverlay';
+import {
+  MusicGameToolbarPanel,
+  type MusicGameController,
+} from './PresentationMusicGameOverlay';
 
 const MICRO_SX = {
   width: 24,
@@ -170,6 +175,7 @@ interface PresentationTabletToolbarProps {
   zoom?: number;
   onZoomChange?: (zoom: number) => void;
   quietWork?: QuietWorkController;
+  musicGame?: MusicGameController;
 }
 
 export default function PresentationTabletToolbar({
@@ -206,6 +212,7 @@ export default function PresentationTabletToolbar({
   zoom,
   onZoomChange,
   quietWork,
+  musicGame,
 }: PresentationTabletToolbarProps) {
   const showColors =
     !readOnly &&
@@ -267,6 +274,7 @@ export default function PresentationTabletToolbar({
       onPointerUp={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
+      {musicGame?.pickerOpen && <MusicGameToolbarPanel musicGame={musicGame} />}
       {quietWork?.pickerOpen && <QuietWorkToolbarPanel quietWork={quietWork} />}
 
       {showNumberRanges && onPickRandomNumber && (
@@ -596,6 +604,16 @@ export default function PresentationTabletToolbar({
             onClick={quietWork.togglePicker}
           >
             <QuietWorkIcon sx={{ fontSize: 16 }} />
+          </ToolBtn>
+        )}
+
+        {musicGame && (
+          <ToolBtn
+            title={musicGame.running ? 'Musikspiel beenden' : 'Musikspiel'}
+            active={musicGame.running || musicGame.pickerOpen}
+            onClick={musicGame.togglePicker}
+          >
+            <MusicGameIcon sx={{ fontSize: 16 }} />
           </ToolBtn>
         )}
 
