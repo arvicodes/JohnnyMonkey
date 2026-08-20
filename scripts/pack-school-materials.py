@@ -161,13 +161,20 @@ def stage_paths(mode: str) -> list[tuple[Path, Path]]:
   if mode == "all":
     return [(JM, Path("."))]
   if mode == "full":
+    # Unterrichtsordner (ohne die sehr großen Archive Erasmus/Wall-of-fame/Zwischenspeicher)
     items: list[tuple[Path, Path]] = []
-    mathe = JM / "Mathe"
-    if mathe.exists():
-      items.append((mathe, Path("Mathe")))
-    schnell = JM / "Lehrer-Schnellnotizen"
-    if schnell.exists():
-      items.append((schnell, Path("Lehrer-Schnellnotizen")))
+    for name in (
+      "Mathe",
+      "Informatik",
+      "Lehrer-Schnellnotizen",
+      "Mini-Projekte",
+      "Grafiken",
+      "Ankündigungen & Briefe",
+      "Folien - ALLE - BACKUP",
+    ):
+      src = JM / name
+      if src.exists():
+        items.append((src, Path(name)))
     return items
   # default: dirty lessons only
   return [(lesson, lesson.relative_to(JM)) for lesson in sorted(changed_lesson_dirs())]
