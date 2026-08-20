@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import {
   DEFAULT_JOHNNY_PERIOD_TIMES,
   getBerlinNow,
@@ -98,10 +98,25 @@ const upload = multer({
   },
 });
 
-async function getTeacherIdFromLogin(req: Request): Promise<string | null> {
-  const loginCode = req.headers['x-login-code'] as string;
+async function getUserByLoginHeader(
+  req: Request,
+): Promise<{ id: string; role: string } | null> {
+  const raw = req.headers['x-login-code'];
+  const loginCode = typeof raw === 'string' ? raw.trim() : '';
   if (!loginCode) return null;
-  const user = await prisma.user.findUnique({ where: { loginCode } });
+  const exact = await prisma.user.findUnique({
+    where: { loginCode },
+    select: { id: true, role: true },
+  });
+  if (exact) return exact;
+  const rows = await prisma.$queryRaw<Array<{ id: string; role: string }>>(
+    Prisma.sql`SELECT id, role FROM User WHERE lower(loginCode) = lower(${loginCode}) LIMIT 1`,
+  );
+  return rows[0] ?? null;
+}
+
+async function getTeacherIdFromLogin(req: Request): Promise<string | null> {
+  const user = await getUserByLoginHeader(req);
   if (!user || user.role !== 'TEACHER') return null;
   return user.id;
 }
@@ -330,11 +345,12 @@ router.get('/uploads/:id/file', async (req: Request, res: Response) => {
 
 router.get('/active-lessons/student', async (req: Request, res: Response) => {
   try {
-    const loginCode = req.headers['x-login-code'] as string;
-    if (!loginCode) return res.status(401).json({ error: 'Nicht autorisiert' });
-
+    const studentAuth = await getUserByLoginHeader(req);
+    if (!studentAuth || studentAuth.role !== 'STUDENT') {
+      return res.status(401).json({ error: 'Nicht autorisiert' });
+    }
     const student = await prisma.user.findUnique({
-      where: { loginCode },
+      where: { id: studentAuth.id },
       include: { learningGroups: { select: { id: true } } },
     });
     if (!student || student.role !== 'STUDENT') {
@@ -395,11 +411,12 @@ router.get('/active-lessons/teacher', async (req: Request, res: Response) => {
  */
 router.get('/released-lessons/student', async (req: Request, res: Response) => {
   try {
-    const loginCode = req.headers['x-login-code'] as string;
-    if (!loginCode) return res.status(401).json({ error: 'Nicht autorisiert' });
-
+    const studentAuth = await getUserByLoginHeader(req);
+    if (!studentAuth || studentAuth.role !== 'STUDENT') {
+      return res.status(401).json({ error: 'Nicht autorisiert' });
+    }
     const student = await prisma.user.findUnique({
-      where: { loginCode },
+      where: { id: studentAuth.id },
       include: { learningGroups: { select: { id: true } } },
     });
     if (!student || student.role !== 'STUDENT') {

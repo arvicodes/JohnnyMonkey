@@ -112,8 +112,8 @@ function AppContent() {
           localStorage.setItem('studentId', data.user.id);
         }
         localStorage.setItem('userRole', data.user.role || '');
-        localStorage.setItem('loginCode', loginCode); // Speichere den Login-Code
-        localStorage.setItem('userName', data.user.name); // Speichere den Benutzernamen
+        localStorage.setItem('loginCode', data.user.loginCode || loginCode);
+        localStorage.setItem('userName', data.user.name);
         
         setShowSuccessMessage(true);
         setTimeout(() => setShowSuccessMessage(false), 3000); // Hide after 3 seconds

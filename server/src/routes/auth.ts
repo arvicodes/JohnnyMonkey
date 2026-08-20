@@ -118,6 +118,7 @@ router.post('/login', async (req: Request, res: Response) => {
         id: user.id,
         name: user.name,
         role: user.role,
+        loginCode: user.loginCode,
         groups: groups
       }
     });
