@@ -23,6 +23,7 @@ import {
   Check as CheckIcon,
   Create as CreateIcon,
   History as HistoryIcon,
+  Pause as PauseIcon,
   PlayArrow as PlayArrowIcon,
   Print as PrintIcon,
   RestartAlt as RestartAltIcon,
@@ -3523,11 +3524,14 @@ export default function EntryTicketPage({
   startSessionRef.current = startSession;
 
   const startOrResume = () => {
-    if (!sessionDone) return;
-    if (solutionSecondsLeft <= 0) {
-      setSolutionSecondsLeft(solutionDurationSecRef.current);
+    if (sessionDone) {
+      if (solutionSecondsLeft <= 0) {
+        setSolutionSecondsLeft(solutionDurationSecRef.current);
+      }
+      setSolutionRunning(true);
+      return;
     }
-    setSolutionRunning(true);
+    setIsRunning(true);
   };
 
   const printLessonsAvailable = useMemo(() => {
@@ -3678,7 +3682,11 @@ export default function EntryTicketPage({
   }, []);
 
   const pause = () => {
-    if (sessionDone) setSolutionRunning(false);
+    if (sessionDone) {
+      setSolutionRunning(false);
+      return;
+    }
+    setIsRunning(false);
   };
 
   const replaceTaskAtIndex = (index: number) => {
@@ -4001,7 +4009,8 @@ export default function EntryTicketPage({
           else startOrResume();
           return;
         }
-        goNext();
+        if (isRunning) pause();
+        else startOrResume();
       }
     };
 
@@ -4012,6 +4021,7 @@ export default function EntryTicketPage({
     goPrevious,
     handleBack,
     isClassModerator,
+    isRunning,
     isTeacher,
     markEntryTicketDone,
     sessionDone,
@@ -4593,6 +4603,131 @@ export default function EntryTicketPage({
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.45, flexShrink: 0, minWidth: 24, ml: 'auto' }}>
+            {sessionStarted && !sessionDone && !studentReviewMode && !laptopCompanion ? (
+              <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
+                <Tooltip title="Sekunden pro Karte">
+                  <TextField
+                    size="small"
+                    type="text"
+                    inputMode="numeric"
+                    value={durationDraft}
+                    onChange={(e) => setDurationDraft(e.target.value.replace(/[^\d]/g, ''))}
+                    onBlur={commitDurationDraft}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        commitDurationDraft();
+                        (e.target as HTMLInputElement).blur();
+                      }
+                      if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        applySlideDurationSec(slideDurationSec + 1);
+                      }
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        applySlideDurationSec(slideDurationSec - 1);
+                      }
+                    }}
+                    inputProps={{
+                      'aria-label': 'Sekunden pro Karte',
+                      inputMode: 'numeric',
+                      pattern: '[0-9]*',
+                    }}
+                    sx={{
+                      width: 52,
+                      '& .MuiInputBase-input': {
+                        py: 0.45,
+                        px: 0.5,
+                        fontSize: '0.92rem',
+                        fontWeight: 800,
+                        textAlign: 'center',
+                        fontVariantNumeric: 'tabular-nums',
+                        color: '#455a64',
+                      },
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 1.5,
+                        bgcolor: '#fff',
+                        height: 32,
+                      },
+                      '& .MuiOutlinedInput-notchedOutline': { borderColor: '#cfd8dc' },
+                    }}
+                  />
+                </Tooltip>
+                <Typography sx={{ fontSize: '0.72rem', fontWeight: 800, color: '#90a4ae', mr: 0.15 }}>
+                  s
+                </Typography>
+                <Tooltip title="Vorherige">
+                  <span>
+                    <IconButton
+                      size="small"
+                      onClick={goPrevious}
+                      aria-label="Vorherige Karte"
+                      disabled={currentIndex === 0}
+                      sx={{ ...etSessionBtnSx, width: 32, height: 32, minWidth: 32 }}
+                    >
+                      <SkipPreviousIcon sx={{ fontSize: 22 }} />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                {isRunning ? (
+                  <Tooltip title="Stop">
+                    <IconButton
+                      size="small"
+                      onClick={pause}
+                      aria-label="Stop"
+                      sx={{
+                        width: 32,
+                        height: 32,
+                        bgcolor: '#eceff1',
+                        color: '#455a64',
+                        '&:hover': { bgcolor: '#cfd8dc' },
+                      }}
+                    >
+                      <PauseIcon sx={{ fontSize: 20 }} />
+                    </IconButton>
+                  </Tooltip>
+                ) : (
+                  <Tooltip title="Start">
+                    <IconButton
+                      size="small"
+                      onClick={startOrResume}
+                      aria-label="Start"
+                      sx={{
+                        width: 32,
+                        height: 32,
+                        bgcolor: '#455a64',
+                        color: '#fff',
+                        '&:hover': { bgcolor: '#37474f' },
+                      }}
+                    >
+                      <PlayArrowIcon sx={{ fontSize: 22 }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                <Tooltip title="Nächste">
+                  <span>
+                    <IconButton
+                      size="small"
+                      onClick={goNext}
+                      aria-label="Nächste Karte"
+                      sx={{ ...etSessionBtnSx, width: 32, height: 32, minWidth: 32 }}
+                    >
+                      <SkipNextIcon sx={{ fontSize: 22 }} />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                <Tooltip title="Zurücksetzen">
+                  <IconButton
+                    size="small"
+                    onClick={restart}
+                    aria-label="Zurücksetzen"
+                    sx={{ ...etSessionBtnSx, width: 32, height: 32, minWidth: 32, color: '#90a4ae', border: 'none', bgcolor: 'transparent' }}
+                  >
+                    <RestartAltIcon sx={{ fontSize: 20 }} />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            ) : null}
             {sessionDone ? (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, mr: 0.15 }}>
                 <FormControlLabel
@@ -4977,6 +5112,24 @@ export default function EntryTicketPage({
                           flex: '0 0 auto',
                         }}
                       >
+                        <Box
+                          sx={{
+                            height: 5,
+                            width: '100%',
+                            bgcolor: 'rgba(120,144,156,0.16)',
+                            flexShrink: 0,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              height: '100%',
+                              width: `${(secondsLeft / Math.max(slideDurationSec, 1)) * 100}%`,
+                              bgcolor: secondsLeft <= 5 ? '#ff7043' : '#78909c',
+                              transition: 'width 0.95s linear, background-color 0.25s ease',
+                            }}
+                          />
+                        </Box>
                           <Box
                             sx={{
                               flex: 1,
@@ -5035,70 +5188,6 @@ export default function EntryTicketPage({
                         </Box>
                       </Box>
                     </AnimatePresence>
-                    {!studentReviewMode && !laptopCompanion ? (
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 1.25,
-                          flexShrink: 0,
-                          py: 0.25,
-                        }}
-                      >
-                        <Tooltip title="Vorherige Karte">
-                          <span>
-                            <IconButton
-                              onClick={goPrevious}
-                              aria-label="Vorherige Karte"
-                              disabled={currentIndex === 0}
-                              sx={{
-                                width: 52,
-                                height: 52,
-                                bgcolor: '#fff',
-                                border: '1px solid #cfd8dc',
-                                color: '#455a64',
-                                '&:hover': { bgcolor: '#eceff1', borderColor: '#90a4ae' },
-                                '&.Mui-disabled': { color: '#b0bec5', bgcolor: '#f5f5f5' },
-                              }}
-                            >
-                              <SkipPreviousIcon sx={{ fontSize: 32 }} />
-                            </IconButton>
-                          </span>
-                        </Tooltip>
-                        <Tooltip title="Nächste Karte">
-                          <span>
-                            <IconButton
-                              onClick={goNext}
-                              aria-label="Nächste Karte"
-                              sx={{
-                                width: 52,
-                                height: 52,
-                                bgcolor: '#455a64',
-                                color: '#fff',
-                                '&:hover': { bgcolor: '#37474f' },
-                              }}
-                            >
-                              <SkipNextIcon sx={{ fontSize: 32 }} />
-                            </IconButton>
-                          </span>
-                        </Tooltip>
-                        <Tooltip title="Zurücksetzen">
-                          <IconButton
-                            onClick={restart}
-                            aria-label="Zurücksetzen"
-                            sx={{
-                              width: 40,
-                              height: 40,
-                              color: '#90a4ae',
-                              '&:hover': { bgcolor: 'rgba(69,90,100,0.08)', color: '#546e7a' },
-                            }}
-                          >
-                            <RestartAltIcon sx={{ fontSize: 22 }} />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    ) : null}
                   </Box>
                 ) : (
                   <Box
@@ -5126,7 +5215,17 @@ export default function EntryTicketPage({
                     }}
                   >
                     {sessionDone && !studentReviewMode && !laptopCompanion ? (
-                      <Box sx={{ position: 'absolute', top: 2, right: 8, zIndex: 2 }}>
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: 2,
+                          right: 8,
+                          zIndex: 2,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                        }}
+                      >
                         <SolutionSlideClock
                           secondsLeft={solutionSecondsLeft}
                           running={solutionRunning}
@@ -5135,6 +5234,57 @@ export default function EntryTicketPage({
                             else startOrResume();
                           }}
                         />
+                        <Tooltip title="Minuten auf der Lösungsfolie">
+                          <TextField
+                            size="small"
+                            type="text"
+                            inputMode="numeric"
+                            value={solutionDurationMinDraft}
+                            onChange={(e) => setSolutionDurationMinDraft(e.target.value.replace(/[^\d]/g, ''))}
+                            onBlur={commitSolutionDurationDraft}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                commitSolutionDurationDraft();
+                                (e.target as HTMLInputElement).blur();
+                              }
+                              if (e.key === 'ArrowUp') {
+                                e.preventDefault();
+                                applySolutionDurationSec(solutionDurationSec + 60);
+                              }
+                              if (e.key === 'ArrowDown') {
+                                e.preventDefault();
+                                applySolutionDurationSec(solutionDurationSec - 60);
+                              }
+                            }}
+                            inputProps={{
+                              'aria-label': 'Minuten auf der Lösungsfolie',
+                              inputMode: 'numeric',
+                              pattern: '[0-9]*',
+                            }}
+                            sx={{
+                              width: 44,
+                              '& .MuiInputBase-input': {
+                                py: 0.4,
+                                px: 0.4,
+                                fontSize: '1.05rem',
+                                fontWeight: 800,
+                                textAlign: 'center',
+                                fontVariantNumeric: 'tabular-nums',
+                                color: '#455a64',
+                              },
+                              '& .MuiOutlinedInput-root': {
+                                borderRadius: 1.5,
+                                bgcolor: '#fff',
+                                height: 36,
+                              },
+                              '& .MuiOutlinedInput-notchedOutline': { borderColor: '#cfd8dc' },
+                            }}
+                          />
+                        </Tooltip>
+                        <Typography sx={{ fontSize: '0.85rem', fontWeight: 800, color: '#90a4ae' }}>
+                          min
+                        </Typography>
                       </Box>
                     ) : null}
                     <Box
