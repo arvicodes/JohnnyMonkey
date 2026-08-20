@@ -61,22 +61,43 @@ export function shapeSupportsText(el: Pick<SlideElement, 'type' | 'shapeKind'>):
 }
 
 function connectorEnds(flipH?: boolean, flipV?: boolean): { x1: number; y1: number; x2: number; y2: number } {
-  const x1 = flipH ? 92 : 8;
-  const y1 = flipV ? 92 : 8;
-  const x2 = flipH ? 8 : 92;
-  const y2 = flipV ? 8 : 92;
+  const x1 = flipH ? 94 : 6;
+  const y1 = flipV ? 94 : 6;
+  const x2 = flipH ? 6 : 94;
+  const y2 = flipV ? 6 : 94;
   return { x1, y1, x2, y2 };
 }
 
-function arrowHeadPoints(x1: number, y1: number, x2: number, y2: number): string {
-  const angle = Math.atan2(y2 - y1, x2 - x1);
-  const size = 11;
-  const spread = Math.PI * 0.78;
-  const ax = x2 + Math.cos(angle + spread) * size;
-  const ay = y2 + Math.sin(angle + spread) * size;
-  const bx = x2 + Math.cos(angle - spread) * size;
-  const by = y2 + Math.sin(angle - spread) * size;
-  return `${ax},${ay} ${x2},${y2} ${bx},${by}`;
+/** Achsennahe Verbinder: Mitte der Box, nicht die Diagonale (sonst wird die Spitze gequetscht). */
+function straightenConnector(
+  ends: { x1: number; y1: number; x2: number; y2: number },
+  boxW: number,
+  boxH: number,
+  flipH: boolean,
+  flipV: boolean,
+): { x1: number; y1: number; x2: number; y2: number } {
+  const w = Math.max(boxW, 0.01);
+  const h = Math.max(boxH, 0.01);
+  if (w / h < 0.28) {
+    return { x1: 50, y1: flipV ? 94 : 6, x2: 50, y2: flipV ? 6 : 94 };
+  }
+  if (h / w < 0.28) {
+    return { x1: flipH ? 94 : 6, y1: 50, x2: flipH ? 6 : 94, y2: 50 };
+  }
+  return ends;
+}
+
+function visualAngleDeg(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  boxW: number,
+  boxH: number,
+): number {
+  const dx = (x2 - x1) * Math.max(boxW, 0.01) * 16;
+  const dy = (y2 - y1) * Math.max(boxH, 0.01) * 9;
+  return (Math.atan2(dy, dx) * 180) / Math.PI;
 }
 
 export function SlideShapeSvg({
@@ -86,6 +107,8 @@ export function SlideShapeSvg({
   strokeWidth = 3,
   flipH,
   flipV,
+  boxW,
+  boxH,
   style,
 }: {
   kind: PresentationShapeKind;
@@ -94,6 +117,8 @@ export function SlideShapeSvg({
   strokeWidth?: number;
   flipH?: boolean;
   flipV?: boolean;
+  boxW?: number;
+  boxH?: number;
   style?: React.CSSProperties;
 }) {
   const stroke = strokeColor || JOHNNY_PRESENTATION.primary;
@@ -101,7 +126,68 @@ export function SlideShapeSvg({
     fillColor && fillColor !== 'transparent' && fillColor !== 'none' ? fillColor : 'none';
   const sw = Math.max(1.5, Math.min(12, strokeWidth));
   const connector = flipH != null || flipV != null;
-  const ends = connector ? connectorEnds(Boolean(flipH), Boolean(flipV)) : null;
+  const rawEnds = connector ? connectorEnds(Boolean(flipH), Boolean(flipV)) : null;
+  const ends = rawEnds
+    ? straightenConnector(rawEnds, boxW ?? 1, boxH ?? 1, Boolean(flipH), Boolean(flipV))
+    : null;
+
+  const connectorArrow =
+    kind === 'arrow' && ends ? (
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '100%',
+          overflow: 'visible',
+          ...style,
+        }}
+      >
+        <svg
+          viewBox="0 0 100 100"
+          width="100%"
+          height="100%"
+          preserveAspectRatio="none"
+          style={{ display: 'block', overflow: 'visible' }}
+          aria-hidden
+        >
+          <line
+            x1={ends.x1}
+            y1={ends.y1}
+            x2={ends.x1 + (ends.x2 - ends.x1) * 0.9}
+            y2={ends.y1 + (ends.y2 - ends.y1) * 0.9}
+            stroke={stroke}
+            strokeWidth={Math.max(sw, 4)}
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          aria-hidden
+          style={{
+            position: 'absolute',
+            left: `${ends.x2}%`,
+            top: `${ends.y2}%`,
+            transform: `translate(-50%, -50%) rotate(${visualAngleDeg(
+              ends.x1,
+              ends.y1,
+              ends.x2,
+              ends.y2,
+              boxW ?? 1,
+              boxH ?? 1,
+            )}deg)`,
+            overflow: 'visible',
+            pointerEvents: 'none',
+          }}
+        >
+          <polygon points="1,2 15,8 1,14" fill={stroke} />
+        </svg>
+      </div>
+    ) : null;
+
+  if (connectorArrow) return connectorArrow;
 
   return (
     <svg
@@ -119,26 +205,13 @@ export function SlideShapeSvg({
           x2={ends.x2}
           y2={ends.y2}
           stroke={stroke}
-          strokeWidth={sw}
+          strokeWidth={Math.max(sw, 4)}
           strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
         />
       )}
       {kind === 'line' && !ends && (
         <line x1="8" y1="50" x2="92" y2="50" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
-      )}
-      {kind === 'arrow' && ends && (
-        <>
-          <line
-            x1={ends.x1}
-            y1={ends.y1}
-            x2={ends.x2}
-            y2={ends.y2}
-            stroke={stroke}
-            strokeWidth={sw}
-            strokeLinecap="round"
-          />
-          <polygon points={arrowHeadPoints(ends.x1, ends.y1, ends.x2, ends.y2)} fill={stroke} />
-        </>
       )}
       {kind === 'arrow' && !ends && (
         <>

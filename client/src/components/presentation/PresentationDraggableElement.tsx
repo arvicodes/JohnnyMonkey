@@ -1094,6 +1094,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             strokeWidth={element.strokeWidth ?? 3}
             flipH={element.flipH}
             flipV={element.flipV}
+            boxW={element.w}
+            boxH={element.h}
           />
           {isShapeBox &&
             (editable && !animationEditMode && !exportSnapshot ? (
