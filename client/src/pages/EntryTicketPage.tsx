@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import {
   Add as AddIcon,
+  Remove as RemoveIcon,
   Check as CheckIcon,
   Create as CreateIcon,
   History as HistoryIcon,
@@ -350,7 +351,7 @@ const MATHE_LK_SOLUTION_DURATION_SEC = 180;
 const SOLUTION_DURATION_STORAGE_KEY = 'entry-ticket-solution-duration-sec-v2';
 const SOLUTION_DURATION_KLASSE5_KEY = 'entry-ticket-solution-duration-sec-klasse-5';
 const SOLUTION_DURATION_MATHE_LK_KEY = 'entry-ticket-solution-duration-sec-mathe-lk';
-const MIN_SOLUTION_DURATION_SEC = 15;
+const MIN_SOLUTION_DURATION_SEC = 5;
 const MAX_SOLUTION_DURATION_SEC = 15 * 60;
 
 function simpleTaskHash(s: string): string {
@@ -2099,6 +2100,8 @@ export default function EntryTicketPage({
     typeof window !== 'undefined' ? loadSolutionDurationSec() : DEFAULT_SOLUTION_DURATION_SEC,
   );
   const [solutionRunning, setSolutionRunning] = useState(false);
+  const solutionRunningRef = useRef(solutionRunning);
+  solutionRunningRef.current = solutionRunning;
   const [isRunning, setIsRunning] = useState(false);
   const [showSolutions, setShowSolutions] = useState(() => Boolean(initialRoute.review));
   const [teacherNotes, setTeacherNotes] = useState('');
@@ -2749,8 +2752,8 @@ export default function EntryTicketPage({
     setSolutionDurationSec(next);
     setSolutionDurationDraft(String(next));
     solutionDurationSecRef.current = next;
-    if (!solutionRunning) setSolutionSecondsLeft(next);
-  }, [durationProfile, solutionRunning]);
+    if (!solutionRunningRef.current) setSolutionSecondsLeft(next);
+  }, [durationProfile]);
   const slideDurationProfileRef = useRef<boolean | null>(null);
   useEffect(() => {
     if (slideDurationProfileRef.current === isKlasse5Set) return;
@@ -4567,14 +4570,13 @@ export default function EntryTicketPage({
               minWidth: 0,
             }}
           >
-            {!sessionStarted ? (
             <Box
               title="Aktuelles Motiv (wie bei den Schüler:innen)"
               sx={{
-                width: 20,
-                height: 20,
+                width: sessionStarted ? 32 : 20,
+                height: sessionStarted ? 32 : 20,
                 flexShrink: 0,
-                borderRadius: 0.5,
+                borderRadius: sessionStarted ? 1 : 0.5,
                 overflow: 'hidden',
                 border: '1px solid',
                 borderColor: 'rgba(30, 136, 229, 0.28)',
@@ -4588,7 +4590,6 @@ export default function EntryTicketPage({
                 sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
               />
             </Box>
-            ) : null}
             {!sessionStarted ? (
             <Typography
               sx={{
@@ -4734,6 +4735,116 @@ export default function EntryTicketPage({
             ) : null}
             {sessionDone ? (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, mr: 0.15 }}>
+                {!studentReviewMode && !laptopCompanion ? (
+                  <Box
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.15, mr: 0.25 }}
+                  >
+                    <Tooltip title="15 Sekunden weniger">
+                      <span>
+                        <IconButton
+                          size="small"
+                          onClick={() => applySolutionDurationSec(solutionDurationSec - 15)}
+                          aria-label="Lösungszeit um 15 Sekunden verringern"
+                          sx={{ ...etSessionBtnSx, width: 28, height: 28, minWidth: 28 }}
+                        >
+                          <RemoveIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title="Sekunden auf der Lösungsfolie">
+                      <span>
+                        <TextField
+                          size="small"
+                          type="text"
+                          inputMode="numeric"
+                          value={solutionDurationDraft}
+                          onChange={(e) => setSolutionDurationDraft(e.target.value.replace(/[^\d]/g, ''))}
+                          onBlur={commitSolutionDurationDraft}
+                          onKeyDown={(e) => {
+                            e.stopPropagation();
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              commitSolutionDurationDraft();
+                              (e.target as HTMLInputElement).blur();
+                            }
+                            if (e.key === 'ArrowUp') {
+                              e.preventDefault();
+                              applySolutionDurationSec(solutionDurationSec + 15);
+                            }
+                            if (e.key === 'ArrowDown') {
+                              e.preventDefault();
+                              applySolutionDurationSec(solutionDurationSec - 15);
+                            }
+                          }}
+                          inputProps={{
+                            'aria-label': 'Sekunden auf der Lösungsfolie',
+                            inputMode: 'numeric',
+                            pattern: '[0-9]*',
+                          }}
+                          sx={{
+                            width: 52,
+                            '& .MuiInputBase-input': {
+                              py: 0.45,
+                              px: 0.5,
+                              fontSize: '0.92rem',
+                              fontWeight: 800,
+                              textAlign: 'center',
+                              fontVariantNumeric: 'tabular-nums',
+                              color: '#455a64',
+                            },
+                            '& .MuiOutlinedInput-root': {
+                              borderRadius: 1.5,
+                              bgcolor: '#fff',
+                              height: 32,
+                            },
+                            '& .MuiOutlinedInput-notchedOutline': { borderColor: '#cfd8dc' },
+                          }}
+                        />
+                      </span>
+                    </Tooltip>
+                    <Typography sx={{ fontSize: '0.72rem', fontWeight: 800, color: '#90a4ae', mr: 0.1 }}>
+                      s
+                    </Typography>
+                    <Tooltip title="15 Sekunden mehr">
+                      <span>
+                        <IconButton
+                          size="small"
+                          onClick={() => applySolutionDurationSec(solutionDurationSec + 15)}
+                          aria-label="Lösungszeit um 15 Sekunden erhöhen"
+                          sx={{ ...etSessionBtnSx, width: 28, height: 28, minWidth: 28 }}
+                        >
+                          <AddIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                    {solutionRunning ? (
+                      <Tooltip title="Lösungsuhr pausieren">
+                        <IconButton
+                          size="small"
+                          onClick={pause}
+                          aria-label="Lösungsuhr pausieren"
+                          sx={{ ...etSessionBtnSx, width: 28, height: 28, minWidth: 28 }}
+                        >
+                          <PauseIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </Tooltip>
+                    ) : (
+                      <Tooltip title={solutionSecondsLeft <= 0 ? 'Lösungsuhr neu starten' : 'Lösungsuhr starten'}>
+                        <IconButton
+                          size="small"
+                          onClick={startOrResume}
+                          aria-label={solutionSecondsLeft <= 0 ? 'Lösungsuhr neu starten' : 'Lösungsuhr starten'}
+                          sx={{ ...etSessionBtnSx, width: 28, height: 28, minWidth: 28 }}
+                        >
+                          <PlayArrowIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </Box>
+                ) : null}
                 <FormControlLabel
                   control={
                     <Switch
@@ -5225,71 +5336,13 @@ export default function EntryTicketPage({
                           top: 2,
                           right: 8,
                           zIndex: 2,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1,
+                          pointerEvents: 'none',
                         }}
                       >
                         <SolutionSlideClock
                           secondsLeft={solutionSecondsLeft}
                           running={solutionRunning}
-                          onToggle={() => {
-                            if (solutionRunning) pause();
-                            else startOrResume();
-                          }}
                         />
-                        <Tooltip title="Sekunden auf der Lösungsfolie">
-                          <TextField
-                            size="small"
-                            type="text"
-                            inputMode="numeric"
-                            value={solutionDurationDraft}
-                            onChange={(e) => setSolutionDurationDraft(e.target.value.replace(/[^\d]/g, ''))}
-                            onBlur={commitSolutionDurationDraft}
-                            onKeyDown={(e) => {
-                              e.stopPropagation();
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                commitSolutionDurationDraft();
-                                (e.target as HTMLInputElement).blur();
-                              }
-                              if (e.key === 'ArrowUp') {
-                                e.preventDefault();
-                                applySolutionDurationSec(solutionDurationSec + 15);
-                              }
-                              if (e.key === 'ArrowDown') {
-                                e.preventDefault();
-                                applySolutionDurationSec(solutionDurationSec - 15);
-                              }
-                            }}
-                            inputProps={{
-                              'aria-label': 'Sekunden auf der Lösungsfolie',
-                              inputMode: 'numeric',
-                              pattern: '[0-9]*',
-                            }}
-                            sx={{
-                              width: 72,
-                              '& .MuiInputBase-input': {
-                                py: 0.6,
-                                px: 0.6,
-                                fontSize: '1.35rem',
-                                fontWeight: 800,
-                                textAlign: 'center',
-                                fontVariantNumeric: 'tabular-nums',
-                                color: '#263238',
-                              },
-                              '& .MuiOutlinedInput-root': {
-                                borderRadius: 1.5,
-                                bgcolor: '#fff',
-                                height: 48,
-                              },
-                              '& .MuiOutlinedInput-notchedOutline': { borderColor: '#90a4ae' },
-                            }}
-                          />
-                        </Tooltip>
-                        <Typography sx={{ fontSize: '1.05rem', fontWeight: 800, color: '#78909c' }}>
-                          s
-                        </Typography>
                       </Box>
                     ) : null}
                     <Box
