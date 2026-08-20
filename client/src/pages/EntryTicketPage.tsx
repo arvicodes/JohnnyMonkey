@@ -2090,8 +2090,8 @@ export default function EntryTicketPage({
   const [solutionDurationSec, setSolutionDurationSec] = useState(() =>
     typeof window !== 'undefined' ? loadSolutionDurationSec() : DEFAULT_SOLUTION_DURATION_SEC,
   );
-  const [solutionDurationMinDraft, setSolutionDurationMinDraft] = useState(() =>
-    String(Math.max(1, Math.round((typeof window !== 'undefined' ? loadSolutionDurationSec() : DEFAULT_SOLUTION_DURATION_SEC) / 60))),
+  const [solutionDurationDraft, setSolutionDurationDraft] = useState(() =>
+    String(typeof window !== 'undefined' ? loadSolutionDurationSec() : DEFAULT_SOLUTION_DURATION_SEC),
   );
   const solutionDurationSecRef = useRef(solutionDurationSec);
   solutionDurationSecRef.current = solutionDurationSec;
@@ -2223,7 +2223,6 @@ export default function EntryTicketPage({
     if (heroImageIndex != null) setEntryHeroImageIndex(heroImageIndex);
     setCurrentIndex(0);
     setSecondsLeft(slideDurationSecRef.current);
-    setIsRunning(false);
     setSolutionRunning(false);
     setSolutionSecondsLeft(solutionDurationSecRef.current);
     setShowSetEditor(Boolean(openEditor && !autostart && !review && !companion));
@@ -2252,6 +2251,7 @@ export default function EntryTicketPage({
       setSessionDone(true);
       setShowSolutions(true);
       setTaskSeed(seedToUse);
+      setIsRunning(false);
     } else if (keepBoot) {
       seedToUse = playBoot?.taskSeed ?? seedToUse;
       tasksForSignal = playBoot?.selectedTasks ?? [];
@@ -2260,6 +2260,7 @@ export default function EntryTicketPage({
       setSessionStarted(true);
       setSessionDone(false);
       setShowSolutions(false);
+      setIsRunning(true);
       startedNow = true;
     } else if (autostart) {
       const pool = activeSet ? playPoolFromCustomSet(activeSet, lessonPath) : [];
@@ -2269,11 +2270,13 @@ export default function EntryTicketPage({
         setSelectedTasks(picked);
         setSessionStarted(true);
         setAutoStartPending(false);
+        setIsRunning(true);
         startedNow = true;
       } else {
         setSelectedTasks([]);
         setSessionStarted(false);
         setAutoStartPending(true);
+        setIsRunning(false);
       }
       setTaskSeed(seedToUse);
       setSessionDone(false);
@@ -2284,6 +2287,7 @@ export default function EntryTicketPage({
       setSessionDone(false);
       setAutoStartPending(false);
       setShowSolutions(false);
+      setIsRunning(false);
     }
 
     const teacher = Boolean(typeof window !== 'undefined' && localStorage.getItem('teacherId'));
@@ -2743,7 +2747,7 @@ export default function EntryTicketPage({
     solutionDurationProfileRef.current = durationProfile;
     const next = loadSolutionDurationSec(durationProfile);
     setSolutionDurationSec(next);
-    setSolutionDurationMinDraft(String(Math.max(1, Math.round(next / 60))));
+    setSolutionDurationDraft(String(next));
     solutionDurationSecRef.current = next;
     if (!solutionRunning) setSolutionSecondsLeft(next);
   }, [durationProfile, solutionRunning]);
@@ -3448,7 +3452,7 @@ export default function EntryTicketPage({
   const applySolutionDurationSec = useCallback((raw: number) => {
     const next = clampSolutionDurationSec(raw, durationProfile);
     setSolutionDurationSec(next);
-    setSolutionDurationMinDraft(String(Math.max(1, Math.round(next / 60))));
+    setSolutionDurationDraft(String(next));
     solutionDurationSecRef.current = next;
     setSolutionSecondsLeft(next);
     try {
@@ -3459,13 +3463,13 @@ export default function EntryTicketPage({
   }, [durationProfile]);
 
   const commitSolutionDurationDraft = useCallback(() => {
-    const n = Number(String(solutionDurationMinDraft).replace(',', '.'));
+    const n = Number(String(solutionDurationDraft).replace(',', '.'));
     if (!Number.isFinite(n) || n <= 0) {
-      setSolutionDurationMinDraft(String(Math.max(1, Math.round(solutionDurationSec / 60))));
+      setSolutionDurationDraft(String(solutionDurationSec));
       return;
     }
-    applySolutionDurationSec(n * 60);
-  }, [applySolutionDurationSec, solutionDurationMinDraft, solutionDurationSec]);
+    applySolutionDurationSec(n);
+  }, [applySolutionDurationSec, solutionDurationDraft, solutionDurationSec]);
 
   const startSession = () => {
     // Jeder Start neu mischen (außer Moderator mit gesperrten Lehrer-Karten)
@@ -3490,7 +3494,7 @@ export default function EntryTicketPage({
     setSolutionSecondsLeft(solutionDurationSecRef.current);
     setShowSolutions(false);
     setTeacherNotes('');
-    setIsRunning(false);
+    setIsRunning(true);
     if (isTeacher) {
       if (skipDuplicateEntrySignalRef.current) {
         skipDuplicateEntrySignalRef.current = false;
@@ -5234,15 +5238,16 @@ export default function EntryTicketPage({
                             else startOrResume();
                           }}
                         />
-                        <Tooltip title="Minuten auf der Lösungsfolie">
+                        <Tooltip title="Sekunden auf der Lösungsfolie">
                           <TextField
                             size="small"
                             type="text"
                             inputMode="numeric"
-                            value={solutionDurationMinDraft}
-                            onChange={(e) => setSolutionDurationMinDraft(e.target.value.replace(/[^\d]/g, ''))}
+                            value={solutionDurationDraft}
+                            onChange={(e) => setSolutionDurationDraft(e.target.value.replace(/[^\d]/g, ''))}
                             onBlur={commitSolutionDurationDraft}
                             onKeyDown={(e) => {
+                              e.stopPropagation();
                               if (e.key === 'Enter') {
                                 e.preventDefault();
                                 commitSolutionDurationDraft();
@@ -5250,40 +5255,40 @@ export default function EntryTicketPage({
                               }
                               if (e.key === 'ArrowUp') {
                                 e.preventDefault();
-                                applySolutionDurationSec(solutionDurationSec + 60);
+                                applySolutionDurationSec(solutionDurationSec + 15);
                               }
                               if (e.key === 'ArrowDown') {
                                 e.preventDefault();
-                                applySolutionDurationSec(solutionDurationSec - 60);
+                                applySolutionDurationSec(solutionDurationSec - 15);
                               }
                             }}
                             inputProps={{
-                              'aria-label': 'Minuten auf der Lösungsfolie',
+                              'aria-label': 'Sekunden auf der Lösungsfolie',
                               inputMode: 'numeric',
                               pattern: '[0-9]*',
                             }}
                             sx={{
-                              width: 44,
+                              width: 72,
                               '& .MuiInputBase-input': {
-                                py: 0.4,
-                                px: 0.4,
-                                fontSize: '1.05rem',
+                                py: 0.6,
+                                px: 0.6,
+                                fontSize: '1.35rem',
                                 fontWeight: 800,
                                 textAlign: 'center',
                                 fontVariantNumeric: 'tabular-nums',
-                                color: '#455a64',
+                                color: '#263238',
                               },
                               '& .MuiOutlinedInput-root': {
                                 borderRadius: 1.5,
                                 bgcolor: '#fff',
-                                height: 36,
+                                height: 48,
                               },
-                              '& .MuiOutlinedInput-notchedOutline': { borderColor: '#cfd8dc' },
+                              '& .MuiOutlinedInput-notchedOutline': { borderColor: '#90a4ae' },
                             }}
                           />
                         </Tooltip>
-                        <Typography sx={{ fontSize: '0.85rem', fontWeight: 800, color: '#90a4ae' }}>
-                          min
+                        <Typography sx={{ fontSize: '1.05rem', fontWeight: 800, color: '#78909c' }}>
+                          s
                         </Typography>
                       </Box>
                     ) : null}
