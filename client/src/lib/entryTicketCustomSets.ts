@@ -404,6 +404,77 @@ export function countCustomSetTasks(set: EntryTicketCustomSet): number {
   return set.lessons.reduce((n, lesson) => n + lesson.tasks.length, 0);
 }
 
+function mergeTaskListsKeepExisting(
+  primary: EntryTicketCustomTask[],
+  extra: EntryTicketCustomTask[],
+): EntryTicketCustomTask[] {
+  if (extra.length === 0) return primary;
+  const out = [...primary];
+  const ids = new Set(primary.map((t) => t.id).filter(Boolean));
+  const keys = new Set(primary.map(taskCopyKey));
+  for (const t of extra) {
+    if (t.id && ids.has(t.id)) continue;
+    const key = taskCopyKey(t);
+    if (keys.has(key)) continue;
+    out.push(t);
+    if (t.id) ids.add(t.id);
+    keys.add(key);
+  }
+  return out;
+}
+
+function mergeLessonKeepExisting(
+  primary: EntryTicketLessonSection,
+  extra: EntryTicketLessonSection,
+): EntryTicketLessonSection {
+  return {
+    ...primary,
+    lessonKey: primary.lessonKey || extra.lessonKey,
+    topicName: primary.topicName || extra.topicName,
+    lessonName: primary.lessonName || extra.lessonName,
+    tasks: mergeTaskListsKeepExisting(primary.tasks, extra.tasks),
+  };
+}
+
+/** Live-Stand behalten, fehlende Karten/Stunden vom anderen Stand ergänzen. */
+export function mergeCustomSetsKeepExisting(
+  primary: EntryTicketCustomSet,
+  incoming: EntryTicketCustomSet,
+): EntryTicketCustomSet {
+  const lessons = [...primary.lessons];
+  const indexByKey = new Map(
+    lessons.map((l, i) => [lessonMatchKey(l.lessonName, l.lessonKey), i] as const),
+  );
+  for (const extra of incoming.lessons) {
+    const key = lessonMatchKey(extra.lessonName, extra.lessonKey);
+    const idx = indexByKey.get(key);
+    if (idx == null) {
+      indexByKey.set(key, lessons.length);
+      lessons.push(extra);
+      continue;
+    }
+    lessons[idx] = mergeLessonKeepExisting(lessons[idx], extra);
+  }
+  return ensureSpecialLessonSections({
+    ...primary,
+    reihePath: primary.reihePath || incoming.reihePath,
+    notes: primary.notes ?? incoming.notes,
+    lessons,
+  });
+}
+
+export function mergeCustomSetListsKeepExisting(
+  primary: EntryTicketCustomSet[],
+  incoming: EntryTicketCustomSet[],
+): EntryTicketCustomSet[] {
+  const byId = new Map(primary.map((s) => [s.id, s] as const));
+  for (const s of incoming) {
+    const prev = byId.get(s.id);
+    byId.set(s.id, prev ? mergeCustomSetsKeepExisting(prev, s) : s);
+  }
+  return Array.from(byId.values());
+}
+
 export function flattenCustomSetTasks(set: EntryTicketCustomSet): EntryTicketCustomTask[] {
   return set.lessons.flatMap((l) => l.tasks);
 }
@@ -534,21 +605,12 @@ export async function fetchAndCacheCustomEntryTicketSets(): Promise<EntryTicketC
     const remote = remoteRaw
       .map(parseCustomSet)
       .filter((s): s is EntryTicketCustomSet => Boolean(s));
-    if (remote.length === 0) return local;
+    if (remote.length === 0) return loadCustomEntryTicketSets();
 
-    const byId = new Map(local.map((s) => [s.id, s] as const));
-    for (const s of remote) {
-      const prev = byId.get(s.id);
-      if (!prev || countCustomSetTasks(s) >= countCustomSetTasks(prev)) {
-        byId.set(s.id, {
-          ...s,
-          // reihePath / notes aus lokalem Stand behalten, falls Server sie weglässt
-          reihePath: s.reihePath || prev?.reihePath,
-          notes: s.notes ?? prev?.notes,
-        });
-      }
-    }
-    const merged = Array.from(byId.values()).map(ensureSpecialLessonSections);
+    // Nach dem Fetch noch einmal localStorage lesen: währenddessen können neue Karten
+    // schon gespeichert worden sein. Der Live-Stand bleibt primär.
+    const localNow = loadCustomEntryTicketSets();
+    const merged = mergeCustomSetListsKeepExisting(localNow, remote).map(ensureSpecialLessonSections);
     saveCustomEntryTicketSets(merged);
     return merged;
   } catch {
@@ -657,7 +719,17 @@ export function mergeDiscoveredLessonsIntoSet(
   const general = ensured.lessons.filter(isGeneralLessonSection);
   const later = ensured.lessons.filter(isLaterLessonSection);
   const middle = ensured.lessons.filter((l) => !isGeneralLessonSection(l) && !isLaterLessonSection(l));
-  const byKey = new Map(middle.map((l) => [lessonMatchKey(l.lessonName, l.lessonKey), l] as const));
+  const byKey = new Map<string, EntryTicketLessonSection>();
+  for (const l of middle) {
+    const key = lessonMatchKey(l.lessonName, l.lessonKey);
+    const prev = byKey.get(key);
+    if (!prev) {
+      byKey.set(key, l);
+      continue;
+    }
+    byKey.set(key, mergeLessonKeepExisting(prev, l));
+    changed = true;
+  }
   const mergedMiddle: EntryTicketLessonSection[] = [];
   const seen = new Set<string>();
 
@@ -685,8 +757,8 @@ export function mergeDiscoveredLessonsIntoSet(
     }
     mergedMiddle.push(row);
   }
-  for (const l of middle) {
-    if (!seen.has(lessonMatchKey(l.lessonName, l.lessonKey))) mergedMiddle.push(l);
+  for (const [key, l] of byKey) {
+    if (!seen.has(key)) mergedMiddle.push(l);
   }
 
   if (!changed) return set;

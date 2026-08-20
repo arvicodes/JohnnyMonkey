@@ -102,7 +102,15 @@ const sameLessonPath = (a?: string | null, b?: string | null): boolean => {
   return na.endsWith(`/${nb}`) || nb.endsWith(`/${na}`) || na.endsWith(nb) || nb.endsWith(na);
 };
 
-const normalizeTasksPayload = (raw: unknown): EntryTicketTaskPayload[] | undefined => {
+/** Play-Runde: begrenzt. Fragenset-Speicher: höher, sonst gehen neue Karten (z. B. Mathe 5) verloren. */
+const PLAY_TASK_LIMIT = 80;
+const CUSTOM_SET_TASK_LIMIT = 400;
+const CUSTOM_SET_LESSON_LIMIT = 200;
+
+const normalizeTasksPayload = (
+  raw: unknown,
+  limit = PLAY_TASK_LIMIT,
+): EntryTicketTaskPayload[] | undefined => {
   if (!Array.isArray(raw)) return undefined;
   const out: EntryTicketTaskPayload[] = [];
   for (const row of raw) {
@@ -125,7 +133,7 @@ const normalizeTasksPayload = (raw: unknown): EntryTicketTaskPayload[] | undefin
       ...(sourceKey ? { sourceKey } : {}),
       ...(id ? { id } : {}),
     });
-    if (out.length >= 80) break;
+    if (out.length >= limit) break;
   }
   return out.length > 0 ? out : undefined;
 };
@@ -147,7 +155,7 @@ const normalizeCustomSetPayload = (raw: unknown): EntryTicketCustomSetPayload | 
         ? lesson.lessonName.trim().slice(0, 160)
         : '';
     if (!lessonName) continue;
-    const tasks = normalizeTasksPayload(lesson.tasks) ?? [];
+    const tasks = normalizeTasksPayload(lesson.tasks, CUSTOM_SET_TASK_LIMIT) ?? [];
     lessons.push({
       id:
         typeof lesson.id === 'string' && lesson.id.trim()
@@ -162,7 +170,7 @@ const normalizeCustomSetPayload = (raw: unknown): EntryTicketCustomSetPayload | 
         : {}),
       tasks,
     });
-    if (lessons.length >= 40) break;
+    if (lessons.length >= CUSTOM_SET_LESSON_LIMIT) break;
   }
   if (lessons.length === 0) return undefined;
   const reihePath =
@@ -1310,6 +1318,12 @@ export class EntryTicketController {
       const sets = rawSets
         .map((s: unknown) => normalizeCustomSetPayload(s))
         .filter(Boolean) as EntryTicketCustomSetPayload[];
+      if (sets.length === 0) {
+        const existing = await loadStoredCustomSets(user.id);
+        if (existing.length > 0) {
+          return res.json({ success: true, count: existing.length, kept: true });
+        }
+      }
       await saveStoredCustomSets(user.id, sets);
       return res.json({ success: true, count: sets.length });
     } catch (error) {

@@ -70,6 +70,7 @@ import {
   laterSectionContainsTask,
   fetchAndCacheCustomEntryTicketSets,
   loadCustomEntryTicketSets,
+  mergeCustomSetListsKeepExisting,
   mergeDiscoveredLessonsIntoSet,
   saveCustomEntryTicketSets,
   sortLessonsChronologically,
@@ -2929,16 +2930,7 @@ export default function EntryTicketPage({
         if (cancelled) return;
         setCustomSets((local) => {
           if (merged.length === 0) return local;
-          const byId = new Map(local.map((s) => [s.id, s] as const));
-          for (const s of merged) {
-            const prev = byId.get(s.id);
-            byId.set(s.id, {
-              ...s,
-              reihePath: s.reihePath || prev?.reihePath,
-              notes: s.notes ?? prev?.notes,
-            });
-          }
-          return Array.from(byId.values());
+          return mergeCustomSetListsKeepExisting(local, merged);
         });
       } catch {
         /* ignore */
