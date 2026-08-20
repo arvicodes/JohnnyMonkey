@@ -5287,7 +5287,6 @@ export default function EntryTicketPage({
                             </Tooltip>
                           ) : null}
                         </Box>
-                        </Box>
                       ))}
                     </Box>
                   </Box>
