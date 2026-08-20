@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Klasse 5a – Fotos</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+         background: #121212; color: #f2f2f2; }
+  h1 { font-size: 1.15rem; font-weight: 600; margin: 0; padding: 16px 18px 8px; }
+  p.hint { margin: 0 18px 14px; color: #bbb; font-size: 0.9rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+           gap: 12px; padding: 0 18px 40px; }
+  .card { appearance: none; border: 0; padding: 0; margin: 0; background: #1e1e1e;
+          border-radius: 10px; overflow: hidden; cursor: pointer; text-align: left;
+          color: inherit; font: inherit; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+  .card:hover { transform: translateY(-2px); }
+  .card img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #000; }
+  .card span, .missing span { display: block; padding: 8px 10px 10px; font-size: 0.82rem; line-height: 1.25; }
+  .missing { cursor: default; opacity: .7; }
+  .placeholder { aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+                  background: #2a2a2a; color: #888; font-size: 0.85rem; }
+  #lb { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.88);
+        z-index: 20; align-items: center; justify-content: center; padding: 24px; }
+  #lb.open { display: flex; }
+  #lb img { max-width: min(92vw, 900px); max-height: 86vh; object-fit: contain;
+             border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,.5); }
+  #lb .cap { position: absolute; left: 0; right: 0; bottom: 12px; text-align: center;
+              font-size: 1.05rem; }
+  #lb .x { position: absolute; top: 10px; right: 14px; width: 36px; height: 36px;
+            border: 0; border-radius: 8px; background: rgba(255,255,255,.12); color: #fff;
+            font-size: 22px; cursor: pointer; }
+</style>
+</head>
+<body>
+  <h1>Klasse 5a – Fotos</h1>
+  <p class="hint">Auf ein Foto klicken, um es groß anzuzeigen. Nochmal klicken oder Esc schließt.</p>
+  <div class="grid">
+    
+    <button class="card" data-src="5a-portraits/Adrian_Busch.jpg" data-name="Adrian Busch">
+      <img src="5a-portraits/Adrian_Busch.jpg" alt="Adrian Busch">
+      <span>Adrian Busch</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Aurelia_Hamm.jpg" data-name="Aurelia Hamm">
+      <img src="5a-portraits/Aurelia_Hamm.jpg" alt="Aurelia Hamm">
+      <span>Aurelia Hamm</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Charlotta_Maier.jpg" data-name="Charlotta Maier">
+      <img src="5a-portraits/Charlotta_Maier.jpg" alt="Charlotta Maier">
+      <span>Charlotta Maier</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Clara_Groß.jpg" data-name="Clara Groß">
+      <img src="5a-portraits/Clara_Groß.jpg" alt="Clara Groß">
+      <span>Clara Groß</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Damian_Baumeister.jpg" data-name="Damian Baumeister">
+      <img src="5a-portraits/Damian_Baumeister.jpg" alt="Damian Baumeister">
+      <span>Damian Baumeister</span>
+    </button>
+    <div class="card missing">
+      <div class="placeholder">kein Foto</div>
+      <span>Elli Wöll</span>
+    </div>
+    <button class="card" data-src="5a-portraits/Eva_Geis.jpg" data-name="Eva Geis">
+      <img src="5a-portraits/Eva_Geis.jpg" alt="Eva Geis">
+      <span>Eva Geis</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Eva_Rünz.jpg" data-name="Eva Rünz">
+      <img src="5a-portraits/Eva_Rünz.jpg" alt="Eva Rünz">
+      <span>Eva Rünz</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Felix_Schüler.jpg" data-name="Felix Schüler">
+      <img src="5a-portraits/Felix_Schüler.jpg" alt="Felix Schüler">
+      <span>Felix Schüler</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Filip_Glura.jpg" data-name="Filip Glura">
+      <img src="5a-portraits/Filip_Glura.jpg" alt="Filip Glura">
+      <span>Filip Glura</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Franz_Peres.jpg" data-name="Franz Peres">
+      <img src="5a-portraits/Franz_Peres.jpg" alt="Franz Peres">
+      <span>Franz Peres</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Henriette_Müller.jpg" data-name="Henriette Müller">
+      <img src="5a-portraits/Henriette_Müller.jpg" alt="Henriette Müller">
+      <span>Henriette Müller</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Ida_Schell.jpg" data-name="Ida Schell">
+      <img src="5a-portraits/Ida_Schell.jpg" alt="Ida Schell">
+      <span>Ida Schell</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Ida_Weyrich.jpg" data-name="Ida Weyrich">
+      <img src="5a-portraits/Ida_Weyrich.jpg" alt="Ida Weyrich">
+      <span>Ida Weyrich</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Isabel_Chartier.jpg" data-name="Isabel Chartier">
+      <img src="5a-portraits/Isabel_Chartier.jpg" alt="Isabel Chartier">
+      <span>Isabel Chartier</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Jonathan_Schwarz.jpg" data-name="Jonathan Schwarz">
+      <img src="5a-portraits/Jonathan_Schwarz.jpg" alt="Jonathan Schwarz">
+      <span>Jonathan Schwarz</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Katharina_Brandt.jpg" data-name="Katharina Brandt">
+      <img src="5a-portraits/Katharina_Brandt.jpg" alt="Katharina Brandt">
+      <span>Katharina Brandt</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Laura_Huke.jpg" data-name="Laura Huke">
+      <img src="5a-portraits/Laura_Huke.jpg" alt="Laura Huke">
+      <span>Laura Huke</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Levin_Dormann.jpg" data-name="Levin Dormann">
+      <img src="5a-portraits/Levin_Dormann.jpg" alt="Levin Dormann">
+      <span>Levin Dormann</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Louisa_Mitscherling.jpg" data-name="Louisa Mitscherling">
+      <img src="5a-portraits/Louisa_Mitscherling.jpg" alt="Louisa Mitscherling">
+      <span>Louisa Mitscherling</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Luca_Boshoven.jpg" data-name="Luca Boshoven">
+      <img src="5a-portraits/Luca_Boshoven.jpg" alt="Luca Boshoven">
+      <span>Luca Boshoven</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Mats_Kuhn.jpg" data-name="Mats Kuhn">
+      <img src="5a-portraits/Mats_Kuhn.jpg" alt="Mats Kuhn">
+      <span>Mats Kuhn</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Mats_Wirges.jpg" data-name="Mats Wirges">
+      <img src="5a-portraits/Mats_Wirges.jpg" alt="Mats Wirges">
+      <span>Mats Wirges</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Matteo_De_Donatis.jpg" data-name="Matteo De Donatis">
+      <img src="5a-portraits/Matteo_De_Donatis.jpg" alt="Matteo De Donatis">
+      <span>Matteo De Donatis</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Maxima_Diehl.jpg" data-name="Maxima Diehl">
+      <img src="5a-portraits/Maxima_Diehl.jpg" alt="Maxima Diehl">
+      <span>Maxima Diehl</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Mila_Šašić.jpg" data-name="Mila Šašić">
+      <img src="5a-portraits/Mila_Šašić.jpg" alt="Mila Šašić">
+      <span>Mila Šašić</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Samuel_Klepzig.jpg" data-name="Samuel Klepzig">
+      <img src="5a-portraits/Samuel_Klepzig.jpg" alt="Samuel Klepzig">
+      <span>Samuel Klepzig</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Sebastian_Zander.jpg" data-name="Sebastian Zander">
+      <img src="5a-portraits/Sebastian_Zander.jpg" alt="Sebastian Zander">
+      <span>Sebastian Zander</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Skadi_Unkelbach.jpg" data-name="Skadi Unkelbach">
+      <img src="5a-portraits/Skadi_Unkelbach.jpg" alt="Skadi Unkelbach">
+      <span>Skadi Unkelbach</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Theo_Winkels.jpg" data-name="Theo Winkels">
+      <img src="5a-portraits/Theo_Winkels.jpg" alt="Theo Winkels">
+      <span>Theo Winkels</span>
+    </button>
+    <button class="card" data-src="5a-portraits/Yutatsu_Long.jpg" data-name="Yutatsu Long">
+      <img src="5a-portraits/Yutatsu_Long.jpg" alt="Yutatsu Long">
+      <span>Yutatsu Long</span>
+    </button>
+  </div>
+  <div id="lb" role="dialog" aria-modal="true">
+    <button class="x" type="button" aria-label="Schließen">×</button>
+    <img alt="">
+    <div class="cap"></div>
+  </div>
+<script>
+const lb = document.getElementById('lb');
+const img = lb.querySelector('img');
+const cap = lb.querySelector('.cap');
+function openLb(src, name) {
+  img.src = src; img.alt = name; cap.textContent = name;
+  lb.classList.add('open');
+}
+function closeLb() { lb.classList.remove('open'); img.src = ''; }
+document.querySelectorAll('.card[data-src]').forEach(btn => {
+  btn.addEventListener('click', () => openLb(btn.dataset.src, btn.dataset.name));
+});
+lb.addEventListener('click', closeLb);
+lb.querySelector('.x').addEventListener('click', e => { e.stopPropagation(); closeLb(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLb(); });
+</script>
+</body>
+</html>
