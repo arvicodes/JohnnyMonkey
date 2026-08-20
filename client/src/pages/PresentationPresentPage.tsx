@@ -48,6 +48,7 @@ import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
 import { isPresentationLinkClickTarget } from '../lib/presentationRichText';
 import { clampPresentZoomSmooth, handlePresentZoomHotkey, attachPresentTrackpadZoom, attachPresentTouchPinchZoom, centerPresentPan, panAfterPresentZoom, clampPresentPan, type PresentZoomOrigin } from '../lib/presentationPresentZoom';
 import { ensureEntryTicketButtonsOnTitleSlides } from '../lib/presentationSlideTemplates';
+import { tryPlayArmedStartSlideSound, unlockPresentationAudio } from '../lib/presentationSound';
 import { markTeacherWantsDashboard } from '../lib/teacherLiveLesson';
 import {
   attachPresentViewportFill,
@@ -882,6 +883,14 @@ const PresentationPresentPage: React.FC = () => {
     containerRef.current?.focus({ preventScroll: true });
   }, [loading]);
 
+  useEffect(() => {
+    if (loading || !deck || slideIndex !== 0 || entryTicketOpen) return;
+    const t = window.setTimeout(() => {
+      tryPlayArmedStartSlideSound();
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [loading, deck, slideIndex, entryTicketOpen]);
+
   const scaleReady = !loading && !!deck && !!annotations && !!currentSlide;
 
   useLayoutEffect(() => {
@@ -1176,6 +1185,8 @@ const PresentationPresentPage: React.FC = () => {
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
       onPointerDownCapture={(e) => {
+        unlockPresentationAudio();
+        if (slideIndex === 0 && !entryTicketOpen) tryPlayArmedStartSlideSound();
         if (entryTicketOpen || drawActive) return;
         if (e.pointerType === 'pen') return;
         const t = e.target instanceof Element ? e.target : null;

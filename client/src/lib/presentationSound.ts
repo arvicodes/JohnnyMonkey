@@ -37,8 +37,8 @@ export type PresentationSoundSettings = {
   favoriteIds: PresentationSoundId[];
 };
 
-export const PRESENTATION_SOUND_STORAGE_KEY = 'jm-presentation-sound-v2';
-const LEGACY_STORAGE_KEY = 'jm-presentation-sound-v1';
+export const PRESENTATION_SOUND_STORAGE_KEY = 'jm-presentation-sound-v3';
+const LEGACY_STORAGE_KEYS = ['jm-presentation-sound-v2', 'jm-presentation-sound-v1'];
 
 export const PRESENTATION_SOUND_CATEGORIES: Array<{
   id: PresentationSoundCategory;
@@ -61,7 +61,7 @@ export const PRESENTATION_SOUND_PRESETS: Array<{
   { id: 'alert', label: 'Alarm', hint: 'Wiederholt, laut', category: 'attention' },
   { id: 'classbell', label: 'Schulglocke', hint: 'Lang, durchdringend', category: 'attention' },
   { id: 'double', label: 'Doppel', hint: 'Zwei kräftige Töne', category: 'attention' },
-  { id: 'chime', label: 'Glocke', hint: 'Klar und hell', category: 'bells' },
+  { id: 'chime', label: 'Glocke', hint: 'Klarer Startton, hell', category: 'bells' },
   { id: 'singingbowl', label: 'Klangschale', hint: 'Langer, meditativer Nachklang', category: 'bells' },
   { id: 'gong', label: 'Gong', hint: 'Tief, voll, lang ausklingend', category: 'bells' },
   { id: 'temple', label: 'Tempelglocke', hint: 'Warm und feierlich', category: 'bells' },
@@ -88,10 +88,10 @@ export const PRESENTATION_SOUND_DURATIONS: Array<{
 ];
 
 const DEFAULT_SETTINGS: PresentationSoundSettings = {
-  soundId: 'attention',
+  soundId: 'chime',
   entryDoneSoundId: 'fanfare',
-  volume: 0.9,
-  duration: 'long',
+  volume: 0.95,
+  duration: 'normal',
   favoriteIds: [],
 };
 
@@ -146,15 +146,27 @@ function parseStoredSettings(raw: string | null): PresentationSoundSettings | nu
   }
 }
 
+function isUntouchedFactoryStartSound(s: PresentationSoundSettings): boolean {
+  return (
+    s.soundId === 'attention' &&
+    s.duration === 'long' &&
+    s.entryDoneSoundId === 'fanfare' &&
+    Math.abs(s.volume - 0.9) < 0.02 &&
+    s.favoriteIds.length === 0
+  );
+}
+
 export function loadPresentationSoundSettings(): PresentationSoundSettings {
   try {
     const current = parseStoredSettings(localStorage.getItem(PRESENTATION_SOUND_STORAGE_KEY));
     if (current) return current;
 
-    const legacy = parseStoredSettings(localStorage.getItem(LEGACY_STORAGE_KEY));
-    if (legacy) {
-      savePresentationSoundSettings(legacy);
-      return legacy;
+    for (const key of LEGACY_STORAGE_KEYS) {
+      const legacy = parseStoredSettings(localStorage.getItem(key));
+      if (!legacy) continue;
+      const next = isUntouchedFactoryStartSound(legacy) ? { ...DEFAULT_SETTINGS } : legacy;
+      savePresentationSoundSettings(next);
+      return next;
     }
   } catch {
     // ignore
@@ -360,9 +372,10 @@ function buildSteps(id: PresentationSoundId): Step[] {
     case 'chime':
     default:
       return [
-        { f: 784, start: 0, dur: 0.55, peak: 1 },
-        { f: 1046.5, start: 0.12, dur: 0.75, peak: 0.95 },
-        { f: 1318.5, start: 0.28, dur: 0.9, peak: 0.7 },
+        { f: 1046.5, start: 0, dur: 0.22, peak: 1 },
+        { f: 1318.5, start: 0.04, dur: 0.85, peak: 0.82 },
+        { f: 1568, start: 0.14, dur: 1.05, peak: 0.95 },
+        { f: 2093, start: 0.18, dur: 0.8, peak: 0.45 },
       ];
   }
 }
@@ -371,6 +384,7 @@ const LAYERED_SOUNDS = new Set<PresentationSoundId>([
   'attention',
   'alert',
   'classbell',
+  'chime',
   'gong',
   'singingbowl',
   'temple',
