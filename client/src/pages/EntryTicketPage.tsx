@@ -61,7 +61,6 @@ import {
   isGeneralLessonSection,
   isLaterLessonSection,
   isUnboundPriorLessonSection,
-  laterSectionContainsTask,
   fetchAndCacheCustomEntryTicketSets,
   loadCustomEntryTicketSets,
   mergeCustomSetListsKeepExisting,
@@ -525,15 +524,12 @@ const overviewRichFitSx = {
 
 function SolutionSlideClock({
   secondsLeft,
-  totalSec,
   running,
   onToggle,
 }: {
   secondsLeft: number;
-  totalSec: number;
   running: boolean;
   onToggle?: () => void;
-  size?: number;
 }) {
   const done = secondsLeft <= 0;
   const urgent = secondsLeft > 0 && secondsLeft <= 15;
@@ -564,7 +560,7 @@ function SolutionSlideClock({
         WebkitAppearance: 'none',
         fontWeight: 900,
         fontVariantNumeric: 'tabular-nums',
-        fontSize: { xs: '1.55rem', sm: '1.85rem' },
+        fontSize: { xs: '1.7rem', sm: '2.05rem' },
         lineHeight: 1,
         letterSpacing: -0.04,
         color,
@@ -579,8 +575,6 @@ function SolutionSlideClock({
 /** Zufällige Auswahl aus dem klassenspezifischen Fragenset */
 const TARGET_TASK_COUNT = 10;
 const DONE_CELEBRATE_MS = 2000;
-const DISPLAY_BOX_WIDTH = 1320;
-const DISPLAY_BOX_MIN_HEIGHT = 312;
 const OPERATOR_COLOR = '#ef6c00';
 const QUESTION_COLOR = '#d32f2f';
 
@@ -1812,6 +1806,81 @@ export type EntryTicketEmbeddedPlay = {
   companion?: 'laptop-solutions';
 };
 
+function playPoolFromCustomSet(
+  set: EntryTicketCustomSet,
+  lessonPath: string | null | undefined,
+): EntryTicketTask[] {
+  return cumulativeTasksBeforeLesson(set, lessonPath).map((t) => ({
+    category: t.category,
+    prompt: t.prompt,
+    solution: t.solution,
+    sourceKey: `c:${set.id}:${t.id}`,
+  }));
+}
+
+function shufflePickCustomTasks(
+  pool: EntryTicketTask[],
+  count: number,
+  seed: number,
+): EntryTicketTask[] {
+  const arr = pool.map((task) => task);
+  let s = seed;
+  const rnd = () => {
+    s = (s * 1664525 + 1013904223) % 4294967296;
+    return s / 4294967296;
+  };
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rnd() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.slice(0, Math.min(count, arr.length));
+}
+
+function resolveEmbeddedCustomSetId(
+  play: EntryTicketEmbeddedPlay,
+  sets: EntryTicketCustomSet[],
+): string | null {
+  if (play.grade != null) {
+    const band = parseEntryTicketPlanBand(play.grade);
+    if (isCustomEntryTicketSetId(band)) return band;
+  }
+  const band = resolveEntryTicketBandForLessonPath(play.lessonPath, 7, sets);
+  return isCustomEntryTicketSetId(band) ? band : null;
+}
+
+function readEmbeddedAutostartBoot(play: EntryTicketEmbeddedPlay): {
+  customSets: EntryTicketCustomSet[];
+  customSetId: string | null;
+  selectedTasks: EntryTicketTask[];
+  taskSeed: number;
+  sessionStarted: boolean;
+} {
+  const customSets = typeof window !== 'undefined' ? loadCustomEntryTicketSets() : [];
+  if (play.companion === 'laptop-solutions') {
+    return {
+      customSets,
+      customSetId: resolveEmbeddedCustomSetId(play, customSets),
+      selectedTasks: [],
+      taskSeed: randomTaskSeed(),
+      sessionStarted: false,
+    };
+  }
+  const customSetId = resolveEmbeddedCustomSetId(play, customSets);
+  const set = customSetId ? customSets.find((s) => s.id === customSetId) ?? null : null;
+  const pool = set ? playPoolFromCustomSet(set, play.lessonPath) : [];
+  const taskSeed = randomTaskSeed();
+  if (pool.length === 0) {
+    return { customSets, customSetId, selectedTasks: [], taskSeed, sessionStarted: false };
+  }
+  return {
+    customSets,
+    customSetId,
+    selectedTasks: shufflePickCustomTasks(pool, TARGET_TASK_COUNT, taskSeed),
+    taskSeed,
+    sessionStarted: true,
+  };
+}
+
 function parseLiveTicketTasks(
   raw: unknown,
 ): Array<{ category: string; prompt: string; solution: string; sourceKey?: string }> {
@@ -1858,11 +1927,11 @@ function attachSourceKeysFromSet(
   });
 }
 
-function embeddedPlaySearch(play: EntryTicketEmbeddedPlay): string {
+function embeddedPlaySearch(play: EntryTicketEmbeddedPlay, sets: EntryTicketCustomSet[] = []): string {
   const qs = new URLSearchParams();
   const band = play.grade != null
     ? parseEntryTicketPlanBand(play.grade)
-    : resolveEntryTicketBandForLessonPath(play.lessonPath, 7);
+    : resolveEntryTicketBandForLessonPath(play.lessonPath, 7, sets);
   qs.set('grade', String(band));
   if (play.companion === 'laptop-solutions') qs.set('companion', '1');
   else qs.set('autostart', '1');
@@ -1878,7 +1947,11 @@ export default function EntryTicketPage({
 } = {}) {
   const navigate = useNavigate();
   const location = useLocation();
-  const routeSearch = embeddedPlay ? embeddedPlaySearch(embeddedPlay) : location.search;
+  const [playBoot] = useState(() => (embeddedPlay ? readEmbeddedAutostartBoot(embeddedPlay) : null));
+  const keepEmbeddedBootRef = useRef(Boolean(playBoot?.sessionStarted));
+  const routeSearch = embeddedPlay
+    ? embeddedPlaySearch(embeddedPlay, playBoot?.customSets)
+    : location.search;
   const safeStundeReturnTo = useMemo(
     () => (embeddedPlay ? null : parseSafeStundeReturnTo(location.search)),
     [embeddedPlay, location.search],
@@ -1900,15 +1973,18 @@ export default function EntryTicketPage({
           taskSeed: null as number | null,
           hasExplicitBand: false,
         };
-  const [sessionStarted, setSessionStarted] = useState(() => Boolean(initialRoute.review));
+  const [sessionStarted, setSessionStarted] = useState(() =>
+    Boolean(initialRoute.review || playBoot?.sessionStarted),
+  );
   const [grade, setGrade] = useState<EntryBand>(() => initialRoute.grade);
   const [customSetId, setCustomSetId] = useState<string | null>(() => {
+    if (playBoot?.customSetId) return playBoot.customSetId;
     if (initialRoute.customSetId) return initialRoute.customSetId;
     if (!initialRoute.autostart || !initialRoute.lessonPath || typeof window === 'undefined') return null;
     const band = resolveEntryTicketBandForLessonPath(
       initialRoute.lessonPath,
       initialRoute.grade,
-      loadCustomEntryTicketSets(),
+      playBoot?.customSets ?? loadCustomEntryTicketSets(),
     );
     return isCustomEntryTicketSetId(band) ? band : null;
   });
@@ -1924,7 +2000,7 @@ export default function EntryTicketPage({
   );
   const [entryLessonPath, setEntryLessonPath] = useState<string | null>(() => initialRoute.lessonPath);
   const [customSets, setCustomSets] = useState<EntryTicketCustomSet[]>(() =>
-    typeof window !== 'undefined' ? loadCustomEntryTicketSets() : [],
+    playBoot?.customSets ?? (typeof window !== 'undefined' ? loadCustomEntryTicketSets() : []),
   );
   const [createSetOpen, setCreateSetOpen] = useState(false);
   const [printFlashcardsOpen, setPrintFlashcardsOpen] = useState(false);
@@ -1933,7 +2009,7 @@ export default function EntryTicketPage({
   const [createSetName, setCreateSetName] = useState('');
   const [createSetBusy, setCreateSetBusy] = useState(false);
   const [createSetError, setCreateSetError] = useState<string | null>(null);
-  const [taskSeed, setTaskSeed] = useState(() => initialRoute.taskSeed ?? randomTaskSeed());
+  const [taskSeed, setTaskSeed] = useState(() => playBoot?.taskSeed ?? initialRoute.taskSeed ?? randomTaskSeed());
   const [showSetEditor, setShowSetEditor] = useState(() => Boolean(initialRoute.openEditor));
   const [questionSets, setQuestionSets] = useState<GradeQuestionSets>(() => {
     if (embeddedPlay || initialRoute.autostart) {
@@ -1990,7 +2066,7 @@ export default function EntryTicketPage({
     }
   });
   const [selectedTasks, setSelectedTasks] = useState<EntryTicketTask[]>(
-    [],
+    () => playBoot?.selectedTasks ?? [],
   );
   const [cardShowCounts, setCardShowCounts] = useState<Record<string, number>>(() =>
     typeof window !== 'undefined' ? loadCardShowCounts() : {},
@@ -2042,7 +2118,9 @@ export default function EntryTicketPage({
   const [setEditCategory, setSetEditCategory] = useState('Alltag');
   const [newPrompt, setNewPrompt] = useState('');
   const [newSolution, setNewSolution] = useState('');
-  const [autoStartPending, setAutoStartPending] = useState(() => initialRoute.autostart);
+  const [autoStartPending, setAutoStartPending] = useState(
+    () => (playBoot?.sessionStarted ? false : initialRoute.autostart),
+  );
   const [entryTicketGroupId, setEntryTicketGroupId] = useState<string | null>(() => initialRoute.groupId);
   /** Motiv 0..9 — kommt vom Server (pro neuem Signal / neuer Stunden-Klick neu gewürfelt) */
   const [entryHeroImageIndex, setEntryHeroImageIndex] = useState(
@@ -2068,12 +2146,15 @@ export default function EntryTicketPage({
   /** Erst nach Server-Sync Fragensets zurückschreiben (leeres localStorage nicht überschreiben). */
   const customSetsServerSyncedRef = useRef(false);
   const [customSetsReady, setCustomSetsReady] = useState(
-    () => !(typeof window !== 'undefined' && localStorage.getItem('teacherId')),
+    () =>
+      Boolean(embeddedPlay) ||
+      !(typeof window !== 'undefined' && localStorage.getItem('teacherId')),
   );
   const [assignedGradeResolved, setAssignedGradeResolved] = useState(
     () =>
+      Boolean(embeddedPlay) ||
       !initialRoute.autostart ||
-      Boolean(initialRoute.customSetId) ||
+      Boolean(initialRoute.customSetId || playBoot?.customSetId) ||
       !initialRoute.lessonPath ||
       Boolean(
         typeof window !== 'undefined' &&
@@ -2082,7 +2163,7 @@ export default function EntryTicketPage({
             resolveEntryTicketBandForLessonPath(
               initialRoute.lessonPath,
               initialRoute.grade,
-              loadCustomEntryTicketSets(),
+              playBoot?.customSets ?? loadCustomEntryTicketSets(),
             ),
           ),
       ),
@@ -2096,7 +2177,9 @@ export default function EntryTicketPage({
 
   /** Klassenstufe / eigenes Set aus URL; neuer Zufallssatz bei jedem Aufruf (inkl. &r=… vom Klick auf das Dashboard-Icon). */
   useLayoutEffect(() => {
-    const search = embeddedPlay ? embeddedPlaySearch(embeddedPlay) : location.search;
+    const search = embeddedPlay
+      ? embeddedPlaySearch(embeddedPlay, playBoot?.customSets)
+      : location.search;
     const {
       grade: g,
       customSetId: cId,
@@ -2126,7 +2209,7 @@ export default function EntryTicketPage({
             const band = resolveEntryTicketBandForLessonPath(
               lessonPath,
               g,
-              loadCustomEntryTicketSets(),
+              playBoot?.customSets ?? customSetsRef.current,
             );
             return isCustomEntryTicketSetId(band) ? band : null;
           })()
@@ -2135,19 +2218,13 @@ export default function EntryTicketPage({
     if (resolvedSetId) setAssignedGradeResolved(true);
     setBandChosen(Boolean(hasExplicitBand || resolvedSetId || autostart || openEditor || review || companion));
     setEntryLessonPath(lessonPath);
-    setAutoStartPending(review || companion ? false : autostart);
     setEntryTicketGroupId(groupId);
     if (heroImageIndex != null) setEntryHeroImageIndex(heroImageIndex);
-    const seedToUse = urlSeed != null ? urlSeed : randomTaskSeed();
-    setTaskSeed(seedToUse);
-    setSessionStarted(Boolean(review || companion));
-    setSessionDone(Boolean(review || companion));
     setCurrentIndex(0);
     setSecondsLeft(slideDurationSecRef.current);
     setIsRunning(false);
     setSolutionRunning(false);
     setSolutionSecondsLeft(solutionDurationSecRef.current);
-    setShowSolutions(Boolean(review || companion));
     setShowSetEditor(Boolean(openEditor && !autostart && !review && !companion));
     setSharedTasksLocked(Boolean(review || companion));
     setStudentReviewMode(Boolean(review));
@@ -2157,19 +2234,69 @@ export default function EntryTicketPage({
     }
     tasksSyncedRef.current = '';
 
+    const localSets =
+      playBoot?.customSets ??
+      (customSetsRef.current.length > 0 ? customSetsRef.current : []);
+    const activeSet = resolvedSetId ? localSets.find((s) => s.id === resolvedSetId) ?? null : null;
+    const keepBoot = keepEmbeddedBootRef.current && autostart && !companion && !review;
+    keepEmbeddedBootRef.current = false;
+
+    let seedToUse = urlSeed != null ? urlSeed : randomTaskSeed();
+    let startedNow = Boolean(review || companion);
+    let tasksForSignal: EntryTicketTask[] = [];
+
+    if (review || companion) {
+      setAutoStartPending(false);
+      setSessionStarted(true);
+      setSessionDone(true);
+      setShowSolutions(true);
+      setTaskSeed(seedToUse);
+    } else if (keepBoot) {
+      seedToUse = playBoot?.taskSeed ?? seedToUse;
+      tasksForSignal = playBoot?.selectedTasks ?? [];
+      setTaskSeed(seedToUse);
+      setAutoStartPending(false);
+      setSessionStarted(true);
+      setSessionDone(false);
+      setShowSolutions(false);
+      startedNow = true;
+    } else if (autostart) {
+      const pool = activeSet ? playPoolFromCustomSet(activeSet, lessonPath) : [];
+      if (pool.length > 0) {
+        const picked = shufflePickCustomTasks(pool, TARGET_TASK_COUNT, seedToUse);
+        tasksForSignal = picked;
+        setSelectedTasks(picked);
+        setSessionStarted(true);
+        setAutoStartPending(false);
+        startedNow = true;
+      } else {
+        setSelectedTasks([]);
+        setSessionStarted(false);
+        setAutoStartPending(true);
+      }
+      setTaskSeed(seedToUse);
+      setSessionDone(false);
+      setShowSolutions(false);
+    } else {
+      setTaskSeed(seedToUse);
+      setSessionStarted(false);
+      setSessionDone(false);
+      setAutoStartPending(false);
+      setShowSolutions(false);
+    }
+
     const teacher = Boolean(typeof window !== 'undefined' && localStorage.getItem('teacherId'));
-    if (autostart && teacher && !companion) {
+    if (startedNow && autostart && teacher && !companion) {
       skipDuplicateEntrySignalRef.current = true;
       void (async () => {
         try {
-          const gradeParam = cId || String(g);
-          const localSets = loadCustomEntryTicketSets();
-          const activeSet = cId ? localSets.find((s) => s.id === cId) ?? null : null;
+          const gradeParam = resolvedSetId || String(g);
           const res = await apiPost('/api/entry-ticket/signal', {
             ...(groupId ? { learningGroupId: groupId } : {}),
             grade: gradeParam,
             taskSeed: seedToUse,
             lessonPath: lessonPath || undefined,
+            ...(tasksForSignal.length > 0 ? { tasks: tasksForSignal } : {}),
             ...(activeSet ? { customSet: snapshotCustomSetForSignal(activeSet) } : {}),
           });
           if (res.ok) {
@@ -2668,13 +2795,7 @@ export default function EntryTicketPage({
 
   const poolForBand = useMemo(() => {
     if (customSetId && activeCustomSet) {
-      // Play: bis zu 10 zufällig aus allen Stunden *vor* der aktuellen (nie aktuelle)
-      return cumulativeTasksBeforeLesson(activeCustomSet, entryLessonPath).map((t) => ({
-        category: t.category,
-        prompt: t.prompt,
-        solution: t.solution,
-        sourceKey: `c:${activeCustomSet.id}:${t.id}`,
-      }));
+      return playPoolFromCustomSet(activeCustomSet, entryLessonPath);
     }
     // Generierte Klassen-/Inf-Pools werden nicht mehr genutzt
     return [];
@@ -2893,22 +3014,28 @@ export default function EntryTicketPage({
   }, [poolForBand, taskSeed, sessionStarted, displayNumberByPoolIndex, sharedTasksLocked, bandChosen]);
 
   useEffect(() => {
+    if (embeddedPlay) return;
     try {
       localStorage.setItem(QUESTION_SET_STORAGE_KEY, JSON.stringify(questionSets));
     } catch {
       // ignore storage errors
     }
-  }, [questionSets]);
+  }, [embeddedPlay, questionSets]);
 
   useEffect(() => {
+    if (embeddedPlay) return;
     if (customSets.length === 0) return;
     saveCustomEntryTicketSets(customSets);
     if (!isTeacher || !customSetsServerSyncedRef.current) return;
     void apiPut('/api/entry-ticket/custom-sets', { sets: customSets }).catch(() => {});
-  }, [customSets, isTeacher]);
+  }, [customSets, isTeacher, embeddedPlay]);
 
   /** Lehrer: Fragensets vom Server laden — Notizen/reihePath bleiben erhalten. */
   useEffect(() => {
+    if (embeddedPlay) {
+      setCustomSetsReady(true);
+      return;
+    }
     if (!isTeacher) {
       customSetsServerSyncedRef.current = true;
       setCustomSetsReady(true);
@@ -2935,7 +3062,7 @@ export default function EntryTicketPage({
     return () => {
       cancelled = true;
     };
-  }, [isTeacher]);
+  }, [isTeacher, embeddedPlay]);
 
   /** Bestehende Sets (z. B. Mathe 5) um fehlende Stundenordner aus der Reihe ergänzen. */
   useEffect(() => {
@@ -3001,6 +3128,10 @@ export default function EntryTicketPage({
 
   /** Autostart / Editor: zugewiesenes Fragenset (Stundenplan) + Pfad (z. B. Mathe 5 / Klasse 5). */
   useEffect(() => {
+    if (embeddedPlay) {
+      setAssignedGradeResolved(true);
+      return;
+    }
     const wantAssignedSet = (autoStartPending || showSetEditor) && !customSetId && Boolean(entryLessonPath);
     if (!wantAssignedSet) {
       setAssignedGradeResolved(true);
@@ -3032,7 +3163,7 @@ export default function EntryTicketPage({
     return () => {
       cancelled = true;
     };
-  }, [autoStartPending, showSetEditor, customSetId, entryLessonPath, grade, customSets]);
+  }, [embeddedPlay, autoStartPending, showSetEditor, customSetId, entryLessonPath, grade, customSets]);
 
   /** Autostart darf nicht ewig auf den Stundenplan-Fetch warten. */
   useEffect(() => {
@@ -3214,39 +3345,6 @@ export default function EntryTicketPage({
     setTaskSeed((s) => s + 1);
   };
 
-  const resolveCustomTaskFromPlay = (task: EntryTicketTask): EntryTicketCustomTask | null => {
-    if (!activeCustomSet) return null;
-    const prefix = `c:${activeCustomSet.id}:`;
-    const id = task.sourceKey?.startsWith(prefix) ? task.sourceKey.slice(prefix.length) : '';
-    if (id) {
-      for (const lesson of activeCustomSet.lessons) {
-        const found = lesson.tasks.find((t) => t.id === id);
-        if (found) return found;
-      }
-    }
-    if (!task.prompt || !task.solution) return null;
-    return {
-      id: task.sourceKey || 'play',
-      category: task.category || 'Für später',
-      prompt: task.prompt,
-      solution: task.solution,
-    };
-  };
-
-  const copyPlayTaskToLater = (task: EntryTicketTask) => {
-    if (!activeCustomSet || !isTeacher) return;
-    const original = resolveCustomTaskFromPlay(task);
-    if (!original) return;
-    const next = copyTasksToLaterSection(activeCustomSet, [original]);
-    setCustomSets((prev) => prev.map((s) => (s.id === next.id ? next : s)));
-  };
-
-  const playTaskIsSavedForLater = (task: EntryTicketTask) => {
-    if (!activeCustomSet) return false;
-    const original = resolveCustomTaskFromPlay(task);
-    return laterSectionContainsTask(activeCustomSet, original ?? task);
-  };
-
   const renameActiveCustomSet = (name: string) => {
     if (!customSetId) return;
     const trimmed = name.trim();
@@ -3425,14 +3523,11 @@ export default function EntryTicketPage({
   startSessionRef.current = startSession;
 
   const startOrResume = () => {
-    if (sessionDone) {
-      if (solutionSecondsLeft <= 0) {
-        setSolutionSecondsLeft(solutionDurationSecRef.current);
-      }
-      setSolutionRunning(true);
-      return;
+    if (!sessionDone) return;
+    if (solutionSecondsLeft <= 0) {
+      setSolutionSecondsLeft(solutionDurationSecRef.current);
     }
-    setIsRunning(true);
+    setSolutionRunning(true);
   };
 
   const printLessonsAvailable = useMemo(() => {
@@ -3583,11 +3678,7 @@ export default function EntryTicketPage({
   }, []);
 
   const pause = () => {
-    if (sessionDone) {
-      setSolutionRunning(false);
-      return;
-    }
-    setIsRunning(false);
+    if (sessionDone) setSolutionRunning(false);
   };
 
   const replaceTaskAtIndex = (index: number) => {
@@ -3905,11 +3996,12 @@ export default function EntryTicketPage({
           void markEntryTicketDone();
           return;
         }
-        if (isRunning) {
-          pause();
-        } else {
-          startOrResume();
+        if (sessionDone) {
+          if (solutionRunning) pause();
+          else startOrResume();
+          return;
         }
+        goNext();
       }
     };
 
@@ -3920,12 +4012,13 @@ export default function EntryTicketPage({
     goPrevious,
     handleBack,
     isClassModerator,
-    isRunning,
     isTeacher,
     markEntryTicketDone,
     sessionDone,
     sessionStarted,
+    solutionRunning,
     startOrResume,
+    pause,
     studentReviewMode,
     laptopCompanion,
     editingIndex,
@@ -4426,19 +4519,19 @@ export default function EntryTicketPage({
       }}
     >
       <Box sx={{ width: '100%', maxWidth: '100%', mx: 0, minWidth: 0, boxSizing: 'border-box', flex: embeddedPlay ? 1 : undefined, minHeight: embeddedPlay ? 0 : undefined, display: embeddedPlay ? 'flex' : undefined, flexDirection: embeddedPlay ? 'column' : undefined }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0, pb: 0, gap: 0.5, minHeight: 0, flexShrink: 0, flexWrap: 'nowrap', overflow: 'hidden', height: 36, px: embeddedPlay ? 0.6 : 0.15 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0, pb: 0, gap: 0.5, minHeight: 0, flexShrink: 0, flexWrap: 'nowrap', overflow: 'hidden', height: 44, px: embeddedPlay ? 0.6 : 0.15 }}>
           {sessionStarted || studentReviewMode ? (
             <Typography
               aria-label={`Karte ${sessionDone ? activeTasks.length : currentIndex + 1} von ${activeTasks.length}`}
               sx={{
-                fontSize: { xs: '1.45rem', sm: '1.75rem' },
+                fontSize: { xs: '1.9rem', sm: '2.35rem' },
                 fontWeight: 900,
                 color: '#263238',
                 fontVariantNumeric: 'tabular-nums',
                 lineHeight: 1,
-                letterSpacing: -0.04,
+                letterSpacing: -0.05,
                 flexShrink: 0,
-                minWidth: 44,
+                minWidth: 56,
               }}
             >
               {sessionDone ? activeTasks.length : currentIndex + 1}
@@ -4482,8 +4575,8 @@ export default function EntryTicketPage({
               />
             </Box>
             ) : null}
+            {!sessionStarted ? (
             <Typography
-              title={sessionStarted ? activeSetLabel : undefined}
               sx={{
                 color: '#37474f',
                 fontWeight: 700,
@@ -4492,29 +4585,68 @@ export default function EntryTicketPage({
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
-                maxWidth: embeddedPlay ? { xs: '28vw', sm: '22vw' } : { xs: '36vw', sm: '28vw' },
               }}
             >
               EntryTicket
-              {sessionStarted && !embeddedPlay ? (
-                <Box component="span" sx={{ color: '#78909c', fontWeight: 600, fontSize: '0.85em' }}>
-                  {` · ${activeSetLabel}`}
-                </Box>
-              ) : null}
             </Typography>
+            ) : null}
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.45, flexShrink: 0, minWidth: 24, ml: 'auto' }}>
-            {sessionDone && !studentReviewMode && !laptopCompanion ? (
-              <SolutionSlideClock
-                secondsLeft={solutionSecondsLeft}
-                totalSec={solutionDurationSec}
-                running={solutionRunning}
-                onToggle={() => {
-                  if (solutionRunning) pause();
-                  else startOrResume();
-                }}
-              />
+            {sessionStarted && !sessionDone && !studentReviewMode && !laptopCompanion ? (
+              <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.15, flexShrink: 0 }}>
+                <Tooltip title="Vorherige">
+                  <span>
+                    <IconButton
+                      size="small"
+                      onClick={goPrevious}
+                      aria-label="Vorherige Karte"
+                      disabled={currentIndex === 0}
+                      sx={{
+                        ...etSessionBtnSx,
+                        border: 'none',
+                        bgcolor: 'transparent',
+                        '&:hover': { bgcolor: 'rgba(69,90,100,0.08)' },
+                      }}
+                    >
+                      <SkipPreviousIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                <Tooltip title="Nächste">
+                  <span>
+                    <IconButton
+                      size="small"
+                      onClick={goNext}
+                      aria-label="Nächste Karte"
+                      sx={{
+                        ...etSessionBtnSx,
+                        border: 'none',
+                        bgcolor: 'transparent',
+                        '&:hover': { bgcolor: 'rgba(69,90,100,0.08)' },
+                      }}
+                    >
+                      <SkipNextIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                <Tooltip title="Zurücksetzen">
+                  <IconButton
+                    size="small"
+                    onClick={restart}
+                    aria-label="Zurücksetzen"
+                    sx={{
+                      ...etSessionBtnSx,
+                      border: 'none',
+                      bgcolor: 'transparent',
+                      color: '#90a4ae',
+                      '&:hover': { bgcolor: 'rgba(69,90,100,0.08)' },
+                    }}
+                  >
+                    <RestartAltIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                </Tooltip>
+              </Box>
             ) : null}
             {sessionDone ? (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, mr: 0.15 }}>
@@ -4846,81 +4978,6 @@ export default function EntryTicketPage({
                   justifyItems: 'stretch',
                 }}
               >
-                {/* Kartennummer sitzt oben links in der Kopfzeile — hier nur Lehrer-Steuerung */}
-                {!studentReviewMode && !laptopCompanion && !sessionDone ? (
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    gap: 0.5,
-                    flexWrap: 'nowrap',
-                    overflow: 'hidden',
-                    px: 0.25,
-                    minHeight: 28,
-                    height: 28,
-                    width: '100%',
-                    flexShrink: 0,
-                    alignSelf: 'start',
-                  }}
-                >
-                  <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4, flexShrink: 0 }}>
-                    <Tooltip title="Vorherige">
-                      <span>
-                        <IconButton
-                          size="small"
-                          onClick={goPrevious}
-                          aria-label="Vorherige Karte"
-                          disabled={currentIndex === 0 && !sessionDone}
-                          sx={{
-                            ...etSessionBtnSx,
-                            border: 'none',
-                            bgcolor: 'transparent',
-                            '&:hover': { bgcolor: 'rgba(69,90,100,0.08)' },
-                          }}
-                        >
-                          <SkipPreviousIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title="Nächste">
-                      <span>
-                        <IconButton
-                          size="small"
-                          onClick={goNext}
-                          aria-label="Nächste Karte"
-                          disabled={sessionDone}
-                          sx={{
-                            ...etSessionBtnSx,
-                            border: 'none',
-                            bgcolor: 'transparent',
-                            '&:hover': { bgcolor: 'rgba(69,90,100,0.08)' },
-                          }}
-                        >
-                          <SkipNextIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title="Zurücksetzen">
-                      <IconButton
-                        size="small"
-                        onClick={restart}
-                        aria-label="Zurücksetzen"
-                        sx={{
-                          ...etSessionBtnSx,
-                          border: 'none',
-                          bgcolor: 'transparent',
-                          color: '#90a4ae',
-                          '&:hover': { bgcolor: 'rgba(69,90,100,0.08)' },
-                        }}
-                      >
-                        <RestartAltIcon sx={{ fontSize: 18 }} />
-                      </IconButton>
-                    </Tooltip>
-                  </Box>
-                </Box>
-                ) : null}
-
                 {!sessionDone ? (
                   <Box
                     sx={{
@@ -4928,20 +4985,15 @@ export default function EntryTicketPage({
                       width: '100%',
                       maxWidth: 864,
                       mx: 'auto',
+                      mt: 0,
                       boxSizing: 'border-box',
-                      alignSelf: 'center',
+                      alignSelf: 'stretch',
                       justifySelf: 'center',
-                      ...(embeddedPlay
-                        ? {
-                            flex: '0 0 auto',
-                            minHeight: 0,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'flex-start',
-                            alignSelf: 'stretch',
-                            overflow: 'visible',
-                          }
-                        : {}),
+                      flex: '0 0 auto',
+                      minHeight: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'flex-start',
                     }}
                   >
                     <AnimatePresence mode="wait" custom={cardSlideDir} initial={false}>
@@ -4967,15 +5019,15 @@ export default function EntryTicketPage({
                         sx={{
                           position: 'relative',
                           width: '100%',
-                          borderRadius: 3,
+                          borderRadius: 1.5,
                           bgcolor: '#ffffff',
-                          boxShadow: '0 8px 28px rgba(55, 71, 79, 0.1)',
+                          boxShadow: '0 2px 10px rgba(55, 71, 79, 0.08)',
                           display: 'flex',
                           flexDirection: 'column',
                           overflow: 'visible',
-                          minHeight: embeddedPlay ? 0 : DISPLAY_BOX_MIN_HEIGHT,
-                          maxHeight: embeddedPlay ? 'none' : undefined,
-                          ...(embeddedPlay ? { flex: '0 0 auto', height: 'auto' } : {}),
+                          minHeight: 0,
+                          height: 'auto',
+                          flex: '0 0 auto',
                         }}
                       >
                           <Box
@@ -4990,8 +5042,8 @@ export default function EntryTicketPage({
                                   readEntryTicketCardLayout(currentTask.prompt) !== 'flow')
                                   ? 'left'
                                   : 'center',
-                              px: { xs: 1.4, sm: 2.2 },
-                              py: embeddedPlay ? 0.7 : 2.7,
+                              px: { xs: 1.1, sm: 1.6 },
+                              py: { xs: 0.55, sm: 0.75 },
                               overflow: 'visible',
                               minHeight: 0,
                             }}
@@ -5044,19 +5096,20 @@ export default function EntryTicketPage({
                 ) : (
                   <Box
                     sx={{
+                      position: 'relative',
                       width: '100%',
                       minWidth: 0,
                       height: embeddedPlay
                         ? '100%'
-                        : { xs: 'calc(100vh - 58px)', sm: 'calc(100vh - 56px)' },
+                        : { xs: 'calc(100vh - 52px)', sm: 'calc(100vh - 50px)' },
                       maxHeight: embeddedPlay
                         ? '100%'
-                        : { xs: 'calc(100vh - 58px)', sm: 'calc(100vh - 56px)' },
+                        : { xs: 'calc(100vh - 52px)', sm: 'calc(100vh - 50px)' },
                       flex: embeddedPlay ? 1 : undefined,
                       borderRadius: 2,
                       px: { xs: 0.25, sm: 0.4 },
                       py: 0,
-                      pt: embeddedPlay ? 0 : 0.75,
+                      pt: sessionDone && !studentReviewMode && !laptopCompanion ? 5.25 : 0,
                       bgcolor: 'transparent',
                       overflow: 'hidden',
                       boxSizing: 'border-box',
@@ -5065,6 +5118,18 @@ export default function EntryTicketPage({
                       gap: 0,
                     }}
                   >
+                    {sessionDone && !studentReviewMode && !laptopCompanion ? (
+                      <Box sx={{ position: 'absolute', top: 2, right: 8, zIndex: 2 }}>
+                        <SolutionSlideClock
+                          secondsLeft={solutionSecondsLeft}
+                          running={solutionRunning}
+                          onToggle={() => {
+                            if (solutionRunning) pause();
+                            else startOrResume();
+                          }}
+                        />
+                      </Box>
+                    ) : null}
                     <Box
                       sx={{
                         flex: 1,
@@ -5092,12 +5157,9 @@ export default function EntryTicketPage({
                           key={`${index}-${task.prompt}`}
                           sx={{
                             display: 'grid',
-                            gridTemplateColumns:
-                              isTeacher && isCustomSetActive
-                                ? '19px minmax(0, 1fr) 22px 22px'
-                                : isTeacher
-                                  ? '19px minmax(0, 1fr) 22px'
-                                  : '19px minmax(0, 1fr)',
+                            gridTemplateColumns: isTeacher
+                              ? '19px minmax(0, 1fr) 22px'
+                              : '19px minmax(0, 1fr)',
                             columnGap: 0.55,
                             alignItems: 'start',
                             px: 0.5,
