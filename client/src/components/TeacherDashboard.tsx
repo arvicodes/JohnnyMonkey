@@ -428,6 +428,8 @@ import SubmissionViewer from './SubmissionViewer';
 import SpielMenuButton from './SpielMenuButton';
 import LearningGroupAppearanceFields from './LearningGroupAppearanceFields';
 import DualStudentAvatars from './DualStudentAvatars';
+import StudentNameTrainerDialog from './StudentNameTrainerDialog';
+import FaceRetouchingNaturalIcon from '@mui/icons-material/FaceRetouchingNatural';
 import PresentationLaptopPlayer from './presentation/PresentationLaptopPlayer';
 import { PresentationSoundSplitControl } from './presentation/PresentationSoundControls';
 import LearningGroupSortableShell from './LearningGroupSortableShell';
@@ -6022,6 +6024,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   // Document Processing History States
   const [documentHistoryMap, setDocumentHistoryMap] = useState<{[key: string]: DocumentProcessingHistory[]}>({});
 
+
+  const [nameTrainerGroupId, setNameTrainerGroupId] = useState<string | null>(null);
 
   // Menü pro Schüler
   const [studentMenuAnchorEl, setStudentMenuAnchorEl] = useState<null | HTMLElement>(null);
@@ -16116,6 +16120,28 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                             <BrushIcon sx={{ fontSize: 28 }} />
                           </IconButton>
                           <IconButton
+                            aria-label="Namen lernen"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setNameTrainerGroupId(group.id);
+                            }}
+                            size="small"
+                            sx={{
+                              width: 28,
+                              height: 28,
+                              p: 0,
+                              mr: 0.5,
+                              color: hasCustomStyle ? rowIconColor : '#7b1fa2',
+                              '& svg': {
+                                width: '100%',
+                                height: '100%',
+                              },
+                            }}
+                            title="Namen lernen (Fotos)"
+                          >
+                            <FaceRetouchingNaturalIcon sx={{ fontSize: 28 }} />
+                          </IconButton>
+                          <IconButton
                             aria-label="Epochal eintragen"
                             onClick={e => { e.stopPropagation(); handleParticipationOpen(group.id, group.name); }}
                             size="small"
@@ -18221,6 +18247,14 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         >
           <VisibilityOffIcon fontSize="small" sx={{ mr: 1 }} /> Schüler passiv setzen
         </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (menuGroupId) setNameTrainerGroupId(menuGroupId);
+            handleMenuClose();
+          }}
+        >
+          <FaceRetouchingNaturalIcon fontSize="small" sx={{ mr: 1 }} /> Namen lernen
+        </MenuItem>
         <MenuItem onClick={() => handleFolderAssignmentOpen(menuGroupId!)}>
           <FolderIcon fontSize="small" sx={{ mr: 1 }} /> Ordner zuordnen
         </MenuItem>
@@ -18266,6 +18300,12 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> Löschen
         </MenuItem>
       </Menu>
+      <StudentNameTrainerDialog
+        open={Boolean(nameTrainerGroupId)}
+        onClose={() => setNameTrainerGroupId(null)}
+        groupName={groups.find((g) => g.id === nameTrainerGroupId)?.name || ''}
+        students={groups.find((g) => g.id === nameTrainerGroupId)?.students || []}
+      />
       {/* Bearbeitungsdialog für Lerngruppe */}
       <Dialog open={editDialogOpen} onClose={handleEditDialogClose} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ ...dialogCloseTitleSx }}>
