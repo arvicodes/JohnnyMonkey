@@ -74,7 +74,7 @@ function blockFileDropIntoText(e: React.DragEvent) {
   }
 }
 
-type DragMode = 'move' | 'resize';
+type DragMode = 'move' | 'resize' | 'rotate';
 type ResizeCorner = 'br' | 'tr';
 
 interface DragState {
@@ -84,6 +84,8 @@ interface DragState {
   startY: number;
   slideW: number;
   slideH: number;
+  slideLeft: number;
+  slideTop: number;
   orig: SlideElement;
 }
 
@@ -165,6 +167,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     startY: number;
     slideW: number;
     slideH: number;
+    slideLeft: number;
+    slideTop: number;
     orig: SlideElement;
     pointerId: number;
     cardZone?: 'title' | 'body' | null;
@@ -399,6 +403,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         startY: pending.startY,
         slideW: pending.slideW,
         slideH: pending.slideH,
+        slideLeft: pending.slideLeft,
+        slideTop: pending.slideTop,
         orig: pending.orig,
       };
       pendingDragRef.current = null;
@@ -416,7 +422,21 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
 
     let patch: Partial<SlideElement>;
     let guides: SnapGuide[] = [];
-    if (d.mode === 'move') {
+    if (d.mode === 'rotate') {
+      const cx = d.slideLeft + ((d.orig.x + d.orig.w / 2) / 100) * d.slideW;
+      const cy = d.slideTop + ((d.orig.y + d.orig.h / 2) / 100) * d.slideH;
+      const a0 = Math.atan2(d.startY - cy, d.startX - cx);
+      const a1 = Math.atan2(e.clientY - cy, e.clientX - cx);
+      let rot = (d.orig.rotation ?? 0) + ((a1 - a0) * 180) / Math.PI;
+      if (e.shiftKey) {
+        rot = Math.round(rot / 15) * 15;
+      } else {
+        const quarter = Math.round(rot / 90) * 90;
+        if (Math.abs(rot - quarter) < 6) rot = quarter;
+      }
+      rot = ((rot % 360) + 360) % 360;
+      patch = { rotation: Math.round(rot) };
+    } else if (d.mode === 'move') {
       if (shouldPanCoverImageOnDrag(d.orig, { altKey: e.altKey })) {
         const pos = parseImageObjectPosition(d.orig.imageObjectPosition);
         const panGain = 1.35;
@@ -579,6 +599,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       startY: e.clientY,
       slideW: rect.width,
       slideH: rect.height,
+      slideLeft: rect.left,
+      slideTop: rect.top,
       orig: { ...element },
       pointerId: e.pointerId,
       cardZone,
@@ -775,6 +797,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         if (!editable) return;
         if (isMediaElement && mediaInteractive) return;
         if ((e.target as HTMLElement).closest('[data-resize-handle]')) return;
+        if ((e.target as HTMLElement).closest('[data-rotate-handle]')) return;
         if ((e.target as HTMLElement).closest('[data-col-resize]')) return;
         if ((e.target as HTMLElement).closest('[data-element-delete]')) return;
         const hit = e.target as HTMLElement;
@@ -909,8 +932,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             ? 'visible'
             : 'hidden',
         transform:
-          isShapeElement && typeof element.rotation === 'number' && element.rotation % 360 !== 0
-            ? `rotate(${element.rotation}deg)`
+          isShapeElement && typeof view.rotation === 'number' && view.rotation % 360 !== 0
+            ? `rotate(${view.rotation}deg)`
             : undefined,
         transformOrigin: 'center center',
         border: isCardElement
@@ -1875,6 +1898,44 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             dangerouslySetInnerHTML={{ __html: displayHtml }}
           />
         ))}
+
+      {showSelectionChrome && isShapeElement && (
+        <Box
+          data-rotate-handle
+          title="Drehen — ziehen"
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            startDrag(e, 'rotate');
+          }}
+          sx={{
+            position: 'absolute',
+            left: '50%',
+            top: `${-28 * scale}px`,
+            width: `${18 * scale}px`,
+            height: `${18 * scale}px`,
+            ml: `${-9 * scale}px`,
+            borderRadius: '50%',
+            bgcolor: '#fff',
+            border: `${2 * scale}px solid #2E7D32`,
+            cursor: 'grab',
+            zIndex: 32,
+            pointerEvents: 'auto',
+            touchAction: 'none',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.28)',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              left: '50%',
+              top: '100%',
+              width: `${2 * scale}px`,
+              height: `${10 * scale}px`,
+              ml: `${-1 * scale}px`,
+              bgcolor: '#2E7D32',
+            },
+            '&:active': { cursor: 'grabbing' },
+          }}
+        />
+      )}
 
       {showResizeHandle && !hugImageChrome && (
         <Box
