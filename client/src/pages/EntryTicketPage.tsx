@@ -2722,7 +2722,7 @@ export default function EntryTicketPage({
     const priorLabel = priorParts.length > 0 ? priorParts.join(', ') : 'keine';
     const currentHint =
       currentCount > 0
-        ? ` · ${currentCount} in der aktuellen Stunde zählen nicht`
+        ? ` · ${currentCount} in der aktuellen Stunde`
         : '';
     return `Pool: ${prevCount} aus früheren (${priorLabel}) · Spiel: ${pickN}/${TARGET_TASK_COUNT}${currentHint} · Set gesamt ${total}`;
   }, [isCustomSetActive, activeCustomSet, poolForBand.length, entryLessonPath]);
@@ -2909,6 +2909,7 @@ export default function EntryTicketPage({
   }, [questionSets]);
 
   useEffect(() => {
+    if (customSets.length === 0) return;
     saveCustomEntryTicketSets(customSets);
     if (!isTeacher || !customSetsServerSyncedRef.current) return;
     void apiPut('/api/entry-ticket/custom-sets', { sets: customSets }).catch(() => {});
@@ -3055,12 +3056,13 @@ export default function EntryTicketPage({
     return () => window.clearTimeout(t);
   }, [autoStartPending, sessionStarted, assignedGradeResolved]);
 
-  /** Autostart: Play starten, sobald das Set da ist — nicht abbrechen, wenn noch geladen wird. */
+  /** Autostart: Play starten, sobald das Set da ist — nicht ohne Karten loslegen. */
   useEffect(() => {
     if (!autoStartPending || sessionStarted) return;
     if (!isTeacher && (!moderatorGateChecked || !isClassModerator)) return;
+    if (isTeacher && !customSetsReady) return;
     const haveLocalSet = !customSetId || customSets.some((s) => s.id === customSetId);
-    if (!customSetsReady && !haveLocalSet) return;
+    if (!haveLocalSet) return;
     if (!assignedGradeResolved && !customSetId) return;
 
     if (!customSetId && entryLessonPath) {
@@ -3081,9 +3083,15 @@ export default function EntryTicketPage({
         setBandChosen(true);
         return;
       }
+      if (!customSetsReady) return;
       setCustomSetId(null);
       setAutoStartPending(false);
       return;
+    }
+
+    if (customSetId && poolForBand.length === 0) {
+      const set = customSets.find((s) => s.id === customSetId);
+      if (set && countCustomSetTasks(set) > 0) return;
     }
 
     startSessionRef.current();

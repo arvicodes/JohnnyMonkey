@@ -599,9 +599,8 @@ function lessonMatchesPath(lesson: EntryTicketLessonSection, lessonPath: string)
 }
 
 /**
- * Play-Pool: alle Fragen aus *allen* Stunden vor der aktuellen (kumulativ), nie die aktuelle.
- * Vergleich über chronologischen Ordnernamen (01.01 < 01.02 …), unabhängig von Editor-Reihenfolge.
- * Ohne lessonPath: gesamtes Set (z. B. freies Spielen ohne Stundenkontext).
+ * Play-Pool: frühere Stunden plus die aktuelle (kumulativ).
+ * „Für später“ nie. Ohne lessonPath: gesamtes Set.
  */
 export function cumulativeTasksBeforeLesson(
   set: EntryTicketCustomSet,
@@ -616,13 +615,11 @@ export function cumulativeTasksBeforeLesson(
   }
 
   const wantName = lessonFolderName(want);
-  // Aktuelle Stunde am Ordnernamen ausrichten — auch wenn sie noch keine Sektion im Set hat.
-  // „Allgemein“ zählt immer als vor der ersten Stunde (auch wenn localeCompare sonst anders sortiert).
   return lessons
     .filter((l) => {
       if (isLaterLessonSection(l)) return false;
       if (isGeneralLessonSection(l) || isUnboundPriorLessonSection(l)) return true;
-      if (lessonMatchesPath(l, want)) return false;
+      if (lessonMatchesPath(l, want)) return true;
       return compareLessonSortKeys(lessonSortKey(l), wantName) < 0;
     })
     .flatMap((l) => l.tasks);

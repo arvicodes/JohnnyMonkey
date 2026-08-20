@@ -97,6 +97,10 @@ function normalizeLessonPathKey(p: string): string {
  */
 const SERIES_PATH_TO_SET_NAME: { pathTest: RegExp; setNameTests: RegExp[] }[] = [
   {
+    pathTest: /(?:^|\/)Klasse\s*5(?:\/|$)/i,
+    setNameTests: [/^Mathe\s*5$/i, /Klasse\s*5/i, /^M\s*5$/i],
+  },
+  {
     pathTest: /(?:^|\/)11[-–\s]?04[^/]*\bKI\b/i,
     setNameTests: [/11[-–\s]?04.*\bKI\b/i, /^KI$/i, /\bKI\b/i],
   },
