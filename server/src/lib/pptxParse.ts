@@ -34,6 +34,8 @@ export type ParsedPptxBox =
       fillColor?: string | null;
       strokeColor?: string | null;
       shapeKind: 'rect' | 'ellipse' | 'line' | 'arrow';
+      flipH?: boolean;
+      flipV?: boolean;
     };
 
 export type ParsedPptxSlide = {
@@ -113,6 +115,14 @@ function emuToPct(rect: RectEmu, slideCx: number, slideCy: number): { x: number;
 function parseAttrNumber(tag: string, name: string): number | null {
   const m = tag.match(new RegExp(`\\b${name}="(-?\\d+)"`, 'i'));
   return m ? Number(m[1]) : null;
+}
+
+function parseXfrmFlips(xml: string): { flipH: boolean; flipV: boolean } {
+  const attrs = xml.match(/<a:xfrm\b([^>]*)>/i)?.[1] || '';
+  return {
+    flipH: /\bflipH="(true|1)"/i.test(attrs),
+    flipV: /\bflipV="(true|1)"/i.test(attrs),
+  };
 }
 
 function parseXfrmBlock(xml: string): RectEmu | null {
@@ -698,6 +708,7 @@ function extractShapeBoxes(
     if (pct.w < 0.2 && pct.h < 0.2) continue;
     const stroke = extractStrokeColor(cxn, theme) || '#212121';
     const hasArrow = /<a:tailEnd|<a:headEnd/i.test(cxn);
+    const flips = parseXfrmFlips(cxn);
     boxes.push({
       kind: 'shape',
       x: pct.x,
@@ -707,6 +718,8 @@ function extractShapeBoxes(
       fillColor: null,
       strokeColor: stroke,
       shapeKind: hasArrow ? 'arrow' : 'line',
+      flipH: flips.flipH,
+      flipV: flips.flipV,
     });
   }
 

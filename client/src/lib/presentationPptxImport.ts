@@ -49,6 +49,8 @@ export type ImportedPptxBox =
       fillColor?: string | null;
       strokeColor?: string | null;
       shapeKind: 'rect' | 'ellipse' | 'line' | 'arrow';
+      flipH?: boolean;
+      flipV?: boolean;
     };
 
 export type ImportedPptxSlide = {
@@ -258,7 +260,9 @@ export function buildLayoutFaithfulSlideFromImport(
         shapeKind: box.shapeKind || 'rect',
         fillColor: box.fillColor || '#FFFFFF',
         strokeColor: box.strokeColor || box.fillColor || '#BDBDBD',
-        strokeWidth: box.strokeColor ? 2 : 0,
+        strokeWidth: box.shapeKind === 'arrow' || box.shapeKind === 'line' ? 3 : box.strokeColor ? 2 : 0,
+        ...(box.flipH != null ? { flipH: box.flipH } : {}),
+        ...(box.flipV != null ? { flipV: box.flipV } : {}),
         zIndex: z++,
         stackLayer: 'background',
       });

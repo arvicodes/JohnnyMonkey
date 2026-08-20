@@ -60,23 +60,48 @@ export function shapeSupportsText(el: Pick<SlideElement, 'type' | 'shapeKind'>):
   return kind === 'rect' || kind === 'ellipse';
 }
 
+function connectorEnds(flipH?: boolean, flipV?: boolean): { x1: number; y1: number; x2: number; y2: number } {
+  const x1 = flipH ? 92 : 8;
+  const y1 = flipV ? 92 : 8;
+  const x2 = flipH ? 8 : 92;
+  const y2 = flipV ? 8 : 92;
+  return { x1, y1, x2, y2 };
+}
+
+function arrowHeadPoints(x1: number, y1: number, x2: number, y2: number): string {
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const size = 11;
+  const spread = Math.PI * 0.78;
+  const ax = x2 + Math.cos(angle + spread) * size;
+  const ay = y2 + Math.sin(angle + spread) * size;
+  const bx = x2 + Math.cos(angle - spread) * size;
+  const by = y2 + Math.sin(angle - spread) * size;
+  return `${ax},${ay} ${x2},${y2} ${bx},${by}`;
+}
+
 export function SlideShapeSvg({
   kind,
   strokeColor,
   fillColor,
   strokeWidth = 3,
+  flipH,
+  flipV,
   style,
 }: {
   kind: PresentationShapeKind;
   strokeColor?: string;
   fillColor?: string;
   strokeWidth?: number;
+  flipH?: boolean;
+  flipV?: boolean;
   style?: React.CSSProperties;
 }) {
   const stroke = strokeColor || JOHNNY_PRESENTATION.primary;
   const fill =
     fillColor && fillColor !== 'transparent' && fillColor !== 'none' ? fillColor : 'none';
   const sw = Math.max(1.5, Math.min(12, strokeWidth));
+  const connector = flipH != null || flipV != null;
+  const ends = connector ? connectorEnds(Boolean(flipH), Boolean(flipV)) : null;
 
   return (
     <svg
@@ -87,10 +112,35 @@ export function SlideShapeSvg({
       style={{ display: 'block', overflow: 'visible', ...style }}
       aria-hidden
     >
-      {kind === 'line' && (
+      {kind === 'line' && ends && (
+        <line
+          x1={ends.x1}
+          y1={ends.y1}
+          x2={ends.x2}
+          y2={ends.y2}
+          stroke={stroke}
+          strokeWidth={sw}
+          strokeLinecap="round"
+        />
+      )}
+      {kind === 'line' && !ends && (
         <line x1="8" y1="50" x2="92" y2="50" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
       )}
-      {kind === 'arrow' && (
+      {kind === 'arrow' && ends && (
+        <>
+          <line
+            x1={ends.x1}
+            y1={ends.y1}
+            x2={ends.x2}
+            y2={ends.y2}
+            stroke={stroke}
+            strokeWidth={sw}
+            strokeLinecap="round"
+          />
+          <polygon points={arrowHeadPoints(ends.x1, ends.y1, ends.x2, ends.y2)} fill={stroke} />
+        </>
+      )}
+      {kind === 'arrow' && !ends && (
         <>
           <line x1="6" y1="50" x2="72" y2="50" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
           <polygon points="68,32 94,50 68,68" fill={stroke} />

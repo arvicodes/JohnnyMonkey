@@ -82,6 +82,9 @@ export interface SlideElement {
   src?: string;
   /** Form-Art (nur type === 'shape'). */
   shapeKind?: PresentationShapeKind;
+  /** PPTX-Verbinder: Diagonale der Box (sonst bleibt der Pfeil waagerecht). */
+  flipH?: boolean;
+  flipV?: boolean;
   strokeColor?: string;
   strokeWidth?: number;
   fillColor?: string;

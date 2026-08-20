@@ -2,7 +2,7 @@
   "version": 1,
   "title": "01.07 Prozesse am Fahrrad",
   "lessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad",
-  "updatedAt": "2026-08-20T09:48:00.000Z",
+  "updatedAt": "2026-08-20T10:05:00.000Z",
   "defaultTransition": "fade",
   "slides": [
     {
@@ -288,7 +288,9 @@
           "strokeColor": "#212121",
           "strokeWidth": 3,
           "zIndex": 17,
-          "stackLayer": "background"
+          "stackLayer": "foreground",
+          "flipH": false,
+          "flipV": false
         },
         {
           "id": "el-pptx-18-mt1c0zjc-bjeqf-shape",
@@ -301,7 +303,9 @@
           "strokeColor": "#212121",
           "strokeWidth": 3,
           "zIndex": 18,
-          "stackLayer": "background"
+          "stackLayer": "foreground",
+          "flipH": false,
+          "flipV": false
         },
         {
           "id": "el-pptx-19-mt1c0zjc-xg9bh-shape",
@@ -314,7 +318,9 @@
           "strokeColor": "#212121",
           "strokeWidth": 3,
           "zIndex": 19,
-          "stackLayer": "background"
+          "stackLayer": "foreground",
+          "flipH": true,
+          "flipV": false
         },
         {
           "id": "el-pptx-20-mt1c0zjc-isjm6-shape",
@@ -327,7 +333,9 @@
           "strokeColor": "#212121",
           "strokeWidth": 3,
           "zIndex": 20,
-          "stackLayer": "background"
+          "stackLayer": "foreground",
+          "flipH": false,
+          "flipV": false
         },
         {
           "id": "el-pptx-21-mt1c0zjc-gd81p-shape",
@@ -340,7 +348,9 @@
           "strokeColor": "#212121",
           "strokeWidth": 3,
           "zIndex": 21,
-          "stackLayer": "background"
+          "stackLayer": "foreground",
+          "flipH": true,
+          "flipV": false
         },
         {
           "id": "el-pptx-22-mt1c0zjc-ngoqy-shape",
@@ -353,7 +363,9 @@
           "strokeColor": "#212121",
           "strokeWidth": 3,
           "zIndex": 22,
-          "stackLayer": "background"
+          "stackLayer": "foreground",
+          "flipH": false,
+          "flipV": false
         },
         {
           "id": "el-pptx-23-mt1c0zjc-poj2a-shape",
@@ -366,7 +378,9 @@
           "strokeColor": "#212121",
           "strokeWidth": 3,
           "zIndex": 23,
-          "stackLayer": "background"
+          "stackLayer": "foreground",
+          "flipH": true,
+          "flipV": false
         },
         {
           "id": "el-pptx-24-mt1c0zjc-t97cu-shape",
@@ -379,7 +393,9 @@
           "strokeColor": "#212121",
           "strokeWidth": 3,
           "zIndex": 24,
-          "stackLayer": "background"
+          "stackLayer": "foreground",
+          "flipH": false,
+          "flipV": false
         },
         {
           "id": "el-pptx-25-mt1c0zjc-i4pvh-shape",
@@ -392,7 +408,9 @@
           "strokeColor": "#212121",
           "strokeWidth": 3,
           "zIndex": 25,
-          "stackLayer": "background"
+          "stackLayer": "foreground",
+          "flipH": false,
+          "flipV": false
         },
         {
           "id": "el-pptx-26-mt1c0zjc-b2yos-shape",
@@ -405,7 +423,9 @@
           "strokeColor": "#212121",
           "strokeWidth": 3,
           "zIndex": 26,
-          "stackLayer": "background"
+          "stackLayer": "foreground",
+          "flipH": false,
+          "flipV": false
         },
         {
           "id": "el-pptx-27-mt1c0zjc-84b5v-shape",
@@ -418,7 +438,9 @@
           "strokeColor": "#212121",
           "strokeWidth": 3,
           "zIndex": 27,
-          "stackLayer": "background"
+          "stackLayer": "foreground",
+          "flipH": true,
+          "flipV": false
         },
         {
           "id": "el-pptx-28-mt1c0zjc-bpt5e-shape",
@@ -431,7 +453,9 @@
           "strokeColor": "#212121",
           "strokeWidth": 3,
           "zIndex": 28,
-          "stackLayer": "background"
+          "stackLayer": "foreground",
+          "flipH": false,
+          "flipV": false
         },
         {
           "id": "el-pptx-29-mt1c0zjc-lpd5x-shape",
@@ -444,7 +468,9 @@
           "strokeColor": "#212121",
           "strokeWidth": 3,
           "zIndex": 29,
-          "stackLayer": "background"
+          "stackLayer": "foreground",
+          "flipH": true,
+          "flipV": false
         },
         {
           "id": "el-pptx-30-mt1c0zjc-s0vgb-shape",
@@ -457,7 +483,9 @@
           "strokeColor": "#212121",
           "strokeWidth": 3,
           "zIndex": 30,
-          "stackLayer": "background"
+          "stackLayer": "foreground",
+          "flipH": false,
+          "flipV": false
         },
         {
           "id": "el-pptx-31-mt1c0zjc-eqb1e-shape",
@@ -470,7 +498,9 @@
           "strokeColor": "#212121",
           "strokeWidth": 3,
           "zIndex": 31,
-          "stackLayer": "background"
+          "stackLayer": "foreground",
+          "flipH": true,
+          "flipV": false
         },
         {
           "id": "el-pptx-32-mt1c0zjc-o3qh7-shape",
@@ -483,7 +513,9 @@
           "strokeColor": "#212121",
           "strokeWidth": 3,
           "zIndex": 32,
-          "stackLayer": "background"
+          "stackLayer": "foreground",
+          "flipH": false,
+          "flipV": false
         },
         {
           "id": "el-pptx-33-mt1c0zjc-57wen-text",

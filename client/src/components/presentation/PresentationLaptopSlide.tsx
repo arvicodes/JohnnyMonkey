@@ -292,6 +292,8 @@ function StaticElement({ el, scale, accent }: { el: SlideElement; scale: number;
           strokeColor={el.strokeColor}
           fillColor={el.fillColor}
           strokeWidth={el.strokeWidth ?? 3}
+          flipH={el.flipH}
+          flipV={el.flipV}
         />
         {showText ? (
           <div

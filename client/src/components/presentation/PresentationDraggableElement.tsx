@@ -1092,6 +1092,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             strokeColor={element.strokeColor}
             fillColor={element.fillColor}
             strokeWidth={element.strokeWidth ?? 3}
+            flipH={element.flipH}
+            flipV={element.flipV}
           />
           {isShapeBox &&
             (editable && !animationEditMode && !exportSnapshot ? (
