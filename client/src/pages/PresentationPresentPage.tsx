@@ -1,9 +1,7 @@
 import React, { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Snackbar, TextField, Tooltip, Typography } from '@mui/material';
 import {
-  Close as CloseIcon,
   Fullscreen as FullscreenIcon,
   FullscreenExit as FullscreenExitIcon,
 } from '@mui/icons-material';
@@ -58,10 +56,40 @@ import {
   isIosSafariLike,
   requestPresentFullscreen,
 } from '../lib/presentationPresentFullscreen';
+import { ThemeProvider, createTheme, useTheme } from '@mui/material/styles';
 import EntryTicketPage from './EntryTicketPage';
 
 const SWIPE_MIN_PX = 48;
 const EMPTY_STROKES: PresentationStroke[] = [];
+
+function PresentFullscreenPortals({
+  host,
+  children,
+}: {
+  host: HTMLElement | null;
+  children: React.ReactNode;
+}) {
+  const theme = useTheme();
+  const nested = useMemo(
+    () =>
+      createTheme(theme, {
+        components: {
+          MuiModal: {
+            defaultProps: {
+              container: () => host || document.body,
+            },
+          },
+          MuiPopover: {
+            defaultProps: {
+              container: () => host || document.body,
+            },
+          },
+        },
+      }),
+    [theme, host],
+  );
+  return <ThemeProvider theme={nested}>{children}</ThemeProvider>;
+}
 
 const PresentationPresentPage: React.FC = () => {
   const navigate = useNavigate();
@@ -1068,9 +1096,7 @@ const PresentationPresentPage: React.FC = () => {
   };
 
   const handleSlideTap = (e: React.MouseEvent) => {
-    if (drawActive) return;
     if (entryTicketOpen) return;
-    if (quietWork.running || quietWork.finished || musicGame.running) return;
     if (
       tryHandleLessonEntryTicketLinkClick(e, {
         lessonPath,
@@ -1081,6 +1107,8 @@ const PresentationPresentPage: React.FC = () => {
     ) {
       return;
     }
+    if (drawActive) return;
+    if (quietWork.running || quietWork.finished || musicGame.running) return;
     requestPresentFullscreen(containerRef.current);
     if (isPresentationLinkClickTarget(e.target)) return;
     if (didPanRef.current) {
@@ -1190,7 +1218,13 @@ const PresentationPresentPage: React.FC = () => {
         if (entryTicketOpen || drawActive) return;
         if (e.pointerType === 'pen') return;
         const t = e.target instanceof Element ? e.target : null;
-        if (t?.closest?.('[data-pres-fs], [data-pres-back], [data-pres-toolbar], canvas')) return;
+        if (
+          t?.closest?.(
+            '[data-pres-fs], [data-pres-back], [data-pres-toolbar], canvas, a[href][data-pres-entry-ticket], a[href*="jm=lesson-entry"]',
+          )
+        ) {
+          return;
+        }
         requestPresentFullscreen(containerRef.current);
       }}
       onClickCapture={(e) => {
@@ -1223,24 +1257,6 @@ const PresentationPresentPage: React.FC = () => {
               </IconButton>
             </Tooltip>
           ) : null}
-          <Tooltip title="Zum Dashboard (D)">
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                goToDashboard();
-              }}
-              aria-label="Zum Dashboard"
-              data-pres-back=""
-              sx={{
-                ...presentBackBtnSx,
-                left: 'auto',
-                right: 'max(8px, env(safe-area-inset-right))',
-              }}
-            >
-              <CloseIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Tooltip>
         </>
       ) : null}
 
@@ -1513,36 +1529,32 @@ const PresentationPresentPage: React.FC = () => {
         onClose={() => setSnackbar('')}
       />
 
-      {entryTicketOpen && typeof document !== 'undefined'
-        ? createPortal(
-            <Box
-              data-present-scroll
-              data-entry-ticket-open=""
-              sx={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                width: '100%',
-                height: '100svh',
-                maxHeight: '100svh',
-                zIndex: 1200,
-                bgcolor: '#f4f6fb',
-                overflow: 'hidden',
-                overscrollBehavior: 'none',
+      {entryTicketOpen ? (
+        <Box
+          data-present-scroll
+          data-entry-ticket-open=""
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 200,
+            bgcolor: '#f4f6fb',
+            overflow: 'hidden',
+            overscrollBehavior: 'none',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <PresentFullscreenPortals host={containerRef.current}>
+            <EntryTicketPage
+              embeddedPlay={{
+                lessonPath,
+                groupId: groupId || undefined,
+                onExit: closeEntryTicket,
               }}
-            >
-              <EntryTicketPage
-                embeddedPlay={{
-                  lessonPath,
-                  groupId: groupId || undefined,
-                  onExit: closeEntryTicket,
-                }}
-              />
-            </Box>,
-            document.body,
-          )
-        : null}
+            />
+          </PresentFullscreenPortals>
+        </Box>
+      ) : null}
     </Box>
   );
 };

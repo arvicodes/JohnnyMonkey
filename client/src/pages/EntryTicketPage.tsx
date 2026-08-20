@@ -20,13 +20,9 @@ import {
 } from '@mui/material';
 import {
   Add as AddIcon,
-  ArrowBack as ArrowBackIcon,
-  Bookmark as BookmarkIcon,
-  BookmarkAdd as BookmarkAddIcon,
   Check as CheckIcon,
   Create as CreateIcon,
   History as HistoryIcon,
-  Pause as PauseIcon,
   PlayArrow as PlayArrowIcon,
   Print as PrintIcon,
   RestartAlt as RestartAltIcon,
@@ -55,8 +51,6 @@ import { presentationLessonBackUrl } from '../lib/presentationEditorUi';
 import { playPresentationSoundFor } from '../lib/presentationSound';
 import {
   type EntryTicketCustomSet,
-  type EntryTicketCustomTask,
-  copyTasksToLaterSection,
   countCustomSetTasks,
   createEmptyCustomSet,
   createLessonSection,
@@ -534,7 +528,6 @@ function SolutionSlideClock({
   totalSec,
   running,
   onToggle,
-  size = 88,
 }: {
   secondsLeft: number;
   totalSec: number;
@@ -542,12 +535,9 @@ function SolutionSlideClock({
   onToggle?: () => void;
   size?: number;
 }) {
-  const frac = Math.max(0, Math.min(1, secondsLeft / Math.max(totalSec, 1)));
   const done = secondsLeft <= 0;
   const urgent = secondsLeft > 0 && secondsLeft <= 15;
-  const diskColor = done ? '#d50000' : urgent ? '#ff6d00' : '#00c853';
-  const inner = Math.max(6, Math.round(size * 0.12));
-  const tickOrigin = `${1}px ${size / 2 - 3}px`;
+  const color = done ? '#d50000' : urgent ? '#ff6d00' : '#263238';
 
   return (
     <Box
@@ -564,62 +554,24 @@ function SolutionSlideClock({
           : 'Lösungsuhr'
       }
       sx={{
-        position: 'relative',
-        width: size,
-        height: size,
         flexShrink: 0,
         p: 0,
+        m: 0,
         border: 'none',
-        borderRadius: '50%',
+        bgcolor: 'transparent',
         cursor: onToggle ? 'pointer' : 'default',
-        background: `conic-gradient(${diskColor} 0deg ${frac * 360}deg, #eceff1 ${frac * 360}deg 360deg)`,
-        boxShadow: `0 0 0 2px ${diskColor}, 0 0 10px ${diskColor}66`,
         appearance: 'none',
         WebkitAppearance: 'none',
-        '&:hover': onToggle ? { filter: 'brightness(0.96)' } : undefined,
+        fontWeight: 900,
+        fontVariantNumeric: 'tabular-nums',
+        fontSize: { xs: '1.55rem', sm: '1.85rem' },
+        lineHeight: 1,
+        letterSpacing: -0.04,
+        color,
+        '&:hover': onToggle ? { opacity: 0.78 } : undefined,
       }}
     >
-      {[0, 90, 180, 270].map((deg) => (
-        <Box
-          key={deg}
-          sx={{
-            position: 'absolute',
-            left: '50%',
-            top: 3,
-            width: 2,
-            height: 5,
-            bgcolor: 'rgba(38,50,56,0.5)',
-            transformOrigin: tickOrigin,
-            transform: `translateX(-50%) rotate(${deg}deg)`,
-            pointerEvents: 'none',
-          }}
-        />
-      ))}
-      <Box
-        sx={{
-          position: 'absolute',
-          inset: inner,
-          borderRadius: '50%',
-          bgcolor: '#fff',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: 'inset 0 0 0 1px rgba(69,90,100,0.12)',
-        }}
-      >
-        <Typography
-          sx={{
-            fontWeight: 900,
-            fontVariantNumeric: 'tabular-nums',
-            fontSize: size >= 80 ? '1.15rem' : '0.72rem',
-            lineHeight: 1,
-            color: diskColor,
-            letterSpacing: -0.35,
-          }}
-        >
-          {formatMmSs(secondsLeft)}
-        </Typography>
-      </Box>
+      {formatMmSs(secondsLeft)}
     </Box>
   );
 }
@@ -1950,7 +1902,16 @@ export default function EntryTicketPage({
         };
   const [sessionStarted, setSessionStarted] = useState(() => Boolean(initialRoute.review));
   const [grade, setGrade] = useState<EntryBand>(() => initialRoute.grade);
-  const [customSetId, setCustomSetId] = useState<string | null>(() => initialRoute.customSetId);
+  const [customSetId, setCustomSetId] = useState<string | null>(() => {
+    if (initialRoute.customSetId) return initialRoute.customSetId;
+    if (!initialRoute.autostart || !initialRoute.lessonPath || typeof window === 'undefined') return null;
+    const band = resolveEntryTicketBandForLessonPath(
+      initialRoute.lessonPath,
+      initialRoute.grade,
+      loadCustomEntryTicketSets(),
+    );
+    return isCustomEntryTicketSetId(band) ? band : null;
+  });
   /** Inhalte (Karten / Editor) erst nach Klick auf ein Set — außer URL/Autostart. */
   const [bandChosen, setBandChosen] = useState(
     () =>
@@ -1975,6 +1936,9 @@ export default function EntryTicketPage({
   const [taskSeed, setTaskSeed] = useState(() => initialRoute.taskSeed ?? randomTaskSeed());
   const [showSetEditor, setShowSetEditor] = useState(() => Boolean(initialRoute.openEditor));
   const [questionSets, setQuestionSets] = useState<GradeQuestionSets>(() => {
+    if (embeddedPlay || initialRoute.autostart) {
+      return DEFAULT_QUESTION_SETS;
+    }
     try {
       const raw = localStorage.getItem(QUESTION_SET_STORAGE_KEY);
       if (!raw) {
@@ -2107,7 +2071,21 @@ export default function EntryTicketPage({
     () => !(typeof window !== 'undefined' && localStorage.getItem('teacherId')),
   );
   const [assignedGradeResolved, setAssignedGradeResolved] = useState(
-    () => !initialRoute.autostart || Boolean(initialRoute.customSetId) || !initialRoute.lessonPath,
+    () =>
+      !initialRoute.autostart ||
+      Boolean(initialRoute.customSetId) ||
+      !initialRoute.lessonPath ||
+      Boolean(
+        typeof window !== 'undefined' &&
+          initialRoute.lessonPath &&
+          isCustomEntryTicketSetId(
+            resolveEntryTicketBandForLessonPath(
+              initialRoute.lessonPath,
+              initialRoute.grade,
+              loadCustomEntryTicketSets(),
+            ),
+          ),
+      ),
   );
 
   const laptopCompanion =
@@ -2141,8 +2119,21 @@ export default function EntryTicketPage({
     }
     appliedPlayKeyRef.current = playKey;
     setGrade(g);
-    setCustomSetId(cId);
-    setBandChosen(Boolean(hasExplicitBand || cId || autostart || openEditor || review || companion));
+    const resolvedSetId =
+      cId ||
+      (lessonPath
+        ? (() => {
+            const band = resolveEntryTicketBandForLessonPath(
+              lessonPath,
+              g,
+              loadCustomEntryTicketSets(),
+            );
+            return isCustomEntryTicketSetId(band) ? band : null;
+          })()
+        : null);
+    setCustomSetId(resolvedSetId);
+    if (resolvedSetId) setAssignedGradeResolved(true);
+    setBandChosen(Boolean(hasExplicitBand || resolvedSetId || autostart || openEditor || review || companion));
     setEntryLessonPath(lessonPath);
     setAutoStartPending(review || companion ? false : autostart);
     setEntryTicketGroupId(groupId);
@@ -2948,6 +2939,7 @@ export default function EntryTicketPage({
 
   /** Bestehende Sets (z. B. Mathe 5) um fehlende Stundenordner aus der Reihe ergänzen. */
   useEffect(() => {
+    if (embeddedPlay) return;
     if (!isTeacher || !customSetsReady) return;
     let cancelled = false;
     void (async () => {
@@ -2970,10 +2962,11 @@ export default function EntryTicketPage({
     return () => {
       cancelled = true;
     };
-  }, [isTeacher, customSetsReady]);
+  }, [embeddedPlay, isTeacher, customSetsReady]);
 
   /** Aktives Set beim Öffnen noch einmal gegen die Reihenordner abgleichen. */
   useEffect(() => {
+    if (embeddedPlay) return;
     if (!isTeacher || !customSetsReady || !customSetId) return;
     let cancelled = false;
     void (async () => {
@@ -2993,7 +2986,7 @@ export default function EntryTicketPage({
     return () => {
       cancelled = true;
     };
-  }, [isTeacher, customSetsReady, customSetId]);
+  }, [embeddedPlay, isTeacher, customSetsReady, customSetId]);
 
   /** Gelöschtes Custom-Set (nur Lehrer): zurück auf Klassenband. Moderator behält URL/Server-Grade. */
   useEffect(() => {
@@ -3052,7 +3045,9 @@ export default function EntryTicketPage({
   useEffect(() => {
     if (!autoStartPending || sessionStarted) return;
     if (!isTeacher && (!moderatorGateChecked || !isClassModerator)) return;
-    if (isTeacher && !customSetsReady) return;
+    if (isTeacher && !customSetsReady) {
+      if (!embeddedPlay || poolForBand.length === 0) return;
+    }
     const haveLocalSet = !customSetId || customSets.some((s) => s.id === customSetId);
     if (!haveLocalSet) return;
     if (!assignedGradeResolved && !customSetId) return;
@@ -3101,6 +3096,7 @@ export default function EntryTicketPage({
     isTeacher,
     moderatorGateChecked,
     isClassModerator,
+    embeddedPlay,
   ]);
 
   /** Lehrer: konkrete Karten in das Signal schreiben, damit der Moderator dasselbe Ticket sieht. */
@@ -3395,7 +3391,7 @@ export default function EntryTicketPage({
     setSolutionSecondsLeft(solutionDurationSecRef.current);
     setShowSolutions(false);
     setTeacherNotes('');
-    setIsRunning(true);
+    setIsRunning(false);
     if (isTeacher) {
       if (skipDuplicateEntrySignalRef.current) {
         skipDuplicateEntrySignalRef.current = false;
@@ -4430,110 +4426,28 @@ export default function EntryTicketPage({
       }}
     >
       <Box sx={{ width: '100%', maxWidth: '100%', mx: 0, minWidth: 0, boxSizing: 'border-box', flex: embeddedPlay ? 1 : undefined, minHeight: embeddedPlay ? 0 : undefined, display: embeddedPlay ? 'flex' : undefined, flexDirection: embeddedPlay ? 'column' : undefined }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: embeddedPlay ? 0 : sessionDone ? 1.5 : 0, pb: embeddedPlay ? 0 : sessionDone ? 0.5 : 0, gap: 0.35, minHeight: 0, flexShrink: 0, flexWrap: 'nowrap', overflow: 'hidden', height: sessionDone && !studentReviewMode && !laptopCompanion ? (embeddedPlay ? 96 : 92) : 28, px: embeddedPlay ? 0.4 : 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0, pb: 0, gap: 0.5, minHeight: 0, flexShrink: 0, flexWrap: 'nowrap', overflow: 'hidden', height: 36, px: embeddedPlay ? 0.6 : 0.15 }}>
           {sessionStarted || studentReviewMode ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, flexShrink: 0 }}>
-              {sessionDone && !studentReviewMode && !laptopCompanion ? (
-                <>
-                <SolutionSlideClock
-                  secondsLeft={solutionSecondsLeft}
-                  totalSec={solutionDurationSec}
-                  running={solutionRunning}
-                  size={embeddedPlay ? 92 : 84}
-                  onToggle={() => {
-                    if (solutionRunning) pause();
-                    else startOrResume();
-                  }}
-                />
-                <Tooltip title="Minuten auf der Lösungsfolie">
-                  <TextField
-                    size="small"
-                    type="text"
-                    inputMode="numeric"
-                    value={solutionDurationMinDraft}
-                    onChange={(e) => setSolutionDurationMinDraft(e.target.value.replace(/[^\d]/g, ''))}
-                    onBlur={commitSolutionDurationDraft}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        commitSolutionDurationDraft();
-                        (e.target as HTMLInputElement).blur();
-                      }
-                      if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        applySolutionDurationSec(solutionDurationSec + 60);
-                      }
-                      if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        applySolutionDurationSec(solutionDurationSec - 60);
-                      }
-                    }}
-                    inputProps={{
-                      'aria-label': 'Minuten auf der Lösungsfolie',
-                      inputMode: 'numeric',
-                      pattern: '[0-9]*',
-                    }}
-                    sx={{
-                      width: 28,
-                      '& .MuiInputBase-input': {
-                        py: 0.15,
-                        px: 0.25,
-                        fontSize: '0.7rem',
-                        fontWeight: 800,
-                        textAlign: 'center',
-                        fontVariantNumeric: 'tabular-nums',
-                        color: '#546e7a',
-                      },
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: 1,
-                        bgcolor: '#fff',
-                        height: 22,
-                      },
-                      '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' },
-                    }}
-                  />
-                </Tooltip>
-                </>
-              ) : null}
-              <Typography
-                aria-label={`Karte ${sessionDone ? activeTasks.length : currentIndex + 1} von ${activeTasks.length}`}
-                sx={{
-                  fontSize: '0.95rem',
-                  fontWeight: 800,
-                  color: '#263238',
-                  fontVariantNumeric: 'tabular-nums',
-                  lineHeight: 1,
-                  letterSpacing: -0.03,
-                  flexShrink: 0,
-                  minWidth: 28,
-                }}
-              >
-                {sessionDone ? activeTasks.length : currentIndex + 1}
-                <Box component="span" sx={{ color: '#90a4ae', fontWeight: 700, fontSize: '0.58em' }}>
-                  /{activeTasks.length}
-                </Box>
-              </Typography>
-            </Box>
+            <Typography
+              aria-label={`Karte ${sessionDone ? activeTasks.length : currentIndex + 1} von ${activeTasks.length}`}
+              sx={{
+                fontSize: { xs: '1.45rem', sm: '1.75rem' },
+                fontWeight: 900,
+                color: '#263238',
+                fontVariantNumeric: 'tabular-nums',
+                lineHeight: 1,
+                letterSpacing: -0.04,
+                flexShrink: 0,
+                minWidth: 44,
+              }}
+            >
+              {sessionDone ? activeTasks.length : currentIndex + 1}
+              <Box component="span" sx={{ color: '#90a4ae', fontWeight: 800, fontSize: '0.62em' }}>
+                /{activeTasks.length}
+              </Box>
+            </Typography>
           ) : (
-            <Tooltip title="Zurück">
-              <IconButton
-                onClick={handleBack}
-                size="small"
-                aria-label="Zurück"
-                sx={{
-                  p: 0,
-                  minWidth: 24,
-                  width: 24,
-                  height: 24,
-                  bgcolor: 'white',
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  flexShrink: 0,
-                }}
-              >
-                <ArrowBackIcon sx={{ fontSize: 14 }} />
-              </IconButton>
-            </Tooltip>
+            <Box sx={{ width: 24, flexShrink: 0 }} />
           )}
 
           <Box
@@ -4590,7 +4504,18 @@ export default function EntryTicketPage({
             </Typography>
           </Box>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3, flexShrink: 0, minWidth: 24 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.45, flexShrink: 0, minWidth: 24, ml: 'auto' }}>
+            {sessionDone && !studentReviewMode && !laptopCompanion ? (
+              <SolutionSlideClock
+                secondsLeft={solutionSecondsLeft}
+                totalSec={solutionDurationSec}
+                running={solutionRunning}
+                onToggle={() => {
+                  if (solutionRunning) pause();
+                  else startOrResume();
+                }}
+              />
+            ) : null}
             {sessionDone ? (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, mr: 0.15 }}>
                 <FormControlLabel
@@ -4671,27 +4596,6 @@ export default function EntryTicketPage({
               >
                 Historie
               </Button>
-            ) : null}
-            {sessionStarted || studentReviewMode ? (
-              <Tooltip title="Zurück">
-                <IconButton
-                  onClick={handleBack}
-                  size="small"
-                  aria-label="Zurück"
-                  sx={{
-                    p: 0,
-                    minWidth: 24,
-                    width: 24,
-                    height: 24,
-                    bgcolor: 'white',
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    flexShrink: 0,
-                  }}
-                >
-                  <ArrowBackIcon sx={{ fontSize: 14 }} />
-                </IconButton>
-              </Tooltip>
             ) : null}
           </Box>
         </Box>
@@ -4961,53 +4865,6 @@ export default function EntryTicketPage({
                   }}
                 >
                   <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4, flexShrink: 0 }}>
-                    {!sessionDone ? (
-                    <TextField
-                      size="small"
-                      type="text"
-                      inputMode="numeric"
-                      value={durationDraft}
-                      onChange={(e) => setDurationDraft(e.target.value.replace(/[^\d]/g, ''))}
-                      onBlur={commitDurationDraft}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          commitDurationDraft();
-                          (e.target as HTMLInputElement).blur();
-                        }
-                        if (e.key === 'ArrowUp') {
-                          e.preventDefault();
-                          applySlideDurationSec(slideDurationSec + 1);
-                        }
-                        if (e.key === 'ArrowDown') {
-                          e.preventDefault();
-                          applySlideDurationSec(slideDurationSec - 1);
-                        }
-                      }}
-                      inputProps={{
-                        'aria-label': 'Sekunden pro Karte',
-                        inputMode: 'numeric',
-                        pattern: '[0-9]*',
-                      }}
-                      sx={{
-                        width: 48,
-                        '& .MuiInputBase-input': {
-                          py: 0.45,
-                          px: 0.5,
-                          fontSize: '0.85rem',
-                          fontWeight: 700,
-                          textAlign: 'center',
-                          fontVariantNumeric: 'tabular-nums',
-                          color: '#546e7a',
-                        },
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: 2,
-                          bgcolor: '#fff',
-                        },
-                        '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0' },
-                      }}
-                    />
-                    ) : null}
                     <Tooltip title="Vorherige">
                       <span>
                         <IconButton
@@ -5026,41 +4883,6 @@ export default function EntryTicketPage({
                         </IconButton>
                       </span>
                     </Tooltip>
-                    {!(sessionDone ? solutionRunning : isRunning) ? (
-                      <Tooltip title={sessionDone ? (solutionSecondsLeft <= 0 ? 'Uhr neu starten' : 'Uhr starten') : 'Weiter'}>
-                        <IconButton
-                          size="small"
-                          onClick={startOrResume}
-                          aria-label={sessionDone ? 'Lösungsuhr starten' : 'Weiter'}
-                          sx={{
-                            width: 28,
-                            height: 28,
-                            bgcolor: '#546e7a',
-                            color: '#fff',
-                            '&:hover': { bgcolor: '#455a64' },
-                          }}
-                        >
-                          <PlayArrowIcon sx={{ fontSize: 18 }} />
-                        </IconButton>
-                      </Tooltip>
-                    ) : (
-                      <Tooltip title="Pause">
-                        <IconButton
-                          size="small"
-                          onClick={pause}
-                          aria-label="Pause"
-                          sx={{
-                            width: 28,
-                            height: 28,
-                            bgcolor: '#eceff1',
-                            color: '#546e7a',
-                            '&:hover': { bgcolor: '#cfd8dc' },
-                          }}
-                        >
-                          <PauseIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                      </Tooltip>
-                    )}
                     <Tooltip title="Nächste">
                       <span>
                         <IconButton
@@ -5111,12 +4933,13 @@ export default function EntryTicketPage({
                       justifySelf: 'center',
                       ...(embeddedPlay
                         ? {
-                            flex: 1,
+                            flex: '0 0 auto',
                             minHeight: 0,
                             display: 'flex',
                             flexDirection: 'column',
-                            justifyContent: 'center',
-                            overflow: 'hidden',
+                            justifyContent: 'flex-start',
+                            alignSelf: 'stretch',
+                            overflow: 'visible',
                           }
                         : {}),
                     }}
@@ -5149,74 +4972,15 @@ export default function EntryTicketPage({
                           boxShadow: '0 8px 28px rgba(55, 71, 79, 0.1)',
                           display: 'flex',
                           flexDirection: 'column',
-                          overflow: embeddedPlay ? 'auto' : 'visible',
+                          overflow: 'visible',
                           minHeight: embeddedPlay ? 0 : DISPLAY_BOX_MIN_HEIGHT,
-                          maxHeight: embeddedPlay ? '100%' : undefined,
-                          ...(embeddedPlay ? { flex: '0 1 auto', height: 'auto' } : {}),
+                          maxHeight: embeddedPlay ? 'none' : undefined,
+                          ...(embeddedPlay ? { flex: '0 0 auto', height: 'auto' } : {}),
                         }}
                       >
-                        <Box
-                          sx={{
-                            height: 3,
-                            width: '100%',
-                            bgcolor: 'rgba(120,144,156,0.12)',
-                            flexShrink: 0,
-                            borderTopLeftRadius: 12,
-                            borderTopRightRadius: 12,
-                            overflow: 'hidden',
-                          }}
-                        >
                           <Box
                             sx={{
-                              height: '100%',
-                              width: `${(secondsLeft / Math.max(slideDurationSec, 1)) * 100}%`,
-                              bgcolor: secondsLeft <= 5 ? '#ff8a65' : '#90a4ae',
-                              transition: 'width 0.95s linear, background-color 0.25s ease',
-                            }}
-                          />
-                        </Box>
-
-                        {isTeacher && isCustomSetActive && currentTask ? (
-                          <Tooltip
-                            title={
-                              playTaskIsSavedForLater(currentTask)
-                                ? 'Bereits in „Für später“'
-                                : 'Nach „Für später“ kopieren'
-                            }
-                          >
-                            <span>
-                              <IconButton
-                                size="small"
-                                onClick={() => copyPlayTaskToLater(currentTask)}
-                                disabled={playTaskIsSavedForLater(currentTask)}
-                                aria-label="Nach Für später kopieren"
-                                sx={{
-                                  position: 'absolute',
-                                  top: 8,
-                                  right: 4,
-                                  p: 0,
-                                  minWidth: 28,
-                                  width: 28,
-                                  height: 28,
-                                  zIndex: 1,
-                                  color: playTaskIsSavedForLater(currentTask) ? '#fb8c00' : '#90a4ae',
-                                  '&:hover': { color: '#e65100', bgcolor: 'rgba(251,140,0,0.12)' },
-                                  '&.Mui-disabled': { color: '#fb8c00', opacity: 1 },
-                                }}
-                              >
-                                {playTaskIsSavedForLater(currentTask) ? (
-                                  <BookmarkIcon sx={{ fontSize: 20 }} />
-                                ) : (
-                                  <BookmarkAddIcon sx={{ fontSize: 20 }} />
-                                )}
-                              </IconButton>
-                            </span>
-                          </Tooltip>
-                        ) : null}
-
-                          <Box
-                            sx={{
-                              flex: embeddedPlay ? '0 1 auto' : 1,
+                              flex: '0 0 auto',
                               display: 'flex',
                               alignItems: 'flex-start',
                               justifyContent: 'center',
@@ -5226,13 +4990,9 @@ export default function EntryTicketPage({
                                   readEntryTicketCardLayout(currentTask.prompt) !== 'flow')
                                   ? 'left'
                                   : 'center',
-                              px: { xs: 2.7, sm: 4.2 },
-                              pr:
-                                isTeacher && isCustomSetActive
-                                  ? { xs: 4.5, sm: 5.5 }
-                                  : { xs: 2.7, sm: 4.2 },
-                              py: embeddedPlay ? 1.6 : 2.7,
-                              overflow: embeddedPlay ? 'auto' : 'visible',
+                              px: { xs: 1.4, sm: 2.2 },
+                              py: embeddedPlay ? 0.7 : 2.7,
+                              overflow: 'visible',
                               minHeight: 0,
                             }}
                           >
@@ -5278,23 +5038,6 @@ export default function EntryTicketPage({
                             ) : null}
                           </Box>
                         </Box>
-
-                        <Typography
-                          sx={{
-                            pb: embeddedPlay ? 1.4 : 1.1,
-                            pt: embeddedPlay ? 0.4 : 0.25,
-                            textAlign: 'center',
-                            flexShrink: 0,
-                            fontSize: embeddedPlay ? { xs: '2.05rem', sm: '2.45rem' } : { xs: '1.35rem', sm: '1.55rem' },
-                            fontWeight: 900,
-                            lineHeight: 1,
-                            color: secondsLeft <= 5 ? '#ff8a65' : '#546e7a',
-                            fontVariantNumeric: 'tabular-nums',
-                            letterSpacing: -0.04,
-                          }}
-                        >
-                          {formatMmSs(secondsLeft)}
-                        </Typography>
                       </Box>
                     </AnimatePresence>
                   </Box>
@@ -5481,39 +5224,7 @@ export default function EntryTicketPage({
                               </IconButton>
                             </Tooltip>
                           ) : null}
-                          {isTeacher && isCustomSetActive ? (
-                            <Tooltip
-                              title={
-                                playTaskIsSavedForLater(task)
-                                  ? 'Bereits in „Für später“'
-                                  : 'Nach „Für später“ kopieren'
-                              }
-                            >
-                              <span>
-                                <IconButton
-                                  size="small"
-                                  onClick={() => copyPlayTaskToLater(task)}
-                                  disabled={playTaskIsSavedForLater(task)}
-                                  aria-label="Nach Für später kopieren"
-                                  sx={{
-                                    p: 0,
-                                    minWidth: 22,
-                                    width: 22,
-                                    height: 22,
-                                    color: playTaskIsSavedForLater(task) ? '#fb8c00' : '#90a4ae',
-                                    '&:hover': { color: '#e65100', bgcolor: 'rgba(251,140,0,0.12)' },
-                                    '&.Mui-disabled': { color: '#fb8c00', opacity: 1 },
-                                  }}
-                                >
-                                  {playTaskIsSavedForLater(task) ? (
-                                    <BookmarkIcon sx={{ fontSize: 16 }} />
-                                  ) : (
-                                    <BookmarkAddIcon sx={{ fontSize: 16 }} />
-                                  )}
-                                </IconButton>
-                              </span>
-                            </Tooltip>
-                          ) : null}
+                        </Box>
                         </Box>
                       ))}
                     </Box>

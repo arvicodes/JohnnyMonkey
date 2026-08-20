@@ -579,29 +579,6 @@ export default function PresentationLaptopPlayer({
         ...(embedded ? {} : { height: '100%', minHeight: '100dvh' }),
       }}
     >
-      {onClose && !entryTicketOpen ? (
-        <IconButton
-          size="small"
-          onClick={onClose}
-          aria-label="Zum Dashboard"
-          sx={{
-            position: 'absolute',
-            top: 6,
-            right: 6,
-            zIndex: 5,
-            width: 28,
-            height: 28,
-            p: 0,
-            color: 'rgba(255,255,255,0.9)',
-            bgcolor: 'rgba(22,24,28,0.55)',
-            border: '1px solid rgba(255,255,255,0.2)',
-            '&:hover': { bgcolor: 'rgba(22,24,28,0.8)' },
-          }}
-        >
-          <CloseIcon sx={{ fontSize: 16 }} />
-        </IconButton>
-      ) : null}
-
       {/* Stage: dunkler Rahmen um die Folie; Embedded ohne großen Letterbox */}
       <Box
         ref={stageHostRef}
