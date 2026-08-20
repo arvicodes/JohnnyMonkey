@@ -85,6 +85,8 @@ export interface SlideElement {
   /** PPTX-Verbinder: Diagonale der Box (sonst bleibt der Pfeil waagerecht). */
   flipH?: boolean;
   flipV?: boolean;
+  /** Drehung in Grad, um die Mitte (Linie, Pfeil, Form). */
+  rotation?: number;
   strokeColor?: string;
   strokeWidth?: number;
   fillColor?: string;

@@ -285,6 +285,11 @@ function StaticElement({ el, scale, accent }: { el: SlideElement; scale: number;
           overflow: 'visible',
           boxSizing: 'border-box',
           pointerEvents: 'none',
+          transform:
+            typeof el.rotation === 'number' && el.rotation % 360 !== 0
+              ? `rotate(${el.rotation}deg)`
+              : undefined,
+          transformOrigin: 'center center',
         }}
       >
         <SlideShapeSvg

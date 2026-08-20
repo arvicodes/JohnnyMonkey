@@ -29,6 +29,7 @@ import {
   LayersOutlined as BackgroundLayerIcon,
   Layers as ForegroundLayerIcon,
   CategoryOutlined as ShapeIcon,
+  RotateRight as RotateRightIcon,
   TrendingFlat as ArrowShapeIcon,
   HorizontalRule as LineShapeIcon,
   CropSquare as RectShapeIcon,
@@ -1214,6 +1215,62 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                           '& .MuiInputLabel-root': { fontSize: 9 },
                         }}
                       />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, mb: 0.5 }}>
+                        <TextField
+                          size="small"
+                          type="number"
+                          label="Drehung °"
+                          value={Math.round((((selectedElement.rotation ?? 0) % 360) + 360) % 360)}
+                          onChange={(e) =>
+                            onUpdateElement(selectedElement.id, {
+                              rotation: (((Number(e.target.value) || 0) % 360) + 360) % 360,
+                            })
+                          }
+                          sx={{
+                            flex: 1,
+                            '& .MuiInputBase-root': { fontSize: 10, height: 28 },
+                            '& .MuiInputLabel-root': { fontSize: 9 },
+                          }}
+                        />
+                        <Tooltip title="90° drehen">
+                          <IconButton
+                            size="small"
+                            onClick={() =>
+                              onUpdateElement(selectedElement.id, {
+                                rotation: ((((selectedElement.rotation ?? 0) + 90) % 360) + 360) % 360,
+                              })
+                            }
+                            sx={{ width: 28, height: 28, border: '1px solid #cfd8dc', borderRadius: 1 }}
+                          >
+                            <RotateRightIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 0.35, mb: 0.5 }}>
+                        {[0, 45, 90, 135, 180].map((deg) => {
+                          const current = Math.round((((selectedElement.rotation ?? 0) % 360) + 360) % 360);
+                          const active = current === deg;
+                          return (
+                            <Typography
+                              key={deg}
+                              component="button"
+                              onClick={() => onUpdateElement(selectedElement.id, { rotation: deg })}
+                              sx={{
+                                flex: 1,
+                                border: active ? '1.5px solid #455a64' : '1px solid #cfd8dc',
+                                bgcolor: active ? '#eceff1' : '#fff',
+                                borderRadius: 1,
+                                fontSize: 9,
+                                fontWeight: 700,
+                                py: 0.35,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {deg}°
+                            </Typography>
+                          );
+                        })}
+                      </Box>
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.35, mb: 0.5 }}>
                         {(['x', 'y', 'w', 'h'] as const).map((key) => (
                           <TextField

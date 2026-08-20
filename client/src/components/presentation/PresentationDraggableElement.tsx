@@ -908,6 +908,11 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
           pictureFrameOn
             ? 'visible'
             : 'hidden',
+        transform:
+          isShapeElement && typeof element.rotation === 'number' && element.rotation % 360 !== 0
+            ? `rotate(${element.rotation}deg)`
+            : undefined,
+        transformOrigin: 'center center',
         border: isCardElement
           ? undefined
           : imageSelectionBorder,
