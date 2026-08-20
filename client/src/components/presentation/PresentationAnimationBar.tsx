@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import {
   AnimationOutlined as AnimationIcon,
+  Filter1 as StepsIcon,
   SettingsOutlined as FooterSettingsIcon,
   SwapHoriz as TransitionIcon,
 } from '@mui/icons-material';
@@ -26,8 +27,9 @@ import {
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
 
 const iconBtnSx = {
-  width: 28,
-  height: 28,
+  width: 26,
+  height: 26,
+  p: 0.2,
   color: PRES_EDITOR_UI.textMuted,
   '&:hover': { bgcolor: '#fff', color: PRES_EDITOR_UI.accent },
 };
@@ -48,7 +50,6 @@ const PresentationAnimationBar: React.FC<PresentationAnimationBarProps> = ({
   deck,
   slide,
   animationEditMode,
-  selectedAnimationTarget,
   onAnimationEditModeChange,
   onUpdateSlide,
   onUpdateDeck,
@@ -60,6 +61,7 @@ const PresentationAnimationBar: React.FC<PresentationAnimationBarProps> = ({
   const [footerAnchor, setFooterAnchor] = useState<HTMLElement | null>(null);
 
   const revealOn = slide.revealEnabled !== false;
+  const footerOn = deck.showSlideFooter !== false;
   const transitionMeta = getSlideTransitionMeta(slide.transition);
   const footer = deck.slideFooter ?? {};
   const lessonFolderLabel = lessonFolderDisplayName(deck.lessonPath);
@@ -78,38 +80,27 @@ const PresentationAnimationBar: React.FC<PresentationAnimationBarProps> = ({
     setTransitionAnchor(null);
   };
 
-  const toggleAnimationEdit = () => {
-    onAnimationEditModeChange(!animationEditMode);
-  };
-
   return (
     <Box
       sx={{
         display: 'flex',
         alignItems: 'center',
-        gap: 0.5,
+        gap: 0.1,
         flexShrink: 0,
       }}
     >
-      <Tooltip title="Folienübergang wählen">
-        <Button
+      <Tooltip title={`Übergang: ${transitionMeta.label}`}>
+        <IconButton
           size="small"
           onClick={(e) => setTransitionAnchor(e.currentTarget)}
-          startIcon={<TransitionIcon sx={{ fontSize: 16 }} />}
           sx={{
-            minWidth: 0,
-            px: 1,
-            py: 0.25,
-            fontSize: 11,
-            textTransform: 'none',
-            color: PRES_EDITOR_UI.text,
-            border: `1px solid ${PRES_EDITOR_UI.barBorder}`,
-            bgcolor: '#fff',
-            '&:hover': { bgcolor: PRES_EDITOR_UI.accentSoft },
+            ...iconBtnSx,
+            color: transitionAnchor ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
+            bgcolor: transitionAnchor ? '#fff' : 'transparent',
           }}
         >
-          {transitionMeta.label}
-        </Button>
+          <TransitionIcon sx={{ fontSize: 16 }} />
+        </IconButton>
       </Tooltip>
 
       <Popover
@@ -180,42 +171,51 @@ const PresentationAnimationBar: React.FC<PresentationAnimationBarProps> = ({
         </Box>
       </Popover>
 
-      <FormControlLabel
-        sx={{ m: 0, gap: 0.35, flexShrink: 0 }}
-        control={
-          <Switch
-            size="small"
-            checked={deck.showSlideFooter !== false}
-            onChange={(e) =>
-              onUpdateDeck({
-                showSlideFooter: e.target.checked,
-                showSlideNumbers: e.target.checked ? true : deck.showSlideNumbers,
-              })
-            }
-          />
-        }
-        label={
-          <Typography sx={{ fontSize: 10, color: PRES_EDITOR_UI.textMuted, whiteSpace: 'nowrap' }}>
-            Fußleiste
-          </Typography>
-        }
-      />
+      <Tooltip title={animationEditMode ? 'Animations-Bearbeitung beenden' : 'Animationen bearbeiten'}>
+        <IconButton
+          size="small"
+          onClick={() => onAnimationEditModeChange(!animationEditMode)}
+          sx={{
+            ...iconBtnSx,
+            color: animationEditMode ? '#fff' : PRES_EDITOR_UI.textMuted,
+            bgcolor: animationEditMode ? '#FF9800' : 'transparent',
+            border: animationEditMode ? '1px solid #E65100' : '1px solid transparent',
+            '&:hover': {
+              bgcolor: animationEditMode ? '#F57C00' : '#fff',
+              color: animationEditMode ? '#fff' : PRES_EDITOR_UI.accent,
+            },
+          }}
+        >
+          <AnimationIcon sx={{ fontSize: 16 }} />
+        </IconButton>
+      </Tooltip>
 
-      <Tooltip title="Fußleiste bearbeiten">
-        <span>
-          <IconButton
-            size="small"
-            disabled={deck.showSlideFooter === false}
-            onClick={(e) => setFooterAnchor(e.currentTarget)}
-            sx={{
-              ...iconBtnSx,
-              color: footerAnchor ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
-              bgcolor: footerAnchor ? '#fff' : 'transparent',
-            }}
-          >
-            <FooterSettingsIcon sx={{ fontSize: 15 }} />
-          </IconButton>
-        </span>
+      <Tooltip title={revealOn ? 'Einblend-Schritte an' : 'Einblend-Schritte aus'}>
+        <IconButton
+          size="small"
+          onClick={() => onUpdateSlide({ revealEnabled: !revealOn })}
+          sx={{
+            ...iconBtnSx,
+            color: revealOn ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
+            bgcolor: revealOn ? '#fff' : 'transparent',
+          }}
+        >
+          <StepsIcon sx={{ fontSize: 16 }} />
+        </IconButton>
+      </Tooltip>
+
+      <Tooltip title="Fußleiste">
+        <IconButton
+          size="small"
+          onClick={(e) => setFooterAnchor(e.currentTarget)}
+          sx={{
+            ...iconBtnSx,
+            color: footerAnchor || footerOn ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
+            bgcolor: footerAnchor ? '#fff' : 'transparent',
+          }}
+        >
+          <FooterSettingsIcon sx={{ fontSize: 15 }} />
+        </IconButton>
       </Tooltip>
 
       <Popover
@@ -226,16 +226,36 @@ const PresentationAnimationBar: React.FC<PresentationAnimationBarProps> = ({
         transformOrigin={{ vertical: 'top', horizontal: 'left' }}
       >
         <Box sx={{ p: 1.25, width: 280 }}>
-          <Typography sx={{ fontSize: 11, fontWeight: 700, color: PRES_EDITOR_UI.text, mb: 0.75 }}>
+          <Typography sx={{ fontSize: 11, fontWeight: 700, color: PRES_EDITOR_UI.text, mb: 0.5 }}>
             Fußleiste
           </Typography>
+          <FormControlLabel
+            sx={{ m: 0, mb: 0.75, gap: 0.35 }}
+            control={
+              <Switch
+                size="small"
+                checked={footerOn}
+                onChange={(e) =>
+                  onUpdateDeck({
+                    showSlideFooter: e.target.checked,
+                    showSlideNumbers: e.target.checked ? true : deck.showSlideNumbers,
+                  })
+                }
+              />
+            }
+            label={
+              <Typography sx={{ fontSize: 11, color: PRES_EDITOR_UI.text }}>
+                Anzeigen
+              </Typography>
+            }
+          />
           <Typography sx={{ fontSize: 10, color: PRES_EDITOR_UI.textMuted, mb: 0.75 }}>
-            Standardwerte aus dem Stundenordner — bei Bedarf anpassen. Foliennummer (z. B. 1 / 5) erscheint
-            automatisch rechts.
+            Standard aus dem Stundenordner. Foliennummer erscheint automatisch rechts.
           </Typography>
           <TextField
             size="small"
             fullWidth
+            disabled={!footerOn}
             label="Links (Stundenordner)"
             value={footerTitleValue}
             onChange={(e) => {
@@ -247,6 +267,7 @@ const PresentationAnimationBar: React.FC<PresentationAnimationBarProps> = ({
           <TextField
             size="small"
             fullWidth
+            disabled={!footerOn}
             label="Rechts (Oberordner)"
             value={footerRightValue}
             onChange={(e) => {
@@ -257,49 +278,6 @@ const PresentationAnimationBar: React.FC<PresentationAnimationBarProps> = ({
           />
         </Box>
       </Popover>
-
-      <FormControlLabel
-        sx={{ m: 0, gap: 0.35, flexShrink: 0 }}
-        control={
-          <Switch
-            size="small"
-            checked={revealOn}
-            onChange={(e) => onUpdateSlide({ revealEnabled: e.target.checked })}
-          />
-        }
-        label={
-          <Typography sx={{ fontSize: 10, color: PRES_EDITOR_UI.textMuted, whiteSpace: 'nowrap' }}>
-            Schritte
-          </Typography>
-        }
-      />
-
-      <Tooltip title={animationEditMode ? 'Animations-Bearbeitung beenden' : 'Animationen bearbeiten'}>
-        <Button
-          size="small"
-          onClick={toggleAnimationEdit}
-          startIcon={<AnimationIcon sx={{ fontSize: 16 }} />}
-          sx={{
-            minWidth: 0,
-            px: 1,
-            py: 0.25,
-            fontSize: 11,
-            textTransform: 'none',
-            color: animationEditMode ? '#fff' : PRES_EDITOR_UI.text,
-            border: `1px solid ${animationEditMode ? '#E65100' : PRES_EDITOR_UI.barBorder}`,
-            bgcolor: animationEditMode ? '#FF9800' : '#fff',
-            '&:hover': { bgcolor: animationEditMode ? '#F57C00' : PRES_EDITOR_UI.accentSoft },
-          }}
-        >
-          Animation
-        </Button>
-      </Tooltip>
-
-      {animationEditMode && (
-        <Typography sx={{ fontSize: 10, color: '#E65100', fontWeight: 600, whiteSpace: 'nowrap' }}>
-          {selectedAnimationTarget ? 'Zahl 0–9 drücken' : 'Element anklicken'}
-        </Typography>
-      )}
 
       <Tooltip title="Weitere Animations-Optionen">
         <IconButton

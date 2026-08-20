@@ -224,7 +224,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
 
   const btnSx = {
     color: disabled || !activeEditor ? '#999' : '#444',
-    p: 0.4,
+    p: 0.25,
     '&:hover': { bgcolor: '#e8e8e8' },
   };
 
@@ -504,15 +504,15 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   return (
     <Box
       data-presentation-format-bar
-      sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexWrap: 'nowrap', minWidth: 0 }}
+      sx={{ display: 'flex', alignItems: 'center', gap: 0.1, flexWrap: 'nowrap', minWidth: 0 }}
       onPointerDownCapture={() => beginFormatBarInteraction()}
       onMouseDownCapture={() => stashEditorSelection(activeEditor)}
       onMouseDown={(e) => {
         if (!isSelectTarget(e.target)) preventToolbarFocus(e);
       }}
     >
-      {contextLabel && (
-        <Typography variant="caption" sx={{ color: '#2E7D32', fontSize: 10, fontWeight: 700, mr: 0.5, minWidth: 52 }}>
+      {contextLabel && contextLabel !== 'Folie' && (
+        <Typography variant="caption" sx={{ color: '#2E7D32', fontSize: 10, fontWeight: 700, mr: 0.35 }}>
           {contextLabel}
         </Typography>
       )}
@@ -582,7 +582,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         </span>
       </Tooltip>
 
-      <Divider orientation="vertical" flexItem sx={{ borderColor: '#ccc', mx: 0.25 }} />
+      <Divider orientation="vertical" flexItem sx={{ borderColor: '#ccc', mx: 0.1 }} />
 
       <Tooltip title="Als Tabelle formatieren (Text mit Tabs/| oder vorhandene Tabelle stylen)">
         <span>
@@ -628,7 +628,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         </span>
       </Tooltip>
 
-      <Divider orientation="vertical" flexItem sx={{ borderColor: '#ccc', mx: 0.25 }} />
+      <Divider orientation="vertical" flexItem sx={{ borderColor: '#ccc', mx: 0.1 }} />
 
       <Tooltip title="Aufzählung">
         <span>
@@ -723,7 +723,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         </span>
       </Tooltip>
 
-      <Divider orientation="vertical" flexItem sx={{ borderColor: '#ccc', mx: 0.25 }} />
+      <Divider orientation="vertical" flexItem sx={{ borderColor: '#ccc', mx: 0.1 }} />
 
       <Tooltip title="Links">
         <span>
@@ -754,7 +754,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         </span>
       </Tooltip>
 
-      <Divider orientation="vertical" flexItem sx={{ borderColor: '#ccc', mx: 0.25 }} />
+      <Divider orientation="vertical" flexItem sx={{ borderColor: '#ccc', mx: 0.1 }} />
 
       <Select
         size="small"
@@ -779,7 +779,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
           color: '#444',
           fontSize: 11,
           height: 28,
-          minWidth: 88,
+          minWidth: 72,
           '.MuiOutlinedInput-notchedOutline': { borderColor: '#ccc' },
         }}
       >
@@ -860,7 +860,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         </span>
       </Tooltip>
 
-      <Divider orientation="vertical" flexItem sx={{ borderColor: '#ccc', mx: 0.25 }} />
+      <Divider orientation="vertical" flexItem sx={{ borderColor: '#ccc', mx: 0.1 }} />
 
       <Tooltip title="Textfarbe">
         <span>
@@ -1088,7 +1088,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
 
       {onInsertImage && (
         <>
-          <Divider orientation="vertical" flexItem sx={{ borderColor: '#ccc', mx: 0.25 }} />
+          <Divider orientation="vertical" flexItem sx={{ borderColor: '#ccc', mx: 0.1 }} />
           <Tooltip title="Bild einfügen">
             <span>
               <IconButton

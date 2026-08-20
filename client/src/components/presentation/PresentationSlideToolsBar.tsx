@@ -47,7 +47,6 @@ import {
   ViewColumnOutlined as CardPairIcon,
   TableChartOutlined as TableIcon,
 } from '@mui/icons-material';
-import { PresentationSoundSplitControl } from './PresentationSoundControls';
 import {
   PresentationShapeKind,
   PresentationSlide,
@@ -120,12 +119,12 @@ const miniBtnSx = {
 const toolGroupSx = {
   display: 'inline-flex',
   alignItems: 'center',
-  gap: 0.15,
+  gap: 0,
   border: `1px solid ${PRES_EDITOR_UI.barBorder}`,
-  borderRadius: '7px',
+  borderRadius: '6px',
   bgcolor: '#fff',
-  px: 0.2,
-  py: 0.1,
+  px: 0.1,
+  py: 0,
 };
 
 interface PresentationSlideToolsBarProps {
@@ -414,7 +413,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
       sx={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 0.35,
+        gap: 0.15,
         flexShrink: 0,
         width: 'fit-content',
         flexWrap: 'nowrap',
@@ -960,7 +959,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                             })
                           }
                         >
-                          Füllen
+                          Zuschneiden
                         </Button>
                       </Box>
                       {isImageCropMode(selectedElement) && (
@@ -977,7 +976,9 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                         </Button>
                       )}
                       <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, lineHeight: 1.35, mb: 0.75 }}>
-                        Ziehen: Bild verschieben · Alt+Ziehen: Ausschnitt (bei Füllen)
+                        {isImageCropMode(selectedElement)
+                          ? 'Ziehen verschiebt den Ausschnitt · Kanten ziehen den Rahmen · Shift+Ziehen verschiebt das Bild'
+                          : 'Ziehen verschiebt das Bild · Zuschneiden für Ausschnitt'}
                       </Typography>
                       <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.4 }}>
                         Rahmen
@@ -1432,10 +1433,6 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
               </Popover>
         </>
       )}
-
-      <Divider orientation="vertical" flexItem sx={{ borderColor: PRES_EDITOR_UI.barBorder, mx: 0.1, height: 20 }} />
-
-      <PresentationSoundSplitControl variant="editor" />
 
       <Divider orientation="vertical" flexItem sx={{ borderColor: PRES_EDITOR_UI.barBorder, mx: 0.1, height: 20 }} />
 

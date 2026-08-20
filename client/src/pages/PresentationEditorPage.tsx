@@ -185,6 +185,7 @@ import {
   insertImageHtmlAtCursor,
   nudgeFontSize,
 } from '../lib/presentationRichText';
+import { serializePresentationNotesHtml } from '../lib/presentationNotesImages';
 
 const PresentationEditorPage: React.FC = () => {
   const navigate = useNavigate();
@@ -543,7 +544,10 @@ const PresentationEditorPage: React.FC = () => {
         return;
       }
 
-      const html = activeEditor.innerHTML;
+      const html =
+        activeEditor.getAttribute('data-pres-notes-zone') === 'true'
+          ? serializePresentationNotesHtml(activeEditor)
+          : activeEditor.innerHTML;
       const plainKey = HTML_TO_PLAIN[activeHtmlField];
       const slides = current.slides.map((s) =>
         s.id === activeId
@@ -2644,9 +2648,9 @@ const PresentationEditorPage: React.FC = () => {
           sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: 0.4,
-            px: 1,
-            py: 0.35,
+            gap: 0.25,
+            px: 0.5,
+            py: 0.2,
             borderTop: `1px solid ${PRES_EDITOR_UI.barBorder}`,
             bgcolor: '#f7faf7',
           }}
@@ -2659,11 +2663,12 @@ const PresentationEditorPage: React.FC = () => {
               alignItems: 'center',
               overflowX: 'auto',
               overflowY: 'hidden',
-              scrollbarWidth: 'thin',
+              scrollbarWidth: 'none',
+              '&::-webkit-scrollbar': { display: 'none' },
               borderRadius: 1,
-              px: 0.5,
-              py: 0.2,
-              maxHeight: 40,
+              px: 0.25,
+              py: 0.1,
+              maxHeight: 36,
               ...(animationEditMode
                 ? {
                     bgcolor: 'rgba(255,152,0,0.12)',
@@ -2673,8 +2678,8 @@ const PresentationEditorPage: React.FC = () => {
             }}
           >
             {animationEditMode ? (
-              <Typography sx={{ fontSize: 11, color: '#E65100', fontWeight: 600 }}>
-                Element anklicken → Zahl 0–9 (0 = sofort, Esc = abwählen)
+              <Typography sx={{ fontSize: 11, color: '#E65100', fontWeight: 600, px: 0.5 }}>
+                Element → 0–9
               </Typography>
             ) : (
               <PresentationFormatBar
@@ -2704,8 +2709,8 @@ const PresentationEditorPage: React.FC = () => {
                   alignItems: 'center',
                   width: 'fit-content',
                   borderRadius: 1,
-                  px: 0.45,
-                  py: 0.2,
+                  px: 0.25,
+                  py: 0.1,
                   ...PRES_EDITOR_UI.toolbarSection.slide,
                 }}
               >
@@ -2746,8 +2751,8 @@ const PresentationEditorPage: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   borderRadius: 1,
-                  px: 0.75,
-                  py: 0.35,
+                  px: 0.2,
+                  py: 0.1,
                   ...PRES_EDITOR_UI.toolbarSection.anim,
                 }}
               >

@@ -46,6 +46,7 @@ import {
 } from '../lib/presentationDeck';
 import { hydrateNotesHtmlFontSizes } from '../lib/presentationFontSize';
 import { presentationNestedListSx, presentationNotesTableSx } from '../lib/presentationListStyles';
+import { presentationNotesImageViewSx } from '../lib/presentationNotesImages';
 import { findHomeworkSlides } from '../lib/presentationSlideTemplates';
 import { lessonPathFromHomeworkAssignmentPath } from '../lib/previousLessonFolder';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
@@ -835,18 +836,9 @@ const SubmissionsGridPage: React.FC = () => {
                         listGapPx: 4,
                       }),
                       ...presentationNotesTableSx(),
+                      ...presentationNotesImageViewSx({ maxHeight: 180 }),
                       '& mark': { borderRadius: 0.5 },
                       '& b, & strong': { fontWeight: 700 },
-                      '& img, & img[data-pres-notes-img]': {
-                        maxWidth: '100%',
-                        maxHeight: 180,
-                        width: 'auto',
-                        height: 'auto',
-                        objectFit: 'contain',
-                        display: 'block',
-                        my: 1,
-                        borderRadius: 0.75,
-                      },
                     }}
                     dangerouslySetInnerHTML={{
                       __html: hydrateNotesHtmlFontSizes(haNotesHtml),

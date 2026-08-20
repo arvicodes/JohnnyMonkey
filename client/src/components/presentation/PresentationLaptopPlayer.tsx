@@ -21,6 +21,7 @@ import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../../l
 import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
 import { hydrateNotesHtmlFontSizes } from '../../lib/presentationFontSize';
 import { presentationNestedListSx, presentationNotesTableSx } from '../../lib/presentationListStyles';
+import { presentationNotesImageViewSx } from '../../lib/presentationNotesImages';
 import { isPresentationLinkClickTarget } from '../../lib/presentationRichText';
 import { tryHandleLessonEntryTicketLinkClick, isLessonEntryTicketSlideHref } from '../../lib/presentationEditorUi';
 import EntryTicketPage from '../../pages/EntryTicketPage';
@@ -870,6 +871,7 @@ export default function PresentationLaptopPlayer({
                   listGapPx: 4,
                 }),
                 ...presentationNotesTableSx(),
+                ...presentationNotesImageViewSx({ maxHeight: embedded ? 240 : 110 }),
                 '& mark': { borderRadius: 0.5 },
                 '& [data-pres-fs]': { lineHeight: 'inherit' },
                 '& [data-pres-color]': { lineHeight: 'inherit' },
@@ -877,15 +879,7 @@ export default function PresentationLaptopPlayer({
                 '& b, & strong': { fontWeight: 700 },
                 '& i, & em': { fontStyle: 'italic' },
                 '& u': { textDecoration: 'underline' },
-                '& img, & img[data-pres-notes-img]': {
-                  maxWidth: '100%',
-                  maxHeight: embedded ? 240 : 110,
-                  width: 'auto',
-                  height: 'auto',
-                  objectFit: 'contain',
-                  display: 'block',
-                  my: 1,
-                  borderRadius: 0.75,
+                '& img': {
                   cursor: 'zoom-in',
                   transition: 'opacity 0.15s ease',
                   '&:hover': { opacity: 0.92 },

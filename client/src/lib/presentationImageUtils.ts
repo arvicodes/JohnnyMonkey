@@ -58,12 +58,52 @@ export const IMAGE_FRAME_SIZE_MAX = 160;
 export const IMAGE_CROP_POSITION_MIN = -20;
 export const IMAGE_CROP_POSITION_MAX = 120;
 
-/** Cover-Bilder: Alt+Ziehen verschiebt den Bildausschnitt; ohne Alt den Rahmen. */
+/**
+ * Zuschneiden (Cover): Ziehen verschiebt den Ausschnitt.
+ * Shift hält den Ausschnitt fest und verschiebt den Rahmen.
+ */
 export function shouldPanCoverImageOnDrag(
   element: SlideElement,
-  options?: { altKey?: boolean },
+  options?: { altKey?: boolean; shiftKey?: boolean },
 ): boolean {
-  return isImageCropMode(element) && Boolean(options?.altKey);
+  if (!isImageCropMode(element)) return false;
+  return !options?.shiftKey;
+}
+
+export type ImageCropHandle = 'n' | 's' | 'e' | 'w' | 'nw' | 'ne' | 'sw' | 'se';
+
+export function resizeImageFrameByHandle(
+  orig: { x: number; y: number; w: number; h: number },
+  handle: ImageCropHandle,
+  dxPct: number,
+  dyPct: number,
+  minSize = 4,
+): { x: number; y: number; w: number; h: number } {
+  let { x, y, w, h } = orig;
+  const growE = handle === 'e' || handle === 'ne' || handle === 'se';
+  const growW = handle === 'w' || handle === 'nw' || handle === 'sw';
+  const growS = handle === 's' || handle === 'se' || handle === 'sw';
+  const growN = handle === 'n' || handle === 'ne' || handle === 'nw';
+  if (growE) w = orig.w + dxPct;
+  if (growS) h = orig.h + dyPct;
+  if (growW) {
+    w = orig.w - dxPct;
+    x = orig.x + orig.w - w;
+  }
+  if (growN) {
+    h = orig.h - dyPct;
+    y = orig.y + orig.h - h;
+  }
+  w = clampPercent(w, minSize, IMAGE_FRAME_SIZE_MAX);
+  h = clampPercent(h, minSize, IMAGE_FRAME_SIZE_MAX);
+  if (growW) x = orig.x + orig.w - w;
+  if (growN) y = orig.y + orig.h - h;
+  return {
+    x: clampPercent(x, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
+    y: clampPercent(y, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
+    w,
+    h,
+  };
 }
 
 export function presentationImageElementSx(

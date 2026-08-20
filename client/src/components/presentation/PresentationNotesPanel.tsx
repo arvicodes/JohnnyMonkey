@@ -12,6 +12,11 @@ import { captureEditorSelection, clearSavedSelection } from '../../lib/presentat
 import { presentationNestedListSx, presentationNotesTableSx } from '../../lib/presentationListStyles';
 import { sanitizePastedHtml, normalizeNotesHtml, handlePresentationTabKey, replaceArrowShortcutsNearCursor, tryMarkdownListShortcut, insertImageHtmlAtCursor } from '../../lib/presentationRichText';
 import {
+  enhancePresentationNotesImages,
+  presentationNotesImageEditorSx,
+  serializePresentationNotesHtml,
+} from '../../lib/presentationNotesImages';
+import {
   tryStartTableResizeFromPointer,
   updateTableResizeHoverCursor,
 } from '../../lib/presentationTableResize';
@@ -56,15 +61,27 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   const displayHtml = normalizeNotesHtml(html || textToHtml(plain || ''));
 
   const persistContent = useCallback(
-    (rawHtml: string, normalize = false) => {
+    (rawHtml: string, normalize = false, writeBack = false) => {
       const nextHtml = normalize ? normalizeNotesHtml(rawHtml) : rawHtml;
-      if (ref.current && nextHtml !== ref.current.innerHTML) {
+      if (writeBack && ref.current && nextHtml !== ref.current.innerHTML) {
         ref.current.innerHTML = nextHtml;
       }
       onChange(nextHtml, htmlToPlain(nextHtml));
     },
     [onChange]
   );
+
+  const persistFromEditor = useCallback(
+    (normalize = false, writeBack = false) => {
+      if (!ref.current) return;
+      persistContent(serializePresentationNotesHtml(ref.current), normalize, writeBack);
+    },
+    [persistContent]
+  );
+
+  const enhanceImages = useCallback(() => {
+    enhancePresentationNotesImages(ref.current, () => persistFromEditor(false, false));
+  }, [persistFromEditor]);
 
   const insertImageFile = useCallback(
     async (file: File) => {
@@ -74,9 +91,10 @@ const NoteZone: React.FC<NoteZoneProps> = ({
       if (!src) return;
       ref.current.focus();
       insertImageHtmlAtCursor(ref.current, src, file.name);
-      persistContent(ref.current.innerHTML, false);
+      enhanceImages();
+      persistFromEditor(false, false);
     },
-    [onUploadImage, persistContent, readOnly]
+    [onUploadImage, persistFromEditor, enhanceImages, readOnly]
   );
 
   const syncFromProps = useCallback(() => {
@@ -84,7 +102,8 @@ const NoteZone: React.FC<NoteZoneProps> = ({
     if (!el || editingRef.current) return;
     const next = displayHtml || '<p><br></p>';
     if (el.innerHTML !== next) el.innerHTML = next;
-  }, [displayHtml]);
+    if (!readOnly) enhanceImages();
+  }, [displayHtml, enhanceImages, readOnly]);
 
   useEffect(() => {
     syncFromProps();
@@ -95,15 +114,19 @@ const NoteZone: React.FC<NoteZoneProps> = ({
     if (!el || readOnly) return undefined;
     const onMouseUp = () => captureEditorSelection(el);
     el.addEventListener('mouseup', onMouseUp);
+    const mo = new MutationObserver(() => enhanceImages());
+    mo.observe(el, { childList: true, subtree: true });
+    enhanceImages();
     return () => {
       el.removeEventListener('mouseup', onMouseUp);
+      mo.disconnect();
     };
-  }, [readOnly, displayHtml]);
+  }, [readOnly, displayHtml, enhanceImages]);
 
   const handleInput = () => {
     if (!ref.current || readOnly) return;
     replaceArrowShortcutsNearCursor(ref.current);
-    persistContent(ref.current.innerHTML, false);
+    persistFromEditor(false, false);
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
@@ -136,7 +159,8 @@ const NoteZone: React.FC<NoteZoneProps> = ({
       /* ignore */
     }
     document.execCommand('insertHTML', false, content || '<p><br></p>');
-    persistContent(el.innerHTML, false);
+    enhanceImages();
+    persistFromEditor(false, false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -146,7 +170,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
       if (tryMarkdownListShortcut(el)) {
         e.preventDefault();
         e.stopPropagation();
-        persistContent(el.innerHTML, false);
+        persistFromEditor(false, false);
         return;
       }
     }
@@ -154,7 +178,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
     e.preventDefault();
     e.stopPropagation();
     handlePresentationTabKey(el, e.shiftKey);
-    persistContent(el.innerHTML, false);
+    persistFromEditor(false, false);
   };
 
   return (
@@ -252,9 +276,13 @@ const NoteZone: React.FC<NoteZoneProps> = ({
             isFormatBarInteracting() || isPresentationFormatUiTarget(next);
 
           if (toFormatBar) return;
+          if (ref.current?.getAttribute('data-pres-notes-dragging') === '1') {
+            editingRef.current = true;
+            return;
+          }
 
           if (ref.current) {
-            persistContent(ref.current.innerHTML, true);
+            persistFromEditor(true, false);
           }
 
           editingRef.current = false;
@@ -282,10 +310,12 @@ const NoteZone: React.FC<NoteZoneProps> = ({
         onMouseDown={(e) => {
           if (!isFormatBarInteracting()) clearSavedSelection();
           if (readOnly) return;
+          const hit = e.target as HTMLElement | null;
+          if (hit?.closest?.('[data-pres-notes-img-wrap], .pres-notes-img-wrap')) return;
           if (
             tryStartTableResizeFromPointer(ref.current, e, {
               onDone: () => {
-                if (ref.current) persistContent(ref.current.innerHTML, true);
+                persistFromEditor(true, false);
                 if (ref.current) ref.current.style.cursor = '';
               },
             })
@@ -328,6 +358,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
             listGapPx: 4,
           }),
           ...presentationNotesTableSx(),
+          ...presentationNotesImageEditorSx(),
           '& mark': { borderRadius: 0.5 },
           '& [data-pres-fs]': { lineHeight: 'inherit' },
           '& [data-pres-color]': { lineHeight: 'inherit' },
@@ -335,13 +366,6 @@ const NoteZone: React.FC<NoteZoneProps> = ({
           '& b, & strong': { fontWeight: 700 },
           '& i, & em': { fontStyle: 'italic' },
           '& u': { textDecoration: 'underline' },
-          '& img, & img[data-pres-notes-img]': {
-            maxWidth: '100%',
-            height: 'auto',
-            display: 'block',
-            my: 1,
-            borderRadius: 0.75,
-          },
           '&:empty:before': {
             content: `"${placeholder}"`,
             color: PRES_EDITOR_UI.textMuted,

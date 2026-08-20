@@ -38,7 +38,9 @@ import {
   isImageCropMode,
   parseImageObjectPosition,
   presentationImageElementSx,
+  resizeImageFrameByHandle,
   shouldPanCoverImageOnDrag,
+  type ImageCropHandle,
 } from '../../lib/presentationImageUtils';
 import { SlideShapeSvg, shapeSupportsText } from '../../lib/presentationSlideShapes';
 import {
@@ -75,7 +77,7 @@ function blockFileDropIntoText(e: React.DragEvent) {
 }
 
 type DragMode = 'move' | 'resize' | 'rotate';
-type ResizeCorner = 'br' | 'tr';
+type ResizeCorner = 'br' | 'tr' | ImageCropHandle;
 
 interface DragState {
   mode: DragMode;
@@ -437,7 +439,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       rot = ((rot % 360) + 360) % 360;
       patch = { rotation: Math.round(rot) };
     } else if (d.mode === 'move') {
-      if (shouldPanCoverImageOnDrag(d.orig, { altKey: e.altKey })) {
+      if (shouldPanCoverImageOnDrag(d.orig, { shiftKey: e.shiftKey })) {
         const pos = parseImageObjectPosition(d.orig.imageObjectPosition);
         const panGain = 1.35;
         patch = {
@@ -458,6 +460,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         patch = { x: snapped.x, y: snapped.y };
         guides = snapped.guides;
       }
+    } else if (d.mode === 'resize' && d.resizeCorner !== 'br' && d.resizeCorner !== 'tr') {
+      patch = resizeImageFrameByHandle(d.orig, d.resizeCorner, dxPct, dyPct, MIN_SIZE);
     } else if (d.resizeCorner === 'tr') {
       const nextW = clamp(d.orig.w + dxPct, MIN_SIZE, IMAGE_FRAME_SIZE_MAX);
       const nextH = clamp(d.orig.h - dyPct, MIN_SIZE, IMAGE_FRAME_SIZE_MAX);
@@ -956,15 +960,19 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
           ? 'pointer'
           : editable
             ? dragging
-              ? 'grabbing'
+              ? cropMode
+                ? 'move'
+                : 'grabbing'
               : showTextEditor ||
                   showTableEditor ||
                   showCardTitleEditor ||
                   showCardBodyEditor
                 ? 'text'
-                : showSelectionChrome
-                  ? 'grab'
-                  : 'pointer'
+                : cropMode && showSelectionChrome
+                  ? 'move'
+                  : showSelectionChrome
+                    ? 'grab'
+                    : 'pointer'
             : isMediaElement && mediaInteractive
               ? 'default'
               : undefined,
@@ -1035,6 +1043,11 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               ...(pictureFrameOn ? pictureFrame.wrap : undefined),
               outline: pictureSelectOutline,
               outlineOffset: pictureSelectOutline ? `${2 * scale}px` : undefined,
+              ...(cropMode && showSelectionChrome
+                ? {
+                    boxShadow: `inset 0 0 0 ${2 * scale}px #2E7D32`,
+                  }
+                : undefined),
             }}
           >
             <Box
@@ -1937,7 +1950,64 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         />
       )}
 
-      {showResizeHandle && !hugImageChrome && (
+      {showSelectionChrome && cropMode && (
+        <>
+          {(
+            [
+              { id: 'n', cursor: 'ns-resize', top: -5 * scale, left: '50%', w: 22, h: 10, ml: -11 },
+              { id: 's', cursor: 'ns-resize', bottom: -5 * scale, left: '50%', w: 22, h: 10, ml: -11 },
+              { id: 'e', cursor: 'ew-resize', right: -5 * scale, top: '50%', w: 10, h: 22, mt: -11 },
+              { id: 'w', cursor: 'ew-resize', left: -5 * scale, top: '50%', w: 10, h: 22, mt: -11 },
+              { id: 'nw', cursor: 'nwse-resize', top: -6 * scale, left: -6 * scale, w: 12, h: 12 },
+              { id: 'ne', cursor: 'nesw-resize', top: -6 * scale, right: -6 * scale, w: 12, h: 12 },
+              { id: 'sw', cursor: 'nesw-resize', bottom: -6 * scale, left: -6 * scale, w: 12, h: 12 },
+              { id: 'se', cursor: 'nwse-resize', bottom: -6 * scale, right: -6 * scale, w: 12, h: 12 },
+            ] satisfies Array<{
+              id: ImageCropHandle;
+              cursor: string;
+              top?: number | string;
+              bottom?: number | string;
+              left?: number | string;
+              right?: number | string;
+              w: number;
+              h: number;
+              ml?: number;
+              mt?: number;
+            }>
+          ).map((h) => (
+            <Box
+              key={h.id}
+              data-resize-handle
+              title="Zuschneiden — Kante ziehen"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                startDrag(e, 'resize', h.id);
+              }}
+              sx={{
+                position: 'absolute',
+                top: h.top,
+                bottom: h.bottom,
+                left: h.left,
+                right: h.right,
+                width: `${h.w * scale}px`,
+                height: `${h.h * scale}px`,
+                ml: h.ml != null ? `${h.ml * scale}px` : undefined,
+                mt: h.mt != null ? `${h.mt * scale}px` : undefined,
+                bgcolor: '#fff',
+                border: `${1.5 * scale}px solid #2E7D32`,
+                borderRadius: `${2 * scale}px`,
+                cursor: h.cursor,
+                zIndex: 34,
+                pointerEvents: 'auto',
+                touchAction: 'none',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.28)',
+              }}
+            />
+          ))}
+        </>
+      )}
+
+      {showResizeHandle && !hugImageChrome && !cropMode && (
         <Box
           data-resize-handle
           onPointerDown={(e) =>
