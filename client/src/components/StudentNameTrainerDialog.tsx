@@ -42,7 +42,6 @@ export default function StudentNameTrainerDialog({ open, onClose, groupName, stu
   const [index, setIndex] = useState(0);
   const [showName, setShowName] = useState(false);
   const [randomMode, setRandomMode] = useState(false);
-  const [photoVisible, setPhotoVisible] = useState(true);
 
   useEffect(() => {
     if (!open) return;
@@ -50,7 +49,6 @@ export default function StudentNameTrainerDialog({ open, onClose, groupName, stu
     setIndex(0);
     setShowName(false);
     setRandomMode(false);
-    setPhotoVisible(true);
   }, [open, withPhoto]);
 
   const ordered = useMemo(() => {
@@ -76,12 +74,8 @@ export default function StudentNameTrainerDialog({ open, onClose, groupName, stu
   const go = useCallback(
     (dir: 1 | -1) => {
       if (!total) return;
-      setPhotoVisible(false);
+      setIndex((i) => (i + dir + total) % total);
       setShowName(false);
-      window.setTimeout(() => {
-        setIndex((i) => (i + dir + total) % total);
-        setPhotoVisible(true);
-      }, 120);
     },
     [total],
   );
@@ -189,6 +183,7 @@ export default function StudentNameTrainerDialog({ open, onClose, groupName, stu
             >
               <Box
                 component="img"
+                key={current.id}
                 src={photoUrl}
                 alt=""
                 sx={{
@@ -196,8 +191,11 @@ export default function StudentNameTrainerDialog({ open, onClose, groupName, stu
                   height: '100%',
                   objectFit: 'cover',
                   display: 'block',
-                  opacity: photoVisible ? 1 : 0,
-                  transition: 'opacity 0.14s ease',
+                  animation: 'nameTrainerIn 0.16s ease',
+                  '@keyframes nameTrainerIn': {
+                    from: { opacity: 0 },
+                    to: { opacity: 1 },
+                  },
                 }}
               />
             </Box>
