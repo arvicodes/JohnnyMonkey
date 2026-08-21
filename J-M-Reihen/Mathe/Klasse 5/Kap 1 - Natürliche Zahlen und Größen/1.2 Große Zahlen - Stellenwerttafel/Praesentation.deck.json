@@ -2,7 +2,7 @@
   "version": 1,
   "title": "1.2 Große Zahlen - Stellenwerttafel",
   "lessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/1.2 Große Zahlen - Stellenwerttafel",
-  "updatedAt": "2026-08-19T08:34:07.003Z",
+  "updatedAt": "2026-08-21T09:46:28.782Z",
   "defaultTransition": "fade",
   "slides": [
     {
@@ -185,6 +185,74 @@
       "order": 2
     },
     {
+      "id": "slide-1787295714548-zcxib",
+      "order": 3,
+      "speakerNotes": "",
+      "layout": "blank",
+      "subtitle": "",
+      "bodyLeft": "",
+      "bodyRight": "",
+      "imagePath": "",
+      "imageCaption": "",
+      "bodyStyle": "plain",
+      "titleAlign": "left",
+      "accentColor": "#2E7D32",
+      "title": "",
+      "body": "",
+      "hiddenLayoutZones": [
+        "bodyHtml"
+      ],
+      "titleHtml": "",
+      "bodyHtml": "",
+      "subtitleHtml": "",
+      "bodyLeftHtml": "",
+      "bodyRightHtml": "",
+      "imageCaptionHtml": "",
+      "speakerNotesHtml": "<p><br></p>",
+      "preparationNotes": "",
+      "preparationHtml": "<p><br></p>",
+      "materialNotes": "",
+      "materialHtml": "<p><br></p>",
+      "elements": [],
+      "transition": "fade",
+      "revealEnabled": true,
+      "zoneRevealSteps": {}
+    },
+    {
+      "id": "slide-1787298516962-d6s77",
+      "order": 4,
+      "speakerNotes": "",
+      "layout": "blank",
+      "subtitle": "",
+      "bodyLeft": "",
+      "bodyRight": "",
+      "imagePath": "",
+      "imageCaption": "",
+      "bodyStyle": "plain",
+      "titleAlign": "left",
+      "accentColor": "#2E7D32",
+      "title": "",
+      "body": "",
+      "hiddenLayoutZones": [
+        "bodyHtml"
+      ],
+      "titleHtml": "",
+      "bodyHtml": "",
+      "subtitleHtml": "",
+      "bodyLeftHtml": "",
+      "bodyRightHtml": "",
+      "imageCaptionHtml": "",
+      "speakerNotesHtml": "<p><br></p>",
+      "preparationNotes": "",
+      "preparationHtml": "<p><br></p>",
+      "materialNotes": "",
+      "materialHtml": "<p><br></p>",
+      "elements": [],
+      "transition": "fade",
+      "revealEnabled": true,
+      "zoneRevealSteps": {}
+    },
+    {
       "layout": "blank",
       "title": "Hausaufgabe",
       "body": "",
@@ -266,7 +334,7 @@
         "bodyHtml"
       ],
       "id": "slide-1786947178281-2-4tufu",
-      "order": 3
+      "order": 5
     }
   ],
   "trash": [
