@@ -89,6 +89,13 @@ rm -rf /tmp/jm-prebuilt-stage
 mkdir -p /tmp/jm-prebuilt-stage/server/client-build
 cp -R server/dist /tmp/jm-prebuilt-stage/server/
 cp -R client/build/* /tmp/jm-prebuilt-stage/server/client-build/
+# SuS-Fotos (DB hat nur URLs; Dateien liegen unter uploads/avatars)
+if [[ -d server/uploads/avatars ]]; then
+  mkdir -p /tmp/jm-prebuilt-stage/server/uploads/avatars
+  find server/uploads/avatars -type f \( -name '*.jpg' -o -name '*.jpeg' -o -name '*.png' -o -name '*.webp' \) ! -name '._*' \
+    -exec cp -a {} /tmp/jm-prebuilt-stage/server/uploads/avatars/ \;
+  log "Avatars: $(find /tmp/jm-prebuilt-stage/server/uploads/avatars -type f | wc -l | tr -d ' ') Dateien"
+fi
 rm -f /tmp/jm-app-prebuilt.tar.gz
 tar -czf /tmp/jm-app-prebuilt.tar.gz -C /tmp/jm-prebuilt-stage .
 
