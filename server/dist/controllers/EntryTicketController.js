@@ -64,7 +64,11 @@ const sameLessonPath = (a, b) => {
     // Fallback: ein Pfad endet mit dem anderen (verschiedene Präfixe)
     return na.endsWith(`/${nb}`) || nb.endsWith(`/${na}`) || na.endsWith(nb) || nb.endsWith(na);
 };
-const normalizeTasksPayload = (raw) => {
+/** Play-Runde: begrenzt. Fragenset-Speicher: höher, sonst gehen neue Karten (z. B. Mathe 5) verloren. */
+const PLAY_TASK_LIMIT = 80;
+const CUSTOM_SET_TASK_LIMIT = 400;
+const CUSTOM_SET_LESSON_LIMIT = 200;
+const normalizeTasksPayload = (raw, limit = PLAY_TASK_LIMIT) => {
     if (!Array.isArray(raw))
         return undefined;
     const out = [];
@@ -87,7 +91,7 @@ const normalizeTasksPayload = (raw) => {
             ...(sourceKey ? { sourceKey } : {}),
             ...(id ? { id } : {}),
         });
-        if (out.length >= 80)
+        if (out.length >= limit)
             break;
     }
     return out.length > 0 ? out : undefined;
@@ -112,7 +116,7 @@ const normalizeCustomSetPayload = (raw) => {
             : '';
         if (!lessonName)
             continue;
-        const tasks = (_a = normalizeTasksPayload(lesson.tasks)) !== null && _a !== void 0 ? _a : [];
+        const tasks = (_a = normalizeTasksPayload(lesson.tasks, CUSTOM_SET_TASK_LIMIT)) !== null && _a !== void 0 ? _a : [];
         lessons.push({
             id: typeof lesson.id === 'string' && lesson.id.trim()
                 ? lesson.id.trim().slice(0, 80)
@@ -126,7 +130,7 @@ const normalizeCustomSetPayload = (raw) => {
                 : {}),
             tasks,
         });
-        if (lessons.length >= 40)
+        if (lessons.length >= CUSTOM_SET_LESSON_LIMIT)
             break;
     }
     if (lessons.length === 0)
@@ -302,10 +306,36 @@ async function loadStoredCustomSets(teacherId) {
         return [];
     }
 }
+function lessonFolderKey(lesson) {
+    const raw = (lesson.lessonKey || lesson.lessonName || '').replace(/\\/g, '/').replace(/\/+$/, '');
+    const name = raw.split('/').pop() || raw;
+    return name.trim().toLowerCase();
+}
+/** Leere Stunden im PUT dürfen gespeicherte Karten nicht löschen. */
+function preserveNonEmptyLessons(existing, incoming) {
+    const prevById = new Map(existing.map((s) => [s.id, s]));
+    return incoming.map((set) => {
+        const prev = prevById.get(set.id);
+        if (!prev)
+            return set;
+        const prevLesson = new Map(prev.lessons.map((l) => [lessonFolderKey(l), l]));
+        const lessons = set.lessons.map((lesson) => {
+            var _a, _b;
+            const stored = prevLesson.get(lessonFolderKey(lesson));
+            if (stored && (((_a = lesson.tasks) === null || _a === void 0 ? void 0 : _a.length) || 0) === 0 && (((_b = stored.tasks) === null || _b === void 0 ? void 0 : _b.length) || 0) > 0) {
+                return { ...lesson, tasks: stored.tasks };
+            }
+            return lesson;
+        });
+        return { ...set, lessons };
+    });
+}
 async function saveStoredCustomSets(teacherId, sets) {
     const cleaned = sets
         .map((s) => normalizeCustomSetPayload(s))
         .filter(Boolean);
+    const existing = await loadStoredCustomSets(teacherId);
+    const merged = preserveNonEmptyLessons(existing, cleaned);
     await prisma.teacherLessonInstruction.upsert({
         where: {
             teacherId_lessonPath: { teacherId, lessonPath: ENTRY_TICKET_CUSTOM_SETS_PATH },
@@ -313,9 +343,9 @@ async function saveStoredCustomSets(teacherId, sets) {
         create: {
             teacherId,
             lessonPath: ENTRY_TICKET_CUSTOM_SETS_PATH,
-            content: JSON.stringify({ sets: cleaned }),
+            content: JSON.stringify({ sets: merged }),
         },
-        update: { content: JSON.stringify({ sets: cleaned }) },
+        update: { content: JSON.stringify({ sets: merged }) },
     });
 }
 /** Aus aktiven Signalen / Archiven Fragensets einsammeln (Wiederherstellung nach leerem localStorage). */
@@ -1189,6 +1219,12 @@ class EntryTicketController {
             const sets = rawSets
                 .map((s) => normalizeCustomSetPayload(s))
                 .filter(Boolean);
+            if (sets.length === 0) {
+                const existing = await loadStoredCustomSets(user.id);
+                if (existing.length > 0) {
+                    return res.json({ success: true, count: existing.length, kept: true });
+                }
+            }
             await saveStoredCustomSets(user.id, sets);
             return res.json({ success: true, count: sets.length });
         }

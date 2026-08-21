@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Viele viele bunte Smarties</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #f3f4f6;
+      color: #111827;
+      line-height: 1.45;
+    }
+    .page { max-width: 1280px; margin: 0 auto; padding: 12px 16px 24px; }
+    .paper {
+      background: #fff;
+      border-radius: 12px;
+      padding: 10px 14px 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .header { margin-bottom: 8px; }
+    .box-img { height: 64px; width: auto; flex-shrink: 0; }
+    @media (min-width: 600px) { .box-img { height: 88px; } }
+    .title {
+      flex: 1;
+      min-width: 0;
+      font-size: clamp(1.85rem, 4vw, 2.7rem);
+      font-weight: 900;
+      line-height: 1.08;
+      margin: 0;
+    }
+    .btn-row {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 6px;
+      align-items: center;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+    .version-toggle {
+      display: flex;
+      gap: 6px;
+      flex-wrap: nowrap;
+      justify-content: flex-end;
+    }
+    .version-toggle button {
+      border: 1px solid rgba(0,0,0,0.18);
+      border-radius: 6px;
+      background: #fff;
+      padding: 4px 9px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      line-height: 1.2;
+    }
+    .version-toggle button.active {
+      background: #1976d2;
+      color: #fff;
+      border-color: #1976d2;
+    }
+    .custom-toolbar {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 6px;
+      align-items: center;
+      justify-content: flex-end;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    label { font-size: 0.72rem; font-weight: 600; color: #4b5563; white-space: nowrap; flex-shrink: 0; }
+    select, input[type="text"], textarea {
+      font: inherit;
+      border: 1px solid rgba(0,0,0,0.23);
+      border-radius: 6px;
+      padding: 4px 6px;
+    }
+    select, input[type="text"] { font-size: 0.72rem; flex-shrink: 0; }
+    #preset-name { width: 88px; }
+    #preset-select { max-width: 130px; }
+    textarea {
+      width: 100%;
+      min-height: 52px;
+      resize: vertical;
+      font-size: 0.96rem;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+    .btn {
+      font: inherit;
+      font-weight: 700;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      padding: 4px 9px;
+      cursor: pointer;
+      font-size: 0.72rem;
+      white-space: nowrap;
+      flex-shrink: 0;
+      line-height: 1.2;
+    }
+    .btn-primary { background: #2e7d32; color: #fff; }
+    .btn-secondary { background: #9c27b0; color: #fff; }
+    .btn-secondary.outline { background: #fff; color: #9c27b0; border-color: #9c27b0; }
+    .btn-secondary.outline.active { background: #9c27b0; color: #fff; }
+    .btn-outlined { background: #fff; border-color: rgba(0,0,0,0.23); color: #374151; }
+    .btn-text { background: #fff; border: 1px solid rgba(0,0,0,0.23); color: #374151; }
+    .btn-save { background: #1976d2; color: #fff; }
+    .btn-danger { background: #fff; border-color: #d32f2f; color: #d32f2f; }
+    .btn-danger:disabled { opacity: 0.45; cursor: not-allowed; }
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+    @media (min-width: 1024px) {
+      .layout { grid-template-columns: minmax(240px, 30%) minmax(0, 1fr); }
+    }
+    .flow-card {
+      background: #fce4ec;
+      border: 1px solid #f8bbd0;
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+    .flow-card h2 {
+      margin: 0 0 8px;
+      font-size: 1.05rem;
+      font-weight: 900;
+      color: #880e4f;
+    }
+    .flow-card ol {
+      margin: 0;
+      padding-left: 1.25rem;
+    }
+    .flow-card li {
+      margin-bottom: 5px;
+      color: #4b5563;
+      font-size: 0.98rem;
+      line-height: 1.5;
+    }
+    .flow-card strong { color: #1f2937; }
+    .actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      margin: 10px 0;
+    }
+    .questions {
+      background: #fff;
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+    .questions-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    @media (max-width: 600px) {
+      .questions-grid { grid-template-columns: 1fr; }
+    }
+    .q-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px;
+      border-radius: 10px;
+      border-left: 3px solid;
+      min-width: 0;
+    }
+    .q-color {
+      font-size: 0.9rem;
+      font-weight: 800;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .q-text { font-weight: 600; font-size: 0.98rem; color: #374151; }
+    .gem {
+      border-radius: 50%;
+      flex-shrink: 0;
+      position: relative;
+      border: 2px solid rgba(255,255,255,0.5);
+      box-shadow: inset 0 -3px 6px rgba(0,0,0,0.28), 0 3px 8px rgba(0,0,0,0.18);
+    }
+    .gem::after {
+      content: '';
+      position: absolute;
+      top: 16%;
+      left: 20%;
+      width: 38%;
+      height: 38%;
+      border-radius: 50%;
+      background: white;
+      opacity: 0.9;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="paper" id="app"></div>
+  </div>
+  <script>
+(function () {
+  var embeddedBootstrap = null;
+
+  const smartieVersion1 = [
+    { name: 'Rot', hex: '#E53935', question: 'In welchem Fach wäre KI völlig überfordert?' },
+    { name: 'Orange', hex: '#FB8C00', question: 'Welchen Lehrersatz müsste man KI erklären?' },
+    { name: 'Gelb', hex: '#FDD835', question: 'Wegen welcher typischen Lehreraufgabe würde KI nach einer Woche kündigen?' },
+    { name: 'Grün', hex: '#43A047', question: 'Wenn KI einen Elternabend moderieren müsste: Was könnte schiefgehen?' },
+    { name: 'Blau', hex: '#1E88E5', question: 'Was wäre der schlimmste KI-Vorschlag für eine Klassenarbeit?' },
+    { name: 'Violett', hex: '#8E24AA', question: 'Welche AG würde KI anbieten und niemand würde kommen?' },
+    { name: 'Pink', hex: '#EC407A', question: 'Welche Zeugnisbemerkung würde KI viel zu ehrlich formulieren?' },
+    { name: 'Braun', hex: '#6D4C41', question: 'Was wäre KIs Lieblingsort in der Schule?' },
+  ];
+  const smartieVersion2 = [
+    { name: 'Rot', hex: '#E53935', question: 'Was wäre KIs Lieblingsort in der Schule?' },
+    { name: 'Orange', hex: '#FB8C00', question: 'Welche Klassenfahrt würde KI aus Sicherheitsgründen absagen?' },
+    { name: 'Gelb', hex: '#FDD835', question: 'Welche Ausrede würde KI nicht glauben?' },
+    { name: 'Grün', hex: '#43A047', question: 'Was wäre KIs größter Fehler im Lehrerzimmer?' },
+    { name: 'Blau', hex: '#1E88E5', question: 'Was würde KI als „pädagogisch wertvoll“ verkaufen?' },
+    { name: 'Violett', hex: '#8E24AA', question: 'Was würde KI in der Pausenaufsicht melden?' },
+    { name: 'Pink', hex: '#EC407A', question: 'Was wäre der peinlichste KI-Vorschlag für einen Elternabend?' },
+    { name: 'Braun', hex: '#6D4C41', question: 'Welche Sitzordnung würde KI vorschlagen?' },
+  ];
+  const smartieTitleColors = ['#E53935', '#FB8C00', '#FDD835', '#43A047', '#1E88E5', '#8E24AA', '#EC407A', '#6D4C41'];
+  const smartieCustomMixStorageKey = 'ki-games-smarties-custom-mix';
+  const smartiePresetsStorageKey = 'ki-games-smarties-saved-presets';
+  const smartiePresetsBackupKey = 'ki-games-smarties-saved-presets-backup';
+  const smartieVersionStorageKey = 'ki-games-smarties-version';
+  const BOX_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" role="img" aria-label="Smarties Mini Box" class="box-img"><defs><linearGradient id="boxRed" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#e53935"/><stop offset="100%" stop-color="#b71c1c"/></linearGradient><linearGradient id="boxSide" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#c62828"/><stop offset="100%" stop-color="#8e0000"/></linearGradient></defs><rect x="40" y="48" width="220" height="150" rx="10" fill="url(#boxRed)" stroke="#7f0000" stroke-width="3"/><polygon points="260,48 290,68 290,218 260,198" fill="url(#boxSide)" stroke="#7f0000" stroke-width="3"/><polygon points="40,48 70,68 290,68 260,48" fill="#ef5350" stroke="#7f0000" stroke-width="3"/><rect x="72" y="78" width="156" height="88" rx="6" fill="#fff8e1" stroke="#5d4037" stroke-width="2"/><text x="150" y="118" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="900" fill="#c62828">Smarties</text><text x="150" y="142" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" fill="#5d4037">Mini Box</text><circle cx="98" cy="168" r="9" fill="#E53935"/><circle cx="122" cy="168" r="9" fill="#FB8C00"/><circle cx="146" cy="168" r="9" fill="#FDD835"/><circle cx="170" cy="168" r="9" fill="#43A047"/><circle cx="194" cy="168" r="9" fill="#1E88E5"/><circle cx="218" cy="168" r="9" fill="#8E24AA"/><circle cx="110" cy="186" r="9" fill="#EC407A"/><circle cx="134" cy="186" r="9" fill="#6D4C41"/><circle cx="158" cy="186" r="9" fill="#E53935"/><circle cx="182" cy="186" r="9" fill="#43A047"/><circle cx="206" cy="186" r="9" fill="#FB8C00"/></svg>';
+  const instructions = [
+    '<strong>Nehmt</strong> euch eine Smartie Mini Box.',
+    '<strong>Bewegt</strong> euch frei im Raum, solange die Musik läuft.',
+    'Stoppt die Musik, <strong>findet</strong> eine Partner*in – eine Person pro Paar.',
+    '<strong>Zieht</strong> beide jeweils ein Smartie aus der Box. Die Farbe legt die Frage fest.',
+    '<strong>Beantwortet</strong> nacheinander die Frage zu eurer jeweiligen Farbe.',
+    '<strong>Esst</strong> euren Smartie, weiter gehts.',
+  ];
+
+  function defaultSmartieCustomMix() {
+    return smartieVersion1.map(function (card, index) {
+      return { name: card.name, hex: card.hex, question: (smartieVersion2[index] && smartieVersion2[index].question) || card.question };
+    });
+  }
+
+  function normalizeSmartieCards(cards) {
+    if (!Array.isArray(cards) || cards.length !== 8) return defaultSmartieCustomMix();
+    return cards.map(function (card, index) {
+      return {
+        name: (smartieVersion1[index] && smartieVersion1[index].name) || card.name,
+        hex: (smartieVersion1[index] && smartieVersion1[index].hex) || card.hex,
+        question: String(card.question || '').trim() || smartieVersion1[index].question,
+      };
+    });
+  }
+
+  function loadLegacyCustomSmartieMix() {
+    try {
+      var raw = localStorage.getItem(smartieCustomMixStorageKey);
+      if (!raw) return defaultSmartieCustomMix();
+      return normalizeSmartieCards(JSON.parse(raw));
+    } catch (e) {
+      return defaultSmartieCustomMix();
+    }
+  }
+
+  function parsePresetEntry(raw, index) {
+    if (!raw || typeof raw !== 'object') return null;
+    var id = typeof raw.id === 'string' && raw.id.trim() ? raw.id.trim() : 'smartie-preset-recovered-' + index;
+    var name = typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim() : 'Version ' + (index + 1);
+    return { id: id, name: name, cards: normalizeSmartieCards(raw.cards) };
+  }
+
+  function tryParsePresetsRaw(raw) {
+    if (!raw) return null;
+    try {
+      var parsed = JSON.parse(raw);
+      var source = Array.isArray(parsed.presets) ? parsed.presets : Array.isArray(parsed) ? parsed : [];
+      var presets = source.map(parsePresetEntry).filter(function (p) { return p !== null; });
+      if (!presets.length) return null;
+      var selectedId = presets.some(function (p) { return p.id === parsed.selectedId; }) ? String(parsed.selectedId) : presets[0].id;
+      return { presets: presets, selectedId: selectedId };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function loadSmartiePresetsState() {
+    var fromPrimary = tryParsePresetsRaw(localStorage.getItem(smartiePresetsStorageKey));
+    if (fromPrimary) return fromPrimary;
+    var fromBackup = tryParsePresetsRaw(localStorage.getItem(smartiePresetsBackupKey));
+    if (fromBackup) {
+      localStorage.setItem(smartiePresetsStorageKey, JSON.stringify({ presets: fromBackup.presets, selectedId: fromBackup.selectedId }));
+      return fromBackup;
+    }
+    var preset = { id: 'default-mix', name: 'Meine Mixversion', cards: loadLegacyCustomSmartieMix() };
+    return { presets: [preset], selectedId: preset.id };
+  }
+
+  function loadSmartieVersion() {
+    var raw = localStorage.getItem(smartieVersionStorageKey);
+    if (raw === 'v1' || raw === 'v2' || raw === 'custom') return raw;
+    return 'v1';
+  }
+
+  function getSmartieQuestions(version, customMix) {
+    if (version === 'v1') return smartieVersion1;
+    if (version === 'v2') return smartieVersion2;
+    return customMix;
+  }
+
+  function escapeHtml(text) {
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function colorTitleHtml() {
+    var text = 'Viele viele bunte Smarties';
+    var html = '';
+    var colorIndex = 0;
+    for (var i = 0; i < text.length; i++) {
+      var ch = text[i];
+      if (ch === ' ') { html += ' '; continue; }
+      var color = smartieTitleColors[colorIndex % smartieTitleColors.length];
+      colorIndex++;
+      html += '<span style="color:' + color + '">' + escapeHtml(ch) + '</span>';
+    }
+    return html;
+  }
+
+  function gemHtml(size, color) {
+    return '<span class="gem" style="width:' + size + 'px;height:' + size + 'px;background:' + color + '"></span>';
+  }
+
+  function loadEmbeddedPresetsState() {
+    if (!embeddedBootstrap || !Array.isArray(embeddedBootstrap.presets) || !embeddedBootstrap.presets.length) {
+      return null;
+    }
+    var presets = embeddedBootstrap.presets
+      .filter(function (p) { return p && typeof p.id === 'string' && typeof p.name === 'string'; })
+      .map(function (p) {
+        return {
+          id: p.id,
+          name: String(p.name || '').trim() || 'Unbenannte Version',
+          cards: normalizeSmartieCards(p.cards),
+        };
+      });
+    if (!presets.length) return null;
+    var selectedId = presets.some(function (p) { return p.id === embeddedBootstrap.selectedId; })
+      ? String(embeddedBootstrap.selectedId)
+      : presets[0].id;
+    return { presets: presets, selectedId: selectedId };
+  }
+
+  var initial = loadEmbeddedPresetsState() || loadSmartiePresetsState();
+  var embeddedCustomMix = embeddedBootstrap && Array.isArray(embeddedBootstrap.customMix)
+    ? normalizeSmartieCards(embeddedBootstrap.customMix)
+    : null;
+  var state = {
+    version: embeddedBootstrap && (embeddedBootstrap.version === 'v1' || embeddedBootstrap.version === 'v2' || embeddedBootstrap.version === 'custom')
+      ? embeddedBootstrap.version
+      : loadSmartieVersion(),
+    presets: initial.presets,
+    selectedPresetId: initial.selectedId,
+    presetName: (initial.presets.find(function (p) { return p.id === initial.selectedId; }) || {}).name || '',
+    customMix: embeddedCustomMix
+      || (initial.presets.find(function (p) { return p.id === initial.selectedId; }) || {}).cards
+      || defaultSmartieCustomMix(),
+    musicOn: false,
+  };
+
+  var skipPersist = true;
+
+  function persist() {
+    try {
+      var existing = localStorage.getItem(smartiePresetsStorageKey);
+      if (existing) localStorage.setItem(smartiePresetsBackupKey, existing);
+      localStorage.setItem(smartiePresetsStorageKey, JSON.stringify({ presets: state.presets, selectedId: state.selectedPresetId }));
+      localStorage.setItem(smartieCustomMixStorageKey, JSON.stringify(state.customMix));
+      localStorage.setItem(smartieVersionStorageKey, state.version);
+    } catch (e) { /* ignore */ }
+  }
+
+  function questions() {
+    return getSmartieQuestions(state.version, state.customMix);
+  }
+
+  function applyCustomMix(cards) {
+    state.customMix = normalizeSmartieCards(cards);
+    state.presets = state.presets.map(function (p) {
+      return p.id === state.selectedPresetId ? Object.assign({}, p, { cards: state.customMix }) : p;
+    });
+    persist();
+    render();
+  }
+
+  function selectVersion(version) {
+    state.version = version;
+    persist();
+    render();
+  }
+
+  function selectPreset(presetId) {
+    var preset = state.presets.find(function (p) { return p.id === presetId; });
+    if (!preset) return;
+    state.selectedPresetId = preset.id;
+    state.presetName = preset.name;
+    state.customMix = preset.cards;
+    persist();
+    render();
+  }
+
+  function deletePreset() {
+    if (state.presets.length <= 1) {
+      window.alert('Mindestens eine Version muss bleiben.');
+      return;
+    }
+    var preset = state.presets.find(function (p) { return p.id === state.selectedPresetId; });
+    if (!preset) return;
+    if (!window.confirm('Version „' + preset.name + '“ wirklich löschen?')) return;
+    var nextPresets = state.presets.filter(function (p) { return p.id !== state.selectedPresetId; });
+    var nextSelected = nextPresets[0];
+    state.presets = nextPresets;
+    state.selectedPresetId = nextSelected.id;
+    state.presetName = nextSelected.name;
+    state.customMix = nextSelected.cards;
+    persist();
+    render();
+  }
+
+  function savePreset() {
+    var cleanName = state.presetName.trim() || 'Unbenannte Version';
+    var normalized = normalizeSmartieCards(state.customMix);
+    var existing = state.presets.find(function (p) { return p.id === state.selectedPresetId; });
+    if (existing && existing.name === cleanName) {
+      state.presets = state.presets.map(function (p) {
+        return p.id === state.selectedPresetId ? Object.assign({}, p, { name: cleanName, cards: normalized }) : p;
+      });
+      state.customMix = normalized;
+      persist();
+      render();
+      return;
+    }
+    var duplicate = state.presets.find(function (p) { return p.name === cleanName; });
+    if (duplicate) {
+      state.presets = state.presets.map(function (p) {
+        return p.id === duplicate.id ? Object.assign({}, p, { cards: normalized }) : p;
+      });
+      state.selectedPresetId = duplicate.id;
+      state.customMix = normalized;
+      persist();
+      render();
+      return;
+    }
+    var next = { id: 'smartie-preset-' + Date.now(), name: cleanName, cards: normalized };
+    state.presets = state.presets.concat([next]);
+    state.selectedPresetId = next.id;
+    state.customMix = normalized;
+    persist();
+    render();
+  }
+
+  function updateQuestion(index, question, skipRender) {
+    state.customMix = normalizeSmartieCards(
+      state.customMix.map(function (card, i) { return i === index ? Object.assign({}, card, { question: question }) : card; })
+    );
+    state.presets = state.presets.map(function (p) {
+      return p.id === state.selectedPresetId ? Object.assign({}, p, { cards: state.customMix }) : p;
+    });
+    persist();
+    if (!skipRender) render();
+  }
+
+  function render() {
+    var root = document.getElementById('app');
+    var qs = questions();
+    var versionLabels = { v1: 'Version 1', v2: 'Version 2', custom: 'Eigene Mixversion' };
+
+    var html = '';
+    html += '<div class="header">';
+    html += '<div class="header-brand">';
+    html += BOX_SVG;
+    html += '<h1 class="title">' + colorTitleHtml() + '</h1>';
+    html += '</div>';
+    html += '<div class="version-toggle">';
+    ['v1', 'v2', 'custom'].forEach(function (v) {
+      html += '<button type="button" data-version="' + v + '" class="' + (state.version === v ? 'active' : '') + '">' + versionLabels[v] + '</button>';
+    });
+    html += '</div></div>';
+
+    if (state.version === 'custom') {
+      html += '<div class="custom-toolbar">';
+      html += '<label>Version <select id="preset-select">';
+      state.presets.forEach(function (p) {
+        html += '<option value="' + escapeHtml(p.id) + '"' + (p.id === state.selectedPresetId ? ' selected' : '') + '>' + escapeHtml(p.name) + '</option>';
+      });
+      html += '</select></label>';
+      html += '<label>Name <input type="text" id="preset-name" value="' + escapeHtml(state.presetName) + '" /></label>';
+      html += '<button type="button" class="btn btn-save" id="save-preset">Speichern</button>';
+      html += '<button type="button" class="btn btn-danger" id="delete-preset"' + (state.presets.length <= 1 ? ' disabled' : '') + '>Löschen</button>';
+      html += '<button type="button" class="btn btn-outlined" data-copy="v1">Von V1</button>';
+      html += '<button type="button" class="btn btn-outlined" data-copy="v2">Von V2</button>';
+      html += '<button type="button" class="btn btn-outlined" id="reset-mix">Zurücksetzen</button>';
+      html += '</div>';
+    }
+
+    html += '<div class="layout">';
+    html += '<div class="left-col">';
+    html += '<div class="flow-card"><h2>Ablauf</h2><ol>';
+    instructions.forEach(function (step) { html += '<li>' + step + '</li>'; });
+    html += '</ol></div>';
+    html += '<div class="actions">';
+    html += '<button type="button" class="btn btn-secondary' + (state.musicOn ? '' : ' outline') + (state.musicOn ? ' active' : '') + '" id="toggle-music">' + (state.musicOn ? '♪ Musik läuft' : '♪ Musik stoppt') + '</button>';
+    html += '</div>';
+
+    html += '</div>';
+    html += '<div class="questions"><div class="questions-grid">';
+    qs.forEach(function (card, index) {
+      html += '<div class="q-item" style="border-left-color:' + card.hex + ';background:' + card.hex + '0c">';
+      html += gemHtml(26, card.hex);
+      html += '<div style="min-width:0;flex:1">';
+      html += '<span class="q-color" style="color:' + card.hex + ';filter:brightness(0.72)">' + escapeHtml(card.name) + '</span>';
+      if (state.version === 'custom') {
+        html += '<textarea data-q-index="' + index + '" placeholder="Eigene Frage …">' + escapeHtml(card.question) + '</textarea>';
+      } else {
+        html += '<div class="q-text">' + escapeHtml(card.question) + '</div>';
+      }
+      html += '</div></div>';
+    });
+    html += '</div></div></div>';
+
+    root.innerHTML = html;
+
+    root.querySelectorAll('[data-version]').forEach(function (btn) {
+      btn.addEventListener('click', function () { selectVersion(btn.getAttribute('data-version')); });
+    });
+
+    var presetSelect = document.getElementById('preset-select');
+    if (presetSelect) presetSelect.addEventListener('change', function () { selectPreset(presetSelect.value); });
+
+    var presetName = document.getElementById('preset-name');
+    if (presetName) {
+      presetName.addEventListener('input', function () { state.presetName = presetName.value; });
+      presetName.addEventListener('change', function () { state.presetName = presetName.value; });
+    }
+
+    var saveBtn = document.getElementById('save-preset');
+    if (saveBtn) saveBtn.addEventListener('click', savePreset);
+
+    var deleteBtn = document.getElementById('delete-preset');
+    if (deleteBtn) deleteBtn.addEventListener('click', deletePreset);
+
+    root.querySelectorAll('[data-copy]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var src = btn.getAttribute('data-copy') === 'v1' ? smartieVersion1 : smartieVersion2;
+        applyCustomMix(src.map(function (c) { return Object.assign({}, c); }));
+      });
+    });
+
+    var resetMix = document.getElementById('reset-mix');
+    if (resetMix) resetMix.addEventListener('click', function () { applyCustomMix(defaultSmartieCustomMix()); });
+
+    document.getElementById('toggle-music').addEventListener('click', function () {
+      state.musicOn = !state.musicOn;
+      render();
+    });
+
+    root.querySelectorAll('textarea[data-q-index]').forEach(function (ta) {
+      ta.addEventListener('input', function () {
+        updateQuestion(Number(ta.getAttribute('data-q-index')), ta.value, true);
+      });
+    });
+  }
+
+  render();
+})();
+  </script>
+</body>
+</html>

@@ -27,7 +27,9 @@ export type ParsedPptxBox = {
     h: number;
     fillColor?: string | null;
     strokeColor?: string | null;
-    shapeKind: 'rect' | 'ellipse';
+    shapeKind: 'rect' | 'ellipse' | 'line' | 'arrow';
+    flipH?: boolean;
+    flipV?: boolean;
 };
 export type ParsedPptxSlide = {
     index: number;

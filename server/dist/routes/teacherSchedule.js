@@ -97,11 +97,23 @@ const upload = (0, multer_1.default)({
         }
     },
 });
-async function getTeacherIdFromLogin(req) {
-    const loginCode = req.headers['x-login-code'];
+async function getUserByLoginHeader(req) {
+    var _a;
+    const raw = req.headers['x-login-code'];
+    const loginCode = typeof raw === 'string' ? raw.trim() : '';
     if (!loginCode)
         return null;
-    const user = await prisma.user.findUnique({ where: { loginCode } });
+    const exact = await prisma.user.findUnique({
+        where: { loginCode },
+        select: { id: true, role: true },
+    });
+    if (exact)
+        return exact;
+    const rows = await prisma.$queryRaw(client_1.Prisma.sql `SELECT id, role FROM User WHERE lower(loginCode) = lower(${loginCode}) LIMIT 1`);
+    return (_a = rows[0]) !== null && _a !== void 0 ? _a : null;
+}
+async function getTeacherIdFromLogin(req) {
+    const user = await getUserByLoginHeader(req);
     if (!user || user.role !== 'TEACHER')
         return null;
     return user.id;
@@ -327,11 +339,12 @@ router.get('/uploads/:id/file', async (req, res) => {
 });
 router.get('/active-lessons/student', async (req, res) => {
     try {
-        const loginCode = req.headers['x-login-code'];
-        if (!loginCode)
+        const studentAuth = await getUserByLoginHeader(req);
+        if (!studentAuth || studentAuth.role !== 'STUDENT') {
             return res.status(401).json({ error: 'Nicht autorisiert' });
+        }
         const student = await prisma.user.findUnique({
-            where: { loginCode },
+            where: { id: studentAuth.id },
             include: { learningGroups: { select: { id: true } } },
         });
         if (!student || student.role !== 'STUDENT') {
@@ -389,11 +402,12 @@ router.get('/active-lessons/teacher', async (req, res) => {
  */
 router.get('/released-lessons/student', async (req, res) => {
     try {
-        const loginCode = req.headers['x-login-code'];
-        if (!loginCode)
+        const studentAuth = await getUserByLoginHeader(req);
+        if (!studentAuth || studentAuth.role !== 'STUDENT') {
             return res.status(401).json({ error: 'Nicht autorisiert' });
+        }
         const student = await prisma.user.findUnique({
-            where: { loginCode },
+            where: { id: studentAuth.id },
             include: { learningGroups: { select: { id: true } } },
         });
         if (!student || student.role !== 'STUDENT') {

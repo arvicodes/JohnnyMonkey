@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Memory</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #f3f4f6;
+      color: #111827;
+      line-height: 1.45;
+    }
+    .page { max-width: 1280px; margin: 0 auto; padding: 12px 16px 24px; }
+    .paper {
+      background: #fff;
+      border-radius: 12px;
+      padding: 12px 14px 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .game-shell {
+      min-height: 100vh;
+      background: #eef3f8;
+      padding: 8px;
+      position: relative;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      font-weight: 900;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    label { font-size: 0.75rem; font-weight: 600; color: #4b5563; }
+    select, input[type="text"], textarea {
+      font: inherit;
+      border: 1px solid rgba(0,0,0,0.23);
+      border-radius: 6px;
+      padding: 6px 8px;
+    }
+    select, input[type="text"] { font-size: 0.85rem; }
+    .btn {
+      font: inherit;
+      font-weight: 700;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      white-space: nowrap;
+    }
+    .btn-primary { background: #2e7d32; color: #fff; }
+    .btn-outlined { background: #fff; border-color: rgba(0,0,0,0.23); color: #374151; }
+    .btn-danger { background: #fff; border-color: #d32f2f; color: #d32f2f; }
+    .btn-icon {
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+    .chip {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 99px;
+      background: #e3f2fd;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+    .editor-table {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .col-head {
+      font-weight: 900;
+      font-size: 0.9rem;
+      padding: 6px 8px;
+      border-radius: 8px;
+      background: #e3f2fd;
+    }
+    .col-head.right { background: #fff8e1; }
+    .row-list { display: flex; flex-direction: column; gap: 8px; }
+    .row-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px;
+      align-items: start;
+      padding: 6px;
+      border-radius: 8px;
+      border: 1px solid rgba(0,0,0,0.08);
+      background: #fafafa;
+    }
+    .row-item textarea {
+      width: 100%;
+      min-height: 44px;
+      resize: vertical;
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+    .row-img {
+      width: 52px;
+      height: 52px;
+      object-fit: contain;
+      border-radius: 6px;
+      border: 1px solid rgba(0,0,0,0.12);
+      background: #fff;
+    }
+    .row-actions { display: flex; flex-direction: column; gap: 4px; }
+    .row-actions button {
+      width: 28px;
+      height: 28px;
+      border: 1px solid rgba(0,0,0,0.2);
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 0.75rem;
+    }
+    .hint { font-size: 0.78rem; color: #6b7280; margin-top: 6px; }
+    .back-btn {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 20;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid rgba(0,0,0,0.12);
+      background: #fff;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(15,23,42,0.16);
+    }
+    .game-layout {
+      display: grid;
+      grid-template-columns: minmax(120px, 180px) minmax(0, 1fr) minmax(120px, 180px);
+      gap: 10px;
+      align-items: start;
+    }
+    @media (max-width: 768px) {
+      .game-layout { grid-template-columns: 1fr; }
+      .team-panel { min-height: 58px !important; flex-direction: row !important; }
+    }
+    .team-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: calc(100vh - 24px);
+      padding: 12px 8px;
+      border-radius: 12px;
+      text-align: center;
+      border: 5px solid #cbd5e1;
+      background: #e5e7eb;
+      color: #64748b;
+      opacity: 0.55;
+      filter: grayscale(1);
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    .team-panel.active {
+      opacity: 1;
+      filter: none;
+      color: #fff;
+      border-color: currentColor;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.15);
+    }
+    .team-panel.winner {
+      border-width: 8px;
+      border-color: #facc15;
+      box-shadow: 0 0 0 10px rgba(250,204,21,0.35);
+    }
+    .team-animal { font-size: clamp(2rem, 5vw, 4rem); line-height: 1; }
+    .team-name { font-size: 1rem; font-weight: 1000; }
+    .team-score { font-size: clamp(1.2rem, 3vw, 2rem); font-weight: 1000; }
+    .team-badge {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #facc15;
+      color: #111;
+      border: 3px solid #fff;
+      border-radius: 99px;
+      padding: 4px 12px;
+      font-weight: 1000;
+      font-size: 0.85rem;
+    }
+    .card-grid {
+      display: grid;
+      gap: 10px;
+      justify-content: center;
+      align-content: start;
+      width: 100%;
+    }
+    .memory-card {
+      border: 3px solid #9ca3af;
+      border-radius: 10px;
+      background: #fff;
+      cursor: pointer;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      font-weight: 900;
+      color: #1f2937;
+      box-shadow: 0 8px 18px rgba(148,163,184,0.32);
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+    .memory-card:hover { transform: translateY(-2px); }
+    .memory-card.solved { background: #d9f7d9; border-width: 5px; }
+    .memory-card .back-logo {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      opacity: 0.2;
+      user-select: none;
+    }
+    .card-face {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+      text-align: center;
+      line-height: 1.25;
+      overflow: auto;
+    }
+    .card-face.has-image { padding: 0; }
+    .card-face img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .card-face .img-caption {
+      padding: 6px 8px;
+      font-size: 0.78rem;
+      width: 100%;
+    }
+    .hidden-input { display: none; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <input type="file" id="image-picker" class="hidden-input" accept="image/*" />
+  <script>
+(function () {
+  var embeddedBootstrap = null;
+
+  var STORAGE_KEY = 'johnnyMonkey.kiGames.memorySets.v1';
+  var MEMORY_PALETTE = ['#ef5350','#ab47bc','#5c6bc0','#29b6f6','#26a69a','#66bb6a','#d4e157','#ffca28','#ffa726','#8d6e63','#ec407a','#7e57c2'];
+  var TEAM_COLORS = { 'Team A': '#ff6d00', 'Team B': '#00897b' };
+  var TEAM_ANIMALS = { 'Team A': '🐯', 'Team B': '🐔' };
+  var TEAM_NAMES = { 'Team A': 'Tigerkatzen', 'Team B': 'Johnny Hühner' };
+  var FLIP_REVEAL_MS = 2800;
+  var CARD_WIDTH_RATIO = 1.45;
+
+  var MEMORY_PAIR_STRINGS = [
+    ['Lernzeit', 'Zeit, in der Schülerinnen und Schüler wirklich fachlich arbeiten.'],
+    ['Denkzeit', 'Aktive kognitive Auseinandersetzung statt nur fertige Ergebnisse übernehmen.'],
+    ['KI Bequemlichkeit', 'Die Gefahr, dass KI Anstrengung, Lesen, Denken oder Üben ersetzt.'],
+    ['Anschlussaufgabe', 'Die Aufgabe nach dem KI-Ergebnis: prüfen, vergleichen, anwenden oder verbessern.'],
+    ['Prüfen', 'Kontrollieren, ob ein KI-Ergebnis fachlich stimmt und belegt werden kann.'],
+    ['Vergleichen', 'Eigene Lösung und KI-Lösung gegenüberstellen und Unterschiede markieren.'],
+    ['Denkfehler', 'Eine fachliche Fehlvorstellung erkennen und korrigieren.'],
+    ['Experimentiergerät', 'KI zum sprachlichen oder fachlichen Ausprobieren verschiedener Varianten nutzen.'],
+    ['Plausibilitätsfalle', 'Eine KI-Antwort klingt überzeugend, ist aber falsch oder ungenau.'],
+    ['Vorwissen', 'Grundlage, um KI-Ergebnisse sinnvoll einordnen und bewerten zu können.'],
+    ['Anstrengung', 'Notwendiger Bestandteil von Lernen, den KI nicht ersetzen sollte.'],
+    ['Lernpartner', 'KI gibt Hinweise, Fragen oder Feedback statt sofort fertige Lösungen zu liefern.']
+  ];
+
+  var KI_STUDIENTAGE_LEFT = [
+    '🔎 Google und ChatGPT vergleichen', '📚 Vokabelliste + Textarbeit', '📌 KI-Antwort mit Belegen prüfen',
+    '✍️ Erst ohne KI, dann Feedback', '📄 Fertige Interpretation übernehmen', '❓ KI-Quiz selbst lösen',
+    '📊 Begriff auf drei Niveaus', '🧠 Denkfehler in Aussage finden', '💬 KI fragt und gibt Tipps',
+    '🛤️ Eigenen Arbeitsweg erklären', '⚖️ Faire KI-Nutzung diskutieren', '✅ KI-Material fachlich prüfen'
+  ];
+  var KI_STUDIENTAGE_RIGHT = [
+    'KI thematisieren', 'KI integrieren', 'KI reflektieren', 'KI limitieren', 'KI Bequemlichkeit',
+    'Üben und Sichern', 'Niveaudifferenzierung', 'Denkfehler korrigieren', 'KI als Lernpartner',
+    'Denkzeit sichtbar machen', 'Verantwortung', 'Lehrkraft verantwortlich'
+  ];
+  var KI_STUDIENTAGE2_LEFT = [
+    '🤖 Wie erzeugt ChatGPT Antworten?', '📚 KI-Vokabelliste + Textarbeit', '📌 KI-Antwort mit Textbelegen prüfen',
+    '✍️ Erst ohne KI, dann Feedback', '📄 Fertige KI-Lösung übernehmen', '💬 KI stellt Fragen und Tipps',
+    '🧠 KI findet Denkfehler', '📊 Text auf mehreren Niveaus', '✅ KI erstellt Material',
+    '🛠️ KI-Ergebnisse bearbeiten', '⚠️ KI klingt richtig, liegt falsch', '🧭 KI erzeugt fertige Produkte'
+  ];
+  var KI_STUDIENTAGE2_RIGHT = [
+    'KI thematisieren', 'KI integrieren', 'KI reflektieren', 'KI limitieren', 'KI Bequemlichkeit',
+    'KI als Lernpartner', 'Fehlvorstellungen erkennen', 'Differenzierung', 'Fachliche und didaktische Prüfung',
+    'Lernzeit und Denkzeit', 'Grenzen von KI', 'Prozessorientierung'
+  ];
+  var KI_STUDIENTAGE3_LEFT = [
+    '🤖 Suchmaschine vs. Sprachmodell', '📚 Vokabelliste im Text nutzen', '📌 Kafka-Antwort mit Fehlern',
+    '✍️ Erst eigene Lösung schreiben', '📊 Drei Sprachniveaus vergleichen', '🧠 Dunkle Falter: Denkfehler',
+    '💬 KI fragt nur nach', '🛤️ Was kam von dir?', '📄 Fertige Lösung übernehmen', '✅ Material didaktisch prüfen',
+    '🚦 Wo darf KI helfen?', '⚖️ Erleichterung oder Anstrengung?'
+  ];
+  var KI_STUDIENTAGE3_RIGHT = [
+    'KI verstehen', 'KI als Einstiegshilfe', 'Plausibilität prüfen', 'Eigenleistung sichern',
+    'Sprachniveau reflektieren', 'Fehlvorstellung sichtbar machen', 'Tutor statt Lösungsmaschine',
+    'Prozess zählt', 'Bequemlichkeitsfalle', 'Lehrkraft didaktisch verantwortlich', 'KI-Einsatz begrenzen',
+    'KI-Nutzung reflektieren'
+  ];
+
+  function pairsToSet(id, name, pairs) {
+    return {
+      id: id,
+      name: name,
+      leftText: pairs.map(function (p) { return p[0]; }).join('\n'),
+      rightText: pairs.map(function (p) { return p[1]; }).join('\n')
+    };
+  }
+
+  function linesToSet(id, name, leftLines, rightLines) {
+    return { id: id, name: name, leftText: leftLines.join('\n'), rightText: rightLines.join('\n') };
+  }
+
+  var DEFAULT_SETS = [
+    pairsToSet('ki-leisen', 'KI / Leisen', MEMORY_PAIR_STRINGS),
+    linesToSet('ki-studientage', 'KI Studientage', KI_STUDIENTAGE_LEFT, KI_STUDIENTAGE_RIGHT),
+    linesToSet('ki-studientage-2', 'KI Studientage 2', KI_STUDIENTAGE2_LEFT, KI_STUDIENTAGE2_RIGHT),
+    linesToSet('ki-studientage-3', 'KI Studientage 3', KI_STUDIENTAGE3_LEFT, KI_STUDIENTAGE3_RIGHT),
+    {
+      id: 'blanko',
+      name: 'Blanko-Beispiel',
+      leftText: 'Sonne\nMond\nWasser\nBaum',
+      rightText: 'Stern im Zentrum unseres Sonnensystems\nNatürlicher Begleiter der Erde\nH2O, wichtig für Leben\nPflanze mit Stamm und Krone'
+    }
+  ];
+
+  function shuffle(items) {
+    var copy = items.slice();
+    for (var i = copy.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = copy[i]; copy[i] = copy[j]; copy[j] = t;
+    }
+    return copy;
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function normalizeImages(images, rowCount) {
+    var base = Array.isArray(images) ? images.map(function (e) { return String(e || '').trim(); }) : [];
+    while (base.length < rowCount) base.push('');
+    return base.slice(0, rowCount);
+  }
+
+  function parseCell(line, image) {
+    return { text: String(line || '').trim(), imageUrl: image && image.trim() ? image.trim() : '' };
+  }
+
+  function cellHasContent(cell) {
+    return Boolean(cell.text || cell.imageUrl);
+  }
+
+  function parsePairs(leftText, rightText, leftImages, rightImages) {
+    var leftLines = leftText.split('\n');
+    var rightLines = rightText.split('\n');
+    var rowCount = Math.max(leftLines.length, rightLines.length, leftImages.length, rightImages.length);
+    var li = normalizeImages(leftImages, rowCount);
+    var ri = normalizeImages(rightImages, rowCount);
+    var pairs = [];
+    for (var i = 0; i < rowCount; i++) {
+      var left = parseCell(leftLines[i], li[i]);
+      var right = parseCell(rightLines[i], ri[i]);
+      if (cellHasContent(left) && cellHasContent(right)) pairs.push([left, right]);
+    }
+    return pairs;
+  }
+
+  function createDeck(pairs) {
+    return shuffle(pairs.flatMap(function (pair, index) {
+      var term = pair[0];
+      var text = pair[1];
+      var color = MEMORY_PALETTE[index % MEMORY_PALETTE.length];
+      return [
+        { id: index + '-term', pairId: String(index), kind: 'term', label: term.text, imageUrl: term.imageUrl, color: color },
+        { id: index + '-text', pairId: String(index), kind: 'text', label: text.text, imageUrl: text.imageUrl, color: color }
+      ];
+    }));
+  }
+
+  function includeMissingDefaults(sets) {
+    var ids = {};
+    sets.forEach(function (s) { ids[s.id] = true; });
+    var merged = sets.slice();
+    DEFAULT_SETS.forEach(function (d) {
+      if (!ids[d.id]) merged.push(JSON.parse(JSON.stringify(d)));
+    });
+    return merged;
+  }
+
+  function loadFromStorage() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed.sets) || !parsed.sets.length) return null;
+      return {
+        sets: includeMissingDefaults(parsed.sets),
+        selectedId: typeof parsed.selectedId === 'string' ? parsed.selectedId : parsed.sets[0].id
+      };
+    } catch (e) { return null; }
+  }
+
+  function loadEmbedded() {
+    if (!embeddedBootstrap || !Array.isArray(embeddedBootstrap.sets) || !embeddedBootstrap.sets.length) return null;
+    return {
+      sets: includeMissingDefaults(embeddedBootstrap.sets),
+      selectedId: embeddedBootstrap.selectedId || embeddedBootstrap.sets[0].id
+    };
+  }
+
+  var initial = loadEmbedded() || loadFromStorage() || { sets: JSON.parse(JSON.stringify(DEFAULT_SETS)), selectedId: 'ki-leisen' };
+  var currentSet = initial.sets.find(function (s) { return s.id === initial.selectedId; }) || initial.sets[0];
+
+  var state = {
+    sets: initial.sets,
+    selectedId: currentSet.id,
+    leftText: currentSet.leftText,
+    rightText: currentSet.rightText,
+    leftImages: normalizeImages(currentSet.leftImages, Math.max(4, currentSet.leftText.split('\n').length, currentSet.rightText.split('\n').length)),
+    rightImages: normalizeImages(currentSet.rightImages, Math.max(4, currentSet.leftText.split('\n').length, currentSet.rightText.split('\n').length)),
+    newSetName: '',
+    renameDraft: currentSet.name,
+    gameStarted: false,
+    deck: [],
+    open: [],
+    solved: [],
+    solvedByTeam: {},
+    team: 'Team A',
+    score: { 'Team A': 0, 'Team B': 0 },
+    imageTarget: null
+  };
+
+  var skipPersist = true;
+
+  function persist() {
+    if (skipPersist) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ sets: state.sets, selectedId: state.selectedId }));
+    } catch (e) { /* ignore */ }
+  }
+
+  function syncCurrentSetToList() {
+    state.sets = state.sets.map(function (set) {
+      if (set.id !== state.selectedId) return set;
+      return {
+        id: set.id,
+        name: set.name,
+        leftText: state.leftText,
+        rightText: state.rightText,
+        leftImages: state.leftImages.slice(),
+        rightImages: state.rightImages.slice()
+      };
+    });
+    persist();
+  }
+
+  function rowCount() {
+    return Math.max(4, state.leftText.split('\n').length, state.rightText.split('\n').length);
+  }
+
+  function syncImages() {
+    var count = rowCount();
+    state.leftImages = normalizeImages(state.leftImages, count);
+    state.rightImages = normalizeImages(state.rightImages, count);
+  }
+
+  function selectSet(id) {
+    syncCurrentSetToList();
+    var set = state.sets.find(function (s) { return s.id === id; });
+    if (!set) return;
+    state.selectedId = set.id;
+    state.renameDraft = set.name;
+    state.leftText = set.leftText;
+    state.rightText = set.rightText;
+    syncImages();
+    state.leftImages = normalizeImages(set.leftImages, rowCount());
+    state.rightImages = normalizeImages(set.rightImages, rowCount());
+    state.gameStarted = false;
+    persist();
+    render();
+  }
+
+  function renameSet() {
+    var clean = state.renameDraft.trim();
+    if (!clean) return;
+    state.sets = state.sets.map(function (set) {
+      return set.id === state.selectedId ? Object.assign({}, set, { name: clean }) : set;
+    });
+    state.renameDraft = clean;
+    persist();
+    render();
+  }
+
+  function canDeleteSelectedSet() {
+    return state.selectedId.indexOf('custom-') === 0;
+  }
+
+  function createSet() {
+    syncCurrentSetToList();
+    var name = state.newSetName.trim() || ('Neuer Kartensatz ' + (state.sets.length + 1));
+    var set = {
+      id: 'custom-' + Date.now(),
+      name: name,
+      leftText: 'Karte 1\nKarte 2\nKarte 3\nKarte 4',
+      rightText: 'Passende Karte 1\nPassende Karte 2\nPassende Karte 3\nPassende Karte 4',
+      leftImages: ['', '', '', ''],
+      rightImages: ['', '', '', '']
+    };
+    state.sets.push(set);
+    state.newSetName = '';
+    selectSet(set.id);
+  }
+
+  function deleteSet() {
+    if (!canDeleteSelectedSet()) return;
+    var current = state.sets.find(function (s) { return s.id === state.selectedId; });
+    if (!current) return;
+    if (!confirm('Kartensatz „' + current.name + '“ wirklich löschen?')) return;
+    state.sets = state.sets.filter(function (s) { return s.id !== state.selectedId; });
+    if (!state.sets.length) return;
+    selectSet(state.sets[0].id);
+  }
+
+  function updateColumn(side, value) {
+    if (side === 'left') state.leftText = value;
+    else state.rightText = value;
+    syncImages();
+    syncCurrentSetToList();
+    state.gameStarted = false;
+    render();
+  }
+
+  function updateRowText(side, index, value) {
+    var lines = (side === 'left' ? state.leftText : state.rightText).split('\n');
+    while (lines.length <= index) lines.push('');
+    lines[index] = value;
+    updateColumn(side, lines.join('\n'));
+  }
+
+  function updateImage(side, index, url) {
+    syncImages();
+    if (side === 'left') state.leftImages[index] = url;
+    else state.rightImages[index] = url;
+    syncCurrentSetToList();
+    state.gameStarted = false;
+    render();
+  }
+
+  function addRow() {
+    state.leftText = state.leftText + (state.leftText ? '\n' : '');
+    state.rightText = state.rightText + (state.rightText ? '\n' : '');
+    syncImages();
+    syncCurrentSetToList();
+    render();
+  }
+
+  function compressImage(file, maxSide) {
+    maxSide = maxSide || 480;
+    return new Promise(function (resolve) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        var dataUrl = typeof reader.result === 'string' ? reader.result : '';
+        if (!dataUrl) { resolve(''); return; }
+        var img = new Image();
+        img.onload = function () {
+          var scale = Math.min(1, maxSide / Math.max(img.width, img.height, 1));
+          var w = Math.max(1, Math.round(img.width * scale));
+          var h = Math.max(1, Math.round(img.height * scale));
+          var canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          var ctx = canvas.getContext('2d');
+          if (!ctx) { resolve(dataUrl); return; }
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.82));
+        };
+        img.onerror = function () { resolve(dataUrl); };
+        img.src = dataUrl;
+      };
+      reader.onerror = function () { resolve(''); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function startGame() {
+    syncCurrentSetToList();
+    var pairs = parsePairs(state.leftText, state.rightText, state.leftImages, state.rightImages);
+    if (!pairs.length) {
+      alert('Bitte mindestens ein vollständiges Paar eintragen.');
+      return;
+    }
+    state.deck = createDeck(pairs);
+    state.open = [];
+    state.solved = [];
+    state.solvedByTeam = {};
+    state.team = 'Team A';
+    state.score = { 'Team A': 0, 'Team B': 0 };
+    state.gameStarted = true;
+    render();
+  }
+
+  function flipCard(card) {
+    if (state.solved.indexOf(card.pairId) >= 0) return;
+    if (state.open.indexOf(card.id) >= 0) return;
+    if (state.open.length >= 2) return;
+    state.open = state.open.concat([card.id]);
+    if (state.open.length < 2) { render(); return; }
+    var a = state.deck.find(function (c) { return c.id === state.open[0]; });
+    var b = state.deck.find(function (c) { return c.id === state.open[1]; });
+    var match = a && b && a.pairId === b.pairId && a.kind !== b.kind;
+    setTimeout(function () {
+      if (match && a) {
+        state.solved = state.solved.concat([a.pairId]);
+        state.solvedByTeam[a.pairId] = state.team;
+        state.score[state.team] += 1;
+      } else {
+        state.team = state.team === 'Team A' ? 'Team B' : 'Team A';
+      }
+      state.open = [];
+      render();
+    }, FLIP_REVEAL_MS);
+    render();
+  }
+
+  function cardFontSize(label) {
+    var n = (label || '').length;
+    if (n > 42) return '0.72rem';
+    if (n > 32) return '0.8rem';
+    if (n > 22) return '0.86rem';
+    return '0.92rem';
+  }
+
+  function renderCardFace(card) {
+    if (card.imageUrl) {
+      var caption = card.label ? '<div class="img-caption">' + escapeHtml(card.label) + '</div>' : '';
+      return '<div class="card-face has-image"><img src="' + escapeHtml(card.imageUrl) + '" alt="" />' + caption + '</div>';
+    }
+    return '<div class="card-face" style="font-size:' + cardFontSize(card.label) + '">' + escapeHtml(card.label) + '</div>';
+  }
+
+  function renderEditor(root) {
+    syncImages();
+    var pairs = parsePairs(state.leftText, state.rightText, state.leftImages, state.rightImages);
+    var rows = rowCount();
+    var leftLines = state.leftText.split('\n');
+    var rightLines = state.rightText.split('\n');
+
+    var html = '<div class="page"><div class="paper">';
+    html += '<h1>Memory</h1>';
+    html += '<div class="toolbar">';
+    html += '<label>Kartensatz <select id="set-select">';
+    state.sets.forEach(function (set) {
+      html += '<option value="' + escapeHtml(set.id) + '"' + (set.id === state.selectedId ? ' selected' : '') + '>' + escapeHtml(set.name) + '</option>';
+    });
+    html += '</select></label>';
+    html += '<input type="text" id="rename-set" placeholder="Name" value="' + escapeHtml(state.renameDraft) + '" style="width:150px" title="Name des Kartensatzes" />';
+    html += '<button type="button" class="btn btn-outlined" id="rename-set-btn">Speichern</button>';
+    html += '<button type="button" class="btn btn-danger" id="delete-set"' + (canDeleteSelectedSet() ? '' : ' disabled title="Vordefinierte Kartensätze können nicht gelöscht werden"') + '>Löschen</button>';
+    html += '<input type="text" id="new-set-name" placeholder="Neuer Kartensatz" value="' + escapeHtml(state.newSetName) + '" style="width:160px" />';
+    html += '<button type="button" class="btn btn-outlined btn-icon" id="create-set" title="Neuen Kartensatz">+</button>';
+    html += '<button type="button" class="btn btn-primary" id="start-game">Spielen</button>';
+    html += '</div>';
+
+    html += '<div class="editor-table">';
+    html += '<div><div class="col-head">Links</div><div class="row-list">';
+    for (var i = 0; i < rows; i++) {
+      html += '<div class="row-item">';
+      html += '<textarea data-side="left" data-row="' + i + '">' + escapeHtml(leftLines[i] || '') + '</textarea>';
+      html += '<div class="row-actions">';
+      if (state.leftImages[i]) {
+        html += '<img class="row-img" src="' + escapeHtml(state.leftImages[i]) + '" alt="" />';
+        html += '<button type="button" data-clear-img="left" data-row="' + i + '">✕</button>';
+      } else {
+        html += '<button type="button" data-pick-img="left" data-row="' + i + '">🖼</button>';
+      }
+      html += '</div></div>';
+    }
+    html += '</div></div>';
+
+    html += '<div><div class="col-head right">Rechts</div><div class="row-list">';
+    for (var j = 0; j < rows; j++) {
+      html += '<div class="row-item">';
+      html += '<textarea data-side="right" data-row="' + j + '">' + escapeHtml(rightLines[j] || '') + '</textarea>';
+      html += '<div class="row-actions">';
+      if (state.rightImages[j]) {
+        html += '<img class="row-img" src="' + escapeHtml(state.rightImages[j]) + '" alt="" />';
+        html += '<button type="button" data-clear-img="right" data-row="' + j + '">✕</button>';
+      } else {
+        html += '<button type="button" data-pick-img="right" data-row="' + j + '">🖼</button>';
+      }
+      html += '</div></div>';
+    }
+    html += '</div></div></div>';
+
+    html += '<div class="toolbar"><button type="button" class="btn btn-outlined" id="add-row">Zeile hinzufügen</button>';
+    html += '<span class="chip">' + pairs.length + ' Paare</span></div>';
+    html += '<p class="hint">Pro Zeile optional ein Bild – statt Text, zusätzlich zum Text oder nur auf einer Seite des Paares. Einstellungen werden lokal gespeichert.</p>';
+    html += '</div></div>';
+
+    root.innerHTML = html;
+
+    document.getElementById('set-select').addEventListener('change', function (e) { selectSet(e.target.value); });
+    document.getElementById('rename-set').addEventListener('input', function (e) { state.renameDraft = e.target.value; });
+    document.getElementById('rename-set').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') renameSet();
+    });
+    document.getElementById('rename-set-btn').addEventListener('click', renameSet);
+    document.getElementById('new-set-name').addEventListener('input', function (e) { state.newSetName = e.target.value; });
+    document.getElementById('new-set-name').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') createSet();
+    });
+    document.getElementById('create-set').addEventListener('click', createSet);
+    document.getElementById('delete-set').addEventListener('click', deleteSet);
+    document.getElementById('start-game').addEventListener('click', startGame);
+    document.getElementById('add-row').addEventListener('click', addRow);
+
+    root.querySelectorAll('textarea[data-side]').forEach(function (ta) {
+      ta.addEventListener('input', function () {
+        updateRowText(ta.getAttribute('data-side'), Number(ta.getAttribute('data-row')), ta.value);
+      });
+    });
+    root.querySelectorAll('[data-pick-img]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        state.imageTarget = { side: btn.getAttribute('data-pick-img'), row: Number(btn.getAttribute('data-row')) };
+        document.getElementById('image-picker').click();
+      });
+    });
+    root.querySelectorAll('[data-clear-img]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        updateImage(btn.getAttribute('data-clear-img'), Number(btn.getAttribute('data-row')), '');
+      });
+    });
+  }
+
+  function renderGame(root) {
+    var cols = state.deck.length <= 12 ? 4 : state.deck.length <= 24 ? 6 : 8;
+    var rows = Math.max(1, Math.ceil(state.deck.length / cols));
+    var complete = state.deck.length > 0 && state.solved.length >= state.deck.length / 2;
+    var winner = complete && state.score['Team A'] !== state.score['Team B']
+      ? (state.score['Team A'] > state.score['Team B'] ? 'Team A' : 'Team B')
+      : null;
+
+    var html = '<div class="game-shell">';
+    html += '<button type="button" class="back-btn" id="back-editor" aria-label="Zurück">←</button>';
+    html += '<div class="game-layout">';
+
+    function teamPanelHtml(team) {
+      var active = team === state.team;
+      var isWinner = winner === team;
+      var highlighted = isWinner || (active && !complete);
+      var color = TEAM_COLORS[team];
+      var panel = '<button type="button" class="team-panel' + (highlighted ? ' active' : '') + (isWinner ? ' winner' : '') + '" data-team="' + team + '" style="' + (highlighted ? 'background:' + color + ';border-color:' + (isWinner ? '#facc15' : color) + ';color:#fff' : '') + '">';
+      if (isWinner) panel += '<span class="team-badge">⭐ SIEGER ⭐</span>';
+      panel += '<span class="team-animal">' + TEAM_ANIMALS[team] + '</span>';
+      panel += '<span class="team-name">' + TEAM_NAMES[team] + '</span>';
+      panel += '<span class="team-score">' + state.score[team] + '</span>';
+      panel += '<span>Paare</span>';
+      if (active && !complete) panel += '<strong>AM ZUG</strong>';
+      if (isWinner) panel += '<strong>GEWONNEN ✨</strong>';
+      panel += '</button>';
+      return panel;
+    }
+
+    html += teamPanelHtml('Team A');
+
+    html += '<div class="card-grid" style="grid-template-columns:repeat(' + cols + ', minmax(0, 1fr));--rows:' + rows + '">';
+    state.deck.forEach(function (card) {
+      var visible = state.open.indexOf(card.id) >= 0 || state.solved.indexOf(card.pairId) >= 0;
+      var solved = state.solved.indexOf(card.pairId) >= 0;
+      var solvedTeam = state.solvedByTeam[card.pairId];
+      var borderColor = solved ? (solvedTeam ? TEAM_COLORS[solvedTeam] : card.color) : '#9ca3af';
+      var aspect = 'aspect-ratio:' + CARD_WIDTH_RATIO + '/1;';
+      var maxH = 'max-height:min(172px, calc((100vh - 120px - ' + (rows - 1) * 10 + 'px) / ' + rows + '));';
+      html += '<button type="button" class="memory-card' + (solved ? ' solved' : '') + '" data-card-id="' + escapeHtml(card.id) + '" style="border-color:' + borderColor + ';' + aspect + maxH + 'width:100%;">';
+      if (visible) html += renderCardFace(card);
+      else html += '<span class="back-logo">🐵</span>';
+      html += '</button>';
+    });
+    html += '</div>';
+    html += teamPanelHtml('Team B');
+    html += '</div></div>';
+
+    root.innerHTML = html;
+    document.getElementById('back-editor').addEventListener('click', function () {
+      state.gameStarted = false;
+      render();
+    });
+    root.querySelectorAll('[data-team]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        state.team = btn.getAttribute('data-team');
+        render();
+      });
+    });
+    root.querySelectorAll('[data-card-id]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var card = state.deck.find(function (c) { return c.id === btn.getAttribute('data-card-id'); });
+        if (card) flipCard(card);
+      });
+    });
+  }
+
+  function render() {
+    var root = document.getElementById('root');
+    if (state.gameStarted) renderGame(root);
+    else renderEditor(root);
+  }
+
+  document.getElementById('image-picker').addEventListener('change', function (e) {
+    var file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file || !state.imageTarget) return;
+    compressImage(file).then(function (url) {
+      if (url) updateImage(state.imageTarget.side, state.imageTarget.row, url);
+      state.imageTarget = null;
+    });
+  });
+
+  if (embeddedBootstrap) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ sets: state.sets, selectedId: state.selectedId })); } catch (e) { /* ignore */ }
+  }
+
+  skipPersist = false;
+  render();
+})();
+  </script>
+</body>
+</html>

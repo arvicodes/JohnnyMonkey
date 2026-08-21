@@ -51,11 +51,20 @@ function parseAttrNumber(tag, name) {
     const m = tag.match(new RegExp(`\\b${name}="(-?\\d+)"`, 'i'));
     return m ? Number(m[1]) : null;
 }
+function parseXfrmFlips(xml) {
+    var _a;
+    const attrs = ((_a = xml.match(/<a:xfrm\b([^>]*)>/i)) === null || _a === void 0 ? void 0 : _a[1]) || '';
+    return {
+        flipH: /\bflipH="(true|1)"/i.test(attrs),
+        flipV: /\bflipV="(true|1)"/i.test(attrs),
+    };
+}
 function parseXfrmBlock(xml) {
-    var _a, _b;
-    // off/ext Attribute können in beliebiger Reihenfolge stehen
-    const off = (_a = xml.match(/<a:off\b[^>]*\/?>/i)) === null || _a === void 0 ? void 0 : _a[0];
-    const ext = (_b = xml.match(/<a:ext\b[^>]*\/?>/i)) === null || _b === void 0 ? void 0 : _b[0];
+    var _a, _b, _c;
+    // Nur das echte a:xfrm — nicht a:extLst/a:ext (Office speichert dort uris ohne cx/cy).
+    const xfrm = ((_a = xml.match(/<a:xfrm\b[^>]*>[\s\S]*?<\/a:xfrm>/i)) === null || _a === void 0 ? void 0 : _a[0]) || xml;
+    const off = (_b = xfrm.match(/<a:off\b[^>]*\/?>/i)) === null || _b === void 0 ? void 0 : _b[0];
+    const ext = (_c = xfrm.match(/<a:ext\b[^>]*\/?>/i)) === null || _c === void 0 ? void 0 : _c[0];
     if (!off || !ext)
         return null;
     const x = parseAttrNumber(off, 'x');
@@ -357,6 +366,18 @@ function paragraphsToHtml(txBodyXml, theme, fallbackFontPt) {
     }
     if (inList)
         html += '</ul>';
+    if (!htmlParts.length) {
+        const math = [...txBodyXml.matchAll(/<m:t(?:\s[^>]*)?>([\s\S]*?)<\/m:t>/gi)]
+            .map((m) => decodeXmlEntities(m[1]).replace(/\s+/g, ' ').trim())
+            .filter(Boolean);
+        if (math.length) {
+            const joined = math.join('');
+            html = `<p style="text-align:center"><span data-pres-fs="20" style="font-size:20px">${escapeHtml(joined)}</span></p>`;
+            plainLines.push(joined);
+            if (fontSizePt == null)
+                fontSizePt = 20;
+        }
+    }
     // Wenn gar keine data-pres-fs gesetzt: gesamten Block mit Fallback wrappen
     if (html && fontSizePt && !/data-pres-fs=/.test(html)) {
         const pt = Math.round(fontSizePt);
@@ -539,7 +560,9 @@ function extractTopLevelBlocks(xml, tag) {
     }
     return blocks;
 }
-/** Entfernt alle grpSp-Blöcke, damit Top-Level-Shapes nicht doppelt aus Gruppen kommen. */
+function stripMcFallback(xml) {
+    return xml.replace(/<mc:Fallback\b[^>]*>[\s\S]*?<\/mc:Fallback>/gi, '');
+}
 function stripGroupBlocks(xml) {
     let out = xml;
     const blocks = extractTopLevelBlocks(xml, 'p:grpSp');
@@ -603,6 +626,30 @@ function extractShapeBoxes(xml, zip, relMap, placeholders, group, slideCx, slide
             name: path_1.default.basename(media.entryName),
             mime,
             base64: data.toString('base64'),
+        });
+    }
+    for (const cxn of extractTopLevelBlocks(flat, 'p:cxnSp')) {
+        let rect = parseXfrmBlock(cxn);
+        if (!rect || rect.w <= 0 || rect.h <= 0)
+            continue;
+        rect = applyGroupTransform(rect, group);
+        const pct = emuToPct(rect, slideCx, slideCy);
+        if (pct.w < 0.2 && pct.h < 0.2)
+            continue;
+        const stroke = extractStrokeColor(cxn, theme) || '#212121';
+        const hasArrow = /<a:tailEnd|<a:headEnd/i.test(cxn);
+        const flips = parseXfrmFlips(cxn);
+        boxes.push({
+            kind: 'shape',
+            x: pct.x,
+            y: pct.y,
+            w: Math.max(pct.w, 0.6),
+            h: Math.max(pct.h, 0.6),
+            fillColor: null,
+            strokeColor: stroke,
+            shapeKind: hasArrow ? 'arrow' : 'line',
+            flipH: flips.flipH,
+            flipV: flips.flipV,
         });
     }
     for (const frame of extractTopLevelBlocks(flat, 'p:graphicFrame')) {
@@ -721,7 +768,8 @@ function parsePptxBuffer(buffer, fileName = 'import.pptx') {
     for (let i = 0; i < slideEntries.length; i++) {
         const entry = slideEntries[i];
         const slidePath = entry.entryName.replace(/\\/g, '/');
-        const slideXml = entry.getData().toString('utf8');
+        const slideXmlRaw = entry.getData().toString('utf8');
+        const slideXml = stripMcFallback(slideXmlRaw);
         const slideNum = (slidePath.match(/slide(\d+)/i) || [])[1] || String(i + 1);
         const relsPath = `ppt/slides/_rels/slide${slideNum}.xml.rels`;
         const relsEntry = zip.getEntry(relsPath) || zip.getEntry(relsPath.replace(/\//g, '\\'));
