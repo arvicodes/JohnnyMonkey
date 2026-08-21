@@ -52,6 +52,11 @@ export function toolUsesColor(tool: PresentationDrawTool): boolean {
   return tool !== 'eraser' && tool !== 'select';
 }
 
+/** Apple Pencil / Stylus — nicht in Textfelder, sondern Tinte / Verschieben. */
+export function isPenPointer(e: { pointerType?: string } | PointerEvent): boolean {
+  return e.pointerType === 'pen';
+}
+
 export function toolUsesLineWidth(tool: PresentationDrawTool): boolean {
   return tool !== 'eraser';
 }

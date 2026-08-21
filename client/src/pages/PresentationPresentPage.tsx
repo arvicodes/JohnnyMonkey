@@ -800,6 +800,15 @@ const PresentationPresentPage: React.FC = () => {
     if (tool !== 'select') setSelectedStrokeIds([]);
   };
 
+  useEffect(() => {
+    if (!drawActive || activeTool === 'select') return;
+    const el = document.activeElement;
+    if (!(el instanceof HTMLElement)) return;
+    if (el.isContentEditable || el.closest('[data-pres-rich-zone], [data-text-edit]')) {
+      el.blur();
+    }
+  }, [drawActive, activeTool]);
+
   const handleSelectColor = (c: string) => {
     setStrokeColor(c);
     if (activeTool === 'marker') markerColorRef.current = c;
@@ -1327,7 +1336,7 @@ const PresentationPresentPage: React.FC = () => {
                   deckTitle={deck?.title ?? ''}
                   lessonPath={deck?.lessonPath ?? lessonPath}
                   mediaInteractive={!drawActive && !zoomed}
-                  editable={drawActive}
+                  editable={drawActive && activeTool === 'select'}
                   selectedElementId={selectedElementId}
                   onElementSelect={setSelectedElementId}
                   onElementChange={updateSlideElement}

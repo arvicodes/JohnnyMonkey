@@ -14,6 +14,7 @@ import {
   isShapeTool,
   toolLineWidth,
   toolToShape,
+  isPenPointer,
 } from '../../lib/presentationDrawTools';
 import {
   ShapeHandle,
@@ -165,12 +166,19 @@ function clickableInChrome(el: HTMLElement | null): HTMLElement | null {
 
 function hitUnderCanvas(canvas: HTMLCanvasElement, clientX: number, clientY: number) {
   const below = elementUnderCanvas(canvas, clientX, clientY);
-  if (!below) return { handle: null as HTMLElement | null, host: null as HTMLElement | null };
+  if (!below) {
+    return {
+      handle: null as HTMLElement | null,
+      host: null as HTMLElement | null,
+      text: null as HTMLElement | null,
+    };
+  }
   return {
     handle: below.closest(
       '[data-resize-handle], [data-element-delete], [data-col-resize]',
     ) as HTMLElement | null,
     host: below.closest('[data-pres-element]') as HTMLElement | null,
+    text: below.closest('[contenteditable="true"], [data-pres-rich-zone], [data-text-edit]') as HTMLElement | null,
   };
 }
 
@@ -799,6 +807,13 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       }
 
       if (under.host && (e.pointerType === 'touch' || e.pointerType === 'pen')) {
+        if (isPenPointer(e) && under.text) {
+          beginManip();
+          emitSelection([]);
+          manipRef.current = { kind: 'lasso', points: [pt] };
+          redraw();
+          return;
+        }
         dispatchPointerTo(under.host, e);
         return;
       }

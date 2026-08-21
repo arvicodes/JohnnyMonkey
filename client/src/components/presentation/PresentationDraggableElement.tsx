@@ -26,6 +26,7 @@ import {
 } from '../../lib/presentationRichText';
 import { PRESENTATION_DEFAULT_FONT_FAMILY } from '../../lib/presentationFonts';
 import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
+import { isPenPointer } from '../../lib/presentationDrawTools';
 import { imageFrameParts } from '../../lib/presentationImageFrames';
 import '../../styles/presentationLists.css';
 import {
@@ -176,6 +177,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     cardZone?: 'title' | 'body' | null;
     /** Tippen ohne Zug → Text/Form-Box bearbeiten (Stift: Ziehen verschiebt). */
     editOnClick?: 'text' | 'shape' | null;
+    pointerType?: string;
   } | null>(null);
   const [dragging, setDragging] = useState(false);
   /** Während Drag nur lokal — kein setDeck pro Pointer-Move. */
@@ -202,6 +204,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     tableWidthPx: number;
   } | null>(null);
   const selectedRef = useRef(selected);
+  const lastPointerTypeRef = useRef<string>('mouse');
   selectedRef.current = selected;
   const DRAG_THRESHOLD_PX = 5;
 
@@ -269,6 +272,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   useEffect(() => {
     if (element.type !== 'card' || !editable || !selected || animationEditMode || cardTitleEditing)
       return;
+    if (lastPointerTypeRef.current === 'pen') return;
     let cancelled = false;
     const focusBody = () => {
       if (cancelled) return;
@@ -545,6 +549,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         !wasDragging &&
         pending &&
         pending.mode === 'move' &&
+        pending.pointerType !== 'pen' &&
         element.type === 'card' &&
         editable &&
         !animationEditMode &&
@@ -555,10 +560,22 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       }
 
       // Text/Form: Klick ohne Zug → tippen; Ziehen (auch Stift) → verschieben
-      if (!wasDragging && pending?.editOnClick === 'text' && editable && !animationEditMode) {
+      if (
+        !wasDragging &&
+        pending?.pointerType !== 'pen' &&
+        pending?.editOnClick === 'text' &&
+        editable &&
+        !animationEditMode
+      ) {
         setTextEditing(true);
       }
-      if (!wasDragging && pending?.editOnClick === 'shape' && editable && !animationEditMode) {
+      if (
+        !wasDragging &&
+        pending?.pointerType !== 'pen' &&
+        pending?.editOnClick === 'shape' &&
+        editable &&
+        !animationEditMode
+      ) {
         window.setTimeout(() => {
           const el = textRef.current;
           if (!el) return;
@@ -609,6 +626,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       pointerId: e.pointerId,
       cardZone,
       editOnClick,
+      pointerType: e.pointerType,
     };
     // currentTarget = Element-Box bzw. Resize-Handle — zuverlässiger als innere Targets
     try {
@@ -794,6 +812,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       onDragOver={blockFileDropIntoText}
       onDrop={blockFileDropIntoText}
       onPointerDown={(e) => {
+        lastPointerTypeRef.current = e.pointerType || 'mouse';
         if (animationEditMode) {
           handleAnimationClick(e);
           return;
@@ -836,12 +855,19 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         if (isTableElement && !onTableDrag) {
           e.stopPropagation();
           onSelect?.();
-          window.setTimeout(() => tableRef.current?.focus({ preventScroll: true }), 0);
+          if (!isPenPointer(e)) {
+            window.setTimeout(() => tableRef.current?.focus({ preventScroll: true }), 0);
+          }
           return;
         }
 
-        // Karte: Inhalt nicht ziehen — Auswahl + Tippen
+        // Karte: Inhalt nicht ziehen — Auswahl + Tippen (Stift: verschieben, nicht tippen)
         if (isCardElement && onCardBody && !onCardTitle) {
+          if (isPenPointer(e)) {
+            e.preventDefault();
+            startDrag(e, 'move', 'br', 'body');
+            return;
+          }
           e.stopPropagation();
           onSelect?.();
           setCardTitleEditing(false);
@@ -1440,6 +1466,10 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 }}
                 onPointerDown={(e) => {
                   if (!showCardBodyEditor) return;
+                  if (isPenPointer(e)) {
+                    e.preventDefault();
+                    return;
+                  }
                   e.stopPropagation();
                 }}
                 onPaste={(e) => {
@@ -1588,6 +1618,10 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 }
               }}
               onPointerDown={(e) => {
+                if (isPenPointer(e)) {
+                  e.preventDefault();
+                  return;
+                }
                 e.stopPropagation();
                 if (
                   tryStartTableResizeFromPointer(tableRef.current, e, {

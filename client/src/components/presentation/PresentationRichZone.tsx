@@ -18,6 +18,7 @@ import {
   updateTableResizeHoverCursor,
 } from '../../lib/presentationTableResize';
 import { PRESENTATION_DEFAULT_FONT_FAMILY } from '../../lib/presentationFonts';
+import { isPenPointer } from '../../lib/presentationDrawTools';
 import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
 import { PRESENTATION_CONTENT_FONT_PX } from '../../lib/presentationFontSize';
 import { presentationNestedListSx } from '../../lib/presentationListStyles';
@@ -498,6 +499,11 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
       onPointerDown={(e) => {
         if (animationEditMode) {
           handleAnimationClick(e);
+          return;
+        }
+        // Stift: nicht ins Textfeld (iPad Scribble / Caret) — Finger/Maus bleiben zum Tippen.
+        if (isPenPointer(e)) {
+          e.preventDefault();
           return;
         }
         e.stopPropagation();
