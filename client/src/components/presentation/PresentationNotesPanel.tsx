@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, IconButton, Tooltip, Typography } from '@mui/material';
 import {
   DeleteOutline as TrashIcon,
@@ -24,6 +24,37 @@ import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 
 /** Ein Notizfeld (früher Material / Setup / Sprechakte). Legacy-Keys bleiben für Papierkorb. */
 export type NotesFieldKey = 'materialHtml' | 'preparationHtml' | 'speakerNotesHtml';
+
+const NOTES_WIDTH_STORAGE_KEY = 'johnny-pres-notes-width';
+const NOTES_WIDTH_DEFAULT = 320;
+const NOTES_WIDTH_MIN = 240;
+const NOTES_WIDTH_MAX = 920;
+
+function clampNotesWidth(raw: number): number {
+  const viewportMax =
+    typeof window === 'undefined'
+      ? NOTES_WIDTH_MAX
+      : Math.min(NOTES_WIDTH_MAX, Math.max(NOTES_WIDTH_MIN, Math.round(window.innerWidth * 0.62)));
+  if (!Number.isFinite(raw)) return NOTES_WIDTH_DEFAULT;
+  return Math.min(viewportMax, Math.max(NOTES_WIDTH_MIN, Math.round(raw)));
+}
+
+function loadNotesWidth(): number {
+  try {
+    const n = Number(localStorage.getItem(NOTES_WIDTH_STORAGE_KEY));
+    return clampNotesWidth(n);
+  } catch {
+    return NOTES_WIDTH_DEFAULT;
+  }
+}
+
+function persistNotesWidth(width: number) {
+  try {
+    localStorage.setItem(NOTES_WIDTH_STORAGE_KEY, String(width));
+  } catch {
+    /* ignore */
+  }
+}
 
 interface NoteZoneProps {
   fieldKey: NotesFieldKey;
@@ -404,10 +435,63 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
   onUploadImage,
   onHide,
 }) => {
+  const [panelWidth, setPanelWidth] = useState(loadNotesWidth);
+  const resizeRef = useRef<{ pointerId: number; startX: number; startW: number } | null>(null);
+  const [resizing, setResizing] = useState(false);
+
+  const onResizePointerDown = useCallback((e: React.PointerEvent<HTMLElement>) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    resizeRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startW: panelWidth,
+    };
+    setResizing(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }, [panelWidth]);
+
+  const onResizePointerMove = useCallback((e: React.PointerEvent<HTMLElement>) => {
+    const drag = resizeRef.current;
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    const next = clampNotesWidth(drag.startW + (drag.startX - e.clientX));
+    setPanelWidth(next);
+  }, []);
+
+  const endResize = useCallback((e: React.PointerEvent<HTMLElement>) => {
+    const drag = resizeRef.current;
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    resizeRef.current = null;
+    setResizing(false);
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    setPanelWidth((w) => {
+      const next = clampNotesWidth(w);
+      persistNotesWidth(next);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!resizing) return undefined;
+    const prev = document.body.style.cursor;
+    const prevSelect = document.body.style.userSelect;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    return () => {
+      document.body.style.cursor = prev;
+      document.body.style.userSelect = prevSelect;
+    };
+  }, [resizing]);
+
   return (
     <Box
       sx={{
-        width: 320,
+        width: panelWidth,
         flexShrink: 0,
         minHeight: 0,
         display: 'flex',
@@ -415,8 +499,55 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
         bgcolor: PRES_EDITOR_UI.panelBg,
         borderLeft: `1px solid ${PRES_EDITOR_UI.panelBorder}`,
         overflow: 'hidden',
+        position: 'relative',
       }}
     >
+      <Box
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Notizfeld breiter oder schmaler ziehen"
+        aria-valuenow={panelWidth}
+        aria-valuemin={NOTES_WIDTH_MIN}
+        aria-valuemax={NOTES_WIDTH_MAX}
+        onPointerDown={onResizePointerDown}
+        onPointerMove={onResizePointerMove}
+        onPointerUp={endResize}
+        onPointerCancel={endResize}
+        onDoubleClick={() => {
+          const next = NOTES_WIDTH_DEFAULT;
+          setPanelWidth(next);
+          persistNotesWidth(next);
+        }}
+        sx={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: 8,
+          zIndex: 3,
+          cursor: 'col-resize',
+          touchAction: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          '&:hover .pres-notes-resize-bar, &:focus-visible .pres-notes-resize-bar': {
+            bgcolor: PRES_EDITOR_UI.accent,
+            opacity: 1,
+          },
+        }}
+      >
+        <Box
+          className="pres-notes-resize-bar"
+          sx={{
+            width: 3,
+            height: 36,
+            borderRadius: 999,
+            bgcolor: resizing ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.panelBorder,
+            opacity: resizing ? 1 : 0.85,
+            pointerEvents: 'none',
+          }}
+        />
+      </Box>
       <Box
         sx={{
           flexShrink: 0,
