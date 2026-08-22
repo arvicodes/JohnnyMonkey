@@ -405,6 +405,7 @@ import {
   Games as GamesIcon,
   DirectionsRun as DirectionsRunIcon,
   Computer as ComputerIcon,
+  LaptopMac as LaptopMacIcon,
   Calculate as CalculateIcon,
   Functions as FunctionsIcon,
   EmojiEmotions as EmojiEmotionsIcon,
@@ -7049,8 +7050,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   }, [isLessonStundeRoute, lessonModalData?.groupId]);
 
   const openLessonStundePage = useCallback(
-    (groupId: string, lessonPath: string, lessonName: string) => {
+    (
+      groupId: string,
+      lessonPath: string,
+      lessonName: string,
+      opts?: { planMode?: 'create' | 'run' | 'background'; openPresentation?: boolean },
+    ) => {
       const q = new URLSearchParams({ groupId, lessonPath, lessonName });
+      if (opts?.planMode === 'create' || opts?.planMode === 'run' || opts?.planMode === 'background') {
+        q.set('planMode', opts.planMode);
+      }
+      if (opts?.openPresentation) q.set('openPresentation', '1');
       navigate(`/teacher/stunde?${q.toString()}`);
     },
     [navigate],
@@ -10885,60 +10895,112 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             )}
 
             {isStundeFolder && (
-              <Tooltip
-                title={
-                  isStundeRunning
-                    ? 'Stunde beenden'
-                    : wasStundePlayed
-                      ? 'Stunde starten (bereits gehalten)'
-                      : 'Stunde starten (Tablet-Play, erste Folie)'
-                }
+              <Box
+                sx={{ display: 'flex', alignItems: 'center', gap: 0.2, flexShrink: 0, ml: 0.15 }}
+                onClick={(e) => e.stopPropagation()}
               >
-                <span>
+                <Tooltip
+                  title={
+                    isStundeRunning
+                      ? 'Stunde beenden'
+                      : wasStundePlayed
+                        ? 'Stunde starten (bereits gehalten)'
+                        : 'Stunde starten (Tablet-Play, erste Folie)'
+                  }
+                >
+                  <span>
+                    <IconButton
+                      size="small"
+                      disabled={stundeRunBusy}
+                      aria-label={isStundeRunning ? 'Stunde beenden' : 'Stunde starten'}
+                      onClick={() => {
+                        if (isStundeRunning) {
+                          void endLessonRun(groupId, stundeLessonPath, activeStundeSession?.id);
+                        } else {
+                          void startLessonRun(groupId, stundeLessonPath);
+                        }
+                      }}
+                      sx={{
+                        p: 0,
+                        minWidth: 18,
+                        width: 18,
+                        height: 18,
+                        borderRadius: '50%',
+                        bgcolor: isStundeRunning ? '#c62828' : '#2e7d32',
+                        color: '#fff',
+                        boxShadow: isStundeRunning
+                          ? '0 0 0 2px rgba(198, 40, 40, 0.25)'
+                          : wasStundePlayed
+                            ? '0 0 0 2px #f9a825'
+                            : '0 0 0 1px rgba(46, 125, 50, 0.2)',
+                        '&:hover': {
+                          bgcolor: isStundeRunning ? '#b71c1c' : '#1b5e20',
+                        },
+                        '&.Mui-disabled': {
+                          bgcolor: isStundeRunning ? '#ef9a9a' : '#a5d6a7',
+                          color: '#fff',
+                        },
+                      }}
+                    >
+                      {isStundeRunning ? (
+                        <StopIcon sx={{ fontSize: 12 }} />
+                      ) : (
+                        <PlayIcon sx={{ fontSize: 12 }} />
+                      )}
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                <Tooltip title="Laptop-Modus (Präsentation links)">
                   <IconButton
                     size="small"
-                    disabled={stundeRunBusy}
-                    aria-label={isStundeRunning ? 'Stunde beenden' : 'Stunde starten'}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (isStundeRunning) {
-                        void endLessonRun(groupId, stundeLessonPath, activeStundeSession?.id);
-                      } else {
-                        void startLessonRun(groupId, stundeLessonPath);
-                      }
+                    aria-label="Laptop-Modus"
+                    onClick={() => {
+                      preparePresentationAudioForPlay();
+                      openLessonStundePage(groupId, stundeLessonPath, item.name, {
+                        planMode: 'background',
+                        openPresentation: true,
+                      });
                     }}
                     sx={{
                       p: 0,
-                      ml: 0.15,
                       minWidth: 18,
                       width: 18,
                       height: 18,
-                      flexShrink: 0,
                       borderRadius: '50%',
-                      bgcolor: isStundeRunning ? '#c62828' : '#2e7d32',
+                      bgcolor: '#3949ab',
                       color: '#fff',
-                      boxShadow: isStundeRunning
-                        ? '0 0 0 2px rgba(198, 40, 40, 0.25)'
-                        : wasStundePlayed
-                          ? '0 0 0 2px #f9a825'
-                          : '0 0 0 1px rgba(46, 125, 50, 0.2)',
-                      '&:hover': {
-                        bgcolor: isStundeRunning ? '#b71c1c' : '#1b5e20',
-                      },
-                      '&.Mui-disabled': {
-                        bgcolor: isStundeRunning ? '#ef9a9a' : '#a5d6a7',
-                        color: '#fff',
-                      },
+                      boxShadow: '0 0 0 1px rgba(57, 73, 171, 0.25)',
+                      '&:hover': { bgcolor: '#283593' },
                     }}
                   >
-                    {isStundeRunning ? (
-                      <StopIcon sx={{ fontSize: 12 }} />
-                    ) : (
-                      <PlayIcon sx={{ fontSize: 12 }} />
-                    )}
+                    <LaptopMacIcon sx={{ fontSize: 11 }} />
                   </IconButton>
-                </span>
-              </Tooltip>
+                </Tooltip>
+                <Tooltip title="Bearbeiten (Erstellen-Modus)">
+                  <IconButton
+                    size="small"
+                    aria-label="Erstellen-Modus"
+                    onClick={() => {
+                      openLessonStundePage(groupId, stundeLessonPath, item.name, {
+                        planMode: 'create',
+                      });
+                    }}
+                    sx={{
+                      p: 0,
+                      minWidth: 18,
+                      width: 18,
+                      height: 18,
+                      borderRadius: '50%',
+                      bgcolor: '#ef6c00',
+                      color: '#fff',
+                      boxShadow: '0 0 0 1px rgba(239, 108, 0, 0.25)',
+                      '&:hover': { bgcolor: '#e65100' },
+                    }}
+                  >
+                    <EditIcon sx={{ fontSize: 11 }} />
+                  </IconButton>
+                </Tooltip>
+              </Box>
             )}
             
             {/* Erstellungs-Icons für Quiz- und Cards-Dateien */}
