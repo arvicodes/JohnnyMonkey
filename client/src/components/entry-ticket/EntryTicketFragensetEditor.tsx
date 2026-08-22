@@ -2,9 +2,15 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Autocomplete,
   Box,
+  Button,
   Checkbox,
   Chip,
   Collapse,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControlLabel,
   IconButton,
   TextField,
   Tooltip,
@@ -89,6 +95,8 @@ const LESSON_PALETTES = [
   { bg: '#eceff1', border: '#90a4ae', title: '#455a64', chip: '#607d8b', soft: '#cfd8dc' },
   { bg: '#e8f5e9', border: '#66bb6a', title: '#1b5e20', chip: '#43a047', soft: '#c8e6c9' },
 ];
+
+const DELETE_CONFIRM_WORD = 'LÖSCHEN';
 
 const LATER_PALETTE = {
   bg: '#fff8e1',
@@ -175,6 +183,27 @@ export function EntryTicketFragensetEditor({
   const [reiheOptionsLoading, setReiheOptionsLoading] = useState(false);
   const [reiheBusy, setReiheBusy] = useState(false);
   const catalogRequestedRef = useRef(false);
+  const [deleteAsk, setDeleteAsk] = useState<
+    | { kind: 'set' }
+    | { kind: 'lesson'; lessonId: string; lessonName: string; taskCount: number }
+    | null
+  >(null);
+  const [deleteCheck1, setDeleteCheck1] = useState(false);
+  const [deleteCheck2, setDeleteCheck2] = useState(false);
+  const [deleteWord, setDeleteWord] = useState('');
+
+  const closeDeleteAsk = () => {
+    setDeleteAsk(null);
+    setDeleteCheck1(false);
+    setDeleteCheck2(false);
+    setDeleteWord('');
+  };
+
+  const deleteReady =
+    Boolean(deleteAsk) &&
+    deleteCheck1 &&
+    deleteCheck2 &&
+    deleteWord.trim() === DELETE_CONFIRM_WORD;
 
   useEffect(() => {
     setNameDraft(set.name);
@@ -321,7 +350,7 @@ export function EntryTicketFragensetEditor({
     setNewLessonName('');
   };
 
-  const deleteLesson = (lessonId: string) => {
+  const requestDeleteLesson = (lessonId: string) => {
     const lesson = set.lessons.find((l) => l.id === lessonId);
     if (!lesson) return;
     if (isGeneralLessonSection(lesson)) {
@@ -332,13 +361,27 @@ export function EntryTicketFragensetEditor({
       window.alert('„Für später“ kann nicht gelöscht werden — einzelne Karten kannst du dort entfernen.');
       return;
     }
-    if (
-      lesson.tasks.length > 0 &&
-      !window.confirm(`Stunde „${lesson.lessonName}“ mit ${lesson.tasks.length} Fragen löschen?`)
-    ) {
+    setDeleteCheck1(false);
+    setDeleteCheck2(false);
+    setDeleteWord('');
+    setDeleteAsk({
+      kind: 'lesson',
+      lessonId: lesson.id,
+      lessonName: lesson.lessonName,
+      taskCount: lesson.tasks.length,
+    });
+  };
+
+  const confirmDangerousDelete = () => {
+    if (!deleteReady || !deleteAsk) return;
+    if (deleteAsk.kind === 'set') {
+      closeDeleteAsk();
+      onDeleteSet();
       return;
     }
-    updateLessons(set.lessons.filter((l) => l.id !== lessonId));
+    const id = deleteAsk.lessonId;
+    closeDeleteAsk();
+    updateLessons(set.lessons.filter((l) => l.id !== id));
   };
 
   const addTasksFromList = (lessonId: string) => {
@@ -458,9 +501,12 @@ export function EntryTicketFragensetEditor({
         boxSizing: 'border-box',
         borderRadius: 1.5,
         border: `1.5px solid ${ET.border}`,
-        bgcolor: ET.white,
+        bgcolor: '#fff',
         overflow: 'hidden',
         boxShadow: 'none',
+        display: 'grid',
+        gap: 1.15,
+        p: 1.1,
       }}
     >
       {/* Name links, Historie Mitte, Kartenzahl rechts */}
@@ -470,11 +516,12 @@ export function EntryTicketFragensetEditor({
           display: 'grid',
           gridTemplateColumns: '1fr auto 1fr',
           alignItems: 'center',
-          gap: 0.75,
-          px: 0.75,
-          py: 0.45,
-          borderBottom: `1.5px solid ${ET.border}`,
-          bgcolor: '#f5f5f5',
+          gap: 1,
+          px: 1.1,
+          py: 0.85,
+          borderRadius: 1.15,
+          border: `1px solid ${ET.border}`,
+          bgcolor: '#fafafa',
           boxSizing: 'border-box',
         }}
       >
@@ -505,7 +552,12 @@ export function EntryTicketFragensetEditor({
           <Tooltip title="Fragenset löschen">
             <IconButton
               size="small"
-              onClick={onDeleteSet}
+              onClick={() => {
+                setDeleteCheck1(false);
+                setDeleteCheck2(false);
+                setDeleteWord('');
+                setDeleteAsk({ kind: 'set' });
+              }}
               aria-label="Fragenset löschen"
               sx={{
                 ...iconBtnSx,
@@ -558,13 +610,15 @@ export function EntryTicketFragensetEditor({
       <Box
         sx={{
           width: '100%',
-          px: 0.6,
-          pt: 0.55,
-          pb: 0,
+          px: 1.1,
+          py: 1,
           boxSizing: 'border-box',
           display: 'flex',
           alignItems: 'flex-start',
-          gap: 0.55,
+          gap: 1.15,
+          borderRadius: 1.15,
+          border: `1px solid ${ET.border}`,
+          bgcolor: '#fff',
         }}
       >
         <TextField
@@ -601,7 +655,7 @@ export function EntryTicketFragensetEditor({
           }}
           inputProps={{ 'aria-label': 'Persönliche Notizen zum Fragenset' }}
         />
-        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: 0.45 }}>
+        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: 0.75 }}>
           <Autocomplete
             multiple
             size="small"
@@ -683,7 +737,7 @@ export function EntryTicketFragensetEditor({
               },
             }}
           />
-          <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexWrap: 'wrap', gap: 0.3, pt: 0.2 }}>
+          <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexWrap: 'wrap', gap: 0.5, pt: 0.35 }}>
             {selectedReihen.map((option) => (
               <Chip
                 key={option.path}
@@ -708,7 +762,18 @@ export function EntryTicketFragensetEditor({
         </Box>
       </Box>
 
-      <Box sx={{ width: '100%', p: 0.6, display: 'grid', gap: 0.55, boxSizing: 'border-box' }}>
+      <Box
+        sx={{
+          width: '100%',
+          p: 1.1,
+          display: 'grid',
+          gap: 1.1,
+          boxSizing: 'border-box',
+          borderRadius: 1.15,
+          border: `1px solid ${ET.border}`,
+          bgcolor: '#fff',
+        }}
+      >
         {set.lessons.length === 0 && (
           <Typography sx={{ color: ET.muted, fontSize: '0.75rem', textAlign: 'center', py: 1.25 }}>
             Noch keine Stunden — Reihenname prüfen oder unten ergänzen.
@@ -722,17 +787,17 @@ export function EntryTicketFragensetEditor({
           const isFirstHourGroup =
             !isSpecialRow && displayGroups.findIndex((g) => !g.special) === groupIndex;
           return (
-            <Box key={group.key} sx={{ width: '100%', boxSizing: 'border-box', display: 'grid', gap: 0.45 }}>
+            <Box key={group.key} sx={{ width: '100%', boxSizing: 'border-box', display: 'grid', gap: 0.75 }}>
               {groupIndex > 0 && !isSpecialRow && (
                 <Box
                   sx={{
                     width: '100%',
-                    mt: 1.4,
-                    mb: 0.4,
-                    height: 3,
-                    borderRadius: 2,
-                    background: `linear-gradient(90deg, ${accent.chip}, ${accent.soft}, ${nextAccent.chip})`,
-                    opacity: 0.9,
+                    mt: 0.6,
+                    mb: 0.15,
+                    height: 10,
+                    borderRadius: 1,
+                    bgcolor: '#fff',
+                    borderBottom: `1px solid ${ET.border}`,
                   }}
                 />
               )}
@@ -763,7 +828,7 @@ export function EntryTicketFragensetEditor({
                   width: '100%',
                   display: 'grid',
                   gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                  gap: 0.5,
+                  gap: 0.9,
                   alignItems: 'start',
                   boxSizing: 'border-box',
                 }}
@@ -798,9 +863,9 @@ export function EntryTicketFragensetEditor({
                       sx={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 0.4,
-                        px: 0.5,
-                        py: 0.35,
+                        gap: 0.55,
+                        px: 0.75,
+                        py: 0.55,
                         cursor: 'pointer',
                         bgcolor: isActive ? `${palette.chip}16` : 'rgba(255,255,255,0.55)',
                         borderBottom: isOpen ? `1px solid ${palette.soft}` : 'none',
@@ -934,7 +999,7 @@ export function EntryTicketFragensetEditor({
                             size="small"
                             onClick={(e) => {
                               e.stopPropagation();
-                              deleteLesson(lesson.id);
+                              requestDeleteLesson(lesson.id);
                             }}
                             aria-label="Stunde löschen"
                             sx={{
@@ -1245,9 +1310,10 @@ export function EntryTicketFragensetEditor({
         <Box
           sx={{
             width: '100%',
+            mt: 0.4,
             display: 'grid',
             gridTemplateColumns: 'minmax(0, 1fr) 22px',
-            gap: 0.4,
+            gap: 0.6,
             alignItems: 'center',
             boxSizing: 'border-box',
           }}
@@ -1284,6 +1350,96 @@ export function EntryTicketFragensetEditor({
           </Tooltip>
         </Box>
       </Box>
+
+      <Dialog
+        open={Boolean(deleteAsk)}
+        onClose={closeDeleteAsk}
+        maxWidth="xs"
+        fullWidth
+        disableEscapeKeyDown
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: '#b71c1c', fontSize: '1rem', pb: 0.5 }}>
+          {deleteAsk?.kind === 'set' ? 'Fragenset unwiderruflich löschen' : 'Stunde unwiderruflich löschen'}
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontSize: '0.85rem', mt: 1 }}>
+            {deleteAsk?.kind === 'set' ? (
+              <>
+                Das gesamte Fragenset <strong>„{set.name}“</strong> mit allen Stunden und Karten wird
+                gelöscht.
+              </>
+            ) : (
+              <>
+                Die Stunde <strong>„{deleteAsk?.lessonName}“</strong>
+                {deleteAsk && deleteAsk.kind === 'lesson' && deleteAsk.taskCount > 0
+                  ? ` mit ${deleteAsk.taskCount} Karte${deleteAsk.taskCount === 1 ? '' : 'n'}`
+                  : ''}{' '}
+                wird gelöscht.
+              </>
+            )}
+          </Typography>
+          <Typography sx={{ color: '#b71c1c', fontWeight: 800, fontSize: '0.82rem', mt: 1.25 }}>
+            Das lässt sich nicht rückgängig machen. Ein Versehen ist hier nicht erlaubt.
+          </Typography>
+          <Box sx={{ mt: 1.5, display: 'grid', gap: 0.4 }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  size="small"
+                  checked={deleteCheck1}
+                  onChange={(e) => setDeleteCheck1(e.target.checked)}
+                />
+              }
+              label="Ich habe verstanden, dass alles unwiderruflich verloren geht."
+              sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.78rem' } }}
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  size="small"
+                  checked={deleteCheck2}
+                  onChange={(e) => setDeleteCheck2(e.target.checked)}
+                />
+              }
+              label={
+                deleteAsk?.kind === 'set'
+                  ? 'Ich will dieses Fragenset wirklich endgültig löschen.'
+                  : 'Ich will diese Stunde wirklich endgültig löschen.'
+              }
+              sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.78rem' } }}
+            />
+          </Box>
+          <Typography sx={{ mt: 1.5, mb: 0.6, color: '#b71c1c', fontWeight: 800, fontSize: '0.78rem' }}>
+            Tippe zur Bestätigung genau: {DELETE_CONFIRM_WORD}
+          </Typography>
+          <TextField
+            fullWidth
+            size="small"
+            autoComplete="off"
+            value={deleteWord}
+            onChange={(e) => setDeleteWord(e.target.value)}
+            placeholder={DELETE_CONFIRM_WORD}
+            inputProps={{ 'aria-label': 'Bestätigungswort' }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.preventDefault();
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 1.5 }}>
+          <Button onClick={closeDeleteAsk} size="small">
+            Abbrechen
+          </Button>
+          <Button
+            onClick={confirmDangerousDelete}
+            color="error"
+            variant="contained"
+            size="small"
+            disabled={!deleteReady}
+          >
+            Endgültig löschen
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

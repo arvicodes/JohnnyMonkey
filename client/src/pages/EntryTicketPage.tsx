@@ -3333,7 +3333,6 @@ export default function EntryTicketPage({
 
   const deleteActiveCustomSet = () => {
     if (!customSetId) return;
-    if (!window.confirm(`Fragenset „${activeCustomSet?.name ?? ''}“ wirklich löschen?`)) return;
     setCustomSets((prev) => prev.filter((s) => s.id !== customSetId));
     setCustomSetId(null);
     setSetEditIndex(null);
@@ -5082,7 +5081,7 @@ export default function EntryTicketPage({
                         </Typography>
                       </Box>
                     ) : null}
-                    <Box sx={{ width: '100%', minWidth: 0, mt: poolForBand.length === 0 ? 0 : 0.5 }}>
+                    <Box sx={{ width: '100%', minWidth: 0, mt: poolForBand.length === 0 ? 0 : 1.25 }}>
                       <EntryTicketFragensetEditor
                         set={activeCustomSet}
                         activeLessonPath={entryLessonPath}
