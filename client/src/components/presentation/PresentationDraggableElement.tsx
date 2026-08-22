@@ -1106,7 +1106,6 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               overflow: pictureFrameOn ? 'visible' : windowCrop || cropMode || hugImageChrome ? 'hidden' : 'visible',
               width: '100%',
               height: '100%',
-              position: 'relative',
               ...(pictureFrameOn ? pictureFrame.wrap : undefined),
               outline: pictureSelectOutline,
               outlineOffset: pictureSelectOutline ? `${2 * scale}px` : undefined,

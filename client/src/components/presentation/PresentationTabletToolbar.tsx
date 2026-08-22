@@ -120,29 +120,28 @@ function stylusActivateHandlers(action: () => void, disabled?: boolean) {
 
 function ToolBtn({ title, active, disabled, round, onClick, children }: ToolBtnProps) {
   return (
-    <Tooltip title={title} enterDelay={500}>
-      <span>
-        <IconButton
-          size="small"
-          disabled={disabled}
-          onClick={onClick}
-          {...stylusActivateHandlers(() => onClick({} as React.MouseEvent<HTMLElement>), disabled)}
-          sx={{
-            ...MICRO_SX,
-            ...(round
-              ? {
-                  borderRadius: '50%',
-                  bgcolor: 'rgba(255,255,255,0.12)',
-                  boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.18)',
-                }
-              : {}),
-            ...(active ? TOOL_ACTIVE : {}),
-          }}
-        >
-          {children}
-        </IconButton>
-      </span>
-    </Tooltip>
+    <span>
+      <IconButton
+        size="small"
+        disabled={disabled}
+        aria-label={title}
+        onClick={onClick}
+        {...stylusActivateHandlers(() => onClick({} as React.MouseEvent<HTMLElement>), disabled)}
+        sx={{
+          ...MICRO_SX,
+          ...(round
+            ? {
+                borderRadius: '50%',
+                bgcolor: 'rgba(255,255,255,0.12)',
+                boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.18)',
+              }
+            : {}),
+          ...(active ? TOOL_ACTIVE : {}),
+        }}
+      >
+        {children}
+      </IconButton>
+    </span>
   );
 }
 
