@@ -1239,14 +1239,14 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
       const html = `${buildBlankTableHtml(rows, cols, getTableTheme('grau'))}<p><br></p>`;
       const ok = insertHtmlIntoNotesEditor(editor, html);
       if (!ok) editor.insertAdjacentHTML('beforeend', html);
-      editor.querySelectorAll('table').forEach((table) => {
-        const el = table as HTMLTableElement;
-        el.style.width = 'max-content';
-        el.style.maxWidth = '100%';
-        el.style.marginLeft = '0';
-        el.style.marginRight = 'auto';
-        el.style.float = 'none';
-      });
+      const inserted = editor.querySelector('table:last-of-type') as HTMLTableElement | null;
+      if (inserted) {
+        const px = Math.min(520, Math.max(240, cols * 120));
+        inserted.style.width = `${px}px`;
+        inserted.style.maxWidth = '100%';
+        inserted.style.marginLeft = '0';
+        inserted.style.marginRight = 'auto';
+      }
       syncEditorToState();
     },
     [pushHistorySnapshot, restoreNotesSelection, syncEditorToState],
@@ -2811,9 +2811,9 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                 },
                 ...presentationNotesTableSx(),
                 '& table': {
-                  width: 'max-content !important',
+                  width: 'min(100%, 520px) !important',
                   maxWidth: '100%',
-                  marginLeft: '0 !important',
+                  marginLeft: 0,
                   marginRight: 'auto',
                   borderCollapse: 'collapse',
                   tableLayout: 'fixed',
