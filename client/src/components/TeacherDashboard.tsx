@@ -15483,7 +15483,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
             ...(lessonSplitLeft && {
               position: 'relative',
-              zIndex: 4,
+              zIndex: (theme) => theme.zIndex.modal + 10,
               maxWidth: laptopLeftWidth,
               boxSizing: 'border-box',
             }),
@@ -25901,12 +25901,14 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
               console.log(`   Grid ${gridKey} (R${row+1}, C${col+1}): Desk ${deskId}, Slot0=${slot0}, Slot1=${slot1}`);
             });
             
-            // Funktion zur Berechnung der globalen Slot-Nummer (zeilenweise, beginnt bei 1)
-            // WICHTIG: Immer Grid-Position verwenden, nicht deskId!
+            const visibleGridRows = finalDeskPositions.length
+              ? Math.min(gridRows, Math.max(...finalDeskPositions.map((p) => p.gridRow)) + 1)
+              : gridRows;
+
+            // Pult unten: 1 beginnt links vorne, dann nach rechts, n√§chste Reihe nach hinten.
             const getGlobalSlotNumber = (slotIndex: number, gridRow: number, gridCol: number): number => {
-              // Zeilenweise Nummerierung: (row * gridCols + col) * 2 + slotIndex + 1
-              // Jede Grid-Zelle hat 2 Slots, nummeriert von oben links nach unten rechts
-              return (gridRow * gridCols + gridCol) * 2 + slotIndex + 1;
+              const fromFront = visibleGridRows - 1 - gridRow;
+              return (fromFront * gridCols + gridCol) * 2 + slotIndex + 1;
             };
             
             // Debug: Zeige aktuelle Verteilung
@@ -26541,7 +26543,6 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
               setDragOverGridCell(null);
             };
 
-            // Feste Tisch-Zellenh√∂he (Zeile im Grid identisch); Schrift/Slots etwas gro√üz√ºgiger
             const DESK_CELL_HEIGHT = '96px';
             
             // Helper-Funktion zum Rendern eines Sch√ºlers - MIT DROP-FUNKTIONALIT√ÑT
@@ -26634,7 +26635,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                     flexDirection: 'column',
                     justifyContent: 'center',
                     alignItems: 'stretch',
-                    overflow: 'hidden',
+                    overflow: participationDocked ? 'visible' : 'hidden',
                     boxShadow: isCurrentDropTarget ? '0 0 0 3px rgba(76, 175, 80, 0.3)' : '0 2px 4px rgba(0,0,0,0.1)',
                     transform: isCurrentDropTarget ? 'scale(1.02)' : 'scale(1)',
                     zIndex: isCurrentDropTarget ? 10 : 1,
@@ -26708,9 +26709,9 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                           avatarEmoji={student.avatarEmoji}
                           avatarUrl={student.avatarUrl}
                           fallbackEmoji={student.name.charAt(0) || 'üë§'}
-                          size={22}
-                          photoSize={40}
-                          sx={{ gap: 0.4 }}
+                          size={20}
+                          photoSize={36}
+                          sx={{ gap: 0.3 }}
                         />
                       </Box>
                     )}
@@ -26719,14 +26720,16 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                         <Typography
                           sx={{
                             fontWeight: 800,
-                            fontSize: '0.92rem',
+                            fontSize: '0.78rem',
                             textAlign: 'center',
-                            lineHeight: 1.1,
-                            letterSpacing: '-0.02em',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
+                            lineHeight: 1.15,
+                            letterSpacing: '-0.01em',
+                            overflow: 'visible',
+                            whiteSpace: 'normal',
+                            wordBreak: 'break-word',
+                            overflowWrap: 'anywhere',
                             maxWidth: '100%',
+                            flexShrink: 0,
                             color: 'text.primary',
                           }}
                         >
@@ -26736,14 +26739,16 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                           <Typography
                             sx={{
                               fontWeight: 500,
-                              fontSize: '0.58rem',
+                              fontSize: '0.55rem',
                               textAlign: 'center',
-                              lineHeight: 1.1,
+                              lineHeight: 1.15,
                               color: 'text.secondary',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
+                              overflow: 'visible',
+                              whiteSpace: 'normal',
+                              wordBreak: 'break-word',
+                              overflowWrap: 'anywhere',
                               maxWidth: '100%',
+                              flexShrink: 0,
                             }}
                           >
                             {student.name.trim().split(/\s+/).slice(-1)[0]}
@@ -26966,15 +26971,15 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                             sx={{ 
                     display: 'grid',
                     gridTemplateColumns: `repeat(${gridCols}, 1fr)`,
-                    gridTemplateRows: `repeat(${gridRows}, ${DESK_CELL_HEIGHT})`,
+                    gridTemplateRows: `repeat(${visibleGridRows}, ${DESK_CELL_HEIGHT})`,
                     gap: 0.15,
                     alignItems: 'stretch',
                     justifyItems: 'stretch',
-                    minHeight: `calc(${gridRows} * (${DESK_CELL_HEIGHT} + 2px))`,
+                    minHeight: `calc(${visibleGridRows} * (${DESK_CELL_HEIGHT} + 2px))`,
                   }}
                 >
                   {/* Render Grid-Zellen */}
-                  {Array.from({ length: gridRows * gridCols }, (_, index) => {
+                  {Array.from({ length: visibleGridRows * gridCols }, (_, index) => {
                     const gridRow = Math.floor(index / gridCols);
                     const gridCol = index % gridCols;
                     const gridKey = `${gridRow}-${gridCol}`;

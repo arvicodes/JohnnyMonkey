@@ -152,10 +152,15 @@ export function DualStudentAvatars({
           src={resolvedUrl}
           alt={name ? `${name} Foto` : 'Eigenes Bild'}
           onError={() => setImgFailed(true)}
+          draggable={false}
           sx={{
             width: '100%',
             height: '100%',
             objectFit: 'cover',
+            objectPosition: '50% 18%',
+            transform: 'scale(1.32)',
+            transformOrigin: 'center 22%',
+            filter: 'contrast(1.16) saturate(1.12) brightness(1.06)',
             display: 'block',
           }}
         />
@@ -237,6 +242,7 @@ export function DualStudentAvatars({
                 maxHeight: '80vh',
                 objectFit: 'contain',
                 display: 'block',
+                filter: 'contrast(1.1) saturate(1.08) brightness(1.04)',
               }}
             />
           </DialogContent>

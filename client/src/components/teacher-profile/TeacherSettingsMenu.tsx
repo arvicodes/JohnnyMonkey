@@ -15,6 +15,7 @@ import {
 import {
   Person as PersonIcon,
   CalendarMonth as CalendarMonthIcon,
+  Home as HomeIcon,
 } from '@mui/icons-material';
 
 import {
@@ -68,17 +69,12 @@ export default function TeacherSettingsMenu({
     <>
       <IconButton
         onClick={(e) => {
-          if (!isOnDashboard) {
-            markTeacherWantsDashboard();
-            if (onGoToDashboard) onGoToDashboard();
-            else navigate('/dashboard');
-            return;
-          }
+          e.stopPropagation();
           setAnchorEl(e.currentTarget);
         }}
         sx={{ p: 0 }}
-        aria-label={isOnDashboard ? 'Profil und Einstellungen' : 'Zum Dashboard'}
-        title={isOnDashboard ? 'Profil' : 'Zum Dashboard'}
+        aria-label="Profil und Einstellungen"
+        title="Profil"
       >
         <Avatar
           sx={{
@@ -178,6 +174,28 @@ export default function TeacherSettingsMenu({
         </Box>
 
         <Divider />
+
+        {!isOnDashboard && (
+          <MenuItem
+            onClick={() => {
+              close();
+              markTeacherWantsDashboard();
+              if (onGoToDashboard) onGoToDashboard();
+              else navigate('/dashboard');
+            }}
+            sx={{ py: 1.1, px: 2 }}
+          >
+            <ListItemIcon>
+              <HomeIcon fontSize="small" sx={{ color: '#1976d2' }} />
+            </ListItemIcon>
+            <ListItemText
+              primary="Dashboard"
+              secondary="Zurück zur Übersicht"
+              primaryTypographyProps={{ fontWeight: 700, fontSize: '0.82rem' }}
+              secondaryTypographyProps={{ fontSize: '0.68rem' }}
+            />
+          </MenuItem>
+        )}
 
         <MenuItem
           onClick={() => {
