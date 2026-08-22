@@ -157,16 +157,29 @@ export default function EntryTicketCompletedRow({ groupId, editable = false }: P
       >
         Entry Tickets
       </Typography>
-      <Box
-        role="toolbar"
+      <ButtonGroup
+        variant="outlined"
+        size="small"
         aria-label="Erledigte Entry Tickets"
         sx={{
-          display: 'flex',
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          gap: 0.35,
           minWidth: 0,
+          flexWrap: 'wrap',
+          '& .MuiButtonGroup-grouped': {
+            minWidth: 18,
+            width: 'auto',
+            height: 18,
+            px: '5px',
+            py: 0,
+            position: 'relative',
+            borderColor: '#90caf9',
+            color: ENTRY_TICKET_TEXT_COLOR,
+            bgcolor: '#fff',
+            fontWeight: 800,
+            fontSize: '0.62rem',
+            lineHeight: 1,
+            textTransform: 'none',
+            '&:hover': { bgcolor: '#bbdefb', borderColor: '#64b5f6' },
+          },
         }}
       >
         {items.map((item) => {
@@ -179,44 +192,13 @@ export default function EntryTicketCompletedRow({ groupId, editable = false }: P
             .filter(Boolean)
             .join(' · ');
           return (
-            <Box
+            <Button
               key={`${item.index}-${item.completedAt}`}
-              sx={{
-                position: 'relative',
-                display: 'inline-flex',
-                flexShrink: 0,
-              }}
+              title={title}
+              onClick={() => openCompletedTicket(groupId, item)}
+              aria-label={`Entry Ticket ${item.index} ansehen`}
             >
-              <Box
-                component="button"
-                type="button"
-                title={title}
-                onClick={() => openCompletedTicket(groupId, item)}
-                aria-label={`Entry Ticket ${item.index} ansehen`}
-                sx={{
-                  m: 0,
-                  width: 24,
-                  height: 22,
-                  minWidth: 24,
-                  p: 0,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  border: '1px solid #90caf9',
-                  borderRadius: '5px',
-                  bgcolor: '#fff',
-                  color: ENTRY_TICKET_TEXT_COLOR,
-                  fontWeight: 800,
-                  fontSize: '0.7rem',
-                  lineHeight: 1,
-                  fontFamily: 'inherit',
-                  cursor: 'pointer',
-                  '&:hover': { bgcolor: '#bbdefb', borderColor: '#64b5f6' },
-                }}
-              >
-                {item.index}
-              </Box>
+              {item.index}
               {editable ? (
                 <IconButton
                   size="small"
@@ -230,28 +212,28 @@ export default function EntryTicketCompletedRow({ groupId, editable = false }: P
                   }}
                   sx={{
                     position: 'absolute',
-                    top: -3,
-                    right: -3,
-                    width: 8,
-                    height: 8,
-                    minWidth: 8,
-                    minHeight: 8,
+                    top: 0,
+                    right: 0,
+                    width: 7,
+                    height: 7,
+                    minWidth: 7,
+                    minHeight: 7,
                     p: 0,
                     bgcolor: '#c62828',
                     color: '#fff',
-                    boxShadow: '0 0 0 1px #fff',
+                    borderRadius: '0 2px 0 2px',
                     '&:hover': { bgcolor: '#b71c1c' },
                     '&.Mui-disabled': { bgcolor: '#ef9a9a', color: '#fff' },
-                    '& .MuiSvgIcon-root': { fontSize: 7 },
+                    '& .MuiSvgIcon-root': { fontSize: 6 },
                   }}
                 >
                   <CloseIcon />
                 </IconButton>
               ) : null}
-            </Box>
+            </Button>
           );
         })}
-      </Box>
+      </ButtonGroup>
     </Box>
   );
 }
