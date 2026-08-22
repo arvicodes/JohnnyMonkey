@@ -93,6 +93,7 @@ import {
   mergePlayedLessonKeys,
   playedLessonKey,
 } from '../lib/playedLessons';
+import { buildKlasse5SeatingOrder, type Klasse5SeatingKey } from '../lib/klasse5SeatingPlans';
 import {
   WOCHENAUFGABEN_BG,
   WOCHENAUFGABEN_BORDER,
@@ -12159,6 +12160,39 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     }
   };
 
+  const applyKlasse5PhotoSeating = (klass: Klasse5SeatingKey) => {
+    if (!participationGroupId) {
+      showSnackbar('Keine Lerngruppe ausgewählt.', 'warning');
+      return;
+    }
+    const group = groups.find((g) => g.id === participationGroupId);
+    if (!group) {
+      showSnackbar('Lerngruppe nicht gefunden.', 'warning');
+      return;
+    }
+    const students = activeStudentsOfGroup(
+      group.students,
+      parsePassiveStudentIds(group.passiveStudentIds),
+    );
+    const result = buildKlasse5SeatingOrder(students, klass);
+    setCustomSeatingOrder((prev) => ({ ...prev, [participationGroupId]: result.order }));
+    setDeskPositions((prev) => ({ ...prev, [participationGroupId]: result.deskPositions }));
+    void saveSeatingOrder(participationGroupId, result.order, result.deskPositions);
+    if (result.matched === 0) {
+      showSnackbar(
+        `Sitzplan ${klass}: keine Namen in dieser Gruppe gefunden. Bitte 5a oder 5c wählen.`,
+        'warning',
+      );
+      return;
+    }
+    showSnackbar(
+      result.missing > 0
+        ? `Sitzplan ${klass}: ${result.matched} Plätze, ${result.missing} ohne Treffer.`
+        : `Sitzplan ${klass}: ${result.matched} Plätze übernommen.`,
+      'success',
+    );
+  };
+
   // Lade alle Stichworte für eine Gruppe
   const loadLessonKeywords = async (groupId: string) => {
     try {
@@ -20204,17 +20238,17 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               position: 'sticky',
               top: 0,
               borderBottom: '1px solid #e0e0e0',
-              pb: 1.5,
-              pt: 1.5,
-              px: 2,
-              pr: 5,
+              pb: lessonSplitLeft ? 0.75 : 1.5,
+              pt: lessonSplitLeft ? 0.75 : 1.5,
+              px: lessonSplitLeft ? 0.75 : 2,
+              pr: lessonSplitLeft ? 0.75 : 5,
               flexShrink: 0,
               display: 'flex',
               flexDirection: 'row',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 1,
-              flexWrap: 'wrap',
+              justifyContent: lessonSplitLeft ? 'flex-start' : 'space-between',
+              gap: lessonSplitLeft ? 0.4 : 1,
+              flexWrap: lessonSplitLeft ? 'nowrap' : 'wrap',
               rowGap: 1,
               bgcolor: lessonSplitLeft ? alpha('#fff', 0.82) : 'background.paper',
               backdropFilter: lessonSplitLeft ? 'blur(8px)' : 'none',
@@ -20230,10 +20264,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 display: 'flex',
                 alignItems: 'center',
                 gap: 0.15,
-                flex: '1 1 140px',
+                flex: lessonSplitLeft ? '0 1 auto' : '1 1 140px',
                 minWidth: 0,
-                maxWidth: '100%',
-                pr: 1,
+                maxWidth: lessonSplitLeft ? '38%' : '100%',
+                pr: lessonSplitLeft ? 0.25 : 1,
               }}
             >
               <Box sx={{ mr: 0.75, flexShrink: 0 }}>
@@ -20333,10 +20367,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               }}
               sx={{
                 flexShrink: 0,
-                mr: 4.5,
+                mr: lessonSplitLeft ? 0.25 : 4.5,
+                ml: lessonSplitLeft ? 0 : undefined,
                 '& .MuiToggleButton-root': {
                   py: 0.35,
-                  px: 1,
+                  px: lessonSplitLeft ? 0.7 : 1,
                   fontSize: '0.68rem',
                   textTransform: 'none',
                   fontWeight: 600,
@@ -24662,6 +24697,24 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 sx={epochalLaptopHeaderBtnSx}
               >
                 {participationDocked ? 'Stat.' : 'Statistik'}
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => applyKlasse5PhotoSeating('5a')}
+                sx={epochalLaptopHeaderBtnSx}
+                title="Sitzplan aus dem Foto der 5a übernehmen"
+              >
+                5a
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => applyKlasse5PhotoSeating('5c')}
+                sx={epochalLaptopHeaderBtnSx}
+                title="Sitzplan aus dem Foto der 5c übernehmen"
+              >
+                5c
               </Button>
             </Box>
           </Box>

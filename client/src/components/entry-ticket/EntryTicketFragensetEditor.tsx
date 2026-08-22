@@ -508,106 +508,123 @@ export function EntryTicketFragensetEditor({
         </Tooltip>
       </Box>
 
-      <Box sx={{ width: '100%', px: 0.6, pt: 0.55, pb: 0, boxSizing: 'border-box' }}>
-        <Autocomplete
-          multiple
-          size="small"
-          disableClearable
-          disableCloseOnSelect
-          options={catalogOptions}
-          value={selectedReihen}
-          loading={reiheOptionsLoading || reiheBusy}
-          onOpen={ensureReihenCatalog}
-          onChange={(_, next) => {
-            void applyReihePaths(next.map((o) => o.path));
-          }}
-          isOptionEqualToValue={(a, b) => a.path === b.path}
-          getOptionLabel={(o) => o.label || reiheLabelFromPath(o.path)}
-          renderTags={() => null}
-          renderOption={(props, option, { selected }) => {
-            const { key, ...rest } = props as React.HTMLAttributes<HTMLLIElement> & {
-              key?: React.Key;
-            };
-            return (
-              <li
-                key={key}
-                {...rest}
-                style={{
-                  ...((rest as { style?: React.CSSProperties }).style || {}),
-                  opacity: selected ? 0.55 : 1,
-                  fontWeight: selected ? 600 : 400,
-                }}
-              >
-                {option.label}
-                {option.subject ? (
-                  <Typography
-                    component="span"
-                    sx={{ ml: 1, fontSize: '0.7rem', color: 'text.secondary' }}
-                  >
-                    {option.subject}
-                  </Typography>
-                ) : null}
-                {selected ? (
-                  <Typography
-                    component="span"
-                    sx={{ ml: 1, fontSize: '0.7rem', color: 'text.secondary' }}
-                  >
-                    · gewählt
-                  </Typography>
-                ) : null}
-              </li>
-            );
-          }}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              size="small"
-              placeholder="Reihe hinzufügen…"
-              inputProps={{
-                ...params.inputProps,
-                'aria-label': 'Unterrichtsreihen zum Kartenset',
-              }}
-            />
-          )}
-          sx={{
-            width: '100%',
-            '& .MuiInputBase-root': {
-              fontSize: '0.8rem',
-              pr: '40px !important',
-            },
-            '& .MuiAutocomplete-endAdornment': {
-              right: 6,
-            },
-            '& .MuiAutocomplete-clearIndicator': {
-              display: 'none',
-            },
-          }}
-        />
-        {selectedReihen.length > 0 && (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.4, mt: 0.45 }}>
-            {selectedReihen.map((option) => (
-              <Chip
-                key={option.path}
+      <Box
+        sx={{
+          width: '100%',
+          px: 0.6,
+          pt: 0.55,
+          pb: 0,
+          boxSizing: 'border-box',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 0.55,
+        }}
+      >
+        <Box sx={{ width: 168, flexShrink: 0, minWidth: 0 }}>
+          <Autocomplete
+            multiple
+            size="small"
+            disableClearable
+            disableCloseOnSelect
+            options={catalogOptions}
+            value={selectedReihen}
+            loading={reiheOptionsLoading || reiheBusy}
+            onOpen={ensureReihenCatalog}
+            onChange={(_, next) => {
+              void applyReihePaths(next.map((o) => o.path));
+            }}
+            isOptionEqualToValue={(a, b) => a.path === b.path}
+            getOptionLabel={(o) => o.label || reiheLabelFromPath(o.path)}
+            renderTags={() => null}
+            renderOption={(props, option, { selected }) => {
+              const { key, ...rest } = props as React.HTMLAttributes<HTMLLIElement> & {
+                key?: React.Key;
+              };
+              return (
+                <li
+                  key={key}
+                  {...rest}
+                  style={{
+                    ...((rest as { style?: React.CSSProperties }).style || {}),
+                    opacity: selected ? 0.55 : 1,
+                    fontWeight: selected ? 600 : 400,
+                  }}
+                >
+                  {option.label}
+                  {option.subject ? (
+                    <Typography
+                      component="span"
+                      sx={{ ml: 1, fontSize: '0.7rem', color: 'text.secondary' }}
+                    >
+                      {option.subject}
+                    </Typography>
+                  ) : null}
+                  {selected ? (
+                    <Typography
+                      component="span"
+                      sx={{ ml: 1, fontSize: '0.7rem', color: 'text.secondary' }}
+                    >
+                      · gewählt
+                    </Typography>
+                  ) : null}
+                </li>
+              );
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
                 size="small"
-                label={option.label}
-                onDelete={() => {
-                  void applyReihePaths(selectedReihen.filter((o) => o.path !== option.path).map((o) => o.path));
-                }}
-                sx={{
-                  height: 22,
-                  fontWeight: 700,
-                  fontSize: '0.68rem',
-                  bgcolor: '#e8f5e9',
-                  color: '#2e7d32',
-                  '& .MuiChip-deleteIcon': { fontSize: 14, color: '#66bb6a' },
+                placeholder="Reihe…"
+                inputProps={{
+                  ...params.inputProps,
+                  'aria-label': 'Unterrichtsreihen zum Kartenset',
                 }}
               />
-            ))}
-          </Box>
-        )}
-      </Box>
-
-      <Box sx={{ width: '100%', px: 0.6, pt: 0.55, pb: 0, boxSizing: 'border-box' }}>
+            )}
+            sx={{
+              width: '100%',
+              '& .MuiInputBase-root': {
+                fontSize: '0.72rem',
+                minHeight: 32,
+                py: 0.15,
+                pr: '32px !important',
+              },
+              '& .MuiAutocomplete-endAdornment': {
+                right: 4,
+              },
+              '& .MuiAutocomplete-popupIndicator': {
+                p: 0.25,
+              },
+              '& .MuiAutocomplete-clearIndicator': {
+                display: 'none',
+              },
+            }}
+          />
+          {selectedReihen.length > 0 && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3, mt: 0.35 }}>
+              {selectedReihen.map((option) => (
+                <Chip
+                  key={option.path}
+                  size="small"
+                  label={option.label}
+                  onDelete={() => {
+                    void applyReihePaths(
+                      selectedReihen.filter((o) => o.path !== option.path).map((o) => o.path),
+                    );
+                  }}
+                  sx={{
+                    height: 20,
+                    fontWeight: 700,
+                    fontSize: '0.62rem',
+                    bgcolor: '#e8f5e9',
+                    color: '#2e7d32',
+                    '& .MuiChip-deleteIcon': { fontSize: 13, color: '#66bb6a' },
+                  }}
+                />
+              ))}
+            </Box>
+          )}
+        </Box>
         <TextField
           size="small"
           multiline
@@ -623,6 +640,8 @@ export function EntryTicketFragensetEditor({
           placeholder="Notizen nur für dich (nicht sichtbar für SuS)…"
           sx={{
             ...fieldSx,
+            flex: 1,
+            minWidth: 0,
             '& .MuiOutlinedInput-root': {
               ...fieldSx['& .MuiOutlinedInput-root'],
               bgcolor: '#fffde7',
