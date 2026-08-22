@@ -3313,6 +3313,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         item.type === 'file' ? isStudentSharedFile(item, groupSharedFiles) : false;
       const isWochenaufgabenDir =
         item.type === 'directory' && isWochenaufgabenFolderName(item.name || '');
+      // Obere Wochenaufgaben-Box reicht — den Ordner nicht nochmal im Baum zeigen
+      if (isWochenaufgabenDir) return null;
       const isNumberedWa =
         item.type === 'directory' &&
         (isNumberedWochenaufgabePath(item.path || '') ||
@@ -6759,15 +6761,24 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                           {/* Zugeordnete Ordner - direkt unterhalb des Headers, exakt wie im TeacherDashboard */}
                           {assignedFolders[gruppe.id] && assignedFolders[gruppe.id].length > 0 ? (
                             <Box>
-                              {filterOutNestedAssignedFolderPaths(assignedFolders[gruppe.id])
-                                .filter((folderPath: string) => {
-                                  // Filtere Ordner mit dem Namen "Karteikarten" aus
-                                  const folderName = folderPath.split('/').pop() || folderPath;
-                                  return !folderName.toLowerCase().includes('karteikarten');
-                                })
-                                .map((folderPath: string) => {
-                                  return renderAssignedFolderPreview(gruppe.id, folderPath);
-                                })}
+                              {(() => {
+                                const visible = filterOutNestedAssignedFolderPaths(assignedFolders[gruppe.id])
+                                  .filter((folderPath: string) => {
+                                    const folderName = folderPath.split('/').pop() || folderPath;
+                                    return !folderName.toLowerCase().includes('karteikarten');
+                                  });
+                                const hasOtherFolder = visible.some(
+                                  (p) => !isWochenaufgabenFolderName(p.split('/').pop() || p),
+                                );
+                                return (hasOtherFolder
+                                  ? visible.filter(
+                                      (p) => !isWochenaufgabenFolderName(p.split('/').pop() || p),
+                                    )
+                                  : visible
+                                ).map((folderPath: string) =>
+                                  renderAssignedFolderPreview(gruppe.id, folderPath),
+                                );
+                              })()}
                             </Box>
                           ) : (
                             <Typography variant="body2" sx={{ 

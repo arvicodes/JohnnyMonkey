@@ -6265,6 +6265,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   } | null>(null);
   const [lessonPlanViewMode, setLessonPlanViewMode] = useState<'create' | 'run' | 'background'>('create');
   const [laptopPresentationActive, setLaptopPresentationActive] = useState(false);
+  const [laptopSplitPct, setLaptopSplitPct] = useState(() => {
+    try {
+      const n = Number(localStorage.getItem('johnny-laptop-split-pct'));
+      if (!Number.isFinite(n)) return 58;
+      return Math.min(76, Math.max(28, Math.round(n)));
+    } catch {
+      return 58;
+    }
+  });
+  const laptopSplitDraggingRef = useRef(false);
   /** Remount-Key: bei jedem Öffnen frisches Live-Deck laden */
   const [laptopPresentationMountKey, setLaptopPresentationMountKey] = useState(0);
   /** Laptop-Linksspalte: Deck (Original/bearbeitet) oder benannte PDF-Version */
@@ -15257,8 +15267,28 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   const participationDocked =
     participationModalOpen && lessonPlanViewMode === 'background' && isLessonStundeRoute;
   const lessonSplitLeft = isLessonStundeRoute && lessonPlanViewMode === 'background';
-  const laptopLeftWidth = laptopPresentationActive ? '58%' : '50%';
-  const laptopRightWidth = laptopPresentationActive ? '42%' : '50%';
+  const laptopLeftWidth = `${laptopSplitPct}%`;
+  const laptopRightWidth = `${100 - laptopSplitPct}%`;
+  const beginLaptopSplitDrag = (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    laptopSplitDraggingRef.current = true;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+  const moveLaptopSplitDrag = (e: React.PointerEvent) => {
+    if (!laptopSplitDraggingRef.current) return;
+    const pct = Math.min(76, Math.max(28, Math.round((e.clientX / window.innerWidth) * 100)));
+    setLaptopSplitPct(pct);
+  };
+  const endLaptopSplitDrag = () => {
+    if (!laptopSplitDraggingRef.current) return;
+    laptopSplitDraggingRef.current = false;
+    try {
+      localStorage.setItem('johnny-laptop-split-pct', String(laptopSplitPct));
+    } catch {
+      /* ignore */
+    }
+  };
   /** Gemeinsame Mittellinie / Farbübergang Laptop-Zweispalter */
   const laptopSplitSeam = alpha('#3949ab', 0.2);
   const laptopSplitGlow = alpha('#3949ab', 0.12);

@@ -28,7 +28,10 @@ function foldUmlauts(s: string): string {
 }
 
 function normalizeName(s: string): string {
-  return foldUmlauts((s || '').normalize('NFC').toLowerCase().trim())
+  const folded = foldUmlauts((s || '').normalize('NFC').toLowerCase().trim());
+  return folded
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -55,14 +58,26 @@ function lastMatches(studentLast: string, tokens: string[], hintLast?: string): 
   return tokens.some((t) => t === want || t.startsWith(want) || want.startsWith(t));
 }
 
+function firstNameMatches(studentFirst: string, tokens: string[], hintFirst: string): boolean {
+  if (!hintFirst) return false;
+  if (studentFirst === hintFirst || tokens.includes(hintFirst)) return true;
+  // Nur fast-gleiche Kürzel (Theo/Theodor), nicht Leon/Leonard.
+  if (studentFirst.length >= 3 && hintFirst.length >= 3) {
+    const a = studentFirst.length >= hintFirst.length ? studentFirst : hintFirst;
+    const b = studentFirst.length >= hintFirst.length ? hintFirst : studentFirst;
+    if (a.startsWith(b) && a.length - b.length <= 2) return true;
+  }
+  return false;
+}
+
 function scoreMatch(student: SeatingStudent, hint: NonNullable<SeatHint>): number {
   const { first, last, tokens } = nameParts(student.name);
   const firsts = hintFirsts(hint);
-  const firstHit = firsts.some((f) => first === f || first.startsWith(f) || f.startsWith(first) || tokens.includes(f));
+  const firstHit = firsts.some((f) => firstNameMatches(first, tokens, f));
   if (!firstHit) return 0;
   if (hint.last && lastMatches(last, tokens, hint.last)) return 3;
   if (!hint.last) return 2;
-  return 0;
+  return 1;
 }
 
 /** 5a: Pult unten, zwei Vierer-Blöcke je Reihe (hinten = oben). */
@@ -100,7 +115,7 @@ const PLAN_5C: SeatHint[][][] = [
     [{ first: 'laura', last: 'malina' }, { first: 'enie', last: 'kluetsch', also: ['ernie'] }],
     [{ first: 'eric', last: 'foehlinger' }, { first: 'felix', last: 'pohl' }],
     [{ first: 'benno', last: 'noll' }, { first: 'jan', last: 'pfefferl' }],
-    [{ first: 'leon', last: 'fernandez', also: ['leonie'] }, { first: 'leonard', last: 'schmitt' }],
+    [{ first: 'leon', last: 'fernandez', also: ['leon'] }, { first: 'leonard', last: 'schmitt' }],
   ],
   [
     [{ first: 'tim', last: 'simon' }, { first: 'casper', last: 'neubusch' }],
@@ -164,9 +179,21 @@ export function buildKlasse5SeatingOrder(
         best = student;
       }
     }
-    if (!best || bestScore < 2) return null;
-    unused.delete(best.id);
-    return best.id;
+    if (best && bestScore >= 2) {
+      unused.delete(best.id);
+      return best.id;
+    }
+    const firsts = hintFirsts(hint);
+    const unique = students.filter((student) => {
+      if (!unused.has(student.id)) return false;
+      const { first, tokens } = nameParts(student.name);
+      return firsts.some((f) => first === f || tokens.includes(f));
+    });
+    if (unique.length === 1) {
+      unused.delete(unique[0].id);
+      return unique[0].id;
+    }
+    return null;
   };
 
   for (let row = 0; row < GRID_ROWS; row++) {
