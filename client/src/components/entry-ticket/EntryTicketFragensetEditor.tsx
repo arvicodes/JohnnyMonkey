@@ -505,8 +505,8 @@ export function EntryTicketFragensetEditor({
         overflow: 'hidden',
         boxShadow: 'none',
         display: 'grid',
-        gap: 1.15,
-        p: 1.1,
+        gap: 1.75,
+        p: 1.6,
       }}
     >
       {/* Name links, Historie Mitte, Kartenzahl rechts */}
@@ -516,9 +516,9 @@ export function EntryTicketFragensetEditor({
           display: 'grid',
           gridTemplateColumns: '1fr auto 1fr',
           alignItems: 'center',
-          gap: 1,
-          px: 1.1,
-          py: 0.85,
+          gap: 1.25,
+          px: 1.5,
+          py: 1.15,
           borderRadius: 1.15,
           border: `1px solid ${ET.border}`,
           bgcolor: '#fafafa',
@@ -570,22 +570,26 @@ export function EntryTicketFragensetEditor({
           </Tooltip>
         </Box>
         {onOpenHistory ? (
-          <Tooltip title="Historie">
-            <IconButton
-              size="small"
-              onClick={onOpenHistory}
-              aria-label="Historie"
-              sx={{
-                ...iconBtnSx,
-                width: 26,
-                height: 26,
-                color: ET.accent,
-                '&:hover': { bgcolor: 'rgba(69,90,100,0.1)' },
-              }}
-            >
-              <HistoryIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
+          <Button
+            size="small"
+            onClick={onOpenHistory}
+            startIcon={<HistoryIcon sx={{ fontSize: 15 }} />}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
+              fontSize: '0.72rem',
+              minHeight: 26,
+              py: 0.15,
+              px: 0.9,
+              color: ET.accent,
+              border: `1px solid ${ET.border}`,
+              bgcolor: ET.white,
+              '& .MuiButton-startIcon': { mr: 0.4 },
+              '&:hover': { bgcolor: 'rgba(69,90,100,0.08)', borderColor: ET.accentSoft },
+            }}
+          >
+            Historie
+          </Button>
         ) : (
           <Box />
         )}
@@ -610,12 +614,12 @@ export function EntryTicketFragensetEditor({
       <Box
         sx={{
           width: '100%',
-          px: 1.1,
-          py: 1,
+          px: 1.5,
+          py: 1.35,
           boxSizing: 'border-box',
           display: 'flex',
           alignItems: 'flex-start',
-          gap: 1.15,
+          gap: 1.6,
           borderRadius: 1.15,
           border: `1px solid ${ET.border}`,
           bgcolor: '#fff',
@@ -655,7 +659,7 @@ export function EntryTicketFragensetEditor({
           }}
           inputProps={{ 'aria-label': 'Persönliche Notizen zum Fragenset' }}
         />
-        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: 0.75 }}>
+        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: 1 }}>
           <Autocomplete
             multiple
             size="small"
@@ -737,7 +741,7 @@ export function EntryTicketFragensetEditor({
               },
             }}
           />
-          <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexWrap: 'wrap', gap: 0.5, pt: 0.35 }}>
+          <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexWrap: 'wrap', gap: 0.65, pt: 0.45 }}>
             {selectedReihen.map((option) => (
               <Chip
                 key={option.path}
@@ -765,9 +769,9 @@ export function EntryTicketFragensetEditor({
       <Box
         sx={{
           width: '100%',
-          p: 1.1,
+          p: 1.5,
           display: 'grid',
-          gap: 1.1,
+          gap: 1.5,
           boxSizing: 'border-box',
           borderRadius: 1.15,
           border: `1px solid ${ET.border}`,
@@ -787,14 +791,14 @@ export function EntryTicketFragensetEditor({
           const isFirstHourGroup =
             !isSpecialRow && displayGroups.findIndex((g) => !g.special) === groupIndex;
           return (
-            <Box key={group.key} sx={{ width: '100%', boxSizing: 'border-box', display: 'grid', gap: 0.75 }}>
+            <Box key={group.key} sx={{ width: '100%', boxSizing: 'border-box', display: 'grid', gap: 1 }}>
               {groupIndex > 0 && !isSpecialRow && (
                 <Box
                   sx={{
                     width: '100%',
-                    mt: 0.6,
-                    mb: 0.15,
-                    height: 10,
+                    mt: 1,
+                    mb: 0.35,
+                    height: 14,
                     borderRadius: 1,
                     bgcolor: '#fff',
                     borderBottom: `1px solid ${ET.border}`,
@@ -828,7 +832,7 @@ export function EntryTicketFragensetEditor({
                   width: '100%',
                   display: 'grid',
                   gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                  gap: 0.9,
+                  gap: 1.2,
                   alignItems: 'start',
                   boxSizing: 'border-box',
                 }}
@@ -863,9 +867,9 @@ export function EntryTicketFragensetEditor({
                       sx={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 0.55,
-                        px: 0.75,
-                        py: 0.55,
+                        gap: 0.7,
+                        px: 0.95,
+                        py: 0.7,
                         cursor: 'pointer',
                         bgcolor: isActive ? `${palette.chip}16` : 'rgba(255,255,255,0.55)',
                         borderBottom: isOpen ? `1px solid ${palette.soft}` : 'none',
@@ -1310,10 +1314,10 @@ export function EntryTicketFragensetEditor({
         <Box
           sx={{
             width: '100%',
-            mt: 0.4,
+            mt: 0.7,
             display: 'grid',
             gridTemplateColumns: 'minmax(0, 1fr) 22px',
-            gap: 0.6,
+            gap: 0.8,
             alignItems: 'center',
             boxSizing: 'border-box',
           }}

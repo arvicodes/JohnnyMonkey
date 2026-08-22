@@ -705,40 +705,13 @@ function CustomSetChipRow({
   selected,
   accent,
   onSelect,
-  onHistory,
 }: {
   set: EntryTicketCustomSet;
   selected: boolean;
   accent: 'mathe' | 'inf';
   onSelect: () => void;
-  onHistory: () => void;
 }) {
-  return (
-    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.05 }}>
-      <SortableCustomSetChip set={set} selected={selected} accent={accent} onSelect={onSelect} />
-      <Tooltip title={`Historie: ${set.name}`}>
-        <IconButton
-          size="small"
-          aria-label={`Historie ${set.name}`}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onHistory();
-          }}
-          sx={{
-            width: 22,
-            height: 22,
-            p: 0,
-            color: accent === 'inf' ? '#2e7d32' : '#607d8b',
-            '&:hover': { bgcolor: accent === 'inf' ? 'rgba(46,125,50,0.1)' : 'rgba(69,90,100,0.1)' },
-          }}
-        >
-          <HistoryIcon sx={{ fontSize: 14 }} />
-        </IconButton>
-      </Tooltip>
-    </Box>
-  );
+  return <SortableCustomSetChip set={set} selected={selected} accent={accent} onSelect={onSelect} />;
 }
 
 type CoarseCategory =
@@ -4917,13 +4890,13 @@ export default function EntryTicketPage({
               <Box sx={{ width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
                 <Box
                   sx={{
-                    mb: 1.25,
+                    mb: 1.75,
                     minWidth: 0,
                     display: 'grid',
                     gridTemplateColumns: { xs: '1fr', md: 'minmax(0,1fr) auto minmax(0,1fr)' },
-                    gap: { xs: 1.5, md: 2.5 },
+                    gap: { xs: 1.75, md: 3 },
                     alignItems: 'start',
-                    pb: 1.35,
+                    pb: 1.75,
                     borderBottom: '3px solid #455a64',
                   }}
                 >
@@ -4945,7 +4918,7 @@ export default function EntryTicketPage({
                         <Box
                           role="toolbar"
                           aria-label="Informatik-Fragensets"
-                          sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5, minHeight: 28 }}
+                          sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.7, minHeight: 28 }}
                         >
                           {infCustomSets.length === 0 ? (
                             <Typography sx={{ color: '#81c784', fontSize: '0.7rem', fontWeight: 600 }}>
@@ -4959,7 +4932,6 @@ export default function EntryTicketPage({
                                 selected={bandChosen && customSetId === set.id}
                                 accent="inf"
                                 onSelect={() => selectCustomSet(set.id)}
-                                onHistory={() => setHistoryTarget({ id: set.id, name: set.name })}
                               />
                             ))
                           )}
@@ -5030,7 +5002,7 @@ export default function EntryTicketPage({
                             flexWrap: 'wrap',
                             alignItems: 'center',
                             justifyContent: { xs: 'flex-start', md: 'flex-end' },
-                            gap: 0.5,
+                            gap: 0.7,
                             minHeight: 28,
                           }}
                         >
@@ -5046,7 +5018,6 @@ export default function EntryTicketPage({
                                 selected={bandChosen && customSetId === set.id}
                                 accent="mathe"
                                 onSelect={() => selectCustomSet(set.id)}
-                                onHistory={() => setHistoryTarget({ id: set.id, name: set.name })}
                               />
                             ))
                           )}
@@ -5081,7 +5052,7 @@ export default function EntryTicketPage({
                         </Typography>
                       </Box>
                     ) : null}
-                    <Box sx={{ width: '100%', minWidth: 0, mt: poolForBand.length === 0 ? 0 : 1.25 }}>
+                    <Box sx={{ width: '100%', minWidth: 0, mt: poolForBand.length === 0 ? 0 : 1.75 }}>
                       <EntryTicketFragensetEditor
                         set={activeCustomSet}
                         activeLessonPath={entryLessonPath}
