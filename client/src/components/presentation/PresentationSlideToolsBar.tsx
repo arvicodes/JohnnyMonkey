@@ -89,7 +89,7 @@ import {
   type CreateTableOptions,
 } from '../../lib/presentationSlideTables';
 import { isHomeworkSlide } from '../../lib/presentationSlideTemplates';
-import { isImageCropMode, isWindowCropMode, sourceRectFromElement } from '../../lib/presentationImageUtils';
+import { ensureWindowCropLock, isImageCropMode, isWindowCropMode } from '../../lib/presentationImageUtils';
 import {
   IMAGE_FRAME_COLORS,
   IMAGE_FRAME_DASHES,
@@ -961,11 +961,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                           variant={isImageCropMode(selectedElement) ? 'contained' : 'outlined'}
                           startIcon={<CropIcon sx={{ fontSize: 14 }} />}
                           onClick={() =>
-                            onUpdateElement(selectedElement.id, {
-                              imageFit: 'contain',
-                              imageSourceRect:
-                                selectedElement.imageSourceRect || sourceRectFromElement(selectedElement),
-                            })
+                            onUpdateElement(selectedElement.id, ensureWindowCropLock(selectedElement))
                           }
                         >
                           Zuschneiden

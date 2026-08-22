@@ -35,6 +35,7 @@ import {
   IMAGE_FRAME_MAX,
   IMAGE_FRAME_MIN,
   IMAGE_FRAME_SIZE_MAX,
+  ensureWindowCropLock,
   imageSourceRectCss,
   isHeroSlideImage,
   isImageCropMode,
@@ -46,7 +47,6 @@ import {
   resizeImageFrameByHandle,
   resizeWindowCrop,
   shouldPanCoverImageOnDrag,
-  sourceRectFromElement,
   type ImageCropHandle,
 } from '../../lib/presentationImageUtils';
 import { SlideShapeSvg, shapeSupportsText } from '../../lib/presentationSlideShapes';
@@ -632,15 +632,24 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     const slide = (e.currentTarget as HTMLElement).closest('[data-pres-slide]') as HTMLElement | null;
     const rect = slide?.getBoundingClientRect();
     if (!rect) return;
+    e.preventDefault();
     e.stopPropagation();
     if (textEditing) setTextEditing(false);
     if (cardTitleEditing && mode === 'move' && e.detail < 2) setCardTitleEditing(false);
     onSelect?.();
-    const orig: SlideElement = { ...element };
-    if (imageOnlyEdit && !normalizeImageSourceRect(orig.imageSourceRect)) {
-      orig.imageSourceRect = sourceRectFromElement(orig);
-      orig.imageFit = 'contain';
+    let orig: SlideElement = { ...element };
+    if (mode === 'resize' && orig.type === 'image' && !normalizeImageSourceRect(orig.imageSourceRect)) {
+      const img = (e.currentTarget as HTMLElement).closest('[data-pres-element]')?.querySelector('img');
+      const natural =
+        img && img.naturalWidth > 0 && img.naturalHeight > 0
+          ? { w: img.naturalWidth, h: img.naturalHeight }
+          : null;
+      orig = ensureWindowCropLock(orig, natural);
       onChange({
+        x: orig.x,
+        y: orig.y,
+        w: orig.w,
+        h: orig.h,
         imageSourceRect: orig.imageSourceRect,
         imageFit: 'contain',
       });
@@ -2031,18 +2040,18 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         />
       )}
 
-      {showSelectionChrome && cropMode && (
+      {showSelectionChrome && isImageElement && (
         <>
           {(
             [
-              { id: 'n', cursor: 'ns-resize', top: -5 * scale, left: '50%', w: 22, h: 10, ml: -11 },
-              { id: 's', cursor: 'ns-resize', bottom: -5 * scale, left: '50%', w: 22, h: 10, ml: -11 },
-              { id: 'e', cursor: 'ew-resize', right: -5 * scale, top: '50%', w: 10, h: 22, mt: -11 },
-              { id: 'w', cursor: 'ew-resize', left: -5 * scale, top: '50%', w: 10, h: 22, mt: -11 },
-              { id: 'nw', cursor: 'nwse-resize', top: -6 * scale, left: -6 * scale, w: 12, h: 12 },
-              { id: 'ne', cursor: 'nesw-resize', top: -6 * scale, right: -6 * scale, w: 12, h: 12 },
-              { id: 'sw', cursor: 'nesw-resize', bottom: -6 * scale, left: -6 * scale, w: 12, h: 12 },
-              { id: 'se', cursor: 'nwse-resize', bottom: -6 * scale, right: -6 * scale, w: 12, h: 12 },
+              { id: 'n', cursor: 'ns-resize', top: -7 * scale, left: '50%', w: imageOnlyEdit ? 36 : 22, h: imageOnlyEdit ? 18 : 10, ml: imageOnlyEdit ? -18 : -11 },
+              { id: 's', cursor: 'ns-resize', bottom: -7 * scale, left: '50%', w: imageOnlyEdit ? 36 : 22, h: imageOnlyEdit ? 18 : 10, ml: imageOnlyEdit ? -18 : -11 },
+              { id: 'e', cursor: 'ew-resize', right: -7 * scale, top: '50%', w: imageOnlyEdit ? 18 : 10, h: imageOnlyEdit ? 36 : 22, mt: imageOnlyEdit ? -18 : -11 },
+              { id: 'w', cursor: 'ew-resize', left: -7 * scale, top: '50%', w: imageOnlyEdit ? 18 : 10, h: imageOnlyEdit ? 36 : 22, mt: imageOnlyEdit ? -18 : -11 },
+              { id: 'nw', cursor: 'nwse-resize', top: -8 * scale, left: -8 * scale, w: imageOnlyEdit ? 20 : 12, h: imageOnlyEdit ? 20 : 12 },
+              { id: 'ne', cursor: 'nesw-resize', top: -8 * scale, right: -8 * scale, w: imageOnlyEdit ? 20 : 12, h: imageOnlyEdit ? 20 : 12 },
+              { id: 'sw', cursor: 'nesw-resize', bottom: -8 * scale, left: -8 * scale, w: imageOnlyEdit ? 20 : 12, h: imageOnlyEdit ? 20 : 12 },
+              { id: 'se', cursor: 'nwse-resize', bottom: -8 * scale, right: -8 * scale, w: imageOnlyEdit ? 20 : 12, h: imageOnlyEdit ? 20 : 12 },
             ] satisfies Array<{
               id: ImageCropHandle;
               cursor: string;

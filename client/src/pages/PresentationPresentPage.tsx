@@ -60,11 +60,11 @@ import {
 } from '../lib/presentationPresentFullscreen';
 import { ThemeProvider, createTheme, useTheme } from '@mui/material/styles';
 import {
-  DEFAULT_FLOATING_IMAGE_H,
-  DEFAULT_FLOATING_IMAGE_W,
+  ensureWindowCropLock,
   isImageCropMode,
   isWindowCropMode,
-  sourceRectFromElement,
+  readImageNaturalSize,
+  slidePercentSizeForImage,
 } from '../lib/presentationImageUtils';
 import EntryTicketPage from './EntryTicketPage';
 
@@ -207,6 +207,7 @@ const PresentationPresentPage: React.FC = () => {
   const lastPickedStudentIdRef = useRef<string | null>(null);
   const lastPickedNumberRef = useRef<{ max: number; value: number } | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deckSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const swipeRef = useRef<{ x: number; y: number } | null>(null);
   const [nativeFs, setNativeFs] = useState(() => isAnyNativeFullscreen());
   /** Letzter gesicherter Stand der aktuellen benannten Version (für Speichern als…). */
@@ -425,7 +426,7 @@ const PresentationPresentPage: React.FC = () => {
       if (!prev) return prev;
       const slideId = currentSlideIdRef.current;
       if (!slideId) return prev;
-      return {
+      const next: PresentationDeck = {
         ...prev,
         slides: prev.slides.map((s) =>
           s.id !== slideId
@@ -436,8 +437,17 @@ const PresentationPresentPage: React.FC = () => {
               }
         ),
       };
+      if (!isNamedViewRef.current && !isOriginalViewRef.current && lessonPath) {
+        if (deckSaveTimer.current) clearTimeout(deckSaveTimer.current);
+        deckSaveTimer.current = setTimeout(() => {
+          void saveJsonFile(lessonPath, DECK_FILENAME, next).catch(() => {
+            setSnackbar('Foto-Änderung nicht gespeichert — bitte Sichern tippen.');
+          });
+        }, 700);
+      }
+      return next;
     });
-  }, []);
+  }, [lessonPath]);
 
   const insertPlayPhoto = useCallback(
     async (file: File) => {
@@ -463,17 +473,21 @@ const PresentationPresentPage: React.FC = () => {
             : `${folder}/${(data.filename || named.name).split('/').pop()}`
         ).replace(/\\/g, '/');
 
+        const natural = await readImageNaturalSize(named);
+        const size = slidePercentSizeForImage(natural.w, natural.h);
+        const x = Math.max(4, (100 - size.w) / 2);
+        const y = Math.max(8, (88 - size.h) / 2);
+
         const el: SlideElement = {
           id: `el-${Date.now()}`,
           type: 'image',
-          x: 36,
-          y: 28,
-          w: DEFAULT_FLOATING_IMAGE_W,
-          h: DEFAULT_FLOATING_IMAGE_H,
+          x,
+          y,
+          w: size.w,
+          h: size.h,
           src: path,
           zIndex: 80,
           imageFit: 'contain',
-          imageSourceRect: { x: 36, y: 28, w: DEFAULT_FLOATING_IMAGE_W, h: DEFAULT_FLOATING_IMAGE_H },
           stackLayer: 'foreground',
         };
 
@@ -498,10 +512,8 @@ const PresentationPresentPage: React.FC = () => {
           });
           return next;
         });
-        setDrawActive(true);
-        setActiveTool('select');
         setSelectedElementId(el.id);
-        setSnackbar('Foto eingefügt — ziehen verschiebt, Zuschneiden in der Leiste');
+        setSnackbar('Foto eingefügt — mit Fingern verschieben, an den Kanten abschneiden');
       } catch (e) {
         setSnackbar(e instanceof Error ? e.message : 'Foto fehlgeschlagen');
       } finally {
@@ -517,18 +529,17 @@ const PresentationPresentPage: React.FC = () => {
 
   const toggleSelectedImageCrop = useCallback(() => {
     if (!selectedImageForCrop) return;
-    if (isWindowCropMode(selectedImageForCrop) || isImageCropMode(selectedImageForCrop)) {
+    if (isWindowCropMode(selectedImageForCrop)) {
+      const src = selectedImageForCrop.imageSourceRect;
       updateSlideElement(selectedImageForCrop.id, {
         imageFit: 'contain',
         imageSourceRect: undefined,
         imageObjectPosition: undefined,
+        ...(src ? { x: src.x, y: src.y, w: src.w, h: src.h } : {}),
       });
       return;
     }
-    updateSlideElement(selectedImageForCrop.id, {
-      imageFit: 'contain',
-      imageSourceRect: sourceRectFromElement(selectedImageForCrop),
-    });
+    updateSlideElement(selectedImageForCrop.id, ensureWindowCropLock(selectedImageForCrop));
   }, [selectedImageForCrop, updateSlideElement]);
 
   const flushAnnotations = useCallback(async (): Promise<PresentationAnnotations | null> => {

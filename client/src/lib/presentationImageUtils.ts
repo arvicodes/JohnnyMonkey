@@ -76,6 +76,67 @@ export function isImageCropMode(element: SlideElement): boolean {
   return isWindowCropMode(element) || element.imageFit === 'cover';
 }
 
+/** Folien-Referenz 1920×1080 — nicht aus presentationDeck importieren (Zyklus). */
+const SLIDE_REF_W = 1920;
+const SLIDE_REF_H = 1080;
+
+/** Rahmengröße in Folien-Prozent, passend zum echten Foto-Seitenverhältnis. */
+export function slidePercentSizeForImage(
+  naturalW: number,
+  naturalH: number,
+  maxW = 34,
+  maxH = 40,
+): { w: number; h: number } {
+  const imgAspect = Math.max(naturalW, 1) / Math.max(naturalH, 1);
+  const ratio = imgAspect / (SLIDE_REF_W / SLIDE_REF_H);
+  let w = maxW;
+  let h = w / Math.max(ratio, 0.05);
+  if (h > maxH) {
+    h = maxH;
+    w = h * ratio;
+  }
+  return { w: Math.max(10, w), h: Math.max(10, h) };
+}
+
+/** Sichtbares Foto (contain) innerhalb eines Folien-Rahmens, in Folien-Prozent. */
+export function containedImageSlideRect(
+  box: ImageSourceRect,
+  naturalW: number,
+  naturalH: number,
+): ImageSourceRect {
+  const boxPxAspect = (box.w / Math.max(box.h, 0.01)) * (SLIDE_REF_W / SLIDE_REF_H);
+  const imgAspect = Math.max(naturalW, 1) / Math.max(naturalH, 1);
+  if (imgAspect >= boxPxAspect) {
+    const usedH = box.h * (boxPxAspect / imgAspect);
+    return { x: box.x, y: box.y + (box.h - usedH) / 2, w: box.w, h: usedH };
+  }
+  const usedW = box.w * (imgAspect / boxPxAspect);
+  return { x: box.x + (box.w - usedW) / 2, y: box.y, w: usedW, h: box.h };
+}
+
+export function ensureWindowCropLock(
+  element: SlideElement,
+  natural?: { w: number; h: number } | null,
+): SlideElement {
+  const existing = normalizeImageSourceRect(element.imageSourceRect);
+  if (existing) {
+    return { ...element, imageSourceRect: existing, imageFit: 'contain' };
+  }
+  const source =
+    natural && natural.w > 0 && natural.h > 0
+      ? containedImageSlideRect(sourceRectFromElement(element), natural.w, natural.h)
+      : sourceRectFromElement(element);
+  return {
+    ...element,
+    x: source.x,
+    y: source.y,
+    w: source.w,
+    h: source.h,
+    imageSourceRect: source,
+    imageFit: 'contain',
+  };
+}
+
 export function imageSourceRectCss(box: ImageSourceRect, source: ImageSourceRect) {
   const bw = Math.max(box.w, 0.01);
   const bh = Math.max(box.h, 0.01);
@@ -88,7 +149,38 @@ export function imageSourceRectCss(box: ImageSourceRect, source: ImageSourceRect
     maxWidth: 'none',
     maxHeight: 'none',
     objectFit: 'fill' as const,
+    objectPosition: '50% 50%',
+    pointerEvents: 'none' as const,
   };
+}
+
+export async function readImageNaturalSize(file: File): Promise<{ w: number; h: number }> {
+  try {
+    if (typeof createImageBitmap === 'function') {
+      const bmp = await createImageBitmap(file);
+      const w = bmp.width || 4;
+      const h = bmp.height || 3;
+      bmp.close?.();
+      return { w, h };
+    }
+  } catch {
+    /* fallback */
+  }
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const w = img.naturalWidth || 4;
+      const h = img.naturalHeight || 3;
+      URL.revokeObjectURL(url);
+      resolve({ w, h });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve({ w: 4, h: 3 });
+    };
+    img.src = url;
+  });
 }
 
 export function moveWindowCrop(
