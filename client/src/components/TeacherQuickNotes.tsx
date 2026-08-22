@@ -41,6 +41,10 @@ import {
   tableAddRow,
 } from '../lib/presentationSlideTables';
 import { presentationNotesTableSx } from '../lib/presentationListStyles';
+import {
+  tryStartTableResizeFromPointer,
+  updateTableResizeHoverCursor,
+} from '../lib/presentationTableResize';
 import { applyEditorFontSizePx, stashEditorSelection } from '../lib/presentationFontSize';
 import { isFormatBarInteracting, setFormatBarInteracting } from '../lib/presentationFormatBarGuard';
 import { strokeSmoothFreehand } from '../lib/presentationDrawTools';
@@ -2729,6 +2733,27 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                   syncEditorToStateRef.current?.();
                 });
                 syncEditorToState();
+              }}
+              onMouseDown={(e) => {
+                if (mode !== 'text') return;
+                if (
+                  tryStartTableResizeFromPointer(editorRef.current, e, {
+                    onDone: () => {
+                      syncEditorToState();
+                      if (editorRef.current) editorRef.current.style.cursor = '';
+                    },
+                  })
+                ) {
+                  e.preventDefault();
+                  pushHistorySnapshot();
+                }
+              }}
+              onMouseMove={(e) => {
+                if (mode !== 'text') return;
+                updateTableResizeHoverCursor(editorRef.current, e.clientX, e.clientY);
+              }}
+              onMouseLeave={() => {
+                if (editorRef.current) editorRef.current.style.cursor = '';
               }}
               onClick={(e) => {
                 const t = e.target as HTMLElement | null;
