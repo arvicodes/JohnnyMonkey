@@ -12117,9 +12117,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             }));
           }
         } else {
-          console.log('ℹ️ Keine gespeicherte Sitzordnung gefunden - verwende Standard-Sortierung');
-          // Lösche eventuell vorhandene alte Sitzordnung
+          console.log('ℹ️ Keine gespeicherte Sitzordnung gefunden - lokalen Plan behalten falls vorhanden');
           setCustomSeatingOrder(prev => {
+            if (prev[groupId]?.some((id) => id != null)) return prev;
             const updated = { ...prev };
             delete updated[groupId];
             return updated;
@@ -12175,26 +12175,34 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   };
 
   const applyKlasse5PhotoSeating = (klass: Klasse5SeatingKey, groupId = participationGroupId) => {
-    if (!groupId) {
-      showSnackbar('Keine Lerngruppe ausgewählt.', 'warning');
-      return;
-    }
-    const group = groups.find((g) => g.id === groupId);
-    if (!group) {
-      showSnackbar('Lerngruppe nicht gefunden.', 'warning');
+    const namedGroup = groups.find((g) => detectKlasse5SeatingKey(g.name) === klass);
+    const group = namedGroup || groups.find((g) => g.id === groupId);
+    const targetId = group?.id;
+    if (!targetId || !group) {
+      showSnackbar(`Lerngruppe für Sitzplan ${klass} nicht gefunden.`, 'warning');
       return;
     }
     const students = activeStudentsOfGroup(
       group.students,
       parsePassiveStudentIds(group.passiveStudentIds),
     );
+    if (students.length === 0) {
+      showSnackbar(`Sitzplan ${klass}: Schülerliste ist noch leer.`, 'warning');
+      return;
+    }
     const result = buildKlasse5SeatingOrder(students, klass);
-    setCustomSeatingOrder((prev) => ({ ...prev, [groupId]: result.order }));
-    setDeskPositions((prev) => ({ ...prev, [groupId]: result.deskPositions }));
-    void saveSeatingOrder(groupId, result.order, result.deskPositions);
+    if (namedGroup && namedGroup.id !== participationGroupId) {
+      setParticipationGroupId(namedGroup.id);
+      setParticipationGroupName(namedGroup.name);
+      void loadParticipations(namedGroup.id);
+      void loadPeriodConfig(namedGroup.id);
+    }
+    setCustomSeatingOrder((prev) => ({ ...prev, [targetId]: result.order }));
+    setDeskPositions((prev) => ({ ...prev, [targetId]: result.deskPositions }));
+    void saveSeatingOrder(targetId, result.order, result.deskPositions);
     if (result.matched === 0) {
       showSnackbar(
-        `Sitzplan ${klass}: keine Namen in dieser Gruppe gefunden. Bitte 5a oder 5c wählen.`,
+        `Sitzplan ${klass}: keine Namen in „${group.name}“ gefunden.`,
         'warning',
       );
       return;
@@ -15273,21 +15281,25 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     e.preventDefault();
     e.stopPropagation();
     laptopSplitDraggingRef.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
   const moveLaptopSplitDrag = (e: React.PointerEvent) => {
     if (!laptopSplitDraggingRef.current) return;
     const pct = Math.min(76, Math.max(28, Math.round((e.clientX / window.innerWidth) * 100)));
     setLaptopSplitPct(pct);
+    try {
+      localStorage.setItem('johnny-laptop-split-pct', String(pct));
+    } catch {
+      /* ignore */
+    }
   };
   const endLaptopSplitDrag = () => {
     if (!laptopSplitDraggingRef.current) return;
     laptopSplitDraggingRef.current = false;
-    try {
-      localStorage.setItem('johnny-laptop-split-pct', String(laptopSplitPct));
-    } catch {
-      /* ignore */
-    }
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
   };
   /** Gemeinsame Mittellinie / Farbübergang Laptop-Zweispalter */
   const laptopSplitSeam = alpha('#3949ab', 0.2);
@@ -24593,6 +24605,41 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         </Box>
       )}
 
+      {lessonSplitLeft && (
+        <Box
+          onPointerDown={beginLaptopSplitDrag}
+          onPointerMove={moveLaptopSplitDrag}
+          onPointerUp={endLaptopSplitDrag}
+          onPointerCancel={endLaptopSplitDrag}
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: `calc(${laptopSplitPct}% - 6px)`,
+            width: 12,
+            height: '100vh',
+            cursor: 'col-resize',
+            zIndex: (theme) => theme.zIndex.modal + 8,
+            touchAction: 'none',
+            '&:hover': {
+              '&::after': { opacity: 1 },
+            },
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: 4,
+              width: 4,
+              borderRadius: 2,
+              bgcolor: alpha('#3949ab', 0.35),
+              opacity: 0.35,
+              transition: 'opacity 0.15s ease',
+            },
+          }}
+          title="Ziehen, um die Breite zu ändern"
+        />
+      )}
+
       {/* Mitarbeitsbewertungs-Modal (zentriert) bzw. rechts 50 % bei Stunden-Ansicht „Laptop“ */}
       <Dialog 
         open={participationModalOpen} 
@@ -26661,16 +26708,54 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                           avatarEmoji={student.avatarEmoji}
                           avatarUrl={student.avatarUrl}
                           fallbackEmoji={student.name.charAt(0) || '👤'}
-                          size={20}
-                          sx={{ gap: 0.35 }}
+                          size={22}
+                          photoSize={40}
+                          sx={{ gap: 0.4 }}
                         />
                       </Box>
                     )}
+                    {participationDocked ? (
+                      <>
+                        <Typography
+                          sx={{
+                            fontWeight: 800,
+                            fontSize: '0.92rem',
+                            textAlign: 'center',
+                            lineHeight: 1.1,
+                            letterSpacing: '-0.02em',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            maxWidth: '100%',
+                            color: 'text.primary',
+                          }}
+                        >
+                          {student.name.trim().split(/\s+/)[0] || formatStudentName(student.name)}
+                        </Typography>
+                        {student.name.trim().split(/\s+/).length > 1 && (
+                          <Typography
+                            sx={{
+                              fontWeight: 500,
+                              fontSize: '0.58rem',
+                              textAlign: 'center',
+                              lineHeight: 1.1,
+                              color: 'text.secondary',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              maxWidth: '100%',
+                            }}
+                          >
+                            {student.name.trim().split(/\s+/).slice(-1)[0]}
+                          </Typography>
+                        )}
+                      </>
+                    ) : (
                     <Typography
                       variant="caption"
                       sx={{
                         fontWeight: 600,
-                        fontSize: participationDocked ? '0.62rem' : '0.74rem',
+                        fontSize: '0.74rem',
                         textAlign: 'center',
                         wordBreak: 'break-word',
                         lineHeight: 1.15,
@@ -26683,6 +26768,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     >
                       {formatStudentName(student.name)}
                     </Typography>
+                    )}
                     <Typography
                       variant="body2"
                       sx={{

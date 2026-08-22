@@ -54,8 +54,15 @@ function lastMatches(studentLast: string, tokens: string[], hintLast?: string): 
   if (!hintLast) return true;
   const want = normalizeName(hintLast);
   if (!want) return true;
-  if (studentLast === want || studentLast.startsWith(want) || want.startsWith(studentLast)) return true;
-  return tokens.some((t) => t === want || t.startsWith(want) || want.startsWith(t));
+  if (studentLast === want) return true;
+  if (want.length >= 3 && studentLast.length >= 3) {
+    if (studentLast.startsWith(want) || want.startsWith(studentLast)) return true;
+  }
+  return tokens.some((t) => {
+    if (t === want) return true;
+    if (want.length >= 3 && t.length >= 3 && (t.startsWith(want) || want.startsWith(t))) return true;
+    return false;
+  });
 }
 
 function firstNameMatches(studentFirst: string, tokens: string[], hintFirst: string): boolean {
@@ -119,7 +126,7 @@ const PLAN_5C: SeatHint[][][] = [
   ],
   [
     [{ first: 'tim', last: 'simon' }, { first: 'casper', last: 'neubusch' }],
-    [{ first: 'elisabeth', last: 'eming', also: ['elli'] }, { first: 'melissa', last: 'fandino', also: ['melli'] }],
+    [{ first: 'elisabeth', last: 'eming', also: ['elli', 'eni'] }, { first: 'melissa', last: 'fandino', also: ['melli', 'mellli'] }],
     [{ first: 'elisabeth', last: 'croonenberg' }, { first: 'fraenzi', last: 'broeder', also: ['franzi'] }],
     [{ first: 'oskar', last: 'mueller' }, { first: 'david', last: 'nguyen' }],
   ],

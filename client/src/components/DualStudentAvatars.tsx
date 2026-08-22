@@ -13,6 +13,8 @@ type DualStudentAvatarsProps = {
   emojiLoading?: boolean;
   photoLoading?: boolean;
   size?: number;
+  /** Photo circle; defaults to `size`. */
+  photoSize?: number;
   /** Larger profile card layout */
   large?: boolean;
   /** Always show photo circle even without image (default true) */
@@ -33,6 +35,7 @@ export function DualStudentAvatars({
   emojiLoading = false,
   photoLoading = false,
   size = 32,
+  photoSize,
   large = false,
   alwaysShowPhotoSlot = true,
   onEmojiClick,
@@ -40,7 +43,7 @@ export function DualStudentAvatars({
   sx,
 }: DualStudentAvatarsProps) {
   const emojiSize = large ? 88 : size;
-  const photoSize = large ? 88 : size;
+  const photoPx = large ? 88 : photoSize ?? size;
   const emoji = avatarEmoji?.trim() || fallbackEmoji;
   const resolvedUrl = resolveAvatarUrl(avatarUrl);
   const [imgFailed, setImgFailed] = useState(false);
@@ -53,7 +56,7 @@ export function DualStudentAvatars({
   const emojiEditable = Boolean(onEmojiClick);
   const photoEditable = Boolean(onPhotoClick);
   const photoPreviewable = hasPhoto && !photoEditable;
-  const compact = !large && size <= 18;
+  const compact = !large && Math.min(size, photoPx) <= 18;
   const borderWidth = large ? 3 : compact ? 1 : 2;
   const defaultGap = large ? 1.5 : compact ? 0.25 : 0.6;
 
@@ -93,8 +96,8 @@ export function DualStudentAvatars({
   );
 
   const photoCircleSx = {
-    width: photoSize,
-    height: photoSize,
+    width: photoPx,
+    height: photoPx,
     flexShrink: 0,
     borderRadius: '50%',
     overflow: 'hidden' as const,
@@ -159,7 +162,7 @@ export function DualStudentAvatars({
       ) : large ? (
         <AddAPhotoIcon sx={{ fontSize: 36 }} />
       ) : (
-        <PhotoCameraIcon sx={{ fontSize: Math.max(8, size * 0.45) }} />
+        <PhotoCameraIcon sx={{ fontSize: Math.max(8, photoPx * 0.45) }} />
       )}
     </Box>
   );
@@ -199,6 +202,7 @@ export function DualStudentAvatars({
           maxWidth="md"
           fullWidth
           onClick={(e) => e.stopPropagation()}
+          sx={{ zIndex: (theme) => theme.zIndex.modal + 20 }}
           PaperProps={{
             sx: {
               bgcolor: '#111',
