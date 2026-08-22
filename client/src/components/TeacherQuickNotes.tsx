@@ -1239,6 +1239,14 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
       const html = `${buildBlankTableHtml(rows, cols, getTableTheme('grau'))}<p><br></p>`;
       const ok = insertHtmlIntoNotesEditor(editor, html);
       if (!ok) editor.insertAdjacentHTML('beforeend', html);
+      editor.querySelectorAll('table').forEach((table) => {
+        const el = table as HTMLTableElement;
+        el.style.width = 'max-content';
+        el.style.maxWidth = '100%';
+        el.style.marginLeft = '0';
+        el.style.marginRight = 'auto';
+        el.style.float = 'none';
+      });
       syncEditorToState();
     },
     [pushHistorySnapshot, restoreNotesSelection, syncEditorToState],
@@ -2316,21 +2324,6 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                 ))}
               </Box>
               <Divider orientation="vertical" flexItem sx={{ mx: 0.35, my: 0.4, borderColor: '#ffe082' }} />
-              <Tooltip title="Überschrift">
-                <IconButton size="small" onClick={() => runFormat('formatBlock', 'h3')} sx={fmtBtnSx()}>
-                  <TitleIcon sx={{ fontSize: 16 }} />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Aufzählung">
-                <IconButton size="small" onClick={() => runFormat('insertUnorderedList')} sx={fmtBtnSx()}>
-                  <FormatListBulletedIcon sx={{ fontSize: 16 }} />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Nummerierte Liste">
-                <IconButton size="small" onClick={() => runFormat('insertOrderedList')} sx={fmtBtnSx()}>
-                  <FormatListNumberedIcon sx={{ fontSize: 16 }} />
-                </IconButton>
-              </Tooltip>
               <Tooltip title="Tabelle">
                 <IconButton
                   size="small"
@@ -2398,6 +2391,21 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                   </MenuItem>
                 </Box>
               </Popover>
+              <Tooltip title="Überschrift">
+                <IconButton size="small" onClick={() => runFormat('formatBlock', 'h3')} sx={fmtBtnSx()}>
+                  <TitleIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Aufzählung">
+                <IconButton size="small" onClick={() => runFormat('insertUnorderedList')} sx={fmtBtnSx()}>
+                  <FormatListBulletedIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Nummerierte Liste">
+                <IconButton size="small" onClick={() => runFormat('insertOrderedList')} sx={fmtBtnSx()}>
+                  <FormatListNumberedIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
               <Tooltip title="Formatierung entfernen">
                 <IconButton size="small" onClick={() => runFormat('removeFormat')} sx={fmtBtnSx()}>
                   <FormatClearIcon sx={{ fontSize: 16 }} />
@@ -2803,7 +2811,10 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                 },
                 ...presentationNotesTableSx(),
                 '& table': {
-                  width: '100%',
+                  width: 'max-content !important',
+                  maxWidth: '100%',
+                  marginLeft: '0 !important',
+                  marginRight: 'auto',
                   borderCollapse: 'collapse',
                   tableLayout: 'fixed',
                   my: 1.25,

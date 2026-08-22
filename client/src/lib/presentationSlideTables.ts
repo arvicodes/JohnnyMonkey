@@ -391,6 +391,40 @@ export function findTableRoot(from: HTMLElement | null): HTMLTableElement | null
   return from.closest('table') as HTMLTableElement | null;
 }
 
+function focusTableCell(cell: HTMLTableCellElement) {
+  const sel = window.getSelection();
+  if (!sel) return;
+  const range = cell.ownerDocument.createRange();
+  range.selectNodeContents(cell);
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+/** Tab in Tabelle: nächste Zelle; in der letzten Zelle neue Zeile. Shift+Tab: zurück. */
+export function handleTableTabInEditor(editor: HTMLElement, shiftKey: boolean): boolean {
+  const cell = getCellFromSelection(editor);
+  if (!cell) return false;
+  const table = findTableRoot(cell);
+  if (!table || !editor.contains(table)) return false;
+  const cells = Array.from(table.querySelectorAll('th, td')) as HTMLTableCellElement[];
+  const idx = cells.indexOf(cell);
+  if (idx < 0) return false;
+  if (shiftKey) {
+    if (idx > 0) focusTableCell(cells[idx - 1]);
+    return true;
+  }
+  if (idx < cells.length - 1) {
+    focusTableCell(cells[idx + 1]);
+    return true;
+  }
+  tableAddRow(table);
+  const nextCells = Array.from(table.querySelectorAll('th, td')) as HTMLTableCellElement[];
+  const firstNew = nextCells[cells.length] || nextCells[nextCells.length - 1];
+  if (firstNew) focusTableCell(firstNew);
+  return true;
+}
+
 export function getCellFromSelection(editor: HTMLElement | null): HTMLTableCellElement | null {
   if (!editor) return null;
   const sel = window.getSelection();

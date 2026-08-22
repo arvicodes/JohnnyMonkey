@@ -109,7 +109,10 @@ export function presentationNestedListSx(options: NestedListSxOptions = {}) {
 export function presentationNotesTableSx() {
   return {
     '& table, & table[data-pres-table]': {
-      width: '100%',
+      width: 'max-content',
+      maxWidth: '100%',
+      marginLeft: '0 !important',
+      marginRight: 'auto',
       borderCollapse: 'collapse' as const,
       tableLayout: 'fixed' as const,
       my: 1,

@@ -30,7 +30,7 @@ import {
 } from './presentationListNormalize';
 import { PRESENTATION_DEFAULT_FONT_FAMILY } from './presentationFonts';
 import { JOHNNY_PRESENTATION, toHighlightFill } from './presentationTheme';
-import { ensureNotesTablesFormatted, applyJohnnyTableFormatting } from './presentationSlideTables';
+import { ensureNotesTablesFormatted, applyJohnnyTableFormatting, handleTableTabInEditor } from './presentationSlideTables';
 import { presentationNotesImageInsertHtml, stripNotesImageChrome } from './presentationNotesImages';
 
 // Explizite Re-Exports (HMR-sicherer als `import` + `export { … }`)
@@ -1242,10 +1242,15 @@ function nudgeParagraphIndent(block: HTMLElement, shiftKey: boolean) {
   else block.style.marginLeft = `${next}px`;
 }
 
-/** Tab in Präsentations-Editoren: Listen einrücken, sonst Absatz-Einzug (kein Browser-indent). */
+/** Tab in Präsentations-Editoren: Tabelle → nächste Zelle/neue Zeile, Listen einrücken, sonst Absatz-Einzug. */
 export function handlePresentationTabKey(editor: HTMLElement, shiftKey: boolean): void {
   stashEditorSelection(editor);
   ensureEditorSelection(editor) || focusEditor(editor);
+
+  if (handleTableTabInEditor(editor, shiftKey)) {
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
+    return;
+  }
 
   if (isSelectionInList(editor)) {
     const changed = shiftKey
