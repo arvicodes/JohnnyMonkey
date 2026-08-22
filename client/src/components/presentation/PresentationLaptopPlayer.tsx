@@ -622,6 +622,110 @@ export default function PresentationLaptopPlayer({
         ...(embedded ? {} : { height: '100%', minHeight: '100dvh' }),
       }}
     >
+      {embedded && (
+        <Box
+          sx={{
+            flex: '0 0 auto',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+            gap: 0.25,
+            px: 1,
+            py: 0.35,
+            minWidth: 0,
+            overflow: 'visible',
+            bgcolor: '#fff',
+            borderBottom: '1px solid rgba(0,0,0,0.06)',
+          }}
+        >
+          <IconButton
+            size="small"
+            onClick={goPrev}
+            disabled={!canGoPrev}
+            aria-label="Vorherige Folie"
+            sx={{
+              width: 28,
+              height: 28,
+              p: 0,
+              color: 'text.secondary',
+              '&:hover': { bgcolor: 'rgba(0,0,0,0.06)' },
+            }}
+          >
+            <ChevronLeft sx={{ fontSize: 20 }} />
+          </IconButton>
+          <Typography
+            sx={{
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: 'text.secondary',
+              minWidth: 40,
+              textAlign: 'center',
+              lineHeight: 1,
+            }}
+          >
+            {safeIndex + 1}/{slides.length}
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={goNext}
+            disabled={!canGoNext}
+            aria-label="Nächste Folie"
+            sx={{
+              width: 28,
+              height: 28,
+              p: 0,
+              color: 'text.secondary',
+              '&:hover': { bgcolor: 'rgba(0,0,0,0.06)' },
+            }}
+          >
+            <ChevronRight sx={{ fontSize: 20 }} />
+          </IconButton>
+          <Box sx={{ ml: 0.5 }}>
+            <PresentationPresentZoomControls
+              zoom={userZoom}
+              onZoomChange={applyUserZoom}
+              variant="light"
+              compact
+            />
+          </Box>
+          <Box sx={{ ml: 0.25 }}>
+            <PresentationSoundSplitControl variant="laptop" />
+          </Box>
+          <Tooltip title={quietWork.running ? 'Stillarbeit beenden' : 'Stillarbeit'}>
+            <IconButton
+              size="small"
+              aria-label="Stillarbeit"
+              onClick={quietWork.togglePicker}
+              sx={{
+                ml: 0.15,
+                width: 28,
+                height: 28,
+                p: 0,
+                color: quietWork.running || quietWork.pickerOpen ? '#2E7D32' : 'text.secondary',
+                '&:hover': { bgcolor: 'rgba(0,0,0,0.06)' },
+              }}
+            >
+              <QuietWorkIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title={musicGame.running ? 'Musikspiel beenden' : 'Musikspiel'}>
+            <IconButton
+              size="small"
+              aria-label="Musikspiel"
+              onClick={musicGame.togglePicker}
+              sx={{
+                width: 28,
+                height: 28,
+                p: 0,
+                color: musicGame.running || musicGame.pickerOpen ? '#E65100' : 'text.secondary',
+                '&:hover': { bgcolor: 'rgba(0,0,0,0.06)' },
+              }}
+            >
+              <MusicGameIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      )}
       {/* Stage: dunkler Rahmen um die Folie; Embedded ohne großen Letterbox */}
       <Box
         ref={stageHostRef}
@@ -793,6 +897,7 @@ export default function PresentationLaptopPlayer({
           py: embedded ? 1.25 : 0.75,
         }}
       >
+        {!embedded ? (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, mb: showNotes ? 0.5 : 0 }}>
           <IconButton
             size="small"
@@ -800,21 +905,21 @@ export default function PresentationLaptopPlayer({
             disabled={!canGoPrev}
             aria-label="Vorherige Folie"
             sx={{
-              width: embedded ? 28 : 22,
-              height: embedded ? 28 : 22,
+              width: 22,
+              height: 22,
               p: 0,
               color: 'text.secondary',
               '&:hover': { bgcolor: 'rgba(0,0,0,0.06)' },
             }}
           >
-            <ChevronLeft sx={{ fontSize: embedded ? 20 : 16 }} />
+            <ChevronLeft sx={{ fontSize: 16 }} />
           </IconButton>
           <Typography
             sx={{
-              fontSize: embedded ? '0.75rem' : '0.62rem',
+              fontSize: '0.62rem',
               fontWeight: 600,
               color: 'text.secondary',
-              minWidth: embedded ? 40 : 32,
+              minWidth: 32,
               textAlign: 'center',
               lineHeight: 1,
             }}
@@ -827,21 +932,21 @@ export default function PresentationLaptopPlayer({
             disabled={!canGoNext}
             aria-label="Nächste Folie"
             sx={{
-              width: embedded ? 28 : 22,
-              height: embedded ? 28 : 22,
+              width: 22,
+              height: 22,
               p: 0,
               color: 'text.secondary',
               '&:hover': { bgcolor: 'rgba(0,0,0,0.06)' },
             }}
           >
-            <ChevronRight sx={{ fontSize: embedded ? 20 : 16 }} />
+            <ChevronRight sx={{ fontSize: 16 }} />
           </IconButton>
           <Box sx={{ ml: 0.75 }}>
             <PresentationPresentZoomControls
               zoom={userZoom}
               onZoomChange={applyUserZoom}
               variant="light"
-              compact={embedded}
+              compact={false}
             />
           </Box>
           <Box sx={{ ml: 0.35 }}>
@@ -854,14 +959,14 @@ export default function PresentationLaptopPlayer({
               onClick={quietWork.togglePicker}
               sx={{
                 ml: 0.25,
-                width: embedded ? 28 : 22,
-                height: embedded ? 28 : 22,
+                width: 22,
+                height: 22,
                 p: 0,
                 color: quietWork.running || quietWork.pickerOpen ? '#2E7D32' : 'text.secondary',
                 '&:hover': { bgcolor: 'rgba(0,0,0,0.06)' },
               }}
             >
-              <QuietWorkIcon sx={{ fontSize: embedded ? 18 : 16 }} />
+              <QuietWorkIcon sx={{ fontSize: 16 }} />
             </IconButton>
           </Tooltip>
           <Tooltip title={musicGame.running ? 'Musikspiel beenden' : 'Musikspiel'}>
@@ -871,21 +976,21 @@ export default function PresentationLaptopPlayer({
               onClick={musicGame.togglePicker}
               sx={{
                 ml: 0.15,
-                width: embedded ? 28 : 22,
-                height: embedded ? 28 : 22,
+                width: 22,
+                height: 22,
                 p: 0,
                 color: musicGame.running || musicGame.pickerOpen ? '#E65100' : 'text.secondary',
                 '&:hover': { bgcolor: 'rgba(0,0,0,0.06)' },
               }}
             >
-              <MusicGameIcon sx={{ fontSize: embedded ? 18 : 16 }} />
+              <MusicGameIcon sx={{ fontSize: 16 }} />
             </IconButton>
           </Tooltip>
           {showNotes && (
             <Typography
               sx={{
                 color: 'text.secondary',
-                fontSize: embedded ? '0.72rem' : '0.58rem',
+                fontSize: '0.58rem',
                 fontWeight: 700,
                 letterSpacing: 0.06,
                 textTransform: 'uppercase',
@@ -897,6 +1002,23 @@ export default function PresentationLaptopPlayer({
             </Typography>
           )}
         </Box>
+        ) : (
+          showNotes && (
+            <Typography
+              sx={{
+                color: 'text.secondary',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                letterSpacing: 0.06,
+                textTransform: 'uppercase',
+                lineHeight: 1,
+                mb: 0.5,
+              }}
+            >
+              Notizen
+            </Typography>
+          )
+        )}
         {showNotes &&
           (hasHtmlNotes ? (
             <Box

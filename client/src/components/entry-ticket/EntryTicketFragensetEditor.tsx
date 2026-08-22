@@ -16,6 +16,7 @@ import {
   BookmarkAdd as BookmarkAddIcon,
   Class as ClassIcon,
   DeleteOutline as DeleteOutlineIcon,
+  History as HistoryIcon,
   ExpandLess as ExpandLessIcon,
   ExpandMore as ExpandMoreIcon,
 } from '@mui/icons-material';
@@ -107,6 +108,7 @@ type Props = {
   showCounts?: Record<string, number>;
   /** z. B. „47 Fragen im Set · Spiel: 10“ — rechts neben dem Namen. */
   playSourceLabel?: string | null;
+  onOpenHistory?: () => void;
 };
 
 function lessonMatchesPath(lesson: EntryTicketLessonSection, lessonPath?: string | null): boolean {
@@ -155,6 +157,7 @@ export function EntryTicketFragensetEditor({
   onDeleteSet,
   showCounts,
   playSourceLabel,
+  onOpenHistory,
 }: Props) {
   const [nameDraft, setNameDraft] = useState(set.name);
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
@@ -460,11 +463,12 @@ export function EntryTicketFragensetEditor({
         boxShadow: 'none',
       }}
     >
-      {/* Name links, Kartenzahl rechts */}
+      {/* Name links, Historie Mitte, Kartenzahl rechts */}
       <Box
         sx={{
           width: '100%',
-          display: 'flex',
+          display: 'grid',
+          gridTemplateColumns: '1fr auto 1fr',
           alignItems: 'center',
           gap: 0.75,
           px: 0.75,
@@ -474,47 +478,68 @@ export function EntryTicketFragensetEditor({
           boxSizing: 'border-box',
         }}
       >
-        <TextField
-          size="small"
-          value={nameDraft}
-          onChange={(e) => setNameDraft(e.target.value)}
-          onBlur={() => {
-            const next = nameDraft.trim();
-            if (next && next !== set.name) onRename(next);
-            else setNameDraft(set.name);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              (e.target as HTMLInputElement).blur();
-            }
-          }}
-          placeholder="Set-Name"
-          sx={{
-            ...fieldSx,
-            width: 168,
-            flexShrink: 0,
-            '& .MuiInputBase-input': { ...fieldSx['& .MuiInputBase-input'], fontWeight: 700, color: ET.ink },
-          }}
-        />
-        <Tooltip title="Fragenset löschen">
-          <IconButton
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
+          <TextField
             size="small"
-            onClick={onDeleteSet}
-            aria-label="Fragenset löschen"
-            sx={{
-              ...iconBtnSx,
-              color: ET.muted,
-              '&:hover': { color: '#c62828', bgcolor: 'rgba(198,40,40,0.08)' },
+            value={nameDraft}
+            onChange={(e) => setNameDraft(e.target.value)}
+            onBlur={() => {
+              const next = nameDraft.trim();
+              if (next && next !== set.name) onRename(next);
+              else setNameDraft(set.name);
             }}
-          >
-            <DeleteOutlineIcon sx={{ fontSize: 15 }} />
-          </IconButton>
-        </Tooltip>
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+            placeholder="Set-Name"
+            sx={{
+              ...fieldSx,
+              width: 168,
+              flexShrink: 0,
+              '& .MuiInputBase-input': { ...fieldSx['& .MuiInputBase-input'], fontWeight: 700, color: ET.ink },
+            }}
+          />
+          <Tooltip title="Fragenset löschen">
+            <IconButton
+              size="small"
+              onClick={onDeleteSet}
+              aria-label="Fragenset löschen"
+              sx={{
+                ...iconBtnSx,
+                color: ET.muted,
+                '&:hover': { color: '#c62828', bgcolor: 'rgba(198,40,40,0.08)' },
+              }}
+            >
+              <DeleteOutlineIcon sx={{ fontSize: 15 }} />
+            </IconButton>
+          </Tooltip>
+        </Box>
+        {onOpenHistory ? (
+          <Tooltip title="Historie">
+            <IconButton
+              size="small"
+              onClick={onOpenHistory}
+              aria-label="Historie"
+              sx={{
+                ...iconBtnSx,
+                width: 26,
+                height: 26,
+                color: ET.accent,
+                '&:hover': { bgcolor: 'rgba(69,90,100,0.1)' },
+              }}
+            >
+              <HistoryIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
+        ) : (
+          <Box />
+        )}
         {playSourceLabel ? (
           <Typography
             sx={{
-              ml: 'auto',
               minWidth: 0,
               color: '#546e7a',
               fontSize: '0.72rem',
@@ -525,7 +550,9 @@ export function EntryTicketFragensetEditor({
           >
             {playSourceLabel}
           </Typography>
-        ) : null}
+        ) : (
+          <Box />
+        )}
       </Box>
 
       <Box
@@ -568,12 +595,13 @@ export function EntryTicketFragensetEditor({
               ...fieldSx['& .MuiInputBase-input'],
               fontSize: '0.72rem',
               lineHeight: 1.35,
-              color: '#5d4037',
+              color: '#000',
             },
+            '& textarea': { color: '#000' },
           }}
           inputProps={{ 'aria-label': 'Persönliche Notizen zum Fragenset' }}
         />
-        <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: 0.45 }}>
           <Autocomplete
             multiple
             size="small"

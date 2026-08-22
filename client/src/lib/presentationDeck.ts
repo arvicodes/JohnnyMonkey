@@ -329,10 +329,32 @@ export function htmlToPlain(html: string): string {
   return (div.textContent || div.innerText || '').replace(/\u00a0/g, ' ').trim();
 }
 
+/** Schul-/Absolutpfade in Folien → git-intern/… (lokal und Schule). */
+export function portableSlideMediaPath(imagePath: string): string {
+  const p = (imagePath || '').replace(/\\/g, '/').trim();
+  if (!p) return '';
+  if (p.startsWith('/api/')) return p;
+  if (/^https?:\/\//i.test(p)) return p;
+  if (p.startsWith('/app/J-M-Reihen/')) {
+    return `git-intern/${p.slice('/app/J-M-Reihen/'.length)}`;
+  }
+  const markers = ['/J-M-Reihen/', 'J-M-Reihen/'];
+  for (const m of markers) {
+    const i = p.indexOf(m);
+    if (i >= 0) {
+      const rest = p.slice(i + m.length).replace(/^\/+/, '');
+      return rest ? `git-intern/${rest}` : 'git-intern';
+    }
+  }
+  return p;
+}
+
 export function slideImageUrl(imagePath: string, maxEdge?: number): string {
   if (!imagePath) return '';
   if (/^https?:\/\//i.test(imagePath)) return imagePath;
-  const qs = new URLSearchParams({ filePath: imagePath });
+  if (imagePath.startsWith('/api/')) return imagePath;
+  const filePath = portableSlideMediaPath(imagePath);
+  const qs = new URLSearchParams({ filePath });
   if (maxEdge && maxEdge > 0) qs.set('max', String(Math.round(maxEdge)));
   return `/api/file-system-paths/read-image?${qs.toString()}`;
 }

@@ -302,6 +302,9 @@ export class StorageManager {
 
   static resolveFilePath(filePath: string): string | null {
     let norm = this.remapLegacyAbsolutePath(filePath);
+    if (norm.startsWith('/app/J-M-Reihen/')) {
+      norm = `git-intern/${norm.slice('/app/J-M-Reihen/'.length)}`;
+    }
     if (norm === 'J-M-Reihen' || norm.startsWith('J-M-Reihen/')) {
       norm =
         norm === 'J-M-Reihen'
@@ -329,6 +332,9 @@ export class StorageManager {
   static async readFile(filePath: string): Promise<Buffer | null> {
     try {
       let filePathNorm = this.remapLegacyAbsolutePath(filePath);
+      if (filePathNorm.startsWith('/app/J-M-Reihen/')) {
+        filePathNorm = `git-intern/${filePathNorm.slice('/app/J-M-Reihen/'.length)}`;
+      }
       if (filePathNorm === 'J-M-Reihen' || filePathNorm.startsWith('J-M-Reihen/')) {
         filePathNorm =
           filePathNorm === 'J-M-Reihen'
