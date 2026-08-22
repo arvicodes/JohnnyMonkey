@@ -93,7 +93,11 @@ import {
   mergePlayedLessonKeys,
   playedLessonKey,
 } from '../lib/playedLessons';
-import { buildKlasse5SeatingOrder, type Klasse5SeatingKey } from '../lib/klasse5SeatingPlans';
+import {
+  buildKlasse5SeatingOrder,
+  detectKlasse5SeatingKey,
+  type Klasse5SeatingKey,
+} from '../lib/klasse5SeatingPlans';
 import {
   WOCHENAUFGABEN_BG,
   WOCHENAUFGABEN_BORDER,
@@ -12160,12 +12164,12 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
     }
   };
 
-  const applyKlasse5PhotoSeating = (klass: Klasse5SeatingKey) => {
-    if (!participationGroupId) {
+  const applyKlasse5PhotoSeating = (klass: Klasse5SeatingKey, groupId = participationGroupId) => {
+    if (!groupId) {
       showSnackbar('Keine Lerngruppe ausgew√§hlt.', 'warning');
       return;
     }
-    const group = groups.find((g) => g.id === participationGroupId);
+    const group = groups.find((g) => g.id === groupId);
     if (!group) {
       showSnackbar('Lerngruppe nicht gefunden.', 'warning');
       return;
@@ -12175,9 +12179,9 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
       parsePassiveStudentIds(group.passiveStudentIds),
     );
     const result = buildKlasse5SeatingOrder(students, klass);
-    setCustomSeatingOrder((prev) => ({ ...prev, [participationGroupId]: result.order }));
-    setDeskPositions((prev) => ({ ...prev, [participationGroupId]: result.deskPositions }));
-    void saveSeatingOrder(participationGroupId, result.order, result.deskPositions);
+    setCustomSeatingOrder((prev) => ({ ...prev, [groupId]: result.order }));
+    setDeskPositions((prev) => ({ ...prev, [groupId]: result.deskPositions }));
+    void saveSeatingOrder(groupId, result.order, result.deskPositions);
     if (result.matched === 0) {
       showSnackbar(
         `Sitzplan ${klass}: keine Namen in dieser Gruppe gefunden. Bitte 5a oder 5c w√§hlen.`,
@@ -15325,6 +15329,8 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
         await loadEpoGrades(gid);
         await loadLessonKeywords(gid);
         await loadSeatingOrder(gid);
+        const klass = detectKlasse5SeatingKey(g.name);
+        if (klass && !cancelled) applyKlasse5PhotoSeating(klass, gid);
         if (!cancelled) setParticipationModalOpen(true);
       } catch (e) {
         console.error(e);

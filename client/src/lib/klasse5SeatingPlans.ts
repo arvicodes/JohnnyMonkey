@@ -128,6 +128,14 @@ const PLANS: Record<Klasse5SeatingKey, SeatHint[][][]> = {
   '5c': PLAN_5C,
 };
 
+/** Lerngruppenname → Sitzplan-Foto (5a / 5c). */
+export function detectKlasse5SeatingKey(name: string): Klasse5SeatingKey | null {
+  const n = (name || '').toLowerCase();
+  if (/(^|[^0-9a-z])5a([^0-9a-z]|$)/i.test(n)) return '5a';
+  if (/(^|[^0-9a-z])5c([^0-9a-z]|$)/i.test(n)) return '5c';
+  return null;
+}
+
 export function buildKlasse5SeatingOrder(
   students: SeatingStudent[],
   klass: Klasse5SeatingKey,
