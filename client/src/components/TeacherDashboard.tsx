@@ -15421,7 +15421,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         {/* Header Section – auch auf /teacher/stunde und während Laptop-Präsentation */}
         <Grid item xs={12}>
           <Box sx={{ 
-            p: lessonSplitLeft ? 0.45 : 1.05,
+            p: lessonSplitLeft ? 0.7 : 1.05,
             background: '#f8f9fa',
             color: '#222',
             borderRadius: '12px',
@@ -15438,10 +15438,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: lessonSplitLeft ? 'flex-start' : 'space-between',
-                gap: lessonSplitLeft ? 0.4 : 0,
+                gap: lessonSplitLeft ? 0.75 : 0,
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: lessonSplitLeft ? 0.35 : 1.5, flexShrink: 0 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: lessonSplitLeft ? 0.65 : 1.5, flexShrink: 0 }}>
                 <TeacherSettingsMenu
                   teacherName={teacherName}
                   userId={userId}
@@ -15457,26 +15457,26 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 display="flex"
                 alignItems="center"
                 sx={{
-                  gap: lessonSplitLeft ? 0.2 : 0.5,
+                  gap: lessonSplitLeft ? 0.4 : 0.5,
                   minWidth: 0,
                   flexWrap: lessonSplitLeft ? 'nowrap' : 'wrap',
                   ...(lessonSplitLeft && {
                     '& .MuiIconButton-root': {
-                      minWidth: '22px !important',
-                      width: '22px !important',
-                      height: '22px !important',
-                      p: '1px !important',
+                      minWidth: '26px !important',
+                      width: '26px !important',
+                      height: '26px !important',
+                      p: '2px !important',
                     },
                     '& .MuiButton-root': {
-                      minWidth: '44px !important',
+                      minWidth: '50px !important',
                       width: 'auto !important',
-                      height: '22px !important',
-                      fontSize: '0.58rem !important',
-                      px: '5px !important',
+                      height: '26px !important',
+                      fontSize: '0.62rem !important',
+                      px: '7px !important',
                       py: '0 !important',
                     },
                     '& .MuiSvgIcon-root': {
-                      fontSize: '13px !important',
+                      fontSize: '15px !important',
                     },
                   }),
                 }}
