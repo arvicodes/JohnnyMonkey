@@ -663,48 +663,48 @@ export function EntryTicketFragensetEditor({
               />
             )}
             sx={{
-              width: '100%',
+              width: '20%',
+              minWidth: 88,
+              flexShrink: 0,
               '& .MuiInputBase-root': {
                 fontSize: '0.72rem',
                 minHeight: 32,
                 py: 0.15,
-                pr: '32px !important',
+                pr: '28px !important',
               },
               '& .MuiAutocomplete-endAdornment': {
-                right: 4,
+                right: 2,
               },
               '& .MuiAutocomplete-popupIndicator': {
-                p: 0.25,
+                p: 0.2,
               },
               '& .MuiAutocomplete-clearIndicator': {
                 display: 'none',
               },
             }}
           />
-          {selectedReihen.length > 0 && (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3, mt: 0.35 }}>
-              {selectedReihen.map((option) => (
-                <Chip
-                  key={option.path}
-                  size="small"
-                  label={option.label}
-                  onDelete={() => {
-                    void applyReihePaths(
-                      selectedReihen.filter((o) => o.path !== option.path).map((o) => o.path),
-                    );
-                  }}
-                  sx={{
-                    height: 20,
-                    fontWeight: 700,
-                    fontSize: '0.62rem',
-                    bgcolor: '#e8f5e9',
-                    color: '#2e7d32',
-                    '& .MuiChip-deleteIcon': { fontSize: 13, color: '#66bb6a' },
-                  }}
-                />
-              ))}
-            </Box>
-          )}
+          <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexWrap: 'wrap', gap: 0.3, pt: 0.2 }}>
+            {selectedReihen.map((option) => (
+              <Chip
+                key={option.path}
+                size="small"
+                label={option.label}
+                onDelete={() => {
+                  void applyReihePaths(
+                    selectedReihen.filter((o) => o.path !== option.path).map((o) => o.path),
+                  );
+                }}
+                sx={{
+                  height: 20,
+                  fontWeight: 700,
+                  fontSize: '0.62rem',
+                  bgcolor: '#e8f5e9',
+                  color: '#2e7d32',
+                  '& .MuiChip-deleteIcon': { fontSize: 13, color: '#66bb6a' },
+                }}
+              />
+            ))}
+          </Box>
         </Box>
       </Box>
 

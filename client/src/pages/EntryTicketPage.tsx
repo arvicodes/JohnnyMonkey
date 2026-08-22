@@ -5091,6 +5091,9 @@ export default function EntryTicketPage({
                         onDeleteSet={deleteActiveCustomSet}
                         showCounts={cardShowCounts}
                         playSourceLabel={customPlaySourceLabel}
+                        onOpenHistory={() =>
+                          setHistoryTarget({ id: activeCustomSet.id, name: activeCustomSet.name })
+                        }
                       />
                     </Box>
                   </>
