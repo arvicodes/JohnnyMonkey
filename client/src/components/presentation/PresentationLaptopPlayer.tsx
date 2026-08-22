@@ -39,6 +39,23 @@ import PresentationMusicGameOverlay, {
 } from './PresentationMusicGameOverlay';
 import { tryPlayArmedStartSlideSound, unlockPresentationAudio } from '../../lib/presentationSound';
 
+const LAPTOP_NOTES_SHARE_KEY = 'jm-laptop-notes-share';
+const LAPTOP_NOTES_SHARE_DEFAULT = 0.52;
+const LAPTOP_NOTES_SHARE_MIN = 0.22;
+const LAPTOP_NOTES_SHARE_MAX = 0.78;
+
+function readLaptopNotesShare(): number {
+  try {
+    const raw = Number(window.localStorage.getItem(LAPTOP_NOTES_SHARE_KEY));
+    if (Number.isFinite(raw) && raw >= LAPTOP_NOTES_SHARE_MIN && raw <= LAPTOP_NOTES_SHARE_MAX) {
+      return raw;
+    }
+  } catch {
+    /* ignore */
+  }
+  return LAPTOP_NOTES_SHARE_DEFAULT;
+}
+
 const EMPTY_STROKES: PresentationStroke[] = [];
 const EMPTY_ANNOTATIONS: PresentationAnnotations = {
   version: 1,
@@ -107,6 +124,8 @@ export default function PresentationLaptopPlayer({
   const musicGame = useMusicGameController();
   const stageHostRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const [notesShare, setNotesShare] = useState(readLaptopNotesShare);
+  const notesDragRef = useRef<{ startY: number; startShare: number; rootH: number } | null>(null);
 
   const applyUserZoom = useCallback((next: number, origin?: PresentZoomOrigin) => {
     const clamped = clampPresentZoomSmooth(next);
@@ -406,15 +425,11 @@ export default function PresentationLaptopPlayer({
       const host = stageHostRef.current;
       if (!host) return;
       // Embedded: schmaler schwarzer Rahmen, Folie füllt Restbreite — Notizen behalten Platz
-      const framePad = embedded ? 16 : 0;
+      const framePad = embedded ? 12 : 0;
       const width = Math.max(40, host.clientWidth - framePad);
+      const height = Math.max(40, host.clientHeight - framePad);
       if (width < 40) return;
-      let next = width / SLIDE_REF_WIDTH;
-      if (!embedded) {
-        const height = host.clientHeight;
-        if (height < 40) return;
-        next = Math.min(width / SLIDE_REF_WIDTH, height / SLIDE_REF_HEIGHT);
-      }
+      const next = Math.min(width / SLIDE_REF_WIDTH, height / SLIDE_REF_HEIGHT);
       setDisplayScale((prev) => (Math.abs(prev - next) < 1e-4 ? prev : next));
     };
     updateScale();
@@ -425,7 +440,7 @@ export default function PresentationLaptopPlayer({
       ro.disconnect();
       window.removeEventListener('resize', updateScale);
     };
-  }, [scaleReady, embedded]);
+  }, [scaleReady, embedded, notesShare]);
 
   // Trackpad-Pinch + Zwei-Finger-Pinch auf der Bühne
   useEffect(() => {
@@ -548,8 +563,36 @@ export default function PresentationLaptopPlayer({
   const zoomed = userZoom > 1.001;
   const fitW = SLIDE_REF_WIDTH * displayScale;
   const fitH = SLIDE_REF_HEIGHT * displayScale;
-  const notesPanelMin = hideTeacherNotes ? 40 : embedded ? 120 : 64;
+  const notesPanelMin = hideTeacherNotes ? 40 : embedded ? 160 : 64;
   const showNotes = !hideTeacherNotes;
+  const stageSharePct = embedded ? `${((1 - notesShare) * 100).toFixed(2)}%` : undefined;
+
+  const onNotesSplitPointerDown = (e: React.PointerEvent) => {
+    if (!embedded) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const rootH = rootRef.current?.clientHeight || 1;
+    notesDragRef.current = { startY: e.clientY, startShare: notesShare, rootH };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+  const onNotesSplitPointerMove = (e: React.PointerEvent) => {
+    const drag = notesDragRef.current;
+    if (!drag) return;
+    const next = Math.min(
+      LAPTOP_NOTES_SHARE_MAX,
+      Math.max(LAPTOP_NOTES_SHARE_MIN, drag.startShare - (e.clientY - drag.startY) / drag.rootH),
+    );
+    setNotesShare(next);
+  };
+  const onNotesSplitPointerUp = () => {
+    if (!notesDragRef.current) return;
+    notesDragRef.current = null;
+    try {
+      window.localStorage.setItem(LAPTOP_NOTES_SHARE_KEY, String(notesShare));
+    } catch {
+      /* ignore */
+    }
+  };
   const notesHtml = showNotes ? currentSlide.speakerNotesHtml?.trim() : '';
   const hasHtmlNotes =
     !!notesHtml && notesHtml !== '<p></p>' && notesHtml !== '<p><br></p>';
@@ -587,10 +630,10 @@ export default function PresentationLaptopPlayer({
         onPointerUp={onStagePointerUp}
         onPointerCancel={onStagePointerUp}
         sx={{
-          flex: embedded ? '0 0 auto' : '1 1 auto',
-          minHeight: 0,
+          flex: embedded ? `0 0 ${stageSharePct}` : '1 1 auto',
+          minHeight: embedded ? 96 : 0,
           width: '100%',
-          height: embedded && fitH > 0 ? fitH + 16 : undefined,
+          height: embedded ? 'auto' : undefined,
           position: 'relative',
           overflow: 'hidden',
           touchAction: 'none',
@@ -702,13 +745,44 @@ export default function PresentationLaptopPlayer({
         </Typography>
       )}
 
+      {embedded && showNotes && (
+        <Box
+          role="separator"
+          aria-label="Notizfeld-Höhe"
+          aria-orientation="horizontal"
+          onPointerDown={onNotesSplitPointerDown}
+          onPointerMove={onNotesSplitPointerMove}
+          onPointerUp={onNotesSplitPointerUp}
+          onPointerCancel={onNotesSplitPointerUp}
+          sx={{
+            flex: '0 0 10px',
+            cursor: 'row-resize',
+            touchAction: 'none',
+            bgcolor: '#f4f4f5',
+            borderTop: '1px solid rgba(0,0,0,0.08)',
+            borderBottom: '1px solid rgba(0,0,0,0.06)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            '&:hover': { bgcolor: '#e8eaf6' },
+            '&::after': {
+              content: '""',
+              width: 36,
+              height: 3,
+              borderRadius: 2,
+              bgcolor: 'rgba(57, 73, 171, 0.35)',
+            },
+          }}
+        />
+      )}
+
       <Box
         sx={{
           // minHeight:0 + flexBasis:0: sonst wächst das Panel auf Bildhöhe,
           // Parent (overflow:hidden) clippt — Bild in den Notizen unsichtbar.
           flex: embedded && showNotes ? '1 1 0' : '0 0 auto',
           flexBasis: embedded && showNotes ? 0 : undefined,
-          minHeight: embedded && showNotes ? 0 : notesPanelMin,
+          minHeight: embedded && showNotes ? notesPanelMin : notesPanelMin,
           maxHeight: hideTeacherNotes ? 48 : embedded ? 'none' : 140,
           overflowY: 'auto',
           overflowX: 'hidden',

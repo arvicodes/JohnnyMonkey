@@ -47,11 +47,12 @@ function hintFirsts(hint: NonNullable<SeatHint>): string[] {
   return [hint.first, ...(hint.also || [])].map((n) => normalizeName(n)).filter(Boolean);
 }
 
-function lastMatches(studentLast: string, hintLast?: string): boolean {
+function lastMatches(studentLast: string, tokens: string[], hintLast?: string): boolean {
   if (!hintLast) return true;
   const want = normalizeName(hintLast);
   if (!want) return true;
-  return studentLast === want || studentLast.startsWith(want) || want.startsWith(studentLast);
+  if (studentLast === want || studentLast.startsWith(want) || want.startsWith(studentLast)) return true;
+  return tokens.some((t) => t === want || t.startsWith(want) || want.startsWith(t));
 }
 
 function scoreMatch(student: SeatingStudent, hint: NonNullable<SeatHint>): number {
@@ -59,7 +60,7 @@ function scoreMatch(student: SeatingStudent, hint: NonNullable<SeatHint>): numbe
   const firsts = hintFirsts(hint);
   const firstHit = firsts.some((f) => first === f || first.startsWith(f) || f.startsWith(first) || tokens.includes(f));
   if (!firstHit) return 0;
-  if (hint.last && lastMatches(last, hint.last)) return 3;
+  if (hint.last && lastMatches(last, tokens, hint.last)) return 3;
   if (!hint.last) return 2;
   return 0;
 }
