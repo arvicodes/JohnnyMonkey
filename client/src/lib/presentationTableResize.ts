@@ -11,6 +11,7 @@ import {
 
 const EDGE_PX = 8;
 const MIN_ROW_PX = 28;
+const MIN_TABLE_PX = 140;
 
 export type TableResizeHit =
   | {
@@ -29,6 +30,10 @@ export type TableResizeHit =
       table: HTMLTableElement;
       rowIndex: number;
       sign: 1 | -1;
+    }
+  | {
+      kind: 'table-width';
+      table: HTMLTableElement;
     };
 
 function cellFromPoint(clientX: number, clientY: number): HTMLTableCellElement | null {
@@ -61,6 +66,11 @@ export function hitTestTableBorder(
     cell.parentElement instanceof HTMLTableRowElement ? cell.parentElement.rowIndex : -1;
   const rowCount = table.rows.length;
 
+  // Gesamte Breite: äußere rechte Kante der letzten Spalte
+  if (nearRight && colIndex === colCount - 1) {
+    return { kind: 'table-width', table };
+  }
+
   // Spalten: rechte Kante bevorzugen wenn beide (schmale Zelle)
   if (nearRight || nearLeft) {
     if (colCount < 2 || colIndex < 0) {
@@ -74,9 +84,6 @@ export function hitTestTableBorder(
     } else if (nearLeft && colIndex === 0) {
       // Äußere linke Kante der Tabelle
       return { kind: 'col', table, colIndex: 0, sign: -1 };
-    } else if (nearRight && colIndex === colCount - 1) {
-      // Äußere rechte Kante der Tabelle
-      return { kind: 'col', table, colIndex: colCount - 2, sign: -1 };
     }
   }
 
@@ -100,7 +107,21 @@ export function hitTestTableBorder(
 
 export function tableResizeCursor(hit: TableResizeHit | null): string | null {
   if (!hit) return null;
+  if (hit.kind === 'table-width') return 'ew-resize';
   return hit.kind === 'col' ? 'col-resize' : 'row-resize';
+}
+
+function tableWidthParentMaxPx(table: HTMLTableElement): number {
+  const parent = table.parentElement;
+  const fromParent = parent?.clientWidth || 0;
+  return fromParent > 0 ? fromParent : Math.max(table.getBoundingClientRect().width, MIN_TABLE_PX);
+}
+
+export function setTableWidthPx(table: HTMLTableElement, widthPx: number): void {
+  const maxW = tableWidthParentMaxPx(table);
+  const next = Math.min(maxW, Math.max(MIN_TABLE_PX, Math.round(widthPx)));
+  table.style.width = `${next}px`;
+  table.style.maxWidth = '100%';
 }
 
 /** Zeilenhöhe in px setzen (Zellen der Zeile). */
@@ -139,6 +160,25 @@ export function startTableBorderResize(
     onDone?: () => void;
   },
 ): boolean {
+  if (hit.kind === 'table-width') {
+    const table = hit.table;
+    const startW = table.getBoundingClientRect().width || MIN_TABLE_PX;
+    const onMove = (ev: PointerEvent) => {
+      setTableWidthPx(table, startW + (ev.clientX - startClientX));
+      opts?.onUpdate?.();
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      opts?.onDone?.();
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    return true;
+  }
+
   if (hit.kind === 'col') {
     const widths = getColumnWidthPercents(hit.table);
     if (hit.colIndex < 0 || hit.colIndex >= widths.length - 1) return false;
@@ -219,7 +259,11 @@ export function updateTableResizeHoverCursor(
   const cursor = tableResizeCursor(hit);
   if (cursor) {
     root.style.cursor = cursor;
-  } else if (root.style.cursor === 'col-resize' || root.style.cursor === 'row-resize') {
+  } else if (
+    root.style.cursor === 'col-resize' ||
+    root.style.cursor === 'row-resize' ||
+    root.style.cursor === 'ew-resize'
+  ) {
     root.style.cursor = '';
   }
 }

@@ -2811,7 +2811,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                 },
                 ...presentationNotesTableSx(),
                 '& table': {
-                  width: 'min(100%, 520px) !important',
+                  width: 'min(100%, 520px)',
                   maxWidth: '100%',
                   marginLeft: 0,
                   marginRight: 'auto',

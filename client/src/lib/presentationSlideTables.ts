@@ -401,21 +401,31 @@ function focusTableCell(cell: HTMLTableCellElement) {
   sel.addRange(range);
 }
 
-/** Tab in Tabelle: nächste Zelle; in der letzten Zelle neue Zeile. Shift+Tab: zurück. */
+function tableFromSelection(editor: HTMLElement): HTMLTableElement | null {
+  const cell = getCellFromSelection(editor);
+  if (cell) return findTableRoot(cell);
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return null;
+  const nodes = [sel.anchorNode, sel.focusNode, sel.getRangeAt(0).commonAncestorContainer];
+  for (const raw of nodes) {
+    let node: Node | null = raw;
+    if (node?.nodeType === Node.TEXT_NODE) node = node.parentNode;
+    if (!(node instanceof Element)) continue;
+    const table = node.closest('table') as HTMLTableElement | null;
+    if (table && editor.contains(table)) return table;
+  }
+  return null;
+}
+
+/** Tab in Tabelle: neue Zeile. Shift+Tab: vorherige Zelle. */
 export function handleTableTabInEditor(editor: HTMLElement, shiftKey: boolean): boolean {
   const cell = getCellFromSelection(editor);
-  if (!cell) return false;
-  const table = findTableRoot(cell);
+  const table = cell ? findTableRoot(cell) : tableFromSelection(editor);
   if (!table || !editor.contains(table)) return false;
   const cells = Array.from(table.querySelectorAll('th, td')) as HTMLTableCellElement[];
-  const idx = cells.indexOf(cell);
-  if (idx < 0) return false;
+  const idx = cell ? cells.indexOf(cell) : cells.length - 1;
   if (shiftKey) {
     if (idx > 0) focusTableCell(cells[idx - 1]);
-    return true;
-  }
-  if (idx < cells.length - 1) {
-    focusTableCell(cells[idx + 1]);
     return true;
   }
   tableAddRow(table);
@@ -429,12 +439,15 @@ export function getCellFromSelection(editor: HTMLElement | null): HTMLTableCellE
   if (!editor) return null;
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0) return null;
-  let node: Node | null = sel.anchorNode;
-  if (node?.nodeType === Node.TEXT_NODE) node = node.parentNode;
-  if (!(node instanceof Element)) return null;
-  const cell = node.closest('td, th') as HTMLTableCellElement | null;
-  if (!cell || !editor.contains(cell)) return null;
-  return cell;
+  const nodes = [sel.anchorNode, sel.focusNode, sel.getRangeAt(0).commonAncestorContainer];
+  for (const raw of nodes) {
+    let node: Node | null = raw;
+    if (node?.nodeType === Node.TEXT_NODE) node = node.parentNode;
+    if (!(node instanceof Element)) continue;
+    const cell = node.closest('td, th') as HTMLTableCellElement | null;
+    if (cell && editor.contains(cell)) return cell;
+  }
+  return null;
 }
 
 function ensureColgroup(table: HTMLTableElement): HTMLTableColElement[] {

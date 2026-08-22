@@ -1227,7 +1227,8 @@ function getEditableBlock(editor: HTMLElement): HTMLElement | null {
   if (node?.nodeType === Node.TEXT_NODE) node = node.parentNode;
   if (!(node instanceof Element)) return null;
   const block = node.closest('p, li, div, blockquote');
-  if (!block || !editor.contains(block)) return null;
+  if (!block || block === editor || !editor.contains(block)) return null;
+  if ((block as HTMLElement).closest('table')) return null;
   return block as HTMLElement;
 }
 
@@ -1242,10 +1243,14 @@ function nudgeParagraphIndent(block: HTMLElement, shiftKey: boolean) {
   else block.style.marginLeft = `${next}px`;
 }
 
-/** Tab in Präsentations-Editoren: Tabelle → nächste Zelle/neue Zeile, Listen einrücken, sonst Absatz-Einzug. */
+/** Tab in Präsentations-Editoren: Tabelle → neue Zeile, Listen einrücken, sonst Absatz-Einzug. */
 export function handlePresentationTabKey(editor: HTMLElement, shiftKey: boolean): void {
-  stashEditorSelection(editor);
-  ensureEditorSelection(editor) || focusEditor(editor);
+  const sel = window.getSelection();
+  const caretInEditor = !!(sel?.anchorNode && editor.contains(sel.anchorNode));
+  if (!caretInEditor) {
+    stashEditorSelection(editor);
+    ensureEditorSelection(editor) || focusEditor(editor);
+  }
 
   if (handleTableTabInEditor(editor, shiftKey)) {
     editor.dispatchEvent(new Event('input', { bubbles: true }));
