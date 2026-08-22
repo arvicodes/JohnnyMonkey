@@ -165,7 +165,7 @@ export default function EntryTicketCompletedRow({ groupId, editable = false }: P
           flexDirection: 'row',
           flexWrap: 'wrap',
           alignItems: 'center',
-          gap: editable ? 0.7 : 0.35,
+          gap: 0.35,
           minWidth: 0,
         }}
       >
@@ -230,19 +230,22 @@ export default function EntryTicketCompletedRow({ groupId, editable = false }: P
                   }}
                   sx={{
                     position: 'absolute',
-                    top: -7,
-                    right: -7,
-                    width: 14,
-                    height: 14,
+                    top: -3,
+                    right: -3,
+                    width: 8,
+                    height: 8,
+                    minWidth: 8,
+                    minHeight: 8,
                     p: 0,
                     bgcolor: '#c62828',
                     color: '#fff',
                     boxShadow: '0 0 0 1px #fff',
                     '&:hover': { bgcolor: '#b71c1c' },
                     '&.Mui-disabled': { bgcolor: '#ef9a9a', color: '#fff' },
+                    '& .MuiSvgIcon-root': { fontSize: 7 },
                   }}
                 >
-                  <CloseIcon sx={{ fontSize: 10 }} />
+                  <CloseIcon />
                 </IconButton>
               ) : null}
             </Box>
