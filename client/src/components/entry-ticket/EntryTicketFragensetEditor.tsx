@@ -14,6 +14,7 @@ import {
   Add as AddIcon,
   Bookmark as BookmarkIcon,
   BookmarkAdd as BookmarkAddIcon,
+  Class as ClassIcon,
   DeleteOutline as DeleteOutlineIcon,
   ExpandLess as ExpandLessIcon,
   ExpandMore as ExpandMoreIcon,
@@ -104,6 +105,8 @@ type Props = {
   onDeleteSet: () => void;
   /** Wie oft die Karte schon im Play gezeigt wurde (sourceKey → count). */
   showCounts?: Record<string, number>;
+  /** z. B. „47 Fragen im Set · Spiel: 10“ — rechts neben dem Namen. */
+  playSourceLabel?: string | null;
 };
 
 function lessonMatchesPath(lesson: EntryTicketLessonSection, lessonPath?: string | null): boolean {
@@ -151,13 +154,13 @@ export function EntryTicketFragensetEditor({
   onRename,
   onDeleteSet,
   showCounts,
+  playSourceLabel,
 }: Props) {
   const [nameDraft, setNameDraft] = useState(set.name);
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
     for (const lesson of set.lessons) {
-      init[lesson.id] =
-        isGeneralLessonSection(lesson) || lessonMatchesPath(lesson, activeLessonPath);
+      init[lesson.id] = lessonMatchesPath(lesson, activeLessonPath);
     }
     return init;
   });
@@ -182,22 +185,6 @@ export function EntryTicketFragensetEditor({
       .then(setReiheOptions)
       .finally(() => setReiheOptionsLoading(false));
   };
-
-  useEffect(() => {
-    const idleId =
-      typeof window.requestIdleCallback === 'function'
-        ? window.requestIdleCallback(() => ensureReihenCatalog(), { timeout: 1500 })
-        : window.setTimeout(() => ensureReihenCatalog(), 800);
-    return () => {
-      if (typeof window.cancelIdleCallback === 'function' && typeof idleId === 'number') {
-        window.cancelIdleCallback(idleId);
-      } else {
-        window.clearTimeout(idleId);
-      }
-    };
-    // Katalog erst nach dem ersten Paint / beim Öffnen der Zuordnung.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount
-  }, []);
 
   const assignedReihePaths = customSetReihePaths(set);
   const catalogOptions = useMemo(() => {
@@ -273,8 +260,7 @@ export function EntryTicketFragensetEditor({
   useEffect(() => {
     const init: Record<string, boolean> = {};
     for (const lesson of set.lessons) {
-      init[lesson.id] =
-        isGeneralLessonSection(lesson) || lessonMatchesPath(lesson, activeLessonPath);
+      init[lesson.id] = lessonMatchesPath(lesson, activeLessonPath);
     }
     setExpanded(init);
   }, [set.id]);
@@ -285,8 +271,7 @@ export function EntryTicketFragensetEditor({
       let changed = false;
       for (const lesson of set.lessons) {
         if (next[lesson.id] === undefined) {
-          next[lesson.id] =
-            isGeneralLessonSection(lesson) || lessonMatchesPath(lesson, activeLessonPath);
+          next[lesson.id] = lessonMatchesPath(lesson, activeLessonPath);
           changed = true;
         }
       }
@@ -295,6 +280,27 @@ export function EntryTicketFragensetEditor({
   }, [set.lessons]);
 
   const topicGroups = useMemo(() => groupLessonsByTopic(set.lessons), [set.lessons]);
+  const displayGroups = useMemo(() => {
+    const generalGroup = topicGroups.find((g) => /^allgemein$/i.test(g.topic));
+    const laterGroup = topicGroups.find((g) => /^für später$/i.test(g.topic));
+    const hourGroups = topicGroups.filter(
+      (g) => !/^allgemein$/i.test(g.topic) && !/^für später$/i.test(g.topic),
+    );
+    const rows: Array<{
+      key: string;
+      topic: string;
+      lessons: TopicGroup['lessons'];
+      special?: boolean;
+    }> = [];
+    const specialLessons = [...(generalGroup?.lessons || []), ...(laterGroup?.lessons || [])];
+    if (specialLessons.length > 0) {
+      rows.push({ key: '__special__', topic: '', lessons: specialLessons, special: true });
+    }
+    for (const g of hourGroups) {
+      rows.push({ key: g.topic, topic: g.topic, lessons: g.lessons });
+    }
+    return rows;
+  }, [topicGroups]);
 
   const updateLessons = (lessons: EntryTicketLessonSection[]) => {
     onChange({ ...set, lessons });
@@ -454,16 +460,16 @@ export function EntryTicketFragensetEditor({
         boxShadow: 'none',
       }}
     >
-      {/* Kopfzeile */}
+      {/* Name links, Kartenzahl rechts */}
       <Box
         sx={{
           width: '100%',
           display: 'flex',
           alignItems: 'center',
           gap: 0.75,
-          px: 1,
-          py: 0.55,
-          borderBottom: `2.5px solid ${ET.accent}`,
+          px: 0.75,
+          py: 0.45,
+          borderBottom: `1.5px solid ${ET.border}`,
           bgcolor: '#f5f5f5',
           boxSizing: 'border-box',
         }}
@@ -483,10 +489,10 @@ export function EntryTicketFragensetEditor({
               (e.target as HTMLInputElement).blur();
             }
           }}
-          placeholder="Reihe"
+          placeholder="Set-Name"
           sx={{
             ...fieldSx,
-            width: 148,
+            width: 168,
             flexShrink: 0,
             '& .MuiInputBase-input': { ...fieldSx['& .MuiInputBase-input'], fontWeight: 700, color: ET.ink },
           }}
@@ -498,7 +504,6 @@ export function EntryTicketFragensetEditor({
             aria-label="Fragenset löschen"
             sx={{
               ...iconBtnSx,
-              ml: 'auto',
               color: ET.muted,
               '&:hover': { color: '#c62828', bgcolor: 'rgba(198,40,40,0.08)' },
             }}
@@ -506,6 +511,21 @@ export function EntryTicketFragensetEditor({
             <DeleteOutlineIcon sx={{ fontSize: 15 }} />
           </IconButton>
         </Tooltip>
+        {playSourceLabel ? (
+          <Typography
+            sx={{
+              ml: 'auto',
+              minWidth: 0,
+              color: '#546e7a',
+              fontSize: '0.72rem',
+              fontWeight: 600,
+              textAlign: 'right',
+              lineHeight: 1.25,
+            }}
+          >
+            {playSourceLabel}
+          </Typography>
+        ) : null}
       </Box>
 
       <Box
@@ -520,7 +540,40 @@ export function EntryTicketFragensetEditor({
           gap: 0.55,
         }}
       >
-        <Box sx={{ width: 168, flexShrink: 0, minWidth: 0 }}>
+        <TextField
+          size="small"
+          multiline
+          minRows={2}
+          maxRows={5}
+          value={set.notes || ''}
+          onChange={(e) =>
+            onChange({
+              ...set,
+              notes: e.target.value.slice(0, 4000),
+            })
+          }
+          placeholder="Notizen nur für dich (nicht sichtbar für SuS)…"
+          sx={{
+            ...fieldSx,
+            flex: 1,
+            minWidth: 0,
+            '& .MuiOutlinedInput-root': {
+              ...fieldSx['& .MuiOutlinedInput-root'],
+              bgcolor: '#fffde7',
+              '& fieldset': { borderColor: '#fff59d' },
+              '&:hover fieldset': { borderColor: '#fbc02d' },
+              '&.Mui-focused fieldset': { borderColor: '#f9a825' },
+            },
+            '& .MuiInputBase-input': {
+              ...fieldSx['& .MuiInputBase-input'],
+              fontSize: '0.72rem',
+              lineHeight: 1.35,
+              color: '#5d4037',
+            },
+          }}
+          inputProps={{ 'aria-label': 'Persönliche Notizen zum Fragenset' }}
+        />
+        <Box sx={{ flex: 1, minWidth: 0 }}>
           <Autocomplete
             multiple
             size="small"
@@ -625,39 +678,6 @@ export function EntryTicketFragensetEditor({
             </Box>
           )}
         </Box>
-        <TextField
-          size="small"
-          multiline
-          minRows={2}
-          maxRows={5}
-          value={set.notes || ''}
-          onChange={(e) =>
-            onChange({
-              ...set,
-              notes: e.target.value.slice(0, 4000),
-            })
-          }
-          placeholder="Notizen nur für dich (nicht sichtbar für SuS)…"
-          sx={{
-            ...fieldSx,
-            flex: 1,
-            minWidth: 0,
-            '& .MuiOutlinedInput-root': {
-              ...fieldSx['& .MuiOutlinedInput-root'],
-              bgcolor: '#fffde7',
-              '& fieldset': { borderColor: '#fff59d' },
-              '&:hover fieldset': { borderColor: '#fbc02d' },
-              '&.Mui-focused fieldset': { borderColor: '#f9a825' },
-            },
-            '& .MuiInputBase-input': {
-              ...fieldSx['& .MuiInputBase-input'],
-              fontSize: '0.72rem',
-              lineHeight: 1.35,
-              color: '#5d4037',
-            },
-          }}
-          inputProps={{ 'aria-label': 'Persönliche Notizen zum Fragenset' }}
-        />
       </Box>
 
       <Box sx={{ width: '100%', p: 0.6, display: 'grid', gap: 0.55, boxSizing: 'border-box' }}>
@@ -667,12 +687,15 @@ export function EntryTicketFragensetEditor({
           </Typography>
         )}
 
-        {topicGroups.map((group, groupIndex) => {
+        {displayGroups.map((group, groupIndex) => {
           const accent = LESSON_PALETTES[groupIndex % LESSON_PALETTES.length];
           const nextAccent = LESSON_PALETTES[(groupIndex + 4) % LESSON_PALETTES.length];
+          const isSpecialRow = Boolean(group.special);
+          const isFirstHourGroup =
+            !isSpecialRow && displayGroups.findIndex((g) => !g.special) === groupIndex;
           return (
-            <Box key={group.topic} sx={{ width: '100%', boxSizing: 'border-box', display: 'grid', gap: 0.45 }}>
-              {groupIndex > 0 && (
+            <Box key={group.key} sx={{ width: '100%', boxSizing: 'border-box', display: 'grid', gap: 0.45 }}>
+              {groupIndex > 0 && !isSpecialRow && (
                 <Box
                   sx={{
                     width: '100%',
@@ -685,13 +708,12 @@ export function EntryTicketFragensetEditor({
                   }}
                 />
               )}
-              {!/^eigen\b/i.test(group.topic.trim()) &&
-                !/^allgemein$/i.test(group.topic.trim()) &&
-                !/^für später$/i.test(group.topic.trim()) && (
+              {!isSpecialRow && (isFirstHourGroup || Boolean(group.topic.trim())) && (
               <Box
                 sx={{
                   display: 'inline-flex',
                   alignItems: 'center',
+                  gap: 0.4,
                   width: 'fit-content',
                   px: 0.75,
                   py: 0.25,
@@ -701,8 +723,9 @@ export function EntryTicketFragensetEditor({
                   color: accent.title,
                 }}
               >
+                <ClassIcon sx={{ fontSize: 13 }} />
                 <Typography sx={{ fontWeight: 800, fontSize: '0.7rem', lineHeight: 1.2 }}>
-                  {group.topic}
+                  {isFirstHourGroup && !group.topic.trim() ? 'Stunden' : group.topic}
                 </Typography>
               </Box>
               )}
@@ -741,7 +764,6 @@ export function EntryTicketFragensetEditor({
                       bgcolor: palette.bg,
                       overflow: 'hidden',
                       boxShadow: isActive ? `0 0 0 2px ${palette.chip}22` : 'none',
-                      gridColumn: isLater ? { sm: '1 / -1' } : undefined,
                     }}
                   >
                     <Box
@@ -787,7 +809,7 @@ export function EntryTicketFragensetEditor({
                         ) : isGeneral ? (
                           'A'
                         ) : (
-                          globalIndex
+                          <ClassIcon sx={{ fontSize: 12 }} />
                         )}
                       </Box>
                       <Typography

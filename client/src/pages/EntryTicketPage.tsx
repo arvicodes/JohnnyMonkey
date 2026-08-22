@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -67,12 +67,11 @@ import {
   fetchAndCacheCustomEntryTicketSets,
   loadCustomEntryTicketSets,
   mergeCustomSetListsKeepExisting,
-  mergeDiscoveredLessonsIntoSet,
   saveCustomEntryTicketSets,
   sortLessonsChronologically,
   patchCustomSetTaskContent,
 } from '../lib/entryTicketCustomSets';
-import { discoverLessonsForCustomSet, discoverLessonsForReiheName } from '../lib/entryTicketReiheLessons';
+import { discoverLessonsForReiheName } from '../lib/entryTicketReiheLessons';
 import { resolveEntryTicketBandForLessonPath, fetchAssignedEntryTicketGrade, parseEntryTicketPlanBand } from '../lib/entryTicketGrade';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
 import { EntryTicketFragensetEditor } from '../components/entry-ticket/EntryTicketFragensetEditor';
@@ -3093,41 +3092,6 @@ export default function EntryTicketPage({
     };
   }, [isTeacher, embeddedPlay]);
 
-  /** Aktives Set im Hintergrund gegen Reihenordner abgleichen — nach dem ersten Paint. */
-  useEffect(() => {
-    if (embeddedPlay) return;
-    if (!isTeacher || !customSetsReady || !customSetId) return;
-    let cancelled = false;
-    const run = () => {
-      void (async () => {
-        const set = customSetsRef.current.find((s) => s.id === customSetId);
-        if (!set) return;
-        try {
-          const discovered = await discoverLessonsForCustomSet(set);
-          if (cancelled) return;
-          const merged = mergeDiscoveredLessonsIntoSet(set, discovered);
-          if (merged !== set) {
-            setCustomSets((prev) => prev.map((s) => (s.id === merged.id ? merged : s)));
-          }
-        } catch {
-          /* ignore */
-        }
-      })();
-    };
-    const idleId =
-      typeof window.requestIdleCallback === 'function'
-        ? window.requestIdleCallback(run, { timeout: 400 })
-        : window.setTimeout(run, 50);
-    return () => {
-      cancelled = true;
-      if (typeof window.cancelIdleCallback === 'function') {
-        window.cancelIdleCallback(idleId as number);
-      } else {
-        window.clearTimeout(idleId);
-      }
-    };
-  }, [embeddedPlay, isTeacher, customSetsReady, customSetId]);
-
   /** Gelöschtes Custom-Set (nur Lehrer): zurück auf Klassenband. Moderator behält URL/Server-Grade. */
   useEffect(() => {
     if (!isTeacher) return;
@@ -3300,14 +3264,15 @@ export default function EntryTicketPage({
   };
 
   const selectCustomSet = (id: string) => {
-    setCustomSetId(id);
-    setBandChosen(true);
-    setShowSetEditor(true);
-    setSetEditIndex(null);
-    setSetEditCategory('Alltag');
-    setSetEditPrompt('');
-    setSetEditSolution('');
-    setTaskSeed(randomTaskSeed());
+    startTransition(() => {
+      setCustomSetId(id);
+      setBandChosen(true);
+      setShowSetEditor(true);
+      setSetEditIndex(null);
+      setSetEditCategory('Alltag');
+      setSetEditPrompt('');
+      setSetEditSolution('');
+    });
   };
 
   const openCreateSetDialog = () => {
@@ -5094,20 +5059,6 @@ export default function EntryTicketPage({
 
                 {bandChosen ? (
                   <>
-                {isCustomSetActive && customPlaySourceLabel ? (
-                  <Typography
-                    sx={{
-                      width: '100%',
-                      mb: 0.6,
-                      color: '#546e7a',
-                      fontSize: '0.72rem',
-                      fontWeight: 600,
-                      textAlign: 'center',
-                    }}
-                  >
-                    {customPlaySourceLabel}
-                  </Typography>
-                ) : null}
                 {isCustomSetActive && activeCustomSet ? (
                   <>
                     {poolForBand.length === 0 ? (
@@ -5139,6 +5090,7 @@ export default function EntryTicketPage({
                         onRename={renameActiveCustomSet}
                         onDeleteSet={deleteActiveCustomSet}
                         showCounts={cardShowCounts}
+                        playSourceLabel={customPlaySourceLabel}
                       />
                     </Box>
                   </>
