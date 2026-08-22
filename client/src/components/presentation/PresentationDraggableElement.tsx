@@ -552,9 +552,15 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
 
       // Element auf Filmstrip-Folie fallen lassen → verschieben
       if (wasDragging && dragMode === 'move' && onMoveToSlide) {
-        const hit = document.elementFromPoint(e.clientX, e.clientY);
-        const thumb = hit?.closest('[data-pres-filmstrip-slide]') as HTMLElement | null;
-        const targetSlideId = thumb?.getAttribute('data-pres-filmstrip-slide');
+        const thumbs = document.querySelectorAll('[data-pres-filmstrip-slide]');
+        let targetSlideId: string | null = null;
+        thumbs.forEach((thumb) => {
+          if (targetSlideId) return;
+          const r = thumb.getBoundingClientRect();
+          if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+            targetSlideId = thumb.getAttribute('data-pres-filmstrip-slide');
+          }
+        });
         if (targetSlideId) {
           onMoveToSlide(targetSlideId);
           try {
@@ -2156,22 +2162,23 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
           onPointerDown={(e) => {
             e.stopPropagation();
             e.preventDefault();
+            if (imageOnlyEdit) onDelete();
           }}
           onClick={(e) => {
             e.stopPropagation();
-            onDelete();
+            if (!imageOnlyEdit) onDelete();
           }}
           sx={{
             position: 'absolute',
-            top: `${-6 * scale}px`,
-            right: `${-6 * scale}px`,
-            width: `${22 * scale}px`,
-            height: `${22 * scale}px`,
+            top: `${(imageOnlyEdit ? -14 : -6) * scale}px`,
+            right: `${(imageOnlyEdit ? -14 : -6) * scale}px`,
+            width: `${(imageOnlyEdit ? 32 : 22) * scale}px`,
+            height: `${(imageOnlyEdit ? 32 : 22) * scale}px`,
             borderRadius: '50%',
             border: `${2 * scale}px solid #fff`,
             bgcolor: '#c62828',
             color: '#fff',
-            fontSize: `${14 * scale}px`,
+            fontSize: `${(imageOnlyEdit ? 20 : 14) * scale}px`,
             fontWeight: 800,
             lineHeight: 1,
             display: 'flex',

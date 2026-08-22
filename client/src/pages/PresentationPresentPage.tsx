@@ -422,6 +422,74 @@ const PresentationPresentPage: React.FC = () => {
     saveTimer.current = setTimeout(() => void persistAnnotations(next), 1600);
   }, [persistAnnotations]);
 
+  const persistDeckSoon = useCallback(
+    (next: PresentationDeck, failMessage: string) => {
+      if (isNamedViewRef.current || isOriginalViewRef.current || !lessonPath) return;
+      if (deckSaveTimer.current) clearTimeout(deckSaveTimer.current);
+      deckSaveTimer.current = setTimeout(() => {
+        void saveJsonFile(lessonPath, DECK_FILENAME, next).catch(() => {
+          setSnackbar(failMessage);
+        });
+      }, 400);
+    },
+    [lessonPath],
+  );
+
+  const deletePlayPhoto = useCallback(
+    (id: string) => {
+      setDeck((prev) => {
+        if (!prev) return prev;
+        const slideId = currentSlideIdRef.current;
+        if (!slideId) return prev;
+        const next: PresentationDeck = {
+          ...prev,
+          slides: prev.slides.map((s) =>
+            s.id !== slideId ? s : { ...s, elements: (s.elements || []).filter((el) => el.id !== id) },
+          ),
+        };
+        persistDeckSoon(next, 'Foto gelöscht — bitte noch Sichern tippen.');
+        return next;
+      });
+      setSelectedElementId(null);
+      setSnackbar('Foto gelöscht');
+    },
+    [persistDeckSoon],
+  );
+
+  const movePlayPhotoToSlide = useCallback(
+    (elementId: string, targetSlideId: string) => {
+      const sourceId = currentSlideIdRef.current;
+      if (!sourceId || sourceId === targetSlideId) return;
+      setDeck((prev) => {
+        if (!prev) return prev;
+        const source = prev.slides.find((s) => s.id === sourceId);
+        const element = source?.elements?.find((el) => el.id === elementId);
+        if (!element) return prev;
+        const next: PresentationDeck = {
+          ...prev,
+          slides: prev.slides.map((s) => {
+            if (s.id === sourceId) {
+              return { ...s, elements: (s.elements || []).filter((el) => el.id !== elementId) };
+            }
+            if (s.id === targetSlideId) {
+              return {
+                ...s,
+                elements: [...(s.elements || []), { ...element, zIndex: (s.elements?.length ?? 0) + 1 }],
+              };
+            }
+            return s;
+          }),
+        };
+        persistDeckSoon(next, 'Foto verschoben — bitte noch Sichern tippen.');
+        return next;
+      });
+      const idx = slides.findIndex((s) => s.id === targetSlideId);
+      setSnackbar(idx >= 0 ? `Foto auf Folie ${idx + 1}` : 'Foto auf andere Folie gelegt');
+      if (idx >= 0) setSlideIndex(idx);
+    },
+    [persistDeckSoon, slides],
+  );
+
   const updateSlideElement = useCallback((id: string, patch: Partial<SlideElement>) => {
     setDeck((prev) => {
       if (!prev) return prev;
@@ -438,17 +506,10 @@ const PresentationPresentPage: React.FC = () => {
               }
         ),
       };
-      if (!isNamedViewRef.current && !isOriginalViewRef.current && lessonPath) {
-        if (deckSaveTimer.current) clearTimeout(deckSaveTimer.current);
-        deckSaveTimer.current = setTimeout(() => {
-          void saveJsonFile(lessonPath, DECK_FILENAME, next).catch(() => {
-            setSnackbar('Foto-Änderung nicht gespeichert — bitte Sichern tippen.');
-          });
-        }, 700);
-      }
+      persistDeckSoon(next, 'Foto-Änderung nicht gespeichert — bitte Sichern tippen.');
       return next;
     });
-  }, [lessonPath]);
+  }, [persistDeckSoon]);
 
   const insertPlayPhoto = useCallback(
     async (file: File) => {
@@ -1258,7 +1319,7 @@ const PresentationPresentPage: React.FC = () => {
       swipeRef.current = null;
       return;
     }
-    if (target?.closest?.('[data-pres-element-type="image"], [data-resize-handle]')) {
+    if (target?.closest?.('[data-pres-element-type="image"], [data-resize-handle], [data-pres-filmstrip-slide], [data-element-delete]')) {
       swipeRef.current = null;
       return;
     }
@@ -1295,7 +1356,11 @@ const PresentationPresentPage: React.FC = () => {
       return;
     }
     const tapTarget = e.target instanceof Element ? e.target : null;
-    if (tapTarget?.closest?.('[data-pres-element-type="image"], [data-resize-handle], [data-element-delete]')) {
+    if (
+      tapTarget?.closest?.(
+        '[data-pres-element-type="image"], [data-resize-handle], [data-element-delete], [data-pres-filmstrip-slide], [data-pres-toolbar]',
+      )
+    ) {
       return;
     }
     if (selectedElementId) {
@@ -1455,6 +1520,87 @@ const PresentationPresentPage: React.FC = () => {
         </>
       ) : null}
 
+      {selectedImageForCrop && !isOriginalView && !isNamedView && slides.length > 1 ? (
+        <Box
+          data-pres-chrome=""
+          data-pres-toolbar=""
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+          sx={{
+            position: 'absolute',
+            top: 'max(8px, env(safe-area-inset-top))',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 85,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+            px: 1,
+            py: 0.45,
+            borderRadius: 2,
+            bgcolor: 'rgba(22,24,28,0.94)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            boxShadow: '0 6px 22px rgba(0,0,0,0.38)',
+            maxWidth: 'calc(100% - 96px)',
+            overflowX: 'auto',
+            touchAction: 'manipulation',
+          }}
+        >
+          <Typography
+            sx={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: 'rgba(255,255,255,0.7)',
+              whiteSpace: 'nowrap',
+              mr: 0.25,
+            }}
+          >
+            Auf Folie
+          </Typography>
+          {slides.map((s, i) => {
+            const current = s.id === currentSlide?.id;
+            return (
+              <Box
+                key={s.id}
+                role="button"
+                tabIndex={0}
+                data-pres-filmstrip-slide={s.id}
+                aria-label={`Foto auf Folie ${i + 1}`}
+                onClick={() => {
+                  if (!current) movePlayPhotoToSlide(selectedImageForCrop.id, s.id);
+                }}
+                sx={{
+                  minWidth: 32,
+                  height: 32,
+                  px: 0.75,
+                  borderRadius: 1.25,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 13,
+                  fontWeight: 800,
+                  cursor: current ? 'default' : 'pointer',
+                  userSelect: 'none',
+                  color: current ? JOHNNY_PRESENTATION.warm : 'rgba(255,255,255,0.92)',
+                  bgcolor: current ? 'rgba(255,152,0,0.28)' : 'rgba(255,255,255,0.1)',
+                  boxShadow: current
+                    ? 'inset 0 0 0 1px rgba(255,152,0,0.5)'
+                    : 'inset 0 0 0 1px rgba(255,255,255,0.14)',
+                  'body[data-pres-element-drag] &': current
+                    ? undefined
+                    : {
+                        outline: '2px dashed rgba(102,187,106,0.95)',
+                        outlineOffset: 1,
+                      },
+                }}
+              >
+                {i + 1}
+              </Box>
+            );
+          })}
+        </Box>
+      ) : null}
+
       <Box
         ref={stageRef}
         data-pres-stage=""
@@ -1527,6 +1673,12 @@ const PresentationPresentPage: React.FC = () => {
                   selectedElementId={selectedElementId}
                   onElementSelect={setSelectedElementId}
                   onElementChange={updateSlideElement}
+                  onDeleteElement={
+                    isOriginalView || isNamedView ? undefined : deletePlayPhoto
+                  }
+                  onMoveElementToSlide={
+                    isOriginalView || isNamedView ? undefined : movePlayPhotoToSlide
+                  }
                 />
               </Box>
             </Box>
