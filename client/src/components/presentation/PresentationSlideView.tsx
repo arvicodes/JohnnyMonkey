@@ -862,7 +862,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
 
       {renderElementLayer(
         foregroundElements,
-        editable ? 25 : animationEditMode ? 12 : 5,
+        editable || imageEditable ? 25 : animationEditMode ? 12 : 5,
       )}
 
       {editable && snapGuides.length > 0 && (

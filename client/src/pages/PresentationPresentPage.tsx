@@ -1234,6 +1234,14 @@ const PresentationPresentPage: React.FC = () => {
     ) {
       return;
     }
+    const tapTarget = e.target instanceof Element ? e.target : null;
+    if (tapTarget?.closest?.('[data-pres-element-type="image"], [data-resize-handle], [data-element-delete]')) {
+      return;
+    }
+    if (selectedElementId) {
+      setSelectedElementId(null);
+      return;
+    }
     if (drawActive) return;
     if (quietWork.running || quietWork.finished || musicGame.running) return;
     requestPresentFullscreen(containerRef.current);
@@ -1474,6 +1482,8 @@ const PresentationPresentPage: React.FC = () => {
               selectedStrokeIds={selectedStrokeIds}
               onSelectedStrokeIdsChange={setSelectedStrokeIds}
               scale={displayScale}
+              onBackgroundPointerDown={() => setSelectedElementId(null)}
+              onHitElement={setSelectedElementId}
             />
           </Box>
         </Box>

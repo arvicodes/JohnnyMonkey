@@ -56,6 +56,10 @@ interface PresentationDrawOverlayProps {
   onSelectedStrokeIdsChange?: (ids: string[]) => void;
   markerOpacity?: number;
   scale?: number;
+  /** Finger auf leerer Folie — z. B. Foto-Auswahl aufheben. */
+  onBackgroundPointerDown?: () => void;
+  /** Finger auf einem Folien-Element (Foto). */
+  onHitElement?: (elementId: string) => void;
 }
 
 const SHAPE_MIN_PX = 6;
@@ -223,6 +227,8 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   onSelectedStrokeIdsChange,
   markerOpacity = DEFAULT_MARKER_OPACITY,
   scale = 1,
+  onBackgroundPointerDown,
+  onHitElement,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -254,6 +260,10 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   const onSelectedStrokeIdChangeRef = useRef(onSelectedStrokeIdChange);
   const onSelectedStrokeIdsChangeRef = useRef(onSelectedStrokeIdsChange);
   const chromeTapRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+  const onBackgroundPointerDownRef = useRef(onBackgroundPointerDown);
+  onBackgroundPointerDownRef.current = onBackgroundPointerDown;
+  const onHitElementRef = useRef(onHitElement);
+  onHitElementRef.current = onHitElement;
   const straightRef = useRef<{
     timer: number | null;
     snapped: boolean;
@@ -725,9 +735,12 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       if (imageHost) {
         e.preventDefault();
         e.stopPropagation();
+        const id = imageHost.getAttribute('data-pres-element');
+        if (id) onHitElementRef.current?.(id);
         dispatchPointerTo(imageHost, e);
         return;
       }
+      onBackgroundPointerDownRef.current?.();
     } else if (under.handle && !imageHost) {
       e.preventDefault();
       e.stopPropagation();

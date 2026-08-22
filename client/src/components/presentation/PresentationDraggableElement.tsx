@@ -867,6 +867,13 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         }
         if (!canEdit) return;
         if (imageOnlyEdit && e.pointerType === 'pen') return;
+        if (imageOnlyEdit) {
+          e.preventDefault();
+          e.stopPropagation();
+          onSelect?.();
+          // Erst antippen/auswählen, dann ziehen — sonst wechselt die Folie.
+          if (!selected) return;
+        }
         if (isMediaElement && mediaInteractive) return;
         if ((e.target as HTMLElement).closest('[data-resize-handle]')) return;
         if ((e.target as HTMLElement).closest('[data-rotate-handle]')) return;
@@ -957,6 +964,11 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
           element.type === 'text' ? 'text' : isShapeBox ? 'shape' : null,
         );
       }}
+      onClick={(e) => {
+        if (!imageOnlyEdit) return;
+        e.preventDefault();
+        e.stopPropagation();
+      }}
       onDoubleClick={(e) => {
         if (!editable || animationEditMode) return;
         if (element.type === 'text') {
@@ -1033,6 +1045,12 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             : undefined,
         cursor: animationEditMode
           ? 'pointer'
+          : imageOnlyEdit
+            ? dragging
+              ? 'move'
+              : showSelectionChrome
+                ? 'grab'
+                : 'pointer'
           : editable
             ? dragging
               ? cropMode
@@ -1066,7 +1084,11 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               ? editable || animationEditMode
                 ? 'auto'
                 : 'none'
-              : editable || animationEditMode || (isMediaElement && mediaInteractive) || playLinkHitTarget
+              : editable ||
+                  animationEditMode ||
+                  imageOnlyEdit ||
+                  (isMediaElement && mediaInteractive) ||
+                  playLinkHitTarget
                 ? 'auto'
                 : 'none',
         // Links in Folien-HTML bleiben klickbar (CSS: [data-pres-html] a)
