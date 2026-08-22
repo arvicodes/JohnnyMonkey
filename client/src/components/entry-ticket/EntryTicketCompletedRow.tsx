@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { Box, Typography } from '@mui/material';
-import { apiGetSafe } from '../../lib/api';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Box, IconButton, Typography } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import { apiDelete, apiGetSafe } from '../../lib/api';
 
 export const ENTRY_TICKET_BOX_BG = '#e8f3fc';
 export const ENTRY_TICKET_BOX_BORDER = '#90caf9';
@@ -20,6 +21,8 @@ export type EntryTicketCompletedListItem = {
 
 type Props = {
   groupId: string;
+  /** Lehrkraft: einzelne Tickets per × entfernen (für alle unsichtbar). */
+  editable?: boolean;
 };
 
 function formatWhen(iso: string): string {
@@ -50,38 +53,77 @@ function openCompletedTicket(groupId: string, item: EntryTicketCompletedListItem
 }
 
 /** Blauer Kasten: erledigte Entry Tickets als kompakte nummerierte Buttons (1, 2, …). */
-export default function EntryTicketCompletedRow({ groupId }: Props) {
+export default function EntryTicketCompletedRow({ groupId, editable = false }: Props) {
   const [items, setItems] = useState<EntryTicketCompletedListItem[]>([]);
+  const [busyIndex, setBusyIndex] = useState<number | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!groupId || groupId.startsWith('__')) {
       setItems([]);
       return;
     }
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const res = await apiGetSafe(`/api/entry-ticket/completed-list?groupId=${encodeURIComponent(groupId)}`);
-        if (!res || !res.ok || cancelled) {
-          if (!cancelled) setItems([]);
-          return;
-        }
-        const data = (await res.json()) as { items?: EntryTicketCompletedListItem[] };
-        if (cancelled) return;
-        const next = Array.isArray(data.items) ? data.items : [];
-        next.sort((a, b) => a.index - b.index);
-        setItems(next);
-      } catch {
-        if (!cancelled) setItems([]);
+    try {
+      const res = await apiGetSafe(`/api/entry-ticket/completed-list?groupId=${encodeURIComponent(groupId)}`);
+      if (!res || !res.ok) {
+        setItems([]);
+        return;
       }
-    };
-    void load();
-    const t = setInterval(() => void load(), 60000);
+      const data = (await res.json()) as { items?: EntryTicketCompletedListItem[] };
+      const next = Array.isArray(data.items) ? data.items : [];
+      next.sort((a, b) => a.index - b.index);
+      setItems(next);
+    } catch {
+      setItems([]);
+    }
+  }, [groupId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      await load();
+      if (cancelled) return;
+    })();
+    const t = setInterval(() => {
+      if (!cancelled) void load();
+    }, 60000);
     return () => {
       cancelled = true;
       clearInterval(t);
     };
-  }, [groupId]);
+  }, [load]);
+
+  const removeItem = async (item: EntryTicketCompletedListItem) => {
+    const label = item.setName || 'Entry Ticket';
+    const when = formatWhen(item.completedAt);
+    if (
+      !window.confirm(
+        `Entry Ticket ${item.index} (${label}, ${when}) wirklich entfernen?\n\nEs verschwindet dann für alle Schülerinnen und Schüler.`,
+      )
+    ) {
+      return;
+    }
+    setBusyIndex(item.index);
+    try {
+      const qs = new URLSearchParams({
+        groupId,
+        index: String(item.index),
+      });
+      const res = await apiDelete(`/api/entry-ticket/completed?${qs.toString()}`);
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        window.alert(err.error || 'Entry Ticket konnte nicht entfernt werden.');
+        return;
+      }
+      const data = (await res.json()) as { items?: EntryTicketCompletedListItem[] };
+      const next = Array.isArray(data.items) ? data.items : [];
+      next.sort((a, b) => a.index - b.index);
+      setItems(next);
+    } catch {
+      window.alert('Entry Ticket konnte nicht entfernt werden.');
+    } finally {
+      setBusyIndex(null);
+    }
+  };
 
   if (items.length === 0) return null;
 
@@ -123,7 +165,7 @@ export default function EntryTicketCompletedRow({ groupId }: Props) {
           flexDirection: 'row',
           flexWrap: 'wrap',
           alignItems: 'center',
-          gap: 0.35,
+          gap: editable ? 0.7 : 0.35,
           minWidth: 0,
         }}
       >
@@ -139,34 +181,70 @@ export default function EntryTicketCompletedRow({ groupId }: Props) {
           return (
             <Box
               key={`${item.index}-${item.completedAt}`}
-              component="button"
-              type="button"
-              title={title}
-              onClick={() => openCompletedTicket(groupId, item)}
-              aria-label={`Entry Ticket ${item.index} ansehen`}
               sx={{
-                m: 0,
-                width: 24,
-                height: 22,
-                minWidth: 24,
-                p: 0,
+                position: 'relative',
                 display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
                 flexShrink: 0,
-                border: '1px solid #90caf9',
-                borderRadius: '5px',
-                bgcolor: '#fff',
-                color: ENTRY_TICKET_TEXT_COLOR,
-                fontWeight: 800,
-                fontSize: '0.7rem',
-                lineHeight: 1,
-                fontFamily: 'inherit',
-                cursor: 'pointer',
-                '&:hover': { bgcolor: '#bbdefb', borderColor: '#64b5f6' },
               }}
             >
-              {item.index}
+              <Box
+                component="button"
+                type="button"
+                title={title}
+                onClick={() => openCompletedTicket(groupId, item)}
+                aria-label={`Entry Ticket ${item.index} ansehen`}
+                sx={{
+                  m: 0,
+                  width: 24,
+                  height: 22,
+                  minWidth: 24,
+                  p: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  border: '1px solid #90caf9',
+                  borderRadius: '5px',
+                  bgcolor: '#fff',
+                  color: ENTRY_TICKET_TEXT_COLOR,
+                  fontWeight: 800,
+                  fontSize: '0.7rem',
+                  lineHeight: 1,
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                  '&:hover': { bgcolor: '#bbdefb', borderColor: '#64b5f6' },
+                }}
+              >
+                {item.index}
+              </Box>
+              {editable ? (
+                <IconButton
+                  size="small"
+                  disabled={busyIndex === item.index}
+                  aria-label={`Entry Ticket ${item.index} entfernen`}
+                  title="Entfernen"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    void removeItem(item);
+                  }}
+                  sx={{
+                    position: 'absolute',
+                    top: -7,
+                    right: -7,
+                    width: 14,
+                    height: 14,
+                    p: 0,
+                    bgcolor: '#c62828',
+                    color: '#fff',
+                    boxShadow: '0 0 0 1px #fff',
+                    '&:hover': { bgcolor: '#b71c1c' },
+                    '&.Mui-disabled': { bgcolor: '#ef9a9a', color: '#fff' },
+                  }}
+                >
+                  <CloseIcon sx={{ fontSize: 10 }} />
+                </IconButton>
+              ) : null}
             </Box>
           );
         })}

@@ -2101,6 +2101,10 @@ export default function EntryTicketPage({
   const [studentReviewMode, setStudentReviewMode] = useState(() => Boolean(initialRoute.review));
   const [studentReviewReady, setStudentReviewReady] = useState(false);
   const [studentReviewError, setStudentReviewError] = useState<string | null>(null);
+  const [reviewArchiveIndex, setReviewArchiveIndex] = useState<number | null>(
+    () => initialRoute.archiveIndex,
+  );
+  const [reviewArchiveCount, setReviewArchiveCount] = useState(0);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingPrompt, setEditingPrompt] = useState('');
   const [editingSolution, setEditingSolution] = useState('');
@@ -2347,6 +2351,8 @@ export default function EntryTicketPage({
     const route = parseEntryTicketSearch(location.search);
     if (!route.review) {
       setStudentReviewMode(false);
+      setReviewArchiveIndex(null);
+      setReviewArchiveCount(0);
       return;
     }
     if (!route.groupId || (!route.lessonPath && !route.archiveIndex)) {
@@ -2359,8 +2365,8 @@ export default function EntryTicketPage({
     let cancelled = false;
     setStudentReviewMode(true);
     setStudentReviewError(null);
-    setStudentReviewReady(false);
     setModeratorGateChecked(true);
+    if (route.archiveIndex) setReviewArchiveIndex(route.archiveIndex);
     void (async () => {
       try {
         const qs = new URLSearchParams({
@@ -2427,6 +2433,11 @@ export default function EntryTicketPage({
         } else if (route.groupId) {
           setEntryTicketGroupId(route.groupId);
         }
+        if (typeof (data as { index?: number }).index === 'number' && (data as { index: number }).index >= 1) {
+          setReviewArchiveIndex((data as { index: number }).index);
+        } else if (route.archiveIndex) {
+          setReviewArchiveIndex(route.archiveIndex);
+        }
         setSelectedTasks(tasks);
         setSharedTasksLocked(true);
         setBandChosen(true);
@@ -2446,6 +2457,50 @@ export default function EntryTicketPage({
       cancelled = true;
     };
   }, [location.search, applyGradeParam]);
+
+  /** Review: wie viele Tickets die Gruppe hat — für Vor/Zurück. */
+  useEffect(() => {
+    const route = parseEntryTicketSearch(location.search);
+    if (!route.review || !route.groupId) {
+      setReviewArchiveCount(0);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await apiGet(
+          `/api/entry-ticket/completed-list?groupId=${encodeURIComponent(route.groupId!)}`,
+        );
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as { items?: Array<{ index?: number }> };
+        if (cancelled) return;
+        const items = Array.isArray(data.items) ? data.items : [];
+        const maxIndex = items.reduce((m, it) => {
+          const n = typeof it.index === 'number' ? it.index : 0;
+          return n > m ? n : m;
+        }, items.length);
+        setReviewArchiveCount(maxIndex);
+      } catch {
+        if (!cancelled) setReviewArchiveCount(0);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [location.search]);
+
+  const goReviewArchive = useCallback(
+    (nextIndex: number) => {
+      if (!Number.isInteger(nextIndex) || nextIndex < 1) return;
+      const params = new URLSearchParams(location.search);
+      params.set('review', '1');
+      params.set('index', String(nextIndex));
+      params.delete('lessonPath');
+      params.delete('lesson');
+      navigate(`/entry-ticket?${params.toString()}`, { replace: true });
+    },
+    [location.search, navigate],
+  );
 
   /** Nicht-Lehrkräfte: nur Klassen-Moderator darf die volle Ticket-Seite nutzen (außer Review) */
   useEffect(() => {
@@ -3925,8 +3980,24 @@ export default function EntryTicketPage({
         return;
       }
 
-      // SuS-Review: nur Überblick ansehen — keine Session-Steuerung per Tastatur
-      if (studentReviewMode) return;
+      // Review: Pfeile wechseln zwischen erledigten Tickets, sonst keine Session-Steuerung
+      if (studentReviewMode) {
+        if (typingOrInField(e)) return;
+        if (e.key === 'ArrowLeft' && reviewArchiveIndex != null && reviewArchiveIndex > 1) {
+          e.preventDefault();
+          goReviewArchive(reviewArchiveIndex - 1);
+        }
+        if (
+          e.key === 'ArrowRight' &&
+          reviewArchiveIndex != null &&
+          reviewArchiveCount > 0 &&
+          reviewArchiveIndex < reviewArchiveCount
+        ) {
+          e.preventDefault();
+          goReviewArchive(reviewArchiveIndex + 1);
+        }
+        return;
+      }
       if (laptopCompanion) return;
       if (editingIndex !== null) return;
 
@@ -3982,6 +4053,9 @@ export default function EntryTicketPage({
     studentReviewMode,
     laptopCompanion,
     editingIndex,
+    goReviewArchive,
+    reviewArchiveIndex,
+    reviewArchiveCount,
   ]);
 
   const formatPromptForDisplay = (prompt: string): string => formatEntryTicketPromptStructure(prompt);
@@ -4480,7 +4554,55 @@ export default function EntryTicketPage({
     >
       <Box sx={{ width: '100%', maxWidth: '100%', mx: 0, minWidth: 0, boxSizing: 'border-box', flex: embeddedPlay ? 1 : undefined, minHeight: embeddedPlay ? 0 : undefined, display: embeddedPlay ? 'flex' : undefined, flexDirection: embeddedPlay ? 'column' : undefined }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0, pb: 0, gap: 0.5, minHeight: 0, flexShrink: 0, flexWrap: 'nowrap', overflow: 'hidden', height: 44, px: embeddedPlay ? 0.6 : 0.15 }}>
-          {sessionStarted || studentReviewMode ? (
+          {studentReviewMode && reviewArchiveIndex != null && reviewArchiveCount > 1 ? (
+            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.2, flexShrink: 0 }}>
+              <Tooltip title="Voriges Ticket">
+                <span>
+                  <IconButton
+                    size="small"
+                    disabled={reviewArchiveIndex <= 1}
+                    onClick={() => goReviewArchive(reviewArchiveIndex - 1)}
+                    aria-label="Voriges Entry Ticket"
+                    sx={{ ...etSessionBtnSx, width: 32, height: 32, minWidth: 32 }}
+                  >
+                    <SkipPreviousIcon sx={{ fontSize: 22 }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Typography
+                aria-label={`Ticket ${reviewArchiveIndex} von ${reviewArchiveCount}`}
+                sx={{
+                  fontSize: { xs: '1.55rem', sm: '1.9rem' },
+                  fontWeight: 900,
+                  color: '#1565c0',
+                  fontVariantNumeric: 'tabular-nums',
+                  lineHeight: 1,
+                  letterSpacing: -0.05,
+                  minWidth: 52,
+                  textAlign: 'center',
+                  px: 0.2,
+                }}
+              >
+                {reviewArchiveIndex}
+                <Box component="span" sx={{ color: '#90a4ae', fontWeight: 800, fontSize: '0.58em' }}>
+                  /{reviewArchiveCount}
+                </Box>
+              </Typography>
+              <Tooltip title="Nächstes Ticket">
+                <span>
+                  <IconButton
+                    size="small"
+                    disabled={reviewArchiveIndex >= reviewArchiveCount}
+                    onClick={() => goReviewArchive(reviewArchiveIndex + 1)}
+                    aria-label="Nächstes Entry Ticket"
+                    sx={{ ...etSessionBtnSx, width: 32, height: 32, minWidth: 32 }}
+                  >
+                    <SkipNextIcon sx={{ fontSize: 22 }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Box>
+          ) : sessionStarted || studentReviewMode ? (
             <Typography
               aria-label={`Karte ${sessionDone ? activeTasks.length : currentIndex + 1} von ${activeTasks.length}`}
               sx={{

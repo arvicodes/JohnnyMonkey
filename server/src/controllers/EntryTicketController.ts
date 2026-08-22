@@ -354,6 +354,20 @@ async function upsertArchiveForGroup(
   });
 }
 
+async function saveArchiveStore(
+  teacherId: string,
+  groupId: string,
+  store: EntryTicketArchiveStore,
+): Promise<void> {
+  const lessonPath = entryTicketDonePathForGroup(groupId);
+  const content = JSON.stringify({ archives: store.archives.slice(0, 200) });
+  await prisma.teacherLessonInstruction.upsert({
+    where: { teacherId_lessonPath: { teacherId, lessonPath } },
+    create: { teacherId, lessonPath, content },
+    update: { content },
+  });
+}
+
 function countCustomSetTasks(set: EntryTicketCustomSetPayload): number {
   return (set.lessons || []).reduce((n, l) => n + (l.tasks?.length || 0), 0);
 }
@@ -1121,6 +1135,87 @@ export class EntryTicketController {
     } catch (error) {
       console.error('EntryTicket getCompletedList error:', error);
       return res.status(500).json({ error: 'Fehler beim Laden' });
+    }
+  }
+
+  /**
+   * Lehrkraft: erledigtes Entry Ticket aus der gemeinsamen Liste entfernen.
+   * Body/Query: groupId, index (1 = zuerst erledigt).
+   */
+  static async deleteCompleted(req: Request, res: Response) {
+    try {
+      const user = await getUserByLoginCode(req);
+      if (!user) return res.status(401).json({ error: 'Nicht angemeldet' });
+      if (user.role !== 'TEACHER') {
+        return res.status(403).json({ error: 'Nur Lehrkräfte' });
+      }
+
+      const groupId = String(req.body?.groupId || req.query.groupId || '').trim();
+      const indexRaw = Number.parseInt(String(req.body?.index ?? req.query.index ?? ''), 10);
+      const archiveIndex = Number.isInteger(indexRaw) && indexRaw >= 1 ? indexRaw : null;
+      if (!groupId || !archiveIndex) {
+        return res.status(400).json({ error: 'groupId und index erforderlich' });
+      }
+
+      const group = await prisma.learningGroup.findUnique({
+        where: { id: groupId },
+        select: { id: true, name: true, teacherId: true },
+      });
+      if (!group) return res.status(404).json({ error: 'Lerngruppe nicht gefunden' });
+      if (group.teacherId !== user.id) {
+        return res.status(403).json({ error: 'Kein Zugriff' });
+      }
+
+      const row = await prisma.teacherLessonInstruction.findUnique({
+        where: {
+          teacherId_lessonPath: {
+            teacherId: group.teacherId,
+            lessonPath: entryTicketDonePathForGroup(groupId),
+          },
+        },
+        select: { content: true },
+      });
+      const store = parseArchiveStore(row?.content);
+      const numbered = numberedArchives(store);
+      const hit = numbered.find((a) => a.index === archiveIndex);
+      if (!hit) {
+        return res.status(404).json({ error: 'Entry Ticket nicht gefunden' });
+      }
+
+      let removed = false;
+      const archives = store.archives.filter((a) => {
+        if (removed) return true;
+        const sameStart = a.startedAt === hit.startedAt;
+        const sameDone = (a.completedAt || a.startedAt) === hit.completedAt;
+        if (sameStart && sameDone) {
+          removed = true;
+          return false;
+        }
+        return true;
+      });
+      await saveArchiveStore(group.teacherId, groupId, { archives });
+
+      const items = numberedArchives({ archives }).map((a) => ({
+        index: a.index,
+        startedAt: a.startedAt,
+        completedAt: a.completedAt,
+        grade: a.grade ?? null,
+        customSetId: archiveCustomSetId(a),
+        setName: archiveSetName(a),
+        reihePath: a.customSet?.reihePath ?? null,
+        materialLessonPath: a.materialLessonPath ?? null,
+        taskCount: a.tasks?.length ?? 0,
+      }));
+
+      return res.json({
+        success: true,
+        items,
+        learningGroupId: groupId,
+        groupName: group.name,
+      });
+    } catch (error) {
+      console.error('EntryTicket deleteCompleted error:', error);
+      return res.status(500).json({ error: 'Fehler beim Entfernen' });
     }
   }
 
