@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Box, CircularProgress, Dialog, IconButton, Tooltip, Typography } from '@mui/material';
-import { ChevronLeft, ChevronRight, Close as CloseIcon, SelfImprovement as QuietWorkIcon, MusicNote as MusicGameIcon } from '@mui/icons-material';
+import { Box, CircularProgress, IconButton, Typography } from '@mui/material';
+import { ChevronLeft, ChevronRight, SelfImprovement as QuietWorkIcon, MusicNote as MusicGameIcon } from '@mui/icons-material';
 import PresentationSlideView from './PresentationSlideView';
 import PresentationStrokesPreview from './PresentationStrokesPreview';
 import {
@@ -118,7 +118,6 @@ export default function PresentationLaptopPlayer({
   const panDragRef = useRef<{ x: number; y: number; panX: number; panY: number; moved: boolean } | null>(null);
   const didPanRef = useRef(false);
   const [panning, setPanning] = useState(false);
-  const [notesLightboxSrc, setNotesLightboxSrc] = useState<string | null>(null);
   const [entryTicketOpen, setEntryTicketOpen] = useState(false);
   const quietWork = useQuietWorkController();
   const musicGame = useMusicGameController();
@@ -163,25 +162,6 @@ export default function PresentationLaptopPlayer({
     setUserZoom(clamped);
     setPan(nextPan);
   }, []);
-
-  const openNotesImageLightbox = useCallback((rawSrc: string) => {
-    const src = rawSrc.trim();
-    if (!src) return;
-    // Vorschau oft mit max=960 — Lightbox so scharf wie der Server erlaubt
-    const hi = src.replace(/([?&]max=)\d+/i, '$12400');
-    setNotesLightboxSrc(hi);
-  }, []);
-
-  const onNotesHtmlClick = useCallback(
-    (e: React.MouseEvent<HTMLElement>) => {
-      const t = e.target;
-      if (!(t instanceof HTMLImageElement)) return;
-      e.preventDefault();
-      e.stopPropagation();
-      openNotesImageLightbox(t.currentSrc || t.src || t.getAttribute('src') || '');
-    },
-    [openNotesImageLightbox]
-  );
 
   useEffect(() => {
     let cancelled = false;
@@ -343,19 +323,12 @@ export default function PresentationLaptopPlayer({
       }
       if (handlePresentZoomHotkey(e, userZoom, applyUserZoom)) return;
       if (e.key === 'Escape') {
-        if (notesLightboxSrc) {
-          e.preventDefault();
-          e.stopPropagation();
-          setNotesLightboxSrc(null);
-          return;
-        }
         if (onClose) {
           e.preventDefault();
           onClose();
         }
         return;
       }
-      if (notesLightboxSrc) return;
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') {
         e.preventDefault();
         goNext();
@@ -382,7 +355,7 @@ export default function PresentationLaptopPlayer({
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [goNext, goPrev, onClose, slides, notesLightboxSrc, userZoom, entryTicketOpen, applyUserZoom, quietWork, musicGame]);
+  }, [goNext, goPrev, onClose, slides, userZoom, entryTicketOpen, applyUserZoom, quietWork, musicGame]);
 
   useEffect(() => {
     const host = rootRef.current;
@@ -691,7 +664,6 @@ export default function PresentationLaptopPlayer({
           <Box sx={{ ml: 0.25 }}>
             <PresentationSoundSplitControl variant="laptop" />
           </Box>
-          <Tooltip title={quietWork.running ? 'Stillarbeit beenden' : 'Stillarbeit'}>
             <IconButton
               size="small"
               aria-label="Stillarbeit"
@@ -707,8 +679,6 @@ export default function PresentationLaptopPlayer({
             >
               <QuietWorkIcon sx={{ fontSize: 18 }} />
             </IconButton>
-          </Tooltip>
-          <Tooltip title={musicGame.running ? 'Musikspiel beenden' : 'Musikspiel'}>
             <IconButton
               size="small"
               aria-label="Musikspiel"
@@ -723,7 +693,6 @@ export default function PresentationLaptopPlayer({
             >
               <MusicGameIcon sx={{ fontSize: 18 }} />
             </IconButton>
-          </Tooltip>
         </Box>
       )}
       {/* Stage: dunkler Rahmen um die Folie; Embedded ohne großen Letterbox */}
@@ -952,7 +921,6 @@ export default function PresentationLaptopPlayer({
           <Box sx={{ ml: 0.35 }}>
             <PresentationSoundSplitControl variant="laptop" />
           </Box>
-          <Tooltip title={quietWork.running ? 'Stillarbeit beenden' : 'Stillarbeit'}>
             <IconButton
               size="small"
               aria-label="Stillarbeit"
@@ -968,8 +936,6 @@ export default function PresentationLaptopPlayer({
             >
               <QuietWorkIcon sx={{ fontSize: 16 }} />
             </IconButton>
-          </Tooltip>
-          <Tooltip title={musicGame.running ? 'Musikspiel beenden' : 'Musikspiel'}>
             <IconButton
               size="small"
               aria-label="Musikspiel"
@@ -985,7 +951,6 @@ export default function PresentationLaptopPlayer({
             >
               <MusicGameIcon sx={{ fontSize: 16 }} />
             </IconButton>
-          </Tooltip>
           {showNotes && (
             <Typography
               sx={{
@@ -1044,7 +1009,7 @@ export default function PresentationLaptopPlayer({
                   listGapPx: 4,
                 }),
                 ...presentationNotesTableSx(),
-                ...presentationNotesImageViewSx({ maxHeight: embedded ? 240 : 110 }),
+                ...presentationNotesImageViewSx(),
                 '& mark': { borderRadius: 0.5 },
                 '& [data-pres-fs]': { lineHeight: 'inherit' },
                 '& [data-pres-color]': { lineHeight: 'inherit' },
@@ -1053,12 +1018,9 @@ export default function PresentationLaptopPlayer({
                 '& i, & em': { fontStyle: 'italic' },
                 '& u': { textDecoration: 'underline' },
                 '& img': {
-                  cursor: 'zoom-in',
-                  transition: 'opacity 0.15s ease',
-                  '&:hover': { opacity: 0.92 },
+                  cursor: 'default',
                 },
               }}
-              onClick={onNotesHtmlClick}
               dangerouslySetInnerHTML={{ __html: displayNotesHtml }}
             />
           ) : (
@@ -1080,84 +1042,6 @@ export default function PresentationLaptopPlayer({
         )}
       </Box>
 
-      <Dialog
-        open={!!notesLightboxSrc}
-        onClose={() => setNotesLightboxSrc(null)}
-        maxWidth={false}
-        fullWidth
-        // Über Laptop-Spalte (oft modal+1) und andere Overlays legen
-        sx={{ zIndex: 20000 }}
-        slotProps={{
-          backdrop: { sx: { bgcolor: 'rgba(10,12,16,0.92)', zIndex: 20000 } },
-        }}
-        PaperProps={{
-          sx: {
-            m: 0,
-            width: '100vw',
-            maxWidth: '100vw',
-            height: '100vh',
-            maxHeight: '100vh',
-            bgcolor: 'transparent',
-            boxShadow: 'none',
-            overflow: 'hidden',
-            zIndex: 20001,
-            borderRadius: 0,
-          },
-        }}
-      >
-        <Box
-          sx={{
-            position: 'relative',
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            p: 0.5,
-            boxSizing: 'border-box',
-          }}
-          onClick={() => setNotesLightboxSrc(null)}
-        >
-          <IconButton
-            size="small"
-            onClick={() => setNotesLightboxSrc(null)}
-            aria-label="Schließen"
-            sx={{
-              position: 'fixed',
-              top: 8,
-              right: 8,
-              zIndex: 20002,
-              width: 22,
-              height: 22,
-              p: 0,
-              color: 'rgba(255,255,255,0.92)',
-              bgcolor: 'rgba(0,0,0,0.5)',
-              border: '1px solid rgba(255,255,255,0.22)',
-              '&:hover': { bgcolor: 'rgba(0,0,0,0.72)' },
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 14 }} />
-          </IconButton>
-          {notesLightboxSrc && (
-            <Box
-              component="img"
-              src={notesLightboxSrc}
-              alt=""
-              onClick={(e) => e.stopPropagation()}
-              sx={{
-                maxWidth: '98vw',
-                maxHeight: '98vh',
-                width: 'auto',
-                height: 'auto',
-                objectFit: 'contain',
-                borderRadius: 0.5,
-                boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-                cursor: 'zoom-out',
-              }}
-            />
-          )}
-        </Box>
-      </Dialog>
       {entryTicketOpen ? (
         <Box
           data-entry-ticket-open=""

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Divider, IconButton, Tooltip, Typography } from '@mui/material';
+import { Box, Divider, IconButton, Typography } from '@mui/material';
 import {
   ArrowForward as ArrowIcon,
   Casino as CasinoIcon,

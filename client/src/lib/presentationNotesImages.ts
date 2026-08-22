@@ -77,8 +77,8 @@ export function presentationNotesImageEditorSx() {
 }
 
 /** Anzeige (Laptop / Abgaben): gespeicherte Positionen respektieren. */
-export function presentationNotesImageViewSx(options?: { maxHeight?: number }) {
-  const maxHeight = options?.maxHeight ?? 180;
+export function presentationNotesImageViewSx(options?: { maxHeight?: number | null }) {
+  const maxHeight = options?.maxHeight;
   return {
     position: 'relative' as const,
     [`& .${PRES_NOTES_IMG_WRAP_CLASS}`]: {
@@ -96,7 +96,7 @@ export function presentationNotesImageViewSx(options?: { maxHeight?: number }) {
     },
     [`& img, & img[${PRES_NOTES_IMG_ATTR}]`]: {
       maxWidth: '100%',
-      maxHeight,
+      ...(maxHeight ? { maxHeight } : {}),
       width: 'auto',
       height: 'auto',
       objectFit: 'contain',
@@ -106,7 +106,7 @@ export function presentationNotesImageViewSx(options?: { maxHeight?: number }) {
     },
     [`& .${PRES_NOTES_IMG_WRAP_CLASS} img`]: {
       my: 0,
-      maxHeight,
+      ...(maxHeight ? { maxHeight } : {}),
     },
     [`& .${PRES_NOTES_IMG_WRAP_CLASS}[${PRES_NOTES_IMG_POS_ATTR}="1"] img`]: {
       maxWidth: 'none',

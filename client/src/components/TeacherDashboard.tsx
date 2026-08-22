@@ -6265,16 +6265,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   } | null>(null);
   const [lessonPlanViewMode, setLessonPlanViewMode] = useState<'create' | 'run' | 'background'>('create');
   const [laptopPresentationActive, setLaptopPresentationActive] = useState(false);
-  const [laptopSplitPct, setLaptopSplitPct] = useState(() => {
-    try {
-      const n = Number(localStorage.getItem('johnny-laptop-split-pct'));
-      if (!Number.isFinite(n)) return 58;
-      return Math.min(76, Math.max(28, Math.round(n)));
-    } catch {
-      return 58;
-    }
-  });
+  const [laptopSplitPct, setLaptopSplitPct] = useState(58);
   const laptopSplitDraggingRef = useRef(false);
+  const laptopSplitListenersRef = useRef<{
+    move: (ev: PointerEvent) => void;
+    up: () => void;
+  } | null>(null);
   /** Remount-Key: bei jedem √ñffnen frisches Live-Deck laden */
   const [laptopPresentationMountKey, setLaptopPresentationMountKey] = useState(0);
   /** Laptop-Linksspalte: Deck (Original/bearbeitet) oder benannte PDF-Version */
@@ -15277,29 +15273,38 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
   const lessonSplitLeft = isLessonStundeRoute && lessonPlanViewMode === 'background';
   const laptopLeftWidth = `${laptopSplitPct}%`;
   const laptopRightWidth = `${100 - laptopSplitPct}%`;
-  const beginLaptopSplitDrag = (e: React.PointerEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    laptopSplitDraggingRef.current = true;
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  };
-  const moveLaptopSplitDrag = (e: React.PointerEvent) => {
-    if (!laptopSplitDraggingRef.current) return;
-    const pct = Math.min(76, Math.max(28, Math.round((e.clientX / window.innerWidth) * 100)));
-    setLaptopSplitPct(pct);
-    try {
-      localStorage.setItem('johnny-laptop-split-pct', String(pct));
-    } catch {
-      /* ignore */
-    }
-  };
   const endLaptopSplitDrag = () => {
-    if (!laptopSplitDraggingRef.current) return;
+    if (!laptopSplitDraggingRef.current && !laptopSplitListenersRef.current) return;
     laptopSplitDraggingRef.current = false;
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
+    if (laptopSplitListenersRef.current) {
+      window.removeEventListener('pointermove', laptopSplitListenersRef.current.move);
+      window.removeEventListener('pointerup', laptopSplitListenersRef.current.up);
+      laptopSplitListenersRef.current = null;
+    }
+  };
+  const beginLaptopSplitDrag = (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    endLaptopSplitDrag();
+    laptopSplitDraggingRef.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    const move = (ev: PointerEvent) => {
+      if (!laptopSplitDraggingRef.current) return;
+      const pct = Math.min(76, Math.max(28, Math.round((ev.clientX / window.innerWidth) * 100)));
+      setLaptopSplitPct(pct);
+      try {
+        localStorage.setItem('johnny-laptop-split-pct', String(pct));
+      } catch {
+        /* ignore */
+      }
+    };
+    const up = () => endLaptopSplitDrag();
+    laptopSplitListenersRef.current = { move, up };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
   };
   /** Gemeinsame Mittellinie / Farb√ºbergang Laptop-Zweispalter */
   const laptopSplitSeam = alpha('#3949ab', 0.2);
@@ -24608,17 +24613,14 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
       {lessonSplitLeft && (
         <Box
           onPointerDown={beginLaptopSplitDrag}
-          onPointerMove={moveLaptopSplitDrag}
-          onPointerUp={endLaptopSplitDrag}
-          onPointerCancel={endLaptopSplitDrag}
           sx={{
             position: 'fixed',
             top: 0,
-            left: `calc(${laptopSplitPct}% - 6px)`,
-            width: 12,
+            left: `calc(${laptopSplitPct}% - 3px)`,
+            width: 6,
             height: '100vh',
             cursor: 'col-resize',
-            zIndex: (theme) => theme.zIndex.modal + 8,
+            zIndex: (theme) => theme.zIndex.modal + 12,
             touchAction: 'none',
             '&:hover': {
               '&::after': { opacity: 1 },
@@ -24628,11 +24630,11 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
               position: 'absolute',
               top: 0,
               bottom: 0,
-              left: 4,
+              left: 1,
               width: 4,
               borderRadius: 2,
-              bgcolor: alpha('#3949ab', 0.35),
-              opacity: 0.35,
+              bgcolor: alpha('#3949ab', 0.45),
+              opacity: 0.4,
               transition: 'opacity 0.15s ease',
             },
           }}
@@ -24654,6 +24656,10 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                   justifyContent: 'flex-end',
                   alignItems: 'stretch',
                   overflow: 'hidden',
+                  pointerEvents: 'none',
+                },
+                '& .MuiPaper-root': {
+                  pointerEvents: 'auto',
                 },
               }
             : undefined
