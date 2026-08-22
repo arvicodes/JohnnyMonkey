@@ -15421,14 +15421,27 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         {/* Header Section – auch auf /teacher/stunde und während Laptop-Präsentation */}
         <Grid item xs={12}>
           <Box sx={{ 
-            p: 1.05,
+            p: lessonSplitLeft ? 0.45 : 1.05,
             background: '#f8f9fa',
             color: '#222',
             borderRadius: '12px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            ...(lessonSplitLeft && {
+              position: 'relative',
+              zIndex: 4,
+              maxWidth: laptopLeftWidth,
+              boxSizing: 'border-box',
+            }),
           }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: lessonSplitLeft ? 'flex-start' : 'space-between',
+                gap: lessonSplitLeft ? 0.4 : 0,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: lessonSplitLeft ? 0.35 : 1.5, flexShrink: 0 }}>
                 <TeacherSettingsMenu
                   teacherName={teacherName}
                   userId={userId}
@@ -15440,7 +15453,34 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   onGoToDashboard={handleCloseLessonPage}
                 />
               </Box>
-              <Box display="flex" gap={0.5} alignItems="center">
+              <Box
+                display="flex"
+                alignItems="center"
+                sx={{
+                  gap: lessonSplitLeft ? 0.2 : 0.5,
+                  minWidth: 0,
+                  flexWrap: lessonSplitLeft ? 'nowrap' : 'wrap',
+                  ...(lessonSplitLeft && {
+                    '& .MuiIconButton-root': {
+                      minWidth: '22px !important',
+                      width: '22px !important',
+                      height: '22px !important',
+                      p: '1px !important',
+                    },
+                    '& .MuiButton-root': {
+                      minWidth: '44px !important',
+                      width: 'auto !important',
+                      height: '22px !important',
+                      fontSize: '0.58rem !important',
+                      px: '5px !important',
+                      py: '0 !important',
+                    },
+                    '& .MuiSvgIcon-root': {
+                      fontSize: '13px !important',
+                    },
+                  }),
+                }}
+              >
                 <IconButton
                   onClick={() => window.dispatchEvent(new Event(OPEN_TEACHER_NOTES_EVENT))}
                   sx={{
@@ -15566,7 +15606,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     navigate(`/entry-ticket?${qs.toString()}`);
                   }}
                   sx={{
-                    ml: 'auto',
+                    ml: lessonSplitLeft ? 0 : 'auto',
                     p: 0.5,
                     minWidth: 32,
                     width: 32,
