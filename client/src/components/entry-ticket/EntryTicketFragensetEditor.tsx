@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Autocomplete,
   Box,
   Checkbox,
+  Chip,
   Collapse,
   IconButton,
   TextField,
@@ -20,16 +22,24 @@ import {
   copyTaskIdsToLaterSection,
   createCustomTask,
   createLessonSection,
+  customSetReihePaths,
   ensureSpecialLessonSections,
   isGeneralLessonSection,
   isLaterLessonSection,
   laterSectionContainsTask,
+  mergeDiscoveredLessonsIntoSet,
   parseEntryTicketCardList,
   sortLessonsChronologically,
+  withCustomSetReihePaths,
   type EntryTicketCustomSet,
   type EntryTicketCustomTask,
   type EntryTicketLessonSection,
 } from '../../lib/entryTicketCustomSets';
+import {
+  discoverLessonsForCustomSet,
+  loadEntryTicketReihenCatalog,
+} from '../../lib/entryTicketReiheLessons';
+import { reiheLabelFromPath, type WorkingReiheOption } from '../../lib/dashboardWorkingReihen';
 import { entryTicketShowCountStyle } from '../../lib/entryTicketRichText';
 import { EntryTicketRichField } from './EntryTicketRichField';
 
@@ -154,10 +164,63 @@ export function EntryTicketFragensetEditor({
   const [listDraftByLesson, setListDraftByLesson] = useState<Record<string, string>>({});
   /** Markierte Karten pro Stunde (taskIds). */
   const [selectedTaskIdsByLesson, setSelectedTaskIdsByLesson] = useState<Record<string, string[]>>({});
+  const [reiheOptions, setReiheOptions] = useState<WorkingReiheOption[]>([]);
+  const [reiheOptionsLoading, setReiheOptionsLoading] = useState(true);
+  const [reiheBusy, setReiheBusy] = useState(false);
 
   useEffect(() => {
     setNameDraft(set.name);
   }, [set.id, set.name]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setReiheOptionsLoading(true);
+    void loadEntryTicketReihenCatalog(customSetReihePaths(set))
+      .then((opts) => {
+        if (!cancelled) setReiheOptions(opts);
+      })
+      .finally(() => {
+        if (!cancelled) setReiheOptionsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Katalog einmal laden; zugewiesene Pfade werden unten extra gemerged.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount
+  }, []);
+
+  const assignedReihePaths = customSetReihePaths(set);
+  const catalogOptions = useMemo(() => {
+    const byPath = new Map(reiheOptions.map((o) => [o.path, o]));
+    for (const path of assignedReihePaths) {
+      if (!byPath.has(path)) {
+        byPath.set(path, { path, label: reiheLabelFromPath(path) });
+      }
+    }
+    return Array.from(byPath.values());
+  }, [assignedReihePaths, reiheOptions]);
+  const selectedReihen = useMemo(
+    () =>
+      assignedReihePaths
+        .map((path) => catalogOptions.find((o) => o.path === path))
+        .filter((o): o is WorkingReiheOption => Boolean(o)),
+    [assignedReihePaths, catalogOptions],
+  );
+
+  const applyReihePaths = async (paths: string[]) => {
+    const next = withCustomSetReihePaths(set, paths);
+    onChange(next);
+    setReiheBusy(true);
+    try {
+      const discovered = await discoverLessonsForCustomSet(next);
+      const merged = mergeDiscoveredLessonsIntoSet(next, discovered);
+      if (merged !== next) onChange(merged);
+    } catch {
+      /* ignore */
+    } finally {
+      setReiheBusy(false);
+    }
+  };
 
   // Bestehende Sets ohne „Allgemein“ / „Für später“ nachziehen (Laden sorgt i. d. R. schon dafür)
   useEffect(() => {
@@ -431,6 +494,63 @@ export function EntryTicketFragensetEditor({
             <DeleteOutlineIcon sx={{ fontSize: 15 }} />
           </IconButton>
         </Tooltip>
+      </Box>
+
+      <Box sx={{ width: '100%', px: 0.6, pt: 0.55, pb: 0, boxSizing: 'border-box' }}>
+        <Autocomplete
+          multiple
+          disableCloseOnSelect
+          options={catalogOptions}
+          value={selectedReihen}
+          loading={reiheOptionsLoading || reiheBusy}
+          onChange={(_, next) => {
+            void applyReihePaths(next.map((o) => o.path));
+          }}
+          isOptionEqualToValue={(a, b) => a.path === b.path}
+          getOptionLabel={(o) => (o.subject ? `${o.label} · ${o.subject}` : o.label)}
+          groupBy={(o) => o.subject || ''}
+          filterSelectedOptions
+          renderTags={(value, getTagProps) =>
+            value.map((option, index) => {
+              const { key, ...tagProps } = getTagProps({ index });
+              return (
+                <Chip
+                  key={key}
+                  size="small"
+                  label={option.label}
+                  {...tagProps}
+                  sx={{
+                    height: 22,
+                    fontWeight: 700,
+                    fontSize: '0.68rem',
+                    bgcolor: '#e8f5e9',
+                    color: '#2e7d32',
+                    '& .MuiChip-deleteIcon': { fontSize: 14, color: '#66bb6a' },
+                  }}
+                />
+              );
+            })
+          }
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              size="small"
+              placeholder={selectedReihen.length === 0 ? 'Unterrichtsreihen zuordnen…' : ''}
+              sx={{
+                ...fieldSx,
+                '& .MuiInputBase-root': { py: 0.15, minHeight: 32 },
+                '& .MuiInputBase-input': {
+                  ...fieldSx['& .MuiInputBase-input'],
+                  fontSize: '0.72rem',
+                },
+              }}
+              inputProps={{
+                ...params.inputProps,
+                'aria-label': 'Unterrichtsreihen zum Kartenset',
+              }}
+            />
+          )}
+        />
       </Box>
 
       <Box sx={{ width: '100%', px: 0.6, pt: 0.55, pb: 0, boxSizing: 'border-box' }}>

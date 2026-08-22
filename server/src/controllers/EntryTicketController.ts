@@ -27,6 +27,7 @@ type EntryTicketCustomSetPayload = {
   id: string;
   name: string;
   reihePath?: string;
+  reihePaths?: string[];
   /** Persönliche Lehrer-Notizen */
   notes?: string;
   lessons: Array<{
@@ -177,6 +178,16 @@ const normalizeCustomSetPayload = (raw: unknown): EntryTicketCustomSetPayload | 
     typeof row.reihePath === 'string' && row.reihePath.trim()
       ? row.reihePath.trim().replace(/\\/g, '/').slice(0, 500)
       : undefined;
+  const reihePaths: string[] = [];
+  const addReihe = (raw: unknown) => {
+    if (typeof raw !== 'string' || !raw.trim()) return;
+    const n = raw.trim().replace(/\\/g, '/').slice(0, 500);
+    if (n && !reihePaths.includes(n)) reihePaths.push(n);
+  };
+  if (Array.isArray(row.reihePaths)) {
+    for (const item of row.reihePaths) addReihe(item);
+  }
+  addReihe(reihePath);
   const notes =
     typeof row.notes === 'string' && row.notes.trim()
       ? row.notes.replace(/\r\n/g, '\n').slice(0, 4000)
@@ -184,7 +195,8 @@ const normalizeCustomSetPayload = (raw: unknown): EntryTicketCustomSetPayload | 
   return {
     id,
     name,
-    ...(reihePath ? { reihePath } : {}),
+    ...(reihePaths[0] ? { reihePath: reihePaths[0] } : {}),
+    ...(reihePaths.length > 0 ? { reihePaths } : {}),
     ...(notes ? { notes } : {}),
     lessons,
   };
@@ -325,13 +337,18 @@ function mergeCustomSetMaps(
   if (!set?.id || !set.id.startsWith('c_')) return;
   const prev = into.get(set.id);
   if (!prev || countCustomSetTasks(set) >= countCustomSetTasks(prev)) {
+    const reihePaths = [
+      ...(Array.isArray(set.reihePaths) ? set.reihePaths : []),
+      ...(Array.isArray(prev?.reihePaths) ? prev.reihePaths : []),
+      set.reihePath,
+      prev?.reihePath,
+    ].filter((p, i, a): p is string => typeof p === 'string' && Boolean(p) && a.indexOf(p) === i);
     into.set(set.id, {
       id: set.id,
       name: set.name || 'Fragenset',
       lessons: Array.isArray(set.lessons) ? set.lessons : [],
-      ...(set.reihePath || prev?.reihePath
-        ? { reihePath: set.reihePath || prev?.reihePath }
-        : {}),
+      ...(reihePaths[0] ? { reihePath: reihePaths[0] } : {}),
+      ...(reihePaths.length > 0 ? { reihePaths } : {}),
       ...(set.notes || prev?.notes ? { notes: set.notes ?? prev?.notes } : {}),
     });
   }

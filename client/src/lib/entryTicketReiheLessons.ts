@@ -1,6 +1,11 @@
 /** Stunden einer Unterrichtsreihe unter J-M-Reihen für Entry-Ticket-Fragensets finden. */
 
 import { isWochenaufgabenFolderName } from './wochenaufgabenFolder';
+import {
+  collectReihenFromJmTree,
+  mergeReihenOptions,
+  type WorkingReiheOption,
+} from './dashboardWorkingReihen';
 
 export type DiscoveredReiheLesson = {
   lessonName: string;
@@ -263,4 +268,50 @@ export async function discoverLessonsForReiheName(
   const children = series.children?.length ? series.children : await readFolderTree(series.path);
   if (children.length === 0) return { reihePath: toGitInternPath(series.path), lessons: [] };
   return lessonsFromSeriesFolder(series.path, children);
+}
+
+/** Stunden aller zugeordneten Unterrichtsreihen (ohne Namenssuche, wenn Pfade gesetzt sind). */
+export async function discoverLessonsForCustomSet(set: {
+  name: string;
+  reihePath?: string;
+  reihePaths?: string[];
+}): Promise<{ reihePath: string | null; lessons: DiscoveredReiheLesson[] }> {
+  const rawPaths = Array.isArray(set.reihePaths) ? set.reihePaths : [];
+  const paths = [...rawPaths, set.reihePath || '']
+    .map((p) => toGitInternPath(String(p || '').trim()))
+    .filter((p, i, a) => Boolean(p) && a.indexOf(p) === i);
+
+  if (paths.length === 0) {
+    return discoverLessonsForReiheName(set.name, set.reihePath);
+  }
+
+  const all: DiscoveredReiheLesson[] = [];
+  const seen = new Set<string>();
+  for (const path of paths) {
+    const children = await readFolderTree(path);
+    if (children.length === 0) continue;
+    const found = lessonsFromSeriesFolder(path, children);
+    for (const lesson of found.lessons) {
+      const key = `${lesson.lessonKey}\n${lesson.lessonName}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      all.push(lesson);
+    }
+  }
+  return { reihePath: paths[0] ?? null, lessons: all };
+}
+
+/** Katalog aller Unterrichtsreihen unter J-M-Reihen für die Zuordnung am Kartenset. */
+export async function loadEntryTicketReihenCatalog(
+  extraPaths: string[] = [],
+): Promise<WorkingReiheOption[]> {
+  let children = await readFolderTree('J-M-Reihen');
+  if (children.length === 0) children = await readFolderTree('git-intern');
+  const discovered = collectReihenFromJmTree({
+    type: 'directory',
+    name: 'J-M-Reihen',
+    path: 'J-M-Reihen',
+    children,
+  });
+  return mergeReihenOptions(discovered, extraPaths);
 }

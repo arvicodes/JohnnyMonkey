@@ -30,12 +30,51 @@ export type EntryTicketCustomSet = {
   id: EntryTicketCustomSetId;
   /** Name der Reihe / des Fragensets. */
   name: string;
-  /** Optionaler Pfad zum Reihen-Ordner. */
+  /** Erster / älterer Reihen-Pfad (Kompatibilität). */
   reihePath?: string;
+  /** Zugeordnete Unterrichtsreihen (mehrere möglich). */
+  reihePaths?: string[];
   /** Persönliche Lehrer-Notizen (nicht ans Signal / SuS). */
   notes?: string;
   lessons: EntryTicketLessonSection[];
 };
+
+function parseReihePathList(raw: unknown, fallback?: string): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const add = (value: unknown) => {
+    if (typeof value !== 'string' || !value.trim()) return;
+    const p = normalizePath(value);
+    if (!p || seen.has(p)) return;
+    seen.add(p);
+    out.push(p);
+  };
+  if (Array.isArray(raw)) {
+    for (const item of raw) add(item);
+  }
+  add(fallback);
+  return out;
+}
+
+/** Alle zugeordneten Unterrichtsreihen (reihePaths + Legacy-reihePath). */
+export function customSetReihePaths(
+  set: Pick<EntryTicketCustomSet, 'reihePath' | 'reihePaths'> | null | undefined,
+): string[] {
+  if (!set) return [];
+  return parseReihePathList(set.reihePaths, set.reihePath);
+}
+
+export function withCustomSetReihePaths(
+  set: EntryTicketCustomSet,
+  paths: string[],
+): EntryTicketCustomSet {
+  const unique = parseReihePathList(paths);
+  return {
+    ...set,
+    reihePath: unique[0],
+    reihePaths: unique.length > 0 ? unique : undefined,
+  };
+}
 
 export const CUSTOM_SETS_STORAGE_KEY = 'entry-ticket-custom-question-sets-v2';
 /** Altformat (flach tasks[]) — wird beim Laden migriert. */
@@ -318,10 +357,15 @@ function migrateV1Set(raw: Record<string, unknown>): EntryTicketCustomSet | null
   if (!isCustomEntryTicketSetId(id) || !name) return null;
   if (Array.isArray(raw.lessons)) {
     const lessons = raw.lessons.map(parseLessonSection).filter((l): l is EntryTicketLessonSection => Boolean(l));
+    const paths = parseReihePathList(
+      raw.reihePaths,
+      typeof raw.reihePath === 'string' ? raw.reihePath : undefined,
+    );
     return ensureSpecialLessonSections({
       id,
       name,
-      reihePath: typeof raw.reihePath === 'string' ? normalizePath(raw.reihePath) : undefined,
+      reihePath: paths[0],
+      reihePaths: paths.length > 0 ? paths : undefined,
       notes:
         typeof raw.notes === 'string' && raw.notes.trim()
           ? raw.notes.replace(/\r\n/g, '\n').slice(0, 4000)
@@ -331,10 +375,15 @@ function migrateV1Set(raw: Record<string, unknown>): EntryTicketCustomSet | null
   }
   const tasksRaw = Array.isArray(raw.tasks) ? raw.tasks : [];
   const tasks = tasksRaw.map(parseTask).filter((t): t is EntryTicketCustomTask => Boolean(t));
+  const paths = parseReihePathList(
+    raw.reihePaths,
+    typeof raw.reihePath === 'string' ? raw.reihePath : undefined,
+  );
   return ensureSpecialLessonSections({
     id,
     name,
-    reihePath: typeof raw.reihePath === 'string' ? normalizePath(raw.reihePath) : undefined,
+    reihePath: paths[0],
+    reihePaths: paths.length > 0 ? paths : undefined,
     notes:
       typeof raw.notes === 'string' && raw.notes.trim()
         ? raw.notes.replace(/\r\n/g, '\n').slice(0, 4000)
@@ -455,9 +504,13 @@ export function mergeCustomSetsKeepExisting(
     }
     lessons[idx] = mergeLessonKeepExisting(lessons[idx], extra);
   }
+  const paths = parseReihePathList(
+    [...customSetReihePaths(primary), ...customSetReihePaths(incoming)],
+  );
   return ensureSpecialLessonSections({
     ...primary,
-    reihePath: primary.reihePath || incoming.reihePath,
+    reihePath: paths[0] || primary.reihePath || incoming.reihePath,
+    reihePaths: paths.length > 0 ? paths : undefined,
     notes: primary.notes ?? incoming.notes,
     lessons,
   });
@@ -552,10 +605,9 @@ export function findCustomSetForLessonPath(
   const withLesson = list.find((s) => findLessonSectionIndex(s, lessonPath) >= 0);
   if (withLesson) return withLesson;
   const want = normalizePath(lessonPath);
-  const byReihePath = list.find((s) => {
-    const rp = s.reihePath ? normalizePath(s.reihePath) : '';
-    return Boolean(rp) && (want === rp || want.startsWith(`${rp}/`));
-  });
+  const byReihePath = list.find((s) =>
+    customSetReihePaths(s).some((rp) => want === rp || want.startsWith(`${rp}/`)),
+  );
   if (byReihePath) return byReihePath;
 
   const seriesRoot = seriesFolderPathFromLessonPath(want);
@@ -707,13 +759,17 @@ export function mergeDiscoveredLessonsIntoSet(
 ): EntryTicketCustomSet {
   const ensured = ensureSpecialLessonSections(set);
   let changed = false;
-  let reihePath = ensured.reihePath;
-  if (discovered.reihePath && reihePath !== discovered.reihePath) {
-    reihePath = discovered.reihePath;
-    changed = true;
+  const paths = customSetReihePaths(ensured);
+  if (discovered.reihePath && paths.length === 0) {
+    const n = normalizePath(discovered.reihePath);
+    if (n) {
+      paths.push(n);
+      changed = true;
+    }
   }
+  const reihePath = paths[0] || ensured.reihePath;
   if (discovered.lessons.length === 0) {
-    return changed ? { ...ensured, reihePath } : set;
+    return changed ? { ...ensured, reihePath, reihePaths: paths.length > 0 ? paths : undefined } : set;
   }
 
   const general = ensured.lessons.filter(isGeneralLessonSection);
@@ -765,15 +821,18 @@ export function mergeDiscoveredLessonsIntoSet(
   return ensureSpecialLessonSections({
     ...ensured,
     reihePath,
+    reihePaths: paths.length > 0 ? paths : undefined,
     lessons: [...general, ...mergedMiddle, ...later],
   });
 }
 
 export function createEmptyCustomSet(name: string, reihePath?: string): EntryTicketCustomSet {
+  const paths = reihePath ? parseReihePathList([reihePath]) : [];
   return {
     id: makeCustomEntryTicketSetId(),
     name: name.trim() || 'Neues Fragenset',
-    reihePath: reihePath ? normalizePath(reihePath) : undefined,
+    reihePath: paths[0],
+    reihePaths: paths.length > 0 ? paths : undefined,
     lessons: [createGeneralLessonSection(), createLaterLessonSection()],
   };
 }

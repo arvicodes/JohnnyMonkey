@@ -53,6 +53,7 @@ import { presentationLessonBackUrl } from '../lib/presentationEditorUi';
 import { playPresentationSoundFor } from '../lib/presentationSound';
 import {
   type EntryTicketCustomSet,
+  customSetReihePaths,
   countCustomSetTasks,
   createEmptyCustomSet,
   createLessonSection,
@@ -71,7 +72,7 @@ import {
   sortLessonsChronologically,
   patchCustomSetTaskContent,
 } from '../lib/entryTicketCustomSets';
-import { discoverLessonsForReiheName } from '../lib/entryTicketReiheLessons';
+import { discoverLessonsForCustomSet, discoverLessonsForReiheName } from '../lib/entryTicketReiheLessons';
 import { resolveEntryTicketBandForLessonPath, fetchAssignedEntryTicketGrade, parseEntryTicketPlanBand } from '../lib/entryTicketGrade';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
 import { EntryTicketFragensetEditor } from '../components/entry-ticket/EntryTicketFragensetEditor';
@@ -596,7 +597,11 @@ function fragensetHeadingLabel(band: EntryBand, customName?: string | null): str
 
 /** Eigene Sets nach Fach trennen (Reihenpfad / Name). Mathe = rechts, Informatik = links. */
 function customSetIsInformatik(set: EntryTicketCustomSet): boolean {
-  const path = (set.reihePath || '').replace(/\\/g, '/').toLowerCase();
+  const path = [set.reihePath, ...(set.reihePaths || [])]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\\/g, '/')
+    .toLowerCase();
   const name = (set.name || '').toLowerCase();
   // Mathe-Reihen klar als Mathe (auch wenn Name zufällig „KI“ enthält)
   if (path.includes('/mathe/') || /(^|\/)mathe(\/|$)/i.test(path)) return false;
@@ -1490,11 +1495,21 @@ function hydrateCustomSetFromSignal(raw: unknown): EntryTicketCustomSet | null {
     typeof row.reihePath === 'string' && row.reihePath.trim()
       ? row.reihePath.trim().replace(/\\/g, '/')
       : undefined;
+  const reihePaths = Array.isArray(row.reihePaths)
+    ? row.reihePaths
+        .filter((p): p is string => typeof p === 'string' && Boolean(p.trim()))
+        .map((p) => p.trim().replace(/\\/g, '/'))
+    : undefined;
+  const paths = [
+    ...(reihePaths || []),
+    ...(reihePath ? [reihePath] : []),
+  ].filter((p, i, a) => p && a.indexOf(p) === i);
   return {
     id,
     name,
     lessons,
-    ...(reihePath ? { reihePath } : {}),
+    ...(paths[0] ? { reihePath: paths[0] } : {}),
+    ...(paths.length > 0 ? { reihePaths: paths } : {}),
     ...(notes ? { notes } : {}),
   };
 }
@@ -1510,6 +1525,7 @@ function mergeHydratedCustomSet(
         ? {
             ...existing,
             reihePath: existing.reihePath || hydrated.reihePath,
+            reihePaths: existing.reihePaths?.length ? existing.reihePaths : hydrated.reihePaths,
             notes: existing.notes ?? hydrated.notes,
           }
         : s,
@@ -2730,18 +2746,23 @@ export default function EntryTicketPage({
   );
   const isCustomSetActive = Boolean(customSetId && activeCustomSet);
   const isMatheLkSet = useMemo(
-    () => isMatheLkEntryContext(activeCustomSet?.name, activeCustomSet?.reihePath, entryLessonPath),
-    [activeCustomSet?.name, activeCustomSet?.reihePath, entryLessonPath],
+    () =>
+      isMatheLkEntryContext(
+        activeCustomSet?.name,
+        customSetReihePaths(activeCustomSet).join(' '),
+        entryLessonPath,
+      ),
+    [activeCustomSet, entryLessonPath],
   );
   const isKlasse5Set = useMemo(
     () =>
       isKlasse5EntryContext(
         grade,
         activeCustomSet?.name,
-        activeCustomSet?.reihePath,
+        customSetReihePaths(activeCustomSet).join(' '),
         entryLessonPath,
       ),
-    [grade, activeCustomSet?.name, activeCustomSet?.reihePath, entryLessonPath],
+    [grade, activeCustomSet, entryLessonPath],
   );
   const durationProfile = solutionDurationProfile(isMatheLkSet, isKlasse5Set);
   const solutionDurationProfileRef = useRef<SolutionDurationProfile | null>(null);
@@ -3084,7 +3105,7 @@ export default function EntryTicketPage({
       let changed = false;
       for (const set of current) {
         try {
-          const discovered = await discoverLessonsForReiheName(set.name, set.reihePath);
+          const discovered = await discoverLessonsForCustomSet(set);
           const merged = mergeDiscoveredLessonsIntoSet(set, discovered);
           if (merged !== set) changed = true;
           next.push(merged);
@@ -3108,7 +3129,7 @@ export default function EntryTicketPage({
       const set = customSetsRef.current.find((s) => s.id === customSetId);
       if (!set) return;
       try {
-        const discovered = await discoverLessonsForReiheName(set.name, set.reihePath);
+        const discovered = await discoverLessonsForCustomSet(set);
         if (cancelled) return;
         const merged = mergeDiscoveredLessonsIntoSet(set, discovered);
         if (merged !== set) {
@@ -3321,6 +3342,7 @@ export default function EntryTicketPage({
       const discovered = await discoverLessonsForReiheName(name, null);
       if (discovered.reihePath) {
         next.reihePath = discovered.reihePath;
+        next.reihePaths = [discovered.reihePath];
       }
       if (discovered.lessons.length > 0) {
         next.lessons = discovered.lessons.map((l) =>
