@@ -39,6 +39,7 @@ import {
   imageSourceRectCss,
   isHeroSlideImage,
   isImageCropMode,
+  isImageScaleHandle,
   isWindowCropMode,
   moveWindowCrop,
   normalizeImageSourceRect,
@@ -46,6 +47,7 @@ import {
   presentationImageElementSx,
   resizeImageFrameByHandle,
   resizeWindowCrop,
+  scaleImageOnSlide,
   shouldPanCoverImageOnDrag,
   type ImageCropHandle,
 } from '../../lib/presentationImageUtils';
@@ -96,6 +98,7 @@ interface DragState {
   slideLeft: number;
   slideTop: number;
   orig: SlideElement;
+  imageGesture?: 'crop' | 'scale';
 }
 
 interface PresentationDraggableElementProps {
@@ -187,6 +190,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     /** Tippen ohne Zug → Text/Form-Box bearbeiten (Stift: Ziehen verschiebt). */
     editOnClick?: 'text' | 'shape' | null;
     pointerType?: string;
+    imageGesture?: 'crop' | 'scale';
   } | null>(null);
   const [dragging, setDragging] = useState(false);
   /** Während Drag nur lokal — kein setDeck pro Pointer-Move. */
@@ -421,6 +425,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         slideLeft: pending.slideLeft,
         slideTop: pending.slideTop,
         orig: pending.orig,
+        imageGesture: pending.imageGesture,
       };
       pendingDragRef.current = null;
       setDragging(true);
@@ -475,6 +480,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         patch = { x: snapped.x, y: snapped.y };
         guides = snapped.guides;
       }
+    } else if (d.mode === 'resize' && d.imageGesture === 'scale') {
+      patch = scaleImageOnSlide(d.orig, d.resizeCorner as ImageCropHandle, dxPct, dyPct, MIN_SIZE);
     } else if (d.mode === 'resize' && d.resizeCorner !== 'br' && d.resizeCorner !== 'tr') {
       patch = isWindowCropMode(d.orig)
         ? resizeWindowCrop(d.orig, d.resizeCorner, dxPct, dyPct, MIN_SIZE)
@@ -638,21 +645,30 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     if (cardTitleEditing && mode === 'move' && e.detail < 2) setCardTitleEditing(false);
     onSelect?.();
     let orig: SlideElement = { ...element };
-    if (mode === 'resize' && orig.type === 'image' && !normalizeImageSourceRect(orig.imageSourceRect)) {
-      const img = (e.currentTarget as HTMLElement).closest('[data-pres-element]')?.querySelector('img');
-      const natural =
-        img && img.naturalWidth > 0 && img.naturalHeight > 0
-          ? { w: img.naturalWidth, h: img.naturalHeight }
-          : null;
-      orig = ensureWindowCropLock(orig, natural);
-      onChange({
-        x: orig.x,
-        y: orig.y,
-        w: orig.w,
-        h: orig.h,
-        imageSourceRect: orig.imageSourceRect,
-        imageFit: 'contain',
-      });
+    let imageGesture: 'crop' | 'scale' | undefined;
+    if (mode === 'resize' && orig.type === 'image' && resizeCorner !== 'br' && resizeCorner !== 'tr') {
+      const scaleCorner = imageOnlyEdit && isImageScaleHandle(resizeCorner);
+      if (scaleCorner) {
+        imageGesture = 'scale';
+      } else {
+        imageGesture = 'crop';
+        if (!normalizeImageSourceRect(orig.imageSourceRect)) {
+          const img = (e.currentTarget as HTMLElement).closest('[data-pres-element]')?.querySelector('img');
+          const natural =
+            img && img.naturalWidth > 0 && img.naturalHeight > 0
+              ? { w: img.naturalWidth, h: img.naturalHeight }
+              : null;
+          orig = ensureWindowCropLock(orig, natural);
+          onChange({
+            x: orig.x,
+            y: orig.y,
+            w: orig.w,
+            h: orig.h,
+            imageSourceRect: orig.imageSourceRect,
+            imageFit: 'contain',
+          });
+        }
+      }
     }
     pendingDragRef.current = {
       mode,
@@ -668,6 +684,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       cardZone,
       editOnClick,
       pointerType: e.pointerType,
+      imageGesture,
     };
     // currentTarget = Element-Box bzw. Resize-Handle — zuverlässiger als innere Targets
     try {
@@ -871,8 +888,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
           e.preventDefault();
           e.stopPropagation();
           onSelect?.();
-          // Erst antippen/auswählen, dann ziehen — sonst wechselt die Folie.
-          if (!selected) return;
+          startDrag(e, 'move');
+          return;
         }
         if (isMediaElement && mediaInteractive) return;
         if ((e.target as HTMLElement).closest('[data-resize-handle]')) return;
@@ -2070,10 +2087,10 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               { id: 's', cursor: 'ns-resize', bottom: -7 * scale, left: '50%', w: imageOnlyEdit ? 36 : 22, h: imageOnlyEdit ? 18 : 10, ml: imageOnlyEdit ? -18 : -11 },
               { id: 'e', cursor: 'ew-resize', right: -7 * scale, top: '50%', w: imageOnlyEdit ? 18 : 10, h: imageOnlyEdit ? 36 : 22, mt: imageOnlyEdit ? -18 : -11 },
               { id: 'w', cursor: 'ew-resize', left: -7 * scale, top: '50%', w: imageOnlyEdit ? 18 : 10, h: imageOnlyEdit ? 36 : 22, mt: imageOnlyEdit ? -18 : -11 },
-              { id: 'nw', cursor: 'nwse-resize', top: -8 * scale, left: -8 * scale, w: imageOnlyEdit ? 20 : 12, h: imageOnlyEdit ? 20 : 12 },
-              { id: 'ne', cursor: 'nesw-resize', top: -8 * scale, right: -8 * scale, w: imageOnlyEdit ? 20 : 12, h: imageOnlyEdit ? 20 : 12 },
-              { id: 'sw', cursor: 'nesw-resize', bottom: -8 * scale, left: -8 * scale, w: imageOnlyEdit ? 20 : 12, h: imageOnlyEdit ? 20 : 12 },
-              { id: 'se', cursor: 'nwse-resize', bottom: -8 * scale, right: -8 * scale, w: imageOnlyEdit ? 20 : 12, h: imageOnlyEdit ? 20 : 12 },
+              { id: 'nw', cursor: 'nwse-resize', top: -10 * scale, left: -10 * scale, w: imageOnlyEdit ? 28 : 12, h: imageOnlyEdit ? 28 : 12, scale: true },
+              { id: 'ne', cursor: 'nesw-resize', top: -10 * scale, right: -10 * scale, w: imageOnlyEdit ? 28 : 12, h: imageOnlyEdit ? 28 : 12, scale: true },
+              { id: 'sw', cursor: 'nesw-resize', bottom: -10 * scale, left: -10 * scale, w: imageOnlyEdit ? 28 : 12, h: imageOnlyEdit ? 28 : 12, scale: true },
+              { id: 'se', cursor: 'nwse-resize', bottom: -10 * scale, right: -10 * scale, w: imageOnlyEdit ? 28 : 12, h: imageOnlyEdit ? 28 : 12, scale: true },
             ] satisfies Array<{
               id: ImageCropHandle;
               cursor: string;
@@ -2085,6 +2102,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               h: number;
               ml?: number;
               mt?: number;
+              scale?: boolean;
             }>
           ).map((h) => (
             <Box
@@ -2104,9 +2122,9 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 height: `${h.h * scale}px`,
                 ml: h.ml != null ? `${h.ml * scale}px` : undefined,
                 mt: h.mt != null ? `${h.mt * scale}px` : undefined,
-                bgcolor: '#fff',
+                bgcolor: imageOnlyEdit && h.scale ? '#2E7D32' : '#fff',
                 border: `${1.5 * scale}px solid #2E7D32`,
-                borderRadius: `${2 * scale}px`,
+                borderRadius: imageOnlyEdit && h.scale ? '50%' : `${2 * scale}px`,
                 cursor: h.cursor,
                 zIndex: 34,
                 pointerEvents: 'auto',

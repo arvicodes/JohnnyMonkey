@@ -64,6 +64,7 @@ import {
   isImageCropMode,
   isWindowCropMode,
   readImageNaturalSize,
+  scaleImageFromCenter,
   slidePercentSizeForImage,
 } from '../lib/presentationImageUtils';
 import EntryTicketPage from './EntryTicketPage';
@@ -161,9 +162,9 @@ const PresentationPresentPage: React.FC = () => {
   const [panning, setPanning] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-  /** Pinch immer — auch beim Zeichnen; nur Stift schreibt, Finger zoomen. */
+  /** Pinch auf leerer Folie zoomt die Bühne; bei gewähltem Foto das Foto. */
   const pinchEnabledRef = useRef(true);
-  pinchEnabledRef.current = true;
+  pinchEnabledRef.current = !selectedElementId;
 
   const applyUserZoom = useCallback((next: number, origin?: PresentZoomOrigin) => {
     const clamped = clampPresentZoomSmooth(next);
@@ -513,7 +514,7 @@ const PresentationPresentPage: React.FC = () => {
           return next;
         });
         setSelectedElementId(el.id);
-        setSnackbar('Foto eingefügt — mit Fingern verschieben, an den Kanten abschneiden');
+        setSnackbar('Foto: ziehen · Kanten abschneiden · Ecken oder zwei Finger größer/kleiner');
       } catch (e) {
         setSnackbar(e instanceof Error ? e.message : 'Foto fehlgeschlagen');
       } finally {
@@ -541,6 +542,65 @@ const PresentationPresentPage: React.FC = () => {
     }
     updateSlideElement(selectedImageForCrop.id, ensureWindowCropLock(selectedImageForCrop));
   }, [selectedImageForCrop, updateSlideElement]);
+
+  const selectedImageRef = useRef(selectedImageForCrop);
+  selectedImageRef.current = selectedImageForCrop;
+  const updateSlideElementRef = useRef(updateSlideElement);
+  updateSlideElementRef.current = updateSlideElement;
+
+  useEffect(() => {
+    const host = stageRef.current;
+    if (!host || !selectedImageForCrop) return;
+    let startDist = 0;
+    let startEl = selectedImageForCrop;
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length !== 2) {
+        startDist = 0;
+        return;
+      }
+      const a = e.touches[0];
+      const b = e.touches[1];
+      const hitA = document.elementFromPoint(a.clientX, a.clientY);
+      const hitB = document.elementFromPoint(b.clientX, b.clientY);
+      const onPhoto =
+        hitA?.closest?.('[data-pres-element-type="image"]') ||
+        hitB?.closest?.('[data-pres-element-type="image"]');
+      if (!onPhoto) {
+        startDist = 0;
+        return;
+      }
+      const current = selectedImageRef.current;
+      if (!current) {
+        startDist = 0;
+        return;
+      }
+      startEl = current;
+      startDist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    };
+    const onMove = (e: TouchEvent) => {
+      if (startDist < 8 || e.touches.length !== 2) return;
+      e.preventDefault();
+      const d = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY,
+      );
+      if (d < 1) return;
+      updateSlideElementRef.current(startEl.id, scaleImageFromCenter(startEl, d / startDist));
+    };
+    const onEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) startDist = 0;
+    };
+    host.addEventListener('touchstart', onStart, { capture: true, passive: true });
+    host.addEventListener('touchmove', onMove, { capture: true, passive: false });
+    host.addEventListener('touchend', onEnd, { capture: true, passive: true });
+    host.addEventListener('touchcancel', onEnd, { capture: true, passive: true });
+    return () => {
+      host.removeEventListener('touchstart', onStart, true);
+      host.removeEventListener('touchmove', onMove, true);
+      host.removeEventListener('touchend', onEnd, true);
+      host.removeEventListener('touchcancel', onEnd, true);
+    };
+  }, [selectedImageForCrop]);
 
   const flushAnnotations = useCallback(async (): Promise<PresentationAnnotations | null> => {
     const current = annotationsRef.current;

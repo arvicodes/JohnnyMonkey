@@ -220,6 +220,94 @@ export function resizeWindowCrop(
   return { x, y, w, h, imageSourceRect: source };
 }
 
+const SCALE_HANDLES = new Set<string>(['nw', 'ne', 'sw', 'se']);
+
+export function isImageScaleHandle(handle: string): boolean {
+  return SCALE_HANDLES.has(handle);
+}
+
+function mapSourceThroughScale(
+  orig: SlideElement,
+  next: { x: number; y: number; w: number; h: number },
+): Partial<SlideElement> {
+  const source = normalizeImageSourceRect(orig.imageSourceRect);
+  if (!source) return next;
+  const ow = Math.max(orig.w, 0.01);
+  const oh = Math.max(orig.h, 0.01);
+  return {
+    ...next,
+    imageSourceRect: {
+      x: next.x + ((source.x - orig.x) / ow) * next.w,
+      y: next.y + ((source.y - orig.y) / oh) * next.h,
+      w: (source.w / ow) * next.w,
+      h: (source.h / oh) * next.h,
+    },
+  };
+}
+
+/** Ganzes Foto größer/kleiner — Ausschnitt bleibt, nur die Foliengröße ändert sich. */
+export function scaleImageOnSlide(
+  orig: SlideElement,
+  handle: ImageCropHandle,
+  dxPct: number,
+  dyPct: number,
+  minSize = 8,
+): Partial<SlideElement> {
+  const aspect = orig.w / Math.max(orig.h, 0.01);
+  const growE = handle === 'e' || handle === 'ne' || handle === 'se';
+  const growW = handle === 'w' || handle === 'nw' || handle === 'sw';
+  const growS = handle === 's' || handle === 'se' || handle === 'sw';
+  const growN = handle === 'n' || handle === 'ne' || handle === 'nw';
+  const dw = growE ? dxPct : growW ? -dxPct : 0;
+  const dh = growS ? dyPct : growN ? -dyPct : 0;
+  const scale =
+    Math.abs(dw) * aspect >= Math.abs(dh)
+      ? (orig.w + dw) / Math.max(orig.w, 0.01)
+      : (orig.h + dh) / Math.max(orig.h, 0.01);
+  let w = clampPercent(orig.w * scale, minSize, IMAGE_FRAME_SIZE_MAX);
+  let h = w / aspect;
+  if (h > IMAGE_FRAME_SIZE_MAX) {
+    h = IMAGE_FRAME_SIZE_MAX;
+    w = h * aspect;
+  }
+  if (h < minSize) {
+    h = minSize;
+    w = h * aspect;
+  }
+  const x = growW ? orig.x + orig.w - w : orig.x;
+  const y = growN ? orig.y + orig.h - h : orig.y;
+  return mapSourceThroughScale(orig, {
+    x: clampPercent(x, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
+    y: clampPercent(y, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
+    w,
+    h,
+  });
+}
+
+export function scaleImageFromCenter(
+  orig: SlideElement,
+  scale: number,
+  minSize = 8,
+): Partial<SlideElement> {
+  const aspect = orig.w / Math.max(orig.h, 0.01);
+  let w = clampPercent(orig.w * Math.max(0.05, scale), minSize, IMAGE_FRAME_SIZE_MAX);
+  let h = w / aspect;
+  if (h > IMAGE_FRAME_SIZE_MAX) {
+    h = IMAGE_FRAME_SIZE_MAX;
+    w = h * aspect;
+  }
+  if (h < minSize) {
+    h = minSize;
+    w = h * aspect;
+  }
+  return mapSourceThroughScale(orig, {
+    x: clampPercent(orig.x + (orig.w - w) / 2, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
+    y: clampPercent(orig.y + (orig.h - h) / 2, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
+    w,
+    h,
+  });
+}
+
 /** Bildrahmen darf über den Folienrand hinausragen (Prozent). */
 export const IMAGE_FRAME_MIN = -40;
 export const IMAGE_FRAME_MAX = 100;
