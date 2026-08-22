@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Autocomplete,
   Box,
@@ -156,7 +156,8 @@ export function EntryTicketFragensetEditor({
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
     for (const lesson of set.lessons) {
-      init[lesson.id] = true;
+      init[lesson.id] =
+        isGeneralLessonSection(lesson) || lessonMatchesPath(lesson, activeLessonPath);
     }
     return init;
   });
@@ -165,27 +166,36 @@ export function EntryTicketFragensetEditor({
   /** Markierte Karten pro Stunde (taskIds). */
   const [selectedTaskIdsByLesson, setSelectedTaskIdsByLesson] = useState<Record<string, string[]>>({});
   const [reiheOptions, setReiheOptions] = useState<WorkingReiheOption[]>([]);
-  const [reiheOptionsLoading, setReiheOptionsLoading] = useState(true);
+  const [reiheOptionsLoading, setReiheOptionsLoading] = useState(false);
   const [reiheBusy, setReiheBusy] = useState(false);
+  const catalogRequestedRef = useRef(false);
 
   useEffect(() => {
     setNameDraft(set.name);
   }, [set.id, set.name]);
 
-  useEffect(() => {
-    let cancelled = false;
+  const ensureReihenCatalog = () => {
+    if (catalogRequestedRef.current) return;
+    catalogRequestedRef.current = true;
     setReiheOptionsLoading(true);
     void loadEntryTicketReihenCatalog(customSetReihePaths(set))
-      .then((opts) => {
-        if (!cancelled) setReiheOptions(opts);
-      })
-      .finally(() => {
-        if (!cancelled) setReiheOptionsLoading(false);
-      });
+      .then(setReiheOptions)
+      .finally(() => setReiheOptionsLoading(false));
+  };
+
+  useEffect(() => {
+    const idleId =
+      typeof window.requestIdleCallback === 'function'
+        ? window.requestIdleCallback(() => ensureReihenCatalog(), { timeout: 1500 })
+        : window.setTimeout(() => ensureReihenCatalog(), 800);
     return () => {
-      cancelled = true;
+      if (typeof window.cancelIdleCallback === 'function' && typeof idleId === 'number') {
+        window.cancelIdleCallback(idleId);
+      } else {
+        window.clearTimeout(idleId);
+      }
     };
-    // Katalog einmal laden; zugewiesene Pfade werden unten extra gemerged.
+    // Katalog erst nach dem ersten Paint / beim Öffnen der Zuordnung.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount
   }, []);
 
@@ -263,7 +273,8 @@ export function EntryTicketFragensetEditor({
   useEffect(() => {
     const init: Record<string, boolean> = {};
     for (const lesson of set.lessons) {
-      init[lesson.id] = true;
+      init[lesson.id] =
+        isGeneralLessonSection(lesson) || lessonMatchesPath(lesson, activeLessonPath);
     }
     setExpanded(init);
   }, [set.id]);
@@ -274,7 +285,8 @@ export function EntryTicketFragensetEditor({
       let changed = false;
       for (const lesson of set.lessons) {
         if (next[lesson.id] === undefined) {
-          next[lesson.id] = true;
+          next[lesson.id] =
+            isGeneralLessonSection(lesson) || lessonMatchesPath(lesson, activeLessonPath);
           changed = true;
         }
       }
@@ -499,58 +511,100 @@ export function EntryTicketFragensetEditor({
       <Box sx={{ width: '100%', px: 0.6, pt: 0.55, pb: 0, boxSizing: 'border-box' }}>
         <Autocomplete
           multiple
+          size="small"
+          disableClearable
           disableCloseOnSelect
           options={catalogOptions}
           value={selectedReihen}
           loading={reiheOptionsLoading || reiheBusy}
+          onOpen={ensureReihenCatalog}
           onChange={(_, next) => {
             void applyReihePaths(next.map((o) => o.path));
           }}
           isOptionEqualToValue={(a, b) => a.path === b.path}
-          getOptionLabel={(o) => (o.subject ? `${o.label} · ${o.subject}` : o.label)}
-          groupBy={(o) => o.subject || ''}
-          filterSelectedOptions
-          renderTags={(value, getTagProps) =>
-            value.map((option, index) => {
-              const { key, ...tagProps } = getTagProps({ index });
-              return (
-                <Chip
-                  key={key}
-                  size="small"
-                  label={option.label}
-                  {...tagProps}
-                  sx={{
-                    height: 22,
-                    fontWeight: 700,
-                    fontSize: '0.68rem',
-                    bgcolor: '#e8f5e9',
-                    color: '#2e7d32',
-                    '& .MuiChip-deleteIcon': { fontSize: 14, color: '#66bb6a' },
-                  }}
-                />
-              );
-            })
-          }
+          getOptionLabel={(o) => o.label || reiheLabelFromPath(o.path)}
+          renderTags={() => null}
+          renderOption={(props, option, { selected }) => {
+            const { key, ...rest } = props as React.HTMLAttributes<HTMLLIElement> & {
+              key?: React.Key;
+            };
+            return (
+              <li
+                key={key}
+                {...rest}
+                style={{
+                  ...((rest as { style?: React.CSSProperties }).style || {}),
+                  opacity: selected ? 0.55 : 1,
+                  fontWeight: selected ? 600 : 400,
+                }}
+              >
+                {option.label}
+                {option.subject ? (
+                  <Typography
+                    component="span"
+                    sx={{ ml: 1, fontSize: '0.7rem', color: 'text.secondary' }}
+                  >
+                    {option.subject}
+                  </Typography>
+                ) : null}
+                {selected ? (
+                  <Typography
+                    component="span"
+                    sx={{ ml: 1, fontSize: '0.7rem', color: 'text.secondary' }}
+                  >
+                    · gewählt
+                  </Typography>
+                ) : null}
+              </li>
+            );
+          }}
           renderInput={(params) => (
             <TextField
               {...params}
               size="small"
-              placeholder={selectedReihen.length === 0 ? 'Unterrichtsreihen zuordnen…' : ''}
-              sx={{
-                ...fieldSx,
-                '& .MuiInputBase-root': { py: 0.15, minHeight: 32 },
-                '& .MuiInputBase-input': {
-                  ...fieldSx['& .MuiInputBase-input'],
-                  fontSize: '0.72rem',
-                },
-              }}
+              placeholder="Reihe hinzufügen…"
               inputProps={{
                 ...params.inputProps,
                 'aria-label': 'Unterrichtsreihen zum Kartenset',
               }}
             />
           )}
+          sx={{
+            width: '100%',
+            '& .MuiInputBase-root': {
+              fontSize: '0.8rem',
+              pr: '40px !important',
+            },
+            '& .MuiAutocomplete-endAdornment': {
+              right: 6,
+            },
+            '& .MuiAutocomplete-clearIndicator': {
+              display: 'none',
+            },
+          }}
         />
+        {selectedReihen.length > 0 && (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.4, mt: 0.45 }}>
+            {selectedReihen.map((option) => (
+              <Chip
+                key={option.path}
+                size="small"
+                label={option.label}
+                onDelete={() => {
+                  void applyReihePaths(selectedReihen.filter((o) => o.path !== option.path).map((o) => o.path));
+                }}
+                sx={{
+                  height: 22,
+                  fontWeight: 700,
+                  fontSize: '0.68rem',
+                  bgcolor: '#e8f5e9',
+                  color: '#2e7d32',
+                  '& .MuiChip-deleteIcon': { fontSize: 14, color: '#66bb6a' },
+                }}
+              />
+            ))}
+          </Box>
+        )}
       </Box>
 
       <Box sx={{ width: '100%', px: 0.6, pt: 0.55, pb: 0, boxSizing: 'border-box' }}>
@@ -645,7 +699,7 @@ export function EntryTicketFragensetEditor({
                 }}
               >
               {group.lessons.map(({ lesson, globalIndex }) => {
-                const isOpen = expanded[lesson.id] !== false;
+                const isOpen = expanded[lesson.id] === true;
                 const isActive = lessonMatchesPath(lesson, activeLessonPath);
                 const isGeneral = isGeneralLessonSection(lesson);
                 const isLater = isLaterLessonSection(lesson);
@@ -827,7 +881,7 @@ export function EntryTicketFragensetEditor({
                       )}
                     </Box>
 
-                    <Collapse in={isOpen}>
+                    <Collapse in={isOpen} unmountOnExit>
                       <Box
                         sx={{
                           width: '100%',

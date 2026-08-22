@@ -3093,54 +3093,38 @@ export default function EntryTicketPage({
     };
   }, [isTeacher, embeddedPlay]);
 
-  /** Bestehende Sets (z. B. Mathe 5) um fehlende Stundenordner aus der Reihe ergänzen. */
-  useEffect(() => {
-    if (embeddedPlay) return;
-    if (!isTeacher || !customSetsReady) return;
-    let cancelled = false;
-    void (async () => {
-      const current = customSetsRef.current;
-      if (current.length === 0) return;
-      const next: EntryTicketCustomSet[] = [];
-      let changed = false;
-      for (const set of current) {
-        try {
-          const discovered = await discoverLessonsForCustomSet(set);
-          const merged = mergeDiscoveredLessonsIntoSet(set, discovered);
-          if (merged !== set) changed = true;
-          next.push(merged);
-        } catch {
-          next.push(set);
-        }
-      }
-      if (!cancelled && changed) setCustomSets(next);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [embeddedPlay, isTeacher, customSetsReady]);
-
-  /** Aktives Set beim Öffnen noch einmal gegen die Reihenordner abgleichen. */
+  /** Aktives Set im Hintergrund gegen Reihenordner abgleichen — nach dem ersten Paint. */
   useEffect(() => {
     if (embeddedPlay) return;
     if (!isTeacher || !customSetsReady || !customSetId) return;
     let cancelled = false;
-    void (async () => {
-      const set = customSetsRef.current.find((s) => s.id === customSetId);
-      if (!set) return;
-      try {
-        const discovered = await discoverLessonsForCustomSet(set);
-        if (cancelled) return;
-        const merged = mergeDiscoveredLessonsIntoSet(set, discovered);
-        if (merged !== set) {
-          setCustomSets((prev) => prev.map((s) => (s.id === merged.id ? merged : s)));
+    const run = () => {
+      void (async () => {
+        const set = customSetsRef.current.find((s) => s.id === customSetId);
+        if (!set) return;
+        try {
+          const discovered = await discoverLessonsForCustomSet(set);
+          if (cancelled) return;
+          const merged = mergeDiscoveredLessonsIntoSet(set, discovered);
+          if (merged !== set) {
+            setCustomSets((prev) => prev.map((s) => (s.id === merged.id ? merged : s)));
+          }
+        } catch {
+          /* ignore */
         }
-      } catch {
-        /* ignore */
-      }
-    })();
+      })();
+    };
+    const idleId =
+      typeof window.requestIdleCallback === 'function'
+        ? window.requestIdleCallback(run, { timeout: 400 })
+        : window.setTimeout(run, 50);
     return () => {
       cancelled = true;
+      if (typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleId as number);
+      } else {
+        window.clearTimeout(idleId);
+      }
     };
   }, [embeddedPlay, isTeacher, customSetsReady, customSetId]);
 

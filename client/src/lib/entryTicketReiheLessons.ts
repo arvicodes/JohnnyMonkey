@@ -21,6 +21,19 @@ type DirNode = {
   children?: DirNode[];
 };
 
+const FOLDER_CACHE_TTL_MS = 90_000;
+const folderCache = new Map<string, { at: number; nodes: DirNode[] }>();
+let catalogPromise: Promise<WorkingReiheOption[]> | null = null;
+
+const CATALOG_SKIP_TOP = new Set([
+  'Grafiken',
+  'Folien - ALLE - BACKUP',
+  'Wall-of-fame',
+  'Erasmus',
+  'Ankündigungen & Briefe',
+  'Mini-Projekte',
+]);
+
 function normalizeFolderLabel(name: string): string {
   return (name || '')
     .trim()
@@ -67,9 +80,6 @@ function extractChildren(data: unknown): DirNode[] {
   if (Array.isArray(data)) return data as DirNode[];
   if (!data || typeof data !== 'object') return [];
   const row = data as Record<string, unknown>;
-  if (Array.isArray(row.root) && row.root) {
-    /* fall through */
-  }
   if (row.root && typeof row.root === 'object') {
     const root = row.root as DirNode;
     if (Array.isArray(root.children)) return root.children;
@@ -77,70 +87,6 @@ function extractChildren(data: unknown): DirNode[] {
   if (Array.isArray(row.items)) return row.items as DirNode[];
   if (Array.isArray(row.children)) return row.children as DirNode[];
   return [];
-}
-
-function walkFindSeriesFolder(nodes: DirNode[], wantNorm: string, parentPath = ''): DirNode | null {
-  for (const node of nodes) {
-    const name = (node.name || '').trim();
-    const path = ((node.path || `${parentPath}/${name}`) as string).replace(/\\/g, '/').replace(/\/+$/, '');
-    const isDir = node.type === 'directory' || node.type === 'folder' || Array.isArray(node.children);
-    if (!isDir) continue;
-    if (normalizeFolderLabel(name) === wantNorm) return { ...node, path, name };
-    if (node.children?.length) {
-      const hit = walkFindSeriesFolder(node.children, wantNorm, path);
-      if (hit) return hit;
-    }
-  }
-  return null;
-}
-
-function collectStundeFolders(
-  nodes: DirNode[],
-  parentPath: string,
-  topicName: string | undefined,
-  out: DiscoveredReiheLesson[],
-): void {
-  for (const node of nodes) {
-    const name = (node.name || '').trim();
-    if (!name || name.startsWith('.')) continue;
-    const path = ((node.path || `${parentPath}/${name}`) as string).replace(/\\/g, '/').replace(/\/+$/, '');
-    const isDir = node.type === 'directory' || node.type === 'folder' || Array.isArray(node.children);
-    if (!isDir) continue;
-
-    if (isTopicSectionFolderName(name) || isChapterHeadingFolderName(name) || isSeriesHeadingFolderName(name)) {
-      if (node.children?.length) {
-        collectStundeFolders(node.children, path, name, out);
-      }
-      continue;
-    }
-
-    if (isWochenaufgabenFolderName(name) || /^Grafiken$/i.test(name) || isLessonRohdatArchiveFolderName(name)) {
-      continue;
-    }
-
-    if (isStundeFolderName(name)) {
-      out.push({
-        lessonName: name,
-        lessonKey: path,
-        topicName,
-      });
-      continue;
-    }
-
-    if (node.children?.length) {
-      collectStundeFolders(node.children, path, topicName, out);
-    }
-  }
-}
-
-async function readFolderTree(folderPath: string): Promise<DirNode[]> {
-  const res = await fetch(
-    `/api/file-system-paths/read?path=${encodeURIComponent(folderPath)}&recursive=true&t=${Date.now()}`,
-    { credentials: 'include' },
-  );
-  if (!res.ok) return [];
-  const data = await res.json();
-  return extractChildren(data);
 }
 
 function toGitInternPath(p: string): string {
@@ -154,6 +100,27 @@ function toGitInternPath(p: string): string {
   if (n === 'J-M-Reihen') return 'git-intern';
   if (n.startsWith('J-M-Reihen/')) return `git-intern/${n.slice('J-M-Reihen/'.length)}`;
   return n;
+}
+
+function folderCacheKey(folderPath: string): string {
+  return toGitInternPath(folderPath) || folderPath;
+}
+
+/** Nur eine Ebene — kein rekursiver Baum mit allen Dateien. */
+async function readFolderShallow(folderPath: string): Promise<DirNode[]> {
+  const key = folderCacheKey(folderPath);
+  const hit = folderCache.get(key);
+  if (hit && Date.now() - hit.at < FOLDER_CACHE_TTL_MS) return hit.nodes;
+
+  const res = await fetch(
+    `/api/file-system-paths/read?path=${encodeURIComponent(folderPath)}&recursive=false`,
+    { credentials: 'include' },
+  );
+  if (!res.ok) return [];
+  const data = await res.json();
+  const nodes = extractChildren(data);
+  folderCache.set(key, { at: Date.now(), nodes });
+  return nodes;
 }
 
 function klasseNumberFromReiheName(reiheName: string): string | null {
@@ -193,11 +160,9 @@ function reiheNameLookupCandidates(reiheName: string): string[] {
   if (!want) return [];
   const out: string[] = [want];
   const lower = want.toLowerCase().replace(/\s+/g, ' ');
-  // „Mathe 5“ / „M5“ → Ordner „Klasse 5“
   const matheKlasse = lower.match(/^(?:mathe|m)\s*(\d{1,2})$/);
   if (matheKlasse) out.push(`Klasse ${matheKlasse[1]}`);
   if (/^klasse\s*\d+/i.test(want)) out.push(want.replace(/^klasse\s*/i, 'Klasse '));
-  // „LK Mathe“ / „Matrizen“ oft unter MSS 12 LK
   if (
     /^lk\s*mathe$/i.test(want) ||
     /^mathe\s*lk$/i.test(want) ||
@@ -210,18 +175,109 @@ function reiheNameLookupCandidates(reiheName: string): string[] {
   return out.filter((v, i, a) => a.findIndex((x) => normalizeFolderLabel(x) === normalizeFolderLabel(v)) === i);
 }
 
-function lessonsFromSeriesFolder(
+function nodePath(node: DirNode, parentPath: string): string {
+  const name = (node.name || '').trim();
+  return ((node.path || `${parentPath}/${name}`) as string).replace(/\\/g, '/').replace(/\/+$/, '');
+}
+
+function isDirNode(node: DirNode): boolean {
+  return node.type === 'directory' || node.type === 'folder' || Array.isArray(node.children);
+}
+
+/**
+ * Stundenordner flach einsammeln — stoppt in der Stunde, lädt also keine Folien/PDFs.
+ * Vorhandene children (API liefert oft 2 Ebenen) werden ohne Extra-Request genutzt.
+ */
+async function walkStundeFolders(
+  folderPath: string,
+  topicName: string | undefined,
+  out: DiscoveredReiheLesson[],
+  depth: number,
+  knownChildren?: DirNode[],
+): Promise<void> {
+  if (depth > 5) return;
+  const children = knownChildren ?? (await readFolderShallow(folderPath));
+  const nested: Promise<void>[] = [];
+  for (const node of children) {
+    const name = (node.name || '').trim();
+    if (!name || name.startsWith('.') || !isDirNode(node)) continue;
+    const path = nodePath(node, folderPath);
+
+    if (isTopicSectionFolderName(name) || isChapterHeadingFolderName(name) || isSeriesHeadingFolderName(name)) {
+      nested.push(walkStundeFolders(path, name, out, depth + 1, node.children));
+      continue;
+    }
+
+    if (isWochenaufgabenFolderName(name) || /^Grafiken$/i.test(name) || isLessonRohdatArchiveFolderName(name)) {
+      continue;
+    }
+
+    if (isStundeFolderName(name)) {
+      out.push({
+        lessonName: name,
+        lessonKey: toGitInternPath(path),
+        topicName,
+      });
+      continue;
+    }
+
+    nested.push(walkStundeFolders(path, topicName, out, depth + 1, node.children));
+  }
+  if (nested.length) await Promise.all(nested);
+}
+
+async function lessonsFromSeriesPath(
   seriesPath: string,
-  children: DirNode[],
-): { reihePath: string; lessons: DiscoveredReiheLesson[] } {
+): Promise<{ reihePath: string; lessons: DiscoveredReiheLesson[] }> {
   const reihePath = toGitInternPath(seriesPath);
   const lessons: DiscoveredReiheLesson[] = [];
-  collectStundeFolders(children, reihePath, undefined, lessons);
-  for (const lesson of lessons) {
-    lesson.lessonKey = toGitInternPath(lesson.lessonKey);
-  }
+  await walkStundeFolders(reihePath, undefined, lessons, 0);
   lessons.sort((a, b) => a.lessonName.localeCompare(b.lessonName, 'de', { numeric: true }));
   return { reihePath, lessons };
+}
+
+async function loadCatalogTree(): Promise<WorkingReiheOption[]> {
+  let subjects = await readFolderShallow('J-M-Reihen');
+  let rootName = 'J-M-Reihen';
+  if (subjects.length === 0) {
+    subjects = await readFolderShallow('git-intern');
+    rootName = 'git-intern';
+  }
+
+  const treeChildren = await Promise.all(
+    subjects
+      .filter((subj) => isDirNode(subj) && subj.name && !CATALOG_SKIP_TOP.has(subj.name))
+      .map(async (subj) => {
+        const subjPath = nodePath(subj, rootName);
+        // Ein Read pro Fach: Blöcke + Einheiten (API liefert zwei Ebenen).
+        const blocks = await readFolderShallow(subjPath);
+        return {
+          ...subj,
+          path: subjPath,
+          type: 'directory',
+          children: blocks
+            .filter((block) => isDirNode(block) && block.name)
+            .map((block) => {
+              const blockPath = nodePath(block, subjPath);
+              return {
+                ...block,
+                path: blockPath,
+                type: 'directory',
+                children: (block.children || []).filter(
+                  (u) => isDirNode(u) && u.name && !isWochenaufgabenFolderName(u.name || ''),
+                ),
+              };
+            }),
+        };
+      }),
+  );
+
+  return collectReihenFromJmTree({
+    type: 'directory',
+    name: rootName,
+    path: rootName,
+    children: treeChildren,
+  });
 }
 
 /**
@@ -236,38 +292,27 @@ export async function discoverLessonsForReiheName(
   lessons: DiscoveredReiheLesson[];
 }> {
   for (const direct of reiheDirectPathCandidates(reiheName, knownReihePath)) {
-    const children = await readFolderTree(direct);
-    if (children.length === 0) continue;
-    return lessonsFromSeriesFolder(direct, children);
+    const found = await lessonsFromSeriesPath(direct);
+    if (found.lessons.length > 0) return found;
   }
 
   const candidates = reiheNameLookupCandidates(reiheName);
   if (candidates.length === 0) return { reihePath: null, lessons: [] };
 
-  let rootPath = 'git-intern';
+  const wantNorms = new Set(candidates.map((c) => normalizeFolderLabel(c)));
   try {
-    const pathRes = await fetch('/api/file-system-paths/jm-reihen-path', { credentials: 'include' });
-    if (pathRes.ok) {
-      const data = (await pathRes.json()) as { path?: string };
-      if (data.path) rootPath = toGitInternPath(data.path) || 'git-intern';
-    }
+    const catalog = await loadEntryTicketReihenCatalog();
+    const match = catalog.find((o) => {
+      const label = normalizeFolderLabel(o.label);
+      const leaf = normalizeFolderLabel((o.path.split('/').pop() || ''));
+      return wantNorms.has(label) || wantNorms.has(leaf);
+    });
+    if (match?.path) return lessonsFromSeriesPath(match.path);
   } catch {
-    // fallback rootPath
+    /* Katalog optional */
   }
 
-  const tree = await readFolderTree(rootPath);
-  let series: DirNode | null = null;
-  for (const cand of candidates) {
-    series = walkFindSeriesFolder(tree, normalizeFolderLabel(cand), rootPath);
-    if (series?.path) break;
-  }
-  if (!series?.path) {
-    return { reihePath: null, lessons: [] };
-  }
-
-  const children = series.children?.length ? series.children : await readFolderTree(series.path);
-  if (children.length === 0) return { reihePath: toGitInternPath(series.path), lessons: [] };
-  return lessonsFromSeriesFolder(series.path, children);
+  return { reihePath: null, lessons: [] };
 }
 
 /** Stunden aller zugeordneten Unterrichtsreihen (ohne Namenssuche, wenn Pfade gesetzt sind). */
@@ -285,12 +330,10 @@ export async function discoverLessonsForCustomSet(set: {
     return discoverLessonsForReiheName(set.name, set.reihePath);
   }
 
+  const batches = await Promise.all(paths.map((path) => lessonsFromSeriesPath(path)));
   const all: DiscoveredReiheLesson[] = [];
   const seen = new Set<string>();
-  for (const path of paths) {
-    const children = await readFolderTree(path);
-    if (children.length === 0) continue;
-    const found = lessonsFromSeriesFolder(path, children);
+  for (const found of batches) {
     for (const lesson of found.lessons) {
       const key = `${lesson.lessonKey}\n${lesson.lessonName}`;
       if (seen.has(key)) continue;
@@ -305,13 +348,12 @@ export async function discoverLessonsForCustomSet(set: {
 export async function loadEntryTicketReihenCatalog(
   extraPaths: string[] = [],
 ): Promise<WorkingReiheOption[]> {
-  let children = await readFolderTree('J-M-Reihen');
-  if (children.length === 0) children = await readFolderTree('git-intern');
-  const discovered = collectReihenFromJmTree({
-    type: 'directory',
-    name: 'J-M-Reihen',
-    path: 'J-M-Reihen',
-    children,
-  });
+  if (!catalogPromise) {
+    catalogPromise = loadCatalogTree().catch((err) => {
+      catalogPromise = null;
+      throw err;
+    });
+  }
+  const discovered = await catalogPromise;
   return mergeReihenOptions(discovered, extraPaths);
 }
