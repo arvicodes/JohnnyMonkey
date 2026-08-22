@@ -15293,8 +15293,14 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
   useEffect(() => {
     if (lessonPlanViewMode !== 'background') {
       setLaptopPresentationActive(false);
+      return;
     }
-  }, [lessonPlanViewMode]);
+    if (!isLessonStundeRoute || !lessonModalData?.lessonPath) return;
+    preparePresentationAudioForPlay();
+    setLaptopPresentationView({ mode: 'deck', variant: 'edited' });
+    setLaptopPresentationMountKey((k) => k + 1);
+    setLaptopPresentationActive(true);
+  }, [lessonPlanViewMode, isLessonStundeRoute, lessonModalData?.lessonPath]);
 
   useEffect(() => {
     if (!isLessonStundeRoute) return;
@@ -15422,6 +15428,7 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
         <Grid item xs={12}>
           <Box sx={{ 
             p: lessonSplitLeft ? 0.7 : 1.05,
+            pl: lessonSplitLeft ? 1.35 : 1.05,
             background: '#f8f9fa',
             color: '#222',
             borderRadius: '12px',
