@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleOutlined as CircleIcon,
+  Crop as CropIcon,
   CropSquare as RectIcon,
   Draw as DrawIcon,
   Highlight as HighlightIcon,
@@ -19,6 +20,7 @@ import {
   SelfImprovement as QuietWorkIcon,
   MusicNote as MusicGameIcon,
   Close as CloseIcon,
+  PhotoCamera as PhotoCameraIcon,
 } from '@mui/icons-material';
 import {
   MARKER_OPACITY_PRESETS,
@@ -94,6 +96,7 @@ type ToolBtnProps = {
   title: string;
   active?: boolean;
   disabled?: boolean;
+  round?: boolean;
   onClick: (e: React.MouseEvent<HTMLElement> | React.PointerEvent<HTMLElement>) => void;
   children: React.ReactNode;
 };
@@ -115,7 +118,7 @@ function stylusActivateHandlers(action: () => void, disabled?: boolean) {
   };
 }
 
-function ToolBtn({ title, active, disabled, onClick, children }: ToolBtnProps) {
+function ToolBtn({ title, active, disabled, round, onClick, children }: ToolBtnProps) {
   return (
     <Tooltip title={title} enterDelay={500}>
       <span>
@@ -124,7 +127,17 @@ function ToolBtn({ title, active, disabled, onClick, children }: ToolBtnProps) {
           disabled={disabled}
           onClick={onClick}
           {...stylusActivateHandlers(() => onClick({} as React.MouseEvent<HTMLElement>), disabled)}
-          sx={{ ...MICRO_SX, ...(active ? TOOL_ACTIVE : {}) }}
+          sx={{
+            ...MICRO_SX,
+            ...(round
+              ? {
+                  borderRadius: '50%',
+                  bgcolor: 'rgba(255,255,255,0.12)',
+                  boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.18)',
+                }
+              : {}),
+            ...(active ? TOOL_ACTIVE : {}),
+          }}
         >
           {children}
         </IconButton>
@@ -165,6 +178,13 @@ interface PresentationTabletToolbarProps {
   onPickRandomNumber?: (max: number) => void;
   /** Entry Ticket dieser Stunde öffnen (TABLET-Play) */
   onOpenEntryTicket?: () => void;
+  /** Tablet-Kamera: Foto direkt als Folienbild */
+  onCaptureImage?: () => void;
+  captureBusy?: boolean;
+  /** Ausgewähltes Folienbild zuschneiden / Einpassen */
+  imageCropAvailable?: boolean;
+  imageCropActive?: boolean;
+  onToggleImageCrop?: () => void;
   /** Sofort zum Dashboard (wie Taste D) */
   onExitToDashboard?: () => void;
   /** overlay = absolut in der Present-Bühne (Safari iPad); fixed = Viewport; docked = Layout unten */
@@ -206,6 +226,11 @@ export default function PresentationTabletToolbar({
   canPickRandomStudent = false,
   onPickRandomNumber,
   onOpenEntryTicket,
+  onCaptureImage,
+  captureBusy = false,
+  imageCropAvailable = false,
+  imageCropActive = false,
+  onToggleImageCrop,
   onExitToDashboard,
   placement = 'fixed',
   readOnly = false,
@@ -542,6 +567,31 @@ export default function PresentationTabletToolbar({
             onClick={onToggleDraw}
           >
             <DrawIcon sx={{ fontSize: 15 }} />
+          </ToolBtn>
+        )}
+
+        {!readOnly && onCaptureImage && (
+          <ToolBtn
+            title="Foto aufnehmen und auf die Folie setzen"
+            disabled={captureBusy}
+            round
+            onClick={onCaptureImage}
+          >
+            <PhotoCameraIcon sx={{ fontSize: 15 }} />
+          </ToolBtn>
+        )}
+
+        {!readOnly && imageCropAvailable && onToggleImageCrop && (
+          <ToolBtn
+            title={
+              imageCropActive
+                ? 'Zuschneiden aus — Bild wieder einpassen'
+                : 'Bild zuschneiden (ziehen = Ausschnitt)'
+            }
+            active={imageCropActive}
+            onClick={onToggleImageCrop}
+          >
+            <CropIcon sx={{ fontSize: 15 }} />
           </ToolBtn>
         )}
 

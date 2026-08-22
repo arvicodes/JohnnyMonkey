@@ -17,6 +17,7 @@ import PresentationMusicGameOverlay, {
 } from '../components/presentation/PresentationMusicGameOverlay';
 import {
   ANNOTATIONS_FILENAME,
+  DECK_FILENAME,
   PresentationAnnotations,
   PresentationDeck,
   PresentationStroke,
@@ -25,6 +26,7 @@ import {
   SLIDE_REF_WIDTH,
   SlideElement,
   createEmptyAnnotations,
+  lessonFolderPath,
   loadOrMigrateNamedVersionSnapshot,
   loadPresentationAnnotations,
   loadPresentationDeck,
@@ -57,6 +59,7 @@ import {
   requestPresentFullscreen,
 } from '../lib/presentationPresentFullscreen';
 import { ThemeProvider, createTheme, useTheme } from '@mui/material/styles';
+import { DEFAULT_FLOATING_IMAGE_H, DEFAULT_FLOATING_IMAGE_W, isImageCropMode } from '../lib/presentationImageUtils';
 import EntryTicketPage from './EntryTicketPage';
 
 const SWIPE_MIN_PX = 48;
@@ -119,6 +122,8 @@ const PresentationPresentPage: React.FC = () => {
   const [markerOpacity, setMarkerOpacity] = useState(DEFAULT_MARKER_OPACITY);
   const [selectedStrokeIds, setSelectedStrokeIds] = useState<string[]>([]);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [snackbar, setSnackbar] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState('');
@@ -427,6 +432,93 @@ const PresentationPresentPage: React.FC = () => {
       };
     });
   }, []);
+
+  const insertPlayPhoto = useCallback(
+    async (file: File) => {
+      if (!lessonPath || isOriginalView || isNamedView) return;
+      const slideId = currentSlideIdRef.current;
+      if (!slideId) return;
+      setPhotoBusy(true);
+      try {
+        const folder = lessonFolderPath(lessonPath);
+        const rawName = (file.name || 'foto.jpg').replace(/[^\w.\-äöüÄÖÜß]+/gi, '_');
+        const named = new File([file], `play-foto-${Date.now()}-${rawName}`, {
+          type: file.type || 'image/jpeg',
+        });
+        const formData = new FormData();
+        formData.append('file', named);
+        formData.append('targetPath', folder);
+        const res = await fetch('/api/file-system-paths/save-file', { method: 'POST', body: formData });
+        if (!res.ok) throw new Error('Foto konnte nicht gespeichert werden');
+        const data = (await res.json()) as { path?: string; filename?: string };
+        const path = (
+          data.path && data.path.trim()
+            ? data.path
+            : `${folder}/${(data.filename || named.name).split('/').pop()}`
+        ).replace(/\\/g, '/');
+
+        const el: SlideElement = {
+          id: `el-${Date.now()}`,
+          type: 'image',
+          x: 36,
+          y: 28,
+          w: DEFAULT_FLOATING_IMAGE_W,
+          h: DEFAULT_FLOATING_IMAGE_H,
+          src: path,
+          zIndex: 80,
+          imageFit: 'contain',
+          stackLayer: 'foreground',
+        };
+
+        setDeck((prev) => {
+          if (!prev) return prev;
+          const next: PresentationDeck = {
+            ...prev,
+            slides: prev.slides.map((s) =>
+              s.id !== slideId
+                ? s
+                : {
+                    ...s,
+                    elements: [
+                      ...(s.elements || []),
+                      { ...el, zIndex: (s.elements?.length ?? 0) + 1 },
+                    ],
+                  },
+            ),
+          };
+          void saveJsonFile(lessonPath, DECK_FILENAME, next).catch(() => {
+            setSnackbar('Foto ist auf der Folie — bitte noch Sichern tippen.');
+          });
+          return next;
+        });
+        setDrawActive(true);
+        setActiveTool('select');
+        setSelectedElementId(el.id);
+        setSnackbar('Foto eingefügt — ziehen verschiebt, Zuschneiden in der Leiste');
+      } catch (e) {
+        setSnackbar(e instanceof Error ? e.message : 'Foto fehlgeschlagen');
+      } finally {
+        setPhotoBusy(false);
+      }
+    },
+    [isNamedView, isOriginalView, lessonPath],
+  );
+
+  const selectedSlideElement =
+    currentSlide?.elements?.find((el) => el.id === selectedElementId) ?? null;
+  const selectedImageForCrop = selectedSlideElement?.type === 'image' ? selectedSlideElement : null;
+
+  const toggleSelectedImageCrop = useCallback(() => {
+    if (!selectedImageForCrop) return;
+    if (isImageCropMode(selectedImageForCrop)) {
+      updateSlideElement(selectedImageForCrop.id, { imageFit: 'contain' });
+      return;
+    }
+    updateSlideElement(selectedImageForCrop.id, {
+      imageFit: 'cover',
+      imageObjectPosition: selectedImageForCrop.imageObjectPosition || '50% 50%',
+    });
+  }, [selectedImageForCrop, updateSlideElement]);
 
   const flushAnnotations = useCallback(async (): Promise<PresentationAnnotations | null> => {
     const current = annotationsRef.current;
@@ -1414,6 +1506,15 @@ const PresentationPresentPage: React.FC = () => {
         canPickRandomStudent={groupStudents.length > 0}
         onPickRandomNumber={handlePickRandomNumber}
         onOpenEntryTicket={openEntryTicket}
+        onCaptureImage={
+          isOriginalView || isNamedView
+            ? undefined
+            : () => cameraInputRef.current?.click()
+        }
+        captureBusy={photoBusy}
+        imageCropAvailable={Boolean(drawActive && activeTool === 'select' && selectedImageForCrop)}
+        imageCropActive={Boolean(selectedImageForCrop && isImageCropMode(selectedImageForCrop))}
+        onToggleImageCrop={toggleSelectedImageCrop}
         onExitToDashboard={entryTicketOpen ? undefined : goToDashboard}
         zoom={userZoom}
         onZoomChange={applyUserZoom}
@@ -1530,6 +1631,19 @@ const PresentationPresentPage: React.FC = () => {
           </Typography>
         </Box>
       )}
+
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) void insertPlayPhoto(file);
+          e.target.value = '';
+        }}
+      />
 
       <Snackbar
         open={!!snackbar}
