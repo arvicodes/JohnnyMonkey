@@ -716,14 +716,42 @@ function readRangeFontSizePx(editor: HTMLElement, range: Range | null): number {
   return Number.isFinite(px) && px > 0 ? px : NOTE_DEFAULT_FONT_PX;
 }
 
-function cloneLiveNotesRange(editor: HTMLElement | null): Range | null {
+function cloneLiveNotesRange(editor: HTMLElement | null, allowCollapsed = false): Range | null {
   if (!editor) return null;
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0) return null;
   const range = sel.getRangeAt(0);
-  if (range.collapsed) return null;
+  if (range.collapsed && !allowCollapsed) return null;
   if (!editor.contains(range.commonAncestorContainer)) return null;
   return range.cloneRange();
+}
+
+function insertHtmlIntoNotesEditor(editor: HTMLElement, html: string): boolean {
+  editor.focus({ preventScroll: true });
+  const sel = window.getSelection();
+  let range: Range | null = null;
+  if (sel && sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
+    range = sel.getRangeAt(0);
+  }
+  if (!range) {
+    range = document.createRange();
+    range.selectNodeContents(editor);
+    range.collapse(false);
+  }
+  range.deleteContents();
+  const tpl = document.createElement('template');
+  tpl.innerHTML = html;
+  const frag = tpl.content;
+  const last = frag.lastChild;
+  range.insertNode(frag);
+  if (last && sel) {
+    const after = document.createRange();
+    after.setStartAfter(last);
+    after.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(after);
+  }
+  return Boolean(editor.querySelector('table'));
 }
 
 type TeacherQuickNotesProps = {
@@ -1187,7 +1215,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     const range =
       notesSelectionRef.current && editor.contains(notesSelectionRef.current.commonAncestorContainer)
         ? notesSelectionRef.current
-        : cloneLiveNotesRange(editor);
+        : cloneLiveNotesRange(editor, true);
     if (range && sel) {
       sel.removeAllRanges();
       sel.addRange(range);
@@ -1198,15 +1226,15 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     (rows = 3, cols = 3) => {
       const editor = editorRef.current;
       if (!editor) return;
+      if (modeRef.current !== 'text') {
+        modeRef.current = 'text';
+        setMode('text');
+      }
       pushHistorySnapshot();
       restoreNotesSelection();
       const html = `${buildBlankTableHtml(rows, cols, getTableTheme('grau'))}<p><br></p>`;
-      try {
-        document.execCommand('styleWithCSS', false, 'true');
-        document.execCommand('insertHTML', false, html);
-      } catch {
-        editor.insertAdjacentHTML('beforeend', html);
-      }
+      const ok = insertHtmlIntoNotesEditor(editor, html);
+      if (!ok) editor.insertAdjacentHTML('beforeend', html);
       syncEditorToState();
     },
     [pushHistorySnapshot, restoreNotesSelection, syncEditorToState],
@@ -1240,7 +1268,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   };
 
   const rememberNotesSelection = useCallback(() => {
-    const live = cloneLiveNotesRange(editorRef.current);
+    const live = cloneLiveNotesRange(editorRef.current, true);
     if (live) notesSelectionRef.current = live;
     stashEditorSelection(editorRef.current);
     return live;
@@ -1298,7 +1326,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     const onSelectionChange = () => {
       const editor = editorRef.current;
       if (!editor) return;
-      const live = cloneLiveNotesRange(editor);
+      const live = cloneLiveNotesRange(editor, true);
       if (live) {
         notesSelectionRef.current = live;
         stashEditorSelection(editor);
@@ -1307,7 +1335,6 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
       if (isFormatBarInteracting()) return;
       const active = document.activeElement;
       if (active && formatToolbarRef.current?.contains(active)) return;
-      if (active && editor.contains(active)) notesSelectionRef.current = null;
     };
     document.addEventListener('selectionchange', onSelectionChange);
     return () => document.removeEventListener('selectionchange', onSelectionChange);
