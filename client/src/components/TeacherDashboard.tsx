@@ -10976,14 +10976,14 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     <LaptopMacIcon sx={{ fontSize: 11 }} />
                   </IconButton>
                 </Tooltip>
-                <Tooltip title="Bearbeiten (Erstellen-Modus)">
+                <Tooltip title="Präsentation bearbeiten (Erstellen)">
                   <IconButton
                     size="small"
-                    aria-label="Erstellen-Modus"
+                    aria-label="Präsentation erstellen"
                     onClick={() => {
-                      openLessonStundePage(groupId, stundeLessonPath, item.name, {
-                        planMode: 'create',
-                      });
+                      const editorGroupId =
+                        groupId && groupId !== DASHBOARD_REIHEN_CONTENT_GROUP ? groupId : undefined;
+                      navigate(presentationEditorUrl(stundeLessonPath, editorGroupId, 'create'));
                     }}
                     sx={{
                       p: 0,
