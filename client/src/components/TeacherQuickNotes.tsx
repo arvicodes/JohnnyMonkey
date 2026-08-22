@@ -762,6 +762,15 @@ function insertHtmlIntoNotesEditor(editor: HTMLElement, html: string): boolean {
     range.selectNodeContents(editor);
     range.collapse(false);
   }
+  const inCell = (() => {
+    const n = range.commonAncestorContainer;
+    const el = n instanceof Element ? n : n.parentElement;
+    return Boolean(el?.closest?.('td, th'));
+  })();
+  // Nicht den ganzen Notiztext löschen, wenn mehr als eine Zelle markiert ist
+  if (!range.collapsed && !inCell) {
+    range.collapse(false);
+  }
   range.deleteContents();
   const tpl = document.createElement('template');
   tpl.innerHTML = html;
