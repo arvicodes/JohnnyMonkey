@@ -24,6 +24,7 @@ interface PresentationSlideElementsProps {
   /** Karte gewählt → Bilder lassen Klicks durch. */
   passPointerThrough?: boolean;
   mediaInteractive?: boolean;
+  imageEditable?: boolean;
   exportSnapshot?: boolean;
   imageMaxEdge?: number;
   accentColor?: string;
@@ -48,6 +49,7 @@ const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
   onSnapGuidesChange,
   passPointerThrough = false,
   mediaInteractive = false,
+  imageEditable = false,
   exportSnapshot = false,
   imageMaxEdge,
   accentColor,
@@ -80,6 +82,7 @@ const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
           onSnapGuidesChange={onSnapGuidesChange}
           passPointerThrough={passPointerThrough}
           mediaInteractive={mediaInteractive}
+          imageEditable={imageEditable}
           exportSnapshot={exportSnapshot}
           imageMaxEdge={imageMaxEdge}
           accentColor={accentColor}

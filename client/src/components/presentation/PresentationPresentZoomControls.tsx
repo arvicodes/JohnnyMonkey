@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, IconButton, Tooltip, Typography } from '@mui/material';
+import { Box, IconButton, Typography } from '@mui/material';
 import {
   Add as ZoomInIcon,
   Remove as ZoomOutIcon,
@@ -62,7 +62,6 @@ const PresentationPresentZoomControls: React.FC<PresentationPresentZoomControlsP
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
     >
-      <Tooltip title="Herauszoomen (−)">
         <span>
           <IconButton
             size="small"
@@ -86,7 +85,6 @@ const PresentationPresentZoomControls: React.FC<PresentationPresentZoomControlsP
             <ZoomOutIcon sx={{ fontSize: 16 }} />
           </IconButton>
         </span>
-      </Tooltip>
       {!compact && (
         <Typography
           component="span"
@@ -103,7 +101,6 @@ const PresentationPresentZoomControls: React.FC<PresentationPresentZoomControlsP
           {presentZoomLabel(zoom)}
         </Typography>
       )}
-      <Tooltip title="Hineinzoomen (+)">
         <span>
           <IconButton
             size="small"
@@ -127,8 +124,6 @@ const PresentationPresentZoomControls: React.FC<PresentationPresentZoomControlsP
             <ZoomInIcon sx={{ fontSize: 16 }} />
           </IconButton>
         </span>
-      </Tooltip>
-      <Tooltip title="Zoom zurücksetzen (0)">
         <span>
           <IconButton
             size="small"
@@ -152,7 +147,6 @@ const PresentationPresentZoomControls: React.FC<PresentationPresentZoomControlsP
             <ZoomResetIcon sx={{ fontSize: 15 }} />
           </IconButton>
         </span>
-      </Tooltip>
     </Box>
   );
 };

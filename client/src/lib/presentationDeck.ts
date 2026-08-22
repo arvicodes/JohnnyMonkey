@@ -99,6 +99,11 @@ export interface SlideElement {
   imageFit?: 'contain' | 'cover';
   /** Bildausschnitt bei object-fit: cover (z. B. "40% 60%"). */
   imageObjectPosition?: string;
+  /**
+   * Echtes Zuschneiden: Lage des ganzen Bildes auf der Folie (Prozent).
+   * Der Element-Rahmen (x/y/w/h) ist das Fenster — alles außerhalb wird abgeschnitten.
+   */
+  imageSourceRect?: { x: number; y: number; w: number; h: number };
   /** Bildrahmen (PowerPoint-ähnlich: Linie, Passepartout, Schatten). */
   imageFrame?: SlideImageFrame;
   /** Standard-Zoom für Referenz-Embeds (1 = 100 %). */

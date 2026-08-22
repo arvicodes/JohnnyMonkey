@@ -59,7 +59,13 @@ import {
   requestPresentFullscreen,
 } from '../lib/presentationPresentFullscreen';
 import { ThemeProvider, createTheme, useTheme } from '@mui/material/styles';
-import { DEFAULT_FLOATING_IMAGE_H, DEFAULT_FLOATING_IMAGE_W, isImageCropMode } from '../lib/presentationImageUtils';
+import {
+  DEFAULT_FLOATING_IMAGE_H,
+  DEFAULT_FLOATING_IMAGE_W,
+  isImageCropMode,
+  isWindowCropMode,
+  sourceRectFromElement,
+} from '../lib/presentationImageUtils';
 import EntryTicketPage from './EntryTicketPage';
 
 const SWIPE_MIN_PX = 48;
@@ -467,6 +473,7 @@ const PresentationPresentPage: React.FC = () => {
           src: path,
           zIndex: 80,
           imageFit: 'contain',
+          imageSourceRect: { x: 36, y: 28, w: DEFAULT_FLOATING_IMAGE_W, h: DEFAULT_FLOATING_IMAGE_H },
           stackLayer: 'foreground',
         };
 
@@ -510,13 +517,17 @@ const PresentationPresentPage: React.FC = () => {
 
   const toggleSelectedImageCrop = useCallback(() => {
     if (!selectedImageForCrop) return;
-    if (isImageCropMode(selectedImageForCrop)) {
-      updateSlideElement(selectedImageForCrop.id, { imageFit: 'contain' });
+    if (isWindowCropMode(selectedImageForCrop) || isImageCropMode(selectedImageForCrop)) {
+      updateSlideElement(selectedImageForCrop.id, {
+        imageFit: 'contain',
+        imageSourceRect: undefined,
+        imageObjectPosition: undefined,
+      });
       return;
     }
     updateSlideElement(selectedImageForCrop.id, {
-      imageFit: 'cover',
-      imageObjectPosition: selectedImageForCrop.imageObjectPosition || '50% 50%',
+      imageFit: 'contain',
+      imageSourceRect: sourceRectFromElement(selectedImageForCrop),
     });
   }, [selectedImageForCrop, updateSlideElement]);
 
@@ -1176,6 +1187,10 @@ const PresentationPresentPage: React.FC = () => {
       swipeRef.current = null;
       return;
     }
+    if (target?.closest?.('[data-pres-element-type="image"], [data-resize-handle]')) {
+      swipeRef.current = null;
+      return;
+    }
     swipeRef.current = { x: t.clientX, y: t.clientY };
   };
 
@@ -1429,6 +1444,7 @@ const PresentationPresentPage: React.FC = () => {
                   lessonPath={deck?.lessonPath ?? lessonPath}
                   mediaInteractive={!drawActive && !zoomed}
                   editable={drawActive && activeTool === 'select'}
+                  imageEditable={!isOriginalView && !isNamedView}
                   selectedElementId={selectedElementId}
                   onElementSelect={setSelectedElementId}
                   onElementChange={updateSlideElement}

@@ -22,7 +22,11 @@ import {
 } from '../../lib/presentationSlideFooter';
 import { sanitizePresentationHtml } from '../../lib/presentationRichText';
 import { getElementStackLayer } from '../../lib/presentationElementLayers';
-import { slideHasImageHeroLayout } from '../../lib/presentationImageUtils';
+import {
+  imageSourceRectCss,
+  normalizeImageSourceRect,
+  slideHasImageHeroLayout,
+} from '../../lib/presentationImageUtils';
 import { slideHasFullscreenMedia } from '../../lib/presentationMediaEmbed';
 import { isBareBlankLayout, isBlankLayout } from '../../lib/presentationLayouts';
 import { hydratePresentationHtmlFontSizes, PRESENTATION_CONTENT_FONT_PX } from '../../lib/presentationFontSize';
@@ -119,18 +123,37 @@ function StaticElement({ el, scale, accent }: { el: SlideElement; scale: number;
           pointerEvents: 'none',
         }}
       >
-        <div style={frame.active ? frame.wrap : { width: '100%', height: '100%' }}>
-          <div style={frame.active ? frame.inner : { width: '100%', height: '100%' }}>
+        <div
+          style={
+            frame.active
+              ? frame.wrap
+              : { width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }
+          }
+        >
+          <div
+            style={
+              frame.active
+                ? { ...frame.inner, position: 'relative', overflow: 'hidden' }
+                : { width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }
+            }
+          >
             <img
               src={url}
               alt=""
               style={{
-                width: '100%',
-                height: '100%',
-                objectFit: el.imageFit === 'cover' ? 'cover' : 'contain',
-                objectPosition: el.imageObjectPosition || '50% 50%',
                 display: 'block',
                 background: 'transparent',
+                ...(normalizeImageSourceRect(el.imageSourceRect)
+                  ? imageSourceRectCss(
+                      { x: el.x, y: el.y, w: el.w, h: el.h },
+                      normalizeImageSourceRect(el.imageSourceRect)!,
+                    )
+                  : {
+                      width: '100%',
+                      height: '100%',
+                      objectFit: el.imageFit === 'cover' ? 'cover' : 'contain',
+                      objectPosition: el.imageObjectPosition || '50% 50%',
+                    }),
                 ...(frame.active ? frame.img : {}),
               }}
             />

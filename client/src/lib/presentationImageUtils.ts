@@ -44,9 +44,88 @@ export function formatImageObjectPosition(x: number, y: number): string {
   )}%`;
 }
 
-/** Bild im Beschneide-Modus (object-fit: cover + Ausschnitt verschieben). */
+export type ImageSourceRect = { x: number; y: number; w: number; h: number };
+
+export function normalizeImageSourceRect(
+  rect: ImageSourceRect | undefined | null,
+): ImageSourceRect | null {
+  if (!rect) return null;
+  const w = Number(rect.w);
+  const h = Number(rect.h);
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w < 1 || h < 1) return null;
+  return {
+    x: Number.isFinite(rect.x) ? rect.x : 0,
+    y: Number.isFinite(rect.y) ? rect.y : 0,
+    w,
+    h,
+  };
+}
+
+export function sourceRectFromElement(element: Pick<SlideElement, 'x' | 'y' | 'w' | 'h'>): ImageSourceRect {
+  return { x: element.x, y: element.y, w: element.w, h: element.h };
+}
+
+/** Fenster-Zuschneiden: das Foto bleibt, der Rahmen schneidet ab. */
+export function isWindowCropMode(element: SlideElement): boolean {
+  return element.type === 'image' && Boolean(normalizeImageSourceRect(element.imageSourceRect));
+}
+
+/** Bild im Beschneide-Modus (Fenster oder älteres Cover). */
 export function isImageCropMode(element: SlideElement): boolean {
-  return element.type === 'image' && element.imageFit === 'cover' && Boolean(element.src?.trim());
+  if (element.type !== 'image' || !element.src?.trim()) return false;
+  return isWindowCropMode(element) || element.imageFit === 'cover';
+}
+
+export function imageSourceRectCss(box: ImageSourceRect, source: ImageSourceRect) {
+  const bw = Math.max(box.w, 0.01);
+  const bh = Math.max(box.h, 0.01);
+  return {
+    position: 'absolute' as const,
+    left: `${((source.x - box.x) / bw) * 100}%`,
+    top: `${((source.y - box.y) / bh) * 100}%`,
+    width: `${(source.w / bw) * 100}%`,
+    height: `${(source.h / bh) * 100}%`,
+    maxWidth: 'none',
+    maxHeight: 'none',
+    objectFit: 'fill' as const,
+  };
+}
+
+export function moveWindowCrop(
+  orig: SlideElement,
+  dxPct: number,
+  dyPct: number,
+): Partial<SlideElement> {
+  const source = normalizeImageSourceRect(orig.imageSourceRect) || sourceRectFromElement(orig);
+  return {
+    x: orig.x + dxPct,
+    y: orig.y + dyPct,
+    imageSourceRect: {
+      x: source.x + dxPct,
+      y: source.y + dyPct,
+      w: source.w,
+      h: source.h,
+    },
+  };
+}
+
+export function resizeWindowCrop(
+  orig: SlideElement,
+  handle: ImageCropHandle,
+  dxPct: number,
+  dyPct: number,
+  minSize = 4,
+): Partial<SlideElement> {
+  const source = normalizeImageSourceRect(orig.imageSourceRect) || sourceRectFromElement(orig);
+  const next = resizeImageFrameByHandle(orig, handle, dxPct, dyPct, minSize);
+  const maxW = source.x + source.w - next.x;
+  const maxH = source.y + source.h - next.y;
+  let { x, y, w, h } = next;
+  x = Math.max(source.x, Math.min(x, source.x + source.w - minSize));
+  y = Math.max(source.y, Math.min(y, source.y + source.h - minSize));
+  w = Math.max(minSize, Math.min(w, source.x + source.w - x, maxW));
+  h = Math.max(minSize, Math.min(h, source.y + source.h - y, maxH));
+  return { x, y, w, h, imageSourceRect: source };
 }
 
 /** Bildrahmen darf über den Folienrand hinausragen (Prozent). */
@@ -66,6 +145,7 @@ export function shouldPanCoverImageOnDrag(
   element: SlideElement,
   options?: { altKey?: boolean; shiftKey?: boolean },
 ): boolean {
+  if (isWindowCropMode(element)) return false;
   if (!isImageCropMode(element)) return false;
   return !options?.shiftKey;
 }

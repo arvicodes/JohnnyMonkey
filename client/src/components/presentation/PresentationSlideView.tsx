@@ -78,6 +78,8 @@ interface PresentationSlideViewProps {
   selectedAnimationTarget?: string | null;
   onAnimationTargetClick?: (itemId: string | null) => void;
   mediaInteractive?: boolean;
+  /** Play: Folienbilder mit Fingern verschieben/zuschneiden. */
+  imageEditable?: boolean;
   /** PDF-Export: Layout wie im Editor, ohne Animations-Artefakte. */
   exportSnapshot?: boolean;
   /** Bildgröße begrenzen (Editor). Ohne Wert: Original / Export. */
@@ -111,6 +113,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   selectedAnimationTarget = null,
   onAnimationTargetClick,
   mediaInteractive = false,
+  imageEditable = false,
   exportSnapshot = false,
   imageMaxEdge,
 }) => {
@@ -218,6 +221,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           selectedAnimationTarget={selectedAnimationTarget}
           onAnimationTargetClick={onAnimationTargetClick}
           mediaInteractive={mediaInteractive}
+          imageEditable={imageEditable}
           imageMaxEdge={resolvedImageMax}
           accentColor={slide.accentColor}
         />

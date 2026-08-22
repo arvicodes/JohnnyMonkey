@@ -15377,10 +15377,17 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
         await loadLessonKeywords(gid);
         await loadSeatingOrder(gid);
         const klass = detectKlasse5SeatingKey(g.name);
-        if (klass && !cancelled) applyKlasse5PhotoSeating(klass, gid);
+        if (klass && !cancelled) {
+          try {
+            applyKlasse5PhotoSeating(klass, gid);
+          } catch (seatingErr) {
+            console.error(seatingErr);
+          }
+        }
         if (!cancelled) setParticipationModalOpen(true);
       } catch (e) {
         console.error(e);
+        if (!cancelled) setParticipationModalOpen(true);
       }
     })();
     return () => {
@@ -15488,7 +15495,8 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
             ...(lessonSplitLeft && {
               position: 'relative',
-              zIndex: (theme) => theme.zIndex.modal + 10,
+              zIndex: (theme) => theme.zIndex.modal + 2,
+              width: laptopLeftWidth,
               maxWidth: laptopLeftWidth,
               boxSizing: 'border-box',
             }),
@@ -24645,20 +24653,26 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
       {/* Mitarbeitsbewertungs-Modal (zentriert) bzw. rechts 50 % bei Stunden-Ansicht â€žLaptopâ€œ */}
       <Dialog 
         open={participationModalOpen} 
-        onClose={handleParticipationClose}
+        onClose={(event, reason) => {
+          if (participationDocked && reason === 'backdropClick') return;
+          handleParticipationClose();
+        }}
         maxWidth={participationDocked ? false : 'md'}
         fullWidth={!participationDocked}
         hideBackdrop={participationDocked}
+        disableEnforceFocus={participationDocked}
+        disableAutoFocus={participationDocked}
         sx={
           participationDocked
             ? {
+                zIndex: (theme) => theme.zIndex.modal + 6,
                 '& .MuiDialog-container': {
                   justifyContent: 'flex-end',
                   alignItems: 'stretch',
                   overflow: 'hidden',
                   pointerEvents: 'none',
                 },
-                '& .MuiPaper-root': {
+                '& .MuiDialog-paper': {
                   pointerEvents: 'auto',
                 },
               }

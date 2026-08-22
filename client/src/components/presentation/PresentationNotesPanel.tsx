@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Box, IconButton, Tooltip, Typography } from '@mui/material';
+import { Box, IconButton, Typography } from '@mui/material';
 import {
   DeleteOutline as TrashIcon,
   ChevronRight as HideNotesIcon,
@@ -258,9 +258,9 @@ const NoteZone: React.FC<NoteZoneProps> = ({
                   e.target.value = '';
                 }}
               />
-              <Tooltip title="Bild einfügen">
                 <IconButton
                   size="small"
+                  aria-label="Bild einfügen"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     if (ref.current) onEditorFocus(fieldKey, ref.current);
@@ -270,19 +270,17 @@ const NoteZone: React.FC<NoteZoneProps> = ({
                 >
                   <ImageOutlinedIcon sx={{ fontSize: 14 }} />
                 </IconButton>
-              </Tooltip>
             </>
           )}
           {!readOnly && onMoveToTrash && (
-            <Tooltip title="In Papierkorb verschieben">
               <IconButton
                 size="small"
+                aria-label="In Papierkorb verschieben"
                 onClick={() => onMoveToTrash(fieldKey)}
                 sx={{ width: 22, height: 22, color: PRES_EDITOR_UI.textMuted }}
               >
                 <TrashIcon sx={{ fontSize: 14 }} />
               </IconButton>
-            </Tooltip>
           )}
         </Box>
       </Box>
@@ -575,7 +573,6 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
           </Typography>
         </Box>
         {onHide && (
-          <Tooltip title="Notizen ausblenden">
             <IconButton
               size="small"
               onClick={onHide}
@@ -589,7 +586,6 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
             >
               <HideNotesIcon sx={{ fontSize: 18 }} />
             </IconButton>
-          </Tooltip>
         )}
       </Box>
       <NoteZone

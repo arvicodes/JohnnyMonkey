@@ -89,7 +89,7 @@ import {
   type CreateTableOptions,
 } from '../../lib/presentationSlideTables';
 import { isHomeworkSlide } from '../../lib/presentationSlideTemplates';
-import { isImageCropMode } from '../../lib/presentationImageUtils';
+import { isImageCropMode, isWindowCropMode, sourceRectFromElement } from '../../lib/presentationImageUtils';
 import {
   IMAGE_FRAME_COLORS,
   IMAGE_FRAME_DASHES,
@@ -940,9 +940,17 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                         <Button
                           size="small"
                           sx={{ ...miniBtnSx, flex: 1 }}
-                          variant={selectedElement.imageFit === 'contain' ? 'contained' : 'outlined'}
+                          variant={
+                            selectedElement.imageFit !== 'cover' && !isWindowCropMode(selectedElement)
+                              ? 'contained'
+                              : 'outlined'
+                          }
                           onClick={() =>
-                            onUpdateElement(selectedElement.id, { imageFit: 'contain' })
+                            onUpdateElement(selectedElement.id, {
+                              imageFit: 'contain',
+                              imageSourceRect: undefined,
+                              imageObjectPosition: undefined,
+                            })
                           }
                         >
                           Einpassen
@@ -954,15 +962,33 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                           startIcon={<CropIcon sx={{ fontSize: 14 }} />}
                           onClick={() =>
                             onUpdateElement(selectedElement.id, {
-                              imageFit: 'cover',
-                              imageObjectPosition: selectedElement.imageObjectPosition || '50% 50%',
+                              imageFit: 'contain',
+                              imageSourceRect:
+                                selectedElement.imageSourceRect || sourceRectFromElement(selectedElement),
                             })
                           }
                         >
                           Zuschneiden
                         </Button>
                       </Box>
-                      {isImageCropMode(selectedElement) && (
+                      {isWindowCropMode(selectedElement) && selectedElement.imageSourceRect ? (
+                        <Button
+                          size="small"
+                          fullWidth
+                          variant="outlined"
+                          onClick={() =>
+                            onUpdateElement(selectedElement.id, {
+                              x: selectedElement.imageSourceRect!.x,
+                              y: selectedElement.imageSourceRect!.y,
+                              w: selectedElement.imageSourceRect!.w,
+                              h: selectedElement.imageSourceRect!.h,
+                            })
+                          }
+                          sx={{ ...miniBtnSx, mb: 0.35 }}
+                        >
+                          Zuschnitt zurücksetzen
+                        </Button>
+                      ) : isImageCropMode(selectedElement) ? (
                         <Button
                           size="small"
                           fullWidth
@@ -974,11 +1000,13 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                         >
                           Ausschnitt zentrieren
                         </Button>
-                      )}
+                      ) : null}
                       <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, lineHeight: 1.35, mb: 0.75 }}>
-                        {isImageCropMode(selectedElement)
-                          ? 'Ziehen verschiebt den Ausschnitt · Kanten ziehen den Rahmen · Shift+Ziehen verschiebt das Bild'
-                          : 'Ziehen verschiebt das Bild · Zuschneiden für Ausschnitt'}
+                        {isWindowCropMode(selectedElement)
+                          ? 'Kanten ziehen schneidet das Foto zu · Ziehen verschiebt das ganze Bild'
+                          : isImageCropMode(selectedElement)
+                            ? 'Ziehen verschiebt den Ausschnitt · Kanten ziehen den Rahmen · Shift+Ziehen verschiebt das Bild'
+                            : 'Ziehen verschiebt das Bild · Zuschneiden für Ausschnitt'}
                       </Typography>
                       <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.4 }}>
                         Rahmen

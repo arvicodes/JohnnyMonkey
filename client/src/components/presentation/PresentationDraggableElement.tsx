@@ -35,12 +35,18 @@ import {
   IMAGE_FRAME_MAX,
   IMAGE_FRAME_MIN,
   IMAGE_FRAME_SIZE_MAX,
+  imageSourceRectCss,
   isHeroSlideImage,
   isImageCropMode,
+  isWindowCropMode,
+  moveWindowCrop,
+  normalizeImageSourceRect,
   parseImageObjectPosition,
   presentationImageElementSx,
   resizeImageFrameByHandle,
+  resizeWindowCrop,
   shouldPanCoverImageOnDrag,
+  sourceRectFromElement,
   type ImageCropHandle,
 } from '../../lib/presentationImageUtils';
 import { SlideShapeSvg, shapeSupportsText } from '../../lib/presentationSlideShapes';
@@ -117,6 +123,8 @@ interface PresentationDraggableElementProps {
   onSnapGuidesChange?: (guides: SnapGuide[]) => void;
   /** Wenn eine Karte gewählt ist: Bilder lassen Klicks durch (Inhalt tippen). */
   passPointerThrough?: boolean;
+  /** Play: Bild mit Fingern verschieben/zuschneiden, Stift bleibt zum Malen. */
+  imageEditable?: boolean;
   /** Folien-Akzent für Bildrahmen-Vorlage „Akzent“. */
   accentColor?: string;
 }
@@ -158,6 +166,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   snapTargets = [],
   onSnapGuidesChange,
   passPointerThrough = false,
+  imageEditable = false,
   accentColor,
 }) => {
   const textRef = useRef<HTMLDivElement>(null);
@@ -443,7 +452,9 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       rot = ((rot % 360) + 360) % 360;
       patch = { rotation: Math.round(rot) };
     } else if (d.mode === 'move') {
-      if (shouldPanCoverImageOnDrag(d.orig, { shiftKey: e.shiftKey })) {
+      if (isWindowCropMode(d.orig)) {
+        patch = moveWindowCrop(d.orig, dxPct, dyPct);
+      } else if (shouldPanCoverImageOnDrag(d.orig, { shiftKey: e.shiftKey })) {
         const pos = parseImageObjectPosition(d.orig.imageObjectPosition);
         const panGain = 1.35;
         patch = {
@@ -465,22 +476,30 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         guides = snapped.guides;
       }
     } else if (d.mode === 'resize' && d.resizeCorner !== 'br' && d.resizeCorner !== 'tr') {
-      patch = resizeImageFrameByHandle(d.orig, d.resizeCorner, dxPct, dyPct, MIN_SIZE);
+      patch = isWindowCropMode(d.orig)
+        ? resizeWindowCrop(d.orig, d.resizeCorner, dxPct, dyPct, MIN_SIZE)
+        : resizeImageFrameByHandle(d.orig, d.resizeCorner, dxPct, dyPct, MIN_SIZE);
     } else if (d.resizeCorner === 'tr') {
-      const nextW = clamp(d.orig.w + dxPct, MIN_SIZE, IMAGE_FRAME_SIZE_MAX);
-      const nextH = clamp(d.orig.h - dyPct, MIN_SIZE, IMAGE_FRAME_SIZE_MAX);
-      const deltaH = d.orig.h - nextH;
-      const proposed = {
-        ...elementToRect(d.orig),
-        w: nextW,
-        h: nextH,
-        y: clamp(d.orig.y + deltaH, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
-      };
-      const snapped = snapElementResize(proposed, 'tr', snapTargetsRef.current, {
-        enabled: snapEnabled,
-      });
-      patch = { x: snapped.x, y: snapped.y, w: snapped.w, h: snapped.h };
-      guides = snapped.guides;
+      if (isWindowCropMode(d.orig)) {
+        patch = resizeWindowCrop(d.orig, 'ne', dxPct, dyPct, MIN_SIZE);
+      } else {
+        const nextW = clamp(d.orig.w + dxPct, MIN_SIZE, IMAGE_FRAME_SIZE_MAX);
+        const nextH = clamp(d.orig.h - dyPct, MIN_SIZE, IMAGE_FRAME_SIZE_MAX);
+        const deltaH = d.orig.h - nextH;
+        const proposed = {
+          ...elementToRect(d.orig),
+          w: nextW,
+          h: nextH,
+          y: clamp(d.orig.y + deltaH, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
+        };
+        const snapped = snapElementResize(proposed, 'tr', snapTargetsRef.current, {
+          enabled: snapEnabled,
+        });
+        patch = { x: snapped.x, y: snapped.y, w: snapped.w, h: snapped.h };
+        guides = snapped.guides;
+      }
+    } else if (isWindowCropMode(d.orig)) {
+      patch = resizeWindowCrop(d.orig, 'se', dxPct, dyPct, MIN_SIZE);
     } else {
       const proposed = {
         ...elementToRect(d.orig),
@@ -598,6 +617,9 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     [pointerMove, element.type, element.html, editable, animationEditMode, onChange, onMoveToSlide, onTextEditorFocus, element.id]
   );
 
+  const imageOnlyEdit = Boolean(imageEditable && element.type === 'image' && onChange);
+  const canEdit = Boolean(editable || imageOnlyEdit);
+
   const startDrag = (
     e: React.PointerEvent,
     mode: DragMode,
@@ -605,7 +627,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     cardZone: 'title' | 'body' | null = null,
     editOnClick: 'text' | 'shape' | null = null,
   ) => {
-    if (!editable || !onChange) return;
+    if (!canEdit || !onChange) return;
+    if (imageOnlyEdit && e.pointerType === 'pen') return;
     const slide = (e.currentTarget as HTMLElement).closest('[data-pres-slide]') as HTMLElement | null;
     const rect = slide?.getBoundingClientRect();
     if (!rect) return;
@@ -613,6 +636,15 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     if (textEditing) setTextEditing(false);
     if (cardTitleEditing && mode === 'move' && e.detail < 2) setCardTitleEditing(false);
     onSelect?.();
+    const orig: SlideElement = { ...element };
+    if (imageOnlyEdit && !normalizeImageSourceRect(orig.imageSourceRect)) {
+      orig.imageSourceRect = sourceRectFromElement(orig);
+      orig.imageFit = 'contain';
+      onChange({
+        imageSourceRect: orig.imageSourceRect,
+        imageFit: 'contain',
+      });
+    }
     pendingDragRef.current = {
       mode,
       resizeCorner,
@@ -622,7 +654,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       slideH: rect.height,
       slideLeft: rect.left,
       slideTop: rect.top,
-      orig: { ...element },
+      orig,
       pointerId: e.pointerId,
       cardZone,
       editOnClick,
@@ -698,12 +730,18 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   );
   const pictureFrameOn = isImageElement && pictureFrame.active;
   const heroImage = isImageElement && isHeroSlideImage(view);
-  const cropMode = isImageElement && isImageCropMode(view);
+  const windowCropRect = isImageElement ? normalizeImageSourceRect(view.imageSourceRect) : null;
+  const windowCrop = Boolean(windowCropRect);
+  const cropMode = isImageElement && (windowCrop || isImageCropMode(view) || imageOnlyEdit);
   const imageFit = effectivePresentationImageFit(view.src, view.imageFit);
   /** Contain: Rahmen/Handles am sichtbaren Bild, nicht am leeren Elementkasten. */
   const hugImageChrome =
-    isImageElement && Boolean(element.src?.trim()) && !heroImage && imageFit !== 'cover';
-  const showSelectionChrome = editable && selected && !animationEditMode;
+    isImageElement &&
+    Boolean(element.src?.trim()) &&
+    !heroImage &&
+    !windowCrop &&
+    imageFit !== 'cover';
+  const showSelectionChrome = canEdit && selected && !animationEditMode;
   const isShapeElement = element.type === 'shape';
   const isShapeBox = shapeSupportsText(element);
   /** Freie Textfelder: Doppelklick. Form-Boxen: bei Auswahl sofort tippbar (wie Karten). */
@@ -809,6 +847,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   return (
     <Box
       data-pres-element={element.id}
+      data-pres-element-type={element.type}
       onDragOver={blockFileDropIntoText}
       onDrop={blockFileDropIntoText}
       onPointerDown={(e) => {
@@ -817,7 +856,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
           handleAnimationClick(e);
           return;
         }
-        if (!editable) return;
+        if (!canEdit) return;
+        if (imageOnlyEdit && e.pointerType === 'pen') return;
         if (isMediaElement && mediaInteractive) return;
         if ((e.target as HTMLElement).closest('[data-resize-handle]')) return;
         if ((e.target as HTMLElement).closest('[data-rotate-handle]')) return;
@@ -1063,9 +1103,10 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               lineHeight: 0,
               boxSizing: 'border-box',
               border: hugImageChrome ? hugChromeBorder : undefined,
-              overflow: pictureFrameOn ? 'visible' : cropMode || hugImageChrome ? 'hidden' : 'visible',
+              overflow: pictureFrameOn ? 'visible' : windowCrop || cropMode || hugImageChrome ? 'hidden' : 'visible',
               width: '100%',
               height: '100%',
+              position: 'relative',
               ...(pictureFrameOn ? pictureFrame.wrap : undefined),
               outline: pictureSelectOutline,
               outlineOffset: pictureSelectOutline ? `${2 * scale}px` : undefined,
@@ -1080,6 +1121,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               sx={{
                 width: '100%',
                 height: '100%',
+                position: 'relative',
+                overflow: windowCrop ? 'hidden' : undefined,
                 ...(pictureFrameOn ? pictureFrame.inner : undefined),
               }}
             >
@@ -1102,11 +1145,16 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                       height: '100%',
                     }
                   : undefined),
-                ...presentationImageElementSx(
-                  element.src,
-                  view.imageFit,
-                  view.imageObjectPosition,
-                ),
+                ...(windowCrop && windowCropRect
+                  ? imageSourceRectCss(
+                      { x: view.x, y: view.y, w: view.w, h: view.h },
+                      windowCropRect,
+                    )
+                  : presentationImageElementSx(
+                      element.src,
+                      view.imageFit,
+                      view.imageObjectPosition,
+                    )),
                 ...(pictureFrameOn ? pictureFrame.img : undefined),
               }}
             />
@@ -2012,7 +2060,6 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             <Box
               key={h.id}
               data-resize-handle
-              title="Zuschneiden — Kante ziehen"
               onPointerDown={(e) => {
                 e.stopPropagation();
                 startDrag(e, 'resize', h.id);

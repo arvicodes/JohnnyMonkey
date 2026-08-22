@@ -724,9 +724,25 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       return;
     }
 
-    if (e.pointerType === 'touch' && (t === 'pen' || t === 'marker' || !e.isPrimary)) {
-      e.preventDefault();
-      return;
+    if (e.pointerType === 'touch') {
+      const imageHost =
+        under.host?.getAttribute('data-pres-element-type') === 'image' ? under.host : null;
+      if (imageHost) {
+        e.preventDefault();
+        e.stopPropagation();
+        const target = under.handle || imageHost;
+        try {
+          target.setPointerCapture(e.pointerId);
+        } catch {
+          /* ignore */
+        }
+        dispatchPointerTo(target, e);
+        return;
+      }
+      if (t === 'pen' || t === 'marker' || !e.isPrimary) {
+        e.preventDefault();
+        return;
+      }
     }
 
     if (!isInkPointer(t, e.pointerType)) return;
