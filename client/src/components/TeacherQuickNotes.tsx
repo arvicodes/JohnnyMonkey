@@ -6,6 +6,7 @@ import {
   DialogTitle,
   Divider,
   IconButton,
+  MenuItem,
   Popover,
   Tooltip,
   Typography,
@@ -28,10 +29,18 @@ import AutoFixOffIcon from '@mui/icons-material/AutoFixOff';
 import UndoIcon from '@mui/icons-material/Undo';
 import RedoIcon from '@mui/icons-material/Redo';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
+import TableChartIcon from '@mui/icons-material/TableChart';
 import CloseIcon from '@mui/icons-material/Close';
 import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
 import { DialogCloseIconButton } from './ui/dialog-close-icon-button';
 import { handlePresentationListShortcutKey, handlePresentationTabKey } from '../lib/presentationRichText';
+import {
+  buildBlankTableHtml,
+  getTableTheme,
+  tableAddColumn,
+  tableAddRow,
+} from '../lib/presentationSlideTables';
+import { presentationNotesTableSx } from '../lib/presentationListStyles';
 import { applyEditorFontSizePx, stashEditorSelection } from '../lib/presentationFontSize';
 import { isFormatBarInteracting, setFormatBarInteracting } from '../lib/presentationFormatBarGuard';
 import { strokeSmoothFreehand } from '../lib/presentationDrawTools';
@@ -743,6 +752,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   const [renamingIndex, setRenamingIndex] = useState<number | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [tableAnchor, setTableAnchor] = useState<HTMLElement | null>(null);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
   const emojiAnchorRef = useRef<HTMLButtonElement | null>(null);
   const emojiCaretRef = useRef<Range | null>(null);
@@ -1151,6 +1161,73 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     }
     syncEditorToState();
   }, [color, pushHistorySnapshot, syncEditorToState]);
+
+  const findNotesTable = useCallback((): HTMLTableElement | null => {
+    const editor = editorRef.current;
+    if (!editor) return null;
+    const sel = window.getSelection();
+    const node = sel?.anchorNode;
+    const el = node instanceof Element ? node : node?.parentElement;
+    if (el && editor.contains(el)) {
+      const table = el.closest('table');
+      if (table) return table;
+    }
+    return editor.querySelector('table');
+  }, []);
+
+  const restoreNotesSelection = useCallback(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    if (modeRef.current !== 'text') {
+      modeRef.current = 'text';
+      setMode('text');
+    }
+    editor.focus({ preventScroll: true });
+    const sel = window.getSelection();
+    const range =
+      notesSelectionRef.current && editor.contains(notesSelectionRef.current.commonAncestorContainer)
+        ? notesSelectionRef.current
+        : cloneLiveNotesRange(editor);
+    if (range && sel) {
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  }, []);
+
+  const insertNotesTable = useCallback(
+    (rows = 3, cols = 3) => {
+      const editor = editorRef.current;
+      if (!editor) return;
+      pushHistorySnapshot();
+      restoreNotesSelection();
+      const html = `${buildBlankTableHtml(rows, cols, getTableTheme('grau'))}<p><br></p>`;
+      try {
+        document.execCommand('styleWithCSS', false, 'true');
+        document.execCommand('insertHTML', false, html);
+      } catch {
+        editor.insertAdjacentHTML('beforeend', html);
+      }
+      syncEditorToState();
+    },
+    [pushHistorySnapshot, restoreNotesSelection, syncEditorToState],
+  );
+
+  const mutateNotesTable = useCallback(
+    (fn: (table: HTMLTableElement) => boolean) => {
+      const editor = editorRef.current;
+      if (!editor) return;
+      restoreNotesSelection();
+      const table = findNotesTable();
+      if (!table) {
+        insertNotesTable();
+        return;
+      }
+      pushHistorySnapshot();
+      fn(table);
+      syncEditorToState();
+    },
+    [findNotesTable, insertNotesTable, pushHistorySnapshot, restoreNotesSelection, syncEditorToState],
+  );
 
   const applyColor = (next: string) => {
     setColor(next);
@@ -2223,6 +2300,73 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                   <FormatListNumberedIcon sx={{ fontSize: 16 }} />
                 </IconButton>
               </Tooltip>
+              <Tooltip title="Tabelle">
+                <IconButton
+                  size="small"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={(e) => {
+                    rememberNotesSelection();
+                    setTableAnchor(e.currentTarget);
+                  }}
+                  sx={fmtBtnSx(Boolean(tableAnchor))}
+                >
+                  <TableChartIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+              <Popover
+                open={Boolean(tableAnchor)}
+                anchorEl={tableAnchor}
+                onClose={() => setTableAnchor(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+              >
+                <Box sx={{ py: 0.5, minWidth: 176 }}>
+                  <MenuItem
+                    dense
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      insertNotesTable(3, 3);
+                      setTableAnchor(null);
+                    }}
+                    sx={{ fontSize: '0.82rem' }}
+                  >
+                    Tabelle 3 × 3 einfügen
+                  </MenuItem>
+                  <MenuItem
+                    dense
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      insertNotesTable(4, 4);
+                      setTableAnchor(null);
+                    }}
+                    sx={{ fontSize: '0.82rem' }}
+                  >
+                    Tabelle 4 × 4 einfügen
+                  </MenuItem>
+                  <MenuItem
+                    dense
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      mutateNotesTable((t) => tableAddRow(t));
+                      setTableAnchor(null);
+                    }}
+                    sx={{ fontSize: '0.82rem' }}
+                  >
+                    Zeile hinzufügen
+                  </MenuItem>
+                  <MenuItem
+                    dense
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      mutateNotesTable((t) => tableAddColumn(t));
+                      setTableAnchor(null);
+                    }}
+                    sx={{ fontSize: '0.82rem' }}
+                  >
+                    Spalte hinzufügen
+                  </MenuItem>
+                </Box>
+              </Popover>
               <Tooltip title="Formatierung entfernen">
                 <IconButton size="small" onClick={() => runFormat('removeFormat')} sx={fmtBtnSx()}>
                   <FormatClearIcon sx={{ fontSize: 16 }} />
@@ -2604,6 +2748,27 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                 '& ul, & ol': {
                   margin: '0.35em 0',
                   paddingLeft: '1.4em',
+                },
+                ...presentationNotesTableSx(),
+                '& table': {
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  tableLayout: 'fixed',
+                  my: 1.25,
+                  fontSize: '0.92em',
+                  lineHeight: 1.35,
+                },
+                '& th, & td': {
+                  border: '1px solid #bdbdbd',
+                  padding: '6px 8px',
+                  verticalAlign: 'top',
+                  wordBreak: 'break-word',
+                  minHeight: 28,
+                },
+                '& th': {
+                  backgroundColor: '#eceff1',
+                  fontWeight: 700,
+                  textAlign: 'left',
                 },
                 '& b, & strong': { fontWeight: 700 },
                 '& i, & em': { fontStyle: 'italic' },
