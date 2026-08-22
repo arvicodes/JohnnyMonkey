@@ -173,6 +173,34 @@ const normalizeCustomSetPayload = (raw: unknown): EntryTicketCustomSetPayload | 
     });
     if (lessons.length >= CUSTOM_SET_LESSON_LIMIT) break;
   }
+  const wissen11 = lessons.filter((l) => /^wissen(\s+aus\s+der)?\s+11/i.test(l.lessonName));
+  if (wissen11.length > 0) {
+    const rest = lessons.filter((l) => !/^wissen(\s+aus\s+der)?\s+11/i.test(l.lessonName));
+    let general = rest.find(
+      (l) => l.lessonKey === '__allgemein__' || /^allgemein(es)?$/i.test(l.lessonName),
+    );
+    if (!general) {
+      general = {
+        id: 'ls_allgemein',
+        lessonName: 'Allgemein',
+        lessonKey: '__allgemein__',
+        topicName: 'Allgemein',
+        tasks: [],
+      };
+      rest.unshift(general);
+    }
+    const seen = new Set(general.tasks.map((t) => `${t.prompt}\n${t.solution}`));
+    for (const lesson of wissen11) {
+      for (const t of lesson.tasks) {
+        const k = `${t.prompt}\n${t.solution}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        general.tasks.push(t);
+      }
+    }
+    lessons.length = 0;
+    lessons.push(...rest);
+  }
   if (lessons.length === 0) return undefined;
   const reihePath =
     typeof row.reihePath === 'string' && row.reihePath.trim()

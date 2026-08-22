@@ -159,6 +159,12 @@ export function isLaterLessonSection(lesson: EntryTicketLessonSection): boolean 
   return name === 'für später' || name === 'fuer spaeter' || name === 'für spaeter';
 }
 
+/** LK: „Wissen aus der 11“ ist allgemeines Vorwissen, kein eigener Stundenblock. */
+export function isWissen11LessonSection(lesson: EntryTicketLessonSection): boolean {
+  const name = (lesson.lessonName || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  return name === 'wissen aus der 11' || name === 'wissen 11' || name.startsWith('wissen aus der 11');
+}
+
 function isFolderBoundLessonSection(lesson: EntryTicketLessonSection): boolean {
   const key = (lesson.lessonKey || '').trim();
   return Boolean(key) && !key.startsWith('__');
@@ -266,9 +272,37 @@ export function ensureLaterLessonSection(set: EntryTicketCustomSet): EntryTicket
   };
 }
 
+/** LK: Karten aus „Wissen aus der 11“ nach „Allgemein“ ziehen, Block entfernen. */
+export function mergeWissen11IntoGeneral(set: EntryTicketCustomSet): EntryTicketCustomSet {
+  const extra = set.lessons.filter(isWissen11LessonSection);
+  if (extra.length === 0) return set;
+  const rest = set.lessons.filter((l) => !isWissen11LessonSection(l));
+  const withGeneral = ensureGeneralLessonSection({ ...set, lessons: rest });
+  const generalIdx = withGeneral.lessons.findIndex(isGeneralLessonSection);
+  if (generalIdx < 0) return withGeneral;
+  const general = withGeneral.lessons[generalIdx];
+  const seen = new Set(general.tasks.map(taskCopyKey));
+  const added: EntryTicketCustomTask[] = [];
+  for (const lesson of extra) {
+    for (const task of lesson.tasks) {
+      const key = taskCopyKey(task);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      added.push(task);
+    }
+  }
+  if (added.length === 0 && rest.length === set.lessons.length - extra.length) {
+    return withGeneral;
+  }
+  const lessons = withGeneral.lessons.map((l, i) =>
+    i === generalIdx ? { ...l, tasks: [...l.tasks, ...added] } : l,
+  );
+  return { ...withGeneral, lessons };
+}
+
 /** Allgemein zuerst, „Für später“ zuletzt. */
 export function ensureSpecialLessonSections(set: EntryTicketCustomSet): EntryTicketCustomSet {
-  return ensureLaterLessonSection(ensureGeneralLessonSection(set));
+  return ensureLaterLessonSection(ensureGeneralLessonSection(mergeWissen11IntoGeneral(set)));
 }
 
 function taskCopyKey(task: Pick<EntryTicketCustomTask, 'prompt' | 'solution'>): string {

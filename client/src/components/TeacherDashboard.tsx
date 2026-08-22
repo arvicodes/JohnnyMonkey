@@ -15820,8 +15820,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     sx={{
                       display: 'flex',
                       alignItems: 'center',
+                      justifyContent: 'space-between',
                       gap: 1,
-                      flexWrap: 'wrap',
+                      width: '100%',
                     }}
                   >
                     <Typography
@@ -15901,18 +15902,56 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         <TextField
                           {...params}
                           placeholder="Reihe hinzufügen…"
+                          InputProps={{
+                            ...params.InputProps,
+                            sx: {
+                              fontSize: '0.74rem',
+                              fontWeight: 600,
+                              letterSpacing: 0.01,
+                              color: '#263238',
+                            },
+                          }}
+                          inputProps={{
+                            ...params.inputProps,
+                            style: {
+                              ...(params.inputProps as { style?: React.CSSProperties }).style,
+                              fontSize: '0.74rem',
+                              fontWeight: 600,
+                              color: '#263238',
+                            },
+                          }}
                         />
                       )}
                       sx={{
-                        width: 260,
+                        width: 188,
                         maxWidth: '100%',
+                        ml: 'auto',
                         flexShrink: 0,
                         '& .MuiInputBase-root': {
-                          fontSize: '0.8rem',
-                          pr: '40px !important',
+                          minHeight: 30,
+                          py: 0.15,
+                          fontSize: '0.74rem',
+                          fontWeight: 600,
+                          color: '#263238',
+                          pr: '32px !important',
+                        },
+                        '& .MuiInputBase-input': {
+                          py: '3px !important',
+                          fontSize: '0.74rem',
+                          fontWeight: 600,
+                          color: '#263238',
+                          '::placeholder': {
+                            color: '#546e7a',
+                            opacity: 1,
+                            fontWeight: 600,
+                            fontSize: '0.74rem',
+                          },
                         },
                         '& .MuiAutocomplete-endAdornment': {
-                          right: 6,
+                          right: 4,
+                        },
+                        '& .MuiAutocomplete-popupIndicator': {
+                          p: 0.25,
                         },
                         '& .MuiAutocomplete-clearIndicator': {
                           display: 'none',

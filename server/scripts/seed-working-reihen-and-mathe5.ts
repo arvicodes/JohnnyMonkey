@@ -161,7 +161,21 @@ function mergeLessonsIntoSet(
     if (discoveredKeys.has(key)) continue;
     if (middle.some((m) => m.lessonName === L.lessonName && !(L.tasks && L.tasks.length))) continue;
     if (L.lessonKey) L.lessonKey = toPortable(L.lessonKey);
-    // Keep if it has tasks (e.g. „Wissen aus der 11“)
+    if (/wissen\s+aus\s+der\s+11/i.test(L.lessonName || '')) {
+      if (general) {
+        const seen = new Set(
+          (general.tasks || []).map((t) => `${(t.prompt || '').trim()}\n${(t.solution || '').trim()}`),
+        );
+        for (const t of L.tasks || []) {
+          const k = `${(t.prompt || '').trim()}\n${(t.solution || '').trim()}`;
+          if (seen.has(k)) continue;
+          seen.add(k);
+          general.tasks = [...(general.tasks || []), t];
+        }
+      }
+      continue;
+    }
+    // Keep if it has tasks
     if ((L.tasks && L.tasks.length > 0) || !key) {
       middle.push(L);
     }

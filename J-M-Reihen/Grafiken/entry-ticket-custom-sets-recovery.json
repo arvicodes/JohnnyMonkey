@@ -158,7 +158,9 @@
     "lessons": [
       {
         "id": "ls_1e6920c7-d3f1-4163-8d31-b9d0dd70da01",
-        "lessonName": "Wissen aus der 11",
+        "lessonName": "Allgemein",
+        "lessonKey": "__allgemein__",
+        "topicName": "Allgemein",
         "tasks": [
           {
             "category": "Eigen",
