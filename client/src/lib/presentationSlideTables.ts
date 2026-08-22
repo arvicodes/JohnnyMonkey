@@ -112,9 +112,11 @@ export function buildBlankTableHtml(
   rows = 4,
   cols = 4,
   theme: TableColorTheme = TABLE_COLOR_THEMES[0],
+  opts?: { cellAlign?: 'left' | 'center' | 'right' },
 ): string {
   const r = Math.max(2, Math.min(20, Math.round(rows)));
   const c = Math.max(2, Math.min(12, Math.round(cols)));
+  const align = opts?.cellAlign ?? 'center';
   const pct = (100 / c).toFixed(4);
   const colgroup = Array.from(
     { length: c },
@@ -122,13 +124,13 @@ export function buildBlankTableHtml(
   ).join('');
   const headCells = Array.from({ length: c }, (_, i) => {
     const label = `Spalte ${i + 1}`;
-    return `<th style="${cellStyle({ bg: theme.headerBg, border: theme.border, bold: true })}">${esc(label)}</th>`;
+    return `<th style="${cellStyle({ bg: theme.headerBg, border: theme.border, bold: true, align })}">${esc(label)}</th>`;
   }).join('');
   const bodyRows = Array.from({ length: r - 1 }, (_, ri) => {
     const bg = ri % 2 === 1 ? theme.zebraBg : '#ffffff';
     const cells = Array.from(
       { length: c },
-      () => `<td style="${cellStyle({ bg, border: theme.border })}"><br></td>`,
+      () => `<td style="${cellStyle({ bg, border: theme.border, align })}"><br></td>`,
     ).join('');
     return `<tr>${cells}</tr>`;
   }).join('');

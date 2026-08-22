@@ -730,6 +730,26 @@ function cloneLiveNotesRange(editor: HTMLElement | null, allowCollapsed = false)
   return range.cloneRange();
 }
 
+function pinNotesTableLeft(editor: HTMLElement, table: HTMLTableElement) {
+  table.style.marginLeft = '0';
+  table.style.marginRight = 'auto';
+  table.style.float = 'none';
+  table.style.textAlign = 'left';
+  table.querySelectorAll('th, td').forEach((cell) => {
+    (cell as HTMLElement).style.textAlign = 'left';
+  });
+  if (table.parentElement === editor) return;
+  let block: HTMLElement | null = table.parentElement;
+  while (block && block.parentElement && block.parentElement !== editor) {
+    block = block.parentElement;
+  }
+  if (!block || block === editor || block.parentElement !== editor) return;
+  editor.insertBefore(table, block.nextSibling);
+  const empty = !block.textContent?.trim() && !block.querySelector('img, table');
+  if (empty) block.remove();
+  else block.style.marginLeft = '0';
+}
+
 function insertHtmlIntoNotesEditor(editor: HTMLElement, html: string): boolean {
   editor.focus({ preventScroll: true });
   const sel = window.getSelection();
@@ -1236,7 +1256,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
       }
       pushHistorySnapshot();
       restoreNotesSelection();
-      const html = `${buildBlankTableHtml(rows, cols, getTableTheme('grau'))}<p><br></p>`;
+      const html = `${buildBlankTableHtml(rows, cols, getTableTheme('grau'), { cellAlign: 'left' })}<p><br></p>`;
       const ok = insertHtmlIntoNotesEditor(editor, html);
       if (!ok) editor.insertAdjacentHTML('beforeend', html);
       const inserted = editor.querySelector('table:last-of-type') as HTMLTableElement | null;
@@ -1244,8 +1264,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
         const px = Math.min(520, Math.max(240, cols * 120));
         inserted.style.width = `${px}px`;
         inserted.style.maxWidth = '100%';
-        inserted.style.marginLeft = '0';
-        inserted.style.marginRight = 'auto';
+        pinNotesTableLeft(editor, inserted);
       }
       syncEditorToState();
     },
@@ -2813,8 +2832,9 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                 '& table': {
                   width: 'min(100%, 520px)',
                   maxWidth: '100%',
-                  marginLeft: 0,
+                  marginLeft: '0 !important',
                   marginRight: 'auto',
+                  float: 'none',
                   borderCollapse: 'collapse',
                   tableLayout: 'fixed',
                   my: 1.25,
@@ -2827,11 +2847,12 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                   verticalAlign: 'top',
                   wordBreak: 'break-word',
                   minHeight: 28,
+                  textAlign: 'left !important',
                 },
                 '& th': {
                   backgroundColor: '#eceff1',
                   fontWeight: 700,
-                  textAlign: 'left',
+                  textAlign: 'left !important',
                 },
                 '& b, & strong': { fontWeight: 700 },
                 '& i, & em': { fontStyle: 'italic' },
