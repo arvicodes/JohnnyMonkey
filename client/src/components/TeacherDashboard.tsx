@@ -20324,18 +20324,18 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
               position: 'sticky',
               top: 0,
               borderBottom: '1px solid #e0e0e0',
-              pb: 1.5,
-              pt: 1.5,
-              px: 2,
-              pr: 5,
+              pb: lessonSplitLeft ? 0.45 : 1.5,
+              pt: lessonSplitLeft ? 0.45 : 1.5,
+              px: lessonSplitLeft ? 1 : 2,
+              pr: lessonSplitLeft ? 2.5 : 5,
               flexShrink: 0,
               display: 'flex',
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
-              gap: 1,
+              gap: lessonSplitLeft ? 0.5 : 1,
               flexWrap: 'wrap',
-              rowGap: 1,
+              rowGap: lessonSplitLeft ? 0.4 : 1,
               bgcolor: lessonSplitLeft ? alpha('#fff', 0.82) : 'background.paper',
               backdropFilter: lessonSplitLeft ? 'blur(8px)' : 'none',
               isolation: 'isolate',
@@ -20349,14 +20349,26 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
               sx={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 0.15,
+                gap: lessonSplitLeft ? 0.1 : 0.15,
                 flex: '1 1 140px',
                 minWidth: 0,
                 maxWidth: '100%',
-                pr: 1,
+                pr: lessonSplitLeft ? 0.5 : 1,
               }}
             >
-              <Box sx={{ mr: 0.75, flexShrink: 0 }}>
+              <Box
+                sx={{
+                  mr: lessonSplitLeft ? 0.35 : 0.75,
+                  flexShrink: 0,
+                  ...(lessonSplitLeft && {
+                    '& .MuiAvatar-root': {
+                      width: 24,
+                      height: 24,
+                      fontSize: '0.95rem',
+                    },
+                  }),
+                }}
+              >
                 <TeacherSettingsMenu
                   teacherName={teacherName}
                   userId={userId}
@@ -20382,15 +20394,15 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
                     onClick={() => goToAdjacentLesson(adjacentLessons.prev)}
                     aria-label="Vorherige Stunde"
                     sx={{
-                      p: 0.35,
-                      width: 32,
-                      height: 32,
+                      p: lessonSplitLeft ? 0.2 : 0.35,
+                      width: lessonSplitLeft ? 24 : 32,
+                      height: lessonSplitLeft ? 24 : 32,
                       flexShrink: 0,
                       color: '#455a64',
                       '&.Mui-disabled': { color: '#cfd8dc' },
                     }}
                   >
-                    <ArrowBackIcon sx={{ fontSize: 20 }} />
+                    <ArrowBackIcon sx={{ fontSize: lessonSplitLeft ? 16 : 20 }} />
                   </IconButton>
                 </span>
               </Tooltip>
@@ -20399,6 +20411,8 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
                 component="span"
                 sx={{
                   fontWeight: 600,
+                  fontSize: lessonSplitLeft ? '0.78rem' : undefined,
+                  lineHeight: lessonSplitLeft ? 1.2 : undefined,
                   display: '-webkit-box',
                   WebkitLineClamp: 2,
                   WebkitBoxOrient: 'vertical',
@@ -20425,15 +20439,15 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
                     onClick={() => goToAdjacentLesson(adjacentLessons.next)}
                     aria-label="NÃ¤chste Stunde"
                     sx={{
-                      p: 0.35,
-                      width: 32,
-                      height: 32,
+                      p: lessonSplitLeft ? 0.2 : 0.35,
+                      width: lessonSplitLeft ? 24 : 32,
+                      height: lessonSplitLeft ? 24 : 32,
                       flexShrink: 0,
                       color: '#455a64',
                       '&.Mui-disabled': { color: '#cfd8dc' },
                     }}
                   >
-                    <ArrowForwardIcon sx={{ fontSize: 20 }} />
+                    <ArrowForwardIcon sx={{ fontSize: lessonSplitLeft ? 16 : 20 }} />
                   </IconButton>
                 </span>
               </Tooltip>
@@ -20453,13 +20467,14 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
               }}
               sx={{
                 flexShrink: 0,
-                mr: 4.5,
+                mr: lessonSplitLeft ? 2 : 4.5,
                 '& .MuiToggleButton-root': {
-                  py: 0.35,
-                  px: 1,
-                  fontSize: '0.68rem',
+                  py: lessonSplitLeft ? 0.1 : 0.35,
+                  px: lessonSplitLeft ? 0.65 : 1,
+                  fontSize: lessonSplitLeft ? '0.58rem' : '0.68rem',
                   textTransform: 'none',
                   fontWeight: 600,
+                  minHeight: lessonSplitLeft ? 22 : undefined,
                 },
               }}
             >
