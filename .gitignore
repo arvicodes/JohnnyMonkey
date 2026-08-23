@@ -68,6 +68,11 @@ J-M-Reihen/Folien - ALLE - BACKUP/
 J-M-Reihen/Lehrer-Schnellnotizen/
 Notizen-Sicherheitskopien/
 
+# Login-Listen (Klartext-Codes, nicht committen)
+LOGIN-CODES-ALLE.txt
+login-codes-vorschlag.txt
+login-codes-vorschlag.csv
+
 
 # Zusammengefügte ZIP > 100 MB – Teile liegen als J-M-Reihen.zip.aa / .ab im Repo; siehe scripts/assemble-j-m-reihen-zip.sh
 /J-M-Reihen.zip

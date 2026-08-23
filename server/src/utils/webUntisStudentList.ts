@@ -1,3 +1,5 @@
+import { randomInt } from 'crypto';
+
 /** WebUntis „Schüler*innen im Unterricht“-PDF/Text → SuS-Namen (ohne Mittelnamen). */
 
 export type ParsedWebUntisStudent = {
@@ -39,20 +41,36 @@ export function stripMiddleNames(fullName: string): string {
   return `${parts[0]} ${parts[parts.length - 1]}`;
 }
 
-export function generateLoginCode(firstName: string, lastName: string, groupNumber: string): string {
-  const lastForCode = (lastName || '').trim().split(/\s+/).filter(Boolean).pop() || lastName || '';
-  const firstForCode = (firstName || '').trim().split(/\s+/).filter(Boolean)[0] || firstName || '';
-  const lastNameFirst = lastForCode.substring(0, 1).toUpperCase();
-  const lastNameRest = lastForCode
-    .substring(1, 3)
-    .toLowerCase()
-    .padEnd(2, lastForCode[1] || lastForCode[0] || 'x');
-  const firstNameFirst = firstForCode.substring(0, 1).toUpperCase();
-  const firstNameRest = firstForCode
-    .substring(1, 3)
-    .toLowerCase()
-    .padEnd(2, firstForCode[1] || firstForCode[0] || 'x');
-  return normalizeLoginCode(`${lastNameFirst}${lastNameRest}${firstNameFirst}${firstNameRest}${groupNumber}`);
+const LOGIN_UPPER = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+const LOGIN_LOWER = 'abcdefghijkmnpqrstuvwxyz';
+const LOGIN_DIGIT = '23456789';
+const LOGIN_SPECIAL = '!?@#';
+
+function randomLoginChar(alphabet: string): string {
+  return alphabet[randomInt(alphabet.length)];
+}
+
+function randomLoginBlock(): string {
+  const chars = [
+    randomLoginChar(LOGIN_UPPER),
+    randomLoginChar(LOGIN_LOWER),
+    randomLoginChar(LOGIN_DIGIT),
+    randomLoginChar(LOGIN_SPECIAL),
+  ];
+  for (let i = chars.length - 1; i > 0; i -= 1) {
+    const j = randomInt(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join('');
+}
+
+/** Zwei Blöcke à 4 Zeichen (Groß/Klein/Ziffer/!?#@), unabhängig vom Namen. */
+export function generateTwoBlockLoginCode(): string {
+  return `${randomLoginBlock()}-${randomLoginBlock()}`;
+}
+
+export function generateLoginCode(_firstName: string, _lastName: string, _groupNumber: string): string {
+  return generateTwoBlockLoginCode();
 }
 
 export function normalizeLoginCode(code: string): string {
