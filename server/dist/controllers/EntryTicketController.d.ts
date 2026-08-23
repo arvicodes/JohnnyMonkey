@@ -16,6 +16,11 @@ export declare class EntryTicketController {
      */
     static getCompletedList(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /**
+     * Lehrkraft: erledigtes Entry Ticket aus der gemeinsamen Liste entfernen.
+     * Body/Query: groupId, index (1 = zuerst erledigt).
+     */
+    static deleteCompleted(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
      * Lehrer-Historie: erledigte Entry-Ticket-Durchläufe.
      * Query optional: groupId, setId (Fragenset) — Nummerierung jeweils 1 = zuerst.
      */

@@ -133,18 +133,59 @@ const normalizeCustomSetPayload = (raw) => {
         if (lessons.length >= CUSTOM_SET_LESSON_LIMIT)
             break;
     }
+    const wissen11 = lessons.filter((l) => /^wissen(\s+aus\s+der)?\s+11/i.test(l.lessonName));
+    if (wissen11.length > 0) {
+        const rest = lessons.filter((l) => !/^wissen(\s+aus\s+der)?\s+11/i.test(l.lessonName));
+        let general = rest.find((l) => l.lessonKey === '__allgemein__' || /^allgemein(es)?$/i.test(l.lessonName));
+        if (!general) {
+            general = {
+                id: 'ls_allgemein',
+                lessonName: 'Allgemein',
+                lessonKey: '__allgemein__',
+                topicName: 'Allgemein',
+                tasks: [],
+            };
+            rest.unshift(general);
+        }
+        const seen = new Set(general.tasks.map((t) => `${t.prompt}\n${t.solution}`));
+        for (const lesson of wissen11) {
+            for (const t of lesson.tasks) {
+                const k = `${t.prompt}\n${t.solution}`;
+                if (seen.has(k))
+                    continue;
+                seen.add(k);
+                general.tasks.push(t);
+            }
+        }
+        lessons.length = 0;
+        lessons.push(...rest);
+    }
     if (lessons.length === 0)
         return undefined;
     const reihePath = typeof row.reihePath === 'string' && row.reihePath.trim()
         ? row.reihePath.trim().replace(/\\/g, '/').slice(0, 500)
         : undefined;
+    const reihePaths = [];
+    const addReihe = (raw) => {
+        if (typeof raw !== 'string' || !raw.trim())
+            return;
+        const n = raw.trim().replace(/\\/g, '/').slice(0, 500);
+        if (n && !reihePaths.includes(n))
+            reihePaths.push(n);
+    };
+    if (Array.isArray(row.reihePaths)) {
+        for (const item of row.reihePaths)
+            addReihe(item);
+    }
+    addReihe(reihePath);
     const notes = typeof row.notes === 'string' && row.notes.trim()
         ? row.notes.replace(/\r\n/g, '\n').slice(0, 4000)
         : undefined;
     return {
         id,
         name,
-        ...(reihePath ? { reihePath } : {}),
+        ...(reihePaths[0] ? { reihePath: reihePaths[0] } : {}),
+        ...(reihePaths.length > 0 ? { reihePaths } : {}),
         ...(notes ? { notes } : {}),
         lessons,
     };
@@ -265,6 +306,15 @@ async function upsertArchiveForGroup(teacherId, groupId, payload) {
         update: { content },
     });
 }
+async function saveArchiveStore(teacherId, groupId, store) {
+    const lessonPath = entryTicketDonePathForGroup(groupId);
+    const content = JSON.stringify({ archives: store.archives.slice(0, 200) });
+    await prisma.teacherLessonInstruction.upsert({
+        where: { teacherId_lessonPath: { teacherId, lessonPath } },
+        create: { teacherId, lessonPath, content },
+        update: { content },
+    });
+}
 function countCustomSetTasks(set) {
     return (set.lessons || []).reduce((n, l) => { var _a; return n + (((_a = l.tasks) === null || _a === void 0 ? void 0 : _a.length) || 0); }, 0);
 }
@@ -274,13 +324,18 @@ function mergeCustomSetMaps(into, set) {
         return;
     const prev = into.get(set.id);
     if (!prev || countCustomSetTasks(set) >= countCustomSetTasks(prev)) {
+        const reihePaths = [
+            ...(Array.isArray(set.reihePaths) ? set.reihePaths : []),
+            ...(Array.isArray(prev === null || prev === void 0 ? void 0 : prev.reihePaths) ? prev.reihePaths : []),
+            set.reihePath,
+            prev === null || prev === void 0 ? void 0 : prev.reihePath,
+        ].filter((p, i, a) => typeof p === 'string' && Boolean(p) && a.indexOf(p) === i);
         into.set(set.id, {
             id: set.id,
             name: set.name || 'Fragenset',
             lessons: Array.isArray(set.lessons) ? set.lessons : [],
-            ...(set.reihePath || (prev === null || prev === void 0 ? void 0 : prev.reihePath)
-                ? { reihePath: set.reihePath || (prev === null || prev === void 0 ? void 0 : prev.reihePath) }
-                : {}),
+            ...(reihePaths[0] ? { reihePath: reihePaths[0] } : {}),
+            ...(reihePaths.length > 0 ? { reihePaths } : {}),
             ...(set.notes || (prev === null || prev === void 0 ? void 0 : prev.notes) ? { notes: (_a = set.notes) !== null && _a !== void 0 ? _a : prev === null || prev === void 0 ? void 0 : prev.notes } : {}),
         });
     }
@@ -964,6 +1019,88 @@ class EntryTicketController {
         catch (error) {
             console.error('EntryTicket getCompletedList error:', error);
             return res.status(500).json({ error: 'Fehler beim Laden' });
+        }
+    }
+    /**
+     * Lehrkraft: erledigtes Entry Ticket aus der gemeinsamen Liste entfernen.
+     * Body/Query: groupId, index (1 = zuerst erledigt).
+     */
+    static async deleteCompleted(req, res) {
+        var _a, _b, _c, _d;
+        try {
+            const user = await getUserByLoginCode(req);
+            if (!user)
+                return res.status(401).json({ error: 'Nicht angemeldet' });
+            if (user.role !== 'TEACHER') {
+                return res.status(403).json({ error: 'Nur Lehrkräfte' });
+            }
+            const groupId = String(((_a = req.body) === null || _a === void 0 ? void 0 : _a.groupId) || req.query.groupId || '').trim();
+            const indexRaw = Number.parseInt(String((_d = (_c = (_b = req.body) === null || _b === void 0 ? void 0 : _b.index) !== null && _c !== void 0 ? _c : req.query.index) !== null && _d !== void 0 ? _d : ''), 10);
+            const archiveIndex = Number.isInteger(indexRaw) && indexRaw >= 1 ? indexRaw : null;
+            if (!groupId || !archiveIndex) {
+                return res.status(400).json({ error: 'groupId und index erforderlich' });
+            }
+            const group = await prisma.learningGroup.findUnique({
+                where: { id: groupId },
+                select: { id: true, name: true, teacherId: true },
+            });
+            if (!group)
+                return res.status(404).json({ error: 'Lerngruppe nicht gefunden' });
+            if (group.teacherId !== user.id) {
+                return res.status(403).json({ error: 'Kein Zugriff' });
+            }
+            const row = await prisma.teacherLessonInstruction.findUnique({
+                where: {
+                    teacherId_lessonPath: {
+                        teacherId: group.teacherId,
+                        lessonPath: entryTicketDonePathForGroup(groupId),
+                    },
+                },
+                select: { content: true },
+            });
+            const store = parseArchiveStore(row === null || row === void 0 ? void 0 : row.content);
+            const numbered = numberedArchives(store);
+            const hit = numbered.find((a) => a.index === archiveIndex);
+            if (!hit) {
+                return res.status(404).json({ error: 'Entry Ticket nicht gefunden' });
+            }
+            let removed = false;
+            const archives = store.archives.filter((a) => {
+                if (removed)
+                    return true;
+                const sameStart = a.startedAt === hit.startedAt;
+                const sameDone = (a.completedAt || a.startedAt) === hit.completedAt;
+                if (sameStart && sameDone) {
+                    removed = true;
+                    return false;
+                }
+                return true;
+            });
+            await saveArchiveStore(group.teacherId, groupId, { archives });
+            const items = numberedArchives({ archives }).map((a) => {
+                var _a, _b, _c, _d, _e, _f;
+                return ({
+                    index: a.index,
+                    startedAt: a.startedAt,
+                    completedAt: a.completedAt,
+                    grade: (_a = a.grade) !== null && _a !== void 0 ? _a : null,
+                    customSetId: archiveCustomSetId(a),
+                    setName: archiveSetName(a),
+                    reihePath: (_c = (_b = a.customSet) === null || _b === void 0 ? void 0 : _b.reihePath) !== null && _c !== void 0 ? _c : null,
+                    materialLessonPath: (_d = a.materialLessonPath) !== null && _d !== void 0 ? _d : null,
+                    taskCount: (_f = (_e = a.tasks) === null || _e === void 0 ? void 0 : _e.length) !== null && _f !== void 0 ? _f : 0,
+                });
+            });
+            return res.json({
+                success: true,
+                items,
+                learningGroupId: groupId,
+                groupName: group.name,
+            });
+        }
+        catch (error) {
+            console.error('EntryTicket deleteCompleted error:', error);
+            return res.status(500).json({ error: 'Fehler beim Entfernen' });
         }
     }
     /**
