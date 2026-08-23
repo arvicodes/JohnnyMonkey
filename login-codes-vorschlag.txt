@@ -1,0 +1,212 @@
+JohnnyMonkey — Vorschlag neue Login-Codes
+3 Blöcke à 4 Zeichen  ·  je Block: Groß + Klein + Ziffer + Sonderzeichen
+Sonderzeichen: ! ? # % + @ * _ $
+Ohne I O l 0 1 und ohne Bindestrich im Block (Bindestrich nur als Trenner).
+Noch NICHT aktiv — nur Liste zum Anschauen/Drucken.
+
+Rolle      Name                                 Code
+------------------------------------------------------------------------
+Lehrerin   Frau Christ                          $Cb5-U8p$-8+wP
+Lehrer     Herr Kowalski                        T3_q-kN9?-*i7P
+SuS        Aaron Herrenkind                     _g9T-*Xm9-$M3e
+SuS        Aaron Schroeder                      i$U8-d$L2-B!w2
+SuS        Aaron Schröder                       *4Ey-8xB?-7Pw!
+SuS        Adam Zazvorka                        r?5L-!5Ns-J?p4
+SuS        Adela Mureşan                        s#U5-?Tw2-q?R8
+SuS        Adrian Busch                         #jJ4-9Sc@-9W!c
+SuS        Adrian Schröder                      E7$n-T4+c-Si$2
+SuS        Adriana Gruenewald                   P+8i-4Jn$-$s7Z
+SuS        Alex Koch                            X7r#-a2@P-6N%g
+SuS        Amelie Heimes                        Q4#x-tT6*-j%A3
+SuS        Andreas Thielen                      yX2*-!M4m-9Lb%
+SuS        Anna-Sophia Spadi                    @Rb5-V+3i-*Wx9
+SuS        Anne Berres                          *qB6-s%2Y-J2#w
+SuS        Annika Rojan                         Qj%3-+G6e-3gY%
+SuS        Anton Böhm                           p4+V-D_7s-$Ts8
+SuS        Anton Hahn                           Y?e6-$3Ry-He5_
+SuS        Arthur Potemkin                      A5w#-!Zp5-Ze9+
+SuS        Aurelia Hamm                         b2D$-h7U@-R+9n
+SuS        Ben Bremann                          $pC4-w$3C-W3m_
+SuS        Ben Sonntag                          4@fN-#G7j-xF9?
+SuS        Benedikt Roth                        9S_b-@q5M-r+7W
+SuS        Benjamin Clos                        3J@q-+6Xe-D6r!
+SuS        Benno Noll                           5zG$-Fq2+-W#7u
+SuS        Bruno Scavio                         $cM8-qT+3-8vW_
+SuS        Casper Neubusch                      Wr2_-8?Yk-gN+9
+SuS        Charlotta Maier                      f2L_-3_aX-Qd@3
+SuS        Charlotte Doll                       8_mW-Hx4*-wK2+
+SuS        Charlotte Letschert                  6#cD-q8L%-z9T@
+SuS        Clara Groß                           +i6G-?s7W-M6x!
+SuS        Claudia Oellermann                   a2*A-@8qK-*4yY
+SuS        Clemens Sievers                      V2c*-4Bd%-Sg%9
+SuS        Damian Baumeister                    Ua9_-5z?K-7?Nb
+SuS        Damien Reinhardt                     eN#3-Dh_4-8V_j
+SuS        David Grenz                          C7#t-+Me2-?fF5
+SuS        David Nguyen                         6$Hp-w%N6-+v8B
+SuS        David Preygermann                    +B5w-9F@y-s#A8
+SuS        David Schulte                        4V!f-z*9N-Y@e9
+SuS        Dennis Miller                        Jg?8-_3Uw-_i7T
+SuS        Duy Anh Trân                         S2u*-W2x_-S6c_
+SuS        Elias Karl Simonis                   X?2f-uZ+5-?p9W
+SuS        Elias Muno                           8s_B-$Y6t-5R_i
+SuS        Elisabeth Croonenberg                7Sk_-U4+r-%2Nt
+SuS        Elisabeth Eming                      2*Xv-_iP5-%Eg3
+SuS        Elisabeth May                        +n9G-7tM%-En$2
+SuS        Elli Wöll                            z4$G-f2*N-B+5c
+SuS        Emilian Florian Bischoff             z6T*-+Er4-%Y7t
+SuS        Emily Müller                         8$uB-Ru+2-9a!H
+SuS        Enie Klütsch                         $jN4-!e4G-!9nS
+SuS        Eric Föhlinger                       3x+Z-jE*4-gT?7
+SuS        Erich König                          z_5W-_sZ2-#3Xw
+SuS        Eva Geis                             !Sj3-nZ7%-%Cw5
+SuS        Eva Rünz                             ?kV7-n2X#-5%sF
+SuS        Fabio Urso                           u*G6-*3Rb-Kb%7
+SuS        Felix Pohl                           dW*5-@n9K-Rg8+
+SuS        Felix Reinhardt                      V7k%-%H3r-k8A+
+SuS        Felix Schmelzlin                     u_8F-Sz8%-5J*w
+SuS        Felix Schüler                        Zi@7-3p?D-$Kz8
+SuS        Filip Glura                          g8@N-!j5L-8Tz?
+SuS        Finley Wandtke                       nV7+-S6@a-*Em6
+SuS        Franz Peres                          G$8t-F*9v-wY$3
+SuS        Freya Zipper                         Cb2*-b$K3-7G!p
+SuS        Frida Bittner                        7j?B-+S9p-Mn5*
+SuS        Friederike Bremser                   $Sp2-$9Mn-v!5Q
+SuS        Fränzi Bröder                        H9_e-?Gq5-4zP*
+SuS        Gentatsu Long                        2pX#-Y9_b-R+a2
+SuS        Gero Hanrath                         S*9g-9jH+-Y8%j
+SuS        Grace Krämer                         ?vS6-x#R4-!x9Z
+SuS        Greta Nacke                          X3!a-@Am9-%f3F
+SuS        Hanna Ruess Mejias                   g2S+-H6w+-L!j6
+SuS        Hannah Hagedorn                      !b7A-Ce4?-!G8w
+SuS        Harald Korn                          #Xp4-8U+w-rR+5
+SuS        Helge Nebendahl                      xL6*-+A6v-G5t$
+SuS        Henriette Müller                     M4!h-V%z9-u9@H
+SuS        Henrik Aron Schmidt                  t%3M-?Z6t-r+9B
+SuS        Ida Schell                           9Fa*-2%tV-$3Xi
+SuS        Ida Weyrich                          2rS@-9#vZ-7nM?
+SuS        Isabel Chartier                      7G%h-C9n%-2Q!a
+SuS        Jakob Ackermann                      V9m+-8$Vu-V@7p
+SuS        Jakob Weyerhäuser                    m7_G-E9+f-$8yF
+SuS        Jan Jung                             x7_E-_6sH-fR_2
+SuS        Jan Pfefferl                         q3D!-4_Xa-#Ez9
+SuS        Jan Wimmershoff                      5a_B-Y9a*-uR+2
+SuS        Jana Schiffer                        P@a6-t?X4-T6+k
+SuS        Janic Schaaf                         ?Nq5-S+z7-qH7$
+SuS        Jannis Breidert                      3eD*-$K4n-F9$g
+SuS        Jannis Busch                         ?T3g-v7_Z-Rm7@
+SuS        Jasmin Farnung                       pB9$-d4F+-7%Uw
+SuS        Jasmin Mosgold                       Yv6?-E8+v-?Q8g
+SuS        Jasper Wagner                        3_fA-6Q*v-Yp2+
+SuS        Johanna Schäfer                      4Xd@-j8+G-G5+z
+SuS        Jonah May                            A!k6-c_5S-J@u5
+SuS        Jonas Maxeiner                       +kG4-7j%Y-8Mr_
+SuS        Jonathan Dillmann                    *5pG-f+S7-3Cy*
+SuS        Jonathan Schwarz                     m8_X-8Dn_-!mB4
+SuS        Josefine Baierl                      r?3X-p8Q%-2$tV
+SuS        Julia Beil                           Gx$2-?E8m-E@4p
+SuS        Julia Reiners                        Lj*7-@M5x-Y7%f
+SuS        Julia Zimmermann                     U8v!-e!F5-p9Y*
+SuS        Julian Stammer                       +4Pi-+6mQ-7Ej#
+SuS        Julian Weitz                         *fV8-3u!G-$G8u
+SuS        Julien Schmidt                       #hF8-v+D8-#9Kf
+SuS        Julius Schöning                      Tf_2-3dN+-3pM!
+SuS        Julius Weyer                         8x_G-5$dR-6X%w
+SuS        Justus Damm                          4iH!-$G9g-z8!S
+SuS        Karoline Bremser                     S+q4-Zj3%-t*5V
+SuS        Katharina Brandt                     E2%e-J_i5-?jW2
+SuS        Kilian Jahnke                        #5xW-_z2U-Rh+9
+SuS        Laura Braun                          3?qH-z+J4-pS$6
+SuS        Laura Huke                           uZ3?-c3G%-9@eU
+SuS        Laura Malina                         j9!S-3R+c-S!6b
+SuS        Laureen Budka                        Z*k8-9f*W-M_u8
+SuS        Lea Bauer                            7#iJ-4%Ge-?y3F
+SuS        Lena Marie Friesenhahn               Sm!7-Zk#9-*A6d
+SuS        Lennard Sunaga                       4m@C-8j_C-8X?a
+SuS        Lennas Weinem                        !Q5k-5J@q-P7+i
+SuS        Leon Gartlib                         8bY@-Dp8%-p7N_
+SuS        Leonard Schmitt                      6Ae+-m8P!-6Tp$
+SuS        Levi Bröder                          Mu3!-7w@C-@Qe2
+SuS        Levin Demirci                        *4Qe-!zP9-!Bn9
+SuS        Levin Dormann                        $aP3-$d6X-*9Cm
+SuS        León Fernández de la Peña            pY%7-d?S9-_Rr2
+SuS        Linus Samuel Wilke                   H9f%-Pq@7-qC3%
+SuS        Lisanne Daubländer                   t?6Y-G7+d-9%Jt
+SuS        Louis Gerharz                        +2hL-%L2t-y+K3
+SuS        Louis Scheerer                       #X2y-U_r2-c5P_
+SuS        Louisa Galler                        $7Vs-kB!4-%xL3
+SuS        Louisa Mitscherling                  6Lp+-S6j_-Fr+3
+SuS        Louisa Plattes                       bN8*-jE3#-sY3*
+SuS        Luca Boshoven                        fE4?-cL%2-2%Cv
+SuS        Luise Habach                         $8Bp-2F?p-@uE4
+SuS        Lukas Wetzlar                        4@Br-8hT_-#5rD
+SuS        Luthien Thomé                        3R_t-c!6G-f@9E
+SuS        Magdalena Hessel                     wW4*-q3D@-P5k#
+SuS        Magdalena Kaschny                    Jv8%-?P5c-!i8Q
+SuS        Magnus Paul Rickert                  2nC#-!Sm2-J8b$
+SuS        Marie Fedrowitz                      G*h3-W?k7-qH*7
+SuS        Marie Günter                         pB?6-Tv7*-9!Fc
+SuS        Marie Sprechert                      +h8G-%k4X-k$3R
+SuS        Marleen Hannes                       9Bn$-L5+f-e_L9
+SuS        Marlene Geis                         ?2Ae-Zn@8-Tu8?
+SuS        Marlene Krall                        S@2y-6Ee!-8x+S
+SuS        Martin Bindewald                     ?wQ3-G!4j-9@xH
+SuS        Mateo Abas                           g7T$-Gp7$-E%g3
+SuS        Mats Kuhn                            $pA2-4C?y-dH9%
+SuS        Mats Wirges                          7*Jf-Bf$3-Y%r2
+SuS        Matteo De Donatis                    @8Mi-*F7x-aS@3
+SuS        Maxima Diehl                         _9Af-R#e9-7+Gn
+SuS        Maximilian Kux                       5Ht?-8Nb%-M8s%
+SuS        Melanie Mosgold                      6%Vs-*bM8-d*E5
+SuS        Melissa Fandiño Geisen               f@Y7-i5#L-9bK%
+SuS        Merle Weinem                         2Qs!-4Nh$-%Ms4
+SuS        Mila Šašić                           ?a7C-B?b7-5Y@a
+SuS        Milo Singhof                         E7#t-i%7E-g4F#
+SuS        Miró Mohr                            r2U#-8hX!-4f?U
+SuS        Moritz Friedrich Becker              7@Fh-#t2J-q8+F
+SuS        Moritz Paulik                        Z8_u-aT8$-*9Mt
+SuS        Nathan Krämer                        9G*z-Q!q4-9!iQ
+SuS        Nele Koch                            _3Hg-y6%G-x*7F
+SuS        Nika Monschauer                      8_wR-?L6f-Fb6*
+SuS        Nikita Kling                         x#U8-#8Ge-%N8v
+SuS        Niklas Schmitz                       7p@W-S?e6-4We%
+SuS        Nikolaj Kotykov                      _3Pk-%Jh3-F6+c
+SuS        Nils Weiß                            3T+p-3+zU-?Ka5
+SuS        Noah Juranovic                       5F*q-vW%7-Ww+5
+SuS        Noah Theis                           @a3Q-6Du_-3K*p
+SuS        Ole Hofmann                          4tX!-qK6+-r2@F
+SuS        Oskar Jäckel                         7Hf#-4M@b-3K?w
+SuS        Oskar Mueller                        7m@P-*fZ2-!cW2
+SuS        Paul Jonas Köhler                    iD?5-#5qV-wS@6
+SuS        Paul Jung                            8K!b-D$6i-4sG+
+SuS        Paul Pfeifer                         6Y_q-8S@x-A#9c
+SuS        Paul Ulrich                          7vM@-3F#w-9u+E
+SuS        Paul Volk                            z3%D-3?fU-u+5E
+SuS        Paul Wöll                            9sQ*-F!i7-S_m4
+SuS        Philipp Beuler                       n8V*-8_Jv-A7h_
+SuS        Philipp Weinand                      z!9T-Wd5$-?7Gc
+SuS        Pia Sasse                            Z#m6-p5P_-5kT?
+SuS        Robin Maas                           vD6_-7f!G-v7W*
+SuS        Roman Vladimirovich Eremeev          v8?U-t$F2-@3Wy
+SuS        Romeh Wollweber                      Ex5*-4V@c-4_Ez
+SuS        Samuel Klepzig                       6$yY-Ud_4-m*A2
+SuS        Samuel Krämer                        T@8d-3%aK-n_Y4
+SuS        Samuel May                           #8Fx-2@cE-@7Cv
+SuS        Samuel Schmitz                       j$L7-Q2q?-W2+q
+SuS        Sarina Schulz                        ?Vv5-d%E3-r9!S
+SuS        Sebastian Zander                     #5Ru-$5sJ-$7Pn
+SuS        Silas Martin Lindner                 j5$L-+Yf9-Cq8!
+SuS        Skadi Unkelbach                      _3aW-J7%e-Ew6$
+SuS        Sonea Malou Franz                    Fj2$-y6+P-P@i7
+SuS        Sophie Schaaf                        _Jj7-9?Aq-@cP5
+SuS        Sophie Schaaf                        h8T+-wK4_-h6J$
+SuS        Stipe Drmic                          $Nz6-cG5?-w_J8
+SuS        Theo Rünz                            +kD9-Y2*v-+6qB
+SuS        Theo Winkels                         @Bx3-Vz7$-J+f5
+SuS        Thorben Emanuel Weinhold             A?x2-4*Lr-#u9Q
+SuS        Tim Brockmann                        *w4B-6sY_-Zr!9
+SuS        Tim Simon                            3E#m-4Vi@-4@rS
+SuS        Tom Kup                              5Zw@-?2gR-Dq+4
+SuS        Vincent Schlag                       %8bY-7A*x-k?9Z
+SuS        Wiebke Schmidt                       *E3q-+2Hz-Em9+
+SuS        Yannis Luca Birro                    e7J*-C7?z-+M4p
+SuS        Yutatsu Long                         B+i9-i9R_-e!D9
