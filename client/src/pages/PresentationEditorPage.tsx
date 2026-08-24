@@ -1985,7 +1985,8 @@ const PresentationEditorPage: React.FC = () => {
   };
 
   useEffect(() => {
-    const onPaste = (e: ClipboardEvent) => {
+    const onPaste = (e: Event) => {
+      if (!(e instanceof ClipboardEvent)) return;
       if (isTypingField(e.target)) return;
       const dt = e.clipboardData;
       if (!clipboardHasImage(dt)) return;
@@ -1993,8 +1994,8 @@ const PresentationEditorPage: React.FC = () => {
       e.stopPropagation();
       void pasteImagesFromClipboardEventRef.current(dt);
     };
-    window.addEventListener('paste', onPaste, true);
-    return () => window.removeEventListener('paste', onPaste, true);
+    document.addEventListener('paste', onPaste, true);
+    return () => document.removeEventListener('paste', onPaste, true);
   }, []);
 
   const handleSlideImageDragEnter = (e: React.DragEvent) => {
