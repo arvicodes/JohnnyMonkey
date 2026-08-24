@@ -327,6 +327,58 @@ export class StorageManager {
   }
 
   /**
+   * Wie resolveFilePath, plus: gleicher Dateiname in Elternordnern / Grafiken
+   * (nach dem Zusammenlegen von Stundenordnern bleiben oft alte Pfade in Folien).
+   */
+  static resolveImageFilePath(filePath: string): string | null {
+    const trimmed = (filePath || '').replace(/\\/g, '/').trim();
+    if (!trimmed) return null;
+    const fromToken = trimmed.startsWith('__GRAFIKEN__/')
+      ? `git-intern/Grafiken/${trimmed.slice('__GRAFIKEN__/'.length)}`
+      : trimmed;
+    const found = this.resolveFilePath(fromToken);
+    if (found) return found;
+    return this.resolveSameImageNameNearby(fromToken);
+  }
+
+  private static resolveSameImageNameNearby(filePath: string): string | null {
+    let norm = this.remapLegacyAbsolutePath(filePath).replace(/\\/g, '/');
+    if (norm.startsWith('/app/J-M-Reihen/')) {
+      norm = `git-intern/${norm.slice('/app/J-M-Reihen/'.length)}`;
+    }
+    if (norm === 'J-M-Reihen' || norm.startsWith('J-M-Reihen/')) {
+      norm =
+        norm === 'J-M-Reihen'
+          ? 'git-intern'
+          : `git-intern/${norm.slice('J-M-Reihen/'.length)}`;
+    }
+    const posix = norm.replace(/\\/g, '/');
+    const basename = posix.split('/').pop() || '';
+    if (!basename || !/\.(png|jpe?g|gif|webp|heic|heif|avif|bmp|svg|tiff?)$/i.test(basename)) {
+      return null;
+    }
+    const jmRoot = this.resolveJmReihenRoot();
+    let rel = posix;
+    const marker = '/J-M-Reihen/';
+    const markerAt = rel.indexOf(marker);
+    if (rel.startsWith('git-intern/')) rel = rel.slice('git-intern/'.length);
+    else if (markerAt >= 0) rel = rel.slice(markerAt + marker.length);
+    const parts = rel.split('/').filter(Boolean);
+    if (parts.length) parts.pop();
+    for (let depth = parts.length; depth >= 0; depth -= 1) {
+      const dirRel = parts.slice(0, depth);
+      const dirFull = dirRel.length ? path.join(jmRoot, ...dirRel) : jmRoot;
+      for (const candidate of [
+        path.join(dirFull, basename),
+        path.join(dirFull, 'Grafiken', basename),
+      ]) {
+        if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
+      }
+    }
+    return null;
+  }
+
+  /**
    * Read file contents
    */
   static async readFile(filePath: string): Promise<Buffer | null> {

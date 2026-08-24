@@ -25,6 +25,8 @@ function mimeForExt(ext: string): string {
       return 'image/bmp';
     case '.webp':
       return 'image/webp';
+    case '.avif':
+      return 'image/avif';
     case '.svg':
       return 'image/svg+xml';
     case '.jpg':

@@ -953,8 +953,12 @@ export class FileSystemPathController {
         return res.status(400).json({ error: 'filePath is required' });
       }
 
-      filePath = decodeURIComponent(filePath);
-      const fullPath = StorageManager.resolveFilePath(filePath);
+      try {
+        filePath = decodeURIComponent(filePath);
+      } catch {
+        /* bereits decoded */
+      }
+      const fullPath = StorageManager.resolveImageFilePath(filePath);
       if (!fullPath) {
         return res.status(404).json({ error: 'File not found', path: filePath });
       }

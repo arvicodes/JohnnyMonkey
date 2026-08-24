@@ -12,6 +12,7 @@ import {
   SLIDE_REF_WIDTH,
   SLIDE_IMAGE_EDITOR_MAX,
   slideImageUrl,
+  slideImageUrlWithoutMax,
   withHiddenLayoutZone,
 } from '../../lib/presentationDeck';
 import { JOHNNY_PRESENTATION, accentGradient } from '../../lib/presentationTheme';
@@ -536,7 +537,15 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
               src={url}
               alt=""
               decoding="async"
-              loading={exportSnapshot ? undefined : 'lazy'}
+              onError={(event) => {
+                const img = event.currentTarget;
+                if (img.dataset.presRetry === '1') return;
+                const next = slideImageUrlWithoutMax(img.currentSrc || img.src);
+                if (next && next !== img.src) {
+                  img.dataset.presRetry = '1';
+                  img.src = next;
+                }
+              }}
               sx={{
                 ...presentationImageElementSx(slide.imagePath, 'contain'),
                 maxHeight: `${720 * scale}px`,

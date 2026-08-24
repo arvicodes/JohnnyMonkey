@@ -416,10 +416,25 @@ export function slideImageUrl(imagePath: string, maxEdge?: number): string {
   if (!imagePath) return '';
   if (/^https?:\/\//i.test(imagePath)) return imagePath;
   if (imagePath.startsWith('/api/')) return imagePath;
-  const filePath = portableSlideMediaPath(imagePath);
-  const qs = new URLSearchParams({ filePath });
+  const raw = imagePath.replace(/\\/g, '/').trim();
+  const portable = raw.startsWith('__GRAFIKEN__/')
+    ? `git-intern/Grafiken/${raw.slice('__GRAFIKEN__/'.length)}`
+    : portableSlideMediaPath(raw);
+  const qs = new URLSearchParams({ filePath: portable });
   if (maxEdge && maxEdge > 0) qs.set('max', String(Math.round(maxEdge)));
   return `/api/file-system-paths/read-image?${qs.toString()}`;
+}
+
+/** Zweiter Versuch ohne Verkleinerung, falls sips/max fehlschlägt. */
+export function slideImageUrlWithoutMax(url: string): string {
+  if (!url || !url.includes('max=')) return url;
+  try {
+    const parsed = new URL(url, window.location.origin);
+    parsed.searchParams.delete('max');
+    return `${parsed.pathname}?${parsed.searchParams.toString()}`;
+  } catch {
+    return url.replace(/([?&])max=\d+&?/g, '$1').replace(/[?&]$/, '');
+  }
 }
 
 /** Editor-Canvas: scharf genug, aber keine Multi-MB-Originale. */

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Box } from '@mui/material';
-import { SlideElement, SLIDE_IMAGE_EDITOR_MAX, slideImageUrl } from '../../lib/presentationDeck';
+import { SlideElement, SLIDE_IMAGE_EDITOR_MAX, slideImageUrl, slideImageUrlWithoutMax } from '../../lib/presentationDeck';
 import {
   animationBadgeBoxSx,
   animationItemIdForElement,
@@ -1188,7 +1188,15 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               alt=""
               draggable={false}
               decoding="async"
-              loading={exportSnapshot ? undefined : 'lazy'}
+              onError={(event) => {
+                const img = event.currentTarget;
+                if (img.dataset.presRetry === '1') return;
+                const next = slideImageUrlWithoutMax(img.currentSrc || img.src);
+                if (next && next !== img.src) {
+                  img.dataset.presRetry = '1';
+                  img.src = next;
+                }
+              }}
               sx={{
                 ...(heroImage
                   ? {
