@@ -118,6 +118,11 @@ import {
   type PresentationPlayVariants,
 } from '../lib/presentationPlayVariants';
 import {
+  nextUntitledSectionName,
+  renameSlideSection,
+  splitSlideSectionAt,
+} from '../lib/presentationSections';
+import {
   DEFAULT_PEN_COLOR,
   defaultLineWidthForTool,
   type PresentationDrawTool,
@@ -1740,9 +1745,11 @@ const PresentationEditorPage: React.FC = () => {
     if (!current) return;
     const { sorted, insertIndex } = insertIndexAfterActive(current.slides);
     // „+“: leere Folie ohne Titel-/Inhaltsfeld (freie Elemente nach Bedarf)
+    const inheritName = sorted[Math.max(0, insertIndex - 1)]?.sourceLessonName;
     const slide = normalizeSlide({
       ...createSlideFromLayout(insertIndex, layout),
       ...(isBlankLayout(layout) ? { hiddenLayoutZones: ['bodyHtml'] } : {}),
+      ...(inheritName ? { sourceLessonName: inheritName } : {}),
     });
     const nextSlides = [...sorted];
     nextSlides.splice(insertIndex, 0, slide);
@@ -1792,8 +1799,9 @@ const PresentationEditorPage: React.FC = () => {
       }
     }
 
+    const inheritName = slides[Math.max(0, insertIndex - 1)]?.sourceLessonName;
     const nextSlides = [...slides];
-    nextSlides.splice(insertIndex, 0, slide);
+    nextSlides.splice(insertIndex, 0, inheritName ? { ...slide, sourceLessonName: inheritName } : slide);
     const reordered = nextSlides.map((s, i) => ({ ...s, order: i }));
     scheduleSave({ ...current, slides: reordered }, { history: 'immediate' });
     setActiveId(slide.id);
@@ -1813,8 +1821,9 @@ const PresentationEditorPage: React.FC = () => {
     const slide = createSlideFromCustomTemplate(customId, insertIndex, lessonPath, slideTemplates);
     if (!slide) return;
 
+    const inheritName = slides[Math.max(0, insertIndex - 1)]?.sourceLessonName;
     const nextSlides = [...slides];
-    nextSlides.splice(insertIndex, 0, slide);
+    nextSlides.splice(insertIndex, 0, inheritName ? { ...slide, sourceLessonName: inheritName } : slide);
     const reordered = nextSlides.map((s, i) => ({ ...s, order: i }));
     scheduleSave({ ...current, slides: reordered }, { history: 'immediate' });
     setActiveId(slide.id);
@@ -2020,6 +2029,34 @@ const PresentationEditorPage: React.FC = () => {
     }
     setFilmstripSlides(reordered);
     scheduleSave({ ...current, slides: reordered }, { history: 'immediate', urgent: true });
+  };
+
+  const renameSection = (startSlideId: string, name: string) => {
+    const current = deckRef.current;
+    if (!current) return;
+    const slides = sortSlides(current.slides);
+    const startIndex = slides.findIndex((slide) => slide.id === startSlideId);
+    if (startIndex < 0) return;
+    const next = renameSlideSection(slides, startIndex, name).map((slide, index) => ({
+      ...slide,
+      order: index,
+    }));
+    scheduleSave({ ...current, slides: next }, { history: 'immediate', urgent: true });
+  };
+
+  const addSectionAt = (atSlideId: string) => {
+    const current = deckRef.current;
+    if (!current) return;
+    const slides = sortSlides(current.slides);
+    const atIndex = slides.findIndex((slide) => slide.id === atSlideId);
+    if (atIndex < 0) return;
+    const next = splitSlideSectionAt(
+      slides,
+      atIndex,
+      nextUntitledSectionName(slides),
+    ).map((slide, index) => ({ ...slide, order: index }));
+    scheduleSave({ ...current, slides: next }, { history: 'immediate', urgent: true });
+    setSnackbar('Unterkapitel hinzugefügt — Name oben in der Leiste ändern');
   };
 
   const deleteSlide = () => {
@@ -3265,6 +3302,8 @@ const PresentationEditorPage: React.FC = () => {
           onOpenVariant={openPlayVariant}
           onAdd={() => addSlide('blank')}
           onReorder={reorderSlides}
+          onRenameSection={renameSection}
+          onAddSection={addSectionAt}
         />
 
         {/* Canvas + Notizen */}

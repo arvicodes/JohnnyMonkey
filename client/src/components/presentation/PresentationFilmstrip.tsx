@@ -15,7 +15,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Box, Button, IconButton, Tooltip } from '@mui/material';
+import { Box, Button, IconButton, TextField, Tooltip } from '@mui/material';
 import { Add as AddIcon, DragIndicator as DragIcon } from '@mui/icons-material';
 import {
   PresentationSlide,
@@ -36,14 +36,145 @@ interface PresentationFilmstripProps {
   onOpenVariant?: (id: string) => void;
   onAdd: () => void;
   onReorder: (activeId: string, overId: string) => void;
+  onRenameSection?: (startSlideId: string, name: string) => void;
+  onAddSection?: (atSlideId: string) => void;
 }
 
 const THUMB_W = PRES_EDITOR_UI.filmstripThumbWidth;
 const THUMB_SCALE = THUMB_W / SLIDE_REF_WIDTH;
 const THUMB_H = SLIDE_REF_HEIGHT * THUMB_SCALE;
-const STRIP_W = THUMB_W + 12;
+const STRIP_W = THUMB_W + 22;
 
-/** Leichte Signatur für Memo — ohne normalizeSlide. */
+function FilmstripSectionLabel({
+  label,
+  onRename,
+  onAddSection,
+}: {
+  label: string;
+  onRename?: (name: string) => void;
+  onAddSection?: () => void;
+}) {
+  const [editing, setEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState(label);
+
+  React.useEffect(() => {
+    if (!editing) setDraft(label);
+  }, [label, editing]);
+
+  const commit = () => {
+    const next = draft.trim();
+    setEditing(false);
+    if (next && next !== label) onRename?.(next);
+    else setDraft(label);
+  };
+
+  return (
+    <Box
+      sx={{
+        mx: 0.15,
+        mb: 0.55,
+        mt: 0.15,
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 0.25,
+      }}
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      {editing ? (
+        <TextField
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              commit();
+            }
+            if (event.key === 'Escape') {
+              setDraft(label);
+              setEditing(false);
+            }
+          }}
+          autoFocus
+          multiline
+          minRows={2}
+          maxRows={4}
+          size="small"
+          fullWidth
+          inputProps={{ 'aria-label': 'Unterkapitel' }}
+          sx={{
+            '& .MuiInputBase-root': {
+              fontSize: 16,
+              fontWeight: 800,
+              lineHeight: 1.28,
+              py: 0.85,
+              px: 0.85,
+              bgcolor: '#fff',
+              color: '#0d47a1',
+              borderRadius: 1.25,
+            },
+          }}
+        />
+      ) : (
+        <Box
+          component="button"
+          type="button"
+          title="Unterkapitel umbenennen"
+          onClick={() => {
+            setDraft(label);
+            setEditing(true);
+          }}
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            m: 0,
+            px: 0.9,
+            py: 0.95,
+            borderRadius: 1.25,
+            border: '1px solid rgba(21, 101, 192, 0.28)',
+            bgcolor: 'rgba(21, 101, 192, 0.12)',
+            color: '#0d47a1',
+            fontSize: 16,
+            fontWeight: 800,
+            lineHeight: 1.28,
+            letterSpacing: 0.1,
+            textAlign: 'left',
+            cursor: 'text',
+            wordBreak: 'break-word',
+            whiteSpace: 'normal',
+            fontFamily: 'inherit',
+            boxShadow: '0 1px 2px rgba(13, 71, 161, 0.08)',
+            '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.18)' },
+          }}
+        >
+          {label}
+        </Box>
+      )}
+      {onAddSection ? (
+        <Tooltip title="Neues Unterkapitel ab der nächsten Folie">
+          <IconButton
+            size="small"
+            aria-label="Unterkapitel hinzufügen"
+            onClick={onAddSection}
+            sx={{
+              width: 28,
+              height: 28,
+              mt: 0.2,
+              p: 0,
+              color: '#1565c0',
+              bgcolor: '#fff',
+              border: '1px solid rgba(21, 101, 192, 0.28)',
+              '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.12)' },
+            }}
+          >
+            <AddIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </Tooltip>
+      ) : null}
+    </Box>
+  );
+}
+
 function slideThumbSignature(slide: PresentationSlide): string {
   const els = (slide.elements ?? [])
     .map((el) =>
@@ -291,6 +422,8 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
   onOpenVariant,
   onAdd,
   onReorder,
+  onRenameSection,
+  onAddSection,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -346,32 +479,26 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
               const hourLabel = (slide.sourceLessonName || '').trim();
               const prevHour = (slides[idx - 1]?.sourceLessonName || '').trim();
               const showHour = Boolean(hourLabel) && hourLabel !== prevHour;
+              const nextInSection = slides[idx + 1];
+              const canSplit =
+                Boolean(nextInSection) &&
+                (nextInSection.sourceLessonName || '').trim() === hourLabel;
               return (
                 <Box key={slide.id}>
                   {showHour ? (
-                    <Box
-                      sx={{
-                        mx: 0.25,
-                        mb: 0.45,
-                        mt: idx === 0 ? 0 : 0.35,
-                        px: 0.4,
-                        py: 0.15,
-                        borderRadius: 0.5,
-                        bgcolor: 'rgba(21, 101, 192, 0.08)',
-                        color: '#1565c0',
-                        fontSize: 8,
-                        fontWeight: 800,
-                        lineHeight: 1.25,
-                        letterSpacing: 0.1,
-                        textAlign: 'center',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                      title={hourLabel}
-                    >
-                      {hourLabel}
-                    </Box>
+                    <FilmstripSectionLabel
+                      label={hourLabel}
+                      onRename={
+                        onRenameSection ? (name) => onRenameSection(slide.id, name) : undefined
+                      }
+                      onAddSection={
+                        onAddSection && canSplit
+                          ? () => onAddSection(nextInSection.id)
+                          : onAddSection
+                            ? () => onAddSection(slide.id)
+                            : undefined
+                      }
+                    />
                   ) : null}
                   <SortableFilmstripThumb
                     slide={slide}
@@ -393,14 +520,25 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
         </DndContext>
       </Box>
 
-      <Box sx={{ py: 0.75, display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+      <Box
+        sx={{
+          py: 0.75,
+          px: 0.5,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'stretch',
+          gap: 0.5,
+          flexShrink: 0,
+        }}
+      >
         <Tooltip title="Neue Folie">
           <IconButton
             size="small"
             onClick={onAdd}
             sx={{
-              width: 30,
-              height: 30,
+              alignSelf: 'center',
+              width: 34,
+              height: 34,
               bgcolor: '#fff',
               color: PRES_EDITOR_UI.accent,
               border: `1px solid ${PRES_EDITOR_UI.panelBorder}`,
@@ -408,9 +546,33 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
               '&:hover': { bgcolor: PRES_EDITOR_UI.accentSoft },
             }}
           >
-            <AddIcon sx={{ fontSize: 17 }} />
+            <AddIcon sx={{ fontSize: 20 }} />
           </IconButton>
         </Tooltip>
+        {onAddSection && activeId ? (
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<AddIcon sx={{ fontSize: 18 }} />}
+            aria-label="Unterkapitel hinzufügen"
+            onClick={() => onAddSection(activeId)}
+            sx={{
+              minWidth: 0,
+              px: 0.6,
+              py: 0.55,
+              fontSize: 12,
+              fontWeight: 800,
+              lineHeight: 1.2,
+              textTransform: 'none',
+              color: '#1565c0',
+              borderColor: 'rgba(21, 101, 192, 0.4)',
+              bgcolor: '#fff',
+              '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.1)', borderColor: '#1565c0' },
+            }}
+          >
+            Unterkapitel
+          </Button>
+        ) : null}
       </Box>
     </Box>
   );

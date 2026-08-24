@@ -36,7 +36,7 @@
           "y": 6.555859751303066,
           "w": 31.831176939326497,
           "h": 37.65493697478992,
-          "src": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.02 Orga/Adobe Express - file.png",
+          "src": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/Adobe Express - file.png",
           "zIndex": 1,
           "imageFit": "contain"
         }
@@ -47,7 +47,7 @@
       "id": "slide-1785308147722-mxq9o",
       "order": 0,
       "sourceLessonName": "01.01 Orga",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.01 Orga"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "speakerNotes": "",
@@ -81,7 +81,7 @@
           "y": 23.454414447453548,
           "w": 43.77617836166371,
           "h": 18.38957457983193,
-          "src": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.02 Orga/Bildschirmfoto 2026-07-16 um 07.26.08.png",
+          "src": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/Bildschirmfoto 2026-07-16 um 07.26.08.png",
           "zIndex": 2,
           "imageFit": "contain"
         },
@@ -92,7 +92,7 @@
           "y": 46.252916745399425,
           "w": 17.084753987593068,
           "h": 27.54464285714285,
-          "src": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.02 Orga/notebook.png",
+          "src": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/notebook.png",
           "zIndex": 3,
           "imageFit": "contain"
         },
@@ -116,7 +116,7 @@
           "y": 74.85035527424168,
           "w": 11.568693694343485,
           "h": 20.121454831932773,
-          "src": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.02 Orga/Moderator.png",
+          "src": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/Moderator.png",
           "zIndex": 5,
           "imageFit": "contain"
         },
@@ -140,7 +140,7 @@
       "id": "slide-1785308209619-pwk87",
       "order": 1,
       "sourceLessonName": "01.01 Orga",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.01 Orga"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "id": "slide-1785739607846-jd55y",
@@ -167,7 +167,7 @@
           "y": 31.465041130807556,
           "w": 18.321949947862358,
           "h": 44.146912292897696,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.01 Orga/10 Münzen.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/10 Münzen.png",
           "imageFit": "contain",
           "zIndex": 1,
           "stackLayer": "foreground"
@@ -264,7 +264,7 @@
           "y": 20.935,
           "w": 18.321949947862358,
           "h": 44.146912292897696,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.01 Orga/10 Münzen.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/10 Münzen.png",
           "imageFit": "contain",
           "zIndex": 9,
           "stackLayer": "foreground"
@@ -276,7 +276,7 @@
           "y": 31.465041130807556,
           "w": 18.321949947862358,
           "h": 44.146912292897696,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.01 Orga/10 Münzen.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/10 Münzen.png",
           "imageFit": "contain",
           "zIndex": 10,
           "stackLayer": "foreground"
@@ -288,7 +288,7 @@
           "y": 20.935,
           "w": 18.321949947862358,
           "h": 44.146912292897696,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.01 Orga/10 Münzen.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/10 Münzen.png",
           "imageFit": "contain",
           "zIndex": 11,
           "stackLayer": "foreground"
@@ -300,7 +300,7 @@
           "y": 43.00845614644885,
           "w": 18.321949947862358,
           "h": 44.146912292897696,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.01 Orga/10 Münzen.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/10 Münzen.png",
           "imageFit": "contain",
           "zIndex": 12,
           "stackLayer": "foreground"
@@ -312,13 +312,13 @@
           "y": 43.00845614644885,
           "w": 18.321949947862358,
           "h": 44.146912292897696,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.01 Orga/10 Münzen.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/10 Münzen.png",
           "imageFit": "contain",
           "zIndex": 13,
           "stackLayer": "foreground"
         }
       ],
-      "speakerNotesHtml": "<p><span style=\"font-weight: 700;\"><span data-pres-highlight=\"#C5E1A5\" style=\"background-color: rgb(197, 225, 165) !important;\">Material</span></span></p><p></p><ul><li><span style=\"font-weight: 700;\">50 Münzen</span>&nbsp;pro Schülerpaar</li></ul><p></p><p>→ im LK also 500 Münzen&nbsp;</p><p><br></p><p><a href=\"/api/file-system-paths/read-pdf?filePath=%2FUsers%2Fverachrist%2FDocuments%2FMEINE_APP%2FJohnnyMonkey%2FJ-M-Reihen%2FMathe%2FMSS%2012%20LK%2F12-01%20Matrizen%2F01%20Basiswissen%2F01.01%20Orga%2FMatrizen.pdf\" target=\"_blank\" rel=\"noopener noreferrer\" data-pres-lesson-file=\"git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.01 Orga/Matrizen.pdf\">Musterlösung</a></p>",
+      "speakerNotesHtml": "<p><span style=\"font-weight: 700;\"><span data-pres-highlight=\"#C5E1A5\" style=\"background-color: rgb(197, 225, 165) !important;\">Material</span></span></p><p></p><ul><li><span style=\"font-weight: 700;\">50 Münzen</span>&nbsp;pro Schülerpaar</li></ul><p></p><p>→ im LK also 500 Münzen&nbsp;</p><p><br></p><p><a href=\"/api/file-system-paths/read-pdf?filePath=%2FUsers%2Fverachrist%2FDocuments%2FMEINE_APP%2FJohnnyMonkey%2FJ-M-Reihen%2FMathe%2FMSS%2012%20LK%2F12-01%20Matrizen%2F01%20Basiswissen%2F01.01%20Orga%2FMatrizen.pdf\" target=\"_blank\" rel=\"noopener noreferrer\" data-pres-lesson-file=\"git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/Matrizen.pdf\">Musterlösung</a></p>",
       "subtitleHtml": "",
       "bodyLeftHtml": "",
       "bodyRightHtml": "",
@@ -331,7 +331,7 @@
       "revealEnabled": true,
       "zoneRevealSteps": {},
       "sourceLessonName": "01.01 Orga",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.01 Orga"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "speakerNotes": "",
@@ -376,7 +376,7 @@
       "id": "slide-1785308147723-2hjml",
       "order": 3,
       "sourceLessonName": "01.01 Orga",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.01 Orga"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "id": "slide-1786512973228-cxjwx",
@@ -403,7 +403,7 @@
           "y": 31.465041130807556,
           "w": 18.321949947862358,
           "h": 44.146912292897696,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.01 Orga/10 Münzen.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/10 Münzen.png",
           "imageFit": "contain",
           "zIndex": 1,
           "stackLayer": "foreground"
@@ -502,7 +502,7 @@
           "y": 20.935,
           "w": 18.321949947862358,
           "h": 44.146912292897696,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.01 Orga/10 Münzen.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/10 Münzen.png",
           "imageFit": "contain",
           "zIndex": 9,
           "stackLayer": "foreground"
@@ -514,7 +514,7 @@
           "y": 31.465041130807556,
           "w": 18.321949947862358,
           "h": 44.146912292897696,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.01 Orga/10 Münzen.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/10 Münzen.png",
           "imageFit": "contain",
           "zIndex": 10,
           "stackLayer": "foreground"
@@ -526,7 +526,7 @@
           "y": 20.935,
           "w": 18.321949947862358,
           "h": 44.146912292897696,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.01 Orga/10 Münzen.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/10 Münzen.png",
           "imageFit": "contain",
           "zIndex": 11,
           "stackLayer": "foreground"
@@ -538,7 +538,7 @@
           "y": 43.00845614644885,
           "w": 18.321949947862358,
           "h": 44.146912292897696,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.01 Orga/10 Münzen.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/10 Münzen.png",
           "imageFit": "contain",
           "zIndex": 12,
           "stackLayer": "foreground"
@@ -550,13 +550,13 @@
           "y": 43.00845614644885,
           "w": 18.321949947862358,
           "h": 44.146912292897696,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.01 Orga/10 Münzen.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/10 Münzen.png",
           "imageFit": "contain",
           "zIndex": 13,
           "stackLayer": "foreground"
         }
       ],
-      "speakerNotesHtml": "<p><span style=\"font-weight: 700;\"><span data-pres-highlight=\"#C5E1A5\" style=\"background-color: rgb(197, 225, 165) !important;\">Material</span></span></p><p></p><ul><li><span style=\"font-weight: 700;\">50 Münzen</span>&nbsp;pro Schülerpaar</li></ul><p></p><p>→ im LK also 500 Münzen&nbsp;</p><p><br></p><p><a href=\"/api/file-system-paths/read-pdf?filePath=%2FUsers%2Fverachrist%2FDocuments%2FMEINE_APP%2FJohnnyMonkey%2FJ-M-Reihen%2FMathe%2FMSS%2012%20LK%2F12-01%20Matrizen%2F01%20Basiswissen%2F01.01%20Orga%2FMatrizen.pdf\" target=\"_blank\" rel=\"noopener noreferrer\" data-pres-lesson-file=\"git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.01 Orga/Matrizen.pdf\">Musterlösung</a></p>",
+      "speakerNotesHtml": "<p><span style=\"font-weight: 700;\"><span data-pres-highlight=\"#C5E1A5\" style=\"background-color: rgb(197, 225, 165) !important;\">Material</span></span></p><p></p><ul><li><span style=\"font-weight: 700;\">50 Münzen</span>&nbsp;pro Schülerpaar</li></ul><p></p><p>→ im LK also 500 Münzen&nbsp;</p><p><br></p><p><a href=\"/api/file-system-paths/read-pdf?filePath=%2FUsers%2Fverachrist%2FDocuments%2FMEINE_APP%2FJohnnyMonkey%2FJ-M-Reihen%2FMathe%2FMSS%2012%20LK%2F12-01%20Matrizen%2F01%20Basiswissen%2F01.01%20Orga%2FMatrizen.pdf\" target=\"_blank\" rel=\"noopener noreferrer\" data-pres-lesson-file=\"git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/Matrizen.pdf\">Musterlösung</a></p>",
       "subtitleHtml": "",
       "bodyLeftHtml": "",
       "bodyRightHtml": "",
@@ -569,7 +569,7 @@
       "revealEnabled": true,
       "zoneRevealSteps": {},
       "sourceLessonName": "01.02 Einstieg Matrizen",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.02 Einstieg Matrizen"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "id": "slide-1786512990745-llve5",
@@ -605,7 +605,7 @@
           "y": 6.663775889138529,
           "w": 81.59010360297707,
           "h": 79.2957303113553,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.02 Einstieg Matrizen/Bildschirmfoto 2026-08-12 um 07.50.47.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/Bildschirmfoto 2026-08-12 um 07.50.47.png",
           "zIndex": 1,
           "imageFit": "contain",
           "stackLayer": "foreground"
@@ -615,7 +615,7 @@
       "revealEnabled": true,
       "zoneRevealSteps": {},
       "sourceLessonName": "01.02 Einstieg Matrizen",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.02 Einstieg Matrizen"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "id": "slide-1786513900433-6mlzu",
@@ -651,7 +651,7 @@
           "y": 11.061666743798735,
           "w": 79.71478181652179,
           "h": 74.17038690476191,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.02 Einstieg Matrizen/Bildschirmfoto 2026-08-12 um 07.51.48.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/Bildschirmfoto 2026-08-12 um 07.51.48.png",
           "zIndex": 1,
           "imageFit": "contain",
           "stackLayer": "foreground"
@@ -661,7 +661,7 @@
       "revealEnabled": true,
       "zoneRevealSteps": {},
       "sourceLessonName": "01.02 Einstieg Matrizen",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.02 Einstieg Matrizen"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "id": "slide-1786513931646-8esbq",
@@ -697,7 +697,7 @@
           "y": 15.518473559751767,
           "w": 39.09843573230633,
           "h": 58.57950921390109,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.02 Einstieg Matrizen/Bildschirmfoto 2026-08-12 um 07.51.56.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/Bildschirmfoto 2026-08-12 um 07.51.56.png",
           "zIndex": 1,
           "imageFit": "contain",
           "stackLayer": "foreground"
@@ -709,7 +709,7 @@
           "y": 8.188325068883522,
           "w": 46.46122176107706,
           "h": 68.88335622710622,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.02 Einstieg Matrizen/IMG_5722.jpeg",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/IMG_5722.jpeg",
           "zIndex": 2,
           "imageFit": "contain",
           "stackLayer": "foreground"
@@ -719,7 +719,7 @@
       "revealEnabled": true,
       "zoneRevealSteps": {},
       "sourceLessonName": "01.02 Einstieg Matrizen",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.02 Einstieg Matrizen"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "id": "slide-1786529074976-8xgrj",
@@ -792,7 +792,7 @@
       "revealEnabled": true,
       "zoneRevealSteps": {},
       "sourceLessonName": "01.02 Einstieg Matrizen",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.02 Einstieg Matrizen"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "layout": "title-content",
@@ -825,7 +825,7 @@
       "id": "slide-1786512939712-xg9qb",
       "order": 9,
       "sourceLessonName": "01.02 Einstieg Matrizen",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.02 Einstieg Matrizen"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "id": "slide-1786514477880-779mj",
@@ -858,7 +858,7 @@
       "revealEnabled": true,
       "zoneRevealSteps": {},
       "sourceLessonName": "01.02 Einstieg Matrizen",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.02 Einstieg Matrizen"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "speakerNotes": "",
@@ -912,7 +912,7 @@
       "id": "slide-1787117622970-r3pti",
       "order": 11,
       "sourceLessonName": "01.03 Definitionen",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.03 Definitionen"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "layout": "blank",
@@ -998,7 +998,7 @@
       "id": "slide-1787117622971-9kee1",
       "order": 12,
       "sourceLessonName": "01.03 Definitionen",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.03 Definitionen"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "speakerNotes": "",
@@ -1052,7 +1052,7 @@
       "id": "slide-1787117622971-kjkjg",
       "order": 13,
       "sourceLessonName": "01.04 Matrix mal Vektor",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.04 Matrix mal Vektor"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "layout": "blank",
@@ -1138,7 +1138,7 @@
       "id": "slide-1787117622972-n0jb7",
       "order": 14,
       "sourceLessonName": "01.04 Matrix mal Vektor",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.04 Matrix mal Vektor"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "id": "slide-1787122224443-iz0om",
@@ -1174,7 +1174,7 @@
           "y": 3.376131283393306,
           "w": 20.54170755642787,
           "h": 31.106204339766656,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.05 Insekten und Autos/Bildschirmfoto 2026-08-19 um 08.53.18.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/Bildschirmfoto 2026-08-19 um 08.53.18.png",
           "zIndex": 1,
           "imageFit": "contain",
           "stackLayer": "foreground"
@@ -1184,7 +1184,7 @@
       "revealEnabled": true,
       "zoneRevealSteps": {},
       "sourceLessonName": "01.05 Insekten und Autos",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.05 Insekten und Autos"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "id": "slide-1787122584640-c8nrd",
@@ -1217,7 +1217,7 @@
       "revealEnabled": true,
       "zoneRevealSteps": {},
       "sourceLessonName": "01.05 Insekten und Autos",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.05 Insekten und Autos"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "id": "slide-1787122486771-e1qyr",
@@ -1250,7 +1250,7 @@
       "revealEnabled": true,
       "zoneRevealSteps": {},
       "sourceLessonName": "01.05 Insekten und Autos",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.05 Insekten und Autos"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "id": "slide-1787119507212-fmjc8",
@@ -1286,7 +1286,7 @@
           "y": 11.750354377930428,
           "w": 42.622178606476936,
           "h": 24.651074037727618,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.05 Insekten und Autos/ChatGPT Image 19. Aug. 2026, 08_21_50.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/ChatGPT Image 19. Aug. 2026, 08_21_50.png",
           "zIndex": 1,
           "imageFit": "contain",
           "stackLayer": "foreground",
@@ -1305,7 +1305,7 @@
           "y": 41.583524152218956,
           "w": 49.29538763493621,
           "h": 43.49307600043616,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.05 Insekten und Autos/Bildschirmfoto 2026-08-19 um 08.49.41.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/Bildschirmfoto 2026-08-19 um 08.49.41.png",
           "zIndex": 2,
           "imageFit": "contain",
           "stackLayer": "foreground"
@@ -1323,7 +1323,7 @@
         }
       },
       "sourceLessonName": "01.05 Insekten und Autos",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.05 Insekten und Autos"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "id": "slide-1787118410832-5su8i",
@@ -1359,7 +1359,7 @@
           "y": 1.457038490895215,
           "w": 28.29440628066732,
           "h": 30.931741358630465,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.05 Insekten und Autos/image.jpeg",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/image.jpeg",
           "zIndex": 1,
           "imageFit": "contain",
           "stackLayer": "foreground"
@@ -1381,7 +1381,7 @@
           "y": 44.89832079380656,
           "w": 55.08537782139352,
           "h": 23.25406171627958,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.05 Insekten und Autos/Bildschirmfoto 2026-08-19 um 08.57.33.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/Bildschirmfoto 2026-08-19 um 08.57.33.png",
           "zIndex": 3,
           "imageFit": "contain",
           "stackLayer": "foreground"
@@ -1399,7 +1399,7 @@
         }
       },
       "sourceLessonName": "01.05 Insekten und Autos",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.05 Insekten und Autos"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "speakerNotes": "",
@@ -1453,7 +1453,7 @@
       "id": "slide-1787117622971-0ls2j",
       "order": 20,
       "sourceLessonName": "01.05 Insekten und Autos",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.05 Insekten und Autos"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "layout": "blank",
@@ -1539,7 +1539,7 @@
       "id": "slide-1787117622972-o67dj",
       "order": 21,
       "sourceLessonName": "01.05 Insekten und Autos",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.05 Insekten und Autos"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "speakerNotes": "",
@@ -1593,7 +1593,7 @@
       "id": "slide-1787117622972-dgvuo",
       "order": 22,
       "sourceLessonName": "01.06 Gemischtes Üben",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.06 Gemischtes Üben"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "layout": "blank",
@@ -1679,7 +1679,7 @@
       "id": "slide-1787117622973-la9hl",
       "order": 23,
       "sourceLessonName": "01.06 Gemischtes Üben",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.06 Gemischtes Üben"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "speakerNotes": "Beschreibt die Grafik!Sammelt mathematische Fragen, die man hier bearbeiten kann und löst diese mit Hilfe von Matrizen!Mögliche Musterlösung:Notiere für jede Firma eine Prozessmatrix.Wie groß ist der Rohstoffbedarf je Rad von Firma Radieschen, wenn jeweils immer 10 Räder gleichzeitig produziert werden. (skalare Multiplikation)Bestimme den Rohstoffbedarf beider Mountenbikes und Stadträder zusammen. (Matrizen Addition)Bestimme den Unterschied im Rohstoffbedarf bei den beiden Mountenbikes und bei den zwei Stadträdern. (Matrizen Subtraktion) Wenn Firma Radieschen 3 Mountenbikes und ein Stadtrad bestellt, wie viele Rohstoffe werden dann gebraucht? (Matrix Vektor Produkt)Bonusaufgabe auf dem AB (würde ich reingeben, wenn die ersten fertig sind) (Matrix Produkt)Im Anschluss würde ich die Rechenoperationen noch definieren und dann zum Üben im Schulbuch auf S.170 Nr.3 und auf S.174 Nr.6 machen.",
@@ -1714,7 +1714,7 @@
           "y": 69.87,
           "w": 18.08,
           "h": 20.33,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-1-image1.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-1-image1.png",
           "imageFit": "contain",
           "zIndex": 1,
           "stackLayer": "foreground"
@@ -1726,7 +1726,7 @@
           "y": 68.95,
           "w": 14.48,
           "h": 24.66,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-2-image2.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-2-image2.png",
           "imageFit": "contain",
           "zIndex": 2,
           "stackLayer": "foreground"
@@ -1738,7 +1738,7 @@
           "y": 71.2,
           "w": 16.8,
           "h": 20.45,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-3-image3.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-3-image3.png",
           "imageFit": "contain",
           "zIndex": 3,
           "stackLayer": "foreground"
@@ -1750,7 +1750,7 @@
           "y": 69.87,
           "w": 16.51,
           "h": 20.82,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-4-image4.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-4-image4.png",
           "imageFit": "contain",
           "zIndex": 4,
           "stackLayer": "foreground"
@@ -1762,7 +1762,7 @@
           "y": 32.91,
           "w": 7.96,
           "h": 8.75,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-5-image5.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-5-image5.png",
           "imageFit": "contain",
           "zIndex": 5,
           "stackLayer": "foreground"
@@ -1774,7 +1774,7 @@
           "y": 32.14,
           "w": 9.77,
           "h": 9.91,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-6-image6.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-6-image6.png",
           "imageFit": "contain",
           "zIndex": 6,
           "stackLayer": "foreground"
@@ -1786,7 +1786,7 @@
           "y": 31.9,
           "w": 8.77,
           "h": 10.39,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-7-image7.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-7-image7.png",
           "imageFit": "contain",
           "zIndex": 7,
           "stackLayer": "foreground"
@@ -1798,7 +1798,7 @@
           "y": 28.81,
           "w": 9.75,
           "h": 16.77,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-8-image8.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-8-image8.png",
           "imageFit": "contain",
           "zIndex": 8,
           "stackLayer": "foreground"
@@ -1810,7 +1810,7 @@
           "y": 29.19,
           "w": 9.97,
           "h": 15.81,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-9-image9.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-9-image9.png",
           "imageFit": "contain",
           "zIndex": 9,
           "stackLayer": "foreground"
@@ -1822,7 +1822,7 @@
           "y": 4.650000000000002,
           "w": 17.33,
           "h": 15.84,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-10-image10.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-10-image10.png",
           "imageFit": "contain",
           "zIndex": 10,
           "stackLayer": "foreground"
@@ -1834,7 +1834,7 @@
           "y": 32.97,
           "w": 7.96,
           "h": 8.75,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-5-image5.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-5-image5.png",
           "imageFit": "contain",
           "zIndex": 11,
           "stackLayer": "foreground"
@@ -1846,7 +1846,7 @@
           "y": 32.39,
           "w": 9.77,
           "h": 9.91,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-6-image6.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-6-image6.png",
           "imageFit": "contain",
           "zIndex": 12,
           "stackLayer": "foreground"
@@ -1858,7 +1858,7 @@
           "y": 32.15,
           "w": 8.77,
           "h": 10.39,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-7-image7.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-7-image7.png",
           "imageFit": "contain",
           "zIndex": 13,
           "stackLayer": "foreground"
@@ -1870,7 +1870,7 @@
           "y": 29.06,
           "w": 9.75,
           "h": 16.77,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-8-image8.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-8-image8.png",
           "imageFit": "contain",
           "zIndex": 14,
           "stackLayer": "foreground"
@@ -1882,7 +1882,7 @@
           "y": 29.62,
           "w": 9.97,
           "h": 15.81,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-9-image9.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-9-image9.png",
           "imageFit": "contain",
           "zIndex": 15,
           "stackLayer": "foreground"
@@ -1894,7 +1894,7 @@
           "y": 3.3999999999999986,
           "w": 13.19,
           "h": 16.2,
-          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/pptx-11-image27.png",
+          "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-11-image27.png",
           "imageFit": "contain",
           "zIndex": 16,
           "stackLayer": "foreground"
@@ -2503,7 +2503,7 @@
       "preparationNotes": "",
       "materialNotes": "",
       "sourceLessonName": "01.07 Prozesse am Fahrrad",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "speakerNotes": "",
@@ -2557,7 +2557,7 @@
         "bodyHtml"
       ],
       "sourceLessonName": "01.07 Prozesse am Fahrrad",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "layout": "blank",
@@ -2639,7 +2639,7 @@
           "y": 9.129772046836543,
           "w": 43.022935779816514,
           "h": 38.25178389398573,
-          "src": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/Bildschirmfoto 2026-08-20 um 13.59.27.png",
+          "src": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/Bildschirmfoto 2026-08-20 um 13.59.27.png",
           "zIndex": 5,
           "imageFit": "contain",
           "stackLayer": "foreground",
@@ -2657,7 +2657,7 @@
           "y": 49.91717635066259,
           "w": 43.022935779816514,
           "h": 24.592252803261978,
-          "src": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad/Bildschirmfoto 2026-08-20 um 14.01.21.png",
+          "src": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/Bildschirmfoto 2026-08-20 um 14.01.21.png",
           "zIndex": 6,
           "imageFit": "contain",
           "stackLayer": "foreground",
@@ -2679,7 +2679,7 @@
       "id": "slide-1787219258001-tt2dx",
       "order": 26,
       "sourceLessonName": "01.07 Prozesse am Fahrrad",
-      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad"
+      "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     }
   ],
   "defaultTransition": "fade",
@@ -2688,37 +2688,37 @@
   "slideFooter": {},
   "combinedFrom": [
     {
-      "lessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.01 Orga",
+      "lessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen",
       "lessonName": "01.01 Orga",
       "updatedAt": "2026-08-09T07:01:17.882Z"
     },
     {
-      "lessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.02 Einstieg Matrizen",
+      "lessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen",
       "lessonName": "01.02 Einstieg Matrizen",
       "updatedAt": "2026-08-19T06:56:17.149Z"
     },
     {
-      "lessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.03 Definitionen",
+      "lessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen",
       "lessonName": "01.03 Definitionen",
       "updatedAt": "2026-08-19T05:33:42.000Z"
     },
     {
-      "lessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.04 Matrix mal Vektor",
+      "lessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen",
       "lessonName": "01.04 Matrix mal Vektor",
       "updatedAt": "2026-08-19T05:33:42.000Z"
     },
     {
-      "lessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.05 Insekten und Autos",
+      "lessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen",
       "lessonName": "01.05 Insekten und Autos",
       "updatedAt": "2026-08-19T06:57:54.759Z"
     },
     {
-      "lessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.06 Gemischtes Üben",
+      "lessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen",
       "lessonName": "01.06 Gemischtes Üben",
       "updatedAt": "2026-08-19T05:33:42.000Z"
     },
     {
-      "lessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad",
+      "lessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen",
       "lessonName": "01.07 Prozesse am Fahrrad",
       "updatedAt": "2026-08-22T05:54:54.923Z"
     }

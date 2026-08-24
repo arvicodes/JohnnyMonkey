@@ -17,7 +17,7 @@ export const PRES_EDITOR_UI = {
   accent: JOHNNY_PRESENTATION.primary,
   accentSoft: '#e8f5e9',
   accentHover: '#a5d6a7',
-  filmstripThumbWidth: 88,
+  filmstripThumbWidth: 148,
   toolbarIcon: {
     width: 24,
     height: 24,

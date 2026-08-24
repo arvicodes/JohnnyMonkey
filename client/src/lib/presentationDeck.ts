@@ -186,7 +186,7 @@ export interface PresentationSlide {
    * Liegt im Deck, nicht in den Live-Annotationen der Stunde.
    */
   inkStrokes?: PresentationStroke[];
-  /** Herkunftsstunde, wenn die Folie in einem Kapitel-Foliensatz liegt. */
+  /** Unterkapitel in der Folienleiste (frei benennbar). */
   sourceLessonName?: string;
   sourceLessonPath?: string;
 }
