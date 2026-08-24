@@ -112,6 +112,7 @@ import {
   loadPresentationPlayVariants,
   migratePlayLayerIntoVariants,
   playVariantSlideIds,
+  removePlaySlideVariant,
   savePresentationPlayVariants,
   stripPlayLayerFromSlide,
   upsertPlaySlideVariant,
@@ -386,6 +387,7 @@ const PresentationEditorPage: React.FC = () => {
     name: string;
     count: number;
   } | null>(null);
+  const [variantDeleteAsk, setVariantDeleteAsk] = useState<{ slideId: string } | null>(null);
   const deckRef = useRef<PresentationDeck | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const imageTargetRef = useRef<'inline' | 'layout' | 'element' | 'notes'>('inline');
@@ -577,6 +579,22 @@ const PresentationEditorPage: React.FC = () => {
           setSnackbar('Präsentations-Variante konnte nicht gespeichert werden');
         });
       }, 400);
+    },
+    [lessonPath],
+  );
+
+  const persistVariantsNow = useCallback(
+    (next: PresentationPlayVariants) => {
+      playVariantsRef.current = next;
+      setPlayVariants(next);
+      if (variantSaveTimer.current) {
+        clearTimeout(variantSaveTimer.current);
+        variantSaveTimer.current = null;
+      }
+      if (!lessonPath) return;
+      void savePresentationPlayVariants(lessonPath, next).catch(() => {
+        setSnackbar('Präsentations-Variante konnte nicht gespeichert werden');
+      });
     },
     [lessonPath],
   );
@@ -999,8 +1017,10 @@ const PresentationEditorPage: React.FC = () => {
     (slideId: string) => {
       const master = deckRef.current?.slides.find((s) => s.id === slideId);
       if (!master) return;
-      if (!playVariantsRef.current?.bySlideId[slideId]?.slide) {
+      const created = !playVariantsRef.current?.bySlideId[slideId]?.slide;
+      if (created) {
         persistVariantSlide(stripPlayLayerFromSlide(master));
+        setSnackbar('Variante angelegt — das Original bleibt unverändert');
       }
       selectSlide(slideId, { keepVariant: true });
       editingVariantRef.current = true;
@@ -1011,6 +1031,52 @@ const PresentationEditorPage: React.FC = () => {
     },
     [persistVariantSlide, selectSlide],
   );
+
+  const requestDeleteVariant = (slideId: string) => {
+    const exists =
+      Boolean(playVariantsRef.current?.bySlideId[slideId]) ||
+      Boolean(annotationsRef.current?.bySlideId[slideId]?.length);
+    if (!exists) {
+      setSnackbar('Diese Folie hat noch keine Variante');
+      return;
+    }
+    setVariantDeleteAsk({ slideId });
+  };
+
+  const confirmDeleteVariant = () => {
+    const ask = variantDeleteAsk;
+    setVariantDeleteAsk(null);
+    if (!ask || !lessonPath) return;
+    if (variantSaveTimer.current) {
+      clearTimeout(variantSaveTimer.current);
+      variantSaveTimer.current = null;
+    }
+    editingVariantRef.current = false;
+    setEditingVariant(false);
+    setActiveEditor(null);
+    setActiveHtmlField(null);
+    setSelectedElementId(null);
+    setInkEditActive(false);
+    suppressMasterCommitRef.current = true;
+    window.setTimeout(() => {
+      suppressMasterCommitRef.current = false;
+    }, 500);
+    persistVariantsNow(
+      removePlaySlideVariant(
+        playVariantsRef.current ?? createEmptyPlayVariants(lessonPath),
+        ask.slideId,
+      ),
+    );
+    const base = annotationsRef.current;
+    if (base) {
+      const { [ask.slideId]: _dropped, ...bySlideId } = base.bySlideId;
+      const nextAnn = { ...base, bySlideId };
+      annotationsRef.current = nextAnn;
+      setAnnotations(nextAnn);
+      void persistInk(nextAnn);
+    }
+    setSnackbar('Variante gelöscht — die Original-Folie bleibt');
+  };
 
   const handleFilmstripSelect = useCallback(
     (id: string, event: React.MouseEvent) => {
@@ -2870,7 +2936,7 @@ const PresentationEditorPage: React.FC = () => {
       if (animationEditMode) return; // eigener Handler im Animationsmodus
       if (isTypingTarget(e.target)) return;
       if (isFormatBarInteracting()) return;
-      if (sectionDeleteAsk || saveNamedOpen || pasteCatcherOpen || pendingPasteFiles?.length) return;
+      if (sectionDeleteAsk || variantDeleteAsk || saveNamedOpen || pasteCatcherOpen || pendingPasteFiles?.length) return;
       if (document.querySelector('.MuiModal-root:not([aria-hidden="true"])')) return;
       e.preventDefault();
       e.stopPropagation();
@@ -2888,6 +2954,7 @@ const PresentationEditorPage: React.FC = () => {
     planMode,
     saveNamedOpen,
     sectionDeleteAsk,
+    variantDeleteAsk,
   ]);
 
   const toolbarIconSx = {
@@ -3581,6 +3648,8 @@ const PresentationEditorPage: React.FC = () => {
           activeVariantId={editingVariant ? activeId : null}
           onSelect={handleFilmstripSelect}
           onOpenVariant={openPlayVariant}
+          onAddVariant={openPlayVariant}
+          onDeleteVariant={requestDeleteVariant}
           onAdd={() => addSlide('blank')}
           onReorder={reorderSlides}
           onRenameSection={renameSection}
@@ -3656,6 +3725,23 @@ const PresentationEditorPage: React.FC = () => {
                 >
                   Zur Original-Folie
                 </Button>
+                {activeId ? (
+                  <Button
+                    size="small"
+                    color="error"
+                    onClick={() => requestDeleteVariant(activeId)}
+                    sx={{
+                      minWidth: 0,
+                      px: 1,
+                      height: 22,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      textTransform: 'none',
+                    }}
+                  >
+                    Variante löschen…
+                  </Button>
+                ) : null}
               </Box>
             )}
             {normalizedActive && canvasScale > 0 && (
@@ -3960,6 +4046,27 @@ const PresentationEditorPage: React.FC = () => {
           <Button onClick={() => setSectionDeleteAsk(null)}>Abbrechen</Button>
           <Button color="error" variant="contained" onClick={confirmDeleteSection}>
             In den Papierkorb
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(variantDeleteAsk)}
+        onClose={() => setVariantDeleteAsk(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Variante löschen?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            Die Präsentations-Variante dieser Folie löschen? Stift, Fotos und Änderungen aus dem
+            Präsentieren gehen verloren. Die Original-Folie bleibt unverändert.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setVariantDeleteAsk(null)}>Abbrechen</Button>
+          <Button color="error" variant="contained" onClick={confirmDeleteVariant}>
+            Variante löschen
           </Button>
         </DialogActions>
       </Dialog>

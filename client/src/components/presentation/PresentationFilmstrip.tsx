@@ -34,6 +34,8 @@ interface PresentationFilmstripProps {
   activeVariantId?: string | null;
   onSelect: (id: string, event: React.MouseEvent) => void;
   onOpenVariant?: (id: string) => void;
+  onAddVariant?: (id: string) => void;
+  onDeleteVariant?: (id: string) => void;
   onAdd: () => void;
   onReorder: (activeId: string, overId: string) => void;
   onRenameSection?: (startSlideId: string, name: string) => void;
@@ -251,6 +253,8 @@ interface SortableThumbProps {
   variantActive: boolean;
   onSelect: (event: React.MouseEvent) => void;
   onOpenVariant?: () => void;
+  onAddVariant?: () => void;
+  onDeleteVariant?: () => void;
   setItemRef: (node: HTMLDivElement | null) => void;
 }
 
@@ -264,6 +268,8 @@ const SortableFilmstripThumb = React.memo(
     variantActive,
     onSelect,
     onOpenVariant,
+    onAddVariant,
+    onDeleteVariant,
     setItemRef,
   }: SortableThumbProps) => {
     const {
@@ -404,13 +410,69 @@ const SortableFilmstripThumb = React.memo(
             <DragIcon sx={{ fontSize: 13 }} />
           </Box>
         </Box>
-        {hasVariant && (
+        {hasVariant ? (
+          <Box sx={{ display: 'flex', alignItems: 'stretch', gap: 0.3, mt: 0.35 }}>
+            <Button
+              size="small"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpenVariant?.();
+              }}
+              sx={{
+                minWidth: 0,
+                flex: 1,
+                height: 20,
+                px: 0.5,
+                fontSize: 9,
+                fontWeight: 800,
+                lineHeight: 1,
+                textTransform: 'none',
+                borderRadius: 0.75,
+                color: variantActive ? '#fff' : PRES_EDITOR_UI.accent,
+                bgcolor: variantActive ? PRES_EDITOR_UI.accent : '#fff',
+                border: `1px solid ${variantActive ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.panelBorder}`,
+                boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+                '&:hover': {
+                  bgcolor: variantActive ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.accentSoft,
+                },
+              }}
+            >
+              Variante
+            </Button>
+            {onDeleteVariant ? (
+              <Tooltip title="Variante löschen…">
+                <IconButton
+                  size="small"
+                  aria-label="Variante löschen"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onDeleteVariant();
+                  }}
+                  sx={{
+                    width: 20,
+                    height: 20,
+                    p: 0,
+                    color: '#c62828',
+                    bgcolor: '#fff',
+                    border: '1px solid rgba(198, 40, 40, 0.28)',
+                    '&:hover': { bgcolor: 'rgba(198, 40, 40, 0.1)' },
+                  }}
+                >
+                  <DeleteIcon sx={{ fontSize: 14 }} />
+                </IconButton>
+              </Tooltip>
+            ) : null}
+          </Box>
+        ) : onAddVariant ? (
           <Button
             size="small"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => {
               event.stopPropagation();
-              onOpenVariant?.();
+              onAddVariant();
             }}
             sx={{
               mt: 0.35,
@@ -423,18 +485,15 @@ const SortableFilmstripThumb = React.memo(
               lineHeight: 1,
               textTransform: 'none',
               borderRadius: 0.75,
-              color: variantActive ? '#fff' : PRES_EDITOR_UI.accent,
-              bgcolor: variantActive ? PRES_EDITOR_UI.accent : '#fff',
-              border: `1px solid ${variantActive ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.panelBorder}`,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-              '&:hover': {
-                bgcolor: variantActive ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.accentSoft,
-              },
+              color: '#1565c0',
+              bgcolor: '#fff',
+              border: '1px dashed rgba(21, 101, 192, 0.45)',
+              '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.1)' },
             }}
           >
-            Variante
+            + Variante
           </Button>
-        )}
+        ) : null}
       </Box>
     );
   },
@@ -455,6 +514,8 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
   activeVariantId,
   onSelect,
   onOpenVariant,
+  onAddVariant,
+  onDeleteVariant,
   onAdd,
   onReorder,
   onRenameSection,
@@ -538,6 +599,8 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
                     variantActive={activeVariantId === slide.id}
                     onSelect={(event) => onSelect(slide.id, event)}
                     onOpenVariant={onOpenVariant ? () => onOpenVariant(slide.id) : undefined}
+                    onAddVariant={onAddVariant ? () => onAddVariant(slide.id) : undefined}
+                    onDeleteVariant={onDeleteVariant ? () => onDeleteVariant(slide.id) : undefined}
                     setItemRef={(node) => {
                       itemRefs.current[slide.id] = node;
                     }}
@@ -601,6 +664,31 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
             }}
           >
             Unterkapitel
+          </Button>
+        ) : null}
+        {onAddVariant && activeId && !variantSet.has(activeId) ? (
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<AddIcon sx={{ fontSize: 18 }} />}
+            aria-label="Variante hinzufügen"
+            onClick={() => onAddVariant(activeId)}
+            sx={{
+              minWidth: 0,
+              px: 0.5,
+              py: 0.25,
+              fontSize: 10,
+              fontWeight: 700,
+              lineHeight: 1.15,
+              textTransform: 'none',
+              color: PRES_EDITOR_UI.accent,
+              borderColor: 'rgba(46, 125, 50, 0.4)',
+              bgcolor: '#fff',
+              '& .MuiButton-startIcon': { mr: 0.4, ml: 0 },
+              '&:hover': { bgcolor: PRES_EDITOR_UI.accentSoft, borderColor: PRES_EDITOR_UI.accent },
+            }}
+          >
+            Variante
           </Button>
         ) : null}
       </Box>

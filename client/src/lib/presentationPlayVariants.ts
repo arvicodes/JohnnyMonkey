@@ -117,6 +117,19 @@ export function playVariantSlideIds(
   return Array.from(ids);
 }
 
+export function removePlaySlideVariant(
+  prev: PresentationPlayVariants,
+  slideId: string,
+): PresentationPlayVariants {
+  if (!prev.bySlideId[slideId]) return prev;
+  const { [slideId]: _removed, ...bySlideId } = prev.bySlideId;
+  return {
+    ...prev,
+    updatedAt: new Date().toISOString(),
+    bySlideId,
+  };
+}
+
 export function upsertPlaySlideVariant(
   prev: PresentationPlayVariants,
   slide: PresentationSlide,
