@@ -76,7 +76,32 @@ export function renameSlideSection(
   );
 }
 
-/** Neues Unterkapitel ab dieser Folie bis zum Ende des bisherigen Laufs. */
+export function sectionRunRange(
+  slides: PresentationSlide[],
+  atIndex: number,
+): { start: number; end: number } {
+  const sorted = sortSlides(slides);
+  if (atIndex < 0 || atIndex >= sorted.length) return { start: atIndex, end: atIndex };
+  const name = slideSectionName(sorted[atIndex]);
+  let start = atIndex;
+  while (start > 0 && slideSectionName(sorted[start - 1]) === name) start -= 1;
+  return { start, end: sectionRunEnd(sorted, start) };
+}
+
+export function removeSlideSection(
+  slides: PresentationSlide[],
+  atIndex: number,
+): { slides: PresentationSlide[]; removed: PresentationSlide[] } | null {
+  const sorted = sortSlides(slides);
+  const { start, end } = sectionRunRange(sorted, atIndex);
+  if (start < 0 || end <= start) return null;
+  if (sorted.length - (end - start) < 1) return null;
+  const removed = sorted.slice(start, end);
+  const next = sorted
+    .filter((_, index) => index < start || index >= end)
+    .map((slide, index) => ({ ...slide, order: index }));
+  return { slides: next, removed };
+}
 export function splitSlideSectionAt(
   slides: PresentationSlide[],
   atIndex: number,

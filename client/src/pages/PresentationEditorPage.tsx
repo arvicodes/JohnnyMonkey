@@ -119,9 +119,18 @@ import {
 } from '../lib/presentationPlayVariants';
 import {
   nextNumberedSectionName,
+  removeSlideSection,
   renameSlideSection,
   sectionRunEnd,
+  sectionRunRange,
+  slideSectionName,
 } from '../lib/presentationSections';
+import {
+  clearPresentationDeckDraft,
+  isDraftNewerThanDeck,
+  putPresentationDeckDraft,
+  readPresentationDeckDraft,
+} from '../lib/presentationDeckDraft';
 import { isEndSlide } from '../lib/presentationChapterCombine';
 import {
   DEFAULT_PEN_COLOR,
@@ -367,7 +376,16 @@ const PresentationEditorPage: React.FC = () => {
   const pdfExportTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const quietUiTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const filmstripIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveVersionRef = useRef(0);
+  const lastPersistedVersionRef = useRef(0);
+  const persistAgainRef = useRef(false);
+  const persistChainRef = useRef(Promise.resolve());
+  const [sectionDeleteAsk, setSectionDeleteAsk] = useState<{
+    startSlideId: string;
+    name: string;
+    count: number;
+  } | null>(null);
   const deckRef = useRef<PresentationDeck | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const imageTargetRef = useRef<'inline' | 'layout' | 'element' | 'notes'>('inline');
@@ -431,15 +449,36 @@ const PresentationEditorPage: React.FC = () => {
       return;
     }
     let cancelled = false;
-    loadPresentationDeck(lessonPath)
-      .then(async (d) => {
-        if (cancelled) return;
-        const [ann, variants] = await Promise.all([
-          loadPresentationAnnotations(lessonPath).catch(() => createEmptyAnnotations(lessonPath)),
-          loadPresentationPlayVariants(lessonPath),
-        ]);
-        if (cancelled) return;
-        const normalized = normalizeDeck(d);
+    (async () => {
+      let server: PresentationDeck | null = null;
+      let loadError: unknown = null;
+      try {
+        server = await loadPresentationDeck(lessonPath);
+      } catch (e) {
+        loadError = e;
+      }
+      if (cancelled) return;
+      const [ann, variants, draft] = await Promise.all([
+        loadPresentationAnnotations(lessonPath).catch(() => createEmptyAnnotations(lessonPath)),
+        loadPresentationPlayVariants(lessonPath),
+        readPresentationDeckDraft(lessonPath).catch(() => null),
+      ]);
+      if (cancelled) return;
+      const recovered =
+        draft && (!server || isDraftNewerThanDeck(draft, server))
+          ? normalizeDeck(draft.deck)
+          : null;
+      const d = recovered || server;
+      if (!d) {
+        setLoading(false);
+        setSnackbar(
+          loadError instanceof Error
+            ? loadError.message
+            : 'Präsentation konnte nicht geladen werden. Datei wurde nicht überschrieben.',
+        );
+        return;
+      }
+      const normalized = recovered || normalizeDeck(d);
         const withEntry = {
           ...normalized,
           slides: ensureEntryTicketButtonsOnTitleSlides(normalized.slides),
@@ -465,25 +504,37 @@ const PresentationEditorPage: React.FC = () => {
         setEditingVariant(false);
         setActiveId(migrated.deck.slides[0]?.id ?? null);
         setLoading(false);
+        if (recovered) {
+          ++saveVersionRef.current;
+          void saveJsonFile(lessonPath, DECK_FILENAME, migrated.deck)
+            .then(() => writeOriginalDeckSnapshot(lessonPath, migrated.deck, 'sync'))
+            .then(() => {
+              lastPersistedVersionRef.current = saveVersionRef.current;
+              return clearPresentationDeckDraft(lessonPath);
+            })
+            .catch(() => {
+              setSnackbar('Wiederhergestellt — bitte oben auf Sichern klicken');
+            });
+          setSnackbar('Ungespeicherte Änderungen wiederhergestellt');
+        }
         if (merged.changed) {
           void saveJsonFile(lessonPath, ANNOTATIONS_FILENAME, merged.annotations);
         }
-        if (merged.changed || migrated.changed) {
+        if (!recovered && (merged.changed || migrated.changed)) {
           void saveJsonFile(lessonPath, DECK_FILENAME, migrated.deck);
         }
         if (migrated.changed) {
           void savePresentationPlayVariants(lessonPath, migrated.variants);
         }
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        setLoading(false);
-        setSnackbar(
-          e instanceof Error
-            ? e.message
-            : 'Präsentation konnte nicht geladen werden. Datei wurde nicht überschrieben.'
-        );
-      });
+    })().catch((e) => {
+      if (cancelled) return;
+      setLoading(false);
+      setSnackbar(
+        e instanceof Error
+          ? e.message
+          : 'Präsentation konnte nicht geladen werden. Datei wurde nicht überschrieben.'
+      );
+    });
     loadSlideTemplates(lessonPath)
       .then(setSlideTemplates)
       .catch(() => setSlideTemplates(createDefaultTemplatesStore()));
@@ -612,6 +663,8 @@ const PresentationEditorPage: React.FC = () => {
         // Original nur aktualisieren, solange noch nicht eingefroren (Erstell-Phase)
         await writeOriginalDeckSnapshot(lessonPath, payload, 'sync');
         if (version === saveVersionRef.current) {
+          lastPersistedVersionRef.current = version;
+          void clearPresentationDeckDraft(lessonPath).catch(() => undefined);
           if (options?.schedulePdfExport === true) {
             schedulePdfExport({ delayMs: 800, notify: true });
           }
@@ -624,6 +677,26 @@ const PresentationEditorPage: React.FC = () => {
       }
     },
     [lessonPath, schedulePdfExport]
+  );
+
+  const flushPersist = useCallback(
+    (options?: { schedulePdfExport?: boolean }) => {
+      persistAgainRef.current = true;
+      persistChainRef.current = persistChainRef.current
+        .catch(() => undefined)
+        .then(async () => {
+          while (persistAgainRef.current) {
+            persistAgainRef.current = false;
+            const snapshot = deckRef.current;
+            if (!snapshot || !lessonPath) return;
+            const version = saveVersionRef.current;
+            await persistDeck(snapshot, version, options);
+            if (saveVersionRef.current !== version) persistAgainRef.current = true;
+          }
+        });
+      return persistChainRef.current;
+    },
+    [lessonPath, persistDeck],
   );
 
   const scheduleSave = useCallback(
@@ -676,11 +749,25 @@ const PresentationEditorPage: React.FC = () => {
         }
       }
 
-      const version = ++saveVersionRef.current;
+      ++saveVersionRef.current;
+      if (lessonPath) {
+        if (draftTimer.current) clearTimeout(draftTimer.current);
+        draftTimer.current = setTimeout(() => {
+          draftTimer.current = null;
+          const snapshot = deckRef.current;
+          if (snapshot) {
+            void putPresentationDeckDraft(lessonPath, snapshot).catch(() => undefined);
+          }
+        }, options?.urgent ? 0 : 180);
+      }
       if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => void persistDeck(next, version), 2500);
+      const delayMs = options?.urgent ? 0 : 900;
+      saveTimer.current = setTimeout(() => {
+        saveTimer.current = null;
+        void flushPersist();
+      }, delayMs);
     },
-    [persistDeck]
+    [flushPersist, lessonPath]
   );
 
   const commitEditorState = useCallback(
@@ -778,6 +865,64 @@ const PresentationEditorPage: React.FC = () => {
     },
     [activeEditor, activeHtmlField, activeId, persistVariantSlide, scheduleSave]
   );
+
+  useEffect(() => {
+    const flushPending = () => {
+      commitEditorState({ history: 'skip' });
+      if (draftTimer.current) {
+        clearTimeout(draftTimer.current);
+        draftTimer.current = null;
+      }
+      const snapshot = deckRef.current;
+      if (
+        snapshot &&
+        lessonPath &&
+        lastPersistedVersionRef.current !== saveVersionRef.current
+      ) {
+        void putPresentationDeckDraft(lessonPath, snapshot).catch(() => undefined);
+      }
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+      }
+      void flushPersist();
+      if (inkSaveTimer.current) {
+        clearTimeout(inkSaveTimer.current);
+        inkSaveTimer.current = null;
+        const ink = annotationsRef.current;
+        if (ink) void persistInk(ink);
+      }
+      if (variantSaveTimer.current) {
+        clearTimeout(variantSaveTimer.current);
+        variantSaveTimer.current = null;
+        const variants = playVariantsRef.current;
+        if (variants && lessonPath) {
+          void savePresentationPlayVariants(lessonPath, variants).catch(() => {
+            setSnackbar('Präsentations-Variante konnte nicht gespeichert werden');
+          });
+        }
+      }
+    };
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') flushPending();
+    };
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      flushPending();
+      if (lastPersistedVersionRef.current !== saveVersionRef.current) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    window.addEventListener('pagehide', flushPending);
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      window.removeEventListener('pagehide', flushPending);
+      document.removeEventListener('visibilitychange', onHide);
+      flushPending();
+    };
+  }, [commitEditorState, flushPersist, persistInk, lessonPath]);
 
   const saveNamedPresentationVersion = useCallback(async () => {
     const label = saveNamedLabel.trim();
@@ -985,11 +1130,11 @@ const PresentationEditorPage: React.FC = () => {
         snapshot.slides.some((s) => s.id === current) ? current : snapshot.slides[0]?.id ?? null
       );
       setHistoryVersion((v) => v + 1);
-      const version = ++saveVersionRef.current;
-      void persistDeck(snapshot, version);
+      ++saveVersionRef.current;
+      void flushPersist();
       applyingHistoryRef.current = false;
     },
-    [persistDeck]
+    [flushPersist]
   );
 
   const undo = useCallback(() => {
@@ -2098,6 +2243,61 @@ const PresentationEditorPage: React.FC = () => {
     setSnackbar(`Unterkapitel ${name} hinzugefügt`);
   };
 
+  const requestDeleteSection = (startSlideId: string) => {
+    const current = deckRef.current;
+    if (!current) return;
+    const slides = sortSlides(current.slides);
+    const atIndex = slides.findIndex((slide) => slide.id === startSlideId);
+    if (atIndex < 0) return;
+    const { start, end } = sectionRunRange(slides, atIndex);
+    const count = end - start;
+    if (slides.length - count < 1) {
+      setSnackbar('Das letzte Unterkapitel bleibt stehen — sonst wäre die Präsentation leer.');
+      return;
+    }
+    setSectionDeleteAsk({
+      startSlideId,
+      name: slideSectionName(slides[start]) || 'Unterkapitel',
+      count,
+    });
+  };
+
+  const confirmDeleteSection = () => {
+    const ask = sectionDeleteAsk;
+    setSectionDeleteAsk(null);
+    if (!ask) return;
+    const current = deckRef.current;
+    if (!current) return;
+    const slides = sortSlides(current.slides);
+    const atIndex = slides.findIndex((slide) => slide.id === ask.startSlideId);
+    if (atIndex < 0) return;
+    const removed = removeSlideSection(slides, atIndex);
+    if (!removed) {
+      setSnackbar('Das letzte Unterkapitel bleibt stehen — sonst wäre die Präsentation leer.');
+      return;
+    }
+    let trash = normalizeTrash(current);
+    for (const slide of [...removed.removed].reverse()) {
+      trash = [createSlideTrashItem(slide), ...trash].slice(0, MAX_TRASH_ITEMS);
+    }
+    const nextActive =
+      (activeId && removed.slides.some((slide) => slide.id === activeId) && activeId) ||
+      removed.slides[Math.min(atIndex, removed.slides.length - 1)]?.id ||
+      removed.slides[0]?.id ||
+      null;
+    scheduleSave(
+      { ...current, slides: removed.slides, trash },
+      { history: 'immediate', urgent: true },
+    );
+    setEditingVariant(false);
+    setActiveId(nextActive);
+    setSelectedSlideIds(nextActive ? [nextActive] : []);
+    slideSelectionAnchorRef.current = nextActive;
+    setSnackbar(
+      `Unterkapitel „${ask.name}“ (${ask.count} ${ask.count === 1 ? 'Folie' : 'Folien'}) im Papierkorb`,
+    );
+  };
+
   const deleteSlide = () => {
     const current = deckRef.current;
     if (!current || current.slides.length <= 1) return;
@@ -2143,7 +2343,7 @@ const PresentationEditorPage: React.FC = () => {
         slides,
         trash,
       },
-      { history: 'immediate' }
+      { history: 'immediate', urgent: true }
     );
     setActiveId(nextActive);
     setSelectedSlideIds(nextActive ? [nextActive] : []);
@@ -2595,8 +2795,37 @@ const PresentationEditorPage: React.FC = () => {
   const showLayoutImage =
     normalizedActive?.layout === 'image-left' || normalizedActive?.layout === 'image-right';
 
+  const flushThenLeave = useCallback(
+    async (to: string) => {
+      commitEditorState({ history: 'skip' });
+      if (draftTimer.current) {
+        clearTimeout(draftTimer.current);
+        draftTimer.current = null;
+      }
+      const snapshot = deckRef.current;
+      if (
+        snapshot &&
+        lessonPath &&
+        lastPersistedVersionRef.current !== saveVersionRef.current
+      ) {
+        void putPresentationDeckDraft(lessonPath, snapshot).catch(() => undefined);
+      }
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+      }
+      try {
+        await flushPersist();
+      } catch {
+        /* persistDeck zeigt den Fehler */
+      }
+      navigate(to);
+    },
+    [commitEditorState, flushPersist, lessonPath, navigate],
+  );
+
   const handleBack = () => {
-    navigate(presentationLessonBackUrl(lessonPath, groupId, planMode));
+    void flushThenLeave(presentationLessonBackUrl(lessonPath, groupId, planMode));
   };
 
   const lessonDisplayName = useMemo(
@@ -2606,8 +2835,8 @@ const PresentationEditorPage: React.FC = () => {
 
   const openEntryTicketEdit = useCallback(() => {
     if (!lessonPath) return;
-    navigate(presentationEntryTicketEditUrl(lessonPath, groupId || undefined, planMode || 'create'));
-  }, [groupId, lessonPath, navigate, planMode]);
+    void flushThenLeave(presentationEntryTicketEditUrl(lessonPath, groupId || undefined, planMode || 'create'));
+  }, [flushThenLeave, groupId, lessonPath, planMode]);
 
   const handlePlanModeChange = useCallback(
     (_: React.MouseEvent<HTMLElement>, next: 'create' | 'run' | 'background' | null) => {
@@ -2616,15 +2845,14 @@ const PresentationEditorPage: React.FC = () => {
       if (next === 'run') {
         preparePresentationAudioForPlay();
         requestPresentFullscreen();
-        navigate(
+        void flushThenLeave(
           presentationPresentUrl(lessonPath, groupId || undefined, 'edited', undefined, 'run'),
         );
         return;
       }
-      // Laptop → zurück in die Stundenansicht (Laptop-Modus)
-      navigate(presentationLessonBackUrl(lessonPath, groupId, 'background'));
+      void flushThenLeave(presentationLessonBackUrl(lessonPath, groupId, 'background'));
     },
-    [groupId, lessonPath, navigate],
+    [flushThenLeave, groupId, lessonPath],
   );
 
   // Esc → zurück zur Stundenplanung (nicht während Textbearbeitung / Dialog / Animationsmodus)
@@ -2642,14 +2870,25 @@ const PresentationEditorPage: React.FC = () => {
       if (animationEditMode) return; // eigener Handler im Animationsmodus
       if (isTypingTarget(e.target)) return;
       if (isFormatBarInteracting()) return;
+      if (sectionDeleteAsk || saveNamedOpen || pasteCatcherOpen || pendingPasteFiles?.length) return;
       if (document.querySelector('.MuiModal-root:not([aria-hidden="true"])')) return;
       e.preventDefault();
       e.stopPropagation();
-      navigate(presentationLessonBackUrl(lessonPath, groupId, planMode));
+      void flushThenLeave(presentationLessonBackUrl(lessonPath, groupId, planMode));
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [animationEditMode, lessonPath, groupId, navigate, planMode]);
+  }, [
+    animationEditMode,
+    flushThenLeave,
+    groupId,
+    lessonPath,
+    pasteCatcherOpen,
+    pendingPasteFiles,
+    planMode,
+    saveNamedOpen,
+    sectionDeleteAsk,
+  ]);
 
   const toolbarIconSx = {
     color: PRES_EDITOR_UI.textMuted,
@@ -3048,14 +3287,15 @@ const PresentationEditorPage: React.FC = () => {
                 size="small"
                 onClick={() => {
                   commitEditorState({ history: 'skip' });
-                  const current = deckRef.current || deck;
-                  if (!current) return;
+                  if (!deckRef.current) return;
                   if (pdfExportTimer.current) clearTimeout(pdfExportTimer.current);
-                  const v = ++saveVersionRef.current;
-                  void persistDeck(current, v, { schedulePdfExport: false }).then(() => {
-                    if (v !== saveVersionRef.current) return;
+                  if (saveTimer.current) {
+                    clearTimeout(saveTimer.current);
+                    saveTimer.current = null;
+                  }
+                  void flushPersist({ schedulePdfExport: false }).then(() => {
+                    if (lastPersistedVersionRef.current !== saveVersionRef.current) return;
                     setSnackbar('Gesichert');
-                    // Schwere PDF-Exports nicht beim Speichern — idle im Hintergrund
                     schedulePdfExport({ delayMs: 14000, notify: false });
                   });
                 }}
@@ -3093,7 +3333,9 @@ const PresentationEditorPage: React.FC = () => {
                 onClick={() => {
                   preparePresentationAudioForPlay();
                   requestPresentFullscreen();
-                  navigate(presentationPresentUrl(lessonPath, groupId || undefined, undefined, undefined, planMode));
+                  void flushThenLeave(
+                    presentationPresentUrl(lessonPath, groupId || undefined, undefined, undefined, planMode),
+                  );
                 }}
                 sx={{
                   width: 38,
@@ -3343,6 +3585,7 @@ const PresentationEditorPage: React.FC = () => {
           onReorder={reorderSlides}
           onRenameSection={renameSection}
           onAddSection={addSectionAt}
+          onDeleteSection={requestDeleteSection}
         />
 
         {/* Canvas + Notizen */}
@@ -3696,6 +3939,30 @@ const PresentationEditorPage: React.FC = () => {
           </Box>
         )}
       </Box>
+
+      <Dialog
+        open={Boolean(sectionDeleteAsk)}
+        onClose={() => setSectionDeleteAsk(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Unterkapitel löschen?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            {sectionDeleteAsk
+              ? `„${sectionDeleteAsk.name}“ mit ${sectionDeleteAsk.count} ${
+                  sectionDeleteAsk.count === 1 ? 'Folie' : 'Folien'
+                } in den Papierkorb legen? Du kannst das Unterkapitel dort wiederherstellen.`
+              : ''}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSectionDeleteAsk(null)}>Abbrechen</Button>
+          <Button color="error" variant="contained" onClick={confirmDeleteSection}>
+            In den Papierkorb
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={Boolean(pendingPasteFiles?.length) && !pasteBusy}

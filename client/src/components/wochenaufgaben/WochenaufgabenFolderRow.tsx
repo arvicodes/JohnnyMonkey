@@ -150,58 +150,61 @@ export default function WochenaufgabenFolderRow({
         borderRadius: 1.25,
         bgcolor: WOCHENAUFGABEN_BOX_BG,
         px: 0.75,
-        pt: 0.55,
-        pb: 0.55,
+        py: 0.4,
       }}
     >
-      {showLabel ? (
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.35 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 0.65,
+          minWidth: 0,
+        }}
+      >
+        {showLabel ? (
           <Typography
             component="div"
             sx={{
-              fontSize: '0.72rem',
+              fontSize: '0.68rem',
               fontWeight: 700,
               color: WOCHENAUFGABEN_TEXT_COLOR,
-              lineHeight: 1.25,
+              lineHeight: 1,
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
             }}
           >
-            📅 Wochenaufgaben
+            Wochenaufgaben
           </Typography>
-          {studentId ? <WochenaufgabenInfoButton /> : null}
+        ) : null}
+        {studentId ? <WochenaufgabenInfoButton /> : null}
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          <WochenaufgabenNumberChips
+            children={children}
+            parentPath={parentPath}
+            isTeacher={isTeacher}
+            statesByPath={loadGroupId ? statesByPath : {}}
+            onSelect={onSelect}
+            onOpenPdf={onOpenPdf}
+            onActivate={isTeacher ? handleActivate : undefined}
+            onClaimVideo={studentId ? handleClaimVideo : undefined}
+            onUpload={studentId && teacherId ? (lessonPath, kind) => setUpload({ lessonPath, kind }) : undefined}
+            onAdd={onAdd}
+          />
         </Box>
-      ) : studentId ? (
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.35 }}>
-          <WochenaufgabenInfoButton />
-          <Typography sx={{ fontSize: '0.58rem', color: 'text.secondary', ml: 0.25 }}>
-            So funktionieren Wochenaufgaben
-          </Typography>
-        </Box>
-      ) : null}
+      </Box>
 
       {statusHint ? (
-        <Typography sx={{ fontSize: '0.58rem', color: 'error.main', mb: 0.35, lineHeight: 1.3 }}>
+        <Typography sx={{ fontSize: '0.58rem', color: 'error.main', mt: 0.35, lineHeight: 1.3 }}>
           {statusHint}
         </Typography>
       ) : null}
 
       {!loadGroupId && isTeacher ? (
-        <Typography sx={{ fontSize: '0.58rem', color: 'text.secondary', mb: 0.35, lineHeight: 1.3 }}>
+        <Typography sx={{ fontSize: '0.58rem', color: 'text.secondary', mt: 0.35, lineHeight: 1.3 }}>
           Reihe einer Lerngruppe zuordnen (Häkchen), dann wird Freigeben aktiv.
         </Typography>
       ) : null}
-
-      <WochenaufgabenNumberChips
-        children={children}
-        parentPath={parentPath}
-        isTeacher={isTeacher}
-        statesByPath={loadGroupId ? statesByPath : {}}
-        onSelect={onSelect}
-        onOpenPdf={onOpenPdf}
-        onActivate={isTeacher ? handleActivate : undefined}
-        onClaimVideo={studentId ? handleClaimVideo : undefined}
-        onUpload={studentId && teacherId ? (lessonPath, kind) => setUpload({ lessonPath, kind }) : undefined}
-        onAdd={onAdd}
-      />
 
       {upload && studentId && teacherId ? (
         <WochenaufgabeUploadModal

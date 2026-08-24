@@ -3750,21 +3750,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             sx={{
               p: 1.4,
               borderRadius: 1.4,
-              bgcolor: rootIsWochenaufgaben
-                ? WOCHENAUFGABEN_BG
-                : rootIsInformatik
+              bgcolor: rootIsInformatik
                   ? INFORMATIK_FOLDER_BG
                   : '#f8f9fa',
-              border: rootIsWochenaufgaben
-                ? `1px solid ${WOCHENAUFGABEN_BORDER}`
-                : rootIsInformatik
+              border: rootIsInformatik
                   ? INFORMATIK_FOLDER_BORDER
                   : '1px solid #e9ecef',
               transition: 'all 0.2s ease',
               '&:hover': {
-                bgcolor: rootIsWochenaufgaben
-                  ? '#fff3e0'
-                  : rootIsInformatik
+                bgcolor: rootIsInformatik
                     ? 'rgba(0, 96, 100, 0.12)'
                     : '#e9ecef',
               },
@@ -3797,7 +3791,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   flex: 1,
                 }}
               >
-                {rootIsWochenaufgaben ? '📅' : '📁'} {folderPath.split('/').pop() || folderPath}
+                {rootIsWochenaufgaben ? null : (
+                  <>
+                    📁 {folderPath.split('/').pop() || folderPath}
+                  </>
+                )}
               </Typography>
             </Box>
           </Box>

@@ -9,8 +9,8 @@ export const WOCHENAUFGABEN_COLOR = '#ffb74d';
 export const WOCHENAUFGABEN_TEXT_COLOR = '#ef6c00';
 export const WOCHENAUFGABEN_BG = '#fff8e1';
 export const WOCHENAUFGABEN_BORDER = '#ffe0b2';
-export const WOCHENAUFGABEN_BOX_BG = '#fafbfd';
-export const WOCHENAUFGABEN_BOX_BORDER = '#e8eaf0';
+export const WOCHENAUFGABEN_BOX_BG = '#fff8e1';
+export const WOCHENAUFGABEN_BOX_BORDER = '#ffcc80';
 
 export function wochenaufgabePdfFileCandidates(lessonPath: string): { path: string; name: string }[] {
   const base = normalizePath(lessonPath);

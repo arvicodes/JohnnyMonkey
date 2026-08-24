@@ -109,7 +109,7 @@ export default function WochenaufgabenNumberChips({
   }
 
   return (
-    <Box sx={{ display: 'inline-flex', alignItems: 'flex-end', gap: 0.5, flexWrap: 'wrap', mt: 0.35 }}>
+    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
       {dirs.map((child) => {
         const lessonPath = normPath(child.path || `${parentPath}/${child.name || ''}`);
         const state = statesByPath[lessonPath];

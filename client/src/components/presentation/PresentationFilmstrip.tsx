@@ -16,7 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Box, Button, IconButton, TextField, Tooltip } from '@mui/material';
-import { Add as AddIcon, DragIndicator as DragIcon } from '@mui/icons-material';
+import { Add as AddIcon, DeleteOutline as DeleteIcon, DragIndicator as DragIcon } from '@mui/icons-material';
 import {
   PresentationSlide,
   SLIDE_IMAGE_THUMB_MAX,
@@ -38,6 +38,7 @@ interface PresentationFilmstripProps {
   onReorder: (activeId: string, overId: string) => void;
   onRenameSection?: (startSlideId: string, name: string) => void;
   onAddSection?: (atSlideId: string) => void;
+  onDeleteSection?: (startSlideId: string) => void;
 }
 
 const THUMB_W = PRES_EDITOR_UI.filmstripThumbWidth;
@@ -49,10 +50,12 @@ function FilmstripSectionLabel({
   label,
   onRename,
   onAddSection,
+  onDeleteSection,
 }: {
   label: string;
   onRename?: (name: string) => void;
   onAddSection?: () => void;
+  onDeleteSection?: () => void;
 }) {
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState(label);
@@ -158,7 +161,11 @@ function FilmstripSectionLabel({
           <IconButton
             size="small"
             aria-label="Unterkapitel hinzufügen"
-            onClick={onAddSection}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onAddSection();
+            }}
             sx={{
               width: 20,
               height: 20,
@@ -171,6 +178,31 @@ function FilmstripSectionLabel({
             }}
           >
             <AddIcon sx={{ fontSize: 14 }} />
+          </IconButton>
+        </Tooltip>
+      ) : null}
+      {onDeleteSection ? (
+        <Tooltip title="Unterkapitel löschen…">
+          <IconButton
+            size="small"
+            aria-label="Unterkapitel löschen"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onDeleteSection();
+            }}
+            sx={{
+              width: 20,
+              height: 20,
+              mt: 0.05,
+              p: 0,
+              color: '#c62828',
+              bgcolor: '#fff',
+              border: '1px solid rgba(198, 40, 40, 0.28)',
+              '&:hover': { bgcolor: 'rgba(198, 40, 40, 0.1)' },
+            }}
+          >
+            <DeleteIcon sx={{ fontSize: 14 }} />
           </IconButton>
         </Tooltip>
       ) : null}
@@ -427,6 +459,7 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
   onReorder,
   onRenameSection,
   onAddSection,
+  onDeleteSection,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -482,10 +515,6 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
               const hourLabel = (slide.sourceLessonName || '').trim();
               const prevHour = (slides[idx - 1]?.sourceLessonName || '').trim();
               const showHour = Boolean(hourLabel) && hourLabel !== prevHour;
-              const nextInSection = slides[idx + 1];
-              const canSplit =
-                Boolean(nextInSection) &&
-                (nextInSection.sourceLessonName || '').trim() === hourLabel;
               return (
                 <Box key={slide.id}>
                   {showHour ? (
@@ -494,12 +523,9 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
                       onRename={
                         onRenameSection ? (name) => onRenameSection(slide.id, name) : undefined
                       }
-                      onAddSection={
-                        onAddSection && canSplit
-                          ? () => onAddSection(nextInSection.id)
-                          : onAddSection
-                            ? () => onAddSection(slide.id)
-                            : undefined
+                      onAddSection={onAddSection ? () => onAddSection(slide.id) : undefined}
+                      onDeleteSection={
+                        onDeleteSection ? () => onDeleteSection(slide.id) : undefined
                       }
                     />
                   ) : null}

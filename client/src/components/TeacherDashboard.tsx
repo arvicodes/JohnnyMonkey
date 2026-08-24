@@ -459,6 +459,7 @@ import {
   INFORMATIK_FOLDER_BORDER,
   isInformatikFolderPath,
   resolveLearningGroupDisplayStyle,
+  compactLearningGroupLabel,
 } from '../lib/learningGroupAppearance';
 import { sortLearningGroups, nextLearningGroupDisplayOrder } from '../lib/learningGroupSort';
 import {
@@ -11166,9 +11167,14 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
               cursor: 'pointer',
               userSelect: 'none',
             }}>
-              {rootHeaderIcon} {assignedFolderDisplayLabel(folderPath)}
+              {rootIsWochenaufgaben ? null : (
+                <>
+                  {rootHeaderIcon} {assignedFolderDisplayLabel(folderPath)}
+                </>
+              )}
             </Typography>
           </Box>
+          {renderReiheGroupBreadcrumbs(folderPath)}
         
           {rootExpanded && (
           <Box sx={{ mt: 0.65, pl: 1.25, borderLeft: rootTreeBorder }}>
@@ -11251,9 +11257,14 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
               cursor: 'inherit',
               userSelect: 'none',
             }}>
-              {rootHeaderIcon} {assignedFolderDisplayLabel(folderPath)}
+              {rootIsWochenaufgaben ? null : (
+                <>
+                  {rootHeaderIcon} {assignedFolderDisplayLabel(folderPath)}
+                </>
+              )}
             </Typography>
           </Box>
+          {renderReiheGroupBreadcrumbs(folderPath)}
         
           {rootExpanded && (
           <Box sx={{ mt: 0.65, pl: 1.25, borderLeft: rootTreeBorder }}>
@@ -13663,6 +13674,56 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
     },
     [groups, assignedFolders],
   );
+
+  const renderReiheGroupBreadcrumbs = (folderPath: string) => {
+    const ids = new Set(resolveGroupIdsForReihe(folderPath));
+    const assigned = groups.filter((g) => ids.has(g.id));
+    if (!assigned.length) return null;
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          columnGap: 0.35,
+          rowGap: 0.1,
+          mt: 0.25,
+          ml: 3.4,
+          minWidth: 0,
+        }}
+        aria-label="Zugeordnete Lerngruppen"
+      >
+        {assigned.map((g, i) => {
+          const { groupColor } = resolveLearningGroupDisplayStyle(g, colors.primary);
+          return (
+            <React.Fragment key={g.id}>
+              {i > 0 ? (
+                <Box
+                  component="span"
+                  sx={{ fontSize: '0.52rem', color: '#90a4ae', lineHeight: 1, fontWeight: 600 }}
+                >
+                  â€º
+                </Box>
+              ) : null}
+              <Box
+                component="span"
+                title={g.name}
+                sx={{
+                  fontSize: '0.58rem',
+                  fontWeight: 700,
+                  color: groupColor,
+                  lineHeight: 1.2,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {compactLearningGroupLabel(g.name)}
+              </Box>
+            </React.Fragment>
+          );
+        })}
+      </Box>
+    );
+  };
 
   const isReiheAssignedToGroup = useCallback(
     (folderPath: string, groupId: string) => {

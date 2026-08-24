@@ -177,4 +177,17 @@ export function isInformatikFolderPath(path: string): boolean {
 
 export const INFORMATIK_FOLDER_BORDER = '2px solid #006064';
 export const INFORMATIK_FOLDER_BORDER_SOFT = '#80cbc4';
+
+/** Kurzlabel für kompakte Zuordnungs-Zeilen (Klasse 5a → 5a). */
+export function compactLearningGroupLabel(name: string): string {
+  const n = (name || '').trim();
+  const stripped = n
+    .replace(/^Klasse\s+/i, '')
+    .replace(/^Informatik\s+/i, '')
+    .replace(/^Mathematik\s+/i, '')
+    .replace(/^Mathe\s+/i, '')
+    .trim();
+  return stripped || n;
+}
+
 export const INFORMATIK_FOLDER_BG = 'rgba(0, 96, 100, 0.14)';
