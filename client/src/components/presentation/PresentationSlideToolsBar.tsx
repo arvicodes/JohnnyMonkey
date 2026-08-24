@@ -23,6 +23,9 @@ import {
   ContentPaste as PasteIcon,
   ContentPasteGo as PasteGoIcon,
   Gesture as InkIcon,
+  Draw as DrawIcon,
+  HighlightAlt as LassoIcon,
+  Undo as UndoIcon,
   Crop as CropIcon,
   ImageOutlined as ImageIcon,
   PaletteOutlined as PaletteIcon,
@@ -114,6 +117,10 @@ import { JOHNNY_ACCENT_PRESETS } from '../../lib/presentationTheme';
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
 import { sanitizePresentationHtml } from '../../lib/presentationRichText';
 import { setFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
+import {
+  PEN_COLORS,
+  type PresentationDrawTool,
+} from '../../lib/presentationDrawTools';
 
 const iconBtnSx = PRES_EDITOR_UI.toolbarIcon;
 
@@ -141,6 +148,14 @@ interface PresentationSlideToolsBarProps {
   onAddTextElement: () => void;
   onAddImageElement: () => void;
   onPasteFromClipboard?: (mode: 'image' | 'ink') => void;
+  inkEditActive?: boolean;
+  inkTool?: PresentationDrawTool;
+  inkColor?: string;
+  canUndoInk?: boolean;
+  onToggleInkEdit?: () => void;
+  onSelectInkTool?: (tool: PresentationDrawTool) => void;
+  onSelectInkColor?: (color: string) => void;
+  onUndoInk?: () => void;
   onAddLayoutImage: () => void;
   onAddShapeElement: (kind: PresentationShapeKind) => void;
   onAddCardElement?: (mode?: 'single' | 'pair') => void;
@@ -177,6 +192,14 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
   onAddTextElement,
   onAddImageElement,
   onPasteFromClipboard,
+  inkEditActive = false,
+  inkTool = 'select',
+  inkColor = '#1565c0',
+  canUndoInk = false,
+  onToggleInkEdit,
+  onSelectInkTool,
+  onSelectInkColor,
+  onUndoInk,
   onAddLayoutImage,
   onAddShapeElement,
   onAddCardElement,
@@ -521,11 +544,128 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                 </ListItemIcon>
                 <ListItemText
                   primary="Als Stiftstriche"
-                  secondary="Striche und Linien, wie mit dem Stift"
+                  secondary="Wie im Präsentationsmodus: Lasso, verschieben, radieren"
                 />
               </MenuItem>
             </Menu>
           </>
+        )}
+        {onToggleInkEdit && (
+          <Box sx={toolGroupSx}>
+            <Tooltip title={inkEditActive ? 'Stift-Bearbeitung aus — Text wieder tippbar' : 'Stiftstriche bearbeiten (Lasso, Radierer)'}>
+              <IconButton
+                size="small"
+                onClick={onToggleInkEdit}
+                sx={{
+                  ...iconBtnSx,
+                  ...(inkEditActive
+                    ? { bgcolor: `${PRES_EDITOR_UI.accent}22`, color: PRES_EDITOR_UI.accent }
+                    : {}),
+                }}
+                aria-label="Stiftstriche bearbeiten"
+              >
+                <DrawIcon sx={{ fontSize: 15 }} />
+              </IconButton>
+            </Tooltip>
+            {inkEditActive && onSelectInkTool && (
+              <>
+                <Tooltip title="Lasso: umfahren, dann verschieben">
+                  <IconButton
+                    size="small"
+                    onClick={() => onSelectInkTool('select')}
+                    sx={{
+                      ...iconBtnSx,
+                      ...(inkTool === 'select'
+                        ? { bgcolor: `${PRES_EDITOR_UI.accent}22`, color: PRES_EDITOR_UI.accent }
+                        : {}),
+                    }}
+                    aria-label="Lasso"
+                  >
+                    <LassoIcon sx={{ fontSize: 15 }} />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Stift">
+                  <IconButton
+                    size="small"
+                    onClick={() => onSelectInkTool('pen')}
+                    sx={{
+                      ...iconBtnSx,
+                      ...(inkTool === 'pen'
+                        ? { bgcolor: `${PRES_EDITOR_UI.accent}22`, color: PRES_EDITOR_UI.accent }
+                        : {}),
+                    }}
+                    aria-label="Stift"
+                  >
+                    <InkIcon sx={{ fontSize: 15 }} />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Radierer">
+                  <IconButton
+                    size="small"
+                    onClick={() => onSelectInkTool('eraser')}
+                    sx={{
+                      ...iconBtnSx,
+                      ...(inkTool === 'eraser'
+                        ? { bgcolor: `${PRES_EDITOR_UI.accent}22`, color: PRES_EDITOR_UI.accent }
+                        : {}),
+                    }}
+                    aria-label="Radierer"
+                  >
+                    <Box
+                      sx={{
+                        width: 11,
+                        height: 11,
+                        borderRadius: 0.5,
+                        bgcolor: inkTool === 'eraser' ? PRES_EDITOR_UI.accent : '#90a4ae',
+                        transform: 'rotate(-18deg)',
+                      }}
+                    />
+                  </IconButton>
+                </Tooltip>
+                {PEN_COLORS.slice(0, 6).map((c) => (
+                  <IconButton
+                    key={c}
+                    size="small"
+                    onClick={() => onSelectInkColor?.(c)}
+                    aria-label={`Stiftfarbe ${c}`}
+                    sx={{
+                      ...iconBtnSx,
+                      width: 22,
+                      height: 22,
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 12,
+                        height: 12,
+                        borderRadius: '50%',
+                        bgcolor: c,
+                        boxShadow:
+                          inkColor.toLowerCase() === c.toLowerCase()
+                            ? `0 0 0 2px ${PRES_EDITOR_UI.accent}`
+                            : '0 0 0 1px rgba(0,0,0,0.2)',
+                      }}
+                    />
+                  </IconButton>
+                ))}
+                {onUndoInk && (
+                  <Tooltip title="Letzten Strich rückgängig">
+                    <span>
+                      <IconButton
+                        size="small"
+                        onClick={onUndoInk}
+                        disabled={!canUndoInk}
+                        sx={iconBtnSx}
+                        aria-label="Strich rückgängig"
+                      >
+                        <UndoIcon sx={{ fontSize: 15 }} />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                )}
+              </>
+            )}
+          </Box>
         )}
         {showLayoutImage && (
           <Tooltip title="Layout-Bild">

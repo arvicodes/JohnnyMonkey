@@ -565,6 +565,33 @@ export function createEmptyDeck(lessonPath: string, title?: string): Presentatio
   return deck;
 }
 
+/** Folien-Tinte (`inkStrokes`) in die Live-Annotationen legen — gleiche Stift-Ebene wie im Play-Modus. */
+export function absorbSlideInkIntoAnnotations(
+  deck: PresentationDeck,
+  annotations: PresentationAnnotations,
+): { deck: PresentationDeck; annotations: PresentationAnnotations; changed: boolean } {
+  let changed = false;
+  const bySlideId = { ...annotations.bySlideId };
+  const slides = deck.slides.map((slide) => {
+    const extra = sanitizeInkStrokes(slide.inkStrokes);
+    if (!extra?.length) return slide;
+    changed = true;
+    bySlideId[slide.id] = [...(bySlideId[slide.id] || []), ...extra];
+    const { inkStrokes: _ink, ...rest } = slide;
+    return rest;
+  });
+  if (!changed) return { deck, annotations, changed: false };
+  return {
+    deck: { ...deck, slides },
+    annotations: {
+      ...annotations,
+      bySlideId,
+      updatedAt: new Date().toISOString(),
+    },
+    changed: true,
+  };
+}
+
 export function createEmptyAnnotations(lessonPath: string): PresentationAnnotations {
   return {
     version: 1,

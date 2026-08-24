@@ -78,12 +78,16 @@ import {
   isBlankLayout,
 } from '../lib/presentationLayouts';
 import {
+  ANNOTATIONS_FILENAME,
   DECK_FILENAME,
+  PresentationAnnotations,
   PresentationDeck,
   PresentationShapeKind,
   PresentationSlide,
+  PresentationStroke,
   SlideElement,
   SlideLayout,
+  absorbSlideInkIntoAnnotations,
   createEmptyAnnotations,
   htmlToPlain,
   loadPresentationAnnotations,
@@ -103,6 +107,11 @@ import {
   SLIDE_REF_WIDTH,
 } from '../lib/presentationDeck';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
+import {
+  DEFAULT_PEN_COLOR,
+  defaultLineWidthForTool,
+  type PresentationDrawTool,
+} from '../lib/presentationDrawTools';
 import { requestPresentFullscreen } from '../lib/presentationPresentFullscreen';
 import { preparePresentationAudioForPlay } from '../lib/presentationSound';
 import { PRES_EDITOR_UI, presentationEntryTicketEditUrl, presentationLessonBackUrl, presentationLessonReturnWithPresentationUrl, tryHandleLessonEntryTicketLinkClick } from '../lib/presentationEditorUi';
@@ -148,6 +157,7 @@ import {
   type DeckHistory,
 } from '../lib/presentationEditorHistory';
 import PresentationSlideView from '../components/presentation/PresentationSlideView';
+import PresentationDrawOverlay from '../components/presentation/PresentationDrawOverlay';
 import {
   addTrashItem,
   createNotesTrashItem,
@@ -196,6 +206,8 @@ import {
   nudgeFontSize,
 } from '../lib/presentationRichText';
 import { serializePresentationNotesHtml } from '../lib/presentationNotesImages';
+
+const EMPTY_STROKES: PresentationStroke[] = [];
 
 const PresentationEditorPage: React.FC = () => {
   const navigate = useNavigate();
@@ -350,6 +362,14 @@ const PresentationEditorPage: React.FC = () => {
   const pasteModeRef = useRef<'image' | 'ink' | null>(null);
   const [pendingPasteFiles, setPendingPasteFiles] = useState<File[] | null>(null);
   const [pasteBusy, setPasteBusy] = useState(false);
+  const [annotations, setAnnotations] = useState<PresentationAnnotations | null>(null);
+  const annotationsRef = useRef<PresentationAnnotations | null>(null);
+  const inkSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [inkEditActive, setInkEditActive] = useState(false);
+  const [inkTool, setInkTool] = useState<PresentationDrawTool>('select');
+  const [inkColor, setInkColor] = useState(DEFAULT_PEN_COLOR);
+  const [selectedStrokeIds, setSelectedStrokeIds] = useState<string[]>([]);
+  const activeIdRef = useRef<string | null>(null);
   const elementClipboardRef = useRef<{
     mode: 'cut' | 'copy';
     sourceSlideId: string;
@@ -364,25 +384,50 @@ const PresentationEditorPage: React.FC = () => {
   }, [deck]);
 
   useEffect(() => {
+    annotationsRef.current = annotations;
+  }, [annotations]);
+
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
+
+  useEffect(() => {
+    setSelectedStrokeIds([]);
+  }, [activeId]);
+
+  useEffect(() => {
     if (!lessonPath) {
       setLoading(false);
       return;
     }
     let cancelled = false;
-    loadPresentationDeck(lessonPath)
-      .then((d) => {
+    Promise.all([
+      loadPresentationDeck(lessonPath),
+      loadPresentationAnnotations(lessonPath).catch(() => createEmptyAnnotations(lessonPath)),
+    ])
+      .then(([d, ann]) => {
         if (cancelled) return;
         const normalized = normalizeDeck(d);
         const withEntry = {
           ...normalized,
           slides: ensureEntryTicketButtonsOnTitleSlides(normalized.slides),
         };
-        historyRef.current = createDeckHistory(withEntry);
+        const merged = absorbSlideInkIntoAnnotations(
+          withEntry,
+          ann?.bySlideId ? ann : createEmptyAnnotations(lessonPath),
+        );
+        historyRef.current = createDeckHistory(merged.deck);
         setHistoryVersion((v) => v + 1);
-        setDeck(withEntry);
-        deckRef.current = withEntry;
-        setActiveId(withEntry.slides[0]?.id ?? null);
+        setDeck(merged.deck);
+        deckRef.current = merged.deck;
+        setAnnotations(merged.annotations);
+        annotationsRef.current = merged.annotations;
+        setActiveId(merged.deck.slides[0]?.id ?? null);
         setLoading(false);
+        if (merged.changed) {
+          void saveJsonFile(lessonPath, ANNOTATIONS_FILENAME, merged.annotations);
+          void saveJsonFile(lessonPath, DECK_FILENAME, merged.deck);
+        }
       })
       .catch((e) => {
         if (cancelled) return;
@@ -400,6 +445,40 @@ const PresentationEditorPage: React.FC = () => {
       cancelled = true;
     };
   }, [lessonPath]);
+
+  const persistInk = useCallback(
+    async (next: PresentationAnnotations) => {
+      if (!lessonPath) return;
+      try {
+        await saveJsonFile(lessonPath, ANNOTATIONS_FILENAME, {
+          ...next,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch {
+        setSnackbar('Stiftstriche konnten nicht gespeichert werden');
+      }
+    },
+    [lessonPath],
+  );
+
+  const updateInkStrokes = useCallback(
+    (strokes: PresentationStroke[]) => {
+      const slideId = activeIdRef.current;
+      const base = annotationsRef.current;
+      if (!slideId || !base) return;
+      const next: PresentationAnnotations = {
+        ...base,
+        bySlideId: { ...base.bySlideId, [slideId]: strokes },
+      };
+      annotationsRef.current = next;
+      startTransition(() => setAnnotations(next));
+      if (inkSaveTimer.current) clearTimeout(inkSaveTimer.current);
+      inkSaveTimer.current = setTimeout(() => void persistInk(next), 900);
+    },
+    [persistInk],
+  );
+
+  const currentInkStrokes = annotations?.bySlideId[activeId ?? ''] ?? EMPTY_STROKES;
 
   const schedulePdfExport = useCallback(
     (options?: { delayMs?: number; notify?: boolean }) => {
@@ -594,7 +673,8 @@ const PresentationEditorPage: React.FC = () => {
         saveTimer.current = null;
       }
       const annotations =
-        (await loadPresentationAnnotations(lessonPath)) ?? createEmptyAnnotations(lessonPath);
+        annotationsRef.current ??
+        ((await loadPresentationAnnotations(lessonPath)) ?? createEmptyAnnotations(lessonPath));
       const result = await savePresentationNamedVersion(
         lessonPath,
         current,
@@ -1298,6 +1378,38 @@ const PresentationEditorPage: React.FC = () => {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [copySelectedElement, pasteClipboardElement]);
 
+  useEffect(() => {
+    if (!inkEditActive || inkTool === 'select') return;
+    const el = document.activeElement;
+    if (el instanceof HTMLElement && (el.isContentEditable || el.closest('[data-pres-rich-zone]'))) {
+      el.blur();
+    }
+  }, [inkEditActive, inkTool]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!inkEditActive) return;
+      if (e.key !== 'Backspace' && e.key !== 'Delete') return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable ||
+          target.closest('[data-pres-rich-zone]'))
+      ) {
+        return;
+      }
+      if (!selectedStrokeIds.length) return;
+      e.preventDefault();
+      const idSet = new Set(selectedStrokeIds);
+      updateInkStrokes(currentInkStrokes.filter((s) => !idSet.has(s.id)));
+      setSelectedStrokeIds([]);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [inkEditActive, selectedStrokeIds, currentInkStrokes, updateInkStrokes]);
+
   const reorderElementLayer = (id: string, action: ElementLayerAction) => {
     const current = deckRef.current;
     if (!current || !activeId) return;
@@ -1991,15 +2103,21 @@ const PresentationEditorPage: React.FC = () => {
         all.push(...(await imageFileToPresentationStrokes(file)));
       }
       if (!all.length) {
-        setSnackbar('Keine Striche erkannt — als Bild eingefügt');
-        imageTargetRef.current = 'element';
-        for (const file of files) await handleImageFile(file);
-        return true;
+        setSnackbar('Keine Striche erkannt. Nochmal kopieren — dunkle Schrift auf hellem Grund klappt am besten.');
+        return false;
       }
-      const current = deckRef.current;
-      const slide = current?.slides.find((s) => s.id === activeId);
-      updateSlide({ inkStrokes: [...(slide?.inkStrokes || []), ...all] });
-      setSnackbar(all.length === 1 ? 'Als Stiftstrich eingefügt' : `${all.length} Stiftstriche eingefügt`);
+      const slideId = activeIdRef.current;
+      const base = annotationsRef.current ?? createEmptyAnnotations(lessonPath || '');
+      const prev = slideId ? base.bySlideId[slideId] || [] : [];
+      updateInkStrokes([...prev, ...all]);
+      setInkEditActive(true);
+      setInkTool('select');
+      setSelectedStrokeIds(all.map((s) => s.id));
+      setSnackbar(
+        all.length === 1
+          ? 'Als Stiftstrich eingefügt — Lasso zum Verschieben, Radierer zum Löschen'
+          : `${all.length} Stiftstriche eingefügt — Lasso zum Verschieben, Radierer zum Löschen`,
+      );
       return true;
     } catch (e) {
       setSnackbar(e instanceof Error ? e.message : 'Striche konnten nicht erkannt werden');
@@ -2864,6 +2982,37 @@ const PresentationEditorPage: React.FC = () => {
                     imageInputRef.current?.click();
                   }}
                   onPasteFromClipboard={pasteFromGoodNotes}
+                  inkEditActive={inkEditActive}
+                  inkTool={inkTool}
+                  inkColor={inkColor}
+                  canUndoInk={currentInkStrokes.length > 0}
+                  onToggleInkEdit={() => {
+                    setInkEditActive((v) => {
+                      if (!v) setInkTool('select');
+                      return !v;
+                    });
+                    setSelectedElementId(null);
+                    setActiveEditor(null);
+                  }}
+                  onSelectInkTool={(tool) => {
+                    setInkEditActive(true);
+                    setInkTool(tool);
+                    if (tool !== 'select') setSelectedStrokeIds([]);
+                  }}
+                  onSelectInkColor={(c) => {
+                    setInkColor(c);
+                    if (selectedStrokeIds.length) {
+                      const idSet = new Set(selectedStrokeIds);
+                      updateInkStrokes(
+                        currentInkStrokes.map((s) => (idSet.has(s.id) ? { ...s, color: c } : s)),
+                      );
+                    }
+                  }}
+                  onUndoInk={() => {
+                    if (!currentInkStrokes.length) return;
+                    updateInkStrokes(currentInkStrokes.slice(0, -1));
+                    setSelectedStrokeIds([]);
+                  }}
                   onAddLayoutImage={() => {
                     imageTargetRef.current = 'layout';
                     imageInputRef.current?.click();
@@ -3132,7 +3281,7 @@ const PresentationEditorPage: React.FC = () => {
                     slide={normalizedActive}
                     scale={1}
                     showShadow={false}
-                    editable
+                    editable={!inkEditActive || inkTool === 'select'}
                     revealStep={999}
                     revealEnabled={false}
                     animationEditMode={animationEditMode}
@@ -3163,6 +3312,20 @@ const PresentationEditorPage: React.FC = () => {
                       setActiveHtmlField(fieldKey ?? null);
                       setSelectedElementId(null);
                     }}
+                  />
+                  <PresentationDrawOverlay
+                    strokes={currentInkStrokes}
+                    onStrokesChange={updateInkStrokes}
+                    enabled={inkEditActive}
+                    slideId={normalizedActive.id}
+                    tool={inkTool}
+                    strokeColor={inkColor}
+                    lineWidth={defaultLineWidthForTool(inkTool === 'eraser' ? 'pen' : inkTool)}
+                    selectedStrokeIds={selectedStrokeIds}
+                    onSelectedStrokeIdsChange={setSelectedStrokeIds}
+                    scale={1}
+                    onBackgroundPointerDown={() => setSelectedElementId(null)}
+                    onHitElement={setSelectedElementId}
                   />
                 </Box>
               </Box>

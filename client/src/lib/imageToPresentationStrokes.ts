@@ -36,14 +36,53 @@ function loadImage(file: File): Promise<HTMLImageElement> {
   });
 }
 
-function isInk(r: number, g: number, b: number, a: number): boolean {
-  if (a < 40) return false;
+function lumOf(r: number, g: number, b: number): number {
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function sampleCorner(data: Uint8ClampedArray, w: number, h: number) {
+  const pts: Array<[number, number]> = [
+    [1, 1],
+    [w - 2, 1],
+    [1, h - 2],
+    [w - 2, h - 2],
+    [Math.floor(w / 2), 1],
+    [1, Math.floor(h / 2)],
+  ];
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  let a = 0;
+  let n = 0;
+  for (const [x, y] of pts) {
+    const i = (y * w + x) * 4;
+    r += data[i];
+    g += data[i + 1];
+    b += data[i + 2];
+    a += data[i + 3];
+    n += 1;
+  }
+  return { r: r / n, g: g / n, b: b / n, a: a / n, lum: lumOf(r / n, g / n, b / n) };
+}
+
+function isInk(
+  r: number,
+  g: number,
+  b: number,
+  a: number,
+  bg: { r: number; g: number; b: number; a: number; lum: number },
+): boolean {
+  if (a < 16) return false;
+  const lum = lumOf(r, g, b);
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
-  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  if (lum > 250) return false;
-  if (lum > 238 && max - min < 22) return false;
-  return true;
+  if (bg.a < 40) {
+    return a >= 28;
+  }
+  const dist = Math.abs(lum - bg.lum) + Math.abs(r - bg.r) + Math.abs(g - bg.g) + Math.abs(b - bg.b);
+  if (dist > 48) return true;
+  if (lum > 242 && max - min < 18) return false;
+  return lum < bg.lum - 18;
 }
 
 function rgbToHex(r: number, g: number, b: number): string {
@@ -257,19 +296,14 @@ export async function imageFileToPresentationStrokes(file: File): Promise<Presen
   if (!ctx) return [];
   ctx.drawImage(img, 0, 0, w, h);
   const { data } = ctx.getImageData(0, 0, w, h);
+  const bg = sampleCorner(data, w, h);
 
   const mask = new Uint8Array(w * h);
   let inkCount = 0;
-  let cr = 0;
-  let cg = 0;
-  let cb = 0;
   for (let i = 0, p = 0; i < data.length; i += 4, p += 1) {
-    if (!isInk(data[i], data[i + 1], data[i + 2], data[i + 3])) continue;
+    if (!isInk(data[i], data[i + 1], data[i + 2], data[i + 3], bg)) continue;
     mask[p] = 1;
     inkCount += 1;
-    cr += data[i];
-    cg += data[i + 1];
-    cb += data[i + 2];
   }
   if (inkCount < 8) return [];
 
@@ -291,8 +325,26 @@ export async function imageFileToPresentationStrokes(file: File): Promise<Presen
 
   const widthPx = meanInkWidth(mask, skel, w, h);
   const lineWidth = Math.max(1.6, Math.min(10, widthPx * pxToSlide * 0.92));
-  const color = rgbToHex(cr / inkCount, cg / inkCount, cb / inkCount);
   const stamp = Date.now();
+
+  const colorAlong = (path: Array<[number, number]>): string => {
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    let n = 0;
+    const step = Math.max(1, Math.floor(path.length / 8));
+    for (let k = 0; k < path.length; k += step) {
+      const [x, y] = path[k];
+      const i = (Math.max(0, Math.min(h - 1, Math.round(y))) * w + Math.max(0, Math.min(w - 1, Math.round(x)))) * 4;
+      if (data[i + 3] < 20) continue;
+      r += data[i];
+      g += data[i + 1];
+      b += data[i + 2];
+      n += 1;
+    }
+    if (n === 0) return '#000000';
+    return rgbToHex(r / n, g / n, b / n);
+  };
 
   const strokes: PresentationStroke[] = [];
   for (let i = 0; i < paths.length; i++) {
@@ -300,7 +352,7 @@ export async function imageFileToPresentationStrokes(file: File): Promise<Presen
     if (simplified.length < 2) continue;
     strokes.push({
       id: `ink-${stamp}-${i}-${Math.random().toString(36).slice(2, 7)}`,
-      color,
+      color: colorAlong(paths[i]),
       lineWidth,
       mode: 'pen',
       points: simplified.map(([x, y]) => ({

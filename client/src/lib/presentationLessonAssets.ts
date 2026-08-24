@@ -25,8 +25,8 @@ export function johnnyPresentationKindFromPdfName(
 export function isLessonPresentationSystemFile(name: string): boolean {
   const n = ((name || '').trim().split(/[/\\]/).pop() || '');
   if (!n) return false;
-  // Praesentation.deck.json, .deck.original.json, .deck.*.json.bak*, annotations, version.*
-  return /^Praesentation\.(deck|annotations|version)(\.|$)/i.test(n);
+  // Praesentation.deck.json, .deck.original.json, .deck.*.json.bak*, annotations, version.*, play-variants
+  return /^Praesentation\.(deck|annotations|version|play-variants)(\.|$)/i.test(n);
 }
 
 /**

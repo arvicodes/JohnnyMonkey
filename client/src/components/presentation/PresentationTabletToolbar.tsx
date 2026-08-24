@@ -21,6 +21,7 @@ import {
   MusicNote as MusicGameIcon,
   Close as CloseIcon,
   PhotoCamera as PhotoCameraIcon,
+  ContentPasteGo as PasteGoIcon,
 } from '@mui/icons-material';
 import {
   MARKER_OPACITY_PRESETS,
@@ -180,6 +181,7 @@ interface PresentationTabletToolbarProps {
   /** Tablet-Kamera: Foto direkt als Folienbild */
   onCaptureImage?: () => void;
   captureBusy?: boolean;
+  onPasteInk?: () => void;
   /** Ausgewähltes Folienbild zuschneiden / Einpassen */
   imageCropAvailable?: boolean;
   imageCropActive?: boolean;
@@ -227,6 +229,7 @@ export default function PresentationTabletToolbar({
   onOpenEntryTicket,
   onCaptureImage,
   captureBusy = false,
+  onPasteInk,
   imageCropAvailable = false,
   imageCropActive = false,
   onToggleImageCrop,
@@ -566,6 +569,15 @@ export default function PresentationTabletToolbar({
             onClick={onToggleDraw}
           >
             <DrawIcon sx={{ fontSize: 15 }} />
+          </ToolBtn>
+        )}
+
+        {!readOnly && onPasteInk && (
+          <ToolBtn
+            title="GoodNotes einfügen als Stiftstriche (Lasso → Kopieren → hier)"
+            onClick={onPasteInk}
+          >
+            <PasteGoIcon sx={{ fontSize: 15 }} />
           </ToolBtn>
         )}
 

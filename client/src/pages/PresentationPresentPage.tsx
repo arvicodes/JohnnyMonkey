@@ -25,6 +25,7 @@ import {
   SLIDE_REF_HEIGHT,
   SLIDE_REF_WIDTH,
   SlideElement,
+  absorbSlideInkIntoAnnotations,
   createEmptyAnnotations,
   lessonFolderPath,
   loadOrMigrateNamedVersionSnapshot,
@@ -41,7 +42,15 @@ import {
 import { PresentationDrawTool, DEFAULT_MARKER_COLOR, DEFAULT_MARKER_OPACITY, DEFAULT_PEN_COLOR, defaultColorForTool, defaultLineWidthForTool, lineWidthsForTool, toolUsesColor } from '../lib/presentationDrawTools';
 import { presentationLessonBackUrl, tryHandleLessonEntryTicketLinkClick, isLessonEntryTicketSlideHref } from '../lib/presentationEditorUi';
 import { markLessonPlayed } from '../lib/playedLessons';
-import { savePresentationBothVersions, savePresentationNamedVersion, exportPresentationPdfVersions } from '../lib/presentationExport';
+import { savePresentationNamedVersion, exportPresentationPdfVersions } from '../lib/presentationExport';
+import {
+  applyPlayVariantsToDeck,
+  createEmptyPlayVariants,
+  loadPresentationPlayVariants,
+  savePresentationPlayVariants,
+  upsertPlaySlideVariant,
+  type PresentationPlayVariants,
+} from '../lib/presentationPlayVariants';
 import { getSlideMaxRevealSteps } from '../lib/presentationReveal';
 import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../lib/presentationTransitions';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
@@ -68,6 +77,8 @@ import {
   slidePercentSizeForImage,
 } from '../lib/presentationImageUtils';
 import EntryTicketPage from './EntryTicketPage';
+import { collectPasteImages, isTypingField, readImagesFromSystemClipboard } from '../lib/goodNotesClipboard';
+import { imageFileToPresentationStrokes } from '../lib/imageToPresentationStrokes';
 
 const SWIPE_MIN_PX = 48;
 const EMPTY_STROKES: PresentationStroke[] = [];
@@ -208,13 +219,16 @@ const PresentationPresentPage: React.FC = () => {
   const lastPickedStudentIdRef = useRef<string | null>(null);
   const lastPickedNumberRef = useRef<{ max: number; value: number } | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const deckSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const variantSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playVariantsRef = useRef<PresentationPlayVariants | null>(null);
+  const deckRef = useRef<PresentationDeck | null>(null);
   const swipeRef = useRef<{ x: number; y: number } | null>(null);
   const [nativeFs, setNativeFs] = useState(() => isAnyNativeFullscreen());
   /** Letzter gesicherter Stand der aktuellen benannten Version (für Speichern als…). */
   const namedBaselineRef = useRef<PresentationAnnotations | null>(null);
   const annotationsRef = useRef<PresentationAnnotations | null>(null);
   annotationsRef.current = annotations;
+  deckRef.current = deck;
 
   const slides = useMemo(() => (deck ? sortSlides(deck.slides) : []), [deck]);
   const currentSlide = slides[slideIndex];
@@ -235,15 +249,33 @@ const PresentationPresentPage: React.FC = () => {
     const finish = (
       d: PresentationDeck | null,
       a: PresentationAnnotations | null,
-      opts?: { draw?: boolean; label?: string }
+      opts?: { draw?: boolean; label?: string },
+      variants?: PresentationPlayVariants | null,
     ) => {
       if (cancelled) return;
       const deckWithEntry = d
         ? { ...d, slides: ensureEntryTicketButtonsOnTitleSlides(d.slides) }
         : null;
-      setDeck(deckWithEntry);
-      const ann = a ?? createEmptyAnnotations(lessonPath);
+      const rawAnn = a ?? createEmptyAnnotations(lessonPath);
+      const merged = deckWithEntry
+        ? absorbSlideInkIntoAnnotations(deckWithEntry, rawAnn)
+        : { deck: null as PresentationDeck | null, annotations: rawAnn, changed: false };
+      const liveEdited = !isOriginalView && !namedSlug;
+      const playVariants = liveEdited
+        ? (variants ?? createEmptyPlayVariants(lessonPath))
+        : createEmptyPlayVariants(lessonPath);
+      playVariantsRef.current = playVariants;
+      const ann = merged.annotations;
       setAnnotations(ann);
+      if (merged.changed && liveEdited) {
+        void saveJsonFile(lessonPath, ANNOTATIONS_FILENAME, ann);
+        if (merged.deck) void saveJsonFile(lessonPath, DECK_FILENAME, merged.deck);
+      }
+      const displayDeck =
+        liveEdited && merged.deck
+          ? applyPlayVariantsToDeck(merged.deck, playVariants)
+          : merged.deck;
+      setDeck(displayDeck);
       // Baseline = Stand auf Disk — Speichern als… stellt danach wieder her
       namedBaselineRef.current = namedSlug
         ? {
@@ -291,9 +323,12 @@ const PresentationPresentPage: React.FC = () => {
     const loadAnn = isOriginalView
       ? Promise.resolve(null as PresentationAnnotations | null)
       : loadPresentationAnnotations(lessonPath);
+    const loadVariants = isOriginalView
+      ? Promise.resolve(createEmptyPlayVariants(lessonPath))
+      : loadPresentationPlayVariants(lessonPath);
 
-    Promise.all([loadDeck, loadAnn])
-      .then(([d, a]) => {
+    Promise.all([loadDeck, loadAnn, loadVariants])
+      .then(([d, a, variants]) => {
         if (cancelled) return;
         // Kein Auto-Freeze beim Öffnen: Live-Deck darf Original nicht überschreiben,
         // und Original-Sichern bleibt die einzige Schreibstelle fürs Original.
@@ -302,7 +337,8 @@ const PresentationPresentPage: React.FC = () => {
           isOriginalView
             ? createEmptyAnnotations(lessonPath)
             : a ?? createEmptyAnnotations(lessonPath),
-          { draw: isOriginalView }
+          { draw: isOriginalView },
+          variants,
         );
       })
       .catch(() => {
@@ -420,7 +456,112 @@ const PresentationPresentPage: React.FC = () => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     if (isNamedViewRef.current || isOriginalViewRef.current) return;
     saveTimer.current = setTimeout(() => void persistAnnotations(next), 1600);
-  }, [persistAnnotations]);
+    const slide = deckRef.current?.slides.find((s) => s.id === slideId);
+    if (slide) {
+      const nextVariants = upsertPlaySlideVariant(
+        playVariantsRef.current ?? createEmptyPlayVariants(lessonPath),
+        slide,
+        strokes,
+      );
+      playVariantsRef.current = nextVariants;
+      if (variantSaveTimer.current) clearTimeout(variantSaveTimer.current);
+      variantSaveTimer.current = setTimeout(() => {
+        const payload = playVariantsRef.current;
+        if (!payload) return;
+        void savePresentationPlayVariants(lessonPath, payload).catch(() => {
+          setSnackbar('Präsentations-Variante konnte nicht gespeichert werden');
+        });
+      }, 400);
+    }
+  }, [lessonPath, persistAnnotations]);
+
+  const persistPlayVariantSoon = useCallback(
+    (next: PresentationDeck, failMessage: string, extraSlideIds: string[] = []) => {
+      if (isNamedViewRef.current || isOriginalViewRef.current || !lessonPath) return;
+      const slideId = currentSlideIdRef.current;
+      const ids = new Set(extraSlideIds);
+      if (slideId) ids.add(slideId);
+      const strokesBy = annotationsRef.current?.bySlideId ?? {};
+      let cur = playVariantsRef.current ?? createEmptyPlayVariants(lessonPath);
+      for (const id of ids) {
+        const slide = next.slides.find((s) => s.id === id);
+        if (!slide) continue;
+        cur = upsertPlaySlideVariant(cur, slide, strokesBy[id] ?? []);
+      }
+      playVariantsRef.current = cur;
+      if (variantSaveTimer.current) clearTimeout(variantSaveTimer.current);
+      variantSaveTimer.current = setTimeout(() => {
+        const payload = playVariantsRef.current;
+        if (!payload) return;
+        void savePresentationPlayVariants(lessonPath, payload).catch(() => {
+          setSnackbar(failMessage);
+        });
+      }, 400);
+    },
+    [lessonPath],
+  );
+
+  const pasteInkFiles = useCallback(
+    async (files: File[]) => {
+      if (!files.length) return false;
+      setSnackbar('Striche werden erkannt…');
+      try {
+        const all: PresentationStroke[] = [];
+        for (const file of files) {
+          all.push(...(await imageFileToPresentationStrokes(file)));
+        }
+        if (!all.length) {
+          setSnackbar('Keine Striche erkannt. Dunkle Schrift auf hellem Grund kopieren.');
+          return false;
+        }
+        const slideId = currentSlideIdRef.current;
+        const base = annotationsRef.current;
+        if (!slideId || !base) return false;
+        const prev = base.bySlideId[slideId] ?? [];
+        updateStrokes([...prev, ...all]);
+        setDrawActive(true);
+        setActiveTool('select');
+        setSelectedStrokeIds(all.map((s) => s.id));
+        setSnackbar(
+          all.length === 1
+            ? 'Als Stiftstrich eingefügt — Lasso zum Verschieben'
+            : `${all.length} Stiftstriche eingefügt — Lasso zum Verschieben`,
+        );
+        return true;
+      } catch (e) {
+        setSnackbar(e instanceof Error ? e.message : 'Striche konnten nicht erkannt werden');
+        return false;
+      }
+    },
+    [updateStrokes],
+  );
+
+  const pasteInkFromClipboard = useCallback(() => {
+    void (async () => {
+      const files = await readImagesFromSystemClipboard();
+      if (files.length) {
+        await pasteInkFiles(files);
+        return;
+      }
+      setSnackbar('In GoodNotes kopieren, dann hier nochmal auf Einfügen tippen');
+    })();
+  }, [pasteInkFiles]);
+
+  useEffect(() => {
+    const onPaste = (e: Event) => {
+      if (!(e instanceof ClipboardEvent)) return;
+      if (isTypingField(e.target)) return;
+      const dt = e.clipboardData;
+      if (!dt) return;
+      e.preventDefault();
+      e.stopPropagation();
+      void collectPasteImages(dt).then((files) => {
+        if (files.length) void pasteInkFiles(files);
+      });
+    };
+    document.addEventListener('paste', onPaste, true);
+    return () => document.removeEventListener('paste', onPaste, true);
+  }, [pasteInkFiles]);
 
   const persistDeckSoon = useCallback(
     (next: PresentationDeck, failMessage: string) => {
@@ -1760,6 +1901,7 @@ const PresentationPresentPage: React.FC = () => {
             ? undefined
             : () => cameraInputRef.current?.click()
         }
+        onPasteInk={isOriginalView || isNamedView ? undefined : pasteInkFromClipboard}
         captureBusy={photoBusy}
         imageCropAvailable={Boolean(drawActive && activeTool === 'select' && selectedImageForCrop)}
         imageCropActive={Boolean(selectedImageForCrop && isImageCropMode(selectedImageForCrop))}

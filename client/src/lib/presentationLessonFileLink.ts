@@ -18,6 +18,7 @@ export function isLinkableLessonFileName(name: string): boolean {
   if (!n || n.startsWith('.')) return false;
   if (n.endsWith('.deck.json')) return false;
   if (n.endsWith('.annotations.json')) return false;
+  if (n.endsWith('.play-variants.json')) return false;
   if (/\.deck(\.|$)/i.test(n)) return false;
   if (n.endsWith('.bak') || n.includes('.bak-')) return false;
   return true;
