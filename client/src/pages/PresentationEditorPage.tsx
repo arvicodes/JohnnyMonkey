@@ -34,8 +34,6 @@ import {
   ContentCopy as CopyIcon,
   ContentPaste as PasteIcon,
   ContentPasteGo as PasteGoIcon,
-  Gesture as InkIcon,
-  ImageOutlined as PasteImageIcon,
   DeleteOutline as DeleteIcon,
   PlayArrow as PresentIcon,
   RestoreFromTrash as TrashBinIcon,
@@ -155,8 +153,9 @@ import {
   slideDropPositionForImage,
 } from '../lib/presentationImageUtils';
 import {
-  clipboardHasImage,
-  collectPasteImages,
+  collectPasteImagesWithFallback,
+  focusEditableAtPoint,
+  isPresentationPasteTarget,
   isTypingField,
   readImagesFromSystemClipboard,
   snapshotClipboardFiles,
@@ -392,12 +391,8 @@ const PresentationEditorPage: React.FC = () => {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const imageTargetRef = useRef<'inline' | 'layout' | 'element' | 'notes'>('inline');
   const imageDropBusyRef = useRef(false);
-  const pasteCatcherRef = useRef<HTMLDivElement | null>(null);
-  const [pasteCatcherOpen, setPasteCatcherOpen] = useState(false);
-  const [pasteCatcherMode, setPasteCatcherMode] = useState<'image' | 'ink' | 'choose'>('choose');
+  const pasteTargetRef = useRef<HTMLDivElement | null>(null);
   const pasteModeRef = useRef<'image' | 'ink' | null>(null);
-  const [pendingPasteFiles, setPendingPasteFiles] = useState<File[] | null>(null);
-  const [pasteBusy, setPasteBusy] = useState(false);
   const [annotations, setAnnotations] = useState<PresentationAnnotations | null>(null);
   const annotationsRef = useRef<PresentationAnnotations | null>(null);
   const [playVariants, setPlayVariants] = useState<PresentationPlayVariants | null>(null);
@@ -2610,7 +2605,6 @@ const PresentationEditorPage: React.FC = () => {
       return true;
     }
 
-    setPasteBusy(true);
     setSnackbar('Striche werden erkannt…');
     try {
       const all = [];
@@ -2638,8 +2632,6 @@ const PresentationEditorPage: React.FC = () => {
     } catch (e) {
       setSnackbar(e instanceof Error ? e.message : 'Striche konnten nicht erkannt werden');
       return false;
-    } finally {
-      setPasteBusy(false);
     }
   };
   const applyPastedFilesRef = useRef(applyPastedFiles);
@@ -2659,12 +2651,12 @@ const PresentationEditorPage: React.FC = () => {
       pasteModeRef.current = null;
       return true;
     }
-    setPendingPasteFiles(files);
+    void applyPastedFilesRef.current(files, 'image');
     return true;
   };
 
   const pasteImagesFromClipboardEvent = async (dt: DataTransfer | null | undefined) => {
-    const files = await collectPasteImages(dt);
+    const files = await collectPasteImagesWithFallback(dt);
     if (!files.length) return false;
     return offerPasteChoice(files);
   };
@@ -2681,37 +2673,34 @@ const PresentationEditorPage: React.FC = () => {
         pasteModeRef.current = null;
         return;
       }
-      setPasteCatcherMode(mode);
-      setPasteCatcherOpen(true);
+      pasteTargetRef.current?.focus({ preventScroll: true });
       setSnackbar(
         mode === 'ink'
-          ? 'Jetzt einfügen: auf dem gelben Feld lange drücken → Einfügen (wird zu Stiftstrichen)'
-          : 'Jetzt einfügen: auf dem gelben Feld lange drücken → Einfügen',
+          ? 'Mit dem Stift lange auf die Folie tippen → Einfügen (wird zu Stiftstrichen), oder ⌘V'
+          : 'Mit dem Stift lange auf die Folie tippen → Einfügen, oder ⌘V',
       );
     })();
   };
-
-  useEffect(() => {
-    if (!pasteCatcherOpen) return;
-    const node = pasteCatcherRef.current;
-    window.requestAnimationFrame(() => {
-      node?.focus({ preventScroll: true });
-    });
-  }, [pasteCatcherOpen]);
 
   useEffect(() => {
     const onPaste = (e: Event) => {
       if (!(e instanceof ClipboardEvent)) return;
       if (isTypingField(e.target)) return;
       const dt = e.clipboardData;
-      if (!dt) return;
-      const filesNow = snapshotClipboardFiles(dt);
-      const html = dt.getData('text/html') || '';
-      if (!filesNow.length && !/<img[\s>]/i.test(html)) return;
+      const filesNow = dt ? snapshotClipboardFiles(dt) : [];
+      const html = dt?.getData('text/html') || '';
+      const fromPasteTarget = isPresentationPasteTarget(e.target);
+      if (!fromPasteTarget && !filesNow.length && !/<img[\s>]/i.test(html)) return;
       e.preventDefault();
       e.stopPropagation();
       void pasteImagesFromClipboardEventRef.current(dt).then((ok) => {
-        if (ok) setPasteCatcherOpen(false);
+        const node = pasteTargetRef.current;
+        if (node) node.textContent = '';
+        if (!ok) {
+          setSnackbar(
+            'Kein Bild in der Zwischenablage. In GoodNotes kopieren, dann mit dem Stift lange auf die Folie tippen → Einfügen, oder ⌘V.',
+          );
+        }
       });
     };
     document.addEventListener('paste', onPaste, true);
@@ -2927,7 +2916,7 @@ const PresentationEditorPage: React.FC = () => {
       if (!(el instanceof HTMLElement)) return false;
       const tag = el.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
-      if (el.isContentEditable) return true;
+      if (el.isContentEditable && !isPresentationPasteTarget(el)) return true;
       return false;
     };
 
@@ -2936,7 +2925,7 @@ const PresentationEditorPage: React.FC = () => {
       if (animationEditMode) return; // eigener Handler im Animationsmodus
       if (isTypingTarget(e.target)) return;
       if (isFormatBarInteracting()) return;
-      if (sectionDeleteAsk || variantDeleteAsk || saveNamedOpen || pasteCatcherOpen || pendingPasteFiles?.length) return;
+      if (sectionDeleteAsk || variantDeleteAsk || saveNamedOpen) return;
       if (document.querySelector('.MuiModal-root:not([aria-hidden="true"])')) return;
       e.preventDefault();
       e.stopPropagation();
@@ -2949,8 +2938,6 @@ const PresentationEditorPage: React.FC = () => {
     flushThenLeave,
     groupId,
     lessonPath,
-    pasteCatcherOpen,
-    pendingPasteFiles,
     planMode,
     saveNamedOpen,
     sectionDeleteAsk,
@@ -3779,67 +3766,62 @@ const PresentationEditorPage: React.FC = () => {
                     : null),
                 }}
               >
-                {pasteCatcherOpen && (
-                  <Box
-                    ref={pasteCatcherRef}
-                    contentEditable
-                    suppressContentEditableWarning
-                    tabIndex={0}
-                    onPaste={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const dt = e.clipboardData;
-                      void (async () => {
-                        const ok = await pasteImagesFromClipboardEventRef.current(dt);
-                        setPasteCatcherOpen(false);
-                        if (!ok) {
-                          setSnackbar(
-                            'Kein Bild in der Zwischenablage. In GoodNotes kopieren, dann hier lange drücken → Einfügen. Sonst Screenshot über das Bild-Symbol.',
-                          );
-                        }
-                      })();
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Escape') setPasteCatcherOpen(false);
-                    }}
-                    sx={{
-                      position: 'absolute',
-                      inset: 0,
-                      zIndex: 6000,
-                      bgcolor: 'rgba(255, 248, 225, 0.97)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      outline: 'none',
-                      cursor: 'text',
-                      px: 2,
-                      textAlign: 'center',
-                    }}
-                  >
-                    <Typography
-                      sx={{
-                        fontSize: `${15 * canvasScale}px`,
-                        fontWeight: 700,
-                        color: '#5d4037',
-                        pointerEvents: 'none',
-                        maxWidth: 360,
-                        lineHeight: 1.45,
-                      }}
-                    >
-                      Jetzt einfügen: hier lange drücken → Einfügen
-                      <br />
-                      <Box component="span" sx={{ fontWeight: 500, fontSize: '0.92em' }}>
-                        {pasteCatcherMode === 'ink'
-                          ? 'wird als Stiftstriche übernommen'
-                          : pasteCatcherMode === 'image'
-                            ? 'wird als Bild übernommen'
-                            : 'danach Bild oder Stiftstriche wählen'}
-                        {' · '}
-                        ⌘V
-                      </Box>
-                    </Typography>
-                  </Box>
-                )}
+                <Box
+                  ref={pasteTargetRef}
+                  data-pres-paste-target
+                  contentEditable
+                  suppressContentEditableWarning
+                  spellCheck={false}
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  inputMode="none"
+                  tabIndex={-1}
+                  aria-label="Einfügen"
+                  onPointerDown={(e) => {
+                    if (inkEditActive) return;
+                    if (e.pointerType === 'pen') {
+                      setSelectedElementId(null);
+                      return;
+                    }
+                    const overlay = e.currentTarget;
+                    overlay.style.pointerEvents = 'none';
+                    focusEditableAtPoint(e.clientX, e.clientY);
+                    const restore = () => {
+                      overlay.style.pointerEvents = '';
+                      window.removeEventListener('pointerup', restore, true);
+                      window.removeEventListener('pointercancel', restore, true);
+                    };
+                    window.addEventListener('pointerup', restore, true);
+                    window.addEventListener('pointercancel', restore, true);
+                  }}
+                  onBeforeInput={(e) => e.preventDefault()}
+                  onInput={(e) => {
+                    const el = e.currentTarget;
+                    if (el.textContent) el.textContent = '';
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.metaKey || e.ctrlKey) return;
+                    e.preventDefault();
+                  }}
+                  sx={{
+                    position: 'absolute',
+                    inset: 0,
+                    zIndex: 15,
+                    outline: 'none',
+                    caretColor: 'transparent',
+                    color: 'transparent',
+                    fontSize: 1,
+                    lineHeight: 1,
+                    overflow: 'hidden',
+                    WebkitUserSelect: 'text',
+                    userSelect: 'text',
+                    WebkitTouchCallout: 'default',
+                    pointerEvents: inkEditActive ? 'none' : 'none',
+                    '@media (any-pointer: coarse)': {
+                      pointerEvents: inkEditActive ? 'none' : 'auto',
+                    },
+                  }}
+                />
                 {imageDropActive && (
                   <Box
                     onDragEnter={(e) => {
@@ -4067,61 +4049,6 @@ const PresentationEditorPage: React.FC = () => {
           <Button onClick={() => setVariantDeleteAsk(null)}>Abbrechen</Button>
           <Button color="error" variant="contained" onClick={confirmDeleteVariant}>
             Variante löschen
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog
-        open={Boolean(pendingPasteFiles?.length) && !pasteBusy}
-        onClose={() => {
-          if (pasteBusy) return;
-          setPendingPasteFiles(null);
-          pasteModeRef.current = null;
-        }}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle>GoodNotes einfügen</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Als Foto auf der Folie, oder als einzelne Striche und Linien — wie mit dem Stift
-            gezeichnet.
-          </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Button
-              variant="outlined"
-              startIcon={<PasteImageIcon />}
-              onClick={() => {
-                const files = pendingPasteFiles;
-                setPendingPasteFiles(null);
-                if (files) void applyPastedFilesRef.current(files, 'image');
-              }}
-              sx={{ justifyContent: 'flex-start', py: 1.2 }}
-            >
-              Als Bild
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<InkIcon />}
-              onClick={() => {
-                const files = pendingPasteFiles;
-                setPendingPasteFiles(null);
-                if (files) void applyPastedFilesRef.current(files, 'ink');
-              }}
-              sx={{ justifyContent: 'flex-start', py: 1.2 }}
-            >
-              Als Stiftstriche
-            </Button>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => {
-              setPendingPasteFiles(null);
-              pasteModeRef.current = null;
-            }}
-          >
-            Abbrechen
           </Button>
         </DialogActions>
       </Dialog>

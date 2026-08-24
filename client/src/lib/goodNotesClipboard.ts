@@ -1,7 +1,7 @@
 /**
  * GoodNotes hat keine öffentliche API.
  * Inhalt kommt per System-Zwischenablage: Lasso → Kopieren → in JohnnyMonkey einfügen.
- * Auf dem iPad erscheint „Einfügen“ nur in einem echten Text-/Edit-Feld — nicht auf der Folie.
+ * iPad: langes Tippen mit dem Stift auf der Folie (unsichtbares Edit-Feld). Laptop: ⌘V.
  */
 import { extractImageFilesFromDataTransfer } from './presentationImageUtils';
 
@@ -123,9 +123,60 @@ export async function readImagesFromSystemClipboard(): Promise<File[]> {
   }
 }
 
+export function isPresentationPasteTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && Boolean(target.closest('[data-pres-paste-target]'));
+}
+
 export function isTypingField(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
+  if (isPresentationPasteTarget(target)) return false;
   const tag = target.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
   return false;
+}
+
+/** Im Paste-Event zuerst die Event-Daten, sonst clipboard.read() (Safari/iPad). */
+export async function collectPasteImagesWithFallback(
+  dt: DataTransfer | null | undefined,
+): Promise<File[]> {
+  const fromEvent = await collectPasteImages(dt);
+  if (fromEvent.length) return fromEvent;
+  return readImagesFromSystemClipboard();
+}
+
+/** Finger-Tipp durch die Paste-Schicht: Caret ins echte Textfeld darunter. */
+export function focusEditableAtPoint(clientX: number, clientY: number): void {
+  const hit = document.elementFromPoint(clientX, clientY);
+  if (!hit) return;
+  const start = hit instanceof HTMLElement ? hit : hit.parentElement;
+  const editable = start?.closest('[contenteditable="true"]') as HTMLElement | null;
+  if (!editable || isPresentationPasteTarget(editable)) return;
+  editable.focus({ preventScroll: true });
+  const doc = document as Document & {
+    caretRangeFromPoint?: (x: number, y: number) => Range | null;
+    caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+  };
+  const sel = window.getSelection();
+  if (!sel) return;
+  try {
+    if (typeof doc.caretRangeFromPoint === 'function') {
+      const range = doc.caretRangeFromPoint(clientX, clientY);
+      if (range) {
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+      return;
+    }
+    if (typeof doc.caretPositionFromPoint === 'function') {
+      const pos = doc.caretPositionFromPoint(clientX, clientY);
+      if (!pos) return;
+      const range = document.createRange();
+      range.setStart(pos.offsetNode, pos.offset);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  } catch {
+    /* Safari/WebKit: Caret-API nicht immer verfügbar */
+  }
 }

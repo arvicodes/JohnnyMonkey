@@ -503,7 +503,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
         </Tooltip>
         {onPasteFromClipboard && (
           <>
-            <Tooltip title="Aus GoodNotes einfügen (Lasso → Kopieren → hier)">
+            <Tooltip title="Aus GoodNotes einfügen: auf der Folie lange tippen → Einfügen, oder ⌘V">
               <IconButton
                 size="small"
                 onClick={(e) => setGoodNotesAnchor(e.currentTarget)}
@@ -530,7 +530,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                 </ListItemIcon>
                 <ListItemText
                   primary="Als Bild"
-                  secondary="Foto auf der Folie, wie bisher"
+                  secondary="Danach auf der Folie lange tippen → Einfügen, oder ⌘V"
                 />
               </MenuItem>
               <MenuItem
@@ -544,7 +544,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                 </ListItemIcon>
                 <ListItemText
                   primary="Als Stiftstriche"
-                  secondary="Wie im Präsentationsmodus: Lasso, verschieben, radieren"
+                  secondary="Danach auf der Folie lange tippen → Einfügen, oder ⌘V"
                 />
               </MenuItem>
             </Menu>
