@@ -29,6 +29,7 @@ import AutoFixOffIcon from '@mui/icons-material/AutoFixOff';
 import UndoIcon from '@mui/icons-material/Undo';
 import RedoIcon from '@mui/icons-material/Redo';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
+import ContentPasteGoIcon from '@mui/icons-material/ContentPasteGo';
 import TableChartIcon from '@mui/icons-material/TableChart';
 import CloseIcon from '@mui/icons-material/Close';
 import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
@@ -45,6 +46,7 @@ import {
   tryStartTableResizeFromPointer,
   updateTableResizeHoverCursor,
 } from '../lib/presentationTableResize';
+import { clipboardHasImage, collectPasteImages, readImagesFromSystemClipboard } from '../lib/goodNotesClipboard';
 import { applyEditorFontSizePx, stashEditorSelection } from '../lib/presentationFontSize';
 import { isFormatBarInteracting, setFormatBarInteracting } from '../lib/presentationFormatBarGuard';
 import { strokeSmoothFreehand } from '../lib/presentationDrawTools';
@@ -1382,7 +1384,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
 
   const insertImagesFromFiles = useCallback(
     async (files: FileList | File[]) => {
-      const list = Array.from(files).filter((f) => f.type.startsWith('image/'));
+      const list = Array.from(files).filter((f) => !f.type || f.type.startsWith('image/'));
       if (list.length === 0) return;
       if (modeRef.current !== 'text') {
         modeRef.current = 'text';
@@ -1442,14 +1444,25 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   };
 
   const onEditorPaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
-    const items = Array.from(e.clipboardData?.items || []);
-    const imageItems = items.filter((it) => it.type.startsWith('image/'));
-    if (imageItems.length === 0) return;
+    const dt = e.clipboardData;
+    if (!clipboardHasImage(dt)) return;
     e.preventDefault();
-    const files = imageItems
-      .map((it) => it.getAsFile())
-      .filter((f): f is File => !!f);
-    void insertImagesFromFiles(files);
+    void (async () => {
+      const files = await collectPasteImages(dt);
+      if (files.length) await insertImagesFromFiles(files);
+    })();
+  };
+
+  const pasteFromGoodNotes = () => {
+    rememberNotesSelection();
+    void (async () => {
+      const files = await readImagesFromSystemClipboard();
+      if (files.length) {
+        await insertImagesFromFiles(files);
+        return;
+      }
+      editorRef.current?.focus();
+    })();
   };
 
   const onEditorDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -2439,9 +2452,19 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                   <FormatClearIcon sx={{ fontSize: 16 }} />
                 </IconButton>
               </Tooltip>
-              <Tooltip title="Bild einfügen">
+              <Tooltip title="Bild aus Datei oder GoodNotes: Lasso → Kopieren → hier einfügen">
                 <IconButton size="small" onClick={onPickImages} sx={fmtBtnSx()}>
                   <ImageOutlinedIcon sx={{ fontSize: 16, color: '#f57f17' }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Aus GoodNotes einfügen (zuerst in GoodNotes kopieren)">
+                <IconButton
+                  size="small"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={pasteFromGoodNotes}
+                  sx={fmtBtnSx()}
+                >
+                  <ContentPasteGoIcon sx={{ fontSize: 16, color: '#f57f17' }} />
                 </IconButton>
               </Tooltip>
               <Tooltip title="Emoji">
@@ -2939,7 +2962,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                 ? 'Radierer · ⌘Z rückgängig'
                 : mode === 'pen'
                   ? 'Stift · rund wie auf den Folien · ⌘Z rückgängig'
-                  : 'Apple Pencil schreibt direkt · Finger/Maus zum Tippen'}
+                  : 'Apple Pencil schreibt direkt · GoodNotes: Lasso, Kopieren, hier einfügen'}
             </Typography>
           </Box>
         </DialogContent>

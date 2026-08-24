@@ -118,6 +118,12 @@ import {
   slideDropPositionForImage,
 } from '../lib/presentationImageUtils';
 import {
+  clipboardHasImage,
+  collectPasteImages,
+  isTypingField,
+  readImagesFromSystemClipboard,
+} from '../lib/goodNotesClipboard';
+import {
   type ElementLayerAction,
   type ElementStackLayer,
   getElementStackLayer,
@@ -1947,6 +1953,50 @@ const PresentationEditorPage: React.FC = () => {
     await handleImageFile(file);
   };
 
+  const pasteImagesFromClipboardEvent = async (dt: DataTransfer | null | undefined) => {
+    const files = await collectPasteImages(dt);
+    if (!files.length) return false;
+    const ae = document.activeElement;
+    if (ae instanceof HTMLElement && ae.closest('[data-pres-notes-zone="true"]')) {
+      imageTargetRef.current = 'notes';
+    } else {
+      imageTargetRef.current = 'element';
+    }
+    setSnackbar(files.length > 1 ? `${files.length} Ausschnitte werden eingefügt…` : 'Wird eingefügt…');
+    for (const file of files) {
+      await handleImageFile(file);
+    }
+    return true;
+  };
+  const pasteImagesFromClipboardEventRef = useRef(pasteImagesFromClipboardEvent);
+  pasteImagesFromClipboardEventRef.current = pasteImagesFromClipboardEvent;
+
+  const pasteFromGoodNotes = () => {
+    void (async () => {
+      const files = await readImagesFromSystemClipboard();
+      if (files.length) {
+        imageTargetRef.current = 'element';
+        setSnackbar(files.length > 1 ? `${files.length} Ausschnitte werden eingefügt…` : 'Wird eingefügt…');
+        for (const file of files) await handleImageFile(file);
+        return;
+      }
+      setSnackbar('Nichts in der Zwischenablage — in GoodNotes Lasso, Kopieren, dann hier erneut tippen');
+    })();
+  };
+
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      if (isTypingField(e.target)) return;
+      const dt = e.clipboardData;
+      if (!clipboardHasImage(dt)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      void pasteImagesFromClipboardEventRef.current(dt);
+    };
+    window.addEventListener('paste', onPaste, true);
+    return () => window.removeEventListener('paste', onPaste, true);
+  }, []);
+
   const handleSlideImageDragEnter = (e: React.DragEvent) => {
     if (!isPresentationImageDragEvent(e)) return;
     e.preventDefault();
@@ -2726,6 +2776,7 @@ const PresentationEditorPage: React.FC = () => {
                     imageTargetRef.current = 'element';
                     imageInputRef.current?.click();
                   }}
+                  onPasteFromClipboard={pasteFromGoodNotes}
                   onAddLayoutImage={() => {
                     imageTargetRef.current = 'layout';
                     imageInputRef.current?.click();

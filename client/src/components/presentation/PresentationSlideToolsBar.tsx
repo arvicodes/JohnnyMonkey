@@ -17,6 +17,7 @@ import {
   ContentCut as CutIcon,
   ContentCopy as CopyIcon,
   ContentPaste as PasteIcon,
+  ContentPasteGo as PasteGoIcon,
   Crop as CropIcon,
   ImageOutlined as ImageIcon,
   PaletteOutlined as PaletteIcon,
@@ -134,6 +135,7 @@ interface PresentationSlideToolsBarProps {
   onApplyAccentColor: (color: string, allSlides: boolean) => void;
   onAddTextElement: () => void;
   onAddImageElement: () => void;
+  onPasteFromClipboard?: () => void;
   onAddLayoutImage: () => void;
   onAddShapeElement: (kind: PresentationShapeKind) => void;
   onAddCardElement?: (mode?: 'single' | 'pair') => void;
@@ -169,6 +171,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
   onApplyAccentColor,
   onAddTextElement,
   onAddImageElement,
+  onPasteFromClipboard,
   onAddLayoutImage,
   onAddShapeElement,
   onAddCardElement,
@@ -464,11 +467,18 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
             <TextIcon sx={{ fontSize: 15 }} />
           </IconButton>
         </Tooltip>
-        <Tooltip title="Bild">
+        <Tooltip title="Bild-Datei">
           <IconButton size="small" onClick={onAddImageElement} sx={iconBtnSx}>
             <ImageIcon sx={{ fontSize: 15 }} />
           </IconButton>
         </Tooltip>
+        {onPasteFromClipboard && (
+          <Tooltip title="Aus GoodNotes einfügen (Lasso → Kopieren → hier)">
+            <IconButton size="small" onClick={onPasteFromClipboard} sx={iconBtnSx} aria-label="GoodNotes einfügen">
+              <PasteGoIcon sx={{ fontSize: 15 }} />
+            </IconButton>
+          </Tooltip>
+        )}
         {showLayoutImage && (
           <Tooltip title="Layout-Bild">
             <IconButton size="small" onClick={onAddLayoutImage} sx={iconBtnSx}>

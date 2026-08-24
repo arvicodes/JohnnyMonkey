@@ -21,6 +21,7 @@ import {
   updateTableResizeHoverCursor,
 } from '../../lib/presentationTableResize';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
+import { clipboardHasImage, collectPasteImages } from '../../lib/goodNotesClipboard';
 
 /** Ein Notizfeld (früher Material / Setup / Sprechakte). Legacy-Keys bleiben für Papierkorb. */
 export type NotesFieldKey = 'materialHtml' | 'preparationHtml' | 'speakerNotesHtml';
@@ -117,7 +118,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   const insertImageFile = useCallback(
     async (file: File) => {
       if (!ref.current || readOnly || !onUploadImage) return;
-      if (!file.type.startsWith('image/')) return;
+      if (file.type && !file.type.startsWith('image/')) return;
       const src = await onUploadImage(file);
       if (!src) return;
       ref.current.focus();
@@ -164,16 +165,12 @@ const NoteZone: React.FC<NoteZoneProps> = ({
     const el = ref.current;
     if (!el || readOnly) return;
 
-    const imageItem = Array.from(e.clipboardData.items || []).find(
-      (it) => it.kind === 'file' && it.type.startsWith('image/')
-    );
-    const imageFile =
-      imageItem?.getAsFile() ||
-      Array.from(e.clipboardData.files || []).find((f) => f.type.startsWith('image/'));
-
-    if (imageFile && onUploadImage) {
+    if (clipboardHasImage(e.clipboardData) && onUploadImage) {
       e.preventDefault();
-      void insertImageFile(imageFile);
+      void (async () => {
+        const files = await collectPasteImages(e.clipboardData);
+        for (const file of files) await insertImageFile(file);
+      })();
       return;
     }
 
