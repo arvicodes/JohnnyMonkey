@@ -122,6 +122,7 @@ import {
   collectPasteImages,
   isTypingField,
   readImagesFromSystemClipboard,
+  snapshotClipboardFiles,
 } from '../lib/goodNotesClipboard';
 import {
   type ElementLayerAction,
@@ -340,6 +341,8 @@ const PresentationEditorPage: React.FC = () => {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const imageTargetRef = useRef<'inline' | 'layout' | 'element' | 'notes'>('inline');
   const imageDropBusyRef = useRef(false);
+  const pasteCatcherRef = useRef<HTMLDivElement | null>(null);
+  const [pasteCatcherOpen, setPasteCatcherOpen] = useState(false);
   const elementClipboardRef = useRef<{
     mode: 'cut' | 'copy';
     sourceSlideId: string;
@@ -1980,19 +1983,33 @@ const PresentationEditorPage: React.FC = () => {
         for (const file of files) await handleImageFile(file);
         return;
       }
-      setSnackbar('Nichts in der Zwischenablage — in GoodNotes Lasso, Kopieren, dann hier erneut tippen');
+      setPasteCatcherOpen(true);
+      setSnackbar('Jetzt einfügen: auf dem gelben Feld lange drücken → Einfügen');
     })();
   };
+
+  useEffect(() => {
+    if (!pasteCatcherOpen) return;
+    const node = pasteCatcherRef.current;
+    window.requestAnimationFrame(() => {
+      node?.focus({ preventScroll: true });
+    });
+  }, [pasteCatcherOpen]);
 
   useEffect(() => {
     const onPaste = (e: Event) => {
       if (!(e instanceof ClipboardEvent)) return;
       if (isTypingField(e.target)) return;
       const dt = e.clipboardData;
-      if (!clipboardHasImage(dt)) return;
+      if (!dt) return;
+      const filesNow = snapshotClipboardFiles(dt);
+      const html = dt.getData('text/html') || '';
+      if (!filesNow.length && !/<img[\s>]/i.test(html)) return;
       e.preventDefault();
       e.stopPropagation();
-      void pasteImagesFromClipboardEventRef.current(dt);
+      void pasteImagesFromClipboardEventRef.current(dt).then((ok) => {
+        if (ok) setPasteCatcherOpen(false);
+      });
     };
     document.addEventListener('paste', onPaste, true);
     return () => document.removeEventListener('paste', onPaste, true);
@@ -2917,6 +2934,61 @@ const PresentationEditorPage: React.FC = () => {
                     : null),
                 }}
               >
+                {pasteCatcherOpen && (
+                  <Box
+                    ref={pasteCatcherRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    tabIndex={0}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const dt = e.clipboardData;
+                      void (async () => {
+                        const ok = await pasteImagesFromClipboardEventRef.current(dt);
+                        setPasteCatcherOpen(false);
+                        if (!ok) {
+                          setSnackbar(
+                            'Kein Bild in der Zwischenablage. In GoodNotes kopieren, dann hier lange drücken → Einfügen. Sonst Screenshot über das Bild-Symbol.',
+                          );
+                        }
+                      })();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') setPasteCatcherOpen(false);
+                    }}
+                    sx={{
+                      position: 'absolute',
+                      inset: 0,
+                      zIndex: 6000,
+                      bgcolor: 'rgba(255, 248, 225, 0.97)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      outline: 'none',
+                      cursor: 'text',
+                      px: 2,
+                      textAlign: 'center',
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontSize: `${15 * canvasScale}px`,
+                        fontWeight: 700,
+                        color: '#5d4037',
+                        pointerEvents: 'none',
+                        maxWidth: 360,
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      Jetzt einfügen: hier lange drücken → Einfügen
+                      <br />
+                      <Box component="span" sx={{ fontWeight: 500, fontSize: '0.92em' }}>
+                        (oder ⌘V)
+                      </Box>
+                    </Typography>
+                  </Box>
+                )}
                 {imageDropActive && (
                   <Box
                     onDragEnter={(e) => {

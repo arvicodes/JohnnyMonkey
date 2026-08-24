@@ -436,19 +436,19 @@ export function isLikelyImageFile(file: File): boolean {
 export function extractImageFilesFromDataTransfer(dt: DataTransfer): File[] {
   const fromList = Array.from(dt.files || []).filter((f) => {
     if (isLikelyImageFile(f)) return true;
-    // Chrome-Tab-Drag: oft leerer MIME, aber Bilddaten vorhanden
     return !f.type && f.size > 32;
   });
   if (fromList.length > 0) return fromList;
 
   const fromItems: File[] = [];
   for (const item of Array.from(dt.items || [])) {
-    if (item.kind !== 'file') continue;
     const mime = (item.type || '').toLowerCase();
-    if (mime && !mime.startsWith('image/') && mime !== 'application/octet-stream') continue;
+    if (mime && !mime.startsWith('image/') && mime !== 'application/octet-stream' && item.kind !== 'file') {
+      continue;
+    }
     const file = item.getAsFile();
     if (!file || file.size < 8) continue;
-    if (isLikelyImageFile(file) || !file.type) fromItems.push(file);
+    if (isLikelyImageFile(file) || !file.type || mime.startsWith('image/')) fromItems.push(file);
   }
   return fromItems;
 }

@@ -1,7 +1,7 @@
 /**
  * GoodNotes hat keine öffentliche API.
  * Inhalt kommt per System-Zwischenablage: Lasso → Kopieren → in JohnnyMonkey einfügen.
- * Typisch: PNG der Auswahl, manchmal HTML mit <img data:…>, seltener nur Text.
+ * Auf dem iPad erscheint „Einfügen“ nur in einem echten Text-/Edit-Feld — nicht auf der Folie.
  */
 import { extractImageFilesFromDataTransfer } from './presentationImageUtils';
 
@@ -13,10 +13,42 @@ function clipboardTypes(dt: DataTransfer): string[] {
   }
 }
 
+function asImageFile(file: File): File {
+  if (file.type && file.type.startsWith('image/')) return file;
+  return new File([file], file.name || `goodnotes-${Date.now()}.png`, { type: 'image/png' });
+}
+
+/** Dateien sofort im Paste-Event lesen (DataTransfer ist danach oft leer). */
+export function snapshotClipboardFiles(dt: DataTransfer | null | undefined): File[] {
+  if (!dt) return [];
+  const out: File[] = [];
+  const seen = new Set<string>();
+  const add = (f: File | null | undefined) => {
+    if (!f || f.size < 8) return;
+    const key = `${f.size}:${f.type}:${f.name}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(asImageFile(f));
+  };
+  for (const item of Array.from(dt.items || [])) {
+    add(item.getAsFile());
+  }
+  for (const f of Array.from(dt.files || [])) add(f);
+  const extracted = extractImageFilesFromDataTransfer(dt);
+  extracted.forEach((f) => add(f));
+  return out;
+}
+
 export function clipboardHasImage(dt: DataTransfer | null | undefined): boolean {
   if (!dt) return false;
-  if (extractImageFilesFromDataTransfer(dt).length > 0) return true;
-  if (clipboardTypes(dt).some((t) => t.toLowerCase().startsWith('image/'))) return true;
+  if (snapshotClipboardFiles(dt).length > 0) return true;
+  const types = clipboardTypes(dt).map((t) => t.toLowerCase());
+  if (types.some((t) => t.startsWith('image/') || t === 'files' || t.includes('png') || t.includes('jpeg') || t.includes('tiff'))) {
+    return true;
+  }
+  if (Array.from(dt.items || []).some((it) => (it.type || '').toLowerCase().startsWith('image/'))) {
+    return true;
+  }
   const html = dt.getData('text/html') || '';
   return /<img[\s>]/i.test(html);
 }
@@ -56,7 +88,7 @@ function imageSrcsFromHtml(html: string): string[] {
 /** Bilder aus einem Paste-/Drop-DataTransfer (GoodNotes, Fotos, Browser). */
 export async function collectPasteImages(dt: DataTransfer | null | undefined): Promise<File[]> {
   if (!dt) return [];
-  const files = extractImageFilesFromDataTransfer(dt);
+  const files = snapshotClipboardFiles(dt);
   if (files.length > 0) return files;
 
   const srcs = imageSrcsFromHtml(dt.getData('text/html') || '');
@@ -68,7 +100,7 @@ export async function collectPasteImages(dt: DataTransfer | null | undefined): P
   return fromHtml;
 }
 
-/** Nach App-Wechsel (GoodNotes → Safari): Zwischenablage per Geste lesen. */
+/** Nach App-Wechsel: Zwischenablage per Geste lesen (Safari erlaubt das oft nicht). */
 export async function readImagesFromSystemClipboard(): Promise<File[]> {
   const nav = navigator.clipboard as Clipboard & { read?: () => Promise<ClipboardItem[]> };
   if (!nav?.read) return [];
@@ -76,10 +108,12 @@ export async function readImagesFromSystemClipboard(): Promise<File[]> {
     const items = await nav.read();
     const files: File[] = [];
     for (const item of items) {
-      const type = item.types.find((t) => t.startsWith('image/'));
+      const type =
+        item.types.find((t) => t.startsWith('image/')) ||
+        item.types.find((t) => /png|jpeg|jpg|gif|webp|tiff/i.test(t));
       if (!type) continue;
       const blob = await item.getType(type);
-      const mime = blob.type || type;
+      const mime = blob.type && blob.type.startsWith('image/') ? blob.type : 'image/png';
       const ext = mime.replace('image/', '').replace('jpeg', 'jpg') || 'png';
       files.push(new File([blob], `goodnotes-${Date.now()}.${ext}`, { type: mime }));
     }

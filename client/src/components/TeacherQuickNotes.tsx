@@ -46,7 +46,7 @@ import {
   tryStartTableResizeFromPointer,
   updateTableResizeHoverCursor,
 } from '../lib/presentationTableResize';
-import { clipboardHasImage, collectPasteImages, readImagesFromSystemClipboard } from '../lib/goodNotesClipboard';
+import { clipboardHasImage, collectPasteImages, readImagesFromSystemClipboard, snapshotClipboardFiles } from '../lib/goodNotesClipboard';
 import { applyEditorFontSizePx, stashEditorSelection } from '../lib/presentationFontSize';
 import { isFormatBarInteracting, setFormatBarInteracting } from '../lib/presentationFormatBarGuard';
 import { strokeSmoothFreehand } from '../lib/presentationDrawTools';
@@ -1445,8 +1445,13 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
 
   const onEditorPaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
     const dt = e.clipboardData;
-    if (!clipboardHasImage(dt)) return;
+    const filesNow = snapshotClipboardFiles(dt);
+    if (!filesNow.length && !clipboardHasImage(dt)) return;
     e.preventDefault();
+    if (filesNow.length) {
+      void insertImagesFromFiles(filesNow);
+      return;
+    }
     void (async () => {
       const files = await collectPasteImages(dt);
       if (files.length) await insertImagesFromFiles(files);
