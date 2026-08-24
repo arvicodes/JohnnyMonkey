@@ -1,14 +1,15 @@
 "use strict";
-/** WebUntis „Schüler*innen im Unterricht“-PDF/Text → SuS-Namen (ohne Mittelnamen). */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.studentDisplayName = studentDisplayName;
 exports.stripMiddleNames = stripMiddleNames;
+exports.generateTwoBlockLoginCode = generateTwoBlockLoginCode;
 exports.generateLoginCode = generateLoginCode;
 exports.normalizeLoginCode = normalizeLoginCode;
 exports.groupNumberFromName = groupNumberFromName;
 exports.loginGroupNumberFromKlasse = loginGroupNumberFromKlasse;
 exports.splitGluedLastFirst = splitGluedLastFirst;
 exports.parseWebUntisStudentListText = parseWebUntisStudentListText;
+const crypto_1 = require("crypto");
 /** Nur echte Kopfzeilen — nicht Namen wie „SchülerFelix…“. */
 const HEADER_SKIP = /^(VornameFamilienname|Vorname\b|Familienname\b|Schüler\*innen|Schülergruppe:|Klasse:|Klasse$|D-\d|JOHANNES|Schuljahr|WebUntis|Untis\b|Seite\b|christvera|\d{2}\.\d{2}\.\d{4})/i;
 function escapeRegExp(s) {
@@ -27,20 +28,32 @@ function stripMiddleNames(fullName) {
         return parts[0] || '';
     return `${parts[0]} ${parts[parts.length - 1]}`;
 }
-function generateLoginCode(firstName, lastName, groupNumber) {
-    const lastForCode = (lastName || '').trim().split(/\s+/).filter(Boolean).pop() || lastName || '';
-    const firstForCode = (firstName || '').trim().split(/\s+/).filter(Boolean)[0] || firstName || '';
-    const lastNameFirst = lastForCode.substring(0, 1).toUpperCase();
-    const lastNameRest = lastForCode
-        .substring(1, 3)
-        .toLowerCase()
-        .padEnd(2, lastForCode[1] || lastForCode[0] || 'x');
-    const firstNameFirst = firstForCode.substring(0, 1).toUpperCase();
-    const firstNameRest = firstForCode
-        .substring(1, 3)
-        .toLowerCase()
-        .padEnd(2, firstForCode[1] || firstForCode[0] || 'x');
-    return normalizeLoginCode(`${lastNameFirst}${lastNameRest}${firstNameFirst}${firstNameRest}${groupNumber}`);
+const LOGIN_UPPER = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+const LOGIN_LOWER = 'abcdefghijkmnpqrstuvwxyz';
+const LOGIN_DIGIT = '23456789';
+const LOGIN_SPECIAL = '!?@#';
+function randomLoginChar(alphabet) {
+    return alphabet[(0, crypto_1.randomInt)(alphabet.length)];
+}
+function randomLoginBlock() {
+    const chars = [
+        randomLoginChar(LOGIN_UPPER),
+        randomLoginChar(LOGIN_LOWER),
+        randomLoginChar(LOGIN_DIGIT),
+        randomLoginChar(LOGIN_SPECIAL),
+    ];
+    for (let i = chars.length - 1; i > 0; i -= 1) {
+        const j = (0, crypto_1.randomInt)(i + 1);
+        [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+    return chars.join('');
+}
+/** Zwei Blöcke à 4 Zeichen (Groß/Klein/Ziffer/!?#@), unabhängig vom Namen. */
+function generateTwoBlockLoginCode() {
+    return `${randomLoginBlock()}-${randomLoginBlock()}`;
+}
+function generateLoginCode(_firstName, _lastName, _groupNumber) {
+    return generateTwoBlockLoginCode();
 }
 function normalizeLoginCode(code) {
     return code

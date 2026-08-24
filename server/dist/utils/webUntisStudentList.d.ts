@@ -18,7 +18,9 @@ export type WebUntisParseResult = {
 export declare function studentDisplayName(firstName: string, lastName: string): string;
 /** Mittelname(n) aus „Vorname … Nachname“ streichen. */
 export declare function stripMiddleNames(fullName: string): string;
-export declare function generateLoginCode(firstName: string, lastName: string, groupNumber: string): string;
+/** Zwei Blöcke à 4 Zeichen (Groß/Klein/Ziffer/!?#@), unabhängig vom Namen. */
+export declare function generateTwoBlockLoginCode(): string;
+export declare function generateLoginCode(_firstName: string, _lastName: string, _groupNumber: string): string;
 export declare function normalizeLoginCode(code: string): string;
 /** Ziffern aus Gruppennamen, z. B. „Informatik GK 11“ → „11“. */
 export declare function groupNumberFromName(groupName: string, fallback?: string): string;
