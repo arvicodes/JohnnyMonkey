@@ -72,8 +72,8 @@ function FilmstripSectionLabel({
     <Box
       sx={{
         mx: 0.15,
-        mb: 0.55,
-        mt: 0.15,
+        mb: 0.3,
+        mt: 0.1,
         display: 'flex',
         alignItems: 'flex-start',
         gap: 0.25,
@@ -97,21 +97,21 @@ function FilmstripSectionLabel({
           }}
           autoFocus
           multiline
-          minRows={2}
-          maxRows={4}
+          minRows={1}
+          maxRows={2}
           size="small"
           fullWidth
           inputProps={{ 'aria-label': 'Unterkapitel' }}
           sx={{
             '& .MuiInputBase-root': {
-              fontSize: 16,
-              fontWeight: 800,
-              lineHeight: 1.28,
-              py: 0.85,
-              px: 0.85,
+              fontSize: 11,
+              fontWeight: 700,
+              lineHeight: 1.2,
+              py: 0.25,
+              px: 0.45,
               bgcolor: '#fff',
               color: '#0d47a1',
-              borderRadius: 1.25,
+              borderRadius: 1,
             },
           }}
         />
@@ -128,22 +128,25 @@ function FilmstripSectionLabel({
             flex: 1,
             minWidth: 0,
             m: 0,
-            px: 0.9,
-            py: 0.95,
-            borderRadius: 1.25,
+            px: 0.5,
+            py: 0.3,
+            borderRadius: 1,
             border: '1px solid rgba(21, 101, 192, 0.28)',
             bgcolor: 'rgba(21, 101, 192, 0.12)',
             color: '#0d47a1',
-            fontSize: 16,
-            fontWeight: 800,
-            lineHeight: 1.28,
-            letterSpacing: 0.1,
+            fontSize: 11,
+            fontWeight: 700,
+            lineHeight: 1.2,
+            letterSpacing: 0,
             textAlign: 'left',
             cursor: 'text',
             wordBreak: 'break-word',
             whiteSpace: 'normal',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
             fontFamily: 'inherit',
-            boxShadow: '0 1px 2px rgba(13, 71, 161, 0.08)',
             '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.18)' },
           }}
         >
@@ -157,9 +160,9 @@ function FilmstripSectionLabel({
             aria-label="Unterkapitel hinzufügen"
             onClick={onAddSection}
             sx={{
-              width: 28,
-              height: 28,
-              mt: 0.2,
+              width: 20,
+              height: 20,
+              mt: 0.05,
               p: 0,
               color: '#1565c0',
               bgcolor: '#fff',
@@ -167,7 +170,7 @@ function FilmstripSectionLabel({
               '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.12)' },
             }}
           >
-            <AddIcon sx={{ fontSize: 20 }} />
+            <AddIcon sx={{ fontSize: 14 }} />
           </IconButton>
         </Tooltip>
       ) : null}
@@ -558,15 +561,16 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
             onClick={() => onAddSection(activeId)}
             sx={{
               minWidth: 0,
-              px: 0.6,
-              py: 0.55,
-              fontSize: 12,
-              fontWeight: 800,
-              lineHeight: 1.2,
+              px: 0.5,
+              py: 0.25,
+              fontSize: 10,
+              fontWeight: 700,
+              lineHeight: 1.15,
               textTransform: 'none',
               color: '#1565c0',
               borderColor: 'rgba(21, 101, 192, 0.4)',
               bgcolor: '#fff',
+              '& .MuiButton-startIcon': { mr: 0.4, ml: 0 },
               '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.1)', borderColor: '#1565c0' },
             }}
           >
