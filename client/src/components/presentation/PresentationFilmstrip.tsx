@@ -191,6 +191,7 @@ const SortableFilmstripThumb = React.memo(
                 revealEnabled={false}
                 revealStep={999}
                 imageMaxEdge={SLIDE_IMAGE_THUMB_MAX}
+                showInkStrokes={false}
               />
             </Box>
           </Box>

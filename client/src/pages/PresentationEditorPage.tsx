@@ -110,8 +110,10 @@ import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
 import {
   createEmptyPlayVariants,
   loadPresentationPlayVariants,
+  migratePlayLayerIntoVariants,
   playVariantSlideIds,
   savePresentationPlayVariants,
+  stripPlayLayerFromSlide,
   upsertPlaySlideVariant,
   type PresentationPlayVariants,
 } from '../lib/presentationPlayVariants';
@@ -377,6 +379,7 @@ const PresentationEditorPage: React.FC = () => {
   const variantSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [editingVariant, setEditingVariant] = useState(false);
   const editingVariantRef = useRef(false);
+  const suppressMasterCommitRef = useRef(false);
   const inkSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [inkEditActive, setInkEditActive] = useState(false);
   const [inkTool, setInkTool] = useState<PresentationDrawTool>('select');
@@ -438,20 +441,31 @@ const PresentationEditorPage: React.FC = () => {
           withEntry,
           ann?.bySlideId ? ann : createEmptyAnnotations(lessonPath),
         );
-        historyRef.current = createDeckHistory(merged.deck);
+        const migrated = migratePlayLayerIntoVariants(
+          merged.deck,
+          variants,
+          merged.annotations,
+        );
+        historyRef.current = createDeckHistory(migrated.deck);
         setHistoryVersion((v) => v + 1);
-        setDeck(merged.deck);
-        deckRef.current = merged.deck;
+        setDeck(migrated.deck);
+        deckRef.current = migrated.deck;
         setAnnotations(merged.annotations);
         annotationsRef.current = merged.annotations;
-        setPlayVariants(variants);
-        playVariantsRef.current = variants;
+        setPlayVariants(migrated.variants);
+        playVariantsRef.current = migrated.variants;
+        editingVariantRef.current = false;
         setEditingVariant(false);
-        setActiveId(merged.deck.slides[0]?.id ?? null);
+        setActiveId(migrated.deck.slides[0]?.id ?? null);
         setLoading(false);
         if (merged.changed) {
           void saveJsonFile(lessonPath, ANNOTATIONS_FILENAME, merged.annotations);
-          void saveJsonFile(lessonPath, DECK_FILENAME, merged.deck);
+        }
+        if (merged.changed || migrated.changed) {
+          void saveJsonFile(lessonPath, DECK_FILENAME, migrated.deck);
+        }
+        if (migrated.changed) {
+          void savePresentationPlayVariants(lessonPath, migrated.variants);
         }
       })
       .catch((e) => {
@@ -561,7 +575,8 @@ const PresentationEditorPage: React.FC = () => {
     };
   }, []);
 
-  const masterSlide = deck?.slides.find((s) => s.id === activeId) ?? deck?.slides[0];
+  const masterSlideRaw = deck?.slides.find((s) => s.id === activeId) ?? deck?.slides[0];
+  const masterSlide = masterSlideRaw ? stripPlayLayerFromSlide(masterSlideRaw) : undefined;
   const variantWorkingSlide =
     editingVariant && activeId ? playVariants?.bySlideId[activeId]?.slide : undefined;
   const activeSlide = variantWorkingSlide ?? masterSlide;
@@ -673,6 +688,7 @@ const PresentationEditorPage: React.FC = () => {
       }
       const current = deckRef.current;
       if (!current || !activeId) return;
+      if (!editingVariantRef.current && suppressMasterCommitRef.current) return;
       const applyToVariant = (nextSlide: PresentationSlide) => {
         persistVariantSlide(nextSlide);
       };
@@ -798,9 +814,21 @@ const PresentationEditorPage: React.FC = () => {
     }
   }, [commitEditorState, deck, lessonPath, saveNamedLabel]);
 
+  const leaveVariantMode = useCallback(() => {
+    if (editingVariantRef.current) {
+      commitEditorState({ history: 'skip' });
+      editingVariantRef.current = false;
+      suppressMasterCommitRef.current = true;
+      window.setTimeout(() => {
+        suppressMasterCommitRef.current = false;
+      }, 500);
+    }
+    setEditingVariant(false);
+  }, [commitEditorState]);
+
   const selectSlide = useCallback(
     (id: string, opts?: { preserveMulti?: boolean; keepVariant?: boolean }) => {
-      if (!opts?.keepVariant) setEditingVariant(false);
+      if (!opts?.keepVariant) leaveVariantMode();
       if (!opts?.preserveMulti) {
         setSelectedSlideIds([id]);
         slideSelectionAnchorRef.current = id;
@@ -812,7 +840,7 @@ const PresentationEditorPage: React.FC = () => {
       setActiveEditor(null);
       setActiveHtmlField(null);
     },
-    [activeId, commitEditorState]
+    [activeId, commitEditorState, leaveVariantMode]
   );
 
   const openPlayVariant = useCallback(
@@ -820,9 +848,10 @@ const PresentationEditorPage: React.FC = () => {
       const master = deckRef.current?.slides.find((s) => s.id === slideId);
       if (!master) return;
       if (!playVariantsRef.current?.bySlideId[slideId]?.slide) {
-        persistVariantSlide(master);
+        persistVariantSlide(stripPlayLayerFromSlide(master));
       }
       selectSlide(slideId, { keepVariant: true });
+      editingVariantRef.current = true;
       setEditingVariant(true);
       setSelectedElementId(null);
       setActiveEditor(null);
@@ -905,11 +934,11 @@ const PresentationEditorPage: React.FC = () => {
       setSelectedElementId(id);
       // Bilder über Karten: beim Anklicken in den Vordergrund holen (außer Vollbild-Hero).
       if (!id || !activeId) return;
-      const current = deckRef.current;
-      if (!current) return;
-      const slide = current.slides.find((s) => s.id === activeId);
-      if (!slide) return;
-      const el = slide.elements?.find((e) => e.id === id);
+      const working = editingVariantRef.current
+        ? playVariantsRef.current?.bySlideId[activeId]?.slide
+        : deckRef.current?.slides.find((s) => s.id === activeId);
+      if (!working) return;
+      const el = working.elements?.find((e) => e.id === id);
       if (
         !el ||
         el.type !== 'image' ||
@@ -918,14 +947,20 @@ const PresentationEditorPage: React.FC = () => {
       ) {
         return;
       }
-      const nextEls = setElementStackLayerInSlide(slide.elements || [], id, 'foreground');
-      if (nextEls === slide.elements) return;
+      const nextEls = setElementStackLayerInSlide(working.elements || [], id, 'foreground');
+      if (nextEls === working.elements) return;
+      if (editingVariantRef.current) {
+        persistVariantSlide({ ...working, elements: nextEls });
+        return;
+      }
+      const current = deckRef.current;
+      if (!current) return;
       const slides = current.slides.map((s) =>
         s.id === activeId ? { ...s, elements: nextEls } : s,
       );
       scheduleSave({ ...current, slides }, { quiet: true, history: 'skip' });
     },
-    [commitEditorState, activeId, scheduleSave],
+    [commitEditorState, activeId, persistVariantSlide, scheduleSave],
   );
 
   const restoreDeckSnapshot = useCallback(
@@ -937,6 +972,7 @@ const PresentationEditorPage: React.FC = () => {
       setActiveEditor(null);
       setActiveHtmlField(null);
       setSelectedElementId(null);
+      editingVariantRef.current = false;
       setEditingVariant(false);
       setActiveId((current) =>
         snapshot.slides.some((s) => s.id === current) ? current : snapshot.slides[0]?.id ?? null
@@ -1059,6 +1095,7 @@ const PresentationEditorPage: React.FC = () => {
   const updateSlide = (patch: Partial<PresentationSlide>) => {
     const current = deckRef.current;
     if (!current || !activeId) return;
+    if (!editingVariantRef.current && suppressMasterCommitRef.current) return;
     if (editingVariantRef.current) {
       const base =
         playVariantsRef.current?.bySlideId[activeId]?.slide ??
@@ -1301,6 +1338,7 @@ const PresentationEditorPage: React.FC = () => {
   const updateElement = (id: string, patch: Partial<SlideElement>) => {
     const current = deckRef.current;
     if (!current || !activeId) return;
+    if (!editingVariantRef.current && suppressMasterCommitRef.current) return;
     if (editingVariantRef.current) {
       const base =
         playVariantsRef.current?.bySlideId[activeId]?.slide ??
@@ -2244,6 +2282,7 @@ const PresentationEditorPage: React.FC = () => {
       const base = annotationsRef.current ?? createEmptyAnnotations(lessonPath || '');
       const prev = slideId ? base.bySlideId[slideId] || [] : [];
       updateInkStrokes([...prev, ...all]);
+      if (slideId) openPlayVariant(slideId);
       setInkEditActive(true);
       setInkTool('select');
       setSelectedStrokeIds(all.map((s) => s.id));
@@ -3121,6 +3160,9 @@ const PresentationEditorPage: React.FC = () => {
                   inkColor={inkColor}
                   canUndoInk={currentInkStrokes.length > 0}
                   onToggleInkEdit={() => {
+                    if (!editingVariantRef.current && activeId) {
+                      openPlayVariant(activeId);
+                    }
                     setInkEditActive((v) => {
                       if (!v) setInkTool('select');
                       return !v;
@@ -3129,6 +3171,9 @@ const PresentationEditorPage: React.FC = () => {
                     setActiveEditor(null);
                   }}
                   onSelectInkTool={(tool) => {
+                    if (!editingVariantRef.current && activeId) {
+                      openPlayVariant(activeId);
+                    }
                     setInkEditActive(true);
                     setInkTool(tool);
                     if (tool !== 'select') setSelectedStrokeIds([]);
@@ -3210,7 +3255,7 @@ const PresentationEditorPage: React.FC = () => {
 
       <Box sx={{ display: 'flex', flex: 1, minHeight: 0, bgcolor: PRES_EDITOR_UI.pageBg }}>
         <PresentationFilmstrip
-          slides={filmstripSlides.length ? filmstripSlides : sortedSlides}
+          slides={(filmstripSlides.length ? filmstripSlides : sortedSlides).map(stripPlayLayerFromSlide)}
           activeId={activeId}
           selectedIds={selectedSlideIds.length ? selectedSlideIds : activeId ? [activeId] : []}
           variantSlideIds={variantSlideIdList}
@@ -3276,7 +3321,7 @@ const PresentationEditorPage: React.FC = () => {
                 </Typography>
                 <Button
                   size="small"
-                  onClick={() => setEditingVariant(false)}
+                  onClick={leaveVariantMode}
                   sx={{
                     minWidth: 0,
                     px: 1,
@@ -3473,6 +3518,7 @@ const PresentationEditorPage: React.FC = () => {
                     onElementChange={updateElement}
                     onDeleteElement={deleteElement}
                     onMoveElementToSlide={moveElementToSlide}
+                    showInkStrokes={editingVariant}
                     onTextElementFocus={(el, elementId, field) => {
                       setActiveEditor(el);
                       setActiveHtmlField(
@@ -3488,10 +3534,10 @@ const PresentationEditorPage: React.FC = () => {
                     }}
                   />
                   <PresentationDrawOverlay
-                    strokes={editingVariant || inkEditActive ? currentInkStrokes : EMPTY_STROKES}
+                    strokes={editingVariant ? currentInkStrokes : EMPTY_STROKES}
                     onStrokesChange={updateInkStrokes}
-                    enabled={inkEditActive}
-                    slideId={normalizedActive.id}
+                    enabled={editingVariant && inkEditActive}
+                    slideId={`${normalizedActive.id}:${editingVariant ? 'variant' : 'master'}`}
                     tool={inkTool}
                     strokeColor={inkColor}
                     lineWidth={defaultLineWidthForTool(inkTool === 'eraser' ? 'pen' : inkTool)}

@@ -85,6 +85,8 @@ interface PresentationSlideViewProps {
   exportSnapshot?: boolean;
   /** Bildgröße begrenzen (Editor). Ohne Wert: Original / Export. */
   imageMaxEdge?: number;
+  /** Eingebettete Folien-Tinte (inkStrokes). Im Erstellen-Modus nur auf der Variante. */
+  showInkStrokes?: boolean;
 }
 
 const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
@@ -117,6 +119,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   imageEditable = false,
   exportSnapshot = false,
   imageMaxEdge,
+  showInkStrokes = true,
 }) => {
   const [snapGuides, setSnapGuides] = useState<SnapGuide[]>([]);
   const handleSnapGuidesChange = useCallback((guides: SnapGuide[]) => {
@@ -866,7 +869,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
         editable || imageEditable ? 25 : animationEditMode ? 12 : 5,
       )}
 
-      {!exportSnapshot && (slide.inkStrokes?.length ?? 0) > 0 && (
+      {!exportSnapshot && showInkStrokes && (slide.inkStrokes?.length ?? 0) > 0 && (
         <Box
           sx={{
             position: 'absolute',

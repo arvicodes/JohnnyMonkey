@@ -120,6 +120,17 @@ export interface PresentationStroke {
   shape?: PresentationShapeKind;
   /** Rotation in radians for box shapes (rect, ellipse). */
   rotation?: number;
+  /**
+   * GoodNotes-Import: gefüllte Silhouette (nicht Mittellinie).
+   * Sieht aus wie die Original-Schrift, bleibt aber lassobar.
+   */
+  filled?: boolean;
+  /** Löcher in Buchstaben (o, a, 8, …) — even-odd Fill. */
+  holes?: { x: number; y: number }[][];
+}
+
+export function isFilledInkStroke(stroke: PresentationStroke): boolean {
+  return Boolean(stroke.filled) && !stroke.shape && stroke.points.length >= 3;
 }
 
 export type LayoutZoneBox = { x: number; y: number; w: number; h: number };
@@ -196,6 +207,18 @@ export function sanitizeInkStrokes(raw?: PresentationStroke[]): PresentationStro
       ...(typeof s.markerOpacity === 'number' && Number.isFinite(s.markerOpacity)
         ? { markerOpacity: s.markerOpacity }
         : {}),
+      ...(s.filled ? { filled: true } : {}),
+      ...(() => {
+        if (!Array.isArray(s.holes) || s.holes.length === 0) return {};
+        const holes = s.holes
+          .map((h) =>
+            (h || [])
+              .map((p) => ({ x: Number(p?.x), y: Number(p?.y) }))
+              .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y)),
+          )
+          .filter((h) => h.length >= 3);
+        return holes.length ? { holes } : {};
+      })(),
     });
     if (out.length >= 800) break;
   }

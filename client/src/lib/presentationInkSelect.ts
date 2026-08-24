@@ -1,4 +1,4 @@
-import type { PresentationStroke } from './presentationDeck';
+import { isFilledInkStroke, type PresentationStroke } from './presentationDeck';
 import { hitTestShapeBody, isSelectableShape, type Pt } from './presentationShapeTransform';
 
 export type Bounds = { x: number; y: number; w: number; h: number };
@@ -34,6 +34,20 @@ export function pointInPolygon(pt: Pt, poly: Pt[]): boolean {
 
 export function hitTestInkStroke(stroke: PresentationStroke, pt: Pt, pad = INK_HIT_PAD): boolean {
   if (stroke.shape) return hitTestShapeBody(stroke, pt, pad);
+  if (isFilledInkStroke(stroke)) {
+    const inside = pointInPolygon(pt, stroke.points);
+    if (!inside) {
+      const thresh = pad + 2;
+      for (let i = 1; i < stroke.points.length; i++) {
+        if (distPointToSegment(pt.x, pt.y, stroke.points[i - 1].x, stroke.points[i - 1].y, stroke.points[i].x, stroke.points[i].y) <= thresh) {
+          return true;
+        }
+      }
+      return false;
+    }
+    if (stroke.holes?.some((hole) => hole.length >= 3 && pointInPolygon(pt, hole))) return false;
+    return true;
+  }
   const pts = stroke.points;
   if (pts.length === 0) return false;
   if (pts.length === 1) return Math.hypot(pt.x - pts[0].x, pt.y - pts[0].y) <= pad + stroke.lineWidth;
@@ -106,6 +120,11 @@ function segmentsIntersect(a1: Pt, a2: Pt, b1: Pt, b2: Pt): boolean {
 
 export function strokeHitsLasso(stroke: PresentationStroke, lasso: Pt[]): boolean {
   if (lasso.length < 3) return false;
+  if (isFilledInkStroke(stroke)) {
+    for (const p of lasso) {
+      if (hitTestInkStroke(stroke, p, 0)) return true;
+    }
+  }
   for (const p of stroke.points) {
     if (pointInPolygon(p, lasso)) return true;
   }
@@ -140,6 +159,11 @@ export function moveStroke(stroke: PresentationStroke, dx: number, dy: number): 
   return {
     ...stroke,
     points: stroke.points.map((p) => ({ x: p.x + dx, y: p.y + dy })),
+    ...(stroke.holes?.length
+      ? {
+          holes: stroke.holes.map((hole) => hole.map((p) => ({ x: p.x + dx, y: p.y + dy }))),
+        }
+      : {}),
   };
 }
 
@@ -159,6 +183,16 @@ export function scaleStroke(
       x: origin.x + (p.x - origin.x) * nx,
       y: origin.y + (p.y - origin.y) * ny,
     })),
+    ...(stroke.holes?.length
+      ? {
+          holes: stroke.holes.map((hole) =>
+            hole.map((p) => ({
+              x: origin.x + (p.x - origin.x) * nx,
+              y: origin.y + (p.y - origin.y) * ny,
+            })),
+          ),
+        }
+      : {}),
   };
 }
 

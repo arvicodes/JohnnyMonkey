@@ -1,4 +1,4 @@
-import type { PresentationShapeKind, PresentationStroke } from './presentationDeck';
+import { isFilledInkStroke, type PresentationShapeKind, type PresentationStroke } from './presentationDeck';
 import { getBoxFrame, hitTestShapeBody } from './presentationShapeTransform';
 
 export type PresentationDrawTool =
@@ -123,6 +123,32 @@ function distPointToSegment(
   return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
 }
 
+function pointInPoly(pt: { x: number; y: number }, poly: { x: number; y: number }[]): boolean {
+  if (poly.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i];
+    const b = poly[j];
+    const intersect =
+      a.y > pt.y !== b.y > pt.y && pt.x < ((b.x - a.x) * (pt.y - a.y)) / (b.y - a.y + 1e-9) + a.x;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function polylineHitsRadius(
+  points: { x: number; y: number }[],
+  ep: { x: number; y: number },
+  radius: number,
+): boolean {
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    if (distPointToSegment(ep.x, ep.y, a.x, a.y, b.x, b.y) < radius) return true;
+  }
+  return false;
+}
+
 function strokeHitByEraser(
   stroke: PresentationStroke,
   eraserPoints: { x: number; y: number }[],
@@ -140,13 +166,20 @@ function strokeHitByEraser(
     return false;
   }
 
+  if (isFilledInkStroke(stroke)) {
+    for (const ep of eraserPoints) {
+      const inOuter = pointInPoly(ep, stroke.points);
+      const inHole = Boolean(stroke.holes?.some((hole) => hole.length >= 3 && pointInPoly(ep, hole)));
+      if (inOuter && !inHole) return true;
+      if (polylineHitsRadius(stroke.points, ep, radius)) return true;
+      if (stroke.holes?.some((hole) => polylineHitsRadius(hole, ep, radius))) return true;
+    }
+    return false;
+  }
+
   if (stroke.points.length < 2) return false;
   for (const ep of eraserPoints) {
-    for (let i = 0; i < stroke.points.length - 1; i++) {
-      const a = stroke.points[i];
-      const b = stroke.points[i + 1];
-      if (distPointToSegment(ep.x, ep.y, a.x, a.y, b.x, b.y) < radius) return true;
-    }
+    if (polylineHitsRadius(stroke.points, ep, radius)) return true;
   }
   return false;
 }
@@ -185,6 +218,34 @@ function drawArrowHead(
 
 export function drawPresentationStroke(ctx: CanvasRenderingContext2D, stroke: PresentationStroke) {
   if (stroke.points.length < 2) return;
+
+  if (isFilledInkStroke(stroke)) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = stroke.color;
+    ctx.strokeStyle = stroke.color;
+    ctx.lineWidth = 0.85;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+    for (let i = 1; i < stroke.points.length; i++) {
+      ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+    }
+    ctx.closePath();
+    if (stroke.holes) {
+      for (const hole of stroke.holes) {
+        if (hole.length < 3) continue;
+        ctx.moveTo(hole[0].x, hole[0].y);
+        for (let i = 1; i < hole.length; i++) ctx.lineTo(hole[i].x, hole[i].y);
+        ctx.closePath();
+      }
+    }
+    ctx.fill('evenodd');
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
 
   if (stroke.shape) {
     const [p0, p1] = stroke.points;

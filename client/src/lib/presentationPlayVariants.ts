@@ -2,9 +2,11 @@ import {
   loadJsonFile,
   lessonFolderPath,
   saveJsonFile,
+  type PresentationAnnotations,
   type PresentationDeck,
   type PresentationSlide,
   type PresentationStroke,
+  type SlideElement,
 } from './presentationDeck';
 
 export const PLAY_VARIANTS_FILENAME = 'Praesentation.play-variants.json';
@@ -37,6 +39,55 @@ export function createEmptyPlayVariants(lessonPath: string): PresentationPlayVar
     updatedAt: new Date().toISOString(),
     bySlideId: {},
   };
+}
+
+export function isPlayPhotoElement(el: SlideElement): boolean {
+  const name = (el.src || '').split(/[/\\]/).pop() || '';
+  return el.type === 'image' && /^play-foto-/i.test(name);
+}
+
+export function stripPlayLayerFromSlide(slide: PresentationSlide): PresentationSlide {
+  const hadInk = (slide.inkStrokes?.length ?? 0) > 0;
+  const elements = (slide.elements || []).filter((el) => !isPlayPhotoElement(el));
+  const strippedPhotos = elements.length !== (slide.elements || []).length;
+  if (!hadInk && !strippedPhotos) return slide;
+  const { inkStrokes: _ink, ...rest } = slide;
+  return { ...rest, elements };
+}
+
+export function migratePlayLayerIntoVariants(
+  deck: PresentationDeck,
+  variants: PresentationPlayVariants,
+  annotations: PresentationAnnotations,
+): { deck: PresentationDeck; variants: PresentationPlayVariants; changed: boolean } {
+  let variantsNext = variants;
+  let changed = false;
+  const slides = deck.slides.map((slide) => {
+    const playPhotos = (slide.elements || []).filter(isPlayPhotoElement);
+    const existing = variantsNext.bySlideId[slide.id];
+    if (playPhotos.length) {
+      const base = existing?.slide ?? slide;
+      const have = new Set((base.elements || []).map((el) => el.id));
+      const mergedEls = [
+        ...(base.elements || []),
+        ...playPhotos.filter((photo) => !have.has(photo.id)),
+      ];
+      variantsNext = upsertPlaySlideVariant(
+        variantsNext,
+        { ...base, elements: mergedEls },
+        annotations.bySlideId[slide.id] ?? existing?.strokes ?? [],
+      );
+      changed = true;
+      return stripPlayLayerFromSlide(slide);
+    }
+    if ((slide.inkStrokes?.length ?? 0) > 0) {
+      changed = true;
+      return stripPlayLayerFromSlide(slide);
+    }
+    return slide;
+  });
+  if (!changed) return { deck, variants, changed: false };
+  return { deck: { ...deck, slides }, variants: variantsNext, changed: true };
 }
 
 export function hasPlaySlideVariant(
