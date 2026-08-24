@@ -118,10 +118,11 @@ import {
   type PresentationPlayVariants,
 } from '../lib/presentationPlayVariants';
 import {
-  nextUntitledSectionName,
+  nextNumberedSectionName,
   renameSlideSection,
-  splitSlideSectionAt,
+  sectionRunEnd,
 } from '../lib/presentationSections';
+import { isEndSlide } from '../lib/presentationChapterCombine';
 import {
   DEFAULT_PEN_COLOR,
   defaultLineWidthForTool,
@@ -2050,13 +2051,51 @@ const PresentationEditorPage: React.FC = () => {
     const slides = sortSlides(current.slides);
     const atIndex = slides.findIndex((slide) => slide.id === atSlideId);
     if (atIndex < 0) return;
-    const next = splitSlideSectionAt(
-      slides,
-      atIndex,
-      nextUntitledSectionName(slides),
-    ).map((slide, index) => ({ ...slide, order: index }));
-    scheduleSave({ ...current, slides: next }, { history: 'immediate', urgent: true });
-    setSnackbar('Unterkapitel hinzugefügt — Name oben in der Leiste ändern');
+    const name = nextNumberedSectionName(slides);
+    const insertAt = sectionRunEnd(slides, atIndex);
+    const path = (lessonPath || '').trim();
+    const sectionMeta = {
+      sourceLessonName: name,
+      ...(path ? { sourceLessonPath: path } : {}),
+    };
+    const blank = normalizeSlide({
+      ...createSlideFromLayout(insertAt, 'blank'),
+      hiddenLayoutZones: ['bodyHtml'],
+      ...sectionMeta,
+    });
+    let end =
+      (path ? createSlideFromTemplateKind('ha', insertAt + 1, path, slideTemplates) : null) ||
+      (path ? createSlideFromTemplateKind('ende', insertAt + 1, path, slideTemplates) : null);
+    if (!end) {
+      const source = [...slides].reverse().find((slide) => isEndSlide(slide));
+      if (source) {
+        end = normalizeSlide({
+          ...JSON.parse(JSON.stringify(source)),
+          id: `slide-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          order: insertAt + 1,
+          inkStrokes: undefined,
+          elements: (source.elements || []).map((el, index) => ({
+            ...el,
+            id: `el-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 5)}`,
+          })),
+          ...sectionMeta,
+        });
+      }
+    } else {
+      end = { ...end, ...sectionMeta, order: insertAt + 1 };
+    }
+    if (!end) {
+      setSnackbar('Endfolie konnte nicht erzeugt werden');
+      return;
+    }
+    const next = [...slides];
+    next.splice(insertAt, 0, blank, end);
+    const reordered = next.map((slide, index) => ({ ...slide, order: index }));
+    scheduleSave({ ...current, slides: reordered }, { history: 'immediate', urgent: true });
+    setEditingVariant(false);
+    setActiveId(blank.id);
+    setSelectedSlideIds([blank.id]);
+    setSnackbar(`Unterkapitel ${name} hinzugefügt`);
   };
 
   const deleteSlide = () => {

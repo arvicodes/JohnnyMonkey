@@ -13,7 +13,48 @@ export function nextUntitledSectionName(slides: PresentationSlide[]): string {
   return `Unterkapitel ${n}`;
 }
 
-function sectionRunEnd(slides: PresentationSlide[], startIndex: number): number {
+type ParsedSectionNumber = {
+  major: number;
+  minor: number;
+  majorWidth: number;
+  minorWidth: number;
+};
+
+function parseSectionNumber(name: string): ParsedSectionNumber | null {
+  const match = name.trim().match(/^(\d+)\.(\d+)\b/);
+  if (!match) return null;
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    majorWidth: match[1].length,
+    minorWidth: match[2].length,
+  };
+}
+
+/** Nächste Nummer im bestehenden Schema (1.2 → 1.3, 01.05 → 01.06). */
+export function nextNumberedSectionName(slides: PresentationSlide[]): string {
+  const names: string[] = [];
+  let prev = '';
+  for (const slide of sortSlides(slides)) {
+    const name = slideSectionName(slide);
+    if (name && name !== prev) {
+      names.push(name);
+      prev = name;
+    }
+  }
+  const parsed = names
+    .map(parseSectionNumber)
+    .filter((row): row is ParsedSectionNumber => Boolean(row));
+  if (!parsed.length) return '1.0';
+  const last = parsed[parsed.length - 1];
+  const sameMajor = parsed.filter((row) => row.major === last.major);
+  const nextMinor = Math.max(...sameMajor.map((row) => row.minor)) + 1;
+  const majorWidth = Math.max(...sameMajor.map((row) => row.majorWidth));
+  const minorWidth = Math.max(...sameMajor.map((row) => row.minorWidth));
+  return `${String(last.major).padStart(majorWidth, '0')}.${String(nextMinor).padStart(minorWidth, '0')}`;
+}
+
+export function sectionRunEnd(slides: PresentationSlide[], startIndex: number): number {
   const name = slideSectionName(slides[startIndex]);
   let end = startIndex + 1;
   while (end < slides.length && slideSectionName(slides[end]) === name) end += 1;

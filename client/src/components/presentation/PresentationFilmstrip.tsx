@@ -154,7 +154,7 @@ function FilmstripSectionLabel({
         </Box>
       )}
       {onAddSection ? (
-        <Tooltip title="Neues Unterkapitel ab der nächsten Folie">
+        <Tooltip title="Neues Unterkapitel danach (nächste Nummer, mit Endfolie)">
           <IconButton
             size="small"
             aria-label="Unterkapitel hinzufügen"
