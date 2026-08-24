@@ -34,6 +34,8 @@ import {
   ContentCopy as CopyIcon,
   ContentPaste as PasteIcon,
   ContentPasteGo as PasteGoIcon,
+  Gesture as InkIcon,
+  ImageOutlined as PasteImageIcon,
   DeleteOutline as DeleteIcon,
   PlayArrow as PresentIcon,
   RestoreFromTrash as TrashBinIcon,
@@ -124,6 +126,7 @@ import {
   readImagesFromSystemClipboard,
   snapshotClipboardFiles,
 } from '../lib/goodNotesClipboard';
+import { imageFileToPresentationStrokes } from '../lib/imageToPresentationStrokes';
 import {
   type ElementLayerAction,
   type ElementStackLayer,
@@ -343,6 +346,10 @@ const PresentationEditorPage: React.FC = () => {
   const imageDropBusyRef = useRef(false);
   const pasteCatcherRef = useRef<HTMLDivElement | null>(null);
   const [pasteCatcherOpen, setPasteCatcherOpen] = useState(false);
+  const [pasteCatcherMode, setPasteCatcherMode] = useState<'image' | 'ink' | 'choose'>('choose');
+  const pasteModeRef = useRef<'image' | 'ink' | null>(null);
+  const [pendingPasteFiles, setPendingPasteFiles] = useState<File[] | null>(null);
+  const [pasteBusy, setPasteBusy] = useState(false);
   const elementClipboardRef = useRef<{
     mode: 'cut' | 'copy';
     sourceSlideId: string;
@@ -1956,35 +1963,97 @@ const PresentationEditorPage: React.FC = () => {
     await handleImageFile(file);
   };
 
-  const pasteImagesFromClipboardEvent = async (dt: DataTransfer | null | undefined) => {
-    const files = await collectPasteImages(dt);
+  const applyPastedFiles = async (files: File[], mode: 'image' | 'ink') => {
+    if (!files.length) return false;
+    const ae = document.activeElement;
+    const notesFocused = ae instanceof HTMLElement && ae.closest('[data-pres-notes-zone="true"]');
+    if (notesFocused) {
+      imageTargetRef.current = 'notes';
+      setSnackbar(
+        files.length > 1 ? `${files.length} Ausschnitte werden in Notizen eingefügt…` : 'Wird in Notizen eingefügt…',
+      );
+      for (const file of files) await handleImageFile(file);
+      return true;
+    }
+
+    if (mode === 'image') {
+      imageTargetRef.current = 'element';
+      setSnackbar(files.length > 1 ? `${files.length} Ausschnitte werden eingefügt…` : 'Wird eingefügt…');
+      for (const file of files) await handleImageFile(file);
+      return true;
+    }
+
+    setPasteBusy(true);
+    setSnackbar('Striche werden erkannt…');
+    try {
+      const all = [];
+      for (const file of files) {
+        all.push(...(await imageFileToPresentationStrokes(file)));
+      }
+      if (!all.length) {
+        setSnackbar('Keine Striche erkannt — als Bild eingefügt');
+        imageTargetRef.current = 'element';
+        for (const file of files) await handleImageFile(file);
+        return true;
+      }
+      const current = deckRef.current;
+      const slide = current?.slides.find((s) => s.id === activeId);
+      updateSlide({ inkStrokes: [...(slide?.inkStrokes || []), ...all] });
+      setSnackbar(all.length === 1 ? 'Als Stiftstrich eingefügt' : `${all.length} Stiftstriche eingefügt`);
+      return true;
+    } catch (e) {
+      setSnackbar(e instanceof Error ? e.message : 'Striche konnten nicht erkannt werden');
+      return false;
+    } finally {
+      setPasteBusy(false);
+    }
+  };
+  const applyPastedFilesRef = useRef(applyPastedFiles);
+  applyPastedFilesRef.current = applyPastedFiles;
+
+  const offerPasteChoice = (files: File[]) => {
     if (!files.length) return false;
     const ae = document.activeElement;
     if (ae instanceof HTMLElement && ae.closest('[data-pres-notes-zone="true"]')) {
       imageTargetRef.current = 'notes';
-    } else {
-      imageTargetRef.current = 'element';
+      void applyPastedFilesRef.current(files, 'image');
+      return true;
     }
-    setSnackbar(files.length > 1 ? `${files.length} Ausschnitte werden eingefügt…` : 'Wird eingefügt…');
-    for (const file of files) {
-      await handleImageFile(file);
+    const preset = pasteModeRef.current;
+    if (preset) {
+      void applyPastedFilesRef.current(files, preset);
+      pasteModeRef.current = null;
+      return true;
     }
+    setPendingPasteFiles(files);
     return true;
+  };
+
+  const pasteImagesFromClipboardEvent = async (dt: DataTransfer | null | undefined) => {
+    const files = await collectPasteImages(dt);
+    if (!files.length) return false;
+    return offerPasteChoice(files);
   };
   const pasteImagesFromClipboardEventRef = useRef(pasteImagesFromClipboardEvent);
   pasteImagesFromClipboardEventRef.current = pasteImagesFromClipboardEvent;
 
-  const pasteFromGoodNotes = () => {
+  const pasteFromGoodNotes = (mode: 'image' | 'ink') => {
+    imageTargetRef.current = 'element';
+    pasteModeRef.current = mode;
     void (async () => {
       const files = await readImagesFromSystemClipboard();
       if (files.length) {
-        imageTargetRef.current = 'element';
-        setSnackbar(files.length > 1 ? `${files.length} Ausschnitte werden eingefügt…` : 'Wird eingefügt…');
-        for (const file of files) await handleImageFile(file);
+        await applyPastedFilesRef.current(files, mode);
+        pasteModeRef.current = null;
         return;
       }
+      setPasteCatcherMode(mode);
       setPasteCatcherOpen(true);
-      setSnackbar('Jetzt einfügen: auf dem gelben Feld lange drücken → Einfügen');
+      setSnackbar(
+        mode === 'ink'
+          ? 'Jetzt einfügen: auf dem gelben Feld lange drücken → Einfügen (wird zu Stiftstrichen)'
+          : 'Jetzt einfügen: auf dem gelben Feld lange drücken → Einfügen',
+      );
     })();
   };
 
@@ -2984,7 +3053,13 @@ const PresentationEditorPage: React.FC = () => {
                       Jetzt einfügen: hier lange drücken → Einfügen
                       <br />
                       <Box component="span" sx={{ fontWeight: 500, fontSize: '0.92em' }}>
-                        (oder ⌘V)
+                        {pasteCatcherMode === 'ink'
+                          ? 'wird als Stiftstriche übernommen'
+                          : pasteCatcherMode === 'image'
+                            ? 'wird als Bild übernommen'
+                            : 'danach Bild oder Stiftstriche wählen'}
+                        {' · '}
+                        ⌘V
                       </Box>
                     </Typography>
                   </Box>
@@ -3159,6 +3234,61 @@ const PresentationEditorPage: React.FC = () => {
           </Box>
         )}
       </Box>
+
+      <Dialog
+        open={Boolean(pendingPasteFiles?.length) && !pasteBusy}
+        onClose={() => {
+          if (pasteBusy) return;
+          setPendingPasteFiles(null);
+          pasteModeRef.current = null;
+        }}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>GoodNotes einfügen</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Als Foto auf der Folie, oder als einzelne Striche und Linien — wie mit dem Stift
+            gezeichnet.
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <Button
+              variant="outlined"
+              startIcon={<PasteImageIcon />}
+              onClick={() => {
+                const files = pendingPasteFiles;
+                setPendingPasteFiles(null);
+                if (files) void applyPastedFilesRef.current(files, 'image');
+              }}
+              sx={{ justifyContent: 'flex-start', py: 1.2 }}
+            >
+              Als Bild
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<InkIcon />}
+              onClick={() => {
+                const files = pendingPasteFiles;
+                setPendingPasteFiles(null);
+                if (files) void applyPastedFilesRef.current(files, 'ink');
+              }}
+              sx={{ justifyContent: 'flex-start', py: 1.2 }}
+            >
+              Als Stiftstriche
+            </Button>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setPendingPasteFiles(null);
+              pasteModeRef.current = null;
+            }}
+          >
+            Abbrechen
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={saveNamedOpen}

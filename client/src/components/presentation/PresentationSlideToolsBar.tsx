@@ -7,6 +7,10 @@ import {
   Divider,
   FormControlLabel,
   IconButton,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
   Popover,
   Switch,
   TextField,
@@ -18,6 +22,7 @@ import {
   ContentCopy as CopyIcon,
   ContentPaste as PasteIcon,
   ContentPasteGo as PasteGoIcon,
+  Gesture as InkIcon,
   Crop as CropIcon,
   ImageOutlined as ImageIcon,
   PaletteOutlined as PaletteIcon,
@@ -135,7 +140,7 @@ interface PresentationSlideToolsBarProps {
   onApplyAccentColor: (color: string, allSlides: boolean) => void;
   onAddTextElement: () => void;
   onAddImageElement: () => void;
-  onPasteFromClipboard?: () => void;
+  onPasteFromClipboard?: (mode: 'image' | 'ink') => void;
   onAddLayoutImage: () => void;
   onAddShapeElement: (kind: PresentationShapeKind) => void;
   onAddCardElement?: (mode?: 'single' | 'pair') => void;
@@ -192,6 +197,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
   const [elementAnchor, setElementAnchor] = useState<HTMLElement | null>(null);
   const [accentAnchor, setAccentAnchor] = useState<HTMLElement | null>(null);
   const [shapeAnchor, setShapeAnchor] = useState<HTMLElement | null>(null);
+  const [goodNotesAnchor, setGoodNotesAnchor] = useState<HTMLElement | null>(null);
   const [tableAnchor, setTableAnchor] = useState<HTMLElement | null>(null);
   const [tableEditAnchor, setTableEditAnchor] = useState<HTMLElement | null>(null);
   const [tableRows, setTableRows] = useState(4);
@@ -473,11 +479,53 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
           </IconButton>
         </Tooltip>
         {onPasteFromClipboard && (
-          <Tooltip title="Aus GoodNotes einfügen (Lasso → Kopieren → hier)">
-            <IconButton size="small" onClick={onPasteFromClipboard} sx={iconBtnSx} aria-label="GoodNotes einfügen">
-              <PasteGoIcon sx={{ fontSize: 15 }} />
-            </IconButton>
-          </Tooltip>
+          <>
+            <Tooltip title="Aus GoodNotes einfügen (Lasso → Kopieren → hier)">
+              <IconButton
+                size="small"
+                onClick={(e) => setGoodNotesAnchor(e.currentTarget)}
+                sx={iconBtnSx}
+                aria-label="GoodNotes einfügen"
+              >
+                <PasteGoIcon sx={{ fontSize: 15 }} />
+              </IconButton>
+            </Tooltip>
+            <Menu
+              anchorEl={goodNotesAnchor}
+              open={Boolean(goodNotesAnchor)}
+              onClose={() => setGoodNotesAnchor(null)}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+            >
+              <MenuItem
+                onClick={() => {
+                  setGoodNotesAnchor(null);
+                  onPasteFromClipboard('image');
+                }}
+              >
+                <ListItemIcon>
+                  <ImageIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Als Bild"
+                  secondary="Foto auf der Folie, wie bisher"
+                />
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setGoodNotesAnchor(null);
+                  onPasteFromClipboard('ink');
+                }}
+              >
+                <ListItemIcon>
+                  <InkIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Als Stiftstriche"
+                  secondary="Striche und Linien, wie mit dem Stift"
+                />
+              </MenuItem>
+            </Menu>
+          </>
         )}
         {showLayoutImage && (
           <Tooltip title="Layout-Bild">

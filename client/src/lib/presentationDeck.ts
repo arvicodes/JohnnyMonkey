@@ -170,6 +170,36 @@ export interface PresentationSlide {
    * Fehlt/false → Folie sichtbar, aber kein Upload.
    */
   homeworkSubmissionRequired?: boolean;
+  /**
+   * Stiftstriche als Folieninhalt (z. B. GoodNotes-Lasso als Tinte).
+   * Liegt im Deck, nicht in den Live-Annotationen der Stunde.
+   */
+  inkStrokes?: PresentationStroke[];
+}
+
+export function sanitizeInkStrokes(raw?: PresentationStroke[]): PresentationStroke[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const out: PresentationStroke[] = [];
+  for (const s of raw) {
+    if (!s || !Array.isArray(s.points) || s.points.length < 2) continue;
+    const points = s.points
+      .map((p) => ({ x: Number(p?.x), y: Number(p?.y) }))
+      .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+    if (points.length < 2) continue;
+    const lineWidth = Number(s.lineWidth);
+    out.push({
+      id: typeof s.id === 'string' && s.id ? s.id : `ink-${out.length}`,
+      points,
+      color: typeof s.color === 'string' && s.color ? s.color : '#000000',
+      lineWidth: Number.isFinite(lineWidth) ? Math.max(0.5, Math.min(48, lineWidth)) : 3,
+      ...(s.mode === 'marker' || s.mode === 'pen' ? { mode: s.mode } : { mode: 'pen' as const }),
+      ...(typeof s.markerOpacity === 'number' && Number.isFinite(s.markerOpacity)
+        ? { markerOpacity: s.markerOpacity }
+        : {}),
+    });
+    if (out.length >= 800) break;
+  }
+  return out.length ? out : undefined;
 }
 
 export function clampLayoutZoneBox(box: LayoutZoneBox): LayoutZoneBox {
@@ -513,6 +543,7 @@ export function normalizeSlide(slide: PresentationSlide): PresentationSlide {
     ...(typeof slide.homeworkSubmissionRequired === 'boolean'
       ? { homeworkSubmissionRequired: slide.homeworkSubmissionRequired }
       : {}),
+    inkStrokes: sanitizeInkStrokes(slide.inkStrokes),
   };
 }
 

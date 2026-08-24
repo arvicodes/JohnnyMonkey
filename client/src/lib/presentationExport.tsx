@@ -220,10 +220,11 @@ async function captureSlideCanvas(
     });
 
     const normalizedCanvas = normalizeCaptureCanvas(canvas);
-
-    if (includeStrokes && strokes.length > 0) {
-      const ctx = normalizedCanvas.getContext('2d');
-      if (ctx) {
+    const ctx = normalizedCanvas.getContext('2d');
+    if (ctx) {
+      const slideInk = normalizedSlide.inkStrokes ?? [];
+      for (const stroke of slideInk) drawPresentationStroke(ctx, stroke);
+      if (includeStrokes && strokes.length > 0) {
         for (const stroke of strokes) drawPresentationStroke(ctx, stroke);
       }
     }

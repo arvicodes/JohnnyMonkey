@@ -36,6 +36,7 @@ import { getElementStackLayer, splitElementsByStackLayer } from '../../lib/prese
 import type { SnapGuide } from '../../lib/presentationElementSnap';
 import PresentationRichZone from './PresentationRichZone';
 import PresentationSlideElements from './PresentationSlideElements';
+import PresentationStrokesPreview from './PresentationStrokesPreview';
 
 function measureLayoutZoneBox(zoneEl: HTMLElement): LayoutZoneBox | null {
   const slideEl = zoneEl.closest('[data-pres-slide]') as HTMLElement | null;
@@ -863,6 +864,20 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
       {renderElementLayer(
         foregroundElements,
         editable || imageEditable ? 25 : animationEditMode ? 12 : 5,
+      )}
+
+      {!exportSnapshot && (slide.inkStrokes?.length ?? 0) > 0 && (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            zIndex: 36,
+            overflow: 'hidden',
+          }}
+        >
+          <PresentationStrokesPreview strokes={slide.inkStrokes || []} scale={scale} />
+        </Box>
       )}
 
       {editable && snapGuides.length > 0 && (
