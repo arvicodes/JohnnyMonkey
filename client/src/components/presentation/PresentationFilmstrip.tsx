@@ -15,7 +15,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Box, IconButton, Tooltip } from '@mui/material';
+import { Box, Button, IconButton, Tooltip } from '@mui/material';
 import { Add as AddIcon, DragIndicator as DragIcon } from '@mui/icons-material';
 import {
   PresentationSlide,
@@ -30,7 +30,10 @@ interface PresentationFilmstripProps {
   slides: PresentationSlide[];
   activeId: string | null;
   selectedIds: string[];
+  variantSlideIds?: string[];
+  activeVariantId?: string | null;
   onSelect: (id: string, event: React.MouseEvent) => void;
+  onOpenVariant?: (id: string) => void;
   onAdd: () => void;
   onReorder: (activeId: string, overId: string) => void;
 }
@@ -77,12 +80,25 @@ interface SortableThumbProps {
   index: number;
   active: boolean;
   selected: boolean;
+  hasVariant: boolean;
+  variantActive: boolean;
   onSelect: (event: React.MouseEvent) => void;
+  onOpenVariant?: () => void;
   setItemRef: (node: HTMLDivElement | null) => void;
 }
 
 const SortableFilmstripThumb = React.memo(
-  ({ slide, index, active, selected, onSelect, setItemRef }: SortableThumbProps) => {
+  ({
+    slide,
+    index,
+    active,
+    selected,
+    hasVariant,
+    variantActive,
+    onSelect,
+    onOpenVariant,
+    setItemRef,
+  }: SortableThumbProps) => {
     const {
       attributes,
       listeners,
@@ -108,117 +124,157 @@ const SortableFilmstripThumb = React.memo(
     return (
       <Box
         ref={mergedRef}
-        onClick={onSelect}
         data-pres-filmstrip-slide={slide.id}
         sx={{
           mb: 0.75,
           position: 'relative',
           width: THUMB_W,
           mx: 'auto',
-          borderRadius: 1,
-          overflow: 'hidden',
           flexShrink: 0,
-          cursor: isDragging ? 'grabbing' : 'grab',
           transform: CSS.Transform.toString(transform),
           transition,
           opacity: isDragging ? 0.82 : selected || active ? 1 : 0.92,
           zIndex: isDragging ? 3 : 1,
-          boxShadow: ring,
-          bgcolor: selected && !active ? 'rgba(46,125,50,0.06)' : undefined,
-          '&:hover': {
-            boxShadow: active || selected
-              ? ring
-              : `0 0 0 1px ${PRES_EDITOR_UI.accentHover}, 0 1px 3px rgba(0,0,0,0.08)`,
-          },
-          'body[data-pres-element-drag] &': {
-            outline: `2px dashed ${PRES_EDITOR_UI.accent}`,
-            outlineOffset: 2,
-          },
         }}
-        {...attributes}
-        {...listeners}
       >
         <Box
+          onClick={onSelect}
           sx={{
-            width: THUMB_W,
-            height: THUMB_H,
-            overflow: 'hidden',
-            bgcolor: '#fff',
             position: 'relative',
-            contentVisibility: 'auto',
-            containIntrinsicSize: `${THUMB_W}px ${THUMB_H}px`,
+            width: THUMB_W,
+            borderRadius: 1,
+            overflow: 'hidden',
+            cursor: isDragging ? 'grabbing' : 'grab',
+            boxShadow: ring,
+            bgcolor: selected && !active ? 'rgba(46,125,50,0.06)' : undefined,
+            '&:hover': {
+              boxShadow: active || selected
+                ? ring
+                : `0 0 0 1px ${PRES_EDITOR_UI.accentHover}, 0 1px 3px rgba(0,0,0,0.08)`,
+            },
+            'body[data-pres-element-drag] &': {
+              outline: `2px dashed ${PRES_EDITOR_UI.accent}`,
+              outlineOffset: 2,
+            },
           }}
+          {...attributes}
+          {...listeners}
         >
           <Box
             sx={{
+              width: THUMB_W,
+              height: THUMB_H,
+              overflow: 'hidden',
+              bgcolor: '#fff',
+              position: 'relative',
+              contentVisibility: 'auto',
+              containIntrinsicSize: `${THUMB_W}px ${THUMB_H}px`,
+            }}
+          >
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: SLIDE_REF_WIDTH,
+                height: SLIDE_REF_HEIGHT,
+                transform: `scale(${THUMB_SCALE})`,
+                transformOrigin: 'top left',
+                pointerEvents: 'none',
+              }}
+            >
+              <PresentationSlideView
+                slide={slide}
+                scale={1}
+                showLogo={false}
+                showShadow={false}
+                revealEnabled={false}
+                revealStep={999}
+                imageMaxEdge={SLIDE_IMAGE_THUMB_MAX}
+              />
+            </Box>
+          </Box>
+          <Box
+            sx={{
               position: 'absolute',
-              top: 0,
-              left: 0,
-              width: SLIDE_REF_WIDTH,
-              height: SLIDE_REF_HEIGHT,
-              transform: `scale(${THUMB_SCALE})`,
-              transformOrigin: 'top left',
+              top: 4,
+              left: 4,
+              minWidth: 18,
+              height: 18,
+              px: 0.5,
+              borderRadius: 0.75,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              bgcolor: active || selected ? PRES_EDITOR_UI.accent : 'rgba(0,0,0,0.55)',
+              color: '#fff',
+              fontSize: 10,
+              fontWeight: 800,
+              lineHeight: 1,
               pointerEvents: 'none',
             }}
           >
-            <PresentationSlideView
-              slide={slide}
-              scale={1}
-              showLogo={false}
-              showShadow={false}
-              revealEnabled={false}
-              revealStep={999}
-              imageMaxEdge={SLIDE_IMAGE_THUMB_MAX}
-            />
+            {index + 1}
+          </Box>
+          <Box
+            sx={{
+              position: 'absolute',
+              right: 3,
+              bottom: 3,
+              width: 18,
+              height: 18,
+              borderRadius: 0.5,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              bgcolor: 'rgba(255,255,255,0.88)',
+              color: PRES_EDITOR_UI.textMuted,
+              pointerEvents: 'none',
+              opacity: 0.85,
+            }}
+          >
+            <DragIcon sx={{ fontSize: 13 }} />
           </Box>
         </Box>
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 4,
-            left: 4,
-            minWidth: 18,
-            height: 18,
-            px: 0.5,
-            borderRadius: 0.75,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            bgcolor: active || selected ? PRES_EDITOR_UI.accent : 'rgba(0,0,0,0.55)',
-            color: '#fff',
-            fontSize: 10,
-            fontWeight: 800,
-            lineHeight: 1,
-            pointerEvents: 'none',
-          }}
-        >
-          {index + 1}
-        </Box>
-        <Box
-          sx={{
-            position: 'absolute',
-            right: 3,
-            bottom: 3,
-            width: 18,
-            height: 18,
-            borderRadius: 0.5,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            bgcolor: 'rgba(255,255,255,0.88)',
-            color: PRES_EDITOR_UI.textMuted,
-            pointerEvents: 'none',
-            opacity: 0.85,
-          }}
-        >
-          <DragIcon sx={{ fontSize: 13 }} />
-        </Box>
+        {hasVariant && (
+          <Button
+            size="small"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenVariant?.();
+            }}
+            sx={{
+              mt: 0.35,
+              minWidth: 0,
+              width: '100%',
+              height: 20,
+              px: 0.5,
+              fontSize: 9,
+              fontWeight: 800,
+              lineHeight: 1,
+              textTransform: 'none',
+              borderRadius: 0.75,
+              color: variantActive ? '#fff' : PRES_EDITOR_UI.accent,
+              bgcolor: variantActive ? PRES_EDITOR_UI.accent : '#fff',
+              border: `1px solid ${variantActive ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.panelBorder}`,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+              '&:hover': {
+                bgcolor: variantActive ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.accentSoft,
+              },
+            }}
+          >
+            Variante
+          </Button>
+        )}
       </Box>
     );
   },
   (prev, next) =>
     prev.active === next.active &&
     prev.selected === next.selected &&
+    prev.hasVariant === next.hasVariant &&
+    prev.variantActive === next.variantActive &&
     prev.index === next.index &&
     slideThumbSignature(prev.slide) === slideThumbSignature(next.slide)
 );
@@ -227,7 +283,10 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
   slides,
   activeId,
   selectedIds,
+  variantSlideIds,
+  activeVariantId,
   onSelect,
+  onOpenVariant,
   onAdd,
   onReorder,
 }) => {
@@ -235,6 +294,7 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const slideIds = useMemo(() => slides.map((slide) => slide.id), [slides]);
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const variantSet = useMemo(() => new Set(variantSlideIds ?? []), [variantSlideIds]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -287,7 +347,10 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
                 index={idx}
                 active={slide.id === activeId}
                 selected={selectedSet.has(slide.id)}
+                hasVariant={variantSet.has(slide.id)}
+                variantActive={activeVariantId === slide.id}
                 onSelect={(event) => onSelect(slide.id, event)}
+                onOpenVariant={onOpenVariant ? () => onOpenVariant(slide.id) : undefined}
                 setItemRef={(node) => {
                   itemRefs.current[slide.id] = node;
                 }}

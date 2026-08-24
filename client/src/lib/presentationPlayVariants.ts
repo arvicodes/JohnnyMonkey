@@ -1,7 +1,6 @@
 import {
   loadJsonFile,
   lessonFolderPath,
-  normalizeSlide,
   saveJsonFile,
   type PresentationDeck,
   type PresentationSlide,
@@ -80,7 +79,7 @@ export function upsertPlaySlideVariant(
       ...prev.bySlideId,
       [slide.id]: {
         updatedAt: now,
-        slide: normalizeSlide(cloneJson(slide)),
+        slide: cloneJson(slide),
         strokes: cloneJson(strokes),
       },
     },
@@ -99,7 +98,7 @@ export function applyPlayVariantsToDeck(
       const variant = by[slide.id];
       if (!variant?.slide) return slide;
       return {
-        ...normalizeSlide(cloneJson(variant.slide)),
+        ...cloneJson(variant.slide),
         id: slide.id,
         order: slide.order,
       };

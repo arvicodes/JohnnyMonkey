@@ -564,16 +564,10 @@ const PresentationPresentPage: React.FC = () => {
   }, [pasteInkFiles]);
 
   const persistDeckSoon = useCallback(
-    (next: PresentationDeck, failMessage: string) => {
-      if (isNamedViewRef.current || isOriginalViewRef.current || !lessonPath) return;
-      if (deckSaveTimer.current) clearTimeout(deckSaveTimer.current);
-      deckSaveTimer.current = setTimeout(() => {
-        void saveJsonFile(lessonPath, DECK_FILENAME, next).catch(() => {
-          setSnackbar(failMessage);
-        });
-      }, 400);
+    (next: PresentationDeck, failMessage: string, extraSlideIds: string[] = []) => {
+      persistPlayVariantSoon(next, failMessage, extraSlideIds);
     },
-    [lessonPath],
+    [persistPlayVariantSoon],
   );
 
   const deletePlayPhoto = useCallback(
@@ -621,7 +615,7 @@ const PresentationPresentPage: React.FC = () => {
             return s;
           }),
         };
-        persistDeckSoon(next, 'Foto verschoben — bitte noch Sichern tippen.');
+        persistDeckSoon(next, 'Foto verschoben — bitte noch Sichern tippen.', [sourceId, targetSlideId]);
         return next;
       });
       const idx = slides.findIndex((s) => s.id === targetSlideId);
@@ -710,9 +704,7 @@ const PresentationPresentPage: React.FC = () => {
                   },
             ),
           };
-          void saveJsonFile(lessonPath, DECK_FILENAME, next).catch(() => {
-            setSnackbar('Foto ist auf der Folie — bitte noch Sichern tippen.');
-          });
+          persistDeckSoon(next, 'Foto ist auf der Folie — bitte noch Sichern tippen.');
           return next;
         });
         setSelectedElementId(el.id);
@@ -723,7 +715,7 @@ const PresentationPresentPage: React.FC = () => {
         setPhotoBusy(false);
       }
     },
-    [isNamedView, isOriginalView, lessonPath],
+    [isNamedView, isOriginalView, lessonPath, persistDeckSoon],
   );
 
   const selectedSlideElement =
@@ -826,6 +818,17 @@ const PresentationPresentPage: React.FC = () => {
     return payload;
   }, [deck, isNamedView, isOriginalView, lessonPath, namedSlug]);
 
+  const flushPlayVariants = useCallback(async () => {
+    if (variantSaveTimer.current) {
+      clearTimeout(variantSaveTimer.current);
+      variantSaveTimer.current = null;
+    }
+    if (isNamedView || isOriginalView || !lessonPath) return;
+    const payload = playVariantsRef.current;
+    if (!payload) return;
+    await savePresentationPlayVariants(lessonPath, payload);
+  }, [isNamedView, isOriginalView, lessonPath]);
+
   const handleSaveBothVersions = useCallback(async () => {
     if (!deck || saving) return;
     const currentAnn = annotationsRef.current;
@@ -896,10 +899,13 @@ const PresentationPresentPage: React.FC = () => {
     try {
       const ann = await flushAnnotations();
       if (!ann) throw new Error('Annotationen fehlen');
+      await flushPlayVariants();
       setSnackbar('Gesichert');
       setSaving(false);
       setSaveProgress('');
-      void savePresentationBothVersions(lessonPath, deck, ann).catch((e) => {
+      void exportPresentationPdfVersions(lessonPath, deck, ann, undefined, {
+        editedOnly: true,
+      }).catch((e) => {
         console.warn('Live PDF export after save failed', e);
       });
     } catch (e) {
@@ -910,6 +916,7 @@ const PresentationPresentPage: React.FC = () => {
   }, [
     deck,
     flushAnnotations,
+    flushPlayVariants,
     isNamedView,
     isOriginalView,
     lessonPath,

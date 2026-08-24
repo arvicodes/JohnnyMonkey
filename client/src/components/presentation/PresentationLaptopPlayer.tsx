@@ -16,6 +16,10 @@ import {
   loadOrMigrateNamedVersionSnapshot,
   sortSlides,
 } from '../../lib/presentationDeck';
+import {
+  applyPlayVariantsToDeck,
+  loadPresentationPlayVariants,
+} from '../../lib/presentationPlayVariants';
 import { getSlideMaxRevealSteps } from '../../lib/presentationReveal';
 import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../../lib/presentationTransitions';
 import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
@@ -173,14 +177,24 @@ export default function PresentationLaptopPlayer({
     setLoading(true);
     setError(null);
 
-    const apply = (d: PresentationDeck | null, a: PresentationAnnotations | null, err?: string) => {
+    const apply = (
+      d: PresentationDeck | null,
+      a: PresentationAnnotations | null,
+      err?: string,
+      variants?: Awaited<ReturnType<typeof loadPresentationPlayVariants>> | null,
+    ) => {
       if (cancelled) return;
       if (!d) {
         setError(err || 'Präsentation konnte nicht geladen werden.');
         setDeck(null);
         setAnnotations(EMPTY_ANNOTATIONS);
       } else {
-        setDeck({ ...d, slides: ensureEntryTicketButtonsOnTitleSlides(d.slides) });
+        const withEntry = { ...d, slides: ensureEntryTicketButtonsOnTitleSlides(d.slides) };
+        setDeck(
+          variant === 'original' || namedSlug
+            ? withEntry
+            : applyPlayVariantsToDeck(withEntry, variants),
+        );
         setAnnotations(a ?? { ...EMPTY_ANNOTATIONS, lessonPath });
         setSlideIndex(0);
         setRevealStep(0);
@@ -212,17 +226,23 @@ export default function PresentationLaptopPlayer({
         ? Promise.all([
             loadPresentationDeckForOriginalView(lessonPath),
             Promise.resolve(null as PresentationAnnotations | null),
+            Promise.resolve(null),
           ])
-        : Promise.all([loadPresentationDeck(lessonPath), loadPresentationAnnotations(lessonPath)]);
+        : Promise.all([
+            loadPresentationDeck(lessonPath),
+            loadPresentationAnnotations(lessonPath),
+            loadPresentationPlayVariants(lessonPath),
+          ]);
 
     load
-      .then(([d, a]) => {
+      .then(([d, a, variants]) => {
         apply(
           d,
           variant === 'original' ? { ...EMPTY_ANNOTATIONS, lessonPath } : a,
           variant === 'original'
             ? 'Original-Version noch nicht gespeichert.'
-            : 'Präsentation konnte nicht geladen werden.'
+            : 'Präsentation konnte nicht geladen werden.',
+          variants,
         );
       })
       .catch((e) => {
