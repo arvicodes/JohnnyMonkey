@@ -10327,13 +10327,13 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     return htmlParts.join('').replace(/\r\n?|\n/g, '<br>');
   }
 
-  /** Kapitel-Container (z. B. „Kap 6 - Ganze Zahlen“) – Überschrift, keine Stunden-Ansicht. */
+  /** Kapitel-Container (z. B. „Kap 6 - Ganze Zahlen“) — Präsentation für alle Stunden darin. */
   const isChapterHeadingFolderName = (name: string) =>
     /^(Kap\.?\s*\d+|Kapitel\s*\d+)/i.test((name || '').trim());
 
   /**
-   * Oberste Ebene / Themenblock: „1 Rechnerarchitektur“, „01 Basiswissen“ — keine Stundenseite.
-   * „2.01 Gatter“ / „01.02 Orga“ bleibt Stunde.
+   * Themenblock: „1 Rechnerarchitektur“, „01 Basiswissen“ — Präsentation für alle Stunden darin.
+   * „2.01 Gatter“ / „01.02 Orga“ bleibt einzelne Stunde (nur wenn kein solcher Oberordner).
    */
   const isTopicSectionFolderName = (name: string) => {
     const t = (name || '').trim();
@@ -10341,16 +10341,15 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     return /^\d+\s+/.test(t);
   };
 
-  /** Reihen-Überschrift wie „11-04 KI“ / „11 04 KI“ — Container, keine Stunde. */
+  /** Reihen-Überschrift wie „11-04 KI“ / „11 04 KI“ — Container, klappt zu den Themenblöcken auf. */
   const isSeriesHeadingFolderName = (name: string) =>
     /^\d{1,2}[-–\s]\d{2}(\b|\s|$)/.test((name || '').trim());
 
-  const directoryOpensStundePage = (name: string, level: number) => {
-    if (isChapterHeadingFolderName(name)) return false;
-    if (isSeriesHeadingFolderName(name)) return false;
-    if (isTopicSectionFolderName(name)) return false;
+  const directoryOpensStundePage = (name: string, _level: number) => {
     if (isLessonRohdatArchiveFolderName(name)) return false;
     if (isWochenaufgabenFolderName(name)) return false;
+    if (isSeriesHeadingFolderName(name)) return false;
+    if (isChapterHeadingFolderName(name) || isTopicSectionFolderName(name)) return true;
     return true;
   };
 

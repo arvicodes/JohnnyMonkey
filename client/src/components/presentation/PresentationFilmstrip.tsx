@@ -65,6 +65,7 @@ function slideThumbSignature(slide: PresentationSlide): string {
     slide.id,
     slide.layout || '',
     slide.imagePath || '',
+    slide.sourceLessonName || '',
     slide.accentColor || '',
     (slide.title || '').slice(0, 48),
     (slide.titleHtml || '').length,
@@ -341,22 +342,53 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
       >
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={slideIds} strategy={verticalListSortingStrategy}>
-            {slides.map((slide, idx) => (
-              <SortableFilmstripThumb
-                key={slide.id}
-                slide={slide}
-                index={idx}
-                active={slide.id === activeId}
-                selected={selectedSet.has(slide.id)}
-                hasVariant={variantSet.has(slide.id)}
-                variantActive={activeVariantId === slide.id}
-                onSelect={(event) => onSelect(slide.id, event)}
-                onOpenVariant={onOpenVariant ? () => onOpenVariant(slide.id) : undefined}
-                setItemRef={(node) => {
-                  itemRefs.current[slide.id] = node;
-                }}
-              />
-            ))}
+            {slides.map((slide, idx) => {
+              const hourLabel = (slide.sourceLessonName || '').trim();
+              const prevHour = (slides[idx - 1]?.sourceLessonName || '').trim();
+              const showHour = Boolean(hourLabel) && hourLabel !== prevHour;
+              return (
+                <Box key={slide.id}>
+                  {showHour ? (
+                    <Box
+                      sx={{
+                        mx: 0.25,
+                        mb: 0.45,
+                        mt: idx === 0 ? 0 : 0.35,
+                        px: 0.4,
+                        py: 0.15,
+                        borderRadius: 0.5,
+                        bgcolor: 'rgba(21, 101, 192, 0.08)',
+                        color: '#1565c0',
+                        fontSize: 8,
+                        fontWeight: 800,
+                        lineHeight: 1.25,
+                        letterSpacing: 0.1,
+                        textAlign: 'center',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                      title={hourLabel}
+                    >
+                      {hourLabel}
+                    </Box>
+                  ) : null}
+                  <SortableFilmstripThumb
+                    slide={slide}
+                    index={idx}
+                    active={slide.id === activeId}
+                    selected={selectedSet.has(slide.id)}
+                    hasVariant={variantSet.has(slide.id)}
+                    variantActive={activeVariantId === slide.id}
+                    onSelect={(event) => onSelect(slide.id, event)}
+                    onOpenVariant={onOpenVariant ? () => onOpenVariant(slide.id) : undefined}
+                    setItemRef={(node) => {
+                      itemRefs.current[slide.id] = node;
+                    }}
+                  />
+                </Box>
+              );
+            })}
           </SortableContext>
         </DndContext>
       </Box>

@@ -164,11 +164,9 @@ function isSeriesHeadingFolderNameStudent(name: string): boolean {
 
 function directoryIsStundeFolderForStudentTree(name: string, _level: number): boolean {
   if (isWochenaufgabenFolderName(name)) return false;
-  if (isChapterHeadingFolderNameStudent(name)) return false;
   if (isSeriesHeadingFolderNameStudent(name)) return false;
-  // Themenblock „01 Basiswissen“ auf jeder Ebene — keine Stunde (wie Lehrer-Dashboard)
-  if (isTopicSectionFolderNameStudent(name)) return false;
   if (isLessonRohdatArchiveFolderNameStudent(name)) return false;
+  if (isChapterHeadingFolderNameStudent(name) || isTopicSectionFolderNameStudent(name)) return true;
   return true;
 }
 

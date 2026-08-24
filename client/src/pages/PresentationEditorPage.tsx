@@ -425,12 +425,13 @@ const PresentationEditorPage: React.FC = () => {
       return;
     }
     let cancelled = false;
-    Promise.all([
-      loadPresentationDeck(lessonPath),
-      loadPresentationAnnotations(lessonPath).catch(() => createEmptyAnnotations(lessonPath)),
-      loadPresentationPlayVariants(lessonPath),
-    ])
-      .then(([d, ann, variants]) => {
+    loadPresentationDeck(lessonPath)
+      .then(async (d) => {
+        if (cancelled) return;
+        const [ann, variants] = await Promise.all([
+          loadPresentationAnnotations(lessonPath).catch(() => createEmptyAnnotations(lessonPath)),
+          loadPresentationPlayVariants(lessonPath),
+        ]);
         if (cancelled) return;
         const normalized = normalizeDeck(d);
         const withEntry = {

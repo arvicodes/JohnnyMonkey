@@ -320,18 +320,17 @@ const PresentationPresentPage: React.FC = () => {
     const loadDeck = isOriginalView
       ? loadPresentationDeckForOriginalView(lessonPath)
       : loadPresentationDeck(lessonPath);
-    const loadAnn = isOriginalView
-      ? Promise.resolve(null as PresentationAnnotations | null)
-      : loadPresentationAnnotations(lessonPath);
-    const loadVariants = isOriginalView
-      ? Promise.resolve(createEmptyPlayVariants(lessonPath))
-      : loadPresentationPlayVariants(lessonPath);
 
-    Promise.all([loadDeck, loadAnn, loadVariants])
-      .then(([d, a, variants]) => {
+    loadDeck
+      .then(async (d) => {
         if (cancelled) return;
-        // Kein Auto-Freeze beim Öffnen: Live-Deck darf Original nicht überschreiben,
-        // und Original-Sichern bleibt die einzige Schreibstelle fürs Original.
+        const a = isOriginalView
+          ? null
+          : (await loadPresentationAnnotations(lessonPath)) ?? createEmptyAnnotations(lessonPath);
+        const variants = isOriginalView
+          ? createEmptyPlayVariants(lessonPath)
+          : await loadPresentationPlayVariants(lessonPath);
+        if (cancelled) return;
         finish(
           d,
           isOriginalView

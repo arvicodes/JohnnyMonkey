@@ -186,6 +186,9 @@ export interface PresentationSlide {
    * Liegt im Deck, nicht in den Live-Annotationen der Stunde.
    */
   inkStrokes?: PresentationStroke[];
+  /** Herkunftsstunde, wenn die Folie in einem Kapitel-Foliensatz liegt. */
+  sourceLessonName?: string;
+  sourceLessonPath?: string;
 }
 
 export function sanitizeInkStrokes(raw?: PresentationStroke[]): PresentationStroke[] | undefined {
@@ -315,6 +318,8 @@ export interface PresentationDeck {
    * gesetzt beim ersten Live-Speichern in der Stunde → Original ist eingefroren.
    */
   johnnyOriginalFrozenAt?: string;
+  /** Stunden, aus denen dieser Kapitel-Foliensatz zusammengeführt wurde. */
+  combinedFrom?: { lessonPath: string; lessonName: string; updatedAt?: string }[];
 }
 
 export interface PresentationAnnotations {
@@ -759,6 +764,11 @@ export async function loadPresentationDeck(lessonPath: string): Promise<Presenta
       'Präsentationsdatei ist leer oder beschädigt. Bestehende Datei wurde nicht überschrieben.'
     );
   }
+  // Oberordner ohne eigenes Deck: Stundenfolien + Varianten zusammenführen.
+  const { tryCombineChildHourPresentations } = await import('./presentationChapterCombine');
+  const combined = await tryCombineChildHourPresentations(lessonPath);
+  if (combined?.deck?.slides?.length) return combined.deck;
+
   // Truly missing (404): create starter deck once for new lessons only.
   const deck = await buildStarterDeck(lessonPath);
   await saveJsonFile(lessonPath, DECK_FILENAME, deck);

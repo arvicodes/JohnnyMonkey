@@ -223,16 +223,12 @@ export default function PresentationLaptopPlayer({
 
     const load =
       variant === 'original'
-        ? Promise.all([
-            loadPresentationDeckForOriginalView(lessonPath),
-            Promise.resolve(null as PresentationAnnotations | null),
-            Promise.resolve(null),
-          ])
-        : Promise.all([
-            loadPresentationDeck(lessonPath),
-            loadPresentationAnnotations(lessonPath),
-            loadPresentationPlayVariants(lessonPath),
-          ]);
+        ? loadPresentationDeckForOriginalView(lessonPath).then((d) => [d, null, null] as const)
+        : loadPresentationDeck(lessonPath).then(async (d) => {
+            const a = await loadPresentationAnnotations(lessonPath);
+            const variants = await loadPresentationPlayVariants(lessonPath);
+            return [d, a, variants] as const;
+          });
 
     load
       .then(([d, a, variants]) => {
