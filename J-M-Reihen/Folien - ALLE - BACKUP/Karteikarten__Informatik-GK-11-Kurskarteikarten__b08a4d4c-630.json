@@ -1,0 +1,32 @@
+{
+  "backupType": "flashcard-deck",
+  "backedUpAt": "2026-07-31T05:43:49.032Z",
+  "id": "b08a4d4c-6307-4881-bd10-bc8933bde6e1",
+  "title": "Informatik GK 11 - Kurskarteikarten",
+  "description": "",
+  "subjectId": null,
+  "subjectName": null,
+  "teacherId": "01ed6e10-397e-446c-9254-2ad7fd4ec777",
+  "teacherName": "Frau Christ",
+  "isPublic": false,
+  "createdAt": "2026-04-10T06:19:10.185Z",
+  "updatedAt": "2026-04-10T06:19:10.185Z",
+  "cards": [
+    {
+      "id": "c2f7231f-b3c9-4a8d-a505-e6d64385642d",
+      "front": "<blockquote style=\"margin: 0 0 0 40px; border: none; padding: 0px;\">Die drei Grundgatter der Informatik sind ...&nbsp;</blockquote>",
+      "back": "AND, OR und NOT",
+      "hint": "von Emilian Florian Bischoff",
+      "difficulty": 1,
+      "order": 1
+    },
+    {
+      "id": "e0e7f898-e0f0-4778-bdb3-d19924172ed3",
+      "front": "<blockquote style=\"margin: 0 0 0 40px; border: none; padding: 0px;\">Das Grundbauteil jedes Computer ist ...</blockquote>",
+      "back": "... der Transistor",
+      "hint": "von Emilian Florian Bischoff",
+      "difficulty": 1,
+      "order": 2
+    }
+  ]
+}

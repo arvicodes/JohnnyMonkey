@@ -1,0 +1,48 @@
+{
+  "backupType": "flashcard-deck",
+  "backedUpAt": "2026-07-31T05:43:49.030Z",
+  "id": "2f49f975-39e4-4dfe-8737-e8b5bff5d7c0",
+  "title": "7a",
+  "description": "",
+  "subjectId": null,
+  "subjectName": null,
+  "teacherId": "01ed6e10-397e-446c-9254-2ad7fd4ec777",
+  "teacherName": "Frau Christ",
+  "isPublic": false,
+  "createdAt": "2026-04-06T04:43:53.559Z",
+  "updatedAt": "2026-04-06T04:43:53.559Z",
+  "cards": [
+    {
+      "id": "522cbd95-3e3e-46e5-9a37-a29285c7056b",
+      "front": "Die Addition von zwei positiven Zahlen ergibt _________________ .&nbsp;",
+      "back": "eine positive Zahl",
+      "hint": null,
+      "difficulty": 1,
+      "order": 1
+    },
+    {
+      "id": "8569a287-b79e-4a09-8bc5-b6d7dfe644a6",
+      "front": "Zwei gleich große Zahlen (zwei gleich große Armeen) _____________ und ergeben __________.",
+      "back": "neutralisieren sich gegenseitig<br><br><br>0",
+      "hint": null,
+      "difficulty": 1,
+      "order": 2
+    },
+    {
+      "id": "0ac10776-e620-44cc-acf6-0535ec675e13",
+      "front": "<p>positiv * positiv = _________</p>",
+      "back": "<p>positiv</p>",
+      "hint": null,
+      "difficulty": 1,
+      "order": 3
+    },
+    {
+      "id": "581a532c-4319-4f5d-889e-bb9feea38aa9",
+      "front": "+ mal + ergibt _____ .&nbsp;",
+      "back": "+",
+      "hint": null,
+      "difficulty": 1,
+      "order": 4
+    }
+  ]
+}
