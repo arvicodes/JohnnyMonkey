@@ -9,16 +9,6 @@ import {
 } from './presentationDeck';
 
 const MAX_TRACE = 1800;
-const N8: Array<[number, number]> = [
-  [1, 0],
-  [1, 1],
-  [0, 1],
-  [-1, 1],
-  [-1, 0],
-  [-1, -1],
-  [0, -1],
-  [1, -1],
-];
 
 function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -186,6 +176,99 @@ function at(mask: Uint8Array, w: number, h: number, x: number, y: number): boole
   return x >= 0 && y >= 0 && x < w && y < h && mask[y * w + x] === 1;
 }
 
+function shoelace(points: Array<[number, number]>): number {
+  let a = 0;
+  const n = points.length;
+  if (n < 3) return 0;
+  for (let i = 0; i < n; i++) {
+    const p = points[i];
+    const q = points[(i + 1) % n];
+    a += p[0] * q[1] - q[0] * p[1];
+  }
+  return a / 2;
+}
+
+function centroid(points: Array<[number, number]>): [number, number] {
+  let x = 0;
+  let y = 0;
+  const n = Math.max(1, points.length);
+  for (const p of points) {
+    x += p[0];
+    y += p[1];
+  }
+  return [x / n, y / n];
+}
+
+function pointInPolyPts(pt: [number, number], poly: Array<[number, number]>): boolean {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i];
+    const b = poly[j];
+    const intersect =
+      a[1] > pt[1] !== b[1] > pt[1] &&
+      pt[0] < ((b[0] - a[0]) * (pt[1] - a[1])) / (b[1] - a[1] + 1e-9) + a[0];
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * Kanten der Pixelquadrate verketten — liefert Außenkontur und Löcher
+ * als geschlossene Schleifen, ohne Moore-Abbruch-Artefakte.
+ */
+function tracePixelLoops(mask: Uint8Array, w: number, h: number): Array<Array<[number, number]>> {
+  const from = new Map<string, Array<[number, number]>>();
+  const add = (x1: number, y1: number, x2: number, y2: number) => {
+    const k = `${x1},${y1}`;
+    const list = from.get(k);
+    if (list) list.push([x2, y2]);
+    else from.set(k, [[x2, y2]]);
+  };
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (!mask[y * w + x]) continue;
+      if (!at(mask, w, h, x, y - 1)) add(x, y, x + 1, y);
+      if (!at(mask, w, h, x + 1, y)) add(x + 1, y, x + 1, y + 1);
+      if (!at(mask, w, h, x, y + 1)) add(x + 1, y + 1, x, y + 1);
+      if (!at(mask, w, h, x - 1, y)) add(x, y + 1, x, y);
+    }
+  }
+  const used = new Set<string>();
+  const loops: Array<Array<[number, number]>> = [];
+  const edgeId = (a: [number, number], b: [number, number]) => `${a[0]},${a[1]}>${b[0]},${b[1]}`;
+  for (const [startKey, starts] of from) {
+    for (const firstTo of starts) {
+      const [sx, sy] = startKey.split(',').map(Number) as [number, number];
+      if (used.has(edgeId([sx, sy], firstTo))) continue;
+      const loop: Array<[number, number]> = [[sx, sy]];
+      let cx = sx;
+      let cy = sy;
+      let nx = firstTo[0];
+      let ny = firstTo[1];
+      for (let step = 0; step < w * h * 4; step++) {
+        used.add(edgeId([cx, cy], [nx, ny]));
+        loop.push([nx, ny]);
+        if (nx === sx && ny === sy && loop.length > 2) break;
+        const nexts = from.get(`${nx},${ny}`) || [];
+        let found: [number, number] | null = null;
+        for (const cand of nexts) {
+          if (!used.has(edgeId([nx, ny], cand))) {
+            found = cand;
+            break;
+          }
+        }
+        if (!found) break;
+        cx = nx;
+        cy = ny;
+        nx = found[0];
+        ny = found[1];
+      }
+      if (loop.length >= 4) loops.push(dropDuplicateClose(loop));
+    }
+  }
+  return loops;
+}
+
 const N4: Array<[number, number]> = [
   [1, 0],
   [-1, 0],
@@ -213,34 +296,25 @@ function dilate4(mask: Uint8Array, w: number, h: number): Uint8Array {
   return out;
 }
 
-/** Moore-Nachbar: Außenkontur, startet am linken Pixel der obersten Reihe. */
-function traceContour(mask: Uint8Array, w: number, h: number, sx: number, sy: number): Array<[number, number]> {
-  const path: Array<[number, number]> = [];
-  let x = sx;
-  let y = sy;
-  let dir = 4;
-  const startKey = `${sx},${sy}`;
-  for (let step = 0; step < w * h * 2; step++) {
-    path.push([x + 0.5, y + 0.5]);
-    let found = false;
-    for (let k = 0; k < 8; k++) {
-      const nd = (dir + 6 + k) % 8;
-      const nx = x + N8[nd][0];
-      const ny = y + N8[nd][1];
-      if (!at(mask, w, h, nx, ny)) continue;
-      x = nx;
-      y = ny;
-      dir = nd;
-      found = true;
-      break;
-    }
-    if (!found) break;
-    if (path.length >= 4 && `${x},${y}` === startKey) {
-      path.push([sx + 0.5, sy + 0.5]);
-      break;
-    }
-  }
-  return path;
+function splitOuterAndHoles(loops: Array<Array<[number, number]>>): {
+  outer: Array<[number, number]>;
+  holes: Array<Array<[number, number]>>;
+} | null {
+  if (!loops.length) return null;
+  const ranked = loops
+    .map((loop) => ({ loop, area: Math.abs(shoelace(loop)) }))
+    .filter((x) => x.area >= 4)
+    .sort((a, b) => b.area - a.area);
+  if (!ranked.length) return null;
+  const outer = ranked[0].loop;
+  const holes = ranked.slice(1)
+    .filter((x) => {
+      if (x.area < 8) return false;
+      const c = centroid(x.loop);
+      return pointInPolyPts(c, outer);
+    })
+    .map((x) => x.loop);
+  return { outer, holes };
 }
 
 type Component = {
@@ -286,7 +360,7 @@ function labelComponents(mask: Uint8Array, w: number, h: number): { labels: Int3
         if (cy < minY) minY = cy;
         if (cx > maxX) maxX = cx;
         if (cy > maxY) maxY = cy;
-        for (const [dx, dy] of N8) {
+        for (const [dx, dy] of N4) {
           const nx = cx + dx;
           const ny = cy + dy;
           if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
@@ -335,52 +409,6 @@ function componentMask(labels: Int32Array, w: number, h: number, id: number, pad
   return { mask, bw, bh, ox, oy };
 }
 
-function findHoles(mask: Uint8Array, bw: number, bh: number): Array<Array<[number, number]>> {
-  const outside = new Uint8Array(bw * bh);
-  const q: number[] = [];
-  const push = (x: number, y: number) => {
-    if (x < 0 || y < 0 || x >= bw || y >= bh) return;
-    const i = y * bw + x;
-    if (mask[i] || outside[i]) return;
-    outside[i] = 1;
-    q.push(i);
-  };
-  for (let x = 0; x < bw; x++) {
-    push(x, 0);
-    push(x, bh - 1);
-  }
-  for (let y = 0; y < bh; y++) {
-    push(0, y);
-    push(bw - 1, y);
-  }
-  while (q.length) {
-    const cur = q.pop()!;
-    const y = (cur / bw) | 0;
-    const x = cur - y * bw;
-    push(x + 1, y);
-    push(x - 1, y);
-    push(x, y + 1);
-    push(x, y - 1);
-  }
-  const holeMask = new Uint8Array(bw * bh);
-  let holePixels = 0;
-  for (let i = 0; i < holeMask.length; i++) {
-    if (!mask[i] && !outside[i]) {
-      holeMask[i] = 1;
-      holePixels += 1;
-    }
-  }
-  if (holePixels < 8) return [];
-  const { comps } = labelComponents(holeMask, bw, bh);
-  const holes: Array<Array<[number, number]>> = [];
-  for (const c of comps) {
-    if (c.area < 10) continue;
-    const contour = traceContour(holeMask, bw, bh, c.startX, c.startY);
-    if (contour.length >= 4) holes.push(contour);
-  }
-  return holes;
-}
-
 function sampleComponentColor(
   data: Uint8ClampedArray,
   labels: Int32Array,
@@ -415,8 +443,8 @@ function sampleComponentColor(
 
 function polishContour(raw: Array<[number, number]>): Array<[number, number]> {
   if (raw.length < 4) return raw;
-  const smoothed = chaikinClosed(raw, 2);
-  return simplifyClosed(smoothed, 0.55);
+  const smoothed = chaikinClosed(raw, 3);
+  return simplifyClosed(smoothed, 0.8);
 }
 
 export async function imageFileToPresentationStrokes(file: File): Promise<PresentationStroke[]> {
@@ -470,12 +498,11 @@ export async function imageFileToPresentationStrokes(file: File): Promise<Presen
     const c = comps[i];
     if (c.area < 5) continue;
     const local = componentMask(labels, w, h, c.id, 2);
-    const startX = c.startX - local.ox;
-    const startY = c.startY - local.oy;
-    const outer = polishContour(traceContour(local.mask, local.bw, local.bh, startX, startY));
+    const parts = splitOuterAndHoles(tracePixelLoops(local.mask, local.bw, local.bh));
+    if (!parts) continue;
+    const outer = polishContour(parts.outer);
     if (outer.length < 4) continue;
-    const holesRaw = findHoles(local.mask, local.bw, local.bh);
-    const holes = holesRaw
+    const holes = parts.holes
       .map((hole) => polishContour(hole))
       .filter((hole) => hole.length >= 4)
       .map((hole) => hole.map(([x, y]) => toSlide([x + local.ox, y + local.oy])));
