@@ -1,10 +1,10 @@
 {
   "files": {
     "main.css": "/static/css/main.57b29eff.css",
-    "main.js": "/static/js/main.84762a03.js",
+    "main.js": "/static/js/main.3779385b.js",
     "static/js/602.474556c8.chunk.js": "/static/js/602.474556c8.chunk.js",
     "static/js/82.277d4e8e.chunk.js": "/static/js/82.277d4e8e.chunk.js",
-    "static/js/239.bca74a86.chunk.js": "/static/js/239.bca74a86.chunk.js",
+    "static/js/239.7c95d5cd.chunk.js": "/static/js/239.7c95d5cd.chunk.js",
     "static/js/206.276884ca.chunk.js": "/static/js/206.276884ca.chunk.js",
     "static/media/pdf.worker.min.mjs": "/static/media/pdf.worker.min.12bbcd6cc8867de595a1.mjs",
     "static/media/johnny-logo.png": "/static/media/johnny-logo.ab16ba2faa40454072d7.png",
@@ -12,6 +12,6 @@
   },
   "entrypoints": [
     "static/css/main.57b29eff.css",
-    "static/js/main.84762a03.js"
+    "static/js/main.3779385b.js"
   ]
 }

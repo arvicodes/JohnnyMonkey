@@ -323,6 +323,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   };
 
   const handleNudge = (dir: 1 | -1) => {
+    if (!activeEditor) return;
     setFormatBarInteracting(true);
     stashEditorSelection(activeEditor);
     const px = nudgeFontSize(activeEditor, dir);
@@ -1169,6 +1170,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
               textTransform: 'none' as const,
             };
             const run = (fn: () => void) => {
+              if (!activeEditor) return;
               stashEditorSelection(activeEditor);
               setFormatBarInteracting(true);
               fn();

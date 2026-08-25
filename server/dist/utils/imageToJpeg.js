@@ -30,6 +30,8 @@ function mimeForExt(ext) {
             return 'image/bmp';
         case '.webp':
             return 'image/webp';
+        case '.avif':
+            return 'image/avif';
         case '.svg':
             return 'image/svg+xml';
         case '.jpg':

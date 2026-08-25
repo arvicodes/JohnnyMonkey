@@ -39,6 +39,12 @@ export declare class StorageManager {
     private static remapLegacyAbsolutePath;
     static resolveFilePath(filePath: string): string | null;
     /**
+     * Wie resolveFilePath, plus: gleicher Dateiname in Elternordnern / Grafiken
+     * (nach dem Zusammenlegen von Stundenordnern bleiben oft alte Pfade in Folien).
+     */
+    static resolveImageFilePath(filePath: string): string | null;
+    private static resolveSameImageNameNearby;
+    /**
      * Read file contents
      */
     static readFile(filePath: string): Promise<Buffer | null>;

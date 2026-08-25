@@ -889,8 +889,13 @@ class FileSystemPathController {
             if (!filePath || typeof filePath !== 'string') {
                 return res.status(400).json({ error: 'filePath is required' });
             }
-            filePath = decodeURIComponent(filePath);
-            const fullPath = storageManager_1.StorageManager.resolveFilePath(filePath);
+            try {
+                filePath = decodeURIComponent(filePath);
+            }
+            catch {
+                /* bereits decoded */
+            }
+            const fullPath = storageManager_1.StorageManager.resolveImageFilePath(filePath);
             if (!fullPath) {
                 return res.status(404).json({ error: 'File not found', path: filePath });
             }
