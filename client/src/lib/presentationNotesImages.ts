@@ -173,6 +173,17 @@ export function releaseNotesImagesToFlow(root: ParentNode): void {
   });
 }
 
+export function applyNotesImageFlowToHtml(html: string): string {
+  if (!html || typeof document === 'undefined') return html;
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    releaseNotesImagesToFlow(doc.body);
+    return doc.body.innerHTML;
+  } catch {
+    return html;
+  }
+}
+
 export function clearNotesImageSelection(editor: HTMLElement): void {
   editor.querySelectorAll(`.${PRES_NOTES_IMG_WRAP_CLASS}`).forEach((node) => {
     const el = node as HTMLElement;

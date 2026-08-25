@@ -46,7 +46,7 @@ import {
 } from '../lib/presentationDeck';
 import { hydrateNotesHtmlFontSizes } from '../lib/presentationFontSize';
 import { presentationNestedListSx, presentationNotesTableSx } from '../lib/presentationListStyles';
-import { presentationNotesImageViewSx } from '../lib/presentationNotesImages';
+import { presentationNotesImageViewSx, applyNotesImageFlowToHtml } from '../lib/presentationNotesImages';
 import { findHomeworkSlides } from '../lib/presentationSlideTemplates';
 import { lessonPathFromHomeworkAssignmentPath } from '../lib/previousLessonFolder';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
@@ -841,7 +841,7 @@ const SubmissionsGridPage: React.FC = () => {
                       '& b, & strong': { fontWeight: 700 },
                     }}
                     dangerouslySetInnerHTML={{
-                      __html: hydrateNotesHtmlFontSizes(haNotesHtml),
+                      __html: applyNotesImageFlowToHtml(hydrateNotesHtmlFontSizes(haNotesHtml)),
                     }}
                   />
                 ) : (

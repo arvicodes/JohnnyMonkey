@@ -79,6 +79,46 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-login-code']
 }));
 
+/** Öffentliche HTTPS-URL hinter Sophos. Direkter HTTP-Zugriff auf die Server-IP wird dorthin umgeleitet. */
+const SCHOOL_HTTPS_ORIGIN = (process.env.SCHOOL_HTTPS_ORIGIN || 'https://mnsplusdocker:44443').replace(/\/$/, '');
+
+function requestHostname(hostHeader: string): string {
+  const raw = hostHeader.trim().toLowerCase();
+  if (raw.startsWith('[')) {
+    const end = raw.indexOf(']');
+    return end >= 0 ? raw.slice(1, end) : raw;
+  }
+  return raw.split(':')[0];
+}
+
+function isLoopbackHost(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+}
+
+function isIpHostname(hostname: string): boolean {
+  return /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname) || hostname.includes(':');
+}
+
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV !== 'production') return next();
+  if (req.path === '/health') return next();
+
+  const hostname = requestHostname(String(req.headers.host || ''));
+  if (isLoopbackHost(hostname)) return next();
+
+  const forwarded = String(req.headers['x-forwarded-proto'] || '')
+    .split(',')[0]
+    .trim()
+    .toLowerCase();
+  if (forwarded === 'https' || req.secure) return next();
+
+  // z. B. http://192.168.8.1 → https://mnsplusdocker:44443/…
+  if (isIpHostname(hostname)) {
+    return res.redirect(308, `${SCHOOL_HTTPS_ORIGIN}${req.originalUrl || '/'}`);
+  }
+  next();
+});
+
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 

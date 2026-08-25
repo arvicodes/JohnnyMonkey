@@ -25,7 +25,7 @@ import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../../l
 import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
 import { hydrateNotesHtmlFontSizes } from '../../lib/presentationFontSize';
 import { presentationNestedListSx, presentationNotesTableSx } from '../../lib/presentationListStyles';
-import { presentationNotesImageViewSx } from '../../lib/presentationNotesImages';
+import { presentationNotesImageViewSx, applyNotesImageFlowToHtml } from '../../lib/presentationNotesImages';
 import { isPresentationLinkClickTarget } from '../../lib/presentationRichText';
 import { tryHandleLessonEntryTicketLinkClick, isLessonEntryTicketSlideHref } from '../../lib/presentationEditorUi';
 import EntryTicketPage from '../../pages/EntryTicketPage';
@@ -587,7 +587,7 @@ export default function PresentationLaptopPlayer({
   const hasHtmlNotes =
     !!notesHtml && notesHtml !== '<p></p>' && notesHtml !== '<p><br></p>';
   const plainNotes = showNotes ? currentSlide.speakerNotes?.trim() || '' : '';
-  const displayNotesHtml = hasHtmlNotes ? hydrateNotesHtmlFontSizes(notesHtml!) : '';
+  const displayNotesHtml = hasHtmlNotes ? applyNotesImageFlowToHtml(hydrateNotesHtmlFontSizes(notesHtml!)) : '';
 
   return (
     <Box

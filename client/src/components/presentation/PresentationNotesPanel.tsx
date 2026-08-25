@@ -354,6 +354,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
           if (readOnly) return;
           const hit = e.target as HTMLElement | null;
           if (hit?.closest?.('[data-pres-notes-img-wrap], .pres-notes-img-wrap')) return;
+          if (ref.current) clearNotesImageSelection(ref.current);
           if (
             tryStartTableResizeFromPointer(ref.current, e, {
               onDone: () => {

@@ -187,10 +187,10 @@
 /* Formeln im Textfluss; nur alleinstehende Bilder als Block */
 [data-pres-rich-zone] p img,
 [data-pres-rich-zone] li img,
-[data-pres-rich-zone] span img,
+[data-pres-rich-zone] span:not(.pres-notes-img-wrap) img,
 [data-pres-html] p img,
 [data-pres-html] li img,
-[data-pres-html] span img {
+[data-pres-html] span:not(.pres-notes-img-wrap) img {
   display: inline-block !important;
   vertical-align: middle;
   width: auto;
@@ -202,10 +202,28 @@
 [data-pres-rich-zone] p > img:only-child,
 [data-pres-html] p > img:only-child,
 [data-pres-rich-zone] [data-pres-notes-img],
-[data-pres-html] [data-pres-notes-img] {
+[data-pres-html] [data-pres-notes-img],
+[data-pres-notes-zone] .pres-notes-img-wrap img,
+[data-pres-notes-zone] img[data-pres-notes-img] {
   display: block !important;
   height: auto;
   max-height: none;
   max-width: 100%;
   margin: 0.45em 0 !important;
+}
+
+[data-pres-notes-zone] .pres-notes-img-wrap {
+  display: block;
+  position: relative;
+  max-width: 100%;
+  margin: 0.5em 0;
+  line-height: 0;
+}
+
+[data-pres-notes-zone] .pres-notes-img-wrap img {
+  margin: 0 !important;
+  width: auto;
+  height: auto !important;
+  max-width: 100% !important;
+  max-height: none !important;
 }
