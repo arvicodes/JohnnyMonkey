@@ -77,8 +77,12 @@ app.use((0, cors_1.default)({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-login-code']
 }));
-/** Öffentliche HTTPS-URL hinter Sophos. Direkter HTTP-Zugriff auf die Server-IP wird dorthin umgeleitet. */
+/** Öffentliche HTTPS-URL hinter Sophos. Klartext-HTTP wird dorthin umgeleitet. */
 const SCHOOL_HTTPS_ORIGIN = (process.env.SCHOOL_HTTPS_ORIGIN || 'https://mnsplusdocker:44443').replace(/\/$/, '');
+const SCHOOL_HTTPS_BY_HOST = {
+    mnsplusdocker: 'https://mnsplusdocker:44443',
+    'rpl-50147-0.dn.mnsnet.de': 'https://rpl-50147-0.dn.mnsnet.de:44443',
+};
 function requestHostname(hostHeader) {
     const raw = hostHeader.trim().toLowerCase();
     if (raw.startsWith('[')) {
@@ -87,18 +91,37 @@ function requestHostname(hostHeader) {
     }
     return raw.split(':')[0];
 }
+function requestHostPort(hostHeader) {
+    const raw = hostHeader.trim().toLowerCase();
+    if (raw.startsWith('[')) {
+        const end = raw.indexOf(']');
+        if (end >= 0 && raw[end + 1] === ':')
+            return raw.slice(end + 2);
+        return '';
+    }
+    const i = raw.lastIndexOf(':');
+    return i >= 0 ? raw.slice(i + 1) : '';
+}
 function isLoopbackHost(hostname) {
     return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
 }
 function isIpHostname(hostname) {
     return /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname) || hostname.includes(':');
 }
+function redirectToSchoolHttps(req, res) {
+    const hostname = requestHostname(String(req.headers.host || ''));
+    const origin = SCHOOL_HTTPS_BY_HOST[hostname] || SCHOOL_HTTPS_ORIGIN;
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    return res.redirect(308, `${origin}${req.originalUrl || '/'}`);
+}
 app.use((req, res, next) => {
     if (process.env.NODE_ENV !== 'production')
         return next();
     if (req.path === '/health')
         return next();
-    const hostname = requestHostname(String(req.headers.host || ''));
+    const hostHeader = String(req.headers.host || '');
+    const hostname = requestHostname(hostHeader);
     if (isLoopbackHost(hostname))
         return next();
     const forwarded = String(req.headers['x-forwarded-proto'] || '')
@@ -107,9 +130,12 @@ app.use((req, res, next) => {
         .toLowerCase();
     if (forwarded === 'https' || req.secure)
         return next();
-    // z. B. http://192.168.8.1 → https://mnsplusdocker:44443/…
-    if (isIpHostname(hostname)) {
-        return res.redirect(308, `${SCHOOL_HTTPS_ORIGIN}${req.originalUrl || '/'}`);
+    // Sophos HTTPS kommt intern als HTTP an, oft mit Original-Host :44443.
+    if (requestHostPort(hostHeader) === '44443')
+        return next();
+    // http://192.168.8.1 und http://mnsplusdocker (ohne 44443) → HTTPS-Name
+    if (isIpHostname(hostname) || hostname in SCHOOL_HTTPS_BY_HOST) {
+        return redirectToSchoolHttps(req, res);
     }
     next();
 });

@@ -99,11 +99,11 @@ Kurzcheck: siehe auch [`DEPLOY_PORTAINER_CHECKLIST.md`](./DEPLOY_PORTAINER_CHECK
 
 | Zugang | URL |
 |--------|-----|
-| Schul-LAN / Unterricht | `https://mnsplusdocker:44443/` |
+| Unterricht (Schulnetz) | `https://mnsplusdocker:44443/` |
 | Von außen | `https://rpl-50147-0.dn.mnsnet.de:44443/` |
 | Portainer | `https://192.168.8.1:9443` |
 
-Nicht mehr verwenden: `http://192.168.8.1` (Klartext).
+Nicht mehr verwenden: `http://192.168.8.1` (wird auf den HTTPS-Namen umgeleitet).
 
 **Tunnel-URL nachschauen:** Portainer → Containers → `johnnymonkey-tunnel` → Logs → nach `trycloudflare.com` suchen.  
 Hinweis: Bei Quick Tunnels ändert sich die URL nach jedem Neustart des Tunnel-Containers.
