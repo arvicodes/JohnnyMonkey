@@ -13,7 +13,7 @@ const DROP_MARKER_CLASS = 'pres-notes-img-drop';
 const BOUND_ATTR = 'data-pres-notes-img-bound';
 
 const WRAP_FLOW_STYLE =
-  'position:relative;display:block;max-width:100%;width:fit-content;margin:0.5em 0;line-height:0;cursor:grab;';
+  'position:relative;display:inline-block;vertical-align:top;max-width:100%;width:fit-content;margin:0.25em 0.4em 0.25em 0;line-height:0;cursor:grab;';
 
 function escapeAttr(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
@@ -37,14 +37,16 @@ export function presentationNotesImageEditorSx() {
     position: 'relative' as const,
     [`& .${PRES_NOTES_IMG_WRAP_CLASS}`]: {
       position: 'relative',
-      display: 'block',
+      display: 'inline-block',
+      verticalAlign: 'top',
       width: 'fit-content',
       maxWidth: '100%',
       lineHeight: 0,
       cursor: 'grab',
       userSelect: 'none',
       touchAction: 'none',
-      my: 0.5,
+      mr: 0.5,
+      my: 0.25,
     },
     [`& .${PRES_NOTES_IMG_WRAP_CLASS} img, & img[${PRES_NOTES_IMG_ATTR}]`]: {
       maxWidth: '100%',
@@ -93,10 +95,12 @@ export function presentationNotesImageViewSx(options?: { maxHeight?: number | nu
     position: 'relative' as const,
     [`& .${PRES_NOTES_IMG_WRAP_CLASS}`]: {
       position: 'relative',
-      display: 'block',
+      display: 'inline-block',
+      verticalAlign: 'top',
       maxWidth: '100%',
       width: 'fit-content',
       lineHeight: 0,
+      mr: 0.5,
     },
     [`& img, & img[${PRES_NOTES_IMG_ATTR}]`]: {
       maxWidth: '100%',
