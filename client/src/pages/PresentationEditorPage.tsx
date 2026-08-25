@@ -104,6 +104,11 @@ import {
   SLIDE_REF_HEIGHT,
   SLIDE_REF_WIDTH,
 } from '../lib/presentationDeck';
+import {
+  notifyPresentationDeckSaved,
+  parsePresentationDeckSavedEvent,
+  samePresentationLesson,
+} from '../lib/presentationDeckSync';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
 import {
   createEmptyPlayVariants,
@@ -379,6 +384,7 @@ const PresentationEditorPage: React.FC = () => {
   const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveVersionRef = useRef(0);
   const lastPersistedVersionRef = useRef(0);
+  const lastPersistedUpdatedAtRef = useRef('');
   const persistAgainRef = useRef(false);
   const persistChainRef = useRef(Promise.resolve());
   const [sectionDeleteAsk, setSectionDeleteAsk] = useState<{
@@ -501,6 +507,7 @@ const PresentationEditorPage: React.FC = () => {
         setEditingVariant(false);
         setActiveId(migrated.deck.slides[0]?.id ?? null);
         setLoading(false);
+        lastPersistedUpdatedAtRef.current = migrated.deck.updatedAt || '';
         if (recovered) {
           ++saveVersionRef.current;
           void saveJsonFile(lessonPath, DECK_FILENAME, migrated.deck)
@@ -675,6 +682,8 @@ const PresentationEditorPage: React.FC = () => {
         await saveJsonFile(lessonPath, DECK_FILENAME, payload);
         // Original nur aktualisieren, solange noch nicht eingefroren (Erstell-Phase)
         await writeOriginalDeckSnapshot(lessonPath, payload, 'sync');
+        lastPersistedUpdatedAtRef.current = payload.updatedAt;
+        notifyPresentationDeckSaved(lessonPath, payload.updatedAt);
         if (version === saveVersionRef.current) {
           lastPersistedVersionRef.current = version;
           void clearPresentationDeckDraft(lessonPath).catch(() => undefined);
@@ -887,18 +896,28 @@ const PresentationEditorPage: React.FC = () => {
         draftTimer.current = null;
       }
       const snapshot = deckRef.current;
-      if (
-        snapshot &&
-        lessonPath &&
-        lastPersistedVersionRef.current !== saveVersionRef.current
-      ) {
+      const dirty = lastPersistedVersionRef.current !== saveVersionRef.current;
+      if (snapshot && lessonPath && dirty) {
         void putPresentationDeckDraft(lessonPath, snapshot).catch(() => undefined);
       }
       if (saveTimer.current) {
         clearTimeout(saveTimer.current);
         saveTimer.current = null;
       }
-      void flushPersist();
+      if (dirty) {
+        void (async () => {
+          const server = await loadPresentationDeck(lessonPath).catch(() => null);
+          const serverAt = Date.parse(server?.updatedAt || '') || 0;
+          const ours = Date.parse(lastPersistedUpdatedAtRef.current || '') || 0;
+          if (server && serverAt > ours + 800) {
+            setSnackbar(
+              'Anderer Tab hat einen neueren Stand. Dieser Tab speichert nicht darüber — bitte neu laden.',
+            );
+            return;
+          }
+          await flushPersist();
+        })();
+      }
       if (inkSaveTimer.current) {
         clearTimeout(inkSaveTimer.current);
         inkSaveTimer.current = null;
@@ -936,6 +955,54 @@ const PresentationEditorPage: React.FC = () => {
       flushPending();
     };
   }, [commitEditorState, flushPersist, persistInk, lessonPath]);
+
+  useEffect(() => {
+    if (!lessonPath) return undefined;
+    const pullIfClean = async () => {
+      if (lastPersistedVersionRef.current !== saveVersionRef.current) return;
+      try {
+        const server = await loadPresentationDeck(lessonPath);
+        const current = deckRef.current;
+        if (!server?.slides?.length || !current) return;
+        const serverAt = Date.parse(server.updatedAt || '') || 0;
+        const ours = Date.parse(current.updatedAt || lastPersistedUpdatedAtRef.current || '') || 0;
+        if (serverAt <= ours + 400) return;
+        const keepId = activeIdRef.current;
+        const normalized = normalizeDeck(server);
+        historyRef.current = createDeckHistory(normalized);
+        setHistoryVersion((v) => v + 1);
+        setDeck(normalized);
+        deckRef.current = normalized;
+        setFilmstripSlides(sortSlides(normalized.slides));
+        lastPersistedUpdatedAtRef.current = normalized.updatedAt || '';
+        if (keepId && normalized.slides.some((s) => s.id === keepId)) {
+          setActiveId(keepId);
+        }
+        setSnackbar('Folien aus anderem Tab übernommen');
+      } catch {
+        /* ignore */
+      }
+    };
+    const onStorage = (e: StorageEvent) => {
+      const parsed = parsePresentationDeckSavedEvent(e);
+      if (!parsed || !samePresentationLesson(parsed.lessonPath, lessonPath)) return;
+      void pullIfClean();
+    };
+    const onFocus = () => {
+      void pullIfClean();
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('focus', onFocus);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void pullIfClean();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [lessonPath]);
 
   const saveNamedPresentationVersion = useCallback(async () => {
     const label = saveNamedLabel.trim();
