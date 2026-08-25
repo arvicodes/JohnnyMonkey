@@ -33,6 +33,12 @@ import { PRESENTATION_DEFAULT_FONT_FAMILY } from './presentationFonts';
 import { JOHNNY_PRESENTATION, toHighlightFill } from './presentationTheme';
 import { ensureNotesTablesFormatted, applyJohnnyTableFormatting, handleTableTabInEditor } from './presentationSlideTables';
 import { presentationNotesImageInsertHtml, stripNotesImageChrome } from './presentationNotesImages';
+import {
+  convertOmmlElementsInPlace,
+  hoistPastedMathHtml,
+  isPresentationMathNode,
+  preserveEquationImagesInPlace,
+} from './presentationPasteMath';
 
 // Explizite Re-Exports (HMR-sicherer als `import` + `export { … }`)
 export {
@@ -241,6 +247,7 @@ export function convertCaretSuperscriptsInPlace(root: ParentNode): boolean {
   }
   let changed = false;
   for (const node of nodes) {
+    if (node.parentElement && isPresentationMathNode(node.parentElement)) continue;
     if (materializeSupMarkersInTextNode(node)) changed = true;
   }
   return changed;
@@ -625,11 +632,13 @@ function stripForeignPasteChrome(root: ParentNode) {
   removeHtmlComments(root);
   root.querySelectorAll('style, script, meta, link, xml, title').forEach((el) => el.remove());
   Array.from(root.querySelectorAll('*')).forEach((node) => {
+    if (isPresentationMathNode(node)) return;
     const tag = node.tagName || '';
     if (tag.includes(':')) unwrapElementKeepChildren(node);
   });
   root.querySelectorAll('*').forEach((node) => {
     const el = node as HTMLElement;
+    if (isPresentationMathNode(el)) return;
     el.removeAttribute('class');
     el.removeAttribute('lang');
     el.removeAttribute('align');
@@ -669,7 +678,8 @@ function unwrapPointlessSpans(root: ParentNode) {
         span.hasAttribute('data-pres-fs') ||
         span.hasAttribute('data-pres-color') ||
         span.hasAttribute('data-pres-highlight') ||
-        span.hasAttribute('data-pres-back')
+        span.hasAttribute('data-pres-back') ||
+        span.hasAttribute('data-pres-math')
       ) {
         return;
       }
@@ -867,7 +877,10 @@ export function sanitizePastedHtml(html: string, options?: PasteSanitizeOptions)
   const fontPx = slideDefaults
     ? options?.fontPx ?? PRESENTATION_CONTENT_FONT_PX
     : options?.fontPx;
-  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const withMath = hoistPastedMathHtml(html);
+  const doc = new DOMParser().parseFromString(withMath, 'text/html');
+  convertOmmlElementsInPlace(doc.body);
+  preserveEquationImagesInPlace(doc.body);
   doc.body.querySelectorAll('font').forEach((font) => {
     const span = doc.createElement('span');
     span.innerHTML = font.innerHTML;
@@ -883,6 +896,7 @@ export function sanitizePastedHtml(html: string, options?: PasteSanitizeOptions)
   demoteHeadingsToParagraphs(doc.body);
   convertPastedListParagraphs(doc.body);
   normalizeListsInPlace(doc.body);
+  convertCaretSuperscriptsInPlace(doc.body);
   stampDefaultPresentationFont(doc.body, fontPx, slideDefaults);
   if (slideDefaults) {
     stampSlideTextAlign(doc.body, options?.textAlign ?? 'justify');
