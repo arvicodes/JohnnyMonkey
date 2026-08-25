@@ -9,10 +9,11 @@ export const PRES_NOTES_IMG_ATTR = 'data-pres-notes-img';
 export const PRES_NOTES_IMG_SELECTED_CLASS = 'pres-notes-img-selected';
 
 const RESIZE_HANDLE_CLASS = 'pres-notes-img-resize';
+const DROP_MARKER_CLASS = 'pres-notes-img-drop';
 const BOUND_ATTR = 'data-pres-notes-img-bound';
 
 const WRAP_FLOW_STYLE =
-  'position:relative;display:block;max-width:100%;width:fit-content;margin:0.5em 0;line-height:0;cursor:default;';
+  'position:relative;display:block;max-width:100%;width:fit-content;margin:0.5em 0;line-height:0;cursor:grab;';
 
 function escapeAttr(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
@@ -40,8 +41,9 @@ export function presentationNotesImageEditorSx() {
       width: 'fit-content',
       maxWidth: '100%',
       lineHeight: 0,
-      cursor: 'default',
+      cursor: 'grab',
       userSelect: 'none',
+      touchAction: 'none',
       my: 0.5,
     },
     [`& .${PRES_NOTES_IMG_WRAP_CLASS} img, & img[${PRES_NOTES_IMG_ATTR}]`]: {
@@ -55,6 +57,16 @@ export function presentationNotesImageEditorSx() {
     [`& .${PRES_NOTES_IMG_WRAP_CLASS}.${PRES_NOTES_IMG_SELECTED_CLASS}`]: {
       outline: '2px solid #f57f17',
       outlineOffset: '2px',
+    },
+    [`& .${DROP_MARKER_CLASS}`]: {
+      position: 'absolute',
+      left: 8,
+      right: 8,
+      height: 3,
+      bgcolor: '#f57f17',
+      borderRadius: '1px',
+      pointerEvents: 'none',
+      zIndex: 6,
     },
     [`& .${RESIZE_HANDLE_CLASS}`]: {
       position: 'absolute',
@@ -105,7 +117,7 @@ export function presentationNotesImageViewSx(options?: { maxHeight?: number | nu
 }
 
 export function stripNotesImageChrome(root: ParentNode): void {
-  root.querySelectorAll(`.${RESIZE_HANDLE_CLASS}`).forEach((n) => n.remove());
+  root.querySelectorAll(`.${RESIZE_HANDLE_CLASS}, .${DROP_MARKER_CLASS}`).forEach((n) => n.remove());
   root.querySelectorAll(`.${PRES_NOTES_IMG_WRAP_CLASS}`).forEach((node) => {
     const el = node as HTMLElement;
     el.style.outline = '';
