@@ -259,16 +259,24 @@ function bindNotesImage(wrap: HTMLElement, img: HTMLImageElement, editor: HTMLEl
     e.preventDefault();
     e.stopPropagation();
     selectWrap();
-    if (wrap.getAttribute(PRES_NOTES_IMG_POS_ATTR) !== '1') {
-      pinWrapToEditor(wrap, editor);
-    }
     const startX = e.clientX;
     const startY = e.clientY;
-    const startLeft = parseFloat(wrap.style.left || '0') || 0;
-    const startTop = parseFloat(wrap.style.top || '0') || 0;
-    wrap.style.cursor = 'grabbing';
+    let dragging = false;
+    let startLeft = parseFloat(wrap.style.left || '0') || 0;
+    let startTop = parseFloat(wrap.style.top || '0') || 0;
     editor.setAttribute('data-pres-notes-dragging', '1');
     const onMove = (ev: PointerEvent) => {
+      if (!dragging) {
+        if (Math.hypot(ev.clientX - startX, ev.clientY - startY) < 5) return;
+        dragging = true;
+        if (wrap.getAttribute(PRES_NOTES_IMG_POS_ATTR) !== '1') {
+          pinWrapToEditor(wrap, editor);
+        }
+        startLeft = parseFloat(wrap.style.left || '0') || 0;
+        startTop = parseFloat(wrap.style.top || '0') || 0;
+        wrap.style.cursor = 'grabbing';
+        document.body.style.userSelect = 'none';
+      }
       const nextLeft = startLeft + (ev.clientX - startX);
       const nextTop = startTop + (ev.clientY - startY);
       const wr = wrap.getBoundingClientRect();
@@ -283,9 +291,9 @@ function bindNotesImage(wrap: HTMLElement, img: HTMLImageElement, editor: HTMLEl
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
       document.body.style.userSelect = '';
-      onChange();
+      ensureNotesTypingHost(editor);
+      if (dragging) onChange();
     };
-    document.body.style.userSelect = 'none';
     document.addEventListener('pointermove', onMove);
     document.addEventListener('pointerup', onUp);
   });
@@ -294,6 +302,61 @@ function bindNotesImage(wrap: HTMLElement, img: HTMLImageElement, editor: HTMLEl
     e.stopPropagation();
     selectWrap();
   });
+}
+
+const NOTES_TYPEHOST_ATTR = 'data-pres-notes-typehost';
+
+/** Solange nur Bilder (contenteditable=false) in den Notizen stehen, gibt es keinen Caret. */
+export function ensureNotesTypingHost(editor: HTMLElement): HTMLElement {
+  const abs = Array.from(
+    editor.querySelectorAll(`[${PRES_NOTES_IMG_POS_ATTR}="1"]`),
+  ) as HTMLElement[];
+  let maxBottom = 0;
+  for (const el of abs) {
+    const top = parseFloat(el.style.top) || 0;
+    maxBottom = Math.max(maxBottom, top + (el.offsetHeight || 0));
+  }
+
+  let host = editor.querySelector(`p[${NOTES_TYPEHOST_ATTR}]`) as HTMLElement | null;
+  if (!host) {
+    const last = editor.lastElementChild as HTMLElement | null;
+    const lastIsEmptyTextP =
+      last &&
+      last.tagName === 'P' &&
+      !last.querySelector('img, [contenteditable="false"]') &&
+      !(last.textContent || '').replace(/\u00a0/g, ' ').trim();
+    if (lastIsEmptyTextP) {
+      host = last;
+    } else {
+      host = document.createElement('p');
+      host.appendChild(document.createElement('br'));
+      editor.appendChild(host);
+    }
+    host.setAttribute(NOTES_TYPEHOST_ATTR, '1');
+  }
+
+  if (maxBottom > 40) {
+    const gap = `${Math.max(8, Math.round(maxBottom + 12))}px`;
+    if (host.style.marginTop !== gap) host.style.marginTop = gap;
+  } else {
+    host.style.removeProperty('margin-top');
+  }
+  if (!host.querySelector('br') && !(host.textContent || '').trim()) {
+    host.appendChild(document.createElement('br'));
+  }
+  return host;
+}
+
+export function placeNotesCaretInTypingHost(editor: HTMLElement): void {
+  const host = ensureNotesTypingHost(editor);
+  editor.focus({ preventScroll: true });
+  const sel = window.getSelection();
+  if (!sel) return;
+  const range = document.createRange();
+  range.selectNodeContents(host);
+  range.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(range);
 }
 
 /** Resize-Handles + Ziehen zum Verschieben an alle Notiz-Bilder hängen. */
@@ -305,6 +368,7 @@ export function enhancePresentationNotesImages(editor: HTMLElement | null, onCha
     const wrap = ensureNotesImageWrap(img);
     bindNotesImage(wrap, img, editor, onChange);
   });
+  ensureNotesTypingHost(editor);
 }
 
 /** Drop-Ziel: Notizleiste (auch wenn das gezogene Folien-Element darüber liegt). */

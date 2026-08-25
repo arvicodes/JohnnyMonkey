@@ -15,6 +15,7 @@ import {
   enhancePresentationNotesImages,
   presentationNotesImageEditorSx,
   serializePresentationNotesHtml,
+  placeNotesCaretInTypingHost,
 } from '../../lib/presentationNotesImages';
 import {
   tryStartTableResizeFromPointer,
@@ -348,6 +349,15 @@ const NoteZone: React.FC<NoteZoneProps> = ({
             })
           ) {
             e.preventDefault();
+            return;
+          }
+          const el = ref.current;
+          if (!el) return;
+          const locked = Boolean(hit?.closest?.('[contenteditable="false"]'));
+          const onBareEditor = hit === el;
+          if (locked || onBareEditor) {
+            e.preventDefault();
+            placeNotesCaretInTypingHost(el);
           }
         }}
         onMouseMove={(e) => {
