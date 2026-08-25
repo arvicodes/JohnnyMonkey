@@ -500,11 +500,16 @@ function pastedListInfo(
   level = Math.min(MAX_LIST_LEVEL - 1, level);
 
   if (isMso) {
+    const hasIgnoreMarker = Array.from(el.querySelectorAll('span')).some((span) =>
+      isMsoIgnoreMarker(span as HTMLElement),
+    );
+    const parsed = parsePastedListLine(el.textContent || '');
+    // Word rückt Formeln oft als MsoListParagraph ein — ohne Marker keine Liste.
+    if (!hasIgnoreMarker && !parsed) return null;
     const marker = extractMarkerText(el);
-    const olStyle = olStyleFromMarker(marker);
-    const ordered =
-      olStyle != null || /^\(?\d+[.)]?/.test(marker) || /^\d+\s/.test(marker);
-    return { ordered, level, olStyle: olStyle || undefined };
+    const olStyle = parsed?.olStyle || olStyleFromMarker(marker) || undefined;
+    const ordered = Boolean(parsed?.ordered || olStyle);
+    return { ordered, level: parsed?.level ?? level, olStyle };
   }
 
   const parsed = parsePastedListLine(el.textContent || '');

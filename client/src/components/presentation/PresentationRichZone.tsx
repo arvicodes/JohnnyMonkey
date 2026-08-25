@@ -118,7 +118,8 @@ function buildRichSx(
     overflow: exportSnapshot ? 'visible' : allowScroll ? 'auto' : 'hidden',
     color: VARIANT_DEFAULT_COLOR[variant],
     '& p': {
-      m: 0,
+      mt: 0,
+      mr: 0,
       mb: `${6 * scale}px`,
       textAlign: resolvedAlign === 'justify' ? 'justify' : undefined,
     },
@@ -136,9 +137,6 @@ function buildRichSx(
     '& [data-pres-highlight]': { lineHeight: 'inherit' },
     '& img': {
       maxWidth: '100%',
-      height: 'auto',
-      display: 'block',
-      my: `${8 * scale}px`,
       backgroundColor: 'transparent',
       backgroundImage: 'none',
     },

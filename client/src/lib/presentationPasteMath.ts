@@ -282,14 +282,16 @@ export function convertOmmlElementsInPlace(root: ParentNode): void {
 function looksLikeEquationImage(img: HTMLImageElement): boolean {
   const src = (img.getAttribute('src') || '').trim();
   const alt = (img.getAttribute('alt') || '').toLowerCase();
+  const html = img.outerHTML || '';
   if (/bullet|spacer|clear\.gif|transparent/i.test(src + alt + (img.className || ''))) return false;
   const w = Number(img.getAttribute('width') || img.width || 0);
   const h = Number(img.getAttribute('height') || img.height || 0);
-  if (w && h && w < 10 && h < 10) return false;
+  if (w && h && w < 8 && h < 8) return false;
+  if (/data:image\/(x-)?(emf|wmf)|v:shapes|_x0000_i/i.test(src + html)) return true;
   if (src.startsWith('data:image/') || src.startsWith('blob:')) {
     if (w && h && w / h > 1.2 && h >= 12 && h <= 220) return true;
     if (/equation|formel|math|omml/i.test(alt)) return true;
-    if (w >= 24 && h >= 12) return true;
+    if (w >= 24 && h >= 12 && h <= 80) return true;
   }
   return /equation|formel|math/i.test(alt);
 }

@@ -658,6 +658,11 @@ function stripForeignPasteChrome(root: ParentNode) {
       keep.add('width');
       keep.add('height');
     }
+    if (el.tagName === 'P' || el.tagName === 'DIV' || el.tagName === 'BLOCKQUOTE' || el.tagName === 'LI') {
+      keep.add('margin-left');
+      keep.add('padding-left');
+      keep.add('text-indent');
+    }
     const toRemove: string[] = [];
     for (let i = 0; i < style.length; i++) {
       const prop = style.item(i);
@@ -1283,14 +1288,15 @@ export function handlePresentationTabKey(editor: HTMLElement, shiftKey: boolean)
     if (changed) {
       collapseEditorSelection(editor);
       editor.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
     }
-    return;
   }
 
   const block = getEditableBlock(editor);
   if (!block) return;
   nudgeParagraphIndent(block, shiftKey);
   collapseEditorSelection(editor);
+  editor.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 export function execFormat(editor: HTMLElement | null, cmd: string, value?: string) {

@@ -1651,7 +1651,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   borderRadius: `${4 * scale}px`,
                   p: `${6 * scale}px`,
                   pointerEvents: editable && !animationEditMode ? 'auto' : 'none',
-                  '& p': { m: 0, mb: `${4 * scale}px` },
+                  '& p': { mt: 0, mr: 0, mb: `${4 * scale}px` },
                 }}
               />
             ) : (
@@ -1667,7 +1667,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   lineHeight: 1.4,
                   color: JOHNNY_PRESENTATION.textPrimary,
                   pointerEvents: 'none',
-                  '& p': { m: 0, mb: `${4 * scale}px` },
+                  '& p': { mt: 0, mr: 0, mb: `${4 * scale}px` },
                 }}
                 dangerouslySetInnerHTML={{ __html: cardBodyHtml }}
               />
@@ -2031,7 +2031,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               cursor: 'text',
               color: JOHNNY_PRESENTATION.textPrimary,
               boxSizing: 'border-box',
-              '& p': { m: 0, mb: `${4 * scale}px` },
+              '& p': { mt: 0, mr: 0, mb: `${4 * scale}px` },
               '& li > p': { display: 'block', listStyle: 'none' },
               ...presentationNestedListSx({ scale, listPaddingPx: 20 * scale, itemGapPx: 2 * scale }),
               '& [data-pres-fs]': { lineHeight: 'inherit' },
@@ -2057,7 +2057,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 cursor: 'pointer',
                 touchAction: 'manipulation',
               },
-              '& p': { m: 0, mb: `${4 * scale}px` },
+              '& p': { mt: 0, mr: 0, mb: `${4 * scale}px` },
               '& li > p': { display: 'block', listStyle: 'none' },
               ...presentationNestedListSx({ scale, listPaddingPx: 20 * scale, itemGapPx: 2 * scale }),
               '& [data-reveal-step].pres-reveal-enter': {

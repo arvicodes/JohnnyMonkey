@@ -183,3 +183,29 @@
   vertical-align: middle;
   display: inline-block;
 }
+
+/* Formeln im Textfluss; nur alleinstehende Bilder als Block */
+[data-pres-rich-zone] p img,
+[data-pres-rich-zone] li img,
+[data-pres-rich-zone] span img,
+[data-pres-html] p img,
+[data-pres-html] li img,
+[data-pres-html] span img {
+  display: inline-block !important;
+  vertical-align: middle;
+  width: auto;
+  height: 1.25em;
+  max-height: 2.4em;
+  margin: 0 0.12em !important;
+}
+
+[data-pres-rich-zone] p > img:only-child,
+[data-pres-html] p > img:only-child,
+[data-pres-rich-zone] [data-pres-notes-img],
+[data-pres-html] [data-pres-notes-img] {
+  display: block !important;
+  height: auto;
+  max-height: none;
+  max-width: 100%;
+  margin: 0.45em 0 !important;
+}
