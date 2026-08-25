@@ -202,9 +202,7 @@
 [data-pres-rich-zone] p > img:only-child,
 [data-pres-html] p > img:only-child,
 [data-pres-rich-zone] [data-pres-notes-img],
-[data-pres-html] [data-pres-notes-img],
-[data-pres-notes-zone] .pres-notes-img-wrap img,
-[data-pres-notes-zone] img[data-pres-notes-img] {
+[data-pres-html] [data-pres-notes-img] {
   display: block !important;
   height: auto;
   max-height: none;
@@ -213,14 +211,17 @@
 }
 
 [data-pres-notes-zone] .pres-notes-img-wrap {
-  display: block;
+  display: inline-block;
+  vertical-align: top;
   position: relative;
   max-width: 100%;
-  margin: 0.5em 0;
+  margin: 0.25em 0.4em 0.25em 0;
   line-height: 0;
 }
 
-[data-pres-notes-zone] .pres-notes-img-wrap img {
+[data-pres-notes-zone] .pres-notes-img-wrap img,
+[data-pres-notes-zone] img[data-pres-notes-img] {
+  display: block !important;
   margin: 0 !important;
   width: auto;
   height: auto !important;

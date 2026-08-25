@@ -423,19 +423,38 @@ function notesCaretRangeFromPoint(editor: HTMLElement, x: number, y: number): Ra
   return range;
 }
 
-function notesImageMoveUnit(wrap: HTMLElement, editor: HTMLElement): HTMLElement {
+function takeNotesImageWrap(wrap: HTMLElement, editor: HTMLElement): HTMLElement {
   const parent = wrap.parentElement;
-  if (parent && parent !== editor && parent.tagName === 'P' && isEmptyNotesBlockAfterRemoving(parent, wrap)) {
-    return parent;
+  wrap.remove();
+  if (parent && parent !== editor && parent.tagName === 'P' && isEmptyNotesBlock(parent)) {
+    parent.remove();
   }
   return wrap;
 }
 
-function isEmptyNotesBlockAfterRemoving(block: HTMLElement, wrap: HTMLElement): boolean {
-  const clone = block.cloneNode(true) as HTMLElement;
-  clone.querySelector(`.${PRES_NOTES_IMG_WRAP_CLASS}`)?.remove();
-  clone.querySelectorAll('br').forEach((b) => b.remove());
-  return !(clone.textContent || '').replace(/\u00a0/g, ' ').trim() && !clone.querySelector('img');
+function dropRelationToWrap(other: HTMLElement, x: number, y: number): 'left' | 'right' | 'above' | 'below' {
+  const r = other.getBoundingClientRect();
+  const inY = y >= r.top - 10 && y <= r.bottom + 10;
+  if (inY) return x < r.left + r.width / 2 ? 'left' : 'right';
+  return y < r.top + r.height / 2 ? 'above' : 'below';
+}
+
+function fitNotesImagesSideBySide(a: HTMLElement, b: HTMLElement, editor: HTMLElement): void {
+  const budget = Math.max(72, Math.floor((editor.clientWidth - 28) / 2));
+  const aw = a.getBoundingClientRect().width;
+  const bw = b.getBoundingClientRect().width;
+  if (aw + bw <= editor.clientWidth - 20) return;
+  const sizeWrap = (el: HTMLElement, w: number) => {
+    el.style.width = `${w}px`;
+    el.style.maxWidth = '100%';
+    const img = el.querySelector('img') as HTMLImageElement | null;
+    if (!img) return;
+    img.style.setProperty('width', '100%');
+    img.style.setProperty('max-width', '100%');
+    img.style.setProperty('height', 'auto');
+  };
+  sizeWrap(a, budget);
+  sizeWrap(b, budget);
 }
 
 function ensureNotesDropMarker(editor: HTMLElement): HTMLElement {
@@ -444,7 +463,8 @@ function ensureNotesDropMarker(editor: HTMLElement): HTMLElement {
     marker = document.createElement('span');
     marker.className = DROP_MARKER_CLASS;
     marker.setAttribute('contenteditable', 'false');
-    marker.style.cssText = 'position:absolute;left:8px;right:8px;height:3px;background:#f57f17;border-radius:1px;pointer-events:none;z-index:6;';
+    marker.style.cssText =
+      'position:absolute;left:8px;right:8px;height:3px;background:#f57f17;border-radius:1px;pointer-events:none;z-index:6;';
     editor.appendChild(marker);
   }
   return marker;
@@ -459,17 +479,34 @@ function updateNotesDropMarker(
 ): void {
   const er = editor.getBoundingClientRect();
   const other = notesImageWrapFromPoint(editor, wrap, x, y);
-  let top = y;
-  if (other) {
-    const r = other.getBoundingClientRect();
-    top = y < r.top + r.height / 2 ? r.top : r.bottom;
-  } else {
-    const range = notesCaretRangeFromPoint(editor, x, y);
-    const rect = range?.getClientRects()[0] || range?.getBoundingClientRect();
-    if (rect && (rect.height || rect.width)) top = rect.top;
-  }
-  marker.style.top = `${Math.max(0, Math.round(top - er.top + editor.scrollTop - 1))}px`;
   marker.style.display = 'block';
+  marker.style.background = '#f57f17';
+  if (other) {
+    const rel = dropRelationToWrap(other, x, y);
+    const r = other.getBoundingClientRect();
+    if (rel === 'left' || rel === 'right') {
+      marker.style.width = '3px';
+      marker.style.height = `${Math.round(r.height)}px`;
+      marker.style.left = `${Math.round((rel === 'left' ? r.left : r.right) - er.left - 1)}px`;
+      marker.style.right = 'auto';
+      marker.style.top = `${Math.round(r.top - er.top + editor.scrollTop)}px`;
+      return;
+    }
+    marker.style.left = '8px';
+    marker.style.right = '8px';
+    marker.style.width = 'auto';
+    marker.style.height = '3px';
+    marker.style.top = `${Math.max(0, Math.round((rel === 'above' ? r.top : r.bottom) - er.top + editor.scrollTop - 1))}px`;
+    return;
+  }
+  marker.style.left = '8px';
+  marker.style.right = '8px';
+  marker.style.width = 'auto';
+  marker.style.height = '3px';
+  const range = notesCaretRangeFromPoint(editor, x, y);
+  const rect = range?.getClientRects()[0] || range?.getBoundingClientRect();
+  const top = rect && (rect.height || rect.width) ? rect.top : y;
+  marker.style.top = `${Math.max(0, Math.round(top - er.top + editor.scrollTop - 1))}px`;
 }
 
 function notesImageWrapFromPoint(editor: HTMLElement, moving: HTMLElement, x: number, y: number): HTMLElement | null {
@@ -484,42 +521,66 @@ function moveNotesImageToPoint(wrap: HTMLElement, editor: HTMLElement, x: number
   const er = editor.getBoundingClientRect();
   if (x < er.left - 8 || x > er.right + 8 || y < er.top - 8 || y > er.bottom + 8) return false;
 
-  const unit = notesImageMoveUnit(wrap, editor);
   const other = notesImageWrapFromPoint(editor, wrap, x, y);
   if (other) {
-    const otherUnit = notesImageMoveUnit(other, editor);
-    const r = other.getBoundingClientRect();
-    const before = y < r.top + r.height / 2;
-    if (unit === otherUnit) return false;
-    unit.remove();
-    otherUnit.parentNode?.insertBefore(unit, before ? otherUnit : otherUnit.nextSibling);
+    const rel = dropRelationToWrap(other, x, y);
+    takeNotesImageWrap(wrap, editor);
+    if (rel === 'left' || rel === 'right') {
+      other.parentNode?.insertBefore(wrap, rel === 'left' ? other : other.nextSibling);
+      fitNotesImagesSideBySide(wrap, other, editor);
+      return true;
+    }
+    const block = closestNotesBlock(other, editor) || other;
+    const line = document.createElement('p');
+    line.appendChild(wrap);
+    block.parentNode?.insertBefore(line, rel === 'above' ? block : block.nextSibling);
     return true;
   }
 
   const range = notesCaretRangeFromPoint(editor, x, y);
-  if (!range) {
-    unit.remove();
+  takeNotesImageWrap(wrap, editor);
+  if (!range || wrap.contains(range.startContainer)) {
     const host = editor.querySelector(`p[${NOTES_TYPEHOST_ATTR}]`);
-    if (host) editor.insertBefore(unit, host);
-    else editor.appendChild(unit);
-    return true;
-  }
-  if (unit.contains(range.startContainer) || wrap.contains(range.startContainer)) return false;
-
-  const block = closestNotesBlock(range.startContainer, editor);
-  unit.remove();
-  if (block && block !== editor && block !== unit && !unit.contains(block)) {
-    const br = block.getBoundingClientRect();
-    const before = y < br.top + br.height / 2;
-    block.parentNode?.insertBefore(unit, before ? block : block.nextSibling);
+    if (host) editor.insertBefore(wrap, host);
+    else editor.appendChild(wrap);
     return true;
   }
   try {
-    range.insertNode(unit);
+    range.insertNode(wrap);
     return true;
   } catch {
-    editor.appendChild(unit);
+    editor.appendChild(wrap);
     return true;
+  }
+}
+
+function notesWrapsAreNeighbors(a: HTMLElement, b: HTMLElement): boolean {
+  if (a.nextElementSibling === b || b.nextElementSibling === a) return true;
+  const ap = a.parentElement;
+  const bp = b.parentElement;
+  if (ap && bp && ap !== bp && ap.nextElementSibling === bp) {
+    const aSolo = ap.querySelectorAll(`.${PRES_NOTES_IMG_WRAP_CLASS}`).length === 1;
+    const bSolo = bp.querySelectorAll(`.${PRES_NOTES_IMG_WRAP_CLASS}`).length === 1;
+    return aSolo && bSolo;
+  }
+  return false;
+}
+
+/** Zwei gleiche, direkt hintereinander eingefügte Grafiken auf eine reduzieren. */
+export function dedupeAdjacentNotesImages(root: ParentNode): void {
+  const wraps = Array.from(root.querySelectorAll(`.${PRES_NOTES_IMG_WRAP_CLASS}`)) as HTMLElement[];
+  for (let i = wraps.length - 1; i > 0; i -= 1) {
+    const cur = wraps[i];
+    const prev = wraps[i - 1];
+    const srcA = (cur.querySelector('img') as HTMLImageElement | null)?.getAttribute('src');
+    const srcB = (prev.querySelector('img') as HTMLImageElement | null)?.getAttribute('src');
+    if (!srcA || srcA !== srcB) continue;
+    if (!notesWrapsAreNeighbors(prev, cur)) continue;
+    const parent = cur.parentElement;
+    cur.remove();
+    if (parent && parent !== root && parent instanceof HTMLElement && parent.tagName === 'P' && isEmptyNotesBlock(parent)) {
+      parent.remove();
+    }
   }
 }
 
@@ -745,6 +806,7 @@ export function enhancePresentationNotesImages(editor: HTMLElement | null, onCha
     const wrap = ensureNotesImageWrap(img);
     bindNotesImage(wrap, img, editor, onChange);
   });
+  dedupeAdjacentNotesImages(editor);
   ensureNotesTypingHost(editor);
 }
 
@@ -765,7 +827,7 @@ export function notesDropTargetHits(clientX: number, clientY: number): boolean {
 export function slideElementToNotesInsertHtml(el: SlideElement): string | null {
   if (el.type === 'image' && el.src?.trim()) {
     const name = (el.src.split('/').pop() || 'Bild').replace(/\+/g, ' ');
-    return `<p>${presentationNotesImageInsertHtml(slideImageUrl(el.src, 960), name)}</p>`;
+    return presentationNotesImageInsertHtml(slideImageUrl(el.src, 960), name);
   }
   if (el.type === 'text' && el.html?.trim()) return el.html;
   if (el.type === 'card') {
@@ -819,14 +881,24 @@ export function insertHtmlIntoOpenNotesEditor(
   if (!editor || editor.getAttribute('contenteditable') === 'false') return false;
   editor.focus({ preventScroll: true });
   setCaretInNotesEditor(editor, clientX, clientY);
-  try {
-    document.execCommand('styleWithCSS', false, 'true');
-  } catch {
-    /* ignore */
-  }
-  const ok = document.execCommand('insertHTML', false, html);
-  if (!ok) {
-    editor.innerHTML = appendNotesHtml(editor.innerHTML, html);
+  const tpl = document.createElement('template');
+  tpl.innerHTML = html;
+  const frag = tpl.content;
+  if (!frag.childNodes.length) return false;
+  const last = frag.lastChild;
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0 && editor.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    range.insertNode(frag);
+    if (last) {
+      range.setStartAfter(last);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  } else {
+    editor.appendChild(frag);
   }
   editor.dispatchEvent(new Event('input', { bubbles: true }));
   return true;

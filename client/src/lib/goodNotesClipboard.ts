@@ -25,7 +25,7 @@ export function snapshotClipboardFiles(dt: DataTransfer | null | undefined): Fil
   const seen = new Set<string>();
   const add = (f: File | null | undefined) => {
     if (!f || f.size < 8) return;
-    const key = `${f.size}:${f.type}:${f.name}`;
+    const key = `${f.size}:${f.type}`;
     if (seen.has(key)) return;
     seen.add(key);
     out.push(asImageFile(f));

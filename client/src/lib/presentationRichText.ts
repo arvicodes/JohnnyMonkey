@@ -127,27 +127,26 @@ export function insertImageHtmlAtCursor(
   ensureEditorSelection(editor) || focusEditor(editor);
 
   const html = presentationNotesImageInsertHtml(src, alt);
+  const sel = window.getSelection();
+  const canUseRange =
+    sel &&
+    sel.rangeCount > 0 &&
+    editor.contains(sel.getRangeAt(0).commonAncestorContainer);
+  const tpl = document.createElement('template');
+  tpl.innerHTML = html;
+  const node = tpl.content.firstChild as HTMLElement | null;
+  if (!node) return false;
 
-  try {
-    document.execCommand('styleWithCSS', false, 'true');
-  } catch {
-    /* ignore */
-  }
-  const ok = document.execCommand('insertHTML', false, html);
-  if (!ok) {
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0 || !editor.contains(sel.anchorNode)) return false;
+  if (canUseRange && sel) {
     const range = sel.getRangeAt(0);
     range.deleteContents();
-    const tpl = document.createElement('template');
-    tpl.innerHTML = html;
-    const node = tpl.content.firstChild;
-    if (!node) return false;
     range.insertNode(node);
     range.setStartAfter(node);
     range.collapse(true);
     sel.removeAllRanges();
     sel.addRange(range);
+  } else {
+    editor.appendChild(node);
   }
 
   collapseEditorSelection(editor);

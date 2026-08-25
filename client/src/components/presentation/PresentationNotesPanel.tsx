@@ -163,6 +163,30 @@ const NoteZone: React.FC<NoteZoneProps> = ({
     };
   }, [readOnly, displayHtml, enhanceImages]);
 
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || readOnly || !onUploadImage) return undefined;
+    const onPasteCapture = (e: ClipboardEvent) => {
+      if (!clipboardHasImage(e.clipboardData) || clipboardPrefersRichText(e.clipboardData)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      void (async () => {
+        const files = await collectPasteImages(e.clipboardData);
+        const unique: File[] = [];
+        const seen = new Set<string>();
+        for (const file of files) {
+          const key = `${file.size}:${file.type || 'image'}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          unique.push(file);
+        }
+        for (const file of unique) await insertImageFile(file);
+      })();
+    };
+    el.addEventListener('paste', onPasteCapture, true);
+    return () => el.removeEventListener('paste', onPasteCapture, true);
+  }, [readOnly, onUploadImage, insertImageFile]);
+
   const handleInput = () => {
     if (!ref.current || readOnly) return;
     replaceArrowShortcutsNearCursor(ref.current);
@@ -172,29 +196,33 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   const handlePaste = (e: React.ClipboardEvent) => {
     const el = ref.current;
     if (!el || readOnly) return;
-
     if (clipboardHasImage(e.clipboardData) && onUploadImage && !clipboardPrefersRichText(e.clipboardData)) {
       e.preventDefault();
-      void (async () => {
-        const files = await collectPasteImages(e.clipboardData);
-        for (const file of files) await insertImageFile(file);
-      })();
       return;
     }
 
     e.preventDefault();
     const pastedHtml = e.clipboardData.getData('text/html');
     const pastedText = e.clipboardData.getData('text/plain');
-    const content = pastedHtml
-      ? sanitizePastedHtml(pastedHtml)
-      : textToHtml(pastedText);
+    const content = pastedHtml ? sanitizePastedHtml(pastedHtml) : textToHtml(pastedText);
     el.focus();
-    try {
-      document.execCommand('styleWithCSS', false, 'true');
-    } catch {
-      /* ignore */
+    const tpl = document.createElement('template');
+    tpl.innerHTML = content || '<p><br></p>';
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && el.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+      const range = sel.getRangeAt(0);
+      range.deleteContents();
+      const last = tpl.content.lastChild;
+      range.insertNode(tpl.content);
+      if (last) {
+        range.setStartAfter(last);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    } else {
+      el.appendChild(tpl.content);
     }
-    document.execCommand('insertHTML', false, content || '<p><br></p>');
     enhanceImages();
     persistFromEditor(false, false);
   };
