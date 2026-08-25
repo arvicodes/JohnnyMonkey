@@ -256,6 +256,10 @@ interface SortableThumbProps {
   onAddVariant?: () => void;
   onDeleteVariant?: () => void;
   setItemRef: (node: HTMLDivElement | null) => void;
+  sectionLabel?: string;
+  onRenameSection?: (name: string) => void;
+  onAddSection?: () => void;
+  onDeleteSection?: () => void;
 }
 
 const SortableFilmstripThumb = React.memo(
@@ -271,6 +275,10 @@ const SortableFilmstripThumb = React.memo(
     onAddVariant,
     onDeleteVariant,
     setItemRef,
+    sectionLabel,
+    onRenameSection,
+    onAddSection,
+    onDeleteSection,
   }: SortableThumbProps) => {
     const {
       attributes,
@@ -307,9 +315,17 @@ const SortableFilmstripThumb = React.memo(
           transform: CSS.Transform.toString(transform),
           transition,
           opacity: isDragging ? 0.82 : selected || active ? 1 : 0.92,
-          zIndex: isDragging ? 3 : 1,
-        }}
-      >
+        zIndex: isDragging ? 3 : 1,
+      }}
+    >
+        {sectionLabel ? (
+          <FilmstripSectionLabel
+            label={sectionLabel}
+            onRename={onRenameSection}
+            onAddSection={onAddSection}
+            onDeleteSection={onDeleteSection}
+          />
+        ) : null}
         <Box
           onClick={onSelect}
           sx={{
@@ -503,6 +519,7 @@ const SortableFilmstripThumb = React.memo(
     prev.hasVariant === next.hasVariant &&
     prev.variantActive === next.variantActive &&
     prev.index === next.index &&
+    prev.sectionLabel === next.sectionLabel &&
     slideThumbSignature(prev.slide) === slideThumbSignature(next.slide)
 );
 
@@ -577,20 +594,8 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
               const prevHour = (slides[idx - 1]?.sourceLessonName || '').trim();
               const showHour = Boolean(hourLabel) && hourLabel !== prevHour;
               return (
-                <Box key={slide.id}>
-                  {showHour ? (
-                    <FilmstripSectionLabel
-                      label={hourLabel}
-                      onRename={
-                        onRenameSection ? (name) => onRenameSection(slide.id, name) : undefined
-                      }
-                      onAddSection={onAddSection ? () => onAddSection(slide.id) : undefined}
-                      onDeleteSection={
-                        onDeleteSection ? () => onDeleteSection(slide.id) : undefined
-                      }
-                    />
-                  ) : null}
                   <SortableFilmstripThumb
+                    key={slide.id}
                     slide={slide}
                     index={idx}
                     active={slide.id === activeId}
@@ -604,8 +609,19 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
                     setItemRef={(node) => {
                       itemRefs.current[slide.id] = node;
                     }}
+                    sectionLabel={showHour ? hourLabel : undefined}
+                    onRenameSection={
+                      showHour && onRenameSection
+                        ? (name) => onRenameSection(slide.id, name)
+                        : undefined
+                    }
+                    onAddSection={
+                      showHour && onAddSection ? () => onAddSection(slide.id) : undefined
+                    }
+                    onDeleteSection={
+                      showHour && onDeleteSection ? () => onDeleteSection(slide.id) : undefined
+                    }
                   />
-                </Box>
               );
             })}
           </SortableContext>

@@ -124,15 +124,45 @@ export async function readImagesFromSystemClipboard(): Promise<File[]> {
 }
 
 export function isPresentationPasteTarget(target: EventTarget | null): boolean {
-  return target instanceof HTMLElement && Boolean(target.closest('[data-pres-paste-target]'));
+  const el = eventTargetElement(target);
+  return Boolean(el?.closest('[data-pres-paste-target]'));
+}
+
+function eventTargetElement(target: EventTarget | null): HTMLElement | null {
+  if (target instanceof HTMLElement) return target;
+  if (target instanceof Node) return target.parentElement;
+  return null;
 }
 
 export function isTypingField(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (isPresentationPasteTarget(target)) return false;
-  const tag = target.tagName;
+  const el = eventTargetElement(target);
+  if (!el) return false;
+  if (isPresentationPasteTarget(el)) return false;
+  const tag = el.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  if (el.isContentEditable) return true;
+  if (el.closest('[contenteditable="true"]')) return true;
+  if (el.closest('[data-pres-rich-zone], [data-pres-notes-zone]')) return true;
   return false;
+}
+
+/** Word/Text hat oft Zier-<img>; dann Text einfügen, nicht als Bild abfangen. */
+export function clipboardPrefersRichText(dt: DataTransfer | null | undefined): boolean {
+  if (!dt) return false;
+  const text = (dt.getData('text/plain') || '').replace(/\u00a0/g, ' ').trim();
+  const html = dt.getData('text/html') || '';
+  const looksLikeWord = /schemas-microsoft-com|mso-|class="?Mso/i.test(html);
+  if (looksLikeWord && (text.length > 0 || /<\s*(p|div|li|table|h[1-6])\b/i.test(html))) return true;
+  const files = snapshotClipboardFiles(dt);
+  const htmlText = html
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (files.length && text.length < 12 && htmlText.length < 24) return false;
+  return text.length >= 8 || htmlText.length >= 24;
 }
 
 /** Im Paste-Event zuerst die Event-Daten, sonst clipboard.read() (Safari/iPad). */

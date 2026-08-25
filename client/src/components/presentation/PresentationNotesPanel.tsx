@@ -21,7 +21,7 @@ import {
   updateTableResizeHoverCursor,
 } from '../../lib/presentationTableResize';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
-import { clipboardHasImage, collectPasteImages } from '../../lib/goodNotesClipboard';
+import { clipboardHasImage, clipboardPrefersRichText, collectPasteImages } from '../../lib/goodNotesClipboard';
 
 /** Ein Notizfeld (früher Material / Setup / Sprechakte). Legacy-Keys bleiben für Papierkorb. */
 export type NotesFieldKey = 'materialHtml' | 'preparationHtml' | 'speakerNotesHtml';
@@ -165,7 +165,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
     const el = ref.current;
     if (!el || readOnly) return;
 
-    if (clipboardHasImage(e.clipboardData) && onUploadImage) {
+    if (clipboardHasImage(e.clipboardData) && onUploadImage && !clipboardPrefersRichText(e.clipboardData)) {
       e.preventDefault();
       void (async () => {
         const files = await collectPasteImages(e.clipboardData);

@@ -158,6 +158,7 @@ import {
   slideDropPositionForImage,
 } from '../lib/presentationImageUtils';
 import {
+  clipboardPrefersRichText,
   collectPasteImagesWithFallback,
   focusEditableAtPoint,
   isPresentationPasteTarget,
@@ -2351,10 +2352,18 @@ const PresentationEditorPage: React.FC = () => {
     const oldIndex = slides.findIndex((slide) => slide.id === fromId);
     const newIndex = slides.findIndex((slide) => slide.id === toId);
     if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return;
-    const reordered = arrayMove(slides, oldIndex, newIndex).map((slide, index) => ({
-      ...slide,
-      order: index,
-    }));
+    const dest = slides[newIndex];
+    const destName = (dest.sourceLessonName || '').trim();
+    const destPath = (dest.sourceLessonPath || '').trim();
+    const reordered = arrayMove(slides, oldIndex, newIndex).map((slide, index) => {
+      const base = { ...slide, order: index };
+      if (slide.id !== fromId) return base;
+      return {
+        ...base,
+        sourceLessonName: destName,
+        ...(destPath ? { sourceLessonPath: destPath } : { sourceLessonPath: slide.sourceLessonPath }),
+      };
+    });
     // Sofort in der Filmstrip spiegeln — sonst springt die Reihenfolge zurück (verzögerte filmstripSlides)
     if (filmstripIdleTimer.current) {
       clearTimeout(filmstripIdleTimer.current);
@@ -2816,6 +2825,7 @@ const PresentationEditorPage: React.FC = () => {
       const filesNow = dt ? snapshotClipboardFiles(dt) : [];
       const html = dt?.getData('text/html') || '';
       const fromPasteTarget = isPresentationPasteTarget(e.target);
+      if (!fromPasteTarget && clipboardPrefersRichText(dt)) return;
       if (!fromPasteTarget && !filesNow.length && !/<img[\s>]/i.test(html)) return;
       e.preventDefault();
       e.stopPropagation();
