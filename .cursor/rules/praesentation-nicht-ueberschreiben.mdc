@@ -13,8 +13,10 @@ Die Lehrerin bearbeitet Folien selbst. Agenten dürfen den Inhalt **nicht** „a
 - `**/Praesentation.deck.original.json`
 - `**/Praesentation.annotations.json`
 - `**/Praesentation.play-variants.json`
-- `**/.presentation-backups/**`
-- `**/Presentation-Sicherheitskopien/**`
+- `**/.presentation-backups/**` (außer wenn sie ausdrücklich eine Sicherheitskopie will)
+- `**/Presentation-Sicherheitskopien/**` (außer wenn sie ausdrücklich eine Sicherheitskopie will)
+
+Sicherheitskopien sind nur **Kopien**. Live-Dateien nicht überschreiben, um ein Backup anzulegen.
 
 ## Wann Folieninhalt geändert werden darf
 
