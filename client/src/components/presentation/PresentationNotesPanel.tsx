@@ -134,6 +134,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   const syncFromProps = useCallback(() => {
     const el = ref.current;
     if (!el || editingRef.current) return;
+    if (el.getAttribute('data-pres-notes-dragging') === '1') return;
     const next = displayHtml || '<p><br></p>';
     if (el.innerHTML !== next) el.innerHTML = next;
     if (!readOnly) enhanceImages();
@@ -148,7 +149,10 @@ const NoteZone: React.FC<NoteZoneProps> = ({
     if (!el || readOnly) return undefined;
     const onMouseUp = () => captureEditorSelection(el);
     el.addEventListener('mouseup', onMouseUp);
-    const mo = new MutationObserver(() => enhanceImages());
+    const mo = new MutationObserver(() => {
+      if (el.getAttribute('data-pres-notes-dragging') === '1') return;
+      enhanceImages();
+    });
     mo.observe(el, { childList: true, subtree: true });
     enhanceImages();
     return () => {

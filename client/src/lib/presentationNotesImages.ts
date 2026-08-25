@@ -41,6 +41,7 @@ export function presentationNotesImageEditorSx() {
       lineHeight: 0,
       cursor: 'grab',
       userSelect: 'none',
+      touchAction: 'none',
     },
     [`& .${PRES_NOTES_IMG_WRAP_CLASS}[${PRES_NOTES_IMG_POS_ATTR}="1"]`]: {
       position: 'absolute',
@@ -138,6 +139,27 @@ export function serializePresentationNotesHtml(editor: HTMLElement): string {
   return clone.innerHTML;
 }
 
+export const PRES_NOTES_DRAGGING_ATTR = 'data-pres-notes-dragging';
+
+function notesEditorIsDragging(editor: HTMLElement | null): boolean {
+  return editor?.getAttribute(PRES_NOTES_DRAGGING_ATTR) === '1';
+}
+
+function beginNotesDrag(editor: HTMLElement): void {
+  editor.setAttribute(PRES_NOTES_DRAGGING_ATTR, '1');
+}
+
+function endNotesDrag(editor: HTMLElement, afterPersist?: () => void): void {
+  afterPersist?.();
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      if (editor.getAttribute(PRES_NOTES_DRAGGING_ATTR) === '1') {
+        editor.removeAttribute(PRES_NOTES_DRAGGING_ATTR);
+      }
+    });
+  });
+}
+
 function editorPadding(editor: HTMLElement): { left: number; top: number } {
   const cs = getComputedStyle(editor);
   return {
@@ -224,13 +246,20 @@ function bindNotesImage(wrap: HTMLElement, img: HTMLImageElement, editor: HTMLEl
   };
 
   handle.addEventListener('pointerdown', (e) => {
+    beginNotesDrag(editor);
     e.preventDefault();
     e.stopPropagation();
     selectWrap();
     const startX = e.clientX;
     const startW = wrap.getBoundingClientRect().width || img.offsetWidth || 160;
     const maxW = Math.max(120, editor.clientWidth - 16);
+    try {
+      handle.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
     const onMove = (ev: PointerEvent) => {
+      if (ev.pointerId !== e.pointerId) return;
       const nextW = Math.max(48, Math.min(maxW, startW + (ev.clientX - startX)));
       wrap.style.width = `${Math.round(nextW)}px`;
       wrap.style.maxWidth = 'none';
@@ -238,64 +267,90 @@ function bindNotesImage(wrap: HTMLElement, img: HTMLImageElement, editor: HTMLEl
       img.style.setProperty('max-width', 'none', 'important');
       img.style.setProperty('height', 'auto', 'important');
     };
-    const onUp = () => {
-      editor.removeAttribute('data-pres-notes-dragging');
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
+    const onUp = (ev: PointerEvent) => {
+      if (ev.pointerId !== e.pointerId) return;
+      handle.removeEventListener('pointermove', onMove);
+      handle.removeEventListener('pointerup', onUp);
+      handle.removeEventListener('pointercancel', onUp);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
-      onChange();
+      try {
+        handle.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      endNotesDrag(editor, () => {
+        ensureNotesTypingHost(editor);
+        onChange();
+      });
     };
     document.body.style.cursor = 'nwse-resize';
     document.body.style.userSelect = 'none';
-    editor.setAttribute('data-pres-notes-dragging', '1');
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
+    handle.addEventListener('pointermove', onMove);
+    handle.addEventListener('pointerup', onUp);
+    handle.addEventListener('pointercancel', onUp);
   });
 
   wrap.addEventListener('pointerdown', (e) => {
     if ((e.target as HTMLElement).closest(`.${RESIZE_HANDLE_CLASS}`)) return;
     if (e.button !== 0) return;
+    beginNotesDrag(editor);
     e.preventDefault();
     e.stopPropagation();
     selectWrap();
-    const startX = e.clientX;
-    const startY = e.clientY;
-    let dragging = false;
+    let originX = e.clientX;
+    let originY = e.clientY;
+    let dragging = wrap.getAttribute(PRES_NOTES_IMG_POS_ATTR) === '1';
     let startLeft = parseFloat(wrap.style.left || '0') || 0;
     let startTop = parseFloat(wrap.style.top || '0') || 0;
-    editor.setAttribute('data-pres-notes-dragging', '1');
+    try {
+      wrap.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
     const onMove = (ev: PointerEvent) => {
+      if (ev.pointerId !== e.pointerId) return;
       if (!dragging) {
-        if (Math.hypot(ev.clientX - startX, ev.clientY - startY) < 5) return;
+        if (Math.hypot(ev.clientX - originX, ev.clientY - originY) < 4) return;
         dragging = true;
         if (wrap.getAttribute(PRES_NOTES_IMG_POS_ATTR) !== '1') {
           pinWrapToEditor(wrap, editor);
         }
         startLeft = parseFloat(wrap.style.left || '0') || 0;
         startTop = parseFloat(wrap.style.top || '0') || 0;
+        originX = ev.clientX;
+        originY = ev.clientY;
         wrap.style.cursor = 'grabbing';
         document.body.style.userSelect = 'none';
       }
-      const nextLeft = startLeft + (ev.clientX - startX);
-      const nextTop = startTop + (ev.clientY - startY);
+      const nextLeft = startLeft + (ev.clientX - originX);
+      const nextTop = startTop + (ev.clientY - originY);
       const wr = wrap.getBoundingClientRect();
       const maxLeft = Math.max(0, editor.clientWidth - 32);
       const maxTop = Math.max(0, Math.max(editor.scrollHeight, editor.clientHeight) - 24);
       wrap.style.left = `${Math.round(Math.max(-wr.width + 32, Math.min(maxLeft, nextLeft)))}px`;
       wrap.style.top = `${Math.round(Math.max(0, Math.min(maxTop, nextTop)))}px`;
     };
-    const onUp = () => {
+    const onUp = (ev: PointerEvent) => {
+      if (ev.pointerId !== e.pointerId) return;
+      wrap.removeEventListener('pointermove', onMove);
+      wrap.removeEventListener('pointerup', onUp);
+      wrap.removeEventListener('pointercancel', onUp);
       wrap.style.cursor = 'grab';
-      editor.removeAttribute('data-pres-notes-dragging');
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
       document.body.style.userSelect = '';
-      ensureNotesTypingHost(editor);
-      if (dragging) onChange();
+      try {
+        wrap.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      endNotesDrag(editor, () => {
+        ensureNotesTypingHost(editor);
+        if (dragging) onChange();
+      });
     };
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
+    wrap.addEventListener('pointermove', onMove);
+    wrap.addEventListener('pointerup', onUp);
+    wrap.addEventListener('pointercancel', onUp);
   });
 
   wrap.addEventListener('click', (e) => {
@@ -361,7 +416,7 @@ export function placeNotesCaretInTypingHost(editor: HTMLElement): void {
 
 /** Resize-Handles + Ziehen zum Verschieben an alle Notiz-Bilder hängen. */
 export function enhancePresentationNotesImages(editor: HTMLElement | null, onChange: () => void): void {
-  if (!editor) return;
+  if (!editor || notesEditorIsDragging(editor)) return;
   editor.querySelectorAll('img').forEach((node) => {
     const img = node as HTMLImageElement;
     if (!img.getAttribute('src')) return;
