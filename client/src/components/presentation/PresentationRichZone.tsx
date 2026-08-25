@@ -277,8 +277,12 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
   useEffect(() => {
     if (!editable) return;
     editingRef.current = false;
+  }, [editable, slideId]);
+
+  useEffect(() => {
+    if (!editable) return;
     syncFromProps();
-  }, [editable, slideId, syncFromProps]);
+  }, [editable, syncFromProps]);
 
   /** Orphan-Inline (Text ohne &lt;p&gt;) für Animationsklicks in Absätze packen. */
   useEffect(() => {

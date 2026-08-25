@@ -3,7 +3,7 @@
  * Größen sind immer Folien-Pixel (1920×1080-Raum), unabhängig vom Anzeige-Scale.
  */
 
-import { isFormatBarInteracting } from './presentationFormatBarGuard';
+import { isFormatBarInteracting, isPresentationFormatUiTarget } from './presentationFormatBarGuard';
 import { toHighlightFill } from './presentationTheme';
 
 export const PRESENTATION_CONTENT_FONT_PX = 26;
@@ -58,7 +58,17 @@ export function captureEditorSelection(editor: HTMLElement | null) {
   const range = sel.getRangeAt(0);
   if (!editor.contains(range.commonAncestorContainer)) return;
   if (range.collapsed) {
-    if (!isFormatBarInteracting() && saved?.editor === editor) saved = null;
+    if (
+      isFormatBarInteracting() ||
+      isPresentationFormatUiTarget(document.activeElement)
+    ) {
+      return;
+    }
+    // Toolbar/Popover hat den Fokus — gespeicherte Markierung behalten.
+    if (document.activeElement !== editor && !editor.contains(document.activeElement)) {
+      return;
+    }
+    if (saved?.editor === editor) saved = null;
     return;
   }
   saved = { editor, range: range.cloneRange() };
@@ -116,11 +126,8 @@ export function keepEditorSelection(editor: HTMLElement, preferred?: Range | nul
   }
   if (sel.rangeCount > 0) {
     const live = sel.getRangeAt(0);
-    if (editor.contains(live.commonAncestorContainer)) {
-      if (!live.collapsed) {
-        saved = { editor, range: live.cloneRange() };
-      }
-      // Auch bei Cursor (collapsed): hier lassen — nicht in alte Markierung springen
+    if (editor.contains(live.commonAncestorContainer) && !live.collapsed) {
+      saved = { editor, range: live.cloneRange() };
       return;
     }
   }
@@ -486,6 +493,12 @@ export function hydratePresentationHtmlFontSizes(html: string): string {
       const raw = el.getAttribute('data-pres-highlight') || el.style.backgroundColor || '';
       if (!raw) return;
       el.style.setProperty('background-color', toHighlightFill(raw), 'important');
+    });
+    doc.body.querySelectorAll('[data-pres-color]').forEach((node) => {
+      const el = node as HTMLElement;
+      const raw = (el.getAttribute('data-pres-color') || '').trim();
+      if (!raw) return;
+      el.style.setProperty('color', raw, 'important');
     });
     return doc.body.innerHTML;
   } catch {

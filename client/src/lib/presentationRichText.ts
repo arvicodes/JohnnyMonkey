@@ -17,6 +17,7 @@ import {
   rangeFullyContainsNode,
   restoreSavedEditorSelection,
   stashEditorSelection,
+  hydratePresentationHtmlFontSizes,
 } from './presentationFontSize';
 import {
   normalizeListsInPlace,
@@ -1171,7 +1172,7 @@ export function sanitizePresentationHtml(html: string): string {
   doc.body.querySelectorAll('table:not([data-pres-table])').forEach((node) => {
     applyJohnnyTableFormatting(node as HTMLTableElement);
   });
-  return doc.body.innerHTML;
+  return hydratePresentationHtmlFontSizes(doc.body.innerHTML);
 }
 
 const NOTES_INDENT_PROPS = [
@@ -1312,7 +1313,6 @@ export function execFormat(editor: HTMLElement | null, cmd: string, value?: stri
   if (LIST_FORMAT_COMMANDS.has(cmd)) {
     normalizeListsInPlace(editor);
   }
-  // Markierung behalten (nicht kollabieren)
   keepEditorSelection(editor);
   editor.dispatchEvent(new Event('input', { bubbles: true }));
 }
@@ -1512,11 +1512,11 @@ function applyStyleAcrossRange(
   editor: HTMLElement,
   range: Range,
   style: Record<string, string>
-): HTMLSpanElement | null {
+): HTMLSpanElement[] {
   const textNodes = textNodesInRange(editor, range);
-  if (!textNodes.length) return null;
+  if (!textNodes.length) return [];
 
-  let firstSpan: HTMLSpanElement | null = null;
+  const spans: HTMLSpanElement[] = [];
   for (let i = textNodes.length - 1; i >= 0; i -= 1) {
     const textNode = textNodes[i];
     const sub = document.createRange();
@@ -1529,12 +1529,33 @@ function applyStyleAcrossRange(
         ? range.endOffset
         : textNode.length;
     if (start >= end) continue;
-    sub.setStart(textNode, start);
-    sub.setEnd(textNode, end);
+    try {
+      sub.setStart(textNode, start);
+      sub.setEnd(textNode, end);
+    } catch {
+      continue;
+    }
     const span = applyStyleToTextRange(sub, style);
-    if (span && !firstSpan) firstSpan = span;
+    if (span) spans.unshift(span);
   }
-  return firstSpan;
+  return spans;
+}
+
+function rangeFromStyleSpans(spans: HTMLSpanElement[]): Range | null {
+  if (!spans.length) return null;
+  const keep = document.createRange();
+  try {
+    keep.selectNodeContents(spans[0]);
+    if (spans.length > 1) {
+      const last = spans[spans.length - 1];
+      const end = document.createRange();
+      end.selectNodeContents(last);
+      keep.setEnd(end.endContainer, end.endOffset);
+    }
+    return keep;
+  } catch {
+    return null;
+  }
 }
 
 function applyInlineStyleToSelection(editor: HTMLElement, style: Record<string, string>): boolean {
@@ -1550,18 +1571,13 @@ function applyInlineStyleToSelection(editor: HTMLElement, style: Record<string, 
   if (style.backgroundColor) stripHighlightInRange(editor, work);
   if (style.fontFamily) stripFontInRange(editor, work);
 
-  const wrapped =
-    applyStyleAcrossRange(editor, work, style) ?? applyStyleToTextRange(work, style);
+  const spans = applyStyleAcrossRange(editor, work, style);
+  const wrapped = spans[0] ?? applyStyleToTextRange(work, style);
   if (!wrapped) return false;
+  if (wrapped && !spans.includes(wrapped)) spans.push(wrapped);
 
-  // Markierung auf dem formatierten Text behalten
-  try {
-    const keep = document.createRange();
-    keep.selectNodeContents(wrapped);
-    keepEditorSelection(editor, keep);
-  } catch {
-    keepEditorSelection(editor);
-  }
+  const keep = rangeFromStyleSpans(spans);
+  keepEditorSelection(editor, keep);
   editor.dispatchEvent(new Event('input', { bubbles: true }));
   return true;
 }
@@ -1596,9 +1612,39 @@ function applyInlineStyle(editor: HTMLElement, style: Record<string, string>) {
   editor.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
+function stampColorOnCurrentSelection(editor: HTMLElement, color: string) {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+  const range = sel.getRangeAt(0);
+  const nodes = elementsInRange(editor, range);
+  for (const el of nodes) {
+    if (!range.intersectsNode(el)) continue;
+    if (el.style?.color || el.hasAttribute('color') || el.tagName === 'FONT') {
+      el.setAttribute('data-pres-color', color);
+      el.style.setProperty('color', color, 'important');
+      if (el.tagName === 'FONT') el.removeAttribute('color');
+    }
+  }
+}
+
 export function applyTextColor(editor: HTMLElement | null, color: string) {
   if (!editor) return;
-  applyInlineStyle(editor, { color });
+  if (applyInlineStyleToSelection(editor, { color })) return;
+  stashEditorSelection(editor);
+  if (!ensureEditorSelection(editor)) {
+    applyInlineStyle(editor, { color });
+    return;
+  }
+  try {
+    document.execCommand('styleWithCSS', false, 'true');
+    document.execCommand('foreColor', false, color);
+  } catch {
+    applyInlineStyle(editor, { color });
+    return;
+  }
+  stampColorOnCurrentSelection(editor, color);
+  keepEditorSelection(editor);
+  editor.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 export function applyHighlightColor(editor: HTMLElement | null, color: string) {
@@ -1620,7 +1666,7 @@ export function clearFontFamilyInSelection(editor: HTMLElement | null): boolean 
   const range = sel.getRangeAt(0);
   if (range.collapsed) return false;
   stripFontInRange(editor, range);
-  collapseEditorSelection(editor);
+  keepEditorSelection(editor);
   editor.dispatchEvent(new Event('input', { bubbles: true }));
   return true;
 }
@@ -1706,6 +1752,6 @@ export function clearInlineFormatting(
   } catch {
     /* ignore */
   }
-  collapseEditorSelection(editor);
+  keepEditorSelection(editor);
   editor.dispatchEvent(new Event('input', { bubbles: true }));
 }

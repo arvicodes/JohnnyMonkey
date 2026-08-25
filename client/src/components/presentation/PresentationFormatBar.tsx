@@ -53,7 +53,6 @@ import {
   applyHighlightColor,
   applyPresentationLink,
   applyTextColor,
-  bookmarkSelection,
   clearFontFamilyInSelection,
   clearInlineFormatting,
   execFormat,
@@ -66,6 +65,7 @@ import {
   removePresentationLink,
   stashEditorSelection,
   insertTextAtCursor,
+  keepEditorSelection,
 } from '../../lib/presentationRichText';
 import {
   applyOrderedListStyle,
@@ -117,6 +117,12 @@ const MOD_LABEL = typeof navigator !== 'undefined' && /Mac/i.test(navigator.plat
 /** Sentinel — never use value="" with a disabled MenuItem (MUI Select render loop). */
 const FONT_SIZE_PLACEHOLDER = '__pres_font_size__';
 
+const FORMAT_POPOVER_FOCUS = {
+  disableAutoFocus: true,
+  disableEnforceFocus: true,
+  disableRestoreFocus: true,
+} as const;
+
 interface PresentationFormatBarProps {
   activeEditor: HTMLElement | null;
   disabled?: boolean;
@@ -160,6 +166,15 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   const [selectedLessonFile, setSelectedLessonFile] = useState<string>('');
   const [selectedFileMeta, setSelectedFileMeta] = useState<LessonFolderFsItem | null>(null);
   const linkRangeRef = useRef<Range | null>(null);
+  const formatMenuOpen =
+    Boolean(colorAnchor) ||
+    Boolean(highlightAnchor) ||
+    Boolean(emojiAnchor) ||
+    Boolean(tableAnchor) ||
+    Boolean(olStyleAnchor) ||
+    linkDialogOpen;
+  const formatMenuOpenRef = useRef(formatMenuOpen);
+  formatMenuOpenRef.current = formatMenuOpen;
 
   const isNotesEditor = Boolean(
     activeEditor?.getAttribute('data-pres-notes-zone') === 'true' || contextLabel === 'Notizen',
@@ -207,9 +222,9 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   useEffect(() => {
     syncFormatting();
     if (!activeEditor) return undefined;
-    const persistSelection = () => bookmarkSelection(activeEditor);
+    const persistSelection = () => stashEditorSelection(activeEditor);
     const onSelectionChange = () => {
-      bookmarkSelection(activeEditor);
+      stashEditorSelection(activeEditor);
       syncFormatting();
     };
     activeEditor.addEventListener('keyup', persistSelection);
@@ -228,14 +243,27 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     '&:hover': { bgcolor: '#e8e8e8' },
   };
 
+  const releaseFormatBarInteraction = useCallback(() => {
+    window.setTimeout(() => {
+      if (formatMenuOpenRef.current) return;
+      setFormatBarInteracting(false);
+    }, 250);
+  }, []);
+
+  useEffect(() => {
+    if (formatMenuOpen) setFormatBarInteracting(true);
+  }, [formatMenuOpen]);
+
   const applyAndNotify = (fn: () => void, refreshSize = false) => {
     if (!activeEditor) return;
     setFormatBarInteracting(true);
     stashEditorSelection(activeEditor);
     fn();
+    keepEditorSelection(activeEditor);
+    window.requestAnimationFrame(() => keepEditorSelection(activeEditor));
     if (refreshSize) syncFormatting();
     onEditorChanged?.();
-    window.setTimeout(() => setFormatBarInteracting(false), 0);
+    releaseFormatBarInteraction();
   };
 
   useEffect(() => {
@@ -299,10 +327,12 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     stashEditorSelection(activeEditor);
     const px = nudgeFontSize(activeEditor, dir);
     if (px != null) {
+      keepEditorSelection(activeEditor);
+      window.requestAnimationFrame(() => keepEditorSelection(activeEditor));
       syncFormatting();
       onEditorChanged?.();
     }
-    window.setTimeout(() => setFormatBarInteracting(false), 0);
+    releaseFormatBarInteraction();
   };
 
   const beginFormatBarInteraction = () => {
@@ -324,7 +354,6 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
       return;
     }
     stashEditorSelection(activeEditor);
-    bookmarkSelection(activeEditor);
     const sel = window.getSelection();
     if (sel?.rangeCount) {
       const range = sel.getRangeAt(0);
@@ -345,7 +374,6 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
       sel.removeAllRanges();
       sel.addRange(linkRangeRef.current.cloneRange());
       stashEditorSelection(activeEditor);
-      bookmarkSelection(activeEditor);
       return true;
     } catch {
       return false;
@@ -573,7 +601,8 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
             sx={btnSx}
             onMouseDown={(e) => {
               e.preventDefault();
-              bookmarkSelection(activeEditor);
+              setFormatBarInteracting(true);
+              stashEditorSelection(activeEditor);
             }}
             onClick={openLinkDialog}
           >
@@ -595,7 +624,8 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
             }}
             onMouseDown={(e) => {
               e.preventDefault();
-              bookmarkSelection(activeEditor);
+              setFormatBarInteracting(true);
+              stashEditorSelection(activeEditor);
             }}
             onClick={(e) => {
               if (!activeEditor) return;
@@ -607,7 +637,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
                 const result = formatEditorContentAsTable(activeEditor, isNotesEditor ? 'grau' : 'gelb');
                 if (!result.ok) {
                   // Kein Tabellen-Text → leere Tabelle einfügen
-                  bookmarkSelection(activeEditor);
+                  stashEditorSelection(activeEditor);
                   const html = buildBlankTableHtml(3, 3, getTableTheme(isNotesEditor ? 'grau' : 'gelb'));
                   try {
                     document.execCommand('styleWithCSS', false, 'true');
@@ -659,7 +689,8 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
               sx={{ ...btnSx, p: 0, width: 16, minWidth: 16 }}
               onMouseDown={(e) => {
                 e.preventDefault();
-                bookmarkSelection(activeEditor);
+                setFormatBarInteracting(true);
+                stashEditorSelection(activeEditor);
               }}
               onClick={(e) => {
                 if (!activeEditor) return;
@@ -676,11 +707,12 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         anchorEl={olStyleAnchor}
         onClose={() => {
           setOlStyleAnchor(null);
-          setFormatBarInteracting(false);
+          releaseFormatBarInteraction();
         }}
+        {...FORMAT_POPOVER_FOCUS}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
       >
-        <Box sx={{ py: 0.5, minWidth: 148 }}>
+        <Box data-presentation-format-ui sx={{ py: 0.5, minWidth: 148 }}>
           {PRESENTATION_OL_STYLES.map((style) => {
             const current = getCurrentPresentationOlStyle(activeEditor);
             const selected = current === style.id;
@@ -870,7 +902,8 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
             sx={btnSx}
             onMouseDown={(e) => {
               e.preventDefault();
-              bookmarkSelection(activeEditor);
+              setFormatBarInteracting(true);
+              stashEditorSelection(activeEditor);
             }}
             onClick={(e) => setColorAnchor(e.currentTarget)}
           >
@@ -883,15 +916,16 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         anchorEl={colorAnchor}
         onClose={() => {
           setColorAnchor(null);
-          setFormatBarInteracting(false);
+          releaseFormatBarInteraction();
         }}
+        {...FORMAT_POPOVER_FOCUS}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
       >
         <Box data-presentation-format-ui sx={{ p: 1, maxWidth: 260 }}>
           <Box
             onMouseDown={(e) => {
               e.preventDefault();
-              bookmarkSelection(activeEditor);
+              stashEditorSelection(activeEditor);
               applyAndNotify(() => clearInlineFormatting(activeEditor, 'color'));
               setColorAnchor(null);
             }}
@@ -916,7 +950,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
               key={c}
               onMouseDown={(e) => {
                 e.preventDefault();
-                bookmarkSelection(activeEditor);
+                stashEditorSelection(activeEditor);
                 applyAndNotify(() => applyTextColor(activeEditor, c));
                 setColorAnchor(null);
               }}
@@ -942,7 +976,8 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
             sx={btnSx}
             onMouseDown={(e) => {
               e.preventDefault();
-              bookmarkSelection(activeEditor);
+              setFormatBarInteracting(true);
+              stashEditorSelection(activeEditor);
             }}
             onClick={(e) => setHighlightAnchor(e.currentTarget)}
           >
@@ -955,15 +990,16 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         anchorEl={highlightAnchor}
         onClose={() => {
           setHighlightAnchor(null);
-          setFormatBarInteracting(false);
+          releaseFormatBarInteraction();
         }}
+        {...FORMAT_POPOVER_FOCUS}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
       >
         <Box data-presentation-format-ui sx={{ p: 1, maxWidth: 260 }}>
           <Box
             onMouseDown={(e) => {
               e.preventDefault();
-              bookmarkSelection(activeEditor);
+              stashEditorSelection(activeEditor);
               applyAndNotify(() => clearInlineFormatting(activeEditor, 'highlight'));
               setHighlightAnchor(null);
             }}
@@ -988,7 +1024,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
               key={c}
               onMouseDown={(e) => {
                 e.preventDefault();
-                bookmarkSelection(activeEditor);
+                stashEditorSelection(activeEditor);
                 applyAndNotify(() => applyHighlightColor(activeEditor, c));
                 setHighlightAnchor(null);
               }}
@@ -1014,7 +1050,8 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
             sx={btnSx}
             onMouseDown={(e) => {
               e.preventDefault();
-              bookmarkSelection(activeEditor);
+              setFormatBarInteracting(true);
+              stashEditorSelection(activeEditor);
             }}
             onClick={(e) => setEmojiAnchor(e.currentTarget)}
           >
@@ -1027,8 +1064,9 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         anchorEl={emojiAnchor}
         onClose={() => {
           setEmojiAnchor(null);
-          setFormatBarInteracting(false);
+          releaseFormatBarInteraction();
         }}
+        {...FORMAT_POPOVER_FOCUS}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
       >
         <Box
@@ -1055,7 +1093,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
                     aria-label={`Emoji ${emoji}`}
                     onMouseDown={(e) => {
                       e.preventDefault();
-                      bookmarkSelection(activeEditor);
+                      stashEditorSelection(activeEditor);
                       applyAndNotify(() => {
                         insertTextAtCursor(activeEditor, emoji);
                       });
@@ -1110,8 +1148,9 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         anchorEl={tableAnchor}
         onClose={() => {
           setTableAnchor(null);
-          setFormatBarInteracting(false);
+          releaseFormatBarInteraction();
         }}
+        {...FORMAT_POPOVER_FOCUS}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
       >
         {editorTableCtx &&
@@ -1130,12 +1169,13 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
               textTransform: 'none' as const,
             };
             const run = (fn: () => void) => {
-              bookmarkSelection(activeEditor);
+              stashEditorSelection(activeEditor);
               setFormatBarInteracting(true);
               fn();
+              keepEditorSelection(activeEditor);
               onEditorChanged?.();
               setNotesTableTick((n) => n + 1);
-              window.setTimeout(() => setFormatBarInteracting(false), 0);
+              releaseFormatBarInteraction();
             };
             return (
               <Box
