@@ -16,6 +16,8 @@ import {
   presentationNotesImageEditorSx,
   serializePresentationNotesHtml,
   placeNotesCaretInTypingHost,
+  handleNotesImageDeleteKey,
+  clearNotesImageSelection,
 } from '../../lib/presentationNotesImages';
 import {
   tryStartTableResizeFromPointer,
@@ -200,6 +202,14 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     const el = ref.current;
     if (!el || readOnly) return;
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      if (handleNotesImageDeleteKey(el, e.key)) {
+        e.preventDefault();
+        e.stopPropagation();
+        persistFromEditor(false, false);
+        return;
+      }
+    }
     if (e.key === ' ' && !e.ctrlKey && !e.metaKey && !e.altKey) {
       if (tryMarkdownListShortcut(el)) {
         e.preventDefault();

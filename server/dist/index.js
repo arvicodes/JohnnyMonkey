@@ -54,14 +54,25 @@ const teacherScratchPadStore_1 = require("./utils/teacherScratchPadStore");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const prisma = new client_1.PrismaClient();
-// Trust proxy - wichtig für nginx Reverse Proxy und X-Forwarded-Proto
-// Erlaubt Express, die X-Forwarded-* Header von nginx zu respektieren
+// Trust proxy - Sophos/nginx terminiert HTTPS und reicht intern HTTP weiter.
 app.set('trust proxy', true);
-// Enable CORS with better configuration
+const PRODUCTION_CORS_ORIGINS = [
+    'https://johnnymonkey.onrender.com',
+    'https://www.johnnymonkey.onrender.com',
+    'https://mnsplusdocker:44443',
+    'https://mnsplusdocker',
+    'https://rpl-50147-0.dn.mnsnet.de:44443',
+    'https://rpl-50147-0.dn.mnsnet.de',
+];
+function productionCorsOrigins() {
+    const extra = (process.env.CORS_ORIGINS || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+    return [...PRODUCTION_CORS_ORIGINS, ...extra];
+}
 app.use((0, cors_1.default)({
-    origin: process.env.NODE_ENV === 'production'
-        ? ['https://johnnymonkey.onrender.com', 'https://www.johnnymonkey.onrender.com']
-        : true,
+    origin: process.env.NODE_ENV === 'production' ? productionCorsOrigins() : true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-login-code']

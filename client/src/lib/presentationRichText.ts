@@ -32,7 +32,7 @@ import {
 import { PRESENTATION_DEFAULT_FONT_FAMILY } from './presentationFonts';
 import { JOHNNY_PRESENTATION, toHighlightFill } from './presentationTheme';
 import { ensureNotesTablesFormatted, applyJohnnyTableFormatting, handleTableTabInEditor } from './presentationSlideTables';
-import { presentationNotesImageInsertHtml, stripNotesImageChrome } from './presentationNotesImages';
+import { presentationNotesImageInsertHtml, stripNotesImageChrome, releaseNotesImagesToFlow } from './presentationNotesImages';
 import {
   convertOmmlElementsInPlace,
   hoistPastedMathHtml,
@@ -1234,6 +1234,7 @@ export function normalizeNotesHtml(html: string): string {
   ensureNotesTablesFormatted(doc.body);
   normalizePresentationAnchorsInPlace(doc.body);
   stripNotesImageChrome(doc.body);
+  releaseNotesImagesToFlow(doc.body);
   return doc.body.innerHTML;
 }
 
