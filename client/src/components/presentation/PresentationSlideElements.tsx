@@ -19,6 +19,7 @@ interface PresentationSlideElementsProps {
   onElementChange?: (id: string, patch: Partial<SlideElement>) => void;
   onDeleteElement?: (id: string) => void;
   onMoveElementToSlide?: (elementId: string, targetSlideId: string) => void;
+  onMoveElementToNotes?: (elementId: string, clientX: number, clientY: number) => void;
   onTextEditorFocus?: (el: HTMLElement, elementId: string, field?: 'html' | 'titleHtml') => void;
   onSnapGuidesChange?: (guides: SnapGuide[]) => void;
   /** Karte gewählt → Bilder lassen Klicks durch. */
@@ -45,6 +46,7 @@ const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
   onElementChange,
   onDeleteElement,
   onMoveElementToSlide,
+  onMoveElementToNotes,
   onTextEditorFocus,
   onSnapGuidesChange,
   passPointerThrough = false,
@@ -76,6 +78,9 @@ const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
           onDelete={onDeleteElement ? () => onDeleteElement(el.id) : undefined}
           onMoveToSlide={
             onMoveElementToSlide ? (targetSlideId) => onMoveElementToSlide(el.id, targetSlideId) : undefined
+          }
+          onMoveToNotes={
+            onMoveElementToNotes ? (x, y) => onMoveElementToNotes(el.id, x, y) : undefined
           }
           onTextEditorFocus={onTextEditorFocus}
           snapTargets={snapTargets}

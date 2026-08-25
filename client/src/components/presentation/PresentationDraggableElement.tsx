@@ -26,6 +26,7 @@ import {
 } from '../../lib/presentationRichText';
 import { PRESENTATION_DEFAULT_FONT_FAMILY } from '../../lib/presentationFonts';
 import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
+import { notesDropTargetHits } from '../../lib/presentationNotesImages';
 import { isPenPointer } from '../../lib/presentationDrawTools';
 import { imageFrameParts } from '../../lib/presentationImageFrames';
 import '../../styles/presentationLists.css';
@@ -116,6 +117,8 @@ interface PresentationDraggableElementProps {
   onDelete?: () => void;
   /** Bild auf andere Folie legen: Drop über Filmstrip-Thumbnail. */
   onMoveToSlide?: (targetSlideId: string) => void;
+  /** Folien-Element in die Notizleiste legen. */
+  onMoveToNotes?: (clientX: number, clientY: number) => void;
   onTextEditorFocus?: (el: HTMLElement, elementId: string, field?: 'html' | 'titleHtml') => void;
   /** Video/Embed in Präsentation bedienbar (Play, Zoom …). */
   mediaInteractive?: boolean;
@@ -162,6 +165,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   onChange,
   onDelete,
   onMoveToSlide,
+  onMoveToNotes,
   onTextEditorFocus,
   mediaInteractive = false,
   exportSnapshot = false,
@@ -550,25 +554,36 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       window.removeEventListener('pointerup', pointerUp, true);
       window.removeEventListener('pointercancel', pointerUp, true);
 
-      // Element auf Filmstrip-Folie fallen lassen → verschieben
-      if (wasDragging && dragMode === 'move' && onMoveToSlide) {
-        const thumbs = document.querySelectorAll('[data-pres-filmstrip-slide]');
-        let targetSlideId: string | null = null;
-        thumbs.forEach((thumb) => {
-          if (targetSlideId) return;
-          const r = thumb.getBoundingClientRect();
-          if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
-            targetSlideId = thumb.getAttribute('data-pres-filmstrip-slide');
-          }
-        });
-        if (targetSlideId) {
-          onMoveToSlide(targetSlideId);
+      // Element auf Filmstrip-Folie oder in Notizen fallen lassen
+      if (wasDragging && dragMode === 'move') {
+        if (onMoveToNotes && notesDropTargetHits(e.clientX, e.clientY)) {
+          onMoveToNotes(e.clientX, e.clientY);
           try {
             (e.target as HTMLElement)?.releasePointerCapture?.(e.pointerId);
           } catch {
             /* ignore */
           }
           return;
+        }
+        if (onMoveToSlide) {
+          const thumbs = document.querySelectorAll('[data-pres-filmstrip-slide]');
+          let targetSlideId: string | null = null;
+          thumbs.forEach((thumb) => {
+            if (targetSlideId) return;
+            const r = thumb.getBoundingClientRect();
+            if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+              targetSlideId = thumb.getAttribute('data-pres-filmstrip-slide');
+            }
+          });
+          if (targetSlideId) {
+            onMoveToSlide(targetSlideId);
+            try {
+              (e.target as HTMLElement)?.releasePointerCapture?.(e.pointerId);
+            } catch {
+              /* ignore */
+            }
+            return;
+          }
         }
       }
 
@@ -627,7 +642,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         /* ignore */
       }
     },
-    [pointerMove, element.type, element.html, editable, animationEditMode, onChange, onMoveToSlide, onTextEditorFocus, element.id]
+    [pointerMove, element.type, element.html, editable, animationEditMode, onChange, onMoveToSlide, onMoveToNotes, onTextEditorFocus, element.id]
   );
 
   const imageOnlyEdit = Boolean(imageEditable && element.type === 'image' && onChange);

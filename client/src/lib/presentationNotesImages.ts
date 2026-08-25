@@ -1,3 +1,5 @@
+import { slideImageUrl, type SlideElement } from './presentationDeck';
+
 /** Frei verschiebbare Bilder in Folien-Notizen (contentEditable). */
 
 export const PRES_NOTES_IMG_WRAP_CLASS = 'pres-notes-img-wrap';
@@ -303,4 +305,92 @@ export function enhancePresentationNotesImages(editor: HTMLElement | null, onCha
     const wrap = ensureNotesImageWrap(img);
     bindNotesImage(wrap, img, editor, onChange);
   });
+}
+
+/** Drop-Ziel: Notizleiste (auch wenn das gezogene Folien-Element darüber liegt). */
+export const PRES_NOTES_DROP_ATTR = 'data-pres-notes-drop';
+
+export function notesDropTargetHits(clientX: number, clientY: number): boolean {
+  const targets = document.querySelectorAll(`[${PRES_NOTES_DROP_ATTR}]`);
+  for (const node of targets) {
+    const r = node.getBoundingClientRect();
+    if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function slideElementToNotesInsertHtml(el: SlideElement): string | null {
+  if (el.type === 'image' && el.src?.trim()) {
+    const name = (el.src.split('/').pop() || 'Bild').replace(/\+/g, ' ');
+    return `<p>${presentationNotesImageInsertHtml(slideImageUrl(el.src, 960), name)}</p>`;
+  }
+  if (el.type === 'text' && el.html?.trim()) return el.html;
+  if (el.type === 'card') {
+    const title = el.titleHtml?.trim() || '';
+    const body = el.html?.trim() || '';
+    if (!title && !body) return null;
+    return `${title}${body}`;
+  }
+  if (el.type === 'table' && el.html?.trim()) return el.html;
+  if ((el.type === 'video' || el.type === 'embed') && el.src?.trim()) {
+    const href = escapeAttr(el.src);
+    return `<p><a href="${href}">${href}</a></p>`;
+  }
+  return null;
+}
+
+function appendNotesHtml(existing: string, extra: string): string {
+  const base = (existing || '').trim();
+  if (!base || base === '<p><br></p>' || base === '<p></p>') return extra;
+  return `${base}${extra}`;
+}
+
+function setCaretInNotesEditor(editor: HTMLElement, clientX?: number, clientY?: number) {
+  const sel = window.getSelection();
+  if (!sel) return;
+  if (typeof clientX === 'number' && typeof clientY === 'number') {
+    const caretDoc = document as Document & {
+      caretRangeFromPoint?: (x: number, y: number) => Range | null;
+    };
+    const range = caretDoc.caretRangeFromPoint?.(clientX, clientY);
+    if (range && editor.contains(range.startContainer)) {
+      sel.removeAllRanges();
+      sel.addRange(range);
+      return;
+    }
+  }
+  const end = document.createRange();
+  end.selectNodeContents(editor);
+  end.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(end);
+}
+
+/** HTML in das offene Notizfeld einfügen. false = Panel zu / kein Editor. */
+export function insertHtmlIntoOpenNotesEditor(
+  html: string,
+  clientX?: number,
+  clientY?: number,
+): boolean {
+  const editor = document.querySelector('[data-pres-notes-zone="true"]') as HTMLElement | null;
+  if (!editor || editor.getAttribute('contenteditable') === 'false') return false;
+  editor.focus({ preventScroll: true });
+  setCaretInNotesEditor(editor, clientX, clientY);
+  try {
+    document.execCommand('styleWithCSS', false, 'true');
+  } catch {
+    /* ignore */
+  }
+  const ok = document.execCommand('insertHTML', false, html);
+  if (!ok) {
+    editor.innerHTML = appendNotesHtml(editor.innerHTML, html);
+  }
+  editor.dispatchEvent(new Event('input', { bubbles: true }));
+  return true;
+}
+
+export function appendHtmlToNotesValue(existing: string, extra: string): string {
+  return appendNotesHtml(existing, extra);
 }
