@@ -43,9 +43,10 @@ environment:
 
 ## Korrekte URLs
 
-- Schul-LAN: `http://192.168.8.1/dashboard` (http, kein https/www/Port)
-- VPN: Cloudflare-URL aus Tunnel-Logs (`*.trycloudflare.com/dashboard`)
+- Schul-LAN / Unterricht: `https://mnsplusdocker:44443/` (HTTPS über Sophos)
+- Von außen: `https://rpl-50147-0.dn.mnsnet.de:44443/`
 - Portainer: `https://192.168.8.1:9443`
+- Nicht mehr: `http://192.168.8.1` (Klartext)
 
 ## Warum es klappt
 

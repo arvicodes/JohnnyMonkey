@@ -13,6 +13,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=80
+      # HTTPS liegt bei Sophos. Nutzer: https://mnsplusdocker:44443/
       # DB-Volume nur auf data/ — prisma/schema.prisma bleibt aus dem Image
       - DATABASE_URL=file:/app/server/data/dev.db
       - FORCE_DB_IMPORT=false

@@ -95,13 +95,15 @@ Kurzcheck: siehe auch [`DEPLOY_PORTAINER_CHECKLIST.md`](./DEPLOY_PORTAINER_CHECK
    - leitet auf `http://127.0.0.1:80` weiter
    - öffentliche URL steht in den **Logs** von `johnnymonkey-tunnel` (`https://….trycloudflare.com`)
 
-**URLs:**
+**URLs (HTTPS über Sophos, App selbst bleibt HTTP auf Port 80):**
 
 | Zugang | URL |
 |--------|-----|
-| Schul-LAN | `http://192.168.8.1/dashboard` |
-| VPN / von außerhalb | Cloudflare-URL aus Tunnel-Logs → `…/dashboard` |
+| Schul-LAN / Unterricht | `https://mnsplusdocker:44443/` |
+| Von außen | `https://rpl-50147-0.dn.mnsnet.de:44443/` |
 | Portainer | `https://192.168.8.1:9443` |
+
+Nicht mehr verwenden: `http://192.168.8.1` (Klartext).
 
 **Tunnel-URL nachschauen:** Portainer → Containers → `johnnymonkey-tunnel` → Logs → nach `trycloudflare.com` suchen.  
 Hinweis: Bei Quick Tunnels ändert sich die URL nach jedem Neustart des Tunnel-Containers.
