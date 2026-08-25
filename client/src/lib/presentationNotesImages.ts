@@ -227,15 +227,16 @@ function bindNotesImage(wrap: HTMLElement, img: HTMLImageElement, editor: HTMLEl
   wrap.setAttribute(BOUND_ATTR, '1');
   wrap.setAttribute('contenteditable', 'false');
 
-  let handle = wrap.querySelector(`.${RESIZE_HANDLE_CLASS}`) as HTMLElement | null;
-  if (!handle) {
-    handle = document.createElement('span');
-    handle.className = RESIZE_HANDLE_CLASS;
-    handle.setAttribute('contenteditable', 'false');
-    handle.setAttribute('aria-label', 'Bildgröße ändern');
-    handle.title = 'Ziehen: Größe · Bild ziehen: Position';
-    wrap.appendChild(handle);
+  let handleEl = wrap.querySelector(`.${RESIZE_HANDLE_CLASS}`) as HTMLElement | null;
+  if (!handleEl) {
+    handleEl = document.createElement('span');
+    handleEl.className = RESIZE_HANDLE_CLASS;
+    handleEl.setAttribute('contenteditable', 'false');
+    handleEl.setAttribute('aria-label', 'Bildgröße ändern');
+    handleEl.title = 'Ziehen: Größe · Bild ziehen: Position';
+    wrap.appendChild(handleEl);
   }
+  const handle: HTMLElement = handleEl;
 
   const selectWrap = () => {
     editor.querySelectorAll(`.${PRES_NOTES_IMG_WRAP_CLASS}`).forEach((el) => {
