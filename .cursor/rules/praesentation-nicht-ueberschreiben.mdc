@@ -1,0 +1,30 @@
+---
+description: Live-Folien nie automatisch umschreiben oder überschreiben
+alwaysApply: true
+---
+
+# Präsentationen nicht überschreiben
+
+Die Lehrerin bearbeitet Folien selbst. Agenten dürfen den Inhalt **nicht** „aufräumen“, neu formatieren, Formeln ersetzen oder Listen umbauen.
+
+## Verbotene Dateien (ohne ausdrücklichen Auftrag)
+
+- `**/Praesentation.deck.json`
+- `**/Praesentation.deck.original.json`
+- `**/Praesentation.annotations.json`
+- `**/Praesentation.play-variants.json`
+- `**/.presentation-backups/**`
+- `**/Presentation-Sicherheitskopien/**`
+
+## Wann Folieninhalt geändert werden darf
+
+Nur wenn die Nutzerin **klar** sagt, welche Folie oder welche Datei geändert werden soll (z. B. „ändere Folie 12“). Dann nur diese Stelle, nichts drumherum.
+
+Nicht tun:
+
+- ganzen `Praesentation.deck.json` neu serialisieren / neu speichern
+- Formeln, Listen, Einrückungen, Screenshots oder Text „verbessern“
+- Übungsfolien erfinden oder Layouts umbauen
+- eine Folie anfassen, weil eine andere Folie das Thema ist
+
+Speichern, Sichern und Tippen in der App bleiben ihre Arbeit. Agent ändert Code der App nur, wenn sie das will — nicht den Folientext.
