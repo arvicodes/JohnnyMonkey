@@ -39,6 +39,10 @@ import {
   writeOriginalDeckSnapshot,
   parsePresentationPlanMode,
 } from '../lib/presentationDeck';
+import {
+  parsePresentationDeckSavedEvent,
+  samePresentationLesson,
+} from '../lib/presentationDeckSync';
 import { PresentationDrawTool, DEFAULT_MARKER_COLOR, DEFAULT_MARKER_OPACITY, DEFAULT_PEN_COLOR, defaultColorForTool, defaultLineWidthForTool, lineWidthsForTool, toolUsesColor } from '../lib/presentationDrawTools';
 import { presentationLessonBackUrl, tryHandleLessonEntryTicketLinkClick, isLessonEntryTicketSlideHref } from '../lib/presentationEditorUi';
 import { markLessonPlayed } from '../lib/playedLessons';
@@ -268,8 +272,14 @@ const PresentationPresentPage: React.FC = () => {
       const ann = merged.annotations;
       setAnnotations(ann);
       if (merged.changed && liveEdited) {
-        void saveJsonFile(lessonPath, ANNOTATIONS_FILENAME, ann);
-        if (merged.deck) void saveJsonFile(lessonPath, DECK_FILENAME, merged.deck);
+        void (async () => {
+          const disk = await loadPresentationDeck(lessonPath).catch(() => null);
+          const diskAt = Date.parse(disk?.updatedAt || '') || 0;
+          const loadedAt = Date.parse(d?.updatedAt || '') || 0;
+          if (disk && diskAt > loadedAt + 800) return;
+          await saveJsonFile(lessonPath, ANNOTATIONS_FILENAME, ann);
+          if (merged.deck) await saveJsonFile(lessonPath, DECK_FILENAME, merged.deck);
+        })();
       }
       const displayDeck =
         liveEdited && merged.deck
@@ -431,6 +441,56 @@ const PresentationPresentPage: React.FC = () => {
 
   const currentSlideIdRef = useRef<string | undefined>(undefined);
   currentSlideIdRef.current = currentSlide?.id;
+
+  useEffect(() => {
+    if (!lessonPath || namedSlug || isOriginalView) return undefined;
+    const reloadFromDisk = async () => {
+      try {
+        const d = await loadPresentationDeck(lessonPath);
+        if (!d?.slides?.length) return;
+        const current = deckRef.current;
+        const diskAt = Date.parse(d.updatedAt || '') || 0;
+        const ours = Date.parse(current?.updatedAt || '') || 0;
+        if (current && diskAt <= ours + 400) return;
+        const a =
+          (await loadPresentationAnnotations(lessonPath)) ?? createEmptyAnnotations(lessonPath);
+        const variants = await loadPresentationPlayVariants(lessonPath);
+        const keepId = currentSlideIdRef.current;
+        const deckWithEntry = { ...d, slides: ensureEntryTicketButtonsOnTitleSlides(d.slides) };
+        const merged = absorbSlideInkIntoAnnotations(deckWithEntry, a);
+        const playVariants = variants ?? createEmptyPlayVariants(lessonPath);
+        playVariantsRef.current = playVariants;
+        setAnnotations(merged.annotations);
+        const displayDeck = applyPlayVariantsToDeck(merged.deck, playVariants);
+        setDeck(displayDeck);
+        const sorted = sortSlides(displayDeck.slides);
+        const idx = keepId ? sorted.findIndex((s) => s.id === keepId) : -1;
+        if (idx >= 0) setSlideIndex(idx);
+        else setSlideIndex((i) => Math.min(i, Math.max(0, sorted.length - 1)));
+      } catch {
+        /* ignore */
+      }
+    };
+    const onStorage = (e: StorageEvent) => {
+      const parsed = parsePresentationDeckSavedEvent(e);
+      if (!parsed || !samePresentationLesson(parsed.lessonPath, lessonPath)) return;
+      void reloadFromDisk();
+    };
+    const onFocus = () => {
+      void reloadFromDisk();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void reloadFromDisk();
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [lessonPath, namedSlug, isOriginalView]);
 
   useEffect(() => {
     setSelectedStrokeIds([]);

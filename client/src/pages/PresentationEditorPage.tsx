@@ -679,6 +679,15 @@ const PresentationEditorPage: React.FC = () => {
           ...normalizeDeck(next),
           updatedAt: new Date().toISOString(),
         };
+        const server = await loadPresentationDeck(lessonPath).catch(() => null);
+        const serverAt = Date.parse(server?.updatedAt || '') || 0;
+        const ours = Date.parse(lastPersistedUpdatedAtRef.current || '') || 0;
+        if (server && serverAt > ours + 800) {
+          setSnackbar(
+            'Anderer Tab hat einen neueren Stand. Dieser Tab speichert nicht darüber — bitte neu laden.',
+          );
+          return;
+        }
         await saveJsonFile(lessonPath, DECK_FILENAME, payload);
         // Original nur aktualisieren, solange noch nicht eingefroren (Erstell-Phase)
         await writeOriginalDeckSnapshot(lessonPath, payload, 'sync');
