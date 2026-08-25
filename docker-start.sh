@@ -26,6 +26,13 @@ fi
 
 export DATABASE_URL="file:/app/server/data/dev.db"
 
+# Prisma-Schema hatte früher url="file:./dev.db" (relativ → prisma/dev.db).
+# Volume-DB und prisma/dev.db synchron halten, sonst greifen alte Login-Codes.
+if [ -f /app/server/data/dev.db ]; then
+  cp -a /app/server/data/dev.db /app/server/prisma/dev.db
+  echo "🔗 Synced data/dev.db → prisma/dev.db"
+fi
+
 echo "📦 Generating Prisma client..."
 # Schema kommt immer aus dem Image (prisma/ wird nicht mehr vom DB-Volume überdeckt)
 if [ -f "prisma/schema.prisma" ]; then

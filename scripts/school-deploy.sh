@@ -353,9 +353,14 @@ app = find(os.environ["APP_NAME"])
 tunnel = find(os.environ["TUNNEL_NAME"])
 verify = ""
 if app and app.get("State") == "running":
+  # Prisma liest ggf. noch prisma/dev.db — Volume-DB dorthin spiegeln
+  run(
+    app["Id"],
+    "cp -a /app/server/data/dev.db /app/server/prisma/dev.db && echo DB_SYNCED",
+  )
   verify = run(
     app["Id"],
-    "ls /app/server/client-build/static/js/main.*.js; sha256sum /app/server/data/dev.db; echo VERIFY_OK",
+    "ls /app/server/client-build/static/js/main.*.js; sha256sum /app/server/data/dev.db /app/server/prisma/dev.db; echo VERIFY_OK",
   )
 tunnel_url = ""
 if tunnel:
