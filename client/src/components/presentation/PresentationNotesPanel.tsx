@@ -485,6 +485,7 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
 
   return (
     <Box
+      data-pres-notes-drop="1"
       sx={{
         width: panelWidth,
         flexShrink: 0,
@@ -495,6 +496,11 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
         borderLeft: `1px solid ${PRES_EDITOR_UI.panelBorder}`,
         overflow: 'hidden',
         position: 'relative',
+        'body[data-pres-element-drag] &': {
+          outline: `2px dashed ${PRES_EDITOR_UI.accent}`,
+          outlineOffset: -3,
+          bgcolor: PRES_EDITOR_UI.accentSoft,
+        },
       }}
     >
       <Box

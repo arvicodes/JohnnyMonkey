@@ -235,7 +235,7 @@ import {
   insertImageHtmlAtCursor,
   nudgeFontSize,
 } from '../lib/presentationRichText';
-import { serializePresentationNotesHtml } from '../lib/presentationNotesImages';
+import { serializePresentationNotesHtml, slideElementToNotesInsertHtml, insertHtmlIntoOpenNotesEditor, appendHtmlToNotesValue } from '../lib/presentationNotesImages';
 
 const EMPTY_STROKES: PresentationStroke[] = [];
 
@@ -1747,6 +1747,56 @@ const PresentationEditorPage: React.FC = () => {
       setSnackbar(`${label} auf andere Folie verschoben`);
     },
     [activeId, scheduleSave]
+  );
+
+  const moveElementToNotes = useCallback(
+    (elementId: string, clientX: number, clientY: number) => {
+      const current = deckRef.current;
+      if (!current || !activeId) return;
+      const sourceSlide = current.slides.find((s) => s.id === activeId);
+      const element = sourceSlide?.elements?.find((el) => el.id === elementId);
+      if (!sourceSlide || !element) return;
+      const insertHtml = slideElementToNotesInsertHtml(element);
+      if (!insertHtml) {
+        setSnackbar(
+          element.type === 'shape'
+            ? 'Formen können nicht in Notizen gezogen werden'
+            : 'Dieses Element kann nicht in Notizen gezogen werden',
+        );
+        return;
+      }
+      const insertedLive = insertHtmlIntoOpenNotesEditor(insertHtml, clientX, clientY);
+      const editor = document.querySelector('[data-pres-notes-zone="true"]') as HTMLElement | null;
+      const nextNotes = insertedLive && editor
+        ? serializePresentationNotesHtml(editor)
+        : appendHtmlToNotesValue(sourceSlide.speakerNotesHtml || '', insertHtml);
+      const slides = current.slides.map((s) => {
+        if (s.id !== activeId) return s;
+        return {
+          ...s,
+          elements: (s.elements || []).filter((el) => el.id !== elementId),
+          speakerNotesHtml: nextNotes,
+          speakerNotes: htmlToPlain(nextNotes),
+        };
+      });
+      scheduleSave({ ...current, slides }, { history: 'immediate' });
+      setSelectedElementId(null);
+      if (!insertedLive) setNotesPanelOpenPersist(true);
+      const label =
+        element.type === 'card'
+          ? 'Infobox'
+          : element.type === 'text'
+            ? 'Text'
+            : element.type === 'table'
+              ? 'Tabelle'
+              : element.type === 'image'
+                ? 'Bild'
+                : element.type === 'video' || element.type === 'embed'
+                  ? 'Medien'
+                  : 'Element';
+      setSnackbar(`${label} in Notizen verschoben`);
+    },
+    [activeId, scheduleSave, setNotesPanelOpenPersist]
   );
 
   const copySelectedElement = useCallback(
@@ -3984,6 +4034,7 @@ const PresentationEditorPage: React.FC = () => {
                     onElementChange={updateElement}
                     onDeleteElement={deleteElement}
                     onMoveElementToSlide={moveElementToSlide}
+                    onMoveElementToNotes={moveElementToNotes}
                     showInkStrokes={editingVariant}
                     onTextElementFocus={(el, elementId, field) => {
                       setActiveEditor(el);
@@ -4051,6 +4102,7 @@ const PresentationEditorPage: React.FC = () => {
         )}
         {normalizedActive && !notesPanelOpen && (
           <Box
+            data-pres-notes-drop="1"
             sx={{
               width: 36,
               flexShrink: 0,
@@ -4062,6 +4114,11 @@ const PresentationEditorPage: React.FC = () => {
               gap: 0.5,
               bgcolor: PRES_EDITOR_UI.panelBg,
               borderLeft: `1px solid ${PRES_EDITOR_UI.panelBorder}`,
+              'body[data-pres-element-drag] &': {
+                outline: `2px dashed ${PRES_EDITOR_UI.accent}`,
+                outlineOffset: -2,
+                bgcolor: PRES_EDITOR_UI.accentSoft,
+              },
             }}
           >
             <Tooltip title="Notizen einblenden" placement="left">

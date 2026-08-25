@@ -68,6 +68,7 @@ interface PresentationSlideViewProps {
   onElementChange?: (id: string, patch: Partial<SlideElement>) => void;
   onDeleteElement?: (id: string) => void;
   onMoveElementToSlide?: (elementId: string, targetSlideId: string) => void;
+  onMoveElementToNotes?: (elementId: string, clientX: number, clientY: number) => void;
   onTextElementFocus?: (el: HTMLElement, elementId: string, field?: 'html' | 'titleHtml') => void;
   showSlideNumbers?: boolean;
   slideNumber?: number;
@@ -105,6 +106,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   onElementChange,
   onDeleteElement,
   onMoveElementToSlide,
+  onMoveElementToNotes,
   onTextElementFocus,
   showSlideNumbers = false,
   slideNumber = 0,
@@ -219,6 +221,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           onElementChange={onElementChange}
           onDeleteElement={onDeleteElement}
           onMoveElementToSlide={onMoveElementToSlide}
+          onMoveElementToNotes={onMoveElementToNotes}
           onTextEditorFocus={onTextElementFocus}
           onSnapGuidesChange={editable ? handleSnapGuidesChange : undefined}
           passPointerThrough={passPointerThrough}
