@@ -711,6 +711,7 @@ function stampDefaultPresentationFont(root: ParentNode, fontPx?: number, force =
   if (force) {
     root.querySelectorAll('[data-pres-font], [data-pres-fs], [data-pres-color]').forEach((node) => {
       const el = node as HTMLElement;
+      if (isPresentationMathNode(el)) return;
       el.removeAttribute('data-pres-font');
       el.removeAttribute('data-pres-fs');
       if (stampColor) el.removeAttribute('data-pres-color');
@@ -816,6 +817,7 @@ function unwrapIllegalSpanBlocks(root: ParentNode) {
   while (changed) {
     changed = false;
     Array.from(root.querySelectorAll('span')).forEach((span) => {
+      if (isPresentationMathNode(span)) return;
       const hasBlockChild = Array.from(span.children).some((child) =>
         BLOCK_TAGS.has(child.tagName)
       );
@@ -832,7 +834,7 @@ function unwrapIllegalSpanBlocks(root: ParentNode) {
 function stripExternalFontSizing(root: ParentNode) {
   root.querySelectorAll('*').forEach((node) => {
     const el = node as HTMLElement;
-    if (el.hasAttribute('data-pres-fs')) return;
+    if (isPresentationMathNode(el) || el.hasAttribute('data-pres-fs')) return;
     el.style?.removeProperty('font-size');
     if (el.tagName === 'FONT') el.removeAttribute('size');
     const styleAttr = el.getAttribute('style')?.trim() ?? '';
@@ -843,7 +845,7 @@ function stripExternalFontSizing(root: ParentNode) {
 function stripExternalColors(root: ParentNode) {
   root.querySelectorAll('*').forEach((node) => {
     const el = node as HTMLElement;
-    if (el.hasAttribute('data-pres-color')) return;
+    if (isPresentationMathNode(el) || el.hasAttribute('data-pres-color')) return;
     el.style?.removeProperty('color');
     if (el.tagName === 'FONT') el.removeAttribute('color');
     const styleAttr = el.getAttribute('style')?.trim() ?? '';
@@ -854,7 +856,7 @@ function stripExternalColors(root: ParentNode) {
 function stripExternalFontFamilies(root: ParentNode) {
   root.querySelectorAll('*').forEach((node) => {
     const el = node as HTMLElement;
-    if (el.hasAttribute('data-pres-font')) return;
+    if (isPresentationMathNode(el) || el.hasAttribute('data-pres-font')) return;
     el.style?.removeProperty('font-family');
     if (el.tagName === 'FONT') el.removeAttribute('face');
     const styleAttr = el.getAttribute('style')?.trim() ?? '';
@@ -882,6 +884,7 @@ export function sanitizePastedHtml(html: string, options?: PasteSanitizeOptions)
   convertOmmlElementsInPlace(doc.body);
   preserveEquationImagesInPlace(doc.body);
   doc.body.querySelectorAll('font').forEach((font) => {
+    if (isPresentationMathNode(font)) return;
     const span = doc.createElement('span');
     span.innerHTML = font.innerHTML;
     font.replaceWith(span);
@@ -929,6 +932,7 @@ export function presentationPasteHtml(
     fontPx,
   );
   const doc = new DOMParser().parseFromString(html, 'text/html');
+  convertCaretSuperscriptsInPlace(doc.body);
   stampSlideTextAlign(doc.body, textAlign);
   return doc.body.innerHTML || '<p><br></p>';
 }

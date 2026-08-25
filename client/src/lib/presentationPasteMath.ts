@@ -61,6 +61,10 @@ function ommlVal(el: Element | null): string {
   );
 }
 
+function kids(el: Element): Element[] {
+  return Array.from(el.children);
+}
+
 function findNamed(el: Element, name: string): Element | null {
   if (localName(el) === name) return el;
   for (const c of kids(el)) {
@@ -68,8 +72,6 @@ function findNamed(el: Element, name: string): Element | null {
     if (hit) return hit;
   }
   return null;
-}
-  return Array.from(el.children);
 }
 
 function child(el: Element, name: string): Element | null {
@@ -95,7 +97,13 @@ function convertOmml(el: Element): string {
       .map(convertOmml)
       .join('');
   }
-  if (name === 't') return `<mtext>${escapeXml(el.textContent || '')}</mtext>`;
+  if (name === 't') {
+    const text = el.textContent || '';
+    const trimmed = text.trim();
+    if (/^[A-Za-zΑ-ω]$/.test(trimmed)) return `<mi>${escapeXml(trimmed)}</mi>`;
+    if (/^[0-9]+([.,][0-9]+)?$/.test(trimmed)) return `<mn>${escapeXml(trimmed)}</mn>`;
+    return `<mtext>${escapeXml(text)}</mtext>`;
+  }
   if (name === 'ssup') {
     return `<msup><mrow>${child(el, 'e') ? convertOmml(child(el, 'e')!) : ''}</mrow><mrow>${
       child(el, 'sup') ? convertOmml(child(el, 'sup')!) : ''
@@ -126,20 +134,17 @@ function convertOmml(el: Element): string {
   }
   if (name === 'd') {
     const pr = child(el, 'dpr');
-    const open = pr?.querySelector('begChr, BegChr')?.textContent ?? '(';
-    const close = pr?.querySelector('endChr, EndChr')?.textContent ?? ')';
+    const open = (pr && ommlVal(findNamed(pr, 'begchr'))) || '(';
+    const close = (pr && ommlVal(findNamed(pr, 'endchr'))) || ')';
     const inner = kids(el)
       .filter((c) => localName(c) !== 'dpr')
       .map(convertOmml)
       .join('<mo>,</mo>');
-    return `<mrow><mo>${escapeXml(open || '(')}</mo>${inner}<mo>${escapeXml(close || ')')}</mo></mrow>`;
+    return `<mrow><mo>${escapeXml(open)}</mo>${inner}<mo>${escapeXml(close)}</mo></mrow>`;
   }
   if (name === 'nary') {
     const pr = child(el, 'narypr');
-    const chr = (pr?.querySelector('chr, Chr')?.getAttribute('m:val') ||
-      pr?.querySelector('chr, Chr')?.getAttribute('val') ||
-      pr?.querySelector('chr, Chr')?.textContent ||
-      '∑').trim() || '∑';
+    const chr = ((pr && ommlVal(findNamed(pr, 'chr'))) || '∑').trim() || '∑';
     const sub = child(el, 'sub');
     const sup = child(el, 'sup');
     const body = child(el, 'e') ? convertOmml(child(el, 'e')!) : '';
@@ -224,11 +229,20 @@ function ommlFragmentToSpan(fragment: string): string {
 /** Word packt OMML oft in bedingte Kommentare. */
 export function hoistPastedMathHtml(html: string): string {
   if (!html) return html;
+  let convertedAny = false;
   let out = html.replace(
     /<!--\[if[^\]]*msEquation[^\]]*\]>([\s\S]*?)<!\[endif\]-->/gi,
-    (_, inner: string) => ommlFragmentToSpan(inner) || '',
+    (_, inner: string) => {
+      const converted = ommlFragmentToSpan(inner);
+      if (converted) convertedAny = true;
+      return converted || inner;
+    },
   );
-  out = out.replace(/<!--\[if\s*!msEquation\][\s\S]*?<!\[endif\]-->/gi, '');
+  if (convertedAny) {
+    out = out.replace(/<!--\[if\s*!msEquation\][\s\S]*?<!\[endif\]-->/gi, '');
+  } else {
+    out = out.replace(/<!--\[if\s*!msEquation\]>?([\s\S]*?)<!\[endif\]-->/gi, '$1');
+  }
   out = out.replace(/<m:oMathPara\b[\s\S]*?<\/m:oMathPara>/gi, (m) => ommlFragmentToSpan(m) || m);
   out = out.replace(/<m:oMath\b[\s\S]*?<\/m:oMath>/gi, (m) => ommlFragmentToSpan(m) || m);
   return out;
@@ -250,6 +264,7 @@ function wrapMathElement(el: Element): void {
 export function convertOmmlElementsInPlace(root: ParentNode): void {
   const all = Array.from((root as Element).querySelectorAll?.('*') ?? []);
   for (const el of all) {
+    if (!el.parentNode) continue;
     const name = localName(el);
     if (name !== 'omath' && name !== 'omathpara') continue;
     const html = wrapMathMl(convertOmml(el));

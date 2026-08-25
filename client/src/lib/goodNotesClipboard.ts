@@ -152,6 +152,8 @@ export function clipboardPrefersRichText(dt: DataTransfer | null | undefined): b
   const text = (dt.getData('text/plain') || '').replace(/\u00a0/g, ' ').trim();
   const html = dt.getData('text/html') || '';
   const looksLikeWord = /schemas-microsoft-com|mso-|class="?Mso/i.test(html);
+  const looksLikeMath = /msEquation|m:oMath|<math[\s>]|Math\/MathML/i.test(html);
+  if (looksLikeMath) return true;
   if (looksLikeWord && (text.length > 0 || /<\s*(p|div|li|table|h[1-6])\b/i.test(html))) return true;
   const files = snapshotClipboardFiles(dt);
   const htmlText = html

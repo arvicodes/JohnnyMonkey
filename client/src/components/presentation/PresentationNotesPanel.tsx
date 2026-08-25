@@ -22,6 +22,7 @@ import {
 } from '../../lib/presentationTableResize';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { clipboardHasImage, clipboardPrefersRichText, collectPasteImages } from '../../lib/goodNotesClipboard';
+import '../../styles/presentationLists.css';
 
 /** Ein Notizfeld (früher Material / Setup / Sprechakte). Legacy-Keys bleiben für Papierkorb. */
 export type NotesFieldKey = 'materialHtml' | 'preparationHtml' | 'speakerNotesHtml';

@@ -148,3 +148,38 @@
 [data-pres-html] a[href]:hover {
   color: #0d47a1;
 }
+
+/* Word-/MathML-Formeln nach dem Einfügen */
+.pres-math,
+[data-pres-math] {
+  display: inline-block;
+  vertical-align: middle;
+  white-space: nowrap;
+  line-height: 1.15;
+  user-select: all;
+  -webkit-user-select: all;
+}
+
+.pres-math math,
+[data-pres-math] math {
+  font-size: 1.05em;
+  font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Times New Roman", serif;
+}
+
+.pres-math mfrac,
+[data-pres-math] mfrac,
+.pres-math msqrt,
+[data-pres-math] msqrt,
+.pres-math mroot,
+[data-pres-math] mroot {
+  padding-inline: 0.05em;
+}
+
+.pres-math img,
+[data-pres-math] img {
+  height: 1.35em;
+  width: auto;
+  max-width: 100%;
+  vertical-align: middle;
+  display: inline-block;
+}

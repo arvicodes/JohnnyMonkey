@@ -42,6 +42,7 @@ import PresentationMusicGameOverlay, {
   useMusicGameController,
 } from './PresentationMusicGameOverlay';
 import { tryPlayArmedStartSlideSound, unlockPresentationAudio } from '../../lib/presentationSound';
+import '../../styles/presentationLists.css';
 
 const LAPTOP_NOTES_SHARE_KEY = 'jm-laptop-notes-share';
 const LAPTOP_NOTES_SHARE_DEFAULT = 0.52;
