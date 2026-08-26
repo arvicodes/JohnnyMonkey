@@ -276,6 +276,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
       selectAllNotesContent(el);
       return;
     }
+    if (e.key === 'Backspace' || e.key === 'Delete') {
       if (handleNotesImageDeleteKey(el, e.key)) {
         e.preventDefault();
         e.stopPropagation();

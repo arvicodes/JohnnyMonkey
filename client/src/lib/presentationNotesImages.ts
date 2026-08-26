@@ -1006,7 +1006,11 @@ export function insertHtmlIntoOpenNotesEditor(
   const editor = document.querySelector('[data-pres-notes-zone="true"]') as HTMLElement | null;
   if (!editor || editor.getAttribute('contenteditable') === 'false') return false;
   editor.focus({ preventScroll: true });
-  setCaretInNotesEditor(editor, clientX, clientY);
+  if (typeof clientX === 'number' && typeof clientY === 'number') {
+    placeNotesCaretAtPoint(editor, clientX, clientY);
+  } else {
+    setCaretInNotesEditor(editor);
+  }
   const tpl = document.createElement('template');
   tpl.innerHTML = html;
   const frag = tpl.content;

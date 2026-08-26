@@ -123,8 +123,7 @@ export function insertImageHtmlAtCursor(
   alt = ''
 ): boolean {
   if (!editor || !src.trim()) return false;
-  stashEditorSelection(editor);
-  ensureEditorSelection(editor) || focusEditor(editor);
+  editor.focus({ preventScroll: true });
 
   const html = presentationNotesImageInsertHtml(src, alt);
   const sel = window.getSelection();
@@ -132,19 +131,29 @@ export function insertImageHtmlAtCursor(
     sel &&
     sel.rangeCount > 0 &&
     editor.contains(sel.getRangeAt(0).commonAncestorContainer);
+  if (!canUseRange) {
+    stashEditorSelection(editor);
+    ensureEditorSelection(editor) || focusEditor(editor);
+  }
+
   const tpl = document.createElement('template');
   tpl.innerHTML = html;
   const node = tpl.content.firstChild as HTMLElement | null;
   if (!node) return false;
 
-  if (canUseRange && sel) {
-    const range = sel.getRangeAt(0);
+  const sel2 = window.getSelection();
+  const rangeOk =
+    sel2 &&
+    sel2.rangeCount > 0 &&
+    editor.contains(sel2.getRangeAt(0).commonAncestorContainer);
+  if (rangeOk && sel2) {
+    const range = sel2.getRangeAt(0);
     range.deleteContents();
     range.insertNode(node);
     range.setStartAfter(node);
     range.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(range);
+    sel2.removeAllRanges();
+    sel2.addRange(range);
   } else {
     editor.appendChild(node);
   }
