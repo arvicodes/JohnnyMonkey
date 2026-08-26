@@ -226,7 +226,8 @@ def docker_stop(container_id, timeout=15):
   docker("POST", f"/containers/{container_id}/stop", {"t": timeout}, ignore_http=(304, 400, 404, 409))
 
 def docker_start(container_id):
-  docker("POST", f"/containers/{container_id}/start", ignore_http=(304, 400, 404, 409))
+  # Leerer JSON-Body: ohne Body antwortet Portainer oft 400.
+  docker("POST", f"/containers/{container_id}/start", {}, ignore_http=(304, 400, 404, 409))
 
 def containers():
   data, _, _ = docker("GET", "/containers/json?all=true")
