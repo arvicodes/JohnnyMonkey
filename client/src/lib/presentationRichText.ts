@@ -642,6 +642,11 @@ function stripForeignPasteChrome(root: ParentNode) {
     el.removeAttribute('lang');
     el.removeAttribute('align');
     el.removeAttribute('dir');
+    el.removeAttribute('tabindex');
+    el.removeAttribute('autoid');
+    el.removeAttribute('aria-label');
+    el.removeAttribute('aria-selected');
+    el.removeAttribute('aria-level');
     if (el.tagName !== 'IMG') {
       el.removeAttribute('width');
       el.removeAttribute('height');
@@ -1225,16 +1230,96 @@ export function stripNotesBlockIndent(html: string): string {
   return doc.body.innerHTML;
 }
 
+const NOTES_MAIL_WRAPPER_ROLES = new Set(['list', 'document', 'heading', 'article', 'main', 'group', 'region']);
+
+function isNotesMailWrapper(el: HTMLElement): boolean {
+  if (el.tagName !== 'DIV') return false;
+  if (el.closest('table')) return false;
+  const id = el.id || '';
+  if (/^(Item\.|x_divtag|_rp_)/i.test(id)) return true;
+  if (el.hasAttribute('autoid')) return true;
+  const role = (el.getAttribute('role') || '').toLowerCase();
+  if (NOTES_MAIL_WRAPPER_ROLES.has(role)) return true;
+  const label = (el.getAttribute('aria-label') || '').toLowerCase();
+  if (label.includes('unterhaltung') || label.includes('nachricht')) return true;
+  return false;
+}
+
+function unwrapNotesMailWrappers(root: ParentNode) {
+  let guard = 0;
+  while (guard++ < 40) {
+    const wrappers = Array.from(root.querySelectorAll('div')).filter((node) =>
+      isNotesMailWrapper(node as HTMLElement),
+    );
+    if (!wrappers.length) break;
+    wrappers.forEach((el) => unwrapElementKeepChildren(el));
+  }
+}
+
+function unwrapBareNotesDivs(root: ParentNode) {
+  let guard = 0;
+  let changed = true;
+  while (changed && guard++ < 20) {
+    changed = false;
+    Array.from(root.querySelectorAll('div')).forEach((node) => {
+      const el = node as HTMLElement;
+      if (el.closest('table')) return;
+      if (el.hasAttribute('data-pres-notes-img-wrap') || el.classList.contains('pres-notes-img-wrap')) {
+        return;
+      }
+      const names = el.getAttributeNames().filter((name) => name !== 'style');
+      if (names.length) return;
+      const hasBlock = Array.from(el.children).some((child) =>
+        /^(P|DIV|UL|OL|TABLE|H\d|BLOCKQUOTE|PRE)$/i.test(child.tagName),
+      );
+      if (hasBlock || !el.parentElement) {
+        unwrapElementKeepChildren(el);
+        changed = true;
+        return;
+      }
+      const p = el.ownerDocument.createElement('p');
+      while (el.firstChild) p.appendChild(el.firstChild);
+      el.replaceWith(p);
+      changed = true;
+    });
+  }
+}
+
+/** Outlook/Teams/Word: tabindex, Rollen und Hüll-DIVs machen Notizen uneditierbar. */
+export function stripNotesFocusTraps(root: ParentNode) {
+  unwrapNotesMailWrappers(root);
+  root.querySelectorAll('*').forEach((node) => {
+    const el = node as HTMLElement;
+    if (isPresentationMathNode(el)) return;
+    el.removeAttribute('tabindex');
+    el.removeAttribute('autoid');
+    el.removeAttribute('aria-label');
+    el.removeAttribute('aria-selected');
+    el.removeAttribute('aria-level');
+    const role = (el.getAttribute('role') || '').toLowerCase();
+    if (role && NOTES_MAIL_WRAPPER_ROLES.has(role)) el.removeAttribute('role');
+    if (el.id && /^(Item\.|x_divtag|_rp_)/i.test(el.id)) el.removeAttribute('id');
+    const isNotesImageWrap =
+      el.hasAttribute('data-pres-notes-img-wrap') || el.classList.contains('pres-notes-img-wrap');
+    if (el.hasAttribute('contenteditable') && !isNotesImageWrap) {
+      el.removeAttribute('contenteditable');
+    }
+  });
+  unwrapBareNotesDivs(root);
+}
+
 /** @deprecated Alias */
 export function normalizeNotesHtml(html: string): string {
   const base = normalizePresentationLists(stripNotesBlockIndent(html));
   if (!base || typeof document === 'undefined') return base;
   const doc = new DOMParser().parseFromString(base, 'text/html');
+  stripNotesFocusTraps(doc.body);
   ensureNotesTablesFormatted(doc.body);
   normalizePresentationAnchorsInPlace(doc.body);
   stripNotesImageChrome(doc.body);
   releaseNotesImagesToFlow(doc.body);
-  return doc.body.innerHTML;
+  wrapOrphanRootInlineContent(doc.body);
+  return doc.body.innerHTML || '<p><br></p>';
 }
 
 const LIST_FORMAT_COMMANDS = new Set([

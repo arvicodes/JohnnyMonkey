@@ -20,24 +20,30 @@ import {
   Add as AddIcon,
   Bookmark as BookmarkIcon,
   BookmarkAdd as BookmarkAddIcon,
+  CallSplit as CallSplitIcon,
   Class as ClassIcon,
   DeleteOutline as DeleteOutlineIcon,
   History as HistoryIcon,
   ExpandLess as ExpandLessIcon,
   ExpandMore as ExpandMoreIcon,
+  MergeType as MergeTypeIcon,
 } from '@mui/icons-material';
 import {
+  combineLessonSections,
   copyTaskIdsToLaterSection,
   createCustomTask,
   createLessonSection,
   customSetReihePaths,
+  defaultCombinedLessonName,
   ensureSpecialLessonSections,
+  isCombinedLessonSection,
   isGeneralLessonSection,
   isLaterLessonSection,
   laterSectionContainsTask,
   mergeDiscoveredLessonsIntoSet,
   parseEntryTicketCardList,
   sortLessonsChronologically,
+  splitCombinedLessonSection,
   withCustomSetReihePaths,
   lessonMatchesPath as lessonSectionMatchesPath,
   type EntryTicketCustomSet,
@@ -174,6 +180,11 @@ export function EntryTicketFragensetEditor({
   const [listDraftByLesson, setListDraftByLesson] = useState<Record<string, string>>({});
   /** Markierte Karten pro Stunde (taskIds). */
   const [selectedTaskIdsByLesson, setSelectedTaskIdsByLesson] = useState<Record<string, string[]>>({});
+  /** Stunden zum Zusammenfassen (nicht Allgemein / Für später). */
+  const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
+  const [combineAsk, setCombineAsk] = useState<{ lessonIds: string[]; nameDraft: string } | null>(
+    null,
+  );
   const [reiheOptions, setReiheOptions] = useState<WorkingReiheOption[]>([]);
   const [reiheOptionsLoading, setReiheOptionsLoading] = useState(false);
   const [reiheBusy, setReiheBusy] = useState(false);
@@ -291,6 +302,18 @@ export function EntryTicketFragensetEditor({
         if (!set.lessons.some((l) => l.id === id) && (prev[id] || []).length > 0) changed = true;
       }
       return changed || Object.keys(prev).length !== Object.keys(next).length ? next : prev;
+    });
+  }, [set.lessons]);
+
+  useEffect(() => {
+    const valid = new Set(
+      set.lessons
+        .filter((l) => !isGeneralLessonSection(l) && !isLaterLessonSection(l))
+        .map((l) => l.id),
+    );
+    setSelectedLessonIds((prev) => {
+      const kept = prev.filter((id) => valid.has(id));
+      return kept.length === prev.length ? prev : kept;
     });
   }, [set.lessons]);
 
@@ -507,6 +530,42 @@ export function EntryTicketFragensetEditor({
       if (later) setExpanded((prev) => ({ ...prev, [later.id]: true }));
       onChange(next);
     }
+  };
+
+  const toggleLessonSelected = (lessonId: string) => {
+    const lesson = set.lessons.find((l) => l.id === lessonId);
+    if (!lesson || isGeneralLessonSection(lesson) || isLaterLessonSection(lesson)) return;
+    setSelectedLessonIds((prev) =>
+      prev.includes(lessonId) ? prev.filter((id) => id !== lessonId) : [...prev, lessonId],
+    );
+  };
+
+  const openCombineAsk = (lessonIds: string[]) => {
+    const picked = set.lessons.filter((l) => lessonIds.includes(l.id));
+    if (picked.length < 2) return;
+    setCombineAsk({
+      lessonIds,
+      nameDraft: defaultCombinedLessonName(picked),
+    });
+  };
+
+  const confirmCombineLessons = () => {
+    if (!combineAsk) return;
+    const next = combineLessonSections(set, combineAsk.lessonIds, combineAsk.nameDraft);
+    if (next !== set) {
+      const survivor = next.lessons.find((l) => combineAsk.lessonIds.includes(l.id) && isCombinedLessonSection(l));
+      if (survivor) setExpanded((prev) => ({ ...prev, [survivor.id]: true }));
+      onChange(next);
+    }
+    setSelectedLessonIds([]);
+    setCombineAsk(null);
+  };
+
+  const splitCombined = (lessonId: string) => {
+    const lesson = set.lessons.find((l) => l.id === lessonId);
+    if (!lesson || !isCombinedLessonSection(lesson)) return;
+    const next = splitCombinedLessonSection(set, lessonId);
+    if (next !== set) onChange(next);
   };
 
   return (
@@ -825,6 +884,14 @@ export function EntryTicketFragensetEditor({
               {!isSpecialRow && (isFirstHourGroup || Boolean(group.topic.trim())) && (
               <Box
                 sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.6,
+                  flexWrap: 'wrap',
+                }}
+              >
+              <Box
+                sx={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 0.4,
@@ -841,6 +908,38 @@ export function EntryTicketFragensetEditor({
                 <Typography sx={{ fontWeight: 800, fontSize: '0.7rem', lineHeight: 1.2 }}>
                   {isFirstHourGroup && !group.topic.trim() ? 'Stunden' : group.topic}
                 </Typography>
+              </Box>
+              {(() => {
+                const groupHourIds = group.lessons
+                  .filter(({ lesson }) => !isGeneralLessonSection(lesson) && !isLaterLessonSection(lesson))
+                  .map(({ lesson }) => lesson.id);
+                const selectedInGroup = selectedLessonIds.filter((id) => groupHourIds.includes(id));
+                if (selectedInGroup.length < 2) return null;
+                return (
+                  <Tooltip title="Markierte Stunden zu einer Kategorie zusammenfassen — Karten nur noch dort">
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<MergeTypeIcon sx={{ fontSize: 14 }} />}
+                      onClick={() => openCombineAsk(selectedInGroup)}
+                      sx={{
+                        minHeight: 22,
+                        py: 0,
+                        px: 0.8,
+                        fontSize: '0.68rem',
+                        fontWeight: 800,
+                        textTransform: 'none',
+                        color: accent.title,
+                        borderColor: accent.border,
+                        bgcolor: ET.white,
+                        '&:hover': { borderColor: accent.chip, bgcolor: accent.soft },
+                      }}
+                    >
+                      Zusammenfassen ({selectedInGroup.length})
+                    </Button>
+                  </Tooltip>
+                );
+              })()}
               </Box>
               )}
 
@@ -859,6 +958,8 @@ export function EntryTicketFragensetEditor({
                 const isActive = lessonMatchesPath(lesson, activeLessonPath);
                 const isGeneral = isGeneralLessonSection(lesson);
                 const isLater = isLaterLessonSection(lesson);
+                const isCombined = isCombinedLessonSection(lesson);
+                const lessonSelected = selectedLessonIds.includes(lesson.id);
                 const palette = isLater ? LATER_PALETTE : LESSON_PALETTES[globalIndex % LESSON_PALETTES.length];
                 const selectedIds = selectedTaskIdsByLesson[lesson.id] || [];
                 const allTaskIds = lesson.tasks.map((t) => t.id);
@@ -905,6 +1006,24 @@ export function EntryTicketFragensetEditor({
                       >
                         {isOpen ? <ExpandLessIcon sx={{ fontSize: 16 }} /> : <ExpandMoreIcon sx={{ fontSize: 16 }} />}
                       </IconButton>
+                      {!isGeneral && !isLater && (
+                        <Checkbox
+                          size="small"
+                          checked={lessonSelected}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            toggleLessonSelected(lesson.id);
+                          }}
+                          inputProps={{ 'aria-label': `Stunde ${lesson.lessonName} zum Zusammenfassen markieren` }}
+                          sx={{
+                            p: 0.15,
+                            color: palette.border,
+                            '&.Mui-checked': { color: palette.chip },
+                            '& .MuiSvgIcon-root': { fontSize: 16 },
+                          }}
+                        />
+                      )}
                       <Box
                         sx={{
                           minWidth: 18,
@@ -942,6 +1061,21 @@ export function EntryTicketFragensetEditor({
                       >
                         {lesson.lessonName}
                       </Typography>
+                      {isCombined && (
+                        <Chip
+                          size="small"
+                          label={`${lesson.covers?.length || 0} Std.`}
+                          sx={{
+                            height: 16,
+                            fontSize: '0.58rem',
+                            fontWeight: 800,
+                            bgcolor: ET.white,
+                            border: `1px solid ${palette.soft}`,
+                            color: palette.title,
+                            '& .MuiChip-label': { px: 0.5 },
+                          }}
+                        />
+                      )}
                       <Typography
                         component="span"
                         sx={{
@@ -1014,6 +1148,25 @@ export function EntryTicketFragensetEditor({
                           </IconButton>
                         </Tooltip>
                       )}
+                      {!isGeneral && !isLater && isCombined && (
+                        <Tooltip title="Wieder in einzelne Stunden aufteilen. Karten bleiben bei der ersten Stunde.">
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              splitCombined(lesson.id);
+                            }}
+                            aria-label="Zusammenfassung aufteilen"
+                            sx={{
+                              ...iconBtnSx,
+                              color: palette.chip,
+                              '&:hover': { bgcolor: `${palette.chip}18` },
+                            }}
+                          >
+                            <CallSplitIcon sx={{ fontSize: 14 }} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                       {!isGeneral && !isLater && (
                         <Tooltip title="Stunde löschen">
                           <IconButton
@@ -1054,6 +1207,33 @@ export function EntryTicketFragensetEditor({
                           const listDraft = listDraftByLesson[lesson.id] || '';
                           const previewCount = parseEntryTicketCardList(listDraft).length;
                           return (
+                            <Box
+                              sx={{
+                                width: '100%',
+                                display: 'grid',
+                                gap: 0.45,
+                                boxSizing: 'border-box',
+                              }}
+                            >
+                            {isCombined && (lesson.covers || []).length > 0 && (
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.35, px: 0.15 }}>
+                                {(lesson.covers || []).map((cover) => (
+                                  <Chip
+                                    key={`${cover.lessonKey || cover.lessonName}`}
+                                    size="small"
+                                    label={cover.lessonName}
+                                    sx={{
+                                      height: 18,
+                                      fontSize: '0.58rem',
+                                      fontWeight: 700,
+                                      bgcolor: palette.soft,
+                                      color: palette.title,
+                                      '& .MuiChip-label': { px: 0.55 },
+                                    }}
+                                  />
+                                ))}
+                              </Box>
+                            )}
                             <Box
                               sx={{
                                 width: '100%',
@@ -1116,6 +1296,7 @@ export function EntryTicketFragensetEditor({
                                   </IconButton>
                                 </span>
                               </Tooltip>
+                            </Box>
                             </Box>
                           );
                         })()}
@@ -1371,6 +1552,59 @@ export function EntryTicketFragensetEditor({
           </Tooltip>
         </Box>
       </Box>
+
+      <Dialog
+        open={Boolean(combineAsk)}
+        onClose={() => setCombineAsk(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 800, fontSize: '1rem', pb: 0.5, color: ET.ink }}>
+          Stunden zusammenfassen
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontSize: '0.82rem', mt: 1, color: ET.ink }}>
+            Karten liegen danach nur noch in dieser Kategorie, nicht mehr in den einzelnen Stunden.
+            Die Folien-Unterkapitel bleiben abgedeckt.
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.4, mt: 1.1 }}>
+            {(combineAsk?.lessonIds || [])
+              .map((id) => set.lessons.find((l) => l.id === id))
+              .filter((l): l is EntryTicketLessonSection => Boolean(l))
+              .map((l) => (
+                <Chip
+                  key={l.id}
+                  size="small"
+                  label={l.lessonName}
+                  sx={{ height: 22, fontSize: '0.68rem', fontWeight: 700 }}
+                />
+              ))}
+          </Box>
+          <TextField
+            size="small"
+            fullWidth
+            label="Name der Kategorie"
+            value={combineAsk?.nameDraft || ''}
+            onChange={(e) =>
+              setCombineAsk((prev) => (prev ? { ...prev, nameDraft: e.target.value } : prev))
+            }
+            sx={{ ...fieldSx, mt: 1.5 }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 1.5 }}>
+          <Button onClick={() => setCombineAsk(null)} sx={{ textTransform: 'none' }}>
+            Abbrechen
+          </Button>
+          <Button
+            variant="contained"
+            onClick={confirmCombineLessons}
+            disabled={!combineAsk || combineAsk.lessonIds.length < 2 || !combineAsk.nameDraft.trim()}
+            sx={{ textTransform: 'none', fontWeight: 800, bgcolor: ET.accent, '&:hover': { bgcolor: ET.ink } }}
+          >
+            Zusammenfassen
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={Boolean(deleteAsk)}

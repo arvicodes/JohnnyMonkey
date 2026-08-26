@@ -15,6 +15,11 @@ export type EntryTicketCustomTask = {
 };
 
 /** Fragen zu einer einzelnen Stunde innerhalb einer Reihe. */
+export type EntryTicketCoveredLesson = {
+  lessonName: string;
+  lessonKey?: string;
+};
+
 export type EntryTicketLessonSection = {
   id: string;
   /** Anzeigename, z. B. „01.01 KI sucht Mensch“. */
@@ -23,6 +28,11 @@ export type EntryTicketLessonSection = {
   lessonKey?: string;
   /** Themenblock, z. B. „01 Basiswissen“. */
   topicName?: string;
+  /**
+   * Option: diese Kategorie steht für mehrere Folien-Unterkapitel.
+   * Karten liegen nur hier, nicht mehr auf den einzelnen Stunden.
+   */
+  covers?: EntryTicketCoveredLesson[];
   tasks: EntryTicketCustomTask[];
 };
 
@@ -140,6 +150,23 @@ function parseTask(raw: unknown): EntryTicketCustomTask | null {
   };
 }
 
+function parseCoveredLesson(raw: unknown): EntryTicketCoveredLesson | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const row = raw as Record<string, unknown>;
+  const lessonName =
+    (typeof row.lessonName === 'string' && row.lessonName.trim()) ||
+    (typeof row.name === 'string' && row.name.trim()) ||
+    '';
+  if (!lessonName) return null;
+  return {
+    lessonName,
+    lessonKey:
+      typeof row.lessonKey === 'string' && row.lessonKey.trim()
+        ? normalizePath(row.lessonKey)
+        : undefined,
+  };
+}
+
 function parseLessonSection(raw: unknown): EntryTicketLessonSection | null {
   if (!raw || typeof raw !== 'object') return null;
   const row = raw as Record<string, unknown>;
@@ -150,11 +177,16 @@ function parseLessonSection(raw: unknown): EntryTicketLessonSection | null {
   if (!lessonName) return null;
   const tasksRaw = Array.isArray(row.tasks) ? row.tasks : [];
   const tasks = tasksRaw.map(parseTask).filter((t): t is EntryTicketCustomTask => Boolean(t));
+  const coversRaw = Array.isArray(row.covers) ? row.covers : [];
+  const covers = coversRaw
+    .map(parseCoveredLesson)
+    .filter((c): c is EntryTicketCoveredLesson => Boolean(c));
   return {
     id: typeof row.id === 'string' && row.id ? row.id : makeEntryTicketEntityId('ls'),
     lessonName,
     lessonKey: typeof row.lessonKey === 'string' && row.lessonKey.trim() ? normalizePath(row.lessonKey) : undefined,
     topicName: typeof row.topicName === 'string' && row.topicName.trim() ? row.topicName.trim() : undefined,
+    ...(covers.length >= 2 ? { covers } : {}),
     tasks,
   };
 }
@@ -187,7 +219,22 @@ export function isWissen11LessonSection(lesson: EntryTicketLessonSection): boole
 
 function isFolderBoundLessonSection(lesson: EntryTicketLessonSection): boolean {
   const key = (lesson.lessonKey || '').trim();
-  return Boolean(key) && !key.startsWith('__');
+  if (key && !key.startsWith('__')) return true;
+  return (lesson.covers || []).some((c) => Boolean((c.lessonKey || '').trim()) && !String(c.lessonKey).startsWith('__'));
+}
+
+export function isCombinedLessonSection(lesson: EntryTicketLessonSection): boolean {
+  return (lesson.covers || []).length >= 2;
+}
+
+export function coveredLessonsOf(lesson: EntryTicketLessonSection): EntryTicketCoveredLesson[] {
+  if (isCombinedLessonSection(lesson) && lesson.covers) return lesson.covers;
+  return [
+    {
+      lessonName: lesson.lessonName,
+      lessonKey: lesson.lessonKey,
+    },
+  ];
 }
 
 /**
@@ -530,11 +577,15 @@ function mergeLessonKeepExisting(
   primary: EntryTicketLessonSection,
   extra: EntryTicketLessonSection,
 ): EntryTicketLessonSection {
+  const covers =
+    (primary.covers && primary.covers.length >= 2 ? primary.covers : null) ||
+    (extra.covers && extra.covers.length >= 2 ? extra.covers : undefined);
   return {
     ...primary,
     lessonKey: primary.lessonKey || extra.lessonKey,
     topicName: primary.topicName || extra.topicName,
     lessonName: primary.lessonName || extra.lessonName,
+    ...(covers ? { covers } : {}),
     tasks: mergeTaskListsKeepExisting(primary.tasks, extra.tasks),
   };
 }
@@ -735,6 +786,8 @@ export async function fetchAndCacheCustomEntryTicketSets(): Promise<EntryTicketC
 
 /** Sortierschlüssel: Ordnername der Stunde (01.01 …), egal ob voller Pfad oder Anzeigename. */
 function lessonSortKey(lesson: EntryTicketLessonSection): string {
+  const first = lesson.covers?.[0];
+  if (first) return lessonFolderName(first.lessonKey || first.lessonName || '');
   return lessonFolderName(lesson.lessonKey || lesson.lessonName || '');
 }
 
@@ -789,6 +842,23 @@ export function lessonMatchesPath(lesson: EntryTicketLessonSection, lessonPath: 
     }
     if (folderNamesEqual(lessonFolderName(key), wantLabel)) return true;
   }
+  if (isCombinedLessonSection(lesson)) {
+    for (const cover of lesson.covers || []) {
+      if (
+        lessonMatchesPath(
+          {
+            ...lesson,
+            lessonName: cover.lessonName,
+            lessonKey: cover.lessonKey,
+            covers: undefined,
+          },
+          lessonPath,
+        )
+      ) {
+        return true;
+      }
+    }
+  }
   return (
     folderNamesEqual(lesson.lessonName.trim(), wantLabel) ||
     folderNamesEqual(lessonFolderName(lesson.lessonName), wantLabel)
@@ -827,6 +897,110 @@ function lessonMatchKey(lessonName: string, lessonKey?: string): string {
     .trim()
     .toLowerCase()
     .normalize('NFC');
+}
+
+function coveredMatchKeysOf(lesson: EntryTicketLessonSection): string[] {
+  return coveredLessonsOf(lesson).map((c) => lessonMatchKey(c.lessonName, c.lessonKey));
+}
+
+export function defaultCombinedLessonName(lessons: EntryTicketLessonSection[]): string {
+  const ordered = sortLessonsChronologically(
+    lessons.filter((l) => !isGeneralLessonSection(l) && !isLaterLessonSection(l)),
+  );
+  if (ordered.length === 0) return 'Zusammenfassung';
+  if (ordered.length === 1) return ordered[0].lessonName;
+  const first = ordered[0].lessonName.trim();
+  const last = ordered[ordered.length - 1].lessonName.trim();
+  const a = first.match(/^(\d+\.\d+)/);
+  const b = last.match(/^(\d+\.\d+)/);
+  if (a && b && a[1] !== b[1]) return `${a[1]}–${b[1]}`;
+  if (a && b) return first;
+  return `${first} · ${last}`;
+}
+
+function flattenCoveredLessons(lessons: EntryTicketLessonSection[]): EntryTicketCoveredLesson[] {
+  const out: EntryTicketCoveredLesson[] = [];
+  const seen = new Set<string>();
+  for (const lesson of sortLessonsChronologically(lessons)) {
+    for (const cover of coveredLessonsOf(lesson)) {
+      const key = lessonMatchKey(cover.lessonName, cover.lessonKey);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        lessonName: cover.lessonName,
+        lessonKey: cover.lessonKey,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * Mehrere Stunden zu einer Kategorie zusammenfassen.
+ * Karten bleiben (IDs unverändert) und liegen nur noch auf der Zusammenfassung.
+ */
+export function combineLessonSections(
+  set: EntryTicketCustomSet,
+  lessonIds: string[],
+  combinedName?: string,
+): EntryTicketCustomSet {
+  const idSet = new Set(lessonIds);
+  const picked = sortLessonsChronologically(
+    set.lessons.filter(
+      (l) => idSet.has(l.id) && !isGeneralLessonSection(l) && !isLaterLessonSection(l),
+    ),
+  );
+  if (picked.length < 2) return set;
+  const covers = flattenCoveredLessons(picked);
+  if (covers.length < 2) return set;
+  const survivor: EntryTicketLessonSection = {
+    ...picked[0],
+    lessonName: (combinedName || '').trim() || defaultCombinedLessonName(picked),
+    lessonKey: covers[0].lessonKey || picked[0].lessonKey,
+    topicName: picked[0].topicName,
+    covers,
+    tasks: picked.reduce(
+      (tasks, l) => mergeTaskListsKeepExisting(tasks, l.tasks),
+      [] as EntryTicketCustomTask[],
+    ),
+  };
+  const drop = new Set(picked.slice(1).map((l) => l.id));
+  return ensureSpecialLessonSections({
+    ...set,
+    lessons: set.lessons
+      .map((l) => (l.id === survivor.id ? survivor : l))
+      .filter((l) => !drop.has(l.id)),
+  });
+}
+
+/**
+ * Zusammenfassung aufheben: einzelne Stunden wieder da, Karten bleiben bei der ersten.
+ */
+export function splitCombinedLessonSection(
+  set: EntryTicketCustomSet,
+  lessonId: string,
+): EntryTicketCustomSet {
+  const idx = set.lessons.findIndex((l) => l.id === lessonId);
+  if (idx < 0) return set;
+  const row = set.lessons[idx];
+  const covers = row.covers || [];
+  if (covers.length < 2) return set;
+  const restored: EntryTicketLessonSection[] = covers.map((cover, i) => {
+    if (i === 0) {
+      const { covers: _covers, ...rest } = row;
+      return {
+        ...rest,
+        lessonName: cover.lessonName,
+        lessonKey: cover.lessonKey || rest.lessonKey,
+        covers: undefined,
+        tasks: row.tasks,
+      };
+    }
+    return createLessonSection(cover.lessonName, cover.lessonKey, row.topicName);
+  });
+  const nextLessons = [...set.lessons];
+  nextLessons.splice(idx, 1, ...restored);
+  return ensureSpecialLessonSections({ ...set, lessons: nextLessons });
 }
 
 /**
@@ -870,13 +1044,27 @@ export function mergeDiscoveredLessonsIntoSet(
     byKey.set(key, mergeLessonKeepExisting(prev, l));
     changed = true;
   }
+  const coveredKeys = new Set<string>();
+  for (const l of middle) {
+    if (!isCombinedLessonSection(l)) continue;
+    for (const k of coveredMatchKeysOf(l)) coveredKeys.add(k);
+  }
   const mergedMiddle: EntryTicketLessonSection[] = [];
   const seen = new Set<string>();
 
   for (const d of discovered.lessons) {
     const key = lessonMatchKey(d.lessonName, d.lessonKey);
-    seen.add(key);
     const prev = byKey.get(key);
+    if (prev && isCombinedLessonSection(prev)) {
+      for (const k of coveredMatchKeysOf(prev)) seen.add(k);
+      mergedMiddle.push(prev);
+      continue;
+    }
+    if (!prev && coveredKeys.has(key)) {
+      seen.add(key);
+      continue;
+    }
+    seen.add(key);
     if (!prev) {
       mergedMiddle.push(createLessonSection(d.lessonName, d.lessonKey, d.topicName));
       changed = true;

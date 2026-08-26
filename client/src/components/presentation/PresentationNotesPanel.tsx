@@ -95,6 +95,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editingRef = useRef(false);
   const displayHtml = normalizeNotesHtml(html || textToHtml(plain || ''));
+  const healedFromRef = useRef<string | null>(null);
 
   const persistContent = useCallback(
     (rawHtml: string, normalize = false, writeBack = false) => {
@@ -146,6 +147,23 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   useEffect(() => {
     syncFromProps();
   }, [syncFromProps]);
+
+  useEffect(() => {
+    if (readOnly) return;
+    const original = html || '';
+    if (healedFromRef.current === original) return;
+    const dirty =
+      /tabindex=|autoid=|role="(?:list|document|heading)"|Item\.Message|x_divtagdefaultwrapper|_rp_/i.test(
+        original,
+      );
+    if (!dirty) {
+      healedFromRef.current = original;
+      return;
+    }
+    healedFromRef.current = original;
+    const cleaned = displayHtml || '<p><br></p>';
+    onChange(cleaned, htmlToPlain(cleaned));
+  }, [html, displayHtml, onChange, readOnly]);
 
   useEffect(() => {
     const el = ref.current;
@@ -206,7 +224,9 @@ const NoteZone: React.FC<NoteZoneProps> = ({
     e.preventDefault();
     const pastedHtml = e.clipboardData.getData('text/html');
     const pastedText = e.clipboardData.getData('text/plain');
-    const content = pastedHtml ? sanitizePastedHtml(pastedHtml) : textToHtml(pastedText);
+    const content = pastedHtml
+      ? normalizeNotesHtml(sanitizePastedHtml(pastedHtml))
+      : textToHtml(pastedText);
     el.focus();
     const tpl = document.createElement('template');
     tpl.innerHTML = content || '<p><br></p>';
@@ -339,6 +359,14 @@ const NoteZone: React.FC<NoteZoneProps> = ({
           if (readOnly) return;
           editingRef.current = true;
           if (ref.current) onEditorFocus(fieldKey, ref.current);
+        }}
+        onFocusCapture={(e) => {
+          if (readOnly) return;
+          const hit = e.target as HTMLElement | null;
+          if (!hit || hit === ref.current) return;
+          if (hit.getAttribute('tabindex') == null) return;
+          e.stopPropagation();
+          ref.current?.focus();
         }}
         onBlur={(e) => {
           if (readOnly) return;
