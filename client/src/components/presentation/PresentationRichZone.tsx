@@ -5,7 +5,6 @@ import { filterHtmlByRevealStep } from '../../lib/presentationReveal';
 import { isFormatBarInteracting, isPresentationFormatUiTarget } from '../../lib/presentationFormatBarGuard';
 import { isApplyingDeckHistory } from '../../lib/presentationEditorHistory';
 import { captureEditorSelection, clearSavedSelection } from '../../lib/presentationFontSize';
-import { normalizeListsInPlace } from '../../lib/presentationListNormalize';
 import {
   animationParagraphBadgeSx,
   animBlockIndexInRoot,
@@ -440,7 +439,6 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
         }
         editingRef.current = true;
         if (ref.current) {
-          normalizeListsInPlace(ref.current);
           onEditorFocus?.(ref.current);
         }
       }}

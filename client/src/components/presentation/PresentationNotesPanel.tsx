@@ -83,6 +83,8 @@ interface NoteZoneProps {
   onEditorFocus: (fieldKey: NotesFieldKey, el: HTMLElement) => void;
   onEditorBlur?: () => void;
   onMoveToTrash?: (fieldKey: NotesFieldKey) => void;
+  /** Vor Löschen/Einfügen: aktuellen Deck-Stand in die Rückgängig-Liste legen. */
+  onBeforeDiscreteEdit?: () => void;
   /** Bild hochladen → Anzeige-URL (read-image API) */
   onUploadImage?: (file: File) => Promise<string | null>;
 }
@@ -100,6 +102,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   onEditorFocus,
   onEditorBlur,
   onMoveToTrash,
+  onBeforeDiscreteEdit,
   onUploadImage,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -117,6 +120,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
 
   const persistContent = useCallback(
     (rawHtml: string, normalize = false, writeBack = false) => {
+      if (isApplyingDeckHistory()) return;
       const nextHtml = normalize ? normalizeNotesHtml(rawHtml) : rawHtml;
       if (writeBack && ref.current && nextHtml !== ref.current.innerHTML) {
         ref.current.innerHTML = nextHtml;
@@ -145,13 +149,14 @@ const NoteZone: React.FC<NoteZoneProps> = ({
       if (file.type && !file.type.startsWith('image/')) return;
       const src = await onUploadImage(file);
       if (!src || !ref.current) return;
+      onBeforeDiscreteEdit?.();
       ref.current.focus({ preventScroll: true });
       if (at) placeNotesCaretAtPoint(ref.current, at.x, at.y);
       insertImageHtmlAtCursor(ref.current, src, file.name);
       enhanceImages();
       persistFromEditor(false, false);
     },
-    [onUploadImage, persistFromEditor, enhanceImages, readOnly]
+    [onUploadImage, persistFromEditor, enhanceImages, readOnly, onBeforeDiscreteEdit]
   );
 
   const syncFromProps = useCallback(() => {
@@ -259,6 +264,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
         : pastedHtml
           ? normalizeNotesHtml(sanitizePastedHtml(pastedHtml))
           : textToHtml(pastedText);
+    onBeforeDiscreteEdit?.();
     el.focus();
     const tpl = document.createElement('template');
     tpl.innerHTML = content || '<p><br></p>';
@@ -297,6 +303,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   const handleCut = (e: React.ClipboardEvent) => {
     handleCopy(e);
     if (!e.defaultPrevented) return;
+    onBeforeDiscreteEdit?.();
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
     sel.getRangeAt(0).deleteContents();
@@ -313,7 +320,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
       return;
     }
     if (e.key === 'Backspace' || e.key === 'Delete') {
-      if (handleNotesImageDeleteKey(el, e.key)) {
+      if (handleNotesImageDeleteKey(el, e.key, onBeforeDiscreteEdit)) {
         e.preventDefault();
         e.stopPropagation();
         persistFromEditor(false, false);
@@ -330,6 +337,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
     }
     if (isImageFrameShortcut(e)) {
       if (toggleNotesImageFrame(el)) {
+        onBeforeDiscreteEdit?.();
         e.preventDefault();
         e.stopPropagation();
         persistFromEditor(false, false);
@@ -580,6 +588,8 @@ interface PresentationNotesPanelProps {
   onEditorFocus: (fieldKey: NotesFieldKey, el: HTMLElement) => void;
   onEditorBlur?: () => void;
   onSpeakerChange: (html: string, plain: string) => void;
+  /** Vor Bild löschen/einfügen in den Notizen: Stand für ⌘Z sichern. */
+  onBeforeDiscreteEdit?: () => void;
   onMoveNotesToTrash?: (fieldKey: NotesFieldKey) => void;
   /** Bild hochladen → Anzeige-URL für Notizen */
   onUploadImage?: (file: File) => Promise<string | null>;
@@ -596,6 +606,7 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
   onEditorFocus,
   onEditorBlur,
   onSpeakerChange,
+  onBeforeDiscreteEdit,
   onMoveNotesToTrash,
   onUploadImage,
   onHide,
@@ -771,6 +782,7 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
         readOnly={readOnly}
         placeholder="Material, Setup, Sprechakte, Timing…"
         onChange={onSpeakerChange}
+        onBeforeDiscreteEdit={onBeforeDiscreteEdit}
         onEditorFocus={onEditorFocus}
         onEditorBlur={onEditorBlur}
         onMoveToTrash={onMoveNotesToTrash}

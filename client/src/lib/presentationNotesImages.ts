@@ -455,11 +455,16 @@ function removeNotesImageWrap(wrap: HTMLElement, editor: HTMLElement): void {
 }
 
 /** Entf/Rücktaste: ausgewählte oder benachbarte Notiz-Grafik löschen. */
-export function handleNotesImageDeleteKey(editor: HTMLElement, key: 'Backspace' | 'Delete'): boolean {
+export function handleNotesImageDeleteKey(
+  editor: HTMLElement,
+  key: 'Backspace' | 'Delete',
+  onBeforeRemove?: () => void,
+): boolean {
   const selected = editor.querySelector(
     `.${PRES_NOTES_IMG_WRAP_CLASS}.${PRES_NOTES_IMG_SELECTED_CLASS}`,
   ) as HTMLElement | null;
   if (selected) {
+    onBeforeRemove?.();
     removeNotesImageWrap(selected, editor);
     return true;
   }
@@ -471,6 +476,7 @@ export function handleNotesImageDeleteKey(editor: HTMLElement, key: 'Backspace' 
 
   const wrap = findAdjacentNotesImageWrap(range, key, editor);
   if (!wrap || !editor.contains(wrap)) return false;
+  onBeforeRemove?.();
   removeNotesImageWrap(wrap, editor);
   return true;
 }

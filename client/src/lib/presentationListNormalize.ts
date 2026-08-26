@@ -42,7 +42,7 @@ function unwrapIllegalSpanBlocks(root: ParentNode) {
   }
 }
 
-/** ul/ol direkt in ul/ol → innere Liste in li einbetten. */
+/** ul/ol direkt in ul/ol → an den vorherigen Punkt hängen (Einrückung), sonst in li packen. */
 function fixDirectNestedLists(root: ParentNode) {
   let changed = true;
   while (changed) {
@@ -50,6 +50,12 @@ function fixDirectNestedLists(root: ParentNode) {
     Array.from(root.querySelectorAll('ul, ol')).forEach((list) => {
       const parent = list.parentElement;
       if (!isList(parent)) return;
+      const prev = list.previousElementSibling;
+      if (prev && prev.tagName === 'LI') {
+        prev.appendChild(list);
+        changed = true;
+        return;
+      }
       const li = document.createElement('li');
       parent.insertBefore(li, list);
       li.appendChild(list);
@@ -175,7 +181,7 @@ export function getListItemFromSelection(editor: HTMLElement): HTMLLIElement | n
   return li;
 }
 
-/** ul > li ohne eigenen Text, nur Unterliste → eine Ebene hochziehen (Doppel-Bullets). */
+/** ul > li ohne eigenen Text, nur Unterliste → hochziehen, aber nicht wenn davor ein Punkt steht (dann ist es Einrückung). */
 function flattenRedundantListNesting(root: ParentNode) {
   let changed = true;
   while (changed) {
@@ -183,6 +189,7 @@ function flattenRedundantListNesting(root: ParentNode) {
     Array.from(root.querySelectorAll('li')).forEach((li) => {
       const sub = li.querySelector(':scope > ul, :scope > ol');
       if (!sub) return;
+      if (li.previousElementSibling) return;
 
       let ownText = '';
       Array.from(li.childNodes).forEach((node) => {
@@ -234,18 +241,23 @@ function getOrCreateSubList(parentLi: HTMLLIElement, list: HTMLUListElement | HT
   return subList;
 }
 
-/** Altes flaches Outline-Modell (data-pres-list-level) → echte Unterlisten. */
+/** Altes flaches Outline-Modell (data-pres-list-level / margin-left) → echte Unterlisten. */
 function convertFlatOutlineInList(list: HTMLUListElement | HTMLOListElement) {
   const items = Array.from(list.children).filter((n): n is HTMLLIElement => n.tagName === 'LI');
-  if (!items.some((li) => li.hasAttribute('data-pres-list-level'))) return;
+  if (!items.length) return;
+  const levels = items.map(outlineLevelOfLi);
+  if (!levels.some((level) => level > 0) && !items.some((li) => li.hasAttribute('data-pres-list-level'))) {
+    return;
+  }
 
-  const tag = listTagName(list);
   const lastAtLevel: (HTMLLIElement | null)[] = [];
 
-  for (const li of items) {
-    const level = Math.max(0, parseInt(li.getAttribute('data-pres-list-level') || '0', 10) || 0);
+  for (let i = 0; i < items.length; i++) {
+    const li = items[i];
+    const level = levels[i];
     li.removeAttribute('data-pres-list-level');
     li.style.removeProperty('margin-left');
+    li.style.removeProperty('padding-left');
 
     if (level === 0) {
       lastAtLevel.length = 0;
@@ -253,9 +265,10 @@ function convertFlatOutlineInList(list: HTMLUListElement | HTMLOListElement) {
       continue;
     }
 
-    const parentLi = lastAtLevel[level - 1];
-    if (!parentLi) {
+    const parentLi = lastAtLevel[level - 1] ?? lastAtLevel[lastAtLevel.length - 1] ?? null;
+    if (!parentLi || parentLi === li) {
       lastAtLevel[0] = li;
+      lastAtLevel.length = 1;
       continue;
     }
 
@@ -432,16 +445,29 @@ export function olStyleFromMarker(raw: string): PresentationOlStyleId | null {
 }
 
 function parseMarginToLevel(style: string): number | null {
-  const m = style.match(/margin-left:\s*([\d.]+)\s*(pt|px|cm|mm)?/i);
+  const m = style.match(/(?:margin-left|padding-left)\s*:\s*([\d.]+)\s*(pt|px|cm|mm|em)?/i);
   if (!m) return null;
   const n = parseFloat(m[1]);
-  if (!Number.isFinite(n) || n < 12) return null;
-  const unit = (m[2] || 'pt').toLowerCase();
-  let pt = n;
-  if (unit === 'px') pt = n * 0.75;
-  else if (unit === 'cm') pt = n * 28.35;
-  else if (unit === 'mm') pt = n * 2.835;
-  return Math.min(MAX_LIST_LEVEL - 1, Math.max(0, Math.round(pt / 36) - 1));
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const unit = (m[2] || 'px').toLowerCase();
+  let px = n;
+  if (unit === 'pt') px = n * (96 / 72);
+  else if (unit === 'cm') px = n * 37.8;
+  else if (unit === 'mm') px = n * 3.78;
+  else if (unit === 'em') px = n * 16;
+  if (px < 12) return null;
+  // Tab: 28px; Word oft 36pt. round(px/36) hält beides als mindestens Ebene 1.
+  return Math.min(MAX_LIST_LEVEL - 1, Math.max(1, Math.round(px / 36)));
+}
+
+function outlineLevelOfLi(li: HTMLLIElement): number {
+  const attr = li.getAttribute('data-pres-list-level');
+  if (attr != null && attr !== '') {
+    const n = parseInt(attr, 10);
+    if (Number.isFinite(n)) return Math.max(0, Math.min(MAX_LIST_LEVEL - 1, n));
+  }
+  const style = `${li.getAttribute('style') || ''} ${li.style?.cssText || ''}`;
+  return parseMarginToLevel(style) ?? 0;
 }
 
 function looksLikeListMarkerText(raw: string): boolean {

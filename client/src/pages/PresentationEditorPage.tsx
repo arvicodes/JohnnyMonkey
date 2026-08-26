@@ -369,6 +369,8 @@ const PresentationEditorPage: React.FC = () => {
   const historyRef = useRef<DeckHistory | null>(null);
   const historyPushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const applyingHistoryRef = useRef(false);
+  /** Verwirft verspätetes startTransition(setDeck), sonst überschreibt Löschen das Rückgängig. */
+  const deckUiGenRef = useRef(0);
 
   const HTML_TO_PLAIN: Record<string, keyof PresentationSlide> = {
     titleHtml: 'title',
@@ -747,26 +749,22 @@ const PresentationEditorPage: React.FC = () => {
     ) => {
       deckRef.current = next;
 
+      if (quietUiTimer.current) {
+        clearTimeout(quietUiTimer.current);
+        quietUiTimer.current = null;
+      }
+
       if (options?.urgent) {
-        if (quietUiTimer.current) {
-          clearTimeout(quietUiTimer.current);
-          quietUiTimer.current = null;
-        }
+        deckUiGenRef.current += 1;
         setDeck(next);
-      } else if (options?.quiet) {
-        // Tippen: State zeitnah aktualisieren (sonst leert der Editor-Sync den DOM beim Klick
-        // mit veraltetem element.html). startTransition hält die Tipplast niedrig.
-        if (quietUiTimer.current) {
-          clearTimeout(quietUiTimer.current);
-          quietUiTimer.current = null;
-        }
-        startTransition(() => setDeck(next));
       } else {
-        if (quietUiTimer.current) {
-          clearTimeout(quietUiTimer.current);
-          quietUiTimer.current = null;
-        }
-        startTransition(() => setDeck(next));
+        // Tippen: startTransition hält die Last niedrig. Generation verwirft den Aufruf,
+        // wenn inzwischen Rückgängig/Redo oder ein dringendes setDeck kam.
+        const gen = deckUiGenRef.current;
+        startTransition(() => {
+          if (gen !== deckUiGenRef.current) return;
+          setDeck(next);
+        });
       }
 
       if (!applyingHistoryRef.current && options?.history !== 'skip' && historyRef.current) {
@@ -1307,6 +1305,7 @@ const PresentationEditorPage: React.FC = () => {
     (snapshot: PresentationDeck) => {
       applyingHistoryRef.current = true;
       setApplyingDeckHistory(true);
+      deckUiGenRef.current += 1;
       if (historyPushTimer.current) clearTimeout(historyPushTimer.current);
       const active = document.activeElement;
       const wasNotes =
@@ -4244,6 +4243,7 @@ const PresentationEditorPage: React.FC = () => {
             onSpeakerChange={(html, plain) =>
               updateSlide({ speakerNotesHtml: html, speakerNotes: plain }, normalizedActive.id)
             }
+            onBeforeDiscreteEdit={flushDeckHistory}
             onMoveNotesToTrash={moveNotesToTrash}
             onUploadImage={uploadNotesImageSrc}
           />

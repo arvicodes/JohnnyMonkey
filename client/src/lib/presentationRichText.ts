@@ -1385,6 +1385,9 @@ export function handlePresentationTabKey(editor: HTMLElement, shiftKey: boolean)
       editor.dispatchEvent(new Event('input', { bubbles: true }));
       return;
     }
+    // Listenpunkte nicht per margin-left schieben — das wird beim Speichern wieder entfernt.
+    collapseEditorSelection(editor);
+    return;
   }
 
   const block = getEditableBlock(editor);
