@@ -45,6 +45,8 @@ import {
 } from '../lib/presentationDeckSync';
 import { PresentationDrawTool, DEFAULT_MARKER_COLOR, DEFAULT_MARKER_OPACITY, DEFAULT_PEN_COLOR, defaultColorForTool, defaultLineWidthForTool, lineWidthsForTool, toolUsesColor } from '../lib/presentationDrawTools';
 import { presentationLessonBackUrl, tryHandleLessonEntryTicketLinkClick, isLessonEntryTicketSlideHref } from '../lib/presentationEditorUi';
+import { slideSectionName } from '../lib/presentationSections';
+import { withLessonSectionPath } from '../lib/entryTicketCustomSets';
 import { markLessonPlayed } from '../lib/playedLessons';
 import { savePresentationNamedVersion, exportPresentationPdfVersions } from '../lib/presentationExport';
 import {
@@ -236,6 +238,7 @@ const PresentationPresentPage: React.FC = () => {
 
   const slides = useMemo(() => (deck ? sortSlides(deck.slides) : []), [deck]);
   const currentSlide = slides[slideIndex];
+  const entryTicketLessonPath = withLessonSectionPath(lessonPath, slideSectionName(currentSlide));
   const maxReveal = currentSlide ? getSlideMaxRevealSteps(currentSlide) : 0;
   const transition = currentSlide?.transition || deck?.defaultTransition || 'fade';
   const canGoPrev = slideIndex > 0 || revealStep > 0;
@@ -1555,6 +1558,7 @@ const PresentationPresentPage: React.FC = () => {
     if (
       tryHandleLessonEntryTicketLinkClick(e, {
         lessonPath,
+        sectionName: slideSectionName(currentSlide),
         groupId: groupId || undefined,
         autostart: true,
         onOpen: openEntryTicket,
@@ -1698,6 +1702,7 @@ const PresentationPresentPage: React.FC = () => {
         if (entryTicketOpen) return;
         tryHandleLessonEntryTicketLinkClick(e, {
           lessonPath,
+          sectionName: slideSectionName(currentSlide),
           groupId: groupId || undefined,
           autostart: true,
           onOpen: () => openEntryTicket(),
@@ -2127,7 +2132,7 @@ const PresentationPresentPage: React.FC = () => {
           <PresentFullscreenPortals host={containerRef.current}>
             <EntryTicketPage
               embeddedPlay={{
-                lessonPath,
+                lessonPath: entryTicketLessonPath,
                 groupId: groupId || undefined,
                 onExit: closeEntryTicket,
               }}

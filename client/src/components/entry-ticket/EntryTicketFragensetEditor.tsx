@@ -39,6 +39,7 @@ import {
   parseEntryTicketCardList,
   sortLessonsChronologically,
   withCustomSetReihePaths,
+  lessonMatchesPath as lessonSectionMatchesPath,
   type EntryTicketCustomSet,
   type EntryTicketCustomTask,
   type EntryTicketLessonSection,
@@ -121,13 +122,7 @@ type Props = {
 
 function lessonMatchesPath(lesson: EntryTicketLessonSection, lessonPath?: string | null): boolean {
   if (!lessonPath) return false;
-  const want = lessonPath.replace(/\\/g, '/').replace(/\/+$/, '');
-  const wantName = want.split('/').pop() || '';
-  if (lesson.lessonKey) {
-    const key = lesson.lessonKey.replace(/\\/g, '/').replace(/\/+$/, '');
-    if (key === want || key.endsWith(`/${wantName}`)) return true;
-  }
-  return lesson.lessonName.trim() === wantName;
+  return lessonSectionMatchesPath(lesson, lessonPath);
 }
 
 type TopicGroup = {
@@ -183,6 +178,8 @@ export function EntryTicketFragensetEditor({
   const [reiheOptionsLoading, setReiheOptionsLoading] = useState(false);
   const [reiheBusy, setReiheBusy] = useState(false);
   const catalogRequestedRef = useRef(false);
+  const setRef = useRef(set);
+  setRef.current = set;
   const [deleteAsk, setDeleteAsk] = useState<
     | { kind: 'set' }
     | { kind: 'lesson'; lessonId: string; lessonName: string; taskCount: number }
@@ -258,6 +255,26 @@ export function EntryTicketFragensetEditor({
     // nur beim Wechsel des Sets; sonst Risiko von Update-Schleifen
     // eslint-disable-next-line react-hooks/exhaustive-deps -- set.id
   }, [set.id]);
+
+  // Folien-Unterkapitel nachziehen, ohne vorhandene Karten zu löschen
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const discovered = await discoverLessonsForCustomSet(setRef.current);
+        if (cancelled) return;
+        const merged = mergeDiscoveredLessonsIntoSet(setRef.current, discovered);
+        if (merged !== setRef.current) onChange(merged);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // set/onChange bewusst nicht: sonst Schleife nach dem Merge
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- set.id + Reihen
+  }, [set.id, assignedReihePaths.join('|')]);
 
   // Auswahl bereinigen, wenn Karten wegfallen / Stunde wechselt
   useEffect(() => {

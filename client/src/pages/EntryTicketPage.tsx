@@ -67,11 +67,12 @@ import {
   fetchAndCacheCustomEntryTicketSets,
   loadCustomEntryTicketSets,
   mergeCustomSetListsKeepExisting,
+  mergeDiscoveredLessonsIntoSet,
   saveCustomEntryTicketSets,
   sortLessonsChronologically,
   patchCustomSetTaskContent,
 } from '../lib/entryTicketCustomSets';
-import { discoverLessonsForReiheName } from '../lib/entryTicketReiheLessons';
+import { discoverLessonsForReiheName, mergeFolienUnterkapitelIntoSets } from '../lib/entryTicketReiheLessons';
 import { resolveEntryTicketBandForLessonPath, fetchAssignedEntryTicketGrade, parseEntryTicketPlanBand } from '../lib/entryTicketGrade';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
 import { EntryTicketFragensetEditor } from '../components/entry-ticket/EntryTicketFragensetEditor';
@@ -3088,9 +3089,42 @@ export default function EntryTicketPage({
 
   /** Lehrer: Fragensets vom Server laden — Notizen/reihePath bleiben erhalten. */
   useEffect(() => {
+    const applyUnterkapitel = (withUnterkapitel: EntryTicketCustomSet[]) => {
+      setCustomSets((latest) =>
+        latest.map((set) => {
+          const next = withUnterkapitel.find((s) => s.id === set.id);
+          if (!next) return set;
+          return mergeDiscoveredLessonsIntoSet(set, {
+            reihePath: next.reihePath ?? null,
+            lessons: next.lessons
+              .filter(
+                (l) =>
+                  !isGeneralLessonSection(l) &&
+                  !isLaterLessonSection(l) &&
+                  Boolean(l.lessonKey),
+              )
+              .map((l) => ({
+                lessonName: l.lessonName,
+                lessonKey: l.lessonKey as string,
+                topicName: l.topicName,
+              })),
+          });
+        }),
+      );
+    };
+
     if (embeddedPlay) {
-      setCustomSetsReady(true);
-      return;
+      let cancelled = false;
+      void mergeFolienUnterkapitelIntoSets(loadCustomEntryTicketSets())
+        .then((withUnterkapitel) => {
+          if (!cancelled) applyUnterkapitel(withUnterkapitel);
+        })
+        .finally(() => {
+          if (!cancelled) setCustomSetsReady(true);
+        });
+      return () => {
+        cancelled = true;
+      };
     }
     if (!isTeacher) {
       customSetsServerSyncedRef.current = true;
@@ -3103,8 +3137,13 @@ export default function EntryTicketPage({
         const merged = await fetchAndCacheCustomEntryTicketSets();
         if (cancelled) return;
         setCustomSets((local) => {
-          if (merged.length === 0) return local;
-          return mergeCustomSetListsKeepExisting(local, merged);
+          const combined =
+            merged.length === 0 ? local : mergeCustomSetListsKeepExisting(local, merged);
+          void mergeFolienUnterkapitelIntoSets(combined).then((withUnterkapitel) => {
+            if (cancelled) return;
+            applyUnterkapitel(withUnterkapitel);
+          });
+          return combined;
         });
       } catch {
         /* ignore */

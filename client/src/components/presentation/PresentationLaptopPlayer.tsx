@@ -28,6 +28,8 @@ import { presentationNestedListSx, presentationNotesTableSx } from '../../lib/pr
 import { presentationNotesImageViewSx, applyNotesImageFlowToHtml } from '../../lib/presentationNotesImages';
 import { isPresentationLinkClickTarget } from '../../lib/presentationRichText';
 import { tryHandleLessonEntryTicketLinkClick, isLessonEntryTicketSlideHref } from '../../lib/presentationEditorUi';
+import { slideSectionName } from '../../lib/presentationSections';
+import { withLessonSectionPath } from '../../lib/entryTicketCustomSets';
 import EntryTicketPage from '../../pages/EntryTicketPage';
 import { ensureEntryTicketButtonsOnTitleSlides } from '../../lib/presentationSlideTemplates';
 import { clampPresentZoomSmooth, handlePresentZoomHotkey, attachPresentTrackpadZoom, attachPresentTouchPinchZoom, centerPresentPan, panAfterPresentZoom, clampPresentPan, type PresentZoomOrigin } from '../../lib/presentationPresentZoom';
@@ -264,6 +266,7 @@ export default function PresentationLaptopPlayer({
   const slides = useMemo(() => (deck ? sortSlides(deck.slides) : []), [deck]);
   const safeIndex = slides.length === 0 ? 0 : Math.min(slideIndex, slides.length - 1);
   const currentSlide = slides[safeIndex];
+  const entryTicketLessonPath = withLessonSectionPath(lessonPath, slideSectionName(currentSlide));
   const maxReveal = disableAnimations
     ? 0
     : currentSlide
@@ -514,6 +517,7 @@ export default function PresentationLaptopPlayer({
     if (
       tryHandleLessonEntryTicketLinkClick(e, {
         lessonPath,
+        sectionName: slideSectionName(currentSlide),
         groupId,
         autostart: true,
         onOpen: () => setEntryTicketOpen(true),
@@ -1074,7 +1078,7 @@ export default function PresentationLaptopPlayer({
         >
           <EntryTicketPage
             embeddedPlay={{
-              lessonPath,
+              lessonPath: entryTicketLessonPath,
               groupId,
               onExit: () => {
                 setEntryTicketOpen(false);

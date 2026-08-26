@@ -106,6 +106,26 @@ function normalizePath(p: string): string {
   return (p || '').replace(/\\/g, '/').replace(/\/+$/, '');
 }
 
+/** Folien-Unterkapitel am Stundenpfad: `…/01 Basiswissen#01.09 Neutrales Element`. */
+export const ENTRY_TICKET_SECTION_KEY_SEP = '#';
+
+export function splitLessonSectionKey(raw: string): { path: string; section: string | null } {
+  const n = normalizePath(raw);
+  const i = n.indexOf(ENTRY_TICKET_SECTION_KEY_SEP);
+  if (i > 0 && i < n.length - 1) {
+    return { path: n.slice(0, i), section: n.slice(i + 1).trim() || null };
+  }
+  return { path: n, section: null };
+}
+
+export function withLessonSectionPath(stundePath: string, sectionName?: string | null): string {
+  const { path } = splitLessonSectionKey(stundePath);
+  const section = (sectionName || '').trim();
+  if (!path) return section;
+  if (!section) return path;
+  return `${path}${ENTRY_TICKET_SECTION_KEY_SEP}${section}`;
+}
+
 function parseTask(raw: unknown): EntryTicketCustomTask | null {
   if (!raw || typeof raw !== 'object') return null;
   const q = raw as Record<string, unknown>;
@@ -567,8 +587,17 @@ export function flattenCustomSetTasks(set: EntryTicketCustomSet): EntryTicketCus
 }
 
 function lessonFolderName(lessonPathOrKey: string): string {
-  const n = normalizePath(lessonPathOrKey);
-  return n.split('/').pop() || n;
+  const { path, section } = splitLessonSectionKey(lessonPathOrKey);
+  if (section) return section;
+  return path.split('/').pop() || path;
+}
+
+function folderNamesEqual(a: string, b: string): boolean {
+  return a.trim().toLowerCase().normalize('NFC') === b.trim().toLowerCase().normalize('NFC');
+}
+
+function stundePathOf(lessonPathOrKey: string): string {
+  return splitLessonSectionKey(lessonPathOrKey).path;
 }
 
 /**
@@ -576,7 +605,7 @@ function lessonFolderName(lessonPathOrKey: string): string {
  * Erkennt „11-04 …“ / „12-01 Matrizen“-Segmente.
  */
 export function seriesFolderPathFromLessonPath(lessonPath: string | null | undefined): string | null {
-  const want = normalizePath(lessonPath || '');
+  const want = stundePathOf(lessonPath || '');
   if (!want) return null;
   const absolute = want.startsWith('/');
   const parts = want.split('/').filter(Boolean);
@@ -613,7 +642,7 @@ function klasseNumberFromLessonPath(lessonPath: string): string | null {
 }
 
 function pathUnderSeries(path: string, seriesRoot: string): boolean {
-  const p = normalizePath(path);
+  const p = stundePathOf(path);
   const root = normalizePath(seriesRoot);
   if (!p || !root) return false;
   return p === root || p.startsWith(`${root}/`);
@@ -734,16 +763,36 @@ export function sortLessonsChronologically(
   });
 }
 
-function lessonMatchesPath(lesson: EntryTicketLessonSection, lessonPath: string): boolean {
-  const want = normalizePath(lessonPath);
-  const wantName = lessonFolderName(want);
+export function lessonMatchesPath(lesson: EntryTicketLessonSection, lessonPath: string): boolean {
+  const wantRaw = normalizePath(lessonPath);
+  if (!wantRaw) return false;
+  const { path: wantPath, section: wantSection } = splitLessonSectionKey(wantRaw);
+  const wantStundeName = wantPath.split('/').pop() || wantPath;
+  const wantLabel = wantSection || wantStundeName;
+
   if (lesson.lessonKey) {
     const key = normalizePath(lesson.lessonKey);
-    if (key === want || key.endsWith(`/${wantName}`) || lessonFolderName(key) === wantName) {
-      return true;
+    const { path: keyPath, section: keySection } = splitLessonSectionKey(key);
+    if (key === wantRaw) return true;
+    const sameStunde =
+      keyPath === wantPath ||
+      (Boolean(wantStundeName) &&
+        keyPath.endsWith(`/${wantStundeName}`) &&
+        folderNamesEqual(keyPath.split('/').pop() || '', wantStundeName));
+    if (sameStunde) {
+      if (!wantSection) return true;
+      if (keySection && folderNamesEqual(keySection, wantSection)) return true;
     }
+    if (key.startsWith(`${wantPath}/`)) {
+      if (!wantSection) return true;
+      if (folderNamesEqual(lessonFolderName(key), wantSection)) return true;
+    }
+    if (folderNamesEqual(lessonFolderName(key), wantLabel)) return true;
   }
-  return lesson.lessonName.trim() === wantName || lessonFolderName(lesson.lessonName) === wantName;
+  return (
+    folderNamesEqual(lesson.lessonName.trim(), wantLabel) ||
+    folderNamesEqual(lessonFolderName(lesson.lessonName), wantLabel)
+  );
 }
 
 /**
@@ -782,7 +831,8 @@ function lessonMatchKey(lessonName: string, lessonKey?: string): string {
 
 /**
  * Stundenordner der Reihe in ein bestehendes Set mergen.
- * Vorhandene Karten bleiben; fehlende Stunden (z. B. Klasse 5: 1.0 / 1.1 / …) werden ergänzt.
+ * Vorhandene Karten und nicht mehr gefundene Blöcke bleiben;
+ * fehlende Folien-Unterkapitel werden ergänzt.
  */
 export function mergeDiscoveredLessonsIntoSet(
   set: EntryTicketCustomSet,

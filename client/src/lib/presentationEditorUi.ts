@@ -1,6 +1,7 @@
 import { JOHNNY_PRESENTATION } from './presentationTheme';
 import { lessonFolderDisplayName } from './presentationSlideFooter';
 import { parseEntryTicketPlanBand, resolveEntryTicketBandForLessonPath } from './entryTicketGrade';
+import { withLessonSectionPath } from './entryTicketCustomSets';
 import { presentationEditorUrl, type PresentationPlanMode } from './presentationDeck';
 import { isWochenaufgabenFolderPath } from './wochenaufgabenFolder';
 
@@ -135,20 +136,22 @@ export function isLessonEntryTicketSlideHref(href: string | null | undefined): b
 /** Startet das Entry Ticket dieser Stunde (wie im Stundenplan), optional mit returnTo. */
 export function buildLessonEntryTicketLaunchUrl(opts: {
   lessonPath: string;
+  sectionName?: string | null;
   groupId?: string;
   gradeFallback?: string | number;
   autostart?: boolean;
   returnTo?: string;
 }): string {
   const qs = new URLSearchParams();
+  const lessonPath = withLessonSectionPath(opts.lessonPath, opts.sectionName);
   const band = resolveEntryTicketBandForLessonPath(
-    opts.lessonPath,
+    lessonPath,
     parseEntryTicketPlanBand(opts.gradeFallback ?? 7),
   );
   qs.set('grade', String(band));
   if (opts.autostart !== false) qs.set('autostart', '1');
   qs.set('r', String(Date.now()));
-  if (opts.lessonPath) qs.set('lessonPath', opts.lessonPath);
+  if (lessonPath) qs.set('lessonPath', lessonPath);
   if (opts.groupId) qs.set('groupId', opts.groupId);
   if (opts.returnTo) qs.set('returnTo', opts.returnTo);
   return `/entry-ticket?${qs.toString()}`;
@@ -162,6 +165,7 @@ export function tryHandleLessonEntryTicketLinkClick(
   event: { target: EventTarget | null; preventDefault: () => void; stopPropagation: () => void },
   opts: {
     lessonPath: string;
+    sectionName?: string | null;
     groupId?: string;
     gradeFallback?: string | number;
     returnTo?: string;
@@ -196,6 +200,7 @@ export function tryHandleLessonEntryTicketLinkClick(
       : undefined);
   const url = buildLessonEntryTicketLaunchUrl({
     lessonPath: opts.lessonPath,
+    sectionName: opts.sectionName,
     groupId: opts.groupId,
     gradeFallback: opts.gradeFallback,
     autostart: opts.autostart !== false,

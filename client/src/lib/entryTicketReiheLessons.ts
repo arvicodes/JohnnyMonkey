@@ -6,6 +6,13 @@ import {
   mergeReihenOptions,
   type WorkingReiheOption,
 } from './dashboardWorkingReihen';
+import { DECK_FILENAME, loadJsonFile } from './presentationDeck';
+import { orderedSlideSectionNames } from './presentationSections';
+import {
+  mergeDiscoveredLessonsIntoSet,
+  withLessonSectionPath,
+  type EntryTicketCustomSet,
+} from './entryTicketCustomSets';
 
 export type DiscoveredReiheLesson = {
   lessonName: string;
@@ -23,6 +30,7 @@ type DirNode = {
 
 const FOLDER_CACHE_TTL_MS = 90_000;
 const folderCache = new Map<string, { at: number; nodes: DirNode[] }>();
+const deckSectionCache = new Map<string, { at: number; names: string[] }>();
 let catalogPromise: Promise<WorkingReiheOption[]> | null = null;
 
 const CATALOG_SKIP_TOP = new Set([
@@ -73,6 +81,7 @@ export function isStundeFolderName(name: string): boolean {
   if (isTopicSectionFolderName(t)) return false;
   if (isLessonRohdatArchiveFolderName(t)) return false;
   if (isWochenaufgabenFolderName(t)) return false;
+  if (/^Grafiken$/i.test(t)) return false;
   return true;
 }
 
@@ -184,9 +193,75 @@ function isDirNode(node: DirNode): boolean {
   return node.type === 'directory' || node.type === 'folder' || Array.isArray(node.children);
 }
 
+function isDeckFileNode(node: DirNode): boolean {
+  const name = (node.name || '').trim();
+  if (name !== DECK_FILENAME) return false;
+  if (node.type === 'directory' || node.type === 'folder') return false;
+  return true;
+}
+
+function folderChildrenForWalk(node: DirNode): DirNode[] | undefined {
+  if (Array.isArray(node.children) && node.children.length > 0) return node.children;
+  return undefined;
+}
+
+function normalizeFolderPath(p: string): string {
+  return (p || '').replace(/\\/g, '/').replace(/\/+$/, '');
+}
+
+/** Folien-Unterkapitel aus Praesentation.deck.json — nur lesen, nie speichern. */
+async function readDeckUnterkapitel(folderPath: string): Promise<string[]> {
+  const key = toGitInternPath(folderPath);
+  const hit = deckSectionCache.get(key);
+  if (hit && Date.now() - hit.at < FOLDER_CACHE_TTL_MS) return hit.names;
+  try {
+    const filePath = `${normalizeFolderPath(folderPath)}/${DECK_FILENAME}`;
+    const deck = await loadJsonFile<{
+      slides?: Array<{ sourceLessonName?: string; order?: number }>;
+    }>(filePath);
+    const names = orderedSlideSectionNames(deck?.slides || []);
+    deckSectionCache.set(key, { at: Date.now(), names });
+    return names;
+  } catch {
+    deckSectionCache.set(key, { at: Date.now(), names: [] });
+    return [];
+  }
+}
+
+function pushDeckSections(
+  out: DiscoveredReiheLesson[],
+  stundePath: string,
+  topicName: string,
+  sections: string[],
+): void {
+  const stundeKey = toGitInternPath(stundePath);
+  for (const section of sections) {
+    const lessonName = section.trim();
+    if (!lessonName) continue;
+    out.push({
+      lessonName,
+      lessonKey: withLessonSectionPath(stundeKey, lessonName),
+      topicName,
+    });
+  }
+}
+
+function hasNestedStundeFolders(children: DirNode[]): boolean {
+  return children.some((node) => {
+    const name = (node.name || '').trim();
+    if (!name || name.startsWith('.') || !isDirNode(node)) return false;
+    // Grafiken/Backup sind keine Stunden — sonst würde z. B. „01 Basiswissen“ nicht aus dem Deck gelesen.
+    if (isWochenaufgabenFolderName(name) || /^Grafiken$/i.test(name) || isLessonRohdatArchiveFolderName(name)) {
+      return false;
+    }
+    return isStundeFolderName(name);
+  });
+}
+
 /**
  * Stundenordner flach einsammeln — stoppt in der Stunde, lädt also keine Folien/PDFs.
- * Vorhandene children (API liefert oft 2 Ebenen) werden ohne Extra-Request genutzt.
+ * Ausnahme: kombinierte Kapitelordner (z. B. „01 Basiswissen“) mit Praesentation.deck.json
+ * → Unterkapitel aus den Folien, ohne die Datei zu ändern.
  */
 async function walkStundeFolders(
   folderPath: string,
@@ -203,12 +278,35 @@ async function walkStundeFolders(
     if (!name || name.startsWith('.') || !isDirNode(node)) continue;
     const path = nodePath(node, folderPath);
 
-    if (isTopicSectionFolderName(name) || isChapterHeadingFolderName(name) || isSeriesHeadingFolderName(name)) {
-      nested.push(walkStundeFolders(path, name, out, depth + 1, node.children));
+    if (isWochenaufgabenFolderName(name) || /^Grafiken$/i.test(name) || isLessonRohdatArchiveFolderName(name)) {
       continue;
     }
 
-    if (isWochenaufgabenFolderName(name) || /^Grafiken$/i.test(name) || isLessonRohdatArchiveFolderName(name)) {
+    if (isTopicSectionFolderName(name) || isChapterHeadingFolderName(name) || isSeriesHeadingFolderName(name)) {
+      nested.push(
+        (async () => {
+          let childList = folderChildrenForWalk(node);
+          const childHintUseful =
+            Array.isArray(childList) &&
+            (childList.some(isDeckFileNode) || hasNestedStundeFolders(childList));
+          if (!childHintUseful) childList = await readFolderShallow(path);
+          const kids = childList || [];
+          if (kids.some(isDeckFileNode) && !hasNestedStundeFolders(kids)) {
+            const sections = await readDeckUnterkapitel(path);
+            if (sections.length > 0) {
+              pushDeckSections(out, path, name, sections);
+              return;
+            }
+            out.push({
+              lessonName: name,
+              lessonKey: toGitInternPath(path),
+              topicName,
+            });
+            return;
+          }
+          await walkStundeFolders(path, name, out, depth + 1, kids);
+        })(),
+      );
       continue;
     }
 
@@ -342,6 +440,29 @@ export async function discoverLessonsForCustomSet(set: {
     }
   }
   return { reihePath: paths[0] ?? null, lessons: all };
+}
+
+/**
+ * Folien-Unterkapitel in bestehende Fragensets mergen.
+ * Vorhandene Karten und alte Blöcke bleiben; fehlende Unterkapitel werden ergänzt.
+ */
+export async function mergeFolienUnterkapitelIntoSets(
+  sets: EntryTicketCustomSet[],
+): Promise<EntryTicketCustomSet[]> {
+  if (sets.length === 0) return sets;
+  const out: EntryTicketCustomSet[] = [];
+  let changed = false;
+  for (const set of sets) {
+    try {
+      const discovered = await discoverLessonsForCustomSet(set);
+      const merged = mergeDiscoveredLessonsIntoSet(set, discovered);
+      if (merged !== set) changed = true;
+      out.push(merged);
+    } catch {
+      out.push(set);
+    }
+  }
+  return changed ? out : sets;
 }
 
 /** Katalog aller Unterrichtsreihen unter J-M-Reihen für die Zuordnung am Kartenset. */

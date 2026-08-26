@@ -5,6 +5,24 @@ export function slideSectionName(slide: PresentationSlide | null | undefined): s
   return (slide?.sourceLessonName || '').trim();
 }
 
+/** Unterkapitel in Folien-Reihenfolge (ohne Duplikate). */
+export function orderedSlideSectionNames(
+  slides: Array<{ sourceLessonName?: string; order?: number }> | null | undefined,
+): string[] {
+  if (!Array.isArray(slides) || slides.length === 0) return [];
+  const sorted = [...slides].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const names: string[] = [];
+  let prev = '';
+  for (const slide of sorted) {
+    const name = (slide?.sourceLessonName || '').trim();
+    if (name && name !== prev) {
+      names.push(name);
+      prev = name;
+    }
+  }
+  return names;
+}
+
 export function nextUntitledSectionName(slides: PresentationSlide[]): string {
   const used = new Set(slides.map(slideSectionName).filter(Boolean));
   if (!used.has('Unterkapitel')) return 'Unterkapitel';

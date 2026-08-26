@@ -3794,6 +3794,7 @@ const PresentationEditorPage: React.FC = () => {
               if (!lessonPath) return;
               tryHandleLessonEntryTicketLinkClick(e, {
                 lessonPath,
+                sectionName: slideSectionName(activeSlide),
                 groupId: groupId || undefined,
                 returnTo: presentationLessonReturnWithPresentationUrl(lessonPath, groupId || undefined),
                 autostart: true,
