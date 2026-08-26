@@ -569,7 +569,7 @@ function updateNotesDropMarker(
   marker.style.top = `${Math.max(0, Math.round(top - er.top + editor.scrollTop - 1))}px`;
 }
 
-function notesImageWrapFromPoint(editor: HTMLElement, moving: HTMLElement, x: number, y: number): HTMLElement | null {
+function notesImageWrapFromPoint(editor: HTMLElement, moving: HTMLElement | null, x: number, y: number): HTMLElement | null {
   const hit = document.elementFromPoint(x, y) as HTMLElement | null;
   if (!hit || !editor.contains(hit)) return null;
   const wrap = hit.closest(`.${PRES_NOTES_IMG_WRAP_CLASS}`) as HTMLElement | null;
@@ -599,19 +599,19 @@ function moveNotesImageToPoint(wrap: HTMLElement, editor: HTMLElement, x: number
 
   const range = notesCaretRangeFromPoint(editor, x, y);
   takeNotesImageWrap(wrap, editor);
-  if (!range || wrap.contains(range.startContainer)) {
-    const host = editor.querySelector(`p[${NOTES_TYPEHOST_ATTR}]`);
-    if (host) editor.insertBefore(wrap, host);
-    else editor.appendChild(wrap);
-    return true;
+  if (range && editor.contains(range.startContainer) && !wrap.contains(range.startContainer)) {
+    try {
+      range.insertNode(wrap);
+      return true;
+    } catch {
+      /* fall through */
+    }
   }
-  try {
-    range.insertNode(wrap);
-    return true;
-  } catch {
-    editor.appendChild(wrap);
-    return true;
-  }
+  const hosts = editor.querySelectorAll(`p[${NOTES_TYPEHOST_ATTR}]`);
+  const host = hosts[hosts.length - 1] as HTMLElement | undefined;
+  if (host) editor.insertBefore(wrap, host);
+  else editor.appendChild(wrap);
+  return true;
 }
 
 function notesWrapsAreNeighbors(a: HTMLElement, b: HTMLElement): boolean {
@@ -819,7 +819,8 @@ const NOTES_TYPEHOST_ATTR = 'data-pres-notes-typehost';
 
 /** Solange nur Bilder (contenteditable=false) in den Notizen stehen, gibt es keinen Caret. */
 export function ensureNotesTypingHost(editor: HTMLElement): HTMLElement {
-  let host = editor.querySelector(`p[${NOTES_TYPEHOST_ATTR}]`) as HTMLElement | null;
+  const hosts = editor.querySelectorAll(`p[${NOTES_TYPEHOST_ATTR}]`);
+  let host = hosts[hosts.length - 1] as HTMLElement | null;
   if (!host) {
     const last = editor.lastElementChild as HTMLElement | null;
     const lastIsEmptyTextP =
@@ -842,6 +843,71 @@ export function ensureNotesTypingHost(editor: HTMLElement): HTMLElement {
     host.appendChild(document.createElement('br'));
   }
   return host;
+}
+
+export function placeNotesCaretAtPoint(editor: HTMLElement, clientX: number, clientY: number): boolean {
+  editor.focus({ preventScroll: true });
+  const sel = window.getSelection();
+  if (!sel) return false;
+  const wrap = notesImageWrapFromPoint(editor, null, clientX, clientY);
+  if (wrap && editor.contains(wrap)) {
+    const r = wrap.getBoundingClientRect();
+    const after = clientX > r.left + r.width / 2 || clientY > r.top + r.height / 2;
+    const range = document.createRange();
+    if (after) range.setStartAfter(wrap);
+    else range.setStartBefore(wrap);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    return true;
+  }
+  const range = notesCaretRangeFromPoint(editor, clientX, clientY);
+  if (range && editor.contains(range.startContainer)) {
+    sel.removeAllRanges();
+    sel.addRange(range);
+    return true;
+  }
+  const end = document.createRange();
+  end.selectNodeContents(editor);
+  end.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(end);
+  return true;
+}
+
+export function selectAllNotesContent(editor: HTMLElement): void {
+  editor.focus({ preventScroll: true });
+  const sel = window.getSelection();
+  if (!sel) return;
+  const range = document.createRange();
+  range.selectNodeContents(editor);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+/** HTML für ⌘C: Auswahl, sonst markiertes Bild, sonst ganze Notiz (inkl. Bilder). */
+export function notesClipboardHtml(editor: HTMLElement): string {
+  const sel = window.getSelection();
+  if (
+    sel &&
+    sel.rangeCount > 0 &&
+    !sel.isCollapsed &&
+    editor.contains(sel.anchorNode) &&
+    editor.contains(sel.focusNode)
+  ) {
+    const holder = document.createElement('div');
+    holder.appendChild(sel.getRangeAt(0).cloneContents());
+    return serializePresentationNotesHtml(holder);
+  }
+  const selected = editor.querySelector(
+    `.${PRES_NOTES_IMG_WRAP_CLASS}.${PRES_NOTES_IMG_SELECTED_CLASS}`,
+  ) as HTMLElement | null;
+  if (selected) {
+    const holder = document.createElement('div');
+    holder.appendChild(selected.cloneNode(true));
+    return serializePresentationNotesHtml(holder);
+  }
+  return serializePresentationNotesHtml(editor);
 }
 
 export function placeNotesCaretInTypingHost(editor: HTMLElement): void {

@@ -17,6 +17,9 @@ import {
   presentationNotesImageEditorSx,
   serializePresentationNotesHtml,
   placeNotesCaretInTypingHost,
+  placeNotesCaretAtPoint,
+  selectAllNotesContent,
+  notesClipboardHtml,
   handleNotesImageDeleteKey,
   clearNotesImageSelection,
   toggleNotesImageFrame,
@@ -124,12 +127,13 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   }, [persistFromEditor]);
 
   const insertImageFile = useCallback(
-    async (file: File) => {
+    async (file: File, at?: { x: number; y: number }) => {
       if (!ref.current || readOnly || !onUploadImage) return;
       if (file.type && !file.type.startsWith('image/')) return;
       const src = await onUploadImage(file);
-      if (!src) return;
-      ref.current.focus();
+      if (!src || !ref.current) return;
+      ref.current.focus({ preventScroll: true });
+      if (at) placeNotesCaretAtPoint(ref.current, at.x, at.y);
       insertImageHtmlAtCursor(ref.current, src, file.name);
       enhanceImages();
       persistFromEditor(false, false);
@@ -252,10 +256,26 @@ const NoteZone: React.FC<NoteZoneProps> = ({
     persistFromEditor(false, false);
   };
 
+  const handleCopy = (e: React.ClipboardEvent) => {
+    const el = ref.current;
+    if (!el || readOnly) return;
+    const html = notesClipboardHtml(el);
+    if (!html.trim()) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.clipboardData.setData('text/html', html);
+    e.clipboardData.setData('text/plain', htmlToPlain(html));
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     const el = ref.current;
     if (!el || readOnly) return;
-    if (e.key === 'Backspace' || e.key === 'Delete') {
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 'a') {
+      e.preventDefault();
+      e.stopPropagation();
+      selectAllNotesContent(el);
+      return;
+    }
       if (handleNotesImageDeleteKey(el, e.key)) {
         e.preventDefault();
         e.stopPropagation();
@@ -406,12 +426,14 @@ const NoteZone: React.FC<NoteZoneProps> = ({
         }}
         onInput={handleInput}
         onPaste={handlePaste}
+        onCopy={handleCopy}
         onKeyDown={handleKeyDown}
         onDragOver={(e) => {
           if (readOnly || !onUploadImage) return;
           if (![...e.dataTransfer.types].includes('Files')) return;
           e.preventDefault();
           e.dataTransfer.dropEffect = 'copy';
+          if (ref.current) placeNotesCaretAtPoint(ref.current, e.clientX, e.clientY);
         }}
         onDrop={(e) => {
           if (readOnly || !onUploadImage) return;
@@ -421,7 +443,9 @@ const NoteZone: React.FC<NoteZoneProps> = ({
           if (!file) return;
           e.preventDefault();
           e.stopPropagation();
-          void insertImageFile(file);
+          const at = { x: e.clientX, y: e.clientY };
+          if (ref.current) placeNotesCaretAtPoint(ref.current, at.x, at.y);
+          void insertImageFile(file, at);
         }}
         onMouseDown={(e) => {
           if (!isFormatBarInteracting()) clearSavedSelection();

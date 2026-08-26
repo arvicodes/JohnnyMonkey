@@ -69,92 +69,61 @@ function stripDuplicatePlainMatrix(s: string): string {
   );
 }
 
-function flattenForCompare(s: string): string {
-  return s
-    .replace(/\\times|×/g, 'x')
-    .replace(/\\cdot|[⋅·]/g, '')
-    .replace(/\\le|≤/g, '<=')
-    .replace(/\\ge|≥/g, '>=')
-    .replace(/\\vec\s*/g, '')
-    .replace(/\\begin\{[^}]+\}/g, '')
-    .replace(/\\end\{[^}]+\}/g, '')
-    .replace(/\\[a-zA-Z]+/g, '')
-    .replace(/[_^{}&\\\s,]/g, '')
-    .toLowerCase();
+function isGluedPlainDump(s: string): boolean {
+  if (!s || s.length < 3 || /\s/.test(s)) return false;
+  if (/[×⋅·≤≥⃗]/.test(s)) return true;
+  if (/[()=]/.test(s) && /[A-Za-z]/.test(s) && /[0-9]/.test(s)) return true;
+  if (/^[A-Za-z]{2,}=[A-Za-z0-9+\-()]+$/.test(s)) return true;
+  if (/^[A-Za-z]=\([A-Za-z0-9]+\)$/.test(s)) return true;
+  return false;
 }
 
-function gluedPlainStart(full: string, texStart: number, tex: string): number {
-  const flatTex = flattenForCompare(tex);
-  if (flatTex.length < 2) return texStart;
-  let i = texStart;
-  while (i > 0) {
-    const ch = full[i - 1];
-    if (ch === '\\' || ch === '\n' || ch === '<' || ch === '>') break;
-    if (!/[A-Za-zÄÖÜäöü0-9×⋅·≤≥⃗()[\]+\-=,^_{}]/.test(ch)) break;
-    i -= 1;
+function longestPlainDumpPrefix(dump: string): number {
+  for (let len = dump.length; len >= 3; len -= 1) {
+    if (isGluedPlainDump(dump.slice(0, len))) return len;
   }
-  const plain = full.slice(i, texStart);
-  if (!plain) return texStart;
-  const tryStrip = (chunk: string, from: number): number | null => {
-    const flatPlain = flattenForCompare(chunk);
-    if (flatPlain.length < 2) return null;
-    if (flatTex === flatPlain || flatTex.startsWith(flatPlain)) return from;
-    if (flatPlain.length >= 3 && flatTex.includes(flatPlain)) return from;
-    return null;
-  };
-  const whole = tryStrip(plain, i);
-  if (whole != null) return whole;
-  for (let k = 1; k < plain.length; k += 1) {
-    const hit = tryStrip(plain.slice(k), i + k);
-    if (hit != null) return hit;
+  return 0;
+}
+
+/**
+ * In den LK-Karten klebt oft dieselbe Formel nochmal ohne Backslash davor:
+ * `n×mn\times m`, `1≤i≤n1\le i\le n`, `M⋅v⃗M\cdot\vec v`.
+ */
+function stripGluedPlainDuplicates(s: string): string {
+  const starts: number[] = [];
+  const re = /\\[a-zA-Z]+|[A-Za-z][_^]\{/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(s))) starts.push(m.index);
+  let out = s;
+  for (let i = starts.length - 1; i >= 0; i -= 1) {
+    let texHead = starts[i];
+    if (texHead > out.length) continue;
+    while (texHead > 0 && /[A-Za-z0-9]/.test(out[texHead - 1])) texHead -= 1;
+    let from = texHead;
+    while (from > 0 && /[A-Za-zÄÖÜäöü0-9()×⋅·≤≥⃗+\-=]/.test(out[from - 1])) from -= 1;
+    const dump = out.slice(from, texHead);
+    const take = longestPlainDumpPrefix(dump);
+    if (!take) continue;
+    out = out.slice(0, from) + out.slice(from + take);
+    for (let j = 0; j < i; j += 1) {
+      if (starts[j] >= from + take) starts[j] -= take;
+      else if (starts[j] > from) starts[j] = from;
+    }
   }
-  return texStart;
+  return out;
 }
 
 const ENV_PIECE = String.raw`\\begin\{[a-zA-Z*]+\}[\s\S]*?\\end\{[a-zA-Z*]+\}?`;
 const ENV_JOIN = String.raw`(?:\s*\^\{?\d+\}?)?(?:\s*(?:\\cdot|\\times|[+\-])\s*)`;
 const ASSIGN_PREFIX = String.raw`(?:(?:\\[a-zA-Z]+\s*)?[A-Za-z][A-Za-z0-9]*⃗?\s*=\s*)`;
-const ENV_CHAIN = new RegExp(`${ASSIGN_PREFIX}?${ENV_PIECE}(?:${ENV_JOIN}${ASSIGN_PREFIX}?${ENV_PIECE})*(?:\\s*\\^\\{?\\d+\\}?)?`, 'g');
+const ENV_CHAIN = new RegExp(
+  `${ASSIGN_PREFIX}?${ENV_PIECE}(?:${ENV_JOIN}${ASSIGN_PREFIX}?${ENV_PIECE})*(?:\\s*\\^\\{?\\d+\\}?)?`,
+  'g',
+);
 
+/** Prefix nur angeklebt (`1\le`, `n\times`) — kein Leerzeichen davor, sonst wird „mit a_{ij}“ zu einer Formel. */
 const UNDELIMITED =
-  /[A-Za-z0-9]*\s*(?:\\[a-zA-Z]+|[A-Za-z][_^]\{)(?:\\[a-zA-Z]+\s*|\\[^A-Za-z\n]|[_^{}A-Za-z0-9+=()|&,.\\ \t]|-(?![A-Za-zÄÖÜäöü])|\s(?=\\))*[A-Za-z0-9_^{}+=()|&,.\\]*/g;
-
-function collectLatexRanges(source: string): Array<{ start: number; end: number }> {
-  const ranges: Array<{ start: number; end: number }> = [];
-  const add = (re: RegExp) => {
-    re.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(source))) {
-      ranges.push({ start: m.index, end: m.index + m[0].length });
-    }
-  };
-  add(/\$\$[\s\S]+?\$\$/g);
-  add(/\\\[[\s\S]+?\\\]/g);
-  add(ENV_CHAIN);
-  add(/\\\([\s\S]+?\\\)/g);
-  add(/\$[^$\n]+?\$/g);
-  add(UNDELIMITED);
-  ranges.sort((a, b) => a.start - b.start || b.end - a.end);
-  const merged: Array<{ start: number; end: number }> = [];
-  for (const r of ranges) {
-    const last = merged[merged.length - 1];
-    if (last && r.start < last.end) continue;
-    merged.push({ ...r });
-  }
-  return merged;
-}
-
-function stripGluedPlainDuplicates(s: string): string {
-  const ranges = collectLatexRanges(s);
-  let out = s;
-  for (let i = ranges.length - 1; i >= 0; i -= 1) {
-    const { start, end } = ranges[i];
-    const tex = out.slice(start, end);
-    const from = gluedPlainStart(out, start, tex);
-    if (from < start) out = out.slice(0, from) + out.slice(start);
-  }
-  return out;
-}
+  /[A-Za-z0-9]*(?:\\[a-zA-Z]+|[A-Za-z][_^]\{)(?:\\[a-zA-Z]+\s*|\\[^A-Za-z\n]|[_^{}A-Za-z0-9+=()|&,.\\]|-(?![A-Za-zÄÖÜäöü])|\s(?=\\))*[A-Za-z0-9_^{}+=()|&,.\\]*/g;
 
 function isStandaloneFormula(source: string, match: string): boolean {
   const rest = source.split(match).join('').replace(/<[^>]+>/g, '').trim();

@@ -38,8 +38,8 @@ services:
       - "com.portainer.io.category=Application"
       - "com.portainer.io.managed=true"
 
-  # Outbound-Tunnel: Zugriff ohne offenen Port 80 (VPN blockiert 80, nur 9443 ist frei).
-  # URL steht in den Logs von johnnymonkey-tunnel (*.trycloudflare.com).
+  # Alter Workaround-Tunnel. Schülerzugang ist Sophos-HTTPS:
+  # intern https://mnsplusdocker:44443/  außen https://rpl-50147-0.dn.mnsnet.de:44443/
   tunnel:
     image: cloudflare/cloudflared:latest
     pull_policy: never

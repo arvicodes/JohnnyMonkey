@@ -77,36 +77,21 @@ npm start
 
 Kurzcheck: siehe auch [`DEPLOY_PORTAINER_CHECKLIST.md`](./DEPLOY_PORTAINER_CHECKLIST.md).
 
-#### Problem: Website per VPN nicht erreichbar (Port 80)
+#### Schüler- und Lehrerzugang (aktuell)
 
-**Symptom:** Portainer unter `https://192.168.8.1:9443` geht, aber `http://192.168.8.1` / `/dashboard` schlägt fehl („Verbindung abgelehnt“ / Connection refused).
+HTTPS terminiert die Sophos-Firewall. Die App selbst bleibt intern HTTP auf Port 80. Den Port **`:44443`** mit eintippen.
 
-**Ursache:** Die Schul-VPN-/Firewall lässt eingehend **Port 80 nicht durch**. Nur wenige Ports (u. a. Portainer **9443**) sind freigegeben. Die App kann im Container gesund laufen und trotzdem von außen unerreichbar sein.
+| Wer | URL |
+|-----|-----|
+| Unterricht / Schulnetz | `https://mnsplusdocker:44443/` |
+| Von zu Hause / unterwegs | `https://rpl-50147-0.dn.mnsnet.de:44443/` |
+| Portainer (nur Verwaltung) | `https://192.168.8.1:9443` |
 
-**Lösung (Stand in `docker-compose.yml`):**
+Nicht ausgeben: `http://192.168.8.1` (Klartext; wird auf den HTTPS-Namen umgeleitet). Nicht verwenden: Cloudflare-`trycloudflare.com`-Tunnel (nur alter Workaround).
 
-1. **Host-Netz für die App** — kein Bridge-Mapping `80→3000`, sondern:
-   - `network_mode: host`
-   - `PORT=80` (Node lauscht direkt auf dem Host)
-   - Healthcheck: `http://127.0.0.1:80/health`
-   - Container `webserver` (nginx) muss **gestoppt** bleiben, sonst Port-Konflikt
-2. **Cloudflare Quick Tunnel** für VPN-Zugriff — Service `tunnel` / Container `johnnymonkey-tunnel`:
-   - `cloudflared` mit Host-Netz
-   - leitet auf `http://127.0.0.1:80` weiter
-   - öffentliche URL steht in den **Logs** von `johnnymonkey-tunnel` (`https://….trycloudflare.com`)
+Chrome kann **Nicht sicher** zeigen, weil das Zertifikat von der Schul-CA (JoGy-Firewall) stammt, nicht von einer öffentlichen Stelle. Die Adresse ist trotzdem die richtige.
 
-**URLs (HTTPS über Sophos, App selbst bleibt HTTP auf Port 80):**
-
-| Zugang | URL |
-|--------|-----|
-| Unterricht (Schulnetz) | `https://mnsplusdocker:44443/` |
-| Von außen | `https://rpl-50147-0.dn.mnsnet.de:44443/` |
-| Portainer | `https://192.168.8.1:9443` |
-
-Nicht mehr verwenden: `http://192.168.8.1` (wird auf den HTTPS-Namen umgeleitet).
-
-**Tunnel-URL nachschauen:** Portainer → Containers → `johnnymonkey-tunnel` → Logs → nach `trycloudflare.com` suchen.  
-Hinweis: Bei Quick Tunnels ändert sich die URL nach jedem Neustart des Tunnel-Containers.
+**Technik hinter der App:** `network_mode: host`, `PORT=80`, Healthcheck `http://127.0.0.1:80/health`. Container `webserver` (nginx) muss gestoppt bleiben.
 
 **Redeploy nach Compose-Änderung:** Stacks → `johnnymonkey` → **Pull and redeploy** (Rebuild an, Re-pull image aus). Nicht über Containers → Recreate.
 

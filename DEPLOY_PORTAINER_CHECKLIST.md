@@ -14,8 +14,7 @@
 - `PORT=80` (App lauscht direkt auf dem Host)
 - Healthcheck: `http://127.0.0.1:80/health`
 
-Zusätzlich: Container `johnnymonkey-tunnel` (Cloudflare quick tunnel) für VPN-Zugriff,
-weil die Firewall Port 80 per VPN blockiert. URL in den Tunnel-Logs (`*.trycloudflare.com`).
+Zugriff für Unterricht und von außen läuft über Sophos-HTTPS (nicht über Cloudflare).
 
 ## DB-Volume (wichtig)
 
@@ -39,24 +38,24 @@ environment:
    - Rebuild = **AN**
    - Re-pull image = **AUS**
 5. Prüfen: `johnnymonkey-app` = `healthy`, Logs: `running on port 80`
-6. Tunnel-Logs: `johnnymonkey-tunnel` → `https://….trycloudflare.com`
+6. App-URL: `https://mnsplusdocker:44443/` (Schulnetz) bzw. `https://rpl-50147-0.dn.mnsnet.de:44443/` (außen)
 
 ## Korrekte URLs
 
 - Schul-LAN / Unterricht: `https://mnsplusdocker:44443/` (HTTPS über Sophos)
-- Von außen: `https://rpl-50147-0.dn.mnsnet.de:44443/`
+- Von zu Hause / unterwegs: `https://rpl-50147-0.dn.mnsnet.de:44443/`
 - Portainer: `https://192.168.8.1:9443`
-- Nicht mehr: `http://192.168.8.1` (Klartext)
+- Nicht mehr: `http://192.168.8.1` (Klartext) und nicht `*.trycloudflare.com`
 
 ## Warum es klappt
 
 - Container neu gebaut (`Rebuild`), aktuelle Git-Änderungen.
 - `webserver` blockiert Port 80 nicht.
 - App mit Host-Netz direkt auf Port `80` (kein Docker-Port-Proxy).
-- VPN: Outbound-Tunnel über Cloudflare, weil TCP 80 eingehend blockiert ist.
+- Von außen: `https://rpl-50147-0.dn.mnsnet.de:44443/` (Sophos, nicht Port 80).
 - `J-M-Reihen` aus dem Image; DB unter `/app/server/data/dev.db`.
 
 ## Wenn nur VPN und Safari „Verbindung abgelehnt“
 
-Portainer `:9443` geht, Port `80` nicht → Firewall/VPN lässt 80 nicht durch.
-Dann die `trycloudflare.com`-URL aus den Tunnel-Logs verwenden (nicht `192.168.8.1`).
+Portainer `:9443` geht, Port `80` nicht → Firewall blockiert HTTP auf 80.
+Dann die externe HTTPS-Adresse verwenden: `https://rpl-50147-0.dn.mnsnet.de:44443/` (nicht die IP, nicht Cloudflare).

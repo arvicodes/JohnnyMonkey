@@ -1,5 +1,12 @@
 # Portainer.io Deployment Anleitung für JohnnyMonkey
 
+**Aktueller Schülerzugang (nicht diese alte 8080-Anleitung):**
+
+- Unterricht: `https://mnsplusdocker:44443/`
+- Von außen: `https://rpl-50147-0.dn.mnsnet.de:44443/`
+
+Die App läuft mit Host-Netz auf Port **80** (HTTP intern). HTTPS und Port 44443 kommen von der Sophos-Firewall. Siehe README und `DEPLOY_PORTAINER_CHECKLIST.md`.
+
 ## Übersicht
 
 Diese Anleitung zeigt Schritt für Schritt, wie du die JohnnyMonkey App mit nginx Reverse Proxy in Portainer.io deployst.
