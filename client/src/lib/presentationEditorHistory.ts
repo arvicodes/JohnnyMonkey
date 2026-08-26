@@ -76,7 +76,10 @@ export function pushDeckHistory(history: DeckHistory, deck: PresentationDeck): D
   return { stack, index: stack.length - 1, fingerprints };
 }
 
-export function canUndoDeck(history: DeckHistory | null, current?: PresentationDeck): boolean {
+export function canUndoDeck(
+  history: DeckHistory | null,
+  current?: PresentationDeck | null,
+): boolean {
   if (!history) return false;
   if (current && history.fingerprints[history.index] !== deckFingerprint(current)) return true;
   return history.index > 0;

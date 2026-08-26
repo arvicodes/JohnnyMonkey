@@ -813,7 +813,7 @@ const PresentationEditorPage: React.FC = () => {
       const editorSlideId = activeEditor.getAttribute('data-pres-slide-id');
       const editorField = activeEditor.getAttribute('data-pres-html-field');
       const isNotesEditor = activeEditor.getAttribute('data-pres-notes-zone') === 'true';
-      const targetSlideId = (isNotesEditor && editorSlideId) || activeId;
+      const targetSlideId = ((isNotesEditor && editorSlideId) || activeId) ?? '';
       if (!isNotesEditor && editorSlideId && editorSlideId !== activeId) return;
       if (editorField && editorField !== activeHtmlField && !activeHtmlField.startsWith('element:')) {
         return;
@@ -830,8 +830,8 @@ const PresentationEditorPage: React.FC = () => {
         const titleHtml = activeEditor.innerHTML;
         if (editingVariantRef.current) {
           const base =
-            playVariantsRef.current?.bySlideId[activeId]?.slide ??
-            current.slides.find((s) => s.id === activeId);
+            playVariantsRef.current?.bySlideId[targetSlideId]?.slide ??
+            current.slides.find((s) => s.id === targetSlideId);
           if (!base) return;
           const elements = (base.elements || []).map((e) =>
             e.id === id ? { ...e, titleHtml } : e,
@@ -855,8 +855,8 @@ const PresentationEditorPage: React.FC = () => {
         const html = activeEditor.innerHTML;
         if (editingVariantRef.current) {
           const base =
-            playVariantsRef.current?.bySlideId[activeId]?.slide ??
-            current.slides.find((s) => s.id === activeId);
+            playVariantsRef.current?.bySlideId[targetSlideId]?.slide ??
+            current.slides.find((s) => s.id === targetSlideId);
           if (!base) return;
           const elements = (base.elements || []).map((e) => (e.id === id ? { ...e, html } : e));
           applyToVariant(normalizeSlide({ ...base, elements }));
