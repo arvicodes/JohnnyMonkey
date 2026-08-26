@@ -9,6 +9,7 @@ import {
   Crop as CropIcon,
   CropSquare as RectIcon,
   Draw as DrawIcon,
+  GridView as GridViewIcon,
   Highlight as HighlightIcon,
   HighlightAlt as LassoIcon,
   HorizontalRule as LineIcon,
@@ -158,6 +159,8 @@ interface PresentationTabletToolbarProps {
   onGoPrev: () => void;
   onGoNext: () => void;
   nextButtonTitle?: string;
+  onOpenSlideOverview?: () => void;
+  slideOverviewOpen?: boolean;
   onToggleDraw: () => void;
   onSelectTool: (tool: PresentationDrawTool) => void;
   onSelectColor: (color: string) => void;
@@ -211,6 +214,8 @@ export default function PresentationTabletToolbar({
   onGoPrev,
   onGoNext,
   nextButtonTitle = 'Weiter',
+  onOpenSlideOverview,
+  slideOverviewOpen = false,
   onToggleDraw,
   onSelectTool,
   onSelectColor,
@@ -531,6 +536,16 @@ export default function PresentationTabletToolbar({
         <ToolBtn title="Zurück" disabled={!canGoPrev} onClick={onGoPrev}>
           <ChevronLeft sx={{ fontSize: 17 }} />
         </ToolBtn>
+
+        {onOpenSlideOverview && (
+          <ToolBtn
+            title="Folienübersicht"
+            active={slideOverviewOpen}
+            onClick={onOpenSlideOverview}
+          >
+            <GridViewIcon sx={{ fontSize: 15 }} />
+          </ToolBtn>
+        )}
 
         {typeof zoom === 'number' && onZoomChange && (
           <>

@@ -1080,6 +1080,10 @@ const PresentationEditorPage: React.FC = () => {
         slideSelectionAnchorRef.current = id;
       }
       if (id === activeId) return;
+      const notesEl = document.querySelector('[data-pres-notes-zone="true"]') as HTMLElement | null;
+      if (notesEl && (document.activeElement === notesEl || notesEl.contains(document.activeElement))) {
+        notesEl.blur();
+      }
       commitEditorState({ history: 'skip' });
       setActiveId(id);
       setSelectedElementId(null);
@@ -4184,6 +4188,7 @@ const PresentationEditorPage: React.FC = () => {
 
         {normalizedActive && notesPanelOpen && (
           <PresentationNotesPanel
+            key={normalizedActive.id}
             speakerHtml={normalizedActive.speakerNotesHtml}
             speakerPlain={normalizedActive.speakerNotes}
             activeField={notesActiveField}

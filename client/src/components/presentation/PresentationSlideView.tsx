@@ -73,6 +73,8 @@ interface PresentationSlideViewProps {
   showSlideNumbers?: boolean;
   slideNumber?: number;
   slideTotal?: number;
+  /** Play: Klick auf die Foliennummer öffnet die Übersicht. */
+  onSlideNumberClick?: (e: React.MouseEvent) => void;
   showSlideFooter?: boolean;
   slideFooter?: PresentationSlideFooter;
   deckTitle?: string;
@@ -111,6 +113,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   showSlideNumbers = false,
   slideNumber = 0,
   slideTotal = 0,
+  onSlideNumberClick,
   showSlideFooter = false,
   slideFooter,
   deckTitle = '',
@@ -1015,6 +1018,16 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             ) : null}
             {showFooterNumbers ? (
               <Typography
+                data-pres-slide-number=""
+                onClick={
+                  onSlideNumberClick
+                    ? (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onSlideNumberClick(e);
+                      }
+                    : undefined
+                }
                 sx={{
                   flexShrink: 0,
                   fontSize: `${15 * scale}px`,
@@ -1022,6 +1035,14 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
                   color: `${accent}cc`,
                   letterSpacing: 0.4,
                   lineHeight: 1.25,
+                  ...(onSlideNumberClick
+                    ? {
+                        pointerEvents: 'auto',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        '&:hover': { color: accent },
+                      }
+                    : null),
                 }}
               >
                 {slideNumberLabel}
@@ -1033,6 +1054,16 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
 
       {showStandaloneNumbers && (
         <Typography
+          data-pres-slide-number=""
+          onClick={
+            onSlideNumberClick
+              ? (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onSlideNumberClick(e);
+                }
+              : undefined
+          }
           sx={{
             position: 'absolute',
             right: `${28 * scale}px`,
@@ -1042,9 +1073,11 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             fontWeight: 700,
             color: `${accent}cc`,
             letterSpacing: 0.4,
-            pointerEvents: 'none',
             userSelect: 'none',
             lineHeight: 1,
+            pointerEvents: onSlideNumberClick ? 'auto' : 'none',
+            cursor: onSlideNumberClick ? 'pointer' : 'default',
+            ...(onSlideNumberClick ? { '&:hover': { color: accent } } : null),
           }}
         >
           {slideNumberLabel}

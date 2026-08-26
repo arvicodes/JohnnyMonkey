@@ -8,6 +8,7 @@ import {
 import PresentationSlideView from '../components/presentation/PresentationSlideView';
 import PresentationDrawOverlay from '../components/presentation/PresentationDrawOverlay';
 import PresentationTabletToolbar from '../components/presentation/PresentationTabletToolbar';
+import PresentationPresentSlideOverview from '../components/presentation/PresentationPresentSlideOverview';
 import PresentationRandomStudentOverlay from '../components/presentation/PresentationRandomStudentOverlay';
 import PresentationQuietWorkOverlay, {
   useQuietWorkController,
@@ -154,6 +155,7 @@ const PresentationPresentPage: React.FC = () => {
   const [saveNamedOpen, setSaveNamedOpen] = useState(false);
   const [clearInkOpen, setClearInkOpen] = useState(false);
   const [entryTicketOpen, setEntryTicketOpen] = useState(false);
+  const [slideOverviewOpen, setSlideOverviewOpen] = useState(false);
   const openEntryTicket = useCallback(() => {
     freezePresentViewport(true);
     setEntryTicketOpen(true);
@@ -1119,6 +1121,20 @@ const PresentationPresentPage: React.FC = () => {
     }
   }, [revealStep, slideIndex, slides]);
 
+  const goToSlideAt = useCallback(
+    (idx: number) => {
+      if (idx < 0 || idx >= slides.length) return;
+      setSlideIndex(idx);
+      setRevealStep(getSlideMaxRevealSteps(slides[idx]));
+      setSlideOverviewOpen(false);
+    },
+    [slides],
+  );
+
+  const toggleSlideOverview = useCallback(() => {
+    setSlideOverviewOpen((open) => !open);
+  }, []);
+
   const handleToggleNativeFullscreen = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isIosSafariLike()) return;
@@ -1318,6 +1334,21 @@ const PresentationPresentPage: React.FC = () => {
         return;
       }
 
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        setSlideOverviewOpen((open) => !open);
+        return;
+      }
+
+      if (slideOverviewOpen) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setSlideOverviewOpen(false);
+        }
+        return;
+      }
+
       if (handlePresentZoomHotkey(e, userZoom, applyUserZoom)) return;
 
       if (e.key === 'Escape') {
@@ -1357,7 +1388,7 @@ const PresentationPresentPage: React.FC = () => {
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [goNext, goPrev, drawActive, groupId, lessonPath, navigate, planMode, slides, saveNamedOpen, clearInkOpen, userZoom, entryTicketOpen, applyUserZoom, quietWork, musicGame]);
+  }, [goNext, goPrev, drawActive, groupId, lessonPath, navigate, planMode, slides, saveNamedOpen, clearInkOpen, userZoom, entryTicketOpen, applyUserZoom, quietWork, musicGame, slideOverviewOpen]);
 
   // Fokus auf die Bühne, damit Pfeiltasten sofort greifen
   useEffect(() => {
@@ -1529,7 +1560,7 @@ const PresentationPresentPage: React.FC = () => {
       swipeRef.current = null;
       return;
     }
-    if (target?.closest?.('[data-pres-element-type="image"], [data-resize-handle], [data-pres-filmstrip-slide], [data-element-delete]')) {
+    if (target?.closest?.('[data-pres-element-type="image"], [data-resize-handle], [data-pres-filmstrip-slide], [data-pres-slide-overview], [data-pres-slide-number], [data-element-delete]')) {
       swipeRef.current = null;
       return;
     }
@@ -1555,6 +1586,7 @@ const PresentationPresentPage: React.FC = () => {
 
   const handleSlideTap = (e: React.MouseEvent) => {
     if (entryTicketOpen) return;
+    if (slideOverviewOpen) return;
     if (
       tryHandleLessonEntryTicketLinkClick(e, {
         lessonPath,
@@ -1569,7 +1601,7 @@ const PresentationPresentPage: React.FC = () => {
     const tapTarget = e.target instanceof Element ? e.target : null;
     if (
       tapTarget?.closest?.(
-        '[data-pres-element-type="image"], [data-resize-handle], [data-element-delete], [data-pres-filmstrip-slide], [data-pres-toolbar]',
+        '[data-pres-element-type="image"], [data-resize-handle], [data-element-delete], [data-pres-filmstrip-slide], [data-pres-toolbar], [data-pres-slide-overview], [data-pres-slide-number]',
       )
     ) {
       return;
@@ -1691,7 +1723,7 @@ const PresentationPresentPage: React.FC = () => {
         const t = e.target instanceof Element ? e.target : null;
         if (
           t?.closest?.(
-            '[data-pres-fs], [data-pres-back], [data-pres-toolbar], canvas, a[href][data-pres-entry-ticket], a[href*="jm=lesson-entry"]',
+            '[data-pres-fs], [data-pres-back], [data-pres-toolbar], [data-pres-slide-overview], [data-pres-slide-number], canvas, a[href][data-pres-entry-ticket], a[href*="jm=lesson-entry"]',
           )
         ) {
           return;
@@ -1875,6 +1907,7 @@ const PresentationPresentPage: React.FC = () => {
                   showSlideNumbers={deck?.showSlideNumbers !== false}
                   slideNumber={slideIndex + 1}
                   slideTotal={slides.length}
+                  onSlideNumberClick={toggleSlideOverview}
                   showSlideFooter={deck?.showSlideFooter !== false}
                   slideFooter={deck?.slideFooter}
                   deckTitle={deck?.title ?? ''}
@@ -1935,6 +1968,14 @@ const PresentationPresentPage: React.FC = () => {
         </Typography>
       )}
 
+      <PresentationPresentSlideOverview
+        open={slideOverviewOpen}
+        slides={slides}
+        currentIndex={slideIndex}
+        onClose={() => setSlideOverviewOpen(false)}
+        onJump={goToSlideAt}
+      />
+
       <PresentationTabletToolbar
         drawActive={drawActive}
         activeTool={activeTool}
@@ -1948,6 +1989,8 @@ const PresentationPresentPage: React.FC = () => {
         placement="overlay"
         onGoPrev={goPrev}
         onGoNext={goNext}
+        onOpenSlideOverview={toggleSlideOverview}
+        slideOverviewOpen={slideOverviewOpen}
         onToggleDraw={handleToggleDraw}
         onSelectTool={handleSelectTool}
         onSelectColor={handleSelectColor}
