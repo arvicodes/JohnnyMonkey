@@ -149,6 +149,45 @@ export function serializePresentationNotesHtml(editor: HTMLElement): string {
   return clone.innerHTML;
 }
 
+export const JOHNNY_NOTES_COPY_ATTR = 'data-johnny-notes-copy';
+
+function rangeCoversEditorContents(range: Range, editor: HTMLElement): boolean {
+  const full = document.createRange();
+  full.selectNodeContents(editor);
+  try {
+    return (
+      range.compareBoundaryPoints(Range.START_TO_START, full) <= 0 &&
+      range.compareBoundaryPoints(Range.END_TO_END, full) >= 0
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** Clipboard-Hülle, damit Einfügen die Notizen 1:1 erkennt und nicht als Word-Paste putzt. */
+export function wrapJohnnyNotesCopyHtml(innerHtml: string): string {
+  return `<!--johnny-notes-copy--><div ${JOHNNY_NOTES_COPY_ATTR}="1">${innerHtml}</div>`;
+}
+
+export function unwrapJohnnyNotesCopyHtml(html: string): string | null {
+  if (!html || typeof document === 'undefined') return null;
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const marked = doc.querySelector(`[${JOHNNY_NOTES_COPY_ATTR}]`);
+  if (marked) {
+    stripNotesImageChrome(marked);
+    return marked.innerHTML;
+  }
+  if (
+    doc.body.querySelector(
+      `[${PRES_NOTES_IMG_WRAP_ATTR}], [${PRES_NOTES_IMG_ATTR}], .${PRES_NOTES_IMG_WRAP_CLASS}`,
+    )
+  ) {
+    stripNotesImageChrome(doc.body);
+    return doc.body.innerHTML;
+  }
+  return null;
+}
+
 export const PRES_NOTES_DRAGGING_ATTR = 'data-pres-notes-dragging';
 
 function notesEditorIsDragging(editor: HTMLElement | null): boolean {
@@ -895,8 +934,12 @@ export function notesClipboardHtml(editor: HTMLElement): string {
     editor.contains(sel.anchorNode) &&
     editor.contains(sel.focusNode)
   ) {
+    const range = sel.getRangeAt(0);
+    if (rangeCoversEditorContents(range, editor)) {
+      return serializePresentationNotesHtml(editor);
+    }
     const holder = document.createElement('div');
-    holder.appendChild(sel.getRangeAt(0).cloneContents());
+    holder.appendChild(range.cloneContents());
     return serializePresentationNotesHtml(holder);
   }
   const selected = editor.querySelector(
@@ -923,7 +966,11 @@ export function placeNotesCaretInTypingHost(editor: HTMLElement): void {
 }
 
 /** Resize-Handles an alle Notiz-Bilder hängen; Grafiken bleiben im Textfluss. */
-export function enhancePresentationNotesImages(editor: HTMLElement | null, onChange: () => void): void {
+export function enhancePresentationNotesImages(
+  editor: HTMLElement | null,
+  onChange: () => void,
+  options?: { skipDedupe?: boolean },
+): void {
   if (!editor || notesEditorIsDragging(editor)) return;
   releaseNotesImagesToFlow(editor);
   editor.querySelectorAll('img').forEach((node) => {
@@ -932,7 +979,7 @@ export function enhancePresentationNotesImages(editor: HTMLElement | null, onCha
     const wrap = ensureNotesImageWrap(img);
     bindNotesImage(wrap, img, editor, onChange);
   });
-  dedupeAdjacentNotesImages(editor);
+  if (!options?.skipDedupe) dedupeAdjacentNotesImages(editor);
   ensureNotesTypingHost(editor);
 }
 

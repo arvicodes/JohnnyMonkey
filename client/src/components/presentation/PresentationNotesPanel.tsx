@@ -20,6 +20,8 @@ import {
   placeNotesCaretAtPoint,
   selectAllNotesContent,
   notesClipboardHtml,
+  unwrapJohnnyNotesCopyHtml,
+  wrapJohnnyNotesCopyHtml,
   handleNotesImageDeleteKey,
   clearNotesImageSelection,
   toggleNotesImageFrame,
@@ -100,7 +102,12 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   const ref = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editingRef = useRef(false);
-  const displayHtml = normalizeNotesHtml(html || textToHtml(plain || ''));
+  const rawDisplay = html || textToHtml(plain || '');
+  const displayHtml = /tabindex=|autoid=|role="(?:list|document|heading)"|Item\.Message|x_divtagdefaultwrapper|_rp_/i.test(
+    rawDisplay,
+  )
+    ? normalizeNotesHtml(rawDisplay)
+    : rawDisplay;
   const healedFromRef = useRef<string | null>(null);
 
   const persistContent = useCallback(
@@ -194,6 +201,8 @@ const NoteZone: React.FC<NoteZoneProps> = ({
     const el = ref.current;
     if (!el || readOnly || !onUploadImage) return undefined;
     const onPasteCapture = (e: ClipboardEvent) => {
+      const copiedHtml = e.clipboardData?.getData('text/html') || '';
+      if (unwrapJohnnyNotesCopyHtml(copiedHtml) != null) return;
       if (!clipboardHasImage(e.clipboardData) || clipboardPrefersRichText(e.clipboardData)) return;
       e.preventDefault();
       e.stopPropagation();
@@ -223,17 +232,26 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   const handlePaste = (e: React.ClipboardEvent) => {
     const el = ref.current;
     if (!el || readOnly) return;
-    if (clipboardHasImage(e.clipboardData) && onUploadImage && !clipboardPrefersRichText(e.clipboardData)) {
+    const pastedHtml = e.clipboardData.getData('text/html');
+    const internalHtml = unwrapJohnnyNotesCopyHtml(pastedHtml);
+    if (
+      internalHtml == null &&
+      clipboardHasImage(e.clipboardData) &&
+      onUploadImage &&
+      !clipboardPrefersRichText(e.clipboardData)
+    ) {
       e.preventDefault();
       return;
     }
 
     e.preventDefault();
-    const pastedHtml = e.clipboardData.getData('text/html');
     const pastedText = e.clipboardData.getData('text/plain');
-    const content = pastedHtml
-      ? normalizeNotesHtml(sanitizePastedHtml(pastedHtml))
-      : textToHtml(pastedText);
+    const content =
+      internalHtml != null
+        ? internalHtml
+        : pastedHtml
+          ? normalizeNotesHtml(sanitizePastedHtml(pastedHtml))
+          : textToHtml(pastedText);
     el.focus();
     const tpl = document.createElement('template');
     tpl.innerHTML = content || '<p><br></p>';
@@ -252,7 +270,9 @@ const NoteZone: React.FC<NoteZoneProps> = ({
     } else {
       el.appendChild(tpl.content);
     }
-    enhanceImages();
+    enhancePresentationNotesImages(el, () => persistFromEditor(false, false), {
+      skipDedupe: internalHtml != null,
+    });
     persistFromEditor(false, false);
   };
 
@@ -263,8 +283,17 @@ const NoteZone: React.FC<NoteZoneProps> = ({
     if (!html.trim()) return;
     e.preventDefault();
     e.stopPropagation();
-    e.clipboardData.setData('text/html', html);
+    e.clipboardData.setData('text/html', wrapJohnnyNotesCopyHtml(html));
     e.clipboardData.setData('text/plain', htmlToPlain(html));
+  };
+
+  const handleCut = (e: React.ClipboardEvent) => {
+    handleCopy(e);
+    if (!e.defaultPrevented) return;
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+    sel.getRangeAt(0).deleteContents();
+    persistFromEditor(false, false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -419,7 +448,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
           }
 
           if (ref.current) {
-            persistFromEditor(true, false);
+            persistFromEditor(false, false);
           }
 
           editingRef.current = false;
@@ -428,6 +457,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
         onInput={handleInput}
         onPaste={handlePaste}
         onCopy={handleCopy}
+        onCut={handleCut}
         onKeyDown={handleKeyDown}
         onDragOver={(e) => {
           if (readOnly || !onUploadImage) return;
