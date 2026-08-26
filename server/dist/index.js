@@ -111,9 +111,23 @@ function isIpHostname(hostname) {
 function redirectToSchoolHttps(req, res) {
     const hostname = requestHostname(String(req.headers.host || ''));
     const origin = SCHOOL_HTTPS_BY_HOST[hostname] || SCHOOL_HTTPS_ORIGIN;
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    return res.redirect(308, `${origin}${req.originalUrl || '/'}`);
+    const loc = `${origin}${req.originalUrl || '/'}`;
+    const htmlLoc = loc
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;');
+    // 301 + lange Cache-Dauer: Chrome soll die alte HTTP-Seite ersetzen, nicht behalten.
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.setHeader('Location', loc);
+    if (req.method === 'GET' || req.method === 'HEAD') {
+        res.status(301);
+        if (req.method === 'HEAD')
+            return res.end();
+        return res
+            .type('html')
+            .send(`<!doctype html><meta http-equiv="refresh" content="0;url=${htmlLoc}"><script>location.replace(${JSON.stringify(loc)})</script><p><a href="${htmlLoc}">Weiter zu JohnnyMonkey (HTTPS)</a></p>`);
+    }
+    return res.redirect(308, loc);
 }
 app.use((req, res, next) => {
     if (process.env.NODE_ENV !== 'production')
@@ -128,13 +142,15 @@ app.use((req, res, next) => {
         .split(',')[0]
         .trim()
         .toLowerCase();
-    if (forwarded === 'https' || req.secure)
+    const hostPort = requestHostPort(hostHeader);
+    // Direkter Zugriff auf die Server-IP: immer umleiten (nicht per Header austricksen).
+    if (isIpHostname(hostname)) {
+        return redirectToSchoolHttps(req, res);
+    }
+    // Sophos: intern HTTP, Host oft :44443 oder X-Forwarded-Proto: https.
+    if (hostPort === '44443' || forwarded === 'https' || req.secure)
         return next();
-    // Sophos HTTPS kommt intern als HTTP an, oft mit Original-Host :44443.
-    if (requestHostPort(hostHeader) === '44443')
-        return next();
-    // http://192.168.8.1 und http://mnsplusdocker (ohne 44443) → HTTPS-Name
-    if (isIpHostname(hostname) || hostname in SCHOOL_HTTPS_BY_HOST) {
+    if (hostname in SCHOOL_HTTPS_BY_HOST) {
         return redirectToSchoolHttps(req, res);
     }
     next();

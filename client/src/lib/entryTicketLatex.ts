@@ -1,4 +1,4 @@
-import katex from 'katex';
+import { renderToString as katexRenderToString } from 'katex';
 import 'katex/dist/katex.min.css';
 
 const LATEX_MARK = '\uE200';
@@ -8,7 +8,7 @@ export function renderEntryTicketLatexHtml(tex: string, display = false): string
   const trimmed = (tex || '').trim();
   if (!trimmed) return '';
   try {
-    return katex.renderToString(trimmed, {
+    return katexRenderToString(trimmed, {
       throwOnError: false,
       displayMode: display,
       output: 'html',
