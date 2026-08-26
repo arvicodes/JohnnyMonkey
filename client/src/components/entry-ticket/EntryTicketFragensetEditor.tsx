@@ -1865,7 +1865,8 @@ export function EntryTicketFragensetEditor({
                     border: '2px solid #66bb6a',
                     bgcolor: '#e8f5e9',
                     boxSizing: 'border-box',
-                    whiteSpace: 'pre-wrap',
+                    whiteSpace: 'normal',
+                    overflow: 'auto',
                     ...entryTicketRichTextSx,
                     '& img': {
                       display: 'inline-block',

@@ -392,7 +392,7 @@ export function wrapEntryTicketOperatorsHtml(plainText: string): string {
     return `${prefix}${pushTaskOpMark(taskMarks, label)}`;
   });
 
-  const parts = s.split(/([+\-−·×∗*÷:/=<>%?])/g);
+  const parts = s.split(/([+·×∗*÷:/=<>%?]|[−]|(?<![A-Za-zÄÖÜäöü])-(?![A-Za-zÄÖÜäöü]))/g);
   const html = parts
     .map((part) => {
       if (!part) return '';
@@ -413,7 +413,7 @@ export function wrapEntryTicketOperatorsHtml(plainText: string): string {
 }
 
 function decorateTextNodesForDisplay(root: ParentNode): void {
-  const skip = new Set(['SCRIPT', 'STYLE', 'IMG', 'STRONG', 'B', 'MATH']);
+  const skip = new Set(['SCRIPT', 'STYLE', 'IMG', 'MATH']);
   const nodes: Text[] = [];
   const walk = (node: Node) => {
     if (node.nodeType === Node.TEXT_NODE) {
@@ -462,14 +462,19 @@ export function decorateEntryTicketDisplayHtml(value: string): string {
   }
 
   const sanitized = sanitizeEntryTicketHtml(raw);
+  const latexMarks: string[] = [];
+  const withLatex = extractEntryTicketLatex(sanitized, latexMarks);
   if (typeof document === 'undefined') {
-    return wrapEntryTicketOperatorsHtml(entryTicketPlainText(sanitized));
+    return restoreEntryTicketLatex(
+      wrapEntryTicketOperatorsHtml(entryTicketPlainText(withLatex)),
+      latexMarks,
+    );
   }
 
   const holder = document.createElement('div');
-  holder.innerHTML = sanitized;
+  holder.innerHTML = withLatex;
   decorateTextNodesForDisplay(holder);
-  return holder.innerHTML;
+  return restoreEntryTicketLatex(holder.innerHTML, latexMarks);
 }
 
 /** Text oder eingebettetes Bild zählt als Inhalt. */

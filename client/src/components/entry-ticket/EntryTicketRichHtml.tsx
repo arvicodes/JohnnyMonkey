@@ -33,17 +33,31 @@ export const entryTicketRichTextSx = {
     my: 0.75,
   },
   '& .et-tex': {
-    display: 'inline',
+    display: 'inline-block',
+    verticalAlign: 'middle',
     whiteSpace: 'nowrap',
+    maxWidth: '100%',
+    overflowX: 'auto',
+    overflowY: 'hidden',
+  },
+  '& .et-tex-display': {
+    display: 'block',
+    width: '100%',
+    overflowX: 'auto',
+    overflowY: 'hidden',
+    textAlign: 'center',
+    my: 0.4,
   },
   '& .katex': {
-    fontSize: '1.08em',
+    fontSize: '1.05em',
+    textAlign: 'left',
   },
   '& .katex-display': {
     display: 'block',
-    margin: '0.2em 0',
+    margin: '0.15em 0',
     overflowX: 'auto',
     overflowY: 'hidden',
+    maxWidth: '100%',
   },
 } as const;
 
