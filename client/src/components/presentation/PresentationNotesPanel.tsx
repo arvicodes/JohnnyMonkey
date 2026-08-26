@@ -7,6 +7,7 @@ import {
 } from '@mui/icons-material';
 import { htmlToPlain, textToHtml } from '../../lib/presentationDeck';
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
+import { presentationNotesHighlightSx, restampNotesHighlights, restampNotesHighlightsHtml } from '../../lib/presentationTheme';
 import { isFormatBarInteracting, isPresentationFormatUiTarget } from '../../lib/presentationFormatBarGuard';
 import { isApplyingDeckHistory } from '../../lib/presentationEditorHistory';
 import { captureEditorSelection, clearSavedSelection } from '../../lib/presentationFontSize';
@@ -74,6 +75,7 @@ interface NoteZoneProps {
   label: string;
   html?: string;
   plain?: string;
+  slideId?: string;
   active?: boolean;
   readOnly?: boolean;
   placeholder: string;
@@ -90,6 +92,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   label,
   html,
   plain,
+  slideId,
   active,
   readOnly,
   placeholder,
@@ -103,11 +106,13 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editingRef = useRef(false);
   const rawDisplay = html || textToHtml(plain || '');
-  const displayHtml = /tabindex=|autoid=|role="(?:list|document|heading)"|Item\.Message|x_divtagdefaultwrapper|_rp_/i.test(
-    rawDisplay,
-  )
-    ? normalizeNotesHtml(rawDisplay)
-    : rawDisplay;
+  const displayHtml = restampNotesHighlightsHtml(
+    /tabindex=|autoid=|role="(?:list|document|heading)"|Item\.Message|x_divtagdefaultwrapper|_rp_/i.test(
+      rawDisplay,
+    )
+      ? normalizeNotesHtml(rawDisplay)
+      : rawDisplay,
+  );
   const healedFromRef = useRef<string | null>(null);
 
   const persistContent = useCallback(
@@ -124,6 +129,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   const persistFromEditor = useCallback(
     (normalize = false, writeBack = false) => {
       if (!ref.current) return;
+      restampNotesHighlights(ref.current);
       persistContent(serializePresentationNotesHtml(ref.current), normalize, writeBack);
     },
     [persistContent]
@@ -156,6 +162,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
     const next = displayHtml || '<p><br></p>';
     if (el.innerHTML !== next) el.innerHTML = next;
     if (!readOnly) enhanceImages();
+    restampNotesHighlights(el);
   }, [displayHtml, enhanceImages, readOnly]);
 
   useEffect(() => {
@@ -414,6 +421,8 @@ const NoteZone: React.FC<NoteZoneProps> = ({
         suppressContentEditableWarning
         data-pres-rich-zone
         data-pres-notes-zone="true"
+        data-pres-slide-id={slideId || undefined}
+        data-pres-html-field={fieldKey}
         data-pres-base-fs="13"
         data-notes-field={fieldKey}
         onFocus={() => {
@@ -543,6 +552,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
           }),
           ...presentationNotesTableSx(),
           ...presentationNotesImageEditorSx(),
+          ...presentationNotesHighlightSx(),
           '& mark': { borderRadius: 0.5 },
           '& [data-pres-fs]': { lineHeight: 'inherit' },
           '& [data-pres-color]': { lineHeight: 'inherit' },
@@ -562,6 +572,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
 };
 
 interface PresentationNotesPanelProps {
+  slideId?: string;
   speakerHtml?: string;
   speakerPlain?: string;
   activeField?: NotesFieldKey | null;
@@ -577,6 +588,7 @@ interface PresentationNotesPanelProps {
 }
 
 const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
+  slideId,
   speakerHtml,
   speakerPlain,
   activeField,
@@ -752,6 +764,7 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
       <NoteZone
         fieldKey="speakerNotesHtml"
         label="Notizen"
+        slideId={slideId}
         html={speakerHtml}
         plain={speakerPlain}
         active={activeField === 'speakerNotesHtml'}

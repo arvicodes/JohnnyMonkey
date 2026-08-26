@@ -76,8 +76,10 @@ export function pushDeckHistory(history: DeckHistory, deck: PresentationDeck): D
   return { stack, index: stack.length - 1, fingerprints };
 }
 
-export function canUndoDeck(history: DeckHistory | null): boolean {
-  return !!history && history.index > 0;
+export function canUndoDeck(history: DeckHistory | null, current?: PresentationDeck): boolean {
+  if (!history) return false;
+  if (current && history.fingerprints[history.index] !== deckFingerprint(current)) return true;
+  return history.index > 0;
 }
 
 export function canRedoDeck(history: DeckHistory | null): boolean {
@@ -87,12 +89,24 @@ export function canRedoDeck(history: DeckHistory | null): boolean {
 export function undoDeckHistory(
   history: DeckHistory
 ): { history: DeckHistory; deck: PresentationDeck } | null {
-  if (!canUndoDeck(history)) return null;
+  if (history.index <= 0) return null;
   const index = history.index - 1;
   return {
     history: { ...history, index },
     deck: cloneDeck(history.stack[index]),
   };
+}
+
+/** Letzten sichtbaren Schritt zurück: ungespeicherte Änderung oder vorheriger History-Stand. */
+export function takeUndoStep(
+  history: DeckHistory,
+  current: PresentationDeck,
+): { history: DeckHistory; deck: PresentationDeck } | null {
+  const fp = deckFingerprint(current);
+  if (history.fingerprints[history.index] !== fp) {
+    return { history, deck: cloneDeck(history.stack[history.index]) };
+  }
+  return undoDeckHistory(history);
 }
 
 export function redoDeckHistory(

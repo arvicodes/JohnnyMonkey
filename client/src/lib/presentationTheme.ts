@@ -84,6 +84,9 @@ export const HIGHLIGHT_PRESETS = [
 /** Textmarker-Hintergrund: Wort bleibt lesbar. */
 export const PRESENTATION_HIGHLIGHT_ALPHA = 0.22;
 
+/** Notizen: kräftiger, damit die Markierung auf weißem Papier klar zu sehen ist. */
+export const NOTES_HIGHLIGHT_ALPHA = 0.62;
+
 export function toHighlightFill(color: string, alpha = PRESENTATION_HIGHLIGHT_ALPHA): string {
   const c = (color || '').trim();
   const rgb = c.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
@@ -96,6 +99,38 @@ export function toHighlightFill(color: string, alpha = PRESENTATION_HIGHLIGHT_AL
   const b = parseInt(h.slice(4, 6), 16);
   if ([r, g, b].some((n) => Number.isNaN(n))) return `rgba(255,245,157,${alpha})`;
   return `rgba(${r},${g},${b},${alpha})`;
+}
+
+export function restampNotesHighlights(root: ParentNode): void {
+  root.querySelectorAll('[data-pres-highlight], mark').forEach((node) => {
+    const el = node as HTMLElement;
+    const raw = el.getAttribute('data-pres-highlight') || el.style.backgroundColor || '';
+    if (!raw) return;
+    el.style.setProperty('background-color', toHighlightFill(raw, NOTES_HIGHLIGHT_ALPHA), 'important');
+  });
+}
+
+export function restampNotesHighlightsHtml(html: string): string {
+  if (!html || typeof document === 'undefined') return html;
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    restampNotesHighlights(doc.body);
+    return doc.body.innerHTML;
+  } catch {
+    return html;
+  }
+}
+
+export function presentationNotesHighlightSx() {
+  return {
+    '& [data-pres-highlight], & mark': {
+      borderRadius: '3px',
+      padding: '0.05em 0.16em',
+      boxDecorationBreak: 'clone',
+      WebkitBoxDecorationBreak: 'clone',
+      boxShadow: 'inset 0 -0.18em 0 rgba(0,0,0,0.08)',
+    },
+  } as const;
 }
 
 export function accentGradient(color: string): string {

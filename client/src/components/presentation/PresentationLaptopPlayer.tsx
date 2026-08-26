@@ -22,7 +22,7 @@ import {
 } from '../../lib/presentationPlayVariants';
 import { getSlideMaxRevealSteps } from '../../lib/presentationReveal';
 import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../../lib/presentationTransitions';
-import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
+import { JOHNNY_PRESENTATION, presentationNotesHighlightSx, restampNotesHighlightsHtml } from '../../lib/presentationTheme';
 import { hydrateNotesHtmlFontSizes } from '../../lib/presentationFontSize';
 import { presentationNestedListSx, presentationNotesTableSx } from '../../lib/presentationListStyles';
 import { presentationNotesImageViewSx, applyNotesImageFlowToHtml } from '../../lib/presentationNotesImages';
@@ -591,7 +591,9 @@ export default function PresentationLaptopPlayer({
   const hasHtmlNotes =
     !!notesHtml && notesHtml !== '<p></p>' && notesHtml !== '<p><br></p>';
   const plainNotes = showNotes ? currentSlide.speakerNotes?.trim() || '' : '';
-  const displayNotesHtml = hasHtmlNotes ? applyNotesImageFlowToHtml(hydrateNotesHtmlFontSizes(notesHtml!)) : '';
+  const displayNotesHtml = hasHtmlNotes
+    ? restampNotesHighlightsHtml(applyNotesImageFlowToHtml(hydrateNotesHtmlFontSizes(notesHtml!)))
+    : '';
 
   return (
     <Box
@@ -1031,6 +1033,7 @@ export default function PresentationLaptopPlayer({
                 }),
                 ...presentationNotesTableSx(),
                 ...presentationNotesImageViewSx(),
+                ...presentationNotesHighlightSx(),
                 '& mark': { borderRadius: 0.5 },
                 '& [data-pres-fs]': { lineHeight: 'inherit' },
                 '& [data-pres-color]': { lineHeight: 'inherit' },

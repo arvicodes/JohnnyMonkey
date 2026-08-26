@@ -30,7 +30,7 @@ import {
   buildNestedListFromItems,
 } from './presentationListNormalize';
 import { PRESENTATION_DEFAULT_FONT_FAMILY } from './presentationFonts';
-import { JOHNNY_PRESENTATION, toHighlightFill } from './presentationTheme';
+import { JOHNNY_PRESENTATION, NOTES_HIGHLIGHT_ALPHA, PRESENTATION_HIGHLIGHT_ALPHA, toHighlightFill } from './presentationTheme';
 import { ensureNotesTablesFormatted, applyJohnnyTableFormatting, handleTableTabInEditor } from './presentationSlideTables';
 import { presentationNotesImageInsertHtml, stripNotesImageChrome, releaseNotesImagesToFlow } from './presentationNotesImages';
 import {
@@ -1436,7 +1436,14 @@ export function execFormat(editor: HTMLElement | null, cmd: string, value?: stri
   editor.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-function makeStyleSpan(style: Record<string, string>): HTMLSpanElement {
+function highlightAlphaForEditor(editor?: HTMLElement | null): number {
+  if (editor?.closest?.('[data-pres-notes-zone]') || editor?.getAttribute?.('data-pres-notes-zone')) {
+    return NOTES_HIGHLIGHT_ALPHA;
+  }
+  return PRESENTATION_HIGHLIGHT_ALPHA;
+}
+
+function makeStyleSpan(style: Record<string, string>, editor?: HTMLElement | null): HTMLSpanElement {
   const span = document.createElement('span');
   Object.entries(style).forEach(([key, value]) => {
     if (key === 'color') {
@@ -1446,7 +1453,11 @@ function makeStyleSpan(style: Record<string, string>): HTMLSpanElement {
     }
     if (key === 'backgroundColor') {
       span.setAttribute('data-pres-highlight', value);
-      span.style.setProperty('background-color', toHighlightFill(value), 'important');
+      span.style.setProperty(
+        'background-color',
+        toHighlightFill(value, highlightAlphaForEditor(editor)),
+        'important',
+      );
       return;
     }
     if (key === 'fontFamily') {
@@ -1611,8 +1622,12 @@ function textNodesInRange(editor: HTMLElement, range: Range): Text[] {
   return nodes;
 }
 
-function applyStyleToTextRange(range: Range, style: Record<string, string>): HTMLSpanElement | null {
-  const span = makeStyleSpan(style);
+function applyStyleToTextRange(
+  range: Range,
+  style: Record<string, string>,
+  editor?: HTMLElement | null,
+): HTMLSpanElement | null {
+  const span = makeStyleSpan(style, editor);
   try {
     const extracted = range.extractContents();
     if (!fragmentHasText(extracted)) return null;
@@ -1654,7 +1669,7 @@ function applyStyleAcrossRange(
     } catch {
       continue;
     }
-    const span = applyStyleToTextRange(sub, style);
+    const span = applyStyleToTextRange(sub, style, editor);
     if (span) spans.unshift(span);
   }
   return spans;
@@ -1719,7 +1734,7 @@ function applyInlineStyle(editor: HTMLElement, style: Record<string, string>) {
   const range = sel.getRangeAt(0);
   if (!range.collapsed) return;
 
-  const span = makeStyleSpan(style);
+  const span = makeStyleSpan(style, editor);
   span.appendChild(document.createTextNode('\u200B'));
   range.insertNode(span);
   const textNode = span.firstChild!;

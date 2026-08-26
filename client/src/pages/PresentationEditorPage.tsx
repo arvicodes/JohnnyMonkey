@@ -186,7 +186,7 @@ import {
   pushDeckHistory,
   redoDeckHistory,
   setApplyingDeckHistory,
-  undoDeckHistory,
+  takeUndoStep,
   type DeckHistory,
 } from '../lib/presentationEditorHistory';
 import PresentationSlideView from '../components/presentation/PresentationSlideView';
@@ -812,12 +812,14 @@ const PresentationEditorPage: React.FC = () => {
       if (!activeEditor.isConnected) return;
       const editorSlideId = activeEditor.getAttribute('data-pres-slide-id');
       const editorField = activeEditor.getAttribute('data-pres-html-field');
-      if (editorSlideId && editorSlideId !== activeId) return;
+      const isNotesEditor = activeEditor.getAttribute('data-pres-notes-zone') === 'true';
+      const targetSlideId = (isNotesEditor && editorSlideId) || activeId;
+      if (!isNotesEditor && editorSlideId && editorSlideId !== activeId) return;
       if (editorField && editorField !== activeHtmlField && !activeHtmlField.startsWith('element:')) {
         return;
       }
       const current = deckRef.current;
-      if (!current || !activeId) return;
+      if (!current || !targetSlideId) return;
       if (!editingVariantRef.current && suppressMasterCommitRef.current) return;
       const applyToVariant = (nextSlide: PresentationSlide) => {
         persistVariantSlide(nextSlide);
@@ -876,8 +878,8 @@ const PresentationEditorPage: React.FC = () => {
       const plainKey = HTML_TO_PLAIN[activeHtmlField];
       if (editingVariantRef.current) {
         const base =
-          playVariantsRef.current?.bySlideId[activeId]?.slide ??
-          current.slides.find((s) => s.id === activeId);
+          playVariantsRef.current?.bySlideId[targetSlideId]?.slide ??
+          current.slides.find((s) => s.id === targetSlideId);
         if (!base) return;
         applyToVariant(
           normalizeSlide({
@@ -889,7 +891,7 @@ const PresentationEditorPage: React.FC = () => {
         return;
       }
       const slides = current.slides.map((s) =>
-        s.id === activeId
+        s.id === targetSlideId
           ? normalizeSlide({
               ...s,
               [activeHtmlField]: html,
@@ -1072,6 +1074,22 @@ const PresentationEditorPage: React.FC = () => {
     setEditingVariant(false);
   }, [commitEditorState]);
 
+  const persistLiveNotesToBoundSlide = useCallback(() => {
+    const notesEl = document.querySelector('[data-pres-notes-zone="true"]') as HTMLElement | null;
+    const current = deckRef.current;
+    if (!notesEl || !current) return;
+    const slideId = notesEl.getAttribute('data-pres-slide-id') || activeIdRef.current;
+    if (!slideId) return;
+    const html = serializePresentationNotesHtml(notesEl);
+    const slides = current.slides.map((s) =>
+      s.id === slideId
+        ? normalizeSlide({ ...s, speakerNotesHtml: html, speakerNotes: htmlToPlain(html) })
+        : s,
+    );
+    const next = { ...current, slides };
+    deckRef.current = next;
+  }, []);
+
   const selectSlide = useCallback(
     (id: string, opts?: { preserveMulti?: boolean; keepVariant?: boolean }) => {
       if (!opts?.keepVariant) leaveVariantMode();
@@ -1080,17 +1098,21 @@ const PresentationEditorPage: React.FC = () => {
         slideSelectionAnchorRef.current = id;
       }
       if (id === activeId) return;
+      persistLiveNotesToBoundSlide();
       const notesEl = document.querySelector('[data-pres-notes-zone="true"]') as HTMLElement | null;
       if (notesEl && (document.activeElement === notesEl || notesEl.contains(document.activeElement))) {
         notesEl.blur();
       }
       commitEditorState({ history: 'skip' });
+      if (deckRef.current) {
+        scheduleSave(deckRef.current, { quiet: true, history: 'skip' });
+      }
       setActiveId(id);
       setSelectedElementId(null);
       setActiveEditor(null);
       setActiveHtmlField(null);
     },
-    [activeId, commitEditorState, leaveVariantMode]
+    [activeId, commitEditorState, leaveVariantMode, persistLiveNotesToBoundSlide, scheduleSave]
   );
 
   const openPlayVariant = useCallback(
@@ -1338,23 +1360,31 @@ const PresentationEditorPage: React.FC = () => {
 
   const undo = useCallback(() => {
     commitEditorState({ history: 'skip' });
-    flushDeckHistory();
-    if (!historyRef.current || !canUndoDeck(historyRef.current)) return;
-    const result = undoDeckHistory(historyRef.current);
+    persistLiveNotesToBoundSlide();
+    if (historyPushTimer.current) {
+      clearTimeout(historyPushTimer.current);
+      historyPushTimer.current = null;
+    }
+    if (!historyRef.current || !deckRef.current) return;
+    const result = takeUndoStep(historyRef.current, deckRef.current);
     if (!result) return;
     historyRef.current = result.history;
     restoreDeckSnapshot(result.deck);
-  }, [commitEditorState, flushDeckHistory, restoreDeckSnapshot]);
+  }, [commitEditorState, persistLiveNotesToBoundSlide, restoreDeckSnapshot]);
 
   const redo = useCallback(() => {
     commitEditorState({ history: 'skip' });
-    flushDeckHistory();
+    persistLiveNotesToBoundSlide();
+    if (historyPushTimer.current) {
+      clearTimeout(historyPushTimer.current);
+      historyPushTimer.current = null;
+    }
     if (!historyRef.current || !canRedoDeck(historyRef.current)) return;
     const result = redoDeckHistory(historyRef.current);
     if (!result) return;
     historyRef.current = result.history;
     restoreDeckSnapshot(result.deck);
-  }, [commitEditorState, flushDeckHistory, restoreDeckSnapshot]);
+  }, [commitEditorState, persistLiveNotesToBoundSlide, restoreDeckSnapshot]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -1446,7 +1476,7 @@ const PresentationEditorPage: React.FC = () => {
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [undo, redo, activeEditor, commitEditorState, goToAdjacentSlide]);
 
-  const canUndo = canUndoDeck(historyRef.current);
+  const canUndo = canUndoDeck(historyRef.current, deckRef.current);
   const canRedo = canRedoDeck(historyRef.current);
   void historyVersion;
 
@@ -1459,20 +1489,20 @@ const PresentationEditorPage: React.FC = () => {
     [scheduleSave],
   );
 
-  const updateSlide = (patch: Partial<PresentationSlide>) => {
+  const updateSlide = (patch: Partial<PresentationSlide>, slideId = activeId) => {
     const current = deckRef.current;
-    if (!current || !activeId) return;
+    if (!current || !slideId) return;
     if (!editingVariantRef.current && suppressMasterCommitRef.current) return;
     if (editingVariantRef.current) {
       const base =
-        playVariantsRef.current?.bySlideId[activeId]?.slide ??
-        current.slides.find((s) => s.id === activeId);
+        playVariantsRef.current?.bySlideId[slideId]?.slide ??
+        current.slides.find((s) => s.id === slideId);
       if (!base) return;
       persistVariantSlide(normalizeSlide({ ...base, ...patch }));
       return;
     }
     const slides = current.slides.map((s) =>
-      s.id === activeId ? normalizeSlide({ ...s, ...patch }) : s
+      s.id === slideId ? normalizeSlide({ ...s, ...patch }) : s
     );
     // Text-Änderungen: UI nicht bei jedem Keystroke neu zeichnen
     const quiet =
@@ -4189,6 +4219,7 @@ const PresentationEditorPage: React.FC = () => {
         {normalizedActive && notesPanelOpen && (
           <PresentationNotesPanel
             key={normalizedActive.id}
+            slideId={normalizedActive.id}
             speakerHtml={normalizedActive.speakerNotesHtml}
             speakerPlain={normalizedActive.speakerNotes}
             activeField={notesActiveField}
@@ -4211,7 +4242,7 @@ const PresentationEditorPage: React.FC = () => {
               }
             }}
             onSpeakerChange={(html, plain) =>
-              updateSlide({ speakerNotesHtml: html, speakerNotes: plain })
+              updateSlide({ speakerNotesHtml: html, speakerNotes: plain }, normalizedActive.id)
             }
             onMoveNotesToTrash={moveNotesToTrash}
             onUploadImage={uploadNotesImageSrc}
