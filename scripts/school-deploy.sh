@@ -181,7 +181,7 @@ JWT="$(
 # CSRF + helpers via python for reliability
 export PORTAINER_URL ENDPOINT_ID JWT APP_NAME TUNNEL_NAME IMAGE DB_VOLUME APP_URL MAT_URL DB_PUBLIC DBSHA BUNDLE
 python3 <<'PY'
-import json, os, sys, time, urllib.request, ssl, base64
+import json, os, sys, time, urllib.request, urllib.error, ssl, base64
 
 ctx = ssl._create_unverified_context()
 base = os.environ["PORTAINER_URL"].rstrip("/")
@@ -213,8 +213,20 @@ def req(method, path, data=None, headers=None, raw=False):
 _, csrf, _ = req("GET", f"/api/stacks/15")
 H = {"X-CSRF-Token": csrf} if csrf else {}
 
-def docker(method, path, data=None, raw=False):
-  return req(method, f"/api/endpoints/{ep}/docker{path}", data=data, headers=H, raw=raw)
+def docker(method, path, data=None, raw=False, ignore_http=()):
+  try:
+    return req(method, f"/api/endpoints/{ep}/docker{path}", data=data, headers=H, raw=raw)
+  except urllib.error.HTTPError as e:
+    if e.code in ignore_http:
+      return None, None, e.code
+    raise
+
+def docker_stop(container_id, timeout=15):
+  # Portainer/Docker: Query ?t= ist je nach Version 400; Body ist zuverlässiger.
+  docker("POST", f"/containers/{container_id}/stop", {"t": timeout}, ignore_http=(304, 400, 404, 409))
+
+def docker_start(container_id):
+  docker("POST", f"/containers/{container_id}/start", ignore_http=(304, 400, 404, 409))
 
 def containers():
   data, _, _ = docker("GET", "/containers/json?all=true")
@@ -301,9 +313,9 @@ print(run(app["Id"], " && ".join(parts))[:3000])
 
 # stop for DB
 print("Stopping app/tunnel…")
-docker("POST", f"/containers/{app['Id']}/stop?t=15")
+docker_stop(app["Id"], 15)
 if tunnel:
-  docker("POST", f"/containers/{tunnel['Id']}/stop?t=10")
+  docker_stop(tunnel["Id"], 10)
 time.sleep(2)
 
 db_url = os.environ["DB_PUBLIC"]
@@ -344,9 +356,9 @@ for _ in range(45):
 app = find(os.environ["APP_NAME"])
 tunnel = find(os.environ["TUNNEL_NAME"])
 if app:
-  docker("POST", f"/containers/{app['Id']}/start")
+  docker_start(app["Id"])
 if tunnel:
-  docker("POST", f"/containers/{tunnel['Id']}/start")
+  docker_start(tunnel["Id"])
 time.sleep(7)
 
 app = find(os.environ["APP_NAME"])
