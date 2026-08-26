@@ -77,6 +77,7 @@ import { resolveEntryTicketBandForLessonPath, fetchAssignedEntryTicketGrade, par
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
 import { EntryTicketFragensetEditor } from '../components/entry-ticket/EntryTicketFragensetEditor';
 import { EntryTicketRichField } from '../components/entry-ticket/EntryTicketRichField';
+import { EntryTicketRichHtml, entryTicketRichTextSx } from '../components/entry-ticket/EntryTicketRichHtml';
 import { EntryTicketHistoryDialog } from '../components/entry-ticket/EntryTicketHistoryDialog';
 import { openEntryTicketFlashcardPrint } from '../lib/entryTicketFlashcardPrint';
 import {
@@ -86,9 +87,7 @@ import {
   entryTicketPlainText,
   entryTicketShowCountStyle,
   readEntryTicketCardLayout,
-  decorateEntryTicketDisplayHtml,
   formatEntryTicketPromptStructure,
-  splitEntryTicketMediaAndText,
 } from '../lib/entryTicketRichText';
 
 type EntryTicketTask = {
@@ -98,147 +97,6 @@ type EntryTicketTask = {
   /** Stabile ID für „wie oft gezeigt“ (Pool-Index / Custom-Task-Id). */
   sourceKey?: string;
 };
-
-const richTextSx = {
-  '& p': { m: 0 },
-  '& div': { m: 0 },
-  '& b, & strong': { fontWeight: 800 },
-  '& i, & em': { fontStyle: 'italic' },
-  '& u': { textDecoration: 'underline' },
-  '& .et-op': { fontWeight: '800 !important', color: '#ef6c00' },
-  '& .et-q': { fontWeight: '800 !important', color: '#d32f2f' },
-  '& .et-task-op': { fontWeight: '800 !important', color: 'inherit' },
-  '&::after': {
-    content: '""',
-    display: 'table',
-    clear: 'both',
-  },
-  '& img': {
-    // Breite kommt aus Inline-Style (data-et-width) — hier nicht überschreiben
-    maxWidth: '100%',
-    height: 'auto',
-    objectFit: 'contain',
-    borderRadius: 1,
-  },
-  '& img[data-et-place="block"]': {
-    my: 0.75,
-  },
-} as const;
-
-function EntryTicketRichHtml({
-  value,
-  sx,
-  compact,
-  contain,
-}: {
-  value: string;
-  sx?: Record<string, unknown>;
-  compact?: boolean;
-  contain?: boolean;
-}) {
-  if (!value) return null;
-  const decorated = decorateEntryTicketDisplayHtml(value);
-  if (!decorated) return null;
-
-  if (compact) {
-    return (
-      <Box
-        component="div"
-        sx={{ display: 'block', whiteSpace: 'pre-wrap', overflow: 'hidden', ...richTextSx, ...sx }}
-        dangerouslySetInnerHTML={{ __html: decorated }}
-      />
-    );
-  }
-
-  if (!entryTicketLooksLikeHtml(value) && !entryTicketHasImage(value)) {
-    return (
-      <Box
-        component="div"
-        sx={{ display: 'block', whiteSpace: 'pre-line', ...richTextSx, ...sx }}
-        dangerouslySetInnerHTML={{ __html: decorated }}
-      />
-    );
-  }
-
-  const layout = readEntryTicketCardLayout(value);
-  if (layout === 'split-left' || layout === 'split-right') {
-    const { mediaHtml, textHtml } = splitEntryTicketMediaAndText(value);
-    const mediaFirst = layout === 'split-left';
-    const mediaCol = mediaHtml ? (
-      <Box
-        key="media"
-        sx={{
-          minWidth: 0,
-          width: '100%',
-          alignSelf: 'stretch',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          '& img': {
-            width: '100% !important',
-            maxWidth: '100% !important',
-            height: 'auto !important',
-            maxHeight: contain ? 'min(38vh, 260px)' : 'min(78vh, 640px)',
-            objectFit: 'contain',
-            borderRadius: 1,
-            margin: '0 !important',
-            float: 'none !important',
-            display: 'block',
-          },
-        }}
-        dangerouslySetInnerHTML={{ __html: mediaHtml }}
-      />
-    ) : null;
-    const textCol = textHtml ? (
-      <Box
-        key="text"
-        component="div"
-        sx={{ display: 'block', minWidth: 0, textAlign: 'left', whiteSpace: 'normal', ...richTextSx, ...sx }}
-        dangerouslySetInnerHTML={{ __html: decorateEntryTicketDisplayHtml(textHtml) }}
-      />
-    ) : null;
-    return (
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: {
-            xs: '1fr',
-            sm:
-              mediaHtml && textHtml
-                ? mediaFirst
-                  ? 'minmax(0, 1.15fr) minmax(0, 0.85fr)'
-                  : 'minmax(0, 0.85fr) minmax(0, 1.15fr)'
-                : '1fr',
-          },
-          gap: { xs: 1.25, sm: 2.5 },
-          alignItems: 'center',
-          width: '100%',
-          textAlign: 'left',
-        }}
-      >
-        {mediaFirst ? (
-          <>
-            {mediaCol}
-            {textCol}
-          </>
-        ) : (
-          <>
-            {textCol}
-            {mediaCol}
-          </>
-        )}
-      </Box>
-    );
-  }
-
-  return (
-    <Box
-      component="div"
-      sx={{ display: 'block', whiteSpace: 'normal', ...richTextSx, ...sx }}
-      dangerouslySetInnerHTML={{ __html: decorated }}
-    />
-  );
-}
 
 /** Kompakte MultiButton-Gruppen — Breite immer mindestens so groß, dass der Text vollständig lesbar ist. */
 const etBtnGroupBase = {
@@ -5369,7 +5227,7 @@ export default function EntryTicketPage({
                               color: '#37474f',
                               whiteSpace: 'normal',
                               letterSpacing: -0.01,
-                              ...richTextSx,
+                              ...entryTicketRichTextSx,
                               '& img': {
                                 maxHeight: '22vh !important',
                                 width: 'auto !important',
@@ -5517,7 +5375,7 @@ export default function EntryTicketPage({
                                 minHeight: 0,
                                 overflow: 'hidden',
                                 whiteSpace: 'pre-wrap',
-                                ...richTextSx,
+                                ...entryTicketRichTextSx,
                                 ...overviewRichFitSx,
                                 '& img': {
                                   display: 'block',
@@ -5556,7 +5414,7 @@ export default function EntryTicketPage({
                                   bgcolor: '#e8f5e9',
                                   boxSizing: 'border-box',
                                   whiteSpace: 'pre-wrap',
-                                  ...richTextSx,
+                                  ...entryTicketRichTextSx,
                                   ...overviewRichFitSx,
                                   '& img': {
                                     display: 'inline-block',

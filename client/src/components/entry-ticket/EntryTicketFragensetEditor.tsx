@@ -24,6 +24,7 @@ import {
   Class as ClassIcon,
   DeleteOutline as DeleteOutlineIcon,
   History as HistoryIcon,
+  VisibilityOutlined as VisibilityOutlinedIcon,
   ExpandLess as ExpandLessIcon,
   ExpandMore as ExpandMoreIcon,
   MergeType as MergeTypeIcon,
@@ -55,8 +56,9 @@ import {
   loadEntryTicketReihenCatalog,
 } from '../../lib/entryTicketReiheLessons';
 import { reiheLabelFromPath, type WorkingReiheOption } from '../../lib/dashboardWorkingReihen';
-import { entryTicketShowCountStyle } from '../../lib/entryTicketRichText';
+import { entryTicketHasImage, entryTicketShowCountStyle, readEntryTicketCardLayout } from '../../lib/entryTicketRichText';
 import { EntryTicketRichField } from './EntryTicketRichField';
+import { EntryTicketRichHtml, entryTicketRichTextSx } from './EntryTicketRichHtml';
 
 /** Passend zum EntryTicket, dezent bunt. */
 const ET = {
@@ -199,6 +201,7 @@ export function EntryTicketFragensetEditor({
   const [deleteCheck1, setDeleteCheck1] = useState(false);
   const [deleteCheck2, setDeleteCheck2] = useState(false);
   const [deleteWord, setDeleteWord] = useState('');
+  const [previewTask, setPreviewTask] = useState<{ prompt: string; solution: string } | null>(null);
 
   const closeDeleteAsk = () => {
     setDeleteAsk(null);
@@ -1481,21 +1484,44 @@ export function EntryTicketFragensetEditor({
                                 </span>
                               </Tooltip>
                             )}
-                            <Tooltip title="Karte löschen">
-                              <IconButton
-                                size="small"
-                                onClick={() => deleteTask(lesson.id, task.id)}
-                                aria-label="Karte löschen"
-                                sx={{
-                                  ...iconBtnSx,
-                                  mt: 0.35,
-                                  color: ET.muted,
-                                  '&:hover': { color: '#c62828', bgcolor: 'rgba(198,40,40,0.08)' },
-                                }}
-                              >
-                                <DeleteOutlineIcon sx={{ fontSize: 14 }} />
-                              </IconButton>
-                            </Tooltip>
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: 0.15,
+                                mt: 0.35,
+                              }}
+                            >
+                              <Tooltip title="Karte löschen">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => deleteTask(lesson.id, task.id)}
+                                  aria-label="Karte löschen"
+                                  sx={{
+                                    ...iconBtnSx,
+                                    color: ET.muted,
+                                    '&:hover': { color: '#c62828', bgcolor: 'rgba(198,40,40,0.08)' },
+                                  }}
+                                >
+                                  <DeleteOutlineIcon sx={{ fontSize: 14 }} />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Play-Vorschau">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => setPreviewTask({ prompt: task.prompt, solution: task.solution })}
+                                  aria-label="Play-Vorschau"
+                                  sx={{
+                                    ...iconBtnSx,
+                                    color: ET.muted,
+                                    '&:hover': { color: ET.accent, bgcolor: 'rgba(69,90,100,0.1)' },
+                                  }}
+                                >
+                                  <VisibilityOutlinedIcon sx={{ fontSize: 14 }} />
+                                </IconButton>
+                              </Tooltip>
+                            </Box>
                           </Box>
                           );
                         })}
@@ -1692,6 +1718,180 @@ export function EntryTicketFragensetEditor({
             disabled={!deleteReady}
           >
             Endgültig löschen
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(previewTask)}
+        onClose={() => setPreviewTask(null)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: '#eceff1',
+            borderRadius: 2,
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, fontSize: '0.95rem', color: ET.ink, pb: 0.5, pt: 1.4 }}>
+          Vorschau Play
+        </DialogTitle>
+        <DialogContent sx={{ pt: 0.5, pb: 1.5 }}>
+          {previewTask ? (
+            <Box
+              sx={{
+                width: '100%',
+                maxWidth: 864,
+                mx: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1.1,
+              }}
+            >
+              <Box
+                sx={{
+                  position: 'relative',
+                  width: '100%',
+                  height: '33vh',
+                  minHeight: 180,
+                  maxHeight: 360,
+                  borderRadius: 1.5,
+                  bgcolor: '#ffffff',
+                  boxShadow: '0 2px 10px rgba(55, 71, 79, 0.08)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden',
+                }}
+              >
+                <Box
+                  sx={{
+                    height: 5,
+                    width: '100%',
+                    bgcolor: 'rgba(120,144,156,0.16)',
+                    flexShrink: 0,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <Box
+                    sx={{
+                      height: '100%',
+                      width: '65%',
+                      bgcolor: '#78909c',
+                    }}
+                  />
+                </Box>
+                <Box
+                  sx={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textAlign:
+                      entryTicketHasImage(previewTask.prompt) ||
+                      readEntryTicketCardLayout(previewTask.prompt) !== 'flow'
+                        ? 'left'
+                        : 'center',
+                    px: { xs: 1.4, sm: 2 },
+                    py: { xs: 1, sm: 1.25 },
+                    overflow: 'auto',
+                    minHeight: 0,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: '100%',
+                      height: 'auto',
+                      minHeight: 0,
+                      overflow: 'visible',
+                      fontSize: { xs: '1.28rem', sm: '1.52rem', md: '1.68rem' },
+                      lineHeight: 1.28,
+                      fontWeight: 500,
+                      color: '#37474f',
+                      whiteSpace: 'normal',
+                      letterSpacing: -0.01,
+                      ...entryTicketRichTextSx,
+                      '& img': {
+                        maxHeight: '22vh !important',
+                        width: 'auto !important',
+                        maxWidth: '100% !important',
+                        height: 'auto !important',
+                        objectFit: 'contain',
+                      },
+                    }}
+                  >
+                    {previewTask.prompt.trim() ? (
+                      <EntryTicketRichHtml
+                        contain
+                        value={previewTask.prompt}
+                        sx={{
+                          fontSize: 'inherit',
+                          lineHeight: 'inherit',
+                          color: 'inherit',
+                          whiteSpace: 'normal',
+                        }}
+                      />
+                    ) : (
+                      <Typography sx={{ color: '#90a4ae', fontWeight: 600, fontSize: '1rem' }}>
+                        Noch keine Frage
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+              </Box>
+              <Box>
+                <Typography
+                  sx={{
+                    fontSize: '0.62rem',
+                    fontWeight: 800,
+                    letterSpacing: 0.06,
+                    textTransform: 'uppercase',
+                    color: '#1b5e20',
+                    mb: 0.4,
+                  }}
+                >
+                  Lösung (Übersicht)
+                </Typography>
+                <Box
+                  sx={{
+                    fontSize: '0.95rem',
+                    lineHeight: 1.2,
+                    fontWeight: 800,
+                    color: '#1b5e20',
+                    width: '100%',
+                    px: 0.8,
+                    py: 0.55,
+                    borderRadius: 0.75,
+                    border: '2px solid #66bb6a',
+                    bgcolor: '#e8f5e9',
+                    boxSizing: 'border-box',
+                    whiteSpace: 'pre-wrap',
+                    ...entryTicketRichTextSx,
+                    '& img': {
+                      display: 'inline-block',
+                      maxHeight: '2.4em !important',
+                      maxWidth: '8em !important',
+                      width: 'auto !important',
+                      height: 'auto !important',
+                      verticalAlign: 'middle',
+                    },
+                  }}
+                >
+                  {previewTask.solution.trim() ? (
+                    <EntryTicketRichHtml compact value={previewTask.solution} />
+                  ) : (
+                    <Typography sx={{ color: '#81c784', fontWeight: 600, fontSize: '0.85rem' }}>
+                      Noch keine Lösung
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+            </Box>
+          ) : null}
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 1.4 }}>
+          <Button onClick={() => setPreviewTask(null)} size="small" sx={{ color: ET.accent, fontWeight: 700 }}>
+            Schließen
           </Button>
         </DialogActions>
       </Dialog>
