@@ -64,7 +64,7 @@ function normalizeDoubleEscapedCommands(s: string): string {
  */
 function stripDuplicatePlainMatrix(s: string): string {
   return s.replace(
-    /(?:[A-Za-zÄÖÜäöü⃗\\ ]{0,12}=\s*)?\([^()\n]{2,}\)(?:\s*[\^²\d]{0,4}\s*[⋅·×*]\s*\([^()\n]{1,}\))*\s*(?=(?:(?:\\[a-zA-Z]+\s*)?[A-Za-zÄÖÜäöü⃗\\ ]{0,12}=\s*)?\\begin\{(?:p|b)?matrix\})/g,
+    /(?:(?:\\(?:vec|mathbf|mathrm|bar|hat)\s*)?[A-Za-z][A-Za-z0-9]*⃗?\s*=\s*)?\([^()\n]{2,}\)(?:\s*[\^²\d]{0,4}\s*[⋅·×*]\s*\([^()\n]{1,}\))*\s*(?=(?:(?:\\(?:vec|mathbf|mathrm|bar|hat)\s*)?[A-Za-z][A-Za-z0-9]*⃗?\s*=\s*)?\\begin\{(?:p|b)?matrix\})/g,
     '',
   );
 }
@@ -96,9 +96,18 @@ function stripGluedPlainDuplicates(s: string): string {
   while ((m = re.exec(s))) starts.push(m.index);
   let out = s;
   for (let i = starts.length - 1; i >= 0; i -= 1) {
-    let texHead = starts[i];
-    if (texHead > out.length) continue;
-    while (texHead > 0 && /[A-Za-z0-9]/.test(out[texHead - 1])) texHead -= 1;
+    const start = starts[i];
+    if (start > out.length) continue;
+    const isMacro = out[start] === '\\';
+    let texHead = start;
+    // Nur das direkt angeklebte Stück: `n\times`, `1\le`, `M\cdot` — nicht `mn\times`.
+    if (isMacro) {
+      if (texHead > 0 && /[0-9]/.test(out[texHead - 1])) {
+        while (texHead > 0 && /[0-9]/.test(out[texHead - 1])) texHead -= 1;
+      } else if (texHead > 0 && /[A-Za-z]/.test(out[texHead - 1])) {
+        texHead -= 1;
+      }
+    }
     let from = texHead;
     while (from > 0 && /[A-Za-zÄÖÜäöü0-9()×⋅·≤≥⃗+\-=]/.test(out[from - 1])) from -= 1;
     const dump = out.slice(from, texHead);
@@ -115,7 +124,7 @@ function stripGluedPlainDuplicates(s: string): string {
 
 const ENV_PIECE = String.raw`\\begin\{[a-zA-Z*]+\}[\s\S]*?\\end\{[a-zA-Z*]+\}?`;
 const ENV_JOIN = String.raw`(?:\s*\^\{?\d+\}?)?(?:\s*(?:\\cdot|\\times|[+\-])\s*)`;
-const ASSIGN_PREFIX = String.raw`(?:(?:\\[a-zA-Z]+\s*)?[A-Za-z][A-Za-z0-9]*⃗?\s*=\s*)`;
+const ASSIGN_PREFIX = String.raw`(?:(?:\\(?:vec|mathbf|mathrm|bar|hat)\s*)?[A-Za-z][A-Za-z0-9]*⃗?\s*=\s*)`;
 const ENV_CHAIN = new RegExp(
   `${ASSIGN_PREFIX}?${ENV_PIECE}(?:${ENV_JOIN}${ASSIGN_PREFIX}?${ENV_PIECE})*(?:\\s*\\^\\{?\\d+\\}?)?`,
   'g',
@@ -123,7 +132,7 @@ const ENV_CHAIN = new RegExp(
 
 /** Prefix nur angeklebt (`1\le`, `n\times`) — kein Leerzeichen davor, sonst wird „mit a_{ij}“ zu einer Formel. */
 const UNDELIMITED =
-  /[A-Za-z0-9]*(?:\\[a-zA-Z]+|[A-Za-z][_^]\{)(?:\\[a-zA-Z]+\s*|\\[^A-Za-z\n]|[_^{}A-Za-z0-9+=()|&,.\\]|-(?![A-Za-zÄÖÜäöü])|\s(?=\\))*[A-Za-z0-9_^{}+=()|&,.\\]*/g;
+  /[A-Za-z0-9]*(?:\\[a-zA-Z]+|[A-Za-z][_^]\{)(?:\\[a-zA-Z]+\s*|\\[^A-Za-z\n]|[_^{}A-Za-z0-9+=()|&,.\\]|-(?![A-Za-zÄÖÜäöü])|\s(?=\\)|\s+[A-Za-z0-9]{1,4}(?=\s*\\))*[A-Za-z0-9_^{}+=()|&,.\\]*(?:\s+[A-Za-z]{1,2}(?![A-Za-zÄÖÜäöü]))?/g;
 
 function isStandaloneFormula(source: string, match: string): boolean {
   const rest = source.split(match).join('').replace(/<[^>]+>/g, '').trim();
