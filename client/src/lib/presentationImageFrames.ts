@@ -164,7 +164,10 @@ export const IMAGE_FRAME_DASHES: Array<{ id: ImageFrameDash; label: string }> = 
   { id: 'double', label: 'Doppelt' },
 ];
 
+export const IMAGE_FRAME_DEFAULT_RED = '#C62828';
+
 export const IMAGE_FRAME_COLORS = [
+  IMAGE_FRAME_DEFAULT_RED,
   '#1a1a1a',
   '#ffffff',
   '#757575',
@@ -172,6 +175,23 @@ export const IMAGE_FRAME_COLORS = [
   '#5D4037',
   '#C9A227',
 ];
+
+/** Standard-Umrandung für ⌘R: rot, 3 px, durchgezogen. */
+export const IMAGE_FRAME_TOGGLE_RED: SlideImageFrame = {
+  preset: 'custom',
+  color: IMAGE_FRAME_DEFAULT_RED,
+  width: 3,
+  dash: 'solid',
+};
+
+export function isImageFrameShortcut(e: { key: string; metaKey: boolean; ctrlKey: boolean; altKey: boolean; shiftKey: boolean }): boolean {
+  return (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'r';
+}
+
+export function toggleRedImageFrame(frame?: SlideImageFrame | null): SlideImageFrame | undefined {
+  if (imageFrameIsActive(frame)) return undefined;
+  return { ...IMAGE_FRAME_TOGGLE_RED };
+}
 
 function resolveFrameColor(color: string | undefined, accent: string): string {
   if (!color || color === 'accent') return accent || JOHNNY_PRESENTATION.primary;

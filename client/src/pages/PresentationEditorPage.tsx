@@ -110,6 +110,7 @@ import {
   samePresentationLesson,
 } from '../lib/presentationDeckSync';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
+import { isImageFrameShortcut, toggleRedImageFrame } from '../lib/presentationImageFrames';
 import {
   createEmptyPlayVariants,
   loadPresentationPlayVariants,
@@ -236,7 +237,7 @@ import {
   insertImageHtmlAtCursor,
   nudgeFontSize,
 } from '../lib/presentationRichText';
-import { serializePresentationNotesHtml, slideElementToNotesInsertHtml, insertHtmlIntoOpenNotesEditor, appendHtmlToNotesValue } from '../lib/presentationNotesImages';
+import { serializePresentationNotesHtml, slideElementToNotesInsertHtml, insertHtmlIntoOpenNotesEditor, appendHtmlToNotesValue, toggleNotesImageFrame } from '../lib/presentationNotesImages';
 
 const EMPTY_STROKES: PresentationStroke[] = [];
 
@@ -2064,6 +2065,33 @@ const PresentationEditorPage: React.FC = () => {
   ]);
 
   const selectedElement = normalizedActive?.elements?.find((e) => e.id === selectedElementId);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!isImageFrameShortcut(e)) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.tagName === 'SELECT') {
+        return;
+      }
+      const notesEditor = document.querySelector(
+        '[data-pres-notes-zone="true"]',
+      ) as HTMLElement | null;
+      if (notesEditor && toggleNotesImageFrame(notesEditor)) {
+        e.preventDefault();
+        e.stopPropagation();
+        notesEditor.dispatchEvent(new Event('input', { bubbles: true }));
+        return;
+      }
+      if (selectedElement?.type !== 'image' || !selectedElementId) return;
+      e.preventDefault();
+      e.stopPropagation();
+      updateElement(selectedElementId, {
+        imageFrame: toggleRedImageFrame(selectedElement.imageFrame),
+      });
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [selectedElement, selectedElementId]);
 
   const insertIndexAfterActive = (slides: PresentationSlide[]) => {
     const sorted = sortSlides(slides);

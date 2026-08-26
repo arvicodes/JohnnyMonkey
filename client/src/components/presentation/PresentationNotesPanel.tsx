@@ -18,7 +18,9 @@ import {
   placeNotesCaretInTypingHost,
   handleNotesImageDeleteKey,
   clearNotesImageSelection,
+  toggleNotesImageFrame,
 } from '../../lib/presentationNotesImages';
+import { isImageFrameShortcut } from '../../lib/presentationImageFrames';
 import {
   tryStartTableResizeFromPointer,
   updateTableResizeHoverCursor,
@@ -267,6 +269,14 @@ const NoteZone: React.FC<NoteZoneProps> = ({
         persistFromEditor(false, false);
         return;
       }
+    }
+    if (isImageFrameShortcut(e)) {
+      if (toggleNotesImageFrame(el)) {
+        e.preventDefault();
+        e.stopPropagation();
+        persistFromEditor(false, false);
+      }
+      return;
     }
     if (e.key !== 'Tab' || e.ctrlKey || e.metaKey || e.altKey) return;
     e.preventDefault();

@@ -45,6 +45,7 @@ import {
   ArrowDropDown as ArrowDropDownIcon,
   FolderOpen as FolderOpenIcon,
   InsertDriveFileOutlined as FileIcon,
+  FilterFrames as FrameIcon,
 } from '@mui/icons-material';
 import { HIGHLIGHT_PRESETS, TEXT_COLOR_PRESETS } from '../../lib/presentationTheme';
 import { setFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
@@ -82,6 +83,12 @@ import {
   PRESENTATION_FONT_FAMILIES,
   presentationFontLabel,
 } from '../../lib/presentationFonts';
+import {
+  PRES_NOTES_IMG_FRAME_ATTR,
+  PRES_NOTES_IMG_SELECTED_CLASS,
+  PRES_NOTES_IMG_WRAP_CLASS,
+  toggleNotesImageFrame,
+} from '../../lib/presentationNotesImages';
 import {
   TABLE_CELL_BG_PRESETS,
   TABLE_COLOR_THEMES,
@@ -1173,6 +1180,39 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
             </span>
           </Tooltip>
         </>
+      )}
+
+      {isNotesEditor && (
+        <Tooltip title={navigator.platform.toLowerCase().includes('mac') ? 'Bild umranden (⌘R)' : 'Bild umranden (Strg+R)'}>
+          <span>
+            <IconButton
+              size="small"
+              aria-label="Bild umranden"
+              disabled={disabled || !activeEditor}
+              sx={{
+                ...btnSx,
+                color:
+                  activeEditor?.querySelector(
+                    `.${PRES_NOTES_IMG_WRAP_CLASS}.${PRES_NOTES_IMG_SELECTED_CLASS}[${PRES_NOTES_IMG_FRAME_ATTR}]`,
+                  )
+                    ? '#C62828'
+                    : btnSx.color,
+              }}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                if (!activeEditor) return;
+                if (!toggleNotesImageFrame(activeEditor)) {
+                  onMessage?.('Bild in den Notizen anklicken, dann umranden');
+                  return;
+                }
+                activeEditor.dispatchEvent(new Event('input', { bubbles: true }));
+                onEditorChanged?.();
+              }}
+            >
+              <FrameIcon sx={{ fontSize: 17 }} />
+            </IconButton>
+          </span>
+        </Tooltip>
       )}
 
       <Popover

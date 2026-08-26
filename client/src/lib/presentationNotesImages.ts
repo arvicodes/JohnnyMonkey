@@ -7,6 +7,10 @@ export const PRES_NOTES_IMG_WRAP_ATTR = 'data-pres-notes-img-wrap';
 export const PRES_NOTES_IMG_POS_ATTR = 'data-pres-notes-pos';
 export const PRES_NOTES_IMG_ATTR = 'data-pres-notes-img';
 export const PRES_NOTES_IMG_SELECTED_CLASS = 'pres-notes-img-selected';
+export const PRES_NOTES_IMG_FRAME_ATTR = 'data-pres-notes-img-frame';
+export const PRES_NOTES_IMG_FRAME_COLOR_ATTR = 'data-pres-notes-img-frame-color';
+export const NOTES_IMAGE_FRAME_DEFAULT_COLOR = '#C62828';
+export const NOTES_IMAGE_FRAME_DEFAULT_WIDTH = 3;
 
 const RESIZE_HANDLE_CLASS = 'pres-notes-img-resize';
 const DROP_MARKER_CLASS = 'pres-notes-img-drop';
@@ -56,6 +60,10 @@ export function presentationNotesImageEditorSx() {
       margin: 0,
       borderRadius: '4px',
     },
+    [`& .${PRES_NOTES_IMG_WRAP_CLASS}[${PRES_NOTES_IMG_FRAME_ATTR}]`]: {
+      border: `${NOTES_IMAGE_FRAME_DEFAULT_WIDTH}px solid ${NOTES_IMAGE_FRAME_DEFAULT_COLOR}`,
+      boxSizing: 'border-box',
+    },
     [`& .${PRES_NOTES_IMG_WRAP_CLASS}.${PRES_NOTES_IMG_SELECTED_CLASS}`]: {
       outline: '2px solid #f57f17',
       outlineOffset: '2px',
@@ -101,6 +109,10 @@ export function presentationNotesImageViewSx(options?: { maxHeight?: number | nu
       width: 'fit-content',
       lineHeight: 0,
       mr: 0.5,
+    },
+    [`& .${PRES_NOTES_IMG_WRAP_CLASS}[${PRES_NOTES_IMG_FRAME_ATTR}]`]: {
+      border: `${NOTES_IMAGE_FRAME_DEFAULT_WIDTH}px solid ${NOTES_IMAGE_FRAME_DEFAULT_COLOR}`,
+      boxSizing: 'border-box',
     },
     [`& img, & img[${PRES_NOTES_IMG_ATTR}]`]: {
       maxWidth: '100%',
@@ -174,6 +186,7 @@ export function releaseNotesImagesToFlow(root: ParentNode): void {
       el.style.width = keptWidth;
       el.style.maxWidth = '100%';
     }
+    applyNotesImageFrameStyleFromAttrs(el);
     const img = el.querySelector('img') as HTMLImageElement | null;
     if (img) {
       img.style.removeProperty('max-width');
@@ -187,6 +200,53 @@ export function releaseNotesImagesToFlow(root: ParentNode): void {
       }
     }
   });
+}
+
+export function getSelectedNotesImageWrap(editor: HTMLElement | null): HTMLElement | null {
+  if (!editor) return null;
+  return editor.querySelector(
+    `.${PRES_NOTES_IMG_WRAP_CLASS}.${PRES_NOTES_IMG_SELECTED_CLASS}`,
+  ) as HTMLElement | null;
+}
+
+export function notesImageFrameIsOn(wrap: HTMLElement): boolean {
+  return wrap.getAttribute(PRES_NOTES_IMG_FRAME_ATTR) === '1';
+}
+
+function applyNotesImageFrameStyleFromAttrs(wrap: HTMLElement): void {
+  if (!notesImageFrameIsOn(wrap)) {
+    wrap.style.removeProperty('border');
+    wrap.style.removeProperty('border-width');
+    wrap.style.removeProperty('border-style');
+    wrap.style.removeProperty('border-color');
+    return;
+  }
+  const color = wrap.getAttribute(PRES_NOTES_IMG_FRAME_COLOR_ATTR) || NOTES_IMAGE_FRAME_DEFAULT_COLOR;
+  wrap.style.border = `${NOTES_IMAGE_FRAME_DEFAULT_WIDTH}px solid ${color}`;
+  wrap.style.boxSizing = 'border-box';
+}
+
+export function setNotesImageFrame(
+  wrap: HTMLElement,
+  on: boolean,
+  color = NOTES_IMAGE_FRAME_DEFAULT_COLOR,
+): void {
+  if (on) {
+    wrap.setAttribute(PRES_NOTES_IMG_FRAME_ATTR, '1');
+    wrap.setAttribute(PRES_NOTES_IMG_FRAME_COLOR_ATTR, color);
+  } else {
+    wrap.removeAttribute(PRES_NOTES_IMG_FRAME_ATTR);
+    wrap.removeAttribute(PRES_NOTES_IMG_FRAME_COLOR_ATTR);
+  }
+  applyNotesImageFrameStyleFromAttrs(wrap);
+}
+
+/** Umschaltet die rote Umrandung am ausgewählten Notiz-Bild. */
+export function toggleNotesImageFrame(editor: HTMLElement | null): boolean {
+  const wrap = getSelectedNotesImageWrap(editor);
+  if (!wrap) return false;
+  setNotesImageFrame(wrap, !notesImageFrameIsOn(wrap));
+  return true;
 }
 
 export function applyNotesImageFlowToHtml(html: string): string {
