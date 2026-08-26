@@ -1,3 +1,5 @@
+import { extractEntryTicketLatex, restoreEntryTicketLatex } from './entryTicketLatex';
+
 /** HTML-Hilfen für formatierte Entry-Ticket-Karten (Frage/Lösung). */
 
 export type EntryTicketCardLayout = 'flow' | 'split-left' | 'split-right';
@@ -376,7 +378,9 @@ function escapeEntryTicketDisplayText(text: string): string {
  * Für Kartenanzeige im Play-Modus und Druck.
  */
 export function wrapEntryTicketOperatorsHtml(plainText: string): string {
-  let s = formatEntryTicketPromptStructure(plainText);
+  const latexMarks: string[] = [];
+  let s = extractEntryTicketLatex(plainText, latexMarks);
+  s = formatEntryTicketPromptStructure(s);
   s = s.replace(/(\d+)\s*\/\s*(\d+)/g, '$1⁄$2');
 
   // Getrennte Partikel zuerst (Gib … an), dann zusammenhängende Befehlswörter
@@ -402,11 +406,14 @@ export function wrapEntryTicketOperatorsHtml(plainText: string): string {
     })
     .join('');
 
-  return html.replace(/\uE100(\d+)\uE101/g, (_m, i) => taskMarks[Number(i)] || '');
+  return restoreEntryTicketLatex(
+    html.replace(/\uE100(\d+)\uE101/g, (_m, i) => taskMarks[Number(i)] || ''),
+    latexMarks,
+  );
 }
 
 function decorateTextNodesForDisplay(root: ParentNode): void {
-  const skip = new Set(['SCRIPT', 'STYLE', 'IMG', 'STRONG', 'B']);
+  const skip = new Set(['SCRIPT', 'STYLE', 'IMG', 'STRONG', 'B', 'MATH']);
   const nodes: Text[] = [];
   const walk = (node: Node) => {
     if (node.nodeType === Node.TEXT_NODE) {
@@ -419,7 +426,9 @@ function decorateTextNodesForDisplay(root: ParentNode): void {
     if (
       el.classList?.contains('et-op') ||
       el.classList?.contains('et-q') ||
-      el.classList?.contains('et-task-op')
+      el.classList?.contains('et-task-op') ||
+      el.classList?.contains('et-tex') ||
+      el.classList?.contains('katex')
     ) {
       return;
     }

@@ -3,6 +3,7 @@ import { Box } from '@mui/material';
 import { htmlToPlain, textToHtml } from '../../lib/presentationDeck';
 import { filterHtmlByRevealStep } from '../../lib/presentationReveal';
 import { isFormatBarInteracting, isPresentationFormatUiTarget } from '../../lib/presentationFormatBarGuard';
+import { isApplyingDeckHistory } from '../../lib/presentationEditorHistory';
 import { captureEditorSelection, clearSavedSelection } from '../../lib/presentationFontSize';
 import { normalizeListsInPlace } from '../../lib/presentationListNormalize';
 import {
@@ -445,6 +446,10 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
       }}
       onBlur={(e) => {
         if (animationEditMode) return;
+        if (isApplyingDeckHistory()) {
+          editingRef.current = false;
+          return;
+        }
         if (isFormatBarInteracting()) return;
         const next = e.relatedTarget as HTMLElement | null;
         if (isPresentationFormatUiTarget(next)) return;

@@ -11,6 +11,7 @@ import {
   FormatAlignRight as FormatAlignRightIcon,
   DeleteOutline as DeleteOutlineIcon,
   AddPhotoAlternate as AddPhotoAlternateIcon,
+  Functions as FunctionsIcon,
   WrapText as WrapTextIcon,
 } from '@mui/icons-material';
 import {
@@ -346,6 +347,35 @@ export function EntryTicketRichField({
     emitChange();
   };
 
+  const insertLatexDelimiters = () => {
+    const el = editorRef.current;
+    if (!el) return;
+    el.focus();
+    const sel = window.getSelection();
+    const selected = (sel?.toString() || '').replace(/^\$+|\$+$/g, '');
+    try {
+      if (selected) {
+        document.execCommand('insertText', false, `$${selected}$`);
+      } else {
+        document.execCommand('insertText', false, '$$');
+        const after = window.getSelection();
+        if (after?.rangeCount) {
+          const range = after.getRangeAt(0);
+          const offset = range.startOffset;
+          if (range.startContainer.nodeType === Node.TEXT_NODE && offset > 0) {
+            range.setStart(range.startContainer, offset - 1);
+            range.collapse(true);
+            after.removeAllRanges();
+            after.addRange(range);
+          }
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    emitChange();
+  };
+
   const selectImageAt = (idx: number) => {
     const imgs = listEditorImages();
     if (idx < 0 || idx >= imgs.length) return;
@@ -527,6 +557,11 @@ export function EntryTicketRichField({
         <Tooltip title="Hintergrund">
           <IconButton size="small" aria-label="Hintergrundfarbe" onClick={(e) => setHighlightAnchor(e.currentTarget)} sx={toolBtnSx}>
             <FormatColorFillIcon sx={{ fontSize: 14 }} />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="LaTeX ($…$) — in der Play-Vorschau sichtbar">
+          <IconButton size="small" aria-label="LaTeX" onClick={insertLatexDelimiters} sx={toolBtnSx}>
+            <FunctionsIcon sx={{ fontSize: 15 }} />
           </IconButton>
         </Tooltip>
         <Tooltip title="Bild einfügen">

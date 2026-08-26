@@ -8,6 +8,7 @@ import {
 import { htmlToPlain, textToHtml } from '../../lib/presentationDeck';
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
 import { isFormatBarInteracting, isPresentationFormatUiTarget } from '../../lib/presentationFormatBarGuard';
+import { isApplyingDeckHistory } from '../../lib/presentationEditorHistory';
 import { captureEditorSelection, clearSavedSelection } from '../../lib/presentationFontSize';
 import { presentationNestedListSx, presentationNotesTableSx } from '../../lib/presentationListStyles';
 import { sanitizePastedHtml, normalizeNotesHtml, handlePresentationTabKey, replaceArrowShortcutsNearCursor, tryMarkdownListShortcut, insertImageHtmlAtCursor } from '../../lib/presentationRichText';
@@ -380,6 +381,11 @@ const NoteZone: React.FC<NoteZoneProps> = ({
         }}
         onBlur={(e) => {
           if (readOnly) return;
+
+          if (isApplyingDeckHistory()) {
+            editingRef.current = false;
+            return;
+          }
 
           const next = e.relatedTarget as HTMLElement | null;
           const toFormatBar =

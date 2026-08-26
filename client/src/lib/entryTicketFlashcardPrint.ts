@@ -189,6 +189,7 @@ export function buildEntryTicketFlashcardPrintHtml(
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${title}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css" />
   <style>
     :root {
       --ink: #263238;
@@ -297,6 +298,10 @@ export function buildEntryTicketFlashcardPrintHtml(
     .card .body .q { font-weight: 800; color: #c62828; }
     .card .body p, .card .body div { margin: 0; max-width: 100%; }
     .card .body * { max-width: 100% !important; float: none !important; }
+    .card .body .et-tex,
+    .card .body .katex,
+    .card .body .katex * { max-width: none !important; float: none !important; }
+    .card .body .katex { font-size: 1.05em; }
     .card .body img {
       max-width: 100% !important; max-height: 34mm !important;
       width: auto !important; height: auto !important;

@@ -20,17 +20,35 @@ export interface DeckHistory {
   fingerprints: string[];
 }
 
+function strSig(s: string | undefined): string {
+  if (!s) return '0';
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  return `${s.length}:${h}`;
+}
+
 function deckFingerprint(deck: PresentationDeck): string {
   const slides = deck.slides ?? [];
   let acc = `${slides.length}|${deck.title || ''}|${deck.showSlideNumbers ? 1 : 0}`;
   for (const s of slides) {
     const els = s.elements ?? [];
-    acc += `~${s.id}:${s.order}:${(s.title || '').length}:${(s.bodyHtml || '').length}:${els.length}`;
+    acc += `~${s.id}:${s.order}:${strSig(s.titleHtml || s.title)}:${strSig(s.bodyHtml)}:${strSig(s.speakerNotesHtml)}:${strSig(s.materialHtml)}:${strSig(s.preparationHtml)}:${els.length}`;
     for (const el of els) {
-      acc += `/${el.id}:${el.type}:${el.x | 0}:${el.y | 0}:${el.w | 0}:${el.h | 0}:${(el.src || '').length}:${(el.html || '').length}`;
+      const frame = el.imageFrame;
+      acc += `/${el.id}:${el.type}:${el.x | 0}:${el.y | 0}:${el.w | 0}:${el.h | 0}:${strSig(el.src)}:${strSig(el.html)}:${strSig(el.titleHtml)}:${frame?.preset || ''}:${frame?.color || ''}:${frame?.width || 0}`;
     }
   }
   return acc;
+}
+
+let applyingDeckHistory = false;
+
+export function isApplyingDeckHistory(): boolean {
+  return applyingDeckHistory;
+}
+
+export function setApplyingDeckHistory(value: boolean) {
+  applyingDeckHistory = value;
 }
 
 export function createDeckHistory(initial: PresentationDeck): DeckHistory {

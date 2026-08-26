@@ -185,6 +185,7 @@ import {
   createDeckHistory,
   pushDeckHistory,
   redoDeckHistory,
+  setApplyingDeckHistory,
   undoDeckHistory,
   type DeckHistory,
 } from '../lib/presentationEditorHistory';
@@ -1257,8 +1258,24 @@ const PresentationEditorPage: React.FC = () => {
   const restoreDeckSnapshot = useCallback(
     (snapshot: PresentationDeck) => {
       applyingHistoryRef.current = true;
+      setApplyingDeckHistory(true);
       if (historyPushTimer.current) clearTimeout(historyPushTimer.current);
+      const active = document.activeElement;
+      const wasNotes =
+        active instanceof HTMLElement && !!active.closest('[data-pres-notes-zone="true"]');
+      if (active instanceof HTMLElement && active.closest('[data-pres-rich-zone]')) {
+        active.blur();
+      }
       deckRef.current = snapshot;
+      const slideId =
+        activeIdRef.current && snapshot.slides.some((s) => s.id === activeIdRef.current)
+          ? activeIdRef.current
+          : snapshot.slides[0]?.id ?? null;
+      const notesEl = document.querySelector('[data-pres-notes-zone="true"]') as HTMLElement | null;
+      if (notesEl) {
+        const restoredNotes = snapshot.slides.find((s) => s.id === slideId)?.speakerNotesHtml;
+        notesEl.innerHTML = restoredNotes || '<p><br></p>';
+      }
       setDeck(snapshot);
       setActiveEditor(null);
       setActiveHtmlField(null);
@@ -1271,41 +1288,65 @@ const PresentationEditorPage: React.FC = () => {
       setHistoryVersion((v) => v + 1);
       ++saveVersionRef.current;
       void flushPersist();
-      applyingHistoryRef.current = false;
+      window.setTimeout(() => {
+        applyingHistoryRef.current = false;
+        setApplyingDeckHistory(false);
+        if (wasNotes) {
+          const notes = document.querySelector('[data-pres-notes-zone="true"]') as HTMLElement | null;
+          notes?.focus({ preventScroll: true });
+        }
+      }, 0);
     },
     [flushPersist]
   );
 
+  const flushDeckHistory = useCallback(() => {
+    if (historyPushTimer.current) {
+      clearTimeout(historyPushTimer.current);
+      historyPushTimer.current = null;
+    }
+    if (!historyRef.current || !deckRef.current || applyingHistoryRef.current) return;
+    historyRef.current = pushDeckHistory(historyRef.current, deckRef.current);
+    setHistoryVersion((v) => v + 1);
+  }, []);
+
   const undo = useCallback(() => {
-    if (!historyRef.current || !canUndoDeck(historyRef.current)) return;
     commitEditorState({ history: 'skip' });
+    flushDeckHistory();
+    if (!historyRef.current || !canUndoDeck(historyRef.current)) return;
     const result = undoDeckHistory(historyRef.current);
     if (!result) return;
     historyRef.current = result.history;
     restoreDeckSnapshot(result.deck);
-  }, [commitEditorState, restoreDeckSnapshot]);
+  }, [commitEditorState, flushDeckHistory, restoreDeckSnapshot]);
 
   const redo = useCallback(() => {
-    if (!historyRef.current || !canRedoDeck(historyRef.current)) return;
     commitEditorState({ history: 'skip' });
+    flushDeckHistory();
+    if (!historyRef.current || !canRedoDeck(historyRef.current)) return;
     const result = redoDeckHistory(historyRef.current);
     if (!result) return;
     historyRef.current = result.history;
     restoreDeckSnapshot(result.deck);
-  }, [commitEditorState, restoreDeckSnapshot]);
+  }, [commitEditorState, flushDeckHistory, restoreDeckSnapshot]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      if (!target) return;
+      if (!target || typeof target.closest !== 'function') return;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
         return;
       }
 
       const mod = e.metaKey || e.ctrlKey;
       const inRichEditor = !!target.closest('[data-pres-rich-zone]');
+      const key = e.key.toLowerCase();
 
-      if (inRichEditor && mod && (e.key === 'z' || e.key === 'y')) {
+      if (inRichEditor && mod && (key === 'z' || key === 'y')) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (key === 'y' || e.shiftKey) redo();
+        else undo();
         return;
       }
 
@@ -1357,17 +1398,17 @@ const PresentationEditorPage: React.FC = () => {
 
       if (!mod) return;
 
-      if (e.key === 'z' && !e.shiftKey) {
+      if (key === 'z' && !e.shiftKey) {
         e.preventDefault();
         undo();
-      } else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') {
+      } else if ((key === 'z' && e.shiftKey) || key === 'y') {
         e.preventDefault();
         redo();
       }
     };
 
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [undo, redo, activeEditor, commitEditorState, goToAdjacentSlide]);
 
   const canUndo = canUndoDeck(historyRef.current);

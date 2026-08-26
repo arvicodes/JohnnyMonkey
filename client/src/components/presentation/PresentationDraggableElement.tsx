@@ -14,6 +14,7 @@ import {
 import PresentationMediaFrame from './PresentationMediaFrame';
 import { resolveMediaEmbed } from '../../lib/presentationMediaEmbed';
 import { isFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
+import { isApplyingDeckHistory } from '../../lib/presentationEditorHistory';
 import { captureEditorSelection, hydratePresentationHtmlFontSizes, PRESENTATION_CONTENT_FONT_PX } from '../../lib/presentationFontSize';
 import { filterHtmlByRevealStep, hasVisibleRevealContent, isElementVisible, shouldAnimateReveal } from '../../lib/presentationReveal';
 import { presentationNestedListSx } from '../../lib/presentationListStyles';
@@ -1302,7 +1303,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   if (textRef.current) onTextEditorFocus?.(textRef.current, element.id, 'html');
                 }}
                 onBlur={(e) => {
-                  if (isFormatBarInteracting()) return;
+                  if (isApplyingDeckHistory() || isFormatBarInteracting()) return;
                   const next = e.relatedTarget as HTMLElement | null;
                   if (next?.closest('[data-presentation-format-bar]')) return;
                   if (textInputTimerRef.current) {
@@ -1483,7 +1484,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   }
                 }}
                 onBlur={(e) => {
-                  if (isFormatBarInteracting()) return;
+                  if (isApplyingDeckHistory() || isFormatBarInteracting()) return;
                   const next = e.relatedTarget as HTMLElement | null;
                   if (next?.closest('[data-presentation-format-bar]')) return;
                   if (cardTitleRef.current && onChange) {
@@ -1577,7 +1578,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   }
                 }}
                 onBlur={(e) => {
-                  if (isFormatBarInteracting()) return;
+                  if (isApplyingDeckHistory() || isFormatBarInteracting()) return;
                   const next = e.relatedTarget as HTMLElement | null;
                   if (next?.closest('[data-presentation-format-bar]')) return;
                   if (textInputTimerRef.current) {
@@ -1722,7 +1723,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 if (tableRef.current) onTextEditorFocus?.(tableRef.current, element.id);
               }}
               onBlur={(e) => {
-                if (isFormatBarInteracting()) return;
+                if (isApplyingDeckHistory() || isFormatBarInteracting()) return;
                 const next = e.relatedTarget as HTMLElement | null;
                 if (next?.closest('[data-presentation-format-bar]')) return;
                 if (next?.closest('[data-presentation-table-tools]')) return;
@@ -1950,7 +1951,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               if (textRef.current) onTextEditorFocus?.(textRef.current, element.id);
             }}
             onBlur={(e) => {
-              if (isFormatBarInteracting()) return;
+              if (isApplyingDeckHistory() || isFormatBarInteracting()) return;
               const next = e.relatedTarget as HTMLElement | null;
               if (next?.closest('[data-presentation-format-bar]')) return;
               if (textInputTimerRef.current) {

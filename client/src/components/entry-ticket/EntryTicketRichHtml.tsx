@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, type SxProps, type Theme } from '@mui/material';
+import 'katex/dist/katex.min.css';
 import {
   decorateEntryTicketDisplayHtml,
   entryTicketHasImage,
@@ -30,6 +31,19 @@ export const entryTicketRichTextSx = {
   },
   '& img[data-et-place="block"]': {
     my: 0.75,
+  },
+  '& .et-tex': {
+    display: 'inline',
+    whiteSpace: 'nowrap',
+  },
+  '& .katex': {
+    fontSize: '1.08em',
+  },
+  '& .katex-display': {
+    display: 'block',
+    margin: '0.2em 0',
+    overflowX: 'auto',
+    overflowY: 'hidden',
   },
 } as const;
 
