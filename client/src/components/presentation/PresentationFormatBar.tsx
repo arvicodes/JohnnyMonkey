@@ -123,6 +123,12 @@ const FORMAT_POPOVER_FOCUS = {
   disableRestoreFocus: true,
 } as const;
 
+const FORMAT_SELECT_MENU_PROPS = {
+  ...FORMAT_POPOVER_FOCUS,
+  autoFocus: false,
+  MenuListProps: { autoFocusItem: false },
+} as const;
+
 interface PresentationFormatBarProps {
   activeEditor: HTMLElement | null;
   disabled?: boolean;
@@ -253,6 +259,25 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   useEffect(() => {
     if (formatMenuOpen) setFormatBarInteracting(true);
   }, [formatMenuOpen]);
+
+  useEffect(() => {
+    const onPointerUp = () => releaseFormatBarInteraction();
+    window.addEventListener('pointerup', onPointerUp, true);
+    window.addEventListener('pointercancel', onPointerUp, true);
+    return () => {
+      window.removeEventListener('pointerup', onPointerUp, true);
+      window.removeEventListener('pointercancel', onPointerUp, true);
+    };
+  }, [releaseFormatBarInteraction]);
+
+  const restoreEditorAfterMenu = () => {
+    releaseFormatBarInteraction();
+    if (!activeEditor) return;
+    window.requestAnimationFrame(() => {
+      activeEditor.focus({ preventScroll: true });
+      keepEditorSelection(activeEditor);
+    });
+  };
 
   const applyAndNotify = (fn: () => void, refreshSize = false) => {
     if (!activeEditor) return;
@@ -798,6 +823,9 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         }
         displayEmpty
         disabled={disabled || !activeEditor}
+        MenuProps={FORMAT_SELECT_MENU_PROPS}
+        onOpen={() => setFormatBarInteracting(true)}
+        onClose={restoreEditorAfterMenu}
         onChange={(e) => {
           const value = e.target.value;
           if (!value) {
@@ -847,6 +875,9 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         size="small"
         value={fontSizeSelectValue}
         disabled={disabled || !activeEditor}
+        MenuProps={FORMAT_SELECT_MENU_PROPS}
+        onOpen={() => setFormatBarInteracting(true)}
+        onClose={restoreEditorAfterMenu}
         onChange={(e) => {
           const raw = e.target.value;
           if (raw === FONT_SIZE_PLACEHOLDER) return;

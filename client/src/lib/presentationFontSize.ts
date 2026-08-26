@@ -36,16 +36,45 @@ export function clearSavedSelection() {
   saved = null;
 }
 
+function selectionIsInEditor(editor: HTMLElement, range: Range): boolean {
+  try {
+    return editor.contains(range.commonAncestorContainer);
+  } catch {
+    return false;
+  }
+}
+
+function otherEditableHasFocus(editor: HTMLElement): boolean {
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement) || active === editor) return false;
+  if (editor.contains(active)) return false;
+  if (isPresentationFormatUiTarget(active)) return false;
+  return Boolean(
+    active.isContentEditable ||
+      active.closest('[contenteditable="true"]') ||
+      active.closest('[data-pres-rich-zone]'),
+  );
+}
+
 /** Vor Toolbar-Klick Auswahl sichern (bleibt auch bei Popover-Klick erhalten). */
 export function stashEditorSelection(editor: HTMLElement | null) {
   if (!editor) return;
   const sel = window.getSelection();
   if (sel?.rangeCount) {
     const range = sel.getRangeAt(0);
-    if (!range.collapsed && editor.contains(range.commonAncestorContainer)) {
+    if (!selectionIsInEditor(editor, range)) return;
+    if (!range.collapsed) {
       saved = { editor, range: range.cloneRange() };
       return;
     }
+    if (
+      isFormatBarInteracting() ||
+      isPresentationFormatUiTarget(document.activeElement)
+    ) {
+      return;
+    }
+    if (saved?.editor === editor) saved = null;
+    return;
   }
   if (saved?.editor === editor && !saved.range.collapsed) return;
 }
@@ -56,7 +85,7 @@ export function captureEditorSelection(editor: HTMLElement | null) {
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0) return;
   const range = sel.getRangeAt(0);
-  if (!editor.contains(range.commonAncestorContainer)) return;
+  if (!selectionIsInEditor(editor, range)) return;
   if (range.collapsed) {
     if (
       isFormatBarInteracting() ||
@@ -95,10 +124,21 @@ function collapseAtEnd(editor: HTMLElement, node?: Node) {
 /** Stellt Auswahl für Toolbar-Aktionen her (live oder gespeichert). */
 export function ensureEditorSelection(editor: HTMLElement | null): boolean {
   if (!editor) return false;
-  const range = usableRange(editor);
-  if (!range) return false;
-  editor.focus({ preventScroll: true });
+  if (otherEditableHasFocus(editor)) return false;
   const sel = window.getSelection();
+  if (sel?.rangeCount) {
+    const live = sel.getRangeAt(0);
+    if (selectionIsInEditor(editor, live)) {
+      editor.focus({ preventScroll: true });
+      return true;
+    }
+  }
+  const range = usableRange(editor);
+  if (!range) {
+    editor.focus({ preventScroll: true });
+    return false;
+  }
+  editor.focus({ preventScroll: true });
   if (!sel) return false;
   try {
     sel.removeAllRanges();
@@ -111,6 +151,7 @@ export function ensureEditorSelection(editor: HTMLElement | null): boolean {
 
 /** Markierung nach Formatierung wiederherstellen / behalten. */
 export function keepEditorSelection(editor: HTMLElement, preferred?: Range | null) {
+  if (otherEditableHasFocus(editor)) return;
   const sel = window.getSelection();
   if (!sel) return;
   editor.focus({ preventScroll: true });
@@ -126,8 +167,8 @@ export function keepEditorSelection(editor: HTMLElement, preferred?: Range | nul
   }
   if (sel.rangeCount > 0) {
     const live = sel.getRangeAt(0);
-    if (editor.contains(live.commonAncestorContainer) && !live.collapsed) {
-      saved = { editor, range: live.cloneRange() };
+    if (selectionIsInEditor(editor, live)) {
+      if (!live.collapsed) saved = { editor, range: live.cloneRange() };
       return;
     }
   }

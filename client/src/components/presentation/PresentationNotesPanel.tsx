@@ -136,6 +136,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   const syncFromProps = useCallback(() => {
     const el = ref.current;
     if (!el || editingRef.current) return;
+    if (document.activeElement === el || el.contains(document.activeElement)) return;
     if (el.getAttribute('data-pres-notes-dragging') === '1') return;
     const next = displayHtml || '<p><br></p>';
     if (el.innerHTML !== next) el.innerHTML = next;
@@ -152,16 +153,17 @@ const NoteZone: React.FC<NoteZoneProps> = ({
     const onMouseUp = () => captureEditorSelection(el);
     el.addEventListener('mouseup', onMouseUp);
     const mo = new MutationObserver(() => {
+      if (editingRef.current) return;
       if (el.getAttribute('data-pres-notes-dragging') === '1') return;
       enhanceImages();
     });
     mo.observe(el, { childList: true, subtree: true });
-    enhanceImages();
+    if (!editingRef.current) enhanceImages();
     return () => {
       el.removeEventListener('mouseup', onMouseUp);
       mo.disconnect();
     };
-  }, [readOnly, displayHtml, enhanceImages]);
+  }, [readOnly, enhanceImages]);
 
   useEffect(() => {
     const el = ref.current;
@@ -396,7 +398,8 @@ const NoteZone: React.FC<NoteZoneProps> = ({
           }
           const el = ref.current;
           if (!el) return;
-          const locked = Boolean(hit?.closest?.('[contenteditable="false"]'));
+          const lockedEl = hit?.closest?.('[contenteditable="false"]') as HTMLElement | null;
+          const locked = Boolean(lockedEl && el.contains(lockedEl));
           const onBareEditor = hit === el;
           if (locked || onBareEditor) {
             e.preventDefault();
@@ -421,6 +424,8 @@ const NoteZone: React.FC<NoteZoneProps> = ({
           outline: 'none',
           fontSize: 13,
           lineHeight: 1.55,
+          userSelect: 'text',
+          WebkitUserSelect: 'text',
           borderRadius: 1,
           border: '1px solid',
           borderColor: active ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.barBorder,
