@@ -1,5 +1,23 @@
-import { renderToString as katexRenderToString } from 'katex';
 import 'katex/dist/katex.min.css';
+
+type KatexModule = {
+  renderToString: (
+    tex: string,
+    options?: {
+      throwOnError?: boolean;
+      displayMode?: boolean;
+      output?: 'html' | 'mathml' | 'htmlAndMathml';
+      strict?: boolean | string;
+      trust?: boolean;
+    },
+  ) => string;
+};
+
+function loadKatex(): KatexModule {
+  // katex 0.16 legt types nur unter exports ab — CRA (moduleResolution: node) sieht sie nicht.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+  return require('katex') as KatexModule;
+}
 
 const LATEX_MARK = '\uE200';
 const LATEX_END = '\uE201';
@@ -8,7 +26,7 @@ export function renderEntryTicketLatexHtml(tex: string, display = false): string
   const trimmed = (tex || '').trim();
   if (!trimmed) return '';
   try {
-    return katexRenderToString(trimmed, {
+    return loadKatex().renderToString(trimmed, {
       throwOnError: false,
       displayMode: display,
       output: 'html',
