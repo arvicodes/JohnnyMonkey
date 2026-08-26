@@ -276,6 +276,8 @@ const PresentationEditorPage: React.FC = () => {
     createDefaultTemplatesStore(),
   );
   const [pptxImportOpen, setPptxImportOpen] = useState(false);
+  const [slideJumpOpen, setSlideJumpOpen] = useState(false);
+  const [slideJumpValue, setSlideJumpValue] = useState('');
   const [imageDropActive, setImageDropActive] = useState(false);
   const [removingImageBackground, setRemovingImageBackground] = useState(false);
   const [notesPanelOpen, setNotesPanelOpen] = useState(() => {
@@ -1220,6 +1222,26 @@ const PresentationEditorPage: React.FC = () => {
     [activeId, selectSlide]
   );
 
+  const jumpToSlideNumber = useCallback(
+    (raw: string) => {
+      const current = deckRef.current;
+      if (!current) return false;
+      const slides = sortSlides(current.slides);
+      const n = parseInt(String(raw).replace(/\D/g, ''), 10);
+      if (!Number.isFinite(n) || n < 1 || slides.length === 0) return false;
+      const slide = slides[Math.min(slides.length, n) - 1];
+      if (!slide) return false;
+      selectSlide(slide.id);
+      return true;
+    },
+    [selectSlide],
+  );
+
+  const closeSlideJump = useCallback(() => {
+    setSlideJumpOpen(false);
+    setSlideJumpValue('');
+  }, []);
+
   const handleElementSelect = useCallback(
     (id: string | null) => {
       commitEditorState({ history: 'skip' });
@@ -1334,18 +1356,27 @@ const PresentationEditorPage: React.FC = () => {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (!target || typeof target.closest !== 'function') return;
+
+      const mod = e.metaKey || e.ctrlKey;
+      const key = e.key.toLowerCase();
+      if (mod && !e.altKey && !e.shiftKey && key === 'y') {
+        e.preventDefault();
+        e.stopPropagation();
+        setSlideJumpOpen(true);
+        setSlideJumpValue('');
+        return;
+      }
+
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
         return;
       }
 
-      const mod = e.metaKey || e.ctrlKey;
       const inRichEditor = !!target.closest('[data-pres-rich-zone]');
-      const key = e.key.toLowerCase();
 
-      if (inRichEditor && mod && (key === 'z' || key === 'y')) {
+      if (inRichEditor && mod && key === 'z') {
         e.preventDefault();
         e.stopPropagation();
-        if (key === 'y' || e.shiftKey) redo();
+        if (e.shiftKey) redo();
         else undo();
         return;
       }
@@ -1401,7 +1432,7 @@ const PresentationEditorPage: React.FC = () => {
       if (key === 'z' && !e.shiftKey) {
         e.preventDefault();
         undo();
-      } else if ((key === 'z' && e.shiftKey) || key === 'y') {
+      } else if (key === 'z' && e.shiftKey) {
         e.preventDefault();
         redo();
       }
@@ -3130,7 +3161,7 @@ const PresentationEditorPage: React.FC = () => {
       if (animationEditMode) return; // eigener Handler im Animationsmodus
       if (isTypingTarget(e.target)) return;
       if (isFormatBarInteracting()) return;
-      if (sectionDeleteAsk || variantDeleteAsk || saveNamedOpen) return;
+      if (sectionDeleteAsk || variantDeleteAsk || saveNamedOpen || slideJumpOpen) return;
       if (document.querySelector('.MuiModal-root:not([aria-hidden="true"])')) return;
       e.preventDefault();
       e.stopPropagation();
@@ -3146,6 +3177,7 @@ const PresentationEditorPage: React.FC = () => {
     planMode,
     saveNamedOpen,
     sectionDeleteAsk,
+    slideJumpOpen,
     variantDeleteAsk,
   ]);
 
@@ -4315,6 +4347,89 @@ const PresentationEditorPage: React.FC = () => {
         templates={slideTemplates}
         onImport={importPptxSelections}
       />
+
+      {slideJumpOpen ? (
+        <Box
+          role="dialog"
+          aria-label="Zu Folie springen"
+          onMouseDown={closeSlideJump}
+          sx={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1700,
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            pt: '16vh',
+            bgcolor: 'rgba(15,18,22,0.28)',
+          }}
+        >
+          <Box
+            data-pres-slide-jump="1"
+            onMouseDown={(ev) => ev.stopPropagation()}
+            sx={{
+              minWidth: 240,
+              px: 2.25,
+              py: 1.75,
+              borderRadius: 2,
+              bgcolor: '#1b1d21',
+              color: '#fff',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.4)',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <Typography
+              sx={{ fontSize: 12, fontWeight: 600, letterSpacing: 0.3, mb: 0.75, opacity: 0.72 }}
+            >
+              Zu Folie
+            </Typography>
+            <TextField
+              autoFocus
+              fullWidth
+              value={slideJumpValue}
+              placeholder="Nummer"
+              onChange={(ev) => setSlideJumpValue(ev.target.value.replace(/\D/g, '').slice(0, 4))}
+              onKeyDown={(ev) => {
+                if (ev.key === 'Escape') {
+                  ev.preventDefault();
+                  ev.stopPropagation();
+                  closeSlideJump();
+                  return;
+                }
+                if (ev.key === 'Enter') {
+                  ev.preventDefault();
+                  ev.stopPropagation();
+                  const typed = (ev.target as HTMLInputElement).value;
+                  if (jumpToSlideNumber(typed || slideJumpValue)) closeSlideJump();
+                }
+              }}
+              inputProps={{
+                inputMode: 'numeric',
+                pattern: '[0-9]*',
+                'aria-label': 'Foliennummer',
+              }}
+              sx={{
+                '& .MuiInputBase-root': {
+                  color: '#fff',
+                  fontSize: 28,
+                  fontWeight: 700,
+                  letterSpacing: 1,
+                },
+                '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.22)' },
+                '& .MuiInputBase-root:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'rgba(255,255,255,0.4)',
+                },
+                '& .MuiInputBase-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: PRES_EDITOR_UI.accent,
+                },
+              }}
+            />
+            <Typography sx={{ mt: 0.75, fontSize: 11, opacity: 0.55 }}>
+              Zahl eingeben, Enter
+            </Typography>
+          </Box>
+        </Box>
+      ) : null}
 
       <Snackbar
         open={!!snackbar}
