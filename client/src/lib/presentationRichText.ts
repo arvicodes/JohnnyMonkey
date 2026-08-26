@@ -901,6 +901,7 @@ export function sanitizePastedHtml(html: string, options?: PasteSanitizeOptions)
   unwrapIllegalSpanBlocks(doc.body);
   convertPastedListParagraphs(doc.body);
   stripForeignPasteChrome(doc.body);
+  stripNotesFocusTraps(doc.body);
   stripExternalFontSizing(doc.body);
   stripExternalFontFamilies(doc.body);
   stripExternalColors(doc.body);
