@@ -133,6 +133,13 @@ export function isFilledInkStroke(stroke: PresentationStroke): boolean {
   return Boolean(stroke.filled) && !stroke.shape && stroke.points.length >= 3;
 }
 
+/** Freihand in den Foliennotizen — Koordinaten in CSS-Pixeln des Notizfelds. */
+export type PresentationNotesInkStroke = {
+  points: { x: number; y: number }[];
+  color: string;
+  width: number;
+};
+
 export type LayoutZoneBox = { x: number; y: number; w: number; h: number };
 
 export interface PresentationSlide {
@@ -186,9 +193,37 @@ export interface PresentationSlide {
    * Liegt im Deck, nicht in den Live-Annotationen der Stunde.
    */
   inkStrokes?: PresentationStroke[];
+  /**
+   * Stift in den Foliennotizen (Pixel im Notizfeld, wie in den gelben Lehrer-Notizen).
+   */
+  speakerNotesInk?: PresentationNotesInkStroke[];
   /** Unterkapitel in der Folienleiste (frei benennbar). */
   sourceLessonName?: string;
   sourceLessonPath?: string;
+}
+
+export function sanitizeNotesInk(
+  raw?: PresentationNotesInkStroke[],
+): PresentationNotesInkStroke[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const out: PresentationNotesInkStroke[] = [];
+  for (const s of raw) {
+    if (!s || !Array.isArray(s.points) || s.points.length < 1) continue;
+    const points = s.points
+      .map((p) => ({ x: Number(p?.x), y: Number(p?.y) }))
+      .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+    if (points.length < 1) continue;
+    if (points.length === 1) {
+      points.push({ x: points[0].x + 0.01, y: points[0].y });
+    }
+    const width = Number(s.width);
+    out.push({
+      points,
+      color: typeof s.color === 'string' && s.color ? s.color : '#111827',
+      width: Number.isFinite(width) ? Math.max(0.6, Math.min(12, width)) : 3,
+    });
+  }
+  return out.length ? out : undefined;
 }
 
 export function sanitizeInkStrokes(raw?: PresentationStroke[]): PresentationStroke[] | undefined {
@@ -587,6 +622,7 @@ export function normalizeSlide(slide: PresentationSlide): PresentationSlide {
       ? { homeworkSubmissionRequired: slide.homeworkSubmissionRequired }
       : {}),
     inkStrokes: sanitizeInkStrokes(slide.inkStrokes),
+    speakerNotesInk: sanitizeNotesInk(slide.speakerNotesInk),
   };
 }
 

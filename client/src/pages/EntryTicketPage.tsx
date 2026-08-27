@@ -50,7 +50,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { apiGet, apiPost, apiPut } from '../lib/api';
 import { entryTicketHeroSrc } from '../lib/ticketHeroImages';
 import { presentationLessonBackUrl } from '../lib/presentationEditorUi';
-import { playPresentationSoundFor } from '../lib/presentationSound';
 import {
   type EntryTicketCustomSet,
   customSetReihePaths,
@@ -3549,7 +3548,6 @@ export default function EntryTicketPage({
         return;
       }
       setDoneCelebrate(true);
-      playPresentationSoundFor('entryDone');
       if (doneCelebrateTimerRef.current != null) {
         window.clearTimeout(doneCelebrateTimerRef.current);
       }

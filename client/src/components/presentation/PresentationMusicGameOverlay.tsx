@@ -4,7 +4,6 @@ import {
   MusicNote as MusicIcon,
   PauseCircle as PauseIcon,
 } from '@mui/icons-material';
-import { playPresentationSound } from '../../lib/presentationSound';
 import {
   MUSIC_GAME_ACTIVE_TRACKS,
   MUSIC_GAME_BURSTS,
@@ -109,7 +108,6 @@ export function useMusicGameController(): MusicGameController {
     silence();
     frozenRef.current = true;
     setFrozen(true);
-    playPresentationSound({ soundId: 'wood' });
   }, [clearBurst, silence]);
 
   const armBurst = useCallback(() => {

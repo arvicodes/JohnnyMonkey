@@ -1512,6 +1512,7 @@ const PresentationEditorPage: React.FC = () => {
       'bodyRightHtml' in patch ||
       'imageCaptionHtml' in patch ||
       'speakerNotesHtml' in patch ||
+      'speakerNotesInk' in patch ||
       'preparationHtml' in patch ||
       'materialHtml' in patch ||
       'title' in patch ||
@@ -2694,7 +2695,7 @@ const PresentationEditorPage: React.FC = () => {
       return;
     }
 
-    const patch = { speakerNotesHtml: '<p><br></p>', speakerNotes: '' };
+    const patch = { speakerNotesHtml: '<p><br></p>', speakerNotes: '', speakerNotesInk: undefined };
 
     const slides = current.slides.map((slide) =>
       slide.id === normalizedActive.id ? normalizeSlide({ ...slide, ...patch }) : slide
@@ -4242,6 +4243,10 @@ const PresentationEditorPage: React.FC = () => {
             }}
             onSpeakerChange={(html, plain) =>
               updateSlide({ speakerNotesHtml: html, speakerNotes: plain }, normalizedActive.id)
+            }
+            inkStrokes={normalizedActive.speakerNotesInk}
+            onInkChange={(strokes) =>
+              updateSlide({ speakerNotesInk: strokes }, normalizedActive.id)
             }
             onBeforeDiscreteEdit={flushDeckHistory}
             onMoveNotesToTrash={moveNotesToTrash}

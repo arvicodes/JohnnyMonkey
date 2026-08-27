@@ -1,11 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Box, IconButton, Typography } from '@mui/material';
+import { Box, IconButton, Tooltip, Typography } from '@mui/material';
 import {
   DeleteOutline as TrashIcon,
   ChevronRight as HideNotesIcon,
   StickyNote2Outlined as NotesIcon,
+  Edit as PenIcon,
+  Keyboard as KeyboardIcon,
+  AutoFixOff as EraserIcon,
+  ClearAll as ClearInkIcon,
 } from '@mui/icons-material';
-import { htmlToPlain, textToHtml } from '../../lib/presentationDeck';
+import { htmlToPlain, textToHtml, type PresentationNotesInkStroke } from '../../lib/presentationDeck';
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
 import { presentationNotesHighlightSx, restampNotesHighlights, restampNotesHighlightsHtml } from '../../lib/presentationTheme';
 import { isFormatBarInteracting, isPresentationFormatUiTarget } from '../../lib/presentationFormatBarGuard';
@@ -34,6 +38,7 @@ import {
 } from '../../lib/presentationTableResize';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { clipboardHasImage, clipboardPrefersRichText, collectPasteImages } from '../../lib/goodNotesClipboard';
+import PresentationNotesInkCanvas, { type NotesInkMode } from './PresentationNotesInkCanvas';
 import '../../styles/presentationLists.css';
 
 /** Ein Notizfeld (früher Material / Setup / Sprechakte). Legacy-Keys bleiben für Papierkorb. */
@@ -43,6 +48,16 @@ const NOTES_WIDTH_STORAGE_KEY = 'johnny-pres-notes-width';
 const NOTES_WIDTH_DEFAULT = 320;
 const NOTES_WIDTH_MIN = 240;
 const NOTES_WIDTH_MAX = 920;
+
+const NOTES_INK_COLORS = [
+  { label: 'Schwarz', value: '#111827' },
+  { label: 'Grau', value: '#546e7a' },
+  { label: 'Rot', value: '#c62828' },
+  { label: 'Orange', value: '#ef6c00' },
+  { label: 'Grün', value: '#2e7d32' },
+  { label: 'Blau', value: '#1565c0' },
+  { label: 'Violett', value: '#6a1b9a' },
+] as const;
 
 function clampNotesWidth(raw: number): number {
   const viewportMax =
@@ -87,6 +102,10 @@ interface NoteZoneProps {
   onBeforeDiscreteEdit?: () => void;
   /** Bild hochladen → Anzeige-URL (read-image API) */
   onUploadImage?: (file: File) => Promise<string | null>;
+  inkStrokes?: PresentationNotesInkStroke[];
+  inkMode: NotesInkMode;
+  inkColor: string;
+  onInkChange?: (strokes: PresentationNotesInkStroke[]) => void;
 }
 
 const NoteZone: React.FC<NoteZoneProps> = ({
@@ -104,8 +123,13 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   onMoveToTrash,
   onBeforeDiscreteEdit,
   onUploadImage,
+  inkStrokes,
+  inkMode,
+  inkColor,
+  onInkChange,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
+  const hostRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editingRef = useRef(false);
   const rawDisplay = html || textToHtml(plain || '');
@@ -424,8 +448,20 @@ const NoteZone: React.FC<NoteZoneProps> = ({
         </Box>
       </Box>
       <Box
+        ref={hostRef}
+        sx={{
+          position: 'relative',
+          flex: 1,
+          minHeight: 0,
+          mx: 1,
+          mb: 1,
+          overflow: 'hidden',
+          touchAction: inkMode === 'text' ? 'auto' : 'none',
+        }}
+      >
+      <Box
         ref={ref}
-        contentEditable={!readOnly}
+        contentEditable={!readOnly && inkMode === 'text'}
         suppressContentEditableWarning
         data-pres-rich-zone
         data-pres-notes-zone="true"
@@ -530,23 +566,24 @@ const NoteZone: React.FC<NoteZoneProps> = ({
           if (ref.current) ref.current.style.cursor = '';
         }}
         sx={{
-          flex: 1,
+          inset: 0,
+          zIndex: 1,
           minHeight: 0,
-          mx: 1,
-          mb: 1,
           px: 1.25,
           py: 1,
           overflowY: 'auto',
           outline: 'none',
           fontSize: 13,
           lineHeight: 1.55,
-          userSelect: 'text',
-          WebkitUserSelect: 'text',
+          userSelect: inkMode === 'text' ? 'text' : 'none',
+          WebkitUserSelect: inkMode === 'text' ? 'text' : 'none',
+          pointerEvents: inkMode === 'text' ? 'auto' : 'none',
+          touchAction: 'pan-y',
           borderRadius: 1,
           border: '1px solid',
           borderColor: active ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.barBorder,
           bgcolor: readOnly ? PRES_EDITOR_UI.accentSoft : '#fff',
-          cursor: readOnly ? 'default' : 'text',
+          cursor: readOnly ? 'default' : inkMode === 'text' ? 'text' : 'default',
           color: PRES_EDITOR_UI.text,
           wordBreak: 'break-word',
           '& p, & div': { m: 0, mb: 0.5, ml: 0, pl: 0, textIndent: 0 },
@@ -573,8 +610,20 @@ const NoteZone: React.FC<NoteZoneProps> = ({
             color: PRES_EDITOR_UI.textMuted,
             fontStyle: 'italic',
           },
+          position: 'absolute',
         }}
       />
+        <PresentationNotesInkCanvas
+          hostRef={hostRef}
+          editorRef={ref}
+          strokes={inkStrokes || []}
+          mode={readOnly ? 'text' : inkMode}
+          color={inkColor}
+          readOnly={readOnly}
+          onChange={onInkChange}
+          onBeforeStroke={onBeforeDiscreteEdit}
+        />
+      </Box>
     </Box>
   );
 };
@@ -595,6 +644,8 @@ interface PresentationNotesPanelProps {
   onUploadImage?: (file: File) => Promise<string | null>;
   /** Notizleiste ausblenden (mehr Platz für die Folie). */
   onHide?: () => void;
+  inkStrokes?: PresentationNotesInkStroke[];
+  onInkChange?: (strokes: PresentationNotesInkStroke[]) => void;
 }
 
 const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
@@ -610,8 +661,12 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
   onMoveNotesToTrash,
   onUploadImage,
   onHide,
+  inkStrokes,
+  onInkChange,
 }) => {
   const [panelWidth, setPanelWidth] = useState(loadNotesWidth);
+  const [inkMode, setInkMode] = useState<NotesInkMode>('text');
+  const [inkColor, setInkColor] = useState<string>(NOTES_INK_COLORS[0].value);
   const resizeRef = useRef<{ pointerId: number; startX: number; startW: number } | null>(null);
   const [resizing, setResizing] = useState(false);
 
@@ -733,14 +788,18 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
       <Box
         sx={{
           flexShrink: 0,
+          borderBottom: `1px solid ${PRES_EDITOR_UI.panelBorder}`,
+          bgcolor: '#fff',
+        }}
+      >
+      <Box
+        sx={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 0.5,
           px: 1,
           py: 0.35,
-          borderBottom: `1px solid ${PRES_EDITOR_UI.panelBorder}`,
-          bgcolor: '#fff',
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
@@ -756,6 +815,81 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
             Notizen
           </Typography>
         </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.15 }}>
+          {!readOnly && (
+            <>
+              <Tooltip title="Tippen">
+                <IconButton
+                  size="small"
+                  aria-label="Tippen"
+                  onClick={() => {
+                    setInkMode('text');
+                    window.requestAnimationFrame(() => {
+                      const el = document.querySelector(
+                        '[data-pres-notes-zone="true"]',
+                      ) as HTMLElement | null;
+                      el?.focus();
+                    });
+                  }}
+                  sx={{
+                    width: 26,
+                    height: 26,
+                    color: inkMode === 'text' ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
+                    bgcolor: inkMode === 'text' ? PRES_EDITOR_UI.accentSoft : 'transparent',
+                  }}
+                >
+                  <KeyboardIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Stift (Apple Pencil schreibt immer)">
+                <IconButton
+                  size="small"
+                  aria-label="Stift"
+                  onClick={() => setInkMode('pen')}
+                  sx={{
+                    width: 26,
+                    height: 26,
+                    color: inkMode === 'pen' ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
+                    bgcolor: inkMode === 'pen' ? PRES_EDITOR_UI.accentSoft : 'transparent',
+                  }}
+                >
+                  <PenIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Radierer">
+                <IconButton
+                  size="small"
+                  aria-label="Radierer"
+                  onClick={() => setInkMode('eraser')}
+                  sx={{
+                    width: 26,
+                    height: 26,
+                    color: inkMode === 'eraser' ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
+                    bgcolor: inkMode === 'eraser' ? PRES_EDITOR_UI.accentSoft : 'transparent',
+                  }}
+                >
+                  <EraserIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Alle Stiftstriche löschen">
+                <span>
+                  <IconButton
+                    size="small"
+                    aria-label="Stiftstriche löschen"
+                    disabled={!inkStrokes?.length}
+                    onClick={() => {
+                      if (!inkStrokes?.length) return;
+                      onBeforeDiscreteEdit?.();
+                      onInkChange?.([]);
+                    }}
+                    sx={{ width: 26, height: 26, color: PRES_EDITOR_UI.textMuted }}
+                  >
+                    <ClearInkIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </>
+          )}
         {onHide && (
             <IconButton
               size="small"
@@ -771,6 +905,35 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
               <HideNotesIcon sx={{ fontSize: 18 }} />
             </IconButton>
         )}
+        </Box>
+      </Box>
+      {!readOnly && (inkMode === 'pen' || inkMode === 'eraser') && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1, pb: 0.45 }}>
+          {NOTES_INK_COLORS.map((c) => (
+            <Box
+              key={c.value}
+              component="button"
+              type="button"
+              title={c.label}
+              aria-label={`Stiftfarbe ${c.label}`}
+              onClick={() => {
+                setInkColor(c.value);
+                if (inkMode !== 'pen') setInkMode('pen');
+              }}
+              sx={{
+                width: 14,
+                height: 14,
+                p: 0,
+                borderRadius: '50%',
+                border: inkColor === c.value ? '2px solid #263238' : '1px solid rgba(0,0,0,0.22)',
+                bgcolor: c.value,
+                cursor: 'pointer',
+                flexShrink: 0,
+              }}
+            />
+          ))}
+        </Box>
+      )}
       </Box>
       <NoteZone
         fieldKey="speakerNotesHtml"
@@ -787,6 +950,10 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
         onEditorBlur={onEditorBlur}
         onMoveToTrash={onMoveNotesToTrash}
         onUploadImage={onUploadImage}
+        inkStrokes={inkStrokes}
+        inkMode={inkMode}
+        inkColor={inkColor}
+        onInkChange={onInkChange}
       />
     </Box>
   );

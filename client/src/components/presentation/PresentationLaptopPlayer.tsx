@@ -3,6 +3,7 @@ import { Box, CircularProgress, IconButton, Typography } from '@mui/material';
 import { ChevronLeft, ChevronRight, SelfImprovement as QuietWorkIcon, MusicNote as MusicGameIcon } from '@mui/icons-material';
 import PresentationSlideView from './PresentationSlideView';
 import PresentationStrokesPreview from './PresentationStrokesPreview';
+import PresentationNotesInkCanvas from './PresentationNotesInkCanvas';
 import {
   PresentationAnnotations,
   PresentationDeck,
@@ -130,6 +131,7 @@ export default function PresentationLaptopPlayer({
   const musicGame = useMusicGameController();
   const stageHostRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const notesInkHostRef = useRef<HTMLDivElement>(null);
   const [notesShare, setNotesShare] = useState(readLaptopNotesShare);
   const notesDragRef = useRef<{ startY: number; startShare: number; rootH: number } | null>(null);
 
@@ -591,6 +593,8 @@ export default function PresentationLaptopPlayer({
   const hasHtmlNotes =
     !!notesHtml && notesHtml !== '<p></p>' && notesHtml !== '<p><br></p>';
   const plainNotes = showNotes ? currentSlide.speakerNotes?.trim() || '' : '';
+  const notesInk = showNotes ? currentSlide.speakerNotesInk || [] : [];
+  const hasNotesInk = notesInk.length > 0;
   const displayNotesHtml = hasHtmlNotes
     ? restampNotesHighlightsHtml(applyNotesImageFlowToHtml(hydrateNotesHtmlFontSizes(notesHtml!)))
     : '';
@@ -1008,7 +1012,15 @@ export default function PresentationLaptopPlayer({
           )
         )}
         {showNotes &&
-          (hasHtmlNotes ? (
+          (hasHtmlNotes || hasNotesInk || plainNotes ? (
+            <Box
+              ref={notesInkHostRef}
+              sx={{
+                position: 'relative',
+                minHeight: hasNotesInk ? 88 : undefined,
+              }}
+            >
+            {hasHtmlNotes ? (
             <Box
               sx={{
                 // Basis wie Editor-Notizfeld; individuelle Größen via data-pres-fs / inline
@@ -1047,6 +1059,28 @@ export default function PresentationLaptopPlayer({
               }}
               dangerouslySetInnerHTML={{ __html: displayNotesHtml }}
             />
+          ) : plainNotes ? (
+            <Typography
+              variant="body2"
+              sx={{
+                whiteSpace: 'pre-wrap',
+                fontSize: 13,
+                lineHeight: 1.55,
+              }}
+            >
+              {plainNotes}
+            </Typography>
+          ) : null}
+              {hasNotesInk && (
+                <PresentationNotesInkCanvas
+                  hostRef={notesInkHostRef}
+                  strokes={notesInk}
+                  mode="text"
+                  color="#111827"
+                  readOnly
+                />
+              )}
+            </Box>
           ) : (
             <Typography
               variant="body2"
@@ -1056,7 +1090,7 @@ export default function PresentationLaptopPlayer({
                 lineHeight: 1.55,
               }}
             >
-              {plainNotes || '—'}
+              —
             </Typography>
           ))}
         {showNotes && strokes.length > 0 && (

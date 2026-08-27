@@ -5,7 +5,6 @@ import {
   MusicOff as MusicOffIcon,
   SelfImprovement as QuietIcon,
 } from '@mui/icons-material';
-import { playPresentationSound } from '../../lib/presentationSound';
 import {
   QUIET_WORK_DURATION_MINS,
   QUIET_WORK_TRACKS,
@@ -119,7 +118,6 @@ export function useQuietWorkController(): QuietWorkController {
         setFinished(true);
         setRunning(false);
         stopAudio();
-        playPresentationSound({ soundId: 'singingbowl' });
       }
     };
     tick();

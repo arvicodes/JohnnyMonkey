@@ -419,22 +419,13 @@ function getSoundContext(): AudioContext | null {
   return sharedAudioCtx;
 }
 
-/** Beim Start der Präsentation: Audio entsperren + Startfolien-Ton merken. */
+/** Beim Start der Präsentation: Audio entsperren. Kein automatischer Startton. */
 export function preparePresentationAudioForPlay(): void {
   unlockPresentationAudio();
-  try {
-    sessionStorage.setItem(START_SOUND_ARM_KEY, '1');
-  } catch {
-    // ignore
-  }
 }
 
 export function isPresentationStartSoundArmed(): boolean {
-  try {
-    return sessionStorage.getItem(START_SOUND_ARM_KEY) === '1';
-  } catch {
-    return false;
-  }
+  return false;
 }
 
 function clearArmedStartSlideSound(): void {
@@ -445,14 +436,10 @@ function clearArmedStartSlideSound(): void {
   }
 }
 
-/** Startfolien-Ton, wenn Play ihn vorbereitet hat. Safari: bei Bedarf nach erstem Tippen erneut. */
+/** Früher: Startfolien-Ton nach Play. Bleibt aus — nur noch Taste S / Lautsprecher. */
 export function tryPlayArmedStartSlideSound(): boolean {
-  if (!isPresentationStartSoundArmed()) return false;
-  unlockPresentationAudio();
-  playPresentationSoundFor('startSlide');
-  if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') return false;
   clearArmedStartSlideSound();
-  return true;
+  return false;
 }
 
 export function playPresentationSoundFor(event: PresentationSoundEvent): void {

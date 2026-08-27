@@ -1,4 +1,4 @@
-import { htmlToPlain, normalizeSlide, PresentationDeck, PresentationSlide } from './presentationDeck';
+import { htmlToPlain, normalizeSlide, PresentationDeck, PresentationSlide, type PresentationNotesInkStroke } from './presentationDeck';
 
 export type TrashItemType = 'slide' | 'notes';
 
@@ -19,6 +19,7 @@ export interface PresentationTrashItem {
   preparationNotes?: string;
   speakerNotesHtml?: string;
   speakerNotes?: string;
+  speakerNotesInk?: PresentationNotesInkStroke[];
 }
 
 export const MAX_TRASH_ITEMS = 40;
@@ -58,6 +59,7 @@ export function createSlideTrashItem(slide: PresentationSlide): PresentationTras
     preparationNotes: normalized.preparationNotes,
     speakerNotesHtml: normalized.speakerNotesHtml,
     speakerNotes: normalized.speakerNotes,
+    speakerNotesInk: normalized.speakerNotesInk,
   };
 }
 
@@ -78,7 +80,8 @@ export function createNotesTrashItem(
       : field === 'preparationHtml'
         ? normalized.preparationNotes
         : normalized.speakerNotes;
-  if (!html?.replace(/<[^>]+>/g, '').trim() && !plain?.trim()) return null;
+  const ink = field === 'speakerNotesHtml' ? normalized.speakerNotesInk : undefined;
+  if (!html?.replace(/<[^>]+>/g, '').trim() && !plain?.trim() && !(ink?.length)) return null;
 
   return {
     id: `trash-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -94,6 +97,7 @@ export function createNotesTrashItem(
     preparationNotes: field === 'preparationHtml' ? normalized.preparationNotes : undefined,
     speakerNotesHtml: field === 'speakerNotesHtml' ? normalized.speakerNotesHtml : undefined,
     speakerNotes: field === 'speakerNotesHtml' ? normalized.speakerNotes : undefined,
+    speakerNotesInk: field === 'speakerNotesHtml' ? normalized.speakerNotesInk : undefined,
   };
 }
 
@@ -161,6 +165,7 @@ export function restoreNotesFromTrash(
       ...slide,
       speakerNotesHtml: item.speakerNotesHtml || '',
       speakerNotes: item.speakerNotes || htmlToPlain(item.speakerNotesHtml || ''),
+      speakerNotesInk: item.speakerNotesInk,
     });
   });
 
