@@ -89,7 +89,6 @@ import {
 } from '../lib/dashboardWorkingReihen';
 import {
   loadPlayedLessonKeys,
-  markLessonPlayed,
   mergePlayedLessonKeys,
   playedLessonKey,
 } from '../lib/playedLessons';
@@ -6112,7 +6111,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     periodNumber: number;
   };
   const [activeLessonSessions, setActiveLessonSessions] = useState<ActiveLessonSessionRow[]>([]);
-  const [lessonRunBusyKey, setLessonRunBusyKey] = useState<string | null>(null);
   const [geheimtexteOpen, setGeheimtexteOpen] = useState(false);
   // Bearbeitbare Stunden-Texte und Ablaufplanung pro Stunde (lessonPath)
   type LessonBoxField = 'voraussetzungen' | 'materialliste' | 'anweisungen' | 'abAnleitung' | 'geheimtexte';
@@ -7232,7 +7230,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   );
 
   const startLessonRun = useCallback(
-    async (groupId: string, lessonPath: string) => {
+    (groupId: string, lessonPath: string) => {
       if (!groupId || groupId === DASHBOARD_REIHEN_CONTENT_GROUP) {
         showSnackbar(
           'Keine Lerngruppe für diese Reihe freigeschaltet — oben rechts bei der Reihe eine Gruppe wählen.',
@@ -7242,65 +7240,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
       }
       preparePresentationAudioForPlay();
       requestPresentFullscreen();
-      const key = `${groupId}::${lessonPath}`;
-      setLessonRunBusyKey(key);
-      const loginCode = localStorage.getItem('loginCode') || '';
-      try {
-        const res = await fetch('/api/teacher-schedule/lessons/start', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-login-code': loginCode,
-          },
-          body: JSON.stringify({ groupId, lessonPath }),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          showSnackbar(err?.error || 'Stunde konnte nicht gestartet werden', 'error');
-          return;
-        }
-        await refreshActiveLessonSessions();
-        // Direkt in TABLET-Play der Stunde, erste Folie (Entry Ticket startet über den E-Button)
-        navigate(
-          presentationPresentUrl(lessonPath, groupId, 'edited', undefined, 'run'),
-        );
-      } catch {
-        showSnackbar('Stunde konnte nicht gestartet werden', 'error');
-      } finally {
-        setLessonRunBusyKey(null);
-      }
+      navigate(presentationPresentUrl(lessonPath, groupId, 'edited', undefined, 'run'));
     },
-    [navigate, refreshActiveLessonSessions],
-  );
-
-  const endLessonRun = useCallback(
-    async (groupId: string, lessonPath: string, sessionId?: string) => {
-      const key = `${groupId}::${lessonPath}`;
-      setLessonRunBusyKey(key);
-      const loginCode = localStorage.getItem('loginCode') || '';
-      try {
-        const res = await fetch('/api/teacher-schedule/lessons/end', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-login-code': loginCode,
-          },
-          body: JSON.stringify({ groupId, lessonPath, sessionId }),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          showSnackbar(err?.error || 'Stunde konnte nicht beendet werden', 'error');
-          return;
-        }
-        await refreshActiveLessonSessions();
-        setPlayedLessonKeys(markLessonPlayed(groupId, lessonPath));
-      } catch {
-        showSnackbar('Stunde konnte nicht beendet werden', 'error');
-      } finally {
-        setLessonRunBusyKey(null);
-      }
-    },
-    [refreshActiveLessonSessions],
+    [navigate],
   );
 
   // /teacher/stunde?groupId=&lessonPath=&lessonName= — Stunde im gleichen Tab (Esc → Dashboard)
@@ -10609,8 +10551,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           : null;
       const isStundeRunning = Boolean(activeStundeSession);
       const wasStundePlayed = playedLessonKeySet.has(playedLessonKey(groupId, stundeLessonPath));
-      const stundeRunBusy =
-        isStundeFolder && lessonRunBusyKey === `${groupId}::${stundeLessonPath}`;
 
       // Bestimme Icon und Farbe basierend auf dem Screenshot
       let icon = '📁';
@@ -10912,52 +10852,33 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               >
                 <Tooltip
                   title={
-                    isStundeRunning
-                      ? 'Stunde beenden'
-                      : wasStundePlayed
-                        ? 'Stunde starten (bereits gehalten)'
-                        : 'Stunde starten (Tablet-Play, erste Folie)'
+                    wasStundePlayed
+                      ? 'Play (bereits gehalten)'
+                      : 'Play (Tablet, erste Folie)'
                   }
                 >
                   <span>
                     <IconButton
                       size="small"
-                      disabled={stundeRunBusy}
-                      aria-label={isStundeRunning ? 'Stunde beenden' : 'Stunde starten'}
-                      onClick={() => {
-                        if (isStundeRunning) {
-                          void endLessonRun(groupId, stundeLessonPath, activeStundeSession?.id);
-                        } else {
-                          void startLessonRun(groupId, stundeLessonPath);
-                        }
-                      }}
+                      aria-label="Play"
+                      onClick={() => startLessonRun(groupId, stundeLessonPath)}
                       sx={{
                         p: 0,
                         minWidth: 18,
                         width: 18,
                         height: 18,
                         borderRadius: '50%',
-                        bgcolor: isStundeRunning ? '#c62828' : '#2e7d32',
+                        bgcolor: '#2e7d32',
                         color: '#fff',
-                        boxShadow: isStundeRunning
-                          ? '0 0 0 2px rgba(198, 40, 40, 0.25)'
-                          : wasStundePlayed
-                            ? '0 0 0 2px #f9a825'
-                            : '0 0 0 1px rgba(46, 125, 50, 0.2)',
+                        boxShadow: wasStundePlayed
+                          ? '0 0 0 2px #f9a825'
+                          : '0 0 0 1px rgba(46, 125, 50, 0.2)',
                         '&:hover': {
-                          bgcolor: isStundeRunning ? '#b71c1c' : '#1b5e20',
-                        },
-                        '&.Mui-disabled': {
-                          bgcolor: isStundeRunning ? '#ef9a9a' : '#a5d6a7',
-                          color: '#fff',
+                          bgcolor: '#1b5e20',
                         },
                       }}
                     >
-                      {isStundeRunning ? (
-                        <StopIcon sx={{ fontSize: 12 }} />
-                      ) : (
-                        <PlayIcon sx={{ fontSize: 12 }} />
-                      )}
+                      <PlayIcon sx={{ fontSize: 12 }} />
                     </IconButton>
                   </span>
                 </Tooltip>
