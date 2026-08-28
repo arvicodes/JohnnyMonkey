@@ -6,7 +6,8 @@
 #   sync-backups/global/<stamp>/  ← Kopie vom Schul-Stand (auch auf dem Server unter /app/sync-backups/)
 #
 # Danach: Material mergen (neueres mtime gewinnt, bei Gleichstand Schule),
-# DB: neueres mtime (bei Gleichstand Schule), dann zurück auf beide Seiten.
+# DB: neueres mtime (bei Gleichstand Schule) plus passender Login-Pepper,
+# dann denselben Stand auf beide Seiten. Pepper nie nach GitHub.
 #
 # Voraussetzung: VPN/LAN, .env.school mit Portainer-Passwort
 # Usage:
@@ -96,12 +97,14 @@ log "==> [$STAMP] Lokale Kopie (Mac)"
 mkdir -p "$LOCAL_BAK"
 [[ -f server/prisma/dev.db ]] || die "server/prisma/dev.db fehlt"
 cp -a server/prisma/dev.db "$LOCAL_BAK/dev.db"
-# Komprimierte Material-Kopie (spart Platz)
-tar -czf "$LOCAL_BAK/materials.tar.gz" -C J-M-Reihen Mathe Lehrer-Schnellnotizen Informatik 2>/dev/null \
-  || tar -czf "$LOCAL_BAK/materials.tar.gz" -C J-M-Reihen Mathe Lehrer-Schnellnotizen
+if [[ -f server/prisma/.login-code-pepper ]]; then
+  cp -a server/prisma/.login-code-pepper "$LOCAL_BAK/.login-code-pepper"
+elif [[ -f server/data/.login-code-pepper ]]; then
+  cp -a server/data/.login-code-pepper "$LOCAL_BAK/.login-code-pepper"
+fi
 printf '%s\n' "$STAMP" >"$LOCAL_BAK/STAMP.txt"
 echo "local_db $(shasum -a 256 "$LOCAL_BAK/dev.db" | awk '{print $1}')" >"$LOCAL_BAK/META.txt"
-log "Lokal gesichert: $LOCAL_BAK ($(du -sh "$LOCAL_BAK" | awk '{print $1}'))"
+log "Lokal gesichert: $LOCAL_BAK (DB+Pepper; Folien bleiben in J-M-Reihen)"
 
 log "==> Portainer Login"
 JWT="$(
@@ -116,7 +119,7 @@ export PORTAINER_URL ENDPOINT_ID JWT APP_NAME TUNNEL_NAME IMAGE DB_VOLUME \
   REPO RELEASE_ID TOKEN STAMP LOCAL_BAK GLOBAL_BAK PULL_DIR MERGE_JM ROOT
 
 python3 <<'PY'
-import json, os, sys, time, urllib.request, ssl, base64, shutil, subprocess, hashlib
+import json, os, sys, time, urllib.request, ssl, base64, shutil, subprocess, hashlib, sqlite3
 from pathlib import Path
 
 ctx = ssl._create_unverified_context()
@@ -212,10 +215,9 @@ STAMP={stamp}
 BAK=/app/sync-backups/$STAMP
 mkdir -p "$BAK"
 cp -a /app/server/data/dev.db "$BAK/dev.db" 2>/dev/null || cp -a /app/server/prisma/dev.db "$BAK/dev.db" || true
+if [ -f /app/server/data/.login-code-pepper ]; then cp -a /app/server/data/.login-code-pepper "$BAK/.login-code-pepper"; fi
+if [ -f /app/server/prisma/.login-code-pepper ] && [ ! -f "$BAK/.login-code-pepper" ]; then cp -a /app/server/prisma/.login-code-pepper "$BAK/.login-code-pepper"; fi
 sha256sum "$BAK/dev.db" > "$BAK/META.txt" || true
-# materials snapshot on school
-tar -czf "$BAK/materials.tar.gz" -C /app/J-M-Reihen Mathe Lehrer-Schnellnotizen Informatik 2>/dev/null || \\
-  tar -czf "$BAK/materials.tar.gz" -C /app/J-M-Reihen Mathe Lehrer-Schnellnotizen 2>/dev/null || true
 ls -lh "$BAK"
 # pull package for Mac
 rm -rf /tmp/jm-sync-stage
@@ -266,13 +268,50 @@ echo SCHOOL_BACKUP_OK
 """
 print(run(app["Id"], school_script)[:4000])
 
+def normalize_pepper(raw: str) -> str:
+  hexv = "".join((raw or "").split())
+  if len(hexv) == 64 and all(c in "0123456789abcdefABCDEF" for c in hexv):
+    return hexv.lower()
+  return ""
+
+def read_local_pepper() -> str:
+  for p in (root / "server/prisma/.login-code-pepper", root / "server/data/.login-code-pepper"):
+    if p.is_file():
+      return normalize_pepper(p.read_text(encoding="utf-8"))
+  return ""
+
+def db_is_hashed(path: Path) -> bool:
+  try:
+    con = sqlite3.connect(str(path))
+    row = con.execute("SELECT 1 FROM User WHERE loginCode LIKE 'hm1:%' LIMIT 1").fetchone()
+    con.close()
+    return bool(row)
+  except Exception:
+    return False
+
+def write_pepper_file(path: Path, pepper: str) -> None:
+  path.parent.mkdir(parents=True, exist_ok=True)
+  path.write_text(pepper + "\n", encoding="utf-8")
+  try:
+    os.chmod(path, 0o600)
+  except Exception:
+    pass
+
+school_pepper = normalize_pepper(
+  run(
+    app["Id"],
+    "cat /app/server/data/.login-code-pepper 2>/dev/null || cat /app/server/prisma/.login-code-pepper 2>/dev/null || true",
+  )
+)
+print("Pepper Schule:", "vorhanden" if school_pepper else "fehlt")
+
 print("==> Pull-Asset von GitHub laden")
 # get asset id + signed URL
 import urllib.request as ur
 
 def gh(url, accept="application/vnd.github+json"):
   r = ur.Request(url, headers={"Authorization": f"Bearer {token}", "Accept": accept, "User-Agent": "jm-sync"})
-  with ur.urlopen(r, timeout=120) as resp:
+  with ur.urlopen(r, timeout=120, context=ctx) as resp:
     return resp.read(), dict(resp.headers)
 
 raw, _ = gh(f"https://api.github.com/repos/{repo}/releases/tags/deploy-prebuilt")
@@ -308,17 +347,18 @@ subprocess.check_call(
 )
 print("pull size", pull_tar.stat().st_size)
 subprocess.check_call(["tar", "-xzf", str(pull_tar), "-C", str(pull_dir)])
+try:
+  pull_tar.unlink()
+except Exception:
+  pass
 
-# global backup on Mac = school snapshot (komprimiert)
+# global backup on Mac = school snapshot (DB + Pepper; Folien liegen auf dem Schulserver)
 shutil.copy2(pull_dir / "dev.db", global_bak / "dev.db")
-mat_tar = pull_dir / "materials-from-pull.tar.gz"
-if (pull_dir / "J-M-Reihen").exists():
-  subprocess.check_call(
-    ["tar", "-czf", str(global_bak / "materials.tar.gz"), "-C", str(pull_dir), "J-M-Reihen"]
-  )
 (global_bak / "STAMP.txt").write_text(stamp + "\n")
 school_sha = hashlib.sha256((global_bak / "dev.db").read_bytes()).hexdigest()
 (global_bak / "META.txt").write_text(f"school_db {school_sha}\n")
+if school_pepper:
+  write_pepper_file(global_bak / ".login-code-pepper", school_pepper)
 print("Globale Kopie (Mac):", global_bak)
 
 print("==> Merge Material (neueres gewinnt)")
@@ -345,15 +385,32 @@ subprocess.check_call(
   [sys.executable, str(root / "scripts/merge-school-materials.py"), str(tmp_local), str(tmp_school), str(merge_jm)]
 )
 
-print("==> DB wählen (neueres mtime, Gleichstand → Schule)")
+print("==> DB wählen (neueres mtime, Gleichstand → Schule) + passender Pepper")
 local_db = root / "server/prisma/dev.db"
 school_db = pull_dir / "dev.db"
 local_mt = local_db.stat().st_mtime
 school_mt = school_db.stat().st_mtime
 chosen = school_db if school_mt >= local_mt else local_db
-print(f"DB pick: {'school' if chosen==school_db else 'local'} (local_mt={local_mt}, school_mt={school_mt})")
+from_school = chosen == school_db
+print(f"DB pick: {'school' if from_school else 'local'} (local_mt={local_mt}, school_mt={school_mt})")
 merged_db = Path(f"/tmp/jm-sync-merged-db-{stamp}.db")
 shutil.copy2(chosen, merged_db)
+
+local_pepper = read_local_pepper()
+print("Pepper Laptop:", "vorhanden" if local_pepper else "fehlt")
+hashed = db_is_hashed(chosen)
+if from_school:
+  if hashed and not school_pepper:
+    print("ERROR: Schul-DB hat gehashte Login-Codes, aber keinen Pepper.", file=sys.stderr)
+    sys.exit(1)
+  pepper = school_pepper or local_pepper or os.urandom(32).hex()
+else:
+  if hashed and not local_pepper:
+    print("ERROR: Laptop-DB hat gehashte Login-Codes, aber keinen Pepper.", file=sys.stderr)
+    sys.exit(1)
+  pepper = local_pepper or school_pepper or os.urandom(32).hex()
+write_pepper_file(root / "server/prisma/.login-code-pepper", pepper)
+print("Pepper für beide Seiten:", "gesetzt")
 
 print("==> Merged Material → lokal schreiben")
 for part in ("Mathe", "Lehrer-Schnellnotizen", "Informatik"):
@@ -371,13 +428,14 @@ print("Lokal aktualisiert.")
 
 # Save chosen paths for bash push phase
 Path("/tmp/jm-sync-env.sh").write_text(
-  f"export JM_SYNC_MERGED_DB={merged_db}\nexport JM_SYNC_STAMP={stamp}\n"
+  f"export JM_SYNC_MERGED_DB={merged_db}\nexport JM_SYNC_STAMP={stamp}\nexport LOGIN_PEPPER_HEX={pepper}\n"
 )
 print("PY_OK")
 PY
 
 # shellcheck disable=SC1091
 source /tmp/jm-sync-env.sh
+[[ -n "${LOGIN_PEPPER_HEX:-}" ]] || die "Login-Pepper fehlt nach dem Abgleich."
 
 prune_backups local
 prune_backups global
@@ -426,7 +484,7 @@ MAT_URL="$(
 DB_PUBLIC="https://github.com/$REPO/releases/download/deploy-prebuilt/backup_latest.db"
 DBSHA="$(shasum -a 256 backup_latest.db | awk '{print $1}')"
 
-export JWT MAT_URL DB_PUBLIC DBSHA STAMP
+export JWT MAT_URL DB_PUBLIC DBSHA STAMP LOGIN_PEPPER_HEX
 # re-login JWT may still be valid; refresh
 JWT="$(
   curl -sk -X POST "$PORTAINER_URL/api/auth" \
@@ -530,6 +588,17 @@ if tunnel:
   docker("POST", f"/containers/{tunnel['Id']}/stop?t=10")
 time.sleep(2)
 db_url = os.environ["DB_PUBLIC"]
+pepper = (os.environ.get("LOGIN_PEPPER_HEX") or "").strip()
+helper_cmd = [
+  "set -e",
+  f"wget -q -O /data/dev.db {json.dumps(db_url)} || curl -fsSL -L -o /data/dev.db {json.dumps(db_url)}",
+  "sha256sum /data/dev.db",
+]
+if pepper:
+  helper_cmd.append(
+    'if [ -n "$LOGIN_PEPPER_HEX" ]; then printf "%s" "$LOGIN_PEPPER_HEX" > /data/.login-code-pepper; chmod 600 /data/.login-code-pepper; echo PEPPER_OK; fi'
+  )
+helper_cmd.append("echo DB_DONE")
 try:
   docker("DELETE", "/containers/jm-db-helper?force=1")
 except Exception:
@@ -537,9 +606,13 @@ except Exception:
 created, _, _ = docker("POST", "/containers/create?name=jm-db-helper", {
   "Image": os.environ["IMAGE"],
   "Entrypoint": ["/bin/sh", "-c"],
-  "Cmd": [f"set -e; wget -q -O /data/dev.db {json.dumps(db_url)} || curl -fsSL -L -o /data/dev.db {json.dumps(db_url)}; sha256sum /data/dev.db; echo DB_DONE"],
+  "Env": [f"LOGIN_PEPPER_HEX={pepper}"] if pepper else [],
+  "Cmd": [" && ".join(helper_cmd)],
   "HostConfig": {"Binds": [f"{os.environ['DB_VOLUME']}:/data"], "AutoRemove": True},
 })
+if not created or not created.get("Id"):
+  print("create helper failed", created, file=sys.stderr)
+  sys.exit(1)
 docker("POST", f"/containers/{created['Id']}/start")
 for _ in range(60):
   time.sleep(1)
@@ -555,7 +628,13 @@ if tunnel:
   docker("POST", f"/containers/{tunnel['Id']}/start")
 time.sleep(6)
 app = find(os.environ["APP_NAME"])
-verify = run(app["Id"], "sha256sum /app/server/data/dev.db; echo SYNC_VERIFY") if app else ""
+verify = ""
+if app:
+  run(
+    app["Id"],
+    "cp -a /app/server/data/dev.db /app/server/prisma/dev.db && if [ -f /app/server/data/.login-code-pepper ]; then cp -a /app/server/data/.login-code-pepper /app/server/prisma/.login-code-pepper; fi && echo DB_SYNCED",
+  )
+  verify = run(app["Id"], "sha256sum /app/server/data/dev.db; echo SYNC_VERIFY")
 print(verify)
 want = os.environ.get("DBSHA", "")
 if want and want not in verify:
@@ -564,6 +643,7 @@ print("SYNC_PUSH_OK")
 PY
 
 log "==> Sync fertig [$STAMP]"
+log "Laptop und Schule haben denselben Stand (DB + Folien + Login-Pepper)."
 log "Lokale Kopie:  sync-backups/local/$STAMP"
 log "Globale Kopie: sync-backups/global/$STAMP  (+ auf Server /app/sync-backups/$STAMP)"
 log "Hard-Reload im Schulnetz: http://192.168.8.1/"

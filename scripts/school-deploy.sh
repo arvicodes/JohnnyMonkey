@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # JohnnyMonkey → Schulserver (Portainer) Hot-Deploy
-# Baut App, lädt App+DB(+Material) nach GitHub Release deploy-prebuilt,
-# spielt sie per Portainer API in johnnymonkey-app ein.
+# Gleicht zuerst Daten ab (Mac ↔ Schule), baut dann die App und spielt sie ein.
 #
 # Voraussetzung: VPN/LAN → https://192.168.8.1:9443 erreichbar
 # Credentials: .env.school im Repo-Root (siehe .env.school.example)
 #
 # Usage:
-#   ./scripts/school-deploy.sh              # app + db + materials
-#   ./scripts/school-deploy.sh --skip-mat    # nur app + db
+#   ./scripts/school-deploy.sh              # Sync, dann App + DB (+ Pepper)
+#   ./scripts/school-deploy.sh --skip-sync  # nur Code+DB, Schul-DB wird überschrieben
+#   ./scripts/school-deploy.sh --skip-mat    # nach Sync keine zweite Material-Runde
 #   ./scripts/school-deploy.sh --check       # nur Erreichbarkeit
 
 set -euo pipefail
@@ -17,13 +17,15 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 SKIP_MAT=0
+SKIP_SYNC=0
 CHECK_ONLY=0
 for arg in "$@"; do
   case "$arg" in
     --skip-mat) SKIP_MAT=1 ;;
+    --skip-sync) SKIP_SYNC=1 ;;
     --check) CHECK_ONLY=1 ;;
     -h|--help)
-      sed -n '1,20p' "$0"
+      sed -n '1,16p' "$0"
       exit 0
       ;;
   esac
@@ -72,6 +74,15 @@ TOKEN="$(
     | awk -F= '/^password=/{print $2; exit}'
 )"
 [[ -n "$TOKEN" ]] || die "Kein GitHub-Token (git credential fill)."
+
+if [[ "$SKIP_SYNC" != 1 ]]; then
+  log "==> Zuerst Datenabgleich Mac ↔ Schule (DB, Folien, Pepper)"
+  "$ROOT/scripts/school-sync.sh"
+  SKIP_MAT=1
+  log "Material ist per Sync auf beiden Seiten — Deploy lädt App + DB."
+else
+  log "Datenabgleich übersprungen (--skip-sync). Schul-DB wird durch die Laptop-DB ersetzt."
+fi
 
 log "==> Build Server + Client"
 (cd server && npx tsc --pretty false)
