@@ -365,25 +365,19 @@ print("==> Merge Material (neueres gewinnt)")
 local_jm = root / "J-M-Reihen"
 school_jm = pull_dir / "J-M-Reihen"
 merge_jm.parent.mkdir(parents=True, exist_ok=True)
-# merge only Mathe + Lehrer-Schnellnotizen + Informatik into those subtrees
-# Work on full trees under temp then copy parts back
-tmp_local = Path(f"/tmp/jm-sync-local-jm-{stamp}")
-tmp_school = Path(f"/tmp/jm-sync-school-jm-{stamp}")
-if tmp_local.exists():
-  shutil.rmtree(tmp_local)
-if tmp_school.exists():
-  shutil.rmtree(tmp_school)
-tmp_local.mkdir(parents=True)
-tmp_school.mkdir(parents=True)
+if merge_jm.exists():
+  shutil.rmtree(merge_jm)
+merge_jm.mkdir(parents=True)
 for part in ("Mathe", "Lehrer-Schnellnotizen", "Informatik"):
-  if (local_jm / part).exists():
-    shutil.copytree(local_jm / part, tmp_local / part, dirs_exist_ok=True)
-  if (school_jm / part).exists():
-    shutil.copytree(school_jm / part, tmp_school / part, dirs_exist_ok=True)
-
-subprocess.check_call(
-  [sys.executable, str(root / "scripts/merge-school-materials.py"), str(tmp_local), str(tmp_school), str(merge_jm)]
-)
+  subprocess.check_call(
+    [
+      sys.executable,
+      str(root / "scripts/merge-school-materials.py"),
+      str(local_jm / part),
+      str(school_jm / part),
+      str(merge_jm / part),
+    ]
+  )
 
 print("==> DB wählen (neueres mtime, Gleichstand → Schule) + passender Pepper")
 local_db = root / "server/prisma/dev.db"
@@ -425,6 +419,8 @@ if chosen.resolve() != local_db.resolve():
   shutil.copy2(chosen, local_db)
 shutil.copy2(merged_db, root / "backup_latest.db")
 print("Lokal aktualisiert.")
+shutil.rmtree(pull_dir, ignore_errors=True)
+shutil.rmtree(merge_jm.parent, ignore_errors=True)
 
 # Save chosen paths for bash push phase
 Path("/tmp/jm-sync-env.sh").write_text(
@@ -495,7 +491,7 @@ JWT="$(
 export JWT
 
 python3 <<'PY'
-import json, os, sys, time, urllib.request, ssl, base64
+import json, os, sys, time, urllib.request, urllib.error, ssl, base64
 
 ctx = ssl._create_unverified_context()
 base = os.environ["PORTAINER_URL"].rstrip("/")
@@ -526,8 +522,19 @@ def req(method, path, data=None, headers=None, raw=False):
 _, csrf, _ = req("GET", "/api/stacks/15")
 H = {"X-CSRF-Token": csrf} if csrf else {}
 
-def docker(method, path, data=None, raw=False):
-  return req(method, f"/api/endpoints/{ep}/docker{path}", data=data, headers=H, raw=raw)
+def docker(method, path, data=None, raw=False, ignore_http=()):
+  try:
+    return req(method, f"/api/endpoints/{ep}/docker{path}", data=data, headers=H, raw=raw)
+  except urllib.error.HTTPError as e:
+    if e.code in ignore_http:
+      return None, None, e.code
+    raise
+
+def docker_stop(container_id, timeout=15):
+  docker("POST", f"/containers/{container_id}/stop", {"t": timeout}, ignore_http=(304, 400, 404, 409))
+
+def docker_start(container_id):
+  docker("POST", f"/containers/{container_id}/start", {}, ignore_http=(304, 400, 404, 409))
 
 def containers():
   data, _, _ = docker("GET", "/containers/json?all=true")
@@ -583,9 +590,9 @@ print(run(app["Id"], " && ".join([
 ])))
 
 # DB via helper
-docker("POST", f"/containers/{app['Id']}/stop?t=15")
+docker_stop(app["Id"], 15)
 if tunnel:
-  docker("POST", f"/containers/{tunnel['Id']}/stop?t=10")
+  docker_stop(tunnel["Id"], 10)
 time.sleep(2)
 db_url = os.environ["DB_PUBLIC"]
 pepper = (os.environ.get("LOGIN_PEPPER_HEX") or "").strip()
@@ -617,15 +624,15 @@ docker("POST", f"/containers/{created['Id']}/start")
 for _ in range(60):
   time.sleep(1)
   try:
-    docker("GET", f"/containers/{created['Id']}/json")
+    docker("GET", f"/containers/{created['Id']}/json", ignore_http=(404,))
   except Exception:
     break
 app = find(os.environ["APP_NAME"])
 tunnel = find(os.environ["TUNNEL_NAME"])
 if app:
-  docker("POST", f"/containers/{app['Id']}/start")
+  docker_start(app["Id"])
 if tunnel:
-  docker("POST", f"/containers/{tunnel['Id']}/start")
+  docker_start(tunnel["Id"])
 time.sleep(6)
 app = find(os.environ["APP_NAME"])
 verify = ""
