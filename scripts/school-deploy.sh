@@ -225,7 +225,7 @@ def req(method, path, data=None, headers=None, raw=False):
     body = json.dumps(data).encode()
     h["Content-Type"] = "application/json"
   r = urllib.request.Request(base + path, data=body, headers=h, method=method)
-  with urllib.request.urlopen(r, context=ctx, timeout=120) as resp:
+  with urllib.request.urlopen(r, context=ctx, timeout=300) as resp:
     rawb = resp.read()
     csrf = resp.headers.get("X-CSRF-Token")
     if raw:
@@ -284,24 +284,38 @@ def decode_mux(buf: bytes) -> str:
   return out.decode("utf-8", errors="replace")
 
 def run(container_id, shell):
-  ex, _, _ = docker(
-    "POST",
-    f"/containers/{container_id}/exec",
-    {
-      "AttachStdout": True,
-      "AttachStderr": True,
-      "Cmd": ["/bin/sh", "-c", shell],
-    },
-  )
-  if not ex or not ex.get("Id"):
-    return f"NO_EXEC {ex}"
-  rawb, _, _ = docker(
-    "POST",
-    f"/exec/{ex['Id']}/start",
-    {"Detach": False, "Tty": False},
-    raw=True,
-  )
-  return decode_mux(rawb or b"")
+  docker_start(container_id)
+  last_err = None
+  for attempt in range(5):
+    try:
+      ex, _, _ = docker(
+        "POST",
+        f"/containers/{container_id}/exec",
+        {
+          "AttachStdout": True,
+          "AttachStderr": True,
+          "Cmd": ["/bin/sh", "-c", shell],
+        },
+      )
+      if not ex or not ex.get("Id"):
+        last_err = f"NO_EXEC {ex}"
+        time.sleep(2)
+        docker_start(container_id)
+        continue
+      rawb, _, _ = docker(
+        "POST",
+        f"/exec/{ex['Id']}/start",
+        {"Detach": False, "Tty": False},
+        raw=True,
+      )
+      return decode_mux(rawb or b"")
+    except urllib.error.HTTPError as e:
+      last_err = e
+      if e.code not in (409, 404, 500) or attempt == 4:
+        raise
+      time.sleep(2)
+      docker_start(container_id)
+  return f"NO_EXEC {last_err}"
 
 app = find(os.environ["APP_NAME"])
 tunnel = find(os.environ["TUNNEL_NAME"])
