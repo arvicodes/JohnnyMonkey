@@ -3,6 +3,7 @@ var _a, _b;
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const client_1 = require("@prisma/client");
+const loginCodeCrypto_1 = require("../utils/loginCodeCrypto");
 const router = (0, express_1.Router)();
 // Debug: Log environment variables
 console.log('🔍 Environment check:');
@@ -25,7 +26,7 @@ catch (error) {
 router.post('/login', async (req, res) => {
     var _a, _b;
     let { loginCode } = req.body;
-    console.log('🔐 Login attempt with code (raw):', loginCode);
+    console.log('🔐 Login attempt');
     console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
     console.log('DATABASE_URL length:', ((_a = process.env.DATABASE_URL) === null || _a === void 0 ? void 0 : _a.length) || 0);
     try {
@@ -33,60 +34,25 @@ router.post('/login', async (req, res) => {
             console.log('❌ No login code provided');
             return res.status(400).json({ message: 'Login-Code ist erforderlich' });
         }
-        // Trim whitespace und normalisiere
+        // Trim whitespace
         loginCode = String(loginCode).trim();
-        console.log('🔐 Login code (trimmed):', loginCode);
         console.log('🔐 Login code length:', loginCode.length);
-        // Versuche zuerst exakte Übereinstimmung
-        console.log('🔍 Searching for user with loginCode (exact):', loginCode);
-        let user = await prisma.user.findUnique({
-            where: { loginCode: loginCode },
-            include: {
-                learningGroups: {
-                    select: {
-                        id: true,
-                        name: true
-                    }
-                },
-            },
-        });
-        // Falls nicht gefunden, versuche case-insensitive Suche
-        if (!user) {
-            console.log('⚠️ Exact match not found, trying case-insensitive search...');
-            // Suche alle Benutzer und vergleiche case-insensitive
-            const allUsers = await prisma.user.findMany({
-                select: {
-                    id: true,
-                    name: true,
-                    loginCode: true,
-                    role: true
-                }
-            });
-            const matchedUser = allUsers.find(u => u.loginCode && u.loginCode.toLowerCase() === loginCode.toLowerCase());
-            if (matchedUser) {
-                console.log('✅ Found user with case-insensitive match:', matchedUser.loginCode, '->', matchedUser.name);
-                // Lade den vollständigen Benutzer mit learningGroups
-                user = await prisma.user.findUnique({
-                    where: { id: matchedUser.id },
-                    include: {
-                        learningGroups: {
-                            select: {
-                                id: true,
-                                name: true
-                            }
+        const userId = await (0, loginCodeCrypto_1.findUserIdByLoginCode)(prisma, loginCode);
+        const user = userId
+            ? await prisma.user.findUnique({
+                where: { id: userId },
+                include: {
+                    learningGroups: {
+                        select: {
+                            id: true,
+                            name: true,
                         },
                     },
-                });
-            }
-        }
+                },
+            })
+            : null;
         if (!user) {
-            console.log('❌ Invalid login code:', loginCode);
-            // Debug: Zeige alle verfügbaren Login-Codes (nur erste 10)
-            const sampleUsers = await prisma.user.findMany({
-                select: { loginCode: true, name: true },
-                take: 10
-            });
-            console.log('📋 Sample login codes in database:', sampleUsers.map(u => `${u.loginCode} (${u.name})`));
+            console.log('❌ Invalid login code');
             return res.status(401).json({ message: 'Ungültiger Login-Code' });
         }
         console.log('✅ User found:', user.id, user.name, user.role);
@@ -107,7 +73,7 @@ router.post('/login', async (req, res) => {
                 id: user.id,
                 name: user.name,
                 role: user.role,
-                loginCode: user.loginCode,
+                loginCode,
                 groups: groups
             }
         });

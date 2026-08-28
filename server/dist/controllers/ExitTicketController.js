@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ExitTicketController = exports.EXIT_TICKET_LEGACY_PATH = void 0;
 const client_1 = require("@prisma/client");
 const EntryTicketController_1 = require("./EntryTicketController");
+const loginCodeCrypto_1 = require("../utils/loginCodeCrypto");
 const prisma = new client_1.PrismaClient();
 /** Global pro Lehrkraft (Exit-Ticket-Seite ohne Gruppenkontext) */
 exports.EXIT_TICKET_LEGACY_PATH = '__exit_ticket_active__';
@@ -24,20 +25,10 @@ const parsePayload = (raw) => {
     }
 };
 const getUserByLoginCode = async (req) => {
-    var _a;
     const raw = req.headers['x-login-code'];
-    const loginCode = typeof raw === 'string' ? raw.trim() : '';
-    if (!loginCode)
+    if (!String(raw !== null && raw !== void 0 ? raw : '').trim())
         return null;
-    let user = await prisma.user.findUnique({
-        where: { loginCode },
-        select: { id: true, name: true, role: true },
-    });
-    if (!user) {
-        const rows = await prisma.$queryRaw(client_1.Prisma.sql `SELECT id, name, role FROM User WHERE lower(loginCode) = lower(${loginCode}) LIMIT 1`);
-        user = (_a = rows[0]) !== null && _a !== void 0 ? _a : null;
-    }
-    return user;
+    return (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, raw);
 };
 /**
  * Nur gruppenspezifische Freigaben (Stunde mit learningGroupId). Kein globales Legacy

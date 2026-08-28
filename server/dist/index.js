@@ -51,6 +51,7 @@ const path_1 = __importDefault(require("path"));
 const autoLessonScheduler_1 = require("./services/autoLessonScheduler");
 const ensureWochenaufgabenSchema_1 = require("./utils/ensureWochenaufgabenSchema");
 const teacherScratchPadStore_1 = require("./utils/teacherScratchPadStore");
+const loginCodeCrypto_1 = require("./utils/loginCodeCrypto");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const prisma = new client_1.PrismaClient();
@@ -148,8 +149,10 @@ app.use((req, res, next) => {
         return redirectToSchoolHttps(req, res);
     }
     // Sophos: intern HTTP, Host oft :44443 oder X-Forwarded-Proto: https.
-    if (hostPort === '44443' || forwarded === 'https' || req.secure)
+    if (hostPort === '44443' || forwarded === 'https' || req.secure) {
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         return next();
+    }
     if (hostname in SCHOOL_HTTPS_BY_HOST) {
         return redirectToSchoolHttps(req, res);
     }
@@ -157,6 +160,11 @@ app.use((req, res, next) => {
 });
 app.use(express_1.default.json({ limit: '100mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '100mb' }));
+app.use((_req, res, next) => {
+    const originalJson = res.json.bind(res);
+    res.json = ((body) => originalJson((0, loginCodeCrypto_1.redactHashedLoginCodes)(body)));
+    next();
+});
 // Monitoring middleware (must be first)
 app.use(monitoring_1.default.requestMonitor());
 // API Routes - ALWAYS before static middleware
@@ -313,6 +321,7 @@ async function startServer() {
         console.log('🗄️ DATABASE_URL:', process.env.DATABASE_URL || '(from schema)');
         await (0, ensureWochenaufgabenSchema_1.ensureWochenaufgabenSchema)(prisma);
         console.log('✅ Wochenaufgaben-Schema bereit');
+        await (0, loginCodeCrypto_1.migrateAllLoginCodes)(prisma);
         try {
             const roots = (0, teacherScratchPadStore_1.ensureScratchPadRoots)();
             console.log('✅ Notizen-Ordner bereit:', roots.liveRoot);

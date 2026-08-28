@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.syncLessonFolderFileShares = exports.batchCheckFileShares = exports.checkFileShare = exports.getSharedFilesForGroup = exports.toggleFileShare = void 0;
 const client_1 = require("@prisma/client");
 const lessonFolderShareSync_1 = require("../services/lessonFolderShareSync");
+const loginCodeCrypto_1 = require("../utils/loginCodeCrypto");
 const prisma = new client_1.PrismaClient();
 const normalizeFilePath = (p) => (p || '').replace(/\\/g, '/').trim();
 // Toggle file share for a learning group
@@ -125,10 +126,7 @@ const syncLessonFolderFileShares = async (req, res) => {
         const loginCode = typeof req.headers['x-login-code'] === 'string' ? req.headers['x-login-code'].trim() : '';
         if (!loginCode)
             return res.status(401).json({ error: 'Nicht autorisiert' });
-        const user = await prisma.user.findUnique({
-            where: { loginCode },
-            select: { id: true, role: true },
-        });
+        const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
         if (!user || user.role !== 'TEACHER') {
             return res.status(403).json({ error: 'Nur Lehrkräfte' });
         }

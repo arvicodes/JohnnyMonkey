@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MessageController = void 0;
 const client_1 = require("@prisma/client");
+const loginCodeCrypto_1 = require("../utils/loginCodeCrypto");
 const prisma = new client_1.PrismaClient();
 class MessageController {
     /**
@@ -14,10 +15,7 @@ class MessageController {
             if (!loginCode) {
                 return res.status(401).json({ error: 'Nicht angemeldet' });
             }
-            const user = await prisma.user.findUnique({
-                where: { loginCode },
-                select: { id: true, role: true }
-            });
+            const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
             if (!user || user.role !== 'TEACHER') {
                 return res.status(403).json({ error: 'Nur Lehrer können Nachrichten senden' });
             }
@@ -75,13 +73,10 @@ class MessageController {
                 console.error('❌ Kein loginCode im Header');
                 return res.status(401).json({ error: 'Nicht angemeldet' });
             }
-            console.log('🔑 LoginCode:', loginCode);
-            const user = await prisma.user.findUnique({
-                where: { loginCode },
-                select: { id: true, role: true }
-            });
+            console.log('🔑 Login geprüft');
+            const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
             if (!user) {
-                console.error('❌ Benutzer nicht gefunden für loginCode:', loginCode);
+                console.error('❌ Benutzer nicht gefunden');
                 return res.status(401).json({ error: 'Benutzer nicht gefunden' });
             }
             if (user.role !== 'TEACHER') {
@@ -134,10 +129,7 @@ class MessageController {
             if (!loginCode) {
                 return res.status(401).json({ error: 'Nicht angemeldet' });
             }
-            const user = await prisma.user.findUnique({
-                where: { loginCode },
-                select: { id: true, role: true }
-            });
+            const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
             if (!user || user.role !== 'STUDENT') {
                 return res.status(403).json({ error: 'Nur Schüler können ihre Nachrichten abrufen' });
             }
@@ -176,10 +168,7 @@ class MessageController {
             if (!loginCode) {
                 return res.status(401).json({ error: 'Nicht angemeldet' });
             }
-            const user = await prisma.user.findUnique({
-                where: { loginCode },
-                select: { id: true, role: true }
-            });
+            const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
             if (!user || user.role !== 'STUDENT') {
                 return res.status(403).json({ error: 'Nur Schüler können ihre gesendeten Nachrichten abrufen' });
             }
@@ -218,10 +207,7 @@ class MessageController {
             if (!loginCode) {
                 return res.status(401).json({ error: 'Nicht angemeldet' });
             }
-            const user = await prisma.user.findUnique({
-                where: { loginCode },
-                select: { id: true, role: true }
-            });
+            const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
             if (!user || user.role !== 'STUDENT') {
                 return res.status(403).json({ error: 'Nur Schüler können Nachrichten als gelesen markieren' });
             }
@@ -259,10 +245,7 @@ class MessageController {
             if (!loginCode) {
                 return res.status(401).json({ error: 'Nicht angemeldet' });
             }
-            const user = await prisma.user.findUnique({
-                where: { loginCode },
-                select: { id: true, role: true }
-            });
+            const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
             if (!user || user.role !== 'STUDENT') {
                 return res.status(403).json({ error: 'Nur Schüler können ihre Nachrichten abrufen' });
             }
@@ -288,10 +271,7 @@ class MessageController {
             if (!loginCode) {
                 return res.status(401).json({ error: 'Nicht angemeldet' });
             }
-            const user = await prisma.user.findUnique({
-                where: { loginCode },
-                select: { id: true, role: true }
-            });
+            const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
             if (!user || user.role !== 'TEACHER') {
                 return res.status(403).json({ error: 'Nur Lehrer können ihre gesendeten Nachrichten abrufen' });
             }
@@ -326,10 +306,7 @@ class MessageController {
             if (!loginCode) {
                 return res.status(401).json({ error: 'Nicht angemeldet' });
             }
-            const user = await prisma.user.findUnique({
-                where: { loginCode },
-                select: { id: true, role: true }
-            });
+            const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
             if (!user || user.role !== 'TEACHER') {
                 return res.status(403).json({ error: 'Nur Lehrer können Nachrichten löschen' });
             }
@@ -365,10 +342,7 @@ class MessageController {
             if (!loginCode) {
                 return res.status(401).json({ error: 'Nicht angemeldet' });
             }
-            const user = await prisma.user.findUnique({
-                where: { loginCode },
-                select: { id: true, role: true }
-            });
+            const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
             if (!user || user.role !== 'TEACHER') {
                 return res.status(403).json({ error: 'Nur Lehrer können ihre empfangenen Nachrichten abrufen' });
             }
@@ -410,10 +384,7 @@ class MessageController {
             if (!loginCode) {
                 return res.status(401).json({ error: 'Nicht angemeldet' });
             }
-            const user = await prisma.user.findUnique({
-                where: { loginCode },
-                select: { id: true, role: true }
-            });
+            const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
             if (!user || user.role !== 'STUDENT') {
                 return res.status(403).json({ error: 'Nur Schüler können Nachrichten an Lehrer senden' });
             }

@@ -11,6 +11,7 @@ const fs_1 = __importDefault(require("fs"));
 const uuid_1 = require("uuid");
 const auth_1 = require("../middleware/auth");
 const imageToJpeg_1 = require("../utils/imageToJpeg");
+const loginCodeCrypto_1 = require("../utils/loginCodeCrypto");
 const router = (0, express_1.Router)();
 const prisma = new client_1.PrismaClient();
 const AVATAR_DIR = path_1.default.join(__dirname, '../../uploads/avatars');
@@ -308,23 +309,25 @@ const updateStudentCredentials = async (req, res) => {
         if (!existing || existing.role !== 'STUDENT') {
             return res.status(404).json({ error: 'Schüler nicht gefunden' });
         }
-        if (data.loginCode) {
-            const conflict = await prisma.user.findFirst({
-                where: { loginCode: data.loginCode, NOT: { id: req.params.id } },
-                select: { id: true, name: true },
-            });
+        const plainLoginCode = data.loginCode;
+        if (plainLoginCode) {
+            const conflict = await (0, loginCodeCrypto_1.loginCodeTaken)(prisma, plainLoginCode, req.params.id);
             if (conflict) {
                 return res.status(409).json({
-                    error: `Login-Code bereits vergeben (${conflict.name})`,
+                    error: `Login-Code bereits vergeben`,
                 });
             }
+            data.loginCode = (0, loginCodeCrypto_1.toStoredLoginCode)(plainLoginCode);
         }
         const user = await prisma.user.update({
             where: { id: req.params.id },
             data,
             select: userSelect,
         });
-        res.json(withNormalizedAvatar(user));
+        res.json(withNormalizedAvatar({
+            ...user,
+            loginCode: plainLoginCode || '',
+        }));
     }
     catch (error) {
         console.error('Error updating student credentials:', error);

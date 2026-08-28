@@ -6,6 +6,7 @@ const SpacedRepetitionService_1 = require("../services/SpacedRepetitionService")
 const journeyService_1 = require("../services/journeyService");
 const flashcardWordParser_1 = require("../utils/flashcardWordParser");
 const flashcardDeckBackup_1 = require("../utils/flashcardDeckBackup");
+const loginCodeCrypto_1 = require("../utils/loginCodeCrypto");
 const prisma = new client_1.PrismaClient();
 // FlashcardDeck Controller
 const createDeck = async (req, res) => {
@@ -1561,10 +1562,7 @@ async function resolveStudentUserFromLoginHeader(req) {
     const raw = req.headers['x-login-code'];
     if (!(raw === null || raw === void 0 ? void 0 : raw.trim()))
         return null;
-    const user = await prisma.user.findFirst({
-        where: { loginCode: raw.trim() },
-        select: { id: true, role: true, name: true },
-    });
+    const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, raw);
     if (!user || user.role !== 'STUDENT')
         return null;
     return user;

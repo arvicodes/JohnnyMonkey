@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AnnouncementController = void 0;
 const client_1 = require("@prisma/client");
+const loginCodeCrypto_1 = require("../utils/loginCodeCrypto");
 const folderAnnouncements_1 = require("../utils/folderAnnouncements");
 const prisma = new client_1.PrismaClient();
 const ANNOUNCEMENT_INDEX_PATH = '__announcements_index__';
@@ -58,20 +59,10 @@ const normalizeLinks = (raw) => {
         .filter((item) => Boolean(item));
 };
 const getUserByLoginCode = async (req) => {
-    var _a;
     const raw = req.headers['x-login-code'];
-    const loginCode = typeof raw === 'string' ? raw.trim() : '';
-    if (!loginCode)
+    if (!String(raw !== null && raw !== void 0 ? raw : '').trim())
         return null;
-    let user = await prisma.user.findUnique({
-        where: { loginCode },
-        select: { id: true, name: true, role: true },
-    });
-    if (!user) {
-        const rows = await prisma.$queryRaw(client_1.Prisma.sql `SELECT id, name, role FROM User WHERE lower(loginCode) = lower(${loginCode}) LIMIT 1`);
-        user = (_a = rows[0]) !== null && _a !== void 0 ? _a : null;
-    }
-    return user;
+    return (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, raw);
 };
 const readRow = async (teacherId, lessonPath) => {
     var _a;

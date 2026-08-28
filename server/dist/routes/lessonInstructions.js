@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const client_1 = require("@prisma/client");
+const loginCodeCrypto_1 = require("../utils/loginCodeCrypto");
 const router = (0, express_1.Router)();
 const prisma = new client_1.PrismaClient();
 /**
@@ -77,10 +78,7 @@ router.get('/by-group/:groupId', async (req, res) => {
         if (!loginCode) {
             return res.status(401).json({ error: 'Anmeldung erforderlich' });
         }
-        const user = await prisma.user.findFirst({
-            where: { loginCode },
-            select: { id: true, role: true },
-        });
+        const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
         if (!user || user.role !== 'STUDENT') {
             return res.status(403).json({ error: 'Nur für Schülerkonten' });
         }

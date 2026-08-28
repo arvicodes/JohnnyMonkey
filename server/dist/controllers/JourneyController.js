@@ -4,16 +4,14 @@ exports.getJourney = getJourney;
 exports.postCare = postCare;
 const client_1 = require("@prisma/client");
 const journeyService_1 = require("../services/journeyService");
+const loginCodeCrypto_1 = require("../utils/loginCodeCrypto");
 const prisma = new client_1.PrismaClient();
 async function getJourneyUserFromRequest(req) {
     const loginCode = req.headers['x-login-code'];
     if (!(loginCode === null || loginCode === void 0 ? void 0 : loginCode.trim())) {
         return { error: 401, message: 'Nicht angemeldet' };
     }
-    const user = await prisma.user.findUnique({
-        where: { loginCode: loginCode.trim() },
-        select: { id: true, role: true },
-    });
+    const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
     if (!user || (user.role !== 'STUDENT' && user.role !== 'TEACHER')) {
         return { error: 403, message: 'Nur für Schüler- und Lehrkraftkonten' };
     }

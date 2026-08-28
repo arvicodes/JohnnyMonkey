@@ -11,6 +11,7 @@ const client_1 = require("@prisma/client");
 const periodTimes_1 = require("../lib/periodTimes");
 const autoLessonScheduler_1 = require("../services/autoLessonScheduler");
 const lessonFolderShareSync_1 = require("../services/lessonFolderShareSync");
+const loginCodeCrypto_1 = require("../utils/loginCodeCrypto");
 const router = (0, express_1.Router)();
 const prisma = new client_1.PrismaClient();
 /** periodNumber 0 = manuell gestartete Stunde (Play-Button im Dashboard) */
@@ -98,19 +99,11 @@ const upload = (0, multer_1.default)({
     },
 });
 async function getUserByLoginHeader(req) {
-    var _a;
     const raw = req.headers['x-login-code'];
-    const loginCode = typeof raw === 'string' ? raw.trim() : '';
-    if (!loginCode)
+    if (!String(raw !== null && raw !== void 0 ? raw : '').trim())
         return null;
-    const exact = await prisma.user.findUnique({
-        where: { loginCode },
-        select: { id: true, role: true },
-    });
-    if (exact)
-        return exact;
-    const rows = await prisma.$queryRaw(client_1.Prisma.sql `SELECT id, role FROM User WHERE lower(loginCode) = lower(${loginCode}) LIMIT 1`);
-    return (_a = rows[0]) !== null && _a !== void 0 ? _a : null;
+    const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, raw);
+    return user ? { id: user.id, role: user.role } : null;
 }
 async function getTeacherIdFromLogin(req) {
     const user = await getUserByLoginHeader(req);

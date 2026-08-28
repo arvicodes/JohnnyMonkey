@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.KACorrectionController = void 0;
 const client_1 = require("@prisma/client");
+const loginCodeCrypto_1 = require("../utils/loginCodeCrypto");
 const prisma = new client_1.PrismaClient();
 /**
  * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, HÜ_, HU_)
@@ -49,10 +50,7 @@ class KACorrectionController {
             if (!loginCode) {
                 return res.status(401).json({ error: 'Nicht angemeldet' });
             }
-            const user = await prisma.user.findUnique({
-                where: { loginCode },
-                select: { id: true, role: true }
-            });
+            const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
             if (!user || user.role !== 'STUDENT') {
                 return res.status(403).json({ error: 'Nur Schüler können Klassenarbeiten abgeben' });
             }
@@ -115,10 +113,7 @@ class KACorrectionController {
             if (!loginCode) {
                 return res.status(401).json({ error: 'Nicht angemeldet' });
             }
-            const user = await prisma.user.findUnique({
-                where: { loginCode },
-                select: { id: true, role: true }
-            });
+            const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
             if (!user || user.role !== 'TEACHER') {
                 return res.status(403).json({ error: 'Nur Lehrer können Abgaben einsehen' });
             }
@@ -344,10 +339,7 @@ class KACorrectionController {
             if (!loginCode) {
                 return res.status(401).json({ error: 'Nicht angemeldet' });
             }
-            const user = await prisma.user.findUnique({
-                where: { loginCode },
-                select: { id: true, role: true }
-            });
+            const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
             if (!user || user.role !== 'TEACHER') {
                 return res.status(403).json({ error: 'Nur Lehrer können Abgaben einsehen' });
             }
@@ -400,10 +392,7 @@ class KACorrectionController {
                 console.error('❌ Kein Login-Code vorhanden');
                 return res.status(401).json({ error: 'Nicht angemeldet' });
             }
-            const user = await prisma.user.findUnique({
-                where: { loginCode },
-                select: { id: true, role: true }
-            });
+            const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
             if (!user) {
                 console.error('❌ Benutzer nicht gefunden für Login-Code');
                 return res.status(401).json({ error: 'Benutzer nicht gefunden' });
@@ -500,10 +489,7 @@ class KACorrectionController {
             if (!loginCode) {
                 return res.status(401).json({ error: 'Nicht angemeldet' });
             }
-            const user = await prisma.user.findUnique({
-                where: { loginCode },
-                select: { id: true, role: true }
-            });
+            const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
             if (!user || user.role !== 'TEACHER') {
                 return res.status(403).json({ error: 'Nur Lehrer können Abgaben zurücksetzen' });
             }
@@ -553,10 +539,7 @@ class KACorrectionController {
             if (!loginCode) {
                 return res.status(401).json({ error: 'Nicht angemeldet' });
             }
-            const user = await prisma.user.findUnique({
-                where: { loginCode },
-                select: { id: true, role: true }
-            });
+            const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
             if (!user) {
                 return res.status(401).json({ error: 'Benutzer nicht gefunden' });
             }
@@ -585,10 +568,7 @@ class KACorrectionController {
             if (!loginCode) {
                 return res.status(401).json({ error: 'Nicht angemeldet' });
             }
-            const user = await prisma.user.findUnique({
-                where: { loginCode },
-                select: { id: true, role: true }
-            });
+            const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
             if (!user || user.role !== 'STUDENT') {
                 return res.status(403).json({ error: 'Nur Schüler können diese Funktion nutzen' });
             }
@@ -661,10 +641,7 @@ class KACorrectionController {
             if (!loginCode) {
                 return res.status(401).json({ error: 'Nicht angemeldet' });
             }
-            const user = await prisma.user.findUnique({
-                where: { loginCode },
-                select: { id: true, role: true }
-            });
+            const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
             if (!user || user.role !== 'TEACHER') {
                 return res.status(403).json({ error: 'Nur Lehrer können Noten freigeben' });
             }
@@ -722,10 +699,7 @@ class KACorrectionController {
             if (!loginCode) {
                 return res.status(401).json({ error: 'Nicht angemeldet' });
             }
-            const user = await prisma.user.findUnique({
-                where: { loginCode },
-                select: { id: true, role: true }
-            });
+            const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
             if (!user || user.role !== 'TEACHER') {
                 return res.status(403).json({ error: 'Nur Lehrer können den Freigabestatus prüfen' });
             }
