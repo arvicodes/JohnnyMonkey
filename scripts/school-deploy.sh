@@ -390,7 +390,9 @@ created, _, st = docker("POST", "/containers/create?name=jm-db-helper", create_b
 if not created or not created.get("Id"):
   print("create helper failed", created, file=sys.stderr)
   sys.exit(1)
-docker("POST", f"/containers/{created['Id']}/start")
+print("Starting DB helper…")
+# Leerer Body → Portainer 400; docker_start sendet {}.
+docker("POST", f"/containers/{created['Id']}/start", {})
 for _ in range(45):
   time.sleep(1)
   try:
@@ -418,7 +420,7 @@ if app and app.get("State") == "running":
   )
   verify = run(
     app["Id"],
-    "ls /app/server/client-build/static/js/main.*.js; sha256sum /app/server/data/dev.db /app/server/prisma/dev.db; echo VERIFY_OK",
+    "ls /app/server/client-build/static/js/main.*.js; ls -l /app/server/dist/utils/loginCodeCrypto.js; sha256sum /app/server/data/dev.db /app/server/prisma/dev.db; echo VERIFY_OK",
   )
 tunnel_url = ""
 if tunnel:

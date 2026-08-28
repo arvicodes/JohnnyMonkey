@@ -620,7 +620,8 @@ created, _, _ = docker("POST", "/containers/create?name=jm-db-helper", {
 if not created or not created.get("Id"):
   print("create helper failed", created, file=sys.stderr)
   sys.exit(1)
-docker("POST", f"/containers/{created['Id']}/start")
+print("Starting DB helper…")
+docker("POST", f"/containers/{created['Id']}/start", {})
 for _ in range(60):
   time.sleep(1)
   try:
