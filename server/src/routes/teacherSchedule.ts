@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { Prisma, PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import {
   DEFAULT_JOHNNY_PERIOD_TIMES,
   getBerlinNow,
@@ -14,6 +14,7 @@ import {
   TIMETABLE_UPLOAD_DIR,
 } from '../services/autoLessonScheduler';
 import { syncLessonFolderShares } from '../services/lessonFolderShareSync';
+import { findUserByLoginCode } from '../utils/loginCodeCrypto';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -102,17 +103,9 @@ async function getUserByLoginHeader(
   req: Request,
 ): Promise<{ id: string; role: string } | null> {
   const raw = req.headers['x-login-code'];
-  const loginCode = typeof raw === 'string' ? raw.trim() : '';
-  if (!loginCode) return null;
-  const exact = await prisma.user.findUnique({
-    where: { loginCode },
-    select: { id: true, role: true },
-  });
-  if (exact) return exact;
-  const rows = await prisma.$queryRaw<Array<{ id: string; role: string }>>(
-    Prisma.sql`SELECT id, role FROM User WHERE lower(loginCode) = lower(${loginCode}) LIMIT 1`,
-  );
-  return rows[0] ?? null;
+  if (!String(raw ?? '').trim()) return null;
+  const user = await findUserByLoginCode(prisma, raw);
+  return user ? { id: user.id, role: user.role } : null;
 }
 
 async function getTeacherIdFromLogin(req: Request): Promise<string | null> {

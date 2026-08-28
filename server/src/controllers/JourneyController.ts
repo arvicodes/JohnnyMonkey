@@ -5,6 +5,7 @@ import {
   ensureDailyVisitBonus,
   serializeProgress,
 } from '../services/journeyService';
+import { findUserByLoginCode } from '../utils/loginCodeCrypto';
 
 const prisma = new PrismaClient();
 
@@ -13,10 +14,7 @@ async function getJourneyUserFromRequest(req: Request) {
   if (!loginCode?.trim()) {
     return { error: 401 as const, message: 'Nicht angemeldet' };
   }
-  const user = await prisma.user.findUnique({
-    where: { loginCode: loginCode.trim() },
-    select: { id: true, role: true },
-  });
+  const user = await findUserByLoginCode(prisma, loginCode);
   if (!user || (user.role !== 'STUDENT' && user.role !== 'TEACHER')) {
     return { error: 403 as const, message: 'Nur für Schüler- und Lehrkraftkonten' };
   }

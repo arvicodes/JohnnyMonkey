@@ -84,6 +84,23 @@ BUNDLE="$(ls client/build/static/js/main.*.js 2>/dev/null | head -1 | xargs -n1 
 [[ -n "$BUNDLE" ]] || die "Client-Build ohne main.*.js"
 log "Bundle=$BUNDLE DBSHA=$DBSHA"
 
+PEPPER_FILE=""
+if [[ -f "$ROOT/server/prisma/.login-code-pepper" ]]; then
+  PEPPER_FILE="$ROOT/server/prisma/.login-code-pepper"
+elif [[ -f "$ROOT/server/data/.login-code-pepper" ]]; then
+  PEPPER_FILE="$ROOT/server/data/.login-code-pepper"
+fi
+LOGIN_PEPPER_HEX=""
+if [[ -n "$PEPPER_FILE" ]]; then
+  LOGIN_PEPPER_HEX="$(tr -d ' \r\n' < "$PEPPER_FILE")"
+  if [[ ! "$LOGIN_PEPPER_HEX" =~ ^[0-9a-fA-F]{64}$ ]]; then
+    die "Login-Pepper-Datei ist ungültig."
+  fi
+  log "Pepper wird auf das Schul-Volume kopiert (nicht nach GitHub)."
+else
+  log "Hinweis: Noch kein Login-Pepper. Schule darf nur eine DB mit Klartext-Codes bekommen — sonst gehen die Logins kaputt."
+fi
+
 log "==> Pack App"
 rm -rf /tmp/jm-prebuilt-stage
 mkdir -p /tmp/jm-prebuilt-stage/server/client-build
@@ -179,7 +196,7 @@ JWT="$(
 [[ -n "$JWT" ]] || die "Portainer-Login fehlgeschlagen (Passwort in .env.school prüfen)."
 
 # CSRF + helpers via python for reliability
-export PORTAINER_URL ENDPOINT_ID JWT APP_NAME TUNNEL_NAME IMAGE DB_VOLUME APP_URL MAT_URL DB_PUBLIC DBSHA BUNDLE
+export PORTAINER_URL ENDPOINT_ID JWT APP_NAME TUNNEL_NAME IMAGE DB_VOLUME APP_URL MAT_URL DB_PUBLIC DBSHA BUNDLE LOGIN_PEPPER_HEX
 python3 <<'PY'
 import json, os, sys, time, urllib.request, urllib.error, ssl, base64
 
@@ -320,20 +337,23 @@ if tunnel:
 time.sleep(2)
 
 db_url = os.environ["DB_PUBLIC"]
+pepper = (os.environ.get("LOGIN_PEPPER_HEX") or "").strip()
+helper_cmd = [
+  "set -e",
+  f"wget -q -O /data/dev.db {json.dumps(db_url)} || curl -fsSL -L -o /data/dev.db {json.dumps(db_url)}",
+  "ls -lh /data/dev.db",
+  "sha256sum /data/dev.db",
+]
+if pepper:
+  helper_cmd += [
+    'if [ -n "$LOGIN_PEPPER_HEX" ]; then printf "%s" "$LOGIN_PEPPER_HEX" > /data/.login-code-pepper; chmod 600 /data/.login-code-pepper; echo PEPPER_OK; fi',
+  ]
+helper_cmd.append("echo DB_DONE")
 create_body = {
   "Image": os.environ["IMAGE"],
   "Entrypoint": ["/bin/sh", "-c"],
-  "Cmd": [
-    " && ".join(
-      [
-        "set -e",
-        f"wget -q -O /data/dev.db {json.dumps(db_url)} || curl -fsSL -L -o /data/dev.db {json.dumps(db_url)}",
-        "ls -lh /data/dev.db",
-        "sha256sum /data/dev.db",
-        "echo DB_DONE",
-      ]
-    )
-  ],
+  "Env": [f"LOGIN_PEPPER_HEX={pepper}"] if pepper else [],
+  "Cmd": [" && ".join(helper_cmd)],
   "HostConfig": {"Binds": [f"{os.environ['DB_VOLUME']}:/data"], "AutoRemove": True},
 }
 # remove leftover helper name
@@ -369,7 +389,7 @@ if app and app.get("State") == "running":
   # Prisma liest ggf. noch prisma/dev.db — Volume-DB dorthin spiegeln
   run(
     app["Id"],
-    "cp -a /app/server/data/dev.db /app/server/prisma/dev.db && echo DB_SYNCED",
+    "cp -a /app/server/data/dev.db /app/server/prisma/dev.db && if [ -f /app/server/data/.login-code-pepper ]; then cp -a /app/server/data/.login-code-pepper /app/server/prisma/.login-code-pepper; fi && echo DB_SYNCED",
   )
   verify = run(
     app["Id"],

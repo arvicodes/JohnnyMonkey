@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { syncLessonFolderShares } from '../services/lessonFolderShareSync';
+import { findUserByLoginCode } from '../utils/loginCodeCrypto';
 
 const prisma = new PrismaClient();
 
@@ -135,10 +136,7 @@ export const syncLessonFolderFileShares = async (req: Request, res: Response) =>
   try {
     const loginCode = typeof req.headers['x-login-code'] === 'string' ? req.headers['x-login-code'].trim() : '';
     if (!loginCode) return res.status(401).json({ error: 'Nicht autorisiert' });
-    const user = await prisma.user.findUnique({
-      where: { loginCode },
-      select: { id: true, role: true },
-    });
+    const user = await findUserByLoginCode(prisma, loginCode);
     if (!user || user.role !== 'TEACHER') {
       return res.status(403).json({ error: 'Nur Lehrkräfte' });
     }

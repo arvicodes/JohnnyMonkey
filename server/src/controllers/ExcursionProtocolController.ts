@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { Request, Response } from 'express';
 import { Prisma, PrismaClient } from '@prisma/client';
+import { findUserByLoginCode } from '../utils/loginCodeCrypto';
 
 const prisma = new PrismaClient();
 
@@ -171,19 +172,8 @@ const parseExcursionData = (raw: string | null | undefined): ExcursionDataPayloa
 
 const getUserByLoginCode = async (req: Request) => {
   const raw = req.headers['x-login-code'] as string | undefined;
-  const loginCode = typeof raw === 'string' ? raw.trim() : '';
-  if (!loginCode) return null;
-  let user = await prisma.user.findUnique({
-    where: { loginCode },
-    select: { id: true, name: true, role: true },
-  });
-  if (!user) {
-    const rows = await prisma.$queryRaw<Array<{ id: string; name: string; role: string }>>(
-      Prisma.sql`SELECT id, name, role FROM User WHERE lower(loginCode) = lower(${loginCode}) LIMIT 1`,
-    );
-    user = rows[0] ?? null;
-  }
-  return user;
+  if (!String(raw ?? '').trim()) return null;
+  return findUserByLoginCode(prisma, raw);
 };
 
 const loadTeacherGroupsWithStudents = async (teacherId: string) =>

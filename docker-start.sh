@@ -33,6 +33,17 @@ if [ -f /app/server/data/dev.db ]; then
   echo "🔗 Synced data/dev.db → prisma/dev.db"
 fi
 
+# Login-Pepper liegt neben der DB (nicht in git). Volume und prisma/ gleichhalten.
+if [ -f /app/server/data/.login-code-pepper ]; then
+  cp -a /app/server/data/.login-code-pepper /app/server/prisma/.login-code-pepper 2>/dev/null || true
+elif [ -f /app/server/prisma/.login-code-pepper ]; then
+  cp -a /app/server/prisma/.login-code-pepper /app/server/data/.login-code-pepper
+  echo "🔗 Synced prisma/.login-code-pepper → data/"
+elif [ -f /app/.login-code-pepper ]; then
+  cp -a /app/.login-code-pepper /app/server/data/.login-code-pepper
+  echo "🔗 Synced /app/.login-code-pepper → data/"
+fi
+
 echo "📦 Generating Prisma client..."
 # Schema kommt immer aus dem Image (prisma/ wird nicht mehr vom DB-Volume überdeckt)
 if [ -f "prisma/schema.prisma" ]; then

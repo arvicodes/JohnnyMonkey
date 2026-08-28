@@ -10,6 +10,13 @@ import {
   stripMiddleNames,
   type ParsedWebUntisStudent,
 } from '../utils/webUntisStudentList';
+import {
+  findUserByLoginCode,
+  isHashedLoginCode,
+  loginCodeTaken,
+  occupiedStoredLoginCodes,
+  toStoredLoginCode,
+} from '../utils/loginCodeCrypto';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -52,7 +59,7 @@ router.get('/', async (req: Request, res: Response) => {
     const groups = await prisma.learningGroup.findMany({
       include: { 
         students: {
-          orderBy: { loginCode: 'asc' },
+          orderBy: { name: 'asc' },
           select: {
             id: true,
             name: true,
@@ -104,7 +111,7 @@ router.get('/teacher/:id', async (req: Request, res: Response) => {
         // seatingOrder: true,
         // statisticsOrder: true,
         students: {
-          orderBy: { loginCode: 'asc' },
+          orderBy: { name: 'asc' },
           select: {
             id: true,
             name: true,
@@ -248,7 +255,7 @@ router.get('/student/:id', async (req: Request, res: Response) => {
           }
         },
         students: {
-          orderBy: { loginCode: 'asc' },
+          orderBy: { name: 'asc' },
           select: {
             id: true,
             name: true,
@@ -302,7 +309,7 @@ router.get('/:groupId/available-students', async (req: Request, res: Response) =
           orderBy: { name: 'asc' },
         },
       },
-      orderBy: [{ name: 'asc' }, { loginCode: 'asc' }],
+      orderBy: { name: 'asc' },
     });
     
     const directory = allStudents.map((s) => ({
@@ -527,10 +534,7 @@ router.get('/exam-beacon/student-poll', async (req: Request, res: Response) => {
     if (!loginCode) {
       return res.status(401).json({ error: 'Anmeldung erforderlich' });
     }
-    const user = await prisma.user.findFirst({
-      where: { loginCode },
-      select: { id: true, role: true },
-    });
+    const user = await findUserByLoginCode(prisma, raw);
     if (!user || user.role !== 'STUDENT') {
       return res.status(403).json({ error: 'Nur für Schülerkonten' });
     }
@@ -609,10 +613,7 @@ router.get('/collab-flashcard-beacon/student-poll', async (req: Request, res: Re
     if (!loginCode) {
       return res.status(401).json({ error: 'Anmeldung erforderlich' });
     }
-    const user = await prisma.user.findFirst({
-      where: { loginCode },
-      select: { id: true, role: true },
-    });
+    const user = await findUserByLoginCode(prisma, raw);
     if (!user || user.role !== 'STUDENT') {
       return res.status(403).json({ error: 'Nur für Schülerkonten' });
     }
@@ -640,7 +641,7 @@ router.get('/:id', async (req: Request, res: Response) => {
           }
         },
         students: {
-          orderBy: { loginCode: 'asc' },
+          orderBy: { name: 'asc' },
           select: {
             id: true,
             name: true,
@@ -751,7 +752,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       include: {
         teacher: true,
         students: {
-          orderBy: { loginCode: 'asc' },
+          orderBy: { name: 'asc' },
           select: {
             id: true,
             name: true,
@@ -789,7 +790,7 @@ router.post('/', async (req: Request, res: Response) => {
       },
       include: { 
         students: {
-          orderBy: { loginCode: 'asc' },
+          orderBy: { name: 'asc' },
           select: {
             id: true,
             name: true,
@@ -819,7 +820,7 @@ router.post('/:id/students', async (req: Request, res: Response) => {
       },
       include: { 
         students: {
-          orderBy: { loginCode: 'asc' },
+          orderBy: { name: 'asc' },
           select: {
             id: true,
             name: true,
@@ -866,30 +867,29 @@ async function buildWebUntisPreview(
     byNormName.set(stripMiddleNames(s.name).toLowerCase(), s);
   }
 
-  const usedCodes = new Set(allStudents.map((s) => s.loginCode));
-  const codeCounts = new Map<string, number>();
+  const occupied = await occupiedStoredLoginCodes(prisma);
+  const reservedPlain = new Set<string>();
   const rows: WebUntisPreviewRow[] = [];
 
   for (const st of parsedStudents) {
     const existing = byNormName.get(st.fullName.toLowerCase());
     let loginCode = generateLoginCode(st.firstName, st.lastName, groupNumber);
     if (!existing) {
-      if (codeCounts.has(loginCode) || usedCodes.has(loginCode)) {
-        const n = (codeCounts.get(loginCode) || 0) + 1;
-        codeCounts.set(loginCode, n);
+      const taken = (candidate: string) =>
+        reservedPlain.has(candidate.toLowerCase()) || occupied.has(toStoredLoginCode(candidate));
+      if (taken(loginCode)) {
+        let n = 1;
         let candidate = `${loginCode}${n}`;
-        while (usedCodes.has(candidate)) {
-          const n2 = (codeCounts.get(loginCode) || n) + 1;
-          codeCounts.set(loginCode, n2);
-          candidate = `${loginCode}${n2}`;
+        while (taken(candidate)) {
+          n += 1;
+          candidate = `${loginCode}${n}`;
         }
         loginCode = candidate;
-      } else {
-        codeCounts.set(loginCode, 0);
       }
-      usedCodes.add(loginCode);
+      reservedPlain.add(loginCode.toLowerCase());
+      occupied.add(toStoredLoginCode(loginCode));
     } else {
-      loginCode = existing.loginCode;
+      loginCode = isHashedLoginCode(existing.loginCode) ? '' : existing.loginCode;
     }
 
     rows.push({
@@ -1004,14 +1004,7 @@ router.post('/:groupId/import-webuntis/confirm', async (req: Request, res: Respo
       if (!fullName) continue;
 
       let loginCode = String(raw.loginCode || '').trim();
-      if (!loginCode) {
-        const groupNumber =
-          typeof req.body?.groupNumber === 'string' && req.body.groupNumber.trim()
-            ? loginGroupNumberFromKlasse(req.body.groupNumber.trim(), '') ||
-              groupNumberFromName(group.name, '00')
-            : groupNumberFromName(group.name, '00');
-        loginCode = generateLoginCode(firstName, lastName, groupNumber);
-      }
+      if (isHashedLoginCode(loginCode)) loginCode = '';
 
       let userId: string | undefined =
         typeof raw.existingUserId === 'string' && raw.existingUserId ? raw.existingUserId : undefined;
@@ -1027,41 +1020,51 @@ router.post('/:groupId/import-webuntis/confirm', async (req: Request, res: Respo
         if (match) userId = match.id;
       }
 
+      if (!loginCode && !userId) {
+        const groupNumber =
+          typeof req.body?.groupNumber === 'string' && req.body.groupNumber.trim()
+            ? loginGroupNumberFromKlasse(req.body.groupNumber.trim(), '') ||
+              groupNumberFromName(group.name, '00')
+            : groupNumberFromName(group.name, '00');
+        loginCode = generateLoginCode(firstName, lastName, groupNumber);
+      }
+
       if (userId) {
-        const conflict = await prisma.user.findFirst({
-          where: { loginCode, NOT: { id: userId } },
-          select: { id: true },
-        });
-        if (conflict) {
-          return res.status(409).json({
-            error: `Login-Code „${loginCode}“ ist bereits vergeben (${fullName})`,
-          });
+        const updateData: { name: string; loginCode?: string } = { name: fullName };
+        if (loginCode && !isHashedLoginCode(loginCode)) {
+          const conflict = await loginCodeTaken(prisma, loginCode, userId);
+          if (conflict) {
+            return res.status(409).json({
+              error: `Login-Code „${loginCode}“ ist bereits vergeben (${fullName})`,
+            });
+          }
+          updateData.loginCode = toStoredLoginCode(loginCode);
         }
         const updated = await prisma.user.update({
           where: { id: userId },
-          data: { name: fullName, loginCode },
-          select: { id: true, name: true, loginCode: true },
+          data: updateData,
+          select: { id: true, name: true },
         });
-        reused.push(updated);
+        reused.push({ ...updated, loginCode: loginCode && !isHashedLoginCode(loginCode) ? loginCode : '' });
         if (!inGroupIds.has(userId)) connectIds.push(userId);
         continue;
       }
 
       let attempt = 0;
       let candidate = loginCode;
-      while (await prisma.user.findUnique({ where: { loginCode: candidate } })) {
+      while (await loginCodeTaken(prisma, candidate)) {
         attempt += 1;
         candidate = `${loginCode}${attempt}`;
       }
       const user = await prisma.user.create({
         data: {
           name: fullName,
-          loginCode: candidate,
+          loginCode: toStoredLoginCode(candidate),
           role: 'STUDENT',
         },
-        select: { id: true, name: true, loginCode: true },
+        select: { id: true, name: true },
       });
-      created.push(user);
+      created.push({ ...user, loginCode: candidate });
       connectIds.push(user.id);
     }
 
@@ -1076,7 +1079,7 @@ router.post('/:groupId/import-webuntis/confirm', async (req: Request, res: Respo
       where: { id: groupId },
       include: {
         students: {
-          orderBy: { loginCode: 'asc' },
+          orderBy: { name: 'asc' },
           select: {
             id: true,
             name: true,
@@ -1122,7 +1125,7 @@ router.delete('/:groupId/students/:studentId', async (req: Request, res: Respons
       },
       include: { 
         students: {
-          orderBy: { loginCode: 'asc' },
+          orderBy: { name: 'asc' },
           select: {
             id: true,
             name: true,
@@ -1151,10 +1154,7 @@ router.put('/:id/moderator', async (req: Request, res: Response) => {
 
     const loginCode = typeof req.headers['x-login-code'] === 'string' ? req.headers['x-login-code'].trim() : '';
     if (!loginCode) return res.status(401).json({ error: 'Nicht autorisiert' });
-    const teacher = await prisma.user.findUnique({
-      where: { loginCode },
-      select: { id: true, role: true },
-    });
+    const teacher = await findUserByLoginCode(prisma, loginCode);
     if (!teacher || teacher.role !== 'TEACHER') {
       return res.status(403).json({ error: 'Nur Lehrkräfte' });
     }
@@ -1188,7 +1188,7 @@ router.put('/:id/moderator', async (req: Request, res: Response) => {
         name: true,
         moderatorStudentId: true,
         students: {
-          orderBy: { loginCode: 'asc' },
+          orderBy: { name: 'asc' },
           select: {
             id: true,
             name: true,
@@ -1219,10 +1219,7 @@ router.put('/:id/passive-students', async (req: Request, res: Response) => {
 
     const loginCode = typeof req.headers['x-login-code'] === 'string' ? req.headers['x-login-code'].trim() : '';
     if (!loginCode) return res.status(401).json({ error: 'Nicht autorisiert' });
-    const teacher = await prisma.user.findUnique({
-      where: { loginCode },
-      select: { id: true, role: true },
-    });
+    const teacher = await findUserByLoginCode(prisma, loginCode);
     if (!teacher || teacher.role !== 'TEACHER') {
       return res.status(403).json({ error: 'Nur Lehrkräfte' });
     }
@@ -1247,7 +1244,7 @@ router.put('/:id/passive-students', async (req: Request, res: Response) => {
         name: true,
         passiveStudentIds: true,
         students: {
-          orderBy: { loginCode: 'asc' },
+          orderBy: { name: 'asc' },
           select: {
             id: true,
             name: true,

@@ -70,6 +70,8 @@ Notizen-Sicherheitskopien/
 
 # Login-Listen (Klartext-Codes, nicht committen)
 LOGIN-CODES-ALLE.txt
+.login-code-pepper
+**/.login-code-pepper
 login-codes-vorschlag.txt
 login-codes-vorschlag.csv
 

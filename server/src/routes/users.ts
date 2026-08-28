@@ -6,6 +6,7 @@ import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { authenticateUser, requireTeacher } from '../middleware/auth';
 import { uploadBufferToJpegBuffer } from '../utils/imageToJpeg';
+import { loginCodeTaken, toStoredLoginCode } from '../utils/loginCodeCrypto';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -332,16 +333,15 @@ const updateStudentCredentials: RequestHandler = async (req, res) => {
       return res.status(404).json({ error: 'Schüler nicht gefunden' });
     }
 
-    if (data.loginCode) {
-      const conflict = await prisma.user.findFirst({
-        where: { loginCode: data.loginCode, NOT: { id: req.params.id } },
-        select: { id: true, name: true },
-      });
+    const plainLoginCode = data.loginCode;
+    if (plainLoginCode) {
+      const conflict = await loginCodeTaken(prisma, plainLoginCode, req.params.id);
       if (conflict) {
         return res.status(409).json({
-          error: `Login-Code bereits vergeben (${conflict.name})`,
+          error: `Login-Code bereits vergeben`,
         });
       }
+      data.loginCode = toStoredLoginCode(plainLoginCode);
     }
 
     const user = await prisma.user.update({
@@ -349,7 +349,12 @@ const updateStudentCredentials: RequestHandler = async (req, res) => {
       data,
       select: userSelect,
     });
-    res.json(withNormalizedAvatar(user));
+    res.json(
+      withNormalizedAvatar({
+        ...user,
+        loginCode: plainLoginCode || '',
+      }),
+    );
   } catch (error) {
     console.error('Error updating student credentials:', error);
     res.status(500).json({ error: 'Server error' });

@@ -4,6 +4,7 @@ import { SpacedRepetitionService } from '../services/SpacedRepetitionService';
 import { applyJourneyEvent } from '../services/journeyService';
 import { parseFlashcardWordFile, ParsedFlashcardDocument } from '../utils/flashcardWordParser';
 import { scheduleFlashcardDeckBackup } from '../utils/flashcardDeckBackup';
+import { findUserByLoginCode } from '../utils/loginCodeCrypto';
 
 const prisma = new PrismaClient();
 
@@ -1731,10 +1732,7 @@ export const exportTeacherDecks = async (req: Request, res: Response) => {
 async function resolveStudentUserFromLoginHeader(req: Request) {
   const raw = req.headers['x-login-code'] as string | undefined;
   if (!raw?.trim()) return null;
-  const user = await prisma.user.findFirst({
-    where: { loginCode: raw.trim() },
-    select: { id: true, role: true, name: true },
-  });
+  const user = await findUserByLoginCode(prisma, raw);
   if (!user || user.role !== 'STUDENT') return null;
   return user;
 }

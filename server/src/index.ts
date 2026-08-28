@@ -46,6 +46,7 @@ import path from 'path';
 import { startAutoLessonScheduler } from './services/autoLessonScheduler';
 import { ensureWochenaufgabenSchema } from './utils/ensureWochenaufgabenSchema';
 import { ensureScratchPadRoots } from './utils/teacherScratchPadStore';
+import { migrateAllLoginCodes, redactHashedLoginCodes } from './utils/loginCodeCrypto';
 
 dotenv.config();
 
@@ -171,6 +172,12 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
+
+app.use((_req, res, next) => {
+  const originalJson = res.json.bind(res);
+  res.json = ((body: unknown) => originalJson(redactHashedLoginCodes(body))) as typeof res.json;
+  next();
+});
 
 // Monitoring middleware (must be first)
 app.use(MonitoringService.requestMonitor());
@@ -341,6 +348,7 @@ async function startServer() {
     console.log('🗄️ DATABASE_URL:', process.env.DATABASE_URL || '(from schema)');
     await ensureWochenaufgabenSchema(prisma);
     console.log('✅ Wochenaufgaben-Schema bereit');
+    await migrateAllLoginCodes(prisma);
     try {
       const roots = ensureScratchPadRoots();
       console.log('✅ Notizen-Ordner bereit:', roots.liveRoot);

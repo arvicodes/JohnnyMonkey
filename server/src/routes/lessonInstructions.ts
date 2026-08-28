@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { findUserByLoginCode } from '../utils/loginCodeCrypto';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -75,10 +76,7 @@ router.get('/by-group/:groupId', async (req: Request, res: Response) => {
     if (!loginCode) {
       return res.status(401).json({ error: 'Anmeldung erforderlich' });
     }
-    const user = await prisma.user.findFirst({
-      where: { loginCode },
-      select: { id: true, role: true },
-    });
+    const user = await findUserByLoginCode(prisma, loginCode);
     if (!user || user.role !== 'STUDENT') {
       return res.status(403).json({ error: 'Nur für Schülerkonten' });
     }
