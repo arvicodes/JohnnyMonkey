@@ -86,7 +86,7 @@ export class MessageController {
         return res.status(401).json({ error: 'Nicht angemeldet' });
       }
 
-      console.log('🔑 LoginCode:', loginCode);
+      console.log('🔑 Login geprüft');
 
       const user = await prisma.user.findUnique({
         where: { loginCode },
@@ -94,7 +94,7 @@ export class MessageController {
       });
 
       if (!user) {
-        console.error('❌ Benutzer nicht gefunden für loginCode:', loginCode);
+        console.error('❌ Benutzer nicht gefunden');
         return res.status(401).json({ error: 'Benutzer nicht gefunden' });
       }
 

@@ -24,7 +24,7 @@ try {
 // Login route
 router.post('/login', async (req: Request, res: Response) => {
   let { loginCode } = req.body;
-  console.log('🔐 Login attempt with code (raw):', loginCode);
+  console.log('🔐 Login attempt');
   console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
   console.log('DATABASE_URL length:', process.env.DATABASE_URL?.length || 0);
 
@@ -36,11 +36,10 @@ router.post('/login', async (req: Request, res: Response) => {
 
     // Trim whitespace und normalisiere
     loginCode = String(loginCode).trim();
-    console.log('🔐 Login code (trimmed):', loginCode);
     console.log('🔐 Login code length:', loginCode.length);
 
     // Versuche zuerst exakte Übereinstimmung
-    console.log('🔍 Searching for user with loginCode (exact):', loginCode);
+    console.log('🔍 Searching for user (exact match)');
     let user = await prisma.user.findUnique({
       where: { loginCode: loginCode },
       include: {
@@ -88,13 +87,7 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     if (!user) {
-      console.log('❌ Invalid login code:', loginCode);
-      // Debug: Zeige alle verfügbaren Login-Codes (nur erste 10)
-      const sampleUsers = await prisma.user.findMany({
-        select: { loginCode: true, name: true },
-        take: 10
-      });
-      console.log('📋 Sample login codes in database:', sampleUsers.map(u => `${u.loginCode} (${u.name})`));
+      console.log('❌ Invalid login code');
       return res.status(401).json({ message: 'Ungültiger Login-Code' });
     }
 

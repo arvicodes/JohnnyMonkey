@@ -158,7 +158,10 @@ app.use((req, res, next) => {
   }
 
   // Sophos: intern HTTP, Host oft :44443 oder X-Forwarded-Proto: https.
-  if (hostPort === '44443' || forwarded === 'https' || req.secure) return next();
+  if (hostPort === '44443' || forwarded === 'https' || req.secure) {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    return next();
+  }
 
   if (hostname in SCHOOL_HTTPS_BY_HOST) {
     return redirectToSchoolHttps(req, res);
