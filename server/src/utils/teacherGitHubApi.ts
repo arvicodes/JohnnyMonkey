@@ -532,6 +532,10 @@ export async function pullSchoolStandFromGithub(): Promise<GithubStandResult> {
     committed: false,
     pushed: true,
     message: `Von GitHub geholt: ${wanted.length} Dateien.`,
-    changes: wanted.map(({ path, kind }) => ({ path, kind })),
+    changes: wanted.map(({ path, kind }) => ({
+      path,
+      kind,
+      when: stampForAbs(absForRepoPath(path)),
+    })),
   };
 }
