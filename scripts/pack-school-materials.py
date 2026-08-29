@@ -171,6 +171,9 @@ def stage_paths(mode: str) -> list[tuple[Path, Path]]:
       "Grafiken",
       "Ankündigungen & Briefe",
       "Folien - ALLE - BACKUP",
+      "Backup - Notizen",
+      "Backup - Folien",
+      "Backup - Tickets",
     ):
       src = JM / name
       if src.exists():

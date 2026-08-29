@@ -2,7 +2,11 @@ import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { StorageManager } from '../utils/storageManager';
 import { fileToJpegBuffer, isHeicPath, readImageFileForServe } from '../utils/imageToJpeg';
-import { backupPresentationDeckAfterSave, backupPresentationDeckBeforeOverwrite } from '../utils/presentationDeckBackup';
+import {
+  backupLessonToTeacherFolienFolder,
+  backupPresentationDeckAfterSave,
+  backupPresentationDeckBeforeOverwrite,
+} from '../utils/presentationDeckBackup';
 import { decodeMulterFilename } from '../utils/multerFilename';
 import fs from 'fs';
 import path from 'path';
@@ -1167,8 +1171,15 @@ export class FileSystemPathController {
 
       fs.writeFileSync(finalFilePath, file.buffer);
 
+      const forceBackup =
+        req.body?.forceBackup === true ||
+        req.body?.forceBackup === 'true' ||
+        req.body?.forceBackup === '1';
+
       if (originalName === 'Praesentation.deck.json') {
-        backupPresentationDeckAfterSave(finalFilePath, file.buffer);
+        backupPresentationDeckAfterSave(finalFilePath, file.buffer, { force: forceBackup });
+      } else if (originalName === 'Praesentation.annotations.json') {
+        backupLessonToTeacherFolienFolder(finalFilePath, { force: forceBackup });
       }
 
       console.log('File saved successfully');

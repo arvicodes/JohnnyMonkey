@@ -24,6 +24,7 @@ import {
   Class as ClassIcon,
   DeleteOutline as DeleteOutlineIcon,
   History as HistoryIcon,
+  SaveOutlined as SaveOutlinedIcon,
   VisibilityOutlined as VisibilityOutlinedIcon,
   ExpandLess as ExpandLessIcon,
   ExpandMore as ExpandMoreIcon,
@@ -126,6 +127,7 @@ type Props = {
   /** z. B. „47 Fragen im Set · Spiel: 10“ — rechts neben dem Namen. */
   playSourceLabel?: string | null;
   onOpenHistory?: () => void;
+  onSecure?: () => void;
 };
 
 function lessonMatchesPath(lesson: EntryTicketLessonSection, lessonPath?: string | null): boolean {
@@ -169,6 +171,7 @@ export function EntryTicketFragensetEditor({
   showCounts,
   playSourceLabel,
   onOpenHistory,
+  onSecure,
 }: Props) {
   const [nameDraft, setNameDraft] = useState(set.name);
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
@@ -647,6 +650,22 @@ export function EntryTicketFragensetEditor({
               <DeleteOutlineIcon sx={{ fontSize: 15 }} />
             </IconButton>
           </Tooltip>
+          {onSecure ? (
+            <Tooltip title="Sichern (⌘S) — Kopie nach Backup - Tickets">
+              <IconButton
+                size="small"
+                onClick={() => onSecure()}
+                aria-label="Tickets sichern"
+                sx={{
+                  ...iconBtnSx,
+                  color: ET.accent,
+                  '&:hover': { color: ET.ink, bgcolor: 'rgba(69,90,100,0.08)' },
+                }}
+              >
+                <SaveOutlinedIcon sx={{ fontSize: 15 }} />
+              </IconButton>
+            </Tooltip>
+          ) : null}
         </Box>
         {onOpenHistory ? (
           <Button

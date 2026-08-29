@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { writeTeacherTimestampedBackup } from './jmTeacherBackup';
 
 /** Aktueller Stand der Lehrer-Schnellnotizen (pro Lehrkraft). */
 export const SCRATCH_PAD_LIVE_DIR_NAME = 'Lehrer-Schnellnotizen';
@@ -207,8 +208,9 @@ export function readScratchPadLive(userKey: string): ScratchPadPayload | null {
  */
 export function writeScratchPad(
   userKey: string,
-  payload: ScratchPadPayload
-): { live: string; backupLatest: string; backupStamp: string | null } {
+  payload: ScratchPadPayload,
+  options?: { timestamped?: boolean; forceStamp?: boolean }
+): { live: string; backupLatest: string; backupStamp: string | null; teacherBackup?: string | null } {
   ensureScratchPadRoots();
   const liveDir = ensureScratchPadLiveDir(userKey);
   const backupDir = ensureScratchPadBackupDir(userKey);
@@ -221,6 +223,7 @@ export function writeScratchPad(
       live: livePath,
       backupLatest: path.join(backupDir, 'latest.json'),
       backupStamp: null,
+      teacherBackup: null,
     };
   }
 
@@ -236,7 +239,8 @@ export function writeScratchPad(
   fs.writeFileSync(backupLatestPath, buf);
 
   let backupStamp: string | null = null;
-  if (shouldWriteTimestampedBackup(userKey, buf)) {
+  const wantStamp = options?.timestamped !== false;
+  if (wantStamp && (options?.forceStamp || shouldWriteTimestampedBackup(userKey, buf))) {
     backupStamp = path.join(backupDir, `pad-${stampNow()}.json`);
     fs.writeFileSync(backupStamp, buf);
     pruneTimestampedBackups(backupDir, BACKUP_KEEP);
@@ -249,5 +253,14 @@ export function writeScratchPad(
     else recentByUser.set(userKey, { lastAt: prev.lastAt, lastHash: fileHash(buf) });
   }
 
-  return { live: livePath, backupLatest: backupLatestPath, backupStamp };
+  const teacherBackup = wantStamp
+    ? writeTeacherTimestampedBackup({
+        kind: 'notes',
+        label: userKey,
+        payload: body,
+        force: Boolean(options?.forceStamp),
+      })
+    : null;
+
+  return { live: livePath, backupLatest: backupLatestPath, backupStamp, teacherBackup };
 }

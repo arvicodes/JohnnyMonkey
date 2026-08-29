@@ -5,6 +5,7 @@ import {
   sanitizeBackupFilePart,
   writeFolienAlleBackupFile,
 } from './folienAlleBackup';
+import { writeTeacherTimestampedBackup } from './jmTeacherBackup';
 
 const LOCAL_BACKUP_DIR = '.presentation-backups';
 const CENTRAL_BACKUP_ROOT_NAME = 'Presentation-Sicherheitskopien';
@@ -203,9 +204,66 @@ export function backupPresentationDeckBeforeOverwrite(
  */
 export function backupPresentationDeckAfterSave(
   deckFilePath: string,
-  savedContent: Buffer | string
+  savedContent: Buffer | string,
+  options?: { force?: boolean }
 ): string | null {
-  return backupPresentationDeckToFolienAlle(deckFilePath, savedContent);
+  const folienAlle = backupPresentationDeckToFolienAlle(deckFilePath, savedContent);
+  backupLessonToTeacherFolienFolder(deckFilePath, { force: options?.force, savedDeck: savedContent });
+  return folienAlle;
+}
+
+/**
+ * Zeitstempel-Kopie nach `J-M-Reihen/Backup - Folien/` (Deck + Annotationen, falls vorhanden).
+ */
+export function backupLessonToTeacherFolienFolder(
+  lessonFilePath: string,
+  options?: { force?: boolean; savedDeck?: Buffer | string }
+): string | null {
+  const lessonDir = path.dirname(lessonFilePath);
+  const deckPath = path.join(lessonDir, 'Praesentation.deck.json');
+  let deckRaw: Buffer | null = null;
+  if (options?.savedDeck) {
+    deckRaw =
+      typeof options.savedDeck === 'string' ? Buffer.from(options.savedDeck, 'utf8') : options.savedDeck;
+  } else if (fs.existsSync(deckPath)) {
+    try {
+      deckRaw = fs.readFileSync(deckPath);
+    } catch {
+      deckRaw = null;
+    }
+  }
+  if (!deckRaw || deckRaw.length < 50) return null;
+
+  let annotations: unknown = null;
+  const annPath = path.join(lessonDir, 'Praesentation.annotations.json');
+  if (fs.existsSync(annPath)) {
+    try {
+      annotations = JSON.parse(fs.readFileSync(annPath, 'utf8'));
+    } catch {
+      annotations = null;
+    }
+  }
+
+  let deck: unknown = null;
+  try {
+    deck = JSON.parse(deckRaw.toString('utf8'));
+  } catch {
+    return null;
+  }
+
+  const lesson = lessonKeyFromDeckPath(deckPath);
+  return writeTeacherTimestampedBackup({
+    kind: 'slides',
+    label: lesson,
+    payload: {
+      kind: 'folien',
+      lesson,
+      savedAt: new Date().toISOString(),
+      deck,
+      annotations,
+    },
+    force: Boolean(options?.force),
+  });
 }
 
 export function getCentralPresentationBackupRoot(): string {

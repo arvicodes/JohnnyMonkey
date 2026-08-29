@@ -2944,6 +2944,24 @@ export default function EntryTicketPage({
     void apiPut('/api/entry-ticket/custom-sets', { sets: customSets }).catch(() => {});
   }, [customSets, isTeacher, embeddedPlay]);
 
+  const secureTicketBackup = useCallback(() => {
+    if (!isTeacher || customSets.length === 0) return;
+    saveCustomEntryTicketSets(customSets);
+    void apiPut('/api/entry-ticket/custom-sets', { sets: customSets, forceBackup: true }).catch(() => {});
+  }, [customSets, isTeacher]);
+
+  useEffect(() => {
+    if (!isTeacher || embeddedPlay) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
+      if (e.key !== 's' && e.key !== 'S') return;
+      e.preventDefault();
+      secureTicketBackup();
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [embeddedPlay, isTeacher, secureTicketBackup]);
+
   /** Lehrer: Fragensets vom Server laden — Notizen/reihePath bleiben erhalten. */
   useEffect(() => {
     const applyUnterkapitel = (withUnterkapitel: EntryTicketCustomSet[]) => {
@@ -5081,6 +5099,7 @@ export default function EntryTicketPage({
                         onOpenHistory={() =>
                           setHistoryTarget({ id: activeCustomSet.id, name: activeCustomSet.name })
                         }
+                        onSecure={secureTicketBackup}
                       />
                     </Box>
                   </>

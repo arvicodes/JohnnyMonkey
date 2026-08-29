@@ -705,7 +705,8 @@ export async function loadJsonFile<T>(filePath: string): Promise<T | null> {
 export async function saveJsonFile(
   lessonPath: string,
   filename: string,
-  data: unknown
+  data: unknown,
+  options?: { forceBackup?: boolean }
 ): Promise<void> {
   const targetPath = lessonFolderPath(lessonPath);
   const body = JSON.stringify(data);
@@ -720,6 +721,7 @@ export async function saveJsonFile(
         filename
       );
       formData.append('targetPath', targetPath);
+      if (options?.forceBackup) formData.append('forceBackup', '1');
       const controller = new AbortController();
       const timer = window.setTimeout(() => controller.abort(), 45_000);
       const res = await fetch('/api/file-system-paths/save-file', {
@@ -1037,7 +1039,8 @@ export function presentationPresentUrl(
   groupId?: string,
   variant?: PresentationViewerVariant,
   namedSlug?: string,
-  planMode?: PresentationPlanMode
+  planMode?: PresentationPlanMode,
+  startSlideId?: string | null,
 ): string {
   const qs = new URLSearchParams({ lessonPath });
   if (groupId) qs.set('groupId', groupId);
@@ -1047,6 +1050,7 @@ export function presentationPresentUrl(
   if (planMode === 'create' || planMode === 'run' || planMode === 'background') {
     qs.set('planMode', planMode);
   }
+  if (startSlideId) qs.set('slideId', startSlideId);
   return `/presentation/present?${qs.toString()}`;
 }
 

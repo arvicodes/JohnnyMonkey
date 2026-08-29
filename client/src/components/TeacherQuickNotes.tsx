@@ -33,6 +33,7 @@ import ContentPasteGoIcon from '@mui/icons-material/ContentPasteGo';
 import TableChartIcon from '@mui/icons-material/TableChart';
 import CloseIcon from '@mui/icons-material/Close';
 import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
+import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
 import { DialogCloseIconButton } from './ui/dialog-close-icon-button';
 import { handlePresentationListShortcutKey, handlePresentationTabKey } from '../lib/presentationRichText';
 import {
@@ -577,13 +578,14 @@ function pickNewerPad(a: ScratchPadData, b: ScratchPadData | null): ScratchPadDa
 
 const serverSyncTimers = new Map<string, number>();
 
-function pushPadToServer(userId: string, data: ScratchPadData, immediate = false) {
+function pushPadToServer(userId: string, data: ScratchPadData, immediate = false, forceBackup = false) {
   const send = () => {
     serverSyncTimers.delete(userId);
     apiPutSafe('/api/teacher-scratch-pad', {
       pages: data.pages,
       pageIndex: data.pageIndex,
       updatedAt: data.updatedAt || new Date().toISOString(),
+      forceBackup,
     });
   };
   const prev = serverSyncTimers.get(userId);
@@ -595,7 +597,7 @@ function pushPadToServer(userId: string, data: ScratchPadData, immediate = false
   serverSyncTimers.set(userId, window.setTimeout(send, 900));
 }
 
-async function flushPadToServer(userId: string, data: ScratchPadData) {
+async function flushPadToServer(userId: string, data: ScratchPadData, forceBackup = false) {
   const prev = serverSyncTimers.get(userId);
   if (prev != null) {
     window.clearTimeout(prev);
@@ -605,6 +607,7 @@ async function flushPadToServer(userId: string, data: ScratchPadData) {
     pages: data.pages,
     pageIndex: data.pageIndex,
     updatedAt: data.updatedAt || new Date().toISOString(),
+    forceBackup,
   });
 }
 
@@ -1083,6 +1086,20 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     void flushPadToServer(userId, payload);
     openRef.current = false;
     setOpen(false);
+  }, [flushCurrentPage, userId]);
+
+  const persistManualBackup = useCallback(async () => {
+    const nextPages = flushCurrentPage();
+    const payload = savePad(
+      userId,
+      {
+        pages: nextPages,
+        pageIndex: pageIndexRef.current,
+        updatedAt: new Date().toISOString(),
+      },
+      { immediateServer: true }
+    );
+    await flushPadToServer(userId, payload, true);
   }, [flushCurrentPage, userId]);
 
   /** Beim Start: Ordner anlegen lassen + ggf. Server-Stand holen. */
@@ -1963,6 +1980,12 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
         return;
       }
       const mod = e.metaKey || e.ctrlKey;
+      if (mod && !e.altKey && !e.shiftKey && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        e.stopPropagation();
+        void persistManualBackup();
+        return;
+      }
       if (mod && (e.key === 'z' || e.key === 'Z')) {
         e.preventDefault();
         if (e.shiftKey) redo();
@@ -2074,7 +2097,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [open, goToPage, redo, undo, closeModal, emojiOpen, renamingIndex, pushHistorySnapshot, runFormat, bumpFontSize]);
+  }, [open, goToPage, redo, undo, closeModal, emojiOpen, renamingIndex, persistManualBackup, pushHistorySnapshot, runFormat, bumpFontSize]);
 
   const canUndo = historyTick >= 0 && historyRef.current.length > 0;
   const canRedo = historyTick >= 0 && redoRef.current.length > 0;
@@ -2506,6 +2529,18 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                     <RedoIcon sx={{ fontSize: 16, color: canRedo ? '#f57f17' : '#bdbdbd' }} />
                   </IconButton>
                 </span>
+              </Tooltip>
+              <Tooltip title="Sichern (⌘S) — Kopie nach Backup - Notizen">
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    void persistManualBackup();
+                  }}
+                  aria-label="Notizen sichern"
+                  sx={fmtBtnSx()}
+                >
+                  <SaveOutlinedIcon sx={{ fontSize: 16, color: '#f57f17' }} />
+                </IconButton>
               </Tooltip>
               <Divider orientation="vertical" flexItem sx={{ mx: 0.35, my: 0.4, borderColor: '#ffe082' }} />
               <Tooltip title="Tippen">

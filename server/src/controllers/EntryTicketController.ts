@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { findUserByLoginCode } from '../utils/loginCodeCrypto';
+import { writeTeacherTimestampedBackup } from '../utils/jmTeacherBackup';
 
 const prisma = new PrismaClient();
 
@@ -446,12 +447,14 @@ function preserveNonEmptyLessons(
 async function saveStoredCustomSets(
   teacherId: string,
   sets: EntryTicketCustomSetPayload[],
+  options?: { forceBackup?: boolean; stamp?: boolean },
 ): Promise<void> {
   const cleaned = sets
     .map((s) => normalizeCustomSetPayload(s))
     .filter(Boolean) as EntryTicketCustomSetPayload[];
   const existing = await loadStoredCustomSets(teacherId);
   const merged = preserveNonEmptyLessons(existing, cleaned);
+  const payload = { sets: merged, savedAt: new Date().toISOString(), teacherId };
   await prisma.teacherLessonInstruction.upsert({
     where: {
       teacherId_lessonPath: { teacherId, lessonPath: ENTRY_TICKET_CUSTOM_SETS_PATH },
@@ -463,6 +466,14 @@ async function saveStoredCustomSets(
     },
     update: { content: JSON.stringify({ sets: merged }) },
   });
+  if (options?.stamp !== false) {
+    writeTeacherTimestampedBackup({
+      kind: 'tickets',
+      label: teacherId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 12) || 'tickets',
+      payload,
+      force: Boolean(options?.forceBackup),
+    });
+  }
 }
 
 /** Aus aktiven Signalen / Archiven Fragensets einsammeln (Wiederherstellung nach leerem localStorage). */
@@ -1483,7 +1494,9 @@ export class EntryTicketController {
           return res.json({ success: true, count: existing.length, kept: true });
         }
       }
-      await saveStoredCustomSets(user.id, sets);
+      await saveStoredCustomSets(user.id, sets, {
+        forceBackup: Boolean(req.body?.forceBackup),
+      });
       return res.json({ success: true, count: sets.length });
     } catch (error) {
       console.error('EntryTicket saveCustomSets error:', error);

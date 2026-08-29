@@ -130,6 +130,8 @@ const PresentationPresentPage: React.FC = () => {
     params.get('variant') === 'original' ? 'original' : 'edited';
   const isOriginalView = !isNamedView && viewerVariant === 'original';
   const planMode = parsePresentationPlanMode(params.get('planMode'));
+  const startSlideId = (params.get('slideId') || '').trim();
+  const startSlideNumber = Number.parseInt(params.get('slide') || '', 10);
 
   const [loading, setLoading] = useState(true);
   const [deck, setDeck] = useState<PresentationDeck | null>(null);
@@ -291,6 +293,16 @@ const PresentationPresentPage: React.FC = () => {
           ? applyPlayVariantsToDeck(merged.deck, playVariants)
           : merged.deck;
       setDeck(displayDeck);
+      const sorted = displayDeck ? sortSlides(displayDeck.slides) : [];
+      let startIdx = 0;
+      if (startSlideId) {
+        const byId = sorted.findIndex((s) => s.id === startSlideId);
+        if (byId >= 0) startIdx = byId;
+      } else if (Number.isFinite(startSlideNumber) && startSlideNumber >= 1 && sorted.length) {
+        startIdx = Math.min(sorted.length - 1, startSlideNumber - 1);
+      }
+      setSlideIndex(startIdx);
+      setRevealStep(startIdx > 0 && sorted[startIdx] ? getSlideMaxRevealSteps(sorted[startIdx]) : 0);
       // Baseline = Stand auf Disk — Speichern als… stellt danach wieder her
       namedBaselineRef.current = namedSlug
         ? {
@@ -964,6 +976,12 @@ const PresentationPresentPage: React.FC = () => {
       const ann = await flushAnnotations();
       if (!ann) throw new Error('Annotationen fehlen');
       await flushPlayVariants();
+      await saveJsonFile(
+        lessonPath,
+        DECK_FILENAME,
+        { ...deck, updatedAt: new Date().toISOString() },
+        { forceBackup: true }
+      );
       setSnackbar('Gesichert');
       setSaving(false);
       setSaveProgress('');
@@ -1335,6 +1353,11 @@ const PresentationPresentPage: React.FC = () => {
       }
 
       const mod = e.metaKey || e.ctrlKey;
+      if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        void handleSaveBothVersions();
+        return;
+      }
       if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'y') {
         e.preventDefault();
         setSlideOverviewOpen((open) => !open);
@@ -1388,7 +1411,7 @@ const PresentationPresentPage: React.FC = () => {
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [goNext, goPrev, drawActive, groupId, lessonPath, navigate, planMode, slides, saveNamedOpen, clearInkOpen, userZoom, entryTicketOpen, applyUserZoom, quietWork, musicGame, slideOverviewOpen]);
+  }, [goNext, goPrev, drawActive, groupId, lessonPath, navigate, planMode, slides, saveNamedOpen, clearInkOpen, userZoom, entryTicketOpen, applyUserZoom, quietWork, musicGame, slideOverviewOpen, handleSaveBothVersions]);
 
   // Fokus auf die Bühne, damit Pfeiltasten sofort greifen
   useEffect(() => {

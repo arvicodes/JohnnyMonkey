@@ -795,7 +795,7 @@ export default function PresentationTabletToolbar({
 
         {!readOnly && onSave && (
           <ToolBtn
-            title="Sichern: aktuelle Version aktualisieren"
+            title="Sichern (⌘S): aktuelle Version + Kopie nach Backup - Folien"
             disabled={saving}
             onClick={onSave}
           >

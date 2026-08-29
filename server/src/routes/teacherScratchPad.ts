@@ -103,7 +103,7 @@ router.get('/', async (req, res) => {
     // Sync: neuerer Stand in DB + Datei schreiben
     try {
       await writeScratchPadToDb(user.id, data);
-      writeScratchPad(key, data);
+      writeScratchPad(key, data, { timestamped: false });
     } catch (syncErr) {
       console.warn('Scratch pad sync after GET failed:', syncErr);
     }
@@ -153,7 +153,8 @@ router.put('/', async (req, res) => {
       });
     }
     await writeScratchPadToDb(user.id, payload);
-    const written = writeScratchPad(key, payload);
+    const forceStamp = Boolean((req.body as { forceBackup?: unknown })?.forceBackup);
+    const written = writeScratchPad(key, payload, { timestamped: true, forceStamp });
     res.json({
       ok: true,
       userKey: key,
@@ -161,6 +162,7 @@ router.put('/', async (req, res) => {
       live: written.live,
       backupLatest: written.backupLatest,
       backupStamp: written.backupStamp,
+      teacherBackup: written.teacherBackup,
       updatedAt: payload.updatedAt,
     });
   } catch (e) {

@@ -223,7 +223,7 @@ ls -lh "$BAK"
 rm -rf /tmp/jm-sync-stage
 mkdir -p /tmp/jm-sync-stage/J-M-Reihen
 cp -a "$BAK/dev.db" /tmp/jm-sync-stage/dev.db
-for p in Mathe Lehrer-Schnellnotizen Informatik; do
+for p in Mathe Lehrer-Schnellnotizen Informatik "Backup - Notizen" "Backup - Folien" "Backup - Tickets"; do
   if [ -d "/app/J-M-Reihen/$p" ]; then cp -a "/app/J-M-Reihen/$p" /tmp/jm-sync-stage/J-M-Reihen/; fi
 done
 tar -czf /tmp/jm-sync-pull.tar.gz -C /tmp/jm-sync-stage .
@@ -368,7 +368,7 @@ merge_jm.parent.mkdir(parents=True, exist_ok=True)
 if merge_jm.exists():
   shutil.rmtree(merge_jm)
 merge_jm.mkdir(parents=True)
-for part in ("Mathe", "Lehrer-Schnellnotizen", "Informatik"):
+for part in ("Mathe", "Lehrer-Schnellnotizen", "Informatik", "Backup - Notizen", "Backup - Folien", "Backup - Tickets"):
   subprocess.check_call(
     [
       sys.executable,
@@ -407,7 +407,7 @@ write_pepper_file(root / "server/prisma/.login-code-pepper", pepper)
 print("Pepper für beide Seiten:", "gesetzt")
 
 print("==> Merged Material → lokal schreiben")
-for part in ("Mathe", "Lehrer-Schnellnotizen", "Informatik"):
+for part in ("Mathe", "Lehrer-Schnellnotizen", "Informatik", "Backup - Notizen", "Backup - Folien", "Backup - Tickets"):
   src = merge_jm / part
   dst = local_jm / part
   if not src.exists():

@@ -675,7 +675,7 @@ const PresentationEditorPage: React.FC = () => {
     async (
       next: PresentationDeck,
       version: number,
-      options?: { schedulePdfExport?: boolean }
+      options?: { schedulePdfExport?: boolean; forceBackup?: boolean }
     ) => {
       if (!lessonPath) return;
       const showSavingTimer = window.setTimeout(() => {
@@ -695,7 +695,9 @@ const PresentationEditorPage: React.FC = () => {
           );
           return;
         }
-        await saveJsonFile(lessonPath, DECK_FILENAME, payload);
+        await saveJsonFile(lessonPath, DECK_FILENAME, payload, {
+          forceBackup: options?.forceBackup,
+        });
         // Original nur aktualisieren, solange noch nicht eingefroren (Erstell-Phase)
         await writeOriginalDeckSnapshot(lessonPath, payload, 'sync');
         lastPersistedUpdatedAtRef.current = payload.updatedAt;
@@ -718,7 +720,7 @@ const PresentationEditorPage: React.FC = () => {
   );
 
   const flushPersist = useCallback(
-    (options?: { schedulePdfExport?: boolean }) => {
+    (options?: { schedulePdfExport?: boolean; forceBackup?: boolean }) => {
       persistAgainRef.current = true;
       persistChainRef.current = persistChainRef.current
         .catch(() => undefined)
@@ -1392,6 +1394,16 @@ const PresentationEditorPage: React.FC = () => {
 
       const mod = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
+      if (mod && !e.altKey && !e.shiftKey && key === 's') {
+        e.preventDefault();
+        e.stopPropagation();
+        commitEditorState({ history: 'skip' });
+        void flushPersist({ schedulePdfExport: false, forceBackup: true }).then(() => {
+          if (lastPersistedVersionRef.current !== saveVersionRef.current) return;
+          setSnackbar('Gesichert');
+        });
+        return;
+      }
       if (mod && !e.altKey && !e.shiftKey && key === 'y') {
         e.preventDefault();
         e.stopPropagation();
@@ -1473,7 +1485,7 @@ const PresentationEditorPage: React.FC = () => {
 
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [undo, redo, activeEditor, commitEditorState, goToAdjacentSlide]);
+  }, [undo, redo, activeEditor, commitEditorState, flushPersist, goToAdjacentSlide]);
 
   const canUndo = canUndoDeck(historyRef.current, deckRef.current);
   const canRedo = canRedoDeck(historyRef.current);
@@ -3149,6 +3161,24 @@ const PresentationEditorPage: React.FC = () => {
     [commitEditorState, flushPersist, lessonPath, navigate],
   );
 
+  const startPresentation = useCallback(
+    (fromCurrent: boolean) => {
+      preparePresentationAudioForPlay();
+      requestPresentFullscreen();
+      void flushThenLeave(
+        presentationPresentUrl(
+          lessonPath,
+          groupId || undefined,
+          undefined,
+          undefined,
+          planMode,
+          fromCurrent ? activeId : undefined,
+        ),
+      );
+    },
+    [activeId, flushThenLeave, groupId, lessonPath, planMode],
+  );
+
   const handleBack = () => {
     void flushThenLeave(presentationLessonBackUrl(lessonPath, groupId, planMode));
   };
@@ -3607,7 +3637,7 @@ const PresentationEditorPage: React.FC = () => {
               boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
             }}
           >
-            <Tooltip title="Sichern: aktuelle Version aktualisieren (PDFs später im Hintergrund)">
+            <Tooltip title="Sichern (⌘S): aktuelle Version + Kopie nach Backup - Folien">
               <IconButton
                 size="small"
                 onClick={() => {
@@ -3618,7 +3648,7 @@ const PresentationEditorPage: React.FC = () => {
                     clearTimeout(saveTimer.current);
                     saveTimer.current = null;
                   }
-                  void flushPersist({ schedulePdfExport: false }).then(() => {
+                  void flushPersist({ schedulePdfExport: false, forceBackup: true }).then(() => {
                     if (lastPersistedVersionRef.current !== saveVersionRef.current) return;
                     setSnackbar('Gesichert');
                     schedulePdfExport({ delayMs: 14000, notify: false });
@@ -3652,28 +3682,47 @@ const PresentationEditorPage: React.FC = () => {
               </IconButton>
             </Tooltip>
             <Divider orientation="vertical" flexItem sx={{ borderColor: PRES_EDITOR_UI.barBorder }} />
-            <Tooltip title="Präsentieren">
-              <IconButton
-                size="small"
-                onClick={() => {
-                  preparePresentationAudioForPlay();
-                  requestPresentFullscreen();
-                  void flushThenLeave(
-                    presentationPresentUrl(lessonPath, groupId || undefined, undefined, undefined, planMode),
-                  );
-                }}
-                sx={{
-                  width: 38,
-                  height: 30,
-                  borderRadius: 0,
-                  color: '#fff',
-                  bgcolor: PRES_EDITOR_UI.accent,
-                  '&:hover': { bgcolor: JOHNNY_PRESENTATION.primaryDark },
-                }}
-              >
-                <PresentIcon sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
+            <Box sx={{ display: 'inline-flex', alignItems: 'stretch', height: 30 }}>
+              <Tooltip title="Ab Folie 1">
+                <IconButton
+                  size="small"
+                  aria-label="Ab Folie 1 präsentieren"
+                  onClick={() => startPresentation(false)}
+                  sx={{
+                    width: 26,
+                    height: 30,
+                    borderRadius: 0,
+                    color: '#fff',
+                    bgcolor: '#1565C0',
+                    '&:hover': { bgcolor: '#0D47A1' },
+                  }}
+                >
+                  <PresentIcon sx={{ fontSize: 17 }} />
+                </IconButton>
+              </Tooltip>
+              <Box sx={{ width: '1px', alignSelf: 'stretch', bgcolor: 'rgba(255,255,255,0.35)' }} />
+              <Tooltip title="Ab aktueller Folie">
+                <span>
+                  <IconButton
+                    size="small"
+                    aria-label="Ab aktueller Folie präsentieren"
+                    disabled={!activeId}
+                    onClick={() => startPresentation(true)}
+                    sx={{
+                      width: 26,
+                      height: 30,
+                      borderRadius: 0,
+                      color: '#fff',
+                      bgcolor: PRES_EDITOR_UI.accent,
+                      '&:hover': { bgcolor: JOHNNY_PRESENTATION.primaryDark },
+                      '&.Mui-disabled': { color: '#fff', bgcolor: PRES_EDITOR_UI.accent, opacity: 0.45 },
+                    }}
+                  >
+                    <PresentIcon sx={{ fontSize: 17 }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Box>
           </Box>
 
           <Box sx={{ ml: 0.35, display: 'flex', alignItems: 'center' }}>

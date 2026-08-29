@@ -46,6 +46,7 @@ import path from 'path';
 import { startAutoLessonScheduler } from './services/autoLessonScheduler';
 import { ensureWochenaufgabenSchema } from './utils/ensureWochenaufgabenSchema';
 import { ensureScratchPadRoots } from './utils/teacherScratchPadStore';
+import { ensureTeacherBackupRoots } from './utils/jmTeacherBackup';
 import { migrateAllLoginCodes, redactHashedLoginCodes } from './utils/loginCodeCrypto';
 
 dotenv.config();
@@ -355,6 +356,12 @@ async function startServer() {
       console.log('✅ Notizen-Sicherheitskopien:', roots.backupRoot);
     } catch (e) {
       console.warn('Notizen-Ordner konnten nicht angelegt werden:', e);
+    }
+    try {
+      ensureTeacherBackupRoots();
+      console.log('✅ Backup-Ordner bereit: Notizen, Folien, Tickets');
+    } catch (e) {
+      console.warn('Backup-Ordner konnten nicht angelegt werden:', e);
     }
     // Lokal: 3003 (React nutzt 3000). Ohne PORT kein Konflikt mit dem Frontend.
     const port = parseInt(process.env.PORT || '3003', 10);
