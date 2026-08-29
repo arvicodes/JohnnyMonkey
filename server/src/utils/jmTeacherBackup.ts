@@ -67,7 +67,7 @@ export function sanitizeBackupLabel(raw: string, maxLen = 80): string {
 
 function localStampParts(d = new Date()): { time: string; date: string } {
   return {
-    time: `${d.getHours()}-${String(d.getMinutes()).padStart(2, '0')}`,
+    time: `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`,
     date: `${d.getDate()}.${d.getMonth() + 1}`,
   };
 }
@@ -83,7 +83,7 @@ function uniqueBackupName(dir: string, kind: TeacherBackupKind, label: string, d
   const prefix = FILE_PREFIX[kind];
   const base = `${time}_${date}_${prefix}_${label}.json`;
   if (!fs.existsSync(path.join(dir, base))) return base;
-  const withSeconds = `${time}-${String(d.getSeconds()).padStart(2, '0')}_${date}_${prefix}_${label}.json`;
+  const withSeconds = `${time}:${String(d.getSeconds()).padStart(2, '0')}_${date}_${prefix}_${label}.json`;
   if (!fs.existsSync(path.join(dir, withSeconds))) return withSeconds;
   let n = 2;
   while (fs.existsSync(path.join(dir, `${time}_${date}_${prefix}_${label}-${n}.json`))) n += 1;
@@ -128,7 +128,7 @@ export function ensureTeacherBackupDir(kind: TeacherBackupKind): string {
     fs.writeFileSync(
       readme,
       `Zeitstempel-Kopien: ${titles[kind]}.\n` +
-        'Dateiname: Uhrzeit_Datum_Art_Thema.json (z. B. 9-25_29.8_folien_…).\n' +
+        'Dateiname: Uhrzeit_Datum_Art_Thema.json (z. B. 9:25_29.8_folien_…).\n' +
         'Jede Sicherung legt eine neue Datei an. Der aktuelle Stand bleibt am normalen Ort.\n' +
         '⌘S oder der Sicherungsbutton erzeugt extra eine Kopie der aktuellsten Version.\n',
       'utf8'
