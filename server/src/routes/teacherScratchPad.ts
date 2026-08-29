@@ -122,7 +122,12 @@ router.get('/', async (req, res) => {
       found: true,
       pad: data,
       userKey: key,
-      source: fromDb && padUpdatedMs(fromDb) >= padUpdatedMs(fromFile) ? 'db' : 'file',
+      standPulled: standPulledRecently(),
+      source: standPulledRecently()
+        ? 'file'
+        : fromDb && padUpdatedMs(fromDb) >= padUpdatedMs(fromFile)
+          ? 'db'
+          : 'file',
     });
   } catch (e) {
     console.error('Scratch pad GET failed:', e);
@@ -134,7 +139,7 @@ router.get('/', async (req, res) => {
 router.put('/', async (req, res) => {
   try {
     const user = req.user!;
-    const body = req.body as Partial<ScratchPadPayload>;
+    const body = req.body as Partial<ScratchPadPayload> & { seenStandPull?: unknown };
     if (!body || !Array.isArray(body.pages)) {
       return res.status(400).json({ error: 'Ungültige Notizdaten (pages fehlt)' });
     }
@@ -156,6 +161,15 @@ router.put('/', async (req, res) => {
     const incomingMs = padUpdatedMs(payload);
     const existingMs = padUpdatedMs(existing);
     const pulledMs = standPulledAtMs();
+    if (standPulledRecently() && !body.seenStandPull) {
+      return res.json({
+        ok: true,
+        keptExisting: true,
+        userKey: key,
+        storedIn: 'db',
+        updatedAt: existing?.updatedAt,
+      });
+    }
     if (
       (pulledMs && incomingMs && incomingMs < pulledMs) ||
       (existingMs && incomingMs && incomingMs < existingMs)

@@ -578,6 +578,7 @@ function pickNewerPad(a: ScratchPadData, b: ScratchPadData | null): ScratchPadDa
 }
 
 const serverSyncTimers = new Map<string, number>();
+let lastServerStandPulled = false;
 
 function pushPadToServer(userId: string, data: ScratchPadData, immediate = false, forceBackup = false) {
   const send = () => {
@@ -587,6 +588,7 @@ function pushPadToServer(userId: string, data: ScratchPadData, immediate = false
       pageIndex: data.pageIndex,
       updatedAt: data.updatedAt || new Date().toISOString(),
       forceBackup,
+      seenStandPull: lastServerStandPulled,
     });
   };
   const prev = serverSyncTimers.get(userId);
@@ -609,6 +611,7 @@ async function flushPadToServer(userId: string, data: ScratchPadData, forceBacku
     pageIndex: data.pageIndex,
     updatedAt: data.updatedAt || new Date().toISOString(),
     forceBackup,
+    seenStandPull: lastServerStandPulled,
   });
 }
 
@@ -616,7 +619,8 @@ async function fetchPadFromServer(): Promise<ScratchPadData | null> {
   try {
     const res = await apiGetSafe('/api/teacher-scratch-pad');
     if (!res || !res.ok) return null;
-    const json = (await res.json()) as { found?: boolean; pad?: unknown };
+    const json = (await res.json()) as { found?: boolean; pad?: unknown; standPulled?: boolean };
+    lastServerStandPulled = Boolean(json?.standPulled);
     if (!json?.found || !json.pad) return null;
     return normalizePad(json.pad);
   } catch {
@@ -913,6 +917,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
 
   const persistBook = useCallback(
     (nextPages: ScratchPage[], nextIndex: number) => {
+      if (holdGitStandRef.current) return;
       const safeIndex = Math.min(Math.max(0, nextIndex), Math.max(0, nextPages.length - 1));
       savePad(userId, {
         pages: nextPages,
