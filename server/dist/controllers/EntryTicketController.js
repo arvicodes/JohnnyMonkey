@@ -4,6 +4,7 @@ exports.EntryTicketController = void 0;
 exports.resolveActiveEntryHeroImageIndexForUser = resolveActiveEntryHeroImageIndexForUser;
 const client_1 = require("@prisma/client");
 const loginCodeCrypto_1 = require("../utils/loginCodeCrypto");
+const jmTeacherBackup_1 = require("../utils/jmTeacherBackup");
 const prisma = new client_1.PrismaClient();
 const ENTRY_TICKET_LEGACY_PATH = '__entry_ticket_active__';
 /** Persistente eigene Fragensets der Lehrkraft (nicht nur Browser-localStorage). */
@@ -69,7 +70,33 @@ const sameLessonPath = (a, b) => {
 const PLAY_TASK_LIMIT = 80;
 const CUSTOM_SET_TASK_LIMIT = 400;
 const CUSTOM_SET_LESSON_LIMIT = 200;
-const normalizeTasksPayload = (raw, limit = PLAY_TASK_LIMIT) => {
+const PLAY_FIELD_LIMIT = 8000;
+/** Bilder in Fragenset-Karten (data-URL) brauchen deutlich mehr als die Play-Grenze. */
+const CUSTOM_SET_FIELD_LIMIT = 400000;
+const PLAY_INK_STROKE_LIMIT = 400;
+const PLAY_INK_KEY_LIMIT = 80;
+const sanitizeInkStrokes = (raw) => {
+    if (!Array.isArray(raw) || raw.length === 0)
+        return undefined;
+    return raw.slice(0, PLAY_INK_STROKE_LIMIT);
+};
+const sanitizePlayInkByKey = (raw) => {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw))
+        return undefined;
+    const out = {};
+    for (const [key, value] of Object.entries(raw)) {
+        if (!key || key.length > 200)
+            continue;
+        const strokes = sanitizeInkStrokes(value);
+        if (!strokes)
+            continue;
+        out[key] = strokes;
+        if (Object.keys(out).length >= PLAY_INK_KEY_LIMIT)
+            break;
+    }
+    return Object.keys(out).length > 0 ? out : undefined;
+};
+const normalizeTasksPayload = (raw, limit = PLAY_TASK_LIMIT, fieldLimit = PLAY_FIELD_LIMIT) => {
     if (!Array.isArray(raw))
         return undefined;
     const out = [];
@@ -85,12 +112,14 @@ const normalizeTasksPayload = (raw, limit = PLAY_TASK_LIMIT) => {
             ? r.sourceKey.trim().slice(0, 160)
             : undefined;
         const id = typeof r.id === 'string' && r.id.trim() ? r.id.trim().slice(0, 80) : undefined;
+        const ink = sanitizeInkStrokes(r.ink);
         out.push({
             category: typeof r.category === 'string' && r.category.trim() ? r.category.trim().slice(0, 80) : 'Eigen',
-            prompt: prompt.slice(0, 8000),
-            solution: solution.slice(0, 8000),
+            prompt: prompt.slice(0, fieldLimit),
+            solution: solution.slice(0, fieldLimit),
             ...(sourceKey ? { sourceKey } : {}),
             ...(id ? { id } : {}),
+            ...(ink ? { ink } : {}),
         });
         if (out.length >= limit)
             break;
@@ -117,7 +146,7 @@ const normalizeCustomSetPayload = (raw) => {
             : '';
         if (!lessonName)
             continue;
-        const tasks = (_a = normalizeTasksPayload(lesson.tasks, CUSTOM_SET_TASK_LIMIT)) !== null && _a !== void 0 ? _a : [];
+        const tasks = (_a = normalizeTasksPayload(lesson.tasks, CUSTOM_SET_TASK_LIMIT, CUSTOM_SET_FIELD_LIMIT)) !== null && _a !== void 0 ? _a : [];
         lessons.push({
             id: typeof lesson.id === 'string' && lesson.id.trim()
                 ? lesson.id.trim().slice(0, 80)
@@ -182,12 +211,14 @@ const normalizeCustomSetPayload = (raw) => {
     const notes = typeof row.notes === 'string' && row.notes.trim()
         ? row.notes.replace(/\r\n/g, '\n').slice(0, 4000)
         : undefined;
+    const playInkByKey = sanitizePlayInkByKey(row.playInkByKey);
     return {
         id,
         name,
         ...(reihePaths[0] ? { reihePath: reihePaths[0] } : {}),
         ...(reihePaths.length > 0 ? { reihePaths } : {}),
         ...(notes ? { notes } : {}),
+        ...(playInkByKey ? { playInkByKey } : {}),
         lessons,
     };
 };
@@ -386,12 +417,13 @@ function preserveNonEmptyLessons(existing, incoming) {
         return { ...set, lessons };
     });
 }
-async function saveStoredCustomSets(teacherId, sets) {
+async function saveStoredCustomSets(teacherId, sets, options) {
     const cleaned = sets
         .map((s) => normalizeCustomSetPayload(s))
         .filter(Boolean);
     const existing = await loadStoredCustomSets(teacherId);
     const merged = preserveNonEmptyLessons(existing, cleaned);
+    const payload = { sets: merged, savedAt: new Date().toISOString(), teacherId };
     await prisma.teacherLessonInstruction.upsert({
         where: {
             teacherId_lessonPath: { teacherId, lessonPath: ENTRY_TICKET_CUSTOM_SETS_PATH },
@@ -403,6 +435,14 @@ async function saveStoredCustomSets(teacherId, sets) {
         },
         update: { content: JSON.stringify({ sets: merged }) },
     });
+    if ((options === null || options === void 0 ? void 0 : options.stamp) !== false) {
+        (0, jmTeacherBackup_1.writeTeacherTimestampedBackup)({
+            kind: 'tickets',
+            label: teacherId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 12) || 'tickets',
+            payload,
+            force: Boolean(options === null || options === void 0 ? void 0 : options.forceBackup),
+        });
+    }
 }
 /** Aus aktiven Signalen / Archiven Fragensets einsammeln (Wiederherstellung nach leerem localStorage). */
 async function recoverCustomSetsFromSignals(teacherId) {
@@ -1335,7 +1375,7 @@ class EntryTicketController {
         }
     }
     static async saveCustomSets(req, res) {
-        var _a;
+        var _a, _b;
         try {
             const user = await getUserByLoginCode(req);
             if (!user)
@@ -1353,7 +1393,9 @@ class EntryTicketController {
                     return res.json({ success: true, count: existing.length, kept: true });
                 }
             }
-            await saveStoredCustomSets(user.id, sets);
+            await saveStoredCustomSets(user.id, sets, {
+                forceBackup: Boolean((_b = req.body) === null || _b === void 0 ? void 0 : _b.forceBackup),
+            });
             return res.json({ success: true, count: sets.length });
         }
         catch (error) {

@@ -4,6 +4,7 @@
 Modes:
   (default)  only lesson folders with git dirty/untracked files
   --full     entire Mathe tree + Lehrer-Schnellnotizen (recommended for school sync)
+  --notes    Notizen + Backup-Ordner (keine Unterrichtsfolien)
   --all      entire J-M-Reihen (large; use only when needed)
 """
 from __future__ import annotations
@@ -160,6 +161,18 @@ def stage_paths(mode: str) -> list[tuple[Path, Path]]:
   """Return list of (src, relative-to-JM) to pack."""
   if mode == "all":
     return [(JM, Path("."))]
+  if mode == "notes":
+    items: list[tuple[Path, Path]] = []
+    for name in (
+      "Lehrer-Schnellnotizen",
+      "Backup - Notizen",
+      "Backup - Folien",
+      "Backup - Tickets",
+    ):
+      src = JM / name
+      if src.exists():
+        items.append((src, Path(name)))
+    return items
   if mode == "full":
     # Unterrichtsordner (ohne die sehr großen Archive Erasmus/Wall-of-fame/Zwischenspeicher)
     items: list[tuple[Path, Path]] = []
@@ -188,7 +201,7 @@ def main() -> int:
   mode = "dirty"
   out = Path("/tmp/jm-mat-update.tar.gz")
   for a in args:
-    if a in ("--full", "--all", "--dirty"):
+    if a in ("--full", "--all", "--dirty", "--notes"):
       mode = a.lstrip("-")
     elif not a.startswith("-"):
       out = Path(a)

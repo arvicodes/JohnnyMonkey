@@ -16,6 +16,7 @@ exports.writeScratchPad = writeScratchPad;
 const crypto_1 = __importDefault(require("crypto"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const jmTeacherBackup_1 = require("./jmTeacherBackup");
 /** Aktueller Stand der Lehrer-Schnellnotizen (pro Lehrkraft). */
 exports.SCRATCH_PAD_LIVE_DIR_NAME = 'Lehrer-Schnellnotizen';
 /** Separater Ordner für regelmäßige Sicherheitskopien (Projektwurzel). */
@@ -188,7 +189,7 @@ function readScratchPadLive(userKey) {
  * - Live: `J-M-Reihen/Lehrer-Schnellnotizen/<user>/latest.json`
  * - Backup: `Notizen-Sicherheitskopien/<user>/latest.json` (+ zeitgestempelte Kopien)
  */
-function writeScratchPad(userKey, payload) {
+function writeScratchPad(userKey, payload, options) {
     ensureScratchPadRoots();
     const liveDir = ensureScratchPadLiveDir(userKey);
     const backupDir = ensureScratchPadBackupDir(userKey);
@@ -200,6 +201,7 @@ function writeScratchPad(userKey, payload) {
             live: livePath,
             backupLatest: path_1.default.join(backupDir, 'latest.json'),
             backupStamp: null,
+            teacherBackup: null,
         };
     }
     const body = {
@@ -212,7 +214,8 @@ function writeScratchPad(userKey, payload) {
     fs_1.default.writeFileSync(livePath, buf);
     fs_1.default.writeFileSync(backupLatestPath, buf);
     let backupStamp = null;
-    if (shouldWriteTimestampedBackup(userKey, buf)) {
+    const wantStamp = (options === null || options === void 0 ? void 0 : options.timestamped) !== false;
+    if (wantStamp && ((options === null || options === void 0 ? void 0 : options.forceStamp) || shouldWriteTimestampedBackup(userKey, buf))) {
         backupStamp = path_1.default.join(backupDir, `pad-${stampNow()}.json`);
         fs_1.default.writeFileSync(backupStamp, buf);
         pruneTimestampedBackups(backupDir, BACKUP_KEEP);
@@ -227,6 +230,14 @@ function writeScratchPad(userKey, payload) {
         else
             recentByUser.set(userKey, { lastAt: prev.lastAt, lastHash: fileHash(buf) });
     }
-    return { live: livePath, backupLatest: backupLatestPath, backupStamp };
+    const teacherBackup = wantStamp
+        ? (0, jmTeacherBackup_1.writeTeacherTimestampedBackup)({
+            kind: 'notes',
+            label: userKey,
+            payload: body,
+            force: Boolean(options === null || options === void 0 ? void 0 : options.forceStamp),
+        })
+        : null;
+    return { live: livePath, backupLatest: backupLatestPath, backupStamp, teacherBackup };
 }
 //# sourceMappingURL=teacherScratchPadStore.js.map

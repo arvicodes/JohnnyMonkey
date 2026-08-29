@@ -986,6 +986,7 @@ class FileSystemPathController {
      * Save a file (e.g., whiteboard) to a specific directory
      */
     static async saveFile(req, res) {
+        var _a, _b, _c;
         try {
             const file = req.file;
             const targetPath = req.body.targetPath || req.query.targetPath;
@@ -1066,8 +1067,14 @@ class FileSystemPathController {
                 (0, presentationDeckBackup_1.backupPresentationDeckBeforeOverwrite)(finalFilePath, { reason: 'before-save' });
             }
             fs_1.default.writeFileSync(finalFilePath, file.buffer);
+            const forceBackup = ((_a = req.body) === null || _a === void 0 ? void 0 : _a.forceBackup) === true ||
+                ((_b = req.body) === null || _b === void 0 ? void 0 : _b.forceBackup) === 'true' ||
+                ((_c = req.body) === null || _c === void 0 ? void 0 : _c.forceBackup) === '1';
             if (originalName === 'Praesentation.deck.json') {
-                (0, presentationDeckBackup_1.backupPresentationDeckAfterSave)(finalFilePath, file.buffer);
+                (0, presentationDeckBackup_1.backupPresentationDeckAfterSave)(finalFilePath, file.buffer, { force: forceBackup });
+            }
+            else if (originalName === 'Praesentation.annotations.json') {
+                (0, presentationDeckBackup_1.backupLessonToTeacherFolienFolder)(finalFilePath, { force: forceBackup });
             }
             console.log('File saved successfully');
             res.json({

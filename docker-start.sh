@@ -13,6 +13,26 @@ cd /app/server
 # sonst überschreibt das Volume schema.prisma und der Prisma-Client wird unvollständig.
 mkdir -p /app/server/data
 
+# Folien, Notizen und Sicherungen auf dem DB-Volume halten.
+# Sonst liegen sie nur im Container und gehen beim Neuaufbau verloren.
+JM_FILES=/app/server/data/jm-files
+mkdir -p "$JM_FILES"
+link_jm_persist() {
+  name="$1"
+  live="$2"
+  dest="$JM_FILES/$name"
+  if [ -d "$dest" ] && [ -f "$dest/.jm-seeded" ]; then
+    if [ ! -L "$live" ]; then
+      rm -rf "$live"
+      ln -s "$dest" "$live"
+      echo "🔗 $live → $dest"
+    fi
+  fi
+}
+link_jm_persist "J-M-Reihen" /app/J-M-Reihen
+link_jm_persist "Notizen-Sicherheitskopien" /app/Notizen-Sicherheitskopien
+link_jm_persist "Presentation-Sicherheitskopien" /app/Presentation-Sicherheitskopien
+
 # Migration: altes Volume hing früher auf prisma/ → Dateien liegen nach Remount unter data/
 if [ ! -f /app/server/data/dev.db ]; then
   if [ -f /app/server/prisma/dev.db ]; then

@@ -21,7 +21,9 @@ services:
       - JM_REIHEN_PATH=/app/J-M-Reihen
     volumes:
       - johnnymonkey_db:/app/server/data
-      # J-M-Reihen NICHT mounten: Portainer-Git-Checkout ist oft leer und würde
+      # Folien/Notizen/Sicherungen liegen unter /app/server/data/jm-files (Volume)
+      # und werden in docker-start.sh nach /app verlinkt.
+      # J-M-Reihen NICHT extra mounten: Portainer-Git-Checkout ist oft leer und würde
       # die Materialien aus dem Image überdecken.
       - ./material:/app/material:ro
       - johnnymonkey_logs:/app/logs

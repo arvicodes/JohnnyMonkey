@@ -6,11 +6,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.backupPresentationDeckToFolienAlle = backupPresentationDeckToFolienAlle;
 exports.backupPresentationDeckBeforeOverwrite = backupPresentationDeckBeforeOverwrite;
 exports.backupPresentationDeckAfterSave = backupPresentationDeckAfterSave;
+exports.backupLessonToTeacherFolienFolder = backupLessonToTeacherFolienFolder;
 exports.getCentralPresentationBackupRoot = getCentralPresentationBackupRoot;
 const crypto_1 = __importDefault(require("crypto"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const folienAlleBackup_1 = require("./folienAlleBackup");
+const jmTeacherBackup_1 = require("./jmTeacherBackup");
 const LOCAL_BACKUP_DIR = '.presentation-backups';
 const CENTRAL_BACKUP_ROOT_NAME = 'Presentation-Sicherheitskopien';
 const LOCAL_KEEP = 40;
@@ -180,8 +182,62 @@ function backupPresentationDeckBeforeOverwrite(deckFilePath, options) {
  * Nach erfolgreichem Speichern: aktuelle Version in den Sammelordner schreiben
  * (auch bei Erst-Erstellung, wenn noch kein vorheriges Backup existierte).
  */
-function backupPresentationDeckAfterSave(deckFilePath, savedContent) {
-    return backupPresentationDeckToFolienAlle(deckFilePath, savedContent);
+function backupPresentationDeckAfterSave(deckFilePath, savedContent, options) {
+    const folienAlle = backupPresentationDeckToFolienAlle(deckFilePath, savedContent);
+    backupLessonToTeacherFolienFolder(deckFilePath, { force: options === null || options === void 0 ? void 0 : options.force, savedDeck: savedContent });
+    return folienAlle;
+}
+/**
+ * Zeitstempel-Kopie nach `J-M-Reihen/Backup - Folien/` (Deck + Annotationen, falls vorhanden).
+ */
+function backupLessonToTeacherFolienFolder(lessonFilePath, options) {
+    const lessonDir = path_1.default.dirname(lessonFilePath);
+    const deckPath = path_1.default.join(lessonDir, 'Praesentation.deck.json');
+    let deckRaw = null;
+    if (options === null || options === void 0 ? void 0 : options.savedDeck) {
+        deckRaw =
+            typeof options.savedDeck === 'string' ? Buffer.from(options.savedDeck, 'utf8') : options.savedDeck;
+    }
+    else if (fs_1.default.existsSync(deckPath)) {
+        try {
+            deckRaw = fs_1.default.readFileSync(deckPath);
+        }
+        catch {
+            deckRaw = null;
+        }
+    }
+    if (!deckRaw || deckRaw.length < 50)
+        return null;
+    let annotations = null;
+    const annPath = path_1.default.join(lessonDir, 'Praesentation.annotations.json');
+    if (fs_1.default.existsSync(annPath)) {
+        try {
+            annotations = JSON.parse(fs_1.default.readFileSync(annPath, 'utf8'));
+        }
+        catch {
+            annotations = null;
+        }
+    }
+    let deck = null;
+    try {
+        deck = JSON.parse(deckRaw.toString('utf8'));
+    }
+    catch {
+        return null;
+    }
+    const lesson = lessonKeyFromDeckPath(deckPath);
+    return (0, jmTeacherBackup_1.writeTeacherTimestampedBackup)({
+        kind: 'slides',
+        label: lesson,
+        payload: {
+            kind: 'folien',
+            lesson,
+            savedAt: new Date().toISOString(),
+            deck,
+            annotations,
+        },
+        force: Boolean(options === null || options === void 0 ? void 0 : options.force),
+    });
 }
 function getCentralPresentationBackupRoot() {
     return centralBackupRoot();

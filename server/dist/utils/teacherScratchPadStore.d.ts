@@ -32,9 +32,13 @@ export declare function readScratchPadLive(userKey: string): ScratchPadPayload |
  * - Live: `J-M-Reihen/Lehrer-Schnellnotizen/<user>/latest.json`
  * - Backup: `Notizen-Sicherheitskopien/<user>/latest.json` (+ zeitgestempelte Kopien)
  */
-export declare function writeScratchPad(userKey: string, payload: ScratchPadPayload): {
+export declare function writeScratchPad(userKey: string, payload: ScratchPadPayload, options?: {
+    timestamped?: boolean;
+    forceStamp?: boolean;
+}): {
     live: string;
     backupLatest: string;
     backupStamp: string | null;
+    teacherBackup?: string | null;
 };
 //# sourceMappingURL=teacherScratchPadStore.d.ts.map

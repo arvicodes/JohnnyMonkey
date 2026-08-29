@@ -101,7 +101,7 @@ router.get('/', async (req, res) => {
         // Sync: neuerer Stand in DB + Datei schreiben
         try {
             await writeScratchPadToDb(user.id, data);
-            (0, teacherScratchPadStore_1.writeScratchPad)(key, data);
+            (0, teacherScratchPadStore_1.writeScratchPad)(key, data, { timestamped: false });
         }
         catch (syncErr) {
             console.warn('Scratch pad sync after GET failed:', syncErr);
@@ -121,6 +121,7 @@ router.get('/', async (req, res) => {
 });
 /** Speichern in DB (+ Datei-Sicherheitskopie). */
 router.put('/', async (req, res) => {
+    var _a;
     try {
         const user = req.user;
         const body = req.body;
@@ -150,7 +151,8 @@ router.put('/', async (req, res) => {
             });
         }
         await writeScratchPadToDb(user.id, payload);
-        const written = (0, teacherScratchPadStore_1.writeScratchPad)(key, payload);
+        const forceStamp = Boolean((_a = req.body) === null || _a === void 0 ? void 0 : _a.forceBackup);
+        const written = (0, teacherScratchPadStore_1.writeScratchPad)(key, payload, { timestamped: true, forceStamp });
         res.json({
             ok: true,
             userKey: key,
@@ -158,6 +160,7 @@ router.put('/', async (req, res) => {
             live: written.live,
             backupLatest: written.backupLatest,
             backupStamp: written.backupStamp,
+            teacherBackup: written.teacherBackup,
             updatedAt: payload.updatedAt,
         });
     }

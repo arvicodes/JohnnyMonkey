@@ -13,6 +13,7 @@
 # Usage:
 #   ./scripts/school-sync.sh
 #   ./scripts/school-sync.sh --check
+#   ./scripts/school-sync.sh --notes-only   # Notizen + Sicherungen, keine DB, keine Folien
 
 set -euo pipefail
 
@@ -20,11 +21,13 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 CHECK_ONLY=0
+NOTES_ONLY=0
 for arg in "$@"; do
   case "$arg" in
     --check) CHECK_ONLY=1 ;;
+    --notes-only) NOTES_ONLY=1 ;;
     -h|--help)
-      sed -n '1,25p' "$0"
+      sed -n '1,28p' "$0"
       exit 0
       ;;
   esac
@@ -116,7 +119,7 @@ JWT="$(
 [[ -n "$JWT" ]] || die "Portainer-Login fehlgeschlagen."
 
 export PORTAINER_URL ENDPOINT_ID JWT APP_NAME TUNNEL_NAME IMAGE DB_VOLUME \
-  REPO RELEASE_ID TOKEN STAMP LOCAL_BAK GLOBAL_BAK PULL_DIR MERGE_JM ROOT
+  REPO RELEASE_ID TOKEN STAMP LOCAL_BAK GLOBAL_BAK PULL_DIR MERGE_JM ROOT NOTES_ONLY
 
 python3 <<'PY'
 import json, os, sys, time, urllib.request, ssl, base64, shutil, subprocess, hashlib, sqlite3
@@ -226,6 +229,8 @@ cp -a "$BAK/dev.db" /tmp/jm-sync-stage/dev.db
 for p in Mathe Lehrer-Schnellnotizen Informatik "Backup - Notizen" "Backup - Folien" "Backup - Tickets"; do
   if [ -d "/app/J-M-Reihen/$p" ]; then cp -a "/app/J-M-Reihen/$p" /tmp/jm-sync-stage/J-M-Reihen/; fi
 done
+if [ -d /app/Notizen-Sicherheitskopien ]; then cp -a /app/Notizen-Sicherheitskopien /tmp/jm-sync-stage/; fi
+if [ -d /app/Presentation-Sicherheitskopien ]; then cp -a /app/Presentation-Sicherheitskopien /tmp/jm-sync-stage/; fi
 tar -czf /tmp/jm-sync-pull.tar.gz -C /tmp/jm-sync-stage .
 ls -lh /tmp/jm-sync-pull.tar.gz
 # upload to GitHub release (replace old pull asset)
@@ -362,13 +367,19 @@ if school_pepper:
 print("Globale Kopie (Mac):", global_bak)
 
 print("==> Merge Material (neueres gewinnt)")
+notes_only = os.environ.get("NOTES_ONLY") == "1"
 local_jm = root / "J-M-Reihen"
 school_jm = pull_dir / "J-M-Reihen"
 merge_jm.parent.mkdir(parents=True, exist_ok=True)
 if merge_jm.exists():
   shutil.rmtree(merge_jm)
 merge_jm.mkdir(parents=True)
-for part in ("Mathe", "Lehrer-Schnellnotizen", "Informatik", "Backup - Notizen", "Backup - Folien", "Backup - Tickets"):
+jm_parts = (
+  ("Lehrer-Schnellnotizen", "Backup - Notizen", "Backup - Folien", "Backup - Tickets")
+  if notes_only
+  else ("Mathe", "Lehrer-Schnellnotizen", "Informatik", "Backup - Notizen", "Backup - Folien", "Backup - Tickets")
+)
+for part in jm_parts:
   subprocess.check_call(
     [
       sys.executable,
@@ -378,36 +389,56 @@ for part in ("Mathe", "Lehrer-Schnellnotizen", "Informatik", "Backup - Notizen",
       str(merge_jm / part),
     ]
   )
+safety_roots = ("Notizen-Sicherheitskopien", "Presentation-Sicherheitskopien")
+merge_safety = Path(f"/tmp/jm-sync-merged-safety-{stamp}")
+if merge_safety.exists():
+  shutil.rmtree(merge_safety)
+for extra in safety_roots:
+  subprocess.check_call(
+    [
+      sys.executable,
+      str(root / "scripts/merge-school-materials.py"),
+      str(root / extra),
+      str(pull_dir / extra),
+      str(merge_safety / extra),
+    ]
+  )
 
-print("==> DB wählen (neueres mtime, Gleichstand → Schule) + passender Pepper")
-local_db = root / "server/prisma/dev.db"
-school_db = pull_dir / "dev.db"
-local_mt = local_db.stat().st_mtime
-school_mt = school_db.stat().st_mtime
-chosen = school_db if school_mt >= local_mt else local_db
-from_school = chosen == school_db
-print(f"DB pick: {'school' if from_school else 'local'} (local_mt={local_mt}, school_mt={school_mt})")
+pepper = ""
 merged_db = Path(f"/tmp/jm-sync-merged-db-{stamp}.db")
-shutil.copy2(chosen, merged_db)
-
-local_pepper = read_local_pepper()
-print("Pepper Laptop:", "vorhanden" if local_pepper else "fehlt")
-hashed = db_is_hashed(chosen)
-if from_school:
-  if hashed and not school_pepper:
-    print("ERROR: Schul-DB hat gehashte Login-Codes, aber keinen Pepper.", file=sys.stderr)
-    sys.exit(1)
-  pepper = school_pepper or local_pepper or os.urandom(32).hex()
+if notes_only:
+  print("==> DB unverändert (--notes-only)")
+  local_pepper = read_local_pepper()
+  pepper = local_pepper or school_pepper or ""
 else:
-  if hashed and not local_pepper:
-    print("ERROR: Laptop-DB hat gehashte Login-Codes, aber keinen Pepper.", file=sys.stderr)
-    sys.exit(1)
-  pepper = local_pepper or school_pepper or os.urandom(32).hex()
-write_pepper_file(root / "server/prisma/.login-code-pepper", pepper)
-print("Pepper für beide Seiten:", "gesetzt")
+  print("==> DB wählen (neueres mtime, Gleichstand → Schule) + passender Pepper")
+  local_db = root / "server/prisma/dev.db"
+  school_db = pull_dir / "dev.db"
+  local_mt = local_db.stat().st_mtime
+  school_mt = school_db.stat().st_mtime
+  chosen = school_db if school_mt >= local_mt else local_db
+  from_school = chosen == school_db
+  print(f"DB pick: {'school' if from_school else 'local'} (local_mt={local_mt}, school_mt={school_mt})")
+  shutil.copy2(chosen, merged_db)
+
+  local_pepper = read_local_pepper()
+  print("Pepper Laptop:", "vorhanden" if local_pepper else "fehlt")
+  hashed = db_is_hashed(chosen)
+  if from_school:
+    if hashed and not school_pepper:
+      print("ERROR: Schul-DB hat gehashte Login-Codes, aber keinen Pepper.", file=sys.stderr)
+      sys.exit(1)
+    pepper = school_pepper or local_pepper or os.urandom(32).hex()
+  else:
+    if hashed and not local_pepper:
+      print("ERROR: Laptop-DB hat gehashte Login-Codes, aber keinen Pepper.", file=sys.stderr)
+      sys.exit(1)
+    pepper = local_pepper or school_pepper or os.urandom(32).hex()
+  write_pepper_file(root / "server/prisma/.login-code-pepper", pepper)
+  print("Pepper für beide Seiten:", "gesetzt")
 
 print("==> Merged Material → lokal schreiben")
-for part in ("Mathe", "Lehrer-Schnellnotizen", "Informatik", "Backup - Notizen", "Backup - Folien", "Backup - Tickets"):
+for part in jm_parts:
   src = merge_jm / part
   dst = local_jm / part
   if not src.exists():
@@ -415,43 +446,80 @@ for part in ("Mathe", "Lehrer-Schnellnotizen", "Informatik", "Backup - Notizen",
   if dst.exists():
     shutil.rmtree(dst)
   shutil.copytree(src, dst)
-if chosen.resolve() != local_db.resolve():
-  shutil.copy2(chosen, local_db)
-shutil.copy2(merged_db, root / "backup_latest.db")
+for extra in safety_roots:
+  src = merge_safety / extra
+  dst = root / extra
+  if not src.exists():
+    continue
+  if dst.exists():
+    shutil.rmtree(dst)
+  shutil.copytree(src, dst)
+if not notes_only:
+  local_db = root / "server/prisma/dev.db"
+  if chosen.resolve() != local_db.resolve():
+    shutil.copy2(chosen, local_db)
+  shutil.copy2(merged_db, root / "backup_latest.db")
 print("Lokal aktualisiert.")
 shutil.rmtree(pull_dir, ignore_errors=True)
 shutil.rmtree(merge_jm.parent, ignore_errors=True)
+shutil.rmtree(merge_safety, ignore_errors=True)
 
 # Save chosen paths for bash push phase
 Path("/tmp/jm-sync-env.sh").write_text(
-  f"export JM_SYNC_MERGED_DB={merged_db}\nexport JM_SYNC_STAMP={stamp}\nexport LOGIN_PEPPER_HEX={pepper}\n"
+  f"export JM_SYNC_MERGED_DB={merged_db}\nexport JM_SYNC_STAMP={stamp}\nexport LOGIN_PEPPER_HEX={pepper}\nexport NOTES_ONLY={'1' if notes_only else '0'}\n"
 )
 print("PY_OK")
 PY
 
 # shellcheck disable=SC1091
 source /tmp/jm-sync-env.sh
-[[ -n "${LOGIN_PEPPER_HEX:-}" ]] || die "Login-Pepper fehlt nach dem Abgleich."
+if [[ "${NOTES_ONLY:-0}" != "1" ]]; then
+  [[ -n "${LOGIN_PEPPER_HEX:-}" ]] || die "Login-Pepper fehlt nach dem Abgleich."
+fi
 
 prune_backups local
 prune_backups global
 
 log "==> Merged Stand zurück auf Schule (DB + Material)"
 # Pack materials from merged local
-python3 "$ROOT/scripts/pack-school-materials.py" --full /tmp/jm-mat-update.tar.gz
+if [[ "${NOTES_ONLY:-0}" == "1" ]]; then
+  python3 "$ROOT/scripts/pack-school-materials.py" --notes /tmp/jm-mat-update.tar.gz
+else
+  python3 "$ROOT/scripts/pack-school-materials.py" --full /tmp/jm-mat-update.tar.gz
+fi
 [[ -f /tmp/jm-mat-update.tar.gz ]] || die "Material-Pack fehlgeschlagen"
-cp -a server/prisma/dev.db backup_latest.db
+python3 - <<'PY'
+import tarfile
+from pathlib import Path
+root = Path("/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey")
+out = Path("/tmp/jm-safety-copies.tar.gz")
+with tarfile.open(out, "w:gz") as tar:
+  for name in ("Notizen-Sicherheitskopien", "Presentation-Sicherheitskopien"):
+    src = root / name
+    if src.exists():
+      tar.add(src, arcname=name)
+      print("pack", name)
+print("wrote", out, out.stat().st_size)
+PY
+if [[ "${NOTES_ONLY:-0}" != "1" ]]; then
+  cp -a server/prisma/dev.db backup_latest.db
+fi
 
 # Upload mat + db (reuse deploy upload pattern)
 gh_api() {
   curl -sS -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" "$@"
 }
+DEL_NAMES="jm-mat-update.tar.gz jm-safety-copies.tar.gz"
+if [[ "${NOTES_ONLY:-0}" != "1" ]]; then
+  DEL_NAMES="$DEL_NAMES backup_latest.db"
+fi
 gh_api "https://api.github.com/repos/$REPO/releases/tags/deploy-prebuilt" \
-  | python3 -c '
-import sys,json
+  | DEL_NAMES="$DEL_NAMES" python3 -c '
+import os,sys,json
+want=set(os.environ["DEL_NAMES"].split())
 r=json.load(sys.stdin)
 for a in r.get("assets",[]):
-  if a["name"] in ("backup_latest.db","jm-mat-update.tar.gz"):
+  if a["name"] in want:
     print(a["id"])
 ' > /tmp/jm_del_assets.txt
 while read -r id; do
@@ -467,20 +535,30 @@ upload_asset() {
     "https://uploads.github.com/repos/$REPO/releases/$RELEASE_ID/assets?name=$2" \
     | python3 -c 'import sys,json; r=json.load(sys.stdin); print(r.get("id"), r.get("name"), r.get("size"))'
 }
-DB_ASSET_ID="$(upload_asset "$ROOT/backup_latest.db" backup_latest.db | awk '{print $1}')"
 MAT_ASSET_ID="$(upload_asset /tmp/jm-mat-update.tar.gz jm-mat-update.tar.gz | awk '{print $1}')"
-[[ "$DB_ASSET_ID" =~ ^[0-9]+$ ]] || die "DB-Upload fehlgeschlagen"
+SAFETY_ASSET_ID="$(upload_asset /tmp/jm-safety-copies.tar.gz jm-safety-copies.tar.gz | awk '{print $1}')"
 [[ "$MAT_ASSET_ID" =~ ^[0-9]+$ ]] || die "Mat-Upload fehlgeschlagen"
+[[ "$SAFETY_ASSET_ID" =~ ^[0-9]+$ ]] || die "Sicherungs-Upload fehlgeschlagen"
+if [[ "${NOTES_ONLY:-0}" != "1" ]]; then
+  DB_ASSET_ID="$(upload_asset "$ROOT/backup_latest.db" backup_latest.db | awk '{print $1}')"
+  [[ "$DB_ASSET_ID" =~ ^[0-9]+$ ]] || die "DB-Upload fehlgeschlagen"
+fi
 
-MAT_URL="$(
+signed_url() {
   curl -sSIL -H "Authorization: Bearer $TOKEN" -H "Accept: application/octet-stream" \
-    "https://api.github.com/repos/$REPO/releases/assets/$MAT_ASSET_ID" \
+    "https://api.github.com/repos/$REPO/releases/assets/$1" \
     | awk 'tolower($1)=="location:"{print $2}' | tr -d '\r' | tail -1
-)"
+}
+MAT_URL="$(signed_url "$MAT_ASSET_ID")"
+SAFETY_URL="$(signed_url "$SAFETY_ASSET_ID")"
 DB_PUBLIC="https://github.com/$REPO/releases/download/deploy-prebuilt/backup_latest.db"
-DBSHA="$(shasum -a 256 backup_latest.db | awk '{print $1}')"
+if [[ "${NOTES_ONLY:-0}" != "1" ]]; then
+  DBSHA="$(shasum -a 256 backup_latest.db | awk '{print $1}')"
+else
+  DBSHA=""
+fi
 
-export JWT MAT_URL DB_PUBLIC DBSHA STAMP LOGIN_PEPPER_HEX
+export JWT MAT_URL SAFETY_URL DB_PUBLIC DBSHA STAMP LOGIN_PEPPER_HEX NOTES_ONLY
 # re-login JWT may still be valid; refresh
 JWT="$(
   curl -sk -X POST "$PORTAINER_URL/api/auth" \
@@ -573,9 +651,14 @@ def run(container_id, shell):
 
 app = find(os.environ["APP_NAME"])
 tunnel = find(os.environ["TUNNEL_NAME"])
+notes_only = os.environ.get("NOTES_ONLY") == "1"
 mat_url = os.environ["MAT_URL"]
+safety_url = os.environ.get("SAFETY_URL") or ""
 mat_b64 = base64.b64encode(mat_url.encode()).decode()
 run(app["Id"], f"printf %s {json.dumps(mat_b64)} | base64 -d > /tmp/jm-mat.url")
+if safety_url:
+  safety_b64 = base64.b64encode(safety_url.encode()).decode()
+  run(app["Id"], f"printf %s {json.dumps(safety_b64)} | base64 -d > /tmp/jm-safety.url")
 print(run(app["Id"], " && ".join([
   "set -e",
   "cd /tmp",
@@ -588,6 +671,23 @@ print(run(app["Id"], " && ".join([
   "rm -rf /tmp/jm-mat-extract jm-mat-update.tar.gz /tmp/jm-mat.url",
   "echo MAT_PUSH_OK",
 ])))
+if safety_url:
+  print(run(app["Id"], " && ".join([
+    "set -e",
+    "cd /tmp",
+    "curl -fsSL -o jm-safety-copies.tar.gz \"$(cat /tmp/jm-safety.url)\"",
+    "mkdir -p /tmp/jm-safety-extract",
+    "tar -xzf jm-safety-copies.tar.gz -C /tmp/jm-safety-extract",
+    "if [ -d /tmp/jm-safety-extract/Notizen-Sicherheitskopien ]; then mkdir -p /app/Notizen-Sicherheitskopien; cp -a /tmp/jm-safety-extract/Notizen-Sicherheitskopien/. /app/Notizen-Sicherheitskopien/; fi",
+    "if [ -d /tmp/jm-safety-extract/Presentation-Sicherheitskopien ]; then mkdir -p /app/Presentation-Sicherheitskopien; cp -a /tmp/jm-safety-extract/Presentation-Sicherheitskopien/. /app/Presentation-Sicherheitskopien/; fi",
+    "rm -rf /tmp/jm-safety-extract jm-safety-copies.tar.gz /tmp/jm-safety.url",
+    "echo SAFETY_PUSH_OK",
+  ])))
+
+if notes_only:
+  print("NOTES_ONLY: Schul-DB unverändert")
+  print("SYNC_VERIFY notes-only")
+  raise SystemExit(0)
 
 # DB via helper
 docker_stop(app["Id"], 15)
