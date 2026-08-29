@@ -231,6 +231,16 @@ function getTeacherGitBackupStatus() {
             : 'Kein Git-Ordner gefunden.',
     };
 }
+function settleSqliteAfterReplace(dbPath) {
+    for (const extra of ['-wal', '-shm', '-journal']) {
+        try {
+            fs_1.default.unlinkSync(`${dbPath}${extra}`);
+        }
+        catch {
+            /* ok */
+        }
+    }
+}
 const LAPTOP_PULL_PATHS = [
     'J-M-Reihen',
     'Notizen-Sicherheitskopien',
@@ -281,6 +291,7 @@ async function pullLaptopStand(root) {
         timeout: 120000,
         env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
     });
+    settleSqliteAfterReplace(path_1.default.join(root, 'server/prisma/dev.db'));
     return {
         ok: true,
         committed: false,
@@ -340,11 +351,21 @@ async function pullTeacherGitBackup() {
         const root = findGitRoot();
         if (root && fs_1.default.existsSync(scriptPath(root))) {
             const result = await pullLaptopStand(root);
-            await (0, teacherScratchPadStore_1.writePulledScratchPadsToDb)((0, teacherScratchPadStore_1.applyPulledScratchPadFiles)());
+            try {
+                await (0, teacherScratchPadStore_1.writePulledScratchPadsToDb)((0, teacherScratchPadStore_1.applyPulledScratchPadFiles)());
+            }
+            catch (e) {
+                console.warn('Notizen nach Holen nicht in die Datenbank geschrieben:', e);
+            }
             return result;
         }
         const school = await (0, teacherGitHubApi_1.pullSchoolStandFromGithub)();
-        await (0, teacherScratchPadStore_1.writePulledScratchPadsToDb)((0, teacherScratchPadStore_1.applyPulledScratchPadFiles)());
+        try {
+            await (0, teacherScratchPadStore_1.writePulledScratchPadsToDb)((0, teacherScratchPadStore_1.applyPulledScratchPadFiles)());
+        }
+        catch (e) {
+            console.warn('Notizen nach Holen nicht in die Datenbank geschrieben:', e);
+        }
         return {
             ...school,
             where: 'school',

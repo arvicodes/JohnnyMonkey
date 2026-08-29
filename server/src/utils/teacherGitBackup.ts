@@ -252,6 +252,16 @@ export function getTeacherGitBackupStatus(): TeacherGitBackupStatus {
   };
 }
 
+function settleSqliteAfterReplace(dbPath: string): void {
+  for (const extra of ['-wal', '-shm', '-journal']) {
+    try {
+      fs.unlinkSync(`${dbPath}${extra}`);
+    } catch {
+      /* ok */
+    }
+  }
+}
+
 const LAPTOP_PULL_PATHS = [
   'J-M-Reihen',
   'Notizen-Sicherheitskopien',
@@ -304,6 +314,7 @@ async function pullLaptopStand(root: string): Promise<TeacherGitBackupResult> {
     timeout: 120_000,
     env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
   });
+  settleSqliteAfterReplace(path.join(root, 'server/prisma/dev.db'));
   return {
     ok: true,
     committed: false,
@@ -368,11 +379,19 @@ export async function pullTeacherGitBackup(): Promise<TeacherGitBackupResult> {
     const root = findGitRoot();
     if (root && fs.existsSync(scriptPath(root))) {
       const result = await pullLaptopStand(root);
-      await writePulledScratchPadsToDb(applyPulledScratchPadFiles());
+      try {
+        await writePulledScratchPadsToDb(applyPulledScratchPadFiles());
+      } catch (e) {
+        console.warn('Notizen nach Holen nicht in die Datenbank geschrieben:', e);
+      }
       return result;
     }
     const school = await pullSchoolStandFromGithub();
-    await writePulledScratchPadsToDb(applyPulledScratchPadFiles());
+    try {
+      await writePulledScratchPadsToDb(applyPulledScratchPadFiles());
+    } catch (e) {
+      console.warn('Notizen nach Holen nicht in die Datenbank geschrieben:', e);
+    }
     return {
       ...school,
       where: 'school',

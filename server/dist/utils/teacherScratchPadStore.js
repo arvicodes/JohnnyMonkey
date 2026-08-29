@@ -256,28 +256,61 @@ function applyPulledScratchPadFiles() {
     markStandPulled();
     return applied;
 }
+function resolveScratchPadDbFile() {
+    const fromEnv = String(process.env.DATABASE_URL || '').trim();
+    const envFile = fromEnv.startsWith('file:') ? fromEnv.slice(5) : '';
+    const candidates = [
+        '/app/server/data/dev.db',
+        envFile && path_1.default.isAbsolute(envFile) ? envFile : '',
+        envFile ? path_1.default.resolve(process.cwd(), envFile) : '',
+        path_1.default.join(projectRoot(), 'server/prisma/dev.db'),
+        path_1.default.resolve(process.cwd(), 'prisma/dev.db'),
+    ].filter(Boolean);
+    for (const file of candidates) {
+        if (fs_1.default.existsSync(file))
+            return file;
+    }
+    return path_1.default.join(projectRoot(), 'server/prisma/dev.db');
+}
 async function writePulledScratchPadsToDb(pads) {
     if (!pads.length)
         return;
-    const url = String(process.env.DATABASE_URL || '').trim() ||
-        (fs_1.default.existsSync('/app/server/data/dev.db') ? 'file:/app/server/data/dev.db' : '');
-    const prisma = new client_1.PrismaClient(url ? { datasources: { db: { url } } } : undefined);
-    try {
-        for (const { teacherId, payload } of pads) {
-            await prisma.teacherLessonInstruction.upsert({
-                where: { teacherId_lessonPath: { teacherId, lessonPath: exports.SCRATCH_PAD_DB_PATH } },
-                create: {
-                    teacherId,
-                    lessonPath: exports.SCRATCH_PAD_DB_PATH,
-                    content: JSON.stringify(payload),
-                },
-                update: { content: JSON.stringify(payload) },
-            });
+    const dbFile = resolveScratchPadDbFile();
+    for (const extra of ['-wal', '-shm', '-journal']) {
+        try {
+            fs_1.default.unlinkSync(`${dbFile}${extra}`);
+        }
+        catch {
+            /* ok */
         }
     }
-    finally {
-        await prisma.$disconnect();
+    const url = `file:${dbFile}`;
+    let lastErr;
+    for (let attempt = 0; attempt < 4; attempt++) {
+        const prisma = new client_1.PrismaClient({ datasources: { db: { url } } });
+        try {
+            for (const { teacherId, payload } of pads) {
+                await prisma.teacherLessonInstruction.upsert({
+                    where: { teacherId_lessonPath: { teacherId, lessonPath: exports.SCRATCH_PAD_DB_PATH } },
+                    create: {
+                        teacherId,
+                        lessonPath: exports.SCRATCH_PAD_DB_PATH,
+                        content: JSON.stringify(payload),
+                    },
+                    update: { content: JSON.stringify(payload) },
+                });
+            }
+            return;
+        }
+        catch (e) {
+            lastErr = e;
+            await new Promise((r) => setTimeout(r, 250 * (attempt + 1)));
+        }
+        finally {
+            await prisma.$disconnect().catch(() => undefined);
+        }
     }
+    console.warn('writePulledScratchPadsToDb failed:', lastErr);
 }
 function readScratchPadLive(userKey) {
     try {
