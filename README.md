@@ -95,6 +95,42 @@ Chrome kann **Nicht sicher** zeigen, weil das Zertifikat von der Schul-CA (JoGy-
 
 **Redeploy nach Compose-Änderung:** Stacks → `johnnymonkey` → **Pull and redeploy** (Rebuild an, Re-pull image aus). Nicht über Containers → Recreate.
 
+#### Sicherungsordner in Portainer ansehen
+
+Die Kopien von Notizen, Folien und Tickets liegen **nicht** unter Volumes als eigener Ordnerbaum, sondern im App-Container auf dem Datenbank-Volume.
+
+1. VPN / Schulnetz, dann Portainer: `https://192.168.8.1:9443`
+2. Environment (Docker-Host) wählen.
+3. **Containers** → **johnnymonkey-app**.
+4. **Console** öffnen, Shell `/bin/sh`, **Connect**.
+5. Ordner auflisten:
+
+```bash
+ls /app/server/data/jm-files
+```
+
+Darunter dieselben Namen wie auf dem Laptop:
+
+| Auf der Schule | Inhalt |
+|----------------|--------|
+| `/app/server/data/jm-files/Notizen-Sicherheitskopien` | gelbes N, `latest.json` + `pad-…` |
+| `/app/server/data/jm-files/Presentation-Sicherheitskopien` | Folien-Stände |
+| `/app/server/data/jm-files/J-M-Reihen/Backup - Tickets` | Ticket-Kopien nach ⌘S |
+| `/app/server/data/jm-files/J-M-Reihen/Backup - Folien` | Folien-Kopien nach ⌘S |
+| `/app/server/data/jm-files/J-M-Reihen/Backup - Notizen` | Notizen-Kopien nach ⌘S |
+| `/app/server/data/jm-files/J-M-Reihen/Lehrer-Schnellnotizen` | aktueller Notizen-Stand |
+| `/app/server/data/jm-files/J-M-Reihen/Folien - ALLE - BACKUP` | Sammelkopien der Folien |
+
+Im Container sind `/app/J-M-Reihen`, `/app/Notizen-Sicherheitskopien` und `/app/Presentation-Sicherheitskopien` Verweise auf genau diese Volume-Ordner. Ticket-Beispiel:
+
+```bash
+ls "/app/J-M-Reihen/Backup - Tickets"
+```
+
+Unter **Volumes** heißt das Volume **johnnymonkey_database** (eingehängt als `/app/server/data`). Dort siehst du nur das Volume, nicht den Ordnerbaum — der Inhalt ist der Pfad oben.
+
+Auf dem Laptop (und in Git): `Notizen-Sicherheitskopien/`, `J-M-Reihen/Backup - Tickets` usw.
+
 #### Datenbank-Update in Portainer
 
 Wenn du die lokale Datenbank nach Portainer bringen möchtest:
