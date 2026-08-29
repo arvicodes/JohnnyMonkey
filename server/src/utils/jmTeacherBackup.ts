@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
@@ -22,16 +21,6 @@ const KEEP: Record<TeacherBackupKind, number> = {
   slides: 120,
   tickets: 200,
 };
-
-/** Automatisch: nicht jede Tastenpause eine neue Datei. ⌘S/Button (force) immer. */
-const AUTO_STAMP_MIN_MS: Record<TeacherBackupKind, number> = {
-  notes: 8_000,
-  slides: 60_000,
-  tickets: 15_000,
-};
-
-type Recent = { at: number; hash: string };
-const recentByKey = new Map<string, Recent>();
 
 function projectRoot(): string {
   const fromEnv = process.env.LOCAL_MATERIALS_PATH;
@@ -90,10 +79,6 @@ function uniqueBackupName(dir: string, kind: TeacherBackupKind, label: string, d
   return `${time}_${date}_${prefix}_${label}-${n}.json`;
 }
 
-function fileHash(buf: Buffer): string {
-  return crypto.createHash('sha1').update(buf).digest('hex');
-}
-
 function pruneKind(dir: string, kind: TeacherBackupKind, keep: number): void {
   if (!fs.existsSync(dir)) return;
   const files = fs
@@ -129,8 +114,7 @@ export function ensureTeacherBackupDir(kind: TeacherBackupKind): string {
       readme,
       `Zeitstempel-Kopien: ${titles[kind]}.\n` +
         'Dateiname: Uhrzeit_Datum_Art_Thema.json (z. B. 9:25_29.8_folien_…).\n' +
-        'Jede Sicherung legt eine neue Datei an. Der aktuelle Stand bleibt am normalen Ort.\n' +
-        '⌘S oder der Sicherungsbutton erzeugt extra eine Kopie der aktuellsten Version.\n',
+        'Neue Datei nur bei ⌘S oder dem Sicherungsbutton. Der aktuelle Stand wird trotzdem immer gespeichert.\n',
       'utf8'
     );
   }
@@ -150,6 +134,8 @@ export function writeTeacherTimestampedBackup(opts: {
   force?: boolean;
 }): string | null {
   try {
+    if (!opts.force) return null;
+
     const dir = ensureTeacherBackupDir(opts.kind);
     const json =
       typeof opts.payload === 'string'
@@ -158,20 +144,10 @@ export function writeTeacherTimestampedBackup(opts: {
     const buf = Buffer.from(json, 'utf8');
     if (buf.length < 8) return null;
 
-    const key = `${opts.kind}:${sanitizeBackupLabel(opts.label || '')}`;
-    const hash = fileHash(buf);
-    const now = Date.now();
-    const prev = recentByKey.get(key);
-    const minMs = AUTO_STAMP_MIN_MS[opts.kind];
-    if (!opts.force && prev && now - prev.at < minMs) {
-      return null;
-    }
-
     const label = sanitizeBackupLabel(opts.label || FILE_PREFIX[opts.kind]);
     const name = uniqueBackupName(dir, opts.kind, label);
     const full = path.join(dir, name);
     fs.writeFileSync(full, buf);
-    recentByKey.set(key, { at: now, hash });
     pruneKind(dir, opts.kind, KEEP[opts.kind]);
     return full;
   } catch (e) {

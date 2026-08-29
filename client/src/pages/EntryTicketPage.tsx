@@ -3072,7 +3072,7 @@ export default function EntryTicketPage({
         const nextSet = patchCustomSetPlayInk(current, inkKey, strokes);
         if (nextSet === current) return prev;
         const next = prev.map((s) => (s.id === customSetId ? nextSet : s));
-        persistPlaySetsSoon(next, true);
+        persistPlaySetsSoon(next, false);
         return next;
       });
     },
@@ -3903,7 +3903,7 @@ export default function EntryTicketPage({
           const nextSet = patchCustomSetTaskContent(current, taskId, { prompt, solution });
           if (nextSet === current) return sets;
           const next = sets.map((s) => (s.id === customSetId ? nextSet : s));
-          persistPlaySetsSoon(next, true);
+          persistPlaySetsSoon(next, false);
           return next;
         });
       }
