@@ -212,7 +212,7 @@ async function fileToCompressedDataUrl(file: File): Promise<string | null> {
   }
 }
 
-export function EntryTicketRichField({
+function EntryTicketRichFieldInner({
   value,
   onChange,
   placeholder = '',
@@ -240,8 +240,10 @@ export function EntryTicketRichField({
   const cardLayoutRef = useRef<EntryTicketCardLayout>(cardLayout);
   cardLayoutRef.current = cardLayout;
   const [imageCount, setImageCount] = useState(0);
+  const [chromeOpen, setChromeOpen] = useState(false);
   const palette = TONE_STYLES[tone];
   const fieldBg = softBg ?? palette.softBg;
+  const showChrome = chromeOpen || Boolean(colorAnchor) || Boolean(highlightAnchor);
 
   const listEditorImages = () => {
     const el = editorRef.current;
@@ -509,6 +511,11 @@ export function EntryTicketRichField({
             : `0 0 0 2px ${palette.shadow}`,
         },
       }}
+      onFocus={() => setChromeOpen(true)}
+      onBlur={(e) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+        setChromeOpen(false);
+      }}
       onDragEnter={(e) => {
         if (![...e.dataTransfer.types].includes('Files')) return;
         e.preventDefault();
@@ -530,6 +537,7 @@ export function EntryTicketRichField({
         void ingestImageFiles(e.dataTransfer.files);
       }}
     >
+      {showChrome ? (
       <Box
         sx={{
           display: 'flex',
@@ -626,8 +634,9 @@ export function EntryTicketRichField({
           }}
         />
       </Box>
+      ) : null}
 
-      {hasImages && selectedImgIndex != null ? (
+      {showChrome && hasImages && selectedImgIndex != null ? (
         <Box
           sx={{
             display: 'flex',
@@ -829,6 +838,7 @@ export function EntryTicketRichField({
         ref={editorRef}
         contentEditable
         suppressContentEditableWarning
+        tabIndex={0}
         role="textbox"
         aria-label={placeholder || 'Text'}
         data-placeholder={placeholder}
@@ -997,3 +1007,5 @@ export function EntryTicketRichField({
     </Box>
   );
 }
+
+export const EntryTicketRichField = React.memo(EntryTicketRichFieldInner);

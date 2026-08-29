@@ -557,7 +557,7 @@ const PresentationEditorPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [lessonPath]);
+  }, [lessonPath, startSlideId]);
 
   const persistInk = useCallback(
     async (next: PresentationAnnotations) => {

@@ -3024,20 +3024,6 @@ export default function EntryTicketPage({
     }
   }, [embeddedPlay, questionSets]);
 
-  useEffect(() => {
-    if (customSets.length === 0) return;
-    saveCustomEntryTicketSets(customSets);
-    if (!isTeacher) return;
-    if (!embeddedPlay && !customSetsServerSyncedRef.current) return;
-    void apiPut('/api/entry-ticket/custom-sets', { sets: customSets }).catch(() => {});
-  }, [customSets, isTeacher, embeddedPlay]);
-
-  const secureTicketBackup = useCallback(() => {
-    if (!isTeacher || customSets.length === 0) return;
-    saveCustomEntryTicketSets(customSets);
-    void apiPut('/api/entry-ticket/custom-sets', { sets: customSets, forceBackup: true }).catch(() => {});
-  }, [customSets, isTeacher]);
-
   const playLocalDirtyRef = useRef(0);
   const markPlayLocalDirty = useCallback(() => {
     playLocalDirtyRef.current = Date.now();
@@ -3045,22 +3031,41 @@ export default function EntryTicketPage({
 
   const persistPlaySetsSoon = useCallback(
     (sets: EntryTicketCustomSet[], forceBackup: boolean) => {
+      customSetsRef.current = sets;
       saveCustomEntryTicketSets(sets);
       if (!isTeacher) return;
       if (playPersistTimerRef.current) window.clearTimeout(playPersistTimerRef.current);
       playPersistTimerRef.current = window.setTimeout(() => {
         playPersistTimerRef.current = null;
-        void apiPut('/api/entry-ticket/custom-sets', { sets, forceBackup: false }).catch(() => {});
-      }, 280);
+        const latest = customSetsRef.current;
+        if (latest.length === 0) return;
+        void apiPut('/api/entry-ticket/custom-sets', { sets: latest, forceBackup: false }).catch(() => {});
+      }, 350);
       if (!forceBackup) return;
       if (playForceBackupTimerRef.current) window.clearTimeout(playForceBackupTimerRef.current);
       playForceBackupTimerRef.current = window.setTimeout(() => {
         playForceBackupTimerRef.current = null;
-        void apiPut('/api/entry-ticket/custom-sets', { sets, forceBackup: true }).catch(() => {});
+        const latest = customSetsRef.current;
+        if (latest.length === 0) return;
+        void apiPut('/api/entry-ticket/custom-sets', { sets: latest, forceBackup: true }).catch(() => {});
       }, 900);
     },
     [isTeacher],
   );
+
+  useEffect(() => {
+    if (customSets.length === 0) return;
+    saveCustomEntryTicketSets(customSets);
+    if (!isTeacher) return;
+    if (!embeddedPlay && !customSetsServerSyncedRef.current) return;
+    persistPlaySetsSoon(customSets, false);
+  }, [customSets, isTeacher, embeddedPlay, persistPlaySetsSoon]);
+
+  const secureTicketBackup = useCallback(() => {
+    if (!isTeacher || customSets.length === 0) return;
+    saveCustomEntryTicketSets(customSets);
+    void apiPut('/api/entry-ticket/custom-sets', { sets: customSets, forceBackup: true }).catch(() => {});
+  }, [customSets, isTeacher]);
 
   const patchActiveSetPlayInk = useCallback(
     (inkKey: string, strokes: PresentationStroke[]) => {
@@ -3390,10 +3395,9 @@ export default function EntryTicketPage({
     }
   };
 
-  const patchActiveCustomSet = (next: EntryTicketCustomSet) => {
+  const patchActiveCustomSet = useCallback((next: EntryTicketCustomSet) => {
     setCustomSets((prev) => prev.map((s) => (s.id === next.id ? next : s)));
-    setTaskSeed((s) => s + 1);
-  };
+  }, []);
 
   const renameActiveCustomSet = (name: string) => {
     if (!customSetId) return;

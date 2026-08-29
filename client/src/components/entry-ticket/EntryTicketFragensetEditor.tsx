@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Autocomplete,
   Box,
@@ -162,6 +162,172 @@ function groupLessonsByTopic(lessons: EntryTicketLessonSection[]): TopicGroup[] 
   return groups;
 }
 
+type EditorTaskRowProps = {
+  task: EntryTicketCustomTask;
+  taskIndex: number;
+  lessonId: string;
+  isLater: boolean;
+  alreadyLater: boolean;
+  isSelected: boolean;
+  shown: number;
+  maxShowCount: number;
+  palette: { chip: string; title: string };
+  onUpdateTask: (lessonId: string, taskId: string, patch: Partial<EntryTicketCustomTask>) => void;
+  onToggleSelected: (lessonId: string, taskId: string) => void;
+  onCopyLater: (lessonId: string, taskId: string) => void;
+  onDelete: (lessonId: string, taskId: string) => void;
+  onPreview: (task: { prompt: string; solution: string }) => void;
+};
+
+const EditorTaskRow = React.memo(function EditorTaskRow({
+  task,
+  taskIndex,
+  lessonId,
+  isLater,
+  alreadyLater,
+  isSelected,
+  shown,
+  maxShowCount,
+  palette,
+  onUpdateTask,
+  onToggleSelected,
+  onCopyLater,
+  onDelete,
+  onPreview,
+}: EditorTaskRowProps) {
+  const tone = entryTicketShowCountStyle(shown, maxShowCount);
+  return (
+    <Box
+      sx={{
+        position: 'relative',
+        width: '100%',
+        display: 'grid',
+        gridTemplateColumns: '22px 28px minmax(0, 1fr) minmax(0, 1fr) 22px 22px',
+        gap: 0.4,
+        alignItems: 'start',
+        boxSizing: 'border-box',
+        borderRadius: 0.75,
+        outline: isSelected ? `1.5px solid ${palette.chip}` : 'none',
+        outlineOffset: 0,
+        bgcolor: isSelected ? `${palette.chip}10` : 'transparent',
+      }}
+    >
+      <Checkbox
+        size="small"
+        checked={isSelected}
+        onChange={() => onToggleSelected(lessonId, task.id)}
+        inputProps={{ 'aria-label': `Karte ${taskIndex + 1} markieren` }}
+        sx={{
+          p: 0.15,
+          mt: 0.35,
+          color: palette.chip,
+          '&.Mui-checked': { color: palette.title },
+        }}
+      />
+      <Typography
+        component="span"
+        title={`Schon ${shown}× gezeigt`}
+        sx={{
+          mt: 0.45,
+          fontSize: '0.62rem',
+          fontWeight: 800,
+          lineHeight: 1.15,
+          color: tone.color,
+          bgcolor: tone.bgcolor,
+          textAlign: 'center',
+          fontVariantNumeric: 'tabular-nums',
+          px: 0.3,
+          py: 0.15,
+          borderRadius: 0.5,
+        }}
+      >
+        {shown}×
+      </Typography>
+      <EntryTicketRichField
+        value={task.prompt}
+        onChange={(prompt) => onUpdateTask(lessonId, task.id, { prompt })}
+        placeholder={`${taskIndex + 1}. Frage`}
+        tone="prompt"
+        minHeight={56}
+      />
+      <EntryTicketRichField
+        value={task.solution}
+        onChange={(solution) => onUpdateTask(lessonId, task.id, { solution })}
+        placeholder="Antwort / Lösung"
+        tone="answer"
+        minHeight={56}
+      />
+      {isLater ? (
+        <Box />
+      ) : (
+        <Tooltip
+          title={alreadyLater ? 'Bereits in „Für später“' : 'Nach „Für später“ kopieren'}
+        >
+          <span>
+            <IconButton
+              size="small"
+              onClick={() => onCopyLater(lessonId, task.id)}
+              disabled={alreadyLater}
+              aria-label="Nach Für später kopieren"
+              sx={{
+                ...iconBtnSx,
+                mt: 0.35,
+                color: alreadyLater ? '#fb8c00' : ET.muted,
+                '&:hover': { color: '#e65100', bgcolor: 'rgba(251,140,0,0.12)' },
+                '&.Mui-disabled': { color: '#fb8c00', opacity: 1 },
+              }}
+            >
+              {alreadyLater ? (
+                <BookmarkIcon sx={{ fontSize: 14 }} />
+              ) : (
+                <BookmarkAddIcon sx={{ fontSize: 14 }} />
+              )}
+            </IconButton>
+          </span>
+        </Tooltip>
+      )}
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 0.15,
+          mt: 0.35,
+        }}
+      >
+        <Tooltip title="Karte löschen">
+          <IconButton
+            size="small"
+            onClick={() => onDelete(lessonId, task.id)}
+            aria-label="Karte löschen"
+            sx={{
+              ...iconBtnSx,
+              color: ET.muted,
+              '&:hover': { color: '#c62828', bgcolor: 'rgba(198,40,40,0.08)' },
+            }}
+          >
+            <DeleteOutlineIcon sx={{ fontSize: 14 }} />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Play-Vorschau">
+          <IconButton
+            size="small"
+            onClick={() => onPreview({ prompt: task.prompt, solution: task.solution })}
+            aria-label="Play-Vorschau"
+            sx={{
+              ...iconBtnSx,
+              color: ET.muted,
+              '&:hover': { color: ET.accent, bgcolor: 'rgba(69,90,100,0.1)' },
+            }}
+          >
+            <VisibilityOutlinedIcon sx={{ fontSize: 14 }} />
+          </IconButton>
+        </Tooltip>
+      </Box>
+    </Box>
+  );
+});
+
 export function EntryTicketFragensetEditor({
   set,
   activeLessonPath,
@@ -196,6 +362,8 @@ export function EntryTicketFragensetEditor({
   const catalogRequestedRef = useRef(false);
   const setRef = useRef(set);
   setRef.current = set;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
   const [deleteAsk, setDeleteAsk] = useState<
     | { kind: 'set' }
     | { kind: 'lesson'; lessonId: string; lessonName: string; taskCount: number }
@@ -441,22 +609,26 @@ export function EntryTicketFragensetEditor({
     setListDraftByLesson((prev) => ({ ...prev, [lessonId]: '' }));
   };
 
-  const updateTask = (lessonId: string, taskId: string, patch: Partial<EntryTicketCustomTask>) => {
-    updateLessons(
-      set.lessons.map((l) => {
+  const updateTask = useCallback((lessonId: string, taskId: string, patch: Partial<EntryTicketCustomTask>) => {
+    const current = setRef.current;
+    onChangeRef.current({
+      ...current,
+      lessons: current.lessons.map((l) => {
         if (l.id !== lessonId) return l;
         return { ...l, tasks: l.tasks.map((t) => (t.id === taskId ? { ...t, ...patch } : t)) };
       }),
-    );
-  };
+    });
+  }, []);
 
-  const deleteTask = (lessonId: string, taskId: string) => {
-    updateLessons(
-      set.lessons.map((l) => {
+  const deleteTask = useCallback((lessonId: string, taskId: string) => {
+    const current = setRef.current;
+    onChangeRef.current({
+      ...current,
+      lessons: current.lessons.map((l) => {
         if (l.id !== lessonId) return l;
         return { ...l, tasks: l.tasks.filter((t) => t.id !== taskId) };
       }),
-    );
+    });
     setSelectedTaskIdsByLesson((prev) => {
       const kept = (prev[lessonId] || []).filter((id) => id !== taskId);
       if (kept.length === (prev[lessonId] || []).length) return prev;
@@ -465,9 +637,9 @@ export function EntryTicketFragensetEditor({
       else next[lessonId] = kept;
       return next;
     });
-  };
+  }, []);
 
-  const toggleTaskSelected = (lessonId: string, taskId: string) => {
+  const toggleTaskSelected = useCallback((lessonId: string, taskId: string) => {
     setSelectedTaskIdsByLesson((prev) => {
       const cur = prev[lessonId] || [];
       const has = cur.includes(taskId);
@@ -477,7 +649,7 @@ export function EntryTicketFragensetEditor({
       else next[lessonId] = kept;
       return next;
     });
-  };
+  }, []);
 
   const setAllTasksSelected = (lessonId: string, taskIds: string[], selected: boolean) => {
     setSelectedTaskIdsByLesson((prev) => {
@@ -527,16 +699,17 @@ export function EntryTicketFragensetEditor({
     }
   };
 
-  const copyTaskToLater = (lessonId: string, taskId: string) => {
-    const lesson = set.lessons.find((l) => l.id === lessonId);
+  const copyTaskToLater = useCallback((lessonId: string, taskId: string) => {
+    const current = setRef.current;
+    const lesson = current.lessons.find((l) => l.id === lessonId);
     if (!lesson || isLaterLessonSection(lesson)) return;
-    const next = copyTaskIdsToLaterSection(set, lessonId, [taskId]);
-    if (next !== set) {
+    const next = copyTaskIdsToLaterSection(current, lessonId, [taskId]);
+    if (next !== current) {
       const later = next.lessons.find(isLaterLessonSection);
       if (later) setExpanded((prev) => ({ ...prev, [later.id]: true }));
-      onChange(next);
+      onChangeRef.current(next);
     }
-  };
+  }, []);
 
   const toggleLessonSelected = (lessonId: string) => {
     const lesson = set.lessons.find((l) => l.id === lessonId);
@@ -1405,143 +1578,24 @@ export function EntryTicketFragensetEditor({
                         {lesson.tasks.map((task, taskIndex) => {
                           const countKey = `c:${set.id}:${task.id}`;
                           const shown = showCounts?.[countKey] || 0;
-                          const tone = entryTicketShowCountStyle(shown, maxShowCount);
-                          const isSelected = selectedIds.includes(task.id);
-                          const alreadyLater = isLater || laterSectionContainsTask(set, task);
                           return (
-                          <Box
-                            key={task.id}
-                            sx={{
-                              position: 'relative',
-                              width: '100%',
-                              display: 'grid',
-                              gridTemplateColumns: '22px 28px minmax(0, 1fr) minmax(0, 1fr) 22px 22px',
-                              gap: 0.4,
-                              alignItems: 'start',
-                              boxSizing: 'border-box',
-                              borderRadius: 0.75,
-                              outline: isSelected ? `1.5px solid ${palette.chip}` : 'none',
-                              outlineOffset: 0,
-                              bgcolor: isSelected ? `${palette.chip}10` : 'transparent',
-                            }}
-                          >
-                            <Checkbox
-                              size="small"
-                              checked={isSelected}
-                              onChange={() => toggleTaskSelected(lesson.id, task.id)}
-                              inputProps={{ 'aria-label': `Karte ${taskIndex + 1} markieren` }}
-                              sx={{
-                                p: 0.15,
-                                mt: 0.35,
-                                color: palette.chip,
-                                '&.Mui-checked': { color: palette.title },
-                              }}
+                            <EditorTaskRow
+                              key={task.id}
+                              task={task}
+                              taskIndex={taskIndex}
+                              lessonId={lesson.id}
+                              isLater={isLater}
+                              alreadyLater={isLater || laterSectionContainsTask(set, task)}
+                              isSelected={selectedIds.includes(task.id)}
+                              shown={shown}
+                              maxShowCount={maxShowCount}
+                              palette={palette}
+                              onUpdateTask={updateTask}
+                              onToggleSelected={toggleTaskSelected}
+                              onCopyLater={copyTaskToLater}
+                              onDelete={deleteTask}
+                              onPreview={setPreviewTask}
                             />
-                            <Typography
-                              component="span"
-                              title={`Schon ${shown}× gezeigt`}
-                              sx={{
-                                mt: 0.45,
-                                fontSize: '0.62rem',
-                                fontWeight: 800,
-                                lineHeight: 1.15,
-                                color: tone.color,
-                                bgcolor: tone.bgcolor,
-                                textAlign: 'center',
-                                fontVariantNumeric: 'tabular-nums',
-                                px: 0.3,
-                                py: 0.15,
-                                borderRadius: 0.5,
-                              }}
-                            >
-                              {shown}×
-                            </Typography>
-                            <EntryTicketRichField
-                              value={task.prompt}
-                              onChange={(prompt) => updateTask(lesson.id, task.id, { prompt })}
-                              placeholder={`${taskIndex + 1}. Frage`}
-                              tone="prompt"
-                              minHeight={56}
-                            />
-                            <EntryTicketRichField
-                              value={task.solution}
-                              onChange={(solution) => updateTask(lesson.id, task.id, { solution })}
-                              placeholder="Antwort / Lösung"
-                              tone="answer"
-                              minHeight={56}
-                            />
-                            {isLater ? (
-                              <Box />
-                            ) : (
-                              <Tooltip
-                                title={
-                                  alreadyLater
-                                    ? 'Bereits in „Für später“'
-                                    : 'Nach „Für später“ kopieren'
-                                }
-                              >
-                                <span>
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => copyTaskToLater(lesson.id, task.id)}
-                                    disabled={alreadyLater}
-                                    aria-label="Nach Für später kopieren"
-                                    sx={{
-                                      ...iconBtnSx,
-                                      mt: 0.35,
-                                      color: alreadyLater ? '#fb8c00' : ET.muted,
-                                      '&:hover': { color: '#e65100', bgcolor: 'rgba(251,140,0,0.12)' },
-                                      '&.Mui-disabled': { color: '#fb8c00', opacity: 1 },
-                                    }}
-                                  >
-                                    {alreadyLater ? (
-                                      <BookmarkIcon sx={{ fontSize: 14 }} />
-                                    ) : (
-                                      <BookmarkAddIcon sx={{ fontSize: 14 }} />
-                                    )}
-                                  </IconButton>
-                                </span>
-                              </Tooltip>
-                            )}
-                            <Box
-                              sx={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                gap: 0.15,
-                                mt: 0.35,
-                              }}
-                            >
-                              <Tooltip title="Karte löschen">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => deleteTask(lesson.id, task.id)}
-                                  aria-label="Karte löschen"
-                                  sx={{
-                                    ...iconBtnSx,
-                                    color: ET.muted,
-                                    '&:hover': { color: '#c62828', bgcolor: 'rgba(198,40,40,0.08)' },
-                                  }}
-                                >
-                                  <DeleteOutlineIcon sx={{ fontSize: 14 }} />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Play-Vorschau">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => setPreviewTask({ prompt: task.prompt, solution: task.solution })}
-                                  aria-label="Play-Vorschau"
-                                  sx={{
-                                    ...iconBtnSx,
-                                    color: ET.muted,
-                                    '&:hover': { color: ET.accent, bgcolor: 'rgba(69,90,100,0.1)' },
-                                  }}
-                                >
-                                  <VisibilityOutlinedIcon sx={{ fontSize: 14 }} />
-                                </IconButton>
-                              </Tooltip>
-                            </Box>
-                          </Box>
                           );
                         })}
                       </Box>

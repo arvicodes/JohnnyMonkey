@@ -111,6 +111,9 @@ const sameLessonPath = (a?: string | null, b?: string | null): boolean => {
 const PLAY_TASK_LIMIT = 80;
 const CUSTOM_SET_TASK_LIMIT = 400;
 const CUSTOM_SET_LESSON_LIMIT = 200;
+const PLAY_FIELD_LIMIT = 8000;
+/** Bilder in Fragenset-Karten (data-URL) brauchen deutlich mehr als die Play-Grenze. */
+const CUSTOM_SET_FIELD_LIMIT = 400_000;
 const PLAY_INK_STROKE_LIMIT = 400;
 const PLAY_INK_KEY_LIMIT = 80;
 
@@ -135,6 +138,7 @@ const sanitizePlayInkByKey = (raw: unknown): Record<string, unknown[]> | undefin
 const normalizeTasksPayload = (
   raw: unknown,
   limit = PLAY_TASK_LIMIT,
+  fieldLimit = PLAY_FIELD_LIMIT,
 ): EntryTicketTaskPayload[] | undefined => {
   if (!Array.isArray(raw)) return undefined;
   const out: EntryTicketTaskPayload[] = [];
@@ -154,8 +158,8 @@ const normalizeTasksPayload = (
     out.push({
       category:
         typeof r.category === 'string' && r.category.trim() ? r.category.trim().slice(0, 80) : 'Eigen',
-      prompt: prompt.slice(0, 8000),
-      solution: solution.slice(0, 8000),
+      prompt: prompt.slice(0, fieldLimit),
+      solution: solution.slice(0, fieldLimit),
       ...(sourceKey ? { sourceKey } : {}),
       ...(id ? { id } : {}),
       ...(ink ? { ink } : {}),
@@ -182,7 +186,7 @@ const normalizeCustomSetPayload = (raw: unknown): EntryTicketCustomSetPayload | 
         ? lesson.lessonName.trim().slice(0, 160)
         : '';
     if (!lessonName) continue;
-    const tasks = normalizeTasksPayload(lesson.tasks, CUSTOM_SET_TASK_LIMIT) ?? [];
+    const tasks = normalizeTasksPayload(lesson.tasks, CUSTOM_SET_TASK_LIMIT, CUSTOM_SET_FIELD_LIMIT) ?? [];
     lessons.push({
       id:
         typeof lesson.id === 'string' && lesson.id.trim()
