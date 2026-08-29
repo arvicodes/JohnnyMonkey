@@ -23,11 +23,17 @@ const SKIP_FILE = new Set([
   'login-codes-alle.txt',
 ]);
 
+export type SchoolStandChange = {
+  path: string;
+  kind: 'added' | 'changed';
+};
+
 export type GithubStandResult = {
   ok: boolean;
   committed: boolean;
   pushed: boolean;
   message: string;
+  changes?: SchoolStandChange[];
 };
 
 type MappedFile = { repoPath: string; absPath: string };
@@ -206,35 +212,24 @@ function berlinStamp(): string {
     .replace(', ', ' ');
 }
 
-export async function pushSchoolStandToGithub(): Promise<GithubStandResult> {
+async function collectSchoolDiff(): Promise<{
+  token: string;
+  owner: string;
+  repo: string;
+  parentSha: string;
+  baseTreeSha: string;
+  changed: Array<{ path: string; buf: Buffer; kind: 'added' | 'changed' }>;
+}> {
   const token = readGithubToken();
   if (!token) {
-    return {
-      ok: false,
-      committed: false,
-      pushed: false,
-      message: 'GitHub-Zugang für die Schule fehlt noch. Einmal am Laptop einrichten.',
-    };
+    throw new Error('GitHub-Zugang für die Schule fehlt noch. Einmal am Laptop einrichten.');
   }
+  const [owner, repo] = REPO.split('/');
+  if (!owner || !repo) throw new Error('GitHub-Repository ist nicht gesetzt.');
 
   const files = collectStandFiles();
   if (files.length === 0) {
-    return {
-      ok: false,
-      committed: false,
-      pushed: false,
-      message: 'Keine Dateien zum Schieben gefunden.',
-    };
-  }
-
-  const [owner, repo] = REPO.split('/');
-  if (!owner || !repo) {
-    return {
-      ok: false,
-      committed: false,
-      pushed: false,
-      message: 'GitHub-Repository ist nicht gesetzt.',
-    };
+    throw new Error('Keine Dateien zum Schieben gefunden.');
   }
 
   const ref = await ghJson<{ object: { sha: string } }>(
@@ -248,7 +243,6 @@ export async function pushSchoolStandToGithub(): Promise<GithubStandResult> {
   );
   const baseTreeSha = commit.tree.sha;
   const remoteTree = await ghJson<{
-    truncated?: boolean;
     tree: Array<{ path?: string; sha?: string; type?: string }>;
   }>(token, `/repos/${owner}/${repo}/git/trees/${baseTreeSha}?recursive=1`);
 
@@ -259,7 +253,7 @@ export async function pushSchoolStandToGithub(): Promise<GithubStandResult> {
     }
   }
 
-  const changed: Array<{ path: string; buf: Buffer }> = [];
+  const changed: Array<{ path: string; buf: Buffer; kind: 'added' | 'changed' }> = [];
   for (const file of files) {
     let buf: Buffer;
     try {
@@ -269,9 +263,34 @@ export async function pushSchoolStandToGithub(): Promise<GithubStandResult> {
     }
     if (buf.length > MAX_FILE_BYTES) continue;
     const sha = gitBlobSha(buf);
-    if (remoteSha.get(file.repoPath) === sha) continue;
-    changed.push({ path: file.repoPath, buf });
+    const remote = remoteSha.get(file.repoPath);
+    if (remote === sha) continue;
+    changed.push({ path: file.repoPath, buf, kind: remote ? 'changed' : 'added' });
   }
+
+  return { token, owner, repo, parentSha, baseTreeSha, changed };
+}
+
+export async function previewSchoolStandChanges(): Promise<SchoolStandChange[]> {
+  const { changed } = await collectSchoolDiff();
+  return changed.map(({ path, kind }) => ({ path, kind }));
+}
+
+export async function pushSchoolStandToGithub(): Promise<GithubStandResult> {
+  let prepared: Awaited<ReturnType<typeof collectSchoolDiff>>;
+  try {
+    prepared = await collectSchoolDiff();
+  } catch (err) {
+    return {
+      ok: false,
+      committed: false,
+      pushed: false,
+      message: err instanceof Error ? err.message : 'Schul-Stand nicht lesbar.',
+    };
+  }
+
+  const { token, owner, repo, parentSha, baseTreeSha, changed } = prepared;
+  const changeList = changed.map(({ path, kind }) => ({ path, kind }));
 
   if (changed.length === 0) {
     return {
@@ -279,6 +298,7 @@ export async function pushSchoolStandToGithub(): Promise<GithubStandResult> {
       committed: false,
       pushed: false,
       message: 'Nichts Neues — GitHub hat schon den aktuellen Schul-Stand.',
+      changes: [],
     };
   }
 
@@ -319,5 +339,6 @@ export async function pushSchoolStandToGithub(): Promise<GithubStandResult> {
     committed: true,
     pushed: true,
     message: `Auf GitHub: ${message}`,
+    changes: changeList,
   };
 }

@@ -35,7 +35,6 @@ import TableChartIcon from '@mui/icons-material/TableChart';
 import CloseIcon from '@mui/icons-material/Close';
 import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { DialogCloseIconButton } from './ui/dialog-close-icon-button';
 import { handlePresentationListShortcutKey, handlePresentationTabKey } from '../lib/presentationRichText';
 import {
@@ -54,7 +53,6 @@ import { applyEditorFontSizePx, stashEditorSelection } from '../lib/presentation
 import { isFormatBarInteracting, setFormatBarInteracting } from '../lib/presentationFormatBarGuard';
 import { strokeSmoothFreehand } from '../lib/presentationDrawTools';
 import { apiGetSafe, apiPutSafe, apiPutSafeAwait } from '../lib/api';
-import { pushTeacherGitBackup } from '../lib/teacherGitBackup';
 import type { EmojiClickData } from 'emoji-picker-react';
 import { EmojiStyle } from 'emoji-picker-react';
 
@@ -822,8 +820,6 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   const [renameDraft, setRenameDraft] = useState('');
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [tableAnchor, setTableAnchor] = useState<HTMLElement | null>(null);
-  const [gitBusy, setGitBusy] = useState(false);
-  const [gitMessage, setGitMessage] = useState('');
   const renameInputRef = useRef<HTMLInputElement | null>(null);
   const emojiAnchorRef = useRef<HTMLButtonElement | null>(null);
   const emojiCaretRef = useRef<Range | null>(null);
@@ -1106,20 +1102,6 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     );
     await flushPadToServer(userId, payload, true);
   }, [flushCurrentPage, userId]);
-
-  const pushSicherungenToGithub = useCallback(async () => {
-    if (gitBusy) return;
-    setGitBusy(true);
-    setGitMessage('');
-    try {
-      const result = await pushTeacherGitBackup();
-      setGitMessage(result.message);
-    } catch {
-      setGitMessage('Push fehlgeschlagen. Am Laptop GitHub-Zugang prüfen.');
-    } finally {
-      setGitBusy(false);
-    }
-  }, [gitBusy]);
 
   /** Beim Start: Ordner anlegen lassen + ggf. Server-Stand holen. */
   useEffect(() => {
@@ -2565,21 +2547,6 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                   <SaveOutlinedIcon sx={{ fontSize: 16, color: '#f57f17' }} />
                 </IconButton>
               </Tooltip>
-              <Tooltip title={gitMessage || 'Stand nach GitHub (Laptop und Schule)'}>
-                <span>
-                  <IconButton
-                    size="small"
-                    disabled={gitBusy}
-                    onClick={() => {
-                      void pushSicherungenToGithub();
-                    }}
-                    aria-label="Sicherungen nach GitHub"
-                    sx={fmtBtnSx()}
-                  >
-                    <CloudUploadIcon sx={{ fontSize: 16, color: gitBusy ? '#bdbdbd' : '#f57f17' }} />
-                  </IconButton>
-                </span>
-              </Tooltip>
               <Divider orientation="vertical" flexItem sx={{ mx: 0.35, my: 0.4, borderColor: '#ffe082' }} />
               <Tooltip title="Tippen">
                 <IconButton
@@ -2625,19 +2592,6 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
               </Tooltip>
             </Box>
           </Box>
-          {gitMessage ? (
-            <Typography
-              sx={{
-                px: 1.5,
-                pb: 0.4,
-                fontSize: '0.62rem',
-                color: '#6d4c41',
-                lineHeight: 1.3,
-              }}
-            >
-              {gitBusy ? 'Schiebe nach GitHub …' : gitMessage}
-            </Typography>
-          ) : null}
           <DialogCloseIconButton
             onClose={closeModal}
             sx={{

@@ -1,5 +1,13 @@
 import { apiGet, apiPost } from './api';
 
+export type StandChangeKind = 'added' | 'changed' | 'removed';
+
+export type StandChange = {
+  path: string;
+  kind: StandChangeKind;
+  label: string;
+};
+
 export type TeacherGitBackupStatus = {
   available: boolean;
   reason: 'ok' | 'no-git' | 'not-main' | 'busy' | 'error';
@@ -7,11 +15,20 @@ export type TeacherGitBackupStatus = {
   where?: 'laptop' | 'school';
 };
 
+export type TeacherGitBackupPreview = TeacherGitBackupStatus & {
+  explanation: string;
+  changes: StandChange[];
+  summary: string;
+};
+
 export type TeacherGitBackupResult = {
   ok: boolean;
   committed?: boolean;
   pushed?: boolean;
   message: string;
+  changes?: StandChange[];
+  explanation?: string;
+  where?: 'laptop' | 'school';
 };
 
 export async function fetchTeacherGitBackupStatus(): Promise<TeacherGitBackupStatus> {
@@ -28,6 +45,22 @@ export async function fetchTeacherGitBackupStatus(): Promise<TeacherGitBackupSta
     available: Boolean(data.available),
     reason: data.reason || (data.available ? 'ok' : 'error'),
     hint: String(data.hint || ''),
+    where: data.where,
+  };
+}
+
+export async function fetchTeacherGitBackupPreview(): Promise<TeacherGitBackupPreview> {
+  const res = await apiGet('/api/teacher-git-backup/preview');
+  const data = (await res.json().catch(() => ({}))) as Partial<TeacherGitBackupPreview>;
+  const changes = Array.isArray(data.changes) ? data.changes : [];
+  return {
+    available: Boolean(data.available),
+    reason: data.reason || (data.available ? 'ok' : 'error'),
+    hint: String(data.hint || ''),
+    where: data.where,
+    explanation: String(data.explanation || data.hint || ''),
+    changes,
+    summary: String(data.summary || ''),
   };
 }
 
@@ -40,5 +73,8 @@ export async function pushTeacherGitBackup(): Promise<TeacherGitBackupResult> {
     committed: Boolean(data.committed),
     pushed: Boolean(data.pushed),
     message,
+    changes: Array.isArray(data.changes) ? data.changes : [],
+    explanation: data.explanation,
+    where: data.where,
   };
 }

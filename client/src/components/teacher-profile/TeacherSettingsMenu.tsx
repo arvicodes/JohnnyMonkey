@@ -16,7 +16,9 @@ import {
   Person as PersonIcon,
   CalendarMonth as CalendarMonthIcon,
   Home as HomeIcon,
+  CloudUpload as CloudUploadIcon,
 } from '@mui/icons-material';
+import TeacherGitStandModal from './TeacherGitStandModal';
 
 import {
   DEFAULT_PROFILE_COLOR,
@@ -50,6 +52,7 @@ export default function TeacherSettingsMenu({
   const navigate = useNavigate();
   const location = useLocation();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [standOpen, setStandOpen] = useState(false);
   const open = Boolean(anchorEl);
   const isOnDashboard = location.pathname === '/dashboard';
 
@@ -218,6 +221,24 @@ export default function TeacherSettingsMenu({
         <MenuItem
           onClick={() => {
             close();
+            setStandOpen(true);
+          }}
+          sx={{ py: 1.1, px: 2 }}
+        >
+          <ListItemIcon>
+            <CloudUploadIcon fontSize="small" sx={{ color: '#1976d2' }} />
+          </ListItemIcon>
+          <ListItemText
+            primary="Stand nach GitHub"
+            secondary="Folien, Notizen, Tickets"
+            primaryTypographyProps={{ fontWeight: 700, fontSize: '0.82rem' }}
+            secondaryTypographyProps={{ fontSize: '0.68rem' }}
+          />
+        </MenuItem>
+
+        <MenuItem
+          onClick={() => {
+            close();
             onOpenSchedule();
           }}
           sx={{ py: 1.1, px: 2 }}
@@ -233,6 +254,7 @@ export default function TeacherSettingsMenu({
           />
         </MenuItem>
       </Menu>
+      <TeacherGitStandModal open={standOpen} onClose={() => setStandOpen(false)} />
     </>
   );
 }

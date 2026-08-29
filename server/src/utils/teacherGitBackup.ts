@@ -1,10 +1,18 @@
-import { execFile } from 'child_process';
+import { execFile, execFileSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
-import { hasGithubToken, pushSchoolStandToGithub } from './teacherGitHubApi';
+import { hasGithubToken, previewSchoolStandChanges, pushSchoolStandToGithub } from './teacherGitHubApi';
 
 const execFileAsync = promisify(execFile);
+
+export type StandChangeKind = 'added' | 'changed' | 'removed';
+
+export type StandChange = {
+  path: string;
+  kind: StandChangeKind;
+  label: string;
+};
 
 export type TeacherGitBackupStatus = {
   available: boolean;
@@ -13,11 +21,20 @@ export type TeacherGitBackupStatus = {
   where?: 'laptop' | 'school';
 };
 
+export type TeacherGitBackupPreview = TeacherGitBackupStatus & {
+  explanation: string;
+  changes: StandChange[];
+  summary: string;
+};
+
 export type TeacherGitBackupResult = {
   ok: boolean;
   committed: boolean;
   pushed: boolean;
   message: string;
+  changes?: StandChange[];
+  explanation?: string;
+  where?: 'laptop' | 'school';
 };
 
 let running = false;
@@ -55,6 +72,78 @@ function isSchoolHost(): boolean {
   return String(process.env.LOCAL_MATERIALS_PATH || '') === '/app' || !findGitRoot();
 }
 
+function isSecretPath(repoPath: string): boolean {
+  const n = repoPath.replace(/\\/g, '/');
+  if (n === '.env' || n.startsWith('.env.') || n.includes('/.env')) return true;
+  if (n.includes('.jm-github-token') || n.includes('.login-code-pepper')) return true;
+  if (n.includes('LOGIN-CODES-ALLE.txt')) return true;
+  if (n === 'sync-backups' || n.startsWith('sync-backups/')) return true;
+  if (n.endsWith('.b64')) return true;
+  return false;
+}
+
+export function describeStandPath(repoPath: string): string {
+  const n = repoPath.replace(/\\/g, '/');
+  const base = n.split('/').pop() || n;
+  if (n === 'server/prisma/dev.db') return 'Tickets und Datenbank';
+  if (n.startsWith('Notizen-Sicherheitskopien/')) return `Notizen-Kopie: ${base}`;
+  if (n.includes('/Backup - Tickets/')) return `Ticket-Kopie: ${base}`;
+  if (n.includes('/Backup - Folien/')) return `Folien-Kopie: ${base}`;
+  if (n.includes('/Backup - Notizen/')) return `Notizen-Kopie: ${base}`;
+  if (n.includes('/Lehrer-Schnellnotizen/')) return `Notizen: ${base}`;
+  if (n.includes('Praesentation.deck')) {
+    const parts = n.split('/').filter((p) => p && p !== 'J-M-Reihen' && !p.startsWith('Praesentation'));
+    const lesson = parts.slice(-2).join(' / ') || base;
+    return `Folie: ${lesson}`;
+  }
+  if (n.startsWith('J-M-Reihen/')) {
+    const short = n.replace(/^J-M-Reihen\//, '');
+    return short.length > 72 ? `Material: …${short.slice(-64)}` : `Material: ${short}`;
+  }
+  if (n.startsWith('client/') || n.startsWith('server/')) return `App: ${n}`;
+  return n;
+}
+
+function toChange(pathName: string, kind: StandChangeKind): StandChange {
+  return { path: pathName, kind, label: describeStandPath(pathName) };
+}
+
+function summarizeChanges(changes: StandChange[]): string {
+  if (changes.length === 0) return 'Nichts Neues gegenüber GitHub.';
+  const added = changes.filter((c) => c.kind === 'added').length;
+  const changed = changes.filter((c) => c.kind === 'changed').length;
+  const removed = changes.filter((c) => c.kind === 'removed').length;
+  const bits: string[] = [];
+  if (changed) bits.push(`${changed} geändert`);
+  if (added) bits.push(`${added} neu`);
+  if (removed) bits.push(`${removed} entfernt`);
+  return bits.join(', ');
+}
+
+function previewLaptopChanges(root: string): StandChange[] {
+  const out = execFileSync('git', ['status', '--porcelain', '-uall'], {
+    cwd: root,
+    encoding: 'utf8',
+    timeout: 20_000,
+  });
+  const changes: StandChange[] = [];
+  for (const raw of String(out).split(/\r?\n/)) {
+    const line = raw.trimEnd();
+    if (line.length < 4) continue;
+    const xy = line.slice(0, 2);
+    let filePath = line.slice(3).replace(/^"|"$/g, '');
+    if (filePath.includes(' -> ')) filePath = filePath.split(' -> ').pop() || filePath;
+    if (isSecretPath(filePath)) continue;
+    const index = xy[0];
+    const work = xy[1];
+    let kind: StandChangeKind = 'changed';
+    if (xy === '??' || index === 'A' || work === 'A') kind = 'added';
+    else if (index === 'D' || work === 'D') kind = 'removed';
+    changes.push(toChange(filePath, kind));
+  }
+  return changes;
+}
+
 export function getTeacherGitBackupStatus(): TeacherGitBackupStatus {
   if (running) {
     return {
@@ -87,6 +176,35 @@ export function getTeacherGitBackupStatus(): TeacherGitBackupStatus {
       ? 'GitHub für die Schule ist noch nicht eingerichtet. Einmal am Laptop setzen.'
       : 'Kein Git-Ordner gefunden.',
   };
+}
+
+export async function previewTeacherGitBackup(): Promise<TeacherGitBackupPreview> {
+  const status = getTeacherGitBackupStatus();
+  const where = status.where;
+  const explanation =
+    where === 'school'
+      ? 'Ich schicke den Stand von der Schule nach GitHub: Folien, Notizen und Tickets. Passwörter bleiben hier.'
+      : 'Ich schicke den Stand von diesem Laptop nach GitHub: Folien, Notizen, Tickets und Code. Passwörter bleiben hier.';
+  if (!status.available) {
+    return { ...status, explanation: status.hint, changes: [], summary: status.hint };
+  }
+  try {
+    const raw =
+      where === 'school'
+        ? await previewSchoolStandChanges()
+        : previewLaptopChanges(findGitRoot() || '');
+    const changes = raw.map((c) => toChange(c.path, c.kind));
+    const summary = summarizeChanges(changes);
+    return {
+      ...status,
+      explanation: changes.length ? explanation : 'GitHub hat schon genau diesen Stand.',
+      changes,
+      summary,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Änderungen nicht lesbar.';
+    return { ...status, available: false, reason: 'error', hint: message, explanation: message, changes: [], summary: message };
+  }
 }
 
 function parseScriptOutput(stdout: string, stderr: string): TeacherGitBackupResult {
@@ -139,7 +257,14 @@ export async function runTeacherGitBackup(): Promise<TeacherGitBackupResult> {
     const root = findGitRoot();
     if (root && fs.existsSync(scriptPath(root))) {
       try {
-        return await runLaptopGitBackup(root);
+        const changes = previewLaptopChanges(root);
+        const result = await runLaptopGitBackup(root);
+        return {
+          ...result,
+          changes,
+          where: 'laptop',
+          explanation: 'Stand von diesem Laptop nach GitHub.',
+        };
       } catch (err: unknown) {
         const e = err as { stdout?: string; stderr?: string; message?: string };
         const parsed = parseScriptOutput(String(e.stdout || ''), String(e.stderr || ''));
@@ -156,7 +281,13 @@ export async function runTeacherGitBackup(): Promise<TeacherGitBackupResult> {
         };
       }
     }
-    return await pushSchoolStandToGithub();
+    const school = await pushSchoolStandToGithub();
+    return {
+      ...school,
+      where: 'school',
+      explanation: 'Stand von der Schule nach GitHub.',
+      changes: (school.changes || []).map((c) => toChange(c.path, c.kind)),
+    };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Push fehlgeschlagen.';
     const friendly = /Bad credentials|401/i.test(message)

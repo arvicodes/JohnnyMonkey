@@ -8,23 +8,16 @@ import {
   Tooltip,
   Chip,
   Popover,
-  Button,
 } from '@mui/material';
 import {
   Edit as EditIcon,
   CalendarMonth as CalendarMonthIcon,
   Palette as PaletteIcon,
-  CloudUpload as CloudUploadIcon,
 } from '@mui/icons-material';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-icon-button';
 import EmojiSelector from '../EmojiSelector';
 import { ReisebegleiterAvatarBadge } from '../ReisebegleiterPanel';
 import { apiPut } from '../../lib/api';
-import {
-  fetchTeacherGitBackupStatus,
-  pushTeacherGitBackup,
-  type TeacherGitBackupStatus,
-} from '../../lib/teacherGitBackup';
 import {
   DEFAULT_PROFILE_COLOR,
   PROFILE_COLOR_PRESETS,
@@ -62,50 +55,12 @@ export default function TeacherProfileDialog({
   const [showEmojiSelector, setShowEmojiSelector] = useState(false);
   const [isUpdatingEmoji, setIsUpdatingEmoji] = useState(false);
   const [colorAnchor, setColorAnchor] = useState<HTMLElement | null>(null);
-  const [gitStatus, setGitStatus] = useState<TeacherGitBackupStatus | null>(null);
-  const [gitBusy, setGitBusy] = useState(false);
-  const [gitMessage, setGitMessage] = useState('');
 
   const accent = profileColor || DEFAULT_PROFILE_COLOR;
 
   useEffect(() => {
     setSelectedEmoji(avatarEmoji || DEFAULT_TEACHER_EMOJI);
   }, [avatarEmoji, open]);
-
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    setGitMessage('');
-    void fetchTeacherGitBackupStatus()
-      .then((next) => {
-        if (!cancelled) setGitStatus(next);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setGitStatus({
-            available: false,
-            reason: 'error',
-            hint: 'GitHub-Knopf gerade nicht erreichbar.',
-          });
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [open]);
-
-  const handleGitPush = async () => {
-    setGitBusy(true);
-    setGitMessage('');
-    try {
-      const result = await pushTeacherGitBackup();
-      setGitMessage(result.message);
-    } catch {
-      setGitMessage('Push fehlgeschlagen. Am Laptop GitHub-Zugang prüfen.');
-    } finally {
-      setGitBusy(false);
-    }
-  };
 
   const handleEmojiSelect = async (emoji: string) => {
     setSelectedEmoji(emoji);
@@ -340,50 +295,6 @@ export default function TeacherProfileDialog({
                 </Box>
               </Box>
             </Box>
-          </Box>
-
-          <Box
-            sx={{
-              mt: 1.5,
-              borderRadius: 2.5,
-              bgcolor: '#fff',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-              px: 1.5,
-              py: 1.35,
-            }}
-          >
-            <Typography sx={{ fontSize: '0.72rem', fontWeight: 800, color: '#37474f', mb: 0.35 }}>
-              Stand nach GitHub
-            </Typography>
-            <Typography sx={{ fontSize: '0.62rem', color: '#64748b', lineHeight: 1.35, mb: 1 }}>
-              {gitStatus?.hint ||
-                'Ganzer Stand: Folien, Notizen, Tickets. Am Laptop auch der Code.'}
-            </Typography>
-            <Button
-              size="small"
-              variant="contained"
-              disableElevation
-              startIcon={<CloudUploadIcon sx={{ fontSize: 16 }} />}
-              disabled={gitBusy || gitStatus?.available === false}
-              onClick={() => {
-                void handleGitPush();
-              }}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 700,
-                fontSize: '0.72rem',
-                bgcolor: accent,
-                '&:hover': { bgcolor: accent, filter: 'brightness(0.95)' },
-                '&.Mui-disabled': { bgcolor: '#eceff1', color: '#90a4ae' },
-              }}
-            >
-              {gitBusy ? 'Schiebe …' : 'Stand nach GitHub'}
-            </Button>
-            {gitMessage ? (
-              <Typography sx={{ fontSize: '0.62rem', color: '#455a64', mt: 0.85, lineHeight: 1.35 }}>
-                {gitMessage}
-              </Typography>
-            ) : null}
           </Box>
 
           <Popover

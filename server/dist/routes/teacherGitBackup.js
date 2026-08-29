@@ -11,6 +11,22 @@ router.use(auth_1.authenticateUser, auth_1.requireTeacher);
 router.get('/', (_req, res) => {
     res.json((0, teacherGitBackup_1.getTeacherGitBackupStatus)());
 });
+router.get('/preview', async (_req, res) => {
+    try {
+        res.json(await (0, teacherGitBackup_1.previewTeacherGitBackup)());
+    }
+    catch (error) {
+        console.error('teacher-git-backup preview:', error);
+        res.status(500).json({
+            available: false,
+            reason: 'error',
+            hint: 'Änderungen gerade nicht lesbar.',
+            explanation: 'Änderungen gerade nicht lesbar.',
+            changes: [],
+            summary: 'Änderungen gerade nicht lesbar.',
+        });
+    }
+});
 router.post('/', async (req, res) => {
     req.setTimeout(300000);
     res.setTimeout(300000);

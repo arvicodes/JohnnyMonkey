@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.readGithubToken = readGithubToken;
 exports.hasGithubToken = hasGithubToken;
+exports.previewSchoolStandChanges = previewSchoolStandChanges;
 exports.pushSchoolStandToGithub = pushSchoolStandToGithub;
 const crypto_1 = __importDefault(require("crypto"));
 const child_process_1 = require("child_process");
@@ -204,33 +205,17 @@ function berlinStamp() {
         .format(new Date())
         .replace(', ', ' ');
 }
-async function pushSchoolStandToGithub() {
+async function collectSchoolDiff() {
     const token = readGithubToken();
     if (!token) {
-        return {
-            ok: false,
-            committed: false,
-            pushed: false,
-            message: 'GitHub-Zugang für die Schule fehlt noch. Einmal am Laptop einrichten.',
-        };
-    }
-    const files = collectStandFiles();
-    if (files.length === 0) {
-        return {
-            ok: false,
-            committed: false,
-            pushed: false,
-            message: 'Keine Dateien zum Schieben gefunden.',
-        };
+        throw new Error('GitHub-Zugang für die Schule fehlt noch. Einmal am Laptop einrichten.');
     }
     const [owner, repo] = REPO.split('/');
-    if (!owner || !repo) {
-        return {
-            ok: false,
-            committed: false,
-            pushed: false,
-            message: 'GitHub-Repository ist nicht gesetzt.',
-        };
+    if (!owner || !repo)
+        throw new Error('GitHub-Repository ist nicht gesetzt.');
+    const files = collectStandFiles();
+    if (files.length === 0) {
+        throw new Error('Keine Dateien zum Schieben gefunden.');
     }
     const ref = await ghJson(token, `/repos/${owner}/${repo}/git/ref/heads/${BRANCH}`);
     const parentSha = ref.object.sha;
@@ -255,16 +240,39 @@ async function pushSchoolStandToGithub() {
         if (buf.length > MAX_FILE_BYTES)
             continue;
         const sha = gitBlobSha(buf);
-        if (remoteSha.get(file.repoPath) === sha)
+        const remote = remoteSha.get(file.repoPath);
+        if (remote === sha)
             continue;
-        changed.push({ path: file.repoPath, buf });
+        changed.push({ path: file.repoPath, buf, kind: remote ? 'changed' : 'added' });
     }
+    return { token, owner, repo, parentSha, baseTreeSha, changed };
+}
+async function previewSchoolStandChanges() {
+    const { changed } = await collectSchoolDiff();
+    return changed.map(({ path, kind }) => ({ path, kind }));
+}
+async function pushSchoolStandToGithub() {
+    let prepared;
+    try {
+        prepared = await collectSchoolDiff();
+    }
+    catch (err) {
+        return {
+            ok: false,
+            committed: false,
+            pushed: false,
+            message: err instanceof Error ? err.message : 'Schul-Stand nicht lesbar.',
+        };
+    }
+    const { token, owner, repo, parentSha, baseTreeSha, changed } = prepared;
+    const changeList = changed.map(({ path, kind }) => ({ path, kind }));
     if (changed.length === 0) {
         return {
             ok: true,
             committed: false,
             pushed: false,
             message: 'Nichts Neues — GitHub hat schon den aktuellen Schul-Stand.',
+            changes: [],
         };
     }
     const uploaded = await mapPool(changed, 4, async (item) => {
@@ -300,6 +308,7 @@ async function pushSchoolStandToGithub() {
         committed: true,
         pushed: true,
         message: `Auf GitHub: ${message}`,
+        changes: changeList,
     };
 }
 //# sourceMappingURL=teacherGitHubApi.js.map
