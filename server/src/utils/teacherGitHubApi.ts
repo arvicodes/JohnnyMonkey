@@ -157,19 +157,26 @@ function walkDir(abs: string, repoPrefix: string, seen: Set<string>, out: Mapped
   }
 }
 
+function isSchoolStandPath(repoPath: string): boolean {
+  const n = repoPath.replace(/\\/g, '/');
+  if (n === 'server/prisma/dev.db') return true;
+  if (!n.endsWith('/latest.json') && n !== 'latest.json') return false;
+  return n.includes('/Lehrer-Schnellnotizen/') || n.startsWith('Notizen-Sicherheitskopien/');
+}
+
 function collectStandFiles(): MappedFile[] {
   const root = materialsRoot();
   const seen = new Set<string>();
-  const out: MappedFile[] = [];
+  const raw: MappedFile[] = [];
   const folders = [
-    ['J-M-Reihen', 'J-M-Reihen'],
+    ['J-M-Reihen/Lehrer-Schnellnotizen', 'J-M-Reihen/Lehrer-Schnellnotizen'],
     ['Notizen-Sicherheitskopien', 'Notizen-Sicherheitskopien'],
-    ['Presentation-Sicherheitskopien', 'Presentation-Sicherheitskopien'],
   ] as const;
   for (const [rel, repo] of folders) {
     const abs = path.join(root, rel);
-    if (fs.existsSync(abs)) walkDir(abs, repo, seen, out);
+    if (fs.existsSync(abs)) walkDir(abs, repo, seen, raw);
   }
+  const out = raw.filter((f) => isSchoolStandPath(f.repoPath));
 
   const volumeDb = '/app/server/data/dev.db';
   const localDb = path.join(root, 'server/prisma/dev.db');
@@ -414,14 +421,8 @@ export async function pushSchoolStandToGithub(): Promise<GithubStandResult> {
   };
 }
 
-const PULL_PREFIXES = [
-  'J-M-Reihen/',
-  'Notizen-Sicherheitskopien/',
-  'Presentation-Sicherheitskopien/',
-];
-
 function isPullRepoPath(repoPath: string): boolean {
-  return repoPath === 'server/prisma/dev.db' || PULL_PREFIXES.some((pre) => repoPath.startsWith(pre));
+  return isSchoolStandPath(repoPath);
 }
 
 function absForRepoPath(repoPath: string): string {

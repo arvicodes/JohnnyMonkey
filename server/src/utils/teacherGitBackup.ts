@@ -240,7 +240,7 @@ export function getTeacherGitBackupStatus(): TeacherGitBackupStatus {
       available: true,
       reason: 'ok',
       where: 'school',
-      hint: 'Dieser Schul-Stand nach GitHub: Folien, Notizen und Tickets.',
+      hint: 'Dieser Schul-Stand nach GitHub: Notizen und Tickets.',
     };
   }
   return {
@@ -319,7 +319,7 @@ export async function previewTeacherGitPull(): Promise<TeacherGitBackupPreview> 
   const status = getTeacherGitBackupStatus();
   const explanation =
     status.where === 'school'
-      ? 'Ich hole den Stand von GitHub auf die Schule: Folien, Notizen und Tickets.'
+      ? 'Ich hole den Stand von GitHub auf die Schule: Notizen und Tickets. Folien bleiben hier.'
       : 'Ich hole den Stand von GitHub auf diesen Laptop: Folien, Notizen und Tickets.';
   if (!status.available) {
     return { ...status, explanation: status.hint, changes: [], summary: status.hint };
@@ -392,7 +392,7 @@ export async function previewTeacherGitBackup(): Promise<TeacherGitBackupPreview
   const where = status.where;
   const explanation =
     where === 'school'
-      ? 'Ich schicke den Stand von der Schule nach GitHub: Folien, Notizen und Tickets. Passwörter bleiben hier.'
+      ? 'Ich schicke Notizen und Tickets von der Schule nach GitHub. Folien bleiben hier. Passwörter bleiben hier.'
       : 'Ich schicke den Stand von diesem Laptop nach GitHub: Folien, Notizen, Tickets und Code. Passwörter bleiben hier.';
   if (!status.available) {
     return { ...status, explanation: status.hint, changes: [], summary: status.hint };
