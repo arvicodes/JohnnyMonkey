@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { execFileSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { checkpointStandDatabases } from './teacherTicketStand';
 
 const REPO = process.env.SCHOOL_GITHUB_REPO || process.env.JM_GITHUB_REPO || 'arvicodes/JohnnyMonkey';
 const BRANCH = 'main';
@@ -268,6 +269,7 @@ async function collectSchoolDiff(): Promise<{
   const [owner, repo] = REPO.split('/');
   if (!owner || !repo) throw new Error('GitHub-Repository ist nicht gesetzt.');
 
+  checkpointStandDatabases();
   const files = collectStandFiles();
   if (files.length === 0) {
     throw new Error('Keine Dateien zum Schieben gefunden.');

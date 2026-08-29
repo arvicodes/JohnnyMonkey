@@ -17,6 +17,7 @@ const path_1 = __importDefault(require("path"));
 const util_1 = require("util");
 const teacherGitHubApi_1 = require("./teacherGitHubApi");
 const teacherScratchPadStore_1 = require("./teacherScratchPadStore");
+const teacherTicketStand_1 = require("./teacherTicketStand");
 const execFileAsync = (0, util_1.promisify)(child_process_1.execFile);
 let running = false;
 function candidateRoots() {
@@ -360,6 +361,7 @@ async function pullTeacherGitBackup() {
             catch (e) {
                 console.warn('Notizen nach Holen nicht in die Datenbank geschrieben:', e);
             }
+            (0, teacherTicketStand_1.applyPulledTicketsFromFile)();
             return result;
         }
         const school = await (0, teacherGitHubApi_1.pullSchoolStandFromGithub)();
@@ -369,6 +371,7 @@ async function pullTeacherGitBackup() {
         catch (e) {
             console.warn('Notizen nach Holen nicht in die Datenbank geschrieben:', e);
         }
+        (0, teacherTicketStand_1.applyPulledTicketsFromFile)();
         return {
             ...school,
             where: 'school',

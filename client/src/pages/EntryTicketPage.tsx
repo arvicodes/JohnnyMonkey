@@ -63,9 +63,12 @@ import {
   isGeneralLessonSection,
   isLaterLessonSection,
   isUnboundPriorLessonSection,
+  CUSTOM_SETS_STORAGE_KEY,
   fetchAndCacheCustomEntryTicketSets,
   loadCustomEntryTicketSets,
   mergeCustomSetListsKeepExisting,
+  replaceCustomSetsFromServer,
+  TICKETS_FROM_GIT_EVENT,
   mergeDiscoveredLessonsIntoSet,
   saveCustomEntryTicketSets,
   sortLessonsChronologically,
@@ -3071,6 +3074,25 @@ export default function EntryTicketPage({
     };
     window.addEventListener('johnny:flush-tickets', flush);
     return () => window.removeEventListener('johnny:flush-tickets', flush);
+  }, [isTeacher]);
+
+  useEffect(() => {
+    if (!isTeacher) return;
+    const onFromGit = () => {
+      try {
+        localStorage.removeItem(CUSTOM_SETS_STORAGE_KEY);
+      } catch {
+        /* ignore */
+      }
+      void replaceCustomSetsFromServer().then((remote) => {
+        if (remote.length === 0) return;
+        customSetsRef.current = remote;
+        customSetsServerSyncedRef.current = true;
+        setCustomSets(remote);
+      });
+    };
+    window.addEventListener(TICKETS_FROM_GIT_EVENT, onFromGit);
+    return () => window.removeEventListener(TICKETS_FROM_GIT_EVENT, onFromGit);
   }, [isTeacher]);
 
   const secureTicketBackup = useCallback(() => {

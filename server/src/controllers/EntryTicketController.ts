@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { findUserByLoginCode } from '../utils/loginCodeCrypto';
 import { writeTeacherLatestBackup, writeTeacherTimestampedBackup } from '../utils/jmTeacherBackup';
+import { readTicketsLatest } from '../utils/teacherTicketStand';
+import { standPulledRecently } from '../utils/teacherScratchPadStore';
 
 const prisma = new PrismaClient();
 
@@ -1512,6 +1514,16 @@ export class EntryTicketController {
         return res.status(403).json({ error: 'Nur Lehrkräfte' });
       }
 
+      const fromFile = readTicketsLatest();
+      if (standPulledRecently() && fromFile?.sets?.length) {
+        const fileSets = fromFile.sets
+          .map((s) => normalizeCustomSetPayload(s))
+          .filter(Boolean) as EntryTicketCustomSetPayload[];
+        if (fileSets.length > 0) {
+          return res.json({ sets: fileSets, standPulled: standPulledRecently() });
+        }
+      }
+
       let sets = await loadStoredCustomSets(user.id);
       if (sets.length === 0) {
         const recovered = await recoverCustomSetsFromSignals(user.id);
@@ -1552,6 +1564,15 @@ export class EntryTicketController {
       if (!user) return res.status(401).json({ error: 'Nicht angemeldet' });
       if (user.role !== 'TEACHER') {
         return res.status(403).json({ error: 'Nur Lehrkräfte' });
+      }
+      if (standPulledRecently() && !(req.body as { seenStandPull?: unknown })?.seenStandPull) {
+        const existing = await loadStoredCustomSets(user.id);
+        const fromFile = readTicketsLatest();
+        return res.json({
+          success: true,
+          kept: true,
+          count: fromFile?.sets?.length || existing.length,
+        });
       }
       const rawSets = Array.isArray(req.body?.sets) ? req.body.sets : [];
       const sets = rawSets

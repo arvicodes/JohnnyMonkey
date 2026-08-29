@@ -10,6 +10,7 @@ import {
   pushSchoolStandToGithub,
 } from './teacherGitHubApi';
 import { applyPulledScratchPadFiles, writePulledScratchPadsToDb } from './teacherScratchPadStore';
+import { applyPulledTicketsFromFile } from './teacherTicketStand';
 
 const execFileAsync = promisify(execFile);
 
@@ -387,6 +388,7 @@ export async function pullTeacherGitBackup(): Promise<TeacherGitBackupResult> {
       } catch (e) {
         console.warn('Notizen nach Holen nicht in die Datenbank geschrieben:', e);
       }
+      applyPulledTicketsFromFile();
       return result;
     }
     const school = await pullSchoolStandFromGithub();
@@ -395,6 +397,7 @@ export async function pullTeacherGitBackup(): Promise<TeacherGitBackupResult> {
     } catch (e) {
       console.warn('Notizen nach Holen nicht in die Datenbank geschrieben:', e);
     }
+    applyPulledTicketsFromFile();
     return {
       ...school,
       where: 'school',

@@ -16,6 +16,7 @@ import {
   type StandChange,
 } from '../../lib/teacherGitBackup';
 import { NOTES_FROM_GIT_EVENT } from '../TeacherQuickNotes';
+import { TICKETS_FROM_GIT_EVENT } from '../../lib/entryTicketCustomSets';
 
 type Phase = 'preview' | 'run' | 'done' | 'error';
 
@@ -105,6 +106,7 @@ export default function TeacherGitStandModal({ open, mode, onClose }: TeacherGit
         setPhase(result.ok ? 'done' : 'error');
         if (isPull && result.ok && typeof window !== 'undefined') {
           window.dispatchEvent(new Event(NOTES_FROM_GIT_EVENT));
+          window.dispatchEvent(new Event(TICKETS_FROM_GIT_EVENT));
         }
       } catch {
         if (cancelled) return;

@@ -5,6 +5,8 @@ exports.resolveActiveEntryHeroImageIndexForUser = resolveActiveEntryHeroImageInd
 const client_1 = require("@prisma/client");
 const loginCodeCrypto_1 = require("../utils/loginCodeCrypto");
 const jmTeacherBackup_1 = require("../utils/jmTeacherBackup");
+const teacherTicketStand_1 = require("../utils/teacherTicketStand");
+const teacherScratchPadStore_1 = require("../utils/teacherScratchPadStore");
 const prisma = new client_1.PrismaClient();
 const ENTRY_TICKET_LEGACY_PATH = '__entry_ticket_active__';
 /** Persistente eigene Fragensets der Lehrkraft (nicht nur Browser-localStorage). */
@@ -1370,6 +1372,7 @@ class EntryTicketController {
     }
     /** Eigene Fragensets der Lehrkraft (Server-Backup + Wiederherstellung aus Signalen). */
     static async getCustomSets(req, res) {
+        var _a;
         try {
             res.set('Cache-Control', 'private, no-store, must-revalidate');
             const user = await getUserByLoginCode(req);
@@ -1377,6 +1380,15 @@ class EntryTicketController {
                 return res.status(401).json({ error: 'Nicht angemeldet' });
             if (user.role !== 'TEACHER') {
                 return res.status(403).json({ error: 'Nur Lehrkräfte' });
+            }
+            const fromFile = (0, teacherTicketStand_1.readTicketsLatest)();
+            if ((0, teacherScratchPadStore_1.standPulledRecently)() && ((_a = fromFile === null || fromFile === void 0 ? void 0 : fromFile.sets) === null || _a === void 0 ? void 0 : _a.length)) {
+                const fileSets = fromFile.sets
+                    .map((s) => normalizeCustomSetPayload(s))
+                    .filter(Boolean);
+                if (fileSets.length > 0) {
+                    return res.json({ sets: fileSets, standPulled: (0, teacherScratchPadStore_1.standPulledRecently)() });
+                }
             }
             let sets = await loadStoredCustomSets(user.id);
             if (sets.length === 0) {
@@ -1413,7 +1425,7 @@ class EntryTicketController {
         }
     }
     static async saveCustomSets(req, res) {
-        var _a, _b;
+        var _a, _b, _c, _d;
         try {
             const user = await getUserByLoginCode(req);
             if (!user)
@@ -1421,7 +1433,16 @@ class EntryTicketController {
             if (user.role !== 'TEACHER') {
                 return res.status(403).json({ error: 'Nur Lehrkräfte' });
             }
-            const rawSets = Array.isArray((_a = req.body) === null || _a === void 0 ? void 0 : _a.sets) ? req.body.sets : [];
+            if ((0, teacherScratchPadStore_1.standPulledRecently)() && !((_a = req.body) === null || _a === void 0 ? void 0 : _a.seenStandPull)) {
+                const existing = await loadStoredCustomSets(user.id);
+                const fromFile = (0, teacherTicketStand_1.readTicketsLatest)();
+                return res.json({
+                    success: true,
+                    kept: true,
+                    count: ((_b = fromFile === null || fromFile === void 0 ? void 0 : fromFile.sets) === null || _b === void 0 ? void 0 : _b.length) || existing.length,
+                });
+            }
+            const rawSets = Array.isArray((_c = req.body) === null || _c === void 0 ? void 0 : _c.sets) ? req.body.sets : [];
             const sets = rawSets
                 .map((s) => normalizeCustomSetPayload(s))
                 .filter(Boolean);
@@ -1432,7 +1453,7 @@ class EntryTicketController {
                 }
             }
             await saveStoredCustomSets(user.id, sets, {
-                forceBackup: Boolean((_b = req.body) === null || _b === void 0 ? void 0 : _b.forceBackup),
+                forceBackup: Boolean((_d = req.body) === null || _d === void 0 ? void 0 : _d.forceBackup),
             });
             return res.json({ success: true, count: sets.length });
         }

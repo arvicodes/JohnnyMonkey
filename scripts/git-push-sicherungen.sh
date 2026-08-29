@@ -30,6 +30,10 @@ if [[ -d .git/rebase-merge || -d .git/rebase-apply || -f .git/MERGE_HEAD ]]; the
   exit 2
 fi
 
+if command -v sqlite3 >/dev/null 2>&1 && [[ -f "$ROOT/server/prisma/dev.db" ]]; then
+  sqlite3 "$ROOT/server/prisma/dev.db" 'PRAGMA wal_checkpoint(TRUNCATE);' >/dev/null 2>&1 || true
+fi
+
 git add -A -- \
   ':!.env' ':!.env.*' ':!.env.school' ':!.env.local' \
   ':!.jm-github-token' ':!**/.jm-github-token' \

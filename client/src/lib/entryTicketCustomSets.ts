@@ -567,6 +567,25 @@ export function loadCustomEntryTicketSets(): EntryTicketCustomSet[] {
   }
 }
 
+export const TICKETS_FROM_GIT_EVENT = 'johnny:tickets-from-git';
+
+export async function replaceCustomSetsFromServer(): Promise<EntryTicketCustomSet[]> {
+  try {
+    const res = await apiGet('/api/entry-ticket/custom-sets');
+    if (!res.ok) return loadCustomEntryTicketSets();
+    const data = (await res.json()) as { sets?: unknown };
+    const remote = (Array.isArray(data.sets) ? data.sets : [])
+      .map(parseCustomSet)
+      .filter((s): s is EntryTicketCustomSet => Boolean(s))
+      .map(ensureSpecialLessonSections);
+    if (remote.length === 0) return loadCustomEntryTicketSets();
+    saveCustomEntryTicketSets(remote);
+    return remote;
+  } catch {
+    return loadCustomEntryTicketSets();
+  }
+}
+
 export function saveCustomEntryTicketSets(sets: EntryTicketCustomSet[]): void {
   try {
     localStorage.setItem(CUSTOM_SETS_STORAGE_KEY, JSON.stringify(sets));
@@ -797,6 +816,13 @@ export async function fetchAndCacheCustomEntryTicketSets(): Promise<EntryTicketC
       .map(parseCustomSet)
       .filter((s): s is EntryTicketCustomSet => Boolean(s));
     if (remote.length === 0) return loadCustomEntryTicketSets();
+
+    const json = data as { standPulled?: boolean };
+    if (json.standPulled) {
+      const replaced = remote.map(ensureSpecialLessonSections);
+      saveCustomEntryTicketSets(replaced);
+      return replaced;
+    }
 
     // Nach dem Fetch noch einmal localStorage lesen: währenddessen können neue Karten
     // schon gespeichert worden sein. Der Live-Stand bleibt primär.

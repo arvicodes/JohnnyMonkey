@@ -13,6 +13,7 @@ const crypto_1 = __importDefault(require("crypto"));
 const child_process_1 = require("child_process");
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const teacherTicketStand_1 = require("./teacherTicketStand");
 const REPO = process.env.SCHOOL_GITHUB_REPO || process.env.JM_GITHUB_REPO || 'arvicodes/JohnnyMonkey';
 const BRANCH = 'main';
 const MAX_FILE_BYTES = 90 * 1024 * 1024;
@@ -260,6 +261,7 @@ async function collectSchoolDiff() {
     const [owner, repo] = REPO.split('/');
     if (!owner || !repo)
         throw new Error('GitHub-Repository ist nicht gesetzt.');
+    (0, teacherTicketStand_1.checkpointStandDatabases)();
     const files = collectStandFiles();
     if (files.length === 0) {
         throw new Error('Keine Dateien zum Schieben gefunden.');
