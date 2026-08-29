@@ -1053,31 +1053,21 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     openRef.current = true;
     setOpen(true);
     bumpHistoryUi();
-    window.requestAnimationFrame(() => {
-      showPage(local.pages, local.pageIndex, true);
-    });
 
     void (async () => {
       const remote = await fetchPadFromServer();
+      if (!openRef.current) return;
       if (lastServerStandPulled && remote) {
         holdGitStandRef.current = true;
         savePad(userId, remote, { syncServer: false });
-        if (openRef.current) {
-          showPage(remote.pages, remote.pageIndex, modeRef.current === 'text');
-          bumpHistoryUi();
-        }
+        showPage(remote.pages, remote.pageIndex, true);
+        bumpHistoryUi();
         return;
       }
       const merged = pickNewerPad(local, remote);
       savePad(userId, merged, { immediateServer: true });
-      if (!openRef.current) return;
-      if (
-        padUpdatedMs(merged) > padUpdatedMs(local) ||
-        (padHasContent(merged) && !padHasContent(local))
-      ) {
-        showPage(merged.pages, merged.pageIndex, modeRef.current === 'text');
-        bumpHistoryUi();
-      }
+      showPage(merged.pages, merged.pageIndex, true);
+      bumpHistoryUi();
     })();
   }, [bumpHistoryUi, showPage, userId]);
 

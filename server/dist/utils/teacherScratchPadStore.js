@@ -212,7 +212,7 @@ function standPulledAtMs() {
         return 0;
     }
 }
-function standPulledRecently(maxAgeMs = 20 * 60 * 1000) {
+function standPulledRecently(maxAgeMs = 6 * 60 * 60 * 1000) {
     const at = standPulledAtMs();
     if (!at)
         return false;

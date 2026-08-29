@@ -489,12 +489,16 @@ export async function runTeacherGitBackup(): Promise<TeacherGitBackupResult> {
           return { ...parsed, ok: false };
         }
         const raw = String(e.stderr || e.message || 'Push fehlgeschlagen.').trim();
-        const short = raw.split(/\r?\n/).filter(Boolean).slice(-3).join(' ');
+        const lines = raw.split(/\r?\n/).filter((l) => l && !/^hint:/i.test(l) && !/^! \[rejected\]/i.test(l));
+        const short = lines.slice(-2).join(' ');
+        const friendly = /non-fast-forward|fetch first|rejected/i.test(raw)
+          ? 'GitHub hat inzwischen einen anderen Stand. Erst „Stand von GitHub holen“, dann nochmal schieben.'
+          : short || 'Push fehlgeschlagen. Am Laptop GitHub-Zugang prüfen.';
         return {
           ok: false,
           committed: false,
           pushed: false,
-          message: short || 'Push fehlgeschlagen. Am Laptop GitHub-Zugang prüfen.',
+          message: friendly,
         };
       }
     }

@@ -1,1 +1,44 @@
-{"version":1,"title":"Wochenaufgabe 1","lessonPath":"/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/Wochenaufgaben/1","updatedAt":"2026-08-17T05:36:49.490Z","defaultTransition":"fade","showSlideNumbers":true,"showSlideFooter":true,"slides":[{"layout":"title-content","title":"","body":"","speakerNotes":"","preparationNotes":"","materialNotes":"","subtitle":"","bodyLeft":"","bodyRight":"","imagePath":"","imageCaption":"","bodyStyle":"plain","titleAlign":"left","accentColor":"#2E7D32","titleHtml":"<p><br></p>","bodyHtml":"<p><br></p>","subtitleHtml":"","bodyLeftHtml":"","bodyRightHtml":"","imageCaptionHtml":"","speakerNotesHtml":"<p><br></p>","preparationHtml":"<p><br></p>","materialHtml":"<p><br></p>","elements":[],"transition":"fade","revealEnabled":true,"zoneRevealSteps":{},"id":"slide-1786945009490-6adwq","order":0}],"trash":[],"slideFooter":{}}
+{
+  "version": 1,
+  "title": "Wochenaufgabe 1",
+  "lessonPath": "git-intern/Informatik/MSS Grundthemen/11-04 KI/Wochenaufgaben/1",
+  "updatedAt": "2026-08-17T05:36:49.490Z",
+  "defaultTransition": "fade",
+  "showSlideNumbers": true,
+  "showSlideFooter": true,
+  "slides": [
+    {
+      "layout": "title-content",
+      "title": "",
+      "body": "",
+      "speakerNotes": "",
+      "preparationNotes": "",
+      "materialNotes": "",
+      "subtitle": "",
+      "bodyLeft": "",
+      "bodyRight": "",
+      "imagePath": "",
+      "imageCaption": "",
+      "bodyStyle": "plain",
+      "titleAlign": "left",
+      "accentColor": "#2E7D32",
+      "titleHtml": "<p><br></p>",
+      "bodyHtml": "<p><br></p>",
+      "subtitleHtml": "",
+      "bodyLeftHtml": "",
+      "bodyRightHtml": "",
+      "imageCaptionHtml": "",
+      "speakerNotesHtml": "<p><br></p>",
+      "preparationHtml": "<p><br></p>",
+      "materialHtml": "<p><br></p>",
+      "elements": [],
+      "transition": "fade",
+      "revealEnabled": true,
+      "zoneRevealSteps": {},
+      "id": "slide-1786945009490-6adwq",
+      "order": 0
+    }
+  ],
+  "trash": [],
+  "slideFooter": {}
+}

@@ -228,7 +228,7 @@ export function standPulledAtMs(): number {
   }
 }
 
-export function standPulledRecently(maxAgeMs = 20 * 60 * 1000): boolean {
+export function standPulledRecently(maxAgeMs = 6 * 60 * 60 * 1000): boolean {
   const at = standPulledAtMs();
   if (!at) return false;
   const age = Date.now() - at;

@@ -104,6 +104,7 @@ router.get('/', async (req, res) => {
         else {
             data = fromDb || fromFile;
         }
+        res.setHeader('Cache-Control', 'no-store');
         if (!data) {
             return res.json({ ok: true, found: false, pad: null, userKey: key, source: null });
         }

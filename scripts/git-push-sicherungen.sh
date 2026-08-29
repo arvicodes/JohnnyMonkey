@@ -65,7 +65,25 @@ EOF
 )"
 
 echo "Commit ok — schiebe nach GitHub…"
-git push origin HEAD:main
+git fetch origin main
+if ! git merge-base --is-ancestor origin/main HEAD; then
+  echo "GitHub hat inzwischen einen anderen Stand — ich hole ihn dazu."
+  if ! git merge origin/main --no-edit -m "Stand zusammenführen"; then
+    git checkout --ours -- \
+      J-M-Reihen/Lehrer-Schnellnotizen \
+      Notizen-Sicherheitskopien \
+      2>/dev/null || true
+    git add -A -- \
+      ':!.env' ':!.env.*' ':!.jm-github-token' ':!**/._*' \
+      2>/dev/null || true
+    git commit --no-edit || true
+  fi
+fi
+if ! git push origin HEAD:main; then
+  status error
+  echo "GitHub hat inzwischen einen anderen Stand. Erst „Stand von GitHub holen“, dann nochmal schieben."
+  exit 1
+fi
 
 status ok
 echo "Auf GitHub: ${msg}"
