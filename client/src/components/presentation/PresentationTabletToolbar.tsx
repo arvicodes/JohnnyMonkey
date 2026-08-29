@@ -564,11 +564,13 @@ export default function PresentationTabletToolbar({
           </>
         )}
 
+        {!inkOnly ? (
         <Divider
           orientation="vertical"
           flexItem
           sx={{ mx: 0.15, borderColor: 'rgba(255,255,255,0.1)', height: 18, alignSelf: 'center' }}
         />
+        ) : null}
 
         {readOnly ? (
           <Typography

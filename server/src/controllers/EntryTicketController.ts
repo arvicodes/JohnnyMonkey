@@ -23,6 +23,7 @@ type EntryTicketTaskPayload = {
   solution: string;
   sourceKey?: string;
   id?: string;
+  ink?: unknown[];
 };
 
 type EntryTicketCustomSetPayload = {
@@ -32,6 +33,7 @@ type EntryTicketCustomSetPayload = {
   reihePaths?: string[];
   /** Persönliche Lehrer-Notizen */
   notes?: string;
+  playInkByKey?: Record<string, unknown[]>;
   lessons: Array<{
     id: string;
     lessonName: string;
@@ -109,6 +111,26 @@ const sameLessonPath = (a?: string | null, b?: string | null): boolean => {
 const PLAY_TASK_LIMIT = 80;
 const CUSTOM_SET_TASK_LIMIT = 400;
 const CUSTOM_SET_LESSON_LIMIT = 200;
+const PLAY_INK_STROKE_LIMIT = 400;
+const PLAY_INK_KEY_LIMIT = 80;
+
+const sanitizeInkStrokes = (raw: unknown): unknown[] | undefined => {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  return raw.slice(0, PLAY_INK_STROKE_LIMIT);
+};
+
+const sanitizePlayInkByKey = (raw: unknown): Record<string, unknown[]> | undefined => {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const out: Record<string, unknown[]> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!key || key.length > 200) continue;
+    const strokes = sanitizeInkStrokes(value);
+    if (!strokes) continue;
+    out[key] = strokes;
+    if (Object.keys(out).length >= PLAY_INK_KEY_LIMIT) break;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+};
 
 const normalizeTasksPayload = (
   raw: unknown,
@@ -128,6 +150,7 @@ const normalizeTasksPayload = (
         : undefined;
     const id =
       typeof r.id === 'string' && r.id.trim() ? r.id.trim().slice(0, 80) : undefined;
+    const ink = sanitizeInkStrokes(r.ink);
     out.push({
       category:
         typeof r.category === 'string' && r.category.trim() ? r.category.trim().slice(0, 80) : 'Eigen',
@@ -135,6 +158,7 @@ const normalizeTasksPayload = (
       solution: solution.slice(0, 8000),
       ...(sourceKey ? { sourceKey } : {}),
       ...(id ? { id } : {}),
+      ...(ink ? { ink } : {}),
     });
     if (out.length >= limit) break;
   }
@@ -222,12 +246,14 @@ const normalizeCustomSetPayload = (raw: unknown): EntryTicketCustomSetPayload | 
     typeof row.notes === 'string' && row.notes.trim()
       ? row.notes.replace(/\r\n/g, '\n').slice(0, 4000)
       : undefined;
+  const playInkByKey = sanitizePlayInkByKey(row.playInkByKey);
   return {
     id,
     name,
     ...(reihePaths[0] ? { reihePath: reihePaths[0] } : {}),
     ...(reihePaths.length > 0 ? { reihePaths } : {}),
     ...(notes ? { notes } : {}),
+    ...(playInkByKey ? { playInkByKey } : {}),
     lessons,
   };
 };

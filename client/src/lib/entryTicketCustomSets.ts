@@ -503,6 +503,7 @@ function migrateV1Set(raw: Record<string, unknown>): EntryTicketCustomSet | null
     raw.reihePaths,
     typeof raw.reihePath === 'string' ? raw.reihePath : undefined,
   );
+  const playInkByKey = parseEntryTicketInkMap(raw.playInkByKey);
   return ensureSpecialLessonSections({
     id,
     name,
@@ -512,6 +513,7 @@ function migrateV1Set(raw: Record<string, unknown>): EntryTicketCustomSet | null
       typeof raw.notes === 'string' && raw.notes.trim()
         ? raw.notes.replace(/\r\n/g, '\n').slice(0, 4000)
         : undefined,
+    ...(Object.keys(playInkByKey).length > 0 ? { playInkByKey } : {}),
     lessons: tasks.length > 0 ? [createGeneralLessonSection(tasks)] : [],
   });
 }

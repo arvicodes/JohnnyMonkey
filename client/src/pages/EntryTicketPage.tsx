@@ -22,7 +22,6 @@ import {
   Add as AddIcon,
   Remove as RemoveIcon,
   Check as CheckIcon,
-  Create as CreateIcon,
   History as HistoryIcon,
   Pause as PauseIcon,
   PlayArrow as PlayArrowIcon,
@@ -109,6 +108,8 @@ import {
   readEntryTicketCardLayout,
   formatEntryTicketPromptStructure,
 } from '../lib/entryTicketRichText';
+
+const EMPTY_TICKET_INK: PresentationStroke[] = [];
 
 type EntryTicketTask = {
   category: string;
@@ -1803,7 +1804,14 @@ function attachSourceKeysFromSet(
       const found = lesson.tasks.find(
         (t) => t.prompt === task.prompt && t.solution === task.solution,
       );
-      if (found) return { ...task, sourceKey: `${prefix}${found.id}` };
+      if (found) {
+        const sourceKey = `${prefix}${found.id}`;
+        const ink =
+          task.ink?.length
+            ? task.ink
+            : set.playInkByKey?.[entryTicketCardInkKey(sourceKey)];
+        return { ...task, sourceKey, ...(ink?.length ? { ink } : {}) };
+      }
     }
     return task;
   });
@@ -2615,8 +2623,15 @@ export default function EntryTicketPage({
         const hydrated = hydrateCustomSetFromSignal(data.customSet);
         if (hydrated) {
           setCustomSets((prev) => {
-            if (prev.some((s) => s.id === hydrated.id)) return prev;
-            return mergeHydratedCustomSet(prev, hydrated);
+            const existing = prev.find((s) => s.id === hydrated.id);
+            if (!existing) return mergeHydratedCustomSet(prev, hydrated);
+            if (!hydrated.playInkByKey) return prev;
+            const incomingFp = JSON.stringify(hydrated.playInkByKey);
+            const existingFp = JSON.stringify(existing.playInkByKey ?? {});
+            if (incomingFp === existingFp) return prev;
+            return prev.map((s) =>
+              s.id === hydrated.id ? { ...s, playInkByKey: hydrated.playInkByKey } : s,
+            );
           });
           setCustomSetId((prev) => prev || hydrated.id);
         } else if (typeof data.grade === 'string' && data.grade) {
@@ -2632,6 +2647,7 @@ export default function EntryTicketPage({
           setEntryTicketGroupId((prev) => prev || data.learningGroupId!.trim());
         }
         if (editingIndexRef.current !== null) return;
+        if (Date.now() - playLocalDirtyRef.current < 4000) return;
         const sets = customSetsRef.current;
         const setForKeys =
           (customSetId ? sets.find((s) => s.id === customSetId) : null) ||
@@ -2674,7 +2690,33 @@ export default function EntryTicketPage({
     () => (customSetId ? customSets.find((s) => s.id === customSetId) ?? null : null),
     [customSetId, customSets],
   );
+  const canEditPlay = isTeacher && !studentReviewMode;
+  const currentCardInk =
+    currentTask?.ink ??
+    (currentTask?.sourceKey
+      ? activeCustomSet?.playInkByKey?.[entryTicketCardInkKey(currentTask.sourceKey)]
+      : undefined) ??
+    EMPTY_TICKET_INK;
+  const solutionSlideInk =
+    activeCustomSet?.playInkByKey?.[ENTRY_TICKET_SOLUTION_INK_KEY] ?? EMPTY_TICKET_INK;
   const isCustomSetActive = Boolean(customSetId && activeCustomSet);
+
+  useEffect(() => {
+    const map = activeCustomSet?.playInkByKey;
+    if (!map) return;
+    setSelectedTasks((prev) => {
+      let changed = false;
+      const next = prev.map((t) => {
+        if (t.ink?.length) return t;
+        const key = entryTicketCardInkKey(t.sourceKey);
+        const ink = key ? map[key] : undefined;
+        if (!ink?.length) return t;
+        changed = true;
+        return { ...t, ink };
+      });
+      return changed ? next : prev;
+    });
+  }, [activeCustomSet?.id, activeCustomSet?.playInkByKey]);
   const isMatheLkSet = useMemo(
     () =>
       isMatheLkEntryContext(
@@ -2995,8 +3037,49 @@ export default function EntryTicketPage({
     void apiPut('/api/entry-ticket/custom-sets', { sets: customSets, forceBackup: true }).catch(() => {});
   }, [customSets, isTeacher]);
 
+  const playLocalDirtyRef = useRef(0);
+  const markPlayLocalDirty = useCallback(() => {
+    playLocalDirtyRef.current = Date.now();
+  }, []);
+
+  const persistPlaySetsSoon = useCallback(
+    (sets: EntryTicketCustomSet[], forceBackup: boolean) => {
+      saveCustomEntryTicketSets(sets);
+      if (!isTeacher) return;
+      if (playPersistTimerRef.current) window.clearTimeout(playPersistTimerRef.current);
+      playPersistTimerRef.current = window.setTimeout(() => {
+        playPersistTimerRef.current = null;
+        void apiPut('/api/entry-ticket/custom-sets', { sets, forceBackup: false }).catch(() => {});
+      }, 280);
+      if (!forceBackup) return;
+      if (playForceBackupTimerRef.current) window.clearTimeout(playForceBackupTimerRef.current);
+      playForceBackupTimerRef.current = window.setTimeout(() => {
+        playForceBackupTimerRef.current = null;
+        void apiPut('/api/entry-ticket/custom-sets', { sets, forceBackup: true }).catch(() => {});
+      }, 900);
+    },
+    [isTeacher],
+  );
+
+  const patchActiveSetPlayInk = useCallback(
+    (inkKey: string, strokes: PresentationStroke[]) => {
+      if (!inkKey || !customSetId) return;
+      markPlayLocalDirty();
+      setCustomSets((prev) => {
+        const current = prev.find((s) => s.id === customSetId);
+        if (!current) return prev;
+        const nextSet = patchCustomSetPlayInk(current, inkKey, strokes);
+        if (nextSet === current) return prev;
+        const next = prev.map((s) => (s.id === customSetId ? nextSet : s));
+        persistPlaySetsSoon(next, true);
+        return next;
+      });
+    },
+    [customSetId, markPlayLocalDirty, persistPlaySetsSoon],
+  );
+
   useEffect(() => {
-    if (!isTeacher || embeddedPlay) return;
+    if (!isTeacher) return;
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
       if (e.key !== 's' && e.key !== 'S') return;
@@ -3005,7 +3088,7 @@ export default function EntryTicketPage({
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [embeddedPlay, isTeacher, secureTicketBackup]);
+  }, [isTeacher, secureTicketBackup]);
 
   /** Lehrer: Fragensets vom Server laden — Notizen/reihePath bleiben erhalten. */
   useEffect(() => {
@@ -3793,35 +3876,98 @@ export default function EntryTicketPage({
     setEditingSolution('');
   };
 
+  const commitPlayTaskContent = useCallback(
+    (index: number, promptRaw: string, solutionRaw: string) => {
+      const prevTask = selectedTasksRef.current[index];
+      if (!prevTask) return;
+      const prompt = promptRaw.trim();
+      const solution = (solutionRaw.trim() || prevTask.solution || '').trim();
+      if (!prompt || !solution) return;
+      if (prevTask.prompt === prompt && prevTask.solution === solution) return;
+      markPlayLocalDirty();
+      setSelectedTasks((prev) => {
+        if (index < 0 || index >= prev.length) return prev;
+        const next = [...prev];
+        next[index] = { ...next[index], prompt, solution };
+        return next;
+      });
+      const prefix = customSetId ? `c:${customSetId}:` : '';
+      const taskId = prevTask.sourceKey?.startsWith(prefix)
+        ? prevTask.sourceKey.slice(prefix.length)
+        : '';
+      if (customSetId && taskId) {
+        setCustomSets((sets) => {
+          const current = sets.find((s) => s.id === customSetId);
+          if (!current) return sets;
+          const nextSet = patchCustomSetTaskContent(current, taskId, { prompt, solution });
+          if (nextSet === current) return sets;
+          const next = sets.map((s) => (s.id === customSetId ? nextSet : s));
+          persistPlaySetsSoon(next, true);
+          return next;
+        });
+      }
+    },
+    [customSetId, markPlayLocalDirty, persistPlaySetsSoon],
+  );
+
   const saveEditingTask = () => {
     if (editingIndex === null) return;
-    const prompt = editingPrompt.trim();
-    const typedSolution = editingSolution.trim();
-    const solution = (typedSolution || calculateAutoSolution(prompt)).trim();
-    if (!prompt || !solution) return;
-    const idx = editingIndex;
-    const prevTask = selectedTasks[idx];
-    if (!prevTask) return;
-    setSelectedTasks((prev) => {
-      if (idx < 0 || idx >= prev.length) return prev;
-      const next = [...prev];
-      next[idx] = { ...next[idx], prompt, solution };
-      return next;
-    });
-    const prefix = activeCustomSet ? `c:${activeCustomSet.id}:` : '';
-    const taskId = prevTask.sourceKey?.startsWith(prefix)
-      ? prevTask.sourceKey.slice(prefix.length)
-      : '';
-    if (activeCustomSet && taskId) {
-      setCustomSets((sets) =>
-        sets.map((s) =>
-          s.id === activeCustomSet.id
-            ? patchCustomSetTaskContent(s, taskId, { prompt, solution })
-            : s,
-        ),
-      );
-    }
+    commitPlayTaskContent(editingIndex, editingPrompt, editingSolution);
     cancelEditingTask();
+  };
+
+  const commitCardInk = useCallback(
+    (index: number, strokes: PresentationStroke[]) => {
+      const prevTask = selectedTasksRef.current[index];
+      if (!prevTask) return;
+      markPlayLocalDirty();
+      setSelectedTasks((prev) => {
+        if (index < 0 || index >= prev.length) return prev;
+        const next = [...prev];
+        next[index] = { ...next[index], ink: strokes };
+        return next;
+      });
+      const key = entryTicketCardInkKey(prevTask.sourceKey);
+      if (key) patchActiveSetPlayInk(key, strokes);
+    },
+    [markPlayLocalDirty, patchActiveSetPlayInk],
+  );
+
+  const commitSolutionSlideInk = useCallback(
+    (strokes: PresentationStroke[]) => {
+      patchActiveSetPlayInk(ENTRY_TICKET_SOLUTION_INK_KEY, strokes);
+    },
+    [patchActiveSetPlayInk],
+  );
+
+  const handleToggleDraw = () => {
+    setDrawActive((v) => {
+      if (!v) {
+        setActiveInkTool('pen');
+        setStrokeColor(penColorRef.current);
+      }
+      return !v;
+    });
+  };
+
+  const handleSelectInkTool = (tool: PresentationDrawTool) => {
+    setDrawActive(true);
+    setActiveInkTool(tool);
+    const options = lineWidthsForTool(tool);
+    if (!options.some((w) => Math.abs(w - lineWidth) < 0.01)) {
+      setLineWidth(defaultLineWidthForTool(tool));
+    }
+    if (tool === 'marker') {
+      setStrokeColor(markerColorRef.current || defaultColorForTool(tool));
+    } else if (toolUsesColor(tool)) {
+      setStrokeColor(penColorRef.current || defaultColorForTool(tool));
+    }
+  };
+
+  const handleSelectInkColor = (color: string) => {
+    setStrokeColor(color);
+    if (activeInkTool === 'marker') markerColorRef.current = color;
+    else if (toolUsesColor(activeInkTool)) penColorRef.current = color;
   };
 
   const handleEditKeyDown = (e: React.KeyboardEvent) => {
@@ -4498,6 +4644,7 @@ export default function EntryTicketPage({
   return (
     <Box
       sx={{
+        position: 'relative',
         minHeight: embeddedPlay ? '100%' : '100vh',
         height: embeddedPlay ? '100%' : undefined,
         width: '100%',
@@ -4511,7 +4658,7 @@ export default function EntryTicketPage({
       }}
     >
       <Box sx={{ width: '100%', maxWidth: '100%', mx: 0, minWidth: 0, boxSizing: 'border-box', flex: embeddedPlay ? 1 : undefined, minHeight: embeddedPlay ? 0 : undefined, display: embeddedPlay ? 'flex' : undefined, flexDirection: embeddedPlay ? 'column' : undefined }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0, pb: 0, gap: 0.5, minHeight: 0, flexShrink: 0, flexWrap: 'nowrap', overflow: 'hidden', height: 44, px: embeddedPlay ? 0.6 : 0.15 }}>
+        <Box data-et-toolbar="" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0, pb: 0, gap: 0.5, minHeight: 0, flexShrink: 0, flexWrap: 'nowrap', overflow: 'hidden', height: 44, px: embeddedPlay ? 0.6 : 0.15 }}>
           {studentReviewMode && reviewArchiveIndex != null && reviewArchiveCount > 1 ? (
             <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.2, flexShrink: 0 }}>
               <Tooltip title="Voriges Ticket">
@@ -5237,6 +5384,7 @@ export default function EntryTicketPage({
                           flexDirection: 'column',
                           overflow: 'hidden',
                           flex: '0 0 auto',
+                          touchAction: drawActive ? 'none' : 'manipulation',
                         }}
                       >
                         <Box
@@ -5300,19 +5448,67 @@ export default function EntryTicketPage({
                             }}
                           >
                             {currentTask ? (
-                              <EntryTicketRichHtml
-                                contain
-                                value={currentTask.prompt}
-                                sx={{
-                                  fontSize: 'inherit',
-                                  lineHeight: 'inherit',
-                                  color: 'inherit',
-                                  whiteSpace: 'normal',
-                                }}
-                              />
+                              canEditPlay ? (
+                                <EntryTicketRichField
+                                  playSurface
+                                  value={currentTask.prompt}
+                                  onChange={(prompt) =>
+                                    commitPlayTaskContent(currentIndex, prompt, currentTask.solution)
+                                  }
+                                  placeholder="Frage"
+                                  tone="prompt"
+                                  minHeight={72}
+                                  editorFontSize={
+                                    embeddedPlay
+                                      ? { xs: '1.28rem', sm: '1.52rem', md: '1.68rem' }
+                                      : { xs: '1.56rem', sm: '1.92rem', md: '2.1rem' }
+                                  }
+                                  softBg="transparent"
+                                />
+                              ) : (
+                                <EntryTicketRichHtml
+                                  contain
+                                  value={currentTask.prompt}
+                                  sx={{
+                                    fontSize: 'inherit',
+                                    lineHeight: 'inherit',
+                                    color: 'inherit',
+                                    whiteSpace: 'normal',
+                                  }}
+                                />
+                              )
                             ) : null}
                           </Box>
                         </Box>
+                        {canEditPlay ? (
+                          <PresentationDrawOverlay
+                            fillContainer
+                            strokes={currentCardInk}
+                            onStrokesChange={(strokes) => commitCardInk(currentIndex, strokes)}
+                            enabled={drawActive}
+                            slideId={`et-card-${currentTask?.sourceKey || currentIndex}`}
+                            tool={activeInkTool}
+                            strokeColor={strokeColor}
+                            lineWidth={lineWidth}
+                            markerOpacity={markerOpacity}
+                            selectedStrokeIds={selectedStrokeIds}
+                            onSelectedStrokeIdsChange={setSelectedStrokeIds}
+                            scale={1}
+                          />
+                        ) : currentCardInk.length > 0 ? (
+                          <PresentationDrawOverlay
+                            fillContainer
+                            strokes={currentCardInk}
+                            onStrokesChange={() => {}}
+                            enabled={false}
+                            readOnly
+                            slideId={`et-card-ro-${currentTask?.sourceKey || currentIndex}`}
+                            tool="select"
+                            strokeColor={strokeColor}
+                            lineWidth={lineWidth}
+                            scale={1}
+                          />
+                        ) : null}
                       </Box>
                     </AnimatePresence>
                   </Box>
@@ -5381,12 +5577,10 @@ export default function EntryTicketPage({
                       ) : null}
                       {activeTasks.map((task, index) => (
                         <Box
-                          key={`${index}-${task.prompt}`}
+                          key={task.sourceKey || `et-sol-${index}`}
                           sx={{
                             display: 'grid',
-                            gridTemplateColumns: isTeacher
-                              ? '19px minmax(0, 1fr) 22px'
-                              : '19px minmax(0, 1fr)',
+                            gridTemplateColumns: '19px minmax(0, 1fr)',
                             columnGap: 0.55,
                             alignItems: 'start',
                             px: 0.5,
@@ -5397,6 +5591,7 @@ export default function EntryTicketPage({
                             width: '100%',
                             height: 'fit-content',
                             overflow: 'hidden',
+                            position: 'relative',
                           }}
                         >
                           <Typography
@@ -5450,7 +5645,26 @@ export default function EntryTicketPage({
                                 },
                               }}
                             >
-                              <EntryTicketRichHtml compact value={task.prompt} />
+                              {canEditPlay ? (
+                                <EntryTicketRichField
+                                  playSurface
+                                  value={task.prompt}
+                                  onChange={(prompt) =>
+                                    commitPlayTaskContent(index, prompt, task.solution)
+                                  }
+                                  placeholder="Frage"
+                                  tone="prompt"
+                                  minHeight={36}
+                                  editorFontSize={overviewFitFont(
+                                    htmlPlainLen(task.prompt),
+                                    finalSlideRows,
+                                    'prompt',
+                                  )}
+                                  softBg="transparent"
+                                />
+                              ) : (
+                                <EntryTicketRichHtml compact value={task.prompt} />
+                              )}
                             </Box>
                             {showSolutions || laptopCompanion ? (
                               <Box
@@ -5490,32 +5704,49 @@ export default function EntryTicketPage({
                                   },
                                 }}
                               >
-                                <EntryTicketRichHtml compact value={task.solution || '—'} />
+                                {canEditPlay ? (
+                                  <EntryTicketRichField
+                                    playSurface
+                                    value={task.solution || ''}
+                                    onChange={(solution) =>
+                                      commitPlayTaskContent(index, task.prompt, solution)
+                                    }
+                                    placeholder="Lösung"
+                                    tone="answer"
+                                    minHeight={32}
+                                    editorFontSize={overviewFitFont(
+                                      htmlPlainLen(task.solution || ''),
+                                      finalSlideRows,
+                                      'solution',
+                                    )}
+                                    softBg="transparent"
+                                  />
+                                ) : (
+                                  <EntryTicketRichHtml compact value={task.solution || '—'} />
+                                )}
                               </Box>
                             ) : null}
                           </Box>
-                          {isTeacher ? (
-                            <Tooltip title="Karte bearbeiten (wird gespeichert)">
-                              <IconButton
-                                size="small"
-                                onClick={() => startEditingTask(index)}
-                                aria-label="Karte bearbeiten"
-                                sx={{
-                                  p: 0,
-                                  minWidth: 22,
-                                  width: 22,
-                                  height: 22,
-                                  color: '#546e7a',
-                                  '&:hover': { color: '#263238', bgcolor: 'rgba(69,90,100,0.12)' },
-                                }}
-                              >
-                                <CreateIcon sx={{ fontSize: 16 }} />
-                              </IconButton>
-                            </Tooltip>
-                          ) : null}
                         </Box>
                       ))}
                     </Box>
+                    {canEditPlay || solutionSlideInk.length > 0 ? (
+                      <PresentationDrawOverlay
+                        fillContainer
+                        strokes={solutionSlideInk}
+                        onStrokesChange={canEditPlay ? commitSolutionSlideInk : () => {}}
+                        enabled={canEditPlay && drawActive}
+                        readOnly={!canEditPlay}
+                        slideId="et-solution-slide"
+                        tool={activeInkTool}
+                        strokeColor={strokeColor}
+                        lineWidth={lineWidth}
+                        markerOpacity={markerOpacity}
+                        selectedStrokeIds={selectedStrokeIds}
+                        onSelectedStrokeIdsChange={setSelectedStrokeIds}
+                        scale={1}
+                      />
+                    ) : null}
                   </Box>
                 )}
               </Box>
@@ -5795,6 +6026,78 @@ export default function EntryTicketPage({
               {createSetBusy ? '…' : 'Anlegen'}
             </Button>
           </ButtonGroup>
+        </DialogActions>
+      </Dialog>
+
+      {canEditPlay && sessionStarted ? (
+        <PresentationTabletToolbar
+          variant="ink"
+          placement={embeddedPlay ? 'overlay' : 'fixed'}
+          drawActive={drawActive}
+          activeTool={activeInkTool}
+          strokeColor={strokeColor}
+          lineWidth={lineWidth}
+          canGoPrev={false}
+          canGoNext={false}
+          canUndo={(sessionDone ? solutionSlideInk : currentCardInk).length > 0}
+          onGoPrev={() => {}}
+          onGoNext={() => {}}
+          onToggleDraw={handleToggleDraw}
+          onSelectTool={handleSelectInkTool}
+          onSelectColor={handleSelectInkColor}
+          onSelectLineWidth={setLineWidth}
+          markerOpacity={markerOpacity}
+          onSelectMarkerOpacity={setMarkerOpacity}
+          selectedCount={selectedStrokeIds.length}
+          selectionIsMarker={
+            selectedStrokeIds.length > 0 &&
+            (sessionDone ? solutionSlideInk : currentCardInk)
+              .filter((s) => selectedStrokeIds.includes(s.id))
+              .every((s) => s.mode === 'marker')
+          }
+          onUndo={() => {
+            if (sessionDone) commitSolutionSlideInk(solutionSlideInk.slice(0, -1));
+            else commitCardInk(currentIndex, currentCardInk.slice(0, -1));
+          }}
+          onClearAllInk={() => setClearInkOpen(true)}
+          onSave={secureTicketBackup}
+        />
+      ) : null}
+
+      <Dialog
+        open={clearInkOpen}
+        onClose={() => setClearInkOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        sx={{ zIndex: 1400 }}
+      >
+        <DialogTitle sx={{ ...dialogCloseTitleSx }}>
+          Alle Stiftstriche löschen?
+          <DialogCloseIconButton onClose={() => setClearInkOpen(false)} />
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontSize: '0.9rem', color: '#546e7a' }}>
+            {sessionDone
+              ? 'Alle Stift-, Marker- und Formzeichnungen auf der Lösungsfolie werden entfernt.'
+              : 'Alle Stift-, Marker- und Formzeichnungen auf dieser Karte werden entfernt.'}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setClearInkOpen(false)} sx={{ color: '#546e7a' }}>
+            Abbrechen
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              if (sessionDone) commitSolutionSlideInk([]);
+              else commitCardInk(currentIndex, []);
+              setSelectedStrokeIds([]);
+              setClearInkOpen(false);
+            }}
+            sx={{ bgcolor: '#455a64', '&:hover': { bgcolor: '#37474f' } }}
+          >
+            Löschen
+          </Button>
         </DialogActions>
       </Dialog>
 
