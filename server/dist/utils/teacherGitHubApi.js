@@ -24,6 +24,8 @@ const SKIP_DIR = new Set([
 ]);
 const SKIP_FILE = new Set([
     '.ds_store',
+    'thumbs.db',
+    'desktop.ini',
     '.jm-seeded',
     '.jm-github-token',
     '.env',
@@ -85,8 +87,13 @@ function gitBlobSha(buf) {
 }
 function shouldSkipName(name, isDir) {
     if (isDir)
-        return SKIP_DIR.has(name);
+        return SKIP_DIR.has(name) || name === '__MACOSX';
+    if (name.startsWith('._'))
+        return true;
     return SKIP_FILE.has(name.toLowerCase());
+}
+function isJunkRepoPath(repoPath) {
+    return repoPath.split('/').some((part) => shouldSkipName(part, false) || shouldSkipName(part, true));
 }
 function walkDir(abs, repoPrefix, seen, out) {
     let real = abs;
@@ -107,9 +114,7 @@ function walkDir(abs, repoPrefix, seen, out) {
         return;
     }
     for (const entry of entries) {
-        if (SKIP_DIR.has(entry.name))
-            continue;
-        if (!entry.isDirectory() && shouldSkipName(entry.name, false))
+        if (shouldSkipName(entry.name, entry.isDirectory()))
             continue;
         const childAbs = path_1.default.join(abs, entry.name);
         const childRepo = `${repoPrefix}/${entry.name}`.replace(/\\/g, '/');
@@ -293,18 +298,40 @@ async function pushSchoolStandToGithub() {
     });
     const stamp = berlinStamp();
     const message = `Stand Schule ${stamp}`;
+    const latestRef = await ghJson(token, `/repos/${owner}/${repo}/git/ref/heads/${BRANCH}`);
+    const freshParent = latestRef.object.sha || parentSha;
     const newCommit = await ghJson(token, `/repos/${owner}/${repo}/git/commits`, {
         method: 'POST',
         body: JSON.stringify({
             message,
             tree: newTree.sha,
-            parents: [parentSha],
+            parents: [freshParent],
         }),
     });
-    await ghJson(token, `/repos/${owner}/${repo}/git/refs/heads/${BRANCH}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ sha: newCommit.sha, force: false }),
-    });
+    let published = newCommit.sha;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            await ghJson(token, `/repos/${owner}/${repo}/git/refs/heads/${BRANCH}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ sha: published, force: false }),
+            });
+            break;
+        }
+        catch (err) {
+            if (attempt === 2)
+                throw err;
+            const latest = await ghJson(token, `/repos/${owner}/${repo}/git/ref/heads/${BRANCH}`);
+            const retry = await ghJson(token, `/repos/${owner}/${repo}/git/commits`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    message,
+                    tree: newTree.sha,
+                    parents: [latest.object.sha],
+                }),
+            });
+            published = retry.sha;
+        }
+    }
     return {
         ok: true,
         committed: true,
@@ -345,7 +372,7 @@ async function listRemoteStandFiles() {
     for (const item of remoteTree.tree || []) {
         if (item.type !== 'blob' || !item.path || !item.sha)
             continue;
-        if (!isPullRepoPath(item.path))
+        if (!isPullRepoPath(item.path) || isJunkRepoPath(item.path))
             continue;
         files.push({ path: item.path, sha: item.sha });
     }

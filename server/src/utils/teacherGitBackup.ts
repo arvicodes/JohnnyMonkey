@@ -91,6 +91,9 @@ function isSecretPath(repoPath: string): boolean {
   if (n.includes('LOGIN-CODES-ALLE.txt')) return true;
   if (n === 'sync-backups' || n.startsWith('sync-backups/')) return true;
   if (n.endsWith('.b64')) return true;
+  if (n.split('/').some((part) => part.startsWith('._') || part === '.DS_Store' || part === '__MACOSX')) {
+    return true;
+  }
   return false;
 }
 

@@ -38,6 +38,7 @@ git add -A -- \
   ':!sync-backups' ':!*.b64' \
   ':!.school-deploy.log' ':!.school-sync.log' ':!.auto-git.log' \
   ':!mat_url.b64' ':!app_url.b64' \
+  ':!**/._*' ':!**/.DS_Store' ':!**/Thumbs.db' ':!**/__MACOSX' \
   2>/dev/null || true
 
 git reset -q HEAD -- \

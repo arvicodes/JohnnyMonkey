@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.findGitRoot = findGitRoot;
+exports.formatBerlinStamp = formatBerlinStamp;
 exports.describeStandPath = describeStandPath;
 exports.getTeacherGitBackupStatus = getTeacherGitBackupStatus;
 exports.previewTeacherGitPull = previewTeacherGitPull;
@@ -60,7 +61,63 @@ function isSecretPath(repoPath) {
         return true;
     if (n.endsWith('.b64'))
         return true;
+    if (n.split('/').some((part) => part.startsWith('._') || part === '.DS_Store' || part === '__MACOSX')) {
+        return true;
+    }
     return false;
+}
+function formatBerlinStamp(d) {
+    return new Intl.DateTimeFormat('de-DE', {
+        timeZone: 'Europe/Berlin',
+        day: 'numeric',
+        month: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: false,
+    })
+        .format(d)
+        .replace(', ', ' ');
+}
+function stampForAbs(abs) {
+    try {
+        if (!fs_1.default.existsSync(abs))
+            return undefined;
+        return formatBerlinStamp(fs_1.default.statSync(abs).mtime);
+    }
+    catch {
+        return undefined;
+    }
+}
+function stampForRepoPath(repoPath, root) {
+    if (repoPath === 'server/prisma/dev.db' && fs_1.default.existsSync('/app/server/data/dev.db')) {
+        return stampForAbs('/app/server/data/dev.db');
+    }
+    const bases = [root, findGitRoot(), process.env.LOCAL_MATERIALS_PATH, path_1.default.resolve(__dirname, '../../..')].filter(Boolean);
+    for (const base of bases) {
+        const when = stampForAbs(path_1.default.join(base, repoPath));
+        if (when)
+            return when;
+    }
+    return undefined;
+}
+function laptopGithubTip(root) {
+    try {
+        (0, child_process_1.execFileSync)('git', ['fetch', 'origin', 'main'], {
+            cwd: root,
+            timeout: 60000,
+            env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+        });
+        const raw = (0, child_process_1.execFileSync)('git', ['log', '-1', '--format=%cI\t%s', 'origin/main'], {
+            cwd: root,
+            encoding: 'utf8',
+        }).trim();
+        const [iso, ...rest] = raw.split('\t');
+        const when = iso ? formatBerlinStamp(new Date(iso)) : undefined;
+        return { githubWhen: when, githubMessage: rest.join('\t').trim() || undefined };
+    }
+    catch {
+        return {};
+    }
 }
 function describeStandPath(repoPath) {
     const n = repoPath.replace(/\\/g, '/');
@@ -90,8 +147,8 @@ function describeStandPath(repoPath) {
         return `App: ${n}`;
     return n;
 }
-function toChange(pathName, kind) {
-    return { path: pathName, kind, label: describeStandPath(pathName) };
+function toChange(pathName, kind, when) {
+    return { path: pathName, kind, label: describeStandPath(pathName), when };
 }
 function summarizeChanges(changes) {
     if (changes.length === 0)
@@ -132,7 +189,7 @@ function previewLaptopChanges(root) {
             kind = 'added';
         else if (index === 'D' || work === 'D')
             kind = 'removed';
-        changes.push(toChange(filePath, kind));
+        changes.push(toChange(filePath, kind, stampForRepoPath(filePath, root)));
     }
     return changes;
 }
@@ -197,7 +254,7 @@ function previewLaptopPull(root) {
             kind = 'added';
         else if (code.startsWith('D'))
             kind = 'removed';
-        changes.push(toChange(filePath, kind));
+        changes.push(toChange(filePath, kind, stampForRepoPath(filePath, root)));
     }
     return changes;
 }
@@ -238,15 +295,21 @@ async function previewTeacherGitPull() {
         return { ...status, explanation: status.hint, changes: [], summary: status.hint };
     }
     try {
+        const root = findGitRoot();
+        const tip = root ? laptopGithubTip(root) : {};
         const raw = status.where === 'school'
             ? await (0, teacherGitHubApi_1.previewSchoolStandPull)()
-            : previewLaptopPull(findGitRoot() || '');
-        const changes = raw.map((c) => toChange(c.path, c.kind));
+            : previewLaptopPull(root || '');
+        const changes = raw.map((c) => toChange(c.path, c.kind, 'when' in c ? c.when : stampForRepoPath(c.path, root)));
+        const empty = tip.githubWhen
+            ? `GitHub-Stand vom ${tip.githubWhen}${tip.githubMessage ? ` — ${tip.githubMessage}` : ''}. Dieser Rechner hat dieselben Dateien.`
+            : 'Dieser Rechner hat schon den GitHub-Stand.';
         return {
             ...status,
-            explanation: changes.length ? explanation : 'Dieser Rechner hat schon den GitHub-Stand.',
+            explanation: changes.length ? explanation : empty,
             changes,
             summary: summarizeChanges(changes),
+            ...tip,
         };
     }
     catch (err) {
@@ -302,16 +365,22 @@ async function previewTeacherGitBackup() {
         return { ...status, explanation: status.hint, changes: [], summary: status.hint };
     }
     try {
+        const root = findGitRoot();
+        const tip = root ? laptopGithubTip(root) : {};
         const raw = where === 'school'
             ? await (0, teacherGitHubApi_1.previewSchoolStandChanges)()
-            : previewLaptopChanges(findGitRoot() || '');
-        const changes = raw.map((c) => toChange(c.path, c.kind));
+            : previewLaptopChanges(root || '');
+        const changes = raw.map((c) => toChange(c.path, c.kind, 'when' in c ? c.when : stampForRepoPath(c.path, root)));
         const summary = summarizeChanges(changes);
+        const empty = tip.githubWhen
+            ? `GitHub-Stand vom ${tip.githubWhen}${tip.githubMessage ? ` — ${tip.githubMessage}` : ''}. Nichts Neues zu schicken.`
+            : 'GitHub hat schon genau diesen Stand.';
         return {
             ...status,
-            explanation: changes.length ? explanation : 'GitHub hat schon genau diesen Stand.',
+            explanation: changes.length ? explanation : empty,
             changes,
             summary,
+            ...tip,
         };
     }
     catch (err) {

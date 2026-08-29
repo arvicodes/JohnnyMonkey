@@ -14,6 +14,8 @@ const SKIP_DIR = new Set([
 ]);
 const SKIP_FILE = new Set([
   '.ds_store',
+  'thumbs.db',
+  'desktop.ini',
   '.jm-seeded',
   '.jm-github-token',
   '.env',
@@ -87,8 +89,13 @@ function gitBlobSha(buf: Buffer): string {
 }
 
 function shouldSkipName(name: string, isDir: boolean): boolean {
-  if (isDir) return SKIP_DIR.has(name);
+  if (isDir) return SKIP_DIR.has(name) || name === '__MACOSX';
+  if (name.startsWith('._')) return true;
   return SKIP_FILE.has(name.toLowerCase());
+}
+
+function isJunkRepoPath(repoPath: string): boolean {
+  return repoPath.split('/').some((part) => shouldSkipName(part, false) || shouldSkipName(part, true));
 }
 
 function walkDir(abs: string, repoPrefix: string, seen: Set<string>, out: MappedFile[]): void {
@@ -108,8 +115,7 @@ function walkDir(abs: string, repoPrefix: string, seen: Set<string>, out: Mapped
     return;
   }
   for (const entry of entries) {
-    if (SKIP_DIR.has(entry.name)) continue;
-    if (!entry.isDirectory() && shouldSkipName(entry.name, false)) continue;
+    if (shouldSkipName(entry.name, entry.isDirectory())) continue;
 
     const childAbs = path.join(abs, entry.name);
     const childRepo = `${repoPrefix}/${entry.name}`.replace(/\\/g, '/');
@@ -417,7 +423,7 @@ async function listRemoteStandFiles(): Promise<{
   const files: Array<{ path: string; sha: string }> = [];
   for (const item of remoteTree.tree || []) {
     if (item.type !== 'blob' || !item.path || !item.sha) continue;
-    if (!isPullRepoPath(item.path)) continue;
+    if (!isPullRepoPath(item.path) || isJunkRepoPath(item.path)) continue;
     files.push({ path: item.path, sha: item.sha });
   }
   return { token, owner, repo, files };
