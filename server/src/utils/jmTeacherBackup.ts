@@ -54,10 +54,23 @@ export function sanitizeBackupLabel(raw: string, maxLen = 80): string {
   return cleaned.length > maxLen ? cleaned.slice(0, maxLen) : cleaned;
 }
 
-function localStampParts(d = new Date()): { time: string; date: string } {
+/** Immer deutsche Wanduhr — der Schulcontainer läuft sonst in UTC (2 h hinterher). */
+function localStampParts(d = new Date()): { time: string; date: string; seconds: string } {
+  const fmt = new Intl.DateTimeFormat('de-DE', {
+    timeZone: 'Europe/Berlin',
+    day: 'numeric',
+    month: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+  const parts = fmt.formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value || '';
   return {
-    time: `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`,
-    date: `${d.getDate()}.${d.getMonth() + 1}`,
+    time: `${parseInt(get('hour'), 10)}:${get('minute').padStart(2, '0')}`,
+    date: `${parseInt(get('day'), 10)}.${parseInt(get('month'), 10)}`,
+    seconds: get('second').padStart(2, '0'),
   };
 }
 
@@ -68,11 +81,11 @@ function isKindBackupFile(name: string, kind: TeacherBackupKind): boolean {
 }
 
 function uniqueBackupName(dir: string, kind: TeacherBackupKind, label: string, d = new Date()): string {
-  const { time, date } = localStampParts(d);
+  const { time, date, seconds } = localStampParts(d);
   const prefix = FILE_PREFIX[kind];
   const base = `${time}_${date}_${prefix}_${label}.json`;
   if (!fs.existsSync(path.join(dir, base))) return base;
-  const withSeconds = `${time}:${String(d.getSeconds()).padStart(2, '0')}_${date}_${prefix}_${label}.json`;
+  const withSeconds = `${time}:${seconds}_${date}_${prefix}_${label}.json`;
   if (!fs.existsSync(path.join(dir, withSeconds))) return withSeconds;
   let n = 2;
   while (fs.existsSync(path.join(dir, `${time}_${date}_${prefix}_${label}-${n}.json`))) n += 1;

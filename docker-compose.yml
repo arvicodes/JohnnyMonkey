@@ -19,6 +19,7 @@ services:
       - FORCE_DB_IMPORT=false
       - LOCAL_MATERIALS_PATH=/app
       - JM_REIHEN_PATH=/app/J-M-Reihen
+      - TZ=Europe/Berlin
     volumes:
       - johnnymonkey_db:/app/server/data
       # Folien/Notizen/Sicherungen liegen unter /app/server/data/jm-files (Volume)
