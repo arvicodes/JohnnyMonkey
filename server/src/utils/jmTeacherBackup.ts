@@ -65,10 +65,20 @@ export function sanitizeBackupLabel(raw: string, maxLen = 80): string {
   return cleaned.length > maxLen ? cleaned.slice(0, maxLen) : cleaned;
 }
 
-function localStamp(): string {
+function localStampParts(): { time: string; date: string } {
   const d = new Date();
   const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`;
+  return {
+    time: `${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`,
+    date: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`,
+  };
+}
+
+function isKindBackupFile(name: string, kind: TeacherBackupKind): boolean {
+  if (!name.endsWith('.json')) return false;
+  const prefix = FILE_PREFIX[kind];
+  if (name.startsWith(`${prefix}_`)) return true;
+  return new RegExp(`^\\d{2}-\\d{2}-\\d{2}_\\d{4}-\\d{2}-\\d{2}_${prefix}_`).test(name);
 }
 
 function fileHash(buf: Buffer): string {
@@ -77,10 +87,9 @@ function fileHash(buf: Buffer): string {
 
 function pruneKind(dir: string, kind: TeacherBackupKind, keep: number): void {
   if (!fs.existsSync(dir)) return;
-  const prefix = `${FILE_PREFIX[kind]}_`;
   const files = fs
     .readdirSync(dir)
-    .filter((name) => name.startsWith(prefix) && name.endsWith('.json'))
+    .filter((name) => isKindBackupFile(name, kind))
     .map((name) => {
       const full = path.join(dir, name);
       return { full, mtime: fs.statSync(full).mtimeMs };
@@ -110,6 +119,7 @@ export function ensureTeacherBackupDir(kind: TeacherBackupKind): string {
     fs.writeFileSync(
       readme,
       `Zeitstempel-Kopien: ${titles[kind]}.\n` +
+        'Dateiname: Uhrzeit_Datum_Art_Thema.json (z. B. 09-43-19_2026-08-29_folien_…).\n' +
         'Jede Sicherung legt eine neue Datei an. Der aktuelle Stand bleibt am normalen Ort.\n' +
         '⌘S oder der Sicherungsbutton erzeugt extra eine Kopie der aktuellsten Version.\n',
       'utf8'
@@ -149,7 +159,8 @@ export function writeTeacherTimestampedBackup(opts: {
     }
 
     const label = sanitizeBackupLabel(opts.label || FILE_PREFIX[opts.kind]);
-    const name = `${FILE_PREFIX[opts.kind]}_${label}_${localStamp()}.json`;
+    const { time, date } = localStampParts();
+    const name = `${time}_${date}_${FILE_PREFIX[opts.kind]}_${label}.json`;
     const full = path.join(dir, name);
     fs.writeFileSync(full, buf);
     recentByKey.set(key, { at: now, hash });
