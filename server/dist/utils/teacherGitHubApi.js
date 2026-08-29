@@ -21,6 +21,9 @@ const SKIP_DIR = new Set([
     '.presentation-backups',
     'node_modules',
     'sync-backups',
+    'Backup - Notizen',
+    'Backup - Folien',
+    'Backup - Tickets',
 ]);
 const SKIP_FILE = new Set([
     '.ds_store',
@@ -85,6 +88,14 @@ function gitBlobSha(buf) {
     const header = Buffer.from(`blob ${buf.length}\0`);
     return crypto_1.default.createHash('sha1').update(header).update(buf).digest('hex');
 }
+function isMinuteCopyName(name) {
+    const n = name.toLowerCase();
+    if (n.includes('_notizen_') || n.includes('_tickets_') || n.includes('_folien_'))
+        return true;
+    if (/^\d{1,2}:\d{2}/.test(name))
+        return true;
+    return false;
+}
 function shouldSkipName(name, isDir) {
     if (isDir)
         return SKIP_DIR.has(name) || name === '__MACOSX' || name.startsWith('_extra-sicherung');
@@ -93,6 +104,8 @@ function shouldSkipName(name, isDir) {
     if (/^pad-.+\.json$/i.test(name))
         return true;
     if (name.startsWith('_extra-sicherung'))
+        return true;
+    if (isMinuteCopyName(name))
         return true;
     return SKIP_FILE.has(name.toLowerCase());
 }

@@ -66,6 +66,9 @@ function isSecretPath(repoPath) {
     }
     if (/(^|\/)pad-[^/]+\.json$/i.test(n))
         return true;
+    if (n.includes('/Backup - Notizen/') || n.includes('/Backup - Folien/') || n.includes('/Backup - Tickets/')) {
+        return true;
+    }
     return false;
 }
 function formatBerlinStamp(d) {
