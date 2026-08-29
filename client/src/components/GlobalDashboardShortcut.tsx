@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { IconButton, Tooltip, Typography } from '@mui/material';
 import { markTeacherWantsDashboard } from '../lib/teacherLiveLesson';
+import { exitPresentFullscreen } from '../lib/presentationPresentFullscreen';
 
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -14,6 +16,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 function goDashboard(navigate: ReturnType<typeof useNavigate>) {
+  exitPresentFullscreen();
   markTeacherWantsDashboard();
   navigate('/dashboard');
 }
@@ -42,16 +45,17 @@ export default function GlobalDashboardShortcut({ buttonRight = 20 }: Props) {
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [navigate]);
 
-  return (
+  const button = (
     <Tooltip title="Zum Dashboard (D)" placement="left">
       <IconButton
         onClick={() => goDashboard(navigate)}
         aria-label="Zum Dashboard (Taste D)"
+        data-teacher-fab="dashboard"
         sx={{
           position: 'fixed',
           bottom: 20,
           right: buttonRight,
-          zIndex: 1250,
+          zIndex: 5000,
           p: 0.5,
           minWidth: 40,
           width: 40,
@@ -78,4 +82,6 @@ export default function GlobalDashboardShortcut({ buttonRight = 20 }: Props) {
       </IconButton>
     </Tooltip>
   );
+  if (typeof document === 'undefined') return button;
+  return createPortal(button, document.body);
 }

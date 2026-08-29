@@ -60,6 +60,8 @@ interface PresentationDrawOverlayProps {
   onBackgroundPointerDown?: () => void;
   /** Finger auf einem Folien-Element (Foto). */
   onHitElement?: (elementId: string) => void;
+  /** Canvas füllt den Parent (Entry-Ticket-Karten / Lösungsfolie). */
+  fillContainer?: boolean;
 }
 
 const SHAPE_MIN_PX = 6;
@@ -149,7 +151,7 @@ function applyFreehandStyle(ctx: CanvasRenderingContext2D, stroke: PresentationS
 
 /** UI über der Folie — Stift soll dort Werkzeuge wählen, nicht zeichnen. */
 const PRES_CHROME_HIT =
-  '[data-pres-toolbar], [data-pres-zoom-controls], [data-pres-back], [data-pres-chrome]';
+  '[data-pres-toolbar], [data-pres-zoom-controls], [data-pres-back], [data-pres-chrome], [data-et-toolbar]';
 
 function elementUnderCanvas(canvas: HTMLCanvasElement, clientX: number, clientY: number): HTMLElement | null {
   const prev = canvas.style.pointerEvents;
@@ -229,6 +231,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   scale = 1,
   onBackgroundPointerDown,
   onHitElement,
+  fillContainer = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -308,8 +311,14 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const dpr = Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, 3);
-    const bufW = Math.max(1, Math.round(SLIDE_REF_WIDTH * scale * dpr));
-    const bufH = Math.max(1, Math.round(SLIDE_REF_HEIGHT * scale * dpr));
+    const cssW = fillContainer
+      ? Math.max(1, canvas.clientWidth || canvas.getBoundingClientRect().width || SLIDE_REF_WIDTH * scale)
+      : SLIDE_REF_WIDTH * scale;
+    const cssH = fillContainer
+      ? Math.max(1, canvas.clientHeight || canvas.getBoundingClientRect().height || SLIDE_REF_HEIGHT * scale)
+      : SLIDE_REF_HEIGHT * scale;
+    const bufW = Math.max(1, Math.round(cssW * dpr));
+    const bufH = Math.max(1, Math.round(cssH * dpr));
     if (canvas.width !== bufW || canvas.height !== bufH) {
       if (!allowResize) return canvas;
       canvas.width = bufW;
@@ -485,7 +494,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     const ctx = ctxRef.current;
     if (canvas && ctx) applySlideTransform(ctx, canvas);
     redraw();
-  }, [scale, redraw]);
+  }, [scale, fillContainer, redraw]);
 
   useEffect(
     () => () => {
@@ -498,7 +507,16 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
     refreshRect();
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => refreshRect()) : null;
+    const ro =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => {
+            refreshRect();
+            if (fillContainer && !drawingRef.current && inkPointerIdRef.current == null) {
+              syncCanvasBuffer();
+              redraw();
+            }
+          })
+        : null;
     ro?.observe(canvas);
     const invalidate = () => {
       rectRef.current = null;
@@ -518,7 +536,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       document.removeEventListener('fullscreenchange', invalidate);
       document.removeEventListener('webkitfullscreenchange' as 'fullscreenchange', invalidate);
     };
-  }, [scale, enabled]);
+  }, [scale, enabled, fillContainer, redraw]);
 
   const replaceStroke = (list: PresentationStroke[], id: string, next: PresentationStroke) =>
     list.map((s) => (s.id === id ? next : s));
@@ -1126,8 +1144,8 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
               ? 'crosshair'
               : 'crosshair';
 
-  const displayW = SLIDE_REF_WIDTH * scale;
-  const displayH = SLIDE_REF_HEIGHT * scale;
+  const displayW = fillContainer ? '100%' : SLIDE_REF_WIDTH * scale;
+  const displayH = fillContainer ? '100%' : SLIDE_REF_HEIGHT * scale;
   const touchAction = enabled && !readOnly ? 'none' : 'auto';
 
   return (
@@ -1137,6 +1155,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
         position: 'absolute',
         top: 0,
         left: 0,
+        ...(fillContainer ? { right: 0, bottom: 0 } : {}),
         width: displayW,
         height: displayH,
         touchAction,

@@ -3,6 +3,8 @@ import {
   entryTicketHasText,
   normalizeEntryTicketFieldValue,
 } from './entryTicketRichText';
+import { parseEntryTicketInkMap } from './entryTicketPlayInk';
+import type { PresentationStroke } from './presentationDeck';
 import { apiGet } from './api';
 
 /** Eigene Entry-Ticket-Fragensätze: ein Set pro Reihe, Fragen pro Stunde, localStorage. */
@@ -46,6 +48,8 @@ export type EntryTicketCustomSet = {
   reihePaths?: string[];
   /** Persönliche Lehrer-Notizen (nicht ans Signal / SuS). */
   notes?: string;
+  /** Play-/Lösungsfolie-Stiftstriche, sofort gespeichert. */
+  playInkByKey?: Record<string, PresentationStroke[]>;
   lessons: EntryTicketLessonSection[];
 };
 
@@ -462,6 +466,7 @@ function migrateV1Set(raw: Record<string, unknown>): EntryTicketCustomSet | null
       raw.reihePaths,
       typeof raw.reihePath === 'string' ? raw.reihePath : undefined,
     );
+    const playInkByKey = parseEntryTicketInkMap(raw.playInkByKey);
     return ensureSpecialLessonSections({
       id,
       name,
@@ -471,6 +476,7 @@ function migrateV1Set(raw: Record<string, unknown>): EntryTicketCustomSet | null
         typeof raw.notes === 'string' && raw.notes.trim()
           ? raw.notes.replace(/\r\n/g, '\n').slice(0, 4000)
           : undefined,
+      ...(Object.keys(playInkByKey).length > 0 ? { playInkByKey } : {}),
       lessons,
     });
   }

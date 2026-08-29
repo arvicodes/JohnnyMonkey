@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Box,
   Dialog,
@@ -2154,8 +2155,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     );
   }, [hoverPreview]);
 
-  return (
-    <>
+  const notesFab = (
       <Tooltip
         title={tooltipTitle}
         placement={floating ? 'left' : 'bottom'}
@@ -2176,6 +2176,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
       >
         <IconButton
           onClick={openModal}
+          data-teacher-fab="notes"
           sx={{
             p: 0.5,
             minWidth: 32,
@@ -2190,7 +2191,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                   position: 'fixed',
                   bottom: 20,
                   right: 20,
-                  zIndex: 1250,
+                  zIndex: 5000,
                   width: 40,
                   height: 40,
                   minWidth: 40,
@@ -2214,7 +2215,11 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
           </Typography>
         </IconButton>
       </Tooltip>
+  );
 
+  return (
+    <>
+      {floating && typeof document !== 'undefined' ? createPortal(notesFab, document.body) : notesFab}
       <Dialog
         open={open}
         onClose={closeModal}

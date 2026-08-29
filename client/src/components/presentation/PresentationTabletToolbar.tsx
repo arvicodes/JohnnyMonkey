@@ -200,6 +200,8 @@ interface PresentationTabletToolbarProps {
   onZoomChange?: (zoom: number) => void;
   quietWork?: QuietWorkController;
   musicGame?: MusicGameController;
+  /** Nur Stift/Sichern — für Entry-Ticket Play und Lösungsfolie. */
+  variant?: 'full' | 'ink';
 }
 
 export default function PresentationTabletToolbar({
@@ -245,6 +247,7 @@ export default function PresentationTabletToolbar({
   onZoomChange,
   quietWork,
   musicGame,
+  variant = 'full',
 }: PresentationTabletToolbarProps) {
   const showColors =
     !readOnly &&
@@ -265,6 +268,7 @@ export default function PresentationTabletToolbar({
   const docked = placement === 'docked';
   const overlay = placement === 'overlay';
   const [showNumberRanges, setShowNumberRanges] = useState(false);
+  const inkOnly = variant === 'ink';
 
   return (
     <Box
@@ -309,7 +313,7 @@ export default function PresentationTabletToolbar({
       {musicGame?.pickerOpen && <MusicGameToolbarPanel musicGame={musicGame} />}
       {quietWork?.pickerOpen && <QuietWorkToolbarPanel quietWork={quietWork} />}
 
-      {showNumberRanges && onPickRandomNumber && (
+      {!inkOnly && showNumberRanges && onPickRandomNumber && (
         <Box
           sx={{
             ...PANEL_SX,
@@ -533,11 +537,13 @@ export default function PresentationTabletToolbar({
           py: 0.3,
         }}
       >
+        {!inkOnly ? (
         <ToolBtn title="Zurück" disabled={!canGoPrev} onClick={onGoPrev}>
           <ChevronLeft sx={{ fontSize: 17 }} />
         </ToolBtn>
+        ) : null}
 
-        {onOpenSlideOverview && (
+        {!inkOnly && onOpenSlideOverview && (
           <ToolBtn
             title="Folienübersicht"
             active={slideOverviewOpen}
@@ -547,7 +553,7 @@ export default function PresentationTabletToolbar({
           </ToolBtn>
         )}
 
-        {typeof zoom === 'number' && onZoomChange && (
+        {!inkOnly && typeof zoom === 'number' && onZoomChange && (
           <>
             <Divider
               orientation="vertical"
@@ -587,7 +593,7 @@ export default function PresentationTabletToolbar({
           </ToolBtn>
         )}
 
-        {!readOnly && onPasteInk && (
+        {!inkOnly && !readOnly && onPasteInk && (
           <ToolBtn
             title="GoodNotes einfügen als Stiftstriche (Lasso → Kopieren → hier)"
             onClick={onPasteInk}
@@ -596,7 +602,7 @@ export default function PresentationTabletToolbar({
           </ToolBtn>
         )}
 
-        {!readOnly && onCaptureImage && (
+        {!inkOnly && !readOnly && onCaptureImage && (
           <ToolBtn
             title="Foto aufnehmen und auf die Folie setzen"
             disabled={captureBusy}
@@ -607,7 +613,7 @@ export default function PresentationTabletToolbar({
           </ToolBtn>
         )}
 
-        {!readOnly && imageCropAvailable && onToggleImageCrop && (
+        {!inkOnly && !readOnly && imageCropAvailable && onToggleImageCrop && (
           <ToolBtn
             title={
               imageCropActive
@@ -621,7 +627,7 @@ export default function PresentationTabletToolbar({
           </ToolBtn>
         )}
 
-        {!readOnly && onOpenEntryTicket && (
+        {!inkOnly && !readOnly && onOpenEntryTicket && (
           <ToolBtn title="Entry Ticket" onClick={onOpenEntryTicket}>
             <Box
               component="span"
@@ -643,7 +649,7 @@ export default function PresentationTabletToolbar({
           </ToolBtn>
         )}
 
-        {!readOnly && onPickRandomStudent && (
+        {!inkOnly && !readOnly && onPickRandomStudent && (
           <ToolBtn
             title={
               canPickRandomStudent
@@ -657,7 +663,7 @@ export default function PresentationTabletToolbar({
           </ToolBtn>
         )}
 
-        {!readOnly && onPickRandomNumber && (
+        {!inkOnly && !readOnly && onPickRandomNumber && (
           <ToolBtn
             title="Zufallszahl"
             active={showNumberRanges}
@@ -667,9 +673,9 @@ export default function PresentationTabletToolbar({
           </ToolBtn>
         )}
 
-        <PresentationSoundSplitControl variant="tablet" />
+        {!inkOnly ? <PresentationSoundSplitControl variant="tablet" /> : null}
 
-        {quietWork && (
+        {!inkOnly && quietWork && (
           <ToolBtn
             title={
               quietWork.running || quietWork.finished
@@ -683,7 +689,7 @@ export default function PresentationTabletToolbar({
           </ToolBtn>
         )}
 
-        {musicGame && (
+        {!inkOnly && musicGame && (
           <ToolBtn
             title={musicGame.running ? 'Musikspiel beenden' : 'Musikspiel'}
             active={musicGame.running || musicGame.pickerOpen}
@@ -795,14 +801,18 @@ export default function PresentationTabletToolbar({
 
         {!readOnly && onSave && (
           <ToolBtn
-            title="Sichern (⌘S): aktuelle Version + Kopie nach Backup - Folien"
+            title={
+              inkOnly
+                ? 'Sichern (⌘S): Fragenset + Kopie nach Backup - Tickets'
+                : 'Sichern (⌘S): aktuelle Version + Kopie nach Backup - Folien'
+            }
             disabled={saving}
             onClick={onSave}
           >
             <SaveIcon sx={{ fontSize: 15 }} />
           </ToolBtn>
         )}
-        {!readOnly && onSaveNamed && (
+        {!inkOnly && !readOnly && onSaveNamed && (
           <ToolBtn
             title="Speichern als…: neue Version anlegen, aktuelle bleibt unverändert"
             disabled={saving}
@@ -812,11 +822,13 @@ export default function PresentationTabletToolbar({
           </ToolBtn>
         )}
 
+        {!inkOnly ? (
         <ToolBtn title={nextButtonTitle} disabled={!canGoNext} onClick={onGoNext}>
           <ChevronRight sx={{ fontSize: 17 }} />
         </ToolBtn>
+        ) : null}
 
-        {onExitToDashboard && (
+        {!inkOnly && onExitToDashboard && (
           <>
             <Divider
               orientation="vertical"

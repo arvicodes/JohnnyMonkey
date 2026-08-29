@@ -31,6 +31,17 @@ export function isAnyNativeFullscreen(): boolean {
   return Boolean(document.fullscreenElement || webkitFsElement());
 }
 
+let lastFullscreenChangeAt = 0;
+
+/** Browser feuert beim Verlassen von Vollbild oft ein synthetisches Escape. */
+export function markPresentFullscreenChange(): void {
+  lastFullscreenChangeAt = Date.now();
+}
+
+export function isRecentPresentFullscreenChange(withinMs = 450): boolean {
+  return Date.now() - lastFullscreenChangeAt < withinMs;
+}
+
 /**
  * Natives Fullscreen — muss in derselben User-Geste (Klick/Play) laufen.
  * Ohne Geste lehnt der Browser ab. Bereits aktiver FS wird nicht gewechselt.

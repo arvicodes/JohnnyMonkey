@@ -72,6 +72,8 @@ import {
   exitPresentFullscreen,
   freezePresentViewport,
   isAnyNativeFullscreen,
+  isRecentPresentFullscreenChange,
+  markPresentFullscreenChange,
   isIosSafariLike,
   requestPresentFullscreen,
 } from '../lib/presentationPresentFullscreen';
@@ -398,10 +400,23 @@ const PresentationPresentPage: React.FC = () => {
 
   useEffect(() => () => freezePresentViewport(false), []);
 
+  useEffect(() => {
+    return () => {
+      window.setTimeout(() => {
+        if (!window.location.pathname.startsWith('/presentation/present')) {
+          exitPresentFullscreen();
+        }
+      }, 80);
+    };
+  }, []);
+
   useLayoutEffect(() => {
     if (!lessonPath) return undefined;
     const stop = attachPresentViewportFill(containerRef.current);
-    const syncFs = () => setNativeFs(isAnyNativeFullscreen());
+    const syncFs = () => {
+      markPresentFullscreenChange();
+      setNativeFs(isAnyNativeFullscreen());
+    };
     syncFs();
     document.addEventListener('fullscreenchange', syncFs);
     document.addEventListener('webkitfullscreenchange' as 'fullscreenchange', syncFs);
@@ -409,7 +424,8 @@ const PresentationPresentPage: React.FC = () => {
       document.removeEventListener('fullscreenchange', syncFs);
       document.removeEventListener('webkitfullscreenchange' as 'fullscreenchange', syncFs);
       stop();
-      exitPresentFullscreen();
+      // Vollbild nicht hier beenden: Play setzt FS vor der Navigation;
+      // Cleanup (Strict Mode / Remount) würde es sonst sofort wieder schließen.
     };
   }, [lessonPath]);
 
@@ -1165,6 +1181,7 @@ const PresentationPresentPage: React.FC = () => {
   };
 
   const goToDashboard = useCallback(() => {
+    exitPresentFullscreen();
     markTeacherWantsDashboard();
     navigate('/dashboard');
   }, [navigate]);
@@ -1376,6 +1393,7 @@ const PresentationPresentPage: React.FC = () => {
       if (handlePresentZoomHotkey(e, userZoom, applyUserZoom)) return;
 
       if (e.key === 'Escape') {
+        if (isRecentPresentFullscreenChange()) return;
         e.preventDefault();
         if (drawActive) {
           setDrawActive(false);
