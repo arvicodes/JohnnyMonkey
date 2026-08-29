@@ -1,6 +1,12 @@
 import express from 'express';
 import { authenticateUser, requireTeacher } from '../middleware/auth';
-import { getTeacherGitBackupStatus, previewTeacherGitBackup, runTeacherGitBackup } from '../utils/teacherGitBackup';
+import {
+  getTeacherGitBackupStatus,
+  previewTeacherGitBackup,
+  previewTeacherGitPull,
+  pullTeacherGitBackup,
+  runTeacherGitBackup,
+} from '../utils/teacherGitBackup';
 
 const router = express.Router();
 
@@ -10,9 +16,10 @@ router.get('/', (_req, res) => {
   res.json(getTeacherGitBackupStatus());
 });
 
-router.get('/preview', async (_req, res) => {
+router.get('/preview', async (req, res) => {
   try {
-    res.json(await previewTeacherGitBackup());
+    const pull = String(req.query.direction || '') === 'pull';
+    res.json(pull ? await previewTeacherGitPull() : await previewTeacherGitBackup());
   } catch (error) {
     console.error('teacher-git-backup preview:', error);
     res.status(500).json({
@@ -22,6 +29,23 @@ router.get('/preview', async (_req, res) => {
       explanation: 'Änderungen gerade nicht lesbar.',
       changes: [],
       summary: 'Änderungen gerade nicht lesbar.',
+    });
+  }
+});
+
+router.post('/pull', async (req, res) => {
+  req.setTimeout(300_000);
+  res.setTimeout(300_000);
+  try {
+    const result = await pullTeacherGitBackup();
+    res.status(result.ok ? 200 : 409).json(result);
+  } catch (error) {
+    console.error('teacher-git-backup pull:', error);
+    res.status(500).json({
+      ok: false,
+      committed: false,
+      pushed: false,
+      message: 'Unerwarteter Fehler beim Holen von GitHub.',
     });
   }
 });

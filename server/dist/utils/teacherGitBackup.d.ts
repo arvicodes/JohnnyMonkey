@@ -27,6 +27,8 @@ export type TeacherGitBackupResult = {
 export declare function findGitRoot(): string | null;
 export declare function describeStandPath(repoPath: string): string;
 export declare function getTeacherGitBackupStatus(): TeacherGitBackupStatus;
+export declare function previewTeacherGitPull(): Promise<TeacherGitBackupPreview>;
+export declare function pullTeacherGitBackup(): Promise<TeacherGitBackupResult>;
 export declare function previewTeacherGitBackup(): Promise<TeacherGitBackupPreview>;
 export declare function runTeacherGitBackup(): Promise<TeacherGitBackupResult>;
 //# sourceMappingURL=teacherGitBackup.d.ts.map

@@ -6,6 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.findGitRoot = findGitRoot;
 exports.describeStandPath = describeStandPath;
 exports.getTeacherGitBackupStatus = getTeacherGitBackupStatus;
+exports.previewTeacherGitPull = previewTeacherGitPull;
+exports.pullTeacherGitBackup = pullTeacherGitBackup;
 exports.previewTeacherGitBackup = previewTeacherGitBackup;
 exports.runTeacherGitBackup = runTeacherGitBackup;
 const child_process_1 = require("child_process");
@@ -165,6 +167,126 @@ function getTeacherGitBackupStatus() {
             ? 'GitHub für die Schule ist noch nicht eingerichtet. Einmal am Laptop setzen.'
             : 'Kein Git-Ordner gefunden.',
     };
+}
+const LAPTOP_PULL_PATHS = [
+    'J-M-Reihen',
+    'Notizen-Sicherheitskopien',
+    'Presentation-Sicherheitskopien',
+    'server/prisma/dev.db',
+];
+function previewLaptopPull(root) {
+    (0, child_process_1.execFileSync)('git', ['fetch', 'origin', 'main'], {
+        cwd: root,
+        timeout: 120000,
+        env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+    });
+    const out = (0, child_process_1.execFileSync)('git', ['diff', '--name-status', 'HEAD', 'origin/main', '--', ...LAPTOP_PULL_PATHS], { cwd: root, encoding: 'utf8', timeout: 30000 });
+    const changes = [];
+    for (const line of String(out).split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (!trimmed)
+            continue;
+        const parts = trimmed.split(/\t/);
+        const code = parts[0] || '';
+        const filePath = parts[parts.length - 1] || '';
+        if (!filePath || isSecretPath(filePath))
+            continue;
+        let kind = 'changed';
+        if (code.startsWith('A'))
+            kind = 'added';
+        else if (code.startsWith('D'))
+            kind = 'removed';
+        changes.push(toChange(filePath, kind));
+    }
+    return changes;
+}
+async function pullLaptopStand(root) {
+    const changes = previewLaptopPull(root);
+    if (changes.length === 0) {
+        return {
+            ok: true,
+            committed: false,
+            pushed: false,
+            message: 'Nichts Neues — dieser Laptop hat schon den GitHub-Stand.',
+            changes: [],
+            where: 'laptop',
+            explanation: 'Stand von GitHub auf diesen Laptop.',
+        };
+    }
+    (0, child_process_1.execFileSync)('git', ['checkout', 'origin/main', '--', ...LAPTOP_PULL_PATHS], {
+        cwd: root,
+        timeout: 120000,
+        env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+    });
+    return {
+        ok: true,
+        committed: false,
+        pushed: true,
+        message: `Von GitHub geholt: ${changes.length} Dateien.`,
+        changes,
+        where: 'laptop',
+        explanation: 'Stand von GitHub auf diesen Laptop.',
+    };
+}
+async function previewTeacherGitPull() {
+    const status = getTeacherGitBackupStatus();
+    const explanation = status.where === 'school'
+        ? 'Ich hole den Stand von GitHub auf die Schule: Folien, Notizen und Tickets.'
+        : 'Ich hole den Stand von GitHub auf diesen Laptop: Folien, Notizen und Tickets.';
+    if (!status.available) {
+        return { ...status, explanation: status.hint, changes: [], summary: status.hint };
+    }
+    try {
+        const raw = status.where === 'school'
+            ? await (0, teacherGitHubApi_1.previewSchoolStandPull)()
+            : previewLaptopPull(findGitRoot() || '');
+        const changes = raw.map((c) => toChange(c.path, c.kind));
+        return {
+            ...status,
+            explanation: changes.length ? explanation : 'Dieser Rechner hat schon den GitHub-Stand.',
+            changes,
+            summary: summarizeChanges(changes),
+        };
+    }
+    catch (err) {
+        const message = err instanceof Error ? err.message : 'Änderungen nicht lesbar.';
+        return { ...status, available: false, reason: 'error', hint: message, explanation: message, changes: [], summary: message };
+    }
+}
+async function pullTeacherGitBackup() {
+    const pre = getTeacherGitBackupStatus();
+    if (!pre.available) {
+        return { ok: false, committed: false, pushed: false, message: pre.hint };
+    }
+    if (running) {
+        return {
+            ok: false,
+            committed: false,
+            pushed: false,
+            message: 'Gerade unterwegs — einen Moment warten.',
+        };
+    }
+    running = true;
+    try {
+        const root = findGitRoot();
+        if (root && fs_1.default.existsSync(scriptPath(root))) {
+            return await pullLaptopStand(root);
+        }
+        const school = await (0, teacherGitHubApi_1.pullSchoolStandFromGithub)();
+        return {
+            ...school,
+            where: 'school',
+            explanation: 'Stand von GitHub auf die Schule.',
+            changes: (school.changes || []).map((c) => toChange(c.path, c.kind)),
+        };
+    }
+    catch (err) {
+        const message = err instanceof Error ? err.message : 'Holen fehlgeschlagen.';
+        return { ok: false, committed: false, pushed: false, message };
+    }
+    finally {
+        running = false;
+    }
 }
 async function previewTeacherGitBackup() {
     const status = getTeacherGitBackupStatus();

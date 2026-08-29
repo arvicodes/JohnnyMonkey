@@ -7,6 +7,8 @@ exports.readGithubToken = readGithubToken;
 exports.hasGithubToken = hasGithubToken;
 exports.previewSchoolStandChanges = previewSchoolStandChanges;
 exports.pushSchoolStandToGithub = pushSchoolStandToGithub;
+exports.previewSchoolStandPull = previewSchoolStandPull;
+exports.pullSchoolStandFromGithub = pullSchoolStandFromGithub;
 const crypto_1 = __importDefault(require("crypto"));
 const child_process_1 = require("child_process");
 const fs_1 = __importDefault(require("fs"));
@@ -309,6 +311,121 @@ async function pushSchoolStandToGithub() {
         pushed: true,
         message: `Auf GitHub: ${message}`,
         changes: changeList,
+    };
+}
+const PULL_PREFIXES = [
+    'J-M-Reihen/',
+    'Notizen-Sicherheitskopien/',
+    'Presentation-Sicherheitskopien/',
+];
+function isPullRepoPath(repoPath) {
+    return repoPath === 'server/prisma/dev.db' || PULL_PREFIXES.some((pre) => repoPath.startsWith(pre));
+}
+function absForRepoPath(repoPath) {
+    if (repoPath === 'server/prisma/dev.db') {
+        if (String(process.env.LOCAL_MATERIALS_PATH || '') === '/app' || fs_1.default.existsSync('/app/server/data')) {
+            return '/app/server/data/dev.db';
+        }
+        return path_1.default.join(materialsRoot(), 'server/prisma/dev.db');
+    }
+    return path_1.default.join(materialsRoot(), repoPath);
+}
+async function listRemoteStandFiles() {
+    const token = readGithubToken();
+    if (!token) {
+        throw new Error('GitHub-Zugang für die Schule fehlt noch. Einmal am Laptop einrichten.');
+    }
+    const [owner, repo] = REPO.split('/');
+    if (!owner || !repo)
+        throw new Error('GitHub-Repository ist nicht gesetzt.');
+    const ref = await ghJson(token, `/repos/${owner}/${repo}/git/ref/heads/${BRANCH}`);
+    const commit = await ghJson(token, `/repos/${owner}/${repo}/git/commits/${ref.object.sha}`);
+    const remoteTree = await ghJson(token, `/repos/${owner}/${repo}/git/trees/${commit.tree.sha}?recursive=1`);
+    const files = [];
+    for (const item of remoteTree.tree || []) {
+        if (item.type !== 'blob' || !item.path || !item.sha)
+            continue;
+        if (!isPullRepoPath(item.path))
+            continue;
+        files.push({ path: item.path, sha: item.sha });
+    }
+    return { token, owner, repo, files };
+}
+function localKindForRemote(repoPath, remoteSha) {
+    const abs = absForRepoPath(repoPath);
+    if (!fs_1.default.existsSync(abs))
+        return { path: repoPath, kind: 'added' };
+    try {
+        const buf = fs_1.default.readFileSync(abs);
+        if (buf.length > MAX_FILE_BYTES)
+            return null;
+        if (gitBlobSha(buf) === remoteSha)
+            return null;
+        return { path: repoPath, kind: 'changed' };
+    }
+    catch {
+        return { path: repoPath, kind: 'changed' };
+    }
+}
+async function previewSchoolStandPull() {
+    const { files } = await listRemoteStandFiles();
+    const changes = [];
+    for (const file of files) {
+        const next = localKindForRemote(file.path, file.sha);
+        if (next)
+            changes.push(next);
+    }
+    return changes;
+}
+async function pullSchoolStandFromGithub() {
+    const { token, owner, repo, files } = await listRemoteStandFiles();
+    const wanted = files
+        .map((file) => {
+        const change = localKindForRemote(file.path, file.sha);
+        return change ? { path: file.path, sha: file.sha, kind: change.kind } : null;
+    })
+        .filter((x) => Boolean(x));
+    if (wanted.length === 0) {
+        return {
+            ok: true,
+            committed: false,
+            pushed: false,
+            message: 'Nichts Neues — dieser Rechner hat schon den GitHub-Stand.',
+            changes: [],
+        };
+    }
+    await mapPool(wanted, 4, async (item) => {
+        const blob = await ghJson(token, `/repos/${owner}/${repo}/git/blobs/${item.sha}`);
+        const raw = String(blob.content || '').replace(/\n/g, '');
+        const buf = Buffer.from(raw, blob.encoding === 'base64' ? 'base64' : 'utf8');
+        if (buf.length > MAX_FILE_BYTES)
+            return;
+        const abs = absForRepoPath(item.path);
+        fs_1.default.mkdirSync(path_1.default.dirname(abs), { recursive: true });
+        fs_1.default.writeFileSync(abs, buf);
+        if (item.path === 'server/prisma/dev.db' && abs === '/app/server/data/dev.db') {
+            try {
+                fs_1.default.copyFileSync(abs, '/app/server/prisma/dev.db');
+                for (const extra of ['-wal', '-shm']) {
+                    try {
+                        fs_1.default.unlinkSync(`/app/server/data/dev.db${extra}`);
+                    }
+                    catch {
+                        /* ok */
+                    }
+                }
+            }
+            catch {
+                /* prisma copy optional */
+            }
+        }
+    });
+    return {
+        ok: true,
+        committed: false,
+        pushed: true,
+        message: `Von GitHub geholt: ${wanted.length} Dateien.`,
+        changes: wanted.map(({ path, kind }) => ({ path, kind })),
     };
 }
 //# sourceMappingURL=teacherGitHubApi.js.map

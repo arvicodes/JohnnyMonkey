@@ -342,3 +342,135 @@ export async function pushSchoolStandToGithub(): Promise<GithubStandResult> {
     changes: changeList,
   };
 }
+
+const PULL_PREFIXES = [
+  'J-M-Reihen/',
+  'Notizen-Sicherheitskopien/',
+  'Presentation-Sicherheitskopien/',
+];
+
+function isPullRepoPath(repoPath: string): boolean {
+  return repoPath === 'server/prisma/dev.db' || PULL_PREFIXES.some((pre) => repoPath.startsWith(pre));
+}
+
+function absForRepoPath(repoPath: string): string {
+  if (repoPath === 'server/prisma/dev.db') {
+    if (String(process.env.LOCAL_MATERIALS_PATH || '') === '/app' || fs.existsSync('/app/server/data')) {
+      return '/app/server/data/dev.db';
+    }
+    return path.join(materialsRoot(), 'server/prisma/dev.db');
+  }
+  return path.join(materialsRoot(), repoPath);
+}
+
+async function listRemoteStandFiles(): Promise<{
+  token: string;
+  owner: string;
+  repo: string;
+  files: Array<{ path: string; sha: string }>;
+}> {
+  const token = readGithubToken();
+  if (!token) {
+    throw new Error('GitHub-Zugang für die Schule fehlt noch. Einmal am Laptop einrichten.');
+  }
+  const [owner, repo] = REPO.split('/');
+  if (!owner || !repo) throw new Error('GitHub-Repository ist nicht gesetzt.');
+
+  const ref = await ghJson<{ object: { sha: string } }>(
+    token,
+    `/repos/${owner}/${repo}/git/ref/heads/${BRANCH}`
+  );
+  const commit = await ghJson<{ tree: { sha: string } }>(
+    token,
+    `/repos/${owner}/${repo}/git/commits/${ref.object.sha}`
+  );
+  const remoteTree = await ghJson<{
+    tree: Array<{ path?: string; sha?: string; type?: string }>;
+  }>(token, `/repos/${owner}/${repo}/git/trees/${commit.tree.sha}?recursive=1`);
+
+  const files: Array<{ path: string; sha: string }> = [];
+  for (const item of remoteTree.tree || []) {
+    if (item.type !== 'blob' || !item.path || !item.sha) continue;
+    if (!isPullRepoPath(item.path)) continue;
+    files.push({ path: item.path, sha: item.sha });
+  }
+  return { token, owner, repo, files };
+}
+
+function localKindForRemote(repoPath: string, remoteSha: string): SchoolStandChange | null {
+  const abs = absForRepoPath(repoPath);
+  if (!fs.existsSync(abs)) return { path: repoPath, kind: 'added' };
+  try {
+    const buf = fs.readFileSync(abs);
+    if (buf.length > MAX_FILE_BYTES) return null;
+    if (gitBlobSha(buf) === remoteSha) return null;
+    return { path: repoPath, kind: 'changed' };
+  } catch {
+    return { path: repoPath, kind: 'changed' };
+  }
+}
+
+export async function previewSchoolStandPull(): Promise<SchoolStandChange[]> {
+  const { files } = await listRemoteStandFiles();
+  const changes: SchoolStandChange[] = [];
+  for (const file of files) {
+    const next = localKindForRemote(file.path, file.sha);
+    if (next) changes.push(next);
+  }
+  return changes;
+}
+
+export async function pullSchoolStandFromGithub(): Promise<GithubStandResult> {
+  const { token, owner, repo, files } = await listRemoteStandFiles();
+  const wanted = files
+    .map((file) => {
+      const change = localKindForRemote(file.path, file.sha);
+      return change ? { path: file.path, sha: file.sha, kind: change.kind } : null;
+    })
+    .filter((x): x is { path: string; sha: string; kind: 'added' | 'changed' } => Boolean(x));
+
+  if (wanted.length === 0) {
+    return {
+      ok: true,
+      committed: false,
+      pushed: false,
+      message: 'Nichts Neues — dieser Rechner hat schon den GitHub-Stand.',
+      changes: [],
+    };
+  }
+
+  await mapPool(wanted, 4, async (item) => {
+    const blob = await ghJson<{ content?: string; encoding?: string }>(
+      token,
+      `/repos/${owner}/${repo}/git/blobs/${item.sha}`
+    );
+    const raw = String(blob.content || '').replace(/\n/g, '');
+    const buf = Buffer.from(raw, blob.encoding === 'base64' ? 'base64' : 'utf8');
+    if (buf.length > MAX_FILE_BYTES) return;
+    const abs = absForRepoPath(item.path);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, buf);
+    if (item.path === 'server/prisma/dev.db' && abs === '/app/server/data/dev.db') {
+      try {
+        fs.copyFileSync(abs, '/app/server/prisma/dev.db');
+        for (const extra of ['-wal', '-shm']) {
+          try {
+            fs.unlinkSync(`/app/server/data/dev.db${extra}`);
+          } catch {
+            /* ok */
+          }
+        }
+      } catch {
+        /* prisma copy optional */
+      }
+    }
+  });
+
+  return {
+    ok: true,
+    committed: false,
+    pushed: true,
+    message: `Von GitHub geholt: ${wanted.length} Dateien.`,
+    changes: wanted.map(({ path, kind }) => ({ path, kind })),
+  };
+}

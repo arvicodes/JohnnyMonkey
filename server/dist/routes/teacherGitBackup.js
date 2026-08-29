@@ -11,9 +11,10 @@ router.use(auth_1.authenticateUser, auth_1.requireTeacher);
 router.get('/', (_req, res) => {
     res.json((0, teacherGitBackup_1.getTeacherGitBackupStatus)());
 });
-router.get('/preview', async (_req, res) => {
+router.get('/preview', async (req, res) => {
     try {
-        res.json(await (0, teacherGitBackup_1.previewTeacherGitBackup)());
+        const pull = String(req.query.direction || '') === 'pull';
+        res.json(pull ? await (0, teacherGitBackup_1.previewTeacherGitPull)() : await (0, teacherGitBackup_1.previewTeacherGitBackup)());
     }
     catch (error) {
         console.error('teacher-git-backup preview:', error);
@@ -24,6 +25,23 @@ router.get('/preview', async (_req, res) => {
             explanation: 'Änderungen gerade nicht lesbar.',
             changes: [],
             summary: 'Änderungen gerade nicht lesbar.',
+        });
+    }
+});
+router.post('/pull', async (req, res) => {
+    req.setTimeout(300000);
+    res.setTimeout(300000);
+    try {
+        const result = await (0, teacherGitBackup_1.pullTeacherGitBackup)();
+        res.status(result.ok ? 200 : 409).json(result);
+    }
+    catch (error) {
+        console.error('teacher-git-backup pull:', error);
+        res.status(500).json({
+            ok: false,
+            committed: false,
+            pushed: false,
+            message: 'Unerwarteter Fehler beim Holen von GitHub.',
         });
     }
 });

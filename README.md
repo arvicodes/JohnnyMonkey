@@ -133,7 +133,7 @@ Auf dem Laptop (und in Git): `Notizen-Sicherheitskopien/`, `J-M-Reihen/Backup - 
 
 #### Stand nach GitHub
 
-Am **Laptop** und auf der **Schule**: Profilfoto antippen → dritter Punkt **Stand nach GitHub**. Es öffnet sich ein Fenster, das die Änderungen auflistet und den Lauf zeigt.
+Am **Laptop** und auf der **Schule**: Profilfoto antippen → **Stand nach GitHub** (schicken) oder **Stand von GitHub holen** (einspielen). Es öffnet sich ein Fenster, das die Änderungen auflistet und den Lauf zeigt.
 
 - Laptop: ganzer Git-Stand (Folien, Notizen, Tickets, Code). Keine Passwörter.
 - Schule: dieser Schul-Stand (Folien, Notizen, Tickets) — braucht einmal `scripts/install-school-github-token.sh`.

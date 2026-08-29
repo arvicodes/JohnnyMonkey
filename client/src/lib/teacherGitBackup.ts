@@ -49,8 +49,11 @@ export async function fetchTeacherGitBackupStatus(): Promise<TeacherGitBackupSta
   };
 }
 
-export async function fetchTeacherGitBackupPreview(): Promise<TeacherGitBackupPreview> {
-  const res = await apiGet('/api/teacher-git-backup/preview');
+export async function fetchTeacherGitBackupPreview(
+  direction: 'push' | 'pull' = 'push'
+): Promise<TeacherGitBackupPreview> {
+  const q = direction === 'pull' ? '?direction=pull' : '';
+  const res = await apiGet(`/api/teacher-git-backup/preview${q}`);
   const data = (await res.json().catch(() => ({}))) as Partial<TeacherGitBackupPreview>;
   const changes = Array.isArray(data.changes) ? data.changes : [];
   return {
@@ -61,6 +64,21 @@ export async function fetchTeacherGitBackupPreview(): Promise<TeacherGitBackupPr
     explanation: String(data.explanation || data.hint || ''),
     changes,
     summary: String(data.summary || ''),
+  };
+}
+
+export async function pullTeacherGitBackup(): Promise<TeacherGitBackupResult> {
+  const res = await apiPost('/api/teacher-git-backup/pull');
+  const data = (await res.json().catch(() => ({}))) as Partial<TeacherGitBackupResult>;
+  const message = String(data.message || (res.ok ? 'Fertig.' : 'Holen fehlgeschlagen.'));
+  return {
+    ok: Boolean(data.ok),
+    committed: Boolean(data.committed),
+    pushed: Boolean(data.pushed),
+    message,
+    changes: Array.isArray(data.changes) ? data.changes : [],
+    explanation: data.explanation,
+    where: data.where,
   };
 }
 

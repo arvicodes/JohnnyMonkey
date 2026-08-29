@@ -11,11 +11,12 @@ import {
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-icon-button';
 import {
   fetchTeacherGitBackupPreview,
+  pullTeacherGitBackup,
   pushTeacherGitBackup,
   type StandChange,
 } from '../../lib/teacherGitBackup';
 
-type Phase = 'preview' | 'push' | 'done' | 'error';
+type Phase = 'preview' | 'run' | 'done' | 'error';
 
 const KIND_LABEL: Record<StandChange['kind'], string> = {
   added: 'Neu',
@@ -31,19 +32,23 @@ const KIND_COLOR: Record<StandChange['kind'], string> = {
 
 const LIST_CAP = 80;
 
+export type TeacherGitStandMode = 'push' | 'pull';
+
 type TeacherGitStandModalProps = {
   open: boolean;
+  mode: TeacherGitStandMode;
   onClose: () => void;
 };
 
-export default function TeacherGitStandModal({ open, onClose }: TeacherGitStandModalProps) {
+export default function TeacherGitStandModal({ open, mode, onClose }: TeacherGitStandModalProps) {
+  const isPull = mode === 'pull';
   const [phase, setPhase] = useState<Phase>('preview');
   const [explanation, setExplanation] = useState('Ich schaue, was sich geändert hat …');
   const [summary, setSummary] = useState('');
   const [message, setMessage] = useState('');
   const [changes, setChanges] = useState<StandChange[]>([]);
 
-  const running = phase === 'preview' || phase === 'push';
+  const running = phase === 'preview' || phase === 'run';
 
   useEffect(() => {
     if (!open) return;
@@ -55,12 +60,10 @@ export default function TeacherGitStandModal({ open, onClose }: TeacherGitStandM
     setChanges([]);
 
     void (async () => {
-      let nextChanges: StandChange[] = [];
       try {
-        const preview = await fetchTeacherGitBackupPreview();
+        const preview = await fetchTeacherGitBackupPreview(mode);
         if (cancelled) return;
-        nextChanges = preview.changes || [];
-        setChanges(nextChanges);
+        setChanges(preview.changes || []);
         setExplanation(preview.explanation || preview.hint);
         setSummary(preview.summary);
         if (!preview.available) {
@@ -68,36 +71,40 @@ export default function TeacherGitStandModal({ open, onClose }: TeacherGitStandM
           setMessage(preview.hint || preview.explanation);
           return;
         }
-        if (nextChanges.length === 0) {
+        if ((preview.changes || []).length === 0) {
           setPhase('done');
-          setMessage(preview.summary || 'GitHub hat schon genau diesen Stand.');
+          setMessage(preview.summary || 'GitHub und dieser Rechner sind gleich.');
           return;
         }
       } catch {
         if (cancelled) return;
-        setExplanation('Liste der Änderungen nicht geladen — ich schicke den Stand trotzdem.');
+        setExplanation(
+          isPull
+            ? 'Liste nicht geladen — ich hole den Stand trotzdem.'
+            : 'Liste nicht geladen — ich schicke den Stand trotzdem.'
+        );
       }
 
       if (cancelled) return;
-      setPhase('push');
+      setPhase('run');
       try {
-        const result = await pushTeacherGitBackup();
+        const result = isPull ? await pullTeacherGitBackup() : await pushTeacherGitBackup();
         if (cancelled) return;
         if (result.changes?.length) setChanges(result.changes);
-        setExplanation(result.explanation || explanation);
+        if (result.explanation) setExplanation(result.explanation);
         setMessage(result.message);
         setPhase(result.ok ? 'done' : 'error');
       } catch {
         if (cancelled) return;
         setPhase('error');
-        setMessage('Push fehlgeschlagen. GitHub-Zugang prüfen.');
+        setMessage(isPull ? 'Holen fehlgeschlagen. GitHub-Zugang prüfen.' : 'Push fehlgeschlagen. GitHub-Zugang prüfen.');
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, mode, isPull]);
 
   const extra = Math.max(0, changes.length - LIST_CAP);
   const visible = changes.slice(0, LIST_CAP);
@@ -124,7 +131,7 @@ export default function TeacherGitStandModal({ open, onClose }: TeacherGitStandM
         }}
       >
         <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: '#1565c0' }}>
-          Stand nach GitHub
+          {isPull ? 'Stand von GitHub holen' : 'Stand nach GitHub'}
         </Typography>
         <DialogCloseIconButton onClose={onClose} disabled={running} />
       </DialogTitle>
@@ -135,8 +142,10 @@ export default function TeacherGitStandModal({ open, onClose }: TeacherGitStandM
             <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: '#37474f', lineHeight: 1.4 }}>
               {phase === 'preview'
                 ? 'Ich schaue, was sich geändert hat …'
-                : phase === 'push'
-                  ? 'Schiebe nach GitHub … das kann einen Moment dauern.'
+                : phase === 'run'
+                  ? isPull
+                    ? 'Hole von GitHub … das kann einen Moment dauern.'
+                    : 'Schiebe nach GitHub … das kann einen Moment dauern.'
                   : message || (phase === 'error' ? 'Nicht geschafft.' : 'Fertig.')}
             </Typography>
             <Typography sx={{ fontSize: '0.7rem', color: '#546e7a', mt: 0.5, lineHeight: 1.45 }}>

@@ -17,8 +17,9 @@ import {
   CalendarMonth as CalendarMonthIcon,
   Home as HomeIcon,
   CloudUpload as CloudUploadIcon,
+  CloudDownload as CloudDownloadIcon,
 } from '@mui/icons-material';
-import TeacherGitStandModal from './TeacherGitStandModal';
+import TeacherGitStandModal, { type TeacherGitStandMode } from './TeacherGitStandModal';
 
 import {
   DEFAULT_PROFILE_COLOR,
@@ -53,6 +54,7 @@ export default function TeacherSettingsMenu({
   const location = useLocation();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [standOpen, setStandOpen] = useState(false);
+  const [standMode, setStandMode] = useState<TeacherGitStandMode>('push');
   const open = Boolean(anchorEl);
   const isOnDashboard = location.pathname === '/dashboard';
 
@@ -221,6 +223,7 @@ export default function TeacherSettingsMenu({
         <MenuItem
           onClick={() => {
             close();
+            setStandMode('push');
             setStandOpen(true);
           }}
           sx={{ py: 1.1, px: 2 }}
@@ -230,7 +233,26 @@ export default function TeacherSettingsMenu({
           </ListItemIcon>
           <ListItemText
             primary="Stand nach GitHub"
-            secondary="Folien, Notizen, Tickets"
+            secondary="Diesen Rechner schicken"
+            primaryTypographyProps={{ fontWeight: 700, fontSize: '0.82rem' }}
+            secondaryTypographyProps={{ fontSize: '0.68rem' }}
+          />
+        </MenuItem>
+
+        <MenuItem
+          onClick={() => {
+            close();
+            setStandMode('pull');
+            setStandOpen(true);
+          }}
+          sx={{ py: 1.1, px: 2 }}
+        >
+          <ListItemIcon>
+            <CloudDownloadIcon fontSize="small" sx={{ color: '#1976d2' }} />
+          </ListItemIcon>
+          <ListItemText
+            primary="Stand von GitHub holen"
+            secondary="Hier den GitHub-Stand einspielen"
             primaryTypographyProps={{ fontWeight: 700, fontSize: '0.82rem' }}
             secondaryTypographyProps={{ fontSize: '0.68rem' }}
           />
@@ -254,7 +276,11 @@ export default function TeacherSettingsMenu({
           />
         </MenuItem>
       </Menu>
-      <TeacherGitStandModal open={standOpen} onClose={() => setStandOpen(false)} />
+      <TeacherGitStandModal
+        open={standOpen}
+        mode={standMode}
+        onClose={() => setStandOpen(false)}
+      />
     </>
   );
 }
