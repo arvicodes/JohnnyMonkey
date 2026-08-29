@@ -472,6 +472,7 @@ async function saveStoredCustomSets(teacherId, sets, options) {
         },
         update: { content: JSON.stringify({ sets: merged }) },
     });
+    (0, jmTeacherBackup_1.writeTeacherLatestBackup)({ kind: 'tickets', payload });
     if ((options === null || options === void 0 ? void 0 : options.stamp) !== false) {
         (0, jmTeacherBackup_1.writeTeacherTimestampedBackup)({
             kind: 'tickets',

@@ -8,6 +8,10 @@ export type TeacherBackupKind = keyof typeof JM_TEACHER_BACKUP_DIR;
 export declare function sanitizeBackupLabel(raw: string, maxLen?: number): string;
 export declare function ensureTeacherBackupDir(kind: TeacherBackupKind): string;
 export declare function ensureTeacherBackupRoots(): string[];
+export declare function writeTeacherLatestBackup(opts: {
+    kind: TeacherBackupKind;
+    payload: unknown;
+}): string | null;
 export declare function writeTeacherTimestampedBackup(opts: {
     kind: TeacherBackupKind;
     label?: string;

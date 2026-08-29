@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { findUserByLoginCode } from '../utils/loginCodeCrypto';
-import { writeTeacherTimestampedBackup } from '../utils/jmTeacherBackup';
+import { writeTeacherLatestBackup, writeTeacherTimestampedBackup } from '../utils/jmTeacherBackup';
 
 const prisma = new PrismaClient();
 
@@ -534,6 +534,7 @@ async function saveStoredCustomSets(
     },
     update: { content: JSON.stringify({ sets: merged }) },
   });
+  writeTeacherLatestBackup({ kind: 'tickets', payload });
   if (options?.stamp !== false) {
     writeTeacherTimestampedBackup({
       kind: 'tickets',

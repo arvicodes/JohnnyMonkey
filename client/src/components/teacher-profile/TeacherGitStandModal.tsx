@@ -90,6 +90,11 @@ export default function TeacherGitStandModal({ open, mode, onClose }: TeacherGit
       }
 
       if (cancelled) return;
+      if (!isPull && typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('johnny:flush-tickets'));
+        await new Promise((r) => window.setTimeout(r, 500));
+      }
+      if (cancelled) return;
       setPhase('run');
       try {
         const result = isPull ? await pullTeacherGitBackup() : await pushTeacherGitBackup();

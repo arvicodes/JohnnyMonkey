@@ -507,19 +507,19 @@
             {
               "category": "Eigen",
               "prompt": "Definiere den Begriff Funktion.",
-              "solution": "Eine Funktion f ist eine Zuordnung, die jedem Element x ihres Definitionsbereichs Df genau einen Funktionswert f(x) zuordnet.",
+              "solution": "Eine Funktion $f$ ist eine Zuordnung, die jedem Element $x$ ihres Definitionsbereichs $D_f$ genau einen Funktionswert $f(x)$ zuordnet.",
               "id": "q_d00b7814-4730-49b4-bc4d-73547c298f7e"
             },
             {
               "category": "Eigen",
               "prompt": "Definiere den Begriff Zahlenfolge.",
-              "solution": "Eine Zahlenfolge (aₙ) ist eine Funktion, die jeder natürlichen Zahl n genau eine Zahl aₙ zuordnet.",
+              "solution": "Eine Zahlenfolge $(aₙ)$ ist eine Funktion, die jeder natürlichen Zahl $n$ genau eine Zahl $aₙ$ zuordnet.",
               "id": "q_48aab1f6-0444-4dae-ab78-5857d958d7b7"
             },
             {
               "category": "Eigen",
               "prompt": "Definiere die Konvergenz einer Folge (aₙ) gegen einen Grenzwert L.",
-              "solution": "Eine Folge (aₙ) konvergiert gegen L, wenn zu jedem ε > 0 ein N ∈ ℕ existiert, sodass für alle n ≥ N gilt: |aₙ − L| < ε.",
+              "solution": "Eine Folge $(aₙ)$ konvergiert gegen L, wenn zu jedem $ε > 0$ ein $N ∈ ℕ$ existiert, sodass für alle $n ≥ N$ gilt: $|aₙ − L| < ε$.",
               "id": "q_50ed44ff-65df-4626-9a54-bb6e0da79621"
             },
             {
@@ -536,8 +536,8 @@
             },
             {
               "category": "Eigen",
-              "prompt": "Gib das Kriterium für die Stetigkeit einer Funktion f an einer Stelle x₀ an.",
-              "solution": "Für x₀ ∈ Df ist f an der Stelle x₀ stetig, wenn lim x→x₀ f(x) = f(x₀) gilt.",
+              "prompt": "Gib das Kriterium für die Stetigkeit einer Funktion $f$ an einer Stelle $x₀$ an.",
+              "solution": "Für $x₀ ∈ D_f$ist f an der Stelle $x₀$ stetig, wenn lim $x→x₀ f(x) = f(x₀)$ gilt.",
               "id": "q_573b0531-fd8d-4797-8ebd-5ea4d506b270"
             },
             {
@@ -1067,7 +1067,7 @@
             {
               "category": "Eigen",
               "prompt": "Berechne: (1534)2⋅(24)\\begin{pmatrix}1&5\\\\3&4\\end{pmatrix}^2\\cdot\\begin{pmatrix}2\\\\4\\end{pmatrix}",
-              "solution": "(7676)\\begin{pmatrix}76\\\\76\\end{pmatrix}",
+              "solution": "\\begin{pmatrix}132\\\\154\\end{pmatrix}",
               "id": "q_c0072ebf-5908-43ad-b892-11abfedf08f4"
             },
             {
@@ -2491,48 +2491,9 @@
           ]
         },
         {
-          "id": "ls_1a2fd9b6-a268-4079-91bc-6a7923bc4ebc",
-          "lessonName": "1.0 Kennenlernen und Orga",
-          "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen#1.0 Kennenlernen und Orga",
-          "topicName": "Kap 1 - Natürliche Zahlen und Größen",
-          "tasks": []
-        },
-        {
-          "id": "ls_a5fffb7a-ccf3-457d-85d1-28d27c0531e6",
-          "lessonName": "1.1 Darstellen von Daten",
-          "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen#1.1 Darstellen von Daten",
-          "topicName": "Kap 1 - Natürliche Zahlen und Größen",
-          "tasks": [
-            {
-              "category": "Eigen",
-              "prompt": "Bestimme: die Richtung der Balken im Säulendiagramm.",
-              "solution": "senkrecht",
-              "id": "q_98c70f6d-de43-41d4-a74a-1055643a8e3e"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Bestimme: die Richtung der Balken im Balkendiagramm.",
-              "solution": "waagerecht",
-              "id": "q_3fe79b04-71da-4f0c-be15-e7d7270895b4"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Merke: Säulen verlaufen ...",
-              "solution": "von unten nach oben.",
-              "id": "q_2af9ca47-514f-4f8a-af79-72b7940c0534"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Merke: Balken verlaufen ...",
-              "solution": "von links nach rechts.",
-              "id": "q_4438827e-3d02-4e09-a780-0e8b4548cdd7"
-            }
-          ]
-        },
-        {
           "id": "ls_6b81dc2f-4bd2-46d5-9da4-908e0b157ada",
           "lessonName": "1.2 Große Zahlen - Stellenwerttafel",
-          "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen#1.2 Große Zahlen - Stellenwerttafel",
+          "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/1.2 Große Zahlen - Stellenwerttafel",
           "topicName": "Kap 1 - Natürliche Zahlen und Größen",
           "tasks": [
             {
@@ -2876,6 +2837,69 @@
               "prompt": "Nenne: die Ziffern unseres Zahlensystems",
               "solution": "0, 1, 2, 3, 4, 5, 6, 7, 8, 9",
               "id": "q_f15f73f6-5868-4cd2-ac5b-bba78d373be0"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: Die Millionenstelle in der Zahl 4 582 731.",
+              "solution": "4",
+              "id": "q_33a7f815-1f15-46bc-9cc1-a302fffab838"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: Die Hunderttausenderstelle in der Zahl 4 582 731.",
+              "solution": "5",
+              "id": "q_c453b1cb-cee7-416c-b517-2ca184aa67c7"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: Die Zehntausenderstelle in der Zahl 4 582 731.",
+              "solution": "8",
+              "id": "q_64498d09-eb49-4d61-9f42-a069219d710c"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bilde: Die Zahl aus 9 Millionen, 2 Hunderttausendern, 5 Zehntausendern, 4 Tausendern, 3 Hundertern, 1 Zehner und 7 Einern.",
+              "solution": "9 254 317",
+              "id": "q_1307f311-1eea-4982-8152-d24a91bf0a86"
+            }
+          ]
+        },
+        {
+          "id": "ls_1a2fd9b6-a268-4079-91bc-6a7923bc4ebc",
+          "lessonName": "1.0 Kennenlernen und Orga",
+          "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen#1.0 Kennenlernen und Orga",
+          "topicName": "Kap 1 - Natürliche Zahlen und Größen",
+          "tasks": []
+        },
+        {
+          "id": "ls_a5fffb7a-ccf3-457d-85d1-28d27c0531e6",
+          "lessonName": "1.1 Darstellen von Daten",
+          "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen#1.1 Darstellen von Daten",
+          "topicName": "Kap 1 - Natürliche Zahlen und Größen",
+          "tasks": [
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: die Richtung der Balken im Säulendiagramm.",
+              "solution": "senkrecht",
+              "id": "q_98c70f6d-de43-41d4-a74a-1055643a8e3e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: die Richtung der Balken im Balkendiagramm.",
+              "solution": "waagerecht",
+              "id": "q_3fe79b04-71da-4f0c-be15-e7d7270895b4"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Merke: Säulen verlaufen ...",
+              "solution": "von unten nach oben.",
+              "id": "q_2af9ca47-514f-4f8a-af79-72b7940c0534"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Merke: Balken verlaufen ...",
+              "solution": "von links nach rechts.",
+              "id": "q_4438827e-3d02-4e09-a780-0e8b4548cdd7"
             }
           ]
         },
@@ -2891,7 +2915,158 @@
           "lessonName": "1.4 Das Binärsystem",
           "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen#1.4 Das Binärsystem",
           "topicName": "Kap 1 - Natürliche Zahlen und Größen",
-          "tasks": []
+          "tasks": [
+            {
+              "category": "Eigen",
+              "prompt": "Nenne: die Basis des Binärsystems.",
+              "solution": "2",
+              "id": "q_2b49e8f2-75ac-41de-afe8-ca057b333f66"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: die möglichen Ziffern des Binärsystems.",
+              "solution": "0 und 1",
+              "id": "q_cd705d14-a69d-4e10-8482-6005da41f431"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: den Dezimalwert der Binärzahl 101.",
+              "solution": "5",
+              "id": "q_a28a7c94-d4fa-44a9-9bbd-45210a98b74d"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: den Dezimalwert der Binärzahl 1101.",
+              "solution": "13",
+              "id": "q_ad8535c5-7519-44e2-b22a-008505b70769"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: den Dezimalwert der Binärzahl 10010.",
+              "solution": "18",
+              "id": "q_d479ddc7-e2be-4531-a483-6e62ddc4408e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: den Dezimalwert der Binärzahl 11111.",
+              "solution": "31",
+              "id": "q_4be81900-253d-493e-8285-42ae5789150d"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Wandle um: die Dezimalzahl 9 ins Binärsystem.",
+              "solution": "1001",
+              "id": "q_f603e85b-8ac8-4b05-9ed2-6b0551cd681e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Wandle um: die Dezimalzahl 12 ins Binärsystem.",
+              "solution": "1100",
+              "id": "q_cde08409-95fa-4142-8b07-838f938cd037"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Wandle um: die Dezimalzahl 25 ins Binärsystem.",
+              "solution": "11001",
+              "id": "q_3c5c6958-ecbc-43c6-bdb5-5dcf6859ddb6"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Wandle um: die Dezimalzahl 42 ins Binärsystem.",
+              "solution": "101010",
+              "id": "q_20e89f0b-0e6d-4748-be3e-ba57742cf135"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 101₂ + 011₂",
+              "solution": "1000₂",
+              "id": "q_bf022f4f-2f1b-4d29-8df9-dee572fe1ec9"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 111₂ + 001₂",
+              "solution": "1000₂",
+              "id": "q_1afd0a58-ed82-4230-a874-59cd20dbf1eb"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 1010₂ + 0101₂",
+              "solution": "1111₂",
+              "id": "q_58514365-cfe6-4573-ba6e-f7a794ef0e90"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 1001₂ + 1001₂",
+              "solution": "10010₂",
+              "id": "q_b11aab7c-45c8-45fa-b53b-fd99f3aa2b31"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Notiere die Zusammensetzung der Binärzahl aus Zweierpotenzen 1101₂.",
+              "solution": "1·2³ + 1·2² + 0·2¹ + 1·2⁰ = 13",
+              "id": "q_e6215587-72f3-48c0-8efe-1188f5c5970a"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: die Anzahl darstellbarer Werte mit 4 Bit/Binärziffern.",
+              "solution": "2⁴ = 16 Werte (0 bis 15)",
+              "id": "q_a108b097-64ec-4707-af05-6ceac3b4f7ad"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: den Vorgänger der Binärzahl 1010₂.",
+              "solution": "1001₂",
+              "id": "q_eed09f46-4736-4d20-bfbf-fcc0a9ea3cc3"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: den Nachfolger der Binärzahl 1010₂.",
+              "solution": "1011₂",
+              "id": "q_914cba63-f8a1-4127-a38e-27dbec371c36"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: den Vorgänger der Binärzahl 1000₂.",
+              "solution": "0111₂",
+              "id": "q_c9dfcef4-76c6-4388-80f4-fcb8c4daa6fb"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: den Nachfolger der Binärzahl 1111₂.",
+              "solution": "10000₂",
+              "id": "q_da1822f7-9e92-4a96-aae0-4589fe2e8a13"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: den Vorgänger der Binärzahl 1101₂.",
+              "solution": "1100₂",
+              "id": "q_5e415ed9-94cc-40e0-bea1-9bbc2d46cc1c"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: den Nachfolger der Binärzahl 1101₂.",
+              "solution": "1110₂",
+              "id": "q_72ca32e3-5286-4cbc-868f-a6a32eafc5ab"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: den Vorgänger der Binärzahl 10000₂.",
+              "solution": "1111₂",
+              "id": "q_c882e090-72d8-484c-bc73-cd0d519b2dcf"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: den Nachfolger der Binärzahl 10000₂.",
+              "solution": "10001₂",
+              "id": "q_b15bf4a4-6910-45e6-af23-1b4dc6cf2df3"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Leite ab: die größte darstellbare Zahl mit 5 Bit/Binärziffern.",
+              "solution": "11111₂ = 31",
+              "id": "q_bbe17d01-602b-4ca6-a695-933af6ba8ad3"
+            }
+          ]
         },
         {
           "id": "ls_9f0d1036-e094-4dab-bf6e-ee0cc8464416",
@@ -2961,6 +3136,6 @@
       ]
     }
   ],
-  "savedAt": "2026-08-29T13:03:12.216Z",
+  "savedAt": "2026-08-29T12:55:55.993Z",
   "teacherId": "01ed6e10-397e-446c-9254-2ad7fd4ec777"
 }

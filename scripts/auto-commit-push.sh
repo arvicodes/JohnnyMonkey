@@ -46,6 +46,7 @@ git add -A -- \
   ':!mat_url.b64' ':!app_url.b64' \
   ':!**/._*' ':!**/.DS_Store' ':!**/Thumbs.db' ':!**/__MACOSX' \
   2>/dev/null || true
+git add -f -- server/prisma/dev.db 2>/dev/null || true
 
 # Sicherheitsnetz: gestagte Secrets wieder raus
 git reset -q HEAD -- .env .env.school .env.local 2>/dev/null || true

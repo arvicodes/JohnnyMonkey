@@ -140,6 +140,21 @@ export function ensureTeacherBackupRoots(): string[] {
   );
 }
 
+export function writeTeacherLatestBackup(opts: { kind: TeacherBackupKind; payload: unknown }): string | null {
+  try {
+    const dir = ensureTeacherBackupDir(opts.kind);
+    const json =
+      typeof opts.payload === 'string' ? opts.payload : JSON.stringify(opts.payload, null, 2);
+    if (json.length < 8) return null;
+    const dest = path.join(dir, 'latest.json');
+    fs.writeFileSync(dest, json);
+    return dest;
+  } catch (e) {
+    console.warn('Lehrer-Standdatei fehlgeschlagen:', opts.kind, e);
+    return null;
+  }
+}
+
 export function writeTeacherTimestampedBackup(opts: {
   kind: TeacherBackupKind;
   label?: string;

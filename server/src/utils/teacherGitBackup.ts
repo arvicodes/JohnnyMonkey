@@ -95,7 +95,10 @@ function isSecretPath(repoPath: string): boolean {
     return true;
   }
   if (/(^|\/)pad-[^/]+\.json$/i.test(n)) return true;
-  if (n.includes('/Backup - Notizen/') || n.includes('/Backup - Folien/') || n.includes('/Backup - Tickets/')) {
+  if (n.includes('/Backup - Notizen/') || n.includes('/Backup - Folien/')) {
+    return true;
+  }
+  if (n.includes('/Backup - Tickets/') && !n.endsWith('/latest.json')) {
     return true;
   }
   return false;

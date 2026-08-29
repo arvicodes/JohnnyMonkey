@@ -7,6 +7,7 @@ exports.JM_TEACHER_BACKUP_DIR = void 0;
 exports.sanitizeBackupLabel = sanitizeBackupLabel;
 exports.ensureTeacherBackupDir = ensureTeacherBackupDir;
 exports.ensureTeacherBackupRoots = ensureTeacherBackupRoots;
+exports.writeTeacherLatestBackup = writeTeacherLatestBackup;
 exports.writeTeacherTimestampedBackup = writeTeacherTimestampedBackup;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
@@ -138,6 +139,21 @@ function ensureTeacherBackupDir(kind) {
 }
 function ensureTeacherBackupRoots() {
     return Object.keys(exports.JM_TEACHER_BACKUP_DIR).map((kind) => ensureTeacherBackupDir(kind));
+}
+function writeTeacherLatestBackup(opts) {
+    try {
+        const dir = ensureTeacherBackupDir(opts.kind);
+        const json = typeof opts.payload === 'string' ? opts.payload : JSON.stringify(opts.payload, null, 2);
+        if (json.length < 8)
+            return null;
+        const dest = path_1.default.join(dir, 'latest.json');
+        fs_1.default.writeFileSync(dest, json);
+        return dest;
+    }
+    catch (e) {
+        console.warn('Lehrer-Standdatei fehlgeschlagen:', opts.kind, e);
+        return null;
+    }
 }
 function writeTeacherTimestampedBackup(opts) {
     try {

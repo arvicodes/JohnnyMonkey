@@ -3061,6 +3061,18 @@ export default function EntryTicketPage({
     persistPlaySetsSoon(customSets, false);
   }, [customSets, isTeacher, embeddedPlay, persistPlaySetsSoon]);
 
+  useEffect(() => {
+    if (!isTeacher) return;
+    const flush = () => {
+      const latest = customSetsRef.current;
+      if (latest.length === 0) return;
+      saveCustomEntryTicketSets(latest);
+      void apiPut('/api/entry-ticket/custom-sets', { sets: latest, forceBackup: false }).catch(() => {});
+    };
+    window.addEventListener('johnny:flush-tickets', flush);
+    return () => window.removeEventListener('johnny:flush-tickets', flush);
+  }, [isTeacher]);
+
   const secureTicketBackup = useCallback(() => {
     if (!isTeacher || customSets.length === 0) return;
     saveCustomEntryTicketSets(customSets);

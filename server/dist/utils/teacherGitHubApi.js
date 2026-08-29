@@ -23,7 +23,6 @@ const SKIP_DIR = new Set([
     'sync-backups',
     'Backup - Notizen',
     'Backup - Folien',
-    'Backup - Tickets',
 ]);
 const SKIP_FILE = new Set([
     '.ds_store',
@@ -166,6 +165,8 @@ function isSchoolStandPath(repoPath) {
     const n = repoPath.replace(/\\/g, '/');
     if (n === 'server/prisma/dev.db')
         return true;
+    if (n === 'J-M-Reihen/Backup - Tickets/latest.json')
+        return true;
     if (!n.endsWith('/latest.json') && n !== 'latest.json')
         return false;
     return n.includes('/Lehrer-Schnellnotizen/') || n.startsWith('Notizen-Sicherheitskopien/');
@@ -176,6 +177,7 @@ function collectStandFiles() {
     const raw = [];
     const folders = [
         ['J-M-Reihen/Lehrer-Schnellnotizen', 'J-M-Reihen/Lehrer-Schnellnotizen'],
+        ['J-M-Reihen/Backup - Tickets', 'J-M-Reihen/Backup - Tickets'],
         ['Notizen-Sicherheitskopien', 'Notizen-Sicherheitskopien'],
     ];
     for (const [rel, repo] of folders) {
