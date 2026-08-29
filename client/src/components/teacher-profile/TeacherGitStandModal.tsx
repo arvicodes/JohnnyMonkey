@@ -47,6 +47,7 @@ export default function TeacherGitStandModal({ open, mode, onClose }: TeacherGit
   const [explanation, setExplanation] = useState('Ich schaue, was sich geändert hat …');
   const [summary, setSummary] = useState('');
   const [message, setMessage] = useState('');
+  const [githubWhen, setGithubWhen] = useState('');
   const [changes, setChanges] = useState<StandChange[]>([]);
 
   const running = phase === 'preview' || phase === 'run';
@@ -58,6 +59,7 @@ export default function TeacherGitStandModal({ open, mode, onClose }: TeacherGit
     setExplanation('Ich schaue, was sich geändert hat …');
     setSummary('');
     setMessage('');
+    setGithubWhen('');
     setChanges([]);
 
     void (async () => {
@@ -67,6 +69,7 @@ export default function TeacherGitStandModal({ open, mode, onClose }: TeacherGit
         setChanges(preview.changes || []);
         setExplanation(preview.explanation || preview.hint);
         setSummary(preview.summary);
+        setGithubWhen(preview.githubWhen || '');
         if (!preview.available) {
           setPhase('error');
           setMessage(preview.hint || preview.explanation);
@@ -155,6 +158,11 @@ export default function TeacherGitStandModal({ open, mode, onClose }: TeacherGit
             <Typography sx={{ fontSize: '0.7rem', color: '#546e7a', mt: 0.5, lineHeight: 1.45 }}>
               {explanation}
             </Typography>
+            {githubWhen ? (
+              <Typography sx={{ fontSize: '0.65rem', color: '#78909c', mt: 0.4 }}>
+                GitHub zuletzt: {githubWhen}
+              </Typography>
+            ) : null}
             {summary && phase !== 'preview' ? (
               <Typography sx={{ fontSize: '0.68rem', color: '#1565c0', mt: 0.45, fontWeight: 700 }}>
                 {summary}
@@ -198,9 +206,16 @@ export default function TeacherGitStandModal({ open, mode, onClose }: TeacherGit
                     mt: 0.1,
                   }}
                 />
-                <Typography sx={{ fontSize: '0.7rem', color: '#37474f', lineHeight: 1.35 }}>
-                  {item.label}
-                </Typography>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={{ fontSize: '0.7rem', color: '#37474f', lineHeight: 1.35 }}>
+                    {item.label}
+                  </Typography>
+                  {item.when ? (
+                    <Typography sx={{ fontSize: '0.6rem', color: '#90a4ae', mt: 0.15 }}>
+                      {item.when}
+                    </Typography>
+                  ) : null}
+                </Box>
               </Box>
             ))}
           </Box>

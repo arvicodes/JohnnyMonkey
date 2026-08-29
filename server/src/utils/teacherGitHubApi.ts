@@ -320,19 +320,45 @@ export async function pushSchoolStandToGithub(): Promise<GithubStandResult> {
 
   const stamp = berlinStamp();
   const message = `Stand Schule ${stamp}`;
+  const latestRef = await ghJson<{ object: { sha: string } }>(
+    token,
+    `/repos/${owner}/${repo}/git/ref/heads/${BRANCH}`
+  );
+  const freshParent = latestRef.object.sha || parentSha;
   const newCommit = await ghJson<{ sha: string }>(token, `/repos/${owner}/${repo}/git/commits`, {
     method: 'POST',
     body: JSON.stringify({
       message,
       tree: newTree.sha,
-      parents: [parentSha],
+      parents: [freshParent],
     }),
   });
 
-  await ghJson(token, `/repos/${owner}/${repo}/git/refs/heads/${BRANCH}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ sha: newCommit.sha, force: false }),
-  });
+  let published = newCommit.sha;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await ghJson(token, `/repos/${owner}/${repo}/git/refs/heads/${BRANCH}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ sha: published, force: false }),
+      });
+      break;
+    } catch (err) {
+      if (attempt === 2) throw err;
+      const latest = await ghJson<{ object: { sha: string } }>(
+        token,
+        `/repos/${owner}/${repo}/git/ref/heads/${BRANCH}`
+      );
+      const retry = await ghJson<{ sha: string }>(token, `/repos/${owner}/${repo}/git/commits`, {
+        method: 'POST',
+        body: JSON.stringify({
+          message,
+          tree: newTree.sha,
+          parents: [latest.object.sha],
+        }),
+      });
+      published = retry.sha;
+    }
+  }
 
   return {
     ok: true,

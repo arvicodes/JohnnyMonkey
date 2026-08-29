@@ -6,6 +6,7 @@ export type StandChange = {
   path: string;
   kind: StandChangeKind;
   label: string;
+  when?: string;
 };
 
 export type TeacherGitBackupStatus = {
@@ -19,6 +20,8 @@ export type TeacherGitBackupPreview = TeacherGitBackupStatus & {
   explanation: string;
   changes: StandChange[];
   summary: string;
+  githubWhen?: string;
+  githubMessage?: string;
 };
 
 export type TeacherGitBackupResult = {
@@ -64,6 +67,8 @@ export async function fetchTeacherGitBackupPreview(
     explanation: String(data.explanation || data.hint || ''),
     changes,
     summary: String(data.summary || ''),
+    githubWhen: data.githubWhen,
+    githubMessage: data.githubMessage,
   };
 }
 

@@ -19,6 +19,7 @@ export type StandChange = {
   path: string;
   kind: StandChangeKind;
   label: string;
+  when?: string;
 };
 
 export type TeacherGitBackupStatus = {
@@ -32,6 +33,8 @@ export type TeacherGitBackupPreview = TeacherGitBackupStatus & {
   explanation: string;
   changes: StandChange[];
   summary: string;
+  githubWhen?: string;
+  githubMessage?: string;
 };
 
 export type TeacherGitBackupResult = {
@@ -42,6 +45,8 @@ export type TeacherGitBackupResult = {
   changes?: StandChange[];
   explanation?: string;
   where?: 'laptop' | 'school';
+  githubWhen?: string;
+  githubMessage?: string;
 };
 
 let running = false;
@@ -89,6 +94,61 @@ function isSecretPath(repoPath: string): boolean {
   return false;
 }
 
+export function formatBerlinStamp(d: Date): string {
+  return new Intl.DateTimeFormat('de-DE', {
+    timeZone: 'Europe/Berlin',
+    day: 'numeric',
+    month: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: false,
+  })
+    .format(d)
+    .replace(', ', ' ');
+}
+
+function stampForAbs(abs: string): string | undefined {
+  try {
+    if (!fs.existsSync(abs)) return undefined;
+    return formatBerlinStamp(fs.statSync(abs).mtime);
+  } catch {
+    return undefined;
+  }
+}
+
+function stampForRepoPath(repoPath: string, root?: string | null): string | undefined {
+  if (repoPath === 'server/prisma/dev.db' && fs.existsSync('/app/server/data/dev.db')) {
+    return stampForAbs('/app/server/data/dev.db');
+  }
+  const bases = [root, findGitRoot(), process.env.LOCAL_MATERIALS_PATH, path.resolve(__dirname, '../../..')].filter(
+    Boolean
+  ) as string[];
+  for (const base of bases) {
+    const when = stampForAbs(path.join(base, repoPath));
+    if (when) return when;
+  }
+  return undefined;
+}
+
+function laptopGithubTip(root: string): { githubWhen?: string; githubMessage?: string } {
+  try {
+    execFileSync('git', ['fetch', 'origin', 'main'], {
+      cwd: root,
+      timeout: 60_000,
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+    });
+    const raw = execFileSync('git', ['log', '-1', '--format=%cI\t%s', 'origin/main'], {
+      cwd: root,
+      encoding: 'utf8',
+    }).trim();
+    const [iso, ...rest] = raw.split('\t');
+    const when = iso ? formatBerlinStamp(new Date(iso)) : undefined;
+    return { githubWhen: when, githubMessage: rest.join('\t').trim() || undefined };
+  } catch {
+    return {};
+  }
+}
+
 export function describeStandPath(repoPath: string): string {
   const n = repoPath.replace(/\\/g, '/');
   const base = n.split('/').pop() || n;
@@ -111,8 +171,8 @@ export function describeStandPath(repoPath: string): string {
   return n;
 }
 
-function toChange(pathName: string, kind: StandChangeKind): StandChange {
-  return { path: pathName, kind, label: describeStandPath(pathName) };
+function toChange(pathName: string, kind: StandChangeKind, when?: string): StandChange {
+  return { path: pathName, kind, label: describeStandPath(pathName), when };
 }
 
 function summarizeChanges(changes: StandChange[]): string {
@@ -146,7 +206,7 @@ function previewLaptopChanges(root: string): StandChange[] {
     let kind: StandChangeKind = 'changed';
     if (xy === '??' || index === 'A' || work === 'A') kind = 'added';
     else if (index === 'D' || work === 'D') kind = 'removed';
-    changes.push(toChange(filePath, kind));
+    changes.push(toChange(filePath, kind, stampForRepoPath(filePath, root)));
   }
   return changes;
 }
@@ -214,7 +274,7 @@ function previewLaptopPull(root: string): StandChange[] {
     let kind: StandChangeKind = 'changed';
     if (code.startsWith('A')) kind = 'added';
     else if (code.startsWith('D')) kind = 'removed';
-    changes.push(toChange(filePath, kind));
+    changes.push(toChange(filePath, kind, stampForRepoPath(filePath, root)));
   }
   return changes;
 }
@@ -258,16 +318,24 @@ export async function previewTeacherGitPull(): Promise<TeacherGitBackupPreview> 
     return { ...status, explanation: status.hint, changes: [], summary: status.hint };
   }
   try {
+    const root = findGitRoot();
+    const tip = root ? laptopGithubTip(root) : {};
     const raw =
       status.where === 'school'
         ? await previewSchoolStandPull()
-        : previewLaptopPull(findGitRoot() || '');
-    const changes = raw.map((c) => toChange(c.path, c.kind));
+        : previewLaptopPull(root || '');
+    const changes = raw.map((c) =>
+      toChange(c.path, c.kind, 'when' in c ? c.when : stampForRepoPath(c.path, root))
+    );
+    const empty = tip.githubWhen
+      ? `GitHub-Stand vom ${tip.githubWhen}${tip.githubMessage ? ` — ${tip.githubMessage}` : ''}. Dieser Rechner hat dieselben Dateien.`
+      : 'Dieser Rechner hat schon den GitHub-Stand.';
     return {
       ...status,
-      explanation: changes.length ? explanation : 'Dieser Rechner hat schon den GitHub-Stand.',
+      explanation: changes.length ? explanation : empty,
       changes,
       summary: summarizeChanges(changes),
+      ...tip,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Änderungen nicht lesbar.';
@@ -323,17 +391,25 @@ export async function previewTeacherGitBackup(): Promise<TeacherGitBackupPreview
     return { ...status, explanation: status.hint, changes: [], summary: status.hint };
   }
   try {
+    const root = findGitRoot();
+    const tip = root ? laptopGithubTip(root) : {};
     const raw =
       where === 'school'
         ? await previewSchoolStandChanges()
-        : previewLaptopChanges(findGitRoot() || '');
-    const changes = raw.map((c) => toChange(c.path, c.kind));
+        : previewLaptopChanges(root || '');
+    const changes = raw.map((c) =>
+      toChange(c.path, c.kind, 'when' in c ? c.when : stampForRepoPath(c.path, root))
+    );
     const summary = summarizeChanges(changes);
+    const empty = tip.githubWhen
+      ? `GitHub-Stand vom ${tip.githubWhen}${tip.githubMessage ? ` — ${tip.githubMessage}` : ''}. Nichts Neues zu schicken.`
+      : 'GitHub hat schon genau diesen Stand.';
     return {
       ...status,
-      explanation: changes.length ? explanation : 'GitHub hat schon genau diesen Stand.',
+      explanation: changes.length ? explanation : empty,
       changes,
       summary,
+      ...tip,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Änderungen nicht lesbar.';
