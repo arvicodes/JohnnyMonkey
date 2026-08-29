@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { PrismaClient } from '@prisma/client';
 import { writeTeacherTimestampedBackup } from './jmTeacherBackup';
 
 /** Aktueller Stand der Lehrer-Schnellnotizen (pro Lehrkraft). */
@@ -205,6 +206,92 @@ export function wouldShrinkScratchPad(
   const prev = scratchPadRawLen(existing);
   const next = scratchPadRawLen(incoming);
   return prev >= 400 && next + 200 < prev;
+}
+
+export function standPulledMarkerPath(): string {
+  if (fs.existsSync('/app/server/data')) return path.join('/app/server/data', '.jm-stand-pulled-at');
+  return path.join(projectRoot(), '.jm-stand-pulled-at');
+}
+
+export function markStandPulled(at = new Date()): void {
+  const dest = standPulledMarkerPath();
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.writeFileSync(dest, at.toISOString(), 'utf8');
+}
+
+export function standPulledAtMs(): number {
+  try {
+    const ms = Date.parse(fs.readFileSync(standPulledMarkerPath(), 'utf8').trim());
+    return Number.isFinite(ms) ? ms : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function standPulledRecently(maxAgeMs = 20 * 60 * 1000): boolean {
+  const at = standPulledAtMs();
+  if (!at) return false;
+  const age = Date.now() - at;
+  return age >= 0 && age < maxAgeMs;
+}
+
+/** Nach Git-Holen: Dateien sind die Wahrheit. Zeitstempel nach vorne, damit alte Tabs nicht gewinnen. */
+export function applyPulledScratchPadFiles(): Array<{ teacherId: string; payload: ScratchPadPayload; userKey: string }> {
+  const now = new Date().toISOString();
+  const liveRoot = path.join(jmReihenRoot(), SCRATCH_PAD_LIVE_DIR_NAME);
+  const applied: Array<{ teacherId: string; payload: ScratchPadPayload; userKey: string }> = [];
+  if (!fs.existsSync(liveRoot)) {
+    markStandPulled();
+    return applied;
+  }
+  for (const name of fs.readdirSync(liveRoot)) {
+    const latest = path.join(liveRoot, name, 'latest.json');
+    if (!fs.existsSync(latest) || !fs.statSync(latest).isFile()) continue;
+    try {
+      const parsed = JSON.parse(fs.readFileSync(latest, 'utf8')) as ScratchPadPayload;
+      if (!parsed || !Array.isArray(parsed.pages)) continue;
+      const teacherId = String(parsed.userId || '').trim();
+      const payload: ScratchPadPayload = {
+        ...parsed,
+        updatedAt: now,
+        savedAt: now,
+      };
+      const json = JSON.stringify(payload, null, 2);
+      fs.writeFileSync(latest, json);
+      const backupDir = ensureScratchPadBackupDir(name);
+      fs.writeFileSync(path.join(backupDir, 'latest.json'), json);
+      if (teacherId) applied.push({ teacherId, payload, userKey: name });
+    } catch (e) {
+      console.warn('applyPulledScratchPadFiles failed:', name, e);
+    }
+  }
+  markStandPulled();
+  return applied;
+}
+
+export async function writePulledScratchPadsToDb(
+  pads: Array<{ teacherId: string; payload: ScratchPadPayload }>
+): Promise<void> {
+  if (!pads.length) return;
+  const url =
+    String(process.env.DATABASE_URL || '').trim() ||
+    (fs.existsSync('/app/server/data/dev.db') ? 'file:/app/server/data/dev.db' : '');
+  const prisma = new PrismaClient(url ? { datasources: { db: { url } } } : undefined);
+  try {
+    for (const { teacherId, payload } of pads) {
+      await prisma.teacherLessonInstruction.upsert({
+        where: { teacherId_lessonPath: { teacherId, lessonPath: SCRATCH_PAD_DB_PATH } },
+        create: {
+          teacherId,
+          lessonPath: SCRATCH_PAD_DB_PATH,
+          content: JSON.stringify(payload),
+        },
+        update: { content: JSON.stringify(payload) },
+      });
+    }
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
 export function readScratchPadLive(userKey: string): ScratchPadPayload | null {

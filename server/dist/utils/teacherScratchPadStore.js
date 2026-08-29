@@ -13,11 +13,18 @@ exports.scratchPadContentLen = scratchPadContentLen;
 exports.wouldWipeScratchPad = wouldWipeScratchPad;
 exports.scratchPadRawLen = scratchPadRawLen;
 exports.wouldShrinkScratchPad = wouldShrinkScratchPad;
+exports.standPulledMarkerPath = standPulledMarkerPath;
+exports.markStandPulled = markStandPulled;
+exports.standPulledAtMs = standPulledAtMs;
+exports.standPulledRecently = standPulledRecently;
+exports.applyPulledScratchPadFiles = applyPulledScratchPadFiles;
+exports.writePulledScratchPadsToDb = writePulledScratchPadsToDb;
 exports.readScratchPadLive = readScratchPadLive;
 exports.writeScratchPad = writeScratchPad;
 const crypto_1 = __importDefault(require("crypto"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const client_1 = require("@prisma/client");
 const jmTeacherBackup_1 = require("./jmTeacherBackup");
 /** Aktueller Stand der Lehrer-Schnellnotizen (pro Lehrkraft). */
 exports.SCRATCH_PAD_LIVE_DIR_NAME = 'Lehrer-Schnellnotizen';
@@ -185,6 +192,92 @@ function wouldShrinkScratchPad(existing, incoming) {
     const prev = scratchPadRawLen(existing);
     const next = scratchPadRawLen(incoming);
     return prev >= 400 && next + 200 < prev;
+}
+function standPulledMarkerPath() {
+    if (fs_1.default.existsSync('/app/server/data'))
+        return path_1.default.join('/app/server/data', '.jm-stand-pulled-at');
+    return path_1.default.join(projectRoot(), '.jm-stand-pulled-at');
+}
+function markStandPulled(at = new Date()) {
+    const dest = standPulledMarkerPath();
+    fs_1.default.mkdirSync(path_1.default.dirname(dest), { recursive: true });
+    fs_1.default.writeFileSync(dest, at.toISOString(), 'utf8');
+}
+function standPulledAtMs() {
+    try {
+        const ms = Date.parse(fs_1.default.readFileSync(standPulledMarkerPath(), 'utf8').trim());
+        return Number.isFinite(ms) ? ms : 0;
+    }
+    catch {
+        return 0;
+    }
+}
+function standPulledRecently(maxAgeMs = 20 * 60 * 1000) {
+    const at = standPulledAtMs();
+    if (!at)
+        return false;
+    const age = Date.now() - at;
+    return age >= 0 && age < maxAgeMs;
+}
+/** Nach Git-Holen: Dateien sind die Wahrheit. Zeitstempel nach vorne, damit alte Tabs nicht gewinnen. */
+function applyPulledScratchPadFiles() {
+    const now = new Date().toISOString();
+    const liveRoot = path_1.default.join(jmReihenRoot(), exports.SCRATCH_PAD_LIVE_DIR_NAME);
+    const applied = [];
+    if (!fs_1.default.existsSync(liveRoot)) {
+        markStandPulled();
+        return applied;
+    }
+    for (const name of fs_1.default.readdirSync(liveRoot)) {
+        const latest = path_1.default.join(liveRoot, name, 'latest.json');
+        if (!fs_1.default.existsSync(latest) || !fs_1.default.statSync(latest).isFile())
+            continue;
+        try {
+            const parsed = JSON.parse(fs_1.default.readFileSync(latest, 'utf8'));
+            if (!parsed || !Array.isArray(parsed.pages))
+                continue;
+            const teacherId = String(parsed.userId || '').trim();
+            const payload = {
+                ...parsed,
+                updatedAt: now,
+                savedAt: now,
+            };
+            const json = JSON.stringify(payload, null, 2);
+            fs_1.default.writeFileSync(latest, json);
+            const backupDir = ensureScratchPadBackupDir(name);
+            fs_1.default.writeFileSync(path_1.default.join(backupDir, 'latest.json'), json);
+            if (teacherId)
+                applied.push({ teacherId, payload, userKey: name });
+        }
+        catch (e) {
+            console.warn('applyPulledScratchPadFiles failed:', name, e);
+        }
+    }
+    markStandPulled();
+    return applied;
+}
+async function writePulledScratchPadsToDb(pads) {
+    if (!pads.length)
+        return;
+    const url = String(process.env.DATABASE_URL || '').trim() ||
+        (fs_1.default.existsSync('/app/server/data/dev.db') ? 'file:/app/server/data/dev.db' : '');
+    const prisma = new client_1.PrismaClient(url ? { datasources: { db: { url } } } : undefined);
+    try {
+        for (const { teacherId, payload } of pads) {
+            await prisma.teacherLessonInstruction.upsert({
+                where: { teacherId_lessonPath: { teacherId, lessonPath: exports.SCRATCH_PAD_DB_PATH } },
+                create: {
+                    teacherId,
+                    lessonPath: exports.SCRATCH_PAD_DB_PATH,
+                    content: JSON.stringify(payload),
+                },
+                update: { content: JSON.stringify(payload) },
+            });
+        }
+    }
+    finally {
+        await prisma.$disconnect();
+    }
 }
 function readScratchPadLive(userKey) {
     try {

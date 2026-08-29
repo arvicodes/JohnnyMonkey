@@ -10,6 +10,8 @@ import {
   writeScratchPad,
   wouldShrinkScratchPad,
   wouldWipeScratchPad,
+  standPulledAtMs,
+  standPulledRecently,
   SCRATCH_PAD_DB_PATH,
   type ScratchPadPayload,
 } from '../utils/teacherScratchPadStore';
@@ -90,7 +92,9 @@ router.get('/', async (req, res) => {
     const fromDb = await readScratchPadFromDb(user.id);
     const fromFile = readScratchPadLive(key);
     let data: ScratchPadPayload | null = null;
-    if (fromDb && fromFile) {
+    if (standPulledRecently() && fromFile) {
+      data = fromFile;
+    } else if (fromDb && fromFile) {
       const dbLen = scratchPadContentLen(fromDb);
       const fileLen = scratchPadContentLen(fromFile);
       const dbRaw = scratchPadRawLen(fromDb);
@@ -149,6 +153,21 @@ router.put('/', async (req, res) => {
     const existingFile = readScratchPadLive(key);
     const existing =
       scratchPadContentLen(existingFile) >= scratchPadContentLen(existingDb) ? existingFile : existingDb;
+    const incomingMs = padUpdatedMs(payload);
+    const existingMs = padUpdatedMs(existing);
+    const pulledMs = standPulledAtMs();
+    if (
+      (pulledMs && incomingMs && incomingMs < pulledMs) ||
+      (existingMs && incomingMs && incomingMs < existingMs)
+    ) {
+      return res.json({
+        ok: true,
+        keptExisting: true,
+        userKey: key,
+        storedIn: 'db',
+        updatedAt: existing?.updatedAt,
+      });
+    }
     if (wouldWipeScratchPad(existing, payload) || wouldShrinkScratchPad(existing, payload)) {
       return res.json({
         ok: true,

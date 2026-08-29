@@ -15,6 +15,7 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const util_1 = require("util");
 const teacherGitHubApi_1 = require("./teacherGitHubApi");
+const teacherScratchPadStore_1 = require("./teacherScratchPadStore");
 const execFileAsync = (0, util_1.promisify)(child_process_1.execFile);
 let running = false;
 function candidateRoots() {
@@ -270,9 +271,12 @@ async function pullTeacherGitBackup() {
     try {
         const root = findGitRoot();
         if (root && fs_1.default.existsSync(scriptPath(root))) {
-            return await pullLaptopStand(root);
+            const result = await pullLaptopStand(root);
+            await (0, teacherScratchPadStore_1.writePulledScratchPadsToDb)((0, teacherScratchPadStore_1.applyPulledScratchPadFiles)());
+            return result;
         }
         const school = await (0, teacherGitHubApi_1.pullSchoolStandFromGithub)();
+        await (0, teacherScratchPadStore_1.writePulledScratchPadsToDb)((0, teacherScratchPadStore_1.applyPulledScratchPadFiles)());
         return {
             ...school,
             where: 'school',

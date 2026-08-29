@@ -800,6 +800,7 @@ type TeacherQuickNotesProps = {
 };
 
 export const OPEN_TEACHER_NOTES_EVENT = 'johnny:open-teacher-notes';
+export const NOTES_FROM_GIT_EVENT = 'johnny:notes-from-git';
 
 /**
  * Gelbes N in der Lehrer-Leiste: persönliche Notizfläche (Tastatur + Stift + Formatierung).
@@ -1188,6 +1189,33 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     window.addEventListener(OPEN_TEACHER_NOTES_EVENT, onOpen);
     return () => window.removeEventListener(OPEN_TEACHER_NOTES_EVENT, onOpen);
   }, [openModal]);
+
+  /** Nach „Stand von GitHub holen“: alten Browser-Stand weg, Server-Stand nehmen. */
+  useEffect(() => {
+    const onFromGit = () => {
+      try {
+        localStorage.removeItem(storageKey(userId));
+      } catch {
+        /* ignore */
+      }
+      void (async () => {
+        const remote = await fetchPadFromServer();
+        if (!remote || !Array.isArray(remote.pages) || remote.pages.length === 0) return;
+        savePad(userId, remote, { syncServer: false });
+        pagesRef.current = remote.pages as ScratchPage[];
+        pageIndexRef.current = remote.pageIndex || 0;
+        setPages(remote.pages as ScratchPage[]);
+        setPageIndex(remote.pageIndex || 0);
+        const page = (remote.pages as ScratchPage[])[remote.pageIndex || 0] || emptyPage();
+        textRef.current = page.text || '';
+        inkRef.current = page.ink || [];
+        setText(page.text || '');
+        setInk(page.ink || []);
+      })();
+    };
+    window.addEventListener(NOTES_FROM_GIT_EVENT, onFromGit);
+    return () => window.removeEventListener(NOTES_FROM_GIT_EVENT, onFromGit);
+  }, [userId]);
 
   const refreshHoverPreview = useCallback(() => {
     setHoverPreview(loadPad(userId));

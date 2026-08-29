@@ -9,6 +9,7 @@ import {
   pullSchoolStandFromGithub,
   pushSchoolStandToGithub,
 } from './teacherGitHubApi';
+import { applyPulledScratchPadFiles, writePulledScratchPadsToDb } from './teacherScratchPadStore';
 
 const execFileAsync = promisify(execFile);
 
@@ -291,9 +292,12 @@ export async function pullTeacherGitBackup(): Promise<TeacherGitBackupResult> {
   try {
     const root = findGitRoot();
     if (root && fs.existsSync(scriptPath(root))) {
-      return await pullLaptopStand(root);
+      const result = await pullLaptopStand(root);
+      await writePulledScratchPadsToDb(applyPulledScratchPadFiles());
+      return result;
     }
     const school = await pullSchoolStandFromGithub();
+    await writePulledScratchPadsToDb(applyPulledScratchPadFiles());
     return {
       ...school,
       where: 'school',

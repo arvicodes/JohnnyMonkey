@@ -82,7 +82,10 @@ router.get('/', async (req, res) => {
         const fromDb = await readScratchPadFromDb(user.id);
         const fromFile = (0, teacherScratchPadStore_1.readScratchPadLive)(key);
         let data = null;
-        if (fromDb && fromFile) {
+        if ((0, teacherScratchPadStore_1.standPulledRecently)() && fromFile) {
+            data = fromFile;
+        }
+        else if (fromDb && fromFile) {
             const dbLen = (0, teacherScratchPadStore_1.scratchPadContentLen)(fromDb);
             const fileLen = (0, teacherScratchPadStore_1.scratchPadContentLen)(fromFile);
             const dbRaw = (0, teacherScratchPadStore_1.scratchPadRawLen)(fromDb);
@@ -147,6 +150,19 @@ router.put('/', async (req, res) => {
         const existingDb = await readScratchPadFromDb(user.id);
         const existingFile = (0, teacherScratchPadStore_1.readScratchPadLive)(key);
         const existing = (0, teacherScratchPadStore_1.scratchPadContentLen)(existingFile) >= (0, teacherScratchPadStore_1.scratchPadContentLen)(existingDb) ? existingFile : existingDb;
+        const incomingMs = padUpdatedMs(payload);
+        const existingMs = padUpdatedMs(existing);
+        const pulledMs = (0, teacherScratchPadStore_1.standPulledAtMs)();
+        if ((pulledMs && incomingMs && incomingMs < pulledMs) ||
+            (existingMs && incomingMs && incomingMs < existingMs)) {
+            return res.json({
+                ok: true,
+                keptExisting: true,
+                userKey: key,
+                storedIn: 'db',
+                updatedAt: existing === null || existing === void 0 ? void 0 : existing.updatedAt,
+            });
+        }
         if ((0, teacherScratchPadStore_1.wouldWipeScratchPad)(existing, payload) || (0, teacherScratchPadStore_1.wouldShrinkScratchPad)(existing, payload)) {
             return res.json({
                 ok: true,

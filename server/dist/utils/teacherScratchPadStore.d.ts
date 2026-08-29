@@ -29,6 +29,20 @@ export declare function wouldWipeScratchPad(existing: ScratchPadPayload | null |
 /** Rohe Textmenge (HTML), damit ein älterer Tab einen längeren Schulstand nicht zurückschreibt. */
 export declare function scratchPadRawLen(payload: ScratchPadPayload | null | undefined): number;
 export declare function wouldShrinkScratchPad(existing: ScratchPadPayload | null | undefined, incoming: ScratchPadPayload | null | undefined): boolean;
+export declare function standPulledMarkerPath(): string;
+export declare function markStandPulled(at?: Date): void;
+export declare function standPulledAtMs(): number;
+export declare function standPulledRecently(maxAgeMs?: number): boolean;
+/** Nach Git-Holen: Dateien sind die Wahrheit. Zeitstempel nach vorne, damit alte Tabs nicht gewinnen. */
+export declare function applyPulledScratchPadFiles(): Array<{
+    teacherId: string;
+    payload: ScratchPadPayload;
+    userKey: string;
+}>;
+export declare function writePulledScratchPadsToDb(pads: Array<{
+    teacherId: string;
+    payload: ScratchPadPayload;
+}>): Promise<void>;
 export declare function readScratchPadLive(userKey: string): ScratchPadPayload | null;
 /**
  * Speichert den aktuellen Stand und schreibt Sicherheitskopien.
