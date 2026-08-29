@@ -142,7 +142,7 @@ import {
   defaultLineWidthForTool,
   type PresentationDrawTool,
 } from '../lib/presentationDrawTools';
-import { requestPresentFullscreen } from '../lib/presentationPresentFullscreen';
+import { isRecentLeavePresentToEditor, requestPresentFullscreen } from '../lib/presentationPresentFullscreen';
 import { preparePresentationAudioForPlay } from '../lib/presentationSound';
 import { PRES_EDITOR_UI, presentationEntryTicketEditUrl, presentationLessonBackUrl, presentationLessonReturnWithPresentationUrl, tryHandleLessonEntryTicketLinkClick } from '../lib/presentationEditorUi';
 import { lessonFolderDisplayName } from '../lib/presentationSlideFooter';
@@ -3179,6 +3179,36 @@ const PresentationEditorPage: React.FC = () => {
     [activeId, flushThenLeave, groupId, lessonPath, planMode],
   );
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.altKey || e.shiftKey) return;
+      const key = e.key.toLowerCase();
+      if (key !== 'p') return;
+      const target = e.target as HTMLElement | null;
+      const typing =
+        !!target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable ||
+          !!target.closest('[contenteditable="true"]') ||
+          !!target.closest('[data-pres-rich-zone]'));
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod) {
+        e.preventDefault();
+        e.stopPropagation();
+        startPresentation(false);
+        return;
+      }
+      if (typing) return;
+      e.preventDefault();
+      e.stopPropagation();
+      startPresentation(true);
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [startPresentation]);
+
   const handleBack = () => {
     void flushThenLeave(presentationLessonBackUrl(lessonPath, groupId, planMode));
   };
@@ -3222,6 +3252,7 @@ const PresentationEditorPage: React.FC = () => {
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
+      if (isRecentLeavePresentToEditor()) return;
       if (animationEditMode) return; // eigener Handler im Animationsmodus
       if (isTypingTarget(e.target)) return;
       if (isFormatBarInteracting()) return;
@@ -3683,7 +3714,7 @@ const PresentationEditorPage: React.FC = () => {
             </Tooltip>
             <Divider orientation="vertical" flexItem sx={{ borderColor: PRES_EDITOR_UI.barBorder }} />
             <Box sx={{ display: 'inline-flex', alignItems: 'stretch', height: 30 }}>
-              <Tooltip title="Ab Folie 1">
+              <Tooltip title="Ab Folie 1 (⌘P)">
                 <IconButton
                   size="small"
                   aria-label="Ab Folie 1 präsentieren"
@@ -3701,7 +3732,7 @@ const PresentationEditorPage: React.FC = () => {
                 </IconButton>
               </Tooltip>
               <Box sx={{ width: '1px', alignSelf: 'stretch', bgcolor: 'rgba(255,255,255,0.35)' }} />
-              <Tooltip title="Ab aktueller Folie">
+              <Tooltip title="Ab aktueller Folie (P)">
                 <span>
                   <IconButton
                     size="small"

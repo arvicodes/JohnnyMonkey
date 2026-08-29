@@ -32,6 +32,8 @@ export function isAnyNativeFullscreen(): boolean {
 }
 
 let lastFullscreenChangeAt = 0;
+let lastLeftPresentToEditorAt = 0;
+let ignoreNextFullscreenExit = false;
 
 /** Browser feuert beim Verlassen von Vollbild oft ein synthetisches Escape. */
 export function markPresentFullscreenChange(): void {
@@ -40,6 +42,27 @@ export function markPresentFullscreenChange(): void {
 
 export function isRecentPresentFullscreenChange(withinMs = 450): boolean {
   return Date.now() - lastFullscreenChangeAt < withinMs;
+}
+
+/** Vollbild-Knopf: FS aus, aber in Play bleiben. */
+export function markIgnoreNextFullscreenExit(): void {
+  ignoreNextFullscreenExit = true;
+}
+
+export function consumeIgnoreNextFullscreenExit(): boolean {
+  if (!ignoreNextFullscreenExit) return false;
+  ignoreNextFullscreenExit = false;
+  return true;
+}
+
+/** Nach Play→Editor: synthetisches Escape nicht als „zurück zur Stunde“ werten. */
+export function markLeftPresentToEditor(): void {
+  lastLeftPresentToEditorAt = Date.now();
+  markPresentFullscreenChange();
+}
+
+export function isRecentLeavePresentToEditor(withinMs = 800): boolean {
+  return Date.now() - lastLeftPresentToEditorAt < withinMs;
 }
 
 /**

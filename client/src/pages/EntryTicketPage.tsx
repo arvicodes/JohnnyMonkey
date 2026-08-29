@@ -22,6 +22,7 @@ import {
   Add as AddIcon,
   Remove as RemoveIcon,
   Check as CheckIcon,
+  Create as CreateIcon,
   History as HistoryIcon,
   Pause as PauseIcon,
   PlayArrow as PlayArrowIcon,
@@ -4901,6 +4902,18 @@ export default function EntryTicketPage({
                     <RestartAltIcon sx={{ fontSize: 20 }} />
                   </IconButton>
                 </Tooltip>
+                {canEditPlay ? (
+                  <Tooltip title="Karte bearbeiten (wird sofort gespeichert)">
+                    <IconButton
+                      size="small"
+                      onClick={() => startEditingTask(currentIndex)}
+                      aria-label="Karte bearbeiten"
+                      sx={{ ...etSessionBtnSx, width: 32, height: 32, minWidth: 32 }}
+                    >
+                      <CreateIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                ) : null}
               </Box>
             ) : null}
             {sessionDone ? (
@@ -5448,35 +5461,16 @@ export default function EntryTicketPage({
                             }}
                           >
                             {currentTask ? (
-                              canEditPlay ? (
-                                <EntryTicketRichField
-                                  playSurface
-                                  value={currentTask.prompt}
-                                  onChange={(prompt) =>
-                                    commitPlayTaskContent(currentIndex, prompt, currentTask.solution)
-                                  }
-                                  placeholder="Frage"
-                                  tone="prompt"
-                                  minHeight={72}
-                                  editorFontSize={
-                                    embeddedPlay
-                                      ? { xs: '1.28rem', sm: '1.52rem', md: '1.68rem' }
-                                      : { xs: '1.56rem', sm: '1.92rem', md: '2.1rem' }
-                                  }
-                                  softBg="transparent"
-                                />
-                              ) : (
-                                <EntryTicketRichHtml
-                                  contain
-                                  value={currentTask.prompt}
-                                  sx={{
-                                    fontSize: 'inherit',
-                                    lineHeight: 'inherit',
-                                    color: 'inherit',
-                                    whiteSpace: 'normal',
-                                  }}
-                                />
-                              )
+                              <EntryTicketRichHtml
+                                contain
+                                value={currentTask.prompt}
+                                sx={{
+                                  fontSize: 'inherit',
+                                  lineHeight: 'inherit',
+                                  color: 'inherit',
+                                  whiteSpace: 'normal',
+                                }}
+                              />
                             ) : null}
                           </Box>
                         </Box>
@@ -5580,7 +5574,9 @@ export default function EntryTicketPage({
                           key={task.sourceKey || `et-sol-${index}`}
                           sx={{
                             display: 'grid',
-                            gridTemplateColumns: '19px minmax(0, 1fr)',
+                            gridTemplateColumns: canEditPlay
+                              ? '19px minmax(0, 1fr) 22px'
+                              : '19px minmax(0, 1fr)',
                             columnGap: 0.55,
                             alignItems: 'start',
                             px: 0.5,
@@ -5645,26 +5641,7 @@ export default function EntryTicketPage({
                                 },
                               }}
                             >
-                              {canEditPlay ? (
-                                <EntryTicketRichField
-                                  playSurface
-                                  value={task.prompt}
-                                  onChange={(prompt) =>
-                                    commitPlayTaskContent(index, prompt, task.solution)
-                                  }
-                                  placeholder="Frage"
-                                  tone="prompt"
-                                  minHeight={36}
-                                  editorFontSize={overviewFitFont(
-                                    htmlPlainLen(task.prompt),
-                                    finalSlideRows,
-                                    'prompt',
-                                  )}
-                                  softBg="transparent"
-                                />
-                              ) : (
-                                <EntryTicketRichHtml compact value={task.prompt} />
-                              )}
+                              <EntryTicketRichHtml compact value={task.prompt} />
                             </Box>
                             {showSolutions || laptopCompanion ? (
                               <Box
@@ -5704,29 +5681,29 @@ export default function EntryTicketPage({
                                   },
                                 }}
                               >
-                                {canEditPlay ? (
-                                  <EntryTicketRichField
-                                    playSurface
-                                    value={task.solution || ''}
-                                    onChange={(solution) =>
-                                      commitPlayTaskContent(index, task.prompt, solution)
-                                    }
-                                    placeholder="Lösung"
-                                    tone="answer"
-                                    minHeight={32}
-                                    editorFontSize={overviewFitFont(
-                                      htmlPlainLen(task.solution || ''),
-                                      finalSlideRows,
-                                      'solution',
-                                    )}
-                                    softBg="transparent"
-                                  />
-                                ) : (
-                                  <EntryTicketRichHtml compact value={task.solution || '—'} />
-                                )}
+                                <EntryTicketRichHtml compact value={task.solution || '—'} />
                               </Box>
                             ) : null}
                           </Box>
+                          {canEditPlay ? (
+                            <Tooltip title="Karte bearbeiten (wird sofort gespeichert)">
+                              <IconButton
+                                size="small"
+                                onClick={() => startEditingTask(index)}
+                                aria-label="Karte bearbeiten"
+                                sx={{
+                                  p: 0,
+                                  minWidth: 22,
+                                  width: 22,
+                                  height: 22,
+                                  color: '#546e7a',
+                                  '&:hover': { color: '#263238', bgcolor: 'rgba(69,90,100,0.12)' },
+                                }}
+                              >
+                                <CreateIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </Tooltip>
+                          ) : null}
                         </Box>
                       ))}
                     </Box>
@@ -5772,29 +5749,36 @@ export default function EntryTicketPage({
         <DialogContent sx={{ pt: 2, display: 'grid', gap: 1.25 }}>
           <EntryTicketRichField
             value={editingPrompt}
-            onChange={setEditingPrompt}
+            onChange={(prompt) => {
+              setEditingPrompt(prompt);
+              if (editingIndex !== null) {
+                commitPlayTaskContent(editingIndex, prompt, editingSolution);
+              }
+            }}
             placeholder="Frage"
             tone="prompt"
             minHeight={88}
           />
           <EntryTicketRichField
             value={editingSolution}
-            onChange={setEditingSolution}
+            onChange={(solution) => {
+              setEditingSolution(solution);
+              if (editingIndex !== null) {
+                commitPlayTaskContent(editingIndex, editingPrompt, solution);
+              }
+            }}
             placeholder="Lösung"
             tone="answer"
             minHeight={72}
           />
         </DialogContent>
         <DialogActions sx={{ px: 2, pb: 1.5 }}>
-          <Button onClick={cancelEditingTask} sx={{ color: '#546e7a' }}>
-            Abbrechen
-          </Button>
           <Button
             variant="contained"
-            onClick={saveEditingTask}
+            onClick={cancelEditingTask}
             sx={{ bgcolor: '#455a64', '&:hover': { bgcolor: '#37474f' } }}
           >
-            Speichern
+            Fertig
           </Button>
         </DialogActions>
       </Dialog>

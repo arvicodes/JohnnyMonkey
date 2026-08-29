@@ -72,7 +72,9 @@ import {
   exitPresentFullscreen,
   freezePresentViewport,
   isAnyNativeFullscreen,
-  isRecentPresentFullscreenChange,
+  consumeIgnoreNextFullscreenExit,
+  markIgnoreNextFullscreenExit,
+  markLeftPresentToEditor,
   markPresentFullscreenChange,
   isIosSafariLike,
   requestPresentFullscreen,
@@ -237,6 +239,9 @@ const PresentationPresentPage: React.FC = () => {
   const deckRef = useRef<PresentationDeck | null>(null);
   const swipeRef = useRef<{ x: number; y: number } | null>(null);
   const [nativeFs, setNativeFs] = useState(() => isAnyNativeFullscreen());
+  const leavingPresentRef = useRef(false);
+  const wasNativeFsRef = useRef(isAnyNativeFullscreen());
+  const leavePresentToEditorRef = useRef<() => void>(() => undefined);
   /** Letzter gesicherter Stand der aktuellen benannten Version (für Speichern als…). */
   const namedBaselineRef = useRef<PresentationAnnotations | null>(null);
   const annotationsRef = useRef<PresentationAnnotations | null>(null);
@@ -415,7 +420,13 @@ const PresentationPresentPage: React.FC = () => {
     const stop = attachPresentViewportFill(containerRef.current);
     const syncFs = () => {
       markPresentFullscreenChange();
-      setNativeFs(isAnyNativeFullscreen());
+      const nowFs = isAnyNativeFullscreen();
+      const wasFs = wasNativeFsRef.current;
+      wasNativeFsRef.current = nowFs;
+      setNativeFs(nowFs);
+      if (wasFs && !nowFs && !leavingPresentRef.current && !consumeIgnoreNextFullscreenExit()) {
+        leavePresentToEditorRef.current();
+      }
     };
     syncFs();
     document.addEventListener('fullscreenchange', syncFs);
@@ -1174,13 +1185,25 @@ const PresentationPresentPage: React.FC = () => {
     e.stopPropagation();
     if (isIosSafariLike()) return;
     if (isAnyNativeFullscreen()) {
+      markIgnoreNextFullscreenExit();
       exitPresentFullscreen();
       return;
     }
     requestPresentFullscreen(containerRef.current);
   };
 
+  const leavePresentToEditor = useCallback(() => {
+    if (leavingPresentRef.current) return;
+    leavingPresentRef.current = true;
+    markLeftPresentToEditor();
+    exitPresentFullscreen();
+    navigate(presentationEditorUrl(lessonPath, groupId, 'create'));
+  }, [groupId, lessonPath, navigate]);
+  leavePresentToEditorRef.current = leavePresentToEditor;
+
   const goToDashboard = useCallback(() => {
+    leavingPresentRef.current = true;
+    markIgnoreNextFullscreenExit();
     exitPresentFullscreen();
     markTeacherWantsDashboard();
     navigate('/dashboard');
@@ -1382,25 +1405,11 @@ const PresentationPresentPage: React.FC = () => {
         return;
       }
 
-      if (slideOverviewOpen) {
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          setSlideOverviewOpen(false);
-        }
-        return;
-      }
-
       if (handlePresentZoomHotkey(e, userZoom, applyUserZoom)) return;
 
       if (e.key === 'Escape') {
-        if (isRecentPresentFullscreenChange()) return;
         e.preventDefault();
-        if (drawActive) {
-          setDrawActive(false);
-          return;
-        }
-        exitPresentFullscreen();
-        navigate(presentationEditorUrl(lessonPath, groupId, 'create'));
+        leavePresentToEditor();
         return;
       }
 
@@ -1431,7 +1440,7 @@ const PresentationPresentPage: React.FC = () => {
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [goNext, goPrev, drawActive, groupId, lessonPath, navigate, planMode, slides, saveNamedOpen, clearInkOpen, userZoom, entryTicketOpen, applyUserZoom, quietWork, musicGame, slideOverviewOpen, handleSaveBothVersions]);
+  }, [goNext, goPrev, groupId, lessonPath, navigate, planMode, slides, saveNamedOpen, clearInkOpen, userZoom, entryTicketOpen, applyUserZoom, quietWork, musicGame, handleSaveBothVersions, leavePresentToEditor]);
 
   // Fokus auf die Bühne, damit Pfeiltasten sofort greifen
   useEffect(() => {
