@@ -18,6 +18,8 @@ node_modules/
 .env.production.local
 .env.school
 .school-deploy.log
+.jm-github-token
+**/.jm-github-token
 
 # Logs
 npm-debug.log*

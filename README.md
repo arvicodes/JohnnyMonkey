@@ -131,6 +131,15 @@ Unter **Volumes** heißt das Volume **johnnymonkey_database** (eingehängt als `
 
 Auf dem Laptop (und in Git): `Notizen-Sicherheitskopien/`, `J-M-Reihen/Backup - Tickets` usw.
 
+#### Stand nach GitHub
+
+Am **Laptop** und auf der **Schule**: Profilfoto antippen → **Stand nach GitHub**. Derselbe Knopf sitzt neben dem Speichern im gelben Notizblock.
+
+- Laptop: ganzer Git-Stand (Folien, Notizen, Tickets, Code). Keine Passwörter.
+- Schule: dieser Schul-Stand (Folien, Notizen, Tickets) — braucht einmal `scripts/install-school-github-token.sh`.
+
+Manuell am Laptop: `npm run git:sicherungen`
+
 #### Datenbank-Update in Portainer
 
 Wenn du die lokale Datenbank nach Portainer bringen möchtest:

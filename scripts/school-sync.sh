@@ -211,6 +211,7 @@ print("==> Globale Kopie auf Schulserver + Pull-Paket")
 # Write GH token into container (base64) for upload
 tok_b64 = base64.b64encode(token.encode()).decode()
 run(app["Id"], f"printf %s {json.dumps(tok_b64)} | base64 -d > /tmp/jm-gh.token && chmod 600 /tmp/jm-gh.token")
+run(app["Id"], "cp /tmp/jm-gh.token /app/server/data/.jm-github-token && chmod 600 /app/server/data/.jm-github-token")
 
 school_script = f"""
 set -e
