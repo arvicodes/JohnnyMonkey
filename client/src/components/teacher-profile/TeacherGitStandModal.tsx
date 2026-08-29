@@ -110,10 +110,8 @@ export default function TeacherGitStandModal({ open, onClose }: TeacherGitStandM
       }}
       fullWidth
       maxWidth="sm"
-      slotProps={{
-        paper: {
-          sx: { borderRadius: 2.5, overflow: 'hidden' },
-        },
+      PaperProps={{
+        sx: { borderRadius: 2.5, overflow: 'hidden' },
       }}
     >
       <DialogTitle
