@@ -169,6 +169,9 @@ type Props = {
   softBg?: string;
   tone?: FieldTone;
   minHeight?: number;
+  /** Play/Lösung: Stift-Overlay kann den Editor durchreichen. */
+  playSurface?: boolean;
+  editorFontSize?: string | Record<string, string>;
 };
 
 function toEditorHtml(value: string): string {
@@ -216,6 +219,8 @@ export function EntryTicketRichField({
   softBg,
   tone = 'neutral',
   minHeight = 52,
+  playSurface = false,
+  editorFontSize,
 }: Props) {
   const editorRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -481,6 +486,10 @@ export function EntryTicketRichField({
   return (
     <Box
       ref={wrapRef}
+      data-pres-element={playSurface ? `et-${tone}` : undefined}
+      data-pres-element-type={playSurface ? 'text' : undefined}
+      data-pres-rich-zone={playSurface ? '1' : undefined}
+      data-et-play-edit={playSurface ? '1' : undefined}
       sx={{
         width: '100%',
         minWidth: 0,
@@ -856,7 +865,7 @@ export function EntryTicketRichField({
           minHeight,
           px: 0.75,
           py: 0.45,
-          fontSize: '0.78rem',
+          fontSize: editorFontSize ?? '0.78rem',
           lineHeight: 1.35,
           color: palette.text,
           outline: 'none',

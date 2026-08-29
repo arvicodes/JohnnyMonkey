@@ -418,6 +418,23 @@ export function copyTasksToLaterSection(
   return { ...ensured, lessons };
 }
 
+/** Live-Play: Stiftstriche einer Fläche im Fragenset speichern (ohne Seed-Reset). */
+export function patchCustomSetPlayInk(
+  set: EntryTicketCustomSet,
+  inkKey: string,
+  strokes: PresentationStroke[],
+): EntryTicketCustomSet {
+  if (!inkKey) return set;
+  const prev = set.playInkByKey ?? {};
+  if (strokes.length === 0) {
+    if (!prev[inkKey]) return set;
+    const next = { ...prev };
+    delete next[inkKey];
+    return { ...set, playInkByKey: Object.keys(next).length > 0 ? next : undefined };
+  }
+  return { ...set, playInkByKey: { ...prev, [inkKey]: strokes } };
+}
+
 /** Live-Play: Frage/Lösung einer Karte im Fragenset speichern (ohne Seed-Reset). */
 export function patchCustomSetTaskContent(
   set: EntryTicketCustomSet,

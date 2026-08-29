@@ -70,7 +70,28 @@ import {
   saveCustomEntryTicketSets,
   sortLessonsChronologically,
   patchCustomSetTaskContent,
+  patchCustomSetPlayInk,
 } from '../lib/entryTicketCustomSets';
+import {
+  ENTRY_TICKET_SOLUTION_INK_KEY,
+  entryTicketCardInkKey,
+  inkFingerprint,
+  parseEntryTicketInk,
+  parseEntryTicketInkMap,
+} from '../lib/entryTicketPlayInk';
+import type { PresentationStroke } from '../lib/presentationDeck';
+import PresentationDrawOverlay from '../components/presentation/PresentationDrawOverlay';
+import PresentationTabletToolbar from '../components/presentation/PresentationTabletToolbar';
+import {
+  DEFAULT_MARKER_COLOR,
+  DEFAULT_MARKER_OPACITY,
+  DEFAULT_PEN_COLOR,
+  PresentationDrawTool,
+  defaultColorForTool,
+  defaultLineWidthForTool,
+  lineWidthsForTool,
+  toolUsesColor,
+} from '../lib/presentationDrawTools';
 import { discoverLessonsForReiheName, mergeFolienUnterkapitelIntoSets } from '../lib/entryTicketReiheLessons';
 import { resolveEntryTicketBandForLessonPath, fetchAssignedEntryTicketGrade, parseEntryTicketPlanBand } from '../lib/entryTicketGrade';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
@@ -95,6 +116,8 @@ type EntryTicketTask = {
   solution: string;
   /** Stabile ID für „wie oft gezeigt“ (Pool-Index / Custom-Task-Id). */
   sourceKey?: string;
+  /** Stift auf der Play-Karte (sofort gespeichert). */
+  ink?: PresentationStroke[];
 };
 
 /** Kompakte MultiButton-Gruppen — Breite immer mindestens so groß, dass der Text vollständig lesbar ist. */
@@ -1260,6 +1283,9 @@ function snapshotCustomSetForSignal(set: EntryTicketCustomSet | null | undefined
   return {
     id: set.id,
     name: set.name,
+    ...(set.playInkByKey && Object.keys(set.playInkByKey).length > 0
+      ? { playInkByKey: set.playInkByKey }
+      : {}),
     lessons: set.lessons.map((l) => ({
       id: l.id,
       lessonName: l.lessonName,
@@ -1334,6 +1360,7 @@ function hydrateCustomSetFromSignal(raw: unknown): EntryTicketCustomSet | null {
     ...(reihePaths || []),
     ...(reihePath ? [reihePath] : []),
   ].filter((p, i, a) => p && a.indexOf(p) === i);
+  const playInkByKey = parseEntryTicketInkMap(row.playInkByKey);
   return {
     id,
     name,
@@ -1341,6 +1368,7 @@ function hydrateCustomSetFromSignal(raw: unknown): EntryTicketCustomSet | null {
     ...(paths[0] ? { reihePath: paths[0] } : {}),
     ...(paths.length > 0 ? { reihePaths: paths } : {}),
     ...(notes ? { notes } : {}),
+    ...(Object.keys(playInkByKey).length > 0 ? { playInkByKey } : {}),
   };
 }
 
@@ -1357,6 +1385,7 @@ function mergeHydratedCustomSet(
             reihePath: existing.reihePath || hydrated.reihePath,
             reihePaths: existing.reihePaths?.length ? existing.reihePaths : hydrated.reihePaths,
             notes: existing.notes ?? hydrated.notes,
+            playInkByKey: existing.playInkByKey ?? hydrated.playInkByKey,
           }
         : s,
     );
@@ -1729,9 +1758,7 @@ function readEmbeddedAutostartBoot(play: EntryTicketEmbeddedPlay): {
   };
 }
 
-function parseLiveTicketTasks(
-  raw: unknown,
-): Array<{ category: string; prompt: string; solution: string; sourceKey?: string }> {
+function parseLiveTicketTasks(raw: unknown): EntryTicketTask[] {
   if (!Array.isArray(raw)) return [];
   return raw
     .map((t) => {
@@ -1740,27 +1767,34 @@ function parseLiveTicketTasks(
       const prompt = typeof row.prompt === 'string' ? row.prompt : '';
       const solution = typeof row.solution === 'string' ? row.solution : '';
       if (!prompt || !solution) return null;
+      const ink = parseEntryTicketInk(row.ink);
       return {
         category:
           typeof row.category === 'string' && row.category.trim() ? row.category.trim() : 'Eigen',
         prompt,
         solution,
         sourceKey: typeof row.sourceKey === 'string' && row.sourceKey ? row.sourceKey : undefined,
+        ...(ink.length > 0 ? { ink } : {}),
       };
     })
-    .filter(Boolean) as Array<{ category: string; prompt: string; solution: string; sourceKey?: string }>;
+    .filter(Boolean) as EntryTicketTask[];
 }
 
-function liveTasksFingerprint(
-  tasks: Array<{ prompt: string; solution: string; sourceKey?: string }>,
-): string {
-  return JSON.stringify(tasks.map((t) => ({ p: t.prompt, s: t.solution, k: t.sourceKey || '' })));
+function liveTasksFingerprint(tasks: Array<Pick<EntryTicketTask, 'prompt' | 'solution' | 'sourceKey' | 'ink'>>): string {
+  return JSON.stringify(
+    tasks.map((t) => ({
+      p: t.prompt,
+      s: t.solution,
+      k: t.sourceKey || '',
+      i: inkFingerprint(t.ink),
+    })),
+  );
 }
 
 function attachSourceKeysFromSet(
-  tasks: Array<{ category: string; prompt: string; solution: string; sourceKey?: string }>,
+  tasks: EntryTicketTask[],
   set: EntryTicketCustomSet | null,
-): Array<{ category: string; prompt: string; solution: string; sourceKey?: string }> {
+): EntryTicketTask[] {
   if (!set) return tasks;
   const prefix = `c:${set.id}:`;
   return tasks.map((task) => {
@@ -1966,6 +2000,17 @@ export default function EntryTicketPage({
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingPrompt, setEditingPrompt] = useState('');
   const [editingSolution, setEditingSolution] = useState('');
+  const [drawActive, setDrawActive] = useState(false);
+  const [activeInkTool, setActiveInkTool] = useState<PresentationDrawTool>('pen');
+  const [strokeColor, setStrokeColor] = useState(DEFAULT_PEN_COLOR);
+  const [lineWidth, setLineWidth] = useState(() => defaultLineWidthForTool('pen'));
+  const [markerOpacity, setMarkerOpacity] = useState(DEFAULT_MARKER_OPACITY);
+  const [selectedStrokeIds, setSelectedStrokeIds] = useState<string[]>([]);
+  const [clearInkOpen, setClearInkOpen] = useState(false);
+  const penColorRef = useRef(DEFAULT_PEN_COLOR);
+  const markerColorRef = useRef(DEFAULT_MARKER_COLOR);
+  const playPersistTimerRef = useRef<number | null>(null);
+  const playForceBackupTimerRef = useRef<number | null>(null);
   const [setEditIndex, setSetEditIndex] = useState<number | null>(null);
   const [setEditPrompt, setSetEditPrompt] = useState('');
   const [setEditSolution, setSetEditSolution] = useState('');
@@ -2937,10 +2982,10 @@ export default function EntryTicketPage({
   }, [embeddedPlay, questionSets]);
 
   useEffect(() => {
-    if (embeddedPlay) return;
     if (customSets.length === 0) return;
     saveCustomEntryTicketSets(customSets);
-    if (!isTeacher || !customSetsServerSyncedRef.current) return;
+    if (!isTeacher) return;
+    if (!embeddedPlay && !customSetsServerSyncedRef.current) return;
     void apiPut('/api/entry-ticket/custom-sets', { sets: customSets }).catch(() => {});
   }, [customSets, isTeacher, embeddedPlay]);
 
