@@ -120,7 +120,12 @@ router.get('/', async (req, res) => {
             found: true,
             pad: data,
             userKey: key,
-            source: fromDb && padUpdatedMs(fromDb) >= padUpdatedMs(fromFile) ? 'db' : 'file',
+            standPulled: (0, teacherScratchPadStore_1.standPulledRecently)(),
+            source: (0, teacherScratchPadStore_1.standPulledRecently)()
+                ? 'file'
+                : fromDb && padUpdatedMs(fromDb) >= padUpdatedMs(fromFile)
+                    ? 'db'
+                    : 'file',
         });
     }
     catch (e) {
@@ -153,6 +158,15 @@ router.put('/', async (req, res) => {
         const incomingMs = padUpdatedMs(payload);
         const existingMs = padUpdatedMs(existing);
         const pulledMs = (0, teacherScratchPadStore_1.standPulledAtMs)();
+        if ((0, teacherScratchPadStore_1.standPulledRecently)() && !body.seenStandPull) {
+            return res.json({
+                ok: true,
+                keptExisting: true,
+                userKey: key,
+                storedIn: 'db',
+                updatedAt: existing === null || existing === void 0 ? void 0 : existing.updatedAt,
+            });
+        }
         if ((pulledMs && incomingMs && incomingMs < pulledMs) ||
             (existingMs && incomingMs && incomingMs < existingMs)) {
             return res.json({

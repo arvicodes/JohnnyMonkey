@@ -855,6 +855,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   const lastSmoothMidRef = useRef<InkPoint | null>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const persistInkTimerRef = useRef<number | null>(null);
+  const holdGitStandRef = useRef(false);
 
   useEffect(() => {
     pagesRef.current = pages;
@@ -908,6 +909,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   }, []);
 
   const onBeforeEditorInput = useCallback(() => {
+    holdGitStandRef.current = false;
     if (textBurstArmedRef.current) {
       pushHistorySnapshot();
       textBurstArmedRef.current = false;
@@ -1055,9 +1057,17 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
       showPage(local.pages, local.pageIndex, true);
     });
 
-    // Server-Stand nachladen und mit localStorage zusammenführen
     void (async () => {
       const remote = await fetchPadFromServer();
+      if (lastServerStandPulled && remote) {
+        holdGitStandRef.current = true;
+        savePad(userId, remote, { syncServer: false });
+        if (openRef.current) {
+          showPage(remote.pages, remote.pageIndex, modeRef.current === 'text');
+          bumpHistoryUi();
+        }
+        return;
+      }
       const merged = pickNewerPad(local, remote);
       savePad(userId, merged, { immediateServer: true });
       if (!openRef.current) return;
@@ -1080,17 +1090,19 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
       window.clearTimeout(persistInkTimerRef.current);
       persistInkTimerRef.current = null;
     }
-    const nextPages = flushCurrentPage();
-    const payload = savePad(
-      userId,
-      {
-        pages: nextPages,
-        pageIndex: pageIndexRef.current,
-        updatedAt: new Date().toISOString(),
-      },
-      { immediateServer: true }
-    );
-    void flushPadToServer(userId, payload);
+    if (!holdGitStandRef.current) {
+      const nextPages = flushCurrentPage();
+      const payload = savePad(
+        userId,
+        {
+          pages: nextPages,
+          pageIndex: pageIndexRef.current,
+          updatedAt: new Date().toISOString(),
+        },
+        { immediateServer: true }
+      );
+      void flushPadToServer(userId, payload);
+    }
     openRef.current = false;
     setOpen(false);
   }, [flushCurrentPage, userId]);
@@ -1115,6 +1127,11 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     void (async () => {
       const remote = await fetchPadFromServer();
       if (cancelled) return;
+      if (lastServerStandPulled && remote) {
+        holdGitStandRef.current = true;
+        savePad(userId, remote, { syncServer: false });
+        return;
+      }
       const local = loadPad(userId);
       const merged = pickNewerPad(local, remote);
       if (
@@ -1123,7 +1140,6 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
       ) {
         savePad(userId, merged, { syncServer: false });
       } else if (padHasContent(local) || padUpdatedMs(local) > 0) {
-        // lokalen Stand serverseitig absichern (Ordner + latest)
         pushPadToServer(userId, local, true);
       }
     })();
@@ -1136,6 +1152,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   useEffect(() => {
     if (!open) return;
     const flushNow = () => {
+      if (holdGitStandRef.current) return;
       const html = serializeNotesHtml(editorRef.current) || textRef.current;
       const nextPages = pagesRef.current.map((p, i) =>
         i === pageIndexRef.current ? { ...p, text: html, ink: inkRef.current } : p
@@ -1198,6 +1215,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   /** Nach „Stand von GitHub holen“: alten Browser-Stand weg, Server-Stand nehmen. */
   useEffect(() => {
     const onFromGit = () => {
+      holdGitStandRef.current = true;
       try {
         localStorage.removeItem(storageKey(userId));
       } catch {
@@ -1206,6 +1224,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
       void (async () => {
         const remote = await fetchPadFromServer();
         if (!remote || !Array.isArray(remote.pages) || remote.pages.length === 0) return;
+        lastServerStandPulled = true;
         savePad(userId, remote, { syncServer: false });
         pagesRef.current = remote.pages as ScratchPage[];
         pageIndexRef.current = remote.pageIndex || 0;

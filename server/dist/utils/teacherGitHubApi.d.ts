@@ -1,6 +1,7 @@
 export type SchoolStandChange = {
     path: string;
     kind: 'added' | 'changed';
+    when?: string;
 };
 export type GithubStandResult = {
     ok: boolean;

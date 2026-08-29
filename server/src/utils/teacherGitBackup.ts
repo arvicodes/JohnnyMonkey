@@ -94,6 +94,7 @@ function isSecretPath(repoPath: string): boolean {
   if (n.split('/').some((part) => part.startsWith('._') || part === '.DS_Store' || part === '__MACOSX')) {
     return true;
   }
+  if (/(^|\/)pad-[^/]+\.json$/i.test(n)) return true;
   return false;
 }
 
@@ -373,7 +374,7 @@ export async function pullTeacherGitBackup(): Promise<TeacherGitBackupResult> {
       ...school,
       where: 'school',
       explanation: 'Stand von GitHub auf die Schule.',
-      changes: (school.changes || []).map((c) => toChange(c.path, c.kind)),
+      changes: (school.changes || []).map((c) => toChange(c.path, c.kind, c.when)),
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Holen fehlgeschlagen.';
@@ -499,7 +500,7 @@ export async function runTeacherGitBackup(): Promise<TeacherGitBackupResult> {
       ...school,
       where: 'school',
       explanation: 'Stand von der Schule nach GitHub.',
-      changes: (school.changes || []).map((c) => toChange(c.path, c.kind)),
+      changes: (school.changes || []).map((c) => toChange(c.path, c.kind, c.when)),
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Push fehlgeschlagen.';

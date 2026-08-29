@@ -87,10 +87,24 @@ function gitBlobSha(buf) {
 }
 function shouldSkipName(name, isDir) {
     if (isDir)
-        return SKIP_DIR.has(name) || name === '__MACOSX';
+        return SKIP_DIR.has(name) || name === '__MACOSX' || name.startsWith('_extra-sicherung');
     if (name.startsWith('._'))
         return true;
+    if (/^pad-.+\.json$/i.test(name))
+        return true;
+    if (name.startsWith('_extra-sicherung'))
+        return true;
     return SKIP_FILE.has(name.toLowerCase());
+}
+function stampForAbs(abs) {
+    try {
+        if (!fs_1.default.existsSync(abs))
+            return undefined;
+        return formatBerlinDate(fs_1.default.statSync(abs).mtime);
+    }
+    catch {
+        return undefined;
+    }
 }
 function isJunkRepoPath(repoPath) {
     return repoPath.split('/').some((part) => shouldSkipName(part, false) || shouldSkipName(part, true));
@@ -200,7 +214,7 @@ async function mapPool(items, limit, fn) {
     await Promise.all(Array.from({ length: n }, () => worker()));
     return out;
 }
-function berlinStamp() {
+function formatBerlinDate(d) {
     return new Intl.DateTimeFormat('de-DE', {
         timeZone: 'Europe/Berlin',
         day: 'numeric',
@@ -209,8 +223,11 @@ function berlinStamp() {
         minute: '2-digit',
         hour12: false,
     })
-        .format(new Date())
+        .format(d)
         .replace(', ', ' ');
+}
+function berlinStamp() {
+    return formatBerlinDate(new Date());
 }
 async function collectSchoolDiff() {
     const token = readGithubToken();
@@ -250,13 +267,21 @@ async function collectSchoolDiff() {
         const remote = remoteSha.get(file.repoPath);
         if (remote === sha)
             continue;
-        changed.push({ path: file.repoPath, buf, kind: remote ? 'changed' : 'added' });
+        changed.push({
+            path: file.repoPath,
+            buf,
+            kind: remote ? 'changed' : 'added',
+        });
     }
     return { token, owner, repo, parentSha, baseTreeSha, changed };
 }
 async function previewSchoolStandChanges() {
     const { changed } = await collectSchoolDiff();
-    return changed.map(({ path, kind }) => ({ path, kind }));
+    return changed.map(({ path, kind }) => ({
+        path,
+        kind,
+        when: stampForAbs(absForRepoPath(path)),
+    }));
 }
 async function pushSchoolStandToGithub() {
     let prepared;
@@ -272,7 +297,11 @@ async function pushSchoolStandToGithub() {
         };
     }
     const { token, owner, repo, parentSha, baseTreeSha, changed } = prepared;
-    const changeList = changed.map(({ path, kind }) => ({ path, kind }));
+    const changeList = changed.map(({ path, kind }) => ({
+        path,
+        kind,
+        when: stampForAbs(absForRepoPath(path)),
+    }));
     if (changed.length === 0) {
         return {
             ok: true,
@@ -380,6 +409,7 @@ async function listRemoteStandFiles() {
 }
 function localKindForRemote(repoPath, remoteSha) {
     const abs = absForRepoPath(repoPath);
+    const when = stampForAbs(abs);
     if (!fs_1.default.existsSync(abs))
         return { path: repoPath, kind: 'added' };
     try {
@@ -388,10 +418,10 @@ function localKindForRemote(repoPath, remoteSha) {
             return null;
         if (gitBlobSha(buf) === remoteSha)
             return null;
-        return { path: repoPath, kind: 'changed' };
+        return { path: repoPath, kind: 'changed', when };
     }
     catch {
-        return { path: repoPath, kind: 'changed' };
+        return { path: repoPath, kind: 'changed', when };
     }
 }
 async function previewSchoolStandPull() {

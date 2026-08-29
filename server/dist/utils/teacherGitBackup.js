@@ -64,6 +64,8 @@ function isSecretPath(repoPath) {
     if (n.split('/').some((part) => part.startsWith('._') || part === '.DS_Store' || part === '__MACOSX')) {
         return true;
     }
+    if (/(^|\/)pad-[^/]+\.json$/i.test(n))
+        return true;
     return false;
 }
 function formatBerlinStamp(d) {
@@ -344,7 +346,7 @@ async function pullTeacherGitBackup() {
             ...school,
             where: 'school',
             explanation: 'Stand von GitHub auf die Schule.',
-            changes: (school.changes || []).map((c) => toChange(c.path, c.kind)),
+            changes: (school.changes || []).map((c) => toChange(c.path, c.kind, c.when)),
         };
     }
     catch (err) {
@@ -463,7 +465,7 @@ async function runTeacherGitBackup() {
             ...school,
             where: 'school',
             explanation: 'Stand von der Schule nach GitHub.',
-            changes: (school.changes || []).map((c) => toChange(c.path, c.kind)),
+            changes: (school.changes || []).map((c) => toChange(c.path, c.kind, c.when)),
         };
     }
     catch (err) {
