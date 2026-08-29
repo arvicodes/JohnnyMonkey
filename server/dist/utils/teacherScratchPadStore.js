@@ -11,6 +11,8 @@ exports.ensureScratchPadBackupDir = ensureScratchPadBackupDir;
 exports.ensureScratchPadRoots = ensureScratchPadRoots;
 exports.scratchPadContentLen = scratchPadContentLen;
 exports.wouldWipeScratchPad = wouldWipeScratchPad;
+exports.scratchPadRawLen = scratchPadRawLen;
+exports.wouldShrinkScratchPad = wouldShrinkScratchPad;
 exports.readScratchPadLive = readScratchPadLive;
 exports.writeScratchPad = writeScratchPad;
 const crypto_1 = __importDefault(require("crypto"));
@@ -168,6 +170,22 @@ function scratchPadContentLen(payload) {
 function wouldWipeScratchPad(existing, incoming) {
     return scratchPadContentLen(existing) >= 40 && scratchPadContentLen(incoming) < 12;
 }
+/** Rohe Textmenge (HTML), damit ein älterer Tab einen längeren Schulstand nicht zurückschreibt. */
+function scratchPadRawLen(payload) {
+    if (!payload || !Array.isArray(payload.pages))
+        return 0;
+    return payload.pages.reduce((n, raw) => {
+        const p = raw;
+        const text = typeof p.text === 'string' ? p.text.length : 0;
+        const ink = Array.isArray(p.ink) ? p.ink.length : 0;
+        return n + text + ink;
+    }, 0);
+}
+function wouldShrinkScratchPad(existing, incoming) {
+    const prev = scratchPadRawLen(existing);
+    const next = scratchPadRawLen(incoming);
+    return prev >= 400 && next + 200 < prev;
+}
 function readScratchPadLive(userKey) {
     try {
         const livePath = path_1.default.join(ensureScratchPadLiveDir(userKey), 'latest.json');
@@ -195,7 +213,7 @@ function writeScratchPad(userKey, payload, options) {
     const backupDir = ensureScratchPadBackupDir(userKey);
     const livePath = path_1.default.join(liveDir, 'latest.json');
     const existing = readScratchPadLive(userKey);
-    if (wouldWipeScratchPad(existing, payload)) {
+    if (wouldWipeScratchPad(existing, payload) || wouldShrinkScratchPad(existing, payload)) {
         console.warn('Scratch pad: refusing to overwrite substantial notes with near-empty payload', userKey);
         return {
             live: livePath,

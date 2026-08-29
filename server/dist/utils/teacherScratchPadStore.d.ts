@@ -26,6 +26,9 @@ export type ScratchPadPayload = {
 /** Sichtbare Text-/Tintenmenge — zum Schutz vor versehentlichem Leerlauf-Überschreiben. */
 export declare function scratchPadContentLen(payload: ScratchPadPayload | null | undefined): number;
 export declare function wouldWipeScratchPad(existing: ScratchPadPayload | null | undefined, incoming: ScratchPadPayload | null | undefined): boolean;
+/** Rohe Textmenge (HTML), damit ein älterer Tab einen längeren Schulstand nicht zurückschreibt. */
+export declare function scratchPadRawLen(payload: ScratchPadPayload | null | undefined): number;
+export declare function wouldShrinkScratchPad(existing: ScratchPadPayload | null | undefined, incoming: ScratchPadPayload | null | undefined): boolean;
 export declare function readScratchPadLive(userKey: string): ScratchPadPayload | null;
 /**
  * Speichert den aktuellen Stand und schreibt Sicherheitskopien.

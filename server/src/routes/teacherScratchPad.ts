@@ -5,8 +5,10 @@ import {
   ensureScratchPadRoots,
   readScratchPadLive,
   scratchPadContentLen,
+  scratchPadRawLen,
   scratchPadUserFolderKey,
   writeScratchPad,
+  wouldShrinkScratchPad,
   wouldWipeScratchPad,
   SCRATCH_PAD_DB_PATH,
   type ScratchPadPayload,
@@ -91,8 +93,12 @@ router.get('/', async (req, res) => {
     if (fromDb && fromFile) {
       const dbLen = scratchPadContentLen(fromDb);
       const fileLen = scratchPadContentLen(fromFile);
+      const dbRaw = scratchPadRawLen(fromDb);
+      const fileRaw = scratchPadRawLen(fromFile);
       if (fileLen >= 40 && dbLen < 12) data = fromFile;
       else if (dbLen >= 40 && fileLen < 12) data = fromDb;
+      else if (fileRaw >= dbRaw + 80) data = fromFile;
+      else if (dbRaw >= fileRaw + 80) data = fromDb;
       else data = padUpdatedMs(fromFile) > padUpdatedMs(fromDb) ? fromFile : fromDb;
     } else {
       data = fromDb || fromFile;
@@ -143,7 +149,7 @@ router.put('/', async (req, res) => {
     const existingFile = readScratchPadLive(key);
     const existing =
       scratchPadContentLen(existingFile) >= scratchPadContentLen(existingDb) ? existingFile : existingDb;
-    if (wouldWipeScratchPad(existing, payload)) {
+    if (wouldWipeScratchPad(existing, payload) || wouldShrinkScratchPad(existing, payload)) {
       return res.json({
         ok: true,
         keptExisting: true,

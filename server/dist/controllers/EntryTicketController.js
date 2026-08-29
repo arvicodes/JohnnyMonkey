@@ -398,6 +398,43 @@ function lessonFolderKey(lesson) {
     const name = raw.split('/').pop() || raw;
     return name.trim().toLowerCase();
 }
+function taskTextLen(task) {
+    return ((task === null || task === void 0 ? void 0 : task.prompt) || '').length + ((task === null || task === void 0 ? void 0 : task.solution) || '').length;
+}
+/** Kürzerer Text derselben Karte (typisch: alter Tab) darf den längeren Stand nicht ersetzen. */
+function preserveRicherTasks(existing, incoming) {
+    const prevById = new Map(existing.map((s) => [s.id, s]));
+    return incoming.map((set) => {
+        const prev = prevById.get(set.id);
+        if (!prev)
+            return set;
+        const prevTask = new Map();
+        for (const lesson of prev.lessons) {
+            for (const task of lesson.tasks || []) {
+                if (task.id)
+                    prevTask.set(task.id, task);
+            }
+        }
+        const lessons = set.lessons.map((lesson) => ({
+            ...lesson,
+            tasks: (lesson.tasks || []).map((task) => {
+                if (!task.id)
+                    return task;
+                const stored = prevTask.get(task.id);
+                if (!stored)
+                    return task;
+                if (taskTextLen(stored) <= taskTextLen(task))
+                    return task;
+                return {
+                    ...task,
+                    prompt: (stored.prompt || '').length >= (task.prompt || '').length ? stored.prompt : task.prompt,
+                    solution: (stored.solution || '').length >= (task.solution || '').length ? stored.solution : task.solution,
+                };
+            }),
+        }));
+        return { ...set, lessons };
+    });
+}
 /** Leere Stunden im PUT dürfen gespeicherte Karten nicht löschen. */
 function preserveNonEmptyLessons(existing, incoming) {
     const prevById = new Map(existing.map((s) => [s.id, s]));
@@ -422,7 +459,7 @@ async function saveStoredCustomSets(teacherId, sets, options) {
         .map((s) => normalizeCustomSetPayload(s))
         .filter(Boolean);
     const existing = await loadStoredCustomSets(teacherId);
-    const merged = preserveNonEmptyLessons(existing, cleaned);
+    const merged = preserveRicherTasks(existing, preserveNonEmptyLessons(existing, cleaned));
     const payload = { sets: merged, savedAt: new Date().toISOString(), teacherId };
     await prisma.teacherLessonInstruction.upsert({
         where: {

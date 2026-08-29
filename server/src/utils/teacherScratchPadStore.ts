@@ -187,6 +187,26 @@ export function wouldWipeScratchPad(
   return scratchPadContentLen(existing) >= 40 && scratchPadContentLen(incoming) < 12;
 }
 
+/** Rohe Textmenge (HTML), damit ein älterer Tab einen längeren Schulstand nicht zurückschreibt. */
+export function scratchPadRawLen(payload: ScratchPadPayload | null | undefined): number {
+  if (!payload || !Array.isArray(payload.pages)) return 0;
+  return payload.pages.reduce<number>((n, raw) => {
+    const p = raw as { text?: unknown; ink?: unknown };
+    const text = typeof p.text === 'string' ? p.text.length : 0;
+    const ink = Array.isArray(p.ink) ? p.ink.length : 0;
+    return n + text + ink;
+  }, 0);
+}
+
+export function wouldShrinkScratchPad(
+  existing: ScratchPadPayload | null | undefined,
+  incoming: ScratchPadPayload | null | undefined
+): boolean {
+  const prev = scratchPadRawLen(existing);
+  const next = scratchPadRawLen(incoming);
+  return prev >= 400 && next + 200 < prev;
+}
+
 export function readScratchPadLive(userKey: string): ScratchPadPayload | null {
   try {
     const livePath = path.join(ensureScratchPadLiveDir(userKey), 'latest.json');
@@ -217,7 +237,7 @@ export function writeScratchPad(
 
   const livePath = path.join(liveDir, 'latest.json');
   const existing = readScratchPadLive(userKey);
-  if (wouldWipeScratchPad(existing, payload)) {
+  if (wouldWipeScratchPad(existing, payload) || wouldShrinkScratchPad(existing, payload)) {
     console.warn('Scratch pad: refusing to overwrite substantial notes with near-empty payload', userKey);
     return {
       live: livePath,

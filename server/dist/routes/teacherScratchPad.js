@@ -85,9 +85,15 @@ router.get('/', async (req, res) => {
         if (fromDb && fromFile) {
             const dbLen = (0, teacherScratchPadStore_1.scratchPadContentLen)(fromDb);
             const fileLen = (0, teacherScratchPadStore_1.scratchPadContentLen)(fromFile);
+            const dbRaw = (0, teacherScratchPadStore_1.scratchPadRawLen)(fromDb);
+            const fileRaw = (0, teacherScratchPadStore_1.scratchPadRawLen)(fromFile);
             if (fileLen >= 40 && dbLen < 12)
                 data = fromFile;
             else if (dbLen >= 40 && fileLen < 12)
+                data = fromDb;
+            else if (fileRaw >= dbRaw + 80)
+                data = fromFile;
+            else if (dbRaw >= fileRaw + 80)
                 data = fromDb;
             else
                 data = padUpdatedMs(fromFile) > padUpdatedMs(fromDb) ? fromFile : fromDb;
@@ -141,7 +147,7 @@ router.put('/', async (req, res) => {
         const existingDb = await readScratchPadFromDb(user.id);
         const existingFile = (0, teacherScratchPadStore_1.readScratchPadLive)(key);
         const existing = (0, teacherScratchPadStore_1.scratchPadContentLen)(existingFile) >= (0, teacherScratchPadStore_1.scratchPadContentLen)(existingDb) ? existingFile : existingDb;
-        if ((0, teacherScratchPadStore_1.wouldWipeScratchPad)(existing, payload)) {
+        if ((0, teacherScratchPadStore_1.wouldWipeScratchPad)(existing, payload) || (0, teacherScratchPadStore_1.wouldShrinkScratchPad)(existing, payload)) {
             return res.json({
                 ok: true,
                 keptExisting: true,
