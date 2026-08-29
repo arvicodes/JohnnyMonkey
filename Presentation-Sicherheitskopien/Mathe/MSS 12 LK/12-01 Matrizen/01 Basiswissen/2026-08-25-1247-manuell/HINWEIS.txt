@@ -1,0 +1,10 @@
+Sicherheitskopie (manuell)
+Erstellt: 25.08.2026, 12:47
+Stunde: Mathe / MSS 12 LK / 12-01 Matrizen / 01 Basiswissen
+Stand: 32 Folien, inkl. der final bearbeiteten Folie 29.
+
+Diese Dateien sind Kopien. Die Live-Präsentation wurde nicht verändert.
+
+Wiederherstellen: die vier JSON-Dateien zurück in den Stundenordner kopieren
+(Praesentation.deck.json usw.). Vorher die Live-Dateien nicht überschreiben,
+ohne eine neue Kopie anzulegen.

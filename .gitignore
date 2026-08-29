@@ -59,17 +59,8 @@ db-checkpoint-*.db
 !backup_current_state_20251021-085112.db
 !backup_current_state_20260704-juli2026.db
 
-# Presentation safety copies (auto-generated; not for git)
-Presentation-Sicherheitskopien/
+# Nur die vielen Mini-Kopien neben jeder Folie (nicht der Sammelordner)
 **/.presentation-backups/
-J-M-Reihen/Folien - ALLE - BACKUP/
-
-# Lehrer-Schnellnotizen (Live + Sicherheitskopien)
-J-M-Reihen/Lehrer-Schnellnotizen/
-Notizen-Sicherheitskopien/
-J-M-Reihen/Backup - Notizen/
-J-M-Reihen/Backup - Folien/
-J-M-Reihen/Backup - Tickets/
 
 # Login-Listen (Klartext-Codes, nicht committen)
 LOGIN-CODES-ALLE.txt
