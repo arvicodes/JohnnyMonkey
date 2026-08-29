@@ -39,13 +39,14 @@ import {
   writeNamedVersionSnapshot,
   writeOriginalDeckSnapshot,
   parsePresentationPlanMode,
+  presentationEditorUrl,
 } from '../lib/presentationDeck';
 import {
   parsePresentationDeckSavedEvent,
   samePresentationLesson,
 } from '../lib/presentationDeckSync';
 import { PresentationDrawTool, DEFAULT_MARKER_COLOR, DEFAULT_MARKER_OPACITY, DEFAULT_PEN_COLOR, defaultColorForTool, defaultLineWidthForTool, lineWidthsForTool, toolUsesColor } from '../lib/presentationDrawTools';
-import { presentationLessonBackUrl, tryHandleLessonEntryTicketLinkClick, isLessonEntryTicketSlideHref } from '../lib/presentationEditorUi';
+import { tryHandleLessonEntryTicketLinkClick, isLessonEntryTicketSlideHref } from '../lib/presentationEditorUi';
 import { slideSectionName } from '../lib/presentationSections';
 import { withLessonSectionPath } from '../lib/entryTicketCustomSets';
 import { markLessonPlayed } from '../lib/playedLessons';
@@ -1380,7 +1381,8 @@ const PresentationPresentPage: React.FC = () => {
           setDrawActive(false);
           return;
         }
-        navigate(presentationLessonBackUrl(lessonPath, groupId, planMode));
+        exitPresentFullscreen();
+        navigate(presentationEditorUrl(lessonPath, groupId, 'create'));
         return;
       }
 
