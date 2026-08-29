@@ -1197,8 +1197,15 @@ const PresentationPresentPage: React.FC = () => {
     leavingPresentRef.current = true;
     markLeftPresentToEditor();
     exitPresentFullscreen();
-    navigate(presentationEditorUrl(lessonPath, groupId, 'create'));
-  }, [groupId, lessonPath, navigate]);
+    navigate(
+      presentationEditorUrl(
+        lessonPath,
+        groupId,
+        'create',
+        currentSlideIdRef.current || currentSlide?.id || null,
+      ),
+    );
+  }, [currentSlide?.id, groupId, lessonPath, navigate]);
   leavePresentToEditorRef.current = leavePresentToEditor;
 
   const goToDashboard = useCallback(() => {

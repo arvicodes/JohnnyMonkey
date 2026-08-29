@@ -248,6 +248,7 @@ const PresentationEditorPage: React.FC = () => {
   const lessonPath = params.get('lessonPath') || '';
   const groupId = params.get('groupId') || '';
   const planMode = parsePresentationPlanMode(params.get('planMode'));
+  const startSlideId = (params.get('slideId') || '').trim();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -512,7 +513,11 @@ const PresentationEditorPage: React.FC = () => {
         playVariantsRef.current = migrated.variants;
         editingVariantRef.current = false;
         setEditingVariant(false);
-        setActiveId(migrated.deck.slides[0]?.id ?? null);
+        const requested =
+          startSlideId && migrated.deck.slides.some((s) => s.id === startSlideId)
+            ? startSlideId
+            : migrated.deck.slides[0]?.id ?? null;
+        setActiveId(requested);
         setLoading(false);
         lastPersistedUpdatedAtRef.current = migrated.deck.updatedAt || '';
         if (recovered) {

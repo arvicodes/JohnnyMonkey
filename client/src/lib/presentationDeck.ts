@@ -1024,13 +1024,15 @@ export function parsePresentationPlanMode(
 export function presentationEditorUrl(
   lessonPath: string,
   groupId?: string,
-  planMode?: PresentationPlanMode
+  planMode?: PresentationPlanMode,
+  slideId?: string | null,
 ): string {
   const qs = new URLSearchParams({ lessonPath });
   if (groupId) qs.set('groupId', groupId);
   if (planMode === 'create' || planMode === 'run' || planMode === 'background') {
     qs.set('planMode', planMode);
   }
+  if (slideId) qs.set('slideId', slideId);
   return `/presentation/edit?${qs.toString()}`;
 }
 
