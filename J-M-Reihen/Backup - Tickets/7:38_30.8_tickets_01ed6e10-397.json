@@ -1113,7 +1113,14 @@
           "lessonName": "01.02 Einstieg Matrizen",
           "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen#01.02 Einstieg Matrizen",
           "topicName": "01 Basiswissen",
-          "tasks": []
+          "tasks": [
+            {
+              "category": "Eigen",
+              "prompt": "Oder",
+              "solution": "was",
+              "id": "q_e5600c62-b578-4eb6-a13e-33b720669a16"
+            }
+          ]
         },
         {
           "id": "ls_e52fef79-cf7e-44c3-b623-16120597d99b",
@@ -3057,7 +3064,14 @@
           "lessonName": "1.0 Zählen und Zahlen veranschaulichen",
           "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/1.0 Zählen und Zahlen veranschaulichen",
           "topicName": "Kap 1 - Natürliche Zahlen und Größen",
-          "tasks": []
+          "tasks": [
+            {
+              "category": "Eigen",
+              "prompt": "Test",
+              "solution": "Test",
+              "id": "q_4a0ffad9-9a82-4537-a178-bc48be1386d8"
+            }
+          ]
         },
         {
           "id": "ls_c9d72438-f2fe-4f6f-8493-225ae17e3fb2",
@@ -3106,6 +3120,6 @@
       ]
     }
   ],
-  "savedAt": "2026-08-29T13:32:38.918Z",
+  "savedAt": "2026-08-30T05:38:05.668Z",
   "teacherId": "01ed6e10-397e-446c-9254-2ad7fd4ec777"
 }
