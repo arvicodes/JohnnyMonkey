@@ -21,6 +21,7 @@ import {
   enhancePresentationNotesImages,
   presentationNotesImageEditorSx,
   serializePresentationNotesHtml,
+  insertHtmlIntoOpenNotesEditor,
   placeNotesCaretInTypingHost,
   placeNotesCaretAtPoint,
   selectAllNotesContent,
@@ -37,6 +38,12 @@ import {
   updateTableResizeHoverCursor,
 } from '../../lib/presentationTableResize';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
+import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
+import {
+  NOTES_LESSON_TEMPLATE_HTML,
+  NOTES_LESSON_TEMPLATE_LABEL,
+  notesHtmlLooksEmpty,
+} from '../../lib/presentationNotesTemplates';
 import { clipboardHasImage, clipboardPrefersRichText, collectPasteImages } from '../../lib/goodNotesClipboard';
 import PresentationNotesInkCanvas, { type NotesInkMode } from './PresentationNotesInkCanvas';
 import '../../styles/presentationLists.css';
@@ -182,6 +189,21 @@ const NoteZone: React.FC<NoteZoneProps> = ({
     },
     [onUploadImage, persistFromEditor, enhanceImages, readOnly, onBeforeDiscreteEdit]
   );
+
+  const insertLessonTemplate = useCallback(() => {
+    if (!ref.current || readOnly) return;
+    onBeforeDiscreteEdit?.();
+    const el = ref.current;
+    el.focus({ preventScroll: true });
+    const current = serializePresentationNotesHtml(el);
+    if (notesHtmlLooksEmpty(current)) {
+      el.innerHTML = NOTES_LESSON_TEMPLATE_HTML;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    } else {
+      insertHtmlIntoOpenNotesEditor(NOTES_LESSON_TEMPLATE_HTML);
+    }
+    persistFromEditor(true, true);
+  }, [readOnly, onBeforeDiscreteEdit, persistFromEditor]);
 
   const syncFromProps = useCallback(() => {
     const el = ref.current;
@@ -408,6 +430,22 @@ const NoteZone: React.FC<NoteZoneProps> = ({
           {label}
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+          {!readOnly && (
+            <Tooltip title={`${NOTES_LESSON_TEMPLATE_LABEL} einsetzen`}>
+              <IconButton
+                size="small"
+                aria-label={`${NOTES_LESSON_TEMPLATE_LABEL} einsetzen`}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  if (ref.current) onEditorFocus(fieldKey, ref.current);
+                  insertLessonTemplate();
+                }}
+                sx={{ width: 22, height: 22, color: PRES_EDITOR_UI.textMuted }}
+              >
+                <AssignmentOutlinedIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            </Tooltip>
+          )}
           {!readOnly && onUploadImage && (
             <>
               <input
