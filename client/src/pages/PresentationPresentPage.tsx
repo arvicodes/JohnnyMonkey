@@ -1010,7 +1010,7 @@ const PresentationPresentPage: React.FC = () => {
         { ...deck, updatedAt: new Date().toISOString() },
         { forceBackup: true }
       );
-      setSnackbar('Gesichert');
+      setSnackbar('Gesichert — Arbeitsdatei + Backup - Folien');
       setSaving(false);
       setSaveProgress('');
       void exportPresentationPdfVersions(lessonPath, deck, ann, undefined, {

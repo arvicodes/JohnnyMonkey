@@ -1405,7 +1405,7 @@ const PresentationEditorPage: React.FC = () => {
         commitEditorState({ history: 'skip' });
         void flushPersist({ schedulePdfExport: false, forceBackup: true }).then(() => {
           if (lastPersistedVersionRef.current !== saveVersionRef.current) return;
-          setSnackbar('Gesichert');
+          setSnackbar('Gesichert — Arbeitsdatei + Backup - Folien');
         });
         return;
       }
@@ -3673,7 +3673,7 @@ const PresentationEditorPage: React.FC = () => {
               boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
             }}
           >
-            <Tooltip title="Sichern (⌘S): aktuelle Version + Kopie nach Backup - Folien">
+            <Tooltip title="Sichern (⌘S): Arbeitsdatei + Kopie nach Backup - Folien">
               <IconButton
                 size="small"
                 onClick={() => {
@@ -3686,7 +3686,7 @@ const PresentationEditorPage: React.FC = () => {
                   }
                   void flushPersist({ schedulePdfExport: false, forceBackup: true }).then(() => {
                     if (lastPersistedVersionRef.current !== saveVersionRef.current) return;
-                    setSnackbar('Gesichert');
+                    setSnackbar('Gesichert — Arbeitsdatei + Backup - Folien');
                     schedulePdfExport({ delayMs: 14000, notify: false });
                   });
                 }}
