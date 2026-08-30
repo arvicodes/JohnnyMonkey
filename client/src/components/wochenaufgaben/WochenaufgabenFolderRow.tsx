@@ -40,6 +40,51 @@ function isRealGroupId(id: string | null | undefined): id is string {
   return Boolean(id && !id.startsWith('__'));
 }
 
+/** Lehrerin: Wochenaufgaben an eine Reihe hängen, ohne dass sie standardmäßig da sind. */
+export function WochenaufgabenAddToReiheButton({ onAdd }: { onAdd: () => void }) {
+  return (
+    <Box
+      component="button"
+      type="button"
+      title="Wochenaufgaben zu dieser Reihe hinzufügen"
+      aria-label="Wochenaufgaben zu dieser Reihe hinzufügen"
+      onClick={(e) => {
+        e.stopPropagation();
+        onAdd();
+      }}
+      sx={{
+        mb: 0.75,
+        width: '100%',
+        minWidth: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        gap: 0.5,
+        border: `1px dashed ${WOCHENAUFGABEN_BOX_BORDER}`,
+        borderRadius: 1.25,
+        bgcolor: 'transparent',
+        px: 0.75,
+        py: 0.45,
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        '&:hover': { bgcolor: WOCHENAUFGABEN_BOX_BG },
+      }}
+    >
+      <Typography
+        component="span"
+        sx={{
+          fontSize: '0.68rem',
+          fontWeight: 700,
+          color: WOCHENAUFGABEN_TEXT_COLOR,
+          lineHeight: 1,
+        }}
+      >
+        + Wochenaufgaben
+      </Typography>
+    </Box>
+  );
+}
+
 export default function WochenaufgabenFolderRow({
   children,
   parentPath,

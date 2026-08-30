@@ -1,8 +1,10 @@
 /** Lädt vorhandene Wochenaufgaben-Ordner — legt sie nicht automatisch an. */
 
+import { saveJsonFile } from './presentationDeck';
 import { ensureWochenaufgabeDeck } from './wochenaufgabenPresentation';
 import {
   WochenaufgabenFsNode,
+  WOCHENAUFGABEN_AKTIV_FILE,
   defaultWochenaufgabenFolderPath,
   folderPathBasename,
   isWochenaufgabenFolderName,
@@ -94,9 +96,13 @@ export async function hydrateWochenaufgabenFolderContents(
   }
 }
 
-/** Legt Wochenaufgaben unter einer Reihe an (erster nummerierter Ordner). */
+/** Hängt Wochenaufgaben an eine Reihe (Marker + erster nummerierter Ordner). */
 export async function addWochenaufgabenToReihe(reihePath: string): Promise<string> {
   const waPath = defaultWochenaufgabenFolderPath(reihePath);
+  await saveJsonFile(waPath, WOCHENAUFGABEN_AKTIV_FILE, {
+    enabled: true,
+    addedAt: new Date().toISOString(),
+  });
   await ensureWochenaufgabeDeck(`${waPath}/1`);
   return waPath;
 }

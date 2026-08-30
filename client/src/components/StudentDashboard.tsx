@@ -104,7 +104,6 @@ import {
   WOCHENAUFGABEN_BG,
   WOCHENAUFGABEN_BORDER,
   WOCHENAUFGABEN_TEXT_COLOR,
-  findCachedWochenaufgabenSibling,
   isNumberedWochenaufgabeName,
   isNumberedWochenaufgabePath,
   isWochenaufgabenFolderName,
@@ -3244,8 +3243,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   // Neue Funktion zum Rendern der echten Ordner-Vorschau (exakt wie im Screenshot)
   const renderAssignedFolderPreview = (groupId: string, folderPath: string) => {
     const rawItems = assignedFolderContents[`${groupId}:${folderPath}`] || [];
-    const siblingWochen = findCachedWochenaufgabenSibling(groupId, folderPath, assignedFolderContents);
-    const items = mergeWochenaufgabenIntoFolderTree(rawItems, folderPath, siblingWochen);
+    const items = mergeWochenaufgabenIntoFolderTree(rawItems, folderPath, null);
     const isLoading = loadingFolderContents[`${groupId}:${folderPath}`] || false;
     const rootIsWochenaufgaben = isWochenaufgabenFolderName(folderPath.split('/').pop() || '');
     const rootIsInformatik = isInformatikFolderPath(folderPath);
@@ -3803,13 +3801,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           {rootExpanded && (
           <Box sx={{ ml: 2, mt: 1 }}>
             <Box sx={{ mb: isLoading ? 0.5 : 0 }}>
-              <WochenaufgabenFolderRow
-                children={waDisplay.children}
-                parentPath={waDisplay.parentPath}
-                groupId={groupId}
-                studentId={userId}
-                onOpenPdf={(lessonPath) => void openWaPdf(lessonPath)}
-              />
+              {waDisplay ? (
+                <WochenaufgabenFolderRow
+                  children={waDisplay.children}
+                  parentPath={waDisplay.parentPath}
+                  groupId={groupId}
+                  studentId={userId}
+                  onOpenPdf={(lessonPath) => void openWaPdf(lessonPath)}
+                />
+              ) : null}
               <EntryTicketCompletedRow groupId={groupId} />
             </Box>
             {isLoading ? (

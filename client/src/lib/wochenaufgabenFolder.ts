@@ -68,12 +68,26 @@ export function isNumberedWochenaufgabeName(name: string): boolean {
   return /^\d+$/.test((name || '').trim());
 }
 
+/** Wird beim bewussten Hinzufügen zur Reihe geschrieben — nicht bei alten Auto-Ordnern. */
+export const WOCHENAUFGABEN_AKTIV_FILE = 'aktiv.json';
+
+export function isWochenaufgabenAktivMarkerName(name: string): boolean {
+  return String(name || '').trim().toLowerCase() === WOCHENAUFGABEN_AKTIV_FILE;
+}
+
+export function hasWochenaufgabenAktivMarker(children: WochenaufgabenFsNode[] | undefined): boolean {
+  return (Array.isArray(children) ? children : []).some(
+    (item) => item?.type === 'file' && isWochenaufgabenAktivMarkerName(String(item.name || '')),
+  );
+}
+
 /** Ordner/Dateien für die Baum-Vorschau filtern (Wochenaufgaben, Grafiken, nummerierte WA). */
 export function filterVisibleFolderChildren(items: WochenaufgabenFsNode[] | undefined): WochenaufgabenFsNode[] {
   return (Array.isArray(items) ? items : [])
     .filter((item) => {
-      if (item?.type !== 'directory') return true;
       const name = String(item.name || '');
+      if (item?.type === 'file' && isWochenaufgabenAktivMarkerName(name)) return false;
+      if (item?.type !== 'directory') return true;
       if (isWochenaufgabenFolderName(name)) return false;
       if (isNumberedWochenaufgabeName(name)) return false;
       if (isPresentationInternalFolderName(name)) return false;
@@ -122,7 +136,8 @@ export type WochenaufgabenDisplayBlock = {
 };
 
 /**
- * Block für die Dashboard-Box — nur wenn die Reihe einen Wochenaufgaben-Ordner hat.
+ * Block für die Dashboard-Box — nur nach bewusstem Hinzufügen zur Reihe.
+ * Alte, automatisch angelegte Ordner ohne Marker bleiben unsichtbar.
  */
 export function resolveWochenaufgabenDisplayBlock(
   groupId: string,
@@ -142,12 +157,14 @@ export function resolveWochenaufgabenDisplayBlock(
 
   const fromTree = resolveWochenaufgabenBlock(groupId, folderPath, mergedItems, contents);
   if (!fromTree) return null;
+  const children =
+    contents[`${groupId}:${fromTree.parentPath}`] ||
+    fromTree.children ||
+    [];
+  if (!hasWochenaufgabenAktivMarker(children)) return null;
   return {
     parentPath: fromTree.parentPath,
-    children:
-      contents[`${groupId}:${fromTree.parentPath}`] ||
-      fromTree.children ||
-      [],
+    children,
   };
 }
 

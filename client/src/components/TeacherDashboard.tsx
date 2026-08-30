@@ -102,7 +102,6 @@ import {
   WOCHENAUFGABEN_BORDER,
   WOCHENAUFGABEN_TEXT_COLOR,
   filterVisibleFolderChildren,
-  findCachedWochenaufgabenSibling,
   isNumberedWochenaufgabeName,
   isNumberedWochenaufgabePath,
   isPresentationInternalFolderName,
@@ -115,9 +114,15 @@ import {
   resolveWochenaufgabenDisplayBlock,
   stripWochenaufgabenFolderFromTree,
 } from '../lib/wochenaufgabenFolder';
-import { hydrateWochenaufgabenFolderContents, mergeWochenaufgabenContentsPatch } from '../lib/wochenaufgabenHydrate';
+import {
+  addWochenaufgabenToReihe,
+  hydrateWochenaufgabenFolderContents,
+  mergeWochenaufgabenContentsPatch,
+} from '../lib/wochenaufgabenHydrate';
 import { ensureWochenaufgabeDeck } from '../lib/wochenaufgabenPresentation';
-import WochenaufgabenFolderRow from './wochenaufgaben/WochenaufgabenFolderRow';
+import WochenaufgabenFolderRow, {
+  WochenaufgabenAddToReiheButton,
+} from './wochenaufgaben/WochenaufgabenFolderRow';
 import EntryTicketCompletedRow from './entry-ticket/EntryTicketCompletedRow';
 import {
   Box,
@@ -10336,8 +10341,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
     const enableDrag = opts?.enableDrag !== false;
     const workflowGroupIds = opts?.workflowGroupIds;
     const rawItems = assignedFolderContents[`${groupId}:${folderPath}`] || [];
-    const siblingWochen = findCachedWochenaufgabenSibling(groupId, folderPath, assignedFolderContents);
-    const items = mergeWochenaufgabenIntoFolderTree(rawItems, folderPath, siblingWochen);
+    const items = mergeWochenaufgabenIntoFolderTree(rawItems, folderPath, null);
     const isLoading = loadingFolderContents[`${groupId}:${folderPath}`] || false;
     const rootIsWochenaufgaben = isWochenaufgabenFolderName(folderPath.split('/').pop() || '');
     const rootHeaderColor = rootIsWochenaufgaben ? WOCHENAUFGABEN_TEXT_COLOR : '#D32F2F';
@@ -10359,7 +10363,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
       : stripWochenaufgabenFolderFromTree(filteredItems);
     const addWochenaufgabe = (waParentPath: string) => {
       void (async () => {
-        const cached = assignedFolderContents[`${groupId}:${waParentPath}`] || waDisplay.children || [];
+        const cached = assignedFolderContents[`${groupId}:${waParentPath}`] || waDisplay?.children || [];
         const n = nextWochenaufgabeNumber(cached);
         const lessonPath = `${waParentPath}/${n}`;
         await ensureWochenaufgabeDeck(lessonPath);
@@ -10370,6 +10374,30 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
         void openWochenaufgabenPresentation(groupId, lessonPath);
       })();
     };
+    const enableWochenaufgabenOnReihe = () => {
+      void (async () => {
+        const waPath = await addWochenaufgabenToReihe(folderPath);
+        await fetchAssignedFolderContent(groupId, folderPath);
+        await fetchAssignedFolderContent(groupId, waPath);
+      })();
+    };
+    const wochenaufgabenSection = (
+      <>
+        {waDisplay ? (
+          <WochenaufgabenFolderRow
+            children={waDisplay.children}
+            parentPath={waDisplay.parentPath}
+            groupId={groupId}
+            workflowGroupIds={workflowGroupIds}
+            onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
+            onAdd={() => addWochenaufgabe(waDisplay.parentPath)}
+          />
+        ) : !rootIsWochenaufgaben ? (
+          <WochenaufgabenAddToReiheButton onAdd={enableWochenaufgabenOnReihe} />
+        ) : null}
+        <EntryTicketCompletedRow groupId={groupId} editable />
+      </>
+    );
     const folderFilesForStem = filteredItems
       .filter((i: any) => i.type === 'file')
       .map((f: any) => ({ name: f.name || '' }));
@@ -11100,15 +11128,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
           {rootExpanded && (
           <Box sx={{ mt: 0.65, pl: 1.25, borderLeft: rootTreeBorder }}>
             <Box sx={{ mb: isLoading ? 0.5 : 0 }}>
-              <WochenaufgabenFolderRow
-                children={waDisplay.children}
-                parentPath={waDisplay.parentPath}
-                groupId={groupId}
-                workflowGroupIds={workflowGroupIds}
-                onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
-                onAdd={() => addWochenaufgabe(waDisplay.parentPath)}
-              />
-              <EntryTicketCompletedRow groupId={groupId} editable />
+              {wochenaufgabenSection}
             </Box>
             {isLoading ? (
               <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
@@ -11190,15 +11210,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
           {rootExpanded && (
           <Box sx={{ mt: 0.65, pl: 1.25, borderLeft: rootTreeBorder }}>
             <Box sx={{ mb: isLoading ? 0.5 : 0 }}>
-              <WochenaufgabenFolderRow
-                children={waDisplay.children}
-                parentPath={waDisplay.parentPath}
-                groupId={groupId}
-                workflowGroupIds={workflowGroupIds}
-                onSelect={(lessonPath) => void openWochenaufgabenPresentation(groupId, lessonPath)}
-                onAdd={() => addWochenaufgabe(waDisplay.parentPath)}
-              />
-              <EntryTicketCompletedRow groupId={groupId} editable />
+              {wochenaufgabenSection}
             </Box>
             {isLoading ? (
               <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
