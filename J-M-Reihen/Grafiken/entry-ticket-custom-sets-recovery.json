@@ -6,14 +6,14 @@
       {
         "id": "ls_4b666f0d-68a1-4ede-afec-14b88d9cdf1a",
         "lessonName": "01.01 KI sucht Mensch",
-        "lessonKey": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.01 KI sucht Mensch",
+        "lessonKey": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.01 KI sucht Mensch",
         "topicName": "01 Basiswissen",
         "tasks": []
       },
       {
         "id": "ls_2b1343a5-433b-4bd5-b48b-f7b0e42b827e",
         "lessonName": "01.02 Orga",
-        "lessonKey": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.02 Orga",
+        "lessonKey": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.02 Orga",
         "topicName": "01 Basiswissen",
         "tasks": [
           {
@@ -41,7 +41,7 @@
       {
         "id": "ls_bc06e889-a504-47e8-9b88-bf1a6943b1f3",
         "lessonName": "01.03 Was ist KI? Intelligenz?",
-        "lessonKey": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.03 Was ist KI? Intelligenz?",
+        "lessonKey": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.03 Was ist KI? Intelligenz?",
         "topicName": "01 Basiswissen",
         "tasks": [
           {
@@ -74,7 +74,7 @@
       {
         "id": "ls_c5649148-064a-47a8-b3f5-5541e8a26406",
         "lessonName": "01.04 Merkmale, KI-Welt",
-        "lessonKey": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.04 Merkmale, KI-Welt",
+        "lessonKey": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.04 Merkmale, KI-Welt",
         "topicName": "01 Basiswissen",
         "tasks": [
           {
@@ -132,21 +132,21 @@
       {
         "id": "ls_730108a1-1298-430f-89d8-5835742b8cdc",
         "lessonName": "01.05 Experimentell",
-        "lessonKey": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.05 Experimentell",
+        "lessonKey": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.05 Experimentell",
         "topicName": "01 Basiswissen",
         "tasks": []
       },
       {
         "id": "ls_1b45a079-2d1e-4705-aa07-815f357f94c6",
         "lessonName": "01.06 Der Turing Test",
-        "lessonKey": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.06 Der Turing Test",
+        "lessonKey": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.06 Der Turing Test",
         "topicName": "01 Basiswissen",
         "tasks": []
       },
       {
         "id": "ls_2df6a133-dc42-4e19-a15b-521d6b85b8c1",
         "lessonName": "02.01 Affenschach",
-        "lessonKey": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/02 Lernarten/02.01 Affenschach",
+        "lessonKey": "git-intern/Informatik/MSS Grundthemen/11-04 KI/02 Lernarten/02.01 Affenschach",
         "topicName": "02 Lernarten",
         "tasks": []
       }
