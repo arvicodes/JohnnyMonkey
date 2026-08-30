@@ -1433,16 +1433,20 @@ class EntryTicketController {
             if (user.role !== 'TEACHER') {
                 return res.status(403).json({ error: 'Nur Lehrkräfte' });
             }
-            if ((0, teacherScratchPadStore_1.standPulledRecently)() && !((_a = req.body) === null || _a === void 0 ? void 0 : _a.seenStandPull)) {
+            const forceBackup = Boolean((_a = req.body) === null || _a === void 0 ? void 0 : _a.forceBackup);
+            // Manuelles Sichern: Arbeitsstand (latest.json + DB) + Backup-Kopie erzwingen.
+            if (!forceBackup &&
+                (0, teacherScratchPadStore_1.standPulledRecently)() &&
+                !((_b = req.body) === null || _b === void 0 ? void 0 : _b.seenStandPull)) {
                 const existing = await loadStoredCustomSets(user.id);
                 const fromFile = (0, teacherTicketStand_1.readTicketsLatest)();
                 return res.json({
                     success: true,
                     kept: true,
-                    count: ((_b = fromFile === null || fromFile === void 0 ? void 0 : fromFile.sets) === null || _b === void 0 ? void 0 : _b.length) || existing.length,
+                    count: ((_c = fromFile === null || fromFile === void 0 ? void 0 : fromFile.sets) === null || _c === void 0 ? void 0 : _c.length) || existing.length,
                 });
             }
-            const rawSets = Array.isArray((_c = req.body) === null || _c === void 0 ? void 0 : _c.sets) ? req.body.sets : [];
+            const rawSets = Array.isArray((_d = req.body) === null || _d === void 0 ? void 0 : _d.sets) ? req.body.sets : [];
             const sets = rawSets
                 .map((s) => normalizeCustomSetPayload(s))
                 .filter(Boolean);
@@ -1453,7 +1457,7 @@ class EntryTicketController {
                 }
             }
             await saveStoredCustomSets(user.id, sets, {
-                forceBackup: Boolean((_d = req.body) === null || _d === void 0 ? void 0 : _d.forceBackup),
+                forceBackup,
             });
             return res.json({ success: true, count: sets.length });
         }
