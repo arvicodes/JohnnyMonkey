@@ -11,6 +11,7 @@ import {
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-icon-button';
 import {
   fetchTeacherGitBackupPreview,
+  flushStandSources,
   pullTeacherGitBackup,
   pushTeacherGitBackup,
   type StandChange,
@@ -92,8 +93,8 @@ export default function TeacherGitStandModal({ open, mode, onClose }: TeacherGit
 
       if (cancelled) return;
       if (!isPull && typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('johnny:flush-tickets'));
-        await new Promise((r) => window.setTimeout(r, 500));
+        await flushStandSources();
+        await new Promise((r) => window.setTimeout(r, 400));
       }
       if (cancelled) return;
       setPhase('run');

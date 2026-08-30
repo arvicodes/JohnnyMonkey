@@ -3066,11 +3066,15 @@ export default function EntryTicketPage({
 
   useEffect(() => {
     if (!isTeacher) return;
-    const flush = () => {
+    const flush = (e: Event) => {
       const latest = customSetsRef.current;
       if (latest.length === 0) return;
       saveCustomEntryTicketSets(latest);
-      void apiPut('/api/entry-ticket/custom-sets', { sets: latest, forceBackup: false }).catch(() => {});
+      const pending = apiPut('/api/entry-ticket/custom-sets', { sets: latest, forceBackup: false }).catch(
+        () => {},
+      );
+      const done = (e as CustomEvent<{ done?: (p: Promise<unknown>) => void }>).detail?.done;
+      done?.(pending);
     };
     window.addEventListener('johnny:flush-tickets', flush);
     return () => window.removeEventListener('johnny:flush-tickets', flush);

@@ -87,6 +87,25 @@ export async function pullTeacherGitBackup(): Promise<TeacherGitBackupResult> {
   };
 }
 
+export const FLUSH_TICKETS_EVENT = 'johnny:flush-tickets';
+export const FLUSH_PRESENTATIONS_EVENT = 'johnny:flush-presentations';
+
+type FlushDetail = { done?: (p: Promise<unknown>) => void };
+
+/** Offene Folien- und Ticket-Änderungen auf die Platte schreiben, bevor der Stand geht. */
+export function flushStandSources(): Promise<void> {
+  if (typeof window === 'undefined') return Promise.resolve();
+  const waits: Promise<unknown>[] = [];
+  const collect = (p: Promise<unknown>) => {
+    waits.push(Promise.resolve(p).catch(() => undefined));
+  };
+  window.dispatchEvent(new CustomEvent<FlushDetail>(FLUSH_TICKETS_EVENT, { detail: { done: collect } }));
+  window.dispatchEvent(
+    new CustomEvent<FlushDetail>(FLUSH_PRESENTATIONS_EVENT, { detail: { done: collect } })
+  );
+  return Promise.all(waits).then(() => undefined);
+}
+
 export async function pushTeacherGitBackup(): Promise<TeacherGitBackupResult> {
   const res = await apiPost('/api/teacher-git-backup');
   const data = (await res.json().catch(() => ({}))) as Partial<TeacherGitBackupResult>;

@@ -233,7 +233,7 @@ export default function TeacherSettingsMenu({
           </ListItemIcon>
           <ListItemText
             primary="Stand nach GitHub"
-            secondary="Diesen Rechner schicken"
+            secondary="Folien, Notizen und Tickets"
             primaryTypographyProps={{ fontWeight: 700, fontSize: '0.82rem' }}
             secondaryTypographyProps={{ fontSize: '0.68rem' }}
           />

@@ -744,6 +744,15 @@ const PresentationEditorPage: React.FC = () => {
     [lessonPath, persistDeck],
   );
 
+  useEffect(() => {
+    const onFlush = (e: Event) => {
+      const done = (e as CustomEvent<{ done?: (p: Promise<unknown>) => void }>).detail?.done;
+      done?.(flushPersist());
+    };
+    window.addEventListener('johnny:flush-presentations', onFlush);
+    return () => window.removeEventListener('johnny:flush-presentations', onFlush);
+  }, [flushPersist]);
+
   const scheduleSave = useCallback(
     (
       next: PresentationDeck,
