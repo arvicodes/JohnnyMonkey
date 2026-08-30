@@ -825,6 +825,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   const [renameDraft, setRenameDraft] = useState('');
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [tableAnchor, setTableAnchor] = useState<HTMLElement | null>(null);
+  const [secureFlash, setSecureFlash] = useState(false);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
   const emojiAnchorRef = useRef<HTMLButtonElement | null>(null);
   const emojiCaretRef = useRef<Range | null>(null);
@@ -1098,6 +1099,8 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   }, [flushCurrentPage, userId]);
 
   const persistManualBackup = useCallback(async () => {
+    // Explizites Sichern: Git-Stand-Hold lösen und Arbeitsdatei + Backup-Kopie schreiben.
+    holdGitStandRef.current = false;
     const nextPages = flushCurrentPage();
     const payload = savePad(
       userId,
@@ -1109,6 +1112,8 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
       { immediateServer: true }
     );
     await flushPadToServer(userId, payload, true);
+    setSecureFlash(true);
+    window.setTimeout(() => setSecureFlash(false), 1800);
   }, [flushCurrentPage, userId]);
 
   /** Beim Start: Ordner anlegen lassen + ggf. Server-Stand holen. */
@@ -2577,16 +2582,22 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                   </IconButton>
                 </span>
               </Tooltip>
-              <Tooltip title="Sichern (⌘S) — Kopie nach Backup - Notizen">
+              <Tooltip
+                title={
+                  secureFlash
+                    ? 'Gesichert — Arbeitsdatei + Backup - Notizen'
+                    : 'Sichern (⌘S): Arbeitsdatei + Kopie nach Backup - Notizen'
+                }
+              >
                 <IconButton
                   size="small"
                   onClick={() => {
                     void persistManualBackup();
                   }}
                   aria-label="Notizen sichern"
-                  sx={fmtBtnSx()}
+                  sx={fmtBtnSx(secureFlash)}
                 >
-                  <SaveOutlinedIcon sx={{ fontSize: 16, color: '#f57f17' }} />
+                  <SaveOutlinedIcon sx={{ fontSize: 16, color: secureFlash ? '#2e7d32' : '#f57f17' }} />
                 </IconButton>
               </Tooltip>
               <Divider orientation="vertical" flexItem sx={{ mx: 0.35, my: 0.4, borderColor: '#ffe082' }} />

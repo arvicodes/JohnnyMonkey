@@ -671,7 +671,7 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
   const [resizing, setResizing] = useState(false);
 
   const onResizePointerDown = useCallback((e: React.PointerEvent<HTMLElement>) => {
-    if (e.button !== 0) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
     resizeRef.current = {
@@ -680,42 +680,50 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
       startW: panelWidth,
     };
     setResizing(true);
-    e.currentTarget.setPointerCapture(e.pointerId);
-  }, [panelWidth]);
-
-  const onResizePointerMove = useCallback((e: React.PointerEvent<HTMLElement>) => {
-    const drag = resizeRef.current;
-    if (!drag || e.pointerId !== drag.pointerId) return;
-    const next = clampNotesWidth(drag.startW + (drag.startX - e.clientX));
-    setPanelWidth(next);
-  }, []);
-
-  const endResize = useCallback((e: React.PointerEvent<HTMLElement>) => {
-    const drag = resizeRef.current;
-    if (!drag || e.pointerId !== drag.pointerId) return;
-    resizeRef.current = null;
-    setResizing(false);
     try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
+      e.currentTarget.setPointerCapture(e.pointerId);
     } catch {
-      /* ignore */
+      /* iPad: Capture oft unzuverlässig — Window-Listener unten fangen das Ziehen */
     }
-    setPanelWidth((w) => {
-      const next = clampNotesWidth(w);
-      persistNotesWidth(next);
-      return next;
-    });
-  }, []);
+  }, [panelWidth]);
 
   useEffect(() => {
     if (!resizing) return undefined;
     const prev = document.body.style.cursor;
     const prevSelect = document.body.style.userSelect;
+    const prevTouch = document.body.style.touchAction;
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
+    document.body.style.touchAction = 'none';
+
+    const onMove = (ev: PointerEvent) => {
+      const drag = resizeRef.current;
+      if (!drag || ev.pointerId !== drag.pointerId) return;
+      ev.preventDefault();
+      setPanelWidth(clampNotesWidth(drag.startW + (drag.startX - ev.clientX)));
+    };
+    const onUp = (ev: PointerEvent) => {
+      const drag = resizeRef.current;
+      if (!drag || ev.pointerId !== drag.pointerId) return;
+      resizeRef.current = null;
+      setResizing(false);
+      setPanelWidth((w) => {
+        const next = clampNotesWidth(w);
+        persistNotesWidth(next);
+        return next;
+      });
+    };
+
+    window.addEventListener('pointermove', onMove, { capture: true, passive: false });
+    window.addEventListener('pointerup', onUp, true);
+    window.addEventListener('pointercancel', onUp, true);
     return () => {
+      window.removeEventListener('pointermove', onMove, true);
+      window.removeEventListener('pointerup', onUp, true);
+      window.removeEventListener('pointercancel', onUp, true);
       document.body.style.cursor = prev;
       document.body.style.userSelect = prevSelect;
+      document.body.style.touchAction = prevTouch;
     };
   }, [resizing]);
 
@@ -747,9 +755,6 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
         aria-valuemin={NOTES_WIDTH_MIN}
         aria-valuemax={NOTES_WIDTH_MAX}
         onPointerDown={onResizePointerDown}
-        onPointerMove={onResizePointerMove}
-        onPointerUp={endResize}
-        onPointerCancel={endResize}
         onDoubleClick={() => {
           const next = NOTES_WIDTH_DEFAULT;
           setPanelWidth(next);
@@ -764,12 +769,22 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
           zIndex: 3,
           cursor: 'col-resize',
           touchAction: 'none',
+          WebkitUserSelect: 'none',
+          userSelect: 'none',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           '&:hover .pres-notes-resize-bar, &:focus-visible .pres-notes-resize-bar': {
             bgcolor: PRES_EDITOR_UI.accent,
             opacity: 1,
+          },
+          '@media (any-pointer: coarse)': {
+            width: 28,
+            '& .pres-notes-resize-bar': {
+              width: 5,
+              height: 56,
+              opacity: 1,
+            },
           },
         }}
       >

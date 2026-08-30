@@ -357,6 +357,17 @@ export function EntryTicketFragensetEditor({
     null,
   );
   const [reiheOptions, setReiheOptions] = useState<WorkingReiheOption[]>([]);
+  const [secureFlash, setSecureFlash] = useState(false);
+
+  useEffect(() => {
+    if (!onSecure) return;
+    const onSecured = () => {
+      setSecureFlash(true);
+      window.setTimeout(() => setSecureFlash(false), 1800);
+    };
+    window.addEventListener('johnny:tickets-secured', onSecured);
+    return () => window.removeEventListener('johnny:tickets-secured', onSecured);
+  }, [onSecure]);
   const [reiheOptionsLoading, setReiheOptionsLoading] = useState(false);
   const [reiheBusy, setReiheBusy] = useState(false);
   const catalogRequestedRef = useRef(false);
@@ -824,14 +835,20 @@ export function EntryTicketFragensetEditor({
             </IconButton>
           </Tooltip>
           {onSecure ? (
-            <Tooltip title="Sichern (⌘S) — Kopie nach Backup - Tickets">
+            <Tooltip
+              title={
+                secureFlash
+                  ? 'Gesichert — Arbeitsstand + Backup - Tickets'
+                  : 'Sichern (⌘S): Arbeitsstand + Kopie nach Backup - Tickets'
+              }
+            >
               <IconButton
                 size="small"
                 onClick={() => onSecure()}
                 aria-label="Tickets sichern"
                 sx={{
                   ...iconBtnSx,
-                  color: ET.accent,
+                  color: secureFlash ? '#2e7d32' : ET.accent,
                   '&:hover': { color: ET.ink, bgcolor: 'rgba(69,90,100,0.08)' },
                 }}
               >

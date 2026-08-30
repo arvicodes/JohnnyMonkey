@@ -162,7 +162,9 @@ router.put('/', async (req, res) => {
     const incomingMs = padUpdatedMs(payload);
     const existingMs = padUpdatedMs(existing);
     const pulledMs = standPulledAtMs();
-    if (standPulledRecently() && !body.seenStandPull) {
+    const forceStamp = Boolean((req.body as { forceBackup?: unknown })?.forceBackup);
+    // Manuelles Sichern (⌘S): Arbeitsdatei + Zeitstempel-Kopie — Stand-Pull-Sperre überspringen.
+    if (!forceStamp && standPulledRecently() && !body.seenStandPull) {
       return res.json({
         ok: true,
         keptExisting: true,
@@ -172,8 +174,9 @@ router.put('/', async (req, res) => {
       });
     }
     if (
-      (pulledMs && incomingMs && incomingMs < pulledMs) ||
-      (existingMs && incomingMs && incomingMs < existingMs)
+      !forceStamp &&
+      ((pulledMs && incomingMs && incomingMs < pulledMs) ||
+        (existingMs && incomingMs && incomingMs < existingMs))
     ) {
       return res.json({
         ok: true,
@@ -193,7 +196,6 @@ router.put('/', async (req, res) => {
       });
     }
     await writeScratchPadToDb(user.id, payload);
-    const forceStamp = Boolean((req.body as { forceBackup?: unknown })?.forceBackup);
     const written = writeScratchPad(key, payload, { timestamped: true, forceStamp });
     res.json({
       ok: true,

@@ -805,8 +805,8 @@ export default function PresentationTabletToolbar({
           <ToolBtn
             title={
               inkOnly
-                ? 'Sichern (⌘S): Fragenset + Kopie nach Backup - Tickets'
-                : 'Sichern (⌘S): aktuelle Version + Kopie nach Backup - Folien'
+                ? 'Sichern (⌘S): Arbeitsstand + Kopie nach Backup - Tickets'
+                : 'Sichern (⌘S): Arbeitsdatei + Kopie nach Backup - Folien'
             }
             disabled={saving}
             onClick={onSave}

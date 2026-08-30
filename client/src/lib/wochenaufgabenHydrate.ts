@@ -1,12 +1,11 @@
-/** Lädt / erstellt Wochenaufgaben-Ordner und seedet nummerierte Decks. */
+/** Lädt vorhandene Wochenaufgaben-Ordner — legt sie nicht automatisch an. */
 
-import { ensureWochenaufgabeDeck, INITIAL_WOCHENAUFGABE_NUMBERS } from './wochenaufgabenPresentation';
+import { ensureWochenaufgabeDeck } from './wochenaufgabenPresentation';
 import {
   WochenaufgabenFsNode,
   defaultWochenaufgabenFolderPath,
   folderPathBasename,
   isWochenaufgabenFolderName,
-  numberedWochenaufgabeDirs,
   parseReadApiChildren,
 } from './wochenaufgabenFolder';
 
@@ -42,7 +41,7 @@ async function readFolder(path: string, recursive = false): Promise<Wochenaufgab
   return parseReadApiChildren(await res.json());
 }
 
-/** Findet oder legt Wochenaufgaben-Ordner an und lädt nummerierte Unterordner. */
+/** Findet einen vorhandenen Wochenaufgaben-Ordner und lädt die Unterordner. */
 export async function hydrateWochenaufgabenFolderContents(
   groupId: string,
   folderPath: string,
@@ -60,24 +59,9 @@ export async function hydrateWochenaufgabenFolderContents(
     const nested = items.find(
       (item) => item?.type === 'directory' && isWochenaufgabenFolderName(String(item.name || '')),
     );
-    if (nested) {
-      wochenPath = norm(String(nested.path || `${normFolder}/${nested.name || 'Wochenaufgaben'}`));
-      existingChildren = Array.isArray(nested.children) ? nested.children : [];
-    } else {
-      const parent = normFolder.split('/').slice(0, -1).join('/');
-      if (parent) {
-        const siblings = await readFolder(parent, false);
-        const wochen = siblings.find(
-          (item) => item?.type === 'directory' && isWochenaufgabenFolderName(String(item.name || '')),
-        );
-        if (wochen) {
-          wochenPath = norm(String(wochen.path || `${parent}/${wochen.name || 'Wochenaufgaben'}`));
-        }
-      }
-      if (!wochenPath) {
-        wochenPath = defaultWochenaufgabenFolderPath(normFolder);
-      }
-    }
+    if (!nested) return { patch: {}, wochenPath: null };
+    wochenPath = norm(String(nested.path || `${normFolder}/${nested.name || 'Wochenaufgaben'}`));
+    existingChildren = Array.isArray(nested.children) ? nested.children : [];
   }
 
   if (!wochenPath) return { patch: {}, wochenPath: null };
@@ -90,22 +74,15 @@ export async function hydrateWochenaufgabenFolderContents(
       existingChildren = await readFolder(wochenPath, true);
     }
 
-    const have = new Set(numberedWochenaufgabeDirs(existingChildren).map((item) => Number(item.name)));
-    for (const n of INITIAL_WOCHENAUFGABE_NUMBERS) {
-      if (have.has(n)) continue;
-      await ensureWochenaufgabeDeck(`${wochenPath}/${n}`);
-    }
-
-    const seeded = await readFolder(wochenPath, true);
+    const loaded = existingChildren.length > 0 ? existingChildren : await readFolder(wochenPath, true);
     const patch: WochenaufgabenContentsPatch = {
-      [cacheKey]: seeded,
-      [`${groupId}:${defaultWochenaufgabenFolderPath(normFolder)}`]: seeded,
+      [cacheKey]: loaded,
     };
 
     if (parentKey !== cacheKey && items.length > 0) {
       patch[parentKey] = items.map((item) =>
         item?.type === 'directory' && isWochenaufgabenFolderName(String(item.name || ''))
-          ? { ...item, path: item.path || wochenPath, children: seeded }
+          ? { ...item, path: item.path || wochenPath, children: loaded }
           : item,
       );
     }
@@ -115,4 +92,11 @@ export async function hydrateWochenaufgabenFolderContents(
     console.error('Wochenaufgaben-Ordner laden fehlgeschlagen:', error);
     return { patch: {}, wochenPath };
   }
+}
+
+/** Legt Wochenaufgaben unter einer Reihe an (erster nummerierter Ordner). */
+export async function addWochenaufgabenToReihe(reihePath: string): Promise<string> {
+  const waPath = defaultWochenaufgabenFolderPath(reihePath);
+  await ensureWochenaufgabeDeck(`${waPath}/1`);
+  return waPath;
 }

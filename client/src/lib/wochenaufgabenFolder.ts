@@ -122,15 +122,14 @@ export type WochenaufgabenDisplayBlock = {
 };
 
 /**
- * Block für die Dashboard-Box — immer sichtbar bei zugeordneten Reihen,
- * auch wenn der Ordner noch nicht existiert (dann leere Liste + „+“).
+ * Block für die Dashboard-Box — nur wenn die Reihe einen Wochenaufgaben-Ordner hat.
  */
 export function resolveWochenaufgabenDisplayBlock(
   groupId: string,
   folderPath: string,
   mergedItems: WochenaufgabenFsNode[],
   contents: Record<string, WochenaufgabenFsNode[] | undefined>,
-): WochenaufgabenDisplayBlock {
+): WochenaufgabenDisplayBlock | null {
   const normFolder = normalizePath(folderPath);
   const base = folderPathBasename(normFolder);
 
@@ -142,20 +141,13 @@ export function resolveWochenaufgabenDisplayBlock(
   }
 
   const fromTree = resolveWochenaufgabenBlock(groupId, folderPath, mergedItems, contents);
-  if (fromTree) {
-    return {
-      parentPath: fromTree.parentPath,
-      children:
-        contents[`${groupId}:${fromTree.parentPath}`] ||
-        fromTree.children ||
-        [],
-    };
-  }
-
-  const defaultPath = defaultWochenaufgabenFolderPath(normFolder);
+  if (!fromTree) return null;
   return {
-    parentPath: defaultPath,
-    children: contents[`${groupId}:${defaultPath}`] || [],
+    parentPath: fromTree.parentPath,
+    children:
+      contents[`${groupId}:${fromTree.parentPath}`] ||
+      fromTree.children ||
+      [],
   };
 }
 

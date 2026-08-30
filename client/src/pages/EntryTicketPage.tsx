@@ -3097,8 +3097,20 @@ export default function EntryTicketPage({
 
   const secureTicketBackup = useCallback(() => {
     if (!isTeacher || customSets.length === 0) return;
-    saveCustomEntryTicketSets(customSets);
-    void apiPut('/api/entry-ticket/custom-sets', { sets: customSets, forceBackup: true }).catch(() => {});
+    if (playPersistTimerRef.current) {
+      window.clearTimeout(playPersistTimerRef.current);
+      playPersistTimerRef.current = null;
+    }
+    if (playForceBackupTimerRef.current) {
+      window.clearTimeout(playForceBackupTimerRef.current);
+      playForceBackupTimerRef.current = null;
+    }
+    const latest = customSetsRef.current.length > 0 ? customSetsRef.current : customSets;
+    customSetsRef.current = latest;
+    // Sofort: lokal + Arbeitsstand (latest.json/DB) + Zeitstempel-Kopie unter Backup - Tickets
+    saveCustomEntryTicketSets(latest);
+    void apiPut('/api/entry-ticket/custom-sets', { sets: latest, forceBackup: true }).catch(() => {});
+    window.dispatchEvent(new CustomEvent('johnny:tickets-secured'));
   }, [customSets, isTeacher]);
 
   const patchActiveSetPlayInk = useCallback(

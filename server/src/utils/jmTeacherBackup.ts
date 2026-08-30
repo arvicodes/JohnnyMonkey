@@ -127,7 +127,8 @@ export function ensureTeacherBackupDir(kind: TeacherBackupKind): string {
       readme,
       `Zeitstempel-Kopien: ${titles[kind]}.\n` +
         'Dateiname: Uhrzeit_Datum_Art_Thema.json (z. B. 9:25_29.8_folien_…).\n' +
-        'Neue Datei nur bei ⌘S oder dem Sicherungsbutton. Der aktuelle Stand wird trotzdem immer gespeichert.\n',
+        '⌘S / Sichern: schreibt die aktuelle Arbeitsdatei und legt zusätzlich diese Kopie an.\n' +
+        'Automatisches Speichern aktualisiert den Arbeitsstand ohne neue Zeitstempel-Datei.\n',
       'utf8'
     );
   }

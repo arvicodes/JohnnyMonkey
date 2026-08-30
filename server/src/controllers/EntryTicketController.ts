@@ -1565,7 +1565,13 @@ export class EntryTicketController {
       if (user.role !== 'TEACHER') {
         return res.status(403).json({ error: 'Nur Lehrkräfte' });
       }
-      if (standPulledRecently() && !(req.body as { seenStandPull?: unknown })?.seenStandPull) {
+      const forceBackup = Boolean(req.body?.forceBackup);
+      // Manuelles Sichern: Arbeitsstand (latest.json + DB) + Backup-Kopie erzwingen.
+      if (
+        !forceBackup &&
+        standPulledRecently() &&
+        !(req.body as { seenStandPull?: unknown })?.seenStandPull
+      ) {
         const existing = await loadStoredCustomSets(user.id);
         const fromFile = readTicketsLatest();
         return res.json({
@@ -1585,7 +1591,7 @@ export class EntryTicketController {
         }
       }
       await saveStoredCustomSets(user.id, sets, {
-        forceBackup: Boolean(req.body?.forceBackup),
+        forceBackup,
       });
       return res.json({ success: true, count: sets.length });
     } catch (error) {
