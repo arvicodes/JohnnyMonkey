@@ -332,8 +332,8 @@ function loadKatex(): KatexModule {
   return require('katex') as KatexModule;
 }
 
-function latexSourceFromPlain(raw: string): string {
-  return (raw || '')
+function latexSourceFromPlain(raw: unknown): string {
+  return String(raw ?? '')
     .replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
@@ -740,8 +740,10 @@ export function convertPlainTextWithLatexToPresentationHtml(plain: string): stri
   ];
 
   for (const { re, display } of patterns) {
-    rest = rest.replace(re, (m: string, tex?: string) => {
-      const body = tex != null ? tex : m;
+    rest = rest.replace(re, (match: string, ...restArgs: unknown[]) => {
+      // Ohne Capture-Group ist args[0] der Offset (Zahl) — nicht der Text.
+      const maybeGroup = restArgs[0];
+      const body = typeof maybeGroup === 'string' ? maybeGroup : match;
       chunks.push(render(body, display));
       return `\uE202${chunks.length - 1}\uE203`;
     });
