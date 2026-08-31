@@ -46,8 +46,14 @@ import {
   FolderOpen as FolderOpenIcon,
   InsertDriveFileOutlined as FileIcon,
   FilterFrames as FrameIcon,
+  Functions as FunctionsIcon,
 } from '@mui/icons-material';
 import { HIGHLIGHT_PRESETS, TEXT_COLOR_PRESETS } from '../../lib/presentationTheme';
+import {
+  FORMULA_PASTE_MODE_EVENT,
+  isPresentationFormulaPasteMode,
+  setPresentationFormulaPasteMode,
+} from '../../lib/presentationFormulaPasteMode';
 import { setFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
 import {
   applyFontFamily,
@@ -176,6 +182,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   const [browseFiles, setBrowseFiles] = useState<LessonFolderFsItem[]>([]);
   const [browseLoading, setBrowseLoading] = useState(false);
   const [browseError, setBrowseError] = useState<string | null>(null);
+  const [formulaPasteMode, setFormulaPasteMode] = useState(() => isPresentationFormulaPasteMode());
   const [selectedLessonFile, setSelectedLessonFile] = useState<string>('');
   const [selectedFileMeta, setSelectedFileMeta] = useState<LessonFolderFsItem | null>(null);
   const linkRangeRef = useRef<Range | null>(null);
@@ -188,6 +195,16 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     linkDialogOpen;
   const formatMenuOpenRef = useRef(formatMenuOpen);
   formatMenuOpenRef.current = formatMenuOpen;
+
+  useEffect(() => {
+    const sync = () => setFormulaPasteMode(isPresentationFormulaPasteMode());
+    window.addEventListener(FORMULA_PASTE_MODE_EVENT, sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener(FORMULA_PASTE_MODE_EVENT, sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
 
   const isNotesEditor = Boolean(
     activeEditor?.getAttribute('data-pres-notes-zone') === 'true' || contextLabel === 'Notizen',
@@ -640,6 +657,39 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
             onClick={openLinkDialog}
           >
             <InsertLinkIcon sx={{ fontSize: 17 }} />
+          </IconButton>
+        </span>
+      </Tooltip>
+
+      <Tooltip
+        title={
+          formulaPasteMode
+            ? 'Formel-Modus: an — Word/LaTeX/HTML/PP einfügen (⌘V)'
+            : 'Formel-Modus: aus — normaler Text'
+        }
+      >
+        <span>
+          <IconButton
+            size="small"
+            disabled={disabled || !activeEditor || isNotesEditor}
+            sx={{
+              ...btnSx,
+              color: formulaPasteMode ? '#1565C0' : btnSx.color,
+              bgcolor: formulaPasteMode ? 'rgba(21,101,192,0.12)' : 'transparent',
+            }}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              const next = !formulaPasteMode;
+              setPresentationFormulaPasteMode(next);
+              setFormulaPasteMode(next);
+              onMessage?.(
+                next
+                  ? 'Formel-Modus: Word, LaTeX, HTML-MathML und PowerPoint-Formeln beim Einfügen'
+                  : 'Formel-Modus aus',
+              );
+            }}
+          >
+            <FunctionsIcon sx={{ fontSize: 17 }} />
           </IconButton>
         </span>
       </Tooltip>

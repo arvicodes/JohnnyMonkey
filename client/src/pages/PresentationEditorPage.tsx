@@ -1723,7 +1723,9 @@ const PresentationEditorPage: React.FC = () => {
     updateSlide({ elements: [...(normalizedActive.elements || []), el] });
     setSelectedElementId(el.id);
     setSnackbar(
-      kind === 'arrow'
+      kind === 'curved-arrow'
+        ? 'Gebogener Pfeil eingefügt — Bogenstärke in den Eigenschaften'
+        : kind === 'arrow'
         ? 'Pfeil eingefügt — ziehen zum Verschieben'
         : kind === 'line'
           ? 'Linie eingefügt — ziehen zum Verschieben'

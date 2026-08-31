@@ -363,6 +363,8 @@ export function shapeKindLabel(kind: PresentationShapeKind): string {
       return 'Kreis';
     case 'arrow':
       return 'Pfeil';
+    case 'curved-arrow':
+      return 'Gebogener Pfeil';
     default:
       return 'Form';
   }

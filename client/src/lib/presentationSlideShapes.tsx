@@ -5,10 +5,11 @@ import React from 'react';
 import type { PresentationShapeKind, SlideElement } from './presentationDeck';
 import { JOHNNY_PRESENTATION } from './presentationTheme';
 
-export const SLIDE_SHAPE_KINDS: PresentationShapeKind[] = ['arrow', 'line', 'rect', 'ellipse'];
+export const SLIDE_SHAPE_KINDS: PresentationShapeKind[] = ['arrow', 'curved-arrow', 'line', 'rect', 'ellipse'];
 
 export const SLIDE_SHAPE_LABELS: Record<PresentationShapeKind, string> = {
   arrow: 'Pfeil',
+  'curved-arrow': 'Gebogener Pfeil',
   line: 'Linie',
   rect: 'Rechteck',
   ellipse: 'Kreis / Oval',
@@ -17,6 +18,7 @@ export const SLIDE_SHAPE_LABELS: Record<PresentationShapeKind, string> = {
 export function defaultShapeSize(kind: PresentationShapeKind): { w: number; h: number } {
   switch (kind) {
     case 'arrow':
+    case 'curved-arrow':
     case 'line':
       return { w: 28, h: 10 };
     case 'rect':
@@ -46,8 +48,9 @@ export function createShapeElement(
     h: size.h,
     zIndex,
     strokeColor: accent,
-    strokeWidth: kind === 'line' || kind === 'arrow' ? 4 : 3,
+    strokeWidth: kind === 'line' || kind === 'arrow' || kind === 'curved-arrow' ? 4 : 3,
     fillColor: isBox ? `${accent}33` : 'transparent',
+    ...(kind === 'curved-arrow' ? { curveBend: 35 } : {}),
     // Boxen (Rechteck/Oval) kommen standardmäßig mit integriertem Textfeld
     ...(isBox ? { html: '<p style="text-align:center"><br></p>' } : {}),
   };
@@ -119,6 +122,33 @@ function shaftEnd(
   return { x: x1 + (x2 - x1) * (1 - t), y: y1 + (y2 - y1) * (1 - t) };
 }
 
+function curveControlY(y1: number, y2: number, bend: number): number {
+  return (y1 + y2) / 2 + bend;
+}
+
+/** Tangente am Ende einer quadratischen Bézier-Kurve (t=1). */
+function quadEndAngleDeg(x1: number, y1: number, cx: number, cy: number, x2: number, y2: number): number {
+  const dx = (x2 - cx) * 16;
+  const dy = (y2 - cy) * 9;
+  return (Math.atan2(dy, dx) * 180) / Math.PI;
+}
+
+function pointOnQuad(
+  t: number,
+  x1: number,
+  y1: number,
+  cx: number,
+  cy: number,
+  x2: number,
+  y2: number,
+): { x: number; y: number } {
+  const u = 1 - t;
+  return {
+    x: u * u * x1 + 2 * u * t * cx + t * t * x2,
+    y: u * u * y1 + 2 * u * t * cy + t * t * y2,
+  };
+}
+
 export function SlideShapeSvg({
   kind,
   strokeColor,
@@ -126,6 +156,7 @@ export function SlideShapeSvg({
   strokeWidth = 3,
   flipH,
   flipV,
+  curveBend,
   boxW,
   boxH,
   style,
@@ -136,6 +167,7 @@ export function SlideShapeSvg({
   strokeWidth?: number;
   flipH?: boolean;
   flipV?: boolean;
+  curveBend?: number;
   boxW?: number;
   boxH?: number;
   style?: React.CSSProperties;
@@ -153,6 +185,66 @@ export function SlideShapeSvg({
   const h = boxH ?? 1;
   const shaft = ends ? shaftEnd(ends.x1, ends.y1, ends.x2, ends.y2, w, h, 12) : null;
   const headDeg = ends ? visualAngleDeg(ends.x1, ends.y1, ends.x2, ends.y2, w, h) : 0;
+  const bend = kind === 'curved-arrow' ? Math.max(-80, Math.min(80, curveBend ?? 35)) : 0;
+
+  const curvedEnds = ends ?? { x1: 6, y1: 50, x2: 94, y2: 50 };
+  const curvedControl = {
+    x: (curvedEnds.x1 + curvedEnds.x2) / 2,
+    y: curveControlY(curvedEnds.y1, curvedEnds.y2, bend),
+  };
+  const curvedShaftEnd = pointOnQuad(0.92, curvedEnds.x1, curvedEnds.y1, curvedControl.x, curvedControl.y, curvedEnds.x2, curvedEnds.y2);
+  const curvedHeadDeg =
+    kind === 'curved-arrow'
+      ? quadEndAngleDeg(curvedEnds.x1, curvedEnds.y1, curvedControl.x, curvedControl.y, curvedEnds.x2, curvedEnds.y2)
+      : headDeg;
+
+  const connectorCurvedArrow =
+    kind === 'curved-arrow' ? (
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '100%',
+          overflow: 'visible',
+          ...style,
+        }}
+      >
+        <svg
+          viewBox="0 0 100 100"
+          width="100%"
+          height="100%"
+          preserveAspectRatio="none"
+          style={{ display: 'block', overflow: 'visible' }}
+          aria-hidden
+        >
+          <path
+            d={`M ${curvedEnds.x1} ${curvedEnds.y1} Q ${curvedControl.x} ${curvedControl.y} ${curvedShaftEnd.x} ${curvedShaftEnd.y}`}
+            fill="none"
+            stroke={stroke}
+            strokeWidth={Math.max(sw, 4)}
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          aria-hidden
+          style={{
+            position: 'absolute',
+            left: `${curvedEnds.x2}%`,
+            top: `${curvedEnds.y2}%`,
+            transformOrigin: '15px 8px',
+            transform: `translate(-15px, -8px) rotate(${curvedHeadDeg}deg)`,
+            overflow: 'visible',
+            pointerEvents: 'none',
+          }}
+        >
+          <polygon points="1,2 15,8 1,14" fill={stroke} />
+        </svg>
+      </div>
+    ) : null;
 
   const connectorArrow =
     kind === 'arrow' && ends && shaft ? (
@@ -203,6 +295,8 @@ export function SlideShapeSvg({
         </svg>
       </div>
     ) : null;
+
+  if (connectorCurvedArrow) return connectorCurvedArrow;
 
   if (connectorArrow) return connectorArrow;
 

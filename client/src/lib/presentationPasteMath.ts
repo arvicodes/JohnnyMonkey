@@ -313,3 +313,99 @@ export function preserveEquationImagesInPlace(root: ParentNode): void {
     span.appendChild(img);
   }
 }
+
+type KatexModule = {
+  renderToString: (
+    tex: string,
+    options?: {
+      throwOnError?: boolean;
+      displayMode?: boolean;
+      output?: 'html' | 'mathml' | 'htmlAndMathml';
+      strict?: boolean | string;
+      trust?: boolean;
+    },
+  ) => string;
+};
+
+function loadKatex(): KatexModule {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+  return require('katex') as KatexModule;
+}
+
+function latexSourceFromPlain(raw: string): string {
+  return (raw || '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\u00a0/g, ' ')
+    .trim();
+}
+
+function renderLatexToPresentationSpan(tex: string, display = false): string {
+  const trimmed = latexSourceFromPlain(tex);
+  if (!trimmed) return '';
+  try {
+    const mathml = loadKatex().renderToString(trimmed, {
+      throwOnError: false,
+      displayMode: display,
+      output: 'mathml',
+      strict: 'ignore',
+      trust: false,
+    });
+    const inner = mathml.replace(/^[\s\S]*?(<math[\s\S]*<\/math>)[\s\S]*$/i, '$1').trim();
+    if (!inner.startsWith('<math')) return '';
+    return (
+      `<span class="pres-math" ${PRES_MATH_ATTR}="1" contenteditable="false" data-pres-latex="${encodeURIComponent(trimmed)}">${inner}</span>`
+    );
+  } catch {
+    return '';
+  }
+}
+
+export function looksLikeFormulaPlainText(text: string): boolean {
+  const s = (text || '').trim();
+  if (!s) return false;
+  if (/\$\$[\s\S]+?\$\$|\$[^$\n]+?\$|\\\(|\\\[/.test(s)) return true;
+  if (/\\(?:frac|begin|vec|cdot|times|le|ge|sqrt|sum|int|alpha|beta|gamma|pi|theta)\b/.test(s)) return true;
+  if (/[A-Za-z]\s*=\s*[^=\n]{3,}/.test(s) && /\\|[_^]\{/.test(s)) return true;
+  return false;
+}
+
+/** Plain-Text/LaTeX → HTML mit pres-math-Blöcken (Formel-Modus). */
+export function convertPlainTextWithLatexToPresentationHtml(plain: string): string {
+  const source = plain.replace(/\r\n/g, '\n').trim();
+  if (!source) return '<p><br></p>';
+
+  const render = (tex: string, display: boolean) => renderLatexToPresentationSpan(tex, display) || `<span>${tex}</span>`;
+
+  const chunks: string[] = [];
+  let rest = source;
+  const patterns: Array<{ re: RegExp; display: boolean }> = [
+    { re: /\$\$([\s\S]+?)\$\$/g, display: true },
+    { re: /\\\[([\s\S]+?)\\\]/g, display: true },
+    { re: /\\\(([\s\S]+?)\\\)/g, display: false },
+    { re: /\$([^$\n]+?)\$/g, display: false },
+  ];
+
+  for (const { re, display } of patterns) {
+    rest = rest.replace(re, (_m, tex: string) => {
+      chunks.push(render(tex, display));
+      return `\uE202${chunks.length - 1}\uE203`;
+    });
+  }
+
+  if (/\\(?:frac|begin|vec|cdot|times|sqrt|sum|int)\b/.test(rest)) {
+    rest = render(rest, false);
+    return `<p>${rest}</p>`;
+  }
+
+  const lines = rest.split(/\n+/).map((line) => {
+    const withFormulas = line.replace(/\uE202(\d+)\uE203/g, (_m, i: string) => chunks[Number(i)] || '');
+    const trimmed = withFormulas.trim();
+    if (!trimmed) return '<p><br></p>';
+    if (trimmed.startsWith('<span class="pres-math"')) return `<p>${trimmed}</p>`;
+    return `<p>${trimmed}</p>`;
+  });
+  return lines.join('') || '<p><br></p>';
+}

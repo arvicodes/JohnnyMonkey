@@ -35,10 +35,13 @@ import { ensureNotesTablesFormatted, applyJohnnyTableFormatting, handleTableTabI
 import { presentationNotesImageInsertHtml, stripNotesImageChrome, releaseNotesImagesToFlow } from './presentationNotesImages';
 import {
   convertOmmlElementsInPlace,
+  convertPlainTextWithLatexToPresentationHtml,
   hoistPastedMathHtml,
   isPresentationMathNode,
+  looksLikeFormulaPlainText,
   preserveEquationImagesInPlace,
 } from './presentationPasteMath';
+import { isPresentationFormulaPasteMode } from './presentationFormulaPasteMode';
 
 // Explizite Re-Exports (HMR-sicherer als `import` + `export { … }`)
 export {
@@ -937,14 +940,29 @@ export function sanitizePastedHtml(html: string, options?: PasteSanitizeOptions)
  */
 export function presentationPasteHtml(
   clipboardData: DataTransfer,
-  options?: { fontPx?: number; textAlign?: 'justify' | 'left' | 'center' | 'right' },
+  options?: {
+    fontPx?: number;
+    textAlign?: 'justify' | 'left' | 'center' | 'right';
+    formulaMode?: boolean;
+  },
 ): string {
   const pastedHtml = clipboardData.getData('text/html');
   const pastedText = clipboardData.getData('text/plain');
   const fontPx = options?.fontPx ?? PRESENTATION_CONTENT_FONT_PX;
   const textAlign = options?.textAlign ?? 'justify';
+  const formulaMode = options?.formulaMode ?? isPresentationFormulaPasteMode();
   if (pastedHtml?.trim()) {
     return sanitizePastedHtml(pastedHtml, { slideDefaults: true, fontPx, textAlign }) || '<p><br></p>';
+  }
+  if (formulaMode && looksLikeFormulaPlainText(pastedText)) {
+    const latexHtml = convertPlainTextWithLatexToPresentationHtml(pastedText || '');
+    if (typeof document !== 'undefined') {
+      const doc = new DOMParser().parseFromString(latexHtml, 'text/html');
+      stampDefaultPresentationFont(doc.body, fontPx, true);
+      stampSlideTextAlign(doc.body, textAlign);
+      return doc.body.innerHTML || '<p><br></p>';
+    }
+    return latexHtml;
   }
   const html = stampDefaultPresentationFontHtml(
     plainTextToPresentationHtml(pastedText || ''),

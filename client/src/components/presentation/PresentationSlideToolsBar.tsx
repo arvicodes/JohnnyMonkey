@@ -40,6 +40,7 @@ import {
   CategoryOutlined as ShapeIcon,
   RotateRight as RotateRightIcon,
   TrendingFlat as ArrowShapeIcon,
+  Timeline as CurvedArrowShapeIcon,
   HorizontalRule as LineShapeIcon,
   CropSquare as RectShapeIcon,
   CircleOutlined as EllipseShapeIcon,
@@ -760,6 +761,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
             {(
               [
                 ['arrow', <ArrowShapeIcon key="a" sx={{ fontSize: 18 }} />],
+                ['curved-arrow', <CurvedArrowShapeIcon key="ca" sx={{ fontSize: 18 }} />],
                 ['line', <LineShapeIcon key="l" sx={{ fontSize: 18 }} />],
                 ['rect', <RectShapeIcon key="r" sx={{ fontSize: 18 }} />],
                 ['ellipse', <EllipseShapeIcon key="e" sx={{ fontSize: 18 }} />],
@@ -1438,6 +1440,51 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                           '& .MuiInputLabel-root': { fontSize: 9 },
                         }}
                       />
+                      {selectedElement.shapeKind === 'curved-arrow' && (
+                        <TextField
+                          size="small"
+                          type="number"
+                          label="Bogenstärke"
+                          value={selectedElement.curveBend ?? 35}
+                          onChange={(e) =>
+                            onUpdateElement(selectedElement.id, {
+                              curveBend: Math.max(-80, Math.min(80, Number(e.target.value) || 0)),
+                            })
+                          }
+                          helperText="− = nach oben, + = nach unten"
+                          FormHelperTextProps={{ sx: { fontSize: 8, m: 0, mt: 0.25 } }}
+                          sx={{
+                            mb: 0.5,
+                            width: '100%',
+                            '& .MuiInputBase-root': { fontSize: 10, height: 28 },
+                            '& .MuiInputLabel-root': { fontSize: 9 },
+                          }}
+                        />
+                      )}
+                      {selectedElement.shapeKind === 'curved-arrow' ? (
+                        <Button
+                          size="small"
+                          onClick={() =>
+                            onUpdateElement(selectedElement.id, { shapeKind: 'arrow', curveBend: undefined })
+                          }
+                          sx={{ ...miniBtnSx, mb: 0.5, fontSize: 9, textTransform: 'none' }}
+                        >
+                          In geraden Pfeil umwandeln
+                        </Button>
+                      ) : selectedElement.shapeKind === 'arrow' ? (
+                        <Button
+                          size="small"
+                          onClick={() =>
+                            onUpdateElement(selectedElement.id, {
+                              shapeKind: 'curved-arrow',
+                              curveBend: selectedElement.curveBend ?? 35,
+                            })
+                          }
+                          sx={{ ...miniBtnSx, mb: 0.5, fontSize: 9, textTransform: 'none' }}
+                        >
+                          In gebogenen Pfeil umwandeln
+                        </Button>
+                      ) : null}
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, mb: 0.5 }}>
                         <TextField
                           size="small"

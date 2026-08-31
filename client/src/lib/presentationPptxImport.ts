@@ -7,6 +7,11 @@ import {
 } from './presentationDeck';
 import { hydratePresentationHtmlFontSizes, PRESENTATION_CONTENT_FONT_PX } from './presentationFontSize';
 import { sanitizePresentationHtml } from './presentationRichText';
+import {
+  convertOmmlElementsInPlace,
+  hoistPastedMathHtml,
+  preserveEquationImagesInPlace,
+} from './presentationPasteMath';
 import type { SlideTemplateKind, SlideTemplatesStore } from './presentationSlideTemplates';
 import { JOHNNY_PRESENTATION } from './presentationTheme';
 
@@ -164,6 +169,13 @@ export function normalizeImportedTextHtml(
   opts?: { fontSizePt?: number | null; color?: string | null },
 ): string {
   let out = (html || '').trim() || '<p></p>';
+  if (typeof document !== 'undefined') {
+    out = hoistPastedMathHtml(out);
+    const mathDoc = new DOMParser().parseFromString(out, 'text/html');
+    convertOmmlElementsInPlace(mathDoc.body);
+    preserveEquationImagesInPlace(mathDoc.body);
+    out = mathDoc.body.innerHTML;
+  }
   out = sanitizePresentationHtml(out);
   out = hydratePresentationHtmlFontSizes(out);
 

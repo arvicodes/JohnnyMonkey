@@ -322,6 +322,7 @@ function StaticElement({ el, scale, accent }: { el: SlideElement; scale: number;
           strokeWidth={el.strokeWidth ?? 3}
           flipH={el.flipH}
           flipV={el.flipV}
+          curveBend={el.curveBend}
           boxW={el.w}
           boxH={el.h}
         />
