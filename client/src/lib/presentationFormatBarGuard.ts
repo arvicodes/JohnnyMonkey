@@ -10,8 +10,10 @@ export function isFormatBarInteracting(): boolean {
 }
 
 /** Format-Popover/Menüs (Portal) zur Formatleiste zählen. */
-export const PRESENTATION_FORMAT_UI_SELECTOR =
+export const PRESENTATION_FORMAT_UI_BLUR_SELECTOR =
   '[data-presentation-format-bar], [data-presentation-format-ui], [data-presentation-table-tools]';
+
+export const PRESENTATION_FORMAT_UI_SELECTOR = PRESENTATION_FORMAT_UI_BLUR_SELECTOR;
 
 export function isPresentationFormatUiTarget(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;

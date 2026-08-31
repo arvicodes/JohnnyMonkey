@@ -13,7 +13,7 @@ import {
 } from '../../lib/presentationAnimation';
 import PresentationMediaFrame from './PresentationMediaFrame';
 import { resolveMediaEmbed } from '../../lib/presentationMediaEmbed';
-import { isFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
+import { isFormatBarInteracting, PRESENTATION_FORMAT_UI_BLUR_SELECTOR } from '../../lib/presentationFormatBarGuard';
 import { isApplyingDeckHistory } from '../../lib/presentationEditorHistory';
 import { captureEditorSelection, hydratePresentationHtmlFontSizes, PRESENTATION_CONTENT_FONT_PX } from '../../lib/presentationFontSize';
 import { filterHtmlByRevealStep, hasVisibleRevealContent, isElementVisible, shouldAnimateReveal } from '../../lib/presentationReveal';
@@ -198,6 +198,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     editOnClick?: 'text' | 'shape' | null;
     pointerType?: string;
     imageGesture?: 'crop' | 'scale';
+    shapePointIndex?: number;
   } | null>(null);
   const [dragging, setDragging] = useState(false);
   /** Während Drag nur lokal — kein setDeck pro Pointer-Move. */
@@ -433,6 +434,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         slideTop: pending.slideTop,
         orig: pending.orig,
         imageGesture: pending.imageGesture,
+        shapePointIndex: pending.shapePointIndex,
       };
       pendingDragRef.current = null;
       setDragging(true);
@@ -449,7 +451,23 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
 
     let patch: Partial<SlideElement>;
     let guides: SnapGuide[] = [];
-    if (d.mode === 'rotate') {
+    const slideRect = {
+      left: d.slideLeft,
+      top: d.slideTop,
+      width: d.slideW,
+      height: d.slideH,
+    } as DOMRect;
+
+    if (d.mode === 'shape-point' && d.shapePointIndex != null && isLineLikeShapeKind(d.orig.shapeKind)) {
+      const local = clientToShapeLocal(e.clientX, e.clientY, d.orig, slideRect);
+      const points = resolveShapePoints(d.orig).map((p, i) =>
+        i === d.shapePointIndex ? local : { ...p },
+      );
+      patch = { shapePoints: points };
+    } else if (d.mode === 'shape-curve' && d.orig.shapeKind === 'curved-arrow') {
+      const local = clientToShapeLocal(e.clientX, e.clientY, d.orig, slideRect);
+      patch = { shapeCurveControl: local, curveBend: undefined };
+    } else if (d.mode === 'rotate') {
       const cx = d.slideLeft + ((d.orig.x + d.orig.w / 2) / 100) * d.slideW;
       const cy = d.slideTop + ((d.orig.y + d.orig.h / 2) / 100) * d.slideH;
       const a0 = Math.atan2(d.startY - cy, d.startX - cx);
@@ -721,6 +739,41 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     window.addEventListener('pointercancel', pointerUp, true);
   };
 
+  const startShapeHandleDrag = (
+    e: React.PointerEvent,
+    mode: 'shape-point' | 'shape-curve',
+    pointIndex?: number,
+  ) => {
+    if (!canEdit || !onChange) return;
+    const slide = (e.currentTarget as HTMLElement).closest('[data-pres-slide]') as HTMLElement | null;
+    const rect = slide?.getBoundingClientRect();
+    if (!rect) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onSelect?.();
+    pendingDragRef.current = {
+      mode,
+      resizeCorner: 'br',
+      startX: e.clientX,
+      startY: e.clientY,
+      slideW: rect.width,
+      slideH: rect.height,
+      slideLeft: rect.left,
+      slideTop: rect.top,
+      orig: { ...element },
+      pointerId: e.pointerId,
+      shapePointIndex: pointIndex,
+    };
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    window.addEventListener('pointermove', pointerMove, true);
+    window.addEventListener('pointerup', pointerUp, true);
+    window.addEventListener('pointercancel', pointerUp, true);
+  };
+
   const handleAnimationClick = (e: React.PointerEvent) => {
     if (!animationEditMode || !onAnimationTargetClick) return;
     e.preventDefault();
@@ -740,6 +793,12 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   };
 
   const view = liveGeom ? { ...element, ...liveGeom } : element;
+
+  const isLineShape =
+    view.type === 'shape' && isLineLikeShapeKind(view.shapeKind || 'arrow');
+  const shapePointsView = isLineShape ? resolveShapePoints(view) : [];
+  const shapeCurveView =
+    view.shapeKind === 'curved-arrow' ? resolveCurveControl(shapePointsView, view) : null;
 
   if (!editable && !animationEditMode && !isElementVisible(element, revealStep, revealEnabled)) return null;
 
@@ -1281,17 +1340,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
 
       {isShapeElement && (
         <Box sx={{ width: '100%', height: '100%', pointerEvents: 'none', position: 'relative' }}>
-          <SlideShapeSvg
-            kind={element.shapeKind || 'arrow'}
-            strokeColor={element.strokeColor}
-            fillColor={element.fillColor}
-            strokeWidth={element.strokeWidth ?? 3}
-            flipH={element.flipH}
-            flipV={element.flipV}
-            curveBend={element.curveBend}
-            boxW={element.w}
-            boxH={element.h}
-          />
+          <SlideShapeSvg element={view} />
           {isShapeBox &&
             (editable && !animationEditMode && !exportSnapshot ? (
               <Box
@@ -1308,7 +1357,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 onBlur={(e) => {
                   if (isApplyingDeckHistory() || isFormatBarInteracting()) return;
                   const next = e.relatedTarget as HTMLElement | null;
-                  if (next?.closest('[data-presentation-format-bar]')) return;
+                  if (next?.closest(PRESENTATION_FORMAT_UI_BLUR_SELECTOR)) return;
                   if (textInputTimerRef.current) {
                     window.clearTimeout(textInputTimerRef.current);
                     textInputTimerRef.current = null;
@@ -1489,7 +1538,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 onBlur={(e) => {
                   if (isApplyingDeckHistory() || isFormatBarInteracting()) return;
                   const next = e.relatedTarget as HTMLElement | null;
-                  if (next?.closest('[data-presentation-format-bar]')) return;
+                  if (next?.closest(PRESENTATION_FORMAT_UI_BLUR_SELECTOR)) return;
                   if (cardTitleRef.current && onChange) {
                     onChange({
                       titleHtml: sanitizePresentationHtml(cardTitleRef.current.innerHTML),
@@ -1583,7 +1632,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 onBlur={(e) => {
                   if (isApplyingDeckHistory() || isFormatBarInteracting()) return;
                   const next = e.relatedTarget as HTMLElement | null;
-                  if (next?.closest('[data-presentation-format-bar]')) return;
+                  if (next?.closest(PRESENTATION_FORMAT_UI_BLUR_SELECTOR)) return;
                   if (textInputTimerRef.current) {
                     window.clearTimeout(textInputTimerRef.current);
                     textInputTimerRef.current = null;
@@ -1728,7 +1777,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               onBlur={(e) => {
                 if (isApplyingDeckHistory() || isFormatBarInteracting()) return;
                 const next = e.relatedTarget as HTMLElement | null;
-                if (next?.closest('[data-presentation-format-bar]')) return;
+                if (next?.closest(PRESENTATION_FORMAT_UI_BLUR_SELECTOR)) return;
                 if (next?.closest('[data-presentation-table-tools]')) return;
                 if (textInputTimerRef.current) {
                   window.clearTimeout(textInputTimerRef.current);
@@ -1956,7 +2005,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             onBlur={(e) => {
               if (isApplyingDeckHistory() || isFormatBarInteracting()) return;
               const next = e.relatedTarget as HTMLElement | null;
-              if (next?.closest('[data-presentation-format-bar]')) return;
+              if (next?.closest(PRESENTATION_FORMAT_UI_BLUR_SELECTOR)) return;
               if (textInputTimerRef.current) {
                 window.clearTimeout(textInputTimerRef.current);
                 textInputTimerRef.current = null;
@@ -2166,6 +2215,55 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               }}
             />
           ))}
+        </>
+      )}
+
+      {showSelectionChrome && isLineShape && (
+        <>
+          {shapePointsView.map((pt, i) => (
+            <Box
+              key={`shape-pt-${i}`}
+              data-shape-point-handle
+              onPointerDown={(e) => startShapeHandleDrag(e, 'shape-point', i)}
+              sx={{
+                position: 'absolute',
+                left: `${pt.x}%`,
+                top: `${pt.y}%`,
+                transform: 'translate(-50%, -50%)',
+                width: `${Math.max(10, 12 * scale)}px`,
+                height: `${Math.max(10, 12 * scale)}px`,
+                borderRadius: '50%',
+                bgcolor: i === shapePointsView.length - 1 ? '#1565C0' : '#fff',
+                border: `${2 * scale}px solid #1565C0`,
+                cursor: 'grab',
+                zIndex: 36,
+                pointerEvents: 'auto',
+                touchAction: 'none',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+              }}
+            />
+          ))}
+          {view.shapeKind === 'curved-arrow' && shapeCurveView ? (
+            <Box
+              data-shape-curve-handle
+              onPointerDown={(e) => startShapeHandleDrag(e, 'shape-curve')}
+              sx={{
+                position: 'absolute',
+                left: `${shapeCurveView.x}%`,
+                top: `${shapeCurveView.y}%`,
+                transform: 'translate(-50%, -50%) rotate(45deg)',
+                width: `${Math.max(10, 11 * scale)}px`,
+                height: `${Math.max(10, 11 * scale)}px`,
+                bgcolor: '#fff',
+                border: `${2 * scale}px solid #E65100`,
+                cursor: 'grab',
+                zIndex: 36,
+                pointerEvents: 'auto',
+                touchAction: 'none',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+              }}
+            />
+          ) : null}
         </>
       )}
 

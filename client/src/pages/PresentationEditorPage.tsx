@@ -191,6 +191,10 @@ import {
 } from '../lib/presentationEditorHistory';
 import PresentationSlideView from '../components/presentation/PresentationSlideView';
 import PresentationDrawOverlay from '../components/presentation/PresentationDrawOverlay';
+import PresentationConnectorDrawOverlay, {
+  type ConnectorDrawPoint,
+} from '../components/presentation/PresentationConnectorDrawOverlay';
+import { connectorElementFromSlidePoints } from '../lib/presentationShapePaths';
 import {
   addTrashItem,
   createNotesTrashItem,
@@ -427,6 +431,8 @@ const PresentationEditorPage: React.FC = () => {
   const [inkTool, setInkTool] = useState<PresentationDrawTool>('select');
   const [inkColor, setInkColor] = useState(DEFAULT_PEN_COLOR);
   const [selectedStrokeIds, setSelectedStrokeIds] = useState<string[]>([]);
+  const [connectorDrawActive, setConnectorDrawActive] = useState(false);
+  const [connectorDrawPoints, setConnectorDrawPoints] = useState<ConnectorDrawPoint[]>([]);
   const activeIdRef = useRef<string | null>(null);
   const elementClipboardRef = useRef<{
     mode: 'cut' | 'copy';
@@ -1724,14 +1730,67 @@ const PresentationEditorPage: React.FC = () => {
     setSelectedElementId(el.id);
     setSnackbar(
       kind === 'curved-arrow'
-        ? 'Gebogener Pfeil eingefügt — Bogenstärke in den Eigenschaften'
+        ? 'Gebogener Pfeil — Bogen-Griff (orange) oder Endpunkte ziehen'
+        : kind === 'connector'
+          ? 'Ecken-Pfeil — blaue Griffe ziehen'
         : kind === 'arrow'
-        ? 'Pfeil eingefügt — ziehen zum Verschieben'
+        ? 'Pfeil — Endpunkte an den blauen Griffen ziehen'
         : kind === 'line'
-          ? 'Linie eingefügt — ziehen zum Verschieben'
+          ? 'Linie — Endpunkte an den blauen Griffen ziehen'
           : 'Box eingefügt — Doppelklick für Text, ziehen zum Verschieben',
     );
   };
+
+  const finishConnectorDraw = useCallback(() => {
+    if (!normalizedActive) return;
+    if (connectorDrawPoints.length < 2) {
+      setSnackbar('Mindestens 2 Ecken für einen Ecken-Pfeil');
+      return;
+    }
+    const base = connectorElementFromSlidePoints(
+      connectorDrawPoints,
+      (normalizedActive.elements?.length ?? 0) + 1,
+      normalizedActive.accentColor || '#1565C0',
+    );
+    const el: SlideElement = {
+      ...base,
+      id: `el-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    };
+    updateSlide({ elements: [...(normalizedActive.elements || []), el] });
+    setSelectedElementId(el.id);
+    setConnectorDrawActive(false);
+    setConnectorDrawPoints([]);
+    setSnackbar('Ecken-Pfeil eingefügt — Punkte an den Griffen ziehen');
+  }, [connectorDrawPoints, normalizedActive, updateSlide]);
+
+  const startConnectorDraw = useCallback(() => {
+    setConnectorDrawActive(true);
+    setConnectorDrawPoints([]);
+    setSelectedElementId(null);
+    setInkEditActive(false);
+    setSnackbar('Ecken-Pfeil zeichnen: Ecke klicken · Doppelklick/Enter = fertig · Esc = abbrechen');
+  }, []);
+
+  useEffect(() => {
+    if (!connectorDrawActive) return undefined;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (isFormatBarInteracting()) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setConnectorDrawActive(false);
+        setConnectorDrawPoints([]);
+        setSnackbar('Ecken-Pfeil abgebrochen');
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        finishConnectorDraw();
+      } else if (e.key === 'Backspace' && connectorDrawPoints.length > 0) {
+        e.preventDefault();
+        setConnectorDrawPoints((pts) => pts.slice(0, -1));
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [connectorDrawActive, connectorDrawPoints.length, finishConnectorDraw]);
 
   const addCardElement = (mode: 'single' | 'pair' = 'single') => {
     if (!normalizedActive) return;
@@ -4024,6 +4083,8 @@ const PresentationEditorPage: React.FC = () => {
                     imageInputRef.current?.click();
                   }}
                   onAddShapeElement={addShapeElement}
+                  onStartConnectorDraw={startConnectorDraw}
+                  connectorDrawActive={connectorDrawActive}
                   onAddCardElement={addCardElement}
                   onAddTableElement={addTableElement}
                   activeEditor={activeEditor}
@@ -4382,7 +4443,7 @@ const PresentationEditorPage: React.FC = () => {
                   <PresentationDrawOverlay
                     strokes={editingVariant ? currentInkStrokes : EMPTY_STROKES}
                     onStrokesChange={updateInkStrokes}
-                    enabled={editingVariant && inkEditActive}
+                    enabled={editingVariant && inkEditActive && !connectorDrawActive}
                     slideId={`${normalizedActive.id}:${editingVariant ? 'variant' : 'master'}`}
                     tool={inkTool}
                     strokeColor={inkColor}
@@ -4392,6 +4453,13 @@ const PresentationEditorPage: React.FC = () => {
                     scale={1}
                     onBackgroundPointerDown={() => setSelectedElementId(null)}
                     onHitElement={setSelectedElementId}
+                  />
+                  <PresentationConnectorDrawOverlay
+                    active={connectorDrawActive}
+                    points={connectorDrawPoints}
+                    accentColor={normalizedActive.accentColor}
+                    onAddPoint={(p) => setConnectorDrawPoints((pts) => [...pts, p])}
+                    onFinish={finishConnectorDraw}
                   />
                 </Box>
               </Box>

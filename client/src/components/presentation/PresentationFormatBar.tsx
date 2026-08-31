@@ -195,6 +195,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   const [formulaEditTarget, setFormulaEditTarget] = useState<HTMLElement | null>(null);
   const [formulaNoSource, setFormulaNoSource] = useState(false);
   const formulaEditTargetRef = useRef<HTMLElement | null>(null);
+  const formulaInputRef = useRef<HTMLTextAreaElement | null>(null);
   const [selectedLessonFile, setSelectedLessonFile] = useState<string>('');
   const [selectedFileMeta, setSelectedFileMeta] = useState<LessonFolderFsItem | null>(null);
   const linkRangeRef = useRef<Range | null>(null);
@@ -476,6 +477,17 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     closeFormulaDialog();
     onMessage?.('Formel entfernt');
   }, [activeEditor, closeFormulaDialog, onEditorChanged, onMessage]);
+
+  useEffect(() => {
+    if (!formulaDialogOpen) return;
+    const t = window.setTimeout(() => {
+      const el = formulaInputRef.current;
+      if (!el) return;
+      el.focus();
+      el.select();
+    }, 60);
+    return () => window.clearTimeout(t);
+  }, [formulaDialogOpen]);
 
   useEffect(() => {
     if (!activeEditor || disabled || isNotesEditor) return;
@@ -1768,74 +1780,82 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
       <Dialog
         open={formulaDialogOpen}
         onClose={closeFormulaDialog}
-        maxWidth="sm"
+        maxWidth="xs"
         fullWidth
-        {...FORMAT_POPOVER_FOCUS}
+        PaperProps={{ 'data-presentation-format-ui': 'true' }}
       >
-        <DialogTitle sx={{ pb: 1, fontSize: 16 }}>
+        <DialogTitle sx={{ py: 0.75, px: 1.5, fontSize: 14, fontWeight: 700 }}>
           {formulaEditTarget ? 'Formel bearbeiten' : 'Formel einfügen'}
         </DialogTitle>
-        <DialogContent sx={{ pt: 1 }}>
+        <DialogContent sx={{ px: 1.5, pt: 0, pb: 1 }}>
           {formulaNoSource ? (
-            <Typography sx={{ fontSize: 11, color: '#666', mb: 1 }}>
-              Diese Formel stammt aus Word/PowerPoint — es war keine LaTeX-Quelle gespeichert. Neue
-              Eingabe ersetzt die Darstellung.
+            <Typography sx={{ fontSize: 10, color: '#666', mb: 0.75, lineHeight: 1.35 }}>
+              Keine gespeicherte LaTeX-Quelle (Word/PP). Neue Eingabe ersetzt die Darstellung.
             </Typography>
           ) : null}
-          <TextField
-            autoFocus
-            multiline
-            minRows={3}
-            maxRows={8}
-            fullWidth
-            label="LaTeX"
-            placeholder="z. B. E = mc^2  oder  \\frac{a}{b}"
-            value={formulaLatex}
-            onChange={(e) => setFormulaLatex(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault();
-                applyFormulaDialog();
-              }
-            }}
-            helperText="Tipp: $…$ beim Einfügen im Formel-Modus. Hier direkt LaTeX ohne $."
-            FormHelperTextProps={{ sx: { fontSize: 10 } }}
-            sx={{
-              mb: 1.5,
-              '& .MuiInputBase-root': { fontFamily: 'ui-monospace, monospace', fontSize: 13 },
-            }}
-          />
-          <Typography sx={{ fontSize: 10, fontWeight: 700, color: '#666', mb: 0.5 }}>
-            Vorschau
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 96px', gap: 1, alignItems: 'stretch' }}>
+            <TextField
+              inputRef={formulaInputRef}
+              multiline
+              minRows={2}
+              maxRows={5}
+              fullWidth
+              size="small"
+              label="LaTeX"
+              placeholder="\\frac{a}{b}"
+              value={formulaLatex}
+              onChange={(e) => setFormulaLatex(e.target.value)}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  applyFormulaDialog();
+                }
+              }}
+              sx={{
+                '& .MuiInputBase-root': { fontFamily: 'ui-monospace, monospace', fontSize: 12 },
+                '& .MuiInputLabel-root': { fontSize: 11 },
+              }}
+            />
+            <Box
+              sx={{
+                border: '1px solid #ddd',
+                borderRadius: 1,
+                bgcolor: '#fafafa',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                px: 0.5,
+                minHeight: 56,
+                overflow: 'hidden',
+              }}
+              dangerouslySetInnerHTML={{
+                __html: formulaPreviewHtml || '<span style="color:#bbb;font-size:11px">Vorschau</span>',
+              }}
+            />
+          </Box>
+          <Typography sx={{ fontSize: 9, color: '#888', mt: 0.75 }}>
+            ⌘/Strg+Enter übernehmen · ohne $-Zeichen
           </Typography>
-          <Box
-            sx={{
-              minHeight: 48,
-              p: 1.25,
-              border: '1px solid #ddd',
-              borderRadius: 1,
-              bgcolor: '#fafafa',
-              fontSize: 18,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            dangerouslySetInnerHTML={{
-              __html: formulaPreviewHtml || '<span style="color:#999;font-size:12px">…</span>',
-            }}
-          />
         </DialogContent>
-        <DialogActions sx={{ px: 2, pb: 1.5, gap: 0.5, flexWrap: 'wrap' }}>
+        <DialogActions sx={{ px: 1.5, py: 0.75, gap: 0.5, minHeight: 0 }}>
           {formulaEditTarget ? (
-            <Button color="error" onClick={deleteFormulaFromDialog} sx={{ textTransform: 'none', mr: 'auto' }}>
+            <Button
+              size="small"
+              color="error"
+              onClick={deleteFormulaFromDialog}
+              sx={{ textTransform: 'none', fontSize: 12, mr: 'auto' }}
+            >
               Entfernen
             </Button>
-          ) : null}
-          <Button onClick={closeFormulaDialog} sx={{ textTransform: 'none' }}>
+          ) : (
+            <Box sx={{ mr: 'auto' }} />
+          )}
+          <Button size="small" onClick={closeFormulaDialog} sx={{ textTransform: 'none', fontSize: 12 }}>
             Abbrechen
           </Button>
-          <Button variant="contained" onClick={applyFormulaDialog} sx={{ textTransform: 'none' }}>
-            Übernehmen
+          <Button size="small" variant="contained" onClick={applyFormulaDialog} sx={{ textTransform: 'none', fontSize: 12 }}>
+            OK
           </Button>
         </DialogActions>
       </Dialog>

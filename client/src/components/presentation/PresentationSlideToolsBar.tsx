@@ -56,6 +56,7 @@ import {
   ViewAgendaOutlined as CardIcon,
   ViewColumnOutlined as CardPairIcon,
   TableChartOutlined as TableIcon,
+  Polyline as ConnectorDrawIcon,
 } from '@mui/icons-material';
 import {
   PresentationShapeKind,
@@ -159,6 +160,8 @@ interface PresentationSlideToolsBarProps {
   onUndoInk?: () => void;
   onAddLayoutImage: () => void;
   onAddShapeElement: (kind: PresentationShapeKind) => void;
+  onStartConnectorDraw?: () => void;
+  connectorDrawActive?: boolean;
   onAddCardElement?: (mode?: 'single' | 'pair') => void;
   onAddTableElement?: (opts?: CreateTableOptions) => void;
   /** Live-Editor der aktuellen Tabelle (Zellen-Format). */
@@ -203,6 +206,8 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
   onUndoInk,
   onAddLayoutImage,
   onAddShapeElement,
+  onStartConnectorDraw,
+  connectorDrawActive = false,
   onAddCardElement,
   onAddTableElement,
   activeEditor = null,
@@ -685,6 +690,21 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
             <ShapeIcon sx={{ fontSize: 15 }} />
           </IconButton>
         </Tooltip>
+        <Tooltip title="Ecken-Pfeil zeichnen (Ecke klicken, Doppelklick = fertig)">
+          <IconButton
+            size="small"
+            onClick={() => onStartConnectorDraw?.()}
+            sx={{
+              ...iconBtnSx,
+              ...(connectorDrawActive
+                ? { color: PRES_EDITOR_UI.accent, bgcolor: 'rgba(46,125,50,0.14)' }
+                : {}),
+            }}
+            aria-label="Ecken-Pfeil zeichnen"
+          >
+            <ConnectorDrawIcon sx={{ fontSize: 15 }} />
+          </IconButton>
+        </Tooltip>
         <Tooltip title="Info-Karte (Titelkopf + Inhalt)">
           <IconButton
             size="small"
@@ -762,6 +782,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
               [
                 ['arrow', <ArrowShapeIcon key="a" sx={{ fontSize: 18 }} />],
                 ['curved-arrow', <CurvedArrowShapeIcon key="ca" sx={{ fontSize: 18 }} />],
+                ['connector', <ConnectorDrawIcon key="c" sx={{ fontSize: 18 }} />],
                 ['line', <LineShapeIcon key="l" sx={{ fontSize: 18 }} />],
                 ['rect', <RectShapeIcon key="r" sx={{ fontSize: 18 }} />],
                 ['ellipse', <EllipseShapeIcon key="e" sx={{ fontSize: 18 }} />],
@@ -772,7 +793,11 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                 size="small"
                 startIcon={icon}
                 onClick={() => {
-                  onAddShapeElement(kind);
+                  if (kind === 'connector') {
+                    onStartConnectorDraw?.();
+                  } else {
+                    onAddShapeElement(kind);
+                  }
                   setShapeAnchor(null);
                 }}
                 sx={{
@@ -1440,6 +1465,32 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                           '& .MuiInputLabel-root': { fontSize: 9 },
                         }}
                       />
+                      {selectedElement.shapeKind === 'curved-arrow' && (
+                        <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, mb: 0.5 }}>
+                          Bogen: orange Griff ziehen (oder Zahl unten)
+                        </Typography>
+                      )}
+                      {(selectedElement.shapeKind === 'arrow' ||
+                        selectedElement.shapeKind === 'curved-arrow' ||
+                        selectedElement.shapeKind === 'connector') && (
+                        <TextField
+                          size="small"
+                          type="number"
+                          label="Pfeilspitze"
+                          value={selectedElement.arrowHeadSize ?? 10}
+                          onChange={(e) =>
+                            onUpdateElement(selectedElement.id, {
+                              arrowHeadSize: Math.max(4, Math.min(28, Number(e.target.value) || 10)),
+                            })
+                          }
+                          sx={{
+                            mb: 0.5,
+                            width: '100%',
+                            '& .MuiInputBase-root': { fontSize: 10, height: 28 },
+                            '& .MuiInputLabel-root': { fontSize: 9 },
+                          }}
+                        />
+                      )}
                       {selectedElement.shapeKind === 'curved-arrow' && (
                         <TextField
                           size="small"
