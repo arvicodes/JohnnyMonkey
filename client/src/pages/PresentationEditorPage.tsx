@@ -59,7 +59,7 @@ import PresentationNotesPanel, {
 } from '../components/presentation/PresentationNotesPanel';
 import PresentationTrashPanel from '../components/presentation/PresentationTrashPanel';
 import PresentationSlideClipboardPanel from '../components/presentation/PresentationSlideClipboardPanel';
-import { isFormatBarInteracting } from '../lib/presentationFormatBarGuard';
+import { isFormatBarInteracting, isPresentationModalTypingActive } from '../lib/presentationFormatBarGuard';
 import {
   clearSlideClipboard,
   cloneClipboardSlideForInsert,
@@ -1416,6 +1416,7 @@ const PresentationEditorPage: React.FC = () => {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (isPresentationModalTypingActive()) return;
       const target = e.target as HTMLElement | null;
       if (!target || typeof target.closest !== 'function') return;
 
@@ -4316,6 +4317,7 @@ const PresentationEditorPage: React.FC = () => {
                     if (el.textContent) el.textContent = '';
                   }}
                   onKeyDown={(e) => {
+                    if (document.querySelector('.MuiDialog-root:not([aria-hidden="true"])')) return;
                     if (e.metaKey || e.ctrlKey) return;
                     e.preventDefault();
                   }}

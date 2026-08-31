@@ -19,3 +19,14 @@ export function isPresentationFormatUiTarget(target: EventTarget | null): boolea
   const el = target as HTMLElement | null;
   return !!el?.closest(PRESENTATION_FORMAT_UI_SELECTOR);
 }
+
+/** Dialoge/Modals der Präsentation (Formel, Link, …) — Tastatur nicht an Editor weiterleiten. */
+export function isPresentationModalTypingActive(): boolean {
+  const active = document.activeElement;
+  if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
+    if (active.closest('[data-pres-formula-dialog], [data-presentation-format-ui], .MuiDialog-root')) {
+      return true;
+    }
+  }
+  return Boolean(document.querySelector('[data-pres-formula-dialog][data-open="true"]'));
+}

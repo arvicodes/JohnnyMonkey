@@ -61,7 +61,7 @@ import {
   renderPresentationMathHtml,
   replacePresentationMathElement,
 } from '../../lib/presentationPasteMath';
-import { setFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
+import { setFormatBarInteracting, isPresentationModalTypingActive } from '../../lib/presentationFormatBarGuard';
 import {
   applyFontFamily,
   applyHighlightColor,
@@ -333,6 +333,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     if (disabled || !activeEditor) return undefined;
     const editor = activeEditor;
     const onKeyDown = (e: KeyboardEvent) => {
+      if (isPresentationModalTypingActive()) return;
       if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
       const target = e.target as HTMLElement | null;
       if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.tagName === 'SELECT') {
@@ -439,6 +440,8 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         setFormulaLatex('');
         setFormulaNoSource(false);
       }
+      window.getSelection()?.removeAllRanges();
+      activeEditor.blur();
       setFormulaDialogOpen(true);
     },
     [activeEditor, disabled, isNotesEditor],
@@ -483,9 +486,9 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     const t = window.setTimeout(() => {
       const el = formulaInputRef.current;
       if (!el) return;
-      el.focus();
-      el.select();
-    }, 60);
+      el.focus({ preventScroll: true });
+      el.setSelectionRange(el.value.length, el.value.length);
+    }, 80);
     return () => window.clearTimeout(t);
   }, [formulaDialogOpen]);
 
@@ -1782,27 +1785,32 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         onClose={closeFormulaDialog}
         maxWidth="xs"
         fullWidth
-        PaperProps={{ 'data-presentation-format-ui': 'true' }}
+        data-pres-formula-dialog
+        data-open={formulaDialogOpen ? 'true' : 'false'}
+        PaperProps={{ 'data-presentation-format-ui': 'true', 'data-pres-formula-dialog': 'true' }}
+        TransitionProps={{
+          onEntered: () => {
+            activeEditor?.blur();
+            formulaInputRef.current?.focus({ preventScroll: true });
+          },
+        }}
       >
         <DialogTitle sx={{ py: 0.75, px: 1.5, fontSize: 14, fontWeight: 700 }}>
           {formulaEditTarget ? 'Formel bearbeiten' : 'Formel einfügen'}
         </DialogTitle>
-        <DialogContent sx={{ px: 1.5, pt: 0, pb: 1 }}>
+        <DialogContent
+          sx={{ px: 1.5, pt: 0, pb: 1 }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
           {formulaNoSource ? (
             <Typography sx={{ fontSize: 10, color: '#666', mb: 0.75, lineHeight: 1.35 }}>
               Keine gespeicherte LaTeX-Quelle (Word/PP). Neue Eingabe ersetzt die Darstellung.
             </Typography>
           ) : null}
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 96px', gap: 1, alignItems: 'stretch' }}>
-            <TextField
-              inputRef={formulaInputRef}
-              multiline
-              minRows={2}
-              maxRows={5}
-              fullWidth
-              size="small"
-              label="LaTeX"
-              placeholder="\\frac{a}{b}"
+            <Box
+              component="textarea"
+              ref={formulaInputRef}
               value={formulaLatex}
               onChange={(e) => setFormulaLatex(e.target.value)}
               onKeyDown={(e) => {
@@ -1812,9 +1820,25 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
                   applyFormulaDialog();
                 }
               }}
+              placeholder="LaTeX, z. B. \frac{a}{b}"
+              rows={3}
+              spellCheck={false}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
               sx={{
-                '& .MuiInputBase-root': { fontFamily: 'ui-monospace, monospace', fontSize: 12 },
-                '& .MuiInputLabel-root': { fontSize: 11 },
+                width: '100%',
+                resize: 'vertical',
+                minHeight: 56,
+                maxHeight: 140,
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                fontSize: 12,
+                lineHeight: 1.45,
+                p: 1,
+                border: '1px solid #ccc',
+                borderRadius: 1,
+                outline: 'none',
+                '&:focus': { borderColor: '#1565C0', boxShadow: '0 0 0 1px #1565C0' },
               }}
             />
             <Box
