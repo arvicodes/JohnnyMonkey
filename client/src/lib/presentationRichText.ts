@@ -38,6 +38,7 @@ import {
   convertPlainTextWithLatexToPresentationHtml,
   extractLatexFromPastedHtml,
   hoistPastedMathHtml,
+  insertHtmlAtEditorCursor,
   isInsidePresentationMath,
   isPresentationMathNode,
   looksLikeAsciiMatrix,
@@ -1072,6 +1073,22 @@ export function presentationPasteHtml(
   convertCaretSuperscriptsInPlace(doc.body);
   stampSlideTextAlign(doc.body, textAlign);
   return doc.body.innerHTML || '<p><br></p>';
+}
+
+/** Einfügen ins Folienfeld: MathML per Range, sonst insertHTML. */
+export function insertPresentationPastedHtml(editor: HTMLElement, html: string): void {
+  const content = (html || '').trim() || '<p><br></p>';
+  if (/data-pres-math|pres-math|<math[\s>]/i.test(content)) {
+    insertHtmlAtEditorCursor(editor, content);
+    return;
+  }
+  editor.focus({ preventScroll: true });
+  try {
+    document.execCommand('styleWithCSS', false, 'true');
+  } catch {
+    /* ignore */
+  }
+  document.execCommand('insertHTML', false, content);
 }
 
 /** Erlaubte Link-Ziele in Folien (http(s), mailto, relative App-Pfade, Anker). */

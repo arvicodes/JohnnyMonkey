@@ -12,7 +12,7 @@ import {
   findAnimBlockFromHit,
 } from '../../lib/presentationAnimation';
 import type { HtmlAnimField } from '../../lib/presentationAnimation';
-import { sanitizePresentationHtml, handlePresentationTabKey, replaceArrowShortcutsNearCursor, handlePresentationListShortcutKey, presentationPasteHtml, wrapOrphanRootInlineContent } from '../../lib/presentationRichText';
+import { sanitizePresentationHtml, handlePresentationTabKey, replaceArrowShortcutsNearCursor, handlePresentationListShortcutKey, presentationPasteHtml, insertPresentationPastedHtml, wrapOrphanRootInlineContent } from '../../lib/presentationRichText';
 import {
   tryStartTableResizeFromPointer,
   updateTableResizeHoverCursor,
@@ -361,12 +361,7 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
       textAlign: resolveRichZoneAlign(variant, align),
     });
     el.focus();
-    try {
-      document.execCommand('styleWithCSS', false, 'true');
-    } catch {
-      /* ignore */
-    }
-    document.execCommand('insertHTML', false, content || '<p><br></p>');
+    insertPresentationPastedHtml(el, content || '<p><br></p>');
     handleInput();
   };
 

@@ -139,7 +139,12 @@ import {
 import { isEndSlide } from '../lib/presentationChapterCombine';
 import {
   DEFAULT_PEN_COLOR,
+  DEFAULT_MARKER_COLOR,
+  DEFAULT_MARKER_OPACITY,
   defaultLineWidthForTool,
+  defaultColorForTool,
+  lineWidthsForTool,
+  toolUsesColor,
   type PresentationDrawTool,
 } from '../lib/presentationDrawTools';
 import { isRecentLeavePresentToEditor, requestPresentFullscreen } from '../lib/presentationPresentFullscreen';
@@ -428,8 +433,13 @@ const PresentationEditorPage: React.FC = () => {
   const suppressMasterCommitRef = useRef(false);
   const inkSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [inkEditActive, setInkEditActive] = useState(false);
-  const [inkTool, setInkTool] = useState<PresentationDrawTool>('select');
+  const [inkTool, setInkTool] = useState<PresentationDrawTool>('pen');
   const [inkColor, setInkColor] = useState(DEFAULT_PEN_COLOR);
+  const [inkLineWidth, setInkLineWidth] = useState(() => defaultLineWidthForTool('pen'));
+  const [inkMarkerOpacity, setInkMarkerOpacity] = useState(DEFAULT_MARKER_OPACITY);
+  const [clearInkOpen, setClearInkOpen] = useState(false);
+  const penColorRef = useRef(DEFAULT_PEN_COLOR);
+  const markerColorRef = useRef(DEFAULT_MARKER_COLOR);
   const [selectedStrokeIds, setSelectedStrokeIds] = useState<string[]>([]);
   const [connectorDrawActive, setConnectorDrawActive] = useState(false);
   const [connectorDrawPoints, setConnectorDrawPoints] = useState<ConnectorDrawPoint[]>([]);
@@ -650,6 +660,101 @@ const PresentationEditorPage: React.FC = () => {
   );
 
   const currentInkStrokes = annotations?.bySlideId[activeId ?? ''] ?? EMPTY_STROKES;
+
+  const handleToggleInkEdit = useCallback(() => {
+    setInkEditActive((v) => {
+      if (!v) {
+        setInkTool('pen');
+        setInkColor(penColorRef.current);
+        setInkLineWidth(defaultLineWidthForTool('pen'));
+      }
+      return !v;
+    });
+    setSelectedElementId(null);
+    setActiveEditor(null);
+    setSelectedStrokeIds([]);
+  }, []);
+
+  const handleSelectInkTool = useCallback(
+    (tool: PresentationDrawTool) => {
+      setInkEditActive(true);
+      setInkTool(tool);
+      const options = lineWidthsForTool(tool);
+      setInkLineWidth((w) =>
+        options.some((opt) => Math.abs(opt - w) < 0.01) ? w : defaultLineWidthForTool(tool),
+      );
+      if (tool === 'marker') {
+        setInkColor(markerColorRef.current || defaultColorForTool(tool));
+      } else if (toolUsesColor(tool)) {
+        setInkColor(penColorRef.current || defaultColorForTool(tool));
+      }
+      if (tool !== 'select') setSelectedStrokeIds([]);
+      setSelectedElementId(null);
+      setActiveEditor(null);
+    },
+    [],
+  );
+
+  const handleSelectInkColor = useCallback(
+    (c: string) => {
+      setInkColor(c);
+      if (inkTool === 'marker') markerColorRef.current = c;
+      else penColorRef.current = c;
+      if (selectedStrokeIds.length) {
+        const idSet = new Set(selectedStrokeIds);
+        updateInkStrokes(currentInkStrokes.map((s) => (idSet.has(s.id) ? { ...s, color: c } : s)));
+      }
+    },
+    [inkTool, selectedStrokeIds, currentInkStrokes, updateInkStrokes],
+  );
+
+  const handleSelectInkLineWidth = useCallback(
+    (w: number) => {
+      setInkLineWidth(w);
+      if (selectedStrokeIds.length) {
+        const idSet = new Set(selectedStrokeIds);
+        updateInkStrokes(
+          currentInkStrokes.map((s) => (idSet.has(s.id) ? { ...s, lineWidth: w } : s)),
+        );
+      }
+    },
+    [selectedStrokeIds, currentInkStrokes, updateInkStrokes],
+  );
+
+  const handleSelectInkMarkerOpacity = useCallback(
+    (opacity: number) => {
+      setInkMarkerOpacity(opacity);
+      if (selectedStrokeIds.length) {
+        const idSet = new Set(selectedStrokeIds);
+        updateInkStrokes(
+          currentInkStrokes.map((s) =>
+            idSet.has(s.id) && s.mode === 'marker' ? { ...s, markerOpacity: opacity } : s,
+          ),
+        );
+      }
+    },
+    [selectedStrokeIds, currentInkStrokes, updateInkStrokes],
+  );
+
+  const clearAllInkOnSlide = useCallback(() => {
+    if (!currentInkStrokes.length) return;
+    setSelectedStrokeIds([]);
+    updateInkStrokes([]);
+    setClearInkOpen(false);
+  }, [currentInkStrokes, updateInkStrokes]);
+
+  useEffect(() => {
+    if (!selectedStrokeIds.length) return;
+    const idSet = new Set(selectedStrokeIds);
+    const selected = currentInkStrokes.filter((s) => idSet.has(s.id));
+    const first = selected[0];
+    if (!first) return;
+    setInkLineWidth(first.lineWidth);
+    setInkColor(first.color);
+    if (first.mode === 'marker' && first.markerOpacity != null) {
+      setInkMarkerOpacity(first.markerOpacity);
+    }
+  }, [selectedStrokeIds, currentInkStrokes]);
 
   const schedulePdfExport = useCallback(
     (options?: { delayMs?: number; notify?: boolean }) => {
@@ -4045,40 +4150,26 @@ const PresentationEditorPage: React.FC = () => {
                   inkEditActive={inkEditActive}
                   inkTool={inkTool}
                   inkColor={inkColor}
+                  inkLineWidth={inkLineWidth}
+                  inkMarkerOpacity={inkMarkerOpacity}
                   canUndoInk={currentInkStrokes.length > 0}
-                  onToggleInkEdit={() => {
-                    if (!editingVariantRef.current && activeId) {
-                      openPlayVariant(activeId);
-                    }
-                    setInkEditActive((v) => {
-                      if (!v) setInkTool('select');
-                      return !v;
-                    });
-                    setSelectedElementId(null);
-                    setActiveEditor(null);
-                  }}
-                  onSelectInkTool={(tool) => {
-                    if (!editingVariantRef.current && activeId) {
-                      openPlayVariant(activeId);
-                    }
-                    setInkEditActive(true);
-                    setInkTool(tool);
-                    if (tool !== 'select') setSelectedStrokeIds([]);
-                  }}
-                  onSelectInkColor={(c) => {
-                    setInkColor(c);
-                    if (selectedStrokeIds.length) {
-                      const idSet = new Set(selectedStrokeIds);
-                      updateInkStrokes(
-                        currentInkStrokes.map((s) => (idSet.has(s.id) ? { ...s, color: c } : s)),
-                      );
-                    }
-                  }}
+                  inkSelectionIsMarker={
+                    selectedStrokeIds.length > 0 &&
+                    currentInkStrokes
+                      .filter((s) => selectedStrokeIds.includes(s.id))
+                      .every((s) => s.mode === 'marker')
+                  }
+                  onToggleInkEdit={handleToggleInkEdit}
+                  onSelectInkTool={handleSelectInkTool}
+                  onSelectInkColor={handleSelectInkColor}
+                  onSelectInkLineWidth={handleSelectInkLineWidth}
+                  onSelectInkMarkerOpacity={handleSelectInkMarkerOpacity}
                   onUndoInk={() => {
                     if (!currentInkStrokes.length) return;
                     updateInkStrokes(currentInkStrokes.slice(0, -1));
                     setSelectedStrokeIds([]);
                   }}
+                  onClearAllInk={() => setClearInkOpen(true)}
                   onAddLayoutImage={() => {
                     imageTargetRef.current = 'layout';
                     imageInputRef.current?.click();
@@ -4427,7 +4518,7 @@ const PresentationEditorPage: React.FC = () => {
                     onDeleteElement={deleteElement}
                     onMoveElementToSlide={moveElementToSlide}
                     onMoveElementToNotes={moveElementToNotes}
-                    showInkStrokes={editingVariant}
+                    showInkStrokes={false}
                     onTextElementFocus={(el, elementId, field) => {
                       setActiveEditor(el);
                       setActiveHtmlField(
@@ -4443,13 +4534,14 @@ const PresentationEditorPage: React.FC = () => {
                     }}
                   />
                   <PresentationDrawOverlay
-                    strokes={editingVariant ? currentInkStrokes : EMPTY_STROKES}
+                    strokes={currentInkStrokes}
                     onStrokesChange={updateInkStrokes}
-                    enabled={editingVariant && inkEditActive && !connectorDrawActive}
-                    slideId={`${normalizedActive.id}:${editingVariant ? 'variant' : 'master'}`}
+                    enabled={inkEditActive && !connectorDrawActive}
+                    slideId={normalizedActive.id}
                     tool={inkTool}
                     strokeColor={inkColor}
-                    lineWidth={defaultLineWidthForTool(inkTool === 'eraser' ? 'pen' : inkTool)}
+                    lineWidth={inkLineWidth}
+                    markerOpacity={inkMarkerOpacity}
                     selectedStrokeIds={selectedStrokeIds}
                     onSelectedStrokeIdsChange={setSelectedStrokeIds}
                     scale={1}

@@ -57,6 +57,7 @@ import {
 import {
   findPresentationMathInEditor,
   insertPresentationFormulaAtCursor,
+  rememberFormulaInsertCaret,
   readPresentationMathLatex,
   renderPresentationMathHtml,
   replacePresentationMathElement,
@@ -425,6 +426,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   const openFormulaDialog = useCallback(
     (target?: HTMLElement | null) => {
       if (!activeEditor || disabled || isNotesEditor) return;
+      rememberFormulaInsertCaret(activeEditor);
       setFormatBarInteracting(true);
       stashEditorSelection(activeEditor);
       const math = target ?? findPresentationMathInEditor(activeEditor);
@@ -790,7 +792,10 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
               color: formulaPasteMode ? '#1565C0' : btnSx.color,
               bgcolor: formulaPasteMode ? 'rgba(21,101,192,0.12)' : 'transparent',
             }}
-            onMouseDown={(e) => e.preventDefault()}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              rememberFormulaInsertCaret(activeEditor);
+            }}
             onClick={(e) => {
               if (e.shiftKey) {
                 openFormulaDialog();

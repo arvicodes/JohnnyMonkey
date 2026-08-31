@@ -25,7 +25,9 @@ import {
   Gesture as InkIcon,
   Draw as DrawIcon,
   HighlightAlt as LassoIcon,
+  Highlight as MarkerIcon,
   Undo as UndoIcon,
+  DeleteSweep as ClearInkIcon,
   Crop as CropIcon,
   ImageOutlined as ImageIcon,
   PaletteOutlined as PaletteIcon,
@@ -121,6 +123,10 @@ import { sanitizePresentationHtml } from '../../lib/presentationRichText';
 import { setFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
 import {
   PEN_COLORS,
+  MARKER_OPACITY_PRESETS,
+  lineWidthsForTool,
+  toolUsesColor,
+  toolUsesLineWidth,
   type PresentationDrawTool,
 } from '../../lib/presentationDrawTools';
 
@@ -153,11 +159,17 @@ interface PresentationSlideToolsBarProps {
   inkEditActive?: boolean;
   inkTool?: PresentationDrawTool;
   inkColor?: string;
+  inkLineWidth?: number;
+  inkMarkerOpacity?: number;
   canUndoInk?: boolean;
+  inkSelectionIsMarker?: boolean;
   onToggleInkEdit?: () => void;
   onSelectInkTool?: (tool: PresentationDrawTool) => void;
   onSelectInkColor?: (color: string) => void;
+  onSelectInkLineWidth?: (width: number) => void;
+  onSelectInkMarkerOpacity?: (opacity: number) => void;
   onUndoInk?: () => void;
+  onClearAllInk?: () => void;
   onAddLayoutImage: () => void;
   onAddShapeElement: (kind: PresentationShapeKind) => void;
   onStartConnectorDraw?: () => void;
@@ -199,11 +211,17 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
   inkEditActive = false,
   inkTool = 'select',
   inkColor = '#1565c0',
+  inkLineWidth = 3,
+  inkMarkerOpacity = 0.14,
   canUndoInk = false,
+  inkSelectionIsMarker = false,
   onToggleInkEdit,
   onSelectInkTool,
   onSelectInkColor,
+  onSelectInkLineWidth,
+  onSelectInkMarkerOpacity,
   onUndoInk,
+  onClearAllInk,
   onAddLayoutImage,
   onAddShapeElement,
   onStartConnectorDraw,
@@ -557,8 +575,14 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
           </>
         )}
         {onToggleInkEdit && (
-          <Box sx={toolGroupSx}>
-            <Tooltip title={inkEditActive ? 'Stift-Bearbeitung aus — Text wieder tippbar' : 'Stiftstriche bearbeiten (Lasso, Radierer)'}>
+          <Box sx={{ ...toolGroupSx, flexWrap: 'wrap', maxWidth: '100%' }}>
+            <Tooltip
+              title={
+                inkEditActive
+                  ? 'Stift aus — Text wieder tippbar'
+                  : 'Stift & Werkzeuge (wie im Präsentieren)'
+              }
+            >
               <IconButton
                 size="small"
                 onClick={onToggleInkEdit}
@@ -568,7 +592,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                     ? { bgcolor: `${PRES_EDITOR_UI.accent}22`, color: PRES_EDITOR_UI.accent }
                     : {}),
                 }}
-                aria-label="Stiftstriche bearbeiten"
+                aria-label="Stift & Werkzeuge"
               >
                 <DrawIcon sx={{ fontSize: 15 }} />
               </IconButton>
@@ -605,6 +629,21 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                     <InkIcon sx={{ fontSize: 15 }} />
                   </IconButton>
                 </Tooltip>
+                <Tooltip title="Marker">
+                  <IconButton
+                    size="small"
+                    onClick={() => onSelectInkTool('marker')}
+                    sx={{
+                      ...iconBtnSx,
+                      ...(inkTool === 'marker'
+                        ? { bgcolor: `${PRES_EDITOR_UI.accent}22`, color: PRES_EDITOR_UI.accent }
+                        : {}),
+                    }}
+                    aria-label="Marker"
+                  >
+                    <MarkerIcon sx={{ fontSize: 15 }} />
+                  </IconButton>
+                </Tooltip>
                 <Tooltip title="Radierer">
                   <IconButton
                     size="small"
@@ -628,32 +667,158 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                     />
                   </IconButton>
                 </Tooltip>
-                {PEN_COLORS.slice(0, 6).map((c) => (
+                <Divider orientation="vertical" flexItem sx={{ mx: 0.2, my: 0.4 }} />
+                <Tooltip title="Linie">
                   <IconButton
-                    key={c}
                     size="small"
-                    onClick={() => onSelectInkColor?.(c)}
-                    aria-label={`Stiftfarbe ${c}`}
+                    onClick={() => onSelectInkTool('shape-line')}
                     sx={{
                       ...iconBtnSx,
-                      width: 22,
-                      height: 22,
+                      ...(inkTool === 'shape-line'
+                        ? { bgcolor: `${PRES_EDITOR_UI.accent}22`, color: PRES_EDITOR_UI.accent }
+                        : {}),
                     }}
+                    aria-label="Tinten-Linie"
                   >
-                    <Box
-                      sx={{
-                        width: 12,
-                        height: 12,
-                        borderRadius: '50%',
-                        bgcolor: c,
-                        boxShadow:
-                          inkColor.toLowerCase() === c.toLowerCase()
-                            ? `0 0 0 2px ${PRES_EDITOR_UI.accent}`
-                            : '0 0 0 1px rgba(0,0,0,0.2)',
-                      }}
-                    />
+                    <LineShapeIcon sx={{ fontSize: 15 }} />
                   </IconButton>
-                ))}
+                </Tooltip>
+                <Tooltip title="Rechteck">
+                  <IconButton
+                    size="small"
+                    onClick={() => onSelectInkTool('shape-rect')}
+                    sx={{
+                      ...iconBtnSx,
+                      ...(inkTool === 'shape-rect'
+                        ? { bgcolor: `${PRES_EDITOR_UI.accent}22`, color: PRES_EDITOR_UI.accent }
+                        : {}),
+                    }}
+                    aria-label="Tinten-Rechteck"
+                  >
+                    <RectShapeIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Kreis">
+                  <IconButton
+                    size="small"
+                    onClick={() => onSelectInkTool('shape-ellipse')}
+                    sx={{
+                      ...iconBtnSx,
+                      ...(inkTool === 'shape-ellipse'
+                        ? { bgcolor: `${PRES_EDITOR_UI.accent}22`, color: PRES_EDITOR_UI.accent }
+                        : {}),
+                    }}
+                    aria-label="Tinten-Kreis"
+                  >
+                    <EllipseShapeIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Pfeil">
+                  <IconButton
+                    size="small"
+                    onClick={() => onSelectInkTool('shape-arrow')}
+                    sx={{
+                      ...iconBtnSx,
+                      ...(inkTool === 'shape-arrow'
+                        ? { bgcolor: `${PRES_EDITOR_UI.accent}22`, color: PRES_EDITOR_UI.accent }
+                        : {}),
+                    }}
+                    aria-label="Tinten-Pfeil"
+                  >
+                    <ArrowShapeIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
+                {(toolUsesColor(inkTool) || inkTool === 'select') &&
+                  PEN_COLORS.map((c) => (
+                    <IconButton
+                      key={c}
+                      size="small"
+                      onClick={() => onSelectInkColor?.(c)}
+                      aria-label={`Stiftfarbe ${c}`}
+                      sx={{
+                        ...iconBtnSx,
+                        width: 22,
+                        height: 22,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: 12,
+                          height: 12,
+                          borderRadius: '50%',
+                          bgcolor: c,
+                          boxShadow:
+                            inkColor.toLowerCase() === c.toLowerCase()
+                              ? `0 0 0 2px ${PRES_EDITOR_UI.accent}`
+                              : '0 0 0 1px rgba(0,0,0,0.2)',
+                        }}
+                      />
+                    </IconButton>
+                  ))}
+                {toolUsesLineWidth(inkTool) && onSelectInkLineWidth && (
+                  <>
+                    <Divider orientation="vertical" flexItem sx={{ mx: 0.2, my: 0.4 }} />
+                    {lineWidthsForTool(inkTool).map((w) => (
+                      <Tooltip key={w} title={`Stärke ${w}`}>
+                        <IconButton
+                          size="small"
+                          onClick={() => onSelectInkLineWidth(w)}
+                          aria-label={`Linienstärke ${w}`}
+                          sx={{
+                            ...iconBtnSx,
+                            width: 22,
+                            height: 22,
+                            ...(Math.abs(inkLineWidth - w) < 0.01
+                              ? { bgcolor: `${PRES_EDITOR_UI.accent}22` }
+                              : {}),
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              width: Math.min(14, 4 + w * 0.45),
+                              height: Math.min(14, 4 + w * 0.45),
+                              borderRadius: '50%',
+                              bgcolor: PRES_EDITOR_UI.textMuted,
+                            }}
+                          />
+                        </IconButton>
+                      </Tooltip>
+                    ))}
+                  </>
+                )}
+                {(inkTool === 'marker' || inkSelectionIsMarker) && onSelectInkMarkerOpacity && (
+                  <>
+                    <Divider orientation="vertical" flexItem sx={{ mx: 0.2, my: 0.4 }} />
+                    {MARKER_OPACITY_PRESETS.map((op) => (
+                      <Tooltip key={op} title={`Marker-Deckkraft ${Math.round(op * 100)}%`}>
+                        <IconButton
+                          size="small"
+                          onClick={() => onSelectInkMarkerOpacity(op)}
+                          aria-label={`Marker-Deckkraft ${op}`}
+                          sx={{
+                            ...iconBtnSx,
+                            width: 22,
+                            height: 22,
+                            ...(Math.abs(inkMarkerOpacity - op) < 0.01
+                              ? { bgcolor: `${PRES_EDITOR_UI.accent}22` }
+                              : {}),
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              width: 12,
+                              height: 12,
+                              borderRadius: '2px',
+                              bgcolor: inkColor,
+                              opacity: Math.max(0.2, op * 2.2),
+                              border: '1px solid rgba(0,0,0,0.2)',
+                            }}
+                          />
+                        </IconButton>
+                      </Tooltip>
+                    ))}
+                  </>
+                )}
                 {onUndoInk && (
                   <Tooltip title="Letzten Strich rückgängig">
                     <span>
@@ -665,6 +830,21 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                         aria-label="Strich rückgängig"
                       >
                         <UndoIcon sx={{ fontSize: 15 }} />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                )}
+                {onClearAllInk && (
+                  <Tooltip title="Alle Stiftstriche auf dieser Folie löschen">
+                    <span>
+                      <IconButton
+                        size="small"
+                        onClick={onClearAllInk}
+                        disabled={!canUndoInk}
+                        sx={iconBtnSx}
+                        aria-label="Alle Striche löschen"
+                      >
+                        <ClearInkIcon sx={{ fontSize: 15 }} />
                       </IconButton>
                     </span>
                   </Tooltip>

@@ -529,43 +529,109 @@ export function applyFormatToSelectedMath(
   return true;
 }
 
+let formulaInsertCaret: { editor: HTMLElement; range: Range } | null = null;
+
+/** Cursor merken, bevor der Formel-Dialog den Editor-Fokus nimmt. */
+export function rememberFormulaInsertCaret(editor: HTMLElement | null): void {
+  if (!editor) return;
+  const sel = window.getSelection();
+  if (!sel?.rangeCount) return;
+  const range = sel.getRangeAt(0);
+  try {
+    if (!editor.contains(range.commonAncestorContainer)) return;
+  } catch {
+    return;
+  }
+  formulaInsertCaret = { editor, range: range.cloneRange() };
+}
+
+function rangeAtEditorEnd(editor: HTMLElement): Range {
+  const range = editor.ownerDocument.createRange();
+  const block =
+    (editor.querySelector('p, h1, h2, h3, h4, h5, h6, li, div') as HTMLElement | null) || editor;
+  const last = block.lastChild;
+  if (last && last.nodeName === 'BR') {
+    range.setStartBefore(last);
+    range.collapse(true);
+    return range;
+  }
+  range.selectNodeContents(block);
+  range.collapse(false);
+  return range;
+}
+
+function resolveEditorInsertRange(editor: HTMLElement): Range {
+  const sel = window.getSelection();
+  if (sel?.rangeCount) {
+    try {
+      const live = sel.getRangeAt(0);
+      if (editor.contains(live.commonAncestorContainer)) return live;
+    } catch {
+      /* ignore */
+    }
+  }
+  if (formulaInsertCaret?.editor === editor) {
+    try {
+      return formulaInsertCaret.range.cloneRange();
+    } catch {
+      /* ignore */
+    }
+  }
+  return rangeAtEditorEnd(editor);
+}
+
+function unwrapSingleParagraphIfInsideBlock(frag: DocumentFragment, range: Range): DocumentFragment {
+  if (frag.childElementCount !== 1) return frag;
+  const only = frag.firstElementChild;
+  if (only?.tagName !== 'P') return frag;
+  let node: Node | null = range.commonAncestorContainer;
+  if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+  const inBlock = (node as Element | null)?.closest?.('p, li, h1, h2, h3, h4, h5, h6');
+  if (!inBlock) return frag;
+  const inner = only.ownerDocument.createDocumentFragment();
+  while (only.firstChild) inner.appendChild(only.firstChild);
+  return inner;
+}
+
+/** HTML (inkl. MathML) per Range einfügen — nicht per execCommand (stript oft <math>). */
+export function insertHtmlAtEditorCursor(editor: HTMLElement, html: string): boolean {
+  const trimmed = (html || '').trim();
+  if (!trimmed) return false;
+  const tpl = editor.ownerDocument.createElement('template');
+  tpl.innerHTML = trimmed;
+  if (!tpl.content.firstChild) return false;
+  const range = resolveEditorInsertRange(editor);
+  const content = unwrapSingleParagraphIfInsideBlock(tpl.content, range);
+  range.deleteContents();
+  const last = content.lastChild;
+  range.insertNode(content);
+  if (last) {
+    const zw = editor.ownerDocument.createTextNode('\u200b');
+    last.parentNode?.insertBefore(zw, last.nextSibling);
+    range.setStartAfter(zw);
+    range.collapse(true);
+  } else {
+    range.collapse(false);
+  }
+  formulaInsertCaret = { editor, range: range.cloneRange() };
+  try {
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+  } catch {
+    /* Dialog kann den Fokus halten */
+  }
+  editor.dispatchEvent(new Event('input', { bubbles: true }));
+  return true;
+}
+
 /** Neue Formel an der Cursor-Position einfügen. */
 export function insertPresentationFormulaAtCursor(editor: HTMLElement, latex: string): boolean {
   const trimmed = latexSourceFromPlain(latex);
   if (!trimmed) return false;
   const html = renderLatexToPresentationSpan(trimmed, false);
   if (!html) return false;
-
-  editor.focus({ preventScroll: true });
-  const sel = window.getSelection();
-  const canUseRange =
-    sel &&
-    sel.rangeCount > 0 &&
-    editor.contains(sel.getRangeAt(0).commonAncestorContainer);
-  if (!canUseRange) {
-    const range = editor.ownerDocument.createRange();
-    range.selectNodeContents(editor);
-    range.collapse(false);
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-  }
-
-  const tpl = editor.ownerDocument.createElement('template');
-  tpl.innerHTML = html;
-  const node = tpl.content.firstChild as HTMLElement | null;
-  if (!node) return false;
-
-  const sel2 = window.getSelection();
-  if (!sel2 || sel2.rangeCount === 0) return false;
-  const range = sel2.getRangeAt(0);
-  range.deleteContents();
-  range.insertNode(node);
-  range.setStartAfter(node);
-  range.collapse(true);
-  sel2.removeAllRanges();
-  sel2.addRange(range);
-  editor.dispatchEvent(new Event('input', { bubbles: true }));
-  return true;
+  return insertHtmlAtEditorCursor(editor, html);
 }
 
 export function looksLikeFormulaPlainText(text: string): boolean {

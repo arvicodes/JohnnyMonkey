@@ -24,6 +24,7 @@ import {
   sanitizePresentationHtml,
   handlePresentationListShortcutKey,
   presentationPasteHtml,
+  insertPresentationPastedHtml,
 } from '../../lib/presentationRichText';
 import { PRESENTATION_DEFAULT_FONT_FAMILY } from '../../lib/presentationFonts';
 import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
@@ -1398,7 +1399,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   if (!showSelectionChrome) return;
                   e.preventDefault();
                   const cleaned = presentationPasteHtml(e.clipboardData);
-                  document.execCommand('insertHTML', false, cleaned);
+                  if (textRef.current) insertPresentationPastedHtml(textRef.current, cleaned);
                   if (textRef.current) {
                     onChange?.({ html: sanitizePresentationHtml(textRef.current.innerHTML) });
                   }
@@ -1669,7 +1670,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   if (!showCardBodyEditor) return;
                   e.preventDefault();
                   const cleaned = presentationPasteHtml(e.clipboardData);
-                  document.execCommand('insertHTML', false, cleaned);
+                  if (cardBodyRef.current) insertPresentationPastedHtml(cardBodyRef.current, cleaned);
                   if (cardBodyRef.current) {
                     onChange?.({ html: sanitizePresentationHtml(cardBodyRef.current.innerHTML) });
                   }
@@ -2046,7 +2047,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             onPaste={(e) => {
               e.preventDefault();
               const cleaned = presentationPasteHtml(e.clipboardData);
-              document.execCommand('insertHTML', false, cleaned);
+              if (textRef.current) insertPresentationPastedHtml(textRef.current, cleaned);
               if (textRef.current) onChange?.({ html: textRef.current.innerHTML });
             }}
             onInput={() => {
