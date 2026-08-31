@@ -602,7 +602,7 @@ function EntryTicketRichFieldInner({
         border: '2px solid',
         borderColor: dragOver ? '#43a047' : palette.border,
         bgcolor: fieldBg,
-        overflow: fillParent ? 'hidden' : 'visible',
+        overflow: 'visible',
         boxSizing: 'border-box',
         boxShadow: dragOver ? '0 0 0 2px rgba(67,160,71,0.28)' : 'none',
         transition: 'border-color 0.12s ease, box-shadow 0.12s ease',
