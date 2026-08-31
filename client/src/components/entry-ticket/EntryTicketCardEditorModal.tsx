@@ -51,7 +51,7 @@ export function EntryTicketCardEditorModal({
   onSave,
   slideId = 'et-card-editor',
 }: Props) {
-  const [drawActive, setDrawActive] = useState(true);
+  const [drawActive, setDrawActive] = useState(false);
   const [activeInkTool, setActiveInkTool] = useState<PresentationDrawTool>('pen');
   const [strokeColor, setStrokeColor] = useState(DEFAULT_PEN_COLOR);
   const [lineWidth, setLineWidth] = useState(() => defaultLineWidthForTool('pen'));
@@ -72,7 +72,7 @@ export function EntryTicketCardEditorModal({
     wasOpenRef.current = true;
     // Nur beim Öffnen Stift an — nicht bei jedem Re-Render/Ink-Update zurücksetzen
     if (justOpened) {
-      setDrawActive(true);
+      setDrawActive(false);
       setActiveInkTool('pen');
       setStrokeColor(penColorRef.current);
       setLineWidth(defaultLineWidthForTool('pen'));
@@ -165,7 +165,7 @@ export function EntryTicketCardEditorModal({
           }}
         >
           <Typography sx={{ mt: 0.75, fontSize: '0.78rem', color: '#546e7a', flexShrink: 0 }}>
-            Zeichnen: unten Stift einschalten (Lasso, Marker, Formen). Tippen: Stift wieder aus.
+            Zeichnen: unten Stift einschalten. Tippen und Bilder: Stift wieder aus — Bild ziehen zum Verschieben, orangene Ecke zum Größe ändern.
           </Typography>
           <Box
             sx={{

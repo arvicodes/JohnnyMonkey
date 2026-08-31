@@ -124,6 +124,8 @@ function moveEtImageToPoint(img: HTMLImageElement, editor: HTMLElement, clientX:
   }
 }
 
+const IMG_CORNER_HIT = 32;
+
 function sizeIdForWidth(widthPct: number): 's' | 'm' | 'l' | 'xl' {
   const w = clampImageWidthPct(widthPct);
   let best: 's' | 'm' | 'l' | 'xl' = 'm';
@@ -365,6 +367,7 @@ function EntryTicketRichFieldInner({
     setImgPlace(readImagePlace(img));
     markSelected(imgs, idx);
     requestAnimationFrame(() => syncImgHandle());
+  };
 
   useEffect(() => {
     const el = editorRef.current;
@@ -496,9 +499,12 @@ function EntryTicketRichFieldInner({
     setImageCount(imgs.length);
     setImgWidthPct(readImageWidthPct(img));
     setImgAlign(readImageAlign(img));
+    setImgPlace(readImagePlace(img));
     markSelected(imgs, idx);
     requestAnimationFrame(() => syncImgHandle());
   };
+
+  const insertImageHtml = (dataUrl: string, alt = 'Bild') => {
     const el = editorRef.current;
     if (!el) return;
     el.focus();
@@ -796,6 +802,10 @@ function EntryTicketRichFieldInner({
                 color: palette.toolBtn,
                 py: 0.5,
                 '& .MuiSlider-thumb': { width: 11, height: 11 },
+                '@media (any-pointer: coarse)': {
+                  py: 1,
+                  '& .MuiSlider-thumb': { width: 22, height: 22 },
+                },
               }}
             />
             <Typography sx={{ fontSize: '0.58rem', fontWeight: 800, color: palette.toolBtn, minWidth: 28 }}>
