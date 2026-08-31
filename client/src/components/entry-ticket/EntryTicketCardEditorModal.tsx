@@ -51,7 +51,7 @@ export function EntryTicketCardEditorModal({
   onSave,
   slideId = 'et-card-editor',
 }: Props) {
-  const [drawActive, setDrawActive] = useState(false);
+  const [drawActive, setDrawActive] = useState(true);
   const [activeInkTool, setActiveInkTool] = useState<PresentationDrawTool>('pen');
   const [strokeColor, setStrokeColor] = useState(DEFAULT_PEN_COLOR);
   const [lineWidth, setLineWidth] = useState(() => defaultLineWidthForTool('pen'));
@@ -63,7 +63,7 @@ export function EntryTicketCardEditorModal({
 
   useEffect(() => {
     if (!open) return;
-    setDrawActive(false);
+    setDrawActive(true);
     setActiveInkTool('pen');
     setStrokeColor(penColorRef.current);
     setLineWidth(defaultLineWidthForTool('pen'));
@@ -110,10 +110,10 @@ export function EntryTicketCardEditorModal({
         maxWidth={false}
         PaperProps={{
           sx: {
-            width: 'min(1040px, 96vw)',
-            maxWidth: '96vw',
-            height: 'min(88vh, 900px)',
-            maxHeight: '92vh',
+            width: 'min(1200px, 98vw)',
+            maxWidth: '98vw',
+            height: 'min(92vh, 980px)',
+            maxHeight: '96vh',
             m: { xs: 0.75, sm: 1.5 },
             display: 'flex',
             flexDirection: 'column',
@@ -224,11 +224,11 @@ export function EntryTicketCardEditorModal({
             onSave={onSave}
           />
         </Box>
-        <DialogActions sx={{ px: 2, py: 1, bgcolor: '#eceff1' }}>
+        <DialogActions sx={{ px: 2, py: 1, bgcolor: '#eceff1', justifyContent: 'flex-end' }}>
           <Button
             variant="contained"
             onClick={onClose}
-            sx={{ bgcolor: '#455a64', '&:hover': { bgcolor: '#37474f' } }}
+            sx={{ bgcolor: '#455a64', '&:hover': { bgcolor: '#37474f' }, minWidth: 120 }}
           >
             Fertig
           </Button>

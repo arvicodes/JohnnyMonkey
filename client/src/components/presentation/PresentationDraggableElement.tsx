@@ -26,7 +26,7 @@ import {
   presentationPasteHtml,
   insertPresentationPastedHtml,
 } from '../../lib/presentationRichText';
-import { PRESENTATION_DEFAULT_FONT_FAMILY } from '../../lib/presentationFonts';
+import { convertLatexInEditor, convertLatexNearCursor } from '../../lib/presentationPasteMath';
 import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
 import { notesDropTargetHits } from '../../lib/presentationNotesImages';
 import { isPenPointer } from '../../lib/presentationDrawTools';
@@ -1400,12 +1400,14 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   e.preventDefault();
                   const cleaned = presentationPasteHtml(e.clipboardData);
                   if (textRef.current) insertPresentationPastedHtml(textRef.current, cleaned);
+                  if (textRef.current) convertLatexInEditor(textRef.current);
                   if (textRef.current) {
                     onChange?.({ html: sanitizePresentationHtml(textRef.current.innerHTML) });
                   }
                 }}
                 onInput={() => {
                   if (!showSelectionChrome || !textRef.current || !onChange) return;
+                  convertLatexNearCursor(textRef.current);
                   const html = textRef.current.innerHTML;
                   if (textInputTimerRef.current) window.clearTimeout(textInputTimerRef.current);
                   textInputTimerRef.current = window.setTimeout(() => {
@@ -1573,6 +1575,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 }}
                 onInput={() => {
                   if (!cardTitleRef.current || !onChange) return;
+                  convertLatexNearCursor(cardTitleRef.current);
                   const titleHtml = cardTitleRef.current.innerHTML;
                   if (textInputTimerRef.current) window.clearTimeout(textInputTimerRef.current);
                   textInputTimerRef.current = window.setTimeout(() => {
@@ -1671,12 +1674,14 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   e.preventDefault();
                   const cleaned = presentationPasteHtml(e.clipboardData);
                   if (cardBodyRef.current) insertPresentationPastedHtml(cardBodyRef.current, cleaned);
+                  if (cardBodyRef.current) convertLatexInEditor(cardBodyRef.current);
                   if (cardBodyRef.current) {
                     onChange?.({ html: sanitizePresentationHtml(cardBodyRef.current.innerHTML) });
                   }
                 }}
                 onInput={() => {
                   if (!showCardBodyEditor || !cardBodyRef.current || !onChange) return;
+                  convertLatexNearCursor(cardBodyRef.current);
                   const html = cardBodyRef.current.innerHTML;
                   if (textInputTimerRef.current) window.clearTimeout(textInputTimerRef.current);
                   textInputTimerRef.current = window.setTimeout(() => {
@@ -1864,6 +1869,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               onInput={() => {
                 if (!tableRef.current || !onChange) return;
                 if (tableRef.current.getAttribute('data-pres-table-mutating') === '1') return;
+                convertLatexNearCursor(tableRef.current);
                 const html = tableRef.current.innerHTML;
                 const table = tableRef.current.querySelector('table') as HTMLTableElement | null;
                 if (table) setTableColWidths(getColumnWidthPercents(table));
@@ -2048,11 +2054,13 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               e.preventDefault();
               const cleaned = presentationPasteHtml(e.clipboardData);
               if (textRef.current) insertPresentationPastedHtml(textRef.current, cleaned);
+              if (textRef.current) convertLatexInEditor(textRef.current);
               if (textRef.current) onChange?.({ html: textRef.current.innerHTML });
             }}
             onInput={() => {
               if (!textRef.current || !onChange) return;
               replaceArrowShortcutsNearCursor(textRef.current);
+              convertLatexNearCursor(textRef.current);
               const html = textRef.current.innerHTML;
               if (textInputTimerRef.current) window.clearTimeout(textInputTimerRef.current);
               textInputTimerRef.current = window.setTimeout(() => {

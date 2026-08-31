@@ -13,6 +13,7 @@ import {
 } from '../../lib/presentationAnimation';
 import type { HtmlAnimField } from '../../lib/presentationAnimation';
 import { sanitizePresentationHtml, handlePresentationTabKey, replaceArrowShortcutsNearCursor, handlePresentationListShortcutKey, presentationPasteHtml, insertPresentationPastedHtml, wrapOrphanRootInlineContent } from '../../lib/presentationRichText';
+import { convertLatexInEditor, convertLatexNearCursor } from '../../lib/presentationPasteMath';
 import {
   tryStartTableResizeFromPointer,
   updateTableResizeHoverCursor,
@@ -362,6 +363,7 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
     });
     el.focus();
     insertPresentationPastedHtml(el, content || '<p><br></p>');
+    convertLatexInEditor(el);
     handleInput();
   };
 
@@ -447,6 +449,7 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
         const next = e.relatedTarget as HTMLElement | null;
         if (isPresentationFormatUiTarget(next)) return;
         editingRef.current = false;
+        if (ref.current) convertLatexInEditor(ref.current);
         flushInput();
       }}
       onPaste={(e) => {
@@ -484,9 +487,8 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
       onInput={() => {
         if (animationEditMode) return;
         editingRef.current = true;
-        if (replaceArrowShortcutsNearCursor(ref.current)) {
-          /* caret already moved */
-        }
+        replaceArrowShortcutsNearCursor(ref.current);
+        convertLatexNearCursor(ref.current);
         handleInput();
       }}
       onKeyDown={(e) => {

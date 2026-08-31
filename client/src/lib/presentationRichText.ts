@@ -1045,19 +1045,25 @@ export function presentationPasteHtml(
   // ChatGPT liefert oft HTML — trotzdem Formel/Matrix aus Text oder Annotation holen
   const plainCandidate = (pastedText || '').trim();
   const htmlLatex = pastedHtml?.trim() ? extractLatexFromPastedHtml(pastedHtml) : null;
+  const clipboardAlreadyMath = /msEquation|m:oMath|<math[\s>]|Math\/MathML|data-pres-math/i.test(
+    pastedHtml || '',
+  );
+  const latexSource =
+    (plainCandidate && (looksLikeFormulaPlainText(plainCandidate) || looksLikeAsciiMatrix(plainCandidate))
+      ? plainCandidate
+      : htmlLatex) ||
+    (formulaMode ? plainCandidate : '');
   const wantFormula =
-    formulaMode ||
-    looksLikeFormulaPlainText(plainCandidate) ||
-    looksLikeAsciiMatrix(plainCandidate) ||
-    Boolean(htmlLatex && looksLikeFormulaPlainText(htmlLatex));
+    !clipboardAlreadyMath &&
+    Boolean(
+      latexSource &&
+        (formulaMode || looksLikeFormulaPlainText(latexSource) || looksLikeAsciiMatrix(latexSource)),
+    );
 
-  if (wantFormula) {
-    const source = htmlLatex || plainCandidate;
-    if (source && (looksLikeFormulaPlainText(source) || looksLikeAsciiMatrix(source) || formulaMode)) {
-      const latexHtml = convertPlainTextWithLatexToPresentationHtml(source);
-      if (latexHtml.includes('data-pres-math') || latexHtml.includes('pres-math')) {
-        return finishFormulaHtml(latexHtml);
-      }
+  if (wantFormula && latexSource) {
+    const latexHtml = convertPlainTextWithLatexToPresentationHtml(latexSource);
+    if (latexHtml.includes('data-pres-math') || latexHtml.includes('pres-math')) {
+      return finishFormulaHtml(latexHtml);
     }
   }
 

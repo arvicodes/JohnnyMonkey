@@ -333,13 +333,25 @@ function loadKatex(): KatexModule {
 }
 
 function latexSourceFromPlain(raw: unknown): string {
-  return String(raw ?? '')
+  let s = String(raw ?? '')
     .replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/\u00a0/g, ' ')
     .trim();
+  const wrapped =
+    s.match(/^\$\$([\s\S]*)\$\$$/) ||
+    s.match(/^\$([^$]*)\$$/) ||
+    s.match(/^\\\(([\s\S]*)\\\)$/) ||
+    s.match(/^\\\[([\s\S]*)\\\]$/);
+  if (wrapped) s = wrapped[1].trim();
+  return s;
+}
+
+/** LaTeX-Quelle ohne $…$ / \(…\). */
+export function normalizePresentationLatexSource(raw: unknown): string {
+  return latexSourceFromPlain(raw);
 }
 
 function renderLatexToPresentationSpan(tex: string, display = false): string {
@@ -807,7 +819,6 @@ export function convertPlainTextWithLatexToPresentationHtml(plain: string): stri
 
   for (const { re, display } of patterns) {
     rest = rest.replace(re, (match: string, ...restArgs: unknown[]) => {
-      // Ohne Capture-Group ist args[0] der Offset (Zahl) — nicht der Text.
       const maybeGroup = restArgs[0];
       const body = typeof maybeGroup === 'string' ? maybeGroup : match;
       chunks.push(render(body, display));
@@ -815,8 +826,21 @@ export function convertPlainTextWithLatexToPresentationHtml(plain: string): stri
     });
   }
 
-  if (/\\(?:frac|begin|vec|cdot|times|sqrt|sum|int|pmatrix|bmatrix)\b/.test(rest)) {
-    rest = render(rest, /\\begin\{(?:p|b|v)?matrix\}/i.test(rest));
+  rest = rest.replace(/\\[a-zA-Z]+(?:\s*\{[^{}]*\})+/g, (cmd) => {
+    const html = render(cmd, false);
+    if (!html.includes('data-pres-math')) return cmd;
+    chunks.push(html);
+    return `\uE202${chunks.length - 1}\uE203`;
+  });
+
+  const restTrim = rest.replace(/\uE202\d+\uE203/g, '').trim();
+  if (
+    restTrim &&
+    /^\\/.test(restTrim) &&
+    looksLikeFormulaPlainText(restTrim) &&
+    !/[A-Za-zÄÖÜäöüß]{2,}\s+/.test(restTrim)
+  ) {
+    rest = render(restTrim, /\\begin\{(?:p|b|v)?matrix\}/i.test(restTrim));
     return `<p>${rest}</p>`;
   }
 
@@ -828,4 +852,112 @@ export function convertPlainTextWithLatexToPresentationHtml(plain: string): stri
     return `<p>${trimmed}</p>`;
   });
   return lines.join('') || '<p><br></p>';
+}
+
+const LATEX_CMD_IN_TEXT = /\\[a-zA-Z]+(?:\s*\{[^{}]*\})+/;
+
+function replaceRangeWithFormula(
+  editor: HTMLElement,
+  node: Text,
+  start: number,
+  end: number,
+  tex: string,
+  display: boolean,
+): boolean {
+  const html = renderLatexToPresentationSpan(tex, display);
+  if (!html) return false;
+  const r = editor.ownerDocument.createRange();
+  r.setStart(node, start);
+  r.setEnd(node, end);
+  formulaInsertCaret = { editor, range: r.cloneRange() };
+  try {
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(r);
+  } catch {
+    /* ignore */
+  }
+  return insertHtmlAtEditorCursor(editor, html);
+}
+
+/** $…$ / \(…\) / \frac{…} am Cursor → Formel (beim Tippen). */
+export function convertLatexNearCursor(editor: HTMLElement | null): boolean {
+  if (!editor) return false;
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return false;
+  const range = sel.getRangeAt(0);
+  if (!editor.contains(range.startContainer)) return false;
+  if (isInsidePresentationMath(range.startContainer)) return false;
+  const node = range.startContainer;
+  if (node.nodeType !== Node.TEXT_NODE) return false;
+  const text = node.textContent || '';
+  const offset = range.startOffset;
+  const before = text.slice(0, offset);
+
+  const tryEnd = (re: RegExp, display: boolean, group = 1): boolean => {
+    const m = before.match(re);
+    if (!m) return false;
+    const tex = (m[group] || '').trim();
+    if (!tex) return false;
+    const start = offset - m[0].length;
+    return replaceRangeWithFormula(editor, node as Text, start, offset, tex, display);
+  };
+
+  if (tryEnd(/\$\$([^$]+)\$\$$/, true)) return true;
+  if (tryEnd(/\\\[(.+?)\\\]$/, true)) return true;
+  if (tryEnd(/\\\((.+?)\\\)$/, false)) return true;
+  if (tryEnd(/\$([^$\n]+)\$$/, false)) return true;
+
+  const cmdSpace = before.match(new RegExp(`(${LATEX_CMD_IN_TEXT.source})\\s$`));
+  if (cmdSpace) {
+    const cmd = cmdSpace[1];
+    const start = offset - cmdSpace[0].length;
+    return replaceRangeWithFormula(editor, node as Text, start, start + cmd.length, cmd, false);
+  }
+  return false;
+}
+
+function firstLatexHitInText(text: string): { start: number; end: number; tex: string; display: boolean } | null {
+  const patterns: Array<{ re: RegExp; display: boolean; group: number }> = [
+    { re: /\$\$([^$]+)\$\$/, display: true, group: 1 },
+    { re: /\\\[(.+?)\\\]/, display: true, group: 1 },
+    { re: /\\\((.+?)\\\)/, display: false, group: 1 },
+    { re: /\$([^$\n]+)\$/, display: false, group: 1 },
+    { re: LATEX_CMD_IN_TEXT, display: false, group: 0 },
+  ];
+  let best: { start: number; end: number; tex: string; display: boolean } | null = null;
+  for (const { re, display, group } of patterns) {
+    const m = text.match(re);
+    if (!m || m.index == null) continue;
+    const tex = (group === 0 ? m[0] : m[group] || '').trim();
+    if (!tex) continue;
+    if (!best || m.index < best.start) {
+      best = { start: m.index, end: m.index + m[0].length, tex, display };
+    }
+  }
+  return best;
+}
+
+/** Restliches LaTeX im Feld umwandeln (nach Einfügen / Verlassen). */
+export function convertLatexInEditor(editor: HTMLElement | null): boolean {
+  if (!editor) return false;
+  let changed = false;
+  for (let n = 0; n < 40; n++) {
+    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+    let hit: Text | null = null;
+    while (walker.nextNode()) {
+      const t = walker.currentNode as Text;
+      if (isInsidePresentationMath(t)) continue;
+      if (firstLatexHitInText(t.textContent || '')) {
+        hit = t;
+        break;
+      }
+    }
+    if (!hit) break;
+    const found = firstLatexHitInText(hit.textContent || '');
+    if (!found) break;
+    if (!replaceRangeWithFormula(editor, hit, found.start, found.end, found.tex, found.display)) break;
+    changed = true;
+  }
+  return changed;
 }

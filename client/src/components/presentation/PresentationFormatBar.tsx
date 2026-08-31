@@ -777,11 +777,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
       </Tooltip>
 
       <Tooltip
-        title={
-          formulaPasteMode
-            ? 'Formel-Modus: an — Einfügen (⌘V). Shift+Klick: Formel einfügen/bearbeiten. Doppelklick auf Formel: LaTeX ändern'
-            : 'Formel-Modus: aus — Shift+Klick: Formel einfügen/bearbeiten. Doppelklick auf Formel: LaTeX ändern'
-        }
+        title="LaTeX einfügen (markieren oder klicken). Einfügen mit ⌘V wird erkannt. Doppelklick: bearbeiten"
       >
         <span>
           <IconButton
@@ -801,14 +797,16 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
                 openFormulaDialog();
                 return;
               }
-              const next = !formulaPasteMode;
-              setPresentationFormulaPasteMode(next);
-              setFormulaPasteMode(next);
-              onMessage?.(
-                next
-                  ? 'Formel-Modus an: LaTeX, Matrizen und ChatGPT-Formeln einfügen (⌘V) — Doppelklick zum Bearbeiten'
-                  : 'Formel-Modus aus',
-              );
+              const selected = (window.getSelection()?.toString() || '').trim();
+              if (selected && activeEditor) {
+                rememberFormulaInsertCaret(activeEditor);
+                if (insertPresentationFormulaAtCursor(activeEditor, selected)) {
+                  onEditorChanged?.();
+                  onMessage?.('Formel eingefügt');
+                  return;
+                }
+              }
+              openFormulaDialog();
             }}
           >
             <FunctionsIcon sx={{ fontSize: 17 }} />

@@ -76,6 +76,8 @@ const ET = {
   muted: '#78909c',
 } as const;
 
+const EMPTY_EDIT_INK: import('../../lib/presentationDeck').PresentationStroke[] = [];
+
 const iconBtnSx = {
   minWidth: 22,
   width: 22,
@@ -420,7 +422,7 @@ export function EntryTicketFragensetEditor({
   const largeEditInkKey = largeEditTask
     ? entryTicketCardInkKey(`c:${set.id}:${largeEditTask.task.id}`)
     : '';
-  const largeEditInk = (largeEditInkKey && set.playInkByKey?.[largeEditInkKey]) || [];
+  const largeEditInk = (largeEditInkKey && set.playInkByKey?.[largeEditInkKey]) || EMPTY_EDIT_INK;
 
   useEffect(() => {
     if (largeEdit && !largeEditTask) setLargeEdit(null);

@@ -100,7 +100,6 @@ import { resolveEntryTicketBandForLessonPath, fetchAssignedEntryTicketGrade, par
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
 import { EntryTicketFragensetEditor } from '../components/entry-ticket/EntryTicketFragensetEditor';
 import { EntryTicketCardEditorModal } from '../components/entry-ticket/EntryTicketCardEditorModal';
-import { EntryTicketRichField } from '../components/entry-ticket/EntryTicketRichField';
 import { EntryTicketRichHtml, entryTicketRichTextSx } from '../components/entry-ticket/EntryTicketRichHtml';
 import { EntryTicketHistoryDialog } from '../components/entry-ticket/EntryTicketHistoryDialog';
 import { openEntryTicketFlashcardPrint } from '../lib/entryTicketFlashcardPrint';
@@ -2704,6 +2703,13 @@ export default function EntryTicketPage({
     EMPTY_TICKET_INK;
   const solutionSlideInk =
     activeCustomSet?.playInkByKey?.[ENTRY_TICKET_SOLUTION_INK_KEY] ?? EMPTY_TICKET_INK;
+  const editingPlayTask = editingIndex !== null ? selectedTasks[editingIndex] ?? null : null;
+  const editingCardInk =
+    editingPlayTask?.ink ??
+    (editingPlayTask?.sourceKey
+      ? activeCustomSet?.playInkByKey?.[entryTicketCardInkKey(editingPlayTask.sourceKey)]
+      : undefined) ??
+    EMPTY_TICKET_INK;
   const isCustomSetActive = Boolean(customSetId && activeCustomSet);
 
   useEffect(() => {
@@ -5787,56 +5793,31 @@ export default function EntryTicketPage({
         </Box>
       </Box>
 
-      <Dialog
+      <EntryTicketCardEditorModal
         open={editingIndex !== null}
+        title={editingIndex !== null ? `Karte ${editingIndex + 1} bearbeiten` : 'Karte bearbeiten'}
+        prompt={editingPrompt}
+        solution={editingSolution}
+        ink={editingCardInk}
+        slideId={`et-card-edit-${editingPlayTask?.sourceKey || editingIndex || 'none'}`}
+        onPromptChange={(prompt) => {
+          setEditingPrompt(prompt);
+          if (editingIndex !== null) {
+            commitPlayTaskContent(editingIndex, prompt, editingSolution);
+          }
+        }}
+        onSolutionChange={(solution) => {
+          setEditingSolution(solution);
+          if (editingIndex !== null) {
+            commitPlayTaskContent(editingIndex, editingPrompt, solution);
+          }
+        }}
+        onInkChange={(strokes) => {
+          if (editingIndex !== null) commitCardInk(editingIndex, strokes);
+        }}
         onClose={cancelEditingTask}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle sx={{ ...dialogCloseTitleSx, bgcolor: '#455a64', color: '#fff', py: 1.25 }}>
-          {editingIndex !== null ? `Karte ${editingIndex + 1} bearbeiten` : 'Karte bearbeiten'}
-          <DialogCloseIconButton
-            onClose={cancelEditingTask}
-            sx={{ color: '#fff', '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' } }}
-            iconSx={{ color: '#fff' }}
-          />
-        </DialogTitle>
-        <DialogContent sx={{ pt: 2, display: 'grid', gap: 1.25 }}>
-          <EntryTicketRichField
-            value={editingPrompt}
-            onChange={(prompt) => {
-              setEditingPrompt(prompt);
-              if (editingIndex !== null) {
-                commitPlayTaskContent(editingIndex, prompt, editingSolution);
-              }
-            }}
-            placeholder="Frage"
-            tone="prompt"
-            minHeight={88}
-          />
-          <EntryTicketRichField
-            value={editingSolution}
-            onChange={(solution) => {
-              setEditingSolution(solution);
-              if (editingIndex !== null) {
-                commitPlayTaskContent(editingIndex, editingPrompt, solution);
-              }
-            }}
-            placeholder="Lösung"
-            tone="answer"
-            minHeight={72}
-          />
-        </DialogContent>
-        <DialogActions sx={{ px: 2, pb: 1.5 }}>
-          <Button
-            variant="contained"
-            onClick={cancelEditingTask}
-            sx={{ bgcolor: '#455a64', '&:hover': { bgcolor: '#37474f' } }}
-          >
-            Fertig
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onSave={canEditPlay ? secureTicketBackup : undefined}
+      />
 
       <EntryTicketHistoryDialog
         open={Boolean(historyTarget)}
@@ -6068,7 +6049,7 @@ export default function EntryTicketPage({
         </DialogActions>
       </Dialog>
 
-      {canEditPlay && sessionStarted ? (
+      {canEditPlay && sessionStarted && editingIndex === null ? (
         <PresentationTabletToolbar
           variant="ink"
           placement={embeddedPlay ? 'overlay' : 'fixed'}
