@@ -355,7 +355,31 @@ export function buildStyledSlideFromImport(
 export function isPptxFile(file: File): boolean {
   const n = (file.name || '').toLowerCase();
   const t = (file.type || '').toLowerCase();
-  return n.endsWith('.pptx') || t.includes('presentation') || t.includes('powerpoint');
+  return (
+    n.endsWith('.pptx') ||
+    t.includes('openxmlformats-officedocument.presentationml') ||
+    t.includes('presentation') ||
+    t.includes('powerpoint')
+  );
+}
+
+/** PPTX-Dateien aus Paste/Drop (PowerPoint-Export, Datei-Kopie). */
+export function collectPptxFilesFromDataTransfer(dt: DataTransfer | null | undefined): File[] {
+  if (!dt) return [];
+  const out: File[] = [];
+  const seen = new Set<string>();
+  const add = (f: File | null | undefined) => {
+    if (!f || f.size < 64 || !isPptxFile(f)) return;
+    const key = `${f.name}:${f.size}:${f.type}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(f);
+  };
+  for (const item of Array.from(dt.items || [])) {
+    if (item.kind === 'file') add(item.getAsFile());
+  }
+  for (const f of Array.from(dt.files || [])) add(f);
+  return out;
 }
 
 export async function parsePptxFile(file: File, loginCode?: string): Promise<ImportedPptxResult> {

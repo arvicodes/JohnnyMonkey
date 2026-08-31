@@ -228,8 +228,15 @@ import { removeNearWhiteBackgroundFromUrl } from '../lib/presentationRemoveWhite
 import {
   base64ToFile,
   buildLayoutFaithfulSlideFromImport,
+  collectPptxFilesFromDataTransfer,
+  parsePptxFile,
   type ImportedPptxBox,
 } from '../lib/presentationPptxImport';
+import {
+  isPowerPointClipboardHtml,
+  parsePowerPointClipboardHtml,
+  readClipboardForPowerPointPaste,
+} from '../lib/presentationPowerPointClipboard';
 
 import {
   applyFontSizePresetIndex,
@@ -2014,8 +2021,17 @@ const PresentationEditorPage: React.FC = () => {
         e.preventDefault();
         return;
       }
-      if (e.key === 'v' && pasteClipboardElement()) {
+      if (e.key === 'v') {
         e.preventDefault();
+        void (async () => {
+          if (await pastePowerPointSlideFromClipboard(null)) return;
+          if (await pasteImagesFromClipboardEvent(null)) return;
+          if (pasteClipboardElement()) return;
+          setSnackbar(
+            'Nichts zum Einfügen — PowerPoint-Folie kopieren und ⌘V, Bild aus GoodNotes, oder Element zuvor mit ⌘C kopieren.',
+          );
+        })();
+        return;
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -2378,9 +2394,55 @@ const PresentationEditorPage: React.FC = () => {
     setActiveId(built[0].id);
     setSnackbar(
       built.length === 1
-        ? '1 Folie aus PPTX als Elemente eingefügt'
-        : `${built.length} Folien aus PPTX als Elemente eingefügt`,
+        ? '1 Folie aus PowerPoint als Elemente eingefügt'
+        : `${built.length} Folien aus PowerPoint als Elemente eingefügt`,
     );
+  };
+
+  const pastePowerPointSlideFromClipboard = async (
+    dt: DataTransfer | null | undefined,
+  ): Promise<boolean> => {
+    if (!deckRef.current || !lessonPath) return false;
+
+    let pptxFiles = collectPptxFilesFromDataTransfer(dt);
+    let html = dt?.getData('text/html') || '';
+    if (!pptxFiles.length && !html.trim()) {
+      const remote = await readClipboardForPowerPointPaste();
+      html = remote.html || html;
+      if (remote.pptxFiles.length) pptxFiles = remote.pptxFiles;
+    }
+
+    if (pptxFiles.length > 0) {
+      try {
+        const loginCode = localStorage.getItem('loginCode')?.trim() || '';
+        const parsed = await parsePptxFile(pptxFiles[0], loginCode);
+        if (!parsed.slides.length) return false;
+        await importPptxSelections(parsed.slides.map((slide) => ({ slide })));
+        return true;
+      } catch (e) {
+        setSnackbar(e instanceof Error ? e.message : 'PowerPoint-Einfügen fehlgeschlagen');
+        return true;
+      }
+    }
+
+    if (isPowerPointClipboardHtml(html)) {
+      const imported = parsePowerPointClipboardHtml(html);
+      if (imported?.boxes?.length) {
+        try {
+          await importPptxSelections([{ slide: imported }]);
+          return true;
+        } catch (e) {
+          setSnackbar(e instanceof Error ? e.message : 'PowerPoint-Einfügen fehlgeschlagen');
+          return true;
+        }
+      }
+      setSnackbar(
+        'PowerPoint-Folie erkannt, aber keine Elemente extrahiert — bitte als PPTX-Datei einfügen.',
+      );
+      return true;
+    }
+
+    return false;
   };
 
   const saveCurrentAsTemplate = async (kind: SlideTemplateKind) => {
@@ -2977,31 +3039,46 @@ const PresentationEditorPage: React.FC = () => {
     })();
   };
 
+  const pastePowerPointSlideFromClipboardRef = useRef(pastePowerPointSlideFromClipboard);
+  pastePowerPointSlideFromClipboardRef.current = pastePowerPointSlideFromClipboard;
+
   useEffect(() => {
     const onPaste = (e: Event) => {
       if (!(e instanceof ClipboardEvent)) return;
       if (isTypingField(e.target)) return;
       const dt = e.clipboardData;
-      const filesNow = dt ? snapshotClipboardFiles(dt) : [];
-      const html = dt?.getData('text/html') || '';
       const fromPasteTarget = isPresentationPasteTarget(e.target);
+      const pptxNow = collectPptxFilesFromDataTransfer(dt);
+      const html = dt?.getData('text/html') || '';
+      const isPpt = pptxNow.length > 0 || isPowerPointClipboardHtml(html);
+      if (isPpt) {
+        e.preventDefault();
+        e.stopPropagation();
+        void pastePowerPointSlideFromClipboardRef.current(dt).then((ok) => {
+          if (!ok) {
+            setSnackbar('PowerPoint-Folie konnte nicht eingefügt werden.');
+          }
+        });
+        return;
+      }
+      const filesNow = dt ? snapshotClipboardFiles(dt) : [];
       if (!fromPasteTarget && clipboardPrefersRichText(dt)) return;
       if (!fromPasteTarget && !filesNow.length && !/<img[\s>]/i.test(html)) return;
       e.preventDefault();
       e.stopPropagation();
-      void pasteImagesFromClipboardEventRef.current(dt).then((ok) => {
+      void (async () => {
+        if (await pasteImagesFromClipboardEventRef.current(dt)) return;
+        if (pasteClipboardElement()) return;
         const node = pasteTargetRef.current;
         if (node) node.textContent = '';
-        if (!ok) {
-          setSnackbar(
-            'Kein Bild in der Zwischenablage. In GoodNotes kopieren, dann mit dem Stift lange auf die Folie tippen → Einfügen, oder ⌘V.',
-          );
-        }
-      });
+        setSnackbar(
+          'Kein Bild in der Zwischenablage. PowerPoint-Folie kopieren und ⌘V, oder Bild aus GoodNotes einfügen.',
+        );
+      })();
     };
     document.addEventListener('paste', onPaste, true);
     return () => document.removeEventListener('paste', onPaste, true);
-  }, []);
+  }, [pasteClipboardElement]);
 
   const handleSlideImageDragEnter = (e: React.DragEvent) => {
     if (!isPresentationImageDragEvent(e)) return;
@@ -3069,6 +3146,16 @@ const PresentationEditorPage: React.FC = () => {
       };
 
       const files = extractImageFilesFromDataTransfer(e.dataTransfer);
+      const pptxFiles = collectPptxFilesFromDataTransfer(e.dataTransfer);
+      if (pptxFiles.length > 0) {
+        setSnackbar(
+          pptxFiles.length > 1
+            ? `${pptxFiles.length} PPTX-Dateien — erste wird importiert…`
+            : 'PowerPoint-Datei wird als Folie(n) importiert…',
+        );
+        await pastePowerPointSlideFromClipboard(e.dataTransfer);
+        return;
+      }
       if (files.length > 0) {
         setSnackbar(files.length > 1 ? `${files.length} Bilder werden eingefügt…` : 'Bild wird eingefügt…');
         for (let i = 0; i < files.length; i += 1) {
@@ -3536,7 +3623,7 @@ const PresentationEditorPage: React.FC = () => {
               onSaveNewTemplate={() => void saveAsNewTemplate()}
               onUpdateCustomTemplate={(id) => void updateCustomTemplateFromSlide(id)}
             />
-            <Tooltip title="PPTX importieren — Boxen als Elemente">
+            <Tooltip title="PowerPoint: Folie kopieren → ⌘V (Elemente) · oder PPTX importieren">
               <span>
                 <IconButton
                   size="small"
