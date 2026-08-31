@@ -1766,7 +1766,7 @@
             {
               "category": "Eigen",
               "prompt": "Gib an: Wie viele Möglichkeiten gibt es, zwei Schultage von Montag bis Freitag auszuwählen?",
-              "solution": "10 Möglichkeiten",
+              "solution": "10 Möglichkeiten z",
               "id": "q_5c4ed387-b49a-406f-9bb6-b3dc8a40a2fe"
             },
             {
@@ -3120,6 +3120,6 @@
       ]
     }
   ],
-  "savedAt": "2026-08-30T06:21:20.617Z",
+  "savedAt": "2026-08-31T07:58:07.275Z",
   "teacherId": "01ed6e10-397e-446c-9254-2ad7fd4ec777"
 }
