@@ -25,6 +25,7 @@ import {
   DeleteOutline as DeleteOutlineIcon,
   History as HistoryIcon,
   SaveOutlined as SaveOutlinedIcon,
+  OpenInFull as OpenInFullIcon,
   VisibilityOutlined as VisibilityOutlinedIcon,
   ExpandLess as ExpandLessIcon,
   ExpandMore as ExpandMoreIcon,
@@ -48,6 +49,7 @@ import {
   splitCombinedLessonSection,
   withCustomSetReihePaths,
   lessonMatchesPath as lessonSectionMatchesPath,
+  patchCustomSetPlayInk,
   type EntryTicketCustomSet,
   type EntryTicketCustomTask,
   type EntryTicketLessonSection,
@@ -58,6 +60,8 @@ import {
 } from '../../lib/entryTicketReiheLessons';
 import { reiheLabelFromPath, type WorkingReiheOption } from '../../lib/dashboardWorkingReihen';
 import { entryTicketHasImage, entryTicketShowCountStyle, readEntryTicketCardLayout } from '../../lib/entryTicketRichText';
+import { entryTicketCardInkKey } from '../../lib/entryTicketPlayInk';
+import { EntryTicketCardEditorModal } from './EntryTicketCardEditorModal';
 import { EntryTicketRichField } from './EntryTicketRichField';
 import { EntryTicketRichHtml, entryTicketRichTextSx } from './EntryTicketRichHtml';
 
@@ -177,6 +181,7 @@ type EditorTaskRowProps = {
   onCopyLater: (lessonId: string, taskId: string) => void;
   onDelete: (lessonId: string, taskId: string) => void;
   onPreview: (task: { prompt: string; solution: string }) => void;
+  onOpenLargeEditor: (lessonId: string, taskId: string) => void;
 };
 
 const EditorTaskRow = React.memo(function EditorTaskRow({
@@ -194,6 +199,7 @@ const EditorTaskRow = React.memo(function EditorTaskRow({
   onCopyLater,
   onDelete,
   onPreview,
+  onOpenLargeEditor,
 }: EditorTaskRowProps) {
   const tone = entryTicketShowCountStyle(shown, maxShowCount);
   return (
@@ -295,6 +301,20 @@ const EditorTaskRow = React.memo(function EditorTaskRow({
           mt: 0.35,
         }}
       >
+        <Tooltip title="Groß bearbeiten (Stift)">
+          <IconButton
+            size="small"
+            onClick={() => onOpenLargeEditor(lessonId, task.id)}
+            aria-label="Karte groß bearbeiten"
+            sx={{
+              ...iconBtnSx,
+              color: ET.accent,
+              '&:hover': { color: ET.ink, bgcolor: 'rgba(69,90,100,0.12)' },
+            }}
+          >
+            <OpenInFullIcon sx={{ fontSize: 14 }} />
+          </IconButton>
+        </Tooltip>
         <Tooltip title="Karte löschen">
           <IconButton
             size="small"
@@ -384,6 +404,27 @@ export function EntryTicketFragensetEditor({
   const [deleteCheck2, setDeleteCheck2] = useState(false);
   const [deleteWord, setDeleteWord] = useState('');
   const [previewTask, setPreviewTask] = useState<{ prompt: string; solution: string } | null>(null);
+  const [largeEdit, setLargeEdit] = useState<{ lessonId: string; taskId: string } | null>(null);
+
+  const largeEditTask = useMemo(() => {
+    if (!largeEdit) return null;
+    for (const lesson of set.lessons) {
+      if (lesson.id !== largeEdit.lessonId) continue;
+      const taskIndex = lesson.tasks.findIndex((t) => t.id === largeEdit.taskId);
+      if (taskIndex < 0) return null;
+      return { lessonId: lesson.id, task: lesson.tasks[taskIndex], taskIndex };
+    }
+    return null;
+  }, [largeEdit, set.lessons]);
+
+  const largeEditInkKey = largeEditTask
+    ? entryTicketCardInkKey(`c:${set.id}:${largeEditTask.task.id}`)
+    : '';
+  const largeEditInk = (largeEditInkKey && set.playInkByKey?.[largeEditInkKey]) || [];
+
+  useEffect(() => {
+    if (largeEdit && !largeEditTask) setLargeEdit(null);
+  }, [largeEdit, largeEditTask]);
 
   const closeDeleteAsk = () => {
     setDeleteAsk(null);
@@ -1612,6 +1653,7 @@ export function EntryTicketFragensetEditor({
                               onCopyLater={copyTaskToLater}
                               onDelete={deleteTask}
                               onPreview={setPreviewTask}
+                              onOpenLargeEditor={(lessonId, taskId) => setLargeEdit({ lessonId, taskId })}
                             />
                           );
                         })}
@@ -1811,6 +1853,33 @@ export function EntryTicketFragensetEditor({
           </Button>
         </DialogActions>
       </Dialog>
+
+      <EntryTicketCardEditorModal
+        open={Boolean(largeEditTask)}
+        title={
+          largeEditTask
+            ? `Karte ${largeEditTask.taskIndex + 1} bearbeiten`
+            : 'Karte bearbeiten'
+        }
+        prompt={largeEditTask?.task.prompt ?? ''}
+        solution={largeEditTask?.task.solution ?? ''}
+        ink={largeEditInk}
+        slideId={largeEditInkKey || 'et-card-editor'}
+        onPromptChange={(prompt) => {
+          if (!largeEditTask) return;
+          updateTask(largeEditTask.lessonId, largeEditTask.task.id, { prompt });
+        }}
+        onSolutionChange={(solution) => {
+          if (!largeEditTask) return;
+          updateTask(largeEditTask.lessonId, largeEditTask.task.id, { solution });
+        }}
+        onInkChange={(strokes) => {
+          if (!largeEditInkKey) return;
+          onChange(patchCustomSetPlayInk(setRef.current, largeEditInkKey, strokes));
+        }}
+        onClose={() => setLargeEdit(null)}
+        onSave={onSecure}
+      />
 
       <Dialog
         open={Boolean(previewTask)}

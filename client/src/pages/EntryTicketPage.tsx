@@ -99,6 +99,7 @@ import { discoverLessonsForReiheName, mergeFolienUnterkapitelIntoSets } from '..
 import { resolveEntryTicketBandForLessonPath, fetchAssignedEntryTicketGrade, parseEntryTicketPlanBand } from '../lib/entryTicketGrade';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
 import { EntryTicketFragensetEditor } from '../components/entry-ticket/EntryTicketFragensetEditor';
+import { EntryTicketCardEditorModal } from '../components/entry-ticket/EntryTicketCardEditorModal';
 import { EntryTicketRichField } from '../components/entry-ticket/EntryTicketRichField';
 import { EntryTicketRichHtml, entryTicketRichTextSx } from '../components/entry-ticket/EntryTicketRichHtml';
 import { EntryTicketHistoryDialog } from '../components/entry-ticket/EntryTicketHistoryDialog';

@@ -3143,7 +3143,6 @@ const PresentationEditorPage: React.FC = () => {
       const base = annotationsRef.current ?? createEmptyAnnotations(lessonPath || '');
       const prev = slideId ? base.bySlideId[slideId] || [] : [];
       updateInkStrokes([...prev, ...all]);
-      if (slideId) openPlayVariant(slideId);
       setInkEditActive(true);
       setInkTool('select');
       setSelectedStrokeIds(all.map((s) => s.id));
@@ -4638,6 +4637,27 @@ const PresentationEditorPage: React.FC = () => {
           </Box>
         )}
       </Box>
+
+      <Dialog
+        open={clearInkOpen}
+        onClose={() => setClearInkOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Alle Stiftstriche löschen?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Alle Stift-, Marker- und Formzeichnungen auf dieser Folie werden entfernt. Das lässt
+            sich nicht rückgängig machen.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setClearInkOpen(false)}>Abbrechen</Button>
+          <Button color="error" variant="contained" onClick={clearAllInkOnSlide}>
+            Löschen
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={Boolean(sectionDeleteAsk)}

@@ -171,6 +171,8 @@ type Props = {
   minHeight?: number;
   /** Play/Lösung: Stift-Overlay kann den Editor durchreichen. */
   playSurface?: boolean;
+  /** Füllt die Höhe des Eltern-Containers (großes Karten-Modal). */
+  fillParent?: boolean;
   editorFontSize?: string | Record<string, string>;
 };
 
@@ -220,6 +222,7 @@ function EntryTicketRichFieldInner({
   tone = 'neutral',
   minHeight = 52,
   playSurface = false,
+  fillParent = false,
   editorFontSize,
 }: Props) {
   const editorRef = useRef<HTMLDivElement>(null);
@@ -499,11 +502,14 @@ function EntryTicketRichFieldInner({
         border: '2px solid',
         borderColor: dragOver ? '#43a047' : palette.border,
         bgcolor: fieldBg,
-        overflow: 'visible',
+        overflow: fillParent ? 'hidden' : 'visible',
         boxSizing: 'border-box',
         boxShadow: dragOver ? '0 0 0 2px rgba(67,160,71,0.28)' : 'none',
         transition: 'border-color 0.12s ease, box-shadow 0.12s ease',
         position: 'relative',
+        ...(fillParent
+          ? { height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }
+          : {}),
         '&:focus-within': {
           borderColor: dragOver ? '#43a047' : palette.borderFocus,
           boxShadow: dragOver
@@ -872,7 +878,9 @@ function EntryTicketRichFieldInner({
           void ingestImageFiles(imageFiles);
         }}
         sx={{
-          minHeight,
+          minHeight: fillParent ? 0 : minHeight,
+          flex: fillParent ? 1 : undefined,
+          overflow: fillParent ? 'auto' : undefined,
           px: 0.75,
           py: 0.45,
           fontSize: editorFontSize ?? '0.78rem',
