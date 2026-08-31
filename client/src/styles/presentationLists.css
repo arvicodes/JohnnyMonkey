@@ -154,12 +154,13 @@
 /* Word-/MathML-Formeln nach dem Einfügen */
 .pres-math,
 [data-pres-math] {
-  display: inline-block;
-  vertical-align: middle;
+  display: inline;
+  vertical-align: baseline;
   white-space: nowrap;
-  line-height: 1.15;
+  line-height: inherit;
   user-select: all;
   -webkit-user-select: all;
+  color: inherit;
 }
 
 [contenteditable="true"] .pres-math,
@@ -171,22 +172,23 @@
 
 .pres-math math,
 [data-pres-math] math {
-  font-size: 1em;
+  font-size: 1.05em;
   font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Times New Roman", serif;
-  color: inherit;
-  font-weight: inherit;
 }
 
-.pres-math mi,
-.pres-math mn,
-.pres-math mo,
-.pres-math mtext,
-[data-pres-math] mi,
-[data-pres-math] mn,
-[data-pres-math] mo,
-[data-pres-math] mtext {
+.pres-math[data-pres-color] math,
+[data-pres-math][data-pres-color] math {
   color: inherit;
-  font-weight: inherit;
+}
+
+.pres-math[data-pres-bold="1"] math,
+[data-pres-math][data-pres-bold="1"] math {
+  font-weight: 700;
+}
+
+.pres-math[data-pres-fs] math,
+[data-pres-math][data-pres-fs] math {
+  font-size: 1em;
 }
 
 .pres-math mfrac,

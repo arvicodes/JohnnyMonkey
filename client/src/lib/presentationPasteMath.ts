@@ -572,17 +572,159 @@ export function looksLikeFormulaPlainText(text: string): boolean {
   const s = (text || '').trim();
   if (!s) return false;
   if (/\$\$[\s\S]+?\$\$|\$[^$\n]+?\$|\\\(|\\\[/.test(s)) return true;
-  if (/\\(?:frac|begin|vec|cdot|times|le|ge|sqrt|sum|int|alpha|beta|gamma|pi|theta)\b/.test(s)) return true;
+  if (
+    /\\(?:frac|begin|vec|cdot|times|le|ge|sqrt|sum|int|alpha|beta|gamma|pi|theta|matrix|pmatrix|bmatrix|vmatrix|mathbf|mathrm)\b/.test(
+      s,
+    )
+  ) {
+    return true;
+  }
+  if (/\\begin\{(?:p|b|v)?matrix\}/i.test(s)) return true;
   if (/[A-Za-z]\s*=\s*[^=\n]{3,}/.test(s) && /\\|[_^]\{/.test(s)) return true;
+  if (looksLikeAsciiMatrix(s)) return true;
   return false;
 }
 
-/** Plain-Text/LaTeX → HTML mit pres-math-Blöcken (Formel-Modus). */
+/** ChatGPT-/ASCII-Matrix ohne LaTeX? */
+export function looksLikeAsciiMatrix(text: string): boolean {
+  const lines = (text || '')
+    .replace(/\r\n/g, '\n')
+    .trim()
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length < 2) return false;
+  const rowRe =
+    /^(?:[\[\(\|⎛⎜⎝]|\\left[\(\[]|\\begin\{)\s*-?[\d.,]+\s*(?:[,;\s]\s*-?[\d.,]+\s*)+(?:[\]\)\|⎞⎟⎠]|\\right[\)\]])?$/;
+  const simpleRow = /^(?:[\[\(\|]?\s*)?(?:-?[\d.,]+(?:\s+|,|;)\s*)+-?[\d.,]+\s*(?:[\]\)\|])?$/;
+  let matrixRows = 0;
+  for (const line of lines) {
+    if (rowRe.test(line) || simpleRow.test(line.replace(/\s+/g, ' '))) matrixRows += 1;
+  }
+  return matrixRows >= 2 && matrixRows >= lines.length - 1;
+}
+
+/**
+ * ChatGPT-/Markdown-/ASCII-Text → möglichst reines LaTeX.
+ * Erhält \begin{pmatrix}… und wandelt Klammern-Matrizen um.
+ */
+export function normalizeChatGptMathPlain(plain: string): string {
+  let s = (plain || '').replace(/\r\n/g, '\n').trim();
+  if (!s) return '';
+
+  // Markdown-Codeblöcke (```latex … ```)
+  const fence = s.match(/^```(?:latex|tex|math)?\s*\n?([\s\S]*?)```$/i);
+  if (fence) s = fence[1].trim();
+
+  // Äußere $$ / \[ \] entfernen
+  s = s.replace(/^\$\$\s*([\s\S]*?)\s*\$\$$/, '$1').trim();
+  s = s.replace(/^\\\[\s*([\s\S]*?)\s*\\\]$/, '$1').trim();
+  s = s.replace(/^\\\(\s*([\s\S]*?)\s*\\\)$/, '$1').trim();
+
+  // Schon LaTeX-Matrix / Formel → bereinigen
+  if (/\\begin\{(?:p|b|v)?matrix\}/i.test(s) || /\\frac\b|\\vec\b|\\sum\b/.test(s)) {
+    return latexSourceFromPlain(s);
+  }
+
+  const asciiLatex = asciiMatrixToLatex(s);
+  if (asciiLatex) return asciiLatex;
+
+  return latexSourceFromPlain(s);
+}
+
+/** Zeilen wie `[1 2; 3 4]` oder zwei Zeilen `[1 2]` / `[3 4]` → pmatrix. */
+export function asciiMatrixToLatex(text: string): string | null {
+  const raw = (text || '').replace(/\r\n/g, '\n').trim();
+  if (!raw) return null;
+
+  // Einzeilig: [1 2; 3 4] oder (1,2|3,4)
+  const oneLine = raw.match(
+    /^[A-Za-z]?\s*=?\s*[\[\(\|]\s*((?:-?[\d.,]+(?:\s*[,;\s]\s*-?[\d.,]+)*)(?:\s*[;|]\s*-?[\d.,]+(?:\s*[,;\s]\s*-?[\d.,]+)*)+)\s*[\]\)\|]\s*$/,
+  );
+  if (oneLine) {
+    const body = oneLine[1]
+      .split(/\s*[;|]\s*/)
+      .map((row) =>
+        row
+          .trim()
+          .split(/\s*[,]\s*|\s+/)
+          .filter(Boolean)
+          .join(' & '),
+      )
+      .join(' \\\\ ');
+    if (body.includes('&')) return `\\begin{pmatrix}${body}\\end{pmatrix}`;
+  }
+
+  const lines = raw
+    .split(/\n+/)
+    .map((l) =>
+      l
+        .trim()
+        .replace(/^[\[\(\|⎛⎜⎝]+\s*/, '')
+        .replace(/\s*[\]\)\|⎞⎟⎠]+$/, '')
+        .replace(/^\\left[\(\[]\s*/, '')
+        .replace(/\s*\\right[\)\]]$/, '')
+        .trim(),
+    )
+    .filter(Boolean);
+  if (lines.length < 2) return null;
+
+  const rows: string[][] = [];
+  for (const line of lines) {
+    // A = ... vor der Matrix ignorieren
+    const cleaned = line.replace(/^[A-Za-z][A-Za-z0-9]*\s*=\s*/, '').trim();
+    const cells = cleaned
+      .split(/\s*[,;]\s*|\s+/)
+      .map((c) => c.trim())
+      .filter((c) => /^-?[\d.,]+(?:e[-+]?\d+)?$/i.test(c) || /^[A-Za-z]$/.test(c));
+    if (cells.length < 2) return null;
+    rows.push(cells);
+  }
+  const width = rows[0].length;
+  if (!rows.every((r) => r.length === width)) return null;
+  const body = rows.map((r) => r.join(' & ')).join(' \\\\ ');
+  return `\\begin{pmatrix}${body}\\end{pmatrix}`;
+}
+
+/** LaTeX aus ChatGPT-HTML (katex annotation, code-Blöcke). */
+export function extractLatexFromPastedHtml(html: string): string | null {
+  if (!html?.trim() || typeof document === 'undefined') return null;
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+
+  const annotation = doc.querySelector('annotation[encoding="application/x-tex"], annotation[encoding="application/x-latex"]');
+  if (annotation?.textContent?.trim()) {
+    return normalizeChatGptMathPlain(annotation.textContent);
+  }
+
+  const code =
+    doc.querySelector('code.language-latex, code.language-tex, code.language-math, pre code') ||
+    doc.querySelector('[class*="language-latex"], [class*="language-tex"]');
+  if (code?.textContent?.trim()) {
+    const t = normalizeChatGptMathPlain(code.textContent);
+    if (looksLikeFormulaPlainText(t) || /\\begin\{/.test(t)) return t;
+  }
+
+  const plain = (doc.body.textContent || '').replace(/\u00a0/g, ' ').trim();
+  if (looksLikeFormulaPlainText(plain)) return normalizeChatGptMathPlain(plain);
+  return null;
+}
+
+/** Plain-Text/LaTeX → HTML mit pres-math-Blöcken (Formel-Modus / ChatGPT-Matrix). */
 export function convertPlainTextWithLatexToPresentationHtml(plain: string): string {
-  const source = plain.replace(/\r\n/g, '\n').trim();
+  const normalized = normalizeChatGptMathPlain(plain);
+  const source = normalized || plain.replace(/\r\n/g, '\n').trim();
   if (!source) return '<p><br></p>';
 
-  const render = (tex: string, display: boolean) => renderLatexToPresentationSpan(tex, display) || `<span>${tex}</span>`;
+  const render = (tex: string, display: boolean) =>
+    renderLatexToPresentationSpan(tex, display) || `<span>${tex}</span>`;
+
+  // Reine Matrix / ein LaTeX-Block → eine Display-Formel
+  if (
+    /^\\begin\{(?:p|b|v)?matrix\}[\s\S]*\\end\{(?:p|b|v)?matrix\}$/i.test(source.trim()) ||
+    (looksLikeAsciiMatrix(plain) && /^\\begin\{pmatrix\}/.test(source))
+  ) {
+    return `<p>${render(source.trim(), true)}</p>`;
+  }
 
   const chunks: string[] = [];
   let rest = source;
@@ -591,17 +733,22 @@ export function convertPlainTextWithLatexToPresentationHtml(plain: string): stri
     { re: /\\\[([\s\S]+?)\\\]/g, display: true },
     { re: /\\\(([\s\S]+?)\\\)/g, display: false },
     { re: /\$([^$\n]+?)\$/g, display: false },
+    {
+      re: /\\begin\{(?:p|b|v)?matrix\}[\s\S]*?\\end\{(?:p|b|v)?matrix\}/gi,
+      display: true,
+    },
   ];
 
   for (const { re, display } of patterns) {
-    rest = rest.replace(re, (_m, tex: string) => {
-      chunks.push(render(tex, display));
+    rest = rest.replace(re, (m: string, tex?: string) => {
+      const body = tex != null ? tex : m;
+      chunks.push(render(body, display));
       return `\uE202${chunks.length - 1}\uE203`;
     });
   }
 
-  if (/\\(?:frac|begin|vec|cdot|times|sqrt|sum|int)\b/.test(rest)) {
-    rest = render(rest, false);
+  if (/\\(?:frac|begin|vec|cdot|times|sqrt|sum|int|pmatrix|bmatrix)\b/.test(rest)) {
+    rest = render(rest, /\\begin\{(?:p|b|v)?matrix\}/i.test(rest));
     return `<p>${rest}</p>`;
   }
 

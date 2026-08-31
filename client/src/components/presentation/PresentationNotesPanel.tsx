@@ -45,7 +45,10 @@ import {
   notesHtmlLooksEmpty,
 } from '../../lib/presentationNotesTemplates';
 import { clipboardHasImage, clipboardPrefersRichText, collectPasteImages } from '../../lib/goodNotesClipboard';
-import PresentationNotesInkCanvas, { type NotesInkMode } from './PresentationNotesInkCanvas';
+import PresentationNotesInkCanvas, {
+  EMPTY_NOTES_INK,
+  type NotesInkMode,
+} from './PresentationNotesInkCanvas';
 import '../../styles/presentationLists.css';
 
 /** Ein Notizfeld (früher Material / Setup / Sprechakte). Legacy-Keys bleiben für Papierkorb. */
@@ -654,7 +657,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
         <PresentationNotesInkCanvas
           hostRef={hostRef}
           editorRef={ref}
-          strokes={inkStrokes || []}
+          strokes={inkStrokes?.length ? inkStrokes : EMPTY_NOTES_INK}
           mode={readOnly ? 'text' : inkMode}
           color={inkColor}
           readOnly={readOnly}

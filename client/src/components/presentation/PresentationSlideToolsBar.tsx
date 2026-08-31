@@ -1452,10 +1452,10 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                         size="small"
                         type="number"
                         label="Linienstärke"
-                        value={selectedElement.strokeWidth ?? 3}
+                        value={selectedElement.strokeWidth ?? 10.5}
                         onChange={(e) =>
                           onUpdateElement(selectedElement.id, {
-                            strokeWidth: Math.max(1, Math.min(16, Number(e.target.value) || 3)),
+                            strokeWidth: Math.max(1, Math.min(28, Number(e.target.value) || 10.5)),
                           })
                         }
                         sx={{
@@ -1477,10 +1477,10 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                           size="small"
                           type="number"
                           label="Pfeilspitze"
-                          value={selectedElement.arrowHeadSize ?? 10}
+                          value={selectedElement.arrowHeadSize ?? 22}
                           onChange={(e) =>
                             onUpdateElement(selectedElement.id, {
-                              arrowHeadSize: Math.max(4, Math.min(28, Number(e.target.value) || 10)),
+                              arrowHeadSize: Math.max(4, Math.min(36, Number(e.target.value) || 22)),
                             })
                           }
                           sx={{

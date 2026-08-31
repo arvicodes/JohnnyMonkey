@@ -5,11 +5,12 @@
 
 import { isFormatBarInteracting, isPresentationFormatUiTarget } from './presentationFormatBarGuard';
 import { toHighlightFill } from './presentationTheme';
-import {
-  applyFormatToSelectedMath,
-  isInsidePresentationMath,
-  mathElementsInSelection,
-} from './presentationPasteMath';
+
+function isInsidePresentationMath(node: Node | null): boolean {
+  if (!node) return false;
+  const el = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
+  return Boolean(el?.closest?.('[data-pres-math]'));
+}
 
 export const PRESENTATION_CONTENT_FONT_PX = 26;
 
@@ -464,58 +465,13 @@ export function applyEditorFontSizePx(
 ): boolean {
   if (!editor || !Number.isFinite(px) || px < 8) return false;
 
-  const maths = mathElementsInSelection(editor);
-  if (maths.length) {
-    applyFormatToSelectedMath(editor, { fontSizePx: px });
-    // Nur Formeln markiert → fertig (kein Wrap in MathML)
-    const sel = window.getSelection();
-    const range =
-      explicitRange && !explicitRange.collapsed
-        ? explicitRange
-        : sel?.rangeCount
-          ? sel.getRangeAt(0)
-          : null;
-    if (range) {
-      const onlyMath =
-        range.collapsed ||
-        (() => {
-          try {
-            const walker = document.createTreeWalker(
-              range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
-                ? (range.commonAncestorContainer as Node)
-                : range.commonAncestorContainer.parentNode || editor,
-              NodeFilter.SHOW_TEXT,
-            );
-            let n: Node | null;
-            while ((n = walker.nextNode())) {
-              if (!range.intersectsNode(n)) continue;
-              if (!(n.textContent || '').replace(/\u00a0/g, ' ').trim()) continue;
-              if (!isInsidePresentationMath(n)) return false;
-            }
-            return true;
-          } catch {
-            return maths.length > 0;
-          }
-        })();
-      if (onlyMath) {
-        keepEditorSelection(editor);
-        return true;
-      }
-    } else {
-      keepEditorSelection(editor);
-      return true;
-    }
-  }
-
   const range =
     explicitRange && !explicitRange.collapsed
       ? explicitRange.cloneRange()
       : liveRange(editor) ??
         (saved?.editor === editor && !saved.range.collapsed ? saved.range.cloneRange() : null);
-  if (!range || range.collapsed) {
-    return maths.length > 0;
-  }
-  if (!editor.contains(range.commonAncestorContainer)) return maths.length > 0;
+  if (!range || range.collapsed) return false;
+  if (!editor.contains(range.commonAncestorContainer)) return false;
 
   saved = { editor, range: range.cloneRange() };
 
@@ -526,7 +482,7 @@ export function applyEditorFontSizePx(
       sel.removeAllRanges();
       sel.addRange(range.cloneRange());
     } catch {
-      return maths.length > 0;
+      return false;
     }
   }
 
@@ -535,7 +491,7 @@ export function applyEditorFontSizePx(
 
   const spans = applyPxAcrossRange(work, px);
   const keep = rangeFromSpans(spans);
-  if (!keep) return maths.length > 0;
+  if (!keep) return false;
 
   editor.dispatchEvent(new Event('input', { bubbles: true }));
   keepEditorSelection(editor, keep);

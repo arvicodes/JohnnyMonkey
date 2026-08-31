@@ -39,14 +39,21 @@ export const SLIDE_SHAPE_LABELS: Record<PresentationShapeKind, string> = {
   ellipse: 'Kreis / Oval',
 };
 
+/** Standard-Linienstärke für Pfeile/Linien (früher ~3.5; 3× für klare Erkennbarkeit). */
+export const DEFAULT_ARROW_STROKE_WIDTH = 10.5;
+/** Standard-Pfeilspitze in lokaler Box (0–100); mit kürzerer Länge etwas größer. */
+export const DEFAULT_ARROW_HEAD_SIZE = 22;
+
 export function defaultShapeSize(kind: PresentationShapeKind): { w: number; h: number } {
   switch (kind) {
     case 'arrow':
-    case 'curved-arrow':
     case 'line':
-      return { w: 28, h: 10 };
+      // Länge ~halb gegenüber früherem Standard (32 → 16)
+      return { w: 16, h: 10 };
+    case 'curved-arrow':
+      return { w: 15, h: 14 };
     case 'connector':
-      return { w: 32, h: 28 };
+      return { w: 16, h: 22 };
     case 'rect':
       return { w: 24, h: 16 };
     case 'ellipse':
@@ -55,6 +62,8 @@ export function defaultShapeSize(kind: PresentationShapeKind): { w: number; h: n
       return { w: 22, h: 14 };
   }
 }
+
+const DEFAULT_LINE_COLOR = '#212121';
 
 export function createShapeElement(
   kind: PresentationShapeKind,
@@ -65,18 +74,20 @@ export function createShapeElement(
   const accent = accentColor || JOHNNY_PRESENTATION.primary;
   const isBox = kind === 'rect' || kind === 'ellipse';
   const lineLike = isLineLikeShapeKind(kind);
+  const plainArrow = kind === 'arrow' || kind === 'line';
   const el: SlideElement = {
     id: `el-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     type: 'shape',
     shapeKind: kind,
-    x: 36,
-    y: 40,
+    x: 34,
+    y: 44,
     w: size.w,
     h: size.h,
     zIndex,
-    strokeColor: accent,
-    strokeWidth: lineLike ? 4 : 3,
+    strokeColor: plainArrow ? DEFAULT_LINE_COLOR : accent,
+    strokeWidth: lineLike ? DEFAULT_ARROW_STROKE_WIDTH : 3,
     fillColor: isBox ? `${accent}33` : 'transparent',
+    arrowHeadSize: shapeHasArrowHead(kind) ? DEFAULT_ARROW_HEAD_SIZE : undefined,
     ...(isBox ? { html: '<p style="text-align:center"><br></p>' } : {}),
   };
   return normalizeShapeElement(el);
@@ -94,7 +105,7 @@ export function SlideShapeSvg({
   kind: kindProp,
   strokeColor,
   fillColor,
-  strokeWidth = 3,
+  strokeWidth = DEFAULT_ARROW_STROKE_WIDTH,
   flipH,
   flipV,
   curveBend,
@@ -146,16 +157,17 @@ export function SlideShapeSvg({
     strokeWidth: strokeWidth ?? base.strokeWidth,
   });
   const kind = norm.shapeKind || 'arrow';
-  const stroke = norm.strokeColor || JOHNNY_PRESENTATION.primary;
+  const stroke = norm.strokeColor || (kind === 'arrow' || kind === 'line' ? '#212121' : JOHNNY_PRESENTATION.primary);
   const fill =
     norm.fillColor && norm.fillColor !== 'transparent' && norm.fillColor !== 'none'
       ? norm.fillColor
       : 'none';
-  const sw = Math.max(1.5, Math.min(16, norm.strokeWidth ?? 3));
+  const sw = Math.max(1.5, Math.min(28, norm.strokeWidth ?? DEFAULT_ARROW_STROKE_WIDTH));
   const points = resolveShapePoints(norm);
   const curveControl = kind === 'curved-arrow' ? resolveCurveControl(points, norm) : null;
   const headSize = resolveArrowHeadSize(norm);
-  const { shaftOnly, head } = buildLinePathD(kind, points, curveControl, headSize);
+  const boxAspect = Math.max((norm.w || 1) / Math.max(norm.h || 1, 0.5), 0.15);
+  const { shaftOnly, head } = buildLinePathD(kind, points, curveControl, headSize, boxAspect);
   const showHead = shapeHasArrowHead(kind) && head;
 
   if (isLineLikeShapeKind(kind)) {

@@ -1,8 +1,8 @@
 /** Rich-Text-Hilfen für Präsentations-Editoren (Farben, Listen, Fett …). */
 
 import {
-  applyEditorFontSizePx,
-  applyEditorFontSizeStepIndex,
+  applyEditorFontSizePx as applyEditorFontSizePxCore,
+  applyEditorFontSizeStepIndex as applyEditorFontSizeStepIndexCore,
   captureEditorSelection,
   clearSavedSelection,
   collapseEditorSelection,
@@ -10,7 +10,7 @@ import {
   getEditorSelectionFontPx,
   getEditorFontSizeSteps,
   keepEditorSelection,
-  nudgeEditorFontSize,
+  nudgeEditorFontSize as nudgeEditorFontSizeCore,
   NOTES_FONT_SIZE_STEPS,
   PRESENTATION_CONTENT_FONT_PX,
   PRESENTATION_FONT_SIZE_STEPS,
@@ -36,9 +36,11 @@ import { presentationNotesImageInsertHtml, stripNotesImageChrome, releaseNotesIm
 import {
   convertOmmlElementsInPlace,
   convertPlainTextWithLatexToPresentationHtml,
+  extractLatexFromPastedHtml,
   hoistPastedMathHtml,
   isInsidePresentationMath,
   isPresentationMathNode,
+  looksLikeAsciiMatrix,
   looksLikeFormulaPlainText,
   applyFormatToSelectedMath,
   mathElementsInSelection,
@@ -46,10 +48,84 @@ import {
 } from './presentationPasteMath';
 import { isPresentationFormulaPasteMode } from './presentationFormulaPasteMode';
 
+function selectionIsOnlyMath(editor: HTMLElement): boolean {
+  const maths = mathElementsInSelection(editor);
+  if (!maths.length) return false;
+  const sel = window.getSelection();
+  if (!sel?.rangeCount) return true;
+  const range = sel.getRangeAt(0);
+  if (range.collapsed) return true;
+  try {
+    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+    let n: Node | null;
+    while ((n = walker.nextNode())) {
+      if (!range.intersectsNode(n)) continue;
+      if (!(n.textContent || '').replace(/\u00a0/g, ' ').trim()) continue;
+      if (!isInsidePresentationMath(n)) return false;
+    }
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+/** Schriftgröße — Formeln am Span, Text normal. */
+export function applyEditorFontSizePx(
+  editor: HTMLElement | null,
+  px: number,
+  explicitRange?: Range | null,
+): boolean {
+  if (!editor) return false;
+  if (mathElementsInSelection(editor).length) {
+    applyFormatToSelectedMath(editor, { fontSizePx: px });
+    if (selectionIsOnlyMath(editor)) {
+      keepEditorSelection(editor);
+      return true;
+    }
+  }
+  return applyEditorFontSizePxCore(editor, px, explicitRange);
+}
+
+export function nudgeEditorFontSize(editor: HTMLElement | null, direction: 1 | -1): number | null {
+  if (!editor) return null;
+  const maths = mathElementsInSelection(editor);
+  if (maths.length && selectionIsOnlyMath(editor)) {
+    const steps = getEditorFontSizeSteps(editor);
+    const current =
+      parseInt(maths[0].getAttribute('data-pres-fs') || '', 10) ||
+      getEditorSelectionFontPx(editor) ||
+      PRESENTATION_CONTENT_FONT_PX;
+    let idx = 0;
+    let best = Infinity;
+    steps.forEach((step, i) => {
+      const d = Math.abs(step - current);
+      if (d < best) {
+        best = d;
+        idx = i;
+      }
+    });
+    if (direction > 0 && steps[idx] <= current && idx < steps.length - 1) idx += 1;
+    else if (direction < 0 && steps[idx] >= current && idx > 0) idx -= 1;
+    else idx = Math.max(0, Math.min(steps.length - 1, idx + direction));
+    const px = steps[idx];
+    applyFormatToSelectedMath(editor, { fontSizePx: px });
+    keepEditorSelection(editor);
+    return px;
+  }
+  return nudgeEditorFontSizeCore(editor, direction);
+}
+
+export function applyEditorFontSizeStepIndex(editor: HTMLElement | null, index: number): number | null {
+  if (!editor) return null;
+  const steps = getEditorFontSizeSteps(editor);
+  if (index < 0 || index >= steps.length) return null;
+  const px = steps[index];
+  if (applyEditorFontSizePx(editor, px)) return px;
+  return applyEditorFontSizeStepIndexCore(editor, index);
+}
+
 // Explizite Re-Exports (HMR-sicherer als `import` + `export { … }`)
 export {
-  applyEditorFontSizePx,
-  applyEditorFontSizeStepIndex,
   captureEditorSelection,
   clearSavedSelection,
   collapseEditorSelection,
@@ -57,7 +133,6 @@ export {
   getEditorSelectionFontPx,
   getEditorFontSizeSteps,
   keepEditorSelection,
-  nudgeEditorFontSize,
   NOTES_FONT_SIZE_STEPS,
   PRESENTATION_CONTENT_FONT_PX,
   PRESENTATION_FONT_SIZE_STEPS,
@@ -940,6 +1015,7 @@ export function sanitizePastedHtml(html: string, options?: PasteSanitizeOptions)
 
 /**
  * Einfügen in Folien-Editoren: HTML oder Plain-Text → bereinigt, Listen, Aptos 26, Blocksatz.
+ * Formel-Modus / ChatGPT-Matrix: LaTeX und ASCII-Matrizen → MathML.
  */
 export function presentationPasteHtml(
   clipboardData: DataTransfer,
@@ -954,11 +1030,8 @@ export function presentationPasteHtml(
   const fontPx = options?.fontPx ?? PRESENTATION_CONTENT_FONT_PX;
   const textAlign = options?.textAlign ?? 'justify';
   const formulaMode = options?.formulaMode ?? isPresentationFormulaPasteMode();
-  if (pastedHtml?.trim()) {
-    return sanitizePastedHtml(pastedHtml, { slideDefaults: true, fontPx, textAlign }) || '<p><br></p>';
-  }
-  if (formulaMode && looksLikeFormulaPlainText(pastedText)) {
-    const latexHtml = convertPlainTextWithLatexToPresentationHtml(pastedText || '');
+
+  const finishFormulaHtml = (latexHtml: string) => {
     if (typeof document !== 'undefined') {
       const doc = new DOMParser().parseFromString(latexHtml, 'text/html');
       stampDefaultPresentationFont(doc.body, fontPx, true);
@@ -966,7 +1039,31 @@ export function presentationPasteHtml(
       return doc.body.innerHTML || '<p><br></p>';
     }
     return latexHtml;
+  };
+
+  // ChatGPT liefert oft HTML — trotzdem Formel/Matrix aus Text oder Annotation holen
+  const plainCandidate = (pastedText || '').trim();
+  const htmlLatex = pastedHtml?.trim() ? extractLatexFromPastedHtml(pastedHtml) : null;
+  const wantFormula =
+    formulaMode ||
+    looksLikeFormulaPlainText(plainCandidate) ||
+    looksLikeAsciiMatrix(plainCandidate) ||
+    Boolean(htmlLatex && looksLikeFormulaPlainText(htmlLatex));
+
+  if (wantFormula) {
+    const source = htmlLatex || plainCandidate;
+    if (source && (looksLikeFormulaPlainText(source) || looksLikeAsciiMatrix(source) || formulaMode)) {
+      const latexHtml = convertPlainTextWithLatexToPresentationHtml(source);
+      if (latexHtml.includes('data-pres-math') || latexHtml.includes('pres-math')) {
+        return finishFormulaHtml(latexHtml);
+      }
+    }
   }
+
+  if (pastedHtml?.trim()) {
+    return sanitizePastedHtml(pastedHtml, { slideDefaults: true, fontPx, textAlign }) || '<p><br></p>';
+  }
+
   const html = stampDefaultPresentationFontHtml(
     plainTextToPresentationHtml(pastedText || ''),
     fontPx,

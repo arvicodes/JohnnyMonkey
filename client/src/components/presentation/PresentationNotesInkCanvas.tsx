@@ -10,6 +10,9 @@ const ERASER_RADIUS = 16;
 const MIN_INK_DIST_SQ = 0.45 * 0.45;
 const INK_COMMIT_IDLE_MS = 420;
 
+/** Stabil — verhindert, dass `strokes || []` bei jedem Render die Tinte löscht. */
+export const EMPTY_NOTES_INK: PresentationNotesInkStroke[] = [];
+
 function strokeHitsPoint(stroke: PresentationNotesInkStroke, pt: InkPoint, radius: number): boolean {
   const r2 = radius * radius;
   for (const p of stroke.points) {
@@ -26,6 +29,12 @@ function cloneStrokes(strokes: PresentationNotesInkStroke[]): PresentationNotesI
     width: s.width,
     points: s.points.map((p) => ({ x: p.x, y: p.y })),
   }));
+}
+
+function strokesSignature(strokes: PresentationNotesInkStroke[]): string {
+  return strokes
+    .map((s) => `${s.color}|${s.width}|${s.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(';')}`)
+    .join('/');
 }
 
 type PresentationNotesInkCanvasProps = {
@@ -55,7 +64,8 @@ const PresentationNotesInkCanvas: React.FC<PresentationNotesInkCanvasProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
-  const inkRef = useRef<PresentationNotesInkStroke[]>(strokes);
+  const inkRef = useRef<PresentationNotesInkStroke[]>(cloneStrokes(strokes));
+  const pendingCommitRef = useRef<PresentationNotesInkStroke[] | null>(null);
   const currentStrokeRef = useRef<PresentationNotesInkStroke | null>(null);
   const lastInkPtRef = useRef<InkPoint | null>(null);
   const lastSmoothMidRef = useRef<InkPoint | null>(null);
@@ -69,6 +79,7 @@ const PresentationNotesInkCanvas: React.FC<PresentationNotesInkCanvasProps> = ({
   const onChangeRef = useRef(onChange);
   const onBeforeStrokeRef = useRef(onBeforeStroke);
   const historyPushedRef = useRef(false);
+  const lastAppliedSigRef = useRef(strokesSignature(strokes));
 
   useEffect(() => {
     modeRef.current = mode;
@@ -88,7 +99,21 @@ const PresentationNotesInkCanvas: React.FC<PresentationNotesInkCanvasProps> = ({
 
   useEffect(() => {
     if (drawingRef.current) return;
-    inkRef.current = cloneStrokes(strokes);
+    const incoming = strokes?.length ? strokes : EMPTY_NOTES_INK;
+    const sig = strokesSignature(incoming);
+    // Pending Commit: Props sind noch alt — nicht überschreiben
+    if (pendingCommitRef.current) {
+      const pendingSig = strokesSignature(pendingCommitRef.current);
+      if (sig === pendingSig) {
+        pendingCommitRef.current = null;
+        lastAppliedSigRef.current = sig;
+        inkRef.current = cloneStrokes(incoming);
+      }
+      return;
+    }
+    if (sig === lastAppliedSigRef.current) return;
+    lastAppliedSigRef.current = sig;
+    inkRef.current = cloneStrokes(incoming);
     redrawCanvas();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [strokes]);
@@ -180,12 +205,21 @@ const PresentationNotesInkCanvas: React.FC<PresentationNotesInkCanvasProps> = ({
     return { x: clientX - rect.left, y: clientY - rect.top };
   };
 
+  const flushCommit = (nextInk: PresentationNotesInkStroke[]) => {
+    pendingCommitRef.current = cloneStrokes(nextInk);
+    inkRef.current = nextInk;
+    lastAppliedSigRef.current = strokesSignature(nextInk);
+    onChangeRef.current?.(cloneStrokes(nextInk));
+  };
+
   const scheduleCommit = (nextInk: PresentationNotesInkStroke[]) => {
     inkRef.current = nextInk;
+    pendingCommitRef.current = cloneStrokes(nextInk);
+    lastAppliedSigRef.current = strokesSignature(nextInk);
     if (persistTimerRef.current != null) window.clearTimeout(persistTimerRef.current);
     persistTimerRef.current = window.setTimeout(() => {
       persistTimerRef.current = null;
-      onChangeRef.current?.(cloneStrokes(nextInk));
+      flushCommit(nextInk);
     }, INK_COMMIT_IDLE_MS);
   };
 
@@ -401,7 +435,8 @@ const PresentationNotesInkCanvas: React.FC<PresentationNotesInkCanvasProps> = ({
       if (persistTimerRef.current != null) {
         window.clearTimeout(persistTimerRef.current);
         persistTimerRef.current = null;
-        onChangeRef.current?.(cloneStrokes(inkRef.current));
+        const pending = pendingCommitRef.current || inkRef.current;
+        flushCommit(pending);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -419,7 +454,8 @@ const PresentationNotesInkCanvas: React.FC<PresentationNotesInkCanvasProps> = ({
         zIndex: 2,
         touchAction: 'none',
         cursor: readOnly ? 'default' : mode === 'eraser' ? 'cell' : mode === 'pen' ? 'crosshair' : 'text',
-        pointerEvents: readOnly || mode === 'text' ? 'none' : 'auto',
+        // Pen schreibt auch im Textmodus (Host-Listener) — Canvas darf die Events nicht blockieren.
+        pointerEvents: readOnly ? 'none' : mode === 'text' ? 'none' : 'auto',
         WebkitUserSelect: 'none',
         userSelect: 'none',
         WebkitTouchCallout: 'none',

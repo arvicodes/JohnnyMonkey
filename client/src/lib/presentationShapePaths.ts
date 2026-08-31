@@ -71,8 +71,8 @@ export function resolveCurveControl(
 }
 
 export function resolveArrowHeadSize(el: Pick<SlideElement, 'arrowHeadSize' | 'strokeWidth'>): number {
-  const raw = el.arrowHeadSize ?? Math.max(8, (el.strokeWidth ?? 4) * 2.2);
-  return clamp(raw, 4, 28);
+  const raw = el.arrowHeadSize ?? Math.max(14, (el.strokeWidth ?? 10.5) * 2.1);
+  return clamp(raw, 4, 36);
 }
 
 export function normalizeShapeElement(el: SlideElement): SlideElement {
@@ -161,15 +161,23 @@ export function arrowHeadPolygon(
   tipY: number,
   angleRad: number,
   size: number,
+  /** Element-Seitenverhältnis w/h — gegen gequetschte Spitzen in flachen Boxen. */
+  boxAspect = 1,
 ): string {
-  const back = size * 1.05;
-  const half = size * 0.48;
-  const bx = tipX - back * Math.cos(angleRad);
-  const by = tipY - back * Math.sin(angleRad);
-  const lx = bx + half * Math.sin(angleRad);
-  const ly = by - half * Math.cos(angleRad);
-  const rx = bx - half * Math.sin(angleRad);
-  const ry = by + half * Math.cos(angleRad);
+  const ar = Number.isFinite(boxAspect) && boxAspect > 0.08 ? boxAspect : 1;
+  const back = size * 1.08;
+  const half = size * 0.5;
+  // In „gleichmäßigem“ Raum (y' = y * ar) konstruieren, dann zurück
+  const tipUy = tipY * ar;
+  const ang = Math.atan2(Math.sin(angleRad) * ar, Math.cos(angleRad));
+  const c = Math.cos(ang);
+  const s = Math.sin(ang);
+  const ubx = tipX - back * c;
+  const uby = tipUy - back * s;
+  const lx = ubx + half * s;
+  const ly = (uby - half * c) / ar;
+  const rx = ubx - half * s;
+  const ry = (uby + half * c) / ar;
   return `${tipX.toFixed(2)},${tipY.toFixed(2)} ${lx.toFixed(2)},${ly.toFixed(2)} ${rx.toFixed(2)},${ry.toFixed(2)}`;
 }
 
@@ -178,6 +186,7 @@ export function buildLinePathD(
   points: ShapePoint[],
   curveControl: ShapePoint | null,
   headSize: number,
+  boxAspect = 1,
 ): { path: string; head: string | null; shaftOnly: string } {
   if (points.length < 2) {
     return { path: '', head: null, shaftOnly: '' };
@@ -189,7 +198,7 @@ export function buildLinePathD(
 
   if (kind === 'curved-arrow' && curveControl) {
     const d = `M ${points[0].x} ${points[0].y} Q ${curveControl.x} ${curveControl.y} ${shaftEnd.x} ${shaftEnd.y}`;
-    const head = arrowHeadPolygon(tip.x, tip.y, angle, headSize);
+    const head = arrowHeadPolygon(tip.x, tip.y, angle, headSize, boxAspect);
     return { path: d, head, shaftOnly: d };
   }
 
@@ -200,7 +209,7 @@ export function buildLinePathD(
     }
     parts.push(`L ${shaftEnd.x} ${shaftEnd.y}`);
     const d = parts.join(' ');
-    const head = arrowHeadPolygon(tip.x, tip.y, angle, headSize);
+    const head = arrowHeadPolygon(tip.x, tip.y, angle, headSize, boxAspect);
     return { path: d, head, shaftOnly: d };
   }
 
@@ -211,7 +220,7 @@ export function buildLinePathD(
 
   // arrow
   const d = `M ${points[0].x} ${points[0].y} L ${shaftEnd.x} ${shaftEnd.y}`;
-  const head = arrowHeadPolygon(tip.x, tip.y, angle, headSize);
+  const head = arrowHeadPolygon(tip.x, tip.y, angle, headSize, boxAspect);
   return { path: d, head, shaftOnly: d };
 }
 
@@ -410,9 +419,9 @@ export function connectorElementFromSlidePoints(
     h: base.h ?? 10,
     zIndex,
     strokeColor: accent,
-    strokeWidth: 4,
+    strokeWidth: 10.5,
     fillColor: 'transparent',
     shapePoints: base.shapePoints,
-    arrowHeadSize: 10,
+    arrowHeadSize: 22,
   };
 }

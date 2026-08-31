@@ -801,7 +801,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
               setFormulaPasteMode(next);
               onMessage?.(
                 next
-                  ? 'Formel-Modus: Word, LaTeX, HTML-MathML und PowerPoint-Formeln beim Einfügen — Doppelklick auf Formel zum Bearbeiten'
+                  ? 'Formel-Modus an: LaTeX, Matrizen und ChatGPT-Formeln einfügen (⌘V) — Doppelklick zum Bearbeiten'
                   : 'Formel-Modus aus',
               );
             }}
