@@ -54,7 +54,7 @@ import {
   type ImageCropHandle,
 } from '../../lib/presentationImageUtils';
 import { SlideShapeSvg, shapeSupportsText, isLineLikeShapeKind, clientToShapeLocal } from '../../lib/presentationSlideShapes';
-import { resolveCurveControl, resolveShapePoints } from '../../lib/presentationShapePaths';
+import { resolveCurveControl, resolveShapePoints, localPointsToSlide, clientToSlidePct, snapSlidePointAxis, rebaseShapeFromSlidePoints } from '../../lib/presentationShapePaths';
 import {
   elementToRect,
   snapElementMove,
@@ -459,14 +459,30 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     } as DOMRect;
 
     if (d.mode === 'shape-point' && d.shapePointIndex != null && isLineLikeShapeKind(d.orig.shapeKind)) {
-      const local = clientToShapeLocal(e.clientX, e.clientY, d.orig, slideRect);
-      const points = resolveShapePoints(d.orig).map((p, i) =>
-        i === d.shapePointIndex ? local : { ...p },
-      );
-      patch = { shapePoints: points };
+      const idx = d.shapePointIndex;
+      const slidePoints = localPointsToSlide(d.orig, resolveShapePoints(d.orig));
+      const adjIdx = idx === 0 ? 1 : idx - 1;
+      const adj = slidePoints[adjIdx] || slidePoints[0];
+      let next = clientToSlidePct(e.clientX, e.clientY, d.slideLeft, d.slideTop, d.slideW, d.slideH);
+      next = snapSlidePointAxis(next, adj, e.shiftKey);
+      const nextSlide = slidePoints.map((p, i) => (i === idx ? next : p));
+      let curveSlide: { x: number; y: number } | null = null;
+      if (d.orig.shapeKind === 'curved-arrow') {
+        const ctrl = resolveCurveControl(resolveShapePoints(d.orig), d.orig);
+        curveSlide = localPointsToSlide(d.orig, [ctrl])[0];
+      }
+      patch = rebaseShapeFromSlidePoints(d.orig, nextSlide, { curveSlide });
     } else if (d.mode === 'shape-curve' && d.orig.shapeKind === 'curved-arrow') {
-      const local = clientToShapeLocal(e.clientX, e.clientY, d.orig, slideRect);
-      patch = { shapeCurveControl: local, curveBend: undefined };
+      const slidePoints = localPointsToSlide(d.orig, resolveShapePoints(d.orig));
+      const curveSlide = clientToSlidePct(
+        e.clientX,
+        e.clientY,
+        d.slideLeft,
+        d.slideTop,
+        d.slideW,
+        d.slideH,
+      );
+      patch = rebaseShapeFromSlidePoints(d.orig, slidePoints, { curveSlide });
     } else if (d.mode === 'rotate') {
       const cx = d.slideLeft + ((d.orig.x + d.orig.w / 2) / 100) * d.slideW;
       const cy = d.slideTop + ((d.orig.y + d.orig.h / 2) / 100) * d.slideH;

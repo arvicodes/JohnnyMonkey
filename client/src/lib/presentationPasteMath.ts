@@ -388,7 +388,7 @@ export function renderPresentationMathHtml(latex: string, display = false): stri
   return renderLatexToPresentationSpan(latex, display);
 }
 
-/** Vorhandene Formel durch neu gerenderte ersetzen. */
+/** Vorhandene Formel durch neu gerenderte ersetzen (Formatierung behalten). */
 export function replacePresentationMathElement(span: HTMLElement, latex: string): HTMLElement | null {
   const trimmed = latexSourceFromPlain(latex);
   if (!trimmed) return null;
@@ -398,8 +398,61 @@ export function replacePresentationMathElement(span: HTMLElement, latex: string)
   tpl.innerHTML = html;
   const next = tpl.content.firstElementChild as HTMLElement | null;
   if (!next) return null;
+  copyPresentationMathChrome(span, next);
   span.replaceWith(next);
   return next;
+}
+
+const MATH_STYLE_ATTRS = ['data-pres-fs', 'data-pres-color', 'data-pres-bold'] as const;
+
+function copyPresentationMathChrome(from: HTMLElement, to: HTMLElement) {
+  for (const attr of MATH_STYLE_ATTRS) {
+    const v = from.getAttribute(attr);
+    if (v) to.setAttribute(attr, v);
+  }
+  const fs = from.style.fontSize;
+  const color = from.style.color;
+  const weight = from.style.fontWeight;
+  if (fs) to.style.setProperty('font-size', fs, 'important');
+  if (color) to.style.setProperty('color', color, 'important');
+  if (weight) to.style.setProperty('font-weight', weight, 'important');
+}
+
+export type PresentationMathStylePatch = {
+  fontSizePx?: number;
+  color?: string | null;
+  bold?: boolean | 'toggle';
+};
+
+/** Formatierung direkt am Formel-Span — MathML erbt Farbe/Größe/Fett. */
+export function applyPresentationMathStyle(span: HTMLElement, patch: PresentationMathStylePatch): void {
+  if (patch.fontSizePx != null && Number.isFinite(patch.fontSizePx)) {
+    const px = Math.round(Math.max(10, Math.min(96, patch.fontSizePx)));
+    span.setAttribute('data-pres-fs', String(px));
+    span.style.setProperty('font-size', `${px}px`, 'important');
+  }
+  if (patch.color === null) {
+    span.removeAttribute('data-pres-color');
+    span.style.removeProperty('color');
+  } else if (typeof patch.color === 'string' && patch.color.trim()) {
+    const c = patch.color.trim();
+    span.setAttribute('data-pres-color', c);
+    span.style.setProperty('color', c, 'important');
+  }
+  if (patch.bold === 'toggle') {
+    const on =
+      span.getAttribute('data-pres-bold') === '1' ||
+      span.style.fontWeight === 'bold' ||
+      parseInt(span.style.fontWeight || '0', 10) >= 600;
+    patch = { ...patch, bold: !on };
+  }
+  if (patch.bold === true) {
+    span.setAttribute('data-pres-bold', '1');
+    span.style.setProperty('font-weight', '700', 'important');
+  } else if (patch.bold === false) {
+    span.removeAttribute('data-pres-bold');
+    span.style.removeProperty('font-weight');
+  }
 }
 
 /** Formel an Cursor oder in der Auswahl finden. */
@@ -415,9 +468,65 @@ export function findPresentationMathInEditor(editor: HTMLElement): HTMLElement |
   const maths = editor.querySelectorAll(`[${PRES_MATH_ATTR}]`);
   for (let i = 0; i < maths.length; i += 1) {
     const m = maths[i] as HTMLElement;
-    if (range.intersectsNode(m)) return m;
+    try {
+      if (range.intersectsNode(m)) return m;
+    } catch {
+      /* ignore */
+    }
   }
   return null;
+}
+
+export function isInsidePresentationMath(node: Node | null): boolean {
+  if (!node) return false;
+  const el = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
+  return Boolean(el?.closest?.(`[${PRES_MATH_ATTR}]`));
+}
+
+/** Alle Formel-Spans in der aktuellen Auswahl (oder unter dem Cursor). */
+export function mathElementsInSelection(editor: HTMLElement): HTMLElement[] {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return [];
+  if (!editor.contains(sel.anchorNode) && !editor.contains(sel.focusNode)) return [];
+  const range = sel.getRangeAt(0);
+  const found: HTMLElement[] = [];
+  const seen = new Set<HTMLElement>();
+
+  const add = (el: HTMLElement | null) => {
+    if (!el || seen.has(el) || !editor.contains(el)) return;
+    seen.add(el);
+    found.push(el);
+  };
+
+  editor.querySelectorAll(`[${PRES_MATH_ATTR}]`).forEach((node) => {
+    const el = node as HTMLElement;
+    try {
+      if (range.collapsed) {
+        const container = range.commonAncestorContainer;
+        if (el === container || el.contains(container)) add(el);
+      } else if (range.intersectsNode(el)) {
+        add(el);
+      }
+    } catch {
+      /* ignore */
+    }
+  });
+
+  if (!found.length) add(findPresentationMathInEditor(editor));
+  return found;
+}
+
+/** Formatierung auf ausgewählte Formeln anwenden. true = mindestens eine Formel getroffen. */
+export function applyFormatToSelectedMath(
+  editor: HTMLElement | null,
+  patch: PresentationMathStylePatch,
+): boolean {
+  if (!editor) return false;
+  const maths = mathElementsInSelection(editor);
+  if (!maths.length) return false;
+  maths.forEach((m) => applyPresentationMathStyle(m, patch));
+  editor.dispatchEvent(new Event('input', { bubbles: true }));
+  return true;
 }
 
 /** Neue Formel an der Cursor-Position einfügen. */

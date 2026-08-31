@@ -171,8 +171,22 @@
 
 .pres-math math,
 [data-pres-math] math {
-  font-size: 1.05em;
+  font-size: 1em;
   font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Times New Roman", serif;
+  color: inherit;
+  font-weight: inherit;
+}
+
+.pres-math mi,
+.pres-math mn,
+.pres-math mo,
+.pres-math mtext,
+[data-pres-math] mi,
+[data-pres-math] mn,
+[data-pres-math] mo,
+[data-pres-math] mtext {
+  color: inherit;
+  font-weight: inherit;
 }
 
 .pres-math mfrac,

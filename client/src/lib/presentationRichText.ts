@@ -37,8 +37,11 @@ import {
   convertOmmlElementsInPlace,
   convertPlainTextWithLatexToPresentationHtml,
   hoistPastedMathHtml,
+  isInsidePresentationMath,
   isPresentationMathNode,
   looksLikeFormulaPlainText,
+  applyFormatToSelectedMath,
+  mathElementsInSelection,
   preserveEquationImagesInPlace,
 } from './presentationPasteMath';
 import { isPresentationFormulaPasteMode } from './presentationFormulaPasteMode';
@@ -1420,6 +1423,44 @@ export function execFormat(editor: HTMLElement | null, cmd: string, value?: stri
   stashEditorSelection(editor);
   ensureEditorSelection(editor) || focusEditor(editor);
 
+  if (cmd === 'bold') {
+    if (applyFormatToSelectedMath(editor, { bold: 'toggle' })) {
+      const maths = mathElementsInSelection(editor);
+      // Nur Formel(n) → kein execCommand in MathML
+      if (maths.length) {
+        const sel = window.getSelection();
+        if (sel?.rangeCount) {
+          const range = sel.getRangeAt(0);
+          let onlyMath = range.collapsed;
+          if (!onlyMath) {
+            onlyMath = true;
+            try {
+              const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+              let n: Node | null;
+              while ((n = walker.nextNode())) {
+                if (!range.intersectsNode(n)) continue;
+                if (!(n.textContent || '').replace(/\u00a0/g, ' ').trim()) continue;
+                if (!isInsidePresentationMath(n)) {
+                  onlyMath = false;
+                  break;
+                }
+              }
+            } catch {
+              onlyMath = true;
+            }
+          }
+          if (onlyMath) {
+            keepEditorSelection(editor);
+            return;
+          }
+        } else {
+          keepEditorSelection(editor);
+          return;
+        }
+      }
+    }
+  }
+
   if (cmd === 'indent') {
     if (getListItemFromSelection(editor)) {
       indentListItemInEditor(editor);
@@ -1629,6 +1670,7 @@ function textNodesInRange(editor: HTMLElement, range: Range): Text[] {
   const nodes: Text[] = [];
   const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
+      if (isInsidePresentationMath(node)) return NodeFilter.FILTER_REJECT;
       const text = node.textContent ?? '';
       if (!text.replace(/\u00a0/g, ' ').trim()) return NodeFilter.FILTER_REJECT;
       try {
@@ -1719,7 +1761,14 @@ function applyInlineStyleToSelection(editor: HTMLElement, style: Record<string, 
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0 || !editor.contains(sel.anchorNode)) return false;
   const range = sel.getRangeAt(0);
-  if (range.collapsed) return false;
+
+  const maths = mathElementsInSelection(editor);
+  if (maths.length) {
+    if (style.color) applyFormatToSelectedMath(editor, { color: style.color });
+    // Hintergrund auf Formeln wirkt oft kaputt — überspringen
+  }
+
+  if (range.collapsed) return maths.length > 0 && Boolean(style.color);
 
   const work = range.cloneRange();
   if (style.color) stripColorInRange(editor, work);
@@ -1728,7 +1777,7 @@ function applyInlineStyleToSelection(editor: HTMLElement, style: Record<string, 
 
   const spans = applyStyleAcrossRange(editor, work, style);
   const wrapped = spans[0] ?? applyStyleToTextRange(work, style);
-  if (!wrapped) return false;
+  if (!wrapped && !maths.length) return false;
   if (wrapped && !spans.includes(wrapped)) spans.push(wrapped);
 
   const keep = rangeFromStyleSpans(spans);
@@ -1785,6 +1834,10 @@ function stampColorOnCurrentSelection(editor: HTMLElement, color: string) {
 export function applyTextColor(editor: HTMLElement | null, color: string) {
   if (!editor) return;
   if (applyInlineStyleToSelection(editor, { color })) return;
+  if (applyFormatToSelectedMath(editor, { color })) {
+    keepEditorSelection(editor);
+    return;
+  }
   stashEditorSelection(editor);
   if (!ensureEditorSelection(editor)) {
     applyInlineStyle(editor, { color });

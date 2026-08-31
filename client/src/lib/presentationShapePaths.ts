@@ -15,16 +15,27 @@ export function shapeHasArrowHead(kind?: PresentationShapeKind): boolean {
   return kind === 'arrow' || kind === 'curved-arrow' || kind === 'connector';
 }
 
-/** Legacy flipH/V → Start/Ende in lokaler Box. */
+/** Legacy flipH/V → Start/Ende. Standard: waagerecht (nicht schräg). */
 export function defaultShapePointsFromFlip(
   flipH?: boolean,
   flipV?: boolean,
 ): [ShapePoint, ShapePoint] {
+  // Senkrecht
+  if (flipV) {
+    const y1 = flipH ? 94 : 6;
+    const y2 = flipH ? 6 : 94;
+    return [
+      { x: 50, y: y1 },
+      { x: 50, y: y2 },
+    ];
+  }
+  // Waagerecht (Standard)
   const x1 = flipH ? 94 : 6;
-  const y1 = flipV ? 94 : 6;
   const x2 = flipH ? 6 : 94;
-  const y2 = flipV ? 6 : 94;
-  return [{ x: x1, y: y1 }, { x: x2, y: y2 }];
+  return [
+    { x: x1, y: 50 },
+    { x: x2, y: 50 },
+  ];
 }
 
 export function defaultShapePoints(kind: PresentationShapeKind, flipH?: boolean, flipV?: boolean): ShapePoint[] {
@@ -221,37 +232,187 @@ export function clientToShapeLocal(
   };
 }
 
+export function clientToSlidePct(
+  clientX: number,
+  clientY: number,
+  slideLeft: number,
+  slideTop: number,
+  slideW: number,
+  slideH: number,
+): ShapePoint {
+  return {
+    x: clamp(((clientX - slideLeft) / slideW) * 100, 0, 100),
+    y: clamp(((clientY - slideTop) / slideH) * 100, 0, 100),
+  };
+}
+
+export function localPointsToSlide(
+  el: Pick<SlideElement, 'x' | 'y' | 'w' | 'h'>,
+  points: ShapePoint[],
+): ShapePoint[] {
+  return points.map((p) => ({
+    x: el.x + (p.x / 100) * el.w,
+    y: el.y + (p.y / 100) * el.h,
+  }));
+}
+
+/** Endpunkt an Nachbar ausrichten: Shift = hart H/V, sonst weiches Einrasten. */
+export function snapSlidePointAxis(
+  point: ShapePoint,
+  anchor: ShapePoint,
+  hard: boolean,
+): ShapePoint {
+  if (hard) {
+    if (Math.abs(point.x - anchor.x) >= Math.abs(point.y - anchor.y)) {
+      return { x: point.x, y: anchor.y };
+    }
+    return { x: anchor.x, y: point.y };
+  }
+  const soft = 1.25;
+  if (Math.abs(point.y - anchor.y) <= soft) return { x: point.x, y: anchor.y };
+  if (Math.abs(point.x - anchor.x) <= soft) return { x: anchor.x, y: point.y };
+  return point;
+}
+
+/**
+ * Lokale Punkte → neue Bounding-Box auf der Folie (Endpunkte frei ziehbar, auch H/V).
+ */
+export function rebaseShapeFromSlidePoints(
+  el: SlideElement,
+  slidePoints: ShapePoint[],
+  opts?: { curveSlide?: ShapePoint | null },
+): Partial<SlideElement> {
+  if (slidePoints.length < 2) return {};
+  const pad = 2.2;
+  const xs = slidePoints.map((p) => p.x);
+  const ys = slidePoints.map((p) => p.y);
+  if (opts?.curveSlide) {
+    xs.push(opts.curveSlide.x);
+    ys.push(opts.curveSlide.y);
+  }
+  let minX = Math.min(...xs) - pad;
+  let minY = Math.min(...ys) - pad;
+  let maxX = Math.max(...xs) + pad;
+  let maxY = Math.max(...ys) + pad;
+
+  // Mindest-Dicke, damit waagerechte/senkrechte Pfeile Griffe + Spitze behalten
+  const minSpan = 4;
+  if (maxX - minX < minSpan) {
+    const mid = (minX + maxX) / 2;
+    minX = mid - minSpan / 2;
+    maxX = mid + minSpan / 2;
+  }
+  if (maxY - minY < minSpan) {
+    const mid = (minY + maxY) / 2;
+    minY = mid - minSpan / 2;
+    maxY = mid + minSpan / 2;
+  }
+
+  const w = Math.max(maxX - minX, 2);
+  const h = Math.max(maxY - minY, 2);
+  const toLocal = (p: ShapePoint): ShapePoint => ({
+    x: ((p.x - minX) / w) * 100,
+    y: ((p.y - minY) / h) * 100,
+  });
+
+  const patch: Partial<SlideElement> = {
+    x: minX,
+    y: minY,
+    w,
+    h,
+    shapePoints: slidePoints.map(toLocal),
+    flipH: undefined,
+    flipV: undefined,
+  };
+  if (opts?.curveSlide) {
+    patch.shapeCurveControl = toLocal(opts.curveSlide);
+    patch.curveBend = undefined;
+  }
+  return patch;
+}
+
+/** Ausgewählten Pfeil waagerecht oder senkrecht ausrichten (Länge beibehalten). */
+export function orientLineShape(
+  el: SlideElement,
+  orientation: 'horizontal' | 'vertical',
+): Partial<SlideElement> {
+  const points = resolveShapePoints(el);
+  if (points.length < 2) return {};
+  const slidePts = localPointsToSlide(el, points);
+  const start = slidePts[0];
+  const end = slidePts[slidePts.length - 1];
+  const len = Math.max(Math.hypot(end.x - start.x, end.y - start.y), 12);
+  const midX = (start.x + end.x) / 2;
+  const midY = (start.y + end.y) / 2;
+  const n = Math.max(slidePts.length - 1, 1);
+
+  let nextSlide: ShapePoint[];
+  if (orientation === 'horizontal') {
+    const directedRight = end.x >= start.x;
+    const x0 = midX - len / 2;
+    nextSlide = slidePts.map((_p, i) => {
+      const t = i / n;
+      return {
+        x: directedRight ? x0 + t * len : x0 + len - t * len,
+        y: midY,
+      };
+    });
+  } else {
+    const directedDown = end.y >= start.y;
+    const y0 = midY - len / 2;
+    nextSlide = slidePts.map((_p, i) => {
+      const t = i / n;
+      return {
+        x: midX,
+        y: directedDown ? y0 + t * len : y0 + len - t * len,
+      };
+    });
+  }
+
+  let curveSlide: ShapePoint | null = null;
+  if (el.shapeKind === 'curved-arrow') {
+    const bend = orientation === 'horizontal' ? -8 : 8;
+    const a = nextSlide[0];
+    const b = nextSlide[nextSlide.length - 1];
+    curveSlide = {
+      x: (a.x + b.x) / 2 + (orientation === 'vertical' ? bend : 0),
+      y: (a.y + b.y) / 2 + (orientation === 'horizontal' ? bend : 0),
+    };
+  }
+  return rebaseShapeFromSlidePoints(el, nextSlide, { curveSlide });
+}
+
 /** Slide-% → lokale Punkte + Bounding-Box für neu gezeichneten Connector. */
 export function connectorElementFromSlidePoints(
   slidePoints: ShapePoint[],
   zIndex: number,
   accent: string,
 ): Omit<SlideElement, 'id'> {
-  const pad = 3;
-  const xs = slidePoints.map((p) => p.x);
-  const ys = slidePoints.map((p) => p.y);
-  const minX = Math.min(...xs) - pad;
-  const minY = Math.min(...ys) - pad;
-  const maxX = Math.max(...xs) + pad;
-  const maxY = Math.max(...ys) + pad;
-  const w = Math.max(maxX - minX, 4);
-  const h = Math.max(maxY - minY, 4);
-  const local = slidePoints.map((p) => ({
-    x: ((p.x - minX) / w) * 100,
-    y: ((p.y - minY) / h) * 100,
-  }));
+  const base = rebaseShapeFromSlidePoints(
+    {
+      id: 'tmp',
+      type: 'shape',
+      shapeKind: 'connector',
+      x: 0,
+      y: 0,
+      w: 100,
+      h: 100,
+      zIndex,
+    },
+    slidePoints,
+  );
   return {
     type: 'shape',
     shapeKind: 'connector',
-    x: minX,
-    y: minY,
-    w,
-    h,
+    x: base.x ?? 0,
+    y: base.y ?? 0,
+    w: base.w ?? 10,
+    h: base.h ?? 10,
     zIndex,
     strokeColor: accent,
     strokeWidth: 4,
     fillColor: 'transparent',
-    shapePoints: local,
+    shapePoints: base.shapePoints,
     arrowHeadSize: 10,
   };
 }
