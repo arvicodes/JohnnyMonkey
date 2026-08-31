@@ -324,11 +324,11 @@ function makeNotesImageResizable(
 
   // Kompakt an der unteren rechten Bildecke
   grip.style.cssText = `
-    position:absolute;bottom:1px;right:1px;width:16px;height:16px;
-    background:#f57f17;border:2px solid #fff;border-radius:3px;
+    position:absolute;bottom:-4px;right:-4px;width:28px;height:28px;
+    background:#f57f17;border:2px solid #fff;border-radius:4px;
     cursor:nwse-resize;z-index:20;opacity:1;
     box-shadow:0 1px 3px rgba(0,0,0,.35);pointer-events:auto;
-    display:block;box-sizing:border-box;
+    display:block;box-sizing:border-box;touch-action:none;
   `;
 
   if (grip.getAttribute('data-notes-resize-bound') === '1') return;
@@ -373,19 +373,11 @@ function makeNotesImageResizable(
     applyNotesImageSize(img, wrap, nextW, ratio);
   };
 
-  const onUp = (e: PointerEvent) => {
+  const onUp = () => {
     if (!resizing) return;
     resizing = false;
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
-    document.removeEventListener('pointermove', onMove);
-    document.removeEventListener('pointerup', onUp);
-    try {
-      if (grip.hasPointerCapture(e.pointerId)) grip.releasePointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-    // Explizite Zielbreite behalten (nicht offsetWidth — der kann kurz hinterherhinken)
     const styledW = parseFloat(img.style.width || '');
     const w = (Number.isFinite(styledW) && styledW > 0 ? styledW : 0) || img.offsetWidth || startW;
     applyNotesImageSize(img, wrap, w, ratio);
@@ -393,6 +385,7 @@ function makeNotesImageResizable(
   };
 
   grip.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
     selectWrap();
@@ -412,13 +405,23 @@ function makeNotesImageResizable(
     wrap.style.maxWidth = '100%';
     document.body.style.cursor = 'nwse-resize';
     document.body.style.userSelect = 'none';
-    try {
-      grip.setPointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
+    const prevTouch = document.body.style.touchAction;
+    document.body.style.touchAction = 'none';
+    const move = (ev: PointerEvent) => {
+      if (ev.pointerId !== e.pointerId) return;
+      onMove(ev);
+    };
+    const up = (ev: PointerEvent) => {
+      if (ev.pointerId !== e.pointerId) return;
+      window.removeEventListener('pointermove', move, true);
+      window.removeEventListener('pointerup', up, true);
+      window.removeEventListener('pointercancel', up, true);
+      document.body.style.touchAction = prevTouch;
+      onUp();
+    };
+    window.addEventListener('pointermove', move, { capture: true, passive: false });
+    window.addEventListener('pointerup', up, true);
+    window.addEventListener('pointercancel', up, true);
   });
 
   wrap.addEventListener('click', (e) => {
@@ -3012,13 +3015,13 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                 },
                 '& .notes-resize-handle': {
                   position: 'absolute',
-                  bottom: 1,
-                  right: 1,
-                  width: 16,
-                  height: 16,
+                  bottom: -4,
+                  right: -4,
+                  width: 28,
+                  height: 28,
                   bgcolor: '#f57f17',
                   border: '2px solid #fff',
-                  borderRadius: '3px',
+                  borderRadius: '4px',
                   cursor: 'nwse-resize',
                   zIndex: 20,
                   opacity: '1 !important',
@@ -3026,6 +3029,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                   pointerEvents: 'auto',
                   display: 'block',
                   boxSizing: 'border-box',
+                  touchAction: 'none',
                 },
               }}
             />

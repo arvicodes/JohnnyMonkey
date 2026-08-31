@@ -4026,6 +4026,18 @@ export default function EntryTicketPage({
     }
   };
 
+  useEffect(() => {
+    if (!drawActive) return;
+    const el = document.activeElement;
+    if (
+      el instanceof HTMLElement &&
+      (el.isContentEditable ||
+        el.closest('[data-et-play-edit], [data-pres-rich-zone], [contenteditable="true"], [data-text-edit]'))
+    ) {
+      el.blur();
+    }
+  }, [drawActive, activeInkTool]);
+
   const handleSelectInkColor = (color: string) => {
     setStrokeColor(color);
     if (activeInkTool === 'marker') markerColorRef.current = color;

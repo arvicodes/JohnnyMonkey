@@ -787,6 +787,212 @@ export function extractLatexFromPastedHtml(html: string): string | null {
   return null;
 }
 
+type LatexRun = { start: number; end: number; tex: string; display: boolean };
+
+function isLatexDisplay(tex: string): boolean {
+  return /\\begin\{(?:equation|align|displaymath|p?matrix|bmatrix|vmatrix)/i.test(tex) || /\\displaystyle/.test(tex);
+}
+
+function markOccupied(occupied: boolean[], start: number, end: number) {
+  for (let i = start; i < end; i++) occupied[i] = true;
+}
+
+function rangeOccupied(occupied: boolean[], start: number, end: number): boolean {
+  for (let i = start; i < end; i++) if (occupied[i]) return true;
+  return false;
+}
+
+function parseBalanced(text: string, i: number, open: string, close: string, occupied?: boolean[]): number {
+  if (text[i] !== open) return -1;
+  let depth = 0;
+  let j = i;
+  while (j < text.length) {
+    if (occupied?.[j]) return -1;
+    const ch = text[j];
+    if (ch === open) depth += 1;
+    else if (ch === close) {
+      depth -= 1;
+      j += 1;
+      if (depth === 0) return j;
+      continue;
+    }
+    j += 1;
+  }
+  return -1;
+}
+
+function parseBeginEnd(text: string, i: number): number {
+  const m = text.slice(i).match(/^\\begin\{([a-zA-Z*]+)\}/);
+  if (!m) return -1;
+  const endTag = `\\end{${m[1]}}`;
+  const endAt = text.indexOf(endTag, i + m[0].length);
+  if (endAt < 0) return i + m[0].length;
+  return endAt + endTag.length;
+}
+
+function parseLatexCommand(text: string, i: number, occupied?: boolean[]): number {
+  if (text[i] !== '\\') return -1;
+  const env = parseBeginEnd(text, i);
+  if (env > i) return env;
+  const m = text.slice(i).match(/^\\([a-zA-Z]+|.)/);
+  if (!m) return -1;
+  let j = i + m[0].length;
+  if (text[j] === '*') j += 1;
+  if (text[j] === '[') {
+    const close = parseBalanced(text, j, '[', ']', occupied);
+    if (close > j) j = close;
+  }
+  while (text[j] === '{') {
+    const close = parseBalanced(text, j, '{', '}', occupied);
+    if (close < 0) break;
+    j = close;
+  }
+  return j;
+}
+
+const MATH_OP_CHAR = /[+\-*=<>/|,.;:!?'()[\]|&~]/;
+
+function parseLatexToken(text: string, i: number, occupied?: boolean[]): number {
+  if (i >= text.length || occupied?.[i]) return -1;
+  if (text[i] === '\\') return parseLatexCommand(text, i, occupied);
+  if (text[i] === '^' || text[i] === '_') {
+    let j = i + 1;
+    if (text[j] === '{') {
+      const close = parseBalanced(text, j, '{', '}', occupied);
+      return close > j ? close : j;
+    }
+    if (text[j] === '\\') {
+      const cmd = parseLatexCommand(text, j, occupied);
+      return cmd > j ? cmd : j;
+    }
+    if (j < text.length && !/\s/.test(text[j]) && !occupied?.[j]) return j + 1;
+    return j;
+  }
+  if (text[i] === '{') return parseBalanced(text, i, '{', '}', occupied);
+  if (MATH_OP_CHAR.test(text[i])) return i + 1;
+  if (/\d/.test(text[i])) {
+    let j = i;
+    while (j < text.length && /[\d.]/.test(text[j]) && !occupied?.[j]) j += 1;
+    return j;
+  }
+  if (/[a-zA-Z]/.test(text[i])) {
+    const word = text.slice(i).match(/^[A-Za-zÄÖÜäöüß]+/);
+    if (!word || word[0].length >= 2) return -1;
+    return i + 1;
+  }
+  return -1;
+}
+
+function expandUnwrappedLatexRun(text: string, start: number, occupied?: boolean[]): LatexRun | null {
+  if (text[start] !== '\\') return null;
+  let i = parseLatexCommand(text, start, occupied);
+  if (i < 0) return null;
+  while (true) {
+    let j = i;
+    while (j < text.length && !occupied?.[j] && /\s/.test(text[j])) j += 1;
+    const next = parseLatexToken(text, j, occupied);
+    if (next < 0) break;
+    i = next;
+  }
+  while (i > start && /\s/.test(text[i - 1])) i -= 1;
+  const tex = text.slice(start, i).trim();
+  if (!tex) return null;
+  return { start, end: i, tex, display: isLatexDisplay(tex) };
+}
+
+/** Zusammenhängendes LaTeX als eine Formel (nicht jedes \\frac einzeln). */
+function findLatexRuns(text: string): LatexRun[] {
+  const occupied = new Array(text.length).fill(false);
+  const runs: LatexRun[] = [];
+  const delimited: Array<{ re: RegExp; display: boolean }> = [
+    { re: /\$\$([\s\S]+?)\$\$/g, display: true },
+    { re: /\\\[([\s\S]+?)\\\]/g, display: true },
+    { re: /\\\(([\s\S]+?)\\\)/g, display: false },
+    { re: /\$([^$\n]+?)\$/g, display: false },
+  ];
+  for (const { re, display } of delimited) {
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text))) {
+      const start = m.index;
+      const end = start + m[0].length;
+      if (rangeOccupied(occupied, start, end)) continue;
+      markOccupied(occupied, start, end);
+      runs.push({ start, end, tex: (m[1] || '').trim(), display });
+    }
+  }
+  let i = 0;
+  while (i < text.length) {
+    if (occupied[i] || text[i] !== '\\' || !/[a-zA-Z]/.test(text[i + 1] || '')) {
+      i += 1;
+      continue;
+    }
+    const run = expandUnwrappedLatexRun(text, i, occupied);
+    if (!run) {
+      i += 1;
+      continue;
+    }
+    markOccupied(occupied, run.start, run.end);
+    runs.push(run);
+    i = run.end;
+  }
+  runs.sort((a, b) => a.start - b.start);
+  return runs;
+}
+
+function isMathGlueGap(gap: string): boolean {
+  if (!/^[\s+\-*=<>/|,.;:()[\]·×±≤≥∞'′^_]*$/.test(gap)) return false;
+  if (gap === '') return true;
+  return /[+\-*=<>/|·×±≤≥^_]/.test(gap);
+}
+
+/** Benachbarte Formelstücke mit + / = dazwischen zu einer Formel zusammenziehen. */
+export function mergeAdjacentPresentationMath(editor: HTMLElement | null): boolean {
+  if (!editor) return false;
+  let changed = false;
+  for (let safety = 0; safety < 40; safety += 1) {
+    const maths = Array.from(editor.querySelectorAll(`span.pres-math[${PRES_MATH_ATTR}="1"]`)) as HTMLElement[];
+    let did = false;
+    for (let k = 0; k < maths.length - 1; k += 1) {
+      const a = maths[k];
+      const b = maths[k + 1];
+      if (a.parentNode !== b.parentNode) continue;
+      const between: Node[] = [];
+      let gap = '';
+      let n: ChildNode | null = a.nextSibling;
+      let ok = true;
+      while (n && n !== b) {
+        between.push(n);
+        if (n.nodeType === Node.TEXT_NODE) gap += n.textContent || '';
+        else if (n.nodeType === Node.ELEMENT_NODE) {
+          const el = n as HTMLElement;
+          if (el.tagName === 'BR' || el.hasAttribute(PRES_MATH_ATTR) || el.querySelector('math,img,table')) {
+            ok = false;
+            break;
+          }
+          gap += el.textContent || '';
+        }
+        n = n.nextSibling;
+      }
+      if (!ok || n !== b || !isMathGlueGap(gap)) continue;
+      const latexA = readPresentationMathLatex(a);
+      const latexB = readPresentationMathLatex(b);
+      if (!latexA || !latexB) continue;
+      if (!a.getAttribute(PRES_LATEX_ATTR) || !b.getAttribute(PRES_LATEX_ATTR)) continue;
+      const combined = `${latexA}${gap}${latexB}`.replace(/[ \t]*\n[ \t]*/g, ' ');
+      const next = replacePresentationMathElement(a, combined);
+      if (!next) continue;
+      between.forEach((node) => node.parentNode?.removeChild(node));
+      b.remove();
+      did = true;
+      changed = true;
+      break;
+    }
+    if (!did) break;
+  }
+  return changed;
+}
+
 /** Plain-Text/LaTeX → HTML mit pres-math-Blöcken (Formel-Modus / ChatGPT-Matrix). */
 export function convertPlainTextWithLatexToPresentationHtml(plain: string): string {
   const normalized = normalizeChatGptMathPlain(plain);
@@ -804,45 +1010,24 @@ export function convertPlainTextWithLatexToPresentationHtml(plain: string): stri
     return `<p>${render(source.trim(), true)}</p>`;
   }
 
-  const chunks: string[] = [];
-  let rest = source;
-  const patterns: Array<{ re: RegExp; display: boolean }> = [
-    { re: /\$\$([\s\S]+?)\$\$/g, display: true },
-    { re: /\\\[([\s\S]+?)\\\]/g, display: true },
-    { re: /\\\(([\s\S]+?)\\\)/g, display: false },
-    { re: /\$([^$\n]+?)\$/g, display: false },
-    {
-      re: /\\begin\{(?:p|b|v)?matrix\}[\s\S]*?\\end\{(?:p|b|v)?matrix\}/gi,
-      display: true,
-    },
-  ];
-
-  for (const { re, display } of patterns) {
-    rest = rest.replace(re, (match: string, ...restArgs: unknown[]) => {
-      const maybeGroup = restArgs[0];
-      const body = typeof maybeGroup === 'string' ? maybeGroup : match;
-      chunks.push(render(body, display));
-      return `\uE202${chunks.length - 1}\uE203`;
-    });
-  }
-
-  rest = rest.replace(/\\[a-zA-Z]+(?:\s*\{[^{}]*\})+/g, (cmd) => {
-    const html = render(cmd, false);
-    if (!html.includes('data-pres-math')) return cmd;
-    chunks.push(html);
-    return `\uE202${chunks.length - 1}\uE203`;
-  });
-
-  const restTrim = rest.replace(/\uE202\d+\uE203/g, '').trim();
+  const runs = findLatexRuns(source);
   if (
-    restTrim &&
-    /^\\/.test(restTrim) &&
-    looksLikeFormulaPlainText(restTrim) &&
-    !/[A-Za-zÄÖÜäöüß]{2,}\s+/.test(restTrim)
+    runs.length === 1 &&
+    source.slice(0, runs[0].start).trim() === '' &&
+    source.slice(runs[0].end).trim() === ''
   ) {
-    rest = render(restTrim, /\\begin\{(?:p|b|v)?matrix\}/i.test(restTrim));
-    return `<p>${rest}</p>`;
+    return `<p>${render(runs[0].tex, runs[0].display)}</p>`;
   }
+
+  const chunks = runs.map((run) => render(run.tex, run.display));
+  let rest = '';
+  let cursor = 0;
+  for (let i = 0; i < runs.length; i += 1) {
+    rest += source.slice(cursor, runs[i].start);
+    rest += `\uE202${i}\uE203`;
+    cursor = runs[i].end;
+  }
+  rest += source.slice(cursor);
 
   const lines = rest.split(/\n+/).map((line) => {
     const withFormulas = line.replace(/\uE202(\d+)\uE203/g, (_m, i: string) => chunks[Number(i)] || '');
@@ -853,8 +1038,6 @@ export function convertPlainTextWithLatexToPresentationHtml(plain: string): stri
   });
   return lines.join('') || '<p><br></p>';
 }
-
-const LATEX_CMD_IN_TEXT = /\\[a-zA-Z]+(?:\s*\{[^{}]*\})+/;
 
 function replaceRangeWithFormula(
   editor: HTMLElement,
@@ -877,10 +1060,12 @@ function replaceRangeWithFormula(
   } catch {
     /* ignore */
   }
-  return insertHtmlAtEditorCursor(editor, html);
+  const ok = insertHtmlAtEditorCursor(editor, html);
+  if (ok) mergeAdjacentPresentationMath(editor);
+  return ok;
 }
 
-/** $…$ / \(…\) / \frac{…} am Cursor → Formel (beim Tippen). */
+/** $…$ / \(…\) / ganze Gleichung am Cursor → eine Formel (beim Tippen). */
 export function convertLatexNearCursor(editor: HTMLElement | null): boolean {
   if (!editor) return false;
   const sel = window.getSelection();
@@ -908,34 +1093,17 @@ export function convertLatexNearCursor(editor: HTMLElement | null): boolean {
   if (tryEnd(/\\\((.+?)\\\)$/, false)) return true;
   if (tryEnd(/\$([^$\n]+)\$$/, false)) return true;
 
-  const cmdSpace = before.match(new RegExp(`(${LATEX_CMD_IN_TEXT.source})\\s$`));
-  if (cmdSpace) {
-    const cmd = cmdSpace[1];
-    const start = offset - cmdSpace[0].length;
-    return replaceRangeWithFormula(editor, node as Text, start, start + cmd.length, cmd, false);
-  }
-  return false;
+  if (!/\s$/.test(before)) return false;
+  const runs = findLatexRuns(before.replace(/\s+$/, ''));
+  const last = runs[runs.length - 1];
+  if (!last) return false;
+  const trimmed = before.replace(/\s+$/, '');
+  if (last.end !== trimmed.length) return false;
+  return replaceRangeWithFormula(editor, node as Text, last.start, last.end, last.tex, last.display);
 }
 
-function firstLatexHitInText(text: string): { start: number; end: number; tex: string; display: boolean } | null {
-  const patterns: Array<{ re: RegExp; display: boolean; group: number }> = [
-    { re: /\$\$([^$]+)\$\$/, display: true, group: 1 },
-    { re: /\\\[(.+?)\\\]/, display: true, group: 1 },
-    { re: /\\\((.+?)\\\)/, display: false, group: 1 },
-    { re: /\$([^$\n]+)\$/, display: false, group: 1 },
-    { re: LATEX_CMD_IN_TEXT, display: false, group: 0 },
-  ];
-  let best: { start: number; end: number; tex: string; display: boolean } | null = null;
-  for (const { re, display, group } of patterns) {
-    const m = text.match(re);
-    if (!m || m.index == null) continue;
-    const tex = (group === 0 ? m[0] : m[group] || '').trim();
-    if (!tex) continue;
-    if (!best || m.index < best.start) {
-      best = { start: m.index, end: m.index + m[0].length, tex, display };
-    }
-  }
-  return best;
+function firstLatexHitInText(text: string): LatexRun | null {
+  return findLatexRuns(text)[0] || null;
 }
 
 /** Restliches LaTeX im Feld umwandeln (nach Einfügen / Verlassen). */
@@ -959,5 +1127,6 @@ export function convertLatexInEditor(editor: HTMLElement | null): boolean {
     if (!replaceRangeWithFormula(editor, hit, found.start, found.end, found.tex, found.display)) break;
     changed = true;
   }
+  if (mergeAdjacentPresentationMath(editor)) changed = true;
   return changed;
 }

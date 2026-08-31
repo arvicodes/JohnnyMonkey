@@ -63,6 +63,67 @@ function clampImageWidthPct(n: number): number {
   return Math.min(100, Math.max(15, Math.round(n)));
 }
 
+function isPrimaryPointer(e: { pointerType?: string; button?: number }): boolean {
+  if (e.pointerType === 'mouse') return e.button === 0;
+  return true;
+}
+
+function listenWindowPointerDrag(
+  pointerId: number,
+  onMove: (ev: PointerEvent) => void,
+  onUp: (ev: PointerEvent) => void,
+) {
+  const prevTouch = document.body.style.touchAction;
+  const prevSelect = document.body.style.userSelect;
+  document.body.style.touchAction = 'none';
+  document.body.style.userSelect = 'none';
+  const move = (ev: PointerEvent) => {
+    if (ev.pointerId !== pointerId) return;
+    ev.preventDefault();
+    onMove(ev);
+  };
+  const up = (ev: PointerEvent) => {
+    if (ev.pointerId !== pointerId) return;
+    window.removeEventListener('pointermove', move, true);
+    window.removeEventListener('pointerup', up, true);
+    window.removeEventListener('pointercancel', up, true);
+    document.body.style.touchAction = prevTouch;
+    document.body.style.userSelect = prevSelect;
+    onUp(ev);
+  };
+  window.addEventListener('pointermove', move, { capture: true, passive: false });
+  window.addEventListener('pointerup', up, true);
+  window.addEventListener('pointercancel', up, true);
+}
+
+function caretRangeFromPoint(x: number, y: number): Range | null {
+  const doc = document as Document & {
+    caretRangeFromPoint?: (x: number, y: number) => Range | null;
+    caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+  };
+  if (typeof doc.caretRangeFromPoint === 'function') return doc.caretRangeFromPoint(x, y);
+  const pos = doc.caretPositionFromPoint?.(x, y);
+  if (!pos) return null;
+  const r = document.createRange();
+  r.setStart(pos.offsetNode, pos.offset);
+  r.collapse(true);
+  return r;
+}
+
+function moveEtImageToPoint(img: HTMLImageElement, editor: HTMLElement, clientX: number, clientY: number): boolean {
+  const range = caretRangeFromPoint(clientX, clientY);
+  if (!range || !editor.contains(range.commonAncestorContainer)) return false;
+  const node = range.commonAncestorContainer;
+  if (node === img || (node instanceof HTMLElement && node.contains(img) && img.contains(node))) return false;
+  if (img.contains(node)) return false;
+  try {
+    range.insertNode(img);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function sizeIdForWidth(widthPct: number): 's' | 'm' | 'l' | 'xl' {
   const w = clampImageWidthPct(widthPct);
   let best: 's' | 'm' | 'l' | 'xl' = 'm';
@@ -244,6 +305,7 @@ function EntryTicketRichFieldInner({
   cardLayoutRef.current = cardLayout;
   const [imageCount, setImageCount] = useState(0);
   const [chromeOpen, setChromeOpen] = useState(false);
+  const [imgHandle, setImgHandle] = useState<{ left: number; top: number } | null>(null);
   const palette = TONE_STYLES[tone];
   const fieldBg = softBg ?? palette.softBg;
   const showChrome = chromeOpen || Boolean(colorAnchor) || Boolean(highlightAnchor);
@@ -256,8 +318,29 @@ function EntryTicketRichFieldInner({
     );
   };
 
+  const syncImgHandle = () => {
+    const wrap = wrapRef.current;
+    const imgs = listEditorImages();
+    const idx = selectedImgIndexRef.current;
+    if (!wrap || idx == null || !imgs[idx]) {
+      setImgHandle(null);
+      return;
+    }
+    const ir = imgs[idx].getBoundingClientRect();
+    const wr = wrap.getBoundingClientRect();
+    if (ir.width < 8 || ir.height < 8) {
+      setImgHandle(null);
+      return;
+    }
+    setImgHandle({
+      left: ir.right - wr.left - 26,
+      top: ir.bottom - wr.top - 26,
+    });
+  };
+
   const markSelected = (imgs: HTMLImageElement[], idx: number | null) => {
     imgs.forEach((node, i) => {
+      node.draggable = false;
       if (idx != null && i === idx) node.setAttribute('data-selected', '1');
       else node.removeAttribute('data-selected');
     });
@@ -269,6 +352,7 @@ function EntryTicketRichFieldInner({
     if (imgs.length === 0) {
       setSelectedImgIndex(null);
       selectedImgIndexRef.current = null;
+      setImgHandle(null);
       return;
     }
     let idx = preferIndex;
@@ -280,7 +364,7 @@ function EntryTicketRichFieldInner({
     setImgAlign(readImageAlign(img));
     setImgPlace(readImagePlace(img));
     markSelected(imgs, idx);
-  };
+    requestAnimationFrame(() => syncImgHandle());
 
   useEffect(() => {
     const el = editorRef.current;
@@ -318,6 +402,23 @@ function EntryTicketRichFieldInner({
     refreshImageUi(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (selectedImgIndex == null) {
+      setImgHandle(null);
+      return undefined;
+    }
+    const onScroll = () => syncImgHandle();
+    const editor = editorRef.current;
+    editor?.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    requestAnimationFrame(() => syncImgHandle());
+    return () => {
+      editor?.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedImgIndex]);
 
   const emitChange = () => {
     const el = editorRef.current;
@@ -395,11 +496,9 @@ function EntryTicketRichFieldInner({
     setImageCount(imgs.length);
     setImgWidthPct(readImageWidthPct(img));
     setImgAlign(readImageAlign(img));
-    setImgPlace(readImagePlace(img));
     markSelected(imgs, idx);
+    requestAnimationFrame(() => syncImgHandle());
   };
-
-  const insertImageHtml = (dataUrl: string, alt = 'Bild') => {
     const el = editorRef.current;
     if (!el) return;
     el.focus();
@@ -438,6 +537,7 @@ function EntryTicketRichFieldInner({
     setImgPlace(place);
     setImageCount(imgs.length);
     markSelected(imgs, idx);
+    requestAnimationFrame(() => syncImgHandle());
     if (commit) emitChange();
   };
 
@@ -850,18 +950,74 @@ function EntryTicketRichFieldInner({
         data-placeholder={placeholder}
         onInput={emitChange}
         onBlur={emitChange}
-        onMouseDown={(e) => {
+        onPointerDown={(e) => {
+          if (!isPrimaryPointer(e)) return;
           const t = e.target;
-          if (t instanceof HTMLImageElement) {
-            const imgs = listEditorImages();
-            const idx = imgs.indexOf(t);
-            if (idx >= 0) selectImageAt(idx);
-          } else {
-            // Klick neben Bild → Auswahl aufheben
+          const img =
+            t instanceof HTMLImageElement
+              ? t
+              : t instanceof Element
+                ? (t.closest('img') as HTMLImageElement | null)
+                : null;
+          if (!img || !editorRef.current?.contains(img)) {
             markSelected(listEditorImages(), null);
             setSelectedImgIndex(null);
             selectedImgIndexRef.current = null;
+            setImgHandle(null);
+            return;
           }
+          const imgs = listEditorImages();
+          const idx = imgs.indexOf(img);
+          if (idx < 0) return;
+          e.preventDefault();
+          e.stopPropagation();
+          selectImageAt(idx);
+          const box = img.getBoundingClientRect();
+          const nearCorner =
+            e.clientX >= box.right - IMG_CORNER_HIT && e.clientY >= box.bottom - IMG_CORNER_HIT;
+          const originX = e.clientX;
+          const originY = e.clientY;
+          const startPct = readImageWidthPct(img);
+          const startW = box.width;
+          const editorW = Math.max(80, editorRef.current?.clientWidth || 240);
+          let mode: 'pending' | 'resize' | 'move' = nearCorner ? 'resize' : 'pending';
+          if (nearCorner) document.body.style.cursor = 'nwse-resize';
+          listenWindowPointerDrag(
+            e.pointerId,
+            (ev) => {
+              if (mode === 'pending') {
+                if (Math.hypot(ev.clientX - originX, ev.clientY - originY) < 8) return;
+                mode = 'move';
+                img.style.opacity = '0.4';
+                document.body.style.cursor = 'grabbing';
+              }
+              if (mode === 'resize') {
+                const nextPct = clampImageWidthPct(startPct + ((ev.clientX - originX) / editorW) * 100);
+                applyImageLayout(img, nextPct, readImageAlign(img), readImagePlace(img));
+                setImgWidthPct(nextPct);
+                requestAnimationFrame(() => syncImgHandle());
+                return;
+              }
+              if (mode === 'move') {
+                img.style.opacity = '0.4';
+              }
+            },
+            (ev) => {
+              document.body.style.cursor = '';
+              img.style.opacity = '';
+              if (mode === 'resize') {
+                emitChange();
+                refreshImageUi(idx);
+                return;
+              }
+              if (mode === 'move' && editorRef.current) {
+                moveEtImageToPoint(img, editorRef.current, ev.clientX, ev.clientY);
+                emitChange();
+                const nextImgs = listEditorImages();
+                refreshImageUi(Math.max(0, nextImgs.indexOf(img)));
+              }
+            },
+          );
         }}
         onPaste={(e) => {
           const items = e.clipboardData?.items;
@@ -902,9 +1058,13 @@ function EntryTicketRichFieldInner({
             maxWidth: '100% !important',
             height: 'auto !important',
             borderRadius: 0.5,
-            cursor: 'pointer',
+            cursor: 'grab',
             outlineOffset: 2,
             boxSizing: 'border-box',
+            touchAction: 'none',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            WebkitTouchCallout: 'none',
           },
           '& img[data-et-place="block"]': {
             marginTop: '6px',
@@ -938,6 +1098,53 @@ function EntryTicketRichFieldInner({
             : null),
         }}
       />
+
+      {imgHandle && selectedImgIndex != null ? (
+        <Box
+          aria-label="Bildgröße ändern"
+          onPointerDown={(e) => {
+            if (!isPrimaryPointer(e)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const img = listEditorImages()[selectedImgIndex];
+            if (!img) return;
+            const startPct = readImageWidthPct(img);
+            const originX = e.clientX;
+            const editorW = Math.max(80, editorRef.current?.clientWidth || 240);
+            document.body.style.cursor = 'nwse-resize';
+            listenWindowPointerDrag(
+              e.pointerId,
+              (ev) => {
+                const nextPct = clampImageWidthPct(startPct + ((ev.clientX - originX) / editorW) * 100);
+                applyImageLayout(img, nextPct, readImageAlign(img), readImagePlace(img));
+                setImgWidthPct(nextPct);
+                requestAnimationFrame(() => syncImgHandle());
+              },
+              () => {
+                document.body.style.cursor = '';
+                emitChange();
+                refreshImageUi(selectedImgIndex);
+              },
+            );
+          }}
+          sx={{
+            position: 'absolute',
+            left: imgHandle.left,
+            top: imgHandle.top,
+            width: 28,
+            height: 28,
+            bgcolor: palette.borderFocus,
+            border: '2px solid #fff',
+            borderRadius: '4px',
+            cursor: 'nwse-resize',
+            zIndex: 5,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
+            touchAction: 'none',
+            pointerEvents: 'auto',
+            boxSizing: 'border-box',
+          }}
+        />
+      ) : null}
 
       <Popover
         open={Boolean(colorAnchor)}

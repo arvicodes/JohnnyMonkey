@@ -28,6 +28,7 @@ import {
 } from '../../lib/presentationRichText';
 import { convertLatexInEditor, convertLatexNearCursor } from '../../lib/presentationPasteMath';
 import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
+import { PRESENTATION_DEFAULT_FONT_FAMILY } from '../../lib/presentationFonts';
 import { notesDropTargetHits } from '../../lib/presentationNotesImages';
 import { isPenPointer } from '../../lib/presentationDrawTools';
 import { imageFrameParts } from '../../lib/presentationImageFrames';

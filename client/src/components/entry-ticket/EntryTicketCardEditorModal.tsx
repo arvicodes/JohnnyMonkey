@@ -61,14 +61,24 @@ export function EntryTicketCardEditorModal({
   const penColorRef = useRef(DEFAULT_PEN_COLOR);
   const markerColorRef = useRef(DEFAULT_MARKER_COLOR);
 
+  const wasOpenRef = useRef(false);
+
   useEffect(() => {
-    if (!open) return;
-    setDrawActive(true);
-    setActiveInkTool('pen');
-    setStrokeColor(penColorRef.current);
-    setLineWidth(defaultLineWidthForTool('pen'));
+    if (!open) {
+      wasOpenRef.current = false;
+      return;
+    }
+    const justOpened = !wasOpenRef.current;
+    wasOpenRef.current = true;
+    // Nur beim Öffnen Stift an — nicht bei jedem Re-Render/Ink-Update zurücksetzen
+    if (justOpened) {
+      setDrawActive(true);
+      setActiveInkTool('pen');
+      setStrokeColor(penColorRef.current);
+      setLineWidth(defaultLineWidthForTool('pen'));
+      setClearInkOpen(false);
+    }
     setSelectedStrokeIds([]);
-    setClearInkOpen(false);
   }, [open, slideId]);
 
   const handleToggleDraw = () => {
@@ -80,6 +90,17 @@ export function EntryTicketCardEditorModal({
       return !v;
     });
   };
+
+  useEffect(() => {
+    if (!drawActive) return;
+    const el = document.activeElement;
+    if (
+      el instanceof HTMLElement &&
+      (el.isContentEditable || el.closest('[data-et-play-edit], [data-pres-rich-zone], [contenteditable="true"]'))
+    ) {
+      el.blur();
+    }
+  }, [drawActive, activeInkTool]);
 
   const handleSelectInkTool = (tool: PresentationDrawTool) => {
     setDrawActive(true);
@@ -156,7 +177,14 @@ export function EntryTicketCardEditorModal({
               touchAction: drawActive ? 'none' : 'manipulation',
             }}
           >
-            <Box sx={{ flex: 1, minHeight: 0 }}>
+            <Box
+              sx={{
+                flex: 1,
+                minHeight: 0,
+                pointerEvents: drawActive ? 'none' : 'auto',
+                userSelect: drawActive ? 'none' : 'auto',
+              }}
+            >
               <EntryTicketRichField
                 value={prompt}
                 onChange={onPromptChange}
@@ -183,7 +211,13 @@ export function EntryTicketCardEditorModal({
               scale={1}
             />
           </Box>
-          <Box sx={{ flexShrink: 0 }}>
+          <Box
+            sx={{
+              flexShrink: 0,
+              pointerEvents: drawActive ? 'none' : 'auto',
+              userSelect: drawActive ? 'none' : 'auto',
+            }}
+          >
             <EntryTicketRichField
               value={solution}
               onChange={onSolutionChange}

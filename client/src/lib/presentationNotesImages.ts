@@ -19,6 +19,40 @@ const BOUND_ATTR = 'data-pres-notes-img-bound';
 const WRAP_FLOW_STYLE =
   'position:relative;display:inline-block;vertical-align:top;max-width:100%;width:fit-content;margin:0.25em 0.4em 0.25em 0;line-height:0;cursor:grab;';
 
+function isPrimaryPointer(e: { pointerType?: string; button?: number }): boolean {
+  if (e.pointerType === 'mouse') return e.button === 0;
+  return true;
+}
+
+/** iPad: Element-Capture oft tot — Window-Listener mit capture. */
+function listenWindowPointerDrag(
+  pointerId: number,
+  onMove: (ev: PointerEvent) => void,
+  onUp: (ev: PointerEvent) => void,
+) {
+  const prevTouch = document.body.style.touchAction;
+  const prevSelect = document.body.style.userSelect;
+  document.body.style.touchAction = 'none';
+  document.body.style.userSelect = 'none';
+  const move = (ev: PointerEvent) => {
+    if (ev.pointerId !== pointerId) return;
+    ev.preventDefault();
+    onMove(ev);
+  };
+  const up = (ev: PointerEvent) => {
+    if (ev.pointerId !== pointerId) return;
+    window.removeEventListener('pointermove', move, true);
+    window.removeEventListener('pointerup', up, true);
+    window.removeEventListener('pointercancel', up, true);
+    document.body.style.touchAction = prevTouch;
+    document.body.style.userSelect = prevSelect;
+    onUp(ev);
+  };
+  window.addEventListener('pointermove', move, { capture: true, passive: false });
+  window.addEventListener('pointerup', up, true);
+  window.addEventListener('pointercancel', up, true);
+}
+
 function escapeAttr(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
@@ -82,16 +116,23 @@ export function presentationNotesImageEditorSx() {
       position: 'absolute',
       right: 1,
       bottom: 1,
-      width: 14,
-      height: 14,
+      width: 18,
+      height: 18,
       bgcolor: '#f57f17',
       border: '2px solid #fff',
-      borderRadius: '3px',
+      borderRadius: '4px',
       cursor: 'nwse-resize',
       zIndex: 4,
       boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
       pointerEvents: 'auto',
       boxSizing: 'border-box',
+      touchAction: 'none',
+      '@media (any-pointer: coarse)': {
+        width: 28,
+        height: 28,
+        right: -4,
+        bottom: -4,
+      },
     },
   };
 }
@@ -715,6 +756,7 @@ function bindNotesImage(wrap: HTMLElement, img: HTMLImageElement, editor: HTMLEl
   const handle: HTMLElement = handleEl;
 
   handle.addEventListener('pointerdown', (e) => {
+    if (!isPrimaryPointer(e)) return;
     beginNotesDrag(editor);
     e.preventDefault();
     e.stopPropagation();
@@ -723,47 +765,30 @@ function bindNotesImage(wrap: HTMLElement, img: HTMLImageElement, editor: HTMLEl
     const startX = e.clientX;
     const startW = wrap.getBoundingClientRect().width || img.offsetWidth || 160;
     const maxW = Math.max(80, editor.clientWidth - 16);
-    try {
-      handle.setPointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-    const onMove = (ev: PointerEvent) => {
-      if (ev.pointerId !== e.pointerId) return;
-      const nextW = Math.max(48, Math.min(maxW, startW + (ev.clientX - startX)));
-      wrap.style.width = `${Math.round(nextW)}px`;
-      wrap.style.maxWidth = '100%';
-      img.style.setProperty('width', '100%', 'important');
-      img.style.setProperty('max-width', '100%', 'important');
-      img.style.setProperty('height', 'auto', 'important');
-    };
-    const onUp = (ev: PointerEvent) => {
-      if (ev.pointerId !== e.pointerId) return;
-      handle.removeEventListener('pointermove', onMove);
-      handle.removeEventListener('pointerup', onUp);
-      handle.removeEventListener('pointercancel', onUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      try {
-        handle.releasePointerCapture(e.pointerId);
-      } catch {
-        /* ignore */
-      }
-      endNotesDrag(editor, () => {
-        ensureNotesTypingHost(editor);
-        onChange();
-      });
-    };
     document.body.style.cursor = 'nwse-resize';
-    document.body.style.userSelect = 'none';
-    handle.addEventListener('pointermove', onMove);
-    handle.addEventListener('pointerup', onUp);
-    handle.addEventListener('pointercancel', onUp);
+    listenWindowPointerDrag(
+      e.pointerId,
+      (ev) => {
+        const nextW = Math.max(48, Math.min(maxW, startW + (ev.clientX - startX)));
+        wrap.style.width = `${Math.round(nextW)}px`;
+        wrap.style.maxWidth = '100%';
+        img.style.setProperty('width', '100%', 'important');
+        img.style.setProperty('max-width', '100%', 'important');
+        img.style.setProperty('height', 'auto', 'important');
+      },
+      () => {
+        document.body.style.cursor = '';
+        endNotesDrag(editor, () => {
+          ensureNotesTypingHost(editor);
+          onChange();
+        });
+      },
+    );
   });
 
   wrap.addEventListener('pointerdown', (e) => {
     if ((e.target as HTMLElement).closest(`.${RESIZE_HANDLE_CLASS}`)) return;
-    if (e.button !== 0) return;
+    if (!isPrimaryPointer(e)) return;
     beginNotesDrag(editor);
     e.preventDefault();
     e.stopPropagation();
@@ -777,79 +802,60 @@ function bindNotesImage(wrap: HTMLElement, img: HTMLImageElement, editor: HTMLEl
     let dragging = false;
     let ghost: HTMLElement | null = null;
     let marker: HTMLElement | null = null;
-    try {
-      wrap.setPointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
 
-    const onMove = (ev: PointerEvent) => {
-      if (ev.pointerId !== e.pointerId) return;
-      if (!dragging) {
-        if (Math.hypot(ev.clientX - originX, ev.clientY - originY) < 6) return;
-        dragging = true;
-        wrap.style.opacity = '0.35';
-        wrap.style.pointerEvents = 'none';
-        wrap.style.cursor = 'grabbing';
-        ghost = wrap.cloneNode(true) as HTMLElement;
-        ghost.removeAttribute(BOUND_ATTR);
-        ghost.classList.remove(PRES_NOTES_IMG_SELECTED_CLASS);
-        ghost.querySelector(`.${RESIZE_HANDLE_CLASS}`)?.remove();
-        ghost.style.position = 'fixed';
-        ghost.style.left = `${ev.clientX - grabX}px`;
-        ghost.style.top = `${ev.clientY - grabY}px`;
-        ghost.style.margin = '0';
-        ghost.style.zIndex = '10000';
-        ghost.style.opacity = '0.9';
-        ghost.style.pointerEvents = 'none';
-        ghost.style.outline = '2px solid #f57f17';
-        ghost.style.width = `${Math.round(grab.width)}px`;
-        document.body.appendChild(ghost);
-        marker = ensureNotesDropMarker(editor);
-        document.body.style.userSelect = 'none';
-        document.body.style.cursor = 'grabbing';
-      }
-      const box = editor.getBoundingClientRect();
-      if (ev.clientY < box.top + 28) editor.scrollTop -= 16;
-      else if (ev.clientY > box.bottom - 28) editor.scrollTop += 16;
-      if (ghost) {
-        ghost.style.left = `${ev.clientX - grabX}px`;
-        ghost.style.top = `${ev.clientY - grabY}px`;
-      }
-      if (marker) updateNotesDropMarker(editor, marker, wrap, ev.clientX, ev.clientY);
-    };
-
-    const onUp = (ev: PointerEvent) => {
-      if (ev.pointerId !== e.pointerId) return;
-      wrap.removeEventListener('pointermove', onMove);
-      wrap.removeEventListener('pointerup', onUp);
-      wrap.removeEventListener('pointercancel', onUp);
-      wrap.style.opacity = '';
-      wrap.style.pointerEvents = '';
-      wrap.style.cursor = '';
-      ghost?.remove();
-      marker?.remove();
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      try {
-        wrap.releasePointerCapture(e.pointerId);
-      } catch {
-        /* ignore */
-      }
-      let moved = false;
-      if (dragging) {
-        moved = moveNotesImageToPoint(wrap, editor, ev.clientX, ev.clientY);
-        selectNotesImageWrap(editor, wrap);
-      }
-      endNotesDrag(editor, () => {
-        ensureNotesTypingHost(editor);
-        if (moved) onChange();
-      });
-    };
-
-    wrap.addEventListener('pointermove', onMove);
-    wrap.addEventListener('pointerup', onUp);
-    wrap.addEventListener('pointercancel', onUp);
+    listenWindowPointerDrag(
+      e.pointerId,
+      (ev) => {
+        if (!dragging) {
+          if (Math.hypot(ev.clientX - originX, ev.clientY - originY) < 6) return;
+          dragging = true;
+          wrap.style.opacity = '0.35';
+          wrap.style.pointerEvents = 'none';
+          wrap.style.cursor = 'grabbing';
+          ghost = wrap.cloneNode(true) as HTMLElement;
+          ghost.removeAttribute(BOUND_ATTR);
+          ghost.classList.remove(PRES_NOTES_IMG_SELECTED_CLASS);
+          ghost.querySelector(`.${RESIZE_HANDLE_CLASS}`)?.remove();
+          ghost.style.position = 'fixed';
+          ghost.style.left = `${ev.clientX - grabX}px`;
+          ghost.style.top = `${ev.clientY - grabY}px`;
+          ghost.style.margin = '0';
+          ghost.style.zIndex = '10000';
+          ghost.style.opacity = '0.9';
+          ghost.style.pointerEvents = 'none';
+          ghost.style.outline = '2px solid #f57f17';
+          ghost.style.width = `${Math.round(grab.width)}px`;
+          document.body.appendChild(ghost);
+          marker = ensureNotesDropMarker(editor);
+          document.body.style.cursor = 'grabbing';
+        }
+        const box = editor.getBoundingClientRect();
+        if (ev.clientY < box.top + 28) editor.scrollTop -= 16;
+        else if (ev.clientY > box.bottom - 28) editor.scrollTop += 16;
+        if (ghost) {
+          ghost.style.left = `${ev.clientX - grabX}px`;
+          ghost.style.top = `${ev.clientY - grabY}px`;
+        }
+        if (marker) updateNotesDropMarker(editor, marker, wrap, ev.clientX, ev.clientY);
+      },
+      (ev) => {
+        wrap.style.opacity = '';
+        wrap.style.pointerEvents = '';
+        wrap.style.cursor = '';
+        ghost?.remove();
+        marker?.remove();
+        document.body.style.cursor = '';
+        let moved = false;
+        if (dragging) {
+          moved = moveNotesImageToPoint(wrap, editor, ev.clientX, ev.clientY);
+          selectNotesImageWrap(editor, wrap);
+        }
+        endNotesDrag(editor, () => {
+          ensureNotesTypingHost(editor);
+          if (moved) onChange();
+        });
+      },
+    );
   });
 
   wrap.addEventListener('click', (e) => {

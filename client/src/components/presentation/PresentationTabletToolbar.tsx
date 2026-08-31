@@ -103,7 +103,7 @@ type ToolBtnProps = {
   children: React.ReactNode;
 };
 
-/** Apple Pencil löst oft kein click aus — Pointer-Up zählt als Tippen. */
+/** Apple Pencil löst oft pointerUp + click aus — ohne Guard würde z. B. Stift an/aus doppelt togglen. */
 function stylusActivateHandlers(action: () => void, disabled?: boolean) {
   return {
     onPointerDown: (e: React.PointerEvent) => {
@@ -115,7 +115,16 @@ function stylusActivateHandlers(action: () => void, disabled?: boolean) {
       if (disabled || e.pointerType !== 'pen') return;
       e.preventDefault();
       e.stopPropagation();
+      const el = e.currentTarget as HTMLElement & { __jmPenSkipClick?: boolean };
+      el.__jmPenSkipClick = true;
       action();
+    },
+    onClickCapture: (e: React.MouseEvent) => {
+      const el = e.currentTarget as HTMLElement & { __jmPenSkipClick?: boolean };
+      if (!el.__jmPenSkipClick) return;
+      el.__jmPenSkipClick = false;
+      e.preventDefault();
+      e.stopPropagation();
     },
   };
 }
