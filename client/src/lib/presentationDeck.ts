@@ -66,7 +66,7 @@ export type BodyStyle = 'plain' | 'bullets' | 'numbered';
 
 export type PresentationStrokeMode = 'pen' | 'marker';
 
-export type PresentationShapeKind = 'line' | 'rect' | 'ellipse' | 'arrow' | 'curved-arrow';
+export type PresentationShapeKind = 'line' | 'rect' | 'ellipse' | 'arrow' | 'curved-arrow' | 'connector';
 
 /** Frei platzierbare Elemente — Basis für Bilder, Animationen etc. */
 export interface SlideElement {
@@ -85,8 +85,14 @@ export interface SlideElement {
   /** PPTX-Verbinder: Diagonale der Box (sonst bleibt der Pfeil waagerecht). */
   flipH?: boolean;
   flipV?: boolean;
-  /** Bogenstärke für curved-arrow (−80…80, Prozent der Boxhöhe). */
+  /** Bogenstärke für curved-arrow (−80…80, Prozent der Boxhöhe). Legacy — shapeCurveControl bevorzugt. */
   curveBend?: number;
+  /** Pfad-Eckpunkte in lokaler Box (0–100). */
+  shapePoints?: Array<{ x: number; y: number }>;
+  /** Bögen: Kontrollpunkt (0–100). */
+  shapeCurveControl?: { x: number; y: number };
+  /** Pfeilspitze: Größe in viewBox-Einheiten (4–28). */
+  arrowHeadSize?: number;
   /** Drehung in Grad, um die Mitte (Linie, Pfeil, Form). */
   rotation?: number;
   strokeColor?: string;

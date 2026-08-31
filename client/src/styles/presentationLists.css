@@ -162,6 +162,13 @@
   -webkit-user-select: all;
 }
 
+[contenteditable="true"] .pres-math,
+[contenteditable="true"] [data-pres-math],
+[data-text-edit] .pres-math,
+[data-text-edit] [data-pres-math] {
+  cursor: pointer;
+}
+
 .pres-math math,
 [data-pres-math] math {
   font-size: 1.05em;

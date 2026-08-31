@@ -54,6 +54,13 @@ import {
   isPresentationFormulaPasteMode,
   setPresentationFormulaPasteMode,
 } from '../../lib/presentationFormulaPasteMode';
+import {
+  findPresentationMathInEditor,
+  insertPresentationFormulaAtCursor,
+  readPresentationMathLatex,
+  renderPresentationMathHtml,
+  replacePresentationMathElement,
+} from '../../lib/presentationPasteMath';
 import { setFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
 import {
   applyFontFamily,
@@ -183,6 +190,11 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   const [browseLoading, setBrowseLoading] = useState(false);
   const [browseError, setBrowseError] = useState<string | null>(null);
   const [formulaPasteMode, setFormulaPasteMode] = useState(() => isPresentationFormulaPasteMode());
+  const [formulaDialogOpen, setFormulaDialogOpen] = useState(false);
+  const [formulaLatex, setFormulaLatex] = useState('');
+  const [formulaEditTarget, setFormulaEditTarget] = useState<HTMLElement | null>(null);
+  const [formulaNoSource, setFormulaNoSource] = useState(false);
+  const formulaEditTargetRef = useRef<HTMLElement | null>(null);
   const [selectedLessonFile, setSelectedLessonFile] = useState<string>('');
   const [selectedFileMeta, setSelectedFileMeta] = useState<LessonFolderFsItem | null>(null);
   const linkRangeRef = useRef<Range | null>(null);
@@ -192,7 +204,8 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     Boolean(emojiAnchor) ||
     Boolean(tableAnchor) ||
     Boolean(olStyleAnchor) ||
-    linkDialogOpen;
+    linkDialogOpen ||
+    formulaDialogOpen;
   const formatMenuOpenRef = useRef(formatMenuOpen);
   formatMenuOpenRef.current = formatMenuOpen;
 
@@ -397,6 +410,91 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     setSelectedFileMeta(null);
     setFormatBarInteracting(false);
   }, []);
+
+  const closeFormulaDialog = useCallback(() => {
+    setFormulaDialogOpen(false);
+    setFormulaLatex('');
+    setFormulaEditTarget(null);
+    formulaEditTargetRef.current = null;
+    setFormulaNoSource(false);
+    setFormatBarInteracting(false);
+  }, []);
+
+  const openFormulaDialog = useCallback(
+    (target?: HTMLElement | null) => {
+      if (!activeEditor || disabled || isNotesEditor) return;
+      setFormatBarInteracting(true);
+      stashEditorSelection(activeEditor);
+      const math = target ?? findPresentationMathInEditor(activeEditor);
+      if (math) {
+        const src = readPresentationMathLatex(math);
+        setFormulaEditTarget(math);
+        formulaEditTargetRef.current = math;
+        setFormulaLatex(src);
+        setFormulaNoSource(!math.getAttribute('data-pres-latex') && math.getAttribute('data-pres-math') !== 'img');
+      } else {
+        setFormulaEditTarget(null);
+        formulaEditTargetRef.current = null;
+        setFormulaLatex('');
+        setFormulaNoSource(false);
+      }
+      setFormulaDialogOpen(true);
+    },
+    [activeEditor, disabled, isNotesEditor],
+  );
+
+  const applyFormulaDialog = useCallback(() => {
+    if (!activeEditor) return;
+    const latex = formulaLatex.trim();
+    if (!latex) {
+      onMessage?.('Bitte LaTeX eingeben (z. B. \\frac{a}{b})');
+      return;
+    }
+    const target = formulaEditTargetRef.current;
+    if (target && activeEditor.contains(target)) {
+      const next = replacePresentationMathElement(target, latex);
+      if (!next) {
+        onMessage?.('Formel konnte nicht gerendert werden — LaTeX prüfen');
+        return;
+      }
+    } else if (!insertPresentationFormulaAtCursor(activeEditor, latex)) {
+      onMessage?.('Formel konnte nicht eingefügt werden');
+      return;
+    }
+    activeEditor.dispatchEvent(new Event('input', { bubbles: true }));
+    onEditorChanged?.();
+    closeFormulaDialog();
+    onMessage?.(target ? 'Formel aktualisiert' : 'Formel eingefügt');
+  }, [activeEditor, formulaLatex, closeFormulaDialog, onEditorChanged, onMessage]);
+
+  const deleteFormulaFromDialog = useCallback(() => {
+    const target = formulaEditTargetRef.current;
+    if (!target || !activeEditor?.contains(target)) return;
+    target.remove();
+    activeEditor.dispatchEvent(new Event('input', { bubbles: true }));
+    onEditorChanged?.();
+    closeFormulaDialog();
+    onMessage?.('Formel entfernt');
+  }, [activeEditor, closeFormulaDialog, onEditorChanged, onMessage]);
+
+  useEffect(() => {
+    if (!activeEditor || disabled || isNotesEditor) return;
+    const onDblClick = (e: MouseEvent) => {
+      const math = (e.target as HTMLElement | null)?.closest('[data-pres-math]') as HTMLElement | null;
+      if (!math || !activeEditor.contains(math)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      openFormulaDialog(math);
+    };
+    activeEditor.addEventListener('dblclick', onDblClick);
+    return () => activeEditor.removeEventListener('dblclick', onDblClick);
+  }, [activeEditor, disabled, isNotesEditor, openFormulaDialog]);
+
+  const formulaPreviewHtml = useMemo(() => {
+    const trimmed = formulaLatex.trim();
+    if (!trimmed) return '';
+    return renderPresentationMathHtml(trimmed) || '';
+  }, [formulaLatex]);
 
   const captureLinkSelection = useCallback(() => {
     if (!activeEditor) {
@@ -664,8 +762,8 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
       <Tooltip
         title={
           formulaPasteMode
-            ? 'Formel-Modus: an — Word/LaTeX/HTML/PP einfügen (⌘V)'
-            : 'Formel-Modus: aus — normaler Text'
+            ? 'Formel-Modus: an — Einfügen (⌘V). Shift+Klick: Formel einfügen/bearbeiten. Doppelklick auf Formel: LaTeX ändern'
+            : 'Formel-Modus: aus — Shift+Klick: Formel einfügen/bearbeiten. Doppelklick auf Formel: LaTeX ändern'
         }
       >
         <span>
@@ -678,13 +776,17 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
               bgcolor: formulaPasteMode ? 'rgba(21,101,192,0.12)' : 'transparent',
             }}
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => {
+            onClick={(e) => {
+              if (e.shiftKey) {
+                openFormulaDialog();
+                return;
+              }
               const next = !formulaPasteMode;
               setPresentationFormulaPasteMode(next);
               setFormulaPasteMode(next);
               onMessage?.(
                 next
-                  ? 'Formel-Modus: Word, LaTeX, HTML-MathML und PowerPoint-Formeln beim Einfügen'
+                  ? 'Formel-Modus: Word, LaTeX, HTML-MathML und PowerPoint-Formeln beim Einfügen — Doppelklick auf Formel zum Bearbeiten'
                   : 'Formel-Modus aus',
               );
             }}
@@ -1660,6 +1762,81 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
               URL verknüpfen
             </Button>
           )}
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={formulaDialogOpen}
+        onClose={closeFormulaDialog}
+        maxWidth="sm"
+        fullWidth
+        {...FORMAT_POPOVER_FOCUS}
+      >
+        <DialogTitle sx={{ pb: 1, fontSize: 16 }}>
+          {formulaEditTarget ? 'Formel bearbeiten' : 'Formel einfügen'}
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          {formulaNoSource ? (
+            <Typography sx={{ fontSize: 11, color: '#666', mb: 1 }}>
+              Diese Formel stammt aus Word/PowerPoint — es war keine LaTeX-Quelle gespeichert. Neue
+              Eingabe ersetzt die Darstellung.
+            </Typography>
+          ) : null}
+          <TextField
+            autoFocus
+            multiline
+            minRows={3}
+            maxRows={8}
+            fullWidth
+            label="LaTeX"
+            placeholder="z. B. E = mc^2  oder  \\frac{a}{b}"
+            value={formulaLatex}
+            onChange={(e) => setFormulaLatex(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                applyFormulaDialog();
+              }
+            }}
+            helperText="Tipp: $…$ beim Einfügen im Formel-Modus. Hier direkt LaTeX ohne $."
+            FormHelperTextProps={{ sx: { fontSize: 10 } }}
+            sx={{
+              mb: 1.5,
+              '& .MuiInputBase-root': { fontFamily: 'ui-monospace, monospace', fontSize: 13 },
+            }}
+          />
+          <Typography sx={{ fontSize: 10, fontWeight: 700, color: '#666', mb: 0.5 }}>
+            Vorschau
+          </Typography>
+          <Box
+            sx={{
+              minHeight: 48,
+              p: 1.25,
+              border: '1px solid #ddd',
+              borderRadius: 1,
+              bgcolor: '#fafafa',
+              fontSize: 18,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            dangerouslySetInnerHTML={{
+              __html: formulaPreviewHtml || '<span style="color:#999;font-size:12px">…</span>',
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 1.5, gap: 0.5, flexWrap: 'wrap' }}>
+          {formulaEditTarget ? (
+            <Button color="error" onClick={deleteFormulaFromDialog} sx={{ textTransform: 'none', mr: 'auto' }}>
+              Entfernen
+            </Button>
+          ) : null}
+          <Button onClick={closeFormulaDialog} sx={{ textTransform: 'none' }}>
+            Abbrechen
+          </Button>
+          <Button variant="contained" onClick={applyFormulaDialog} sx={{ textTransform: 'none' }}>
+            Übernehmen
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

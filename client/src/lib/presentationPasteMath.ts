@@ -363,6 +363,102 @@ function renderLatexToPresentationSpan(tex: string, display = false): string {
   }
 }
 
+export const PRES_LATEX_ATTR = 'data-pres-latex';
+
+/** LaTeX-Quelle aus pres-math-Span lesen (falls vorhanden). */
+export function readPresentationMathLatex(span: HTMLElement): string {
+  const raw = span.getAttribute(PRES_LATEX_ATTR);
+  if (raw) {
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw;
+    }
+  }
+  if (span.getAttribute(PRES_MATH_ATTR) === 'img') return '';
+  const math = span.querySelector('math');
+  if (math) {
+    return (math.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+  return '';
+}
+
+/** LaTeX → pres-math-HTML (Vorschau / Einfügen). */
+export function renderPresentationMathHtml(latex: string, display = false): string {
+  return renderLatexToPresentationSpan(latex, display);
+}
+
+/** Vorhandene Formel durch neu gerenderte ersetzen. */
+export function replacePresentationMathElement(span: HTMLElement, latex: string): HTMLElement | null {
+  const trimmed = latexSourceFromPlain(latex);
+  if (!trimmed) return null;
+  const html = renderLatexToPresentationSpan(trimmed, false);
+  if (!html) return null;
+  const tpl = span.ownerDocument.createElement('template');
+  tpl.innerHTML = html;
+  const next = tpl.content.firstElementChild as HTMLElement | null;
+  if (!next) return null;
+  span.replaceWith(next);
+  return next;
+}
+
+/** Formel an Cursor oder in der Auswahl finden. */
+export function findPresentationMathInEditor(editor: HTMLElement): HTMLElement | null {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return null;
+  let node: Node | null = sel.anchorNode;
+  while (node && node !== editor) {
+    if (node instanceof HTMLElement && node.hasAttribute(PRES_MATH_ATTR)) return node;
+    node = node.parentNode;
+  }
+  const range = sel.getRangeAt(0);
+  const maths = editor.querySelectorAll(`[${PRES_MATH_ATTR}]`);
+  for (let i = 0; i < maths.length; i += 1) {
+    const m = maths[i] as HTMLElement;
+    if (range.intersectsNode(m)) return m;
+  }
+  return null;
+}
+
+/** Neue Formel an der Cursor-Position einfügen. */
+export function insertPresentationFormulaAtCursor(editor: HTMLElement, latex: string): boolean {
+  const trimmed = latexSourceFromPlain(latex);
+  if (!trimmed) return false;
+  const html = renderLatexToPresentationSpan(trimmed, false);
+  if (!html) return false;
+
+  editor.focus({ preventScroll: true });
+  const sel = window.getSelection();
+  const canUseRange =
+    sel &&
+    sel.rangeCount > 0 &&
+    editor.contains(sel.getRangeAt(0).commonAncestorContainer);
+  if (!canUseRange) {
+    const range = editor.ownerDocument.createRange();
+    range.selectNodeContents(editor);
+    range.collapse(false);
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+  }
+
+  const tpl = editor.ownerDocument.createElement('template');
+  tpl.innerHTML = html;
+  const node = tpl.content.firstChild as HTMLElement | null;
+  if (!node) return false;
+
+  const sel2 = window.getSelection();
+  if (!sel2 || sel2.rangeCount === 0) return false;
+  const range = sel2.getRangeAt(0);
+  range.deleteContents();
+  range.insertNode(node);
+  range.setStartAfter(node);
+  range.collapse(true);
+  sel2.removeAllRanges();
+  sel2.addRange(range);
+  editor.dispatchEvent(new Event('input', { bubbles: true }));
+  return true;
+}
+
 export function looksLikeFormulaPlainText(text: string): boolean {
   const s = (text || '').trim();
   if (!s) return false;

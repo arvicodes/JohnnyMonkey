@@ -4,12 +4,36 @@
 import React from 'react';
 import type { PresentationShapeKind, SlideElement } from './presentationDeck';
 import { JOHNNY_PRESENTATION } from './presentationTheme';
+import {
+  buildLinePathD,
+  isLineLikeShapeKind,
+  normalizeShapeElement,
+  resolveArrowHeadSize,
+  resolveCurveControl,
+  resolveShapePoints,
+  shapeHasArrowHead,
+} from './presentationShapePaths';
 
-export const SLIDE_SHAPE_KINDS: PresentationShapeKind[] = ['arrow', 'curved-arrow', 'line', 'rect', 'ellipse'];
+export {
+  connectorElementFromSlidePoints,
+  clientToShapeLocal,
+  isLineLikeShapeKind,
+  normalizeShapeElement,
+} from './presentationShapePaths';
+
+export const SLIDE_SHAPE_KINDS: PresentationShapeKind[] = [
+  'arrow',
+  'curved-arrow',
+  'connector',
+  'line',
+  'rect',
+  'ellipse',
+];
 
 export const SLIDE_SHAPE_LABELS: Record<PresentationShapeKind, string> = {
   arrow: 'Pfeil',
   'curved-arrow': 'Gebogener Pfeil',
+  connector: 'Ecken-Pfeil',
   line: 'Linie',
   rect: 'Rechteck',
   ellipse: 'Kreis / Oval',
@@ -21,6 +45,8 @@ export function defaultShapeSize(kind: PresentationShapeKind): { w: number; h: n
     case 'curved-arrow':
     case 'line':
       return { w: 28, h: 10 };
+    case 'connector':
+      return { w: 32, h: 28 };
     case 'rect':
       return { w: 24, h: 16 };
     case 'ellipse':
@@ -33,12 +59,13 @@ export function defaultShapeSize(kind: PresentationShapeKind): { w: number; h: n
 export function createShapeElement(
   kind: PresentationShapeKind,
   zIndex: number,
-  accentColor?: string
+  accentColor?: string,
 ): SlideElement {
   const size = defaultShapeSize(kind);
   const accent = accentColor || JOHNNY_PRESENTATION.primary;
   const isBox = kind === 'rect' || kind === 'ellipse';
-  return {
+  const lineLike = isLineLikeShapeKind(kind);
+  const el: SlideElement = {
     id: `el-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     type: 'shape',
     shapeKind: kind,
@@ -48,12 +75,11 @@ export function createShapeElement(
     h: size.h,
     zIndex,
     strokeColor: accent,
-    strokeWidth: kind === 'line' || kind === 'arrow' || kind === 'curved-arrow' ? 4 : 3,
+    strokeWidth: lineLike ? 4 : 3,
     fillColor: isBox ? `${accent}33` : 'transparent',
-    ...(kind === 'curved-arrow' ? { curveBend: 35 } : {}),
-    // Boxen (Rechteck/Oval) kommen standardmäßig mit integriertem Textfeld
     ...(isBox ? { html: '<p style="text-align:center"><br></p>' } : {}),
   };
+  return normalizeShapeElement(el);
 }
 
 /** Rechteck/Oval können integrierten Text haben. */
@@ -63,242 +89,98 @@ export function shapeSupportsText(el: Pick<SlideElement, 'type' | 'shapeKind'>):
   return kind === 'rect' || kind === 'ellipse';
 }
 
-function connectorEnds(flipH?: boolean, flipV?: boolean): { x1: number; y1: number; x2: number; y2: number } {
-  const x1 = flipH ? 94 : 6;
-  const y1 = flipV ? 94 : 6;
-  const x2 = flipH ? 6 : 94;
-  const y2 = flipV ? 6 : 94;
-  return { x1, y1, x2, y2 };
-}
-
-/** Achsennahe Verbinder: Mitte der Box, nicht die Diagonale (sonst wird die Spitze gequetscht). */
-function straightenConnector(
-  ends: { x1: number; y1: number; x2: number; y2: number },
-  boxW: number,
-  boxH: number,
-  flipH: boolean,
-  flipV: boolean,
-): { x1: number; y1: number; x2: number; y2: number } {
-  const w = Math.max(boxW, 0.01);
-  const h = Math.max(boxH, 0.01);
-  if (w / h < 0.28) {
-    return { x1: 50, y1: flipV ? 94 : 6, x2: 50, y2: flipV ? 6 : 94 };
-  }
-  if (h / w < 0.28) {
-    return { x1: flipH ? 94 : 6, y1: 50, x2: flipH ? 6 : 94, y2: 50 };
-  }
-  return ends;
-}
-
-function visualAngleDeg(
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  boxW: number,
-  boxH: number,
-): number {
-  const dx = (x2 - x1) * Math.max(boxW, 0.01) * 16;
-  const dy = (y2 - y1) * Math.max(boxH, 0.01) * 9;
-  return (Math.atan2(dy, dx) * 180) / Math.PI;
-}
-
-/** Linie nur um die Spitzenlänge zurückziehen — nicht um Prozent der ganzen Strecke. */
-function shaftEnd(
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  boxW: number,
-  boxH: number,
-  pullPx: number,
-): { x: number; y: number } {
-  const pxW = (Math.max(boxW, 0.01) / 100) * 1920;
-  const pxH = (Math.max(boxH, 0.01) / 100) * 1080;
-  const dxPx = ((x2 - x1) / 100) * pxW;
-  const dyPx = ((y2 - y1) / 100) * pxH;
-  const len = Math.hypot(dxPx, dyPx) || 1;
-  const t = Math.min(0.4, Math.max(0, pullPx / len));
-  return { x: x1 + (x2 - x1) * (1 - t), y: y1 + (y2 - y1) * (1 - t) };
-}
-
-function curveControlY(y1: number, y2: number, bend: number): number {
-  return (y1 + y2) / 2 + bend;
-}
-
-/** Tangente am Ende einer quadratischen Bézier-Kurve (t=1). */
-function quadEndAngleDeg(x1: number, y1: number, cx: number, cy: number, x2: number, y2: number): number {
-  const dx = (x2 - cx) * 16;
-  const dy = (y2 - cy) * 9;
-  return (Math.atan2(dy, dx) * 180) / Math.PI;
-}
-
-function pointOnQuad(
-  t: number,
-  x1: number,
-  y1: number,
-  cx: number,
-  cy: number,
-  x2: number,
-  y2: number,
-): { x: number; y: number } {
-  const u = 1 - t;
-  return {
-    x: u * u * x1 + 2 * u * t * cx + t * t * x2,
-    y: u * u * y1 + 2 * u * t * cy + t * t * y2,
-  };
-}
-
 export function SlideShapeSvg({
-  kind,
+  element,
+  kind: kindProp,
   strokeColor,
   fillColor,
   strokeWidth = 3,
   flipH,
   flipV,
   curveBend,
+  shapePoints,
+  shapeCurveControl,
+  arrowHeadSize,
   boxW,
   boxH,
   style,
 }: {
-  kind: PresentationShapeKind;
+  element?: SlideElement;
+  kind?: PresentationShapeKind;
   strokeColor?: string;
   fillColor?: string;
   strokeWidth?: number;
   flipH?: boolean;
   flipV?: boolean;
   curveBend?: number;
+  shapePoints?: Array<{ x: number; y: number }>;
+  shapeCurveControl?: { x: number; y: number };
+  arrowHeadSize?: number;
   boxW?: number;
   boxH?: number;
   style?: React.CSSProperties;
 }) {
-  const stroke = strokeColor || JOHNNY_PRESENTATION.primary;
-  const fill =
-    fillColor && fillColor !== 'transparent' && fillColor !== 'none' ? fillColor : 'none';
-  const sw = Math.max(1.5, Math.min(12, strokeWidth));
-  const connector = flipH != null || flipV != null;
-  const rawEnds = connector ? connectorEnds(Boolean(flipH), Boolean(flipV)) : null;
-  const ends = rawEnds
-    ? straightenConnector(rawEnds, boxW ?? 1, boxH ?? 1, Boolean(flipH), Boolean(flipV))
-    : null;
-  const w = boxW ?? 1;
-  const h = boxH ?? 1;
-  const shaft = ends ? shaftEnd(ends.x1, ends.y1, ends.x2, ends.y2, w, h, 12) : null;
-  const headDeg = ends ? visualAngleDeg(ends.x1, ends.y1, ends.x2, ends.y2, w, h) : 0;
-  const bend = kind === 'curved-arrow' ? Math.max(-80, Math.min(80, curveBend ?? 35)) : 0;
-
-  const curvedEnds = ends ?? { x1: 6, y1: 50, x2: 94, y2: 50 };
-  const curvedControl = {
-    x: (curvedEnds.x1 + curvedEnds.x2) / 2,
-    y: curveControlY(curvedEnds.y1, curvedEnds.y2, bend),
+  const base: SlideElement = element ?? {
+    id: 'preview',
+    type: 'shape',
+    shapeKind: kindProp || 'arrow',
+    x: 0,
+    y: 0,
+    w: boxW ?? 28,
+    h: boxH ?? 10,
+    zIndex: 1,
+    strokeColor,
+    fillColor,
+    strokeWidth,
+    flipH,
+    flipV,
+    curveBend,
+    shapePoints,
+    shapeCurveControl,
+    arrowHeadSize,
   };
-  const curvedShaftEnd = pointOnQuad(0.92, curvedEnds.x1, curvedEnds.y1, curvedControl.x, curvedControl.y, curvedEnds.x2, curvedEnds.y2);
-  const curvedHeadDeg =
-    kind === 'curved-arrow'
-      ? quadEndAngleDeg(curvedEnds.x1, curvedEnds.y1, curvedControl.x, curvedControl.y, curvedEnds.x2, curvedEnds.y2)
-      : headDeg;
+  const norm = normalizeShapeElement({
+    ...base,
+    strokeColor: strokeColor ?? base.strokeColor,
+    fillColor: fillColor ?? base.fillColor,
+    strokeWidth: strokeWidth ?? base.strokeWidth,
+  });
+  const kind = norm.shapeKind || 'arrow';
+  const stroke = norm.strokeColor || JOHNNY_PRESENTATION.primary;
+  const fill =
+    norm.fillColor && norm.fillColor !== 'transparent' && norm.fillColor !== 'none'
+      ? norm.fillColor
+      : 'none';
+  const sw = Math.max(1.5, Math.min(16, norm.strokeWidth ?? 3));
+  const points = resolveShapePoints(norm);
+  const curveControl = kind === 'curved-arrow' ? resolveCurveControl(points, norm) : null;
+  const headSize = resolveArrowHeadSize(norm);
+  const { shaftOnly, head } = buildLinePathD(kind, points, curveControl, headSize);
+  const showHead = shapeHasArrowHead(kind) && head;
 
-  const connectorCurvedArrow =
-    kind === 'curved-arrow' ? (
-      <div
-        style={{
-          position: 'relative',
-          width: '100%',
-          height: '100%',
-          overflow: 'visible',
-          ...style,
-        }}
+  if (isLineLikeShapeKind(kind)) {
+    return (
+      <svg
+        viewBox="0 0 100 100"
+        width="100%"
+        height="100%"
+        preserveAspectRatio="none"
+        style={{ display: 'block', overflow: 'visible', ...style }}
+        aria-hidden
       >
-        <svg
-          viewBox="0 0 100 100"
-          width="100%"
-          height="100%"
-          preserveAspectRatio="none"
-          style={{ display: 'block', overflow: 'visible' }}
-          aria-hidden
-        >
-          <path
-            d={`M ${curvedEnds.x1} ${curvedEnds.y1} Q ${curvedControl.x} ${curvedControl.y} ${curvedShaftEnd.x} ${curvedShaftEnd.y}`}
-            fill="none"
-            stroke={stroke}
-            strokeWidth={Math.max(sw, 4)}
-            strokeLinecap="round"
-            vectorEffect="non-scaling-stroke"
-          />
-        </svg>
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          aria-hidden
-          style={{
-            position: 'absolute',
-            left: `${curvedEnds.x2}%`,
-            top: `${curvedEnds.y2}%`,
-            transformOrigin: '15px 8px',
-            transform: `translate(-15px, -8px) rotate(${curvedHeadDeg}deg)`,
-            overflow: 'visible',
-            pointerEvents: 'none',
-          }}
-        >
-          <polygon points="1,2 15,8 1,14" fill={stroke} />
-        </svg>
-      </div>
-    ) : null;
-
-  const connectorArrow =
-    kind === 'arrow' && ends && shaft ? (
-      <div
-        style={{
-          position: 'relative',
-          width: '100%',
-          height: '100%',
-          overflow: 'visible',
-          ...style,
-        }}
-      >
-        <svg
-          viewBox="0 0 100 100"
-          width="100%"
-          height="100%"
-          preserveAspectRatio="none"
-          style={{ display: 'block', overflow: 'visible' }}
-          aria-hidden
-        >
-          <line
-            x1={ends.x1}
-            y1={ends.y1}
-            x2={shaft.x}
-            y2={shaft.y}
-            stroke={stroke}
-            strokeWidth={Math.max(sw, 4)}
-            strokeLinecap="butt"
-            vectorEffect="non-scaling-stroke"
-          />
-        </svg>
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          aria-hidden
-          style={{
-            position: 'absolute',
-            left: `${ends.x2}%`,
-            top: `${ends.y2}%`,
-            transformOrigin: '15px 8px',
-            transform: `translate(-15px, -8px) rotate(${headDeg}deg)`,
-            overflow: 'visible',
-            pointerEvents: 'none',
-          }}
-        >
-          <polygon points="1,2 15,8 1,14" fill={stroke} />
-        </svg>
-      </div>
-    ) : null;
-
-  if (connectorCurvedArrow) return connectorCurvedArrow;
-
-  if (connectorArrow) return connectorArrow;
+        <path
+          d={shaftOnly}
+          fill="none"
+          stroke={stroke}
+          strokeWidth={Math.max(sw, 2)}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+        {showHead ? <polygon points={head!} fill={stroke} stroke="none" /> : null}
+      </svg>
+    );
+  }
 
   return (
     <svg
@@ -309,38 +191,8 @@ export function SlideShapeSvg({
       style={{ display: 'block', overflow: 'visible', ...style }}
       aria-hidden
     >
-      {kind === 'line' && ends && (
-        <line
-          x1={ends.x1}
-          y1={ends.y1}
-          x2={ends.x2}
-          y2={ends.y2}
-          stroke={stroke}
-          strokeWidth={Math.max(sw, 4)}
-          strokeLinecap="round"
-          vectorEffect="non-scaling-stroke"
-        />
-      )}
-      {kind === 'line' && !ends && (
-        <line x1="8" y1="50" x2="92" y2="50" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
-      )}
-      {kind === 'arrow' && !ends && (
-        <>
-          <line x1="6" y1="50" x2="72" y2="50" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
-          <polygon points="68,32 94,50 68,68" fill={stroke} />
-        </>
-      )}
       {kind === 'rect' && (
-        <rect
-          x="10"
-          y="18"
-          width="80"
-          height="64"
-          rx="4"
-          fill={fill}
-          stroke={stroke}
-          strokeWidth={sw}
-        />
+        <rect x="10" y="18" width="80" height="64" rx="4" fill={fill} stroke={stroke} strokeWidth={sw} />
       )}
       {kind === 'ellipse' && (
         <ellipse cx="50" cy="50" rx="38" ry="34" fill={fill} stroke={stroke} strokeWidth={sw} />

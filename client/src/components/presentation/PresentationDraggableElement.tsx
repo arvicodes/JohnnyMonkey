@@ -53,7 +53,8 @@ import {
   shouldPanCoverImageOnDrag,
   type ImageCropHandle,
 } from '../../lib/presentationImageUtils';
-import { SlideShapeSvg, shapeSupportsText } from '../../lib/presentationSlideShapes';
+import { SlideShapeSvg, shapeSupportsText, isLineLikeShapeKind, clientToShapeLocal } from '../../lib/presentationSlideShapes';
+import { resolveCurveControl, resolveShapePoints } from '../../lib/presentationShapePaths';
 import {
   elementToRect,
   snapElementMove,
@@ -87,7 +88,7 @@ function blockFileDropIntoText(e: React.DragEvent) {
   }
 }
 
-type DragMode = 'move' | 'resize' | 'rotate';
+type DragMode = 'move' | 'resize' | 'rotate' | 'shape-point' | 'shape-curve';
 type ResizeCorner = 'br' | 'tr' | ImageCropHandle;
 
 interface DragState {
@@ -101,6 +102,7 @@ interface DragState {
   slideTop: number;
   orig: SlideElement;
   imageGesture?: 'crop' | 'scale';
+  shapePointIndex?: number;
 }
 
 interface PresentationDraggableElementProps {
