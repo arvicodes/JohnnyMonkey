@@ -341,6 +341,8 @@ export interface PresentationSlide {
   sourceLessonPath?: string;
   /** Eingesprochener Audiotrack (Datei im Stundenordner). */
   audioTrack?: SlideAudioTrack;
+  /** Bildschirm-Aufnahme zur Folie (Video-Datei im Stundenordner). */
+  screenTrack?: SlideAudioTrack;
 }
 
 export function sanitizeInkStrokes(raw?: PresentationStroke[]): PresentationStroke[] | undefined {
@@ -757,7 +759,11 @@ export function normalizeSlide(slide: PresentationSlide): PresentationSlide {
           : {}),
     ...(() => {
       const audioTrack = sanitizeSlideAudioTrack(slide.audioTrack);
-      return audioTrack ? { audioTrack } : { audioTrack: undefined };
+      const screenTrack = sanitizeSlideAudioTrack(slide.screenTrack);
+      return {
+        ...(audioTrack ? { audioTrack } : { audioTrack: undefined }),
+        ...(screenTrack ? { screenTrack } : { screenTrack: undefined }),
+      };
     })(),
   };
 }

@@ -16,7 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Box, Button, IconButton, TextField, Tooltip } from '@mui/material';
-import { Add as AddIcon, DeleteOutline as DeleteIcon, DragIndicator as DragIcon, Mic as MicIcon } from '@mui/icons-material';
+import { Add as AddIcon, DeleteOutline as DeleteIcon, DragIndicator as DragIcon, Mic as MicIcon, Videocam as VideocamIcon } from '@mui/icons-material';
 import {
   PresentationSlide,
   SLIDE_IMAGE_THUMB_MAX,
@@ -406,26 +406,52 @@ const SortableFilmstripThumb = React.memo(
           >
             {index + 1}
           </Box>
-          {slide.audioTrack?.path ? (
+          {slide.audioTrack?.path || slide.screenTrack?.path ? (
             <Box
               sx={{
                 position: 'absolute',
                 top: 4,
                 right: 4,
-                width: 16,
-                height: 16,
-                borderRadius: 0.6,
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                bgcolor: PRES_EDITOR_UI.accent,
-                color: '#fff',
+                gap: 0.25,
                 pointerEvents: 'none',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
               }}
               aria-hidden
             >
-              <MicIcon sx={{ fontSize: 11 }} />
+              {slide.audioTrack?.path ? (
+                <Box
+                  sx={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: 0.6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bgcolor: PRES_EDITOR_UI.accent,
+                    color: '#fff',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+                  }}
+                >
+                  <MicIcon sx={{ fontSize: 11 }} />
+                </Box>
+              ) : null}
+              {slide.screenTrack?.path ? (
+                <Box
+                  sx={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: 0.6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bgcolor: '#1565c0',
+                    color: '#fff',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+                  }}
+                >
+                  <VideocamIcon sx={{ fontSize: 11 }} />
+                </Box>
+              ) : null}
             </Box>
           ) : null}
           <Box

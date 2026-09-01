@@ -1047,10 +1047,12 @@ export class FileSystemPathController {
       }
 
       const ext = path.extname(normalizedFull).toLowerCase();
+      const base = path.basename(normalizedFull);
+      const isScreen = /^slide-screen-/i.test(base);
       const mimeByExt: Record<string, string> = {
-        '.webm': 'audio/webm',
+        '.webm': isScreen ? 'video/webm' : 'audio/webm',
         '.m4a': 'audio/mp4',
-        '.mp4': 'audio/mp4',
+        '.mp4': isScreen ? 'video/mp4' : 'audio/mp4',
         '.ogg': 'audio/ogg',
         '.oga': 'audio/ogg',
         '.mp3': 'audio/mpeg',

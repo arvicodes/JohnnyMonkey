@@ -22,6 +22,7 @@ export function isLinkableLessonFileName(name: string): boolean {
   if (/\.deck(\.|$)/i.test(n)) return false;
   if (n.endsWith('.bak') || n.includes('.bak-')) return false;
   if (/^slide-audio-/i.test(n)) return false;
+  if (/^slide-screen-/i.test(n)) return false;
   return true;
 }
 

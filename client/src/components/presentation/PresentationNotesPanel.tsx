@@ -1,12 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Box, IconButton, Tooltip, Typography } from '@mui/material';
+import { Box, Button, IconButton, Tooltip, Typography } from '@mui/material';
 import {
   DeleteOutline as TrashIcon,
   ChevronRight as HideNotesIcon,
   StickyNote2Outlined as NotesIcon,
 } from '@mui/icons-material';
 import { htmlToPlain, textToHtml, type PresentationStroke, type SlideAudioTrack } from '../../lib/presentationDeck';
-import PresentationSlideAudioRecorder from './PresentationSlideAudioRecorder';
 import {
   migrateNotesInkCssToSlideSpace,
   notesInkNeedsHostMigration,
@@ -725,10 +724,8 @@ interface PresentationNotesPanelProps {
   onUploadImage?: (file: File) => Promise<string | null>;
   /** Notizleiste ausblenden (mehr Platz für die Folie). */
   onHide?: () => void;
-  lessonPath?: string;
   audioTrack?: SlideAudioTrack;
-  onAudioTrackChange?: (track: SlideAudioTrack | undefined) => void;
-  onAudioError?: (message: string) => void;
+  onOpenAudio?: () => void;
   inkStrokes?: PresentationStroke[];
   inkSpace?: 'css' | 'slide';
   inkTool?: PresentationDrawTool;
@@ -757,10 +754,8 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
   onMoveNotesToTrash,
   onUploadImage,
   onHide,
-  lessonPath,
   audioTrack,
-  onAudioTrackChange,
-  onAudioError,
+  onOpenAudio,
   inkStrokes,
   inkSpace,
   inkTool = 'pen',
@@ -973,15 +968,33 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
         </Box>
         </Box>
       </Box>
-      {slideId && onAudioTrackChange ? (
-        <PresentationSlideAudioRecorder
-          slideId={slideId}
-          lessonPath={lessonPath}
-          track={audioTrack}
-          disabled={readOnly}
-          onChange={onAudioTrackChange}
-          onError={onAudioError}
-        />
+      {onOpenAudio ? (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+            px: 1,
+            py: 0.4,
+            borderBottom: `1px solid ${PRES_EDITOR_UI.panelBorder}`,
+            bgcolor: '#fff',
+          }}
+        >
+          <Button
+            size="small"
+            onClick={onOpenAudio}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
+              fontSize: 11,
+              minHeight: 26,
+              px: 1,
+              color: audioTrack?.path ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
+            }}
+          >
+            {audioTrack?.path ? 'Ton öffnen' : 'Einsprechen'}
+          </Button>
+        </Box>
       ) : null}
       <NoteZone
         fieldKey="speakerNotesHtml"

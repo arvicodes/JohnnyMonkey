@@ -37,6 +37,7 @@ import {
   DeleteOutline as DeleteIcon,
   Mic as MicIcon,
   PlayArrow as PresentIcon,
+  Videocam as VideocamIcon,
   RestoreFromTrash as TrashBinIcon,
   SaveAsOutlined as SaveAsIcon,
   SaveOutlined as SaveIcon,
@@ -58,6 +59,7 @@ import PresentationFilmstrip from '../components/presentation/PresentationFilmst
 import PresentationNotesPanel, {
   type NotesFieldKey,
 } from '../components/presentation/PresentationNotesPanel';
+import PresentationSlideAudioRecorder from '../components/presentation/PresentationSlideAudioRecorder';
 import PresentationTrashPanel from '../components/presentation/PresentationTrashPanel';
 import PresentationSlideClipboardPanel from '../components/presentation/PresentationSlideClipboardPanel';
 import { isFormatBarInteracting, isPresentationModalTypingActive } from '../lib/presentationFormatBarGuard';
@@ -309,6 +311,9 @@ const PresentationEditorPage: React.FC = () => {
       return true;
     }
   });
+  const [audioPanelOpen, setAudioPanelOpen] = useState(false);
+  const [audioSessionActive, setAudioSessionActive] = useState(false);
+  const [recordKind, setRecordKind] = useState<'audio' | 'screen'>('audio');
   const canvasHostRef = useRef<HTMLDivElement>(null);
   const slideShellRef = useRef<HTMLDivElement>(null);
   const canvasHostObserverRef = useRef<ResizeObserver | null>(null);
@@ -3862,15 +3867,43 @@ const PresentationEditorPage: React.FC = () => {
               <span>
                 <IconButton
                   size="small"
-                  onClick={() => setNotesPanelOpenPersist(true)}
+                  onClick={() => {
+                    setRecordKind('audio');
+                    setAudioPanelOpen(true);
+                  }}
                   disabled={!normalizedActive}
                   aria-label="Ton einsprechen"
                   sx={{
                     ...toolbarIconSx,
-                    color: normalizedActive?.audioTrack?.path ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
+                    color:
+                      audioSessionActive || audioPanelOpen || normalizedActive?.audioTrack?.path
+                        ? PRES_EDITOR_UI.accent
+                        : PRES_EDITOR_UI.textMuted,
+                    ...(audioSessionActive
+                      ? { bgcolor: 'rgba(211,47,47,0.12)', color: '#c62828' }
+                      : {}),
                   }}
                 >
                   <MicIcon sx={{ fontSize: 17 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title={normalizedActive?.screenTrack?.path ? 'Bildschirm aufnehmen (vorhanden)' : 'Bildschirm aufnehmen'}>
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    setRecordKind('screen');
+                    setAudioPanelOpen(true);
+                  }}
+                  disabled={!normalizedActive}
+                  aria-label="Bildschirm aufnehmen"
+                  sx={{
+                    ...toolbarIconSx,
+                    color: normalizedActive?.screenTrack?.path ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
+                  }}
+                >
+                  <VideocamIcon sx={{ fontSize: 17 }} />
                 </IconButton>
               </span>
             </Tooltip>
@@ -4310,6 +4343,20 @@ const PresentationEditorPage: React.FC = () => {
         </Box>
       </Box>
 
+      {normalizedActive && (audioPanelOpen || audioSessionActive) && (
+        <PresentationSlideAudioRecorder
+          slideId={normalizedActive.id}
+          lessonPath={lessonPath || undefined}
+          audioTrack={normalizedActive.audioTrack}
+          screenTrack={normalizedActive.screenTrack}
+          defaultKind={recordKind}
+          onAudioChange={(next, id) => updateSlide({ audioTrack: next }, id)}
+          onScreenChange={(next, id) => updateSlide({ screenTrack: next }, id)}
+          onError={(message) => setSnackbar(message)}
+          onSessionChange={setAudioSessionActive}
+          onClose={() => setAudioPanelOpen(false)}
+        />
+      )}
       <input
         ref={imageInputRef}
         type="file"
@@ -4668,10 +4715,8 @@ const PresentationEditorPage: React.FC = () => {
             activeField={notesActiveField}
             readOnly={false}
             onHide={() => setNotesPanelOpenPersist(false)}
-            lessonPath={lessonPath || undefined}
             audioTrack={normalizedActive.audioTrack}
-            onAudioTrackChange={(next) => updateSlide({ audioTrack: next }, normalizedActive.id)}
-            onAudioError={(message) => setSnackbar(message)}
+            onOpenAudio={() => setAudioPanelOpen(true)}
             onEditorFocus={(fieldKey, el) => {
               setActiveEditor(el);
               setActiveHtmlField(fieldKey);
@@ -4757,10 +4802,10 @@ const PresentationEditorPage: React.FC = () => {
               </IconButton>
             </Tooltip>
             <NotesIcon sx={{ fontSize: 14, color: PRES_EDITOR_UI.textMuted, opacity: 0.7 }} />
-            <Tooltip title="Einsprechen (Notizen öffnen)" placement="left">
+            <Tooltip title="Einsprechen" placement="left">
               <IconButton
                 size="small"
-                onClick={() => setNotesPanelOpenPersist(true)}
+                onClick={() => setAudioPanelOpen(true)}
                 aria-label="Einsprechen"
                 sx={{
                   width: 28,
