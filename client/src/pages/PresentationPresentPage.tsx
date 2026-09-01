@@ -40,6 +40,8 @@ import {
   writeOriginalDeckSnapshot,
   parsePresentationPlanMode,
   presentationEditorUrl,
+  rememberActivePresentationSlide,
+  recalledActivePresentationSlide,
 } from '../lib/presentationDeck';
 import {
   parsePresentationDeckSavedEvent,
@@ -259,6 +261,11 @@ const PresentationPresentPage: React.FC = () => {
   const canGoNext = canAdvanceSlide || canFinishToDashboard;
 
   useEffect(() => {
+    if (loading || !lessonPath || !currentSlide?.id) return;
+    rememberActivePresentationSlide(lessonPath, currentSlide.id);
+  }, [loading, lessonPath, currentSlide?.id]);
+
+  useEffect(() => {
     if (!lessonPath) {
       setLoading(false);
       return;
@@ -303,8 +310,9 @@ const PresentationPresentPage: React.FC = () => {
       setDeck(displayDeck);
       const sorted = displayDeck ? sortSlides(displayDeck.slides) : [];
       let startIdx = 0;
-      if (startSlideId) {
-        const byId = sorted.findIndex((s) => s.id === startSlideId);
+      const remembered = recalledActivePresentationSlide(lessonPath, startSlideId);
+      if (remembered) {
+        const byId = sorted.findIndex((s) => s.id === remembered);
         if (byId >= 0) startIdx = byId;
       } else if (Number.isFinite(startSlideNumber) && startSlideNumber >= 1 && sorted.length) {
         startIdx = Math.min(sorted.length - 1, startSlideNumber - 1);

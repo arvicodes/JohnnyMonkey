@@ -598,7 +598,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         : resizeImageFrameByHandle(d.orig, d.resizeCorner, dxPct, dyPct, MIN_SIZE);
     } else if (d.resizeCorner === 'tr') {
       if (isWindowCropMode(d.orig)) {
-        patch = resizeWindowCrop(d.orig, 'ne', dxPct, dyPct, MIN_SIZE);
+        patch = scaleImageOnSlide(d.orig, 'ne', dxPct, dyPct, MIN_SIZE);
       } else {
         const nextW = clamp(d.orig.w + dxPct, MIN_SIZE, IMAGE_FRAME_SIZE_MAX);
         const nextH = clamp(d.orig.h - dyPct, MIN_SIZE, IMAGE_FRAME_SIZE_MAX);
@@ -616,7 +616,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         guides = snapped.guides;
       }
     } else if (isWindowCropMode(d.orig)) {
-      patch = resizeWindowCrop(d.orig, 'se', dxPct, dyPct, MIN_SIZE);
+      patch = scaleImageOnSlide(d.orig, 'se', dxPct, dyPct, MIN_SIZE);
     } else {
       const proposed = {
         ...elementToRect(d.orig),
@@ -774,8 +774,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     let orig: SlideElement = { ...element };
     let imageGesture: 'crop' | 'scale' | undefined;
     if (mode === 'resize' && orig.type === 'image' && resizeCorner !== 'br' && resizeCorner !== 'tr') {
-      const scaleCorner = imageOnlyEdit && isImageScaleHandle(resizeCorner);
-      if (scaleCorner) {
+      // Ecken = Größe auf der Folie; Kanten = Ausschnitt (auch nach Zuschneiden).
+      if (isImageScaleHandle(resizeCorner)) {
         imageGesture = 'scale';
       } else {
         imageGesture = 'crop';
@@ -2309,6 +2309,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             <Box
               key={h.id}
               data-resize-handle
+              title={h.scale ? 'Größe ändern' : 'Zuschneiden'}
               onPointerDown={(e) => {
                 e.stopPropagation();
                 startDrag(e, 'resize', h.id);
@@ -2323,9 +2324,9 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 height: `${h.h * scale}px`,
                 ml: h.ml != null ? `${h.ml * scale}px` : undefined,
                 mt: h.mt != null ? `${h.mt * scale}px` : undefined,
-                bgcolor: imageOnlyEdit && h.scale ? '#2E7D32' : '#fff',
+                bgcolor: h.scale ? '#2E7D32' : '#fff',
                 border: `${1.5 * scale}px solid #2E7D32`,
-                borderRadius: imageOnlyEdit && h.scale ? '50%' : `${2 * scale}px`,
+                borderRadius: h.scale ? '50%' : `${2 * scale}px`,
                 cursor: h.cursor,
                 zIndex: 34,
                 pointerEvents: 'auto',
@@ -2386,7 +2387,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         </>
       )}
 
-      {showResizeHandle && !hugImageChrome && !cropMode && (
+      {showResizeHandle && !hugImageChrome && (
         <Box
           data-resize-handle
           onPointerDown={(e) =>

@@ -1419,10 +1419,10 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                       ) : null}
                       <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, lineHeight: 1.35, mb: 0.75 }}>
                         {isWindowCropMode(selectedElement)
-                          ? 'Kanten ziehen schneidet das Foto zu · Ziehen verschiebt das ganze Bild'
+                          ? 'Ecken ziehen = Größe · Kanten ziehen = Ausschnitt · Ziehen verschiebt das Bild'
                           : isImageCropMode(selectedElement)
-                            ? 'Ziehen verschiebt den Ausschnitt · Kanten ziehen den Rahmen · Shift+Ziehen verschiebt das Bild'
-                            : 'Ziehen verschiebt das Bild · Zuschneiden für Ausschnitt'}
+                            ? 'Ecken ziehen = Größe · Kanten = Ausschnitt · Ziehen verschiebt den Ausschnitt'
+                            : 'Ziehen verschiebt das Bild · Zuschneiden für Ausschnitt · Ecken = Größe'}
                       </Typography>
                       <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.4 }}>
                         Rahmen

@@ -1178,6 +1178,40 @@ export function presentationEditorUrl(
   return `/presentation/edit?${qs.toString()}`;
 }
 
+const ACTIVE_SLIDE_STORAGE_PREFIX = 'johnny-pres-active-slide:';
+
+/** Aktuelle Folie in der URL merken, damit Neuladen dieselbe Folie öffnet. */
+export function rememberActivePresentationSlide(
+  lessonPath: string,
+  slideId: string | null | undefined,
+): void {
+  if (typeof window === 'undefined' || !lessonPath || !slideId) return;
+  try {
+    sessionStorage.setItem(`${ACTIVE_SLIDE_STORAGE_PREFIX}${lessonPath}`, slideId);
+  } catch {
+    /* ignore */
+  }
+  const url = new URL(window.location.href);
+  if (url.searchParams.get('slideId') === slideId) return;
+  url.searchParams.set('slideId', slideId);
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
+/** Folie aus URL, sonst letzte Folie dieser Stunde aus dieser Browser-Sitzung. */
+export function recalledActivePresentationSlide(
+  lessonPath: string,
+  urlSlideId?: string | null,
+): string {
+  const fromUrl = (urlSlideId || '').trim();
+  if (fromUrl) return fromUrl;
+  if (typeof window === 'undefined' || !lessonPath) return '';
+  try {
+    return sessionStorage.getItem(`${ACTIVE_SLIDE_STORAGE_PREFIX}${lessonPath}`) || '';
+  } catch {
+    return '';
+  }
+}
+
 export function presentationPresentUrl(
   lessonPath: string,
   groupId?: string,

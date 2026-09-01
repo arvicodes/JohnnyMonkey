@@ -101,6 +101,8 @@ import {
   normalizeSlide,
   presentationPresentUrl,
   parsePresentationPlanMode,
+  rememberActivePresentationSlide,
+  recalledActivePresentationSlide,
   saveJsonFile,
   nextViewportScale,
   sortSlides,
@@ -380,6 +382,11 @@ const PresentationEditorPage: React.FC = () => {
   }, [activeId]);
 
   useEffect(() => {
+    if (loading || !activeId || !lessonPath) return;
+    rememberActivePresentationSlide(lessonPath, activeId);
+  }, [activeId, lessonPath, loading]);
+
+  useEffect(() => {
     if (!activeId) {
       setSelectedSlideIds([]);
       slideSelectionAnchorRef.current = null;
@@ -549,9 +556,10 @@ const PresentationEditorPage: React.FC = () => {
         playVariantsRef.current = migrated.variants;
         editingVariantRef.current = false;
         setEditingVariant(false);
+        const remembered = recalledActivePresentationSlide(lessonPath, startSlideId);
         const requested =
-          startSlideId && migrated.deck.slides.some((s) => s.id === startSlideId)
-            ? startSlideId
+          remembered && migrated.deck.slides.some((s) => s.id === remembered)
+            ? remembered
             : migrated.deck.slides[0]?.id ?? null;
         setActiveId(requested);
         setLoading(false);
