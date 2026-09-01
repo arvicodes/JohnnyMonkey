@@ -141,13 +141,13 @@ function clampPct(v: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, v));
 }
 
-/** Leeres Textfeld: breit, etwas höher als eine Zeile. */
+/** Leeres Textfeld: eine Zeile plus schmaler Rand. */
 export function defaultEmptyTextFieldSize(maxW: number): { w: number; h: number } {
   const w = clampPct(maxW * 0.52, 36, maxW);
-  const hPx = PRESENTATION_CONTENT_FONT_PX * 1.45 + 22;
+  const hPx = PRESENTATION_CONTENT_FONT_PX * 1.35 + 8;
   return {
     w,
-    h: clampPct((hPx / SLIDE_REF_HEIGHT) * 100, 4.8, 6.4),
+    h: clampPct((hPx / SLIDE_REF_HEIGHT) * 100, 3.4, 4.4),
   };
 }
 

@@ -313,7 +313,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       onChange({ w: next.w, h: next.h });
       return;
     }
-    const nextH = measureTextFieldHeightPct(contentEl, slideEl, 12 * scale);
+    const nextH = measureTextFieldHeightPct(contentEl, slideEl, 4 * scale);
     if (nextH == null) return;
     const prev = lastFitRef.current;
     if (Math.abs(nextH - prev.h) < 0.08) return;
@@ -2181,18 +2181,19 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             sx={{
               // Etwas eingerückt: Rahmen der Box bleibt ziehbar, Tippen innen.
               position: 'absolute',
-              inset: `${6 * scale}px`,
-              overflow: 'auto',
+              inset: `${2 * scale}px`,
+              overflow: 'hidden',
               outline: 'none',
               fontSize: `${textBaseFs * scale}px`,
               fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
-              lineHeight: 1.4,
-              p: `${4 * scale}px`,
+              lineHeight: 1.35,
+              p: `${2 * scale}px`,
               cursor: 'text',
               color: JOHNNY_PRESENTATION.textPrimary,
               boxSizing: 'border-box',
               textAlign: 'left',
-              '& p': { mt: 0, mr: 0, mb: `${4 * scale}px` },
+              '& p': { mt: 0, mr: 0, mb: `${2 * scale}px` },
+              '& p:last-child': { mb: 0 },
               '& p:only-child:has(> br:only-child):before': {
                 content: `"${TEXT_FIELD_PLACEHOLDER}"`,
                 color: 'rgba(0,0,0,0.28)',
@@ -2212,8 +2213,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               overflow: 'hidden',
               fontSize: `${textBaseFs * scale}px`,
               fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
-              lineHeight: 1.4,
-              p: `${4 * scale}px`,
+              lineHeight: 1.35,
+              p: `${2 * scale}px`,
               pointerEvents: animationEditMode || playLinkHitTarget ? 'auto' : 'none',
               color: JOHNNY_PRESENTATION.textPrimary,
               boxSizing: 'border-box',
@@ -2223,7 +2224,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 cursor: 'pointer',
                 touchAction: 'manipulation',
               },
-              '& p': { mt: 0, mr: 0, mb: `${4 * scale}px` },
+              '& p': { mt: 0, mr: 0, mb: `${2 * scale}px` },
+              '& p:last-child': { mb: 0 },
               '& p:only-child:has(> br:only-child):before': {
                 content: `"${TEXT_FIELD_PLACEHOLDER}"`,
                 color: 'rgba(0,0,0,0.28)',
