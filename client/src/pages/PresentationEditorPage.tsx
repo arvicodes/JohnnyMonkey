@@ -145,6 +145,7 @@ import {
   defaultColorForTool,
   lineWidthsForTool,
   toolUsesColor,
+  isInkDrawCaptureTool,
   type PresentationDrawTool,
 } from '../lib/presentationDrawTools';
 import { isRecentLeavePresentToEditor, requestPresentFullscreen } from '../lib/presentationPresentFullscreen';
@@ -660,6 +661,9 @@ const PresentationEditorPage: React.FC = () => {
   );
 
   const currentInkStrokes = annotations?.bySlideId[activeId ?? ''] ?? EMPTY_STROKES;
+  const inkUiActive = inkEditActive && !connectorDrawActive;
+  const inkDrawCapture = inkUiActive && isInkDrawCaptureTool(inkTool);
+  const showInkOverlay = inkUiActive || currentInkStrokes.length > 0;
 
   const handleToggleInkEdit = useCallback(() => {
     setInkEditActive((v) => {
@@ -696,11 +700,10 @@ const PresentationEditorPage: React.FC = () => {
   );
 
   const exitInkDrawForEditing = useCallback(() => {
-    if (!inkEditActive) return;
-    setInkEditActive(false);
-    setInkTool('select');
-    setSelectedStrokeIds([]);
-  }, [inkEditActive]);
+    if (inkEditActive && isInkDrawCaptureTool(inkTool)) {
+      setInkTool('select');
+    }
+  }, [inkEditActive, inkTool]);
 
   const handleSelectInkColor = useCallback(
     (c: string) => {
@@ -1409,7 +1412,7 @@ const PresentationEditorPage: React.FC = () => {
 
   const handleElementSelect = useCallback(
     (id: string | null) => {
-      if (inkEditActive && inkTool !== 'select') {
+      if (inkEditActive && isInkDrawCaptureTool(inkTool)) {
         setInkTool('select');
       }
       commitEditorState({ history: 'skip' });
@@ -2219,7 +2222,7 @@ const PresentationEditorPage: React.FC = () => {
   }, [copySelectedElement, pasteClipboardElement]);
 
   useEffect(() => {
-    if (!inkEditActive || inkTool === 'select') return;
+    if (!inkEditActive || !isInkDrawCaptureTool(inkTool)) return;
     const el = document.activeElement;
     if (el instanceof HTMLElement && (el.isContentEditable || el.closest('[data-pres-rich-zone]'))) {
       el.blur();
@@ -4508,7 +4511,7 @@ const PresentationEditorPage: React.FC = () => {
                     slide={normalizedActive}
                     scale={1}
                     showShadow={false}
-                    editable={!inkEditActive || inkTool === 'select'}
+                    editable={!inkDrawCapture}
                     revealStep={999}
                     revealEnabled={false}
                     animationEditMode={animationEditMode}
@@ -4544,10 +4547,13 @@ const PresentationEditorPage: React.FC = () => {
                       setSelectedElementId(null);
                     }}
                   />
+                  {showInkOverlay ? (
                   <PresentationDrawOverlay
                     strokes={currentInkStrokes}
                     onStrokesChange={updateInkStrokes}
-                    enabled={inkEditActive && !connectorDrawActive}
+                    enabled={showInkOverlay}
+                    interactive={inkDrawCapture}
+                    readOnly={!inkUiActive}
                     slideId={normalizedActive.id}
                     tool={inkTool}
                     strokeColor={inkColor}
@@ -4559,6 +4565,7 @@ const PresentationEditorPage: React.FC = () => {
                     onBackgroundPointerDown={() => setSelectedElementId(null)}
                     onHitElement={setSelectedElementId}
                   />
+                  ) : null}
                   <PresentationConnectorDrawOverlay
                     active={connectorDrawActive}
                     points={connectorDrawPoints}
