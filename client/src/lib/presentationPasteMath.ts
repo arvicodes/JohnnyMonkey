@@ -1333,16 +1333,17 @@ function collectSelectionSlices(editor: HTMLElement, range: Range): TextSlice[] 
   while ((current = walker.nextNode())) {
     const textNode = current as Text;
     if (isInsidePresentationMath(textNode)) continue;
+    let intersects = false;
+    try {
+      intersects = range.intersectsNode(textNode);
+    } catch {
+      intersects = false;
+    }
+    if (!intersects) continue;
     let start = 0;
     let end = textNode.length;
-    try {
-      if (range.comparePoint(textNode, 0) > 0) continue;
-      if (range.comparePoint(textNode, textNode.length) < 0) continue;
-      if (range.startContainer === textNode) start = range.startOffset;
-      if (range.endContainer === textNode) end = range.endOffset;
-    } catch {
-      continue;
-    }
+    if (range.startContainer === textNode) start = range.startOffset;
+    if (range.endContainer === textNode) end = range.endOffset;
     if (start >= end) continue;
     slices.push({ node: textNode, start, end, globalStart: global });
     global += end - start;
@@ -1717,16 +1718,17 @@ function collectSelectionStyleRuns(editor: HTMLElement, range: Range): TextStyle
   while ((current = walker.nextNode())) {
     const textNode = current as Text;
     if (isInsidePresentationMath(textNode)) continue;
+    let intersects = false;
+    try {
+      intersects = range.intersectsNode(textNode);
+    } catch {
+      intersects = false;
+    }
+    if (!intersects) continue;
     let start = 0;
     let end = textNode.length;
-    try {
-      if (range.comparePoint(textNode, 0) > 0) continue;
-      if (range.comparePoint(textNode, textNode.length) < 0) continue;
-      if (range.startContainer === textNode) start = range.startOffset;
-      if (range.endContainer === textNode) end = range.endOffset;
-    } catch {
-      continue;
-    }
+    if (range.startContainer === textNode) start = range.startOffset;
+    if (range.endContainer === textNode) end = range.endOffset;
     if (start >= end) continue;
     const text = (textNode.data || '').slice(start, end).replace(/\u00a0/g, ' ');
     if (!text) continue;
@@ -1912,17 +1914,18 @@ export function convertSelectedTextToPresentationMath(editor: HTMLElement | null
     return false;
   }
   const slices = collectSelectionSlices(editor, range);
-  if (!slices.length) return false;
   const styleRuns = collectSelectionStyleRuns(editor, range);
-  const text = slices
-    .map((s) => (s.node.data || '').slice(s.start, s.end).replace(/\u00a0/g, ' '))
-    .join('');
+  const text =
+    slices.length > 0
+      ? slices.map((s) => (s.node.data || '').slice(s.start, s.end).replace(/\u00a0/g, ' ')).join('')
+      : range.toString().replace(/\u00a0/g, ' ');
   if (!text.trim()) return false;
 
   const latexRuns = findLatexRuns(text);
   const hasProse = leftoverHasNormalText(text, latexRuns);
 
   if (latexRuns.length > 0 && (latexRuns.length > 1 || hasProse)) {
+    if (!slices.length) return false;
     let changed = false;
     for (let i = latexRuns.length - 1; i >= 0; i -= 1) {
       if (insertFormulaForLatexRun(editor, slices, latexRuns[i], styleRuns)) changed = true;

@@ -18,27 +18,23 @@ import {
 } from '@mui/icons-material';
 import { isPenPointer } from '../../lib/presentationDrawTools';
 import {
-  applyEditorFontSizePx,
-  ensureEditorSelection,
-  getEditorFontSizeSteps,
-  getEditorSelectionFontPx,
-  nudgeEditorFontSize,
-  stashEditorSelection,
-} from '../../lib/presentationFontSize';
-import { setFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
-import {
-  PRESENTATION_FONT_FAMILIES,
-  getEditorSelectionFontFamily,
-  presentationFontLabel,
-} from '../../lib/presentationFonts';
-import {
   convertSelectedTextToPresentationMath,
+  clearMathFormatTarget,
   mathElementsInSelection,
   placeCaretBesidePresentationMath,
   selectionIntersectsPresentationMath,
   unwrapSelectedPresentationMath,
   applyFormatToSelectedMath,
 } from '../../lib/presentationPasteMath';
+import {
+  applyEditorFontSizePx,
+  ensureEditorSelection,
+  getEditorFontSizeSteps,
+  getEditorSelectionFontPx,
+  keepEditorSelection,
+  nudgeEditorFontSize,
+  stashEditorSelection,
+} from '../../lib/presentationFontSize';
 import {
   applyFontFamily,
   applyHighlightColor,
@@ -47,7 +43,12 @@ import {
   insertPresentationPastedHtml,
   presentationPasteHtml,
 } from '../../lib/presentationRichText';
-import { isPresentationModalTypingActive } from '../../lib/presentationFormatBarGuard';
+import { isPresentationModalTypingActive, setFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
+import {
+  PRESENTATION_FONT_FAMILIES,
+  getEditorSelectionFontFamily,
+  presentationFontLabel,
+} from '../../lib/presentationFonts';
 import '../../styles/presentationLists.css';
 import {
   buildEtImgStyle,
@@ -518,13 +519,21 @@ function EntryTicketRichFieldInner({
   const handleLatexShortcut = useCallback(() => {
     const el = editorRef.current;
     if (!el || !textEditing) return;
+    setFormatBarInteracting(true);
     stashEditorSelection(el);
-    ensureEditorSelection(el);
+    if (!ensureEditorSelection(el)) {
+      window.setTimeout(() => setFormatBarInteracting(false), 0);
+      return;
+    }
+    keepEditorSelection(el);
+    clearMathFormatTarget(el);
     if (selectionIntersectsPresentationMath(el)) {
       if (unwrapSelectedPresentationMath(el)) emitChange();
+      window.setTimeout(() => setFormatBarInteracting(false), 0);
       return;
     }
     if (convertSelectedTextToPresentationMath(el)) emitChange();
+    window.setTimeout(() => setFormatBarInteracting(false), 0);
   }, [textEditing]);
 
   useEffect(() => {

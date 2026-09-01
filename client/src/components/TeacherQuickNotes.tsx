@@ -40,6 +40,7 @@ import { DialogCloseIconButton } from './ui/dialog-close-icon-button';
 import { handlePresentationListShortcutKey, handlePresentationTabKey, applyTextColor, execFormat, insertPresentationPastedHtml, presentationPasteHtml } from '../lib/presentationRichText';
 import {
   convertSelectedTextToPresentationMath,
+  clearMathFormatTarget,
   placeCaretBesidePresentationMath,
   selectionIntersectsPresentationMath,
   unwrapSelectedPresentationMath,
@@ -57,7 +58,7 @@ import {
   updateTableResizeHoverCursor,
 } from '../lib/presentationTableResize';
 import { clipboardHasImage, collectPasteImages, readImagesFromSystemClipboard, snapshotClipboardFiles } from '../lib/goodNotesClipboard';
-import { applyEditorFontSizePx, stashEditorSelection } from '../lib/presentationFontSize';
+import { applyEditorFontSizePx, ensureEditorSelection, keepEditorSelection, stashEditorSelection } from '../lib/presentationFontSize';
 import { isFormatBarInteracting, isPresentationModalTypingActive, setFormatBarInteracting } from '../lib/presentationFormatBarGuard';
 import { strokeSmoothFreehand } from '../lib/presentationDrawTools';
 import { apiGetSafe, apiPutSafe, apiPutSafeAwait } from '../lib/api';
@@ -1308,14 +1309,29 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     const editor = editorRef.current;
     if (!editor) return;
     pushHistorySnapshot();
-    stashEditorSelection(editor);
-    editor.focus({ preventScroll: true });
+    setFormatBarInteracting(true);
+    const remembered = cloneLiveNotesRange(editor) || notesSelectionRef.current;
+    if (remembered && !remembered.collapsed) {
+      notesSelectionRef.current = remembered.cloneRange();
+      stashEditorSelection(editor);
+    } else {
+      rememberNotesSelection();
+      stashEditorSelection(editor);
+    }
+    if (!ensureEditorSelection(editor)) {
+      window.setTimeout(() => setFormatBarInteracting(false), 0);
+      return;
+    }
+    keepEditorSelection(editor, notesSelectionRef.current);
+    clearMathFormatTarget(editor);
     if (selectionIntersectsPresentationMath(editor)) {
       if (unwrapSelectedPresentationMath(editor)) syncEditorToState();
+      window.setTimeout(() => setFormatBarInteracting(false), 0);
       return;
     }
     if (convertSelectedTextToPresentationMath(editor)) syncEditorToState();
-  }, [pushHistorySnapshot, syncEditorToState]);
+    window.setTimeout(() => setFormatBarInteracting(false), 0);
+  }, [pushHistorySnapshot, rememberNotesSelection, syncEditorToState]);
 
   const findNotesTable = useCallback((): HTMLTableElement | null => {
     const editor = editorRef.current;
@@ -2455,7 +2471,11 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
               <Tooltip title="LaTeX markieren → ⌘L (Formel ⇄ LaTeX)">
                 <IconButton
                   size="small"
-                  onMouseDown={(e) => e.preventDefault()}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    rememberNotesSelection();
+                    setFormatBarInteracting(true);
+                  }}
                   onClick={handleLatexShortcut}
                   sx={fmtBtnSx()}
                 >
