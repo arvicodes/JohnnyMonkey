@@ -1350,3 +1350,46 @@ export function convertLatexInEditor(editor: HTMLElement | null): boolean {
   if (mergeAdjacentPresentationMath(editor)) changed = true;
   return changed;
 }
+
+export function selectionIntersectsPresentationMath(editor: HTMLElement | null): boolean {
+  if (!editor) return false;
+  if (mathElementsInSelection(editor).length) return true;
+  return Boolean(findPresentationMathInEditor(editor));
+}
+
+/** Markierten LaTeX-Text → eine Formel. */
+export function convertSelectedTextToPresentationMath(editor: HTMLElement | null): boolean {
+  if (!editor) return false;
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return false;
+  const range = sel.getRangeAt(0);
+  try {
+    if (!editor.contains(range.commonAncestorContainer)) return false;
+  } catch {
+    return false;
+  }
+  const raw = (range.toString() || '').replace(/\u00a0/g, ' ');
+  const tex = normalizePresentationLatexSource(raw);
+  if (!tex) return false;
+  const html = renderLatexToPresentationSpan(tex, /\\begin\{|\\displaystyle/.test(tex));
+  if (!html) return false;
+  formulaInsertCaret = { editor, range: range.cloneRange() };
+  return insertHtmlAtEditorCursor(editor, html);
+}
+
+/** Markierte Formel(n) → wieder LaTeX-Text. */
+export function unwrapSelectedPresentationMath(editor: HTMLElement | null): boolean {
+  if (!editor) return false;
+  const maths = mathElementsInSelection(editor);
+  const extra = findPresentationMathInEditor(editor);
+  const targets = [...maths];
+  if (extra && !targets.includes(extra)) targets.push(extra);
+  if (!targets.length) return false;
+  targets.forEach((span) => {
+    const tex = readPresentationMathLatex(span) || (span.textContent || '').replace(/\s+/g, ' ').trim();
+    const text = editor.ownerDocument.createTextNode(tex);
+    span.replaceWith(text);
+  });
+  editor.dispatchEvent(new Event('input', { bubbles: true }));
+  return true;
+}

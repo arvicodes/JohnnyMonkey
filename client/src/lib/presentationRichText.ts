@@ -35,20 +35,15 @@ import { ensureNotesTablesFormatted, applyJohnnyTableFormatting, handleTableTabI
 import { presentationNotesImageInsertHtml, stripNotesImageChrome, releaseNotesImagesToFlow } from './presentationNotesImages';
 import {
   convertOmmlElementsInPlace,
-  convertPlainTextWithLatexToPresentationHtml,
-  extractLatexFromPastedHtml,
   hoistPastedMathHtml,
   insertHtmlAtEditorCursor,
   isInsidePresentationMath,
   isPresentationMathNode,
-  looksLikeAsciiMatrix,
-  looksLikeFormulaPlainText,
   applyFormatToSelectedMath,
   getMathFormatTarget,
   mathElementsInSelection,
   preserveEquationImagesInPlace,
 } from './presentationPasteMath';
-import { isPresentationFormulaPasteMode } from './presentationFormulaPasteMode';
 
 function selectionIsOnlyMath(editor: HTMLElement): boolean {
   const maths = mathElementsInSelection(editor);
@@ -1032,7 +1027,7 @@ export function sanitizePastedHtml(html: string, options?: PasteSanitizeOptions)
 
 /**
  * Einfügen in Folien-Editoren: HTML oder Plain-Text → bereinigt, Listen, Aptos 26, Blocksatz.
- * Formel-Modus / ChatGPT-Matrix: LaTeX und ASCII-Matrizen → MathML.
+ * LaTeX bleibt Text — Umwandeln nur per ⌘U.
  */
 export function presentationPasteHtml(
   clipboardData: DataTransfer,
@@ -1046,42 +1041,6 @@ export function presentationPasteHtml(
   const pastedText = clipboardData.getData('text/plain');
   const fontPx = options?.fontPx ?? PRESENTATION_CONTENT_FONT_PX;
   const textAlign = options?.textAlign ?? 'justify';
-  const formulaMode = options?.formulaMode ?? isPresentationFormulaPasteMode();
-
-  const finishFormulaHtml = (latexHtml: string) => {
-    if (typeof document !== 'undefined') {
-      const doc = new DOMParser().parseFromString(latexHtml, 'text/html');
-      stampDefaultPresentationFont(doc.body, fontPx, true);
-      stampSlideTextAlign(doc.body, textAlign);
-      return doc.body.innerHTML || '<p><br></p>';
-    }
-    return latexHtml;
-  };
-
-  // ChatGPT liefert oft HTML — trotzdem Formel/Matrix aus Text oder Annotation holen
-  const plainCandidate = (pastedText || '').trim();
-  const htmlLatex = pastedHtml?.trim() ? extractLatexFromPastedHtml(pastedHtml) : null;
-  const clipboardAlreadyMath = /msEquation|m:oMath|<math[\s>]|Math\/MathML|data-pres-math/i.test(
-    pastedHtml || '',
-  );
-  const latexSource =
-    (plainCandidate && (looksLikeFormulaPlainText(plainCandidate) || looksLikeAsciiMatrix(plainCandidate))
-      ? plainCandidate
-      : htmlLatex) ||
-    (formulaMode ? plainCandidate : '');
-  const wantFormula =
-    !clipboardAlreadyMath &&
-    Boolean(
-      latexSource &&
-        (formulaMode || looksLikeFormulaPlainText(latexSource) || looksLikeAsciiMatrix(latexSource)),
-    );
-
-  if (wantFormula && latexSource) {
-    const latexHtml = convertPlainTextWithLatexToPresentationHtml(latexSource);
-    if (latexHtml.includes('data-pres-math') || latexHtml.includes('pres-math')) {
-      return finishFormulaHtml(latexHtml);
-    }
-  }
 
   if (pastedHtml?.trim()) {
     return sanitizePastedHtml(pastedHtml, { slideDefaults: true, fontPx, textAlign }) || '<p><br></p>';

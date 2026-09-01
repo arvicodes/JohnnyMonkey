@@ -44,7 +44,10 @@ interface PresentationDrawOverlayProps {
   strokes: PresentationStroke[];
   onStrokesChange: (strokes: PresentationStroke[]) => void;
   readOnly?: boolean;
+  /** Canvas sichtbar (Striche) — kann ohne interaktive Eingabe sein. */
   enabled?: boolean;
+  /** Maus/Stift-Eingabe — Standard: wie `enabled`. Editor: nur bei Zeichenwerkzeugen. */
+  interactive?: boolean;
   /** Folienwechsel → Overlay übernimmt Props neu */
   slideId?: string;
   tool: PresentationDrawTool;
@@ -230,6 +233,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   onStrokesChange,
   readOnly = false,
   enabled = true,
+  interactive,
   slideId,
   tool,
   strokeColor,
@@ -265,6 +269,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   const pendingCommitRef = useRef<PresentationStroke[] | null>(null);
   const toolRef = useRef(tool);
   const enabledRef = useRef(enabled);
+  const interactiveRef = useRef(interactive ?? enabled);
   const readOnlyRef = useRef(readOnly);
   const strokeColorRef = useRef(strokeColor);
   const lineWidthRef = useRef(lineWidth);
@@ -294,6 +299,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   onStrokesChangeRef.current = onStrokesChange;
   toolRef.current = tool;
   enabledRef.current = enabled;
+  interactiveRef.current = interactive ?? enabled;
   readOnlyRef.current = readOnly;
   strokeColorRef.current = strokeColor;
   lineWidthRef.current = lineWidth;
@@ -742,7 +748,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   };
 
   const onPointerDown = (e: PointerEvent) => {
-    if (readOnlyRef.current || !enabledRef.current) return;
+    if (readOnlyRef.current || !interactiveRef.current) return;
     const t = toolRef.current;
     const canvas = e.currentTarget as HTMLCanvasElement;
 
@@ -947,7 +953,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   };
 
   const onPointerMove = (e: PointerEvent) => {
-    if (readOnlyRef.current || !enabledRef.current) return;
+    if (readOnlyRef.current || !interactiveRef.current) return;
     const t = toolRef.current;
     const chrome = chromeTapRef.current;
     if (chrome && e.pointerId === chrome.pointerId) return;
@@ -1058,7 +1064,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       return;
     }
 
-    if (readOnlyRef.current || !enabledRef.current) return;
+    if (readOnlyRef.current || !interactiveRef.current) return;
     if (inkPointerIdRef.current != null && e.pointerId !== inkPointerIdRef.current) return;
 
     try {
@@ -1143,7 +1149,8 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   // Native Pointer-Events: deutlich niedrigerer Overhead als React-Synthetic auf dem iPad
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !enabled || readOnly) return;
+    const listens = (interactive ?? enabled) && !readOnly;
+    if (!canvas || !listens) return;
 
     const opts: AddEventListenerOptions = { passive: false };
     canvas.addEventListener('pointerdown', onPointerDown, opts);
@@ -1170,10 +1177,11 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     };
     // Handler schließen über Refs — nur enable/readOnly neu binden
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, readOnly]);
+  }, [interactive, enabled, readOnly]);
 
+  const listens = (interactive ?? enabled) && !readOnly;
   const cursor =
-    readOnly || !enabled
+    readOnly || !listens
       ? 'default'
       : tool === 'select'
         ? 'grab'
@@ -1187,9 +1195,9 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
 
   const displayW = fillContainer ? '100%' : SLIDE_REF_WIDTH * scale;
   const displayH = fillContainer ? '100%' : SLIDE_REF_HEIGHT * scale;
-  const touchAction = enabled && !readOnly ? 'none' : 'auto';
-  /** Nur Zeichen-/Radier-Werkzeuge über Folien-Elemente legen — Lasso bleibt darunter (normale Maus). */
-  const stackAboveContent = enabled && !readOnly && tool !== 'select';
+  const touchAction = listens ? 'none' : 'auto';
+  /** Nur Zeichen-/Radier-Werkzeuge über Folien-Elemente legen. */
+  const stackAboveContent = listens && tool !== 'select';
 
   return (
     <canvas
@@ -1203,7 +1211,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
         height: displayH,
         touchAction,
         cursor: stackAboveContent ? cursor : 'default',
-        pointerEvents: enabled && !readOnly ? 'auto' : 'none',
+        pointerEvents: listens ? 'auto' : 'none',
         zIndex: stackAboveContent ? 48 : 2,
         WebkitUserSelect: 'none',
         userSelect: 'none',

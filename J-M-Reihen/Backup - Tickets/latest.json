@@ -952,12 +952,6 @@
             },
             {
               "category": "Eigen",
-              "prompt": "Berechne: (4321)⋅(2  3)\\begin{pmatrix}4\\\\3\\\\2\\\\1\\end{pmatrix}\\cdot(2\\;3)",
-              "solution": "3); (812694623)\\begin{pmatrix}8&12\\\\6&9\\\\4&6\\\\2&3\\end{pmatrix}",
-              "id": "q_c1666496-986e-40b0-ad32-c9a854ad66ba"
-            },
-            {
-              "category": "Eigen",
               "prompt": "Berechne: (1123581321)⋅(3455)\\begin{pmatrix}1&1&2&3\\\\5&8&13&21\\end{pmatrix}\\cdot\\begin{pmatrix}34\\\\55\\end{pmatrix}",
               "solution": "Nicht definiert.",
               "id": "q_5d4ebed4-5436-43ca-9ee1-ab9f960a19fd"
@@ -1105,13 +1099,19 @@
               "prompt": "<p>Führe durch: Die Matrix-Vektor-Multiplikation M⋅v⃗M\\cdot \\vec v mit M=\\begin{pmatrix}a_{11}&amp;a_{12}\\\\a_{21}&amp;a_{22}\\end{pmatrix},&nbsp;</p><p>\\vec v=\\begin{pmatrix}v_1\\\\v_2\\end{pmatrix}</p>",
               "solution": "(a11v1+a12v2a21v1+a22v2)\\begin{pmatrix}a_{11}v_1+a_{12}v_2\\\\a_{21}v_1+a_{22}v_2\\end{pmatrix}",
               "id": "q_a536c4a4-f6e8-4152-ba34-917d3373884d"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: (4321)⋅(2  3)\\begin{pmatrix}4\\\\3\\\\2\\\\1\\end{pmatrix}\\cdot(2\\;3)",
+              "solution": "3); (812694623)\\begin{pmatrix}8&12\\\\6&9\\\\4&6\\\\2&3\\end{pmatrix}",
+              "id": "q_c1666496-986e-40b0-ad32-c9a854ad66ba"
             }
           ]
         },
         {
           "id": "ls_msx0bpf6_1v77xc8t",
           "lessonName": "01.02 Einstieg Matrizen",
-          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.02 Einstieg Matrizen",
+          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen#01.02 Einstieg Matrizen",
           "topicName": "01 Basiswissen",
           "tasks": [
             {
@@ -1125,14 +1125,14 @@
         {
           "id": "ls_e52fef79-cf7e-44c3-b623-16120597d99b",
           "lessonName": "01.03 Definitionen",
-          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.03 Definitionen",
+          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen#01.03 Definitionen",
           "topicName": "01 Basiswissen",
           "tasks": []
         },
         {
           "id": "ls_aeb00815-81a2-48c1-ba6c-bbaa337fdb01",
           "lessonName": "01.04 Matrix mal Vektor",
-          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.04 Matrix mal Vektor",
+          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen#01.04 Matrix mal Vektor",
           "topicName": "01 Basiswissen",
           "tasks": [
             {
@@ -1146,28 +1146,21 @@
         {
           "id": "ls_b114b098-3cb1-4350-9085-6ec963e5c4d1",
           "lessonName": "01.05 Insekten und Autos",
-          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.05 Insekten und Autos",
+          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen#01.05 Insekten und Autos",
           "topicName": "01 Basiswissen",
           "tasks": []
         },
         {
           "id": "ls_32c5dfd7-d817-418c-947d-fc58f81a58e8",
           "lessonName": "01.06 Gemischtes Üben",
-          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.06 Gemischtes Üben",
+          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen#01.06 Gemischtes Üben",
           "topicName": "01 Basiswissen",
           "tasks": []
         },
         {
           "id": "ls_e696f17b-6e6e-43cb-a137-d7ee1055d4e5",
           "lessonName": "01.07 Prozesse am Fahrrad",
-          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse am Fahrrad",
-          "topicName": "01 Basiswissen",
-          "tasks": []
-        },
-        {
-          "id": "ls_d5ef8b38-f192-4931-a3a2-c58ff32fedd2",
-          "lessonName": "01.07 Prozesse Fahrrad",
-          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse Fahrrad",
+          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen#01.07 Prozesse am Fahrrad",
           "topicName": "01 Basiswissen",
           "tasks": []
         },
@@ -1189,6 +1182,13 @@
           "id": "ls_36b228a5-3274-4126-a94e-012f816ac427",
           "lessonName": "01.10 Mehrstufige Prozesse mit Schokolade",
           "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen#01.10 Mehrstufige Prozesse mit Schokolade",
+          "topicName": "01 Basiswissen",
+          "tasks": []
+        },
+        {
+          "id": "ls_d5ef8b38-f192-4931-a3a2-c58ff32fedd2",
+          "lessonName": "01.07 Prozesse Fahrrad",
+          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse Fahrrad",
           "topicName": "01 Basiswissen",
           "tasks": []
         },
@@ -1252,30 +1252,6 @@
         "git-intern/Mathe/Klasse 5"
       ],
       "notes": "Aus der Datei SMANA_AB_Alle_Kategorien_G03_012 habe ich jetz talles aus den WiWo 1 bis 12 in dem Set Allgemein eingefügt.",
-      "playInkByKey": {
-        "card:c:c_34b3cb65-9e89-436a-8c84-a8e5bf4aa09f:shared_q_0_0": [
-          {
-            "id": "s-1788243321768-ckffy",
-            "points": [
-              {
-                "x": 767.9999999999999,
-                "y": 432
-              },
-              {
-                "x": 833.5290102389079,
-                "y": 451.3371956123889
-              },
-              {
-                "x": 899.0580204778157,
-                "y": 444.8914637415926
-              }
-            ],
-            "color": "#1565c0",
-            "lineWidth": 3,
-            "mode": "pen"
-          }
-        ]
-      },
       "lessons": [
         {
           "id": "ls_4822dfb3-a9cd-4ef3-9eb9-3f170a6d7dcf",
@@ -2089,7 +2065,7 @@
             },
             {
               "category": "Eigen",
-              "prompt": "Wandle in die nächstkleinere Einheit um: 35 dm",
+              "prompt": "Wandle 35 dm in die nächstkleinere Einheit um.",
               "solution": "350 cm",
               "id": "q_791eb2b9-ae12-4a3e-98dd-e10d8132a397"
             },
@@ -2365,7 +2341,7 @@
             },
             {
               "category": "Eigen",
-              "prompt": "Bestimme: Das Polygon mit drei Seiten.",
+              "prompt": "Bestimme: Ein Polygon mit drei Seiten.",
               "solution": "Dreieck",
               "id": "q_0dc5605d-9f79-43b6-af6f-165c38b839de"
             },
@@ -2522,52 +2498,6 @@
           ]
         },
         {
-          "id": "ls_06f953fa-134d-48a4-bbe6-04c9c0789e5c",
-          "lessonName": "1.0 Zählen und Zahlen veranschaulichen",
-          "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/1.0 Zählen und Zahlen veranschaulichen",
-          "topicName": "Kap 1 - Natürliche Zahlen und Größen",
-          "tasks": [
-            {
-              "category": "Eigen",
-              "prompt": "Test",
-              "solution": "Test",
-              "id": "q_4a0ffad9-9a82-4537-a178-bc48be1386d8"
-            }
-          ]
-        },
-        {
-          "id": "ls_a5fffb7a-ccf3-457d-85d1-28d27c0531e6",
-          "lessonName": "1.1 Darstellen von Daten",
-          "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/1.1 Darstellen von Daten",
-          "topicName": "Kap 1 - Natürliche Zahlen und Größen",
-          "tasks": [
-            {
-              "category": "Eigen",
-              "prompt": "Bestimme: die Richtung der Balken im Säulendiagramm.",
-              "solution": "senkrecht",
-              "id": "q_98c70f6d-de43-41d4-a74a-1055643a8e3e"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Bestimme: die Richtung der Balken im Balkendiagramm.",
-              "solution": "waagerecht",
-              "id": "q_3fe79b04-71da-4f0c-be15-e7d7270895b4"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Merke: Säulen verlaufen ...",
-              "solution": "von unten nach oben.",
-              "id": "q_2af9ca47-514f-4f8a-af79-72b7940c0534"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Merke: Balken verlaufen ...",
-              "solution": "von links nach rechts.",
-              "id": "q_4438827e-3d02-4e09-a780-0e8b4548cdd7"
-            }
-          ]
-        },
-        {
           "id": "ls_6b81dc2f-4bd2-46d5-9da4-908e0b157ada",
           "lessonName": "1.2 Große Zahlen - Stellenwerttafel",
           "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/1.2 Große Zahlen - Stellenwerttafel",
@@ -2665,7 +2595,7 @@
             },
             {
               "category": "Eigen",
-              "prompt": "Bestimme: den Nachfolger von 100",
+              "prompt": "Bestimme den Nachfolger von 100.",
               "solution": "101",
               "id": "q_12e93729-d9a1-441c-b4af-10337f98e6cf"
             },
@@ -2773,7 +2703,7 @@
             },
             {
               "category": "Eigen",
-              "prompt": "Bestimme: den Wert der Ziffer 8 in 5 824",
+              "prompt": "Bestimme den Wert der Ziffer 8 in 5 824.",
               "solution": "800",
               "id": "q_66135089-95f0-4358-8e1e-de692cd6cb72"
             },
@@ -2929,6 +2859,38 @@
           "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen#1.0 Kennenlernen und Orga",
           "topicName": "Kap 1 - Natürliche Zahlen und Größen",
           "tasks": []
+        },
+        {
+          "id": "ls_a5fffb7a-ccf3-457d-85d1-28d27c0531e6",
+          "lessonName": "1.1 Darstellen von Daten",
+          "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen#1.1 Darstellen von Daten",
+          "topicName": "Kap 1 - Natürliche Zahlen und Größen",
+          "tasks": [
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: die Richtung der Balken im Säulendiagramm.",
+              "solution": "senkrecht",
+              "id": "q_98c70f6d-de43-41d4-a74a-1055643a8e3e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: die Richtung der Balken im Balkendiagramm.",
+              "solution": "waagerecht",
+              "id": "q_3fe79b04-71da-4f0c-be15-e7d7270895b4"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Merke: Säulen verlaufen ...",
+              "solution": "von unten nach oben.",
+              "id": "q_2af9ca47-514f-4f8a-af79-72b7940c0534"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Merke: Balken verlaufen ...",
+              "solution": "von links nach rechts.",
+              "id": "q_4438827e-3d02-4e09-a780-0e8b4548cdd7"
+            }
+          ]
         },
         {
           "id": "ls_7b21749f-3dcb-4203-9f02-df43d4317e31",
@@ -3116,6 +3078,20 @@
           "tasks": []
         },
         {
+          "id": "ls_06f953fa-134d-48a4-bbe6-04c9c0789e5c",
+          "lessonName": "1.0 Zählen und Zahlen veranschaulichen",
+          "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/1.0 Zählen und Zahlen veranschaulichen",
+          "topicName": "Kap 1 - Natürliche Zahlen und Größen",
+          "tasks": [
+            {
+              "category": "Eigen",
+              "prompt": "Test",
+              "solution": "<p><b>Test</b></p>",
+              "id": "q_4a0ffad9-9a82-4537-a178-bc48be1386d8"
+            }
+          ]
+        },
+        {
           "id": "ls_c9d72438-f2fe-4f6f-8493-225ae17e3fb2",
           "lessonName": "Für später",
           "lessonKey": "__fuer_spaeter__",
@@ -3162,6 +3138,6 @@
       ]
     }
   ],
-  "savedAt": "2026-09-01T06:16:30.997Z",
+  "savedAt": "2026-09-01T06:22:20.027Z",
   "teacherId": "01ed6e10-397e-446c-9254-2ad7fd4ec777"
 }

@@ -50,20 +50,9 @@ import {
 } from '@mui/icons-material';
 import { HIGHLIGHT_PRESETS, TEXT_COLOR_PRESETS } from '../../lib/presentationTheme';
 import {
-  FORMULA_PASTE_MODE_EVENT,
-  isPresentationFormulaPasteMode,
-  setPresentationFormulaPasteMode,
-} from '../../lib/presentationFormulaPasteMode';
-import {
-  findPresentationMathInEditor,
-  insertPresentationFormulaAtCursor,
-  rememberFormulaInsertCaret,
-  readPresentationMathLatex,
-  renderPresentationMathHtml,
-  replacePresentationMathElement,
-  setMathFormatTarget,
-  clearMathFormatTarget,
-  mathFormatNodeFromEvent,
+  convertSelectedTextToPresentationMath,
+  selectionIntersectsPresentationMath,
+  unwrapSelectedPresentationMath,
 } from '../../lib/presentationPasteMath';
 import { setFormatBarInteracting, isPresentationModalTypingActive } from '../../lib/presentationFormatBarGuard';
 import {
@@ -193,13 +182,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   const [browseFiles, setBrowseFiles] = useState<LessonFolderFsItem[]>([]);
   const [browseLoading, setBrowseLoading] = useState(false);
   const [browseError, setBrowseError] = useState<string | null>(null);
-  const [formulaPasteMode, setFormulaPasteMode] = useState(() => isPresentationFormulaPasteMode());
-  const [formulaDialogOpen, setFormulaDialogOpen] = useState(false);
-  const [formulaLatex, setFormulaLatex] = useState('');
-  const [formulaEditTarget, setFormulaEditTarget] = useState<HTMLElement | null>(null);
-  const [formulaNoSource, setFormulaNoSource] = useState(false);
-  const formulaEditTargetRef = useRef<HTMLElement | null>(null);
-  const formulaInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const [latexChip, setLatexChip] = useState<{ top: number; left: number } | null>(null);
   const [selectedLessonFile, setSelectedLessonFile] = useState<string>('');
   const [selectedFileMeta, setSelectedFileMeta] = useState<LessonFolderFsItem | null>(null);
   const linkRangeRef = useRef<Range | null>(null);
@@ -209,20 +192,9 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     Boolean(emojiAnchor) ||
     Boolean(tableAnchor) ||
     Boolean(olStyleAnchor) ||
-    linkDialogOpen ||
-    formulaDialogOpen;
+    linkDialogOpen;
   const formatMenuOpenRef = useRef(formatMenuOpen);
   formatMenuOpenRef.current = formatMenuOpen;
-
-  useEffect(() => {
-    const sync = () => setFormulaPasteMode(isPresentationFormulaPasteMode());
-    window.addEventListener(FORMULA_PASTE_MODE_EVENT, sync);
-    window.addEventListener('storage', sync);
-    return () => {
-      window.removeEventListener(FORMULA_PASTE_MODE_EVENT, sync);
-      window.removeEventListener('storage', sync);
-    };
-  }, []);
 
   const isNotesEditor = Boolean(
     activeEditor?.getAttribute('data-pres-notes-zone') === 'true' || contextLabel === 'Notizen',
@@ -333,6 +305,70 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     releaseFormatBarInteraction();
   };
 
+  const hideLatexChip = useCallback(() => setLatexChip(null), []);
+
+  const handleLatexShortcut = useCallback(() => {
+    if (!activeEditor || disabled) return;
+    stashEditorSelection(activeEditor);
+    if (selectionIntersectsPresentationMath(activeEditor)) {
+      if (unwrapSelectedPresentationMath(activeEditor)) {
+        hideLatexChip();
+        onEditorChanged?.();
+        onMessage?.('Formel wieder als LaTeX');
+      }
+      return;
+    }
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed || !(sel.toString() || '').trim()) {
+      onMessage?.('LaTeX markieren, dann ⌘U');
+      return;
+    }
+    try {
+      const rect = sel.getRangeAt(0).getBoundingClientRect();
+      const left = Math.max(8, Math.min(rect.left, window.innerWidth - 120));
+      const top = Math.min(rect.bottom + 8, window.innerHeight - 48);
+      setLatexChip({ top: Math.max(8, top), left });
+      setFormatBarInteracting(true);
+    } catch {
+      onMessage?.('Markierung konnte nicht gelesen werden');
+    }
+  }, [activeEditor, disabled, hideLatexChip, onEditorChanged, onMessage]);
+
+  const applyLatexConvert = useCallback(() => {
+    if (!activeEditor) return;
+    setFormatBarInteracting(true);
+    stashEditorSelection(activeEditor);
+    keepEditorSelection(activeEditor);
+    if (!convertSelectedTextToPresentationMath(activeEditor)) {
+      onMessage?.('LaTeX konnte nicht umgewandelt werden');
+      hideLatexChip();
+      setFormatBarInteracting(false);
+      return;
+    }
+    hideLatexChip();
+    onEditorChanged?.();
+    onMessage?.('Formel umgewandelt');
+    setFormatBarInteracting(false);
+  }, [activeEditor, hideLatexChip, onEditorChanged, onMessage]);
+
+  useEffect(() => {
+    if (!latexChip) return undefined;
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t?.closest('[data-pres-latex-chip]')) return;
+      hideLatexChip();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') hideLatexChip();
+    };
+    window.addEventListener('pointerdown', onDown, true);
+    window.addEventListener('keydown', onKey, true);
+    return () => {
+      window.removeEventListener('pointerdown', onDown, true);
+      window.removeEventListener('keydown', onKey, true);
+    };
+  }, [latexChip, hideLatexChip]);
+
   useEffect(() => {
     if (disabled || !activeEditor) return undefined;
     const editor = activeEditor;
@@ -365,7 +401,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
       if (key === 'u' && !e.shiftKey) {
         e.preventDefault();
         e.stopPropagation();
-        applyAndNotify(() => execFormat(editor, 'underline'));
+        handleLatexShortcut();
         return;
       }
       if (key === 'x' && e.shiftKey) {
@@ -378,7 +414,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     return () => window.removeEventListener('keydown', onKeyDown, true);
     // applyAndNotify closes over the current editor; rebind when it changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeEditor, disabled]);
+  }, [activeEditor, disabled, handleLatexShortcut]);
 
   const preventToolbarFocus = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -416,120 +452,6 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     setSelectedFileMeta(null);
     setFormatBarInteracting(false);
   }, []);
-
-  const closeFormulaDialog = useCallback(() => {
-    setFormulaDialogOpen(false);
-    setFormulaLatex('');
-    setFormulaEditTarget(null);
-    formulaEditTargetRef.current = null;
-    setFormulaNoSource(false);
-    setFormatBarInteracting(false);
-  }, []);
-
-  const openFormulaDialog = useCallback(
-    (target?: HTMLElement | null) => {
-      if (!activeEditor || disabled || isNotesEditor) return;
-      rememberFormulaInsertCaret(activeEditor);
-      setFormatBarInteracting(true);
-      stashEditorSelection(activeEditor);
-      const math = target ?? findPresentationMathInEditor(activeEditor);
-      if (math) {
-        const src = readPresentationMathLatex(math);
-        setFormulaEditTarget(math);
-        formulaEditTargetRef.current = math;
-        setFormulaLatex(src);
-        setFormulaNoSource(!math.getAttribute('data-pres-latex') && math.getAttribute('data-pres-math') !== 'img');
-      } else {
-        setFormulaEditTarget(null);
-        formulaEditTargetRef.current = null;
-        setFormulaLatex('');
-        setFormulaNoSource(false);
-      }
-      window.getSelection()?.removeAllRanges();
-      activeEditor.blur();
-      setFormulaDialogOpen(true);
-    },
-    [activeEditor, disabled, isNotesEditor],
-  );
-
-  const applyFormulaDialog = useCallback(() => {
-    if (!activeEditor) return;
-    const latex = formulaLatex.trim();
-    if (!latex) {
-      onMessage?.('Bitte LaTeX eingeben (z. B. \\frac{a}{b})');
-      return;
-    }
-    const target = formulaEditTargetRef.current;
-    if (target && activeEditor.contains(target)) {
-      const next = replacePresentationMathElement(target, latex);
-      if (!next) {
-        onMessage?.('Formel konnte nicht gerendert werden — LaTeX prüfen');
-        return;
-      }
-    } else if (!insertPresentationFormulaAtCursor(activeEditor, latex)) {
-      onMessage?.('Formel konnte nicht eingefügt werden');
-      return;
-    }
-    activeEditor.dispatchEvent(new Event('input', { bubbles: true }));
-    onEditorChanged?.();
-    closeFormulaDialog();
-    onMessage?.(target ? 'Formel aktualisiert' : 'Formel eingefügt');
-  }, [activeEditor, formulaLatex, closeFormulaDialog, onEditorChanged, onMessage]);
-
-  const deleteFormulaFromDialog = useCallback(() => {
-    const target = formulaEditTargetRef.current;
-    if (!target || !activeEditor?.contains(target)) return;
-    target.remove();
-    activeEditor.dispatchEvent(new Event('input', { bubbles: true }));
-    onEditorChanged?.();
-    closeFormulaDialog();
-    onMessage?.('Formel entfernt');
-  }, [activeEditor, closeFormulaDialog, onEditorChanged, onMessage]);
-
-  useEffect(() => {
-    if (!formulaDialogOpen) return;
-    const t = window.setTimeout(() => {
-      const el = formulaInputRef.current;
-      if (!el) return;
-      el.focus({ preventScroll: true });
-      el.setSelectionRange(el.value.length, el.value.length);
-    }, 80);
-    return () => window.clearTimeout(t);
-  }, [formulaDialogOpen]);
-
-  useEffect(() => {
-    if (!activeEditor || disabled || isNotesEditor) return;
-    const onClick = (e: MouseEvent) => {
-      const node = mathFormatNodeFromEvent(e.target);
-      if (!node || !activeEditor.contains(node)) {
-        clearMathFormatTarget(activeEditor);
-        return;
-      }
-      e.preventDefault();
-      e.stopPropagation();
-      setMathFormatTarget(activeEditor, node);
-      syncFormatting();
-    };
-    const onDblClick = (e: MouseEvent) => {
-      const math = (e.target as HTMLElement | null)?.closest('[data-pres-math]') as HTMLElement | null;
-      if (!math || !activeEditor.contains(math)) return;
-      e.preventDefault();
-      e.stopPropagation();
-      openFormulaDialog(math);
-    };
-    activeEditor.addEventListener('click', onClick);
-    activeEditor.addEventListener('dblclick', onDblClick);
-    return () => {
-      activeEditor.removeEventListener('click', onClick);
-      activeEditor.removeEventListener('dblclick', onDblClick);
-    };
-  }, [activeEditor, disabled, isNotesEditor, openFormulaDialog, syncFormatting]);
-
-  const formulaPreviewHtml = useMemo(() => {
-    const trimmed = formulaLatex.trim();
-    if (!trimmed) return '';
-    return renderPresentationMathHtml(trimmed) || '';
-  }, [formulaLatex]);
 
   const captureLinkSelection = useCallback(() => {
     if (!activeEditor) {
@@ -742,7 +664,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
           </IconButton>
         </span>
       </Tooltip>
-      <Tooltip title={`Unterstrichen (${MOD_LABEL}+U)`}>
+      <Tooltip title="Unterstrichen">
         <span>
           <IconButton size="small" disabled={disabled || !activeEditor} sx={btnSx} onMouseDown={(e) => e.preventDefault()} onClick={() => applyAndNotify(() => execFormat(activeEditor, 'underline'))}>
             <FormatUnderlined sx={{ fontSize: 17 }} />
@@ -794,38 +716,17 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         </span>
       </Tooltip>
 
-      <Tooltip
-        title="LaTeX einfügen (markieren oder klicken). Einfügen mit ⌘V wird erkannt. Doppelklick: bearbeiten"
-      >
+      <Tooltip title="LaTeX markieren, ⌘U → Umwandeln. Formel markieren, ⌘U → wieder LaTeX">
         <span>
           <IconButton
             size="small"
-            disabled={disabled || !activeEditor || isNotesEditor}
-            sx={{
-              ...btnSx,
-              color: formulaPasteMode ? '#1565C0' : btnSx.color,
-              bgcolor: formulaPasteMode ? 'rgba(21,101,192,0.12)' : 'transparent',
-            }}
+            disabled={disabled || !activeEditor}
+            sx={btnSx}
             onMouseDown={(e) => {
               e.preventDefault();
-              rememberFormulaInsertCaret(activeEditor);
+              stashEditorSelection(activeEditor);
             }}
-            onClick={(e) => {
-              if (e.shiftKey) {
-                openFormulaDialog();
-                return;
-              }
-              const selected = (window.getSelection()?.toString() || '').trim();
-              if (selected && activeEditor) {
-                rememberFormulaInsertCaret(activeEditor);
-                if (insertPresentationFormulaAtCursor(activeEditor, selected)) {
-                  onEditorChanged?.();
-                  onMessage?.('Formel eingefügt');
-                  return;
-                }
-              }
-              openFormulaDialog();
-            }}
+            onClick={() => handleLatexShortcut()}
           >
             <FunctionsIcon sx={{ fontSize: 17 }} />
           </IconButton>
@@ -1801,109 +1702,30 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         </DialogActions>
       </Dialog>
 
-      <Dialog
-        open={formulaDialogOpen}
-        onClose={closeFormulaDialog}
-        maxWidth="xs"
-        fullWidth
-        data-pres-formula-dialog
-        data-open={formulaDialogOpen ? 'true' : 'false'}
-        PaperProps={{ 'data-presentation-format-ui': 'true', 'data-pres-formula-dialog': 'true' }}
-        TransitionProps={{
-          onEntered: () => {
-            activeEditor?.blur();
-            formulaInputRef.current?.focus({ preventScroll: true });
-          },
-        }}
-      >
-        <DialogTitle sx={{ py: 0.75, px: 1.5, fontSize: 14, fontWeight: 700 }}>
-          {formulaEditTarget ? 'Formel bearbeiten' : 'Formel einfügen'}
-        </DialogTitle>
-        <DialogContent
-          sx={{ px: 1.5, pt: 0, pb: 1 }}
-          onMouseDown={(e) => e.stopPropagation()}
+      {latexChip ? (
+        <Box
+          data-pres-latex-chip
+          data-presentation-format-ui="true"
+          sx={{
+            position: 'fixed',
+            top: latexChip.top,
+            left: latexChip.left,
+            zIndex: 20000,
+            boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
+            borderRadius: 1,
+          }}
         >
-          {formulaNoSource ? (
-            <Typography sx={{ fontSize: 10, color: '#666', mb: 0.75, lineHeight: 1.35 }}>
-              Keine gespeicherte LaTeX-Quelle (Word/PP). Neue Eingabe ersetzt die Darstellung.
-            </Typography>
-          ) : null}
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 96px', gap: 1, alignItems: 'stretch' }}>
-            <Box
-              component="textarea"
-              ref={formulaInputRef}
-              value={formulaLatex}
-              onChange={(e) => setFormulaLatex(e.target.value)}
-              onKeyDown={(e) => {
-                e.stopPropagation();
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                  e.preventDefault();
-                  applyFormulaDialog();
-                }
-              }}
-              placeholder="LaTeX, z. B. \frac{a}{b}"
-              rows={3}
-              spellCheck={false}
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="off"
-              sx={{
-                width: '100%',
-                resize: 'vertical',
-                minHeight: 56,
-                maxHeight: 140,
-                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-                fontSize: 12,
-                lineHeight: 1.45,
-                p: 1,
-                border: '1px solid #ccc',
-                borderRadius: 1,
-                outline: 'none',
-                '&:focus': { borderColor: '#1565C0', boxShadow: '0 0 0 1px #1565C0' },
-              }}
-            />
-            <Box
-              sx={{
-                border: '1px solid #ddd',
-                borderRadius: 1,
-                bgcolor: '#fafafa',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                px: 0.5,
-                minHeight: 56,
-                overflow: 'hidden',
-              }}
-              dangerouslySetInnerHTML={{
-                __html: formulaPreviewHtml || '<span style="color:#bbb;font-size:11px">Vorschau</span>',
-              }}
-            />
-          </Box>
-          <Typography sx={{ fontSize: 9, color: '#888', mt: 0.75 }}>
-            ⌘/Strg+Enter übernehmen · ohne $-Zeichen
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 1.5, py: 0.75, gap: 0.5, minHeight: 0 }}>
-          {formulaEditTarget ? (
-            <Button
-              size="small"
-              color="error"
-              onClick={deleteFormulaFromDialog}
-              sx={{ textTransform: 'none', fontSize: 12, mr: 'auto' }}
-            >
-              Entfernen
-            </Button>
-          ) : (
-            <Box sx={{ mr: 'auto' }} />
-          )}
-          <Button size="small" onClick={closeFormulaDialog} sx={{ textTransform: 'none', fontSize: 12 }}>
-            Abbrechen
+          <Button
+            size="small"
+            variant="contained"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={applyLatexConvert}
+            sx={{ textTransform: 'none', fontSize: 12, px: 1.25, py: 0.25, minHeight: 28 }}
+          >
+            Umwandeln
           </Button>
-          <Button size="small" variant="contained" onClick={applyFormulaDialog} sx={{ textTransform: 'none', fontSize: 12 }}>
-            OK
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
+      ) : null}
     </Box>
   );
 };

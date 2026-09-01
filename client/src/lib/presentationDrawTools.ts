@@ -97,6 +97,11 @@ export function isShapeTool(tool: PresentationDrawTool): boolean {
   return tool.startsWith('shape-');
 }
 
+/** Stift/Marker/Formen/Radierer — Overlay fängt Eingabe ab (nicht Lasso). */
+export function isInkDrawCaptureTool(tool: PresentationDrawTool): boolean {
+  return tool === 'pen' || tool === 'marker' || tool === 'eraser' || isShapeTool(tool);
+}
+
 function hexToRgba(hex: string, alpha: number): string {
   const h = hex.replace('#', '').trim();
   if (h.length !== 6) return `rgba(200,80,80,${alpha})`;
