@@ -122,13 +122,14 @@ export function formatSlideAudioDuration(ms?: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export function slideAudioUrl(track?: SlideAudioTrack | null): string {
+export function slideAudioUrl(track?: SlideAudioTrack | null, opts?: { video?: boolean }): string {
   const raw = track?.path?.trim();
   if (!raw) return '';
   if (/^https?:\/\//i.test(raw) || raw.startsWith('/api/')) return raw;
   const portable = portableSlideMediaPath(raw);
   const qs = new URLSearchParams({ filePath: portable || raw });
   if (track?.recordedAt) qs.set('t', track.recordedAt);
+  if (opts?.video) qs.set('kind', 'video');
   return `/api/file-system-paths/read-audio?${qs.toString()}`;
 }
 

@@ -1,16 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Box, Button, CircularProgress, IconButton, Tooltip, Typography } from '@mui/material';
+import { Box, Button, CircularProgress, Dialog, DialogContent, DialogTitle, IconButton, Tooltip, Typography } from '@mui/material';
 import {
   Close as CloseIcon,
   DeleteOutline as DeleteIcon,
   Mic as MicIcon,
-  Pause as PauseIcon,
-  PlayArrow as PlayIcon,
-  Stop as StopIcon,
   Videocam as VideocamIcon,
 } from '@mui/icons-material';
 import type { SlideAudioTrack } from '../../lib/presentationDeck';
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
+import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-icon-button';
 import {
   formatSlideAudioDuration,
   openMicStream,
@@ -45,11 +43,16 @@ type PresentationSlideAudioRecorderProps = {
 
 const BTN = {
   textTransform: 'none' as const,
-  fontWeight: 800,
-  fontSize: 12,
-  minHeight: 30,
-  px: 1.25,
-  borderRadius: 1.25,
+  fontWeight: 700,
+  fontSize: 11,
+  minHeight: 22,
+  minWidth: 0,
+  width: 'auto',
+  flexShrink: 0,
+  lineHeight: 1.1,
+  px: 0.85,
+  py: 0,
+  borderRadius: 1,
 };
 
 export default function PresentationSlideAudioRecorder({
@@ -69,6 +72,7 @@ export default function PresentationSlideAudioRecorder({
   const [session, setSession] = useState<Session>('idle');
   const [elapsedMs, setElapsedMs] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [playerOpen, setPlayerOpen] = useState(false);
   const [error, setError] = useState('');
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -80,13 +84,15 @@ export default function PresentationSlideAudioRecorder({
   const segmentStartedAtRef = useRef(0);
   const sessionRef = useRef<Session>('idle');
   const mediaRef = useRef<HTMLMediaElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const tickRef = useRef<number | null>(null);
   const aliveRef = useRef(true);
   const pauseOk = slideAudioPauseSupported();
   const screenOk = slideScreenIsSupported();
   const track = kind === 'screen' ? screenTrack : audioTrack;
-  const src = slideAudioUrl(track);
-  const maxMs = kind === 'screen' ? SLIDE_SCREEN_MAX_MS : SLIDE_AUDIO_MAX_MS;
+  const audioSrc = slideAudioUrl(audioTrack);
+  const screenSrc = slideAudioUrl(screenTrack, { video: true });
+  const src = kind === 'screen' ? screenSrc : audioSrc;
 
   sessionRef.current = session;
   kindRef.current = kind;
@@ -128,10 +134,17 @@ export default function PresentationSlideAudioRecorder({
 
   const stopPlayback = useCallback(() => {
     const media = mediaRef.current;
-    if (!media) return;
-    media.pause();
-    media.currentTime = 0;
+    if (media) {
+      media.pause();
+      media.currentTime = 0;
+    }
+    const video = videoRef.current;
+    if (video) {
+      video.pause();
+      video.currentTime = 0;
+    }
     setPlaying(false);
+    setPlayerOpen(false);
   }, []);
 
   const report = useCallback(
@@ -348,6 +361,7 @@ export default function PresentationSlideAudioRecorder({
 
   useEffect(() => {
     setPlaying(false);
+    setPlayerOpen(false);
     const media = mediaRef.current;
     if (media) {
       media.pause();
@@ -356,8 +370,13 @@ export default function PresentationSlideAudioRecorder({
   }, [src, kind]);
 
   const togglePlay = () => {
+    if (kind === 'screen') {
+      if (!screenSrc) return;
+      setPlayerOpen(true);
+      return;
+    }
     const media = mediaRef.current;
-    if (!media || !src) return;
+    if (!media || !audioSrc) return;
     if (playing) {
       media.pause();
       setPlaying(false);
@@ -372,6 +391,15 @@ export default function PresentationSlideAudioRecorder({
       });
   };
 
+  const closePlayer = () => {
+    const video = videoRef.current;
+    if (video) {
+      video.pause();
+    }
+    setPlayerOpen(false);
+    setPlaying(false);
+  };
+
   const busy = session === 'saving' || session === 'requesting';
   const live = session === 'recording' || session === 'paused';
   const hasTrack = Boolean(track?.path);
@@ -379,41 +407,29 @@ export default function PresentationSlideAudioRecorder({
   const kindLocked = live || busy;
 
   return (
+    <>
     <Box
       sx={{
         flexShrink: 0,
         display: 'flex',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: 0.75,
-        px: 1.25,
-        py: 0.75,
+        gap: 0.45,
+        px: 1,
+        py: 0.35,
         bgcolor: session === 'recording' ? 'rgba(211,47,47,0.08)' : session === 'paused' ? 'rgba(255,152,0,0.1)' : '#fff',
         borderBottom: `1px solid ${PRES_EDITOR_UI.barBorder}`,
       }}
     >
-      {src && kind === 'audio' ? (
+      {audioSrc && kind === 'audio' ? (
         <audio
           ref={(el) => {
             mediaRef.current = el;
           }}
-          src={src}
+          src={audioSrc}
           preload="metadata"
           onEnded={() => setPlaying(false)}
           onPause={() => setPlaying(false)}
-        />
-      ) : null}
-      {src && kind === 'screen' ? (
-        <video
-          ref={(el) => {
-            mediaRef.current = el;
-          }}
-          src={src}
-          preload="metadata"
-          playsInline
-          onEnded={() => setPlaying(false)}
-          onPause={() => setPlaying(false)}
-          style={{ width: 72, height: 40, borderRadius: 4, background: '#111', objectFit: 'cover' }}
         />
       ) : null}
 
@@ -422,7 +438,7 @@ export default function PresentationSlideAudioRecorder({
           display: 'flex',
           alignItems: 'center',
           border: `1px solid ${PRES_EDITOR_UI.barBorder}`,
-          borderRadius: 1.25,
+          borderRadius: 1,
           overflow: 'hidden',
           opacity: kindLocked ? 0.55 : 1,
           pointerEvents: kindLocked ? 'none' : 'auto',
@@ -433,7 +449,6 @@ export default function PresentationSlideAudioRecorder({
           onClick={() => setKind('audio')}
           sx={{
             ...BTN,
-            minHeight: 28,
             borderRadius: 0,
             bgcolor: kind === 'audio' ? PRES_EDITOR_UI.accentSoft : 'transparent',
             color: kind === 'audio' ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
@@ -447,7 +462,6 @@ export default function PresentationSlideAudioRecorder({
           onClick={() => setKind('screen')}
           sx={{
             ...BTN,
-            minHeight: 28,
             borderRadius: 0,
             bgcolor: kind === 'screen' ? PRES_EDITOR_UI.accentSoft : 'transparent',
             color: kind === 'screen' ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
@@ -457,49 +471,44 @@ export default function PresentationSlideAudioRecorder({
         </Button>
       </Box>
 
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, mr: 0.5 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
         {kind === 'screen' ? (
-          <VideocamIcon sx={{ fontSize: 18, color: session === 'recording' ? '#c62828' : PRES_EDITOR_UI.accent }} />
+          <VideocamIcon sx={{ fontSize: 14, color: session === 'recording' ? '#c62828' : PRES_EDITOR_UI.accent }} />
         ) : (
-          <MicIcon sx={{ fontSize: 18, color: session === 'recording' ? '#c62828' : PRES_EDITOR_UI.accent }} />
+          <MicIcon sx={{ fontSize: 14, color: session === 'recording' ? '#c62828' : PRES_EDITOR_UI.accent }} />
         )}
-        <Typography sx={{ fontSize: 12, fontWeight: 800, color: PRES_EDITOR_UI.text }}>
-          {session === 'recording'
-            ? 'Aufnahme läuft'
-            : session === 'paused'
-              ? 'Pause'
-              : session === 'requesting'
-                ? kind === 'screen'
-                  ? 'Fenster wählen…'
-                  : 'Mikrofon…'
-                : session === 'saving'
-                  ? 'Speichern…'
-                  : kind === 'screen'
-                    ? 'Bildschirm'
-                    : 'Einsprechen'}
-        </Typography>
         <Typography
           sx={{
-            fontSize: 13,
+            fontSize: 11,
             fontWeight: 800,
             fontVariantNumeric: 'tabular-nums',
             color: session === 'recording' ? '#c62828' : PRES_EDITOR_UI.text,
-            minWidth: 40,
+            minWidth: 34,
           }}
         >
           {formatSlideAudioDuration(live ? elapsedMs : track?.durationMs)}
         </Typography>
+        {session === 'requesting' || session === 'saving' || session === 'paused' ? (
+          <Typography sx={{ fontSize: 11, fontWeight: 700, color: PRES_EDITOR_UI.textMuted }}>
+            {session === 'paused'
+              ? 'Pause'
+              : session === 'requesting'
+                ? kind === 'screen'
+                  ? 'Fenster…'
+                  : 'Mikro…'
+                : 'Speichern…'}
+          </Typography>
+        ) : null}
       </Box>
 
       {session === 'requesting' || session === 'saving' ? (
-        <CircularProgress size={16} sx={{ color: PRES_EDITOR_UI.accent }} />
+        <CircularProgress size={12} sx={{ color: PRES_EDITOR_UI.accent }} />
       ) : live ? (
         <>
           {pauseOk && session === 'recording' ? (
             <Button
               size="small"
               variant="outlined"
-              startIcon={<PauseIcon sx={{ fontSize: 16 }} />}
               onClick={pauseRecording}
               sx={{ ...BTN, borderColor: '#fb8c00', color: '#e65100' }}
             >
@@ -510,7 +519,6 @@ export default function PresentationSlideAudioRecorder({
             <Button
               size="small"
               variant="contained"
-              startIcon={<PlayIcon sx={{ fontSize: 16 }} />}
               onClick={resumeRecording}
               sx={{ ...BTN, bgcolor: PRES_EDITOR_UI.accent, '&:hover': { bgcolor: '#2e7d32' } }}
             >
@@ -520,7 +528,6 @@ export default function PresentationSlideAudioRecorder({
           <Button
             size="small"
             variant="contained"
-            startIcon={<StopIcon sx={{ fontSize: 16 }} />}
             onClick={finish}
             sx={{ ...BTN, bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' } }}
           >
@@ -533,9 +540,6 @@ export default function PresentationSlideAudioRecorder({
             size="small"
             variant="contained"
             disabled={disabled || busy || (kind === 'screen' && !screenOk)}
-            startIcon={
-              kind === 'screen' ? <VideocamIcon sx={{ fontSize: 16 }} /> : <MicIcon sx={{ fontSize: 16 }} />
-            }
             onClick={() => void startRecording()}
             sx={{ ...BTN, bgcolor: '#d32f2f', '&:hover': { bgcolor: '#b71c1c' } }}
           >
@@ -547,11 +551,10 @@ export default function PresentationSlideAudioRecorder({
                 size="small"
                 variant="outlined"
                 disabled={disabled}
-                startIcon={playing ? <PauseIcon sx={{ fontSize: 16 }} /> : <PlayIcon sx={{ fontSize: 16 }} />}
                 onClick={togglePlay}
                 sx={{ ...BTN, borderColor: PRES_EDITOR_UI.accent, color: PRES_EDITOR_UI.accent }}
               >
-                {playing ? 'Pause' : 'Abspielen'}
+                {kind === 'screen' ? 'Ansehen' : playing ? 'Pause' : 'Abspielen'}
               </Button>
               <Tooltip title="Aufnahme löschen">
                 <IconButton
@@ -563,9 +566,9 @@ export default function PresentationSlideAudioRecorder({
                     if (kind === 'screen') onScreenChange(undefined, slideId);
                     else onAudioChange(undefined, slideId);
                   }}
-                  sx={{ color: PRES_EDITOR_UI.textMuted }}
+                  sx={{ color: PRES_EDITOR_UI.textMuted, p: 0.25 }}
                 >
-                  <DeleteIcon sx={{ fontSize: 18 }} />
+                  <DeleteIcon sx={{ fontSize: 16 }} />
                 </IconButton>
               </Tooltip>
             </>
@@ -574,12 +577,8 @@ export default function PresentationSlideAudioRecorder({
       )}
 
       {error ? (
-        <Typography sx={{ fontSize: 11, fontWeight: 600, color: '#c62828', flex: '1 1 160px' }}>
+        <Typography sx={{ fontSize: 11, fontWeight: 600, color: '#c62828', flex: '1 1 140px' }}>
           {error}
-        </Typography>
-      ) : !live && kind === 'screen' ? (
-        <Typography sx={{ fontSize: 11, color: PRES_EDITOR_UI.textMuted }}>
-          Fenster oder Tab wählen — Stimme wird mit aufgenommen. Max. {Math.round(maxMs / 60000)} Min.
         </Typography>
       ) : null}
 
@@ -588,11 +587,31 @@ export default function PresentationSlideAudioRecorder({
           size="small"
           onClick={onClose}
           aria-label="Aufnahmeleiste schließen"
-          sx={{ ml: 'auto', color: PRES_EDITOR_UI.textMuted }}
+          sx={{ ml: 'auto', color: PRES_EDITOR_UI.textMuted, p: 0.25 }}
         >
-          <CloseIcon sx={{ fontSize: 18 }} />
+          <CloseIcon sx={{ fontSize: 16 }} />
         </IconButton>
       ) : null}
     </Box>
+
+    <Dialog open={playerOpen} onClose={closePlayer} maxWidth="md" fullWidth>
+      <DialogTitle sx={{ ...dialogCloseTitleSx, fontSize: 16, fontWeight: 800, py: 1.25 }}>
+        Bildschirm-Aufnahme
+        <DialogCloseIconButton onClose={closePlayer} />
+      </DialogTitle>
+      <DialogContent sx={{ pt: 0, pb: 2, px: 2 }}>
+        {screenSrc ? (
+          <video
+            ref={videoRef}
+            src={screenSrc}
+            controls
+            autoPlay
+            playsInline
+            style={{ width: '100%', maxHeight: '70vh', background: '#111', borderRadius: 8, display: 'block' }}
+          />
+        ) : null}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
