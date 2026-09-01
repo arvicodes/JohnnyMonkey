@@ -1805,8 +1805,8 @@
             "mode": "pen",
             "shape": "curved-arrow",
             "rotation": 0,
-            "curveBend": 35,
-            "arrowHeadSize": 22
+            "arrowHeadSize": 22,
+            "curveBend": 35
           },
           {
             "id": "s-1788245959131-libxi",
@@ -1825,8 +1825,8 @@
             "mode": "pen",
             "shape": "curved-arrow",
             "rotation": 0,
-            "curveBend": 35,
-            "arrowHeadSize": 22
+            "arrowHeadSize": 22,
+            "curveBend": 35
           }
         ]
       },
@@ -3698,6 +3698,6 @@
       ]
     }
   ],
-  "savedAt": "2026-09-01T07:01:07.405Z",
+  "savedAt": "2026-09-01T07:10:23.051Z",
   "teacherId": "01ed6e10-397e-446c-9254-2ad7fd4ec777"
 }

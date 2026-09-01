@@ -333,7 +333,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
       onMessage?.('Formel umgewandelt');
       return;
     }
-    onMessage?.('LaTeX markieren, dann ⌘U');
+    onMessage?.('LaTeX markieren, dann ⌘L');
   }, [disabled, resolveLatexEditor, onEditorChanged, onMessage]);
 
   useEffect(() => {
@@ -367,6 +367,12 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         return;
       }
       if (key === 'u' && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        applyAndNotify(() => execFormat(editor, 'underline'));
+        return;
+      }
+      if (key === 'l' && !e.shiftKey) {
         e.preventDefault();
         e.stopPropagation();
         handleLatexShortcut();
@@ -632,7 +638,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
           </IconButton>
         </span>
       </Tooltip>
-      <Tooltip title="Unterstrichen">
+      <Tooltip title={`Unterstrichen (${MOD_LABEL}+U)`}>
         <span>
           <IconButton size="small" disabled={disabled || !activeEditor} sx={btnSx} onMouseDown={(e) => e.preventDefault()} onClick={() => applyAndNotify(() => execFormat(activeEditor, 'underline'))}>
             <FormatUnderlined sx={{ fontSize: 17 }} />
@@ -684,7 +690,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         </span>
       </Tooltip>
 
-      <Tooltip title="Markieren + ⌘U: LaTeX ⇄ Formel">
+      <Tooltip title={`Markieren + ${MOD_LABEL}+L: LaTeX ⇄ Formel`}>
         <span>
           <IconButton
             size="small"

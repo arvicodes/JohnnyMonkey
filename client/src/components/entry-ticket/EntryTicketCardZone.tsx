@@ -1,7 +1,10 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import type { PresentationStroke } from '../../lib/presentationDeck';
 import { isInkDrawCaptureTool, type PresentationDrawTool } from '../../lib/presentationDrawTools';
+import PresentationConnectorDrawOverlay, {
+  type ConnectorDrawPoint,
+} from '../presentation/PresentationConnectorDrawOverlay';
 import PresentationDrawOverlay from '../presentation/PresentationDrawOverlay';
 import { EntryTicketRichField } from './EntryTicketRichField';
 
@@ -52,6 +55,10 @@ type Props = {
   selectedStrokeIds?: string[];
   onSelectedStrokeIdsChange?: (ids: string[]) => void;
   onInkStart?: () => void;
+  connectorDrawActive?: boolean;
+  connectorDrawPoints?: ConnectorDrawPoint[];
+  onConnectorAddPoint?: (point: ConnectorDrawPoint) => void;
+  onConnectorFinish?: () => void;
 };
 
 export function EntryTicketCardZone({
@@ -75,6 +82,10 @@ export function EntryTicketCardZone({
   selectedStrokeIds = [],
   onSelectedStrokeIdsChange,
   onInkStart,
+  connectorDrawActive = false,
+  connectorDrawPoints = [],
+  onConnectorAddPoint,
+  onConnectorFinish,
 }: Props) {
   const theme = ZONE_THEMES[tone];
   const inkEnabled = typeof onInkChange === 'function';
@@ -82,7 +93,9 @@ export function EntryTicketCardZone({
   const textEditing = !drawActive;
 
   const inkCapture =
-    drawActive && (isInkDrawCaptureTool(activeInkTool) || activeInkTool === 'select');
+    drawActive &&
+    !connectorDrawActive &&
+    (isInkDrawCaptureTool(activeInkTool) || activeInkTool === 'select');
 
   const handleHostPointerDownCapture = useCallback(
     (e: React.PointerEvent) => {
@@ -161,11 +174,11 @@ export function EntryTicketCardZone({
         >
           {theme.label}
         </Box>
-        <Typography sx={{ fontSize: '0.72rem', color: theme.accent, fontWeight: 600, opacity: 0.85 }}>
-          {drawActive && inkEnabled
-            ? 'Stift-Werkzeuge unten'
-            : 'Tippen · Farben · Bilder · Format'}
-        </Typography>
+        {drawActive && inkEnabled ? (
+          <Typography sx={{ fontSize: '0.72rem', color: theme.accent, fontWeight: 600, opacity: 0.85 }}>
+            Stift-Werkzeuge unten
+          </Typography>
+        ) : null}
       </Box>
 
       <Box
@@ -190,7 +203,21 @@ export function EntryTicketCardZone({
           notesSurface
           textEditing={textEditing}
           editorFontSize={editorFontSize}
-          overlay={overlay}
+          overlay={
+            <>
+              {overlay}
+              {connectorDrawActive && onConnectorAddPoint && onConnectorFinish ? (
+                <PresentationConnectorDrawOverlay
+                  active
+                  boundsMode="host"
+                  points={connectorDrawPoints}
+                  accentColor={strokeColor}
+                  onAddPoint={onConnectorAddPoint}
+                  onFinish={onConnectorFinish}
+                />
+              ) : null}
+            </>
+          }
         />
       </Box>
     </Box>

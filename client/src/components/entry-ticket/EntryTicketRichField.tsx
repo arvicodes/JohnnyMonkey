@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Box, IconButton, Popover, Slider, Tooltip, Typography } from '@mui/material';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Box, IconButton, MenuItem, Popover, Select, Slider, Tooltip, Typography } from '@mui/material';
 import {
   FormatBold as FormatBoldIcon,
   FormatItalic as FormatItalicIcon,
@@ -13,10 +13,36 @@ import {
   AddPhotoAlternate as AddPhotoAlternateIcon,
   Functions as FunctionsIcon,
   WrapText as WrapTextIcon,
+  Remove as RemoveIcon,
+  Add as AddIcon,
 } from '@mui/icons-material';
 import { isPenPointer } from '../../lib/presentationDrawTools';
-import { ensureEditorSelection, stashEditorSelection } from '../../lib/presentationFontSize';
+import {
+  applyEditorFontSizePx,
+  ensureEditorSelection,
+  getEditorFontSizeSteps,
+  getEditorSelectionFontPx,
+  nudgeEditorFontSize,
+  stashEditorSelection,
+} from '../../lib/presentationFontSize';
 import { setFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
+import {
+  PRESENTATION_FONT_FAMILIES,
+  getEditorSelectionFontFamily,
+  presentationFontLabel,
+} from '../../lib/presentationFonts';
+import {
+  convertSelectedTextToPresentationMath,
+  selectionIntersectsPresentationMath,
+  unwrapSelectedPresentationMath,
+} from '../../lib/presentationPasteMath';
+import {
+  applyFontFamily,
+  clearFontFamilyInSelection,
+  insertPresentationPastedHtml,
+  presentationPasteHtml,
+} from '../../lib/presentationRichText';
+import '../../styles/presentationLists.css';
 import {
   buildEtImgStyle,
   entryTicketLooksLikeHtml,
@@ -28,6 +54,8 @@ import {
   type EntryTicketImageAlign,
   type EntryTicketImagePlace,
 } from '../../lib/entryTicketRichText';
+
+const FONT_SIZE_PLACEHOLDER = '__et_font_size__';
 
 const TEXT_COLORS = [
   '#1a237e',
@@ -320,10 +348,32 @@ function EntryTicketRichFieldInner({
   const [imageCount, setImageCount] = useState(0);
   const [chromeOpen, setChromeOpen] = useState(false);
   const [imgHandle, setImgHandle] = useState<{ left: number; top: number } | null>(null);
+  const [fontFamily, setFontFamily] = useState('');
+  const [fontSizePx, setFontSizePx] = useState('');
   const palette = TONE_STYLES[tone];
   const fieldBg = softBg ?? (notesSurface ? '#ffffff' : palette.softBg);
   const textEditing = textEditingProp ?? true;
   const showChrome = textEditing && (chromeOpen || Boolean(colorAnchor) || Boolean(highlightAnchor));
+
+  const syncFormattingState = useCallback(() => {
+    const el = editorRef.current;
+    if (!el) return;
+    setFontFamily(getEditorSelectionFontFamily(el));
+    const px = getEditorSelectionFontPx(el);
+    setFontSizePx(px != null ? String(px) : '');
+  }, []);
+
+  useEffect(() => {
+    const onSelectionChange = () => {
+      const el = editorRef.current;
+      if (!el) return;
+      const sel = window.getSelection();
+      if (!sel?.anchorNode || !el.contains(sel.anchorNode)) return;
+      syncFormattingState();
+    };
+    document.addEventListener('selectionchange', onSelectionChange);
+    return () => document.removeEventListener('selectionchange', onSelectionChange);
+  }, [syncFormattingState]);
 
   const listEditorImages = () => {
     const el = editorRef.current;
@@ -445,6 +495,65 @@ function EntryTicketRichFieldInner({
     onChange(next);
   };
 
+  const fontSteps = getEditorFontSizeSteps(editorRef.current);
+
+  const applyFormatting = (fn: () => void, refreshSize = false) => {
+    const el = editorRef.current;
+    if (!el || !textEditing) return;
+    setFormatBarInteracting(true);
+    stashEditorSelection(el);
+    fn();
+    ensureEditorSelection(el);
+    if (refreshSize) syncFormattingState();
+    emitChange();
+    window.setTimeout(() => setFormatBarInteracting(false), 0);
+  };
+
+  const handleLatexShortcut = useCallback(() => {
+    const el = editorRef.current;
+    if (!el || !textEditing) return;
+    stashEditorSelection(el);
+    ensureEditorSelection(el);
+    if (selectionIntersectsPresentationMath(el)) {
+      if (unwrapSelectedPresentationMath(el)) emitChange();
+      return;
+    }
+    if (convertSelectedTextToPresentationMath(el)) emitChange();
+  }, [textEditing]);
+
+  useEffect(() => {
+    if (!textEditing) return undefined;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      const el = editorRef.current;
+      if (!el) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.tagName === 'SELECT') {
+        return;
+      }
+      const sel = window.getSelection();
+      const inEditor =
+        target === el ||
+        (target != null && el.contains(target)) ||
+        (sel?.anchorNode != null && el.contains(sel.anchorNode));
+      if (!inEditor) return;
+      const key = e.key.toLowerCase();
+      if (key === 'u' && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        runCommand('underline');
+        return;
+      }
+      if (key === 'l' && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleLatexShortcut();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [textEditing, handleLatexShortcut]);
+
   const applyCardLayout = (layout: EntryTicketCardLayout) => {
     const el = editorRef.current;
     if (!el) return;
@@ -469,35 +578,6 @@ function EntryTicketRichFieldInner({
     el.focus({ preventScroll: true });
     try {
       document.execCommand(command, false, commandValue);
-    } catch {
-      /* ignore */
-    }
-    emitChange();
-  };
-
-  const insertLatexDelimiters = () => {
-    const el = editorRef.current;
-    if (!el) return;
-    el.focus();
-    const sel = window.getSelection();
-    const selected = (sel?.toString() || '').replace(/^\$+|\$+$/g, '');
-    try {
-      if (selected) {
-        document.execCommand('insertText', false, `$${selected}$`);
-      } else {
-        document.execCommand('insertText', false, '$$');
-        const after = window.getSelection();
-        if (after?.rangeCount) {
-          const range = after.getRangeAt(0);
-          const offset = range.startOffset;
-          if (range.startContainer.nodeType === Node.TEXT_NODE && offset > 0) {
-            range.setStart(range.startContainer, offset - 1);
-            range.collapse(true);
-            after.removeAllRanges();
-            after.addRange(range);
-          }
-        }
-      }
     } catch {
       /* ignore */
     }
@@ -711,6 +791,107 @@ function EntryTicketRichFieldInner({
             <FormatUnderlinedIcon sx={{ fontSize: 14 }} />
           </IconButton>
         </Tooltip>
+        <Select
+          size="small"
+          value={
+            fontFamily && PRESENTATION_FONT_FAMILIES.some((f) => f.value === fontFamily)
+              ? fontFamily
+              : ''
+          }
+          displayEmpty
+          disabled={!textEditing}
+          onOpen={() => setFormatBarInteracting(true)}
+          onClose={() => window.setTimeout(() => setFormatBarInteracting(false), 0)}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (!v) applyFormatting(() => clearFontFamilyInSelection(editorRef.current!), true);
+            else applyFormatting(() => applyFontFamily(editorRef.current, v), true);
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+          renderValue={(v) => presentationFontLabel(v)}
+          sx={{
+            height: 24,
+            minWidth: 68,
+            maxWidth: 88,
+            fontSize: 10,
+            bgcolor: '#fff',
+            '.MuiOutlinedInput-notchedOutline': { borderColor: palette.toolBtnBorder },
+          }}
+        >
+          <MenuItem value="" dense sx={{ fontSize: 11 }}>
+            Standard
+          </MenuItem>
+          {PRESENTATION_FONT_FAMILIES.map((font) => (
+            <MenuItem key={font.value} value={font.value} dense sx={{ fontSize: 11, fontFamily: font.value }}>
+              {font.label}
+            </MenuItem>
+          ))}
+        </Select>
+        <Tooltip title="Kleiner (⌘[)">
+          <IconButton
+            size="small"
+            aria-label="Schrift kleiner"
+            disabled={!textEditing}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              applyFormatting(() => {
+                nudgeEditorFontSize(editorRef.current, -1);
+              }, true);
+            }}
+            sx={toolBtnSx}
+          >
+            <RemoveIcon sx={{ fontSize: 13 }} />
+          </IconButton>
+        </Tooltip>
+        <Select
+          size="small"
+          value={fontSizePx || FONT_SIZE_PLACEHOLDER}
+          disabled={!textEditing}
+          onOpen={() => setFormatBarInteracting(true)}
+          onClose={() => window.setTimeout(() => setFormatBarInteracting(false), 0)}
+          onChange={(e) => {
+            const raw = e.target.value;
+            if (raw === FONT_SIZE_PLACEHOLDER) return;
+            const px = parseInt(raw, 10);
+            if (!Number.isFinite(px)) return;
+            applyFormatting(() => applyEditorFontSizePx(editorRef.current, px), true);
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+          renderValue={(v) => (v && v !== FONT_SIZE_PLACEHOLDER ? `${v}` : 'Größe')}
+          sx={{
+            height: 24,
+            minWidth: 52,
+            maxWidth: 62,
+            fontSize: 10,
+            bgcolor: '#fff',
+            '.MuiOutlinedInput-notchedOutline': { borderColor: palette.toolBtnBorder },
+          }}
+        >
+          <MenuItem value={FONT_SIZE_PLACEHOLDER} dense sx={{ display: 'none' }}>
+            Größe
+          </MenuItem>
+          {fontSteps.map((px) => (
+            <MenuItem key={px} value={String(px)} dense sx={{ fontSize: 11 }}>
+              {px}
+            </MenuItem>
+          ))}
+        </Select>
+        <Tooltip title="Größer (⌘])">
+          <IconButton
+            size="small"
+            aria-label="Schrift größer"
+            disabled={!textEditing}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              applyFormatting(() => {
+                nudgeEditorFontSize(editorRef.current, 1);
+              }, true);
+            }}
+            sx={toolBtnSx}
+          >
+            <AddIcon sx={{ fontSize: 13 }} />
+          </IconButton>
+        </Tooltip>
         <Tooltip title="Textfarbe">
           <IconButton
             size="small"
@@ -739,8 +920,8 @@ function EntryTicketRichFieldInner({
             <FormatColorFillIcon sx={{ fontSize: 14 }} />
           </IconButton>
         </Tooltip>
-        <Tooltip title="LaTeX ($…$) — in der Play-Vorschau sichtbar">
-          <IconButton size="small" aria-label="LaTeX" onClick={insertLatexDelimiters} sx={toolBtnSx}>
+        <Tooltip title="LaTeX markieren → ⌘L (Formel ⇄ LaTeX)">
+          <IconButton size="small" aria-label="Formel" onClick={handleLatexShortcut} sx={toolBtnSx}>
             <FunctionsIcon sx={{ fontSize: 15 }} />
           </IconButton>
         </Tooltip>
@@ -1097,17 +1278,29 @@ function EntryTicketRichFieldInner({
         }}
         onPaste={(e) => {
           const items = e.clipboardData?.items;
-          if (!items) return;
           const imageFiles: File[] = [];
-          for (const item of Array.from(items)) {
-            if (item.type.startsWith('image/')) {
-              const file = item.getAsFile();
-              if (file) imageFiles.push(file);
+          if (items) {
+            for (const item of Array.from(items)) {
+              if (item.type.startsWith('image/')) {
+                const file = item.getAsFile();
+                if (file) imageFiles.push(file);
+              }
             }
           }
-          if (imageFiles.length === 0) return;
+          if (imageFiles.length > 0) {
+            e.preventDefault();
+            void ingestImageFiles(imageFiles);
+            return;
+          }
+          const html = e.clipboardData?.getData('text/html') || '';
+          const text = e.clipboardData?.getData('text/plain') || '';
+          if (!html.trim() && !text.trim()) return;
           e.preventDefault();
-          void ingestImageFiles(imageFiles);
+          const el = editorRef.current;
+          if (!el) return;
+          const pasted = presentationPasteHtml(e.clipboardData, { fontPx: 26, textAlign: 'left' });
+          insertPresentationPastedHtml(el, pasted);
+          emitChange();
         }}
         sx={{
           minHeight: fillParent ? 0 : minHeight,

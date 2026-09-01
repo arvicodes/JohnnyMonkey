@@ -188,6 +188,11 @@
   color: inherit;
 }
 
+.pres-math [data-pres-color],
+[data-pres-math] [data-pres-color] {
+  color: var(--pres-math-color, inherit) !important;
+}
+
 .pres-math[data-pres-font] math,
 [data-pres-math][data-pres-font] math {
   font-family: inherit;

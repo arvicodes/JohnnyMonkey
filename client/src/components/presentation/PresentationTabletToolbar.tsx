@@ -17,6 +17,7 @@ import {
   SaveAs as SaveAsIcon,
   Tag as TagIcon,
   Timeline as CurvedArrowIcon,
+  Polyline as ConnectorDrawIcon,
   Undo as UndoIcon,
   DeleteSweep as DeleteSweepIcon,
   SelfImprovement as QuietWorkIcon,
@@ -216,6 +217,8 @@ interface PresentationTabletToolbarProps {
   musicGame?: MusicGameController;
   /** Nur Stift/Sichern — für Entry-Ticket Play und Lösungsfolie. */
   variant?: 'full' | 'ink';
+  onStartConnectorDraw?: () => void;
+  connectorDrawActive?: boolean;
 }
 
 export default function PresentationTabletToolbar({
@@ -264,6 +267,8 @@ export default function PresentationTabletToolbar({
   quietWork,
   musicGame,
   variant = 'full',
+  onStartConnectorDraw,
+  connectorDrawActive = false,
 }: PresentationTabletToolbarProps) {
   const showColors =
     !readOnly &&
@@ -947,6 +952,15 @@ export default function PresentationTabletToolbar({
             >
               <CurvedArrowIcon sx={{ fontSize: 14 }} />
             </ToolBtn>
+            {onStartConnectorDraw ? (
+              <ToolBtn
+                title="Ecken-Pfeil zeichnen (Ecke klicken, Doppelklick = fertig)"
+                active={connectorDrawActive}
+                onClick={() => onStartConnectorDraw()}
+              >
+                <ConnectorDrawIcon sx={{ fontSize: 14 }} />
+              </ToolBtn>
+            ) : null}
 
             <Divider
               orientation="vertical"

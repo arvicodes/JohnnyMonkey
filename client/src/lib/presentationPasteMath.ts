@@ -499,11 +499,13 @@ export function applyPresentationMathStyle(span: HTMLElement, patch: Presentatio
   if (patch.color === null) {
     span.removeAttribute('data-pres-color');
     span.removeAttribute('mathcolor');
+    span.style.removeProperty('--pres-math-color');
     span.style.removeProperty('color');
   } else if (typeof patch.color === 'string' && patch.color.trim()) {
     const c = patch.color.trim();
     span.setAttribute('data-pres-color', c);
     span.setAttribute('mathcolor', c);
+    span.style.setProperty('--pres-math-color', c);
     span.style.setProperty('color', c, 'important');
   }
   if (patch.fontFamily === null) {
@@ -746,7 +748,30 @@ function mathAdjacentToNode(node: Node | null, offset: number): HTMLElement | nu
   return null;
 }
 
-/** Klick links/rechts an der Formel → Caret davor bzw. dahinter. */
+function mathTokenFromPoint(wrap: HTMLElement, x: number, y: number): HTMLElement {
+  const tokens = Array.from(wrap.querySelectorAll('mi, mn, mo, mtext')) as HTMLElement[];
+  const hit = tokens
+    .map((t) => ({ t, r: t.getBoundingClientRect() }))
+    .filter(({ r }) => r.width > 0 && r.height > 0 && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom)
+    .sort((a, b) => a.r.width * a.r.height - b.r.width * b.r.height);
+  if (hit[0]) return hit[0].t;
+  let best: HTMLElement | null = null;
+  let bestDist = Infinity;
+  for (const t of tokens) {
+    const r = t.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) continue;
+    const cx = Math.min(Math.max(x, r.left), r.right);
+    const cy = Math.min(Math.max(y, r.top), r.bottom);
+    const d = (x - cx) ** 2 + (y - cy) ** 2;
+    if (d < bestDist) {
+      bestDist = d;
+      best = t;
+    }
+  }
+  return best || wrap;
+}
+
+/** Klick am Rand → Caret davor/dahinter; innen → einzelnes Formelzeichen zum Färben. */
 export function placeCaretBesidePresentationMath(e: Event): boolean {
   const target = e.target as Node | null;
   const el = target instanceof HTMLElement ? target : target?.parentElement;
@@ -756,23 +781,37 @@ export function placeCaretBesidePresentationMath(e: Event): boolean {
   if (!editor) return false;
   e.preventDefault();
   e.stopPropagation();
-  const pads = ensureMathCaretPads(math);
   const rect = math.getBoundingClientRect();
   const x = 'clientX' in e ? (e as MouseEvent).clientX : rect.left + rect.width / 2;
-  const before = x < rect.left + rect.width * 0.5;
-  const range = editor.ownerDocument.createRange();
-  if (before) range.setStart(pads.before, pads.before.data.length);
-  else range.setStart(pads.after, 0);
-  range.collapse(true);
-  const sel = window.getSelection();
-  sel?.removeAllRanges();
-  sel?.addRange(range);
+  const y = 'clientY' in e ? (e as MouseEvent).clientY : rect.top + rect.height / 2;
+  const edge = Math.min(14, Math.max(8, rect.width * 0.16));
+  const onLeftEdge = x < rect.left + edge;
+  const onRightEdge = x > rect.right - edge;
+  if (onLeftEdge || onRightEdge) {
+    const pads = ensureMathCaretPads(math);
+    const range = editor.ownerDocument.createRange();
+    if (onLeftEdge) range.setStart(pads.before, pads.before.data.length);
+    else range.setStart(pads.after, 0);
+    range.collapse(true);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    try {
+      editor.focus({ preventScroll: true });
+    } catch {
+      editor.focus();
+    }
+    clearMathFormatTarget(editor);
+    return true;
+  }
+  const token = mathFormatNodeFromEvent(e.target) || mathTokenFromPoint(math, x, y);
+  const picked = token === math || localName(token) === 'math' ? mathTokenFromPoint(math, x, y) : token;
+  setMathFormatTarget(editor, picked);
   try {
     editor.focus({ preventScroll: true });
   } catch {
     editor.focus();
   }
-  setMathFormatTarget(editor, math);
   return true;
 }
 

@@ -1,4 +1,5 @@
 import { isFilledInkStroke, type PresentationShapeKind, type PresentationStroke } from './presentationDeck';
+import { pathEndAngleRad, shaftEndPoint } from './presentationShapePaths';
 import { getBoxFrame, hitTestShapeBody } from './presentationShapeTransform';
 
 export type PresentationDrawTool =
@@ -328,6 +329,38 @@ export function drawPresentationStroke(ctx: CanvasRenderingContext2D, stroke: Pr
         ctx.stroke();
         const angle = Math.atan2(p1.y - cp.y, p1.x - cp.x);
         drawArrowHeadAtAngle(ctx, p1.x, p1.y, angle, resolveInkArrowHeadSize(stroke));
+        break;
+      }
+      case 'connector': {
+        const pts = stroke.points;
+        if (pts.length < 2) break;
+        const headSize = resolveInkArrowHeadSize(stroke);
+        const xs = pts.map((p) => p.x);
+        const ys = pts.map((p) => p.y);
+        const minX = Math.min(...xs);
+        const minY = Math.min(...ys);
+        const bw = Math.max(Math.max(...xs) - minX, 1);
+        const bh = Math.max(Math.max(...ys) - minY, 1);
+        const local = pts.map((p) => ({
+          x: ((p.x - minX) / bw) * 100,
+          y: ((p.y - minY) / bh) * 100,
+        }));
+        const shaftEnd = shaftEndPoint('connector', local, null, headSize);
+        const angle = pathEndAngleRad('connector', local, null);
+        const toAbs = (p: { x: number; y: number }) => ({
+          x: minX + (p.x / 100) * bw,
+          y: minY + (p.y / 100) * bh,
+        });
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length - 1; i += 1) {
+          ctx.lineTo(pts[i].x, pts[i].y);
+        }
+        const se = toAbs(shaftEnd);
+        ctx.lineTo(se.x, se.y);
+        ctx.stroke();
+        const tip = pts[pts.length - 1];
+        drawArrowHeadAtAngle(ctx, tip.x, tip.y, angle, headSize);
         break;
       }
       default:

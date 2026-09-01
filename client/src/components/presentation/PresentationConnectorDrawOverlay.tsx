@@ -8,6 +8,8 @@ interface PresentationConnectorDrawOverlayProps {
   active: boolean;
   points: ConnectorDrawPoint[];
   accentColor?: string;
+  /** slide = [data-pres-slide]; host = Overlay-Fläche (Entry-Ticket-Karte). */
+  boundsMode?: 'slide' | 'host';
   onAddPoint: (point: ConnectorDrawPoint) => void;
   onFinish: () => void;
 }
@@ -16,6 +18,7 @@ const PresentationConnectorDrawOverlay: React.FC<PresentationConnectorDrawOverla
   active,
   points,
   accentColor = '#1565C0',
+  boundsMode = 'slide',
   onAddPoint,
   onFinish,
 }) => {
@@ -40,10 +43,13 @@ const PresentationConnectorDrawOverlay: React.FC<PresentationConnectorDrawOverla
     if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
-    const slide = (e.currentTarget.parentElement?.querySelector('[data-pres-slide]') ??
-      e.currentTarget.closest('[data-pres-slide]')) as HTMLElement | null;
-    if (!slide) return;
-    const rect = slide.getBoundingClientRect();
+    const host =
+      boundsMode === 'host'
+        ? (e.currentTarget as HTMLElement)
+        : ((e.currentTarget.parentElement?.querySelector('[data-pres-slide]') ??
+            e.currentTarget.closest('[data-pres-slide]')) as HTMLElement | null);
+    if (!host) return;
+    const rect = host.getBoundingClientRect();
     if (rect.width < 8 || rect.height < 8) return;
     onAddPoint({
       x: Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100)),

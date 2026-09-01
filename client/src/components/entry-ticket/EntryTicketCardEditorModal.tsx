@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Box,
   Button,
@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import { Save as SaveIcon } from '@mui/icons-material';
 import type { PresentationStroke } from '../../lib/presentationDeck';
+import { SLIDE_REF_HEIGHT, SLIDE_REF_WIDTH } from '../../lib/presentationDeck';
 import {
   DEFAULT_MARKER_COLOR,
   DEFAULT_MARKER_OPACITY,
@@ -23,6 +24,7 @@ import {
   type PresentationDrawTool,
 } from '../../lib/presentationDrawTools';
 import PresentationTabletToolbar from '../presentation/PresentationTabletToolbar';
+import type { ConnectorDrawPoint } from '../presentation/PresentationConnectorDrawOverlay';
 import { EntryTicketCardZone } from './EntryTicketCardZone';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-icon-button';
 
@@ -61,6 +63,8 @@ export function EntryTicketCardEditorModal({
   const [markerOpacity, setMarkerOpacity] = useState(DEFAULT_MARKER_OPACITY);
   const [selectedStrokeIds, setSelectedStrokeIds] = useState<string[]>([]);
   const [clearInkOpen, setClearInkOpen] = useState(false);
+  const [connectorDrawActive, setConnectorDrawActive] = useState(false);
+  const [connectorDrawPoints, setConnectorDrawPoints] = useState<ConnectorDrawPoint[]>([]);
   const penColorRef = useRef(DEFAULT_PEN_COLOR);
   const markerColorRef = useRef(DEFAULT_MARKER_COLOR);
   const wasOpenRef = useRef(false);
@@ -79,6 +83,8 @@ export function EntryTicketCardEditorModal({
       setStrokeColor(penColorRef.current);
       setLineWidth(defaultLineWidthForTool('pen'));
       setClearInkOpen(false);
+      setConnectorDrawActive(false);
+      setConnectorDrawPoints([]);
     }
     setSelectedStrokeIds([]);
   }, [open, slideId]);
@@ -88,10 +94,63 @@ export function EntryTicketCardEditorModal({
       if (!v) {
         setActiveInkTool('pen');
         setStrokeColor(penColorRef.current);
+      } else {
+        setConnectorDrawActive(false);
+        setConnectorDrawPoints([]);
       }
       return !v;
     });
   };
+
+  const finishConnectorDraw = useCallback(() => {
+    if (connectorDrawPoints.length < 2) {
+      setConnectorDrawActive(false);
+      setConnectorDrawPoints([]);
+      return;
+    }
+    const absPoints = connectorDrawPoints.map((p) => ({
+      x: (p.x / 100) * SLIDE_REF_WIDTH,
+      y: (p.y / 100) * SLIDE_REF_HEIGHT,
+    }));
+    const stroke: PresentationStroke = {
+      id: `stroke-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      points: absPoints,
+      color: strokeColor,
+      lineWidth,
+      shape: 'connector',
+      arrowHeadSize: 22,
+    };
+    onInkChange([...ink, stroke]);
+    setConnectorDrawActive(false);
+    setConnectorDrawPoints([]);
+    setDrawActive(true);
+  }, [connectorDrawPoints, ink, lineWidth, onInkChange, strokeColor]);
+
+  const startConnectorDraw = useCallback(() => {
+    setConnectorDrawActive(true);
+    setConnectorDrawPoints([]);
+    setDrawActive(true);
+    setActiveSide('prompt');
+  }, []);
+
+  useEffect(() => {
+    if (!connectorDrawActive) return undefined;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setConnectorDrawActive(false);
+        setConnectorDrawPoints([]);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        finishConnectorDraw();
+      } else if (e.key === 'Backspace' && connectorDrawPoints.length > 0) {
+        e.preventDefault();
+        setConnectorDrawPoints((pts) => pts.slice(0, -1));
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [connectorDrawActive, connectorDrawPoints.length, finishConnectorDraw]);
 
   const handleInkStart = () => {
     setDrawActive(true);
@@ -258,6 +317,10 @@ export function EntryTicketCardEditorModal({
               selectedStrokeIds={selectedStrokeIds}
               onSelectedStrokeIdsChange={setSelectedStrokeIds}
               onInkStart={handleInkStart}
+              connectorDrawActive={connectorDrawActive}
+              connectorDrawPoints={connectorDrawPoints}
+              onConnectorAddPoint={(p) => setConnectorDrawPoints((pts) => [...pts, p])}
+              onConnectorFinish={finishConnectorDraw}
             />
             <EntryTicketCardZone
               tone="answer"
@@ -307,6 +370,8 @@ export function EntryTicketCardEditorModal({
                 : null
             }
             onPatchSelectedStroke={patchSelectedStroke}
+            onStartConnectorDraw={startConnectorDraw}
+            connectorDrawActive={connectorDrawActive}
           />
         </Box>
 

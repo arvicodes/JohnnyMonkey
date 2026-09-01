@@ -17,8 +17,10 @@ export function entryTicketHasImage(value: string): boolean {
 /** Fett/Kursiv/Unterstrichen/Farben — auch wenn Browser `span style=...` nutzt. */
 export function entryTicketHasRichFormatting(value: string): boolean {
   const v = value || '';
+  if (/\bdata-pres-math\b/i.test(v)) return true;
+  if (/\bdata-pres-font\b/i.test(v) || /\bdata-pres-fs\b/i.test(v)) return true;
   if (/<(strong|b|u|i|em|font|mark)\b/i.test(v)) return true;
-  return /style\s*=\s*["'][^"']*(?:font-weight|font-style|text-decoration|color|background(?:-color)?)\s*:/i.test(v);
+  return /style\s*=\s*["'][^"']*(?:font-weight|font-style|text-decoration|color|background(?:-color)?|font-size|font-family)\s*:/i.test(v);
 }
 
 export function entryTicketPlainText(value: string): string {
@@ -644,6 +646,26 @@ function sanitizeStyleAttr(style: string): string {
 function sanitizeFormattingTag(tag: string, name: string): string {
   const isClose = /^<\//.test(tag);
   if (isClose) return `</${name}>`;
+  if (name === 'span') {
+    const attrs: string[] = [];
+    const styleMatch = tag.match(/\bstyle\s*=\s*["']([^"']*)["']/i);
+    if (styleMatch) {
+      const style = sanitizeStyleAttr(styleMatch[1]);
+      if (style) attrs.push(`style="${style}"`);
+    }
+    const presMath = /\bdata-pres-math\b/i.test(tag);
+    if (presMath) attrs.push('data-pres-math="1"');
+    const presFont = tag.match(/\bdata-pres-font\s*=\s*["']([^"']*)["']/i);
+    if (presFont) attrs.push(`data-pres-font="${presFont[1].replace(/"/g, '')}"`);
+    const presFs = tag.match(/\bdata-pres-fs\s*=\s*["']([^"']*)["']/i);
+    if (presFs) attrs.push(`data-pres-fs="${presFs[1].replace(/"/g, '')}"`);
+    const presLatex = tag.match(/\bdata-pres-latex\s*=\s*["']([^"']*)["']/i);
+    if (presLatex) attrs.push(`data-pres-latex="${presLatex[1].replace(/"/g, '')}"`);
+    const cls = tag.match(/\bclass\s*=\s*["']([^"']*)["']/i);
+    if (cls && /\bpres-math\b/.test(cls[1])) attrs.push('class="pres-math"');
+    if (/\bcontenteditable\s*=\s*["']false["']/i.test(tag)) attrs.push('contenteditable="false"');
+    return attrs.length ? `<span ${attrs.join(' ')}>` : '<span>';
+  }
   if (name === 'mark') {
     const styleMatch = tag.match(/\bstyle\s*=\s*["']([^"']*)["']/i);
     if (styleMatch) {
@@ -691,6 +713,7 @@ function sanitizeLayoutDivOpen(tag: string): string {
 /** Erlaubt nur Basis-Formatierung (Fett/Kursiv/Unterstrichen/Farben/Absätze/Bilder). */
 export function sanitizeEntryTicketHtml(html: string): string {
   const imgs: string[] = [];
+  const mathBlocks: string[] = [];
   // Bilder zuerst herauslösen — sonst könnten globale Regexes Base64-Daten beschädigen
   let out = (html || '').replace(/<img\b[^>]*>/gi, (tag) => {
     const clean = sanitizeImgTag(tag);
@@ -699,13 +722,18 @@ export function sanitizeEntryTicketHtml(html: string): string {
     imgs.push(clean);
     return token;
   });
+  out = out.replace(/<span\b[^>]*\bdata-pres-math\b[^>]*>[\s\S]*?<\/span>/gi, (tag) => {
+    const token = `\uE000MATH${mathBlocks.length}\uE001`;
+    mathBlocks.push(tag);
+    return token;
+  });
   out = out
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
     .replace(/\s*contenteditable\s*=\s*["']?(?:true|false)["']?/gi, '')
     .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
-    // data-et-* (Bildgröße/-position/Layout) behalten, andere data-* entfernen
-    .replace(/\s*data-(?!et-)[a-z0-9-]+\s*=\s*["'][^"']*["']/gi, '');
+    // data-et-* / data-pres-* behalten, andere data-* entfernen
+    .replace(/\s*data-(?!et-|pres-)[a-z0-9-]+\s*=\s*["'][^"']*["']/gi, '');
 
   // Layout-Wrapper normalisieren
   out = out.replace(/<div\b[^>]*>/gi, (tag) => {
@@ -718,7 +746,9 @@ export function sanitizeEntryTicketHtml(html: string): string {
     sanitizeFormattingTag(tag, String(name).toLowerCase()),
   );
 
-  return out.replace(/\uE000IMG(\d+)\uE001/g, (_, i) => imgs[Number(i)] || '');
+  return out
+    .replace(/\uE000IMG(\d+)\uE001/g, (_, i) => imgs[Number(i)] || '')
+    .replace(/\uE000MATH(\d+)\uE001/g, (_, i) => mathBlocks[Number(i)] || '');
 }
 
 /** Speichern: leeres Editor-HTML → '', Formatierung/Bilder immer als HTML behalten. */

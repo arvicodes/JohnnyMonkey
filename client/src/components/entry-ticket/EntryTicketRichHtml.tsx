@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, type SxProps, type Theme } from '@mui/material';
 import 'katex/dist/katex.min.css';
+import '../../styles/presentationLists.css';
 import {
   decorateEntryTicketDisplayHtml,
   entryTicketHasImage,

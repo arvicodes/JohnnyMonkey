@@ -1027,7 +1027,7 @@ export function sanitizePastedHtml(html: string, options?: PasteSanitizeOptions)
 
 /**
  * Einfügen in Folien-Editoren: HTML oder Plain-Text → bereinigt, Listen, Aptos 26, Blocksatz.
- * LaTeX bleibt Text — Umwandeln nur per ⌘U.
+ * LaTeX bleibt Text — Umwandeln nur per ⌘L.
  */
 export function presentationPasteHtml(
   clipboardData: DataTransfer,
@@ -1945,6 +1945,11 @@ function stampColorOnCurrentSelection(editor: HTMLElement, color: string) {
 
 export function applyTextColor(editor: HTMLElement | null, color: string) {
   if (!editor) return;
+  if (getMathFormatTarget(editor)) {
+    applyFormatToSelectedMath(editor, { color });
+    keepEditorSelection(editor);
+    return;
+  }
   if (applyInlineStyleToSelection(editor, { color })) return;
   if (applyFormatToSelectedMath(editor, { color })) {
     keepEditorSelection(editor);
