@@ -37,7 +37,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
 import { DialogCloseIconButton } from './ui/dialog-close-icon-button';
-import { handlePresentationListShortcutKey, handlePresentationTabKey, applyTextColor, applyHighlightColor, execFormat, insertPresentationPastedHtml, presentationPasteHtml } from '../lib/presentationRichText';
+import { handlePresentationListShortcutKey, handlePresentationTabKey, applyTextColor, execFormat, insertPresentationPastedHtml, presentationPasteHtml } from '../lib/presentationRichText';
 import {
   convertSelectedTextToPresentationMath,
   placeCaretBesidePresentationMath,
@@ -2957,6 +2957,10 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
               }}
               onMouseDown={(e) => {
                 if (mode !== 'text') return;
+                if (placeCaretBesidePresentationMath(e.nativeEvent)) {
+                  e.preventDefault();
+                  return;
+                }
                 if (
                   tryStartTableResizeFromPointer(editorRef.current, e, {
                     onDone: () => {

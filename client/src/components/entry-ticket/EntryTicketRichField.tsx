@@ -45,7 +45,6 @@ import {
   applyTextColor,
   clearFontFamilyInSelection,
   insertPresentationPastedHtml,
-  keepEditorSelection,
   presentationPasteHtml,
 } from '../../lib/presentationRichText';
 import { isPresentationModalTypingActive } from '../../lib/presentationFormatBarGuard';

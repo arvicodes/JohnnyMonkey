@@ -23,6 +23,8 @@ export function restorePresentationMathInHtml(html: string, blocks: string[]): s
 export function htmlHasPresentationMath(html: string): boolean {
   return /\bdata-pres-math\b/i.test(html || '');
 }
+
+const MATH_ML_TAGS = new Set([
   'MATH',
   'MROW',
   'MI',
@@ -48,7 +50,6 @@ export function htmlHasPresentationMath(html: string): boolean {
   'MPHANTOM',
   'MFENCED',
   'MMULTISCRIPTS',
-  'MUNDER',
 ]);
 
 export function isPresentationMathNode(node: Element | null | undefined): boolean {
