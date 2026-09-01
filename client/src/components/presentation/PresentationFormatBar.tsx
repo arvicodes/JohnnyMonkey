@@ -321,14 +321,16 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     }
     stashEditorSelection(editor);
     keepEditorSelection(editor);
+    if (selectionIntersectsPresentationMath(editor)) {
+      if (unwrapSelectedPresentationMath(editor)) {
+        onEditorChanged?.();
+        onMessage?.('Wieder LaTeX');
+      }
+      return;
+    }
     if (convertSelectedTextToPresentationMath(editor)) {
       onEditorChanged?.();
       onMessage?.('Formel umgewandelt');
-      return;
-    }
-    if (selectionIntersectsPresentationMath(editor) && unwrapSelectedPresentationMath(editor)) {
-      onEditorChanged?.();
-      onMessage?.('Wieder LaTeX');
       return;
     }
     onMessage?.('LaTeX markieren, dann ⌘U');

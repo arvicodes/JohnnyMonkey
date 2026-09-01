@@ -1768,9 +1768,9 @@ export function convertSelectedTextToPresentationMath(editor: HTMLElement | null
   if (!text.trim()) return false;
 
   const latexRuns = findLatexRuns(text);
-  const mixed = latexRuns.length > 0 && (latexRuns.length > 1 || leftoverHasNormalText(text, latexRuns));
+  const hasProse = leftoverHasNormalText(text, latexRuns);
 
-  if (mixed) {
+  if (latexRuns.length > 0 && (latexRuns.length > 1 || hasProse)) {
     let changed = false;
     for (let i = latexRuns.length - 1; i >= 0; i -= 1) {
       if (insertFormulaForLatexRun(editor, slices, latexRuns[i], styleRuns)) changed = true;
@@ -1778,7 +1778,9 @@ export function convertSelectedTextToPresentationMath(editor: HTMLElement | null
     return changed;
   }
 
-  const tex = normalizePresentationLatexSource(text);
+  if (latexRuns.length === 0 && /[A-Za-zÄÖÜäöüß]{2,}/.test(text)) return false;
+
+  const tex = normalizePresentationLatexSource(latexRuns[0]?.tex || text);
   if (!tex) return false;
   const html = renderLatexToPresentationSpan(tex, /\\begin\{|\\displaystyle/.test(tex));
   if (!html) return false;
