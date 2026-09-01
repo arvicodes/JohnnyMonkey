@@ -1262,15 +1262,6 @@ function insertFormulaForLatexRun(
   if (added && runStyles.length) applyRunsToMath(added, runStyles);
   return true;
 }
-  let rest = '';
-  let cursor = 0;
-  for (const run of latexRuns) {
-    rest += text.slice(cursor, run.start);
-    cursor = run.end;
-  }
-  rest += text.slice(cursor);
-  return /[A-Za-zÄÖÜäöüß]{2,}/.test(rest);
-}
 
 function isMathGlueGap(gap: string): boolean {
   if (!/^[\s+\-*=<>/|,.;:()[\]·×±≤≥∞'′^_]*$/.test(gap)) return false;

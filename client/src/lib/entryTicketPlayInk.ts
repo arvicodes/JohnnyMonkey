@@ -29,7 +29,8 @@ export function parseEntryTicketInk(raw: unknown): PresentationStroke[] {
       row.shape === 'line' ||
       row.shape === 'rect' ||
       row.shape === 'ellipse' ||
-      row.shape === 'arrow'
+      row.shape === 'arrow' ||
+      row.shape === 'curved-arrow'
         ? row.shape
         : undefined;
     const holes = Array.isArray(row.holes)
@@ -56,6 +57,12 @@ export function parseEntryTicketInk(raw: unknown): PresentationStroke[] {
       ...(shape ? { shape } : {}),
       ...(typeof row.rotation === 'number' && Number.isFinite(row.rotation)
         ? { rotation: row.rotation }
+        : {}),
+      ...(typeof row.arrowHeadSize === 'number' && Number.isFinite(row.arrowHeadSize)
+        ? { arrowHeadSize: row.arrowHeadSize }
+        : {}),
+      ...(typeof row.curveBend === 'number' && Number.isFinite(row.curveBend)
+        ? { curveBend: row.curveBend }
         : {}),
       ...(row.filled === true ? { filled: true } : {}),
       ...(holes && holes.length > 0 ? { holes } : {}),

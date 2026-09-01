@@ -728,6 +728,21 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                     <ArrowShapeIcon sx={{ fontSize: 14 }} />
                   </IconButton>
                 </Tooltip>
+                <Tooltip title="Gebogener Pfeil">
+                  <IconButton
+                    size="small"
+                    onClick={() => onSelectInkTool('shape-curved-arrow')}
+                    sx={{
+                      ...iconBtnSx,
+                      ...(inkTool === 'shape-curved-arrow'
+                        ? { bgcolor: `${PRES_EDITOR_UI.accent}22`, color: PRES_EDITOR_UI.accent }
+                        : {}),
+                    }}
+                    aria-label="Tinten-Pfeil gebogen"
+                  >
+                    <CurvedArrowShapeIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
                 {(toolUsesColor(inkTool) || inkTool === 'select') &&
                   PEN_COLORS.map((c) => (
                     <IconButton

@@ -394,6 +394,146 @@ export default function PresentationTabletToolbar({
         </Box>
       )}
 
+      {showArrowOptions && selectedArrowStroke && onPatchSelectedStroke && (
+        <Box
+          sx={{
+            ...PANEL_SX,
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            flexWrap: docked ? 'wrap' : 'nowrap',
+            gap: 0.45,
+            borderRadius: 2,
+            px: 0.65,
+            py: 0.35,
+          }}
+        >
+          <Typography sx={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.72)', mr: 0.25 }}>
+            Pfeil
+          </Typography>
+          <Typography sx={{ fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>Spitze</Typography>
+          {[14, 18, 22, 28].map((size) => {
+            const active = (selectedArrowStroke.arrowHeadSize ?? 22) === size;
+            return (
+              <Box
+                key={size}
+                data-pres-swatch=""
+                role="button"
+                tabIndex={0}
+                title={`Pfeilspitze ${size}`}
+                onClick={() => onPatchSelectedStroke({ arrowHeadSize: size })}
+                {...stylusActivateHandlers(() => onPatchSelectedStroke({ arrowHeadSize: size }))}
+                sx={{
+                  minWidth: 24,
+                  height: 22,
+                  px: 0.45,
+                  borderRadius: 1,
+                  display: 'grid',
+                  placeItems: 'center',
+                  fontSize: 10,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  color: active ? JOHNNY_PRESENTATION.warm : 'rgba(255,255,255,0.88)',
+                  border: active
+                    ? `2px solid ${JOHNNY_PRESENTATION.warm}`
+                    : '1px solid rgba(255,255,255,0.18)',
+                  bgcolor: active ? 'rgba(255,152,0,0.14)' : 'transparent',
+                }}
+              >
+                {size}
+              </Box>
+            );
+          })}
+          {selectedArrowStroke.shape === 'curved-arrow' && (
+            <>
+              <Divider
+                orientation="vertical"
+                flexItem
+                sx={{ mx: 0.1, borderColor: 'rgba(255,255,255,0.16)', height: 16, alignSelf: 'center' }}
+              />
+              <Typography sx={{ fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>Bogen</Typography>
+              {[-40, -20, 0, 20, 35, 40].map((bend) => {
+                const active = (selectedArrowStroke.curveBend ?? 35) === bend;
+                return (
+                  <Box
+                    key={bend}
+                    data-pres-swatch=""
+                    role="button"
+                    tabIndex={0}
+                    title={`Bogenstärke ${bend}`}
+                    onClick={() => onPatchSelectedStroke({ curveBend: bend })}
+                    {...stylusActivateHandlers(() => onPatchSelectedStroke({ curveBend: bend }))}
+                    sx={{
+                      minWidth: 24,
+                      height: 22,
+                      px: 0.45,
+                      borderRadius: 1,
+                      display: 'grid',
+                      placeItems: 'center',
+                      fontSize: 10,
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      color: active ? JOHNNY_PRESENTATION.warm : 'rgba(255,255,255,0.88)',
+                      border: active
+                        ? `2px solid ${JOHNNY_PRESENTATION.warm}`
+                        : '1px solid rgba(255,255,255,0.18)',
+                      bgcolor: active ? 'rgba(255,152,0,0.14)' : 'transparent',
+                    }}
+                  >
+                    {bend > 0 ? `+${bend}` : bend}
+                  </Box>
+                );
+              })}
+            </>
+          )}
+          <Divider
+            orientation="vertical"
+            flexItem
+            sx={{ mx: 0.1, borderColor: 'rgba(255,255,255,0.16)', height: 16, alignSelf: 'center' }}
+          />
+          <Box
+            data-pres-swatch=""
+            role="button"
+            tabIndex={0}
+            title={
+              selectedArrowStroke.shape === 'curved-arrow'
+                ? 'In geraden Pfeil umwandeln'
+                : 'In gebogenen Pfeil umwandeln'
+            }
+            onClick={() =>
+              onPatchSelectedStroke(
+                selectedArrowStroke.shape === 'curved-arrow'
+                  ? { shape: 'arrow', curveBend: undefined }
+                  : { shape: 'curved-arrow', curveBend: selectedArrowStroke.curveBend ?? 35 },
+              )
+            }
+            {...stylusActivateHandlers(() =>
+              onPatchSelectedStroke(
+                selectedArrowStroke.shape === 'curved-arrow'
+                  ? { shape: 'arrow', curveBend: undefined }
+                  : { shape: 'curved-arrow', curveBend: selectedArrowStroke.curveBend ?? 35 },
+              ),
+            )}
+            sx={{
+              px: 0.65,
+              height: 22,
+              borderRadius: 1,
+              display: 'grid',
+              placeItems: 'center',
+              fontSize: 9.5,
+              fontWeight: 800,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              color: 'rgba(255,255,255,0.88)',
+              border: '1px solid rgba(255,255,255,0.18)',
+              '&:hover': { bgcolor: 'rgba(255,152,0,0.14)', borderColor: 'rgba(255,152,0,0.45)' },
+            }}
+          >
+            {selectedArrowStroke.shape === 'curved-arrow' ? 'Gerade' : 'Gebogen'}
+          </Box>
+        </Box>
+      )}
+
       {(showColors || showLineWidths || showMarkerOpacity) && (
         <Box
           sx={{

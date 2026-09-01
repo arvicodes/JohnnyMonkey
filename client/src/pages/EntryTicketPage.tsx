@@ -6095,6 +6095,20 @@ export default function EntryTicketPage({
           }}
           onClearAllInk={() => setClearInkOpen(true)}
           onSave={secureTicketBackup}
+          selectedArrowStroke={(() => {
+            const activeInk = sessionDone ? solutionSlideInk : currentCardInk;
+            if (selectedStrokeIds.length !== 1) return null;
+            const s = activeInk.find((row) => row.id === selectedStrokeIds[0]);
+            return s?.shape === 'arrow' || s?.shape === 'curved-arrow' ? s : null;
+          })()}
+          onPatchSelectedStroke={(patch) => {
+            const activeInk = sessionDone ? solutionSlideInk : currentCardInk;
+            if (selectedStrokeIds.length !== 1) return;
+            const id = selectedStrokeIds[0];
+            const next = activeInk.map((s) => (s.id === id ? { ...s, ...patch } : s));
+            if (sessionDone) commitSolutionSlideInk(next);
+            else commitCardInk(currentIndex, next);
+          }}
         />
       ) : null}
 
