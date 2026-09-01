@@ -4607,21 +4607,13 @@ const PresentationEditorPage: React.FC = () => {
                   <PresentationDrawOverlay
                     strokes={currentInkStrokes}
                     onStrokesChange={updateInkStrokes}
-                    enabled={
-                      currentInkStrokes.length > 0 ||
-                      inkTarget === 'slide' ||
-                      !inkEditActive
-                    }
-                    interactive={
-                      inkTarget === 'slide' &&
-                      !connectorDrawActive &&
-                      (inkDrawCapture || !inkEditActive)
-                    }
+                    enabled
+                    interactive={!connectorDrawActive}
                     readOnly={false}
-                    passThroughNonPen={!inkEditActive || inkTarget !== 'slide'}
+                    passThroughNonPen={!inkEditActive}
                     onInkStart={handleInkStartFromStylus}
                     slideId={normalizedActive.id}
-                    tool={inkTool}
+                    tool={inkEditActive ? inkTool : 'pen'}
                     strokeColor={inkColor}
                     lineWidth={inkLineWidth}
                     markerOpacity={inkMarkerOpacity}
@@ -4685,7 +4677,7 @@ const PresentationEditorPage: React.FC = () => {
             inkColor={inkColor}
             inkLineWidth={inkLineWidth}
             inkMarkerOpacity={inkMarkerOpacity}
-            inkEditActive={inkEditActive && inkTarget === 'notes'}
+            inkEditActive={inkEditActive}
             selectedStrokeIds={notesSelectedStrokeIds}
             onSelectedStrokeIdsChange={setNotesSelectedStrokeIds}
             onInkChange={(strokes) =>

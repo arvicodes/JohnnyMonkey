@@ -45,7 +45,7 @@ import {
   notesHtmlLooksEmpty,
 } from '../../lib/presentationNotesTemplates';
 import { clipboardHasImage, clipboardPrefersRichText, collectPasteImages } from '../../lib/goodNotesClipboard';
-import { isInkDrawCaptureTool, type PresentationDrawTool } from '../../lib/presentationDrawTools';
+import { type PresentationDrawTool } from '../../lib/presentationDrawTools';
 import PresentationDrawOverlay from './PresentationDrawOverlay';
 import '../../styles/presentationLists.css';
 
@@ -770,9 +770,9 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
   const resizeRef = useRef<{ pointerId: number; startX: number; startW: number } | null>(null);
   const [resizing, setResizing] = useState(false);
 
-  const notesInkCapture = inkEditActive && isInkDrawCaptureTool(inkTool);
-  const textEditing = !inkEditActive || !notesInkCapture;
-  const inkInteractive = !readOnly && (notesInkCapture || !inkEditActive);
+  /** Stift an → Notizfeld zeichnet (wie Folie); Stift aus → tippen, Pencil schaltet an. */
+  const textEditing = !inkEditActive;
+  const inkInteractive = !readOnly;
   const passThroughNonPen = !inkEditActive;
 
   const onResizePointerDown = useCallback((e: React.PointerEvent<HTMLElement>) => {
