@@ -182,7 +182,6 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   const [browseFiles, setBrowseFiles] = useState<LessonFolderFsItem[]>([]);
   const [browseLoading, setBrowseLoading] = useState(false);
   const [browseError, setBrowseError] = useState<string | null>(null);
-  const [latexChip, setLatexChip] = useState<{ top: number; left: number } | null>(null);
   const [selectedLessonFile, setSelectedLessonFile] = useState<string>('');
   const [selectedFileMeta, setSelectedFileMeta] = useState<LessonFolderFsItem | null>(null);
   const linkRangeRef = useRef<Range | null>(null);
@@ -305,16 +304,27 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     releaseFormatBarInteraction();
   };
 
-  const hideLatexChip = useCallback(() => setLatexChip(null), []);
+  const resolveLatexEditor = useCallback((): HTMLElement | null => {
+    if (activeEditor) return activeEditor;
+    const sel = window.getSelection();
+    const node = sel?.anchorNode;
+    const el = node instanceof HTMLElement ? node : node?.parentElement;
+    return (el?.closest('[data-pres-rich-zone], [contenteditable="true"]') as HTMLElement | null) || null;
+  }, [activeEditor]);
 
   const handleLatexShortcut = useCallback(() => {
-    if (!activeEditor || disabled) return;
-    stashEditorSelection(activeEditor);
-    if (selectionIntersectsPresentationMath(activeEditor)) {
-      if (unwrapSelectedPresentationMath(activeEditor)) {
-        hideLatexChip();
+    if (disabled) return;
+    const editor = resolveLatexEditor();
+    if (!editor) {
+      onMessage?.('Zuerst ins Textfeld klicken und LaTeX markieren');
+      return;
+    }
+    stashEditorSelection(editor);
+    keepEditorSelection(editor);
+    if (selectionIntersectsPresentationMath(editor)) {
+      if (unwrapSelectedPresentationMath(editor)) {
         onEditorChanged?.();
-        onMessage?.('Formel wieder als LaTeX');
+        onMessage?.('Wieder LaTeX');
       }
       return;
     }
@@ -323,51 +333,13 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
       onMessage?.('LaTeX markieren, dann ⌘U');
       return;
     }
-    try {
-      const rect = sel.getRangeAt(0).getBoundingClientRect();
-      const left = Math.max(8, Math.min(rect.left, window.innerWidth - 120));
-      const top = Math.min(rect.bottom + 8, window.innerHeight - 48);
-      setLatexChip({ top: Math.max(8, top), left });
-      setFormatBarInteracting(true);
-    } catch {
-      onMessage?.('Markierung konnte nicht gelesen werden');
-    }
-  }, [activeEditor, disabled, hideLatexChip, onEditorChanged, onMessage]);
-
-  const applyLatexConvert = useCallback(() => {
-    if (!activeEditor) return;
-    setFormatBarInteracting(true);
-    stashEditorSelection(activeEditor);
-    keepEditorSelection(activeEditor);
-    if (!convertSelectedTextToPresentationMath(activeEditor)) {
+    if (!convertSelectedTextToPresentationMath(editor)) {
       onMessage?.('LaTeX konnte nicht umgewandelt werden');
-      hideLatexChip();
-      setFormatBarInteracting(false);
       return;
     }
-    hideLatexChip();
     onEditorChanged?.();
     onMessage?.('Formel umgewandelt');
-    setFormatBarInteracting(false);
-  }, [activeEditor, hideLatexChip, onEditorChanged, onMessage]);
-
-  useEffect(() => {
-    if (!latexChip) return undefined;
-    const onDown = (e: PointerEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (t?.closest('[data-pres-latex-chip]')) return;
-      hideLatexChip();
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') hideLatexChip();
-    };
-    window.addEventListener('pointerdown', onDown, true);
-    window.addEventListener('keydown', onKey, true);
-    return () => {
-      window.removeEventListener('pointerdown', onDown, true);
-      window.removeEventListener('keydown', onKey, true);
-    };
-  }, [latexChip, hideLatexChip]);
+  }, [disabled, resolveLatexEditor, onEditorChanged, onMessage]);
 
   useEffect(() => {
     if (disabled || !activeEditor) return undefined;
@@ -380,10 +352,11 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         return;
       }
       const sel = window.getSelection();
+      const latexEditor = resolveLatexEditor() || editor;
       const inEditor =
         target === editor ||
         (target != null && editor.contains(target)) ||
-        (sel?.anchorNode != null && editor.contains(sel.anchorNode));
+        (sel?.anchorNode != null && (editor.contains(sel.anchorNode) || latexEditor.contains(sel.anchorNode)));
       if (!inEditor) return;
       const key = e.key.toLowerCase();
       if (key === 'b' && !e.shiftKey) {
@@ -414,7 +387,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     return () => window.removeEventListener('keydown', onKeyDown, true);
     // applyAndNotify closes over the current editor; rebind when it changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeEditor, disabled, handleLatexShortcut]);
+  }, [activeEditor, disabled, handleLatexShortcut, resolveLatexEditor]);
 
   const preventToolbarFocus = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -716,7 +689,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
         </span>
       </Tooltip>
 
-      <Tooltip title="LaTeX markieren, ⌘U → Umwandeln. Formel markieren, ⌘U → wieder LaTeX">
+      <Tooltip title="Markieren + ⌘U: LaTeX ⇄ Formel">
         <span>
           <IconButton
             size="small"
@@ -1701,31 +1674,6 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
           )}
         </DialogActions>
       </Dialog>
-
-      {latexChip ? (
-        <Box
-          data-pres-latex-chip
-          data-presentation-format-ui="true"
-          sx={{
-            position: 'fixed',
-            top: latexChip.top,
-            left: latexChip.left,
-            zIndex: 20000,
-            boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
-            borderRadius: 1,
-          }}
-        >
-          <Button
-            size="small"
-            variant="contained"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={applyLatexConvert}
-            sx={{ textTransform: 'none', fontSize: 12, px: 1.25, py: 0.25, minHeight: 28 }}
-          >
-            Umwandeln
-          </Button>
-        </Box>
-      ) : null}
     </Box>
   );
 };
