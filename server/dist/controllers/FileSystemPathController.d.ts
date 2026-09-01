@@ -51,6 +51,8 @@ export declare class FileSystemPathController {
     static readGoodNotesFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static readImageFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static readTextFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /** Folien-Audio (Einsprechen) — inline, mit Range fürs Spulen. */
+    static readAudioFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static downloadFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /**
      * Get J-M-Reihen path for current environment
