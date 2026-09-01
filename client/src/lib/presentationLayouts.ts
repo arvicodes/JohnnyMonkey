@@ -1,5 +1,5 @@
 import type { PresentationSlide, SlideElement, SlideLayout } from './presentationDeck';
-import { SLIDE_REF_HEIGHT, SLIDE_REF_WIDTH } from './presentationDeck';
+import { SLIDE_REF_HEIGHT, SLIDE_REF_WIDTH, slidePageCountFromEl, slidePageHeightPx } from './presentationDeck';
 import { JOHNNY_ACCENT_PRESETS, JOHNNY_PRESENTATION } from './presentationTheme';
 import { PRESENTATION_CONTENT_FONT_PX } from './presentationFontSize';
 import { PRESENTATION_DEFAULT_FONT_FAMILY } from './presentationFonts';
@@ -112,9 +112,11 @@ export function measureSlideBodyOrigin(slideEl: HTMLElement | null | undefined):
   const sr = slideEl.getBoundingClientRect();
   const zr = zone.getBoundingClientRect();
   if (sr.width < 8 || sr.height < 8 || zr.width < 8) return fallback;
+  const pageH = slidePageHeightPx(sr.height, slidePageCountFromEl(slideEl));
+  if (pageH < 8) return fallback;
   return {
     x: ((zr.left - sr.left) / sr.width) * 100,
-    y: ((zr.top - sr.top) / sr.height) * 100,
+    y: ((zr.top - sr.top) / pageH) * 100,
     maxW: (zr.width / sr.width) * 100,
   };
 }
@@ -183,6 +185,8 @@ export function measureTextFieldHeightPct(
 ): number | null {
   const sr = slideEl.getBoundingClientRect();
   if (sr.height < 8) return null;
+  const pageH = slidePageHeightPx(sr.height, slidePageCountFromEl(slideEl));
+  if (pageH < 8) return null;
   const cs = window.getComputedStyle(contentEl);
   const padTop = parseFloat(cs.paddingTop) || 0;
   const padBottom = parseFloat(cs.paddingBottom) || 0;
@@ -195,7 +199,7 @@ export function measureTextFieldHeightPct(
   } else {
     inner = textH + padTop + padBottom;
   }
-  return clampPct(((inner + extraInsetY) / sr.height) * 100, 2.0, 92);
+  return clampPct(((inner + extraInsetY) / pageH) * 100, 2.0, 92);
 }
 
 /** Box an Inhalt anpassen (Breite höchstens Inhaltsfeld). */
@@ -209,6 +213,8 @@ export function measureTextFieldSizePct(
 ): { w: number; h: number } | null {
   const sr = slideEl.getBoundingClientRect();
   if (sr.width < 8 || sr.height < 8) return null;
+  const pageH = slidePageHeightPx(sr.height, slidePageCountFromEl(slideEl));
+  if (pageH < 8) return null;
   const maxWpx = Math.max(48, (maxWpct / 100) * sr.width - extraPadX);
   const cs = window.getComputedStyle(contentEl);
   const clone = contentEl.cloneNode(true) as HTMLElement;
@@ -238,6 +244,6 @@ export function measureTextFieldSizePct(
   clone.remove();
   return {
     w: clampPct((wpx / sr.width) * 100, 5, maxWpct),
-    h: clampPct((hpx / sr.height) * 100, 2.6, 92),
+    h: clampPct((hpx / pageH) * 100, 2.6, 92),
   };
 }

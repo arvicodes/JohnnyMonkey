@@ -318,12 +318,16 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     onSelectedStrokeIdChangeRef.current?.(ids[0] ?? null);
   };
 
+  const logicalHeightRef = useRef(logicalHeight);
+  logicalHeightRef.current = logicalHeight;
+
   const applySlideTransform = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
+    const height = Math.max(1, logicalHeightRef.current);
     ctx.setTransform(
       canvas.width / SLIDE_REF_WIDTH,
       0,
       0,
-      canvas.height / Math.max(1, logicalHeight),
+      canvas.height / height,
       0,
       0,
     );
@@ -341,8 +345,8 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       ? Math.max(1, canvas.clientWidth || canvas.getBoundingClientRect().width || SLIDE_REF_WIDTH * scale)
       : SLIDE_REF_WIDTH * scale;
     const cssH = fillContainer
-      ? Math.max(1, canvas.clientHeight || canvas.getBoundingClientRect().height || logicalHeight * scale)
-      : logicalHeight * scale;
+      ? Math.max(1, canvas.clientHeight || canvas.getBoundingClientRect().height || logicalHeightRef.current * scale)
+      : logicalHeightRef.current * scale;
     const bufW = Math.max(1, Math.round(cssW * dpr));
     const bufH = Math.max(1, Math.round(cssH * dpr));
     if (canvas.width !== bufW || canvas.height !== bufH) {
@@ -383,7 +387,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     }
     return {
       x: ((clientX - rect.left) / rect.width) * SLIDE_REF_WIDTH,
-      y: ((clientY - rect.top) / rect.height) * logicalHeight,
+      y: ((clientY - rect.top) / rect.height) * logicalHeightRef.current,
     };
   };
 
@@ -413,7 +417,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     const canvas = canvasRef.current;
     const ctx = ensureCtx(!isLiveInking());
     if (!canvas || !ctx) return;
-    ctx.clearRect(0, 0, SLIDE_REF_WIDTH, logicalHeight);
+    ctx.clearRect(0, 0, SLIDE_REF_WIDTH, logicalHeightRef.current);
     const current = previewStrokesRef.current ?? strokesRef.current;
     const base =
       toolRef.current === 'eraser' && eraserPathRef.current.length > 0

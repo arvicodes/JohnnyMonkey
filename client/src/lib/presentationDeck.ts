@@ -46,6 +46,24 @@ export function pagePctToCssPct(pagePct: number, pageCount: number): number {
   return pagePct / pages;
 }
 
+export function slidePageCountFromEl(el: Element | null | undefined): number {
+  if (!el) return 1;
+  const node =
+    (el.closest?.('[data-pres-pages]') as HTMLElement | null) ||
+    (el.querySelector?.('[data-pres-pages]') as HTMLElement | null) ||
+    (el as HTMLElement);
+  const n = Number(node.dataset?.presPages);
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return Math.min(MAX_SLIDE_EXTRA_PAGES + 1, Math.round(n));
+}
+
+export function slidePageHeightPx(totalHeightPx: number, pageCount = 1): number {
+  const pages = Math.max(1, pageCount);
+  const h = Number(totalHeightPx);
+  if (!Number.isFinite(h) || h <= 0) return 0;
+  return h / pages;
+}
+
 /** Skalierung, damit die komplette Folie (16:9) in den Viewport passt — nicht nur nach Breite. */
 export function slideFitScale(
   viewportWidth: number,

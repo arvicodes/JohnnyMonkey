@@ -1730,7 +1730,11 @@ const PresentationEditorPage: React.FC = () => {
       'materialHtml' in patch ||
       'title' in patch ||
       'body' in patch;
-    scheduleSave({ ...current, slides }, quiet ? { quiet: true } : undefined);
+    const urgent = 'extraPageCount' in patch;
+    scheduleSave(
+      { ...current, slides },
+      quiet ? { quiet: true } : urgent ? { urgent: true } : undefined,
+    );
   };
 
   const isAnimationKeyBlocked = useCallback(() => {
@@ -3381,10 +3385,11 @@ const PresentationEditorPage: React.FC = () => {
         slideEl,
         DEFAULT_FLOATING_IMAGE_W,
         DEFAULT_FLOATING_IMAGE_H,
+        activePageCount,
       );
       const pos = {
         x: Math.min(base.x, 100 - DEFAULT_FLOATING_IMAGE_W - 1.5),
-        y: Math.min(base.y, 100 - DEFAULT_FLOATING_IMAGE_H - 1.5),
+        y: Math.min(base.y, 100 * Math.max(1, activePageCount) - DEFAULT_FLOATING_IMAGE_H - 1.5),
       };
 
       const files = extractImageFilesFromDataTransfer(e.dataTransfer);
@@ -3404,7 +3409,7 @@ const PresentationEditorPage: React.FC = () => {
           const offset = i * 3;
           await handleImageFile(files[i], {
             x: Math.min(pos.x + offset, 100 - DEFAULT_FLOATING_IMAGE_W - 1.5),
-            y: Math.min(pos.y + offset, 100 - DEFAULT_FLOATING_IMAGE_H - 1.5),
+            y: Math.min(pos.y + offset, 100 * Math.max(1, activePageCount) - DEFAULT_FLOATING_IMAGE_H - 1.5),
           });
         }
         return;
@@ -4714,6 +4719,7 @@ const PresentationEditorPage: React.FC = () => {
                     onSelectedStrokeIdsChange={setSelectedStrokeIds}
                     scale={1}
                     logicalHeight={activeLogicalH}
+                    fillContainer
                     onBackgroundPointerDown={() => {
                       setSelectedElementId(null);
                       setInkTarget('slide');
@@ -4727,6 +4733,7 @@ const PresentationEditorPage: React.FC = () => {
                     active={connectorDrawActive}
                     points={connectorDrawPoints}
                     accentColor={normalizedActive.accentColor}
+                    pageCount={activePageCount}
                     onAddPoint={(p) => setConnectorDrawPoints((pts) => [...pts, p])}
                     onFinish={finishConnectorDraw}
                   />
@@ -4759,10 +4766,9 @@ const PresentationEditorPage: React.FC = () => {
                         );
                         updateSlide({ extraPageCount: next || undefined }, normalizedActive.id);
                         window.requestAnimationFrame(() => {
-                          canvasHostRef.current?.scrollTo({
-                            top: canvasHostRef.current.scrollHeight,
-                            behavior: 'smooth',
-                          });
+                          const host = canvasHostRef.current;
+                          if (!host) return;
+                          host.scrollBy({ top: slideViewportH, behavior: 'smooth' });
                         });
                       }}
                       sx={{

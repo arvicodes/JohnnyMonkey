@@ -1,4 +1,4 @@
-import { htmlToPlain, type PresentationSlide, type SlideElement } from './presentationDeck';
+import { htmlToPlain, slidePageCountFromEl, slidePageHeightPx, type PresentationSlide, type SlideElement } from './presentationDeck';
 
 /** Max. Bildhöhe auf Folien mit Fußleiste (Prozent), damit die Fußzeile frei bleibt. */
 export const SLIDE_HERO_IMAGE_HEIGHT_PCT = 93;
@@ -252,6 +252,7 @@ export function scaleImageOnSlide(
   dxPct: number,
   dyPct: number,
   minSize = 8,
+  yMax = SLIDE_Y_MAX,
 ): Partial<SlideElement> {
   const aspect = orig.w / Math.max(orig.h, 0.01);
   const growE = handle === 'e' || handle === 'ne' || handle === 'se';
@@ -278,7 +279,7 @@ export function scaleImageOnSlide(
   const y = growN ? orig.y + orig.h - h : orig.y;
   return mapSourceThroughScale(orig, {
     x: clampPercent(x, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
-    y: clampPercent(y, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
+    y: clampPercent(y, IMAGE_FRAME_MIN, yMax),
     w,
     h,
   });
@@ -302,7 +303,7 @@ export function scaleImageFromCenter(
   }
   return mapSourceThroughScale(orig, {
     x: clampPercent(orig.x + (orig.w - w) / 2, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
-    y: clampPercent(orig.y + (orig.h - h) / 2, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
+    y: clampPercent(orig.y + (orig.h - h) / 2, IMAGE_FRAME_MIN, SLIDE_Y_MAX),
     w,
     h,
   });
@@ -311,6 +312,8 @@ export function scaleImageFromCenter(
 /** Bildrahmen darf über den Folienrand hinausragen (Prozent). */
 export const IMAGE_FRAME_MIN = -40;
 export const IMAGE_FRAME_MAX = 100;
+/** y darf über eine Folienseite hinaus (extra Seiten). Nicht aus presentationDeck importieren — Zyklus. */
+const SLIDE_Y_MAX = 800;
 export const IMAGE_FRAME_SIZE_MAX = 160;
 
 /** Ausschnitt bei Cover-Bildern (object-position). */
@@ -338,6 +341,7 @@ export function resizeImageFrameByHandle(
   dxPct: number,
   dyPct: number,
   minSize = 4,
+  yMax = SLIDE_Y_MAX,
 ): { x: number; y: number; w: number; h: number } {
   let { x, y, w, h } = orig;
   const growE = handle === 'e' || handle === 'ne' || handle === 'se';
@@ -360,7 +364,7 @@ export function resizeImageFrameByHandle(
   if (growN) y = orig.y + orig.h - h;
   return {
     x: clampPercent(x, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
-    y: clampPercent(y, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
+    y: clampPercent(y, IMAGE_FRAME_MIN, yMax),
     w,
     h,
   };
@@ -738,18 +742,21 @@ export function slideDropPositionForImage(
   slideEl: HTMLElement,
   imageWPct = DEFAULT_FLOATING_IMAGE_W,
   imageHPct = DEFAULT_FLOATING_IMAGE_H,
+  pageCount?: number,
 ): { x: number; y: number } {
   const rect = slideEl.getBoundingClientRect();
   if (rect.width <= 0 || rect.height <= 0) {
     return { x: 36, y: 30 };
   }
+  const pages = Math.max(1, pageCount || slidePageCountFromEl(slideEl));
+  const pageH = slidePageHeightPx(rect.height, pages);
   const xPct = ((clientX - rect.left) / rect.width) * 100;
-  const yPct = ((clientY - rect.top) / rect.height) * 100;
-  // Rand lassen, damit Resize-Handles nicht am Folienrand abgeschnitten werden
+  const yPct = pageH > 0 ? ((clientY - rect.top) / pageH) * 100 : 30;
   const edge = 1.5;
+  const yMax = 100 * pages - imageHPct - edge;
   return {
     x: clampPercent(xPct - imageWPct / 2, edge, 100 - imageWPct - edge),
-    y: clampPercent(yPct - imageHPct / 2, edge, 100 - imageHPct - edge),
+    y: clampPercent(yPct - imageHPct / 2, edge, Math.max(edge, yMax)),
   };
 }
 

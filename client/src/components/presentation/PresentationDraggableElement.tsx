@@ -599,14 +599,14 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         guides = snapped.guides;
       }
     } else if (d.mode === 'resize' && d.imageGesture === 'scale') {
-      patch = scaleImageOnSlide(d.orig, d.resizeCorner as ImageCropHandle, dxPct, dyPct, MIN_SIZE);
+      patch = scaleImageOnSlide(d.orig, d.resizeCorner as ImageCropHandle, dxPct, dyPct, MIN_SIZE, yMax);
     } else if (d.mode === 'resize' && d.resizeCorner !== 'br' && d.resizeCorner !== 'tr') {
       patch = isWindowCropMode(d.orig)
         ? resizeWindowCrop(d.orig, d.resizeCorner, dxPct, dyPct, MIN_SIZE)
-        : resizeImageFrameByHandle(d.orig, d.resizeCorner, dxPct, dyPct, MIN_SIZE);
+        : resizeImageFrameByHandle(d.orig, d.resizeCorner, dxPct, dyPct, MIN_SIZE, yMax);
     } else if (d.resizeCorner === 'tr') {
       if (isWindowCropMode(d.orig)) {
-        patch = scaleImageOnSlide(d.orig, 'ne', dxPct, dyPct, MIN_SIZE);
+        patch = scaleImageOnSlide(d.orig, 'ne', dxPct, dyPct, MIN_SIZE, yMax);
       } else {
         const nextW = clamp(d.orig.w + dxPct, MIN_SIZE, IMAGE_FRAME_SIZE_MAX);
         const nextH = clamp(d.orig.h - dyPct, MIN_SIZE, IMAGE_FRAME_SIZE_MAX);
@@ -625,7 +625,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         guides = snapped.guides;
       }
     } else if (isWindowCropMode(d.orig)) {
-      patch = scaleImageOnSlide(d.orig, 'se', dxPct, dyPct, MIN_SIZE);
+      patch = scaleImageOnSlide(d.orig, 'se', dxPct, dyPct, MIN_SIZE, yMax);
     } else {
       const proposed = {
         ...elementToRect(d.orig),

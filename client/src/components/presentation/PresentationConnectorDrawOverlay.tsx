@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box } from '@mui/material';
-import { SLIDE_REF_HEIGHT, SLIDE_REF_WIDTH } from '../../lib/presentationDeck';
+import { SLIDE_REF_HEIGHT, SLIDE_REF_WIDTH, slidePageCountFromEl, slidePageHeightPx } from '../../lib/presentationDeck';
 
 export type ConnectorDrawPoint = { x: number; y: number };
 
@@ -10,6 +10,7 @@ interface PresentationConnectorDrawOverlayProps {
   accentColor?: string;
   /** slide = [data-pres-slide]; host = Overlay-Fläche (Entry-Ticket-Karte). */
   boundsMode?: 'slide' | 'host';
+  pageCount?: number;
   onAddPoint: (point: ConnectorDrawPoint) => void;
   onFinish: () => void;
 }
@@ -19,11 +20,14 @@ const PresentationConnectorDrawOverlay: React.FC<PresentationConnectorDrawOverla
   points,
   accentColor = '#1565C0',
   boundsMode = 'slide',
+  pageCount = 1,
   onAddPoint,
   onFinish,
 }) => {
   if (!active) return null;
 
+  const pages = Math.max(1, pageCount);
+  const logicalH = SLIDE_REF_HEIGHT * pages;
   const toPx = (p: ConnectorDrawPoint) => ({
     x: (p.x / 100) * SLIDE_REF_WIDTH,
     y: (p.y / 100) * SLIDE_REF_HEIGHT,
@@ -51,9 +55,12 @@ const PresentationConnectorDrawOverlay: React.FC<PresentationConnectorDrawOverla
     if (!host) return;
     const rect = host.getBoundingClientRect();
     if (rect.width < 8 || rect.height < 8) return;
+    const pagesHere = Math.max(1, pageCount || slidePageCountFromEl(host));
+    const pageH = slidePageHeightPx(rect.height, pagesHere);
+    if (pageH < 1) return;
     onAddPoint({
       x: Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100)),
-      y: Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100)),
+      y: Math.max(0, Math.min(100 * pagesHere, ((e.clientY - rect.top) / pageH) * 100)),
     });
   };
 
@@ -75,8 +82,8 @@ const PresentationConnectorDrawOverlay: React.FC<PresentationConnectorDrawOverla
     >
       <svg
         width={SLIDE_REF_WIDTH}
-        height={SLIDE_REF_HEIGHT}
-        viewBox={`0 0 ${SLIDE_REF_WIDTH} ${SLIDE_REF_HEIGHT}`}
+        height={logicalH}
+        viewBox={`0 0 ${SLIDE_REF_WIDTH} ${logicalH}`}
         style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
         aria-hidden
       >

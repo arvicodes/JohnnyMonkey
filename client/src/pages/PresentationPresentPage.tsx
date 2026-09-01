@@ -1967,6 +1967,7 @@ const PresentationPresentPage: React.FC = () => {
             <Box sx={{ position: 'absolute', inset: 0, zIndex: 0, overflow: slidePageCount(currentSlide) > 1 ? 'auto' : 'hidden' }}>
               <Box
                 sx={{
+                  position: 'relative',
                   width: SLIDE_REF_WIDTH,
                   height: slideLogicalHeight(currentSlide),
                   transform: `scale(${displayScale})`,
@@ -1999,26 +2000,28 @@ const PresentationPresentPage: React.FC = () => {
                     isOriginalView || isNamedView ? undefined : movePlayPhotoToSlide
                   }
                 />
+                <PresentationDrawOverlay
+                  strokes={currentStrokes}
+                  onStrokesChange={updateStrokes}
+                  enabled
+                  interactive
+                  passThroughNonPen={!drawActive}
+                  onInkStart={handleInkStartFromStylus}
+                  slideId={currentSlide.id}
+                  tool={drawActive ? activeTool : 'pen'}
+                  strokeColor={strokeColor}
+                  lineWidth={lineWidth}
+                  markerOpacity={markerOpacity}
+                  selectedStrokeIds={selectedStrokeIds}
+                  onSelectedStrokeIdsChange={setSelectedStrokeIds}
+                  scale={1}
+                  logicalHeight={slideLogicalHeight(currentSlide)}
+                  fillContainer
+                  onBackgroundPointerDown={() => setSelectedElementId(null)}
+                  onHitElement={setSelectedElementId}
+                />
               </Box>
             </Box>
-            <PresentationDrawOverlay
-              strokes={currentStrokes}
-              onStrokesChange={updateStrokes}
-              enabled
-              interactive
-              passThroughNonPen={!drawActive}
-              onInkStart={handleInkStartFromStylus}
-              slideId={currentSlide.id}
-              tool={drawActive ? activeTool : 'pen'}
-              strokeColor={strokeColor}
-              lineWidth={lineWidth}
-              markerOpacity={markerOpacity}
-              selectedStrokeIds={selectedStrokeIds}
-              onSelectedStrokeIdsChange={setSelectedStrokeIds}
-              scale={displayScale}
-              onBackgroundPointerDown={() => setSelectedElementId(null)}
-              onHitElement={setSelectedElementId}
-            />
           </Box>
         </Box>
       </Box>

@@ -230,11 +230,14 @@ export function clientToShapeLocal(
   clientY: number,
   el: Pick<SlideElement, 'x' | 'y' | 'w' | 'h'>,
   slideRect: DOMRect,
+  pageCount = 1,
 ): ShapePoint {
+  const pages = Math.max(1, pageCount);
+  const pageH = slideRect.height / pages;
   const left = slideRect.left + (el.x / 100) * slideRect.width;
-  const top = slideRect.top + (el.y / 100) * slideRect.height;
+  const top = slideRect.top + (el.y / 100) * pageH;
   const w = (el.w / 100) * slideRect.width;
-  const h = (el.h / 100) * slideRect.height;
+  const h = (el.h / 100) * pageH;
   return {
     x: clamp(((clientX - left) / w) * 100, -5, 105),
     y: clamp(((clientY - top) / h) * 100, -5, 105),
