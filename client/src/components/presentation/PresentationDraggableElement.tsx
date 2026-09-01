@@ -31,6 +31,16 @@ import { PRESENTATION_DEFAULT_FONT_FAMILY } from '../../lib/presentationFonts';
 import { notesDropTargetHits } from '../../lib/presentationNotesImages';
 import { isPenPointer } from '../../lib/presentationDrawTools';
 import { imageFrameParts } from '../../lib/presentationImageFrames';
+import {
+  isDefaultTextFieldHtml,
+  measureSlideBodyOrigin,
+  measureTextFieldSizePct,
+  shouldAutoFitPresentationText,
+  TEXT_FIELD_PLACEHOLDER,
+} from '../../lib/presentationLayouts';
+import { notesDropTargetHits } from '../../lib/presentationNotesImages';
+import { isPenPointer } from '../../lib/presentationDrawTools';
+import { imageFrameParts } from '../../lib/presentationImageFrames';
 import '../../styles/presentationLists.css';
 import {
   effectivePresentationImageFit,
@@ -182,6 +192,9 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
 }) => {
   const textRef = useRef<HTMLDivElement>(null);
   const displayRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const lastFitRef = useRef({ w: 0, h: 0 });
+  const autoEditOnceRef = useRef(false);
   const dragRef = useRef<DragState | null>(null);
   const pendingDragRef = useRef<{
     mode: DragMode;
@@ -250,10 +263,69 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       el.innerHTML = hydratePresentationHtmlFontSizes(element.html || '<p><br></p>');
     }
     el.focus({ preventScroll: true });
+    if (isDefaultTextFieldHtml(el.innerHTML) || isDefaultTextFieldHtml(element.html)) {
+      const range = el.ownerDocument.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    }
     onTextEditorFocus?.(el, element.id, 'html');
     // nur beim Eintritt in den Edit-Modus
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [textEditing]);
+
+  useEffect(() => {
+    if (!selected) {
+      autoEditOnceRef.current = false;
+      setTextEditing(false);
+      setCardTitleEditing(false);
+      setTableColWidths([]);
+    }
+  }, [selected]);
+
+  /** Neues/leeres Textfeld: sofort tippen, Standardtext ist markiert. */
+  useEffect(() => {
+    if (element.type !== 'text' || !editable || !selected || animationEditMode) return;
+    if (autoEditOnceRef.current) return;
+    if (!isDefaultTextFieldHtml(element.html)) return;
+    autoEditOnceRef.current = true;
+    setTextEditing(true);
+  }, [element.type, element.id, element.html, editable, selected, animationEditMode]);
+
+  const fitTextBoxToContent = useCallback(() => {
+    if (!shouldAutoFitPresentationText(element) || !editable || animationEditMode) return;
+    if (dragRef.current) return;
+    const contentEl = textRef.current || displayRef.current;
+    const slideEl = (rootRef.current?.closest('[data-pres-slide]') as HTMLElement | null) ?? null;
+    if (!contentEl || !slideEl || !onChange) return;
+    const origin = measureSlideBodyOrigin(slideEl);
+    const empty =
+      isDefaultTextFieldHtml(contentEl.innerHTML) || isDefaultTextFieldHtml(element.html);
+    const next = measureTextFieldSizePct(
+      contentEl,
+      slideEl,
+      origin.maxW,
+      empty,
+      12 * scale,
+      12 * scale,
+    );
+    if (!next) return;
+    const prev = lastFitRef.current;
+    if (Math.abs(next.w - prev.w) < 0.12 && Math.abs(next.h - prev.h) < 0.12) return;
+    if (Math.abs(next.w - element.w) < 0.12 && Math.abs(next.h - element.h) < 0.12) {
+      lastFitRef.current = next;
+      return;
+    }
+    lastFitRef.current = next;
+    onChange({ w: next.w, h: next.h });
+  }, [element, editable, animationEditMode, onChange, scale]);
+
+  useLayoutEffect(() => {
+    if (element.type !== 'text' || !textEditing) return;
+    const id = window.requestAnimationFrame(() => fitTextBoxToContent());
+    return () => window.cancelAnimationFrame(id);
+  }, [element.type, textEditing, fitTextBoxToContent]);
 
   // Form-Box-Text: einmalig seeden; danach DOM behalten (kein Remount beim Auswählen)
   useLayoutEffect(() => {
@@ -314,14 +386,6 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [element.type, element.id, editable, selected, animationEditMode, cardTitleEditing]);
-
-  useEffect(() => {
-    if (!selected) {
-      setTextEditing(false);
-      setCardTitleEditing(false);
-      setTableColWidths([]);
-    }
-  }, [selected]);
 
   /** Nach Doppelklick tippbar — freie Textfelder. */
   useEffect(() => {
@@ -972,6 +1036,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
 
   return (
     <Box
+      ref={rootRef}
       data-pres-element={element.id}
       data-pres-element-type={element.type}
       onDragOver={blockFileDropIntoText}
@@ -2049,11 +2114,13 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               const cleaned = presentationPasteHtml(e.clipboardData);
               if (textRef.current) insertPresentationPastedHtml(textRef.current, cleaned);
               if (textRef.current) onChange?.({ html: textRef.current.innerHTML });
+              fitTextBoxToContent();
             }}
             onInput={() => {
               if (!textRef.current || !onChange) return;
               replaceArrowShortcutsNearCursor(textRef.current);
               const html = textRef.current.innerHTML;
+              fitTextBoxToContent();
               if (textInputTimerRef.current) window.clearTimeout(textInputTimerRef.current);
               textInputTimerRef.current = window.setTimeout(() => {
                 onChange({ html });
@@ -2081,6 +2148,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               }
               if (handlePresentationListShortcutKey(e, el)) {
                 onChange?.({ html: el.innerHTML });
+                fitTextBoxToContent();
                 return;
               }
               if (e.key !== 'Tab' || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -2101,7 +2169,12 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               cursor: 'text',
               color: JOHNNY_PRESENTATION.textPrimary,
               boxSizing: 'border-box',
+              textAlign: 'left',
               '& p': { mt: 0, mr: 0, mb: `${4 * scale}px` },
+              '& p:only-child:has(> br:only-child):before': {
+                content: `"${TEXT_FIELD_PLACEHOLDER}"`,
+                color: 'rgba(0,0,0,0.28)',
+              },
               '& li > p': { display: 'block', listStyle: 'none' },
               ...presentationNestedListSx({ scale, listPaddingPx: 20 * scale, itemGapPx: 2 * scale }),
               '& [data-pres-fs]': { lineHeight: 'inherit' },
@@ -2122,12 +2195,17 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               pointerEvents: animationEditMode || playLinkHitTarget ? 'auto' : 'none',
               color: JOHNNY_PRESENTATION.textPrimary,
               boxSizing: 'border-box',
+              textAlign: 'left',
               '& a[href]': {
                 pointerEvents: 'auto',
                 cursor: 'pointer',
                 touchAction: 'manipulation',
               },
               '& p': { mt: 0, mr: 0, mb: `${4 * scale}px` },
+              '& p:only-child:has(> br:only-child):before': {
+                content: `"${TEXT_FIELD_PLACEHOLDER}"`,
+                color: 'rgba(0,0,0,0.28)',
+              },
               '& li > p': { display: 'block', listStyle: 'none' },
               ...presentationNestedListSx({ scale, listPaddingPx: 20 * scale, itemGapPx: 2 * scale }),
               '& [data-reveal-step].pres-reveal-enter': {

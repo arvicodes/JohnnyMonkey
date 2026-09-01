@@ -151,7 +151,7 @@
   color: #0d47a1;
 }
 
-/* Word-/MathML-Formeln nach dem Einfügen */
+/* Formeln im Textfluss, nicht zentriert */
 .pres-math,
 [data-pres-math] {
   display: inline;
@@ -164,6 +164,7 @@
   font-size: inherit;
   font-weight: inherit;
   cursor: inherit;
+  text-align: inherit;
 }
 
 [contenteditable="true"] .pres-math,
@@ -177,6 +178,9 @@
 [data-pres-math] math {
   font-size: inherit;
   font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Times New Roman", serif;
+  display: inline !important;
+  text-align: inherit !important;
+  margin: 0 !important;
 }
 
 .pres-math math {

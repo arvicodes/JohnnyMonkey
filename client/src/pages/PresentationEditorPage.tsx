@@ -74,6 +74,9 @@ import {
   createSlideFromLayout,
   SLIDE_LAYOUTS,
   isBlankLayout,
+  measureSlideBodyOrigin,
+  defaultEmptyTextFieldSize,
+  TEXT_FIELD_EMPTY_HTML,
 } from '../lib/presentationLayouts';
 import {
   ANNOTATIONS_FILENAME,
@@ -1813,14 +1816,19 @@ const PresentationEditorPage: React.FC = () => {
 
   const addTextElement = () => {
     if (!normalizedActive) return;
+    const slideEl = document.querySelector(
+      `[data-pres-slide-id="${normalizedActive.id}"]`,
+    ) as HTMLElement | null;
+    const origin = measureSlideBodyOrigin(slideEl);
+    const size = defaultEmptyTextFieldSize(origin.maxW);
     const el: SlideElement = {
       id: `el-${Date.now()}`,
       type: 'text',
-      x: 18,
-      y: 28,
-      w: 38,
-      h: 22,
-      html: '<p>Text hier…</p>',
+      x: origin.x,
+      y: origin.y,
+      w: size.w,
+      h: size.h,
+      html: TEXT_FIELD_EMPTY_HTML,
       zIndex: (normalizedActive.elements?.length ?? 0) + 1,
     };
     updateSlide({ elements: [...(normalizedActive.elements || []), el] });

@@ -354,18 +354,21 @@ export function normalizePresentationLatexSource(raw: unknown): string {
   return latexSourceFromPlain(raw);
 }
 
-function renderLatexToPresentationSpan(tex: string, display = false): string {
+function renderLatexToPresentationSpan(tex: string, _display = false): string {
   const trimmed = latexSourceFromPlain(tex);
   if (!trimmed) return '';
   try {
     const mathml = loadKatex().renderToString(trimmed, {
       throwOnError: false,
-      displayMode: display,
+      displayMode: false,
       output: 'mathml',
       strict: 'ignore',
       trust: false,
     });
-    const inner = mathml.replace(/^[\s\S]*?(<math[\s\S]*<\/math>)[\s\S]*$/i, '$1').trim();
+    const inner = mathml
+      .replace(/^[\s\S]*?(<math[\s\S]*<\/math>)[\s\S]*$/i, '$1')
+      .trim()
+      .replace(/\sdisplay=["']block["']/gi, ' display="inline"');
     if (!inner.startsWith('<math')) return '';
     return (
       `<span class="pres-math" ${PRES_MATH_ATTR}="1" contenteditable="false" data-pres-latex="${encodeURIComponent(trimmed)}">${inner}</span>`

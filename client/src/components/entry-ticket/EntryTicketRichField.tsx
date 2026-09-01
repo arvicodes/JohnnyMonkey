@@ -15,6 +15,8 @@ import {
   WrapText as WrapTextIcon,
 } from '@mui/icons-material';
 import { isPenPointer } from '../../lib/presentationDrawTools';
+import { ensureEditorSelection, stashEditorSelection } from '../../lib/presentationFontSize';
+import { setFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
 import {
   buildEtImgStyle,
   entryTicketLooksLikeHtml,
@@ -240,8 +242,10 @@ type Props = {
   editorFontSize?: string | Record<string, string>;
   /** Notizen-Layout: weiße Schreibfläche im Host, Werkzeugleiste oben. */
   notesSurface?: boolean;
-  /** Tippen vs. Stift/Radierer — wie Foliennotizen. */
-  inkMode?: 'text' | 'pen' | 'eraser';
+  /** false = Stift-Modus, kein Tippen */
+  textEditing?: boolean;
+  /** Stift-Canvas — nur über der Schreibfläche, nicht über der Toolbar */
+  overlay?: React.ReactNode;
 };
 
 function toEditorHtml(value: string): string {
@@ -293,7 +297,8 @@ function EntryTicketRichFieldInner({
   fillParent = false,
   editorFontSize,
   notesSurface = false,
-  inkMode = 'text',
+  textEditing: textEditingProp,
+  overlay,
 }: Props) {
   const editorRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -317,7 +322,7 @@ function EntryTicketRichFieldInner({
   const [imgHandle, setImgHandle] = useState<{ left: number; top: number } | null>(null);
   const palette = TONE_STYLES[tone];
   const fieldBg = softBg ?? (notesSurface ? '#ffffff' : palette.softBg);
-  const textEditing = inkMode === 'text';
+  const textEditing = textEditingProp ?? true;
   const showChrome = textEditing && (chromeOpen || Boolean(colorAnchor) || Boolean(highlightAnchor));
 
   const listEditorImages = () => {
@@ -459,8 +464,9 @@ function EntryTicketRichFieldInner({
 
   const runCommand = (command: string, commandValue?: string) => {
     const el = editorRef.current;
-    if (!el) return;
-    el.focus();
+    if (!el || !textEditing) return;
+    ensureEditorSelection(el);
+    el.focus({ preventScroll: true });
     try {
       document.execCommand(command, false, commandValue);
     } catch {
@@ -700,12 +706,30 @@ function EntryTicketRichFieldInner({
           </IconButton>
         </Tooltip>
         <Tooltip title="Textfarbe">
-          <IconButton size="small" aria-label="Textfarbe" onClick={(e) => setColorAnchor(e.currentTarget)} sx={toolBtnSx}>
+          <IconButton
+            size="small"
+            aria-label="Textfarbe"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              stashEditorSelection(editorRef.current);
+            }}
+            onClick={(e) => setColorAnchor(e.currentTarget)}
+            sx={toolBtnSx}
+          >
             <FormatColorTextIcon sx={{ fontSize: 14 }} />
           </IconButton>
         </Tooltip>
         <Tooltip title="Hintergrund">
-          <IconButton size="small" aria-label="Hintergrundfarbe" onClick={(e) => setHighlightAnchor(e.currentTarget)} sx={toolBtnSx}>
+          <IconButton
+            size="small"
+            aria-label="Hintergrundfarbe"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              stashEditorSelection(editorRef.current);
+            }}
+            onClick={(e) => setHighlightAnchor(e.currentTarget)}
+            sx={toolBtnSx}
+          >
             <FormatColorFillIcon sx={{ fontSize: 14 }} />
           </IconButton>
         </Tooltip>

@@ -1,5 +1,8 @@
-import type { PresentationSlide, SlideLayout } from './presentationDeck';
+import type { PresentationSlide, SlideElement, SlideLayout } from './presentationDeck';
+import { SLIDE_REF_HEIGHT, SLIDE_REF_WIDTH } from './presentationDeck';
 import { JOHNNY_ACCENT_PRESETS, JOHNNY_PRESENTATION } from './presentationTheme';
+import { PRESENTATION_CONTENT_FONT_PX } from './presentationFontSize';
+import { PRESENTATION_DEFAULT_FONT_FAMILY } from './presentationFonts';
 
 export interface LayoutMeta {
   id: SlideLayout;
@@ -77,4 +80,118 @@ export function createSlideFromLayout(order: number, layout: SlideLayout = 'titl
     default:
       return { ...base, title: `Folie ${n}`, body: '' };
   }
+}
+
+/** Muss zu PresentationSlideView (Chrome + Titel & Inhalt) passen. */
+const TITLE_CONTENT_PAD_X = 64;
+const TITLE_CONTENT_PAD_TOP = 72;
+const TITLE_CONTENT_TITLE_PX = 42;
+const TITLE_CONTENT_TITLE_LH = 1.15;
+const TITLE_CONTENT_TITLE_MB = 24;
+
+export const TEXT_FIELD_PLACEHOLDER = 'Text hier…';
+export const TEXT_FIELD_EMPTY_HTML = '<p><br></p>';
+
+export type SlideBoxOrigin = { x: number; y: number; maxW: number };
+
+/** Start und Breite des Inhaltsfelds bei Titel & Inhalt (Folien-Prozent). */
+export function titleContentBodyOrigin(): SlideBoxOrigin {
+  const x = (TITLE_CONTENT_PAD_X / SLIDE_REF_WIDTH) * 100;
+  const titleH = TITLE_CONTENT_TITLE_PX * TITLE_CONTENT_TITLE_LH;
+  const y = ((TITLE_CONTENT_PAD_TOP + titleH + TITLE_CONTENT_TITLE_MB) / SLIDE_REF_HEIGHT) * 100;
+  const maxW = ((SLIDE_REF_WIDTH - TITLE_CONTENT_PAD_X * 2) / SLIDE_REF_WIDTH) * 100;
+  return { x, y, maxW };
+}
+
+/** Live-Inhaltsfeld, sonst Standard von Titel & Inhalt. */
+export function measureSlideBodyOrigin(slideEl: HTMLElement | null | undefined): SlideBoxOrigin {
+  const fallback = titleContentBodyOrigin();
+  if (!slideEl) return fallback;
+  const zone = slideEl.querySelector('[data-pres-layout-zone="bodyHtml"]') as HTMLElement | null;
+  if (!zone) return fallback;
+  const sr = slideEl.getBoundingClientRect();
+  const zr = zone.getBoundingClientRect();
+  if (sr.width < 8 || sr.height < 8 || zr.width < 8) return fallback;
+  return {
+    x: ((zr.left - sr.left) / sr.width) * 100,
+    y: ((zr.top - sr.top) / sr.height) * 100,
+    maxW: (zr.width / sr.width) * 100,
+  };
+}
+
+export function isDefaultTextFieldHtml(html?: string | null): boolean {
+  const plain = (html || '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/<br\s*\/?>/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/[\u200B\uFEFF]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return !plain || plain === TEXT_FIELD_PLACEHOLDER || plain === 'Text hier...';
+}
+
+export function shouldAutoFitPresentationText(element: SlideElement): boolean {
+  if (element.type !== 'text') return false;
+  const html = element.html || '';
+  if (/data-pres-entry-ticket/.test(html) || /jm=lesson-entry/.test(html)) return false;
+  return true;
+}
+
+function clampPct(v: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, v));
+}
+
+/** Leeres Textfeld: Größe für den Platzhalter „Text hier…“. */
+export function defaultEmptyTextFieldSize(maxW: number): { w: number; h: number } {
+  const pad = 20;
+  const wPx = TEXT_FIELD_PLACEHOLDER.length * PRESENTATION_CONTENT_FONT_PX * 0.62 + pad;
+  const hPx = PRESENTATION_CONTENT_FONT_PX * 1.4 + pad;
+  return {
+    w: clampPct((wPx / SLIDE_REF_WIDTH) * 100, 8, maxW),
+    h: clampPct((hPx / SLIDE_REF_HEIGHT) * 100, 4, 20),
+  };
+}
+
+/** Box an Inhalt anpassen (Breite höchstens Inhaltsfeld). */
+export function measureTextFieldSizePct(
+  contentEl: HTMLElement,
+  slideEl: HTMLElement,
+  maxWpct: number,
+  empty: boolean,
+  extraPadX = 0,
+  extraPadY = 0,
+): { w: number; h: number } | null {
+  const sr = slideEl.getBoundingClientRect();
+  if (sr.width < 8 || sr.height < 8) return null;
+  const maxWpx = Math.max(48, (maxWpct / 100) * sr.width - extraPadX);
+  const cs = window.getComputedStyle(contentEl);
+  const clone = contentEl.cloneNode(true) as HTMLElement;
+  if (empty) clone.innerHTML = `<p>${TEXT_FIELD_PLACEHOLDER}</p>`;
+  clone.style.cssText = [
+    'position:absolute',
+    'left:-99999px',
+    'top:0',
+    'visibility:hidden',
+    'pointer-events:none',
+    'box-sizing:border-box',
+    'height:auto',
+    'overflow:visible',
+    'width:max-content',
+    `max-width:${maxWpx}px`,
+    `font-size:${cs.fontSize}`,
+    `font-family:${cs.fontFamily || PRESENTATION_DEFAULT_FONT_FAMILY}`,
+    `font-weight:${cs.fontWeight}`,
+    `line-height:${cs.lineHeight}`,
+    `padding:${cs.padding}`,
+    'white-space:pre-wrap',
+    'word-break:break-word',
+  ].join(';');
+  slideEl.appendChild(clone);
+  const wpx = Math.ceil(clone.scrollWidth) + extraPadX + 4;
+  const hpx = Math.ceil(clone.scrollHeight) + extraPadY + 4;
+  clone.remove();
+  return {
+    w: clampPct((wpx / sr.width) * 100, 5, maxWpct),
+    h: clampPct((hpx / sr.height) * 100, 3.6, 92),
+  };
 }
