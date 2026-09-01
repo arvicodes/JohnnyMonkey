@@ -77,14 +77,15 @@ export function applyEditorFontSizePx(
   explicitRange?: Range | null,
 ): boolean {
   if (!editor) return false;
-  if (mathElementsInSelection(editor).length) {
+  const maths = mathElementsInSelection(editor);
+  if (maths.length && selectionIsOnlyMath(editor)) {
     applyFormatToSelectedMath(editor, { fontSizePx: px });
-    if (selectionIsOnlyMath(editor)) {
-      keepEditorSelection(editor);
-      return true;
-    }
+    keepEditorSelection(editor);
+    return true;
   }
-  return applyEditorFontSizePxCore(editor, px, explicitRange);
+  const ok = applyEditorFontSizePxCore(editor, px, explicitRange);
+  if (maths.length) applyFormatToSelectedMath(editor, { fontSizePx: px });
+  return ok || maths.length > 0;
 }
 
 export function nudgeEditorFontSize(editor: HTMLElement | null, direction: 1 | -1): number | null {
@@ -1543,6 +1544,13 @@ export function execFormat(editor: HTMLElement | null, cmd: string, value?: stri
   stashEditorSelection(editor);
   ensureEditorSelection(editor) || focusEditor(editor);
 
+  if (cmd === 'italic') {
+    if (applyFormatToSelectedMath(editor, { italic: 'toggle' }) && selectionIsOnlyMath(editor)) {
+      keepEditorSelection(editor);
+      return;
+    }
+  }
+
   if (cmd === 'bold') {
     if (applyFormatToSelectedMath(editor, { bold: 'toggle' })) {
       const maths = mathElementsInSelection(editor);
@@ -1654,6 +1662,7 @@ function makeStyleSpan(style: Record<string, string>, editor?: HTMLElement | nul
 
 function unwrapNestedAttrSpans(root: DocumentFragment | ParentNode, attr: string) {
   root.querySelectorAll?.(`span[${attr}]`)?.forEach((inner) => {
+    if ((inner as HTMLElement).closest?.('[data-pres-math]')) return;
     const parent = inner.parentNode;
     if (!parent) return;
     while (inner.firstChild) parent.insertBefore(inner.firstChild, inner);
@@ -1667,6 +1676,7 @@ function stripColorInRange(editor: HTMLElement, range: Range) {
   let node: Node | null;
   while ((node = walker.nextNode())) {
     const el = node as HTMLElement;
+    if (el.closest?.('[data-pres-math]')) continue;
     if (!el.style?.color && !el.hasAttribute('data-pres-color') && !(el.tagName === 'FONT' && el.hasAttribute('color'))) {
       continue;
     }
@@ -1687,6 +1697,7 @@ function stripHighlightInRange(editor: HTMLElement, range: Range) {
   let node: Node | null;
   while ((node = walker.nextNode())) {
     const el = node as HTMLElement;
+    if (el.closest?.('[data-pres-math]')) continue;
     const hasHl =
       el.tagName === 'MARK' ||
       Boolean(el.style?.backgroundColor) ||
@@ -1715,6 +1726,7 @@ function stripColorFromFragment(root: DocumentFragment | HTMLElement) {
     if (root instanceof HTMLElement) nodes.push(root);
   }
   nodes.forEach((el) => {
+    if (el.closest?.('[data-pres-math]')) return;
     el.style?.removeProperty('color');
     el.removeAttribute('data-pres-color');
     if (el.tagName === 'FONT') el.removeAttribute('color');
@@ -1731,6 +1743,7 @@ function stripFontInRange(editor: HTMLElement, range: Range) {
   let node: Node | null;
   while ((node = walker.nextNode())) {
     const el = node as HTMLElement;
+    if (el.closest?.('[data-pres-math]')) continue;
     const hasFont =
       Boolean(el.style?.fontFamily) ||
       el.hasAttribute('data-pres-font') ||
@@ -1756,6 +1769,7 @@ function stripFontFromFragment(root: DocumentFragment | HTMLElement) {
     if (root instanceof HTMLElement) nodes.push(root);
   }
   nodes.forEach((el) => {
+    if (el.closest?.('[data-pres-math]')) return;
     el.style?.removeProperty('font-family');
     el.removeAttribute('data-pres-font');
     if (el.tagName === 'FONT') el.removeAttribute('face');
@@ -1773,6 +1787,7 @@ function stripHighlightFromFragment(root: DocumentFragment | HTMLElement) {
     if (root instanceof HTMLElement) nodes.push(root);
   }
   nodes.forEach((el) => {
+    if (el.closest?.('[data-pres-math]')) return;
     if (el.tagName === 'MARK') {
       unwrapElement(el);
       return;
@@ -1885,10 +1900,13 @@ function applyInlineStyleToSelection(editor: HTMLElement, style: Record<string, 
   const maths = mathElementsInSelection(editor);
   if (maths.length) {
     if (style.color) applyFormatToSelectedMath(editor, { color: style.color });
-    // Hintergrund auf Formeln wirkt oft kaputt — überspringen
+    if (style.fontFamily) applyFormatToSelectedMath(editor, { fontFamily: style.fontFamily });
+    if (style.backgroundColor) applyFormatToSelectedMath(editor, { highlight: style.backgroundColor });
   }
 
-  if (range.collapsed) return maths.length > 0 && Boolean(style.color);
+  if (range.collapsed) {
+    return maths.length > 0 && Boolean(style.color || style.fontFamily || style.backgroundColor);
+  }
 
   const work = range.cloneRange();
   if (style.color) stripColorInRange(editor, work);
@@ -1994,6 +2012,7 @@ export function clearFontFamilyInSelection(editor: HTMLElement | null): boolean 
   const range = sel.getRangeAt(0);
   if (range.collapsed) return false;
   stripFontInRange(editor, range);
+  applyFormatToSelectedMath(editor, { fontFamily: null });
   keepEditorSelection(editor);
   editor.dispatchEvent(new Event('input', { bubbles: true }));
   return true;
@@ -2044,6 +2063,17 @@ export function clearInlineFormatting(
 
   const targets = elementsInRange(editor, range);
   for (const el of targets) {
+    if (el.closest?.('[data-pres-math]')) {
+      if (mode === 'color' || mode === 'both') {
+        el.style.removeProperty('color');
+        el.removeAttribute('data-pres-color');
+      }
+      if (mode === 'highlight' || mode === 'both') {
+        el.style.removeProperty('background-color');
+        el.removeAttribute('data-pres-highlight');
+      }
+      continue;
+    }
     if (mode === 'highlight' || mode === 'both') {
       if (el.tagName === 'MARK') {
         unwrapElement(el);

@@ -415,7 +415,14 @@ export function replacePresentationMathElement(span: HTMLElement, latex: string)
   return next;
 }
 
-const MATH_STYLE_ATTRS = ['data-pres-fs', 'data-pres-color', 'data-pres-bold'] as const;
+const MATH_STYLE_ATTRS = [
+  'data-pres-fs',
+  'data-pres-color',
+  'data-pres-bold',
+  'data-pres-font',
+  'data-pres-italic',
+  'data-pres-highlight',
+] as const;
 
 function copyPresentationMathChrome(from: HTMLElement, to: HTMLElement) {
   for (const attr of MATH_STYLE_ATTRS) {
@@ -425,15 +432,24 @@ function copyPresentationMathChrome(from: HTMLElement, to: HTMLElement) {
   const fs = from.style.fontSize;
   const color = from.style.color;
   const weight = from.style.fontWeight;
+  const family = from.style.fontFamily;
+  const italic = from.style.fontStyle;
+  const bg = from.style.backgroundColor;
   if (fs) to.style.setProperty('font-size', fs, 'important');
   if (color) to.style.setProperty('color', color, 'important');
   if (weight) to.style.setProperty('font-weight', weight, 'important');
+  if (family) to.style.setProperty('font-family', family, 'important');
+  if (italic) to.style.setProperty('font-style', italic, 'important');
+  if (bg) to.style.setProperty('background-color', bg, 'important');
 }
 
 export type PresentationMathStylePatch = {
   fontSizePx?: number;
   color?: string | null;
   bold?: boolean | 'toggle';
+  italic?: boolean | 'toggle';
+  fontFamily?: string | null;
+  highlight?: string | null;
 };
 
 /** Formatierung direkt am Formel-Span — MathML erbt Farbe/Größe/Fett. */
@@ -451,6 +467,22 @@ export function applyPresentationMathStyle(span: HTMLElement, patch: Presentatio
     span.setAttribute('data-pres-color', c);
     span.style.setProperty('color', c, 'important');
   }
+  if (patch.fontFamily === null) {
+    span.removeAttribute('data-pres-font');
+    span.style.removeProperty('font-family');
+  } else if (typeof patch.fontFamily === 'string' && patch.fontFamily.trim()) {
+    const f = patch.fontFamily.trim();
+    span.setAttribute('data-pres-font', f);
+    span.style.setProperty('font-family', f, 'important');
+  }
+  if (patch.highlight === null) {
+    span.removeAttribute('data-pres-highlight');
+    span.style.removeProperty('background-color');
+  } else if (typeof patch.highlight === 'string' && patch.highlight.trim()) {
+    const h = patch.highlight.trim();
+    span.setAttribute('data-pres-highlight', h);
+    span.style.setProperty('background-color', h, 'important');
+  }
   if (patch.bold === 'toggle') {
     const on =
       span.getAttribute('data-pres-bold') === '1' ||
@@ -464,6 +496,91 @@ export function applyPresentationMathStyle(span: HTMLElement, patch: Presentatio
   } else if (patch.bold === false) {
     span.removeAttribute('data-pres-bold');
     span.style.removeProperty('font-weight');
+  }
+  if (patch.italic === 'toggle') {
+    const on = span.getAttribute('data-pres-italic') === '1' || span.style.fontStyle === 'italic';
+    patch = { ...patch, italic: !on };
+  }
+  if (patch.italic === true) {
+    span.setAttribute('data-pres-italic', '1');
+    span.style.setProperty('font-style', 'italic', 'important');
+  } else if (patch.italic === false) {
+    span.removeAttribute('data-pres-italic');
+    span.style.removeProperty('font-style');
+  }
+}
+
+/** Farbe/Größe/Schrift vom umgebenden Text auf eine neue Formel übertragen. */
+export function applySurroundingStyleToMath(span: HTMLElement, from: Node | null): void {
+  let el: HTMLElement | null =
+    from instanceof HTMLElement ? from : from?.parentElement ?? span.parentElement;
+  if (!el) return;
+  const patch: PresentationMathStylePatch = {};
+  const root = span.closest('[contenteditable="true"], [data-pres-rich-zone]') as HTMLElement | null;
+  let node: HTMLElement | null = el;
+  while (node && node !== root) {
+    if (patch.fontSizePx == null) {
+      const attr = node.getAttribute('data-pres-fs');
+      if (attr) {
+        const n = parseInt(attr, 10);
+        if (Number.isFinite(n)) patch.fontSizePx = n;
+      } else {
+        const m = (node.style?.fontSize || '').match(/^([\d.]+)px/i);
+        if (m) patch.fontSizePx = Math.round(parseFloat(m[1]));
+      }
+    }
+    if (patch.color == null) {
+      const c = (node.getAttribute('data-pres-color') || node.style?.color || '').trim();
+      if (c) patch.color = c;
+    }
+    if (patch.fontFamily == null) {
+      const f = (node.getAttribute('data-pres-font') || node.style?.fontFamily || '').trim();
+      if (f) patch.fontFamily = f;
+    }
+    if (patch.bold == null && (node.getAttribute('data-pres-bold') === '1' || node.tagName === 'B' || node.tagName === 'STRONG')) {
+      patch.bold = true;
+    }
+    if (patch.italic == null && (node.getAttribute('data-pres-italic') === '1' || node.tagName === 'I' || node.tagName === 'EM' || node.style?.fontStyle === 'italic')) {
+      patch.italic = true;
+    }
+    node = node.parentElement;
+  }
+  if (patch.fontSizePx == null || patch.color == null) {
+    try {
+      const cs = window.getComputedStyle(el);
+      if (patch.fontSizePx == null) {
+        const n = parseFloat(cs.fontSize);
+        if (Number.isFinite(n) && n >= 8) patch.fontSizePx = Math.round(n);
+      }
+      if (patch.color == null && cs.color) patch.color = cs.color;
+    } catch {
+      /* ignore */
+    }
+  }
+  if (
+    patch.fontSizePx != null ||
+    patch.color ||
+    patch.bold ||
+    patch.italic ||
+    patch.fontFamily
+  ) {
+    applyPresentationMathStyle(span, patch);
+  }
+}
+
+/** Formel anklicken → ganze Formel markieren (Formatleiste). */
+export function selectPresentationMath(editor: HTMLElement, span: HTMLElement): boolean {
+  if (!editor.contains(span)) return false;
+  try {
+    const range = editor.ownerDocument.createRange();
+    range.selectNode(span);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    formulaInsertCaret = { editor, range: range.cloneRange() };
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -614,9 +731,20 @@ export function insertHtmlAtEditorCursor(editor: HTMLElement, html: string): boo
   if (!tpl.content.firstChild) return false;
   const range = resolveEditorInsertRange(editor);
   const content = unwrapSingleParagraphIfInsideBlock(tpl.content, range);
+  const freshMath: HTMLElement[] = [];
+  const collectMath = (node: Node) => {
+    if (node instanceof HTMLElement && node.hasAttribute(PRES_MATH_ATTR)) freshMath.push(node);
+    node.childNodes.forEach(collectMath);
+  };
+  collectMath(content);
+  const styleFrom = range.commonAncestorContainer;
   range.deleteContents();
   const last = content.lastChild;
   range.insertNode(content);
+  freshMath.forEach((math) => {
+    if (math.getAttribute('data-pres-fs') || math.getAttribute('data-pres-color')) return;
+    applySurroundingStyleToMath(math, math.parentElement || styleFrom);
+  });
   if (last) {
     const zw = editor.ownerDocument.createTextNode('\u200b');
     last.parentNode?.insertBefore(zw, last.nextSibling);

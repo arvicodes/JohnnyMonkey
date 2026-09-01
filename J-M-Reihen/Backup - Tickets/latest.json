@@ -507,19 +507,19 @@
             {
               "category": "Eigen",
               "prompt": "Definiere den Begriff Funktion.",
-              "solution": "Eine Funktion $f$ ist eine Zuordnung, die jedem Element $x$ ihres Definitionsbereichs $D_f$ genau einen Funktionswert $f(x)$ zuordnet.",
+              "solution": "Eine Funktion f ist eine Zuordnung, die jedem Element x ihres Definitionsbereichs Df genau einen Funktionswert f(x) zuordnet.",
               "id": "q_d00b7814-4730-49b4-bc4d-73547c298f7e"
             },
             {
               "category": "Eigen",
               "prompt": "Definiere den Begriff Zahlenfolge.",
-              "solution": "Eine Zahlenfolge $(aₙ)$ ist eine Funktion, die jeder natürlichen Zahl $n$ genau eine Zahl $aₙ$ zuordnet.",
+              "solution": "Eine Zahlenfolge (aₙ) ist eine Funktion, die jeder natürlichen Zahl n genau eine Zahl aₙ zuordnet.",
               "id": "q_48aab1f6-0444-4dae-ab78-5857d958d7b7"
             },
             {
               "category": "Eigen",
               "prompt": "Definiere die Konvergenz einer Folge (aₙ) gegen einen Grenzwert L.",
-              "solution": "Eine Folge $(aₙ)$ konvergiert gegen L, wenn zu jedem $ε > 0$ ein $N ∈ ℕ$ existiert, sodass für alle $n ≥ N$ gilt: $|aₙ − L| < ε$.",
+              "solution": "Eine Folge (aₙ) konvergiert gegen L, wenn zu jedem ε > 0 ein N ∈ ℕ existiert, sodass für alle n ≥ N gilt: |aₙ − L| < ε.",
               "id": "q_50ed44ff-65df-4626-9a54-bb6e0da79621"
             },
             {
@@ -536,8 +536,8 @@
             },
             {
               "category": "Eigen",
-              "prompt": "Gib das Kriterium für die Stetigkeit einer Funktion $f$ an einer Stelle $x₀$ an.",
-              "solution": "Für $x₀ ∈ D_f$ist f an der Stelle $x₀$ stetig, wenn lim $x→x₀ f(x) = f(x₀)$ gilt.",
+              "prompt": "Gib das Kriterium für die Stetigkeit einer Funktion f an einer Stelle x₀ an.",
+              "solution": "Für x₀ ∈ Df ist f an der Stelle x₀ stetig, wenn lim x→x₀ f(x) = f(x₀) gilt.",
               "id": "q_573b0531-fd8d-4797-8ebd-5ea4d506b270"
             },
             {
@@ -952,12 +952,6 @@
             },
             {
               "category": "Eigen",
-              "prompt": "Berechne: (4321)⋅(2  3)\\begin{pmatrix}4\\\\3\\\\2\\\\1\\end{pmatrix}\\cdot(2\\",
-              "solution": "3); (812694623)\\begin{pmatrix}8&12\\\\6&9\\\\4&6\\\\2&3\\end{pmatrix}",
-              "id": "q_c1666496-986e-40b0-ad32-c9a854ad66ba"
-            },
-            {
-              "category": "Eigen",
               "prompt": "Berechne: (1123581321)⋅(3455)\\begin{pmatrix}1&1&2&3\\\\5&8&13&21\\end{pmatrix}\\cdot\\begin{pmatrix}34\\\\55\\end{pmatrix}",
               "solution": "Nicht definiert.",
               "id": "q_5d4ebed4-5436-43ca-9ee1-ab9f960a19fd"
@@ -995,25 +989,25 @@
             {
               "category": "Eigen",
               "prompt": "Nenne: Ein Beispiel für eine 6×7-Matrix",
-              "solution": "(123456712345671234567123456712345671234567)\\begin{pmatrix}1&2&3&4&5&6&7\\\\1&2&3&4&5&6&7\\\\1&2&3&4&5&6&7\\\\1&2&3&4&5&6&7\\\\1&2&3&4&5&6&7\\\\1&2&3&4&5&6&7\\end{pmatrix}",
+              "solution": ")\\begin{pmatrix}1&2&3&4&5&6&7\\\\1&2&3&4&5&6&7\\\\1&2&3&4&5&6&7\\\\1&2&3&4&5&6&7\\\\1&2&3&4&5&6&7\\\\1&2&3&4&5&6&7\\end{pmatrix}",
               "id": "q_2b449848-dc94-42a8-b4bd-4f26aa3b85de"
             },
             {
               "category": "Eigen",
               "prompt": "Berechne: (1218)⋅(1534)\\begin{pmatrix}12\\\\18\\end{pmatrix}\\cdot\\begin{pmatrix}15&34\\end{pmatrix}",
-              "solution": "(180408270612)\\begin{pmatrix}180&408\\\\270&612\\end{pmatrix}",
+              "solution": "\\begin{pmatrix}180&408\\\\270&612\\end{pmatrix}",
               "id": "q_3c470331-7a13-4b48-aa43-e2de23fd0cc0"
             },
             {
               "category": "Eigen",
               "prompt": "Berechne: (6666777766667777)⋅(6767)\\begin{pmatrix}6&6&6&6\\\\7&7&7&7\\\\6&6&6&6\\\\7&7&7&7\\end{pmatrix}\\cdot\\begin{pmatrix}6\\\\7\\\\6\\\\7\\end{pmatrix}",
-              "solution": "(156182156182)\\begin{pmatrix}156\\\\182\\\\156\\\\182\\end{pmatrix}",
+              "solution": "\\begin{pmatrix}156\\\\182\\\\156\\\\182\\end{pmatrix}",
               "id": "q_f14ab817-d68e-423f-8ee3-6728863d07aa"
             },
             {
               "category": "Eigen",
               "prompt": "Notiere: Eine 3×3-Matrix",
-              "solution": "(a11a12a13a21a22a23a31a32a33)\\begin{pmatrix}a_{11}&a_{12}&a_{13}\\\\a_{21}&a_{22}&a_{23}\\\\a_{31}&a_{32}&a_{33}\\end{pmatrix}",
+              "solution": "\\begin{pmatrix}a_{11}&a_{12}&a_{13}\\\\a_{21}&a_{22}&a_{23}\\\\a_{31}&a_{32}&a_{33}\\end{pmatrix}",
               "id": "q_49e25128-e8fc-4b06-8167-51d140b7db4b"
             },
             {
@@ -1037,13 +1031,13 @@
             {
               "category": "Eigen",
               "prompt": "Löse: (3425)⋅(67)\\begin{pmatrix}3&4\\\\2&5\\end{pmatrix}\\cdot\\begin{pmatrix}6\\\\7\\end{pmatrix}",
-              "solution": "(4647)\\begin{pmatrix}46\\\\47\\end{pmatrix}",
+              "solution": "\\begin{pmatrix}46\\\\47\\end{pmatrix}",
               "id": "q_0410a57b-37b4-46c3-a5b2-eb0982b040fe"
             },
             {
               "category": "Eigen",
               "prompt": "Notiere: Eine 4×4-Matrix mit aij=i+ja_{ij}=i+j",
-              "solution": "(2345345645675678)\\begin{pmatrix}2&3&4&5\\\\3&4&5&6\\\\4&5&6&7\\\\5&6&7&8\\end{pmatrix}",
+              "solution": "\\begin{pmatrix}2&3&4&5\\\\3&4&5&6\\\\4&5&6&7\\\\5&6&7&8\\end{pmatrix}",
               "id": "q_0bd7dfb2-2c6c-49e3-9341-296d68f3eeae"
             },
             {
@@ -1102,9 +1096,15 @@
             },
             {
               "category": "Eigen",
-              "prompt": "Führe durch: Die Matrix-Vektor-Multiplikation M⋅v⃗M\\cdot \\vec v mit M=(a11a12a21a22)M=\\begin{pmatrix}a_{11}&a_{12}\\\\a_{21}&a_{22}\\end{pmatrix}, v⃗=(v1v2)\\vec v=\\begin{pmatrix}v_1\\\\v_2\\end{pmatrix}",
-              "solution": "(a11v1+a12v2a21v1+a22v2)\\begin{pmatrix}a_{11}v_1+a_{12}v_2\\\\a_{21}v_1+a_{22}v_2\\end{pmatrix}",
+              "prompt": "<p>Führe durch: Die Matrix-Vektor-Multiplikation M⋅v⃗M\\cdot \\vec v mit M=\\begin{pmatrix}a_{11}&amp;a_{12}\\\\a_{21}&amp;a_{22}\\end{pmatrix},&nbsp;</p><p>\\vec v=\\begin{pmatrix}v_1\\\\v_2\\end{pmatrix}</p>",
+              "solution": "\\begin{pmatrix}a_{11}v_1+a_{12}v_2\\\\a_{21}v_1+a_{22}v_2\\end{pmatrix}",
               "id": "q_a536c4a4-f6e8-4152-ba34-917d3373884d"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: (4321)⋅(2  3)\\begin{pmatrix}4\\\\3\\\\2\\\\1\\end{pmatrix}\\cdot(2\\;3)",
+              "solution": "\\begin{pmatrix}8&12\\\\6&9\\\\4&6\\\\2&3\\end{pmatrix}",
+              "id": "q_c1666496-986e-40b0-ad32-c9a854ad66ba"
             }
           ]
         },
@@ -1113,14 +1113,7 @@
           "lessonName": "01.02 Einstieg Matrizen",
           "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen#01.02 Einstieg Matrizen",
           "topicName": "01 Basiswissen",
-          "tasks": [
-            {
-              "category": "Eigen",
-              "prompt": "Oder",
-              "solution": "was",
-              "id": "q_e5600c62-b578-4eb6-a13e-33b720669a16"
-            }
-          ]
+          "tasks": []
         },
         {
           "id": "ls_e52fef79-cf7e-44c3-b623-16120597d99b",
@@ -1538,7 +1531,7 @@
             {
               "category": "Eigen",
               "prompt": "Schaue ich drei Filme nacheinander, wie viele verschiedene Reihenfolgen sind möglich?",
-              "solution": "ACB",
+              "solution": "6",
               "id": "shared_q_0_46"
             },
             {
@@ -2065,7 +2058,7 @@
             },
             {
               "category": "Eigen",
-              "prompt": "Wandle in die nächstkleinere Einheit um: 35 dm",
+              "prompt": "Wandle 35 dm in die nächstkleinere Einheit um.",
               "solution": "350 cm",
               "id": "q_791eb2b9-ae12-4a3e-98dd-e10d8132a397"
             },
@@ -2258,7 +2251,7 @@
             {
               "category": "Eigen",
               "prompt": "<p><b>Notiere</b> die Einerziffer von 52.</p>",
-              "solution": "LII",
+              "solution": "2",
               "id": "q_20d4e016-1fb8-4d90-917d-8c606f4169e6"
             },
             {
@@ -2341,7 +2334,7 @@
             },
             {
               "category": "Eigen",
-              "prompt": "Bestimme: Das Polygon mit drei Seiten.",
+              "prompt": "Bestimme: Ein Polygon mit drei Seiten.",
               "solution": "Dreieck",
               "id": "q_0dc5605d-9f79-43b6-af6f-165c38b839de"
             },
@@ -2503,12 +2496,6 @@
           "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/1.2 Große Zahlen - Stellenwerttafel",
           "topicName": "Kap 1 - Natürliche Zahlen und Größen",
           "tasks": [
-            {
-              "category": "Eigen",
-              "prompt": "Bilde: Die Zahl aus 9 Millionen, 2 Hunderttausendern, 5 Zehntausendern, 4 Tausendern, 3 Hundertern, 1 Zehner und 7 Einern.",
-              "solution": "9 254 317",
-              "id": "q_b8d130a1-fe8a-498b-b8f2-8c339badb97e"
-            },
             {
               "category": "Große Zahlen",
               "prompt": "Schreibe mit Ziffern: dreihundert Milliarden",
@@ -2832,6 +2819,24 @@
               "prompt": "Nenne: die Ziffern unseres Zahlensystems",
               "solution": "0, 1, 2, 3, 4, 5, 6, 7, 8, 9",
               "id": "q_d202210f-1ea0-422c-ab04-97449251f47a"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Erkläre: Zahl",
+              "solution": "Eine Zahl besteht aus einer oder mehreren Ziffern.",
+              "id": "q_5a528dc8-0d80-47ca-a7a7-18cba96b9812"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Erkläre: Ziffer",
+              "solution": "Eine Ziffer ist ein Zahlzeichen, zum Beispiel 3 oder 7.",
+              "id": "q_06e9509a-9f89-46fb-a08d-a6cd23286c57"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Nenne: die Ziffern unseres Zahlensystems",
+              "solution": "0, 1, 2, 3, 4, 5, 6, 7, 8, 9",
+              "id": "q_f15f73f6-5868-4cd2-ac5b-bba78d373be0"
             }
           ]
         },
@@ -2886,164 +2891,7 @@
           "lessonName": "1.4 Das Binärsystem",
           "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen#1.4 Das Binärsystem",
           "topicName": "Kap 1 - Natürliche Zahlen und Größen",
-          "tasks": [
-            {
-              "category": "Eigen",
-              "prompt": "Nenne: die Basis des Binärsystems.",
-              "solution": "2",
-              "id": "q_2b49e8f2-75ac-41de-afe8-ca057b333f66"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Gib an: die möglichen Ziffern des Binärsystems.",
-              "solution": "0 und 1",
-              "id": "q_cd705d14-a69d-4e10-8482-6005da41f431"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Bestimme: den Dezimalwert der Binärzahl 101.",
-              "solution": "5",
-              "id": "q_a28a7c94-d4fa-44a9-9bbd-45210a98b74d"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Bestimme: den Dezimalwert der Binärzahl 1101.",
-              "solution": "13",
-              "id": "q_ad8535c5-7519-44e2-b22a-008505b70769"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Bestimme: den Dezimalwert der Binärzahl 10010.",
-              "solution": "18",
-              "id": "q_d479ddc7-e2be-4531-a483-6e62ddc4408e"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Bestimme: den Dezimalwert der Binärzahl 11111.",
-              "solution": "31",
-              "id": "q_4be81900-253d-493e-8285-42ae5789150d"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Wandle um: die Dezimalzahl 9 ins Binärsystem.",
-              "solution": "1001",
-              "id": "q_f603e85b-8ac8-4b05-9ed2-6b0551cd681e"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Wandle um: die Dezimalzahl 12 ins Binärsystem.",
-              "solution": "1100",
-              "id": "q_cde08409-95fa-4142-8b07-838f938cd037"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Wandle um: die Dezimalzahl 25 ins Binärsystem.",
-              "solution": "11001",
-              "id": "q_3c5c6958-ecbc-43c6-bdb5-5dcf6859ddb6"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Wandle um: die Dezimalzahl 42 ins Binärsystem.",
-              "solution": "101010",
-              "id": "q_20e89f0b-0e6d-4748-be3e-ba57742cf135"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Berechne: 101₂ + 011₂",
-              "solution": "1000₂",
-              "id": "q_bf022f4f-2f1b-4d29-8df9-dee572fe1ec9"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Berechne: 111₂ + 001₂",
-              "solution": "1000₂",
-              "id": "q_1afd0a58-ed82-4230-a874-59cd20dbf1eb"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Berechne: 1010₂ + 0101₂",
-              "solution": "1111₂",
-              "id": "q_58514365-cfe6-4573-ba6e-f7a794ef0e90"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Berechne: 1001₂ + 1001₂",
-              "solution": "10010₂",
-              "id": "q_b11aab7c-45c8-45fa-b53b-fd99f3aa2b31"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Notiere die Zusammensetzung der Binärzahl aus Zweierpotenzen 1101₂.",
-              "solution": "1·2³ + 1·2² + 0·2¹ + 1·2⁰ = 13",
-              "id": "q_e6215587-72f3-48c0-8efe-1188f5c5970a"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Bestimme: die Anzahl darstellbarer Werte mit 4 Bit/Binärziffern.",
-              "solution": "2⁴ = 16 Werte (0 bis 15)",
-              "id": "q_a108b097-64ec-4707-af05-6ceac3b4f7ad"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Bestimme: den Vorgänger der Binärzahl 1010₂.",
-              "solution": "1001₂",
-              "id": "q_eed09f46-4736-4d20-bfbf-fcc0a9ea3cc3"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Bestimme: den Nachfolger der Binärzahl 1010₂.",
-              "solution": "1011₂",
-              "id": "q_914cba63-f8a1-4127-a38e-27dbec371c36"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Bestimme: den Vorgänger der Binärzahl 1000₂.",
-              "solution": "0111₂",
-              "id": "q_c9dfcef4-76c6-4388-80f4-fcb8c4daa6fb"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Bestimme: den Nachfolger der Binärzahl 1111₂.",
-              "solution": "10000₂",
-              "id": "q_da1822f7-9e92-4a96-aae0-4589fe2e8a13"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Bestimme: den Vorgänger der Binärzahl 1101₂.",
-              "solution": "1100₂",
-              "id": "q_5e415ed9-94cc-40e0-bea1-9bbc2d46cc1c"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Bestimme: den Nachfolger der Binärzahl 1101₂.",
-              "solution": "1110₂",
-              "id": "q_72ca32e3-5286-4cbc-868f-a6a32eafc5ab"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Bestimme: den Vorgänger der Binärzahl 10000₂.",
-              "solution": "1111₂",
-              "id": "q_c882e090-72d8-484c-bc73-cd0d519b2dcf"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Bestimme: den Nachfolger der Binärzahl 10000₂.",
-              "solution": "10001₂",
-              "id": "q_b15bf4a4-6910-45e6-af23-1b4dc6cf2df3"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Leite ab: die größte darstellbare Zahl mit 5 Bit/Binärziffern.",
-              "solution": "11111₂ = 31",
-              "id": "q_bbe17d01-602b-4ca6-a695-933af6ba8ad3"
-            },
-            {
-              "category": "Eigen",
-              "prompt": "Nenne die Basis des Dezimalsystems",
-              "solution": "10",
-              "id": "q_ae4f2d03-ba90-4a80-994f-3c6788e5b239"
-            }
-          ]
+          "tasks": []
         },
         {
           "id": "ls_9f0d1036-e094-4dab-bf6e-ee0cc8464416",
@@ -3064,14 +2912,7 @@
           "lessonName": "1.0 Zählen und Zahlen veranschaulichen",
           "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/1.0 Zählen und Zahlen veranschaulichen",
           "topicName": "Kap 1 - Natürliche Zahlen und Größen",
-          "tasks": [
-            {
-              "category": "Eigen",
-              "prompt": "Test",
-              "solution": "Test",
-              "id": "q_4a0ffad9-9a82-4537-a178-bc48be1386d8"
-            }
-          ]
+          "tasks": []
         },
         {
           "id": "ls_c9d72438-f2fe-4f6f-8493-225ae17e3fb2",
@@ -3120,6 +2961,6 @@
       ]
     }
   ],
-  "savedAt": "2026-08-31T07:39:42.299Z",
+  "savedAt": "2026-09-01T06:08:34.958Z",
   "teacherId": "01ed6e10-397e-446c-9254-2ad7fd4ec777"
 }

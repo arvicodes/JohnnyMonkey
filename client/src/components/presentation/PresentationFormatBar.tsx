@@ -61,6 +61,7 @@ import {
   readPresentationMathLatex,
   renderPresentationMathHtml,
   replacePresentationMathElement,
+  selectPresentationMath,
 } from '../../lib/presentationPasteMath';
 import { setFormatBarInteracting, isPresentationModalTypingActive } from '../../lib/presentationFormatBarGuard';
 import {
@@ -496,6 +497,16 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
 
   useEffect(() => {
     if (!activeEditor || disabled || isNotesEditor) return;
+    const onClick = (e: MouseEvent) => {
+      const math = (e.target as HTMLElement | null)?.closest('[data-pres-math]') as HTMLElement | null;
+      if (!math || !activeEditor.contains(math)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      activeEditor.focus({ preventScroll: true });
+      selectPresentationMath(activeEditor, math);
+      stashEditorSelection(activeEditor);
+      syncFormatting();
+    };
     const onDblClick = (e: MouseEvent) => {
       const math = (e.target as HTMLElement | null)?.closest('[data-pres-math]') as HTMLElement | null;
       if (!math || !activeEditor.contains(math)) return;
@@ -503,9 +514,13 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
       e.stopPropagation();
       openFormulaDialog(math);
     };
+    activeEditor.addEventListener('click', onClick);
     activeEditor.addEventListener('dblclick', onDblClick);
-    return () => activeEditor.removeEventListener('dblclick', onDblClick);
-  }, [activeEditor, disabled, isNotesEditor, openFormulaDialog]);
+    return () => {
+      activeEditor.removeEventListener('click', onClick);
+      activeEditor.removeEventListener('dblclick', onDblClick);
+    };
+  }, [activeEditor, disabled, isNotesEditor, openFormulaDialog, syncFormatting]);
 
   const formulaPreviewHtml = useMemo(() => {
     const trimmed = formulaLatex.trim();

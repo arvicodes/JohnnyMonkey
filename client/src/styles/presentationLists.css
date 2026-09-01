@@ -161,6 +161,8 @@
   user-select: all;
   -webkit-user-select: all;
   color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
 }
 
 [contenteditable="true"] .pres-math,
@@ -172,18 +174,32 @@
 
 .pres-math math,
 [data-pres-math] math {
-  font-size: 1.05em;
+  font-size: 1em;
   font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Times New Roman", serif;
 }
 
-.pres-math[data-pres-color] math,
-[data-pres-math][data-pres-color] math {
-  color: inherit;
+.pres-math math,
+.pres-math math *:not(annotation),
+[data-pres-math] math,
+[data-pres-math] math *:not(annotation) {
+  color: inherit !important;
+}
+
+.pres-math[data-pres-font] math,
+[data-pres-math][data-pres-font] math {
+  font-family: inherit;
 }
 
 .pres-math[data-pres-bold="1"] math,
-[data-pres-math][data-pres-bold="1"] math {
+.pres-math[data-pres-bold="1"] math *,
+[data-pres-math][data-pres-bold="1"] math,
+[data-pres-math][data-pres-bold="1"] math * {
   font-weight: 700;
+}
+
+.pres-math[data-pres-italic="1"] math,
+[data-pres-math][data-pres-italic="1"] math {
+  font-style: italic;
 }
 
 .pres-math[data-pres-fs] math,

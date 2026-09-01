@@ -325,6 +325,7 @@ export function rangeFullyContainsNode(range: Range, node: Node): boolean {
 
 function stripNestedFontSpans(root: DocumentFragment | HTMLElement) {
   root.querySelectorAll?.('span[data-pres-fs]')?.forEach((inner) => {
+    if ((inner as HTMLElement).closest?.('[data-pres-math]')) return;
     const parent = inner.parentNode;
     if (!parent) return;
     while (inner.firstChild) parent.insertBefore(inner.firstChild, inner);
@@ -339,6 +340,7 @@ export function stripFontSizingInRange(editor: HTMLElement, range: Range) {
   let node: Node | null;
   while ((node = walker.nextNode())) {
     const el = node as HTMLElement;
+    if (el.closest?.('[data-pres-math]')) continue;
     if (!el.style?.fontSize && !el.hasAttribute('data-pres-fs') && !el.hasAttribute('size')) {
       continue;
     }
@@ -359,6 +361,7 @@ function stripAllSizingFromFragment(root: DocumentFragment | HTMLElement) {
     if (root instanceof HTMLElement) nodes.push(root);
   }
   nodes.forEach((el) => {
+    if (el.closest?.('[data-pres-math]')) return;
     el.style?.removeProperty('font-size');
     el.removeAttribute('data-pres-fs');
     el.removeAttribute('size');
@@ -551,6 +554,15 @@ export function hydratePresentationHtmlFontSizes(html: string): string {
     doc.body.querySelectorAll('[data-pres-bold="1"]').forEach((node) => {
       const el = node as HTMLElement;
       el.style.setProperty('font-weight', '700', 'important');
+    });
+    doc.body.querySelectorAll('[data-pres-italic="1"]').forEach((node) => {
+      const el = node as HTMLElement;
+      el.style.setProperty('font-style', 'italic', 'important');
+    });
+    doc.body.querySelectorAll('[data-pres-font]').forEach((node) => {
+      const el = node as HTMLElement;
+      const raw = (el.getAttribute('data-pres-font') || '').trim();
+      if (raw) el.style.setProperty('font-family', raw, 'important');
     });
     return doc.body.innerHTML;
   } catch {
