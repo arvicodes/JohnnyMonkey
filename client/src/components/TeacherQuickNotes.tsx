@@ -42,6 +42,7 @@ import {
   convertSelectedTextToPresentationMath,
   clearMathFormatTarget,
   placeCaretBesidePresentationMath,
+  prepareEditorSelectionForLatexShortcut,
   selectionIntersectsPresentationMath,
   unwrapSelectedPresentationMath,
 } from '../lib/presentationPasteMath';
@@ -1301,51 +1302,6 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     syncEditorToState();
   }, [color, pushHistorySnapshot, syncEditorToState]);
 
-  const handleLatexShortcut = useCallback(() => {
-    if (modeRef.current !== 'text') {
-      modeRef.current = 'text';
-      setMode('text');
-    }
-    const editor = editorRef.current;
-    if (!editor) return;
-    pushHistorySnapshot();
-    setFormatBarInteracting(true);
-    const remembered = cloneLiveNotesRange(editor) || notesSelectionRef.current;
-    if (remembered && !remembered.collapsed) {
-      notesSelectionRef.current = remembered.cloneRange();
-      stashEditorSelection(editor);
-    } else {
-      rememberNotesSelection();
-      stashEditorSelection(editor);
-    }
-    if (!ensureEditorSelection(editor)) {
-      window.setTimeout(() => setFormatBarInteracting(false), 0);
-      return;
-    }
-    keepEditorSelection(editor, notesSelectionRef.current);
-    clearMathFormatTarget(editor);
-    if (selectionIntersectsPresentationMath(editor)) {
-      if (unwrapSelectedPresentationMath(editor)) syncEditorToState();
-      window.setTimeout(() => setFormatBarInteracting(false), 0);
-      return;
-    }
-    if (convertSelectedTextToPresentationMath(editor)) syncEditorToState();
-    window.setTimeout(() => setFormatBarInteracting(false), 0);
-  }, [pushHistorySnapshot, rememberNotesSelection, syncEditorToState]);
-
-  const findNotesTable = useCallback((): HTMLTableElement | null => {
-    const editor = editorRef.current;
-    if (!editor) return null;
-    const sel = window.getSelection();
-    const node = sel?.anchorNode;
-    const el = node instanceof Element ? node : node?.parentElement;
-    if (el && editor.contains(el)) {
-      const table = el.closest('table');
-      if (table) return table;
-    }
-    return editor.querySelector('table');
-  }, []);
-
   const restoreNotesSelection = useCallback(() => {
     const editor = editorRef.current;
     if (!editor) return;
@@ -1363,6 +1319,67 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
       sel.removeAllRanges();
       sel.addRange(range);
     }
+  }, []);
+
+  const rememberNotesSelection = useCallback(() => {
+    const live = cloneLiveNotesRange(editorRef.current, true);
+    if (live) notesSelectionRef.current = live;
+    stashEditorSelection(editorRef.current);
+    return live;
+  }, []);
+
+  const handleLatexShortcut = useCallback(() => {
+    if (modeRef.current !== 'text') {
+      modeRef.current = 'text';
+      setMode('text');
+    }
+    const editor = editorRef.current;
+    if (!editor) return;
+    pushHistorySnapshot();
+    const remembered =
+      cloneLiveNotesRange(editor) ||
+      (notesSelectionRef.current && !notesSelectionRef.current.collapsed
+        ? notesSelectionRef.current
+        : null);
+    if (remembered && !remembered.collapsed) {
+      notesSelectionRef.current = remembered.cloneRange();
+    } else {
+      rememberNotesSelection();
+    }
+    stashEditorSelection(editor);
+    setFormatBarInteracting(true);
+    keepEditorSelection(
+      editor,
+      notesSelectionRef.current && !notesSelectionRef.current.collapsed ? notesSelectionRef.current : null,
+    );
+    if (!ensureEditorSelection(editor)) {
+      restoreNotesSelection();
+      if (!ensureEditorSelection(editor) && !prepareEditorSelectionForLatexShortcut(editor)) {
+        window.setTimeout(() => setFormatBarInteracting(false), 0);
+        return;
+      }
+    }
+    clearMathFormatTarget(editor);
+    if (selectionIntersectsPresentationMath(editor)) {
+      if (unwrapSelectedPresentationMath(editor)) syncEditorToState();
+      window.setTimeout(() => setFormatBarInteracting(false), 0);
+      return;
+    }
+    if (convertSelectedTextToPresentationMath(editor)) syncEditorToState();
+    window.setTimeout(() => setFormatBarInteracting(false), 0);
+  }, [pushHistorySnapshot, rememberNotesSelection, restoreNotesSelection, syncEditorToState]);
+
+  const findNotesTable = useCallback((): HTMLTableElement | null => {
+    const editor = editorRef.current;
+    if (!editor) return null;
+    const sel = window.getSelection();
+    const node = sel?.anchorNode;
+    const el = node instanceof Element ? node : node?.parentElement;
+    if (el && editor.contains(el)) {
+      const table = el.closest('table');
+      if (table) return table;
+    }
+    return editor.querySelector('table');
   }, []);
 
   const insertNotesTable = useCallback(
@@ -1415,16 +1432,12 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     }
     if (mode === 'pen') return;
     pushHistorySnapshot();
+    restoreNotesSelection();
     applyTextColor(editorRef.current, next);
+    const kept = cloneLiveNotesRange(editorRef.current, true);
+    if (kept) notesSelectionRef.current = kept;
     syncEditorToState();
   };
-
-  const rememberNotesSelection = useCallback(() => {
-    const live = cloneLiveNotesRange(editorRef.current, true);
-    if (live) notesSelectionRef.current = live;
-    stashEditorSelection(editorRef.current);
-    return live;
-  }, []);
 
   const bumpFontSize = useCallback((direction: -1 | 1) => {
     if (modeRef.current !== 'text') {
@@ -2510,6 +2523,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                       component="button"
                       type="button"
                       aria-label={c.label}
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => applyColor(c.value)}
                       sx={{
                         width: 11,

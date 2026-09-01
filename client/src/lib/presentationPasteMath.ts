@@ -1613,6 +1613,33 @@ export function selectionIntersectsPresentationMath(editor: HTMLElement | null):
   return Boolean(findPresentationMathInEditor(editor));
 }
 
+/** Für ⌘L nach Toolbar-Klick: Cursor in Formel → ganze Formel markieren. */
+export function prepareEditorSelectionForLatexShortcut(editor: HTMLElement | null): boolean {
+  if (!editor) return false;
+  const sel = window.getSelection();
+  if (!sel) return false;
+  if (sel.rangeCount > 0) {
+    const range = sel.getRangeAt(0);
+    if (editor.contains(range.commonAncestorContainer) && !range.collapsed) return true;
+  }
+  const math = findPresentationMathInEditor(editor);
+  if (!math) return false;
+  try {
+    const r = editor.ownerDocument.createRange();
+    r.selectNode(math);
+    sel.removeAllRanges();
+    sel.addRange(r);
+    try {
+      editor.focus({ preventScroll: true });
+    } catch {
+      editor.focus();
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 type TextStyleSnapshot = {
   text: string;
   color?: string;

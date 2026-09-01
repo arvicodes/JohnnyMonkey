@@ -22,6 +22,7 @@ import {
   clearMathFormatTarget,
   mathElementsInSelection,
   placeCaretBesidePresentationMath,
+  prepareEditorSelectionForLatexShortcut,
   selectionIntersectsPresentationMath,
   unwrapSelectedPresentationMath,
   applyFormatToSelectedMath,
@@ -519,13 +520,13 @@ function EntryTicketRichFieldInner({
   const handleLatexShortcut = useCallback(() => {
     const el = editorRef.current;
     if (!el || !textEditing) return;
-    setFormatBarInteracting(true);
     stashEditorSelection(el);
-    if (!ensureEditorSelection(el)) {
+    setFormatBarInteracting(true);
+    keepEditorSelection(el);
+    if (!ensureEditorSelection(el) && !prepareEditorSelectionForLatexShortcut(el)) {
       window.setTimeout(() => setFormatBarInteracting(false), 0);
       return;
     }
-    keepEditorSelection(el);
     clearMathFormatTarget(el);
     if (selectionIntersectsPresentationMath(el)) {
       if (unwrapSelectedPresentationMath(el)) emitChange();

@@ -1,1 +1,1722 @@
-{"version":1,"lessonPath":"git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen","updatedAt":"2026-08-31T07:56:28.943Z","bySlideId":{"slide-pptx-prozesse-schokolade":{"updatedAt":"2026-08-26T11:08:22.671Z","slide":{"id":"slide-pptx-prozesse-schokolade","order":30,"speakerNotes":"","layout":"blank-full","subtitle":"","bodyLeft":"","bodyRight":"","imagePath":"","imageCaption":"","bodyStyle":"plain","titleAlign":"left","accentColor":"#2E7D32","title":"Prozesse Schokolade","body":"","hiddenLayoutZones":["bodyHtml"],"titleHtml":"","bodyHtml":"","subtitleHtml":"","bodyLeftHtml":"","bodyRightHtml":"","imageCaptionHtml":"","speakerNotesHtml":"<p data-pres-notes-typehost=\"1\"><br></p>","preparationNotes":"","preparationHtml":"<p><br></p>","materialNotes":"","materialHtml":"<p><br></p>","elements":[{"id":"el-pptx-schoko-1-circle","type":"shape","shapeKind":"ellipse","x":5.72,"y":69.88,"w":5.9799999999999995,"h":7.540000000000006,"html":"<p style=\"text-align:center\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><strong>6g</strong></span></p>","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"zIndex":46,"stackLayer":"foreground"},{"id":"el-pptx-schoko-2-circle","type":"shape","shapeKind":"ellipse","x":12.14,"y":70.88,"w":6.390000000000001,"h":7.540000000000006,"html":"<p style=\"text-align:center\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><strong>3g</strong></span></p>","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"zIndex":47,"stackLayer":"foreground"},{"id":"el-pptx-schoko-3-circle","type":"shape","shapeKind":"ellipse","x":29.55,"y":70.6,"w":6.2,"h":6.820000000000007,"html":"<p style=\"text-align:center\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><strong>1g</strong></span></p>","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"zIndex":48,"stackLayer":"foreground"},{"id":"el-pptx-schoko-4-circle","type":"shape","shapeKind":"ellipse","x":54.34,"y":67.55,"w":6.6299999999999955,"h":8.920000000000002,"html":"<p style=\"text-align:center\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><strong>3g</strong></span></p>","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"zIndex":49,"stackLayer":"foreground"},{"id":"el-pptx-schoko-5-circle","type":"shape","shapeKind":"ellipse","x":34.72,"y":67.8,"w":5.375,"h":7.900000000000006,"html":"<p style=\"text-align:center\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><strong>5g</strong></span></p>","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"zIndex":50,"stackLayer":"foreground"},{"id":"el-pptx-schoko-6-circle","type":"shape","shapeKind":"ellipse","x":38.91,"y":70.01,"w":6.710000000000008,"h":7.409999999999997,"html":"<p style=\"text-align:center\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><strong>3g</strong></span></p>","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"zIndex":51,"stackLayer":"foreground"},{"id":"el-pptx-schoko-7-circle","type":"shape","shapeKind":"ellipse","x":60.97,"y":68.12,"w":6.159999999999997,"h":7.789999999999992,"html":"<p style=\"text-align:center\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><strong>3g</strong></span></p>","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"zIndex":52,"stackLayer":"foreground"},{"id":"el-pptx-schoko-8-circle","type":"shape","shapeKind":"ellipse","x":67.13,"y":67.42,"w":5.189999999999998,"h":8.280000000000001,"html":"<p style=\"text-align:center\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><strong>1g</strong></span></p>","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"zIndex":53,"stackLayer":"foreground"},{"id":"el-pptx-schoko-9-circle","type":"shape","shapeKind":"ellipse","x":88.2,"y":64,"w":6.6299999999999955,"h":7.560000000000002,"html":"<p style=\"text-align:center\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><strong>3g</strong></span></p>","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"zIndex":54,"stackLayer":"foreground"},{"id":"el-pptx-schoko-10-circle","type":"shape","shapeKind":"ellipse","x":82.55,"y":65.72,"w":5.650000000000006,"h":6.295000000000002,"html":"<p style=\"text-align:center\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><strong>2g</strong></span></p>","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"zIndex":55,"stackLayer":"foreground"},{"id":"el-pptx-schoko-11-circle","type":"shape","shapeKind":"ellipse","x":16.18,"y":34.41,"w":5.289999999999999,"h":9.090000000000003,"html":"<p style=\"text-align:center\"><span data-pres-fs=\"36\" style=\"font-size: 36px !important;\"><strong>6</strong></span></p>","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"zIndex":56,"stackLayer":"foreground"},{"id":"el-pptx-schoko-12-circle","type":"shape","shapeKind":"ellipse","x":21.47,"y":34.53,"w":6.159999999999997,"h":8.969999999999999,"html":"<p style=\"text-align:center\"><span data-pres-fs=\"36\" style=\"font-size: 36px !important;\"><strong>2</strong></span></p>","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"zIndex":57,"stackLayer":"foreground"},{"id":"el-pptx-schoko-13-circle","type":"shape","shapeKind":"ellipse","x":43.22,"y":35.84,"w":5.02,"h":8.479999999999997,"html":"<p style=\"text-align:center\"><span data-pres-fs=\"36\" style=\"font-size: 36px !important;\"><strong>2</strong></span></p>","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"zIndex":58,"stackLayer":"foreground"},{"id":"el-pptx-schoko-14-circle","type":"shape","shapeKind":"ellipse","x":70.52,"y":35.35,"w":5.9799999999999995,"h":8.969999999999999,"html":"<p style=\"text-align:center\"><span data-pres-fs=\"36\" style=\"font-size: 36px !important;\"><strong>2</strong></span></p>","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"zIndex":59,"stackLayer":"foreground"},{"id":"el-pptx-schoko-15-circle","type":"shape","shapeKind":"ellipse","x":80.39,"y":36.04,"w":6.2,"h":8.280000000000001,"html":"<p style=\"text-align:center\"><span data-pres-fs=\"36\" style=\"font-size: 36px !important;\"><strong>5</strong></span></p>","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"zIndex":60,"stackLayer":"foreground"},{"id":"el-pptx-schoko-16-circle","type":"shape","shapeKind":"ellipse","x":52.54,"y":36.49,"w":5.704999999999998,"h":7.829999999999998,"html":"<p style=\"text-align:center\"><span data-pres-fs=\"36\" style=\"font-size: 36px !important;\"><strong>3</strong></span></p>","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"zIndex":61,"stackLayer":"foreground"},{"id":"el-pptx-schoko-17-img","type":"image","x":10.32,"y":39.62,"w":19.42,"h":16.76,"src":"git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-1787645278156-0-image1.png","imageFit":"contain","zIndex":17,"stackLayer":"foreground"},{"id":"el-pptx-schoko-18-img","type":"image","x":41.71,"y":41.21,"w":16.14,"h":16.44,"src":"git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-1787645278156-1-image2.png","imageFit":"contain","zIndex":18,"stackLayer":"foreground"},{"id":"el-pptx-schoko-19-img","type":"image","x":70.38,"y":41.32,"w":19.42,"h":16.34,"src":"git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-1787645278156-2-image3.png","imageFit":"contain","zIndex":19,"stackLayer":"foreground"},{"id":"el-pptx-schoko-20-img","type":"image","x":2.8599999999999994,"y":78.76,"w":17.12,"h":14.63,"src":"git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-1787645278156-3-image4.png","imageFit":"contain","zIndex":20,"stackLayer":"foreground"},{"id":"el-pptx-schoko-21-img","type":"image","x":28.37,"y":73.66,"w":16.55,"h":18.7,"src":"git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-1787645278156-4-image5.png","imageFit":"contain","zIndex":21,"stackLayer":"foreground"},{"id":"el-pptx-schoko-22-img","type":"image","x":55.08,"y":71.61,"w":17.24,"h":22.36,"src":"git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-1787645278156-5-image6.png","imageFit":"contain","zIndex":22,"stackLayer":"foreground"},{"id":"el-pptx-schoko-23-img","type":"image","x":83.09,"y":69.9,"w":12.62,"h":24.07,"src":"git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-1787645278156-6-image7.png","imageFit":"contain","zIndex":23,"stackLayer":"foreground"},{"id":"el-pptx-schoko-24-img","type":"image","x":26.73,"y":0.88,"w":14.79,"h":25.46,"src":"git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-1787645278156-7-image8.png","imageFit":"contain","zIndex":24,"stackLayer":"foreground"},{"id":"el-pptx-schoko-25-img","type":"image","x":56.31,"y":0.98,"w":14.79,"h":26.77,"src":"git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-1787645278156-8-image9.png","imageFit":"contain","zIndex":25,"stackLayer":"foreground"},{"id":"el-pptx-schoko-26-shape","type":"shape","x":9.19,"y":57.01,"w":5.02,"h":18.9,"shapeKind":"arrow","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"flipH":false,"flipV":true,"zIndex":26,"stackLayer":"background"},{"id":"el-pptx-schoko-27-shape","type":"shape","x":13.39,"y":58.13,"w":58.92,"h":18.34,"shapeKind":"arrow","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"flipH":false,"flipV":true,"zIndex":27,"stackLayer":"background"},{"id":"el-pptx-schoko-28-shape","type":"shape","x":20.03,"y":56.38,"w":11.84,"h":17.28,"shapeKind":"arrow","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"flipH":true,"flipV":true,"zIndex":28,"stackLayer":"background"},{"id":"el-pptx-schoko-29-shape","type":"shape","x":36.64,"y":57.91,"w":8.98,"h":15.75,"shapeKind":"arrow","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"flipH":false,"flipV":true,"zIndex":29,"stackLayer":"background"},{"id":"el-pptx-schoko-30-shape","type":"shape","x":41.58,"y":58.13,"w":33.33,"h":15.53,"shapeKind":"arrow","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"flipH":false,"flipV":true,"zIndex":30,"stackLayer":"background"},{"id":"el-pptx-schoko-31-shape","type":"shape","x":25.95,"y":56.38,"w":30.36,"h":15.23,"shapeKind":"arrow","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"flipH":true,"flipV":true,"zIndex":31,"stackLayer":"background"},{"id":"el-pptx-schoko-32-shape","type":"shape","x":49.78,"y":57.65,"w":13.93,"h":13.96,"shapeKind":"arrow","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"flipH":true,"flipV":true,"zIndex":32,"stackLayer":"background"},{"id":"el-pptx-schoko-33-shape","type":"shape","x":69.43,"y":57.65,"w":10.66,"h":13.73,"shapeKind":"arrow","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"flipH":false,"flipV":true,"zIndex":33,"stackLayer":"background"},{"id":"el-pptx-schoko-34-shape","type":"shape","x":56.74,"y":57.65,"w":28.01,"h":12.24,"shapeKind":"arrow","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"flipH":true,"flipV":true,"zIndex":34,"stackLayer":"background"},{"id":"el-pptx-schoko-35-shape","type":"shape","x":85.67,"y":57.23,"w":3.72,"h":12.67,"shapeKind":"arrow","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"flipH":true,"flipV":true,"zIndex":35,"stackLayer":"background"},{"id":"el-pptx-schoko-36-shape","type":"shape","x":18.53,"y":24.16,"w":9.84,"h":15.7,"shapeKind":"arrow","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"flipH":false,"flipV":true,"zIndex":36,"stackLayer":"background"},{"id":"el-pptx-schoko-37-shape","type":"shape","x":23.45,"y":24.6,"w":33.29,"h":15.02,"shapeKind":"arrow","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"flipH":false,"flipV":true,"zIndex":37,"stackLayer":"background"},{"id":"el-pptx-schoko-38-shape","type":"shape","x":53.49,"y":27.97,"w":8.9,"h":13.16,"shapeKind":"arrow","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"flipH":false,"flipV":true,"zIndex":38,"stackLayer":"background"},{"id":"el-pptx-schoko-39-shape","type":"shape","x":34.13,"y":26.34,"w":12.05,"h":15.2,"shapeKind":"arrow","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"flipH":true,"flipV":true,"zIndex":39,"stackLayer":"background"},{"id":"el-pptx-schoko-40-shape","type":"shape","x":41.71,"y":25.45,"w":31.9,"h":16.43,"shapeKind":"arrow","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"flipH":true,"flipV":true,"zIndex":40,"stackLayer":"background"},{"id":"el-pptx-schoko-41-shape","type":"shape","x":69.43,"y":27.97,"w":11.75,"h":13.03,"shapeKind":"arrow","fillColor":"#FFFFFF","strokeColor":"#212121","strokeWidth":3,"flipH":true,"flipV":true,"zIndex":41,"stackLayer":"background"},{"id":"el-pptx-schoko-42-text","type":"text","x":0.98,"y":92.36,"w":19.83,"h":6.8,"html":"<p style=\"text-align:center\"><span data-pres-fs=\"26\" style=\"font-size: 26px !important;\"><strong><span style=\"\"><span data-pres-fs=\"32\" style=\"font-size: 32px !important;\">Kakaopulver</span></span></strong></span></p>","zIndex":42,"stackLayer":"foreground"},{"id":"el-pptx-schoko-43-text","type":"text","x":26.73,"y":92.36,"w":19.83,"h":6.8,"html":"<p style=\"text-align:center\"><span data-pres-fs=\"26\" style=\"font-size: 26px !important;\"><strong><span style=\"\"><span data-pres-fs=\"32\" style=\"font-size: 32px !important;\">Kakaobutter</span></span></strong></span></p>","zIndex":43,"stackLayer":"foreground"},{"id":"el-pptx-schoko-44-text","type":"text","x":52.48,"y":92.8,"w":19.83,"h":6.8,"html":"<p style=\"text-align:center\"><span data-pres-fs=\"26\" style=\"font-size: 26px !important;\"><strong><span style=\"\"><span data-pres-fs=\"32\" style=\"font-size: 32px !important;\">Zucker</span></span></strong></span></p>","zIndex":44,"stackLayer":"foreground"},{"id":"el-pptx-schoko-45-text","type":"text","x":79.48,"y":92.8,"w":19.83,"h":6.8,"html":"<p style=\"text-align:center\"><span data-pres-fs=\"26\" style=\"font-size: 26px !important;\"><strong><span style=\"\"><span data-pres-fs=\"32\" style=\"font-size: 32px !important;\">Milchpulver</span></span></strong></span></p>","zIndex":45,"stackLayer":"foreground"}],"transition":"fade","revealEnabled":true,"zoneRevealSteps":{},"sourceLessonName":"01.10 Mehrstufige Prozesse mit Schokolade","sourceLessonPath":"git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"},"strokes":[]},"slide-1787824561305-a07ex":{"updatedAt":"2026-08-27T12:35:46.984Z","slide":{"id":"slide-1787824561305-a07ex","order":31,"speakerNotes":"","layout":"blank","subtitle":"","bodyLeft":"","bodyRight":"","imagePath":"","imageCaption":"","bodyStyle":"plain","titleAlign":"left","accentColor":"#2E7D32","title":"","body":"","hiddenLayoutZones":["bodyHtml"],"sourceLessonName":"01.10 Mehrstufige Prozesse mit Schokolade","titleHtml":"","bodyHtml":"","subtitleHtml":"","bodyLeftHtml":"","bodyRightHtml":"","imageCaptionHtml":"","speakerNotesHtml":"<p data-pres-notes-typehost=\"1\"><br></p>","preparationNotes":"","preparationHtml":"<p><br></p>","materialNotes":"","materialHtml":"<p><br></p>","elements":[{"id":"el-1787824577140","type":"image","x":15.281929278917907,"y":13.176809499017267,"w":69.43614144216419,"h":31.27414084357514,"src":"git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/Bildschirmfoto 2026-08-27 um 11.55.17.png","zIndex":1,"imageFit":"contain","stackLayer":"foreground"}],"transition":"fade","revealEnabled":true,"zoneRevealSteps":{}},"strokes":[]},"slide-1787742741976-bzf21":{"updatedAt":"2026-08-27T12:35:48.299Z","slide":{"id":"slide-1787742741976-bzf21","order":29,"speakerNotes":"Matrix A (Schokoladenbedarf je Packung)\nZeilen: Schokoladensorten (Zeile 1: Zartbitterschokolade, Zeile 2: Weiße Schokolade ...)\nSpalten: Packungen (Spalte 1: Edle Mischung, Spalte 2: Süße Mischung)\nA=(622325)A=\n\\begin{pmatrix}\n6 & 2\\\\\n2 & 3\\\\\n2 & 5\n\\end{pmatrix}​​\nMatrix B (Rohstoffbedarf je Schokoladenstück)\nZeilen: Rohstoffe, Spalten: Schokoladensorten\nB=(603153331002)B=\n\\begin{pmatrix}\n6 & 0 & 3\\\\\n1 & 5 & 3\\\\\n3 & 3 & 1\\\\\n0 & 0 & 2\n\\end{pmatrix}GesamtbedarfsmatrixG= B⋅AG=(603153331002)⋅(622325)​ Kundenbestellung\nBestellvektor:\nx=(10080)x=\n\\begin{pmatrix}\n100\\\\\n80\n\\end{pmatrix}Gesamtbedarf:\nr=G⋅xr=G\\cdot x r=(422722322620410)⋅(10080)r=\n\\begin{pmatrix}\n42 & 27\\\\\n22 & 32\\\\\n26 & 20\\\\\n4 & 10\n\\end{pmatrix}\n\\cdot\n\\begin{pmatrix}\n100\\\\\n80\n\\end{pmatrix}Ergebnis\nFür die Bestellung von 100 Edlen Mischungen und 80 Süßen Mischungen werden benötigt:\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nRohstoffBedarfKakaopulver6.360 gKakaobutter4.760 gZucker4.200 gMilchpulver1.200 g____________________________________________________________Weg 1: Zweistufige Rechnung\nZuerst wird aus der Bestellung der Bedarf an Schokoladensorten berechnet. Anschließend wird aus diesem Schokoladenbedarf der Rohstoffbedarf bestimmt.\nMathematisch:\nRohstoffbedarf=A⋅(B⋅x)\\text{Rohstoffbedarf}\n= A \\cdot (B \\cdot x) Dabei ist\nAA: Rohstoffe → SchokoladensortenBB: Schokoladensorten → Pralinenpackungenxx: Bestellvektor\n\nWeg 2: Gesamtbedarfsmatrix\nZunächst werden die beiden Teilbedarfsmatrizen zu einer Gesamtbedarfsmatrix zusammengefasst:\nG=A⋅B.G=A\\cdot B.Dann genügt eine einzige Matrixmultiplikation:\nRohstoffbedarf=G⋅x.\\text{Rohstoffbedarf}\n= G \\cdot x.Begründung\nBeide Wege liefern dasselbe Ergebnis, weil die Matrixmultiplikation assoziativ ist:\nA⋅(B⋅x)=(A⋅B)⋅x.A\\cdot(B\\cdot x)\n=\n(A\\cdot B)\\cdot x.Deshalb kann man entweder\ndie Berechnung Schritt für Schritt entlang der Produktionsstufen durchführen oderdie Produktionsstufen zunächst zu einer Gesamtbedarfsmatrix zusammenfassen.","layout":"title-content","subtitle":"","bodyLeft":"","bodyRight":"","imagePath":"","imageCaption":"","bodyStyle":"plain","titleAlign":"left","accentColor":"#2E7D32","title":"Mehrstufe Prozessmatrizen","body":"Stelle die Teilbedarfsmatrix A für die Pralinenpackungen und die Teilbedarfsmatrix B für die Rohstoffe auf.Berechne die Gesamtbedarfsmatrix G.Ein Kunde bestellt:100 Packungen „Edle Mischung“80 Packungen „Süße Mischung“\n\n\n\n\n\n\n\n\nBerechne den Gesamtbedarf an Rohstoffen.Bonusfrage: Warum kann man den Rohstoffbedarf entweder über die Gesamtbedarfsmatrix GG oder durch eine zweistufige Rechnung (zuerst Schokoladenbedarf, dann Rohstoffbedarf) bestimmen? Begründen mithilfe der Matrixmultiplikation.","sourceLessonName":"01.10 Mehrstufige Prozesse mit Schokolade","titleHtml":"<p>Mehrstufe Prozessmatrizen</p>","bodyHtml":"<p></p><div><span style=\"font-weight: 700;\"><br></span></div><ol><li><span style=\"font-weight: bold;\">Stelle</span>&nbsp;die <span style=\"font-weight: bold;\"><span data-pres-color=\"#6A1B9A\" style=\"color: rgb(106, 27, 154) !important;\">Teilbedarfsmatrix </span></span><span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\"><semantics><mrow><mi><span data-pres-color=\"#6A1B9A\" style=\"color: rgb(106, 27, 154) !important;\">A</span></mi></mrow></semantics></math></span>&nbsp;für die <span data-pres-color=\"#7B1FA2\" style=\"color: rgb(123, 31, 162) !important;\">Pralinenpackungen</span> und die <span style=\"font-weight: bold;\"><span data-pres-color=\"#2E7D32\" style=\"color: rgb(46, 125, 50) !important;\">Teilbedarfsmatrix </span></span><span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\"><semantics><mrow><mi><span data-pres-color=\"#2E7D32\" style=\"color: rgb(46, 125, 50) !important;\">B</span></mi></mrow></semantics></math></span>&nbsp;für die <span data-pres-color=\"#2E7D32\" style=\"color: rgb(46, 125, 50) !important;\">Rohstoffe</span> <span style=\"font-weight: bold;\">auf</span>.</li><li><span style=\"font-weight: bold;\">Berechne</span>&nbsp;die <span style=\"font-weight: bold;\"><span data-pres-color=\"#1565C0\" style=\"color: rgb(21, 101, 192) !important;\">Gesamtbedarfsmatrix </span></span><span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\"><semantics><mrow><mi><span data-pres-color=\"#1565C0\" style=\"color: rgb(21, 101, 192) !important;\">G</span></mi></mrow></semantics></math></span>.</li><li>Ein Kunde bestellt:</li></ol><p></p><ul><li><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important;\">100 Packungen „Edle Mischung“</span></li><li>80 Packungen „Süße Mischung“</li></ul><p>\n\n\n\n\n\n\n\n\n</p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important;\"><span style=\"font-weight: bold;\">Berechne</span>&nbsp;den Gesamtbedarf an Rohstoffen.</span></p><p><br></p><p><br></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important;\"></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\"><strong>Bonusfrage:&nbsp;</strong>Warum kann man den Rohstoffbedarf entweder über die Gesamtbedarfsmatrix <span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\"><semantics><mrow><mi>G</mi></mrow><annotation encoding=\"application/x-tex\">G</annotation></semantics></math></span>&nbsp;oder durch eine zweistufige Rechnung (zuerst Schokoladenbedarf, dann Rohstoffbedarf) bestimmen? <span style=\"font-weight: bold;\">Begründen</span>&nbsp;mithilfe der Matrixmultiplikation.</span></p>","subtitleHtml":"","bodyLeftHtml":"","bodyRightHtml":"","imageCaptionHtml":"","speakerNotesHtml":"<p data-pres-notes-typehost=\"1\"><b style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif;\">Matrix A (Schokoladenbedarf je Packung)</b></p>\n<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Zeilen: Schokoladensorten (<span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Zeile 1: Zartbitterschokolade,&nbsp;</span><span style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif;\">Zeile 2: Weiße Schokolade ...)</span></span></p>\n<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Spalten: Packungen (Spalte 1: Edle Mischung,&nbsp;</span><span style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif;\">Spalte 2: Süße Mischung)</span></p><p>\n<span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><mi>A</mi><mo>=</mo><mrow><mo fence=\"true\">(</mo><mtable rowspacing=\"0.16em\" columnalign=\"center center\" columnspacing=\"1em\"><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>6</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>2</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>2</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>3</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>2</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>5</mn></mstyle></mtd></mtr></mtable><mo fence=\"true\">)</mo></mrow></mrow><annotation encoding=\"application/x-tex\">A=\n\\begin{pmatrix}\n6 &amp; 2\\\\\n2 &amp; 3\\\\\n2 &amp; 5\n\\end{pmatrix}</annotation></semantics></math></span>​​\n</p><p><br></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b>Matrix B (Rohstoffbedarf je Schokoladenstück)</b></span></p>\n<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Zeilen: Rohstoffe,&nbsp;</span><span style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif;\">Spalten: Schokoladensorten</span></p><p>\n<span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><mi>B</mi><mo>=</mo><mrow><mo fence=\"true\">(</mo><mtable rowspacing=\"0.16em\" columnalign=\"center center center\" columnspacing=\"1em\"><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>6</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>0</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>3</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>1</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>5</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>3</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>3</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>3</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>1</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>0</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>0</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>2</mn></mstyle></mtd></mtr></mtable><mo fence=\"true\">)</mo></mrow></mrow><annotation encoding=\"application/x-tex\">B=\n\\begin{pmatrix}\n6 &amp; 0 &amp; 3\\\\\n1 &amp; 5 &amp; 3\\\\\n3 &amp; 3 &amp; 1\\\\\n0 &amp; 0 &amp; 2\n\\end{pmatrix}</annotation></semantics></math></span></p><p><br></p><p></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b>Gesamtbedarfsmatrix</b></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b><br></b></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b></b></span></p><p><b><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">G= B⋅A</span></b></p><p><b style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><mi>G</mi><mo>=</mo><mrow><mo fence=\"true\">(</mo><mtable rowspacing=\"0.16em\" columnalign=\"center center center\" columnspacing=\"1em\"><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>6</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>0</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>3</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>1</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>5</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>3</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>3</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>3</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>1</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>0</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>0</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>2</mn></mstyle></mtd></mtr></mtable><mo fence=\"true\">)</mo></mrow><mo>⋅</mo><mrow><mo fence=\"true\">(</mo><mtable rowspacing=\"0.16em\" columnalign=\"center center\" columnspacing=\"1em\"><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>6</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>2</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>2</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>3</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>2</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>5</mn></mstyle></mtd></mtr></mtable><mo fence=\"true\">)</mo></mrow></mrow></semantics></math></span>​&nbsp;</span></b></p><p><b><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: 92px; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/MSS%2012%20LK/12-01%20Matrizen/01%20Basiswissen/notes-1787743723133-Bildschirmfoto_2026-08-26_um_13.28.39.png&max=960\" alt=\"Bildschirmfoto 2026-08-26 um 13.28.39.png\" data-pres-notes-img=\"1\" draggable=\"false\" style=\"display: block; border-radius: 4px; width: 100%; height: auto; max-width: 100%;\"></span><br></span></b></p><p><b><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br></span></b></p><p><b><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br></span></b></p><p><b><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"></span></b></p><p><b><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b>Kundenbestellung</b></span></b></p><b>\n<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Bestellvektor:</span></p><p>\n<span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><mi>x</mi><mo>=</mo><mrow><mo fence=\"true\">(</mo><mtable rowspacing=\"0.16em\" columnalign=\"center\" columnspacing=\"1em\"><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>100</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>80</mn></mstyle></mtd></mtr></mtable><mo fence=\"true\">)</mo></mrow></mrow><annotation encoding=\"application/x-tex\">x=\n\\begin{pmatrix}\n100\\\\\n80\n\\end{pmatrix}</annotation></semantics></math></span><br></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Gesamtbedarf:</span></p><p>\n<span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><mi>r</mi><mo>=</mo><mi>G</mi><mo>⋅</mo><mi>x</mi></mrow><annotation encoding=\"application/x-tex\">r=G\\cdot x</annotation></semantics></math></span></p><p><br></p>&nbsp;<span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><mi>r</mi><mo>=</mo><mrow><mo fence=\"true\">(</mo><mtable rowspacing=\"0.16em\" columnalign=\"center center\" columnspacing=\"1em\"><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>42</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>27</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>22</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>32</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>26</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>20</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>4</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>10</mn></mstyle></mtd></mtr></mtable><mo fence=\"true\">)</mo></mrow><mo>⋅</mo><mrow><mo fence=\"true\">(</mo><mtable rowspacing=\"0.16em\" columnalign=\"center\" columnspacing=\"1em\"><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>100</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>80</mn></mstyle></mtd></mtr></mtable><mo fence=\"true\">)</mo></mrow></mrow><annotation encoding=\"application/x-tex\">r=\n\\begin{pmatrix}\n42 &amp; 27\\\\\n22 &amp; 32\\\\\n26 &amp; 20\\\\\n4 &amp; 10\n\\end{pmatrix}\n\\cdot\n\\begin{pmatrix}\n100\\\\\n80\n\\end{pmatrix}</annotation></semantics></math></span><br><p></p><p><br></p><p><br></p><p></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b>Ergebnis</b></span></p>\n<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Für die Bestellung von <strong>100 Edlen Mischungen</strong> und <strong>80 Süßen Mischungen</strong> werden benötigt:</span></p>\n<div role=\"presentation\" data-stable-ignore=\"true\" data-tabster=\"{&quot;restorer&quot;:{&quot;type&quot;:1}}\" aria-expanded=\"false\">\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n<table node=\"[object Object]\" markdown=\"| Rohstoff | Bedarf |\n|------|------:|\n| Kakaopulver | 6.360 g |\n| Kakaobutter | 4.760 g |\n| Zucker | 4.200 g |\n| Milchpulver | 1.200 g |\" data-pres-table=\"1\" data-pres-table-theme=\"gelb\" style=\"width: 100%; border-collapse: collapse; table-layout: fixed; font-size: inherit;\"><colgroup><col style=\"width: 50%;\"><col style=\"width: 50%;\"></colgroup><thead><tr><th style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 229, 153); font-weight: 700; vertical-align: middle; word-break: break-word; text-align: left;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Rohstoff</span></th><th style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 229, 153); font-weight: 700; vertical-align: middle; word-break: break-word; text-align: left;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Bedarf</span></th></tr></thead><tbody><tr><td style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 255, 255); vertical-align: middle; word-break: break-word;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Kakaopulver</span></td><td style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 255, 255); vertical-align: middle; word-break: break-word;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">6.360 g</span></td></tr><tr><td style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Kakaobutter</span></td><td style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">4.760 g</span></td></tr><tr><td style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 255, 255); vertical-align: middle; word-break: break-word;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Zucker</span></td><td style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 255, 255); vertical-align: middle; word-break: break-word;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">4.200 g</span></td></tr><tr><td style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Milchpulver</span></td><td style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">1.200 g</span></td></tr></tbody></table></div><br><p></p></b><p></p><p></p><p></p><p></p><p></p><p></p><div>____________________________________________________________</div><div><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b>Weg 1: Zweistufige Rechnung</b></span></p>\n<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Zuerst wird aus der Bestellung der Bedarf an Schokoladensorten berechnet. Anschließend wird aus diesem Schokoladenbedarf der Rohstoffbedarf bestimmt.</span></p>\n<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Mathematisch:</span></p><p>\n<span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><mtext>Rohstoffbedarf</mtext><mo>=</mo><mi>A</mi><mo>⋅</mo><mo stretchy=\"false\">(</mo><mi>B</mi><mo>⋅</mo><mi>x</mi><mo stretchy=\"false\">)</mo></mrow><annotation encoding=\"application/x-tex\">\\text{Rohstoffbedarf}\n= A \\cdot (B \\cdot x)</annotation></semantics></math></span>&nbsp;</p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Dabei ist</span></p>\n<ul><li><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\"><semantics><mrow><mi>A</mi></mrow><annotation encoding=\"application/x-tex\">A</annotation></semantics></math></span>: Rohstoffe → Schokoladensorten</span></li><li><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\"><semantics><mrow><mi>B</mi></mrow><annotation encoding=\"application/x-tex\">B</annotation></semantics></math></span>: Schokoladensorten → Pralinenpackungen</span></li><li><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\"><semantics><mrow><mi>x</mi></mrow><annotation encoding=\"application/x-tex\">x</annotation></semantics></math></span>: Bestellvektor</span></li></ul>\n<hr>\n<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b>Weg 2: Gesamtbedarfsmatrix</b></span></p>\n<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Zunächst werden die beiden Teilbedarfsmatrizen zu einer Gesamtbedarfsmatrix zusammengefasst:</span></p><p>\n<span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><mi>G</mi><mo>=</mo><mi>A</mi><mo>⋅</mo><mi>B</mi><mi mathvariant=\"normal\">.</mi></mrow><annotation encoding=\"application/x-tex\">G=A\\cdot B.</annotation></semantics></math></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Dann genügt eine einzige Matrixmultiplikation:</span></p><p>\n<span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><mtext>Rohstoffbedarf</mtext><mo>=</mo><mi>G</mi><mo>⋅</mo><mi>x</mi><mi mathvariant=\"normal\">.</mi></mrow><annotation encoding=\"application/x-tex\">\\text{Rohstoffbedarf}\n= G \\cdot x.</annotation></semantics></math></span></p><p><br></p><p></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b>Begründung</b></span></p>\n<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Beide Wege liefern dasselbe Ergebnis, weil die Matrixmultiplikation <strong>assoziativ</strong> ist:</span></p><p>\n<span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><mi>A</mi><mo>⋅</mo><mo stretchy=\"false\">(</mo><mi>B</mi><mo>⋅</mo><mi>x</mi><mo stretchy=\"false\">)</mo><mo>=</mo><mo stretchy=\"false\">(</mo><mi>A</mi><mo>⋅</mo><mi>B</mi><mo stretchy=\"false\">)</mo><mo>⋅</mo><mi>x</mi><mi mathvariant=\"normal\">.</mi></mrow><annotation encoding=\"application/x-tex\">A\\cdot(B\\cdot x)\n=\n(A\\cdot B)\\cdot x.</annotation></semantics></math></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Deshalb kann man entweder</span></p>\n<ol><li><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">die Berechnung Schritt für Schritt entlang der Produktionsstufen durchführen oder</span></li><li><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">die Produktionsstufen zunächst zu einer Gesamtbedarfsmatrix zusammenfassen.</span></li></ol>\n<p><br></p><br><p></p><br></div>","preparationNotes":"","preparationHtml":"<p><br></p>","materialNotes":"","materialHtml":"<p><br></p>","elements":[],"transition":"fade","revealEnabled":true,"zoneRevealSteps":{}},"strokes":[]},"slide-1787813980979-2u4o9":{"updatedAt":"2026-08-29T08:02:03.406Z","slide":{"id":"slide-1787813980979-2u4o9","order":36,"speakerNotes":"","layout":"blank","subtitle":"","bodyLeft":"","bodyRight":"","imagePath":"","imageCaption":"","bodyStyle":"plain","titleAlign":"left","accentColor":"#2E7D32","title":"","body":"","hiddenLayoutZones":["bodyHtml"],"sourceLessonName":"01.10 Mehrstufige Prozesse mit Schokolade","titleHtml":"","bodyHtml":"","subtitleHtml":"","bodyLeftHtml":"","bodyRightHtml":"","imageCaptionHtml":"","speakerNotesHtml":"<p data-pres-notes-typehost=\"1\"><br></p>","preparationNotes":"","preparationHtml":"<p><br></p>","materialNotes":"","materialHtml":"<p><br></p>","elements":[],"transition":"fade","revealEnabled":true,"zoneRevealSteps":{}},"strokes":[]},"slide-1788154429617-2zn26":{"updatedAt":"2026-08-31T05:47:51.696Z","slide":{"id":"slide-1788154429617-2zn26","order":38,"speakerNotes":"","layout":"blank","subtitle":"","bodyLeft":"","bodyRight":"","imagePath":"","imageCaption":"","bodyStyle":"plain","titleAlign":"left","accentColor":"#2E7D32","title":"","body":"","hiddenLayoutZones":["bodyHtml"],"sourceLessonName":"01.11 Die Autos sind kaputt","titleHtml":"","bodyHtml":"","subtitleHtml":"","bodyLeftHtml":"","bodyRightHtml":"","imageCaptionHtml":"","speakerNotesHtml":"<p data-pres-notes-typehost=\"1\"><br></p>","preparationNotes":"","preparationHtml":"<p><br></p>","materialNotes":"","materialHtml":"<p><br></p>","elements":[],"transition":"fade","revealEnabled":true,"zoneRevealSteps":{}},"strokes":[]},"slide-1788161987569-t0zdc":{"updatedAt":"2026-08-31T07:56:28.541Z","slide":{"id":"slide-1788161987569-t0zdc","order":41,"speakerNotes":"","layout":"blank","subtitle":"","bodyLeft":"","bodyRight":"","imagePath":"","imageCaption":"","bodyStyle":"plain","titleAlign":"left","accentColor":"#2E7D32","title":"","body":"","hiddenLayoutZones":["bodyHtml"],"sourceLessonName":"01.11 Die Autos sind kaputt","titleHtml":"","bodyHtml":"","subtitleHtml":"","bodyLeftHtml":"","bodyRightHtml":"","imageCaptionHtml":"","speakerNotesHtml":"<p data-pres-notes-typehost=\"1\"><br></p>","preparationNotes":"","preparationHtml":"<p><br></p>","materialNotes":"","materialHtml":"<p><br></p>","elements":[],"transition":"fade","revealEnabled":true,"zoneRevealSteps":{}},"strokes":[{"id":"s-1788162986791-rw9ah","points":[{"x":856.0629557209573,"y":160.56879004261273},{"x":856.0629557209573,"y":162.12065516932304},{"x":856.0629557209573,"y":160.56879004261273},{"x":856.0629557209573,"y":162.12065516932304},{"x":856.0629557209573,"y":163.67252029603338},{"x":856.0629557209573,"y":165.2243854227437},{"x":856.0629557209573,"y":162.12065516932304},{"x":856.0629557209573,"y":163.67252029603338},{"x":856.0629557209573,"y":165.2243854227437},{"x":856.0629557209573,"y":166.77625054945403},{"x":856.0629557209573,"y":168.32811567616434},{"x":856.0629557209573,"y":169.87998080287466},{"x":854.5110906282727,"y":171.43184592958497},{"x":856.0629557209573,"y":166.77625054945403},{"x":856.0629557209573,"y":168.32811567616434},{"x":856.0629557209573,"y":169.87998080287466},{"x":854.5110906282727,"y":171.43184592958497},{"x":854.5110906282727,"y":174.53557618300562},{"x":854.5110906282727,"y":177.63930643642627},{"x":852.9592255355877,"y":180.74303668984692},{"x":851.4073604429029,"y":183.84676694326757},{"x":854.5110906282727,"y":174.53557618300562},{"x":854.5110906282727,"y":177.63930643642627},{"x":852.9592255355877,"y":180.74303668984692},{"x":851.4073604429029,"y":183.84676694326757},{"x":851.4073604429029,"y":188.50236232339856},{"x":849.8554953502181,"y":191.6060925768192},{"x":848.3036302575332,"y":194.70982283023986},{"x":846.7517651648484,"y":199.36541821037082},{"x":851.4073604429029,"y":188.50236232339856},{"x":849.8554953502181,"y":191.6060925768192},{"x":848.3036302575332,"y":194.70982283023986},{"x":846.7517651648484,"y":199.36541821037082},{"x":846.7517651648484,"y":202.46914846379147},{"x":845.1999000721635,"y":205.5728787172121},{"x":843.6480349794787,"y":208.67660897063274},{"x":843.6480349794787,"y":210.22847409734308},{"x":846.7517651648484,"y":202.46914846379147},{"x":845.1999000721635,"y":205.5728787172121},{"x":843.6480349794787,"y":208.67660897063274},{"x":843.6480349794787,"y":210.22847409734308},{"x":842.0961698867937,"y":213.33220435076373},{"x":842.0961698867937,"y":214.88406947747404},{"x":842.0961698867937,"y":216.43593460418438},{"x":840.544304794109,"y":217.9877997308947},{"x":842.0961698867937,"y":213.33220435076373},{"x":842.0961698867937,"y":214.88406947747404},{"x":842.0961698867937,"y":216.43593460418438},{"x":840.544304794109,"y":217.9877997308947},{"x":840.544304794109,"y":219.53966485760503},{"x":840.544304794109,"y":221.09152998431534},{"x":840.544304794109,"y":219.53966485760503},{"x":840.544304794109,"y":221.09152998431534},{"x":840.544304794109,"y":219.53966485760503},{"x":840.544304794109,"y":221.09152998431534},{"x":840.544304794109,"y":219.53966485760503}],"color":"#1565c0","lineWidth":3,"mode":"pen"},{"id":"s-1788162987124-7ptgu","points":[{"x":852.9592255355877,"y":152.80946440906112},{"x":852.9592255355877,"y":151.25759928235078},{"x":854.5110906282727,"y":151.25759928235078},{"x":854.5110906282727,"y":149.70573415564047},{"x":852.9592255355877,"y":151.25759928235078},{"x":854.5110906282727,"y":151.25759928235078},{"x":854.5110906282727,"y":149.70573415564047},{"x":856.0629557209573,"y":149.70573415564047},{"x":856.0629557209573,"y":151.25759928235078},{"x":856.0629557209573,"y":152.80946440906112},{"x":856.0629557209573,"y":154.36132953577143},{"x":856.0629557209573,"y":149.70573415564047},{"x":856.0629557209573,"y":151.25759928235078},{"x":856.0629557209573,"y":152.80946440906112},{"x":856.0629557209573,"y":154.36132953577143},{"x":857.6148208136423,"y":155.91319466248174},{"x":857.6148208136423,"y":157.46505978919208},{"x":859.1666859063271,"y":159.0169249159024},{"x":859.1666859063271,"y":162.12065516932304},{"x":857.6148208136423,"y":155.91319466248174},{"x":857.6148208136423,"y":157.46505978919208},{"x":859.1666859063271,"y":159.0169249159024},{"x":859.1666859063271,"y":162.12065516932304},{"x":860.718550999012,"y":165.2243854227437},{"x":860.718550999012,"y":166.77625054945403},{"x":862.2704160916968,"y":169.87998080287466},{"x":863.8222811843817,"y":172.9837110562953},{"x":860.718550999012,"y":165.2243854227437},{"x":860.718550999012,"y":166.77625054945403},{"x":862.2704160916968,"y":169.87998080287466},{"x":863.8222811843817,"y":172.9837110562953},{"x":863.8222811843817,"y":177.63930643642627},{"x":865.3741462770665,"y":180.74303668984692},{"x":866.9260113697513,"y":183.84676694326757},{"x":868.4778764624363,"y":186.95049719668822},{"x":863.8222811843817,"y":177.63930643642627},{"x":865.3741462770665,"y":180.74303668984692},{"x":866.9260113697513,"y":183.84676694326757},{"x":868.4778764624363,"y":186.95049719668822},{"x":870.029741555121,"y":190.05422745010887},{"x":871.5816066478059,"y":193.15795770352952},{"x":873.1334717404907,"y":194.70982283023986},{"x":874.6853368331756,"y":197.8135530836605},{"x":870.029741555121,"y":190.05422745010887},{"x":871.5816066478059,"y":193.15795770352952},{"x":873.1334717404907,"y":194.70982283023986},{"x":874.6853368331756,"y":197.8135530836605},{"x":874.6853368331756,"y":199.36541821037082},{"x":876.2372019258604,"y":200.91728333708116},{"x":877.7890670185453,"y":202.46914846379147},{"x":874.6853368331756,"y":199.36541821037082},{"x":876.2372019258604,"y":200.91728333708116},{"x":877.7890670185453,"y":202.46914846379147},{"x":879.3409321112301,"y":204.0210135905018},{"x":879.3409321112301,"y":205.5728787172121},{"x":879.3409321112301,"y":207.12474384392243},{"x":879.3409321112301,"y":204.0210135905018},{"x":879.3409321112301,"y":205.5728787172121},{"x":879.3409321112301,"y":207.12474384392243},{"x":880.8927972039149,"y":207.12474384392243},{"x":880.8927972039149,"y":208.67660897063274},{"x":880.8927972039149,"y":207.12474384392243},{"x":880.8927972039149,"y":208.67660897063274},{"x":880.8927972039149,"y":210.22847409734308},{"x":880.8927972039149,"y":208.67660897063274},{"x":880.8927972039149,"y":210.22847409734308}],"color":"#1565c0","lineWidth":3,"mode":"pen"},{"id":"s-1788162987524-5k003","points":[{"x":849.8554953502181,"y":188.50236232339856},{"x":851.4073604429029,"y":188.50236232339856},{"x":852.9592255355877,"y":188.50236232339856},{"x":849.8554953502181,"y":188.50236232339856},{"x":851.4073604429029,"y":188.50236232339856},{"x":852.9592255355877,"y":188.50236232339856},{"x":854.5110906282727,"y":188.50236232339856},{"x":857.6148208136423,"y":188.50236232339856},{"x":859.1666859063271,"y":188.50236232339856},{"x":860.718550999012,"y":188.50236232339856},{"x":854.5110906282727,"y":188.50236232339856},{"x":857.6148208136423,"y":188.50236232339856},{"x":859.1666859063271,"y":188.50236232339856},{"x":860.718550999012,"y":188.50236232339856},{"x":862.2704160916968,"y":188.50236232339856},{"x":865.3741462770665,"y":188.50236232339856},{"x":866.9260113697513,"y":188.50236232339856},{"x":870.029741555121,"y":188.50236232339856},{"x":862.2704160916968,"y":188.50236232339856},{"x":865.3741462770665,"y":188.50236232339856},{"x":866.9260113697513,"y":188.50236232339856},{"x":870.029741555121,"y":188.50236232339856},{"x":871.5816066478059,"y":188.50236232339856},{"x":873.1334717404907,"y":188.50236232339856},{"x":874.6853368331756,"y":188.50236232339856},{"x":876.2372019258604,"y":188.50236232339856},{"x":871.5816066478059,"y":188.50236232339856},{"x":873.1334717404907,"y":188.50236232339856},{"x":874.6853368331756,"y":188.50236232339856},{"x":876.2372019258604,"y":188.50236232339856},{"x":877.7890670185453,"y":188.50236232339856}],"color":"#1565c0","lineWidth":3,"mode":"pen"},{"id":"s-1788162987824-4ui4o","points":[{"x":908.8263688722421,"y":174.53557618300562},{"x":910.378233964927,"y":174.53557618300562},{"x":908.8263688722421,"y":174.53557618300562},{"x":910.378233964927,"y":174.53557618300562},{"x":911.9300990576118,"y":174.53557618300562},{"x":913.4819641502967,"y":174.53557618300562},{"x":910.378233964927,"y":174.53557618300562},{"x":911.9300990576118,"y":174.53557618300562},{"x":913.4819641502967,"y":174.53557618300562},{"x":915.0338292429815,"y":174.53557618300562},{"x":916.5856943356664,"y":174.53557618300562},{"x":913.4819641502967,"y":174.53557618300562},{"x":915.0338292429815,"y":174.53557618300562},{"x":916.5856943356664,"y":174.53557618300562},{"x":918.1375594283512,"y":174.53557618300562},{"x":919.6894245210361,"y":174.53557618300562},{"x":916.5856943356664,"y":174.53557618300562},{"x":918.1375594283512,"y":174.53557618300562},{"x":919.6894245210361,"y":174.53557618300562},{"x":921.2412896137209,"y":174.53557618300562},{"x":922.7931547064057,"y":174.53557618300562},{"x":919.6894245210361,"y":174.53557618300562},{"x":921.2412896137209,"y":174.53557618300562},{"x":922.7931547064057,"y":174.53557618300562}],"color":"#1565c0","lineWidth":3,"mode":"pen"},{"id":"s-1788162988041-78pye","points":[{"x":913.4819641502967,"y":185.3986320699779},{"x":915.0338292429815,"y":185.3986320699779},{"x":916.5856943356664,"y":185.3986320699779},{"x":918.1375594283512,"y":185.3986320699779},{"x":916.5856943356664,"y":185.3986320699779},{"x":918.1375594283512,"y":185.3986320699779},{"x":919.6894245210361,"y":185.3986320699779},{"x":921.2412896137209,"y":185.3986320699779},{"x":922.7931547064057,"y":185.3986320699779},{"x":919.6894245210361,"y":185.3986320699779},{"x":921.2412896137209,"y":185.3986320699779},{"x":922.7931547064057,"y":185.3986320699779},{"x":924.3450197990906,"y":185.3986320699779},{"x":924.3450197990906,"y":186.95049719668822},{"x":925.8968848917754,"y":186.95049719668822},{"x":924.3450197990906,"y":185.3986320699779},{"x":924.3450197990906,"y":186.95049719668822},{"x":925.8968848917754,"y":186.95049719668822}],"color":"#1565c0","lineWidth":3,"mode":"pen"}]}}}
+{
+  "version": 1,
+  "lessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen",
+  "updatedAt": "2026-08-31T07:56:28.943Z",
+  "bySlideId": {
+    "slide-pptx-prozesse-schokolade": {
+      "updatedAt": "2026-08-26T11:08:22.671Z",
+      "slide": {
+        "id": "slide-pptx-prozesse-schokolade",
+        "order": 30,
+        "speakerNotes": "",
+        "layout": "blank-full",
+        "subtitle": "",
+        "bodyLeft": "",
+        "bodyRight": "",
+        "imagePath": "",
+        "imageCaption": "",
+        "bodyStyle": "plain",
+        "titleAlign": "left",
+        "accentColor": "#2E7D32",
+        "title": "Prozesse Schokolade",
+        "body": "",
+        "hiddenLayoutZones": [
+          "bodyHtml"
+        ],
+        "titleHtml": "",
+        "bodyHtml": "",
+        "subtitleHtml": "",
+        "bodyLeftHtml": "",
+        "bodyRightHtml": "",
+        "imageCaptionHtml": "",
+        "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><br></p>",
+        "preparationNotes": "",
+        "preparationHtml": "<p><br></p>",
+        "materialNotes": "",
+        "materialHtml": "<p><br></p>",
+        "elements": [
+          {
+            "id": "el-pptx-schoko-1-circle",
+            "type": "shape",
+            "shapeKind": "ellipse",
+            "x": 5.72,
+            "y": 69.88,
+            "w": 5.9799999999999995,
+            "h": 7.540000000000006,
+            "html": "<p style=\"text-align:center\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><strong>6g</strong></span></p>",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "zIndex": 46,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-2-circle",
+            "type": "shape",
+            "shapeKind": "ellipse",
+            "x": 12.14,
+            "y": 70.88,
+            "w": 6.390000000000001,
+            "h": 7.540000000000006,
+            "html": "<p style=\"text-align:center\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><strong>3g</strong></span></p>",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "zIndex": 47,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-3-circle",
+            "type": "shape",
+            "shapeKind": "ellipse",
+            "x": 29.55,
+            "y": 70.6,
+            "w": 6.2,
+            "h": 6.820000000000007,
+            "html": "<p style=\"text-align:center\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><strong>1g</strong></span></p>",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "zIndex": 48,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-4-circle",
+            "type": "shape",
+            "shapeKind": "ellipse",
+            "x": 54.34,
+            "y": 67.55,
+            "w": 6.6299999999999955,
+            "h": 8.920000000000002,
+            "html": "<p style=\"text-align:center\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><strong>3g</strong></span></p>",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "zIndex": 49,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-5-circle",
+            "type": "shape",
+            "shapeKind": "ellipse",
+            "x": 34.72,
+            "y": 67.8,
+            "w": 5.375,
+            "h": 7.900000000000006,
+            "html": "<p style=\"text-align:center\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><strong>5g</strong></span></p>",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "zIndex": 50,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-6-circle",
+            "type": "shape",
+            "shapeKind": "ellipse",
+            "x": 38.91,
+            "y": 70.01,
+            "w": 6.710000000000008,
+            "h": 7.409999999999997,
+            "html": "<p style=\"text-align:center\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><strong>3g</strong></span></p>",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "zIndex": 51,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-7-circle",
+            "type": "shape",
+            "shapeKind": "ellipse",
+            "x": 60.97,
+            "y": 68.12,
+            "w": 6.159999999999997,
+            "h": 7.789999999999992,
+            "html": "<p style=\"text-align:center\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><strong>3g</strong></span></p>",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "zIndex": 52,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-8-circle",
+            "type": "shape",
+            "shapeKind": "ellipse",
+            "x": 67.13,
+            "y": 67.42,
+            "w": 5.189999999999998,
+            "h": 8.280000000000001,
+            "html": "<p style=\"text-align:center\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><strong>1g</strong></span></p>",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "zIndex": 53,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-9-circle",
+            "type": "shape",
+            "shapeKind": "ellipse",
+            "x": 88.2,
+            "y": 64,
+            "w": 6.6299999999999955,
+            "h": 7.560000000000002,
+            "html": "<p style=\"text-align:center\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><strong>3g</strong></span></p>",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "zIndex": 54,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-10-circle",
+            "type": "shape",
+            "shapeKind": "ellipse",
+            "x": 82.55,
+            "y": 65.72,
+            "w": 5.650000000000006,
+            "h": 6.295000000000002,
+            "html": "<p style=\"text-align:center\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><strong>2g</strong></span></p>",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "zIndex": 55,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-11-circle",
+            "type": "shape",
+            "shapeKind": "ellipse",
+            "x": 16.18,
+            "y": 34.41,
+            "w": 5.289999999999999,
+            "h": 9.090000000000003,
+            "html": "<p style=\"text-align:center\"><span data-pres-fs=\"36\" style=\"font-size: 36px !important;\"><strong>6</strong></span></p>",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "zIndex": 56,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-12-circle",
+            "type": "shape",
+            "shapeKind": "ellipse",
+            "x": 21.47,
+            "y": 34.53,
+            "w": 6.159999999999997,
+            "h": 8.969999999999999,
+            "html": "<p style=\"text-align:center\"><span data-pres-fs=\"36\" style=\"font-size: 36px !important;\"><strong>2</strong></span></p>",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "zIndex": 57,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-13-circle",
+            "type": "shape",
+            "shapeKind": "ellipse",
+            "x": 43.22,
+            "y": 35.84,
+            "w": 5.02,
+            "h": 8.479999999999997,
+            "html": "<p style=\"text-align:center\"><span data-pres-fs=\"36\" style=\"font-size: 36px !important;\"><strong>2</strong></span></p>",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "zIndex": 58,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-14-circle",
+            "type": "shape",
+            "shapeKind": "ellipse",
+            "x": 70.52,
+            "y": 35.35,
+            "w": 5.9799999999999995,
+            "h": 8.969999999999999,
+            "html": "<p style=\"text-align:center\"><span data-pres-fs=\"36\" style=\"font-size: 36px !important;\"><strong>2</strong></span></p>",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "zIndex": 59,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-15-circle",
+            "type": "shape",
+            "shapeKind": "ellipse",
+            "x": 80.39,
+            "y": 36.04,
+            "w": 6.2,
+            "h": 8.280000000000001,
+            "html": "<p style=\"text-align:center\"><span data-pres-fs=\"36\" style=\"font-size: 36px !important;\"><strong>5</strong></span></p>",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "zIndex": 60,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-16-circle",
+            "type": "shape",
+            "shapeKind": "ellipse",
+            "x": 52.54,
+            "y": 36.49,
+            "w": 5.704999999999998,
+            "h": 7.829999999999998,
+            "html": "<p style=\"text-align:center\"><span data-pres-fs=\"36\" style=\"font-size: 36px !important;\"><strong>3</strong></span></p>",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "zIndex": 61,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-17-img",
+            "type": "image",
+            "x": 10.32,
+            "y": 39.62,
+            "w": 19.42,
+            "h": 16.76,
+            "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-1787645278156-0-image1.png",
+            "imageFit": "contain",
+            "zIndex": 17,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-18-img",
+            "type": "image",
+            "x": 41.71,
+            "y": 41.21,
+            "w": 16.14,
+            "h": 16.44,
+            "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-1787645278156-1-image2.png",
+            "imageFit": "contain",
+            "zIndex": 18,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-19-img",
+            "type": "image",
+            "x": 70.38,
+            "y": 41.32,
+            "w": 19.42,
+            "h": 16.34,
+            "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-1787645278156-2-image3.png",
+            "imageFit": "contain",
+            "zIndex": 19,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-20-img",
+            "type": "image",
+            "x": 2.8599999999999994,
+            "y": 78.76,
+            "w": 17.12,
+            "h": 14.63,
+            "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-1787645278156-3-image4.png",
+            "imageFit": "contain",
+            "zIndex": 20,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-21-img",
+            "type": "image",
+            "x": 28.37,
+            "y": 73.66,
+            "w": 16.55,
+            "h": 18.7,
+            "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-1787645278156-4-image5.png",
+            "imageFit": "contain",
+            "zIndex": 21,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-22-img",
+            "type": "image",
+            "x": 55.08,
+            "y": 71.61,
+            "w": 17.24,
+            "h": 22.36,
+            "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-1787645278156-5-image6.png",
+            "imageFit": "contain",
+            "zIndex": 22,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-23-img",
+            "type": "image",
+            "x": 83.09,
+            "y": 69.9,
+            "w": 12.62,
+            "h": 24.07,
+            "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-1787645278156-6-image7.png",
+            "imageFit": "contain",
+            "zIndex": 23,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-24-img",
+            "type": "image",
+            "x": 26.73,
+            "y": 0.88,
+            "w": 14.79,
+            "h": 25.46,
+            "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-1787645278156-7-image8.png",
+            "imageFit": "contain",
+            "zIndex": 24,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-25-img",
+            "type": "image",
+            "x": 56.31,
+            "y": 0.98,
+            "w": 14.79,
+            "h": 26.77,
+            "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/pptx-1787645278156-8-image9.png",
+            "imageFit": "contain",
+            "zIndex": 25,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-26-shape",
+            "type": "shape",
+            "x": 9.19,
+            "y": 57.01,
+            "w": 5.02,
+            "h": 18.9,
+            "shapeKind": "arrow",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "flipH": false,
+            "flipV": true,
+            "zIndex": 26,
+            "stackLayer": "background"
+          },
+          {
+            "id": "el-pptx-schoko-27-shape",
+            "type": "shape",
+            "x": 13.39,
+            "y": 58.13,
+            "w": 58.92,
+            "h": 18.34,
+            "shapeKind": "arrow",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "flipH": false,
+            "flipV": true,
+            "zIndex": 27,
+            "stackLayer": "background"
+          },
+          {
+            "id": "el-pptx-schoko-28-shape",
+            "type": "shape",
+            "x": 20.03,
+            "y": 56.38,
+            "w": 11.84,
+            "h": 17.28,
+            "shapeKind": "arrow",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "flipH": true,
+            "flipV": true,
+            "zIndex": 28,
+            "stackLayer": "background"
+          },
+          {
+            "id": "el-pptx-schoko-29-shape",
+            "type": "shape",
+            "x": 36.64,
+            "y": 57.91,
+            "w": 8.98,
+            "h": 15.75,
+            "shapeKind": "arrow",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "flipH": false,
+            "flipV": true,
+            "zIndex": 29,
+            "stackLayer": "background"
+          },
+          {
+            "id": "el-pptx-schoko-30-shape",
+            "type": "shape",
+            "x": 41.58,
+            "y": 58.13,
+            "w": 33.33,
+            "h": 15.53,
+            "shapeKind": "arrow",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "flipH": false,
+            "flipV": true,
+            "zIndex": 30,
+            "stackLayer": "background"
+          },
+          {
+            "id": "el-pptx-schoko-31-shape",
+            "type": "shape",
+            "x": 25.95,
+            "y": 56.38,
+            "w": 30.36,
+            "h": 15.23,
+            "shapeKind": "arrow",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "flipH": true,
+            "flipV": true,
+            "zIndex": 31,
+            "stackLayer": "background"
+          },
+          {
+            "id": "el-pptx-schoko-32-shape",
+            "type": "shape",
+            "x": 49.78,
+            "y": 57.65,
+            "w": 13.93,
+            "h": 13.96,
+            "shapeKind": "arrow",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "flipH": true,
+            "flipV": true,
+            "zIndex": 32,
+            "stackLayer": "background"
+          },
+          {
+            "id": "el-pptx-schoko-33-shape",
+            "type": "shape",
+            "x": 69.43,
+            "y": 57.65,
+            "w": 10.66,
+            "h": 13.73,
+            "shapeKind": "arrow",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "flipH": false,
+            "flipV": true,
+            "zIndex": 33,
+            "stackLayer": "background"
+          },
+          {
+            "id": "el-pptx-schoko-34-shape",
+            "type": "shape",
+            "x": 56.74,
+            "y": 57.65,
+            "w": 28.01,
+            "h": 12.24,
+            "shapeKind": "arrow",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "flipH": true,
+            "flipV": true,
+            "zIndex": 34,
+            "stackLayer": "background"
+          },
+          {
+            "id": "el-pptx-schoko-35-shape",
+            "type": "shape",
+            "x": 85.67,
+            "y": 57.23,
+            "w": 3.72,
+            "h": 12.67,
+            "shapeKind": "arrow",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "flipH": true,
+            "flipV": true,
+            "zIndex": 35,
+            "stackLayer": "background"
+          },
+          {
+            "id": "el-pptx-schoko-36-shape",
+            "type": "shape",
+            "x": 18.53,
+            "y": 24.16,
+            "w": 9.84,
+            "h": 15.7,
+            "shapeKind": "arrow",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "flipH": false,
+            "flipV": true,
+            "zIndex": 36,
+            "stackLayer": "background"
+          },
+          {
+            "id": "el-pptx-schoko-37-shape",
+            "type": "shape",
+            "x": 23.45,
+            "y": 24.6,
+            "w": 33.29,
+            "h": 15.02,
+            "shapeKind": "arrow",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "flipH": false,
+            "flipV": true,
+            "zIndex": 37,
+            "stackLayer": "background"
+          },
+          {
+            "id": "el-pptx-schoko-38-shape",
+            "type": "shape",
+            "x": 53.49,
+            "y": 27.97,
+            "w": 8.9,
+            "h": 13.16,
+            "shapeKind": "arrow",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "flipH": false,
+            "flipV": true,
+            "zIndex": 38,
+            "stackLayer": "background"
+          },
+          {
+            "id": "el-pptx-schoko-39-shape",
+            "type": "shape",
+            "x": 34.13,
+            "y": 26.34,
+            "w": 12.05,
+            "h": 15.2,
+            "shapeKind": "arrow",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "flipH": true,
+            "flipV": true,
+            "zIndex": 39,
+            "stackLayer": "background"
+          },
+          {
+            "id": "el-pptx-schoko-40-shape",
+            "type": "shape",
+            "x": 41.71,
+            "y": 25.45,
+            "w": 31.9,
+            "h": 16.43,
+            "shapeKind": "arrow",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "flipH": true,
+            "flipV": true,
+            "zIndex": 40,
+            "stackLayer": "background"
+          },
+          {
+            "id": "el-pptx-schoko-41-shape",
+            "type": "shape",
+            "x": 69.43,
+            "y": 27.97,
+            "w": 11.75,
+            "h": 13.03,
+            "shapeKind": "arrow",
+            "fillColor": "#FFFFFF",
+            "strokeColor": "#212121",
+            "strokeWidth": 3,
+            "flipH": true,
+            "flipV": true,
+            "zIndex": 41,
+            "stackLayer": "background"
+          },
+          {
+            "id": "el-pptx-schoko-42-text",
+            "type": "text",
+            "x": 0.98,
+            "y": 92.36,
+            "w": 19.83,
+            "h": 6.8,
+            "html": "<p style=\"text-align:center\"><span data-pres-fs=\"26\" style=\"font-size: 26px !important;\"><strong><span style=\"\"><span data-pres-fs=\"32\" style=\"font-size: 32px !important;\">Kakaopulver</span></span></strong></span></p>",
+            "zIndex": 42,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-43-text",
+            "type": "text",
+            "x": 26.73,
+            "y": 92.36,
+            "w": 19.83,
+            "h": 6.8,
+            "html": "<p style=\"text-align:center\"><span data-pres-fs=\"26\" style=\"font-size: 26px !important;\"><strong><span style=\"\"><span data-pres-fs=\"32\" style=\"font-size: 32px !important;\">Kakaobutter</span></span></strong></span></p>",
+            "zIndex": 43,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-44-text",
+            "type": "text",
+            "x": 52.48,
+            "y": 92.8,
+            "w": 19.83,
+            "h": 6.8,
+            "html": "<p style=\"text-align:center\"><span data-pres-fs=\"26\" style=\"font-size: 26px !important;\"><strong><span style=\"\"><span data-pres-fs=\"32\" style=\"font-size: 32px !important;\">Zucker</span></span></strong></span></p>",
+            "zIndex": 44,
+            "stackLayer": "foreground"
+          },
+          {
+            "id": "el-pptx-schoko-45-text",
+            "type": "text",
+            "x": 79.48,
+            "y": 92.8,
+            "w": 19.83,
+            "h": 6.8,
+            "html": "<p style=\"text-align:center\"><span data-pres-fs=\"26\" style=\"font-size: 26px !important;\"><strong><span style=\"\"><span data-pres-fs=\"32\" style=\"font-size: 32px !important;\">Milchpulver</span></span></strong></span></p>",
+            "zIndex": 45,
+            "stackLayer": "foreground"
+          }
+        ],
+        "transition": "fade",
+        "revealEnabled": true,
+        "zoneRevealSteps": {},
+        "sourceLessonName": "01.10 Mehrstufige Prozesse mit Schokolade",
+        "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
+      },
+      "strokes": []
+    },
+    "slide-1787824561305-a07ex": {
+      "updatedAt": "2026-08-27T12:35:46.984Z",
+      "slide": {
+        "id": "slide-1787824561305-a07ex",
+        "order": 31,
+        "speakerNotes": "",
+        "layout": "blank",
+        "subtitle": "",
+        "bodyLeft": "",
+        "bodyRight": "",
+        "imagePath": "",
+        "imageCaption": "",
+        "bodyStyle": "plain",
+        "titleAlign": "left",
+        "accentColor": "#2E7D32",
+        "title": "",
+        "body": "",
+        "hiddenLayoutZones": [
+          "bodyHtml"
+        ],
+        "sourceLessonName": "01.10 Mehrstufige Prozesse mit Schokolade",
+        "titleHtml": "",
+        "bodyHtml": "",
+        "subtitleHtml": "",
+        "bodyLeftHtml": "",
+        "bodyRightHtml": "",
+        "imageCaptionHtml": "",
+        "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><br></p>",
+        "preparationNotes": "",
+        "preparationHtml": "<p><br></p>",
+        "materialNotes": "",
+        "materialHtml": "<p><br></p>",
+        "elements": [
+          {
+            "id": "el-1787824577140",
+            "type": "image",
+            "x": 15.281929278917907,
+            "y": 13.176809499017267,
+            "w": 69.43614144216419,
+            "h": 31.27414084357514,
+            "src": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/Bildschirmfoto 2026-08-27 um 11.55.17.png",
+            "zIndex": 1,
+            "imageFit": "contain",
+            "stackLayer": "foreground"
+          }
+        ],
+        "transition": "fade",
+        "revealEnabled": true,
+        "zoneRevealSteps": {}
+      },
+      "strokes": []
+    },
+    "slide-1787742741976-bzf21": {
+      "updatedAt": "2026-08-27T12:35:48.299Z",
+      "slide": {
+        "id": "slide-1787742741976-bzf21",
+        "order": 29,
+        "speakerNotes": "Matrix A (Schokoladenbedarf je Packung)\nZeilen: Schokoladensorten (Zeile 1: Zartbitterschokolade, Zeile 2: Weiße Schokolade ...)\nSpalten: Packungen (Spalte 1: Edle Mischung, Spalte 2: Süße Mischung)\nA=(622325)A=\n\\begin{pmatrix}\n6 & 2\\\\\n2 & 3\\\\\n2 & 5\n\\end{pmatrix}​​\nMatrix B (Rohstoffbedarf je Schokoladenstück)\nZeilen: Rohstoffe, Spalten: Schokoladensorten\nB=(603153331002)B=\n\\begin{pmatrix}\n6 & 0 & 3\\\\\n1 & 5 & 3\\\\\n3 & 3 & 1\\\\\n0 & 0 & 2\n\\end{pmatrix}GesamtbedarfsmatrixG= B⋅AG=(603153331002)⋅(622325)​ Kundenbestellung\nBestellvektor:\nx=(10080)x=\n\\begin{pmatrix}\n100\\\\\n80\n\\end{pmatrix}Gesamtbedarf:\nr=G⋅xr=G\\cdot x r=(422722322620410)⋅(10080)r=\n\\begin{pmatrix}\n42 & 27\\\\\n22 & 32\\\\\n26 & 20\\\\\n4 & 10\n\\end{pmatrix}\n\\cdot\n\\begin{pmatrix}\n100\\\\\n80\n\\end{pmatrix}Ergebnis\nFür die Bestellung von 100 Edlen Mischungen und 80 Süßen Mischungen werden benötigt:\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nRohstoffBedarfKakaopulver6.360 gKakaobutter4.760 gZucker4.200 gMilchpulver1.200 g____________________________________________________________Weg 1: Zweistufige Rechnung\nZuerst wird aus der Bestellung der Bedarf an Schokoladensorten berechnet. Anschließend wird aus diesem Schokoladenbedarf der Rohstoffbedarf bestimmt.\nMathematisch:\nRohstoffbedarf=A⋅(B⋅x)\\text{Rohstoffbedarf}\n= A \\cdot (B \\cdot x) Dabei ist\nAA: Rohstoffe → SchokoladensortenBB: Schokoladensorten → Pralinenpackungenxx: Bestellvektor\n\nWeg 2: Gesamtbedarfsmatrix\nZunächst werden die beiden Teilbedarfsmatrizen zu einer Gesamtbedarfsmatrix zusammengefasst:\nG=A⋅B.G=A\\cdot B.Dann genügt eine einzige Matrixmultiplikation:\nRohstoffbedarf=G⋅x.\\text{Rohstoffbedarf}\n= G \\cdot x.Begründung\nBeide Wege liefern dasselbe Ergebnis, weil die Matrixmultiplikation assoziativ ist:\nA⋅(B⋅x)=(A⋅B)⋅x.A\\cdot(B\\cdot x)\n=\n(A\\cdot B)\\cdot x.Deshalb kann man entweder\ndie Berechnung Schritt für Schritt entlang der Produktionsstufen durchführen oderdie Produktionsstufen zunächst zu einer Gesamtbedarfsmatrix zusammenfassen.",
+        "layout": "title-content",
+        "subtitle": "",
+        "bodyLeft": "",
+        "bodyRight": "",
+        "imagePath": "",
+        "imageCaption": "",
+        "bodyStyle": "plain",
+        "titleAlign": "left",
+        "accentColor": "#2E7D32",
+        "title": "Mehrstufe Prozessmatrizen",
+        "body": "Stelle die Teilbedarfsmatrix A für die Pralinenpackungen und die Teilbedarfsmatrix B für die Rohstoffe auf.Berechne die Gesamtbedarfsmatrix G.Ein Kunde bestellt:100 Packungen „Edle Mischung“80 Packungen „Süße Mischung“\n\n\n\n\n\n\n\n\nBerechne den Gesamtbedarf an Rohstoffen.Bonusfrage: Warum kann man den Rohstoffbedarf entweder über die Gesamtbedarfsmatrix GG oder durch eine zweistufige Rechnung (zuerst Schokoladenbedarf, dann Rohstoffbedarf) bestimmen? Begründen mithilfe der Matrixmultiplikation.",
+        "sourceLessonName": "01.10 Mehrstufige Prozesse mit Schokolade",
+        "titleHtml": "<p>Mehrstufe Prozessmatrizen</p>",
+        "bodyHtml": "<p></p><div><span style=\"font-weight: 700;\"><br></span></div><ol><li><span style=\"font-weight: bold;\">Stelle</span>&nbsp;die <span style=\"font-weight: bold;\"><span data-pres-color=\"#6A1B9A\" style=\"color: rgb(106, 27, 154) !important;\">Teilbedarfsmatrix </span></span><span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\"><semantics><mrow><mi><span data-pres-color=\"#6A1B9A\" style=\"color: rgb(106, 27, 154) !important;\">A</span></mi></mrow></semantics></math></span>&nbsp;für die <span data-pres-color=\"#7B1FA2\" style=\"color: rgb(123, 31, 162) !important;\">Pralinenpackungen</span> und die <span style=\"font-weight: bold;\"><span data-pres-color=\"#2E7D32\" style=\"color: rgb(46, 125, 50) !important;\">Teilbedarfsmatrix </span></span><span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\"><semantics><mrow><mi><span data-pres-color=\"#2E7D32\" style=\"color: rgb(46, 125, 50) !important;\">B</span></mi></mrow></semantics></math></span>&nbsp;für die <span data-pres-color=\"#2E7D32\" style=\"color: rgb(46, 125, 50) !important;\">Rohstoffe</span> <span style=\"font-weight: bold;\">auf</span>.</li><li><span style=\"font-weight: bold;\">Berechne</span>&nbsp;die <span style=\"font-weight: bold;\"><span data-pres-color=\"#1565C0\" style=\"color: rgb(21, 101, 192) !important;\">Gesamtbedarfsmatrix </span></span><span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\"><semantics><mrow><mi><span data-pres-color=\"#1565C0\" style=\"color: rgb(21, 101, 192) !important;\">G</span></mi></mrow></semantics></math></span>.</li><li>Ein Kunde bestellt:</li></ol><p></p><ul><li><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important;\">100 Packungen „Edle Mischung“</span></li><li>80 Packungen „Süße Mischung“</li></ul><p>\n\n\n\n\n\n\n\n\n</p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important;\"><span style=\"font-weight: bold;\">Berechne</span>&nbsp;den Gesamtbedarf an Rohstoffen.</span></p><p><br></p><p><br></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important;\"></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\"><strong>Bonusfrage:&nbsp;</strong>Warum kann man den Rohstoffbedarf entweder über die Gesamtbedarfsmatrix <span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\"><semantics><mrow><mi>G</mi></mrow><annotation encoding=\"application/x-tex\">G</annotation></semantics></math></span>&nbsp;oder durch eine zweistufige Rechnung (zuerst Schokoladenbedarf, dann Rohstoffbedarf) bestimmen? <span style=\"font-weight: bold;\">Begründen</span>&nbsp;mithilfe der Matrixmultiplikation.</span></p>",
+        "subtitleHtml": "",
+        "bodyLeftHtml": "",
+        "bodyRightHtml": "",
+        "imageCaptionHtml": "",
+        "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><b style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif;\">Matrix A (Schokoladenbedarf je Packung)</b></p>\n<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Zeilen: Schokoladensorten (<span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Zeile 1: Zartbitterschokolade,&nbsp;</span><span style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif;\">Zeile 2: Weiße Schokolade ...)</span></span></p>\n<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Spalten: Packungen (Spalte 1: Edle Mischung,&nbsp;</span><span style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif;\">Spalte 2: Süße Mischung)</span></p><p>\n<span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><mi>A</mi><mo>=</mo><mrow><mo fence=\"true\">(</mo><mtable rowspacing=\"0.16em\" columnalign=\"center center\" columnspacing=\"1em\"><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>6</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>2</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>2</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>3</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>2</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>5</mn></mstyle></mtd></mtr></mtable><mo fence=\"true\">)</mo></mrow></mrow><annotation encoding=\"application/x-tex\">A=\n\\begin{pmatrix}\n6 &amp; 2\\\\\n2 &amp; 3\\\\\n2 &amp; 5\n\\end{pmatrix}</annotation></semantics></math></span>​​\n</p><p><br></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b>Matrix B (Rohstoffbedarf je Schokoladenstück)</b></span></p>\n<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Zeilen: Rohstoffe,&nbsp;</span><span style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif;\">Spalten: Schokoladensorten</span></p><p>\n<span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><mi>B</mi><mo>=</mo><mrow><mo fence=\"true\">(</mo><mtable rowspacing=\"0.16em\" columnalign=\"center center center\" columnspacing=\"1em\"><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>6</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>0</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>3</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>1</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>5</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>3</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>3</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>3</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>1</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>0</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>0</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>2</mn></mstyle></mtd></mtr></mtable><mo fence=\"true\">)</mo></mrow></mrow><annotation encoding=\"application/x-tex\">B=\n\\begin{pmatrix}\n6 &amp; 0 &amp; 3\\\\\n1 &amp; 5 &amp; 3\\\\\n3 &amp; 3 &amp; 1\\\\\n0 &amp; 0 &amp; 2\n\\end{pmatrix}</annotation></semantics></math></span></p><p><br></p><p></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b>Gesamtbedarfsmatrix</b></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b><br></b></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b></b></span></p><p><b><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">G= B⋅A</span></b></p><p><b style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><mi>G</mi><mo>=</mo><mrow><mo fence=\"true\">(</mo><mtable rowspacing=\"0.16em\" columnalign=\"center center center\" columnspacing=\"1em\"><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>6</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>0</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>3</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>1</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>5</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>3</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>3</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>3</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>1</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>0</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>0</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>2</mn></mstyle></mtd></mtr></mtable><mo fence=\"true\">)</mo></mrow><mo>⋅</mo><mrow><mo fence=\"true\">(</mo><mtable rowspacing=\"0.16em\" columnalign=\"center center\" columnspacing=\"1em\"><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>6</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>2</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>2</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>3</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>2</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>5</mn></mstyle></mtd></mtr></mtable><mo fence=\"true\">)</mo></mrow></mrow></semantics></math></span>​&nbsp;</span></b></p><p><b><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: 92px; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/MSS%2012%20LK/12-01%20Matrizen/01%20Basiswissen/notes-1787743723133-Bildschirmfoto_2026-08-26_um_13.28.39.png&max=960\" alt=\"Bildschirmfoto 2026-08-26 um 13.28.39.png\" data-pres-notes-img=\"1\" draggable=\"false\" style=\"display: block; border-radius: 4px; width: 100%; height: auto; max-width: 100%;\"></span><br></span></b></p><p><b><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br></span></b></p><p><b><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br></span></b></p><p><b><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"></span></b></p><p><b><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b>Kundenbestellung</b></span></b></p><b>\n<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Bestellvektor:</span></p><p>\n<span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><mi>x</mi><mo>=</mo><mrow><mo fence=\"true\">(</mo><mtable rowspacing=\"0.16em\" columnalign=\"center\" columnspacing=\"1em\"><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>100</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>80</mn></mstyle></mtd></mtr></mtable><mo fence=\"true\">)</mo></mrow></mrow><annotation encoding=\"application/x-tex\">x=\n\\begin{pmatrix}\n100\\\\\n80\n\\end{pmatrix}</annotation></semantics></math></span><br></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Gesamtbedarf:</span></p><p>\n<span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><mi>r</mi><mo>=</mo><mi>G</mi><mo>⋅</mo><mi>x</mi></mrow><annotation encoding=\"application/x-tex\">r=G\\cdot x</annotation></semantics></math></span></p><p><br></p>&nbsp;<span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><mi>r</mi><mo>=</mo><mrow><mo fence=\"true\">(</mo><mtable rowspacing=\"0.16em\" columnalign=\"center center\" columnspacing=\"1em\"><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>42</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>27</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>22</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>32</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>26</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>20</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>4</mn></mstyle></mtd><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>10</mn></mstyle></mtd></mtr></mtable><mo fence=\"true\">)</mo></mrow><mo>⋅</mo><mrow><mo fence=\"true\">(</mo><mtable rowspacing=\"0.16em\" columnalign=\"center\" columnspacing=\"1em\"><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>100</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel=\"0\" displaystyle=\"false\"><mn>80</mn></mstyle></mtd></mtr></mtable><mo fence=\"true\">)</mo></mrow></mrow><annotation encoding=\"application/x-tex\">r=\n\\begin{pmatrix}\n42 &amp; 27\\\\\n22 &amp; 32\\\\\n26 &amp; 20\\\\\n4 &amp; 10\n\\end{pmatrix}\n\\cdot\n\\begin{pmatrix}\n100\\\\\n80\n\\end{pmatrix}</annotation></semantics></math></span><br><p></p><p><br></p><p><br></p><p></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b>Ergebnis</b></span></p>\n<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Für die Bestellung von <strong>100 Edlen Mischungen</strong> und <strong>80 Süßen Mischungen</strong> werden benötigt:</span></p>\n<div role=\"presentation\" data-stable-ignore=\"true\" data-tabster=\"{&quot;restorer&quot;:{&quot;type&quot;:1}}\" aria-expanded=\"false\">\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n<table node=\"[object Object]\" markdown=\"| Rohstoff | Bedarf |\n|------|------:|\n| Kakaopulver | 6.360 g |\n| Kakaobutter | 4.760 g |\n| Zucker | 4.200 g |\n| Milchpulver | 1.200 g |\" data-pres-table=\"1\" data-pres-table-theme=\"gelb\" style=\"width: 100%; border-collapse: collapse; table-layout: fixed; font-size: inherit;\"><colgroup><col style=\"width: 50%;\"><col style=\"width: 50%;\"></colgroup><thead><tr><th style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 229, 153); font-weight: 700; vertical-align: middle; word-break: break-word; text-align: left;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Rohstoff</span></th><th style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 229, 153); font-weight: 700; vertical-align: middle; word-break: break-word; text-align: left;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Bedarf</span></th></tr></thead><tbody><tr><td style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 255, 255); vertical-align: middle; word-break: break-word;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Kakaopulver</span></td><td style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 255, 255); vertical-align: middle; word-break: break-word;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">6.360 g</span></td></tr><tr><td style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Kakaobutter</span></td><td style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">4.760 g</span></td></tr><tr><td style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 255, 255); vertical-align: middle; word-break: break-word;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Zucker</span></td><td style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 255, 255); vertical-align: middle; word-break: break-word;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">4.200 g</span></td></tr><tr><td style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Milchpulver</span></td><td style=\"border: 1px solid rgb(232, 192, 112); padding: 8px 10px; background-color: rgb(255, 242, 204); vertical-align: middle; word-break: break-word;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">1.200 g</span></td></tr></tbody></table></div><br><p></p></b><p></p><p></p><p></p><p></p><p></p><p></p><div>____________________________________________________________</div><div><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b>Weg 1: Zweistufige Rechnung</b></span></p>\n<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Zuerst wird aus der Bestellung der Bedarf an Schokoladensorten berechnet. Anschließend wird aus diesem Schokoladenbedarf der Rohstoffbedarf bestimmt.</span></p>\n<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Mathematisch:</span></p><p>\n<span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><mtext>Rohstoffbedarf</mtext><mo>=</mo><mi>A</mi><mo>⋅</mo><mo stretchy=\"false\">(</mo><mi>B</mi><mo>⋅</mo><mi>x</mi><mo stretchy=\"false\">)</mo></mrow><annotation encoding=\"application/x-tex\">\\text{Rohstoffbedarf}\n= A \\cdot (B \\cdot x)</annotation></semantics></math></span>&nbsp;</p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Dabei ist</span></p>\n<ul><li><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\"><semantics><mrow><mi>A</mi></mrow><annotation encoding=\"application/x-tex\">A</annotation></semantics></math></span>: Rohstoffe → Schokoladensorten</span></li><li><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\"><semantics><mrow><mi>B</mi></mrow><annotation encoding=\"application/x-tex\">B</annotation></semantics></math></span>: Schokoladensorten → Pralinenpackungen</span></li><li><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\"><semantics><mrow><mi>x</mi></mrow><annotation encoding=\"application/x-tex\">x</annotation></semantics></math></span>: Bestellvektor</span></li></ul>\n<hr>\n<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b>Weg 2: Gesamtbedarfsmatrix</b></span></p>\n<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Zunächst werden die beiden Teilbedarfsmatrizen zu einer Gesamtbedarfsmatrix zusammengefasst:</span></p><p>\n<span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><mi>G</mi><mo>=</mo><mi>A</mi><mo>⋅</mo><mi>B</mi><mi mathvariant=\"normal\">.</mi></mrow><annotation encoding=\"application/x-tex\">G=A\\cdot B.</annotation></semantics></math></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Dann genügt eine einzige Matrixmultiplikation:</span></p><p>\n<span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><mtext>Rohstoffbedarf</mtext><mo>=</mo><mi>G</mi><mo>⋅</mo><mi>x</mi><mi mathvariant=\"normal\">.</mi></mrow><annotation encoding=\"application/x-tex\">\\text{Rohstoffbedarf}\n= G \\cdot x.</annotation></semantics></math></span></p><p><br></p><p></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b>Begründung</b></span></p>\n<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Beide Wege liefern dasselbe Ergebnis, weil die Matrixmultiplikation <strong>assoziativ</strong> ist:</span></p><p>\n<span class=\"pres-math\" data-pres-math=\"1\" contenteditable=\"false\"><math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><mi>A</mi><mo>⋅</mo><mo stretchy=\"false\">(</mo><mi>B</mi><mo>⋅</mo><mi>x</mi><mo stretchy=\"false\">)</mo><mo>=</mo><mo stretchy=\"false\">(</mo><mi>A</mi><mo>⋅</mo><mi>B</mi><mo stretchy=\"false\">)</mo><mo>⋅</mo><mi>x</mi><mi mathvariant=\"normal\">.</mi></mrow><annotation encoding=\"application/x-tex\">A\\cdot(B\\cdot x)\n=\n(A\\cdot B)\\cdot x.</annotation></semantics></math></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Deshalb kann man entweder</span></p>\n<ol><li><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">die Berechnung Schritt für Schritt entlang der Produktionsstufen durchführen oder</span></li><li><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">die Produktionsstufen zunächst zu einer Gesamtbedarfsmatrix zusammenfassen.</span></li></ol>\n<p><br></p><br><p></p><br></div>",
+        "preparationNotes": "",
+        "preparationHtml": "<p><br></p>",
+        "materialNotes": "",
+        "materialHtml": "<p><br></p>",
+        "elements": [],
+        "transition": "fade",
+        "revealEnabled": true,
+        "zoneRevealSteps": {}
+      },
+      "strokes": []
+    },
+    "slide-1787813980979-2u4o9": {
+      "updatedAt": "2026-08-29T08:02:03.406Z",
+      "slide": {
+        "id": "slide-1787813980979-2u4o9",
+        "order": 36,
+        "speakerNotes": "",
+        "layout": "blank",
+        "subtitle": "",
+        "bodyLeft": "",
+        "bodyRight": "",
+        "imagePath": "",
+        "imageCaption": "",
+        "bodyStyle": "plain",
+        "titleAlign": "left",
+        "accentColor": "#2E7D32",
+        "title": "",
+        "body": "",
+        "hiddenLayoutZones": [
+          "bodyHtml"
+        ],
+        "sourceLessonName": "01.10 Mehrstufige Prozesse mit Schokolade",
+        "titleHtml": "",
+        "bodyHtml": "",
+        "subtitleHtml": "",
+        "bodyLeftHtml": "",
+        "bodyRightHtml": "",
+        "imageCaptionHtml": "",
+        "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><br></p>",
+        "preparationNotes": "",
+        "preparationHtml": "<p><br></p>",
+        "materialNotes": "",
+        "materialHtml": "<p><br></p>",
+        "elements": [],
+        "transition": "fade",
+        "revealEnabled": true,
+        "zoneRevealSteps": {}
+      },
+      "strokes": []
+    },
+    "slide-1788154429617-2zn26": {
+      "updatedAt": "2026-08-31T05:47:51.696Z",
+      "slide": {
+        "id": "slide-1788154429617-2zn26",
+        "order": 38,
+        "speakerNotes": "",
+        "layout": "blank",
+        "subtitle": "",
+        "bodyLeft": "",
+        "bodyRight": "",
+        "imagePath": "",
+        "imageCaption": "",
+        "bodyStyle": "plain",
+        "titleAlign": "left",
+        "accentColor": "#2E7D32",
+        "title": "",
+        "body": "",
+        "hiddenLayoutZones": [
+          "bodyHtml"
+        ],
+        "sourceLessonName": "01.11 Die Autos sind kaputt",
+        "titleHtml": "",
+        "bodyHtml": "",
+        "subtitleHtml": "",
+        "bodyLeftHtml": "",
+        "bodyRightHtml": "",
+        "imageCaptionHtml": "",
+        "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><br></p>",
+        "preparationNotes": "",
+        "preparationHtml": "<p><br></p>",
+        "materialNotes": "",
+        "materialHtml": "<p><br></p>",
+        "elements": [],
+        "transition": "fade",
+        "revealEnabled": true,
+        "zoneRevealSteps": {}
+      },
+      "strokes": []
+    },
+    "slide-1788161987569-t0zdc": {
+      "updatedAt": "2026-08-31T07:56:28.541Z",
+      "slide": {
+        "id": "slide-1788161987569-t0zdc",
+        "order": 41,
+        "speakerNotes": "",
+        "layout": "blank",
+        "subtitle": "",
+        "bodyLeft": "",
+        "bodyRight": "",
+        "imagePath": "",
+        "imageCaption": "",
+        "bodyStyle": "plain",
+        "titleAlign": "left",
+        "accentColor": "#2E7D32",
+        "title": "",
+        "body": "",
+        "hiddenLayoutZones": [
+          "bodyHtml"
+        ],
+        "sourceLessonName": "01.11 Die Autos sind kaputt",
+        "titleHtml": "",
+        "bodyHtml": "",
+        "subtitleHtml": "",
+        "bodyLeftHtml": "",
+        "bodyRightHtml": "",
+        "imageCaptionHtml": "",
+        "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><br></p>",
+        "preparationNotes": "",
+        "preparationHtml": "<p><br></p>",
+        "materialNotes": "",
+        "materialHtml": "<p><br></p>",
+        "elements": [],
+        "transition": "fade",
+        "revealEnabled": true,
+        "zoneRevealSteps": {}
+      },
+      "strokes": [
+        {
+          "id": "s-1788162986791-rw9ah",
+          "points": [
+            {
+              "x": 856.0629557209573,
+              "y": 160.56879004261273
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 162.12065516932304
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 160.56879004261273
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 162.12065516932304
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 163.67252029603338
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 165.2243854227437
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 162.12065516932304
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 163.67252029603338
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 165.2243854227437
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 166.77625054945403
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 168.32811567616434
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 169.87998080287466
+            },
+            {
+              "x": 854.5110906282727,
+              "y": 171.43184592958497
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 166.77625054945403
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 168.32811567616434
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 169.87998080287466
+            },
+            {
+              "x": 854.5110906282727,
+              "y": 171.43184592958497
+            },
+            {
+              "x": 854.5110906282727,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 854.5110906282727,
+              "y": 177.63930643642627
+            },
+            {
+              "x": 852.9592255355877,
+              "y": 180.74303668984692
+            },
+            {
+              "x": 851.4073604429029,
+              "y": 183.84676694326757
+            },
+            {
+              "x": 854.5110906282727,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 854.5110906282727,
+              "y": 177.63930643642627
+            },
+            {
+              "x": 852.9592255355877,
+              "y": 180.74303668984692
+            },
+            {
+              "x": 851.4073604429029,
+              "y": 183.84676694326757
+            },
+            {
+              "x": 851.4073604429029,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 849.8554953502181,
+              "y": 191.6060925768192
+            },
+            {
+              "x": 848.3036302575332,
+              "y": 194.70982283023986
+            },
+            {
+              "x": 846.7517651648484,
+              "y": 199.36541821037082
+            },
+            {
+              "x": 851.4073604429029,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 849.8554953502181,
+              "y": 191.6060925768192
+            },
+            {
+              "x": 848.3036302575332,
+              "y": 194.70982283023986
+            },
+            {
+              "x": 846.7517651648484,
+              "y": 199.36541821037082
+            },
+            {
+              "x": 846.7517651648484,
+              "y": 202.46914846379147
+            },
+            {
+              "x": 845.1999000721635,
+              "y": 205.5728787172121
+            },
+            {
+              "x": 843.6480349794787,
+              "y": 208.67660897063274
+            },
+            {
+              "x": 843.6480349794787,
+              "y": 210.22847409734308
+            },
+            {
+              "x": 846.7517651648484,
+              "y": 202.46914846379147
+            },
+            {
+              "x": 845.1999000721635,
+              "y": 205.5728787172121
+            },
+            {
+              "x": 843.6480349794787,
+              "y": 208.67660897063274
+            },
+            {
+              "x": 843.6480349794787,
+              "y": 210.22847409734308
+            },
+            {
+              "x": 842.0961698867937,
+              "y": 213.33220435076373
+            },
+            {
+              "x": 842.0961698867937,
+              "y": 214.88406947747404
+            },
+            {
+              "x": 842.0961698867937,
+              "y": 216.43593460418438
+            },
+            {
+              "x": 840.544304794109,
+              "y": 217.9877997308947
+            },
+            {
+              "x": 842.0961698867937,
+              "y": 213.33220435076373
+            },
+            {
+              "x": 842.0961698867937,
+              "y": 214.88406947747404
+            },
+            {
+              "x": 842.0961698867937,
+              "y": 216.43593460418438
+            },
+            {
+              "x": 840.544304794109,
+              "y": 217.9877997308947
+            },
+            {
+              "x": 840.544304794109,
+              "y": 219.53966485760503
+            },
+            {
+              "x": 840.544304794109,
+              "y": 221.09152998431534
+            },
+            {
+              "x": 840.544304794109,
+              "y": 219.53966485760503
+            },
+            {
+              "x": 840.544304794109,
+              "y": 221.09152998431534
+            },
+            {
+              "x": 840.544304794109,
+              "y": 219.53966485760503
+            },
+            {
+              "x": 840.544304794109,
+              "y": 221.09152998431534
+            },
+            {
+              "x": 840.544304794109,
+              "y": 219.53966485760503
+            }
+          ],
+          "color": "#1565c0",
+          "lineWidth": 3,
+          "mode": "pen"
+        },
+        {
+          "id": "s-1788162987124-7ptgu",
+          "points": [
+            {
+              "x": 852.9592255355877,
+              "y": 152.80946440906112
+            },
+            {
+              "x": 852.9592255355877,
+              "y": 151.25759928235078
+            },
+            {
+              "x": 854.5110906282727,
+              "y": 151.25759928235078
+            },
+            {
+              "x": 854.5110906282727,
+              "y": 149.70573415564047
+            },
+            {
+              "x": 852.9592255355877,
+              "y": 151.25759928235078
+            },
+            {
+              "x": 854.5110906282727,
+              "y": 151.25759928235078
+            },
+            {
+              "x": 854.5110906282727,
+              "y": 149.70573415564047
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 149.70573415564047
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 151.25759928235078
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 152.80946440906112
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 154.36132953577143
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 149.70573415564047
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 151.25759928235078
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 152.80946440906112
+            },
+            {
+              "x": 856.0629557209573,
+              "y": 154.36132953577143
+            },
+            {
+              "x": 857.6148208136423,
+              "y": 155.91319466248174
+            },
+            {
+              "x": 857.6148208136423,
+              "y": 157.46505978919208
+            },
+            {
+              "x": 859.1666859063271,
+              "y": 159.0169249159024
+            },
+            {
+              "x": 859.1666859063271,
+              "y": 162.12065516932304
+            },
+            {
+              "x": 857.6148208136423,
+              "y": 155.91319466248174
+            },
+            {
+              "x": 857.6148208136423,
+              "y": 157.46505978919208
+            },
+            {
+              "x": 859.1666859063271,
+              "y": 159.0169249159024
+            },
+            {
+              "x": 859.1666859063271,
+              "y": 162.12065516932304
+            },
+            {
+              "x": 860.718550999012,
+              "y": 165.2243854227437
+            },
+            {
+              "x": 860.718550999012,
+              "y": 166.77625054945403
+            },
+            {
+              "x": 862.2704160916968,
+              "y": 169.87998080287466
+            },
+            {
+              "x": 863.8222811843817,
+              "y": 172.9837110562953
+            },
+            {
+              "x": 860.718550999012,
+              "y": 165.2243854227437
+            },
+            {
+              "x": 860.718550999012,
+              "y": 166.77625054945403
+            },
+            {
+              "x": 862.2704160916968,
+              "y": 169.87998080287466
+            },
+            {
+              "x": 863.8222811843817,
+              "y": 172.9837110562953
+            },
+            {
+              "x": 863.8222811843817,
+              "y": 177.63930643642627
+            },
+            {
+              "x": 865.3741462770665,
+              "y": 180.74303668984692
+            },
+            {
+              "x": 866.9260113697513,
+              "y": 183.84676694326757
+            },
+            {
+              "x": 868.4778764624363,
+              "y": 186.95049719668822
+            },
+            {
+              "x": 863.8222811843817,
+              "y": 177.63930643642627
+            },
+            {
+              "x": 865.3741462770665,
+              "y": 180.74303668984692
+            },
+            {
+              "x": 866.9260113697513,
+              "y": 183.84676694326757
+            },
+            {
+              "x": 868.4778764624363,
+              "y": 186.95049719668822
+            },
+            {
+              "x": 870.029741555121,
+              "y": 190.05422745010887
+            },
+            {
+              "x": 871.5816066478059,
+              "y": 193.15795770352952
+            },
+            {
+              "x": 873.1334717404907,
+              "y": 194.70982283023986
+            },
+            {
+              "x": 874.6853368331756,
+              "y": 197.8135530836605
+            },
+            {
+              "x": 870.029741555121,
+              "y": 190.05422745010887
+            },
+            {
+              "x": 871.5816066478059,
+              "y": 193.15795770352952
+            },
+            {
+              "x": 873.1334717404907,
+              "y": 194.70982283023986
+            },
+            {
+              "x": 874.6853368331756,
+              "y": 197.8135530836605
+            },
+            {
+              "x": 874.6853368331756,
+              "y": 199.36541821037082
+            },
+            {
+              "x": 876.2372019258604,
+              "y": 200.91728333708116
+            },
+            {
+              "x": 877.7890670185453,
+              "y": 202.46914846379147
+            },
+            {
+              "x": 874.6853368331756,
+              "y": 199.36541821037082
+            },
+            {
+              "x": 876.2372019258604,
+              "y": 200.91728333708116
+            },
+            {
+              "x": 877.7890670185453,
+              "y": 202.46914846379147
+            },
+            {
+              "x": 879.3409321112301,
+              "y": 204.0210135905018
+            },
+            {
+              "x": 879.3409321112301,
+              "y": 205.5728787172121
+            },
+            {
+              "x": 879.3409321112301,
+              "y": 207.12474384392243
+            },
+            {
+              "x": 879.3409321112301,
+              "y": 204.0210135905018
+            },
+            {
+              "x": 879.3409321112301,
+              "y": 205.5728787172121
+            },
+            {
+              "x": 879.3409321112301,
+              "y": 207.12474384392243
+            },
+            {
+              "x": 880.8927972039149,
+              "y": 207.12474384392243
+            },
+            {
+              "x": 880.8927972039149,
+              "y": 208.67660897063274
+            },
+            {
+              "x": 880.8927972039149,
+              "y": 207.12474384392243
+            },
+            {
+              "x": 880.8927972039149,
+              "y": 208.67660897063274
+            },
+            {
+              "x": 880.8927972039149,
+              "y": 210.22847409734308
+            },
+            {
+              "x": 880.8927972039149,
+              "y": 208.67660897063274
+            },
+            {
+              "x": 880.8927972039149,
+              "y": 210.22847409734308
+            }
+          ],
+          "color": "#1565c0",
+          "lineWidth": 3,
+          "mode": "pen"
+        },
+        {
+          "id": "s-1788162987524-5k003",
+          "points": [
+            {
+              "x": 849.8554953502181,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 851.4073604429029,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 852.9592255355877,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 849.8554953502181,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 851.4073604429029,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 852.9592255355877,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 854.5110906282727,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 857.6148208136423,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 859.1666859063271,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 860.718550999012,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 854.5110906282727,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 857.6148208136423,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 859.1666859063271,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 860.718550999012,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 862.2704160916968,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 865.3741462770665,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 866.9260113697513,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 870.029741555121,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 862.2704160916968,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 865.3741462770665,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 866.9260113697513,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 870.029741555121,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 871.5816066478059,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 873.1334717404907,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 874.6853368331756,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 876.2372019258604,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 871.5816066478059,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 873.1334717404907,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 874.6853368331756,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 876.2372019258604,
+              "y": 188.50236232339856
+            },
+            {
+              "x": 877.7890670185453,
+              "y": 188.50236232339856
+            }
+          ],
+          "color": "#1565c0",
+          "lineWidth": 3,
+          "mode": "pen"
+        },
+        {
+          "id": "s-1788162987824-4ui4o",
+          "points": [
+            {
+              "x": 908.8263688722421,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 910.378233964927,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 908.8263688722421,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 910.378233964927,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 911.9300990576118,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 913.4819641502967,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 910.378233964927,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 911.9300990576118,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 913.4819641502967,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 915.0338292429815,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 916.5856943356664,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 913.4819641502967,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 915.0338292429815,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 916.5856943356664,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 918.1375594283512,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 919.6894245210361,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 916.5856943356664,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 918.1375594283512,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 919.6894245210361,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 921.2412896137209,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 922.7931547064057,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 919.6894245210361,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 921.2412896137209,
+              "y": 174.53557618300562
+            },
+            {
+              "x": 922.7931547064057,
+              "y": 174.53557618300562
+            }
+          ],
+          "color": "#1565c0",
+          "lineWidth": 3,
+          "mode": "pen"
+        },
+        {
+          "id": "s-1788162988041-78pye",
+          "points": [
+            {
+              "x": 913.4819641502967,
+              "y": 185.3986320699779
+            },
+            {
+              "x": 915.0338292429815,
+              "y": 185.3986320699779
+            },
+            {
+              "x": 916.5856943356664,
+              "y": 185.3986320699779
+            },
+            {
+              "x": 918.1375594283512,
+              "y": 185.3986320699779
+            },
+            {
+              "x": 916.5856943356664,
+              "y": 185.3986320699779
+            },
+            {
+              "x": 918.1375594283512,
+              "y": 185.3986320699779
+            },
+            {
+              "x": 919.6894245210361,
+              "y": 185.3986320699779
+            },
+            {
+              "x": 921.2412896137209,
+              "y": 185.3986320699779
+            },
+            {
+              "x": 922.7931547064057,
+              "y": 185.3986320699779
+            },
+            {
+              "x": 919.6894245210361,
+              "y": 185.3986320699779
+            },
+            {
+              "x": 921.2412896137209,
+              "y": 185.3986320699779
+            },
+            {
+              "x": 922.7931547064057,
+              "y": 185.3986320699779
+            },
+            {
+              "x": 924.3450197990906,
+              "y": 185.3986320699779
+            },
+            {
+              "x": 924.3450197990906,
+              "y": 186.95049719668822
+            },
+            {
+              "x": 925.8968848917754,
+              "y": 186.95049719668822
+            },
+            {
+              "x": 924.3450197990906,
+              "y": 185.3986320699779
+            },
+            {
+              "x": 924.3450197990906,
+              "y": 186.95049719668822
+            },
+            {
+              "x": 925.8968848917754,
+              "y": 186.95049719668822
+            }
+          ],
+          "color": "#1565c0",
+          "lineWidth": 3,
+          "mode": "pen"
+        }
+      ]
+    }
+  }
+}
