@@ -1188,6 +1188,8 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   const displayW = fillContainer ? '100%' : SLIDE_REF_WIDTH * scale;
   const displayH = fillContainer ? '100%' : SLIDE_REF_HEIGHT * scale;
   const touchAction = enabled && !readOnly ? 'none' : 'auto';
+  /** Nur Zeichen-/Radier-Werkzeuge über Folien-Elemente legen — Lasso bleibt darunter (normale Maus). */
+  const stackAboveContent = enabled && !readOnly && tool !== 'select';
 
   return (
     <canvas
@@ -1200,10 +1202,9 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
         width: displayW,
         height: displayH,
         touchAction,
-        cursor,
+        cursor: stackAboveContent ? cursor : 'default',
         pointerEvents: enabled && !readOnly ? 'auto' : 'none',
-        // Über Folien-Elementen — sonst fangen Boxen/Pfeile die Eingabe ab (Stift/Formen).
-        zIndex: enabled && !readOnly ? 48 : 2,
+        zIndex: stackAboveContent ? 48 : 2,
         WebkitUserSelect: 'none',
         userSelect: 'none',
         WebkitTouchCallout: 'none',

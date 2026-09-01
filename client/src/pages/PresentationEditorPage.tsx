@@ -433,7 +433,7 @@ const PresentationEditorPage: React.FC = () => {
   const suppressMasterCommitRef = useRef(false);
   const inkSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [inkEditActive, setInkEditActive] = useState(false);
-  const [inkTool, setInkTool] = useState<PresentationDrawTool>('pen');
+  const [inkTool, setInkTool] = useState<PresentationDrawTool>('select');
   const [inkColor, setInkColor] = useState(DEFAULT_PEN_COLOR);
   const [inkLineWidth, setInkLineWidth] = useState(() => defaultLineWidthForTool('pen'));
   const [inkMarkerOpacity, setInkMarkerOpacity] = useState(DEFAULT_MARKER_OPACITY);
@@ -664,14 +664,12 @@ const PresentationEditorPage: React.FC = () => {
   const handleToggleInkEdit = useCallback(() => {
     setInkEditActive((v) => {
       if (!v) {
-        setInkTool('pen');
+        setInkTool('select');
         setInkColor(penColorRef.current);
         setInkLineWidth(defaultLineWidthForTool('pen'));
       }
       return !v;
     });
-    setSelectedElementId(null);
-    setActiveEditor(null);
     setSelectedStrokeIds([]);
   }, []);
 
@@ -688,12 +686,21 @@ const PresentationEditorPage: React.FC = () => {
       } else if (toolUsesColor(tool)) {
         setInkColor(penColorRef.current || defaultColorForTool(tool));
       }
-      if (tool !== 'select') setSelectedStrokeIds([]);
-      setSelectedElementId(null);
-      setActiveEditor(null);
+      if (tool !== 'select') {
+        setSelectedStrokeIds([]);
+        setSelectedElementId(null);
+        setActiveEditor(null);
+      }
     },
     [],
   );
+
+  const exitInkDrawForEditing = useCallback(() => {
+    if (!inkEditActive) return;
+    setInkEditActive(false);
+    setInkTool('select');
+    setSelectedStrokeIds([]);
+  }, [inkEditActive]);
 
   const handleSelectInkColor = useCallback(
     (c: string) => {
@@ -1402,6 +1409,9 @@ const PresentationEditorPage: React.FC = () => {
 
   const handleElementSelect = useCallback(
     (id: string | null) => {
+      if (inkEditActive && inkTool !== 'select') {
+        setInkTool('select');
+      }
       commitEditorState({ history: 'skip' });
       setSelectedElementId(id);
       // Bilder über Karten: beim Anklicken in den Vordergrund holen (außer Vollbild-Hero).
@@ -1432,7 +1442,7 @@ const PresentationEditorPage: React.FC = () => {
       );
       scheduleSave({ ...current, slides }, { quiet: true, history: 'skip' });
     },
-    [commitEditorState, activeId, persistVariantSlide, scheduleSave],
+    [commitEditorState, activeId, persistVariantSlide, scheduleSave, inkEditActive, inkTool],
   );
 
   const restoreDeckSnapshot = useCallback(
@@ -4519,6 +4529,7 @@ const PresentationEditorPage: React.FC = () => {
                     onMoveElementToNotes={moveElementToNotes}
                     showInkStrokes={false}
                     onTextElementFocus={(el, elementId, field) => {
+                      exitInkDrawForEditing();
                       setActiveEditor(el);
                       setActiveHtmlField(
                         field === 'titleHtml' ? `element-title:${elementId}` : `element:${elementId}`,
@@ -4527,6 +4538,7 @@ const PresentationEditorPage: React.FC = () => {
                     }}
                     onChange={(patch) => updateSlide(patch)}
                     onEditorFocus={(el, fieldKey) => {
+                      exitInkDrawForEditing();
                       setActiveEditor(el);
                       setActiveHtmlField(fieldKey ?? null);
                       setSelectedElementId(null);

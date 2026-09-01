@@ -579,8 +579,8 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
             <Tooltip
               title={
                 inkEditActive
-                  ? 'Stift aus — Text wieder tippbar'
-                  : 'Stift & Werkzeuge (wie im Präsentieren)'
+                  ? 'Stift aus — normale Bearbeitung (Text, Formen, Verschieben)'
+                  : 'Stift & Werkzeuge (Lasso, Marker, Formen)'
               }
             >
               <IconButton
