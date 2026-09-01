@@ -2,7 +2,7 @@
   "version": 1,
   "title": "Kap 1 - Natürliche Zahlen und Größen",
   "lessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen",
-  "updatedAt": "2026-09-01T09:35:16.647Z",
+  "updatedAt": "2026-09-01T10:12:16.742Z",
   "slides": [
     {
       "layout": "title-slide",
@@ -961,7 +961,62 @@
       "preparationHtml": "<p><br></p>",
       "materialNotes": "",
       "materialHtml": "<p><br></p>",
-      "elements": [],
+      "elements": [
+        {
+          "id": "el-1788256028906",
+          "type": "image",
+          "x": 87.79563556905738,
+          "y": 63.67777620596273,
+          "w": 11.02347127309654,
+          "h": 29.14543469217969,
+          "src": "/app/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/goodnotes-1788256028477.png",
+          "zIndex": 1,
+          "imageFit": "contain",
+          "stackLayer": "foreground"
+        },
+        {
+          "id": "el-1788256086083",
+          "type": "image",
+          "x": 21.455637273859697,
+          "y": 3.927344009983358,
+          "w": 50.149607143946604,
+          "h": 60.308340266222956,
+          "src": "/app/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/goodnotes-1788256084764.png",
+          "zIndex": 2,
+          "imageFit": "contain",
+          "stackLayer": "foreground",
+          "imageFrame": {
+            "preset": "custom",
+            "color": "#1a1a1a",
+            "width": 3,
+            "dash": "solid"
+          }
+        },
+        {
+          "id": "el-1788256270894",
+          "type": "image",
+          "x": 31.566897837318024,
+          "y": 67.01462668424342,
+          "w": 32.249387360261636,
+          "h": 22.471733735618294,
+          "src": "/app/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/goodnotes-1788256270709.png",
+          "zIndex": 3,
+          "imageFit": "contain",
+          "stackLayer": "foreground",
+          "imageSourceRect": {
+            "x": 31.566897837318024,
+            "y": 61.55901268421002,
+            "w": 32.249387360261636,
+            "h": 32.26653217012886
+          },
+          "imageFrame": {
+            "preset": "custom",
+            "color": "#1a1a1a",
+            "width": 3,
+            "dash": "solid"
+          }
+        }
+      ],
       "transition": "fade",
       "revealEnabled": true,
       "zoneRevealSteps": {}
@@ -969,34 +1024,44 @@
     {
       "id": "slide-1787901470723-so4yq",
       "order": 16,
-      "speakerNotes": "",
-      "layout": "blank",
+      "speakerNotes": "Beispiellösung:VIII = 8XIII = 13XVII = 17XXIII = 23XXXII = 32LXII = 62LXXVIII = 78----------------XIV = 14XIX = 19XLII = 42XCIV = 94CD = 400CM = 900-----------------------------44 = XLIV99 = XCIX49 = XLIX und nicht IL, weil I nur vor V oder X stehen darf.",
+      "layout": "two-column",
       "subtitle": "",
-      "bodyLeft": "",
-      "bodyRight": "",
+      "bodyLeft": "Lasst uns addieren:II =VIII = XIII = XVII = XXIII =XXXII =LXII = LXXVIII = Lasst uns subtrahieren:XIV = _____XIX = ______XLII = ______XCIV = ______CD = ______CM = ______",
+      "bodyRight": "Schreibe als römische Zahl:44 = ______99 = ______Zum Nachdenken:Warum ist 49 = XLIX und nicht IL?",
       "imagePath": "",
       "imageCaption": "",
       "bodyStyle": "plain",
       "titleAlign": "left",
       "accentColor": "#2E7D32",
-      "title": "",
-      "body": "",
-      "hiddenLayoutZones": [
-        "bodyHtml"
-      ],
+      "title": "Knacke die römischen Zahlen",
+      "body": "VIII = ______XIII = ______XVII = ______XXIII = ______XXXII = ______LXII = ______LXXVIII = ______Danach dann Aufgaben mit Subtraktion:XIV = ______XIX = ______XLII = ______XCIV = ______CD = ______CM = ______Schreibe als römische Zahl:44 = ______99 = ______Zum Nachdenken:Warum ist 49 = XLIX und nicht IL?",
       "sourceLessonName": "1.7 Römische Zahlen",
-      "titleHtml": "",
-      "bodyHtml": "",
+      "titleHtml": "<p>Knacke die römischen Zahlen</p>",
+      "bodyHtml": "<p>VIII = ______</p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\">XIII = ______</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\">XVII = ______</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\">XXIII = ______</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\">XXXII = ______</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\">LXII = ______</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\">LXXVIII = ______</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\">Danach dann Aufgaben mit Subtraktion:</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\">XIV = ______</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\">XIX = ______</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\">XLII = ______</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\">XCIV = ______</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\">CD = ______</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\">CM = ______</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\">Schreibe als römische Zahl:</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\">44 = ______</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\">99 = ______</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\">Zum Nachdenken:</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\">Warum ist 49 = XLIX und nicht IL?</span></p>",
       "subtitleHtml": "",
-      "bodyLeftHtml": "",
-      "bodyRightHtml": "",
+      "bodyLeftHtml": "<p><span style=\"font-weight: bold;\">Lasst uns addieren:</span></p><p>II =</p><p>VIII =&nbsp;</p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">XIII =&nbsp;</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">XVII =&nbsp;</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">XXIII =</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">XXXII =</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">LXII =&nbsp;</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">LXXVIII =&nbsp;</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important; font-weight: bold;\">Lasst uns subtrahieren:</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">XIV = _____</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">XIX = ______</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">XLII = ______</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">XCIV = ______</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">CD = ______</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">CM = ______</span></p><p><br></p>",
+      "bodyRightHtml": "<p><span style=\"font-weight: bold;\">Schreibe als römische Zahl:</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">44 = ______</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">99 = ______</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important; font-weight: bold;\">Zum Nachdenken:</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Warum ist 49 = XLIX und nicht IL?</span></p>",
       "imageCaptionHtml": "",
-      "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><br></p>",
+      "speakerNotesHtml": "<p><span data-pres-highlight=\"#C5E1A5\" style=\"background-color: rgba(197, 225, 165, 0.62) !important; font-weight: bold;\">Beispiellösung:</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">VIII = 8</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">XIII = 13</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">XVII = 17</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">XXIII = 23</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">XXXII = 32</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">LXII = 62</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">LXXVIII = 78</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">----------------</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">XIV = 14</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">XIX = 19</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">XLII = 42</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">XCIV = 94</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">CD = 400</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">CM = 900</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">-----------------------------</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">44 = XLIV</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">99 = XCIX</span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" style=\"font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">49 = XLIX und nicht IL, weil <strong>I nur vor V oder X</strong> stehen darf.</span></p><br><p></p><p data-pres-notes-typehost=\"1\"><br></p>",
       "preparationNotes": "",
       "preparationHtml": "<p><br></p>",
       "materialNotes": "",
       "materialHtml": "<p><br></p>",
-      "elements": [],
+      "elements": [
+        {
+          "id": "el-1788257333141-zkrgr",
+          "type": "image",
+          "x": 87.79563556905738,
+          "y": 63.67777620596273,
+          "w": 11.02347127309654,
+          "h": 29.14543469217969,
+          "src": "/app/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/goodnotes-1788256028477.png",
+          "zIndex": 1,
+          "imageFit": "contain",
+          "stackLayer": "foreground"
+        }
+      ],
       "transition": "fade",
       "revealEnabled": true,
       "zoneRevealSteps": {}
@@ -1086,7 +1151,7 @@
           "imageFit": "contain",
           "stackLayer": "foreground",
           "imageFrame": {
-            "preset": "simple-black",
+            "preset": "custom",
             "color": "#1a1a1a",
             "width": 3,
             "dash": "solid"
@@ -1104,7 +1169,7 @@
           "imageFit": "contain",
           "stackLayer": "foreground",
           "imageFrame": {
-            "preset": "simple-black",
+            "preset": "custom",
             "color": "#1a1a1a",
             "width": 3,
             "dash": "solid"
