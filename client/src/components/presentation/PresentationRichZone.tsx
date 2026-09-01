@@ -22,6 +22,7 @@ import { isPenPointer } from '../../lib/presentationDrawTools';
 import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
 import { PRESENTATION_CONTENT_FONT_PX } from '../../lib/presentationFontSize';
 import { presentationNestedListSx } from '../../lib/presentationListStyles';
+import { placeCaretBesidePresentationMath } from '../../lib/presentationPasteMath';
 import '../../styles/presentationLists.css';
 
 export type RichZoneVariant = 'title' | 'hero' | 'subtitle' | 'body' | 'quote' | 'caption';
@@ -497,6 +498,10 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
       onPointerDown={(e) => {
         if (animationEditMode) {
           handleAnimationClick(e);
+          return;
+        }
+        if (placeCaretBesidePresentationMath(e.nativeEvent)) {
+          e.stopPropagation();
           return;
         }
         // Stift: nicht ins Textfeld (iPad Scribble / Caret) — Finger/Maus bleiben zum Tippen.

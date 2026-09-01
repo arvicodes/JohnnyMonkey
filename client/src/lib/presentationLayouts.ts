@@ -141,14 +141,13 @@ function clampPct(v: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, v));
 }
 
-/** Leeres Textfeld: Größe für den Platzhalter „Text hier…“. */
+/** Leeres Textfeld: breit wie etwa die halbe Inhaltszeile, eine Zeile hoch. */
 export function defaultEmptyTextFieldSize(maxW: number): { w: number; h: number } {
-  const pad = 20;
-  const wPx = TEXT_FIELD_PLACEHOLDER.length * PRESENTATION_CONTENT_FONT_PX * 0.62 + pad;
-  const hPx = PRESENTATION_CONTENT_FONT_PX * 1.4 + pad;
+  const w = clampPct(maxW * 0.52, 36, maxW);
+  const hPx = PRESENTATION_CONTENT_FONT_PX * 1.2 + 6;
   return {
-    w: clampPct((wPx / SLIDE_REF_WIDTH) * 100, 8, maxW),
-    h: clampPct((hPx / SLIDE_REF_HEIGHT) * 100, 4, 20),
+    w,
+    h: clampPct((hPx / SLIDE_REF_HEIGHT) * 100, 2.6, 4),
   };
 }
 
@@ -192,6 +191,6 @@ export function measureTextFieldSizePct(
   clone.remove();
   return {
     w: clampPct((wpx / sr.width) * 100, 5, maxWpct),
-    h: clampPct((hpx / sr.height) * 100, 3.6, 92),
+    h: clampPct((hpx / sr.height) * 100, 2.6, 92),
   };
 }

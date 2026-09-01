@@ -31,11 +31,13 @@ import { PRESENTATION_DEFAULT_FONT_FAMILY } from '../../lib/presentationFonts';
 import { notesDropTargetHits } from '../../lib/presentationNotesImages';
 import { isPenPointer } from '../../lib/presentationDrawTools';
 import { imageFrameParts } from '../../lib/presentationImageFrames';
+import { placeCaretBesidePresentationMath } from '../../lib/presentationPasteMath';
 import {
   isDefaultTextFieldHtml,
   measureSlideBodyOrigin,
   measureTextFieldSizePct,
   shouldAutoFitPresentationText,
+  defaultEmptyTextFieldSize,
   TEXT_FIELD_PLACEHOLDER,
 } from '../../lib/presentationLayouts';
 import '../../styles/presentationLists.css';
@@ -299,13 +301,25 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     const origin = measureSlideBodyOrigin(slideEl);
     const empty =
       isDefaultTextFieldHtml(contentEl.innerHTML) || isDefaultTextFieldHtml(element.html);
+    if (empty) {
+      const next = defaultEmptyTextFieldSize(origin.maxW);
+      const prev = lastFitRef.current;
+      if (Math.abs(next.w - prev.w) < 0.12 && Math.abs(next.h - prev.h) < 0.12) return;
+      if (Math.abs(next.w - element.w) < 0.12 && Math.abs(next.h - element.h) < 0.12) {
+        lastFitRef.current = next;
+        return;
+      }
+      lastFitRef.current = next;
+      onChange({ w: next.w, h: next.h });
+      return;
+    }
     const next = measureTextFieldSizePct(
       contentEl,
       slideEl,
       origin.maxW,
-      empty,
-      12 * scale,
-      12 * scale,
+      false,
+      8 * scale,
+      4 * scale,
     );
     if (!next) return;
     const prev = lastFitRef.current;
@@ -1044,6 +1058,12 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
           handleAnimationClick(e);
           return;
         }
+        if (placeCaretBesidePresentationMath(e.nativeEvent)) {
+          e.stopPropagation();
+          onSelect?.();
+          if (element.type === 'text') setTextEditing(true);
+          return;
+        }
         if (!canEdit) return;
         if (imageOnlyEdit && e.pointerType === 'pen') return;
         if (imageOnlyEdit) {
@@ -1447,6 +1467,10 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 }}
                 onPointerDown={(e) => {
                   if (!showSelectionChrome) return;
+                  if (placeCaretBesidePresentationMath(e.nativeEvent)) {
+                    e.stopPropagation();
+                    return;
+                  }
                   const mouseSelecting =
                     e.pointerType === 'mouse' &&
                     (document.activeElement === textRef.current || e.currentTarget.contains(document.activeElement));
@@ -1722,6 +1746,10 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 }}
                 onPointerDown={(e) => {
                   if (!showCardBodyEditor) return;
+                  if (placeCaretBesidePresentationMath(e.nativeEvent)) {
+                    e.stopPropagation();
+                    return;
+                  }
                   if (isPenPointer(e)) {
                     e.preventDefault();
                     return;
@@ -2096,6 +2124,10 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               }
             }}
             onPointerDown={(e) => {
+              if (placeCaretBesidePresentationMath(e.nativeEvent)) {
+                e.stopPropagation();
+                return;
+              }
               const mouseSelecting =
                 e.pointerType === 'mouse' &&
                 (textEditing || document.activeElement === textRef.current);
@@ -2188,7 +2220,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               fontSize: `${textBaseFs * scale}px`,
               fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
               lineHeight: 1.4,
-              p: `${8 * scale}px`,
+              p: `${4 * scale}px`,
               pointerEvents: animationEditMode || playLinkHitTarget ? 'auto' : 'none',
               color: JOHNNY_PRESENTATION.textPrimary,
               boxSizing: 'border-box',

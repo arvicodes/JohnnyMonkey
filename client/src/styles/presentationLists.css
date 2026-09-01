@@ -151,19 +151,19 @@
   color: #0d47a1;
 }
 
-/* Formeln im Textfluss, nicht zentriert */
+/* Formeln im Textfluss (keine eigene Zeile, nicht zentriert) */
 .pres-math,
 [data-pres-math] {
-  display: inline;
-  vertical-align: baseline;
+  display: inline-block;
+  vertical-align: middle;
   white-space: nowrap;
-  line-height: inherit;
-  user-select: all;
-  -webkit-user-select: all;
+  line-height: 1;
+  user-select: none;
+  -webkit-user-select: none;
   color: inherit;
   font-size: inherit;
   font-weight: inherit;
-  cursor: inherit;
+  cursor: text;
   text-align: inherit;
 }
 
@@ -171,14 +171,15 @@
 [contenteditable="true"] [data-pres-math],
 [data-text-edit] .pres-math,
 [data-text-edit] [data-pres-math] {
-  cursor: inherit;
+  cursor: text;
 }
 
 .pres-math math,
 [data-pres-math] math {
   font-size: inherit;
   font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Times New Roman", serif;
-  display: inline !important;
+  display: inline-block !important;
+  vertical-align: middle;
   text-align: inherit !important;
   margin: 0 !important;
 }

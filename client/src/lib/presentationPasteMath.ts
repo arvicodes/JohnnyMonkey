@@ -678,6 +678,8 @@ export function findPresentationMathInEditor(editor: HTMLElement): HTMLElement |
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0) return null;
   let node: Node | null = sel.anchorNode;
+  const adjacent = mathAdjacentToNode(node, sel.anchorOffset);
+  if (adjacent && editor.contains(adjacent)) return adjacent;
   while (node && node !== editor) {
     if (node instanceof HTMLElement && node.hasAttribute(PRES_MATH_ATTR)) return node;
     node = node.parentNode;
@@ -699,6 +701,79 @@ export function isInsidePresentationMath(node: Node | null): boolean {
   if (!node) return false;
   const el = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
   return Boolean(el?.closest?.(`[${PRES_MATH_ATTR}]`));
+}
+
+const MATH_CARET_ZW = '\u200b';
+
+function ensureZwspText(node: Node | null, create: () => Text): Text {
+  if (node && node.nodeType === Node.TEXT_NODE) {
+    const t = node as Text;
+    if (!t.data) t.data = MATH_CARET_ZW;
+    return t;
+  }
+  return create();
+}
+
+/** Unsichtbare Klick-/Caret-Stellen direkt vor und hinter der Formel. */
+export function ensureMathCaretPads(math: HTMLElement): { before: Text; after: Text } {
+  const parent = math.parentNode;
+  const doc = math.ownerDocument;
+  const before = ensureZwspText(math.previousSibling, () => {
+    const t = doc.createTextNode(MATH_CARET_ZW);
+    parent?.insertBefore(t, math);
+    return t;
+  });
+  const after = ensureZwspText(math.nextSibling, () => {
+    const t = doc.createTextNode(MATH_CARET_ZW);
+    parent?.insertBefore(t, math.nextSibling);
+    return t;
+  });
+  return { before, after };
+}
+
+function mathAdjacentToNode(node: Node | null, offset: number): HTMLElement | null {
+  if (!node) return null;
+  if (node instanceof HTMLElement && node.hasAttribute(PRES_MATH_ATTR)) return node;
+  if (node.nodeType === Node.TEXT_NODE) {
+    const t = node as Text;
+    const prev = t.previousSibling;
+    const next = t.nextSibling;
+    if (offset <= 0 && prev instanceof HTMLElement && prev.hasAttribute(PRES_MATH_ATTR)) return prev;
+    if (offset >= (t.data?.length ?? 0) && next instanceof HTMLElement && next.hasAttribute(PRES_MATH_ATTR)) {
+      return next;
+    }
+  }
+  return null;
+}
+
+/** Klick links/rechts an der Formel → Caret davor bzw. dahinter. */
+export function placeCaretBesidePresentationMath(e: Event): boolean {
+  const target = e.target as Node | null;
+  const el = target instanceof HTMLElement ? target : target?.parentElement;
+  const math = el?.closest?.(`[${PRES_MATH_ATTR}]`) as HTMLElement | null;
+  if (!math) return false;
+  const editor = math.closest('[contenteditable="true"], [data-text-edit], [data-pres-rich-zone]') as HTMLElement | null;
+  if (!editor) return false;
+  e.preventDefault();
+  e.stopPropagation();
+  const pads = ensureMathCaretPads(math);
+  const rect = math.getBoundingClientRect();
+  const x = 'clientX' in e ? (e as MouseEvent).clientX : rect.left + rect.width / 2;
+  const before = x < rect.left + rect.width * 0.5;
+  const range = editor.ownerDocument.createRange();
+  if (before) range.setStart(pads.before, pads.before.data.length);
+  else range.setStart(pads.after, 0);
+  range.collapse(true);
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+  try {
+    editor.focus({ preventScroll: true });
+  } catch {
+    editor.focus();
+  }
+  setMathFormatTarget(editor, math);
+  return true;
 }
 
 /** Alle Formel-Spans in der aktuellen Auswahl (oder unter dem Cursor). */
@@ -837,13 +912,18 @@ export function insertHtmlAtEditorCursor(editor: HTMLElement, html: string): boo
   const last = content.lastChild;
   range.insertNode(content);
   freshMath.forEach((math) => {
-    if (math.getAttribute('data-pres-fs') || math.getAttribute('data-pres-color')) return;
-    applySurroundingStyleToMath(math, math.parentElement || styleFrom);
+    if (!(math.getAttribute('data-pres-fs') || math.getAttribute('data-pres-color'))) {
+      applySurroundingStyleToMath(math, math.parentElement || styleFrom);
+    }
+    ensureMathCaretPads(math);
   });
-  if (last) {
-    const zw = editor.ownerDocument.createTextNode('\u200b');
-    last.parentNode?.insertBefore(zw, last.nextSibling);
-    range.setStartAfter(zw);
+  const lastMath = freshMath.length ? freshMath[freshMath.length - 1] : null;
+  if (lastMath) {
+    const pads = ensureMathCaretPads(lastMath);
+    range.setStart(pads.after, 0);
+    range.collapse(true);
+  } else if (last) {
+    range.setStartAfter(last);
     range.collapse(true);
   } else {
     range.collapse(false);
