@@ -35,6 +35,7 @@ import {
   ContentPaste as PasteIcon,
   ContentPasteGo as PasteGoIcon,
   DeleteOutline as DeleteIcon,
+  Mic as MicIcon,
   PlayArrow as PresentIcon,
   RestoreFromTrash as TrashBinIcon,
   SaveAsOutlined as SaveAsIcon,
@@ -3857,6 +3858,22 @@ const PresentationEditorPage: React.FC = () => {
                 <CopyIcon sx={{ fontSize: 17 }} />
               </IconButton>
             </Tooltip>
+            <Tooltip title={normalizedActive?.audioTrack?.path ? 'Ton einsprechen (vorhanden)' : 'Ton einsprechen'}>
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={() => setNotesPanelOpenPersist(true)}
+                  disabled={!normalizedActive}
+                  aria-label="Ton einsprechen"
+                  sx={{
+                    ...toolbarIconSx,
+                    color: normalizedActive?.audioTrack?.path ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
+                  }}
+                >
+                  <MicIcon sx={{ fontSize: 17 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
             <Tooltip title="In Folien-Ablage (über alle Präsentationen, max. 5)">
               <span>
                 <IconButton
@@ -4651,6 +4668,10 @@ const PresentationEditorPage: React.FC = () => {
             activeField={notesActiveField}
             readOnly={false}
             onHide={() => setNotesPanelOpenPersist(false)}
+            lessonPath={lessonPath || undefined}
+            audioTrack={normalizedActive.audioTrack}
+            onAudioTrackChange={(next) => updateSlide({ audioTrack: next }, normalizedActive.id)}
+            onAudioError={(message) => setSnackbar(message)}
             onEditorFocus={(fieldKey, el) => {
               setActiveEditor(el);
               setActiveHtmlField(fieldKey);
@@ -4736,6 +4757,21 @@ const PresentationEditorPage: React.FC = () => {
               </IconButton>
             </Tooltip>
             <NotesIcon sx={{ fontSize: 14, color: PRES_EDITOR_UI.textMuted, opacity: 0.7 }} />
+            <Tooltip title="Einsprechen (Notizen öffnen)" placement="left">
+              <IconButton
+                size="small"
+                onClick={() => setNotesPanelOpenPersist(true)}
+                aria-label="Einsprechen"
+                sx={{
+                  width: 28,
+                  height: 28,
+                  color: normalizedActive.audioTrack?.path ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
+                  '&:hover': { bgcolor: PRES_EDITOR_UI.accentSoft, color: PRES_EDITOR_UI.accent },
+                }}
+              >
+                <MicIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
           </Box>
         )}
       </Box>

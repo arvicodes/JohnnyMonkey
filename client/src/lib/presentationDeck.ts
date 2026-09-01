@@ -256,6 +256,26 @@ export function sanitizeNotesInk(
 
 export type LayoutZoneBox = { x: number; y: number; w: number; h: number };
 
+/** Eingesprochener Ton zur Folie — Datei im Stundenordner, hier nur der Verweis. */
+export type SlideAudioTrack = {
+  path: string;
+  durationMs?: number;
+  recordedAt?: string;
+};
+
+export function sanitizeSlideAudioTrack(raw?: SlideAudioTrack | null): SlideAudioTrack | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const path = typeof raw.path === 'string' ? raw.path.trim() : '';
+  if (!path) return undefined;
+  const durationMs = Number(raw.durationMs);
+  const recordedAt = typeof raw.recordedAt === 'string' && raw.recordedAt.trim() ? raw.recordedAt.trim() : '';
+  return {
+    path,
+    ...(Number.isFinite(durationMs) && durationMs > 0 ? { durationMs: Math.round(durationMs) } : {}),
+    ...(recordedAt ? { recordedAt } : {}),
+  };
+}
+
 export interface PresentationSlide {
   id: string;
   title: string;
@@ -319,6 +339,8 @@ export interface PresentationSlide {
   /** Unterkapitel in der Folienleiste (frei benennbar). */
   sourceLessonName?: string;
   sourceLessonPath?: string;
+  /** Eingesprochener Audiotrack (Datei im Stundenordner). */
+  audioTrack?: SlideAudioTrack;
 }
 
 export function sanitizeInkStrokes(raw?: PresentationStroke[]): PresentationStroke[] | undefined {
@@ -733,6 +755,10 @@ export function normalizeSlide(slide: PresentationSlide): PresentationSlide {
         : slide.speakerNotesInk?.length
           ? { speakerNotesInkSpace: 'slide' as const }
           : {}),
+    ...(() => {
+      const audioTrack = sanitizeSlideAudioTrack(slide.audioTrack);
+      return audioTrack ? { audioTrack } : { audioTrack: undefined };
+    })(),
   };
 }
 

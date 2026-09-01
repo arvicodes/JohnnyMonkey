@@ -32,7 +32,7 @@ function deckFingerprint(deck: PresentationDeck): string {
   let acc = `${slides.length}|${deck.title || ''}|${deck.showSlideNumbers ? 1 : 0}`;
   for (const s of slides) {
     const els = s.elements ?? [];
-    acc += `~${s.id}:${s.order}:${strSig(s.titleHtml || s.title)}:${strSig(s.bodyHtml)}:${strSig(s.speakerNotesHtml)}:${s.speakerNotesInk?.length || 0}:${strSig(s.materialHtml)}:${strSig(s.preparationHtml)}:${els.length}`;
+    acc += `~${s.id}:${s.order}:${strSig(s.titleHtml || s.title)}:${strSig(s.bodyHtml)}:${strSig(s.speakerNotesHtml)}:${s.speakerNotesInk?.length || 0}:${strSig(s.materialHtml)}:${strSig(s.preparationHtml)}:${strSig(s.audioTrack?.path)}:${s.audioTrack?.durationMs || 0}:${els.length}`;
     for (const el of els) {
       const frame = el.imageFrame;
       acc += `/${el.id}:${el.type}:${el.x | 0}:${el.y | 0}:${el.w | 0}:${el.h | 0}:${strSig(el.src)}:${strSig(el.html)}:${strSig(el.titleHtml)}:${frame?.preset || ''}:${frame?.color || ''}:${frame?.width || 0}`;

@@ -1022,6 +1022,80 @@ export class FileSystemPathController {
     }
   }
 
+  /** Folien-Audio (Einsprechen) — inline, mit Range fürs Spulen. */
+  static async readAudioFile(req: Request, res: Response) {
+    try {
+      let { filePath } = req.query;
+      if (!filePath || typeof filePath !== 'string') {
+        return res.status(400).json({ error: 'filePath is required' });
+      }
+      try {
+        filePath = decodeURIComponent(filePath);
+      } catch {
+        /* already decoded */
+      }
+
+      const fullPath = StorageManager.resolveFilePath(filePath);
+      if (!fullPath) {
+        return res.status(404).json({ error: 'File not found' });
+      }
+
+      const jmRoot = path.resolve(StorageManager.resolveGitInternRelativePath(''));
+      const normalizedFull = path.resolve(fullPath);
+      if (normalizedFull !== jmRoot && !normalizedFull.startsWith(jmRoot + path.sep)) {
+        return res.status(403).json({ error: 'Zugriff nicht erlaubt' });
+      }
+
+      const ext = path.extname(normalizedFull).toLowerCase();
+      const mimeByExt: Record<string, string> = {
+        '.webm': 'audio/webm',
+        '.m4a': 'audio/mp4',
+        '.mp4': 'audio/mp4',
+        '.ogg': 'audio/ogg',
+        '.oga': 'audio/ogg',
+        '.mp3': 'audio/mpeg',
+        '.wav': 'audio/wav',
+      };
+      const mimeType = mimeByExt[ext];
+      if (!mimeType) {
+        return res.status(400).json({ error: 'Keine Audiodatei' });
+      }
+
+      const stat = fs.statSync(normalizedFull);
+      const size = stat.size;
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      res.setHeader('Content-Type', mimeType);
+
+      const range = req.headers.range;
+      if (range) {
+        const m = /^bytes=(\d*)-(\d*)$/.exec(range);
+        if (!m) {
+          res.setHeader('Content-Range', `bytes */${size}`);
+          return res.status(416).end();
+        }
+        const start = m[1] ? parseInt(m[1], 10) : 0;
+        let end = m[2] ? parseInt(m[2], 10) : size - 1;
+        if (!Number.isFinite(start) || !Number.isFinite(end) || start > end || start >= size) {
+          res.setHeader('Content-Range', `bytes */${size}`);
+          return res.status(416).end();
+        }
+        end = Math.min(end, size - 1);
+        res.status(206);
+        res.setHeader('Content-Range', `bytes ${start}-${end}/${size}`);
+        res.setHeader('Content-Length', String(end - start + 1));
+        fs.createReadStream(normalizedFull, { start, end }).pipe(res);
+        return;
+      }
+
+      res.setHeader('Content-Length', String(size));
+      fs.createReadStream(normalizedFull).pipe(res);
+    } catch (error) {
+      console.error('Error reading audio file:', error);
+      res.status(500).json({ error: 'Audiodatei konnte nicht gelesen werden' });
+    }
+  }
+
   // Download file handler
   static async downloadFile(req: Request, res: Response) {
     try {

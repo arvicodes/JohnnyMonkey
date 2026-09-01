@@ -46,6 +46,9 @@ router.get('/read-powerpoint', FileSystemPathController.readPowerPointFile);
 // Bild-Datei lesen
 router.get('/read-image', FileSystemPathController.readImageFile);
 
+// Folien-Audio (Einsprechen)
+router.get('/read-audio', FileSystemPathController.readAudioFile);
+
 // GoodNotes-Datei lesen
 router.get('/read-goodnotes', FileSystemPathController.readGoodNotesFile);
 

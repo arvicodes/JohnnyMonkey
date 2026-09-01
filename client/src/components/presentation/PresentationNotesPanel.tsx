@@ -5,7 +5,8 @@ import {
   ChevronRight as HideNotesIcon,
   StickyNote2Outlined as NotesIcon,
 } from '@mui/icons-material';
-import { htmlToPlain, textToHtml, type PresentationStroke } from '../../lib/presentationDeck';
+import { htmlToPlain, textToHtml, type PresentationStroke, type SlideAudioTrack } from '../../lib/presentationDeck';
+import PresentationSlideAudioRecorder from './PresentationSlideAudioRecorder';
 import {
   migrateNotesInkCssToSlideSpace,
   notesInkNeedsHostMigration,
@@ -724,6 +725,10 @@ interface PresentationNotesPanelProps {
   onUploadImage?: (file: File) => Promise<string | null>;
   /** Notizleiste ausblenden (mehr Platz für die Folie). */
   onHide?: () => void;
+  lessonPath?: string;
+  audioTrack?: SlideAudioTrack;
+  onAudioTrackChange?: (track: SlideAudioTrack | undefined) => void;
+  onAudioError?: (message: string) => void;
   inkStrokes?: PresentationStroke[];
   inkSpace?: 'css' | 'slide';
   inkTool?: PresentationDrawTool;
@@ -752,6 +757,10 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
   onMoveNotesToTrash,
   onUploadImage,
   onHide,
+  lessonPath,
+  audioTrack,
+  onAudioTrackChange,
+  onAudioError,
   inkStrokes,
   inkSpace,
   inkTool = 'pen',
@@ -962,8 +971,18 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
             </IconButton>
         )}
         </Box>
+        </Box>
       </Box>
-      </Box>
+      {slideId && onAudioTrackChange ? (
+        <PresentationSlideAudioRecorder
+          slideId={slideId}
+          lessonPath={lessonPath}
+          track={audioTrack}
+          disabled={readOnly}
+          onChange={onAudioTrackChange}
+          onError={onAudioError}
+        />
+      ) : null}
       <NoteZone
         fieldKey="speakerNotesHtml"
         label="Notizen"

@@ -21,6 +21,7 @@ export function isLinkableLessonFileName(name: string): boolean {
   if (n.endsWith('.play-variants.json')) return false;
   if (/\.deck(\.|$)/i.test(n)) return false;
   if (n.endsWith('.bak') || n.includes('.bak-')) return false;
+  if (/^slide-audio-/i.test(n)) return false;
   return true;
 }
 
