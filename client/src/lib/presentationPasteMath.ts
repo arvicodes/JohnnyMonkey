@@ -2,7 +2,27 @@
 
 export const PRES_MATH_ATTR = 'data-pres-math';
 
-const MATH_ML_TAGS = new Set([
+const PRES_MATH_STASH = '\uE000PMATH';
+
+/** pres-math-Blöcke vor Legacy-LaTeX-Konvertierung schützen (Vorschau / Sanitize). */
+export function stashPresentationMathInHtml(html: string): { html: string; blocks: string[] } {
+  const blocks: string[] = [];
+  const out = (html || '').replace(/<span\b[^>]*\bdata-pres-math\b[^>]*>[\s\S]*?<\/span>/gi, (tag) => {
+    const token = `${PRES_MATH_STASH}${blocks.length}\uE001`;
+    blocks.push(tag);
+    return token;
+  });
+  return { html: out, blocks };
+}
+
+export function restorePresentationMathInHtml(html: string, blocks: string[]): string {
+  if (!blocks.length) return html;
+  return html.replace(/\uE000PMATH(\d+)\uE001/g, (_, i) => blocks[Number(i)] || '');
+}
+
+export function htmlHasPresentationMath(html: string): boolean {
+  return /\bdata-pres-math\b/i.test(html || '');
+}
   'MATH',
   'MROW',
   'MI',

@@ -23,6 +23,7 @@ import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
 import TitleIcon from '@mui/icons-material/Title';
 import FormatClearIcon from '@mui/icons-material/FormatClear';
+import FunctionsIcon from '@mui/icons-material/Functions';
 import TextDecreaseIcon from '@mui/icons-material/TextDecrease';
 import TextIncreaseIcon from '@mui/icons-material/TextIncrease';
 import AddIcon from '@mui/icons-material/Add';
@@ -36,7 +37,14 @@ import CloseIcon from '@mui/icons-material/Close';
 import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
 import { DialogCloseIconButton } from './ui/dialog-close-icon-button';
-import { handlePresentationListShortcutKey, handlePresentationTabKey } from '../lib/presentationRichText';
+import { handlePresentationListShortcutKey, handlePresentationTabKey, applyTextColor, applyHighlightColor, execFormat, insertPresentationPastedHtml, presentationPasteHtml } from '../lib/presentationRichText';
+import {
+  convertSelectedTextToPresentationMath,
+  placeCaretBesidePresentationMath,
+  selectionIntersectsPresentationMath,
+  unwrapSelectedPresentationMath,
+} from '../lib/presentationPasteMath';
+import '../styles/presentationLists.css';
 import {
   buildBlankTableHtml,
   getTableTheme,
@@ -50,7 +58,7 @@ import {
 } from '../lib/presentationTableResize';
 import { clipboardHasImage, collectPasteImages, readImagesFromSystemClipboard, snapshotClipboardFiles } from '../lib/goodNotesClipboard';
 import { applyEditorFontSizePx, stashEditorSelection } from '../lib/presentationFontSize';
-import { isFormatBarInteracting, setFormatBarInteracting } from '../lib/presentationFormatBarGuard';
+import { isFormatBarInteracting, isPresentationModalTypingActive, setFormatBarInteracting } from '../lib/presentationFormatBarGuard';
 import { strokeSmoothFreehand } from '../lib/presentationDrawTools';
 import { apiGetSafe, apiPutSafe, apiPutSafeAwait } from '../lib/api';
 import type { EmojiClickData } from 'emoji-picker-react';
@@ -1278,20 +1286,36 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
       sel.removeAllRanges();
       sel.addRange(range);
     }
-    try {
-      if (cmd === 'formatBlock') {
+    if (cmd === 'foreColor') {
+      applyTextColor(editor, value || color);
+    } else if (cmd === 'formatBlock') {
+      try {
         document.execCommand('formatBlock', false, value || 'h3');
-      } else if (cmd === 'foreColor') {
-        document.execCommand('styleWithCSS', false, 'true');
-        document.execCommand('foreColor', false, value || color);
-      } else {
-        document.execCommand(cmd, false, value);
+      } catch {
+        /* ignore */
       }
-    } catch {
-      /* older browsers */
+    } else {
+      execFormat(editor, cmd, value);
     }
     syncEditorToState();
   }, [color, pushHistorySnapshot, syncEditorToState]);
+
+  const handleLatexShortcut = useCallback(() => {
+    if (modeRef.current !== 'text') {
+      modeRef.current = 'text';
+      setMode('text');
+    }
+    const editor = editorRef.current;
+    if (!editor) return;
+    pushHistorySnapshot();
+    stashEditorSelection(editor);
+    editor.focus({ preventScroll: true });
+    if (selectionIntersectsPresentationMath(editor)) {
+      if (unwrapSelectedPresentationMath(editor)) syncEditorToState();
+      return;
+    }
+    if (convertSelectedTextToPresentationMath(editor)) syncEditorToState();
+  }, [pushHistorySnapshot, syncEditorToState]);
 
   const findNotesTable = useCallback((): HTMLTableElement | null => {
     const editor = editorRef.current;
@@ -1374,7 +1398,9 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
       return;
     }
     if (mode === 'pen') return;
-    runFormat('foreColor', next);
+    pushHistorySnapshot();
+    applyTextColor(editorRef.current, next);
+    syncEditorToState();
   };
 
   const rememberNotesSelection = useCallback(() => {
@@ -1514,16 +1540,33 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
   const onEditorPaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
     const dt = e.clipboardData;
     const filesNow = snapshotClipboardFiles(dt);
-    if (!filesNow.length && !clipboardHasImage(dt)) return;
-    e.preventDefault();
     if (filesNow.length) {
+      e.preventDefault();
       void insertImagesFromFiles(filesNow);
       return;
     }
-    void (async () => {
-      const files = await collectPasteImages(dt);
-      if (files.length) await insertImagesFromFiles(files);
-    })();
+    if (clipboardHasImage(dt)) {
+      e.preventDefault();
+      void (async () => {
+        const files = await collectPasteImages(dt);
+        if (files.length) await insertImagesFromFiles(files);
+      })();
+      return;
+    }
+    const html = dt.getData('text/html') || '';
+    const text = dt.getData('text/plain') || '';
+    if (!html.trim() && !text.trim()) return;
+    e.preventDefault();
+    const editor = editorRef.current;
+    if (!editor) return;
+    if (modeRef.current !== 'text') {
+      modeRef.current = 'text';
+      setMode('text');
+    }
+    pushHistorySnapshot();
+    const pasted = presentationPasteHtml(dt, { fontPx: NOTE_DEFAULT_FONT_PX, textAlign: 'left' });
+    insertPresentationPastedHtml(editor, pasted);
+    syncEditorToState();
   };
 
   const pasteFromGoodNotes = () => {
@@ -2050,6 +2093,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
       }
       // ⌘B/I/U/[ /] — Capture, sonst nimmt der Browser ⌘B als Lesezeichen.
       if (mod && !e.altKey && modeRef.current === 'text' && renamingIndex == null) {
+        if (isPresentationModalTypingActive()) return;
         const target = e.target as HTMLElement | null;
         if (target?.tagName !== 'INPUT' && target?.tagName !== 'TEXTAREA') {
           const key = e.key.toLowerCase();
@@ -2069,6 +2113,12 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
             e.preventDefault();
             e.stopPropagation();
             runFormat('underline');
+            return;
+          }
+          if (key === 'l' && !e.shiftKey) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleLatexShortcut();
             return;
           }
           if (key === 'x' && e.shiftKey) {
@@ -2148,7 +2198,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [open, goToPage, redo, undo, closeModal, emojiOpen, renamingIndex, persistManualBackup, pushHistorySnapshot, runFormat, bumpFontSize]);
+  }, [open, goToPage, redo, undo, closeModal, emojiOpen, renamingIndex, persistManualBackup, pushHistorySnapshot, runFormat, bumpFontSize, handleLatexShortcut]);
 
   const canUndo = historyTick >= 0 && historyRef.current.length > 0;
   const canRedo = historyTick >= 0 && redoRef.current.length > 0;
@@ -2400,6 +2450,16 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
                   sx={fmtBtnSx()}
                 >
                   <StrikethroughSIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="LaTeX markieren → ⌘L (Formel ⇄ LaTeX)">
+                <IconButton
+                  size="small"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={handleLatexShortcut}
+                  sx={fmtBtnSx()}
+                >
+                  <FunctionsIcon sx={{ fontSize: 16 }} />
                 </IconButton>
               </Tooltip>
               <Tooltip title="Kleiner (⌘[)">
@@ -2867,6 +2927,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
               contentEditable={mode === 'text'}
               suppressContentEditableWarning
               data-pres-notes-zone="true"
+              data-pres-rich-zone="1"
               data-pres-base-fs={String(NOTE_DEFAULT_FONT_PX)}
               onBeforeInput={onBeforeEditorInput}
               onKeyDown={(e) => {

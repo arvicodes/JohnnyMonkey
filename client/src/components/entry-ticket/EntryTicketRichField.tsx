@@ -33,15 +33,22 @@ import {
 } from '../../lib/presentationFonts';
 import {
   convertSelectedTextToPresentationMath,
+  mathElementsInSelection,
+  placeCaretBesidePresentationMath,
   selectionIntersectsPresentationMath,
   unwrapSelectedPresentationMath,
+  applyFormatToSelectedMath,
 } from '../../lib/presentationPasteMath';
 import {
   applyFontFamily,
+  applyHighlightColor,
+  applyTextColor,
   clearFontFamilyInSelection,
   insertPresentationPastedHtml,
+  keepEditorSelection,
   presentationPasteHtml,
 } from '../../lib/presentationRichText';
+import { isPresentationModalTypingActive } from '../../lib/presentationFormatBarGuard';
 import '../../styles/presentationLists.css';
 import {
   buildEtImgStyle,
@@ -524,6 +531,7 @@ function EntryTicketRichFieldInner({
   useEffect(() => {
     if (!textEditing) return undefined;
     const onKeyDown = (e: KeyboardEvent) => {
+      if (isPresentationModalTypingActive()) return;
       if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
       const el = editorRef.current;
       if (!el) return;
@@ -835,7 +843,18 @@ function EntryTicketRichFieldInner({
             onMouseDown={(e) => {
               e.preventDefault();
               applyFormatting(() => {
-                nudgeEditorFontSize(editorRef.current, -1);
+                const el = editorRef.current;
+                if (!el) return;
+                if (mathElementsInSelection(el).length) {
+                  const current = getEditorSelectionFontPx(el) ?? 26;
+                  const steps = getEditorFontSizeSteps(el);
+                  let idx = steps.findIndex((s) => s >= current);
+                  if (idx < 0) idx = steps.length - 1;
+                  const nextIdx = Math.max(0, idx - 1);
+                  applyFormatToSelectedMath(el, { fontSizePx: steps[nextIdx] ?? current });
+                } else {
+                  nudgeEditorFontSize(el, -1);
+                }
               }, true);
             }}
             sx={toolBtnSx}
@@ -854,7 +873,13 @@ function EntryTicketRichFieldInner({
             if (raw === FONT_SIZE_PLACEHOLDER) return;
             const px = parseInt(raw, 10);
             if (!Number.isFinite(px)) return;
-            applyFormatting(() => applyEditorFontSizePx(editorRef.current, px), true);
+            applyFormatting(() => {
+              const el = editorRef.current;
+              if (!el) return;
+              if (!applyFormatToSelectedMath(el, { fontSizePx: px })) {
+                applyEditorFontSizePx(el, px);
+              }
+            }, true);
           }}
           onMouseDown={(e) => e.stopPropagation()}
           renderValue={(v) => (v && v !== FONT_SIZE_PLACEHOLDER ? `${v}` : 'Größe')}
@@ -884,7 +909,18 @@ function EntryTicketRichFieldInner({
             onMouseDown={(e) => {
               e.preventDefault();
               applyFormatting(() => {
-                nudgeEditorFontSize(editorRef.current, 1);
+                const el = editorRef.current;
+                if (!el) return;
+                if (mathElementsInSelection(el).length) {
+                  const current = getEditorSelectionFontPx(el) ?? 26;
+                  const steps = getEditorFontSizeSteps(el);
+                  let idx = steps.findIndex((s) => s >= current);
+                  if (idx < 0) idx = steps.length - 1;
+                  const nextIdx = Math.min(steps.length - 1, idx + 1);
+                  applyFormatToSelectedMath(el, { fontSizePx: steps[nextIdx] ?? current });
+                } else {
+                  nudgeEditorFontSize(el, 1);
+                }
               }, true);
             }}
             sx={toolBtnSx}
@@ -1204,6 +1240,10 @@ function EntryTicketRichFieldInner({
           emitChange();
         }}
         onPointerDown={(e) => {
+          if (placeCaretBesidePresentationMath(e.nativeEvent)) {
+            e.preventDefault();
+            return;
+          }
           if (!notesSurface && isPenPointer(e)) {
             e.preventDefault();
             return;
@@ -1444,14 +1484,11 @@ function EntryTicketRichFieldInner({
           {TEXT_COLORS.map((c) => (
             <Box
               key={c}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                stashEditorSelection(editorRef.current);
-              }}
-              onClick={() => {
-                runCommand('foreColor', c);
-                setColorAnchor(null);
-              }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              applyFormatting(() => applyTextColor(editorRef.current, c));
+              setColorAnchor(null);
+            }}
               sx={{
                 width: 20,
                 height: 20,
@@ -1481,15 +1518,15 @@ function EntryTicketRichFieldInner({
               key={c}
               onMouseDown={(e) => {
                 e.preventDefault();
-                stashEditorSelection(editorRef.current);
-              }}
-              onClick={() => {
-                if (c === 'transparent') {
-                  runCommand('removeFormat');
-                } else {
-                  runCommand('hiliteColor', c);
-                  runCommand('backColor', c);
-                }
+                applyFormatting(() => {
+                  const el = editorRef.current;
+                  if (!el) return;
+                  if (c === 'transparent') {
+                    applyHighlightColor(el, 'transparent');
+                  } else {
+                    applyHighlightColor(el, c);
+                  }
+                });
                 setHighlightAnchor(null);
               }}
               sx={{

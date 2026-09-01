@@ -141,50 +141,61 @@ function clampPct(v: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, v));
 }
 
-/** Leeres Textfeld: eine Zeile plus schmaler Rand. */
+/** Leeres Textfeld: eine Zeile, ohne Luft nach unten. */
 export function defaultEmptyTextFieldSize(maxW: number): { w: number; h: number } {
   const w = clampPct(maxW * 0.52, 36, maxW);
-  const hPx = PRESENTATION_CONTENT_FONT_PX * 1.35 + 8;
+  const hPx = PRESENTATION_CONTENT_FONT_PX * 1.35 + 6;
   return {
     w,
-    h: clampPct((hPx / SLIDE_REF_HEIGHT) * 100, 3.4, 4.4),
+    h: clampPct((hPx / SLIDE_REF_HEIGHT) * 100, 3.1, 3.8),
   };
 }
 
-/** Nur die benötigte Höhe bei gegebener Breite (kein Extra-Luft). */
+function unionVisibleContentHeight(contentEl: HTMLElement): number {
+  let top = Infinity;
+  let bottom = 0;
+  const add = (r: DOMRectReadOnly) => {
+    if (r.width < 0.5 && r.height < 0.5) return;
+    top = Math.min(top, r.top);
+    bottom = Math.max(bottom, r.bottom);
+  };
+  const walker = document.createTreeWalker(contentEl, NodeFilter.SHOW_TEXT);
+  let node: Node | null;
+  while ((node = walker.nextNode())) {
+    if ((node.parentElement as HTMLElement | null)?.closest('.pres-math, [data-pres-math]')) continue;
+    if (!(node.textContent || '').replace(/[\u200b\u200B\u00a0\s]/g, '')) continue;
+    const range = contentEl.ownerDocument.createRange();
+    range.selectNodeContents(node);
+    add(range.getBoundingClientRect());
+  }
+  contentEl.querySelectorAll('.pres-math, [data-pres-math], img, table').forEach((el) => {
+    add((el as HTMLElement).getBoundingClientRect());
+  });
+  if (!Number.isFinite(top) || bottom <= top) return 0;
+  return bottom - top;
+}
+
+/** Höhe am sichtbaren Text — nicht an der gestreckten Editor-Box. */
 export function measureTextFieldHeightPct(
   contentEl: HTMLElement,
   slideEl: HTMLElement,
   extraInsetY = 0,
 ): number | null {
   const sr = slideEl.getBoundingClientRect();
-  if (sr.width < 8 || sr.height < 8) return null;
-  const innerW = Math.max(8, contentEl.clientWidth);
+  if (sr.height < 8) return null;
   const cs = window.getComputedStyle(contentEl);
-  const clone = contentEl.cloneNode(true) as HTMLElement;
-  clone.style.cssText = [
-    'position:absolute',
-    'left:-99999px',
-    'top:0',
-    'visibility:hidden',
-    'pointer-events:none',
-    'box-sizing:border-box',
-    `width:${innerW}px`,
-    `max-width:${innerW}px`,
-    'height:auto',
-    'overflow:visible',
-    `font-size:${cs.fontSize}`,
-    `font-family:${cs.fontFamily || PRESENTATION_DEFAULT_FONT_FAMILY}`,
-    `font-weight:${cs.fontWeight}`,
-    `line-height:${cs.lineHeight}`,
-    `padding:${cs.padding}`,
-    'white-space:pre-wrap',
-    'word-break:break-word',
-  ].join(';');
-  slideEl.appendChild(clone);
-  const hpx = Math.ceil(clone.scrollHeight) + extraInsetY;
-  clone.remove();
-  return clampPct((hpx / sr.height) * 100, 2.2, 92);
+  const padTop = parseFloat(cs.paddingTop) || 0;
+  const padBottom = parseFloat(cs.paddingBottom) || 0;
+  const textH = unionVisibleContentHeight(contentEl);
+  let inner: number;
+  if (textH < 2) {
+    const lh = parseFloat(cs.lineHeight);
+    const fs = parseFloat(cs.fontSize);
+    inner = (Number.isFinite(lh) ? lh : fs * 1.35) + padTop + padBottom;
+  } else {
+    inner = textH + padTop + padBottom;
+  }
+  return clampPct(((inner + extraInsetY) / sr.height) * 100, 2.0, 92);
 }
 
 /** Box an Inhalt anpassen (Breite höchstens Inhaltsfeld). */

@@ -1,4 +1,8 @@
 import { extractEntryTicketLatex, restoreEntryTicketLatex } from './entryTicketLatex';
+import {
+  restorePresentationMathInHtml,
+  stashPresentationMathInHtml,
+} from './presentationPasteMath';
 
 /** HTML-Hilfen für formatierte Entry-Ticket-Karten (Frage/Lösung). */
 
@@ -430,7 +434,9 @@ function decorateTextNodesForDisplay(root: ParentNode): void {
       el.classList?.contains('et-q') ||
       el.classList?.contains('et-task-op') ||
       el.classList?.contains('et-tex') ||
-      el.classList?.contains('katex')
+      el.classList?.contains('katex') ||
+      el.classList?.contains('pres-math') ||
+      el.hasAttribute('data-pres-math')
     ) {
       return;
     }
@@ -464,19 +470,26 @@ export function decorateEntryTicketDisplayHtml(value: string): string {
   }
 
   const sanitized = sanitizeEntryTicketHtml(raw);
+  const { html: withoutPresMath, blocks: presMathBlocks } = stashPresentationMathInHtml(sanitized);
   const latexMarks: string[] = [];
-  const withLatex = extractEntryTicketLatex(sanitized, latexMarks);
+  const withLatex = extractEntryTicketLatex(withoutPresMath, latexMarks);
   if (typeof document === 'undefined') {
-    return restoreEntryTicketLatex(
-      wrapEntryTicketOperatorsHtml(entryTicketPlainText(withLatex)),
-      latexMarks,
+    return restorePresentationMathInHtml(
+      restoreEntryTicketLatex(
+        wrapEntryTicketOperatorsHtml(entryTicketPlainText(withLatex)),
+        latexMarks,
+      ),
+      presMathBlocks,
     );
   }
 
   const holder = document.createElement('div');
   holder.innerHTML = withLatex;
   decorateTextNodesForDisplay(holder);
-  return restoreEntryTicketLatex(holder.innerHTML, latexMarks);
+  return restorePresentationMathInHtml(
+    restoreEntryTicketLatex(holder.innerHTML, latexMarks),
+    presMathBlocks,
+  );
 }
 
 /** Text oder eingebettetes Bild zählt als Inhalt. */
