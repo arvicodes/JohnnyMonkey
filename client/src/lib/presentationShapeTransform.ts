@@ -92,11 +92,49 @@ function distPointToSegment(px: number, py: number, x1: number, y1: number, x2: 
   return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
 }
 
+function isEndpointInkShape(kind?: PresentationShapeKind): boolean {
+  return kind === 'line' || kind === 'arrow' || kind === 'curved-arrow';
+}
+
+function curvedArrowControl(p0: Pt, p1: Pt, bend: number): Pt {
+  const mx = (p0.x + p1.x) / 2;
+  const my = (p0.y + p1.y) / 2;
+  const dx = p1.x - p0.x;
+  const dy = p1.y - p0.y;
+  const len = Math.hypot(dx, dy) || 1;
+  return { x: mx - (dy / len) * bend, y: my + (dx / len) * bend };
+}
+
+function sampleQuadratic(p0: Pt, cp: Pt, p1: Pt, segments = 14): Pt[] {
+  const pts: Pt[] = [];
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const u = 1 - t;
+    pts.push({
+      x: u * u * p0.x + 2 * u * t * cp.x + t * t * p1.x,
+      y: u * u * p0.y + 2 * u * t * cp.y + t * t * p1.y,
+    });
+  }
+  return pts;
+}
+
 export function hitTestShapeBody(stroke: PresentationStroke, pt: Pt, pad = 10): boolean {
   if (!stroke.shape || stroke.points.length < 2) return false;
   const [p0, p1] = stroke.points;
 
-  if (stroke.shape === 'line' || stroke.shape === 'arrow') {
+  if (stroke.shape === 'curved-arrow') {
+    const cp = curvedArrowControl(p0, p1, stroke.curveBend ?? 35);
+    const samples = sampleQuadratic(p0, cp, p1);
+    const threshold = pad + stroke.lineWidth;
+    for (let i = 1; i < samples.length; i++) {
+      const a = samples[i - 1];
+      const b = samples[i];
+      if (distPointToSegment(pt.x, pt.y, a.x, a.y, b.x, b.y) < threshold) return true;
+    }
+    return false;
+  }
+
+  if (isEndpointInkShape(stroke.shape)) {
     return distPointToSegment(pt.x, pt.y, p0.x, p0.y, p1.x, p1.y) < pad + stroke.lineWidth;
   }
 
@@ -135,7 +173,7 @@ export function pickShapeHandle(
   if (!stroke.shape || stroke.points.length < 2) return null;
   const [p0, p1] = stroke.points;
 
-  if (stroke.shape === 'line' || stroke.shape === 'arrow') {
+  if (isEndpointInkShape(stroke.shape)) {
     if (dist(pt, p0) <= radius) return 'start';
     if (dist(pt, p1) <= radius) return 'end';
     const mid = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
@@ -174,7 +212,7 @@ export function rotateShapeByDelta(stroke: PresentationStroke, deltaRadians: num
   if (!stroke.shape || stroke.points.length < 2 || Math.abs(deltaRadians) < 1e-6) return stroke;
   const [p0, p1] = stroke.points;
 
-  if (stroke.shape === 'line' || stroke.shape === 'arrow') {
+  if (isEndpointInkShape(stroke.shape)) {
     const cx = (p0.x + p1.x) / 2;
     const cy = (p0.y + p1.y) / 2;
     const cos = Math.cos(deltaRadians);
@@ -198,7 +236,7 @@ export function resizeShapeWithHandle(
   if (!stroke.shape || stroke.points.length < 2) return stroke;
   const [p0, p1] = stroke.points;
 
-  if (stroke.shape === 'line' || stroke.shape === 'arrow') {
+  if (isEndpointInkShape(stroke.shape)) {
     if (handle === 'start') return { ...stroke, points: [pointer, p1] };
     if (handle === 'end') return { ...stroke, points: [p0, pointer] };
     return stroke;
@@ -256,7 +294,7 @@ export function getSelectionOutlinePoints(stroke: PresentationStroke): Pt[] {
   if (!stroke.shape || stroke.points.length < 2) return [];
   const [p0, p1] = stroke.points;
 
-  if (stroke.shape === 'line' || stroke.shape === 'arrow') {
+  if (isEndpointInkShape(stroke.shape)) {
     return [p0, p1];
   }
 
@@ -275,7 +313,7 @@ export function getSelectionHandles(stroke: PresentationStroke): { handle: Shape
   if (!stroke.shape || stroke.points.length < 2) return [];
   const [p0, p1] = stroke.points;
 
-  if (stroke.shape === 'line' || stroke.shape === 'arrow') {
+  if (isEndpointInkShape(stroke.shape)) {
     const mid = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
     return [
       { handle: 'start', pt: p0 },
@@ -306,7 +344,23 @@ export function drawShapeSelection(
   ctx.lineWidth = 2;
   ctx.setLineDash([6, 4]);
 
-  if (stroke.shape === 'line' || stroke.shape === 'arrow') {
+  if (stroke.shape === 'curved-arrow' && stroke.points.length >= 2) {
+    const [p0, p1] = stroke.points;
+    const cp = curvedArrowControl(p0, p1, stroke.curveBend ?? 35);
+    ctx.beginPath();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.quadraticCurveTo(cp.x, cp.y, p1.x, p1.y);
+    ctx.stroke();
+    const mid = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
+    const rot = handles.find((h) => h.handle === 'rotate');
+    if (rot) {
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(mid.x, mid.y);
+      ctx.lineTo(rot.pt.x, rot.pt.y);
+      ctx.stroke();
+    }
+  } else if (isEndpointInkShape(stroke.shape)) {
     ctx.beginPath();
     ctx.moveTo(outline[0].x, outline[0].y);
     ctx.lineTo(outline[1].x, outline[1].y);

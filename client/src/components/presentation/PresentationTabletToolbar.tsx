@@ -16,6 +16,7 @@ import {
   Save as SaveIcon,
   SaveAs as SaveAsIcon,
   Tag as TagIcon,
+  Timeline as CurvedArrowIcon,
   Undo as UndoIcon,
   DeleteSweep as DeleteSweepIcon,
   SelfImprovement as QuietWorkIcon,
@@ -32,6 +33,7 @@ import {
   toolUsesColor,
   toolUsesLineWidth,
 } from '../../lib/presentationDrawTools';
+import type { PresentationStroke } from '../../lib/presentationDeck';
 import { JOHNNY_PRESENTATION, toHighlightFill } from '../../lib/presentationTheme';
 import PresentationPresentZoomControls from './PresentationPresentZoomControls';
 import { PresentationSoundSplitControl } from './PresentationSoundControls';
@@ -178,6 +180,9 @@ interface PresentationTabletToolbarProps {
   onSelectMarkerOpacity?: (opacity: number) => void;
   selectedCount?: number;
   selectionIsMarker?: boolean;
+  /** Ein ausgewählter Pfeil (Lasso) — Spitze / Bogen wie auf Folien. */
+  selectedArrowStroke?: PresentationStroke | null;
+  onPatchSelectedStroke?: (patch: Partial<PresentationStroke>) => void;
   onUndo: () => void;
   /** Alle Stiftstriche der aktuellen Folie löschen (nach Bestätigung in der Seite). */
   onClearAllInk?: () => void;
@@ -235,6 +240,8 @@ export default function PresentationTabletToolbar({
   onSelectMarkerOpacity,
   selectedCount = 0,
   selectionIsMarker = false,
+  selectedArrowStroke = null,
+  onPatchSelectedStroke,
   onUndo,
   onClearAllInk,
   onSave,
@@ -274,6 +281,12 @@ export default function PresentationTabletToolbar({
   const widthOptions = lineWidthsForTool(
     activeTool === 'select' ? (selectionIsMarker ? 'marker' : 'pen') : activeTool
   );
+  const showArrowOptions =
+    !readOnly &&
+    drawActive &&
+    selectedArrowStroke &&
+    (selectedArrowStroke.shape === 'arrow' || selectedArrowStroke.shape === 'curved-arrow') &&
+    typeof onPatchSelectedStroke === 'function';
   const docked = placement === 'docked';
   const overlay = placement === 'overlay';
   const [showNumberRanges, setShowNumberRanges] = useState(false);
@@ -786,6 +799,13 @@ export default function PresentationTabletToolbar({
               onClick={() => onSelectTool('shape-arrow')}
             >
               <ArrowIcon sx={{ fontSize: 14 }} />
+            </ToolBtn>
+            <ToolBtn
+              title="Gebogener Pfeil"
+              active={activeTool === 'shape-curved-arrow'}
+              onClick={() => onSelectTool('shape-curved-arrow')}
+            >
+              <CurvedArrowIcon sx={{ fontSize: 14 }} />
             </ToolBtn>
 
             <Divider

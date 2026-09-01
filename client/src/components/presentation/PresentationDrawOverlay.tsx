@@ -616,6 +616,8 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
         mode: 'pen',
         shape,
         rotation: 0,
+        ...(shape === 'curved-arrow' ? { curveBend: 35 } : {}),
+        ...(shape === 'arrow' || shape === 'curved-arrow' ? { arrowHeadSize: 22 } : {}),
       };
       lastInkPtRef.current = pt;
       return;
@@ -693,7 +695,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   const beginRotate = (target: PresentationStroke, pt: { x: number; y: number }): ManipState => {
     const [p0, p1] = target.points;
     const center =
-      target.shape === 'line' || target.shape === 'arrow'
+      target.shape === 'line' || target.shape === 'arrow' || target.shape === 'curved-arrow'
         ? { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 }
         : (() => {
             const f = getBoxFrame(target);
@@ -769,6 +771,19 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     if (passThroughNonPenRef.current && e.pointerType !== 'pen') {
       e.preventDefault();
       e.stopPropagation();
+      const below = elementUnderCanvas(canvas, e.clientX, e.clientY);
+      const chromeBtn = clickableInChrome(below);
+      if (chromeBtn && typeof chromeBtn.click === 'function') {
+        chromeBtn.click();
+        return;
+      }
+      const richBtn = below?.closest?.(
+        'button, [role="button"], a, [data-pres-swatch]',
+      ) as HTMLElement | null;
+      if (richBtn && below?.closest?.('[data-et-play-edit]')) {
+        richBtn.click();
+        return;
+      }
       if (under.handle) {
         dispatchPointerTo(under.handle, e);
         return;
@@ -1180,8 +1195,9 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   }, [interactive, enabled, readOnly]);
 
   const listens = (interactive ?? enabled) && !readOnly;
+  const mousePassThrough = listens && passThroughNonPen;
   const cursor =
-    readOnly || !listens
+    readOnly || !listens || mousePassThrough
       ? 'default'
       : tool === 'select'
         ? 'grab'
@@ -1195,9 +1211,9 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
 
   const displayW = fillContainer ? '100%' : SLIDE_REF_WIDTH * scale;
   const displayH = fillContainer ? '100%' : SLIDE_REF_HEIGHT * scale;
-  const touchAction = listens ? 'none' : 'auto';
+  const touchAction = listens && !mousePassThrough ? 'none' : 'auto';
   /** Nur Zeichen-/Radier-Werkzeuge über Folien-Elemente legen. */
-  const stackAboveContent = listens && tool !== 'select';
+  const stackAboveContent = listens && tool !== 'select' && !passThroughNonPen;
 
   return (
     <canvas

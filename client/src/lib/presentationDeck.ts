@@ -126,6 +126,10 @@ export interface PresentationStroke {
   mode?: PresentationStrokeMode;
   markerOpacity?: number;
   shape?: PresentationShapeKind;
+  /** Pfeilspitze für Tinten-Pfeile (4–36, Standard ~22). */
+  arrowHeadSize?: number;
+  /** Bogenstärke für curved-arrow (−80…80). */
+  curveBend?: number;
   /** Rotation in radians for box shapes (rect, ellipse). */
   rotation?: number;
   /**
@@ -265,6 +269,14 @@ export function sanitizeInkStrokes(raw?: PresentationStroke[]): PresentationStro
           .filter((h) => h.length >= 3);
         return holes.length ? { holes } : {};
       })(),
+      ...(typeof s.shape === 'string' && s.shape ? { shape: s.shape as PresentationShapeKind } : {}),
+      ...(typeof s.rotation === 'number' && Number.isFinite(s.rotation) ? { rotation: s.rotation } : {}),
+      ...(typeof s.arrowHeadSize === 'number' && Number.isFinite(s.arrowHeadSize)
+        ? { arrowHeadSize: Math.max(4, Math.min(36, s.arrowHeadSize)) }
+        : {}),
+      ...(typeof s.curveBend === 'number' && Number.isFinite(s.curveBend)
+        ? { curveBend: Math.max(-80, Math.min(80, s.curveBend)) }
+        : {}),
     });
     if (out.length >= 800) break;
   }

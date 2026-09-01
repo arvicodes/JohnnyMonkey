@@ -15,6 +15,7 @@ import {
   DEFAULT_PEN_COLOR,
   defaultColorForTool,
   defaultLineWidthForTool,
+  isInkDrawCaptureTool,
   lineWidthsForTool,
   toolUsesColor,
   type PresentationDrawTool,
@@ -73,9 +74,9 @@ export function EntryTicketCardEditorModal({
     // Nur beim Öffnen Stift an — nicht bei jedem Re-Render/Ink-Update zurücksetzen
     if (justOpened) {
       setDrawActive(false);
-      setActiveInkTool('pen');
+      setActiveInkTool('select');
       setStrokeColor(penColorRef.current);
-      setLineWidth(defaultLineWidthForTool('pen'));
+      setLineWidth(defaultLineWidthForTool('select'));
       setClearInkOpen(false);
     }
     setSelectedStrokeIds([]);
@@ -120,6 +121,16 @@ export function EntryTicketCardEditorModal({
     setStrokeColor(color);
     if (activeInkTool === 'marker') markerColorRef.current = color;
     else if (toolUsesColor(activeInkTool)) penColorRef.current = color;
+  };
+
+  const inkDrawCapture = drawActive && isInkDrawCaptureTool(activeInkTool);
+  const inkLasso = drawActive && activeInkTool === 'select';
+  const selectedStroke =
+    selectedStrokeIds.length === 1 ? ink.find((s) => s.id === selectedStrokeIds[0]) : undefined;
+
+  const patchSelectedStroke = (patch: Partial<PresentationStroke>) => {
+    if (!selectedStroke) return;
+    onInkChange(ink.map((s) => (s.id === selectedStroke.id ? { ...s, ...patch } : s)));
   };
 
   return (
@@ -201,8 +212,12 @@ export function EntryTicketCardEditorModal({
               strokes={ink}
               onStrokesChange={onInkChange}
               enabled
+              interactive={!drawActive || inkDrawCapture || inkLasso}
               passThroughNonPen={!drawActive}
-              onInkStart={() => setDrawActive(true)}
+              onInkStart={() => {
+                setDrawActive(true);
+                if (activeInkTool === 'select') setActiveInkTool('pen');
+              }}
               slideId={slideId}
               tool={activeInkTool}
               strokeColor={strokeColor}
@@ -258,6 +273,12 @@ export function EntryTicketCardEditorModal({
             onUndo={() => onInkChange(ink.slice(0, -1))}
             onClearAllInk={() => setClearInkOpen(true)}
             onSave={onSave}
+            selectedArrowStroke={
+              selectedStroke?.shape === 'arrow' || selectedStroke?.shape === 'curved-arrow'
+                ? selectedStroke
+                : null
+            }
+            onPatchSelectedStroke={patchSelectedStroke}
           />
         </Box>
         <DialogActions sx={{ px: 2, py: 1, bgcolor: '#eceff1', justifyContent: 'flex-end' }}>

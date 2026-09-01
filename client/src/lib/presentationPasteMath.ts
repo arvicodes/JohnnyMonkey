@@ -1160,6 +1160,118 @@ function findLatexRuns(text: string): LatexRun[] {
   return runs;
 }
 
+function leftoverHasNormalText(text: string, latexRuns: LatexRun[]): boolean {
+  let rest = '';
+  let cursor = 0;
+  for (const run of latexRuns) {
+    rest += text.slice(cursor, run.start);
+    cursor = run.end;
+  }
+  rest += text.slice(cursor);
+  return /[A-Za-zÄÖÜäöüß]{2,}/.test(rest);
+}
+
+type TextSlice = { node: Text; start: number; end: number; globalStart: number };
+
+function collectSelectionSlices(editor: HTMLElement, range: Range): TextSlice[] {
+  const slices: TextSlice[] = [];
+  let global = 0;
+  const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+  let current: Node | null;
+  while ((current = walker.nextNode())) {
+    const textNode = current as Text;
+    if (isInsidePresentationMath(textNode)) continue;
+    let start = 0;
+    let end = textNode.length;
+    try {
+      if (range.comparePoint(textNode, 0) > 0) continue;
+      if (range.comparePoint(textNode, textNode.length) < 0) continue;
+      if (range.startContainer === textNode) start = range.startOffset;
+      if (range.endContainer === textNode) end = range.endOffset;
+    } catch {
+      continue;
+    }
+    if (start >= end) continue;
+    slices.push({ node: textNode, start, end, globalStart: global });
+    global += end - start;
+  }
+  return slices;
+}
+
+function pointAtGlobal(slices: TextSlice[], global: number): { node: Text; offset: number } | null {
+  for (const slice of slices) {
+    const len = slice.end - slice.start;
+    if (global < slice.globalStart) return null;
+    if (global <= slice.globalStart + len) {
+      return { node: slice.node, offset: slice.start + (global - slice.globalStart) };
+    }
+  }
+  const last = slices[slices.length - 1];
+  if (!last) return null;
+  return { node: last.node, offset: last.end };
+}
+
+function stylesOverlapping(styleRuns: TextStyleSnapshot[], from: number, to: number): TextStyleSnapshot[] {
+  const out: TextStyleSnapshot[] = [];
+  let pos = 0;
+  for (const run of styleRuns) {
+    const r0 = pos;
+    const r1 = pos + run.text.length;
+    const a = Math.max(r0, from);
+    const b = Math.min(r1, to);
+    if (a < b) out.push({ ...run, text: run.text.slice(a - r0, b - r0) });
+    pos = r1;
+  }
+  return out;
+}
+
+function insertFormulaForLatexRun(
+  editor: HTMLElement,
+  slices: TextSlice[],
+  run: LatexRun,
+  styleRuns: TextStyleSnapshot[],
+): boolean {
+  const start = pointAtGlobal(slices, run.start);
+  const end = pointAtGlobal(slices, run.end);
+  if (!start || !end) return false;
+  const r = editor.ownerDocument.createRange();
+  try {
+    r.setStart(start.node, start.offset);
+    r.setEnd(end.node, end.offset);
+  } catch {
+    return false;
+  }
+  const tex = normalizePresentationLatexSource(run.tex);
+  if (!tex) return false;
+  const html = renderLatexToPresentationSpan(tex, run.display);
+  if (!html) return false;
+  const existing = new Set(Array.from(editor.querySelectorAll(`[${PRES_MATH_ATTR}]`)));
+  formulaInsertCaret = { editor, range: r.cloneRange() };
+  try {
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(r.cloneRange());
+  } catch {
+    /* ignore */
+  }
+  if (!insertHtmlAtEditorCursor(editor, html)) return false;
+  const added = Array.from(editor.querySelectorAll(`[${PRES_MATH_ATTR}]`)).find((node) => !existing.has(node)) as
+    | HTMLElement
+    | undefined;
+  const runStyles = stylesOverlapping(styleRuns, run.start, run.end);
+  if (added && runStyles.length) applyRunsToMath(added, runStyles);
+  return true;
+}
+  let rest = '';
+  let cursor = 0;
+  for (const run of latexRuns) {
+    rest += text.slice(cursor, run.start);
+    cursor = run.end;
+  }
+  rest += text.slice(cursor);
+  return /[A-Za-zÄÖÜäöüß]{2,}/.test(rest);
+}
+
 function isMathGlueGap(gap: string): boolean {
   if (!/^[\s+\-*=<>/|,.;:()[\]·×±≤≥∞'′^_]*$/.test(gap)) return false;
   if (gap === '') return true;
@@ -1645,7 +1757,7 @@ function mathSpanToStyledLatexNode(span: HTMLElement): Node {
   return wrap;
 }
 
-/** Markierten LaTeX-Text → eine Formel (Formatierung bleibt). */
+/** Markierten Text: LaTeX-Teile → Formeln, normaler Text bleibt. */
 export function convertSelectedTextToPresentationMath(editor: HTMLElement | null): boolean {
   if (!editor) return false;
   const sel = window.getSelection();
@@ -1656,9 +1768,26 @@ export function convertSelectedTextToPresentationMath(editor: HTMLElement | null
   } catch {
     return false;
   }
-  const runs = collectSelectionStyleRuns(editor, range);
-  const raw = (range.toString() || '').replace(/\u00a0/g, ' ');
-  const tex = normalizePresentationLatexSource(raw);
+  const slices = collectSelectionSlices(editor, range);
+  if (!slices.length) return false;
+  const styleRuns = collectSelectionStyleRuns(editor, range);
+  const text = slices
+    .map((s) => (s.node.data || '').slice(s.start, s.end).replace(/\u00a0/g, ' '))
+    .join('');
+  if (!text.trim()) return false;
+
+  const latexRuns = findLatexRuns(text);
+  const mixed = latexRuns.length > 0 && (latexRuns.length > 1 || leftoverHasNormalText(text, latexRuns));
+
+  if (mixed) {
+    let changed = false;
+    for (let i = latexRuns.length - 1; i >= 0; i -= 1) {
+      if (insertFormulaForLatexRun(editor, slices, latexRuns[i], styleRuns)) changed = true;
+    }
+    return changed;
+  }
+
+  const tex = normalizePresentationLatexSource(text);
   if (!tex) return false;
   const html = renderLatexToPresentationSpan(tex, /\\begin\{|\\displaystyle/.test(tex));
   if (!html) return false;
@@ -1668,7 +1797,7 @@ export function convertSelectedTextToPresentationMath(editor: HTMLElement | null
   const added = Array.from(editor.querySelectorAll(`[${PRES_MATH_ATTR}]`)).find((node) => !existing.has(node)) as
     | HTMLElement
     | undefined;
-  if (added && runs.length) applyRunsToMath(added, runs);
+  if (added && styleRuns.length) applyRunsToMath(added, styleRuns);
   return true;
 }
 

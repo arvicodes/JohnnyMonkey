@@ -655,6 +655,7 @@ function EntryTicketRichFieldInner({
     >
       {showChrome ? (
       <Box
+        data-et-toolbar=""
         sx={{
           display: 'flex',
           alignItems: 'center',

@@ -9,7 +9,8 @@ export type PresentationDrawTool =
   | 'shape-line'
   | 'shape-rect'
   | 'shape-ellipse'
-  | 'shape-arrow';
+  | 'shape-arrow'
+  | 'shape-curved-arrow';
 
 export const PEN_LINE_WIDTHS = [1.5, 3, 5, 8] as const;
 export const MARKER_LINE_WIDTHS = [6, 10, 16, 24] as const;
@@ -88,6 +89,8 @@ export function toolToShape(tool: PresentationDrawTool): PresentationShapeKind |
       return 'ellipse';
     case 'shape-arrow':
       return 'arrow';
+    case 'shape-curved-arrow':
+      return 'curved-arrow';
     default:
       return undefined;
   }
@@ -207,18 +210,44 @@ function drawArrowHead(
   headLen: number
 ) {
   const angle = Math.atan2(toY - fromY, toX - fromX);
+  drawArrowHeadAtAngle(ctx, toX, toY, angle, headLen);
+}
+
+function drawArrowHeadAtAngle(
+  ctx: CanvasRenderingContext2D,
+  tipX: number,
+  tipY: number,
+  angle: number,
+  headLen: number
+) {
   ctx.beginPath();
-  ctx.moveTo(toX, toY);
+  ctx.moveTo(tipX, tipY);
   ctx.lineTo(
-    toX - headLen * Math.cos(angle - Math.PI / 6),
-    toY - headLen * Math.sin(angle - Math.PI / 6)
+    tipX - headLen * Math.cos(angle - Math.PI / 6),
+    tipY - headLen * Math.sin(angle - Math.PI / 6)
   );
-  ctx.moveTo(toX, toY);
+  ctx.moveTo(tipX, tipY);
   ctx.lineTo(
-    toX - headLen * Math.cos(angle + Math.PI / 6),
-    toY - headLen * Math.sin(angle + Math.PI / 6)
+    tipX - headLen * Math.cos(angle + Math.PI / 6),
+    tipY - headLen * Math.sin(angle + Math.PI / 6)
   );
   ctx.stroke();
+}
+
+function curvedArrowControl(p0: { x: number; y: number }, p1: { x: number; y: number }, bend: number) {
+  const mx = (p0.x + p1.x) / 2;
+  const my = (p0.y + p1.y) / 2;
+  const dx = p1.x - p0.x;
+  const dy = p1.y - p0.y;
+  const len = Math.hypot(dx, dy) || 1;
+  return { x: mx - (dy / len) * bend, y: my + (dx / len) * bend };
+}
+
+function resolveInkArrowHeadSize(stroke: PresentationStroke): number {
+  if (stroke.arrowHeadSize != null && Number.isFinite(stroke.arrowHeadSize)) {
+    return Math.max(4, Math.min(36, stroke.arrowHeadSize));
+  }
+  return Math.max(14, stroke.lineWidth * 4);
 }
 
 export function drawPresentationStroke(ctx: CanvasRenderingContext2D, stroke: PresentationStroke) {
@@ -285,12 +314,22 @@ export function drawPresentationStroke(ctx: CanvasRenderingContext2D, stroke: Pr
         ctx.restore();
         break;
       }
-      case 'arrow':
+      case 'arrow': {
         ctx.moveTo(p0.x, p0.y);
         ctx.lineTo(p1.x, p1.y);
         ctx.stroke();
-        drawArrowHead(ctx, p0.x, p0.y, p1.x, p1.y, Math.max(14, stroke.lineWidth * 4));
+        drawArrowHead(ctx, p0.x, p0.y, p1.x, p1.y, resolveInkArrowHeadSize(stroke));
         break;
+      }
+      case 'curved-arrow': {
+        const cp = curvedArrowControl(p0, p1, stroke.curveBend ?? 35);
+        ctx.moveTo(p0.x, p0.y);
+        ctx.quadraticCurveTo(cp.x, cp.y, p1.x, p1.y);
+        ctx.stroke();
+        const angle = Math.atan2(p1.y - cp.y, p1.x - cp.x);
+        drawArrowHeadAtAngle(ctx, p1.x, p1.y, angle, resolveInkArrowHeadSize(stroke));
+        break;
+      }
       default:
         break;
     }

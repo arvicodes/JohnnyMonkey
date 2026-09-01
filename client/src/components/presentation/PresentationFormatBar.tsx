@@ -321,24 +321,17 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
     }
     stashEditorSelection(editor);
     keepEditorSelection(editor);
-    if (selectionIntersectsPresentationMath(editor)) {
-      if (unwrapSelectedPresentationMath(editor)) {
-        onEditorChanged?.();
-        onMessage?.('Wieder LaTeX');
-      }
+    if (convertSelectedTextToPresentationMath(editor)) {
+      onEditorChanged?.();
+      onMessage?.('Formel umgewandelt');
       return;
     }
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0 || sel.isCollapsed || !(sel.toString() || '').trim()) {
-      onMessage?.('LaTeX markieren, dann ⌘U');
+    if (selectionIntersectsPresentationMath(editor) && unwrapSelectedPresentationMath(editor)) {
+      onEditorChanged?.();
+      onMessage?.('Wieder LaTeX');
       return;
     }
-    if (!convertSelectedTextToPresentationMath(editor)) {
-      onMessage?.('LaTeX konnte nicht umgewandelt werden');
-      return;
-    }
-    onEditorChanged?.();
-    onMessage?.('Formel umgewandelt');
+    onMessage?.('LaTeX markieren, dann ⌘U');
   }, [disabled, resolveLatexEditor, onEditorChanged, onMessage]);
 
   useEffect(() => {
