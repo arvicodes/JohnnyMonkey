@@ -1665,7 +1665,7 @@ const PresentationPresentPage: React.FC = () => {
     const tapTarget = e.target instanceof Element ? e.target : null;
     if (
       tapTarget?.closest?.(
-        '[data-pres-element-type="image"], [data-resize-handle], [data-element-delete], [data-pres-filmstrip-slide], [data-pres-toolbar], [data-pres-slide-overview], [data-pres-slide-number]',
+        '[data-pres-element-type="image"], [data-pres-element-type="video"], [data-pres-element-type="embed"], video, iframe, [data-resize-handle], [data-element-delete], [data-pres-filmstrip-slide], [data-pres-toolbar], [data-pres-slide-overview], [data-pres-slide-number]',
       )
     ) {
       return;

@@ -99,6 +99,12 @@ const PresentationMediaFrame: React.FC<PresentationMediaFrameProps> = ({
         src={resolved.src}
         controls={allowInteract}
         playsInline
+        onClick={(e) => {
+          if (allowInteract) e.stopPropagation();
+        }}
+        onPointerDown={(e) => {
+          if (allowInteract) e.stopPropagation();
+        }}
         sx={{
           width: '100%',
           height: '100%',
@@ -114,6 +120,12 @@ const PresentationMediaFrame: React.FC<PresentationMediaFrameProps> = ({
         title="Eingebettete Referenz"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
         allowFullScreen
+        onClick={(e) => {
+          if (allowInteract) e.stopPropagation();
+        }}
+        onPointerDown={(e) => {
+          if (allowInteract) e.stopPropagation();
+        }}
         sx={{
           width: '100%',
           height: '100%',

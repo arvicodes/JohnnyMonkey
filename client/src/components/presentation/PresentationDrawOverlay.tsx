@@ -1215,6 +1215,28 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   /** Nur Zeichen-/Radier-Werkzeuge über Folien-Elemente legen. */
   const stackAboveContent = listens && tool !== 'select' && !passThroughNonPen;
 
+  /**
+   * Bei passThroughNonPen darf das Canvas Maus/Finger nicht abfangen —
+   * sonst sind YouTube-Play und Video-Controls unerreichbar (iframe/video).
+   * Apple Pencil wird am Parent im Capture erkannt → onInkStart.
+   */
+  useEffect(() => {
+    if (!mousePassThrough || readOnly) return undefined;
+    const canvas = canvasRef.current;
+    const host = canvas?.parentElement;
+    if (!host) return undefined;
+    const onPenDown = (e: PointerEvent) => {
+      if (e.pointerType !== 'pen') return;
+      const t = e.target instanceof Element ? e.target : null;
+      if (t?.closest?.('[data-pres-toolbar], [data-presentation-format-bar], button, a, input, textarea')) {
+        return;
+      }
+      onInkStartRef.current?.();
+    };
+    host.addEventListener('pointerdown', onPenDown, true);
+    return () => host.removeEventListener('pointerdown', onPenDown, true);
+  }, [mousePassThrough, readOnly, slideId]);
+
   return (
     <canvas
       ref={canvasRef}
@@ -1227,7 +1249,8 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
         height: displayH,
         touchAction,
         cursor: stackAboveContent ? cursor : 'default',
-        pointerEvents: listens ? 'auto' : 'none',
+        // passThrough: echte Klicks müssen Video/iframe erreichen (kein synthetisches Click)
+        pointerEvents: listens && !mousePassThrough ? 'auto' : 'none',
         zIndex: stackAboveContent ? 48 : 2,
         WebkitUserSelect: 'none',
         userSelect: 'none',

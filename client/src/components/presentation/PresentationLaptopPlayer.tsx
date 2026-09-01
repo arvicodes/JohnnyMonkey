@@ -530,6 +530,14 @@ export default function PresentationLaptopPlayer({
       return;
     }
     if (isPresentationLinkClickTarget(e.target)) return;
+    const tapTarget = e.target instanceof Element ? e.target : null;
+    if (
+      tapTarget?.closest?.(
+        '[data-pres-element-type="video"], [data-pres-element-type="embed"], video, iframe',
+      )
+    ) {
+      return;
+    }
     if (didPanRef.current) {
       didPanRef.current = false;
       return;
