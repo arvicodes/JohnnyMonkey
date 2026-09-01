@@ -238,6 +238,10 @@ type Props = {
   /** Füllt die Höhe des Eltern-Containers (großes Karten-Modal). */
   fillParent?: boolean;
   editorFontSize?: string | Record<string, string>;
+  /** Notizen-Layout: weiße Schreibfläche im Host, Werkzeugleiste oben. */
+  notesSurface?: boolean;
+  /** Tippen vs. Stift/Radierer — wie Foliennotizen. */
+  inkMode?: 'text' | 'pen' | 'eraser';
 };
 
 function toEditorHtml(value: string): string {
@@ -288,6 +292,8 @@ function EntryTicketRichFieldInner({
   playSurface = false,
   fillParent = false,
   editorFontSize,
+  notesSurface = false,
+  inkMode = 'text',
 }: Props) {
   const editorRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -310,8 +316,9 @@ function EntryTicketRichFieldInner({
   const [chromeOpen, setChromeOpen] = useState(false);
   const [imgHandle, setImgHandle] = useState<{ left: number; top: number } | null>(null);
   const palette = TONE_STYLES[tone];
-  const fieldBg = softBg ?? palette.softBg;
-  const showChrome = chromeOpen || Boolean(colorAnchor) || Boolean(highlightAnchor);
+  const fieldBg = softBg ?? (notesSurface ? '#ffffff' : palette.softBg);
+  const textEditing = inkMode === 'text';
+  const showChrome = textEditing && (chromeOpen || Boolean(colorAnchor) || Boolean(highlightAnchor));
 
   const listEditorImages = () => {
     const el = editorRef.current;
@@ -605,26 +612,35 @@ function EntryTicketRichFieldInner({
       sx={{
         width: '100%',
         minWidth: 0,
-        borderRadius: 1,
-        border: '2px solid',
+        borderRadius: notesSurface ? 0 : 1,
+        border: notesSurface ? 'none' : '2px solid',
         borderColor: dragOver ? '#43a047' : palette.border,
-        bgcolor: fieldBg,
-        overflow: 'visible',
+        bgcolor: notesSurface ? 'transparent' : fieldBg,
+        overflow: notesSurface ? 'hidden' : 'visible',
         boxSizing: 'border-box',
-        boxShadow: dragOver ? '0 0 0 2px rgba(67,160,71,0.28)' : 'none',
-        transition: 'border-color 0.12s ease, box-shadow 0.12s ease',
+        boxShadow: notesSurface
+          ? 'none'
+          : dragOver
+            ? '0 0 0 2px rgba(67,160,71,0.28)'
+            : 'none',
+        transition: notesSurface ? undefined : 'border-color 0.12s ease, box-shadow 0.12s ease',
         position: 'relative',
         ...(fillParent
           ? { height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }
           : {}),
-        '&:focus-within': {
-          borderColor: dragOver ? '#43a047' : palette.borderFocus,
-          boxShadow: dragOver
-            ? '0 0 0 2px rgba(67,160,71,0.28)'
-            : `0 0 0 2px ${palette.shadow}`,
-        },
+        ...(!notesSurface
+          ? {
+              '&:focus-within': {
+                borderColor: dragOver ? '#43a047' : palette.borderFocus,
+                boxShadow: dragOver
+                  ? '0 0 0 2px rgba(67,160,71,0.28)'
+                  : `0 0 0 2px ${palette.shadow}`,
+              },
+            }
+          : {}),
       }}
       onPointerDownCapture={(e) => {
+        if (notesSurface) return;
         if (isPenPointer(e)) e.preventDefault();
       }}
       onFocus={() => setChromeOpen(true)}
@@ -956,8 +972,15 @@ function EntryTicketRichFieldInner({
       ) : null}
 
       <Box
+        sx={{
+          ...(notesSurface && fillParent
+            ? { position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }
+            : {}),
+        }}
+      >
+      <Box
         ref={editorRef}
-        contentEditable
+        contentEditable={textEditing}
         suppressContentEditableWarning
         tabIndex={0}
         role="textbox"
@@ -966,8 +989,7 @@ function EntryTicketRichFieldInner({
         onInput={emitChange}
         onBlur={emitChange}
         onPointerDown={(e) => {
-          // Apple Pencil: nicht ins Textfeld (Scribble / Schreiboption) — Tinte liegt darüber.
-          if (isPenPointer(e)) {
+          if (!notesSurface && isPenPointer(e)) {
             e.preventDefault();
             return;
           }
@@ -1057,14 +1079,27 @@ function EntryTicketRichFieldInner({
           minHeight: fillParent ? 0 : minHeight,
           flex: fillParent ? 1 : undefined,
           overflow: fillParent ? 'auto' : undefined,
-          px: 0.75,
-          py: 0.45,
-          fontSize: editorFontSize ?? '0.78rem',
-          lineHeight: 1.35,
+          px: notesSurface ? 1.25 : 0.75,
+          py: notesSurface ? 1 : 0.45,
+          fontSize: editorFontSize ?? (notesSurface ? '1.05rem' : '0.78rem'),
+          lineHeight: notesSurface ? 1.5 : 1.35,
           color: palette.text,
           outline: 'none',
-          cursor: 'text',
-          position: 'relative',
+          cursor: textEditing ? 'text' : 'default',
+          position: notesSurface ? 'absolute' : 'relative',
+          ...(notesSurface ? { inset: 0, zIndex: 1 } : {}),
+          userSelect: textEditing ? 'text' : 'none',
+          WebkitUserSelect: textEditing ? 'text' : 'none',
+          pointerEvents: textEditing ? 'auto' : 'none',
+          touchAction: textEditing ? 'pan-y' : 'none',
+          ...(notesSurface
+            ? {
+                bgcolor: '#fff',
+                border: '1px solid',
+                borderColor: palette.border,
+                borderRadius: 1,
+              }
+            : {}),
           '&:empty:before': {
             content: 'attr(data-placeholder)',
             color: palette.toolBtnBorder,
@@ -1118,6 +1153,7 @@ function EntryTicketRichFieldInner({
             : null),
         }}
       />
+      </Box>
 
       {imgHandle && selectedImgIndex != null ? (
         <Box
