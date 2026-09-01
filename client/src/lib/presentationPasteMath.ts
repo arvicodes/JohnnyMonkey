@@ -1357,7 +1357,295 @@ export function selectionIntersectsPresentationMath(editor: HTMLElement | null):
   return Boolean(findPresentationMathInEditor(editor));
 }
 
-/** Markierten LaTeX-Text → eine Formel. */
+type TextStyleSnapshot = {
+  text: string;
+  color?: string;
+  fontSizePx?: number;
+  bold?: boolean;
+  italic?: boolean;
+  fontFamily?: string;
+  highlight?: string;
+};
+
+function toCssColor(raw: string): string | undefined {
+  const s = (raw || '').trim();
+  if (!s || s === 'transparent' || s === 'inherit') return undefined;
+  const m = s.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  if (m) {
+    const hex = [m[1], m[2], m[3]].map((n) => Number(n).toString(16).padStart(2, '0')).join('');
+    return `#${hex}`;
+  }
+  return s;
+}
+
+function snapshotFromNode(node: Node, editor: HTMLElement): Omit<TextStyleSnapshot, 'text'> {
+  let el: HTMLElement | null = node instanceof HTMLElement ? node : node.parentElement;
+  const snap: Omit<TextStyleSnapshot, 'text'> = {};
+  while (el && el !== editor) {
+    if (snap.fontSizePx == null) {
+      const attr = el.getAttribute('data-pres-fs');
+      if (attr) {
+        const n = parseInt(attr, 10);
+        if (Number.isFinite(n)) snap.fontSizePx = n;
+      } else {
+        const px = (el.style?.fontSize || '').match(/^([\d.]+)px/i);
+        if (px) snap.fontSizePx = Math.round(parseFloat(px[1]));
+      }
+    }
+    if (snap.color == null) {
+      const c = toCssColor(el.getAttribute('data-pres-color') || el.style?.color || '');
+      if (c) snap.color = c;
+    }
+    if (snap.fontFamily == null) {
+      const f = (el.getAttribute('data-pres-font') || el.style?.fontFamily || '').trim();
+      if (f) snap.fontFamily = f;
+    }
+    if (
+      snap.bold == null &&
+      (el.getAttribute('data-pres-bold') === '1' ||
+        el.tagName === 'B' ||
+        el.tagName === 'STRONG' ||
+        el.style.fontWeight === 'bold' ||
+        parseInt(el.style.fontWeight || '0', 10) >= 600)
+    ) {
+      snap.bold = true;
+    }
+    if (
+      snap.italic == null &&
+      (el.getAttribute('data-pres-italic') === '1' ||
+        el.tagName === 'I' ||
+        el.tagName === 'EM' ||
+        el.style.fontStyle === 'italic')
+    ) {
+      snap.italic = true;
+    }
+    if (snap.highlight == null) {
+      const h = toCssColor(el.getAttribute('data-pres-highlight') || el.style?.backgroundColor || '');
+      if (h) snap.highlight = h;
+    }
+    el = el.parentElement;
+  }
+  const host = node instanceof HTMLElement ? node : node.parentElement;
+  if (host) {
+    try {
+      const cs = window.getComputedStyle(host);
+      if (snap.fontSizePx == null) {
+        const n = parseFloat(cs.fontSize);
+        if (Number.isFinite(n) && n >= 8) snap.fontSizePx = Math.round(n);
+      }
+      if (snap.color == null) {
+        const c = toCssColor(cs.color);
+        if (c) snap.color = c;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return snap;
+}
+
+function sameSnapshot(a: Omit<TextStyleSnapshot, 'text'>, b: Omit<TextStyleSnapshot, 'text'>): boolean {
+  return (
+    a.color === b.color &&
+    a.fontSizePx === b.fontSizePx &&
+    a.bold === b.bold &&
+    a.italic === b.italic &&
+    a.fontFamily === b.fontFamily &&
+    a.highlight === b.highlight
+  );
+}
+
+function collectSelectionStyleRuns(editor: HTMLElement, range: Range): TextStyleSnapshot[] {
+  const runs: TextStyleSnapshot[] = [];
+  const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+  let current: Node | null;
+  while ((current = walker.nextNode())) {
+    const textNode = current as Text;
+    if (isInsidePresentationMath(textNode)) continue;
+    let start = 0;
+    let end = textNode.length;
+    try {
+      if (range.comparePoint(textNode, 0) > 0) continue;
+      if (range.comparePoint(textNode, textNode.length) < 0) continue;
+      if (range.startContainer === textNode) start = range.startOffset;
+      if (range.endContainer === textNode) end = range.endOffset;
+    } catch {
+      continue;
+    }
+    if (start >= end) continue;
+    const text = (textNode.data || '').slice(start, end).replace(/\u00a0/g, ' ');
+    if (!text) continue;
+    const style = snapshotFromNode(textNode, editor);
+    const prev = runs[runs.length - 1];
+    if (prev && sameSnapshot(prev, style)) prev.text += text;
+    else runs.push({ text, ...style });
+  }
+  return runs;
+}
+
+function snapshotToPatch(s: Omit<TextStyleSnapshot, 'text'>): PresentationMathStylePatch {
+  const patch: PresentationMathStylePatch = {};
+  if (s.fontSizePx != null && Number.isFinite(s.fontSizePx)) patch.fontSizePx = s.fontSizePx;
+  if (s.color) patch.color = s.color;
+  if (s.fontFamily) patch.fontFamily = s.fontFamily;
+  if (s.highlight) patch.highlight = s.highlight;
+  if (s.bold) patch.bold = true;
+  if (s.italic) patch.italic = true;
+  return patch;
+}
+
+function patchSignature(p: PresentationMathStylePatch): string {
+  return `${p.color || ''}|${p.fontSizePx ?? ''}|${p.bold ? 1 : 0}|${p.italic ? 1 : 0}|${p.fontFamily || ''}|${p.highlight || ''}`;
+}
+
+function hasStylePatch(p: PresentationMathStylePatch): boolean {
+  return Boolean(p.color || p.fontSizePx || p.fontFamily || p.highlight || p.bold || p.italic);
+}
+
+function dominantStyle(runs: TextStyleSnapshot[]): PresentationMathStylePatch {
+  if (!runs.length) return {};
+  const scores = new Map<string, { len: number; run: TextStyleSnapshot }>();
+  for (const run of runs) {
+    const key = patchSignature(snapshotToPatch(run));
+    const cur = scores.get(key);
+    if (!cur) scores.set(key, { len: run.text.length, run });
+    else cur.len += run.text.length;
+  }
+  let best = runs[0];
+  let bestLen = -1;
+  scores.forEach((v) => {
+    if (v.len > bestLen) {
+      bestLen = v.len;
+      best = v.run;
+    }
+  });
+  return snapshotToPatch(best);
+}
+
+function visibleLatexSymbols(text: string): string[] {
+  const out: string[] = [];
+  let i = 0;
+  while (i < text.length) {
+    if (text[i] === '\\') {
+      i += 1;
+      while (i < text.length && /[a-zA-Z]/.test(text[i])) i += 1;
+      if (text[i] === '*') i += 1;
+      continue;
+    }
+    if ('{}$^_&% \t\n\r'.includes(text[i])) {
+      i += 1;
+      continue;
+    }
+    if (/\d/.test(text[i])) {
+      let n = '';
+      while (i < text.length && /[\d.]/.test(text[i])) n += text[i++];
+      if (n) out.push(n);
+      continue;
+    }
+    out.push(text[i]);
+    i += 1;
+  }
+  return out;
+}
+
+function applyRunsToMath(math: HTMLElement, runs: TextStyleSnapshot[]) {
+  const base = dominantStyle(runs);
+  if (hasStylePatch(base)) applyPresentationMathStyle(math, base);
+  const tokens = Array.from(math.querySelectorAll('mi, mn, mo, mtext')) as HTMLElement[];
+  if (!tokens.length) return;
+  const baseKey = patchSignature(base);
+  let tokenIdx = 0;
+  for (const run of runs) {
+    const patch = snapshotToPatch(run);
+    const symbols = visibleLatexSymbols(run.text);
+    const distinctive = patchSignature(patch) !== baseKey && hasStylePatch(patch);
+    for (const sym of symbols) {
+      while (tokenIdx < tokens.length && (tokens[tokenIdx].textContent || '').trim() !== sym) {
+        tokenIdx += 1;
+      }
+      if (tokenIdx >= tokens.length) return;
+      if (distinctive) applyPresentationMathStyle(tokens[tokenIdx], patch);
+      tokenIdx += 1;
+    }
+  }
+}
+
+function readPatchFromMath(span: HTMLElement): PresentationMathStylePatch {
+  const fs = parseInt(span.getAttribute('data-pres-fs') || '', 10);
+  return {
+    fontSizePx: Number.isFinite(fs) ? fs : undefined,
+    color: span.getAttribute('data-pres-color') || undefined,
+    fontFamily: span.getAttribute('data-pres-font') || undefined,
+    highlight: span.getAttribute('data-pres-highlight') || undefined,
+    bold: span.getAttribute('data-pres-bold') === '1' ? true : undefined,
+    italic: span.getAttribute('data-pres-italic') === '1' ? true : undefined,
+  };
+}
+
+function applyPatchToHtmlSpan(span: HTMLElement, patch: PresentationMathStylePatch) {
+  if (patch.fontSizePx != null && Number.isFinite(patch.fontSizePx)) {
+    span.setAttribute('data-pres-fs', String(patch.fontSizePx));
+    span.style.setProperty('font-size', `${patch.fontSizePx}px`, 'important');
+  }
+  if (typeof patch.color === 'string' && patch.color) {
+    span.setAttribute('data-pres-color', patch.color);
+    span.style.setProperty('color', patch.color, 'important');
+  }
+  if (typeof patch.fontFamily === 'string' && patch.fontFamily) {
+    span.setAttribute('data-pres-font', patch.fontFamily);
+    span.style.setProperty('font-family', patch.fontFamily, 'important');
+  }
+  if (typeof patch.highlight === 'string' && patch.highlight) {
+    span.setAttribute('data-pres-highlight', patch.highlight);
+    span.style.setProperty('background-color', patch.highlight, 'important');
+  }
+  if (patch.bold) {
+    span.setAttribute('data-pres-bold', '1');
+    span.style.setProperty('font-weight', '700', 'important');
+  }
+  if (patch.italic) {
+    span.setAttribute('data-pres-italic', '1');
+    span.style.setProperty('font-style', 'italic', 'important');
+  }
+}
+
+function mathSpanToStyledLatexNode(span: HTMLElement): Node {
+  const tex = readPresentationMathLatex(span) || (span.textContent || '').replace(/\s+/g, ' ').trim();
+  const wrapPatch = readPatchFromMath(span);
+  const doc = span.ownerDocument;
+  const tokens = Array.from(span.querySelectorAll('mi, mn, mo, mtext')) as HTMLElement[];
+  const extras = tokens.filter((t) => {
+    const p = readPatchFromMath(t);
+    return hasStylePatch(p) && patchSignature(p) !== patchSignature(wrapPatch);
+  });
+
+  const wrap = doc.createElement('span');
+  if (hasStylePatch(wrapPatch)) applyPatchToHtmlSpan(wrap, wrapPatch);
+
+  if (!extras.length) {
+    wrap.textContent = tex;
+    return hasStylePatch(wrapPatch) ? wrap : doc.createTextNode(tex);
+  }
+
+  let pos = 0;
+  extras.forEach((token) => {
+    const piece = (token.textContent || '').trim();
+    if (!piece) return;
+    const idx = tex.indexOf(piece, pos);
+    if (idx < 0) return;
+    if (idx > pos) wrap.appendChild(doc.createTextNode(tex.slice(pos, idx)));
+    const inner = doc.createElement('span');
+    applyPatchToHtmlSpan(inner, readPatchFromMath(token));
+    inner.textContent = piece;
+    wrap.appendChild(inner);
+    pos = idx + piece.length;
+  });
+  if (pos < tex.length) wrap.appendChild(doc.createTextNode(tex.slice(pos)));
+  if (!wrap.childNodes.length) wrap.textContent = tex;
+  return wrap;
+}
+
+/** Markierten LaTeX-Text → eine Formel (Formatierung bleibt). */
 export function convertSelectedTextToPresentationMath(editor: HTMLElement | null): boolean {
   if (!editor) return false;
   const sel = window.getSelection();
@@ -1368,16 +1656,23 @@ export function convertSelectedTextToPresentationMath(editor: HTMLElement | null
   } catch {
     return false;
   }
+  const runs = collectSelectionStyleRuns(editor, range);
   const raw = (range.toString() || '').replace(/\u00a0/g, ' ');
   const tex = normalizePresentationLatexSource(raw);
   if (!tex) return false;
   const html = renderLatexToPresentationSpan(tex, /\\begin\{|\\displaystyle/.test(tex));
   if (!html) return false;
+  const existing = new Set(Array.from(editor.querySelectorAll(`[${PRES_MATH_ATTR}]`)));
   formulaInsertCaret = { editor, range: range.cloneRange() };
-  return insertHtmlAtEditorCursor(editor, html);
+  if (!insertHtmlAtEditorCursor(editor, html)) return false;
+  const added = Array.from(editor.querySelectorAll(`[${PRES_MATH_ATTR}]`)).find((node) => !existing.has(node)) as
+    | HTMLElement
+    | undefined;
+  if (added && runs.length) applyRunsToMath(added, runs);
+  return true;
 }
 
-/** Markierte Formel(n) → wieder LaTeX-Text. */
+/** Markierte Formel(n) → wieder LaTeX-Text (Formatierung bleibt). */
 export function unwrapSelectedPresentationMath(editor: HTMLElement | null): boolean {
   if (!editor) return false;
   const maths = mathElementsInSelection(editor);
@@ -1386,9 +1681,7 @@ export function unwrapSelectedPresentationMath(editor: HTMLElement | null): bool
   if (extra && !targets.includes(extra)) targets.push(extra);
   if (!targets.length) return false;
   targets.forEach((span) => {
-    const tex = readPresentationMathLatex(span) || (span.textContent || '').replace(/\s+/g, ' ').trim();
-    const text = editor.ownerDocument.createTextNode(tex);
-    span.replaceWith(text);
+    span.replaceWith(mathSpanToStyledLatexNode(span));
   });
   editor.dispatchEvent(new Event('input', { bubbles: true }));
   return true;
