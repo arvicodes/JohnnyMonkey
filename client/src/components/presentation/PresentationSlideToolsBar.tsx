@@ -579,8 +579,8 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
             <Tooltip
               title={
                 inkEditActive
-                  ? 'Stift aus — normale Bearbeitung (Text, Formen, Verschieben)'
-                  : 'Stift & Werkzeuge (Lasso, Marker, Formen)'
+                  ? 'Stift aus — tippen & bearbeiten (Folie und Notizen)'
+                  : 'Stift an — sofort schreiben (auch Apple Pencil). Werkzeuge: Lasso, Marker, Formen — gilt für Folie und Notizen'
               }
             >
               <IconButton

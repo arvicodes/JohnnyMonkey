@@ -145,12 +145,114 @@ export function isFilledInkStroke(stroke: PresentationStroke): boolean {
   return Boolean(stroke.filled) && !stroke.shape && stroke.points.length >= 3;
 }
 
-/** Freihand in den Foliennotizen — Koordinaten in CSS-Pixeln des Notizfelds. */
-export type PresentationNotesInkStroke = {
+/** Freihand in den Foliennotizen — gleiche Stroke-Struktur wie auf der Folie (Slide-Koordinaten). */
+export type PresentationNotesInkStroke = PresentationStroke;
+
+/** Altes Format (CSS-Pixel des Notizfelds, ohne id). */
+type LegacyNotesInkStroke = {
   points: { x: number; y: number }[];
   color: string;
   width: number;
 };
+
+export function isLegacyNotesInkStroke(raw: unknown): raw is LegacyNotesInkStroke {
+  if (!raw || typeof raw !== 'object') return false;
+  const s = raw as Record<string, unknown>;
+  return Array.isArray(s.points) && typeof s.width === 'number' && typeof s.id !== 'string';
+}
+
+/** Alte Notiz-Tinte (CSS-Pixel) → Folien-Koordinaten für DrawOverlay. */
+export function migrateLegacyNotesInkToSlideSpace(
+  raw: LegacyNotesInkStroke[],
+  hostW: number,
+  hostH: number,
+): PresentationStroke[] {
+  const sx = SLIDE_REF_WIDTH / Math.max(1, hostW);
+  const sy = SLIDE_REF_HEIGHT / Math.max(1, hostH);
+  const out: PresentationStroke[] = [];
+  raw.forEach((s, i) => {
+    if (!s?.points?.length) return;
+    const points = s.points
+      .map((p) => ({ x: Number(p?.x) * sx, y: Number(p?.y) * sy }))
+      .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+    if (points.length < 1) return;
+    if (points.length === 1) points.push({ x: points[0].x + 0.01, y: points[0].y });
+    const width = Number(s.width);
+    out.push({
+      id: `notes-legacy-${i}-${Math.round(points[0].x)}-${Math.round(points[0].y)}`,
+      points,
+      color: typeof s.color === 'string' && s.color ? s.color : '#111827',
+      lineWidth: Number.isFinite(width) ? Math.max(0.8, Math.min(48, width * sx)) : 3 * sx,
+      mode: 'pen',
+    });
+  });
+  return out;
+}
+
+export function notesInkNeedsHostMigration(
+  raw?: unknown[],
+  space?: 'css' | 'slide',
+): boolean {
+  if (space === 'slide') return false;
+  if (space === 'css') return Array.isArray(raw) && raw.length > 0;
+  if (!Array.isArray(raw) || raw.length === 0) return false;
+  if (raw.some(isLegacyNotesInkStroke)) return true;
+  return raw.some((item) => {
+    if (!item || typeof item !== 'object') return false;
+    const id = (item as { id?: unknown }).id;
+    return typeof id === 'string' && id.startsWith('notes-css-');
+  });
+}
+
+/** CSS-Pixel-Striche (Legacy oder notes-css-*) → Slide-Koordinaten. */
+export function migrateNotesInkCssToSlideSpace(
+  strokes: PresentationStroke[],
+  hostW: number,
+  hostH: number,
+): PresentationStroke[] {
+  const sx = SLIDE_REF_WIDTH / Math.max(1, hostW);
+  const sy = SLIDE_REF_HEIGHT / Math.max(1, hostH);
+  return strokes.map((s, i) => ({
+    ...s,
+    id: s.id?.startsWith('notes-css-')
+      ? `notes-legacy-${i}-${Math.round((s.points[0]?.x ?? 0) * sx)}`
+      : s.id,
+    points: s.points.map((p) => ({ x: p.x * sx, y: p.y * sy })),
+    lineWidth: Math.max(0.8, Math.min(48, (s.lineWidth || 3) * sx)),
+  }));
+}
+
+export function sanitizeNotesInk(
+  raw?: unknown[],
+): PresentationStroke[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  if (raw.some(isLegacyNotesInkStroke)) {
+    // Noch CSS-Koordinaten — Panel migriert beim ersten Layout in Slide-Space.
+    const out: PresentationStroke[] = [];
+    raw.forEach((item, i) => {
+      if (!isLegacyNotesInkStroke(item)) {
+        const modern = sanitizeInkStrokes([item as PresentationStroke]);
+        if (modern?.[0]) out.push(modern[0]);
+        return;
+      }
+      const points = item.points
+        .map((p) => ({ x: Number(p?.x), y: Number(p?.y) }))
+        .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+      if (points.length < 1) return;
+      if (points.length === 1) points.push({ x: points[0].x + 0.01, y: points[0].y });
+      const width = Number(item.width);
+      out.push({
+        id: `notes-css-${i}`,
+        points,
+        color: typeof item.color === 'string' && item.color ? item.color : '#111827',
+        lineWidth: Number.isFinite(width) ? Math.max(0.6, Math.min(12, width)) : 3,
+        mode: 'pen',
+      });
+    });
+    return out.length ? out : undefined;
+  }
+  return sanitizeInkStrokes(raw as PresentationStroke[]);
+}
 
 export type LayoutZoneBox = { x: number; y: number; w: number; h: number };
 
@@ -206,36 +308,17 @@ export interface PresentationSlide {
    */
   inkStrokes?: PresentationStroke[];
   /**
-   * Stift in den Foliennotizen (Pixel im Notizfeld, wie in den gelben Lehrer-Notizen).
+   * Stift in den Foliennotizen (gleiche Stroke-Struktur wie auf der Folie).
    */
   speakerNotesInk?: PresentationNotesInkStroke[];
+  /**
+   * `css` = Legacy-Koordinaten im Notizfeld-Pixelraum; `slide` = 1920×1080 wie Folientinte.
+   * Fehlt und alte Striche → beim Öffnen der Notizen migrieren.
+   */
+  speakerNotesInkSpace?: 'css' | 'slide';
   /** Unterkapitel in der Folienleiste (frei benennbar). */
   sourceLessonName?: string;
   sourceLessonPath?: string;
-}
-
-export function sanitizeNotesInk(
-  raw?: PresentationNotesInkStroke[],
-): PresentationNotesInkStroke[] | undefined {
-  if (!Array.isArray(raw) || raw.length === 0) return undefined;
-  const out: PresentationNotesInkStroke[] = [];
-  for (const s of raw) {
-    if (!s || !Array.isArray(s.points) || s.points.length < 1) continue;
-    const points = s.points
-      .map((p) => ({ x: Number(p?.x), y: Number(p?.y) }))
-      .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
-    if (points.length < 1) continue;
-    if (points.length === 1) {
-      points.push({ x: points[0].x + 0.01, y: points[0].y });
-    }
-    const width = Number(s.width);
-    out.push({
-      points,
-      color: typeof s.color === 'string' && s.color ? s.color : '#111827',
-      width: Number.isFinite(width) ? Math.max(0.6, Math.min(12, width)) : 3,
-    });
-  }
-  return out.length ? out : undefined;
 }
 
 export function sanitizeInkStrokes(raw?: PresentationStroke[]): PresentationStroke[] | undefined {
@@ -643,6 +726,13 @@ export function normalizeSlide(slide: PresentationSlide): PresentationSlide {
       : {}),
     inkStrokes: sanitizeInkStrokes(slide.inkStrokes),
     speakerNotesInk: sanitizeNotesInk(slide.speakerNotesInk),
+    ...(slide.speakerNotesInkSpace === 'css' || slide.speakerNotesInkSpace === 'slide'
+      ? { speakerNotesInkSpace: slide.speakerNotesInkSpace }
+      : notesInkNeedsHostMigration(slide.speakerNotesInk)
+        ? { speakerNotesInkSpace: 'css' as const }
+        : slide.speakerNotesInk?.length
+          ? { speakerNotesInkSpace: 'slide' as const }
+          : {}),
   };
 }
 

@@ -221,9 +221,13 @@ export function EntryTicketCardEditorModal({
         <DialogTitle
           sx={{
             ...dialogCloseTitleSx,
+            pr: 9,
+            flexShrink: 0,
+            minHeight: 44,
+            maxHeight: 48,
             bgcolor: '#fffde7',
             color: '#3e2723',
-            py: 1,
+            py: 0.75,
             borderBottom: '1px solid #ffe082',
           }}
         >
@@ -251,24 +255,29 @@ export function EntryTicketCardEditorModal({
           {onSave ? (
             <Tooltip title="Sichern (Arbeitsstand + Backup)">
               <IconButton
+                size="small"
                 onClick={onSave}
                 aria-label="Sichern"
                 sx={{
                   position: 'absolute',
-                  right: 44,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
+                  right: 36,
+                  top: 6,
+                  zIndex: 2,
                   color: '#5d4037',
+                  width: 28,
+                  height: 28,
+                  minWidth: 28,
+                  p: 0.25,
                   '&:hover': { bgcolor: 'rgba(251, 192, 45, 0.35)' },
                 }}
               >
-                <SaveIcon sx={{ fontSize: 20 }} />
+                <SaveIcon sx={{ fontSize: 16 }} />
               </IconButton>
             </Tooltip>
           ) : null}
           <DialogCloseIconButton
             onClose={onClose}
-            sx={{ color: '#5d4037', '&:hover': { bgcolor: 'rgba(251, 192, 45, 0.35)' } }}
+            sx={{ color: '#5d4037', top: 6, transform: 'none', '&:hover': { bgcolor: 'rgba(251, 192, 45, 0.35)' } }}
             iconSx={{ color: '#5d4037' }}
           />
         </DialogTitle>

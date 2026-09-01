@@ -3,7 +3,7 @@ import { Box, CircularProgress, IconButton, Typography } from '@mui/material';
 import { ChevronLeft, ChevronRight, SelfImprovement as QuietWorkIcon, MusicNote as MusicGameIcon } from '@mui/icons-material';
 import PresentationSlideView from './PresentationSlideView';
 import PresentationStrokesPreview from './PresentationStrokesPreview';
-import PresentationNotesInkCanvas from './PresentationNotesInkCanvas';
+import PresentationDrawOverlay from './PresentationDrawOverlay';
 import {
   PresentationAnnotations,
   PresentationDeck,
@@ -15,6 +15,8 @@ import {
   loadPresentationDeck,
   loadPresentationDeckForOriginalView,
   loadOrMigrateNamedVersionSnapshot,
+  migrateNotesInkCssToSlideSpace,
+  notesInkNeedsHostMigration,
   sortSlides,
 } from '../../lib/presentationDeck';
 import {
@@ -595,6 +597,14 @@ export default function PresentationLaptopPlayer({
   const plainNotes = showNotes ? currentSlide.speakerNotes?.trim() || '' : '';
   const notesInk = showNotes ? currentSlide.speakerNotesInk || [] : [];
   const hasNotesInk = notesInk.length > 0;
+  let notesInkDisplay: PresentationStroke[] = notesInk;
+  if (hasNotesInk && notesInkNeedsHostMigration(notesInk, currentSlide.speakerNotesInkSpace)) {
+    const host = notesInkHostRef.current;
+    const rect = host?.getBoundingClientRect();
+    if (rect && rect.width >= 8 && rect.height >= 8) {
+      notesInkDisplay = migrateNotesInkCssToSlideSpace(notesInk, rect.width, rect.height);
+    }
+  }
   const displayNotesHtml = hasHtmlNotes
     ? restampNotesHighlightsHtml(applyNotesImageFlowToHtml(hydrateNotesHtmlFontSizes(notesHtml!)))
     : '';
@@ -1072,12 +1082,17 @@ export default function PresentationLaptopPlayer({
             </Typography>
           ) : null}
               {hasNotesInk && (
-                <PresentationNotesInkCanvas
-                  hostRef={notesInkHostRef}
-                  strokes={notesInk}
-                  mode="text"
-                  color="#111827"
+                <PresentationDrawOverlay
+                  fillContainer
+                  strokes={notesInkDisplay}
+                  onStrokesChange={() => {}}
+                  enabled
+                  interactive={false}
                   readOnly
+                  slideId={currentSlide.id}
+                  tool="pen"
+                  strokeColor="#111827"
+                  scale={1}
                 />
               )}
             </Box>

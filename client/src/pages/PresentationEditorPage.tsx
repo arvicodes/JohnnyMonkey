@@ -437,7 +437,10 @@ const PresentationEditorPage: React.FC = () => {
   const suppressMasterCommitRef = useRef(false);
   const inkSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [inkEditActive, setInkEditActive] = useState(false);
-  const [inkTool, setInkTool] = useState<PresentationDrawTool>('select');
+  const [inkTool, setInkTool] = useState<PresentationDrawTool>('pen');
+  /** Stiftziel: Folie oder Notizfeld neben der Folie — eine gemeinsame Werkzeugleiste. */
+  const [inkTarget, setInkTarget] = useState<'slide' | 'notes'>('slide');
+  const [notesSelectedStrokeIds, setNotesSelectedStrokeIds] = useState<string[]>([]);
   const [inkColor, setInkColor] = useState(DEFAULT_PEN_COLOR);
   const [inkLineWidth, setInkLineWidth] = useState(() => defaultLineWidthForTool('pen'));
   const [inkMarkerOpacity, setInkMarkerOpacity] = useState(DEFAULT_MARKER_OPACITY);
@@ -671,13 +674,35 @@ const PresentationEditorPage: React.FC = () => {
   const handleToggleInkEdit = useCallback(() => {
     setInkEditActive((v) => {
       if (!v) {
-        setInkTool('select');
+        // Wie in den Notizen: Stift-Icon → sofort schreiben, nicht erst Lasso/Linie wählen.
+        setInkTool('pen');
         setInkColor(penColorRef.current);
         setInkLineWidth(defaultLineWidthForTool('pen'));
       }
       return !v;
     });
     setSelectedStrokeIds([]);
+    setNotesSelectedStrokeIds([]);
+  }, []);
+
+  const handleInkStartFromStylus = useCallback(() => {
+    setInkEditActive(true);
+    setInkTarget('slide');
+    setInkTool((t) => (isInkDrawCaptureTool(t) ? t : 'pen'));
+    setInkColor(penColorRef.current);
+    setInkLineWidth((w) =>
+      lineWidthsForTool('pen').some((opt) => Math.abs(opt - w) < 0.01) ? w : defaultLineWidthForTool('pen'),
+    );
+  }, []);
+
+  const handleNotesInkStartFromStylus = useCallback(() => {
+    setInkEditActive(true);
+    setInkTarget('notes');
+    setInkTool((t) => (isInkDrawCaptureTool(t) ? t : 'pen'));
+    setInkColor(penColorRef.current);
+    setInkLineWidth((w) =>
+      lineWidthsForTool('pen').some((opt) => Math.abs(opt - w) < 0.01) ? w : defaultLineWidthForTool('pen'),
+    );
   }, []);
 
   const handleSelectInkTool = useCallback(
@@ -695,6 +720,7 @@ const PresentationEditorPage: React.FC = () => {
       }
       if (tool !== 'select') {
         setSelectedStrokeIds([]);
+        setNotesSelectedStrokeIds([]);
         setSelectedElementId(null);
         setActiveEditor(null);
       }
@@ -713,12 +739,13 @@ const PresentationEditorPage: React.FC = () => {
       setInkColor(c);
       if (inkTool === 'marker') markerColorRef.current = c;
       else penColorRef.current = c;
+      if (inkTarget === 'notes') return;
       if (selectedStrokeIds.length) {
         const idSet = new Set(selectedStrokeIds);
         updateInkStrokes(currentInkStrokes.map((s) => (idSet.has(s.id) ? { ...s, color: c } : s)));
       }
     },
-    [inkTool, selectedStrokeIds, currentInkStrokes, updateInkStrokes],
+    [inkTool, inkTarget, selectedStrokeIds, currentInkStrokes, updateInkStrokes],
   );
 
   const handleSelectInkLineWidth = useCallback(
@@ -4175,12 +4202,21 @@ const PresentationEditorPage: React.FC = () => {
                   inkColor={inkColor}
                   inkLineWidth={inkLineWidth}
                   inkMarkerOpacity={inkMarkerOpacity}
-                  canUndoInk={currentInkStrokes.length > 0}
+                  canUndoInk={
+                    inkTarget === 'notes'
+                      ? (normalizedActive?.speakerNotesInk?.length || 0) > 0
+                      : currentInkStrokes.length > 0
+                  }
                   inkSelectionIsMarker={
-                    selectedStrokeIds.length > 0 &&
-                    currentInkStrokes
-                      .filter((s) => selectedStrokeIds.includes(s.id))
-                      .every((s) => s.mode === 'marker')
+                    inkTarget === 'notes'
+                      ? notesSelectedStrokeIds.length > 0 &&
+                        (normalizedActive?.speakerNotesInk || [])
+                          .filter((s) => notesSelectedStrokeIds.includes(s.id))
+                          .every((s) => s.mode === 'marker')
+                      : selectedStrokeIds.length > 0 &&
+                        currentInkStrokes
+                          .filter((s) => selectedStrokeIds.includes(s.id))
+                          .every((s) => s.mode === 'marker')
                   }
                   onToggleInkEdit={handleToggleInkEdit}
                   onSelectInkTool={handleSelectInkTool}
@@ -4188,6 +4224,19 @@ const PresentationEditorPage: React.FC = () => {
                   onSelectInkLineWidth={handleSelectInkLineWidth}
                   onSelectInkMarkerOpacity={handleSelectInkMarkerOpacity}
                   onUndoInk={() => {
+                    if (inkTarget === 'notes') {
+                      const strokes = normalizedActive?.speakerNotesInk || [];
+                      if (!strokes.length || !normalizedActive) return;
+                      updateSlide(
+                        {
+                          speakerNotesInk: strokes.slice(0, -1),
+                          speakerNotesInkSpace: 'slide',
+                        },
+                        normalizedActive.id,
+                      );
+                      setNotesSelectedStrokeIds([]);
+                      return;
+                    }
                     if (!currentInkStrokes.length) return;
                     updateInkStrokes(currentInkStrokes.slice(0, -1));
                     setSelectedStrokeIds([]);
@@ -4555,13 +4604,22 @@ const PresentationEditorPage: React.FC = () => {
                       setSelectedElementId(null);
                     }}
                   />
-                  {showInkOverlay ? (
                   <PresentationDrawOverlay
                     strokes={currentInkStrokes}
                     onStrokesChange={updateInkStrokes}
-                    enabled={showInkOverlay}
-                    interactive={inkDrawCapture}
-                    readOnly={!inkUiActive}
+                    enabled={
+                      currentInkStrokes.length > 0 ||
+                      inkTarget === 'slide' ||
+                      !inkEditActive
+                    }
+                    interactive={
+                      inkTarget === 'slide' &&
+                      !connectorDrawActive &&
+                      (inkDrawCapture || !inkEditActive)
+                    }
+                    readOnly={false}
+                    passThroughNonPen={!inkEditActive || inkTarget !== 'slide'}
+                    onInkStart={handleInkStartFromStylus}
                     slideId={normalizedActive.id}
                     tool={inkTool}
                     strokeColor={inkColor}
@@ -4570,10 +4628,15 @@ const PresentationEditorPage: React.FC = () => {
                     selectedStrokeIds={selectedStrokeIds}
                     onSelectedStrokeIdsChange={setSelectedStrokeIds}
                     scale={1}
-                    onBackgroundPointerDown={() => setSelectedElementId(null)}
-                    onHitElement={setSelectedElementId}
+                    onBackgroundPointerDown={() => {
+                      setSelectedElementId(null);
+                      setInkTarget('slide');
+                    }}
+                    onHitElement={(id) => {
+                      setSelectedElementId(id);
+                      setInkTarget('slide');
+                    }}
                   />
-                  ) : null}
                   <PresentationConnectorDrawOverlay
                     active={connectorDrawActive}
                     points={connectorDrawPoints}
@@ -4600,6 +4663,7 @@ const PresentationEditorPage: React.FC = () => {
               setActiveEditor(el);
               setActiveHtmlField(fieldKey);
               setSelectedElementId(null);
+              setInkTarget('notes');
             }}
             onEditorBlur={() => {
               if (isFormatBarInteracting()) return;
@@ -4616,8 +4680,27 @@ const PresentationEditorPage: React.FC = () => {
               updateSlide({ speakerNotesHtml: html, speakerNotes: plain }, normalizedActive.id)
             }
             inkStrokes={normalizedActive.speakerNotesInk}
+            inkSpace={normalizedActive.speakerNotesInkSpace}
+            inkTool={inkTool}
+            inkColor={inkColor}
+            inkLineWidth={inkLineWidth}
+            inkMarkerOpacity={inkMarkerOpacity}
+            inkEditActive={inkEditActive && inkTarget === 'notes'}
+            selectedStrokeIds={notesSelectedStrokeIds}
+            onSelectedStrokeIdsChange={setNotesSelectedStrokeIds}
             onInkChange={(strokes) =>
-              updateSlide({ speakerNotesInk: strokes }, normalizedActive.id)
+              updateSlide(
+                { speakerNotesInk: strokes, speakerNotesInkSpace: 'slide' },
+                normalizedActive.id,
+              )
+            }
+            onInkStart={handleNotesInkStartFromStylus}
+            onNotesActivate={() => setInkTarget('notes')}
+            onMigratedInk={(strokes) =>
+              updateSlide(
+                { speakerNotesInk: strokes, speakerNotesInkSpace: 'slide' },
+                normalizedActive.id,
+              )
             }
             onBeforeDiscreteEdit={flushDeckHistory}
             onMoveNotesToTrash={moveNotesToTrash}
@@ -4674,13 +4757,28 @@ const PresentationEditorPage: React.FC = () => {
         <DialogTitle>Alle Stiftstriche löschen?</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary">
-            Alle Stift-, Marker- und Formzeichnungen auf dieser Folie werden entfernt. Das lässt
-            sich nicht rückgängig machen.
+            Alle Stift-, Marker- und Formzeichnungen{' '}
+            {inkTarget === 'notes' ? 'in den Notizen' : 'auf dieser Folie'} werden entfernt.
           </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setClearInkOpen(false)}>Abbrechen</Button>
-          <Button color="error" variant="contained" onClick={clearAllInkOnSlide}>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => {
+              if (inkTarget === 'notes' && normalizedActive) {
+                setNotesSelectedStrokeIds([]);
+                updateSlide(
+                  { speakerNotesInk: undefined, speakerNotesInkSpace: 'slide' },
+                  normalizedActive.id,
+                );
+                setClearInkOpen(false);
+                return;
+              }
+              clearAllInkOnSlide();
+            }}
+          >
             Löschen
           </Button>
         </DialogActions>

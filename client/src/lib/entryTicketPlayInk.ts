@@ -95,3 +95,25 @@ export function inkFingerprint(strokes: PresentationStroke[] | undefined): strin
     .map((s) => `${s.id}:${s.points.length}:${s.color}:${s.lineWidth}`)
     .join('|');
 }
+
+function inkPointCount(strokes: PresentationStroke[] | undefined): number {
+  if (!strokes?.length) return 0;
+  return strokes.reduce((n, s) => n + (s.points?.length || 0), 0);
+}
+
+/** Pro Fläche die vollständigere Zeichnung behalten (Tablet ↔ Laptop). */
+export function mergePlayInkMaps(
+  a?: Record<string, PresentationStroke[]>,
+  b?: Record<string, PresentationStroke[]>,
+): Record<string, PresentationStroke[]> | undefined {
+  const keys = new Set([...Object.keys(a || {}), ...Object.keys(b || {})]);
+  if (keys.size === 0) return undefined;
+  const out: Record<string, PresentationStroke[]> = {};
+  for (const key of keys) {
+    const sa = a?.[key];
+    const sb = b?.[key];
+    const pick = inkPointCount(sb) > inkPointCount(sa) ? sb : sa;
+    if (pick?.length) out[key] = pick;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}

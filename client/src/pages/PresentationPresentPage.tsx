@@ -1292,6 +1292,11 @@ const PresentationPresentPage: React.FC = () => {
     });
   };
 
+  const handleInkStartFromStylus = () => {
+    setDrawActive(true);
+    setActiveTool((t) => (t === 'select' ? 'pen' : t));
+  };
+
   const handleSelectLineWidth = (w: number) => {
     setLineWidth(w);
     if (selectedStrokeIds.length && annotations && currentSlide) {
@@ -1989,9 +1994,12 @@ const PresentationPresentPage: React.FC = () => {
             <PresentationDrawOverlay
               strokes={currentStrokes}
               onStrokesChange={updateStrokes}
-              enabled={drawActive}
+              enabled
+              interactive
+              passThroughNonPen={!drawActive}
+              onInkStart={handleInkStartFromStylus}
               slideId={currentSlide.id}
-              tool={activeTool}
+              tool={drawActive ? activeTool : 'pen'}
               strokeColor={strokeColor}
               lineWidth={lineWidth}
               markerOpacity={markerOpacity}

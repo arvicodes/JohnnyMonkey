@@ -61,6 +61,8 @@ import {
 import { reiheLabelFromPath, type WorkingReiheOption } from '../../lib/dashboardWorkingReihen';
 import { entryTicketHasImage, entryTicketShowCountStyle, readEntryTicketCardLayout } from '../../lib/entryTicketRichText';
 import { entryTicketCardInkKey } from '../../lib/entryTicketPlayInk';
+import type { PresentationStroke } from '../../lib/presentationDeck';
+import PresentationDrawOverlay from '../presentation/PresentationDrawOverlay';
 import { EntryTicketCardEditorModal } from './EntryTicketCardEditorModal';
 import { EntryTicketRichField } from './EntryTicketRichField';
 import { EntryTicketRichHtml, entryTicketRichTextSx } from './EntryTicketRichHtml';
@@ -182,8 +184,9 @@ type EditorTaskRowProps = {
   onToggleSelected: (lessonId: string, taskId: string) => void;
   onCopyLater: (lessonId: string, taskId: string) => void;
   onDelete: (lessonId: string, taskId: string) => void;
-  onPreview: (task: { prompt: string; solution: string }) => void;
+  onPreview: (task: { prompt: string; solution: string; ink?: PresentationStroke[] }) => void;
   onOpenLargeEditor: (lessonId: string, taskId: string) => void;
+  cardInk?: PresentationStroke[];
 };
 
 const EditorTaskRow = React.memo(function EditorTaskRow({
@@ -202,6 +205,7 @@ const EditorTaskRow = React.memo(function EditorTaskRow({
   onDelete,
   onPreview,
   onOpenLargeEditor,
+  cardInk = EMPTY_EDIT_INK,
 }: EditorTaskRowProps) {
   const tone = entryTicketShowCountStyle(shown, maxShowCount);
   return (
@@ -334,7 +338,13 @@ const EditorTaskRow = React.memo(function EditorTaskRow({
         <Tooltip title="Play-Vorschau">
           <IconButton
             size="small"
-            onClick={() => onPreview({ prompt: task.prompt, solution: task.solution })}
+            onClick={() =>
+              onPreview({
+                prompt: task.prompt,
+                solution: task.solution,
+                ink: cardInk,
+              })
+            }
             aria-label="Play-Vorschau"
             sx={{
               ...iconBtnSx,
@@ -405,7 +415,11 @@ export function EntryTicketFragensetEditor({
   const [deleteCheck1, setDeleteCheck1] = useState(false);
   const [deleteCheck2, setDeleteCheck2] = useState(false);
   const [deleteWord, setDeleteWord] = useState('');
-  const [previewTask, setPreviewTask] = useState<{ prompt: string; solution: string } | null>(null);
+  const [previewTask, setPreviewTask] = useState<{
+    prompt: string;
+    solution: string;
+    ink?: PresentationStroke[];
+  } | null>(null);
   const [largeEdit, setLargeEdit] = useState<{ lessonId: string; taskId: string } | null>(null);
 
   const largeEditTask = useMemo(() => {
@@ -1656,6 +1670,7 @@ export function EntryTicketFragensetEditor({
                               onDelete={deleteTask}
                               onPreview={setPreviewTask}
                               onOpenLargeEditor={(lessonId, taskId) => setLargeEdit({ lessonId, taskId })}
+                              cardInk={set.playInkByKey?.[entryTicketCardInkKey(`c:${set.id}:${task.id}`)]}
                             />
                           );
                         })}
@@ -1999,6 +2014,21 @@ export function EntryTicketFragensetEditor({
                     )}
                   </Box>
                 </Box>
+                {previewTask.ink && previewTask.ink.length > 0 ? (
+                  <PresentationDrawOverlay
+                    fillContainer
+                    strokes={previewTask.ink}
+                    onStrokesChange={() => {}}
+                    readOnly
+                    enabled
+                    interactive={false}
+                    slideId="et-preview-ink"
+                    tool="select"
+                    strokeColor="#263238"
+                    lineWidth={3}
+                    scale={1}
+                  />
+                ) : null}
               </Box>
               <Box>
                 <Typography

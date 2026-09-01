@@ -1,7 +1,7 @@
 {
   "version": 1,
   "lessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen",
-  "updatedAt": "2026-08-27T08:21:07.727Z",
+  "updatedAt": "2026-09-01T07:54:02.955Z",
   "bySlideId": {
     "slide-1786610158789-rug2p": [
       {
@@ -291840,6 +291840,7 @@
         "lineWidth": 3,
         "mode": "pen"
       }
-    ]
+    ],
+    "slide-1787902159112-fvcix": []
   }
 }

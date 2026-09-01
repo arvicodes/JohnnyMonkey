@@ -24,16 +24,18 @@ function strokeHitsPoint(stroke: PresentationNotesInkStroke, pt: InkPoint, radiu
 }
 
 function cloneStrokes(strokes: PresentationNotesInkStroke[]): PresentationNotesInkStroke[] {
-  return strokes.map((s) => ({
+  return strokes.map((s, i) => ({
+    ...s,
+    id: s.id || `notes-${i}`,
     color: s.color,
-    width: s.width,
+    lineWidth: s.lineWidth,
     points: s.points.map((p) => ({ x: p.x, y: p.y })),
   }));
 }
 
 function strokesSignature(strokes: PresentationNotesInkStroke[]): string {
   return strokes
-    .map((s) => `${s.color}|${s.width}|${s.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(';')}`)
+    .map((s) => `${s.id}|${s.color}|${s.lineWidth}|${s.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(';')}`)
     .join('/');
 }
 
@@ -121,7 +123,7 @@ const PresentationNotesInkCanvas: React.FC<PresentationNotesInkCanvasProps> = ({
   const applyInkStyle = (ctx: CanvasRenderingContext2D, stroke: PresentationNotesInkStroke) => {
     ctx.strokeStyle = stroke.color;
     ctx.fillStyle = stroke.color;
-    ctx.lineWidth = stroke.width;
+    ctx.lineWidth = stroke.lineWidth;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.miterLimit = 1.5;
@@ -156,7 +158,7 @@ const PresentationNotesInkCanvas: React.FC<PresentationNotesInkCanvasProps> = ({
       applyInkStyle(ctx, stroke);
       const p = stroke.points[0];
       ctx.beginPath();
-      ctx.arc(p.x, p.y, Math.max(0.6, stroke.width / 2), 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, Math.max(0.6, stroke.lineWidth / 2), 0, Math.PI * 2);
       ctx.fill();
       return;
     }
@@ -305,9 +307,11 @@ const PresentationNotesInkCanvas: React.FC<PresentationNotesInkCanvasProps> = ({
     erasingRef.current = false;
     const pressure = e.pressure > 0 ? e.pressure : 0.5;
     const stroke: PresentationNotesInkStroke = {
+      id: `notes-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       points: [pt],
       color: colorRef.current,
-      width: e.pointerType === 'pen' ? Math.max(2, Math.min(4.2, pressure * 4.2)) : 3,
+      lineWidth: e.pointerType === 'pen' ? Math.max(2, Math.min(4.2, pressure * 4.2)) : 3,
+      mode: 'pen',
     };
     currentStrokeRef.current = stroke;
     lastInkPtRef.current = pt;
@@ -316,7 +320,7 @@ const PresentationNotesInkCanvas: React.FC<PresentationNotesInkCanvasProps> = ({
     if (ctx) {
       applyInkStyle(ctx, stroke);
       ctx.beginPath();
-      ctx.arc(pt.x, pt.y, Math.max(0.6, stroke.width / 2), 0, Math.PI * 2);
+      ctx.arc(pt.x, pt.y, Math.max(0.6, stroke.lineWidth / 2), 0, Math.PI * 2);
       ctx.fill();
     }
   };

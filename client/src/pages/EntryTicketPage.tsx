@@ -67,6 +67,7 @@ import {
   fetchAndCacheCustomEntryTicketSets,
   loadCustomEntryTicketSets,
   mergeCustomSetListsKeepExisting,
+  mergeCustomSetsKeepExisting,
   replaceCustomSetsFromServer,
   TICKETS_FROM_GIT_EVENT,
   mergeDiscoveredLessonsIntoSet,
@@ -79,6 +80,7 @@ import {
   ENTRY_TICKET_SOLUTION_INK_KEY,
   entryTicketCardInkKey,
   inkFingerprint,
+  mergePlayInkMaps,
   parseEntryTicketInk,
   parseEntryTicketInkMap,
 } from '../lib/entryTicketPlayInk';
@@ -1390,7 +1392,7 @@ function mergeHydratedCustomSet(
             reihePath: existing.reihePath || hydrated.reihePath,
             reihePaths: existing.reihePaths?.length ? existing.reihePaths : hydrated.reihePaths,
             notes: existing.notes ?? hydrated.notes,
-            playInkByKey: existing.playInkByKey ?? hydrated.playInkByKey,
+            playInkByKey: mergePlayInkMaps(existing.playInkByKey, hydrated.playInkByKey),
           }
         : s,
     );
@@ -2629,13 +2631,12 @@ export default function EntryTicketPage({
           setCustomSets((prev) => {
             const existing = prev.find((s) => s.id === hydrated.id);
             if (!existing) return mergeHydratedCustomSet(prev, hydrated);
-            if (!hydrated.playInkByKey) return prev;
-            const incomingFp = JSON.stringify(hydrated.playInkByKey);
+            const merged = mergeCustomSetsKeepExisting(hydrated, existing);
+            const incomingFp = JSON.stringify(merged.playInkByKey ?? {});
             const existingFp = JSON.stringify(existing.playInkByKey ?? {});
-            if (incomingFp === existingFp) return prev;
-            return prev.map((s) =>
-              s.id === hydrated.id ? { ...s, playInkByKey: hydrated.playInkByKey } : s,
-            );
+            const lessonsChanged = JSON.stringify(merged.lessons) !== JSON.stringify(existing.lessons);
+            if (incomingFp === existingFp && !lessonsChanged) return prev;
+            return prev.map((s) => (s.id === hydrated.id ? { ...existing, ...merged, notes: existing.notes ?? merged.notes } : s));
           });
           setCustomSetId((prev) => prev || hydrated.id);
         } else if (typeof data.grade === 'string' && data.grade) {
@@ -3200,11 +3201,18 @@ export default function EntryTicketPage({
     let cancelled = false;
     void (async () => {
       try {
-        const merged = await fetchAndCacheCustomEntryTicketSets();
+        const merged = await fetchAndCacheCustomEntryTicketSets({
+          preferRemote: Date.now() - playLocalDirtyRef.current > 4000,
+        });
         if (cancelled) return;
         setCustomSets((local) => {
+          const keepLocal = Date.now() - playLocalDirtyRef.current < 4000;
           const combined =
-            merged.length === 0 ? local : mergeCustomSetListsKeepExisting(local, merged);
+            merged.length === 0
+              ? local
+              : keepLocal
+                ? mergeCustomSetListsKeepExisting(local, merged)
+                : mergeCustomSetListsKeepExisting(merged, local);
           void mergeFolienUnterkapitelIntoSets(combined).then((withUnterkapitel) => {
             if (cancelled) return;
             applyUnterkapitel(withUnterkapitel);
@@ -3224,6 +3232,43 @@ export default function EntryTicketPage({
       cancelled = true;
     };
   }, [isTeacher, embeddedPlay]);
+
+  /** Tablet-Änderungen (Karten, Zeichnung) regelmäßig auf den Laptop holen. */
+  useEffect(() => {
+    if (!isTeacher || studentReviewMode) return;
+    let cancelled = false;
+    const tick = async () => {
+      if (cancelled) return;
+      if (Date.now() - playLocalDirtyRef.current < 4000) return;
+      try {
+        const remote = await fetchAndCacheCustomEntryTicketSets({ preferRemote: true });
+        if (cancelled || remote.length === 0) return;
+        setCustomSets((local) => {
+          if (Date.now() - playLocalDirtyRef.current < 4000) return local;
+          const combined = mergeCustomSetListsKeepExisting(remote, local);
+          const same =
+            combined.length === local.length &&
+            combined.every((s, i) => {
+              const o = local[i];
+              return (
+                o &&
+                s.id === o.id &&
+                JSON.stringify(s.playInkByKey ?? {}) === JSON.stringify(o.playInkByKey ?? {}) &&
+                JSON.stringify(s.lessons) === JSON.stringify(o.lessons)
+              );
+            });
+          return same ? local : combined;
+        });
+      } catch {
+        /* ignore */
+      }
+    };
+    const id = window.setInterval(() => void tick(), 2500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [isTeacher, studentReviewMode]);
 
   /** Gelöschtes Custom-Set (nur Lehrer): zurück auf Klassenband. Moderator behält URL/Server-Grade. */
   useEffect(() => {
@@ -3352,8 +3397,11 @@ export default function EntryTicketPage({
       taskSeed,
       lessonPath: entryLessonPath || '',
       groupId: entryTicketGroupId || '',
-      tasks: selectedTasks,
+      tasks: liveTasksFingerprint(selectedTasks),
       customSetId: activeSet?.id || '',
+      ink: Object.entries(activeSet?.playInkByKey || {})
+        .map(([k, v]) => `${k}:${inkFingerprint(v)}`)
+        .join('|'),
     });
     if (tasksSyncedRef.current === sig) return;
     tasksSyncedRef.current = sig;
@@ -5643,7 +5691,15 @@ export default function EntryTicketPage({
                           Entry Ticket startet… Karten erscheinen hier mit Lösungen.
                         </Typography>
                       ) : null}
-                      {activeTasks.map((task, index) => (
+                      {activeTasks.map((task, index) => {
+                        const cardInk =
+                          task.ink?.length
+                            ? task.ink
+                            : task.sourceKey
+                              ? activeCustomSet?.playInkByKey?.[entryTicketCardInkKey(task.sourceKey)]
+                              : undefined;
+                        const hasCardInk = Boolean(cardInk && cardInk.length > 0);
+                        return (
                         <Box
                           key={task.sourceKey || `et-sol-${index}`}
                           sx={{
@@ -5690,6 +5746,7 @@ export default function EntryTicketPage({
                           >
                             <Box
                               sx={{
+                                position: 'relative',
                                 fontSize: overviewFitFont(
                                   htmlPlainLen(task.prompt),
                                   finalSlideRows,
@@ -5699,7 +5756,7 @@ export default function EntryTicketPage({
                                 fontWeight: 500,
                                 color: '#455a64',
                                 minWidth: 0,
-                                minHeight: 0,
+                                minHeight: hasCardInk ? 88 : 0,
                                 overflow: 'hidden',
                                 whiteSpace: 'pre-wrap',
                                 ...entryTicketRichTextSx,
@@ -5716,6 +5773,21 @@ export default function EntryTicketPage({
                               }}
                             >
                               <EntryTicketRichHtml compact value={task.prompt} />
+                              {hasCardInk ? (
+                                <PresentationDrawOverlay
+                                  fillContainer
+                                  strokes={cardInk ?? []}
+                                  onStrokesChange={() => {}}
+                                  readOnly
+                                  enabled
+                                  interactive={false}
+                                  slideId={`et-ov-${task.sourceKey || index}`}
+                                  tool="select"
+                                  strokeColor="#263238"
+                                  lineWidth={3}
+                                  scale={1}
+                                />
+                              ) : null}
                             </Box>
                             {showSolutions || laptopCompanion ? (
                               <Box
@@ -5779,7 +5851,8 @@ export default function EntryTicketPage({
                             </Tooltip>
                           ) : null}
                         </Box>
-                      ))}
+                        );
+                      })}
                     </Box>
                     {canEditPlay || solutionSlideInk.length > 0 ? (
                       <PresentationDrawOverlay

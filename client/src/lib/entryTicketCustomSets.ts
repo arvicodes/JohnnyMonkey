@@ -3,7 +3,7 @@ import {
   entryTicketHasText,
   normalizeEntryTicketFieldValue,
 } from './entryTicketRichText';
-import { parseEntryTicketInkMap } from './entryTicketPlayInk';
+import { mergePlayInkMaps, parseEntryTicketInkMap } from './entryTicketPlayInk';
 import type { PresentationStroke } from './presentationDeck';
 import { apiGet } from './api';
 
@@ -661,6 +661,7 @@ export function mergeCustomSetsKeepExisting(
     reihePath: paths[0] || primary.reihePath || incoming.reihePath,
     reihePaths: paths.length > 0 ? paths : undefined,
     notes: primary.notes ?? incoming.notes,
+    playInkByKey: mergePlayInkMaps(primary.playInkByKey, incoming.playInkByKey),
     lessons,
   });
 }
@@ -805,7 +806,9 @@ function normalizeFolderLabel(name: string): string {
 /**
  * Fragensets vom Server laden und in localStorage cachen (TeacherDashboard / Defaults).
  */
-export async function fetchAndCacheCustomEntryTicketSets(): Promise<EntryTicketCustomSet[]> {
+export async function fetchAndCacheCustomEntryTicketSets(opts?: {
+  preferRemote?: boolean;
+}): Promise<EntryTicketCustomSet[]> {
   const local = loadCustomEntryTicketSets();
   try {
     const res = await apiGet('/api/entry-ticket/custom-sets');
@@ -824,10 +827,15 @@ export async function fetchAndCacheCustomEntryTicketSets(): Promise<EntryTicketC
       return replaced;
     }
 
-    // Nach dem Fetch noch einmal localStorage lesen: währenddessen können neue Karten
-    // schon gespeichert worden sein. Der Live-Stand bleibt primär.
+    // Nach dem Fetch localStorage nochmal lesen (Karten, die währenddessen kamen).
+    // Standard: Server gewinnt bei vorhandenem Inhalt — sonst bleibt das Tablet unsichtbar.
     const localNow = loadCustomEntryTicketSets();
-    const merged = mergeCustomSetListsKeepExisting(localNow, remote).map(ensureSpecialLessonSections);
+    const preferRemote = opts?.preferRemote !== false;
+    const merged = (
+      preferRemote
+        ? mergeCustomSetListsKeepExisting(remote, localNow)
+        : mergeCustomSetListsKeepExisting(localNow, remote)
+    ).map(ensureSpecialLessonSections);
     saveCustomEntryTicketSets(merged);
     return merged;
   } catch {

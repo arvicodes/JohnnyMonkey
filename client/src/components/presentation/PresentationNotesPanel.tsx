@@ -4,12 +4,12 @@ import {
   DeleteOutline as TrashIcon,
   ChevronRight as HideNotesIcon,
   StickyNote2Outlined as NotesIcon,
-  Edit as PenIcon,
-  Keyboard as KeyboardIcon,
-  AutoFixOff as EraserIcon,
-  ClearAll as ClearInkIcon,
 } from '@mui/icons-material';
-import { htmlToPlain, textToHtml, type PresentationNotesInkStroke } from '../../lib/presentationDeck';
+import { htmlToPlain, textToHtml, type PresentationStroke } from '../../lib/presentationDeck';
+import {
+  migrateNotesInkCssToSlideSpace,
+  notesInkNeedsHostMigration,
+} from '../../lib/presentationDeck';
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
 import { presentationNotesHighlightSx, restampNotesHighlights, restampNotesHighlightsHtml } from '../../lib/presentationTheme';
 import { isFormatBarInteracting, isPresentationFormatUiTarget } from '../../lib/presentationFormatBarGuard';
@@ -45,10 +45,8 @@ import {
   notesHtmlLooksEmpty,
 } from '../../lib/presentationNotesTemplates';
 import { clipboardHasImage, clipboardPrefersRichText, collectPasteImages } from '../../lib/goodNotesClipboard';
-import PresentationNotesInkCanvas, {
-  EMPTY_NOTES_INK,
-  type NotesInkMode,
-} from './PresentationNotesInkCanvas';
+import { isInkDrawCaptureTool, type PresentationDrawTool } from '../../lib/presentationDrawTools';
+import PresentationDrawOverlay from './PresentationDrawOverlay';
 import '../../styles/presentationLists.css';
 
 /** Ein Notizfeld (früher Material / Setup / Sprechakte). Legacy-Keys bleiben für Papierkorb. */
@@ -59,15 +57,7 @@ const NOTES_WIDTH_DEFAULT = 320;
 const NOTES_WIDTH_MIN = 240;
 const NOTES_WIDTH_MAX = 920;
 
-const NOTES_INK_COLORS = [
-  { label: 'Schwarz', value: '#111827' },
-  { label: 'Grau', value: '#546e7a' },
-  { label: 'Rot', value: '#c62828' },
-  { label: 'Orange', value: '#ef6c00' },
-  { label: 'Grün', value: '#2e7d32' },
-  { label: 'Blau', value: '#1565c0' },
-  { label: 'Violett', value: '#6a1b9a' },
-] as const;
+const EMPTY_NOTES_STROKES: PresentationStroke[] = [];
 
 function clampNotesWidth(raw: number): number {
   const viewportMax =
@@ -112,10 +102,22 @@ interface NoteZoneProps {
   onBeforeDiscreteEdit?: () => void;
   /** Bild hochladen → Anzeige-URL (read-image API) */
   onUploadImage?: (file: File) => Promise<string | null>;
-  inkStrokes?: PresentationNotesInkStroke[];
-  inkMode: NotesInkMode;
+  inkStrokes?: PresentationStroke[];
+  /** Tippen erlaubt, wenn Stift-Modus aus oder Lasso ohne Capture. */
+  textEditing: boolean;
+  inkTool: PresentationDrawTool;
   inkColor: string;
-  onInkChange?: (strokes: PresentationNotesInkStroke[]) => void;
+  inkLineWidth: number;
+  inkMarkerOpacity: number;
+  inkInteractive: boolean;
+  passThroughNonPen: boolean;
+  selectedStrokeIds?: string[];
+  onSelectedStrokeIdsChange?: (ids: string[]) => void;
+  onInkChange?: (strokes: PresentationStroke[]) => void;
+  onInkStart?: () => void;
+  onNotesPointerActivate?: () => void;
+  inkSpace?: 'css' | 'slide';
+  onMigratedInk?: (strokes: PresentationStroke[]) => void;
 }
 
 const NoteZone: React.FC<NoteZoneProps> = ({
@@ -134,9 +136,20 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   onBeforeDiscreteEdit,
   onUploadImage,
   inkStrokes,
-  inkMode,
+  textEditing,
+  inkTool,
   inkColor,
+  inkLineWidth,
+  inkMarkerOpacity,
+  inkInteractive,
+  passThroughNonPen,
+  selectedStrokeIds,
+  onSelectedStrokeIdsChange,
   onInkChange,
+  onInkStart,
+  onNotesPointerActivate,
+  inkSpace,
+  onMigratedInk,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
@@ -222,6 +235,18 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   useEffect(() => {
     syncFromProps();
   }, [syncFromProps]);
+
+  useEffect(() => {
+    if (readOnly || !onMigratedInk) return;
+    if (inkSpace === 'slide') return;
+    if (!notesInkNeedsHostMigration(inkStrokes, inkSpace)) return;
+    const host = hostRef.current;
+    if (!host) return;
+    const rect = host.getBoundingClientRect();
+    if (rect.width < 8 || rect.height < 8) return;
+    const source = inkStrokes?.length ? inkStrokes : [];
+    onMigratedInk(migrateNotesInkCssToSlideSpace(source, rect.width, rect.height));
+  }, [readOnly, inkSpace, inkStrokes, onMigratedInk]);
 
   useEffect(() => {
     if (readOnly) return;
@@ -490,6 +515,9 @@ const NoteZone: React.FC<NoteZoneProps> = ({
       </Box>
       <Box
         ref={hostRef}
+        onPointerDownCapture={() => {
+          onNotesPointerActivate?.();
+        }}
         sx={{
           position: 'relative',
           flex: 1,
@@ -497,12 +525,12 @@ const NoteZone: React.FC<NoteZoneProps> = ({
           mx: 1,
           mb: 1,
           overflow: 'hidden',
-          touchAction: inkMode === 'text' ? 'auto' : 'none',
+          touchAction: textEditing ? 'auto' : 'none',
         }}
       >
       <Box
         ref={ref}
-        contentEditable={!readOnly && inkMode === 'text'}
+        contentEditable={!readOnly && textEditing}
         suppressContentEditableWarning
         data-pres-rich-zone
         data-pres-notes-zone="true"
@@ -616,15 +644,15 @@ const NoteZone: React.FC<NoteZoneProps> = ({
           outline: 'none',
           fontSize: 13,
           lineHeight: 1.55,
-          userSelect: inkMode === 'text' ? 'text' : 'none',
-          WebkitUserSelect: inkMode === 'text' ? 'text' : 'none',
-          pointerEvents: inkMode === 'text' ? 'auto' : 'none',
+          userSelect: textEditing ? 'text' : 'none',
+          WebkitUserSelect: textEditing ? 'text' : 'none',
+          pointerEvents: textEditing ? 'auto' : 'none',
           touchAction: 'pan-y',
           borderRadius: 1,
           border: '1px solid',
           borderColor: active ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.barBorder,
           bgcolor: readOnly ? PRES_EDITOR_UI.accentSoft : '#fff',
-          cursor: readOnly ? 'default' : inkMode === 'text' ? 'text' : 'default',
+          cursor: readOnly ? 'default' : textEditing ? 'text' : 'default',
           color: PRES_EDITOR_UI.text,
           wordBreak: 'break-word',
           '& p, & div': { m: 0, mb: 0.5, ml: 0, pl: 0, textIndent: 0 },
@@ -654,15 +682,26 @@ const NoteZone: React.FC<NoteZoneProps> = ({
           position: 'absolute',
         }}
       />
-        <PresentationNotesInkCanvas
-          hostRef={hostRef}
-          editorRef={ref}
-          strokes={inkStrokes?.length ? inkStrokes : EMPTY_NOTES_INK}
-          mode={readOnly ? 'text' : inkMode}
-          color={inkColor}
+        <PresentationDrawOverlay
+          fillContainer
+          strokes={inkStrokes?.length ? inkStrokes : EMPTY_NOTES_STROKES}
+          onStrokesChange={(next) => {
+            onBeforeDiscreteEdit?.();
+            onInkChange?.(next);
+          }}
+          enabled
+          interactive={!readOnly && inkInteractive}
           readOnly={readOnly}
-          onChange={onInkChange}
-          onBeforeStroke={onBeforeDiscreteEdit}
+          passThroughNonPen={passThroughNonPen}
+          onInkStart={onInkStart}
+          slideId={slideId || 'notes'}
+          tool={inkTool}
+          strokeColor={inkColor}
+          lineWidth={inkLineWidth}
+          markerOpacity={inkMarkerOpacity}
+          selectedStrokeIds={selectedStrokeIds}
+          onSelectedStrokeIdsChange={onSelectedStrokeIdsChange}
+          scale={1}
         />
       </Box>
     </Box>
@@ -685,8 +724,19 @@ interface PresentationNotesPanelProps {
   onUploadImage?: (file: File) => Promise<string | null>;
   /** Notizleiste ausblenden (mehr Platz für die Folie). */
   onHide?: () => void;
-  inkStrokes?: PresentationNotesInkStroke[];
-  onInkChange?: (strokes: PresentationNotesInkStroke[]) => void;
+  inkStrokes?: PresentationStroke[];
+  inkSpace?: 'css' | 'slide';
+  inkTool?: PresentationDrawTool;
+  inkColor?: string;
+  inkLineWidth?: number;
+  inkMarkerOpacity?: number;
+  inkEditActive?: boolean;
+  selectedStrokeIds?: string[];
+  onSelectedStrokeIdsChange?: (ids: string[]) => void;
+  onInkChange?: (strokes: PresentationStroke[]) => void;
+  onInkStart?: () => void;
+  onNotesActivate?: () => void;
+  onMigratedInk?: (strokes: PresentationStroke[]) => void;
 }
 
 const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
@@ -703,13 +753,27 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
   onUploadImage,
   onHide,
   inkStrokes,
+  inkSpace,
+  inkTool = 'pen',
+  inkColor = '#1565c0',
+  inkLineWidth = 3,
+  inkMarkerOpacity = 0.45,
+  inkEditActive = false,
+  selectedStrokeIds,
+  onSelectedStrokeIdsChange,
   onInkChange,
+  onInkStart,
+  onNotesActivate,
+  onMigratedInk,
 }) => {
   const [panelWidth, setPanelWidth] = useState(loadNotesWidth);
-  const [inkMode, setInkMode] = useState<NotesInkMode>('text');
-  const [inkColor, setInkColor] = useState<string>(NOTES_INK_COLORS[0].value);
   const resizeRef = useRef<{ pointerId: number; startX: number; startW: number } | null>(null);
   const [resizing, setResizing] = useState(false);
+
+  const notesInkCapture = inkEditActive && isInkDrawCaptureTool(inkTool);
+  const textEditing = !inkEditActive || !notesInkCapture;
+  const inkInteractive = !readOnly && (notesInkCapture || !inkEditActive);
+  const passThroughNonPen = !inkEditActive;
 
   const onResizePointerDown = useCallback((e: React.PointerEvent<HTMLElement>) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -870,82 +934,18 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
           >
             Notizen
           </Typography>
+          <Typography
+            sx={{
+              fontSize: 10,
+              color: PRES_EDITOR_UI.textMuted,
+              opacity: 0.85,
+              display: { xs: 'none', md: 'inline' },
+            }}
+          >
+            · Stift-Werkzeuge oben (wie auf der Folie)
+          </Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.15 }}>
-          {!readOnly && (
-            <>
-              <Tooltip title="Tippen">
-                <IconButton
-                  size="small"
-                  aria-label="Tippen"
-                  onClick={() => {
-                    setInkMode('text');
-                    window.requestAnimationFrame(() => {
-                      const el = document.querySelector(
-                        '[data-pres-notes-zone="true"]',
-                      ) as HTMLElement | null;
-                      el?.focus();
-                    });
-                  }}
-                  sx={{
-                    width: 26,
-                    height: 26,
-                    color: inkMode === 'text' ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
-                    bgcolor: inkMode === 'text' ? PRES_EDITOR_UI.accentSoft : 'transparent',
-                  }}
-                >
-                  <KeyboardIcon sx={{ fontSize: 16 }} />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Stift (Apple Pencil schreibt immer)">
-                <IconButton
-                  size="small"
-                  aria-label="Stift"
-                  onClick={() => setInkMode('pen')}
-                  sx={{
-                    width: 26,
-                    height: 26,
-                    color: inkMode === 'pen' ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
-                    bgcolor: inkMode === 'pen' ? PRES_EDITOR_UI.accentSoft : 'transparent',
-                  }}
-                >
-                  <PenIcon sx={{ fontSize: 16 }} />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Radierer">
-                <IconButton
-                  size="small"
-                  aria-label="Radierer"
-                  onClick={() => setInkMode('eraser')}
-                  sx={{
-                    width: 26,
-                    height: 26,
-                    color: inkMode === 'eraser' ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
-                    bgcolor: inkMode === 'eraser' ? PRES_EDITOR_UI.accentSoft : 'transparent',
-                  }}
-                >
-                  <EraserIcon sx={{ fontSize: 16 }} />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Alle Stiftstriche löschen">
-                <span>
-                  <IconButton
-                    size="small"
-                    aria-label="Stiftstriche löschen"
-                    disabled={!inkStrokes?.length}
-                    onClick={() => {
-                      if (!inkStrokes?.length) return;
-                      onBeforeDiscreteEdit?.();
-                      onInkChange?.([]);
-                    }}
-                    sx={{ width: 26, height: 26, color: PRES_EDITOR_UI.textMuted }}
-                  >
-                    <ClearInkIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </span>
-              </Tooltip>
-            </>
-          )}
         {onHide && (
             <IconButton
               size="small"
@@ -963,33 +963,6 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
         )}
         </Box>
       </Box>
-      {!readOnly && (inkMode === 'pen' || inkMode === 'eraser') && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1, pb: 0.45 }}>
-          {NOTES_INK_COLORS.map((c) => (
-            <Box
-              key={c.value}
-              component="button"
-              type="button"
-              title={c.label}
-              aria-label={`Stiftfarbe ${c.label}`}
-              onClick={() => {
-                setInkColor(c.value);
-                if (inkMode !== 'pen') setInkMode('pen');
-              }}
-              sx={{
-                width: 14,
-                height: 14,
-                p: 0,
-                borderRadius: '50%',
-                border: inkColor === c.value ? '2px solid #263238' : '1px solid rgba(0,0,0,0.22)',
-                bgcolor: c.value,
-                cursor: 'pointer',
-                flexShrink: 0,
-              }}
-            />
-          ))}
-        </Box>
-      )}
       </Box>
       <NoteZone
         fieldKey="speakerNotesHtml"
@@ -1007,9 +980,20 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
         onMoveToTrash={onMoveNotesToTrash}
         onUploadImage={onUploadImage}
         inkStrokes={inkStrokes}
-        inkMode={inkMode}
+        textEditing={textEditing}
+        inkTool={inkTool}
         inkColor={inkColor}
+        inkLineWidth={inkLineWidth}
+        inkMarkerOpacity={inkMarkerOpacity}
+        inkInteractive={inkInteractive}
+        passThroughNonPen={passThroughNonPen}
+        selectedStrokeIds={selectedStrokeIds}
+        onSelectedStrokeIdsChange={onSelectedStrokeIdsChange}
         onInkChange={onInkChange}
+        onInkStart={onInkStart}
+        onNotesPointerActivate={onNotesActivate}
+        inkSpace={inkSpace}
+        onMigratedInk={onMigratedInk}
       />
     </Box>
   );
