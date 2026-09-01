@@ -9,12 +9,14 @@ import { drawPresentationStroke } from '../../lib/presentationDrawTools';
 interface PresentationStrokesPreviewProps {
   strokes: PresentationStroke[];
   scale: number;
+  logicalHeight?: number;
 }
 
 /** Read-only stroke layer for Laptop/review — no parent callbacks, no interaction hooks. */
 const PresentationStrokesPreview: React.FC<PresentationStrokesPreviewProps> = ({
   strokes,
   scale,
+  logicalHeight = SLIDE_REF_HEIGHT,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const strokesKey = useMemo(
@@ -27,20 +29,21 @@ const PresentationStrokesPreview: React.FC<PresentationStrokesPreviewProps> = ({
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    ctx.clearRect(0, 0, SLIDE_REF_WIDTH, SLIDE_REF_HEIGHT);
+    ctx.setTransform(1, 0, 0, canvas.height / Math.max(1, logicalHeight), 0, 0);
+    ctx.clearRect(0, 0, SLIDE_REF_WIDTH, logicalHeight);
     for (const stroke of strokes) drawPresentationStroke(ctx, stroke);
-  }, [strokes, strokesKey]);
+  }, [strokes, strokesKey, logicalHeight]);
 
   if (strokes.length === 0) return null;
 
   const displayW = SLIDE_REF_WIDTH * scale;
-  const displayH = SLIDE_REF_HEIGHT * scale;
+  const displayH = logicalHeight * scale;
 
   return (
     <canvas
       ref={canvasRef}
       width={SLIDE_REF_WIDTH}
-      height={SLIDE_REF_HEIGHT}
+      height={logicalHeight}
       aria-hidden
       style={{
         position: 'absolute',

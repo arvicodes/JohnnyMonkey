@@ -59,6 +59,8 @@ interface PresentationDrawOverlayProps {
   onSelectedStrokeIdsChange?: (ids: string[]) => void;
   markerOpacity?: number;
   scale?: number;
+  /** Logische Folienhöhe in px (1080 × Seiten). */
+  logicalHeight?: number;
   /** Finger auf leerer Folie — z. B. Foto-Auswahl aufheben. */
   onBackgroundPointerDown?: () => void;
   /** Finger auf einem Folien-Element (Foto). */
@@ -244,6 +246,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   onSelectedStrokeIdsChange,
   markerOpacity = DEFAULT_MARKER_OPACITY,
   scale = 1,
+  logicalHeight = SLIDE_REF_HEIGHT,
   onBackgroundPointerDown,
   onHitElement,
   fillContainer = false,
@@ -320,7 +323,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       canvas.width / SLIDE_REF_WIDTH,
       0,
       0,
-      canvas.height / SLIDE_REF_HEIGHT,
+      canvas.height / Math.max(1, logicalHeight),
       0,
       0,
     );
@@ -338,8 +341,8 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       ? Math.max(1, canvas.clientWidth || canvas.getBoundingClientRect().width || SLIDE_REF_WIDTH * scale)
       : SLIDE_REF_WIDTH * scale;
     const cssH = fillContainer
-      ? Math.max(1, canvas.clientHeight || canvas.getBoundingClientRect().height || SLIDE_REF_HEIGHT * scale)
-      : SLIDE_REF_HEIGHT * scale;
+      ? Math.max(1, canvas.clientHeight || canvas.getBoundingClientRect().height || logicalHeight * scale)
+      : logicalHeight * scale;
     const bufW = Math.max(1, Math.round(cssW * dpr));
     const bufH = Math.max(1, Math.round(cssH * dpr));
     if (canvas.width !== bufW || canvas.height !== bufH) {
@@ -380,7 +383,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     }
     return {
       x: ((clientX - rect.left) / rect.width) * SLIDE_REF_WIDTH,
-      y: ((clientY - rect.top) / rect.height) * SLIDE_REF_HEIGHT,
+      y: ((clientY - rect.top) / rect.height) * logicalHeight,
     };
   };
 
@@ -410,7 +413,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     const canvas = canvasRef.current;
     const ctx = ensureCtx(!isLiveInking());
     if (!canvas || !ctx) return;
-    ctx.clearRect(0, 0, SLIDE_REF_WIDTH, SLIDE_REF_HEIGHT);
+    ctx.clearRect(0, 0, SLIDE_REF_WIDTH, logicalHeight);
     const current = previewStrokesRef.current ?? strokesRef.current;
     const base =
       toolRef.current === 'eraser' && eraserPathRef.current.length > 0
@@ -454,7 +457,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
       }
       ctx.restore();
     }
-  }, []);
+  }, [logicalHeight]);
 
   // Folienwechsel / Erstladen: Props übernehmen
   useEffect(() => {
@@ -1210,7 +1213,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
               : 'crosshair';
 
   const displayW = fillContainer ? '100%' : SLIDE_REF_WIDTH * scale;
-  const displayH = fillContainer ? '100%' : SLIDE_REF_HEIGHT * scale;
+  const displayH = fillContainer ? '100%' : logicalHeight * scale;
   const touchAction = listens && !mousePassThrough ? 'none' : 'auto';
   /** Nur Zeichen-/Radier-Werkzeuge über Folien-Elemente legen. */
   const stackAboveContent = listens && tool !== 'select' && !passThroughNonPen;

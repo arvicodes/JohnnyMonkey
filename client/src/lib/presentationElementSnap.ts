@@ -155,13 +155,14 @@ function spacingStartCandidates(others: ElementRect[], axis: 'x' | 'y', size: nu
 export function snapElementMove(
   proposed: ElementRect,
   others: ElementRect[],
-  opts?: { threshold?: number; enabled?: boolean },
+  opts?: { threshold?: number; enabled?: boolean; yMax?: number },
 ): { x: number; y: number; guides: SnapGuide[] } {
   const threshold = opts?.threshold ?? SNAP_THRESHOLD_PCT;
+  const yMax = opts?.yMax ?? IMAGE_FRAME_MAX;
   if (opts?.enabled === false) {
     return {
       x: clamp(proposed.x, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
-      y: clamp(proposed.y, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
+      y: clamp(proposed.y, IMAGE_FRAME_MIN, yMax),
       guides: [],
     };
   }
@@ -255,7 +256,7 @@ export function snapElementMove(
 
   return {
     x: clamp(nextX, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
-    y: clamp(nextY, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
+    y: clamp(nextY, IMAGE_FRAME_MIN, yMax),
     guides,
   };
 }
@@ -264,13 +265,14 @@ export function snapElementResize(
   proposed: ElementRect,
   corner: 'br' | 'tr',
   others: ElementRect[],
-  opts?: { threshold?: number; enabled?: boolean },
+  opts?: { threshold?: number; enabled?: boolean; yMax?: number },
 ): { x: number; y: number; w: number; h: number; guides: SnapGuide[] } {
   const threshold = opts?.threshold ?? SNAP_THRESHOLD_PCT;
+  const yMax = opts?.yMax ?? IMAGE_FRAME_MAX;
   if (opts?.enabled === false) {
     return {
       x: proposed.x,
-      y: proposed.y,
+      y: clamp(proposed.y, IMAGE_FRAME_MIN, yMax),
       w: clamp(proposed.w, MIN_SIZE, IMAGE_FRAME_SIZE_MAX),
       h: clamp(proposed.h, MIN_SIZE, IMAGE_FRAME_SIZE_MAX),
       guides: [],
@@ -363,7 +365,7 @@ export function snapElementResize(
 
   return {
     x: clamp(x, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
-    y: clamp(y, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
+    y: clamp(y, IMAGE_FRAME_MIN, yMax),
     w: clamp(w, MIN_SIZE, IMAGE_FRAME_SIZE_MAX),
     h: clamp(h, MIN_SIZE, IMAGE_FRAME_SIZE_MAX),
     guides,

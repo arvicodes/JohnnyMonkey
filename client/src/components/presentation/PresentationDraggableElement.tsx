@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Box } from '@mui/material';
-import { SlideElement, SLIDE_IMAGE_EDITOR_MAX, slideImageUrl, slideImageUrlWithoutMax } from '../../lib/presentationDeck';
+import { SlideElement, SLIDE_IMAGE_EDITOR_MAX, pagePctToCssPct, slideImageUrl, slideImageUrlWithoutMax } from '../../lib/presentationDeck';
 import {
   animationBadgeBoxSx,
   animationItemIdForElement,
@@ -146,6 +146,8 @@ interface PresentationDraggableElementProps {
   imageEditable?: boolean;
   /** Folien-Akzent für Bildrahmen-Vorlage „Akzent“. */
   accentColor?: string;
+  /** Anzahl Folienseiten (1 = 16:9, mehr = nach unten verlängert). */
+  pageCount?: number;
 }
 
 const MIN_SIZE = 4;
@@ -188,6 +190,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   passPointerThrough = false,
   imageEditable = false,
   accentColor,
+  pageCount = 1,
 }) => {
   const textRef = useRef<HTMLDivElement>(null);
   const displayRef = useRef<HTMLDivElement>(null);
@@ -514,8 +517,11 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
 
     const d = dragRef.current;
     if (!d) return;
+    const pages = Math.max(1, pageCount);
+    const pageH = d.slideH / pages;
+    const yMax = 100 * pages;
     const dxPct = ((e.clientX - d.startX) / d.slideW) * 100;
-    const dyPct = ((e.clientY - d.startY) / d.slideH) * 100;
+    const dyPct = ((e.clientY - d.startY) / pageH) * 100;
     const snapEnabled = !e.metaKey && !e.ctrlKey;
 
     let patch: Partial<SlideElement>;
@@ -532,7 +538,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       const slidePoints = localPointsToSlide(d.orig, resolveShapePoints(d.orig));
       const adjIdx = idx === 0 ? 1 : idx - 1;
       const adj = slidePoints[adjIdx] || slidePoints[0];
-      let next = clientToSlidePct(e.clientX, e.clientY, d.slideLeft, d.slideTop, d.slideW, d.slideH);
+      let next = clientToSlidePct(e.clientX, e.clientY, d.slideLeft, d.slideTop, d.slideW, pageH, yMax);
       next = snapSlidePointAxis(next, adj, e.shiftKey);
       const nextSlide = slidePoints.map((p, i) => (i === idx ? next : p));
       let curveSlide: { x: number; y: number } | null = null;
@@ -549,12 +555,13 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         d.slideLeft,
         d.slideTop,
         d.slideW,
-        d.slideH,
+        pageH,
+        yMax,
       );
       patch = rebaseShapeFromSlidePoints(d.orig, slidePoints, { curveSlide });
     } else if (d.mode === 'rotate') {
       const cx = d.slideLeft + ((d.orig.x + d.orig.w / 2) / 100) * d.slideW;
-      const cy = d.slideTop + ((d.orig.y + d.orig.h / 2) / 100) * d.slideH;
+      const cy = d.slideTop + ((d.orig.y + d.orig.h / 2) / 100) * pageH;
       const a0 = Math.atan2(d.startY - cy, d.startX - cx);
       const a1 = Math.atan2(e.clientY - cy, e.clientX - cx);
       let rot = (d.orig.rotation ?? 0) + ((a1 - a0) * 180) / Math.PI;
@@ -582,10 +589,11 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         const proposed = {
           ...elementToRect(d.orig),
           x: clamp(d.orig.x + dxPct, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
-          y: clamp(d.orig.y + dyPct, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
+          y: clamp(d.orig.y + dyPct, IMAGE_FRAME_MIN, yMax),
         };
         const snapped = snapElementMove(proposed, snapTargetsRef.current, {
           enabled: snapEnabled,
+          yMax,
         });
         patch = { x: snapped.x, y: snapped.y };
         guides = snapped.guides;
@@ -607,10 +615,11 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
           ...elementToRect(d.orig),
           w: nextW,
           h: nextH,
-          y: clamp(d.orig.y + deltaH, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
+          y: clamp(d.orig.y + deltaH, IMAGE_FRAME_MIN, yMax),
         };
         const snapped = snapElementResize(proposed, 'tr', snapTargetsRef.current, {
           enabled: snapEnabled,
+          yMax,
         });
         patch = { x: snapped.x, y: snapped.y, w: snapped.w, h: snapped.h };
         guides = snapped.guides;
@@ -623,9 +632,10 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         w: clamp(d.orig.w + dxPct, MIN_SIZE, IMAGE_FRAME_SIZE_MAX),
         h: clamp(d.orig.h + dyPct, MIN_SIZE, IMAGE_FRAME_SIZE_MAX),
       };
-      const snapped = snapElementResize(proposed, 'br', snapTargetsRef.current, {
-        enabled: snapEnabled,
-      });
+        const snapped = snapElementResize(proposed, 'br', snapTargetsRef.current, {
+          enabled: snapEnabled,
+          yMax,
+        });
       patch = { w: snapped.w, h: snapped.h };
       guides = snapped.guides;
     }
@@ -637,7 +647,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       rafMoveRef.current = null;
       if (livePatchRef.current) setLiveGeom(livePatchRef.current);
     });
-  }, []);
+  }, [pageCount]);
 
   const pointerUp = useCallback(
     (e: PointerEvent) => {
@@ -1193,9 +1203,9 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       sx={{
         position: 'absolute',
         left: `${view.x}%`,
-        top: `${view.y}%`,
+        top: `${pagePctToCssPct(view.y, pageCount)}%`,
         width: `${view.w}%`,
-        height: `${view.h}%`,
+        height: `${pagePctToCssPct(view.h, pageCount)}%`,
         zIndex:
           10 +
           element.zIndex +

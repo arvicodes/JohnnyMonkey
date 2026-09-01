@@ -29,6 +29,7 @@ interface PresentationSlideElementsProps {
   exportSnapshot?: boolean;
   imageMaxEdge?: number;
   accentColor?: string;
+  pageCount?: number;
 }
 
 const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
@@ -55,6 +56,7 @@ const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
   exportSnapshot = false,
   imageMaxEdge,
   accentColor,
+  pageCount = 1,
 }) => {
   const sorted = [...elements].sort((a, b) => a.zIndex - b.zIndex);
   const snapTargets = (snapSourceElements ?? elements).map(elementToRect);
@@ -91,6 +93,7 @@ const PresentationSlideElements: React.FC<PresentationSlideElementsProps> = ({
           exportSnapshot={exportSnapshot}
           imageMaxEdge={imageMaxEdge}
           accentColor={accentColor}
+          pageCount={pageCount}
         />
       ))}
     </>

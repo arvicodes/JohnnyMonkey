@@ -30,6 +30,8 @@ import {
 import {
   Add as AddIcon,
   ArrowBack as ArrowBackIcon,
+  ArrowDownward as ArrowDownwardIcon,
+  ArrowUpward as ArrowUpwardIcon,
   ChevronLeft as ShowNotesIcon,
   ContentCopy as CopyIcon,
   ContentPaste as PasteIcon,
@@ -111,6 +113,12 @@ import {
   withHiddenLayoutZone,
   SLIDE_REF_HEIGHT,
   SLIDE_REF_WIDTH,
+  MAX_SLIDE_EXTRA_PAGES,
+  slideExtraPageCount,
+  slideLogicalHeight,
+  slideMediaFieldPatch,
+  slidePageCount,
+  sanitizeSlideAudioTracks,
 } from '../lib/presentationDeck';
 import {
   notifyPresentationDeckSaved,
@@ -118,7 +126,7 @@ import {
   samePresentationLesson,
 } from '../lib/presentationDeckSync';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
-import { isImageFrameShortcut, toggleRedImageFrame } from '../lib/presentationImageFrames';
+import { isImageFrameShortcut, applyImageFrameFromShortcut } from '../lib/presentationImageFrames';
 import {
   createEmptyPlayVariants,
   loadPresentationPlayVariants,
@@ -263,7 +271,7 @@ import {
   insertImageHtmlAtCursor,
   nudgeFontSize,
 } from '../lib/presentationRichText';
-import { serializePresentationNotesHtml, slideElementToNotesInsertHtml, insertHtmlIntoOpenNotesEditor, appendHtmlToNotesValue, toggleNotesImageFrame } from '../lib/presentationNotesImages';
+import { serializePresentationNotesHtml, slideElementToNotesInsertHtml, insertHtmlIntoOpenNotesEditor, appendHtmlToNotesValue, applyNotesImageFrameShortcut } from '../lib/presentationNotesImages';
 
 const EMPTY_STROKES: PresentationStroke[] = [];
 
@@ -843,6 +851,9 @@ const PresentationEditorPage: React.FC = () => {
     editingVariant && activeId ? playVariants?.bySlideId[activeId]?.slide : undefined;
   const activeSlide = variantWorkingSlide ?? masterSlide;
   const normalizedActive = activeSlide ? normalizeSlide(activeSlide) : null;
+  const activePageCount = slidePageCount(normalizedActive);
+  const activeLogicalH = slideLogicalHeight(normalizedActive);
+  const slideShellH = slideViewportH * activePageCount;
   const variantSlideIdList = useMemo(
     () => playVariantSlideIds(playVariants, annotations?.bySlideId),
     [playVariants, annotations],
@@ -2456,7 +2467,7 @@ const PresentationEditorPage: React.FC = () => {
       const notesEditor = document.querySelector(
         '[data-pres-notes-zone="true"]',
       ) as HTMLElement | null;
-      if (notesEditor && toggleNotesImageFrame(notesEditor)) {
+      if (notesEditor && applyNotesImageFrameShortcut(notesEditor)) {
         e.preventDefault();
         e.stopPropagation();
         notesEditor.dispatchEvent(new Event('input', { bubbles: true }));
@@ -2466,7 +2477,7 @@ const PresentationEditorPage: React.FC = () => {
       e.preventDefault();
       e.stopPropagation();
       updateElement(selectedElementId, {
-        imageFrame: toggleRedImageFrame(selectedElement.imageFrame),
+        imageFrame: applyImageFrameFromShortcut(selectedElement.imageFrame),
       });
     };
     window.addEventListener('keydown', onKeyDown, true);
@@ -4357,9 +4368,17 @@ const PresentationEditorPage: React.FC = () => {
           lessonPath={lessonPath || undefined}
           audioTrack={normalizedActive.audioTrack}
           screenTrack={normalizedActive.screenTrack}
+          audioTracks={normalizedActive.audioTracks}
+          screenTracks={normalizedActive.screenTracks}
+          activeAudioIndex={normalizedActive.activeAudioIndex}
+          activeScreenIndex={normalizedActive.activeScreenIndex}
           defaultKind={recordKind}
-          onAudioChange={(next, id) => updateSlide({ audioTrack: next }, id)}
-          onScreenChange={(next, id) => updateSlide({ screenTrack: next }, id)}
+          onAudioTracksChange={(tracks, index, id) =>
+            updateSlide(slideMediaFieldPatch('audio', tracks, index), id)
+          }
+          onScreenTracksChange={(tracks, index, id) =>
+            updateSlide(slideMediaFieldPatch('screen', tracks, index), id)
+          }
           onError={(message) => setSnackbar(message)}
           onSessionChange={setAudioSessionActive}
           onClose={() => setAudioPanelOpen(false)}
@@ -4420,13 +4439,15 @@ const PresentationEditorPage: React.FC = () => {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: 'center',
+              justifyContent: activePageCount > 1 ? 'flex-start' : 'center',
               bgcolor: PRES_EDITOR_UI.pageBg,
-              overflow: 'hidden',
+              overflowX: 'hidden',
+              overflowY: activePageCount > 1 ? 'auto' : 'hidden',
               position: 'relative',
               minHeight: 0,
               minWidth: 0,
               width: '100%',
+              py: activePageCount > 1 ? 1.5 : 0,
             }}
           >
             {editingVariant && (
@@ -4494,9 +4515,9 @@ const PresentationEditorPage: React.FC = () => {
                 data-pres-slide-shell
                 sx={{
                   width: slideViewportW,
-                  height: slideViewportH,
+                  height: slideShellH,
                   maxWidth: '100%',
-                  maxHeight: '100%',
+                  maxHeight: activePageCount > 1 ? 'none' : '100%',
                   flexShrink: 0,
                   overflow: 'hidden',
                   bgcolor: '#fff',
@@ -4620,7 +4641,7 @@ const PresentationEditorPage: React.FC = () => {
                     top: 0,
                     left: 0,
                     width: SLIDE_REF_WIDTH,
-                    height: SLIDE_REF_HEIGHT,
+                    height: activeLogicalH,
                     transform: `scale(${canvasScale})`,
                     transformOrigin: 'top left',
                     overflow: 'hidden',
@@ -4692,6 +4713,7 @@ const PresentationEditorPage: React.FC = () => {
                     selectedStrokeIds={selectedStrokeIds}
                     onSelectedStrokeIdsChange={setSelectedStrokeIds}
                     scale={1}
+                    logicalHeight={activeLogicalH}
                     onBackgroundPointerDown={() => {
                       setSelectedElementId(null);
                       setInkTarget('slide');
@@ -4711,6 +4733,81 @@ const PresentationEditorPage: React.FC = () => {
                 </Box>
               </Box>
             )}
+            {normalizedActive && canvasScale > 0 ? (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  right: 6,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  zIndex: 8,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 0.4,
+                }}
+              >
+                <Tooltip title="Folie nach unten erweitern" placement="left">
+                  <span>
+                    <IconButton
+                      size="small"
+                      disabled={slideExtraPageCount(normalizedActive) >= MAX_SLIDE_EXTRA_PAGES}
+                      aria-label="Folie nach unten erweitern"
+                      onClick={() => {
+                        const next = Math.min(
+                          MAX_SLIDE_EXTRA_PAGES,
+                          slideExtraPageCount(normalizedActive) + 1,
+                        );
+                        updateSlide({ extraPageCount: next || undefined }, normalizedActive.id);
+                        window.requestAnimationFrame(() => {
+                          canvasHostRef.current?.scrollTo({
+                            top: canvasHostRef.current.scrollHeight,
+                            behavior: 'smooth',
+                          });
+                        });
+                      }}
+                      sx={{
+                        width: 22,
+                        height: 22,
+                        minWidth: 22,
+                        p: 0,
+                        bgcolor: '#fff',
+                        border: `1px solid ${PRES_EDITOR_UI.barBorder}`,
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                        color: PRES_EDITOR_UI.accent,
+                        '&:hover': { bgcolor: PRES_EDITOR_UI.accentSoft },
+                      }}
+                    >
+                      <ArrowDownwardIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                {slideExtraPageCount(normalizedActive) > 0 ? (
+                  <Tooltip title="Verlängerung entfernen" placement="left">
+                    <IconButton
+                      size="small"
+                      aria-label="Verlängerung entfernen"
+                      onClick={() => {
+                        const next = slideExtraPageCount(normalizedActive) - 1;
+                        updateSlide({ extraPageCount: next > 0 ? next : undefined }, normalizedActive.id);
+                      }}
+                      sx={{
+                        width: 22,
+                        height: 22,
+                        minWidth: 22,
+                        p: 0,
+                        bgcolor: '#fff',
+                        border: `1px solid ${PRES_EDITOR_UI.barBorder}`,
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                        color: PRES_EDITOR_UI.textMuted,
+                        '&:hover': { bgcolor: PRES_EDITOR_UI.accentSoft },
+                      }}
+                    >
+                      <ArrowUpwardIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
+                ) : null}
+              </Box>
+            ) : null}
           </Box>
         </Box>
 

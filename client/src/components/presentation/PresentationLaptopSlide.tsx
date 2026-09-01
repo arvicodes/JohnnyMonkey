@@ -12,7 +12,9 @@ import {
   SlideElement,
   SLIDE_REF_HEIGHT,
   SLIDE_REF_WIDTH,
+  pagePctToCssPct,
   slideImageUrl,
+  slidePageCount,
   textToHtml,
 } from '../../lib/presentationDeck';
 import { JOHNNY_PRESENTATION, accentGradient } from '../../lib/presentationTheme';
@@ -104,7 +106,7 @@ function StaticHtml({
   );
 }
 
-function StaticElement({ el, scale, accent }: { el: SlideElement; scale: number; accent: string }) {
+function StaticElement({ el, scale, accent, pages = 1 }: { el: SlideElement; scale: number; accent: string; pages?: number }) {
   if (el.type === 'image') {
     if (!el.src?.trim()) return null;
     const url = slideImageUrl(el.src);
@@ -114,9 +116,9 @@ function StaticElement({ el, scale, accent }: { el: SlideElement; scale: number;
         style={{
           position: 'absolute',
           left: `${el.x}%`,
-          top: `${el.y}%`,
+          top: `${pagePctToCssPct(el.y, pages)}%`,
           width: `${el.w}%`,
-          height: `${el.h}%`,
+          height: `${pagePctToCssPct(el.h, pages)}%`,
           zIndex: 10 + (el.zIndex || 0),
           overflow: frame.active ? 'visible' : 'hidden',
           boxSizing: 'border-box',
@@ -172,9 +174,9 @@ function StaticElement({ el, scale, accent }: { el: SlideElement; scale: number;
         style={{
           position: 'absolute',
           left: `${el.x}%`,
-          top: `${el.y}%`,
+          top: `${pagePctToCssPct(el.y, pages)}%`,
           width: `${el.w}%`,
-          height: `${el.h}%`,
+          height: `${pagePctToCssPct(el.h, pages)}%`,
           zIndex: 10 + (el.zIndex || 0),
           overflow: 'hidden',
           boxSizing: 'border-box',
@@ -210,9 +212,9 @@ function StaticElement({ el, scale, accent }: { el: SlideElement; scale: number;
         style={{
           position: 'absolute',
           left: `${el.x}%`,
-          top: `${el.y}%`,
+          top: `${pagePctToCssPct(el.y, pages)}%`,
           width: `${el.w}%`,
-          height: `${el.h}%`,
+          height: `${pagePctToCssPct(el.h, pages)}%`,
           zIndex: 10 + (el.zIndex || 0),
           boxSizing: 'border-box',
           pointerEvents: 'none',
@@ -274,9 +276,9 @@ function StaticElement({ el, scale, accent }: { el: SlideElement; scale: number;
         style={{
           position: 'absolute',
           left: `${el.x}%`,
-          top: `${el.y}%`,
+          top: `${pagePctToCssPct(el.y, pages)}%`,
           width: `${el.w}%`,
-          height: `${el.h}%`,
+          height: `${pagePctToCssPct(el.h, pages)}%`,
           zIndex: 10 + (el.zIndex || 0),
           boxSizing: 'border-box',
           pointerEvents: 'none',
@@ -301,9 +303,9 @@ function StaticElement({ el, scale, accent }: { el: SlideElement; scale: number;
         style={{
           position: 'absolute',
           left: `${el.x}%`,
-          top: `${el.y}%`,
+          top: `${pagePctToCssPct(el.y, pages)}%`,
           width: `${el.w}%`,
-          height: `${el.h}%`,
+          height: `${pagePctToCssPct(el.h, pages)}%`,
           zIndex: 10 + (el.zIndex || 0),
           overflow: 'visible',
           boxSizing: 'border-box',
@@ -345,9 +347,9 @@ function StaticElement({ el, scale, accent }: { el: SlideElement; scale: number;
         style={{
           position: 'absolute',
           left: `${el.x}%`,
-          top: `${el.y}%`,
+          top: `${pagePctToCssPct(el.y, pages)}%`,
           width: `${el.w}%`,
-          height: `${el.h}%`,
+          height: `${pagePctToCssPct(el.h, pages)}%`,
           zIndex: 10 + (el.zIndex || 0),
           background: '#111',
           color: '#fff',
@@ -394,8 +396,9 @@ const PresentationLaptopSlide: React.FC<PresentationLaptopSlideProps> = ({
   lessonPath = '',
 }) => {
   const slide = normalizeSlide(rawSlide);
+  const pages = slidePageCount(slide);
   const w = SLIDE_REF_WIDTH * scale;
-  const h = SLIDE_REF_HEIGHT * scale;
+  const h = SLIDE_REF_HEIGHT * pages * scale;
   const accent = slide.accentColor || JOHNNY_PRESENTATION.primary;
   const align = slide.titleAlign || 'left';
   const bareBlank = isBareBlankLayout(slide.layout);
@@ -642,7 +645,7 @@ const PresentationLaptopSlide: React.FC<PresentationLaptopSlideProps> = ({
       `}</style>
 
       {backgroundElements.map((el) => (
-        <StaticElement key={el.id} el={el} scale={scale} accent={accent} />
+        <StaticElement key={el.id} el={el} scale={scale} accent={accent} pages={pages} />
       ))}
 
       {showJohnnyChrome && (
@@ -682,7 +685,10 @@ const PresentationLaptopSlide: React.FC<PresentationLaptopSlideProps> = ({
       <div
         style={{
           position: 'absolute',
-          inset: 0,
+          top: 0,
+          left: 0,
+          right: 0,
+          height: `${SLIDE_REF_HEIGHT * scale}px`,
           paddingTop: bareCanvas ? 0 : `${72 * scale}px`,
           paddingLeft: bareCanvas ? 0 : `${64 * scale}px`,
           paddingRight: bareCanvas ? 0 : `${64 * scale}px`,
@@ -710,9 +716,9 @@ const PresentationLaptopSlide: React.FC<PresentationLaptopSlideProps> = ({
             style={{
               position: 'absolute',
               left: `${box.x}%`,
-              top: `${box.y}%`,
+              top: `${pagePctToCssPct(box.y, pages)}%`,
               width: `${box.w}%`,
-              height: `${box.h}%`,
+              height: `${pagePctToCssPct(box.h, pages)}%`,
               overflow: 'auto',
               zIndex: 8,
               pointerEvents: 'none',
@@ -725,7 +731,7 @@ const PresentationLaptopSlide: React.FC<PresentationLaptopSlideProps> = ({
       })}
 
       {foregroundElements.map((el) => (
-        <StaticElement key={el.id} el={el} scale={scale} accent={accent} />
+        <StaticElement key={el.id} el={el} scale={scale} accent={accent} pages={pages} />
       ))}
 
       {footerOn && (

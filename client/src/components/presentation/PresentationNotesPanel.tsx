@@ -30,7 +30,7 @@ import {
   wrapJohnnyNotesCopyHtml,
   handleNotesImageDeleteKey,
   clearNotesImageSelection,
-  toggleNotesImageFrame,
+  applyNotesImageFrameShortcut,
 } from '../../lib/presentationNotesImages';
 import { isImageFrameShortcut } from '../../lib/presentationImageFrames';
 import {
@@ -410,7 +410,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
       }
     }
     if (isImageFrameShortcut(e)) {
-      if (toggleNotesImageFrame(el)) {
+      if (applyNotesImageFrameShortcut(el)) {
         onBeforeDiscreteEdit?.();
         e.preventDefault();
         e.stopPropagation();

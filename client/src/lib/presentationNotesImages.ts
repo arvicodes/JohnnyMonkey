@@ -1,4 +1,5 @@
 import { slideImageUrl, type SlideElement } from './presentationDeck';
+import { consumeImageFrameShortcutDouble } from './presentationImageFrames';
 
 /** Notiz-Grafiken im Textfluss (contentEditable): Größe am Eckpunkt, Entf löscht. */
 
@@ -10,6 +11,7 @@ export const PRES_NOTES_IMG_SELECTED_CLASS = 'pres-notes-img-selected';
 export const PRES_NOTES_IMG_FRAME_ATTR = 'data-pres-notes-img-frame';
 export const PRES_NOTES_IMG_FRAME_COLOR_ATTR = 'data-pres-notes-img-frame-color';
 export const NOTES_IMAGE_FRAME_DEFAULT_COLOR = '#C62828';
+export const NOTES_IMAGE_FRAME_BLACK_COLOR = '#1a1a1a';
 export const NOTES_IMAGE_FRAME_DEFAULT_WIDTH = 3;
 
 const RESIZE_HANDLE_CLASS = 'pres-notes-img-resize';
@@ -326,6 +328,22 @@ export function toggleNotesImageFrame(editor: HTMLElement | null): boolean {
   const wrap = getSelectedNotesImageWrap(editor);
   if (!wrap) return false;
   setNotesImageFrame(wrap, !notesImageFrameIsOn(wrap));
+  return true;
+}
+
+/** ⌘R: rot an/aus · doppeltes ⌘R: schwarz (wie auf Folien). */
+export function applyNotesImageFrameShortcut(editor: HTMLElement | null): boolean {
+  const wrap = getSelectedNotesImageWrap(editor);
+  if (!wrap) return false;
+  if (consumeImageFrameShortcutDouble()) {
+    setNotesImageFrame(wrap, true, NOTES_IMAGE_FRAME_BLACK_COLOR);
+    return true;
+  }
+  if (notesImageFrameIsOn(wrap)) {
+    setNotesImageFrame(wrap, false);
+  } else {
+    setNotesImageFrame(wrap, true, NOTES_IMAGE_FRAME_DEFAULT_COLOR);
+  }
   return true;
 }
 

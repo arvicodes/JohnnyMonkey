@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Box, Button, CircularProgress, Dialog, DialogContent, DialogTitle, IconButton, Tooltip, Typography } from '@mui/material';
+import { Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Tooltip, Typography } from '@mui/material';
 import {
   Close as CloseIcon,
   DeleteOutline as DeleteIcon,
@@ -7,6 +7,7 @@ import {
   Videocam as VideocamIcon,
 } from '@mui/icons-material';
 import type { SlideAudioTrack } from '../../lib/presentationDeck';
+import { MAX_SLIDE_MEDIA_VERSIONS } from '../../lib/presentationDeck';
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-icon-button';
 import {
@@ -16,6 +17,7 @@ import {
   pickRecorderMime,
   pickScreenRecorderMime,
   recorderErrorMessage,
+  newSlideMediaVersionId,
   saveSlideAudioFile,
   slideAudioPauseSupported,
   slideAudioUrl,
@@ -32,10 +34,14 @@ type PresentationSlideAudioRecorderProps = {
   lessonPath?: string;
   audioTrack?: SlideAudioTrack;
   screenTrack?: SlideAudioTrack;
+  audioTracks?: SlideAudioTrack[];
+  screenTracks?: SlideAudioTrack[];
+  activeAudioIndex?: number;
+  activeScreenIndex?: number;
   defaultKind?: SlideRecordKind;
   disabled?: boolean;
-  onAudioChange: (track: SlideAudioTrack | undefined, slideId: string) => void;
-  onScreenChange: (track: SlideAudioTrack | undefined, slideId: string) => void;
+  onAudioTracksChange: (tracks: SlideAudioTrack[], activeIndex: number, slideId: string) => void;
+  onScreenTracksChange: (tracks: SlideAudioTrack[], activeIndex: number, slideId: string) => void;
   onError?: (message: string) => void;
   onSessionChange?: (active: boolean) => void;
   onClose?: () => void;
@@ -55,15 +61,28 @@ const BTN = {
   borderRadius: 1,
 };
 
+const ICON_BTN = {
+  width: 22,
+  height: 22,
+  minWidth: 22,
+  p: 0,
+  flexShrink: 0,
+  color: PRES_EDITOR_UI.textMuted,
+};
+
 export default function PresentationSlideAudioRecorder({
   slideId,
   lessonPath,
   audioTrack,
   screenTrack,
+  audioTracks,
+  screenTracks,
+  activeAudioIndex,
+  activeScreenIndex,
   defaultKind = 'audio',
   disabled,
-  onAudioChange,
-  onScreenChange,
+  onAudioTracksChange,
+  onScreenTracksChange,
   onError,
   onSessionChange,
   onClose,
@@ -73,6 +92,9 @@ export default function PresentationSlideAudioRecorder({
   const [elapsedMs, setElapsedMs] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [playerOpen, setPlayerOpen] = useState(false);
+  const [deleteAsk, setDeleteAsk] = useState(false);
+  const [versionIndex, setVersionIndex] = useState(0);
+  const [recordAsNew, setRecordAsNew] = useState(false);
   const [error, setError] = useState('');
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -89,10 +111,20 @@ export default function PresentationSlideAudioRecorder({
   const aliveRef = useRef(true);
   const pauseOk = slideAudioPauseSupported();
   const screenOk = slideScreenIsSupported();
-  const track = kind === 'screen' ? screenTrack : audioTrack;
-  const audioSrc = slideAudioUrl(audioTrack);
-  const screenSrc = slideAudioUrl(screenTrack, { video: true });
+  const audioList = audioTracks?.length ? audioTracks : audioTrack?.path ? [audioTrack] : [];
+  const screenList = screenTracks?.length ? screenTracks : screenTrack?.path ? [screenTrack] : [];
+  const tracks = kind === 'screen' ? screenList : audioList;
+  const selectedIndex = recordAsNew ? tracks.length : Math.min(versionIndex, Math.max(0, tracks.length - 1));
+  const track = recordAsNew ? undefined : tracks[selectedIndex];
+  const audioSrc = kind === 'audio' ? slideAudioUrl(track) : '';
+  const screenSrc = slideAudioUrl(kind === 'screen' ? track : undefined, { video: true });
   const src = kind === 'screen' ? screenSrc : audioSrc;
+  const versionIndexRef = useRef(0);
+  const recordAsNewRef = useRef(false);
+  const tracksRef = useRef<SlideAudioTrack[]>([]);
+  versionIndexRef.current = selectedIndex;
+  recordAsNewRef.current = recordAsNew;
+  tracksRef.current = tracks;
 
   sessionRef.current = session;
   kindRef.current = kind;
@@ -100,6 +132,11 @@ export default function PresentationSlideAudioRecorder({
   useEffect(() => {
     if (sessionRef.current === 'idle') setKind(defaultKind);
   }, [defaultKind]);
+
+  useEffect(() => {
+    setRecordAsNew(false);
+    setVersionIndex(kind === 'screen' ? activeScreenIndex ?? 0 : activeAudioIndex ?? 0);
+  }, [slideId, kind, activeAudioIndex, activeScreenIndex]);
 
   const currentElapsed = useCallback(() => {
     if (sessionRef.current === 'recording') {
@@ -166,21 +203,35 @@ export default function PresentationSlideAudioRecorder({
       }
       setSession('saving');
       try {
+        const existing = recordAsNewRef.current ? undefined : tracksRef.current[versionIndexRef.current];
+        const versionId = existing?.id || newSlideMediaVersionId();
         const path = await saveSlideAudioFile(
           lessonPath,
           targetSlideId,
           blob,
           blob.type || mimeRef.current,
           recordKind,
+          versionId,
         );
         if (!aliveRef.current) return;
         const next = {
           path,
           durationMs: Math.max(400, Math.round(durationMs)),
           recordedAt: new Date().toISOString(),
+          id: versionId,
         };
-        if (recordKind === 'screen') onScreenChange(next, targetSlideId);
-        else onAudioChange(next, targetSlideId);
+        let list = [...tracksRef.current];
+        let idx = versionIndexRef.current;
+        if (recordAsNewRef.current || idx >= list.length) {
+          list = [...list, next].slice(0, MAX_SLIDE_MEDIA_VERSIONS);
+          idx = list.length - 1;
+        } else {
+          list[idx] = next;
+        }
+        if (recordKind === 'screen') onScreenTracksChange(list, idx, targetSlideId);
+        else onAudioTracksChange(list, idx, targetSlideId);
+        setRecordAsNew(false);
+        setVersionIndex(idx);
         setError('');
       } catch (err) {
         if (aliveRef.current) report(recorderErrorMessage(err, recordKind));
@@ -193,7 +244,7 @@ export default function PresentationSlideAudioRecorder({
         }
       }
     },
-    [lessonPath, onAudioChange, onScreenChange, onSessionChange, report],
+    [lessonPath, onAudioTracksChange, onScreenTracksChange, onSessionChange, report],
   );
 
   const startRecording = useCallback(async () => {
@@ -362,6 +413,7 @@ export default function PresentationSlideAudioRecorder({
   useEffect(() => {
     setPlaying(false);
     setPlayerOpen(false);
+    setDeleteAsk(false);
     const media = mediaRef.current;
     if (media) {
       media.pause();
@@ -398,6 +450,17 @@ export default function PresentationSlideAudioRecorder({
     }
     setPlayerOpen(false);
     setPlaying(false);
+  };
+
+  const confirmDelete = () => {
+    stopPlayback();
+    const list = tracks.filter((_, i) => i !== selectedIndex);
+    const idx = Math.min(selectedIndex, Math.max(0, list.length - 1));
+    if (kind === 'screen') onScreenTracksChange(list, idx, slideId);
+    else onAudioTracksChange(list, idx, slideId);
+    setVersionIndex(idx);
+    setRecordAsNew(false);
+    setDeleteAsk(false);
   };
 
   const busy = session === 'saving' || session === 'requesting';
@@ -470,6 +533,57 @@ export default function PresentationSlideAudioRecorder({
           Bildschirm
         </Button>
       </Box>
+
+      {(tracks.length > 0 || recordAsNew) && !live ? (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            border: `1px solid ${PRES_EDITOR_UI.barBorder}`,
+            borderRadius: 1,
+            overflow: 'hidden',
+            opacity: kindLocked ? 0.55 : 1,
+            pointerEvents: kindLocked ? 'none' : 'auto',
+          }}
+        >
+          {tracks.map((_, i) => (
+            <Button
+              key={`v-${i}`}
+              size="small"
+              onClick={() => {
+                setRecordAsNew(false);
+                setVersionIndex(i);
+                if (kind === 'screen') onScreenTracksChange(tracks, i, slideId);
+                else onAudioTracksChange(tracks, i, slideId);
+              }}
+              sx={{
+                ...BTN,
+                px: 0.7,
+                borderRadius: 0,
+                bgcolor: !recordAsNew && selectedIndex === i ? PRES_EDITOR_UI.accentSoft : 'transparent',
+                color: !recordAsNew && selectedIndex === i ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
+              }}
+            >
+              {`V${i + 1}`}
+            </Button>
+          ))}
+          {tracks.length < MAX_SLIDE_MEDIA_VERSIONS ? (
+            <Button
+              size="small"
+              onClick={() => setRecordAsNew(true)}
+              sx={{
+                ...BTN,
+                px: 0.7,
+                borderRadius: 0,
+                bgcolor: recordAsNew ? PRES_EDITOR_UI.accentSoft : 'transparent',
+                color: recordAsNew ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
+              }}
+            >
+              +
+            </Button>
+          ) : null}
+        </Box>
+      ) : null}
 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
         {kind === 'screen' ? (
@@ -557,19 +671,17 @@ export default function PresentationSlideAudioRecorder({
                 {kind === 'screen' ? 'Ansehen' : playing ? 'Pause' : 'Abspielen'}
               </Button>
               <Tooltip title="Aufnahme löschen">
-                <IconButton
-                  size="small"
-                  disabled={disabled}
-                  aria-label="Aufnahme löschen"
-                  onClick={() => {
-                    stopPlayback();
-                    if (kind === 'screen') onScreenChange(undefined, slideId);
-                    else onAudioChange(undefined, slideId);
-                  }}
-                  sx={{ color: PRES_EDITOR_UI.textMuted, p: 0.25 }}
-                >
-                  <DeleteIcon sx={{ fontSize: 16 }} />
-                </IconButton>
+                <span>
+                  <IconButton
+                    size="small"
+                    disabled={disabled}
+                    aria-label="Aufnahme löschen"
+                    onClick={() => setDeleteAsk(true)}
+                    sx={ICON_BTN}
+                  >
+                    <DeleteIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </span>
               </Tooltip>
             </>
           ) : null}
@@ -587,12 +699,31 @@ export default function PresentationSlideAudioRecorder({
           size="small"
           onClick={onClose}
           aria-label="Aufnahmeleiste schließen"
-          sx={{ ml: 'auto', color: PRES_EDITOR_UI.textMuted, p: 0.25 }}
+          sx={{ ...ICON_BTN, ml: 'auto' }}
         >
-          <CloseIcon sx={{ fontSize: 16 }} />
+          <CloseIcon sx={{ fontSize: 14 }} />
         </IconButton>
       ) : null}
     </Box>
+
+    <Dialog open={deleteAsk} onClose={() => setDeleteAsk(false)} maxWidth="xs" fullWidth>
+      <DialogTitle sx={{ fontSize: 16, fontWeight: 800, py: 1.25 }}>
+        {kind === 'screen' ? 'Bildschirm-Aufnahme löschen?' : 'Tonaufnahme löschen?'}
+      </DialogTitle>
+      <DialogContent>
+        <Typography variant="body2">
+          Die Aufnahme dieser Folie wird entfernt. Das lässt sich nicht rückgängig machen.
+        </Typography>
+      </DialogContent>
+      <DialogActions sx={{ px: 2, pb: 1.5, gap: 0.5 }}>
+        <Button size="small" onClick={() => setDeleteAsk(false)} sx={BTN}>
+          Abbrechen
+        </Button>
+        <Button size="small" color="error" variant="contained" onClick={confirmDelete} sx={BTN}>
+          Löschen
+        </Button>
+      </DialogActions>
+    </Dialog>
 
     <Dialog open={playerOpen} onClose={closePlayer} maxWidth="md" fullWidth>
       <DialogTitle sx={{ ...dialogCloseTitleSx, fontSize: 16, fontWeight: 800, py: 1.25 }}>

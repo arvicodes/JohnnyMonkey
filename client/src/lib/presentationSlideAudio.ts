@@ -114,6 +114,10 @@ export async function openScreenStream(): Promise<MediaStream> {
   return mixed;
 }
 
+export function newSlideMediaVersionId(): string {
+  return `v${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+}
+
 export function formatSlideAudioDuration(ms?: number): string {
   if (!Number.isFinite(ms) || !ms || ms < 0) return '0:00';
   const total = Math.round(ms / 1000);
@@ -155,14 +159,16 @@ export async function saveSlideAudioFile(
   blob: Blob,
   mimeType: string,
   kind: SlideRecordKind = 'audio',
+  versionId?: string,
 ): Promise<string> {
   const folder = lessonFolderPath(lessonPath);
   if (!folder) throw new Error('Kein Stundenordner');
   const picked = kind === 'screen' ? pickScreenRecorderMime() : pickRecorderMime();
   const ext = extForMime(blob.type || mimeType, picked.ext);
+  const versionPart = versionId ? `-${versionId.replace(/[^\w.-]+/g, '').slice(0, 24)}` : '';
   const file = new File(
     [blob],
-    `${kind === 'screen' ? 'slide-screen' : 'slide-audio'}-${safeSlideIdForFile(slideId)}.${ext}`,
+    `${kind === 'screen' ? 'slide-screen' : 'slide-audio'}-${safeSlideIdForFile(slideId)}${versionPart}.${ext}`,
     { type: blob.type || mimeType || (kind === 'screen' ? 'video/webm' : 'audio/webm') },
   );
   const formData = new FormData();

@@ -22,6 +22,29 @@ export type PresentationViewerVariant = 'original' | 'edited';
 
 export const SLIDE_REF_WIDTH = 1920;
 export const SLIDE_REF_HEIGHT = 1080;
+/** Extra volle Folienhöhen unter der ersten Seite (0 = normales 16:9). */
+export const MAX_SLIDE_EXTRA_PAGES = 6;
+export const MAX_SLIDE_MEDIA_VERSIONS = 8;
+
+export function slideExtraPageCount(slide?: { extraPageCount?: number } | null): number {
+  const n = Number(slide?.extraPageCount);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.min(MAX_SLIDE_EXTRA_PAGES, Math.round(n));
+}
+
+export function slidePageCount(slide?: { extraPageCount?: number } | null): number {
+  return 1 + slideExtraPageCount(slide);
+}
+
+export function slideLogicalHeight(slide?: { extraPageCount?: number } | null): number {
+  return SLIDE_REF_HEIGHT * slidePageCount(slide);
+}
+
+/** Element-y/h liegt in Prozent einer Folienseite — CSS-% der ganzen (ggf. hohen) Folie. */
+export function pagePctToCssPct(pagePct: number, pageCount: number): number {
+  const pages = Math.max(1, pageCount);
+  return pagePct / pages;
+}
 
 /** Skalierung, damit die komplette Folie (16:9) in den Viewport passt — nicht nur nach Breite. */
 export function slideFitScale(
@@ -261,6 +284,7 @@ export type SlideAudioTrack = {
   path: string;
   durationMs?: number;
   recordedAt?: string;
+  id?: string;
 };
 
 export function sanitizeSlideAudioTrack(raw?: SlideAudioTrack | null): SlideAudioTrack | undefined {
@@ -269,10 +293,62 @@ export function sanitizeSlideAudioTrack(raw?: SlideAudioTrack | null): SlideAudi
   if (!path) return undefined;
   const durationMs = Number(raw.durationMs);
   const recordedAt = typeof raw.recordedAt === 'string' && raw.recordedAt.trim() ? raw.recordedAt.trim() : '';
+  const id = typeof raw.id === 'string' && raw.id.trim() ? raw.id.trim().slice(0, 40) : '';
   return {
     path,
     ...(Number.isFinite(durationMs) && durationMs > 0 ? { durationMs: Math.round(durationMs) } : {}),
     ...(recordedAt ? { recordedAt } : {}),
+    ...(id ? { id } : {}),
+  };
+}
+
+export function sanitizeSlideAudioTracks(
+  raw: unknown,
+  fallback?: SlideAudioTrack,
+): SlideAudioTrack[] {
+  const list: SlideAudioTrack[] = [];
+  if (Array.isArray(raw)) {
+    for (const item of raw) {
+      const next = sanitizeSlideAudioTrack(item as SlideAudioTrack);
+      if (next) list.push(next);
+      if (list.length >= MAX_SLIDE_MEDIA_VERSIONS) break;
+    }
+  }
+  if (list.length === 0) {
+    const one = sanitizeSlideAudioTrack(fallback);
+    if (one) list.push(one);
+  }
+  return list;
+}
+
+export function sanitizeMediaActiveIndex(raw: unknown, length: number): number {
+  if (length <= 0) return 0;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.min(length - 1, Math.round(n));
+}
+
+export function slideMediaFieldPatch(
+  kind: 'audio' | 'screen',
+  tracks: SlideAudioTrack[],
+  activeIndex = 0,
+): Partial<PresentationSlide> {
+  const clean = tracks
+    .map((t) => sanitizeSlideAudioTrack(t))
+    .filter((t): t is SlideAudioTrack => Boolean(t))
+    .slice(0, MAX_SLIDE_MEDIA_VERSIONS);
+  const idx = sanitizeMediaActiveIndex(activeIndex, clean.length);
+  if (kind === 'screen') {
+    return {
+      screenTrack: clean[idx],
+      screenTracks: clean.length > 1 ? clean : undefined,
+      activeScreenIndex: clean.length > 1 ? idx : undefined,
+    };
+  }
+  return {
+    audioTrack: clean[idx],
+    audioTracks: clean.length > 1 ? clean : undefined,
+    activeAudioIndex: clean.length > 1 ? idx : undefined,
   };
 }
 
@@ -339,10 +415,17 @@ export interface PresentationSlide {
   /** Unterkapitel in der Folienleiste (frei benennbar). */
   sourceLessonName?: string;
   sourceLessonPath?: string;
+  /** Zusätzliche volle Folienhöhen unter der ersten Seite (nahtlos weiß). */
+  extraPageCount?: number;
   /** Eingesprochener Audiotrack (Datei im Stundenordner). */
   audioTrack?: SlideAudioTrack;
+  /** Weitere Ton-Versionen; `audioTrack` ist die gewählte. */
+  audioTracks?: SlideAudioTrack[];
+  activeAudioIndex?: number;
   /** Bildschirm-Aufnahme zur Folie (Video-Datei im Stundenordner). */
   screenTrack?: SlideAudioTrack;
+  screenTracks?: SlideAudioTrack[];
+  activeScreenIndex?: number;
 }
 
 export function sanitizeInkStrokes(raw?: PresentationStroke[]): PresentationStroke[] | undefined {
@@ -758,11 +841,15 @@ export function normalizeSlide(slide: PresentationSlide): PresentationSlide {
           ? { speakerNotesInkSpace: 'slide' as const }
           : {}),
     ...(() => {
-      const audioTrack = sanitizeSlideAudioTrack(slide.audioTrack);
-      const screenTrack = sanitizeSlideAudioTrack(slide.screenTrack);
+      const extraPageCount = slideExtraPageCount(slide);
+      const audioTracks = sanitizeSlideAudioTracks(slide.audioTracks, slide.audioTrack);
+      const screenTracks = sanitizeSlideAudioTracks(slide.screenTracks, slide.screenTrack);
+      const activeAudioIndex = sanitizeMediaActiveIndex(slide.activeAudioIndex, audioTracks.length);
+      const activeScreenIndex = sanitizeMediaActiveIndex(slide.activeScreenIndex, screenTracks.length);
       return {
-        ...(audioTrack ? { audioTrack } : { audioTrack: undefined }),
-        ...(screenTrack ? { screenTrack } : { screenTrack: undefined }),
+        ...(extraPageCount > 0 ? { extraPageCount } : { extraPageCount: undefined }),
+        ...slideMediaFieldPatch('audio', audioTracks, activeAudioIndex),
+        ...slideMediaFieldPatch('screen', screenTracks, activeScreenIndex),
       };
     })(),
   };

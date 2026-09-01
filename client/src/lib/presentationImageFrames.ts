@@ -165,10 +165,11 @@ export const IMAGE_FRAME_DASHES: Array<{ id: ImageFrameDash; label: string }> = 
 ];
 
 export const IMAGE_FRAME_DEFAULT_RED = '#C62828';
+export const IMAGE_FRAME_DEFAULT_BLACK = '#1a1a1a';
 
 export const IMAGE_FRAME_COLORS = [
   IMAGE_FRAME_DEFAULT_RED,
-  '#1a1a1a',
+  IMAGE_FRAME_DEFAULT_BLACK,
   '#ffffff',
   '#757575',
   '#424242',
@@ -184,8 +185,44 @@ export const IMAGE_FRAME_TOGGLE_RED: SlideImageFrame = {
   dash: 'solid',
 };
 
-export function isImageFrameShortcut(e: { key: string; metaKey: boolean; ctrlKey: boolean; altKey: boolean; shiftKey: boolean }): boolean {
+/** Umrandung für doppeltes ⌘R: schwarz, 3 px. */
+export const IMAGE_FRAME_TOGGLE_BLACK: SlideImageFrame = {
+  preset: 'custom',
+  color: IMAGE_FRAME_DEFAULT_BLACK,
+  width: 3,
+  dash: 'solid',
+};
+
+export function isImageFrameShortcut(e: {
+  key: string;
+  metaKey: boolean;
+  ctrlKey: boolean;
+  altKey: boolean;
+  shiftKey: boolean;
+}): boolean {
   return (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'r';
+}
+
+const FRAME_SHORTCUT_DOUBLE_MS = 450;
+let lastImageFrameShortcutAt = 0;
+
+/** true = zweites ⌘R innerhalb des Doppel-Fensters. */
+export function consumeImageFrameShortcutDouble(): boolean {
+  const now = Date.now();
+  const isDouble = now - lastImageFrameShortcutAt > 0 && now - lastImageFrameShortcutAt <= FRAME_SHORTCUT_DOUBLE_MS;
+  lastImageFrameShortcutAt = isDouble ? 0 : now;
+  return isDouble;
+}
+
+/** ⌘R: rot an/aus · doppeltes ⌘R: schwarz. */
+export function applyImageFrameFromShortcut(
+  frame?: SlideImageFrame | null,
+): SlideImageFrame | undefined {
+  if (consumeImageFrameShortcutDouble()) {
+    return { ...IMAGE_FRAME_TOGGLE_BLACK };
+  }
+  if (imageFrameIsActive(frame)) return undefined;
+  return { ...IMAGE_FRAME_TOGGLE_RED };
 }
 
 export function toggleRedImageFrame(frame?: SlideImageFrame | null): SlideImageFrame | undefined {

@@ -248,10 +248,11 @@ export function clientToSlidePct(
   slideTop: number,
   slideW: number,
   slideH: number,
+  maxY = 100,
 ): ShapePoint {
   return {
     x: clamp(((clientX - slideLeft) / slideW) * 100, 0, 100),
-    y: clamp(((clientY - slideTop) / slideH) * 100, 0, 100),
+    y: clamp(((clientY - slideTop) / slideH) * 100, 0, Math.max(100, maxY)),
   };
 }
 

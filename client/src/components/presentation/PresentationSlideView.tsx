@@ -11,8 +11,10 @@ import {
   SLIDE_REF_HEIGHT,
   SLIDE_REF_WIDTH,
   SLIDE_IMAGE_EDITOR_MAX,
+  pagePctToCssPct,
   slideImageUrl,
   slideImageUrlWithoutMax,
+  slidePageCount,
   withHiddenLayoutZone,
 } from '../../lib/presentationDeck';
 import { JOHNNY_PRESENTATION, accentGradient } from '../../lib/presentationTheme';
@@ -45,11 +47,13 @@ function measureLayoutZoneBox(zoneEl: HTMLElement): LayoutZoneBox | null {
   const sr = slideEl.getBoundingClientRect();
   const zr = zoneEl.getBoundingClientRect();
   if (sr.width < 8 || sr.height < 8) return null;
+  const pages = Math.max(1, Number(slideEl.dataset.presPages) || 1);
+  const pageH = sr.height / pages;
   return clampLayoutZoneBox({
     x: ((zr.left - sr.left) / sr.width) * 100,
-    y: ((zr.top - sr.top) / sr.height) * 100,
+    y: ((zr.top - sr.top) / pageH) * 100,
     w: (zr.width / sr.width) * 100,
-    h: (zr.height / sr.height) * 100,
+    h: (zr.height / pageH) * 100,
   });
 }
 
@@ -140,11 +144,12 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
     slideH: number;
   } | null>(null);
   const slide = normalizeSlide(rawSlide);
+  const pages = slidePageCount(slide);
   const resolvedImageMax =
     imageMaxEdge ?? (editable && !exportSnapshot ? SLIDE_IMAGE_EDITOR_MAX : undefined);
   const effectiveReveal = revealEnabled && slide.revealEnabled !== false;
   const w = SLIDE_REF_WIDTH * scale;
-  const h = SLIDE_REF_HEIGHT * scale;
+  const h = SLIDE_REF_HEIGHT * pages * scale;
   const accent = slide.accentColor || JOHNNY_PRESENTATION.primary;
   const align = slide.titleAlign || 'left';
   const bareBlank = isBareBlankLayout(slide.layout);
@@ -235,6 +240,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           imageEditable={imageEditable}
           imageMaxEdge={resolvedImageMax}
           accentColor={slide.accentColor}
+          pageCount={pages}
         />
       </Box>
     );
@@ -283,7 +289,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
       pointerX: e.clientX,
       pointerY: e.clientY,
       slideW: sr.width,
-      slideH: sr.height,
+      slideH: sr.height / pages,
     };
     if (!existing) onChange({ layoutZoneBoxes: boxes });
     const onMove = (ev: PointerEvent) => {
@@ -341,9 +347,9 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           flex: boxed ? undefined : opts.flex,
           position: boxed ? 'absolute' : 'relative',
           left: boxed && box ? `${box.x}%` : undefined,
-          top: boxed && box ? `${box.y}%` : undefined,
+          top: boxed && box ? `${pagePctToCssPct(box.y, pages)}%` : undefined,
           width: boxed && box ? `${box.w}%` : undefined,
-          height: boxed && box ? `${box.h}%` : undefined,
+          height: boxed && box ? `${pagePctToCssPct(box.h, pages)}%` : undefined,
           zIndex: boxed ? 8 : animationEditMode ? 1 : undefined,
           overflow: boxed ? 'auto' : undefined,
           boxSizing: 'border-box',
@@ -777,6 +783,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
     <Box
       data-pres-slide
       data-pres-slide-id={slide.id}
+      data-pres-pages={pages}
       onPointerDown={(e) => {
         if (animationEditMode && e.target === e.currentTarget) {
           onAnimationTargetClick?.(null);
@@ -839,10 +846,13 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
       <Box
         sx={{
           position: 'absolute',
-          inset: 0,
+          top: 0,
+          left: 0,
+          right: 0,
+          height: `${SLIDE_REF_HEIGHT * scale}px`,
           pt: bareCanvas ? 0 : `${(showLogo ? 72 : 36) * scale}px`,
           px: bareCanvas ? 0 : `${64 * scale}px`,
-          pb: bareCanvas ? 0 : `${(footerOn ? 56 : 48) * scale}px`,
+          pb: bareCanvas ? 0 : `${(footerOn && pages === 1 ? 56 : 48) * scale}px`,
           display: 'flex',
           flexDirection: 'column',
           minWidth: 0,
@@ -894,7 +904,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             overflow: 'hidden',
           }}
         >
-          <PresentationStrokesPreview strokes={slide.inkStrokes || []} scale={scale} />
+          <PresentationStrokesPreview strokes={slide.inkStrokes || []} scale={scale} logicalHeight={SLIDE_REF_HEIGHT * pages} />
         </Box>
       )}
 
@@ -933,7 +943,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
                 key={`gy-${i}-${g.pos}`}
                 sx={{
                   position: 'absolute',
-                  top: `${g.pos}%`,
+                  top: `${pagePctToCssPct(g.pos, pages)}%`,
                   left: 0,
                   right: 0,
                   height: 0,

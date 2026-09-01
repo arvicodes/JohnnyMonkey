@@ -25,6 +25,8 @@ import {
   PresentationViewerVariant,
   SLIDE_REF_HEIGHT,
   SLIDE_REF_WIDTH,
+  slideLogicalHeight,
+  slidePageCount,
   SlideElement,
   absorbSlideInkIntoAnnotations,
   createEmptyAnnotations,
@@ -1962,11 +1964,11 @@ const PresentationPresentPage: React.FC = () => {
               touchAction: 'none',
             }}
           >
-            <Box sx={{ position: 'absolute', inset: 0, zIndex: 0, overflow: 'hidden' }}>
+            <Box sx={{ position: 'absolute', inset: 0, zIndex: 0, overflow: slidePageCount(currentSlide) > 1 ? 'auto' : 'hidden' }}>
               <Box
                 sx={{
                   width: SLIDE_REF_WIDTH,
-                  height: SLIDE_REF_HEIGHT,
+                  height: slideLogicalHeight(currentSlide),
                   transform: `scale(${displayScale})`,
                   transformOrigin: 'top left',
                 }}

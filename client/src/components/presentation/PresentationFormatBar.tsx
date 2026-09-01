@@ -1246,7 +1246,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
       )}
 
       {isNotesEditor && (
-        <Tooltip title={navigator.platform.toLowerCase().includes('mac') ? 'Bild umranden (⌘R)' : 'Bild umranden (Strg+R)'}>
+        <Tooltip title={navigator.platform.toLowerCase().includes('mac') ? 'Bild umranden (⌘R rot · ⌘R⌘R schwarz)' : 'Bild umranden (Strg+R rot · 2× Strg+R schwarz)'}>
           <span>
             <IconButton
               size="small"

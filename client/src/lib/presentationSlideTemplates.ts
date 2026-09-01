@@ -235,7 +235,7 @@ export function slideToTemplatePayload(
 ): SlideTemplatePayload {
   const normalized = normalizeSlide(slide);
   const grafikenPath = grafikenFolderPath(lessonPath);
-  const { id: _id, order: _order, audioTrack: _audio, screenTrack: _screen, ...rest } = normalized;
+  const { id: _id, order: _order, audioTrack: _audio, screenTrack: _screen, audioTracks: _audios, screenTracks: _screens, activeAudioIndex: _ai, activeScreenIndex: _si, ...rest } = normalized;
   return {
     ...rest,
     elements: remapElementsForTemplate(rest.elements, grafikenPath),

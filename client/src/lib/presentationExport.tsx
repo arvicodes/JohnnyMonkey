@@ -19,6 +19,7 @@ import {
   loadPresentationOriginalDeck,
   normalizeDeck,
   normalizeSlide,
+  slideLogicalHeight,
   saveJsonFile,
   sortSlides,
   stripOriginalFreezeMeta,
@@ -137,6 +138,8 @@ async function captureSlideCanvas(
   includeStrokes: boolean,
   captureScale = EXPORT_CAPTURE_SCALE
 ): Promise<HTMLCanvasElement> {
+  const normalizedSlide = normalizeSlide(slide);
+  const logicalH = slideLogicalHeight(normalizedSlide);
   const host = document.createElement('div');
   host.setAttribute('data-pres-export-host', 'true');
   host.style.cssText = [
@@ -144,7 +147,7 @@ async function captureSlideCanvas(
     'left:0',
     'top:0',
     `width:${SLIDE_REF_WIDTH}px`,
-    `height:${SLIDE_REF_HEIGHT}px`,
+    `height:${logicalH}px`,
     'overflow:hidden',
     'pointer-events:none',
     'z-index:-1',
@@ -155,12 +158,11 @@ async function captureSlideCanvas(
 
   const mount = document.createElement('div');
   mount.style.width = `${SLIDE_REF_WIDTH}px`;
-  mount.style.height = `${SLIDE_REF_HEIGHT}px`;
+  mount.style.height = `${logicalH}px`;
   host.appendChild(mount);
 
   const removeStyles = injectExportStyles(host);
   const root = createRoot(mount);
-  const normalizedSlide = normalizeSlide(slide);
 
   try {
     await waitForSlideRenderAssets(normalizedSlide);
