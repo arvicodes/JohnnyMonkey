@@ -158,8 +158,8 @@
   vertical-align: middle;
   white-space: nowrap;
   line-height: 1;
-  user-select: none;
-  -webkit-user-select: none;
+  user-select: all;
+  -webkit-user-select: all;
   color: inherit;
   font-size: inherit;
   font-weight: inherit;

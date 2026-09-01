@@ -35,7 +35,7 @@ import { placeCaretBesidePresentationMath } from '../../lib/presentationPasteMat
 import {
   isDefaultTextFieldHtml,
   measureSlideBodyOrigin,
-  measureTextFieldSizePct,
+  measureTextFieldHeightPct,
   shouldAutoFitPresentationText,
   defaultEmptyTextFieldSize,
   TEXT_FIELD_PLACEHOLDER,
@@ -313,23 +313,16 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       onChange({ w: next.w, h: next.h });
       return;
     }
-    const next = measureTextFieldSizePct(
-      contentEl,
-      slideEl,
-      origin.maxW,
-      false,
-      8 * scale,
-      4 * scale,
-    );
-    if (!next) return;
+    const nextH = measureTextFieldHeightPct(contentEl, slideEl, 12 * scale);
+    if (nextH == null) return;
     const prev = lastFitRef.current;
-    if (Math.abs(next.w - prev.w) < 0.12 && Math.abs(next.h - prev.h) < 0.12) return;
-    if (Math.abs(next.w - element.w) < 0.12 && Math.abs(next.h - element.h) < 0.12) {
-      lastFitRef.current = next;
+    if (Math.abs(nextH - prev.h) < 0.08) return;
+    if (Math.abs(nextH - element.h) < 0.08) {
+      lastFitRef.current = { w: element.w, h: nextH };
       return;
     }
-    lastFitRef.current = next;
-    onChange({ w: next.w, h: next.h });
+    lastFitRef.current = { w: element.w, h: nextH };
+    onChange({ h: nextH });
   }, [element, editable, animationEditMode, onChange, scale]);
 
   useLayoutEffect(() => {

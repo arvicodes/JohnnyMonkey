@@ -141,14 +141,50 @@ function clampPct(v: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, v));
 }
 
-/** Leeres Textfeld: breit wie etwa die halbe Inhaltszeile, eine Zeile hoch. */
+/** Leeres Textfeld: breit, etwas höher als eine Zeile. */
 export function defaultEmptyTextFieldSize(maxW: number): { w: number; h: number } {
   const w = clampPct(maxW * 0.52, 36, maxW);
-  const hPx = PRESENTATION_CONTENT_FONT_PX * 1.2 + 6;
+  const hPx = PRESENTATION_CONTENT_FONT_PX * 1.45 + 22;
   return {
     w,
-    h: clampPct((hPx / SLIDE_REF_HEIGHT) * 100, 2.6, 4),
+    h: clampPct((hPx / SLIDE_REF_HEIGHT) * 100, 4.8, 6.4),
   };
+}
+
+/** Nur die benötigte Höhe bei gegebener Breite (kein Extra-Luft). */
+export function measureTextFieldHeightPct(
+  contentEl: HTMLElement,
+  slideEl: HTMLElement,
+  extraInsetY = 0,
+): number | null {
+  const sr = slideEl.getBoundingClientRect();
+  if (sr.width < 8 || sr.height < 8) return null;
+  const innerW = Math.max(8, contentEl.clientWidth);
+  const cs = window.getComputedStyle(contentEl);
+  const clone = contentEl.cloneNode(true) as HTMLElement;
+  clone.style.cssText = [
+    'position:absolute',
+    'left:-99999px',
+    'top:0',
+    'visibility:hidden',
+    'pointer-events:none',
+    'box-sizing:border-box',
+    `width:${innerW}px`,
+    `max-width:${innerW}px`,
+    'height:auto',
+    'overflow:visible',
+    `font-size:${cs.fontSize}`,
+    `font-family:${cs.fontFamily || PRESENTATION_DEFAULT_FONT_FAMILY}`,
+    `font-weight:${cs.fontWeight}`,
+    `line-height:${cs.lineHeight}`,
+    `padding:${cs.padding}`,
+    'white-space:pre-wrap',
+    'word-break:break-word',
+  ].join(';');
+  slideEl.appendChild(clone);
+  const hpx = Math.ceil(clone.scrollHeight) + extraInsetY;
+  clone.remove();
+  return clampPct((hpx / sr.height) * 100, 2.2, 92);
 }
 
 /** Box an Inhalt anpassen (Breite höchstens Inhaltsfeld). */

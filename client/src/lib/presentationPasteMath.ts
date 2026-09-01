@@ -807,6 +807,15 @@ export function placeCaretBesidePresentationMath(e: Event): boolean {
   const token = mathFormatNodeFromEvent(e.target) || mathTokenFromPoint(math, x, y);
   const picked = token === math || localName(token) === 'math' ? mathTokenFromPoint(math, x, y) : token;
   setMathFormatTarget(editor, picked);
+  const range = editor.ownerDocument.createRange();
+  try {
+    range.selectNode(math);
+  } catch {
+    range.selectNodeContents(math);
+  }
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
   try {
     editor.focus({ preventScroll: true });
   } catch {
