@@ -38,9 +38,6 @@ import {
   shouldAutoFitPresentationText,
   TEXT_FIELD_PLACEHOLDER,
 } from '../../lib/presentationLayouts';
-import { notesDropTargetHits } from '../../lib/presentationNotesImages';
-import { isPenPointer } from '../../lib/presentationDrawTools';
-import { imageFrameParts } from '../../lib/presentationImageFrames';
 import '../../styles/presentationLists.css';
 import {
   effectivePresentationImageFit,

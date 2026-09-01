@@ -678,6 +678,7 @@ function EntryTicketRichFieldInner({
       {showChrome ? (
       <Box
         data-et-toolbar=""
+        data-et-format-ui=""
         sx={{
           display: 'flex',
           alignItems: 'center',
@@ -688,7 +689,12 @@ function EntryTicketRichFieldInner({
           borderColor: palette.toolbarBorder,
           bgcolor: palette.toolbarBg,
         }}
-        onMouseDown={(e) => e.preventDefault()}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          stashEditorSelection(editorRef.current);
+          setFormatBarInteracting(true);
+        }}
+        onMouseUp={() => window.setTimeout(() => setFormatBarInteracting(false), 0)}
       >
         <Tooltip title="Fett">
           <IconButton size="small" aria-label="Fett" onClick={() => runCommand('bold')} sx={toolBtnSx}>
@@ -1011,7 +1017,11 @@ function EntryTicketRichFieldInner({
         aria-label={placeholder || 'Text'}
         data-placeholder={placeholder}
         onInput={emitChange}
-        onBlur={emitChange}
+        onBlur={(e) => {
+          const next = e.relatedTarget as HTMLElement | null;
+          if (next?.closest?.('[data-et-format-ui]')) return;
+          emitChange();
+        }}
         onPointerDown={(e) => {
           if (!notesSurface && isPenPointer(e)) {
             e.preventDefault();
@@ -1177,6 +1187,7 @@ function EntryTicketRichFieldInner({
             : null),
         }}
       />
+      {overlay}
       </Box>
 
       {imgHandle && selectedImgIndex != null ? (
@@ -1232,10 +1243,18 @@ function EntryTicketRichFieldInner({
         onClose={() => setColorAnchor(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
       >
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, p: 0.75, maxWidth: 160 }}>
+        <Box
+          data-et-format-ui=""
+          sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, p: 0.75, maxWidth: 160 }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
           {TEXT_COLORS.map((c) => (
             <Box
               key={c}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                stashEditorSelection(editorRef.current);
+              }}
               onClick={() => {
                 runCommand('foreColor', c);
                 setColorAnchor(null);
@@ -1259,10 +1278,18 @@ function EntryTicketRichFieldInner({
         onClose={() => setHighlightAnchor(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
       >
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, p: 0.75, maxWidth: 160 }}>
+        <Box
+          data-et-format-ui=""
+          sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, p: 0.75, maxWidth: 160 }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
           {HIGHLIGHT_COLORS.map((c) => (
             <Box
               key={c}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                stashEditorSelection(editorRef.current);
+              }}
               onClick={() => {
                 if (c === 'transparent') {
                   runCommand('removeFormat');
