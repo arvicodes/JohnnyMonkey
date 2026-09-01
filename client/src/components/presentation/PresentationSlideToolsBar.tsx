@@ -45,8 +45,11 @@ import {
   Timeline as CurvedArrowShapeIcon,
   HorizontalRule as LineShapeIcon,
   CropSquare as RectShapeIcon,
+  Square as FilledRectShapeIcon,
   CircleOutlined as EllipseShapeIcon,
+  Circle as FilledEllipseShapeIcon,
   AutoFixHigh as RemoveBgIcon,
+  AutoAwesome as EnhanceIcon,
   AlignHorizontalLeft as AlignLeftIcon,
   AlignHorizontalCenter as AlignCenterHIcon,
   AlignHorizontalRight as AlignRightIcon,
@@ -116,7 +119,7 @@ import {
   withImageFrameDash,
   withImageFrameWidth,
 } from '../../lib/presentationImageFrames';
-import { SLIDE_SHAPE_LABELS } from '../../lib/presentationSlideShapes';
+import { SLIDE_SHAPE_LABELS, SHAPE_FILL_PRESETS, shapeFillIsNone } from '../../lib/presentationSlideShapes';
 import { JOHNNY_ACCENT_PRESETS } from '../../lib/presentationTheme';
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
 import { sanitizePresentationHtml } from '../../lib/presentationRichText';
@@ -124,6 +127,7 @@ import { setFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
 import {
   PEN_COLORS,
   MARKER_OPACITY_PRESETS,
+  isBoxShapeTool,
   lineWidthsForTool,
   toolUsesColor,
   toolUsesLineWidth,
@@ -171,7 +175,7 @@ interface PresentationSlideToolsBarProps {
   onUndoInk?: () => void;
   onClearAllInk?: () => void;
   onAddLayoutImage: () => void;
-  onAddShapeElement: (kind: PresentationShapeKind) => void;
+  onAddShapeElement: (kind: PresentationShapeKind, opts?: { filled?: boolean }) => void;
   onStartConnectorDraw?: () => void;
   connectorDrawActive?: boolean;
   onAddCardElement?: (mode?: 'single' | 'pair') => void;
@@ -182,6 +186,10 @@ interface PresentationSlideToolsBarProps {
   onDeleteElement: (id: string) => void;
   onRemoveImageBackground?: (id: string) => void;
   removingImageBackground?: boolean;
+  onEnhanceImage?: (id: string) => void;
+  enhancingImage?: boolean;
+  inkShapeFillActive?: boolean;
+  onToggleInkShapeFill?: () => void;
   onCutElement?: () => void;
   onCopyElement?: () => void;
   onPasteElement?: () => void;
@@ -233,6 +241,10 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
   onDeleteElement,
   onRemoveImageBackground,
   removingImageBackground = false,
+  onEnhanceImage,
+  enhancingImage = false,
+  inkShapeFillActive = false,
+  onToggleInkShapeFill,
   onCutElement,
   onCopyElement,
   onPasteElement,
@@ -713,6 +725,23 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                     <EllipseShapeIcon sx={{ fontSize: 14 }} />
                   </IconButton>
                 </Tooltip>
+                {onToggleInkShapeFill && isBoxShapeTool(inkTool) && (
+                  <Tooltip title={inkShapeFillActive ? 'Form ausgefüllt' : 'Form ausfüllen'}>
+                    <IconButton
+                      size="small"
+                      onClick={onToggleInkShapeFill}
+                      sx={{
+                        ...iconBtnSx,
+                        ...(inkShapeFillActive
+                          ? { bgcolor: `${PRES_EDITOR_UI.accent}22`, color: PRES_EDITOR_UI.accent }
+                          : {}),
+                      }}
+                      aria-label="Form ausfüllen"
+                    >
+                      <FilledRectShapeIcon sx={{ fontSize: 14 }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
                 <Tooltip title="Pfeil">
                   <IconButton
                     size="small"
@@ -969,20 +998,22 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
           onClose={() => setShapeAnchor(null)}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
         >
-          <Box sx={{ p: 1, display: 'flex', flexDirection: 'column', gap: 0.35, minWidth: 160 }}>
+          <Box sx={{ p: 1, display: 'flex', flexDirection: 'column', gap: 0.35, minWidth: 180 }}>
             <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, px: 0.5 }}>
               Form einfügen
             </Typography>
             {(
               [
-                ['arrow', <ArrowShapeIcon key="a" sx={{ fontSize: 18 }} />],
-                ['curved-arrow', <CurvedArrowShapeIcon key="ca" sx={{ fontSize: 18 }} />],
-                ['connector', <ConnectorDrawIcon key="c" sx={{ fontSize: 18 }} />],
-                ['line', <LineShapeIcon key="l" sx={{ fontSize: 18 }} />],
-                ['rect', <RectShapeIcon key="r" sx={{ fontSize: 18 }} />],
-                ['ellipse', <EllipseShapeIcon key="e" sx={{ fontSize: 18 }} />],
+                ['arrow', 'Pfeil', <ArrowShapeIcon key="a" sx={{ fontSize: 18 }} />],
+                ['curved-arrow', 'Gebogener Pfeil', <CurvedArrowShapeIcon key="ca" sx={{ fontSize: 18 }} />],
+                ['connector', 'Ecken-Pfeil', <ConnectorDrawIcon key="c" sx={{ fontSize: 18 }} />],
+                ['line', 'Linie', <LineShapeIcon key="l" sx={{ fontSize: 18 }} />],
+                ['rect', 'Rechteck', <RectShapeIcon key="r" sx={{ fontSize: 18 }} />],
+                ['rect-filled', 'Rechteck ausgefüllt', <FilledRectShapeIcon key="rf" sx={{ fontSize: 18 }} />],
+                ['ellipse', 'Kreis / Oval', <EllipseShapeIcon key="e" sx={{ fontSize: 18 }} />],
+                ['ellipse-filled', 'Kreis ausgefüllt', <FilledEllipseShapeIcon key="ef" sx={{ fontSize: 18 }} />],
               ] as const
-            ).map(([kind, icon]) => (
+            ).map(([kind, label, icon]) => (
               <Button
                 key={kind}
                 size="small"
@@ -990,6 +1021,10 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                 onClick={() => {
                   if (kind === 'connector') {
                     onStartConnectorDraw?.();
+                  } else if (kind === 'rect-filled') {
+                    onAddShapeElement('rect', { filled: true });
+                  } else if (kind === 'ellipse-filled') {
+                    onAddShapeElement('ellipse', { filled: true });
                   } else {
                     onAddShapeElement(kind);
                   }
@@ -999,14 +1034,9 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                   ...miniBtnSx,
                   justifyContent: 'flex-start',
                   textTransform: 'none',
-                  fontWeight: 600,
                 }}
               >
-                {kind === 'rect'
-                  ? 'Rechteck-Box (mit Text)'
-                  : kind === 'ellipse'
-                    ? 'Oval-Box (mit Text)'
-                    : SLIDE_SHAPE_LABELS[kind]}
+                {label}
               </Button>
             ))}
             <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, px: 0.5, pt: 0.35 }}>
@@ -1572,6 +1602,19 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                           </Box>
                         </>
                       )}
+                      {onEnhanceImage && selectedElement.src?.trim() && (
+                        <Button
+                          size="small"
+                          fullWidth
+                          variant="outlined"
+                          disabled={enhancingImage}
+                          startIcon={<EnhanceIcon sx={{ fontSize: 14 }} />}
+                          onClick={() => onEnhanceImage(selectedElement.id)}
+                          sx={{ ...miniBtnSx, mb: 0.35 }}
+                        >
+                          {enhancingImage ? 'Verbessern…' : 'Foto verbessern'}
+                        </Button>
+                      )}
                       {onRemoveImageBackground && selectedElement.src?.trim() && (
                         <Button
                           size="small"
@@ -1613,7 +1656,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                         Form · {SLIDE_SHAPE_LABELS[selectedElement.shapeKind || 'arrow']}
                       </Typography>
                       <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, mb: 0.35 }}>
-                        Farbe
+                        Linie
                       </Typography>
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.35, mb: 0.5 }}>
                         {JOHNNY_ACCENT_PRESETS.slice(0, 8).map((c) => (
@@ -1622,11 +1665,6 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                             onClick={() =>
                               onUpdateElement(selectedElement.id, {
                                 strokeColor: c,
-                                fillColor:
-                                  selectedElement.shapeKind === 'rect' ||
-                                  selectedElement.shapeKind === 'ellipse'
-                                    ? `${c}33`
-                                    : selectedElement.fillColor,
                               })
                             }
                             sx={{
@@ -1643,6 +1681,45 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                           />
                         ))}
                       </Box>
+                      {(selectedElement.shapeKind === 'rect' ||
+                        selectedElement.shapeKind === 'ellipse') && (
+                        <>
+                          <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, mb: 0.35 }}>
+                            Füllung
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.35, mb: 0.5, alignItems: 'center' }}>
+                            <Button
+                              size="small"
+                              variant={shapeFillIsNone(selectedElement.fillColor) ? 'contained' : 'outlined'}
+                              onClick={() =>
+                                onUpdateElement(selectedElement.id, { fillColor: 'transparent' })
+                              }
+                              sx={{ ...miniBtnSx, px: 0.6, minWidth: 0 }}
+                            >
+                              Keine
+                            </Button>
+                            {SHAPE_FILL_PRESETS.map((c) => (
+                              <Box
+                                key={c}
+                                onClick={() => onUpdateElement(selectedElement.id, { fillColor: c })}
+                                sx={{
+                                  width: 18,
+                                  height: 18,
+                                  borderRadius: '4px',
+                                  bgcolor: c,
+                                  cursor: 'pointer',
+                                  border:
+                                    (selectedElement.fillColor || '').toLowerCase() === c.toLowerCase()
+                                      ? '2px solid #222'
+                                      : c === '#FFFFFF'
+                                        ? '1px solid #bbb'
+                                        : '1px solid #ccc',
+                                }}
+                              />
+                            ))}
+                          </Box>
+                        </>
+                      )}
                       <TextField
                         size="small"
                         type="number"

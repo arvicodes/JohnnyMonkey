@@ -162,6 +162,9 @@ import {
   lineWidthsForTool,
   toolUsesColor,
   isInkDrawCaptureTool,
+  isBoxShapeTool,
+  inkShapeHasFill,
+  withInkStrokeColor,
   type PresentationDrawTool,
 } from '../lib/presentationDrawTools';
 import { isRecentLeavePresentToEditor, requestPresentFullscreen } from '../lib/presentationPresentFullscreen';
@@ -251,6 +254,13 @@ import {
   type SlideTemplatesStore,
 } from '../lib/presentationSlideTemplates';
 import { removeNearWhiteBackgroundFromUrl } from '../lib/presentationRemoveWhiteBg';
+import { snapshotImageFile } from '../lib/presentationImageFile';
+import { enhanceImageFromUrl } from '../lib/presentationImageEnhance';
+import {
+  clampPresentZoomSmooth,
+  attachPresentTrackpadZoom,
+  attachPresentTouchPinchZoom,
+} from '../lib/presentationPresentZoom';
 import {
   base64ToFile,
   buildLayoutFaithfulSlideFromImport,
@@ -299,6 +309,9 @@ const PresentationEditorPage: React.FC = () => {
   const [animationEditMode, setAnimationEditMode] = useState(false);
   const [selectedAnimationTarget, setSelectedAnimationTarget] = useState<string | null>(null);
   const [canvasScale, setCanvasScale] = useState(0.4);
+  const [editorUserZoom, setEditorUserZoom] = useState(1);
+  const editorUserZoomRef = useRef(1);
+  editorUserZoomRef.current = editorUserZoom;
   const [historyVersion, setHistoryVersion] = useState(0);
   const [trashAnchor, setTrashAnchor] = useState<HTMLElement | null>(null);
   const [clipboardAnchor, setClipboardAnchor] = useState<HTMLElement | null>(null);
@@ -314,6 +327,7 @@ const PresentationEditorPage: React.FC = () => {
   const [slideJumpValue, setSlideJumpValue] = useState('');
   const [imageDropActive, setImageDropActive] = useState(false);
   const [removingImageBackground, setRemovingImageBackground] = useState(false);
+  const [enhancingImage, setEnhancingImage] = useState(false);
   const [notesPanelOpen, setNotesPanelOpen] = useState(() => {
     try {
       return localStorage.getItem('johnny-pres-notes-open') !== '0';
@@ -358,6 +372,27 @@ const PresentationEditorPage: React.FC = () => {
     };
   }, [loading, syncSlideViewport, notesPanelOpen]);
 
+  const applyEditorZoom = useCallback((next: number) => {
+    setEditorUserZoom(clampPresentZoomSmooth(next));
+  }, []);
+
+  useEffect(() => {
+    const el = canvasHostRef.current;
+    if (!el || loading) return undefined;
+    const offWheel = attachPresentTrackpadZoom(el, editorUserZoomRef, applyEditorZoom);
+    const offTouch = attachPresentTouchPinchZoom(el, editorUserZoomRef, applyEditorZoom, undefined, {
+      skipIf: (fingers) =>
+        fingers.some((t) => {
+          const hit = document.elementFromPoint(t.clientX, t.clientY);
+          return Boolean(hit?.closest?.('[data-pres-toolbar], .MuiPopover-root, .MuiDialog-root'));
+        }),
+    });
+    return () => {
+      offWheel();
+      offTouch();
+    };
+  }, [loading, applyEditorZoom, activeId]);
+
   const setNotesPanelOpenPersist = useCallback((open: boolean) => {
     setNotesPanelOpen(open);
     try {
@@ -387,6 +422,7 @@ const PresentationEditorPage: React.FC = () => {
   useEffect(() => {
     setSlideTransitionPreviewKey((key) => key + 1);
     setSelectedAnimationTarget(null);
+    setEditorUserZoom(1);
   }, [activeId]);
 
   useEffect(() => {
@@ -406,8 +442,9 @@ const PresentationEditorPage: React.FC = () => {
     }
   }, [activeId]);
 
-  const slideViewportH = SLIDE_REF_HEIGHT * canvasScale;
-  const slideViewportW = SLIDE_REF_WIDTH * canvasScale;
+  const slideViewportH = SLIDE_REF_HEIGHT * canvasScale * editorUserZoom;
+  const slideViewportW = SLIDE_REF_WIDTH * canvasScale * editorUserZoom;
+  const displayScale = canvasScale * editorUserZoom;
   const historyRef = useRef<DeckHistory | null>(null);
   const historyPushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const applyingHistoryRef = useRef(false);
@@ -459,6 +496,7 @@ const PresentationEditorPage: React.FC = () => {
   const inkSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [inkEditActive, setInkEditActive] = useState(false);
   const [inkTool, setInkTool] = useState<PresentationDrawTool>('pen');
+  const [inkShapeFill, setInkShapeFill] = useState(false);
   /** Stiftziel: Folie oder Notizfeld neben der Folie — eine gemeinsame Werkzeugleiste. */
   const [inkTarget, setInkTarget] = useState<'slide' | 'notes'>('slide');
   const [notesSelectedStrokeIds, setNotesSelectedStrokeIds] = useState<string[]>([]);
@@ -764,7 +802,7 @@ const PresentationEditorPage: React.FC = () => {
       if (inkTarget === 'notes') return;
       if (selectedStrokeIds.length) {
         const idSet = new Set(selectedStrokeIds);
-        updateInkStrokes(currentInkStrokes.map((s) => (idSet.has(s.id) ? { ...s, color: c } : s)));
+        updateInkStrokes(currentInkStrokes.map((s) => (idSet.has(s.id) ? withInkStrokeColor(s, c) : s)));
       }
     },
     [inkTool, inkTarget, selectedStrokeIds, currentInkStrokes, updateInkStrokes],
@@ -816,6 +854,8 @@ const PresentationEditorPage: React.FC = () => {
     if (first.mode === 'marker' && first.markerOpacity != null) {
       setInkMarkerOpacity(first.markerOpacity);
     }
+    if (inkShapeHasFill(first)) setInkShapeFill(true);
+    else if (first.shape === 'rect' || first.shape === 'ellipse') setInkShapeFill(false);
   }, [selectedStrokeIds, currentInkStrokes]);
 
   const schedulePdfExport = useCallback(
@@ -1902,7 +1942,7 @@ const PresentationEditorPage: React.FC = () => {
     }, 40);
   };
 
-  const addShapeElement = (kind: PresentationShapeKind) => {
+  const addShapeElement = (kind: PresentationShapeKind, opts?: { filled?: boolean }) => {
     if (!normalizedActive) return;
     setInkEditActive(false);
     setConnectorDrawActive(false);
@@ -1910,12 +1950,15 @@ const PresentationEditorPage: React.FC = () => {
     const el = createShapeElement(
       kind,
       (normalizedActive.elements?.length ?? 0) + 1,
-      normalizedActive.accentColor
+      normalizedActive.accentColor,
+      opts,
     );
     updateSlide({ elements: [...(normalizedActive.elements || []), el] });
     setSelectedElementId(el.id);
     setSnackbar(
-      kind === 'curved-arrow'
+      opts?.filled
+        ? 'Ausgefüllte Form — Füllfarbe in der Leiste wählen'
+        : kind === 'curved-arrow'
         ? 'Gebogener Pfeil — Bogen-Griff (orange) oder Endpunkte ziehen'
         : kind === 'connector'
           ? 'Ecken-Pfeil — blaue Griffe ziehen'
@@ -2080,6 +2123,32 @@ const PresentationEditorPage: React.FC = () => {
       setSnackbar(e instanceof Error ? e.message : 'Hintergrund entfernen fehlgeschlagen');
     } finally {
       setRemovingImageBackground(false);
+    }
+  };
+
+  const enhanceSelectedImage = async (id: string) => {
+    const current = deckRef.current;
+    if (!current || !lessonPath) return;
+    const slide = current.slides.find((s) => s.id === activeId);
+    const el = slide?.elements?.find((e) => e.id === id);
+    if (!el || el.type !== 'image' || !el.src?.trim()) {
+      setSnackbar('Kein Bild ausgewählt');
+      return;
+    }
+    setEnhancingImage(true);
+    setSnackbar('Foto wird verbessert…');
+    try {
+      const url = slideImageUrl(el.src);
+      const base = el.src.split('/').pop() || 'foto';
+      const file = await enhanceImageFromUrl(url, base);
+      const path = await uploadImageFile(file);
+      if (!path) return;
+      updateElement(id, { src: path });
+      setSnackbar('Foto verbessert (schärfer, mehr Kontrast, weißer Hintergrund)');
+    } catch (e) {
+      setSnackbar(e instanceof Error ? e.message : 'Verbessern fehlgeschlagen');
+    } finally {
+      setEnhancingImage(false);
     }
   };
 
@@ -3095,9 +3164,10 @@ const PresentationEditorPage: React.FC = () => {
   const uploadImageFile = async (file: File): Promise<string | null> => {
     if (!lessonPath) return null;
     try {
+      const unique = await snapshotImageFile(file, 'bild');
       const folder = lessonFolderPath(lessonPath);
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', unique);
       formData.append('targetPath', folder);
       const res = await fetch('/api/file-system-paths/save-file', {
         method: 'POST',
@@ -3109,7 +3179,7 @@ const PresentationEditorPage: React.FC = () => {
       if (data.path && typeof data.path === 'string' && data.path.trim()) {
         return data.path.replace(/\\/g, '/');
       }
-      const name = (data.filename || file.name || 'bild.png').replace(/\\/g, '/');
+      const name = (data.filename || unique.name || 'bild.png').replace(/\\/g, '/');
       return `${folder}/${name.split('/').pop()}`;
     } catch (e) {
       const msg =
@@ -4330,6 +4400,24 @@ const PresentationEditorPage: React.FC = () => {
                   onDeleteElement={deleteElement}
                   onRemoveImageBackground={(id) => void removeSelectedImageBackground(id)}
                   removingImageBackground={removingImageBackground}
+                  onEnhanceImage={(id) => void enhanceSelectedImage(id)}
+                  enhancingImage={enhancingImage}
+                  inkShapeFillActive={inkShapeFill}
+                  onToggleInkShapeFill={() => {
+                    setInkShapeFill((v) => {
+                      const next = !v;
+                      if (selectedStrokeIds.length) {
+                        const idSet = new Set(selectedStrokeIds);
+                        updateInkStrokes(
+                          currentInkStrokes.map((s) => {
+                            if (!idSet.has(s.id) || (s.shape !== 'rect' && s.shape !== 'ellipse')) return s;
+                            return next ? { ...s, fillColor: inkColor } : { ...s, fillColor: undefined };
+                          }),
+                        );
+                      }
+                      return next;
+                    });
+                  }}
                   onCutElement={() => copySelectedElement('cut')}
                   onCopyElement={() => copySelectedElement('copy')}
                   onPasteElement={() => pasteClipboardElement()}
@@ -4444,10 +4532,10 @@ const PresentationEditorPage: React.FC = () => {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: activePageCount > 1 ? 'flex-start' : 'center',
+              justifyContent: activePageCount > 1 || editorUserZoom > 1.01 ? 'flex-start' : 'center',
               bgcolor: PRES_EDITOR_UI.pageBg,
-              overflowX: 'hidden',
-              overflowY: activePageCount > 1 ? 'auto' : 'hidden',
+              overflowX: editorUserZoom > 1.01 ? 'auto' : 'hidden',
+              overflowY: activePageCount > 1 || editorUserZoom > 1.01 ? 'auto' : 'hidden',
               position: 'relative',
               minHeight: 0,
               minWidth: 0,
@@ -4521,8 +4609,8 @@ const PresentationEditorPage: React.FC = () => {
                 sx={{
                   width: slideViewportW,
                   height: slideShellH,
-                  maxWidth: '100%',
-                  maxHeight: activePageCount > 1 ? 'none' : '100%',
+                  maxWidth: editorUserZoom > 1.01 ? 'none' : '100%',
+                  maxHeight: activePageCount > 1 || editorUserZoom > 1.01 ? 'none' : '100%',
                   flexShrink: 0,
                   overflow: 'hidden',
                   bgcolor: '#fff',
@@ -4647,7 +4735,7 @@ const PresentationEditorPage: React.FC = () => {
                     left: 0,
                     width: SLIDE_REF_WIDTH,
                     height: activeLogicalH,
-                    transform: `scale(${canvasScale})`,
+                    transform: `scale(${displayScale})`,
                     transformOrigin: 'top left',
                     overflow: 'hidden',
                     pointerEvents: 'auto',
@@ -4720,6 +4808,7 @@ const PresentationEditorPage: React.FC = () => {
                     scale={1}
                     logicalHeight={activeLogicalH}
                     fillContainer
+                    shapeFillColor={inkShapeFill && isBoxShapeTool(inkTool) ? inkColor : null}
                     onBackgroundPointerDown={() => {
                       setSelectedElementId(null);
                       setInkTarget('slide');

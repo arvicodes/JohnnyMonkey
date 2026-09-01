@@ -8,7 +8,9 @@ import {
   CircleOutlined as CircleIcon,
   Crop as CropIcon,
   CropSquare as RectIcon,
+  Square as FilledRectIcon,
   Draw as DrawIcon,
+  AutoAwesome as EnhanceIcon,
   GridView as GridViewIcon,
   Highlight as HighlightIcon,
   HighlightAlt as LassoIcon,
@@ -30,6 +32,7 @@ import {
   MARKER_OPACITY_PRESETS,
   PEN_COLORS,
   PresentationDrawTool,
+  isBoxShapeTool,
   lineWidthsForTool,
   toolUsesColor,
   toolUsesLineWidth,
@@ -204,6 +207,12 @@ interface PresentationTabletToolbarProps {
   imageCropAvailable?: boolean;
   imageCropActive?: boolean;
   onToggleImageCrop?: () => void;
+  imageEnhanceAvailable?: boolean;
+  imageEnhanceBusy?: boolean;
+  onEnhanceImage?: () => void;
+  /** Rechteck/Kreis ausgefüllt zeichnen */
+  shapeFillActive?: boolean;
+  onToggleShapeFill?: () => void;
   /** Sofort zum Dashboard (wie Taste D) */
   onExitToDashboard?: () => void;
   /** overlay = absolut in der Present-Bühne (Safari iPad); fixed = Viewport; docked = Layout unten */
@@ -259,6 +268,11 @@ export default function PresentationTabletToolbar({
   imageCropAvailable = false,
   imageCropActive = false,
   onToggleImageCrop,
+  imageEnhanceAvailable = false,
+  imageEnhanceBusy = false,
+  onEnhanceImage,
+  shapeFillActive = false,
+  onToggleShapeFill,
   onExitToDashboard,
   placement = 'fixed',
   readOnly = false,
@@ -801,6 +815,16 @@ export default function PresentationTabletToolbar({
           </ToolBtn>
         )}
 
+        {!inkOnly && !readOnly && imageEnhanceAvailable && onEnhanceImage && (
+          <ToolBtn
+            title="Foto verbessern (schärfer, mehr Kontrast, weißer Hintergrund)"
+            disabled={imageEnhanceBusy}
+            onClick={onEnhanceImage}
+          >
+            <EnhanceIcon sx={{ fontSize: 15 }} />
+          </ToolBtn>
+        )}
+
         {!inkOnly && !readOnly && onOpenEntryTicket && (
           <ToolBtn title="Entry Ticket" onClick={onOpenEntryTicket}>
             <Box
@@ -938,6 +962,15 @@ export default function PresentationTabletToolbar({
             >
               <CircleIcon sx={{ fontSize: 14 }} />
             </ToolBtn>
+            {onToggleShapeFill && isBoxShapeTool(activeTool) && (
+              <ToolBtn
+                title={shapeFillActive ? 'Form ausgefüllt — tippen für nur Umriss' : 'Form ausfüllen'}
+                active={shapeFillActive}
+                onClick={onToggleShapeFill}
+              >
+                <FilledRectIcon sx={{ fontSize: 14 }} />
+              </ToolBtn>
+            )}
             <ToolBtn
               title="Pfeil"
               active={activeTool === 'shape-arrow'}

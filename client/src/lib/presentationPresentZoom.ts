@@ -185,17 +185,24 @@ function touchDistance(touches: Touch[] | TouchList): number {
  * Capture-Phase: greift auch, wenn die Zeichen-Canvas oben liegt.
  * `enabledRef`: z. B. aus während Zeichenmodus (Handauflage darf keinen Zoom starten).
  */
+export type PresentPinchOptions = {
+  /** z. B. beide Finger auf einem gewählten Foto — dann Foto-Größe statt Bühnen-Zoom. */
+  skipIf?: (fingers: Touch[]) => boolean;
+};
+
 export function attachPresentTouchPinchZoom(
   el: HTMLElement | null,
   zoomRef: { current: number },
   setZoom: (next: number, origin?: PresentZoomOrigin) => void,
   enabledRef?: { current: boolean },
+  options?: PresentPinchOptions,
 ): () => void {
   if (!el) return () => undefined;
 
   let pinchStartDist = 0;
   let pinchStartZoom = 1;
   let pinching = false;
+  const skipIf = options?.skipIf;
 
   const isEnabled = () => enabledRef?.current !== false;
 
@@ -207,6 +214,11 @@ export function attachPresentTouchPinchZoom(
     }
     const fingers = fingerTouchList(e.touches);
     if (fingers.length === 2) {
+      if (skipIf?.(fingers)) {
+        pinching = false;
+        pinchStartDist = 0;
+        return;
+      }
       pinchStartDist = touchDistance(fingers);
       pinchStartZoom = zoomRef.current;
       pinching = pinchStartDist > 8;

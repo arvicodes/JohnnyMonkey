@@ -74,6 +74,8 @@ interface PresentationDrawOverlayProps {
   passThroughNonPen?: boolean;
   /** Erster Stiftstrich — z. B. Werkzeuge sichtbar lassen. */
   onInkStart?: () => void;
+  /** Rechteck/Kreis mit dieser Farbe füllen (Umriss bleibt strokeColor). */
+  shapeFillColor?: string | null;
 }
 
 const SHAPE_MIN_PX = 6;
@@ -252,6 +254,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   fillContainer = false,
   passThroughNonPen = false,
   onInkStart,
+  shapeFillColor = null,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -292,6 +295,8 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   passThroughNonPenRef.current = passThroughNonPen;
   const onInkStartRef = useRef(onInkStart);
   onInkStartRef.current = onInkStart;
+  const shapeFillColorRef = useRef(shapeFillColor);
+  shapeFillColorRef.current = shapeFillColor;
   const straightRef = useRef<{
     timer: number | null;
     snapped: boolean;
@@ -615,6 +620,10 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     const t = toolRef.current;
     const shape = toolToShape(t);
     if (shape) {
+      const fill =
+        (shape === 'rect' || shape === 'ellipse') && shapeFillColorRef.current
+          ? shapeFillColorRef.current
+          : undefined;
       drawingRef.current = {
         id: `s-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         points: [pt, pt],
@@ -623,6 +632,7 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
         mode: 'pen',
         shape,
         rotation: 0,
+        ...(fill ? { fillColor: fill } : {}),
         ...(shape === 'curved-arrow' ? { curveBend: 35 } : {}),
         ...(shape === 'arrow' || shape === 'curved-arrow' ? { arrowHeadSize: 22 } : {}),
       };

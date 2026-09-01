@@ -38,6 +38,7 @@ import {
   nextViewportScale,
   saveJsonFile,
   sortSlides,
+  slideImageUrl,
   writeNamedVersionSnapshot,
   writeOriginalDeckSnapshot,
   parsePresentationPlanMode,
@@ -49,7 +50,7 @@ import {
   parsePresentationDeckSavedEvent,
   samePresentationLesson,
 } from '../lib/presentationDeckSync';
-import { PresentationDrawTool, DEFAULT_MARKER_COLOR, DEFAULT_MARKER_OPACITY, DEFAULT_PEN_COLOR, defaultColorForTool, defaultLineWidthForTool, lineWidthsForTool, toolUsesColor } from '../lib/presentationDrawTools';
+import { PresentationDrawTool, DEFAULT_MARKER_COLOR, DEFAULT_MARKER_OPACITY, DEFAULT_PEN_COLOR, defaultColorForTool, defaultLineWidthForTool, isBoxShapeTool, lineWidthsForTool, toolUsesColor, withInkStrokeColor, inkShapeHasFill } from '../lib/presentationDrawTools';
 import { tryHandleLessonEntryTicketLinkClick, isLessonEntryTicketSlideHref } from '../lib/presentationEditorUi';
 import { slideSectionName } from '../lib/presentationSections';
 import { withLessonSectionPath } from '../lib/entryTicketCustomSets';
@@ -92,6 +93,8 @@ import {
   scaleImageFromCenter,
   slidePercentSizeForImage,
 } from '../lib/presentationImageUtils';
+import { snapshotImageFile } from '../lib/presentationImageFile';
+import { enhanceImageFromUrl } from '../lib/presentationImageEnhance';
 import EntryTicketPage from './EntryTicketPage';
 import { collectPasteImages, isTypingField, readImagesFromSystemClipboard } from '../lib/goodNotesClipboard';
 import { imageFileToPresentationStrokes } from '../lib/imageToPresentationStrokes';
@@ -192,9 +195,12 @@ const PresentationPresentPage: React.FC = () => {
   const [panning, setPanning] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-  /** Pinch auf leerer Folie zoomt die Bühne; bei gewähltem Foto das Foto. */
+  /** Pinch auf leerer Folie zoomt die Bühne; bei zwei Fingern auf dem Foto das Foto. */
   const pinchEnabledRef = useRef(true);
-  pinchEnabledRef.current = !selectedElementId;
+  pinchEnabledRef.current = true;
+  const [cameraInputKey, setCameraInputKey] = useState(0);
+  const [inkShapeFill, setInkShapeFill] = useState(false);
+  const [enhanceBusy, setEnhanceBusy] = useState(false);
 
   const applyUserZoom = useCallback((next: number, origin?: PresentZoomOrigin) => {
     const clamped = clampPresentZoomSmooth(next);
@@ -767,11 +773,10 @@ const PresentationPresentPage: React.FC = () => {
       if (!slideId) return;
       setPhotoBusy(true);
       try {
+        const named = file.name.startsWith('play-foto-')
+          ? file
+          : await snapshotImageFile(file, 'play-foto');
         const folder = lessonFolderPath(lessonPath);
-        const rawName = (file.name || 'foto.jpg').replace(/[^\w.\-äöüÄÖÜß]+/gi, '_');
-        const named = new File([file], `play-foto-${Date.now()}-${rawName}`, {
-          type: file.type || 'image/jpeg',
-        });
         const formData = new FormData();
         formData.append('file', named);
         formData.append('targetPath', folder);
@@ -855,6 +860,38 @@ const PresentationPresentPage: React.FC = () => {
   selectedImageRef.current = selectedImageForCrop;
   const updateSlideElementRef = useRef(updateSlideElement);
   updateSlideElementRef.current = updateSlideElement;
+
+  const enhanceSelectedPlayPhoto = useCallback(async () => {
+    if (!lessonPath || isOriginalView || isNamedView) return;
+    const current = selectedImageRef.current;
+    if (!current?.src?.trim()) {
+      setSnackbar('Kein Foto ausgewählt');
+      return;
+    }
+    setEnhanceBusy(true);
+    setSnackbar('Foto wird verbessert…');
+    try {
+      const file = await enhanceImageFromUrl(slideImageUrl(current.src), current.src.split('/').pop() || 'foto');
+      const folder = lessonFolderPath(lessonPath);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('targetPath', folder);
+      const res = await fetch('/api/file-system-paths/save-file', { method: 'POST', body: formData });
+      if (!res.ok) throw new Error('Verbessertes Foto konnte nicht gespeichert werden');
+      const data = (await res.json()) as { path?: string; filename?: string };
+      const path = (
+        data.path && data.path.trim()
+          ? data.path
+          : `${folder}/${(data.filename || file.name).split('/').pop()}`
+      ).replace(/\\/g, '/');
+      updateSlideElement(current.id, { src: path });
+      setSnackbar('Foto verbessert — bitte noch Sichern tippen');
+    } catch (e) {
+      setSnackbar(e instanceof Error ? e.message : 'Verbessern fehlgeschlagen');
+    } finally {
+      setEnhanceBusy(false);
+    }
+  }, [isNamedView, isOriginalView, lessonPath, updateSlideElement]);
 
   useEffect(() => {
     const host = stageRef.current;
@@ -1357,7 +1394,7 @@ const PresentationPresentPage: React.FC = () => {
     else penColorRef.current = c;
     if (selectedStrokeIds.length && annotations && currentSlide) {
       const idSet = new Set(selectedStrokeIds);
-      const next = currentStrokes.map((s) => (idSet.has(s.id) ? { ...s, color: c } : s));
+      const next = currentStrokes.map((s) => (idSet.has(s.id) ? withInkStrokeColor(s, c) : s));
       updateStrokes(next);
     }
   };
@@ -1373,6 +1410,8 @@ const PresentationPresentPage: React.FC = () => {
     if (first.mode === 'marker' && first.markerOpacity != null) {
       setMarkerOpacity(first.markerOpacity);
     }
+    if (inkShapeHasFill(first)) setInkShapeFill(true);
+    else if (first.shape === 'rect' || first.shape === 'ellipse') setInkShapeFill(false);
   }, [selectedStrokeIds, annotations, currentSlide?.id]);
 
   useEffect(() => {
@@ -1545,7 +1584,17 @@ const PresentationPresentPage: React.FC = () => {
     if (!scaleReady) return undefined;
     const el = stageRef.current;
     const offWheel = attachPresentTrackpadZoom(el, userZoomRef, applyUserZoom);
-    const offTouch = attachPresentTouchPinchZoom(el, userZoomRef, applyUserZoom, pinchEnabledRef);
+    const offTouch = attachPresentTouchPinchZoom(el, userZoomRef, applyUserZoom, pinchEnabledRef, {
+      skipIf: (fingers) => {
+        if (!selectedImageRef.current || fingers.length < 2) return false;
+        const hitA = document.elementFromPoint(fingers[0].clientX, fingers[0].clientY);
+        const hitB = document.elementFromPoint(fingers[1].clientX, fingers[1].clientY);
+        return Boolean(
+          hitA?.closest?.('[data-pres-element-type="image"]') &&
+            hitB?.closest?.('[data-pres-element-type="image"]'),
+        );
+      },
+    });
     return () => {
       offWheel();
       offTouch();
@@ -2017,6 +2066,7 @@ const PresentationPresentPage: React.FC = () => {
                   scale={1}
                   logicalHeight={slideLogicalHeight(currentSlide)}
                   fillContainer
+                  shapeFillColor={inkShapeFill && isBoxShapeTool(activeTool) ? strokeColor : null}
                   onBackgroundPointerDown={() => setSelectedElementId(null)}
                   onHitElement={setSelectedElementId}
                 />
@@ -2093,13 +2143,34 @@ const PresentationPresentPage: React.FC = () => {
         onCaptureImage={
           isOriginalView || isNamedView
             ? undefined
-            : () => cameraInputRef.current?.click()
+            : () => {
+                if (cameraInputRef.current) cameraInputRef.current.value = '';
+                cameraInputRef.current?.click();
+              }
         }
         onPasteInk={isOriginalView || isNamedView ? undefined : pasteInkFromClipboard}
         captureBusy={photoBusy}
         imageCropAvailable={Boolean(drawActive && activeTool === 'select' && selectedImageForCrop)}
         imageCropActive={Boolean(selectedImageForCrop && isImageCropMode(selectedImageForCrop))}
         onToggleImageCrop={toggleSelectedImageCrop}
+        imageEnhanceAvailable={Boolean(selectedImageForCrop?.src?.trim())}
+        imageEnhanceBusy={enhanceBusy}
+        onEnhanceImage={() => void enhanceSelectedPlayPhoto()}
+        shapeFillActive={inkShapeFill}
+        onToggleShapeFill={() => {
+          setInkShapeFill((v) => {
+            const next = !v;
+            if (selectedStrokeIds.length) {
+              const idSet = new Set(selectedStrokeIds);
+              const mapped = currentStrokes.map((s) => {
+                if (!idSet.has(s.id) || (s.shape !== 'rect' && s.shape !== 'ellipse')) return s;
+                return next ? { ...s, fillColor: strokeColor } : { ...s, fillColor: undefined };
+              });
+              updateStrokes(mapped);
+            }
+            return next;
+          });
+        }}
         onExitToDashboard={entryTicketOpen ? undefined : goToDashboard}
         zoom={userZoom}
         onZoomChange={applyUserZoom}
@@ -2218,6 +2289,7 @@ const PresentationPresentPage: React.FC = () => {
       )}
 
       <input
+        key={cameraInputKey}
         ref={cameraInputRef}
         type="file"
         accept="image/*"
@@ -2225,8 +2297,13 @@ const PresentationPresentPage: React.FC = () => {
         hidden
         onChange={(e) => {
           const file = e.target.files?.[0];
-          if (file) void insertPlayPhoto(file);
           e.target.value = '';
+          if (!file) return;
+          void (async () => {
+            const snap = await snapshotImageFile(file, 'play-foto');
+            setCameraInputKey((k) => k + 1);
+            await insertPlayPhoto(snap);
+          })();
         }}
       />
 

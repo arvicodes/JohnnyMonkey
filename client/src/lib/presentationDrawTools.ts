@@ -101,6 +101,29 @@ export function isShapeTool(tool: PresentationDrawTool): boolean {
   return tool.startsWith('shape-');
 }
 
+export function isBoxShapeTool(tool: PresentationDrawTool): boolean {
+  return tool === 'shape-rect' || tool === 'shape-ellipse';
+}
+
+export function isBoxInkShape(stroke: PresentationStroke): boolean {
+  return stroke.shape === 'rect' || stroke.shape === 'ellipse';
+}
+
+export function inkShapeHasFill(stroke: PresentationStroke): boolean {
+  if (!isBoxInkShape(stroke)) return false;
+  const f = (stroke.fillColor || '').trim().toLowerCase();
+  return Boolean(f) && f !== 'none' && f !== 'transparent';
+}
+
+export function inkShapeFillColor(stroke: PresentationStroke): string | null {
+  return inkShapeHasFill(stroke) ? (stroke.fillColor as string) : null;
+}
+
+export function withInkStrokeColor(stroke: PresentationStroke, color: string): PresentationStroke {
+  if (inkShapeHasFill(stroke)) return { ...stroke, color, fillColor: color };
+  return { ...stroke, color };
+}
+
 /** Stift/Marker/Formen/Radierer — Overlay fängt Eingabe ab (nicht Lasso). */
 export function isInkDrawCaptureTool(tool: PresentationDrawTool): boolean {
   return tool === 'pen' || tool === 'marker' || tool === 'eraser' || isShapeTool(tool);
@@ -301,6 +324,11 @@ export function drawPresentationStroke(ctx: CanvasRenderingContext2D, stroke: Pr
         ctx.save();
         ctx.translate(frame.cx, frame.cy);
         ctx.rotate(frame.rotation);
+        const fill = inkShapeFillColor(stroke);
+        if (fill) {
+          ctx.fillStyle = fill;
+          ctx.fillRect(-frame.w / 2, -frame.h / 2, frame.w, frame.h);
+        }
         ctx.strokeRect(-frame.w / 2, -frame.h / 2, frame.w, frame.h);
         ctx.restore();
         break;
@@ -311,6 +339,11 @@ export function drawPresentationStroke(ctx: CanvasRenderingContext2D, stroke: Pr
         ctx.translate(frame.cx, frame.cy);
         ctx.rotate(frame.rotation);
         ctx.ellipse(0, 0, Math.max(frame.w / 2, 1), Math.max(frame.h / 2, 1), 0, 0, Math.PI * 2);
+        const fill = inkShapeFillColor(stroke);
+        if (fill) {
+          ctx.fillStyle = fill;
+          ctx.fill();
+        }
         ctx.stroke();
         ctx.restore();
         break;

@@ -173,6 +173,8 @@ export interface PresentationStroke {
   curveBend?: number;
   /** Rotation in radians for box shapes (rect, ellipse). */
   rotation?: number;
+  /** Füllfarbe für Rechteck/Kreis (Tinte). Leer/transparent = nur Umriss. */
+  fillColor?: string;
   /**
    * GoodNotes-Import: gefüllte Silhouette (nicht Mittellinie).
    * Sieht aus wie die Original-Schrift, bleibt aber lassobar.
@@ -466,6 +468,9 @@ export function sanitizeInkStrokes(raw?: PresentationStroke[]): PresentationStro
         ? { markerOpacity: s.markerOpacity }
         : {}),
       ...(s.filled ? { filled: true } : {}),
+      ...(typeof s.fillColor === 'string' && s.fillColor.trim() && s.fillColor !== 'transparent'
+        ? { fillColor: s.fillColor }
+        : {}),
       ...(() => {
         if (!Array.isArray(s.holes) || s.holes.length === 0) return {};
         const holes = s.holes

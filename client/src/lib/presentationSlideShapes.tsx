@@ -65,16 +65,38 @@ export function defaultShapeSize(kind: PresentationShapeKind): { w: number; h: n
 
 const DEFAULT_LINE_COLOR = '#212121';
 
+export function shapeFillIsNone(fill?: string): boolean {
+  const f = (fill || '').trim().toLowerCase();
+  return !f || f === 'none' || f === 'transparent';
+}
+
+export const SHAPE_FILL_PRESETS = [
+  '#FFFFFF',
+  '#FFFDE7',
+  '#FFECB3',
+  '#FFCDD2',
+  '#C8E6C9',
+  '#BBDEFB',
+  '#E1BEE7',
+  '#212121',
+  '#C62828',
+  '#1565C0',
+  '#2E7D32',
+  '#FF9800',
+] as const;
+
 export function createShapeElement(
   kind: PresentationShapeKind,
   zIndex: number,
   accentColor?: string,
+  opts?: { filled?: boolean },
 ): SlideElement {
   const size = defaultShapeSize(kind);
   const accent = accentColor || JOHNNY_PRESENTATION.primary;
   const isBox = kind === 'rect' || kind === 'ellipse';
   const lineLike = isLineLikeShapeKind(kind);
   const plainArrow = kind === 'arrow' || kind === 'line';
+  const filled = Boolean(opts?.filled) && isBox;
   const el: SlideElement = {
     id: `el-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     type: 'shape',
@@ -85,8 +107,8 @@ export function createShapeElement(
     h: size.h,
     zIndex,
     strokeColor: plainArrow ? DEFAULT_LINE_COLOR : accent,
-    strokeWidth: lineLike ? DEFAULT_ARROW_STROKE_WIDTH : 3,
-    fillColor: isBox ? `${accent}33` : 'transparent',
+    strokeWidth: lineLike ? DEFAULT_ARROW_STROKE_WIDTH : filled ? 2 : 3,
+    fillColor: filled ? accent : isBox ? `${accent}33` : 'transparent',
     arrowHeadSize: shapeHasArrowHead(kind) ? DEFAULT_ARROW_HEAD_SIZE : undefined,
     ...(isBox ? { html: '<p style="text-align:center"><br></p>' } : {}),
   };
