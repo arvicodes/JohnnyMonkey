@@ -7,7 +7,7 @@ export type EntryTicketImagePlace = 'block' | 'inline' | 'float-left' | 'float-r
 export type EntryTicketImageAlign = 'left' | 'center' | 'right';
 
 export function entryTicketLooksLikeHtml(value: string): boolean {
-  return /<(span|strong|b|u|i|em|br|div|p|font|img)\b/i.test((value || '').trim());
+  return /<(span|strong|b|u|i|em|br|div|p|font|img|mark)\b/i.test((value || '').trim());
 }
 
 export function entryTicketHasImage(value: string): boolean {
@@ -17,7 +17,7 @@ export function entryTicketHasImage(value: string): boolean {
 /** Fett/Kursiv/Unterstrichen/Farben — auch wenn Browser `span style=...` nutzt. */
 export function entryTicketHasRichFormatting(value: string): boolean {
   const v = value || '';
-  if (/<(strong|b|u|i|em|font)\b/i.test(v)) return true;
+  if (/<(strong|b|u|i|em|font|mark)\b/i.test(v)) return true;
   return /style\s*=\s*["'][^"']*(?:font-weight|font-style|text-decoration|color|background(?:-color)?)\s*:/i.test(v);
 }
 
@@ -644,6 +644,14 @@ function sanitizeStyleAttr(style: string): string {
 function sanitizeFormattingTag(tag: string, name: string): string {
   const isClose = /^<\//.test(tag);
   if (isClose) return `</${name}>`;
+  if (name === 'mark') {
+    const styleMatch = tag.match(/\bstyle\s*=\s*["']([^"']*)["']/i);
+    if (styleMatch) {
+      const style = sanitizeStyleAttr(styleMatch[1]);
+      if (style) return `<mark style="${style}">`;
+    }
+    return '<mark>';
+  }
   const styleMatch = tag.match(/\bstyle\s*=\s*["']([^"']*)["']/i);
   const colorMatch = tag.match(/\bcolor\s*=\s*["']?([^"'\s>]+)["']?/i);
   const faceMatch = name === 'font' ? tag.match(/\bface\s*=\s*["']([^"']+)["']/i) : null;
@@ -706,7 +714,7 @@ export function sanitizeEntryTicketHtml(html: string): string {
   });
 
   // Formatierungs-Tags inkl. style/color normalisieren (Attribute whitelisten)
-  out = out.replace(/<\/?(strong|b|u|i|em|span|font)\b[^>]*>/gi, (tag, name) =>
+  out = out.replace(/<\/?(strong|b|u|i|em|span|font|mark)\b[^>]*>/gi, (tag, name) =>
     sanitizeFormattingTag(tag, String(name).toLowerCase()),
   );
 
