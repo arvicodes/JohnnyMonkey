@@ -598,13 +598,15 @@ export default function PresentationTabletToolbar({
             Version
           </Typography>
         ) : (
-          <ToolBtn
-            title={drawActive ? 'Werkzeuge aus' : 'Stift & Werkzeuge'}
-            active={drawActive}
-            onClick={onToggleDraw}
-          >
-            <DrawIcon sx={{ fontSize: 15 }} />
-          </ToolBtn>
+          <span data-pres-draw-toggle="">
+            <ToolBtn
+              title={drawActive ? 'Werkzeuge aus' : 'Stift & Werkzeuge'}
+              active={drawActive}
+              onClick={onToggleDraw}
+            >
+              <DrawIcon sx={{ fontSize: 15 }} />
+            </ToolBtn>
+          </span>
         )}
 
         {!inkOnly && !readOnly && onPasteInk && (

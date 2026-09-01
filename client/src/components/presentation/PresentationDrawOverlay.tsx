@@ -62,6 +62,13 @@ interface PresentationDrawOverlayProps {
   onHitElement?: (elementId: string) => void;
   /** Canvas füllt den Parent (Entry-Ticket-Karten / Lösungsfolie). */
   fillContainer?: boolean;
+  /**
+   * Finger/Maus durchreichen (Tippen, Bilder). Apple Pencil zeichnet trotzdem.
+   * Overlay muss `enabled` bleiben.
+   */
+  passThroughNonPen?: boolean;
+  /** Erster Stiftstrich — z. B. Werkzeuge sichtbar lassen. */
+  onInkStart?: () => void;
 }
 
 const SHAPE_MIN_PX = 6;
@@ -170,6 +177,10 @@ function clickableInChrome(el: HTMLElement | null): HTMLElement | null {
   return (el.closest('button, [role="button"], a, [data-pres-swatch]') as HTMLElement | null) || el;
 }
 
+function isDrawToggleChrome(el: HTMLElement | null): boolean {
+  return !!el?.closest?.('[data-pres-draw-toggle]');
+}
+
 function hitUnderCanvas(canvas: HTMLCanvasElement, clientX: number, clientY: number) {
   const below = elementUnderCanvas(canvas, clientX, clientY);
   if (!below) {
@@ -181,7 +192,7 @@ function hitUnderCanvas(canvas: HTMLCanvasElement, clientX: number, clientY: num
   }
   return {
     handle: below.closest(
-      '[data-resize-handle], [data-element-delete], [data-col-resize]',
+      '[data-resize-handle], [data-element-delete], [data-col-resize], [data-shape-point-handle], [data-shape-curve-handle]',
     ) as HTMLElement | null,
     host: below.closest('[data-pres-element]') as HTMLElement | null,
     text: below.closest('[contenteditable="true"], [data-pres-rich-zone], [data-text-edit]') as HTMLElement | null,
@@ -232,6 +243,8 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   onBackgroundPointerDown,
   onHitElement,
   fillContainer = false,
+  passThroughNonPen = false,
+  onInkStart,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -267,6 +280,10 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
   onBackgroundPointerDownRef.current = onBackgroundPointerDown;
   const onHitElementRef = useRef(onHitElement);
   onHitElementRef.current = onHitElement;
+  const passThroughNonPenRef = useRef(passThroughNonPen);
+  passThroughNonPenRef.current = passThroughNonPen;
+  const onInkStartRef = useRef(onInkStart);
+  onInkStartRef.current = onInkStart;
   const straightRef = useRef<{
     timer: number | null;
     snapped: boolean;
@@ -730,8 +747,9 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     const canvas = e.currentTarget as HTMLCanvasElement;
 
     // Apple Pencil trifft oft das Canvas statt der Leiste — dann Werkzeug-Klick, nicht Tinte.
+    // Stift-An/Aus über das Canvas nicht nochmal klicken: sonst springt es zurück auf Tippen.
     const overChrome = clickableInChrome(elementUnderCanvas(canvas, e.clientX, e.clientY));
-    if (overChrome) {
+    if (overChrome && !(enabledRef.current && isDrawToggleChrome(overChrome))) {
       e.preventDefault();
       e.stopPropagation();
       if (typeof overChrome.click === 'function') overChrome.click();
@@ -741,6 +759,27 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
     const under = hitUnderCanvas(canvas, e.clientX, e.clientY);
     const imageHost =
       under.host?.getAttribute('data-pres-element-type') === 'image' ? under.host : null;
+
+    if (passThroughNonPenRef.current && e.pointerType !== 'pen') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (under.handle) {
+        dispatchPointerTo(under.handle, e);
+        return;
+      }
+      if (imageHost) {
+        const id = imageHost.getAttribute('data-pres-element');
+        if (id) onHitElementRef.current?.(id);
+        dispatchPointerTo(imageHost, e);
+        return;
+      }
+      const target = under.text || under.host || elementUnderCanvas(canvas, e.clientX, e.clientY);
+      if (target) {
+        if (under.text && typeof under.text.focus === 'function') under.text.focus();
+        dispatchPointerTo(target, e);
+      }
+      return;
+    }
 
     // Finger/Maus: Foto und Griffe. Stift auf Fotos malt weiter.
     if (e.pointerType !== 'pen') {
@@ -885,11 +924,13 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
         eraseBaseRef.current,
         eraserPathRef.current,
       );
+      onInkStartRef.current?.();
       redraw();
       return;
     }
 
     startFreehand(pt);
+    onInkStartRef.current?.();
     if (!drawingRef.current?.shape) {
       const ctx = ensureCtx();
       const draft = drawingRef.current;
@@ -1161,7 +1202,8 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
         touchAction,
         cursor,
         pointerEvents: enabled && !readOnly ? 'auto' : 'none',
-        zIndex: 2,
+        // Über Folien-Elementen — sonst fangen Boxen/Pfeile die Eingabe ab (Stift/Formen).
+        zIndex: enabled && !readOnly ? 48 : 2,
         WebkitUserSelect: 'none',
         userSelect: 'none',
         WebkitTouchCallout: 'none',

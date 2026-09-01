@@ -452,19 +452,55 @@ export type PresentationMathStylePatch = {
   highlight?: string | null;
 };
 
-/** Formatierung direkt am Formel-Span — MathML erbt Farbe/Größe/Fett. */
+function isMathWrapperSpan(el: HTMLElement): boolean {
+  return el.hasAttribute(PRES_MATH_ATTR);
+}
+
+function applyFontSizeToNode(el: HTMLElement, px: number) {
+  const size = Math.round(Math.max(10, Math.min(96, px)));
+  el.setAttribute('data-pres-fs', String(size));
+  el.style.setProperty('font-size', `${size}px`, 'important');
+  el.setAttribute('mathsize', `${size}px`);
+  if (isMathWrapperSpan(el)) {
+    const math = el.querySelector('math') as HTMLElement | null;
+    if (math) {
+      math.style.setProperty('font-size', `${size}px`, 'important');
+      math.setAttribute('mathsize', `${size}px`);
+    }
+  }
+}
+
+function tokenTag(el: HTMLElement): string {
+  return localName(el);
+}
+
+function applyBoldToNode(el: HTMLElement, on: boolean) {
+  if (on) {
+    el.setAttribute('data-pres-bold', '1');
+    el.style.setProperty('font-weight', '700', 'important');
+    if (!isMathWrapperSpan(el)) {
+      el.setAttribute('mathvariant', tokenTag(el) === 'mi' ? 'bold-italic' : 'bold');
+    }
+  } else {
+    el.removeAttribute('data-pres-bold');
+    el.style.removeProperty('font-weight');
+    if (!isMathWrapperSpan(el)) el.removeAttribute('mathvariant');
+  }
+}
+
+/** Formatierung am ganzen Formel-Span oder an einem angeklickten MathML-Stück. */
 export function applyPresentationMathStyle(span: HTMLElement, patch: PresentationMathStylePatch): void {
   if (patch.fontSizePx != null && Number.isFinite(patch.fontSizePx)) {
-    const px = Math.round(Math.max(10, Math.min(96, patch.fontSizePx)));
-    span.setAttribute('data-pres-fs', String(px));
-    span.style.setProperty('font-size', `${px}px`, 'important');
+    applyFontSizeToNode(span, patch.fontSizePx);
   }
   if (patch.color === null) {
     span.removeAttribute('data-pres-color');
+    span.removeAttribute('mathcolor');
     span.style.removeProperty('color');
   } else if (typeof patch.color === 'string' && patch.color.trim()) {
     const c = patch.color.trim();
     span.setAttribute('data-pres-color', c);
+    span.setAttribute('mathcolor', c);
     span.style.setProperty('color', c, 'important');
   }
   if (patch.fontFamily === null) {
@@ -490,13 +526,8 @@ export function applyPresentationMathStyle(span: HTMLElement, patch: Presentatio
       parseInt(span.style.fontWeight || '0', 10) >= 600;
     patch = { ...patch, bold: !on };
   }
-  if (patch.bold === true) {
-    span.setAttribute('data-pres-bold', '1');
-    span.style.setProperty('font-weight', '700', 'important');
-  } else if (patch.bold === false) {
-    span.removeAttribute('data-pres-bold');
-    span.style.removeProperty('font-weight');
-  }
+  if (patch.bold === true) applyBoldToNode(span, true);
+  else if (patch.bold === false) applyBoldToNode(span, false);
   if (patch.italic === 'toggle') {
     const on = span.getAttribute('data-pres-italic') === '1' || span.style.fontStyle === 'italic';
     patch = { ...patch, italic: !on };
@@ -568,20 +599,75 @@ export function applySurroundingStyleToMath(span: HTMLElement, from: Node | null
   }
 }
 
-/** Formel anklicken → ganze Formel markieren (Formatleiste). */
-export function selectPresentationMath(editor: HTMLElement, span: HTMLElement): boolean {
-  if (!editor.contains(span)) return false;
-  try {
-    const range = editor.ownerDocument.createRange();
-    range.selectNode(span);
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-    formulaInsertCaret = { editor, range: range.cloneRange() };
-    return true;
-  } catch {
-    return false;
+const MATH_FOCUS_ATTR = 'data-pres-math-focus';
+
+const MATH_TOKEN_TAGS = new Set([
+  'mi',
+  'mo',
+  'mn',
+  'mtext',
+  'ms',
+  'mfrac',
+  'msqrt',
+  'mroot',
+  'msup',
+  'msub',
+  'msubsup',
+  'munder',
+  'mover',
+  'munderover',
+  'mrow',
+  'mtd',
+  'mstyle',
+]);
+
+let mathFormatTarget: { editor: HTMLElement; node: HTMLElement } | null = null;
+
+export function getMathFormatTarget(editor: HTMLElement | null): HTMLElement | null {
+  if (!editor || !mathFormatTarget || mathFormatTarget.editor !== editor) return null;
+  if (!editor.contains(mathFormatTarget.node)) {
+    mathFormatTarget = null;
+    return null;
   }
+  return mathFormatTarget.node;
+}
+
+export function clearMathFormatTarget(editor?: HTMLElement | null) {
+  if (!mathFormatTarget) return;
+  if (editor && mathFormatTarget.editor !== editor) return;
+  mathFormatTarget.node.removeAttribute(MATH_FOCUS_ATTR);
+  mathFormatTarget = null;
+}
+
+export function setMathFormatTarget(editor: HTMLElement, node: HTMLElement): boolean {
+  if (!editor.contains(node)) return false;
+  if (mathFormatTarget?.node !== node) {
+    mathFormatTarget?.node.removeAttribute(MATH_FOCUS_ATTR);
+  }
+  mathFormatTarget = { editor, node };
+  node.setAttribute(MATH_FOCUS_ATTR, '1');
+  return true;
+}
+
+/** Klickziel: einzelne Variable/Zahl/Bruch oder die ganze Formel. */
+export function mathFormatNodeFromEvent(target: EventTarget | null): HTMLElement | null {
+  const el = target instanceof HTMLElement ? target : (target as Node | null)?.parentElement;
+  if (!el) return null;
+  const wrap = el.closest(`[${PRES_MATH_ATTR}]`) as HTMLElement | null;
+  if (!wrap) return null;
+  let node: HTMLElement | null = el;
+  while (node && node !== wrap) {
+    const tag = localName(node);
+    if (tag === 'math') return wrap;
+    if (MATH_TOKEN_TAGS.has(tag) && tag !== 'mrow' && tag !== 'mstyle') return node;
+    node = node.parentElement;
+  }
+  return wrap;
+}
+
+/** @deprecated — nutze setMathFormatTarget */
+export function selectPresentationMath(editor: HTMLElement, span: HTMLElement): boolean {
+  return setMathFormatTarget(editor, span);
 }
 
 /** Formel an Cursor oder in der Auswahl finden. */
@@ -651,6 +737,12 @@ export function applyFormatToSelectedMath(
   patch: PresentationMathStylePatch,
 ): boolean {
   if (!editor) return false;
+  const target = getMathFormatTarget(editor);
+  if (target) {
+    applyPresentationMathStyle(target, patch);
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  }
   const maths = mathElementsInSelection(editor);
   if (!maths.length) return false;
   maths.forEach((m) => applyPresentationMathStyle(m, patch));

@@ -1827,6 +1827,9 @@ const PresentationEditorPage: React.FC = () => {
 
   const addShapeElement = (kind: PresentationShapeKind) => {
     if (!normalizedActive) return;
+    setInkEditActive(false);
+    setConnectorDrawActive(false);
+    setConnectorDrawPoints([]);
     const el = createShapeElement(
       kind,
       (normalizedActive.elements?.length ?? 0) + 1,
@@ -4424,10 +4427,7 @@ const PresentationEditorPage: React.FC = () => {
                     WebkitUserSelect: 'text',
                     userSelect: 'text',
                     WebkitTouchCallout: 'default',
-                    pointerEvents: inkEditActive ? 'none' : 'none',
-                    '@media (any-pointer: coarse)': {
-                      pointerEvents: inkEditActive ? 'none' : 'auto',
-                    },
+                    pointerEvents: 'none',
                   }}
                 />
                 {imageDropActive && (

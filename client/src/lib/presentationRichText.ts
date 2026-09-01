@@ -44,6 +44,7 @@ import {
   looksLikeAsciiMatrix,
   looksLikeFormulaPlainText,
   applyFormatToSelectedMath,
+  getMathFormatTarget,
   mathElementsInSelection,
   preserveEquationImagesInPlace,
 } from './presentationPasteMath';
@@ -77,6 +78,10 @@ export function applyEditorFontSizePx(
   explicitRange?: Range | null,
 ): boolean {
   if (!editor) return false;
+  if (getMathFormatTarget(editor)) {
+    applyFormatToSelectedMath(editor, { fontSizePx: px });
+    return true;
+  }
   const maths = mathElementsInSelection(editor);
   if (maths.length && selectionIsOnlyMath(editor)) {
     applyFormatToSelectedMath(editor, { fontSizePx: px });
@@ -90,8 +95,9 @@ export function applyEditorFontSizePx(
 
 export function nudgeEditorFontSize(editor: HTMLElement | null, direction: 1 | -1): number | null {
   if (!editor) return null;
-  const maths = mathElementsInSelection(editor);
-  if (maths.length && selectionIsOnlyMath(editor)) {
+  const focused = getMathFormatTarget(editor);
+  const maths = focused ? [focused] : mathElementsInSelection(editor);
+  if (maths.length && (focused || selectionIsOnlyMath(editor))) {
     const steps = getEditorFontSizeSteps(editor);
     const current =
       parseInt(maths[0].getAttribute('data-pres-fs') || '', 10) ||
@@ -146,6 +152,15 @@ export const bookmarkSelection = captureEditorSelection;
 
 /** @deprecated Alias */
 export function getSelectionFontSizePx(editor: HTMLElement | null): number | null {
+  if (editor) {
+    const target = getMathFormatTarget(editor);
+    if (target) {
+      const attr = parseInt(target.getAttribute('data-pres-fs') || '', 10);
+      if (Number.isFinite(attr) && attr > 0) return attr;
+      const m = (target.style.fontSize || '').match(/^([\d.]+)px/i);
+      if (m) return Math.round(parseFloat(m[1]));
+    }
+  }
   return getEditorSelectionFontPx(editor);
 }
 

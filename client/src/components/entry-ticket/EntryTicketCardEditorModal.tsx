@@ -165,7 +165,7 @@ export function EntryTicketCardEditorModal({
           }}
         >
           <Typography sx={{ mt: 0.75, fontSize: '0.78rem', color: '#546e7a', flexShrink: 0 }}>
-            Zeichnen: unten Stift einschalten. Tippen und Bilder: Stift wieder aus — Bild ziehen zum Verschieben, orangene Ecke zum Größe ändern.
+            Apple Pencil schreibt immer auf die Frage. Finger: tippen und Bilder (ziehen / orangene Ecke). Unten Stift an: auch mit Finger oder Maus zeichnen.
           </Typography>
           <Box
             sx={{
@@ -174,7 +174,7 @@ export function EntryTicketCardEditorModal({
               minHeight: 220,
               display: 'flex',
               flexDirection: 'column',
-              touchAction: drawActive ? 'none' : 'manipulation',
+              touchAction: 'none',
             }}
           >
             <Box
@@ -200,7 +200,9 @@ export function EntryTicketCardEditorModal({
               fillContainer
               strokes={ink}
               onStrokesChange={onInkChange}
-              enabled={drawActive}
+              enabled
+              passThroughNonPen={!drawActive}
+              onInkStart={() => setDrawActive(true)}
               slideId={slideId}
               tool={activeInkTool}
               strokeColor={strokeColor}

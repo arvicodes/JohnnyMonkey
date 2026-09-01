@@ -61,7 +61,9 @@ import {
   readPresentationMathLatex,
   renderPresentationMathHtml,
   replacePresentationMathElement,
-  selectPresentationMath,
+  setMathFormatTarget,
+  clearMathFormatTarget,
+  mathFormatNodeFromEvent,
 } from '../../lib/presentationPasteMath';
 import { setFormatBarInteracting, isPresentationModalTypingActive } from '../../lib/presentationFormatBarGuard';
 import {
@@ -498,13 +500,14 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   useEffect(() => {
     if (!activeEditor || disabled || isNotesEditor) return;
     const onClick = (e: MouseEvent) => {
-      const math = (e.target as HTMLElement | null)?.closest('[data-pres-math]') as HTMLElement | null;
-      if (!math || !activeEditor.contains(math)) return;
+      const node = mathFormatNodeFromEvent(e.target);
+      if (!node || !activeEditor.contains(node)) {
+        clearMathFormatTarget(activeEditor);
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
-      activeEditor.focus({ preventScroll: true });
-      selectPresentationMath(activeEditor, math);
-      stashEditorSelection(activeEditor);
+      setMathFormatTarget(activeEditor, node);
       syncFormatting();
     };
     const onDblClick = (e: MouseEvent) => {

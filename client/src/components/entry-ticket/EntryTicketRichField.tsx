@@ -14,6 +14,7 @@ import {
   Functions as FunctionsIcon,
   WrapText as WrapTextIcon,
 } from '@mui/icons-material';
+import { isPenPointer } from '../../lib/presentationDrawTools';
 import {
   buildEtImgStyle,
   entryTicketLooksLikeHtml,
@@ -623,6 +624,9 @@ function EntryTicketRichFieldInner({
             : `0 0 0 2px ${palette.shadow}`,
         },
       }}
+      onPointerDownCapture={(e) => {
+        if (isPenPointer(e)) e.preventDefault();
+      }}
       onFocus={() => setChromeOpen(true)}
       onBlur={(e) => {
         if (e.currentTarget.contains(e.relatedTarget as Node)) return;
@@ -961,6 +965,11 @@ function EntryTicketRichFieldInner({
         onInput={emitChange}
         onBlur={emitChange}
         onPointerDown={(e) => {
+          // Apple Pencil: nicht ins Textfeld (Scribble / Schreiboption) — Tinte liegt darüber.
+          if (isPenPointer(e)) {
+            e.preventDefault();
+            return;
+          }
           if (!isPrimaryPointer(e)) return;
           const t = e.target;
           const img =

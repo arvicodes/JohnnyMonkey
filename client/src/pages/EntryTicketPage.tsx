@@ -5553,6 +5553,7 @@ export default function EntryTicketPage({
                             strokes={currentCardInk}
                             onStrokesChange={(strokes) => commitCardInk(currentIndex, strokes)}
                             enabled={drawActive}
+                            onInkStart={() => setDrawActive(true)}
                             slideId={`et-card-${currentTask?.sourceKey || currentIndex}`}
                             tool={activeInkTool}
                             strokeColor={strokeColor}
@@ -5786,6 +5787,7 @@ export default function EntryTicketPage({
                         strokes={solutionSlideInk}
                         onStrokesChange={canEditPlay ? commitSolutionSlideInk : () => {}}
                         enabled={canEditPlay && drawActive}
+                        onInkStart={() => setDrawActive(true)}
                         readOnly={!canEditPlay}
                         slideId="et-solution-slide"
                         tool={activeInkTool}
