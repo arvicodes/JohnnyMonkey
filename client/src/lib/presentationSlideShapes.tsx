@@ -39,8 +39,16 @@ export const SLIDE_SHAPE_LABELS: Record<PresentationShapeKind, string> = {
   ellipse: 'Kreis / Oval',
 };
 
-/** Standard-Linienstärke für Pfeile/Linien (früher ~3.5; 3× für klare Erkennbarkeit). */
-export const DEFAULT_ARROW_STROKE_WIDTH = 10.5;
+/** Standard-Linienstärke für Pfeile/Linien (Pixel, non-scaling). */
+export const DEFAULT_ARROW_STROKE_WIDTH = 3.5;
+export const SHAPE_STROKE_WIDTH_MIN = 1;
+export const SHAPE_STROKE_WIDTH_MAX = 16;
+export const SHAPE_STROKE_PRESETS = [1, 2, 3.5, 6, 10] as const;
+
+export function clampShapeStrokeWidth(raw: number): number {
+  if (!Number.isFinite(raw)) return DEFAULT_ARROW_STROKE_WIDTH;
+  return Math.max(SHAPE_STROKE_WIDTH_MIN, Math.min(SHAPE_STROKE_WIDTH_MAX, raw));
+}
 /** Standard-Pfeilspitze in lokaler Box (0–100); mit kürzerer Länge etwas größer. */
 export const DEFAULT_ARROW_HEAD_SIZE = 22;
 
@@ -107,7 +115,7 @@ export function createShapeElement(
     h: size.h,
     zIndex,
     strokeColor: plainArrow ? DEFAULT_LINE_COLOR : accent,
-    strokeWidth: lineLike ? DEFAULT_ARROW_STROKE_WIDTH : filled ? 2 : 3,
+    strokeWidth: lineLike ? DEFAULT_ARROW_STROKE_WIDTH : 2,
     fillColor: filled ? accent : isBox ? `${accent}33` : 'transparent',
     arrowHeadSize: shapeHasArrowHead(kind) ? DEFAULT_ARROW_HEAD_SIZE : undefined,
     ...(isBox ? { html: '<p style="text-align:center"><br></p>' } : {}),
@@ -184,7 +192,7 @@ export function SlideShapeSvg({
     norm.fillColor && norm.fillColor !== 'transparent' && norm.fillColor !== 'none'
       ? norm.fillColor
       : 'none';
-  const sw = Math.max(1.5, Math.min(28, norm.strokeWidth ?? DEFAULT_ARROW_STROKE_WIDTH));
+  const sw = clampShapeStrokeWidth(norm.strokeWidth ?? DEFAULT_ARROW_STROKE_WIDTH);
   const points = resolveShapePoints(norm);
   const curveControl = kind === 'curved-arrow' ? resolveCurveControl(points, norm) : null;
   const headSize = resolveArrowHeadSize(norm);
@@ -206,7 +214,7 @@ export function SlideShapeSvg({
           d={shaftOnly}
           fill="none"
           stroke={stroke}
-          strokeWidth={Math.max(sw, 2)}
+          strokeWidth={sw}
           strokeLinecap="round"
           strokeLinejoin="round"
           vectorEffect="non-scaling-stroke"
@@ -226,10 +234,29 @@ export function SlideShapeSvg({
       aria-hidden
     >
       {kind === 'rect' && (
-        <rect x="10" y="18" width="80" height="64" rx="4" fill={fill} stroke={stroke} strokeWidth={sw} />
+        <rect
+          x="10"
+          y="18"
+          width="80"
+          height="64"
+          rx="4"
+          fill={fill}
+          stroke={stroke}
+          strokeWidth={sw}
+          vectorEffect="non-scaling-stroke"
+        />
       )}
       {kind === 'ellipse' && (
-        <ellipse cx="50" cy="50" rx="38" ry="34" fill={fill} stroke={stroke} strokeWidth={sw} />
+        <ellipse
+          cx="50"
+          cy="50"
+          rx="38"
+          ry="34"
+          fill={fill}
+          stroke={stroke}
+          strokeWidth={sw}
+          vectorEffect="non-scaling-stroke"
+        />
       )}
     </svg>
   );

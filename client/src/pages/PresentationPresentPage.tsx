@@ -50,7 +50,7 @@ import {
   parsePresentationDeckSavedEvent,
   samePresentationLesson,
 } from '../lib/presentationDeckSync';
-import { PresentationDrawTool, DEFAULT_MARKER_COLOR, DEFAULT_MARKER_OPACITY, DEFAULT_PEN_COLOR, defaultColorForTool, defaultLineWidthForTool, isBoxShapeTool, lineWidthsForTool, toolUsesColor, withInkStrokeColor, inkShapeHasFill } from '../lib/presentationDrawTools';
+import { PresentationDrawTool, DEFAULT_MARKER_COLOR, DEFAULT_MARKER_OPACITY, DEFAULT_PEN_COLOR, defaultColorForTool, defaultLineWidthForTool, isBoxShapeTool, isShapeTool, lineWidthsForTool, toolUsesColor, withInkStrokeColor, inkShapeHasFill } from '../lib/presentationDrawTools';
 import { tryHandleLessonEntryTicketLinkClick, isLessonEntryTicketSlideHref } from '../lib/presentationEditorUi';
 import { slideSectionName } from '../lib/presentationSections';
 import { withLessonSectionPath } from '../lib/entryTicketCustomSets';
@@ -1369,7 +1369,9 @@ const PresentationPresentPage: React.FC = () => {
     setActiveTool(tool);
     const options = lineWidthsForTool(tool);
     if (!options.some((w) => Math.abs(w - lineWidth) < 0.01)) {
-      setLineWidth(defaultLineWidthForTool(tool));
+      if (!(isShapeTool(tool) && lineWidth >= 1 && lineWidth <= 16)) {
+        setLineWidth(defaultLineWidthForTool(tool));
+      }
     }
     if (tool === 'marker') {
       setStrokeColor(markerColorRef.current || defaultColorForTool(tool));

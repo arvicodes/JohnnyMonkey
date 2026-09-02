@@ -163,6 +163,7 @@ import {
   toolUsesColor,
   isInkDrawCaptureTool,
   isBoxShapeTool,
+  isShapeTool,
   inkShapeHasFill,
   withInkStrokeColor,
   type PresentationDrawTool,
@@ -770,9 +771,11 @@ const PresentationEditorPage: React.FC = () => {
       setInkEditActive(true);
       setInkTool(tool);
       const options = lineWidthsForTool(tool);
-      setInkLineWidth((w) =>
-        options.some((opt) => Math.abs(opt - w) < 0.01) ? w : defaultLineWidthForTool(tool),
-      );
+      setInkLineWidth((w) => {
+        if (options.some((opt) => Math.abs(opt - w) < 0.01)) return w;
+        if (isShapeTool(tool) && w >= 1 && w <= 16) return w;
+        return defaultLineWidthForTool(tool);
+      });
       if (tool === 'marker') {
         setInkColor(markerColorRef.current || defaultColorForTool(tool));
       } else if (toolUsesColor(tool)) {

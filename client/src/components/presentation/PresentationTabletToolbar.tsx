@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Divider, IconButton, Typography } from '@mui/material';
+import { Box, Divider, IconButton, Slider, Typography } from '@mui/material';
 import {
   ArrowForward as ArrowIcon,
   Casino as CasinoIcon,
@@ -33,6 +33,7 @@ import {
   PEN_COLORS,
   PresentationDrawTool,
   isBoxShapeTool,
+  isShapeTool,
   lineWidthsForTool,
   toolUsesColor,
   toolUsesLineWidth,
@@ -651,6 +652,25 @@ export default function PresentationTabletToolbar({
                 />
               </Box>
             ))}
+          {showLineWidths && isShapeTool(activeTool) && (
+            <Slider
+              size="small"
+              min={1}
+              max={16}
+              step={0.5}
+              value={Math.max(1, Math.min(16, lineWidth))}
+              aria-label="Linienstärke"
+              onChange={(_, next) =>
+                onSelectLineWidth(Array.isArray(next) ? next[0] : next)
+              }
+              sx={{
+                width: 72,
+                mx: 0.4,
+                color: JOHNNY_PRESENTATION.warm,
+                '& .MuiSlider-thumb': { width: 14, height: 14 },
+              }}
+            />
+          )}
           {showLineWidths && showMarkerOpacity && (
             <Divider
               orientation="vertical"

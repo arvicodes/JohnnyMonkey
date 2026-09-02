@@ -15,7 +15,7 @@ export type PresentationDrawTool =
 
 export const PEN_LINE_WIDTHS = [1.5, 3, 5, 8] as const;
 export const MARKER_LINE_WIDTHS = [6, 10, 16, 24] as const;
-export const SHAPE_LINE_WIDTHS = [2, 4, 6, 10] as const;
+export const SHAPE_LINE_WIDTHS = [1.5, 2.5, 4, 6, 10] as const;
 
 /** Stift / Schrift auf der Folie */
 export const DEFAULT_PEN_COLOR = '#1565c0';

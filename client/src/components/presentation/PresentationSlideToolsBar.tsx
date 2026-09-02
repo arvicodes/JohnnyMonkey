@@ -12,6 +12,7 @@ import {
   ListItemIcon,
   ListItemText,
   Popover,
+  Slider,
   Switch,
   TextField,
   Tooltip,
@@ -120,7 +121,15 @@ import {
   withImageFrameDash,
   withImageFrameWidth,
 } from '../../lib/presentationImageFrames';
-import { SLIDE_SHAPE_LABELS, SHAPE_FILL_PRESETS, shapeFillIsNone } from '../../lib/presentationSlideShapes';
+import {
+  SLIDE_SHAPE_LABELS,
+  SHAPE_FILL_PRESETS,
+  SHAPE_STROKE_PRESETS,
+  SHAPE_STROKE_WIDTH_MAX,
+  SHAPE_STROKE_WIDTH_MIN,
+  clampShapeStrokeWidth,
+  shapeFillIsNone,
+} from '../../lib/presentationSlideShapes';
 import { JOHNNY_ACCENT_PRESETS } from '../../lib/presentationTheme';
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
 import { sanitizePresentationHtml } from '../../lib/presentationRichText';
@@ -129,6 +138,7 @@ import {
   PEN_COLORS,
   MARKER_OPACITY_PRESETS,
   isBoxShapeTool,
+  isShapeTool,
   lineWidthsForTool,
   toolUsesColor,
   toolUsesLineWidth,
@@ -152,6 +162,62 @@ const toolGroupSx = {
   px: 0.1,
   py: 0,
 };
+
+function ShapeStrokeWidthControls({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (width: number) => void;
+}) {
+  const width = clampShapeStrokeWidth(value);
+  return (
+    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.1 }}>
+      {SHAPE_STROKE_PRESETS.map((preset) => (
+        <Tooltip key={preset} title={`Linienstärke ${preset}`}>
+          <IconButton
+            size="small"
+            onClick={() => onChange(preset)}
+            aria-label={`Linienstärke ${preset}`}
+            sx={{
+              ...iconBtnSx,
+              width: 22,
+              height: 22,
+              ...(Math.abs(width - preset) < 0.05 ? { bgcolor: `${PRES_EDITOR_UI.accent}22` } : {}),
+            }}
+          >
+            <Box
+              sx={{
+                width: Math.min(14, 3 + preset * 1.1),
+                height: Math.min(14, 3 + preset * 1.1),
+                borderRadius: '50%',
+                bgcolor: PRES_EDITOR_UI.textMuted,
+              }}
+            />
+          </IconButton>
+        </Tooltip>
+      ))}
+      <Slider
+        size="small"
+        min={SHAPE_STROKE_WIDTH_MIN}
+        max={SHAPE_STROKE_WIDTH_MAX}
+        step={0.5}
+        value={width}
+        aria-label="Linienstärke"
+        onChange={(_, next) =>
+          onChange(clampShapeStrokeWidth(Array.isArray(next) ? next[0] : next))
+        }
+        sx={{
+          width: 80,
+          mx: 0.6,
+          py: 0.4,
+          color: PRES_EDITOR_UI.accent,
+          '& .MuiSlider-thumb': { width: 12, height: 12 },
+        }}
+      />
+    </Box>
+  );
+}
 
 interface PresentationSlideToolsBarProps {
   slide: PresentationSlide | null;
@@ -829,6 +895,28 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                         </IconButton>
                       </Tooltip>
                     ))}
+                    {isShapeTool(inkTool) && (
+                      <Slider
+                        size="small"
+                        min={SHAPE_STROKE_WIDTH_MIN}
+                        max={SHAPE_STROKE_WIDTH_MAX}
+                        step={0.5}
+                        value={clampShapeStrokeWidth(inkLineWidth)}
+                        aria-label="Linienstärke"
+                        onChange={(_, next) =>
+                          onSelectInkLineWidth(
+                            clampShapeStrokeWidth(Array.isArray(next) ? next[0] : next),
+                          )
+                        }
+                        sx={{
+                          width: 72,
+                          mx: 0.5,
+                          py: 0.4,
+                          color: PRES_EDITOR_UI.accent,
+                          '& .MuiSlider-thumb': { width: 12, height: 12 },
+                        }}
+                      />
+                    )}
                   </>
                 )}
                 {(inkTool === 'marker' || inkSelectionIsMarker) && onSelectInkMarkerOpacity && (
@@ -1191,6 +1279,18 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
             </Tooltip>
           </Box>
         )}
+
+      {selectedElement?.type === 'shape' && (
+        <Box sx={toolGroupSx}>
+          <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, px: 0.4 }}>
+            Linie
+          </Typography>
+          <ShapeStrokeWidthControls
+            value={selectedElement.strokeWidth ?? 3.5}
+            onChange={(strokeWidth) => onUpdateElement(selectedElement.id, { strokeWidth })}
+          />
+        </Box>
+      )}
 
       {selectedElement && (
         <Box sx={toolGroupSx}>
@@ -1749,23 +1849,17 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                           </Box>
                         </>
                       )}
-                      <TextField
-                        size="small"
-                        type="number"
-                        label="Linienstärke"
-                        value={selectedElement.strokeWidth ?? 10.5}
-                        onChange={(e) =>
-                          onUpdateElement(selectedElement.id, {
-                            strokeWidth: Math.max(1, Math.min(28, Number(e.target.value) || 10.5)),
-                          })
-                        }
-                        sx={{
-                          mb: 0.5,
-                          width: '100%',
-                          '& .MuiInputBase-root': { fontSize: 10, height: 28 },
-                          '& .MuiInputLabel-root': { fontSize: 9 },
-                        }}
-                      />
+                      <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, mb: 0.15 }}>
+                        Linienstärke
+                      </Typography>
+                      <Box sx={{ px: 0.25, mb: 0.6 }}>
+                        <ShapeStrokeWidthControls
+                          value={selectedElement.strokeWidth ?? 3.5}
+                          onChange={(strokeWidth) =>
+                            onUpdateElement(selectedElement.id, { strokeWidth })
+                          }
+                        />
+                      </Box>
                       {selectedElement.shapeKind === 'curved-arrow' && (
                         <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, mb: 0.5 }}>
                           Bogen: orange Griff ziehen (oder Zahl unten)

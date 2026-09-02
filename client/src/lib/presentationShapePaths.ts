@@ -71,7 +71,7 @@ export function resolveCurveControl(
 }
 
 export function resolveArrowHeadSize(el: Pick<SlideElement, 'arrowHeadSize' | 'strokeWidth'>): number {
-  const raw = el.arrowHeadSize ?? Math.max(14, (el.strokeWidth ?? 10.5) * 2.1);
+  const raw = el.arrowHeadSize ?? Math.max(10, (el.strokeWidth ?? 3.5) * 2.1);
   return clamp(raw, 4, 36);
 }
 
@@ -423,7 +423,7 @@ export function connectorElementFromSlidePoints(
     h: base.h ?? 10,
     zIndex,
     strokeColor: accent,
-    strokeWidth: 10.5,
+    strokeWidth: 3.5,
     fillColor: 'transparent',
     shapePoints: base.shapePoints,
     arrowHeadSize: 22,

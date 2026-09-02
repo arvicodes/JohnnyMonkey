@@ -92,7 +92,7 @@ const PresentationConnectorDrawOverlay: React.FC<PresentationConnectorDrawOverla
             d={pathD}
             fill="none"
             stroke={accentColor}
-            strokeWidth={10.5}
+            strokeWidth={3.5}
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeDasharray="8 6"
