@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Box, Button, IconButton, Tooltip, Typography } from '@mui/material';
+import { Box, IconButton, Tooltip, Typography } from '@mui/material';
 import {
   DeleteOutline as TrashIcon,
   ChevronRight as HideNotesIcon,
-  StickyNote2Outlined as NotesIcon,
+  Mic as MicIcon,
 } from '@mui/icons-material';
 import { htmlToPlain, textToHtml, type PresentationStroke, type SlideAudioTrack } from '../../lib/presentationDeck';
 import {
@@ -102,6 +102,9 @@ interface NoteZoneProps {
   onBeforeDiscreteEdit?: () => void;
   /** Bild hochladen → Anzeige-URL (read-image API) */
   onUploadImage?: (file: File) => Promise<string | null>;
+  onHide?: () => void;
+  onOpenAudio?: () => void;
+  hasAudio?: boolean;
   inkStrokes?: PresentationStroke[];
   /** Tippen erlaubt, wenn Stift-Modus aus oder Lasso ohne Capture. */
   textEditing: boolean;
@@ -133,6 +136,9 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   onEditorFocus,
   onEditorBlur,
   onMoveToTrash,
+  onHide,
+  onOpenAudio,
+  hasAudio,
   onBeforeDiscreteEdit,
   onUploadImage,
   inkStrokes,
@@ -510,6 +516,34 @@ const NoteZone: React.FC<NoteZoneProps> = ({
               >
                 <TrashIcon sx={{ fontSize: 14 }} />
               </IconButton>
+          )}
+          {onOpenAudio && (
+            <Tooltip title={hasAudio ? 'Ton öffnen' : 'Einsprechen'}>
+              <IconButton
+                size="small"
+                aria-label={hasAudio ? 'Ton öffnen' : 'Einsprechen'}
+                onClick={onOpenAudio}
+                sx={{
+                  width: 22,
+                  height: 22,
+                  color: hasAudio ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
+                }}
+              >
+                <MicIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            </Tooltip>
+          )}
+          {onHide && (
+            <Tooltip title="Notizen einklappen">
+              <IconButton
+                size="small"
+                aria-label="Notizen einklappen"
+                onClick={onHide}
+                sx={{ width: 22, height: 22, color: PRES_EDITOR_UI.textMuted }}
+              >
+                <HideNotesIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
           )}
         </Box>
       </Box>
@@ -909,93 +943,6 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
           }}
         />
       </Box>
-      <Box
-        sx={{
-          flexShrink: 0,
-          borderBottom: `1px solid ${PRES_EDITOR_UI.panelBorder}`,
-          bgcolor: '#fff',
-        }}
-      >
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 0.5,
-          px: 1,
-          py: 0.35,
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
-          <NotesIcon sx={{ fontSize: 14, color: PRES_EDITOR_UI.textMuted }} />
-          <Typography
-            sx={{
-              fontSize: 11,
-              fontWeight: 700,
-              color: PRES_EDITOR_UI.textMuted,
-              letterSpacing: 0.02,
-            }}
-          >
-            Notizen
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: 10,
-              color: PRES_EDITOR_UI.textMuted,
-              opacity: 0.85,
-              display: { xs: 'none', md: 'inline' },
-            }}
-          >
-            · Stift-Werkzeuge oben (wie auf der Folie)
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.15 }}>
-        {onHide && (
-            <IconButton
-              size="small"
-              onClick={onHide}
-              aria-label="Notizen ausblenden"
-              sx={{
-                width: 26,
-                height: 26,
-                color: PRES_EDITOR_UI.textMuted,
-                '&:hover': { bgcolor: PRES_EDITOR_UI.accentSoft, color: PRES_EDITOR_UI.accent },
-              }}
-            >
-              <HideNotesIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-        )}
-        </Box>
-        </Box>
-      </Box>
-      {onOpenAudio ? (
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 0.5,
-            px: 1,
-            py: 0.4,
-            borderBottom: `1px solid ${PRES_EDITOR_UI.panelBorder}`,
-            bgcolor: '#fff',
-          }}
-        >
-          <Button
-            size="small"
-            onClick={onOpenAudio}
-            sx={{
-              textTransform: 'none',
-              fontWeight: 700,
-              fontSize: 11,
-              minHeight: 26,
-              px: 1,
-              color: audioTrack?.path ? PRES_EDITOR_UI.accent : PRES_EDITOR_UI.textMuted,
-            }}
-          >
-            {audioTrack?.path ? 'Ton öffnen' : 'Einsprechen'}
-          </Button>
-        </Box>
-      ) : null}
       <NoteZone
         fieldKey="speakerNotesHtml"
         label="Notizen"
@@ -1011,6 +958,9 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
         onEditorBlur={onEditorBlur}
         onMoveToTrash={onMoveNotesToTrash}
         onUploadImage={onUploadImage}
+        onHide={onHide}
+        onOpenAudio={onOpenAudio}
+        hasAudio={Boolean(audioTrack?.path)}
         inkStrokes={inkStrokes}
         textEditing={textEditing}
         inkTool={inkTool}

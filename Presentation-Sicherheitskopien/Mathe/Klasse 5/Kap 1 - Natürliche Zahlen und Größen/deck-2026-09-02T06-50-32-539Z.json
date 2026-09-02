@@ -2,7 +2,7 @@
   "version": 1,
   "title": "Kap 1 - Natürliche Zahlen und Größen",
   "lessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen",
-  "updatedAt": "2026-09-01T10:37:36.795Z",
+  "updatedAt": "2026-09-02T06:33:01.167Z",
   "slides": [
     {
       "layout": "title-slide",
@@ -912,12 +912,37 @@
       "bodyLeftHtml": "",
       "bodyRightHtml": "",
       "imageCaptionHtml": "",
-      "speakerNotesHtml": "<p><br></p>",
+      "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><br></p>",
       "preparationNotes": "",
       "preparationHtml": "<p><br></p>",
       "materialNotes": "",
       "materialHtml": "<p><br></p>",
-      "elements": [],
+      "elements": [
+        {
+          "id": "el-1788329899698",
+          "type": "image",
+          "x": 40.41038022351798,
+          "y": 4.410906624554592,
+          "w": 37.534438775510196,
+          "h": 61.8660155691946,
+          "src": "/app/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/bild-1788330026058-ei50oa.png",
+          "zIndex": 1,
+          "imageFit": "contain",
+          "stackLayer": "foreground",
+          "imageSourceRect": {
+            "x": 29.09627894724163,
+            "y": -2.4262362009637206,
+            "w": 60.53602898236912,
+            "h": 80.71470530982549
+          },
+          "imageFrame": {
+            "preset": "custom",
+            "color": "#1a1a1a",
+            "width": 3,
+            "dash": "solid"
+          }
+        }
+      ],
       "transition": "fade",
       "revealEnabled": true,
       "zoneRevealSteps": {}
@@ -1171,14 +1196,14 @@
           "strokeWidth": 2.5,
           "fillColor": "rgba(239,108,0,0.14)",
           "titleHtml": "<p style=\"text-align:center\"><strong style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\">Hausaufgabe</strong></p><p style=\"text-align:center\"><strong style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\"><br></strong></p>",
-          "html": "<p style=\"text-align: justify;\"><span style=\"font-weight: bold;\">Arbeitsheft</span> Seite 6 , Nummer 11 und 12</p><p style=\"text-align: justify;\"><span style=\"font-weight: bold;\">Buch</span> Seite 23, Nummer 1 und 5</p><p style=\"text-align: justify;\"><br></p><p style=\"text-align: justify;\"><br></p><p style=\"text-align: justify;\"><br></p><p style=\"text-align: justify;\"><br></p><p style=\"text-align: justify;\"><span style=\"font-weight: bold;\">Bonus- &amp; Knobelaufgaben</span></p><p style=\"text-align: justify;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\">Buch&nbsp;Seite 23, Nummer 7 und 8</span></p><p style=\"text-align: justify;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\"><br></span></p>",
+          "html": "<p style=\"text-align: justify;\"><span style=\"font-weight: bold;\">Arbeitsheft</span> Seite 6 , Nummer 11 und 12</p><p style=\"text-align: justify;\"><span style=\"font-weight: bold;\">Buch</span> Seite 23, Nummer 1 und 5</p><p style=\"text-align: justify;\"><br></p><p style=\"text-align: justify;\"><br></p><p style=\"text-align: justify;\"><br></p><p style=\"text-align: justify;\"><br></p><p style=\"text-align: justify;\"><span style=\"font-weight: bold;\">Bonus- &amp; Knobelaufgaben</span></p><p style=\"text-align: justify;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Buch&nbsp;Seite 23, Nummer 7 und 8</span></p><p style=\"text-align: justify;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br></span></p>",
           "stackLayer": "foreground"
         },
         {
           "id": "el-1788255004205",
           "type": "image",
-          "x": 42.46329559793155,
-          "y": 44.084774205233245,
+          "x": 42.807310537874315,
+          "y": 44.89477420523325,
           "w": 32.848817244988254,
           "h": 10.082604470359573,
           "src": "/app/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/Bildschirmfoto 2026-09-01 um 11.30.00.png",
@@ -1195,8 +1220,8 @@
         {
           "id": "el-1788255034122",
           "type": "image",
-          "x": 42.47211284291979,
-          "y": 55.24737867559281,
+          "x": 42.807310537874315,
+          "y": 56.26331189486376,
           "w": 32.90063879503685,
           "h": 10.082604470359573,
           "src": "/app/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/Bildschirmfoto 2026-09-01 um 11.30.25.png",
@@ -1247,30 +1272,6 @@
           }
         },
         {
-          "id": "el-1788258079732",
-          "type": "image",
-          "x": 42.27044972114534,
-          "y": 9.650237667311018,
-          "w": 32.88807984373463,
-          "h": 33.35879463143368,
-          "src": "/app/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/image.jpg",
-          "zIndex": 9,
-          "imageFit": "contain",
-          "stackLayer": "foreground",
-          "imageFrame": {
-            "preset": "simple-black",
-            "color": "#1a1a1a",
-            "width": 3,
-            "dash": "solid"
-          },
-          "imageSourceRect": {
-            "x": 37.265233830643126,
-            "y": 0.4452429261574986,
-            "w": 40.82738780797954,
-            "h": 54.43651707730605
-          }
-        },
-        {
           "id": "el-1788258276890",
           "type": "text",
           "x": 3.3333333333333335,
@@ -1279,6 +1280,30 @@
           "h": 3.8,
           "html": "<p><br></p>",
           "zIndex": 10
+        },
+        {
+          "id": "el-1788329770960",
+          "type": "image",
+          "x": 42.708535469440896,
+          "y": 9.381603700518694,
+          "w": 32.402137228972535,
+          "h": 34.131708194345066,
+          "src": "/app/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/bild-1788329942938-owvn1b.png",
+          "zIndex": 10,
+          "imageFit": "contain",
+          "stackLayer": "foreground",
+          "imageFrame": {
+            "preset": "custom",
+            "color": "#1a1a1a",
+            "width": 3,
+            "dash": "solid"
+          },
+          "imageSourceRect": {
+            "x": 36.899563284395505,
+            "y": -2.6324955722440126,
+            "w": 42.40612079110595,
+            "h": 56.54149438814127
+          }
         }
       ],
       "transition": "zoom",
@@ -1293,6 +1318,152 @@
       "sourceLessonName": "1.7 Römische Zahlen",
       "sourceLessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen",
       "speakerNotesInkSpace": "slide"
+    },
+    {
+      "id": "slide-1788330040989-1ibhd",
+      "order": 19,
+      "speakerNotes": "",
+      "layout": "blank",
+      "subtitle": "",
+      "bodyLeft": "",
+      "bodyRight": "",
+      "imagePath": "",
+      "imageCaption": "",
+      "bodyStyle": "plain",
+      "titleAlign": "left",
+      "accentColor": "#2E7D32",
+      "title": "",
+      "body": "",
+      "hiddenLayoutZones": [
+        "bodyHtml"
+      ],
+      "sourceLessonName": "1.8 Der Zahlenstrahl",
+      "sourceLessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen",
+      "titleHtml": "",
+      "bodyHtml": "",
+      "subtitleHtml": "",
+      "bodyLeftHtml": "",
+      "bodyRightHtml": "",
+      "imageCaptionHtml": "",
+      "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><br></p>",
+      "preparationNotes": "",
+      "preparationHtml": "<p><br></p>",
+      "materialNotes": "",
+      "materialHtml": "<p><br></p>",
+      "elements": [],
+      "transition": "fade",
+      "revealEnabled": true,
+      "zoneRevealSteps": {}
+    },
+    {
+      "layout": "blank",
+      "title": "Hausaufgabe",
+      "body": "",
+      "speakerNotes": "",
+      "preparationNotes": "",
+      "materialNotes": "",
+      "subtitle": "",
+      "bodyLeft": "",
+      "bodyRight": "",
+      "imagePath": "",
+      "imageCaption": "",
+      "bodyStyle": "plain",
+      "titleAlign": "left",
+      "accentColor": "#C62828",
+      "titleHtml": "<p><span data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important;\">Hausaufgabe</span></p><p><span data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important;\"><br></span></p>",
+      "bodyHtml": "<p><br></p>",
+      "subtitleHtml": "",
+      "bodyLeftHtml": "",
+      "bodyRightHtml": "",
+      "imageCaptionHtml": "",
+      "speakerNotesHtml": "<p><br></p>",
+      "preparationHtml": "<p><br></p>",
+      "materialHtml": "<p><br></p>",
+      "elements": [
+        {
+          "id": "el-1788330040990-0-kuz",
+          "type": "image",
+          "x": 34.82752190813671,
+          "y": 9.81815147429894,
+          "w": 6.234590934783087,
+          "h": 7.532135501524438,
+          "src": "git-intern/Grafiken/HA.png",
+          "zIndex": 1,
+          "revealStep": 0,
+          "imageFit": "contain"
+        },
+        {
+          "id": "el-1788330040990-1-07l",
+          "type": "text",
+          "x": 81.35841393849206,
+          "y": 88.3222828483245,
+          "w": 18.641586061507937,
+          "h": 6.796626984126986,
+          "html": "<p><span style=\"font-weight: 700; text-align: center; background-color: rgb(255, 255, 255);\">Bis zur nächsten Stunde!</span></p>",
+          "zIndex": 2
+        },
+        {
+          "id": "el-1788330040990-2-b75",
+          "type": "image",
+          "x": 76.0521128429198,
+          "y": 60.259519334795975,
+          "w": 26.615334494745305,
+          "h": 33.21916135335253,
+          "src": "git-intern/Grafiken/Endroboter.png",
+          "zIndex": 3,
+          "imageFit": "contain"
+        },
+        {
+          "id": "el-1788330040990-3-xhw",
+          "type": "card",
+          "x": 1.85512377684924,
+          "y": 9.129772046836543,
+          "w": 39.206989066070555,
+          "h": 45.847606628756274,
+          "zIndex": 5,
+          "strokeColor": "#EF6C00",
+          "strokeWidth": 2.5,
+          "fillColor": "rgba(239,108,0,0.14)",
+          "titleHtml": "<p style=\"text-align:center\"><strong style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\">Hausaufgabe</strong></p><p style=\"text-align:center\"><strong style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\"><br></strong></p>",
+          "html": "<p style=\"text-align: justify;\"><b>Arbeitsheft </b>ganze Seite 7</p><p style=\"text-align: justify;\"><b>Mathebuch&nbsp;</b>Seite , Nummer</p>",
+          "stackLayer": "foreground"
+        },
+        {
+          "id": "el-1788330145572",
+          "type": "image",
+          "x": 42.785015792031096,
+          "y": 6.956845662790231,
+          "w": 44.669681674213116,
+          "h": 56.2718118225228,
+          "src": "/app/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/bild-1788330226463-fze4au.png",
+          "zIndex": 5,
+          "imageFit": "contain",
+          "stackLayer": "foreground",
+          "imageSourceRect": {
+            "x": 33.5192333696194,
+            "y": -4.140469412458236,
+            "w": 57.80458296517955,
+            "h": 77.07277728690607
+          },
+          "imageFrame": {
+            "preset": "custom",
+            "color": "#1a1a1a",
+            "width": 3,
+            "dash": "solid"
+          }
+        }
+      ],
+      "transition": "zoom",
+      "revealEnabled": true,
+      "zoneRevealSteps": {},
+      "homeworkSubmissionRequired": true,
+      "hiddenLayoutZones": [
+        "bodyHtml"
+      ],
+      "id": "slide-1788330040990-h71hg",
+      "order": 20,
+      "sourceLessonName": "1.8 Der Zahlenstrahl",
+      "sourceLessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen"
     }
   ],
   "defaultTransition": "fade",
