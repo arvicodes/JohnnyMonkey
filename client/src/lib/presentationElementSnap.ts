@@ -9,6 +9,8 @@ export type SnapGuide = {
   /** Position in % der Folienbreite/-höhe */
   pos: number;
   kind: 'edge' | 'center' | 'size' | 'spacing';
+  /** Annäherung — Linie schon sichtbar, noch nicht eingerastet. */
+  preview?: boolean;
 };
 
 export type ElementRect = {
@@ -28,8 +30,10 @@ export type AlignKind =
   | 'bottom';
 
 const MIN_SIZE = 4;
-/** Snap-Toleranz in Folien-% (≈ 6–8 px bei typischer Editor-Größe). */
-export const SNAP_THRESHOLD_PCT = 0.65;
+/** Snap-Toleranz in Folien-% — etwas weiter, damit Mitte/Kante leichter einrasten. */
+export const SNAP_THRESHOLD_PCT = 1.2;
+/** Folien-Mitte und Seitenränder: noch etwas großzügiger. */
+export const SNAP_SLIDE_THRESHOLD_PCT = 1.9;
 
 function clamp(v: number, min: number, max: number) {
   return Math.min(max, Math.max(min, v));
@@ -52,7 +56,14 @@ function bottom(r: ElementRect) {
   return r.y + r.h;
 }
 
-type AxisCandidate = { value: number; guidePos: number; kind: SnapGuide['kind'] };
+type AxisCandidate = {
+  value: number;
+  guidePos: number;
+  kind: SnapGuide['kind'];
+  threshold?: number;
+  /** Höher = Folien-Mitte/Kante gewinnt gegen nah liegende andere Elemente. */
+  priority?: number;
+};
 
 function pickSnap(
   axis: 'x' | 'y',
@@ -61,12 +72,21 @@ function pickSnap(
   threshold: number,
 ): { value: number; guide: SnapGuide | null; dist: number; hit: boolean } {
   let best: AxisCandidate | null = null;
-  let bestDist = threshold;
+  let bestScore = Infinity;
+  let bestDist = Infinity;
   for (const c of candidates) {
+    const t = c.threshold ?? threshold;
     const d = Math.abs(raw - c.value);
-    if (d <= bestDist) {
-      bestDist = d;
+    if (d > t) continue;
+    const score = d - (c.priority ?? 0) * 0.22;
+    if (
+      !best ||
+      score < bestScore - 0.001 ||
+      (Math.abs(score - bestScore) <= 0.28 && (c.priority ?? 0) > (best.priority ?? 0))
+    ) {
       best = c;
+      bestScore = score;
+      bestDist = d;
     }
   }
   if (!best) return { value: raw, guide: null, dist: Infinity, hit: false };
@@ -78,26 +98,40 @@ function pickSnap(
   };
 }
 
-/** Folien-Ränder + Mitte als Snap-Ziele (für Kante bzw. Mitte des Elements). */
+function slideGuide(kind: SnapGuide['kind'], extra?: Partial<AxisCandidate>): Partial<AxisCandidate> {
+  return {
+    threshold: SNAP_SLIDE_THRESHOLD_PCT,
+    priority: kind === 'center' ? 5 : 3,
+    ...extra,
+  };
+}
+
+/** Folien-Ränder + Mitte; bei mehreren Seiten jede Seitenmitte und jeder Seitenrand. */
 function slideEdgeCandidates(
   size: number,
   which: 'start' | 'center' | 'end',
+  axis: 'x' | 'y',
+  pageCount = 1,
 ): AxisCandidate[] {
-  if (which === 'start') {
-    return [
-      { value: 0, guidePos: 0, kind: 'edge' },
-      { value: 50 - size / 2, guidePos: 50, kind: 'center' },
-      { value: 100 - size, guidePos: 100, kind: 'edge' },
-    ];
+  const pages = axis === 'y' ? Math.max(1, pageCount) : 1;
+  const out: AxisCandidate[] = [];
+  for (let i = 0; i < pages; i++) {
+    const top = i * 100;
+    const mid = top + 50;
+    const bot = top + 100;
+    if (which === 'start') {
+      out.push({ value: top, guidePos: top, kind: 'edge', ...slideGuide('edge') });
+      out.push({ value: mid - size / 2, guidePos: mid, kind: 'center', ...slideGuide('center') });
+      out.push({ value: bot - size, guidePos: bot, kind: 'edge', ...slideGuide('edge') });
+    } else if (which === 'center') {
+      out.push({ value: mid, guidePos: mid, kind: 'center', ...slideGuide('center') });
+    } else {
+      out.push({ value: top + size, guidePos: top, kind: 'edge', ...slideGuide('edge') });
+      out.push({ value: mid + size / 2, guidePos: mid, kind: 'center', ...slideGuide('center') });
+      out.push({ value: bot, guidePos: bot, kind: 'edge', ...slideGuide('edge') });
+    }
   }
-  if (which === 'center') {
-    return [{ value: 50, guidePos: 50, kind: 'center' }];
-  }
-  return [
-    { value: size, guidePos: 0, kind: 'edge' },
-    { value: 50 + size / 2, guidePos: 50, kind: 'center' },
-    { value: 100, guidePos: 100, kind: 'edge' },
-  ];
+  return out;
 }
 
 function otherEdgeCandidates(
@@ -152,13 +186,36 @@ function spacingStartCandidates(others: ElementRect[], axis: 'x' | 'y', size: nu
   return out;
 }
 
+function previewSlideGuides(
+  proposed: ElementRect,
+  pageCount: number,
+  existing: SnapGuide[],
+): SnapGuide[] {
+  const reach = SNAP_SLIDE_THRESHOLD_PCT * 1.65;
+  const out: SnapGuide[] = [];
+  const has = (axis: 'x' | 'y', pos: number) =>
+    existing.some((g) => g.axis === axis && Math.abs(g.pos - pos) < 0.05);
+  if (Math.abs(cx(proposed) - 50) <= reach && !has('x', 50)) {
+    out.push({ axis: 'x', pos: 50, kind: 'center', preview: true });
+  }
+  const pages = Math.max(1, pageCount);
+  for (let i = 0; i < pages; i++) {
+    const mid = i * 100 + 50;
+    if (Math.abs(cy(proposed) - mid) <= reach && !has('y', mid)) {
+      out.push({ axis: 'y', pos: mid, kind: 'center', preview: true });
+    }
+  }
+  return out;
+}
+
 export function snapElementMove(
   proposed: ElementRect,
   others: ElementRect[],
-  opts?: { threshold?: number; enabled?: boolean; yMax?: number },
+  opts?: { threshold?: number; enabled?: boolean; yMax?: number; pageCount?: number },
 ): { x: number; y: number; guides: SnapGuide[] } {
   const threshold = opts?.threshold ?? SNAP_THRESHOLD_PCT;
   const yMax = opts?.yMax ?? IMAGE_FRAME_MAX;
+  const pageCount = opts?.pageCount ?? 1;
   if (opts?.enabled === false) {
     return {
       x: clamp(proposed.x, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
@@ -175,16 +232,16 @@ export function snapElementMove(
 
   // X: snap über Start-, Mittel- oder Endkante → resultierendes x
   const xFromStart = pickSnap('x', proposed.x, [
-    ...slideEdgeCandidates(proposed.w, 'start'),
+    ...slideEdgeCandidates(proposed.w, 'start', 'x', pageCount),
     ...xOthers.start,
     ...spacingStartCandidates(peers, 'x', proposed.w),
   ], threshold);
   const xFromCenter = pickSnap('x', cx(proposed), [
-    ...slideEdgeCandidates(proposed.w, 'center'),
+    ...slideEdgeCandidates(proposed.w, 'center', 'x', pageCount),
     ...xOthers.center,
   ], threshold);
   const xFromEnd = pickSnap('x', right(proposed), [
-    ...slideEdgeCandidates(proposed.w, 'end'),
+    ...slideEdgeCandidates(proposed.w, 'end', 'x', pageCount),
     ...xOthers.end,
   ], threshold);
 
@@ -215,16 +272,16 @@ export function snapElementMove(
   }
 
   const yFromStart = pickSnap('y', proposed.y, [
-    ...slideEdgeCandidates(proposed.h, 'start'),
+    ...slideEdgeCandidates(proposed.h, 'start', 'y', pageCount),
     ...yOthers.start,
     ...spacingStartCandidates(peers, 'y', proposed.h),
   ], threshold);
   const yFromCenter = pickSnap('y', cy(proposed), [
-    ...slideEdgeCandidates(proposed.h, 'center'),
+    ...slideEdgeCandidates(proposed.h, 'center', 'y', pageCount),
     ...yOthers.center,
   ], threshold);
   const yFromEnd = pickSnap('y', bottom(proposed), [
-    ...slideEdgeCandidates(proposed.h, 'end'),
+    ...slideEdgeCandidates(proposed.h, 'end', 'y', pageCount),
     ...yOthers.end,
   ], threshold);
 
@@ -254,10 +311,13 @@ export function snapElementMove(
     if (yOptions[0].guide) guides.push(yOptions[0].guide);
   }
 
-  return {
+  const snapped = {
     x: clamp(nextX, IMAGE_FRAME_MIN, IMAGE_FRAME_MAX),
     y: clamp(nextY, IMAGE_FRAME_MIN, yMax),
-    guides,
+  };
+  return {
+    ...snapped,
+    guides: [...guides, ...previewSlideGuides({ ...proposed, ...snapped }, pageCount, guides)],
   };
 }
 
@@ -265,10 +325,11 @@ export function snapElementResize(
   proposed: ElementRect,
   corner: 'br' | 'tr',
   others: ElementRect[],
-  opts?: { threshold?: number; enabled?: boolean; yMax?: number },
+  opts?: { threshold?: number; enabled?: boolean; yMax?: number; pageCount?: number },
 ): { x: number; y: number; w: number; h: number; guides: SnapGuide[] } {
   const threshold = opts?.threshold ?? SNAP_THRESHOLD_PCT;
   const yMax = opts?.yMax ?? IMAGE_FRAME_MAX;
+  const pageCount = opts?.pageCount ?? 1;
   if (opts?.enabled === false) {
     return {
       x: proposed.x,
@@ -312,8 +373,8 @@ export function snapElementResize(
 
   // Rechte / untere / obere Kante an andere Kanten
   const rightTargets: AxisCandidate[] = [
-    { value: 100, guidePos: 100, kind: 'edge' },
-    { value: 50, guidePos: 50, kind: 'center' },
+    { value: 100, guidePos: 100, kind: 'edge', ...slideGuide('edge') },
+    { value: 50, guidePos: 50, kind: 'center', ...slideGuide('center') },
     ...peers.flatMap((o) => [
       { value: o.x, guidePos: o.x, kind: 'edge' as const },
       { value: cx(o), guidePos: cx(o), kind: 'center' as const },
@@ -328,8 +389,7 @@ export function snapElementResize(
 
   if (corner === 'br') {
     const bottomTargets: AxisCandidate[] = [
-      { value: 100, guidePos: 100, kind: 'edge' },
-      { value: 50, guidePos: 50, kind: 'center' },
+      ...slideEdgeCandidates(h, 'end', 'y', pageCount),
       ...peers.flatMap((o) => [
         { value: o.y, guidePos: o.y, kind: 'edge' as const },
         { value: cy(o), guidePos: cy(o), kind: 'center' as const },
@@ -343,8 +403,7 @@ export function snapElementResize(
     }
   } else {
     const topTargets: AxisCandidate[] = [
-      { value: 0, guidePos: 0, kind: 'edge' },
-      { value: 50, guidePos: 50, kind: 'center' },
+      ...slideEdgeCandidates(h, 'start', 'y', pageCount),
       ...peers.flatMap((o) => [
         { value: o.y, guidePos: o.y, kind: 'edge' as const },
         { value: cy(o), guidePos: cy(o), kind: 'center' as const },

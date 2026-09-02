@@ -932,10 +932,10 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
                     g.kind === 'spacing'
                       ? '1px dashed #00BCD4'
                       : g.kind === 'center'
-                        ? '1px solid #FF6F00'
+                        ? `${g.preview ? 1 : 2}px ${g.preview ? 'dashed' : 'solid'} #FF6F00`
                         : '1px solid #00E5FF',
-                  boxShadow: '0 0 0 0.5px rgba(255,255,255,0.7)',
-                  opacity: 0.95,
+                  boxShadow: g.preview ? undefined : '0 0 0 0.5px rgba(255,255,255,0.7)',
+                  opacity: g.preview ? 0.45 : 0.95,
                 }}
               />
             ) : (
@@ -951,10 +951,10 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
                     g.kind === 'spacing'
                       ? '1px dashed #00BCD4'
                       : g.kind === 'center'
-                        ? '1px solid #FF6F00'
+                        ? `${g.preview ? 1 : 2}px ${g.preview ? 'dashed' : 'solid'} #FF6F00`
                         : '1px solid #00E5FF',
-                  boxShadow: '0 0 0 0.5px rgba(255,255,255,0.7)',
-                  opacity: 0.95,
+                  boxShadow: g.preview ? undefined : '0 0 0 0.5px rgba(255,255,255,0.7)',
+                  opacity: g.preview ? 0.45 : 0.95,
                 }}
               />
             ),

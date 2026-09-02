@@ -29,6 +29,7 @@ import {
   Undo as UndoIcon,
   DeleteSweep as ClearInkIcon,
   Crop as CropIcon,
+  RotateLeft as RotateLeftIcon,
   ImageOutlined as ImageIcon,
   PaletteOutlined as PaletteIcon,
   SettingsOutlined as SettingsIcon,
@@ -105,7 +106,7 @@ import {
   type CreateTableOptions,
 } from '../../lib/presentationSlideTables';
 import { isHomeworkSlide } from '../../lib/presentationSlideTemplates';
-import { ensureWindowCropLock, isImageCropMode, isWindowCropMode } from '../../lib/presentationImageUtils';
+import { ensureWindowCropLock, isImageCropMode, isWindowCropMode, rotateElementByDegrees } from '../../lib/presentationImageUtils';
 import {
   IMAGE_FRAME_COLORS,
   IMAGE_FRAME_DASHES,
@@ -1415,6 +1416,34 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                           }
                         >
                           Zuschneiden
+                        </Button>
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 0.35, mb: 0.35 }}>
+                        <Button
+                          size="small"
+                          sx={{ ...miniBtnSx, flex: 1 }}
+                          startIcon={<RotateLeftIcon sx={{ fontSize: 14 }} />}
+                          onClick={() =>
+                            onUpdateElement(
+                              selectedElement.id,
+                              rotateElementByDegrees(selectedElement, -90),
+                            )
+                          }
+                        >
+                          90° links
+                        </Button>
+                        <Button
+                          size="small"
+                          sx={{ ...miniBtnSx, flex: 1 }}
+                          startIcon={<RotateRightIcon sx={{ fontSize: 14 }} />}
+                          onClick={() =>
+                            onUpdateElement(
+                              selectedElement.id,
+                              rotateElementByDegrees(selectedElement, 90),
+                            )
+                          }
+                        >
+                          90° rechts
                         </Button>
                       </Box>
                       {isWindowCropMode(selectedElement) && selectedElement.imageSourceRect ? (

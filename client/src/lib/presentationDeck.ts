@@ -134,7 +134,7 @@ export interface SlideElement {
   shapeCurveControl?: { x: number; y: number };
   /** Pfeilspitze: Größe in viewBox-Einheiten (4–28). */
   arrowHeadSize?: number;
-  /** Drehung in Grad, um die Mitte (Linie, Pfeil, Form). */
+  /** Drehung in Grad, um die Mitte (Bild, Linie, Pfeil, Form). */
   rotation?: number;
   strokeColor?: string;
   strokeWidth?: number;

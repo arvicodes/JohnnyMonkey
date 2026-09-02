@@ -120,9 +120,17 @@ function StaticElement({ el, scale, accent, pages = 1 }: { el: SlideElement; sca
           width: `${el.w}%`,
           height: `${pagePctToCssPct(el.h, pages)}%`,
           zIndex: 10 + (el.zIndex || 0),
-          overflow: frame.active ? 'visible' : 'hidden',
+          overflow:
+            frame.active || (typeof el.rotation === 'number' && el.rotation % 360 !== 0)
+              ? 'visible'
+              : 'hidden',
           boxSizing: 'border-box',
           pointerEvents: 'none',
+          transform:
+            typeof el.rotation === 'number' && el.rotation % 360 !== 0
+              ? `rotate(${el.rotation}deg)`
+              : undefined,
+          transformOrigin: 'center center',
         }}
       >
         <div

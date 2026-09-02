@@ -594,6 +594,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         const snapped = snapElementMove(proposed, snapTargetsRef.current, {
           enabled: snapEnabled,
           yMax,
+          pageCount: pages,
         });
         patch = { x: snapped.x, y: snapped.y };
         guides = snapped.guides;
@@ -620,6 +621,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         const snapped = snapElementResize(proposed, 'tr', snapTargetsRef.current, {
           enabled: snapEnabled,
           yMax,
+          pageCount: pages,
         });
         patch = { x: snapped.x, y: snapped.y, w: snapped.w, h: snapped.h };
         guides = snapped.guides;
@@ -635,6 +637,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         const snapped = snapElementResize(proposed, 'br', snapTargetsRef.current, {
           enabled: snapEnabled,
           yMax,
+          pageCount: pages,
         });
       patch = { w: snapped.w, h: snapped.h };
       guides = snapped.guides;
@@ -1221,11 +1224,14 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
           exportSnapshot ||
           isShapeElement ||
           isCardElement ||
-          pictureFrameOn
+          pictureFrameOn ||
+          (isImageElement && typeof view.rotation === 'number' && view.rotation % 360 !== 0)
             ? 'visible'
             : 'hidden',
         transform:
-          isShapeElement && typeof view.rotation === 'number' && view.rotation % 360 !== 0
+          (isShapeElement || isImageElement) &&
+          typeof view.rotation === 'number' &&
+          view.rotation % 360 !== 0
             ? `rotate(${view.rotation}deg)`
             : undefined,
         transformOrigin: 'center center',
@@ -2252,7 +2258,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
           />
         ))}
 
-      {showSelectionChrome && isShapeElement && (
+      {showSelectionChrome && (isShapeElement || isImageElement) && (
         <Box
           data-rotate-handle
           title="Drehen — ziehen"

@@ -285,6 +285,17 @@ export function scaleImageOnSlide(
   });
 }
 
+export function normalizeElementRotation(deg: number): number {
+  return ((Math.round(deg) % 360) + 360) % 360;
+}
+
+export function rotateElementByDegrees(
+  el: Pick<SlideElement, 'rotation'>,
+  delta: number,
+): { rotation: number } {
+  return { rotation: normalizeElementRotation((el.rotation ?? 0) + delta) };
+}
+
 export function scaleImageFromCenter(
   orig: SlideElement,
   scale: number,
