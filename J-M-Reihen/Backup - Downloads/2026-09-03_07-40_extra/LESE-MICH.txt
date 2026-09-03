@@ -1,0 +1,4 @@
+Extra-Kopie 2026-09-03 07:40 (Europe/Berlin).
+Nur Kopien. Die gelben Notizen und die Präsentationen wurden nicht überschrieben.
+Notizen-vom-2.9-08-35.json = Git-Stand gestern 8:35.
+Notizen-vom-2.9-09-29.json = Git-Stand gestern 9:29.

@@ -42,6 +42,7 @@ import teacherScheduleRoutes from './routes/teacherSchedule';
 import wochenaufgabenRoutes from './routes/wochenaufgaben';
 import teacherScratchPadRoutes from './routes/teacherScratchPad';
 import teacherGitBackupRoutes from './routes/teacherGitBackup';
+import teacherFullArchiveRoutes from './routes/teacherFullArchive';
 import teacherDashboardPrefsRoutes from './routes/teacherDashboardPrefs';
 import path from 'path';
 import { startAutoLessonScheduler } from './services/autoLessonScheduler';
@@ -79,7 +80,8 @@ app.use(cors({
   origin: process.env.NODE_ENV === 'production' ? productionCorsOrigins() : true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-login-code']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-login-code'],
+  exposedHeaders: ['Content-Disposition', 'X-Archive-Presentations', 'X-Archive-Notes', 'X-Archive-Tickets'],
 }));
 
 /** Öffentliche HTTPS-URL hinter Sophos. Klartext-HTTP wird dorthin umgeleitet. */
@@ -213,6 +215,7 @@ app.use('/api/teacher-schedule', teacherScheduleRoutes);
 app.use('/api/wochenaufgaben', wochenaufgabenRoutes);
 app.use('/api/teacher-scratch-pad', teacherScratchPadRoutes);
 app.use('/api/teacher-git-backup', teacherGitBackupRoutes);
+app.use('/api/teacher-full-archive', teacherFullArchiveRoutes);
 app.use('/api/teacher-dashboard-prefs', teacherDashboardPrefsRoutes);
 app.use('/api/ka-corrections', kaCorrectionsRoutes);
 app.use('/api/messages', messageRoutes);

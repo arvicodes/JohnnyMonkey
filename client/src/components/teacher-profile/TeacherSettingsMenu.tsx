@@ -18,7 +18,9 @@ import {
   Home as HomeIcon,
   CloudUpload as CloudUploadIcon,
   CloudDownload as CloudDownloadIcon,
+  Archive as ArchiveIcon,
 } from '@mui/icons-material';
+import { OPEN_TEACHER_FULL_ARCHIVE_EVENT } from '../../lib/teacherFullArchive';
 import TeacherGitStandModal, { type TeacherGitStandMode } from './TeacherGitStandModal';
 
 import {
@@ -215,6 +217,24 @@ export default function TeacherSettingsMenu({
           <ListItemText
             primary="Mein Profil"
             secondary="Avatar & Reisebegleiter"
+            primaryTypographyProps={{ fontWeight: 700, fontSize: '0.82rem' }}
+            secondaryTypographyProps={{ fontSize: '0.68rem' }}
+          />
+        </MenuItem>
+
+        <MenuItem
+          onClick={() => {
+            close();
+            window.dispatchEvent(new Event(OPEN_TEACHER_FULL_ARCHIVE_EVENT));
+          }}
+          sx={{ py: 1.1, px: 2 }}
+        >
+          <ListItemIcon>
+            <ArchiveIcon fontSize="small" sx={{ color: '#2e7d32' }} />
+          </ListItemIcon>
+          <ListItemText
+            primary="Alles sichern (ZIP)"
+            secondary="Folien, Notizen, Tickets — PDF & PPTX"
             primaryTypographyProps={{ fontWeight: 700, fontSize: '0.82rem' }}
             secondaryTypographyProps={{ fontSize: '0.68rem' }}
           />

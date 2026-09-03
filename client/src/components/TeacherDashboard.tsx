@@ -48,7 +48,9 @@ import MaterialShareVersionControl from './MaterialShareVersionControl';
 import KACorrectionMode from './KACorrectionMode';
 import { DEFAULT_PROFILE_COLOR } from '../lib/profileColor';
 import TeacherSettingsMenu from './teacher-profile/TeacherSettingsMenu';
+import TeacherFullArchiveModal from './teacher-profile/TeacherFullArchiveModal';
 import { OPEN_TEACHER_NOTES_EVENT } from './TeacherQuickNotes';
+import { OPEN_TEACHER_FULL_ARCHIVE_EVENT } from '../lib/teacherFullArchive';
 import TeacherProfileDialog from './teacher-profile/TeacherProfileDialog';
 import TeacherScheduleDialog from './teacher-schedule/TeacherScheduleDialog';
 import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
@@ -15542,6 +15544,47 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                   }),
                 }}
               >
+                {!lessonSplitLeft ? (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<DownloadIcon />}
+                    onClick={() => window.dispatchEvent(new Event(OPEN_TEACHER_FULL_ARCHIVE_EVENT))}
+                    sx={{
+                      bgcolor: '#2e7d32',
+                      color: '#fff',
+                      textTransform: 'none',
+                      fontWeight: 800,
+                      fontSize: '0.72rem',
+                      px: 1.15,
+                      py: 0.35,
+                      borderRadius: 1.4,
+                      boxShadow: 'none',
+                      '&:hover': { bgcolor: '#1b5e20', boxShadow: 'none' },
+                    }}
+                    title="Pr√§sentationen, Notizen und Entry Tickets als ZIP (PDF, PPTX, JSON)"
+                  >
+                    Alles sichern
+                  </Button>
+                ) : (
+                  <IconButton
+                    onClick={() => window.dispatchEvent(new Event(OPEN_TEACHER_FULL_ARCHIVE_EVENT))}
+                    sx={{
+                      p: 0.5,
+                      minWidth: 32,
+                      width: 32,
+                      height: 32,
+                      color: '#fff',
+                      bgcolor: '#2e7d32',
+                      borderRadius: 1.4,
+                      '&:hover': { bgcolor: '#1b5e20' },
+                    }}
+                    title="Alles sichern (ZIP)"
+                    aria-label="Alles sichern"
+                  >
+                    <DownloadIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                )}
                 <IconButton
                   onClick={() => window.dispatchEvent(new Event(OPEN_TEACHER_NOTES_EVENT))}
                   sx={{
@@ -30152,6 +30195,8 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
           )}
         </DialogContent>
       </Dialog>
+
+      <TeacherFullArchiveModal />
 
       <TeacherProfileDialog
         open={profileDialogOpen}
