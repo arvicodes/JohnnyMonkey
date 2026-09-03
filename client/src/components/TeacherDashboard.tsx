@@ -501,20 +501,6 @@ const isCorrectionFile = (fileName: string): boolean => {
   );
 };
 
-/** Rekursiv: enthält der Ordner eine Prüfungsdatei? */
-const folderContainsExamination = (item: { type?: string; name?: string; children?: any[] } | null | undefined): boolean => {
-  if (!item?.children?.length) return false;
-  for (const child of item.children) {
-    if (child?.type === 'file' && typeof child.name === 'string' && isCorrectionFile(child.name)) {
-      return true;
-    }
-    if (child?.type === 'directory' && folderContainsExamination(child)) {
-      return true;
-    }
-  }
-  return false;
-};
-
 interface TeacherDashboardProps {
   userId: string;
   /** Nur TEACHER sieht z. B. Bewegungsspiele-Button (Lehreransicht). */
@@ -9240,10 +9226,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
       preferEdit: lessonPlanViewMode === 'create',
       preferLiveDeck: lessonPlanViewMode === 'run',
       planMode: lessonPlanViewMode,
-      onOpenCorrectionHtml: (p: string) => {
-        setSelectedKAFilePath(p);
-        setShowKACorrectionMode(true);
-      },
     };
     if (item?.folienPdfRedirect?.path && item?.folienPdfRedirect?.name) {
       await openLessonFolderFile(
@@ -10850,29 +10832,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             )}
 
             </Typography>
-
-            {isStundeFolder && folderContainsExamination(item) && (
-              <Tooltip title="Diese Stunde enthält eine Prüfung">
-                <Box
-                  component="span"
-                  sx={{
-                    ml: 0.35,
-                    px: 0.45,
-                    py: 0.05,
-                    borderRadius: 0.5,
-                    bgcolor: '#c62828',
-                    color: '#fff',
-                    fontSize: '0.62rem',
-                    fontWeight: 900,
-                    lineHeight: 1.25,
-                    flexShrink: 0,
-                    letterSpacing: 0.2,
-                  }}
-                >
-                  P
-                </Box>
-              </Tooltip>
-            )}
 
             {isStundeFolder && (
               <Box
@@ -21026,12 +20985,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       showSnackbar('Keine Prüfungsdatei (KA_/KU_/HU_/QZ_) in diesem Stundenordner gefunden.', 'error');
                       return;
                     }
-                    if (lessonPlanViewMode === 'create') {
-                      await handleEditSingleQuestion({ path: examFile.path, name: examFile.name });
-                    } else {
-                      setSelectedKAFilePath(examFile.path);
-                      setShowKACorrectionMode(true);
-                    }
+                    window.open(
+                      `/api/file-system-paths/read-html?filePath=${encodeURIComponent(examFile.path)}`,
+                      '_blank',
+                      'noopener,noreferrer'
+                    );
                     return;
                   }
                   if (item.type === 'arbeitsauftrag') {
@@ -21236,8 +21194,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   );
                 };
                 const openExamCorrection = (filePath: string) => {
-                  setSelectedKAFilePath(filePath);
-                  setShowKACorrectionMode(true);
+                  openExamHtml(filePath);
                 };
                 const presentationShareActive =
                   !!planShareGroupId &&
@@ -23054,7 +23011,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                               <EditIcon sx={{ fontSize: 13 }} />
                                             </IconButton>
                                           </Tooltip>
-                                          <Tooltip title="Korrektur / Abgaben">
+                                          <Tooltip title="Prüfung öffnen">
                                             <IconButton
                                               size="small"
                                               onClick={(e) => {
@@ -23436,7 +23393,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                       <EditIcon sx={{ fontSize: 13 }} />
                                     </IconButton>
                                   </Tooltip>
-                                  <Tooltip title="Korrektur / Abgaben">
+                                  <Tooltip title="Prüfung öffnen">
                                     <IconButton
                                       size="small"
                                       onClick={() => openExamCorrection(exam.path)}

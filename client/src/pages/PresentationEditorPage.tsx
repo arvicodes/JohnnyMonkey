@@ -122,6 +122,8 @@ import {
   slidePageCount,
   sanitizeSlideAudioTracks,
   slideHasPrintMaterials,
+  slideHasExam,
+  type SlideExam,
 } from '../lib/presentationDeck';
 import {
   notifyPresentationDeckSaved,
@@ -5192,6 +5194,11 @@ const PresentationEditorPage: React.FC = () => {
                 normalizedActive.id,
               )
             }
+            slideExam={normalizedActive.slideExam}
+            onSlideExamChange={(next: SlideExam | undefined) =>
+              updateSlide({ slideExam: next }, normalizedActive.id)
+            }
+            groupId={groupId}
             onMessage={setSnackbar}
           />
         )}
@@ -5256,6 +5263,29 @@ const PresentationEditorPage: React.FC = () => {
                 <CrateIcon sx={{ fontSize: 16 }} />
               </IconButton>
             </Tooltip>
+            {slideHasExam(normalizedActive) ? (
+              <Tooltip title="Prüfung an dieser Folie" placement="left">
+                <Box
+                  onClick={() => setNotesPanelOpenPersist(true)}
+                  sx={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 0.5,
+                    bgcolor: '#c62828',
+                    color: '#fff',
+                    fontSize: 11,
+                    fontWeight: 900,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    '&:hover': { bgcolor: '#b71c1c' },
+                  }}
+                >
+                  P
+                </Box>
+              </Tooltip>
+            ) : null}
             <Tooltip title="Einsprechen" placement="left">
               <IconButton
                 size="small"

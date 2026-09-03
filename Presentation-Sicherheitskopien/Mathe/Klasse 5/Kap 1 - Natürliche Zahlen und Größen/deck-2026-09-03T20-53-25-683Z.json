@@ -2,7 +2,7 @@
   "version": 1,
   "title": "Kap 1 - Natürliche Zahlen und Größen",
   "lessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen",
-  "updatedAt": "2026-09-03T10:22:49.778Z",
+  "updatedAt": "2026-09-03T11:24:18.386Z",
   "slides": [
     {
       "layout": "title-slide",
@@ -59,7 +59,8 @@
       "order": 0,
       "sourceLessonName": "1.0 Kennenlernen und Orga",
       "sourceLessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen",
-      "speakerNotesInkSpace": "slide"
+      "speakerNotesInkSpace": "slide",
+      "extraPageCount": 1
     },
     {
       "id": "slide-1787569255921-56e63",
@@ -479,7 +480,7 @@
       "bodyLeftHtml": "<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br><br></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br></span></p><p><br></p>",
       "bodyRightHtml": "<p><br></p>",
       "imageCaptionHtml": "",
-      "speakerNotesHtml": "<p><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/1.2%20Gro%C3%9Fe%20Zahlen%20-%20Stellenwerttafel/notes-1787060369558-Bildschirmfoto_2026-08-18_um_15.39.26.png&max=960\" alt=\"Bildschirmfoto 2026-08-18 um 15.39.26.png\" data-pres-notes-img=\"1\" style=\"margin: 0.5em 0px; height: auto; display: block; width: auto; max-width: 100%;\" draggable=\"false\"></span></p><p></p><p><br></p><p></p><p data-pres-notes-typehost=\"1\"><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/1.2%20Gro%C3%9Fe%20Zahlen%20-%20Stellenwerttafel/notes-1787060475833-notes-1787060473857-Bildschirmfoto_2026-08-18_um_15.41.10.png&max=960\" alt=\"notes-1787060473857-Bildschirmfoto_2026-08-18_um_15.41.10.png\" data-pres-notes-img=\"1\" style=\"margin: 0.5em 0px; border-radius: 4px; display: block; height: auto; width: auto; max-width: 100%;\" draggable=\"false\"></span><br></p>",
+      "speakerNotesHtml": "<p><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/1.2%20Gro%C3%9Fe%20Zahlen%20-%20Stellenwerttafel/notes-1787060369558-Bildschirmfoto_2026-08-18_um_15.39.26.png&max=960\" alt=\"Bildschirmfoto 2026-08-18 um 15.39.26.png\" data-pres-notes-img=\"1\" style=\"margin: 0.5em 0px; height: auto; display: block; width: auto; max-width: 100%;\" draggable=\"false\"></span></p><p></p><p><br></p><p></p><p data-pres-notes-typehost=\"1\"><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/1.2%20Gro%C3%9Fe%20Zahlen%20-%20Stellenwerttafel/notes-1787060475833-notes-1787060473857-Bildschirmfoto_2026-08-18_um_15.41.10.png&max=960\" alt=\"Notes-1787060473857-Bildschirmfoto_2026-08-18_um_15.41.10.png\" data-pres-notes-img=\"1\" style=\"margin: 0.5em 0px; border-radius: 4px; display: block; height: auto; width: auto; max-width: 100%;\" draggable=\"false\"></span><br></p>",
       "preparationNotes": "",
       "preparationHtml": "<p><br></p>",
       "materialNotes": "",
@@ -1423,7 +1424,7 @@
       "bodyLeftHtml": "",
       "bodyRightHtml": "",
       "imageCaptionHtml": "",
-      "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\">Welche Dinokarte möchtest du?&nbsp;</font></font></p><p data-pres-notes-typehost=\"1\"><span style=\"font-weight: bold;\"><br></span></p><p data-pres-notes-typehost=\"1\"><span style=\"font-weight: bold;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\">Begründet</font></font></span><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"> .</font></font></p><p data-pres-notes-typehost=\"1\"><br></p><p data-pres-notes-typehost=\"1\"><span style=\"font-weight: bold;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\">Geben Sie</font></font></span><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"> verschiedene Möglichkeiten </font></font><span style=\"font-weight: bold;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\">an</font></font></span><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"> , die Karten zu ordnen.&nbsp;</font></font></p>",
+      "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\">Welche Dinokarte möchtest du?&nbsp;</font></font></font></font></p><p data-pres-notes-typehost=\"1\"><span style=\"font-weight: bold;\"><br></span></p><p data-pres-notes-typehost=\"1\"><span style=\"font-weight: bold;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\">Begründet</font></font></font></font></span><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"> .</font></font></font></font></p><p data-pres-notes-typehost=\"1\"><br></p><p data-pres-notes-typehost=\"1\"><span style=\"font-weight: bold;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\">Geben Sie</font></font></font></font></span><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"> verschiedene Möglichkeiten </font></font></font></font><span style=\"font-weight: bold;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\">an</font></font></font></font></span><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"><font dir=\"auto\" style=\"vertical-align: inherit;\"> , die Karten zu ordnen.&nbsp;</font></font></font></font></p>",
       "preparationNotes": "",
       "preparationHtml": "<p><br></p>",
       "materialNotes": "",
@@ -2120,7 +2121,7 @@
       "bodyLeftHtml": "",
       "bodyRightHtml": "",
       "imageCaptionHtml": "",
-      "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><br></p>",
+      "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/bild-1788431562626-scbil9.jpg&max=960\" alt=\"bild-1788431562626-scbil9.jpg\" data-pres-notes-img=\"1\" draggable=\"false\" style=\"width: auto; height: auto; display: block; border-radius: 4px; max-width: 100%;\"></span><br></p>",
       "preparationNotes": "",
       "preparationHtml": "<p><br></p>",
       "materialNotes": "",
@@ -2203,6 +2204,21 @@
           },
           "revealStep": 2,
           "animationSet": true
+        },
+        {
+          "id": "el-1788431476758-9thgn",
+          "type": "card",
+          "x": 82.15857144406507,
+          "y": 67.06377484309624,
+          "w": 16.18731186828703,
+          "h": 24.687892259414223,
+          "zIndex": 5,
+          "strokeColor": "#2E7D32",
+          "strokeWidth": 2.5,
+          "fillColor": "rgba(46,125,50,0.14)",
+          "titleHtml": "<p style=\"text-align:center\"><strong>Arbeitsauftrag</strong></p>",
+          "html": "<p style=\"text-align: justify;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b>Arbeitsheft</b>&nbsp;</span></p><p style=\"text-align: justify;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Seite 8 ganz&nbsp;</span></p><p style=\"text-align: justify;\"><br></p>",
+          "stackLayer": "foreground"
         }
       ],
       "transition": "fade",
@@ -2279,8 +2295,80 @@
           "strokeWidth": 2.5,
           "fillColor": "rgba(239,108,0,0.14)",
           "titleHtml": "<p style=\"text-align:center\"><strong style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\">Hausaufgabe</strong></p><p style=\"text-align:center\"><strong style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\"><br></strong></p>",
-          "html": "<p style=\"text-align: justify;\"><b>Mathebuch:</b></p><p style=\"text-align: justify;\">Seite , Nummer</p>",
+          "html": "<p style=\"text-align: justify;\"><b>Mathebuch:</b></p><p style=\"text-align: justify;\">Seite 31, Nummern 2 und 7</p><p style=\"text-align: justify;\"><br></p><p style=\"text-align: justify;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">-------------------</span></p><p style=\"text-align: justify;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-weight: bold; font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Bonus- und Knobelaufgabe</span></p><p style=\"text-align: justify;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\">Seite 32 Nummer 12</span></p>",
           "stackLayer": "foreground"
+        },
+        {
+          "id": "el-1788431314479",
+          "type": "image",
+          "x": 43.268755253148306,
+          "y": 9.74199357198359,
+          "w": 37.39200217627857,
+          "h": 7.68300212220576,
+          "src": "/app/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/bild-1788431314403-dzoeg5.png",
+          "zIndex": 5,
+          "imageFit": "contain",
+          "stackLayer": "foreground",
+          "imageSourceRect": {
+            "x": 43.268755253148306,
+            "y": 9.74199357198359,
+            "w": 37.39200217627857,
+            "h": 7.68300212220576
+          },
+          "imageFrame": {
+            "preset": "custom",
+            "color": "#1a1a1a",
+            "width": 3,
+            "dash": "solid"
+          }
+        },
+        {
+          "id": "el-1788431331974",
+          "type": "image",
+          "x": 43.25865410772578,
+          "y": 20.467291578952683,
+          "w": 37.75117315016322,
+          "h": 8.30822531636318,
+          "src": "/app/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/bild-1788431331931-8hbn8y.png",
+          "zIndex": 6,
+          "imageFit": "contain",
+          "stackLayer": "foreground",
+          "imageSourceRect": {
+            "x": 43.25865410772578,
+            "y": 20.467291578952683,
+            "w": 37.75117315016322,
+            "h": 8.30822531636318
+          },
+          "imageFrame": {
+            "preset": "custom",
+            "color": "#1a1a1a",
+            "width": 3,
+            "dash": "solid"
+          }
+        },
+        {
+          "id": "el-1788431417615",
+          "type": "image",
+          "x": 43.51581202393906,
+          "y": 31.57737274815621,
+          "w": 37.34737146354733,
+          "h": 17.547336433666686,
+          "src": "/app/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/bild-1788431417514-w9pmst.png",
+          "zIndex": 7,
+          "imageFit": "contain",
+          "stackLayer": "foreground",
+          "imageFrame": {
+            "preset": "custom",
+            "color": "#1a1a1a",
+            "width": 3,
+            "dash": "solid"
+          },
+          "imageSourceRect": {
+            "x": 43.51581202393906,
+            "y": 31.57737274815621,
+            "w": 37.34737146354733,
+            "h": 17.547336433666686
+          }
         }
       ],
       "transition": "zoom",
@@ -2293,6 +2381,128 @@
       "id": "slide-1788430601466-is9f1",
       "order": 22,
       "sourceLessonName": "1.8 Runden",
+      "sourceLessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen"
+    },
+    {
+      "id": "slide-1788431257741-o54ld",
+      "order": 23,
+      "speakerNotes": "",
+      "layout": "blank",
+      "subtitle": "",
+      "bodyLeft": "",
+      "bodyRight": "",
+      "imagePath": "",
+      "imageCaption": "",
+      "bodyStyle": "plain",
+      "titleAlign": "left",
+      "accentColor": "#2E7D32",
+      "title": "",
+      "body": "",
+      "hiddenLayoutZones": [
+        "bodyHtml"
+      ],
+      "sourceLessonName": "1.9 Größen und ihre Einheiten",
+      "sourceLessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen",
+      "titleHtml": "",
+      "bodyHtml": "",
+      "subtitleHtml": "",
+      "bodyLeftHtml": "",
+      "bodyRightHtml": "",
+      "imageCaptionHtml": "",
+      "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><br></p>",
+      "preparationNotes": "",
+      "preparationHtml": "<p><br></p>",
+      "materialNotes": "",
+      "materialHtml": "<p><br></p>",
+      "elements": [],
+      "transition": "fade",
+      "revealEnabled": true,
+      "zoneRevealSteps": {}
+    },
+    {
+      "layout": "blank",
+      "title": "Hausaufgabe",
+      "body": "",
+      "speakerNotes": "",
+      "preparationNotes": "",
+      "materialNotes": "",
+      "subtitle": "",
+      "bodyLeft": "",
+      "bodyRight": "",
+      "imagePath": "",
+      "imageCaption": "",
+      "bodyStyle": "plain",
+      "titleAlign": "left",
+      "accentColor": "#C62828",
+      "titleHtml": "<p><span data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important;\">Hausaufgabe</span></p><p><span data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important;\"><br></span></p>",
+      "bodyHtml": "<p><br></p>",
+      "subtitleHtml": "",
+      "bodyLeftHtml": "",
+      "bodyRightHtml": "",
+      "imageCaptionHtml": "",
+      "speakerNotesHtml": "<p><br></p>",
+      "preparationHtml": "<p><br></p>",
+      "materialHtml": "<p><br></p>",
+      "elements": [
+        {
+          "id": "el-1788431257742-0-kld",
+          "type": "image",
+          "x": 34.82752190813671,
+          "y": 9.81815147429894,
+          "w": 6.234590934783087,
+          "h": 7.532135501524438,
+          "src": "git-intern/Grafiken/HA.png",
+          "zIndex": 1,
+          "revealStep": 0,
+          "imageFit": "contain"
+        },
+        {
+          "id": "el-1788431257742-1-wfa",
+          "type": "text",
+          "x": 81.35841393849206,
+          "y": 88.3222828483245,
+          "w": 18.641586061507937,
+          "h": 6.796626984126986,
+          "html": "<p><span style=\"font-weight: 700; text-align: center; background-color: rgb(255, 255, 255);\">Bis zur nächsten Stunde!</span></p>",
+          "zIndex": 2
+        },
+        {
+          "id": "el-1788431257742-2-24m",
+          "type": "image",
+          "x": 76.0521128429198,
+          "y": 60.259519334795975,
+          "w": 26.615334494745305,
+          "h": 33.21916135335253,
+          "src": "git-intern/Grafiken/Endroboter.png",
+          "zIndex": 3,
+          "imageFit": "contain"
+        },
+        {
+          "id": "el-1788431257742-3-95o",
+          "type": "card",
+          "x": 1.85512377684924,
+          "y": 9.129772046836543,
+          "w": 39.206989066070555,
+          "h": 45.847606628756274,
+          "zIndex": 5,
+          "strokeColor": "#EF6C00",
+          "strokeWidth": 2.5,
+          "fillColor": "rgba(239,108,0,0.14)",
+          "titleHtml": "<p style=\"text-align:center\"><strong style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\">Hausaufgabe</strong></p><p style=\"text-align:center\"><strong style=\"font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\"><br></strong></p>",
+          "html": "<p style=\"text-align: justify;\"><b>Mathebuch:</b></p><p style=\"text-align: justify;\">Seite , Nummer</p>",
+          "stackLayer": "foreground"
+        }
+      ],
+      "transition": "zoom",
+      "revealEnabled": true,
+      "zoneRevealSteps": {},
+      "homeworkSubmissionRequired": true,
+      "hiddenLayoutZones": [
+        "bodyHtml"
+      ],
+      "id": "slide-1788431257742-0xynx",
+      "order": 24,
+      "sourceLessonName": "1.9 Größen und ihre Einheiten",
       "sourceLessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen"
     }
   ],
@@ -2318,6 +2528,159 @@
     }
   ],
   "trash": [
+    {
+      "id": "trash-1788431482232-9hvn",
+      "type": "slide",
+      "deletedAt": "2026-09-03T10:31:22.232Z",
+      "label": "Folie 21",
+      "slide": {
+        "id": "slide-1788431473159",
+        "order": 20,
+        "speakerNotes": "",
+        "layout": "blank",
+        "subtitle": "",
+        "bodyLeft": "",
+        "bodyRight": "",
+        "imagePath": "",
+        "imageCaption": "",
+        "bodyStyle": "plain",
+        "titleAlign": "left",
+        "accentColor": "#2E7D32",
+        "title": "",
+        "body": "",
+        "hiddenLayoutZones": [
+          "bodyHtml"
+        ],
+        "sourceLessonName": "1.7 Der Zahlenstrahl",
+        "sourceLessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen",
+        "titleHtml": "",
+        "bodyHtml": "",
+        "subtitleHtml": "",
+        "bodyLeftHtml": "",
+        "bodyRightHtml": "",
+        "imageCaptionHtml": "",
+        "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/bild-1788330226463-fze4au.png&max=960\" alt=\"bild-1788330226463-fze4au.png\" data-pres-notes-img=\"1\" draggable=\"false\" style=\"width: auto; height: auto; display: block; border-radius: 4px; max-width: 100%;\"></span><br></p>",
+        "preparationNotes": "",
+        "preparationHtml": "<p><br></p>",
+        "materialNotes": "",
+        "materialHtml": "<p><br></p>",
+        "elements": [
+          {
+            "id": "el-1788429463707",
+            "type": "image",
+            "x": 40.66899255691395,
+            "y": 7.370289385595505,
+            "w": 38.42621735704639,
+            "h": 65.80868696685025,
+            "src": "/app/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/bild-1788429463354-57zn5a.png",
+            "zIndex": 1,
+            "imageFit": "contain",
+            "stackLayer": "foreground",
+            "imageSourceRect": {
+              "x": 3.293342400151019,
+              "y": 1.329424435955179,
+              "w": 75.80186751380931,
+              "h": 89.89777758568596
+            }
+          },
+          {
+            "id": "el-1788429492007",
+            "type": "image",
+            "x": 3.8921212605461113,
+            "y": 7.936804265708517,
+            "w": 31.85774533089042,
+            "h": 26.339291435764416,
+            "src": "/app/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/bild-1788429491277-kddwou.png",
+            "zIndex": 2,
+            "imageFit": "contain",
+            "stackLayer": "foreground",
+            "imageSourceRect": {
+              "x": 3.067685549297427,
+              "y": -33.225879089013006,
+              "w": 68.26271532777656,
+              "h": 80.95666506914883
+            },
+            "imageFrame": {
+              "preset": "custom",
+              "color": "#1a1a1a",
+              "width": 3,
+              "dash": "solid"
+            }
+          },
+          {
+            "id": "el-1788429523668",
+            "type": "image",
+            "x": 3.1276753351812125,
+            "y": 39.57683801618265,
+            "w": 22.070203442053835,
+            "h": 9.671983820461113,
+            "src": "/app/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/bild-1788429523326-ihoy9a.png",
+            "zIndex": 3,
+            "imageFit": "contain",
+            "stackLayer": "foreground",
+            "imageSourceRect": {
+              "x": 0.19817764324729614,
+              "y": -38.19405750574904,
+              "w": 78.07683819347518,
+              "h": 92.5957956541366
+            }
+          },
+          {
+            "id": "el-1788429553195",
+            "type": "image",
+            "x": 3.441515900010343,
+            "y": 49.40745499152011,
+            "w": 39.699979602749835,
+            "h": 17.87768401312575,
+            "src": "/app/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/bild-1788429552470-iz946s.png",
+            "zIndex": 4,
+            "imageFit": "contain",
+            "stackLayer": "foreground",
+            "imageSourceRect": {
+              "x": -34.982639753349765,
+              "y": -25.366748945850304,
+              "w": 78.12413525610997,
+              "h": 92.6518879504962
+            }
+          },
+          {
+            "id": "el-1788429802224-1wce",
+            "type": "shape",
+            "shapeKind": "line",
+            "x": 14.018571444065074,
+            "y": 31.25689437662394,
+            "w": 51.95,
+            "h": 35.23688046647231,
+            "zIndex": 6,
+            "strokeColor": "#212121",
+            "strokeWidth": 3.5,
+            "fillColor": "transparent",
+            "shapePoints": [
+              {
+                "x": 6,
+                "y": 50
+              },
+              {
+                "x": 94,
+                "y": 50
+              }
+            ],
+            "rotation": 90
+          }
+        ],
+        "transition": "fade",
+        "revealEnabled": true,
+        "zoneRevealSteps": {}
+      },
+      "slideId": "slide-1788431473159",
+      "slideOrder": 20,
+      "materialHtml": "<p><br></p>",
+      "materialNotes": "",
+      "preparationHtml": "<p><br></p>",
+      "preparationNotes": "",
+      "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/bild-1788330226463-fze4au.png&max=960\" alt=\"bild-1788330226463-fze4au.png\" data-pres-notes-img=\"1\" draggable=\"false\" style=\"width: auto; height: auto; display: block; border-radius: 4px; max-width: 100%;\"></span><br></p>",
+      "speakerNotes": ""
+    },
     {
       "id": "trash-1788430770087-c26t",
       "type": "slide",

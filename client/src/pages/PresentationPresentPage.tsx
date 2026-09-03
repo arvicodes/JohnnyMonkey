@@ -8,6 +8,7 @@ import {
 import PresentationSlideView from '../components/presentation/PresentationSlideView';
 import PresentationDrawOverlay from '../components/presentation/PresentationDrawOverlay';
 import PresentationTabletToolbar from '../components/presentation/PresentationTabletToolbar';
+import PresentationSlideExamBox from '../components/presentation/PresentationSlideExamBox';
 import PresentationPresentSlideOverview from '../components/presentation/PresentationPresentSlideOverview';
 import PresentationRandomStudentOverlay from '../components/presentation/PresentationRandomStudentOverlay';
 import PresentationQuietWorkOverlay, {
@@ -1685,7 +1686,7 @@ const PresentationPresentPage: React.FC = () => {
       swipeRef.current = null;
       return;
     }
-    if (target?.closest?.('[data-pres-element-type="image"], [data-resize-handle], [data-pres-filmstrip-slide], [data-pres-slide-overview], [data-pres-slide-number], [data-element-delete]')) {
+    if (target?.closest?.('[data-pres-element-type="image"], [data-resize-handle], [data-pres-filmstrip-slide], [data-pres-slide-overview], [data-pres-slide-number], [data-element-delete], [data-pres-exam-box]')) {
       swipeRef.current = null;
       return;
     }
@@ -1726,7 +1727,7 @@ const PresentationPresentPage: React.FC = () => {
     const tapTarget = e.target instanceof Element ? e.target : null;
     if (
       tapTarget?.closest?.(
-        '[data-pres-element-type="image"], [data-pres-element-type="video"], [data-pres-element-type="embed"], video, iframe, [data-resize-handle], [data-element-delete], [data-pres-filmstrip-slide], [data-pres-toolbar], [data-pres-slide-overview], [data-pres-slide-number]',
+        '[data-pres-element-type="image"], [data-pres-element-type="video"], [data-pres-element-type="embed"], video, iframe, [data-resize-handle], [data-element-delete], [data-pres-filmstrip-slide], [data-pres-toolbar], [data-pres-slide-overview], [data-pres-slide-number], [data-pres-exam-box]',
       )
     ) {
       return;
@@ -2179,6 +2180,27 @@ const PresentationPresentPage: React.FC = () => {
         quietWork={quietWork}
         musicGame={musicGame}
       />
+
+      {currentSlide?.slideExam ? (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 'max(12px, env(safe-area-inset-top))',
+            right: 'max(12px, env(safe-area-inset-right))',
+            zIndex: 16,
+            width: 260,
+            pointerEvents: 'auto',
+          }}
+        >
+          <PresentationSlideExamBox
+            exam={currentSlide.slideExam}
+            lessonPath={lessonPath}
+            groupId={groupId}
+            onMessage={setSnackbar}
+            compact={false}
+          />
+        </Box>
+      ) : null}
 
       <PresentationQuietWorkOverlay quietWork={quietWork} />
       <PresentationMusicGameOverlay musicGame={musicGame} />

@@ -16,8 +16,6 @@ import { preparePresentationAudioForPlay } from './presentationSound';
 export type LessonFolderFileLike = { type: string; name: string; path: string };
 
 export interface OpenLessonFolderFileOptions {
-  /** KA_/HÜ_/HU_/QZ_ + .html/.htm → Lehrer-Korrekturmodus (nur TeacherDashboard). */
-  onOpenCorrectionHtml?: (filePath: string) => void;
   /** Lerngruppe für Rückweg aus der Johnny-Präsentation. */
   groupId?: string;
   /** Erstellen-Modus: Johnny-PDFs im Editor öffnen statt Präsentieren. */
@@ -107,15 +105,6 @@ export async function openLessonFolderFile(
       url = presentationEditorUrl(folder, groupId || undefined, planMode);
     }
     window.location.assign(url);
-    return;
-  }
-
-  if (
-    (fileExtension === 'html' || fileExtension === 'htm') &&
-    isLessonCorrectionFileName(item.name) &&
-    options.onOpenCorrectionHtml
-  ) {
-    options.onOpenCorrectionHtml(item.path);
     return;
   }
 

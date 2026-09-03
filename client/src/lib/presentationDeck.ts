@@ -448,6 +448,8 @@ export interface PresentationSlide {
   activeScreenIndex?: number;
   /** Druckmaterial zu dieser Folie (Materialkiste in der Erstellen-Ansicht). */
   printMaterials?: SlidePrintMaterial[];
+  /** Prüfung (KA_/KU_/HU_/QZ_) an dieser Folie — Start/Stop nur hier. */
+  slideExam?: SlideExam;
 }
 
 export type SlidePrintMaterial = {
@@ -487,6 +489,23 @@ export function sanitizeSlidePrintMaterials(
 
 export function slideHasPrintMaterials(slide: PresentationSlide | null | undefined): boolean {
   return (slide?.printMaterials?.length ?? 0) > 0;
+}
+
+export type SlideExam = {
+  path: string;
+  name: string;
+};
+
+export function sanitizeSlideExam(raw?: SlideExam | null): SlideExam | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const path = typeof raw.path === 'string' ? raw.path.replace(/\\/g, '/').trim() : '';
+  const name = typeof raw.name === 'string' ? raw.name.trim() : '';
+  if (!path || !name) return undefined;
+  return { path, name };
+}
+
+export function slideHasExam(slide: PresentationSlide | null | undefined): boolean {
+  return Boolean(sanitizeSlideExam(slide?.slideExam));
 }
 
 export function sanitizeInkStrokes(raw?: PresentationStroke[]): PresentationStroke[] | undefined {
@@ -911,11 +930,13 @@ export function normalizeSlide(slide: PresentationSlide): PresentationSlide {
       const activeAudioIndex = sanitizeMediaActiveIndex(slide.activeAudioIndex, audioTracks.length);
       const activeScreenIndex = sanitizeMediaActiveIndex(slide.activeScreenIndex, screenTracks.length);
       const printMaterials = sanitizeSlidePrintMaterials(slide.printMaterials);
+      const slideExam = sanitizeSlideExam(slide.slideExam);
       return {
         ...(extraPageCount > 0 ? { extraPageCount } : { extraPageCount: undefined }),
         ...slideMediaFieldPatch('audio', audioTracks, activeAudioIndex),
         ...slideMediaFieldPatch('screen', screenTracks, activeScreenIndex),
         ...(printMaterials ? { printMaterials } : { printMaterials: undefined }),
+        ...(slideExam ? { slideExam } : { slideExam: undefined }),
       };
     })(),
   };

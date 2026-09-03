@@ -5,7 +5,7 @@ import {
   ChevronRight as HideNotesIcon,
   Mic as MicIcon,
 } from '@mui/icons-material';
-import { htmlToPlain, textToHtml, type PresentationStroke, type SlideAudioTrack, type SlidePrintMaterial } from '../../lib/presentationDeck';
+import { htmlToPlain, textToHtml, type PresentationStroke, type SlideAudioTrack, type SlideExam, type SlidePrintMaterial } from '../../lib/presentationDeck';
 import {
   migrateNotesInkCssToSlideSpace,
   notesInkNeedsHostMigration,
@@ -49,6 +49,7 @@ import { clipboardHasImage, clipboardPrefersRichText, collectPasteImages } from 
 import { type PresentationDrawTool } from '../../lib/presentationDrawTools';
 import PresentationDrawOverlay from './PresentationDrawOverlay';
 import MaterialCrate from '../MaterialCrate';
+import PresentationSlideExamBox from './PresentationSlideExamBox';
 import '../../styles/presentationLists.css';
 
 /** Ein Notizfeld (früher Material / Setup / Sprechakte). Legacy-Keys bleiben für Papierkorb. */
@@ -786,6 +787,9 @@ interface PresentationNotesPanelProps {
   lessonPath?: string;
   printMaterials?: SlidePrintMaterial[];
   onPrintMaterialsChange?: (next: SlidePrintMaterial[]) => void;
+  slideExam?: SlideExam;
+  onSlideExamChange?: (next: SlideExam | undefined) => void;
+  groupId?: string;
   onMessage?: (text: string) => void;
 }
 
@@ -821,6 +825,9 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
   lessonPath,
   printMaterials,
   onPrintMaterialsChange,
+  slideExam,
+  onSlideExamChange,
+  groupId,
   onMessage,
 }) => {
   const [panelWidth, setPanelWidth] = useState(loadNotesWidth);
@@ -967,6 +974,15 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
           files={printMaterials || []}
           lessonPath={lessonPath}
           onChange={onPrintMaterialsChange}
+          onMessage={onMessage}
+        />
+      ) : null}
+      {onSlideExamChange ? (
+        <PresentationSlideExamBox
+          exam={slideExam}
+          lessonPath={lessonPath}
+          groupId={groupId}
+          onChange={onSlideExamChange}
           onMessage={onMessage}
         />
       ) : null}

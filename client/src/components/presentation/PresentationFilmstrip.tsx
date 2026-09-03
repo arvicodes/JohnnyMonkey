@@ -23,6 +23,7 @@ import {
   SLIDE_REF_HEIGHT,
   SLIDE_REF_WIDTH,
   slideHasPrintMaterials,
+  slideHasExam,
 } from '../../lib/presentationDeck';
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
 import PresentationSlideView from './PresentationSlideView';
@@ -245,6 +246,7 @@ function slideThumbSignature(slide: PresentationSlide): string {
     els,
     (slide.printMaterials?.length ?? 0),
     (slide.printMaterials || []).map((m) => m.id).join(','),
+    slide.slideExam?.path || '',
   ].join('·');
 }
 
@@ -299,6 +301,7 @@ const SortableFilmstripThumb = React.memo(
     };
 
     const hasPrint = slideHasPrintMaterials(slide);
+    const hasExam = slideHasExam(slide);
     const ring = active
       ? `0 0 0 2px ${PRES_EDITOR_UI.accent}, 0 2px 8px rgba(46,125,50,0.15)`
       : selected
@@ -412,6 +415,30 @@ const SortableFilmstripThumb = React.memo(
           >
             {index + 1}
           </Box>
+          {hasExam ? (
+            <Box
+              title="Prüfung an dieser Folie"
+              sx={{
+                position: 'absolute',
+                top: 4,
+                right: slide.audioTrack?.path || slide.screenTrack?.path ? 22 : 4,
+                width: 16,
+                height: 16,
+                borderRadius: 0.5,
+                bgcolor: '#c62828',
+                color: '#fff',
+                fontSize: 9,
+                fontWeight: 900,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                pointerEvents: 'none',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+              }}
+            >
+              P
+            </Box>
+          ) : null}
           {slide.audioTrack?.path || slide.screenTrack?.path ? (
             <Box
               sx={{
