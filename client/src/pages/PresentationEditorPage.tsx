@@ -2054,7 +2054,7 @@ const PresentationEditorPage: React.FC = () => {
     setSnackbar(
       opts?.matrix || opts?.html
         ? 'Tabelle aus Text eingefügt'
-        : 'Tabelle eingefügt — tippen und Spaltenränder ziehen',
+        : 'Tabelle eingefügt — an den grünen Leisten die Spalten ziehen, Tab von Zelle zu Zelle',
     );
   };
 

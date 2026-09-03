@@ -1261,7 +1261,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
               Aus Zwischenablage
             </Button>
             <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, lineHeight: 1.35 }}>
-              Danach: Zellen tippen, Spaltenränder ziehen. Text auf Folie: Formatleiste → Tabelle / x².
+              Danach: an den grünen Leisten Spalten ziehen, Tab von Zelle zu Zelle. »Schmal« macht eine Spalte ganz eng. Text auf Folie: Formatleiste → Tabelle.
             </Typography>
           </Box>
         </Popover>

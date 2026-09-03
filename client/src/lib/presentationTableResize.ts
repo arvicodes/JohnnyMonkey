@@ -9,7 +9,7 @@ import {
   setColumnWidthPercent,
 } from './presentationSlideTables';
 
-const EDGE_PX = 5;
+const EDGE_PX = 8;
 const MIN_ROW_PX = 24;
 const MIN_TABLE_PX = 100;
 

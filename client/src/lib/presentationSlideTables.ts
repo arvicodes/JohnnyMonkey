@@ -529,10 +529,17 @@ export function tableAddColumn(table: HTMLTableElement): boolean {
   const cols = ensureColgroup(table);
   const widths = getColumnWidthPercents(table);
   const minPct = minColumnPercentForTable(table);
-  const newPct = Math.max(minPct, Math.min(16, 100 / (widths.length + 1)));
+  let newPct = Math.max(minPct, Math.min(16, 100 / (widths.length + 1)));
   const scale = (100 - newPct) / 100;
+  const next = widths.map((w) => (w || 0) * scale);
+  next.forEach((w, i) => {
+    if (w < minPct) {
+      newPct = Math.max(minPct, newPct - (minPct - w));
+      next[i] = minPct;
+    }
+  });
   cols.forEach((col, i) => {
-    col.style.width = `${((widths[i] || 0) * scale).toFixed(3)}%`;
+    col.style.width = `${next[i].toFixed(3)}%`;
   });
   const newCol = table.ownerDocument.createElement('col');
   newCol.style.width = `${newPct.toFixed(3)}%`;
