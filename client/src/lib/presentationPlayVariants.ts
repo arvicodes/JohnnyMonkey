@@ -1,4 +1,5 @@
 import {
+  htmlToPlain,
   loadJsonFile,
   lessonFolderPath,
   saveJsonFile,
@@ -150,6 +151,22 @@ export function upsertPlaySlideVariant(
   };
 }
 
+function playSlideHasContent(slide: PresentationSlide | undefined | null): boolean {
+  if (!slide) return false;
+  if ((slide.elements || []).length > 0) return true;
+  if ((slide.inkStrokes || []).length > 0) return true;
+  const texts = [
+    slide.titleHtml,
+    slide.title,
+    slide.bodyHtml,
+    slide.body,
+    slide.bodyLeftHtml,
+    slide.bodyRightHtml,
+    slide.subtitleHtml,
+  ];
+  return texts.some((html) => htmlToPlain(html || '').trim().length > 0);
+}
+
 export function applyPlayVariantsToDeck(
   deck: PresentationDeck,
   variants: PresentationPlayVariants | null | undefined,
@@ -161,6 +178,10 @@ export function applyPlayVariantsToDeck(
     slides: deck.slides.map((slide) => {
       const variant = by[slide.id];
       if (!variant?.slide) return slide;
+      // Leere Play-Kopie (oft versehentlich gespeichert) darf die echte Folie nicht auswischen.
+      if (!playSlideHasContent(variant.slide) && playSlideHasContent(slide)) {
+        return slide;
+      }
       return {
         ...cloneJson(variant.slide),
         id: slide.id,
