@@ -121,6 +121,9 @@ export function presentationNotesTableSx() {
       padding: '4px 6px',
       verticalAlign: 'top' as const,
       wordBreak: 'break-word' as const,
+      minWidth: 0,
+      overflow: 'hidden',
+      boxSizing: 'border-box' as const,
     },
     '& thead th, & th': {
       backgroundColor: '#E8E8E8',

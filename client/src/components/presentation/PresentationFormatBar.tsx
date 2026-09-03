@@ -113,6 +113,7 @@ import {
   tableDeleteLastRow,
   tableDeleteRow,
   tableTranspose,
+  setColumnNarrow,
 } from '../../lib/presentationSlideTables';
 import {
   defaultBrowseStartPath,
@@ -1373,13 +1374,22 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
                     Zebra
                   </Button>
                 </Box>
-                <Button
-                  size="small"
-                  sx={miniBtn}
-                  onClick={() => run(() => distributeColumnsEvenly(table))}
-                >
-                  Spalten =
-                </Button>
+                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.3 }}>
+                  <Button
+                    size="small"
+                    sx={miniBtn}
+                    onClick={() => run(() => distributeColumnsEvenly(table))}
+                  >
+                    Spalten =
+                  </Button>
+                  <Button
+                    size="small"
+                    sx={miniBtn}
+                    onClick={() => run(() => setColumnNarrow(table, cell?.cellIndex ?? 0))}
+                  >
+                    Schmal
+                  </Button>
+                </Box>
                 <Typography sx={{ fontSize: 9, fontWeight: 700, color: '#78909c', mt: 0.25 }}>
                   Farben
                 </Typography>

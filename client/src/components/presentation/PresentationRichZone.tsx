@@ -149,6 +149,9 @@ function buildRichSx(
     '& th, & td': {
       wordBreak: 'break-word',
       position: 'relative',
+      minWidth: 0,
+      overflow: 'hidden',
+      boxSizing: 'border-box',
     },
     '& [data-reveal-step].pres-reveal-enter': {
       animation: 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both',

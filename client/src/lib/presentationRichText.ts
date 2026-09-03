@@ -1478,7 +1478,7 @@ function nudgeParagraphIndent(block: HTMLElement, shiftKey: boolean) {
   else block.style.marginLeft = `${next}px`;
 }
 
-/** Tab in Präsentations-Editoren: Tabelle → neue Zeile, Listen einrücken, sonst Absatz-Einzug. */
+/** Tab in Präsentations-Editoren: Tabelle → nächste Zelle, Listen einrücken, sonst Absatz-Einzug. */
 export function handlePresentationTabKey(editor: HTMLElement, shiftKey: boolean): void {
   const sel = window.getSelection();
   const caretInEditor = !!(sel?.anchorNode && editor.contains(sel.anchorNode));

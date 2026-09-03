@@ -149,6 +149,7 @@ export function paragraphHasRevealAssignment(html: string, paragraphIndex: numbe
 
 export function elementHasRevealAssignment(el: SlideElement): boolean {
   if (el.type === 'text' && el.html?.includes('data-reveal-step')) return true;
+  if ((el.revealStep ?? 0) > 0) return true;
   return el.animationSet === true;
 }
 
@@ -605,15 +606,15 @@ export function animationBadgeBoxSx(scale: number, selected?: boolean) {
 export function animationParagraphBadgeSx(scale: number, editMode: boolean) {
   if (!editMode) return {};
   return {
-    '& [data-reveal-step], & [data-anim-selected]': { position: 'relative' },
+    '& [data-reveal-step], & [data-anim-selected]': { position: 'relative' as const },
     '& [data-reveal-step]::before': {
       content: 'attr(data-reveal-step)',
-      position: 'absolute',
-      top: `${-12 * scale}px`,
-      left: 0,
+      position: 'absolute' as const,
+      top: `${2 * scale}px`,
+      left: `${2 * scale}px`,
       minWidth: `${24 * scale}px`,
       height: `${24 * scale}px`,
-      display: 'flex',
+      display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: `${12 * scale}px`,
@@ -621,7 +622,7 @@ export function animationParagraphBadgeSx(scale: number, editMode: boolean) {
       color: '#fff',
       fontSize: `${13 * scale}px`,
       fontWeight: 800,
-      lineHeight: `${24 * scale}px`,
+      lineHeight: 1,
       textAlign: 'center',
       boxShadow: '0 2px 8px rgba(230,81,0,0.35)',
       zIndex: 5,

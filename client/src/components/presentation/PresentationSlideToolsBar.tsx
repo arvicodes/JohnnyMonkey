@@ -104,6 +104,7 @@ import {
   tableTranspose,
   distributeColumnsEvenly,
   distributeRowsEvenly,
+  setColumnNarrow,
   type CreateTableOptions,
 } from '../../lib/presentationSlideTables';
 import { isHomeworkSlide } from '../../lib/presentationSlideTemplates';
@@ -447,7 +448,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
             </Button>
           </Tooltip>
         </Box>
-        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.3 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0.3 }}>
           <Tooltip title="Alle Spalten gleich breit">
             <Button
               size="small"
@@ -455,6 +456,20 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
               sx={btnSx}
             >
               Spalten =
+            </Button>
+          </Tooltip>
+          <Tooltip title="Gewählte Spalte so schmal wie möglich">
+            <Button
+              size="small"
+              onClick={() =>
+                runTableMutation((t, cell) => {
+                  const idx = cell?.cellIndex ?? 0;
+                  setColumnNarrow(t, idx);
+                })
+              }
+              sx={btnSx}
+            >
+              Schmal
             </Button>
           </Tooltip>
           <Tooltip title="Alle Zeilen gleich hoch">

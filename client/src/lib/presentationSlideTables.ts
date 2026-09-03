@@ -50,6 +50,11 @@ export const TABLE_COLOR_THEMES = [
 
 export type TableColorTheme = (typeof TABLE_COLOR_THEMES)[number];
 
+/** Kompaktes Zell-Padding — sonst lassen sich Spalten kaum schmal ziehen. */
+export const TABLE_CELL_PADDING = '3px 5px';
+/** Untergrenze in Pixeln (nicht in % der ganzen Tabelle). */
+export const MIN_COL_PX = 14;
+
 export const TABLE_CELL_BG_PRESETS = [
   '#FFFFFF',
   '#FFE599',
@@ -78,10 +83,12 @@ function cellStyle(opts: {
 }): string {
   const parts = [
     `border:1px solid ${opts.border || TABLE_ACCENT.border}`,
-    'padding:8px 10px',
+    `padding:${TABLE_CELL_PADDING}`,
     `color:${TABLE_ACCENT.text}`,
     `text-align:${opts.align || 'center'}`,
     'vertical-align:middle',
+    'min-width:0',
+    'overflow:hidden',
   ];
   if (opts.bg) parts.push(`background-color:${opts.bg}`);
   if (opts.bold) parts.push('font-weight:700');
@@ -122,9 +129,8 @@ export function buildBlankTableHtml(
     { length: c },
     () => `<col style="width:${pct}%" />`,
   ).join('');
-  const headCells = Array.from({ length: c }, (_, i) => {
-    const label = `Spalte ${i + 1}`;
-    return `<th style="${cellStyle({ bg: theme.headerBg, border: theme.border, bold: true, align })}">${esc(label)}</th>`;
+  const headCells = Array.from({ length: c }, () => {
+    return `<th style="${cellStyle({ bg: theme.headerBg, border: theme.border, bold: true, align })}">&nbsp;</th>`;
   }).join('');
   const bodyRows = Array.from({ length: r - 1 }, (_, ri) => {
     const bg = ri % 2 === 1 ? theme.zebraBg : '#ffffff';
@@ -181,6 +187,12 @@ export function parseTabularPlainText(text: string): string[][] | null {
     return next;
   });
   return normalized;
+}
+
+function compactCellPadding(existing: string): string {
+  const p = (existing || '').trim();
+  if (!p || p === '8px 10px' || p === '8px 10px;') return TABLE_CELL_PADDING;
+  return p;
 }
 
 /** Matrix → Johnny-Tabellen-HTML (1. Zeile = Kopf). */
@@ -280,7 +292,9 @@ export function applyJohnnyTableFormatting(
   table.querySelectorAll('th').forEach((cell) => {
     const el = cell as HTMLElement;
     el.style.border = `1px solid ${theme.border}`;
-    el.style.padding = el.style.padding || '8px 10px';
+    el.style.padding = compactCellPadding(el.style.padding);
+    el.style.minWidth = '0';
+    el.style.overflow = 'hidden';
     el.style.backgroundColor = theme.headerBg;
     el.style.fontWeight = '700';
     el.style.verticalAlign = 'middle';
@@ -294,7 +308,9 @@ export function applyJohnnyTableFormatting(
     tr.querySelectorAll('td').forEach((cell) => {
       const el = cell as HTMLElement;
       el.style.border = `1px solid ${theme.border}`;
-      el.style.padding = el.style.padding || '8px 10px';
+      el.style.padding = compactCellPadding(el.style.padding);
+      el.style.minWidth = '0';
+      el.style.overflow = 'hidden';
       el.style.backgroundColor = bg;
       el.style.verticalAlign = 'middle';
       el.style.wordBreak = 'break-word';
@@ -419,7 +435,7 @@ function tableFromSelection(editor: HTMLElement): HTMLTableElement | null {
   return null;
 }
 
-/** Tab in Tabelle: neue Zeile. Shift+Tab: vorherige Zelle. */
+/** Tab in Tabelle: nächste Zelle; in der letzten Zelle neue Zeile. Shift+Tab: vorherige Zelle. */
 export function handleTableTabInEditor(editor: HTMLElement, shiftKey: boolean): boolean {
   const cell = getCellFromSelection(editor);
   const table = cell ? findTableRoot(cell) : tableFromSelection(editor);
@@ -428,6 +444,10 @@ export function handleTableTabInEditor(editor: HTMLElement, shiftKey: boolean): 
   const idx = cell ? cells.indexOf(cell) : cells.length - 1;
   if (shiftKey) {
     if (idx > 0) focusTableCell(cells[idx - 1]);
+    return true;
+  }
+  if (idx >= 0 && idx < cells.length - 1) {
+    focusTableCell(cells[idx + 1]);
     return true;
   }
   tableAddRow(table);
@@ -507,13 +527,15 @@ export function tableAddColumn(table: HTMLTableElement): boolean {
   const themeId = table.getAttribute('data-pres-table-theme') || 'gelb';
   const theme = getTableTheme(themeId);
   const cols = ensureColgroup(table);
-  const newCount = cols.length + 1;
-  const pct = 100 / newCount;
-  cols.forEach((col) => {
-    col.style.width = `${pct}%`;
+  const widths = getColumnWidthPercents(table);
+  const minPct = minColumnPercentForTable(table);
+  const newPct = Math.max(minPct, Math.min(16, 100 / (widths.length + 1)));
+  const scale = (100 - newPct) / 100;
+  cols.forEach((col, i) => {
+    col.style.width = `${((widths[i] || 0) * scale).toFixed(3)}%`;
   });
   const newCol = table.ownerDocument.createElement('col');
-  newCol.style.width = `${pct}%`;
+  newCol.style.width = `${newPct.toFixed(3)}%`;
   table.querySelector('colgroup')?.appendChild(newCol);
 
   rows.forEach((tr, ri) => {
@@ -528,7 +550,7 @@ export function tableAddColumn(table: HTMLTableElement): boolean {
       'style',
       cellStyle({ bg, border: theme.border, bold: isHead, align: 'center' }),
     );
-    cell.innerHTML = isHead ? `Spalte ${newCount}` : '<br>';
+    cell.innerHTML = isHead ? '&nbsp;' : '<br>';
     tr.appendChild(cell);
   });
   return true;
@@ -568,9 +590,10 @@ export function tableDeleteColumn(table: HTMLTableElement, cell: HTMLTableCellEl
   const cols = ensureColgroup(table);
   if (cols[idx]) cols[idx].remove();
   const remaining = ensureColgroup(table);
-  const pct = remaining.length > 0 ? 100 / remaining.length : 100;
-  remaining.forEach((col) => {
-    col.style.width = `${pct}%`;
+  const rest = remaining.map((col) => parseFloat(col.style.width) || 0);
+  const sum = rest.reduce((a, b) => a + b, 0) || 1;
+  remaining.forEach((col, i) => {
+    col.style.width = `${((rest[i] / sum) * 100).toFixed(3)}%`;
   });
   return true;
 }
@@ -729,6 +752,13 @@ export function distributeTableEvenly(table: HTMLTableElement): boolean {
   return colsOk || rowsOk;
 }
 
+/** Mindestbreite einer Spalte in % der aktuellen Tabellenbreite. */
+export function minColumnPercentForTable(table: HTMLTableElement): number {
+  const w = table.getBoundingClientRect().width;
+  if (!Number.isFinite(w) || w < 12) return 2;
+  return Math.max(1.1, Math.min(10, (MIN_COL_PX / w) * 100));
+}
+
 /** Spaltenbreite in % setzen (Nachbar-Spalte gleicht aus). */
 export function setColumnWidthPercent(
   table: HTMLTableElement,
@@ -742,15 +772,48 @@ export function setColumnWidthPercent(
   const leftCur = parseFloat(left.style.width) || 100 / cols.length;
   const rightCur = parseFloat(right.style.width) || 100 / cols.length;
   const pair = leftCur + rightCur;
-  const nextLeft = Math.min(pair - 8, Math.max(8, widthPercent));
+  const minPct = minColumnPercentForTable(table);
+  const floor = Math.max(0.8, Math.min(minPct, pair / 2));
+  const nextLeft = Math.min(pair - floor, Math.max(floor, widthPercent));
   const nextRight = pair - nextLeft;
-  left.style.width = `${nextLeft}%`;
-  right.style.width = `${nextRight}%`;
+  left.style.width = `${nextLeft.toFixed(3)}%`;
+  right.style.width = `${nextRight.toFixed(3)}%`;
+}
+
+/** Ausgewählte Spalte auf die Mindestbreite ziehen (Rest an die Nachbarspalte). */
+export function setColumnNarrow(
+  table: HTMLTableElement,
+  colIndex: number,
+): boolean {
+  const cols = ensureColgroup(table);
+  if (colIndex < 0 || colIndex >= cols.length) return false;
+  const widths = getColumnWidthPercents(table);
+  const minPct = minColumnPercentForTable(table);
+  if (widths[colIndex] <= minPct + 0.4) return false;
+  const extra = widths[colIndex] - minPct;
+  widths[colIndex] = minPct;
+  const neighbor = colIndex + 1 < widths.length ? colIndex + 1 : colIndex - 1;
+  if (neighbor >= 0) widths[neighbor] += extra;
+  cols.forEach((col, i) => {
+    col.style.width = `${widths[i].toFixed(3)}%`;
+  });
+  return true;
 }
 
 export function getColumnWidthPercents(table: HTMLTableElement): number[] {
   const cols = ensureColgroup(table);
   return cols.map((col) => parseFloat(col.style.width) || 100 / Math.max(1, cols.length));
+}
+
+/** Alte 8px-Polster und Content-Minimums entfernen, damit Spalten schmal werden. */
+export function ensureTableCellsCanShrink(table: HTMLTableElement): void {
+  table.style.tableLayout = 'fixed';
+  table.querySelectorAll('th, td').forEach((cell) => {
+    const el = cell as HTMLElement;
+    el.style.minWidth = '0';
+    el.style.overflow = 'hidden';
+    el.style.padding = compactCellPadding(el.style.padding);
+  });
 }
 
 /**

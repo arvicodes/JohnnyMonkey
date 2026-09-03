@@ -283,3 +283,24 @@
   max-width: 100% !important;
   max-height: none !important;
 }
+
+[data-pres-html] table,
+[data-pres-table-edit] table,
+[data-pres-rich-zone] table {
+  table-layout: fixed !important;
+  width: 100%;
+  border-collapse: collapse;
+  box-sizing: border-box;
+}
+
+[data-pres-html] th,
+[data-pres-html] td,
+[data-pres-table-edit] th,
+[data-pres-table-edit] td,
+[data-pres-rich-zone] th,
+[data-pres-rich-zone] td {
+  min-width: 0 !important;
+  box-sizing: border-box;
+  overflow: hidden;
+  word-break: break-word;
+}

@@ -9,9 +9,9 @@ import {
   setColumnWidthPercent,
 } from './presentationSlideTables';
 
-const EDGE_PX = 8;
-const MIN_ROW_PX = 28;
-const MIN_TABLE_PX = 140;
+const EDGE_PX = 5;
+const MIN_ROW_PX = 24;
+const MIN_TABLE_PX = 100;
 
 export type TableResizeHit =
   | {
@@ -82,8 +82,7 @@ export function hitTestTableBorder(
       // Innere Kante links → dieselbe Grenze wie rechts der Vorgänger-Spalte
       return { kind: 'col', table, colIndex: colIndex - 1, sign: 1 };
     } else if (nearLeft && colIndex === 0) {
-      // Äußere linke Kante der Tabelle
-      return { kind: 'col', table, colIndex: 0, sign: -1 };
+      // Äußere linke Kante: nicht als Spalten-Resize (Zelle bleibt tippbar)
     }
   }
 

@@ -73,8 +73,8 @@ import {
   type SnapGuide,
 } from '../../lib/presentationElementSnap';
 import {
-  findTableRoot,
   getColumnWidthPercents,
+  handleTableTabInEditor,
   isValidPresentationTableHtml,
   setColumnWidthPercent,
 } from '../../lib/presentationSlideTables';
@@ -233,13 +233,29 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   const cardTitleRef = useRef<HTMLDivElement>(null);
   const cardBodyRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLDivElement>(null);
-  const [tableColWidths, setTableColWidths] = useState<number[]>([]);
+  const [colHandleXs, setColHandleXs] = useState<number[]>([]);
   const colResizeRef = useRef<{
     colIndex: number;
     startX: number;
     startLeftPct: number;
     tableWidthPx: number;
   } | null>(null);
+  const measureTableColHandles = useCallback(() => {
+    const wrap = tableRef.current;
+    const root = rootRef.current;
+    const table = wrap?.querySelector('table') as HTMLTableElement | null;
+    if (!wrap || !root || !table || table.rows.length === 0) {
+      setColHandleXs([]);
+      return;
+    }
+    const rootRect = root.getBoundingClientRect();
+    const row = table.rows[0];
+    const xs: number[] = [];
+    for (let i = 0; i < row.cells.length - 1; i += 1) {
+      xs.push(row.cells[i].getBoundingClientRect().right - rootRect.left);
+    }
+    setColHandleXs(xs);
+  }, []);
   const selectedRef = useRef(selected);
   const lastPointerTypeRef = useRef<string>('mouse');
   selectedRef.current = selected;
@@ -282,7 +298,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       autoEditOnceRef.current = false;
       setTextEditing(false);
       setCardTitleEditing(false);
-      setTableColWidths([]);
+      setColHandleXs([]);
     }
   }, [selected]);
 
@@ -334,9 +350,9 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     return () => window.cancelAnimationFrame(id);
   }, [element.type, textEditing, fitTextBoxToContent]);
 
-  // Form-Box-Text: einmalig seeden; danach DOM behalten (kein Remount beim Auswählen)
+  // Form-Box-Text: einmalig seeden; danach DOM behalten (kein Remount beim Auswählen / Animationsmodus)
   useLayoutEffect(() => {
-    if (!shapeSupportsText(element) || !editable || animationEditMode) return;
+    if (!shapeSupportsText(element) || !editable || exportSnapshot) return;
     const el = textRef.current;
     if (!el) return;
     if (!isEffectivelyEmptyHtml(el.innerHTML)) return;
@@ -344,7 +360,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       element.html || '<p style="text-align:center"><br></p>',
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [element.id, element.type, element.shapeKind, editable, animationEditMode]);
+  }, [element.id, element.type, element.shapeKind, editable, exportSnapshot]);
 
   // Karten-Titel: beim Öffnen Inhalt vor dem Paint setzen
   useLayoutEffect(() => {
@@ -359,15 +375,15 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardTitleEditing, element.id]);
 
-  // Karten-Inhalt: Editor bleibt gemountet — nur initial seeden, nie beim Klick leeren
+  // Karten-Inhalt: Editor bleibt gemountet (auch Animationsmodus) — nur initial seeden
   useLayoutEffect(() => {
-    if (element.type !== 'card' || !editable || animationEditMode) return;
+    if (element.type !== 'card' || !editable || exportSnapshot) return;
     const el = cardBodyRef.current;
     if (!el) return;
     if (!isEffectivelyEmptyHtml(el.innerHTML)) return;
     el.innerHTML = hydratePresentationHtmlFontSizes(element.html || '<p></p>');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [element.id, element.type, editable, animationEditMode]);
+  }, [element.id, element.type, editable, exportSnapshot]);
 
   /** Infobox gewählt → Inhalt fokussieren (sonst wirkt contentEditable erst nach 2. Klick). */
   useEffect(() => {
@@ -439,7 +455,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         el.innerHTML = hydrated;
       }
       const table = el.querySelector('table') as HTMLTableElement | null;
-      if (table) setTableColWidths(getColumnWidthPercents(table));
+      if (table) measureTableColHandles();
       if (!active) onTextEditorFocus?.(el, element.id, 'html');
     };
     const t0 = window.setTimeout(sync, 0);
@@ -451,6 +467,26 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [element.type, element.id, element.html, editable, selected, animationEditMode]);
+
+  useEffect(() => {
+    if (element.type !== 'table' || !editable || !selected || animationEditMode) return undefined;
+    const wrap = tableRef.current;
+    if (!wrap) return undefined;
+    const run = () => measureTableColHandles();
+    run();
+    const t = window.setTimeout(run, 50);
+    if (typeof ResizeObserver === 'undefined') {
+      return () => window.clearTimeout(t);
+    }
+    const ro = new ResizeObserver(run);
+    ro.observe(wrap);
+    const table = wrap.querySelector('table');
+    if (table) ro.observe(table);
+    return () => {
+      window.clearTimeout(t);
+      ro.disconnect();
+    };
+  }, [element.type, element.html, editable, selected, animationEditMode, measureTableColHandles]);
 
   useEffect(() => {
     const el =
@@ -985,8 +1021,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   const handleInsetPx = (isFullscreenish ? 6 : 4) * scale;
   const handleSizePx = (isFullscreenish ? 20 : 16) * scale;
 
-  const showElementBadge =
-    animationEditMode && elementHasRevealAssignment(element) && element.type === 'image';
+  const showElementBadge = animationEditMode && elementHasRevealAssignment(element);
   const isMediaElement = element.type === 'video' || element.type === 'embed';
   const mediaInteract = isMediaElement && mediaInteractive && !editable;
   const mediaAllowZoom = element.type === 'embed' && mediaInteractive && !editable;
@@ -1311,8 +1346,16 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
           touchAction: 'manipulation',
         },
         willChange: dragging ? 'left, top, width, height' : undefined,
-        outline: isCardElement && showSelectionChrome ? `${2 * scale}px solid #2E7D32` : undefined,
-        outlineOffset: isCardElement && showSelectionChrome ? `${2 * scale}px` : undefined,
+        outline: isCardElement
+          ? animationEditMode && elementAnimSelected
+            ? `${2 * scale}px solid #E65100`
+            : showSelectionChrome
+              ? `${2 * scale}px solid #2E7D32`
+              : undefined
+          : undefined,
+        outlineOffset: isCardElement && (showSelectionChrome || (animationEditMode && elementAnimSelected))
+          ? `${2 * scale}px`
+          : undefined,
       }}
     >
       {showElementBadge && (
@@ -1447,10 +1490,17 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
       )}
 
       {isShapeElement && (
-        <Box sx={{ width: '100%', height: '100%', pointerEvents: 'none', position: 'relative' }}>
+        <Box
+          sx={{
+            width: '100%',
+            height: '100%',
+            pointerEvents: animationEditMode ? 'auto' : 'none',
+            position: 'relative',
+          }}
+        >
           <SlideShapeSvg element={view} />
           {isShapeBox &&
-            (editable && !animationEditMode && !exportSnapshot ? (
+            (editable && !exportSnapshot ? (
               <Box
                 ref={textRef}
                 data-shape-body
@@ -1475,6 +1525,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   }
                 }}
                 onPointerDown={(e) => {
+                  if (animationEditMode) return;
                   if (!showSelectionChrome) return;
                   if (placeCaretBesidePresentationMath(e.nativeEvent)) {
                     e.stopPropagation();
@@ -1540,12 +1591,17 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   color: JOHNNY_PRESENTATION.textPrimary,
                   textAlign: 'center',
                   overflow: 'auto',
-                  cursor: showSelectionChrome ? 'text' : 'inherit',
+                  cursor: animationEditMode
+                    ? 'pointer'
+                    : showSelectionChrome
+                      ? 'text'
+                      : 'inherit',
                   bgcolor: showSelectionChrome ? 'rgba(255,255,255,0.45)' : 'transparent',
                   p: `${4 * scale}px`,
                   boxSizing: 'border-box',
-                  pointerEvents: showSelectionChrome ? 'auto' : 'none',
+                  pointerEvents: animationEditMode || showSelectionChrome ? 'auto' : 'none',
                   '& p': { m: 0, mb: `${2 * scale}px` },
+                  ...presentationNestedListSx({ scale, listPaddingPx: 20 * scale, itemGapPx: 2 * scale }),
                 }}
               />
             ) : (
@@ -1556,7 +1612,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   position: 'absolute',
                   inset: '14%',
                   display: 'flex',
-                  alignItems: 'center',
+                  flexDirection: 'column',
+                  alignItems: 'stretch',
                   justifyContent: 'center',
                   overflow: 'hidden',
                   fontSize: `${textBaseFs * scale}px`,
@@ -1565,7 +1622,10 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   color: JOHNNY_PRESENTATION.textPrimary,
                   textAlign: 'center',
                   pointerEvents: 'none',
+                  p: `${4 * scale}px`,
+                  boxSizing: 'border-box',
                   '& p': { m: 0, mb: `${2 * scale}px` },
+                  ...presentationNestedListSx({ scale, listPaddingPx: 20 * scale, itemGapPx: 2 * scale }),
                 }}
                 dangerouslySetInnerHTML={{ __html: shapeBodyHtml }}
               />
@@ -1601,7 +1661,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             border: `${Math.max(2, (element.strokeWidth || 2.5) * scale)}px solid ${cardAccent}`,
             bgcolor: 'transparent',
             boxSizing: 'border-box',
-            pointerEvents: 'none',
+            pointerEvents: animationEditMode ? 'auto' : 'none',
             '& [data-card-title], & [data-card-body], & [data-text-edit]': {
               pointerEvents: 'auto',
             },
@@ -1723,11 +1783,11 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               px: `${8 * scale}px`,
               py: `${8 * scale}px`,
               // Immer greifbar zum Auswählen/Tippen — sonst geht der Klick „durch“ die Box
-              pointerEvents: editable && !animationEditMode ? 'auto' : 'none',
+              pointerEvents: editable || animationEditMode ? 'auto' : 'none',
               position: 'relative',
             }}
           >
-            {editable && !animationEditMode && !exportSnapshot ? (
+            {editable && !exportSnapshot ? (
               <Box
                 ref={cardBodyRef}
                 {...(showCardBodyEditor ? { 'data-text-edit': true } : {})}
@@ -1754,6 +1814,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   }
                 }}
                 onPointerDown={(e) => {
+                  if (animationEditMode) return;
                   if (!showCardBodyEditor) return;
                   if (placeCaretBesidePresentationMath(e.nativeEvent)) {
                     e.stopPropagation();
@@ -1814,18 +1875,26 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
                   lineHeight: 1.4,
                   color: JOHNNY_PRESENTATION.textPrimary,
-                  cursor: showCardBodyEditor ? 'text' : editable ? 'pointer' : 'inherit',
+                  cursor: animationEditMode
+                    ? 'pointer'
+                    : showCardBodyEditor
+                      ? 'text'
+                      : editable
+                        ? 'pointer'
+                        : 'inherit',
                   boxSizing: 'border-box',
                   bgcolor: showCardBodyEditor ? 'rgba(255,255,255,0.55)' : 'transparent',
                   borderRadius: `${4 * scale}px`,
                   p: `${6 * scale}px`,
-                  pointerEvents: editable && !animationEditMode ? 'auto' : 'none',
+                  pointerEvents: editable || animationEditMode ? 'auto' : 'none',
                   '& p': { mt: 0, mr: 0, mb: `${4 * scale}px` },
+                  ...presentationNestedListSx({ scale, listPaddingPx: 20 * scale, itemGapPx: 2 * scale }),
                 }}
               />
             ) : (
               <Box
                 data-pres-html
+                data-pres-rich-zone
                 sx={{
                   width: '100%',
                   height: '100%',
@@ -1836,7 +1905,10 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   lineHeight: 1.4,
                   color: JOHNNY_PRESENTATION.textPrimary,
                   pointerEvents: 'none',
+                  p: `${6 * scale}px`,
+                  boxSizing: 'border-box',
                   '& p': { mt: 0, mr: 0, mb: `${4 * scale}px` },
+                  ...presentationNestedListSx({ scale, listPaddingPx: 20 * scale, itemGapPx: 2 * scale }),
                 }}
                 dangerouslySetInnerHTML={{ __html: cardBodyHtml }}
               />
@@ -1922,7 +1994,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                       const tbl = tableRef.current?.querySelector(
                         'table',
                       ) as HTMLTableElement | null;
-                      if (tbl) setTableColWidths(getColumnWidthPercents(tbl));
+                      if (tbl) measureTableColHandles();
                     },
                     onDone: () => {
                       if (tableRef.current && onChange) {
@@ -1963,9 +2035,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               onInput={() => {
                 if (!tableRef.current || !onChange) return;
                 if (tableRef.current.getAttribute('data-pres-table-mutating') === '1') return;
-                const html = tableRef.current.innerHTML;
                 const table = tableRef.current.querySelector('table') as HTMLTableElement | null;
-                if (table) setTableColWidths(getColumnWidthPercents(table));
+                if (table) measureTableColHandles();
                 if (textInputTimerRef.current) window.clearTimeout(textInputTimerRef.current);
                 textInputTimerRef.current = window.setTimeout(() => {
                   if (!tableRef.current || !onChange) return;
@@ -1983,6 +2054,15 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               onKeyDown={(e) => {
                 const el = tableRef.current;
                 if (!el) return;
+                if (e.key === 'Tab') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (handleTableTabInEditor(el, e.shiftKey)) {
+                    measureTableColHandles();
+                    if (onChange) onChange({ html: el.innerHTML });
+                  }
+                  return;
+                }
                 if ((e.key === 'Backspace' || e.key === 'Delete') && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault();
                   e.stopPropagation();
@@ -2009,6 +2089,9 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 },
                 '& th, & td': {
                   wordBreak: 'break-word',
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  boxSizing: 'border-box',
                 },
                 '& [data-pres-fs]': { lineHeight: 'inherit' },
               }}
@@ -2033,6 +2116,9 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 },
                 '& th, & td': {
                   wordBreak: 'break-word',
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  boxSizing: 'border-box',
                 },
                 '& [data-pres-fs]': { lineHeight: 'inherit' },
               }}
@@ -2040,10 +2126,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             />
           )}
           {showTableEditor &&
-            tableColWidths.length > 1 &&
-            tableColWidths.slice(0, -1).map((_, i) => {
-              const leftPct = tableColWidths.slice(0, i + 1).reduce((a, b) => a + b, 0);
-              return (
+            colHandleXs.map((x, i) => (
                 <Box
                   key={`col-resize-${i}`}
                   data-col-resize
@@ -2068,22 +2151,23 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                       if (!tbl) return;
                       const dxPct = ((ev.clientX - st.startX) / st.tableWidthPx) * 100;
                       setColumnWidthPercent(tbl, st.colIndex, st.startLeftPct + dxPct);
-                      setTableColWidths(getColumnWidthPercents(tbl));
+                      measureTableColHandles();
                     };
                     const onUp = () => {
                       colResizeRef.current = null;
                       window.removeEventListener('pointermove', onMove);
                       window.removeEventListener('pointerup', onUp);
+                      measureTableColHandles();
                       if (tableRef.current && onChange) {
-                    const html = sanitizePresentationHtml(tableRef.current.innerHTML);
-                    if (
-                      !isValidPresentationTableHtml(html) &&
-                      isValidPresentationTableHtml(element.html)
-                    ) {
-                      return;
-                    }
-                    onChange({ html });
-                  }
+                        const html = sanitizePresentationHtml(tableRef.current.innerHTML);
+                        if (
+                          !isValidPresentationTableHtml(html) &&
+                          isValidPresentationTableHtml(element.html)
+                        ) {
+                          return;
+                        }
+                        onChange({ html });
+                      }
                     };
                     window.addEventListener('pointermove', onMove);
                     window.addEventListener('pointerup', onUp);
@@ -2092,17 +2176,32 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                     position: 'absolute',
                     top: `${14 * scale}px`,
                     bottom: `${4 * scale}px`,
-                    left: `calc(${4 * scale}px + (100% - ${8 * scale}px) * ${leftPct / 100})`,
-                    width: `${10 * scale}px`,
-                    marginLeft: `${-5 * scale}px`,
+                    left: `${x}px`,
+                    width: `${14 * scale}px`,
+                    marginLeft: `${-7 * scale}px`,
                     zIndex: 14,
                     cursor: 'col-resize',
                     bgcolor: 'transparent',
-                    '&:hover': { bgcolor: 'rgba(46,125,50,0.2)' },
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      top: `${4 * scale}px`,
+                      bottom: `${4 * scale}px`,
+                      left: '50%',
+                      width: `${2 * scale}px`,
+                      marginLeft: `${-1 * scale}px`,
+                      bgcolor: '#2E7D32',
+                      opacity: 0.38,
+                      borderRadius: 1,
+                      pointerEvents: 'none',
+                    },
+                    '&:hover': {
+                      bgcolor: 'rgba(46,125,50,0.12)',
+                      '&::after': { opacity: 0.95 },
+                    },
                   }}
                 />
-              );
-            })}
+            ))}
         </>
       )}
 
