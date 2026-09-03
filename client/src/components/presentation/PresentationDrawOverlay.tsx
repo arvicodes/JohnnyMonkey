@@ -768,8 +768,6 @@ const PresentationDrawOverlay: React.FC<PresentationDrawOverlayProps> = ({
 
   const onPointerDown = (e: PointerEvent) => {
     if (readOnlyRef.current || !interactiveRef.current) return;
-    // Rechtsklick: Tabelle/Fokus nicht anfassen — Kontextmenü liegt darunter.
-    if (e.button === 2) return;
     const t = toolRef.current;
     const canvas = e.currentTarget as HTMLCanvasElement;
 

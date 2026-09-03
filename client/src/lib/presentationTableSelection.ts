@@ -37,62 +37,6 @@ export function cellFromNode(node: EventTarget | null): HTMLTableCellElement | n
   return node.closest('td, th') as HTMLTableCellElement | null;
 }
 
-/** Zeichen-Canvas liegt über der Folie — darunter die echte Tabelle finden. */
-export function peekUnderOverlayCanvases(clientX: number, clientY: number): Element | null {
-  const canvases = Array.from(document.querySelectorAll('canvas'));
-  const restored: { el: HTMLElement; value: string }[] = [];
-  canvases.forEach((node) => {
-    const el = node as HTMLElement;
-    restored.push({ el, value: el.style.pointerEvents });
-    el.style.pointerEvents = 'none';
-  });
-  const under = document.elementFromPoint(clientX, clientY);
-  restored.forEach(({ el, value }) => {
-    el.style.pointerEvents = value;
-  });
-  return under;
-}
-
-export function tableHitFromPoint(
-  clientX: number,
-  clientY: number,
-  from: EventTarget | null = null,
-): {
-  editor: HTMLElement;
-  table: HTMLTableElement;
-  cell: HTMLTableCellElement | null;
-} | null {
-  const candidates = [
-    from instanceof Element ? from : null,
-    peekUnderOverlayCanvases(clientX, clientY),
-  ];
-  let cell: HTMLTableCellElement | null = null;
-  let editor: HTMLElement | null = null;
-  let table: HTMLTableElement | null = null;
-  for (const node of candidates) {
-    if (!node) continue;
-    cell = cell || cellFromNode(node);
-    editor = editor || tableEditorFromNode(node);
-    if (!editor) {
-      editor = node
-        .closest('[data-pres-element-type="table"]')
-        ?.querySelector('[data-pres-table-edit]') as HTMLElement | null;
-    }
-    table =
-      table ||
-      (cell && findTableRoot(cell)) ||
-      (node.closest('table') as HTMLTableElement | null);
-  }
-  if (!table && editor) table = editor.querySelector('table');
-  if (!table) return null;
-  const resolvedEditor =
-    editor ||
-    tableEditorFromNode(table) ||
-    (table.closest('[data-pres-table-edit], [data-pres-notes-zone="true"]') as HTMLElement | null);
-  if (!resolvedEditor) return null;
-  return { editor: resolvedEditor, table, cell };
-}
-
 function rowIndexOfCell(cell: HTMLTableCellElement): number {
   const row = cell.parentElement;
   return row instanceof HTMLTableRowElement ? row.rowIndex : -1;
