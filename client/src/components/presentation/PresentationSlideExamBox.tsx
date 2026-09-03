@@ -441,12 +441,7 @@ const PresentationSlideExamBox: React.FC<Props> = ({
             <CircularProgress size={22} />
             <Typography variant="body2">Lade Fragen…</Typography>
           </Box>
-        ) : questions.length === 0 ? (
-          <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-            Keine Aufgaben im HTML-Raster gefunden. Die Prüfung kannst du trotzdem über Öffnen
-            ansehen oder die HTML-Datei im Stundenordner bearbeiten.
-          </Typography>
-        ) : editingQuestion ? (
+        ) : questions.length === 0 ? null : editingQuestion ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 0.5 }}>
             <Typography variant="subtitle2">Aufgabe {editingQuestion.taskNumber}</Typography>
             <TextField
@@ -545,9 +540,6 @@ const PresentationSlideExamBox: React.FC<Props> = ({
         >
           Prüfung an diese Folie
         </Button>
-        <Typography sx={{ fontSize: '0.6rem', color: '#8d4a4a', lineHeight: 1.35, px: 0.4, mt: 0.1 }}>
-          Dateien aus diesem Stundenordner (KA_/KU_/HU_/QZ_.html) — oder eine neue erstellen.
-        </Typography>
         {addMenu}
         {createDialog}
       </Box>
