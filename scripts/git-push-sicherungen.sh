@@ -74,7 +74,9 @@ git fetch origin main
 if ! git merge-base --is-ancestor origin/main HEAD; then
   echo "GitHub hat inzwischen einen anderen Stand — ich hole ihn dazu."
   if ! git merge origin/main --no-edit -m "Stand zusammenführen"; then
-    git checkout --ours -- \
+    # Notizen: GitHub/Remote bevorzugen (nie Laptop-Altstand erzwingen).
+    # Quelle der Wahrheit bleibt die Schule — danach school-sync / Notizen holen.
+    git checkout --theirs -- \
       J-M-Reihen/Lehrer-Schnellnotizen \
       Notizen-Sicherheitskopien \
       2>/dev/null || true

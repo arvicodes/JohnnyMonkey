@@ -3,9 +3,10 @@
 
 Modes:
   (default)  only lesson folders with git dirty/untracked files
-  --full     entire Mathe tree + Lehrer-Schnellnotizen (recommended for school sync)
-  --notes    Notizen + Backup-Ordner (keine Unterrichtsfolien)
-  --all      entire J-M-Reihen (large; use only when needed)
+  --full     Unterrichtsordner OHNE Lehrer-Schnellnotizen (gelbes N bleibt Schule)
+  --notes-safe  Backup Folien/Tickets ohne Schnellnotizen
+  --notes    wie --notes-safe (gelbes N wird nie gepackt)
+  --all      J-M-Reihen ohne gelbes N / Backup-Notizen
 """
 from __future__ import annotations
 
@@ -29,6 +30,20 @@ JM_PREFIX = "J-M-Reihen/"
 SKIP_DIR_NAMES = {".presentation-backups", ".git", "__pycache__", "node_modules"}
 SKIP_FILE_NAMES = {".DS_Store"}
 
+# Gelbes N — nie vom Laptop auf die Schule packen (Sync: Schule → lokal).
+NOTES_LAPTOP_NEVER_PUSH = {
+  "Lehrer-Schnellnotizen",
+  "Backup - Notizen",
+}
+
+
+def is_notes_never_push(path: Path) -> bool:
+  """True if path is under Lehrer-Schnellnotizen / Backup - Notizen."""
+  try:
+    rel = path.resolve().relative_to(JM.resolve())
+  except ValueError:
+    return False
+  return bool(rel.parts) and rel.parts[0] in NOTES_LAPTOP_NEVER_PUSH
 
 def nfc(p: str) -> str:
   return "/".join(unicodedata.normalize("NFC", x) for x in p.replace("\\", "/").split("/"))
@@ -160,40 +175,50 @@ def copy_lesson(src: Path, dst: Path) -> int:
 def stage_paths(mode: str) -> list[tuple[Path, Path]]:
   """Return list of (src, relative-to-JM) to pack."""
   if mode == "all":
-    return [(JM, Path("."))]
-  if mode == "notes":
+    # Einzelne Top-Level-Ordner — nie gelbes N / Backup-Notizen
     items: list[tuple[Path, Path]] = []
-    for name in (
-      "Lehrer-Schnellnotizen",
-      "Backup - Notizen",
-      "Backup - Folien",
-      "Backup - Tickets",
-    ):
+    if not JM.exists():
+      return items
+    for child in sorted(JM.iterdir()):
+      if not child.is_dir() or child.name.startswith(".") or child.name.startswith("._"):
+        continue
+      if child.name in NOTES_LAPTOP_NEVER_PUSH:
+        continue
+      items.append((child, Path(child.name)))
+    return items
+  if mode in ("notes", "notes-safe"):
+    # Nie gelbes N zurück auf die Schule
+    items = []
+    for name in ("Backup - Folien", "Backup - Tickets"):
       src = JM / name
       if src.exists():
         items.append((src, Path(name)))
     return items
   if mode == "full":
-    # Unterrichtsordner (ohne die sehr großen Archive Erasmus/Wall-of-fame/Zwischenspeicher)
+    # Unterrichtsordner — ohne gelbes N / Lehrer-Schnellnotizen (Schule ist Quelle)
     items: list[tuple[Path, Path]] = []
     for name in (
       "Mathe",
       "Informatik",
-      "Lehrer-Schnellnotizen",
       "Mini-Projekte",
       "Grafiken",
       "Ankündigungen & Briefe",
       "Folien - ALLE - BACKUP",
-      "Backup - Notizen",
       "Backup - Folien",
       "Backup - Tickets",
     ):
+      if name in NOTES_LAPTOP_NEVER_PUSH:
+        continue
       src = JM / name
       if src.exists():
         items.append((src, Path(name)))
     return items
-  # default: dirty lessons only
-  return [(lesson, lesson.relative_to(JM)) for lesson in sorted(changed_lesson_dirs())]
+  # default: dirty lessons only — Notizen-Pfade herausfiltern
+  return [
+    (lesson, lesson.relative_to(JM))
+    for lesson in sorted(changed_lesson_dirs())
+    if not is_notes_never_push(lesson)
+  ]
 
 
 def main() -> int:
@@ -201,7 +226,7 @@ def main() -> int:
   mode = "dirty"
   out = Path("/tmp/jm-mat-update.tar.gz")
   for a in args:
-    if a in ("--full", "--all", "--dirty", "--notes"):
+    if a in ("--full", "--all", "--dirty", "--notes", "--notes-safe"):
       mode = a.lstrip("-")
     elif not a.startswith("-"):
       out = Path(a)
@@ -212,7 +237,6 @@ def main() -> int:
     if out.exists():
       out.unlink()
     return 0
-
   with tempfile.TemporaryDirectory() as td:
     stage = Path(td) / "J-M-Reihen"
     total = 0

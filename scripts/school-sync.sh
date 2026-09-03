@@ -5,7 +5,9 @@
 #   sync-backups/local/<stamp>/   ← Kopie vom Mac-Stand
 #   sync-backups/global/<stamp>/  ← Kopie vom Schul-Stand (auch auf dem Server unter /app/sync-backups/)
 #
-# Danach: Material mergen (neueres mtime gewinnt, bei Gleichstand Schule),
+# Danach: Material mergen (neueres mtime gewinnt, bei Gleichstand Schule).
+# Ausnahme gelbes N / Lehrer-Schnellnotizen (+ Backup - Notizen, Notizen-Sicherheitskopien):
+#   immer Schulversion — Laptop darf diese Notizen nie überschreiben.
 # DB: neueres mtime (bei Gleichstand Schule) plus passender Login-Pepper,
 # dann denselben Stand auf beide Seiten. Pepper nie nach GitHub.
 #
@@ -367,7 +369,7 @@ if school_pepper:
   write_pepper_file(global_bak / ".login-code-pepper", school_pepper)
 print("Globale Kopie (Mac):", global_bak)
 
-print("==> Merge Material (neueres gewinnt)")
+print("==> Merge Material (Folien: neueres; Notizen/gelbes N: immer Schule)")
 notes_only = os.environ.get("NOTES_ONLY") == "1"
 local_jm = root / "J-M-Reihen"
 school_jm = pull_dir / "J-M-Reihen"
@@ -375,35 +377,50 @@ merge_jm.parent.mkdir(parents=True, exist_ok=True)
 if merge_jm.exists():
   shutil.rmtree(merge_jm)
 merge_jm.mkdir(parents=True)
+# Lehrer-Schnellnotizen = gelbes N: immer Schule (Formatierung + Stiftmarkierungen).
+NOTES_ALWAYS_SCHOOL = {
+  "Lehrer-Schnellnotizen",
+  "Backup - Notizen",
+}
 jm_parts = (
   ("Lehrer-Schnellnotizen", "Backup - Notizen", "Backup - Folien", "Backup - Tickets")
   if notes_only
   else ("Mathe", "Lehrer-Schnellnotizen", "Informatik", "Backup - Notizen", "Backup - Folien", "Backup - Tickets")
 )
 for part in jm_parts:
-  subprocess.check_call(
+  cmd = [
+    sys.executable,
+    str(root / "scripts/merge-school-materials.py"),
+  ]
+  if part in NOTES_ALWAYS_SCHOOL:
+    cmd.append("--prefer-school")
+  cmd.extend(
     [
-      sys.executable,
-      str(root / "scripts/merge-school-materials.py"),
       str(local_jm / part),
       str(school_jm / part),
       str(merge_jm / part),
     ]
   )
+  subprocess.check_call(cmd)
 safety_roots = ("Notizen-Sicherheitskopien", "Presentation-Sicherheitskopien")
 merge_safety = Path(f"/tmp/jm-sync-merged-safety-{stamp}")
 if merge_safety.exists():
   shutil.rmtree(merge_safety)
 for extra in safety_roots:
-  subprocess.check_call(
+  cmd = [
+    sys.executable,
+    str(root / "scripts/merge-school-materials.py"),
+  ]
+  if extra == "Notizen-Sicherheitskopien":
+    cmd.append("--prefer-school")
+  cmd.extend(
     [
-      sys.executable,
-      str(root / "scripts/merge-school-materials.py"),
       str(root / extra),
       str(pull_dir / extra),
       str(merge_safety / extra),
     ]
   )
+  subprocess.check_call(cmd)
 
 pepper = ""
 merged_db = Path(f"/tmp/jm-sync-merged-db-{stamp}.db")
@@ -481,26 +498,38 @@ fi
 prune_backups local
 prune_backups global
 
-log "==> Merged Stand zurück auf Schule (DB + Material)"
-# Pack materials from merged local
+log "==> Merged Stand zurück auf Schule (DB + Material; Notizen/gelbes N werden nicht vom Laptop überschrieben)"
+# Pack materials from merged local — ohne Lehrer-Schnellnotizen (Schule bleibt Quelle)
 if [[ "${NOTES_ONLY:-0}" == "1" ]]; then
-  python3 "$ROOT/scripts/pack-school-materials.py" --notes /tmp/jm-mat-update.tar.gz
+  # Nur Folien-/Ticket-Backups zurück; gelbes N bleibt unangetastet auf der Schule
+  python3 "$ROOT/scripts/pack-school-materials.py" --notes-safe /tmp/jm-mat-update.tar.gz || true
 else
   python3 "$ROOT/scripts/pack-school-materials.py" --full /tmp/jm-mat-update.tar.gz
 fi
-[[ -f /tmp/jm-mat-update.tar.gz ]] || die "Material-Pack fehlgeschlagen"
+if [[ ! -f /tmp/jm-mat-update.tar.gz ]] || [[ ! -s /tmp/jm-mat-update.tar.gz ]]; then
+  if [[ "${NOTES_ONLY:-0}" == "1" ]]; then
+    log "Kein Material-Push nötig (Notizen bleiben Schule)."
+    # leeres Tar vermeiden — Skip mat push below
+    SKIP_MAT_PUSH=1
+  else
+    die "Material-Pack fehlgeschlagen"
+  fi
+else
+  SKIP_MAT_PUSH=0
+fi
 python3 - <<'PY'
 import tarfile
 from pathlib import Path
 root = Path("/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey")
 out = Path("/tmp/jm-safety-copies.tar.gz")
 with tarfile.open(out, "w:gz") as tar:
-  for name in ("Notizen-Sicherheitskopien", "Presentation-Sicherheitskopien"):
+  # Präsentations-Sicherungen ja; Notizen-Sicherungen: Schule gewinnt, Laptop nicht zurückpushen
+  for name in ("Presentation-Sicherheitskopien",):
     src = root / name
     if src.exists():
       tar.add(src, arcname=name)
       print("pack", name)
-print("wrote", out, out.stat().st_size)
+print("wrote", out, out.stat().st_size if out.exists() else 0)
 PY
 if [[ "${NOTES_ONLY:-0}" != "1" ]]; then
   cp -a server/prisma/dev.db backup_latest.db
@@ -510,7 +539,10 @@ fi
 gh_api() {
   curl -sS -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" "$@"
 }
-DEL_NAMES="jm-mat-update.tar.gz jm-safety-copies.tar.gz"
+DEL_NAMES="jm-safety-copies.tar.gz"
+if [[ "${SKIP_MAT_PUSH:-0}" != "1" ]]; then
+  DEL_NAMES="jm-mat-update.tar.gz $DEL_NAMES"
+fi
 if [[ "${NOTES_ONLY:-0}" != "1" ]]; then
   DEL_NAMES="$DEL_NAMES backup_latest.db"
 fi
@@ -536,9 +568,12 @@ upload_asset() {
     "https://uploads.github.com/repos/$REPO/releases/$RELEASE_ID/assets?name=$2" \
     | python3 -c 'import sys,json; r=json.load(sys.stdin); print(r.get("id"), r.get("name"), r.get("size"))'
 }
-MAT_ASSET_ID="$(upload_asset /tmp/jm-mat-update.tar.gz jm-mat-update.tar.gz | awk '{print $1}')"
+MAT_ASSET_ID=""
+if [[ "${SKIP_MAT_PUSH:-0}" != "1" ]]; then
+  MAT_ASSET_ID="$(upload_asset /tmp/jm-mat-update.tar.gz jm-mat-update.tar.gz | awk '{print $1}')"
+  [[ "$MAT_ASSET_ID" =~ ^[0-9]+$ ]] || die "Mat-Upload fehlgeschlagen"
+fi
 SAFETY_ASSET_ID="$(upload_asset /tmp/jm-safety-copies.tar.gz jm-safety-copies.tar.gz | awk '{print $1}')"
-[[ "$MAT_ASSET_ID" =~ ^[0-9]+$ ]] || die "Mat-Upload fehlgeschlagen"
 [[ "$SAFETY_ASSET_ID" =~ ^[0-9]+$ ]] || die "Sicherungs-Upload fehlgeschlagen"
 if [[ "${NOTES_ONLY:-0}" != "1" ]]; then
   DB_ASSET_ID="$(upload_asset "$ROOT/backup_latest.db" backup_latest.db | awk '{print $1}')"
@@ -550,7 +585,10 @@ signed_url() {
     "https://api.github.com/repos/$REPO/releases/assets/$1" \
     | awk 'tolower($1)=="location:"{print $2}' | tr -d '\r' | tail -1
 }
-MAT_URL="$(signed_url "$MAT_ASSET_ID")"
+MAT_URL=""
+if [[ -n "${MAT_ASSET_ID:-}" ]]; then
+  MAT_URL="$(signed_url "$MAT_ASSET_ID")"
+fi
 SAFETY_URL="$(signed_url "$SAFETY_ASSET_ID")"
 DB_PUBLIC="https://github.com/$REPO/releases/download/deploy-prebuilt/backup_latest.db"
 if [[ "${NOTES_ONLY:-0}" != "1" ]]; then
@@ -559,7 +597,7 @@ else
   DBSHA=""
 fi
 
-export JWT MAT_URL SAFETY_URL DB_PUBLIC DBSHA STAMP LOGIN_PEPPER_HEX NOTES_ONLY
+export JWT MAT_URL SAFETY_URL DB_PUBLIC DBSHA STAMP LOGIN_PEPPER_HEX NOTES_ONLY SKIP_MAT_PUSH
 # re-login JWT may still be valid; refresh
 JWT="$(
   curl -sk -X POST "$PORTAINER_URL/api/auth" \
@@ -653,43 +691,48 @@ def run(container_id, shell):
 app = find(os.environ["APP_NAME"])
 tunnel = find(os.environ["TUNNEL_NAME"])
 notes_only = os.environ.get("NOTES_ONLY") == "1"
-mat_url = os.environ["MAT_URL"]
+skip_mat = os.environ.get("SKIP_MAT_PUSH") == "1"
+mat_url = (os.environ.get("MAT_URL") or "").strip()
 safety_url = os.environ.get("SAFETY_URL") or ""
-mat_b64 = base64.b64encode(mat_url.encode()).decode()
-run(app["Id"], f"printf %s {json.dumps(mat_b64)} | base64 -d > /tmp/jm-mat.url")
+if mat_url and not skip_mat:
+  mat_b64 = base64.b64encode(mat_url.encode()).decode()
+  run(app["Id"], f"printf %s {json.dumps(mat_b64)} | base64 -d > /tmp/jm-mat.url")
+  print(run(app["Id"], " && ".join([
+    "set -e",
+    "cd /tmp",
+    "curl -fsSL -o jm-mat-update.tar.gz \"$(cat /tmp/jm-mat.url)\"",
+    "mkdir -p /app/J-M-Reihen /tmp/jm-mat-extract",
+    "rm -rf /tmp/jm-mat-extract",
+    "mkdir -p /tmp/jm-mat-extract",
+    "tar -xzf jm-mat-update.tar.gz -C /tmp/jm-mat-extract",
+    # Nie Lehrer-Schnellnotizen / Backup-Notizen vom Laptop überschreiben
+    "if [ -d /tmp/jm-mat-extract/J-M-Reihen/Lehrer-Schnellnotizen ]; then rm -rf /tmp/jm-mat-extract/J-M-Reihen/Lehrer-Schnellnotizen; fi",
+    "if [ -d '/tmp/jm-mat-extract/J-M-Reihen/Backup - Notizen' ]; then rm -rf '/tmp/jm-mat-extract/J-M-Reihen/Backup - Notizen'; fi",
+    "cp -a /tmp/jm-mat-extract/J-M-Reihen/. /app/J-M-Reihen/",
+    "rm -rf /tmp/jm-mat-extract jm-mat-update.tar.gz /tmp/jm-mat.url",
+    "echo MAT_PUSH_OK",
+  ])))
+else:
+  print("MAT_PUSH_SKIP (Notizen/gelbes N bleiben auf der Schule)")
 if safety_url:
   safety_b64 = base64.b64encode(safety_url.encode()).decode()
   run(app["Id"], f"printf %s {json.dumps(safety_b64)} | base64 -d > /tmp/jm-safety.url")
-print(run(app["Id"], " && ".join([
-  "set -e",
-  "cd /tmp",
-  "curl -fsSL -o jm-mat-update.tar.gz \"$(cat /tmp/jm-mat.url)\"",
-  "mkdir -p /app/J-M-Reihen /tmp/jm-mat-extract",
-  "rm -rf /tmp/jm-mat-extract",
-  "mkdir -p /tmp/jm-mat-extract",
-  "tar -xzf jm-mat-update.tar.gz -C /tmp/jm-mat-extract",
-  "cp -a /tmp/jm-mat-extract/J-M-Reihen/. /app/J-M-Reihen/",
-  "rm -rf /tmp/jm-mat-extract jm-mat-update.tar.gz /tmp/jm-mat.url",
-  "echo MAT_PUSH_OK",
-])))
-if safety_url:
   print(run(app["Id"], " && ".join([
     "set -e",
     "cd /tmp",
     "curl -fsSL -o jm-safety-copies.tar.gz \"$(cat /tmp/jm-safety.url)\"",
     "mkdir -p /tmp/jm-safety-extract",
     "tar -xzf jm-safety-copies.tar.gz -C /tmp/jm-safety-extract",
-    "if [ -d /tmp/jm-safety-extract/Notizen-Sicherheitskopien ]; then mkdir -p /app/Notizen-Sicherheitskopien; cp -a /tmp/jm-safety-extract/Notizen-Sicherheitskopien/. /app/Notizen-Sicherheitskopien/; fi",
+    # Notizen-Sicherheitskopien nie vom Laptop überschreiben
     "if [ -d /tmp/jm-safety-extract/Presentation-Sicherheitskopien ]; then mkdir -p /app/Presentation-Sicherheitskopien; cp -a /tmp/jm-safety-extract/Presentation-Sicherheitskopien/. /app/Presentation-Sicherheitskopien/; fi",
     "rm -rf /tmp/jm-safety-extract jm-safety-copies.tar.gz /tmp/jm-safety.url",
     "echo SAFETY_PUSH_OK",
   ])))
 
 if notes_only:
-  print("NOTES_ONLY: Schul-DB unverändert")
+  print("NOTES_ONLY: Schul-DB unverändert; gelbes N nur Schule → Laptop")
   print("SYNC_VERIFY notes-only")
   raise SystemExit(0)
-
 # DB via helper
 docker_stop(app["Id"], 15)
 if tunnel:

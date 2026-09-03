@@ -1,0 +1,11 @@
+# Gelbes N / Lehrer-Schnellnotizen: Schule gewinnt immer
+
+Die persönlichen Notizen (gelbes **N**, `J-M-Reihen/Lehrer-Schnellnotizen`, inkl. Formatierung und Stiftmarkierungen) werden **auf dem Schulserver** bearbeitet.
+
+## Regeln für Agenten
+
+- Diese Notizen beim Deploy/Sync **nicht** mit dem Laptop-Stand überschreiben.
+- Sync: Schulversion → lokal (`merge-school-materials.py --prefer-school`).
+- Pack/Push Laptop → Schule: **kein** `Lehrer-Schnellnotizen`, kein `Backup - Notizen`, keine `Notizen-Sicherheitskopien` vom Laptop.
+- Bei Git-Merge-Konflikten in Notizen-Dateien: **Schul-/Remote-Stand** (`--theirs` bei `git pull`), nicht den lokalen Laptop-Stand erzwingen.
+- Folien (`Praesentation.deck.json`) bleiben wie bisher: nur anfassen, wenn die Nutzerin es ausdrücklich will (siehe `praesentation-nicht-ueberschreiben.mdc`).

@@ -97,8 +97,18 @@ def rel_nfc(root: Path, file: Path) -> Path:
   return Path(*[unicodedata.normalize("NFC", x) for x in rel.parts])
 
 
-def merge_trees(local_root: Path, school_root: Path, out_root: Path) -> dict:
-  """Merge into out_root. Returns stats."""
+def merge_trees(
+  local_root: Path,
+  school_root: Path,
+  out_root: Path,
+  *,
+  prefer_school: bool = False,
+) -> dict:
+  """Merge into out_root. Returns stats.
+
+  Default: newer mtime wins; tie → school.
+  prefer_school: if school has the file, always take school (local only fills gaps).
+  """
   if out_root.exists():
     shutil.rmtree(out_root)
   out_root.mkdir(parents=True, exist_ok=True)
@@ -113,13 +123,22 @@ def merge_trees(local_root: Path, school_root: Path, out_root: Path) -> dict:
       key = str(rel_nfc(src_root, f))
       mtime = f.stat().st_mtime
       prev = best.get(key)
+      if prefer_school:
+        if label == "school":
+          best[key] = (f, mtime, label)
+          continue
+        if prev is not None and prev[2] == "school":
+          continue
+        if prev is None or mtime >= prev[1]:
+          best[key] = (f, mtime, label)
+        continue
       if prev is None or mtime >= prev[1]:
         # tie → prefer school (online edits)
         if prev is not None and mtime == prev[1] and label != "school":
           continue
         best[key] = (f, mtime, label)
 
-  stats = {"files": 0, "from_local": 0, "from_school": 0}
+  stats = {"files": 0, "from_local": 0, "from_school": 0, "prefer_school": prefer_school}
   for key, (src, _mt, label) in best.items():
     dest = out_root / key
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -133,11 +152,22 @@ def merge_trees(local_root: Path, school_root: Path, out_root: Path) -> dict:
 
 
 def main() -> int:
-  if len(sys.argv) < 4:
-    print("Usage: merge-school-materials.py <local_jm> <school_jm> <out_jm>", file=sys.stderr)
+  args = [a for a in sys.argv[1:] if a]
+  prefer_school = False
+  paths: list[str] = []
+  for a in args:
+    if a == "--prefer-school":
+      prefer_school = True
+    elif not a.startswith("-"):
+      paths.append(a)
+  if len(paths) < 3:
+    print(
+      "Usage: merge-school-materials.py [--prefer-school] <local_jm> <school_jm> <out_jm>",
+      file=sys.stderr,
+    )
     return 2
-  local, school, out = map(Path, sys.argv[1:4])
-  stats = merge_trees(local, school, out)
+  local, school, out = map(Path, paths[:3])
+  stats = merge_trees(local, school, out, prefer_school=prefer_school)
   print(json.dumps(stats))
   return 0
 

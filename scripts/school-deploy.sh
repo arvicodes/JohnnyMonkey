@@ -129,8 +129,9 @@ tar -czf /tmp/jm-app-prebuilt.tar.gz -C /tmp/jm-prebuilt-stage .
 
 MAT_TAR=""
 if [[ "$SKIP_MAT" != 1 ]]; then
-  log "==> Pack Material (Mathe + Lehrer-Schnellnotizen, --full)"
-  # Always pack full Mathe tree: git-dirty-only missed committed Reihen/Notizen on main.
+  log "==> Pack Material (ohne gelbes N / Lehrer-Schnellnotizen)"
+  # Always pack full Mathe tree: git-dirty-only missed committed Reihen on main.
+  # Lehrer-Schnellnotizen werden bewusst nicht gepackt — Schule ist Quelle.
   python3 "$ROOT/scripts/pack-school-materials.py" --full /tmp/jm-mat-update.tar.gz || true
   if [[ -f /tmp/jm-mat-update.tar.gz ]] && [[ -s /tmp/jm-mat-update.tar.gz ]]; then
     MAT_TAR=/tmp/jm-mat-update.tar.gz
@@ -343,8 +344,11 @@ if mat_url:
     "mkdir -p /app/J-M-Reihen /tmp/jm-mat-extract",
     "rm -rf /tmp/jm-mat-extract/*",
     "tar -xzf jm-mat-update.tar.gz -C /tmp/jm-mat-extract",
-    # copy tree
-    "cp -a /tmp/jm-mat-extract/J-M-Reihen/. /app/J-M-Reihen/ 2>/dev/null || tar -xzf jm-mat-update.tar.gz -C /app/J-M-Reihen",
+    # gelbes N / Lehrer-Schnellnotizen nie vom Laptop überschreiben
+    "if [ -d /tmp/jm-mat-extract/J-M-Reihen/Lehrer-Schnellnotizen ]; then rm -rf /tmp/jm-mat-extract/J-M-Reihen/Lehrer-Schnellnotizen; fi",
+    "if [ -d '/tmp/jm-mat-extract/J-M-Reihen/Backup - Notizen' ]; then rm -rf '/tmp/jm-mat-extract/J-M-Reihen/Backup - Notizen'; fi",
+    # copy tree (kein Fallback auf Roh-Tar — der könnte Notizen enthalten)
+    "cp -a /tmp/jm-mat-extract/J-M-Reihen/. /app/J-M-Reihen/",
     # sync lesson folders named identically under Klasse 5 (NFC/NFD)
     'find /tmp/jm-mat-extract -type d -name "1.2 Große Zahlen - Stellenwerttafel" -print0 2>/dev/null | while IFS= read -r -d "" SRC; do find "/app/J-M-Reihen/Mathe/Klasse 5" -type d -name "1.2 Große Zahlen - Stellenwerttafel" -print0 2>/dev/null | while IFS= read -r -d "" d; do cp -a "$SRC"/. "$d"/; done; done || true',
     "rm -rf /tmp/jm-mat-extract jm-mat-update.tar.gz",
