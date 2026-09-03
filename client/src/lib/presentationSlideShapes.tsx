@@ -2,12 +2,18 @@
  * Formen & Pfeile als Folien-Elemente (Editor + Laptop-Ansicht).
  */
 import React from 'react';
-import type { PresentationShapeKind, SlideElement } from './presentationDeck';
+import {
+  SLIDE_REF_HEIGHT,
+  SLIDE_REF_WIDTH,
+  type PresentationShapeKind,
+  type SlideElement,
+} from './presentationDeck';
 import { JOHNNY_PRESENTATION } from './presentationTheme';
 import {
   buildLinePathD,
   isLineLikeShapeKind,
   normalizeShapeElement,
+  pathEndAngleRad,
   resolveArrowHeadSize,
   resolveCurveControl,
   resolveShapePoints,
@@ -198,29 +204,62 @@ export function SlideShapeSvg({
   const headSize = resolveArrowHeadSize(norm);
   const boxAspect = Math.max((norm.w || 1) / Math.max(norm.h || 1, 0.5), 0.15);
   const { shaftOnly, head } = buildLinePathD(kind, points, curveControl, headSize, boxAspect);
-  const showHead = shapeHasArrowHead(kind) && head;
+  const showHead = shapeHasArrowHead(kind) && Boolean(head);
 
   if (isLineLikeShapeKind(kind)) {
+    const tip = points[points.length - 1] || { x: 94, y: 50 };
+    const localAngle = pathEndAngleRad(kind, points, curveControl);
+    const boxW = Math.max(norm.w || 1, 0.4);
+    const boxH = Math.max(norm.h || 1, 0.4);
+    const pixelAngleDeg =
+      (Math.atan2(
+        Math.sin(localAngle) * (boxH / 100) * SLIDE_REF_HEIGHT,
+        Math.cos(localAngle) * (boxW / 100) * SLIDE_REF_WIDTH,
+      ) *
+        180) /
+      Math.PI;
+    const headPx = Math.round(Math.max(14, Math.min(26, sw * 4.2 + 3)));
+
     return (
-      <svg
-        viewBox="0 0 100 100"
-        width="100%"
-        height="100%"
-        preserveAspectRatio="none"
-        style={{ display: 'block', overflow: 'visible', ...style }}
-        aria-hidden
-      >
-        <path
-          d={shaftOnly}
-          fill="none"
-          stroke={stroke}
-          strokeWidth={sw}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          vectorEffect="non-scaling-stroke"
-        />
-        {showHead ? <polygon points={head!} fill={stroke} stroke="none" /> : null}
-      </svg>
+      <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'visible', ...style }}>
+        <svg
+          viewBox="0 0 100 100"
+          width="100%"
+          height="100%"
+          preserveAspectRatio="none"
+          style={{ display: 'block', overflow: 'visible' }}
+          aria-hidden
+        >
+          <path
+            d={shaftOnly}
+            fill="none"
+            stroke={stroke}
+            strokeWidth={sw}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+        {showHead ? (
+          <svg
+            width={headPx}
+            height={headPx}
+            viewBox="0 0 20 20"
+            style={{
+              position: 'absolute',
+              left: `${tip.x}%`,
+              top: `${tip.y}%`,
+              overflow: 'visible',
+              pointerEvents: 'none',
+              transform: `translate(-100%, -50%) rotate(${pixelAngleDeg}deg)`,
+              transformOrigin: '100% 50%',
+            }}
+            aria-hidden
+          >
+            <polygon points="20,10 2,3.6 2,16.4" fill={stroke} />
+          </svg>
+        ) : null}
+      </div>
     );
   }
 
