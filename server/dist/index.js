@@ -47,6 +47,7 @@ const teacherSchedule_1 = __importDefault(require("./routes/teacherSchedule"));
 const wochenaufgaben_1 = __importDefault(require("./routes/wochenaufgaben"));
 const teacherScratchPad_1 = __importDefault(require("./routes/teacherScratchPad"));
 const teacherGitBackup_1 = __importDefault(require("./routes/teacherGitBackup"));
+const teacherFullArchive_1 = __importDefault(require("./routes/teacherFullArchive"));
 const teacherDashboardPrefs_1 = __importDefault(require("./routes/teacherDashboardPrefs"));
 const path_1 = __importDefault(require("path"));
 const autoLessonScheduler_1 = require("./services/autoLessonScheduler");
@@ -78,7 +79,8 @@ app.use((0, cors_1.default)({
     origin: process.env.NODE_ENV === 'production' ? productionCorsOrigins() : true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-login-code']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-login-code'],
+    exposedHeaders: ['Content-Disposition', 'X-Archive-Presentations', 'X-Archive-Notes', 'X-Archive-Tickets'],
 }));
 /** Öffentliche HTTPS-URL hinter Sophos. Klartext-HTTP wird dorthin umgeleitet. */
 const SCHOOL_HTTPS_ORIGIN = (process.env.SCHOOL_HTTPS_ORIGIN || 'https://mnsplusdocker:44443').replace(/\/$/, '');
@@ -198,6 +200,7 @@ app.use('/api/teacher-schedule', teacherSchedule_1.default);
 app.use('/api/wochenaufgaben', wochenaufgaben_1.default);
 app.use('/api/teacher-scratch-pad', teacherScratchPad_1.default);
 app.use('/api/teacher-git-backup', teacherGitBackup_1.default);
+app.use('/api/teacher-full-archive', teacherFullArchive_1.default);
 app.use('/api/teacher-dashboard-prefs', teacherDashboardPrefs_1.default);
 app.use('/api/ka-corrections', kaCorrections_1.default);
 app.use('/api/messages', messages_1.default);
