@@ -46,6 +46,7 @@ import {
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
 import DreierprobeModal from './DreierprobeModal';
+import { examAnswerMatches, formatExamCorrect, parseExamAnswerKey } from '../lib/examAnswerKey';
 
 interface KASubmission {
   id: string;
@@ -90,6 +91,10 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   const [showDreierprobe, setShowDreierprobe] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [learningGroupStudents, setLearningGroupStudents] = useState<Array<{ id: string; name: string; loginCode: string }>>([]);
+  const [examAnswers, setExamAnswers] = useState<Record<string, any>>({});
+  const [examPoints, setExamPoints] = useState<Record<string, number>>({});
+  const [examMaxPoints, setExamMaxPoints] = useState(0);
+  const [useGeometryTask3, setUseGeometryTask3] = useState(false);
 
   // Helper-Funktion: Bestimmt den Dateityp für Texte
   const getFileTypeName = (): string => {
@@ -106,6 +111,46 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
 
   useEffect(() => {
     loadSubmissions();
+  }, [kaFilePath]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadKey = async () => {
+      try {
+        const res = await fetch(
+          `/api/file-system-paths/read-html?filePath=${encodeURIComponent(kaFilePath)}`,
+        );
+        if (!res.ok) throw new Error('html');
+        const html = await res.text();
+        if (cancelled) return;
+        const parsed = parseExamAnswerKey(html);
+        if (Object.keys(parsed.answers).length > 0) {
+          setExamAnswers(parsed.answers);
+          setExamPoints(parsed.points);
+          setExamMaxPoints(parsed.maxPoints);
+          setUseGeometryTask3(parsed.isGeometry);
+          return;
+        }
+      } catch {
+        /* Datei ohne Schlüssel */
+      }
+      if (cancelled) return;
+      if (/geometr/i.test(kaFilePath)) {
+        setExamAnswers(GEOMETRY_ANSWERS);
+        setExamPoints(GEOMETRY_POINTS);
+        setExamMaxPoints(25);
+        setUseGeometryTask3(true);
+      } else {
+        setExamAnswers({});
+        setExamPoints({});
+        setExamMaxPoints(0);
+        setUseGeometryTask3(false);
+      }
+    };
+    void loadKey();
+    return () => {
+      cancelled = true;
+    };
   }, [kaFilePath]);
 
   useEffect(() => {
@@ -530,33 +575,27 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     }
   };
 
-  // Punkteverteilung für jede Aufgabe
-  const pointsDistribution: Record<string, number> = {
-    a1a: 1, a1b: 1, a1c: 1, a1d: 1, a1e: 1, a1f: 1, a1g: 1, a1h: 1,  // Aufgabe 1: 8 Punkte (je 1 Punkt pro Lücke)
-    a2a: 1, a2b: 1, a2c: 1,  // Aufgabe 2: 3 Punkte (je 1 Punkt pro Frage)
-    // Aufgabe 3: Koordinaten einzeln (je 0.25 Punkte pro Koordinate) + 2 Punkte Konstruktion = 5 Punkte pro Teilaufgabe
-    'a3a_x': 0.25, 'a3a_y': 0.25, 'a3b_x': 0.25, 'a3b_y': 0.25, 'a3c_x': 0.25, 'a3c_y': 0.25,  // a) A₁, B₁, C₁
-    'a3d_x': 0.25, 'a3d_y': 0.25, 'a3e_x': 0.25, 'a3e_y': 0.25, 'a3f_x': 0.25, 'a3f_y': 0.25,  // b) A₂, B₂, C₂
-    'a3g_x': 0.25, 'a3g_y': 0.25, 'a3h_x': 0.25, 'a3h_y': 0.25, 'a3i_x': 0.25, 'a3i_y': 0.25,  // c) A₃, B₃, C₃
-    'a3j_x': 0.25, 'a3j_y': 0.25, 'a3k_x': 0.25, 'a3k_y': 0.25, 'a3l_x': 0.25, 'a3l_y': 0.25   // d) A₄, B₄, C₄
+  const GEOMETRY_POINTS: Record<string, number> = {
+    a1a: 1, a1b: 1, a1c: 1, a1d: 1, a1e: 1, a1f: 1, a1g: 1, a1h: 1,
+    a2a: 1, a2b: 1, a2c: 1,
+    'a3a_x': 0.25, 'a3a_y': 0.25, 'a3b_x': 0.25, 'a3b_y': 0.25, 'a3c_x': 0.25, 'a3c_y': 0.25,
+    'a3d_x': 0.25, 'a3d_y': 0.25, 'a3e_x': 0.25, 'a3e_y': 0.25, 'a3f_x': 0.25, 'a3f_y': 0.25,
+    'a3g_x': 0.25, 'a3g_y': 0.25, 'a3h_x': 0.25, 'a3h_y': 0.25, 'a3i_x': 0.25, 'a3i_y': 0.25,
+    'a3j_x': 0.25, 'a3j_y': 0.25, 'a3k_x': 0.25, 'a3k_y': 0.25, 'a3l_x': 0.25, 'a3l_y': 0.25
   };
 
-  // Richtige Antworten für die automatische Bewertung
-  const correctAnswers: Record<string, any> = {
-    // Aufgabe 1: Lückentext
+  const GEOMETRY_ANSWERS: Record<string, any> = {
     a1a: 'Mittelsenkrechte',
     a1b: 'Winkelhalbierende',
-    a1c: 'Achsenspiegelung', // Alternative: Geradenspiegelung
-    a1d: 'Punktspiegelung', // Alternative: Zentralspiegelung
-    a1e: 'Verschiebung', // Alternative: Translation
-    a1f: 'Drehung', // Alternative: Rotation
-    a1g: 'Kongruenzabbildung', // Alternative: Isometrie
+    a1c: 'Achsenspiegelung',
+    a1d: 'Punktspiegelung',
+    a1e: 'Verschiebung',
+    a1f: 'Drehung',
+    a1g: 'Kongruenzabbildung',
     a1h: 'Doppelspiegelung',
-    // Aufgabe 2: Multiple Choice
     a2a: 'b',
     a2b: 'a',
     a2c: 'a',
-    // Aufgabe 3: Koordinaten
     'a3a_x': -6, 'a3a_y': -4,
     'a3b_x': -3, 'a3b_y': -7,
     'a3c_x': -4, 'a3c_y': -2,
@@ -570,6 +609,9 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     'a3k_x': 7, 'a3k_y': -9,
     'a3l_x': 8, 'a3l_y': -4
   };
+
+  const pointsDistribution: Record<string, number> = examPoints;
+  const correctAnswers: Record<string, any> = examAnswers;
 
   // Hilfsfunktion: Formatiert taskId zu "A1 a" Format
   const formatTaskId = (taskId: string): string => {
@@ -588,20 +630,13 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   // Hilfsfunktion: Prüft ob eine Antwort richtig ist (ignoriert Groß-/Kleinschreibung)
   const isAnswerCorrect = (taskId: string, studentAnswer: any): boolean => {
     const correctAnswer = correctAnswers[taskId];
-    if (correctAnswer === undefined) return false; // Keine automatische Bewertung
-    
-    const studentValue = String(studentAnswer || '').trim();
-    const correctValue = String(correctAnswer).trim();
-    
-    // Für Koordinaten: numerischer Vergleich
+    if (correctAnswer === undefined) return false;
     if (taskId.includes('_x') || taskId.includes('_y')) {
-      const studentNum = parseFloat(studentValue);
-      const correctNum = parseFloat(correctValue);
+      const studentNum = parseFloat(String(studentAnswer || ''));
+      const correctNum = parseFloat(String(Array.isArray(correctAnswer) ? correctAnswer[0] : correctAnswer));
       return !isNaN(studentNum) && !isNaN(correctNum) && studentNum === correctNum;
     }
-    
-    // Für Text/Multiple Choice: Groß-/Kleinschreibung ignorieren
-    return studentValue.toLowerCase() === correctValue.toLowerCase();
+    return examAnswerMatches(correctAnswer, studentAnswer);
   };
 
   // Gruppiere Koordinaten von Aufgabe 3 nach Teilaufgaben (a, b, c, d)
@@ -646,7 +681,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         const taskNum = taskMatch[1];
         if (['1', '2', '3'].includes(taskNum)) {
           const isCorrect = isAnswerCorrect(taskId, answer);
-          const points = pointsDistribution[taskId] || 0;
+          const points = pointsDistribution[taskId] ?? 1;
           if (!grouped[taskNum]) grouped[taskNum] = [];
           grouped[taskNum].push({ taskId, answer, isCorrect, points });
         }
@@ -656,8 +691,10 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     return grouped;
   };
 
-  // Aufgaben mit Rechenweg (müssen manuell korrigiert werden)
-  const tasksWithRechenweg = ['3', '4', '5', '6', '7', '8', '9'];
+  // Aufgaben mit Rechenweg (müssen manuell korrigiert werden) — Aufgabe 3 nur bei Geometrie-Koordinaten
+  const tasksWithRechenweg = useGeometryTask3
+    ? ['3', '4', '5', '6', '7', '8', '9']
+    : ['4', '5', '6', '7', '8', '9'];
 
   // Notenberechnung
   const calculateGrade = (achieved: number, total: number): string => {
@@ -694,15 +731,10 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     return `${grade}${tendency}`;
   };
 
-  // Berechne maximale Gesamtpunkte aus der Punkteverteilung
   const calculateMaxTotalPoints = (): number => {
-    // Aufgabe 1: 8 Punkte
-    const task1Points = 8;
-    // Aufgabe 2: 3 Punkte
-    const task2Points = 3;
-    // Aufgabe 3: 4 Teilaufgaben × 3.5 Punkte = 14 Punkte
-    const task3Points = 14;
-    return task1Points + task2Points + task3Points; // 25 Punkte
+    if (examMaxPoints > 0) return examMaxPoints;
+    const fromDist = Object.values(pointsDistribution).reduce((sum, n) => sum + (Number(n) || 0), 0);
+    return fromDist > 0 ? fromDist : 0;
   };
 
   const maxTotalPoints = calculateMaxTotalPoints();
@@ -1658,7 +1690,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
               
               // Prüfe ob alle Aufgaben mit Rechenweg von mir korrigiert wurden
               const allTasksFilled = tasksNeedingManualCorrection.every(taskNum => {
-                if (taskNum === '3') {
+                if (taskNum === '3' && useGeometryTask3) {
                   return allTask3Filled;
                 } else {
                   // Für andere Aufgaben: Punkte müssen von mir gesetzt sein
@@ -2015,7 +2047,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                 let autoPoints = 0;
                 let manualPoints = 0;
                 
-                if (taskNum === '3') {
+                if (taskNum === '3' && useGeometryTask3) {
                   // Aufgabe 3: Spezielle Behandlung - Koordinatenpunkte (automatisch, 0.25 pro Koordinate) + Konstruktionspunkte (manuell, 0-2)
                   const subtasks = groupTask3BySubtask(taskAnswers);
                   const processedSubtasks = new Set<string>();
@@ -2057,7 +2089,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                 } else {
                   // Aufgabe 1 und 2: Normale Berechnung
                   taskAnswers.forEach(({ taskId, isCorrect }) => {
-                    const maxPoints = pointsDistribution[taskId] || 0;
+                    const maxPoints = pointsDistribution[taskId] ?? 1;
                     totalPoints += maxPoints;
                     
                     if (taskNum === '1') {
@@ -2079,8 +2111,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                           achievedPoints += maxPoints;
                         }
                       }
-                    } else if (taskNum === '2') {
-                      // Aufgabe 2: Automatische Korrektur
+                    } else {
                     if (isCorrect === true) {
                         autoPoints += maxPoints;
                       achievedPoints += maxPoints;
@@ -2109,7 +2140,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
             
                     {/* Lösungen dieser Aufgabe */}
                     <Grid container spacing={0.5}>
-                      {taskNum === '3' ? (
+                      {taskNum === '3' && useGeometryTask3 ? (
                         // Aufgabe 3: Nach Teilaufgaben gruppiert (a, b, c, d)
                         (() => {
                           const subtasks = groupTask3BySubtask(taskAnswers);
@@ -2685,7 +2716,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                             {String(answer) || '(leer)'}
                                     {correctAnswers[taskId] !== undefined && (
                                       <span style={{ color: '#2e7d32', marginLeft: '8px' }}>
-                                        ({String(correctAnswers[taskId])})
+                                        ({formatExamCorrect(correctAnswers[taskId])})
                                       </span>
                                     )}
                           </Typography>
@@ -2921,7 +2952,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                     <Table size="small" sx={{ '& .MuiTableCell-root': { py: 0.5, px: 0.75, fontSize: '0.75rem' } }}>
                       <TableHead>
                         <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                          {taskNum === '3' ? (
+                          {taskNum === '3' && useGeometryTask3 ? (
                             <>
                               <TableCell sx={{ fontWeight: 700, width: '12%', fontSize: '0.7rem' }}>Schüler</TableCell>
                               <TableCell sx={{ fontWeight: 700, width: '18%', fontSize: '0.7rem' }}>A3a</TableCell>
@@ -2953,7 +2984,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                           };
 
                           // Für Aufgabe 3: Zeige Teilaufgaben (a, b, c, d) separat, aber Kommentar nur einmal
-                          if (taskNum === '3') {
+                          if (taskNum === '3' && useGeometryTask3) {
                             const subtasks = groupTask3BySubtask(answers.map(({ taskId, answer }) => {
                               const parsedAnswers = parseAnswers(submission.answers);
                               const isCorrect = parsedAnswers[taskId]?.isCorrect;

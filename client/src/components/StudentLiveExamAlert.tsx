@@ -58,43 +58,17 @@ export default function StudentLiveExamAlert({ userId }: { userId: string }) {
   }, [userId, poll]);
 
   useEffect(() => {
-    let cancelled = false;
-    let objectUrl: string | null = null;
-
-    const load = async () => {
-      if (!beacon?.filePath) {
-        setHtmlUrl(null);
-        setLoadError(null);
-        return;
-      }
-      setLoadingHtml(true);
+    if (!beacon?.filePath) {
+      setHtmlUrl(null);
       setLoadError(null);
-      try {
-        const res = await fetch(
-          `/api/file-system-paths/read-html?filePath=${encodeURIComponent(beacon.filePath)}`
-        );
-        if (!res.ok) {
-          throw new Error('Prüfungsdatei konnte nicht geladen werden');
-        }
-        const html = await res.text();
-        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-        objectUrl = URL.createObjectURL(blob);
-        if (!cancelled) setHtmlUrl(objectUrl);
-      } catch (e) {
-        if (!cancelled) {
-          setHtmlUrl(null);
-          setLoadError(e instanceof Error ? e.message : 'Laden fehlgeschlagen');
-        }
-      } finally {
-        if (!cancelled) setLoadingHtml(false);
-      }
-    };
-
-    void load();
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
+      setLoadingHtml(false);
+      return;
+    }
+    setLoadingHtml(false);
+    setLoadError(null);
+    setHtmlUrl(
+      `/api/file-system-paths/read-html?filePath=${encodeURIComponent(beacon.filePath)}`,
+    );
   }, [beacon?.filePath, beacon?.beaconId]);
 
   const open = Boolean(beacon);

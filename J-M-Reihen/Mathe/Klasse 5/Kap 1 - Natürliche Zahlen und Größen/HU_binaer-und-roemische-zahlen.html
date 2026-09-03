@@ -754,16 +754,37 @@
             width: 56px !important;
             text-align: center;
         }
+        .item.input-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
         .compare-choice {
             display: inline-flex;
-            gap: 14px;
-            margin: 0 10px;
+            align-items: center;
+            gap: 2px;
+            margin: 0 4px;
+            padding: 2px;
+            border: 1px solid #bdbdbd;
+            border-radius: 8px;
+            background: #f7f7f7;
             vertical-align: middle;
         }
         .compare-choice label {
             cursor: pointer;
-            font-size: 18px;
-            font-weight: bold;
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0;
+            padding: 4px 10px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .input-group .compare-choice {
+            font-size: 16px;
+            margin-left: 0;
         }
         .grade-table {
             width: 100%;
@@ -1066,38 +1087,26 @@
         
         // Funktion zur Ermittlung der API-Base-URL (muss vor Verwendung definiert sein)
         function getApiBaseUrl() {
-            // Wenn die Datei als Blob-URL geöffnet wird, müssen wir die Origin anders ermitteln
             try {
-                // Versuche opener window (wenn von einem anderen Fenster geöffnet)
                 if (window.opener && window.opener.location && window.opener.location.origin) {
                     return window.opener.location.origin;
                 }
-                // Versuche parent window (wenn in iframe)
                 if (window.parent && window.parent !== window) {
                     try {
                         if (window.parent.location.origin) {
                             return window.parent.location.origin;
                         }
-                    } catch (e) {
-                        // Cross-origin, ignoriere
-                    }
+                    } catch (e) {}
                 }
-                // Versuche die Origin des aktuellen Fensters (nur wenn nicht Blob-URL)
-                if (window.location.origin && !window.location.origin.startsWith('blob:')) {
+                if (window.location.origin && !String(window.location.origin).startsWith('blob:')) {
                     return window.location.origin;
                 }
-            } catch (e) {
-                // Fehler beim Zugriff auf location
-            }
-            // Fallback: Verwende Client-Port für Development
-            // Der Client läuft auf Port 3000 und hat einen Proxy auf Port 3003
-            // In Production würde hier die Production-URL stehen
-            const hostname = window.location.hostname || 'localhost';
+            } catch (e) {}
+            const hostname = window.location.hostname || '';
             if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                return 'http://localhost:3000';  // Client-Port mit Proxy
+                return 'http://localhost:3000';
             }
-            // Production Fallback
-            return 'https://johnnymonkey.onrender.com';
+            return '';
         }
         
         const API_BASE_URL = getApiBaseUrl();
@@ -1931,7 +1940,7 @@
         async function exportToWord(includeSolution = false) {
             try {
                 // Lade docx-Bibliothek dynamisch
-                if (typeof Document === 'undefined') {
+                if (typeof window.docx === 'undefined') {
                     await loadDocxLibrary();
                 }
 
@@ -2015,7 +2024,7 @@
                             
                             // Titel (zentriert, wie im PDF)
                             new Paragraph({
-                                text: 'Klassenarbeit: Prozent- und Zinsrechnung',
+                                text: 'Hausaufgabenüberprüfung: Binärsystem und römische Zahlen',
                                 heading: HeadingLevel.HEADING_1,
                                 alignment: AlignmentType.CENTER,
                                 spacing: { after: 600 }
@@ -2162,7 +2171,7 @@
 
                 // Generiere und speichere Dokument
                 const blob = await Packer.toBlob(doc);
-                const fileName = `Klassenarbeit_Prozent_Zinsrechnung${includeSolution ? '_mit_Loesung' : ''}.docx`;
+                const fileName = `HU_binaer-und-roemische-zahlen${includeSolution ? '_mit_Loesung' : ''}.docx`;
                 
                 // Speichere Datei
                 const url = window.URL.createObjectURL(blob);

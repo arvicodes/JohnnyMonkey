@@ -2902,15 +2902,15 @@ KRITISCH WICHTIG:
         }
       }
 
-      // Extrahiere alle Aufgaben
-      const taskPattern = /<!-- Aufgabe (\d+):([^>]*)-->([\s\S]*?)(?=<!-- Aufgabe |<div class="submit-section">)/g;
+      // Extrahiere alle Aufgaben (`<!-- Aufgabe 1 -->` oder `<!-- Aufgabe 1: AFB … -->`)
+      const taskPattern = /<!-- Aufgabe (\d+)\s*(?::([^>]*))?\s*-->([\s\S]*?)(?=<!-- Aufgabe |<div class="submit-section">)/g;
       const questions: any[] = [];
       let match;
 
       while ((match = taskPattern.exec(htmlContent)) !== null) {
         const taskNumber = parseInt(match[1]);
-        const taskMeta = match[2].trim();
-        const taskHTML = match[3].trim();
+        const taskMeta = (match[2] || '').trim();
+        const taskHTML = (match[3] || '').trim();
 
         // Bestimme den Fragentyp
         const isMultipleChoice = taskHTML.includes('type="radio"');
@@ -2918,16 +2918,22 @@ KRITISCH WICHTIG:
 
         // Extrahiere die Frage
         let questionText = '';
+        const headingMatch = taskHTML.match(/<div class="task-number">\s*([^<]+)/);
+        const firstP = taskHTML.match(/<p[^>]*>([\s\S]*?)<\/p>/);
+        const firstPText = firstP
+          ? firstP[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
+          : '';
         if (isMultipleChoice) {
           const questionMatch = taskHTML.match(/<label[^>]*style="font-weight: bold[^"]*"[^>]*>([^<]+)<\/label>/);
           if (questionMatch) {
             questionText = questionMatch[1].trim();
           }
-        } else {
-          const questionMatch = taskHTML.match(/<p[^>]*>([^<]+)<\/p>/);
-          if (questionMatch) {
-            questionText = questionMatch[1].trim();
-          }
+        }
+        if (!questionText && firstPText) {
+          questionText = firstPText;
+        }
+        if (!questionText && headingMatch) {
+          questionText = headingMatch[1].replace(/\s+/g, ' ').trim();
         }
 
         // Extrahiere Antwortoptionen für Multiple Choice
@@ -3020,11 +3026,25 @@ KRITISCH WICHTIG:
       let htmlContent = fs.readFileSync(fullFilePath, 'utf-8');
 
       // Finde die Aufgabe mit der angegebenen Nummer
-      const taskPattern = new RegExp(`<!-- Aufgabe ${taskNumber}:([^>]*)-->([\\s\\S]*?)(?=<!-- Aufgabe |<div class="submit-section">)`, 'i');
+      const taskPattern = new RegExp(
+        `<!-- Aufgabe ${taskNumber}\\s*(?::([^>]*))?\\s*-->([\\s\\S]*?)(?=<!-- Aufgabe |<div class="submit-section">)`,
+        'i'
+      );
       const taskMatch = htmlContent.match(taskPattern);
 
       if (!taskMatch) {
         return res.status(404).json({ error: `Aufgabe ${taskNumber} nicht gefunden` });
+      }
+
+      const isCustomLayout = !/<!-- Aufgabe \d+:/.test(taskMatch[0]);
+      if (isCustomLayout) {
+        const oldBlock = taskMatch[0];
+        const updatedBlock = questionText
+          ? oldBlock.replace(/(<p[^>]*>)(?:<strong>)?[^<]+/, `$1<strong>${questionText}</strong>`)
+          : oldBlock;
+        htmlContent = htmlContent.replace(oldBlock, updatedBlock);
+        fs.writeFileSync(fullFilePath, htmlContent, 'utf-8');
+        return res.json({ success: true, customLayout: true });
       }
 
       // Extrahiere Punkte und AFB-Level aus der bestehenden Aufgabe

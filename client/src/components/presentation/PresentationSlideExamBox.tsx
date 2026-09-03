@@ -118,11 +118,39 @@ const PresentationSlideExamBox: React.FC<Props> = ({
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<ExamQuestion | null>(null);
   const [savingQuestion, setSavingQuestion] = useState(false);
+  const [pickedGroupId, setPickedGroupId] = useState('');
+  const [groupPickOpen, setGroupPickOpen] = useState(false);
+  const [groups, setGroups] = useState<Array<{ id: string; name: string }>>([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
 
   const canEdit = typeof onChange === 'function';
-  const gid = (groupId || '').trim();
+  const gid = (pickedGroupId || groupId || '').trim();
   const examPath = (exam?.path || '').replace(/\\/g, '/');
   const isRunning = Boolean(runningPath && examPath && runningPath === examPath);
+
+  const loadGroups = useCallback(async () => {
+    setLoadingGroups(true);
+    try {
+      const loginCode = localStorage.getItem('loginCode') || '';
+      const res = await fetch('/api/learning-groups', {
+        headers: { 'Content-Type': 'application/json', 'x-login-code': loginCode },
+      });
+      if (!res.ok) {
+        setGroups([]);
+        return;
+      }
+      const data = (await res.json()) as Array<{ id?: string; name?: string }>;
+      setGroups(
+        (Array.isArray(data) ? data : [])
+          .filter((g) => g.id)
+          .map((g) => ({ id: String(g.id), name: g.name || 'Lerngruppe' })),
+      );
+    } catch {
+      setGroups([]);
+    } finally {
+      setLoadingGroups(false);
+    }
+  }, []);
 
   const loadExamFiles = useCallback(async () => {
     if (!lessonPath) {
@@ -175,34 +203,49 @@ const PresentationSlideExamBox: React.FC<Props> = ({
     onMessage?.(`Prüfung „${examLabel(file.name)}“ an diese Folie gehängt`);
   };
 
-  const toggleRun = async () => {
+  const startForGroup = async (groupIdToUse: string) => {
     if (!examPath) return;
     const teacherId = teacherIdFromStorage();
-    if (!teacherId || !gid) {
-      onMessage?.('Prüfung starten geht nur, wenn die Stunde über eine Lerngruppe geöffnet ist.');
+    if (!teacherId) {
+      onMessage?.('Bitte zuerst anmelden.');
+      return;
+    }
+    const useGid = groupIdToUse.trim();
+    if (!useGid) {
+      await loadGroups();
+      setGroupPickOpen(true);
       return;
     }
     setBusy(true);
     try {
-      if (isRunning) {
-        await stopLessonExam({ teacherId, groupId: gid });
+      if (isRunning && gid === useGid) {
+        await stopLessonExam({ teacherId, groupId: useGid });
         setRunningPath(null);
         onMessage?.('Prüfung beendet');
       } else {
         const started = await startLessonExam({
           teacherId,
-          groupId: gid,
+          groupId: useGid,
           filePath: examPath,
           lessonPath,
         });
+        setPickedGroupId(useGid);
         setRunningPath((started.filePath || examPath).replace(/\\/g, '/'));
-        onMessage?.('Prüfung gestartet — SuS sehen Vollbild');
+        onMessage?.('Prüfung gestartet — SuS der Lerngruppe sehen Vollbild');
       }
     } catch (e) {
       onMessage?.(e instanceof Error ? e.message : 'Prüfung Start/Stop fehlgeschlagen');
     } finally {
       setBusy(false);
     }
+  };
+
+  const toggleRun = async () => {
+    if (isRunning) {
+      await startForGroup(gid);
+      return;
+    }
+    await startForGroup(gid);
   };
 
   const createExam = async () => {
@@ -597,15 +640,9 @@ const PresentationSlideExamBox: React.FC<Props> = ({
             }}
           >
             <Button
-              disabled={busy || !gid}
+              disabled={busy}
               onClick={() => void toggleRun()}
-              title={
-                !gid
-                  ? 'Lerngruppe nötig (Stunde über das Tablet/Laptop öffnen)'
-                  : isRunning
-                    ? 'Prüfung beenden'
-                    : 'Prüfung starten (Vollbild bei SuS)'
-              }
+              title={isRunning ? 'Prüfung beenden' : 'Prüfung starten (Vollbild bei SuS)'}
               sx={{
                 ...headerBtnSx,
                 ...(isRunning
@@ -656,15 +693,43 @@ const PresentationSlideExamBox: React.FC<Props> = ({
         >
           {examLabel(exam.name)}
         </Typography>
-        {!gid ? (
-          <Typography sx={{ fontSize: '0.6rem', color: '#8d4a4a', lineHeight: 1.3, mt: 0.15 }}>
-            START nur mit Lerngruppe (TABLET / Laptop).
-          </Typography>
-        ) : null}
       </Box>
       {createDialog}
       {correctionDialog}
       {editDialog}
+      <Dialog
+        open={groupPickOpen}
+        onClose={() => setGroupPickOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={dialogCloseTitleSx}>
+          Lerngruppe
+          <DialogCloseIconButton onClose={() => setGroupPickOpen(false)} />
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          {loadingGroups ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 2 }}>
+              <CircularProgress size={18} />
+            </Box>
+          ) : groups.length === 0 ? (
+            <Typography variant="body2">Keine Lerngruppe gefunden.</Typography>
+          ) : (
+            groups.map((g) => (
+              <Button
+                key={g.id}
+                onClick={() => {
+                  setGroupPickOpen(false);
+                  void startForGroup(g.id);
+                }}
+                sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
+              >
+                {g.name}
+              </Button>
+            ))
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };
