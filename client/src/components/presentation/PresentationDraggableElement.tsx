@@ -1165,6 +1165,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         if (isTableElement && !onTableDrag) {
           e.stopPropagation();
           onSelect?.();
+          if (e.button === 2) return;
           if (!isPenPointer(e)) {
             window.setTimeout(() => tableRef.current?.focus({ preventScroll: true }), 0);
           }

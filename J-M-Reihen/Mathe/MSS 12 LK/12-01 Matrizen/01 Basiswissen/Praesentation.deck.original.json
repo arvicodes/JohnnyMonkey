@@ -2,7 +2,7 @@
   "version": 1,
   "title": "01 Basiswissen",
   "lessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen",
-  "updatedAt": "2026-09-03T09:23:14.117Z",
+  "updatedAt": "2026-09-03T21:13:49.514Z",
   "slides": [
     {
       "layout": "title-slide",
@@ -423,8 +423,8 @@
           "x": 3.3333333333333357,
           "y": 61.42680627506685,
           "w": 43.709219028520494,
-          "h": 26.573907735442663,
-          "html": "<p style=\"margin-left: 0cm; text-align: justify;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><span style=\"\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\">Seien aₙ und bₙ die </span></span></span><span style=\"font-weight: bold;\"><span style=\"\"><span style=\"\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\">Münzmengen</span></span></span></span><span style=\"\"><span style=\"\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"> in den Feldern A und B nach Runde n.&nbsp;</span></span></span></span><span style=\"\"><span style=\"\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\">Ergänze die Formeln für die nächste Runde.</span></span></span></p><p style=\"margin-left: 0cm; text-align: justify;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br></span></p><p style=\"margin-left: 196px; text-align: justify;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b><span style=\"\"><span style=\"\"><span data-pres-fs=\"32\" style=\"font-size: 32px !important;\">aₙ₊₁ = ______ · aₙ&nbsp; +&nbsp; ______ · bₙ</span></span></span></b></span></p><p style=\"margin-left: 0cm; text-align: justify;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b><br></b></span></p><p style=\"margin-left: 0cm; text-align: justify;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b><br></b></span></p><p style=\"margin-left: 196px; text-align: justify;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b><span style=\"\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><span data-pres-fs=\"32\" style=\"font-size: 32px !important;\">bₙ₊₁ = ______ · aₙ&nbsp; +&nbsp; ______ · bₙ</span></span></span></b></span></p><p style=\"text-align: justify;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br></span></p>",
+          "h": 26.041146376245077,
+          "html": "<p style=\"margin-left: 0cm; text-align: justify;\" data-cursor-ref=\"e454\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><span style=\"\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\">Seien aₙ und bₙ die </span></span></span><span style=\"font-weight: bold;\"><span style=\"\"><span style=\"\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\">Münzmengen</span></span></span></span><span style=\"\"><span style=\"\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"> in den Feldern A und B nach Runde n.&nbsp;</span></span></span></span><span style=\"\"><span style=\"\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\">Ergänze die Formeln für die nächste Runde.</span></span></span></p><p style=\"margin-left: 0cm; text-align: justify;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br></span></p><p style=\"margin-left: 196px; text-align: justify;\" data-cursor-ref=\"e455\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b><span style=\"\"><span style=\"\"><span data-pres-fs=\"32\" style=\"font-size: 32px !important;\">aₙ₊₁ = ______ · aₙ&nbsp; +&nbsp; ______ · bₙ</span></span></span></b></span></p><p style=\"margin-left: 0cm; text-align: justify;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b><br></b></span></p><p style=\"margin-left: 0cm; text-align: justify;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b><br></b></span></p><p style=\"margin-left: 196px; text-align: justify;\" data-cursor-ref=\"e456\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-color=\"#1a1a2e\" style=\"color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><b><span style=\"\"><span data-pres-fs=\"28\" style=\"font-size: 28px !important;\"><span data-pres-fs=\"32\" style=\"font-size: 32px !important;\">bₙ₊₁ = ______ · aₙ&nbsp; +&nbsp; ______ · bₙ</span></span></span></b></span></p><p style=\"text-align: justify;\"><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br></span></p>",
           "zIndex": 5
         },
         {
@@ -4548,67 +4548,6 @@
     }
   ],
   "trash": [
-    {
-      "id": "trash-1788427390296-x2r6",
-      "type": "slide",
-      "deletedAt": "2026-09-03T09:23:10.296Z",
-      "label": "Folie 5",
-      "slide": {
-        "id": "slide-1788426466145-pab4a",
-        "order": 4,
-        "speakerNotes": "",
-        "layout": "blank",
-        "subtitle": "",
-        "bodyLeft": "",
-        "bodyRight": "",
-        "imagePath": "",
-        "imageCaption": "",
-        "bodyStyle": "plain",
-        "titleAlign": "left",
-        "accentColor": "#2E7D32",
-        "title": "",
-        "body": "",
-        "hiddenLayoutZones": [
-          "bodyHtml"
-        ],
-        "sourceLessonName": "01.02 Einstieg Matrizen",
-        "titleHtml": "",
-        "bodyHtml": "",
-        "subtitleHtml": "",
-        "bodyLeftHtml": "",
-        "bodyRightHtml": "",
-        "imageCaptionHtml": "",
-        "speakerNotesHtml": "<p><br></p>",
-        "preparationNotes": "",
-        "preparationHtml": "<p><br></p>",
-        "materialNotes": "",
-        "materialHtml": "<p><br></p>",
-        "elements": [
-          {
-            "id": "el-table-1788426528989-q4rp",
-            "type": "table",
-            "x": 4,
-            "y": 16,
-            "w": 92,
-            "h": 50,
-            "zIndex": 1,
-            "html": "<table data-pres-table=\"1\" data-pres-table-theme=\"gelb\" style=\"width:100%;border-collapse:collapse;table-layout:fixed;font-size:inherit\"><colgroup><col style=\"width: 0.924%;\"><col style=\"width: 1.1%;\"><col style=\"width: 60.976%;\"><col style=\"width: 21%;\"><col style=\"width: 16%;\"></colgroup><thead><tr><th style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#FFE599;font-weight:700\">&nbsp;</th><th style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#FFE599;font-weight:700\">&nbsp;</th><th style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#FFE599;font-weight:700\">&nbsp;</th><th style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#FFE599;font-weight:700\">&nbsp;</th><th style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#FFE599;font-weight:700\">&nbsp;</th></tr></thead><tbody><tr><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#ffffff\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#ffffff\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#ffffff\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#ffffff\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#ffffff\"><br></td></tr><tr><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#FFF2CC\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#FFF2CC\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#FFF2CC\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#FFF2CC\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#FFF2CC\"><br></td></tr><tr><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#ffffff\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#ffffff\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#ffffff\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#ffffff\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#ffffff\"><br></td></tr></tbody></table>",
-            "stackLayer": "foreground"
-          }
-        ],
-        "transition": "fade",
-        "revealEnabled": true,
-        "zoneRevealSteps": {}
-      },
-      "slideId": "slide-1788426466145-pab4a",
-      "slideOrder": 4,
-      "materialHtml": "<p><br></p>",
-      "materialNotes": "",
-      "preparationHtml": "<p><br></p>",
-      "preparationNotes": "",
-      "speakerNotesHtml": "<p><br></p>",
-      "speakerNotes": ""
-    },
     {
       "id": "trash-1788341135012-rz1u",
       "type": "slide",

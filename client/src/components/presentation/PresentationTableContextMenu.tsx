@@ -3,7 +3,6 @@ import { Divider, Menu, MenuItem, Typography } from '@mui/material';
 import {
   distributeColumnsEvenly,
   distributeRowsEvenly,
-  findTableRoot,
   getCellFromSelection,
   setColumnNarrow,
   tableAddColumn,
@@ -12,16 +11,17 @@ import {
   tableDeleteRow,
 } from '../../lib/presentationSlideTables';
 import { hitTestTableBorder } from '../../lib/presentationTableResize';
+import { setFormatBarInteracting } from '../../lib/presentationFormatBarGuard';
 import {
   PRES_TABLE_SELECTING_ATTR,
   applySmartTableRange,
-  cellFromNode,
   clearTableSelection,
   getSelectedColIndices,
   getSelectedRowIndices,
   isTableCellSelected,
   selectTableCellRange,
   tableEditorFromNode,
+  tableHitFromPoint,
   toggleTableColumn,
 } from '../../lib/presentationTableSelection';
 
@@ -66,7 +66,14 @@ const PresentationTableContextMenuHost: React.FC<PresentationTableContextMenuHos
     if (cell && !isTableCellSelected(cell)) {
       selectTableCellRange(table, cell, cell);
     }
+    setFormatBarInteracting(true);
     setMenu({ x: e.clientX, y: e.clientY, table, editor, cell });
+    window.setTimeout(() => editor.focus({ preventScroll: true }), 0);
+  };
+
+  const closeMenu = () => {
+    setFormatBarInteracting(false);
+    setMenu(null);
   };
 
   useEffect(() => {
@@ -78,12 +85,10 @@ const PresentationTableContextMenuHost: React.FC<PresentationTableContextMenuHos
     };
 
     const onPointerDown = (e: PointerEvent) => {
-      const editor = tableEditorFromNode(e.target);
-      const cell = cellFromNode(e.target);
-      if (!editor || !cell) return;
-      if (cell.closest('[data-pres-notes-img-wrap], .pres-notes-img-wrap')) return;
-      const table = findTableRoot(cell);
-      if (!table || !editor.contains(table)) return;
+      const hit = tableHitFromPoint(e.clientX, e.clientY, e.target);
+      if (!hit) return;
+      const { editor, table, cell } = hit;
+      if (cell?.closest('[data-pres-notes-img-wrap], .pres-notes-img-wrap')) return;
       if (hitTestTableBorder(editor, e.clientX, e.clientY)) return;
 
       if (e.button === 2) {
@@ -92,6 +97,7 @@ const PresentationTableContextMenuHost: React.FC<PresentationTableContextMenuHos
         }
         return;
       }
+      if (!cell) return;
       if (e.button !== 0) return;
 
       if (e.metaKey || e.ctrlKey) {
@@ -130,7 +136,7 @@ const PresentationTableContextMenuHost: React.FC<PresentationTableContextMenuHos
     const onPointerMove = (e: PointerEvent) => {
       const drag = dragRef.current;
       if (!drag) return;
-      const cell = cellFromNode(document.elementFromPoint(e.clientX, e.clientY));
+      const cell = tableHitFromPoint(e.clientX, e.clientY, e.target)?.cell;
       if (!cell || !drag.table.contains(cell)) return;
       if (cell === drag.last) return;
       if (Math.hypot(e.clientX, e.clientY) >= 0) {
@@ -154,20 +160,19 @@ const PresentationTableContextMenuHost: React.FC<PresentationTableContextMenuHos
     };
 
     const onContextMenu = (e: MouseEvent) => {
-      const editor = tableEditorFromNode(e.target);
-      const cell = cellFromNode(e.target);
-      if (!editor || !cell) return;
-      const table = findTableRoot(cell);
-      if (!table || !editor.contains(table)) return;
+      const hit = tableHitFromPoint(e.clientX, e.clientY, e.target);
+      if (!hit) return;
       e.preventDefault();
       e.stopPropagation();
-      openMenu(e, editor, table, cell);
+      e.stopImmediatePropagation();
+      openMenu(e, hit.editor, hit.table, hit.cell);
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       const editor = tableEditorFromNode(e.target);
       if (editor) clearTableSelection(editor);
+      setFormatBarInteracting(false);
       setMenu(null);
     };
 
@@ -192,7 +197,8 @@ const PresentationTableContextMenuHost: React.FC<PresentationTableContextMenuHos
     if (!menu) return;
     fn(menu.table, menu.cell || getCellFromSelection(menu.editor));
     persist(menu.editor, onMutated);
-    setMenu(null);
+    closeMenu();
+    menu.editor.focus({ preventScroll: true });
   };
 
   const cols = menu ? getSelectedColIndices(menu.table) : [];
@@ -205,10 +211,18 @@ const PresentationTableContextMenuHost: React.FC<PresentationTableContextMenuHos
   return (
     <Menu
       open={Boolean(menu)}
-      onClose={() => setMenu(null)}
+      onClose={closeMenu}
+      disableAutoFocus
+      disableEnforceFocus
+      disableRestoreFocus
       anchorReference="anchorPosition"
       anchorPosition={menu ? { top: menu.y, left: menu.x } : undefined}
-      MenuListProps={{ dense: true }}
+      MenuListProps={{ dense: true, autoFocusItem: false }}
+      PaperProps={{
+        'data-presentation-format-ui': '1',
+        'data-presentation-table-tools': '1',
+        onMouseDown: (ev: React.MouseEvent) => ev.preventDefault(),
+      } as React.ComponentProps<typeof Menu>['PaperProps']}
     >
       <Typography sx={{ px: 1.5, pt: 0.5, pb: 0.25, fontSize: 10, color: '#78909c', fontWeight: 700 }}>
         Tabelle
