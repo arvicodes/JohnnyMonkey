@@ -446,6 +446,47 @@ export interface PresentationSlide {
   screenTrack?: SlideAudioTrack;
   screenTracks?: SlideAudioTrack[];
   activeScreenIndex?: number;
+  /** Druckmaterial zu dieser Folie (Materialkiste in der Erstellen-Ansicht). */
+  printMaterials?: SlidePrintMaterial[];
+}
+
+export type SlidePrintMaterial = {
+  id: string;
+  path: string;
+  name: string;
+  note?: string;
+};
+
+export function sanitizeSlidePrintMaterials(
+  raw?: SlidePrintMaterial[] | null,
+): SlidePrintMaterial[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const out: SlidePrintMaterial[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const path = typeof item.path === 'string' ? item.path.replace(/\\/g, '/').trim() : '';
+    const name = typeof item.name === 'string' ? item.name.trim() : '';
+    if (!path || !name) continue;
+    const key = path.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const note = typeof item.note === 'string' ? item.note.trim() : '';
+    out.push({
+      id:
+        typeof item.id === 'string' && item.id
+          ? item.id
+          : `pm-${out.length}-${Math.random().toString(36).slice(2, 7)}`,
+      path,
+      name,
+      ...(note ? { note } : {}),
+    });
+  }
+  return out.length ? out : undefined;
+}
+
+export function slideHasPrintMaterials(slide: PresentationSlide | null | undefined): boolean {
+  return (slide?.printMaterials?.length ?? 0) > 0;
 }
 
 export function sanitizeInkStrokes(raw?: PresentationStroke[]): PresentationStroke[] | undefined {
@@ -869,10 +910,12 @@ export function normalizeSlide(slide: PresentationSlide): PresentationSlide {
       const screenTracks = sanitizeSlideAudioTracks(slide.screenTracks, slide.screenTrack);
       const activeAudioIndex = sanitizeMediaActiveIndex(slide.activeAudioIndex, audioTracks.length);
       const activeScreenIndex = sanitizeMediaActiveIndex(slide.activeScreenIndex, screenTracks.length);
+      const printMaterials = sanitizeSlidePrintMaterials(slide.printMaterials);
       return {
         ...(extraPageCount > 0 ? { extraPageCount } : { extraPageCount: undefined }),
         ...slideMediaFieldPatch('audio', audioTracks, activeAudioIndex),
         ...slideMediaFieldPatch('screen', screenTracks, activeScreenIndex),
+        ...(printMaterials ? { printMaterials } : { printMaterials: undefined }),
       };
     })(),
   };

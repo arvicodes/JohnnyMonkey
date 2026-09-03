@@ -44,6 +44,7 @@ import {
   SaveAsOutlined as SaveAsIcon,
   SaveOutlined as SaveIcon,
   StickyNote2Outlined as NotesIcon,
+  Inventory2Outlined as CrateIcon,
   Undo as UndoIcon,
   Redo as RedoIcon,
   ViewQuilt as LayoutIcon,
@@ -58,6 +59,7 @@ import { PresentationSoundSplitControl } from '../components/presentation/Presen
 import PresentationAnimationBar from '../components/presentation/PresentationAnimationBar';
 import PresentationFormatBar from '../components/presentation/PresentationFormatBar';
 import PresentationFilmstrip from '../components/presentation/PresentationFilmstrip';
+import { MATERIAL_CRATE_BROWN } from '../components/MaterialCrate';
 import PresentationNotesPanel, {
   type NotesFieldKey,
 } from '../components/presentation/PresentationNotesPanel';
@@ -119,6 +121,7 @@ import {
   slideMediaFieldPatch,
   slidePageCount,
   sanitizeSlideAudioTracks,
+  slideHasPrintMaterials,
 } from '../lib/presentationDeck';
 import {
   notifyPresentationDeckSaved,
@@ -4966,6 +4969,15 @@ const PresentationEditorPage: React.FC = () => {
             onBeforeDiscreteEdit={flushDeckHistory}
             onMoveNotesToTrash={moveNotesToTrash}
             onUploadImage={uploadNotesImageSrc}
+            lessonPath={lessonPath}
+            printMaterials={normalizedActive.printMaterials}
+            onPrintMaterialsChange={(next) =>
+              updateSlide(
+                { printMaterials: next.length ? next : undefined },
+                normalizedActive.id,
+              )
+            }
+            onMessage={setSnackbar}
           />
         )}
         {normalizedActive && !notesPanelOpen && (
@@ -5005,6 +5017,30 @@ const PresentationEditorPage: React.FC = () => {
               </IconButton>
             </Tooltip>
             <NotesIcon sx={{ fontSize: 14, color: PRES_EDITOR_UI.textMuted, opacity: 0.7 }} />
+            <Tooltip
+              title={
+                slideHasPrintMaterials(normalizedActive)
+                  ? 'Druckmaterial & Notizen einblenden'
+                  : 'Notizen einblenden'
+              }
+              placement="left"
+            >
+              <IconButton
+                size="small"
+                onClick={() => setNotesPanelOpenPersist(true)}
+                aria-label="Druckmaterial"
+                sx={{
+                  width: 28,
+                  height: 28,
+                  color: slideHasPrintMaterials(normalizedActive)
+                    ? MATERIAL_CRATE_BROWN
+                    : PRES_EDITOR_UI.textMuted,
+                  '&:hover': { bgcolor: 'rgba(109,76,65,0.12)', color: MATERIAL_CRATE_BROWN },
+                }}
+              >
+                <CrateIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
             <Tooltip title="Einsprechen" placement="left">
               <IconButton
                 size="small"

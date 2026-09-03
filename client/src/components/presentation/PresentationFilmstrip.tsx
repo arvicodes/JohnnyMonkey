@@ -22,9 +22,11 @@ import {
   SLIDE_IMAGE_THUMB_MAX,
   SLIDE_REF_HEIGHT,
   SLIDE_REF_WIDTH,
+  slideHasPrintMaterials,
 } from '../../lib/presentationDeck';
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
 import PresentationSlideView from './PresentationSlideView';
+import { MATERIAL_CRATE_BROWN } from '../MaterialCrate';
 
 interface PresentationFilmstripProps {
   slides: PresentationSlide[];
@@ -241,6 +243,8 @@ function slideThumbSignature(slide: PresentationSlide): string {
     (slide.body || '').length,
     (slide.subtitleHtml || '').length,
     els,
+    (slide.printMaterials?.length ?? 0),
+    (slide.printMaterials || []).map((m) => m.id).join(','),
   ].join('·');
 }
 
@@ -294,6 +298,7 @@ const SortableFilmstripThumb = React.memo(
       setItemRef(node);
     };
 
+    const hasPrint = slideHasPrintMaterials(slide);
     const ring = active
       ? `0 0 0 2px ${PRES_EDITOR_UI.accent}, 0 2px 8px rgba(46,125,50,0.15)`
       : selected
@@ -335,6 +340,7 @@ const SortableFilmstripThumb = React.memo(
             overflow: 'hidden',
             cursor: isDragging ? 'grabbing' : 'grab',
             boxShadow: ring,
+            border: hasPrint ? `3px solid ${MATERIAL_CRATE_BROWN}` : '3px solid transparent',
             bgcolor: selected && !active ? 'rgba(46,125,50,0.06)' : undefined,
             '&:hover': {
               boxShadow: active || selected

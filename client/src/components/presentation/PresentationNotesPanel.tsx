@@ -5,7 +5,7 @@ import {
   ChevronRight as HideNotesIcon,
   Mic as MicIcon,
 } from '@mui/icons-material';
-import { htmlToPlain, textToHtml, type PresentationStroke, type SlideAudioTrack } from '../../lib/presentationDeck';
+import { htmlToPlain, textToHtml, type PresentationStroke, type SlideAudioTrack, type SlidePrintMaterial } from '../../lib/presentationDeck';
 import {
   migrateNotesInkCssToSlideSpace,
   notesInkNeedsHostMigration,
@@ -47,6 +47,7 @@ import {
 import { clipboardHasImage, clipboardPrefersRichText, collectPasteImages } from '../../lib/goodNotesClipboard';
 import { type PresentationDrawTool } from '../../lib/presentationDrawTools';
 import PresentationDrawOverlay from './PresentationDrawOverlay';
+import MaterialCrate from '../MaterialCrate';
 import '../../styles/presentationLists.css';
 
 /** Ein Notizfeld (früher Material / Setup / Sprechakte). Legacy-Keys bleiben für Papierkorb. */
@@ -773,6 +774,10 @@ interface PresentationNotesPanelProps {
   onInkStart?: () => void;
   onNotesActivate?: () => void;
   onMigratedInk?: (strokes: PresentationStroke[]) => void;
+  lessonPath?: string;
+  printMaterials?: SlidePrintMaterial[];
+  onPrintMaterialsChange?: (next: SlidePrintMaterial[]) => void;
+  onMessage?: (text: string) => void;
 }
 
 const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
@@ -803,6 +808,10 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
   onInkStart,
   onNotesActivate,
   onMigratedInk,
+  lessonPath,
+  printMaterials,
+  onPrintMaterialsChange,
+  onMessage,
 }) => {
   const [panelWidth, setPanelWidth] = useState(loadNotesWidth);
   const resizeRef = useRef<{ pointerId: number; startX: number; startW: number } | null>(null);
@@ -943,6 +952,14 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
           }}
         />
       </Box>
+      {onPrintMaterialsChange ? (
+        <MaterialCrate
+          files={printMaterials || []}
+          lessonPath={lessonPath}
+          onChange={onPrintMaterialsChange}
+          onMessage={onMessage}
+        />
+      ) : null}
       <NoteZone
         fieldKey="speakerNotesHtml"
         label="Notizen"
