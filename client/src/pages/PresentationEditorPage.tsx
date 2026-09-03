@@ -4993,7 +4993,7 @@ const PresentationEditorPage: React.FC = () => {
                 </Box>
               </Box>
             )}
-            {normalizedActive && canvasScale > 0 ? (
+            {normalizedActive && canvasScale > 0 && !animationEditMode ? (
               <Box
                 sx={{
                   position: 'absolute',

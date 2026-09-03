@@ -1,7 +1,7 @@
 /**
  * Holzkiste für Druck-/Stundenmaterial — gleicher Stil auf Stundenseite und Folien-Editor.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Box,
   CircularProgress,
@@ -19,11 +19,12 @@ import {
 import { alpha } from '@mui/material/styles';
 import DescriptionIcon from '@mui/icons-material/Description';
 import FolderIcon from '@mui/icons-material/Folder';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 import PrintIcon from '@mui/icons-material/Print';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/DeleteOutline';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import type { SlidePrintMaterial } from '../lib/presentationDeck';
+import { lessonFolderPath, type SlidePrintMaterial } from '../lib/presentationDeck';
 import {
   defaultBrowseStartPath,
   fetchFolderBrowseListing,
@@ -79,6 +80,51 @@ function isPrintableLessonFile(name: string): boolean {
   if (isLessonPresentationSystemFile(n)) return false;
   if (isPptxImportExtractedAssetFile(n)) return false;
   return true;
+}
+
+function collectDroppedFiles(dt: DataTransfer | null): File[] {
+  if (!dt) return [];
+  const fromFiles = Array.from(dt.files || []);
+  if (fromFiles.length) return fromFiles.filter((f) => f && f.size >= 0 && f.name);
+  const out: File[] = [];
+  for (const item of Array.from(dt.items || [])) {
+    if (item.kind !== 'file') continue;
+    const f = item.getAsFile();
+    if (f && f.name) out.push(f);
+  }
+  return out;
+}
+
+async function uploadFileToLessonFolder(
+  file: File,
+  lessonPath: string,
+): Promise<{ path: string; name: string } | null> {
+  const folder = lessonFolderPath(lessonPath);
+  if (!folder) return null;
+  const safeBase = (file.name || 'datei').replace(/[^\w.\-äöüÄÖÜß ()+-]+/gi, '_');
+  const named = new File([file], safeBase, { type: file.type || 'application/octet-stream' });
+  const formData = new FormData();
+  formData.append('file', named);
+  formData.append('targetPath', folder);
+  const res = await fetch('/api/file-system-paths/save-file', {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      typeof (err as { error?: string }).error === 'string'
+        ? (err as { error: string }).error
+        : 'Upload fehlgeschlagen',
+    );
+  }
+  const data = (await res.json()) as { path?: string; filename?: string };
+  if (data.path && typeof data.path === 'string' && data.path.trim()) {
+    const path = data.path.replace(/\\/g, '/');
+    return { path, name: path.split('/').pop() || named.name };
+  }
+  const name = (data.filename || named.name || 'datei').replace(/\\/g, '/');
+  return { path: `${folder}/${name.split('/').pop()}`, name: name.split('/').pop() || named.name };
 }
 
 async function printMaterialFile(entry: SlidePrintMaterial): Promise<boolean> {
@@ -143,6 +189,10 @@ const MaterialCrate: React.FC<MaterialCrateProps> = ({
   const [browseFiles, setBrowseFiles] = useState<LessonFolderFsItem[]>([]);
   const [browseLoading, setBrowseLoading] = useState(false);
   const [browseError, setBrowseError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragDepthRef = useRef(0);
 
   const loadLessonFiles = useCallback(async () => {
     if (!lessonPath) {
@@ -186,7 +236,7 @@ const MaterialCrate: React.FC<MaterialCrateProps> = ({
     };
   }, [browseOpen, browsePath]);
 
-  const addFile = (path: string, nameHint?: string) => {
+  const addFile = (path: string, nameHint?: string, skipNotePrompt = false) => {
     const norm = path.replace(/\\/g, '/');
     if (!norm) return;
     if (files.some((f) => (f.path || '').replace(/\\/g, '/') === norm)) {
@@ -194,12 +244,15 @@ const MaterialCrate: React.FC<MaterialCrateProps> = ({
       return;
     }
     const name = (nameHint || path.split('/').pop() || 'Datei').trim();
-    const noteRaw = window.prompt(
-      `Angabe zu „${name}“ (z. B. 50 × A4 gedruckt) — leer lassen für nur Dateiname:`,
-      '',
-    );
-    if (noteRaw === null) return;
-    const note = noteRaw.trim();
+    let note = '';
+    if (!skipNotePrompt) {
+      const noteRaw = window.prompt(
+        `Angabe zu „${name}“ (z. B. 50 × A4 gedruckt) — leer lassen für nur Dateiname:`,
+        '',
+      );
+      if (noteRaw === null) return;
+      note = noteRaw.trim();
+    }
     onChange([
       ...files,
       {
@@ -211,6 +264,57 @@ const MaterialCrate: React.FC<MaterialCrateProps> = ({
     ]);
   };
 
+  const uploadComputerFiles = useCallback(
+    async (incoming: File[]) => {
+      if (!lessonPath) {
+        onMessage?.('Kein Stundenordner — Speichern der Stunde prüfen.');
+        return;
+      }
+      const usable = incoming.filter((f) => f && f.name && !f.name.startsWith('.'));
+      if (!usable.length) {
+        onMessage?.('Keine Dateien erkannt.');
+        return;
+      }
+      setUploading(true);
+      onMessage?.(
+        usable.length === 1
+          ? `„${usable[0].name}“ wird hochgeladen…`
+          : `${usable.length} Dateien werden hochgeladen…`,
+      );
+      try {
+        const added: SlidePrintMaterial[] = [];
+        const existing = new Set(files.map((f) => (f.path || '').replace(/\\/g, '/')));
+        for (const file of usable) {
+          const saved = await uploadFileToLessonFolder(file, lessonPath);
+          if (!saved) continue;
+          const norm = saved.path.replace(/\\/g, '/');
+          if (existing.has(norm) || added.some((a) => a.path === norm)) continue;
+          existing.add(norm);
+          added.push({
+            id: `pm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            path: norm,
+            name: saved.name,
+          });
+        }
+        if (!added.length) {
+          onMessage?.('Datei(en) bereits in der Kiste oder Upload leer.');
+          return;
+        }
+        onChange([...files, ...added]);
+        onMessage?.(
+          added.length === 1
+            ? `„${added[0].name}“ in die Materialkiste gelegt`
+            : `${added.length} Dateien in die Materialkiste gelegt`,
+        );
+      } catch (e) {
+        onMessage?.(e instanceof Error ? e.message : 'Upload fehlgeschlagen');
+      } finally {
+        setUploading(false);
+      }
+    },
+    [files, lessonPath, onChange, onMessage],
+  );
+
   const availableToAdd = lessonFiles.filter(
     (f) =>
       !files.some((m) => (m.path || '').replace(/\\/g, '/') === (f.path || '').replace(/\\/g, '/')),
@@ -220,18 +324,89 @@ const MaterialCrate: React.FC<MaterialCrateProps> = ({
 
   return (
     <Box
+      onDragEnter={(e) => {
+        if (![...e.dataTransfer.types].includes('Files')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        dragDepthRef.current += 1;
+        setDragOver(true);
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+        if (dragDepthRef.current === 0) setDragOver(false);
+      }}
+      onDragOver={(e) => {
+        if (![...e.dataTransfer.types].includes('Files')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'copy';
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragDepthRef.current = 0;
+        setDragOver(false);
+        const dropped = collectDroppedFiles(e.dataTransfer);
+        if (dropped.length) void uploadComputerFiles(dropped);
+      }}
       sx={{
         flexShrink: 0,
         borderRadius: compact ? 1.5 : 2,
         overflow: 'hidden',
-        border: `1px solid ${alpha('#5d4037', 0.45)}`,
+        border: `1px solid ${
+          dragOver ? alpha('#ffcc80', 0.85) : alpha('#5d4037', 0.45)
+        }`,
+        outline: dragOver ? `2px solid ${alpha('#ffb74d', 0.95)}` : 'none',
+        outlineOffset: 1,
         background: `linear-gradient(180deg, ${alpha('#8d6e63', 0.92)} 0%, #6d4c41 28%, #5d4037 100%)`,
         boxShadow: `0 4px 16px ${alpha('#3e2723', 0.14)}`,
         mx: compact ? 0.85 : 0,
         mt: compact ? 0.7 : 0,
         mb: compact ? 0.35 : 0,
+        position: 'relative',
       }}
     >
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        hidden
+        onChange={(e) => {
+          const list = Array.from(e.target.files || []);
+          e.target.value = '';
+          if (list.length) void uploadComputerFiles(list);
+        }}
+      />
+      {(dragOver || uploading) && (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 4,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: alpha('#3e2723', dragOver ? 0.72 : 0.55),
+            pointerEvents: 'none',
+            px: 1.5,
+          }}
+        >
+          {uploading ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CircularProgress size={18} sx={{ color: '#ffe0b2' }} />
+              <Typography sx={{ color: '#ffe0b2', fontSize: '0.78rem', fontWeight: 700 }}>
+                Wird hochgeladen…
+              </Typography>
+            </Box>
+          ) : (
+            <Typography sx={{ color: '#ffe0b2', fontSize: '0.8rem', fontWeight: 800, textAlign: 'center' }}>
+              Dateien hier ablegen
+            </Typography>
+          )}
+        </Box>
+      )}
       <Box
         sx={{
           position: 'relative',
@@ -277,6 +452,7 @@ const MaterialCrate: React.FC<MaterialCrateProps> = ({
             <IconButton
               size="small"
               onClick={(e) => setAddAnchor(e.currentTarget)}
+              disabled={uploading}
               sx={{
                 p: 0,
                 minWidth: 22,
@@ -304,6 +480,16 @@ const MaterialCrate: React.FC<MaterialCrateProps> = ({
             transformOrigin={{ vertical: 'top', horizontal: 'right' }}
             PaperProps={{ sx: { maxHeight: 360, minWidth: 240, maxWidth: 380, mt: 0.5 } }}
           >
+            <MenuItem
+              onClick={() => {
+                setAddAnchor(null);
+                fileInputRef.current?.click();
+              }}
+              sx={{ fontSize: '0.75rem', py: 0.7, fontWeight: 700, color: '#2e7d32' }}
+            >
+              <UploadFileIcon sx={{ fontSize: 15, color: '#2e7d32', mr: 0.75, flexShrink: 0 }} />
+              Vom Computer…
+            </MenuItem>
             <MenuItem
               onClick={() => {
                 setAddAnchor(null);
@@ -467,7 +653,7 @@ const MaterialCrate: React.FC<MaterialCrateProps> = ({
                 lineHeight: 1.35,
               }}
             >
-              Noch leer — „+“ zum Laden (PDF, Arbeitsblatt…)
+              Noch leer — Dateien hierher ziehen oder „+“ (PDF, Arbeitsblatt…)
             </Typography>
           </Box>
         )}

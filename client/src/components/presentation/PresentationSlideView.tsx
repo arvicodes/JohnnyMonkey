@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import {
   clampLayoutZoneBox,
+  htmlToPlain,
   isLayoutZoneHidden,
   LayoutZoneBox,
   normalizeSlide,
@@ -146,7 +147,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   const slide = normalizeSlide(rawSlide);
   const pages = slidePageCount(slide);
   const resolvedImageMax =
-    imageMaxEdge ?? (editable && !exportSnapshot ? SLIDE_IMAGE_EDITOR_MAX : undefined);
+    imageMaxEdge ?? (exportSnapshot ? undefined : SLIDE_IMAGE_EDITOR_MAX);
   const effectiveReveal = revealEnabled && slide.revealEnabled !== false;
   const w = SLIDE_REF_WIDTH * scale;
   const h = SLIDE_REF_HEIGHT * pages * scale;
@@ -353,7 +354,13 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
           zIndex: boxed ? 8 : animationEditMode ? 1 : undefined,
           overflow: boxed ? 'auto' : undefined,
           boxSizing: 'border-box',
-          pointerEvents: textZonesInteractive || animationEditMode ? 'auto' : 'none',
+          pointerEvents: (() => {
+            if (animationEditMode) {
+              const raw = (slide[fieldHtml] as string | undefined) || '';
+              return htmlToPlain(raw).trim() ? 'auto' : 'none';
+            }
+            return textZonesInteractive ? 'auto' : 'none';
+          })(),
           display: opts.flex || boxed ? 'flex' : undefined,
           flexDirection: opts.flex || boxed ? 'column' : undefined,
           minHeight: !boxed && opts.flex && editable ? `${80 * scale}px` : undefined,
@@ -891,7 +898,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
 
       {renderElementLayer(
         foregroundElements,
-        editable || imageEditable ? 25 : animationEditMode ? 12 : 5,
+        editable || imageEditable || animationEditMode ? 25 : 5,
       )}
 
       {!exportSnapshot && showInkStrokes && (slide.inkStrokes?.length ?? 0) > 0 && (

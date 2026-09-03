@@ -606,7 +606,12 @@ export function animationBadgeBoxSx(scale: number, selected?: boolean) {
 export function animationParagraphBadgeSx(scale: number, editMode: boolean) {
   if (!editMode) return {};
   return {
-    '& [data-reveal-step], & [data-anim-selected]': { position: 'relative' as const },
+    '& [data-reveal-step], & [data-anim-selected]': {
+      position: 'relative' as const,
+    },
+    '& p[data-reveal-step], & li[data-reveal-step]': {
+      display: 'block',
+    },
     '& [data-reveal-step]::before': {
       content: 'attr(data-reveal-step)',
       position: 'absolute' as const,

@@ -49,6 +49,7 @@ import {
   IMAGE_FRAME_SIZE_MAX,
   ensureWindowCropLock,
   imageSourceRectCss,
+  imageSourceRectFitsBox,
   isHeroSlideImage,
   isImageCropMode,
   isImageScaleHandle,
@@ -974,7 +975,12 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
   const pictureFrameOn = isImageElement && pictureFrame.active;
   const heroImage = isImageElement && isHeroSlideImage(view);
   const windowCropRect = isImageElement ? normalizeImageSourceRect(view.imageSourceRect) : null;
-  const windowCrop = Boolean(windowCropRect);
+  const windowCrop =
+    Boolean(windowCropRect) &&
+    imageSourceRectFitsBox(
+      { x: view.x, y: view.y, w: view.w, h: view.h },
+      windowCropRect!,
+    );
   const cropMode = isImageElement && (windowCrop || isImageCropMode(view) || imageOnlyEdit);
   const imageFit = effectivePresentationImageFit(view.src, view.imageFit);
   /** Contain: Rahmen/Handles am sichtbaren Bild, nicht am leeren Elementkasten. */
@@ -1500,7 +1506,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
         >
           <SlideShapeSvg element={view} />
           {isShapeBox &&
-            (editable && !exportSnapshot ? (
+            (editable && !exportSnapshot && !animationEditMode ? (
               <Box
                 ref={textRef}
                 data-shape-body
@@ -1621,7 +1627,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   lineHeight: 1.35,
                   color: JOHNNY_PRESENTATION.textPrimary,
                   textAlign: 'center',
-                  pointerEvents: 'none',
+                  pointerEvents: animationEditMode ? 'auto' : 'none',
                   p: `${4 * scale}px`,
                   boxSizing: 'border-box',
                   '& p': { m: 0, mb: `${2 * scale}px` },
@@ -1719,6 +1725,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   setCardTitleEditing(false);
                 }}
                 onPointerDown={(e) => {
+                  if (animationEditMode) return;
                   if (e.pointerType === 'pen' || e.pointerType === 'touch') {
                     e.preventDefault();
                     startDrag(e, 'move', 'br', 'title');
@@ -1787,7 +1794,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
               position: 'relative',
             }}
           >
-            {editable && !exportSnapshot ? (
+            {editable && !exportSnapshot && !animationEditMode ? (
               <Box
                 ref={cardBodyRef}
                 {...(showCardBodyEditor ? { 'data-text-edit': true } : {})}
@@ -1904,7 +1911,8 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   fontFamily: PRESENTATION_DEFAULT_FONT_FAMILY,
                   lineHeight: 1.4,
                   color: JOHNNY_PRESENTATION.textPrimary,
-                  pointerEvents: 'none',
+                  pointerEvents: animationEditMode ? 'auto' : 'none',
+                  cursor: animationEditMode ? 'pointer' : undefined,
                   p: `${6 * scale}px`,
                   boxSizing: 'border-box',
                   '& p': { mt: 0, mr: 0, mb: `${4 * scale}px` },

@@ -154,6 +154,26 @@ export function imageSourceRectCss(box: ImageSourceRect, source: ImageSourceRect
   };
 }
 
+/**
+ * True wenn der Fenster-Zuschnitt das Foto noch im Rahmen lässt.
+ * Aufgeblähte/negative Rechtecke (nach dem Ziehen) machen das Bild in Play unsichtbar.
+ */
+export function imageSourceRectFitsBox(box: ImageSourceRect, source: ImageSourceRect): boolean {
+  const bw = Math.max(box.w, 0.01);
+  const bh = Math.max(box.h, 0.01);
+  const topPct = ((source.y - box.y) / bh) * 100;
+  const heightPct = (source.h / bh) * 100;
+  const leftPct = ((source.x - box.x) / bw) * 100;
+  const widthPct = (source.w / bw) * 100;
+  if (![topPct, heightPct, leftPct, widthPct].every(Number.isFinite)) return false;
+  const visibleH = Math.min(100, topPct + heightPct) - Math.max(0, topPct);
+  const visibleW = Math.min(100, leftPct + widthPct) - Math.max(0, leftPct);
+  if (visibleH < 12 || visibleW < 12) return false;
+  if (heightPct > 170 || widthPct > 170) return false;
+  if (topPct < -25 || leftPct < -25) return false;
+  return true;
+}
+
 export async function readImageNaturalSize(file: File): Promise<{ w: number; h: number }> {
   try {
     if (typeof createImageBitmap === 'function') {

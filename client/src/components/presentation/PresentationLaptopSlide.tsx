@@ -26,6 +26,7 @@ import { sanitizePresentationHtml } from '../../lib/presentationRichText';
 import { getElementStackLayer } from '../../lib/presentationElementLayers';
 import {
   imageSourceRectCss,
+  imageSourceRectFitsBox,
   normalizeImageSourceRect,
   slideHasImageHeroLayout,
 } from '../../lib/presentationImageUtils';
@@ -153,7 +154,11 @@ function StaticElement({ el, scale, accent, pages = 1 }: { el: SlideElement; sca
               style={{
                 display: 'block',
                 background: 'transparent',
-                ...(normalizeImageSourceRect(el.imageSourceRect)
+                ...(normalizeImageSourceRect(el.imageSourceRect) &&
+                imageSourceRectFitsBox(
+                  { x: el.x, y: el.y, w: el.w, h: el.h },
+                  normalizeImageSourceRect(el.imageSourceRect)!,
+                )
                   ? imageSourceRectCss(
                       { x: el.x, y: el.y, w: el.w, h: el.h },
                       normalizeImageSourceRect(el.imageSourceRect)!,
