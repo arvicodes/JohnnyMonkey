@@ -1835,44 +1835,47 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                     </>
                   )}
 
-                  {selectedElement && (selectedElement.type === 'video' || selectedElement.type === 'embed') && (
-                    <TextField
-                      size="small"
-                      fullWidth
-                      label={selectedElement.type === 'video' ? 'Video' : 'URL'}
-                      value={selectedElement.src ?? ''}
-                      onChange={(e) => onUpdateElement(selectedElement.id, { src: e.target.value })}
-                      sx={{
-                        mb: 0.5,
-                        '& .MuiInputBase-root': { fontSize: 10 },
-                        '& .MuiInputLabel-root': { fontSize: 10 },
-                      }}
-                    />
-                  )}
-
-                  {selectedElement && (selectedElement.type === 'video' ||
-                    selectedElement.type === 'embed' ||
-                    selectedElement.type === 'text') && (
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.35, mb: 0.5 }}>
-                    {(['x', 'y', 'w', 'h'] as const).map((key) => (
-                      <TextField
-                        key={key}
-                        size="small"
-                        type="number"
-                        label={key.toUpperCase()}
-                        value={selectedElement[key]}
-                        onChange={(e) =>
-                          onUpdateElement(selectedElement.id, { [key]: Number(e.target.value) })
-                        }
-                        sx={{
-                          width: '48%',
-                          '& .MuiInputBase-root': { fontSize: 10, height: 28 },
-                          '& .MuiInputLabel-root': { fontSize: 9 },
-                        }}
-                      />
-                    ))}
-                  </Box>
-                  )}
+                  {selectedElement ? (
+                    <>
+                      {(selectedElement.type === 'video' || selectedElement.type === 'embed') && (
+                        <TextField
+                          size="small"
+                          fullWidth
+                          label={selectedElement.type === 'video' ? 'Video' : 'URL'}
+                          value={selectedElement.src ?? ''}
+                          onChange={(e) => onUpdateElement(selectedElement.id, { src: e.target.value })}
+                          sx={{
+                            mb: 0.5,
+                            '& .MuiInputBase-root': { fontSize: 10 },
+                            '& .MuiInputLabel-root': { fontSize: 10 },
+                          }}
+                        />
+                      )}
+                      {(selectedElement.type === 'video' ||
+                        selectedElement.type === 'embed' ||
+                        selectedElement.type === 'text') && (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.35, mb: 0.5 }}>
+                          {(['x', 'y', 'w', 'h'] as const).map((key) => (
+                            <TextField
+                              key={key}
+                              size="small"
+                              type="number"
+                              label={key.toUpperCase()}
+                              value={selectedElement[key]}
+                              onChange={(e) =>
+                                onUpdateElement(selectedElement.id, { [key]: Number(e.target.value) })
+                              }
+                              sx={{
+                                width: '48%',
+                                '& .MuiInputBase-root': { fontSize: 10, height: 28 },
+                                '& .MuiInputLabel-root': { fontSize: 9 },
+                              }}
+                            />
+                          ))}
+                        </Box>
+                      )}
+                    </>
+                  ) : null}
                   <Button
                     size="small"
                     color="error"

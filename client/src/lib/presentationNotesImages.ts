@@ -614,11 +614,11 @@ export function notesWrapToSlideElement(wrap: HTMLElement): SlideElement {
     y: crop ? NOTES_CROP_BOX.y : 10,
     w: crop ? NOTES_CROP_BOX.w : 30,
     h: crop ? NOTES_CROP_BOX.h : 20,
+    zIndex: 1,
     rotation: getNotesImageRotation(wrap) || undefined,
     imageFit: 'contain',
     imageSourceRect: crop ? { ...NOTES_CROP_SOURCE } : undefined,
     imageFrame: readNotesImageFrame(wrap),
-    zIndex: 4,
   };
 }
 
