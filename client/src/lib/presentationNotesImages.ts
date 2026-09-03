@@ -1,5 +1,11 @@
 import { slideImageUrl, type SlideElement } from './presentationDeck';
-import { consumeImageFrameShortcutDouble } from './presentationImageFrames';
+import {
+  imageFrameIsActive,
+  imageFrameParts,
+  applyImageFrameFromShortcut,
+  type SlideImageFrame,
+} from './presentationImageFrames';
+import { JOHNNY_PRESENTATION } from './presentationTheme';
 
 /** Notiz-Grafiken im Textfluss (contentEditable): Größe am Eckpunkt, Entf löscht. */
 
@@ -10,14 +16,27 @@ export const PRES_NOTES_IMG_ATTR = 'data-pres-notes-img';
 export const PRES_NOTES_IMG_SELECTED_CLASS = 'pres-notes-img-selected';
 export const PRES_NOTES_IMG_FRAME_ATTR = 'data-pres-notes-img-frame';
 export const PRES_NOTES_IMG_FRAME_COLOR_ATTR = 'data-pres-notes-img-frame-color';
+export const PRES_NOTES_IMG_FRAME_JSON_ATTR = 'data-pres-notes-img-frame-json';
 export const PRES_NOTES_IMG_ROTATION_ATTR = 'data-pres-notes-img-rotation';
+export const PRES_NOTES_IMG_CROP_ATTR = 'data-pres-notes-crop';
+export const NOTES_IMAGE_ELEMENT_ID = 'notes-image';
 export const NOTES_IMAGE_FRAME_DEFAULT_COLOR = '#C62828';
 export const NOTES_IMAGE_FRAME_BLACK_COLOR = '#1a1a1a';
 export const NOTES_IMAGE_FRAME_DEFAULT_WIDTH = 3;
 
 const RESIZE_HANDLE_CLASS = 'pres-notes-img-resize';
+const CROP_EDGE_CLASS = 'pres-notes-img-crop-edge';
 const DROP_MARKER_CLASS = 'pres-notes-img-drop';
 const BOUND_ATTR = 'data-pres-notes-img-bound';
+
+type NotesImageCrop = {
+  boxW: number;
+  boxH: number;
+  srcX: number;
+  srcY: number;
+  srcW: number;
+  srcH: number;
+};
 
 const WRAP_FLOW_STYLE =
   'position:relative;display:inline-block;vertical-align:top;max-width:100%;width:fit-content;margin:0.25em 0.4em 0.25em 0;line-height:0;cursor:grab;';
@@ -97,9 +116,17 @@ export function presentationNotesImageEditorSx() {
       margin: 0,
       borderRadius: '4px',
     },
-    [`& .${PRES_NOTES_IMG_WRAP_CLASS}[${PRES_NOTES_IMG_FRAME_ATTR}]`]: {
+    [`& .${PRES_NOTES_IMG_WRAP_CLASS}[${PRES_NOTES_IMG_FRAME_ATTR}]:not([${PRES_NOTES_IMG_FRAME_JSON_ATTR}])`]: {
       border: `${NOTES_IMAGE_FRAME_DEFAULT_WIDTH}px solid ${NOTES_IMAGE_FRAME_DEFAULT_COLOR}`,
       boxSizing: 'border-box',
+    },
+    [`& .${PRES_NOTES_IMG_WRAP_CLASS}[${PRES_NOTES_IMG_CROP_ATTR}]`]: {
+      overflow: 'hidden',
+    },
+    [`& .${PRES_NOTES_IMG_WRAP_CLASS}[${PRES_NOTES_IMG_CROP_ATTR}] img`]: {
+      position: 'absolute',
+      maxWidth: 'none',
+      maxHeight: 'none',
     },
     [`& .${PRES_NOTES_IMG_WRAP_CLASS}[${PRES_NOTES_IMG_ROTATION_ATTR}]`]: {
       transformOrigin: 'center center',
@@ -108,6 +135,29 @@ export function presentationNotesImageEditorSx() {
       outline: '2px solid #f57f17',
       outlineOffset: '2px',
     },
+    [`& .${CROP_EDGE_CLASS}`]: {
+      position: 'absolute',
+      zIndex: 4,
+      background: 'transparent',
+      touchAction: 'none',
+      pointerEvents: 'auto',
+    },
+    [`& .${CROP_EDGE_CLASS}[data-edge="n"], & .${CROP_EDGE_CLASS}[data-edge="s"]`]: {
+      left: 10,
+      right: 10,
+      height: 10,
+      cursor: 'ns-resize',
+    },
+    [`& .${CROP_EDGE_CLASS}[data-edge="n"]`]: { top: 0 },
+    [`& .${CROP_EDGE_CLASS}[data-edge="s"]`]: { bottom: 0 },
+    [`& .${CROP_EDGE_CLASS}[data-edge="e"], & .${CROP_EDGE_CLASS}[data-edge="w"]`]: {
+      top: 10,
+      bottom: 10,
+      width: 10,
+      cursor: 'ew-resize',
+    },
+    [`& .${CROP_EDGE_CLASS}[data-edge="e"]`]: { right: 0 },
+    [`& .${CROP_EDGE_CLASS}[data-edge="w"]`]: { left: 0 },
     [`& .${DROP_MARKER_CLASS}`]: {
       position: 'absolute',
       left: 8,
@@ -157,9 +207,17 @@ export function presentationNotesImageViewSx(options?: { maxHeight?: number | nu
       lineHeight: 0,
       mr: 0.5,
     },
-    [`& .${PRES_NOTES_IMG_WRAP_CLASS}[${PRES_NOTES_IMG_FRAME_ATTR}]`]: {
+    [`& .${PRES_NOTES_IMG_WRAP_CLASS}[${PRES_NOTES_IMG_FRAME_ATTR}]:not([${PRES_NOTES_IMG_FRAME_JSON_ATTR}])`]: {
       border: `${NOTES_IMAGE_FRAME_DEFAULT_WIDTH}px solid ${NOTES_IMAGE_FRAME_DEFAULT_COLOR}`,
       boxSizing: 'border-box',
+    },
+    [`& .${PRES_NOTES_IMG_WRAP_CLASS}[${PRES_NOTES_IMG_CROP_ATTR}]`]: {
+      overflow: 'hidden',
+    },
+    [`& .${PRES_NOTES_IMG_WRAP_CLASS}[${PRES_NOTES_IMG_CROP_ATTR}] img`]: {
+      position: 'absolute',
+      maxWidth: 'none',
+      maxHeight: 'none',
     },
     [`& .${PRES_NOTES_IMG_WRAP_CLASS}[${PRES_NOTES_IMG_ROTATION_ATTR}]`]: {
       transformOrigin: 'center center',
@@ -183,7 +241,7 @@ export function presentationNotesImageViewSx(options?: { maxHeight?: number | nu
 }
 
 export function stripNotesImageChrome(root: ParentNode): void {
-  root.querySelectorAll(`.${RESIZE_HANDLE_CLASS}, .${DROP_MARKER_CLASS}`).forEach((n) => n.remove());
+  root.querySelectorAll(`.${RESIZE_HANDLE_CLASS}, .${CROP_EDGE_CLASS}, .${DROP_MARKER_CLASS}`).forEach((n) => n.remove());
   root.querySelectorAll(`.${PRES_NOTES_IMG_WRAP_CLASS}`).forEach((node) => {
     const el = node as HTMLElement;
     el.style.outline = '';
@@ -278,7 +336,9 @@ export function releaseNotesImagesToFlow(root: ParentNode): void {
     applyNotesImageFrameStyleFromAttrs(el);
     applyNotesImageRotationStyle(el);
     const img = el.querySelector('img') as HTMLImageElement | null;
-    if (img) {
+    if (notesImageCropIsOn(el) && img) {
+      applyNotesImageCropStyle(el);
+    } else if (img) {
       img.style.removeProperty('max-width');
       img.style.setProperty('max-width', '100%');
       img.style.setProperty('height', 'auto');
@@ -300,20 +360,74 @@ export function getSelectedNotesImageWrap(editor: HTMLElement | null): HTMLEleme
 }
 
 export function notesImageFrameIsOn(wrap: HTMLElement): boolean {
-  return wrap.getAttribute(PRES_NOTES_IMG_FRAME_ATTR) === '1';
+  return wrap.getAttribute(PRES_NOTES_IMG_FRAME_ATTR) === '1' || Boolean(readNotesImageFrame(wrap));
+}
+
+function clearNotesImageFrameInlineStyle(wrap: HTMLElement): void {
+  wrap.style.removeProperty('border');
+  wrap.style.removeProperty('border-width');
+  wrap.style.removeProperty('border-style');
+  wrap.style.removeProperty('border-color');
+  wrap.style.removeProperty('box-shadow');
+  wrap.style.removeProperty('padding');
+  wrap.style.removeProperty('background');
+  wrap.style.removeProperty('border-radius');
 }
 
 function applyNotesImageFrameStyleFromAttrs(wrap: HTMLElement): void {
-  if (!notesImageFrameIsOn(wrap)) {
-    wrap.style.removeProperty('border');
-    wrap.style.removeProperty('border-width');
-    wrap.style.removeProperty('border-style');
-    wrap.style.removeProperty('border-color');
+  const frame = readNotesImageFrame(wrap);
+  if (!frame || !imageFrameIsActive(frame)) {
+    if (wrap.getAttribute(PRES_NOTES_IMG_FRAME_ATTR) === '1') {
+      const color = wrap.getAttribute(PRES_NOTES_IMG_FRAME_COLOR_ATTR) || NOTES_IMAGE_FRAME_DEFAULT_COLOR;
+      wrap.style.border = `${NOTES_IMAGE_FRAME_DEFAULT_WIDTH}px solid ${color}`;
+      wrap.style.boxSizing = 'border-box';
+      return;
+    }
+    clearNotesImageFrameInlineStyle(wrap);
     return;
   }
-  const color = wrap.getAttribute(PRES_NOTES_IMG_FRAME_COLOR_ATTR) || NOTES_IMAGE_FRAME_DEFAULT_COLOR;
-  wrap.style.border = `${NOTES_IMAGE_FRAME_DEFAULT_WIDTH}px solid ${color}`;
+  const parts = imageFrameParts(frame, 1, JOHNNY_PRESENTATION.primary);
   wrap.style.boxSizing = 'border-box';
+  wrap.style.boxShadow = String(parts.wrap.boxShadow || '');
+  wrap.style.borderRadius = String(parts.wrap.borderRadius || parts.inner.borderRadius || '');
+  wrap.style.border = String(parts.inner.border || '');
+  wrap.style.padding = String(parts.inner.padding || '');
+  wrap.style.background = String(parts.inner.background || '');
+}
+
+export function readNotesImageFrame(wrap: HTMLElement): SlideImageFrame | undefined {
+  const raw = wrap.getAttribute(PRES_NOTES_IMG_FRAME_JSON_ATTR);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as SlideImageFrame;
+      return imageFrameIsActive(parsed) ? parsed : undefined;
+    } catch {
+      /* fall through */
+    }
+  }
+  if (wrap.getAttribute(PRES_NOTES_IMG_FRAME_ATTR) === '1') {
+    return {
+      preset: 'custom',
+      color: wrap.getAttribute(PRES_NOTES_IMG_FRAME_COLOR_ATTR) || NOTES_IMAGE_FRAME_DEFAULT_COLOR,
+      width: NOTES_IMAGE_FRAME_DEFAULT_WIDTH,
+      dash: 'solid',
+    };
+  }
+  return undefined;
+}
+
+export function writeNotesImageFrame(wrap: HTMLElement, frame?: SlideImageFrame | null): void {
+  if (!frame || !imageFrameIsActive(frame)) {
+    wrap.removeAttribute(PRES_NOTES_IMG_FRAME_ATTR);
+    wrap.removeAttribute(PRES_NOTES_IMG_FRAME_COLOR_ATTR);
+    wrap.removeAttribute(PRES_NOTES_IMG_FRAME_JSON_ATTR);
+    clearNotesImageFrameInlineStyle(wrap);
+    return;
+  }
+  wrap.setAttribute(PRES_NOTES_IMG_FRAME_ATTR, '1');
+  if (frame.color) wrap.setAttribute(PRES_NOTES_IMG_FRAME_COLOR_ATTR, frame.color);
+  wrap.setAttribute(PRES_NOTES_IMG_FRAME_JSON_ATTR, JSON.stringify(frame));
+  applyNotesImageFrameStyleFromAttrs(wrap);
 }
 
 export function setNotesImageFrame(
@@ -321,14 +435,12 @@ export function setNotesImageFrame(
   on: boolean,
   color = NOTES_IMAGE_FRAME_DEFAULT_COLOR,
 ): void {
-  if (on) {
-    wrap.setAttribute(PRES_NOTES_IMG_FRAME_ATTR, '1');
-    wrap.setAttribute(PRES_NOTES_IMG_FRAME_COLOR_ATTR, color);
-  } else {
-    wrap.removeAttribute(PRES_NOTES_IMG_FRAME_ATTR);
-    wrap.removeAttribute(PRES_NOTES_IMG_FRAME_COLOR_ATTR);
-  }
-  applyNotesImageFrameStyleFromAttrs(wrap);
+  writeNotesImageFrame(
+    wrap,
+    on
+      ? { preset: 'custom', color, width: NOTES_IMAGE_FRAME_DEFAULT_WIDTH, dash: 'solid' }
+      : undefined,
+  );
 }
 
 /** Umschaltet die rote Umrandung am ausgewählten Notiz-Bild. */
@@ -343,15 +455,7 @@ export function toggleNotesImageFrame(editor: HTMLElement | null): boolean {
 export function applyNotesImageFrameShortcut(editor: HTMLElement | null): boolean {
   const wrap = getSelectedNotesImageWrap(editor);
   if (!wrap) return false;
-  if (consumeImageFrameShortcutDouble()) {
-    setNotesImageFrame(wrap, true, NOTES_IMAGE_FRAME_BLACK_COLOR);
-    return true;
-  }
-  if (notesImageFrameIsOn(wrap)) {
-    setNotesImageFrame(wrap, false);
-  } else {
-    setNotesImageFrame(wrap, true, NOTES_IMAGE_FRAME_DEFAULT_COLOR);
-  }
+  writeNotesImageFrame(wrap, applyImageFrameFromShortcut(readNotesImageFrame(wrap)));
   return true;
 }
 
@@ -384,6 +488,173 @@ export function rotateSelectedNotesImage(editor: HTMLElement | null, delta: numb
   if (next === 0) wrap.removeAttribute(PRES_NOTES_IMG_ROTATION_ATTR);
   else wrap.setAttribute(PRES_NOTES_IMG_ROTATION_ATTR, String(next));
   applyNotesImageRotationStyle(wrap);
+  return true;
+}
+
+function parseCropNumber(raw: string | null, fallback: number): number {
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+export function notesImageCropIsOn(wrap: HTMLElement): boolean {
+  return wrap.getAttribute(PRES_NOTES_IMG_CROP_ATTR) === '1';
+}
+
+function readNotesImageCrop(wrap: HTMLElement): NotesImageCrop | null {
+  if (!notesImageCropIsOn(wrap)) return null;
+  const boxW = parseCropNumber(wrap.getAttribute('data-pres-notes-box-w'), 0);
+  const boxH = parseCropNumber(wrap.getAttribute('data-pres-notes-box-h'), 0);
+  const srcW = parseCropNumber(wrap.getAttribute('data-pres-notes-src-w'), boxW);
+  const srcH = parseCropNumber(wrap.getAttribute('data-pres-notes-src-h'), boxH);
+  if (boxW < 8 || boxH < 8 || srcW < 8 || srcH < 8) return null;
+  return {
+    boxW,
+    boxH,
+    srcX: parseCropNumber(wrap.getAttribute('data-pres-notes-src-x'), 0),
+    srcY: parseCropNumber(wrap.getAttribute('data-pres-notes-src-y'), 0),
+    srcW,
+    srcH,
+  };
+}
+
+function writeNotesImageCrop(wrap: HTMLElement, crop: NotesImageCrop): void {
+  wrap.setAttribute(PRES_NOTES_IMG_CROP_ATTR, '1');
+  wrap.setAttribute('data-pres-notes-box-w', String(Math.round(crop.boxW)));
+  wrap.setAttribute('data-pres-notes-box-h', String(Math.round(crop.boxH)));
+  wrap.setAttribute('data-pres-notes-src-x', String(Math.round(crop.srcX)));
+  wrap.setAttribute('data-pres-notes-src-y', String(Math.round(crop.srcY)));
+  wrap.setAttribute('data-pres-notes-src-w', String(Math.round(crop.srcW)));
+  wrap.setAttribute('data-pres-notes-src-h', String(Math.round(crop.srcH)));
+}
+
+function applyNotesImageCropStyle(wrap: HTMLElement): void {
+  const crop = readNotesImageCrop(wrap);
+  const img = wrap.querySelector('img') as HTMLImageElement | null;
+  if (!crop || !img) return;
+  wrap.style.overflow = 'hidden';
+  wrap.style.position = 'relative';
+  wrap.style.width = `${crop.boxW}px`;
+  wrap.style.maxWidth = '100%';
+  wrap.style.aspectRatio = `${crop.boxW} / ${crop.boxH}`;
+  wrap.style.height = 'auto';
+  img.style.position = 'absolute';
+  img.style.left = `${(crop.srcX / crop.boxW) * 100}%`;
+  img.style.top = `${(crop.srcY / crop.boxH) * 100}%`;
+  img.style.width = `${(crop.srcW / crop.boxW) * 100}%`;
+  img.style.height = `${(crop.srcH / crop.boxH) * 100}%`;
+  img.style.maxWidth = 'none';
+  img.style.maxHeight = 'none';
+  img.style.objectFit = 'fill';
+}
+
+function clearNotesImageCrop(wrap: HTMLElement): void {
+  wrap.removeAttribute(PRES_NOTES_IMG_CROP_ATTR);
+  wrap.removeAttribute('data-pres-notes-box-w');
+  wrap.removeAttribute('data-pres-notes-box-h');
+  wrap.removeAttribute('data-pres-notes-src-x');
+  wrap.removeAttribute('data-pres-notes-src-y');
+  wrap.removeAttribute('data-pres-notes-src-w');
+  wrap.removeAttribute('data-pres-notes-src-h');
+  wrap.style.removeProperty('overflow');
+  wrap.style.removeProperty('aspect-ratio');
+  wrap.style.removeProperty('height');
+  const img = wrap.querySelector('img') as HTMLImageElement | null;
+  if (img) {
+    img.style.removeProperty('position');
+    img.style.removeProperty('left');
+    img.style.removeProperty('top');
+    img.style.removeProperty('max-height');
+    img.style.removeProperty('object-fit');
+    img.style.setProperty('width', wrap.style.width ? '100%' : 'auto');
+    img.style.setProperty('max-width', '100%');
+    img.style.setProperty('height', 'auto');
+  }
+  wrap.querySelectorAll(`.${CROP_EDGE_CLASS}`).forEach((n) => n.remove());
+}
+
+function lockNotesImageCrop(wrap: HTMLElement): void {
+  if (notesImageCropIsOn(wrap) && readNotesImageCrop(wrap)) {
+    applyNotesImageCropStyle(wrap);
+    return;
+  }
+  const img = wrap.querySelector('img') as HTMLImageElement | null;
+  const rect = wrap.getBoundingClientRect();
+  const imgRect = img?.getBoundingClientRect();
+  const boxW = Math.max(48, rect.width || imgRect?.width || 160);
+  const boxH = Math.max(36, rect.height || imgRect?.height || 120);
+  writeNotesImageCrop(wrap, { boxW, boxH, srcX: 0, srcY: 0, srcW: boxW, srcH: boxH });
+  applyNotesImageCropStyle(wrap);
+}
+
+function resetNotesImageCropWindow(wrap: HTMLElement): void {
+  const crop = readNotesImageCrop(wrap);
+  if (!crop) return;
+  writeNotesImageCrop(wrap, {
+    boxW: crop.srcW,
+    boxH: crop.srcH,
+    srcX: 0,
+    srcY: 0,
+    srcW: crop.srcW,
+    srcH: crop.srcH,
+  });
+  applyNotesImageCropStyle(wrap);
+}
+
+const NOTES_CROP_SOURCE = { x: 0, y: 0, w: 40, h: 40 };
+const NOTES_CROP_BOX = { x: 10, y: 10, w: 20, h: 15 };
+
+export function notesWrapToSlideElement(wrap: HTMLElement): SlideElement {
+  const img = wrap.querySelector('img') as HTMLImageElement | null;
+  const crop = readNotesImageCrop(wrap);
+  return {
+    id: NOTES_IMAGE_ELEMENT_ID,
+    type: 'image',
+    src: img?.getAttribute('src')?.trim() || '',
+    x: crop ? NOTES_CROP_BOX.x : 10,
+    y: crop ? NOTES_CROP_BOX.y : 10,
+    w: crop ? NOTES_CROP_BOX.w : 30,
+    h: crop ? NOTES_CROP_BOX.h : 20,
+    rotation: getNotesImageRotation(wrap) || undefined,
+    imageFit: 'contain',
+    imageSourceRect: crop ? { ...NOTES_CROP_SOURCE } : undefined,
+    imageFrame: readNotesImageFrame(wrap),
+  };
+}
+
+export function applyNotesImageElementPatch(wrap: HTMLElement, patch: Partial<SlideElement>): void {
+  if ('imageSourceRect' in patch) {
+    if (!patch.imageSourceRect) clearNotesImageCrop(wrap);
+    else lockNotesImageCrop(wrap);
+    const editor = wrap.closest('[data-pres-notes-zone="true"]') as HTMLElement | null;
+    if (editor) {
+      bindNotesImageCropEdges(wrap, editor, () => {
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    }
+  } else if (
+    notesImageCropIsOn(wrap) &&
+    patch.x === NOTES_CROP_SOURCE.x &&
+    patch.y === NOTES_CROP_SOURCE.y &&
+    patch.w === NOTES_CROP_SOURCE.w &&
+    patch.h === NOTES_CROP_SOURCE.h
+  ) {
+    resetNotesImageCropWindow(wrap);
+  }
+  if (patch.rotation != null) {
+    const next = normalizeNotesImageRotation(patch.rotation);
+    if (next === 0) wrap.removeAttribute(PRES_NOTES_IMG_ROTATION_ATTR);
+    else wrap.setAttribute(PRES_NOTES_IMG_ROTATION_ATTR, String(next));
+    applyNotesImageRotationStyle(wrap);
+  }
+  if ('imageFrame' in patch) {
+    writeNotesImageFrame(wrap, patch.imageFrame);
+  }
+}
+
+export function deleteSelectedNotesImage(editor: HTMLElement | null): boolean {
+  const wrap = getSelectedNotesImageWrap(editor);
+  if (!wrap || !editor) return false;
+  removeNotesImageWrap(wrap, editor);
   return true;
 }
 
@@ -850,6 +1121,66 @@ export function dedupeAdjacentNotesImages(root: ParentNode): void {
   }
 }
 
+function bindNotesImageCropEdges(
+  wrap: HTMLElement,
+  editor: HTMLElement,
+  onChange: () => void,
+): void {
+  wrap.querySelectorAll(`.${CROP_EDGE_CLASS}`).forEach((n) => n.remove());
+  if (!notesImageCropIsOn(wrap)) return;
+  (['n', 's', 'e', 'w'] as const).forEach((edge) => {
+    const handle = document.createElement('span');
+    handle.className = CROP_EDGE_CLASS;
+    handle.setAttribute('data-edge', edge);
+    handle.setAttribute('contenteditable', 'false');
+    handle.setAttribute('aria-label', 'Ausschnitt ziehen');
+    wrap.appendChild(handle);
+    handle.addEventListener('pointerdown', (e) => {
+      if (!isPrimaryPointer(e)) return;
+      const crop0 = readNotesImageCrop(wrap);
+      if (!crop0) return;
+      beginNotesDrag(editor);
+      e.preventDefault();
+      e.stopPropagation();
+      selectNotesImageWrap(editor, wrap);
+      const startX = e.clientX;
+      const startY = e.clientY;
+      listenWindowPointerDrag(
+        e.pointerId,
+        (ev) => {
+          const dx = ev.clientX - startX;
+          const dy = ev.clientY - startY;
+          const next = { ...crop0 };
+          const minBox = 28;
+          if (edge === 'e') {
+            next.boxW = Math.max(minBox, Math.min(crop0.srcX + crop0.srcW - 4, crop0.boxW + dx));
+          } else if (edge === 'w') {
+            const nextW = Math.max(minBox, crop0.boxW - dx);
+            const shift = crop0.boxW - nextW;
+            next.boxW = nextW;
+            next.srcX = crop0.srcX - shift;
+          } else if (edge === 's') {
+            next.boxH = Math.max(minBox, Math.min(crop0.srcY + crop0.srcH - 4, crop0.boxH + dy));
+          } else if (edge === 'n') {
+            const nextH = Math.max(minBox, crop0.boxH - dy);
+            const shift = crop0.boxH - nextH;
+            next.boxH = nextH;
+            next.srcY = crop0.srcY - shift;
+          }
+          writeNotesImageCrop(wrap, next);
+          applyNotesImageCropStyle(wrap);
+        },
+        () => {
+          endNotesDrag(editor, () => {
+            ensureNotesTypingHost(editor);
+            onChange();
+          });
+        },
+      );
+    });
+  });
+}
+
 function bindNotesImage(
   wrap: HTMLElement,
   img: HTMLImageElement,
@@ -871,6 +1202,8 @@ function bindNotesImage(
   wrap.setAttribute('contenteditable', 'false');
   applyNotesImageRotationStyle(wrap);
   applyNotesImageFrameStyleFromAttrs(wrap);
+  if (notesImageCropIsOn(wrap)) applyNotesImageCropStyle(wrap);
+  bindNotesImageCropEdges(wrap, editor, onChange);
 
   let handleEl = wrap.querySelector(`.${RESIZE_HANDLE_CLASS}`) as HTMLElement | null;
   if (!handleEl) {
@@ -898,6 +1231,20 @@ function bindNotesImage(
       e.pointerId,
       (ev) => {
         const nextW = Math.max(48, Math.min(maxW, startW + (ev.clientX - startX)));
+        const crop = readNotesImageCrop(wrap);
+        if (crop) {
+          const scale = nextW / Math.max(crop.boxW, 1);
+          writeNotesImageCrop(wrap, {
+            boxW: crop.boxW * scale,
+            boxH: crop.boxH * scale,
+            srcX: crop.srcX * scale,
+            srcY: crop.srcY * scale,
+            srcW: crop.srcW * scale,
+            srcH: crop.srcH * scale,
+          });
+          applyNotesImageCropStyle(wrap);
+          return;
+        }
         wrap.style.width = `${Math.round(nextW)}px`;
         wrap.style.maxWidth = '100%';
         img.style.setProperty('width', '100%', 'important');

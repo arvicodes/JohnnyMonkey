@@ -291,8 +291,12 @@ import {
   insertHtmlIntoOpenNotesEditor,
   appendHtmlToNotesValue,
   applyNotesImageFrameShortcut,
+  applyNotesImageElementPatch,
+  deleteSelectedNotesImage,
   getSelectedNotesImageWrap,
   notesImageSrcToSlidePath,
+  notesWrapToSlideElement,
+  NOTES_IMAGE_ELEMENT_ID,
   NOTES_IMAGE_FRAME_BLACK_COLOR,
   NOTES_IMAGE_FRAME_DEFAULT_COLOR,
   type NotesImageToSlidePayload,
@@ -321,6 +325,7 @@ const PresentationEditorPage: React.FC = () => {
   const [activeEditor, setActiveEditor] = useState<HTMLElement | null>(null);
   const [activeHtmlField, setActiveHtmlField] = useState<string | null>(null);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const [notesImgTick, setNotesImgTick] = useState(0);
   const [animationEditMode, setAnimationEditMode] = useState(false);
   const [selectedAnimationTarget, setSelectedAnimationTarget] = useState<string | null>(null);
   const [canvasScale, setCanvasScale] = useState(0.4);
@@ -2350,7 +2355,9 @@ const PresentationEditorPage: React.FC = () => {
 
   const processSelectedNotesImage = useCallback(
     async (mode: 'enhance' | 'remove-bg') => {
-      const editor = document.querySelector('[data-pres-notes-zone="true"]') as HTMLElement | null;
+      const editor =
+        (activeEditor?.getAttribute('data-pres-notes-zone') === 'true' ? activeEditor : null) ||
+        (document.querySelector('[data-pres-notes-zone="true"]') as HTMLElement | null);
       const wrap = getSelectedNotesImageWrap(editor);
       const img = wrap?.querySelector('img') as HTMLImageElement | null;
       const src = img?.getAttribute('src')?.trim();
@@ -2395,6 +2402,7 @@ const PresentationEditorPage: React.FC = () => {
           updateSlide({ speakerNotesHtml: nextNotes, speakerNotes: htmlToPlain(nextNotes) });
         }
         if (mode === 'enhance') setSnackbar('Foto verbessert');
+        setNotesImgTick((n) => n + 1);
       } catch (e) {
         setSnackbar(e instanceof Error ? e.message : 'Bildbearbeitung fehlgeschlagen');
       } finally {
@@ -2402,7 +2410,7 @@ const PresentationEditorPage: React.FC = () => {
         setRemovingImageBackground(false);
       }
     },
-    [lessonPath, updateSlide],
+    [activeEditor, lessonPath, updateSlide],
   );
 
   const copySelectedElement = useCallback(
@@ -2690,6 +2698,23 @@ const PresentationEditorPage: React.FC = () => {
   ]);
 
   const selectedElement = normalizedActive?.elements?.find((e) => e.id === selectedElementId);
+
+  useEffect(() => {
+    if (!activeEditor?.getAttribute('data-pres-notes-zone')) return undefined;
+    const bump = () => setNotesImgTick((n) => n + 1);
+    activeEditor.addEventListener('pointerup', bump, true);
+    activeEditor.addEventListener('click', bump, true);
+    return () => {
+      activeEditor.removeEventListener('pointerup', bump, true);
+      activeEditor.removeEventListener('click', bump, true);
+    };
+  }, [activeEditor]);
+
+  const selectedNotesImage = useMemo(() => {
+    void notesImgTick;
+    const wrap = getSelectedNotesImageWrap(activeEditor);
+    return wrap ? notesWrapToSlideElement(wrap) : null;
+  }, [activeEditor, notesImgTick]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -4465,9 +4490,6 @@ const PresentationEditorPage: React.FC = () => {
                 lessonPath={lessonPath}
                 onEditorChanged={flushActiveEditor}
                 onMessage={(msg) => setSnackbar(msg)}
-                onNotesImageEnhance={() => void processSelectedNotesImage('enhance')}
-                onNotesImageRemoveBg={() => void processSelectedNotesImage('remove-bg')}
-                notesImageBusy={enhancingImage || removingImageBackground}
                 onInsertImage={
                   notesActiveField
                     ? () => {
@@ -4497,6 +4519,7 @@ const PresentationEditorPage: React.FC = () => {
                 <PresentationSlideToolsBar
                   slide={normalizedActive}
                   selectedElement={selectedElement ?? null}
+                  selectedNotesImage={selectedNotesImage}
                   showLayoutImage={showLayoutImage}
                   onApplyAccentColor={applyAccentColor}
                   onAddTextElement={addTextElement}
@@ -4560,11 +4583,44 @@ const PresentationEditorPage: React.FC = () => {
                   onAddCardElement={addCardElement}
                   onAddTableElement={addTableElement}
                   activeEditor={activeEditor}
-                  onUpdateElement={updateElement}
-                  onDeleteElement={deleteElement}
-                  onRemoveImageBackground={(id) => void removeSelectedImageBackground(id)}
+                  onUpdateElement={(id, patch) => {
+                    if (id === NOTES_IMAGE_ELEMENT_ID) {
+                      const wrap = getSelectedNotesImageWrap(activeEditor);
+                      if (!wrap || !activeEditor) return;
+                      applyNotesImageElementPatch(wrap, patch);
+                      activeEditor.dispatchEvent(new Event('input', { bubbles: true }));
+                      flushActiveEditor();
+                      setNotesImgTick((n) => n + 1);
+                      return;
+                    }
+                    updateElement(id, patch);
+                  }}
+                  onDeleteElement={(id) => {
+                    if (id === NOTES_IMAGE_ELEMENT_ID) {
+                      if (activeEditor && deleteSelectedNotesImage(activeEditor)) {
+                        activeEditor.dispatchEvent(new Event('input', { bubbles: true }));
+                        flushActiveEditor();
+                        setNotesImgTick((n) => n + 1);
+                      }
+                      return;
+                    }
+                    deleteElement(id);
+                  }}
+                  onRemoveImageBackground={(id) => {
+                    if (id === NOTES_IMAGE_ELEMENT_ID) {
+                      void processSelectedNotesImage('remove-bg');
+                      return;
+                    }
+                    void removeSelectedImageBackground(id);
+                  }}
                   removingImageBackground={removingImageBackground}
-                  onEnhanceImage={(id) => void enhanceSelectedImage(id)}
+                  onEnhanceImage={(id) => {
+                    if (id === NOTES_IMAGE_ELEMENT_ID) {
+                      void processSelectedNotesImage('enhance');
+                      return;
+                    }
+                    void enhanceSelectedImage(id);
+                  }}
                   enhancingImage={enhancingImage}
                   inkShapeFillActive={inkShapeFill}
                   onToggleInkShapeFill={() => {

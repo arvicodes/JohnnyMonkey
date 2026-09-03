@@ -29,8 +29,6 @@ import {
   Highlight as MarkerIcon,
   Undo as UndoIcon,
   DeleteSweep as ClearInkIcon,
-  Crop as CropIcon,
-  RotateLeft as RotateLeftIcon,
   ImageOutlined as ImageIcon,
   PaletteOutlined as PaletteIcon,
   SettingsOutlined as SettingsIcon,
@@ -50,8 +48,6 @@ import {
   Square as FilledRectShapeIcon,
   CircleOutlined as EllipseShapeIcon,
   Circle as FilledEllipseShapeIcon,
-  AutoFixHigh as RemoveBgIcon,
-  AutoAwesome as EnhanceIcon,
   AlignHorizontalLeft as AlignLeftIcon,
   AlignHorizontalCenter as AlignCenterHIcon,
   AlignHorizontalRight as AlignRightIcon,
@@ -108,20 +104,7 @@ import {
   type CreateTableOptions,
 } from '../../lib/presentationSlideTables';
 import { isHomeworkSlide } from '../../lib/presentationSlideTemplates';
-import { ensureWindowCropLock, isImageCropMode, isWindowCropMode, rotateElementByDegrees } from '../../lib/presentationImageUtils';
-import {
-  IMAGE_FRAME_COLORS,
-  IMAGE_FRAME_DASHES,
-  IMAGE_FRAME_PRESET_LABELS,
-  IMAGE_FRAME_PRESET_ORDER,
-  IMAGE_FRAME_PRESETS,
-  IMAGE_FRAME_WIDTHS,
-  imageFrameIsActive,
-  imageFrameParts,
-  withImageFrameColor,
-  withImageFrameDash,
-  withImageFrameWidth,
-} from '../../lib/presentationImageFrames';
+import PresentationImageToolsPanel from './PresentationImageToolsPanel';
 import {
   SLIDE_SHAPE_LABELS,
   SHAPE_FILL_PRESETS,
@@ -223,6 +206,8 @@ function ShapeStrokeWidthControls({
 interface PresentationSlideToolsBarProps {
   slide: PresentationSlide | null;
   selectedElement: SlideElement | null;
+  /** Ausgewähltes Bild in den Notizen — gleiches Bild-Menü wie auf der Folie. */
+  selectedNotesImage?: SlideElement | null;
   showLayoutImage: boolean;
   onApplyAccentColor: (color: string, allSlides: boolean) => void;
   onAddTextElement: () => void;
@@ -279,6 +264,7 @@ const SLIDE_ALIGN_ACTIONS: { kind: AlignKind; title: string; icon: React.ReactNo
 const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
   slide,
   selectedElement,
+  selectedNotesImage = null,
   showLayoutImage,
   onApplyAccentColor,
   onAddTextElement,
@@ -521,6 +507,9 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
   };
 
   const accentColor = slide?.accentColor || JOHNNY_ACCENT_PRESETS[0];
+  const imageToolsElement =
+    selectedElement?.type === 'image' ? selectedElement : selectedNotesImage;
+  const settingsTarget = selectedElement || selectedNotesImage;
   const stackLayer = selectedElement ? getElementStackLayer(selectedElement) : 'foreground';
   const showHomeworkSubmissionToggle = Boolean(slide && isHomeworkSlide(slide) && onUpdateSlide);
   const siblingElements = (slide?.elements || []).filter((el) => el.id !== selectedElement?.id);
@@ -1309,8 +1298,9 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
         </Box>
       )}
 
-      {selectedElement && (
+      {(selectedElement || selectedNotesImage) && (
         <Box sx={toolGroupSx}>
+          {selectedElement && (
           <Tooltip title="Ausrichten & Größe">
             <IconButton
               size="small"
@@ -1323,6 +1313,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
               <AlignCenterHIcon sx={{ fontSize: 14 }} />
             </IconButton>
           </Tooltip>
+          )}
           <Popover
             open={Boolean(alignAnchor)}
             anchorEl={alignAnchor}
@@ -1441,7 +1432,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
         </Box>
       )}
 
-      {selectedElement && (
+      {settingsTarget && (
         <>
               <Popover
                 open={Boolean(elementAnchor)}
@@ -1450,6 +1441,8 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                 anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
               >
                 <Box sx={{ p: 1, width: 248 }}>
+                  {selectedElement && (
+                  <>
                   <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.5 }}>
                     Ebene
                   </Typography>
@@ -1499,304 +1492,35 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                     </Tooltip>
                   </ButtonGroup>
 
-                  {selectedElement.type === 'image' && (
-                    <>
-                      <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.5 }}>
-                        Bild
-                      </Typography>
-                      <Box sx={{ display: 'flex', gap: 0.35, mb: 0.35 }}>
-                        <Button
-                          size="small"
-                          sx={{ ...miniBtnSx, flex: 1 }}
-                          variant={
-                            selectedElement.imageFit !== 'cover' && !isWindowCropMode(selectedElement)
-                              ? 'contained'
-                              : 'outlined'
-                          }
-                          onClick={() =>
-                            onUpdateElement(selectedElement.id, {
-                              imageFit: 'contain',
-                              imageSourceRect: undefined,
-                              imageObjectPosition: undefined,
-                            })
-                          }
-                        >
-                          Einpassen
-                        </Button>
-                        <Button
-                          size="small"
-                          sx={{ ...miniBtnSx, flex: 1 }}
-                          variant={isImageCropMode(selectedElement) ? 'contained' : 'outlined'}
-                          startIcon={<CropIcon sx={{ fontSize: 14 }} />}
-                          onClick={() =>
-                            onUpdateElement(selectedElement.id, ensureWindowCropLock(selectedElement))
-                          }
-                        >
-                          Zuschneiden
-                        </Button>
-                      </Box>
-                      <Box sx={{ display: 'flex', gap: 0.35, mb: 0.35 }}>
-                        <Button
-                          size="small"
-                          sx={{ ...miniBtnSx, flex: 1 }}
-                          startIcon={<RotateLeftIcon sx={{ fontSize: 14 }} />}
-                          onClick={() =>
-                            onUpdateElement(
-                              selectedElement.id,
-                              rotateElementByDegrees(selectedElement, -90),
-                            )
-                          }
-                        >
-                          90° links
-                        </Button>
-                        <Button
-                          size="small"
-                          sx={{ ...miniBtnSx, flex: 1 }}
-                          startIcon={<RotateRightIcon sx={{ fontSize: 14 }} />}
-                          onClick={() =>
-                            onUpdateElement(
-                              selectedElement.id,
-                              rotateElementByDegrees(selectedElement, 90),
-                            )
-                          }
-                        >
-                          90° rechts
-                        </Button>
-                      </Box>
-                      {isWindowCropMode(selectedElement) && selectedElement.imageSourceRect ? (
-                        <Button
-                          size="small"
-                          fullWidth
-                          variant="outlined"
-                          onClick={() =>
-                            onUpdateElement(selectedElement.id, {
-                              x: selectedElement.imageSourceRect!.x,
-                              y: selectedElement.imageSourceRect!.y,
-                              w: selectedElement.imageSourceRect!.w,
-                              h: selectedElement.imageSourceRect!.h,
-                            })
-                          }
-                          sx={{ ...miniBtnSx, mb: 0.35 }}
-                        >
-                          Zuschnitt zurücksetzen
-                        </Button>
-                      ) : isImageCropMode(selectedElement) ? (
-                        <Button
-                          size="small"
-                          fullWidth
-                          variant="outlined"
-                          onClick={() =>
-                            onUpdateElement(selectedElement.id, { imageObjectPosition: '50% 50%' })
-                          }
-                          sx={{ ...miniBtnSx, mb: 0.35 }}
-                        >
-                          Ausschnitt zentrieren
-                        </Button>
-                      ) : null}
-                      <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, lineHeight: 1.35, mb: 0.75 }}>
-                        {isWindowCropMode(selectedElement)
-                          ? 'Ecken ziehen = Größe · Kanten ziehen = Ausschnitt · Ziehen verschiebt das Bild'
-                          : isImageCropMode(selectedElement)
-                            ? 'Ecken ziehen = Größe · Kanten = Ausschnitt · Ziehen verschiebt den Ausschnitt'
-                            : 'Ziehen verschiebt das Bild · Zuschneiden für Ausschnitt · Ecken = Größe'}
-                      </Typography>
-                      <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.4 }}>
-                        Rahmen
-                      </Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.4, mb: 0.55 }}>
-                        {IMAGE_FRAME_PRESET_ORDER.map((id) => {
-                          const preview = imageFrameParts(IMAGE_FRAME_PRESETS[id], 0.28, accentColor);
-                          const current = selectedElement.imageFrame?.preset || 'none';
-                          const selected =
-                            id === 'none'
-                              ? !imageFrameIsActive(selectedElement.imageFrame)
-                              : current === id;
-                          return (
-                            <Tooltip key={id} title={IMAGE_FRAME_PRESET_LABELS[id]} placement="top">
-                              <Box
-                                onClick={() =>
-                                  onUpdateElement(selectedElement.id, {
-                                    imageFrame:
-                                      id === 'none'
-                                        ? undefined
-                                        : {
-                                            ...IMAGE_FRAME_PRESETS[id],
-                                            color:
-                                              IMAGE_FRAME_PRESETS[id].color === 'accent'
-                                                ? accentColor
-                                                : IMAGE_FRAME_PRESETS[id].color,
-                                          },
-                                  })
-                                }
-                                sx={{
-                                  width: 34,
-                                  height: 26,
-                                  cursor: 'pointer',
-                                  bgcolor: '#eceff1',
-                                  p: '3px',
-                                  boxSizing: 'border-box',
-                                  outline: selected
-                                    ? `2px solid ${PRES_EDITOR_UI.accent}`
-                                    : '1px solid #cfd8dc',
-                                  outlineOffset: 0,
-                                  '&:hover': { outlineColor: PRES_EDITOR_UI.accent },
-                                }}
-                              >
-                                <Box
-                                  sx={{
-                                    width: '100%',
-                                    height: '100%',
-                                    ...preview.wrap,
-                                    boxShadow: preview.wrap.boxShadow || 'none',
-                                  }}
-                                >
-                                  <Box
-                                    sx={{
-                                      width: '100%',
-                                      height: '100%',
-                                      ...preview.inner,
-                                      background:
-                                        preview.inner.background ||
-                                        'linear-gradient(135deg, #90caf9 0%, #42a5f5 100%)',
-                                    }}
-                                  />
-                                </Box>
-                              </Box>
-                            </Tooltip>
-                          );
-                        })}
-                      </Box>
-                      {imageFrameIsActive(selectedElement.imageFrame) && (
-                        <>
-                          <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, mb: 0.3 }}>
-                            Farbe
-                          </Typography>
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3, mb: 0.45 }}>
-                            {[accentColor, ...IMAGE_FRAME_COLORS, ...JOHNNY_ACCENT_PRESETS.slice(0, 8)]
-                              .filter((c, i, arr) => arr.indexOf(c) === i)
-                              .map((c) => (
-                                <Box
-                                  key={c}
-                                  onClick={() =>
-                                    onUpdateElement(selectedElement.id, {
-                                      imageFrame: withImageFrameColor(selectedElement.imageFrame, c),
-                                    })
-                                  }
-                                  sx={{
-                                    width: 16,
-                                    height: 16,
-                                    borderRadius: '3px',
-                                    bgcolor: c,
-                                    border:
-                                      (selectedElement.imageFrame?.color || '') === c
-                                        ? `2px solid ${PRES_EDITOR_UI.accent}`
-                                        : c === '#ffffff'
-                                          ? '1px solid #bdbdbd'
-                                          : '1px solid rgba(0,0,0,0.15)',
-                                    cursor: 'pointer',
-                                  }}
-                                />
-                              ))}
-                          </Box>
-                          <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, mb: 0.3 }}>
-                            Stärke
-                          </Typography>
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3, mb: 0.45 }}>
-                            {IMAGE_FRAME_WIDTHS.map((w) => (
-                              <Button
-                                key={w}
-                                size="small"
-                                variant={
-                                  (selectedElement.imageFrame?.width || 0) === w
-                                    ? 'contained'
-                                    : 'outlined'
-                                }
-                                onClick={() =>
-                                  onUpdateElement(selectedElement.id, {
-                                    imageFrame: withImageFrameWidth(selectedElement.imageFrame, w),
-                                  })
-                                }
-                                sx={{ ...miniBtnSx, minWidth: 28, px: 0.4 }}
-                              >
-                                {w}
-                              </Button>
-                            ))}
-                          </Box>
-                          <Typography sx={{ fontSize: 9, color: PRES_EDITOR_UI.textMuted, mb: 0.3 }}>
-                            Strich
-                          </Typography>
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3, mb: 0.75 }}>
-                            {IMAGE_FRAME_DASHES.map((d) => (
-                              <Button
-                                key={d.id}
-                                size="small"
-                                variant={
-                                  (selectedElement.imageFrame?.dash || 'solid') === d.id
-                                    ? 'contained'
-                                    : 'outlined'
-                                }
-                                onClick={() =>
-                                  onUpdateElement(selectedElement.id, {
-                                    imageFrame: withImageFrameDash(selectedElement.imageFrame, d.id),
-                                  })
-                                }
-                                sx={{ ...miniBtnSx, px: 0.45 }}
-                              >
-                                {d.label}
-                              </Button>
-                            ))}
-                          </Box>
-                        </>
-                      )}
-                      {onEnhanceImage && selectedElement.src?.trim() && (
-                        <Button
-                          size="small"
-                          fullWidth
-                          variant="outlined"
-                          disabled={enhancingImage}
-                          startIcon={<EnhanceIcon sx={{ fontSize: 14 }} />}
-                          onClick={() => onEnhanceImage(selectedElement.id)}
-                          sx={{ ...miniBtnSx, mb: 0.35 }}
-                        >
-                          {enhancingImage ? 'Verbessern…' : 'Foto verbessern'}
-                        </Button>
-                      )}
-                      {onRemoveImageBackground && selectedElement.src?.trim() && (
-                        <Button
-                          size="small"
-                          fullWidth
-                          variant="outlined"
-                          disabled={removingImageBackground}
-                          startIcon={<RemoveBgIcon sx={{ fontSize: 14 }} />}
-                          onClick={() => onRemoveImageBackground(selectedElement.id)}
-                          sx={{ ...miniBtnSx, mb: 0.75 }}
-                        >
-                          {removingImageBackground ? 'Hintergrund…' : 'Weißen Hintergrund weg'}
-                        </Button>
-                      )}
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.35, mb: 0.5 }}>
-                        {(['x', 'y', 'w', 'h'] as const).map((key) => (
-                          <TextField
-                            key={key}
-                            size="small"
-                            type="number"
-                            label={key.toUpperCase()}
-                            value={selectedElement[key]}
-                            onChange={(e) =>
-                              onUpdateElement(selectedElement.id, { [key]: Number(e.target.value) })
-                            }
-                            sx={{
-                              width: '48%',
-                              '& .MuiInputBase-root': { fontSize: 10, height: 28 },
-                              '& .MuiInputLabel-root': { fontSize: 9 },
-                            }}
-                          />
-                        ))}
-                      </Box>
-                    </>
+                  </>
                   )}
 
-                  {selectedElement.type === 'shape' && (
+                  {imageToolsElement && (
+                    <PresentationImageToolsPanel
+                      element={imageToolsElement}
+                      accentColor={accentColor}
+                      showGeometry={Boolean(selectedElement)}
+                      cropHint={
+                        selectedNotesImage && !selectedElement
+                          ? 'Ecken ziehen = Größe · Kanten ziehen = Ausschnitt'
+                          : undefined
+                      }
+                      onUpdate={(patch) => onUpdateElement(imageToolsElement.id, patch)}
+                      onEnhance={
+                        onEnhanceImage ? () => onEnhanceImage(imageToolsElement.id) : undefined
+                      }
+                      onRemoveBackground={
+                        onRemoveImageBackground
+                          ? () => onRemoveImageBackground(imageToolsElement.id)
+                          : undefined
+                      }
+                      enhancing={enhancingImage}
+                      removingBackground={removingImageBackground}
+                    />
+                  )}
+
+                  {selectedElement?.type === 'shape' && (
+
                     <>
                       <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.5 }}>
                         Form · {SLIDE_SHAPE_LABELS[selectedElement.shapeKind || 'arrow']}
@@ -2026,7 +1750,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                     </>
                   )}
 
-                  {selectedElement.type === 'card' && (
+                  {selectedElement?.type === 'card' && (
                     <>
                       <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.5 }}>
                         Info-Karte
@@ -2083,7 +1807,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                     </>
                   )}
 
-                  {selectedElement.type === 'table' && (
+                  {selectedElement?.type === 'table' && (
                     <>
                       <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.5 }}>
                         Tabelle
@@ -2154,7 +1878,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                     color="error"
                     fullWidth
                     onClick={() => {
-                      onDeleteElement(selectedElement.id);
+                      if (settingsTarget) onDeleteElement(settingsTarget.id);
                       setElementAnchor(null);
                     }}
                     sx={{ ...miniBtnSx, mt: 0.25 }}

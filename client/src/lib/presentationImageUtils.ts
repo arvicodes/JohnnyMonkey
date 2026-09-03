@@ -155,23 +155,20 @@ export function imageSourceRectCss(box: ImageSourceRect, source: ImageSourceRect
 }
 
 /**
- * True wenn der Fenster-Zuschnitt das Foto noch im Rahmen lässt.
- * Aufgeblähte/negative Rechtecke (nach dem Ziehen) machen das Bild in Play unsichtbar.
+ * True wenn der Fenster-Zuschnitt noch einen Teil des Fotos zeigt.
+ * Das Foto darf viel größer sein als der Rahmen (enger Ausschnitt) — früher
+ * haben 170%-Grenzen genau das verworfen und den Zuschnitt unsichtbar gemacht.
  */
 export function imageSourceRectFitsBox(box: ImageSourceRect, source: ImageSourceRect): boolean {
   const bw = Math.max(box.w, 0.01);
   const bh = Math.max(box.h, 0.01);
-  const topPct = ((source.y - box.y) / bh) * 100;
-  const heightPct = (source.h / bh) * 100;
-  const leftPct = ((source.x - box.x) / bw) * 100;
-  const widthPct = (source.w / bw) * 100;
-  if (![topPct, heightPct, leftPct, widthPct].every(Number.isFinite)) return false;
-  const visibleH = Math.min(100, topPct + heightPct) - Math.max(0, topPct);
-  const visibleW = Math.min(100, leftPct + widthPct) - Math.max(0, leftPct);
-  if (visibleH < 12 || visibleW < 12) return false;
-  if (heightPct > 170 || widthPct > 170) return false;
-  if (topPct < -25 || leftPct < -25) return false;
-  return true;
+  if (![box.x, box.y, box.w, box.h, source.x, source.y, source.w, source.h].every(Number.isFinite)) {
+    return false;
+  }
+  if (source.w < 0.5 || source.h < 0.5 || box.w < 0.5 || box.h < 0.5) return false;
+  const overlapW = Math.min(box.x + box.w, source.x + source.w) - Math.max(box.x, source.x);
+  const overlapH = Math.min(box.y + box.h, source.y + source.h) - Math.max(box.y, source.y);
+  return overlapW > bw * 0.04 && overlapH > bh * 0.04;
 }
 
 export async function readImageNaturalSize(file: File): Promise<{ w: number; h: number }> {
