@@ -1,9 +1,27 @@
 /**
- * Prüfung an einer Folie: anhängen (Editor) und Start/Stop/Öffnen (Editor + Play).
- * Das alte KA-Korrekturmodul gehört nicht dazu.
+ * Prüfung an einer Folie: anhängen/neu anlegen, Start/Öffnen/Lösen,
+ * plus Korrektur und Fragen bearbeiten.
+ * Dateien liegen im Stundenordner als KA_/KU_/HU_/QZ_*.html.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { Box, Button, CircularProgress, Menu, MenuItem, Typography } from '@mui/material';
+import {
+  Box,
+  Button,
+  ButtonGroup,
+  Checkbox,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  FormControlLabel,
+  FormGroup,
+  Menu,
+  MenuItem,
+  TextField,
+  Typography,
+} from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import {
   fetchLessonFolderLinkableFiles,
@@ -18,21 +36,61 @@ import {
   stopLessonExam,
   teacherIdFromStorage,
 } from '../../lib/lessonExamBeacon';
+import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-icon-button';
+import KACorrectionMode from '../KACorrectionMode';
 
 const EXAM_RED = '#c62828';
+const EXAM_TYPES = [
+  { value: 'KA', label: 'Klassenarbeit', minutes: 60 },
+  { value: 'KU', label: 'Kursarbeit', minutes: 90 },
+  { value: 'HU', label: 'Hausaufgabenüberprüfung', minutes: 15 },
+  { value: 'QZ', label: 'Quiz', minutes: 5 },
+] as const;
+
+type ExamType = (typeof EXAM_TYPES)[number]['value'];
 
 function examLabel(name: string): string {
   return (name || '').replace(/\.(html|htm)$/i, '');
 }
 
+function examFolderPath(lessonPath: string): string {
+  const p = (lessonPath || '').replace(/\\/g, '/').replace(/\/$/, '');
+  if (p.startsWith('git-intern/')) return p;
+  if (p.startsWith('J-M-Reihen/')) return `git-intern/${p.slice('J-M-Reihen/'.length)}`;
+  return p;
+}
+
+type ExamQuestion = {
+  taskNumber: number;
+  questionText: string;
+  questionType: string;
+  options?: string[];
+  correctAnswer?: string;
+  explanation?: string;
+};
+
 type Props = {
   exam?: SlideExam;
   lessonPath?: string;
   groupId?: string;
-  /** Fehlt im Play: nur Management, kein Anhängen/Lösen. */
   onChange?: (next: SlideExam | undefined) => void;
   onMessage?: (text: string) => void;
   compact?: boolean;
+};
+
+const headerBtnSx = {
+  minWidth: 0,
+  height: 24,
+  px: 0.85,
+  py: 0,
+  fontSize: '0.62rem',
+  fontWeight: 800,
+  lineHeight: 1,
+  textTransform: 'none' as const,
+  color: '#fff',
+  borderColor: 'rgba(255,255,255,0.35)',
+  '&:hover': { bgcolor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.55)' },
+  '&.Mui-disabled': { color: 'rgba(255,255,255,0.45)', borderColor: 'rgba(255,255,255,0.18)' },
 };
 
 const PresentationSlideExamBox: React.FC<Props> = ({
@@ -48,6 +106,18 @@ const PresentationSlideExamBox: React.FC<Props> = ({
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [busy, setBusy] = useState(false);
   const [runningPath, setRunningPath] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newType, setNewType] = useState<ExamType>('HU');
+  const [newName, setNewName] = useState('');
+  const [newMinutes, setNewMinutes] = useState(15);
+  const [creating, setCreating] = useState(false);
+  const [correctionOpen, setCorrectionOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [questions, setQuestions] = useState<ExamQuestion[]>([]);
+  const [examTitle, setExamTitle] = useState('');
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<ExamQuestion | null>(null);
+  const [savingQuestion, setSavingQuestion] = useState(false);
 
   const canEdit = typeof onChange === 'function';
   const gid = (groupId || '').trim();
@@ -99,7 +169,7 @@ const PresentationSlideExamBox: React.FC<Props> = ({
     };
   }, [gid]);
 
-  const attach = (file: LessonFolderFsItem) => {
+  const attach = (file: { path: string; name: string }) => {
     onChange?.({ path: file.path.replace(/\\/g, '/'), name: file.name });
     setAddAnchor(null);
     onMessage?.(`Prüfung „${examLabel(file.name)}“ an diese Folie gehängt`);
@@ -135,19 +205,109 @@ const PresentationSlideExamBox: React.FC<Props> = ({
     }
   };
 
+  const createExam = async () => {
+    const name = newName.trim();
+    const folder = examFolderPath(lessonPath || '');
+    if (!name || !folder) {
+      onMessage?.('Name und Stundenordner werden gebraucht.');
+      return;
+    }
+    setCreating(true);
+    try {
+      const res = await fetch('/api/file-system-paths/create-examination', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          examType: newType,
+          fileName: name,
+          folderPath: folder,
+          title: name,
+          durationMinutes: newMinutes,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        fileName?: string;
+        filePath?: string;
+        absolutePath?: string;
+      };
+      if (!res.ok) throw new Error(data.error || 'Prüfung konnte nicht erstellt werden');
+      const createdName = data.fileName || `${newType}_${name}.html`;
+      const createdPath = data.absolutePath || data.filePath || '';
+      if (!createdPath) throw new Error('Keine Datei zurückgegeben');
+      attach({ path: createdPath, name: createdName });
+      setCreateOpen(false);
+      setNewName('');
+      onMessage?.(`Prüfung „${examLabel(createdName)}“ erstellt und angehängt`);
+    } catch (e) {
+      onMessage?.(e instanceof Error ? e.message : 'Erstellen fehlgeschlagen');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const openEdit = async () => {
+    if (!examPath) return;
+    setEditOpen(true);
+    setEditingQuestion(null);
+    setLoadingQuestions(true);
+    try {
+      const res = await fetch(
+        `/api/file-system-paths/get-examination-questions?filePath=${encodeURIComponent(examPath)}`,
+      );
+      if (!res.ok) throw new Error('Fragen konnten nicht geladen werden');
+      const data = (await res.json()) as { questions?: ExamQuestion[]; title?: string };
+      setQuestions(data.questions || []);
+      setExamTitle(data.title || examLabel(exam?.name || ''));
+    } catch (e) {
+      setQuestions([]);
+      onMessage?.(e instanceof Error ? e.message : 'Fragen laden fehlgeschlagen');
+    } finally {
+      setLoadingQuestions(false);
+    }
+  };
+
+  const saveQuestion = async () => {
+    if (!editingQuestion || !examPath) return;
+    setSavingQuestion(true);
+    try {
+      const res = await fetch('/api/file-system-paths/update-single-question', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filePath: examPath,
+          taskNumber: editingQuestion.taskNumber,
+          questionText: editingQuestion.questionText,
+          questionType: editingQuestion.questionType,
+          options: editingQuestion.options || [],
+          correctAnswer: editingQuestion.correctAnswer || '',
+          explanation: editingQuestion.explanation || '',
+        }),
+      });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(err.error || 'Speichern fehlgeschlagen');
+      }
+      setQuestions((prev) =>
+        prev.map((q) => (q.taskNumber === editingQuestion.taskNumber ? editingQuestion : q)),
+      );
+      setEditingQuestion(null);
+      onMessage?.('Frage gespeichert');
+    } catch (e) {
+      onMessage?.(e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
+    } finally {
+      setSavingQuestion(false);
+    }
+  };
+
   if (!exam && !canEdit) return null;
 
-  const btnSx = {
-    minWidth: 0,
-    height: 26,
-    px: 0.9,
-    py: 0,
-    fontSize: '0.68rem',
-    fontWeight: 800,
-    lineHeight: 1,
-    textTransform: 'none' as const,
-    borderRadius: 0.75,
-    boxShadow: 'none',
+  const openCreate = () => {
+    setAddAnchor(null);
+    setNewType('HU');
+    setNewMinutes(15);
+    setNewName('');
+    setCreateOpen(true);
   };
 
   const addMenu = (
@@ -157,10 +317,17 @@ const PresentationSlideExamBox: React.FC<Props> = ({
       onClose={() => setAddAnchor(null)}
       anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
     >
+      <MenuItem onClick={openCreate} sx={{ fontWeight: 800, color: EXAM_RED }}>
+        Neue Prüfung erstellen…
+      </MenuItem>
+      <Divider />
+      <MenuItem disabled sx={{ opacity: 1, fontSize: '0.72rem', whiteSpace: 'normal', maxWidth: 280 }}>
+        Vorhandene Dateien aus diesem Stundenordner (KA_/KU_/HU_/QZ_)
+      </MenuItem>
       {loadingFiles ? (
         <MenuItem disabled>Lade Prüfungsdateien…</MenuItem>
       ) : examFiles.length === 0 ? (
-        <MenuItem disabled>Keine KA_/KU_/HU_/QZ_-HTML im Stundenordner</MenuItem>
+        <MenuItem disabled>Noch keine Prüfungs-HTML hier</MenuItem>
       ) : (
         examFiles.map((f) => (
           <MenuItem key={f.path} onClick={() => attach(f)}>
@@ -169,6 +336,190 @@ const PresentationSlideExamBox: React.FC<Props> = ({
         ))
       )}
     </Menu>
+  );
+
+  const createDialog = (
+    <Dialog
+      open={createOpen}
+      onClose={() => !creating && setCreateOpen(false)}
+      maxWidth="xs"
+      fullWidth
+    >
+      <DialogTitle sx={{ ...dialogCloseTitleSx, bgcolor: EXAM_RED, color: '#fff' }}>
+        Neue Prüfung
+        <DialogCloseIconButton
+          onClose={() => setCreateOpen(false)}
+          disabled={creating}
+          sx={{ color: '#fff', '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' } }}
+          iconSx={{ color: '#fff' }}
+        />
+      </DialogTitle>
+      <DialogContent sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        <Typography variant="body2" color="text.secondary">
+          Wird im aktuellen Stundenordner als HTML angelegt (KA_/KU_/HU_/QZ_) und an diese Folie
+          gehängt.
+        </Typography>
+        <FormGroup row sx={{ gap: 0.5 }}>
+          {EXAM_TYPES.map((opt) => (
+            <FormControlLabel
+              key={opt.value}
+              control={
+                <Checkbox
+                  size="small"
+                  checked={newType === opt.value}
+                  onChange={() => {
+                    setNewType(opt.value);
+                    setNewMinutes(opt.minutes);
+                  }}
+                />
+              }
+              label={opt.label}
+              sx={{ mr: 0.5, '& .MuiFormControlLabel-label': { fontSize: '0.8rem' } }}
+            />
+          ))}
+        </FormGroup>
+        <TextField
+          autoFocus
+          fullWidth
+          size="small"
+          label="Name (ohne Präfix)"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          placeholder="z. B. binaer-und-roemische-zahlen"
+          helperText={`Datei wird ${newType}_${newName.trim() || '…'}.html`}
+        />
+        <TextField
+          fullWidth
+          size="small"
+          type="number"
+          label="Zeit (Minuten)"
+          value={newMinutes}
+          onChange={(e) => setNewMinutes(Math.max(1, parseInt(e.target.value, 10) || 1))}
+          inputProps={{ min: 1, step: 1 }}
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setCreateOpen(false)} disabled={creating}>
+          Abbrechen
+        </Button>
+        <Button
+          variant="contained"
+          disabled={creating || !newName.trim() || !lessonPath}
+          onClick={() => void createExam()}
+          sx={{ bgcolor: EXAM_RED, '&:hover': { bgcolor: '#b71c1c' } }}
+        >
+          {creating ? <CircularProgress size={16} color="inherit" /> : 'Erstellen'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+
+  const correctionDialog = (
+    <Dialog
+      open={correctionOpen}
+      onClose={() => setCorrectionOpen(false)}
+      maxWidth="lg"
+      fullWidth
+    >
+      <DialogContent sx={{ p: 0 }}>
+        {correctionOpen && examPath ? (
+          <KACorrectionMode kaFilePath={examPath} onClose={() => setCorrectionOpen(false)} />
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+
+  const editDialog = (
+    <Dialog open={editOpen} onClose={() => !savingQuestion && setEditOpen(false)} maxWidth="sm" fullWidth>
+      <DialogTitle sx={dialogCloseTitleSx}>
+        Fragen bearbeiten
+        <DialogCloseIconButton onClose={() => setEditOpen(false)} disabled={savingQuestion} />
+      </DialogTitle>
+      <DialogContent sx={{ pt: 1 }}>
+        {loadingQuestions ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 3 }}>
+            <CircularProgress size={22} />
+            <Typography variant="body2">Lade Fragen…</Typography>
+          </Box>
+        ) : questions.length === 0 ? (
+          <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+            Keine Aufgaben im HTML-Raster gefunden. Die Prüfung kannst du trotzdem über Öffnen
+            ansehen oder die HTML-Datei im Stundenordner bearbeiten.
+          </Typography>
+        ) : editingQuestion ? (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 0.5 }}>
+            <Typography variant="subtitle2">Aufgabe {editingQuestion.taskNumber}</Typography>
+            <TextField
+              fullWidth
+              multiline
+              minRows={3}
+              label="Fragentext"
+              value={editingQuestion.questionText}
+              onChange={(e) =>
+                setEditingQuestion({ ...editingQuestion, questionText: e.target.value })
+              }
+            />
+            {editingQuestion.questionType === 'multiple-choice' ? (
+              <TextField
+                fullWidth
+                label="Richtige Antwort"
+                value={editingQuestion.correctAnswer || ''}
+                onChange={(e) =>
+                  setEditingQuestion({ ...editingQuestion, correctAnswer: e.target.value })
+                }
+              />
+            ) : null}
+            <TextField
+              fullWidth
+              multiline
+              minRows={2}
+              label="Erklärung"
+              value={editingQuestion.explanation || ''}
+              onChange={(e) =>
+                setEditingQuestion({ ...editingQuestion, explanation: e.target.value })
+              }
+            />
+          </Box>
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, pt: 0.5 }}>
+            {examTitle ? (
+              <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                {examTitle}
+              </Typography>
+            ) : null}
+            {questions.map((q) => (
+              <Button
+                key={q.taskNumber}
+                onClick={() => setEditingQuestion(q)}
+                sx={{
+                  justifyContent: 'flex-start',
+                  textTransform: 'none',
+                  color: '#333',
+                  border: '1px solid #eee',
+                }}
+              >
+                Aufgabe {q.taskNumber}
+                {q.questionText ? ` — ${q.questionText.slice(0, 48)}` : ''}
+              </Button>
+            ))}
+          </Box>
+        )}
+      </DialogContent>
+      <DialogActions>
+        {editingQuestion ? (
+          <>
+            <Button onClick={() => setEditingQuestion(null)} disabled={savingQuestion}>
+              Zurück
+            </Button>
+            <Button variant="contained" onClick={() => void saveQuestion()} disabled={savingQuestion}>
+              {savingQuestion ? <CircularProgress size={16} color="inherit" /> : 'Speichern'}
+            </Button>
+          </>
+        ) : (
+          <Button onClick={() => setEditOpen(false)}>Schließen</Button>
+        )}
+      </DialogActions>
+    </Dialog>
   );
 
   if (!exam) {
@@ -182,15 +533,23 @@ const PresentationSlideExamBox: React.FC<Props> = ({
             setAddAnchor(e.currentTarget);
           }}
           sx={{
-            ...btnSx,
-            color: EXAM_RED,
+            minWidth: 0,
+            height: 26,
             px: 0.4,
+            fontSize: '0.68rem',
+            fontWeight: 800,
+            textTransform: 'none',
+            color: EXAM_RED,
             '&:hover': { bgcolor: '#ffebee' },
           }}
         >
           Prüfung an diese Folie
         </Button>
+        <Typography sx={{ fontSize: '0.6rem', color: '#8d4a4a', lineHeight: 1.35, px: 0.4, mt: 0.1 }}>
+          Dateien aus diesem Stundenordner (KA_/KU_/HU_/QZ_.html) — oder eine neue erstellen.
+        </Typography>
         {addMenu}
+        {createDialog}
       </Box>
     );
   }
@@ -213,20 +572,20 @@ const PresentationSlideExamBox: React.FC<Props> = ({
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: 0.6,
-          px: 1,
-          py: 0.55,
+          gap: 0.5,
+          px: 0.7,
+          py: 0.45,
           bgcolor: alpha(EXAM_RED, 0.92),
           color: '#fff',
         }}
       >
         <Box
           sx={{
-            width: 18,
-            height: 18,
-            borderRadius: 0.5,
+            width: 16,
+            height: 16,
+            borderRadius: 0.4,
             bgcolor: 'rgba(255,255,255,0.22)',
-            fontSize: 10,
+            fontSize: 9,
             fontWeight: 900,
             display: 'flex',
             alignItems: 'center',
@@ -236,85 +595,84 @@ const PresentationSlideExamBox: React.FC<Props> = ({
         >
           P
         </Box>
-        <Typography sx={{ fontSize: '0.72rem', fontWeight: 800, flex: 1, minWidth: 0 }} noWrap>
-          Prüfung
-        </Typography>
+        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.3 }}>
+          <ButtonGroup
+            size="small"
+            variant="outlined"
+            sx={{
+              width: '100%',
+              '& .MuiButtonGroup-grouped': { minWidth: 0, flex: 1 },
+            }}
+          >
+            <Button
+              disabled={busy || !gid}
+              onClick={() => void toggleRun()}
+              title={
+                !gid
+                  ? 'Lerngruppe nötig (Stunde über das Tablet/Laptop öffnen)'
+                  : isRunning
+                    ? 'Prüfung beenden'
+                    : 'Prüfung starten (Vollbild bei SuS)'
+              }
+              sx={{
+                ...headerBtnSx,
+                ...(isRunning
+                  ? { bgcolor: 'rgba(0,0,0,0.22)', borderColor: 'rgba(255,255,255,0.5)' }
+                  : {}),
+              }}
+            >
+              {busy ? <CircularProgress size={11} color="inherit" /> : isRunning ? 'STOP' : 'START'}
+            </Button>
+            <Button onClick={() => openExamHtmlInTab(exam.path)} sx={headerBtnSx}>
+              Öffnen
+            </Button>
+            {canEdit ? (
+              <Button
+                onClick={() => {
+                  onChange?.(undefined);
+                  onMessage?.('Prüfung von dieser Folie gelöst');
+                }}
+                sx={headerBtnSx}
+              >
+                Lösen
+              </Button>
+            ) : null}
+          </ButtonGroup>
+          <ButtonGroup
+            size="small"
+            variant="outlined"
+            sx={{
+              width: '100%',
+              '& .MuiButtonGroup-grouped': { minWidth: 0, flex: 1 },
+            }}
+          >
+            <Button onClick={() => setCorrectionOpen(true)} sx={headerBtnSx}>
+              Korrektur
+            </Button>
+            <Button onClick={() => void openEdit()} sx={headerBtnSx}>
+              Bearbeiten
+            </Button>
+          </ButtonGroup>
+        </Box>
       </Box>
 
-      <Box sx={{ px: 1, py: 0.75, display: 'flex', flexDirection: 'column', gap: 0.65 }}>
+      <Box sx={{ px: 0.85, py: 0.5 }}>
         <Typography
-          sx={{ fontSize: '0.72rem', fontWeight: 700, color: '#5d1a1a', lineHeight: 1.25 }}
+          sx={{ fontSize: '0.68rem', fontWeight: 700, color: '#5d1a1a', lineHeight: 1.25 }}
           noWrap
           title={exam.name}
         >
           {examLabel(exam.name)}
         </Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-          <Button
-            size="small"
-            variant={isRunning ? 'contained' : 'outlined'}
-            disabled={busy || !gid}
-            onClick={() => void toggleRun()}
-            title={
-              !gid
-                ? 'Lerngruppe nötig (Stunde über das Tablet/Laptop öffnen)'
-                : isRunning
-                  ? 'Prüfung beenden (Overlay bei SuS schließen)'
-                  : 'Prüfung starten (Vollbild bei allen SuS)'
-            }
-            sx={{
-              ...btnSx,
-              ...(isRunning
-                ? {
-                    bgcolor: EXAM_RED,
-                    color: '#fff',
-                    border: `1px solid ${EXAM_RED}`,
-                    '&:hover': { bgcolor: '#b71c1c' },
-                  }
-                : {
-                    color: EXAM_RED,
-                    borderColor: '#ef9a9a',
-                    bgcolor: '#fff',
-                    '&:hover': { bgcolor: '#ffebee', borderColor: '#e57373' },
-                  }),
-            }}
-          >
-            {busy ? <CircularProgress size={12} color="inherit" /> : isRunning ? 'STOP' : 'START'}
-          </Button>
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={() => openExamHtmlInTab(exam.path)}
-            sx={{
-              ...btnSx,
-              color: '#5d1a1a',
-              borderColor: '#ef9a9a',
-              bgcolor: '#fff',
-              '&:hover': { bgcolor: '#ffebee' },
-            }}
-          >
-            Öffnen
-          </Button>
-          {canEdit ? (
-            <Button
-              size="small"
-              variant="text"
-              onClick={() => {
-                onChange?.(undefined);
-                onMessage?.('Prüfung von dieser Folie gelöst');
-              }}
-              sx={{ ...btnSx, color: '#8d4a4a' }}
-            >
-              Lösen
-            </Button>
-          ) : null}
-        </Box>
         {!gid ? (
-          <Typography sx={{ fontSize: '0.62rem', color: '#8d4a4a', lineHeight: 1.3 }}>
-            Start nur mit Lerngruppe (TABLET / Laptop).
+          <Typography sx={{ fontSize: '0.6rem', color: '#8d4a4a', lineHeight: 1.3, mt: 0.15 }}>
+            START nur mit Lerngruppe (TABLET / Laptop).
           </Typography>
         ) : null}
       </Box>
+      {createDialog}
+      {correctionDialog}
+      {editDialog}
     </Box>
   );
 };

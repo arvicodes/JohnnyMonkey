@@ -103,6 +103,10 @@ import {
   setColumnNarrow,
   type CreateTableOptions,
 } from '../../lib/presentationSlideTables';
+import {
+  getSelectedColIndices,
+  getSelectedRowIndices,
+} from '../../lib/presentationTableSelection';
 import { isHomeworkSlide } from '../../lib/presentationSlideTemplates';
 import PresentationImageToolsPanel from './PresentationImageToolsPanel';
 import {
@@ -384,6 +388,9 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
         <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted }}>
           Tabelle · {dim.rows}×{dim.cols}
         </Typography>
+        <Typography sx={{ fontSize: 8, color: PRES_EDITOR_UI.textMuted, lineHeight: 1.3 }}>
+          Zellen ziehen = markieren · Rechtsklick = gleichmäßig · Rand ziehen = Breite
+        </Typography>
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0.3 }}>
           <Button size="small" onClick={() => runTableMutation((t) => tableAddRow(t))} sx={btnSx}>
             +Zeile
@@ -435,10 +442,15 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
           </Tooltip>
         </Box>
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0.3 }}>
-          <Tooltip title="Alle Spalten gleich breit">
+          <Tooltip title="Markierte Spalten gleich breit, sonst alle">
             <Button
               size="small"
-              onClick={() => runTableMutation((t) => distributeColumnsEvenly(t))}
+              onClick={() =>
+                runTableMutation((t) => {
+                  const cols = getSelectedColIndices(t);
+                  distributeColumnsEvenly(t, cols.length >= 2 ? cols : undefined);
+                })
+              }
               sx={btnSx}
             >
               Spalten =
@@ -458,10 +470,15 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
               Schmal
             </Button>
           </Tooltip>
-          <Tooltip title="Alle Zeilen gleich hoch">
+          <Tooltip title="Markierte Zeilen gleich hoch, sonst alle">
             <Button
               size="small"
-              onClick={() => runTableMutation((t) => distributeRowsEvenly(t))}
+              onClick={() =>
+                runTableMutation((t) => {
+                  const rows = getSelectedRowIndices(t);
+                  distributeRowsEvenly(t, rows.length >= 2 ? rows : undefined);
+                })
+              }
               sx={btnSx}
             >
               Zeilen =

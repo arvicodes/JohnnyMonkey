@@ -2188,7 +2188,7 @@ const PresentationPresentPage: React.FC = () => {
             top: 'max(12px, env(safe-area-inset-top))',
             right: 'max(12px, env(safe-area-inset-right))',
             zIndex: 16,
-            width: 260,
+            width: 420,
             pointerEvents: 'auto',
           }}
         >

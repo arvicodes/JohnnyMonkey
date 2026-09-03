@@ -96,6 +96,7 @@ import {
   applyZebraStriping,
   buildBlankTableHtml,
   distributeColumnsEvenly,
+  distributeRowsEvenly,
   findTableRoot,
   formatEditorContentAsTable,
   getTableTheme,
@@ -108,6 +109,10 @@ import {
   tableTranspose,
   setColumnNarrow,
 } from '../../lib/presentationSlideTables';
+import {
+  getSelectedColIndices,
+  getSelectedRowIndices,
+} from '../../lib/presentationTableSelection';
 import {
   defaultBrowseStartPath,
   fetchFolderBrowseListing,
@@ -1334,13 +1339,30 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
                     Zebra
                   </Button>
                 </Box>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.3 }}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0.3 }}>
                   <Button
                     size="small"
                     sx={miniBtn}
-                    onClick={() => run(() => distributeColumnsEvenly(table))}
+                    onClick={() =>
+                      run(() => {
+                        const cols = getSelectedColIndices(table);
+                        distributeColumnsEvenly(table, cols.length >= 2 ? cols : undefined);
+                      })
+                    }
                   >
                     Spalten =
+                  </Button>
+                  <Button
+                    size="small"
+                    sx={miniBtn}
+                    onClick={() =>
+                      run(() => {
+                        const rows = getSelectedRowIndices(table);
+                        distributeRowsEvenly(table, rows.length >= 2 ? rows : undefined);
+                      })
+                    }
+                  >
+                    Zeilen =
                   </Button>
                   <Button
                     size="small"

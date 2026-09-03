@@ -22,6 +22,7 @@ import { isPenPointer } from '../../lib/presentationDrawTools';
 import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
 import { PRESENTATION_CONTENT_FONT_PX } from '../../lib/presentationFontSize';
 import { presentationNestedListSx } from '../../lib/presentationListStyles';
+import { presentationTableSelectionSx } from '../../lib/presentationTableSelection';
 import { placeCaretBesidePresentationMath } from '../../lib/presentationPasteMath';
 import '../../styles/presentationLists.css';
 
@@ -153,6 +154,7 @@ function buildRichSx(
       overflow: 'hidden',
       boxSizing: 'border-box',
     },
+    ...presentationTableSelectionSx(),
     '& [data-reveal-step].pres-reveal-enter': {
       animation: 'presRevealIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both',
     },

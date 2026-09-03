@@ -77,12 +77,17 @@ import {
   getColumnWidthPercents,
   handleTableTabInEditor,
   isValidPresentationTableHtml,
-  setColumnWidthPercent,
+  syncColumnWidthsFromRender,
 } from '../../lib/presentationSlideTables';
 import {
+  applyColumnBorderDrag,
   tryStartTableResizeFromPointer,
   updateTableResizeHoverCursor,
 } from '../../lib/presentationTableResize';
+import {
+  getSelectedColIndices,
+  presentationTableSelectionSx,
+} from '../../lib/presentationTableSelection';
 
 /** Verhindert Inline-Bilder in contentEditable beim Datei-/URL-Drop (Folie fängt den Drop ab). */
 function blockFileDropIntoText(e: React.DragEvent) {
@@ -239,6 +244,9 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     colIndex: number;
     startX: number;
     startLeftPct: number;
+    startGroupPct: number;
+    startWidths: number[];
+    selected: number[];
     tableWidthPx: number;
   } | null>(null);
   const measureTableColHandles = useCallback(() => {
@@ -252,7 +260,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     const rootRect = root.getBoundingClientRect();
     const row = table.rows[0];
     const xs: number[] = [];
-    for (let i = 0; i < row.cells.length - 1; i += 1) {
+    for (let i = 0; i < row.cells.length; i += 1) {
       xs.push(row.cells[i].getBoundingClientRect().right - rootRect.left);
     }
     setColHandleXs(xs);
@@ -2102,6 +2110,7 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                   boxSizing: 'border-box',
                 },
                 '& [data-pres-fs]': { lineHeight: 'inherit' },
+                ...presentationTableSelectionSx(),
               }}
             />
           ) : (
@@ -2145,11 +2154,16 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                     const root = tableRef.current;
                     const table = root?.querySelector('table') as HTMLTableElement | null;
                     if (!table || !root) return;
+                    syncColumnWidthsFromRender(table);
                     const widths = getColumnWidthPercents(table);
+                    const selected = getSelectedColIndices(table);
                     colResizeRef.current = {
                       colIndex: i,
                       startX: e.clientX,
                       startLeftPct: widths[i] || 0,
+                      startGroupPct: selected.reduce((s, idx) => s + (widths[idx] || 0), 0),
+                      startWidths: widths,
+                      selected,
                       tableWidthPx: table.getBoundingClientRect().width || 1,
                     };
                     const onMove = (ev: PointerEvent) => {
@@ -2158,7 +2172,12 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                       const tbl = tableRef.current.querySelector('table') as HTMLTableElement | null;
                       if (!tbl) return;
                       const dxPct = ((ev.clientX - st.startX) / st.tableWidthPx) * 100;
-                      setColumnWidthPercent(tbl, st.colIndex, st.startLeftPct + dxPct);
+                      applyColumnBorderDrag(tbl, st.colIndex, dxPct, {
+                        selected: st.selected,
+                        startLeftPct: st.startLeftPct,
+                        startGroupPct: st.startGroupPct,
+                        startWidths: st.startWidths,
+                      });
                       measureTableColHandles();
                     };
                     const onUp = () => {

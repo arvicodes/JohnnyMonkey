@@ -32,6 +32,7 @@ import {
 import { PRESENTATION_DEFAULT_FONT_FAMILY } from './presentationFonts';
 import { JOHNNY_PRESENTATION, NOTES_HIGHLIGHT_ALPHA, PRESENTATION_HIGHLIGHT_ALPHA, toHighlightFill } from './presentationTheme';
 import { ensureNotesTablesFormatted, applyJohnnyTableFormatting, handleTableTabInEditor } from './presentationSlideTables';
+import { stripTableSelectionHtml } from './presentationTableSelection';
 import { presentationNotesImageInsertHtml, stripNotesImageChrome, releaseNotesImagesToFlow } from './presentationNotesImages';
 import {
   convertOmmlElementsInPlace,
@@ -1325,7 +1326,7 @@ export function sanitizePresentationHtml(html: string): string {
   doc.body.querySelectorAll('table:not([data-pres-table])').forEach((node) => {
     applyJohnnyTableFormatting(node as HTMLTableElement);
   });
-  return hydratePresentationHtmlFontSizes(doc.body.innerHTML);
+  return hydratePresentationHtmlFontSizes(stripTableSelectionHtml(doc.body.innerHTML));
 }
 
 const NOTES_INDENT_PROPS = [

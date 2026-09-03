@@ -2,7 +2,7 @@
   "version": 1,
   "title": "01 Basiswissen",
   "lessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen",
-  "updatedAt": "2026-09-03T09:14:14.180Z",
+  "updatedAt": "2026-09-03T05:57:19.261Z",
   "slides": [
     {
       "layout": "title-slide",
@@ -458,55 +458,8 @@
       "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
-      "id": "slide-1788426466145-pab4a",
-      "order": 4,
-      "speakerNotes": "",
-      "layout": "blank",
-      "subtitle": "",
-      "bodyLeft": "",
-      "bodyRight": "",
-      "imagePath": "",
-      "imageCaption": "",
-      "bodyStyle": "plain",
-      "titleAlign": "left",
-      "accentColor": "#2E7D32",
-      "title": "",
-      "body": "",
-      "hiddenLayoutZones": [
-        "bodyHtml"
-      ],
-      "sourceLessonName": "01.02 Einstieg Matrizen",
-      "titleHtml": "",
-      "bodyHtml": "",
-      "subtitleHtml": "",
-      "bodyLeftHtml": "",
-      "bodyRightHtml": "",
-      "imageCaptionHtml": "",
-      "speakerNotesHtml": "<p><br></p>",
-      "preparationNotes": "",
-      "preparationHtml": "<p><br></p>",
-      "materialNotes": "",
-      "materialHtml": "<p><br></p>",
-      "elements": [
-        {
-          "id": "el-table-1788426528989-q4rp",
-          "type": "table",
-          "x": 4,
-          "y": 16,
-          "w": 92,
-          "h": 50,
-          "zIndex": 1,
-          "html": "<table data-pres-table=\"1\" data-pres-table-theme=\"gelb\" style=\"width:100%;border-collapse:collapse;table-layout:fixed;font-size:inherit\"><colgroup><col style=\"width: 0.924%;\"><col style=\"width: 1.1%;\"><col style=\"width: 60.976%;\"><col style=\"width: 21%;\"><col style=\"width: 16%;\"></colgroup><thead><tr><th style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#FFE599;font-weight:700\">&nbsp;</th><th style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#FFE599;font-weight:700\">&nbsp;</th><th style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#FFE599;font-weight:700\">&nbsp;</th><th style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#FFE599;font-weight:700\">&nbsp;</th><th style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#FFE599;font-weight:700\">&nbsp;</th></tr></thead><tbody><tr><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#ffffff\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#ffffff\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#ffffff\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#ffffff\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#ffffff\"><br></td></tr><tr><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#FFF2CC\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#FFF2CC\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#FFF2CC\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#FFF2CC\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#FFF2CC\"><br></td></tr><tr><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#ffffff\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#ffffff\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#ffffff\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#ffffff\"><br></td><td style=\"border:1px solid #E8C070;padding:3px 5px;color:#424242;text-align:center;vertical-align:middle;min-width:0;overflow:hidden;background-color:#ffffff\"><br></td></tr></tbody></table>",
-          "stackLayer": "foreground"
-        }
-      ],
-      "transition": "fade",
-      "revealEnabled": true,
-      "zoneRevealSteps": {}
-    },
-    {
       "id": "slide-1786514477880-779mj",
-      "order": 5,
+      "order": 4,
       "speakerNotes": "",
       "layout": "two-column",
       "subtitle": "",
@@ -644,7 +597,7 @@
         "bodyHtml"
       ],
       "id": "slide-1787117622971-9kee1",
-      "order": 6,
+      "order": 5,
       "sourceLessonName": "01.02 Einstieg Matrizen",
       "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
@@ -783,13 +736,13 @@
       "revealEnabled": true,
       "zoneRevealSteps": {},
       "id": "slide-1787117622970-r3pti",
-      "order": 7,
+      "order": 6,
       "sourceLessonName": "01.03 Definitionen",
       "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "id": "slide-1788337840537-r4vd0",
-      "order": 8,
+      "order": 7,
       "speakerNotes": "AA ist eine 2×32 \\times 3 Matrix.a12=3a_{12}=3a23=1a_{23}=1BB ist eine 3×23 \\times 2 Matrix.b31=−3b_{31}=-3c24c_{24} steht in der 2. Zeile und 4. Spalte.Ja, eine 3×33 \\times 3 Matrix ist quadratisch.",
       "layout": "two-column",
       "subtitle": "",
@@ -939,7 +892,7 @@
       "revealEnabled": true,
       "zoneRevealSteps": {},
       "id": "slide-1788339414594",
-      "order": 9,
+      "order": 8,
       "sourceLessonName": "01.03 Definitionen",
       "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
@@ -1027,13 +980,13 @@
         "bodyHtml"
       ],
       "id": "slide-1787117622972-n0jb7",
-      "order": 10,
+      "order": 9,
       "sourceLessonName": "01.03 Definitionen",
       "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "id": "slide-1787119507212-fmjc8",
-      "order": 11,
+      "order": 10,
       "speakerNotes": "Beispiellösung:Übergangstabellenach ↓ / von →WMLW0,600,4M00,40,4L800ÜbergangsmatrixA=(0,600,400,40,4800)A= \\begin{pmatrix} 0{,}6 & 0 & 0{,}4\\\\ 0 & 0{,}4 & 0{,}4\\\\ 8 & 0 & 0 \\end{pmatrix}mit der Reihenfolge(WML).\\begin{pmatrix} W\\\\M\\\\L \\end{pmatrix}.Absolute WerteAusgangszustand:v⃗0=(100010000)\\vec v_0= \\begin{pmatrix} 1000\\\\ 1000\\\\ 0 \\end{pmatrix}Nach einem Monat:v⃗1=Av⃗0=(6004008000)\\vec v_1=A\\vec v_0 = \\begin{pmatrix} 600\\\\ 400\\\\ 8000 \\end{pmatrix}Nach zwei Monaten:v⃗2=Av⃗1=(356033604800)\\vec v_2=A\\vec v_1 = \\begin{pmatrix} 3560\\\\ 3360\\\\ 4800 \\end{pmatrix}ZustandWML0100010000160040080002356033604800Übergangsgleichungenwn+1=0,6wn+0,4lnw_{n+1}=0{,}6w_n+0{,}4l_n mn+1=0,4mn+0,4lnm_{n+1}=0{,}4m_n+0{,}4l_n ln+1=8wnl_{n+1}=8w_nBonus: Stabiler Zustand?Nein, es stellt sich kein stabiler Zustand mit konstanten Populationszahlen ein.Für einen Fixvektor müsste geltenAv⃗=v⃗.A\\vec v=\\vec v.Dann müsste insbesonderew=0,6w+0,4l⇒w=lw=0{,}6w+0{,}4l \\quad\\Rightarrow\\quad w=lund gleichzeitigl=8wl=8wgelten. Beides ist nur fürw=l=0w=l=0möglich. Damit folgt auch m=0m=0.Der einzige Fixvektor ist also der Nullvektor. Die vorhandene Insektenpopulation entwickelt sich daher nicht zu einem konstanten Zustand.",
       "layout": "title-content",
       "subtitle": "",
@@ -1106,7 +1059,7 @@
     },
     {
       "id": "slide-1787118410832-5su8i",
-      "order": 12,
+      "order": 11,
       "speakerNotes": "Beispiellösung:ÜbergangsdiagrammAus dem Text folgen die Übergänge:A→A:0,5,A→B:0,25,A→C:0,25A\\rightarrow A:0{,}5,\\qquad A\\rightarrow B:0{,}25,\\qquad A\\rightarrow C:0{,}25 B→A:0,25,B→B:0,5,B→C:0,25B\\rightarrow A:0{,}25,\\qquad B\\rightarrow B:0{,}5,\\qquad B\\rightarrow C:0{,}25 C→A:0,2,C→C:0,8C\\rightarrow A:0{,}2,\\qquad C\\rightarrow C:0{,}8Von CC nach BB gibt es keinen Übergang.ÜbergangsmatrixZeilen stehen für nach, Spalten für von:M=(0,50,250,20,250,500,250,250,8)M= \\begin{pmatrix} 0{,}5 & 0{,}25 & 0{,}2\\\\ 0{,}25 & 0{,}5 & 0\\\\ 0{,}25 & 0{,}25 & 0{,}8 \\end{pmatrix}Verteilung nach einer Woche(0,50,250,20,250,500,250,250,8)(500250250)=(0,5⋅500+0,25⋅250+0,2⋅2500,25⋅500+0,5⋅2500,25⋅500+0,25⋅250+0,8⋅250)\\begin{pmatrix} 0{,}5 & 0{,}25 & 0{,}2\\\\ 0{,}25 & 0{,}5 & 0\\\\ 0{,}25 & 0{,}25 & 0{,}8 \\end{pmatrix} \\begin{pmatrix} 500\\\\ 250\\\\ 250 \\end{pmatrix} = \\begin{pmatrix} 0{,}5\\cdot500+0{,}25\\cdot250+0{,}2\\cdot250\\\\ 0{,}25\\cdot500+0{,}5\\cdot250\\\\ 0{,}25\\cdot500+0{,}25\\cdot250+0{,}8\\cdot250 \\end{pmatrix} =(362,5250387,5)= \\boxed{ \\begin{pmatrix} 362{,}5\\\\ 250\\\\ 387{,}5 \\end{pmatrix}}Also nach einer Woche:A:362,5,B:250,C:387,5A:362{,}5,\\qquad B:250,\\qquad C:387{,}5Verteilung nach zwei Wochen(0,50,250,20,250,500,250,250,8)(362,5250387,5)=(321,25215,625463,125)\\begin{pmatrix} 0{,}5 & 0{,}25 & 0{,}2\\\\ 0{,}25 & 0{,}5 & 0\\\\ 0{,}25 & 0{,}25 & 0{,}8 \\end{pmatrix} \\begin{pmatrix} 362{,}5\\\\ 250\\\\ 387{,}5 \\end{pmatrix} = \\boxed{ \\begin{pmatrix} 321{,}25\\\\ 215{,}625\\\\ 463{,}125 \\end{pmatrix}}Die Gesamtzahl bleibt dabei jeweils bei 10001000.",
       "layout": "title-content",
       "subtitle": "",
@@ -1235,7 +1188,7 @@
         "bodyHtml"
       ],
       "id": "slide-1787117622972-o67dj",
-      "order": 13,
+      "order": 12,
       "sourceLessonName": "01.05 Insekten und Autos",
       "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
@@ -2251,7 +2204,7 @@
       "revealEnabled": true,
       "zoneRevealSteps": {},
       "id": "slide-pptx-prozesse-fahrrad",
-      "order": 14,
+      "order": 13,
       "preparationNotes": "",
       "materialNotes": "",
       "sourceLessonName": "01.07 Prozesse am Fahrrad",
@@ -2304,7 +2257,7 @@
       "revealEnabled": true,
       "zoneRevealSteps": {},
       "id": "slide-1787219258001-au92k",
-      "order": 15,
+      "order": 14,
       "hiddenLayoutZones": [
         "bodyHtml"
       ],
@@ -2429,7 +2382,7 @@
         "bodyHtml"
       ],
       "id": "slide-1787219258001-tt2dx",
-      "order": 16,
+      "order": 15,
       "sourceLessonName": "01.07 Prozesse am Fahrrad",
       "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
@@ -2581,13 +2534,13 @@
         "bodyHtml"
       ],
       "id": "slide-1787649939379-y81we",
-      "order": 17,
+      "order": 16,
       "sourceLessonName": "01.08 Übung",
       "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "id": "slide-1787651324534-8g0o0",
-      "order": 18,
+      "order": 17,
       "speakerNotes": "",
       "layout": "title-content",
       "subtitle": "",
@@ -2620,7 +2573,7 @@
     },
     {
       "id": "slide-1787744446487-e7ifa",
-      "order": 19,
+      "order": 18,
       "speakerNotes": "",
       "layout": "two-column",
       "subtitle": "",
@@ -2652,7 +2605,7 @@
     },
     {
       "id": "slide-pptx-prozesse-schokolade",
-      "order": 20,
+      "order": 19,
       "speakerNotes": "",
       "layout": "blank-full",
       "subtitle": "",
@@ -3529,7 +3482,7 @@
     },
     {
       "id": "slide-1787742741976-bzf21",
-      "order": 21,
+      "order": 20,
       "speakerNotes": "Matrix A (Schokoladenbedarf je Packung)\nZeilen: Schokoladensorten (Zeile 1: Zartbitterschokolade, Zeile 2: Weiße Schokolade ...)\nSpalten: Packungen (Spalte 1: Edle Mischung, Spalte 2: Süße Mischung)\nA=(622325)A=\n\\begin{pmatrix}\n6 & 2\\\\\n2 & 3\\\\\n2 & 5\n\\end{pmatrix}​​\nMatrix B (Rohstoffbedarf je Schokoladenstück)\nZeilen: Rohstoffe, Spalten: Schokoladensorten\nB=(603153331002)B=\n\\begin{pmatrix}\n6 & 0 & 3\\\\\n1 & 5 & 3\\\\\n3 & 3 & 1\\\\\n0 & 0 & 2\n\\end{pmatrix}GesamtbedarfsmatrixG= B⋅AG=(603153331002)⋅(622325)​ Kundenbestellung\nBestellvektor:\nx=(10080)x=\n\\begin{pmatrix}\n100\\\\\n80\n\\end{pmatrix}Gesamtbedarf:\nr=G⋅xr=G\\cdot x r=(422722322620410)⋅(10080)r=\n\\begin{pmatrix}\n42 & 27\\\\\n22 & 32\\\\\n26 & 20\\\\\n4 & 10\n\\end{pmatrix}\n\\cdot\n\\begin{pmatrix}\n100\\\\\n80\n\\end{pmatrix}Ergebnis\nFür die Bestellung von 100 Edlen Mischungen und 80 Süßen Mischungen werden benötigt:\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nRohstoffBedarfKakaopulver6.360 gKakaobutter4.760 gZucker4.200 gMilchpulver1.200 g____________________________________________________________Weg 1: Zweistufige Rechnung\nZuerst wird aus der Bestellung der Bedarf an Schokoladensorten berechnet. Anschließend wird aus diesem Schokoladenbedarf der Rohstoffbedarf bestimmt.\nMathematisch:\nRohstoffbedarf=A⋅(B⋅x)\\text{Rohstoffbedarf}\n= A \\cdot (B \\cdot x) Dabei ist\nAA: Rohstoffe → SchokoladensortenBB: Schokoladensorten → Pralinenpackungenxx: Bestellvektor\n\nWeg 2: Gesamtbedarfsmatrix\nZunächst werden die beiden Teilbedarfsmatrizen zu einer Gesamtbedarfsmatrix zusammengefasst:\nG=A⋅B.G=A\\cdot B.Dann genügt eine einzige Matrixmultiplikation:\nRohstoffbedarf=G⋅x.\\text{Rohstoffbedarf}\n= G \\cdot x.Begründung\nBeide Wege liefern dasselbe Ergebnis, weil die Matrixmultiplikation assoziativ ist:\nA⋅(B⋅x)=(A⋅B)⋅x.A\\cdot(B\\cdot x)\n=\n(A\\cdot B)\\cdot x.Deshalb kann man entweder\ndie Berechnung Schritt für Schritt entlang der Produktionsstufen durchführen oderdie Produktionsstufen zunächst zu einer Gesamtbedarfsmatrix zusammenfassen.",
       "layout": "title-content",
       "subtitle": "",
@@ -3659,13 +3612,13 @@
         "bodyHtml"
       ],
       "id": "slide-1787663127083-bw784",
-      "order": 22,
+      "order": 21,
       "sourceLessonName": "01.10 Mehrstufige Prozesse mit Schokolade",
       "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "id": "slide-1787824561305-a07ex",
-      "order": 23,
+      "order": 22,
       "speakerNotes": "",
       "layout": "blank",
       "subtitle": "",
@@ -3713,7 +3666,7 @@
     },
     {
       "id": "slide-1787824591100-kigz9",
-      "order": 24,
+      "order": 23,
       "speakerNotes": "",
       "layout": "blank",
       "subtitle": "",
@@ -3851,13 +3804,13 @@
         "bodyHtml"
       ],
       "id": "slide-1787651826432",
-      "order": 25,
+      "order": 24,
       "sourceLessonName": "01.09 Neutrales Element",
       "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     },
     {
       "id": "slide-1787813980979-2u4o9",
-      "order": 26,
+      "order": 25,
       "speakerNotes": "",
       "layout": "blank",
       "subtitle": "",
@@ -3892,7 +3845,7 @@
     },
     {
       "id": "slide-1788154822011-cds1s",
-      "order": 27,
+      "order": 26,
       "speakerNotes": "",
       "layout": "blank",
       "subtitle": "",
@@ -4031,7 +3984,7 @@
           "strokeColor": "#0D47A1",
           "strokeWidth": 5,
           "fillColor": "transparent",
-          "rotation": 0,
+          "rotation": 0.0,
           "shapePoints": [
             {
               "x": 6,
@@ -4058,7 +4011,7 @@
           "strokeColor": "#0D47A1",
           "strokeWidth": 5,
           "fillColor": "transparent",
-          "rotation": 180,
+          "rotation": 180.0,
           "shapePoints": [
             {
               "x": 6,
@@ -4186,7 +4139,7 @@
     },
     {
       "id": "slide-1788155294998",
-      "order": 28,
+      "order": 27,
       "speakerNotes": "",
       "layout": "blank",
       "subtitle": "",
@@ -4397,7 +4350,7 @@
     },
     {
       "id": "slide-1788160419104-9sq9r",
-      "order": 29,
+      "order": 28,
       "speakerNotes": "Lernziele der StundeMatrixpotenz, Inverse MatrixBeispiellösung:10% der Fahrzeuge aus dem Verkaufslager wechseln in die Reparaturhalle.",
       "layout": "blank",
       "subtitle": "",
@@ -4548,7 +4501,7 @@
         "bodyHtml"
       ],
       "id": "slide-1788154372139-qvgb2",
-      "order": 30,
+      "order": 29,
       "sourceLessonName": "01.11 Die Autos sind kaputt",
       "sourceLessonPath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen"
     }

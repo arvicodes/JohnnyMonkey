@@ -1,3 +1,5 @@
+import { presentationTableSelectionSx } from './presentationTableSelection';
+
 /** Listen-Symbole für Präsentations-Editoren (verschachtelt + Outline-Ebenen). */
 
 export const PRESENTATION_MAX_LIST_LEVEL = 8;
@@ -133,5 +135,6 @@ export function presentationNotesTableSx() {
     '& tbody tr:nth-of-type(even) td': {
       backgroundColor: 'rgba(0,0,0,0.03)',
     },
+    ...presentationTableSelectionSx(),
   };
 }

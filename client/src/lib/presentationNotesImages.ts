@@ -6,6 +6,7 @@ import {
   type SlideImageFrame,
 } from './presentationImageFrames';
 import { JOHNNY_PRESENTATION } from './presentationTheme';
+import { stripTableSelectionHtml } from './presentationTableSelection';
 
 /** Notiz-Grafiken im Textfluss (contentEditable): Größe am Eckpunkt, Entf löscht. */
 
@@ -254,7 +255,7 @@ export function stripNotesImageChrome(root: ParentNode): void {
 export function serializePresentationNotesHtml(editor: HTMLElement): string {
   const clone = editor.cloneNode(true) as HTMLElement;
   stripNotesImageChrome(clone);
-  return clone.innerHTML;
+  return stripTableSelectionHtml(clone.innerHTML);
 }
 
 export const JOHNNY_NOTES_COPY_ATTR = 'data-johnny-notes-copy';

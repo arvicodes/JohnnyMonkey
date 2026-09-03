@@ -58,6 +58,7 @@ import PresentationSlideToolsBar from '../components/presentation/PresentationSl
 import { PresentationSoundSplitControl } from '../components/presentation/PresentationSoundControls';
 import PresentationAnimationBar from '../components/presentation/PresentationAnimationBar';
 import PresentationFormatBar from '../components/presentation/PresentationFormatBar';
+import PresentationTableContextMenuHost from '../components/presentation/PresentationTableContextMenu';
 import PresentationFilmstrip from '../components/presentation/PresentationFilmstrip';
 import { MATERIAL_CRATE_BROWN } from '../components/MaterialCrate';
 import PresentationNotesPanel, {
@@ -210,6 +211,7 @@ import {
 import { createShapeElement } from '../lib/presentationSlideShapes';
 import { createCardElement, createCardPair } from '../lib/presentationSlideCards';
 import { createTableElement, type CreateTableOptions } from '../lib/presentationSlideTables';
+import { stripTableSelectionHtml } from '../lib/presentationTableSelection';
 import {
   canRedoDeck,
   canUndoDeck,
@@ -1113,7 +1115,7 @@ const PresentationEditorPage: React.FC = () => {
 
       if (activeHtmlField.startsWith('element:')) {
         const id = activeHtmlField.slice(8);
-        const html = activeEditor.innerHTML;
+        const html = stripTableSelectionHtml(activeEditor.innerHTML);
         if (editingVariantRef.current) {
           const base =
             playVariantsRef.current?.bySlideId[targetSlideId]?.slide ??
@@ -4503,6 +4505,14 @@ const PresentationEditorPage: React.FC = () => {
               />
             )}
           </Box>
+          <PresentationTableContextMenuHost
+            onMutated={(editor) => {
+              if (editor.getAttribute('data-pres-notes-zone') === 'true') {
+                editor.dispatchEvent(new Event('input', { bubbles: true }));
+              }
+              flushActiveEditor();
+            }}
+          />
 
           {normalizedActive && (
             <>

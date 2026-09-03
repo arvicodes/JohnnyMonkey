@@ -4,10 +4,18 @@
  * Zeilen: untere und obere Kante.
  */
 import {
+  applyColumnWidthPercents,
   findTableRoot,
   getColumnWidthPercents,
+  resizeSelectedColumnsByDeltaPct,
+  setColumnGroupWidthAgainstNeighbor,
   setColumnWidthPercent,
+  syncColumnWidthsFromRender,
 } from './presentationSlideTables';
+import {
+  contiguousIndexRange,
+  getSelectedColIndices,
+} from './presentationTableSelection';
 
 const EDGE_PX = 8;
 const MIN_ROW_PX = 24;
@@ -66,9 +74,9 @@ export function hitTestTableBorder(
     cell.parentElement instanceof HTMLTableRowElement ? cell.parentElement.rowIndex : -1;
   const rowCount = table.rows.length;
 
-  // Gesamte Breite: äußere rechte Kante der letzten Spalte
-  if (nearRight && colIndex === colCount - 1) {
-    return { kind: 'table-width', table };
+  // Rechte Kante der letzten Spalte: letzte Spalte gegen die vorige (nicht die ganze Tabelle)
+  if (nearRight && colIndex === colCount - 1 && colCount >= 2) {
+    return { kind: 'col', table, colIndex: colCount - 1, sign: 1 };
   }
 
   // Spalten: rechte Kante bevorzugen wenn beide (schmale Zelle)
@@ -108,6 +116,53 @@ export function tableResizeCursor(hit: TableResizeHit | null): string | null {
   if (!hit) return null;
   if (hit.kind === 'table-width') return 'ew-resize';
   return hit.kind === 'col' ? 'col-resize' : 'row-resize';
+}
+
+/**
+ * Ziehen am Spaltenrand: markierte Gruppe bleibt intern im Verhältnis,
+ * einzelne Spalte tauscht Breite mit der Nachbarspalte.
+ */
+export function applyColumnBorderDrag(
+  table: HTMLTableElement,
+  borderCol: number,
+  deltaPct: number,
+  start: {
+    selected: number[];
+    startLeftPct: number;
+    startGroupPct: number;
+    startWidths: number[];
+  },
+): void {
+  const n = start.startWidths.length;
+  if (n < 2) return;
+  const range = contiguousIndexRange(start.selected);
+  applyColumnWidthPercents(table, start.startWidths);
+  if (range && start.selected.length >= 2) {
+    const { min, max } = range;
+    if (borderCol === max && max < n - 1) {
+      setColumnGroupWidthAgainstNeighbor(
+        table,
+        start.selected,
+        max + 1,
+        start.startGroupPct + deltaPct,
+      );
+      return;
+    }
+    if (borderCol === min - 1 && min > 0) {
+      setColumnGroupWidthAgainstNeighbor(
+        table,
+        start.selected,
+        min - 1,
+        start.startGroupPct - deltaPct,
+      );
+      return;
+    }
+    if ((borderCol === max || borderCol === n - 1) && max === n - 1) {
+      resizeSelectedColumnsByDeltaPct(table, start.selected, deltaPct);
+      return;
+    }
+  }
+  setColumnWidthPercent(table, borderCol, start.startLeftPct + deltaPct);
 }
 
 function tableWidthParentMaxPx(table: HTMLTableElement): number {
@@ -179,17 +234,25 @@ export function startTableBorderResize(
   }
 
   if (hit.kind === 'col') {
+    syncColumnWidthsFromRender(hit.table);
     const widths = getColumnWidthPercents(hit.table);
-    if (hit.colIndex < 0 || hit.colIndex >= widths.length - 1) return false;
-    const startLeftPct = widths[hit.colIndex] || 100 / widths.length;
-    const tableWidthPx = hit.table.getBoundingClientRect().width || 1;
+    if (hit.colIndex < 0 || hit.colIndex >= widths.length) return false;
     const table = hit.table;
     const colIndex = hit.colIndex;
     const sign = hit.sign;
+    const tableWidthPx = table.getBoundingClientRect().width || 1;
+    const selected = getSelectedColIndices(table);
+    const startLeftPct = widths[colIndex] || 100 / widths.length;
+    const startGroupPct = selected.reduce((s, i) => s + (widths[i] || 0), 0);
 
     const onMove = (ev: PointerEvent) => {
-      const dxPct = ((ev.clientX - startClientX) / tableWidthPx) * 100;
-      setColumnWidthPercent(table, colIndex, startLeftPct + sign * dxPct);
+      const dxPct = ((ev.clientX - startClientX) / tableWidthPx) * 100 * sign;
+      applyColumnBorderDrag(table, colIndex, dxPct, {
+        selected,
+        startLeftPct,
+        startGroupPct,
+        startWidths: widths,
+      });
       opts?.onUpdate?.();
     };
     const onUp = () => {

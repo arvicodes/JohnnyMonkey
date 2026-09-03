@@ -260,10 +260,14 @@ export function applyJohnnyTableFormatting(
   const theme = getTableTheme(themeId || table.getAttribute('data-pres-table-theme') || 'gelb');
   table.setAttribute('data-pres-table', '1');
   table.setAttribute('data-pres-table-theme', theme.id);
-  table.style.width = '100%';
+  if (!table.style.width) table.style.width = '100%';
   table.style.borderCollapse = 'collapse';
   table.style.tableLayout = 'fixed';
   table.style.fontSize = 'inherit';
+  const keptWidths =
+    table.querySelector('colgroup') && table.rows[0]
+      ? getColumnWidthPercents(table)
+      : null;
 
   // Erste Zeile ohne thead → zu thead befördern
   if (!table.tHead && table.rows.length > 0) {
@@ -287,7 +291,10 @@ export function applyJohnnyTableFormatting(
     });
   }
 
-  ensureColgroup(table);
+  const cols = ensureColgroup(table);
+  if (keptWidths && keptWidths.length === cols.length) {
+    applyColumnWidthPercents(table, keptWidths);
+  }
 
   table.querySelectorAll('th').forEach((cell) => {
     const el = cell as HTMLElement;
@@ -727,36 +734,190 @@ export function applyZebraStriping(table: HTMLTableElement): void {
   reindexZebra(table, theme.zebraBg);
 }
 
-/** Alle Spalten auf gleiche Breite (%). */
-export function distributeColumnsEvenly(table: HTMLTableElement): boolean {
+const MIN_ROW_PX = 24;
+
+function uniqueSortedIndices(values: number[] | undefined, maxExclusive: number): number[] {
+  if (!values?.length) {
+    return Array.from({ length: maxExclusive }, (_, i) => i);
+  }
+  return [...new Set(values.filter((i) => i >= 0 && i < maxExclusive))].sort((a, b) => a - b);
+}
+
+/** Spaltenbreiten als % schreiben (Summe 100). */
+export function applyColumnWidthPercents(table: HTMLTableElement, widths: number[]): void {
   const cols = ensureColgroup(table);
-  if (cols.length === 0) return false;
-  const pct = `${(100 / cols.length).toFixed(4)}%`;
-  cols.forEach((col) => {
-    col.style.width = pct;
+  if (!cols.length) return;
+  const minPct = minColumnPercentForTable(table);
+  const next = cols.map((_, i) => Math.max(minPct, widths[i] || 0));
+  const sum = next.reduce((a, b) => a + b, 0) || 1;
+  cols.forEach((col, i) => {
+    col.style.width = `${((next[i] / sum) * 100).toFixed(3)}%`;
   });
   table.style.tableLayout = 'fixed';
-  table.style.width = '100%';
+  ensureTableCellsCanShrink(table);
+}
+
+function measureRenderedColumnPercents(table: HTMLTableElement, colCount: number): number[] {
+  const row = table.rows[0];
+  const tableW = table.getBoundingClientRect().width;
+  if (!row || !(tableW > 1)) {
+    return Array.from({ length: colCount }, () => 100 / Math.max(1, colCount));
+  }
+  const rendered = Array.from({ length: colCount }, (_, i) => {
+    const cell = row.cells[i];
+    return cell ? cell.getBoundingClientRect().width : 0;
+  });
+  const sum = rendered.reduce((a, b) => a + b, 0);
+  if (!(sum > 1)) {
+    return Array.from({ length: colCount }, () => 100 / Math.max(1, colCount));
+  }
+  return rendered.map((w) => (w / sum) * 100);
+}
+
+/** Gemessene Pixelbreiten in colgroup übernehmen — Ausgang für Ziehen. */
+export function syncColumnWidthsFromRender(table: HTMLTableElement): number[] {
+  const cols = ensureColgroup(table);
+  const measured = measureRenderedColumnPercents(table, cols.length);
+  applyColumnWidthPercents(table, measured);
+  return getColumnWidthPercents(table);
+}
+
+/** Markierte oder alle Spalten auf gleiche Breite. */
+export function distributeColumnsEvenly(
+  table: HTMLTableElement,
+  colIndices?: number[],
+): boolean {
+  const cols = ensureColgroup(table);
+  if (cols.length === 0) return false;
+  table.style.tableLayout = 'fixed';
+  const indices = uniqueSortedIndices(colIndices, cols.length);
+  if (indices.length === 0) return false;
+  if (indices.length === cols.length) {
+    const pct = 100 / cols.length;
+    applyColumnWidthPercents(
+      table,
+      cols.map(() => pct),
+    );
+    if (!table.style.width) table.style.width = '100%';
+    return true;
+  }
+  const widths = getColumnWidthPercents(table);
+  const share = indices.reduce((s, i) => s + (widths[i] || 0), 0);
+  const each = share / indices.length;
+  indices.forEach((i) => {
+    widths[i] = each;
+  });
+  applyColumnWidthPercents(table, widths);
   return true;
 }
 
-/** Alle Zeilen auf gleiche Höhe (% der Tabellenhöhe). */
-export function distributeRowsEvenly(table: HTMLTableElement): boolean {
+function rowHeightPx(row: HTMLTableRowElement): number {
+  const rect = row.getBoundingClientRect().height;
+  if (rect > 1) return rect;
+  const raw = parseFloat(row.style.height);
+  return Number.isFinite(raw) && raw > 0 ? raw : MIN_ROW_PX;
+}
+
+function applyRowHeightPx(row: HTMLTableRowElement, heightPx: number): void {
+  const h = Math.max(MIN_ROW_PX, Math.round(heightPx));
+  row.style.height = `${h}px`;
+  Array.from(row.cells).forEach((cell) => {
+    (cell as HTMLElement).style.height = `${h}px`;
+    (cell as HTMLElement).style.minHeight = `${h}px`;
+  });
+}
+
+/** Markierte oder alle Zeilen auf gleiche Höhe. */
+export function distributeRowsEvenly(
+  table: HTMLTableElement,
+  rowIndices?: number[],
+): boolean {
   const rows = Array.from(table.rows);
   if (rows.length === 0) return false;
-  const pct = `${(100 / rows.length).toFixed(4)}%`;
-  table.style.height = '100%';
-  rows.forEach((tr) => {
-    tr.style.height = pct;
-  });
+  const indices = uniqueSortedIndices(rowIndices, rows.length);
+  if (indices.length === 0) return false;
+  if (indices.length === rows.length) {
+    const total = rows.reduce((s, row) => s + rowHeightPx(row), 0);
+    const each = Math.max(MIN_ROW_PX, total / rows.length);
+    rows.forEach((row) => applyRowHeightPx(row, each));
+    return true;
+  }
+  const total = indices.reduce((s, i) => s + rowHeightPx(rows[i]), 0);
+  const each = Math.max(MIN_ROW_PX, total / indices.length);
+  indices.forEach((i) => applyRowHeightPx(rows[i], each));
   return true;
 }
 
-/** Spalten und Zeilen gleichmäßig. */
-export function distributeTableEvenly(table: HTMLTableElement): boolean {
-  const colsOk = distributeColumnsEvenly(table);
-  const rowsOk = distributeRowsEvenly(table);
+/** Spalten und Zeilen gleichmäßig (optional nur Markierung). */
+export function distributeTableEvenly(
+  table: HTMLTableElement,
+  opts?: { colIndices?: number[]; rowIndices?: number[] },
+): boolean {
+  const colsOk = distributeColumnsEvenly(table, opts?.colIndices);
+  const rowsOk = distributeRowsEvenly(table, opts?.rowIndices);
   return colsOk || rowsOk;
+}
+
+/**
+ * Markierte Spalten gemeinsam schmaler/breiter:
+ * Verhältnis in der Gruppe bleibt, der Rest teilt sich den übrigen Platz.
+ */
+export function resizeSelectedColumnsByDeltaPct(
+  table: HTMLTableElement,
+  colIndices: number[],
+  deltaPct: number,
+): boolean {
+  const widths = getColumnWidthPercents(table);
+  const selected = uniqueSortedIndices(colIndices, widths.length);
+  if (selected.length === 0 || widths.length < 2) return false;
+  const minPct = minColumnPercentForTable(table);
+  const groupTotal = selected.reduce((s, i) => s + widths[i], 0);
+  if (!(groupTotal > 0)) return false;
+  const others = widths.map((w, i) => (selected.includes(i) ? 0 : w));
+  const othersTotal = others.reduce((a, b) => a + b, 0);
+  const minGroup = selected.length * minPct;
+  const minOthers = Math.max(minPct, (widths.length - selected.length) * minPct);
+  const nextGroup = Math.min(100 - minOthers, Math.max(minGroup, groupTotal + deltaPct));
+  const scaleG = nextGroup / groupTotal;
+  const nextOthers = 100 - nextGroup;
+  const scaleO = othersTotal > 0 ? nextOthers / othersTotal : 0;
+  const next = widths.map((w, i) =>
+    selected.includes(i) ? w * scaleG : othersTotal > 0 ? w * scaleO : w,
+  );
+  applyColumnWidthPercents(table, next);
+  return true;
+}
+
+/**
+ * Zusammenhängende Gruppe gegen die Nachbarspalte am gezogenen Rand.
+ * Nach „gleichmäßig verteilen“ bleibt die Gruppe intern gleichmäßig.
+ */
+export function setColumnGroupWidthAgainstNeighbor(
+  table: HTMLTableElement,
+  groupIndices: number[],
+  neighborIndex: number,
+  newGroupTotalPct: number,
+): boolean {
+  const widths = getColumnWidthPercents(table);
+  const group = uniqueSortedIndices(groupIndices, widths.length);
+  if (group.length < 1 || neighborIndex < 0 || neighborIndex >= widths.length) return false;
+  if (group.includes(neighborIndex)) return false;
+  const minPct = minColumnPercentForTable(table);
+  const groupTotal = group.reduce((s, i) => s + widths[i], 0);
+  const neighbor = widths[neighborIndex];
+  const pair = groupTotal + neighbor;
+  if (!(groupTotal > 0) || !(pair > 0)) return false;
+  const nextGroup = Math.min(
+    pair - minPct,
+    Math.max(group.length * minPct, newGroupTotalPct),
+  );
+  const scale = nextGroup / groupTotal;
+  group.forEach((i) => {
+    widths[i] *= scale;
+  });
+  widths[neighborIndex] = pair - nextGroup;
+  applyColumnWidthPercents(table, widths);
+  return true;
 }
 
 /** Mindestbreite einer Spalte in % der aktuellen Tabellenbreite. */
@@ -766,25 +927,24 @@ export function minColumnPercentForTable(table: HTMLTableElement): number {
   return Math.max(1.1, Math.min(10, (MIN_COL_PX / w) * 100));
 }
 
-/** Spaltenbreite in % setzen (Nachbar-Spalte gleicht aus). */
+/** Spaltenbreite in % setzen (Nachbar-Spalte gleicht aus; letzte Spalte gegen die vorige). */
 export function setColumnWidthPercent(
   table: HTMLTableElement,
   colIndex: number,
   widthPercent: number,
 ): void {
   const cols = ensureColgroup(table);
-  if (colIndex < 0 || colIndex >= cols.length - 1) return;
-  const left = cols[colIndex];
-  const right = cols[colIndex + 1];
-  const leftCur = parseFloat(left.style.width) || 100 / cols.length;
-  const rightCur = parseFloat(right.style.width) || 100 / cols.length;
-  const pair = leftCur + rightCur;
+  if (colIndex < 0 || colIndex >= cols.length) return;
+  const neighbor = colIndex < cols.length - 1 ? colIndex + 1 : colIndex - 1;
+  if (neighbor < 0) return;
+  const widths = getColumnWidthPercents(table);
+  const pair = widths[colIndex] + widths[neighbor];
   const minPct = minColumnPercentForTable(table);
   const floor = Math.max(0.8, Math.min(minPct, pair / 2));
-  const nextLeft = Math.min(pair - floor, Math.max(floor, widthPercent));
-  const nextRight = pair - nextLeft;
-  left.style.width = `${nextLeft.toFixed(3)}%`;
-  right.style.width = `${nextRight.toFixed(3)}%`;
+  const nextSelf = Math.min(pair - floor, Math.max(floor, widthPercent));
+  widths[colIndex] = nextSelf;
+  widths[neighbor] = pair - nextSelf;
+  applyColumnWidthPercents(table, widths);
 }
 
 /** Ausgewählte Spalte auf die Mindestbreite ziehen (Rest an die Nachbarspalte). */
@@ -809,7 +969,13 @@ export function setColumnNarrow(
 
 export function getColumnWidthPercents(table: HTMLTableElement): number[] {
   const cols = ensureColgroup(table);
-  return cols.map((col) => parseFloat(col.style.width) || 100 / Math.max(1, cols.length));
+  if (!cols.length) return [];
+  const fromStyle = cols.map((col) => parseFloat(col.style.width));
+  if (fromStyle.every((n) => Number.isFinite(n) && n > 0)) {
+    const sum = fromStyle.reduce((a, b) => a + b, 0);
+    if (sum > 0) return fromStyle.map((n) => (n / sum) * 100);
+  }
+  return measureRenderedColumnPercents(table, cols.length);
 }
 
 /** Alte 8px-Polster und Content-Minimums entfernen, damit Spalten schmal werden. */
