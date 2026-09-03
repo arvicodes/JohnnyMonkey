@@ -618,6 +618,7 @@ export function notesWrapToSlideElement(wrap: HTMLElement): SlideElement {
     imageFit: 'contain',
     imageSourceRect: crop ? { ...NOTES_CROP_SOURCE } : undefined,
     imageFrame: readNotesImageFrame(wrap),
+    zIndex: 4,
   };
 }
 

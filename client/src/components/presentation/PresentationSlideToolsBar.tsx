@@ -1835,7 +1835,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                     </>
                   )}
 
-                  {(selectedElement.type === 'video' || selectedElement.type === 'embed') && (
+                  {selectedElement && (selectedElement.type === 'video' || selectedElement.type === 'embed') && (
                     <TextField
                       size="small"
                       fullWidth
@@ -1850,7 +1850,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                     />
                   )}
 
-                  {(selectedElement.type === 'video' ||
+                  {selectedElement && (selectedElement.type === 'video' ||
                     selectedElement.type === 'embed' ||
                     selectedElement.type === 'text') && (
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.35, mb: 0.5 }}>
