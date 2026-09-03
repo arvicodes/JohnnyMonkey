@@ -1280,14 +1280,16 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
           selectedElement.type === 'shape' ||
           selectedElement.type === 'card' ||
           selectedElement.type === 'table' ||
-          selectedElement.type === 'text') && (
+          selectedElement.type === 'text' ||
+          selectedElement.type === 'video' ||
+          selectedElement.type === 'embed') && (
           <Box sx={toolGroupSx}>
-            <Tooltip title="Ausschneiden (⌘X)">
+            <Tooltip title="Ausschneiden (⌘X) — Element, auch Box/Form">
               <IconButton size="small" onClick={() => onCutElement?.()} sx={iconBtnSx}>
                 <CutIcon sx={{ fontSize: 14 }} />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Kopieren (⌘C)">
+            <Tooltip title="Kopieren (⌘C) — Element, auch Box/Form">
               <IconButton size="small" onClick={() => onCopyElement?.()} sx={iconBtnSx}>
                 <CopyIcon sx={{ fontSize: 14 }} />
               </IconButton>

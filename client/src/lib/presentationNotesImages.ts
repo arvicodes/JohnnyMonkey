@@ -10,6 +10,7 @@ export const PRES_NOTES_IMG_ATTR = 'data-pres-notes-img';
 export const PRES_NOTES_IMG_SELECTED_CLASS = 'pres-notes-img-selected';
 export const PRES_NOTES_IMG_FRAME_ATTR = 'data-pres-notes-img-frame';
 export const PRES_NOTES_IMG_FRAME_COLOR_ATTR = 'data-pres-notes-img-frame-color';
+export const PRES_NOTES_IMG_ROTATION_ATTR = 'data-pres-notes-img-rotation';
 export const NOTES_IMAGE_FRAME_DEFAULT_COLOR = '#C62828';
 export const NOTES_IMAGE_FRAME_BLACK_COLOR = '#1a1a1a';
 export const NOTES_IMAGE_FRAME_DEFAULT_WIDTH = 3;
@@ -100,6 +101,9 @@ export function presentationNotesImageEditorSx() {
       border: `${NOTES_IMAGE_FRAME_DEFAULT_WIDTH}px solid ${NOTES_IMAGE_FRAME_DEFAULT_COLOR}`,
       boxSizing: 'border-box',
     },
+    [`& .${PRES_NOTES_IMG_WRAP_CLASS}[${PRES_NOTES_IMG_ROTATION_ATTR}]`]: {
+      transformOrigin: 'center center',
+    },
     [`& .${PRES_NOTES_IMG_WRAP_CLASS}.${PRES_NOTES_IMG_SELECTED_CLASS}`]: {
       outline: '2px solid #f57f17',
       outlineOffset: '2px',
@@ -156,6 +160,9 @@ export function presentationNotesImageViewSx(options?: { maxHeight?: number | nu
     [`& .${PRES_NOTES_IMG_WRAP_CLASS}[${PRES_NOTES_IMG_FRAME_ATTR}]`]: {
       border: `${NOTES_IMAGE_FRAME_DEFAULT_WIDTH}px solid ${NOTES_IMAGE_FRAME_DEFAULT_COLOR}`,
       boxSizing: 'border-box',
+    },
+    [`& .${PRES_NOTES_IMG_WRAP_CLASS}[${PRES_NOTES_IMG_ROTATION_ATTR}]`]: {
+      transformOrigin: 'center center',
     },
     [`& img, & img[${PRES_NOTES_IMG_ATTR}]`]: {
       maxWidth: '100%',
@@ -269,6 +276,7 @@ export function releaseNotesImagesToFlow(root: ParentNode): void {
       el.style.maxWidth = '100%';
     }
     applyNotesImageFrameStyleFromAttrs(el);
+    applyNotesImageRotationStyle(el);
     const img = el.querySelector('img') as HTMLImageElement | null;
     if (img) {
       img.style.removeProperty('max-width');
@@ -345,6 +353,100 @@ export function applyNotesImageFrameShortcut(editor: HTMLElement | null): boolea
     setNotesImageFrame(wrap, true, NOTES_IMAGE_FRAME_DEFAULT_COLOR);
   }
   return true;
+}
+
+function normalizeNotesImageRotation(deg: number): number {
+  return ((Math.round(deg) % 360) + 360) % 360;
+}
+
+export function getNotesImageRotation(wrap: HTMLElement): number {
+  const raw = parseInt(wrap.getAttribute(PRES_NOTES_IMG_ROTATION_ATTR) || '0', 10);
+  return Number.isFinite(raw) ? normalizeNotesImageRotation(raw) : 0;
+}
+
+function applyNotesImageRotationStyle(wrap: HTMLElement): void {
+  const deg = getNotesImageRotation(wrap);
+  if (deg === 0) {
+    wrap.removeAttribute(PRES_NOTES_IMG_ROTATION_ATTR);
+    wrap.style.removeProperty('transform');
+    return;
+  }
+  wrap.setAttribute(PRES_NOTES_IMG_ROTATION_ATTR, String(deg));
+  wrap.style.transform = `rotate(${deg}deg)`;
+  wrap.style.transformOrigin = 'center center';
+}
+
+/** ±90° Drehung am ausgewählten Notiz-Bild. */
+export function rotateSelectedNotesImage(editor: HTMLElement | null, delta: number): boolean {
+  const wrap = getSelectedNotesImageWrap(editor);
+  if (!wrap) return false;
+  const next = normalizeNotesImageRotation(getNotesImageRotation(wrap) + delta);
+  if (next === 0) wrap.removeAttribute(PRES_NOTES_IMG_ROTATION_ATTR);
+  else wrap.setAttribute(PRES_NOTES_IMG_ROTATION_ATTR, String(next));
+  applyNotesImageRotationStyle(wrap);
+  return true;
+}
+
+/** API-URL oder Pfad → speicherbarer Folien-Bildpfad (oder null = neu hochladen). */
+export function notesImageSrcToSlidePath(src: string): string | null {
+  const raw = (src || '').trim();
+  if (!raw) return null;
+  if (raw.startsWith('/api/file-system-paths/read-image')) {
+    try {
+      const u = new URL(raw, typeof window !== 'undefined' ? window.location.origin : 'http://local');
+      const fp = u.searchParams.get('filePath');
+      return fp?.trim() || null;
+    } catch {
+      return null;
+    }
+  }
+  if (raw.startsWith('data:') || /^https?:\/\//i.test(raw)) return null;
+  if (raw.startsWith('/api/')) return null;
+  return raw;
+}
+
+export type NotesImageToSlidePayload = {
+  src: string;
+  rotation: number;
+  frameOn: boolean;
+  frameColor: string;
+  clientX: number;
+  clientY: number;
+  displayWidthPx: number;
+  displayHeightPx: number;
+};
+
+export function takeNotesImagePayload(
+  wrap: HTMLElement,
+  clientX: number,
+  clientY: number,
+): NotesImageToSlidePayload | null {
+  const img = wrap.querySelector('img') as HTMLImageElement | null;
+  const src = img?.getAttribute('src')?.trim() || '';
+  if (!src) return null;
+  const rect = wrap.getBoundingClientRect();
+  return {
+    src,
+    rotation: getNotesImageRotation(wrap),
+    frameOn: notesImageFrameIsOn(wrap),
+    frameColor: wrap.getAttribute(PRES_NOTES_IMG_FRAME_COLOR_ATTR) || NOTES_IMAGE_FRAME_DEFAULT_COLOR,
+    clientX,
+    clientY,
+    displayWidthPx: Math.max(1, rect.width),
+    displayHeightPx: Math.max(1, rect.height),
+  };
+}
+
+export function slideSurfaceHits(clientX: number, clientY: number): HTMLElement | null {
+  const stack = document.elementsFromPoint(clientX, clientY);
+  for (const node of stack) {
+    if (!(node instanceof HTMLElement)) continue;
+    if (node.closest(`[${PRES_NOTES_DROP_ATTR}]`)) continue;
+    if (node.closest('[data-pres-notes-zone="true"]')) continue;
+    const slide = node.closest('[data-pres-slide]') as HTMLElement | null;
+    if (slide) return slide;
+  }
+  return null;
 }
 
 export function applyNotesImageFlowToHtml(html: string): string {
@@ -748,7 +850,13 @@ export function dedupeAdjacentNotesImages(root: ParentNode): void {
   }
 }
 
-function bindNotesImage(wrap: HTMLElement, img: HTMLImageElement, editor: HTMLElement, onChange: () => void) {
+function bindNotesImage(
+  wrap: HTMLElement,
+  img: HTMLImageElement,
+  editor: HTMLElement,
+  onChange: () => void,
+  onMoveToSlide?: (payload: NotesImageToSlidePayload) => boolean | Promise<boolean>,
+) {
   if (wrap.getAttribute(BOUND_ATTR) === '2') return;
   if (wrap.getAttribute(BOUND_ATTR)) {
     const fresh = wrap.cloneNode(true) as HTMLElement;
@@ -761,6 +869,8 @@ function bindNotesImage(wrap: HTMLElement, img: HTMLImageElement, editor: HTMLEl
   }
   wrap.setAttribute(BOUND_ATTR, '2');
   wrap.setAttribute('contenteditable', 'false');
+  applyNotesImageRotationStyle(wrap);
+  applyNotesImageFrameStyleFromAttrs(wrap);
 
   let handleEl = wrap.querySelector(`.${RESIZE_HANDLE_CLASS}`) as HTMLElement | null;
   if (!handleEl) {
@@ -768,7 +878,7 @@ function bindNotesImage(wrap: HTMLElement, img: HTMLImageElement, editor: HTMLEl
     handleEl.className = RESIZE_HANDLE_CLASS;
     handleEl.setAttribute('contenteditable', 'false');
     handleEl.setAttribute('aria-label', 'Bildgröße ändern');
-    handleEl.title = 'Ziehen: im Text verschieben · Ecke: Größe · Entf: löschen';
+    handleEl.title = 'Ziehen: Notizen oder zurück auf Folie · Ecke: Größe · Entf: löschen';
     wrap.appendChild(handleEl);
   }
   const handle: HTMLElement = handleEl;
@@ -866,6 +976,30 @@ function bindNotesImage(wrap: HTMLElement, img: HTMLImageElement, editor: HTMLEl
         let moved = false;
         if (dragging) {
           moved = moveNotesImageToPoint(wrap, editor, ev.clientX, ev.clientY);
+          if (!moved && onMoveToSlide && slideSurfaceHits(ev.clientX, ev.clientY)) {
+            const payload = takeNotesImagePayload(wrap, ev.clientX, ev.clientY);
+            if (payload) {
+              void (async () => {
+                let ok = false;
+                try {
+                  ok = Boolean(await Promise.resolve(onMoveToSlide(payload)));
+                } catch {
+                  ok = false;
+                }
+                if (ok) {
+                  removeNotesImageWrap(wrap, editor);
+                  endNotesDrag(editor, () => {
+                    ensureNotesTypingHost(editor);
+                    onChange();
+                  });
+                  return;
+                }
+                selectNotesImageWrap(editor, wrap);
+                endNotesDrag(editor, () => ensureNotesTypingHost(editor));
+              })();
+              return;
+            }
+          }
           selectNotesImageWrap(editor, wrap);
         }
         endNotesDrag(editor, () => {
@@ -999,7 +1133,10 @@ export function placeNotesCaretInTypingHost(editor: HTMLElement): void {
 export function enhancePresentationNotesImages(
   editor: HTMLElement | null,
   onChange: () => void,
-  options?: { skipDedupe?: boolean },
+  options?: {
+    skipDedupe?: boolean;
+    onMoveToSlide?: (payload: NotesImageToSlidePayload) => boolean | Promise<boolean>;
+  },
 ): void {
   if (!editor || notesEditorIsDragging(editor)) return;
   releaseNotesImagesToFlow(editor);
@@ -1007,7 +1144,7 @@ export function enhancePresentationNotesImages(
     const img = node as HTMLImageElement;
     if (!img.getAttribute('src')) return;
     const wrap = ensureNotesImageWrap(img);
-    bindNotesImage(wrap, img, editor, onChange);
+    bindNotesImage(wrap, img, editor, onChange, options?.onMoveToSlide);
   });
   if (!options?.skipDedupe) dedupeAdjacentNotesImages(editor);
   ensureNotesTypingHost(editor);
@@ -1030,7 +1167,15 @@ export function notesDropTargetHits(clientX: number, clientY: number): boolean {
 export function slideElementToNotesInsertHtml(el: SlideElement): string | null {
   if (el.type === 'image' && el.src?.trim()) {
     const name = (el.src.split('/').pop() || 'Bild').replace(/\+/g, ' ');
-    return presentationNotesImageInsertHtml(slideImageUrl(el.src, 960), name);
+    let html = presentationNotesImageInsertHtml(slideImageUrl(el.src, 960), name);
+    const rotation = normalizeNotesImageRotation(el.rotation ?? 0);
+    if (rotation !== 0) {
+      html = html.replace(
+        `style="${WRAP_FLOW_STYLE}"`,
+        `${PRES_NOTES_IMG_ROTATION_ATTR}="${rotation}" style="${WRAP_FLOW_STYLE}transform:rotate(${rotation}deg);transform-origin:center center;"`,
+      );
+    }
+    return html;
   }
   if (el.type === 'text' && el.html?.trim()) return el.html;
   if (el.type === 'card') {

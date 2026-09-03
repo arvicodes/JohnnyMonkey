@@ -285,7 +285,18 @@ import {
   insertImageHtmlAtCursor,
   nudgeFontSize,
 } from '../lib/presentationRichText';
-import { serializePresentationNotesHtml, slideElementToNotesInsertHtml, insertHtmlIntoOpenNotesEditor, appendHtmlToNotesValue, applyNotesImageFrameShortcut } from '../lib/presentationNotesImages';
+import {
+  serializePresentationNotesHtml,
+  slideElementToNotesInsertHtml,
+  insertHtmlIntoOpenNotesEditor,
+  appendHtmlToNotesValue,
+  applyNotesImageFrameShortcut,
+  getSelectedNotesImageWrap,
+  notesImageSrcToSlidePath,
+  NOTES_IMAGE_FRAME_BLACK_COLOR,
+  NOTES_IMAGE_FRAME_DEFAULT_COLOR,
+  type NotesImageToSlidePayload,
+} from '../lib/presentationNotesImages';
 
 const EMPTY_STROKES: PresentationStroke[] = [];
 
@@ -2262,6 +2273,138 @@ const PresentationEditorPage: React.FC = () => {
     [activeId, scheduleSave, setNotesPanelOpenPersist]
   );
 
+  const moveNotesImageToSlide = useCallback(
+    async (payload: NotesImageToSlidePayload): Promise<boolean> => {
+      const current = deckRef.current;
+      const slideEl = slideShellRef.current;
+      if (!current || !activeId || !slideEl || !lessonPath) {
+        setSnackbar('Keine Folie aktiv');
+        return false;
+      }
+      setSnackbar('Bild wird auf die Folie gelegt…');
+      try {
+        let path = notesImageSrcToSlidePath(payload.src);
+        if (!path) {
+          const folder = lessonFolderPath(lessonPath);
+          path = await saveImageUrlToLessonFolder(payload.src, folder);
+        }
+        if (!path) {
+          setSnackbar('Bild konnte nicht auf die Folie gelegt werden');
+          return false;
+        }
+        const aspect = payload.displayWidthPx / Math.max(1, payload.displayHeightPx);
+        let w = DEFAULT_FLOATING_IMAGE_W;
+        let h = w / Math.max(0.2, aspect);
+        if (h > DEFAULT_FLOATING_IMAGE_H * 1.6) {
+          h = DEFAULT_FLOATING_IMAGE_H * 1.6;
+          w = h * aspect;
+        }
+        const base = slideDropPositionForImage(
+          payload.clientX,
+          payload.clientY,
+          slideEl,
+          w,
+          h,
+          activePageCount,
+        );
+        const imageFrame =
+          payload.frameOn
+            ? {
+                preset: 'custom' as const,
+                color:
+                  payload.frameColor === NOTES_IMAGE_FRAME_BLACK_COLOR
+                    ? NOTES_IMAGE_FRAME_BLACK_COLOR
+                    : NOTES_IMAGE_FRAME_DEFAULT_COLOR,
+                width: 3,
+                dash: 'solid' as const,
+              }
+            : undefined;
+        const el: SlideElement = {
+          id: `el-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          type: 'image',
+          x: Math.min(base.x, 100 - w - 1.5),
+          y: Math.min(base.y, 100 * Math.max(1, activePageCount) - h - 1.5),
+          w,
+          h,
+          src: path,
+          zIndex: ((current.slides.find((s) => s.id === activeId)?.elements?.length ?? 0) + 1),
+          imageFit: 'contain',
+          stackLayer: 'foreground',
+          rotation: payload.rotation || undefined,
+          imageFrame,
+        };
+        const slides = current.slides.map((s) =>
+          s.id === activeId ? normalizeSlide({ ...s, elements: [...(s.elements || []), el] }) : s,
+        );
+        scheduleSave({ ...current, slides }, { urgent: true, history: 'immediate' });
+        setSelectedElementId(el.id);
+        setSnackbar('Bild auf Folie — dort weiter drehen, zuschneiden, Rahmen…');
+        return true;
+      } catch (e) {
+        setSnackbar(e instanceof Error ? e.message : 'Bild konnte nicht auf die Folie');
+        return false;
+      }
+    },
+    [activeId, activePageCount, lessonPath, scheduleSave],
+  );
+
+  const processSelectedNotesImage = useCallback(
+    async (mode: 'enhance' | 'remove-bg') => {
+      const editor = document.querySelector('[data-pres-notes-zone="true"]') as HTMLElement | null;
+      const wrap = getSelectedNotesImageWrap(editor);
+      const img = wrap?.querySelector('img') as HTMLImageElement | null;
+      const src = img?.getAttribute('src')?.trim();
+      if (!wrap || !img || !src || !lessonPath) {
+        setSnackbar('Bild in den Notizen anklicken');
+        return;
+      }
+      if (mode === 'enhance') {
+        setEnhancingImage(true);
+        setSnackbar('Foto wird verbessert…');
+      } else {
+        setRemovingImageBackground(true);
+        setSnackbar('Hintergrund wird entfernt…');
+      }
+      try {
+        const base = (notesImageSrcToSlidePath(src) || src).split('/').pop() || 'foto';
+        if (mode === 'enhance') {
+          const file = await enhanceImageFromUrl(src, base);
+          const path = await uploadImageFile(file);
+          if (!path) return;
+          img.setAttribute('src', slideImageUrl(path, 960));
+        } else {
+          const { file, removedRatio } = await removeNearWhiteBackgroundFromUrl(src, base, {
+            tolerance: 52,
+          });
+          if (removedRatio < 0.002) {
+            setSnackbar('Kaum hellen Hintergrund gefunden — Bild unverändert');
+            return;
+          }
+          const path = await uploadImageFile(file);
+          if (!path) return;
+          img.setAttribute('src', slideImageUrl(path, 960));
+          setSnackbar(
+            removedRatio > 0.15
+              ? 'Hintergrund entfernt'
+              : 'Hintergrund teilweise entfernt',
+          );
+        }
+        editor?.dispatchEvent(new Event('input', { bubbles: true }));
+        if (editor) {
+          const nextNotes = serializePresentationNotesHtml(editor);
+          updateSlide({ speakerNotesHtml: nextNotes, speakerNotes: htmlToPlain(nextNotes) });
+        }
+        if (mode === 'enhance') setSnackbar('Foto verbessert');
+      } catch (e) {
+        setSnackbar(e instanceof Error ? e.message : 'Bildbearbeitung fehlgeschlagen');
+      } finally {
+        setEnhancingImage(false);
+        setRemovingImageBackground(false);
+      }
+    },
+    [lessonPath, updateSlide],
+  );
+
   const copySelectedElement = useCallback(
     (mode: 'cut' | 'copy') => {
       const current = deckRef.current;
@@ -2283,9 +2426,9 @@ const PresentationEditorPage: React.FC = () => {
         );
         scheduleSave({ ...current, slides }, { history: 'immediate' });
         setSelectedElementId(null);
-        setSnackbar('Ausgeschnitten — andere Folie wählen, dann Einfügen (⌘V)');
+        setSnackbar('Ausgeschnitten — ⌘V zum Einfügen (auch auf anderer Folie)');
       } else {
-        setSnackbar('Kopiert — andere Folie wählen, dann Einfügen (⌘V)');
+        setSnackbar('Kopiert — ⌘V zum Einfügen (leicht versetzt)');
       }
       return true;
     },
@@ -2297,6 +2440,9 @@ const PresentationEditorPage: React.FC = () => {
     const current = deckRef.current;
     if (!clip || !current || !activeId) return false;
     const pasted = cloneElementForPaste(clip.element);
+    const offset = 2.5;
+    pasted.x = Math.min(100 - (pasted.w || 10), (pasted.x ?? 10) + offset);
+    pasted.y = Math.min(100 * Math.max(1, activePageCount) - (pasted.h || 10), (pasted.y ?? 10) + offset);
     const slides = current.slides.map((s) => {
       if (s.id !== activeId) return s;
       return {
@@ -2323,7 +2469,7 @@ const PresentationEditorPage: React.FC = () => {
                 : 'Bild eingefügt',
     );
     return true;
-  }, [activeId, scheduleSave]);
+  }, [activeId, activePageCount, scheduleSave]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -2334,7 +2480,16 @@ const PresentationEditorPage: React.FC = () => {
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
         return;
       }
-      if (target.isContentEditable || target.closest('[data-pres-rich-zone]')) return;
+      const inNotes = Boolean(target.closest('[data-pres-notes-zone="true"]'));
+      if (inNotes) return;
+      const inRich = Boolean(target.isContentEditable || target.closest('[data-pres-rich-zone]'));
+      const sel = window.getSelection();
+      const richTextSelected = Boolean(
+        inRich && sel && !sel.isCollapsed && (sel.toString() || '').replace(/\u00a0/g, ' ').trim(),
+      );
+      // Markierter Text in Karte/Form → normales Kopieren; sonst Element (Box/Form/…)
+      if (richTextSelected && (e.key === 'c' || e.key === 'x')) return;
+      if (inRich && e.key === 'v' && (!selectedElementId || !elementClipboardRef.current)) return;
       if (e.key === 'x' && copySelectedElement('cut')) {
         e.preventDefault();
         return;
@@ -2358,7 +2513,7 @@ const PresentationEditorPage: React.FC = () => {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [copySelectedElement, pasteClipboardElement]);
+  }, [copySelectedElement, pasteClipboardElement, selectedElementId]);
 
   useEffect(() => {
     if (!inkEditActive || !isInkDrawCaptureTool(inkTool)) return;
@@ -4310,6 +4465,9 @@ const PresentationEditorPage: React.FC = () => {
                 lessonPath={lessonPath}
                 onEditorChanged={flushActiveEditor}
                 onMessage={(msg) => setSnackbar(msg)}
+                onNotesImageEnhance={() => void processSelectedNotesImage('enhance')}
+                onNotesImageRemoveBg={() => void processSelectedNotesImage('remove-bg')}
+                notesImageBusy={enhancingImage || removingImageBackground}
                 onInsertImage={
                   notesActiveField
                     ? () => {
@@ -4969,6 +5127,7 @@ const PresentationEditorPage: React.FC = () => {
             onBeforeDiscreteEdit={flushDeckHistory}
             onMoveNotesToTrash={moveNotesToTrash}
             onUploadImage={uploadNotesImageSrc}
+            onMoveImageToSlide={moveNotesImageToSlide}
             lessonPath={lessonPath}
             printMaterials={normalizedActive.printMaterials}
             onPrintMaterialsChange={(next) =>

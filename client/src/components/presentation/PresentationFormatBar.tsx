@@ -47,6 +47,10 @@ import {
   InsertDriveFileOutlined as FileIcon,
   FilterFrames as FrameIcon,
   Functions as FunctionsIcon,
+  RotateLeft as RotateLeftIcon,
+  RotateRight as RotateRightIcon,
+  AutoFixHigh as EnhanceIcon,
+  HideImage as RemoveBgIcon,
 } from '@mui/icons-material';
 import { HIGHLIGHT_PRESETS, TEXT_COLOR_PRESETS } from '../../lib/presentationTheme';
 import {
@@ -91,9 +95,9 @@ import {
 } from '../../lib/presentationFonts';
 import {
   PRES_NOTES_IMG_FRAME_ATTR,
-  PRES_NOTES_IMG_SELECTED_CLASS,
-  PRES_NOTES_IMG_WRAP_CLASS,
+  getSelectedNotesImageWrap,
   toggleNotesImageFrame,
+  rotateSelectedNotesImage,
 } from '../../lib/presentationNotesImages';
 import {
   TABLE_CELL_BG_PRESETS,
@@ -152,6 +156,10 @@ interface PresentationFormatBarProps {
   onInsertImage?: () => void;
   onEditorChanged?: () => void;
   onMessage?: (message: string) => void;
+  /** Notiz-Bild: Foto verbessern / weißen Hintergrund entfernen. */
+  onNotesImageEnhance?: () => void;
+  onNotesImageRemoveBg?: () => void;
+  notesImageBusy?: boolean;
 }
 
 const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
@@ -162,6 +170,9 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   onInsertImage,
   onEditorChanged,
   onMessage,
+  onNotesImageEnhance,
+  onNotesImageRemoveBg,
+  notesImageBusy,
 }) => {
   const [colorAnchor, setColorAnchor] = useState<HTMLElement | null>(null);
   const [highlightAnchor, setHighlightAnchor] = useState<HTMLElement | null>(null);
@@ -171,6 +182,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   const [fontPx, setFontPx] = useState<number | ''>('');
   const [fontFamily, setFontFamily] = useState('');
   const [notesTableTick, setNotesTableTick] = useState(0);
+  const [notesImgTick, setNotesImgTick] = useState(0);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [linkHasExisting, setLinkHasExisting] = useState(false);
@@ -199,6 +211,24 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   const isNotesEditor = Boolean(
     activeEditor?.getAttribute('data-pres-notes-zone') === 'true' || contextLabel === 'Notizen',
   );
+
+  useEffect(() => {
+    if (!activeEditor || !isNotesEditor) return;
+    const bump = () => setNotesImgTick((n) => n + 1);
+    activeEditor.addEventListener('pointerup', bump);
+    activeEditor.addEventListener('click', bump);
+    activeEditor.addEventListener('keyup', bump);
+    return () => {
+      activeEditor.removeEventListener('pointerup', bump);
+      activeEditor.removeEventListener('click', bump);
+      activeEditor.removeEventListener('keyup', bump);
+    };
+  }, [activeEditor, isNotesEditor]);
+
+  const selectedNotesImage = useMemo(() => {
+    void notesImgTick;
+    return getSelectedNotesImageWrap(activeEditor);
+  }, [activeEditor, notesImgTick]);
 
   const editorTableCtx = useMemo(() => {
     void notesTableTick;
@@ -1247,36 +1277,115 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
       )}
 
       {isNotesEditor && (
-        <Tooltip title={navigator.platform.toLowerCase().includes('mac') ? 'Bild umranden (⌘R rot · ⌘R⌘R schwarz)' : 'Bild umranden (Strg+R rot · 2× Strg+R schwarz)'}>
-          <span>
-            <IconButton
-              size="small"
-              aria-label="Bild umranden"
-              disabled={disabled || !activeEditor}
-              sx={{
-                ...btnSx,
-                color:
-                  activeEditor?.querySelector(
-                    `.${PRES_NOTES_IMG_WRAP_CLASS}.${PRES_NOTES_IMG_SELECTED_CLASS}[${PRES_NOTES_IMG_FRAME_ATTR}]`,
-                  )
-                    ? '#C62828'
-                    : btnSx.color,
-              }}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
-                if (!activeEditor) return;
-                if (!toggleNotesImageFrame(activeEditor)) {
-                  onMessage?.('Bild in den Notizen anklicken, dann umranden');
-                  return;
-                }
-                activeEditor.dispatchEvent(new Event('input', { bubbles: true }));
-                onEditorChanged?.();
-              }}
-            >
-              <FrameIcon sx={{ fontSize: 17 }} />
-            </IconButton>
-          </span>
-        </Tooltip>
+        <>
+          <Tooltip title="Notiz-Bild 90° links drehen">
+            <span>
+              <IconButton
+                size="small"
+                aria-label="Bild links drehen"
+                disabled={disabled || !selectedNotesImage}
+                sx={btnSx}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  if (!activeEditor) return;
+                  if (!rotateSelectedNotesImage(activeEditor, -90)) {
+                    onMessage?.('Bild in den Notizen anklicken, dann drehen');
+                    return;
+                  }
+                  activeEditor.dispatchEvent(new Event('input', { bubbles: true }));
+                  onEditorChanged?.();
+                  setNotesImgTick((n) => n + 1);
+                }}
+              >
+                <RotateLeftIcon sx={{ fontSize: 17 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title="Notiz-Bild 90° rechts drehen">
+            <span>
+              <IconButton
+                size="small"
+                aria-label="Bild rechts drehen"
+                disabled={disabled || !selectedNotesImage}
+                sx={btnSx}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  if (!activeEditor) return;
+                  if (!rotateSelectedNotesImage(activeEditor, 90)) {
+                    onMessage?.('Bild in den Notizen anklicken, dann drehen');
+                    return;
+                  }
+                  activeEditor.dispatchEvent(new Event('input', { bubbles: true }));
+                  onEditorChanged?.();
+                  setNotesImgTick((n) => n + 1);
+                }}
+              >
+                <RotateRightIcon sx={{ fontSize: 17 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title={navigator.platform.toLowerCase().includes('mac') ? 'Bild umranden (⌘R rot · ⌘R⌘R schwarz)' : 'Bild umranden (Strg+R rot · 2× Strg+R schwarz)'}>
+            <span>
+              <IconButton
+                size="small"
+                aria-label="Bild umranden"
+                disabled={disabled || !activeEditor}
+                sx={{
+                  ...btnSx,
+                  color:
+                    selectedNotesImage?.getAttribute(PRES_NOTES_IMG_FRAME_ATTR) === '1'
+                      ? '#C62828'
+                      : btnSx.color,
+                }}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  if (!activeEditor) return;
+                  if (!toggleNotesImageFrame(activeEditor)) {
+                    onMessage?.('Bild in den Notizen anklicken, dann umranden');
+                    return;
+                  }
+                  activeEditor.dispatchEvent(new Event('input', { bubbles: true }));
+                  onEditorChanged?.();
+                  setNotesImgTick((n) => n + 1);
+                }}
+              >
+                <FrameIcon sx={{ fontSize: 17 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+          {onNotesImageEnhance && (
+            <Tooltip title="Foto verbessern (Kontrast, Schärfe)">
+              <span>
+                <IconButton
+                  size="small"
+                  aria-label="Foto verbessern"
+                  disabled={disabled || !selectedNotesImage || notesImageBusy}
+                  sx={btnSx}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => onNotesImageEnhance()}
+                >
+                  <EnhanceIcon sx={{ fontSize: 17 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
+          )}
+          {onNotesImageRemoveBg && (
+            <Tooltip title="Weißen Hintergrund entfernen">
+              <span>
+                <IconButton
+                  size="small"
+                  aria-label="Hintergrund entfernen"
+                  disabled={disabled || !selectedNotesImage || notesImageBusy}
+                  sx={btnSx}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => onNotesImageRemoveBg()}
+                >
+                  <RemoveBgIcon sx={{ fontSize: 17 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
+          )}
+        </>
       )}
 
       <Popover

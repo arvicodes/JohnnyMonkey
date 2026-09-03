@@ -31,6 +31,7 @@ import {
   handleNotesImageDeleteKey,
   clearNotesImageSelection,
   applyNotesImageFrameShortcut,
+  type NotesImageToSlidePayload,
 } from '../../lib/presentationNotesImages';
 import { isImageFrameShortcut } from '../../lib/presentationImageFrames';
 import {
@@ -103,6 +104,8 @@ interface NoteZoneProps {
   onBeforeDiscreteEdit?: () => void;
   /** Bild hochladen → Anzeige-URL (read-image API) */
   onUploadImage?: (file: File) => Promise<string | null>;
+  /** Notiz-Bild auf die Folie ziehen. */
+  onMoveImageToSlide?: (payload: NotesImageToSlidePayload) => boolean | Promise<boolean>;
   onHide?: () => void;
   onOpenAudio?: () => void;
   hasAudio?: boolean;
@@ -142,6 +145,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   hasAudio,
   onBeforeDiscreteEdit,
   onUploadImage,
+  onMoveImageToSlide,
   inkStrokes,
   textEditing,
   inkTool,
@@ -194,8 +198,10 @@ const NoteZone: React.FC<NoteZoneProps> = ({
   );
 
   const enhanceImages = useCallback(() => {
-    enhancePresentationNotesImages(ref.current, () => persistFromEditor(false, false));
-  }, [persistFromEditor]);
+    enhancePresentationNotesImages(ref.current, () => persistFromEditor(false, false), {
+      onMoveToSlide: onMoveImageToSlide,
+    });
+  }, [persistFromEditor, onMoveImageToSlide]);
 
   const insertImageFile = useCallback(
     async (file: File, at?: { x: number; y: number }) => {
@@ -366,6 +372,7 @@ const NoteZone: React.FC<NoteZoneProps> = ({
     }
     enhancePresentationNotesImages(el, () => persistFromEditor(false, false), {
       skipDedupe: internalHtml != null,
+      onMoveToSlide: onMoveImageToSlide,
     });
     persistFromEditor(false, false);
   };
@@ -757,6 +764,8 @@ interface PresentationNotesPanelProps {
   onMoveNotesToTrash?: (fieldKey: NotesFieldKey) => void;
   /** Bild hochladen → Anzeige-URL für Notizen */
   onUploadImage?: (file: File) => Promise<string | null>;
+  /** Notiz-Bild zurück auf die Folie ziehen. */
+  onMoveImageToSlide?: (payload: NotesImageToSlidePayload) => boolean | Promise<boolean>;
   /** Notizleiste ausblenden (mehr Platz für die Folie). */
   onHide?: () => void;
   audioTrack?: SlideAudioTrack;
@@ -792,6 +801,7 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
   onBeforeDiscreteEdit,
   onMoveNotesToTrash,
   onUploadImage,
+  onMoveImageToSlide,
   onHide,
   audioTrack,
   onOpenAudio,
@@ -975,6 +985,7 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
         onEditorBlur={onEditorBlur}
         onMoveToTrash={onMoveNotesToTrash}
         onUploadImage={onUploadImage}
+        onMoveImageToSlide={onMoveImageToSlide}
         onHide={onHide}
         onOpenAudio={onOpenAudio}
         hasAudio={Boolean(audioTrack?.path)}
