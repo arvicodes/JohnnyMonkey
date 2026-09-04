@@ -1455,7 +1455,19 @@
       ],
       "transition": "fade",
       "revealEnabled": true,
-      "zoneRevealSteps": {}
+      "zoneRevealSteps": {},
+      "printMaterials": [
+        {
+          "id": "pm-1788436159559-thwwf",
+          "name": "Dinokarten 1.png",
+          "path": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/Dinokarten 1.png"
+        },
+        {
+          "id": "pm-1788436160389-p1f50",
+          "name": "Dinokarten 2.png",
+          "path": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/Dinokarten 2.png"
+        }
+      ]
     },
     {
       "id": "slide-1788426522314-u2sdz",
@@ -1815,7 +1827,24 @@
       "transition": "fade",
       "revealEnabled": true,
       "zoneRevealSteps": {},
-      "sourceLessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen"
+      "sourceLessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen",
+      "printMaterials": [
+        {
+          "id": "pm-1788436232390-wmj6d",
+          "name": "Zahlenstrahl Blanko.png",
+          "path": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/Zahlenstrahl Blanko.png"
+        },
+        {
+          "id": "pm-1788436232619-lt94g",
+          "name": "Zahlenstrahl U_bung 2.png",
+          "path": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/Zahlenstrahl U_bung 2.png"
+        },
+        {
+          "id": "pm-1788436232992-2f5wb",
+          "name": "Zahlenstrahl U_bung.png",
+          "path": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/Zahlenstrahl U_bung.png"
+        }
+      ]
     },
     {
       "id": "slide-1788429275215-agmhf",

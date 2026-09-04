@@ -7,7 +7,12 @@ export type LessonExamBeaconStatus = {
 };
 
 export function teacherIdFromStorage(): string {
-  return (localStorage.getItem('userId') || '').trim();
+  // Lehrer-Login setzt teacherId (App.tsx); userId nur als Fallback
+  return (
+    localStorage.getItem('teacherId') ||
+    localStorage.getItem('userId') ||
+    ''
+  ).trim();
 }
 
 export function openExamHtmlInTab(filePath: string): void {
