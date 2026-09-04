@@ -240,6 +240,8 @@ const NoteZone: React.FC<NoteZoneProps> = ({
     if (!el || editingRef.current) return;
     if (document.activeElement === el || el.contains(document.activeElement)) return;
     if (el.getAttribute('data-pres-notes-dragging') === '1') return;
+    // Ausgewähltes Notiz-Bild behalten, während die Werkzeugleiste bedient wird
+    if (el.querySelector(`.pres-notes-img-wrap.pres-notes-img-selected`)) return;
     const next = displayHtml || '<p><br></p>';
     if (el.innerHTML !== next) el.innerHTML = next;
     if (!readOnly) enhanceImages();
@@ -606,7 +608,11 @@ const NoteZone: React.FC<NoteZoneProps> = ({
           const toFormatBar =
             isFormatBarInteracting() || isPresentationFormatUiTarget(next);
 
-          if (toFormatBar) return;
+          if (toFormatBar) {
+            // Notiz-Bildauswahl + Editor-Zustand halten, während die Folien-Werkzeuge genutzt werden
+            editingRef.current = true;
+            return;
+          }
           if (ref.current?.getAttribute('data-pres-notes-dragging') === '1') {
             editingRef.current = true;
             return;

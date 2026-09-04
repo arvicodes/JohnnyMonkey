@@ -3,12 +3,18 @@
  * Speichert als PNG. Gibt zurück, wie viel Fläche entfernt wurde.
  */
 
+import { slideImageUrlWithoutMax } from './presentationDeck';
+
 export type RemoveWhiteBgOptions = {
   /** Abstand zur Referenzfarbe (0–255). Default 48. */
   tolerance?: number;
-  /** Max. Kantenlänge beim Laden. Default 2400. */
+  /** Max. Kantenlänge beim Laden. Default 3200. */
   maxEdge?: number;
 };
+
+function processSourceUrl(url: string): string {
+  return slideImageUrlWithoutMax(url);
+}
 
 export type RemoveWhiteBgResult = {
   file: File;
@@ -103,9 +109,9 @@ export async function removeNearWhiteBackgroundFromUrl(
   options: RemoveWhiteBgOptions = {},
 ): Promise<RemoveWhiteBgResult> {
   const tolerance = options.tolerance ?? 48;
-  const maxEdge = options.maxEdge ?? 2400;
+  const maxEdge = options.maxEdge ?? 3200;
 
-  const img = await loadImage(imageUrl);
+  const img = await loadImage(processSourceUrl(imageUrl));
   let w = img.naturalWidth || img.width;
   let h = img.naturalHeight || img.height;
   if (!w || !h) throw new Error('Ungültige Bildgröße');

@@ -99,7 +99,8 @@ export async function readImageFileForServe(
   const ext = path.extname(filePath).toLowerCase();
 
   if (isHeicPath(filePath)) {
-    const buffer = await fileToJpegBuffer(filePath, maxEdge ?? 1200);
+    // Ohne max: volle Auflösung (früher Default 1200 → weiche Verbesserungen)
+    const buffer = await fileToJpegBuffer(filePath, maxEdge);
     return { buffer, mimeType: 'image/jpeg' };
   }
 

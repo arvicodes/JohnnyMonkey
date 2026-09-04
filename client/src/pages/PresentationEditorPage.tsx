@@ -124,6 +124,7 @@ import {
   sanitizeSlideAudioTracks,
   slideHasPrintMaterials,
   slideHasExam,
+  SLIDE_IMAGE_EDITOR_MAX,
   type SlideExam,
 } from '../lib/presentationDeck';
 import {
@@ -296,13 +297,16 @@ import {
   appendHtmlToNotesValue,
   applyNotesImageFrameShortcut,
   applyNotesImageElementPatch,
+  clearNotesImageSelection,
   deleteSelectedNotesImage,
   getSelectedNotesImageWrap,
+  getPresentationNotesEditor,
   notesImageSrcToSlidePath,
   notesWrapToSlideElement,
   NOTES_IMAGE_ELEMENT_ID,
   NOTES_IMAGE_FRAME_BLACK_COLOR,
   NOTES_IMAGE_FRAME_DEFAULT_COLOR,
+  PRES_NOTES_IMG_SELECT_EVENT,
   type NotesImageToSlidePayload,
 } from '../lib/presentationNotesImages';
 
@@ -330,6 +334,7 @@ const PresentationEditorPage: React.FC = () => {
   const [activeHtmlField, setActiveHtmlField] = useState<string | null>(null);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [notesImgTick, setNotesImgTick] = useState(0);
+  const selectedNotesWrapRef = useRef<HTMLElement | null>(null);
   const [animationEditMode, setAnimationEditMode] = useState(false);
   const [selectedAnimationTarget, setSelectedAnimationTarget] = useState<string | null>(null);
   const [canvasScale, setCanvasScale] = useState(0.4);
@@ -1538,6 +1543,12 @@ const PresentationEditorPage: React.FC = () => {
       }
       commitEditorState({ history: 'skip' });
       setSelectedElementId(id);
+      const notesEditor = getPresentationNotesEditor();
+      if (notesEditor) {
+        clearNotesImageSelection(notesEditor);
+        selectedNotesWrapRef.current = null;
+        setNotesImgTick((n) => n + 1);
+      }
       // Bilder über Karten: beim Anklicken in den Vordergrund holen (außer Vollbild-Hero).
       if (!id || !activeId) return;
       const working = editingVariantRef.current
@@ -2131,7 +2142,8 @@ const PresentationEditorPage: React.FC = () => {
       const url = slideImageUrl(el.src);
       const base = el.src.split('/').pop() || 'bild';
       const { file, removedRatio } = await removeNearWhiteBackgroundFromUrl(url, base, {
-        tolerance: 52,
+        tolerance: 48,
+        maxEdge: 3200,
       });
       if (removedRatio < 0.002) {
         setSnackbar('Kaum hellen Hintergrund gefunden — Bild unverändert');
@@ -2166,7 +2178,7 @@ const PresentationEditorPage: React.FC = () => {
     try {
       const url = slideImageUrl(el.src);
       const base = el.src.split('/').pop() || 'foto';
-      const file = await enhanceImageFromUrl(url, base);
+      const file = await enhanceImageFromUrl(url, base, { maxEdge: 3200 });
       const path = await uploadImageFile(file);
       if (!path) return;
       updateElement(id, { src: path });
@@ -2361,14 +2373,17 @@ const PresentationEditorPage: React.FC = () => {
     async (mode: 'enhance' | 'remove-bg') => {
       const editor =
         (activeEditor?.getAttribute('data-pres-notes-zone') === 'true' ? activeEditor : null) ||
-        (document.querySelector('[data-pres-notes-zone="true"]') as HTMLElement | null);
-      const wrap = getSelectedNotesImageWrap(editor);
+        getPresentationNotesEditor();
+      const wrap =
+        getSelectedNotesImageWrap(editor) ||
+        (selectedNotesWrapRef.current?.isConnected ? selectedNotesWrapRef.current : null);
       const img = wrap?.querySelector('img') as HTMLImageElement | null;
       const src = img?.getAttribute('src')?.trim();
       if (!wrap || !img || !src || !lessonPath) {
         setSnackbar('Bild in den Notizen anklicken');
         return;
       }
+      selectedNotesWrapRef.current = wrap;
       if (mode === 'enhance') {
         setEnhancingImage(true);
         setSnackbar('Foto wird verbessert…');
@@ -2377,15 +2392,19 @@ const PresentationEditorPage: React.FC = () => {
         setSnackbar('Hintergrund wird entfernt…');
       }
       try {
-        const base = (notesImageSrcToSlidePath(src) || src).split('/').pop() || 'foto';
+        const pathFromSrc = notesImageSrcToSlidePath(src);
+        // Immer volle Auflösung bearbeiten — Anzeige-URL hat oft max=960
+        const processUrl = pathFromSrc ? slideImageUrl(pathFromSrc) : src;
+        const base = (pathFromSrc || src).split('/').pop() || 'foto';
         if (mode === 'enhance') {
-          const file = await enhanceImageFromUrl(src, base);
+          const file = await enhanceImageFromUrl(processUrl, base, { maxEdge: 3200 });
           const path = await uploadImageFile(file);
           if (!path) return;
-          img.setAttribute('src', slideImageUrl(path, 960));
+          img.setAttribute('src', slideImageUrl(path, SLIDE_IMAGE_EDITOR_MAX));
         } else {
-          const { file, removedRatio } = await removeNearWhiteBackgroundFromUrl(src, base, {
-            tolerance: 52,
+          const { file, removedRatio } = await removeNearWhiteBackgroundFromUrl(processUrl, base, {
+            tolerance: 48,
+            maxEdge: 3200,
           });
           if (removedRatio < 0.002) {
             setSnackbar('Kaum hellen Hintergrund gefunden — Bild unverändert');
@@ -2393,16 +2412,18 @@ const PresentationEditorPage: React.FC = () => {
           }
           const path = await uploadImageFile(file);
           if (!path) return;
-          img.setAttribute('src', slideImageUrl(path, 960));
+          img.setAttribute('src', slideImageUrl(path, SLIDE_IMAGE_EDITOR_MAX));
           setSnackbar(
             removedRatio > 0.15
               ? 'Hintergrund entfernt'
               : 'Hintergrund teilweise entfernt',
           );
         }
-        editor?.dispatchEvent(new Event('input', { bubbles: true }));
-        if (editor) {
-          const nextNotes = serializePresentationNotesHtml(editor);
+        const notesRoot =
+          (wrap.closest('[data-pres-notes-zone="true"]') as HTMLElement | null) || editor;
+        if (notesRoot) {
+          notesRoot.dispatchEvent(new Event('input', { bubbles: true }));
+          const nextNotes = serializePresentationNotesHtml(notesRoot);
           updateSlide({ speakerNotesHtml: nextNotes, speakerNotes: htmlToPlain(nextNotes) });
         }
         if (mode === 'enhance') setSnackbar('Foto verbessert');
@@ -2705,18 +2726,39 @@ const PresentationEditorPage: React.FC = () => {
 
   useEffect(() => {
     if (!activeEditor?.getAttribute('data-pres-notes-zone')) return undefined;
-    const bump = () => setNotesImgTick((n) => n + 1);
+    const bump = () => {
+      setSelectedElementId(null);
+      setNotesImgTick((n) => n + 1);
+    };
+    const onSelect = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ wrap?: HTMLElement }>).detail;
+      if (detail?.wrap instanceof HTMLElement) {
+        selectedNotesWrapRef.current = detail.wrap;
+      } else {
+        selectedNotesWrapRef.current = getSelectedNotesImageWrap(activeEditor);
+      }
+      setSelectedElementId(null);
+      setNotesImgTick((n) => n + 1);
+    };
     activeEditor.addEventListener('pointerup', bump, true);
     activeEditor.addEventListener('click', bump, true);
+    activeEditor.addEventListener(PRES_NOTES_IMG_SELECT_EVENT, onSelect);
     return () => {
       activeEditor.removeEventListener('pointerup', bump, true);
       activeEditor.removeEventListener('click', bump, true);
+      activeEditor.removeEventListener(PRES_NOTES_IMG_SELECT_EVENT, onSelect);
     };
   }, [activeEditor]);
 
   const selectedNotesImage = useMemo(() => {
     void notesImgTick;
-    const wrap = getSelectedNotesImageWrap(activeEditor);
+    const notesEditor =
+      (activeEditor?.getAttribute('data-pres-notes-zone') === 'true' ? activeEditor : null) ||
+      getPresentationNotesEditor();
+    const wrap =
+      getSelectedNotesImageWrap(notesEditor) ||
+      (selectedNotesWrapRef.current?.isConnected ? selectedNotesWrapRef.current : null);
+    if (wrap) selectedNotesWrapRef.current = wrap;
     return wrap ? notesWrapToSlideElement(wrap) : null;
   }, [activeEditor, notesImgTick]);
 
@@ -4597,11 +4639,38 @@ const PresentationEditorPage: React.FC = () => {
                   activeEditor={activeEditor}
                   onUpdateElement={(id, patch) => {
                     if (id === NOTES_IMAGE_ELEMENT_ID) {
-                      const wrap = getSelectedNotesImageWrap(activeEditor);
-                      if (!wrap || !activeEditor) return;
+                      const notesEditor =
+                        (activeEditor?.getAttribute('data-pres-notes-zone') === 'true'
+                          ? activeEditor
+                          : null) || getPresentationNotesEditor();
+                      const wrap =
+                        getSelectedNotesImageWrap(notesEditor) ||
+                        (selectedNotesWrapRef.current?.isConnected
+                          ? selectedNotesWrapRef.current
+                          : null);
+                      if (!wrap) {
+                        setSnackbar('Bild in den Notizen anklicken');
+                        return;
+                      }
+                      selectedNotesWrapRef.current = wrap;
                       applyNotesImageElementPatch(wrap, patch);
-                      activeEditor.dispatchEvent(new Event('input', { bubbles: true }));
-                      flushActiveEditor();
+                      // Auswahl halten, damit weitere Klicks (90° nochmal) greifen
+                      if (!wrap.classList.contains('pres-notes-img-selected')) {
+                        wrap.classList.add('pres-notes-img-selected');
+                        wrap.style.outline = '2px solid #f57f17';
+                        wrap.style.outlineOffset = '2px';
+                      }
+                      const root =
+                        (wrap.closest('[data-pres-notes-zone="true"]') as HTMLElement | null) ||
+                        notesEditor;
+                      if (root) {
+                        root.dispatchEvent(new Event('input', { bubbles: true }));
+                        const nextNotes = serializePresentationNotesHtml(root);
+                        updateSlide({
+                          speakerNotesHtml: nextNotes,
+                          speakerNotes: htmlToPlain(nextNotes),
+                        });
+                      }
                       setNotesImgTick((n) => n + 1);
                       return;
                     }
@@ -4609,9 +4678,24 @@ const PresentationEditorPage: React.FC = () => {
                   }}
                   onDeleteElement={(id) => {
                     if (id === NOTES_IMAGE_ELEMENT_ID) {
-                      if (activeEditor && deleteSelectedNotesImage(activeEditor)) {
-                        activeEditor.dispatchEvent(new Event('input', { bubbles: true }));
-                        flushActiveEditor();
+                      const notesEditor =
+                        (activeEditor?.getAttribute('data-pres-notes-zone') === 'true'
+                          ? activeEditor
+                          : null) || getPresentationNotesEditor();
+                      const wrap =
+                        getSelectedNotesImageWrap(notesEditor) ||
+                        (selectedNotesWrapRef.current?.isConnected
+                          ? selectedNotesWrapRef.current
+                          : null);
+                      if (!notesEditor || !wrap) return;
+                      if (deleteSelectedNotesImage(notesEditor, wrap)) {
+                        selectedNotesWrapRef.current = null;
+                        notesEditor.dispatchEvent(new Event('input', { bubbles: true }));
+                        const nextNotes = serializePresentationNotesHtml(notesEditor);
+                        updateSlide({
+                          speakerNotesHtml: nextNotes,
+                          speakerNotes: htmlToPlain(nextNotes),
+                        });
                         setNotesImgTick((n) => n + 1);
                       }
                       return;
@@ -5157,6 +5241,7 @@ const PresentationEditorPage: React.FC = () => {
             }}
             onEditorBlur={() => {
               if (isFormatBarInteracting()) return;
+              if (getSelectedNotesImageWrap(getPresentationNotesEditor())) return;
               if (
                 activeHtmlField === 'materialHtml' ||
                 activeHtmlField === 'speakerNotesHtml' ||

@@ -2,9 +2,16 @@
  * Arbeitsblatt-/Tafel-Fotos: weißer Hintergrund, mehr Kontrast, etwas Schärfe.
  */
 
+import { slideImageUrlWithoutMax } from './presentationDeck';
+
 export type EnhanceImageOptions = {
   maxEdge?: number;
 };
+
+/** Ohne max=… laden — sonst wird nur die Editor-Vorschau „verbessert“. */
+function processSourceUrl(url: string): string {
+  return slideImageUrlWithoutMax(url);
+}
 
 function percentileFromHist(hist: Uint32Array, p: number): number {
   let total = 0;
@@ -43,7 +50,8 @@ export function enhanceWorksheetRgba(data: Uint8ClampedArray, width: number, hei
   const paperR = Math.max(168, percentileFromHist(histR, 0.96));
   const paperG = Math.max(168, percentileFromHist(histG, 0.96));
   const paperB = Math.max(168, percentileFromHist(histB, 0.96));
-  const blackY = Math.min(percentileFromHist(histY, 0.06), 90);
+  const paperY = Math.max(168, percentileFromHist(histY, 0.96));
+  const blackY = Math.min(percentileFromHist(histY, 0.06), Math.max(0, paperY - 48), 90);
 
   const scaleR = 255 / paperR;
   const scaleG = 255 / paperG;
@@ -57,7 +65,7 @@ export function enhanceWorksheetRgba(data: Uint8ClampedArray, width: number, hei
     let g = Math.min(255, data[o + 1] * scaleG);
     let b = Math.min(255, data[o + 2] * scaleB);
     const y = luma(r, g, b);
-    const stretched = ((y - blackY) / span) * 255;
+    const stretched = Math.max(0, ((y - blackY) / span) * 255);
     const contrast = y > 1 ? stretched / y : 1;
     r = Math.min(255, Math.max(0, r * contrast));
     g = Math.min(255, Math.max(0, g * contrast));
@@ -125,7 +133,7 @@ function canvasToJpegFile(canvas: HTMLCanvasElement, name: string): Promise<File
         resolve(new File([blob], name, { type: 'image/jpeg' }));
       },
       'image/jpeg',
-      0.92,
+      0.95,
     );
   });
 }
@@ -135,8 +143,8 @@ export async function enhanceImageFromUrl(
   fileBaseName = 'foto',
   options: EnhanceImageOptions = {},
 ): Promise<File> {
-  const maxEdge = options.maxEdge ?? 2200;
-  const img = await loadImage(imageUrl);
+  const maxEdge = options.maxEdge ?? 3200;
+  const img = await loadImage(processSourceUrl(imageUrl));
   let w = img.naturalWidth || img.width;
   let h = img.naturalHeight || img.height;
   if (!w || !h) throw new Error('Ungültige Bildgröße');
@@ -150,6 +158,9 @@ export async function enhanceImageFromUrl(
   canvas.height = h;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) throw new Error('Canvas nicht verfügbar');
+  // PNG mit Transparenz (z. B. nach „Hintergrund entfernen“) sonst → JPEG-Schwarz
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, w, h);
   ctx.drawImage(img, 0, 0, w, h);
 
   const imageData = ctx.getImageData(0, 0, w, h);

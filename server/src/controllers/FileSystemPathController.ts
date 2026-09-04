@@ -969,7 +969,7 @@ export class FileSystemPathController {
 
       const maxRaw = parseInt(String(max ?? ''), 10);
       const maxEdge =
-        Number.isFinite(maxRaw) && maxRaw > 0 && maxRaw <= 2400 ? maxRaw : undefined;
+        Number.isFinite(maxRaw) && maxRaw > 0 && maxRaw <= 4096 ? maxRaw : undefined;
 
       const { buffer, mimeType } = await readImageFileForServe(fullPath, maxEdge);
 

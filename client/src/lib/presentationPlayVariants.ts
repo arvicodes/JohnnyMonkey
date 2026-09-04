@@ -167,6 +167,41 @@ function playSlideHasContent(slide: PresentationSlide | undefined | null): boole
   return texts.some((html) => htmlToPlain(html || '').trim().length > 0);
 }
 
+/** Play-Kopien speichern oft die Folie ohne Einblend-Nummern — Animation von der Master-Folie behalten. */
+function mergeMasterAnimationOntoPlaySlide(
+  master: PresentationSlide,
+  playSlide: PresentationSlide,
+): PresentationSlide {
+  const masterById = new Map((master.elements || []).map((el) => [el.id, el]));
+  const elements = (playSlide.elements || []).map((el) => {
+    const fromMaster = masterById.get(el.id);
+    if (!fromMaster) return el;
+    const masterHasAnim =
+      fromMaster.animationSet === true || (fromMaster.revealStep != null && fromMaster.revealStep > 0);
+    const playHasAnim = el.animationSet === true || (el.revealStep != null && el.revealStep > 0);
+    if (!masterHasAnim || playHasAnim) return el;
+    return {
+      ...el,
+      revealStep: fromMaster.revealStep,
+      animationSet: fromMaster.animationSet,
+    };
+  });
+  const revealEnabled =
+    playSlide.revealEnabled === false && master.revealEnabled === true
+      ? true
+      : playSlide.revealEnabled;
+  const zoneRevealSteps =
+    playSlide.zoneRevealSteps && Object.keys(playSlide.zoneRevealSteps).length > 0
+      ? playSlide.zoneRevealSteps
+      : master.zoneRevealSteps;
+  return {
+    ...playSlide,
+    elements,
+    revealEnabled,
+    zoneRevealSteps,
+  };
+}
+
 export function applyPlayVariantsToDeck(
   deck: PresentationDeck,
   variants: PresentationPlayVariants | null | undefined,
@@ -182,8 +217,9 @@ export function applyPlayVariantsToDeck(
       if (!playSlideHasContent(variant.slide) && playSlideHasContent(slide)) {
         return slide;
       }
+      const merged = mergeMasterAnimationOntoPlaySlide(slide, cloneJson(variant.slide));
       return {
-        ...cloneJson(variant.slide),
+        ...merged,
         id: slide.id,
         order: slide.order,
       };

@@ -566,6 +566,10 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
 
   return (
     <Box
+      data-presentation-format-ui
+      onPointerDownCapture={() => setFormatBarInteracting(true)}
+      onPointerUpCapture={() => window.setTimeout(() => setFormatBarInteracting(false), 0)}
+      onPointerCancelCapture={() => window.setTimeout(() => setFormatBarInteracting(false), 0)}
       sx={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -1456,8 +1460,18 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                 anchorEl={elementAnchor}
                 onClose={() => setElementAnchor(null)}
                 anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                PaperProps={{
+                  'data-presentation-format-ui': true,
+                  onPointerDown: () => setFormatBarInteracting(true),
+                  onPointerUp: () => window.setTimeout(() => setFormatBarInteracting(false), 0),
+                  onPointerCancel: () => window.setTimeout(() => setFormatBarInteracting(false), 0),
+                } as React.ComponentProps<typeof Popover>['PaperProps']}
               >
-                <Box sx={{ p: 1, width: 248 }}>
+                <Box
+                  sx={{ p: 1, width: 248 }}
+                  data-presentation-format-ui
+                  onPointerDown={() => setFormatBarInteracting(true)}
+                >
                   {selectedElement && (
                   <>
                   <Typography sx={{ fontSize: 9, fontWeight: 700, color: PRES_EDITOR_UI.textMuted, mb: 0.5 }}>

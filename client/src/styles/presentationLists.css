@@ -284,6 +284,16 @@
   max-height: none !important;
 }
 
+/* Zuschneiden: absolute Positionierung darf nicht von !important gekillt werden */
+[data-pres-notes-zone] .pres-notes-img-wrap[data-pres-notes-crop] img {
+  position: absolute !important;
+  margin: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  height: auto !important;
+  width: auto;
+}
+
 [data-pres-html] table,
 [data-pres-table-edit] table,
 [data-pres-rich-zone] table {

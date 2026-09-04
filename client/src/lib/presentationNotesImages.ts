@@ -26,6 +26,7 @@ export const NOTES_IMAGE_FRAME_BLACK_COLOR = '#1a1a1a';
 export const NOTES_IMAGE_FRAME_DEFAULT_WIDTH = 3;
 
 const RESIZE_HANDLE_CLASS = 'pres-notes-img-resize';
+const ROTATE_HANDLE_CLASS = 'pres-notes-img-rotate';
 const CROP_EDGE_CLASS = 'pres-notes-img-crop-edge';
 const DROP_MARKER_CLASS = 'pres-notes-img-drop';
 const BOUND_ATTR = 'data-pres-notes-img-bound';
@@ -139,26 +140,64 @@ export function presentationNotesImageEditorSx() {
     [`& .${CROP_EDGE_CLASS}`]: {
       position: 'absolute',
       zIndex: 4,
-      background: 'transparent',
+      background: 'rgba(245, 127, 23, 0.35)',
+      border: 'none',
       touchAction: 'none',
       pointerEvents: 'auto',
+      boxSizing: 'border-box',
     },
     [`& .${CROP_EDGE_CLASS}[data-edge="n"], & .${CROP_EDGE_CLASS}[data-edge="s"]`]: {
       left: 10,
       right: 10,
-      height: 10,
+      height: 12,
       cursor: 'ns-resize',
     },
-    [`& .${CROP_EDGE_CLASS}[data-edge="n"]`]: { top: 0 },
-    [`& .${CROP_EDGE_CLASS}[data-edge="s"]`]: { bottom: 0 },
+    [`& .${CROP_EDGE_CLASS}[data-edge="n"]`]: {
+      top: 0,
+      borderTop: '3px solid #f57f17',
+    },
+    [`& .${CROP_EDGE_CLASS}[data-edge="s"]`]: {
+      bottom: 0,
+      borderBottom: '3px solid #f57f17',
+    },
     [`& .${CROP_EDGE_CLASS}[data-edge="e"], & .${CROP_EDGE_CLASS}[data-edge="w"]`]: {
       top: 10,
       bottom: 10,
-      width: 10,
+      width: 12,
       cursor: 'ew-resize',
     },
-    [`& .${CROP_EDGE_CLASS}[data-edge="e"]`]: { right: 0 },
-    [`& .${CROP_EDGE_CLASS}[data-edge="w"]`]: { left: 0 },
+    [`& .${CROP_EDGE_CLASS}[data-edge="e"]`]: {
+      right: 0,
+      borderRight: '3px solid #f57f17',
+    },
+    [`& .${CROP_EDGE_CLASS}[data-edge="w"]`]: {
+      left: 0,
+      borderLeft: '3px solid #f57f17',
+    },
+    [`& .${CROP_EDGE_CLASS}[data-edge="n"]::after, & .${CROP_EDGE_CLASS}[data-edge="s"]::after`]: {
+      content: '""',
+      position: 'absolute',
+      left: '50%',
+      top: '50%',
+      width: 28,
+      height: 6,
+      ml: '-14px',
+      mt: '-3px',
+      borderRadius: 1,
+      bgcolor: '#f57f17',
+    },
+    [`& .${CROP_EDGE_CLASS}[data-edge="e"]::after, & .${CROP_EDGE_CLASS}[data-edge="w"]::after`]: {
+      content: '""',
+      position: 'absolute',
+      left: '50%',
+      top: '50%',
+      width: 6,
+      height: 28,
+      ml: '-3px',
+      mt: '-14px',
+      borderRadius: 1,
+      bgcolor: '#f57f17',
+    },
     [`& .${DROP_MARKER_CLASS}`]: {
       position: 'absolute',
       left: 8,
@@ -190,6 +229,33 @@ export function presentationNotesImageEditorSx() {
         right: -4,
         bottom: -4,
       },
+    },
+    [`& .${ROTATE_HANDLE_CLASS}`]: {
+      position: 'absolute',
+      left: '50%',
+      top: 4,
+      width: 16,
+      height: 16,
+      ml: '-8px',
+      borderRadius: '50%',
+      bgcolor: '#fff',
+      border: '2px solid #2E7D32',
+      cursor: 'grab',
+      zIndex: 5,
+      boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+      pointerEvents: 'auto',
+      boxSizing: 'border-box',
+      touchAction: 'none',
+      display: 'none',
+      '@media (any-pointer: coarse)': {
+        width: 24,
+        height: 24,
+        ml: '-12px',
+        top: 6,
+      },
+    },
+    [`& .${PRES_NOTES_IMG_WRAP_CLASS}.${PRES_NOTES_IMG_SELECTED_CLASS} .${ROTATE_HANDLE_CLASS}`]: {
+      display: 'block',
     },
   };
 }
@@ -238,11 +304,14 @@ export function presentationNotesImageViewSx(options?: { maxHeight?: number | nu
       ...(maxHeight ? { maxHeight } : {}),
     },
     [`& .${RESIZE_HANDLE_CLASS}`]: { display: 'none' },
+    [`& .${ROTATE_HANDLE_CLASS}`]: { display: 'none' },
   };
 }
 
 export function stripNotesImageChrome(root: ParentNode): void {
-  root.querySelectorAll(`.${RESIZE_HANDLE_CLASS}, .${CROP_EDGE_CLASS}, .${DROP_MARKER_CLASS}`).forEach((n) => n.remove());
+  root.querySelectorAll(
+    `.${RESIZE_HANDLE_CLASS}, .${ROTATE_HANDLE_CLASS}, .${CROP_EDGE_CLASS}, .${DROP_MARKER_CLASS}`,
+  ).forEach((n) => n.remove());
   root.querySelectorAll(`.${PRES_NOTES_IMG_WRAP_CLASS}`).forEach((node) => {
     const el = node as HTMLElement;
     el.style.outline = '';
@@ -354,10 +423,27 @@ export function releaseNotesImagesToFlow(root: ParentNode): void {
 }
 
 export function getSelectedNotesImageWrap(editor: HTMLElement | null): HTMLElement | null {
-  if (!editor) return null;
-  return editor.querySelector(
+  if (typeof document === 'undefined') return null;
+  if (editor) {
+    const inEditor = editor.querySelector(
+      `.${PRES_NOTES_IMG_WRAP_CLASS}.${PRES_NOTES_IMG_SELECTED_CLASS}`,
+    ) as HTMLElement | null;
+    if (inEditor) return inEditor;
+  }
+  // Werkzeugleiste/Popover: Auswahl am Dokument finden (nicht nur erste Notiz-Zone)
+  return document.querySelector(
     `.${PRES_NOTES_IMG_WRAP_CLASS}.${PRES_NOTES_IMG_SELECTED_CLASS}`,
   ) as HTMLElement | null;
+}
+
+/** Offene Notiz-Zone (auch wenn gerade die Werkzeugleiste Fokus hat). */
+export function getPresentationNotesEditor(): HTMLElement | null {
+  if (typeof document === 'undefined') return null;
+  const withField = document.querySelector(
+    '[data-pres-notes-zone="true"][data-pres-html-field], [data-pres-notes-zone="true"][data-notes-field]',
+  ) as HTMLElement | null;
+  if (withField) return withField;
+  return document.querySelector('[data-pres-notes-zone="true"]') as HTMLElement | null;
 }
 
 export function notesImageFrameIsOn(wrap: HTMLElement): boolean {
@@ -538,14 +624,15 @@ function applyNotesImageCropStyle(wrap: HTMLElement): void {
   wrap.style.maxWidth = '100%';
   wrap.style.aspectRatio = `${crop.boxW} / ${crop.boxH}`;
   wrap.style.height = 'auto';
-  img.style.position = 'absolute';
-  img.style.left = `${(crop.srcX / crop.boxW) * 100}%`;
-  img.style.top = `${(crop.srcY / crop.boxH) * 100}%`;
-  img.style.width = `${(crop.srcW / crop.boxW) * 100}%`;
-  img.style.height = `${(crop.srcH / crop.boxH) * 100}%`;
-  img.style.maxWidth = 'none';
-  img.style.maxHeight = 'none';
-  img.style.objectFit = 'fill';
+  img.style.setProperty('position', 'absolute', 'important');
+  img.style.setProperty('left', `${(crop.srcX / crop.boxW) * 100}%`, 'important');
+  img.style.setProperty('top', `${(crop.srcY / crop.boxH) * 100}%`, 'important');
+  img.style.setProperty('width', `${(crop.srcW / crop.boxW) * 100}%`, 'important');
+  img.style.setProperty('height', `${(crop.srcH / crop.boxH) * 100}%`, 'important');
+  img.style.setProperty('max-width', 'none', 'important');
+  img.style.setProperty('max-height', 'none', 'important');
+  img.style.setProperty('object-fit', 'fill', 'important');
+  img.style.setProperty('margin', '0', 'important');
 }
 
 function clearNotesImageCrop(wrap: HTMLElement): void {
@@ -566,6 +653,7 @@ function clearNotesImageCrop(wrap: HTMLElement): void {
     img.style.removeProperty('top');
     img.style.removeProperty('max-height');
     img.style.removeProperty('object-fit');
+    img.style.removeProperty('margin');
     img.style.setProperty('width', wrap.style.width ? '100%' : 'auto');
     img.style.setProperty('max-width', '100%');
     img.style.setProperty('height', 'auto');
@@ -581,9 +669,21 @@ function lockNotesImageCrop(wrap: HTMLElement): void {
   const img = wrap.querySelector('img') as HTMLImageElement | null;
   const rect = wrap.getBoundingClientRect();
   const imgRect = img?.getBoundingClientRect();
-  const boxW = Math.max(48, rect.width || imgRect?.width || 160);
-  const boxH = Math.max(36, rect.height || imgRect?.height || 120);
-  writeNotesImageCrop(wrap, { boxW, boxH, srcX: 0, srcY: 0, srcW: boxW, srcH: boxH });
+  const fullW = Math.max(48, rect.width || imgRect?.width || 160);
+  const fullH = Math.max(36, rect.height || imgRect?.height || 120);
+  // Leicht eingeschnürt starten — Kanten und Ausschnitt sofort sichtbar
+  const insetX = Math.max(8, fullW * 0.06);
+  const insetY = Math.max(8, fullH * 0.06);
+  const boxW = Math.max(48, fullW - insetX * 2);
+  const boxH = Math.max(36, fullH - insetY * 2);
+  writeNotesImageCrop(wrap, {
+    boxW,
+    boxH,
+    srcX: -insetX,
+    srcY: -insetY,
+    srcW: fullW,
+    srcH: fullH,
+  });
   applyNotesImageCropStyle(wrap);
 }
 
@@ -653,8 +753,11 @@ export function applyNotesImageElementPatch(wrap: HTMLElement, patch: Partial<Sl
   }
 }
 
-export function deleteSelectedNotesImage(editor: HTMLElement | null): boolean {
-  const wrap = getSelectedNotesImageWrap(editor);
+export function deleteSelectedNotesImage(
+  editor: HTMLElement | null,
+  wrapOverride?: HTMLElement | null,
+): boolean {
+  const wrap = wrapOverride || getSelectedNotesImageWrap(editor);
   if (!wrap || !editor) return false;
   removeNotesImageWrap(wrap, editor);
   return true;
@@ -741,11 +844,16 @@ export function clearNotesImageSelection(editor: HTMLElement): void {
   });
 }
 
+export const PRES_NOTES_IMG_SELECT_EVENT = 'pres-notes-img-select';
+
 function selectNotesImageWrap(editor: HTMLElement, wrap: HTMLElement): void {
   clearNotesImageSelection(editor);
   wrap.classList.add(PRES_NOTES_IMG_SELECTED_CLASS);
   wrap.style.outline = '2px solid #f57f17';
   wrap.style.outlineOffset = '2px';
+  editor.dispatchEvent(
+    new CustomEvent(PRES_NOTES_IMG_SELECT_EVENT, { bubbles: true, detail: { wrap } }),
+  );
 }
 
 function isNotesImageWrap(node: Node | null): node is HTMLElement {
@@ -1190,7 +1298,7 @@ function bindNotesImage(
   onChange: () => void,
   onMoveToSlide?: (payload: NotesImageToSlidePayload) => boolean | Promise<boolean>,
 ) {
-  if (wrap.getAttribute(BOUND_ATTR) === '2') return;
+  if (wrap.getAttribute(BOUND_ATTR) === '3') return;
   if (wrap.getAttribute(BOUND_ATTR)) {
     const fresh = wrap.cloneNode(true) as HTMLElement;
     fresh.removeAttribute(BOUND_ATTR);
@@ -1200,7 +1308,7 @@ function bindNotesImage(
     if (!nextImg) return;
     img = nextImg;
   }
-  wrap.setAttribute(BOUND_ATTR, '2');
+  wrap.setAttribute(BOUND_ATTR, '3');
   wrap.setAttribute('contenteditable', 'false');
   applyNotesImageRotationStyle(wrap);
   applyNotesImageFrameStyleFromAttrs(wrap);
@@ -1217,6 +1325,65 @@ function bindNotesImage(
     wrap.appendChild(handleEl);
   }
   const handle: HTMLElement = handleEl;
+
+  let rotateEl = wrap.querySelector(`.${ROTATE_HANDLE_CLASS}`) as HTMLElement | null;
+  if (!rotateEl) {
+    rotateEl = document.createElement('span');
+    rotateEl.className = ROTATE_HANDLE_CLASS;
+    rotateEl.setAttribute('contenteditable', 'false');
+    rotateEl.setAttribute('aria-label', 'Bild drehen');
+    rotateEl.title = 'Drehen — ziehen (Tipp: kurzer Klick = 90°)';
+    wrap.appendChild(rotateEl);
+  }
+  const rotateHandle: HTMLElement = rotateEl;
+
+  rotateHandle.addEventListener('pointerdown', (e) => {
+    if (!isPrimaryPointer(e)) return;
+    beginNotesDrag(editor);
+    e.preventDefault();
+    e.stopPropagation();
+    selectNotesImageWrap(editor, wrap);
+    editor.focus({ preventScroll: true });
+    const rect = wrap.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const startRot = getNotesImageRotation(wrap);
+    const a0 = Math.atan2(e.clientY - cy, e.clientX - cx);
+    let moved = false;
+    document.body.style.cursor = 'grabbing';
+    listenWindowPointerDrag(
+      e.pointerId,
+      (ev) => {
+        const dist = Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY);
+        if (dist >= 4) moved = true;
+        const a1 = Math.atan2(ev.clientY - cy, ev.clientX - cx);
+        let rot = startRot + ((a1 - a0) * 180) / Math.PI;
+        if (ev.shiftKey) {
+          rot = Math.round(rot / 15) * 15;
+        } else {
+          const quarter = Math.round(rot / 90) * 90;
+          if (Math.abs(rot - quarter) < 6) rot = quarter;
+        }
+        const next = normalizeNotesImageRotation(rot);
+        if (next === 0) wrap.removeAttribute(PRES_NOTES_IMG_ROTATION_ATTR);
+        else wrap.setAttribute(PRES_NOTES_IMG_ROTATION_ATTR, String(next));
+        applyNotesImageRotationStyle(wrap);
+      },
+      () => {
+        document.body.style.cursor = '';
+        if (!moved) {
+          const next = normalizeNotesImageRotation(startRot + 90);
+          if (next === 0) wrap.removeAttribute(PRES_NOTES_IMG_ROTATION_ATTR);
+          else wrap.setAttribute(PRES_NOTES_IMG_ROTATION_ATTR, String(next));
+          applyNotesImageRotationStyle(wrap);
+        }
+        endNotesDrag(editor, () => {
+          ensureNotesTypingHost(editor);
+          onChange();
+        });
+      },
+    );
+  });
 
   handle.addEventListener('pointerdown', (e) => {
     if (!isPrimaryPointer(e)) return;
@@ -1265,6 +1432,8 @@ function bindNotesImage(
 
   wrap.addEventListener('pointerdown', (e) => {
     if ((e.target as HTMLElement).closest(`.${RESIZE_HANDLE_CLASS}`)) return;
+    if ((e.target as HTMLElement).closest(`.${ROTATE_HANDLE_CLASS}`)) return;
+    if ((e.target as HTMLElement).closest(`.${CROP_EDGE_CLASS}`)) return;
     if (!isPrimaryPointer(e)) return;
     beginNotesDrag(editor);
     e.preventDefault();
@@ -1293,6 +1462,7 @@ function bindNotesImage(
           ghost.removeAttribute(BOUND_ATTR);
           ghost.classList.remove(PRES_NOTES_IMG_SELECTED_CLASS);
           ghost.querySelector(`.${RESIZE_HANDLE_CLASS}`)?.remove();
+          ghost.querySelector(`.${ROTATE_HANDLE_CLASS}`)?.remove();
           ghost.style.position = 'fixed';
           ghost.style.left = `${ev.clientX - grabX}px`;
           ghost.style.top = `${ev.clientY - grabY}px`;
