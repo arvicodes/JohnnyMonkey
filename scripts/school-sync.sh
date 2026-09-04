@@ -347,7 +347,7 @@ u = f"https://api.github.com/repos/{repo}/releases/assets/{asset['id']}"
 pull_tar = pull_dir / "jm-sync-pull.tar.gz"
 subprocess.check_call(
   [
-    "curl", "-fsSL", "-H", f"Authorization: Bearer {token}",
+    "curl", "--http1.1", "-fsSL", "-H", f"Authorization: Bearer {token}",
     "-H", "Accept: application/octet-stream",
     "-L", "-o", str(pull_tar),
     f"https://api.github.com/repos/{repo}/releases/assets/{asset['id']}",
