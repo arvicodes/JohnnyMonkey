@@ -19,14 +19,76 @@ export type InteractiveExerciseChoice = {
   label: string;
 };
 
+/** Teil einer Rechnung oder eines Lückentexts: fester Text oder Eingabelücke. */
+export type EquationPart =
+  | { type: 'text'; text: string }
+  | { type: 'blank'; correct: string };
+
+/** Ein Paar für Zuordnen (linker Text ↔ rechte Kachel). */
+export type MatchPair = {
+  id: string;
+  left: string;
+  right: string;
+};
+
+/** Abschnitt in einer Vergleichen-Aufgabe (Anton-Stil). */
+export type CompareBlock =
+  | {
+      type: 'convert';
+      /** „Schreibe mit arabischen Ziffern.“ */
+      items: Array<{ roman: string; arabic: string }>;
+    }
+  | {
+      type: 'compare';
+      /** „Setze nun das passende Vergleichszeichen ein.“ */
+      left: string;
+      right: string;
+      sign: '<' | '>' | '=';
+    };
+
 export type InteractiveExerciseQuestion = {
   id: string;
   prompt: string;
-  /** Große Aufgabe (z. B. römische Zahl). */
+  /** Große Aufgabe (z. B. römische Zahl) — nur Choice-Modus. */
   challenge?: string;
   showRomanTable?: boolean;
-  choices: InteractiveExerciseChoice[];
-  correctChoiceId: string;
+  /** Oben: Merksatz / Regel (z. B. bei Rechnen). */
+  ruleText?: string;
+  /** Kurzer Tipp (Tipp-Button / Merke-dir). */
+  tip?: string;
+  /** Beispielzeile über der Aufgabe, z. B. „VIII = 5 + 1 + 1 + 1 = 8“. */
+  exampleLine?: string;
+  /**
+   * `choice` = Multiple Choice (Standard).
+   * `equation` = Rechnung mit Lücken (Mit römischen Zahlen rechnen).
+   * `cloze` = Lückentext mit Wortbank (Regeln).
+   * `sort` = Der Größe nach ordnen (Ordnen).
+   * `write` = Arabische Zahl → römisch tippen (Schreiben).
+   * `match` = Kacheln zuordnen (Zuordnen).
+   * `compare` = Umrechnen + Vergleichszeichen (Vergleichen).
+   */
+  mode?: 'choice' | 'equation' | 'cloze' | 'sort' | 'write' | 'match' | 'compare';
+  /** Für mode=equation: römische Zahl links, dann Parts. */
+  roman?: string;
+  equationParts?: EquationPart[];
+  /** Für mode=cloze: Textteile inkl. Lücken. */
+  clozeParts?: EquationPart[];
+  /** Wortbank unter dem Lückentext. */
+  clozeOptions?: string[];
+  /** Für mode=sort: angezeigte (gemischte) Kacheln. */
+  sortItems?: string[];
+  /** Für mode=sort: richtige Reihenfolge (größte zuerst). */
+  sortCorrectOrder?: string[];
+  /** Für mode=write: richtige römische Schreibweise. */
+  correctAnswer?: string;
+  /** Für mode=write: Eingabe römisch (Standard) oder arabisch. */
+  answerKind?: 'roman' | 'arabic';
+  /** Für mode=match: Paare zum Zuordnen. */
+  matchPairs?: MatchPair[];
+  /** Für mode=compare: Abschnitte (Umrechnen / Vergleichszeichen). */
+  compareBlocks?: CompareBlock[];
+  choices?: InteractiveExerciseChoice[];
+  correctChoiceId?: string;
 };
 
 export type InteractiveExerciseTopic = {
@@ -101,6 +163,39 @@ function q(
   };
 }
 
+function equationQ(
+  id: string,
+  roman: string,
+  exampleLine: string,
+  parts: EquationPart[],
+  tip?: string,
+): InteractiveExerciseQuestion {
+  return {
+    id,
+    mode: 'equation',
+    prompt:
+      'Schreibe die Rechnung zur römischen Zahl. Die jeweils darüber stehende römische Zahl kann dir helfen.',
+    showRomanTable: true,
+    ruleText:
+      'Steht ein Zahlzeichen neben einem gleichen oder höheren, wird addiert. Steht das Zeichen für eine kleinere Zahl links von einer größeren, wird die kleinere von der größeren Zahl subtrahiert.',
+    tip:
+      tip ||
+      'Ein Zahlzeichen schreibt man maximal dreimal hintereinander. Die Zeichen V, L, D dürfen nur einmal in einer Zahl vorkommen.',
+    exampleLine,
+    roman,
+    equationParts: parts,
+    choices: [],
+  };
+}
+
+function blank(correct: string): EquationPart {
+  return { type: 'blank', correct };
+}
+
+function txt(text: string): EquationPart {
+  return { type: 'text', text };
+}
+
 /** Paket „Römische Zahlen“ — Fragen wie in typischen Lernapps. */
 export function createRomanNumeralsExercise(): SlideInteractiveExercise {
   const convertQuestions: InteractiveExerciseQuestion[] = [
@@ -118,60 +213,311 @@ export function createRomanNumeralsExercise(): SlideInteractiveExercise {
     q('rn-12', 'XCIX', '99', ['49', '89', '109']),
   ];
 
+  const calcQuestions: InteractiveExerciseQuestion[] = [
+    equationQ('rn-calc-1', 'XII', 'VIII = 5 + 1 + 1 + 1 = 8', [
+      blank('10'),
+      txt(' + '),
+      blank('1'),
+      txt(' + '),
+      blank('1'),
+      txt(' = '),
+      blank('12'),
+    ]),
+    equationQ('rn-calc-2', 'XV', 'III = 1 + 1 + 1 = 3', [
+      blank('10'),
+      txt(' + '),
+      blank('5'),
+      txt(' = '),
+      blank('15'),
+    ]),
+    equationQ('rn-calc-3', 'XXVI', 'VI = 5 + 1 = 6', [
+      blank('10'),
+      txt(' + '),
+      blank('10'),
+      txt(' + '),
+      blank('5'),
+      txt(' + '),
+      blank('1'),
+      txt(' = '),
+      blank('26'),
+    ]),
+    equationQ('rn-calc-4', 'XC', 'IX = 10 − 1 = 9', [
+      blank('100'),
+      txt(' − '),
+      blank('10'),
+      txt(' = '),
+      blank('90'),
+    ]),
+    equationQ('rn-calc-5', 'XL', 'IV = 5 − 1 = 4', [
+      blank('50'),
+      txt(' − '),
+      blank('10'),
+      txt(' = '),
+      blank('40'),
+    ]),
+    equationQ('rn-calc-6', 'CD', 'XL = 50 − 10 = 40', [
+      blank('500'),
+      txt(' − '),
+      blank('100'),
+      txt(' = '),
+      blank('400'),
+    ]),
+    equationQ('rn-calc-7', 'CMIV', 'CMXL = 1000 − 100 + 50 − 10 = 940', [
+      blank('1000'),
+      txt(' − '),
+      blank('100'),
+      txt(' + '),
+      blank('5'),
+      txt(' − '),
+      blank('1'),
+      txt(' = '),
+      blank('904'),
+    ]),
+    equationQ('rn-calc-8', 'XIV', 'VI = 5 + 1 = 6', [
+      blank('10'),
+      txt(' − '),
+      blank('1'),
+      txt(' + '),
+      blank('5'),
+      txt(' = '),
+      blank('14'),
+    ]),
+  ];
+
   const compareQuestions: InteractiveExerciseQuestion[] = [
-    q('rn-cmp-1', 'XIV  ?  XVI', 'XIV < XVI', ['XIV > XVI', 'XIV = XVI', 'XIV ≤ XII']),
-    q('rn-cmp-2', 'XL  ?  XXXIX', 'XL > XXXIX', ['XL < XXXIX', 'XL = XXXIX', 'XL ≤ XX']),
-    q('rn-cmp-3', 'C  ?  XC', 'C > XC', ['C < XC', 'C = XC', 'C ≤ L']),
-    q('rn-cmp-4', 'VIII  ?  VIII', 'VIII = VIII', ['VIII < VIII', 'VIII > VIII', 'VIII ≠ VIII']),
+    {
+      id: 'rn-cmp-1',
+      mode: 'compare',
+      prompt: 'Vergleiche römische Zahlen.',
+      tip: 'Zuerst in arabische Zahlen umrechnen, dann vergleichen.',
+      compareBlocks: [
+        {
+          type: 'convert',
+          items: [
+            { roman: 'IV', arabic: '4' },
+            { roman: 'VII', arabic: '7' },
+          ],
+        },
+        { type: 'compare', left: 'IV', right: 'VII', sign: '<' },
+      ],
+      choices: [],
+    },
+    {
+      id: 'rn-cmp-2',
+      mode: 'compare',
+      prompt: 'Vergleiche römische Zahlen.',
+      tip: 'D = 500, M = 1000.',
+      compareBlocks: [
+        {
+          type: 'convert',
+          items: [
+            { roman: 'D', arabic: '500' },
+            { roman: 'M', arabic: '1000' },
+          ],
+        },
+        { type: 'compare', left: 'D', right: 'M', sign: '<' },
+      ],
+      choices: [],
+    },
+    {
+      id: 'rn-cmp-3',
+      mode: 'compare',
+      prompt: 'Vergleiche römische Zahlen.',
+      tip: 'DCV = 605, XII = 12.',
+      compareBlocks: [
+        {
+          type: 'convert',
+          items: [
+            { roman: 'DCV', arabic: '605' },
+            { roman: 'XII', arabic: '12' },
+          ],
+        },
+        { type: 'compare', left: 'DCV', right: 'XII', sign: '>' },
+        {
+          type: 'convert',
+          items: [
+            { roman: 'V', arabic: '5' },
+            { roman: 'XV', arabic: '15' },
+          ],
+        },
+        { type: 'compare', left: 'V', right: 'XV', sign: '<' },
+      ],
+      choices: [],
+    },
+    {
+      id: 'rn-cmp-4',
+      mode: 'compare',
+      prompt: 'Vergleiche römische Zahlen.',
+      tip: 'MMMDC = 3600, MMDCC = 2700.',
+      compareBlocks: [
+        {
+          type: 'convert',
+          items: [
+            { roman: 'MMMDC', arabic: '3600' },
+            { roman: 'MMDCC', arabic: '2700' },
+          ],
+        },
+        { type: 'compare', left: 'MMMDC', right: 'MMDCC', sign: '>' },
+        {
+          type: 'convert',
+          items: [
+            { roman: 'CCCLXI', arabic: '361' },
+            { roman: 'CCCXCV', arabic: '395' },
+          ],
+        },
+        { type: 'compare', left: 'CCCLXI', right: 'CCCXCV', sign: '<' },
+      ],
+      choices: [],
+    },
+    {
+      id: 'rn-cmp-5',
+      mode: 'compare',
+      prompt: 'Vergleiche römische Zahlen.',
+      tip: 'MMC = 2100, MCM = 1900 (CM = 900).',
+      compareBlocks: [
+        {
+          type: 'convert',
+          items: [
+            { roman: 'MMC', arabic: '2100' },
+            { roman: 'MCM', arabic: '1900' },
+          ],
+        },
+        { type: 'compare', left: 'MMC', right: 'MCM', sign: '>' },
+      ],
+      choices: [],
+    },
   ];
 
   const orderQuestions: InteractiveExerciseQuestion[] = [
     {
       id: 'rn-ord-1',
-      prompt: 'Welche Reihenfolge ist richtig (klein → groß)?',
-      challenge: 'V · X · I',
-      showRomanTable: true,
-      choices: [
-        { id: 'rn-ord-1-a', label: 'I · V · X' },
-        { id: 'rn-ord-1-b', label: 'V · I · X' },
-        { id: 'rn-ord-1-c', label: 'X · V · I' },
-        { id: 'rn-ord-1-d', label: 'I · X · V' },
-      ],
-      correctChoiceId: 'rn-ord-1-a',
+      mode: 'sort',
+      prompt: 'Sortiere die römischen Zahlen der Größe nach. Beginne mit der Größten.',
+      tip: 'M = 1000, D = 500, C = 100, L = 50, X = 10, V = 5, I = 1',
+      sortItems: ['D', 'I', 'X', 'C', 'L', 'M', 'V'],
+      sortCorrectOrder: ['M', 'D', 'C', 'L', 'X', 'V', 'I'],
+      choices: [],
     },
     {
       id: 'rn-ord-2',
-      prompt: 'Welche Reihenfolge ist richtig (klein → groß)?',
-      challenge: 'L · C · XL',
-      showRomanTable: true,
-      choices: [
-        { id: 'rn-ord-2-a', label: 'XL · L · C' },
-        { id: 'rn-ord-2-b', label: 'L · XL · C' },
-        { id: 'rn-ord-2-c', label: 'C · L · XL' },
-        { id: 'rn-ord-2-d', label: 'XL · C · L' },
-      ],
-      correctChoiceId: 'rn-ord-2-a',
+      mode: 'sort',
+      prompt: 'Sortiere die römischen Zahlen der Größe nach. Beginne mit der Größten.',
+      tip: 'Zusammengesetzte Zahlen zuerst in arabische Zahlen umrechnen.',
+      sortItems: ['L', 'CL', 'C', 'D', 'XL', 'VI', 'IV', 'MDC', 'DCC'],
+      sortCorrectOrder: ['MDC', 'DCC', 'D', 'CL', 'C', 'L', 'XL', 'VI', 'IV'],
+      choices: [],
     },
     {
       id: 'rn-ord-3',
-      prompt: 'Welche Reihenfolge ist richtig (klein → groß)?',
-      challenge: 'IX · XI · X',
-      showRomanTable: true,
-      choices: [
-        { id: 'rn-ord-3-a', label: 'IX · X · XI' },
-        { id: 'rn-ord-3-b', label: 'X · IX · XI' },
-        { id: 'rn-ord-3-c', label: 'XI · X · IX' },
-        { id: 'rn-ord-3-d', label: 'IX · XI · X' },
-      ],
-      correctChoiceId: 'rn-ord-3-a',
+      mode: 'sort',
+      prompt: 'Sortiere die römischen Zahlen der Größe nach. Beginne mit der Größten.',
+      tip: 'XC = 90, IX = 9, XI = 11',
+      sortItems: ['IX', 'XL', 'XI', 'XC', 'XX', 'LX', 'VIII'],
+      sortCorrectOrder: ['XC', 'LX', 'XL', 'XX', 'XI', 'IX', 'VIII'],
+      choices: [],
+    },
+    {
+      id: 'rn-ord-4',
+      mode: 'sort',
+      prompt: 'Sortiere die römischen Zahlen der Größe nach. Beginne mit der Größten.',
+      tip: 'CM = 900, CD = 400, MM = 2000',
+      sortItems: ['CD', 'CM', 'M', 'D', 'MM', 'C'],
+      sortCorrectOrder: ['MM', 'M', 'CM', 'D', 'CD', 'C'],
+      choices: [],
     },
   ];
 
+  const writeRule =
+    'Römische Zahlen werden in absteigender Reihenfolge geschrieben. Ein Zahlzeichen schreibt man maximal dreimal hintereinander. Die Zeichen V, L, D dürfen nur einmal in einer Zahl vorkommen.';
+
+  const writeQ = (id: string, arabic: string, roman: string): InteractiveExerciseQuestion => ({
+    id,
+    mode: 'write',
+    prompt: 'Schreibe mit römischen Zahlen.',
+    showRomanTable: true,
+    ruleText: writeRule,
+    tip: 'Nur I vor V/X, X vor L/C, C vor D/M. V, L, D nie wiederholen.',
+    challenge: arabic,
+    correctAnswer: roman,
+    choices: [],
+  });
+
   const writeQuestions: InteractiveExerciseQuestion[] = [
-    q('rn-w-1', 'Schreibe 44 römisch', 'XLIV', ['XXXXIIII', 'XLIIII', 'IL']),
-    q('rn-w-2', 'Schreibe 99 römisch', 'XCIX', ['IC', 'LXXXXIX', 'XIC']),
-    q('rn-w-3', 'Schreibe 9 römisch', 'IX', ['VIIII', 'XI', 'IV']),
-    q('rn-w-4', 'Schreibe 40 römisch', 'XL', ['XXXX', 'LX', 'IL']),
+    writeQ('rn-w-1', '230', 'CCXXX'),
+    writeQ('rn-w-2', '455', 'CDLV'),
+    writeQ('rn-w-3', '641', 'DCXLI'),
+    writeQ('rn-w-4', '1 450', 'MCDL'),
+    writeQ('rn-w-5', '2 018', 'MMXVIII'),
+    writeQ('rn-w-6', '49', 'XLIX'),
+    writeQ('rn-w-7', '94', 'XCIV'),
+    writeQ('rn-w-8', '444', 'CDXLIV'),
+    writeQ('rn-w-9', '999', 'CMXCIX'),
+    writeQ('rn-w-10', '1 666', 'MDCLXVI'),
+  ];
+
+  const readQ = (id: string, roman: string, arabic: string): InteractiveExerciseQuestion => ({
+    id,
+    mode: 'write',
+    answerKind: 'arabic',
+    prompt: 'Schreibe mit arabischen Ziffern.',
+    showRomanTable: true,
+    tip: 'Addiere von links nach rechts. Klein vor groß bedeutet abziehen (z. B. IV = 4).',
+    challenge: roman,
+    correctAnswer: arabic,
+    choices: [],
+  });
+
+  const testQuestions: InteractiveExerciseQuestion[] = [
+    {
+      id: 'rn-t-rule-1',
+      mode: 'cloze',
+      prompt: 'Fülle die Lücken.',
+      tip: 'Groß nach klein → addieren. Klein links neben groß → subtrahieren.',
+      clozeParts: [
+        txt('Wenn die Zeichen von groß nach klein geordnet sind, werden sie '),
+        blank('addiert'),
+        txt('. Wenn eine kleinere Zahl links neben einer größeren steht, wird die kleinere von der größeren '),
+        blank('abgezogen'),
+        txt('.'),
+      ],
+      clozeOptions: ['addiert', 'abgezogen', 'multipliziert', 'geteilt'],
+      choices: [],
+    },
+    {
+      id: 'rn-t-rule-2',
+      mode: 'cloze',
+      prompt: 'Fülle die Lücken.',
+      showRomanTable: true,
+      tip: 'I, X, C, M höchstens dreimal; V, L, D nur einmal.',
+      clozeParts: [
+        txt('Die Zeichen I, X, C und M dürfen nur '),
+        blank('dreimal'),
+        txt(' hintereinander in einer Zahl vorkommen, die Zeichen V, L, D sogar nur '),
+        blank('einmal'),
+        txt('.'),
+      ],
+      clozeOptions: ['dreimal', 'zehnmal', 'einmal'],
+      choices: [],
+    },
+    readQ('rn-t-r-1', 'DLXIII', '563'),
+    readQ('rn-t-r-2', 'DCCCXII', '812'),
+    readQ('rn-t-r-3', 'LXXVI', '76'),
+    readQ('rn-t-r-4', 'DXCV', '595'),
+    readQ('rn-t-r-5', 'LXIV', '64'),
+    readQ('rn-t-r-6', 'MMXVIII', '2018'),
+    {
+      id: 'rn-t-date-1',
+      mode: 'cloze',
+      prompt: 'Wie lautet das Datum?',
+      tip: 'IV = 4, MDCCLXXVI = 1776.',
+      ruleText:
+        'Du siehst die Tafel, die die New Yorker Freiheitsstatue trägt und auf der das Datum der amerikanischen Unabhängigkeitserklärung steht. Die Tageszahl ist IV, die Jahreszahl ist MDCCLXXVI.',
+      clozeParts: [blank('4'), txt('. Juli '), blank('1776')],
+      clozeOptions: ['4', '14', '1776', '1766', '6', '1976'],
+      choices: [],
+    },
+    compareQuestions[0],
+    writeQ('rn-t-w-1', '49', 'XLIX'),
   ];
 
   return {
@@ -189,14 +535,7 @@ export function createRomanNumeralsExercise(): SlideInteractiveExercise {
         id: 'roman-calc',
         title: 'Mit römischen Zahlen rechnen',
         kind: 'practice',
-        questions: [
-          q('rn-calc-1', 'VII + V', 'XII', ['XI', 'XIII', 'X']),
-          q('rn-calc-2', 'X − III', 'VII', ['VIII', 'VI', 'XIII']),
-          q('rn-calc-3', 'IV + VI', 'X', ['IX', 'XI', 'VIII']),
-          q('rn-calc-4', 'XX − IX', 'XI', ['X', 'XII', 'XIX']),
-          q('rn-calc-5', 'L + XXV', 'LXXV', ['LXV', 'C', 'LXX']),
-          q('rn-calc-6', 'C − XL', 'LX', ['XL', 'LXXX', 'CXL']),
-        ],
+        questions: calcQuestions,
       },
       {
         id: 'roman-rules',
@@ -205,55 +544,63 @@ export function createRomanNumeralsExercise(): SlideInteractiveExercise {
         questions: [
           {
             id: 'rn-rule-1',
-            prompt: 'Welche Schreibweise ist richtig für 49?',
-            challenge: '49 = ?',
-            showRomanTable: true,
-            choices: [
-              { id: 'rn-rule-1-a', label: 'XLIX' },
-              { id: 'rn-rule-1-b', label: 'IL' },
-              { id: 'rn-rule-1-c', label: 'XXXXVIIII' },
-              { id: 'rn-rule-1-d', label: 'VLIV' },
+            mode: 'cloze',
+            prompt: 'Fülle die Lücken im Text.',
+            tip: 'Rechts neben einer größeren Zahl → addieren. Links davon → subtrahieren.',
+            clozeParts: [
+              txt('Steht eine kleinere Zahl rechts neben einer größeren, dann werden sie '),
+              blank('addiert'),
+              txt('. Wenn eine kleinere Zahl '),
+              blank('links'),
+              txt(' von einer größeren Zahl steht, wird die kleinere von der größeren Zahl subtrahiert.'),
             ],
-            correctChoiceId: 'rn-rule-1-a',
+            clozeOptions: ['addiert', 'subtrahiert', 'links', 'rechts'],
+            choices: [],
           },
           {
             id: 'rn-rule-2',
-            prompt: 'Darf man I vor V und X stellen?',
-            challenge: 'Subtraktionsregel',
-            showRomanTable: true,
-            choices: [
-              { id: 'rn-rule-2-a', label: 'Ja (IV, IX)' },
-              { id: 'rn-rule-2-b', label: 'Nein' },
-              { id: 'rn-rule-2-c', label: 'Nur vor L' },
-              { id: 'rn-rule-2-d', label: 'Nur vor C' },
+            mode: 'cloze',
+            prompt: 'Fülle die Lücken im Text.',
+            tip: 'I, X, C und M dürfen höchstens dreimal hintereinander stehen.',
+            clozeParts: [
+              txt('Auch für die '),
+              blank('römischen'),
+              txt(' Zahlen gibt es bestimmte Regeln. So dürfen die Zeichen I, X, C und M nur maximal '),
+              blank('dreimal'),
+              txt(' hintereinanderstehen.'),
             ],
-            correctChoiceId: 'rn-rule-2-a',
+            clozeOptions: ['römischen', 'arabischen', 'dreimal', 'zweimal', 'viermal'],
+            choices: [],
           },
           {
             id: 'rn-rule-3',
-            prompt: 'Wie oft darf man höchstens hintereinander dasselbe Zeichen schreiben?',
-            challenge: 'Wiederholungsregel',
-            showRomanTable: true,
-            choices: [
-              { id: 'rn-rule-3-a', label: 'Dreimal (z. B. III, XXX)' },
-              { id: 'rn-rule-3-b', label: 'Einmal' },
-              { id: 'rn-rule-3-c', label: 'Fünfmal' },
-              { id: 'rn-rule-3-d', label: 'Beliebig oft' },
+            mode: 'cloze',
+            prompt: 'Fülle die Lücken im Text.',
+            tip: 'V, L und D stehen nie mehrfach in einer Zahl.',
+            clozeParts: [
+              txt('Die Zahlzeichen V, L und D dürfen '),
+              blank('nur einmal'),
+              txt(' in einer Zahl vorkommen.'),
             ],
-            correctChoiceId: 'rn-rule-3-a',
+            clozeOptions: ['gar nicht', 'nur einmal', 'zweimal', 'dreimal'],
+            choices: [],
           },
           {
             id: 'rn-rule-4',
-            prompt: 'Welche Zahl steht für D?',
-            challenge: 'D = ?',
-            showRomanTable: true,
-            choices: [
-              { id: 'rn-rule-4-a', label: '500' },
-              { id: 'rn-rule-4-b', label: '50' },
-              { id: 'rn-rule-4-c', label: '1000' },
-              { id: 'rn-rule-4-d', label: '100' },
+            mode: 'cloze',
+            prompt: 'Fülle die Lücken im Text.',
+            tip: 'Nur I vor V/X, X vor L/C, C vor D/M.',
+            clozeParts: [
+              txt('Nur '),
+              blank('I'),
+              txt(' darf vor V und X stehen, nur '),
+              blank('X'),
+              txt(' vor L und C, und nur '),
+              blank('C'),
+              txt(' vor D und M.'),
             ],
-            correctChoiceId: 'rn-rule-4-a',
+            clozeOptions: ['I', 'V', 'X', 'L', 'C', 'D', 'M'],
+            choices: [],
           },
         ],
       },
@@ -274,12 +621,49 @@ export function createRomanNumeralsExercise(): SlideInteractiveExercise {
         title: 'Römische Zahlen zuordnen',
         kind: 'practice',
         questions: [
-          q('rn-m-1', 'M', '1000', ['100', '500', '50']),
-          q('rn-m-2', 'L', '50', ['5', '100', '500']),
-          q('rn-m-3', 'C', '100', ['10', '1000', '50']),
-          q('rn-m-4', 'V', '5', ['1', '10', '50']),
-          q('rn-m-5', 'X', '10', ['1', '5', '100']),
-          q('rn-m-6', 'D', '500', ['50', '100', '1000']),
+          {
+            id: 'rn-m-1',
+            prompt: 'Ordne zu.',
+            mode: 'match',
+            tip: 'Tippe zuerst auf einen Satz, dann auf die passende römische Zahl.',
+            matchPairs: [
+              { id: 'm1a', left: 'Die Uhr zeigt zwölf Uhr.', right: 'XII' },
+              { id: 'm1b', left: 'Die Mannschaft hat 33 Punkte erzielt.', right: 'XXXIII' },
+              { id: 'm1c', left: 'Papst Benedikt der Achte', right: 'VIII' },
+              { id: 'm1d', left: 'Das Buch hat siebzehn Kapitel.', right: 'XVII' },
+            ],
+            choices: [],
+          },
+          {
+            id: 'rn-m-2',
+            prompt:
+              'Römische Zahlen findet man häufig an alten Bauwerken oder auf Gedenktafeln für wichtige Ereignisse. Ordne die Zahlen den passenden Ereignissen zu.',
+            mode: 'match',
+            tip: 'Rechne die römische Zahl in eine Jahreszahl um und finde das passende Ereignis.',
+            matchPairs: [
+              { id: 'm2a', left: 'Kolumbus entdeckt Amerika', right: 'MCDXCII' },
+              { id: 'm2b', left: 'Eröffnung des Eiffelturms', right: 'MDCCCLXXXIX' },
+              { id: 'm2c', left: 'Markteinführung des ersten iPhones', right: 'MMVII' },
+              { id: 'm2d', left: 'Gründung von Berlin', right: 'MCCXXXVII' },
+            ],
+            choices: [],
+          },
+          {
+            id: 'rn-m-3',
+            prompt: 'Ordne die Zeichen den Werten zu.',
+            mode: 'match',
+            tip: 'Nutze die Wertetabelle: I=1, V=5, X=10, L=50, C=100, D=500, M=1000.',
+            matchPairs: [
+              { id: 'm3a', left: 'I', right: '1' },
+              { id: 'm3b', left: 'V', right: '5' },
+              { id: 'm3c', left: 'X', right: '10' },
+              { id: 'm3d', left: 'L', right: '50' },
+              { id: 'm3e', left: 'C', right: '100' },
+              { id: 'm3f', left: 'D', right: '500' },
+              { id: 'm3g', left: 'M', right: '1000' },
+            ],
+            choices: [],
+          },
         ],
       },
       {
@@ -292,11 +676,7 @@ export function createRomanNumeralsExercise(): SlideInteractiveExercise {
         id: 'roman-test',
         title: 'Test',
         kind: 'test',
-        questions: [
-          ...convertQuestions.slice(0, 4),
-          ...writeQuestions.slice(0, 2),
-          ...compareQuestions.slice(0, 2),
-        ],
+        questions: testQuestions,
       },
     ],
   };
@@ -307,12 +687,9 @@ export function resolveInteractiveExercise(
 ): SlideInteractiveExercise | undefined {
   const base = sanitizeSlideInteractiveExercise(raw);
   if (!base) return undefined;
-  if (base.packId === 'roman-numerals' && (!base.topics || base.topics.length === 0)) {
+  // Eingebaute Pakete immer frisch auflösen, damit Inhalts-Updates greifen.
+  if (base.packId === 'roman-numerals') {
     return createRomanNumeralsExercise();
-  }
-  if (base.packId === 'roman-numerals' && base.topics.length > 0) {
-    // Titel vom Paket behalten, aber gespeicherte Themen nutzen
-    return base;
   }
   return base;
 }
@@ -338,6 +715,210 @@ export function sanitizeSlideInteractiveExercise(
       if (!qq || typeof qq !== 'object') continue;
       const qid = typeof qq.id === 'string' ? qq.id.trim() : '';
       const prompt = typeof qq.prompt === 'string' ? qq.prompt.trim() : '';
+      if (!qid || !prompt) continue;
+
+      const mode =
+        qq.mode === 'equation' ||
+        qq.mode === 'cloze' ||
+        qq.mode === 'choice' ||
+        qq.mode === 'sort' ||
+        qq.mode === 'write' ||
+        qq.mode === 'match' ||
+        qq.mode === 'compare'
+          ? qq.mode
+          : 'choice';
+
+      const parseParts = (rawParts: unknown): EquationPart[] => {
+        if (!Array.isArray(rawParts)) return [];
+        const out: EquationPart[] = [];
+        for (const p of rawParts) {
+          if (!p || typeof p !== 'object') continue;
+          if ((p as EquationPart).type === 'text' && typeof (p as { text?: string }).text === 'string') {
+            out.push({ type: 'text', text: String((p as { text: string }).text) });
+          } else if (
+            (p as EquationPart).type === 'blank' &&
+            typeof (p as { correct?: string }).correct === 'string' &&
+            String((p as { correct: string }).correct).trim()
+          ) {
+            out.push({ type: 'blank', correct: String((p as { correct: string }).correct).trim() });
+          }
+        }
+        return out;
+      };
+
+      if (mode === 'equation') {
+        const equationParts = parseParts(qq.equationParts);
+        const blanks = equationParts.filter((p) => p.type === 'blank');
+        if (blanks.length < 1) continue;
+        questions.push({
+          id: qid,
+          prompt,
+          mode: 'equation',
+          ...(typeof qq.challenge === 'string' && qq.challenge.trim()
+            ? { challenge: qq.challenge.trim() }
+            : {}),
+          ...(qq.showRomanTable ? { showRomanTable: true } : {}),
+          ...(typeof qq.ruleText === 'string' && qq.ruleText.trim()
+            ? { ruleText: qq.ruleText.trim() }
+            : {}),
+          ...(typeof qq.tip === 'string' && qq.tip.trim() ? { tip: qq.tip.trim() } : {}),
+          ...(typeof qq.exampleLine === 'string' && qq.exampleLine.trim()
+            ? { exampleLine: qq.exampleLine.trim() }
+            : {}),
+          ...(typeof qq.roman === 'string' && qq.roman.trim() ? { roman: qq.roman.trim() } : {}),
+          equationParts,
+          choices: [],
+        });
+        continue;
+      }
+
+      if (mode === 'cloze') {
+        const clozeParts = parseParts(qq.clozeParts);
+        const blanks = clozeParts.filter((p) => p.type === 'blank');
+        const clozeOptions = Array.isArray(qq.clozeOptions)
+          ? qq.clozeOptions
+              .filter((o): o is string => typeof o === 'string' && o.trim().length > 0)
+              .map((o) => o.trim())
+          : [];
+        if (blanks.length < 1 || clozeOptions.length < 1) continue;
+        questions.push({
+          id: qid,
+          prompt,
+          mode: 'cloze',
+          ...(qq.showRomanTable ? { showRomanTable: true } : {}),
+          ...(typeof qq.ruleText === 'string' && qq.ruleText.trim()
+            ? { ruleText: qq.ruleText.trim() }
+            : {}),
+          ...(typeof qq.tip === 'string' && qq.tip.trim() ? { tip: qq.tip.trim() } : {}),
+          clozeParts,
+          clozeOptions,
+          choices: [],
+        });
+        continue;
+      }
+
+      if (mode === 'sort') {
+        const sortItems = Array.isArray(qq.sortItems)
+          ? qq.sortItems
+              .filter((o): o is string => typeof o === 'string' && o.trim().length > 0)
+              .map((o) => o.trim())
+          : [];
+        const sortCorrectOrder = Array.isArray(qq.sortCorrectOrder)
+          ? qq.sortCorrectOrder
+              .filter((o): o is string => typeof o === 'string' && o.trim().length > 0)
+              .map((o) => o.trim())
+          : [];
+        if (sortItems.length < 2 || sortCorrectOrder.length !== sortItems.length) continue;
+        questions.push({
+          id: qid,
+          prompt,
+          mode: 'sort',
+          ...(typeof qq.tip === 'string' && qq.tip.trim() ? { tip: qq.tip.trim() } : {}),
+          sortItems,
+          sortCorrectOrder,
+          choices: [],
+        });
+        continue;
+      }
+
+      if (mode === 'write') {
+        const answerKind = qq.answerKind === 'arabic' ? 'arabic' : 'roman';
+        const rawAnswer =
+          typeof qq.correctAnswer === 'string' ? qq.correctAnswer.trim() : '';
+        const correctAnswer =
+          answerKind === 'arabic'
+            ? rawAnswer.replace(/\s+/g, '')
+            : rawAnswer.toUpperCase();
+        if (!correctAnswer) continue;
+        questions.push({
+          id: qid,
+          prompt,
+          mode: 'write',
+          answerKind,
+          ...(typeof qq.challenge === 'string' && qq.challenge.trim()
+            ? { challenge: qq.challenge.trim() }
+            : {}),
+          ...(qq.showRomanTable ? { showRomanTable: true } : {}),
+          ...(typeof qq.ruleText === 'string' && qq.ruleText.trim()
+            ? { ruleText: qq.ruleText.trim() }
+            : {}),
+          ...(typeof qq.tip === 'string' && qq.tip.trim() ? { tip: qq.tip.trim() } : {}),
+          correctAnswer,
+          choices: [],
+        });
+        continue;
+      }
+
+      if (mode === 'match') {
+        const matchPairsRaw = Array.isArray(qq.matchPairs) ? qq.matchPairs : [];
+        const matchPairs: MatchPair[] = [];
+        for (const p of matchPairsRaw) {
+          if (!p || typeof p !== 'object') continue;
+          const pid = typeof p.id === 'string' ? p.id.trim() : '';
+          const left = typeof p.left === 'string' ? p.left.trim() : '';
+          const right = typeof p.right === 'string' ? p.right.trim() : '';
+          if (!pid || !left || !right) continue;
+          matchPairs.push({ id: pid, left, right });
+        }
+        if (matchPairs.length < 2) continue;
+        questions.push({
+          id: qid,
+          prompt,
+          mode: 'match',
+          ...(typeof qq.tip === 'string' && qq.tip.trim() ? { tip: qq.tip.trim() } : {}),
+          matchPairs,
+          choices: [],
+        });
+        continue;
+      }
+
+      if (mode === 'compare') {
+        const blocksRaw = Array.isArray(qq.compareBlocks) ? qq.compareBlocks : [];
+        const compareBlocks: CompareBlock[] = [];
+        for (const b of blocksRaw) {
+          if (!b || typeof b !== 'object') continue;
+          if ((b as CompareBlock).type === 'convert') {
+            const itemsRaw = Array.isArray((b as { items?: unknown }).items)
+              ? (b as { items: unknown[] }).items
+              : [];
+            const items: Array<{ roman: string; arabic: string }> = [];
+            for (const it of itemsRaw) {
+              if (!it || typeof it !== 'object') continue;
+              const roman = typeof (it as { roman?: string }).roman === 'string'
+                ? String((it as { roman: string }).roman).trim()
+                : '';
+              const arabic = typeof (it as { arabic?: string }).arabic === 'string'
+                ? String((it as { arabic: string }).arabic).trim().replace(/\s+/g, '')
+                : '';
+              if (!roman || !arabic) continue;
+              items.push({ roman, arabic });
+            }
+            if (items.length < 1) continue;
+            compareBlocks.push({ type: 'convert', items });
+          } else if ((b as CompareBlock).type === 'compare') {
+            const left = typeof (b as { left?: string }).left === 'string'
+              ? String((b as { left: string }).left).trim()
+              : '';
+            const right = typeof (b as { right?: string }).right === 'string'
+              ? String((b as { right: string }).right).trim()
+              : '';
+            const sign = (b as { sign?: string }).sign;
+            if (!left || !right || (sign !== '<' && sign !== '>' && sign !== '=')) continue;
+            compareBlocks.push({ type: 'compare', left, right, sign });
+          }
+        }
+        if (compareBlocks.length < 1) continue;
+        questions.push({
+          id: qid,
+          prompt,
+          mode: 'compare',
+          ...(typeof qq.tip === 'string' && qq.tip.trim() ? { tip: qq.tip.trim() } : {}),
+          compareBlocks,
+          choices: [],
+        });
+        continue;
+      }
+
       const correctChoiceId =
         typeof qq.correctChoiceId === 'string' ? qq.correctChoiceId.trim() : '';
       const choicesRaw = Array.isArray(qq.choices) ? qq.choices : [];
@@ -349,11 +930,12 @@ export function sanitizeSlideInteractiveExercise(
         if (!cid || !label) continue;
         choices.push({ id: cid, label });
       }
-      if (!qid || !prompt || choices.length < 2 || !correctChoiceId) continue;
+      if (choices.length < 2 || !correctChoiceId) continue;
       if (!choices.some((c) => c.id === correctChoiceId)) continue;
       questions.push({
         id: qid,
         prompt,
+        mode: 'choice',
         ...(typeof qq.challenge === 'string' && qq.challenge.trim()
           ? { challenge: qq.challenge.trim() }
           : {}),
