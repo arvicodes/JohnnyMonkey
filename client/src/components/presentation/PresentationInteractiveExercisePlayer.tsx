@@ -582,7 +582,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
             py: `${8 * s}px`,
           }}
         >
-          Im Präsentationsmodus starten die Kinder die Übungen
+          Rechts „START“ tippen — öffnet die Übung bei den SuS
         </Typography>
       ) : null}
     </Box>

@@ -154,6 +154,7 @@ model LearningGroup {
   lessonSharedInputShares LessonSharedInputShare[]
   lessonCollabFlashcardBeacons LessonCollabFlashcardBeacon[]
   lessonExamBeacons            LessonExamBeacon[]
+  lessonInteractiveExerciseBeacons LessonInteractiveExerciseBeacon[]
   scheduleSlots                ScheduleSlot[]
   autoLessonSessions           AutoLessonSession[]
   wochenaufgabeTasks           WochenaufgabeTask[]
@@ -175,6 +176,21 @@ model LessonExamBeacon {
   active     Boolean       @default(true)
   updatedAt  DateTime      @updatedAt
   group      LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
+
+/// Lehrer startet interaktive Übung → SuS bekommen Vollbild-Overlay (Poll).
+model LessonInteractiveExerciseBeacon {
+  groupId      String        @id
+  lessonPath   String        @default("")
+  slideId      String        @default("")
+  exerciseId   String        @default("")
+  exerciseTitle String       @default("")
+  /** JSON: SlideInteractiveExercise */
+  exerciseJson String        @default("{}")
+  beaconId     String
+  active       Boolean       @default(true)
+  updatedAt    DateTime      @updatedAt
+  group        LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
 }
 
 /// Lehrer-Klick „Karteikarten gemeinsam“ (Tablet): neues beaconId → SuS öffnen das Modal per Poll.

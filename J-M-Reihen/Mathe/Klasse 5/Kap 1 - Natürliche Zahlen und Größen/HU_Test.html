@@ -52,6 +52,29 @@
             margin-bottom: 20px;
         }
 
+        
+        .header-brand-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 10px;
+        }
+
+        .header-logo {
+            height: 46px;
+            width: auto;
+            flex-shrink: 0;
+            display: block;
+            object-fit: contain;
+            background: transparent;
+        }
+
+        .header-brand-row .header-top {
+            flex: 1;
+            min-width: 0;
+            margin-bottom: 0;
+        }
+
         .header-top {
             display: flex;
             justify-content: space-between;
@@ -768,9 +791,32 @@
         })();
     </script>
     <div class="header">
-        <div class="header-top">
-            <div class="header-title">Test</div>
-            <div class="header-date" id="currentDate"></div>
+        <div class="header-brand-row">
+            <img class="header-logo" id="jmExamLogo" alt="JohnnyMonkey" src="/johnny-logo.png">
+    <script>
+        (function () {
+            var img = document.getElementById('jmExamLogo');
+            if (!img) return;
+            function setFrom(origin) {
+                if (!origin) return false;
+                img.src = String(origin).replace(/\/$/, '') + '/johnny-logo.png';
+                return true;
+            }
+            if (location.protocol === 'blob:') {
+                try { if (document.referrer && setFrom(new URL(document.referrer).origin)) return; } catch (e) {}
+                try { if (window.opener && setFrom(window.opener.location.origin)) return; } catch (e) {}
+                img.onerror = function () {
+                    img.onerror = null;
+                    img.src = 'https://johnnymonkey.onrender.com/johnny-logo.png';
+                };
+            }
+        })();
+    </script>
+
+            <div class="header-top">
+                        <div class="header-title">Test</div>
+                        <div class="header-date" id="currentDate"></div>
+                    </div>
         </div>
         <div class="header-divider"></div>
         <div class="header-bottom">
@@ -2143,6 +2189,26 @@
         .header {
             margin-bottom: 20px;
         }
+        
+        .header-brand-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 10px;
+        }
+        .header-logo {
+            height: 46px;
+            width: auto;
+            flex-shrink: 0;
+            display: block;
+            object-fit: contain;
+        }
+        .header-brand-row .header-top {
+            flex: 1;
+            min-width: 0;
+            margin-bottom: 0;
+        }
+
         .header-top {
             display: flex;
             justify-content: space-between;
@@ -2319,9 +2385,12 @@
 </head>
 <body>
     <div class="header">
-        <div class="header-top">
-            <div class="header-title">Klassenarbeit: Prozent- und Zinsrechnung</div>
-            <div class="header-date">${dateStr}</div>
+        <div class="header-brand-row">
+            <img class="header-logo" id="jmExamLogo" alt="JohnnyMonkey" src="/johnny-logo.png">
+            <div class="header-top">
+                        <div class="header-title">Klassenarbeit: Prozent- und Zinsrechnung</div>
+                        <div class="header-date">${dateStr}</div>
+                    </div>
         </div>
         <div class="header-divider"></div>
         <div class="header-bottom">

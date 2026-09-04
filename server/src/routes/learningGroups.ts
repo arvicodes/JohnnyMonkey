@@ -569,6 +569,188 @@ router.get('/exam-beacon/student-poll', async (req: Request, res: Response) => {
   }
 });
 
+/** Lehrer: Interaktive Übung für eine Lerngruppe starten (Vollbild bei SuS) */
+router.post('/interactive-exercise-beacon/start', async (req: Request, res: Response) => {
+  try {
+    const { teacherId, groupId, lessonPath, slideId, exerciseId, exerciseTitle, exerciseJson } =
+      req.body as {
+        teacherId?: string;
+        groupId?: string;
+        lessonPath?: string;
+        slideId?: string;
+        exerciseId?: string;
+        exerciseTitle?: string;
+        exerciseJson?: string;
+      };
+    if (!teacherId?.trim() || !groupId?.trim() || !exerciseJson?.trim()) {
+      return res
+        .status(400)
+        .json({ error: 'teacherId, groupId und exerciseJson sind erforderlich' });
+    }
+    const group = await prisma.learningGroup.findUnique({
+      where: { id: groupId },
+      select: { teacherId: true },
+    });
+    if (!group || group.teacherId !== teacherId) {
+      return res.status(403).json({ error: 'Keine Berechtigung' });
+    }
+    let parsedTitle = String(exerciseTitle || '').trim();
+    let parsedId = String(exerciseId || '').trim();
+    try {
+      const raw = JSON.parse(String(exerciseJson));
+      if (raw && typeof raw === 'object') {
+        if (!parsedTitle && typeof raw.title === 'string') parsedTitle = raw.title.trim();
+        if (!parsedId && typeof raw.id === 'string') parsedId = raw.id.trim();
+      }
+    } catch {
+      return res.status(400).json({ error: 'exerciseJson ist ungültig' });
+    }
+    const beaconId = `ix-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    await prisma.lessonInteractiveExerciseBeacon.upsert({
+      where: { groupId },
+      create: {
+        groupId,
+        lessonPath: String(lessonPath || '').trim(),
+        slideId: String(slideId || '').trim(),
+        exerciseId: parsedId || 'exercise',
+        exerciseTitle: parsedTitle || 'Interaktive Übung',
+        exerciseJson: String(exerciseJson),
+        beaconId,
+        active: true,
+      },
+      update: {
+        lessonPath: String(lessonPath || '').trim(),
+        slideId: String(slideId || '').trim(),
+        exerciseId: parsedId || 'exercise',
+        exerciseTitle: parsedTitle || 'Interaktive Übung',
+        exerciseJson: String(exerciseJson),
+        beaconId,
+        active: true,
+      },
+    });
+    return res.json({
+      ok: true,
+      beaconId,
+      exerciseId: parsedId || 'exercise',
+      exerciseTitle: parsedTitle || 'Interaktive Übung',
+      active: true,
+    });
+  } catch (e: any) {
+    console.error('interactive-exercise-beacon/start:', e);
+    return res.status(500).json({ error: e?.message || 'Serverfehler' });
+  }
+});
+
+/** Lehrer: Interaktive Übung beenden → Overlay bei SuS schließen */
+router.post('/interactive-exercise-beacon/stop', async (req: Request, res: Response) => {
+  try {
+    const { teacherId, groupId } = req.body as { teacherId?: string; groupId?: string };
+    if (!teacherId?.trim() || !groupId?.trim()) {
+      return res.status(400).json({ error: 'teacherId und groupId sind erforderlich' });
+    }
+    const group = await prisma.learningGroup.findUnique({
+      where: { id: groupId },
+      select: { teacherId: true },
+    });
+    if (!group || group.teacherId !== teacherId) {
+      return res.status(403).json({ error: 'Keine Berechtigung' });
+    }
+    const existing = await prisma.lessonInteractiveExerciseBeacon.findUnique({
+      where: { groupId },
+    });
+    if (existing) {
+      await prisma.lessonInteractiveExerciseBeacon.update({
+        where: { groupId },
+        data: { active: false },
+      });
+    }
+    return res.json({
+      ok: true,
+      active: false,
+      exerciseId: existing?.exerciseId || null,
+    });
+  } catch (e: any) {
+    console.error('interactive-exercise-beacon/stop:', e);
+    return res.status(500).json({ error: e?.message || 'Serverfehler' });
+  }
+});
+
+/** Lehrer: Status der laufenden interaktiven Übung */
+router.get('/interactive-exercise-beacon/status/:groupId', async (req: Request, res: Response) => {
+  try {
+    const groupId = req.params.groupId;
+    const row = await prisma.lessonInteractiveExerciseBeacon.findUnique({
+      where: { groupId },
+      select: {
+        groupId: true,
+        lessonPath: true,
+        slideId: true,
+        exerciseId: true,
+        exerciseTitle: true,
+        beaconId: true,
+        active: true,
+        updatedAt: true,
+      },
+    });
+    if (!row || !row.active) {
+      return res.json({ active: false, beacon: null });
+    }
+    return res.json({ active: true, beacon: row });
+  } catch (e: any) {
+    console.error('interactive-exercise-beacon/status:', e);
+    return res.status(500).json({ error: e?.message || 'Serverfehler' });
+  }
+});
+
+/** SuS: Polling — aktive interaktive Übung → Vollbild-Overlay */
+router.get('/interactive-exercise-beacon/student-poll', async (req: Request, res: Response) => {
+  try {
+    const raw = req.headers['x-login-code'] as string | undefined;
+    const loginCode = typeof raw === 'string' ? raw.trim() : '';
+    if (!loginCode) {
+      return res.status(401).json({ error: 'Anmeldung erforderlich' });
+    }
+    const user = await findUserByLoginCode(prisma, raw);
+    if (!user || user.role !== 'STUDENT') {
+      return res.status(403).json({ error: 'Nur für Schülerkonten' });
+    }
+    const rows = await prisma.lessonInteractiveExerciseBeacon.findMany({
+      where: {
+        active: true,
+        group: { students: { some: { id: user.id } } },
+      },
+      select: {
+        groupId: true,
+        lessonPath: true,
+        slideId: true,
+        exerciseId: true,
+        exerciseTitle: true,
+        exerciseJson: true,
+        beaconId: true,
+        updatedAt: true,
+        group: { select: { name: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+    return res.json({
+      beacons: rows.map((r) => ({
+        groupId: r.groupId,
+        groupName: r.group.name,
+        lessonPath: r.lessonPath,
+        slideId: r.slideId,
+        exerciseId: r.exerciseId,
+        exerciseTitle: r.exerciseTitle,
+        exerciseJson: r.exerciseJson,
+        beaconId: r.beaconId,
+        updatedAt: r.updatedAt,
+      })),
+    });
+  } catch (e: any) {
+    console.error('interactive-exercise-beacon/student-poll:', e);
+    return res.status(500).json({ error: e?.message || 'Serverfehler' });
+  }
+});
+
 /** Lehrer (z. B. Tablet-Modus): Signal an alle SuS dieser Gruppe — gemeinsames Karteikarten-Modal öffnen */
 router.post('/collab-flashcard-beacon', async (req: Request, res: Response) => {
   try {

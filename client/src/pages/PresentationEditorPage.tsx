@@ -5297,6 +5297,8 @@ const PresentationEditorPage: React.FC = () => {
             onSlideExamChange={(next: SlideExam | undefined) =>
               updateSlide({ slideExam: next }, normalizedActive.id)
             }
+            slideInteractiveExercise={normalizedActive.slideInteractiveExercise}
+            slideIdForExercise={normalizedActive.id}
             groupId={groupId}
             onMessage={setSnackbar}
           />

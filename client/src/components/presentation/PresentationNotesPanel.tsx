@@ -5,7 +5,7 @@ import {
   ChevronRight as HideNotesIcon,
   Mic as MicIcon,
 } from '@mui/icons-material';
-import { htmlToPlain, textToHtml, type PresentationStroke, type SlideAudioTrack, type SlideExam, type SlidePrintMaterial } from '../../lib/presentationDeck';
+import { htmlToPlain, textToHtml, type PresentationStroke, type SlideAudioTrack, type SlideExam, type SlideInteractiveExercise, type SlidePrintMaterial } from '../../lib/presentationDeck';
 import {
   migrateNotesInkCssToSlideSpace,
   notesInkNeedsHostMigration,
@@ -50,6 +50,7 @@ import { type PresentationDrawTool } from '../../lib/presentationDrawTools';
 import PresentationDrawOverlay from './PresentationDrawOverlay';
 import MaterialCrate from '../MaterialCrate';
 import PresentationSlideExamBox from './PresentationSlideExamBox';
+import PresentationSlideExerciseBox from './PresentationSlideExerciseBox';
 import '../../styles/presentationLists.css';
 
 /** Ein Notizfeld (früher Material / Setup / Sprechakte). Legacy-Keys bleiben für Papierkorb. */
@@ -795,6 +796,8 @@ interface PresentationNotesPanelProps {
   onPrintMaterialsChange?: (next: SlidePrintMaterial[]) => void;
   slideExam?: SlideExam;
   onSlideExamChange?: (next: SlideExam | undefined) => void;
+  slideInteractiveExercise?: SlideInteractiveExercise | null;
+  slideIdForExercise?: string;
   groupId?: string;
   onMessage?: (text: string) => void;
 }
@@ -833,6 +836,8 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
   onPrintMaterialsChange,
   slideExam,
   onSlideExamChange,
+  slideInteractiveExercise,
+  slideIdForExercise,
   groupId,
   onMessage,
 }) => {
@@ -989,6 +994,15 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
           lessonPath={lessonPath}
           groupId={groupId}
           onChange={onSlideExamChange}
+          onMessage={onMessage}
+        />
+      ) : null}
+      {slideInteractiveExercise ? (
+        <PresentationSlideExerciseBox
+          exercise={slideInteractiveExercise}
+          slideId={slideIdForExercise || slideId}
+          lessonPath={lessonPath}
+          groupId={groupId}
           onMessage={onMessage}
         />
       ) : null}

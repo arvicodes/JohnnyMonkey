@@ -216,6 +216,20 @@ if [ -f /app/server/data/dev.db ]; then
         )
       \`);
       await prisma.\$executeRawUnsafe(\`
+        CREATE TABLE IF NOT EXISTS "LessonInteractiveExerciseBeacon" (
+          "groupId" TEXT NOT NULL PRIMARY KEY,
+          "lessonPath" TEXT NOT NULL DEFAULT '',
+          "slideId" TEXT NOT NULL DEFAULT '',
+          "exerciseId" TEXT NOT NULL DEFAULT '',
+          "exerciseTitle" TEXT NOT NULL DEFAULT '',
+          "exerciseJson" TEXT NOT NULL DEFAULT '{}',
+          "beaconId" TEXT NOT NULL,
+          "active" BOOLEAN NOT NULL DEFAULT 1,
+          "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY ("groupId") REFERENCES "LearningGroup"("id") ON DELETE CASCADE
+        )
+      \`);
+      await prisma.\$executeRawUnsafe(\`
         CREATE TABLE IF NOT EXISTS "LessonCollabFlashcardBeacon" (
           "groupId" TEXT NOT NULL,
           "lessonPath" TEXT NOT NULL,
@@ -229,6 +243,11 @@ if [ -f /app/server/data/dev.db ]; then
         console.log('✅ Prisma model lessonExamBeacon available');
       } else {
         console.warn('⚠️  Prisma model lessonExamBeacon MISSING after generate — Schema im Image aktualisieren');
+      }
+      if (prisma.lessonInteractiveExerciseBeacon) {
+        console.log('✅ Prisma model lessonInteractiveExerciseBeacon available');
+      } else {
+        console.warn('⚠️  Prisma model lessonInteractiveExerciseBeacon MISSING after generate');
       }
       console.log('✅ LessonExamBeacon-Tabellen bereit');
     } catch (e) {
