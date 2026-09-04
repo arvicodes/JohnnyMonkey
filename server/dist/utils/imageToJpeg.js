@@ -94,7 +94,8 @@ function readSipsPixelEdge(filePath) {
 async function readImageFileForServe(filePath, maxEdge) {
     const ext = path_1.default.extname(filePath).toLowerCase();
     if (isHeicPath(filePath)) {
-        const buffer = await fileToJpegBuffer(filePath, maxEdge !== null && maxEdge !== void 0 ? maxEdge : 1200);
+        // Ohne max: volle Auflösung (früher Default 1200 → weiche Verbesserungen)
+        const buffer = await fileToJpegBuffer(filePath, maxEdge);
         return { buffer, mimeType: 'image/jpeg' };
     }
     if (ext === '.svg' || !RASTER_EXT.has(ext) || !maxEdge || process.platform !== 'darwin') {

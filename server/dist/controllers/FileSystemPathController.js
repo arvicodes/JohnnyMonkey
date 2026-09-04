@@ -900,7 +900,7 @@ class FileSystemPathController {
                 return res.status(404).json({ error: 'File not found', path: filePath });
             }
             const maxRaw = parseInt(String(max !== null && max !== void 0 ? max : ''), 10);
-            const maxEdge = Number.isFinite(maxRaw) && maxRaw > 0 && maxRaw <= 2400 ? maxRaw : undefined;
+            const maxEdge = Number.isFinite(maxRaw) && maxRaw > 0 && maxRaw <= 4096 ? maxRaw : undefined;
             const { buffer, mimeType } = await (0, imageToJpeg_1.readImageFileForServe)(fullPath, maxEdge);
             if (preview === 'true') {
                 const response = {
