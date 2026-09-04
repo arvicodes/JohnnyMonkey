@@ -1533,7 +1533,7 @@ const PresentationSlideToolsBar: React.FC<PresentationSlideToolsBarProps> = ({
                       showGeometry={Boolean(selectedElement)}
                       cropHint={
                         selectedNotesImage && !selectedElement
-                          ? 'Ecken ziehen = Größe · Kanten ziehen = Ausschnitt'
+                          ? 'Zuerst „Zuschneiden“ tippen — dann orangene Griffe an den Kanten/Ecken des Fotos ziehen'
                           : undefined
                       }
                       onUpdate={(patch) => onUpdateElement(imageToolsElement.id, patch)}

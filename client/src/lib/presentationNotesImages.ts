@@ -139,64 +139,84 @@ export function presentationNotesImageEditorSx() {
     },
     [`& .${CROP_EDGE_CLASS}`]: {
       position: 'absolute',
-      zIndex: 4,
-      background: 'rgba(245, 127, 23, 0.35)',
-      border: 'none',
+      zIndex: 6,
       touchAction: 'none',
       pointerEvents: 'auto',
       boxSizing: 'border-box',
+      display: 'none',
     },
+    // Kanten-Griffe (Ausschnitt)
     [`& .${CROP_EDGE_CLASS}[data-edge="n"], & .${CROP_EDGE_CLASS}[data-edge="s"]`]: {
-      left: 10,
-      right: 10,
-      height: 12,
+      left: 18,
+      right: 18,
+      height: 14,
       cursor: 'ns-resize',
+      bgcolor: 'rgba(245, 127, 23, 0.25)',
     },
-    [`& .${CROP_EDGE_CLASS}[data-edge="n"]`]: {
-      top: 0,
-      borderTop: '3px solid #f57f17',
-    },
-    [`& .${CROP_EDGE_CLASS}[data-edge="s"]`]: {
-      bottom: 0,
-      borderBottom: '3px solid #f57f17',
-    },
+    [`& .${CROP_EDGE_CLASS}[data-edge="n"]`]: { top: 0 },
+    [`& .${CROP_EDGE_CLASS}[data-edge="s"]`]: { bottom: 0 },
     [`& .${CROP_EDGE_CLASS}[data-edge="e"], & .${CROP_EDGE_CLASS}[data-edge="w"]`]: {
-      top: 10,
-      bottom: 10,
-      width: 12,
+      top: 18,
+      bottom: 18,
+      width: 14,
       cursor: 'ew-resize',
+      bgcolor: 'rgba(245, 127, 23, 0.25)',
     },
-    [`& .${CROP_EDGE_CLASS}[data-edge="e"]`]: {
-      right: 0,
-      borderRight: '3px solid #f57f17',
-    },
-    [`& .${CROP_EDGE_CLASS}[data-edge="w"]`]: {
-      left: 0,
-      borderLeft: '3px solid #f57f17',
-    },
+    [`& .${CROP_EDGE_CLASS}[data-edge="e"]`]: { right: 0 },
+    [`& .${CROP_EDGE_CLASS}[data-edge="w"]`]: { left: 0 },
+    // Sichtbare Knöpfe in der Mitte der Kanten
     [`& .${CROP_EDGE_CLASS}[data-edge="n"]::after, & .${CROP_EDGE_CLASS}[data-edge="s"]::after`]: {
       content: '""',
       position: 'absolute',
       left: '50%',
       top: '50%',
-      width: 28,
-      height: 6,
-      ml: '-14px',
-      mt: '-3px',
-      borderRadius: 1,
+      width: 36,
+      height: 10,
+      ml: '-18px',
+      mt: '-5px',
+      borderRadius: '4px',
       bgcolor: '#f57f17',
+      border: '2px solid #fff',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
     },
     [`& .${CROP_EDGE_CLASS}[data-edge="e"]::after, & .${CROP_EDGE_CLASS}[data-edge="w"]::after`]: {
       content: '""',
       position: 'absolute',
       left: '50%',
       top: '50%',
-      width: 6,
-      height: 28,
-      ml: '-3px',
-      mt: '-14px',
-      borderRadius: 1,
+      width: 10,
+      height: 36,
+      ml: '-5px',
+      mt: '-18px',
+      borderRadius: '4px',
       bgcolor: '#f57f17',
+      border: '2px solid #fff',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
+    },
+    // Ecken-Griffe
+    [`& .${CROP_EDGE_CLASS}[data-edge="nw"], & .${CROP_EDGE_CLASS}[data-edge="ne"], & .${CROP_EDGE_CLASS}[data-edge="sw"], & .${CROP_EDGE_CLASS}[data-edge="se"]`]: {
+      width: 16,
+      height: 16,
+      bgcolor: '#f57f17',
+      border: '2px solid #fff',
+      borderRadius: '3px',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
+    },
+    [`& .${CROP_EDGE_CLASS}[data-edge="nw"]`]: { top: -2, left: -2, cursor: 'nwse-resize' },
+    [`& .${CROP_EDGE_CLASS}[data-edge="ne"]`]: { top: -2, right: -2, cursor: 'nesw-resize' },
+    [`& .${CROP_EDGE_CLASS}[data-edge="sw"]`]: { bottom: -2, left: -2, cursor: 'nesw-resize' },
+    [`& .${CROP_EDGE_CLASS}[data-edge="se"]`]: { bottom: -2, right: -2, cursor: 'nwse-resize' },
+    [`& .${PRES_NOTES_IMG_WRAP_CLASS}.${PRES_NOTES_IMG_SELECTED_CLASS}[${PRES_NOTES_IMG_CROP_ATTR}] .${CROP_EDGE_CLASS}`]: {
+      display: 'block',
+    },
+    [`& .${PRES_NOTES_IMG_WRAP_CLASS}.${PRES_NOTES_IMG_SELECTED_CLASS}[${PRES_NOTES_IMG_CROP_ATTR}]`]: {
+      outline: '2px solid #f57f17',
+      outlineOffset: '2px',
+      boxShadow: 'inset 0 0 0 2px rgba(245, 127, 23, 0.5)',
+    },
+    // Im Zuschnitt: Größen-Ecke ausblenden (sonst doppelt mit SE-Griff)
+    [`& .${PRES_NOTES_IMG_WRAP_CLASS}[${PRES_NOTES_IMG_CROP_ATTR}] .${RESIZE_HANDLE_CLASS}`]: {
+      display: 'none',
     },
     [`& .${DROP_MARKER_CLASS}`]: {
       position: 'absolute',
@@ -1238,12 +1258,17 @@ function bindNotesImageCropEdges(
 ): void {
   wrap.querySelectorAll(`.${CROP_EDGE_CLASS}`).forEach((n) => n.remove());
   if (!notesImageCropIsOn(wrap)) return;
-  (['n', 's', 'e', 'w'] as const).forEach((edge) => {
+  const edges = ['n', 's', 'e', 'w', 'nw', 'ne', 'sw', 'se'] as const;
+  edges.forEach((edge) => {
     const handle = document.createElement('span');
     handle.className = CROP_EDGE_CLASS;
     handle.setAttribute('data-edge', edge);
     handle.setAttribute('contenteditable', 'false');
-    handle.setAttribute('aria-label', 'Ausschnitt ziehen');
+    handle.setAttribute(
+      'aria-label',
+      edge.length === 1 ? 'Ausschnitt an der Kante ziehen' : 'Ausschnitt an der Ecke ziehen',
+    );
+    handle.title = 'Ausschnitt ziehen';
     wrap.appendChild(handle);
     handle.addEventListener('pointerdown', (e) => {
       if (!isPrimaryPointer(e)) return;
@@ -1262,21 +1287,28 @@ function bindNotesImageCropEdges(
           const dy = ev.clientY - startY;
           const next = { ...crop0 };
           const minBox = 28;
-          if (edge === 'e') {
+          const applyE = () => {
             next.boxW = Math.max(minBox, Math.min(crop0.srcX + crop0.srcW - 4, crop0.boxW + dx));
-          } else if (edge === 'w') {
+          };
+          const applyW = () => {
             const nextW = Math.max(minBox, crop0.boxW - dx);
             const shift = crop0.boxW - nextW;
             next.boxW = nextW;
             next.srcX = crop0.srcX - shift;
-          } else if (edge === 's') {
+          };
+          const applyS = () => {
             next.boxH = Math.max(minBox, Math.min(crop0.srcY + crop0.srcH - 4, crop0.boxH + dy));
-          } else if (edge === 'n') {
+          };
+          const applyN = () => {
             const nextH = Math.max(minBox, crop0.boxH - dy);
             const shift = crop0.boxH - nextH;
             next.boxH = nextH;
             next.srcY = crop0.srcY - shift;
-          }
+          };
+          if (edge === 'e' || edge === 'ne' || edge === 'se') applyE();
+          if (edge === 'w' || edge === 'nw' || edge === 'sw') applyW();
+          if (edge === 's' || edge === 'sw' || edge === 'se') applyS();
+          if (edge === 'n' || edge === 'nw' || edge === 'ne') applyN();
           writeNotesImageCrop(wrap, next);
           applyNotesImageCropStyle(wrap);
         },

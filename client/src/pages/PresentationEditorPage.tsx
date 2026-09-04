@@ -4660,6 +4660,9 @@ const PresentationEditorPage: React.FC = () => {
                         wrap.style.outline = '2px solid #f57f17';
                         wrap.style.outlineOffset = '2px';
                       }
+                      if ('imageSourceRect' in patch && patch.imageSourceRect) {
+                        setSnackbar('Zuschnitt an — orangene Griffe am Foto ziehen');
+                      }
                       const root =
                         (wrap.closest('[data-pres-notes-zone="true"]') as HTMLElement | null) ||
                         notesEditor;
