@@ -39,9 +39,12 @@ TOKEN="$(
 
 log "==> Pack App (ohne DB)"
 rm -rf /tmp/jm-prebuilt-stage
-mkdir -p /tmp/jm-prebuilt-stage/server/client-build
+mkdir -p /tmp/jm-prebuilt-stage/server/client-build /tmp/jm-prebuilt-stage/server/prisma
 cp -R server/dist /tmp/jm-prebuilt-stage/server/
 cp -R client/build/* /tmp/jm-prebuilt-stage/server/client-build/
+cp server/prisma/schema.prisma /tmp/jm-prebuilt-stage/server/prisma/
+[[ -f server/prisma/schema.sqlite.prisma ]] && cp server/prisma/schema.sqlite.prisma /tmp/jm-prebuilt-stage/server/prisma/
+cp "$ROOT/docker-start.sh" /tmp/jm-prebuilt-stage/docker-start.sh
 rm -f /tmp/jm-app-prebuilt.tar.gz
 tar -czf /tmp/jm-app-prebuilt.tar.gz -C /tmp/jm-prebuilt-stage .
 log "Tar: $(ls -lh /tmp/jm-app-prebuilt.tar.gz | awk '{print $5}')"
@@ -201,6 +204,8 @@ print(run(app["Id"], " && ".join([
   f"curl -fsSL -o jm-app-prebuilt.tar.gz {json.dumps(app_url)}",
   "tar -xzf jm-app-prebuilt.tar.gz -C /app",
   "rm -f /app/server/client-build/static/js/main.*.js.map || true",
+  "chmod +x /app/docker-start.sh 2>/dev/null || true",
+  "grep -q LessonExamBeacon /app/server/prisma/schema.prisma",
   "rm -f jm-app-prebuilt.tar.gz",
   "echo INSTALL_DONE",
 ]))[:2000])
@@ -220,6 +225,11 @@ if tunnel:
 time.sleep(8)
 app = find(os.environ["APP_NAME"])
 if app:
-  print(run(app["Id"], "ls /app/server/dist/utils/teacherGitBackup.js /app/server/dist/utils/teacherGitHubApi.js; ls /app/server/client-build/static/js/main.*.js; echo CODE_OK")[:1500])
+  print(run(app["Id"], " && ".join([
+    "ls /app/server/client-build/static/js/main.*.js",
+    "grep -q LessonExamBeacon /app/server/prisma/schema.prisma && echo SCHEMA_HAS_EXAM_BEACON",
+    "cd /app/server && node -e \"const {PrismaClient}=require('@prisma/client'); console.log('PRISMA_EXAM', typeof new PrismaClient().lessonExamBeacon)\"",
+    "echo CODE_OK",
+  ]))[:2000])
 print("CODE_ONLY_OK")
 PY

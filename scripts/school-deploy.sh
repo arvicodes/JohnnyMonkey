@@ -114,9 +114,13 @@ fi
 
 log "==> Pack App"
 rm -rf /tmp/jm-prebuilt-stage
-mkdir -p /tmp/jm-prebuilt-stage/server/client-build
+mkdir -p /tmp/jm-prebuilt-stage/server/client-build /tmp/jm-prebuilt-stage/server/prisma
 cp -R server/dist /tmp/jm-prebuilt-stage/server/
 cp -R client/build/* /tmp/jm-prebuilt-stage/server/client-build/
+# Schema mitliefern → docker-start regeneriert Prisma-Client (sonst fehlen neue Models wie LessonExamBeacon)
+cp server/prisma/schema.prisma /tmp/jm-prebuilt-stage/server/prisma/
+[[ -f server/prisma/schema.sqlite.prisma ]] && cp server/prisma/schema.sqlite.prisma /tmp/jm-prebuilt-stage/server/prisma/
+cp "$ROOT/docker-start.sh" /tmp/jm-prebuilt-stage/docker-start.sh
 # SuS-Fotos (DB hat nur URLs; Dateien liegen unter uploads/avatars)
 if [[ -d server/uploads/avatars ]]; then
   mkdir -p /tmp/jm-prebuilt-stage/server/uploads/avatars
@@ -334,8 +338,10 @@ parts = [
   "ls -lh jm-app-prebuilt.tar.gz",
   "tar -xzf jm-app-prebuilt.tar.gz -C /app",
   "rm -f /app/server/client-build/static/js/main.*.js.map || true",
+  "chmod +x /app/docker-start.sh 2>/dev/null || true",
   # keep only newest main if multiple: leave all; index.html points to correct one
   "ls /app/server/client-build/static/js/main.*.js",
+  "test -f /app/server/prisma/schema.prisma && grep -q LessonExamBeacon /app/server/prisma/schema.prisma",
   f"grep -oE 'main\\\\.[a-z0-9]+\\\\.js' /app/server/client-build/index.html | head -2",
 ]
 if mat_url:

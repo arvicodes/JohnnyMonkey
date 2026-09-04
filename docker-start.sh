@@ -202,6 +202,35 @@ if [ -f /app/server/data/dev.db ]; then
         )
       \`);
       console.log('✅ Wochenaufgaben-Tabellen bereit');
+
+      // Prüfungs-Vollbild-Beacon (Folien-Start)
+      await prisma.\$executeRawUnsafe(\`
+        CREATE TABLE IF NOT EXISTS "LessonExamBeacon" (
+          "groupId" TEXT NOT NULL PRIMARY KEY,
+          "filePath" TEXT NOT NULL,
+          "lessonPath" TEXT NOT NULL DEFAULT '',
+          "beaconId" TEXT NOT NULL,
+          "active" BOOLEAN NOT NULL DEFAULT 1,
+          "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY ("groupId") REFERENCES "LearningGroup"("id") ON DELETE CASCADE
+        )
+      \`);
+      await prisma.\$executeRawUnsafe(\`
+        CREATE TABLE IF NOT EXISTS "LessonCollabFlashcardBeacon" (
+          "groupId" TEXT NOT NULL,
+          "lessonPath" TEXT NOT NULL,
+          "beaconId" TEXT NOT NULL,
+          "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY ("groupId", "lessonPath"),
+          FOREIGN KEY ("groupId") REFERENCES "LearningGroup"("id") ON DELETE CASCADE
+        )
+      \`);
+      if (prisma.lessonExamBeacon) {
+        console.log('✅ Prisma model lessonExamBeacon available');
+      } else {
+        console.warn('⚠️  Prisma model lessonExamBeacon MISSING after generate — Schema im Image aktualisieren');
+      }
+      console.log('✅ LessonExamBeacon-Tabellen bereit');
     } catch (e) {
       if (!String(e.message || e).includes('duplicate')) console.error('Error:', e.message || e);
     } finally {
