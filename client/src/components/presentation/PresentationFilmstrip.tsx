@@ -24,6 +24,7 @@ import {
   SLIDE_REF_WIDTH,
   slideHasPrintMaterials,
   slideHasExam,
+  slideHasInteractiveExercise,
 } from '../../lib/presentationDeck';
 import { PRES_EDITOR_UI } from '../../lib/presentationEditorUi';
 import PresentationSlideView from './PresentationSlideView';
@@ -302,6 +303,7 @@ const SortableFilmstripThumb = React.memo(
 
     const hasPrint = slideHasPrintMaterials(slide);
     const hasExam = slideHasExam(slide);
+    const hasExercise = slideHasInteractiveExercise(slide);
     const ring = active
       ? `0 0 0 2px ${PRES_EDITOR_UI.accent}, 0 2px 8px rgba(46,125,50,0.15)`
       : selected
@@ -437,6 +439,29 @@ const SortableFilmstripThumb = React.memo(
               }}
             >
               P
+            </Box>
+          ) : hasExercise ? (
+            <Box
+              title="Interaktive Übung"
+              sx={{
+                position: 'absolute',
+                top: 4,
+                right: slide.audioTrack?.path || slide.screenTrack?.path ? 22 : 4,
+                width: 16,
+                height: 16,
+                borderRadius: 0.5,
+                bgcolor: '#FF8F00',
+                color: '#fff',
+                fontSize: 9,
+                fontWeight: 900,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                pointerEvents: 'none',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+              }}
+            >
+              Ü
             </Box>
           ) : null}
           {slide.audioTrack?.path || slide.screenTrack?.path ? (

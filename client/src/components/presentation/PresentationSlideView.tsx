@@ -17,7 +17,15 @@ import {
   slideImageUrlWithoutMax,
   slidePageCount,
   withHiddenLayoutZone,
+  slideHasExam,
+  slideHasInteractiveExercise,
+  resolveInteractiveExercise,
+  EXAM_SLIDE_BORDER,
+  EXAM_SLIDE_FILL,
+  INTERACTIVE_EXERCISE_BORDER,
+  INTERACTIVE_EXERCISE_FILL,
 } from '../../lib/presentationDeck';
+import PresentationInteractiveExercisePlayer from './PresentationInteractiveExercisePlayer';
 import { JOHNNY_PRESENTATION, accentGradient } from '../../lib/presentationTheme';
 import {
   presentationImageElementSx,
@@ -96,7 +104,11 @@ interface PresentationSlideViewProps {
   imageMaxEdge?: number;
   /** Eingebettete Folien-Tinte (inkStrokes). Im Erstellen-Modus nur auf der Variante. */
   showInkStrokes?: boolean;
-}
+  /** Interaktive Übungen anklickbar (Präsentieren). */
+  exerciseInteractive?: boolean;
+  lessonGroupId?: string;
+  studentId?: string;
+};
 
 const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   slide: rawSlide,
@@ -131,6 +143,9 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   exportSnapshot = false,
   imageMaxEdge,
   showInkStrokes = true,
+  exerciseInteractive = false,
+  lessonGroupId = '',
+  studentId = '',
 }) => {
   const [snapGuides, setSnapGuides] = useState<SnapGuide[]>([]);
   const handleSnapGuidesChange = useCallback((guides: SnapGuide[]) => {
@@ -152,6 +167,14 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   const w = SLIDE_REF_WIDTH * scale;
   const h = SLIDE_REF_HEIGHT * pages * scale;
   const accent = slide.accentColor || JOHNNY_PRESENTATION.primary;
+  const isExamSlide = slideHasExam(slide);
+  const interactiveExercise = resolveInteractiveExercise(slide.slideInteractiveExercise);
+  const isExerciseSlide = Boolean(interactiveExercise) || slideHasInteractiveExercise(slide);
+  const slideChrome = isExamSlide
+    ? { border: EXAM_SLIDE_BORDER, fill: EXAM_SLIDE_FILL }
+    : isExerciseSlide
+      ? { border: INTERACTIVE_EXERCISE_BORDER, fill: INTERACTIVE_EXERCISE_FILL }
+      : null;
   const align = slide.titleAlign || 'left';
   const bareBlank = isBareBlankLayout(slide.layout);
   const footerOn = showSlideFooter && !bareBlank;
@@ -802,7 +825,10 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
       sx={{
         width: w,
         height: h,
-        bgcolor: JOHNNY_PRESENTATION.slideBg,
+        bgcolor: slideChrome ? '#fff' : JOHNNY_PRESENTATION.slideBg,
+        backgroundImage: slideChrome
+          ? `linear-gradient(${slideChrome.fill}, ${slideChrome.fill})`
+          : undefined,
         borderRadius: `${8 * scale}px`,
         boxShadow: showShadow ? '0 8px 32px rgba(0,0,0,0.12)' : 'none',
         position: 'relative',
@@ -810,9 +836,36 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
         flexShrink: 0,
         minWidth: 0,
         maxWidth: w,
+        boxSizing: 'border-box',
+        border: slideChrome ? `${Math.max(3, 5 * scale)}px solid ${slideChrome.border}` : 'none',
       }}
     >
       {renderElementLayer(backgroundElements, backgroundLayerZ)}
+
+      {interactiveExercise ? (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: `${10 * scale}px`,
+            zIndex: 6,
+            borderRadius: `${6 * scale}px`,
+            overflow: 'hidden',
+            bgcolor: '#fff',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+            pointerEvents: exerciseInteractive && !editable ? 'auto' : 'none',
+          }}
+        >
+          <PresentationInteractiveExercisePlayer
+            exercise={interactiveExercise}
+            scale={scale}
+            interactive={Boolean(exerciseInteractive && !editable && !exportSnapshot)}
+            preview={!exerciseInteractive || editable || exportSnapshot}
+            lessonPath={lessonPath}
+            groupId={lessonGroupId}
+            studentId={studentId}
+          />
+        </Box>
+      ) : null}
 
       {showJohnnyChrome && (
         <Box

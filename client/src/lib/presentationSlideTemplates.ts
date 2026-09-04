@@ -8,6 +8,9 @@ import { loadJsonFile, type PresentationSlide } from './presentationDeck';
 import { JOHNNY_PRESENTATION } from './presentationTheme';
 import { patchBildTemplateHeroElements, SLIDE_HERO_IMAGE_HEIGHT_PCT } from './presentationImageUtils';
 import { ENTRY_TICKET_SLIDE_HREF } from './presentationEditorUi';
+import {
+  INTERACTIVE_EXERCISE_ACCENT,
+} from './presentationInteractiveExercise';
 
 export const SLIDE_TEMPLATES_FILENAME = 'Folienvorlagen.json';
 
@@ -17,6 +20,7 @@ export type SlideTemplateKind =
   | 'sicherung'
   | 'bild'
   | 'ha'
+  | 'uebung'
   | 'ende'
   | 'link'
   | 'referenz'
@@ -54,6 +58,12 @@ export const SLIDE_TEMPLATE_META: SlideTemplateMeta[] = [
   { kind: 'sicherung', label: 'Sicherung', shortLabel: 'Si', hint: 'Sicherung / Merksatz' },
   { kind: 'bild', label: 'Bild', shortLabel: 'B', hint: 'Vollbild ohne Text — Bild reinziehen' },
   { kind: 'ha', label: 'Hausaufgabe', shortLabel: 'HA', hint: 'HA-Folie (immer mit HA-Bild)' },
+  {
+    kind: 'uebung',
+    label: 'Interaktive Übung',
+    shortLabel: 'Ü',
+    hint: 'Gelb-orange Folie mit Übungen (Fortschritt, rot/grün)',
+  },
   { kind: 'ende', label: 'Ende', shortLabel: 'E', hint: 'Abschlussfolie' },
   { kind: 'link', label: 'Link', shortLabel: '▶', hint: 'Video im Vollbild (YouTube, MP4 …)' },
   { kind: 'referenz', label: 'Referenz', shortLabel: '↗', hint: 'Webseite einbetten, zoombar (z. B. Wall of Fame)' },
@@ -478,6 +488,43 @@ function builtinTemplates(): SlideTemplatesStore['templates'] {
       homeworkSubmissionRequired: true,
       hiddenLayoutZones: ['bodyHtml'],
     },
+    /** Interaktive Übung: gelb-orange Folie mit Themenliste / Multiple Choice. */
+    uebung: {
+      layout: 'blank',
+      title: 'Interaktive Übung',
+      body: '',
+      speakerNotes: '',
+      preparationNotes: '',
+      materialNotes: '',
+      subtitle: '',
+      bodyLeft: '',
+      bodyRight: '',
+      imagePath: '',
+      imageCaption: '',
+      bodyStyle: 'plain',
+      titleAlign: 'left',
+      accentColor: INTERACTIVE_EXERCISE_ACCENT,
+      titleHtml: '',
+      bodyHtml: '',
+      subtitleHtml: '',
+      bodyLeftHtml: '',
+      bodyRightHtml: '',
+      imageCaptionHtml: '',
+      speakerNotesHtml: '<p><br></p>',
+      preparationHtml: '<p><br></p>',
+      materialHtml: '<p><br></p>',
+      elements: [],
+      transition: 'fade',
+      revealEnabled: false,
+      zoneRevealSteps: {},
+      hiddenLayoutZones: ['bodyHtml', 'titleHtml'],
+      slideInteractiveExercise: {
+        id: 'ex-custom',
+        title: 'Interaktive Übung',
+        packId: 'roman-numerals',
+        topics: [],
+      },
+    },
     ende: {
       layout: 'title-slide',
       title: 'Bis zur nächsten Stunde!',
@@ -857,6 +904,20 @@ export function createSlideFromTemplateKind(
   }
   if (kind === 'ha' && slide.homeworkSubmissionRequired === undefined) {
     return { ...slide, homeworkSubmissionRequired: true };
+  }
+  if (kind === 'uebung') {
+    return {
+      ...slide,
+      accentColor: INTERACTIVE_EXERCISE_ACCENT,
+      slideInteractiveExercise: {
+        id: 'ex-roman-numerals',
+        title: 'Römische Zahlen',
+        packId: 'roman-numerals',
+        topics: [],
+      },
+      title: 'Römische Zahlen',
+      titleHtml: textToHtml('Römische Zahlen'),
+    };
   }
   return slide;
 }

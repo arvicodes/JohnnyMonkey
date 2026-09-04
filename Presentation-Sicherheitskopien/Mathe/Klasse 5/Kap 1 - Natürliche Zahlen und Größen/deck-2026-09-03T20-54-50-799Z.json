@@ -2,7 +2,7 @@
   "version": 1,
   "title": "Kap 1 - Natürliche Zahlen und Größen",
   "lessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen",
-  "updatedAt": "2026-09-03T20:56:38.649Z",
+  "updatedAt": "2026-09-03T20:53:25.510Z",
   "slides": [
     {
       "layout": "title-slide",
@@ -1399,11 +1399,7 @@
       "id": "slide-1788419706714-q3hf3",
       "order": 14,
       "sourceLessonName": "1.5 Hü",
-      "sourceLessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen",
-      "slideExam": {
-        "path": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/HU_binaer-und-roemische-zahlen.html",
-        "name": "HU_binaer-und-roemische-zahlen.html"
-      }
+      "sourceLessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen"
     },
     {
       "id": "slide-1788419706714-x39fz",

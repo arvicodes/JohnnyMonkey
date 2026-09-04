@@ -17,6 +17,7 @@ import {
   OpenInNew as ReferenzIcon,
   DashboardCustomize as LeinwandIcon,
   SaveOutlined as SaveIcon,
+  SportsEsports as UebungIcon,
 } from '@mui/icons-material';
 import {
   SLIDE_TEMPLATE_META,
@@ -69,6 +70,9 @@ export default function PresentationSlideTemplateBar({
     if (kind === 'ha') {
       return <HomeIcon sx={{ fontSize: 14 }} />;
     }
+    if (kind === 'uebung') {
+      return <UebungIcon sx={{ fontSize: 14 }} />;
+    }
     if (kind === 'link') {
       return <LinkIcon sx={{ fontSize: 14 }} />;
     }
@@ -97,6 +101,8 @@ export default function PresentationSlideTemplateBar({
         return '#455A64';
       case 'ha':
         return '#EF6C00';
+      case 'uebung':
+        return '#FF8F00';
       case 'ende':
         return '#2E7D32';
       case 'link':

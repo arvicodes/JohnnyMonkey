@@ -10,6 +10,8 @@ import {
   SLIDE_TRANSITIONS,
   type SlideTransition,
 } from './presentationTransitions';
+import { sanitizeSlideInteractiveExercise } from './presentationInteractiveExercise';
+import type { SlideInteractiveExercise } from './presentationInteractiveExercise';
 export type { SlideTransition } from './presentationTransitions';
 export { SLIDE_TRANSITIONS };
 
@@ -450,6 +452,8 @@ export interface PresentationSlide {
   printMaterials?: SlidePrintMaterial[];
   /** Prüfung (KA_/KU_/HU_/QZ_) an dieser Folie — Start/Stop nur hier. */
   slideExam?: SlideExam;
+  /** Interaktive Übung (Anton-Stil) an dieser Folie. */
+  slideInteractiveExercise?: SlideInteractiveExercise;
 }
 
 export type SlidePrintMaterial = {
@@ -507,6 +511,23 @@ export function sanitizeSlideExam(raw?: SlideExam | null): SlideExam | undefined
 export function slideHasExam(slide: PresentationSlide | null | undefined): boolean {
   return Boolean(sanitizeSlideExam(slide?.slideExam));
 }
+
+export {
+  slideHasInteractiveExercise,
+  sanitizeSlideInteractiveExercise,
+  resolveInteractiveExercise,
+  INTERACTIVE_EXERCISE_ACCENT,
+  INTERACTIVE_EXERCISE_FILL,
+  INTERACTIVE_EXERCISE_BORDER,
+  EXAM_SLIDE_ACCENT,
+  EXAM_SLIDE_FILL,
+  EXAM_SLIDE_BORDER,
+} from './presentationInteractiveExercise';
+export type {
+  SlideInteractiveExercise,
+  InteractiveExerciseTopic,
+  InteractiveExerciseQuestion,
+} from './presentationInteractiveExercise';
 
 export function sanitizeInkStrokes(raw?: PresentationStroke[]): PresentationStroke[] | undefined {
   if (!Array.isArray(raw) || raw.length === 0) return undefined;
@@ -931,12 +952,18 @@ export function normalizeSlide(slide: PresentationSlide): PresentationSlide {
       const activeScreenIndex = sanitizeMediaActiveIndex(slide.activeScreenIndex, screenTracks.length);
       const printMaterials = sanitizeSlidePrintMaterials(slide.printMaterials);
       const slideExam = sanitizeSlideExam(slide.slideExam);
+      const slideInteractiveExercise = sanitizeSlideInteractiveExercise(
+        slide.slideInteractiveExercise,
+      );
       return {
         ...(extraPageCount > 0 ? { extraPageCount } : { extraPageCount: undefined }),
         ...slideMediaFieldPatch('audio', audioTracks, activeAudioIndex),
         ...slideMediaFieldPatch('screen', screenTracks, activeScreenIndex),
         ...(printMaterials ? { printMaterials } : { printMaterials: undefined }),
         ...(slideExam ? { slideExam } : { slideExam: undefined }),
+        ...(slideInteractiveExercise
+          ? { slideInteractiveExercise }
+          : { slideInteractiveExercise: undefined }),
       };
     })(),
   };

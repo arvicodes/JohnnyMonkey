@@ -2040,6 +2040,8 @@ const PresentationPresentPage: React.FC = () => {
                   deckTitle={deck?.title ?? ''}
                   lessonPath={deck?.lessonPath ?? lessonPath}
                   mediaInteractive={!drawActive && !zoomed}
+                  exerciseInteractive={!drawActive && !zoomed}
+                  lessonGroupId={groupId}
                   editable={drawActive && activeTool === 'select'}
                   imageEditable={!isOriginalView && !isNamedView}
                   selectedElementId={selectedElementId}

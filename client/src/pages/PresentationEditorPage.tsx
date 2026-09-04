@@ -124,6 +124,7 @@ import {
   sanitizeSlideAudioTracks,
   slideHasPrintMaterials,
   slideHasExam,
+  slideHasInteractiveExercise,
   SLIDE_IMAGE_EDITOR_MAX,
   type SlideExam,
 } from '../lib/presentationDeck';
@@ -5381,6 +5382,25 @@ const PresentationEditorPage: React.FC = () => {
                   }}
                 >
                   P
+                </Box>
+              </Tooltip>
+            ) : slideHasInteractiveExercise(normalizedActive) ? (
+              <Tooltip title="Interaktive Übung" placement="left">
+                <Box
+                  sx={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 0.5,
+                    bgcolor: '#FF8F00',
+                    color: '#fff',
+                    fontSize: 11,
+                    fontWeight: 900,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  Ü
                 </Box>
               </Tooltip>
             ) : null}
