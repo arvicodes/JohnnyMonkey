@@ -484,7 +484,7 @@
         "bodyLeftHtml": "<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br><br></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br></span></p><p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><br></span></p><p><br></p>",
         "bodyRightHtml": "<p><br></p>",
         "imageCaptionHtml": "",
-        "speakerNotesHtml": "<p><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/1.2%20Gro%C3%9Fe%20Zahlen%20-%20Stellenwerttafel/notes-1787060369558-Bildschirmfoto_2026-08-18_um_15.39.26.png&amp;max=960\" alt=\"Bildschirmfoto 2026-08-18 um 15.39.26.png\" data-pres-notes-img=\"1\" style=\"margin: 0.5em 0px; height: auto; display: block; width: auto; max-width: 100%;\" draggable=\"false\"></span></p><p></p><p><br></p><p></p><p data-pres-notes-typehost=\"1\"><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/1.2%20Gro%C3%9Fe%20Zahlen%20-%20Stellenwerttafel/notes-1787060475833-notes-1787060473857-Bildschirmfoto_2026-08-18_um_15.41.10.png&amp;max=960\" alt=\"Notes-1787060473857-Bildschirmfoto_2026-08-18_um_15.41.10.png\" data-pres-notes-img=\"1\" style=\"margin: 0.5em 0px; border-radius: 4px; display: block; height: auto; width: auto; max-width: 100%;\" draggable=\"false\"></span><br></p>",
+        "speakerNotesHtml": "<p><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/1.2%20Gro%C3%9Fe%20Zahlen%20-%20Stellenwerttafel/notes-1787060369558-Bildschirmfoto_2026-08-18_um_15.39.26.png&max=960\" alt=\"Bildschirmfoto 2026-08-18 um 15.39.26.png\" data-pres-notes-img=\"1\" style=\"margin: 0.5em 0px; height: auto; display: block; width: auto; max-width: 100%;\" draggable=\"false\"></span></p><p></p><p><br></p><p></p><p data-pres-notes-typehost=\"1\"><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/1.2%20Gro%C3%9Fe%20Zahlen%20-%20Stellenwerttafel/notes-1787060475833-notes-1787060473857-Bildschirmfoto_2026-08-18_um_15.41.10.png&max=960\" alt=\"Notes-1787060473857-Bildschirmfoto_2026-08-18_um_15.41.10.png\" data-pres-notes-img=\"1\" style=\"margin: 0.5em 0px; border-radius: 4px; display: block; height: auto; width: auto; max-width: 100%;\" draggable=\"false\"></span><br></p>",
         "preparationNotes": "",
         "preparationHtml": "<p><br></p>",
         "materialNotes": "",
@@ -767,7 +767,7 @@
         "bodyLeftHtml": "",
         "bodyRightHtml": "",
         "imageCaptionHtml": "",
-        "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/bild-1788419307513-zqmywt.png&amp;max=960\" alt=\"Bildschirmfoto 2026-09-03 um 09.08.22.png\" data-pres-notes-img=\"1\" draggable=\"false\" style=\"width: auto; height: auto; display: block; border-radius: 4px; max-width: 100%;\"></span><br></p><p data-pres-notes-typehost=\"1\"><br></p><p data-pres-notes-typehost=\"1\"><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/bild-1788419324052-eatlvo.png&amp;max=960\" alt=\"Bildschirmfoto 2026-09-03 um 09.08.40.png\" data-pres-notes-img=\"1\" draggable=\"false\" style=\"width: auto; height: auto; display: block; border-radius: 4px; max-width: 100%;\"></span><br></p>",
+        "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/bild-1788419307513-zqmywt.png&max=960\" alt=\"Bildschirmfoto 2026-09-03 um 09.08.22.png\" data-pres-notes-img=\"1\" draggable=\"false\" style=\"width: auto; height: auto; display: block; border-radius: 4px; max-width: 100%;\"></span><br></p><p data-pres-notes-typehost=\"1\"><br></p><p data-pres-notes-typehost=\"1\"><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/bild-1788419324052-eatlvo.png&max=960\" alt=\"Bildschirmfoto 2026-09-03 um 09.08.40.png\" data-pres-notes-img=\"1\" draggable=\"false\" style=\"width: auto; height: auto; display: block; border-radius: 4px; max-width: 100%;\"></span><br></p>",
         "preparationNotes": "",
         "preparationHtml": "<p><br></p>",
         "materialNotes": "",
@@ -1515,7 +1515,7 @@
         "bodyLeftHtml": "",
         "bodyRightHtml": "",
         "imageCaptionHtml": "",
-        "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern%2FMathe%2FKlasse+5%2FKap+1+-+Nat%C3%BCrliche+Zahlen+und+Gr%C3%B6%C3%9Fen%2Fbild-1788552082332-ddepmc.png&amp;max=960\" alt=\"ChatGPT Image 4. Sept. 2026, 07_48_12 (1).png\" data-pres-notes-img=\"1\" draggable=\"false\" style=\"width: auto; height: auto; display: block; border-radius: 4px; max-width: 100%;\"></span><br></p>",
+        "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/bild-1788552082332-ddepmc.png&max=960\" alt=\"ChatGPT Image 4. Sept. 2026, 07_48_12 (1).png\" data-pres-notes-img=\"1\" draggable=\"false\" style=\"width: auto; height: auto; display: block; border-radius: 4px; max-width: 100%;\"></span><br></p>",
         "preparationNotes": "",
         "preparationHtml": "<p><br></p>",
         "materialNotes": "",
@@ -1528,7 +1528,7 @@
             "y": 11.669211520918783,
             "w": 96.48747372547503,
             "h": 74.5858932266293,
-            "src": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/bild-1788552076189-uos1nr.png",
+            "src": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/bild-1788552076189-uos1nr.png",
             "zIndex": 1,
             "imageFit": "contain",
             "stackLayer": "foreground",
@@ -1554,12 +1554,12 @@
         "printMaterials": [
           {
             "id": "pm-1788552156575-a88q5",
-            "path": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/Dinogeschichte Bewegung 1.png",
+            "path": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/Dinogeschichte Bewegung 1.png",
             "name": "Dinogeschichte Bewegung 1.png"
           },
           {
             "id": "pm-1788552156585-wp942",
-            "path": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/Dinogeschichte Text 1.png",
+            "path": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/Dinogeschichte Text 1.png",
             "name": "Dinogeschichte Text 1.png"
           }
         ]
@@ -1589,7 +1589,7 @@
         "bodyLeftHtml": "",
         "bodyRightHtml": "",
         "imageCaptionHtml": "",
-        "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern%2FMathe%2FKlasse+5%2FKap+1+-+Nat%C3%BCrliche+Zahlen+und+Gr%C3%B6%C3%9Fen%2Fbild-1788552111330-axq3zf.png&amp;max=960\" alt=\"Dinogeschichte Text 2.png\" data-pres-notes-img=\"1\" draggable=\"false\" style=\"width: auto; height: auto; display: block; border-radius: 4px; max-width: 100%;\"></span><br></p>",
+        "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/bild-1788552111330-axq3zf.png&max=960\" alt=\"Dinogeschichte Text 2.png\" data-pres-notes-img=\"1\" draggable=\"false\" style=\"width: auto; height: auto; display: block; border-radius: 4px; max-width: 100%;\"></span><br></p>",
         "preparationNotes": "",
         "preparationHtml": "<p><br></p>",
         "materialNotes": "",
@@ -1602,7 +1602,7 @@
             "y": 7.953526826331832,
             "w": 96.80201232238777,
             "h": 83.46537611742332,
-            "src": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/bild-1788552208371-53omw6.jpg",
+            "src": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/bild-1788552208371-53omw6.jpg",
             "zIndex": 1,
             "imageFit": "contain",
             "stackLayer": "foreground",
@@ -1628,12 +1628,12 @@
         "printMaterials": [
           {
             "id": "pm-1788552163920-00s5w",
-            "path": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/Dinogeschichte Bewegung 2.png",
+            "path": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/Dinogeschichte Bewegung 2.png",
             "name": "Dinogeschichte Bewegung 2.png"
           },
           {
             "id": "pm-1788552163944-srgho",
-            "path": "/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/Dinogeschichte Text 2.png",
+            "path": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/Dinogeschichte Text 2.png",
             "name": "Dinogeschichte Text 2.png"
           }
         ]
@@ -1724,7 +1724,7 @@
         "bodyLeftHtml": "<p><br></p>",
         "bodyRightHtml": "<p></p><div style=\"text-align: center;\"><br></div><p></p>",
         "imageCaptionHtml": "",
-        "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/bild-1788427437568-apx2cx.png&amp;max=960\" alt=\"bild-1788427437568-apx2cx.png\" data-pres-notes-img=\"1\" draggable=\"false\" style=\"width: auto; height: auto; display: block; border-radius: 4px; max-width: 100%;\"></span><br></p>",
+        "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/bild-1788427437568-apx2cx.png&max=960\" alt=\"bild-1788427437568-apx2cx.png\" data-pres-notes-img=\"1\" draggable=\"false\" style=\"width: auto; height: auto; display: block; border-radius: 4px; max-width: 100%;\"></span><br></p>",
         "preparationNotes": "",
         "preparationHtml": "<p><br></p>",
         "materialNotes": "",
@@ -2403,7 +2403,7 @@
         "bodyLeftHtml": "",
         "bodyRightHtml": "",
         "imageCaptionHtml": "",
-        "speakerNotesHtml": "<div><br></div><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0; transform: rotate(90deg); transform-origin: center center;\" data-pres-notes-img-rotation=\"90\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/bild-1788431562626-scbil9.jpg&amp;max=960\" alt=\"bild-1788431562626-scbil9.jpg\" data-pres-notes-img=\"1\" draggable=\"false\" style=\"width: auto; height: auto; display: block; border-radius: 4px; max-width: 100%;\"></span><p data-pres-notes-typehost=\"1\"><br></p>",
+        "speakerNotesHtml": "<div><br></div><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0; transform: rotate(90deg); transform-origin: center center;\" data-pres-notes-img-rotation=\"90\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/bild-1788431562626-scbil9.jpg&max=960\" alt=\"bild-1788431562626-scbil9.jpg\" data-pres-notes-img=\"1\" draggable=\"false\" style=\"width: auto; height: auto; display: block; border-radius: 4px; max-width: 100%;\"></span><p data-pres-notes-typehost=\"1\"><br></p>",
         "preparationNotes": "",
         "preparationHtml": "<p><br></p>",
         "materialNotes": "",
