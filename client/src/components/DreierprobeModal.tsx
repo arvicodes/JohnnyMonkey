@@ -158,6 +158,8 @@ const DreierprobeModal: React.FC<DreierprobeModalProps> = ({
   const [gradingSchemas, setGradingSchemas] = useState<any[]>([]);
   const [availableCategories, setAvailableCategories] = useState<Array<{schemaId: string; schemaName: string; categoryName: string}>>([]);
   const [selectedCategory, setSelectedCategory] = useState<{schemaId: string; schemaName: string; categoryName: string} | null>(null);
+  const [categoryLoadError, setCategoryLoadError] = useState('');
+  const [loadingCategories, setLoadingCategories] = useState(false);
   const [emailTemplate, setEmailTemplate] = useState(`Liebe/r XYZ,
 
 ich hoffe es geht dir nicht allzu schlecht und wünsche dir auf jeden Fall schon einmal gute Besserung und dass du dich gut und schnell erholst.
@@ -201,103 +203,186 @@ Vera Christ`);
     }
   };
 
+  const stripSchemaWeightLabel = (raw: string): string =>
+    raw.replace(/\s*\((\d+(?:\.\d+)?)%?\)\s*$/, '').trim();
+
+  const parseSchemaLine = (trimmed: string): { name: string; weight?: number } | null => {
+    let match = trimmed.match(/^(.+?)\s*\((\d+(?:\.\d+)?)%?\)$/);
+    if (!match) match = trimmed.match(/^(.+?)\s+(\d+(?:\.\d+)?)%?$/);
+    if (!match) match = trimmed.match(/^(.+?)\s*(\d+(?:\.\d+)?)%$/);
+    if (match) {
+      return { name: match[1].trim(), weight: parseFloat(match[2]) };
+    }
+    // Zeile ohne %-Angabe trotzdem als Kategorie behalten
+    if (trimmed.length > 0) return { name: trimmed };
+    return null;
+  };
+
+  const extractLeafCategoriesFromSchema = (
+    schema: { id: string; name: string; structure?: string },
+  ): Array<{ schemaId: string; schemaName: string; categoryName: string }> => {
+    const categories: Array<{ schemaId: string; schemaName: string; categoryName: string }> = [];
+    const raw = (schema.structure || '').replace(/\\n/g, '\n');
+    if (!raw.trim()) return categories;
+
+    let parsed: { name: string; children: any[] };
+    if (raw.trim().startsWith('{')) {
+      parsed = JSON.parse(raw);
+    } else {
+      const lines = raw.split(/\r?\n/).filter((line) => line.trim());
+      if (lines.length === 0) return categories;
+      const rootParsed = parseSchemaLine(lines[0].trim());
+      const root: any = {
+        name: rootParsed?.name || stripSchemaWeightLabel(lines[0].trim()),
+        children: [],
+      };
+      const stack: Array<{ node: any; indent: number }> = [{ node: root, indent: -1 }];
+
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        const indent = line.search(/\S/);
+        const parsedLine = parseSchemaLine(line.trim());
+        if (!parsedLine) continue;
+        const node: any = { name: parsedLine.name, children: [] };
+        while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
+          stack.pop();
+        }
+        stack[stack.length - 1].node.children.push(node);
+        stack.push({ node, indent });
+      }
+      parsed = root;
+    }
+
+    const extractLeafNodes = (node: any) => {
+      const children = node?.children;
+      if (!children || children.length === 0) {
+        const name = stripSchemaWeightLabel(String(node?.name || '')).trim();
+        if (name) {
+          categories.push({
+            schemaId: schema.id,
+            schemaName: schema.name,
+            categoryName: name,
+          });
+        }
+        return;
+      }
+      children.forEach((child: any) => extractLeafNodes(child));
+    };
+    extractLeafNodes(parsed);
+    return categories;
+  };
+
+  /** Lerngruppe zu den Abgaben finden — bevorzugt eine mit Bewertungsschema. */
+  const resolveLearningGroupId = async (): Promise<{ id: string; name: string } | null> => {
+    const loginCode = localStorage.getItem('loginCode') || '';
+    const firstStudentId = submissions[0]?.student?.id;
+    if (!firstStudentId) return null;
+
+    const response = await fetch('/api/learning-groups', {
+      headers: {
+        'Content-Type': 'application/json',
+        'x-login-code': loginCode,
+      },
+    });
+    if (!response.ok) return null;
+    const groups = await response.json();
+    const candidates = (Array.isArray(groups) ? groups : []).filter((g: any) =>
+      g.students?.some((s: any) => s.id === firstStudentId),
+    );
+    if (candidates.length === 0) return null;
+
+    for (const group of candidates) {
+      try {
+        const schemaRes = await fetch(`/api/grading-schemas/${group.id}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'x-login-code': loginCode,
+          },
+        });
+        if (!schemaRes.ok) continue;
+        const schemas = await schemaRes.json();
+        if (Array.isArray(schemas) && schemas.length > 0) {
+          return { id: group.id, name: group.name || '' };
+        }
+      } catch {
+        /* nächste Gruppe versuchen */
+      }
+    }
+
+    return { id: candidates[0].id, name: candidates[0].name || '' };
+  };
+
   // Lade GradingSchemas und extrahiere Kategorien
   const loadGradingSchemas = async () => {
-    if (!learningGroupId) return;
-    
+    setLoadingCategories(true);
+    setCategoryLoadError('');
+    setAvailableCategories([]);
+    setSelectedCategory(null);
+
     try {
       const loginCode = localStorage.getItem('loginCode') || '';
-      const response = await fetch(`/api/grading-schemas/${learningGroupId}`, {
+      // Immer neu auflösen: erste passende Gruppe kann ohne Schema sein
+      // (Schüler in mehreren Gruppen), während z. B. 5a ein Schema hat.
+      const resolved = await resolveLearningGroupId();
+      let groupId = resolved?.id || learningGroupId;
+      let groupNameHint = resolved?.name || '';
+
+      if (resolved?.id) {
+        setLearningGroupId(resolved.id);
+      }
+
+      if (!groupId) {
+        setGradingSchemas([]);
+        setCategoryLoadError(
+          'Keine Lerngruppe zu diesen Abgaben gefunden. Prüfen Sie, ob die Schüler in einer Klasse liegen.',
+        );
+        return;
+      }
+
+      const response = await fetch(`/api/grading-schemas/${groupId}`, {
         headers: {
           'Content-Type': 'application/json',
-          'x-login-code': loginCode
+          'x-login-code': loginCode,
+        },
+      });
+
+      if (!response.ok) {
+        setGradingSchemas([]);
+        setCategoryLoadError('Bewertungsschema konnte nicht geladen werden.');
+        return;
+      }
+
+      const schemas = await response.json();
+      setGradingSchemas(schemas);
+
+      if (!Array.isArray(schemas) || schemas.length === 0) {
+        setCategoryLoadError(
+          `Für ${groupNameHint || 'diese Lerngruppe'} ist noch kein Bewertungsschema hinterlegt. ` +
+            'Im Dashboard unter den drei Punkten der Klasse „Benotung festlegen“ öffnen und z. B. „Unter- und Mittelstufe“ zuweisen.',
+        );
+        return;
+      }
+
+      const categories: Array<{ schemaId: string; schemaName: string; categoryName: string }> = [];
+      schemas.forEach((schema: any) => {
+        try {
+          categories.push(...extractLeafCategoriesFromSchema(schema));
+        } catch (error) {
+          console.error('Fehler beim Parsen des Schemas:', error);
         }
       });
 
-      if (response.ok) {
-        const schemas = await response.json();
-        setGradingSchemas(schemas);
-        
-        // Extrahiere alle Kategorien aus den Schemas
-        const categories: Array<{schemaId: string; schemaName: string; categoryName: string}> = [];
-        
-        schemas.forEach((schema: any) => {
-          try {
-            const structure = schema.structure;
-            // Prüfe ob JSON-Format
-            let parsed: any;
-            if (structure.trim().startsWith('{')) {
-              parsed = JSON.parse(structure);
-            } else {
-              // Text-Format: Parse die Struktur zu einem Baum
-              const lines = structure.split('\n').filter((line: string) => line.trim());
-              if (lines.length === 0) return;
-              
-              // Erstelle einen Baum aus der Text-Struktur
-              const root: any = { name: lines[0].trim(), children: [] };
-              const stack: Array<{ node: any; indent: number }> = [{ node: root, indent: -1 }];
-              
-              for (let i = 1; i < lines.length; i++) {
-                const line = lines[i];
-                if (!line.trim()) continue;
-                
-                const indent = line.search(/\S/);
-                // Verschiedene Formate unterstützen
-                let match = line.trim().match(/^(.+?)\s*\((\d+(?:\.\d+)?)%?\)$/);
-                if (!match) {
-                  match = line.trim().match(/^(.+?)\s+(\d+(?:\.\d+)?)%?$/);
-                }
-                if (!match) {
-                  match = line.trim().match(/^(.+?)\s*(\d+(?:\.\d+)?)%$/);
-                }
-                
-                if (!match) continue;
-                
-                const [, name] = match;
-                const node: any = {
-                  name: name.trim(),
-                  children: []
-                };
-                
-                // Finde den richtigen Parent basierend auf Einrückung
-                while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
-                  stack.pop();
-                }
-                
-                const parent = stack[stack.length - 1].node;
-                parent.children.push(node);
-                stack.push({ node, indent });
-              }
-              
-              parsed = root;
-            }
-            
-            // JSON-Format: Rekursiv alle Blattknoten finden
-            const extractLeafNodes = (node: any, path: string[] = []): void => {
-              if (!node.children || node.children.length === 0) {
-                // Blattknoten gefunden
-                categories.push({
-                  schemaId: schema.id,
-                  schemaName: schema.name,
-                  categoryName: node.name || path.join(' > ')
-                });
-              } else {
-                node.children.forEach((child: any) => {
-                  extractLeafNodes(child, [...path, node.name]);
-                });
-              }
-            };
-            
-            extractLeafNodes(parsed);
-          } catch (error) {
-            console.error('Fehler beim Parsen des Schemas:', error);
-          }
-        });
-        
-        setAvailableCategories(categories);
+      setAvailableCategories(categories);
+      if (categories.length === 0) {
+        setCategoryLoadError(
+          `Schema „${schemas[0]?.name || '?'}“ ist vorhanden, aber es konnten keine Kategorien gelesen werden. Bitte das Schema kurz prüfen oder neu zuweisen.`,
+        );
       }
     } catch (error) {
       console.error('Fehler beim Laden der GradingSchemas:', error);
+      setCategoryLoadError('Fehler beim Laden der Kategorien.');
+    } finally {
+      setLoadingCategories(false);
     }
   };
 
@@ -332,20 +417,16 @@ Vera Christ`);
       
       if (schema) {
         try {
-          const structure = schema.structure;
-          const lines = structure.split('\n').filter((line: string) => line.trim());
+          const structure = (schema.structure || '').replace(/\\n/g, '\n');
+          const lines = structure.split(/\r?\n/).filter((line: string) => line.trim());
           
           // Suche nach der Kategorie im Schema
           for (const line of lines) {
-            const match = line.trim().match(/^(.+?)\s*\((\d+(?:\.\d+)?)%?\)$/);
-            if (match) {
-              const [, name] = match;
-              const weightStr = match[2];
-              if (name.trim() === selectedCategory.categoryName) {
-                weight = parseFloat(weightStr);
-                console.log('✅ Gewichtung gefunden:', weight, '% für', selectedCategory.categoryName);
-                break;
-              }
+            const parsedLine = parseSchemaLine(line.trim());
+            if (parsedLine?.weight != null && parsedLine.name === selectedCategory.categoryName) {
+              weight = parsedLine.weight;
+              console.log('✅ Gewichtung gefunden:', weight, '% für', selectedCategory.categoryName);
+              break;
             }
           }
         } catch (error) {
@@ -4783,9 +4864,12 @@ Vera Christ`);
             Wählen Sie die Kategorie aus dem Notenschema aus, in die die HÜ-Noten eingetragen werden sollen:
           </Typography>
           
-          {availableCategories.length === 0 ? (
-            <Alert severity="info">
-              Keine Kategorien gefunden. Bitte erstellen Sie zuerst ein Notenschema für diese Lerngruppe.
+          {loadingCategories ? (
+            <Alert severity="info">Kategorien werden geladen …</Alert>
+          ) : availableCategories.length === 0 ? (
+            <Alert severity="warning">
+              {categoryLoadError ||
+                'Keine Kategorien gefunden. Bitte erstellen Sie zuerst ein Notenschema für diese Lerngruppe.'}
             </Alert>
           ) : (
             <Box sx={{ maxHeight: 400, overflowY: 'auto' }}>
