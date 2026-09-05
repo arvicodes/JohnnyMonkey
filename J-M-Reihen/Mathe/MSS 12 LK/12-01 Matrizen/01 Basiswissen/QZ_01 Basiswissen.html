@@ -49,7 +49,7 @@
         }
 
         .header {
-            margin-bottom: 20px;
+            margin-bottom: 12px;
         }
 
         
@@ -85,17 +85,17 @@
         .header-title {
             font-size: 18px;
             font-weight: bold;
-            color: #1976d2;
+            color: #E10600;
         }
 
         .header-date {
             font-size: 18px;
             font-weight: bold;
-            color: #1976d2;
+            color: #E10600;
         }
 
         .header-divider {
-            border-top: 2px solid #1976d2;
+            border-top: 2px solid #E10600;
             margin: 10px 0;
         }
 
@@ -106,7 +106,7 @@
             margin-top: 10px;
             font-size: 12px;
             font-weight: bold;
-            color: #2e7d32;
+            color: #1a1a1a;
         }
 
         .header-name {
@@ -132,9 +132,9 @@
             text-align: center;
             padding: 40px 20px;
             font-size: 18px;
-            color: #1976d2;
-            background: #e3f2fd;
-            border: 2px solid #1976d2;
+            color: #E10600;
+            background: #faf7f7;
+            border: 2px solid #E10600;
             border-radius: 8px;
             margin: 20px;
         }
@@ -149,13 +149,13 @@
         }
 
         .timer-container {
-            background: #e3f2fd;
+            background: #faf7f7;
             padding: 6px 12px;
-            border: 2px solid #1976d2;
+            border: 2px solid #E10600;
             border-radius: 4px;
             font-size: 18px;
             font-weight: bold;
-            color: #1976d2;
+            color: #E10600;
         }
 
         .timer-warning {
@@ -253,7 +253,7 @@
         .task-number {
             font-size: 16px;
             font-weight: bold;
-            color: #1976d2;
+            color: #E10600;
         }
 
         .task-meta {
@@ -271,8 +271,8 @@
         }
 
         .afb-1 {
-            background-color: #e3f2fd;
-            color: #1976d2;
+            background-color: #faf7f7;
+            color: #E10600;
         }
 
         .afb-2 {
@@ -301,7 +301,7 @@
         }
 
         .points-result {
-            color: #1976d2;
+            color: #E10600;
         }
 
         .points-rechenweg {
@@ -327,7 +327,7 @@
             background: #f9f9f9;
             padding: 10px;
             margin: 10px 0;
-            border-left: 3px solid #1976d2;
+            border-left: 3px solid #E10600;
             border-radius: 3px;
             font-size: 14px;
         }
@@ -435,7 +435,7 @@
 
         .input-group input:focus {
             outline: none;
-            border-color: #1976d2;
+            border-color: #E10600;
             border-width: 2px;
         }
 
@@ -456,7 +456,7 @@
 
         .input-group textarea:focus {
             outline: none;
-            border-color: #1976d2;
+            border-color: #E10600;
             border-width: 2px;
         }
 
@@ -497,7 +497,7 @@
         .footer {
             margin-top: 30px;
             padding-top: 20px;
-            border-top: 2px solid #2e7d32;
+            border-top: 2px solid #1a1a1a;
         }
 
         .footer-content {
@@ -514,7 +514,7 @@
 
         .footer-right {
             font-size: 16px;
-            color: #2e7d32;
+            color: #1a1a1a;
             text-align: right;
         }
 
@@ -584,7 +584,7 @@
         }
 
         .print-button {
-            background: #1976d2;
+            background: #E10600;
             color: white;
             border: none;
             padding: 8px 16px;
@@ -597,7 +597,7 @@
         }
 
         .print-button:hover {
-            background: #1565c0;
+            background: #B00500;
         }
 
         .print-button.teacher-only {
@@ -634,7 +634,7 @@
         }
 
         .submit-button {
-            background: #2e7d32;
+            background: #E10600;
             color: white;
             border: none;
             padding: 8px 16px;
@@ -676,7 +676,7 @@
         }
 
         .submit-button-large:disabled {
-            background: #2e7d32;
+            background: #E10600;
             cursor: not-allowed;
         }
 
@@ -715,26 +715,30 @@
         }
 
         .info-box {
-            background-color: #ffebee;
-            border-left: 4px solid #d32f2f;
-            padding: 10px 12px;
-            margin: 12px 0;
-            border-radius: 3px;
-            font-size: 14px;
-            color: #c62828;
+            background: transparent;
+            border: none;
+            border-left: 2px solid #e8dede;
+            padding: 2px 0 2px 10px;
+            margin: 4px 0 10px;
+            border-radius: 0;
+            font-size: 11px;
+            line-height: 1.35;
+            color: #5c5c5c;
         }
 
         .info-box strong {
-            color: #d32f2f;
-            font-size: 15px;
+            color: #1a1a1a;
+            font-size: 11px;
+            font-weight: 600;
         }
 
         .info-box ul {
-            margin: 4px 0 0 16px;
+            margin: 1px 0 0 14px;
+            padding-left: 0;
         }
 
         .info-box li {
-            margin: 1px 0;
+            margin: 0;
         }
 
         .input-group span {
@@ -1154,13 +1158,13 @@
                         <line x1="0" y1="0" x2="20" y2="20" stroke="#9c27b0" stroke-width="0.15" stroke-dasharray="0.3,0.3" opacity="0.7"/>
                         <text x="18.5" y="18.5" font-size="0.5" fill="#9c27b0" font-weight="bold">y=x</text>
                         <!-- Original-Dreieck ABC: A(-6|4)=(4,6), B(-3|7)=(7,3), C(-4|2)=(6,8) -->
-                        <polygon points="4,6 7,3 6,8" fill="none" stroke="#1976d2" stroke-width="0.2"/>
-                        <circle cx="4" cy="6" r="0.2" fill="#1976d2"/>
-                        <text x="4.3" y="5.7" font-size="0.5" fill="#1976d2" font-weight="bold">A(-6|4)</text>
-                        <circle cx="7" cy="3" r="0.2" fill="#1976d2"/>
-                        <text x="7.3" y="2.7" font-size="0.5" fill="#1976d2" font-weight="bold">B(-3|7)</text>
-                        <circle cx="6" cy="8" r="0.2" fill="#1976d2"/>
-                        <text x="6.3" y="7.7" font-size="0.5" fill="#1976d2" font-weight="bold">C(-4|2)</text>
+                        <polygon points="4,6 7,3 6,8" fill="none" stroke="#E10600" stroke-width="0.2"/>
+                        <circle cx="4" cy="6" r="0.2" fill="#E10600"/>
+                        <text x="4.3" y="5.7" font-size="0.5" fill="#E10600" font-weight="bold">A(-6|4)</text>
+                        <circle cx="7" cy="3" r="0.2" fill="#E10600"/>
+                        <text x="7.3" y="2.7" font-size="0.5" fill="#E10600" font-weight="bold">B(-3|7)</text>
+                        <circle cx="6" cy="8" r="0.2" fill="#E10600"/>
+                        <text x="6.3" y="7.7" font-size="0.5" fill="#E10600" font-weight="bold">C(-4|2)</text>
                         <!-- Gespiegelt an x-Achse: A₁(-6|-4)=(4,14), B₁(-3|-7)=(7,17), C₁(-4|-2)=(6,12) -->
                         <polygon points="4,14 7,17 6,12" fill="none" stroke="#d32f2f" stroke-width="0.15" stroke-dasharray="0.2,0.2" opacity="0.8"/>
                         <circle cx="4" cy="14" r="0.15" fill="#d32f2f"/>
@@ -1476,7 +1480,7 @@
                     clearInterval(timerInterval);
                     document.body.innerHTML = `
                         <div style="font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f5f5f5;">
-                            <div style="text-align: center; padding: 40px 20px; font-size: 18px; color: #1976d2; background: #e3f2fd; border: 2px solid #1976d2; border-radius: 8px; margin: 20px; max-width: 600px;">
+                            <div style="text-align: center; padding: 40px 20px; font-size: 18px; color: #E10600; background: #faf7f7; border: 2px solid #E10600; border-radius: 8px; margin: 20px; max-width: 600px;">
                                 <h2 style="margin-bottom: 20px; font-size: 24px;">⏳ Warte auf Korrektur deiner Lehrkraft</h2>
                             <p style="margin: 10px 0; font-size: 16px;">Die Klassenarbeit wurde bereits abgegeben.</p>
                                 <p style="margin: 10px 0; font-size: 16px;">Bitte warte auf die Korrektur durch deine Lehrkraft.</p>
@@ -2224,15 +2228,15 @@
         .header-title {
             font-size: 18px;
             font-weight: bold;
-            color: #1976d2;
+            color: #E10600;
         }
         .header-date {
             font-size: 18px;
             font-weight: bold;
-            color: #1976d2;
+            color: #E10600;
         }
         .header-divider {
-            border-top: 2px solid #1976d2;
+            border-top: 2px solid #E10600;
             margin: 10px 0;
         }
         .header-bottom {
@@ -2242,7 +2246,7 @@
             margin-top: 10px;
             font-size: 12px;
             font-weight: bold;
-            color: #2e7d32;
+            color: #1a1a1a;
         }
         .header-name {
             margin-top: 10px;
@@ -2268,7 +2272,7 @@
         .task-number {
             font-size: 16px;
             font-weight: bold;
-            color: #1976d2;
+            color: #E10600;
         }
         .task-content {
             margin: 8px 0;
@@ -2281,7 +2285,7 @@
             margin: 8px 0;
             padding: 6px;
             background-color: #f5f5f5;
-            border-left: 3px solid #1976d2;
+            border-left: 3px solid #E10600;
             font-size: 13px;
         }
         .answer-label {
@@ -2346,7 +2350,7 @@
             flex: 1;
             background: #f9f9f9;
             padding: 10px;
-            border-left: 3px solid #1976d2;
+            border-left: 3px solid #E10600;
             border-radius: 3px;
             font-size: 14px;
         }
@@ -2356,7 +2360,7 @@
         .footer {
             margin-top: 30px;
             padding-top: 20px;
-            border-top: 2px solid #2e7d32;
+            border-top: 2px solid #1a1a1a;
         }
         .footer-note {
             margin-top: 20px;
