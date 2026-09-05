@@ -5,7 +5,9 @@
 
 import { isLessonCorrectionFileName } from './openLessonFolderFile';
 import { DECK_FILENAME, presentationEditorUrl, presentationPresentUrl } from './presentationDeck';
-import { slideHasInteractiveExercise } from './presentationInteractiveExercise';
+import {
+  resolveInteractiveExercise,
+} from './presentationInteractiveExercise';
 
 export type LibraryExamItem = {
   name: string;
@@ -148,11 +150,11 @@ export async function scanLibraryInteractiveExercises(
       if (!deck?.slides?.length) return;
       const slides = [...deck.slides].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       slides.forEach((slide, idx) => {
-        if (!slideHasInteractiveExercise(slide as { slideInteractiveExercise?: unknown })) return;
-        const title =
-          (slide.slideInteractiveExercise as { title?: string } | undefined)?.title?.trim() ||
-          slide.title?.trim() ||
-          `Übung Folie ${idx + 1}`;
+        const exercise = resolveInteractiveExercise(
+          (slide as { slideInteractiveExercise?: unknown }).slideInteractiveExercise as never,
+        );
+        if (!exercise) return;
+        const title = exercise.title?.trim() || slide.title?.trim() || `Übung Folie ${idx + 1}`;
         out.push({
           title,
           lessonPath,

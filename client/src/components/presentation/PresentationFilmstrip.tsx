@@ -34,6 +34,7 @@ interface PresentationFilmstripProps {
   slides: PresentationSlide[];
   activeId: string | null;
   selectedIds: string[];
+  nowSlideId?: string | null;
   variantSlideIds?: string[];
   activeVariantId?: string | null;
   onSelect: (id: string, event: React.MouseEvent) => void;

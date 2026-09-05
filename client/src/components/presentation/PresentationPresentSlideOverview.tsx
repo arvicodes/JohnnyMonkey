@@ -95,6 +95,7 @@ const PresentationPresentSlideOverview: React.FC<PresentationPresentSlideOvervie
       >
         {slides.map((slide, index) => {
           const current = index === currentIndex;
+          const isNow = Boolean(nowSlideId && slide.id === nowSlideId);
           const section = slideSectionName(slide);
           const title = thumbTitle(slide);
           return (
@@ -104,7 +105,7 @@ const PresentationPresentSlideOverview: React.FC<PresentationPresentSlideOvervie
               component="button"
               type="button"
               data-pres-overview-slide={index}
-              aria-label={`Folie ${index + 1}${title ? `: ${title}` : ''}`}
+              aria-label={`Folie ${index + 1}${title ? `: ${title}` : ''}${isNow ? ' (NOW)' : ''}`}
               aria-current={current ? 'true' : undefined}
               onClick={() => onJump(index)}
               sx={{
@@ -130,7 +131,9 @@ const PresentationPresentSlideOverview: React.FC<PresentationPresentSlideOvervie
                   position: 'relative',
                   boxShadow: current
                     ? `0 0 0 2px ${JOHNNY_PRESENTATION.warm}, 0 6px 18px rgba(0,0,0,0.45)`
-                    : '0 0 0 1px rgba(255,255,255,0.12), 0 4px 14px rgba(0,0,0,0.35)',
+                    : isNow
+                      ? `0 0 0 2px #e53935, 0 4px 14px rgba(0,0,0,0.35)`
+                      : '0 0 0 1px rgba(255,255,255,0.12), 0 4px 14px rgba(0,0,0,0.35)',
                 }}
               >
                 <Box
@@ -156,6 +159,28 @@ const PresentationPresentSlideOverview: React.FC<PresentationPresentSlideOvervie
                     showInkStrokes={false}
                   />
                 </Box>
+                {isNow ? (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: 6,
+                      right: 6,
+                      px: 0.55,
+                      py: 0.15,
+                      borderRadius: 0.75,
+                      bgcolor: '#e53935',
+                      color: '#fff',
+                      fontSize: 9,
+                      fontWeight: 900,
+                      letterSpacing: 0.4,
+                      lineHeight: 1.2,
+                      pointerEvents: 'none',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
+                    }}
+                  >
+                    NOW
+                  </Box>
+                ) : null}
                 <Box
                   sx={{
                     position: 'absolute',
