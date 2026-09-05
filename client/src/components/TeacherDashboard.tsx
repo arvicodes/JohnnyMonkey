@@ -13802,20 +13802,6 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
   const [folderAssignmentGroupId, setFolderAssignmentGroupId] = useState<string | null>(null);
   const [folderAssignmentGroupName, setFolderAssignmentGroupName] = useState('');
   const [assignedFolders, setAssignedFolders] = useState<{[groupId: string]: string[]}>({});
-  const dashboardLibraryRootPaths = useMemo(() => {
-    const paths = new Set<string>();
-    for (const p of workingReihenPaths || []) {
-      const n = (p || '').replace(/\\/g, '/').replace(/\/+$/, '').trim();
-      if (n) paths.add(n);
-    }
-    for (const list of Object.values(assignedFolders || {})) {
-      for (const p of list || []) {
-        const n = (p || '').replace(/\\/g, '/').replace(/\/+$/, '').trim();
-        if (n) paths.add(n);
-      }
-    }
-    return [...paths];
-  }, [workingReihenPaths, assignedFolders]);
 
   const resolveGroupIdForReihe = useCallback(
     (folderPath: string) => {
