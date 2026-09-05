@@ -22,6 +22,7 @@ interface PresentationPresentSlideOverviewProps {
   open: boolean;
   slides: PresentationSlide[];
   currentIndex: number;
+  nowSlideId?: string;
   onClose: () => void;
   onJump: (index: number) => void;
 }
@@ -30,6 +31,7 @@ const PresentationPresentSlideOverview: React.FC<PresentationPresentSlideOvervie
   open,
   slides,
   currentIndex,
+  nowSlideId,
   onClose,
   onJump,
 }) => {

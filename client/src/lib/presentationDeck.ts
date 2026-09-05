@@ -663,6 +663,11 @@ export interface PresentationDeck {
   showSlideFooter?: boolean;
   slideFooter?: PresentationSlideFooter;
   /**
+   * Fortschritt „NOW“: bis hierhin unterrichtet.
+   * Beim Öffnen Sprung dorthin; SuS sehen Folien/Material nur bis zu dieser Folie.
+   */
+  nowSlideId?: string;
+  /**
    * Nur in Praesentation.deck.original.json:
    * gesetzt beim ersten Live-Speichern in der Stunde → Original ist eingefroren.
    */
@@ -970,15 +975,77 @@ export function normalizeSlide(slide: PresentationSlide): PresentationSlide {
 }
 
 export function normalizeDeck(deck: PresentationDeck): PresentationDeck {
+  const slides = sortSlides(deck.slides.map(normalizeSlide));
+  const nowId = typeof deck.nowSlideId === 'string' ? deck.nowSlideId.trim() : '';
+  const nowSlideId = nowId && slides.some((s) => s.id === nowId) ? nowId : undefined;
   return {
     ...deck,
     defaultTransition: deck.defaultTransition ?? 'fade',
-    slides: sortSlides(deck.slides.map(normalizeSlide)),
+    slides,
     trash: Array.isArray(deck.trash) ? deck.trash : [],
     showSlideNumbers: deck.showSlideNumbers !== false,
     showSlideFooter: deck.showSlideFooter !== false,
     slideFooter: sanitizeStoredFooter(deck.slideFooter, deck.lessonPath, deck.title),
+    ...(nowSlideId ? { nowSlideId } : { nowSlideId: undefined }),
   };
+}
+
+/** Index der NOW-Folie (−1 wenn nicht gesetzt). */
+export function findNowSlideIndex(deck: PresentationDeck | null | undefined): number {
+  if (!deck?.nowSlideId) return -1;
+  const sorted = sortSlides(deck.slides);
+  return sorted.findIndex((s) => s.id === deck.nowSlideId);
+}
+
+/** Folien bis einschließlich NOW (ohne NOW → alle). */
+export function slidesUpToNow(deck: PresentationDeck): PresentationSlide[] {
+  const sorted = sortSlides(deck.slides);
+  const idx = findNowSlideIndex(deck);
+  if (idx < 0) return sorted;
+  const nowOrder = sorted[idx]!.order;
+  return sorted.filter((s) => s.order <= nowOrder);
+}
+
+/** Deck mit Folien nur bis NOW (für SuS-Ansicht). */
+export function clipDeckToNow(deck: PresentationDeck): PresentationDeck {
+  const slides = slidesUpToNow(deck);
+  if (slides.length === deck.slides.length) return deck;
+  return { ...deck, slides };
+}
+
+/** Absolute Pfade der Materialkisten-Dateien auf Folien nach NOW. */
+export function printMaterialPathsAfterNow(deck: PresentationDeck): Set<string> {
+  const sorted = sortSlides(deck.slides);
+  const idx = findNowSlideIndex(deck);
+  if (idx < 0) return new Set();
+  const nowOrder = sorted[idx]!.order;
+  const paths = new Set<string>();
+  for (const slide of sorted) {
+    if (slide.order <= nowOrder) continue;
+    for (const m of slide.printMaterials || []) {
+      const p = (m.path || '').replace(/\\/g, '/').trim();
+      if (p) paths.add(p);
+    }
+  }
+  return paths;
+}
+
+/**
+ * Startfolie: URL-slideId → NOW → Sitzungs-Erinnerung → erste Folie.
+ */
+export function resolvePresentationStartSlideId(
+  deck: PresentationDeck,
+  urlSlideId?: string | null,
+): string {
+  const sorted = sortSlides(deck.slides);
+  if (!sorted.length) return '';
+  const fromUrl = (urlSlideId || '').trim();
+  if (fromUrl && sorted.some((s) => s.id === fromUrl)) return fromUrl;
+  const nowId = (deck.nowSlideId || '').trim();
+  if (nowId && sorted.some((s) => s.id === nowId)) return nowId;
+  const recalled = recalledActivePresentationSlide(deck.lessonPath || '', null);
+  if (recalled && sorted.some((s) => s.id === recalled)) return recalled;
+  return sorted[0]!.id;
 }
 
 export function createEmptyDeck(lessonPath: string, title?: string): PresentationDeck {

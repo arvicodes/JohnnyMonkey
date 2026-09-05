@@ -126,6 +126,11 @@ import WochenaufgabenFolderRow, {
 } from './wochenaufgaben/WochenaufgabenFolderRow';
 import EntryTicketCompletedRow from './entry-ticket/EntryTicketCompletedRow';
 import {
+  DashboardExamsPanel,
+  DashboardInteractiveExercisesPanel,
+} from './dashboard/DashboardLibraryPanels';
+import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
+import {
   Box,
   Typography,
   Button,
@@ -640,10 +645,11 @@ interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
   value: number;
+  dense?: boolean;
 }
 
 function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
+  const { children, value, index, dense, ...other } = props;
 
   return (
     <div
@@ -654,7 +660,7 @@ function TabPanel(props: TabPanelProps) {
       {...other}
     >
       {value === index && (
-        <Box sx={{ p: 3 }}>
+        <Box sx={{ p: dense ? 0 : 3 }}>
           {children}
         </Box>
       )}
@@ -13235,7 +13241,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       e.preventDefault();
     } else if (e.key === 'Tab') {
       return; // Let Tab work normally for accessibility
-            } else if (e.key === 'ArrowRight' && mainTabValue < 5) {
+            } else if (e.key === 'ArrowRight' && mainTabValue < 8) {
       e.preventDefault();
       setMainTabValue(mainTabValue + 1);
     } else if (e.key === 'ArrowLeft' && mainTabValue > 0) {
@@ -13539,6 +13545,20 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   const [folderAssignmentGroupId, setFolderAssignmentGroupId] = useState<string | null>(null);
   const [folderAssignmentGroupName, setFolderAssignmentGroupName] = useState('');
   const [assignedFolders, setAssignedFolders] = useState<{[groupId: string]: string[]}>({});
+  const dashboardLibraryRootPaths = useMemo(() => {
+    const paths = new Set<string>();
+    for (const p of workingReihenPaths || []) {
+      const n = (p || '').replace(/\\/g, '/').replace(/\/+$/, '').trim();
+      if (n) paths.add(n);
+    }
+    for (const list of Object.values(assignedFolders || {})) {
+      for (const p of list || []) {
+        const n = (p || '').replace(/\\/g, '/').replace(/\/+$/, '').trim();
+        if (n) paths.add(n);
+      }
+    }
+    return [...paths];
+  }, [workingReihenPaths, assignedFolders]);
 
   const resolveGroupIdForReihe = useCallback(
     (folderPath: string) => {
@@ -15614,18 +15634,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   }}
                 />
                 <PresentationSoundSplitControl variant="dashboard" />
-                {/* EntryTicket */}
+                {/* EntryTicket → Tab „Entry Tickets“ */}
                 <IconButton
-                  onClick={() => {
-                    const g = selectedGroupId
-                      ? groups.find((x) => x.id === selectedGroupId)
-                      : groups[0];
-                    const gid = selectedGroupId || g?.id;
-                    const qs = new URLSearchParams();
-                    qs.set('r', String(Date.now()));
-                    if (gid) qs.set('groupId', gid);
-                    navigate(`/entry-ticket?${qs.toString()}`);
-                  }}
+                  onClick={() => setMainTabValue(4)}
                   sx={{
                     ml: lessonSplitLeft ? 0 : 'auto',
                     p: 0.5,
@@ -15646,7 +15657,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     },
                     transition: 'all 0.2s ease',
                   }}
-                  title="EntryTicket öffnen (kein Set vorausgewählt)"
+                  title="Entry Tickets"
                 >
                   <Typography
                     component="span"
@@ -15854,13 +15865,23 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       <>
         <Grid item xs={12}>
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 1.4 }}>
-            <Tabs value={mainTabValue} onChange={handleMainTabChange} aria-label="dashboard tabs" sx={{ minHeight: 28 }}>
-              <Tab icon={<AutoStoriesIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Reihen</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
-              <Tab icon={<GroupIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Lerngruppen</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
-              <Tab icon={<BuildIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Verwalten</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
-              <Tab icon={<StyleIcon sx={{ fontSize: 18 }} />} label={<span style={{ fontSize: '0.65rem' }}>Karteikarten</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
-              <Tab icon={<StorageIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem', color: '#9E9E9E' }}>Datenbank</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
-              <Tab icon={<StyleIcon sx={{ fontSize: 18 }} />} label={<span style={{ fontSize: '0.65rem', color: '#9E9E9E' }}>Meine Fächer</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
+            <Tabs
+              value={mainTabValue}
+              onChange={handleMainTabChange}
+              aria-label="dashboard tabs"
+              variant="scrollable"
+              scrollButtons="auto"
+              sx={{ minHeight: 28 }}
+            >
+              <Tab icon={<AutoStoriesIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Reihen</span>} sx={{ minHeight: 28, px: 0.6, minWidth: 'auto' }} />
+              <Tab icon={<GroupIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Lerngruppen</span>} sx={{ minHeight: 28, px: 0.6, minWidth: 'auto' }} />
+              <Tab icon={<AssignmentIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Prüfungen</span>} sx={{ minHeight: 28, px: 0.6, minWidth: 'auto' }} />
+              <Tab icon={<QuizIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Interaktive Übungen</span>} sx={{ minHeight: 28, px: 0.6, minWidth: 'auto' }} />
+              <Tab icon={<ConfirmationNumberIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Entry Tickets</span>} sx={{ minHeight: 28, px: 0.6, minWidth: 'auto' }} />
+              <Tab icon={<BuildIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Verwalten</span>} sx={{ minHeight: 28, px: 0.6, minWidth: 'auto' }} />
+              <Tab icon={<StyleIcon sx={{ fontSize: 18 }} />} label={<span style={{ fontSize: '0.65rem' }}>Karteikarten</span>} sx={{ minHeight: 28, px: 0.6, minWidth: 'auto' }} />
+              <Tab icon={<StorageIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem', color: '#9E9E9E' }}>Datenbank</span>} sx={{ minHeight: 28, px: 0.6, minWidth: 'auto' }} />
+              <Tab icon={<StyleIcon sx={{ fontSize: 18 }} />} label={<span style={{ fontSize: '0.65rem', color: '#9E9E9E' }}>Meine Fächer</span>} sx={{ minHeight: 28, px: 0.6, minWidth: 'auto' }} />
             </Tabs>
           </Box>
         </Grid>
@@ -17373,6 +17394,32 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             </Box>
           </TabPanel>
           <TabPanel value={mainTabValue} index={2}>
+            <DashboardExamsPanel rootPaths={dashboardLibraryRootPaths} colors={colors} />
+          </TabPanel>
+          <TabPanel value={mainTabValue} index={3}>
+            <DashboardInteractiveExercisesPanel
+              rootPaths={dashboardLibraryRootPaths}
+              colors={colors}
+              groupId={selectedGroupId || groups[0]?.id}
+            />
+          </TabPanel>
+          <TabPanel value={mainTabValue} index={4} dense>
+            <Box sx={{ height: 'min(78vh, 900px)', width: '100%', bgcolor: '#fff' }}>
+              {mainTabValue === 4 ? (
+                <Box
+                  component="iframe"
+                  title="Entry Tickets"
+                  src={`/entry-ticket?embed=1${
+                    selectedGroupId || groups[0]?.id
+                      ? `&groupId=${encodeURIComponent(selectedGroupId || groups[0]?.id || '')}`
+                      : ''
+                  }`}
+                  sx={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+                />
+              ) : null}
+            </Box>
+          </TabPanel>
+          <TabPanel value={mainTabValue} index={5}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {/* Dateisystem-Pfade verwalten */}
               <Box sx={{ mb: 2 }}>
@@ -17385,7 +17432,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               </Box>
             </Box>
           </TabPanel>
-          <TabPanel value={mainTabValue} index={3}>
+          <TabPanel value={mainTabValue} index={6}>
             {/* Karteikarten Section */}
             <Box sx={{ p: 1.4 }}>
               {/* Header */}
@@ -17691,12 +17738,12 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               </Grid>
             </Box>
           </TabPanel>
-          <TabPanel value={mainTabValue} index={4}>
+          <TabPanel value={mainTabValue} index={7}>
             <Box sx={{ fontSize: '0.7rem' }}>
               <DatabaseViewer />
             </Box>
           </TabPanel>
-          <TabPanel value={mainTabValue} index={5}>
+          <TabPanel value={mainTabValue} index={8}>
             {/* Subtabs: Fächer als Tabs */}
             <Box sx={{ mb: 0.15 }}>
               <Tabs

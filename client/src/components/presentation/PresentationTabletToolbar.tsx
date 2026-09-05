@@ -216,6 +216,10 @@ interface PresentationTabletToolbarProps {
   onToggleShapeFill?: () => void;
   /** Sofort zum Dashboard (wie Taste D) */
   onExitToDashboard?: () => void;
+  /** Fortschritt „NOW“ auf aktuelle Folie setzen */
+  onMarkNow?: () => void;
+  /** Aktuelle Folie ist die NOW-Marke */
+  isNowSlide?: boolean;
   /** overlay = absolut in der Present-Bühne (Safari iPad); fixed = Viewport; docked = Layout unten */
   placement?: 'fixed' | 'docked' | 'overlay';
   /** Original-Ansicht: nur Navigation, kein Zeichnen/Speichern */
@@ -275,6 +279,8 @@ export default function PresentationTabletToolbar({
   shapeFillActive = false,
   onToggleShapeFill,
   onExitToDashboard,
+  onMarkNow,
+  isNowSlide = false,
   placement = 'fixed',
   readOnly = false,
   zoom,
@@ -754,6 +760,32 @@ export default function PresentationTabletToolbar({
             onClick={onOpenSlideOverview}
           >
             <GridViewIcon sx={{ fontSize: 15 }} />
+          </ToolBtn>
+        )}
+
+        {!inkOnly && onMarkNow && (
+          <ToolBtn
+            title={
+              isNowSlide
+                ? 'NOW — bis hier unterrichtet (SuS sehen bis hier)'
+                : 'NOW setzen — Fortschritt bis zu dieser Folie'
+            }
+            active={isNowSlide}
+            onClick={onMarkNow}
+          >
+            <Typography
+              component="span"
+              sx={{
+                fontSize: 9,
+                fontWeight: 900,
+                letterSpacing: 0.4,
+                lineHeight: 1,
+                px: 0.15,
+                color: isNowSlide ? JOHNNY_PRESENTATION.warm : 'inherit',
+              }}
+            >
+              NOW
+            </Typography>
           </ToolBtn>
         )}
 

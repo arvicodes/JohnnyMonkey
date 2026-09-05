@@ -46,7 +46,8 @@ import {
   parsePresentationPlanMode,
   presentationEditorUrl,
   rememberActivePresentationSlide,
-  recalledActivePresentationSlide,
+  resolvePresentationStartSlideId,
+  normalizeDeck,
 } from '../lib/presentationDeck';
 import {
   parsePresentationDeckSavedEvent,
@@ -320,9 +321,11 @@ const PresentationPresentPage: React.FC = () => {
       setDeck(displayDeck);
       const sorted = displayDeck ? sortSlides(displayDeck.slides) : [];
       let startIdx = 0;
-      const remembered = recalledActivePresentationSlide(lessonPath, startSlideId);
-      if (remembered) {
-        const byId = sorted.findIndex((s) => s.id === remembered);
+      const startId = displayDeck
+        ? resolvePresentationStartSlideId(displayDeck, startSlideId)
+        : '';
+      if (startId) {
+        const byId = sorted.findIndex((s) => s.id === startId);
         if (byId >= 0) startIdx = byId;
       } else if (Number.isFinite(startSlideNumber) && startSlideNumber >= 1 && sorted.length) {
         startIdx = Math.min(sorted.length - 1, startSlideNumber - 1);
@@ -1083,6 +1086,23 @@ const PresentationPresentPage: React.FC = () => {
     namedSlug,
     saving,
   ]);
+
+  const handleMarkNow = useCallback(async () => {
+    if (!currentSlide?.id || !lessonPath || isOriginalView || isNamedView) return;
+    try {
+      const disk = await loadPresentationDeck(lessonPath);
+      const next = normalizeDeck({
+        ...disk,
+        nowSlideId: currentSlide.id,
+        updatedAt: new Date().toISOString(),
+      });
+      await saveJsonFile(lessonPath, DECK_FILENAME, next);
+      setDeck((d) => (d ? { ...d, nowSlideId: currentSlide.id } : d));
+      setSnackbar('NOW gesetzt — SuS sehen Folien und Material bis hier');
+    } catch (e) {
+      setSnackbar(e instanceof Error ? e.message : 'NOW konnte nicht gesetzt werden');
+    }
+  }, [currentSlide?.id, isNamedView, isOriginalView, lessonPath]);
 
   const handleSaveNamedVersion = useCallback(async () => {
     const label = saveNamedLabel.trim();
@@ -2108,6 +2128,7 @@ const PresentationPresentPage: React.FC = () => {
         open={slideOverviewOpen}
         slides={slides}
         currentIndex={slideIndex}
+        nowSlideId={deck?.nowSlideId}
         onClose={() => setSlideOverviewOpen(false)}
         onJump={goToSlideAt}
       />
@@ -2127,6 +2148,10 @@ const PresentationPresentPage: React.FC = () => {
         onGoNext={goNext}
         onOpenSlideOverview={toggleSlideOverview}
         slideOverviewOpen={slideOverviewOpen}
+        onMarkNow={
+          isOriginalView || isNamedView ? undefined : () => void handleMarkNow()
+        }
+        isNowSlide={Boolean(currentSlide?.id && deck?.nowSlideId === currentSlide.id)}
         onToggleDraw={handleToggleDraw}
         onSelectTool={handleSelectTool}
         onSelectColor={handleSelectColor}
