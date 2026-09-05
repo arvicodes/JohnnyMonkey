@@ -5298,6 +5298,12 @@ const PresentationEditorPage: React.FC = () => {
               updateSlide({ slideExam: next }, normalizedActive.id)
             }
             slideInteractiveExercise={normalizedActive.slideInteractiveExercise}
+            onSlideInteractiveExerciseChange={(next) =>
+              updateSlide(
+                { slideInteractiveExercise: next },
+                normalizedActive.id,
+              )
+            }
             slideIdForExercise={normalizedActive.id}
             groupId={groupId}
             onMessage={setSnackbar}
@@ -5393,7 +5399,7 @@ const PresentationEditorPage: React.FC = () => {
                     width: 22,
                     height: 22,
                     borderRadius: 0.5,
-                    bgcolor: '#FF8F00',
+                    bgcolor: '#FBC02D',
                     color: '#fff',
                     fontSize: 11,
                     fontWeight: 900,

@@ -43,37 +43,6 @@ import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-ico
 
 export const MATERIAL_CRATE_BROWN = '#6d4c41';
 
-function CrateSkullIcon() {
-  return (
-    <Box
-      component="svg"
-      viewBox="0 0 24 24"
-      sx={{ width: 15, height: 15, display: 'block', opacity: 0.9 }}
-      aria-hidden
-    >
-      <g fill="#efebe9">
-        <ellipse cx="12" cy="8.2" rx="5.2" ry="4.6" />
-        <path d="M8.6 11.2c.7 1.6 1.9 2.5 3.4 2.5s2.7-.9 3.4-2.5H8.6z" />
-        <circle cx="9.7" cy="7.8" r="1.15" fill="#4e342e" />
-        <circle cx="14.3" cy="7.8" r="1.15" fill="#4e342e" />
-        <path d="M11.2 10.1h1.6v1.35c0 .35-.25.55-.8.55s-.8-.2-.8-.55V10.1z" fill="#4e342e" />
-        <rect x="10.2" y="13.5" width="1.15" height="2.1" rx="0.35" />
-        <rect x="12.65" y="13.5" width="1.15" height="2.1" rx="0.35" />
-        <g transform="rotate(-38 12 18)">
-          <rect x="3.2" y="17.15" width="17.6" height="1.7" rx="0.85" />
-          <circle cx="3.5" cy="18" r="1.55" />
-          <circle cx="20.5" cy="18" r="1.55" />
-        </g>
-        <g transform="rotate(38 12 18)">
-          <rect x="3.2" y="17.15" width="17.6" height="1.7" rx="0.85" />
-          <circle cx="3.5" cy="18" r="1.55" />
-          <circle cx="20.5" cy="18" r="1.55" />
-        </g>
-      </g>
-    </Box>
-  );
-}
-
 function isPrintableLessonFile(name: string): boolean {
   const n = (name || '').trim();
   if (!n || n.startsWith('~$')) return false;
@@ -178,7 +147,7 @@ const MaterialCrate: React.FC<MaterialCrateProps> = ({
   lessonPath,
   onChange,
   onMessage,
-  title = 'Druckmaterial',
+  title: _unusedTitle = 'Druckmaterial',
   compact = true,
 }) => {
   const [addAnchor, setAddAnchor] = useState<null | HTMLElement>(null);
@@ -353,18 +322,18 @@ const MaterialCrate: React.FC<MaterialCrateProps> = ({
       }}
       sx={{
         flexShrink: 0,
-        borderRadius: compact ? 1.5 : 2,
+        borderRadius: compact ? 1.25 : 2,
         overflow: 'hidden',
         border: `1px solid ${
-          dragOver ? alpha('#ffcc80', 0.85) : alpha('#5d4037', 0.45)
+          dragOver ? alpha('#ffcc80', 0.85) : alpha('#8d6e63', 0.35)
         }`,
         outline: dragOver ? `2px solid ${alpha('#ffb74d', 0.95)}` : 'none',
         outlineOffset: 1,
-        background: `linear-gradient(180deg, ${alpha('#8d6e63', 0.92)} 0%, #6d4c41 28%, #5d4037 100%)`,
-        boxShadow: `0 4px 16px ${alpha('#3e2723', 0.14)}`,
+        background: `linear-gradient(165deg, #faf8f5 0%, #f3efe8 55%, #ebe4da 100%)`,
+        boxShadow: `inset 0 1px 0 ${alpha('#fff', 0.7)}`,
         mx: compact ? 0.85 : 0,
-        mt: compact ? 0.7 : 0,
-        mb: compact ? 0.35 : 0,
+        mt: compact ? 0.35 : 0,
+        mb: compact ? 0.25 : 0,
         position: 'relative',
       }}
     >
@@ -407,138 +376,92 @@ const MaterialCrate: React.FC<MaterialCrateProps> = ({
           )}
         </Box>
       )}
-      <Box
-        sx={{
-          position: 'relative',
-          px: 1.2,
-          pt: 0.85,
-          pb: 0.75,
-          background: `linear-gradient(180deg, ${alpha('#a1887f', 0.95)} 0%, #8d6e63 100%)`,
-          borderBottom: `1px solid ${alpha('#3e2723', 0.35)}`,
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, pr: 4.5 }}>
-          <Box
+      <Box sx={{ position: 'absolute', top: 4, right: 4, zIndex: 2 }}>
+        <Tooltip title="Druckmaterial hinzufügen">
+          <IconButton
+            size="small"
+            onClick={(e) => setAddAnchor(e.currentTarget)}
+            disabled={uploading}
             sx={{
-              width: 24,
-              height: 24,
-              borderRadius: '50%',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: alpha('#3e2723', 0.55),
-              border: `1px solid ${alpha('#d7ccc8', 0.35)}`,
-              flexShrink: 0,
-            }}
-          >
-            <CrateSkullIcon />
-          </Box>
-          <Typography
-            component="div"
-            sx={{
-              fontSize: '0.68rem',
+              p: 0,
+              minWidth: 20,
+              width: 20,
+              height: 20,
+              borderRadius: 0.6,
+              bgcolor: alpha('#5d4037', 0.12),
+              color: '#5d4037',
+              fontSize: '0.78rem',
               fontWeight: 800,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              color: alpha('#efebe9', 0.95),
-              lineHeight: 1.1,
+              lineHeight: 1,
+              border: `1px solid ${alpha('#5d4037', 0.28)}`,
+              '&:hover': { bgcolor: alpha('#5d4037', 0.22), color: '#3e2723' },
             }}
+            aria-label="Druckmaterial hinzufügen"
           >
-            {title}
-          </Typography>
-        </Box>
-        <Box sx={{ position: 'absolute', top: 6, right: 6, zIndex: 2 }}>
-          <Tooltip title="Druckmaterial hinzufügen">
-            <IconButton
-              size="small"
-              onClick={(e) => setAddAnchor(e.currentTarget)}
-              disabled={uploading}
-              sx={{
-                p: 0,
-                minWidth: 22,
-                width: 22,
-                height: 22,
-                borderRadius: 0.7,
-                bgcolor: alpha('#3e2723', 0.45),
-                color: alpha('#efebe9', 0.95),
-                fontSize: '0.82rem',
-                fontWeight: 800,
-                lineHeight: 1,
-                border: `1px solid ${alpha('#d7ccc8', 0.35)}`,
-                '&:hover': { bgcolor: alpha('#3e2723', 0.7), color: '#fff' },
-              }}
-              aria-label="Druckmaterial hinzufügen"
-            >
-              +
-            </IconButton>
-          </Tooltip>
-          <Menu
-            anchorEl={addAnchor}
-            open={Boolean(addAnchor)}
-            onClose={() => setAddAnchor(null)}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-            PaperProps={{ sx: { maxHeight: 360, minWidth: 240, maxWidth: 380, mt: 0.5 } }}
+            +
+          </IconButton>
+        </Tooltip>
+        <Menu
+          anchorEl={addAnchor}
+          open={Boolean(addAnchor)}
+          onClose={() => setAddAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          PaperProps={{ sx: { maxHeight: 360, minWidth: 240, maxWidth: 380, mt: 0.5 } }}
+        >
+          <MenuItem
+            onClick={() => {
+              setAddAnchor(null);
+              fileInputRef.current?.click();
+            }}
+            sx={{ fontSize: '0.75rem', py: 0.7, fontWeight: 700, color: '#2e7d32' }}
           >
-            <MenuItem
-              onClick={() => {
-                setAddAnchor(null);
-                fileInputRef.current?.click();
-              }}
-              sx={{ fontSize: '0.75rem', py: 0.7, fontWeight: 700, color: '#2e7d32' }}
-            >
-              <UploadFileIcon sx={{ fontSize: 15, color: '#2e7d32', mr: 0.75, flexShrink: 0 }} />
-              Vom Computer…
+            <UploadFileIcon sx={{ fontSize: 15, color: '#2e7d32', mr: 0.75, flexShrink: 0 }} />
+            Vom Computer…
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              setAddAnchor(null);
+              setBrowsePath(defaultBrowseStartPath(lessonPath));
+              setBrowseOpen(true);
+            }}
+            sx={{ fontSize: '0.75rem', py: 0.7, fontWeight: 700, color: '#ef6c00' }}
+          >
+            <FolderIcon sx={{ fontSize: 15, color: '#ef6c00', mr: 0.75, flexShrink: 0 }} />
+            Anderer Ordner…
+          </MenuItem>
+          <MenuItem disabled sx={{ fontSize: '0.68rem', opacity: 1, fontWeight: 700, color: '#90a4ae' }}>
+            Stundenordner
+          </MenuItem>
+          {availableToAdd.length === 0 ? (
+            <MenuItem disabled sx={{ fontSize: '0.72rem' }}>
+              {lessonPath ? 'Keine weiteren Dateien' : 'Kein Stundenordner'}
             </MenuItem>
-            <MenuItem
-              onClick={() => {
-                setAddAnchor(null);
-                setBrowsePath(defaultBrowseStartPath(lessonPath));
-                setBrowseOpen(true);
-              }}
-              sx={{ fontSize: '0.75rem', py: 0.7, fontWeight: 700, color: '#ef6c00' }}
-            >
-              <FolderIcon sx={{ fontSize: 15, color: '#ef6c00', mr: 0.75, flexShrink: 0 }} />
-              Anderer Ordner…
-            </MenuItem>
-            <MenuItem disabled sx={{ fontSize: '0.68rem', opacity: 1, fontWeight: 700, color: '#90a4ae' }}>
-              Stundenordner
-            </MenuItem>
-            {availableToAdd.length === 0 ? (
-              <MenuItem disabled sx={{ fontSize: '0.72rem' }}>
-                {lessonPath ? 'Keine weiteren Dateien' : 'Kein Stundenordner'}
+          ) : (
+            availableToAdd.map((f) => (
+              <MenuItem
+                key={f.path}
+                onClick={() => {
+                  setAddAnchor(null);
+                  addFile(f.path, f.name);
+                }}
+                sx={{ fontSize: '0.75rem', py: 0.55 }}
+              >
+                {f.name}
               </MenuItem>
-            ) : (
-              availableToAdd.map((f) => (
-                <MenuItem
-                  key={f.path}
-                  onClick={() => {
-                    setAddAnchor(null);
-                    addFile(f.path, f.name);
-                  }}
-                  sx={{ fontSize: '0.75rem', py: 0.55 }}
-                >
-                  {f.name}
-                </MenuItem>
-              ))
-            )}
-          </Menu>
-        </Box>
+            ))
+          )}
+        </Menu>
       </Box>
 
       <Box
         sx={{
-          mx: 1,
-          mt: 1,
-          mb: 1,
-          px: 1,
-          py: 0.9,
-          borderRadius: 1.5,
-          border: `1px solid ${alpha('#5d4037', 0.18)}`,
-          background: `linear-gradient(165deg, #faf8f5 0%, #f3efe8 55%, #ebe4da 100%)`,
-          boxShadow: `inset 0 1px 0 ${alpha('#fff', 0.7)}`,
-          minHeight: compact ? 72 : 128,
-          maxHeight: compact ? 168 : 280,
+          px: 0.85,
+          pt: 0.55,
+          pb: 0.55,
+          pr: 3.2,
+          minHeight: compact ? 44 : 96,
+          maxHeight: compact ? 140 : 280,
           overflow: 'auto',
         }}
       >

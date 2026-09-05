@@ -25,7 +25,6 @@ import {
   INTERACTIVE_EXERCISE_BORDER,
   INTERACTIVE_EXERCISE_FILL,
 } from '../../lib/presentationDeck';
-import PresentationInteractiveExercisePlayer from './PresentationInteractiveExercisePlayer';
 import { JOHNNY_PRESENTATION, accentGradient } from '../../lib/presentationTheme';
 import {
   presentationImageElementSx,
@@ -825,10 +824,15 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
       sx={{
         width: w,
         height: h,
-        bgcolor: slideChrome ? '#fff' : JOHNNY_PRESENTATION.slideBg,
-        backgroundImage: slideChrome
-          ? `linear-gradient(${slideChrome.fill}, ${slideChrome.fill})`
-          : undefined,
+        bgcolor: isExerciseSlide
+          ? INTERACTIVE_EXERCISE_FILL
+          : slideChrome
+            ? '#fff'
+            : JOHNNY_PRESENTATION.slideBg,
+        backgroundImage:
+          isExamSlide && slideChrome
+            ? `linear-gradient(${slideChrome.fill}, ${slideChrome.fill})`
+            : undefined,
         borderRadius: `${8 * scale}px`,
         boxShadow: showShadow ? '0 8px 32px rgba(0,0,0,0.12)' : 'none',
         position: 'relative',
@@ -841,31 +845,6 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
       }}
     >
       {renderElementLayer(backgroundElements, backgroundLayerZ)}
-
-      {interactiveExercise ? (
-        <Box
-          sx={{
-            position: 'absolute',
-            inset: `${10 * scale}px`,
-            zIndex: 6,
-            borderRadius: `${6 * scale}px`,
-            overflow: 'hidden',
-            bgcolor: '#fff',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-            pointerEvents: exerciseInteractive && !editable ? 'auto' : 'none',
-          }}
-        >
-          <PresentationInteractiveExercisePlayer
-            exercise={interactiveExercise}
-            scale={scale}
-            interactive={Boolean(exerciseInteractive && !editable && !exportSnapshot)}
-            preview={!exerciseInteractive || editable || exportSnapshot}
-            lessonPath={lessonPath}
-            groupId={lessonGroupId}
-            studentId={studentId}
-          />
-        </Box>
-      ) : null}
 
       {showJohnnyChrome && (
         <Box

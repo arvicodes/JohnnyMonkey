@@ -102,7 +102,7 @@ export default function PresentationSlideTemplateBar({
       case 'ha':
         return '#EF6C00';
       case 'uebung':
-        return '#FF8F00';
+        return '#FBC02D';
       case 'ende':
         return '#2E7D32';
       case 'link':

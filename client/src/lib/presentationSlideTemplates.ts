@@ -488,10 +488,10 @@ function builtinTemplates(): SlideTemplatesStore['templates'] {
       homeworkSubmissionRequired: true,
       hiddenLayoutZones: ['bodyHtml'],
     },
-    /** Interaktive Übung: gelb-orange Folie mit Themenliste / Multiple Choice. */
+    /** Interaktive Übung: leere gelbe Folie — Inhalte legt die Lehrkraft selbst an; Übung rechts. */
     uebung: {
       layout: 'blank',
-      title: 'Interaktive Übung',
+      title: '',
       body: '',
       speakerNotes: '',
       preparationNotes: '',
@@ -909,14 +909,16 @@ export function createSlideFromTemplateKind(
     return {
       ...slide,
       accentColor: INTERACTIVE_EXERCISE_ACCENT,
+      title: '',
+      titleHtml: '',
+      body: '',
+      bodyHtml: '',
       slideInteractiveExercise: {
         id: 'ex-roman-numerals',
         title: 'Römische Zahlen',
         packId: 'roman-numerals',
         topics: [],
       },
-      title: 'Römische Zahlen',
-      titleHtml: textToHtml('Römische Zahlen'),
     };
   }
   return slide;

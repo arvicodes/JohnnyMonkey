@@ -450,7 +450,7 @@ const SortableFilmstripThumb = React.memo(
                 width: 16,
                 height: 16,
                 borderRadius: 0.5,
-                bgcolor: '#FF8F00',
+                bgcolor: '#FBC02D',
                 color: '#fff',
                 fontSize: 9,
                 fontWeight: 900,

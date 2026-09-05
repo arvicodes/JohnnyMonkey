@@ -797,6 +797,7 @@ interface PresentationNotesPanelProps {
   slideExam?: SlideExam;
   onSlideExamChange?: (next: SlideExam | undefined) => void;
   slideInteractiveExercise?: SlideInteractiveExercise | null;
+  onSlideInteractiveExerciseChange?: (next: SlideInteractiveExercise | undefined) => void;
   slideIdForExercise?: string;
   groupId?: string;
   onMessage?: (text: string) => void;
@@ -837,6 +838,7 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
   slideExam,
   onSlideExamChange,
   slideInteractiveExercise,
+  onSlideInteractiveExerciseChange,
   slideIdForExercise,
   groupId,
   onMessage,
@@ -995,6 +997,18 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
           groupId={groupId}
           onChange={onSlideExamChange}
           onMessage={onMessage}
+          hasInteractiveExercise={Boolean(slideInteractiveExercise)}
+          onAttachInteractiveExercise={
+            onSlideInteractiveExerciseChange
+              ? () =>
+                  onSlideInteractiveExerciseChange({
+                    id: `ex-${Date.now()}`,
+                    title: 'Interaktive Übung',
+                    packId: 'roman-numerals',
+                    topics: [],
+                  })
+              : undefined
+          }
         />
       ) : null}
       {slideInteractiveExercise ? (

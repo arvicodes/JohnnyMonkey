@@ -4,10 +4,10 @@
  */
 import type { PresentationSlide } from './presentationDeck';
 
-/** Gelb-Orange — deutlich von HA (#EF6C00) und Prüfung (#c62828) getrennt. */
-export const INTERACTIVE_EXERCISE_ACCENT = '#FF8F00';
-export const INTERACTIVE_EXERCISE_FILL = 'rgba(255,143,0,0.14)';
-export const INTERACTIVE_EXERCISE_BORDER = '#FF8F00';
+/** Gelb — deutlich von HA (#EF6C00) und Prüfung (#c62828) getrennt. */
+export const INTERACTIVE_EXERCISE_ACCENT = '#FBC02D';
+export const INTERACTIVE_EXERCISE_FILL = '#FFF59D';
+export const INTERACTIVE_EXERCISE_BORDER = '#F9A825';
 
 /** Prüfungsfolien: rot umrandet + rötlich transparent. */
 export const EXAM_SLIDE_ACCENT = '#c62828';

@@ -2203,11 +2203,14 @@ const PresentationPresentPage: React.FC = () => {
             compact={false}
           />
         </Box>
-      ) : currentSlide?.slideInteractiveExercise ? (
+      ) : null}
+      {currentSlide?.slideInteractiveExercise ? (
         <Box
           sx={{
             position: 'absolute',
-            top: 'max(12px, env(safe-area-inset-top))',
+            top: currentSlide?.slideExam
+              ? 'calc(max(12px, env(safe-area-inset-top)) + 88px)'
+              : 'max(12px, env(safe-area-inset-top))',
             right: 'max(12px, env(safe-area-inset-right))',
             zIndex: 16,
             width: 420,

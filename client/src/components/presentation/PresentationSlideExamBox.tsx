@@ -74,6 +74,9 @@ type Props = {
   lessonPath?: string;
   groupId?: string;
   onChange?: (next: SlideExam | undefined) => void;
+  /** Rechter Teil des Doppelbuttons: Übung an diese Folie hängen. */
+  onAttachInteractiveExercise?: () => void;
+  hasInteractiveExercise?: boolean;
   onMessage?: (text: string) => void;
   compact?: boolean;
 };
@@ -98,6 +101,8 @@ const PresentationSlideExamBox: React.FC<Props> = ({
   lessonPath,
   groupId,
   onChange,
+  onAttachInteractiveExercise,
+  hasInteractiveExercise = false,
   onMessage,
   compact = true,
 }) => {
@@ -561,28 +566,62 @@ const PresentationSlideExamBox: React.FC<Props> = ({
   );
 
   if (!exam) {
+    const exerciseAccent = '#F9A825';
     return (
       <Box data-pres-exam-box="1" sx={{ flexShrink: 0, mx: compact ? 0.85 : 0, mt: 0.15, mb: 0.25 }}>
-        <Button
+        <ButtonGroup
           size="small"
           variant="text"
-          onClick={(e) => {
-            setLoadingFiles(true);
-            setAddAnchor(e.currentTarget);
-          }}
           sx={{
-            minWidth: 0,
-            height: 26,
-            px: 0.4,
-            fontSize: '0.68rem',
-            fontWeight: 800,
-            textTransform: 'none',
-            color: EXAM_RED,
-            '&:hover': { bgcolor: '#ffebee' },
+            '& .MuiButtonGroup-grouped': {
+              minWidth: 0,
+              height: 26,
+              px: 0.55,
+              fontSize: '0.62rem',
+              fontWeight: 800,
+              textTransform: 'none',
+              lineHeight: 1.1,
+            },
           }}
         >
-          Prüfung an diese Folie
-        </Button>
+          <Button
+            onClick={(e) => {
+              setLoadingFiles(true);
+              setAddAnchor(e.currentTarget);
+            }}
+            sx={{
+              color: EXAM_RED,
+              '&:hover': { bgcolor: '#ffebee' },
+            }}
+          >
+            Prüfung an diese Folie
+          </Button>
+          {onAttachInteractiveExercise ? (
+            <Button
+              disabled={hasInteractiveExercise}
+              onClick={() => onAttachInteractiveExercise()}
+              title={
+                hasInteractiveExercise
+                  ? 'Interaktive Übung ist bereits angebunden'
+                  : 'Interaktive Übung an diese Folie'
+              }
+              sx={{
+                color: hasInteractiveExercise ? alpha(exerciseAccent, 0.45) : '#E65100',
+                bgcolor: alpha(exerciseAccent, hasInteractiveExercise ? 0.12 : 0.28),
+                borderLeft: `1px solid ${alpha(exerciseAccent, 0.55)} !important`,
+                '&:hover': {
+                  bgcolor: alpha(exerciseAccent, 0.42),
+                },
+                '&.Mui-disabled': {
+                  color: alpha('#E65100', 0.4),
+                  bgcolor: alpha(exerciseAccent, 0.1),
+                },
+              }}
+            >
+              Interaktive Übung an diese Folie
+            </Button>
+          ) : null}
+        </ButtonGroup>
         {addMenu}
         {createDialog}
       </Box>

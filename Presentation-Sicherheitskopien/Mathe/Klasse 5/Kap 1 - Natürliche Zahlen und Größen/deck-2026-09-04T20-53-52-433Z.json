@@ -2,7 +2,7 @@
   "version": 1,
   "title": "Kap 1 - Natürliche Zahlen und Größen",
   "lessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen",
-  "updatedAt": "2026-09-04T20:01:11.478Z",
+  "updatedAt": "2026-09-04T20:23:31.832Z",
   "slides": [
     {
       "layout": "title-slide",
@@ -1511,19 +1511,132 @@
       "bodyLeftHtml": "",
       "bodyRightHtml": "",
       "imageCaptionHtml": "",
-      "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><br></p>",
+      "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/bild-1788552082332-ddepmc.png&max=960\" alt=\"ChatGPT Image 4. Sept. 2026, 07_48_12 (1).png\" data-pres-notes-img=\"1\" draggable=\"false\" style=\"width: auto; height: auto; display: block; border-radius: 4px; max-width: 100%;\"></span><br></p>",
       "preparationNotes": "",
       "preparationHtml": "<p><br></p>",
       "materialNotes": "",
       "materialHtml": "<p><br></p>",
-      "elements": [],
+      "elements": [
+        {
+          "id": "el-1788552076235",
+          "type": "image",
+          "x": 1.980959261758397,
+          "y": 11.669211520918783,
+          "w": 96.48747372547503,
+          "h": 74.5858932266293,
+          "src": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/bild-1788552076189-uos1nr.png",
+          "zIndex": 1,
+          "imageFit": "contain",
+          "stackLayer": "foreground",
+          "imageFrame": {
+            "preset": "rounded",
+            "color": "#1a1a1a",
+            "width": 2,
+            "dash": "solid",
+            "radius": 14,
+            "shadow": "soft"
+          },
+          "imageSourceRect": {
+            "x": 1.0248796500279957,
+            "y": -3.142529137793394,
+            "w": 98.3765009948838,
+            "h": 98.3765009948838
+          }
+        }
+      ],
       "transition": "fade",
       "revealEnabled": true,
-      "zoneRevealSteps": {}
+      "zoneRevealSteps": {},
+      "printMaterials": [
+        {
+          "id": "pm-1788552156575-a88q5",
+          "path": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/Dinogeschichte Bewegung 1.png",
+          "name": "Dinogeschichte Bewegung 1.png"
+        },
+        {
+          "id": "pm-1788552156585-wp942",
+          "path": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/Dinogeschichte Text 1.png",
+          "name": "Dinogeschichte Text 1.png"
+        }
+      ]
+    },
+    {
+      "id": "slide-1788552105778-fxygh",
+      "order": 17,
+      "speakerNotes": "",
+      "layout": "blank",
+      "subtitle": "",
+      "bodyLeft": "",
+      "bodyRight": "",
+      "imagePath": "",
+      "imageCaption": "",
+      "bodyStyle": "plain",
+      "titleAlign": "left",
+      "accentColor": "#2E7D32",
+      "title": "",
+      "body": "",
+      "hiddenLayoutZones": [
+        "bodyHtml"
+      ],
+      "sourceLessonName": "1.6 Hü",
+      "titleHtml": "",
+      "bodyHtml": "",
+      "subtitleHtml": "",
+      "bodyLeftHtml": "",
+      "bodyRightHtml": "",
+      "imageCaptionHtml": "",
+      "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><span class=\"pres-notes-img-wrap\" contenteditable=\"false\" data-pres-notes-img-wrap=\"1\" style=\"position: relative; display: inline-block; vertical-align: top; max-width: 100%; width: fit-content; margin: 0.25em 0.4em 0.25em 0px; line-height: 0;\"><img src=\"/api/file-system-paths/read-image?filePath=git-intern/Mathe/Klasse%205/Kap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen/bild-1788552111330-axq3zf.png&max=960\" alt=\"Dinogeschichte Text 2.png\" data-pres-notes-img=\"1\" draggable=\"false\" style=\"width: auto; height: auto; display: block; border-radius: 4px; max-width: 100%;\"></span><br></p>",
+      "preparationNotes": "",
+      "preparationHtml": "<p><br></p>",
+      "materialNotes": "",
+      "materialHtml": "<p><br></p>",
+      "elements": [
+        {
+          "id": "el-1788552147347",
+          "type": "image",
+          "x": 2.1950498725666785,
+          "y": 7.953526826331832,
+          "w": 96.80201232238777,
+          "h": 83.46537611742332,
+          "src": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/bild-1788552208371-53omw6.jpg",
+          "zIndex": 1,
+          "imageFit": "contain",
+          "stackLayer": "foreground",
+          "imageSourceRect": {
+            "x": 1.6406738210784393,
+            "y": -6.768842549505369,
+            "w": 98.18774549326051,
+            "h": 98.18774549326052
+          },
+          "imageFrame": {
+            "preset": "rounded",
+            "color": "#1a1a1a",
+            "width": 2,
+            "dash": "solid",
+            "radius": 14,
+            "shadow": "soft"
+          }
+        }
+      ],
+      "transition": "fade",
+      "revealEnabled": true,
+      "zoneRevealSteps": {},
+      "printMaterials": [
+        {
+          "id": "pm-1788552163920-00s5w",
+          "path": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/Dinogeschichte Bewegung 2.png",
+          "name": "Dinogeschichte Bewegung 2.png"
+        },
+        {
+          "id": "pm-1788552163944-srgho",
+          "path": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/Dinogeschichte Text 2.png",
+          "name": "Dinogeschichte Text 2.png"
+        }
+      ]
     },
     {
       "id": "slide-1788419706714-x39fz",
-      "order": 17,
+      "order": 18,
       "speakerNotes": "Welche Dinokarte möchtest du? Begründet .Geben Sie verschiedene Möglichkeiten an , die Karten zu ordnen.",
       "layout": "title-content",
       "subtitle": "",
@@ -1587,7 +1700,7 @@
     },
     {
       "id": "slide-1788426522314-u2sdz",
-      "order": 18,
+      "order": 19,
       "speakerNotes": "",
       "layout": "title-content",
       "subtitle": "",
@@ -1888,13 +2001,13 @@
         "bodyHtml"
       ],
       "id": "slide-1788330040990-h71hg",
-      "order": 19,
+      "order": 20,
       "sourceLessonName": "1.7 Zahlen vergleichen und ordnen",
       "sourceLessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen"
     },
     {
       "id": "slide-1788428224507-nq0bh",
-      "order": 20,
+      "order": 21,
       "speakerNotes": "",
       "layout": "blank",
       "subtitle": "",
@@ -1966,7 +2079,7 @@
     },
     {
       "id": "slide-1788429275215-agmhf",
-      "order": 21,
+      "order": 22,
       "speakerNotes": "",
       "layout": "blank",
       "subtitle": "",
@@ -2256,13 +2369,13 @@
         "bodyHtml"
       ],
       "id": "slide-1788429343265",
-      "order": 22,
+      "order": 23,
       "sourceLessonName": "1.8 Der Zahlenstrahl",
       "sourceLessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen"
     },
     {
       "id": "slide-1788430601465-toktj",
-      "order": 23,
+      "order": 24,
       "speakerNotes": "",
       "layout": "blank",
       "subtitle": "",
@@ -2546,13 +2659,13 @@
         "bodyHtml"
       ],
       "id": "slide-1788430601466-is9f1",
-      "order": 24,
+      "order": 25,
       "sourceLessonName": "1.9 Runden",
       "sourceLessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen"
     },
     {
       "id": "slide-1788431257741-o54ld",
-      "order": 25,
+      "order": 26,
       "speakerNotes": "",
       "layout": "blank",
       "subtitle": "",
@@ -2668,7 +2781,7 @@
         "bodyHtml"
       ],
       "id": "slide-1788431257742-0xynx",
-      "order": 26,
+      "order": 27,
       "sourceLessonName": "1.10 Größen und ihre Einheiten",
       "sourceLessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen"
     }
