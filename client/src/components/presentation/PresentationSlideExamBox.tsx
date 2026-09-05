@@ -471,7 +471,7 @@ const PresentationSlideExamBox: React.FC<Props> = ({
     >
       <DialogContent sx={{ p: 0 }}>
         {correctionOpen && examPath ? (
-          <KACorrectionMode kaFilePath={examPath} onClose={() => setCorrectionOpen(false)} />
+          <KACorrectionMode kaFilePath={examPath} groupId={gid || null} onClose={() => setCorrectionOpen(false)} />
         ) : null}
       </DialogContent>
     </Dialog>

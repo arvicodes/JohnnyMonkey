@@ -54,10 +54,24 @@ function normalizeGroupStudents<T extends { students?: Array<{ avatarUrl?: strin
 }
 
 // Get all learning groups (for testing purposes)
+// Wichtig: select statt include — seatingOrder/statisticsOrder können in SQLite als BLOB
+// liegen und würden sonst den ganzen Endpoint mit Prisma-Konvertierungsfehler killen.
 router.get('/', async (req: Request, res: Response) => {
   try {
     const groups = await prisma.learningGroup.findMany({
-      include: { 
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        updatedAt: true,
+        teacherId: true,
+        period1Hours: true,
+        period2Hours: true,
+        iconEmoji: true,
+        color: true,
+        displayOrder: true,
+        isArchived: true,
+        moderatorStudentId: true,
         students: {
           orderBy: { name: 'asc' },
           select: {
@@ -66,12 +80,13 @@ router.get('/', async (req: Request, res: Response) => {
             loginCode: true,
             avatarEmoji: true,
             avatarUrl: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
     res.json(groups.map(normalizeGroupStudents));
   } catch (error) {
+    console.error('GET /learning-groups failed:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -247,7 +262,19 @@ router.get('/student/:id', async (req: Request, res: Response) => {
         isArchived: false,
       },
       orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
-      include: {
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        updatedAt: true,
+        teacherId: true,
+        period1Hours: true,
+        period2Hours: true,
+        iconEmoji: true,
+        color: true,
+        displayOrder: true,
+        isArchived: true,
+        moderatorStudentId: true,
         teacher: {
           select: {
             id: true,
@@ -815,7 +842,22 @@ router.get('/:id', async (req: Request, res: Response) => {
   try {
     const group = await prisma.learningGroup.findUnique({
       where: { id: req.params.id },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        updatedAt: true,
+        teacherId: true,
+        period1Hours: true,
+        period2Hours: true,
+        iconEmoji: true,
+        color: true,
+        displayOrder: true,
+        isArchived: true,
+        moderatorStudentId: true,
+        seatingOrder: true,
+        statisticsOrder: true,
+        passiveStudentIds: true,
         teacher: {
           select: {
             id: true,
@@ -839,13 +881,49 @@ router.get('/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Lerngruppe nicht gefunden' });
     }
 
-    res.json(group);
+    res.json(normalizeGroupStudents(group));
   } catch (error: any) {
-    console.error('Error fetching learning group:', error);
-    res.status(500).json({ 
-      error: 'Server error',
-      message: error?.message || 'Unbekannter Fehler'
-    });
+    // Fallback ohne Order-Felder (falls SQLite-BLOB erneut Probleme macht)
+    try {
+      const group = await prisma.learningGroup.findUnique({
+        where: { id: req.params.id },
+        select: {
+          id: true,
+          name: true,
+          createdAt: true,
+          updatedAt: true,
+          teacherId: true,
+          period1Hours: true,
+          period2Hours: true,
+          iconEmoji: true,
+          color: true,
+          displayOrder: true,
+          isArchived: true,
+          moderatorStudentId: true,
+          teacher: { select: { id: true, name: true } },
+          students: {
+            orderBy: { name: 'asc' },
+            select: {
+              id: true,
+              name: true,
+              loginCode: true,
+              avatarEmoji: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      });
+      if (!group) {
+        return res.status(404).json({ error: 'Lerngruppe nicht gefunden' });
+      }
+      return res.json(normalizeGroupStudents(group));
+    } catch (fallbackError: any) {
+      console.error('Error fetching learning group:', error, fallbackError);
+      return res.status(500).json({
+        error: 'Server error',
+        message: error?.message || 'Unbekannter Fehler',
+      });
+    }
   }
 });
 

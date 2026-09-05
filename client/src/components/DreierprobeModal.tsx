@@ -69,6 +69,8 @@ interface DreierprobeModalProps {
   onClose: () => void;
   kaFilePath: string;
   submissions: KASubmission[];
+  /** Optional: bekannte Lerngruppe (z. B. aus Präsentation) */
+  groupId?: string | null;
 }
 
 // Hilfsfunktion: Extrahiere Vornamen (alles vor dem ersten Leerzeichen)
@@ -141,7 +143,8 @@ const DreierprobeModal: React.FC<DreierprobeModalProps> = ({
   open,
   onClose,
   kaFilePath,
-  submissions
+  submissions,
+  groupId: groupIdProp = null,
 }) => {
   const [learningGroupStudents, setLearningGroupStudents] = useState<LearningGroupStudent[]>([]);
   const [learningGroupId, setLearningGroupId] = useState<string | null>(null);
@@ -275,18 +278,74 @@ Vera Christ`);
   /** Lerngruppe zu den Abgaben finden — bevorzugt eine mit Bewertungsschema. */
   const resolveLearningGroupId = async (): Promise<{ id: string; name: string } | null> => {
     const loginCode = localStorage.getItem('loginCode') || '';
-    const firstStudentId = submissions[0]?.student?.id;
+    const firstStudentId =
+      submissions[0]?.student?.id ||
+      (submissions[0] as { studentId?: string } | undefined)?.studentId;
+    if (!firstStudentId && !groupIdProp && !learningGroupId) return null;
+
+    if (groupIdProp || learningGroupId) {
+      const preferredId = groupIdProp || learningGroupId!;
+      try {
+        const schemaRes = await fetch(`/api/grading-schemas/${preferredId}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'x-login-code': loginCode,
+          },
+        });
+        if (schemaRes.ok) {
+          // Name optional nachladen
+          let name = '';
+          try {
+            const gRes = await fetch(`/api/learning-groups/${preferredId}`, {
+              headers: { 'x-login-code': loginCode },
+            });
+            if (gRes.ok) {
+              const g = await gRes.json();
+              name = g?.name || '';
+            }
+          } catch {
+            /* ignore */
+          }
+          return { id: preferredId, name };
+        }
+      } catch {
+        /* weiter mit Suche */
+      }
+    }
+
+    const loadGroups = async (): Promise<any[]> => {
+      const res = await fetch('/api/learning-groups', {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': loginCode,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) return data;
+      }
+
+      // Fallback: Lehrer-Endpunkt (robuster, ohne problematische Felder)
+      const teacherId =
+        localStorage.getItem('userId') ||
+        localStorage.getItem('teacherId') ||
+        '';
+      if (!teacherId) return [];
+      const teacherRes = await fetch(`/api/learning-groups/teacher/${teacherId}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': loginCode,
+        },
+      });
+      if (!teacherRes.ok) return [];
+      const teacherData = await teacherRes.json();
+      return Array.isArray(teacherData) ? teacherData : [];
+    };
+
     if (!firstStudentId) return null;
 
-    const response = await fetch('/api/learning-groups', {
-      headers: {
-        'Content-Type': 'application/json',
-        'x-login-code': loginCode,
-      },
-    });
-    if (!response.ok) return null;
-    const groups = await response.json();
-    const candidates = (Array.isArray(groups) ? groups : []).filter((g: any) =>
+    const groups = await loadGroups();
+    const candidates = groups.filter((g: any) =>
       g.students?.some((s: any) => s.id === firstStudentId),
     );
     if (candidates.length === 0) return null;

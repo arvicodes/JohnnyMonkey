@@ -74,11 +74,12 @@ interface KACorrection {
 interface KACorrectionModeProps {
   kaFilePath: string;
   onClose: () => void;
+  groupId?: string | null;
 }
 
 type CorrectionMode = 'by-student' | 'by-task';
 
-const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose }) => {
+const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose, groupId = null }) => {
   const [submissions, setSubmissions] = useState<KASubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -3549,6 +3550,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         onClose={() => setShowDreierprobe(false)}
         kaFilePath={kaFilePath}
         submissions={submissions}
+        groupId={groupId}
       />
     </Box>
   );
