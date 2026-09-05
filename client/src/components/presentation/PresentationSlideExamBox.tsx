@@ -571,12 +571,12 @@ const PresentationSlideExamBox: React.FC<Props> = ({
       <Box data-pres-exam-box="1" sx={{ flexShrink: 0, mx: compact ? 0.85 : 0, mt: 0.15, mb: 0.25 }}>
         <ButtonGroup
           size="small"
-          variant="text"
+          variant="outlined"
           sx={{
             '& .MuiButtonGroup-grouped': {
               minWidth: 0,
-              height: 26,
-              px: 0.55,
+              height: 28,
+              px: 0.7,
               fontSize: '0.62rem',
               fontWeight: 800,
               textTransform: 'none',
@@ -591,7 +591,12 @@ const PresentationSlideExamBox: React.FC<Props> = ({
             }}
             sx={{
               color: EXAM_RED,
-              '&:hover': { bgcolor: '#ffebee' },
+              borderColor: `${EXAM_RED} !important`,
+              bgcolor: alpha(EXAM_RED, 0.06),
+              '&:hover': {
+                bgcolor: alpha(EXAM_RED, 0.14),
+                borderColor: `${EXAM_RED} !important`,
+              },
             }}
           >
             Prüfung an diese Folie
@@ -606,15 +611,17 @@ const PresentationSlideExamBox: React.FC<Props> = ({
                   : 'Interaktive Übung an diese Folie'
               }
               sx={{
-                color: hasInteractiveExercise ? alpha(exerciseAccent, 0.45) : '#E65100',
-                bgcolor: alpha(exerciseAccent, hasInteractiveExercise ? 0.12 : 0.28),
-                borderLeft: `1px solid ${alpha(exerciseAccent, 0.55)} !important`,
+                color: hasInteractiveExercise ? alpha('#E65100', 0.45) : '#E65100',
+                borderColor: `${exerciseAccent} !important`,
+                bgcolor: alpha(exerciseAccent, hasInteractiveExercise ? 0.1 : 0.22),
                 '&:hover': {
-                  bgcolor: alpha(exerciseAccent, 0.42),
+                  bgcolor: alpha(exerciseAccent, 0.38),
+                  borderColor: `${exerciseAccent} !important`,
                 },
                 '&.Mui-disabled': {
                   color: alpha('#E65100', 0.4),
-                  bgcolor: alpha(exerciseAccent, 0.1),
+                  borderColor: `${alpha(exerciseAccent, 0.45)} !important`,
+                  bgcolor: alpha(exerciseAccent, 0.08),
                 },
               }}
             >

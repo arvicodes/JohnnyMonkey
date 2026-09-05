@@ -5,8 +5,8 @@
 import type { PresentationSlide } from './presentationDeck';
 
 /** Gelb — deutlich von HA (#EF6C00) und Prüfung (#c62828) getrennt. */
-export const INTERACTIVE_EXERCISE_ACCENT = '#FBC02D';
-export const INTERACTIVE_EXERCISE_FILL = '#FFF59D';
+export const INTERACTIVE_EXERCISE_ACCENT = '#F9A825';
+export const INTERACTIVE_EXERCISE_FILL = '#FFF8E1';
 export const INTERACTIVE_EXERCISE_BORDER = '#F9A825';
 
 /** Prüfungsfolien: rot umrandet + rötlich transparent. */
