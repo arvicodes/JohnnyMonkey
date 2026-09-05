@@ -595,7 +595,11 @@ class KACorrectionController {
                 },
                 select: {
                     id: true,
-                    status: true
+                    status: true,
+                    isReleased: true,
+                    totalPoints: true,
+                    autoPoints: true,
+                    kaFilePath: true,
                 }
             });
             console.log('🔍 Exakte Suche Ergebnis:', submission ? 'gefunden' : 'nicht gefunden');
@@ -610,7 +614,11 @@ class KACorrectionController {
                     },
                     select: {
                         id: true,
-                        status: true
+                        status: true,
+                        isReleased: true,
+                        totalPoints: true,
+                        autoPoints: true,
+                        kaFilePath: true,
                     },
                     take: 1
                 });
@@ -623,6 +631,7 @@ class KACorrectionController {
             console.log('🔍 Finales Ergebnis:', exists ? 'Submission existiert' : 'Keine Submission');
             res.json({
                 exists,
+                isReleased: (submission === null || submission === void 0 ? void 0 : submission.isReleased) === true,
                 submission: submission || null
             });
         }
@@ -635,6 +644,7 @@ class KACorrectionController {
      * Alle Noten für eine Klassenarbeit freigeben/zurücknehmen (nur für Lehrer)
      */
     static async releaseAllGrades(req, res) {
+        var _a;
         try {
             const { kaFilePath } = req.body;
             const loginCode = req.headers['x-login-code'];
@@ -661,9 +671,10 @@ class KACorrectionController {
             if (submissions.length === 0) {
                 return res.status(404).json({ error: 'Keine Abgaben für diese Klassenarbeit gefunden' });
             }
-            // Prüfe ob alle bereits freigegeben sind
+            // Optional explizit setzen (z. B. nach Notenfreigabe), sonst umschalten
+            const bodyReleased = (_a = req.body) === null || _a === void 0 ? void 0 : _a.isReleased;
             const allReleased = submissions.every(sub => sub.isReleased);
-            const newReleaseStatus = !allReleased;
+            const newReleaseStatus = typeof bodyReleased === 'boolean' ? bodyReleased : !allReleased;
             // Aktualisiere alle Submissions
             const result = await prisma.kASubmission.updateMany({
                 where: {
@@ -753,6 +764,116 @@ class KACorrectionController {
         catch (error) {
             console.error('Error checking release status:', error);
             res.status(500).json({ error: 'Fehler beim Prüfen des Freigabestatus' });
+        }
+    }
+    /**
+     * Freigegebene Prüfungsergebnisse für den angemeldeten Schüler
+     * Optional: lessonPath filtert auf Abgaben dieser Stunde
+     */
+    static async getMyReleasedResults(req, res) {
+        try {
+            const loginCode = req.headers['x-login-code'];
+            const lessonPathRaw = typeof req.query.lessonPath === 'string' ? req.query.lessonPath : '';
+            if (!loginCode) {
+                return res.status(401).json({ error: 'Nicht angemeldet' });
+            }
+            const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
+            if (!user || user.role !== 'STUDENT') {
+                return res.status(403).json({ error: 'Nur Schüler können ihre Ergebnisse abrufen' });
+            }
+            const submissions = await prisma.kASubmission.findMany({
+                where: {
+                    studentId: user.id,
+                    isReleased: true,
+                },
+                select: {
+                    id: true,
+                    kaFilePath: true,
+                    totalPoints: true,
+                    autoPoints: true,
+                    status: true,
+                    submittedAt: true,
+                    answers: true,
+                    corrections: {
+                        orderBy: { taskNumber: 'asc' },
+                        select: {
+                            taskNumber: true,
+                            manualPoints: true,
+                            comment: true,
+                        },
+                    },
+                },
+                orderBy: { submittedAt: 'desc' },
+            });
+            const lessonNorm = lessonPathRaw.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+            const fileNamesRaw = typeof req.query.fileNames === 'string' ? req.query.fileNames : '';
+            const fileNameSet = new Set(fileNamesRaw
+                .split(',')
+                .map((s) => decodeURIComponent(s.trim()).toLowerCase())
+                .filter(Boolean));
+            const filtered = submissions.filter((sub) => {
+                const p = (sub.kaFilePath || '').replace(/\\/g, '/');
+                const base = (p.split('/').pop() || p).toLowerCase();
+                const full = p.toLowerCase();
+                if (fileNameSet.size > 0) {
+                    return fileNameSet.has(base);
+                }
+                if (lessonNorm) {
+                    return full.includes(lessonNorm);
+                }
+                return true;
+            });
+            const resultsSource = filtered;
+            // Zusätzlich: gespeicherte Note aus dem Notenschema (falls vorhanden)
+            const grades = await prisma.grade.findMany({
+                where: { studentId: user.id },
+                select: {
+                    categoryName: true,
+                    grade: true,
+                    updatedAt: true,
+                    schema: { select: { name: true, gradingSystem: true } },
+                },
+                orderBy: { updatedAt: 'desc' },
+            });
+            res.json({
+                results: resultsSource.map((sub) => {
+                    const fileName = (sub.kaFilePath || '').replace(/\\/g, '/').split('/').pop() || sub.kaFilePath;
+                    const title = fileName.replace(/\.(html|htm)$/i, '').replace(/^(KA_|KU_|HÜ_|HU_|QZ_)/, '');
+                    let answers = {};
+                    try {
+                        answers = JSON.parse(sub.answers || '{}');
+                    }
+                    catch {
+                        answers = {};
+                    }
+                    return {
+                        id: sub.id,
+                        kaFilePath: sub.kaFilePath,
+                        fileName,
+                        title,
+                        totalPoints: sub.totalPoints,
+                        autoPoints: sub.autoPoints,
+                        submittedAt: sub.submittedAt,
+                        answers,
+                        corrections: sub.corrections,
+                        // Hinweis: konkrete Note kommt oft aus dem Schema; Client berechnet ggf. aus Punkten
+                        recentGrades: grades.slice(0, 8).map((g) => {
+                            var _a, _b;
+                            return ({
+                                categoryName: g.categoryName,
+                                grade: g.grade,
+                                schemaName: (_a = g.schema) === null || _a === void 0 ? void 0 : _a.name,
+                                gradingSystem: (_b = g.schema) === null || _b === void 0 ? void 0 : _b.gradingSystem,
+                                updatedAt: g.updatedAt,
+                            });
+                        }),
+                    };
+                }),
+            });
+        }
+        catch (error) {
+            console.error('Error getting released results:', error);
+            res.status(500).json({ error: 'Fehler beim Laden der Prüfungsergebnisse' });
         }
     }
 }

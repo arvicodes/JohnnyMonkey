@@ -53,7 +53,8 @@ const getSchemas = async (req, res) => {
     try {
         const { groupId } = req.params;
         const schemas = await prisma.gradingSchema.findMany({
-            where: { groupId }
+            where: { groupId },
+            orderBy: { updatedAt: 'desc' },
         });
         // Format the schemas for display
         const formattedSchemas = schemas.map(schema => ({

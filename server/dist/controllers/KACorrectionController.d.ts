@@ -36,5 +36,10 @@ export declare class KACorrectionController {
      * Prüfe Freigabestatus für eine Klassenarbeit (nur für Lehrer)
      */
     static getReleaseStatus(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
+     * Freigegebene Prüfungsergebnisse für den angemeldeten Schüler
+     * Optional: lessonPath filtert auf Abgaben dieser Stunde
+     */
+    static getMyReleasedResults(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
 }
 //# sourceMappingURL=KACorrectionController.d.ts.map

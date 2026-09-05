@@ -1,12 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.LESSON_PRESENTATION_PDF_EDITED = exports.LESSON_PRESENTATION_PDF_ORIGINAL = void 0;
+exports.LESSON_PRESENTATION_PDF_STAND = exports.LESSON_PRESENTATION_PDF_EDITED = exports.LESSON_PRESENTATION_PDF_ORIGINAL = void 0;
 exports.isLessonPresentationSystemFile = isLessonPresentationSystemFile;
 exports.isLessonPresentationMaterialPdf = isLessonPresentationMaterialPdf;
 exports.isStudentVisibleLessonMaterialFile = isStudentVisibleLessonMaterialFile;
 /** Johnny-Präsentation: exportierte Folien-PDFs — für Schüler freigeben. */
 exports.LESSON_PRESENTATION_PDF_ORIGINAL = 'Praesentation_Original.pdf';
 exports.LESSON_PRESENTATION_PDF_EDITED = 'Praesentation_bearbeitet.pdf';
+exports.LESSON_PRESENTATION_PDF_STAND = 'Praesentation_Stand.pdf';
 const LESSON_IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|svg|bmp|heic|avif|tiff?)$/i;
 const LESSON_INPUT_DOCS_RE = /\.(pdf|pptx?|odp|docx?|odt|rtf)$/i;
 function isLessonPresentationSystemFile(name) {
