@@ -15869,19 +15869,37 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               value={mainTabValue}
               onChange={handleMainTabChange}
               aria-label="dashboard tabs"
-              variant="scrollable"
-              scrollButtons="auto"
-              sx={{ minHeight: 28 }}
+              variant="fullWidth"
+              sx={{
+                minHeight: 34,
+                '& .MuiTabs-flexContainer': { gap: 0 },
+                '& .MuiTab-root': {
+                  minHeight: 34,
+                  minWidth: 0,
+                  flex: 1,
+                  maxWidth: 'none',
+                  px: 0.15,
+                  py: 0.25,
+                  fontSize: '0.58rem',
+                  lineHeight: 1.1,
+                  textTransform: 'none',
+                  opacity: 1,
+                },
+                '& .MuiTab-iconWrapper': {
+                  marginBottom: '1px !important',
+                  marginRight: '0 !important',
+                },
+              }}
             >
-              <Tab icon={<AutoStoriesIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Reihen</span>} sx={{ minHeight: 28, px: 0.6, minWidth: 'auto' }} />
-              <Tab icon={<GroupIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Lerngruppen</span>} sx={{ minHeight: 28, px: 0.6, minWidth: 'auto' }} />
-              <Tab icon={<AssignmentIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Prüfungen</span>} sx={{ minHeight: 28, px: 0.6, minWidth: 'auto' }} />
-              <Tab icon={<QuizIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Interaktive Übungen</span>} sx={{ minHeight: 28, px: 0.6, minWidth: 'auto' }} />
-              <Tab icon={<ConfirmationNumberIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Entry Tickets</span>} sx={{ minHeight: 28, px: 0.6, minWidth: 'auto' }} />
-              <Tab icon={<BuildIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Verwalten</span>} sx={{ minHeight: 28, px: 0.6, minWidth: 'auto' }} />
-              <Tab icon={<StyleIcon sx={{ fontSize: 18 }} />} label={<span style={{ fontSize: '0.65rem' }}>Karteikarten</span>} sx={{ minHeight: 28, px: 0.6, minWidth: 'auto' }} />
-              <Tab icon={<StorageIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem', color: '#9E9E9E' }}>Datenbank</span>} sx={{ minHeight: 28, px: 0.6, minWidth: 'auto' }} />
-              <Tab icon={<StyleIcon sx={{ fontSize: 18 }} />} label={<span style={{ fontSize: '0.65rem', color: '#9E9E9E' }}>Meine Fächer</span>} sx={{ minHeight: 28, px: 0.6, minWidth: 'auto' }} />
+              <Tab icon={<AutoStoriesIcon sx={{ fontSize: 14 }} />} label="Reihen" iconPosition="top" />
+              <Tab icon={<GroupIcon sx={{ fontSize: 14 }} />} label="Lerngruppen" iconPosition="top" />
+              <Tab icon={<AssignmentIcon sx={{ fontSize: 14 }} />} label="Prüfungen" iconPosition="top" />
+              <Tab icon={<QuizIcon sx={{ fontSize: 14 }} />} label="Übungen" iconPosition="top" title="Interaktive Übungen" />
+              <Tab icon={<ConfirmationNumberIcon sx={{ fontSize: 14 }} />} label="Entry" iconPosition="top" title="Entry Tickets" />
+              <Tab icon={<BuildIcon sx={{ fontSize: 14 }} />} label="Verwalten" iconPosition="top" />
+              <Tab icon={<StyleIcon sx={{ fontSize: 14 }} />} label="Karten" iconPosition="top" title="Karteikarten" />
+              <Tab icon={<StorageIcon sx={{ fontSize: 14 }} />} label="Datenbank" iconPosition="top" sx={{ color: '#9E9E9E' }} />
+              <Tab icon={<StyleIcon sx={{ fontSize: 14 }} />} label="Fächer" iconPosition="top" title="Meine Fächer" sx={{ color: '#9E9E9E' }} />
             </Tabs>
           </Box>
         </Grid>

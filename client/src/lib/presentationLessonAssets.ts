@@ -1,6 +1,8 @@
 /** Johnny-Präsentation: exportierte Folien-PDFs — sollen als Unterrichtsmaterial erscheinen. */
 export const LESSON_PRESENTATION_PDF_ORIGINAL = 'Praesentation_Original.pdf';
 export const LESSON_PRESENTATION_PDF_EDITED = 'Praesentation_bearbeitet.pdf';
+/** SuS-Download: Folienstand bis NOW (ohne Versionen-Buttons). */
+export const LESSON_PRESENTATION_PDF_STAND = 'Praesentation_Stand.pdf';
 
 const LESSON_IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|svg|bmp|heic|avif|tiff?)$/i;
 const LESSON_INPUT_DOCS_RE = /\.(pdf|pptx?|odp|docx?|odt|rtf)$/i;
@@ -56,6 +58,7 @@ export function listNamedJohnnyPresentationFiles(
     if (name === LESSON_PRESENTATION_PDF_ORIGINAL || name === LESSON_PRESENTATION_PDF_EDITED) {
       continue;
     }
+    if (name === LESSON_PRESENTATION_PDF_STAND) continue;
     const m = name.match(/^Praesentation_(.+)\.pdf$/i);
     const label = m ? m[1].replace(/_/g, ' ').trim() || name : name;
     out.push({ name, label });

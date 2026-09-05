@@ -13,9 +13,11 @@ import {
   PresentationStroke,
   SLIDE_REF_HEIGHT,
   SLIDE_REF_WIDTH,
+  clipDeckToNow,
   createEmptyAnnotations,
   isOriginalDeckFrozen,
   loadPresentationAnnotations,
+  loadPresentationDeck,
   loadPresentationOriginalDeck,
   normalizeDeck,
   normalizeSlide,
@@ -36,6 +38,7 @@ import {
   namedVersionSlugFromLabel,
   LESSON_PRESENTATION_PDF_EDITED,
   LESSON_PRESENTATION_PDF_ORIGINAL,
+  LESSON_PRESENTATION_PDF_STAND,
 } from './presentationLessonAssets';
 import { PRESENTATION_KEYFRAMES } from './presentationTransitions';
 import { PRESENTATION_DEFAULT_FONT_FAMILY } from './presentationFonts';
@@ -44,6 +47,7 @@ import '../styles/presentationLists.css';
 export const DECK_ORIGINAL_SNAPSHOT = DECK_ORIGINAL_FILENAME;
 export const PDF_ORIGINAL_FILENAME = LESSON_PRESENTATION_PDF_ORIGINAL;
 export const PDF_EDITED_FILENAME = LESSON_PRESENTATION_PDF_EDITED;
+export const PDF_STAND_FILENAME = LESSON_PRESENTATION_PDF_STAND;
 
 const EXPORT_CAPTURE_SCALE = 2;
 /** Schneller Export für benannte/Bearbeitet-PDFs (Unterricht). */
@@ -605,4 +609,89 @@ export async function refreshPresentationPdfsFromLessonFolder(lessonPath: string
   await exportPresentationPdfVersions(lessonPath, deck, annotations, undefined, {
     editedOnly: true,
   });
+}
+
+function triggerBlobDownload(blob: Blob, downloadName: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = downloadName || PDF_STAND_FILENAME;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+/**
+ * Folienstand bis NOW als PDF speichern (SuS-Download).
+ * Ohne NOW → gesamter Foliensatz.
+ */
+export async function exportPresentationStandPdf(
+  lessonPath: string,
+  workingDeck?: PresentationDeck | null,
+  annotations?: PresentationAnnotations | null,
+  onProgress?: (label: string) => void,
+): Promise<string> {
+  const folder = lessonPath.replace(/\\/g, '/').replace(/\/$/, '');
+  const deck = normalizeDeck(
+    stripOriginalFreezeMeta(workingDeck ?? (await loadPresentationDeck(folder))),
+  );
+  const ann =
+    annotations ??
+    (await loadPresentationAnnotations(folder).catch(() => createEmptyAnnotations(folder)));
+  const clipped = clipDeckToNow(deck);
+  if (!clipped.slides.length) {
+    throw new Error('Keine Folien für den Stand-PDF');
+  }
+  onProgress?.('Stand-PDF…');
+  const blob = await buildPresentationPdfBlob(
+    clipped,
+    ann,
+    true,
+    (c, t) => onProgress?.(`Stand ${c}/${t}`),
+    EXPORT_FAST,
+  );
+  await savePdfBlob(folder, PDF_STAND_FILENAME, blob);
+  return PDF_STAND_FILENAME;
+}
+
+/**
+ * SuS: Folienstand bis NOW herunterladen (Datei, sonst live erzeugen).
+ */
+export async function downloadPresentationStandPdfForStudent(
+  lessonPath: string,
+  downloadName?: string,
+): Promise<void> {
+  const folder = lessonPath.replace(/\\/g, '/').replace(/\/$/, '');
+  const name =
+    (downloadName || '').trim() ||
+    `${folder.split('/').pop() || 'Folien'}_Stand.pdf`;
+  const standPath = `${folder}/${PDF_STAND_FILENAME}`;
+  try {
+    const response = await fetch(
+      `/api/file-system-paths/download?filePath=${encodeURIComponent(standPath)}`,
+      { credentials: 'include' },
+    );
+    if (response.ok) {
+      const blob = await response.blob();
+      if (blob.size > 0) {
+        triggerBlobDownload(blob, name);
+        return;
+      }
+    }
+  } catch {
+    /* Fallback: live erzeugen */
+  }
+  const deck = await loadPresentationDeck(folder);
+  const ann = await loadPresentationAnnotations(folder).catch(() =>
+    createEmptyAnnotations(folder),
+  );
+  const clipped = clipDeckToNow(deck);
+  if (!clipped.slides.length) {
+    throw new Error('Keine Folien zum Herunterladen');
+  }
+  const blob = await buildPresentationPdfBlob(clipped, ann, true, undefined, EXPORT_FAST);
+  triggerBlobDownload(blob, name);
+  // Im Hintergrund ablegen, damit der nächste Download schnell ist
+  void savePdfBlob(folder, PDF_STAND_FILENAME, blob).catch(() => undefined);
 }
