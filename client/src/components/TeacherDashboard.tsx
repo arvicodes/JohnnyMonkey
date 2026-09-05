@@ -125,11 +125,11 @@ import WochenaufgabenFolderRow, {
   WochenaufgabenAddToReiheButton,
 } from './wochenaufgaben/WochenaufgabenFolderRow';
 import EntryTicketCompletedRow from './entry-ticket/EntryTicketCompletedRow';
-import {
-  DashboardExamsPanel,
-  DashboardInteractiveExercisesPanel,
-} from './dashboard/DashboardLibraryPanels';
 import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
+import {
+  exerciseEditorUrl,
+  exercisePresentUrl,
+} from '../lib/dashboardMaterialLibrary';
 import {
   Box,
   Typography,
@@ -10829,6 +10829,30 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             
             {/* Icon für Bearbeitung von Prüfungsdateien */}
             {item.type === 'file' && isCorrectionFile(item.name) && (
+              materialFocus === 'exams' ? (
+                <Button
+                  size="small"
+                  startIcon={<EditIcon sx={{ fontSize: 12 }} />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditSingleQuestion(item);
+                  }}
+                  sx={{
+                    fontSize: '0.58rem',
+                    textTransform: 'none',
+                    py: 0,
+                    px: 0.6,
+                    minHeight: 20,
+                    ml: 0.5,
+                    bgcolor: '#fff3e0',
+                    color: '#ef6c00',
+                    border: '1px solid #ffcc80',
+                    '&:hover': { bgcolor: '#ffe0b2' },
+                  }}
+                >
+                  Bearbeiten
+                </Button>
+              ) : (
               <IconButton
                 size="small"
                 onClick={(e) => {
@@ -10851,6 +10875,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               >
                 <EditIcon sx={{ fontSize: 14 }} />
               </IconButton>
+              )
             )}
 
             </Typography>
@@ -11074,9 +11099,157 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             
           </Box>
           
-          {/* Unterordner eingerückt in derselben Box — unter einer Stunde keine Dateien */}
+          {materialFocus === 'exams' &&
+            isStundeFolder &&
+            (() => {
+              const examFiles = (item.children || []).filter(
+                (c: any) => c?.type === 'file' && isCorrectionFile(String(c.name || '')),
+              );
+              if (examFiles.length > 0) return null;
+              return (
+                <Typography
+                  variant="caption"
+                  sx={{
+                    display: 'block',
+                    ml: 1.5,
+                    mt: 0.35,
+                    mb: 0.35,
+                    color: '#94a3b8',
+                    fontStyle: 'italic',
+                    fontSize: '0.72rem',
+                  }}
+                >
+                  Noch keine Prüfung in dieser Stunde
+                </Typography>
+              );
+            })()}
+
+          {materialFocus === 'exercises' &&
+            isStundeFolder &&
+            (() => {
+              const lessonNorm = String(stundeLessonPath || '').replace(/\\/g, '/');
+              const matching = (libraryExerciseIndex || []).filter((ex) => {
+                const lesson = String(ex.lessonPath || '').replace(/\\/g, '/');
+                return (
+                  lesson === lessonNorm ||
+                  lesson.startsWith(`${lessonNorm}/`) ||
+                  lessonNorm.startsWith(`${lesson}/`)
+                );
+              });
+              const editorGroupId =
+                groupId && groupId !== DASHBOARD_REIHEN_CONTENT_GROUP ? groupId : undefined;
+              if (matching.length === 0) {
+                return (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      display: 'block',
+                      ml: 1.5,
+                      mt: 0.35,
+                      mb: 0.35,
+                      color: '#94a3b8',
+                      fontStyle: 'italic',
+                      fontSize: '0.72rem',
+                    }}
+                  >
+                    Noch keine interaktiven Übungen in dieser Stunde
+                  </Typography>
+                );
+              }
+              return (
+                <Box
+                  sx={{
+                    ml: 1.5,
+                    mt: 0.35,
+                    mb: 0.45,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 0.35,
+                  }}
+                >
+                  {matching.map((ex) => (
+                    <Box
+                      key={`${ex.lessonPath}:${ex.slideId || ex.slideIndex}`}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        px: 0.75,
+                        py: 0.4,
+                        borderRadius: 1,
+                        bgcolor: 'rgba(124, 58, 237, 0.06)',
+                        border: '1px solid rgba(124, 58, 237, 0.16)',
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          flex: 1,
+                          minWidth: 0,
+                          color: '#5b21b6',
+                          fontWeight: 600,
+                          fontSize: '0.75rem',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                        title={ex.title}
+                      >
+                        {ex.title}
+                      </Typography>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => {
+                          window.open(
+                            exerciseEditorUrl(ex.lessonPath, ex.slideId, editorGroupId),
+                            '_blank',
+                            'noopener,noreferrer',
+                          );
+                        }}
+                        sx={{
+                          minWidth: 0,
+                          px: 0.85,
+                          py: 0.15,
+                          fontSize: '0.68rem',
+                          textTransform: 'none',
+                          borderColor: 'rgba(124, 58, 237, 0.35)',
+                          color: '#6d28d9',
+                        }}
+                      >
+                        Bearbeiten
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={() => {
+                          window.open(
+                            exercisePresentUrl(ex.lessonPath, ex.slideId, editorGroupId),
+                            '_blank',
+                            'noopener,noreferrer',
+                          );
+                        }}
+                        sx={{
+                          minWidth: 0,
+                          px: 0.85,
+                          py: 0.15,
+                          fontSize: '0.68rem',
+                          textTransform: 'none',
+                          bgcolor: '#7c3aed',
+                          '&:hover': { bgcolor: '#6d28d9' },
+                        }}
+                      >
+                        Spielen
+                      </Button>
+                    </Box>
+                  ))}
+                </Box>
+              );
+            })()}
+
+          {/* Unterordner eingerückt — unter Stunde nur Prüfungen (materialFocus exams) */}
           {item.type === 'directory' &&
-            !directoryOpensStundePage(item.name, level) &&
+            (!directoryOpensStundePage(item.name, level) || materialFocus === 'exams') &&
             !isNumberedWa &&
             !isWochenaufgabenDir &&
             item.children &&
@@ -11084,13 +11257,14 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             branchExpanded && (
             <Box
               sx={{
-                ml: isContainerFolder ? 1.25 : 1.5,
-                mt: isContainerFolder ? 0.35 : 0.4,
+                ml: isContainerFolder || materialFocus === 'exams' ? 1.25 : 1.5,
+                mt: isContainerFolder || materialFocus === 'exams' ? 0.35 : 0.4,
                 mb: 0,
-                pl: isContainerFolder ? 0.75 : 0,
-                borderLeft: isContainerFolder
-                  ? `2px solid rgba(21, 101, 192, 0.18)`
-                  : 'none',
+                pl: isContainerFolder || materialFocus === 'exams' ? 0.75 : 0,
+                borderLeft:
+                  isContainerFolder || materialFocus === 'exams'
+                    ? `2px solid rgba(21, 101, 192, 0.18)`
+                    : 'none',
               }}
             >
               {isWochenaufgabenDir ? null : (
@@ -11772,12 +11946,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           await handleEditSingleQuestion({ path: editPath, name: data.fileName });
         }
 
-        // Ordnerinhalte aktualisieren
+        // Ordnerinhalte aktualisieren (Lerngruppen + Arbeits-Reihen)
         Object.keys(assignedFolders).forEach((groupId) => {
           (assignedFolders[groupId] || []).forEach((folderPath: string) => {
             fetchAssignedFolderContent(groupId, folderPath);
           });
         });
+        for (const path of workingReihenPaths) {
+          const gid = resolveGroupIdForReihe(path);
+          void fetchAssignedFolderContent(gid, path);
+        }
         
         // Reset form
         setExaminationType('QZ');
@@ -17521,14 +17699,154 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             </Box>
           </TabPanel>
           <TabPanel value={mainTabValue} index={2}>
-            <DashboardExamsPanel rootPaths={dashboardLibraryRootPaths} colors={colors} />
+            <Box sx={{ p: 1.4 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  color: colors.primary,
+                  mb: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.4,
+                }}
+              >
+                <AssignmentIcon sx={{ fontSize: 16 }} />
+                Prüfungen nach Reihe · Stufe · Thema · Stunde
+              </Typography>
+              {workingReihenPaths.length === 0 ? (
+                <Typography
+                  variant="body2"
+                  sx={{ color: colors.textSecondary, fontStyle: 'italic', fontSize: '0.8rem', px: 0.5 }}
+                >
+                  Noch keine Arbeits-Reihe gewählt — im Tab „Reihen“ auswählen, dann erscheinen hier die Prüfungen
+                  nach Stufen und Themen.
+                </Typography>
+              ) : (
+                <Grid container spacing={1.5} alignItems="flex-start">
+                  {filterOutNestedAssignedFolderPaths(workingReihenPaths).map((folderPath) => {
+                    const gid = resolveGroupIdForReihe(folderPath);
+                    const isInfReihe = isInformatikFolderPath(folderPath);
+                    return (
+                      <Grid item xs={12} sm={6} md={4} key={`exam-${folderPath}`}>
+                        <Box
+                          sx={{
+                            p: 2.1,
+                            bgcolor: isInfReihe ? INFORMATIK_FOLDER_BG : '#fff',
+                            borderRadius: 2.8,
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                            border: isInfReihe ? INFORMATIK_FOLDER_BORDER : '1px solid #e0e0e0',
+                            height: '100%',
+                          }}
+                        >
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              display: 'block',
+                              mb: 0.75,
+                              fontWeight: 700,
+                              color: '#c62828',
+                              fontSize: '0.72rem',
+                            }}
+                          >
+                            {assignedFolderDisplayLabel(folderPath)}
+                          </Typography>
+                          <Box
+                            sx={{
+                              p: 1.4,
+                              bgcolor: '#fafbfc',
+                              borderRadius: 1.4,
+                              border: '1px solid #f0f0f0',
+                            }}
+                          >
+                            {renderAssignedFolderPreview(gid, folderPath, {
+                              enableDrag: false,
+                              materialFocus: 'exams',
+                            })}
+                          </Box>
+                        </Box>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              )}
+            </Box>
           </TabPanel>
           <TabPanel value={mainTabValue} index={3}>
-            <DashboardInteractiveExercisesPanel
-              rootPaths={dashboardLibraryRootPaths}
-              colors={colors}
-              groupId={selectedGroupId || groups[0]?.id}
-            />
+            <Box sx={{ p: 1.4 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  color: colors.primary,
+                  mb: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.4,
+                }}
+              >
+                <QuizIcon sx={{ fontSize: 16 }} />
+                Interaktive Übungen nach Reihe · Stufe · Thema · Stunde
+              </Typography>
+              {workingReihenPaths.length === 0 ? (
+                <Typography
+                  variant="body2"
+                  sx={{ color: colors.textSecondary, fontStyle: 'italic', fontSize: '0.8rem', px: 0.5 }}
+                >
+                  Noch keine Arbeits-Reihe gewählt — im Tab „Reihen“ auswählen, dann erscheinen hier die Übungen
+                  nach Stufen und Themen.
+                </Typography>
+              ) : (
+                <Grid container spacing={1.5} alignItems="flex-start">
+                  {filterOutNestedAssignedFolderPaths(workingReihenPaths).map((folderPath) => {
+                    const gid = resolveGroupIdForReihe(folderPath);
+                    const isInfReihe = isInformatikFolderPath(folderPath);
+                    return (
+                      <Grid item xs={12} sm={6} md={4} key={`exercise-${folderPath}`}>
+                        <Box
+                          sx={{
+                            p: 2.1,
+                            bgcolor: isInfReihe ? INFORMATIK_FOLDER_BG : '#fff',
+                            borderRadius: 2.8,
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                            border: isInfReihe ? INFORMATIK_FOLDER_BORDER : '1px solid #e0e0e0',
+                            height: '100%',
+                          }}
+                        >
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              display: 'block',
+                              mb: 0.75,
+                              fontWeight: 700,
+                              color: '#6a1b9a',
+                              fontSize: '0.72rem',
+                            }}
+                          >
+                            {assignedFolderDisplayLabel(folderPath)}
+                          </Typography>
+                          <Box
+                            sx={{
+                              p: 1.4,
+                              bgcolor: '#fafbfc',
+                              borderRadius: 1.4,
+                              border: '1px solid #f0f0f0',
+                            }}
+                          >
+                            {renderAssignedFolderPreview(gid, folderPath, {
+                              enableDrag: false,
+                              materialFocus: 'exercises',
+                            })}
+                          </Box>
+                        </Box>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              )}
+            </Box>
           </TabPanel>
           <TabPanel value={mainTabValue} index={4} dense>
             <Box sx={{ height: 'min(78vh, 900px)', width: '100%', bgcolor: '#fff' }}>

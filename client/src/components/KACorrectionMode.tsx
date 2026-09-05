@@ -3551,6 +3551,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         kaFilePath={kaFilePath}
         submissions={submissions}
         groupId={groupId}
+        maxTotalPoints={maxTotalPoints}
       />
     </Box>
   );

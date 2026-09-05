@@ -71,6 +71,8 @@ interface DreierprobeModalProps {
   submissions: KASubmission[];
   /** Optional: bekannte Lerngruppe (z. B. aus Präsentation) */
   groupId?: string | null;
+  /** Maximale Punktzahl der Prüfung (aus HTML); Fallback nur wenn unbekannt */
+  maxTotalPoints?: number;
 }
 
 // Hilfsfunktion: Extrahiere Vornamen (alles vor dem ersten Leerzeichen)
@@ -145,6 +147,7 @@ const DreierprobeModal: React.FC<DreierprobeModalProps> = ({
   kaFilePath,
   submissions,
   groupId: groupIdProp = null,
+  maxTotalPoints: maxTotalPointsProp,
 }) => {
   const [learningGroupStudents, setLearningGroupStudents] = useState<LearningGroupStudent[]>([]);
   const [learningGroupId, setLearningGroupId] = useState<string | null>(null);
@@ -624,7 +627,7 @@ Vera Christ`);
     
     const answers = parseAnswers(submission.answers);
     const totalAchieved = submission.totalPoints;
-    const maxTotalPoints = 25;
+    const maxTotalPoints = calculateMaxTotalPoints();
     const gradeData = calculateGrade(totalAchieved, maxTotalPoints);
     const studentName = submission.student.name;
 
@@ -1850,7 +1853,7 @@ Vera Christ`);
     
     const answers = parseAnswers(submission.answers);
     const totalAchieved = submission.totalPoints;
-    const maxTotalPoints = 25;
+    const maxTotalPoints = calculateMaxTotalPoints();
     const gradeData = calculateGrade(totalAchieved, maxTotalPoints);
     const studentName = submission.student.name;
 
@@ -3348,7 +3351,7 @@ Vera Christ`);
         
         // Füge Header mit Punkten und Note hinzu
         const totalAchieved = submission.totalPoints;
-        const maxTotalPoints = 25;
+        const maxTotalPoints = calculateMaxTotalPoints();
         const gradeData = calculateGrade(totalAchieved, maxTotalPoints);
         
         const headerContainer = doc.createElement('div');
@@ -4155,13 +4158,6 @@ Vera Christ`);
       setExporting(true);
       
       // Berechne maximale Punktzahl
-      const calculateMaxTotalPoints = (): number => {
-        const task1Points = 8;
-        const task2Points = 3;
-        const task3Points = 14;
-        return task1Points + task2Points + task3Points;
-      };
-
       const maxTotalPoints = calculateMaxTotalPoints();
 
       // Berechne fehlende Schüler
@@ -4369,15 +4365,13 @@ Vera Christ`);
     }
   };
 
-  // Berechne maximale Punktzahl (wie in KACorrectionMode)
+  // Berechne maximale Punktzahl aus der Prüfungsdatei (nicht fest 25!)
   const calculateMaxTotalPoints = (): number => {
-    // Aufgabe 1: 8 Punkte
-    const task1Points = 8;
-    // Aufgabe 2: 3 Punkte
-    const task2Points = 3;
-    // Aufgabe 3: 4 Teilaufgaben × 3.5 Punkte = 14 Punkte
-    const task3Points = 14;
-    return task1Points + task2Points + task3Points; // 25 Punkte
+    if (typeof maxTotalPointsProp === 'number' && maxTotalPointsProp > 0) {
+      return maxTotalPointsProp;
+    }
+    // Notfall-Fallback nur für alte Geometrie-HÜ ohne Schlüssel
+    return 25;
   };
 
   const maxTotalPoints = calculateMaxTotalPoints();
