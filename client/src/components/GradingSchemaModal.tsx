@@ -42,7 +42,8 @@ import {
   Error as ErrorIcon,
   Info as InfoIcon,
   Visibility as VisibilityIcon,
-  VisibilityOff as VisibilityOffIcon
+  VisibilityOff as VisibilityOffIcon,
+  HowToReg as AssignIcon
 } from '@mui/icons-material';
 
 interface GradeNode {
@@ -588,6 +589,65 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
     }
   };
 
+  /** Bestehendes Schema für die aktuelle Klasse festlegen (Kopie, Original bleibt bei anderen Gruppen). */
+  const handleAssignSchema = async (schema: GradingSchema) => {
+    if (!groupId) {
+      setError('Keine Lerngruppe ausgewählt.');
+      return;
+    }
+    if (schema.isActive) {
+      setError(`„${schema.name}“ ist bereits für ${groupName} aktiv.`);
+      return;
+    }
+    if (!schema.structure?.trim()) {
+      setError('Dieses Schema hat keine Struktur und kann nicht zugewiesen werden.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    try {
+      const response = await fetch('/api/grading-schemas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: schema.name,
+          structure: schema.structure,
+          gradingSystem: schema.gradingSystem || 'GERMAN',
+          groupId,
+        }),
+      });
+
+      if (!response.ok) {
+        const responseText = await response.text();
+        let errorData: { error?: string } = {};
+        try {
+          errorData = JSON.parse(responseText);
+        } catch {
+          errorData = { error: responseText };
+        }
+        setError(errorData.error || 'Schema konnte nicht zugewiesen werden.');
+        return;
+      }
+
+      await fetchExistingSchemas();
+      resetForm();
+      onClose();
+    } catch (err) {
+      console.error('❌ Error assigning schema:', err);
+      setError('Fehler beim Zuweisen des Bewertungsschemas');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const selectSchemaForAssign = (schema: GradingSchema) => {
+    setSelectedSchema(schema);
+    setIsEditing(false);
+    setShowPreview(false);
+    setError('');
+  };
+
   const renderCategoryCard = (node: GradeNode, level: number = 0) => {
     const hasChildren = node.children.length > 0;
     const weightSum = hasChildren ? calculateWeightSum(node.children) : 0;
@@ -927,6 +987,16 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                 Bestehende Schemata
               </Typography>
               
+              <Typography variant="body2" sx={{ fontSize: '0.75rem', color: colors.textSecondary, mb: 1.5 }}>
+                Schema anklicken und mit „Für diese Klasse festlegen“ zuweisen — oder neu erstellen.
+              </Typography>
+
+              {error && !isEditing && (
+                <Alert severity="error" sx={{ mb: 1.5, fontSize: '0.75rem' }} onClose={() => setError('')}>
+                  {error}
+                </Alert>
+              )}
+
               {existingSchemas.length === 0 ? (
                 <Box sx={{ textAlign: 'center', py: 3 }}>
                   <CategoryIcon sx={{ fontSize: 32, color: colors.textSecondary, mb: 1 }} />
@@ -935,18 +1005,26 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                   </Typography>
                 </Box>
               ) : (
-                <List dense sx={{ maxHeight: '60vh', overflowY: 'auto' }}>
-                  {existingSchemas.map((schema) => (
+                <List dense sx={{ maxHeight: '55vh', overflowY: 'auto' }}>
+                  {existingSchemas.map((schema) => {
+                    const isSelected = selectedSchema?.id === schema.id && !isEditing;
+                    return (
                     <ListItem 
                       key={schema.id}
+                      onClick={() => selectSchemaForAssign(schema)}
                       sx={{ 
-                        border: schema.isActive ? `2px solid ${colors.success}` : (selectedSchema?.id === schema.id ? `2px solid ${colors.primary}` : `1px solid ${colors.border}`),
+                        border: schema.isActive
+                          ? `2px solid ${colors.success}`
+                          : (isSelected ? `2px solid ${colors.primary}` : `1px solid ${colors.border}`),
                         borderRadius: 1.5,
                         mb: 1,
-                        bgcolor: schema.isActive ? colors.active : (selectedSchema?.id === schema.id ? colors.hover : colors.cardBg),
+                        cursor: 'pointer',
+                        bgcolor: schema.isActive
+                          ? colors.active
+                          : (isSelected ? colors.hover : colors.cardBg),
                         transition: 'all 0.3s ease',
                         '&:hover': {
-                          bgcolor: schema.isActive ? colors.active : (selectedSchema?.id === schema.id ? colors.hover : colors.hover),
+                          bgcolor: schema.isActive ? colors.active : colors.hover,
                           transform: 'translateY(-2px)',
                           boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                         }
@@ -954,13 +1032,13 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                     >
                       <ListItemText
                         primary={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                             <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}>
                               {schema.name}
                             </Typography>
                             {schema.isActive && (
                               <Chip 
-                                label="Aktiv" 
+                                label={`Aktiv für ${groupName}`}
                                 size="small" 
                                 sx={{ 
                                   height: 20, 
@@ -971,12 +1049,29 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                                 }} 
                               />
                             )}
+                            {isSelected && !schema.isActive && (
+                              <Chip
+                                label="Ausgewählt"
+                                size="small"
+                                sx={{
+                                  height: 20,
+                                  fontSize: '0.6rem',
+                                  bgcolor: colors.primary,
+                                  color: 'white',
+                                  fontWeight: 'bold',
+                                }}
+                              />
+                            )}
                           </Box>
                         }
                         secondary={
                           <Box sx={{ mt: 0.5 }}>
                             <Typography variant="body2" sx={{ fontSize: '0.7rem', color: colors.textSecondary }}>
-                              {schema.createdAt ? new Date(schema.createdAt).toLocaleDateString('de-DE') : ''}
+                              {schema.learningGroup?.name
+                                ? `Von: ${schema.learningGroup.name}`
+                                : schema.createdAt
+                                  ? new Date(schema.createdAt).toLocaleDateString('de-DE')
+                                  : ''}
                             </Typography>
                             <Typography variant="caption" sx={{ fontSize: '0.65rem', color: colors.accent1, fontWeight: 'bold' }}>
                               {schema.gradingSystem === 'GERMAN' ? 'Deutsches Notensystem' : 'MSS-Punktesystem'}
@@ -984,6 +1079,7 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                           </Box>
                         }
                         sx={{
+                          pr: 12,
                           '& .MuiListItemText-primary': {
                             fontSize: '0.8rem',
                             fontWeight: 'bold'
@@ -995,10 +1091,34 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                       />
                       <ListItemSecondaryAction>
                         <Box sx={{ display: 'flex', gap: 0.5 }}>
+                          {!schema.isActive && (
+                            <Tooltip title={`Für ${groupName} festlegen`}>
+                              <IconButton 
+                                size="small" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void handleAssignSchema(schema);
+                                }}
+                                disabled={loading}
+                                sx={{ 
+                                  color: 'white',
+                                  bgcolor: colors.success,
+                                  width: 28,
+                                  height: 28,
+                                  '&:hover': { bgcolor: '#2E7D32' }
+                                }}
+                              >
+                                <AssignIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </Tooltip>
+                          )}
                           <Tooltip title="Bearbeiten">
                             <IconButton 
                               size="small" 
-                              onClick={() => loadSchema(schema)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void loadSchema(schema);
+                              }}
                               sx={{ 
                                 color: colors.primary,
                                 width: 28,
@@ -1012,7 +1132,10 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                           <Tooltip title="Löschen">
                             <IconButton 
                               size="small" 
-                              onClick={() => handleDeleteSchema(schema.id!)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handleDeleteSchema(schema.id!);
+                              }}
                               sx={{ 
                                 color: colors.error,
                                 width: 28,
@@ -1026,8 +1149,34 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                         </Box>
                       </ListItemSecondaryAction>
                     </ListItem>
-                  ))}
+                    );
+                  })}
                 </List>
+              )}
+
+              {!isEditing && selectedSchema && !selectedSchema.isActive && (
+                <Button
+                  variant="contained"
+                  startIcon={<AssignIcon sx={{ fontSize: 16 }} />}
+                  onClick={() => void handleAssignSchema(selectedSchema)}
+                  disabled={loading}
+                  fullWidth
+                  sx={{
+                    mt: 1.5,
+                    borderRadius: 2,
+                    py: 1.1,
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    background: `linear-gradient(135deg, ${colors.success} 0%, ${colors.primary} 100%)`,
+                    '&:hover': {
+                      background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.success} 100%)`,
+                    },
+                  }}
+                >
+                  {loading
+                    ? 'Wird festgelegt…'
+                    : `„${selectedSchema.name}“ für ${groupName} festlegen`}
+                </Button>
               )}
               
               <Button
@@ -1333,7 +1482,9 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
           p: 2, 
           background: colors.background,
           borderTop: `1px solid ${colors.border}`,
-          borderRadius: '0 0 8px 8px'
+          borderRadius: '0 0 8px 8px',
+          gap: 1,
+          flexWrap: 'wrap',
         }}>
           <Button 
             onClick={onClose}
@@ -1354,6 +1505,28 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
           >
             Schließen
           </Button>
+          {selectedSchema && !selectedSchema.isActive && !isEditing && (
+            <Button
+              onClick={() => void handleAssignSchema(selectedSchema)}
+              variant="contained"
+              disabled={loading}
+              startIcon={<AssignIcon sx={{ fontSize: 16 }} />}
+              sx={{
+                borderRadius: 2,
+                px: 2,
+                py: 1,
+                fontSize: '0.8rem',
+                height: '36px',
+                fontWeight: 'bold',
+                background: `linear-gradient(135deg, ${colors.success} 0%, ${colors.primary} 100%)`,
+                '&:hover': {
+                  background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.success} 100%)`,
+                },
+              }}
+            >
+              {loading ? 'Wird festgelegt…' : `Für ${groupName} festlegen`}
+            </Button>
+          )}
         </DialogActions>
       )}
     </Dialog>
