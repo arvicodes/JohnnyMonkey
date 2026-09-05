@@ -10376,7 +10376,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         await fetchAssignedFolderContent(groupId, waPath);
       })();
     };
-    const wochenaufgabenSection = (
+    const wochenaufgabenSection = materialFocus ? null : (
       <>
         {waDisplay ? (
           <WochenaufgabenFolderRow
@@ -10574,6 +10574,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           : null;
       const isStundeRunning = Boolean(activeStundeSession);
       const wasStundePlayed = playedLessonKeySet.has(playedLessonKey(groupId, stundeLessonPath));
+
+      if (materialFocus === 'exams' && item.type === 'file' && !isCorrectionFile(item.name)) {
+        return null;
+      }
+      if (materialFocus === 'exercises' && item.type === 'file') {
+        return null;
+      }
+      if (materialFocus && (isWochenaufgabenDir || isNumberedWa)) {
+        return null;
+      }
 
       // Bestimme Icon und Farbe basierend auf dem Screenshot
       let icon = '📁';
@@ -10845,7 +10855,70 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
             </Typography>
 
-            {isStundeFolder && (
+            {isStundeFolder && materialFocus === 'exams' && (
+              <Box
+                sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0, ml: 0.15 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Button
+                  size="small"
+                  startIcon={<AddIcon sx={{ fontSize: 12 }} />}
+                  onClick={() => {
+                    setExaminationFolderPath(stundeLessonPath);
+                    setExaminationType('QZ');
+                    setExaminationFileName('');
+                    setExamDurationMinutes(15);
+                    setCreateExaminationModalOpen(true);
+                  }}
+                  sx={{
+                    fontSize: '0.58rem',
+                    textTransform: 'none',
+                    py: 0,
+                    px: 0.6,
+                    minHeight: 20,
+                    bgcolor: '#fff3e0',
+                    color: '#ef6c00',
+                    border: '1px solid #ffcc80',
+                    '&:hover': { bgcolor: '#ffe0b2' },
+                  }}
+                >
+                  Neu
+                </Button>
+              </Box>
+            )}
+
+            {isStundeFolder && materialFocus === 'exercises' && (
+              <Box
+                sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0, ml: 0.15 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Button
+                  size="small"
+                  startIcon={<AddIcon sx={{ fontSize: 12 }} />}
+                  onClick={() => {
+                    const editorGroupId =
+                      groupId && groupId !== DASHBOARD_REIHEN_CONTENT_GROUP ? groupId : undefined;
+                    navigate(presentationEditorUrl(stundeLessonPath, editorGroupId, 'create'));
+                    showSnackbar('In der Präsentation: Interaktive Übung anlegen (Folien-Werkzeuge)', 'success');
+                  }}
+                  sx={{
+                    fontSize: '0.58rem',
+                    textTransform: 'none',
+                    py: 0,
+                    px: 0.6,
+                    minHeight: 20,
+                    bgcolor: '#fff8e1',
+                    color: '#f57f17',
+                    border: '1px solid #ffe082',
+                    '&:hover': { bgcolor: '#ffecb3' },
+                  }}
+                >
+                  Neu
+                </Button>
+              </Box>
+            )}
+
+            {isStundeFolder && !materialFocus && (
               <Box
                 sx={{ display: 'flex', alignItems: 'center', gap: 0.2, flexShrink: 0, ml: 0.15 }}
                 onClick={(e) => e.stopPropagation()}
@@ -10936,7 +11009,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             )}
             
             {/* Erstellungs-Icons für Quiz- und Cards-Dateien */}
-            {showCreateIcon && (
+            {showCreateIcon && !materialFocus && (
               <Typography variant="caption" sx={{ 
                 color: '#666',
                 fontSize: '0.7rem',
