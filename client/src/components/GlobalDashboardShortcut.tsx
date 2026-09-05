@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { IconButton, Tooltip, Typography } from '@mui/material';
 import { markTeacherWantsDashboard } from '../lib/teacherLiveLesson';
 import { exitPresentFullscreen } from '../lib/presentationPresentFullscreen';
+import { useTeacherFabPortalHost } from '../lib/teacherFabPortalHost';
 
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -22,15 +23,21 @@ function goDashboard(navigate: ReturnType<typeof useNavigate>) {
 }
 
 type Props = {
-  /** Abstand von rechts, damit der Button neben dem N-Notizbutton sitzt. */
+  /** Abstand von rechts. */
   buttonRight?: number;
+  /** Abstand von unten (für Stapel mit dem N-Button). */
+  buttonBottom?: number;
 };
 
 /**
  * Taste „d“ und grauer D-Button: von überall sofort zum Dashboard (nicht während Texteingabe).
  */
-export default function GlobalDashboardShortcut({ buttonRight = 20 }: Props) {
+export default function GlobalDashboardShortcut({
+  buttonRight = 20,
+  buttonBottom = 68,
+}: Props) {
   const navigate = useNavigate();
+  const portalHost = useTeacherFabPortalHost();
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -53,9 +60,9 @@ export default function GlobalDashboardShortcut({ buttonRight = 20 }: Props) {
         data-teacher-fab="dashboard"
         sx={{
           position: 'fixed',
-          bottom: 20,
-          right: buttonRight,
-          zIndex: 5000,
+          bottom: `max(${buttonBottom}px, calc(env(safe-area-inset-bottom, 0px) + ${buttonBottom}px))`,
+          right: `max(${buttonRight}px, calc(env(safe-area-inset-right, 0px) + ${buttonRight}px))`,
+          zIndex: 20000,
           p: 0.5,
           minWidth: 40,
           width: 40,
@@ -64,6 +71,7 @@ export default function GlobalDashboardShortcut({ buttonRight = 20 }: Props) {
           bgcolor: '#9e9e9e',
           borderRadius: 1.4,
           boxShadow: '0 4px 14px rgba(0,0,0,0.22)',
+          pointerEvents: 'auto',
           '&:hover': { bgcolor: '#757575' },
         }}
       >
@@ -82,6 +90,6 @@ export default function GlobalDashboardShortcut({ buttonRight = 20 }: Props) {
       </IconButton>
     </Tooltip>
   );
-  if (typeof document === 'undefined') return button;
-  return createPortal(button, document.body);
+  if (!portalHost) return button;
+  return createPortal(button, portalHost);
 }

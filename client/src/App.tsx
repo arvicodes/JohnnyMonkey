@@ -359,7 +359,8 @@ function AppContent() {
       <GlobalMarkdownListShortcut />
       {authReady && user && (
         <GlobalDashboardShortcut
-          buttonRight={String(user.role).toUpperCase() === 'TEACHER' ? 68 : 20}
+          buttonRight={20}
+          buttonBottom={String(user.role).toUpperCase() === 'TEACHER' ? 68 : 20}
         />
       )}
 

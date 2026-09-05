@@ -63,6 +63,7 @@ import { applyEditorFontSizePx, ensureEditorSelection, keepEditorSelection, stas
 import { isFormatBarInteracting, isPresentationModalTypingActive, setFormatBarInteracting } from '../lib/presentationFormatBarGuard';
 import { strokeSmoothFreehand } from '../lib/presentationDrawTools';
 import { apiGetSafe, apiPutSafe, apiPutSafeAwait } from '../lib/api';
+import { useTeacherFabPortalHost } from '../lib/teacherFabPortalHost';
 import type { EmojiClickData } from 'emoji-picker-react';
 import { EmojiStyle } from 'emoji-picker-react';
 
@@ -824,6 +825,7 @@ export const NOTES_FROM_GIT_EVENT = 'johnny:notes-from-git';
  * Speichert in localStorage + Server-Datei; Sicherheitskopien unter Notizen-Sicherheitskopien/.
  */
 export default function TeacherQuickNotes({ userId, floating = false }: TeacherQuickNotesProps) {
+  const portalHost = useTeacherFabPortalHost();
   const [open, setOpen] = useState(false);
   const openRef = useRef(false);
   const [mode, setMode] = useState<NotesMode>('text');
@@ -2318,13 +2320,14 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
             ...(floating
               ? {
                   position: 'fixed',
-                  bottom: 20,
-                  right: 20,
-                  zIndex: 5000,
+                  bottom: 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 20px))',
+                  right: 'max(20px, calc(env(safe-area-inset-right, 0px) + 20px))',
+                  zIndex: 20000,
                   width: 40,
                   height: 40,
                   minWidth: 40,
                   boxShadow: '0 4px 14px rgba(0,0,0,0.22)',
+                  pointerEvents: 'auto',
                 }
               : null),
           }}
@@ -2348,7 +2351,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
 
   return (
     <>
-      {floating && typeof document !== 'undefined' ? createPortal(notesFab, document.body) : notesFab}
+      {floating && portalHost ? createPortal(notesFab, portalHost) : notesFab}
       <Dialog
         open={open}
         onClose={closeModal}
