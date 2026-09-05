@@ -24,6 +24,9 @@ router.post('/reset-all', KACorrectionController.resetAllSubmissions);
 // Prüfe ob eigene Submission existiert (für Schüler)
 router.get('/check-my-submission', KACorrectionController.checkMySubmission);
 
+// Freigegebene Prüfungsergebnisse (für Schüler)
+router.get('/my-released', KACorrectionController.getMyReleasedResults);
+
 // Alle Noten für eine Klassenarbeit freigeben/zurücknehmen (nur für Lehrer)
 router.post('/release-all', KACorrectionController.releaseAllGrades);
 

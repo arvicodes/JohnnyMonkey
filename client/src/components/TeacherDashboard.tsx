@@ -10325,10 +10325,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   const renderAssignedFolderPreview = (
     groupId: string,
     folderPath: string,
-    opts?: { enableDrag?: boolean; workflowGroupIds?: string[] },
+    opts?: {
+      enableDrag?: boolean;
+      workflowGroupIds?: string[];
+      /** Prüfungen-/Übungen-Tab: nur relevante Materialien + Neu/Bearbeiten */
+      materialFocus?: 'exams' | 'exercises';
+    },
   ) => {
     const enableDrag = opts?.enableDrag !== false;
     const workflowGroupIds = opts?.workflowGroupIds;
+    const materialFocus = opts?.materialFocus;
     const rawItems = assignedFolderContents[`${groupId}:${folderPath}`] || [];
     const items = mergeWochenaufgabenIntoFolderTree(rawItems, folderPath, null);
     const isLoading = loadingFolderContents[`${groupId}:${folderPath}`] || false;
@@ -13769,9 +13775,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     };
   }, [mainTabValue, assignedFolders]);
 
-  // Inhalte der gewählten Arbeits-Reihen laden
+  // Inhalte der gewählten Arbeits-Reihen laden (Reihen, Prüfungen, Übungen)
   useEffect(() => {
-    if (mainTabValue !== 0) return;
+    if (mainTabValue !== 0 && mainTabValue !== 2 && mainTabValue !== 3) return;
     for (const path of workingReihenPaths) {
       const gid = resolveGroupIdForReihe(path);
       const key = `${gid}:${path}`;
@@ -13779,6 +13785,36 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       void fetchAssignedFolderContent(gid, path);
     }
   }, [mainTabValue, workingReihenPaths, resolveGroupIdForReihe]);
+
+  const [libraryExerciseIndex, setLibraryExerciseIndex] = useState<
+    Array<{ title: string; lessonPath: string; slideId: string; slideIndex: number }>
+  >([]);
+
+  useEffect(() => {
+    if (mainTabValue !== 3) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { scanLibraryInteractiveExercises } = await import('../lib/dashboardMaterialLibrary');
+        const items = await scanLibraryInteractiveExercises(workingReihenPaths);
+        if (!cancelled) {
+          setLibraryExerciseIndex(
+            items.map((i) => ({
+              title: i.title,
+              lessonPath: i.lessonPath,
+              slideId: i.slideId,
+              slideIndex: i.slideIndex,
+            })),
+          );
+        }
+      } catch {
+        if (!cancelled) setLibraryExerciseIndex([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mainTabValue, workingReihenPaths]);
 
   // Test-Funktion für den MaterialCreator-Ref
   const testMaterialCreatorRef = () => {

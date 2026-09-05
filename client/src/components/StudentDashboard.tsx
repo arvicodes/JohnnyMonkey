@@ -4496,6 +4496,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       if (response.ok) {
         const data = await response.json();
         if (data.exists === true) {
+          if (data.isReleased === true) {
+            // Freigegeben → SuS dürfen Ergebnis sehen (unter Folien); hier nicht blockieren
+            return false;
+          }
           const fileType = item.name.startsWith('KA_') ? 'Klassenarbeit' : 'Hausaufgabenüberprüfung';
           alert(
             `⏳ Diese ${fileType} wurde bereits abgegeben.\n\nBitte warte auf die Korrektur durch deine Lehrkraft.`

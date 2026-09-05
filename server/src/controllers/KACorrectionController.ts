@@ -684,7 +684,11 @@ export class KACorrectionController {
         },
         select: {
           id: true,
-          status: true
+          status: true,
+          isReleased: true,
+          totalPoints: true,
+          autoPoints: true,
+          kaFilePath: true,
         }
       });
       
@@ -701,7 +705,11 @@ export class KACorrectionController {
           },
           select: {
             id: true,
-            status: true
+            status: true,
+            isReleased: true,
+            totalPoints: true,
+            autoPoints: true,
+            kaFilePath: true,
           },
           take: 1
         });
@@ -718,6 +726,7 @@ export class KACorrectionController {
 
       res.json({ 
         exists,
+        isReleased: submission?.isReleased === true,
         submission: submission || null
       });
     } catch (error) {
@@ -764,9 +773,11 @@ export class KACorrectionController {
         return res.status(404).json({ error: 'Keine Abgaben für diese Klassenarbeit gefunden' });
       }
 
-      // Prüfe ob alle bereits freigegeben sind
+      // Optional explizit setzen (z. B. nach Notenfreigabe), sonst umschalten
+      const bodyReleased = req.body?.isReleased;
       const allReleased = submissions.every(sub => sub.isReleased);
-      const newReleaseStatus = !allReleased;
+      const newReleaseStatus =
+        typeof bodyReleased === 'boolean' ? bodyReleased : !allReleased;
 
       // Aktualisiere alle Submissions
       const result = await prisma.kASubmission.updateMany({
@@ -864,6 +875,122 @@ export class KACorrectionController {
     } catch (error) {
       console.error('Error checking release status:', error);
       res.status(500).json({ error: 'Fehler beim Prüfen des Freigabestatus' });
+    }
+  }
+
+  /**
+   * Freigegebene Prüfungsergebnisse für den angemeldeten Schüler
+   * Optional: lessonPath filtert auf Abgaben dieser Stunde
+   */
+  static async getMyReleasedResults(req: Request, res: Response) {
+    try {
+      const loginCode = req.headers['x-login-code'] as string;
+      const lessonPathRaw = typeof req.query.lessonPath === 'string' ? req.query.lessonPath : '';
+
+      if (!loginCode) {
+        return res.status(401).json({ error: 'Nicht angemeldet' });
+      }
+
+      const user = await findUserByLoginCode(prisma, loginCode);
+      if (!user || user.role !== 'STUDENT') {
+        return res.status(403).json({ error: 'Nur Schüler können ihre Ergebnisse abrufen' });
+      }
+
+      const submissions = await prisma.kASubmission.findMany({
+        where: {
+          studentId: user.id,
+          isReleased: true,
+        },
+        select: {
+          id: true,
+          kaFilePath: true,
+          totalPoints: true,
+          autoPoints: true,
+          status: true,
+          submittedAt: true,
+          answers: true,
+          corrections: {
+            orderBy: { taskNumber: 'asc' },
+            select: {
+              taskNumber: true,
+              manualPoints: true,
+              comment: true,
+            },
+          },
+        },
+        orderBy: { submittedAt: 'desc' },
+      });
+
+      const lessonNorm = lessonPathRaw.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+      const fileNamesRaw = typeof req.query.fileNames === 'string' ? req.query.fileNames : '';
+      const fileNameSet = new Set(
+        fileNamesRaw
+          .split(',')
+          .map((s) => decodeURIComponent(s.trim()).toLowerCase())
+          .filter(Boolean),
+      );
+
+      const filtered = submissions.filter((sub) => {
+        const p = (sub.kaFilePath || '').replace(/\\/g, '/');
+        const base = (p.split('/').pop() || p).toLowerCase();
+        const full = p.toLowerCase();
+        if (fileNameSet.size > 0) {
+          return fileNameSet.has(base);
+        }
+        if (lessonNorm) {
+          return full.includes(lessonNorm);
+        }
+        return true;
+      });
+
+      const resultsSource = filtered;
+
+      // Zusätzlich: gespeicherte Note aus dem Notenschema (falls vorhanden)
+      const grades = await prisma.grade.findMany({
+        where: { studentId: user.id },
+        select: {
+          categoryName: true,
+          grade: true,
+          updatedAt: true,
+          schema: { select: { name: true, gradingSystem: true } },
+        },
+        orderBy: { updatedAt: 'desc' },
+      });
+
+      res.json({
+        results: resultsSource.map((sub) => {
+          const fileName = (sub.kaFilePath || '').replace(/\\/g, '/').split('/').pop() || sub.kaFilePath;
+          const title = fileName.replace(/\.(html|htm)$/i, '').replace(/^(KA_|KU_|HÜ_|HU_|QZ_)/, '');
+          let answers: Record<string, unknown> = {};
+          try {
+            answers = JSON.parse(sub.answers || '{}');
+          } catch {
+            answers = {};
+          }
+          return {
+            id: sub.id,
+            kaFilePath: sub.kaFilePath,
+            fileName,
+            title,
+            totalPoints: sub.totalPoints,
+            autoPoints: sub.autoPoints,
+            submittedAt: sub.submittedAt,
+            answers,
+            corrections: sub.corrections,
+            // Hinweis: konkrete Note kommt oft aus dem Schema; Client berechnet ggf. aus Punkten
+            recentGrades: grades.slice(0, 8).map((g) => ({
+              categoryName: g.categoryName,
+              grade: g.grade,
+              schemaName: g.schema?.name,
+              gradingSystem: g.schema?.gradingSystem,
+              updatedAt: g.updatedAt,
+            })),
+          };
+        }),
+      });
+    } catch (error) {
+      console.error('Error getting released results:', error);
+      res.status(500).json({ error: 'Fehler beim Laden der Prüfungsergebnisse' });
     }
   }
 }

@@ -558,6 +558,23 @@ Vera Christ`);
         throw new Error(errorText || 'Fehler beim Freigeben der Noten');
       }
 
+      // Prüfung selbst für SuS freigeben (Anzeige unter den Folien)
+      try {
+        const kaRelease = await fetch('/api/ka-corrections/release-all', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-login-code': loginCode,
+          },
+          body: JSON.stringify({ kaFilePath, isReleased: true }),
+        });
+        if (!kaRelease.ok) {
+          console.warn('⚠️ KA-Freigabe fehlgeschlagen:', await kaRelease.text());
+        }
+      } catch (kaReleaseErr) {
+        console.warn('⚠️ KA-Freigabe Fehler:', kaReleaseErr);
+      }
+
       setGradesReleased(true);
       setOpenCategoryDialog(false);
       setSelectedCategory(null);

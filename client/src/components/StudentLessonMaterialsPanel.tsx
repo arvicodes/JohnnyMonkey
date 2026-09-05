@@ -1,7 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Button, ButtonGroup, IconButton, Tooltip, Typography } from '@mui/material';
+import {
+  Box,
+  Button,
+  ButtonGroup,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Tooltip,
+  Typography,
+} from '@mui/material';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DownloadIcon from '@mui/icons-material/Download';
+import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import { apiGetSafe } from '../lib/api';
 import {
   isLessonPresentationMaterialPdf,
@@ -14,6 +26,7 @@ import {
 } from '../lib/presentationLessonAssets';
 import { isLessonFileShared, normalizeLessonMaterialPath } from '../lib/lessonFileSharePath';
 import { openStudentLessonMaterialFile } from '../lib/openStudentLessonMaterial';
+import { openLessonFolderFile, isLessonCorrectionFileName } from '../lib/openLessonFolderFile';
 import { downloadPresentationStandPdfForStudent } from '../lib/presentationExport';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
 import {
@@ -30,8 +43,25 @@ import {
   isHomeworkSubmissionRequired,
 } from '../lib/presentationSlideTemplates';
 import { resolvePreviousLessonFolder } from '../lib/previousLessonFolder';
+import { parseExamAnswerKey } from '../lib/examAnswerKey';
+import { examGradeLabelFromPoints, formatExamGradeNumber } from '../lib/examGradeLabel';
 
 type LessonFile = { type: string; name: string; path: string };
+
+type ReleasedExamResult = {
+  id: string;
+  kaFilePath: string;
+  fileName: string;
+  title: string;
+  totalPoints: number;
+  autoPoints: number;
+  answers: Record<string, unknown>;
+  corrections: Array<{ taskNumber: string; manualPoints: number | null; comment: string | null }>;
+  recentGrades?: Array<{ categoryName: string; grade: number; updatedAt?: string }>;
+  maxPoints?: number;
+  gradeLabel?: string;
+  filePath?: string;
+};
 
 const actionBtnSx = {
   py: 0.35,
@@ -98,6 +128,8 @@ export default function StudentLessonMaterialsPanel({
   const [blockedMaterialPaths, setBlockedMaterialPaths] = useState<Set<string>>(
     () => new Set(),
   );
+  const [releasedExams, setReleasedExams] = useState<ReleasedExamResult[]>([]);
+  const [selectedExam, setSelectedExam] = useState<ReleasedExamResult | null>(null);
 
   useEffect(() => {
     if (!lessonPath) {
@@ -122,6 +154,80 @@ export default function StudentLessonMaterialsPanel({
       cancelled = true;
     };
   }, [lessonPath]);
+
+  // Freigegebene Prüfungen dieser Stunde (unter den Folien)
+  useEffect(() => {
+    if (!lessonPath) {
+      setReleasedExams([]);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const examFiles = files.filter(
+          (f) => f.type === 'file' && isLessonCorrectionFileName(f.name || ''),
+        );
+        const fileNames = examFiles.map((f) => f.name).join(',');
+        const qs = new URLSearchParams({ lessonPath });
+        if (fileNames) qs.set('fileNames', fileNames);
+        const res = await apiGetSafe(`/api/ka-corrections/my-released?${qs.toString()}`);
+        if (!res || !res.ok || cancelled) {
+          if (!cancelled) setReleasedExams([]);
+          return;
+        }
+        const data = (await res.json()) as { results?: ReleasedExamResult[] };
+        const rows = Array.isArray(data.results) ? data.results : [];
+
+        const enriched: ReleasedExamResult[] = [];
+        for (const row of rows) {
+          const matchFile =
+            examFiles.find((f) => f.name.toLowerCase() === (row.fileName || '').toLowerCase()) ||
+            examFiles.find((f) => {
+              const base = (row.kaFilePath || '').replace(/\\/g, '/').split('/').pop() || '';
+              return f.name.toLowerCase() === base.toLowerCase();
+            });
+
+          let maxPoints = 0;
+          if (matchFile?.path) {
+            try {
+              const htmlRes = await fetch(
+                `/api/file-system-paths/read-html?filePath=${encodeURIComponent(matchFile.path)}`,
+              );
+              if (htmlRes.ok) {
+                const html = await htmlRes.text();
+                maxPoints = parseExamAnswerKey(html).maxPoints || 0;
+              }
+            } catch {
+              /* ignore */
+            }
+          }
+
+          const fromPoints =
+            maxPoints > 0
+              ? examGradeLabelFromPoints(Number(row.totalPoints) || 0, maxPoints)
+              : null;
+          const recent = row.recentGrades?.[0];
+          const gradeLabel =
+            fromPoints?.label ||
+            (recent?.grade != null ? formatExamGradeNumber(Number(recent.grade)) : '-');
+
+          enriched.push({
+            ...row,
+            maxPoints,
+            gradeLabel,
+            filePath: matchFile?.path,
+          });
+        }
+
+        if (!cancelled) setReleasedExams(enriched);
+      } catch {
+        if (!cancelled) setReleasedExams([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [lessonPath, files]);
 
   const materials = useMemo(() => {
     const fromTree = files.filter(
@@ -276,7 +382,7 @@ export default function StudentLessonMaterialsPanel({
     };
   }, [lessonPath, hasPresentation, onOpenHomeworkTodo]);
 
-  if (materials.length === 0 && !canOpenLeinwand && !completedEntryTicket) {
+  if (materials.length === 0 && !canOpenLeinwand && !completedEntryTicket && releasedExams.length === 0) {
     return (
       <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', py: 0.5 }}>
         Noch keine Materialien freigegeben.
@@ -440,6 +546,69 @@ export default function StudentLessonMaterialsPanel({
         </Box>
       )}
 
+      {releasedExams.length > 0 && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: '100%' }}>
+          {releasedExams.map((exam) => (
+            <Box
+              key={exam.id}
+              component="button"
+              type="button"
+              onClick={() => setSelectedExam(exam)}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.75,
+                width: '100%',
+                textAlign: 'left',
+                border: '1px solid rgba(46, 125, 50, 0.35)',
+                borderRadius: 1.5,
+                bgcolor: 'rgba(232, 245, 233, 0.95)',
+                px: 1,
+                py: 0.55,
+                cursor: 'pointer',
+                font: 'inherit',
+                '&:hover': { bgcolor: 'rgba(200, 230, 201, 0.95)' },
+              }}
+            >
+              <AssignmentTurnedInIcon sx={{ fontSize: 18, color: '#2e7d32', flexShrink: 0 }} />
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography
+                  sx={{
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    color: '#1b5e20',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {exam.title || exam.fileName}
+                </Typography>
+                <Typography sx={{ fontSize: '0.65rem', color: '#546e7a' }}>
+                  {exam.maxPoints && exam.maxPoints > 0
+                    ? `${Number(exam.totalPoints || 0).toFixed(1)} / ${exam.maxPoints} Punkte`
+                    : `${Number(exam.totalPoints || 0).toFixed(1)} Punkte`}
+                </Typography>
+              </Box>
+              <Box
+                sx={{
+                  px: 0.9,
+                  py: 0.2,
+                  borderRadius: 1,
+                  bgcolor: '#2e7d32',
+                  color: '#fff',
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  flexShrink: 0,
+                }}
+              >
+                {exam.gradeLabel || '-'}
+              </Box>
+            </Box>
+          ))}
+        </Box>
+      )}
+
       {(canOpenLeinwand || showTodoHa) && (
         <Box
           sx={{
@@ -574,6 +743,100 @@ export default function StudentLessonMaterialsPanel({
           </ButtonGroup>
         </Box>
       ))}
+
+      <Dialog
+        open={Boolean(selectedExam)}
+        onClose={() => setSelectedExam(null)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ pb: 0.5, fontSize: '0.95rem', fontWeight: 700 }}>
+          {selectedExam?.title || selectedExam?.fileName || 'Prüfung'}
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1.5 }}>
+          {selectedExam && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 1,
+                  p: 1.25,
+                  borderRadius: 1.5,
+                  bgcolor: 'rgba(232, 245, 233, 0.9)',
+                  border: '1px solid rgba(46, 125, 50, 0.3)',
+                }}
+              >
+                <Box>
+                  <Typography sx={{ fontSize: '0.7rem', color: '#546e7a' }}>Bewertung</Typography>
+                  <Typography sx={{ fontSize: '1.4rem', fontWeight: 800, color: '#1b5e20' }}>
+                    Note {selectedExam.gradeLabel || '-'}
+                  </Typography>
+                </Box>
+                <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#2e7d32' }}>
+                  {selectedExam.maxPoints && selectedExam.maxPoints > 0
+                    ? `${Number(selectedExam.totalPoints || 0).toFixed(1)} / ${selectedExam.maxPoints} Punkte`
+                    : `${Number(selectedExam.totalPoints || 0).toFixed(1)} Punkte`}
+                </Typography>
+              </Box>
+
+              {selectedExam.corrections?.length > 0 && (
+                <Box>
+                  <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, mb: 0.5 }}>
+                    Korrektur im Detail
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.4 }}>
+                    {selectedExam.corrections.map((c) => (
+                      <Box
+                        key={c.taskNumber}
+                        sx={{
+                          display: 'flex',
+                          gap: 0.75,
+                          alignItems: 'flex-start',
+                          px: 0.8,
+                          py: 0.45,
+                          borderRadius: 1,
+                          bgcolor: 'rgba(0,0,0,0.03)',
+                        }}
+                      >
+                        <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, minWidth: 36 }}>
+                          {c.taskNumber}
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, minWidth: 42 }}>
+                          {c.manualPoints != null ? `${c.manualPoints} P` : '–'}
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.7rem', color: '#546e7a', flex: 1 }}>
+                          {c.comment || ''}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 1.5, gap: 0.5 }}>
+          <Button onClick={() => setSelectedExam(null)} size="small" sx={{ textTransform: 'none' }}>
+            Schließen
+          </Button>
+          {selectedExam?.filePath && (
+            <Button
+              variant="contained"
+              size="small"
+              sx={{ textTransform: 'none', bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' } }}
+              onClick={() => {
+                const path = selectedExam.filePath!;
+                const name = selectedExam.fileName || path.split('/').pop() || 'Prüfung.html';
+                void openLessonFolderFile({ type: 'file', name, path });
+              }}
+            >
+              Prüfung öffnen
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
 
     </Box>
   );
