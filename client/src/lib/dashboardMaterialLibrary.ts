@@ -151,7 +151,7 @@ export async function scanLibraryInteractiveExercises(
       const slides = [...deck.slides].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       slides.forEach((slide, idx) => {
         const exercise = resolveInteractiveExercise(
-          (slide as { slideInteractiveExercise?: unknown }).slideInteractiveExercise as never,
+          slide.slideInteractiveExercise as Parameters<typeof resolveInteractiveExercise>[0],
         );
         if (!exercise) return;
         const title = exercise.title?.trim() || slide.title?.trim() || `Übung Folie ${idx + 1}`;

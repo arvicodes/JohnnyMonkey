@@ -17,6 +17,8 @@ import {
   loadOrMigrateNamedVersionSnapshot,
   migrateNotesInkCssToSlideSpace,
   notesInkNeedsHostMigration,
+  resolvePresentationStartSlideId,
+  clipDeckToNow,
   sortSlides,
 } from '../../lib/presentationDeck';
 import {
@@ -86,6 +88,8 @@ export type PresentationLaptopPlayerProps = {
   disableAnimations?: boolean;
   /** Lehrer-Notizen / Kommentare ausblenden (SuS) */
   hideTeacherNotes?: boolean;
+  /** SuS-Ansicht: Folien nur bis NOW */
+  clipToNow?: boolean;
   /**
    * original = Erstell-Stand ohne Striche (SuS „Folien Original“)
    * edited = Live inkl. Annotationen (SuS „Folien bearbeitet“)
@@ -106,6 +110,7 @@ export default function PresentationLaptopPlayer({
   embedded = false,
   disableAnimations = false,
   hideTeacherNotes = false,
+  clipToNow = false,
   variant = 'edited',
   namedSlug,
 }: PresentationLaptopPlayerProps) {
@@ -197,14 +202,29 @@ export default function PresentationLaptopPlayer({
         setAnnotations(EMPTY_ANNOTATIONS);
       } else {
         const withEntry = { ...d, slides: ensureEntryTicketButtonsOnTitleSlides(d.slides) };
-        setDeck(
+        let nextDeck =
           variant === 'original' || namedSlug
             ? withEntry
-            : applyPlayVariantsToDeck(withEntry, variants),
-        );
+            : applyPlayVariantsToDeck(withEntry, variants);
+        if (clipToNow) {
+          nextDeck = clipDeckToNow(nextDeck);
+        }
+        setDeck(nextDeck);
         setAnnotations(a ?? { ...EMPTY_ANNOTATIONS, lessonPath });
-        setSlideIndex(0);
-        setRevealStep(0);
+        const startId = resolvePresentationStartSlideId(nextDeck, null);
+        const sorted = sortSlides(nextDeck.slides);
+        const startIdx = Math.max(
+          0,
+          startId ? sorted.findIndex((s) => s.id === startId) : 0,
+        );
+        setSlideIndex(startIdx >= 0 ? startIdx : 0);
+        setRevealStep(
+          disableAnimations
+            ? 999
+            : startIdx > 0 && sorted[startIdx]
+              ? getSlideMaxRevealSteps(sorted[startIdx]!)
+              : 0,
+        );
       }
       setLoading(false);
     };
@@ -256,7 +276,7 @@ export default function PresentationLaptopPlayer({
     return () => {
       cancelled = true;
     };
-  }, [lessonPath, variant, namedSlug]);
+  }, [lessonPath, variant, namedSlug, clipToNow, disableAnimations]);
 
   useEffect(() => {
     const style = document.createElement('style');

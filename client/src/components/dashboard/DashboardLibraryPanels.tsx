@@ -23,7 +23,7 @@ import {
   scanLibraryInteractiveExercises,
   type LibraryExamItem,
   type LibraryExerciseItem,
-} from '../lib/dashboardMaterialLibrary';
+} from '../../lib/dashboardMaterialLibrary';
 
 type Colors = {
   cardBg: string;

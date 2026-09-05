@@ -20,6 +20,8 @@ import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
 import {
   deckFilePath,
   loadJsonFile,
+  printMaterialPathsAfterNow,
+  findNowSlideIndex,
   sortSlides,
   type PresentationDeck,
 } from '../lib/presentationDeck';
@@ -213,6 +215,40 @@ export default function StudentLessonMaterialsPanel({
     window.open(u.pathname + u.search, '_blank', 'noopener,noreferrer');
   };
 
+  const [abgabeRequired, setAbgabeRequired] = useState(false);
+  /** ToDo HA = HA dieser Stunde (Lehrer „Neue HA“); Fallback: Vorstunde */
+  const [homeworkTodoPath, setHomeworkTodoPath] = useState<string | null>(null);
+  const [homeworkTodoLabel, setHomeworkTodoLabel] = useState<string | null>(null);
+  const [completedEntryTicket, setCompletedEntryTicket] = useState(false);
+  /** Materialkisten-Dateien hinter dem NOW-Fortschritt ausblenden */
+  const [blockedMaterialPaths, setBlockedMaterialPaths] = useState<Set<string>>(
+    () => new Set(),
+  );
+
+  useEffect(() => {
+    if (!lessonPath) {
+      setBlockedMaterialPaths(new Set());
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const loaded = await loadJsonFile<PresentationDeck>(deckFilePath(lessonPath));
+        if (cancelled) return;
+        if (!loaded?.slides?.length) {
+          setBlockedMaterialPaths(new Set());
+          return;
+        }
+        setBlockedMaterialPaths(printMaterialPathsAfterNow(loaded));
+      } catch {
+        if (!cancelled) setBlockedMaterialPaths(new Set());
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [lessonPath]);
+
   const materials = useMemo(() => {
     const fromTree = files.filter(
       (f) =>
@@ -234,8 +270,17 @@ export default function StudentLessonMaterialsPanel({
         byName.set(name, { type: 'file', name, path: p });
       }
     }
-    return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name, 'de'));
-  }, [files, sharedPaths, lessonPath]);
+    return [...byName.values()]
+      .filter((f) => {
+        if (isLessonPresentationMaterialPdf(f.name)) return true;
+        const key = normalizeLessonMaterialPath(f.path).replace(/\/+$/, '');
+        for (const blocked of blockedMaterialPaths) {
+          if (normalizeLessonMaterialPath(blocked).replace(/\/+$/, '') === key) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, 'de'));
+  }, [files, sharedPaths, lessonPath, blockedMaterialPaths]);
 
   const presentationOriginal = materials.find((f) => f.name === LESSON_PRESENTATION_PDF_ORIGINAL);
   const namedPresentationPdfs = materials.filter(
@@ -267,12 +312,6 @@ export default function StudentLessonMaterialsPanel({
   const editedShared = presentationEdited
     ? isLessonFileShared(presentationEdited.path, sharedPaths)
     : false;
-
-  const [abgabeRequired, setAbgabeRequired] = useState(false);
-  /** ToDo HA = HA dieser Stunde (Lehrer „Neue HA“); Fallback: Vorstunde */
-  const [homeworkTodoPath, setHomeworkTodoPath] = useState<string | null>(null);
-  const [homeworkTodoLabel, setHomeworkTodoLabel] = useState<string | null>(null);
-  const [completedEntryTicket, setCompletedEntryTicket] = useState(false);
 
   useEffect(() => {
     if (!lessonPath || !groupId) {
@@ -342,6 +381,16 @@ export default function StudentLessonMaterialsPanel({
             if (!loaded?.slides?.length) continue;
             const haSlides = findHomeworkSlides(sortSlides(loaded.slides));
             if (haSlides.length === 0) continue;
+            // Aktuelle Stunde: HA erst sichtbar, wenn NOW die HA-Folie erreicht hat
+            if (c.path === lessonPath) {
+              const nowIdx = findNowSlideIndex(loaded);
+              if (nowIdx >= 0) {
+                const sorted = sortSlides(loaded.slides);
+                const nowOrder = sorted[nowIdx]!.order;
+                const haReached = haSlides.some((s) => s.order <= nowOrder);
+                if (!haReached) continue;
+              }
+            }
             const ha = haSlides[haSlides.length - 1] ?? haSlides[0];
             setHomeworkTodoPath(c.path);
             setHomeworkTodoLabel(c.label);

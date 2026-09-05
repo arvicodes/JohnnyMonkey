@@ -257,6 +257,7 @@ interface SortableThumbProps {
   index: number;
   active: boolean;
   selected: boolean;
+  isNow: boolean;
   hasVariant: boolean;
   variantActive: boolean;
   onSelect: (event: React.MouseEvent) => void;
@@ -276,6 +277,7 @@ const SortableFilmstripThumb = React.memo(
     index,
     active,
     selected,
+    isNow,
     hasVariant,
     variantActive,
     onSelect,
@@ -418,7 +420,31 @@ const SortableFilmstripThumb = React.memo(
           >
             {index + 1}
           </Box>
-          {hasExam ? (
+          {isNow ? (
+            <Box
+              title="NOW — Unterrichtsfortschritt"
+              sx={{
+                position: 'absolute',
+                top: 4,
+                right: hasExam || hasExercise || slide.audioTrack?.path || slide.screenTrack?.path ? 22 : 4,
+                px: 0.4,
+                height: 16,
+                borderRadius: 0.5,
+                bgcolor: '#e53935',
+                color: '#fff',
+                fontSize: 8,
+                fontWeight: 900,
+                letterSpacing: 0.3,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                pointerEvents: 'none',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+              }}
+            >
+              NOW
+            </Box>
+          ) : hasExam ? (
             <Box
               title="Prüfung an dieser Folie"
               sx={{
@@ -623,6 +649,7 @@ const SortableFilmstripThumb = React.memo(
   (prev, next) =>
     prev.active === next.active &&
     prev.selected === next.selected &&
+    prev.isNow === next.isNow &&
     prev.hasVariant === next.hasVariant &&
     prev.variantActive === next.variantActive &&
     prev.index === next.index &&
@@ -634,6 +661,7 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
   slides,
   activeId,
   selectedIds,
+  nowSlideId,
   variantSlideIds,
   activeVariantId,
   onSelect,
@@ -707,6 +735,7 @@ const PresentationFilmstrip: React.FC<PresentationFilmstripProps> = ({
                     index={idx}
                     active={slide.id === activeId}
                     selected={selectedSet.has(slide.id)}
+                    isNow={Boolean(nowSlideId && slide.id === nowSlideId)}
                     hasVariant={variantSet.has(slide.id)}
                     variantActive={activeVariantId === slide.id}
                     onSelect={(event) => onSelect(slide.id, event)}

@@ -107,7 +107,7 @@ import {
   presentationPresentUrl,
   parsePresentationPlanMode,
   rememberActivePresentationSlide,
-  recalledActivePresentationSlide,
+  resolvePresentationStartSlideId,
   saveJsonFile,
   nextViewportScale,
   sortSlides,
@@ -632,10 +632,10 @@ const PresentationEditorPage: React.FC = () => {
         playVariantsRef.current = migrated.variants;
         editingVariantRef.current = false;
         setEditingVariant(false);
-        const remembered = recalledActivePresentationSlide(lessonPath, startSlideId);
+        const startId = resolvePresentationStartSlideId(migrated.deck, startSlideId);
         const requested =
-          remembered && migrated.deck.slides.some((s) => s.id === remembered)
-            ? remembered
+          startId && migrated.deck.slides.some((s) => s.id === startId)
+            ? startId
             : migrated.deck.slides[0]?.id ?? null;
         setActiveId(requested);
         setLoading(false);
@@ -4571,6 +4571,45 @@ const PresentationEditorPage: React.FC = () => {
                   ...PRES_EDITOR_UI.toolbarSection.slide,
                 }}
               >
+                <Tooltip
+                  title={
+                    activeId && deck?.nowSlideId === activeId
+                      ? 'NOW — bis hier unterrichtet (SuS sehen bis hier)'
+                      : 'NOW setzen — Fortschritt bis zu dieser Folie'
+                  }
+                >
+                  <Button
+                    size="small"
+                    disabled={!activeId}
+                    onClick={() => {
+                      if (!activeId) return;
+                      updateDeck({
+                        nowSlideId: activeId,
+                        updatedAt: new Date().toISOString(),
+                      });
+                      setSnackbar('NOW gesetzt — SuS sehen Folien und Material bis hier');
+                    }}
+                    sx={{
+                      minWidth: 40,
+                      height: 28,
+                      px: 0.75,
+                      mr: 0.5,
+                      fontSize: 10,
+                      fontWeight: 900,
+                      letterSpacing: 0.5,
+                      lineHeight: 1,
+                      textTransform: 'none',
+                      color: activeId && deck?.nowSlideId === activeId ? '#fff' : '#c62828',
+                      bgcolor: activeId && deck?.nowSlideId === activeId ? '#e53935' : 'rgba(229,57,53,0.08)',
+                      border: '1px solid rgba(229,57,53,0.45)',
+                      '&:hover': {
+                        bgcolor: activeId && deck?.nowSlideId === activeId ? '#d32f2f' : 'rgba(229,57,53,0.16)',
+                      },
+                    }}
+                  >
+                    NOW
+                  </Button>
+                </Tooltip>
                 <PresentationSlideToolsBar
                   slide={normalizedActive}
                   selectedElement={selectedElement ?? null}
@@ -4814,6 +4853,7 @@ const PresentationEditorPage: React.FC = () => {
           slides={(filmstripSlides.length ? filmstripSlides : sortedSlides).map(stripPlayLayerFromSlide)}
           activeId={activeId}
           selectedIds={selectedSlideIds.length ? selectedSlideIds : activeId ? [activeId] : []}
+          nowSlideId={deck?.nowSlideId}
           variantSlideIds={variantSlideIdList}
           activeVariantId={editingVariant ? activeId : null}
           onSelect={handleFilmstripSelect}

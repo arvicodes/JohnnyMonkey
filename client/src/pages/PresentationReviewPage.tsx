@@ -54,6 +54,7 @@ const PresentationReviewPage: React.FC = () => {
           namedSlug={namedSlug}
           disableAnimations={studentViewer}
           hideTeacherNotes={studentViewer}
+          clipToNow={studentViewer}
           onClose={() => navigate(presentationLessonBackUrl(lessonPath, groupId, planMode))}
         />
       </Box>
