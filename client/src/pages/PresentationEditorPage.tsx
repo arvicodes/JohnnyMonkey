@@ -242,6 +242,7 @@ import {
 } from '../lib/presentationTrash';
 import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../lib/presentationTransitions';
 import {
+  exportPresentationStandPdf,
   refreshPresentationPdfsFromLessonFolder,
   savePresentationNamedVersion,
 } from '../lib/presentationExport';
@@ -4582,12 +4583,30 @@ const PresentationEditorPage: React.FC = () => {
                     size="small"
                     disabled={!activeId}
                     onClick={() => {
-                      if (!activeId) return;
+                      if (!activeId || !lessonPath) return;
                       updateDeck({
                         nowSlideId: activeId,
                         updatedAt: new Date().toISOString(),
                       });
-                      setSnackbar('NOW gesetzt — SuS sehen Folien und Material bis hier');
+                      setSnackbar('NOW gesetzt — SuS-PDF wird erzeugt…');
+                      const current = deckRef.current;
+                      if (!current) return;
+                      const next = normalizeDeck({
+                        ...current,
+                        nowSlideId: activeId,
+                        updatedAt: new Date().toISOString(),
+                      });
+                      void exportPresentationStandPdf(
+                        lessonPath,
+                        next,
+                        annotationsRef.current,
+                      )
+                        .then(() =>
+                          setSnackbar('NOW gesetzt — SuS sehen Folien und PDF bis hier'),
+                        )
+                        .catch(() =>
+                          setSnackbar('NOW gesetzt — Stand-PDF konnte nicht erzeugt werden'),
+                        );
                     }}
                     sx={{
                       minWidth: 40,

@@ -2,26 +2,26 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Button, ButtonGroup, IconButton, Tooltip, Typography } from '@mui/material';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DownloadIcon from '@mui/icons-material/Download';
-import EditNoteOutlinedIcon from '@mui/icons-material/EditNoteOutlined';
-import CreateOutlinedIcon from '@mui/icons-material/CreateOutlined';
 import { apiGetSafe } from '../lib/api';
 import {
   isLessonPresentationMaterialPdf,
+  isJohnnyPresentationExportPdf,
   isStudentVisibleLessonMaterialFile,
   johnnyPresentationVersionLabel,
-  firstNamedJohnnyPresentationLabel,
-  lessonPresentationDownloadFilename,
   LESSON_PRESENTATION_PDF_EDITED,
   LESSON_PRESENTATION_PDF_ORIGINAL,
+  LESSON_PRESENTATION_PDF_STAND,
 } from '../lib/presentationLessonAssets';
 import { isLessonFileShared, normalizeLessonMaterialPath } from '../lib/lessonFileSharePath';
 import { openStudentLessonMaterialFile } from '../lib/openStudentLessonMaterial';
+import { downloadPresentationStandPdfForStudent } from '../lib/presentationExport';
 import { JOHNNY_PRESENTATION } from '../lib/presentationTheme';
 import {
   deckFilePath,
   loadJsonFile,
   printMaterialPathsAfterNow,
   findNowSlideIndex,
+  presentationReviewUrl,
   sortSlides,
   type PresentationDeck,
 } from '../lib/presentationDeck';
@@ -43,13 +43,6 @@ const actionBtnSx = {
   whiteSpace: 'nowrap' as const,
 };
 
-const iconActionBtnSx = {
-  minWidth: 29,
-  width: 29,
-  height: 26,
-  p: 0.2,
-};
-
 /** Folien-Zeile */
 const FOLIEN_ROW_HEIGHT = 32;
 /** ToDo-HA-Button — etwas flacher als die Folien-Zeile */
@@ -58,128 +51,9 @@ const TODO_HA_BTN_HEIGHT = 24;
 /** Rahmen nur bei ToDo HA mit Abgabe-Pflicht */
 const ABGABE_FRAME = '2px solid rgba(140, 60, 50, 0.95)';
 
-function EditDownloadComboIcon() {
-  return (
-    <Box
-      sx={{
-        position: 'relative',
-        width: 20,
-        height: 20,
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: 'inherit',
-      }}
-    >
-      <CreateOutlinedIcon sx={{ fontSize: 17 }} />
-      <DownloadIcon
-        sx={{
-          fontSize: 11,
-          position: 'absolute',
-          right: -2,
-          bottom: -2,
-          bgcolor: '#fff',
-          borderRadius: '50%',
-          p: '1px',
-        }}
-      />
-    </Box>
-  );
-}
-
-function PresentationCombinedActions({
-  lessonName,
-  original,
-  edited,
-  editedLabel = 'Version',
-  sharedPaths,
-}: {
-  lessonName: string;
-  original?: LessonFile;
-  edited?: LessonFile;
-  editedLabel?: string;
-  sharedPaths: string[];
-}) {
-  const originalShared = original ? isLessonFileShared(original.path, sharedPaths) : false;
-  const editedShared = edited ? isLessonFileShared(edited.path, sharedPaths) : false;
-
-  const groupBtnSx = {
-    ...iconActionBtnSx,
-    borderRadius: 0,
-    borderColor: 'rgba(0,0,0,0.23) !important',
-    borderRight: '1px solid rgba(0,0,0,0.12) !important',
-    color: '#546e7a',
-    bgcolor: 'transparent',
-    boxShadow: 'none',
-    '&:hover': {
-      bgcolor: 'rgba(0,0,0,0.04)',
-      borderColor: 'rgba(0,0,0,0.35) !important',
-    },
-    '&:focus': { outline: 'none' },
-    '&.Mui-focusVisible': { outline: 'none' },
-    '&:last-of-type': { borderRight: 'none !important' },
-  };
-
-  return (
-    <Box
-      sx={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        flexShrink: 0,
-        ml: 'auto',
-        border: '1px solid rgba(0,0,0,0.23)',
-        borderRadius: 1,
-        overflow: 'hidden',
-        '& .MuiButton-root': groupBtnSx,
-      }}
-    >
-      <Tooltip title="Original herunterladen">
-        <span style={{ display: 'inline-flex', lineHeight: 0 }}>
-          <Button
-            variant="outlined"
-            disabled={!originalShared}
-            onClick={() =>
-              originalShared &&
-              original &&
-              void openStudentLessonMaterialFile(original, 'download', {
-                downloadName: lessonPresentationDownloadFilename(lessonName, 'original'),
-              })
-            }
-          >
-            <DownloadIcon sx={{ fontSize: 20 }} />
-          </Button>
-        </span>
-      </Tooltip>
-      <Tooltip title={`${editedLabel} öffnen`}>
-        <span style={{ display: 'inline-flex', lineHeight: 0 }}>
-          <Button
-            variant="outlined"
-            disabled={!editedShared}
-            onClick={() => editedShared && edited && void openStudentLessonMaterialFile(edited, 'open')}
-          >
-            <EditNoteOutlinedIcon sx={{ fontSize: 20 }} />
-          </Button>
-        </span>
-      </Tooltip>
-      <Tooltip title={`${editedLabel} downloaden`}>
-        <span style={{ display: 'inline-flex', lineHeight: 0 }}>
-          <Button
-            variant="outlined"
-            disabled={!editedShared}
-            onClick={() =>
-              editedShared &&
-              edited &&
-              void openStudentLessonMaterialFile(edited, 'download', {
-                downloadName: lessonPresentationDownloadFilename(lessonName, 'edited', editedLabel),
-              })
-            }
-          >
-            <EditDownloadComboIcon />
-          </Button>
-        </span>
-      </Tooltip>
-    </Box>
-  );
+function tryOpenInNewTab(url: string): boolean {
+  const w = window.open(url, '_blank');
+  return !!(w && !w.closed);
 }
 
 export default function StudentLessonMaterialsPanel({
@@ -283,35 +157,19 @@ export default function StudentLessonMaterialsPanel({
   }, [files, sharedPaths, lessonPath, blockedMaterialPaths]);
 
   const presentationOriginal = materials.find((f) => f.name === LESSON_PRESENTATION_PDF_ORIGINAL);
-  const namedPresentationPdfs = materials.filter(
+  const presentationEdited = materials.find((f) => f.name === LESSON_PRESENTATION_PDF_EDITED);
+  const presentationShared = materials.some(
     (f) =>
-      isLessonPresentationMaterialPdf(f.name) &&
-      f.name !== LESSON_PRESENTATION_PDF_ORIGINAL &&
-      f.name !== LESSON_PRESENTATION_PDF_EDITED
+      isJohnnyPresentationExportPdf(f.name) &&
+      f.name !== LESSON_PRESENTATION_PDF_STAND &&
+      isLessonFileShared(f.path, sharedPaths),
   );
-  // Benannte Version (z. B. 2026) ersetzt „bearbeitet“ — gleiche Ansicht, anderer Name
-  const presentationEdited =
-    namedPresentationPdfs[0] ??
-    materials.find((f) => f.name === LESSON_PRESENTATION_PDF_EDITED);
-  const otherMaterials = materials.filter((f) => {
-    if (!isLessonPresentationMaterialPdf(f.name)) return true;
-    if (f.name === LESSON_PRESENTATION_PDF_ORIGINAL || f.name === LESSON_PRESENTATION_PDF_EDITED) {
-      return false;
-    }
-    // Erste benannte Version steckt schon im Folien-Slot
-    if (presentationEdited && f.path === presentationEdited.path) return false;
-    return true;
-  });
-  const hasPresentation = !!(presentationOriginal || presentationEdited);
-  const editedVersionLabel = presentationEdited
-    ? johnnyPresentationVersionLabel(presentationEdited.name, files)
-    : firstNamedJohnnyPresentationLabel(files) || 'Version';
-  const originalShared = presentationOriginal
-    ? isLessonFileShared(presentationOriginal.path, sharedPaths)
-    : false;
-  const editedShared = presentationEdited
-    ? isLessonFileShared(presentationEdited.path, sharedPaths)
-    : false;
+  // Johnny-Folien-PDFs (Original/bearbeitet/Versionen/Stand) nie als Extra-Zeilen —
+  // SuS sehen nur die Folien-Zeile mit einem Download bis NOW.
+  const otherMaterials = materials.filter((f) => !isJohnnyPresentationExportPdf(f.name));
+  const hasPresentation = presentationShared || !!(presentationOriginal || presentationEdited);
+  const canOpenFolien = hasPresentation;
+  const [standDownloadBusy, setStandDownloadBusy] = useState(false);
 
   useEffect(() => {
     if (!lessonPath || !groupId) {
@@ -489,20 +347,16 @@ export default function StudentLessonMaterialsPanel({
               gap: 0.45,
             }}
           >
-            <Tooltip title={editedShared ? `${editedVersionLabel} öffnen` : originalShared ? 'Original öffnen' : 'Folien'}>
+            <Tooltip title={canOpenFolien ? 'Folien bis NOW öffnen' : 'Folien'}>
               <Box component="span" sx={{ display: 'inline-flex', flexShrink: 0 }}>
                 <Box
                   component="button"
                   type="button"
-                  disabled={!editedShared && !originalShared}
+                  disabled={!canOpenFolien}
                   onClick={() => {
-                    if (editedShared && presentationEdited) {
-                      void openStudentLessonMaterialFile(presentationEdited, 'open');
-                      return;
-                    }
-                    if (originalShared && presentationOriginal) {
-                      void openStudentLessonMaterialFile(presentationOriginal, 'open');
-                    }
+                    if (!canOpenFolien || !lessonPath) return;
+                    const url = `${presentationReviewUrl(lessonPath, undefined, 'edited')}&viewer=student`;
+                    if (!tryOpenInNewTab(url)) window.location.assign(url);
                   }}
                   sx={{
                     display: 'inline-flex',
@@ -512,15 +366,15 @@ export default function StudentLessonMaterialsPanel({
                     background: 'none',
                     p: 0,
                     m: 0,
-                    cursor: editedShared || originalShared ? 'pointer' : 'default',
-                    opacity: editedShared || originalShared ? 1 : 0.5,
+                    cursor: canOpenFolien ? 'pointer' : 'default',
+                    opacity: canOpenFolien ? 1 : 0.5,
                     font: 'inherit',
                     textAlign: 'left',
                     color: 'text.primary',
                     borderBottom: '1.5px solid transparent',
                     transition: 'color 0.15s ease, border-color 0.15s ease',
                     '&:hover':
-                      editedShared || originalShared
+                      canOpenFolien
                         ? {
                             color: JOHNNY_PRESENTATION.warm,
                             borderBottomColor: JOHNNY_PRESENTATION.warm,
@@ -544,13 +398,44 @@ export default function StudentLessonMaterialsPanel({
                 </Box>
               </Box>
             </Tooltip>
-            <PresentationCombinedActions
-              lessonName={downloadLessonName}
-              original={presentationOriginal}
-              edited={presentationEdited}
-              editedLabel={editedVersionLabel}
-              sharedPaths={sharedPaths}
-            />
+            <Tooltip title="PDF bis NOW herunterladen">
+              <span style={{ display: 'inline-flex', marginLeft: 'auto', flexShrink: 0 }}>
+                <IconButton
+                  size="small"
+                  disabled={!canOpenFolien || standDownloadBusy || !lessonPath}
+                  aria-label="Folienstand PDF herunterladen"
+                  onClick={() => {
+                    if (!lessonPath || standDownloadBusy) return;
+                    setStandDownloadBusy(true);
+                    void downloadPresentationStandPdfForStudent(
+                      lessonPath,
+                      `${(downloadLessonName || 'Folien').trim() || 'Folien'}_Stand.pdf`,
+                    )
+                      .catch((e) => {
+                        console.warn('Stand-PDF Download fehlgeschlagen', e);
+                        window.alert(
+                          e instanceof Error
+                            ? e.message
+                            : 'PDF konnte nicht heruntergeladen werden.',
+                        );
+                      })
+                      .finally(() => setStandDownloadBusy(false));
+                  }}
+                  sx={{
+                    width: 28,
+                    height: 28,
+                    color: '#546e7a',
+                    border: '1px solid rgba(0,0,0,0.23)',
+                    borderRadius: 1,
+                    bgcolor: 'transparent',
+                    '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' },
+                    '&.Mui-disabled': { opacity: 0.45 },
+                  }}
+                >
+                  <DownloadIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
           </Box>
         </Box>
       )}

@@ -1,6 +1,7 @@
 /** Johnny-Präsentation: exportierte Folien-PDFs — für Schüler freigeben. */
 export const LESSON_PRESENTATION_PDF_ORIGINAL = 'Praesentation_Original.pdf';
 export const LESSON_PRESENTATION_PDF_EDITED = 'Praesentation_bearbeitet.pdf';
+export const LESSON_PRESENTATION_PDF_STAND = 'Praesentation_Stand.pdf';
 
 const LESSON_IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|svg|bmp|heic|avif|tiff?)$/i;
 const LESSON_INPUT_DOCS_RE = /\.(pdf|pptx?|odp|docx?|odt|rtf)$/i;

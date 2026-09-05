@@ -12,11 +12,16 @@ import {
   Chip,
   Alert,
   Paper,
+  Grid,
+  Card,
+  CardContent,
   List,
   ListItem,
   ListItemText,
+  ListItemSecondaryAction,
   Tooltip,
   LinearProgress,
+  Avatar,
   FormControl,
   InputLabel,
   Select,
@@ -31,6 +36,11 @@ import {
   Edit as EditIcon,
   Save as SaveIcon,
   Assessment as AssessmentIcon,
+  Category as CategoryIcon,
+  SubdirectoryArrowRight as SubdirectoryIcon,
+  CheckCircle as CheckCircleIcon,
+  Error as ErrorIcon,
+  Info as InfoIcon,
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
   HowToReg as AssignIcon
@@ -65,40 +75,22 @@ interface GradingSchemaModalProps {
   groupName: string;
 }
 
-// Wie GradesModal – Johnny-Grün, kompakt
+// App color palette - Moderner und akzentuierter
 const colors = {
-  primary: '#2E7D32',
-  secondary: '#F57C00',
-  accent1: '#1976D2',
-  accent2: '#C2185B',
-  background: '#F8FAFC',
+  primary: '#1E88E5', // Modernes Blau
+  secondary: '#FF6B35', // Lebendiges Orange
+  accent1: '#7C4DFF', // Elegantes Violett
+  accent2: '#E91E63', // Modernes Pink
+  background: '#FAFBFF', // Sehr helles Blau
   cardBg: '#FFFFFF',
-  success: '#4CAF50',
-  warning: '#FF9800',
-  error: '#F44336',
-  textPrimary: '#2C3E50',
-  textSecondary: '#7F8C8D',
-  border: '#e0e0e0',
-  hover: '#f5f7f5',
-  active: '#e8f5e9',
-};
-
-const compactBtnSx = {
-  borderRadius: 1.2,
-  px: 1.5,
-  py: 0.4,
-  fontSize: '0.65rem',
-  height: 28,
-  minHeight: 28,
-  textTransform: 'none' as const,
-  fontWeight: 600,
-  boxShadow: 'none',
-};
-
-const compactIconBtnSx = {
-  width: 24,
-  height: 24,
-  p: 0.25,
+  success: '#00C853', // Lebendiges Grün
+  warning: '#FF9800', // Warmes Orange
+  error: '#F44336', // Klares Rot
+  textPrimary: '#1A237E', // Dunkles Blau
+  textSecondary: '#546E7A', // Modernes Grau
+  border: '#E3F2FD', // Helles Blau
+  hover: '#F5F9FF', // Sehr helles Blau für Hover
+  active: '#E8F4FD' // Helles Blau für aktive Elemente
 };
 
 const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
@@ -660,98 +652,223 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
     const hasChildren = node.children.length > 0;
     const weightSum = hasChildren ? calculateWeightSum(node.children) : 0;
     const isValid = level === 0 && hasChildren ? Math.abs(weightSum - 100) < 0.01 : true;
+    const isTopLevel = level === 0;
 
     return (
-      <Box key={node.id} sx={{ mb: 0.5, ml: level * 1.2 }}>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 0.6,
-            px: 0.8,
-            py: 0.4,
-            borderRadius: 0.8,
-            border: isValid ? `1px solid ${colors.border}` : `1px solid ${colors.error}`,
-            borderLeft: level > 0 ? `3px solid ${level === 1 ? colors.primary : colors.accent1}` : undefined,
-            bgcolor: level === 0 ? colors.cardBg : colors.hover,
+      <Box key={node.id} sx={{ mb: 1 }}>
+        <Card 
+          variant="outlined" 
+          sx={{ 
+            borderRadius: 2,
+            border: isValid ? `1px solid ${colors.border}` : `2px solid ${colors.error}`,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+            transition: 'all 0.3s ease-in-out',
+            '&:hover': {
+              boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+              transform: 'translateY(-2px)'
+            },
+            // Klare Einrückung basierend auf Level
+            ml: level * 2,
+            // Visueller Indikator für Hierarchie
+            borderLeft: level > 0 ? `4px solid ${isTopLevel ? colors.primary : colors.accent1}` : 'none',
+            // Hintergrundfarbe für verschiedene Ebenen
+            bgcolor: isValid ? 
+              (level === 0 ? colors.cardBg : 
+               level === 1 ? colors.hover : 
+               level === 2 ? colors.active : '#f8f9fa') : '#ffebee'
           }}
         >
-          <TextField
-            size="small"
-            placeholder={level === 0 ? 'Hauptkategorie' : 'Unterkategorie'}
-            value={node.name}
-            onChange={(e) => updateGradeNode(node.id, 'name', e.target.value)}
-            sx={{
-              flex: 1,
-              '& .MuiOutlinedInput-root': {
-                fontSize: '0.7rem',
-                height: 28,
-                bgcolor: colors.cardBg,
-              },
-              '& .MuiOutlinedInput-input': { py: 0.4, px: 0.8 },
-            }}
-          />
-          <TextField
-            size="small"
-            type="number"
-            value={node.weight}
-            onChange={(e) => updateGradeNode(node.id, 'weight', parseFloat(e.target.value) || 0)}
-            inputProps={{ min: 0, max: 100, step: 0.1 }}
-            sx={{
-              width: 64,
-              '& .MuiOutlinedInput-root': { fontSize: '0.7rem', height: 28 },
-              '& .MuiOutlinedInput-input': { py: 0.4, px: 0.6 },
-            }}
-          />
-          <Typography sx={{ fontSize: '0.6rem', color: colors.textSecondary, width: 12 }}>%</Typography>
-          <Tooltip title="Unterkategorie">
-            <IconButton size="small" onClick={() => addGradeNode(node.id)} sx={{ ...compactIconBtnSx, color: colors.primary }}>
-              <AddIcon sx={{ fontSize: 14 }} />
-            </IconButton>
-          </Tooltip>
-          {hasChildren && (
-            <Tooltip title={node.isExpanded ? 'Einklappen' : 'Aufklappen'}>
-              <IconButton size="small" onClick={() => toggleExpanded(node.id)} sx={{ ...compactIconBtnSx, color: colors.accent1 }}>
-                {node.isExpanded ? <ExpandLessIcon sx={{ fontSize: 14 }} /> : <ExpandMoreIcon sx={{ fontSize: 14 }} />}
-              </IconButton>
-            </Tooltip>
-          )}
-          <Tooltip title="Löschen">
-            <IconButton size="small" onClick={() => deleteGradeNode(node.id)} sx={{ ...compactIconBtnSx, color: colors.error }}>
-              <DeleteIcon sx={{ fontSize: 14 }} />
-            </IconButton>
-          </Tooltip>
-        </Box>
-
-        {hasChildren && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, mt: 0.3, mb: 0.2, ml: 0.5 }}>
-            <Chip
-              size="small"
-              label={`${weightSum.toFixed(0)}%`}
-              color={isValid ? 'success' : 'error'}
-              variant="outlined"
-              sx={{ height: 18, fontSize: '0.55rem', '& .MuiChip-label': { px: 0.6 } }}
-            />
-            {!isValid && level === 0 && (
-              <Typography sx={{ fontSize: '0.55rem', color: colors.error }}>muss 100% sein</Typography>
+          <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+            <Grid container spacing={1} alignItems="center">
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Avatar 
+                    sx={{ 
+                      bgcolor: isTopLevel ? colors.primary : 
+                              level === 1 ? colors.accent1 : 
+                              level === 2 ? colors.secondary : colors.accent2,
+                      width: 24,
+                      height: 24,
+                      fontSize: '0.7rem',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    {isTopLevel ? <CategoryIcon sx={{ fontSize: 14 }} /> : 
+                     level === 1 ? <SubdirectoryIcon sx={{ fontSize: 14 }} /> :
+                     level === 2 ? <SubdirectoryIcon sx={{ fontSize: 14 }} /> :
+                     <SubdirectoryIcon sx={{ fontSize: 14 }} />}
+                  </Avatar>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    placeholder={isTopLevel ? "Hauptkategorie" : 
+                                level === 1 ? "Unterkategorie" :
+                                level === 2 ? "Unter-Unterkategorie" : "Kategorie"}
+                    value={node.name}
+                    onChange={(e) => updateGradeNode(node.id, 'name', e.target.value)}
+                    variant="outlined"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 1.5,
+                        fontSize: '0.75rem',
+                        minHeight: '36px',
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: colors.primary
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: colors.primary,
+                          borderWidth: 2
+                        }
+                      }
+                    }}
+                  />
+                </Box>
+              </Grid>
+              
+              <Grid item xs={12} sm={3}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  type="number"
+                  placeholder="Gewichtung %"
+                  value={node.weight}
+                  onChange={(e) => updateGradeNode(node.id, 'weight', parseFloat(e.target.value) || 0)}
+                  variant="outlined"
+                  inputProps={{ min: 0, max: 100, step: 0.1 }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 1.5,
+                      fontSize: '0.75rem',
+                      minHeight: '36px',
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: colors.primary
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: colors.primary,
+                        borderWidth: 2
+                      }
+                    }
+                  }}
+                />
+              </Grid>
+              
+              <Grid item xs={12} sm={3}>
+                <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+                  <Tooltip title="Unterkategorie hinzufügen">
+                    <IconButton 
+                      size="small" 
+                      onClick={() => addGradeNode(node.id)}
+                      sx={{ 
+                        bgcolor: colors.primary,
+                        color: 'white',
+                        width: 28,
+                        height: 28,
+                        '&:hover': { 
+                          bgcolor: colors.accent1,
+                          transform: 'scale(1.1)',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                        }
+                      }}
+                    >
+                      <AddIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
+                  
+                  {hasChildren && (
+                    <Tooltip title={node.isExpanded ? "Einklappen" : "Aufklappen"}>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => toggleExpanded(node.id)}
+                        sx={{ 
+                          bgcolor: colors.accent1,
+                          color: 'white',
+                          width: 28,
+                          height: 28,
+                          '&:hover': { 
+                            bgcolor: colors.primary,
+                            transform: 'scale(1.1)',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                          }
+                        }}
+                      >
+                        {node.isExpanded ? <ExpandLessIcon sx={{ fontSize: 16 }} /> : <ExpandMoreIcon sx={{ fontSize: 16 }} />}
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  
+                  <Tooltip title="Kategorie löschen">
+                    <IconButton 
+                      size="small" 
+                      onClick={() => deleteGradeNode(node.id)}
+                      sx={{ 
+                        bgcolor: colors.error,
+                        color: 'white',
+                        width: 28,
+                        height: 28,
+                        '&:hover': { 
+                          bgcolor: '#d32f2f',
+                          transform: 'scale(1.1)',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                        }
+                      }}
+                    >
+                      <DeleteIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              </Grid>
+            </Grid>
+            
+            {hasChildren && (
+              <Box sx={{ mt: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                  <Chip 
+                    icon={isValid ? <CheckCircleIcon sx={{ fontSize: 14 }} /> : <ErrorIcon sx={{ fontSize: 14 }} />}
+                    label={`Summe: ${weightSum.toFixed(1)}%`}
+                    color={isValid ? 'success' : 'error'}
+                    size="small"
+                    variant="outlined"
+                    sx={{ 
+                      fontWeight: 'bold',
+                      fontSize: '0.7rem',
+                      height: 24,
+                      borderWidth: 2
+                    }}
+                  />
+                  {!isValid && level === 0 && (
+                    <Typography variant="caption" color="error" sx={{ fontWeight: 'bold', fontSize: '0.7rem' }}>
+                      Sollte 100% sein
+                    </Typography>
+                  )}
+                  {level > 0 && (
+                    <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.7rem' }}>
+                      Unterkategorien können beliebige Gewichtungen haben
+                    </Typography>
+                  )}
+                </Box>
+                
+                <LinearProgress
+                  variant="determinate"
+                  value={Math.min(weightSum, 100)}
+                  sx={determinateLinearProgressSx(
+                    isValid
+                      ? `linear-gradient(90deg, ${colors.success}99 0%, ${colors.success} 100%)`
+                      : `linear-gradient(90deg, ${colors.error}99 0%, ${colors.error} 100%)`,
+                    {
+                      height: 9,
+                      barGlow: isValid ? `${colors.success}55` : `${colors.error}55`,
+                    }
+                  )}
+                />
+              </Box>
             )}
-            <LinearProgress
-              variant="determinate"
-              value={Math.min(weightSum, 100)}
-              sx={{
-                flex: 1,
-                ...((determinateLinearProgressSx(
-                  isValid ? colors.success : colors.error,
-                  { height: 4, barGlow: 'transparent' },
-                ) as object)),
-              }}
-            />
-          </Box>
-        )}
-
+          </CardContent>
+        </Card>
+        
+        {/* Rekursiv alle Kinder rendern - nur wenn expanded */}
         {hasChildren && node.isExpanded && (
-          <Box sx={{ mt: 0.3 }}>
-            {node.children.map((child) => renderCategoryCard(child, level + 1))}
+          <Box sx={{ mt: 0.5 }}>
+            {node.children.map(child => renderCategoryCard(child, level + 1))}
           </Box>
         )}
       </Box>
@@ -762,32 +879,41 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
     if (!showPreview || gradeNodes.length === 0) return null;
 
     return (
-      <Paper
-        elevation={0}
-        sx={{
-          p: 1,
-          mb: 1,
-          bgcolor: colors.hover,
-          borderRadius: 0.8,
-          border: `1px solid ${colors.border}`,
-        }}
-      >
-        <Typography sx={{ fontSize: '0.65rem', fontWeight: 600, color: colors.textPrimary, mb: 0.5 }}>
-          Vorschau
+      <Paper elevation={0} sx={{ 
+        p: 2, 
+        mb: 2, 
+        bgcolor: colors.hover, 
+        borderRadius: 2,
+        border: `1px solid ${colors.border}`
+      }}>
+        <Typography variant="h6" gutterBottom sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1,
+          fontSize: '0.9rem',
+          fontWeight: 'bold',
+          color: colors.textPrimary,
+          mb: 1
+        }}>
+          <VisibilityIcon sx={{ fontSize: 18, color: colors.primary }} />
+          Vorschau des Schemas
         </Typography>
-        <Box
-          sx={{
-            fontFamily: 'monospace',
-            fontSize: '0.6rem',
-            bgcolor: colors.cardBg,
-            p: 0.8,
-            borderRadius: 0.6,
-            border: `1px solid ${colors.border}`,
-            maxHeight: 120,
-            overflowY: 'auto',
-          }}
-        >
-          <pre style={{ margin: 0, whiteSpace: 'pre-wrap', color: colors.textPrimary, lineHeight: 1.35 }}>
+        <Box sx={{ 
+          fontFamily: 'monospace', 
+          fontSize: '0.75rem', 
+          bgcolor: colors.cardBg, 
+          p: 1.5, 
+          borderRadius: 2,
+          border: `1px solid ${colors.border}`,
+          maxHeight: 200,
+          overflowY: 'auto'
+        }}>
+          <pre style={{ 
+            margin: 0, 
+            whiteSpace: 'pre-wrap',
+            color: colors.textPrimary,
+            lineHeight: 1.5
+          }}>
             {formatSchemaToString(gradeNodes)}
           </pre>
         </Box>
@@ -797,541 +923,862 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
 
   return (
     <>
-    <Dialog
-      open={open}
+    <Dialog 
+      open={open} 
       onClose={onClose}
-      maxWidth={false}
-      fullWidth={false}
-      sx={{
-        '& .MuiDialog-paper': {
-          width: isEditing ? 'min(720px, 94vw)' : 'min(440px, 94vw)',
-          maxWidth: isEditing ? 720 : 440,
-          maxHeight: '88vh',
-          borderRadius: 1.5,
-          bgcolor: colors.background,
-        },
+      maxWidth={false} // Keine maximale Breite
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 2,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+          background: colors.background,
+          maxHeight: '98vh', // Maximale Höhe
+          height: '95vh', // Feste Höhe für mehr Platz
+          width: '95vw', // Sehr breit
+          maxWidth: '95vw' // Maximale Breite
+        }
       }}
     >
-      <DialogTitle
-        sx={{
-          py: 1,
-          px: 1.5,
-          background: `linear-gradient(135deg, ${colors.primary}15 0%, ${colors.accent1}10 100%)`,
-          borderBottom: `2px solid ${colors.primary}30`,
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
-          <Box
-            sx={{
-              p: 0.3,
-              borderRadius: '50%',
-              bgcolor: colors.primary,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <AssessmentIcon sx={{ color: 'white', fontSize: 14 }} />
-          </Box>
-          <Typography sx={{ fontWeight: 700, fontSize: '0.75rem', color: colors.textPrimary }}>
-            Benotung – {groupName}
+      <DialogTitle sx={{ 
+        pb: 1, 
+        background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
+        color: 'white',
+        borderRadius: '8px 8px 0 0'
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <AssessmentIcon sx={{ color: 'white', fontSize: 20 }} />
+          <Typography variant="h6" sx={{ 
+            fontWeight: 600, 
+            fontSize: '1rem',
+            color: 'white'
+          }}>
+            Bewertungsschema {isEditing ? 'bearbeiten' : 'erstellen'} - {groupName}
           </Typography>
         </Box>
       </DialogTitle>
-
-      <DialogContent sx={{ p: 1.5, pt: 1.2 }}>
-        {error && !isEditing && (
-          <Alert severity="error" sx={{ mb: 1, py: 0, fontSize: '0.6rem' }} onClose={() => setError('')}>
-            {error}
-          </Alert>
-        )}
-
-        <Box sx={{ display: 'flex', flexDirection: isEditing ? 'row' : 'column', gap: 1.2, alignItems: 'stretch' }}>
-          <Box sx={{ flex: isEditing ? '0 0 200px' : '1 1 auto', minWidth: 0 }}>
-            <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: colors.textPrimary, mb: 0.6 }}>
-              Schemata
-            </Typography>
-            <Typography sx={{ fontSize: '0.58rem', color: colors.textSecondary, mb: 0.8, lineHeight: 1.35 }}>
-              Anklicken und festlegen — oder neu erstellen.
-            </Typography>
-
-            {existingSchemas.length === 0 ? (
-              <Typography sx={{ fontSize: '0.65rem', color: colors.textSecondary, py: 2, textAlign: 'center' }}>
-                Noch keine Schemata vorhanden.
+      
+      <DialogContent sx={{ 
+        p: 3, 
+        background: colors.background,
+        overflow: 'auto',
+        maxHeight: 'calc(90vh - 120px)' // Mehr Platz für den Inhalt
+      }}>
+        <Grid container spacing={2}>
+          {/* Existing Schemata Section - Volle Breite wenn nicht bearbeitet */}
+          <Grid item xs={12} md={isEditing ? 4 : 12}>
+            <Paper elevation={0} sx={{ 
+              p: 2, 
+              height: 'fit-content', 
+              borderRadius: 2,
+              border: `2px solid ${colors.border}`,
+              background: colors.cardBg
+            }}>
+              <Typography variant="h6" gutterBottom sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1,
+                fontSize: '0.9rem',
+                fontWeight: 'bold',
+                color: colors.textPrimary,
+                mb: 2
+              }}>
+                <CategoryIcon sx={{ fontSize: 18, color: colors.primary }} />
+                Bestehende Schemata
               </Typography>
-            ) : (
-              <List dense disablePadding sx={{ maxHeight: isEditing ? '52vh' : '46vh', overflowY: 'auto' }}>
-                {existingSchemas.map((schema) => {
-                  const isSelected = selectedSchema?.id === schema.id && !isEditing;
-                  return (
-                    <ListItem
+              
+              <Typography variant="body2" sx={{ fontSize: '0.75rem', color: colors.textSecondary, mb: 1.5 }}>
+                Schema anklicken und mit „Für diese Klasse festlegen“ zuweisen — oder neu erstellen.
+              </Typography>
+
+              {error && !isEditing && (
+                <Alert severity="error" sx={{ mb: 1.5, fontSize: '0.75rem' }} onClose={() => setError('')}>
+                  {error}
+                </Alert>
+              )}
+
+              {existingSchemas.length === 0 ? (
+                <Box sx={{ textAlign: 'center', py: 3 }}>
+                  <CategoryIcon sx={{ fontSize: 32, color: colors.textSecondary, mb: 1 }} />
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: '0.8rem' }}>
+                    Noch keine Bewertungsschemata vorhanden.
+                  </Typography>
+                </Box>
+              ) : (
+                <List dense sx={{ maxHeight: '55vh', overflowY: 'auto' }}>
+                  {existingSchemas.map((schema) => {
+                    const isSelected = selectedSchema?.id === schema.id && !isEditing;
+                    return (
+                    <ListItem 
                       key={schema.id}
                       onClick={() => selectSchemaForAssign(schema)}
-                      secondaryAction={
-                        <Box sx={{ display: 'flex', gap: 0.15 }}>
-                          {!schema.isActive && (
-                            <Tooltip title={`Für ${groupName} festlegen`}>
-                              <IconButton
-                                size="small"
-                                disabled={loading}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void handleAssignSchema(schema);
-                                }}
-                                sx={{ ...compactIconBtnSx, color: colors.success }}
-                              >
-                                <AssignIcon sx={{ fontSize: 14 }} />
-                              </IconButton>
-                            </Tooltip>
-                          )}
-                          <Tooltip title="Bearbeiten">
-                            <IconButton
-                              size="small"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                void loadSchema(schema);
-                              }}
-                              sx={{ ...compactIconBtnSx, color: colors.primary }}
-                            >
-                              <EditIcon sx={{ fontSize: 14 }} />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Löschen">
-                            <IconButton
-                              size="small"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                void handleDeleteSchema(schema.id!);
-                              }}
-                              sx={{ ...compactIconBtnSx, color: colors.error }}
-                            >
-                              <DeleteIcon sx={{ fontSize: 14 }} />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                      }
-                      sx={{
-                        py: 0.45,
-                        px: 0.8,
-                        mb: 0.45,
-                        pr: '72px !important',
-                        borderRadius: 0.8,
+                      sx={{ 
                         border: schema.isActive
-                          ? `1.5px solid ${colors.success}`
-                          : isSelected
-                            ? `1.5px solid ${colors.primary}`
-                            : `1px solid ${colors.border}`,
-                        bgcolor: schema.isActive ? colors.active : isSelected ? colors.hover : colors.cardBg,
+                          ? `2px solid ${colors.success}`
+                          : (isSelected ? `2px solid ${colors.primary}` : `1px solid ${colors.border}`),
+                        borderRadius: 1.5,
+                        mb: 1,
                         cursor: 'pointer',
-                        '&:hover': { bgcolor: schema.isActive ? colors.active : colors.hover },
+                        bgcolor: schema.isActive
+                          ? colors.active
+                          : (isSelected ? colors.hover : colors.cardBg),
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          bgcolor: schema.isActive ? colors.active : colors.hover,
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                        }
                       }}
                     >
                       <ListItemText
                         primary={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-                            <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: colors.textPrimary }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}>
                               {schema.name}
                             </Typography>
                             {schema.isActive && (
-                              <Chip
-                                label="aktiv"
-                                size="small"
-                                sx={{
-                                  height: 16,
-                                  fontSize: '0.5rem',
+                              <Chip 
+                                label={`Aktiv für ${groupName}`}
+                                size="small" 
+                                sx={{ 
+                                  height: 20, 
+                                  fontSize: '0.6rem',
                                   bgcolor: colors.success,
                                   color: 'white',
-                                  '& .MuiChip-label': { px: 0.5 },
-                                }}
+                                  fontWeight: 'bold'
+                                }} 
                               />
                             )}
                             {isSelected && !schema.isActive && (
                               <Chip
-                                label="gewählt"
+                                label="Ausgewählt"
                                 size="small"
                                 sx={{
-                                  height: 16,
-                                  fontSize: '0.5rem',
+                                  height: 20,
+                                  fontSize: '0.6rem',
                                   bgcolor: colors.primary,
                                   color: 'white',
-                                  '& .MuiChip-label': { px: 0.5 },
+                                  fontWeight: 'bold',
                                 }}
                               />
                             )}
                           </Box>
                         }
                         secondary={
-                          <Typography component="span" sx={{ fontSize: '0.55rem', color: colors.textSecondary }}>
-                            {schema.learningGroup?.name
-                              ? `von ${schema.learningGroup.name}`
-                              : schema.gradingSystem === 'MSS'
-                                ? 'MSS'
-                                : 'Noten 1–6'}
-                          </Typography>
+                          <Box sx={{ mt: 0.5 }}>
+                            <Typography variant="body2" sx={{ fontSize: '0.7rem', color: colors.textSecondary }}>
+                              {schema.learningGroup?.name
+                                ? `Von: ${schema.learningGroup.name}`
+                                : schema.createdAt
+                                  ? new Date(schema.createdAt).toLocaleDateString('de-DE')
+                                  : ''}
+                            </Typography>
+                            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: colors.accent1, fontWeight: 'bold' }}>
+                              {schema.gradingSystem === 'GERMAN' ? 'Deutsches Notensystem' : 'MSS-Punktesystem'}
+                            </Typography>
+                          </Box>
                         }
-                        sx={{ m: 0 }}
+                        sx={{
+                          pr: 12,
+                          '& .MuiListItemText-primary': {
+                            fontSize: '0.8rem',
+                            fontWeight: 'bold'
+                          },
+                          '& .MuiListItemText-secondary': {
+                            fontSize: '0.7rem'
+                          }
+                        }}
                       />
+                      <ListItemSecondaryAction>
+                        <Box sx={{ display: 'flex', gap: 0.5 }}>
+                          {!schema.isActive && (
+                            <Tooltip title={`Für ${groupName} festlegen`}>
+                              <IconButton 
+                                size="small" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void handleAssignSchema(schema);
+                                }}
+                                disabled={loading}
+                                sx={{ 
+                                  color: 'white',
+                                  bgcolor: colors.success,
+                                  width: 28,
+                                  height: 28,
+                                  '&:hover': { bgcolor: '#2E7D32' }
+                                }}
+                              >
+                                <AssignIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                          <Tooltip title="Bearbeiten">
+                            <IconButton 
+                              size="small" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void loadSchema(schema);
+                              }}
+                              sx={{ 
+                                color: colors.primary,
+                                width: 28,
+                                height: 28,
+                                '&:hover': { bgcolor: colors.hover }
+                              }}
+                            >
+                              <EditIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Löschen">
+                            <IconButton 
+                              size="small" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handleDeleteSchema(schema.id!);
+                              }}
+                              sx={{ 
+                                color: colors.error,
+                                width: 28,
+                                height: 28,
+                                '&:hover': { bgcolor: '#FFEBEE' }
+                              }}
+                            >
+                              <DeleteIcon sx={{ fontSize: 16 }}/>
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </ListItemSecondaryAction>
                     </ListItem>
-                  );
-                })}
-              </List>
-            )}
+                    );
+                  })}
+                </List>
+              )}
 
-            <Button
-              variant="outlined"
-              startIcon={<AddIcon sx={{ fontSize: 12 }} />}
-              onClick={() => setShowCreateModal(true)}
-              fullWidth
-              sx={{
-                ...compactBtnSx,
-                mt: 1,
-                borderColor: colors.primary,
-                color: colors.primary,
-                '&:hover': { borderColor: colors.primary, bgcolor: `${colors.primary}08` },
-              }}
-            >
-              Neues Schema
-            </Button>
-          </Box>
-
-          {isEditing && (
-            <Box
-              sx={{
-                flex: 1,
-                minWidth: 0,
-                p: 1,
-                borderRadius: 0.8,
-                border: `1px solid ${colors.border}`,
-                bgcolor: colors.cardBg,
-              }}
-            >
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: colors.textPrimary }}>
-                  Schema bearbeiten
-                </Typography>
+              {!isEditing && selectedSchema && !selectedSchema.isActive && (
                 <Button
-                  size="small"
-                  onClick={() => setShowPreview(!showPreview)}
-                  startIcon={
-                    showPreview ? (
-                      <VisibilityOffIcon sx={{ fontSize: 12 }} />
-                    ) : (
-                      <VisibilityIcon sx={{ fontSize: 12 }} />
-                    )
-                  }
-                  sx={{ ...compactBtnSx, color: colors.accent1 }}
+                  variant="contained"
+                  startIcon={<AssignIcon sx={{ fontSize: 16 }} />}
+                  onClick={() => void handleAssignSchema(selectedSchema)}
+                  disabled={loading}
+                  fullWidth
+                  sx={{
+                    mt: 1.5,
+                    borderRadius: 2,
+                    py: 1.1,
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    background: `linear-gradient(135deg, ${colors.success} 0%, ${colors.primary} 100%)`,
+                    '&:hover': {
+                      background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.success} 100%)`,
+                    },
+                  }}
                 >
-                  Vorschau
+                  {loading
+                    ? 'Wird festgelegt…'
+                    : `„${selectedSchema.name}“ für ${groupName} festlegen`}
+                </Button>
+              )}
+              
+              <Button
+                variant="contained"
+                startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+                onClick={() => {
+                  setShowCreateModal(true);
+                }}
+                fullWidth
+                sx={{ 
+                  mt: 2,
+                  borderRadius: 2,
+                  py: 1,
+                  px: 2,
+                  fontSize: '0.8rem',
+                  height: '36px',
+                  whiteSpace: 'nowrap', // Kein Zeilenumbruch
+                  background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
+                  '&:hover': { 
+                    background: `linear-gradient(135deg, ${colors.accent1} 0%, ${colors.primary} 100%)`,
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                  }
+                }}
+              >
+                Neues Schema erstellen
+              </Button>
+            </Paper>
+          </Grid>
+
+          {/* Schema Editor Section - Nur beim Bearbeiten */}
+          {isEditing && (
+            <Grid item xs={12} md={8}>
+              <Paper elevation={0} sx={{ 
+                p: 2, 
+                borderRadius: 2,
+                border: `2px solid ${colors.border}`,
+                background: colors.cardBg
+              }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6" sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1,
+                    fontSize: '0.9rem',
+                    fontWeight: 'bold',
+                    color: colors.textPrimary
+                  }}>
+                    <AssessmentIcon sx={{ fontSize: 18, color: colors.primary }} />
+                    Schema bearbeiten
+                  </Typography>
+                <Button
+                  variant="outlined"
+                  startIcon={showPreview ? <VisibilityOffIcon sx={{ fontSize: 16 }} /> : <VisibilityIcon sx={{ fontSize: 16 }} />}
+                  onClick={() => setShowPreview(!showPreview)}
+                  sx={{ 
+                    borderRadius: 2,
+                    py: 0.5,
+                    px: 1.5,
+                    fontSize: '0.7rem',
+                    height: '32px',
+                    borderColor: colors.primary,
+                    color: colors.primary,
+                    '&:hover': { 
+                      borderColor: colors.accent1,
+                      bgcolor: colors.hover
+                    }
+                  }}
+                >
+                  {showPreview ? 'Vorschau ausblenden' : 'Vorschau anzeigen'}
                 </Button>
               </Box>
-
+              
               <TextField
                 fullWidth
-                size="small"
-                label="Name"
+                label="Name des Bewertungsschemas"
                 value={schemaName}
                 onChange={(e) => setSchemaName(e.target.value)}
-                sx={{
-                  mb: 1,
-                  '& .MuiInputLabel-root': { fontSize: '0.7rem' },
-                  '& .MuiOutlinedInput-root': { fontSize: '0.7rem', height: 32 },
+                placeholder="z.B. Mathematik Bewertung 2024"
+                variant="outlined"
+                size="small"
+                sx={{ 
+                  mb: 2,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                    fontSize: '0.8rem',
+                    minHeight: '40px',
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: colors.primary
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: colors.primary,
+                      borderWidth: 2
+                    }
+                  },
+                  '& .MuiInputLabel-root': {
+                    fontSize: '0.8rem',
+                    color: colors.textSecondary
+                  }
                 }}
               />
-
-              <FormControl fullWidth size="small" sx={{ mb: 1 }}>
-                <InputLabel sx={{ fontSize: '0.7rem' }}>Notensystem</InputLabel>
+              
+              <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                <InputLabel sx={{ fontSize: '0.8rem', color: colors.textSecondary }}>Notensystem</InputLabel>
                 <Select
                   value={gradingSystem}
-                  label="Notensystem"
                   onChange={(e) => setGradingSystem(e.target.value)}
-                  sx={{ fontSize: '0.7rem', height: 32 }}
+                  label="Notensystem"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                      fontSize: '0.8rem',
+                      minHeight: '40px',
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: colors.primary
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: colors.primary,
+                        borderWidth: 2
+                      }
+                    },
+                    '& .MuiInputLabel-root': {
+                      fontSize: '0.8rem',
+                      color: colors.textSecondary
+                    }
+                  }}
                 >
-                  <MenuItem value="GERMAN" sx={{ fontSize: '0.7rem' }}>
-                    Noten 1–6
+                  <MenuItem value="GERMAN" sx={{ fontSize: '0.8rem' }}>
+                    Deutsches Schulnotensystem (1-6)
                   </MenuItem>
-                  <MenuItem value="MSS" sx={{ fontSize: '0.7rem' }}>
-                    MSS 0–15
+                  <MenuItem value="MSS" sx={{ fontSize: '0.8rem' }}>
+                    MSS-Punktesystem (0-15)
                   </MenuItem>
                 </Select>
               </FormControl>
-
+              
               {renderPreview()}
-
+              
               {error && (
-                <Alert severity="error" sx={{ mb: 1, py: 0, fontSize: '0.6rem' }}>
+                <Alert severity="error" sx={{ 
+                  mb: 2, 
+                  borderRadius: 2, 
+                  fontSize: '0.8rem',
+                  border: `1px solid ${colors.error}`,
+                  '& .MuiAlert-icon': {
+                    color: colors.error
+                  }
+                }}>
                   {error}
                 </Alert>
               )}
-
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.6 }}>
-                <Typography sx={{ fontSize: '0.65rem', fontWeight: 600, color: colors.textPrimary }}>
-                  Kategorien
+              
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="h6" gutterBottom sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1,
+                  fontSize: '0.9rem',
+                  fontWeight: 'bold',
+                  color: colors.textPrimary,
+                  mb: 1
+                }}>
+                  <CategoryIcon sx={{ fontSize: 18, color: colors.primary }} />
+                  Bewertungskategorien
                 </Typography>
+                <Typography variant="body2" color="textSecondary" sx={{ mb: 1.5, fontSize: '0.75rem', lineHeight: 1.4 }}>
+                  Erstellen Sie Kategorien und Unterkategorien mit Gewichtungen. 
+                  Die Hauptkategorien müssen zusammen 100% ergeben. Unterkategorien können beliebige Gewichtungen haben.
+                </Typography>
+                
                 <Button
-                  size="small"
                   variant="contained"
-                  startIcon={<AddIcon sx={{ fontSize: 12 }} />}
+                  startIcon={<AddIcon sx={{ fontSize: 16 }} />}
                   onClick={() => addGradeNode()}
-                  sx={{
-                    ...compactBtnSx,
-                    bgcolor: colors.primary,
-                    '&:hover': { bgcolor: '#256b29' },
+                  sx={{ 
+                    mb: 1.5,
+                    borderRadius: 2,
+                    py: 0.8,
+                    px: 2,
+                    fontSize: '0.8rem',
+                    height: '36px',
+                    background: `linear-gradient(135deg, ${colors.secondary} 0%, ${colors.accent2} 100%)`,
+                    '&:hover': { 
+                      background: `linear-gradient(135deg, ${colors.accent2} 0%, ${colors.secondary} 100%)`,
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                    }
                   }}
                 >
-                  Hauptkategorie
+                  Hauptkategorie hinzufügen
                 </Button>
               </Box>
-              <Typography sx={{ fontSize: '0.55rem', color: colors.textSecondary, mb: 0.8 }}>
-                Hauptkategorien zusammen 100 %.
-              </Typography>
-
-              <Box sx={{ maxHeight: '36vh', overflowY: 'auto', pr: 0.3 }}>
-                {gradeNodes.map((node) => renderCategoryCard(node))}
+              
+              <Box sx={{ maxHeight: '50vh', overflowY: 'auto', pr: 1 }}>
+                {gradeNodes.map(node => renderCategoryCard(node))}
               </Box>
-
+              
               {gradeNodes.length > 0 && (
-                <Box sx={{ mt: 1 }}>
-                  <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, color: colors.textPrimary, mb: 0.3 }}>
-                    Summe: {calculateWeightSum(gradeNodes).toFixed(1)}%
+                <Paper elevation={0} sx={{ 
+                  mt: 2, 
+                  p: 2, 
+                  bgcolor: colors.hover, 
+                  borderRadius: 2,
+                  border: `1px solid ${colors.border}`
+                }}>
+                  <Typography variant="h6" gutterBottom sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1,
+                    fontSize: '0.9rem',
+                    fontWeight: 'bold',
+                    color: colors.textPrimary,
+                    mb: 1
+                  }}>
+                    <InfoIcon sx={{ fontSize: 18, color: colors.primary }} />
+                    Gesamtsumme: {calculateWeightSum(gradeNodes).toFixed(1)}%
                   </Typography>
                   <LinearProgress
                     variant="determinate"
                     value={Math.min(calculateWeightSum(gradeNodes), 100)}
                     sx={determinateLinearProgressSx(
-                      Math.abs(calculateWeightSum(gradeNodes) - 100) < 0.01 ? colors.success : colors.error,
-                      { height: 5, barGlow: 'transparent' },
+                      Math.abs(calculateWeightSum(gradeNodes) - 100) < 0.01
+                        ? `linear-gradient(90deg, ${colors.success}99 0%, ${colors.success} 100%)`
+                        : `linear-gradient(90deg, ${colors.error}99 0%, ${colors.error} 100%)`,
+                      {
+                        height: 10,
+                        barGlow:
+                          Math.abs(calculateWeightSum(gradeNodes) - 100) < 0.01
+                            ? `${colors.success}55`
+                            : `${colors.error}55`,
+                      }
                     )}
                   />
-                </Box>
+                  {Math.abs(calculateWeightSum(gradeNodes) - 100) > 0.01 && (
+                    <Typography color="error" variant="body2" sx={{ mt: 1, fontWeight: 'bold', fontSize: '0.75rem' }}>
+                      Die Gesamtsumme muss 100% betragen.
+                    </Typography>
+                  )}
+                </Paper>
               )}
-            </Box>
+              </Paper>
+            </Grid>
           )}
-        </Box>
+        </Grid>
       </DialogContent>
-
-      <DialogActions
-        sx={{
-          px: 1.5,
-          py: 1,
-          gap: 0.6,
+      
+      {isEditing ? (
+        <DialogActions sx={{ 
+          p: 2, 
+          background: colors.background,
           borderTop: `1px solid ${colors.border}`,
-          background: `linear-gradient(135deg, ${colors.primary}05 0%, ${colors.accent1}03 100%)`,
-        }}
-      >
-        {isEditing ? (
-          <>
+          borderRadius: '0 0 8px 8px'
+        }}>
+          <Button 
+            onClick={() => {
+              resetForm();
+            }}
+            variant="outlined"
+            sx={{ 
+              borderRadius: 2, 
+              px: 2,
+              py: 1,
+              fontSize: '0.8rem',
+              height: '36px',
+              borderColor: colors.textSecondary,
+              color: colors.textSecondary,
+              '&:hover': {
+                borderColor: colors.textPrimary,
+                bgcolor: colors.hover
+              }
+            }}
+          >
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={handleSave} 
+            variant="contained" 
+            disabled={loading || !validateSchema(gradeNodes)}
+            startIcon={loading ? undefined : <SaveIcon sx={{ fontSize: 16 }} />}
+            sx={{ 
+              borderRadius: 2, 
+              px: 2,
+              py: 1,
+              fontSize: '0.8rem',
+              height: '36px',
+              fontWeight: 'bold',
+              background: `linear-gradient(135deg, ${colors.success} 0%, ${colors.primary} 100%)`,
+              '&:hover': { 
+                background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.success} 100%)`,
+                transform: 'translateY(-1px)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+              },
+              '&:disabled': {
+                background: colors.textSecondary
+              }
+            }}
+          >
+            {loading ? 'Speichern...' : 'Aktualisieren'}
+          </Button>
+        </DialogActions>
+      ) : (
+        <DialogActions sx={{ 
+          p: 2, 
+          background: colors.background,
+          borderTop: `1px solid ${colors.border}`,
+          borderRadius: '0 0 8px 8px',
+          gap: 1,
+          flexWrap: 'wrap',
+        }}>
+          <Button 
+            onClick={onClose}
+            variant="outlined"
+            sx={{ 
+              borderRadius: 2, 
+              px: 2,
+              py: 1,
+              fontSize: '0.8rem',
+              height: '36px',
+              borderColor: colors.textSecondary,
+              color: colors.textSecondary,
+              '&:hover': {
+                borderColor: colors.textPrimary,
+                bgcolor: colors.hover
+              }
+            }}
+          >
+            Schließen
+          </Button>
+          {selectedSchema && !selectedSchema.isActive && !isEditing && (
             <Button
-              onClick={() => resetForm()}
-              variant="outlined"
-              sx={{
-                ...compactBtnSx,
-                borderColor: colors.border,
-                color: colors.textSecondary,
-              }}
-            >
-              Abbrechen
-            </Button>
-            <Button
-              onClick={handleSave}
+              onClick={() => void handleAssignSchema(selectedSchema)}
               variant="contained"
-              disabled={loading || !validateSchema(gradeNodes)}
-              startIcon={loading ? undefined : <SaveIcon sx={{ fontSize: 12 }} />}
+              disabled={loading}
+              startIcon={<AssignIcon sx={{ fontSize: 16 }} />}
               sx={{
-                ...compactBtnSx,
-                bgcolor: colors.primary,
-                '&:hover': { bgcolor: '#256b29' },
-                '&:disabled': { bgcolor: colors.textSecondary },
+                borderRadius: 2,
+                px: 2,
+                py: 1,
+                fontSize: '0.8rem',
+                height: '36px',
+                fontWeight: 'bold',
+                background: `linear-gradient(135deg, ${colors.success} 0%, ${colors.primary} 100%)`,
+                '&:hover': {
+                  background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.success} 100%)`,
+                },
               }}
             >
-              {loading ? 'Speichern…' : 'Aktualisieren'}
+              {loading ? 'Wird festgelegt…' : `Für ${groupName} festlegen`}
             </Button>
-          </>
-        ) : (
-          <>
-            <Button
-              onClick={onClose}
-              variant="outlined"
-              sx={{
-                ...compactBtnSx,
-                borderColor: colors.border,
-                color: colors.textSecondary,
-              }}
-            >
-              Schließen
-            </Button>
-            {selectedSchema && !selectedSchema.isActive && (
-              <Button
-                onClick={() => void handleAssignSchema(selectedSchema)}
-                variant="contained"
-                disabled={loading}
-                startIcon={<AssignIcon sx={{ fontSize: 12 }} />}
-                sx={{
-                  ...compactBtnSx,
-                  bgcolor: colors.primary,
-                  '&:hover': { bgcolor: '#256b29' },
-                }}
-              >
-                {loading ? '…' : `Für ${groupName} festlegen`}
-              </Button>
-            )}
-          </>
-        )}
-      </DialogActions>
+          )}
+        </DialogActions>
+      )}
     </Dialog>
 
-    <Dialog
-      open={showCreateModal}
+    {/* Separates Modal für "Neues Schema erstellen" */}
+    <Dialog 
+      open={showCreateModal} 
       onClose={() => {
         setShowCreateModal(false);
         resetForm();
       }}
-      maxWidth={false}
-      fullWidth={false}
+      maxWidth="lg"
+      fullWidth
       sx={{
-        zIndex: 1400,
-        '& .MuiDialog-paper': {
-          width: 'min(520px, 94vw)',
-          maxWidth: 520,
-          maxHeight: '86vh',
-          borderRadius: 1.5,
-          bgcolor: colors.background,
-        },
+        zIndex: 1400, // Höherer z-index als das Hauptmodal (1300)
+        '& .MuiBackdrop-root': {
+          backgroundColor: 'rgba(0, 0, 0, 0.5)'
+        }
+      }}
+      PaperProps={{
+        sx: {
+          borderRadius: 2,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+          background: colors.background,
+          maxHeight: '85vh',
+          height: 'auto',
+          width: '80vw',
+          maxWidth: '900px',
+          margin: '8vh auto 0 auto' // Zentriert mit Margin oben
+        }
       }}
     >
-      <DialogTitle
-        sx={{
-          py: 1,
-          px: 1.5,
-          background: `linear-gradient(135deg, ${colors.primary}15 0%, ${colors.accent1}10 100%)`,
-          borderBottom: `2px solid ${colors.primary}30`,
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
-          <Box
-            sx={{
-              p: 0.3,
-              borderRadius: '50%',
-              bgcolor: colors.primary,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <AssessmentIcon sx={{ color: 'white', fontSize: 14 }} />
-          </Box>
-          <Typography sx={{ fontWeight: 700, fontSize: '0.75rem', color: colors.textPrimary }}>
-            Neues Schema – {groupName}
+      <DialogTitle sx={{ 
+        pb: 1, 
+        background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
+        color: 'white',
+        borderRadius: '8px 8px 0 0'
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <AssessmentIcon sx={{ color: 'white', fontSize: 20 }} />
+          <Typography variant="h6" sx={{ 
+            fontWeight: 600, 
+            fontSize: '1rem',
+            color: 'white'
+          }}>
+            Neues Bewertungsschema erstellen - {groupName}
           </Typography>
         </Box>
       </DialogTitle>
-
-      <DialogContent sx={{ p: 1.5, pt: 1.5 }}>
+      
+      <DialogContent sx={{ 
+        p: 3, 
+        pt: 6, // Viel mehr Padding oben
+        background: colors.background,
+        overflow: 'auto',
+        maxHeight: 'calc(85vh - 120px)'
+      }}>
+        <Box sx={{ mt: 4, mb: 2 }}> {/* Zusätzlicher Container mit viel Abstand */}
         <TextField
           fullWidth
-          size="small"
-          label="Name"
+          label="Name des Bewertungsschemas"
           value={schemaName}
           onChange={(e) => setSchemaName(e.target.value)}
-          placeholder="z.B. Unter- und Mittelstufe"
-          sx={{
-            mb: 1,
-            '& .MuiInputLabel-root': { fontSize: '0.7rem' },
-            '& .MuiOutlinedInput-root': { fontSize: '0.7rem', height: 32 },
+          placeholder="z.B. Mathematik Bewertung 2024"
+          variant="outlined"
+          size="small"
+          sx={{ 
+            mb: 2,
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 2,
+              fontSize: '0.8rem',
+              minHeight: '40px',
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: colors.primary
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: colors.primary,
+                borderWidth: 2
+              }
+            },
+            '& .MuiInputLabel-root': {
+              fontSize: '0.8rem',
+              color: colors.textSecondary
+            }
           }}
         />
-
-        <FormControl fullWidth size="small" sx={{ mb: 1 }}>
-          <InputLabel sx={{ fontSize: '0.7rem' }}>Notensystem</InputLabel>
+        </Box>
+        
+        <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+          <InputLabel sx={{ fontSize: '0.8rem', color: colors.textSecondary }}>Notensystem</InputLabel>
           <Select
             value={gradingSystem}
-            label="Notensystem"
             onChange={(e) => setGradingSystem(e.target.value)}
-            sx={{ fontSize: '0.7rem', height: 32 }}
+            label="Notensystem"
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+                fontSize: '0.8rem',
+                minHeight: '40px',
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: colors.primary
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: colors.primary,
+                  borderWidth: 2
+                }
+              },
+              '& .MuiInputLabel-root': {
+                fontSize: '0.8rem',
+                color: colors.textSecondary
+              }
+            }}
           >
-            <MenuItem value="GERMAN" sx={{ fontSize: '0.7rem' }}>
-              Noten 1–6
+            <MenuItem value="GERMAN" sx={{ fontSize: '0.8rem' }}>
+              Deutsches Schulnotensystem (1-6)
             </MenuItem>
-            <MenuItem value="MSS" sx={{ fontSize: '0.7rem' }}>
-              MSS 0–15
+            <MenuItem value="MSS" sx={{ fontSize: '0.8rem' }}>
+              MSS-Punktesystem (0-15)
             </MenuItem>
           </Select>
         </FormControl>
-
+        
         {renderPreview()}
-
+        
         {error && (
-          <Alert severity="error" sx={{ mb: 1, py: 0, fontSize: '0.6rem' }}>
+          <Alert severity="error" sx={{ 
+            mb: 2, 
+            borderRadius: 2, 
+            fontSize: '0.8rem',
+            border: `1px solid ${colors.error}`,
+            '& .MuiAlert-icon': {
+              color: colors.error
+            }
+          }}>
             {error}
           </Alert>
         )}
-
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.6 }}>
-          <Typography sx={{ fontSize: '0.65rem', fontWeight: 600, color: colors.textPrimary }}>
-            Kategorien
+        
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="h6" gutterBottom sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1,
+            fontSize: '0.9rem',
+            fontWeight: 'bold',
+            color: colors.textPrimary,
+            mb: 1
+          }}>
+            <CategoryIcon sx={{ fontSize: 18, color: colors.primary }} />
+            Bewertungskategorien
           </Typography>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 1.5, fontSize: '0.75rem', lineHeight: 1.4 }}>
+            Erstellen Sie Kategorien und Unterkategorien mit Gewichtungen. 
+            Die Hauptkategorien müssen zusammen 100% ergeben. Unterkategorien können beliebige Gewichtungen haben.
+          </Typography>
+          
           <Button
-            size="small"
             variant="contained"
-            startIcon={<AddIcon sx={{ fontSize: 12 }} />}
+            startIcon={<AddIcon sx={{ fontSize: 16 }} />}
             onClick={() => addGradeNode()}
-            sx={{
-              ...compactBtnSx,
-              bgcolor: colors.primary,
-              '&:hover': { bgcolor: '#256b29' },
+            sx={{ 
+              mb: 1.5,
+              borderRadius: 2,
+              py: 0.8,
+              px: 2,
+              fontSize: '0.8rem',
+              height: '36px',
+              background: `linear-gradient(135deg, ${colors.secondary} 0%, ${colors.accent2} 100%)`,
+              '&:hover': { 
+                background: `linear-gradient(135deg, ${colors.accent2} 0%, ${colors.secondary} 100%)`,
+                transform: 'translateY(-1px)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+              }
             }}
           >
-            Hauptkategorie
+            Hauptkategorie hinzufügen
           </Button>
         </Box>
-        <Typography sx={{ fontSize: '0.55rem', color: colors.textSecondary, mb: 0.8 }}>
-          Hauptkategorien zusammen 100 %. Unterkategorien frei.
-        </Typography>
-
-        <Box sx={{ maxHeight: '38vh', overflowY: 'auto', pr: 0.3 }}>
-          {gradeNodes.map((node) => renderCategoryCard(node))}
+        
+        <Box sx={{ maxHeight: '35vh', overflowY: 'auto', pr: 1 }}>
+          {gradeNodes.map(node => renderCategoryCard(node))}
         </Box>
-
+        
         {gradeNodes.length > 0 && (
-          <Box sx={{ mt: 1 }}>
-            <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, color: colors.textPrimary, mb: 0.3 }}>
-              Summe: {calculateWeightSum(gradeNodes).toFixed(1)}%
+          <Paper elevation={0} sx={{ 
+            mt: 2, 
+            p: 2, 
+            bgcolor: colors.hover, 
+            borderRadius: 2,
+            border: `1px solid ${colors.border}`
+          }}>
+            <Typography variant="h6" gutterBottom sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 1,
+              fontSize: '0.9rem',
+              fontWeight: 'bold',
+              color: colors.textPrimary,
+              mb: 1
+            }}>
+              <InfoIcon sx={{ fontSize: 18, color: colors.primary }} />
+              Gesamtsumme: {calculateWeightSum(gradeNodes).toFixed(1)}%
             </Typography>
             <LinearProgress
               variant="determinate"
               value={Math.min(calculateWeightSum(gradeNodes), 100)}
               sx={determinateLinearProgressSx(
-                Math.abs(calculateWeightSum(gradeNodes) - 100) < 0.01 ? colors.success : colors.error,
-                { height: 5, barGlow: 'transparent' },
+                calculateWeightSum(gradeNodes) === 100
+                  ? `linear-gradient(90deg, ${colors.success} 0%, ${colors.primary} 100%)`
+                  : `linear-gradient(90deg, ${colors.warning} 0%, ${colors.error} 100%)`,
+                {
+                  height: 10,
+                  barGlow:
+                    calculateWeightSum(gradeNodes) === 100
+                      ? `${colors.success}55`
+                      : `${colors.error}55`,
+                }
               )}
             />
-          </Box>
+            <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block', fontSize: '0.7rem' }}>
+              {calculateWeightSum(gradeNodes) === 100 
+                ? '✅ Die Gewichtungen sind korrekt (100%)'
+                : `⚠️ Die Summe sollte 100% sein (aktuell: ${calculateWeightSum(gradeNodes).toFixed(1)}%)`}
+            </Typography>
+          </Paper>
         )}
       </DialogContent>
-
-      <DialogActions
-        sx={{
-          px: 1.5,
-          py: 1,
-          gap: 0.6,
-          borderTop: `1px solid ${colors.border}`,
-          background: `linear-gradient(135deg, ${colors.primary}05 0%, ${colors.accent1}03 100%)`,
-        }}
-      >
-        <Button
+      
+      <DialogActions sx={{ p: 2, background: colors.background, borderTop: `1px solid ${colors.border}` }}>
+        <Button 
           onClick={() => {
             setShowCreateModal(false);
             resetForm();
-          }}
+          }} 
           variant="outlined"
-          sx={{
-            ...compactBtnSx,
-            borderColor: colors.border,
-            color: colors.textSecondary,
+          sx={{ 
+            borderRadius: 2,
+            px: 2,
+            py: 1,
+            fontSize: '0.8rem',
+            height: '36px',
+            borderColor: colors.textPrimary,
+            color: colors.textPrimary,
+            '&:hover': {
+              borderColor: colors.textPrimary,
+              bgcolor: colors.hover
+            }
           }}
         >
           Abbrechen
         </Button>
-        <Button
+        <Button 
           onClick={async () => {
             await handleSave();
             if (!error) {
@@ -1339,18 +1786,29 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
               resetForm();
               fetchExistingSchemas();
             }
-          }}
-          variant="contained"
+          }} 
+          variant="contained" 
           disabled={loading || !validateSchema(gradeNodes)}
-          startIcon={loading ? undefined : <SaveIcon sx={{ fontSize: 12 }} />}
-          sx={{
-            ...compactBtnSx,
-            bgcolor: colors.primary,
-            '&:hover': { bgcolor: '#256b29' },
-            '&:disabled': { bgcolor: colors.textSecondary },
+          startIcon={loading ? undefined : <SaveIcon sx={{ fontSize: 16 }} />}
+          sx={{ 
+            borderRadius: 2, 
+            px: 2,
+            py: 1,
+            fontSize: '0.8rem',
+            height: '36px',
+            fontWeight: 'bold',
+            background: `linear-gradient(135deg, ${colors.success} 0%, ${colors.primary} 100%)`,
+            '&:hover': { 
+              background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.success} 100%)`,
+              transform: 'translateY(-1px)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+            },
+            '&:disabled': {
+              background: colors.textSecondary
+            }
           }}
         >
-          {loading ? 'Speichern…' : 'Speichern'}
+          {loading ? 'Speichern...' : 'Speichern'}
         </Button>
       </DialogActions>
     </Dialog>
@@ -1358,4 +1816,4 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
   );
 };
 
-export default GradingSchemaModal;
+export default GradingSchemaModal; 

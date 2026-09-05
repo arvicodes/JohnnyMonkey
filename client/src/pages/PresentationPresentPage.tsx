@@ -58,7 +58,7 @@ import { tryHandleLessonEntryTicketLinkClick, isLessonEntryTicketSlideHref } fro
 import { slideSectionName } from '../lib/presentationSections';
 import { withLessonSectionPath } from '../lib/entryTicketCustomSets';
 import { markLessonPlayed } from '../lib/playedLessons';
-import { savePresentationNamedVersion, exportPresentationPdfVersions } from '../lib/presentationExport';
+import { savePresentationNamedVersion, exportPresentationPdfVersions, exportPresentationStandPdf } from '../lib/presentationExport';
 import {
   applyPlayVariantsToDeck,
   createEmptyPlayVariants,
@@ -1098,7 +1098,11 @@ const PresentationPresentPage: React.FC = () => {
       });
       await saveJsonFile(lessonPath, DECK_FILENAME, next);
       setDeck((d) => (d ? { ...d, nowSlideId: currentSlide.id } : d));
-      setSnackbar('NOW gesetzt — SuS sehen Folien und Material bis hier');
+      setSnackbar('NOW gesetzt — SuS-PDF wird erzeugt…');
+      const ann = annotationsRef.current ?? createEmptyAnnotations(lessonPath);
+      void exportPresentationStandPdf(lessonPath, next, ann)
+        .then(() => setSnackbar('NOW gesetzt — SuS sehen Folien und PDF bis hier'))
+        .catch(() => setSnackbar('NOW gesetzt — Stand-PDF konnte nicht erzeugt werden'));
     } catch (e) {
       setSnackbar(e instanceof Error ? e.message : 'NOW konnte nicht gesetzt werden');
     }
