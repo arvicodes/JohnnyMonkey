@@ -90,6 +90,7 @@ export default function StudentLessonMaterialsPanel({
   lessonName,
   lessonPath,
   files,
+  examFiles: examFilesProp,
   sharedPaths,
   groupId,
   showLeinwand,
@@ -99,6 +100,8 @@ export default function StudentLessonMaterialsPanel({
   /** Stundenordner-Pfad — für ToDo/Hausaufgaben-Abgabe */
   lessonPath: string;
   files: LessonFile[];
+  /** Prüfungs-HTML aus dem Roh-Stundenordner (nicht durch Materialfilter entfernt) */
+  examFiles?: LessonFile[];
   sharedPaths: string[];
   /** Lerngruppe — für Leinwand-Vollansicht */
   groupId?: string;
@@ -164,9 +167,13 @@ export default function StudentLessonMaterialsPanel({
     let cancelled = false;
     void (async () => {
       try {
-        const examFiles = files.filter(
+        const fromProp = (examFilesProp || []).filter(
           (f) => f.type === 'file' && isLessonCorrectionFileName(f.name || ''),
         );
+        const fromFiles = files.filter(
+          (f) => f.type === 'file' && isLessonCorrectionFileName(f.name || ''),
+        );
+        const examFiles = fromProp.length > 0 ? fromProp : fromFiles;
         const fileNames = examFiles.map((f) => f.name).join(',');
         const qs = new URLSearchParams({ lessonPath });
         if (fileNames) qs.set('fileNames', fileNames);
@@ -180,18 +187,27 @@ export default function StudentLessonMaterialsPanel({
 
         const enriched: ReleasedExamResult[] = [];
         for (const row of rows) {
+          const baseName =
+            (row.fileName || '').trim() ||
+            (row.kaFilePath || '').replace(/\\/g, '/').split('/').pop() ||
+            '';
           const matchFile =
-            examFiles.find((f) => f.name.toLowerCase() === (row.fileName || '').toLowerCase()) ||
+            examFiles.find((f) => f.name.toLowerCase() === baseName.toLowerCase()) ||
             examFiles.find((f) => {
               const base = (row.kaFilePath || '').replace(/\\/g, '/').split('/').pop() || '';
               return f.name.toLowerCase() === base.toLowerCase();
             });
+          const htmlPath =
+            matchFile?.path ||
+            (baseName
+              ? `${lessonPath.replace(/\/+$/, '')}/${baseName}`.replace(/\\/g, '/')
+              : '');
 
           let maxPoints = 0;
-          if (matchFile?.path) {
+          if (htmlPath) {
             try {
               const htmlRes = await fetch(
-                `/api/file-system-paths/read-html?filePath=${encodeURIComponent(matchFile.path)}`,
+                `/api/file-system-paths/read-html?filePath=${encodeURIComponent(htmlPath)}`,
               );
               if (htmlRes.ok) {
                 const html = await htmlRes.text();
@@ -215,7 +231,7 @@ export default function StudentLessonMaterialsPanel({
             ...row,
             maxPoints,
             gradeLabel,
-            filePath: matchFile?.path,
+            filePath: htmlPath || matchFile?.path,
           });
         }
 
@@ -227,7 +243,7 @@ export default function StudentLessonMaterialsPanel({
     return () => {
       cancelled = true;
     };
-  }, [lessonPath, files]);
+  }, [lessonPath, files, examFilesProp]);
 
   const materials = useMemo(() => {
     const fromTree = files.filter(

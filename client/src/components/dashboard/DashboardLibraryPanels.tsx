@@ -2,12 +2,12 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Box,
   Button,
-  Card,
-  CardContent,
   CircularProgress,
+  IconButton,
   List,
   ListItemButton,
   ListItemText,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import AssignmentIcon from '@mui/icons-material/Assignment';
@@ -15,6 +15,7 @@ import QuizIcon from '@mui/icons-material/Quiz';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import EditIcon from '@mui/icons-material/Edit';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import {
   examOpenUrl,
   exerciseEditorUrl,
@@ -36,62 +37,65 @@ function LibraryShell({
   colors,
   title,
   icon,
-  hint,
   loading,
   empty,
+  emptyHint,
   children,
   onReload,
 }: {
   colors: Colors;
   title: string;
   icon: React.ReactNode;
-  hint: string;
   loading: boolean;
   empty: boolean;
+  emptyHint: string;
   children: React.ReactNode;
   onReload: () => void;
 }) {
   return (
-    <Box sx={{ p: 1.4 }}>
-      <Card
-        sx={{
-          borderRadius: 2.8,
-          boxShadow: '0 2.8px 8.4px rgba(0,0,0,0.07)',
-          bgcolor: colors.cardBg,
-          mb: 1.5,
-          border: `1px solid ${colors.border}`,
-        }}
-      >
-        <CardContent sx={{ pb: '12px !important' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-            <Typography
-              variant="body2"
-              sx={{
-                fontSize: '0.78rem',
-                fontWeight: 600,
-                color: colors.primary,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 0.4,
-              }}
-            >
-              {icon}
-              {title}
-            </Typography>
-            <Button size="small" onClick={onReload} disabled={loading} sx={{ fontSize: '0.65rem', textTransform: 'none' }}>
-              Aktualisieren
-            </Button>
-          </Box>
-          <Typography sx={{ mt: 0.75, fontSize: '0.68rem', color: 'text.secondary' }}>{hint}</Typography>
-        </CardContent>
-      </Card>
+    <Box sx={{ p: 1.4, position: 'relative' }}>
+      <Tooltip title="Aktualisieren">
+        <span>
+          <IconButton
+            size="small"
+            aria-label="Aktualisieren"
+            onClick={onReload}
+            disabled={loading}
+            sx={{
+              position: 'absolute',
+              top: 6,
+              right: 6,
+              zIndex: 2,
+              color: colors.primary,
+              bgcolor: 'rgba(255,255,255,0.92)',
+              border: `1px solid ${colors.border}`,
+              width: 30,
+              height: 30,
+              '&:hover': { bgcolor: '#fff' },
+            }}
+          >
+            <RefreshIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </span>
+      </Tooltip>
+
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1, pr: 4.5 }}>
+        <Box sx={{ color: colors.primary, display: 'flex' }}>{icon}</Box>
+        <Typography
+          variant="body2"
+          sx={{ fontSize: '0.82rem', fontWeight: 600, color: colors.primary }}
+        >
+          {title}
+        </Typography>
+      </Box>
+
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress size={28} />
         </Box>
       ) : empty ? (
         <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', px: 0.5 }}>
-          Noch nichts gefunden — unter Arbeits-Reihen bzw. zugeordneten Ordnern suchen.
+          {emptyHint}
         </Typography>
       ) : (
         children
@@ -123,22 +127,28 @@ export const DashboardExamsPanel: React.FC<{
     void load();
   }, [load]);
 
+  const emptyHint =
+    rootPaths.length === 0
+      ? 'Noch keine Arbeits-Reihe gewählt — im Tab „Reihen“ eine Reihe auswählen, dann erscheinen hier die Prüfungen.'
+      : 'Noch keine Prüfung gefunden unter den gewählten Reihen / zugeordneten Ordnern.';
+
   return (
     <LibraryShell
       colors={colors}
       title="Prüfungen"
-      icon={<AssignmentIcon sx={{ fontSize: 15 }} />}
-      hint="Vorhandene KA / KU / HÜ / QZ aus den Arbeits-Reihen und zugeordneten Ordnern"
+      icon={<AssignmentIcon sx={{ fontSize: 17 }} />}
       loading={loading}
       empty={!items.length}
+      emptyHint={emptyHint}
       onReload={() => void load()}
     >
-      <List dense disablePadding sx={{ bgcolor: colors.cardBg, borderRadius: 2, border: `1px solid ${colors.border}` }}>
+      <List
+        dense
+        disablePadding
+        sx={{ bgcolor: colors.cardBg, borderRadius: 2, border: `1px solid ${colors.border}` }}
+      >
         {items.map((item) => (
-          <ListItemButton
-            key={item.path}
-            sx={{ alignItems: 'flex-start', py: 1, gap: 0.5 }}
-          >
+          <ListItemButton key={item.path} sx={{ alignItems: 'flex-start', py: 1, gap: 0.5 }}>
             <ListItemText
               primary={item.name}
               secondary={item.lessonLabel}
@@ -193,17 +203,26 @@ export const DashboardInteractiveExercisesPanel: React.FC<{
     void load();
   }, [load]);
 
+  const emptyHint =
+    rootPaths.length === 0
+      ? 'Noch keine Arbeits-Reihe gewählt — im Tab „Reihen“ eine Reihe auswählen, dann erscheinen hier die Übungen.'
+      : 'Noch keine interaktive Übung gefunden unter den gewählten Reihen / zugeordneten Ordnern.';
+
   return (
     <LibraryShell
       colors={colors}
       title="Interaktive Übungen"
-      icon={<QuizIcon sx={{ fontSize: 15 }} />}
-      hint="Vorhandene Übungen aus den Präsentationen der Arbeits-Reihen und zugeordneten Ordner"
+      icon={<QuizIcon sx={{ fontSize: 17 }} />}
       loading={loading}
       empty={!items.length}
+      emptyHint={emptyHint}
       onReload={() => void load()}
     >
-      <List dense disablePadding sx={{ bgcolor: colors.cardBg, borderRadius: 2, border: `1px solid ${colors.border}` }}>
+      <List
+        dense
+        disablePadding
+        sx={{ bgcolor: colors.cardBg, borderRadius: 2, border: `1px solid ${colors.border}` }}
+      >
         {items.map((item) => (
           <ListItemButton
             key={`${item.lessonPath}:${item.slideId || item.slideIndex}`}

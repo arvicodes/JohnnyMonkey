@@ -4,10 +4,16 @@
  */
 
 import { isLessonCorrectionFileName } from './openLessonFolderFile';
-import { DECK_FILENAME, presentationEditorUrl, presentationPresentUrl } from './presentationDeck';
+import {
+  DECK_FILENAME,
+  presentationEditorUrl,
+  presentationPresentUrl,
+  sanitizeSlideExam,
+} from './presentationDeck';
 import {
   resolveInteractiveExercise,
 } from './presentationInteractiveExercise';
+import { parseReadApiChildren } from './wochenaufgabenFolder';
 
 export type LibraryExamItem = {
   name: string;
@@ -26,6 +32,14 @@ export type LibraryExerciseItem = {
 
 function normalizeFsPath(path: string): string {
   return (path || '').replace(/\\/g, '/').replace(/\/+$/, '').trim();
+}
+
+/** Pfade vergleichbar machen (git-intern ↔ J-M-Reihen). */
+function canonicalLibraryPath(path: string): string {
+  let p = normalizeFsPath(path);
+  if (p.startsWith('git-intern/')) p = `J-M-Reihen/${p.slice('git-intern/'.length)}`;
+  if (p.startsWith('/git-intern/')) p = `J-M-Reihen/${p.slice('/git-intern/'.length)}`;
+  return p;
 }
 
 function parentDir(path: string): string {
@@ -74,9 +88,13 @@ async function readTree(folderPath: string): Promise<FsNode[]> {
   );
   if (!res.ok) return [];
   const data = await res.json();
+  // API liefert { path, root: { children: [...] } } — nicht ein Array.
+  const fromHelper = parseReadApiChildren(data) as FsNode[];
+  if (fromHelper.length) return fromHelper;
   if (Array.isArray(data)) return data as FsNode[];
   if (Array.isArray(data?.children)) return data.children as FsNode[];
-  if (Array.isArray(data?.items)) return data.items as FsNode[];
+  if (Array.isArray(data?.root?.children)) return data.root.children as FsNode[];
+  if (data?.root && Array.isArray(data.root)) return data.root as FsNode[];
   return [];
 }
 
@@ -96,28 +114,72 @@ async function readJsonFile<T>(filePath: string): Promise<T | null> {
   }
 }
 
+function collectDeckPaths(rootPaths: string[], filesByRoot: Array<{ name: string; path: string }>[]): string[] {
+  const deckPaths: string[] = [];
+  for (const files of filesByRoot) {
+    for (const f of files) {
+      if (f.name === DECK_FILENAME) deckPaths.push(f.path);
+    }
+  }
+  // Falls Ordner selbst eine Stunde/Kap ist und Deck direkt liegt — bereits in flatten.
+  // Zusätzlich: bekannte Deck-Pfade unter Roots annehmen.
+  for (const root of rootPaths) {
+    const guess = `${normalizeFsPath(root)}/${DECK_FILENAME}`;
+    deckPaths.push(guess);
+  }
+  return [...new Set(deckPaths.map(normalizeFsPath))];
+}
+
 export async function scanLibraryExams(rootPaths: string[]): Promise<LibraryExamItem[]> {
   const roots = [...new Set(rootPaths.map(normalizeFsPath).filter(Boolean))];
-  const byPath = new Map<string, LibraryExamItem>();
+  const byKey = new Map<string, LibraryExamItem>();
+
+  const addExam = (name: string, path: string, lessonFolder?: string) => {
+    const fullPath = normalizeFsPath(path);
+    if (!fullPath || !name) return;
+    const folder = lessonFolder ? normalizeFsPath(lessonFolder) : parentDir(fullPath);
+    const key = canonicalLibraryPath(fullPath).toLowerCase();
+    if (byKey.has(key)) return;
+    byKey.set(key, {
+      name,
+      path: fullPath,
+      lessonFolder: folder,
+      lessonLabel: lessonLabelFromPath(folder),
+    });
+  };
+
+  const trees = await Promise.all(roots.map((root) => readTree(root)));
+  const filesByRoot = trees.map((t) => flattenFiles(t));
+
+  for (const files of filesByRoot) {
+    for (const f of files) {
+      if (!/\.(html|htm)$/i.test(f.name)) continue;
+      if (!isLessonCorrectionFileName(f.name)) continue;
+      addExam(f.name, f.path, parentDir(f.path));
+    }
+  }
+
+  // Prüfungen, die an Folien hängen (slideExam), auch ohne Dateibaum-Treffer
+  const deckPaths = collectDeckPaths(roots, filesByRoot);
   await Promise.all(
-    roots.map(async (root) => {
-      const files = flattenFiles(await readTree(root));
-      for (const f of files) {
-        if (!/\.(html|htm)$/i.test(f.name)) continue;
-        if (!isLessonCorrectionFileName(f.name)) continue;
-        const lessonFolder = parentDir(f.path);
-        byPath.set(f.path, {
-          name: f.name,
-          path: f.path,
-          lessonFolder,
-          lessonLabel: lessonLabelFromPath(lessonFolder),
-        });
+    deckPaths.map(async (deckPath) => {
+      const lessonPath = parentDir(deckPath);
+      const deck = await readJsonFile<{
+        slides?: Array<{ slideExam?: unknown }>;
+      }>(deckPath);
+      if (!deck?.slides?.length) return;
+      for (const slide of deck.slides) {
+        const exam = sanitizeSlideExam(slide.slideExam as Parameters<typeof sanitizeSlideExam>[0]);
+        if (!exam) continue;
+        addExam(exam.name, exam.path, lessonPath);
       }
     }),
   );
-  return [...byPath.values()].sort((a, b) =>
-    a.lessonLabel.localeCompare(b.lessonLabel, 'de', { sensitivity: 'base', numeric: true }) ||
-    a.name.localeCompare(b.name, 'de', { sensitivity: 'base' }),
+
+  return [...byKey.values()].sort(
+    (a, b) =>
+      a.lessonLabel.localeCompare(b.lessonLabel, 'de', { sensitivity: 'base', numeric: true }) ||
+      a.name.localeCompare(b.name, 'de', { sensitivity: 'base' }),
   );
 }
 
@@ -126,16 +188,10 @@ export async function scanLibraryInteractiveExercises(
 ): Promise<LibraryExerciseItem[]> {
   const roots = [...new Set(rootPaths.map(normalizeFsPath).filter(Boolean))];
   const out: LibraryExerciseItem[] = [];
-  const deckPaths: string[] = [];
-  await Promise.all(
-    roots.map(async (root) => {
-      const files = flattenFiles(await readTree(root));
-      for (const f of files) {
-        if (f.name === DECK_FILENAME) deckPaths.push(f.path);
-      }
-    }),
-  );
-  const uniqueDecks = [...new Set(deckPaths)];
+  const trees = await Promise.all(roots.map((root) => readTree(root)));
+  const filesByRoot = trees.map((t) => flattenFiles(t));
+  const uniqueDecks = collectDeckPaths(roots, filesByRoot);
+
   await Promise.all(
     uniqueDecks.map(async (deckPath) => {
       const lessonPath = parentDir(deckPath);
@@ -165,7 +221,17 @@ export async function scanLibraryInteractiveExercises(
       });
     }),
   );
-  return out.sort(
+
+  // Deduplizieren (gleiches Deck ggf. doppelt geraten)
+  const seen = new Set<string>();
+  const deduped = out.filter((item) => {
+    const key = `${canonicalLibraryPath(item.lessonPath)}:${item.slideId || item.slideIndex}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  return deduped.sort(
     (a, b) =>
       a.lessonLabel.localeCompare(b.lessonLabel, 'de', { sensitivity: 'base', numeric: true }) ||
       a.slideIndex - b.slideIndex,

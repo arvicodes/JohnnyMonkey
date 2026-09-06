@@ -95,7 +95,7 @@ import {
 } from '../lib/learningGroupAppearance';
 import type { ExcursionProtocolDashboardSession } from '../lib/excursionProtocolTypes';
 import type { AnnouncementDashboardSession } from '../lib/announcementTypes';
-import { openLessonFolderFile } from '../lib/openLessonFolderFile';
+import { openLessonFolderFile, isLessonCorrectionFileName } from '../lib/openLessonFolderFile';
 import { openStudentLessonMaterialFile } from '../lib/openStudentLessonMaterial';
 import { CollaborativeFlashcardSessionModal } from './CollaborativeFlashcardSessionModal';
 import StudentLessonMaterialsPanel from './StudentLessonMaterialsPanel';
@@ -3470,6 +3470,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         const lessonKey = `${groupId}::${item.path}`;
         const lessonExpanded = expandedStudentLessons[lessonKey] === true;
         const lessonFiles = filterWbFilesForStudentPreview(item.children || []);
+        const examFiles = (item.children || []).filter(
+          (f: any) => f?.type === 'file' && isLessonCorrectionFileName(f.name || ''),
+        );
         const groupShared = sharedFiles[groupId] || [];
         const toggleLesson = () => {
           const next = !lessonExpanded;
@@ -3480,6 +3483,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             lessonName={item.name}
             lessonPath={item.path}
             files={lessonFiles}
+            examFiles={examFiles}
             sharedPaths={groupShared}
             groupId={groupId}
             showLeinwand={isLessonSharedInputShared(groupId, item.path)}
