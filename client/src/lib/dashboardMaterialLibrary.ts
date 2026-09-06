@@ -20,6 +20,9 @@ export type LibraryExamItem = {
   path: string;
   lessonFolder: string;
   lessonLabel: string;
+  subject: string;
+  stufe: string;
+  reihe: string;
 };
 
 export type LibraryExerciseItem = {
@@ -28,6 +31,9 @@ export type LibraryExerciseItem = {
   lessonLabel: string;
   slideId: string;
   slideIndex: number;
+  subject: string;
+  stufe: string;
+  reihe: string;
 };
 
 function normalizeFsPath(path: string): string {
@@ -48,12 +54,24 @@ function parentDir(path: string): string {
   return i > 0 ? p.slice(0, i) : p;
 }
 
-function lessonLabelFromPath(path: string): string {
-  const parts = normalizeFsPath(path).split('/').filter(Boolean);
-  const last = parts[parts.length - 1] || path;
-  const kap = parts.find((p) => /^Kap\b/i.test(p) || /^Klasse\b/i.test(p));
-  if (kap && last !== kap) return `${kap} · ${last}`;
-  return last;
+/** Fach / Stufe / Reihe / Lektion aus Materialpfad. */
+export function libraryPathHierarchy(path: string): {
+  subject: string;
+  stufe: string;
+  reihe: string;
+  lessonLabel: string;
+} {
+  const parts = canonicalLibraryPath(path)
+    .replace(/^J-M-Reihen\//, '')
+    .split('/')
+    .filter(Boolean);
+  const subject = parts[0] || '';
+  const stufe = parts[1] || subject || 'Sonstiges';
+  const reihe = parts[2] || stufe;
+  const lesson = parts.length > 3 ? parts[parts.length - 1] : reihe;
+  const lessonLabel =
+    lesson && lesson !== reihe ? `${reihe} · ${lesson}` : reihe || stufe || path;
+  return { subject, stufe, reihe, lessonLabel };
 }
 
 type FsNode = {
@@ -140,11 +158,15 @@ export async function scanLibraryExams(rootPaths: string[]): Promise<LibraryExam
     const folder = lessonFolder ? normalizeFsPath(lessonFolder) : parentDir(fullPath);
     const key = canonicalLibraryPath(fullPath).toLowerCase();
     if (byKey.has(key)) return;
+    const h = libraryPathHierarchy(folder);
     byKey.set(key, {
       name,
       path: fullPath,
       lessonFolder: folder,
-      lessonLabel: lessonLabelFromPath(folder),
+      lessonLabel: h.lessonLabel,
+      subject: h.subject,
+      stufe: h.stufe,
+      reihe: h.reihe,
     });
   };
 
@@ -211,12 +233,16 @@ export async function scanLibraryInteractiveExercises(
         );
         if (!exercise) return;
         const title = exercise.title?.trim() || slide.title?.trim() || `Übung Folie ${idx + 1}`;
+        const h = libraryPathHierarchy(lessonPath);
         out.push({
           title,
           lessonPath,
-          lessonLabel: lessonLabelFromPath(lessonPath),
+          lessonLabel: h.lessonLabel,
           slideId: String(slide.id || ''),
           slideIndex: idx + 1,
+          subject: h.subject,
+          stufe: h.stufe,
+          reihe: h.reihe,
         });
       });
     }),

@@ -17709,6 +17709,8 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
             <DashboardExamsPanel
               rootPaths={dashboardLibraryRootPaths}
               colors={colors}
+              groups={groups}
+              assignedFolders={assignedFolders}
               onEditExam={(item) => void handleEditSingleQuestion({ path: item.path, name: item.name })}
             />
           </TabPanel>
@@ -17717,6 +17719,8 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
               rootPaths={dashboardLibraryRootPaths}
               colors={colors}
               groupId={selectedGroupId || groups[0]?.id}
+              groups={groups}
+              assignedFolders={assignedFolders}
             />
           </TabPanel>
           <TabPanel value={mainTabValue} index={4} dense>
