@@ -1014,10 +1014,11 @@
         }
         .compare-choice {
             display: inline-flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 3px;
-            margin: 4px 0;
+            flex-direction: row;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 18px;
+            margin: 0 10px;
             padding: 0;
             border: none;
             border-radius: 0;
@@ -1026,29 +1027,32 @@
         }
         .compare-choice label {
             cursor: pointer;
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 700;
             margin: 0;
-            padding: 2px 4px;
-            border-radius: 4px;
+            padding: 2px 0;
+            border-radius: 0;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 3px;
+        }
+        .compare-choice input[type="radio"] {
+            margin: 0;
+            flex-shrink: 0;
         }
         .input-group .compare-choice {
-            font-size: 15px;
-            margin-left: 0;
-            width: 100%;
+            font-size: 16px;
+            margin-left: 10px;
+            margin-right: 10px;
+            width: auto;
         }
         .item.input-group:has(.compare-choice) {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-        .compare-row {
-            display: flex;
+            flex-direction: row;
             flex-wrap: wrap;
             align-items: center;
-            gap: 8px;
+        }
+        .compare-row {
+            display: contents;
         }
         .grade-table {
             width: 100%;
@@ -1286,26 +1290,22 @@
         <div class="task-content">
             <p><strong>Vergleiche</strong> die Zahlen.</p>
             <div class="item input-group">
-                <div class="compare-row">
-                    <label><span class="item-label">a)</span> 11001<sub>2</sub></label>
-                    <span>XXIV</span>
-                </div>
+                <label><span class="item-label">a)</span> 11001<sub>2</sub></label>
                 <span class="compare-choice">
-                    <label><input type="radio" name="a3a" value="&lt;"> &lt;</label>
-                    <label><input type="radio" name="a3a" value="="> =</label>
-                    <label><input type="radio" name="a3a" value="&gt;"> &gt;</label>
+                    <label><input type="radio" name="a3a" value="&lt;">&lt;</label>
+                    <label><input type="radio" name="a3a" value="=">=</label>
+                    <label><input type="radio" name="a3a" value="&gt;">&gt;</label>
                 </span>
+                <span>XXIV</span>
             </div>
             <div class="item input-group">
-                <div class="compare-row">
-                    <label><span class="item-label">b)</span> XXXI</label>
-                    <span>100000<sub>2</sub></span>
-                </div>
+                <label><span class="item-label">b)</span> XXXI</label>
                 <span class="compare-choice">
-                    <label><input type="radio" name="a3b" value="&lt;"> &lt;</label>
-                    <label><input type="radio" name="a3b" value="="> =</label>
-                    <label><input type="radio" name="a3b" value="&gt;"> &gt;</label>
+                    <label><input type="radio" name="a3b" value="&lt;">&lt;</label>
+                    <label><input type="radio" name="a3b" value="=">=</label>
+                    <label><input type="radio" name="a3b" value="&gt;">&gt;</label>
                 </span>
+                <span>100000<sub>2</sub></span>
             </div>
 
             <div class="item input-group full-width">
