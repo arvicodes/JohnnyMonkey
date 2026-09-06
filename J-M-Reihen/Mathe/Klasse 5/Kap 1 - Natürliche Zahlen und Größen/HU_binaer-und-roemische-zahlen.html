@@ -233,7 +233,12 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
+        }
+
+        .header-brand-row .header-title {
+            flex: 1;
+            min-width: 0;
         }
 
         .header-logo {
@@ -245,30 +250,31 @@
             background: transparent;
         }
 
+        .header-meta-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
         .header-school {
             font-size: 12px;
             font-weight: bold;
             color: #1a1a1a;
             line-height: 1.2;
-            white-space: nowrap;
         }
 
         .header-class {
-            margin-left: auto;
             font-size: 12px;
             font-weight: bold;
             color: #1a1a1a;
             line-height: 1.2;
             text-align: right;
-            white-space: nowrap;
         }
 
         .header-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-            gap: 12px;
+            display: none;
         }
 
         .header-title {
@@ -281,6 +287,7 @@
             font-size: 18px;
             font-weight: bold;
             color: #E10600;
+            flex-shrink: 0;
         }
 
         .header-divider {
@@ -1015,7 +1022,7 @@
             flex-direction: row;
             align-items: center;
             flex-wrap: wrap;
-            gap: 36px;
+            gap: 40px;
             margin: 0 14px;
             padding: 0;
             border: none;
@@ -1151,12 +1158,12 @@
             }
         })();
     </script>
-            <div class="header-school">JOHANNES-GYMNASIUM LAHNSTEIN</div>
-            <div class="header-class">KLASSE 5 MATHEMATIK</div>
-        </div>
-        <div class="header-top">
             <div class="header-title">Hausaufgabenüberprüfung (HÜ): Binärsystem und römische Zahlen</div>
             <div class="header-date" id="currentDate"></div>
+        </div>
+        <div class="header-meta-row">
+            <div class="header-school">JOHANNES-GYMNASIUM LAHNSTEIN</div>
+            <div class="header-class">KLASSE 5 MATHEMATIK</div>
         </div>
         <div class="header-divider"></div>
         <div class="aids-box">
