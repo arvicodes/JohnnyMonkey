@@ -229,16 +229,19 @@
         }
 
         
-        .header-brand-row {
+        .header-top {
             display: flex;
+            justify-content: space-between;
             align-items: center;
             gap: 12px;
             margin-bottom: 6px;
         }
 
-        .header-brand-row .header-title {
-            flex: 1;
-            min-width: 0;
+        .header-brand-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
         }
 
         .header-logo {
@@ -250,14 +253,6 @@
             background: transparent;
         }
 
-        .header-meta-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            gap: 12px;
-            margin-bottom: 8px;
-        }
-
         .header-school {
             font-size: 12px;
             font-weight: bold;
@@ -266,6 +261,7 @@
         }
 
         .header-class {
+            margin-left: auto;
             font-size: 12px;
             font-weight: bold;
             color: #1a1a1a;
@@ -273,14 +269,12 @@
             text-align: right;
         }
 
-        .header-top {
-            display: none;
-        }
-
         .header-title {
             font-size: 18px;
             font-weight: bold;
             color: #E10600;
+            flex: 1;
+            min-width: 0;
         }
 
         .header-date {
@@ -1137,6 +1131,10 @@
     </aside>
     <div class="exam-paper">
     <div class="header">
+        <div class="header-top">
+            <div class="header-title">Hausaufgabenüberprüfung (HÜ): Binärsystem und römische Zahlen</div>
+            <div class="header-date" id="currentDate"></div>
+        </div>
         <div class="header-brand-row">
             <img class="header-logo" id="jmExamLogo" alt="JohnnyMonkey" src="/johnny-logo.png">
     <script>
@@ -1158,10 +1156,6 @@
             }
         })();
     </script>
-            <div class="header-title">Hausaufgabenüberprüfung (HÜ): Binärsystem und römische Zahlen</div>
-            <div class="header-date" id="currentDate"></div>
-        </div>
-        <div class="header-meta-row">
             <div class="header-school">JOHANNES-GYMNASIUM LAHNSTEIN</div>
             <div class="header-class">KLASSE 5 MATHEMATIK</div>
         </div>
