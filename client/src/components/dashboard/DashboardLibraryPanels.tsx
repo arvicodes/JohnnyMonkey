@@ -36,9 +36,13 @@ import {
 type Colors = {
   cardBg: string;
   primary: string;
-  border: string;
-  textSecondary?: string;
+  secondary?: string;
   accent1?: string;
+  accent2?: string;
+  border: string;
+  textPrimary?: string;
+  textSecondary?: string;
+  warning?: string;
 };
 
 type GroupLite = {
@@ -324,6 +328,8 @@ function StufeReiheSections<T extends { stufe: string; reihe: string; subject: s
   itemPath,
   renderItem,
   accent,
+  softBg,
+  softBorder,
 }: {
   buckets: StufeBucket<T>[];
   colors: Colors;
@@ -331,7 +337,12 @@ function StufeReiheSections<T extends { stufe: string; reihe: string; subject: s
   itemPath: (item: T) => string;
   renderItem: (item: T) => React.ReactNode;
   accent: string;
+  softBg: string;
+  softBorder: string;
 }) {
+  const textMain = colors.textPrimary || '#2C3E50';
+  const textMuted = colors.textSecondary || '#7F8C8D';
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.1 }}>
       {buckets.map((bucket) => {
@@ -345,8 +356,8 @@ function StufeReiheSections<T extends { stufe: string; reihe: string; subject: s
             sx={{
               p: 1.15,
               borderRadius: 2.2,
-              bgcolor: isInf ? INFORMATIK_FOLDER_BG : colors.cardBg,
-              border: isInf ? INFORMATIK_FOLDER_BORDER : `1px solid ${colors.border}`,
+              bgcolor: isInf ? INFORMATIK_FOLDER_BG : softBg,
+              border: isInf ? INFORMATIK_FOLDER_BORDER : `1px solid ${softBorder}`,
               boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
             }}
           >
@@ -355,7 +366,7 @@ function StufeReiheSections<T extends { stufe: string; reihe: string; subject: s
                 {bucket.stufe}
               </Typography>
               {bucket.subject ? (
-                <Typography sx={{ fontSize: '0.62rem', color: '#78909c', fontWeight: 600 }}>
+                <Typography sx={{ fontSize: '0.62rem', color: textMuted, fontWeight: 600 }}>
                   {bucket.subject}
                 </Typography>
               ) : null}
@@ -370,8 +381,8 @@ function StufeReiheSections<T extends { stufe: string; reihe: string; subject: s
                     sx={{
                       p: 0.85,
                       borderRadius: 1.5,
-                      bgcolor: isInf ? 'rgba(255,255,255,0.55)' : '#fafbfc',
-                      border: '1px solid #f0f0f0',
+                      bgcolor: colors.cardBg,
+                      border: `1px solid ${colors.border}`,
                     }}
                   >
                     <Box
@@ -388,7 +399,7 @@ function StufeReiheSections<T extends { stufe: string; reihe: string; subject: s
                         sx={{
                           fontSize: '0.68rem',
                           fontWeight: 700,
-                          color: '#546e7a',
+                          color: textMain,
                           minWidth: 0,
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -442,7 +453,9 @@ export const DashboardExamsPanel: React.FC<{
   }, [load]);
 
   const buckets = useMemo(() => groupByStufeReihe(items), [items]);
-  const accent = '#ef6c00';
+  const accent = colors.secondary || colors.warning || '#F57C00';
+  const accentDeep = '#E65100';
+  const openBlue = colors.accent1 || '#1976D2';
 
   const emptyHint =
     rootPaths.length === 0
@@ -465,6 +478,8 @@ export const DashboardExamsPanel: React.FC<{
         meta={meta}
         itemPath={(item) => item.lessonFolder || item.path}
         accent={accent}
+        softBg="rgba(245, 124, 0, 0.06)"
+        softBorder="rgba(245, 124, 0, 0.22)"
         renderItem={(item) => (
           <MaterialRow
             key={item.path}
@@ -476,8 +491,8 @@ export const DashboardExamsPanel: React.FC<{
                 {onEditExam ? (
                   <TinyAction
                     title="Bearbeiten"
-                    bgcolor="#ef6c00"
-                    hover="#e65100"
+                    bgcolor={accent}
+                    hover={accentDeep}
                     onClick={() => onEditExam(item)}
                   >
                     <EditIcon sx={{ fontSize: 12 }} />
@@ -485,7 +500,7 @@ export const DashboardExamsPanel: React.FC<{
                 ) : null}
                 <TinyAction
                   title="Öffnen"
-                  bgcolor="#1976d2"
+                  bgcolor={openBlue}
                   hover="#1565c0"
                   onClick={() => window.open(examOpenUrl(item.path), '_blank', 'noopener,noreferrer')}
                 >
