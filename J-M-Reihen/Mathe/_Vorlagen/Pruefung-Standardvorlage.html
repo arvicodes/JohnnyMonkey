@@ -1,0 +1,2437 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hausaufgabenüberprüfung (HÜ): NEUER TITEL</title>
+    <script>
+        // KRITISCH: Status-Check IM HEAD - wird SOFORT ausgeführt, bevor irgendetwas gerendert wird
+        (function() {
+            try {
+                const KA_KEY = 'HU_NEUER_TITEL';
+                const isTeacher = localStorage.getItem('teacherId') !== null;
+                
+                // Wenn Lehrer, keine Sperre
+                if (isTeacher) {
+                    return;
+                }
+                
+                // Benutzerspezifischer Key (mit userId)
+                const studentId = localStorage.getItem('studentId');
+                if (!studentId) {
+                    return;
+                }
+                
+                // KEINE Blockierung im HEAD - die Seite muss immer laden
+                // Die Prüfung erfolgt in initializeTimer()
+                console.log('KA Status Check (HEAD): Seite wird geladen, Prüfung erfolgt in initializeTimer()');
+            } catch (e) {
+                console.error('Fehler beim Status-Check:', e);
+            }
+        })();
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f3f3f3;
+            line-height: 1.4;
+            font-size: 14px;
+        }
+
+        .exam-shell {
+            max-width: 1536px; /* ~20% breiter als zuvor */
+            margin: 14px 8px 28px 4px;
+            padding: 8px 12px 24px 4px;
+            display: grid;
+            grid-template-columns: 148px minmax(0, 1fr);
+            gap: 10px;
+            align-items: start;
+            justify-content: start;
+        }
+
+        .exam-chrome {
+            position: sticky;
+            top: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+            z-index: 20;
+            margin-left: 0;
+            padding-left: 0;
+        }
+
+        .exam-paper {
+            background: #fff;
+            border: 2px solid #000;
+            padding: 28px 30px;
+            position: relative;
+            min-width: 0;
+        }
+
+        .exam-toolbar {
+            display: none;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .teacher-mode .exam-toolbar.teacher-only {
+            display: flex;
+        }
+
+        .btn-trio {
+            display: inline-flex;
+            width: 100%;
+            border: 1px solid #E10600;
+            border-radius: 7px;
+            overflow: hidden;
+            background: #E10600;
+        }
+
+        .btn-trio button {
+            flex: 1;
+            margin: 0 !important;
+            border: none !important;
+            border-radius: 0 !important;
+            border-right: 1px solid rgba(255,255,255,0.35) !important;
+            padding: 6px 4px !important;
+            font-size: 10px !important;
+            line-height: 1.15 !important;
+            white-space: nowrap;
+            min-width: 0;
+        }
+
+        .btn-trio button:last-child {
+            border-right: none !important;
+        }
+
+        .schema-button {
+            background: #1a1a1a;
+            color: #fff;
+            border: none;
+            border-radius: 7px;
+            padding: 7px 8px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .schema-button:hover {
+            background: #333;
+        }
+
+        .header-meta-row {
+            display: none;
+        }
+
+        .aids-box {
+            border: 1px solid #d8d8d8;
+            border-radius: 4px;
+            padding: 7px 10px;
+            background: #fafafa;
+            max-width: 420px;
+            text-align: left;
+            font-size: 12px;
+            line-height: 1.45;
+            color: #444;
+            margin: 8px 0 10px;
+        }
+
+        .aids-row {
+            display: flex;
+            gap: 6px;
+            align-items: baseline;
+            margin: 0 0 3px;
+        }
+
+        .aids-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .aids-key {
+            font-weight: 700;
+            color: #333;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .aids-val {
+            outline: none;
+            min-width: 4em;
+            flex: 1;
+            min-height: 1.2em;
+        }
+
+        .teacher-mode .aids-val {
+            cursor: text;
+        }
+
+        .schema-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .schema-modal.open,
+        .teacher-mode .schema-modal.open {
+            display: flex !important;
+        }
+
+        .teacher-mode .schema-modal.teacher-only:not(.open) {
+            display: none !important;
+        }
+
+        .schema-modal-card {
+            background: #fff;
+            border-radius: 10px;
+            max-width: 720px;
+            width: 100%;
+            max-height: 85vh;
+            overflow: auto;
+            padding: 18px 20px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+        }
+
+        .schema-modal-card h3 {
+            margin: 0 0 12px;
+            color: #E10600;
+            font-size: 16px;
+        }
+
+        .schema-modal-close {
+            float: right;
+            border: none;
+            background: #eee;
+            border-radius: 6px;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .header {
+            margin-bottom: 12px;
+        }
+
+        
+        .header-brand-row {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            grid-template-rows: auto auto;
+            column-gap: 12px;
+            row-gap: 4px;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .header-logo {
+            grid-row: 1 / span 2;
+            grid-column: 1;
+            height: 52px;
+            width: auto;
+            flex-shrink: 0;
+            display: block;
+            object-fit: contain;
+            background: transparent;
+            align-self: center;
+        }
+
+        .header-top {
+            grid-row: 1;
+            grid-column: 2;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+            margin: 0;
+        }
+
+        .header-meta-row {
+            grid-row: 2;
+            grid-column: 2;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+            min-width: 0;
+            margin: 0;
+        }
+
+        .header-school {
+            font-size: 12px;
+            font-weight: bold;
+            color: #1a1a1a;
+            line-height: 1.2;
+        }
+
+        .header-class {
+            font-size: 12px;
+            font-weight: bold;
+            color: #1a1a1a;
+            line-height: 1.2;
+            text-align: right;
+        }
+
+        .header-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #E10600;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .header-date {
+            font-size: 18px;
+            font-weight: bold;
+            color: #E10600;
+            flex-shrink: 0;
+        }
+
+        .header-divider {
+            border-top: 2px solid #E10600;
+            margin: 10px 0;
+        }
+
+        .header-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #1a1a1a;
+        }
+
+        .header-name {
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        .header-name label {
+            font-size: 13px;
+            font-weight: bold;
+            color: #333;
+            margin-right: 8px;
+        }
+
+        .header-name span {
+            font-size: 14px;
+            font-weight: normal;
+            color: #333;
+            margin-left: 8px;
+        }
+
+        .waiting-message {
+            text-align: center;
+            padding: 40px 20px;
+            font-size: 18px;
+            color: #E10600;
+            background: #faf7f7;
+            border: 2px solid #E10600;
+            border-radius: 8px;
+            margin: 20px;
+        }
+
+        .header-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .timer-container {
+            background: #fff;
+            padding: 8px 10px;
+            border: 2px solid #E10600;
+            border-radius: 8px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #E10600;
+            text-align: center;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .timer-warning {
+            color: #f57c00;
+            background: #fff3e0;
+            border-color: #f57c00;
+        }
+
+        .timer-danger {
+            color: #d32f2f;
+            background: #ffebee;
+            border-color: #d32f2f;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .teacher-toggle {
+            background: #f3e5f5;
+            padding: 4px 8px;
+            border: 2px solid #7b1fa2;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #7b1fa2;
+            font-weight: 500;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 40px;
+            height: 20px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 20px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #4CAF50;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        .task {
+            background: #fffef0;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .task-number {
+            font-size: 16px;
+            font-weight: bold;
+            color: #E10600;
+        }
+
+        .task-meta {
+            text-align: right;
+            font-size: 11px;
+        }
+
+        .afb-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 6px;
+        }
+
+        .afb-1 {
+            background-color: #faf7f7;
+            color: #E10600;
+        }
+
+        .afb-2 {
+            background-color: #fff3e0;
+            color: #f57c00;
+        }
+
+        .afb-3 {
+            background-color: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .points {
+            color: #666;
+            margin-top: 3px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .points-split {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin-top: 3px;
+            font-size: 10px;
+        }
+
+        .points-result {
+            color: #E10600;
+        }
+
+        .points-rechenweg {
+            color: #f57c00;
+        }
+
+        .task-content {
+            margin: 8px 0;
+        }
+
+        .task-content p {
+            margin-bottom: 10px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .task-content ul {
+            margin: 4px 0 4px 18px;
+            font-size: 13px;
+        }
+
+        .task-scenario {
+            background: #f9f9f9;
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 3px solid #E10600;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+
+        .task-image {
+            max-width: 300px;
+            height: auto;
+            margin: 10px 0;
+            border-radius: 4px;
+            border: 2px solid #ddd;
+            display: block;
+        }
+        
+        /* Icons sind kleiner und besser integriert (links neben Text) */
+        .task-image-wrapper img[src*="flaticon"] {
+            max-width: 60px;
+            height: auto;
+            margin: 0;
+            border: none;
+            border-radius: 0;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        
+        /* Icons-Container: Icon links, Text rechts */
+        .task-image-container:has(img[src*="flaticon"]) {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 8px 0;
+        }
+        
+        .task-image-container:has(img[src*="flaticon"]) .task-image-wrapper {
+            flex-shrink: 0;
+            order: 1;
+        }
+        
+        .task-image-container:has(img[src*="flaticon"]) .task-scenario {
+            flex: 1;
+            order: 2;
+        }
+
+        /* Echte Bilder bleiben rechts (wie bisher) */
+        .task-image-container {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            margin: 10px 0;
+        }
+        
+        .task-image-container:has(img[src*="unsplash"]) .task-image-wrapper {
+            order: 2;
+        }
+        
+        .task-image-container:has(img[src*="unsplash"]) .task-scenario {
+            order: 1;
+        }
+
+        .task-image-container .task-scenario {
+            flex: 1;
+        }
+
+        .task-image-container .task-image-wrapper {
+            flex-shrink: 0;
+        }
+
+        .rechenweg-required {
+            background-color: #fff3cd;
+            border-left: 4px solid #f57c00;
+            padding: 8px 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+            font-weight: bold;
+            font-size: 13px;
+            color: #e65100;
+        }
+
+        .rechenweg-points {
+            color: #f57c00;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .input-group {
+            margin: 8px 0;
+        }
+
+        .input-group label {
+            display: inline-block;
+            font-weight: 500;
+            color: #333;
+            font-size: 13px;
+            margin-right: 6px;
+        }
+
+        .input-group input {
+            display: inline-block;
+            width: 120px;
+            padding: 4px 8px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 13px;
+            transition: border-color 0.2s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #E10600;
+            border-width: 2px;
+        }
+
+        .input-group textarea {
+            display: block;
+            width: 100%;
+            min-width: 300px;
+            min-height: 60px;
+            padding: 6px 8px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 13px;
+            font-family: Arial, sans-serif;
+            resize: vertical;
+            transition: border-color 0.2s;
+            margin-top: 4px;
+        }
+
+        .input-group textarea:focus {
+            outline: none;
+            border-color: #E10600;
+            border-width: 2px;
+        }
+
+        .input-group.full-width {
+            display: block;
+        }
+
+        .input-group.full-width label {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .solution {
+            display: none;
+            background-color: #e8f5e9;
+            border-left: 3px solid #4CAF50;
+            padding: 8px;
+            margin-top: 8px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+
+        .solution.show {
+            display: block;
+        }
+
+        .solution h4 {
+            color: #2e7d32;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+
+        .solution p {
+            margin: 4px 0;
+            font-size: 12px;
+        }
+
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #1a1a1a;
+            overflow: hidden;
+        }
+
+        .footer-content {
+            display: none;
+        }
+
+        .footer-left {
+            font-size: 16px;
+            color: #000;
+        }
+
+        .footer-right {
+            float: right;
+            font-size: 16px;
+            color: #1a1a1a;
+            text-align: right;
+            max-width: 40%;
+        }
+
+        .footer-luck {
+            font-weight: bold;
+            margin-top: 0;
+            color: #1a1a1a;
+            font-size: 22px;
+        }
+
+        .footer-clover {
+            font-size: 52px;
+            margin-top: 4px;
+            line-height: 1;
+        }
+
+        .footer-note {
+            float: left;
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
+            max-width: 58%;
+        }
+
+        .footer-note-line {
+            margin: 5px 0;
+            font-size: 18px;
+            font-weight: bold;
+            color: #000;
+        }
+
+        .footer-points {
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #000;
+        }
+
+        .footer-note-input {
+            display: inline-block;
+            min-width: 180px;
+            border-bottom: 2px solid #000;
+            margin: 0 8px;
+            padding: 4px 0;
+            height: 20px;
+        }
+
+        .submit-section {
+            background: white;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .submit-section > div:first-child {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .header-buttons,
+        .header-info {
+            display: none !important;
+        }
+
+        .print-button {
+            background: #E10600;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            font-size: 13px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .print-button:hover {
+            background: #B00500;
+        }
+
+        .print-button.teacher-only {
+            display: none;
+        }
+
+        .teacher-mode .print-button.teacher-only {
+            display: inline-block;
+        }
+
+        .export-button {
+            background: #7b1fa2;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            font-size: 13px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .export-button:hover {
+            background: #6a1b9a;
+        }
+
+        .export-button.teacher-only {
+            display: none;
+        }
+
+        .teacher-mode .export-button.teacher-only {
+            display: inline-block;
+        }
+
+        .submit-button {
+            background: #E10600;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            font-size: 13px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .submit-button:hover {
+            background: #1b5e20;
+        }
+
+        .submit-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .submit-button-large {
+            background: #81c784;
+            color: white;
+            border: none;
+            padding: 14px 8px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: normal;
+            width: 100%;
+            max-width: none;
+            margin: 4px 0 0;
+            line-height: 1.25;
+            box-sizing: border-box;
+        }
+
+        .submit-button-large:hover {
+            background: #66bb6a;
+        }
+
+        .submit-button-large:disabled {
+            background: #E10600;
+            cursor: not-allowed;
+        }
+
+        .exam-chrome .submit-section {
+            display: block;
+            width: 100%;
+            background: transparent;
+            border: none;
+            padding: 0;
+            margin: 0;
+            text-align: left;
+        }
+
+        .success-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+
+        .success-popup-content {
+            background: #4caf50;
+            color: white;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 500px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .success-popup-content h2 {
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+
+        .success-popup-content p {
+            font-size: 18px;
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+
+        .info-box { display: none !important; }
+
+        .input-group span {
+            font-size: 13px;
+            margin-left: 4px;
+        }
+
+        .teacher-only {
+            display: none;
+        }
+
+        .teacher-mode .teacher-only {
+            display: block;
+        }
+
+        .teacher-mode .exam-toolbar.teacher-only {
+            display: flex;
+        }
+
+        .teacher-mode .btn-trio {
+            display: inline-flex;
+        }
+
+        .teacher-mode .solution {
+            display: none;
+        }
+
+        body.show-solutions .solution {
+            display: block !important;
+        }
+
+        .solutions-toggle {
+            display: none;
+            align-items: flex-start;
+            gap: 6px;
+            width: 100%;
+            margin: 0;
+            padding: 7px 8px;
+            border: 1px solid #cfcfcf;
+            border-radius: 7px;
+            background: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.25;
+            color: #333;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+
+        .teacher-mode .solutions-toggle.teacher-only {
+            display: flex;
+        }
+
+        .solutions-toggle input {
+            margin: 1px 0 0;
+            flex-shrink: 0;
+        }
+
+        .item {
+            margin: 12px 0 16px 0;
+            line-height: 1.7;
+        }
+        .item-label {
+            font-weight: bold;
+            margin-right: 6px;
+        }
+        .item input[type="text"] {
+            border: 1px solid #ccc;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 15px;
+            min-width: 110px;
+        }
+        .blank-wide {
+            min-width: 160px !important;
+        }
+        .blank-tiny {
+            min-width: 48px !important;
+            width: 56px !important;
+            text-align: center;
+        }
+        .item.input-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+        .compare-choice {
+            display: inline-flex;
+            flex-direction: row;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 40px;
+            margin: 0 14px;
+            padding: 0;
+            border: none;
+            border-radius: 0;
+            background: transparent;
+            vertical-align: middle;
+        }
+        .compare-choice label {
+            cursor: pointer;
+            font-size: 17px;
+            font-weight: 700;
+            margin: 0;
+            padding: 0;
+            border-radius: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 1px;
+            letter-spacing: 0;
+        }
+        .compare-choice input[type="radio"] {
+            margin: 0 1px 0 0;
+            padding: 0;
+            flex-shrink: 0;
+            width: 15px;
+            height: 15px;
+        }
+        .input-group .compare-choice {
+            font-size: 17px;
+            margin-left: 12px;
+            margin-right: 12px;
+            width: auto;
+        }
+        .item.input-group:has(.compare-choice) {
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .compare-row {
+            display: contents;
+        }
+        .grade-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+        .grade-table th, .grade-table td {
+            border: 1px solid #ccc;
+            padding: 4px 8px;
+            text-align: center;
+        }
+        .afb-inline {
+            font-size: 11px;
+            color: #666;
+            font-weight: normal;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Status-Check: Nur Debug-Log, keine Blockierung
+        // Die echte Prüfung erfolgt in initializeTimer() mit Datenbank-Abfrage
+        (function() {
+            const KA_KEY = 'HU_NEUER_TITEL';
+            const isTeacher = localStorage.getItem('teacherId') !== null;
+            
+            // Wenn Lehrer, keine Prüfung
+            if (isTeacher) {
+                return;
+            }
+            
+            // Benutzerspezifischer Key (mit userId)
+            const studentId = localStorage.getItem('studentId');
+            if (!studentId) {
+                return;
+            }
+            
+            const STORAGE_KEY = `ka_status_${KA_KEY}_${studentId}`;
+            const kaStatus = localStorage.getItem(STORAGE_KEY);
+            
+            // Debug: Log für Fehlersuche
+            console.log('KA Status Check (nur Info, keine Blockierung):', {
+                studentId: studentId,
+                STORAGE_KEY: STORAGE_KEY,
+                kaStatus: kaStatus,
+                isTeacher: isTeacher,
+                note: 'Die echte Prüfung erfolgt später in initializeTimer() mit Datenbank-Abfrage'
+            });
+            
+            // KEINE Blockierung hier - die Prüfung erfolgt in initializeTimer()
+            // die die Datenbank abfragt und localStorage bereinigt, wenn keine Submission existiert
+        })();
+    </script>
+        <div class="exam-shell">
+    <aside class="exam-chrome">
+        <div class="timer-container" id="timer">
+            __TIMER__
+        </div>
+        <div class="exam-toolbar teacher-only">
+            <div class="btn-trio" role="group" aria-label="Export">
+                <button type="button" class="print-button" id="printBtn">Druck</button>
+                <button type="button" class="export-button" id="exportWordBtn">Word</button>
+                <button type="button" class="export-button" id="exportWordWithSolutionBtn">Word+L</button>
+            </div>
+            <button type="button" class="schema-button" id="schemaBtn">Bewertungsschema</button>
+            <label class="solutions-toggle teacher-only" for="solutionsToggle">
+                <input type="checkbox" id="solutionsToggle">
+                <span>Musterlösungen anzeigen</span>
+            </label>
+        </div>
+        <div class="submit-section">
+            <button type="button" class="submit-button-large" id="submitBtnBottom">Fertig.<br>Jetzt abgeben!</button>
+        </div>
+    </aside>
+    <div class="exam-paper">
+    <div class="header">
+        <div class="header-brand-row">
+            <img class="header-logo" id="jmExamLogo" alt="JohnnyMonkey" src="/johnny-logo.png">
+    <script>
+        (function () {
+            var img = document.getElementById('jmExamLogo');
+            if (!img) return;
+            function setFrom(origin) {
+                if (!origin) return false;
+                img.src = String(origin).replace(/\/$/, '') + '/johnny-logo.png';
+                return true;
+            }
+            if (location.protocol === 'blob:') {
+                try { if (document.referrer && setFrom(new URL(document.referrer).origin)) return; } catch (e) {}
+                try { if (window.opener && setFrom(window.opener.location.origin)) return; } catch (e) {}
+                img.onerror = function () {
+                    img.onerror = null;
+                    img.src = 'https://johnnymonkey.onrender.com/johnny-logo.png';
+                };
+            }
+        })();
+    </script>
+            <div class="header-top">
+                <div class="header-title">Hausaufgabenüberprüfung (HÜ): NEUER TITEL</div>
+                <div class="header-date" id="currentDate"></div>
+            </div>
+            <div class="header-meta-row">
+                <div class="header-school">JOHANNES-GYMNASIUM LAHNSTEIN</div>
+                <div class="header-class">KLASSE 5 MATHEMATIK</div>
+            </div>
+        </div>
+        <div class="header-divider"></div>
+        <div class="aids-box">
+            <div class="aids-row">
+                <span class="aids-key">Zeit:</span>
+                <span class="aids-val" id="aidsTime" contenteditable="false">__DAUER__ Min</span>
+            </div>
+            <div class="aids-row">
+                <span class="aids-key">Erlaubte Hilfsmittel:</span>
+                <span class="aids-val" id="aidsTools" contenteditable="false">keine</span>
+            </div>
+        </div>
+        <div class="header-name">
+            <label>Name:</label>
+            <span id="studentName"></span>
+        </div>
+    </div>
+
+    
+    <!-- Aufgabe 1 -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe 1 <span style="font-size: 11px; color: #666; font-weight: normal;">(… Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-1">AFB I</span>
+                <div class="points">… Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+            <p><strong>Hier</strong> die Aufgaben eintragen.</p>
+            <div class="item input-group full-width">
+                <label><span class="item-label">a)</span></label>
+                <input type="text" id="a1a" class="blank-wide" placeholder="Antwort" autocomplete="off">
+            </div>
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>a) …</p>
+            </div>
+        </div>
+    </div>
+
+
+
+        <div class="footer">
+        <div class="footer-note">
+            <div class="footer-points" id="pointsDisplay">Du hast <span id="achievedPoints">___</span> von <span id="totalPoints">__PUNKTE__</span> Punkten erreicht.</div>
+            <div class="footer-note-line"><strong>Note:</strong> <span id="noteText">___</span> / <span id="noteNumber">___</span></div>
+            <div class="footer-points teacher-only" id="averageDisplay" style="margin-top: 10px; font-size: 13px; color: #666; display: none;">Notenschnitt: <span id="averageNote">-</span></div>
+        </div>
+        <div class="footer-right">
+            <div class="footer-luck">Viel Erfolg!</div>
+            <div class="footer-clover">🍀</div>
+        </div>
+    </div>
+    </div><!-- /.exam-paper -->
+    </div><!-- /.exam-shell -->
+
+
+    <div class="schema-modal teacher-only" id="schemaModal" aria-hidden="true">
+        <div class="schema-modal-card">
+            <button type="button" class="schema-modal-close" id="schemaCloseBtn">Schließen</button>
+            <h3>Bewertungsschema</h3>
+            <p><strong>Anforderungsbereiche</strong></p>
+            <table class="grade-table">
+                <tr><th>Anforderungsbereich</th><th>Aufgaben</th><th>Punkte</th></tr>
+                <tr><td>AFB I</td><td>…</td><td>…</td></tr>
+                <tr><td>AFB II</td><td>…</td><td>…</td></tr>
+                <tr><td>AFB III</td><td>…</td><td>…</td></tr>
+            </table>
+            <p style="margin-top: 14px;"><strong>Notenschema</strong></p>
+            <table class="grade-table">
+                <tr><th>Punkte</th><th>Note</th></tr>
+                <tr><td>…</td><td>…</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Eindeutiger Key für diese Hausaufgabenüberprüfung (HÜ)
+        const KA_KEY = 'HU_NEUER_TITEL';
+        const isTeacher = localStorage.getItem('teacherId') !== null;
+        const studentId = localStorage.getItem('studentId') || 'unknown';
+
+        if (isTeacher) {
+            document.body.classList.add('teacher-mode');
+            ['aidsTime', 'aidsTools'].forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) el.setAttribute('contenteditable', 'true');
+            });
+        }
+
+        (function setupSchemaModal() {
+            const modal = document.getElementById('schemaModal');
+            const openBtn = document.getElementById('schemaBtn');
+            const closeBtn = document.getElementById('schemaCloseBtn');
+            if (!modal || !openBtn) return;
+            const open = () => { modal.classList.add('open'); modal.setAttribute('aria-hidden', 'false'); };
+            const close = () => { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); };
+            openBtn.addEventListener('click', open);
+            if (closeBtn) closeBtn.addEventListener('click', close);
+            modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+        })();
+
+        (function setupSolutionsToggle() {
+            const toggle = document.getElementById('solutionsToggle');
+            if (!toggle) return;
+            const apply = () => {
+                document.body.classList.toggle('show-solutions', toggle.checked);
+            };
+            toggle.checked = false;
+            apply();
+            toggle.addEventListener('change', apply);
+        })();
+
+        
+        // Benutzerspezifische Keys
+        const STORAGE_KEY = `ka_status_${KA_KEY}_${studentId}`;
+        const TIMER_KEY = `ka_timer_${KA_KEY}_${studentId}`;
+        const START_TIME_KEY = `ka_starttime_${KA_KEY}_${studentId}`;
+        
+        // Funktion zur Ermittlung der API-Base-URL (muss vor Verwendung definiert sein)
+        function getApiBaseUrl() {
+            try {
+                if (window.opener && window.opener.location && window.opener.location.origin) {
+                    return window.opener.location.origin;
+                }
+                if (window.parent && window.parent !== window) {
+                    try {
+                        if (window.parent.location.origin) {
+                            return window.parent.location.origin;
+                        }
+                    } catch (e) {}
+                }
+                if (window.location.origin && !String(window.location.origin).startsWith('blob:')) {
+                    return window.location.origin;
+                }
+            } catch (e) {}
+            const hostname = window.location.hostname || '';
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                return 'http://localhost:3000';
+            }
+            return '';
+        }
+        
+        const API_BASE_URL = getApiBaseUrl();
+        
+        // Prüfe ob Abgabe noch in DB existiert (falls zurückgesetzt wurde)
+        async function checkSubmissionExists() {
+            try {
+                const loginCode = localStorage.getItem('loginCode') || '';
+                const kaFilePath = `${KA_KEY}.html`;
+                const url = `${API_BASE_URL}/api/ka-corrections/check-my-submission?kaFilePath=${encodeURIComponent(kaFilePath)}`;
+                
+                console.log('🔍 Prüfe Submission:', { kaFilePath: kaFilePath, loginCode: loginCode, url: url });
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-login-code': loginCode
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('📊 API Antwort:', data);
+                    console.log('📊 studentId aus localStorage:', studentId);
+                    console.log('📊 kaFilePath:', kaFilePath);
+                    const exists = data.exists === true;
+                    console.log(exists ? '❌ Submission gefunden - blockiere' : '✅ Keine Submission - erlaube Zugriff');
+                    if (exists) {
+                        console.log('📊 Submission Details:', data.submission);
+                    }
+                    return exists;
+                } else {
+                    const errorText = await response.text();
+                    console.error('⚠️ API Fehler:', response.status, errorText);
+                    // Bei Fehler: keine Submission vorhanden (erlaube Zugriff)
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ Fehler beim Prüfen der Abgabe:', error);
+                // Bei Fehler: keine Submission vorhanden (erlaube Zugriff)
+                return false;
+            }
+        }
+        
+        // Bilder als base64 direkt eingebettet (funktioniert auch bei Blob-URLs)
+        const IMAGE_BASE64_MAP = {
+            };
+        
+        // Bilder direkt setzen (funktioniert auch bei Blob-URLs)
+        function updateImagePaths() {
+            const images = document.querySelectorAll('img[src^="bilder/"]');
+            console.log('Gefundene Bilder:', images.length);
+            
+            for (const img of images) {
+                const originalSrc = img.getAttribute('src') || '';
+                let imageName = originalSrc;
+                if (imageName.startsWith('bilder/')) {
+                    imageName = imageName.substring(7);
+                } else if (imageName.startsWith('./bilder/')) {
+                    imageName = imageName.substring(9);
+                }
+                
+                if (!imageName || imageName.trim() === '') {
+                    console.error('Leerer Dateiname für Bild:', originalSrc);
+                    continue;
+                }
+                
+                if (IMAGE_BASE64_MAP[imageName]) {
+                    img.src = IMAGE_BASE64_MAP[imageName];
+                    console.log('Bild geladen (base64):', imageName);
+                } else {
+                    console.error('Bild nicht gefunden in Map:', imageName);
+                }
+            }
+        }
+        
+        // Benutzerinformationen laden
+
+        async function loadUserInfo() {
+            try {
+                const loginCode = localStorage.getItem('loginCode');
+                if (!loginCode) {
+                    document.getElementById('studentName').textContent = 'Nicht angemeldet';
+                    return;
+                }
+                
+                // Versuche API-Aufruf für aktuellen Benutzer
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/users/me`, {
+                        method: 'GET',
+                        headers: {
+                            'x-login-code': loginCode,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        const userName = data.name;
+                        if (userName) {
+                            // Speichere für zukünftige Verwendung
+                            localStorage.setItem('userName', userName);
+                            document.getElementById('studentName').textContent = userName;
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.error('Fehler beim API-Aufruf:', e);
+                }
+                
+                // Fallback: Versuche aus localStorage
+                const storedUserName = localStorage.getItem('userName');
+                if (storedUserName) {
+                    document.getElementById('studentName').textContent = storedUserName;
+                    return;
+                }
+                
+                // Letzter Fallback
+                document.getElementById('studentName').textContent = 'Name nicht verfügbar';
+            } catch (error) {
+                console.error('Fehler beim Laden der Benutzerinformationen:', error);
+                document.getElementById('studentName').textContent = 'Fehler beim Laden';
+            }
+        }
+        
+        // Timer-Funktionalität
+        let timeLeft = 15 * 60; // 15 Minuten in Sekunden
+        let timerElement = null;
+        let timerInterval = null;
+        
+        // Timer SOFORT starten (unabhängig von Prüfung)
+        function startTimerImmediately(retryCount = 0) {
+            console.log('⏱️ startTimerImmediately() aufgerufen, Versuch:', retryCount + 1);
+            
+            // Stelle sicher, dass timerElement verfügbar ist
+            timerElement = document.getElementById('timer');
+            console.log('⏱️ Timer-Element gesucht:', timerElement ? 'gefunden' : 'nicht gefunden');
+            
+            if (!timerElement) {
+                if (retryCount < 10) {
+                    // Versuche es nochmal nach kurzer Verzögerung (bis zu 10 Versuche)
+                    console.log(`⏱️ Timer-Element nicht gefunden! Versuche erneut in 200ms (Versuch ${retryCount + 1}/10)...`);
+                    setTimeout(() => {
+                        startTimerImmediately(retryCount + 1);
+                    }, 200);
+                    return;
+                } else {
+                    console.error('❌ Timer-Element nach 10 Versuchen nicht gefunden!');
+                    // Versuche trotzdem Timer zu starten, falls Element später erscheint
+                    setTimeout(() => {
+                        timerElement = document.getElementById('timer');
+                        if (timerElement) {
+                            console.log('⏱️ Timer-Element später gefunden, starte Timer jetzt');
+                            startTimer();
+                        }
+                    }, 1000);
+                    return;
+                }
+            }
+            
+            const savedStartTime = localStorage.getItem(START_TIME_KEY);
+            const savedTimeLeft = localStorage.getItem(TIMER_KEY);
+            console.log('⏱️ Timer-Status:', { savedStartTime: savedStartTime, savedTimeLeft: savedTimeLeft });
+            
+            if (savedStartTime && savedTimeLeft) {
+                // Timer wurde bereits gestartet -> berechne verbleibende Zeit
+                const startTime = parseInt(savedStartTime);
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const remaining = parseInt(savedTimeLeft) - elapsed;
+                
+                if (remaining > 0) {
+                    timeLeft = remaining;
+                    console.log('⏱️ Verbleibende Zeit:', remaining, 'Sekunden');
+                } else {
+                    // Zeit abgelaufen
+                    timeLeft = 0;
+                    localStorage.setItem(STORAGE_KEY, 'expired');
+                    localStorage.removeItem(TIMER_KEY);
+                    localStorage.removeItem(START_TIME_KEY);
+                    autoSubmit();
+                    return;
+                }
+            } else {
+                // Erstes Öffnen: Timer SOFORT starten
+                const startTime = Date.now();
+                localStorage.setItem(START_TIME_KEY, startTime.toString());
+                localStorage.setItem(TIMER_KEY, timeLeft.toString());
+                console.log('⏱️ Timer neu gestartet, Startzeit:', startTime, 'timeLeft:', timeLeft);
+            }
+            
+            // Timer SOFORT starten
+            console.log('⏱️ Starte Timer mit timeLeft:', timeLeft);
+            startTimer();
+        }
+
+        // Prüfe Submission im Hintergrund (blockiert Timer nicht)
+        async function checkSubmissionInBackground() {
+            try {
+                const submissionExists = await checkSubmissionExists();
+                
+                if (submissionExists) {
+                    // Submission existiert in DB -> IMMER blockieren
+                    console.log('✅ Submission in DB gefunden - blockiere Zugriff');
+                    clearInterval(timerInterval);
+                    document.body.innerHTML = `
+                        <div style="font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f5f5f5;">
+                            <div style="text-align: center; padding: 40px 20px; font-size: 18px; color: #E10600; background: #faf7f7; border: 2px solid #E10600; border-radius: 8px; margin: 20px; max-width: 600px;">
+                                <h2 style="margin-bottom: 20px; font-size: 24px;">⏳ Warte auf Korrektur deiner Lehrkraft</h2>
+                            <p style="margin: 10px 0; font-size: 16px;">Die Klassenarbeit wurde bereits abgegeben.</p>
+                                <p style="margin: 10px 0; font-size: 16px;">Bitte warte auf die Korrektur durch deine Lehrkraft.</p>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Keine Submission in DB -> bereinige localStorage
+                console.log('✅ Keine Submission in DB - bereinige localStorage');
+                localStorage.removeItem(STORAGE_KEY);
+            } catch (error) {
+                console.error('Fehler bei Submission-Prüfung:', error);
+                // Bei Fehler: Timer läuft trotzdem weiter
+            }
+        }
+
+        // Prüfe Submission im Hintergrund (blockiert Timer nicht)
+        async function initializeTimer() {
+            // Prüfung im Hintergrund (Timer wurde bereits in initializePage gestartet)
+            await checkSubmissionInBackground();
+        }
+        
+        function startTimer(retryCount = 0) {
+            console.log('⏱️ startTimer() aufgerufen, timeLeft:', timeLeft, 'Versuch:', retryCount + 1);
+            if (timerInterval) {
+                clearInterval(timerInterval);
+            }
+            // Stelle sicher, dass timerElement verfügbar ist
+            if (!timerElement) {
+                timerElement = document.getElementById('timer');
+            }
+            if (!timerElement) {
+                if (retryCount < 10) {
+                    console.log(`⏱️ Timer-Element in startTimer() nicht gefunden! Versuche erneut in 200ms (Versuch ${retryCount + 1}/10)...`);
+                    setTimeout(() => {
+                        startTimer(retryCount + 1);
+                    }, 200);
+                    return;
+                } else {
+                    console.error('❌ Timer-Element nach 10 Versuchen in startTimer() nicht gefunden!');
+                    // Versuche trotzdem Timer zu starten, falls Element später erscheint
+                    setTimeout(() => {
+                        timerElement = document.getElementById('timer');
+                        if (timerElement) {
+                            console.log('⏱️ Timer-Element später in startTimer() gefunden, starte Timer jetzt');
+                            updateTimer();
+                            timerInterval = setInterval(updateTimer, 1000);
+                        }
+                    }, 1000);
+                    return;
+                }
+            }
+            // Erste Anzeige sofort
+            updateTimer();
+            // Dann alle Sekunden aktualisieren
+            timerInterval = setInterval(updateTimer, 1000);
+            console.log('✅ Timer gestartet, Interval-ID:', timerInterval);
+        }
+
+        function updateTimer() {
+            if (!timerElement) {
+                timerElement = document.getElementById('timer');
+            }
+            
+            if (!timerElement) {
+                console.error('❌ Timer-Element nicht gefunden in updateTimer!');
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                }
+                return;
+            }
+            
+            // Zeige aktuelle Zeit an
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            const minutesStr = minutes.toString().padStart(2, '0');
+            const secondsStr = seconds.toString().padStart(2, '0');
+            
+            const timeString = `${minutesStr}:${secondsStr}`;
+            timerElement.textContent = timeString;
+            console.log('⏱️ Timer aktualisiert:', timeString, 'timeLeft:', timeLeft);
+            
+            // Speichere aktuelle Zeit in localStorage
+            localStorage.setItem(TIMER_KEY, timeLeft.toString());
+            
+            // Farbänderung bei wenig Zeit
+            if (timeLeft <= 5 * 60) { // 5 Minuten
+                timerElement.classList.add('timer-danger');
+                timerElement.classList.remove('timer-warning');
+            } else if (timeLeft <= 10 * 60) { // 10 Minuten
+                timerElement.classList.add('timer-warning');
+            }
+            
+            // Prüfe ob Zeit abgelaufen
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                timerElement.textContent = '00:00';
+                timerElement.classList.add('timer-danger');
+                // Status speichern (benutzerspezifisch)
+                localStorage.setItem(STORAGE_KEY, 'expired');
+                localStorage.removeItem(TIMER_KEY);
+                localStorage.removeItem(START_TIME_KEY);
+                // Automatisch abgeben
+                autoSubmit();
+            } else {
+                // Zeit dekrementieren
+                timeLeft--;
+            }
+        }
+        
+        // Initialisierung nach DOM-Load
+        function initializePage() {
+            console.log('🚀 Initialisiere Seite...', { 
+                studentId: studentId,
+                loginCode: localStorage.getItem('loginCode') ? 'vorhanden' : 'fehlt'
+            });
+            console.log('🚀 DOM-Elemente prüfen:', {
+                timer: !!document.getElementById('timer'),
+                submitBtn: !!document.getElementById('submitBtnBottom')
+            });
+            
+            // Button Event-Handler registrieren
+            setupSubmitButton();
+            
+            // Timer IMMER starten (nur für Schüler)
+            console.log('👤 Starte Timer für Schüler...');
+            updateSubmitButtons('Fertig. Jetzt abgeben!', false);
+            // Timer SOFORT starten (nicht warten auf async Prüfung)
+            startTimerImmediately();
+            
+            // Prüfung im Hintergrund (blockiert Timer nicht)
+            console.log('🚀 Starte initializeTimer()...');
+            initializeTimer().catch(err => {
+                console.error('❌ Fehler beim Initialisieren des Timers:', err);
+            });
+        }
+        
+        // Initialisierung starten - sicherstellen dass Script am Ende ausgeführt wird
+        function init() {
+            console.log('🔧 init() aufgerufen, readyState:', document.readyState);
+            if (document.readyState === 'loading') {
+                console.log('🔧 DOM lädt noch, warte auf DOMContentLoaded...');
+                document.addEventListener('DOMContentLoaded', initializePage);
+            } else {
+                // DOM ist bereits geladen - kurze Verzögerung um sicherzustellen, dass alles geladen ist
+                console.log('🔧 DOM bereits geladen, starte initializePage in 100ms...');
+                setTimeout(initializePage, 100);
+            }
+        }
+        
+        // Initialisierung starten
+        init();
+        
+        // Benutzerinfo laden
+        loadUserInfo();
+
+        // Datum setzen
+        const today = new Date();
+        const day = String(today.getDate()).padStart(2, '0');
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const year = today.getFullYear();
+        document.getElementById('currentDate').textContent = `${day}.${month}.${year}`;
+
+
+        // Hilfsfunktion: Aktualisiere den Abgabebutton
+        function updateSubmitButtons(text, disabled = false) {
+            const submitBtnBottom = document.getElementById('submitBtnBottom');
+            if (submitBtnBottom) {
+                submitBtnBottom.textContent = text;
+                submitBtnBottom.disabled = disabled;
+            }
+        }
+
+        // Zeige schönes grünes Erfolgs-Popup
+        function showSuccessPopup() {
+            const popup = document.createElement('div');
+            popup.className = 'success-popup';
+            popup.innerHTML = `
+                <div class="success-popup-content">
+                    <h2>😊</h2>
+                    <h2>Abgabe erfolgreich!</h2>
+                    <p>Vielen Dank für deine Abgabe!</p>
+                    <p>Einen schönen Rest der Mathestunde! 🍀</p>
+                </div>
+            `;
+            document.body.appendChild(popup);
+            
+            // Nach 3 Sekunden Tab schließen
+            setTimeout(() => {
+                try {
+                    window.close();
+                } catch (e) {
+                    // Falls window.close() nicht funktioniert, versuche zurückzunavigieren
+                    window.location.href = 'about:blank';
+                }
+            }, 3000);
+        }
+
+        // Abgeben-Funktion
+        async function submitTest() {
+            // Schüler-Modus: Abgabe durchführen
+            updateSubmitButtons('Wird abgegeben...', true);
+            clearInterval(timerInterval);
+            
+            // Sammle alle Antworten
+            const answers = {};
+            // Text-Inputs und Textareas
+            const inputs = document.querySelectorAll('input[type="text"], textarea');
+            inputs.forEach(input => {
+                const id = input.id;
+                if (id) {
+                    answers[id] = input.value || '';
+                }
+            });
+            // Number-Inputs (Koordinaten)
+            const numberInputs = document.querySelectorAll('input[type="number"]');
+            numberInputs.forEach(input => {
+                const id = input.id;
+                if (id) {
+                    answers[id] = input.value || '';
+                }
+            });
+            // Radio-Buttons
+            const radioNames = new Set();
+            document.querySelectorAll('input[type="radio"]').forEach(radio => {
+                if (radio.name) radioNames.add(radio.name);
+            });
+            radioNames.forEach(name => {
+                const selected = document.querySelector(`input[name="${name}"]:checked`);
+                if (selected) {
+                    answers[name] = selected.value || '';
+                }
+            });
+            
+            // Berechne Punkte
+            const points = calculatePoints();
+            
+            // Sende Abgabe an Backend
+            try {
+                const loginCode = localStorage.getItem('loginCode') || '';
+                const response = await fetch(`${API_BASE_URL}/api/ka-corrections/submit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-login-code': loginCode
+                    },
+                    body: JSON.stringify({
+                        kaFilePath: `${KA_KEY}.html`,
+                        answers: answers,
+                        autoPoints: points.achieved
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Unbekannter Fehler' }));
+                    throw new Error(errorData.error || 'Fehler beim Speichern der Abgabe');
+                }
+                
+                const result = await response.json();
+                
+                // Status speichern (benutzerspezifisch)
+                localStorage.setItem(STORAGE_KEY, 'submitted');
+                localStorage.removeItem(TIMER_KEY);
+                localStorage.removeItem(START_TIME_KEY);
+                
+                // Button auf dunkelgrün setzen
+                updateSubmitButtons('Abgegeben', true);
+                
+                // Schönes grünes Popup anzeigen
+                showSuccessPopup();
+            } catch (error) {
+                console.error('Fehler beim Abgeben:', error);
+                const errorMessage = error instanceof Error ? error.message : 'Fehler beim Abgeben der Klassenarbeit. Bitte versuchen Sie es erneut.';
+                alert(errorMessage);
+                updateSubmitButtons('Fertig. Jetzt abgeben!', false);
+            }
+        }
+
+        // Automatische Abgabe bei Zeitablauf
+        async function autoSubmit() {
+            updateSubmitButtons('Wird automatisch abgegeben...', true);
+            clearInterval(timerInterval);
+            
+            // Sammle alle Antworten
+                    const answers = {};
+                    const inputs = document.querySelectorAll('input[type="text"], textarea');
+                    inputs.forEach(input => {
+                        const id = input.id;
+                        if (id) {
+                            answers[id] = input.value || '';
+                        }
+                    });
+                    const radioNames = new Set();
+                    document.querySelectorAll('input[type="radio"]').forEach(radio => {
+                        if (radio.name) radioNames.add(radio.name);
+                    });
+                    radioNames.forEach(name => {
+                        const selected = document.querySelector(`input[name="${name}"]:checked`);
+                        if (selected) {
+                            answers[name] = selected.value || '';
+                        }
+                    });
+                    
+                    // Berechne Punkte
+                    const points = calculatePoints();
+                    
+                    // Sende Abgabe an Backend
+                    try {
+                        const loginCode = localStorage.getItem('loginCode') || '';
+                        const response = await fetch(`${API_BASE_URL}/api/ka-corrections/submit`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'x-login-code': loginCode
+                            },
+                            body: JSON.stringify({
+                                kaFilePath: `${KA_KEY}.html`,
+                                answers: answers,
+                                autoPoints: points.achieved
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({ error: 'Unbekannter Fehler' }));
+                            throw new Error(errorData.error || 'Fehler beim Speichern der Abgabe');
+                        }
+                        
+                        const result = await response.json();
+                        
+                        // Status speichern
+                        localStorage.setItem(STORAGE_KEY, 'expired');
+                        localStorage.removeItem(TIMER_KEY);
+                        localStorage.removeItem(START_TIME_KEY);
+                        
+                        updateSubmitButtons('Automatisch abgegeben', true);
+                        
+                        alert('Die Zeit ist abgelaufen! Die Klassenarbeit wurde automatisch abgegeben.');
+                        // Nach 2 Sekunden zur Warteseite weiterleiten
+                        setTimeout(() => {
+                            location.reload();
+                        }, 2000);
+                    } catch (error) {
+                        console.error('Fehler beim automatischen Abgeben:', error);
+                        const errorMessage = error instanceof Error ? error.message : 'Fehler beim automatischen Abgeben. Bitte kontaktieren Sie Ihren Lehrer.';
+                        alert(errorMessage);
+                        // Trotzdem Status setzen, damit der Schüler nicht nochmal öffnen kann
+                        localStorage.setItem(STORAGE_KEY, 'expired');
+                        localStorage.removeItem(TIMER_KEY);
+                        localStorage.removeItem(START_TIME_KEY);
+                        updateSubmitButtons('Abgabe fehlgeschlagen', true);
+                    }
+        }
+
+        // Abgeben-Button Event-Handler - sicherstellen dass DOM geladen ist
+        function setupSubmitButton(retryCount = 0) {
+            const submitBtnBottom = document.getElementById('submitBtnBottom');
+            if (submitBtnBottom) {
+                // Entferne alte Event-Handler falls vorhanden
+                submitBtnBottom.replaceWith(submitBtnBottom.cloneNode(true));
+                const newBtn = document.getElementById('submitBtnBottom');
+                if (newBtn) {
+                    newBtn.addEventListener('click', submitTest);
+                    console.log('✅ Abgabebutton Event-Handler registriert');
+                } else {
+                    console.error('❌ Abgabebutton nach cloneNode nicht gefunden!');
+                    if (retryCount < 10) {
+                        setTimeout(() => setupSubmitButton(retryCount + 1), 200);
+                    }
+                }
+            } else {
+                if (retryCount < 10) {
+                    console.log(`⏱️ Abgabebutton nicht gefunden! Versuche erneut in 200ms (Versuch ${retryCount + 1}/10)...`);
+                    setTimeout(() => setupSubmitButton(retryCount + 1), 200);
+                } else {
+                    console.error('❌ Abgabebutton nach 10 Versuchen nicht gefunden!');
+                    // Versuche trotzdem Button zu finden, falls Element später erscheint
+                    setTimeout(() => {
+                        const btn = document.getElementById('submitBtnBottom');
+                        if (btn) {
+                            console.log('✅ Abgabebutton später gefunden, registriere Event-Handler jetzt');
+                            btn.addEventListener('click', submitTest);
+                        }
+                    }, 1000);
+                }
+            }
+        }
+
+        function normalizeAnswer(raw) {
+            return String(raw || '')
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, '')
+                .replace(/[₂₁₀]/g, '')
+                .replace(/[_\-–—]/g, '')
+                .replace(/[()]/g, '')
+                .replace(/ä/g, 'ae')
+                .replace(/ö/g, 'oe')
+                .replace(/ü/g, 'ue')
+                .replace(/ß/g, 'ss');
+        }
+
+        const correctAnswers = {
+            a1a: [''],
+        };
+
+        function getAnswerValue(id) {
+            const input = document.getElementById(id);
+            if (input) return input.value || '';
+            const radio = document.querySelector(`input[name="${id}"]:checked`);
+            if (radio) return radio.value || '';
+            return '';
+        }
+
+        function isCorrect(id, value) {
+            const accepted = correctAnswers[id] || [];
+            const n = normalizeAnswer(value);
+            if (!n) return false;
+            if (accepted.some(a => normalizeAnswer(a) === n)) return true;
+            if (id === 'a3a') return n === '>' || n.includes('>') || n.includes('groesser');
+            if (id === 'a3b') return n === '<' || n.includes('<') || n.includes('kleiner');
+            if (id === 'a2c') return n.includes('xliv') && !n.includes('xxxxiv');
+            if (id === 'a2d') return n.includes('xliv') || n.includes('xlix');
+            if (id === 'a3d') return n.includes('xxix') || n.includes('xxxi');
+            if (id === 'a1f') return n === '15' || /[=−-]15$/.test(n);
+            return false;
+        }
+
+        const GRADE_TABLE = {
+            14: { text: 'sehr gut', withTendency: '1' },
+            13: { text: 'sehr gut', withTendency: '1−' },
+            12: { text: 'gut', withTendency: '2+' },
+            11: { text: 'gut', withTendency: '2' },
+            10: { text: 'gut', withTendency: '2−' },
+            9: { text: 'befriedigend', withTendency: '3+' },
+            8: { text: 'befriedigend', withTendency: '3' },
+            7: { text: 'befriedigend', withTendency: '3−' },
+            6: { text: 'ausreichend', withTendency: '4+' },
+            5: { text: 'ausreichend', withTendency: '4' },
+            4: { text: 'ausreichend', withTendency: '4−' },
+            3: { text: 'mangelhaft', withTendency: '5+' },
+            2: { text: 'mangelhaft', withTendency: '5' },
+            1: { text: 'mangelhaft', withTendency: '5−' },
+            0: { text: 'ungenügend', withTendency: '6' }
+        };
+
+        function calculateGrade(achieved, total) {
+            const rounded = Math.max(0, Math.min(14, Math.round(Number(achieved) || 0)));
+            const entry = GRADE_TABLE[rounded] || GRADE_TABLE[0];
+            return {
+                text: entry.text,
+                number: parseInt(entry.withTendency, 10),
+                withTendency: entry.withTendency
+            };
+        }
+
+        function calculatePoints() {
+            let achievedPoints = 0;
+            Object.keys(correctAnswers).forEach(id => {
+                if (isCorrect(id, getAnswerValue(id))) {
+                    achievedPoints += 1;
+                }
+            });
+            return { achieved: achievedPoints, total: 14 };
+        }
+
+        // Funktion zur Aktualisierung der Anzeige
+        function updatePointsDisplay() {
+            const points = calculatePoints();
+            const pointsDisplay = document.getElementById('pointsDisplay');
+            const noteText = document.getElementById('noteText');
+            const noteNumber = document.getElementById('noteNumber');
+            
+            // Zeige Punkteanzeige nur an, wenn mindestens ein Feld ausgefüllt wurde
+            const hasInputs = Array.from(document.querySelectorAll('input[type="text"], textarea, input[type="number"]')).some(input => input.value && input.value.trim() !== '') ||
+                              Array.from(document.querySelectorAll('input[type="radio"]')).some(radio => radio.checked);
+            if (points.achieved > 0 || hasInputs) {
+                pointsDisplay.style.display = 'block';
+                document.getElementById('achievedPoints').textContent = points.achieved;
+                document.getElementById('totalPoints').textContent = points.total;
+                
+                const grade = calculateGrade(points.achieved, points.total);
+                noteText.textContent = grade.text;
+                noteNumber.textContent = grade.text ? grade.withTendency : '___';
+            } else {
+                // Am Anfang: Platzhalter anzeigen
+                pointsDisplay.style.display = 'block';
+                document.getElementById('achievedPoints').textContent = '___';
+                noteText.textContent = '___';
+                noteNumber.textContent = '___';
+            }
+        }
+
+        // Event-Listener für alle Eingabefelder (NUR im Lehrer-Modus)
+        function attachInputListeners() {
+            // Nur im Lehrer-Modus Event-Listener hinzufügen
+            if (isTeacher) {
+                const allInputs = document.querySelectorAll('input[type="text"], textarea, input[type="number"]');
+                allInputs.forEach(input => {
+                    input.addEventListener('input', updatePointsDisplay);
+                });
+                const allRadios = document.querySelectorAll('input[type="radio"]');
+                allRadios.forEach(radio => {
+                    radio.addEventListener('change', updatePointsDisplay);
+                });
+            }
+        }
+
+        // Initialisierung
+        attachInputListeners();
+        // Punkteanzeige nur im Lehrer-Modus aktualisieren
+        if (isTeacher) {
+            updatePointsDisplay();
+        } else {
+            // Im Schüler-Modus: Platzhalter anzeigen
+            const pointsDisplay = document.getElementById('pointsDisplay');
+            if (pointsDisplay) {
+                const points = calculatePoints(); // Für totalPoints
+                pointsDisplay.style.display = 'block';
+                document.getElementById('achievedPoints').textContent = '___';
+                document.getElementById('totalPoints').textContent = points.total;
+                document.getElementById('noteText').textContent = '___';
+                document.getElementById('noteNumber').textContent = '___';
+            }
+        }
+        
+        // Bilder werden jetzt direkt über URLs geladen - keine Aktualisierung mehr nötig
+
+        // Druckversion-Funktion
+        function generatePrintVersion() {
+            const studentName = document.getElementById('studentName').textContent || '________________';
+            const points = calculatePoints();
+            const grade = calculateGrade(points.achieved, points.total);
+            const today = new Date();
+            const dateStr = `${String(today.getDate()).padStart(2, '0')}.${String(today.getMonth() + 1).padStart(2, '0')}.${today.getFullYear()}`;
+            const title = document.querySelector('.header-title')?.textContent?.trim() || 'Hausaufgabenüberprüfung';
+
+            const clone = document.body.cloneNode(true);
+            clone.querySelectorAll('script, .header-buttons, .submit-section, .timer-container, .exam-chrome, .exam-toolbar, .schema-modal').forEach(el => el.remove());
+            clone.querySelectorAll('input[type="text"]').forEach(inp => {
+                const span = document.createElement('span');
+                span.textContent = (inp.value && inp.value.trim()) ? inp.value.trim() : '________';
+                span.style.borderBottom = '1px solid #000';
+                span.style.padding = '0 8px';
+                inp.replaceWith(span);
+            });
+            clone.querySelectorAll('.compare-choice').forEach(group => {
+                const checked = group.querySelector('input:checked');
+                const span = document.createElement('span');
+                span.textContent = checked ? ` ${checked.value} ` : ' ____ ';
+                span.style.borderBottom = '1px solid #000';
+                span.style.fontWeight = 'bold';
+                group.replaceWith(span);
+            });
+
+            const printHTML = `<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>${title} - Druckversion</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 20px auto; padding: 24px; }
+        .header-logo { height: 40px; width: auto; display: block; margin-bottom: 8px; } .header-title { font-size: 18px; font-weight: bold; color: #E10600; }
+        .header-divider { border-top: 2px solid #E10600; margin: 10px 0; }
+        .header-bottom { display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; color: #1a1a1a; }
+        .task { border: 1px solid #ddd; border-radius: 4px; padding: 12px; margin: 12px 0; }
+        .task-number { font-size: 16px; font-weight: bold; color: #E10600; }
+        .solution { background: #e8f5e9; border-left: 3px solid #4CAF50; padding: 8px; margin-top: 8px; }
+        .grade-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .grade-table th, .grade-table td { border: 1px solid #ccc; padding: 4px 8px; text-align: center; }
+        @media print { body { border: none; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img class="header-logo" src="/johnny-logo.png" alt="JohnnyMonkey">
+        <div class="header-title">${title}</div>
+        <div>${dateStr}</div>
+        <div class="header-divider"></div>
+        <div class="header-bottom"><div>JOHANNES-GYMNASIUM LAHNSTEIN</div><div>KLASSE 5 MATHEMATIK</div></div>
+        <p><strong>Name:</strong> ${studentName}</p>
+    </div>
+    ${clone.querySelector('.info-box') ? clone.querySelector('.info-box').outerHTML : ''}
+    ${Array.from(clone.querySelectorAll('.task')).map(t => t.outerHTML).join('\\n')}
+    <div class="footer-note">
+        <p>Du hast ${points.achieved} von ${points.total} Punkten erreicht.</p>
+        <p><strong>Note:</strong> ${grade.text} / ${grade.withTendency}</p>
+    </div>
+</body>
+</html>`;
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(printHTML);
+            printWindow.document.close();
+            setTimeout(() => printWindow.print(), 250);
+        }
+
+        // Druckversion-Button
+        const printBtn = document.getElementById('printBtn');
+        printBtn.addEventListener('click', generatePrintVersion);
+
+        // Word-Export-Funktionen
+        async function exportToWord(includeSolution = false) {
+            try {
+                // Lade docx-Bibliothek dynamisch
+                if (typeof window.docx === 'undefined') {
+                    await loadDocxLibrary();
+                }
+
+                const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = window.docx;
+
+                // Sammle alle Aufgaben
+                const tasks = [];
+                const taskElements = document.querySelectorAll('.task');
+                
+                taskElements.forEach((taskEl, index) => {
+                    const taskNumberEl = taskEl.querySelector('.task-number');
+                    const taskNumber = taskNumberEl?.textContent?.trim() || `Aufgabe ${index + 1}`;
+                    const taskContent = taskEl.querySelector('.task-content');
+                    // Lösung kann sowohl in taskContent als auch direkt in taskEl sein
+                    const solution = taskEl.querySelector('.solution') || taskContent?.querySelector('.solution');
+                    
+                    if (!taskContent) return;
+                    
+                    // Extrahiere Text-Inhalte
+                    const scenarioEl = taskContent.querySelector('.task-scenario');
+                    const scenario = scenarioEl?.textContent?.trim() || '';
+                    
+                    // Extrahiere alle Inhalte (Text, Bilder, etc.)
+                    const inputGroups = Array.from(taskContent.querySelectorAll('.input-group'));
+                    const questions = inputGroups.map(ig => {
+                        const label = ig.querySelector('label');
+                        if (!label) return null;
+                        // Entferne <strong> Tags für sauberen Text
+                        const labelClone = label.cloneNode(true);
+                        const strongTags = labelClone.querySelectorAll('strong');
+                        strongTags.forEach(s => {
+                            const parent = s.parentNode;
+                            while (s.firstChild) {
+                                parent.insertBefore(s.firstChild, s);
+                            }
+                            parent.removeChild(s);
+                        });
+                        return labelClone.textContent?.trim() || '';
+                    }).filter(q => q);
+                    
+                    // Extrahiere Lösung (wenn vorhanden)
+                    let solutionHTML = null;
+                    if (solution) {
+                        solutionHTML = solution.innerHTML;
+                        console.log(`Aufgabe ${index + 1}: Lösung gefunden, Länge: ${solutionHTML.length}`);
+                    } else {
+                        console.log(`Aufgabe ${index + 1}: Keine Lösung gefunden`);
+                    }
+                    
+                    tasks.push({
+                        number: taskNumber,
+                        scenario: scenario,
+                        questions: questions,
+                        solution: solutionHTML
+                    });
+                });
+
+                // Erstelle Word-Dokument
+                const doc = new Document({
+                    sections: [{
+                        properties: {
+                            page: {
+                                margin: {
+                                    top: 1440,    // 2.54 cm (1 inch)
+                                    right: 1440,
+                                    bottom: 1440,
+                                    left: 1440
+                                }
+                            }
+                        },
+                        children: [
+                            // Header: Vor- und Nachname, Note (wie im PDF-Beispiel)
+                            new Paragraph({
+                                children: [
+                                    new TextRun({ text: 'Vor- und Nachname: ' }),
+                                    new TextRun({ text: '        ' }),
+                                    new TextRun({ text: 'Note: ' })
+                                ],
+                                spacing: { after: 400 }
+                            }),
+                            
+                            // Titel (zentriert, wie im PDF)
+                            new Paragraph({
+                                text: 'Hausaufgabenüberprüfung: NEUER TITEL',
+                                heading: HeadingLevel.HEADING_1,
+                                alignment: AlignmentType.CENTER,
+                                spacing: { after: 600 }
+                            }),
+
+                            // Aufgaben
+                            ...tasks.flatMap((task, idx) => {
+                                const children = [
+                                    // Aufgaben-Nummer und Punkte (wie im PDF: "# Aufgabe X: (Y Punkte)")
+                                    new Paragraph({
+                                        text: task.number,
+                                        heading: HeadingLevel.HEADING_2,
+                                        spacing: { before: 400, after: 200 }
+                                    })
+                                ];
+
+                                // Szenario/Text
+                                if (task.scenario) {
+                                    children.push(
+                                        new Paragraph({
+                                            text: task.scenario,
+                                            spacing: { after: 300 }
+                                        })
+                                    );
+                                }
+
+                                // Fragen (mit a), b), c) etc.)
+                                task.questions.forEach((question, qIdx) => {
+                                    children.push(
+                                        new Paragraph({
+                                            text: question,
+                                            spacing: { after: 300 }
+                                        })
+                                    );
+                                });
+
+                                // Musterlösung (wenn gewünscht)
+                                if (includeSolution && task.solution) {
+                                    console.log(`Füge Musterlösung für Aufgabe ${idx + 1} hinzu`);
+                                    const solutionDiv = document.createElement('div');
+                                    solutionDiv.innerHTML = task.solution;
+                                    
+                                    // Extrahiere Überschrift
+                                    const heading = solutionDiv.querySelector('h4');
+                                    if (heading) {
+                                        children.push(
+                                            new Paragraph({
+                                                text: heading.textContent?.trim() || 'Musterlösung:',
+                                                heading: HeadingLevel.HEADING_3,
+                                                spacing: { before: 600, after: 300 }
+                                            })
+                                        );
+                                    } else {
+                                        // Füge Überschrift hinzu, auch wenn keine vorhanden
+                                        children.push(
+                                            new Paragraph({
+                                                text: 'Musterlösung:',
+                                                heading: HeadingLevel.HEADING_3,
+                                                spacing: { before: 600, after: 300 }
+                                            })
+                                        );
+                                    }
+                                    
+                                    // Extrahiere Lösungstexte
+                                    const solutionParagraphs = solutionDiv.querySelectorAll('p');
+                                    if (solutionParagraphs.length > 0) {
+                                        solutionParagraphs.forEach(p => {
+                                            const text = p.textContent?.trim() || '';
+                                            if (text) {
+                                                // Prüfe auf fettgedruckte Teile
+                                                const boldParts = p.querySelectorAll('strong');
+                                                if (boldParts.length > 0) {
+                                                    const paraChildren = [];
+                                                    let lastIndex = 0;
+                                                    const fullText = p.textContent || '';
+                                                    boldParts.forEach(strong => {
+                                                        const strongText = strong.textContent || '';
+                                                        const strongIndex = fullText.indexOf(strongText, lastIndex);
+                                                        if (strongIndex >= 0) {
+                                                            const beforeText = fullText.substring(lastIndex, strongIndex);
+                                                            if (beforeText) {
+                                                                paraChildren.push(new TextRun({ text: beforeText }));
+                                                            }
+                                                            paraChildren.push(new TextRun({ text: strongText, bold: true }));
+                                                            lastIndex = strongIndex + strongText.length;
+                                                        }
+                                                    });
+                                                    const afterText = fullText.substring(lastIndex);
+                                                    if (afterText) {
+                                                        paraChildren.push(new TextRun({ text: afterText }));
+                                                    }
+                                                    children.push(
+                                                        new Paragraph({
+                                                            children: paraChildren,
+                                                            spacing: { after: 200 }
+                                                        })
+                                                    );
+                                                } else {
+                                                    children.push(
+                                                        new Paragraph({
+                                                            text: text,
+                                                            spacing: { after: 200 }
+                                                        })
+                                                    );
+                                                }
+                                            }
+                                        });
+                                    } else {
+                                        // Fallback: Text direkt extrahieren
+                                        const solutionText = solutionDiv.textContent || solutionDiv.innerText || '';
+                                        if (solutionText.trim()) {
+                                            solutionText.split('\n').forEach(line => {
+                                                if (line.trim()) {
+                                                    children.push(
+                                                        new Paragraph({
+                                                            text: line.trim(),
+                                                            spacing: { after: 200 }
+                                                        })
+                                                    );
+                                                }
+                                            });
+                                        }
+                                    }
+                                } else if (includeSolution) {
+                                    console.log(`Keine Lösung für Aufgabe ${idx + 1} gefunden`);
+                                }
+
+                                // Trennlinie nach jeder Aufgabe (außer der letzten)
+                                if (idx < tasks.length - 1) {
+                                    children.push(
+                                        new Paragraph({
+                                            text: '---',
+                                            alignment: AlignmentType.CENTER,
+                                            spacing: { before: 300, after: 300 }
+                                        })
+                                    );
+                                }
+
+                                return children;
+                            })
+                        ]
+                    }]
+                });
+
+                // Generiere und speichere Dokument
+                const blob = await Packer.toBlob(doc);
+                const fileName = `HU_binaer-und-roemische-zahlen${includeSolution ? '_mit_Loesung' : ''}.docx`;
+                
+                // Speichere Datei
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+
+                alert(`✅ Klassenarbeit erfolgreich als Word-Dokument exportiert!`);
+            } catch (error) {
+                console.error('Fehler beim Word-Export:', error);
+                alert('❌ Fehler beim Exportieren. Bitte versuchen Sie es erneut.');
+            }
+        }
+
+        // Lade docx-Bibliothek dynamisch
+        async function loadDocxLibrary() {
+            if (window.docx) return;
+            
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js';
+                script.onload = () => {
+                    // docx wird als UMD-Modul geladen
+                    if (window.docx) {
+                        resolve();
+                    } else {
+                        reject(new Error('docx-Bibliothek konnte nicht geladen werden'));
+                    }
+                };
+                script.onerror = () => reject(new Error('Fehler beim Laden der docx-Bibliothek'));
+                document.head.appendChild(script);
+            });
+        }
+
+        // Word-Export-Buttons
+        const exportWordBtn = document.getElementById('exportWordBtn');
+        const exportWordWithSolutionBtn = document.getElementById('exportWordWithSolutionBtn');
+        
+        if (exportWordBtn) {
+            exportWordBtn.addEventListener('click', () => exportToWord(false));
+        }
+        if (exportWordWithSolutionBtn) {
+            exportWordWithSolutionBtn.addEventListener('click', () => exportToWord(true));
+        }
+
+        // Verhindere Navigation bei ungespeicherten Änderungen (optional)
+        window.addEventListener('beforeunload', function(e) {
+            const submitBtnBottom = document.getElementById('submitBtnBottom');
+            // Verhindere Navigation nur wenn Button nicht disabled ist (also noch nicht abgegeben)
+            if (submitBtnBottom && !submitBtnBottom.disabled) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
