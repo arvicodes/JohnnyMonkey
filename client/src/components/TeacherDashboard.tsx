@@ -16180,6 +16180,18 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
               sx={{
                 minHeight: 40,
                 '& .MuiTabs-flexContainer': { gap: 0 },
+                '& .MuiTabs-indicator': {
+                  height: 3,
+                  borderRadius: '3px 3px 0 0',
+                  bgcolor:
+                    mainTabValue === 2
+                      ? '#c62828'
+                      : mainTabValue === 3
+                        ? '#FBC02D'
+                        : mainTabValue === 4
+                          ? '#1e88e5'
+                          : colors.primary,
+                },
                 '& .MuiTab-root': {
                   minHeight: 40,
                   minWidth: 0,
@@ -16200,9 +16212,35 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
             >
               <Tab icon={<AutoStoriesIcon sx={{ fontSize: 16 }} />} label="Reihen" iconPosition="top" />
               <Tab icon={<GroupIcon sx={{ fontSize: 16 }} />} label="Lerngruppen" iconPosition="top" />
-              <Tab icon={<AssignmentIcon sx={{ fontSize: 16 }} />} label="Pr√ºfungen" iconPosition="top" />
-              <Tab icon={<QuizIcon sx={{ fontSize: 16 }} />} label="√úbungen" iconPosition="top" title="Interaktive √úbungen" />
-              <Tab icon={<ConfirmationNumberIcon sx={{ fontSize: 16 }} />} label="Entry" iconPosition="top" title="Entry Tickets" />
+              <Tab
+                icon={<AssignmentIcon sx={{ fontSize: 16 }} />}
+                label="Pr√ºfungen"
+                iconPosition="top"
+                sx={{
+                  color: 'rgba(198, 40, 40, 0.72)',
+                  '&.Mui-selected': { color: '#c62828', fontWeight: 700 },
+                }}
+              />
+              <Tab
+                icon={<QuizIcon sx={{ fontSize: 16 }} />}
+                label="√úbungen"
+                iconPosition="top"
+                title="Interaktive √úbungen"
+                sx={{
+                  color: 'rgba(245, 127, 23, 0.75)',
+                  '&.Mui-selected': { color: '#F57F17', fontWeight: 700 },
+                }}
+              />
+              <Tab
+                icon={<ConfirmationNumberIcon sx={{ fontSize: 16 }} />}
+                label="Entry"
+                iconPosition="top"
+                title="Entry Tickets"
+                sx={{
+                  color: 'rgba(30, 136, 229, 0.75)',
+                  '&.Mui-selected': { color: '#1e88e5', fontWeight: 700 },
+                }}
+              />
               <Tab icon={<BuildIcon sx={{ fontSize: 16 }} />} label="Verwalten" iconPosition="top" />
               <Tab icon={<StyleIcon sx={{ fontSize: 16 }} />} label="Karten" iconPosition="top" title="Karteikarten" />
               <Tab icon={<StorageIcon sx={{ fontSize: 16 }} />} label="Datenbank" iconPosition="top" sx={{ color: '#9E9E9E' }} />
@@ -17718,6 +17756,15 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
             </Box>
           </TabPanel>
           <TabPanel value={mainTabValue} index={2}>
+            <Box
+              sx={{
+                borderRadius: 2,
+                border: '1px solid rgba(198, 40, 40, 0.22)',
+                boxShadow: '0 2px 10px rgba(198, 40, 40, 0.08)',
+                bgcolor: 'rgba(198, 40, 40, 0.03)',
+                overflow: 'hidden',
+              }}
+            >
             <DashboardExamsPanel
               rootPaths={dashboardLibraryRootPaths}
               colors={colors}
@@ -17734,8 +17781,18 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                 setCreateExaminationModalOpen(true);
               }}
             />
+            </Box>
           </TabPanel>
           <TabPanel value={mainTabValue} index={3}>
+            <Box
+              sx={{
+                borderRadius: 2,
+                border: '1px solid rgba(251, 192, 45, 0.35)',
+                boxShadow: '0 2px 10px rgba(251, 192, 45, 0.14)',
+                bgcolor: 'rgba(251, 192, 45, 0.05)',
+                overflow: 'hidden',
+              }}
+            >
             <DashboardInteractiveExercisesPanel
               rootPaths={dashboardLibraryRootPaths}
               colors={colors}
@@ -17760,9 +17817,37 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                 setCreateExerciseModalOpen(true);
               }}
             />
+            </Box>
           </TabPanel>
           <TabPanel value={mainTabValue} index={4} dense>
-            <Box sx={{ height: 'min(78vh, 900px)', width: '100%', bgcolor: '#fff' }}>
+            <Box
+              sx={{
+                height: 'min(78vh, 900px)',
+                width: '100%',
+                bgcolor: '#fff',
+                borderRadius: 2,
+                border: '1px solid rgba(30, 136, 229, 0.28)',
+                boxShadow: '0 2px 10px rgba(30, 136, 229, 0.12)',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              <Box
+                sx={{
+                  px: 1.4,
+                  py: 0.85,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.55,
+                  background: 'linear-gradient(135deg, #1e88e5 0%, #3949ab 100%)',
+                  color: '#fff',
+                  flexShrink: 0,
+                }}
+              >
+                <ConfirmationNumberIcon sx={{ fontSize: 17 }} />
+                <Typography sx={{ fontSize: '0.8rem', fontWeight: 700 }}>Entry Tickets</Typography>
+              </Box>
               {mainTabValue === 4 ? (
                 <Box
                   component="iframe"
@@ -17772,7 +17857,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                       ? `&groupId=${encodeURIComponent(selectedGroupId || groups[0]?.id || '')}`
                       : ''
                   }`}
-                  sx={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+                  sx={{ width: '100%', flex: 1, border: 0, display: 'block', bgcolor: '#fff' }}
                 />
               ) : null}
             </Box>
@@ -29822,16 +29907,16 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
           }
         }}
       >
-        <DialogTitle sx={{ 
-          pb: 1.5, 
-          pt: 2.5, 
-          px: 3, 
-          borderBottom: '2px solid #e3f2fd',
-          bgcolor: '#f5f9ff'
+        <DialogTitle sx={{
+          pb: 1.5,
+          pt: 2.5,
+          px: 3,
+          borderBottom: '2px solid rgba(198, 40, 40, 0.28)',
+          bgcolor: 'rgba(198, 40, 40, 0.06)'
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <AssignmentIcon sx={{ color: colors.primary, fontSize: 30 }} />
-            <Typography variant="h6" sx={{ fontSize: '1.2rem', fontWeight: 600, color: '#1976d2' }}>
+            <AssignmentIcon sx={{ color: '#c62828', fontSize: 30 }} />
+            <Typography variant="h6" sx={{ fontSize: '1.2rem', fontWeight: 600, color: '#c62828' }}>
               Pr√ºfung erstellen
             </Typography>
           </Box>
@@ -29998,9 +30083,9 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
             variant="contained"
             disabled={!examinationType || !examinationFileName || !examinationFolderPath}
             sx={{ 
-              bgcolor: colors.primary,
+              bgcolor: '#c62828',
               px: 3,
-              '&:hover': { bgcolor: '#1565c0' },
+              '&:hover': { bgcolor: '#b71c1c' },
               '&:disabled': { bgcolor: '#ccc' }
             }}
           >
@@ -30032,13 +30117,13 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
             pb: 1.5,
             pt: 2.5,
             px: 3,
-            borderBottom: '2px solid #e3f2fd',
-            bgcolor: '#f5f9ff',
+            borderBottom: '2px solid rgba(251, 192, 45, 0.45)',
+            bgcolor: 'rgba(251, 192, 45, 0.1)',
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <QuizIcon sx={{ color: '#1976d2', fontSize: 28 }} />
-            <Typography variant="h6" sx={{ fontSize: '1.15rem', fontWeight: 600, color: '#1976d2' }}>
+            <QuizIcon sx={{ color: '#F57F17', fontSize: 28 }} />
+            <Typography variant="h6" sx={{ fontSize: '1.15rem', fontWeight: 600, color: '#F57F17' }}>
               Interaktive √úbung anlegen
             </Typography>
           </Box>
@@ -30052,12 +30137,12 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
           </Typography>
           <Box
             sx={{
-              border: '2px solid #e3f2fd',
+              border: '2px solid rgba(251, 192, 45, 0.4)',
               borderRadius: 2,
               p: 2,
               maxHeight: 300,
               overflow: 'auto',
-              bgcolor: '#fafbff',
+              bgcolor: 'rgba(251, 192, 45, 0.06)',
             }}
           >
             {folderTree ? (
@@ -30107,9 +30192,11 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
               );
             }}
             sx={{
-              bgcolor: '#1976d2',
+              bgcolor: '#FBC02D',
               px: 3,
-              '&:hover': { bgcolor: '#1565c0' },
+              color: '#fff',
+              fontWeight: 700,
+              '&:hover': { bgcolor: '#F9A825' },
               '&:disabled': { bgcolor: '#ccc' },
             }}
           >
