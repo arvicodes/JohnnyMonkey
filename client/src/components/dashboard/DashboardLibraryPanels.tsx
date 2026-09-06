@@ -31,7 +31,20 @@ import {
   INFORMATIK_FOLDER_BG,
   INFORMATIK_FOLDER_BORDER,
   isInformatikFolderPath,
+  resolveLearningGroupDisplayStyle,
 } from '../../lib/learningGroupAppearance';
+
+/** Farben wie im Reihen-Baum (Stufe / Thema / Stunde / Prüfung). */
+const REIHE_STUFE = '#6a1b9a';
+const REIHE_THEMA = '#1565c0';
+const REIHE_STUNDE = '#1976d2';
+const REIHE_PRUEFUNG = '#ff9800';
+const BTN_EDIT = '#ef6c00';
+const BTN_EDIT_HOVER = '#e65100';
+const BTN_PLAY = '#2e7d32';
+const BTN_PLAY_HOVER = '#1b5e20';
+const BTN_OPEN = '#1976d2';
+const BTN_OPEN_HOVER = '#1565c0';
 
 type Colors = {
   cardBg: string;
@@ -152,6 +165,7 @@ function TinyAction({
 function LibraryShell({
   colors,
   title,
+  titleColor,
   icon,
   loading,
   empty,
@@ -161,6 +175,7 @@ function LibraryShell({
 }: {
   colors: Colors;
   title: string;
+  titleColor?: string;
   icon: React.ReactNode;
   loading: boolean;
   empty: boolean;
@@ -196,8 +211,8 @@ function LibraryShell({
       </Tooltip>
 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.45, mb: 1.1, pr: 4.5 }}>
-        <Box sx={{ color: colors.primary, display: 'flex' }}>{icon}</Box>
-        <Typography sx={{ fontSize: '0.8rem', fontWeight: 650, color: colors.primary }}>
+        <Box sx={{ color: titleColor || colors.primary, display: 'flex' }}>{icon}</Box>
+        <Typography sx={{ fontSize: '0.8rem', fontWeight: 650, color: titleColor || colors.primary }}>
           {title}
         </Typography>
       </Box>
@@ -217,7 +232,7 @@ function LibraryShell({
   );
 }
 
-function GroupChips({ groups }: { groups: GroupLite[] }) {
+function GroupChips({ groups, fallbackPrimary }: { groups: GroupLite[]; fallbackPrimary: string }) {
   if (!groups.length) {
     return (
       <Typography sx={{ fontSize: '0.58rem', color: '#9e9e9e', fontStyle: 'italic' }}>
@@ -228,7 +243,7 @@ function GroupChips({ groups }: { groups: GroupLite[] }) {
   return (
     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.35, alignItems: 'center' }}>
       {groups.map((g) => {
-        const color = g.color || '#1976D2';
+        const style = resolveLearningGroupDisplayStyle(g, fallbackPrimary);
         return (
           <Chip
             key={g.id}
@@ -237,10 +252,10 @@ function GroupChips({ groups }: { groups: GroupLite[] }) {
             sx={{
               height: 18,
               fontSize: '0.58rem',
-              fontWeight: 600,
-              bgcolor: `${color}18`,
-              color,
-              border: `1px solid ${color}40`,
+              fontWeight: 700,
+              bgcolor: style.boxBg,
+              color: style.groupColor,
+              border: style.boxBorder,
               '& .MuiChip-label': { px: 0.7, py: 0 },
             }}
           />
@@ -271,9 +286,9 @@ function MaterialRow({
         py: 0.45,
         borderRadius: 1.1,
         bgcolor: '#FFFFFF',
-        border: '1px solid #E0E0E0',
+        border: '1px solid #e0e0e0',
         minHeight: 30,
-        '&:hover': { bgcolor: '#F8FAFC', borderColor: '#CFD8DC' },
+        '&:hover': { bgcolor: '#fafbfc', borderColor: '#e0e0e0' },
       }}
     >
       <Box
@@ -291,7 +306,7 @@ function MaterialRow({
           sx={{
             fontSize: '0.74rem',
             fontWeight: 650,
-            color: '#2C3E50',
+            color: '#37474f',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -305,7 +320,7 @@ function MaterialRow({
           <Typography
             sx={{
               fontSize: '0.58rem',
-              color: '#7F8C8D',
+              color: '#90a4ae',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
@@ -327,22 +342,15 @@ function StufeReiheSections<T extends { stufe: string; reihe: string; subject: s
   meta,
   itemPath,
   renderItem,
-  accent,
-  softBg,
-  softBorder,
+  itemAccent,
 }: {
   buckets: StufeBucket<T>[];
   colors: Colors;
   meta?: LibraryGroupMeta;
   itemPath: (item: T) => string;
-  renderItem: (item: T) => React.ReactNode;
-  accent: string;
-  softBg: string;
-  softBorder: string;
+  renderItem: (item: T, accent: string) => React.ReactNode;
+  itemAccent: string;
 }) {
-  const textMain = colors.textPrimary || '#2C3E50';
-  const textMuted = colors.textSecondary || '#7F8C8D';
-
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.1 }}>
       {buckets.map((bucket) => {
@@ -356,17 +364,19 @@ function StufeReiheSections<T extends { stufe: string; reihe: string; subject: s
             sx={{
               p: 1.15,
               borderRadius: 2.2,
-              bgcolor: isInf ? INFORMATIK_FOLDER_BG : softBg,
-              border: isInf ? INFORMATIK_FOLDER_BORDER : `1px solid ${softBorder}`,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+              bgcolor: isInf ? INFORMATIK_FOLDER_BG : '#fff',
+              border: isInf ? INFORMATIK_FOLDER_BORDER : '1px solid #e0e0e0',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.6, mb: 0.7, flexWrap: 'wrap' }}>
-              <Typography sx={{ fontSize: '0.78rem', fontWeight: 750, color: accent, lineHeight: 1.2 }}>
+              <Typography
+                sx={{ fontSize: '0.78rem', fontWeight: 750, color: REIHE_STUFE, lineHeight: 1.2 }}
+              >
                 {bucket.stufe}
               </Typography>
               {bucket.subject ? (
-                <Typography sx={{ fontSize: '0.62rem', color: textMuted, fontWeight: 600 }}>
+                <Typography sx={{ fontSize: '0.62rem', color: '#9c27b0', fontWeight: 600 }}>
                   {bucket.subject}
                 </Typography>
               ) : null}
@@ -381,8 +391,8 @@ function StufeReiheSections<T extends { stufe: string; reihe: string; subject: s
                     sx={{
                       p: 0.85,
                       borderRadius: 1.5,
-                      bgcolor: colors.cardBg,
-                      border: `1px solid ${colors.border}`,
+                      bgcolor: '#fafbfc',
+                      border: '1px solid #f0f0f0',
                     }}
                   >
                     <Box
@@ -399,7 +409,7 @@ function StufeReiheSections<T extends { stufe: string; reihe: string; subject: s
                         sx={{
                           fontSize: '0.68rem',
                           fontWeight: 700,
-                          color: textMain,
+                          color: REIHE_THEMA,
                           minWidth: 0,
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -410,10 +420,10 @@ function StufeReiheSections<T extends { stufe: string; reihe: string; subject: s
                       >
                         {reihe}
                       </Typography>
-                      <GroupChips groups={linkedGroups} />
+                      <GroupChips groups={linkedGroups} fallbackPrimary={colors.primary} />
                     </Box>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.4 }}>
-                      {items.map((item) => renderItem(item))}
+                      {items.map((item) => renderItem(item, itemAccent))}
                     </Box>
                   </Box>
                 );
@@ -453,9 +463,6 @@ export const DashboardExamsPanel: React.FC<{
   }, [load]);
 
   const buckets = useMemo(() => groupByStufeReihe(items), [items]);
-  const accent = colors.secondary || colors.warning || '#F57C00';
-  const accentDeep = '#E65100';
-  const openBlue = colors.accent1 || '#1976D2';
 
   const emptyHint =
     rootPaths.length === 0
@@ -466,6 +473,7 @@ export const DashboardExamsPanel: React.FC<{
     <LibraryShell
       colors={colors}
       title="Prüfungen"
+      titleColor={REIHE_PRUEFUNG}
       icon={<AssignmentIcon sx={{ fontSize: 16 }} />}
       loading={loading}
       empty={!items.length}
@@ -477,10 +485,8 @@ export const DashboardExamsPanel: React.FC<{
         colors={colors}
         meta={meta}
         itemPath={(item) => item.lessonFolder || item.path}
-        accent={accent}
-        softBg="rgba(245, 124, 0, 0.06)"
-        softBorder="rgba(245, 124, 0, 0.22)"
-        renderItem={(item) => (
+        itemAccent={REIHE_PRUEFUNG}
+        renderItem={(item, accent) => (
           <MaterialRow
             key={item.path}
             title={item.name}
@@ -491,8 +497,8 @@ export const DashboardExamsPanel: React.FC<{
                 {onEditExam ? (
                   <TinyAction
                     title="Bearbeiten"
-                    bgcolor={accent}
-                    hover={accentDeep}
+                    bgcolor={BTN_EDIT}
+                    hover={BTN_EDIT_HOVER}
                     onClick={() => onEditExam(item)}
                   >
                     <EditIcon sx={{ fontSize: 12 }} />
@@ -500,8 +506,8 @@ export const DashboardExamsPanel: React.FC<{
                 ) : null}
                 <TinyAction
                   title="Öffnen"
-                  bgcolor={openBlue}
-                  hover="#1565c0"
+                  bgcolor={BTN_OPEN}
+                  hover={BTN_OPEN_HOVER}
                   onClick={() => window.open(examOpenUrl(item.path), '_blank', 'noopener,noreferrer')}
                 >
                   <OpenInNewIcon sx={{ fontSize: 12 }} />
@@ -542,9 +548,6 @@ export const DashboardInteractiveExercisesPanel: React.FC<{
   }, [load]);
 
   const buckets = useMemo(() => groupByStufeReihe(items), [items]);
-  const accent = colors.primary || '#2E7D32';
-  const accentDeep = '#1B5E20';
-  const editOrange = colors.secondary || '#F57C00';
 
   const emptyHint =
     rootPaths.length === 0
@@ -555,6 +558,7 @@ export const DashboardInteractiveExercisesPanel: React.FC<{
     <LibraryShell
       colors={colors}
       title="Interaktive Übungen"
+      titleColor={REIHE_STUNDE}
       icon={<QuizIcon sx={{ fontSize: 16 }} />}
       loading={loading}
       empty={!items.length}
@@ -566,10 +570,8 @@ export const DashboardInteractiveExercisesPanel: React.FC<{
         colors={colors}
         meta={meta}
         itemPath={(item) => item.lessonPath}
-        accent={accent}
-        softBg="rgba(46, 125, 50, 0.06)"
-        softBorder="rgba(46, 125, 50, 0.22)"
-        renderItem={(item) => {
+        itemAccent={REIHE_STUNDE}
+        renderItem={(item, accent) => {
           const editorGid =
             groupsForMaterialPath(item.lessonPath, meta)[0]?.id || groupId;
           return (
@@ -584,8 +586,8 @@ export const DashboardInteractiveExercisesPanel: React.FC<{
                 <>
                   <TinyAction
                     title="Bearbeiten"
-                    bgcolor={editOrange}
-                    hover="#E65100"
+                    bgcolor={BTN_EDIT}
+                    hover={BTN_EDIT_HOVER}
                     onClick={() => {
                       window.location.href = exerciseEditorUrl(
                         item.lessonPath,
@@ -598,8 +600,8 @@ export const DashboardInteractiveExercisesPanel: React.FC<{
                   </TinyAction>
                   <TinyAction
                     title="Spielen"
-                    bgcolor={accent}
-                    hover={accentDeep}
+                    bgcolor={BTN_PLAY}
+                    hover={BTN_PLAY_HOVER}
                     onClick={() => {
                       window.location.href = exercisePresentUrl(
                         item.lessonPath,
