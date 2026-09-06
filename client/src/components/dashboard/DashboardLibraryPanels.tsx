@@ -270,10 +270,10 @@ function MaterialRow({
         px: 0.75,
         py: 0.45,
         borderRadius: 1.1,
-        bgcolor: '#fff',
-        border: '1px solid #eee',
+        bgcolor: '#FFFFFF',
+        border: '1px solid #E0E0E0',
         minHeight: 30,
-        '&:hover': { bgcolor: '#fafbfc', borderColor: '#e0e0e0' },
+        '&:hover': { bgcolor: '#F8FAFC', borderColor: '#CFD8DC' },
       }}
     >
       <Box
@@ -291,7 +291,7 @@ function MaterialRow({
           sx={{
             fontSize: '0.74rem',
             fontWeight: 650,
-            color: '#37474f',
+            color: '#2C3E50',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -305,7 +305,7 @@ function MaterialRow({
           <Typography
             sx={{
               fontSize: '0.58rem',
-              color: '#90a4ae',
+              color: '#7F8C8D',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
@@ -542,7 +542,9 @@ export const DashboardInteractiveExercisesPanel: React.FC<{
   }, [load]);
 
   const buckets = useMemo(() => groupByStufeReihe(items), [items]);
-  const accent = '#7c3aed';
+  const accent = colors.primary || '#2E7D32';
+  const accentDeep = '#1B5E20';
+  const editOrange = colors.secondary || '#F57C00';
 
   const emptyHint =
     rootPaths.length === 0
@@ -565,6 +567,8 @@ export const DashboardInteractiveExercisesPanel: React.FC<{
         meta={meta}
         itemPath={(item) => item.lessonPath}
         accent={accent}
+        softBg="rgba(46, 125, 50, 0.06)"
+        softBorder="rgba(46, 125, 50, 0.22)"
         renderItem={(item) => {
           const editorGid =
             groupsForMaterialPath(item.lessonPath, meta)[0]?.id || groupId;
@@ -580,8 +584,8 @@ export const DashboardInteractiveExercisesPanel: React.FC<{
                 <>
                   <TinyAction
                     title="Bearbeiten"
-                    bgcolor="#ef6c00"
-                    hover="#e65100"
+                    bgcolor={editOrange}
+                    hover="#E65100"
                     onClick={() => {
                       window.location.href = exerciseEditorUrl(
                         item.lessonPath,
@@ -594,8 +598,8 @@ export const DashboardInteractiveExercisesPanel: React.FC<{
                   </TinyAction>
                   <TinyAction
                     title="Spielen"
-                    bgcolor="#2e7d32"
-                    hover="#1b5e20"
+                    bgcolor={accent}
+                    hover={accentDeep}
                     onClick={() => {
                       window.location.href = exercisePresentUrl(
                         item.lessonPath,
