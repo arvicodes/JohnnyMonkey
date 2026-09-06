@@ -47,13 +47,14 @@
         }
 
         .exam-shell {
-            max-width: 1280px;
-            margin: 14px auto 28px;
-            padding: 8px 16px 24px;
+            max-width: 1536px; /* ~20% breiter als zuvor */
+            margin: 14px 8px 28px 4px;
+            padding: 8px 12px 24px 4px;
             display: grid;
-            grid-template-columns: 150px minmax(0, 1fr);
-            gap: 14px;
+            grid-template-columns: 148px minmax(0, 1fr);
+            gap: 10px;
             align-items: start;
+            justify-content: start;
         }
 
         .exam-chrome {
@@ -64,6 +65,8 @@
             align-items: flex-start;
             gap: 8px;
             z-index: 20;
+            margin-left: 0;
+            padding-left: 0;
         }
 
         .exam-paper {
@@ -128,41 +131,65 @@
             background: #333;
         }
 
-        .header-class-col {
+        .header-meta-row {
             display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 6px;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+            margin-top: 6px;
+            margin-bottom: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #1a1a1a;
+        }
+
+        .header-meta-row .header-school {
+            text-align: left;
+        }
+
+        .header-meta-row .header-class {
             text-align: right;
         }
 
         .aids-box {
             border: 1px solid #d8d8d8;
             border-radius: 4px;
-            padding: 5px 8px;
+            padding: 7px 10px;
             background: #fafafa;
-            max-width: 280px;
+            max-width: 420px;
             text-align: left;
-            font-size: 11px;
-            line-height: 1.35;
-            color: #555;
+            font-size: 12px;
+            line-height: 1.45;
+            color: #444;
+            margin: 8px 0 10px;
         }
 
-        .aids-label {
-            font-size: 9px;
+        .aids-row {
+            display: flex;
+            gap: 6px;
+            align-items: baseline;
+            margin: 0 0 3px;
+        }
+
+        .aids-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .aids-key {
             font-weight: 700;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-            color: #888;
-            margin-bottom: 2px;
+            color: #333;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
-        .aids-text {
+        .aids-val {
             outline: none;
+            min-width: 4em;
+            flex: 1;
             min-height: 1.2em;
         }
 
-        .teacher-mode .aids-text {
+        .teacher-mode .aids-val {
             cursor: text;
         }
 
@@ -831,16 +858,18 @@
             background: #81c784;
             color: white;
             border: none;
-            padding: 20px 40px;
-            font-size: 24px;
+            padding: 14px 8px;
+            font-size: 15px;
             font-weight: bold;
             border-radius: 8px;
             cursor: pointer;
             transition: background 0.2s;
-            white-space: nowrap;
+            white-space: normal;
             width: 100%;
-            max-width: 600px;
-            margin: 20px auto;
+            max-width: none;
+            margin: 4px 0 0;
+            line-height: 1.25;
+            box-sizing: border-box;
         }
 
         .submit-button-large:hover {
@@ -850,6 +879,16 @@
         .submit-button-large:disabled {
             background: #E10600;
             cursor: not-allowed;
+        }
+
+        .exam-chrome .submit-section {
+            display: block;
+            width: 100%;
+            background: transparent;
+            border: none;
+            padding: 0;
+            margin: 0;
+            text-align: left;
         }
 
         .success-popup {
@@ -910,7 +949,38 @@
         }
 
         .teacher-mode .solution {
-            display: block;
+            display: none;
+        }
+
+        body.show-solutions .solution {
+            display: block !important;
+        }
+
+        .solutions-toggle {
+            display: none;
+            align-items: flex-start;
+            gap: 6px;
+            width: 100%;
+            margin: 0;
+            padding: 7px 8px;
+            border: 1px solid #cfcfcf;
+            border-radius: 7px;
+            background: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.25;
+            color: #333;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+
+        .teacher-mode .solutions-toggle.teacher-only {
+            display: flex;
+        }
+
+        .solutions-toggle input {
+            margin: 1px 0 0;
+            flex-shrink: 0;
         }
 
         .item {
@@ -1043,6 +1113,13 @@
                 <button type="button" class="export-button" id="exportWordWithSolutionBtn">Word+L</button>
             </div>
             <button type="button" class="schema-button" id="schemaBtn">Bewertungsschema</button>
+            <label class="solutions-toggle teacher-only" for="solutionsToggle">
+                <input type="checkbox" id="solutionsToggle">
+                <span>Musterlösungen anzeigen</span>
+            </label>
+        </div>
+        <div class="submit-section">
+            <button type="button" class="submit-button-large" id="submitBtnBottom">Fertig.<br>Jetzt abgeben!</button>
         </div>
     </aside>
     <div class="exam-paper">
@@ -1073,15 +1150,19 @@
                 <div class="header-date" id="currentDate"></div>
             </div>
         </div>
+        <div class="header-meta-row">
+            <div class="header-school">JOHANNES-GYMNASIUM LAHNSTEIN</div>
+            <div class="header-class">KLASSE 5 MATHEMATIK</div>
+        </div>
         <div class="header-divider"></div>
-        <div class="header-bottom">
-            <div>JOHANNES-GYMNASIUM LAHNSTEIN</div>
-            <div class="header-class-col">
-                <div>KLASSE 5 MATHEMATIK</div>
-                <div class="aids-box">
-                    <div class="aids-label">Hilfsmittel</div>
-                    <div class="aids-text" id="aidsText" contenteditable="false">keine · 15 Min · 14 Punkte · römisch I–M · &lt; = &gt;</div>
-                </div>
+        <div class="aids-box">
+            <div class="aids-row">
+                <span class="aids-key">Zeit:</span>
+                <span class="aids-val" id="aidsTime" contenteditable="false">15 Min</span>
+            </div>
+            <div class="aids-row">
+                <span class="aids-key">Erlaubte Hilfsmittel:</span>
+                <span class="aids-val" id="aidsTools" contenteditable="false">keine</span>
             </div>
         </div>
         <div class="header-name">
@@ -1247,10 +1328,6 @@
         </div>
     </div>
 
-    <div class="submit-section">
-        <button class="submit-button-large" id="submitBtnBottom">Fertig. Jetzt abgeben!</button>
-    </div>
-
         <div class="footer">
         <div class="footer-note">
             <div class="footer-points" id="pointsDisplay">Du hast <span id="achievedPoints">___</span> von <span id="totalPoints">14</span> Punkten erreicht.</div>
@@ -1297,8 +1374,10 @@
 
         if (isTeacher) {
             document.body.classList.add('teacher-mode');
-            const aids = document.getElementById('aidsText');
-            if (aids) aids.setAttribute('contenteditable', 'true');
+            ['aidsTime', 'aidsTools'].forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) el.setAttribute('contenteditable', 'true');
+            });
         }
 
         (function setupSchemaModal() {
@@ -1311,6 +1390,17 @@
             openBtn.addEventListener('click', open);
             if (closeBtn) closeBtn.addEventListener('click', close);
             modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+        })();
+
+        (function setupSolutionsToggle() {
+            const toggle = document.getElementById('solutionsToggle');
+            if (!toggle) return;
+            const apply = () => {
+                document.body.classList.toggle('show-solutions', toggle.checked);
+            };
+            toggle.checked = false;
+            apply();
+            toggle.addEventListener('change', apply);
         })();
 
         
