@@ -229,28 +229,48 @@
         }
 
         
-        .header-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 6px;
-        }
-
         .header-brand-row {
-            display: flex;
+            display: grid;
+            grid-template-columns: auto 1fr;
+            grid-template-rows: auto auto;
+            column-gap: 12px;
+            row-gap: 4px;
             align-items: center;
-            gap: 12px;
             margin-bottom: 8px;
         }
 
         .header-logo {
-            height: 46px;
+            grid-row: 1 / span 2;
+            grid-column: 1;
+            height: 52px;
             width: auto;
             flex-shrink: 0;
             display: block;
             object-fit: contain;
             background: transparent;
+            align-self: center;
+        }
+
+        .header-top {
+            grid-row: 1;
+            grid-column: 2;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+            margin: 0;
+        }
+
+        .header-meta-row {
+            grid-row: 2;
+            grid-column: 2;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+            min-width: 0;
+            margin: 0;
         }
 
         .header-school {
@@ -261,7 +281,6 @@
         }
 
         .header-class {
-            margin-left: auto;
             font-size: 12px;
             font-weight: bold;
             color: #1a1a1a;
@@ -1131,10 +1150,6 @@
     </aside>
     <div class="exam-paper">
     <div class="header">
-        <div class="header-top">
-            <div class="header-title">Hausaufgabenüberprüfung (HÜ): Binärsystem und römische Zahlen</div>
-            <div class="header-date" id="currentDate"></div>
-        </div>
         <div class="header-brand-row">
             <img class="header-logo" id="jmExamLogo" alt="JohnnyMonkey" src="/johnny-logo.png">
     <script>
@@ -1156,8 +1171,14 @@
             }
         })();
     </script>
-            <div class="header-school">JOHANNES-GYMNASIUM LAHNSTEIN</div>
-            <div class="header-class">KLASSE 5 MATHEMATIK</div>
+            <div class="header-top">
+                <div class="header-title">Hausaufgabenüberprüfung (HÜ): Binärsystem und römische Zahlen</div>
+                <div class="header-date" id="currentDate"></div>
+            </div>
+            <div class="header-meta-row">
+                <div class="header-school">JOHANNES-GYMNASIUM LAHNSTEIN</div>
+                <div class="header-class">KLASSE 5 MATHEMATIK</div>
+            </div>
         </div>
         <div class="header-divider"></div>
         <div class="aids-box">
