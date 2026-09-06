@@ -6774,16 +6774,18 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [participationModalOpen, setParticipationModalOpen] = useState(false);
   const [createExaminationModalOpen, setCreateExaminationModalOpen] = useState(false);
   const [createLessonModalOpen, setCreateLessonModalOpen] = useState(false);
+  const [createExerciseModalOpen, setCreateExerciseModalOpen] = useState(false);
   const [examinationType, setExaminationType] = useState<'KA' | 'KU' | 'HU' | 'QZ' | ''>('QZ');
   const [examinationFileName, setExaminationFileName] = useState('');
   const [examinationFolderPath, setExaminationFolderPath] = useState('');
   const [newLessonName, setNewLessonName] = useState('');
   const [newLessonFolderPath, setNewLessonFolderPath] = useState('');
   const [newLessonWithPruefung, setNewLessonWithPruefung] = useState(false);
+  const [exerciseTargetFolderPath, setExerciseTargetFolderPath] = useState('');
   const [availableFolders, setAvailableFolders] = useState<Array<{ path: string; name: string }>>([]);
   const [folderTree, setFolderTree] = useState<any>(null);
   const [expandedFolderPaths, setExpandedFolderPaths] = useState<Set<string>>(new Set());
-  const [folderPickerMode, setFolderPickerMode] = useState<'exam' | 'lesson'>('exam');
+  const [folderPickerMode, setFolderPickerMode] = useState<'exam' | 'lesson' | 'exercise'>('exam');
   const [examDurationMinutes, setExamDurationMinutes] = useState(5);
   const examinationFileNameInputRef = useRef<HTMLInputElement>(null);
   
@@ -11678,6 +11680,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   if (folderPickerMode === 'lesson' && !newLessonFolderPath) {
                     setNewLessonFolderPath(defaultFolderPath);
                   }
+                  if (folderPickerMode === 'exercise' && !exerciseTargetFolderPath) {
+                    setExerciseTargetFolderPath(defaultFolderPath);
+                  }
                 }
                 setFolderTree(tree);
                 console.log('✅ Ordnerstruktur geladen:', tree);
@@ -11723,7 +11728,12 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   const renderFolderTree = (node: any, level: number = 0) => {
     if (!node) return null;
     
-    const selectedFolderPath = folderPickerMode === 'exam' ? examinationFolderPath : newLessonFolderPath;
+    const selectedFolderPath =
+      folderPickerMode === 'exam'
+        ? examinationFolderPath
+        : folderPickerMode === 'exercise'
+          ? exerciseTargetFolderPath
+          : newLessonFolderPath;
     const isExpanded = expandedFolderPaths.has(node.path);
     const hasChildren = node.children && node.children.length > 0;
     
@@ -11748,6 +11758,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           onClick={() => {
             if (folderPickerMode === 'exam') {
               setExaminationFolderPath(node.path);
+            } else if (folderPickerMode === 'exercise') {
+              setExerciseTargetFolderPath(node.path);
             } else {
               setNewLessonFolderPath(node.path);
             }
@@ -17712,6 +17724,15 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               groups={groups}
               assignedFolders={assignedFolders}
               onEditExam={(item) => void handleEditSingleQuestion({ path: item.path, name: item.name })}
+              onCreateExam={(folderPath) => {
+                setFolderPickerMode('exam');
+                setExaminationType('QZ');
+                setExaminationFileName('');
+                setExamDurationMinutes(15);
+                setExaminationFolderPath(folderPath || '');
+                void fetchAvailableFolders();
+                setCreateExaminationModalOpen(true);
+              }}
             />
           </TabPanel>
           <TabPanel value={mainTabValue} index={3}>
@@ -17721,6 +17742,23 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               groupId={selectedGroupId || groups[0]?.id}
               groups={groups}
               assignedFolders={assignedFolders}
+              onCreateExercise={(lessonPath) => {
+                if (lessonPath) {
+                  const gid = resolveGroupIdForReihe(lessonPath);
+                  const editorGroupId =
+                    gid && gid !== DASHBOARD_REIHEN_CONTENT_GROUP ? gid : undefined;
+                  navigate(presentationEditorUrl(lessonPath, editorGroupId, 'create'));
+                  showSnackbar(
+                    'In der Präsentation: Interaktive Übung anlegen (Folien-Werkzeuge)',
+                    'success',
+                  );
+                  return;
+                }
+                setFolderPickerMode('exercise');
+                setExerciseTargetFolderPath('');
+                void fetchAvailableFolders();
+                setCreateExerciseModalOpen(true);
+              }}
             />
           </TabPanel>
           <TabPanel value={mainTabValue} index={4} dense>
@@ -29967,6 +30005,115 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             }}
           >
             Erstellen
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Interaktive Übung anlegen: Stundenordner wählen */}
+      <Dialog
+        open={createExerciseModalOpen}
+        onClose={() => {
+          setCreateExerciseModalOpen(false);
+          setExerciseTargetFolderPath('');
+          setFolderPickerMode('exam');
+        }}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            maxHeight: '90vh',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            pb: 1.5,
+            pt: 2.5,
+            px: 3,
+            borderBottom: '2px solid #e3f2fd',
+            bgcolor: '#f5f9ff',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <QuizIcon sx={{ color: '#1976d2', fontSize: 28 }} />
+            <Typography variant="h6" sx={{ fontSize: '1.15rem', fontWeight: 600, color: '#1976d2' }}>
+              Interaktive Übung anlegen
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          <Typography variant="body2" sx={{ mb: 1.5, fontWeight: 600, color: '#333', fontSize: '0.95rem' }}>
+            Stundenordner auswählen <span style={{ color: '#d32f2f' }}>*</span>
+          </Typography>
+          <Typography variant="caption" sx={{ display: 'block', color: '#666', mb: 1 }}>
+            Danach öffnet sich die Präsentation — dort die interaktive Übung über die Folien-Werkzeuge anlegen.
+          </Typography>
+          <Box
+            sx={{
+              border: '2px solid #e3f2fd',
+              borderRadius: 2,
+              p: 2,
+              maxHeight: 300,
+              overflow: 'auto',
+              bgcolor: '#fafbff',
+            }}
+          >
+            {folderTree ? (
+              <Box>{renderFolderTree(folderTree)}</Box>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 2 }}>
+                <CircularProgress size={24} sx={{ mb: 1 }} />
+                <Typography variant="body2" sx={{ color: '#666', fontStyle: 'italic' }}>
+                  Lade Ordnerstruktur...
+                </Typography>
+              </Box>
+            )}
+          </Box>
+          {exerciseTargetFolderPath ? (
+            <Typography variant="caption" sx={{ mt: 1, display: 'block', color: '#1976d2' }}>
+              Ausgewählt: {exerciseTargetFolderPath.replace('git-intern/', '')}
+            </Typography>
+          ) : null}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2, borderTop: '2px solid #e3f2fd', bgcolor: '#fafafa', gap: 1 }}>
+          <Button
+            onClick={() => {
+              setCreateExerciseModalOpen(false);
+              setExerciseTargetFolderPath('');
+              setFolderPickerMode('exam');
+            }}
+            sx={{ color: '#666', '&:hover': { bgcolor: '#f0f0f0' } }}
+          >
+            Abbrechen
+          </Button>
+          <Button
+            variant="contained"
+            disabled={!exerciseTargetFolderPath}
+            onClick={() => {
+              const lessonPath = exerciseTargetFolderPath;
+              if (!lessonPath) return;
+              const gid = resolveGroupIdForReihe(lessonPath);
+              const editorGroupId =
+                gid && gid !== DASHBOARD_REIHEN_CONTENT_GROUP ? gid : undefined;
+              setCreateExerciseModalOpen(false);
+              setExerciseTargetFolderPath('');
+              setFolderPickerMode('exam');
+              navigate(presentationEditorUrl(lessonPath, editorGroupId, 'create'));
+              showSnackbar(
+                'In der Präsentation: Interaktive Übung anlegen (Folien-Werkzeuge)',
+                'success',
+              );
+            }}
+            sx={{
+              bgcolor: '#1976d2',
+              px: 3,
+              '&:hover': { bgcolor: '#1565c0' },
+              '&:disabled': { bgcolor: '#ccc' },
+            }}
+          >
+            Weiter zur Präsentation
           </Button>
         </DialogActions>
       </Dialog>

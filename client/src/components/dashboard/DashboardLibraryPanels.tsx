@@ -13,6 +13,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import EditIcon from '@mui/icons-material/Edit';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import AddIcon from '@mui/icons-material/Add';
 import {
   examOpenUrl,
   exerciseEditorUrl,
@@ -172,6 +173,8 @@ function LibraryShell({
   emptyHint,
   children,
   onReload,
+  onCreateNew,
+  createLabel = 'Neu',
 }: {
   colors: Colors;
   title: string;
@@ -182,35 +185,63 @@ function LibraryShell({
   emptyHint: string;
   children: React.ReactNode;
   onReload: () => void;
+  onCreateNew?: () => void;
+  createLabel?: string;
 }) {
   return (
     <Box sx={{ p: 1.4, position: 'relative' }}>
-      <Tooltip title="Aktualisieren">
-        <span>
-          <IconButton
-            size="small"
-            aria-label="Aktualisieren"
-            onClick={onReload}
-            disabled={loading}
-            sx={{
-              position: 'absolute',
-              top: 6,
-              right: 6,
-              zIndex: 2,
-              color: colors.primary,
-              bgcolor: 'rgba(255,255,255,0.95)',
-              border: `1px solid ${colors.border}`,
-              width: 28,
-              height: 28,
-              '&:hover': { bgcolor: '#fff' },
-            }}
-          >
-            <RefreshIcon sx={{ fontSize: 16 }} />
-          </IconButton>
-        </span>
-      </Tooltip>
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 6,
+          right: 6,
+          zIndex: 2,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.4,
+        }}
+      >
+        {onCreateNew ? (
+          <Tooltip title={createLabel}>
+            <IconButton
+              size="small"
+              aria-label={createLabel}
+              onClick={onCreateNew}
+              sx={{
+                color: '#fff',
+                bgcolor: BTN_EDIT,
+                width: 28,
+                height: 28,
+                '&:hover': { bgcolor: BTN_EDIT_HOVER },
+              }}
+            >
+              <AddIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+        ) : null}
+        <Tooltip title="Aktualisieren">
+          <span>
+            <IconButton
+              size="small"
+              aria-label="Aktualisieren"
+              onClick={onReload}
+              disabled={loading}
+              sx={{
+                color: colors.primary,
+                bgcolor: 'rgba(255,255,255,0.95)',
+                border: `1px solid ${colors.border}`,
+                width: 28,
+                height: 28,
+                '&:hover': { bgcolor: '#fff' },
+              }}
+            >
+              <RefreshIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </span>
+        </Tooltip>
+      </Box>
 
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.45, mb: 1.1, pr: 4.5 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.45, mb: 1.1, pr: onCreateNew ? 7.5 : 4.5 }}>
         <Box sx={{ color: titleColor || colors.primary, display: 'flex' }}>{icon}</Box>
         <Typography sx={{ fontSize: '0.8rem', fontWeight: 650, color: titleColor || colors.primary }}>
           {title}
@@ -222,9 +253,36 @@ function LibraryShell({
           <CircularProgress size={26} />
         </Box>
       ) : empty ? (
-        <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', px: 0.5, fontStyle: 'italic' }}>
-          {emptyHint}
-        </Typography>
+        <Box sx={{ px: 0.5 }}>
+          <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', fontStyle: 'italic', mb: onCreateNew ? 1 : 0 }}>
+            {emptyHint}
+          </Typography>
+          {onCreateNew ? (
+            <Box
+              component="button"
+              onClick={onCreateNew}
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 0.4,
+                border: '1px solid #ffcc80',
+                bgcolor: '#fff3e0',
+                color: '#ef6c00',
+                borderRadius: 1.2,
+                px: 1,
+                py: 0.45,
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                '&:hover': { bgcolor: '#ffe0b2' },
+              }}
+            >
+              <AddIcon sx={{ fontSize: 15 }} />
+              {createLabel}
+            </Box>
+          ) : null}
+        </Box>
       ) : (
         children
       )}
@@ -343,6 +401,7 @@ function StufeReiheSections<T extends { stufe: string; reihe: string; subject: s
   itemPath,
   renderItem,
   itemAccent,
+  onCreateInFolder,
 }: {
   buckets: StufeBucket<T>[];
   colors: Colors;
@@ -350,6 +409,7 @@ function StufeReiheSections<T extends { stufe: string; reihe: string; subject: s
   itemPath: (item: T) => string;
   renderItem: (item: T, accent: string) => React.ReactNode;
   itemAccent: string;
+  onCreateInFolder?: (folderPath: string) => void;
 }) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.1 }}>
@@ -385,6 +445,7 @@ function StufeReiheSections<T extends { stufe: string; reihe: string; subject: s
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.85 }}>
               {bucket.reihen.map(({ reihe, items }) => {
                 const linkedGroups = groupsForMaterialPath(itemPath(items[0]), meta);
+                const createPath = itemPath(items[0]);
                 return (
                   <Box
                     key={reihe}
@@ -420,7 +481,30 @@ function StufeReiheSections<T extends { stufe: string; reihe: string; subject: s
                       >
                         {reihe}
                       </Typography>
-                      <GroupChips groups={linkedGroups} fallbackPrimary={colors.primary} />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.45, flexWrap: 'wrap' }}>
+                        <GroupChips groups={linkedGroups} fallbackPrimary={colors.primary} />
+                        {onCreateInFolder && createPath ? (
+                          <Tooltip title="Neu in dieser Reihe">
+                            <IconButton
+                              size="small"
+                              aria-label="Neu in dieser Reihe"
+                              onClick={() => onCreateInFolder(createPath)}
+                              sx={{
+                                p: 0,
+                                width: 20,
+                                height: 20,
+                                bgcolor: '#fff3e0',
+                                color: '#ef6c00',
+                                border: '1px solid #ffcc80',
+                                borderRadius: '50%',
+                                '&:hover': { bgcolor: '#ffe0b2' },
+                              }}
+                            >
+                              <AddIcon sx={{ fontSize: 14 }} />
+                            </IconButton>
+                          </Tooltip>
+                        ) : null}
+                      </Box>
                     </Box>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.4 }}>
                       {items.map((item) => renderItem(item, itemAccent))}
@@ -440,9 +524,10 @@ export const DashboardExamsPanel: React.FC<{
   rootPaths: string[];
   colors: Colors;
   onEditExam?: (item: LibraryExamItem) => void;
+  onCreateExam?: (folderPath?: string) => void;
   groups?: GroupLite[];
   assignedFolders?: Record<string, string[]>;
-}> = ({ rootPaths, colors, onEditExam, groups = [], assignedFolders = {} }) => {
+}> = ({ rootPaths, colors, onEditExam, onCreateExam, groups = [], assignedFolders = {} }) => {
   const [items, setItems] = useState<LibraryExamItem[]>([]);
   const [loading, setLoading] = useState(false);
   const meta = useMemo(() => ({ groups, assignedFolders }), [groups, assignedFolders]);
@@ -479,6 +564,8 @@ export const DashboardExamsPanel: React.FC<{
       empty={!items.length}
       emptyHint={emptyHint}
       onReload={() => void load()}
+      onCreateNew={onCreateExam ? () => onCreateExam() : undefined}
+      createLabel="Neue Prüfung"
     >
       <StufeReiheSections
         buckets={buckets}
@@ -486,6 +573,7 @@ export const DashboardExamsPanel: React.FC<{
         meta={meta}
         itemPath={(item) => item.lessonFolder || item.path}
         itemAccent={REIHE_PRUEFUNG}
+        onCreateInFolder={onCreateExam}
         renderItem={(item, accent) => (
           <MaterialRow
             key={item.path}
@@ -527,7 +615,8 @@ export const DashboardInteractiveExercisesPanel: React.FC<{
   groupId?: string;
   groups?: GroupLite[];
   assignedFolders?: Record<string, string[]>;
-}> = ({ rootPaths, colors, groupId, groups = [], assignedFolders = {} }) => {
+  onCreateExercise?: (lessonPath?: string) => void;
+}> = ({ rootPaths, colors, groupId, groups = [], assignedFolders = {}, onCreateExercise }) => {
   const [items, setItems] = useState<LibraryExerciseItem[]>([]);
   const [loading, setLoading] = useState(false);
   const meta = useMemo(() => ({ groups, assignedFolders }), [groups, assignedFolders]);
@@ -564,6 +653,8 @@ export const DashboardInteractiveExercisesPanel: React.FC<{
       empty={!items.length}
       emptyHint={emptyHint}
       onReload={() => void load()}
+      onCreateNew={onCreateExercise ? () => onCreateExercise() : undefined}
+      createLabel="Neue Übung"
     >
       <StufeReiheSections
         buckets={buckets}
@@ -571,6 +662,7 @@ export const DashboardInteractiveExercisesPanel: React.FC<{
         meta={meta}
         itemPath={(item) => item.lessonPath}
         itemAccent={REIHE_STUNDE}
+        onCreateInFolder={onCreateExercise}
         renderItem={(item, accent) => {
           const editorGid =
             groupsForMaterialPath(item.lessonPath, meta)[0]?.id || groupId;
