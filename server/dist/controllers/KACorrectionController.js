@@ -5,39 +5,41 @@ const client_1 = require("@prisma/client");
 const loginCodeCrypto_1 = require("../utils/loginCodeCrypto");
 const prisma = new client_1.PrismaClient();
 /**
- * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, HÜ_, HU_)
+ * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, KU_, HÜ_, HU_, QZ_)
  */
 function isCorrectionFile(fileName) {
-    return fileName.startsWith('KA_') || fileName.startsWith('HÜ_') || fileName.startsWith('HU_');
+    const base = (fileName || '').replace(/\\/g, '/').split('/').pop() || fileName || '';
+    return /^(KA_|KU_|HÜ_|HU_|QZ_)/i.test(base);
 }
 /**
- * Helper-Funktion: Generiert mögliche Pfad-Varianten für eine Datei
+ * Pfad-Varianten für Abgaben: Lehrer übergibt oft den vollen Ordnerpfad,
+ * SuS speichern meist nur den Dateinamen (z. B. HU_….html).
  */
 function getPossiblePaths(filePath) {
-    const possiblePaths = [
-        filePath,
-        filePath.replace('.html', ''),
-        filePath.replace('.htm', ''),
-    ];
-    // Entferne Präfixe und füge sie wieder hinzu
-    if (filePath.startsWith('KA_')) {
-        const withoutPrefix = filePath.replace('KA_', '');
-        possiblePaths.push(withoutPrefix, `KA_${withoutPrefix}`);
+    const normalized = (filePath || '').replace(/\\/g, '/').trim();
+    const base = normalized.split('/').pop() || normalized;
+    const withoutExt = base.replace(/\.(html|htm)$/i, '');
+    const stem = withoutExt.replace(/^(KA_|KU_|HÜ_|HU_|QZ_)/i, '');
+    const candidates = new Set();
+    const add = (p) => {
+        const v = (p || '').trim();
+        if (!v)
+            return;
+        candidates.add(v);
+        const noExt = v.replace(/\.(html|htm)$/i, '');
+        candidates.add(noExt);
+        if (!/\.(html|htm)$/i.test(v)) {
+            candidates.add(`${v}.html`);
+            candidates.add(`${v}.htm`);
+        }
+    };
+    add(normalized);
+    add(base);
+    add(withoutExt);
+    for (const pref of ['KA_', 'KU_', 'HÜ_', 'HU_', 'QZ_', '']) {
+        add(`${pref}${stem}`);
     }
-    else if (filePath.startsWith('HÜ_')) {
-        const withoutPrefix = filePath.replace('HÜ_', '');
-        possiblePaths.push(withoutPrefix, `HÜ_${withoutPrefix}`, `HU_${withoutPrefix}`);
-    }
-    else if (filePath.startsWith('HU_')) {
-        const withoutPrefix = filePath.replace('HU_', '');
-        possiblePaths.push(withoutPrefix, `HU_${withoutPrefix}`, `HÜ_${withoutPrefix}`);
-    }
-    else {
-        // Wenn kein Präfix vorhanden, füge alle möglichen hinzu
-        possiblePaths.push(`KA_${filePath}`, `HÜ_${filePath}`, `HU_${filePath}`);
-    }
-    // Entferne Duplikate
-    return [...new Set(possiblePaths)];
+    return [...candidates];
 }
 class KACorrectionController {
     /**
@@ -660,14 +662,31 @@ class KACorrectionController {
             }
             // Versuche auch mit verschiedenen Varianten zu suchen
             const uniquePaths = getPossiblePaths(kaFilePath);
-            // Finde alle Submissions für diese KA
-            const submissions = await prisma.kASubmission.findMany({
+            const baseName = (kaFilePath.replace(/\\/g, '/').split('/').pop() || kaFilePath).toLowerCase();
+            // Finde alle Submissions für diese KA (Pfad-Varianten + Basename-Fallback)
+            let submissions = await prisma.kASubmission.findMany({
                 where: {
                     OR: uniquePaths.map(path => ({
                         kaFilePath: path
                     }))
                 }
             });
+            if (submissions.length === 0 && baseName) {
+                const all = await prisma.kASubmission.findMany({
+                    select: { id: true, kaFilePath: true, isReleased: true },
+                });
+                const matchingIds = all
+                    .filter((sub) => {
+                    const subBase = (sub.kaFilePath || '').replace(/\\/g, '/').split('/').pop() || '';
+                    return subBase.toLowerCase() === baseName;
+                })
+                    .map((sub) => sub.id);
+                if (matchingIds.length > 0) {
+                    submissions = await prisma.kASubmission.findMany({
+                        where: { id: { in: matchingIds } },
+                    });
+                }
+            }
             if (submissions.length === 0) {
                 return res.status(404).json({ error: 'Keine Abgaben für diese Klassenarbeit gefunden' });
             }
@@ -675,10 +694,16 @@ class KACorrectionController {
             const bodyReleased = (_a = req.body) === null || _a === void 0 ? void 0 : _a.isReleased;
             const allReleased = submissions.every(sub => sub.isReleased);
             const newReleaseStatus = typeof bodyReleased === 'boolean' ? bodyReleased : !allReleased;
+            const releasePaths = [
+                ...new Set([
+                    ...uniquePaths,
+                    ...submissions.map((s) => s.kaFilePath).filter(Boolean),
+                ]),
+            ];
             // Aktualisiere alle Submissions
             const result = await prisma.kASubmission.updateMany({
                 where: {
-                    OR: uniquePaths.map(path => ({
+                    OR: releasePaths.map(path => ({
                         kaFilePath: path
                     }))
                 },

@@ -1748,17 +1748,28 @@ class FileSystemPathController {
                 fullFolderPath,
                 filePath
             });
-            // Lade Template-Datei
+            // Lade Standard-Prüfungsvorlage (Johnny-Design: Logo/Chrome/Hilfsmittel/…)
             let templatePath;
+            const templateRel = path_1.default.join('J-M-Reihen', 'Mathe', '_Vorlagen', 'Pruefung-Standardvorlage.html');
             if (process.env.NODE_ENV === 'production') {
-                // Production: Versuche verschiedene Pfade
-                const serverPath = path_1.default.join(process.cwd(), 'J-M-Reihen', 'Mathe', 'Klasse 7', 'Kap 3 - Geometrische Abbildungen', 'HU_geometrische-abbildungen.html');
-                const projectPath = path_1.default.join(process.cwd(), '..', 'J-M-Reihen', 'Mathe', 'Klasse 7', 'Kap 3 - Geometrische Abbildungen', 'HU_geometrische-abbildungen.html');
+                const serverPath = path_1.default.join(process.cwd(), templateRel);
+                const projectPath = path_1.default.join(process.cwd(), '..', templateRel);
                 templatePath = fs_1.default.existsSync(serverPath) ? serverPath : projectPath;
             }
             else {
-                // Development: Verwende absoluten Pfad
-                templatePath = path_1.default.join('/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey', 'J-M-Reihen', 'Mathe', 'Klasse 7', 'Kap 3 - Geometrische Abbildungen', 'HU_geometrische-abbildungen.html');
+                templatePath = path_1.default.join('/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey', templateRel);
+            }
+            // Fallback: ältere Geometrie-Vorlage, falls Standard fehlt
+            if (!fs_1.default.existsSync(templatePath)) {
+                const legacyRel = path_1.default.join('J-M-Reihen', 'Mathe', 'Klasse 7', 'Kap 3 - Geometrische Abbildungen', 'HU_geometrische-abbildungen.html');
+                if (process.env.NODE_ENV === 'production') {
+                    const serverPath = path_1.default.join(process.cwd(), legacyRel);
+                    const projectPath = path_1.default.join(process.cwd(), '..', legacyRel);
+                    templatePath = fs_1.default.existsSync(serverPath) ? serverPath : projectPath;
+                }
+                else {
+                    templatePath = path_1.default.join('/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey', legacyRel);
+                }
             }
             console.log('📄 Template-Pfad:', templatePath);
             console.log('📄 Template existiert:', fs_1.default.existsSync(templatePath));
@@ -1793,17 +1804,18 @@ class FileSystemPathController {
             const examTypeName = examTypeNames[examType] || 'Prüfung';
             const finalTitle = title || `${examTypeName}: ${finalFileName.replace(prefix, '').replace(/-/g, ' ')}`;
             templateContent = templateContent.replace(/<title>(.*?)<\/title>/, `<title>${finalTitle}</title>`);
+            templateContent = templateContent.replace(/Hausaufgabenüberprüfung \(HÜ\): NEUER TITEL/g, finalTitle);
             templateContent = templateContent.replace(/Hausaufgabenüberprüfung \(HÜ\): Geometrische Abbildungen/g, finalTitle);
-            // Entferne "Wichtiger Hinweis" Box
+            templateContent = templateContent.replace(/NEUER TITEL/g, finalTitle.replace(/^[^:]+:\s*/, '') || finalTitle);
+            // Legacy: alte Hinweis-Box entfernen, falls noch vorhanden
             templateContent = templateContent.replace(/<div class="info-box">[\s\S]*?<\/div>\s*/g, '');
-            // Entferne Footer-Hinweise (Viel Erfolg / Punkte / Note)
-            templateContent = templateContent.replace(/<div class="footer-right">[\s\S]*?<\/div>/g, '');
-            templateContent = templateContent.replace(/<div class="footer-note">[\s\S]*?<\/div>/g, '');
-            // Punkte-/Notenanzeige absichern, falls Footer entfernt wurde
-            templateContent = templateContent.replace(/const pointsDisplay = document\.getElementById\('pointsDisplay'\);\s*const noteText = document\.getElementById\('noteText'\);\s*const noteNumber = document\.getElementById\('noteNumber'\);\s*/g, "const pointsDisplay = document.getElementById('pointsDisplay');\n            const noteText = document.getElementById('noteText');\n            const noteNumber = document.getElementById('noteNumber');\n            if (!pointsDisplay || !noteText || !noteNumber) {\n                return;\n            }\n");
-            // Setze Timer-Dauer
+            // Dauer / Timer / Hilfsmittel-Zeile
             const timerLabel = `${resolvedDurationMinutes}:00`;
-            templateContent = templateContent.replace(/<div class="timer-container" id="timer">\s*[\d:]+\s*<\/div>/, `<div class="timer-container" id="timer">\n                ${timerLabel}\n            </div>`);
+            templateContent = templateContent.replace(/__TIMER__/g, timerLabel);
+            templateContent = templateContent.replace(/__DAUER__/g, String(resolvedDurationMinutes));
+            templateContent = templateContent.replace(/__PUNKTE__/g, '…');
+            templateContent = templateContent.replace(/<div class="timer-container" id="timer">\s*[\d:]+|__TIMER__\s*<\/div>/, `<div class="timer-container" id="timer">\n            ${timerLabel}\n        </div>`);
+            templateContent = templateContent.replace(/(<span class="aids-val" id="aidsTime"[^>]*>)[^<]*(<\/span>)/, `$1${resolvedDurationMinutes} Min$2`);
             templateContent = templateContent.replace(/let timeLeft = \d+ \* 60;.*$/m, `let timeLeft = ${resolvedDurationMinutes} * 60; // ${resolvedDurationMinutes} Minuten in Sekunden`);
             // Stelle sicher, dass der Ordner existiert
             if (!fs_1.default.existsSync(fullFolderPath)) {
