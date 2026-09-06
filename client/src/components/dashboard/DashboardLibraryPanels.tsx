@@ -103,7 +103,8 @@ function LibraryShell({
 export const DashboardExamsPanel: React.FC<{
   rootPaths: string[];
   colors: Colors;
-}> = ({ rootPaths, colors }) => {
+  onEditExam?: (item: LibraryExamItem) => void;
+}> = ({ rootPaths, colors, onEditExam }) => {
   const [items, setItems] = useState<LibraryExamItem[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -127,7 +128,7 @@ export const DashboardExamsPanel: React.FC<{
       colors={colors}
       title="Prüfungen"
       icon={<AssignmentIcon sx={{ fontSize: 15 }} />}
-      hint="KA / KU / HÜ / QZ aus den Arbeits-Reihen und zugeordneten Stundenordnern"
+      hint="Vorhandene KA / KU / HÜ / QZ aus den Arbeits-Reihen und zugeordneten Ordnern"
       loading={loading}
       empty={!items.length}
       onReload={() => void load()}
@@ -136,16 +137,32 @@ export const DashboardExamsPanel: React.FC<{
         {items.map((item) => (
           <ListItemButton
             key={item.path}
-            onClick={() => window.open(examOpenUrl(item.path), '_blank', 'noopener,noreferrer')}
-            sx={{ alignItems: 'flex-start', py: 1 }}
+            sx={{ alignItems: 'flex-start', py: 1, gap: 0.5 }}
           >
             <ListItemText
               primary={item.name}
               secondary={item.lessonLabel}
               primaryTypographyProps={{ fontSize: '0.82rem', fontWeight: 600 }}
               secondaryTypographyProps={{ fontSize: '0.68rem' }}
+              onClick={() => window.open(examOpenUrl(item.path), '_blank', 'noopener,noreferrer')}
             />
-            <OpenInNewIcon sx={{ fontSize: 16, color: 'text.secondary', mt: 0.5 }} />
+            {onEditExam ? (
+              <Button
+                size="small"
+                startIcon={<EditIcon sx={{ fontSize: 14 }} />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditExam(item);
+                }}
+                sx={{ fontSize: '0.62rem', textTransform: 'none', minWidth: 0, flexShrink: 0 }}
+              >
+                Bearbeiten
+              </Button>
+            ) : null}
+            <OpenInNewIcon
+              sx={{ fontSize: 16, color: 'text.secondary', mt: 0.5, flexShrink: 0, cursor: 'pointer' }}
+              onClick={() => window.open(examOpenUrl(item.path), '_blank', 'noopener,noreferrer')}
+            />
           </ListItemButton>
         ))}
       </List>
@@ -181,7 +198,7 @@ export const DashboardInteractiveExercisesPanel: React.FC<{
       colors={colors}
       title="Interaktive Übungen"
       icon={<QuizIcon sx={{ fontSize: 15 }} />}
-      hint="Übungen aus den Präsentationen der Arbeits-Reihen und zugeordneten Ordner"
+      hint="Vorhandene Übungen aus den Präsentationen der Arbeits-Reihen und zugeordneten Ordner"
       loading={loading}
       empty={!items.length}
       onReload={() => void load()}
@@ -210,7 +227,7 @@ export const DashboardInteractiveExercisesPanel: React.FC<{
               }}
               sx={{ fontSize: '0.62rem', textTransform: 'none', minWidth: 0, flexShrink: 0 }}
             >
-              Edit
+              Bearbeiten
             </Button>
             <Button
               size="small"
@@ -221,7 +238,7 @@ export const DashboardInteractiveExercisesPanel: React.FC<{
               }}
               sx={{ fontSize: '0.62rem', textTransform: 'none', minWidth: 0, flexShrink: 0 }}
             >
-              Play
+              Spielen
             </Button>
           </ListItemButton>
         ))}

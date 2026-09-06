@@ -125,6 +125,10 @@ import WochenaufgabenFolderRow, {
   WochenaufgabenAddToReiheButton,
 } from './wochenaufgaben/WochenaufgabenFolderRow';
 import EntryTicketCompletedRow from './entry-ticket/EntryTicketCompletedRow';
+import {
+  DashboardExamsPanel,
+  DashboardInteractiveExercisesPanel,
+} from './dashboard/DashboardLibraryPanels';
 import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
 import {
   exerciseEditorUrl,
@@ -5947,6 +5951,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const playedLessonKeySet = useMemo(() => new Set(playedLessonKeys), [playedLessonKeys]);
   const [reihenOptions, setReihenOptions] = useState<WorkingReiheOption[]>([]);
   const [reihenOptionsLoading, setReihenOptionsLoading] = useState(false);
+
+  useEffect(() => {
+    if (mainTabValue > 7) setMainTabValue(0);
+  }, [mainTabValue]);
 
   useEffect(() => {
     if (!focusGroupId || groups.length === 0) return;
@@ -13498,7 +13506,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       e.preventDefault();
     } else if (e.key === 'Tab') {
       return; // Let Tab work normally for accessibility
-            } else if (e.key === 'ArrowRight' && mainTabValue < 8) {
+            } else if (e.key === 'ArrowRight' && mainTabValue < 7) {
       e.preventDefault();
       setMainTabValue(mainTabValue + 1);
     } else if (e.key === 'ArrowLeft' && mainTabValue > 0) {
@@ -13802,6 +13810,20 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   const [folderAssignmentGroupId, setFolderAssignmentGroupId] = useState<string | null>(null);
   const [folderAssignmentGroupName, setFolderAssignmentGroupName] = useState('');
   const [assignedFolders, setAssignedFolders] = useState<{[groupId: string]: string[]}>({});
+  const dashboardLibraryRootPaths = useMemo(() => {
+    const paths = new Set<string>();
+    for (const p of workingReihenPaths || []) {
+      const n = (p || '').replace(/\\/g, '/').replace(/\/+$/, '').trim();
+      if (n) paths.add(n);
+    }
+    for (const list of Object.values(assignedFolders || {})) {
+      for (const p of list || []) {
+        const n = (p || '').replace(/\\/g, '/').replace(/\/+$/, '').trim();
+        if (n) paths.add(n);
+      }
+    }
+    return [...paths];
+  }, [workingReihenPaths, assignedFolders]);
 
   const resolveGroupIdForReihe = useCallback(
     (folderPath: string) => {
@@ -16144,35 +16166,34 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               aria-label="dashboard tabs"
               variant="fullWidth"
               sx={{
-                minHeight: 34,
+                minHeight: 40,
                 '& .MuiTabs-flexContainer': { gap: 0 },
                 '& .MuiTab-root': {
-                  minHeight: 34,
+                  minHeight: 40,
                   minWidth: 0,
                   flex: 1,
                   maxWidth: 'none',
-                  px: 0.15,
-                  py: 0.25,
-                  fontSize: '0.58rem',
-                  lineHeight: 1.1,
+                  px: 0.2,
+                  py: 0.35,
+                  fontSize: '0.72rem',
+                  lineHeight: 1.15,
                   textTransform: 'none',
                   opacity: 1,
                 },
                 '& .MuiTab-iconWrapper': {
-                  marginBottom: '1px !important',
+                  marginBottom: '2px !important',
                   marginRight: '0 !important',
                 },
               }}
             >
-              <Tab icon={<AutoStoriesIcon sx={{ fontSize: 14 }} />} label="Reihen" iconPosition="top" />
-              <Tab icon={<GroupIcon sx={{ fontSize: 14 }} />} label="Lerngruppen" iconPosition="top" />
-              <Tab icon={<AssignmentIcon sx={{ fontSize: 14 }} />} label="Prüfungen" iconPosition="top" />
-              <Tab icon={<QuizIcon sx={{ fontSize: 14 }} />} label="Übungen" iconPosition="top" title="Interaktive Übungen" />
-              <Tab icon={<ConfirmationNumberIcon sx={{ fontSize: 14 }} />} label="Entry" iconPosition="top" title="Entry Tickets" />
-              <Tab icon={<BuildIcon sx={{ fontSize: 14 }} />} label="Verwalten" iconPosition="top" />
-              <Tab icon={<StyleIcon sx={{ fontSize: 14 }} />} label="Karten" iconPosition="top" title="Karteikarten" />
-              <Tab icon={<StorageIcon sx={{ fontSize: 14 }} />} label="Datenbank" iconPosition="top" sx={{ color: '#9E9E9E' }} />
-              <Tab icon={<StyleIcon sx={{ fontSize: 14 }} />} label="Fächer" iconPosition="top" title="Meine Fächer" sx={{ color: '#9E9E9E' }} />
+              <Tab icon={<AutoStoriesIcon sx={{ fontSize: 16 }} />} label="Reihen" iconPosition="top" />
+              <Tab icon={<GroupIcon sx={{ fontSize: 16 }} />} label="Lerngruppen" iconPosition="top" />
+              <Tab icon={<AssignmentIcon sx={{ fontSize: 16 }} />} label="Prüfungen" iconPosition="top" />
+              <Tab icon={<QuizIcon sx={{ fontSize: 16 }} />} label="Übungen" iconPosition="top" title="Interaktive Übungen" />
+              <Tab icon={<ConfirmationNumberIcon sx={{ fontSize: 16 }} />} label="Entry" iconPosition="top" title="Entry Tickets" />
+              <Tab icon={<BuildIcon sx={{ fontSize: 16 }} />} label="Verwalten" iconPosition="top" />
+              <Tab icon={<StyleIcon sx={{ fontSize: 16 }} />} label="Karten" iconPosition="top" title="Karteikarten" />
+              <Tab icon={<StorageIcon sx={{ fontSize: 16 }} />} label="Datenbank" iconPosition="top" sx={{ color: '#9E9E9E' }} />
             </Tabs>
           </Box>
         </Grid>
@@ -17685,154 +17706,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             </Box>
           </TabPanel>
           <TabPanel value={mainTabValue} index={2}>
-            <Box sx={{ p: 1.4 }}>
-              <Typography
-                variant="body2"
-                sx={{
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  color: colors.primary,
-                  mb: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.4,
-                }}
-              >
-                <AssignmentIcon sx={{ fontSize: 16 }} />
-                Prüfungen nach Reihe · Stufe · Thema · Stunde
-              </Typography>
-              {workingReihenPaths.length === 0 ? (
-                <Typography
-                  variant="body2"
-                  sx={{ color: colors.textSecondary, fontStyle: 'italic', fontSize: '0.8rem', px: 0.5 }}
-                >
-                  Noch keine Arbeits-Reihe gewählt — im Tab „Reihen“ auswählen, dann erscheinen hier die Prüfungen
-                  nach Stufen und Themen.
-                </Typography>
-              ) : (
-                <Grid container spacing={1.5} alignItems="flex-start">
-                  {filterOutNestedAssignedFolderPaths(workingReihenPaths).map((folderPath) => {
-                    const gid = resolveGroupIdForReihe(folderPath);
-                    const isInfReihe = isInformatikFolderPath(folderPath);
-                    return (
-                      <Grid item xs={12} sm={6} md={4} key={`exam-${folderPath}`}>
-                        <Box
-                          sx={{
-                            p: 2.1,
-                            bgcolor: isInfReihe ? INFORMATIK_FOLDER_BG : '#fff',
-                            borderRadius: 2.8,
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                            border: isInfReihe ? INFORMATIK_FOLDER_BORDER : '1px solid #e0e0e0',
-                            height: '100%',
-                          }}
-                        >
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              display: 'block',
-                              mb: 0.75,
-                              fontWeight: 700,
-                              color: '#c62828',
-                              fontSize: '0.72rem',
-                            }}
-                          >
-                            {assignedFolderDisplayLabel(folderPath)}
-                          </Typography>
-                          <Box
-                            sx={{
-                              p: 1.4,
-                              bgcolor: '#fafbfc',
-                              borderRadius: 1.4,
-                              border: '1px solid #f0f0f0',
-                            }}
-                          >
-                            {renderAssignedFolderPreview(gid, folderPath, {
-                              enableDrag: false,
-                              materialFocus: 'exams',
-                            })}
-                          </Box>
-                        </Box>
-                      </Grid>
-                    );
-                  })}
-                </Grid>
-              )}
-            </Box>
+            <DashboardExamsPanel
+              rootPaths={dashboardLibraryRootPaths}
+              colors={colors}
+              onEditExam={(item) => void handleEditSingleQuestion({ path: item.path, name: item.name })}
+            />
           </TabPanel>
           <TabPanel value={mainTabValue} index={3}>
-            <Box sx={{ p: 1.4 }}>
-              <Typography
-                variant="body2"
-                sx={{
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  color: colors.primary,
-                  mb: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.4,
-                }}
-              >
-                <QuizIcon sx={{ fontSize: 16 }} />
-                Interaktive Übungen nach Reihe · Stufe · Thema · Stunde
-              </Typography>
-              {workingReihenPaths.length === 0 ? (
-                <Typography
-                  variant="body2"
-                  sx={{ color: colors.textSecondary, fontStyle: 'italic', fontSize: '0.8rem', px: 0.5 }}
-                >
-                  Noch keine Arbeits-Reihe gewählt — im Tab „Reihen“ auswählen, dann erscheinen hier die Übungen
-                  nach Stufen und Themen.
-                </Typography>
-              ) : (
-                <Grid container spacing={1.5} alignItems="flex-start">
-                  {filterOutNestedAssignedFolderPaths(workingReihenPaths).map((folderPath) => {
-                    const gid = resolveGroupIdForReihe(folderPath);
-                    const isInfReihe = isInformatikFolderPath(folderPath);
-                    return (
-                      <Grid item xs={12} sm={6} md={4} key={`exercise-${folderPath}`}>
-                        <Box
-                          sx={{
-                            p: 2.1,
-                            bgcolor: isInfReihe ? INFORMATIK_FOLDER_BG : '#fff',
-                            borderRadius: 2.8,
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                            border: isInfReihe ? INFORMATIK_FOLDER_BORDER : '1px solid #e0e0e0',
-                            height: '100%',
-                          }}
-                        >
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              display: 'block',
-                              mb: 0.75,
-                              fontWeight: 700,
-                              color: '#6a1b9a',
-                              fontSize: '0.72rem',
-                            }}
-                          >
-                            {assignedFolderDisplayLabel(folderPath)}
-                          </Typography>
-                          <Box
-                            sx={{
-                              p: 1.4,
-                              bgcolor: '#fafbfc',
-                              borderRadius: 1.4,
-                              border: '1px solid #f0f0f0',
-                            }}
-                          >
-                            {renderAssignedFolderPreview(gid, folderPath, {
-                              enableDrag: false,
-                              materialFocus: 'exercises',
-                            })}
-                          </Box>
-                        </Box>
-                      </Grid>
-                    );
-                  })}
-                </Grid>
-              )}
-            </Box>
+            <DashboardInteractiveExercisesPanel
+              rootPaths={dashboardLibraryRootPaths}
+              colors={colors}
+              groupId={selectedGroupId || groups[0]?.id}
+            />
           </TabPanel>
           <TabPanel value={mainTabValue} index={4} dense>
             <Box sx={{ height: 'min(78vh, 900px)', width: '100%', bgcolor: '#fff' }}>
@@ -18173,201 +18058,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             <Box sx={{ fontSize: '0.7rem' }}>
               <DatabaseViewer />
             </Box>
-          </TabPanel>
-          <TabPanel value={mainTabValue} index={8}>
-            {/* Subtabs: Fächer als Tabs */}
-            <Box sx={{ mb: 0.15 }}>
-              <Tabs
-                value={subjectTabValue}
-                onChange={handleSubjectTabChange}
-                variant="scrollable"
-                scrollButtons={false}
-                aria-label="subjects tabs"
-                sx={{
-                  minHeight: 32,
-                  '& .MuiTabs-flexContainer': { gap: 0.5 },
-                  '& .MuiTabs-indicator': { display: 'none' },
-                  '& .MuiTab-root': {
-                    minHeight: 30,
-                    textTransform: 'none',
-                    padding: '6px 10px',
-                    borderRadius: '16px',
-                    fontSize: '0.82rem',
-                    color: '#2C3E50',
-                    opacity: 1,
-                  },
-                  '& .MuiTab-root.Mui-selected': {
-                    backgroundColor: '#e3f0fc',
-                    color: '#1976D2',
-                    fontWeight: 600,
-                  },
-                  '& .MuiTab-root:first-of-type': {
-                    width: '7%',
-                    minWidth: '56px',
-                    maxWidth: '70px',
-                  },
-                  '& .MuiTab-root:not(:first-of-type)': {
-                    flex: 1,
-                    maxWidth: subjects.length === 1 ? '90%' : '45%',
-                  },
-                }}
-              >
-                {/* + Tab für "Fach hinzufügen" */}
-                <Tab 
-                  label="➕" 
-                  value={-1} 
-                  sx={{ 
-                    fontSize: '1.2rem',
-                    color: '#1976D2',
-                    '&:hover': {
-                      backgroundColor: '#e3f0fc',
-                    }
-                  }}
-                />
-                {subjects.map((s, i) => (
-                  <Tab key={s.id} label={s.name} value={i} />
-                ))}
-              </Tabs>
-            </Box>
-
-            {/* Unter-Tabs: Blöcke direkt unterhalb der jeweiligen Obertabs (bei genau 2 Fächern links/rechts 50%) */}
-            {subjects.length === 2 ? (
-              <Box sx={{ display: 'flex', gap: 0.5, mt: 0.15, mb: 2.5 }}>
-                <Box sx={{ width: '50%', ml: '6%' }}>
-                  {subjectTabValue === 0 && (
-                    <Tabs
-                      value={blockTabValue}
-                      onChange={(_, v) => setBlockTabValue(v)}
-                      variant="standard"
-                      aria-label="blocks tabs left"
-                      sx={{
-                        minHeight: 20,
-                        width: '100%',
-                        '& .MuiTabs-flexContainer': { gap: 0.25, flexWrap: 'wrap' },
-                        '& .MuiTabs-indicator': { display: 'none' },
-                        '& .MuiTab-root': {
-                          minHeight: 18,
-                          textTransform: 'none',
-                          padding: '1px 4px',
-                          borderRadius: '10px',
-                          fontSize: '0.6rem',
-                          color: '#2C3E50',
-                          opacity: 1,
-                          backgroundColor: '#f1f5f9',
-                          width: '20%',
-                          minWidth: 0,
-                        },
-                        '& .MuiTab-root.Mui-selected': {
-                          backgroundColor: '#e8f5e9',
-                          color: '#2E7D32',
-                          fontWeight: 600,
-                        },
-                      }}
-                    >
-                      {(blocks.filter(b => b.subjectId === subjects[0]?.id) || []).map((b, i) => (
-                        <Tab key={b.id} label={b.name} value={i} />
-                      ))}
-                    </Tabs>
-                  )}
-                </Box>
-                <Box sx={{ width: '50%', display: 'flex', justifyContent: 'flex-start' }}>
-                  {subjectTabValue === 1 && (
-                    <Tabs
-                      value={blockTabValue}
-                      onChange={(_, v) => setBlockTabValue(v)}
-                      variant="standard"
-                      aria-label="blocks tabs right"
-                      sx={{
-                        minHeight: 20,
-                        width: '100%',
-                        '& .MuiTabs-flexContainer': { gap: 0.25, flexWrap: 'wrap', justifyContent: 'flex-start' },
-                        '& .MuiTabs-indicator': { display: 'none' },
-                        '& .MuiTab-root': {
-                          minHeight: 18,
-                          textTransform: 'none',
-                          padding: '1px 4px',
-                          borderRadius: '10px',
-                          fontSize: '0.6rem',
-                          color: '#2C3E50',
-                          opacity: 1,
-                          backgroundColor: '#f1f5f9',
-                          width: '20%',
-                          minWidth: 0,
-                        },
-                        '& .MuiTab-root.Mui-selected': {
-                          backgroundColor: '#e8f5e9',
-                          color: '#2E7D32',
-                          fontWeight: 600,
-                        },
-                      }}
-                    >
-                      {(blocks.filter(b => b.subjectId === subjects[1]?.id) || []).map((b, i) => (
-                        <Tab key={b.id} label={b.name} value={i} />
-                      ))}
-                    </Tabs>
-                  )}
-                </Box>
-              </Box>
-            ) : (
-              <Box sx={{ mt: 0.15, mb: 2.5 }}>
-                <Tabs
-                  value={blockTabValue}
-                  onChange={(_, v) => setBlockTabValue(v)}
-                  variant="standard"
-                  aria-label="blocks tabs"
-                  sx={{
-                    minHeight: 20,
-                    width: '100%',
-                    '& .MuiTabs-flexContainer': { gap: 0.25, flexWrap: 'wrap' },
-                    '& .MuiTabs-indicator': { display: 'none' },
-                    '& .MuiTab-root': {
-                      minHeight: 18,
-                      textTransform: 'none',
-                      padding: '1px 4px',
-                      borderRadius: '10px',
-                      fontSize: '0.6rem',
-                      color: '#2C3E50',
-                      opacity: 1,
-                      backgroundColor: '#f1f5f9',
-                      width: '20%',
-                      minWidth: 0,
-                    },
-                    '& .MuiTab-root.Mui-selected': {
-                      backgroundColor: '#e8f5e9',
-                      color: '#2E7D32',
-                      fontWeight: 600,
-                    },
-                  }}
-               >
-                  {(blocks.filter(b => b.subjectId === subjects[subjectTabValue]?.id) || []).map((b, i) => (
-                    <Tab key={b.id} label={b.name} value={i} />
-                  ))}
-                </Tabs>
-              </Box>
-            )}
-
-            <SubjectManager
-              ref={subjectManagerRef}
-              teacherId={userId}
-              subjectAssignments={subjectAssignments}
-              setSubjectAssignments={setSubjectAssignments}
-              blockAssignments={blockAssignments}
-              setBlockAssignments={setBlockAssignments}
-              unitAssignments={unitAssignments}
-              setUnitAssignments={setUnitAssignments}
-              topicAssignments={topicAssignments}
-              setTopicAssignments={setTopicAssignments}
-              lessonAssignments={lessonAssignments}
-              setLessonAssignments={setLessonAssignments}
-              setSubjects={setSubjects}
-              setBlocks={setBlocks}
-              setUnits={setUnits}
-              setTopics={setTopics}
-              setLessons={setLessons}
-              visibleSubjectId={subjects[subjectTabValue]?.id}
-              visibleBlockId={(blocks.filter(b => b.subjectId === subjects[subjectTabValue]?.id) || [])[blockTabValue]?.id}
-              onOpenSubjectDialog={handleOpenSubjectDialog}
-            />
           </TabPanel>
           <TabPanel value={mainTabValue} index={99}>
             {/* Legacy-Duplikat Karteikarten — ungenutzt */}
