@@ -413,6 +413,7 @@ function StufeReiheSections<T extends { stufe: string; reihe: string; subject: s
   renderItem,
   itemAccent,
   onCreateInFolder,
+  createAccent = COLOR_PRUEFUNG,
 }: {
   buckets: StufeBucket<T>[];
   colors: Colors;
@@ -421,6 +422,7 @@ function StufeReiheSections<T extends { stufe: string; reihe: string; subject: s
   renderItem: (item: T, accent: string) => React.ReactNode;
   itemAccent: string;
   onCreateInFolder?: (folderPath: string) => void;
+  createAccent?: string;
 }) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.1 }}>
@@ -504,11 +506,11 @@ function StufeReiheSections<T extends { stufe: string; reihe: string; subject: s
                                 p: 0,
                                 width: 20,
                                 height: 20,
-                                bgcolor: '#fff3e0',
-                                color: '#ef6c00',
-                                border: '1px solid #ffcc80',
+                                bgcolor: `${createAccent}18`,
+                                color: createAccent,
+                                border: `1px solid ${createAccent}55`,
                                 borderRadius: '50%',
-                                '&:hover': { bgcolor: '#ffe0b2' },
+                                '&:hover': { bgcolor: `${createAccent}28` },
                               }}
                             >
                               <AddIcon sx={{ fontSize: 14 }} />
@@ -569,7 +571,7 @@ export const DashboardExamsPanel: React.FC<{
     <LibraryShell
       colors={colors}
       title="Prüfungen"
-      titleColor={REIHE_PRUEFUNG}
+      titleColor={COLOR_PRUEFUNG}
       icon={<AssignmentIcon sx={{ fontSize: 16 }} />}
       loading={loading}
       empty={!items.length}
@@ -577,14 +579,17 @@ export const DashboardExamsPanel: React.FC<{
       onReload={() => void load()}
       onCreateNew={onCreateExam ? () => onCreateExam() : undefined}
       createLabel="Neue Prüfung"
+      createColor={COLOR_PRUEFUNG}
+      createHover={COLOR_PRUEFUNG_HOVER}
     >
       <StufeReiheSections
         buckets={buckets}
         colors={colors}
         meta={meta}
         itemPath={(item) => item.lessonFolder || item.path}
-        itemAccent={REIHE_PRUEFUNG}
+        itemAccent={COLOR_PRUEFUNG}
         onCreateInFolder={onCreateExam}
+        createAccent={COLOR_PRUEFUNG}
         renderItem={(item, accent) => (
           <MaterialRow
             key={item.path}
@@ -658,7 +663,7 @@ export const DashboardInteractiveExercisesPanel: React.FC<{
     <LibraryShell
       colors={colors}
       title="Interaktive Übungen"
-      titleColor={REIHE_STUNDE}
+      titleColor={COLOR_UEBUNG_TEXT}
       icon={<QuizIcon sx={{ fontSize: 16 }} />}
       loading={loading}
       empty={!items.length}
@@ -666,14 +671,17 @@ export const DashboardInteractiveExercisesPanel: React.FC<{
       onReload={() => void load()}
       onCreateNew={onCreateExercise ? () => onCreateExercise() : undefined}
       createLabel="Neue Übung"
+      createColor={COLOR_UEBUNG}
+      createHover={COLOR_UEBUNG_HOVER}
     >
       <StufeReiheSections
         buckets={buckets}
         colors={colors}
         meta={meta}
         itemPath={(item) => item.lessonPath}
-        itemAccent={REIHE_STUNDE}
+        itemAccent={COLOR_UEBUNG}
         onCreateInFolder={onCreateExercise}
+        createAccent={COLOR_UEBUNG_TEXT}
         renderItem={(item, accent) => {
           const editorGid =
             groupsForMaterialPath(item.lessonPath, meta)[0]?.id || groupId;

@@ -132,23 +132,7 @@
         }
 
         .header-meta-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            gap: 12px;
-            margin-top: 6px;
-            margin-bottom: 8px;
-            font-size: 12px;
-            font-weight: bold;
-            color: #1a1a1a;
-        }
-
-        .header-meta-row .header-school {
-            text-align: left;
-        }
-
-        .header-meta-row .header-class {
-            text-align: right;
+            display: none;
         }
 
         .aids-box {
@@ -247,9 +231,9 @@
         
         .header-brand-row {
             display: flex;
-            align-items: flex-start;
-            gap: 14px;
-            margin-bottom: 10px;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
         }
 
         .header-logo {
@@ -261,17 +245,30 @@
             background: transparent;
         }
 
-        .header-brand-row .header-top {
-            flex: 1;
-            min-width: 0;
-            margin-bottom: 0;
+        .header-school {
+            font-size: 12px;
+            font-weight: bold;
+            color: #1a1a1a;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+
+        .header-class {
+            margin-left: auto;
+            font-size: 12px;
+            font-weight: bold;
+            color: #1a1a1a;
+            line-height: 1.2;
+            text-align: right;
+            white-space: nowrap;
         }
 
         .header-top {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            gap: 12px;
         }
 
         .header-title {
@@ -1154,14 +1151,12 @@
             }
         })();
     </script>
-            <div class="header-top">
-                <div class="header-title">Hausaufgabenüberprüfung (HÜ): Binärsystem und römische Zahlen</div>
-                <div class="header-date" id="currentDate"></div>
-            </div>
-        </div>
-        <div class="header-meta-row">
             <div class="header-school">JOHANNES-GYMNASIUM LAHNSTEIN</div>
             <div class="header-class">KLASSE 5 MATHEMATIK</div>
+        </div>
+        <div class="header-top">
+            <div class="header-title">Hausaufgabenüberprüfung (HÜ): Binärsystem und römische Zahlen</div>
+            <div class="header-date" id="currentDate"></div>
         </div>
         <div class="header-divider"></div>
         <div class="aids-box">
