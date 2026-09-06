@@ -35,11 +35,18 @@ import {
   resolveLearningGroupDisplayStyle,
 } from '../../lib/learningGroupAppearance';
 
-/** Farben wie im Reihen-Baum (Stufe / Thema / Stunde / Prüfung). */
+/** Farben wie in der Präsentation: P rot, Ü gelb, E blau. */
+const COLOR_PRUEFUNG = '#c62828';
+const COLOR_PRUEFUNG_HOVER = '#b71c1c';
+const COLOR_UEBUNG = '#FBC02D';
+const COLOR_UEBUNG_TEXT = '#F57F17';
+const COLOR_UEBUNG_HOVER = '#F9A825';
+const COLOR_ENTRY = '#1e88e5';
+const COLOR_ENTRY_DEEP = '#3949ab';
+
+/** Farben wie im Reihen-Baum (Stufe / Thema). */
 const REIHE_STUFE = '#6a1b9a';
 const REIHE_THEMA = '#1565c0';
-const REIHE_STUNDE = '#1976d2';
-const REIHE_PRUEFUNG = '#ff9800';
 const BTN_EDIT = '#ef6c00';
 const BTN_EDIT_HOVER = '#e65100';
 const BTN_PLAY = '#2e7d32';
@@ -175,6 +182,8 @@ function LibraryShell({
   onReload,
   onCreateNew,
   createLabel = 'Neu',
+  createColor = BTN_EDIT,
+  createHover = BTN_EDIT_HOVER,
 }: {
   colors: Colors;
   title: string;
@@ -187,6 +196,8 @@ function LibraryShell({
   onReload: () => void;
   onCreateNew?: () => void;
   createLabel?: string;
+  createColor?: string;
+  createHover?: string;
 }) {
   return (
     <Box sx={{ p: 1.4, position: 'relative' }}>
@@ -209,10 +220,10 @@ function LibraryShell({
               onClick={onCreateNew}
               sx={{
                 color: '#fff',
-                bgcolor: BTN_EDIT,
+                bgcolor: createColor,
                 width: 28,
                 height: 28,
-                '&:hover': { bgcolor: BTN_EDIT_HOVER },
+                '&:hover': { bgcolor: createHover },
               }}
             >
               <AddIcon sx={{ fontSize: 18 }} />
@@ -227,7 +238,7 @@ function LibraryShell({
               onClick={onReload}
               disabled={loading}
               sx={{
-                color: colors.primary,
+                color: titleColor || colors.primary,
                 bgcolor: 'rgba(255,255,255,0.95)',
                 border: `1px solid ${colors.border}`,
                 width: 28,
@@ -250,7 +261,7 @@ function LibraryShell({
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 3.5 }}>
-          <CircularProgress size={26} />
+          <CircularProgress size={26} sx={{ color: titleColor || colors.primary }} />
         </Box>
       ) : empty ? (
         <Box sx={{ px: 0.5 }}>
@@ -265,9 +276,9 @@ function LibraryShell({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 0.4,
-                border: '1px solid #ffcc80',
-                bgcolor: '#fff3e0',
-                color: '#ef6c00',
+                border: `1px solid ${createColor}66`,
+                bgcolor: `${createColor}14`,
+                color: createColor,
                 borderRadius: 1.2,
                 px: 1,
                 py: 0.45,
@@ -275,7 +286,7 @@ function LibraryShell({
                 fontWeight: 700,
                 cursor: 'pointer',
                 fontFamily: 'inherit',
-                '&:hover': { bgcolor: '#ffe0b2' },
+                '&:hover': { bgcolor: `${createColor}24` },
               }}
             >
               <AddIcon sx={{ fontSize: 15 }} />
