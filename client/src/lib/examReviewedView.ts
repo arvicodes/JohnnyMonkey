@@ -1,4 +1,4 @@
-import { examAnswerMatches, parseExamAnswerKey } from './examAnswerKey';
+import { examAnswerMatches, formatExamCorrect, parseExamAnswerKey } from './examAnswerKey';
 
 export type ExamReviewCorrection = {
   taskNumber: string;
@@ -101,6 +101,17 @@ function fillAndMark(
       (el as HTMLInputElement).disabled = true;
     };
 
+    const insertSolutionHint = (anchor: Element | null) => {
+      if (isCorrect || expected === undefined || !anchor) return;
+      const solutionText = formatExamCorrect(expected);
+      if (!solutionText) return;
+      const hint = doc.createElement('span');
+      hint.className = 'jm-correct-solution';
+      hint.textContent = `Lösung: ${solutionText}`;
+      hint.setAttribute('title', `Richtige Lösung: ${solutionText}`);
+      anchor.parentElement?.insertBefore(hint, anchor.nextSibling);
+    };
+
     if (byId) {
       if (byId instanceof HTMLInputElement && (byId.type === 'checkbox' || byId.type === 'radio')) {
         persistInputValue(byId, value);
@@ -112,6 +123,7 @@ function fillAndMark(
       badge.className = `points-badge ${achieved > 0 ? 'points-correct' : 'points-incorrect'}`;
       badge.textContent = `${achieved}/${maxPts}`;
       byId.parentElement?.insertBefore(badge, byId.nextSibling);
+      insertSolutionHint(badge);
       return;
     }
 
@@ -127,6 +139,14 @@ function fillAndMark(
         if (lab && match) {
           lab.classList.add(isCorrect ? 'answer-correct' : 'answer-incorrect');
         }
+        // Richtige Radios ebenfalls dezent markieren, wenn SuS falsch lag
+        if (!isCorrect && expected !== undefined) {
+          const ok = examAnswerMatches(expected, input.value);
+          if (ok) {
+            const okLab = input.closest('label') || input.parentElement;
+            okLab?.classList.add('jm-solution-option');
+          }
+        }
       });
       const wrap =
         radios[0]?.closest('.compare-choice, .input-group, .item') || radios[0]?.parentElement;
@@ -135,6 +155,7 @@ function fillAndMark(
         badge.className = `points-badge ${achieved > 0 ? 'points-correct' : 'points-incorrect'}`;
         badge.textContent = `${achieved}/${maxPts}`;
         wrap.appendChild(badge);
+        insertSolutionHint(badge);
       }
     }
   });
@@ -216,6 +237,27 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     }
     .points-correct { background-color: #4caf50; color: #fff; }
     .points-incorrect { background-color: #f44336; color: #fff; }
+    .jm-correct-solution {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.85em;
+      font-weight: 700;
+      vertical-align: middle;
+      color: #6a1b9a;
+      background: #f3e5f5;
+      border: 1px solid #ce93d8;
+      white-space: nowrap;
+    }
+    .jm-solution-option,
+    label.jm-solution-option {
+      background-color: #f3e5f5 !important;
+      border: 1.5px solid #9c27b0 !important;
+      border-radius: 4px;
+      color: #6a1b9a !important;
+      font-weight: 700;
+    }
     input, textarea, select, button { pointer-events: none !important; }
     html, body {
       margin: 0 !important;
