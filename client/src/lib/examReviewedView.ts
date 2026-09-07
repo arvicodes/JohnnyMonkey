@@ -6,6 +6,17 @@ export type ExamReviewCorrection = {
   comment: string | null;
 };
 
+export type ExamReviewedViewOpts = {
+  filePath: string;
+  title: string;
+  answers: Record<string, unknown>;
+  corrections: ExamReviewCorrection[];
+  gradeLabel: string;
+  totalPoints: number;
+  maxPoints: number;
+  classAverageText?: string;
+};
+
 function fillAndMark(
   doc: Document,
   answers: Record<string, unknown>,
@@ -17,7 +28,6 @@ function fillAndMark(
     if (c.manualPoints == null) return;
     const tn = String(c.taskNumber || '');
     corrByTask[tn] = c.manualPoints;
-    // a1 / 1 / 1a variants
     const m = tn.match(/^(\d+)([a-z])?$/i);
     if (m) {
       corrByTask[`a${m[1]}${m[2] || ''}`] = c.manualPoints;
@@ -84,7 +94,8 @@ function fillAndMark(
           lab.classList.add(isCorrect ? 'answer-correct' : 'answer-incorrect');
         }
       });
-      const wrap = radios[0]?.closest('.compare-choice, .input-group, .item') || radios[0]?.parentElement;
+      const wrap =
+        radios[0]?.closest('.compare-choice, .input-group, .item') || radios[0]?.parentElement;
       if (wrap) {
         const badge = doc.createElement('span');
         badge.className = `points-badge ${achieved > 0 ? 'points-correct' : 'points-incorrect'}`;
@@ -95,17 +106,8 @@ function fillAndMark(
   });
 }
 
-/** Öffnet die ausgefüllte, nicht editierbare Korrekturansicht in einem neuen Tab. */
-export async function openExamReviewedView(opts: {
-  filePath: string;
-  title: string;
-  answers: Record<string, unknown>;
-  corrections: ExamReviewCorrection[];
-  gradeLabel: string;
-  totalPoints: number;
-  maxPoints: number;
-  classAverageText?: string;
-}): Promise<void> {
+/** Baut die fertige Korrektur-HTML (nur lesen) — für Dialog/iframe, ohne Popup. */
+export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise<string> {
   const res = await fetch(
     `/api/file-system-paths/read-html?filePath=${encodeURIComponent(opts.filePath)}`,
   );
@@ -115,12 +117,28 @@ export async function openExamReviewedView(opts: {
 
   const doc = new DOMParser().parseFromString(html, 'text/html');
 
-  // Lehrer-Chrome / Interaktion entfernen
   doc
     .querySelectorAll(
       '.exam-chrome, .exam-toolbar, .submit-section, .schema-modal, .header-buttons, script',
     )
     .forEach((el) => el.remove());
+
+  // Relative Assets auf Download-API umbiegen (iframe srcDoc hat keine Ordner-URL)
+  const folder = opts.filePath.replace(/\\/g, '/').replace(/\/[^/]+$/, '');
+  const rewriteAsset = (raw: string | null): string | null => {
+    if (!raw || /^(data:|https?:|blob:|#|\/\/)/i.test(raw)) return raw;
+    const clean = raw.replace(/^\.\//, '');
+    const assetPath = `${folder}/${clean}`.replace(/\/+/g, '/');
+    return `/api/file-system-paths/download?filePath=${encodeURIComponent(assetPath)}`;
+  };
+  doc.querySelectorAll('[src]').forEach((el) => {
+    const next = rewriteAsset(el.getAttribute('src'));
+    if (next) el.setAttribute('src', next);
+  });
+  doc.querySelectorAll('link[href]').forEach((el) => {
+    const next = rewriteAsset(el.getAttribute('href'));
+    if (next) el.setAttribute('href', next);
+  });
 
   const style = doc.createElement('style');
   style.textContent = `
@@ -186,13 +204,11 @@ export async function openExamReviewedView(opts: {
 
   fillAndMark(doc, opts.answers, key, opts.corrections || []);
 
-  // Alle übrigen Inputs sperren
   doc.querySelectorAll('input, textarea, select, button').forEach((el) => {
     (el as HTMLInputElement).disabled = true;
     (el as HTMLInputElement).readOnly = true;
   });
 
-  // Note unten
   const pointsText =
     opts.maxPoints > 0
       ? `${Number(opts.totalPoints || 0).toFixed(1).replace('.', ',')} / ${opts.maxPoints} Punkte`
@@ -211,24 +227,25 @@ export async function openExamReviewedView(opts: {
   const paper = doc.querySelector('.exam-paper') || doc.body;
   paper.appendChild(box);
 
-  // Footer-Note-Felder füllen falls vorhanden
   const noteText = doc.getElementById('noteText');
   const noteNumber = doc.getElementById('noteNumber');
   const achieved = doc.getElementById('achievedPoints');
   const total = doc.getElementById('totalPoints');
   if (noteText) noteText.textContent = opts.gradeLabel || '–';
   if (noteNumber) noteNumber.textContent = opts.gradeLabel || '–';
-  if (achieved) achieved.textContent = String(Number(opts.totalPoints || 0).toFixed(1)).replace('.', ',');
+  if (achieved) {
+    achieved.textContent = String(Number(opts.totalPoints || 0).toFixed(1)).replace('.', ',');
+  }
   if (total && opts.maxPoints > 0) total.textContent = String(opts.maxPoints);
 
-  const blob = new Blob([`<!DOCTYPE html>${doc.documentElement.outerHTML}`], {
-    type: 'text/html;charset=utf-8',
-  });
-  const url = URL.createObjectURL(blob);
-  const w = window.open(url, '_blank', 'noopener,noreferrer');
-  if (!w) {
-    URL.revokeObjectURL(url);
-    throw new Error('Popup blockiert — bitte Pop-ups erlauben');
+  if (!doc.documentElement.getAttribute('lang')) {
+    doc.documentElement.setAttribute('lang', 'de');
   }
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+
+  return `<!DOCTYPE html>${doc.documentElement.outerHTML}`;
+}
+
+/** @deprecated Prefer buildExamReviewedHtml + in-app Dialog (no popup). */
+export async function openExamReviewedView(opts: ExamReviewedViewOpts): Promise<string> {
+  return buildExamReviewedHtml(opts);
 }

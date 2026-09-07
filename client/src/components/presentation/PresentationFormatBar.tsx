@@ -149,6 +149,8 @@ interface PresentationFormatBarProps {
   lessonPath?: string;
   onInsertImage?: () => void;
   onEditorChanged?: () => void;
+  /** Vor DOM-Mutation (z. B. ⌘L): aktuellen Deck-Stand als Undo-Punkt sichern */
+  onBeforeEditorMutation?: () => void;
   onMessage?: (message: string) => void;
 }
 
@@ -159,6 +161,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
   lessonPath,
   onInsertImage,
   onEditorChanged,
+  onBeforeEditorMutation,
   onMessage,
 }) => {
   const [colorAnchor, setColorAnchor] = useState<HTMLElement | null>(null);
@@ -318,6 +321,8 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
       onMessage?.('Zuerst ins Textfeld klicken und LaTeX markieren');
       return;
     }
+    // Undo-Punkt VOR der Mutation — sonst kann ⌘Z den LaTeX-Schritt nicht zurückholen.
+    onBeforeEditorMutation?.();
     stashEditorSelection(editor);
     keepEditorSelection(editor);
     if (selectionIntersectsPresentationMath(editor)) {
@@ -333,7 +338,7 @@ const PresentationFormatBar: React.FC<PresentationFormatBarProps> = ({
       return;
     }
     onMessage?.('LaTeX markieren, dann ⌘L');
-  }, [disabled, resolveLatexEditor, onEditorChanged, onMessage]);
+  }, [disabled, resolveLatexEditor, onBeforeEditorMutation, onEditorChanged, onMessage]);
 
   useEffect(() => {
     if (disabled || !activeEditor) return undefined;

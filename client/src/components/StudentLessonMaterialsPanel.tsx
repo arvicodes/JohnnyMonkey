@@ -3,11 +3,14 @@ import {
   Box,
   Button,
   ButtonGroup,
+  Dialog,
+  DialogContent,
   IconButton,
   Tooltip,
   Typography,
 } from '@mui/material';
-import { openExamReviewedView } from '../lib/examReviewedView';
+import CloseIcon from '@mui/icons-material/Close';
+import { buildExamReviewedHtml } from '../lib/examReviewedView';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DownloadIcon from '@mui/icons-material/Download';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
@@ -136,6 +139,8 @@ export default function StudentLessonMaterialsPanel({
   );
   const [releasedExams, setReleasedExams] = useState<ReleasedExamResult[]>([]);
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const [reviewHtml, setReviewHtml] = useState<string | null>(null);
+  const [reviewTitle, setReviewTitle] = useState('Prüfung');
 
   useEffect(() => {
     if (!lessonPath) {
@@ -589,7 +594,8 @@ export default function StudentLessonMaterialsPanel({
               onClick={() => {
                 if (!exam.filePath) return;
                 setOpeningId(exam.id);
-                void openExamReviewedView({
+                setReviewTitle(exam.title || exam.fileName || 'Prüfung');
+                void buildExamReviewedHtml({
                   filePath: exam.filePath,
                   title: exam.title || exam.fileName || 'Prüfung',
                   answers: exam.answers || {},
@@ -599,6 +605,7 @@ export default function StudentLessonMaterialsPanel({
                   maxPoints: Number(exam.maxPoints) || 0,
                   classAverageText: exam.classAverageLabel || undefined,
                 })
+                  .then((html) => setReviewHtml(html))
                   .catch((e) =>
                     alert(e instanceof Error ? e.message : 'Prüfung konnte nicht geöffnet werden'),
                   )
@@ -796,7 +803,49 @@ export default function StudentLessonMaterialsPanel({
         </Box>
       ))}
 
-
+      <Dialog
+        open={Boolean(reviewHtml)}
+        onClose={() => setReviewHtml(null)}
+        fullScreen
+        PaperProps={{
+          sx: { bgcolor: '#f5f5f5', display: 'flex', flexDirection: 'column' },
+        }}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            px: 1.5,
+            py: 0.75,
+            bgcolor: '#1b5e20',
+            color: '#fff',
+            flexShrink: 0,
+          }}
+        >
+          <Typography sx={{ flex: 1, fontWeight: 700, fontSize: '0.95rem' }} noWrap>
+            {reviewTitle}
+          </Typography>
+          <IconButton
+            aria-label="Schließen"
+            onClick={() => setReviewHtml(null)}
+            sx={{ color: '#fff' }}
+            size="small"
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        <DialogContent sx={{ p: 0, flex: 1, overflow: 'hidden' }}>
+          {reviewHtml ? (
+            <iframe
+              title={reviewTitle}
+              srcDoc={reviewHtml}
+              sandbox="allow-same-origin"
+              style={{ width: '100%', height: '100%', border: 0, display: 'block', background: '#fff' }}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }

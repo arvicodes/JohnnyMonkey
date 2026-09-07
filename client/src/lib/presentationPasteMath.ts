@@ -874,7 +874,11 @@ export function mathElementsInSelection(editor: HTMLElement): HTMLElement[] {
     }
   });
 
-  if (!found.length) add(findPresentationMathInEditor(editor));
+  // Nur wenn noch nichts gefunden: Formel direkt am Cursor (inkl. Nachbar-ZWSP).
+  if (!found.length) {
+    const caretMath = findPresentationMathInEditor(editor);
+    if (caretMath) add(caretMath);
+  }
   return found;
 }
 
@@ -1897,6 +1901,15 @@ function mathSpanToStyledLatexNode(span: HTMLElement): Node {
   const tex = readPresentationMathLatex(span) || (span.textContent || '').replace(/\s+/g, ' ').trim();
   const wrapPatch = readPatchFromMath(span);
   const doc = span.ownerDocument;
+  const mathEl = span.querySelector('math');
+  const display =
+    mathEl?.getAttribute('display') === 'block' || isLatexDisplay(tex);
+  // Delimiter, damit ⌘L zuverlässig wieder zur Formel wird (ohne Zerlegen der Quelle).
+  const delimited = !tex
+    ? ''
+    : display
+      ? `\\[${tex}\\]`
+      : `\\(${tex}\\)`;
   const tokens = Array.from(span.querySelectorAll('mi, mn, mo, mtext')) as HTMLElement[];
   const extras = tokens.filter((t) => {
     const p = readPatchFromMath(t);
@@ -1907,10 +1920,12 @@ function mathSpanToStyledLatexNode(span: HTMLElement): Node {
   if (hasStylePatch(wrapPatch)) applyPatchToHtmlSpan(wrap, wrapPatch);
 
   if (!extras.length) {
-    wrap.textContent = tex;
-    return hasStylePatch(wrapPatch) ? wrap : doc.createTextNode(tex);
+    wrap.textContent = delimited;
+    return hasStylePatch(wrapPatch) ? wrap : doc.createTextNode(delimited);
   }
 
+  // Bei Teilformatierung: Delimiter um den gesamten LaTeX-String, Format-Spans nur innen.
+  wrap.appendChild(doc.createTextNode(display ? '\\[' : '\\('));
   let pos = 0;
   extras.forEach((token) => {
     const piece = (token.textContent || '').trim();
@@ -1925,7 +1940,8 @@ function mathSpanToStyledLatexNode(span: HTMLElement): Node {
     pos = idx + piece.length;
   });
   if (pos < tex.length) wrap.appendChild(doc.createTextNode(tex.slice(pos)));
-  if (!wrap.childNodes.length) wrap.textContent = tex;
+  wrap.appendChild(doc.createTextNode(display ? '\\]' : '\\)'));
+  if (!wrap.childNodes.length) wrap.textContent = delimited;
   return wrap;
 }
 
@@ -1979,10 +1995,8 @@ export function convertSelectedTextToPresentationMath(editor: HTMLElement | null
 /** Markierte Formel(n) → wieder LaTeX-Text (Formatierung bleibt). */
 export function unwrapSelectedPresentationMath(editor: HTMLElement | null): boolean {
   if (!editor) return false;
-  const maths = mathElementsInSelection(editor);
-  const extra = findPresentationMathInEditor(editor);
-  const targets = [...maths];
-  if (extra && !targets.includes(extra)) targets.push(extra);
+  // Nur Formeln in der Auswahl / am Cursor — keine zusätzlichen „Nachbar“-Formeln.
+  const targets = mathElementsInSelection(editor);
   if (!targets.length) return false;
   targets.forEach((span) => {
     span.replaceWith(mathSpanToStyledLatexNode(span));

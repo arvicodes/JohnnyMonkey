@@ -1910,6 +1910,16 @@ const PresentationEditorPage: React.FC = () => {
     commitEditorState();
   };
 
+  /** Vor ⌘L / ähnlichen DOM-Mutationen: Stand sichern, damit Rückgängig greift. */
+  const snapshotBeforeRichMutation = useCallback(() => {
+    commitEditorState({ history: 'skip' });
+    flushDeckHistory();
+  }, [commitEditorState, flushDeckHistory]);
+
+  const flushActiveEditorImmediate = useCallback(() => {
+    commitEditorState({ history: 'immediate' });
+  }, [commitEditorState]);
+
   const addFloatingImageAt = (
     path: string,
     x = 36,
@@ -4536,7 +4546,8 @@ const PresentationEditorPage: React.FC = () => {
                 activeEditor={activeEditor}
                 contextLabel={formatContextLabel}
                 lessonPath={lessonPath}
-                onEditorChanged={flushActiveEditor}
+                onBeforeEditorMutation={snapshotBeforeRichMutation}
+                onEditorChanged={flushActiveEditorImmediate}
                 onMessage={(msg) => setSnackbar(msg)}
                 onInsertImage={
                   notesActiveField
