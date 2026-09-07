@@ -80,7 +80,7 @@ const actionBtnSx = {
 };
 
 /** Folien-Zeile */
-const FOLIEN_ROW_HEIGHT = 32;
+const FOLIEN_ROW_HEIGHT = 40;
 /** ToDo-HA-Button — etwas flacher als die Folien-Zeile */
 const TODO_HA_BTN_HEIGHT = 24;
 
@@ -484,9 +484,9 @@ export default function StudentLessonMaterialsPanel({
               py: 0,
               px: 1,
               borderRadius: 1.5,
-              bgcolor: 'rgba(255, 255, 255, 0.92)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+              bgcolor: 'rgba(243, 229, 245, 0.95)',
+              border: '1px solid rgba(156, 39, 176, 0.22)',
+              boxShadow: '0 1px 2px rgba(123, 31, 162, 0.06)',
               gap: 0.45,
             }}
           >

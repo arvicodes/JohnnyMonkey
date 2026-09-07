@@ -167,8 +167,12 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       // Verwende den vollständigen kaFilePath, nicht nur den Dateinamen
       // Die API kann mit verschiedenen Pfad-Varianten umgehen (getPossiblePaths)
       console.log('🔍 Lade Abgaben für:', kaFilePath);
+      // SuS speichern oft nur den Dateinamen — gezielt danach suchen
+      const fileNameOnly = (kaFilePath.split('/').pop() || kaFilePath).trim();
       
-      const response = await fetch(`/api/ka-corrections/submissions?kaFilePath=${encodeURIComponent(kaFilePath)}`, {
+      const response = await fetch(
+        `/api/ka-corrections/submissions?kaFilePath=${encodeURIComponent(fileNameOnly)}`,
+        {
         headers: {
           'Content-Type': 'application/json',
           'x-login-code': loginCode
@@ -178,8 +182,12 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Fehler beim Laden:', response.status, errorText);
-        // Kein Fehler werfen, sondern einfach leere Liste setzen
         setSubmissions([]);
+        setError(
+          response.status === 403
+            ? 'Keine Berechtigung für Abgaben (Lehrer-Login nötig).'
+            : `Abgaben konnten nicht geladen werden (${response.status}).`,
+        );
         return;
       }
 

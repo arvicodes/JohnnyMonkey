@@ -152,74 +152,81 @@ export class KACorrectionController {
 
       kaFilePath = kaFilePathParam;
       
-      // SOFORTIGE LÖSUNG: Einfachste Methode - hole ALLE und filtere
       console.log('🔍 Suche Abgaben für kaFilePath:', kaFilePath);
       
-      // Extrahiere den Dateinamen
-      fileName = kaFilePath.split('/').pop() || kaFilePath;
+      fileName = (kaFilePath.split(/[/\\]/).pop() || kaFilePath).trim();
       const fileNameWithoutExt = fileName.replace(/\.(html|htm)$/i, '');
       const fileNameLower = fileName.toLowerCase();
+      const stemLower = fileNameWithoutExt.toLowerCase();
       
       console.log('🔍 Dateiname:', fileName);
+
+      const pathMatches = (stored: string): boolean => {
+        const n = (stored || '').replace(/\\/g, '/');
+        const base = (n.split('/').pop() || n).toLowerCase();
+        const stem = base.replace(/\.(html|htm)$/i, '');
+        return (
+          base === fileNameLower ||
+          stem === stemLower ||
+          n.toLowerCase() === fileNameLower ||
+          n.toLowerCase().endsWith('/' + fileNameLower)
+        );
+      };
       
       let submissions: any[] = [];
       
       try {
-        // Schritt 1: Hole ALLE Submissions (ohne include, um Fehler zu vermeiden)
+        // Alle Abgaben laden und nach Dateiname matchen (SuS speichern oft nur den Namen)
         const allSubmissionsRaw = await prisma.kASubmission.findMany({
-          where: {
-            status: {
-              in: ['submitted', 'expired', 'corrected']
-            }
-          },
           select: {
             id: true,
             kaFilePath: true,
             status: true,
             studentId: true,
-            submittedAt: true
+            submittedAt: true,
           },
-          orderBy: {
-            submittedAt: 'desc'
-          }
+          orderBy: { submittedAt: 'desc' },
         });
         
         console.log(`📊 Gesamt Submissions: ${allSubmissionsRaw.length}`);
         
-        // Schritt 2: Filtere nach Dateiname
         const matchingIds = allSubmissionsRaw
-          .filter(sub => {
-            const subFileName = sub.kaFilePath.split('/').pop() || sub.kaFilePath;
-            return subFileName.toLowerCase() === fileNameLower;
+          .filter((sub) => {
+            if (!pathMatches(sub.kaFilePath)) return false;
+            // leere/draft ausblenden, alles Abgegebene behalten
+            const st = String(sub.status || '').toLowerCase();
+            return !st || st === 'submitted' || st === 'expired' || st === 'corrected' || st === 'released';
           })
-          .map(sub => sub.id);
+          .map((sub) => sub.id);
         
         console.log(`✅ Gefundene IDs: ${matchingIds.length}`);
         
-        // Schritt 3: Lade mit include nur die gefundenen
         if (matchingIds.length > 0) {
-          submissions = await prisma.kASubmission.findMany({
-            where: {
-              id: { in: matchingIds }
-            },
-            include: {
-              student: {
-                select: {
-                  id: true,
-                  name: true,
-                  loginCode: true
-                }
+          try {
+            submissions = await prisma.kASubmission.findMany({
+              where: { id: { in: matchingIds } },
+              include: {
+                student: {
+                  select: { id: true, name: true, loginCode: true },
+                },
+                corrections: {
+                  where: { teacherId },
+                },
               },
-              corrections: {
-                where: {
-                  teacherId: teacherId
-                }
-              }
-            },
-            orderBy: {
-              submittedAt: 'desc'
-            }
-          });
+              orderBy: { submittedAt: 'desc' },
+            });
+          } catch (includeErr) {
+            console.warn('⚠️ Include fehlgeschlagen, lade ohne Korrekturen:', includeErr);
+            submissions = await prisma.kASubmission.findMany({
+              where: { id: { in: matchingIds } },
+              include: {
+                student: {
+                  select: { id: true, name: true, loginCode: true },
+                },
+              },
+              orderBy: { submittedAt: 'desc' },
+            });
+          }
         }
         
         console.log(`✅ Final: ${submissions.length} Submissions`);
@@ -229,16 +236,10 @@ export class KACorrectionController {
         throw queryError;
       }
       
-      // Falls immer noch keine gefunden, versuche alternative Suche
+      // Fallback: Varianten-Suche (älterer Code-Pfad, falls Matching zu streng war)
       if (submissions.length === 0) {
         console.log('⚠️ Keine Submissions mit exaktem Match gefunden, versuche Varianten...');
-        // Hole alle Submissions und filtere manuell (da Prisma SQLite keine case-insensitive Suche unterstützt)
         const allSubmissionsForVariantSearch = await prisma.kASubmission.findMany({
-          where: {
-            status: {
-              in: ['submitted', 'expired', 'corrected']
-            }
-          },
           include: {
             student: {
               select: {
@@ -258,25 +259,19 @@ export class KACorrectionController {
           }
         });
         
-        // Filtere manuell mit case-insensitive Vergleich
-        // WICHTIG: Studenten speichern oft nur den Dateinamen (z.B. "HU_geometrische-abbildungen.html")
-        // Lehrer verwenden vollständigen Pfad (z.B. "J-M-Reihen/Mathe/.../HU_geometrische-abbildungen.html")
         console.log(`🔍 Filtere ${allSubmissionsForVariantSearch.length} Submissions mit Dateiname: ${fileName}`);
         submissions = allSubmissionsForVariantSearch.filter(sub => {
+          if (pathMatches(sub.kaFilePath)) return true;
           const subPathLower = sub.kaFilePath.toLowerCase();
           const subFileName = sub.kaFilePath.split('/').pop() || sub.kaFilePath;
           const subFileNameLower = subFileName.toLowerCase();
           const subFileNameWithoutExt = subFileName.replace(/\.(html|htm)$/i, '').toLowerCase();
           
-          // Prüfe alle möglichen Matches - PRIORITÄT: Dateiname-Match
           const matches = sub.kaFilePath === fileName ||
                  subPathLower === fileName.toLowerCase() ||
                  subFileName === fileName ||
                  subFileNameLower === fileName.toLowerCase() ||
-                 subFileName === fileNameWithoutExt ||
-                 subFileNameLower === fileNameWithoutExt.toLowerCase() ||
                  subFileNameWithoutExt === fileNameWithoutExt.toLowerCase() ||
-                 // Auch umgekehrt: Prüfe ob der gesuchte Dateiname im gespeicherten Pfad vorkommt
                  subFileName.includes(fileNameWithoutExt) ||
                  subFileNameLower.includes(fileNameWithoutExt.toLowerCase());
           

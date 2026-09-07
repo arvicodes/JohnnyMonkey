@@ -17,6 +17,38 @@ export type ExamReviewedViewOpts = {
   classAverageText?: string;
 };
 
+function normAnswer(v: unknown): string {
+  return String(v ?? '')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .trim();
+}
+
+/** Property-Änderungen müssen als Attribute gesetzt werden, sonst gehen sie in outerHTML/srcDoc verloren. */
+function persistInputValue(
+  el: HTMLInputElement | HTMLTextAreaElement,
+  raw: string,
+  checked?: boolean,
+) {
+  const value = normAnswer(raw);
+  if (el instanceof HTMLTextAreaElement) {
+    el.value = value;
+    el.textContent = value;
+    return;
+  }
+  if (el.type === 'checkbox' || el.type === 'radio') {
+    const on = checked ?? (el.value === value || value === 'true' || value === '1');
+    el.checked = on;
+    if (on) el.setAttribute('checked', 'checked');
+    else el.removeAttribute('checked');
+    return;
+  }
+  el.value = value;
+  el.setAttribute('value', value);
+}
+
 function fillAndMark(
   doc: Document,
   answers: Record<string, unknown>,
@@ -36,7 +68,7 @@ function fillAndMark(
   });
 
   Object.entries(answers || {}).forEach(([taskId, raw]) => {
-    const value = raw == null ? '' : String(raw);
+    const value = normAnswer(raw);
     const expected = key.answers[taskId];
     const maxPts = key.points[taskId] ?? 1;
     let isCorrect = expected !== undefined ? examAnswerMatches(expected, raw) : false;
@@ -71,9 +103,9 @@ function fillAndMark(
 
     if (byId) {
       if (byId instanceof HTMLInputElement && (byId.type === 'checkbox' || byId.type === 'radio')) {
-        byId.checked = byId.value === value || value === 'true' || value === '1';
+        persistInputValue(byId, value);
       } else {
-        byId.value = value;
+        persistInputValue(byId, value);
       }
       markEl(byId);
       const badge = doc.createElement('span');
@@ -86,11 +118,13 @@ function fillAndMark(
     if (radios.length) {
       radios.forEach((node) => {
         const input = node as HTMLInputElement;
-        input.checked = input.value === value;
+        const match = normAnswer(input.value) === value;
+        persistInputValue(input, value, match);
         input.disabled = true;
-        if (input.checked) markEl(input);
+        input.setAttribute('disabled', 'disabled');
+        if (match) markEl(input);
         const lab = input.closest('label') || input.parentElement;
-        if (lab && input.checked) {
+        if (lab && match) {
           lab.classList.add(isCorrect ? 'answer-correct' : 'answer-incorrect');
         }
       });
@@ -114,6 +148,15 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
   if (!res.ok) throw new Error('Prüfung konnte nicht geladen werden');
   const html = await res.text();
   const key = parseExamAnswerKey(html);
+
+  let answers: Record<string, unknown> = opts.answers || {};
+  if (typeof (opts.answers as unknown) === 'string') {
+    try {
+      answers = JSON.parse(opts.answers as unknown as string) || {};
+    } catch {
+      answers = {};
+    }
+  }
 
   const doc = new DOMParser().parseFromString(html, 'text/html');
 
@@ -222,7 +265,7 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
   `;
   doc.head.appendChild(style);
 
-  fillAndMark(doc, opts.answers, key, opts.corrections || []);
+  fillAndMark(doc, answers, key, opts.corrections || []);
 
   doc.querySelectorAll('input, textarea, select, button').forEach((el) => {
     (el as HTMLInputElement).disabled = true;
