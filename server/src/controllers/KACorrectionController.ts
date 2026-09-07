@@ -994,28 +994,23 @@ export class KACorrectionController {
       const resultsSource = filtered;
 
       // Klassenschnitt je Prüfungsdatei (alle freigegebenen Abgaben derselben Datei)
-      const bases = [...new Set(resultsSource.map((s) => {
-        const p = (s.kaFilePath || '').replace(/\\/g, '/');
-        return (p.split('/').pop() || p).toLowerCase();
-      }))];
-      const classStats = new Map<string, { avgPoints: number; avgGrade: number | null; count: number }>();
-      for (const base of bases) {
-        const peers = await prisma.kASubmission.findMany({
-          where: { isReleased: true },
-          select: { kaFilePath: true, totalPoints: true },
-        });
-        const peerRows = peers.filter((p) => {
-          const b = (p.kaFilePath || '').replace(/\\/g, '/').split('/').pop() || '';
-          return b.toLowerCase() === base;
-        });
-        if (peerRows.length === 0) continue;
-        const sum = peerRows.reduce((a, r) => a + (Number(r.totalPoints) || 0), 0);
-        classStats.set(base, {
-          avgPoints: sum / peerRows.length,
-          avgGrade: null,
-          count: peerRows.length,
-        });
+      const allReleasedPeers = await prisma.kASubmission.findMany({
+        where: { isReleased: true },
+        select: { kaFilePath: true, totalPoints: true },
+      });
+      const classStats = new Map<string, { avgPoints: number; count: number }>();
+      const byBase = new Map<string, number[]>();
+      for (const p of allReleasedPeers) {
+        const b = ((p.kaFilePath || '').replace(/\\/g, '/').split('/').pop() || '').toLowerCase();
+        if (!b) continue;
+        const arr = byBase.get(b) || [];
+        arr.push(Number(p.totalPoints) || 0);
+        byBase.set(b, arr);
       }
+      byBase.forEach((pts, base) => {
+        const sum = pts.reduce((a, n) => a + n, 0);
+        classStats.set(base, { avgPoints: sum / pts.length, count: pts.length });
+      });
 
       // Noten aus dem Schema (Schüler)
       const grades = await prisma.grade.findMany({
