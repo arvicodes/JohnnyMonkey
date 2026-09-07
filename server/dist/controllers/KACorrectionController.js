@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.KACorrectionController = void 0;
 const client_1 = require("@prisma/client");
@@ -111,12 +144,19 @@ class KACorrectionController {
         let fileName = '';
         try {
             const kaFilePathParam = req.query.kaFilePath;
-            const loginCode = req.headers['x-login-code'];
+            const loginCodeRaw = (typeof req.headers['x-login-code'] === 'string' && req.headers['x-login-code']) ||
+                (Array.isArray(req.headers['x-login-code']) && req.headers['x-login-code'][0]) ||
+                (typeof req.query.loginCode === 'string' && req.query.loginCode) ||
+                '';
+            const loginCode = String(loginCodeRaw).trim();
             if (!loginCode) {
                 return res.status(401).json({ error: 'Nicht angemeldet' });
             }
             const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
-            if (!user || user.role !== 'TEACHER') {
+            if (!user) {
+                return res.status(401).json({ error: 'Ungültiger Login-Code' });
+            }
+            if (user.role !== 'TEACHER') {
                 return res.status(403).json({ error: 'Nur Lehrer können Abgaben einsehen' });
             }
             const teacherId = user.id;
@@ -128,66 +168,72 @@ class KACorrectionController {
                 return res.status(400).json({ error: 'kaFilePath ist erforderlich' });
             }
             kaFilePath = kaFilePathParam;
-            // SOFORTIGE LÖSUNG: Einfachste Methode - hole ALLE und filtere
             console.log('🔍 Suche Abgaben für kaFilePath:', kaFilePath);
-            // Extrahiere den Dateinamen
-            fileName = kaFilePath.split('/').pop() || kaFilePath;
+            fileName = (kaFilePath.split(/[/\\]/).pop() || kaFilePath).trim();
             const fileNameWithoutExt = fileName.replace(/\.(html|htm)$/i, '');
             const fileNameLower = fileName.toLowerCase();
+            const stemLower = fileNameWithoutExt.toLowerCase();
             console.log('🔍 Dateiname:', fileName);
+            const pathMatches = (stored) => {
+                const n = (stored || '').replace(/\\/g, '/');
+                const base = (n.split('/').pop() || n).toLowerCase();
+                const stem = base.replace(/\.(html|htm)$/i, '');
+                return (base === fileNameLower ||
+                    stem === stemLower ||
+                    n.toLowerCase() === fileNameLower ||
+                    n.toLowerCase().endsWith('/' + fileNameLower));
+            };
             let submissions = [];
             try {
-                // Schritt 1: Hole ALLE Submissions (ohne include, um Fehler zu vermeiden)
+                // Alle Abgaben laden und nach Dateiname matchen (SuS speichern oft nur den Namen)
                 const allSubmissionsRaw = await prisma.kASubmission.findMany({
-                    where: {
-                        status: {
-                            in: ['submitted', 'expired', 'corrected']
-                        }
-                    },
                     select: {
                         id: true,
                         kaFilePath: true,
                         status: true,
                         studentId: true,
-                        submittedAt: true
+                        submittedAt: true,
                     },
-                    orderBy: {
-                        submittedAt: 'desc'
-                    }
+                    orderBy: { submittedAt: 'desc' },
                 });
                 console.log(`📊 Gesamt Submissions: ${allSubmissionsRaw.length}`);
-                // Schritt 2: Filtere nach Dateiname
                 const matchingIds = allSubmissionsRaw
-                    .filter(sub => {
-                    const subFileName = sub.kaFilePath.split('/').pop() || sub.kaFilePath;
-                    return subFileName.toLowerCase() === fileNameLower;
+                    .filter((sub) => {
+                    if (!pathMatches(sub.kaFilePath))
+                        return false;
+                    // leere/draft ausblenden, alles Abgegebene behalten
+                    const st = String(sub.status || '').toLowerCase();
+                    return !st || st === 'submitted' || st === 'expired' || st === 'corrected' || st === 'released';
                 })
-                    .map(sub => sub.id);
+                    .map((sub) => sub.id);
                 console.log(`✅ Gefundene IDs: ${matchingIds.length}`);
-                // Schritt 3: Lade mit include nur die gefundenen
                 if (matchingIds.length > 0) {
-                    submissions = await prisma.kASubmission.findMany({
-                        where: {
-                            id: { in: matchingIds }
-                        },
-                        include: {
-                            student: {
-                                select: {
-                                    id: true,
-                                    name: true,
-                                    loginCode: true
-                                }
+                    try {
+                        submissions = await prisma.kASubmission.findMany({
+                            where: { id: { in: matchingIds } },
+                            include: {
+                                student: {
+                                    select: { id: true, name: true, loginCode: true },
+                                },
+                                corrections: {
+                                    where: { teacherId },
+                                },
                             },
-                            corrections: {
-                                where: {
-                                    teacherId: teacherId
-                                }
-                            }
-                        },
-                        orderBy: {
-                            submittedAt: 'desc'
-                        }
-                    });
+                            orderBy: { submittedAt: 'desc' },
+                        });
+                    }
+                    catch (includeErr) {
+                        console.warn('⚠️ Include fehlgeschlagen, lade ohne Korrekturen:', includeErr);
+                        submissions = await prisma.kASubmission.findMany({
+                            where: { id: { in: matchingIds } },
+                            include: {
+                                student: {
+                                    select: { id: true, name: true, loginCode: true },
+                                },
+                            },
+                            orderBy: { submittedAt: 'desc' },
+                        });
+                    }
                 }
                 console.log(`✅ Final: ${submissions.length} Submissions`);
             }
@@ -195,16 +241,10 @@ class KACorrectionController {
                 console.error('❌ Fehler:', queryError);
                 throw queryError;
             }
-            // Falls immer noch keine gefunden, versuche alternative Suche
+            // Fallback: Varianten-Suche (älterer Code-Pfad, falls Matching zu streng war)
             if (submissions.length === 0) {
                 console.log('⚠️ Keine Submissions mit exaktem Match gefunden, versuche Varianten...');
-                // Hole alle Submissions und filtere manuell (da Prisma SQLite keine case-insensitive Suche unterstützt)
                 const allSubmissionsForVariantSearch = await prisma.kASubmission.findMany({
-                    where: {
-                        status: {
-                            in: ['submitted', 'expired', 'corrected']
-                        }
-                    },
                     include: {
                         student: {
                             select: {
@@ -223,25 +263,20 @@ class KACorrectionController {
                         submittedAt: 'desc'
                     }
                 });
-                // Filtere manuell mit case-insensitive Vergleich
-                // WICHTIG: Studenten speichern oft nur den Dateinamen (z.B. "HU_geometrische-abbildungen.html")
-                // Lehrer verwenden vollständigen Pfad (z.B. "J-M-Reihen/Mathe/.../HU_geometrische-abbildungen.html")
                 console.log(`🔍 Filtere ${allSubmissionsForVariantSearch.length} Submissions mit Dateiname: ${fileName}`);
                 submissions = allSubmissionsForVariantSearch.filter(sub => {
                     var _a;
+                    if (pathMatches(sub.kaFilePath))
+                        return true;
                     const subPathLower = sub.kaFilePath.toLowerCase();
                     const subFileName = sub.kaFilePath.split('/').pop() || sub.kaFilePath;
                     const subFileNameLower = subFileName.toLowerCase();
                     const subFileNameWithoutExt = subFileName.replace(/\.(html|htm)$/i, '').toLowerCase();
-                    // Prüfe alle möglichen Matches - PRIORITÄT: Dateiname-Match
                     const matches = sub.kaFilePath === fileName ||
                         subPathLower === fileName.toLowerCase() ||
                         subFileName === fileName ||
                         subFileNameLower === fileName.toLowerCase() ||
-                        subFileName === fileNameWithoutExt ||
-                        subFileNameLower === fileNameWithoutExt.toLowerCase() ||
                         subFileNameWithoutExt === fileNameWithoutExt.toLowerCase() ||
-                        // Auch umgekehrt: Prüfe ob der gesuchte Dateiname im gespeicherten Pfad vorkommt
                         subFileName.includes(fileNameWithoutExt) ||
                         subFileNameLower.includes(fileNameWithoutExt.toLowerCase());
                     if (matches) {
@@ -694,18 +729,10 @@ class KACorrectionController {
             const bodyReleased = (_a = req.body) === null || _a === void 0 ? void 0 : _a.isReleased;
             const allReleased = submissions.every(sub => sub.isReleased);
             const newReleaseStatus = typeof bodyReleased === 'boolean' ? bodyReleased : !allReleased;
-            const releasePaths = [
-                ...new Set([
-                    ...uniquePaths,
-                    ...submissions.map((s) => s.kaFilePath).filter(Boolean),
-                ]),
-            ];
-            // Aktualisiere alle Submissions
+            // Aktualisiere gezielt die gefundenen Abgaben (zuverlässiger als Pfad-OR)
             const result = await prisma.kASubmission.updateMany({
                 where: {
-                    OR: releasePaths.map(path => ({
-                        kaFilePath: path
-                    }))
+                    id: { in: submissions.map((s) => s.id) },
                 },
                 data: {
                     isReleased: newReleaseStatus
@@ -836,6 +863,35 @@ class KACorrectionController {
                 .split(',')
                 .map((s) => decodeURIComponent(s.trim()).toLowerCase())
                 .filter(Boolean));
+            // Falls keine Dateinamen mitkommen: Prüfungs-HTMLs im Stundenordner nachschlagen
+            if (fileNameSet.size === 0 && lessonPathRaw) {
+                try {
+                    const fs = await Promise.resolve().then(() => __importStar(require('fs')));
+                    const path = await Promise.resolve().then(() => __importStar(require('path')));
+                    const { StorageManager } = await Promise.resolve().then(() => __importStar(require('../utils/storageManager')));
+                    let folderAbs = '';
+                    const lp = lessonPathRaw.replace(/\\/g, '/');
+                    if (lp.startsWith('git-intern/')) {
+                        folderAbs = StorageManager.resolveGitInternRelativePath(lp.replace(/^git-intern\//, ''));
+                    }
+                    else if (lp.startsWith('J-M-Reihen/') || lp === 'J-M-Reihen') {
+                        folderAbs = StorageManager.resolveGitInternRelativePath(lp.replace(/^J-M-Reihen\/?/, ''));
+                    }
+                    else {
+                        folderAbs = StorageManager.resolveGitInternRelativePath(lp);
+                    }
+                    if (folderAbs && fs.existsSync(folderAbs)) {
+                        for (const name of fs.readdirSync(folderAbs)) {
+                            if (isCorrectionFile(name) && /\.html?$/i.test(name)) {
+                                fileNameSet.add(name.toLowerCase());
+                            }
+                        }
+                    }
+                }
+                catch (e) {
+                    console.warn('my-released: Ordnerliste nicht lesbar', e);
+                }
+            }
             const filtered = submissions.filter((sub) => {
                 const p = (sub.kaFilePath || '').replace(/\\/g, '/');
                 const base = (p.split('/').pop() || p).toLowerCase();
@@ -849,7 +905,26 @@ class KACorrectionController {
                 return true;
             });
             const resultsSource = filtered;
-            // Zusätzlich: gespeicherte Note aus dem Notenschema (falls vorhanden)
+            // Klassenschnitt je Prüfungsdatei (alle freigegebenen Abgaben derselben Datei)
+            const allReleasedPeers = await prisma.kASubmission.findMany({
+                where: { isReleased: true },
+                select: { kaFilePath: true, totalPoints: true },
+            });
+            const classStats = new Map();
+            const byBase = new Map();
+            for (const p of allReleasedPeers) {
+                const b = ((p.kaFilePath || '').replace(/\\/g, '/').split('/').pop() || '').toLowerCase();
+                if (!b)
+                    continue;
+                const arr = byBase.get(b) || [];
+                arr.push(Number(p.totalPoints) || 0);
+                byBase.set(b, arr);
+            }
+            byBase.forEach((pts, base) => {
+                const sum = pts.reduce((a, n) => a + n, 0);
+                classStats.set(base, { avgPoints: sum / pts.length, count: pts.length });
+            });
+            // Noten aus dem Schema (Schüler)
             const grades = await prisma.grade.findMany({
                 where: { studentId: user.id },
                 select: {
@@ -860,9 +935,21 @@ class KACorrectionController {
                 },
                 orderBy: { updatedAt: 'desc' },
             });
+            const formatGradeLabel = (g) => {
+                const rounded = Math.round(g * 10) / 10;
+                const map = {
+                    '1': '1', '1.3': '1-', '1.7': '2+', '2': '2', '2.3': '2-',
+                    '2.7': '3+', '3': '3', '3.3': '3-', '3.7': '4+', '4': '4',
+                    '4.3': '4-', '4.7': '5+', '5': '5', '5.3': '5-', '5.7': '6', '6': '6',
+                };
+                const key = String(rounded);
+                return map[key] || String(rounded).replace('.', ',');
+            };
             res.json({
                 results: resultsSource.map((sub) => {
+                    var _a, _b, _c;
                     const fileName = (sub.kaFilePath || '').replace(/\\/g, '/').split('/').pop() || sub.kaFilePath;
+                    const base = (fileName || '').toLowerCase();
                     const title = fileName.replace(/\.(html|htm)$/i, '').replace(/^(KA_|KU_|HÜ_|HU_|QZ_)/, '');
                     let answers = {};
                     try {
@@ -871,6 +958,15 @@ class KACorrectionController {
                     catch {
                         answers = {};
                     }
+                    const stem = title.toLowerCase().replace(/[^a-z0-9äöüß]+/gi, ' ').trim();
+                    const matchedGrade = grades.find((g) => {
+                        const cn = (g.categoryName || '').toLowerCase();
+                        return (cn.includes('hü') ||
+                            cn.includes('hu') ||
+                            cn.includes('ka') ||
+                            (stem && cn.includes(stem.slice(0, 8))));
+                    }) || grades[0];
+                    const stats = classStats.get(base);
                     return {
                         id: sub.id,
                         kaFilePath: sub.kaFilePath,
@@ -881,7 +977,11 @@ class KACorrectionController {
                         submittedAt: sub.submittedAt,
                         answers,
                         corrections: sub.corrections,
-                        // Hinweis: konkrete Note kommt oft aus dem Schema; Client berechnet ggf. aus Punkten
+                        schemaGrade: (_a = matchedGrade === null || matchedGrade === void 0 ? void 0 : matchedGrade.grade) !== null && _a !== void 0 ? _a : null,
+                        schemaGradeLabel: (matchedGrade === null || matchedGrade === void 0 ? void 0 : matchedGrade.grade) != null ? formatGradeLabel(Number(matchedGrade.grade)) : null,
+                        schemaCategoryName: (matchedGrade === null || matchedGrade === void 0 ? void 0 : matchedGrade.categoryName) || null,
+                        classAveragePoints: (_b = stats === null || stats === void 0 ? void 0 : stats.avgPoints) !== null && _b !== void 0 ? _b : null,
+                        classAverageCount: (_c = stats === null || stats === void 0 ? void 0 : stats.count) !== null && _c !== void 0 ? _c : 0,
                         recentGrades: grades.slice(0, 8).map((g) => {
                             var _a, _b;
                             return ({
