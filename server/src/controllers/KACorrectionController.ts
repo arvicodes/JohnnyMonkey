@@ -127,7 +127,12 @@ export class KACorrectionController {
     
     try {
       const kaFilePathParam = req.query.kaFilePath;
-      const loginCode = req.headers['x-login-code'] as string;
+      const loginCodeRaw =
+        (typeof req.headers['x-login-code'] === 'string' && req.headers['x-login-code']) ||
+        (Array.isArray(req.headers['x-login-code']) && req.headers['x-login-code'][0]) ||
+        (typeof req.query.loginCode === 'string' && req.query.loginCode) ||
+        '';
+      const loginCode = String(loginCodeRaw).trim();
 
       if (!loginCode) {
         return res.status(401).json({ error: 'Nicht angemeldet' });
@@ -135,7 +140,11 @@ export class KACorrectionController {
 
       const user = await findUserByLoginCode(prisma, loginCode);
 
-      if (!user || user.role !== 'TEACHER') {
+      if (!user) {
+        return res.status(401).json({ error: 'Ungültiger Login-Code' });
+      }
+
+      if (user.role !== 'TEACHER') {
         return res.status(403).json({ error: 'Nur Lehrer können Abgaben einsehen' });
       }
 

@@ -2004,3 +2004,180 @@ export function unwrapSelectedPresentationMath(editor: HTMLElement | null): bool
   editor.dispatchEvent(new Event('input', { bubbles: true }));
   return true;
 }
+
+const EDIT_BLOCK_TAGS = new Set([
+  'P',
+  'DIV',
+  'LI',
+  'H1',
+  'H2',
+  'H3',
+  'H4',
+  'H5',
+  'H6',
+  'BLOCKQUOTE',
+]);
+
+/** Vor DOM-Mutationen an Formeln — Editor kann Undo-Punkt setzen. */
+export const PRES_BEFORE_RICH_MUTATION_EVENT = 'johnny:pres-before-rich-mutation';
+
+function notifyBeforeRichMutation() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(PRES_BEFORE_RICH_MUTATION_EVENT));
+}
+
+function closestEditBlock(node: Node, editor: HTMLElement): HTMLElement | null {
+  let n: Node | null = node.nodeType === Node.TEXT_NODE ? node.parentNode : node;
+  while (n && n !== editor) {
+    if (n instanceof HTMLElement) {
+      if (n.hasAttribute(PRES_MATH_ATTR) || n.closest?.(`[${PRES_MATH_ATTR}]`)) {
+        n = n.parentNode;
+        continue;
+      }
+      if (EDIT_BLOCK_TAGS.has(n.tagName)) return n;
+    }
+    n = n.parentNode;
+  }
+  return null;
+}
+
+function isZwspOnlyText(node: Node | null): boolean {
+  if (!node || node.nodeType !== Node.TEXT_NODE) return false;
+  return !((node.textContent || '').replace(/[\u200b\uFEFF\u00a0\s]/g, ''));
+}
+
+function isEmptyMergePad(node: Node | null): boolean {
+  if (!node) return true;
+  if (node.nodeType === Node.TEXT_NODE) return isZwspOnlyText(node);
+  if (!(node instanceof HTMLElement)) return false;
+  if (node.tagName === 'BR') return true;
+  if (node.hasAttribute(PRES_MATH_ATTR)) return false;
+  if (node.querySelector?.(`[${PRES_MATH_ATTR}], img, table, video, audio`)) return false;
+  const text = (node.textContent || '').replace(/[\u200b\uFEFF\u00a0]/g, '').trim();
+  return !text && !node.querySelector?.('img, table');
+}
+
+function blockHasPresentationMath(block: HTMLElement): boolean {
+  return Boolean(block.querySelector?.(`[${PRES_MATH_ATTR}]`));
+}
+
+/** Inhalt vor dem Caret im Block — nur Pads/BR? */
+function isCaretAtEffectiveBlockEdge(
+  range: Range,
+  block: HTMLElement,
+  edge: 'start' | 'end',
+): boolean {
+  const probe = range.cloneRange();
+  try {
+    if (edge === 'start') {
+      probe.selectNodeContents(block);
+      probe.setEnd(range.startContainer, range.startOffset);
+    } else {
+      probe.selectNodeContents(block);
+      probe.setStart(range.startContainer, range.startOffset);
+    }
+  } catch {
+    return false;
+  }
+  if (probe.toString().replace(/[\u200b\uFEFF\u00a0]/g, '').trim()) return false;
+  const contents = probe.cloneContents();
+  if (contents.querySelector?.(`[${PRES_MATH_ATTR}], img, table, video, audio`)) return false;
+  return true;
+}
+
+function siblingEditBlock(block: HTMLElement, dir: 'prev' | 'next'): HTMLElement | null {
+  let n: Node | null = dir === 'prev' ? block.previousSibling : block.nextSibling;
+  while (n) {
+    if (n instanceof HTMLElement && EDIT_BLOCK_TAGS.has(n.tagName) && !n.hasAttribute(PRES_MATH_ATTR)) {
+      return n;
+    }
+    if (!isEmptyMergePad(n)) return null;
+    n = dir === 'prev' ? n.previousSibling : n.nextSibling;
+  }
+  return null;
+}
+
+function placeCaretAtNodeEdge(node: Node, atEnd: boolean) {
+  const sel = window.getSelection();
+  if (!sel) return;
+  const range = document.createRange();
+  if (node.nodeType === Node.TEXT_NODE) {
+    const len = (node.textContent || '').length;
+    range.setStart(node, atEnd ? len : 0);
+  } else if (node instanceof HTMLElement && node.hasAttribute(PRES_MATH_ATTR)) {
+    const pads = ensureMathCaretPads(node);
+    const pad = atEnd ? pads.after : pads.before;
+    range.setStart(pad, atEnd ? 0 : pad.data.length);
+  } else {
+    range.selectNodeContents(node);
+    range.collapse(!atEnd);
+  }
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+/**
+ * Enter entfernen (Absätze zusammenziehen) neben Formeln:
+ * Chrome löscht sonst oft die MathML-Zeile davor — hier manuell mergen.
+ */
+export function handlePresentationMathBlockMergeKey(
+  e: {
+    key: string;
+    ctrlKey?: boolean;
+    metaKey?: boolean;
+    altKey?: boolean;
+    preventDefault: () => void;
+    stopPropagation?: () => void;
+  },
+  editor: HTMLElement | null,
+): boolean {
+  if (!editor) return false;
+  if (e.ctrlKey || e.metaKey || e.altKey) return false;
+  if (e.key !== 'Backspace' && e.key !== 'Delete') return false;
+
+  const sel = window.getSelection();
+  if (!sel || !sel.isCollapsed || sel.rangeCount === 0) return false;
+  const range = sel.getRangeAt(0);
+  if (!editor.contains(range.startContainer)) return false;
+
+  const block = closestEditBlock(range.startContainer, editor);
+  if (!block || block === editor) return false;
+
+  if (e.key === 'Backspace') {
+    if (!isCaretAtEffectiveBlockEdge(range, block, 'start')) return false;
+    const prev = siblingEditBlock(block, 'prev');
+    if (!prev) return false;
+    if (!blockHasPresentationMath(prev) && !blockHasPresentationMath(block)) return false;
+
+    e.preventDefault();
+    e.stopPropagation?.();
+    notifyBeforeRichMutation();
+
+    const marker = document.createTextNode(MATH_CARET_ZW);
+    prev.appendChild(marker);
+    while (block.firstChild) prev.appendChild(block.firstChild);
+    block.remove();
+    placeCaretAtNodeEdge(marker, false);
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  }
+
+  // Delete am Zeilenende → nächsten Block hereinziehen
+  if (!isCaretAtEffectiveBlockEdge(range, block, 'end')) return false;
+  const next = siblingEditBlock(block, 'next');
+  if (!next) return false;
+  if (!blockHasPresentationMath(block) && !blockHasPresentationMath(next)) return false;
+
+  e.preventDefault();
+  e.stopPropagation?.();
+  notifyBeforeRichMutation();
+
+  const marker = document.createTextNode(MATH_CARET_ZW);
+  block.appendChild(marker);
+  while (next.firstChild) block.appendChild(next.firstChild);
+  next.remove();
+  placeCaretAtNodeEdge(marker, false);
+  editor.dispatchEvent(new Event('input', { bubbles: true }));
+  return true;
+}

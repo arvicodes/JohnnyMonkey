@@ -101,6 +101,27 @@ function fillAndMark(
       (el as HTMLInputElement).disabled = true;
     };
 
+    /** Nach Feld + ggf. Index-Span (sub/sup), damit ₂/₁₀ nicht verrutschen. */
+    const anchorAfterField = (el: Element): Element => {
+      let last: Element = el;
+      let n = el.nextElementSibling;
+      while (
+        n &&
+        n.tagName === 'SPAN' &&
+        !n.classList.contains('points-badge') &&
+        !n.classList.contains('jm-correct-solution') &&
+        (n.querySelector('sub, sup') || /^sub|sup$/i.test(n.tagName))
+      ) {
+        last = n;
+        n = n.nextElementSibling;
+      }
+      return last;
+    };
+
+    const insertAfter = (anchor: Element, node: HTMLElement) => {
+      anchor.parentElement?.insertBefore(node, anchor.nextSibling);
+    };
+
     const insertSolutionHint = (anchor: Element | null) => {
       if (isCorrect || expected === undefined || !anchor) return;
       const solutionText = formatExamCorrect(expected);
@@ -109,7 +130,7 @@ function fillAndMark(
       hint.className = 'jm-correct-solution';
       hint.textContent = `Lösung: ${solutionText}`;
       hint.setAttribute('title', `Richtige Lösung: ${solutionText}`);
-      anchor.parentElement?.insertBefore(hint, anchor.nextSibling);
+      insertAfter(anchor, hint);
     };
 
     if (byId) {
@@ -122,7 +143,8 @@ function fillAndMark(
       const badge = doc.createElement('span');
       badge.className = `points-badge ${achieved > 0 ? 'points-correct' : 'points-incorrect'}`;
       badge.textContent = `${achieved}/${maxPts}`;
-      byId.parentElement?.insertBefore(badge, byId.nextSibling);
+      const anchor = anchorAfterField(byId);
+      insertAfter(anchor, badge);
       insertSolutionHint(badge);
       return;
     }
@@ -139,7 +161,6 @@ function fillAndMark(
         if (lab && match) {
           lab.classList.add(isCorrect ? 'answer-correct' : 'answer-incorrect');
         }
-        // Richtige Radios ebenfalls dezent markieren, wenn SuS falsch lag
         if (!isCorrect && expected !== undefined) {
           const ok = examAnswerMatches(expected, input.value);
           if (ok) {
@@ -208,13 +229,19 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
   style.textContent = `
     .answer-correct {
       background-color: #c8e6c9 !important;
-      border: 2px solid #4caf50 !important;
+      outline: 2px solid #4caf50 !important;
+      outline-offset: 0;
+      border-color: #4caf50 !important;
       color: #1b5e20 !important;
+      vertical-align: baseline !important;
     }
     .answer-incorrect {
       background-color: #ffcdd2 !important;
-      border: 2px solid #f44336 !important;
+      outline: 2px solid #f44336 !important;
+      outline-offset: 0;
+      border-color: #f44336 !important;
       color: #b71c1c !important;
+      vertical-align: baseline !important;
     }
     label.answer-correct, .compare-choice label.answer-correct {
       background-color: #c8e6c9 !important;
@@ -227,24 +254,26 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       padding: 2px 4px;
     }
     .points-badge {
-      display: inline-block;
+      display: inline;
       margin-left: 6px;
-      padding: 2px 6px;
+      padding: 1px 5px;
       border-radius: 3px;
-      font-size: 0.85em;
-      font-weight: bold;
-      vertical-align: middle;
+      font-size: 0.8em;
+      font-weight: 600;
+      vertical-align: baseline;
+      line-height: 1.2;
     }
     .points-correct { background-color: #4caf50; color: #fff; }
     .points-incorrect { background-color: #f44336; color: #fff; }
     .jm-correct-solution {
-      display: inline-block;
-      margin-left: 8px;
-      padding: 2px 8px;
-      border-radius: 4px;
+      display: inline;
+      margin-left: 6px;
+      padding: 1px 6px;
+      border-radius: 3px;
       font-size: 0.85em;
-      font-weight: 700;
-      vertical-align: middle;
+      font-weight: 400;
+      vertical-align: baseline;
+      line-height: 1.2;
       color: #6a1b9a;
       background: #f3e5f5;
       border: 1px solid #ce93d8;
@@ -253,10 +282,17 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     .jm-solution-option,
     label.jm-solution-option {
       background-color: #f3e5f5 !important;
-      border: 1.5px solid #9c27b0 !important;
+      outline: 1.5px solid #9c27b0 !important;
       border-radius: 4px;
       color: #6a1b9a !important;
-      font-weight: 700;
+      font-weight: 400;
+    }
+    /* Indizes (₂, ₁₀) wieder auf der Grundlinie halten */
+    .item sub, .input-group sub, .exam-paper sub {
+      vertical-align: sub !important;
+      font-size: smaller !important;
+      position: static !important;
+      top: auto !important;
     }
     input, textarea, select, button { pointer-events: none !important; }
     html, body {
@@ -325,7 +361,7 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     <div class="meta">${pointsText}</div>
     ${
       opts.classAverageText
-        ? `<div class="avg">⌀ Klassenschnitt ${opts.classAverageText}</div>`
+        ? `<div class="avg">⌀ Klassenschnitt = ${opts.classAverageText}</div>`
         : ''
     }
   `;

@@ -113,7 +113,8 @@ function AppContent() {
           localStorage.setItem('studentId', data.user.id);
         }
         localStorage.setItem('userRole', data.user.role || '');
-        localStorage.setItem('loginCode', data.user.loginCode || loginCode);
+        const codeToStore = String(data.user.loginCode || loginCode || '').trim();
+        if (codeToStore) localStorage.setItem('loginCode', codeToStore);
         localStorage.setItem('userName', data.user.name);
         
         setShowSuccessMessage(true);

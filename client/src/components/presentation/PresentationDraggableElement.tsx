@@ -31,7 +31,10 @@ import { PRESENTATION_DEFAULT_FONT_FAMILY } from '../../lib/presentationFonts';
 import { notesDropTargetHits } from '../../lib/presentationNotesImages';
 import { isPenPointer } from '../../lib/presentationDrawTools';
 import { imageFrameParts } from '../../lib/presentationImageFrames';
-import { placeCaretBesidePresentationMath } from '../../lib/presentationPasteMath';
+import {
+  handlePresentationMathBlockMergeKey,
+  placeCaretBesidePresentationMath,
+} from '../../lib/presentationPasteMath';
 import {
   isDefaultTextFieldHtml,
   measureSlideBodyOrigin,
@@ -302,6 +305,19 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [textEditing]);
 
+  // Freie Textfelder: Undo/Redo muss den contentEditable-DOM mitziehen
+  useLayoutEffect(() => {
+    if (element.type !== 'text' || !editable || exportSnapshot) return;
+    if (!isApplyingDeckHistory()) return;
+    const el = textRef.current;
+    if (!el) return;
+    if (textInputTimerRef.current) {
+      window.clearTimeout(textInputTimerRef.current);
+      textInputTimerRef.current = null;
+    }
+    el.innerHTML = hydratePresentationHtmlFontSizes(element.html || '<p><br></p>');
+  }, [element.type, element.html, editable, exportSnapshot]);
+
   useEffect(() => {
     if (!selected) {
       autoEditOnceRef.current = false;
@@ -359,21 +375,30 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     return () => window.cancelAnimationFrame(id);
   }, [element.type, textEditing, fitTextBoxToContent]);
 
-  // Form-Box-Text: einmalig seeden; danach DOM behalten (kein Remount beim Auswählen / Animationsmodus)
+  // Form-Box-Text: einmalig seeden; bei Undo/Redo aus dem Deck nachziehen
   useLayoutEffect(() => {
     if (!shapeSupportsText(element) || !editable || exportSnapshot) return;
     const el = textRef.current;
     if (!el) return;
-    if (!isEffectivelyEmptyHtml(el.innerHTML)) return;
-    el.innerHTML = hydratePresentationHtmlFontSizes(
+    const next = hydratePresentationHtmlFontSizes(
       element.html || '<p style="text-align:center"><br></p>',
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [element.id, element.type, element.shapeKind, editable, exportSnapshot]);
+    if (isApplyingDeckHistory()) {
+      if (textInputTimerRef.current) {
+        window.clearTimeout(textInputTimerRef.current);
+        textInputTimerRef.current = null;
+      }
+      el.innerHTML = next;
+      return;
+    }
+    if (!isEffectivelyEmptyHtml(el.innerHTML)) return;
+    el.innerHTML = next;
+  }, [element.id, element.type, element.shapeKind, element.html, editable, exportSnapshot]);
 
-  // Karten-Titel: beim Öffnen Inhalt vor dem Paint setzen
+  // Karten-Titel: beim Öffnen Inhalt setzen
   useLayoutEffect(() => {
     if (element.type !== 'card' || !cardTitleEditing) return;
+    if (isApplyingDeckHistory()) return;
     const el = cardTitleRef.current;
     if (!el) return;
     el.innerHTML = hydratePresentationHtmlFontSizes(
@@ -384,15 +409,38 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardTitleEditing, element.id]);
 
-  // Karten-Inhalt: Editor bleibt gemountet (auch Animationsmodus) — nur initial seeden
+  // Karten-Titel: Undo/Redo nachziehen
+  useLayoutEffect(() => {
+    if (element.type !== 'card' || !cardTitleEditing) return;
+    if (!isApplyingDeckHistory()) return;
+    const el = cardTitleRef.current;
+    if (!el) return;
+    if (textInputTimerRef.current) {
+      window.clearTimeout(textInputTimerRef.current);
+      textInputTimerRef.current = null;
+    }
+    el.innerHTML = hydratePresentationHtmlFontSizes(
+      element.titleHtml || '<p style="text-align:center"><strong>Titel</strong></p>',
+    );
+  }, [cardTitleEditing, element.id, element.titleHtml]);
+
+  // Karten-Inhalt: Editor bleibt gemountet — initial seeden; Undo/Redo nachziehen
   useLayoutEffect(() => {
     if (element.type !== 'card' || !editable || exportSnapshot) return;
     const el = cardBodyRef.current;
     if (!el) return;
+    const next = hydratePresentationHtmlFontSizes(element.html || '<p></p>');
+    if (isApplyingDeckHistory()) {
+      if (textInputTimerRef.current) {
+        window.clearTimeout(textInputTimerRef.current);
+        textInputTimerRef.current = null;
+      }
+      el.innerHTML = next;
+      return;
+    }
     if (!isEffectivelyEmptyHtml(el.innerHTML)) return;
-    el.innerHTML = hydratePresentationHtmlFontSizes(element.html || '<p></p>');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [element.id, element.type, editable, exportSnapshot]);
+    el.innerHTML = next;
+  }, [element.id, element.type, element.html, editable, exportSnapshot]);
 
   /** Infobox gewählt → Inhalt fokussieren (sonst wirkt contentEditable erst nach 2. Klick). */
   useEffect(() => {
@@ -1567,10 +1615,10 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 }}
                 onInput={() => {
                   if (!showSelectionChrome || !textRef.current || !onChange) return;
-                  const html = textRef.current.innerHTML;
                   if (textInputTimerRef.current) window.clearTimeout(textInputTimerRef.current);
                   textInputTimerRef.current = window.setTimeout(() => {
-                    onChange({ html: sanitizePresentationHtml(html) });
+                    if (!textRef.current || !onChange || isApplyingDeckHistory()) return;
+                    onChange({ html: sanitizePresentationHtml(textRef.current.innerHTML) });
                   }, 400);
                 }}
                 onKeyDown={(e) => {
@@ -1586,6 +1634,12 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                       onChange({ html: sanitizePresentationHtml(textRef.current.innerHTML) });
                     }
                     textRef.current?.blur();
+                    return;
+                  }
+                  if (handlePresentationMathBlockMergeKey(e, textRef.current)) {
+                    if (textRef.current) {
+                      onChange?.({ html: sanitizePresentationHtml(textRef.current.innerHTML) });
+                    }
                     return;
                   }
                   if (handlePresentationListShortcutKey(e, textRef.current)) {
@@ -1744,10 +1798,12 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 }}
                 onInput={() => {
                   if (!cardTitleRef.current || !onChange) return;
-                  const titleHtml = cardTitleRef.current.innerHTML;
                   if (textInputTimerRef.current) window.clearTimeout(textInputTimerRef.current);
                   textInputTimerRef.current = window.setTimeout(() => {
-                    onChange({ titleHtml: sanitizePresentationHtml(titleHtml) });
+                    if (!cardTitleRef.current || !onChange || isApplyingDeckHistory()) return;
+                    onChange({
+                      titleHtml: sanitizePresentationHtml(cardTitleRef.current.innerHTML),
+                    });
                   }, 400);
                 }}
                 onKeyDown={(e) => {
@@ -1760,6 +1816,14 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                       });
                     }
                     setCardTitleEditing(false);
+                    return;
+                  }
+                  if (handlePresentationMathBlockMergeKey(e, cardTitleRef.current)) {
+                    if (cardTitleRef.current) {
+                      onChange?.({
+                        titleHtml: sanitizePresentationHtml(cardTitleRef.current.innerHTML),
+                      });
+                    }
                   }
                 }}
                 sx={{
@@ -1853,10 +1917,10 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 }}
                 onInput={() => {
                   if (!showCardBodyEditor || !cardBodyRef.current || !onChange) return;
-                  const html = cardBodyRef.current.innerHTML;
                   if (textInputTimerRef.current) window.clearTimeout(textInputTimerRef.current);
                   textInputTimerRef.current = window.setTimeout(() => {
-                    onChange({ html: sanitizePresentationHtml(html) });
+                    if (!cardBodyRef.current || !onChange || isApplyingDeckHistory()) return;
+                    onChange({ html: sanitizePresentationHtml(cardBodyRef.current.innerHTML) });
                   }, 400);
                 }}
                 onKeyDown={(e) => {
@@ -1872,6 +1936,12 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                       onChange({ html: sanitizePresentationHtml(cardBodyRef.current.innerHTML) });
                     }
                     cardBodyRef.current?.blur();
+                    return;
+                  }
+                  if (handlePresentationMathBlockMergeKey(e, cardBodyRef.current)) {
+                    if (cardBodyRef.current) {
+                      onChange?.({ html: sanitizePresentationHtml(cardBodyRef.current.innerHTML) });
+                    }
                     return;
                   }
                   if (handlePresentationListShortcutKey(e, cardBodyRef.current)) {
@@ -2299,11 +2369,11 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
             onInput={() => {
               if (!textRef.current || !onChange) return;
               replaceArrowShortcutsNearCursor(textRef.current);
-              const html = textRef.current.innerHTML;
               fitTextBoxToContent();
               if (textInputTimerRef.current) window.clearTimeout(textInputTimerRef.current);
               textInputTimerRef.current = window.setTimeout(() => {
-                onChange({ html });
+                if (!textRef.current || !onChange || isApplyingDeckHistory()) return;
+                onChange({ html: textRef.current.innerHTML });
               }, 600);
             }}
             onKeyDown={(e) => {
@@ -2324,6 +2394,11 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 e.preventDefault();
                 e.stopPropagation();
                 onDelete?.();
+                return;
+              }
+              if (handlePresentationMathBlockMergeKey(e, el)) {
+                onChange?.({ html: el.innerHTML });
+                fitTextBoxToContent();
                 return;
               }
               if (handlePresentationListShortcutKey(e, el)) {

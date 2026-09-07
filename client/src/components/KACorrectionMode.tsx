@@ -162,32 +162,46 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     try {
       setLoading(true);
       setError(null);
-      const loginCode = localStorage.getItem('loginCode') || '';
-      
-      // Verwende den vollständigen kaFilePath, nicht nur den Dateinamen
-      // Die API kann mit verschiedenen Pfad-Varianten umgehen (getPossiblePaths)
+      const loginCode = (
+        localStorage.getItem('loginCode') ||
+        sessionStorage.getItem('loginCode') ||
+        ''
+      ).trim();
+
+      if (!loginCode) {
+        setSubmissions([]);
+        setError('Nicht angemeldet — bitte neu einloggen, dann Korrektur erneut öffnen.');
+        return;
+      }
+
       console.log('🔍 Lade Abgaben für:', kaFilePath);
       // SuS speichern oft nur den Dateinamen — gezielt danach suchen
       const fileNameOnly = (kaFilePath.split('/').pop() || kaFilePath).trim();
-      
-      const response = await fetch(
-        `/api/ka-corrections/submissions?kaFilePath=${encodeURIComponent(fileNameOnly)}`,
-        {
+      const qs = new URLSearchParams({
+        kaFilePath: fileNameOnly,
+        loginCode,
+      });
+
+      const response = await fetch(`/api/ka-corrections/submissions?${qs.toString()}`, {
+        method: 'GET',
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
-          'x-login-code': loginCode
-        }
+          'x-login-code': loginCode,
+        },
       });
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Fehler beim Laden:', response.status, errorText);
         setSubmissions([]);
-        setError(
-          response.status === 403
-            ? 'Keine Berechtigung für Abgaben (Lehrer-Login nötig).'
-            : `Abgaben konnten nicht geladen werden (${response.status}).`,
-        );
+        if (response.status === 401) {
+          setError('Anmeldung abgelaufen — bitte neu einloggen, dann Korrektur erneut öffnen.');
+        } else if (response.status === 403) {
+          setError('Keine Berechtigung für Abgaben (Lehrer-Login nötig).');
+        } else {
+          setError(`Abgaben konnten nicht geladen werden (${response.status}).`);
+        }
         return;
       }
 

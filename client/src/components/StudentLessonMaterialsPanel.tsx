@@ -646,7 +646,7 @@ export default function StudentLessonMaterialsPanel({
                   {exam.maxPoints && exam.maxPoints > 0
                     ? `${Number(exam.totalPoints || 0).toFixed(1).replace('.', ',')} / ${exam.maxPoints} Punkte`
                     : `${Number(exam.totalPoints || 0).toFixed(1).replace('.', ',')} Punkte`}
-                  {exam.classAverageLabel ? ` · ⌀ Klassenschnitt ${exam.classAverageLabel}` : ''}
+                  {exam.classAverageLabel ? ` · ⌀ Klassenschnitt = ${exam.classAverageLabel}` : ''}
                 </Typography>
               </Box>
               <Box
