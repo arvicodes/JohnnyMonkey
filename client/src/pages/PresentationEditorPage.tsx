@@ -224,6 +224,7 @@ import {
   takeUndoStep,
   type DeckHistory,
 } from '../lib/presentationEditorHistory';
+import { PRES_BEFORE_RICH_MUTATION_EVENT } from '../lib/presentationPasteMath';
 import PresentationSlideView from '../components/presentation/PresentationSlideView';
 import PresentationDrawOverlay from '../components/presentation/PresentationDrawOverlay';
 import PresentationConnectorDrawOverlay, {
@@ -1915,6 +1916,12 @@ const PresentationEditorPage: React.FC = () => {
     commitEditorState({ history: 'skip' });
     flushDeckHistory();
   }, [commitEditorState, flushDeckHistory]);
+
+  useEffect(() => {
+    const onBefore = () => snapshotBeforeRichMutation();
+    window.addEventListener(PRES_BEFORE_RICH_MUTATION_EVENT, onBefore);
+    return () => window.removeEventListener(PRES_BEFORE_RICH_MUTATION_EVENT, onBefore);
+  }, [snapshotBeforeRichMutation]);
 
   const flushActiveEditorImmediate = useCallback(() => {
     commitEditorState({ history: 'immediate' });

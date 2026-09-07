@@ -23,7 +23,7 @@ import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
 import { PRESENTATION_CONTENT_FONT_PX } from '../../lib/presentationFontSize';
 import { presentationNestedListSx } from '../../lib/presentationListStyles';
 import { presentationTableSelectionSx } from '../../lib/presentationTableSelection';
-import { placeCaretBesidePresentationMath } from '../../lib/presentationPasteMath';
+import { placeCaretBesidePresentationMath, handlePresentationMathBlockMergeKey } from '../../lib/presentationPasteMath';
 import '../../styles/presentationLists.css';
 
 export type RichZoneVariant = 'title' | 'hero' | 'subtitle' | 'body' | 'quote' | 'caption';
@@ -272,9 +272,19 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
 
   const syncFromProps = useCallback(() => {
     const el = ref.current;
-    if (!el || editingRef.current) return;
-    if (document.activeElement === el || el.contains(document.activeElement)) return;
+    if (!el) return;
     const next = displayHtml || `<p><br></p>`;
+    if (isApplyingDeckHistory()) {
+      if (inputTimerRef.current) {
+        window.clearTimeout(inputTimerRef.current);
+        inputTimerRef.current = null;
+      }
+      editingRef.current = false;
+      if (el.innerHTML !== next) el.innerHTML = next;
+      return;
+    }
+    if (editingRef.current) return;
+    if (document.activeElement === el || el.contains(document.activeElement)) return;
     if (el.innerHTML !== next) el.innerHTML = next;
   }, [displayHtml]);
 
@@ -334,10 +344,11 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
   const handleInput = () => {
     const el = ref.current;
     if (!el || !onChange) return;
-    const html = el.innerHTML;
     // Tippen bleibt lokal im DOM; React-State nur verzögert → weniger Filmstrip-/Deck-Rerenders.
     if (inputTimerRef.current) window.clearTimeout(inputTimerRef.current);
     inputTimerRef.current = window.setTimeout(() => {
+      if (!ref.current || !onChange || isApplyingDeckHistory()) return;
+      const html = ref.current.innerHTML;
       onChange(html, htmlToPlain(html));
     }, 600);
   };
@@ -374,6 +385,10 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     const el = ref.current;
     if (!el) return;
+    if (handlePresentationMathBlockMergeKey(e, el)) {
+      handleInput();
+      return;
+    }
     if (handlePresentationListShortcutKey(e, el)) {
       handleInput();
       return;
