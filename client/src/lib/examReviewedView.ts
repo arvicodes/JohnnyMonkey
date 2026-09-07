@@ -210,8 +210,13 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
 
   // Relative Assets auf Download-API umbiegen (iframe srcDoc hat keine Ordner-URL)
   const folder = opts.filePath.replace(/\\/g, '/').replace(/\/[^/]+$/, '');
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const rewriteAsset = (raw: string | null): string | null => {
     if (!raw || /^(data:|https?:|blob:|#|\/\/)/i.test(raw)) return raw;
+    // App-Root-Assets (z. B. /johnny-logo.png) — in srcDoc absolut zur App
+    if (raw.startsWith('/')) {
+      return origin ? `${origin}${raw}` : raw;
+    }
     const clean = raw.replace(/^\.\//, '');
     const assetPath = `${folder}/${clean}`.replace(/\/+/g, '/');
     return `/api/file-system-paths/download?filePath=${encodeURIComponent(assetPath)}`;
@@ -224,6 +229,19 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     const next = rewriteAsset(el.getAttribute('href'));
     if (next) el.setAttribute('href', next);
   });
+  // Logo sicher setzen (Script-Fallback wurde entfernt)
+  const logo = doc.getElementById('jmExamLogo') as HTMLImageElement | null;
+  if (logo) {
+    logo.setAttribute('src', `${origin}/johnny-logo.png`);
+    logo.setAttribute(
+      'onerror',
+      "this.onerror=null;this.src='https://johnnymonkey.onrender.com/johnny-logo.png';",
+    );
+  } else {
+    doc.querySelectorAll('img.header-logo').forEach((img) => {
+      img.setAttribute('src', `${origin}/johnny-logo.png`);
+    });
+  }
 
   const style = doc.createElement('style');
   style.textContent = `
