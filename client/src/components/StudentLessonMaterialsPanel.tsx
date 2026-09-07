@@ -81,11 +81,19 @@ const actionBtnSx = {
 
 /** Folien-Zeile */
 const FOLIEN_ROW_HEIGHT = 40;
-/** ToDo-HA-Button — etwas flacher als die Folien-Zeile */
-const TODO_HA_BTN_HEIGHT = 24;
+/** Kompakte Aktionsknöpfe in der Folien-Leiste (E / HA / Leinwand) */
+const FOLIEN_ACTION_BTN = {
+  flexShrink: 0,
+  p: 0,
+  minWidth: 22,
+  width: 22,
+  height: 22,
+  borderRadius: 0.8,
+  boxShadow: 'none',
+} as const;
 
 /** Rahmen nur bei ToDo HA mit Abgabe-Pflicht */
-const ABGABE_FRAME = '2px solid rgba(140, 60, 50, 0.95)';
+const ABGABE_FRAME = '1.5px solid rgba(140, 60, 50, 0.95)';
 
 function tryOpenInNewTab(url: string): boolean {
   const w = window.open(url, '_blank');
@@ -111,7 +119,7 @@ export default function StudentLessonMaterialsPanel({
   sharedPaths: string[];
   /** Lerngruppe — für Leinwand-Vollansicht */
   groupId?: string;
-  /** Leinwand freigegeben → grüner Button neben ToDo HA */
+  /** Leinwand freigegeben → grüner Button unter der Folien-Leiste */
   showLeinwand?: boolean;
   /** Öffnet das ToDo-Modal auf Dashboard-Ebene (überlebt Panel-Remounts).
    *  lessonPath = Stunde der HA-Folie (aktuelle Stunde); contextLabel optional. */
@@ -419,7 +427,13 @@ export default function StudentLessonMaterialsPanel({
     };
   }, [lessonPath, hasPresentation, onOpenHomeworkTodo]);
 
-  if (materials.length === 0 && !canOpenLeinwand && !completedEntryTicket && releasedExams.length === 0) {
+  if (
+    materials.length === 0 &&
+    !canOpenLeinwand &&
+    !completedEntryTicket &&
+    releasedExams.length === 0 &&
+    !(hasPresentation && homeworkTodoPath && onOpenHomeworkTodo)
+  ) {
     return (
       <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', py: 0.5 }}>
         Noch keine Materialien freigegeben.
@@ -431,7 +445,7 @@ export default function StudentLessonMaterialsPanel({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-      {hasPresentation && (
+      {(hasPresentation || showTodoHa) && (
         <Box
           sx={{
             display: 'flex',
@@ -449,16 +463,10 @@ export default function StudentLessonMaterialsPanel({
                 onClick={openCompletedEntryTicket}
                 aria-label="Entry Ticket ansehen"
                 sx={{
-                  flexShrink: 0,
-                  p: 0,
-                  minWidth: 22,
-                  width: 22,
-                  height: 22,
-                  borderRadius: 0.8,
+                  ...FOLIEN_ACTION_BTN,
                   border: '1.5px solid rgba(33, 150, 243, 0.5)',
                   background: 'linear-gradient(135deg, #1e88e5 0%, #3949ab 100%)',
                   color: 'white',
-                  boxShadow: 'none',
                   '&:hover': {
                     background: 'linear-gradient(135deg, #1976d2 0%, #303f9f 100%)',
                   },
@@ -473,6 +481,35 @@ export default function StudentLessonMaterialsPanel({
               </IconButton>
             </Tooltip>
           )}
+          {showTodoHa && (
+            <Tooltip title={homeworkTodoLabel ? `ToDo HA (${homeworkTodoLabel})` : 'ToDo HA'}>
+              <IconButton
+                size="small"
+                onClick={() => onOpenHomeworkTodo!(homeworkTodoPath!, homeworkTodoLabel)}
+                aria-label="ToDo HA"
+                sx={{
+                  ...FOLIEN_ACTION_BTN,
+                  minWidth: 28,
+                  width: 28,
+                  border: abgabeRequired ? ABGABE_FRAME : '1.5px solid rgba(245, 124, 0, 0.55)',
+                  background: `linear-gradient(135deg, ${JOHNNY_PRESENTATION.warm} 0%, #EF6C00 100%)`,
+                  color: 'white',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #F57C00 0%, #E65100 100%)',
+                    border: abgabeRequired ? ABGABE_FRAME : '1.5px solid rgba(230, 81, 0, 0.7)',
+                  },
+                }}
+              >
+                <Typography
+                  component="span"
+                  sx={{ fontSize: '0.62rem', fontWeight: 800, lineHeight: 1, color: 'inherit', letterSpacing: 0.02 }}
+                >
+                  HA
+                </Typography>
+              </IconButton>
+            </Tooltip>
+          )}
+          {hasPresentation && (
           <Box
             sx={{
               display: 'flex',
@@ -580,6 +617,7 @@ export default function StudentLessonMaterialsPanel({
               </span>
             </Tooltip>
           </Box>
+          )}
         </Box>
       )}
 
@@ -668,80 +706,35 @@ export default function StudentLessonMaterialsPanel({
         </Box>
       )}
 
-      {(canOpenLeinwand || showTodoHa) && (
-        <Box
+      {canOpenLeinwand && (
+        <Button
+          type="button"
+          size="small"
+          variant="contained"
+          onClick={openLeinwandFullscreen}
           sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 0.75,
             alignSelf: 'flex-start',
-            flexWrap: 'nowrap',
+            minWidth: 0,
+            width: 'auto',
+            height: 24,
+            minHeight: 24,
+            py: 0,
+            px: 1.25,
+            fontSize: '0.7rem',
+            fontWeight: 700,
+            lineHeight: 1.2,
+            textTransform: 'none',
+            borderRadius: 1.5,
+            boxSizing: 'border-box',
+            bgcolor: '#2e7d32',
+            color: '#fff',
+            border: '2px solid transparent',
+            boxShadow: 'none',
+            '&:hover': { bgcolor: '#1b5e20', boxShadow: 'none' },
           }}
         >
-          {canOpenLeinwand && (
-            <Button
-              type="button"
-              size="small"
-              variant="contained"
-              onClick={openLeinwandFullscreen}
-              sx={{
-                minWidth: 0,
-                width: 'auto',
-                height: TODO_HA_BTN_HEIGHT,
-                minHeight: TODO_HA_BTN_HEIGHT,
-                py: 0,
-                px: 1.25,
-                fontSize: '0.7rem',
-                fontWeight: 700,
-                lineHeight: 1.2,
-                textTransform: 'none',
-                borderRadius: 1.5,
-                boxSizing: 'border-box',
-                bgcolor: '#2e7d32',
-                color: '#fff',
-                border: '2px solid transparent',
-                boxShadow: 'none',
-                '&:hover': { bgcolor: '#1b5e20', boxShadow: 'none' },
-              }}
-            >
-              Leinwand
-            </Button>
-          )}
-          {showTodoHa && (
-            <Button
-              type="button"
-              size="small"
-              variant="contained"
-              title={homeworkTodoLabel ? `ToDo HA (${homeworkTodoLabel})` : 'ToDo HA'}
-              onClick={() => onOpenHomeworkTodo!(homeworkTodoPath!, homeworkTodoLabel)}
-              sx={{
-                minWidth: 0,
-                width: 'auto',
-                height: TODO_HA_BTN_HEIGHT,
-                minHeight: TODO_HA_BTN_HEIGHT,
-                py: 0,
-                px: 1.25,
-                fontSize: '0.7rem',
-                fontWeight: 700,
-                lineHeight: 1.2,
-                textTransform: 'none',
-                borderRadius: 1.5,
-                boxSizing: 'border-box',
-                bgcolor: JOHNNY_PRESENTATION.warm,
-                color: '#fff',
-                border: abgabeRequired ? ABGABE_FRAME : '2px solid transparent',
-                boxShadow: 'none',
-                '&:hover': {
-                  bgcolor: '#F57C00',
-                  boxShadow: 'none',
-                  border: abgabeRequired ? ABGABE_FRAME : '2px solid transparent',
-                },
-              }}
-            >
-              ToDo HA
-            </Button>
-          )}
-        </Box>
+          Leinwand
+        </Button>
       )}
 
       {otherMaterials.map((file) => (
