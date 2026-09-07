@@ -1487,6 +1487,13 @@ const PresentationPresentPage: React.FC = () => {
     const onKey = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
       if (entryTicketOpen) return;
+      if (slideOverviewOpen) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setSlideOverviewOpen(false);
+        }
+        return;
+      }
       if (quietWork.running || quietWork.finished) {
         if (e.key === 'Escape') {
           e.preventDefault();
@@ -1548,7 +1555,7 @@ const PresentationPresentPage: React.FC = () => {
       }
       if (e.key === 'Home') {
         e.preventDefault();
-        setSlideIndex(0);
+        setSlideIndex(deck ? findEntrySlideIndex(deck) : 0);
         setRevealStep(0);
         return;
       }
@@ -1562,7 +1569,7 @@ const PresentationPresentPage: React.FC = () => {
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [goNext, goPrev, groupId, lessonPath, navigate, planMode, slides, saveNamedOpen, clearInkOpen, userZoom, entryTicketOpen, applyUserZoom, quietWork, musicGame, handleSaveBothVersions, leavePresentToEditor]);
+  }, [goNext, goPrev, groupId, lessonPath, navigate, planMode, slides, deck, saveNamedOpen, clearInkOpen, userZoom, entryTicketOpen, slideOverviewOpen, applyUserZoom, quietWork, musicGame, handleSaveBothVersions, leavePresentToEditor]);
 
   // Fokus auf die Bühne, damit Pfeiltasten sofort greifen
   useEffect(() => {
