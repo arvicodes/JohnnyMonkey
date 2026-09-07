@@ -174,7 +174,27 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     .points-correct { background-color: #4caf50; color: #fff; }
     .points-incorrect { background-color: #f44336; color: #fff; }
     input, textarea, select, button { pointer-events: none !important; }
-    .exam-paper { margin: 0 auto; }
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      max-width: none !important;
+      background: #f3f3f3;
+    }
+    .exam-shell {
+      display: block !important;
+      width: 100% !important;
+      max-width: none !important;
+      margin: 0 !important;
+      padding: 10px 12px 28px !important;
+      box-sizing: border-box;
+    }
+    .exam-paper {
+      width: 100% !important;
+      max-width: none !important;
+      margin: 0 !important;
+      box-sizing: border-box;
+    }
     .jm-review-result {
       margin-top: 24px;
       padding: 16px 18px;

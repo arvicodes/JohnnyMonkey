@@ -808,40 +808,49 @@ export default function StudentLessonMaterialsPanel({
         onClose={() => setReviewHtml(null)}
         fullScreen
         PaperProps={{
-          sx: { bgcolor: '#f5f5f5', display: 'flex', flexDirection: 'column' },
+          sx: {
+            bgcolor: '#f3f3f3',
+            display: 'flex',
+            flexDirection: 'column',
+            m: 0,
+            borderRadius: 0,
+          },
         }}
       >
-        <Box
+        <IconButton
+          aria-label="Schließen"
+          onClick={() => setReviewHtml(null)}
+          size="small"
           sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            px: 1.5,
-            py: 0.75,
-            bgcolor: '#1b5e20',
-            color: '#fff',
-            flexShrink: 0,
+            position: 'fixed',
+            top: 4,
+            right: 4,
+            zIndex: 1300,
+            width: 22,
+            height: 22,
+            p: 0,
+            bgcolor: 'rgba(255,255,255,0.85)',
+            color: '#424242',
+            boxShadow: '0 0 0 1px rgba(0,0,0,0.12)',
+            '&:hover': { bgcolor: '#fff', color: '#000' },
+            '& .MuiSvgIcon-root': { fontSize: 14 },
           }}
         >
-          <Typography sx={{ flex: 1, fontWeight: 700, fontSize: '0.95rem' }} noWrap>
-            {reviewTitle}
-          </Typography>
-          <IconButton
-            aria-label="Schließen"
-            onClick={() => setReviewHtml(null)}
-            sx={{ color: '#fff' }}
-            size="small"
-          >
-            <CloseIcon />
-          </IconButton>
-        </Box>
-        <DialogContent sx={{ p: 0, flex: 1, overflow: 'hidden' }}>
+          <CloseIcon />
+        </IconButton>
+        <DialogContent sx={{ p: 0, m: 0, flex: 1, overflow: 'hidden', maxWidth: '100%' }}>
           {reviewHtml ? (
             <iframe
               title={reviewTitle}
               srcDoc={reviewHtml}
               sandbox="allow-same-origin"
-              style={{ width: '100%', height: '100%', border: 0, display: 'block', background: '#fff' }}
+              style={{
+                width: '100%',
+                height: '100%',
+                border: 0,
+                display: 'block',
+                background: '#f3f3f3',
+              }}
             />
           ) : null}
         </DialogContent>
