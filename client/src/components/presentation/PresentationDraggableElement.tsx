@@ -34,6 +34,7 @@ import { imageFrameParts } from '../../lib/presentationImageFrames';
 import {
   handlePresentationMathBlockMergeKey,
   placeCaretBesidePresentationMath,
+  PRES_BEFORE_RICH_MUTATION_EVENT,
 } from '../../lib/presentationPasteMath';
 import {
   isDefaultTextFieldHtml,
@@ -1636,6 +1637,14 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                     textRef.current?.blur();
                     return;
                   }
+                  if (
+                    (e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Enter') &&
+                    !e.metaKey &&
+                    !e.ctrlKey &&
+                    !e.altKey
+                  ) {
+                    window.dispatchEvent(new CustomEvent(PRES_BEFORE_RICH_MUTATION_EVENT));
+                  }
                   if (handlePresentationMathBlockMergeKey(e, textRef.current)) {
                     if (textRef.current) {
                       onChange?.({ html: sanitizePresentationHtml(textRef.current.innerHTML) });
@@ -1818,6 +1827,14 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                     setCardTitleEditing(false);
                     return;
                   }
+                  if (
+                    (e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Enter') &&
+                    !e.metaKey &&
+                    !e.ctrlKey &&
+                    !e.altKey
+                  ) {
+                    window.dispatchEvent(new CustomEvent(PRES_BEFORE_RICH_MUTATION_EVENT));
+                  }
                   if (handlePresentationMathBlockMergeKey(e, cardTitleRef.current)) {
                     if (cardTitleRef.current) {
                       onChange?.({
@@ -1937,6 +1954,14 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                     }
                     cardBodyRef.current?.blur();
                     return;
+                  }
+                  if (
+                    (e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Enter') &&
+                    !e.metaKey &&
+                    !e.ctrlKey &&
+                    !e.altKey
+                  ) {
+                    window.dispatchEvent(new CustomEvent(PRES_BEFORE_RICH_MUTATION_EVENT));
                   }
                   if (handlePresentationMathBlockMergeKey(e, cardBodyRef.current)) {
                     if (cardBodyRef.current) {
@@ -2395,6 +2420,14 @@ const PresentationDraggableElement: React.FC<PresentationDraggableElementProps> 
                 e.stopPropagation();
                 onDelete?.();
                 return;
+              }
+              if (
+                (e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Enter') &&
+                !e.metaKey &&
+                !e.ctrlKey &&
+                !e.altKey
+              ) {
+                window.dispatchEvent(new CustomEvent(PRES_BEFORE_RICH_MUTATION_EVENT));
               }
               if (handlePresentationMathBlockMergeKey(e, el)) {
                 onChange?.({ html: el.innerHTML });

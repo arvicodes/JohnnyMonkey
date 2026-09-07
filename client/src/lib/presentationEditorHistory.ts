@@ -1,4 +1,5 @@
 import { PresentationDeck } from './presentationDeck';
+import { hydratePresentationHtmlFontSizes } from './presentationFontSize';
 
 const MAX_HISTORY = 30;
 
@@ -112,6 +113,18 @@ export function takeUndoStep(
   return undoDeckHistory(history);
 }
 
+/**
+ * Vor Rückgängig: aktuellen Stand auf den Stack legen, dann genau einen Schritt zurück.
+ * Vermeidet den takeUndoStep-Fall, der bei DOM≠Fingerprint denselben kaputten Stand „wiederherstellt“.
+ */
+export function takeUndoStepAfterCommit(
+  history: DeckHistory,
+  current: PresentationDeck,
+): { history: DeckHistory; deck: PresentationDeck } | null {
+  const withCurrent = pushDeckHistory(history, current);
+  return undoDeckHistory(withCurrent);
+}
+
 export function redoDeckHistory(
   history: DeckHistory
 ): { history: DeckHistory; deck: PresentationDeck } | null {
@@ -121,4 +134,71 @@ export function redoDeckHistory(
     history: { ...history, index },
     deck: cloneDeck(history.stack[index]),
   };
+}
+
+function setEditorHtml(el: HTMLElement | null | undefined, html: string | undefined, fallback: string) {
+  if (!el) return;
+  const next = hydratePresentationHtmlFontSizes(html || fallback);
+  if (el.innerHTML !== next) el.innerHTML = next;
+}
+
+/**
+ * contentEditable behält lokalen DOM — nach Undo/Redo explizit aus dem Deck spiegeln.
+ */
+export function syncLiveEditorsFromDeck(deck: PresentationDeck, slideId: string | null) {
+  if (typeof document === 'undefined') return;
+  const slide =
+    (slideId && deck.slides.find((s) => s.id === slideId)) || deck.slides[0] || null;
+  if (!slide) return;
+
+  const notesEl = document.querySelector(
+    '[data-pres-notes-zone="true"]',
+  ) as HTMLElement | null;
+  if (notesEl) {
+    setEditorHtml(notesEl, slide.speakerNotesHtml, '<p><br></p>');
+  }
+
+  const slideRoot = document.querySelector(
+    `[data-pres-slide-id="${slide.id}"]`,
+  ) as HTMLElement | null;
+  if (!slideRoot) return;
+
+  slideRoot.querySelectorAll<HTMLElement>('[data-pres-rich-zone][data-pres-html-field]').forEach((zone) => {
+    const field = zone.getAttribute('data-pres-html-field');
+    if (!field || field.startsWith('element')) return;
+    const value = (slide as unknown as Record<string, unknown>)[field];
+    if (typeof value === 'string') {
+      setEditorHtml(zone, value, '<p><br></p>');
+    }
+  });
+
+  for (const el of slide.elements || []) {
+    const root = slideRoot.querySelector(`[data-pres-element="${el.id}"]`) as HTMLElement | null;
+    if (!root) continue;
+
+    if (el.type === 'card') {
+      const body = root.querySelector('[data-card-body] [data-pres-rich-zone]') as HTMLElement | null;
+      setEditorHtml(body, el.html, '<p></p>');
+      const title = root.querySelector('[data-card-title] [data-pres-rich-zone]') as HTMLElement | null;
+      setEditorHtml(
+        title,
+        el.titleHtml,
+        '<p style="text-align:center"><strong>Titel</strong></p>',
+      );
+      continue;
+    }
+
+    if (el.type === 'text' || el.type === 'table') {
+      const zone = root.querySelector('[data-pres-rich-zone], [data-text-edit]') as HTMLElement | null;
+      setEditorHtml(zone, el.html, el.type === 'table' ? '<table></table>' : '<p><br></p>');
+      continue;
+    }
+
+    const shapeBody = root.querySelector(
+      '[data-shape-body][data-pres-rich-zone], [data-shape-body] [data-pres-rich-zone], [data-text-edit]',
+    ) as HTMLElement | null;
+    if (shapeBody && typeof el.html === 'string') {
+      setEditorHtml(shapeBody, el.html, '<p style="text-align:center"><br></p>');
+    }
+  }
 }

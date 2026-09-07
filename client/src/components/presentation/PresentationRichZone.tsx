@@ -23,7 +23,7 @@ import { JOHNNY_PRESENTATION } from '../../lib/presentationTheme';
 import { PRESENTATION_CONTENT_FONT_PX } from '../../lib/presentationFontSize';
 import { presentationNestedListSx } from '../../lib/presentationListStyles';
 import { presentationTableSelectionSx } from '../../lib/presentationTableSelection';
-import { placeCaretBesidePresentationMath, handlePresentationMathBlockMergeKey } from '../../lib/presentationPasteMath';
+import { placeCaretBesidePresentationMath, handlePresentationMathBlockMergeKey, PRES_BEFORE_RICH_MUTATION_EVENT } from '../../lib/presentationPasteMath';
 import '../../styles/presentationLists.css';
 
 export type RichZoneVariant = 'title' | 'hero' | 'subtitle' | 'body' | 'quote' | 'caption';
@@ -385,6 +385,14 @@ const PresentationRichZoneEditable: React.FC<PresentationRichZoneProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     const el = ref.current;
     if (!el) return;
+    if (
+      (e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Enter') &&
+      !e.metaKey &&
+      !e.ctrlKey &&
+      !e.altKey
+    ) {
+      window.dispatchEvent(new CustomEvent(PRES_BEFORE_RICH_MUTATION_EVENT));
+    }
     if (handlePresentationMathBlockMergeKey(e, el)) {
       handleInput();
       return;

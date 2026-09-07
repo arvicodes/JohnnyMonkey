@@ -221,7 +221,8 @@ import {
   pushDeckHistory,
   redoDeckHistory,
   setApplyingDeckHistory,
-  takeUndoStep,
+  syncLiveEditorsFromDeck,
+  takeUndoStepAfterCommit,
   type DeckHistory,
 } from '../lib/presentationEditorHistory';
 import { PRES_BEFORE_RICH_MUTATION_EVENT } from '../lib/presentationPasteMath';
@@ -1020,6 +1021,9 @@ const PresentationEditorPage: React.FC = () => {
         quiet?: boolean;
       }
     ) => {
+      // Während Undo/Redo keine Tippen-Timer-Saves — sonst überschreibt der alte DOM den Restore.
+      if (applyingHistoryRef.current) return;
+
       deckRef.current = next;
 
       if (quietUiTimer.current) {
@@ -1036,13 +1040,14 @@ const PresentationEditorPage: React.FC = () => {
         const gen = deckUiGenRef.current;
         startTransition(() => {
           if (gen !== deckUiGenRef.current) return;
+          if (applyingHistoryRef.current) return;
           setDeck(next);
         });
       }
 
       if (!applyingHistoryRef.current && options?.history !== 'skip' && historyRef.current) {
         const push = () => {
-          if (!historyRef.current || !deckRef.current) return;
+          if (!historyRef.current || !deckRef.current || applyingHistoryRef.current) return;
           historyRef.current = pushDeckHistory(historyRef.current, deckRef.current);
           setHistoryVersion((v) => v + 1);
         };
@@ -1061,6 +1066,7 @@ const PresentationEditorPage: React.FC = () => {
         if (draftTimer.current) clearTimeout(draftTimer.current);
         draftTimer.current = setTimeout(() => {
           draftTimer.current = null;
+          if (applyingHistoryRef.current) return;
           const snapshot = deckRef.current;
           if (snapshot) {
             void putPresentationDeckDraft(lessonPath, snapshot).catch(() => undefined);
@@ -1071,6 +1077,7 @@ const PresentationEditorPage: React.FC = () => {
       const delayMs = options?.urgent ? 0 : 900;
       saveTimer.current = setTimeout(() => {
         saveTimer.current = null;
+        if (applyingHistoryRef.current) return;
         void flushPersist();
       }, delayMs);
     },
@@ -1589,6 +1596,11 @@ const PresentationEditorPage: React.FC = () => {
       setApplyingDeckHistory(true);
       deckUiGenRef.current += 1;
       if (historyPushTimer.current) clearTimeout(historyPushTimer.current);
+      historyPushTimer.current = null;
+      if (quietUiTimer.current) {
+        clearTimeout(quietUiTimer.current);
+        quietUiTimer.current = null;
+      }
       const active = document.activeElement;
       const wasNotes =
         active instanceof HTMLElement && !!active.closest('[data-pres-notes-zone="true"]');
@@ -1600,11 +1612,6 @@ const PresentationEditorPage: React.FC = () => {
         activeIdRef.current && snapshot.slides.some((s) => s.id === activeIdRef.current)
           ? activeIdRef.current
           : snapshot.slides[0]?.id ?? null;
-      const notesEl = document.querySelector('[data-pres-notes-zone="true"]') as HTMLElement | null;
-      if (notesEl) {
-        const restoredNotes = snapshot.slides.find((s) => s.id === slideId)?.speakerNotesHtml;
-        notesEl.innerHTML = restoredNotes || '<p><br></p>';
-      }
       setDeck(snapshot);
       setActiveEditor(null);
       setActiveHtmlField(null);
@@ -1616,15 +1623,21 @@ const PresentationEditorPage: React.FC = () => {
       );
       setHistoryVersion((v) => v + 1);
       ++saveVersionRef.current;
+      // Sofort in die contentEditables schreiben — React-Effects allein reichen nicht.
+      syncLiveEditorsFromDeck(snapshot, slideId);
+      window.requestAnimationFrame(() => {
+        syncLiveEditorsFromDeck(snapshot, slideId);
+      });
       void flushPersist();
       window.setTimeout(() => {
+        syncLiveEditorsFromDeck(deckRef.current || snapshot, slideId);
         applyingHistoryRef.current = false;
         setApplyingDeckHistory(false);
         if (wasNotes) {
           const notes = document.querySelector('[data-pres-notes-zone="true"]') as HTMLElement | null;
           notes?.focus({ preventScroll: true });
         }
-      }, 0);
+      }, 120);
     },
     [flushPersist]
   );
@@ -1647,8 +1660,11 @@ const PresentationEditorPage: React.FC = () => {
       historyPushTimer.current = null;
     }
     if (!historyRef.current || !deckRef.current) return;
-    const result = takeUndoStep(historyRef.current, deckRef.current);
-    if (!result) return;
+    const result = takeUndoStepAfterCommit(historyRef.current, deckRef.current);
+    if (!result) {
+      setHistoryVersion((v) => v + 1);
+      return;
+    }
     historyRef.current = result.history;
     restoreDeckSnapshot(result.deck);
   }, [commitEditorState, persistLiveNotesToBoundSlide, restoreDeckSnapshot]);
@@ -2112,6 +2128,7 @@ const PresentationEditorPage: React.FC = () => {
   };
 
   const updateElement = (id: string, patch: Partial<SlideElement>) => {
+    if (applyingHistoryRef.current) return;
     const current = deckRef.current;
     if (!current || !activeId) return;
     if (!editingVariantRef.current && suppressMasterCommitRef.current) return;

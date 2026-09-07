@@ -47,6 +47,8 @@ import {
   presentationEditorUrl,
   rememberActivePresentationSlide,
   resolvePresentationStartSlideId,
+  findEntrySlideIndex,
+  resolvePlayResumeSlideId,
   normalizeDeck,
 } from '../lib/presentationDeck';
 import {
@@ -173,14 +175,29 @@ const PresentationPresentPage: React.FC = () => {
   const [clearInkOpen, setClearInkOpen] = useState(false);
   const [entryTicketOpen, setEntryTicketOpen] = useState(false);
   const [slideOverviewOpen, setSlideOverviewOpen] = useState(false);
+  const playEntryBootRef = useRef(false);
+  const resumeAfterEntryRef = useRef(false);
   const openEntryTicket = useCallback(() => {
     freezePresentViewport(true);
     setEntryTicketOpen(true);
   }, []);
+  const jumpToPlayResumeSlide = useCallback(() => {
+    if (!deck) return;
+    const sorted = sortSlides(deck.slides);
+    const targetId = resolvePlayResumeSlideId(deck);
+    const idx = sorted.findIndex((s) => s.id === targetId);
+    if (idx < 0) return;
+    setSlideIndex(idx);
+    setRevealStep(getSlideMaxRevealSteps(sorted[idx]!));
+  }, [deck]);
   const closeEntryTicket = useCallback(() => {
     setEntryTicketOpen(false);
     freezePresentViewport(false);
-  }, []);
+    if (resumeAfterEntryRef.current) {
+      resumeAfterEntryRef.current = false;
+      jumpToPlayResumeSlide();
+    }
+  }, [jumpToPlayResumeSlide]);
   const quietWork = useQuietWorkController();
   const musicGame = useMusicGameController();
   const [saveNamedLabel, setSaveNamedLabel] = useState('');
@@ -320,15 +337,25 @@ const PresentationPresentPage: React.FC = () => {
           : merged.deck;
       setDeck(displayDeck);
       const sorted = displayDeck ? sortSlides(displayDeck.slides) : [];
+      const playBoot =
+        (planMode === 'run' || planMode === 'background') &&
+        !startSlideId &&
+        !Number.isFinite(startSlideNumber);
       let startIdx = 0;
-      const startId = displayDeck
-        ? resolvePresentationStartSlideId(displayDeck, startSlideId)
-        : '';
-      if (startId) {
-        const byId = sorted.findIndex((s) => s.id === startId);
-        if (byId >= 0) startIdx = byId;
-      } else if (Number.isFinite(startSlideNumber) && startSlideNumber >= 1 && sorted.length) {
-        startIdx = Math.min(sorted.length - 1, startSlideNumber - 1);
+      if (playBoot && displayDeck) {
+        startIdx = findEntrySlideIndex(displayDeck);
+        playEntryBootRef.current = true;
+        resumeAfterEntryRef.current = true;
+      } else {
+        const startId = displayDeck
+          ? resolvePresentationStartSlideId(displayDeck, startSlideId)
+          : '';
+        if (startId) {
+          const byId = sorted.findIndex((s) => s.id === startId);
+          if (byId >= 0) startIdx = byId;
+        } else if (Number.isFinite(startSlideNumber) && startSlideNumber >= 1 && sorted.length) {
+          startIdx = Math.min(sorted.length - 1, startSlideNumber - 1);
+        }
       }
       setSlideIndex(startIdx);
       setRevealStep(startIdx > 0 && sorted[startIdx] ? getSlideMaxRevealSteps(sorted[startIdx]) : 0);
@@ -423,6 +450,12 @@ const PresentationPresentPage: React.FC = () => {
     host.addEventListener('click', onClick, true);
     return () => host.removeEventListener('click', onClick, true);
   }, [loading, openEntryTicket]);
+
+  useEffect(() => {
+    if (loading || !deck || !playEntryBootRef.current) return;
+    playEntryBootRef.current = false;
+    openEntryTicket();
+  }, [loading, deck, openEntryTicket]);
 
   useEffect(() => () => freezePresentViewport(false), []);
 

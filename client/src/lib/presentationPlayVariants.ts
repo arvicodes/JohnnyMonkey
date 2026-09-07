@@ -167,25 +167,57 @@ function playSlideHasContent(slide: PresentationSlide | undefined | null): boole
   return texts.some((html) => htmlToPlain(html || '').trim().length > 0);
 }
 
-/** Play-Kopien speichern oft die Folie ohne Einblend-Nummern — Animation von der Master-Folie behalten. */
+function notesHtmlHasContent(html?: string, plain?: string): boolean {
+  if ((plain || '').replace(/\u00a0/g, ' ').trim()) return true;
+  if (/<img\b/i.test(html || '')) return true;
+  return htmlToPlain(html || '').replace(/\u00a0/g, ' ').trim().length > 0;
+}
+
+function mergeElementAnimFromMaster(
+  masterEl: SlideElement | undefined,
+  playEl: SlideElement,
+): SlideElement {
+  if (!masterEl) return playEl;
+  const masterHasAnim =
+    masterEl.animationSet === true || (masterEl.revealStep != null && masterEl.revealStep > 0);
+  const playHasAnim = playEl.animationSet === true || (playEl.revealStep != null && playEl.revealStep > 0);
+  if (!masterHasAnim || playHasAnim) return playEl;
+  return {
+    ...playEl,
+    revealStep: masterEl.revealStep,
+    animationSet: masterEl.animationSet,
+  };
+}
+
+/**
+ * Play-Kopie + Master:
+ * - Elemente: Master behalten, Play überschreibt gleiche IDs, Play-only (z. B. play-foto) ergänzen
+ * - Notizen: unvollständige Play-Kopien dürfen Master-Notizen/Bilder nicht auswischen
+ * - Einblendungen: von Master übernehmen, falls Play sie verloren hat
+ */
 function mergeMasterAnimationOntoPlaySlide(
   master: PresentationSlide,
   playSlide: PresentationSlide,
 ): PresentationSlide {
-  const masterById = new Map((master.elements || []).map((el) => [el.id, el]));
-  const elements = (playSlide.elements || []).map((el) => {
-    const fromMaster = masterById.get(el.id);
-    if (!fromMaster) return el;
-    const masterHasAnim =
-      fromMaster.animationSet === true || (fromMaster.revealStep != null && fromMaster.revealStep > 0);
-    const playHasAnim = el.animationSet === true || (el.revealStep != null && el.revealStep > 0);
-    if (!masterHasAnim || playHasAnim) return el;
-    return {
-      ...el,
-      revealStep: fromMaster.revealStep,
-      animationSet: fromMaster.animationSet,
-    };
-  });
+  const masterEls = master.elements || [];
+  const playEls = playSlide.elements || [];
+  const playById = new Map(playEls.map((el) => [el.id, el]));
+  const used = new Set<string>();
+  const elements: SlideElement[] = [];
+  for (const el of masterEls) {
+    const fromPlay = playById.get(el.id);
+    if (fromPlay) {
+      elements.push(mergeElementAnimFromMaster(el, fromPlay));
+      used.add(el.id);
+    } else {
+      elements.push(el);
+    }
+  }
+  for (const el of playEls) {
+    if (used.has(el.id)) continue;
+    elements.push(mergeElementAnimFromMaster(undefined, el));
+  }
+
   const revealEnabled =
     playSlide.revealEnabled === false && master.revealEnabled === true
       ? true
@@ -194,11 +226,27 @@ function mergeMasterAnimationOntoPlaySlide(
     playSlide.zoneRevealSteps && Object.keys(playSlide.zoneRevealSteps).length > 0
       ? playSlide.zoneRevealSteps
       : master.zoneRevealSteps;
+
+  const playNotesOk = notesHtmlHasContent(playSlide.speakerNotesHtml, playSlide.speakerNotes);
+  const masterNotesOk = notesHtmlHasContent(master.speakerNotesHtml, master.speakerNotes);
+  const keepMasterNotes = masterNotesOk && !playNotesOk;
+  const masterNotesHaveImg = /<img\b/i.test(master.speakerNotesHtml || '');
+  const playNotesHaveImg = /<img\b/i.test(playSlide.speakerNotesHtml || '');
+  const preferMasterNotesForImages = masterNotesHaveImg && !playNotesHaveImg;
+
   return {
     ...playSlide,
     elements,
     revealEnabled,
     zoneRevealSteps,
+    ...((keepMasterNotes || preferMasterNotesForImages)
+      ? {
+          speakerNotesHtml: master.speakerNotesHtml,
+          speakerNotes: master.speakerNotes,
+          speakerNotesInk: master.speakerNotesInk,
+          speakerNotesInkSpace: master.speakerNotesInkSpace,
+        }
+      : {}),
   };
 }
 

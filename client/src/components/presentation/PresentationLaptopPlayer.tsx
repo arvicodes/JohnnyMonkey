@@ -17,13 +17,15 @@ import {
   loadOrMigrateNamedVersionSnapshot,
   migrateNotesInkCssToSlideSpace,
   notesInkNeedsHostMigration,
-  resolvePresentationStartSlideId,
+  findEntrySlideIndex,
+  resolvePlayResumeSlideId,
   clipDeckToNow,
   sortSlides,
 } from '../../lib/presentationDeck';
 import {
   applyPlayVariantsToDeck,
   loadPresentationPlayVariants,
+  type PresentationPlayVariants,
 } from '../../lib/presentationPlayVariants';
 import { getSlideMaxRevealSteps } from '../../lib/presentationReveal';
 import { PRESENTATION_KEYFRAMES, resolveSlideTransitionAnimation } from '../../lib/presentationTransitions';
@@ -39,6 +41,7 @@ import EntryTicketPage from '../../pages/EntryTicketPage';
 import { ensureEntryTicketButtonsOnTitleSlides } from '../../lib/presentationSlideTemplates';
 import { clampPresentZoomSmooth, handlePresentZoomHotkey, attachPresentTrackpadZoom, attachPresentTouchPinchZoom, centerPresentPan, panAfterPresentZoom, clampPresentPan, type PresentZoomOrigin } from '../../lib/presentationPresentZoom';
 import PresentationPresentZoomControls from './PresentationPresentZoomControls';
+import PresentationPresentSlideOverview from './PresentationPresentSlideOverview';
 import { PresentationSoundSplitControl } from './PresentationSoundControls';
 import PresentationQuietWorkOverlay, {
   QuietWorkToolbarPanel,
@@ -134,6 +137,10 @@ export default function PresentationLaptopPlayer({
   const didPanRef = useRef(false);
   const [panning, setPanning] = useState(false);
   const [entryTicketOpen, setEntryTicketOpen] = useState(false);
+  const [slideOverviewOpen, setSlideOverviewOpen] = useState(false);
+  const [playVariants, setPlayVariants] = useState<PresentationPlayVariants | null>(null);
+  const playEntryBootRef = useRef(false);
+  const resumeAfterEntryRef = useRef(false);
   const quietWork = useQuietWorkController();
   const musicGame = useMusicGameController();
   const stageHostRef = useRef<HTMLDivElement>(null);
@@ -211,20 +218,22 @@ export default function PresentationLaptopPlayer({
         }
         setDeck(nextDeck);
         setAnnotations(a ?? { ...EMPTY_ANNOTATIONS, lessonPath });
-        const startId = resolvePresentationStartSlideId(nextDeck, null);
+        setPlayVariants(variants ?? null);
         const sorted = sortSlides(nextDeck.slides);
-        const startIdx = Math.max(
-          0,
-          startId ? sorted.findIndex((s) => s.id === startId) : 0,
-        );
-        setSlideIndex(startIdx >= 0 ? startIdx : 0);
-        setRevealStep(
-          disableAnimations
-            ? 999
-            : startIdx > 0 && sorted[startIdx]
-              ? getSlideMaxRevealSteps(sorted[startIdx]!)
-              : 0,
-        );
+        if (!disableAnimations) {
+          // Lehrer Play/Laptop: immer Entry zuerst, danach (nach Ticket) NOW/aktuell
+          const entryIdx = findEntrySlideIndex(nextDeck);
+          playEntryBootRef.current = true;
+          resumeAfterEntryRef.current = true;
+          setSlideIndex(entryIdx);
+          setRevealStep(0);
+        } else {
+          // SuS: ohne Entry-Timer direkt bei NOW / aktueller Folie
+          const targetId = resolvePlayResumeSlideId(nextDeck);
+          const idx = sorted.findIndex((s) => s.id === targetId);
+          setSlideIndex(idx >= 0 ? idx : Math.max(0, sorted.length - 1));
+          setRevealStep(999);
+        }
       }
       setLoading(false);
     };
@@ -303,12 +312,63 @@ export default function PresentationLaptopPlayer({
 
   const strokes = useMemo(() => {
     if (!currentSlide) return EMPTY_STROKES;
-    return annotations.bySlideId[currentSlide.id] ?? EMPTY_STROKES;
-  }, [annotations, currentSlide]);
+    const fromAnn = annotations.bySlideId[currentSlide.id] ?? EMPTY_STROKES;
+    const fromVariant = playVariants?.bySlideId[currentSlide.id]?.strokes ?? EMPTY_STROKES;
+    if (!fromVariant.length) return fromAnn;
+    if (!fromAnn.length) return fromVariant;
+    const map = new Map<string, PresentationStroke>();
+    for (const s of fromAnn) map.set(s.id, s);
+    for (const s of fromVariant) {
+      if (!map.has(s.id)) map.set(s.id, s);
+    }
+    return Array.from(map.values());
+  }, [annotations, currentSlide, playVariants]);
 
   useEffect(() => {
     setAnimKey((k) => k + 1);
   }, [safeIndex]);
+
+  const jumpToPlayResumeSlide = useCallback(() => {
+    if (!deck) return;
+    const sorted = sortSlides(deck.slides);
+    const targetId = resolvePlayResumeSlideId(deck);
+    const idx = sorted.findIndex((s) => s.id === targetId);
+    if (idx < 0) return;
+    setSlideIndex(idx);
+    setRevealStep(
+      disableAnimations ? 999 : getSlideMaxRevealSteps(sorted[idx]!),
+    );
+  }, [deck, disableAnimations]);
+
+  const closeEntryTicket = useCallback(() => {
+    setEntryTicketOpen(false);
+    if (resumeAfterEntryRef.current) {
+      resumeAfterEntryRef.current = false;
+      jumpToPlayResumeSlide();
+    }
+  }, [jumpToPlayResumeSlide]);
+
+  const goToSlideAt = useCallback(
+    (idx: number) => {
+      if (idx < 0 || idx >= slides.length) return;
+      setSlideIndex(idx);
+      setRevealStep(
+        disableAnimations ? 999 : getSlideMaxRevealSteps(slides[idx]!),
+      );
+      setSlideOverviewOpen(false);
+    },
+    [slides, disableAnimations],
+  );
+
+  const toggleSlideOverview = useCallback(() => {
+    setSlideOverviewOpen((open) => !open);
+  }, []);
+
+  useEffect(() => {
+    if (loading || !deck || !playEntryBootRef.current) return;
+    playEntryBootRef.current = false;
+    setEntryTicketOpen(true);
+  }, [loading, deck]);
 
   const goNext = useCallback(() => {
     if (!disableAnimations && revealStep < maxReveal) {
@@ -346,6 +406,13 @@ export default function PresentationLaptopPlayer({
     const onKey = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
       if (entryTicketOpen) return;
+      if (slideOverviewOpen) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setSlideOverviewOpen(false);
+        }
+        return;
+      }
       if (quietWork.running || quietWork.finished) {
         if (e.key === 'Escape') {
           e.preventDefault();
@@ -385,21 +452,31 @@ export default function PresentationLaptopPlayer({
       }
       if (e.key === 'Home') {
         e.preventDefault();
-        setSlideIndex(0);
-        setRevealStep(0);
+        goToSlideAt(deck ? findEntrySlideIndex(deck) : 0);
         return;
       }
       if (e.key === 'End' && slides.length > 0) {
         e.preventDefault();
-        const last = slides.length - 1;
-        setSlideIndex(last);
-        setRevealStep(getSlideMaxRevealSteps(slides[last]));
+        goToSlideAt(slides.length - 1);
       }
     };
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [goNext, goPrev, onClose, slides, userZoom, entryTicketOpen, applyUserZoom, quietWork, musicGame]);
+  }, [
+    goNext,
+    goPrev,
+    goToSlideAt,
+    onClose,
+    slides,
+    deck,
+    userZoom,
+    entryTicketOpen,
+    slideOverviewOpen,
+    applyUserZoom,
+    quietWork,
+    musicGame,
+  ]);
 
   useEffect(() => {
     const host = rootRef.current;
@@ -692,6 +769,10 @@ export default function PresentationLaptopPlayer({
             <ChevronLeft sx={{ fontSize: 20 }} />
           </IconButton>
           <Typography
+            component="button"
+            type="button"
+            onClick={toggleSlideOverview}
+            title="Folie wählen"
             sx={{
               fontSize: '0.75rem',
               fontWeight: 600,
@@ -699,6 +780,14 @@ export default function PresentationLaptopPlayer({
               minWidth: 40,
               textAlign: 'center',
               lineHeight: 1,
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              p: 0,
+              borderRadius: 0.5,
+              textDecoration: 'underline',
+              textUnderlineOffset: 2,
+              '&:hover': { color: 'text.primary', bgcolor: 'rgba(0,0,0,0.04)' },
             }}
           >
             {safeIndex + 1}/{slides.length}
@@ -830,6 +919,7 @@ export default function PresentationLaptopPlayer({
                   showSlideNumbers={deck.showSlideNumbers !== false}
                   slideNumber={safeIndex + 1}
                   slideTotal={slides.length}
+                  onSlideNumberClick={toggleSlideOverview}
                   showSlideFooter={deck.showSlideFooter !== false}
                   slideFooter={deck.slideFooter}
                   deckTitle={deck.title ?? ''}
@@ -949,6 +1039,10 @@ export default function PresentationLaptopPlayer({
             <ChevronLeft sx={{ fontSize: 16 }} />
           </IconButton>
           <Typography
+            component="button"
+            type="button"
+            onClick={toggleSlideOverview}
+            title="Folie wählen"
             sx={{
               fontSize: '0.62rem',
               fontWeight: 600,
@@ -956,6 +1050,14 @@ export default function PresentationLaptopPlayer({
               minWidth: 32,
               textAlign: 'center',
               lineHeight: 1,
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              p: 0,
+              borderRadius: 0.5,
+              textDecoration: 'underline',
+              textUnderlineOffset: 2,
+              '&:hover': { color: 'text.primary', bgcolor: 'rgba(0,0,0,0.04)' },
             }}
           >
             {safeIndex + 1}/{slides.length}
@@ -1160,13 +1262,20 @@ export default function PresentationLaptopPlayer({
             embeddedPlay={{
               lessonPath: entryTicketLessonPath,
               groupId,
-              onExit: () => {
-                setEntryTicketOpen(false);
-              },
+              onExit: closeEntryTicket,
             }}
           />
         </Box>
       ) : null}
+
+      <PresentationPresentSlideOverview
+        open={slideOverviewOpen}
+        slides={slides}
+        currentIndex={safeIndex}
+        nowSlideId={deck?.nowSlideId}
+        onClose={() => setSlideOverviewOpen(false)}
+        onJump={goToSlideAt}
+      />
     </Box>
   );
 }

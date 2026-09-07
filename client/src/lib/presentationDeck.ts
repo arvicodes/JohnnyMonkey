@@ -997,6 +997,32 @@ export function findNowSlideIndex(deck: PresentationDeck | null | undefined): nu
   return sorted.findIndex((s) => s.id === deck.nowSlideId);
 }
 
+/** Start-/Entry-Titelfolie (erste title-slide, sonst 0). */
+export function findEntrySlideIndex(deck: PresentationDeck | null | undefined): number {
+  const sorted = sortSlides(deck?.slides || []);
+  if (!sorted.length) return 0;
+  const titleIdx = sorted.findIndex((s) => s.layout === 'title-slide');
+  return titleIdx >= 0 ? titleIdx : 0;
+}
+
+/**
+ * Folie nach dem Entry-Ticket im Play-Modus: NOW → Sitzungs-Erinnerung → nächste nach Entry → letzte.
+ * (Erstellen-Modus unverändert über resolvePresentationStartSlideId.)
+ */
+export function resolvePlayResumeSlideId(deck: PresentationDeck): string {
+  const sorted = sortSlides(deck.slides);
+  if (!sorted.length) return '';
+  const nowId = (deck.nowSlideId || '').trim();
+  if (nowId && sorted.some((s) => s.id === nowId)) return nowId;
+  const recalled = recalledActivePresentationSlide(deck.lessonPath || '', null);
+  if (recalled && sorted.some((s) => s.id === recalled)) return recalled;
+  const entryIdx = findEntrySlideIndex(deck);
+  if (entryIdx >= 0 && entryIdx < sorted.length - 1) {
+    return sorted[entryIdx + 1]!.id;
+  }
+  return sorted[sorted.length - 1]!.id;
+}
+
 /** Folien bis einschließlich NOW (ohne NOW → alle). */
 export function slidesUpToNow(deck: PresentationDeck): PresentationSlide[] {
   const sorted = sortSlides(deck.slides);

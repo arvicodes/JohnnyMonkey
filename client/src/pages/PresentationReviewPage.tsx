@@ -50,6 +50,7 @@ const PresentationReviewPage: React.FC = () => {
       >
         <PresentationLaptopPlayer
           lessonPath={lessonPath}
+          groupId={groupId}
           variant={variant}
           namedSlug={namedSlug}
           disableAnimations={studentViewer}
