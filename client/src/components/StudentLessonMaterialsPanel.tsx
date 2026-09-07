@@ -11,6 +11,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import { downloadExamResultPdf } from '../lib/examResultPdf';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DownloadIcon from '@mui/icons-material/Download';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
@@ -58,8 +59,14 @@ type ReleasedExamResult = {
   answers: Record<string, unknown>;
   corrections: Array<{ taskNumber: string; manualPoints: number | null; comment: string | null }>;
   recentGrades?: Array<{ categoryName: string; grade: number; updatedAt?: string }>;
+  schemaGrade?: number | null;
+  schemaGradeLabel?: string | null;
+  schemaCategoryName?: string | null;
+  classAveragePoints?: number | null;
+  classAverageCount?: number;
   maxPoints?: number;
   gradeLabel?: string;
+  classAverageLabel?: string;
   filePath?: string;
 };
 
@@ -133,6 +140,7 @@ export default function StudentLessonMaterialsPanel({
   );
   const [releasedExams, setReleasedExams] = useState<ReleasedExamResult[]>([]);
   const [selectedExam, setSelectedExam] = useState<ReleasedExamResult | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   useEffect(() => {
     if (!lessonPath) {
@@ -224,13 +232,25 @@ export default function StudentLessonMaterialsPanel({
               : null;
           const recent = row.recentGrades?.[0];
           const gradeLabel =
+            row.schemaGradeLabel ||
             fromPoints?.label ||
-            (recent?.grade != null ? formatExamGradeNumber(Number(recent.grade)) : '-');
+            (row.schemaGrade != null ? formatExamGradeNumber(Number(row.schemaGrade)) : null) ||
+            (recent?.grade != null ? formatExamGradeNumber(Number(recent.grade)) : null) ||
+            '-';
+
+          let classAverageLabel: string | undefined;
+          if (row.classAveragePoints != null && maxPoints > 0) {
+            classAverageLabel = examGradeLabelFromPoints(
+              Number(row.classAveragePoints) || 0,
+              maxPoints,
+            ).label;
+          }
 
           enriched.push({
             ...row,
             maxPoints,
             gradeLabel,
+            classAverageLabel,
             filePath: htmlPath || matchFile?.path,
           });
         }
@@ -567,59 +587,114 @@ export default function StudentLessonMaterialsPanel({
           {releasedExams.map((exam) => (
             <Box
               key={exam.id}
-              component="button"
-              type="button"
-              onClick={() => setSelectedExam(exam)}
               sx={{
                 display: 'flex',
-                alignItems: 'center',
-                gap: 0.75,
+                alignItems: 'stretch',
+                gap: 0.5,
                 width: '100%',
-                textAlign: 'left',
-                border: '1px solid rgba(46, 125, 50, 0.35)',
-                borderRadius: 1.5,
-                bgcolor: 'rgba(232, 245, 233, 0.95)',
-                px: 1,
-                py: 0.55,
-                cursor: 'pointer',
-                font: 'inherit',
-                '&:hover': { bgcolor: 'rgba(200, 230, 201, 0.95)' },
               }}
             >
-              <AssignmentTurnedInIcon sx={{ fontSize: 18, color: '#2e7d32', flexShrink: 0 }} />
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography
-                  sx={{
-                    fontSize: '0.78rem',
-                    fontWeight: 700,
-                    color: '#1b5e20',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {exam.title || exam.fileName}
-                </Typography>
-                <Typography sx={{ fontSize: '0.65rem', color: '#546e7a' }}>
-                  {exam.maxPoints && exam.maxPoints > 0
-                    ? `${Number(exam.totalPoints || 0).toFixed(1)} / ${exam.maxPoints} Punkte`
-                    : `${Number(exam.totalPoints || 0).toFixed(1)} Punkte`}
-                </Typography>
-              </Box>
               <Box
+                component="button"
+                type="button"
+                onClick={() => setSelectedExam(exam)}
                 sx={{
-                  px: 0.9,
-                  py: 0.2,
-                  borderRadius: 1,
-                  bgcolor: '#2e7d32',
-                  color: '#fff',
-                  fontSize: '0.75rem',
-                  fontWeight: 800,
-                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.75,
+                  flex: 1,
+                  minWidth: 0,
+                  textAlign: 'left',
+                  border: '1px solid rgba(46, 125, 50, 0.35)',
+                  borderRadius: 1.5,
+                  bgcolor: 'rgba(232, 245, 233, 0.95)',
+                  px: 1,
+                  py: 0.55,
+                  cursor: 'pointer',
+                  font: 'inherit',
+                  '&:hover': { bgcolor: 'rgba(200, 230, 201, 0.95)' },
                 }}
               >
-                {exam.gradeLabel || '-'}
+                <AssignmentTurnedInIcon sx={{ fontSize: 18, color: '#2e7d32', flexShrink: 0 }} />
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography
+                    sx={{
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      color: '#1b5e20',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {exam.title || exam.fileName}
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.65rem', color: '#546e7a' }}>
+                    {exam.maxPoints && exam.maxPoints > 0
+                      ? `${Number(exam.totalPoints || 0).toFixed(1)} / ${exam.maxPoints} Punkte`
+                      : `${Number(exam.totalPoints || 0).toFixed(1)} Punkte`}
+                    {exam.classAverageLabel
+                      ? ` · Schnitt ${exam.classAverageLabel}`
+                      : ''}
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    px: 0.9,
+                    py: 0.2,
+                    borderRadius: 1,
+                    bgcolor: '#2e7d32',
+                    color: '#fff',
+                    fontSize: '0.75rem',
+                    fontWeight: 800,
+                    flexShrink: 0,
+                  }}
+                >
+                  {exam.gradeLabel || '-'}
+                </Box>
               </Box>
+              <Tooltip title="Als PDF speichern">
+                <IconButton
+                  size="small"
+                  aria-label="PDF"
+                  disabled={pdfBusy || !exam.filePath}
+                  onClick={() => {
+                    if (!exam.filePath) return;
+                    setPdfBusy(true);
+                    const pointsText =
+                      exam.maxPoints && exam.maxPoints > 0
+                        ? `${Number(exam.totalPoints || 0).toFixed(1)} / ${exam.maxPoints} Punkte`
+                        : `${Number(exam.totalPoints || 0).toFixed(1)} Punkte`;
+                    void downloadExamResultPdf({
+                      htmlUrl: `/api/file-system-paths/read-html?filePath=${encodeURIComponent(exam.filePath)}`,
+                      fileName: exam.fileName || 'Pruefung',
+                      title: exam.title || exam.fileName || 'Prüfung',
+                      answers: exam.answers || {},
+                      gradeLabel: exam.gradeLabel || '-',
+                      pointsText,
+                      classAverageText: exam.classAverageLabel
+                        ? `${exam.classAverageLabel}${
+                            exam.classAverageCount
+                              ? ` (${exam.classAverageCount} SuS)`
+                              : ''
+                          }`
+                        : undefined,
+                    })
+                      .catch((e) => alert(e instanceof Error ? e.message : 'PDF fehlgeschlagen'))
+                      .finally(() => setPdfBusy(false));
+                  }}
+                  sx={{
+                    border: '1px solid rgba(46, 125, 50, 0.35)',
+                    borderRadius: 1.5,
+                    bgcolor: 'rgba(232, 245, 233, 0.95)',
+                    color: '#2e7d32',
+                    width: 34,
+                    '&:hover': { bgcolor: 'rgba(200, 230, 201, 0.95)' },
+                  }}
+                >
+                  <PictureAsPdfIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Tooltip>
             </Box>
           ))}
         </Box>
@@ -789,6 +864,14 @@ export default function StudentLessonMaterialsPanel({
                   <Typography sx={{ fontSize: '1.4rem', fontWeight: 800, color: '#1b5e20' }}>
                     Note {selectedExam.gradeLabel || '-'}
                   </Typography>
+                  {selectedExam.classAverageLabel && (
+                    <Typography sx={{ fontSize: '0.75rem', color: '#546e7a', mt: 0.35 }}>
+                      Notenschnitt Klasse: {selectedExam.classAverageLabel}
+                      {selectedExam.classAverageCount
+                        ? ` (${selectedExam.classAverageCount} Abgaben)`
+                        : ''}
+                    </Typography>
+                  )}
                 </Box>
                 <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#2e7d32' }}>
                   {selectedExam.maxPoints && selectedExam.maxPoints > 0
@@ -833,10 +916,46 @@ export default function StudentLessonMaterialsPanel({
             </Box>
           )}
         </DialogContent>
-        <DialogActions sx={{ px: 2, pb: 1.5, gap: 0.5 }}>
+        <DialogActions sx={{ px: 2, pb: 1.5, gap: 0.5, flexWrap: 'wrap' }}>
           <Button onClick={() => setSelectedExam(null)} size="small" sx={{ textTransform: 'none' }}>
             Schließen
           </Button>
+          {selectedExam?.filePath && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<PictureAsPdfIcon />}
+              disabled={pdfBusy}
+              sx={{ textTransform: 'none' }}
+              onClick={() => {
+                if (!selectedExam?.filePath) return;
+                setPdfBusy(true);
+                const pointsText =
+                  selectedExam.maxPoints && selectedExam.maxPoints > 0
+                    ? `${Number(selectedExam.totalPoints || 0).toFixed(1)} / ${selectedExam.maxPoints} Punkte`
+                    : `${Number(selectedExam.totalPoints || 0).toFixed(1)} Punkte`;
+                void downloadExamResultPdf({
+                  htmlUrl: `/api/file-system-paths/read-html?filePath=${encodeURIComponent(selectedExam.filePath)}`,
+                  fileName: selectedExam.fileName || 'Pruefung',
+                  title: selectedExam.title || selectedExam.fileName || 'Prüfung',
+                  answers: selectedExam.answers || {},
+                  gradeLabel: selectedExam.gradeLabel || '-',
+                  pointsText,
+                  classAverageText: selectedExam.classAverageLabel
+                    ? `${selectedExam.classAverageLabel}${
+                        selectedExam.classAverageCount
+                          ? ` (${selectedExam.classAverageCount} SuS)`
+                          : ''
+                      }`
+                    : undefined,
+                })
+                  .catch((e) => alert(e instanceof Error ? e.message : 'PDF fehlgeschlagen'))
+                  .finally(() => setPdfBusy(false));
+              }}
+            >
+              PDF
+            </Button>
+          )}
           {selectedExam?.filePath && (
             <Button
               variant="contained"

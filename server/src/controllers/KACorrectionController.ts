@@ -802,19 +802,10 @@ export class KACorrectionController {
       const newReleaseStatus =
         typeof bodyReleased === 'boolean' ? bodyReleased : !allReleased;
 
-      const releasePaths = [
-        ...new Set([
-          ...uniquePaths,
-          ...submissions.map((s) => s.kaFilePath).filter(Boolean),
-        ]),
-      ];
-
-      // Aktualisiere alle Submissions
+      // Aktualisiere gezielt die gefundenen Abgaben (zuverlässiger als Pfad-OR)
       const result = await prisma.kASubmission.updateMany({
         where: {
-          OR: releasePaths.map(path => ({
-            kaFilePath: path
-          }))
+          id: { in: submissions.map((s) => s.id) },
         },
         data: {
           isReleased: newReleaseStatus
@@ -960,6 +951,33 @@ export class KACorrectionController {
           .filter(Boolean),
       );
 
+      // Falls keine Dateinamen mitkommen: Prüfungs-HTMLs im Stundenordner nachschlagen
+      if (fileNameSet.size === 0 && lessonPathRaw) {
+        try {
+          const fs = await import('fs');
+          const path = await import('path');
+          const { StorageManager } = await import('../utils/storageManager');
+          let folderAbs = '';
+          const lp = lessonPathRaw.replace(/\\/g, '/');
+          if (lp.startsWith('git-intern/')) {
+            folderAbs = StorageManager.resolveGitInternRelativePath(lp.replace(/^git-intern\//, ''));
+          } else if (lp.startsWith('J-M-Reihen/') || lp === 'J-M-Reihen') {
+            folderAbs = StorageManager.resolveGitInternRelativePath(lp.replace(/^J-M-Reihen\/?/, ''));
+          } else {
+            folderAbs = StorageManager.resolveGitInternRelativePath(lp);
+          }
+          if (folderAbs && fs.existsSync(folderAbs)) {
+            for (const name of fs.readdirSync(folderAbs)) {
+              if (isCorrectionFile(name) && /\.html?$/i.test(name)) {
+                fileNameSet.add(name.toLowerCase());
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('my-released: Ordnerliste nicht lesbar', e);
+        }
+      }
+
       const filtered = submissions.filter((sub) => {
         const p = (sub.kaFilePath || '').replace(/\\/g, '/');
         const base = (p.split('/').pop() || p).toLowerCase();
@@ -975,7 +993,31 @@ export class KACorrectionController {
 
       const resultsSource = filtered;
 
-      // Zusätzlich: gespeicherte Note aus dem Notenschema (falls vorhanden)
+      // Klassenschnitt je Prüfungsdatei (alle freigegebenen Abgaben derselben Datei)
+      const bases = [...new Set(resultsSource.map((s) => {
+        const p = (s.kaFilePath || '').replace(/\\/g, '/');
+        return (p.split('/').pop() || p).toLowerCase();
+      }))];
+      const classStats = new Map<string, { avgPoints: number; avgGrade: number | null; count: number }>();
+      for (const base of bases) {
+        const peers = await prisma.kASubmission.findMany({
+          where: { isReleased: true },
+          select: { kaFilePath: true, totalPoints: true },
+        });
+        const peerRows = peers.filter((p) => {
+          const b = (p.kaFilePath || '').replace(/\\/g, '/').split('/').pop() || '';
+          return b.toLowerCase() === base;
+        });
+        if (peerRows.length === 0) continue;
+        const sum = peerRows.reduce((a, r) => a + (Number(r.totalPoints) || 0), 0);
+        classStats.set(base, {
+          avgPoints: sum / peerRows.length,
+          avgGrade: null,
+          count: peerRows.length,
+        });
+      }
+
+      // Noten aus dem Schema (Schüler)
       const grades = await prisma.grade.findMany({
         where: { studentId: user.id },
         select: {
@@ -987,9 +1029,21 @@ export class KACorrectionController {
         orderBy: { updatedAt: 'desc' },
       });
 
+      const formatGradeLabel = (g: number): string => {
+        const rounded = Math.round(g * 10) / 10;
+        const map: Record<string, string> = {
+          '1': '1', '1.3': '1-', '1.7': '2+', '2': '2', '2.3': '2-',
+          '2.7': '3+', '3': '3', '3.3': '3-', '3.7': '4+', '4': '4',
+          '4.3': '4-', '4.7': '5+', '5': '5', '5.3': '5-', '5.7': '6', '6': '6',
+        };
+        const key = String(rounded);
+        return map[key] || String(rounded).replace('.', ',');
+      };
+
       res.json({
         results: resultsSource.map((sub) => {
           const fileName = (sub.kaFilePath || '').replace(/\\/g, '/').split('/').pop() || sub.kaFilePath;
+          const base = (fileName || '').toLowerCase();
           const title = fileName.replace(/\.(html|htm)$/i, '').replace(/^(KA_|KU_|HÜ_|HU_|QZ_)/, '');
           let answers: Record<string, unknown> = {};
           try {
@@ -997,6 +1051,18 @@ export class KACorrectionController {
           } catch {
             answers = {};
           }
+          const stem = title.toLowerCase().replace(/[^a-z0-9äöüß]+/gi, ' ').trim();
+          const matchedGrade =
+            grades.find((g) => {
+              const cn = (g.categoryName || '').toLowerCase();
+              return (
+                cn.includes('hü') ||
+                cn.includes('hu') ||
+                cn.includes('ka') ||
+                (stem && cn.includes(stem.slice(0, 8)))
+              );
+            }) || grades[0];
+          const stats = classStats.get(base);
           return {
             id: sub.id,
             kaFilePath: sub.kaFilePath,
@@ -1007,7 +1073,12 @@ export class KACorrectionController {
             submittedAt: sub.submittedAt,
             answers,
             corrections: sub.corrections,
-            // Hinweis: konkrete Note kommt oft aus dem Schema; Client berechnet ggf. aus Punkten
+            schemaGrade: matchedGrade?.grade ?? null,
+            schemaGradeLabel:
+              matchedGrade?.grade != null ? formatGradeLabel(Number(matchedGrade.grade)) : null,
+            schemaCategoryName: matchedGrade?.categoryName || null,
+            classAveragePoints: stats?.avgPoints ?? null,
+            classAverageCount: stats?.count ?? 0,
             recentGrades: grades.slice(0, 8).map((g) => ({
               categoryName: g.categoryName,
               grade: g.grade,

@@ -562,20 +562,20 @@ Vera Christ`);
       }
 
       // Prüfung selbst für SuS freigeben (Anzeige unter den Folien)
-      try {
-        const kaRelease = await fetch('/api/ka-corrections/release-all', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-login-code': loginCode,
-          },
-          body: JSON.stringify({ kaFilePath, isReleased: true }),
-        });
-        if (!kaRelease.ok) {
-          console.warn('⚠️ KA-Freigabe fehlgeschlagen:', await kaRelease.text());
-        }
-      } catch (kaReleaseErr) {
-        console.warn('⚠️ KA-Freigabe Fehler:', kaReleaseErr);
+      const kaRelease = await fetch('/api/ka-corrections/release-all', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': loginCode,
+        },
+        body: JSON.stringify({ kaFilePath, isReleased: true }),
+      });
+      if (!kaRelease.ok) {
+        const errorText = await kaRelease.text();
+        throw new Error(
+          errorText ||
+            'Noten im Schema gespeichert, aber Prüfung konnte nicht für SuS freigegeben werden',
+        );
       }
 
       setGradesReleased(true);
