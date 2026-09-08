@@ -51,6 +51,7 @@ import PresentationMusicGameOverlay, {
   MusicGameToolbarPanel,
   useMusicGameController,
 } from './PresentationMusicGameOverlay';
+import PresentationGreetingTimer from './PresentationGreetingTimer';
 import { tryPlayArmedStartSlideSound, unlockPresentationAudio } from '../../lib/presentationSound';
 import '../../styles/presentationLists.css';
 
@@ -139,7 +140,6 @@ export default function PresentationLaptopPlayer({
   const [entryTicketOpen, setEntryTicketOpen] = useState(false);
   const [slideOverviewOpen, setSlideOverviewOpen] = useState(false);
   const [playVariants, setPlayVariants] = useState<PresentationPlayVariants | null>(null);
-  const playEntryBootRef = useRef(false);
   const resumeAfterEntryRef = useRef(false);
   const quietWork = useQuietWorkController();
   const musicGame = useMusicGameController();
@@ -221,14 +221,12 @@ export default function PresentationLaptopPlayer({
         setPlayVariants(variants ?? null);
         const sorted = sortSlides(nextDeck.slides);
         if (!disableAnimations) {
-          // Lehrer Play/Laptop: immer Entry zuerst, danach (nach Ticket) NOW/aktuell
+          // Lehrer Play/Laptop: Startfolie + Begrüßungs-Timer; Next → NOW
           const entryIdx = findEntrySlideIndex(nextDeck);
-          playEntryBootRef.current = true;
-          resumeAfterEntryRef.current = true;
           setSlideIndex(entryIdx);
           setRevealStep(0);
         } else {
-          // SuS: ohne Entry-Timer direkt bei NOW / aktueller Folie
+          // SuS: ohne Timer direkt bei NOW / aktueller Folie
           const targetId = resolvePlayResumeSlideId(nextDeck);
           const idx = sorted.findIndex((s) => s.id === targetId);
           setSlideIndex(idx >= 0 ? idx : Math.max(0, sorted.length - 1));
@@ -307,8 +305,14 @@ export default function PresentationLaptopPlayer({
       : 0;
   const transition = currentSlide?.transition || deck?.defaultTransition || 'fade';
   const canGoPrev = safeIndex > 0 || (!disableAnimations && revealStep > 0);
+  const entrySlideIndex = deck ? findEntrySlideIndex(deck) : 0;
+  const onEntrySlide = safeIndex === entrySlideIndex;
   const canGoNext =
-    safeIndex < slides.length - 1 || (!disableAnimations && revealStep < maxReveal);
+    (!disableAnimations && onEntrySlide) ||
+    safeIndex < slides.length - 1 ||
+    (!disableAnimations && revealStep < maxReveal);
+  const showGreetingTimer =
+    !disableAnimations && onEntrySlide && !entryTicketOpen && !loading && !!deck;
 
   const strokes = useMemo(() => {
     if (!currentSlide) return EMPTY_STROKES;
@@ -345,8 +349,13 @@ export default function PresentationLaptopPlayer({
     if (resumeAfterEntryRef.current) {
       resumeAfterEntryRef.current = false;
       jumpToPlayResumeSlide();
+      return;
     }
-  }, [jumpToPlayResumeSlide]);
+    if (!disableAnimations && deck) {
+      const entryIdx = findEntrySlideIndex(deck);
+      if (safeIndex === entryIdx) jumpToPlayResumeSlide();
+    }
+  }, [jumpToPlayResumeSlide, disableAnimations, deck, safeIndex]);
 
   const goToSlideAt = useCallback(
     (idx: number) => {
@@ -364,13 +373,14 @@ export default function PresentationLaptopPlayer({
     setSlideOverviewOpen((open) => !open);
   }, []);
 
-  useEffect(() => {
-    if (loading || !deck || !playEntryBootRef.current) return;
-    playEntryBootRef.current = false;
-    setEntryTicketOpen(true);
-  }, [loading, deck]);
-
   const goNext = useCallback(() => {
+    if (!disableAnimations && deck) {
+      const entryIdx = findEntrySlideIndex(deck);
+      if (safeIndex === entryIdx) {
+        jumpToPlayResumeSlide();
+        return;
+      }
+    }
     if (!disableAnimations && revealStep < maxReveal) {
       setRevealStep((s) => s + 1);
       return;
@@ -379,7 +389,15 @@ export default function PresentationLaptopPlayer({
       setSlideIndex(safeIndex + 1);
       setRevealStep(0);
     }
-  }, [disableAnimations, revealStep, maxReveal, safeIndex, slides.length]);
+  }, [
+    disableAnimations,
+    deck,
+    revealStep,
+    maxReveal,
+    safeIndex,
+    slides.length,
+    jumpToPlayResumeSlide,
+  ]);
 
   const goPrev = useCallback(() => {
     if (!disableAnimations && revealStep > 0) {
@@ -933,6 +951,12 @@ export default function PresentationLaptopPlayer({
         </Box>
         <PresentationQuietWorkOverlay quietWork={quietWork} />
         <PresentationMusicGameOverlay musicGame={musicGame} />
+        <PresentationGreetingTimer
+          active={showGreetingTimer}
+          lessonPath={lessonPath}
+          compact={embedded}
+          onContinue={jumpToPlayResumeSlide}
+        />
         {(musicGame.pickerOpen || quietWork.pickerOpen) && (
           <Box
             sx={{

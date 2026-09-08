@@ -15,6 +15,7 @@ import PresentationRandomStudentOverlay from '../components/presentation/Present
 import PresentationQuietWorkOverlay, {
   useQuietWorkController,
 } from '../components/presentation/PresentationQuietWorkOverlay';
+import PresentationGreetingTimer from '../components/presentation/PresentationGreetingTimer';
 import PresentationMusicGameOverlay, {
   useMusicGameController,
 } from '../components/presentation/PresentationMusicGameOverlay';
@@ -175,7 +176,6 @@ const PresentationPresentPage: React.FC = () => {
   const [clearInkOpen, setClearInkOpen] = useState(false);
   const [entryTicketOpen, setEntryTicketOpen] = useState(false);
   const [slideOverviewOpen, setSlideOverviewOpen] = useState(false);
-  const playEntryBootRef = useRef(false);
   const resumeAfterEntryRef = useRef(false);
   const openEntryTicket = useCallback(() => {
     freezePresentViewport(true);
@@ -196,8 +196,14 @@ const PresentationPresentPage: React.FC = () => {
     if (resumeAfterEntryRef.current) {
       resumeAfterEntryRef.current = false;
       jumpToPlayResumeSlide();
+      return;
     }
-  }, [jumpToPlayResumeSlide]);
+    // Play: nach Entry-Ticket von der Startfolie weiter zu NOW
+    if ((planMode === 'run' || planMode === 'background') && deck) {
+      const entryIdx = findEntrySlideIndex(deck);
+      if (slideIndex === entryIdx) jumpToPlayResumeSlide();
+    }
+  }, [jumpToPlayResumeSlide, planMode, deck, slideIndex]);
   const quietWork = useQuietWorkController();
   const musicGame = useMusicGameController();
   const [saveNamedLabel, setSaveNamedLabel] = useState('');
@@ -284,9 +290,17 @@ const PresentationPresentPage: React.FC = () => {
   const maxReveal = currentSlide ? getSlideMaxRevealSteps(currentSlide) : 0;
   const transition = currentSlide?.transition || deck?.defaultTransition || 'fade';
   const canGoPrev = slideIndex > 0 || revealStep > 0;
-  const canAdvanceSlide = slideIndex < slides.length - 1 || revealStep < maxReveal;
+  const playModeNav = planMode === 'run' || planMode === 'background';
+  const entrySlideIndex = deck ? findEntrySlideIndex(deck) : 0;
+  const onEntrySlide = slideIndex === entrySlideIndex;
+  const canAdvanceSlide =
+    (playModeNav && onEntrySlide) ||
+    slideIndex < slides.length - 1 ||
+    revealStep < maxReveal;
   const canFinishToDashboard = planMode === 'run' && slides.length > 0 && !canAdvanceSlide;
   const canGoNext = canAdvanceSlide || canFinishToDashboard;
+  const showGreetingTimer =
+    playModeNav && onEntrySlide && !entryTicketOpen && !loading && !!deck;
 
   useEffect(() => {
     if (loading || !lessonPath || !currentSlide?.id) return;
@@ -344,8 +358,7 @@ const PresentationPresentPage: React.FC = () => {
       let startIdx = 0;
       if (playBoot && displayDeck) {
         startIdx = findEntrySlideIndex(displayDeck);
-        playEntryBootRef.current = true;
-        resumeAfterEntryRef.current = true;
+        // Startfolie sichtbar mit Begrüßungs-Timer — Entry-Ticket manuell per E
       } else {
         const startId = displayDeck
           ? resolvePresentationStartSlideId(displayDeck, startSlideId)
@@ -450,12 +463,6 @@ const PresentationPresentPage: React.FC = () => {
     host.addEventListener('click', onClick, true);
     return () => host.removeEventListener('click', onClick, true);
   }, [loading, openEntryTicket]);
-
-  useEffect(() => {
-    if (loading || !deck || !playEntryBootRef.current) return;
-    playEntryBootRef.current = false;
-    openEntryTicket();
-  }, [loading, deck, openEntryTicket]);
 
   useEffect(() => () => freezePresentViewport(false), []);
 
@@ -1247,6 +1254,14 @@ const PresentationPresentPage: React.FC = () => {
   }, [groupId, lessonPath, navigate]);
 
   const goNext = useCallback(() => {
+    const playNav = planMode === 'run' || planMode === 'background';
+    if (playNav && deck) {
+      const entryIdx = findEntrySlideIndex(deck);
+      if (slideIndex === entryIdx) {
+        jumpToPlayResumeSlide();
+        return;
+      }
+    }
     if (revealStep < maxReveal) {
       setRevealStep((s) => s + 1);
       return;
@@ -1259,7 +1274,16 @@ const PresentationPresentPage: React.FC = () => {
     if (planMode === 'run' && slides.length > 0) {
       void finishPresentationRun();
     }
-  }, [revealStep, maxReveal, slideIndex, slides.length, planMode, finishPresentationRun]);
+  }, [
+    revealStep,
+    maxReveal,
+    slideIndex,
+    slides.length,
+    planMode,
+    finishPresentationRun,
+    deck,
+    jumpToPlayResumeSlide,
+  ]);
 
   const goPrev = useCallback(() => {
     if (revealStep > 0) {
@@ -2299,6 +2323,11 @@ const PresentationPresentPage: React.FC = () => {
 
       <PresentationQuietWorkOverlay quietWork={quietWork} />
       <PresentationMusicGameOverlay musicGame={musicGame} />
+      <PresentationGreetingTimer
+        active={showGreetingTimer}
+        lessonPath={lessonPath}
+        onContinue={jumpToPlayResumeSlide}
+      />
 
       <PresentationRandomStudentOverlay
         text={revealText}
