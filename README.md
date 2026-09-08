@@ -63,6 +63,110 @@ npm start
 - **Backend API:** http://127.0.0.1:3003
 - **Database:** server/prisma/dev.db
 
+## 🖥️ Alles aus dem Terminal
+
+Alle wichtigen Schritte laufen im **Projektroot** (`cd JohnnyMonkey`). Voraussetzungen: **Node.js 18+**, **Git**, für Schule zusätzlich **VPN/LAN** und Datei **`.env.school`** (Vorlage: `.env.school.example`).
+
+### Lokal starten
+
+```bash
+cd /pfad/zu/JohnnyMonkey
+
+# Einmalig: Abhängigkeiten
+npm install
+npm install --prefix server
+npm install --prefix client
+
+# App starten (API + React, Ports 3003 + 3000)
+npm run dev
+
+# Oder mit Port-Freigabe, DB-Check und Compile-Fix:
+npm run start:local
+# Alternativ: ./start-all.sh
+```
+
+Prüfen ob die App läuft: `npm run check:local`  
+Diagnose bei Problemen: `npm run diagnose:local`  
+Beenden: **Strg+C** im Terminal (oder `./stop-app.sh`)
+
+### Stand nach GitHub schicken
+
+Entspricht **Profil → Stand nach GitHub** in der App.
+
+```bash
+npm run git:sicherungen
+# oder: ./scripts/git-push-sicherungen.sh
+```
+
+Committet Folien, Notizen, Tickets und die Datenbank (ohne Secrets) und pusht auf `main`. Bei Konflikten mit GitHub wird automatisch zusammengeführt.
+
+### Stand von GitHub holen
+
+Entspricht **Profil → Stand von GitHub holen** in der App.
+
+```bash
+npm run git:pull
+# oder: ./scripts/git-pull-sicherungen.sh
+```
+
+### Daten Mac ↔ Schule abgleichen
+
+VPN an, dann:
+
+```bash
+# Nur prüfen ob Portainer erreichbar ist:
+./scripts/school-sync.sh --check
+
+# Vollständiger Sync (DB, Folien, Notizen, Backups):
+npm run sync:school
+# oder: ./scripts/school-sync.sh
+
+# Nur Notizen + Sicherungen (keine DB, keine Folien):
+./scripts/school-sync.sh --notes-only
+```
+
+Nach `git push` auf `main` kann ein **post-push-Hook** den Sync automatisch starten (einmal einrichten: `./scripts/install-school-deploy-hook.sh`).
+
+### Auf den Schulserver deployen
+
+Baut App + Client, lädt alles per GitHub-Release in Portainer und startet den Container neu. **VPN/LAN** und **`.env.school`** mit Portainer-Passwort nötig.
+
+```bash
+# Sync, dann Deploy (empfohlen):
+npm run deploy:school
+# oder: ./scripts/school-deploy.sh
+
+# Nur Deploy, ohne vorherigen Datenabgleich:
+./scripts/school-deploy.sh --skip-sync
+
+# Nur prüfen ob Schulserver erreichbar:
+./scripts/school-deploy.sh --check
+```
+
+Nach dem Deploy im Browser **Hard-Reload** (Schul-URLs siehe unten).
+
+### Einmalige Einrichtung Schule
+
+```bash
+cp .env.school.example .env.school
+# Passwort in .env.school eintragen
+
+./scripts/install-school-github-token.sh   # GitHub-Token für die Schule
+./scripts/install-school-deploy-hook.sh    # optional: Sync nach jedem Push
+```
+
+### Kurzreferenz
+
+| Aufgabe | Befehl |
+|---------|--------|
+| Lokal starten | `npm run dev` |
+| Lokal starten (mit Checks) | `npm run start:local` |
+| Stand nach GitHub | `npm run git:sicherungen` |
+| Stand von GitHub holen | `npm run git:pull` |
+| Mac ↔ Schule sync | `npm run sync:school` |
+| Schule deployen | `npm run deploy:school` |
+| Ports/Health prüfen | `npm run check:local` |
+
 ### Problem: „Verbindung abgelehnt“ / Website nicht erreichbar
 
 1. **Server wirklich gestartet?** Im Projektroot: `npm run dev` und **mindestens 30–60 Sekunden** warten (erster Start kompiliert lange).
@@ -138,7 +242,7 @@ Am **Laptop** und auf der **Schule**: Profilfoto antippen → **Stand nach GitHu
 - Laptop: ganzer Git-Stand (Folien, Notizen, Tickets, Code). Keine Passwörter.
 - Schule: dieser Schul-Stand (Folien, Notizen, Tickets) — braucht einmal `scripts/install-school-github-token.sh`.
 
-Manuell am Laptop: `npm run git:sicherungen`
+**Terminal (Laptop):** siehe Abschnitt [Alles aus dem Terminal](#️-alles-aus-dem-terminal) — `npm run git:sicherungen` / `npm run git:pull`
 
 #### Datenbank-Update in Portainer
 
@@ -288,16 +392,25 @@ JohnnyMonkey/
 
 ## 🛠️ Available Scripts
 
-### Startup Scripts
-- `./start-all.sh` - Start both client and server (recommended)
-- `./start-app.sh` - Alternative startup script
-- `./stop-app.sh` - Stop all services
-- `./restart-app.sh` - Restart all services
+### Terminal (empfohlen)
+- `npm run dev` — API + React lokal starten
+- `npm run start:local` — Start mit Port-Freigabe und DB-Check
+- `npm run git:sicherungen` — Stand nach GitHub
+- `npm run git:pull` — Stand von GitHub holen
+- `npm run sync:school` — Mac ↔ Schule abgleichen
+- `npm run deploy:school` — Schulserver deployen
+- `npm run check:local` — Ports 3000/3003 prüfen
+- `npm run diagnose:local` — Fehlerdiagnose lokal
 
-### Development Scripts
-- `npm start` - Start both client and server
-- `npm run dev` - Start in development mode
-- `npm run build` - Build for production
+### Startup Scripts
+- `./start-all.sh` — Start both client and server
+- `./start-app.sh` — Alternative startup script
+- `./stop-app.sh` — Stop all services
+- `./restart-app.sh` — Restart all services
+
+### Build
+- `npm run build` — Production build (Render)
+- `npm run deploy:build` — Server + Client bauen für Deploy
 
 ## 🔧 Features
 
@@ -319,7 +432,7 @@ JohnnyMonkey/
 ## 🚨 Important Notes
 
 - **No seed files required** - Database uses real data
-- **Automatic port management** - Ports 3001 (server) and 3003 (client)
+- **Ports lokal** — Website **3000**, API **3003** (nicht 3001)
 - **Database backups** - Automatic on commits, manual available
 - **Production ready** - Complete with startup scripts and documentation
 
