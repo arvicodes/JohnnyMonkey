@@ -444,10 +444,10 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       const patchSubmission = (sub: KASubmission): KASubmission => {
         const updatedCorrections = sub.corrections ? [...sub.corrections] : [];
         const idx = updatedCorrections.findIndex((c) => c.taskNumber === taskNumber);
-        const row = {
+        const row: KACorrection = {
           id: idx >= 0 ? updatedCorrections[idx].id : '',
           taskNumber,
-          manualPoints: storedPoints ?? null,
+          manualPoints: storedPoints,
           comment: comment || '',
         };
         if (idx >= 0) updatedCorrections[idx] = { ...updatedCorrections[idx], ...row };
