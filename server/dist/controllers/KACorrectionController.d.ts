@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 export declare class KACorrectionController {
+    private static recomputeSubmissionById;
+    private static recalculateAllForExam;
     /**
      * Abgabe einer Klassenarbeit speichern
      */
@@ -41,5 +43,11 @@ export declare class KACorrectionController {
      * Optional: lessonPath filtert auf Abgaben dieser Stunde
      */
     static getMyReleasedResults(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /** Lehrer: Abgabe eines Schülers nachträglich ändern */
+    static updateSubmissionAnswers(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /** Lehrer: Musterlösung (correctAnswers) in der Prüfungs-HTML ändern und neu bewerten */
+    static updateAnswerKey(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /** Lehrer: Alle Abgaben einer Prüfung neu automatisch bewerten */
+    static recalculateExam(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
 }
 //# sourceMappingURL=KACorrectionController.d.ts.map
