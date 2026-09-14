@@ -592,7 +592,10 @@ export class KACorrectionController {
         manualPoints: correction.manualPoints
       });
 
-      const updatedSubmission = await KACorrectionController.recomputeSubmissionById(submissionId);
+      const updatedSubmission = await KACorrectionController.recomputeSubmissionById(
+        submissionId,
+        teacherId,
+      );
       const totalPoints = updatedSubmission?.totalPoints ?? submission.totalPoints;
       const autoPoints = updatedSubmission?.autoPoints ?? submission.autoPoints;
 

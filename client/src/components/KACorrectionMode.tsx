@@ -83,6 +83,9 @@ type CorrectionMode = 'by-student' | 'by-task';
 const submissionStudentName = (submission: KASubmission | null | undefined): string =>
   submission?.student?.name ?? 'Schüler/in';
 
+const correctionStorageKey = (submissionId: string, fieldKey: string): string =>
+  `${submissionId}_${fieldKey}`;
+
 const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose, groupId = null }) => {
   const [submissions, setSubmissions] = useState<KASubmission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -423,96 +426,50 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
 
       const data = await response.json();
       console.log('✅ Korrektur gespeichert:', data);
-      
-      // Update local state - preserve existing constructionPoints
-      const correctionKey = submissionIdOverride ? `${submissionIdOverride}_${taskNumber}` : taskNumber;
-      // Für Aufgabe 3 Teilaufgaben (3a, 3b, 3c, 3d): points sind die Konstruktionspunkte
+
+      const correctionKey = correctionStorageKey(targetSubmissionId, taskNumber);
+      const storedPoints = validatedPoints;
       if (taskNumber.match(/^3[a-d]$/)) {
-        setCorrections(prev => ({
+        setCorrections((prev) => ({
           ...prev,
-          [correctionKey]: { ...prev[correctionKey], constructionPoints: points, comment }
+          [correctionKey]: { ...prev[correctionKey], constructionPoints: storedPoints, comment },
         }));
       } else {
-      setCorrections(prev => ({
-        ...prev,
-        [correctionKey]: { ...prev[correctionKey], points, comment }
-      }));
+        setCorrections((prev) => ({
+          ...prev,
+          [correctionKey]: { ...prev[correctionKey], points: storedPoints, comment },
+        }));
       }
 
-      // Update submission in local state without reloading all submissions
-      // This prevents the modal from reloading on every blur event
-      if (submissionIdOverride) {
-        setSubmissions(prev => prev.map(sub => {
-          if (sub.id === submissionIdOverride) {
-            // Update corrections array
-            const updatedCorrections = sub.corrections ? [...sub.corrections] : [];
-            const existingCorrectionIndex = updatedCorrections.findIndex(c => c.taskNumber === taskNumber);
-            
-            if (existingCorrectionIndex >= 0) {
-              updatedCorrections[existingCorrectionIndex] = {
-                ...updatedCorrections[existingCorrectionIndex],
-                manualPoints: points,
-                comment: comment || ''
-              };
-            } else {
-              updatedCorrections.push({
-                id: '',
-                taskNumber,
-                manualPoints: points,
-                comment: comment || ''
-              });
-            }
-            
-            // Recalculate totalPoints
-            const autoPoints = sub.autoPoints || 0;
-            const manualPointsSum = updatedCorrections.reduce((sum, c) => sum + (c.manualPoints || 0), 0);
-            const newTotalPoints = autoPoints + manualPointsSum;
-            
-            return {
-              ...sub,
-              corrections: updatedCorrections,
-              totalPoints: newTotalPoints
-            };
-          }
-          return sub;
-        }));
-      } else if (selectedSubmission) {
-        // Update selected submission
-        const updatedCorrections = selectedSubmission.corrections ? [...selectedSubmission.corrections] : [];
-        const existingCorrectionIndex = updatedCorrections.findIndex(c => c.taskNumber === taskNumber);
-        
-        if (existingCorrectionIndex >= 0) {
-          updatedCorrections[existingCorrectionIndex] = {
-            ...updatedCorrections[existingCorrectionIndex],
-            manualPoints: points,
-            comment: comment || ''
-          };
-        } else {
-          updatedCorrections.push({
-            id: '',
-            taskNumber,
-            manualPoints: points,
-            comment: comment || ''
-          });
-        }
-        
-        // Recalculate totalPoints
-        const autoPoints = selectedSubmission.autoPoints || 0;
-        const manualPointsSum = updatedCorrections.reduce((sum, c) => sum + (c.manualPoints || 0), 0);
-        const newTotalPoints = autoPoints + manualPointsSum;
-        
-        const updatedSubmission = {
-          ...selectedSubmission,
-          corrections: updatedCorrections,
-          totalPoints: newTotalPoints
+      const patchSubmission = (sub: KASubmission): KASubmission => {
+        const updatedCorrections = sub.corrections ? [...sub.corrections] : [];
+        const idx = updatedCorrections.findIndex((c) => c.taskNumber === taskNumber);
+        const row = {
+          id: idx >= 0 ? updatedCorrections[idx].id : '',
+          taskNumber,
+          manualPoints: storedPoints ?? null,
+          comment: comment || '',
         };
-        
+        if (idx >= 0) updatedCorrections[idx] = { ...updatedCorrections[idx], ...row };
+        else updatedCorrections.push(row);
+        return {
+          ...sub,
+          corrections: updatedCorrections,
+          autoPoints: typeof data.autoPoints === 'number' ? data.autoPoints : sub.autoPoints,
+          totalPoints: typeof data.totalPoints === 'number' ? data.totalPoints : sub.totalPoints,
+        };
+      };
+
+      if (submissionIdOverride) {
+        setSubmissions((prev) =>
+          prev.map((sub) => (sub.id === submissionIdOverride ? patchSubmission(sub) : sub)),
+        );
+      } else if (selectedSubmission) {
+        const updatedSubmission = patchSubmission(selectedSubmission);
         setSelectedSubmission(updatedSubmission);
-        
-        // Also update in submissions array
-        setSubmissions(prev => prev.map(sub => 
-          sub.id === selectedSubmission.id ? updatedSubmission : sub
-        ));
+        setSubmissions((prev) =>
+          prev.map((sub) => (sub.id === selectedSubmission.id ? updatedSubmission : sub)),
+        );
       }
     } catch (err) {
       console.error('❌ Fehler beim Speichern der Korrektur:', err);
@@ -701,26 +658,56 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
 
   // Gruppiere Antworten nach Aufgaben
   const groupAnswersByTask = (answers: Record<string, any>) => {
-    const grouped: Record<string, Array<{ taskId: string; answer: any; isCorrect?: boolean; points?: number }>> = {
-      '1': [],
-      '2': [],
-      '3': []
-    };
+    const grouped: Record<
+      string,
+      Array<{ taskId: string; answer: any; isCorrect?: boolean; points?: number }>
+    > = {};
 
     Object.entries(answers).forEach(([taskId, answer]) => {
       const taskMatch = taskId.match(/a(\d+)/);
-      if (taskMatch) {
-        const taskNum = taskMatch[1];
-        if (['1', '2', '3'].includes(taskNum)) {
-          const isCorrect = isAnswerCorrect(taskId, answer);
-          const points = pointsDistribution[taskId] ?? 1;
-          if (!grouped[taskNum]) grouped[taskNum] = [];
-          grouped[taskNum].push({ taskId, answer, isCorrect, points });
-        }
-      }
+      if (!taskMatch) return;
+      const taskNum = taskMatch[1];
+      const isCorrect = isAnswerCorrect(taskId, answer);
+      const points = pointsDistribution[taskId] ?? 1;
+      if (!grouped[taskNum]) grouped[taskNum] = [];
+      grouped[taskNum].push({ taskId, answer, isCorrect, points });
     });
 
     return grouped;
+  };
+
+  const sumTaskPoints = (
+    taskAnswers: Array<{ taskId: string; isCorrect?: boolean; points?: number }>,
+    submission: KASubmission,
+  ) => {
+    let totalPoints = 0;
+    let achievedPoints = 0;
+    let autoPoints = 0;
+    let manualPoints = 0;
+
+    taskAnswers.forEach(({ taskId, isCorrect, points: fieldMax }) => {
+      const maxPoints = fieldMax ?? pointsDistribution[taskId] ?? 1;
+      totalPoints += maxPoints;
+      const key = correctionStorageKey(submission.id, taskId);
+      const correction = corrections[key] || {};
+      const saved = submission.corrections?.find((c) => c.taskNumber === taskId);
+      const manual =
+        correction.points !== undefined && correction.points !== null
+          ? Number(correction.points)
+          : saved?.manualPoints != null
+            ? Number(saved.manualPoints)
+            : undefined;
+
+      if (manual !== undefined && !Number.isNaN(manual)) {
+        manualPoints += manual;
+        achievedPoints += manual;
+      } else if (isCorrect === true) {
+        autoPoints += maxPoints;
+        achievedPoints += maxPoints;
+      }
+    });
+
+    return { totalPoints, achievedPoints, autoPoints, manualPoints };
   };
 
   // Aufgaben mit Rechenweg (müssen manuell korrigiert werden) — Aufgabe 3 nur bei Geometrie-Koordinaten
@@ -1814,12 +1801,19 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                 if (taskNum === '3' && useGeometryTask3) {
                   return allTask3Filled;
                 } else {
-                  // Für andere Aufgaben: Punkte müssen von mir gesetzt sein
-                  // Verwende die gleiche Logik wie in der aufgabenweisen Ansicht
-                  const taskKey = `${submission.id}_${taskNum}`;
-                  const taskCorrection = corrections[taskKey] || {};
-                  // Prüfe ob Punkte gesetzt sind
-                  return taskCorrection.points !== undefined && taskCorrection.points !== null;
+                  const parsed = parseAnswers(submission.answers);
+                  const fieldIds = Object.keys(parsed).filter((id) => {
+                    const m = id.match(/a(\d+)/);
+                    return m && m[1] === taskNum;
+                  });
+                  if (fieldIds.length === 0) return true;
+                  return fieldIds.every((fieldId) => {
+                    const key = correctionStorageKey(submission.id, fieldId);
+                    const c = corrections[key] || {};
+                    const saved = submission.corrections?.find((sc) => sc.taskNumber === fieldId);
+                    const pts = c.points ?? saved?.manualPoints;
+                    return pts !== undefined && pts !== null;
+                  });
                 }
               });
               
@@ -1829,20 +1823,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
             
             const allFieldsFilled = checkAllFieldsFilled();
             const hasSomeFieldsFilled = () => {
-              // Prüfe ob mindestens ein Feld ausgefüllt ist
-              const subtaskKeys = ['3a', '3b', '3c', '3d'];
-              const someTask3Filled = subtaskKeys.some(subtask => {
-                const subtaskKey = `${submission.id}_3${subtask}`;
-                const subtaskCorrection = corrections[subtaskKey];
-                return subtaskCorrection?.constructionPoints !== undefined && subtaskCorrection?.constructionPoints !== null;
+              const prefix = `${submission.id}_`;
+              return Object.entries(corrections).some(([key, val]) => {
+                if (!key.startsWith(prefix)) return false;
+                return (
+                  (val.points !== undefined && val.points !== null) ||
+                  (val.constructionPoints !== undefined && val.constructionPoints !== null)
+                );
               });
-              
-              const task1Key = `${submission.id}_1`;
-              const task2Key = `${submission.id}_2`;
-              const task1Filled = corrections[task1Key]?.points !== undefined && corrections[task1Key]?.points !== null;
-              const task2Filled = corrections[task2Key]?.points !== undefined && corrections[task2Key]?.points !== null;
-              
-              return someTask3Filled || task1Filled || task2Filled;
             };
             
             const someFieldsFilled = hasSomeFieldsFilled();
@@ -2158,7 +2146,9 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
               
               const taskSections: React.ReactElement[] = [];
               
-              ['1', '2', '3'].forEach((taskNum: string) => {
+              Object.keys(groupedAnswers)
+                .sort((a, b) => Number(a) - Number(b))
+                .forEach((taskNum: string) => {
                 const taskAnswers = groupedAnswers[taskNum] || [];
                 if (taskAnswers.length === 0) return;
 
@@ -2207,40 +2197,12 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                       totalPoints += 3.5;
                     }
                   });
-                } else {
-                  // Aufgabe 1 und 2: Normale Berechnung
-                  taskAnswers.forEach(({ taskId, isCorrect }) => {
-                    const maxPoints = pointsDistribution[taskId] ?? 1;
-                    totalPoints += maxPoints;
-                    
-                    if (taskNum === '1') {
-                      // Aufgabe 1: Manuelle Korrektur pro Input-Feld, aber zeige automatische Punkte wenn keine manuelle Korrektur vorhanden
-                      // Der Key sollte `${selectedSubmission.id}_${taskId}` sein (z.B. "submissionId_a1a")
-                      const correctionKey = selectedSubmission ? `${selectedSubmission.id}_${taskId}` : taskId;
-                      const correction = corrections[correctionKey] || {};
-                      
-                      // Wenn manuelle Korrektur vorhanden, verwende diese, sonst automatische Punkte
-                      if (correction.points !== undefined && correction.points !== null) {
-                        // Manuelle Korrektur vorhanden
-                        const points = Number(correction.points) || 0;
-                        manualPoints += points;
-                        achievedPoints += points;
-                      } else {
-                        // Keine manuelle Korrektur: verwende automatische Punkte
-                        if (isCorrect === true) {
-                          autoPoints += maxPoints;
-                          achievedPoints += maxPoints;
-                        }
-                      }
-                    } else {
-                    if (isCorrect === true) {
-                        autoPoints += maxPoints;
-                      achievedPoints += maxPoints;
-                    } else if (isCorrect === false) {
-                      achievedPoints += 0;
-                      }
-                    }
-                  });
+                } else if (selectedSubmission) {
+                  const summed = sumTaskPoints(taskAnswers, selectedSubmission);
+                  totalPoints = summed.totalPoints;
+                  achievedPoints = summed.achievedPoints;
+                  autoPoints = summed.autoPoints;
+                  manualPoints = summed.manualPoints;
                 }
 
                 taskSections.push(
@@ -2703,11 +2665,19 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                         // Aufgabe 1 und 2: Einzelne Antworten
                         taskAnswers.map(({ taskId, answer, isCorrect, points }) => {
                 const needsManualCorrection = tasksWithRechenweg.includes(taskNum);
-                // Für Aufgabe 1: Verwende taskId (z.B. "a1a") statt taskNum ("1")
-                const correctionKey = taskNum === '1' 
-                  ? (selectedSubmission ? `${selectedSubmission.id}_${taskId}` : taskId)
-                  : (selectedSubmission ? `${selectedSubmission.id}_${taskNum}` : taskNum);
-                const correction = corrections[correctionKey] || {};
+                const correctionKey = selectedSubmission
+                  ? correctionStorageKey(selectedSubmission.id, taskId)
+                  : taskId;
+                const savedCorrection = selectedSubmission?.corrections?.find(
+                  (c) => c.taskNumber === taskId,
+                );
+                const correction =
+                  corrections[correctionKey] !== undefined
+                    ? corrections[correctionKey]
+                    : {
+                        points: savedCorrection?.manualPoints,
+                        comment: savedCorrection?.comment || '',
+                      };
                         
                         // Bestimme Hintergrundfarbe basierend auf Bewertung
                         let bgColor = '#f5f5f5';
@@ -2738,15 +2708,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                           textColor = '#d32f2f';
                         }
 
-                        // Berechne erreichte Punkte
                         let achievedPoints = 0;
-                        if (isCorrect === true) {
+                        if (correction.points !== undefined && correction.points !== null) {
+                          achievedPoints = Number(correction.points) || 0;
+                        } else if (isCorrect === true) {
                           achievedPoints = points || 0;
-                        } else if (isCorrect === false) {
-                          achievedPoints = 0;
-                        } else {
-                          // Aufgabe 1: Keine automatische Bewertung
-                          achievedPoints = points || 0; // Wird manuell korrigiert
                         }
 
                 return (
@@ -2854,17 +2820,16 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                       const numValue = parseFloat(e.target.value);
                                         value = !isNaN(numValue) ? numValue : undefined;
                                       }
-                                    const correctionKey = taskNum === '1' 
-                                      ? (selectedSubmission ? `${selectedSubmission.id}_${taskId}` : taskId)
-                                      : (selectedSubmission ? `${selectedSubmission.id}_${taskNum}` : taskNum);
-                                    setCorrections(prev => ({
+                                    const fieldKey = selectedSubmission
+                                      ? correctionStorageKey(selectedSubmission.id, taskId)
+                                      : taskId;
+                                    setCorrections((prev) => ({
                                       ...prev,
-                                      [correctionKey]: { ...prev[correctionKey], points: value }
+                                      [fieldKey]: { ...prev[fieldKey], points: value },
                                     }));
                                   }}
                                   onBlur={() => {
-                                    const saveTaskNumber = taskNum === '1' || !needsManualCorrection ? taskId : taskNum;
-                                    saveCorrection(saveTaskNumber, correction.points, correction.comment);
+                                    saveCorrection(taskId, correction.points, correction.comment);
                                   }}
                                   inputProps={{ min: 0, max: points || 10, step: 0.25 }}
                                   size="small"
@@ -2881,17 +2846,16 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                   rows={1}
                                   value={correction.comment ?? ''}
                                   onChange={(e) => {
-                                    const correctionKey = taskNum === '1' 
-                                      ? (selectedSubmission ? `${selectedSubmission.id}_${taskId}` : taskId)
-                                      : (selectedSubmission ? `${selectedSubmission.id}_${taskNum}` : taskNum);
-                                    setCorrections(prev => ({
+                                    const fieldKey = selectedSubmission
+                                      ? correctionStorageKey(selectedSubmission.id, taskId)
+                                      : taskId;
+                                    setCorrections((prev) => ({
                                       ...prev,
-                                      [correctionKey]: { ...prev[correctionKey], comment: e.target.value }
+                                      [fieldKey]: { ...prev[fieldKey], comment: e.target.value },
                                     }));
                                   }}
                                   onBlur={() => {
-                                    const saveTaskNumber = taskNum === '1' || !needsManualCorrection ? taskId : taskNum;
-                                    saveCorrection(saveTaskNumber, correction.points, correction.comment);
+                                    saveCorrection(taskId, correction.points, correction.comment);
                                   }}
                                   size="small"
                                         placeholder="…"
@@ -3058,16 +3022,6 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                       </TableHead>
                       <TableBody>
                         {taskSubmissions.map(({ submission, answers }, idx) => {
-                          const correction = submission.corrections?.find(c => c.taskNumber === taskNum);
-                          const correctionKey = `${submission.id}_${taskNum}`;
-                          // Wichtig: Nur Fallback verwenden, wenn Key nicht im State existiert (nicht wenn Wert undefined ist)
-                          const correctionState = corrections[correctionKey] !== undefined
-                            ? corrections[correctionKey]
-                            : {
-                            points: correction?.manualPoints,
-                            comment: correction?.comment || ''
-                          };
-
                           // Für Aufgabe 3: Zeige Teilaufgaben (a, b, c, d) separat, aber Kommentar nur einmal
                           if (taskNum === '3' && useGeometryTask3) {
                             const subtasks = groupTask3BySubtask(answers.map(({ taskId, answer }) => {
@@ -3496,127 +3450,163 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                             );
                           }
                           
-                          // Für Aufgabe 1 und 2: Normale Darstellung
-                          let allFieldsFilled = correctionState.points !== undefined && correctionState.points !== null;
+                          // Pro Teilaufgabe (a3a, a4b, …) eigene Punkte/Kommentare
+                          return answers.map(({ taskId, answer }, answerIdx) => {
+                            const fieldCorrectionKey = correctionStorageKey(submission.id, taskId);
+                            const savedField = submission.corrections?.find(
+                              (c) => c.taskNumber === taskId,
+                            );
+                            const fieldState =
+                              corrections[fieldCorrectionKey] !== undefined
+                                ? corrections[fieldCorrectionKey]
+                                : {
+                                    points: savedField?.manualPoints,
+                                    comment: savedField?.comment || '',
+                                  };
+                            const fieldFilled =
+                              fieldState.points !== undefined && fieldState.points !== null;
 
-                          return (
-                            <TableRow 
-                              key={submission.id}
-                              sx={{ 
-                                '&:nth-of-type(even)': { bgcolor: '#fafafa' },
-                                '&:hover': { bgcolor: '#f0f0f0' }
-                              }}
-                            >
-                              <TableCell>
-                                <Typography 
-                                  variant="caption" 
-                                  sx={{ 
-                                    fontWeight: 600, 
-                                    fontSize: '0.7rem',
-                                    color: allFieldsFilled ? '#2e7d32' : '#f57c00',
-                                    bgcolor: allFieldsFilled ? 'transparent' : '#fff3e0',
-                                    px: !allFieldsFilled ? 0.5 : 0,
-                                    py: !allFieldsFilled ? 0.25 : 0,
-                                    borderRadius: !allFieldsFilled ? 0.5 : 0
-                                  }}
-                                >
-                                    {submissionStudentName(submission)}
-                                  </Typography>
-                              </TableCell>
-                              <TableCell>
-                                {answers.map(({ taskId, answer }) => (
-                                    <Typography 
-                                    key={taskId}
-                                    variant="caption" 
-                                      sx={{ 
-                                        fontFamily: 'monospace',
-                                        fontWeight: answer ? 500 : 400,
-                                        color: answer ? '#1a1a1a' : '#d32f2f',
+                            return (
+                              <TableRow
+                                key={`${submission.id}-${taskId}`}
+                                sx={{
+                                  '&:nth-of-type(even)': { bgcolor: '#fafafa' },
+                                  '&:hover': { bgcolor: '#f0f0f0' },
+                                }}
+                              >
+                                <TableCell>
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      fontWeight: 600,
                                       fontSize: '0.7rem',
-                                      display: 'block'
+                                      color: fieldFilled ? '#2e7d32' : '#f57c00',
+                                      bgcolor: fieldFilled ? 'transparent' : '#fff3e0',
+                                      px: !fieldFilled ? 0.5 : 0,
+                                      py: !fieldFilled ? 0.25 : 0,
+                                      borderRadius: !fieldFilled ? 0.5 : 0,
+                                    }}
+                                  >
+                                    {answerIdx === 0 ? submissionStudentName(submission) : ''}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell>
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      fontWeight: 700,
+                                      color: '#1976d2',
+                                      fontSize: '0.65rem',
+                                      display: 'block',
+                                    }}
+                                  >
+                                    {formatTaskId(taskId)}
+                                  </Typography>
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      fontFamily: 'monospace',
+                                      fontWeight: answer ? 500 : 400,
+                                      color: answer ? '#1a1a1a' : '#d32f2f',
+                                      fontSize: '0.7rem',
+                                      display: 'block',
+                                    }}
+                                  >
+                                    {String(answer) || '(leer)'}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell>
+                                  <Box sx={{ position: 'relative', width: '70px' }}>
+                                    <TextField
+                                      type="number"
+                                      value={fieldState.points ?? ''}
+                                      onChange={(e) => {
+                                        const inputValue = e.target.value.trim().toLowerCase();
+                                        let value: number | undefined;
+                                        if (inputValue === 'x' || inputValue === '') {
+                                          value = undefined;
+                                        } else {
+                                          const numValue = parseFloat(e.target.value);
+                                          value = !isNaN(numValue) ? numValue : undefined;
+                                        }
+                                        setCorrections((prev) => ({
+                                          ...prev,
+                                          [fieldCorrectionKey]: { ...prev[fieldCorrectionKey], points: value },
+                                        }));
                                       }}
-                                    >
-                                      {String(answer) || '(leer)'}
-                                    </Typography>
-                                ))}
-                              </TableCell>
-                              <TableCell>
-                                <Box sx={{ position: 'relative', width: '70px' }}>
-                                <TextField
-                                  type="number"
-                                  value={correctionState.points ?? ''}
-                                  onChange={(e) => {
-                                      const inputValue = e.target.value.trim().toLowerCase();
-                                      let value: number | undefined = undefined;
-                                      
-                                      // Wenn "x" eingegeben wird, leere das Feld
-                                      if (inputValue === 'x') {
-                                        value = undefined;
-                                      } else if (inputValue === '') {
-                                        value = undefined;
-                                      } else {
-                                      const numValue = parseFloat(e.target.value);
-                                        value = !isNaN(numValue) ? numValue : undefined;
+                                      onBlur={() =>
+                                        saveCorrection(
+                                          taskId,
+                                          fieldState.points,
+                                          fieldState.comment,
+                                          submission.id,
+                                        )
                                       }
-                                      
-                                    setCorrections(prev => ({
-                                      ...prev,
-                                      [correctionKey]: { ...prev[correctionKey], points: value }
-                                    }));
-                                  }}
-                                  onBlur={() => saveCorrection(taskNum, correctionState.points, correctionState.comment, submission.id)}
-                                  inputProps={{ min: 0, max: 10, step: 0.5 }}
-                                  size="small"
-                                  sx={{ 
-                                    width: '70px',
-                                    '& .MuiOutlinedInput-root': {
-                                        bgcolor: (correctionState.points !== undefined && correctionState.points !== null && !isNaN(correctionState.points) && correctionState.points >= 0 && correctionState.points <= 10) ? '#e8f5e9' : '#ffebee',
-                                        border: (correctionState.points !== undefined && correctionState.points !== null && !isNaN(correctionState.points) && correctionState.points >= 0 && correctionState.points <= 10) ? '2px solid #4caf50' : '2px solid #f44336',
-                                        fontSize: '0.7rem',
-                                        pr: (correctionState.points !== undefined && correctionState.points !== null && !isNaN(correctionState.points) && correctionState.points >= 0 && correctionState.points <= 10) ? 3 : 1
-                                    }
-                                  }}
-                                />
-                                  {(correctionState.points !== undefined && correctionState.points !== null && !isNaN(correctionState.points) && correctionState.points >= 0 && correctionState.points <= 10) && (
-                                    <CheckCircle 
-                                      sx={{ 
-                                        position: 'absolute',
-                                        right: 4,
-                                        top: '50%',
-                                        transform: 'translateY(-50%)',
-                                        fontSize: 16,
-                                        color: '#4caf50'
+                                      inputProps={{ min: 0, max: 10, step: 0.25 }}
+                                      size="small"
+                                      sx={{
+                                        width: '70px',
+                                        '& .MuiOutlinedInput-root': {
+                                          bgcolor:
+                                            fieldFilled ? '#e8f5e9' : '#ffebee',
+                                          border: fieldFilled
+                                            ? '2px solid #4caf50'
+                                            : '2px solid #f44336',
+                                          fontSize: '0.7rem',
+                                          pr: fieldFilled ? 3 : 1,
+                                        },
                                       }}
                                     />
-                                  )}
-                                </Box>
-                              </TableCell>
-                              <TableCell>
-                                <TextField
-                                  multiline
-                                  rows={1}
-                                  value={correctionState.comment ?? ''}
-                                  onChange={(e) => {
-                                    setCorrections(prev => ({
-                                      ...prev,
-                                      [correctionKey]: { ...prev[correctionKey], comment: e.target.value }
-                                    }));
-                                  }}
-                                  onBlur={() => saveCorrection(taskNum, correctionState.points, correctionState.comment, submission.id)}
-                                  size="small"
-                                  fullWidth
-                                  placeholder="..."
-                                  sx={{ 
-                                    mt: 2,
-                                    '& .MuiOutlinedInput-root': {
-                                      bgcolor: '#fff',
-                                      fontSize: '0.7rem'
+                                    {fieldFilled ? (
+                                      <CheckCircle
+                                        sx={{
+                                          position: 'absolute',
+                                          right: 4,
+                                          top: '50%',
+                                          transform: 'translateY(-50%)',
+                                          fontSize: 16,
+                                          color: '#4caf50',
+                                        }}
+                                      />
+                                    ) : null}
+                                  </Box>
+                                </TableCell>
+                                <TableCell>
+                                  <TextField
+                                    multiline
+                                    rows={1}
+                                    value={fieldState.comment ?? ''}
+                                    onChange={(e) => {
+                                      setCorrections((prev) => ({
+                                        ...prev,
+                                        [fieldCorrectionKey]: {
+                                          ...prev[fieldCorrectionKey],
+                                          comment: e.target.value,
+                                        },
+                                      }));
+                                    }}
+                                    onBlur={() =>
+                                      saveCorrection(
+                                        taskId,
+                                        fieldState.points,
+                                        fieldState.comment,
+                                        submission.id,
+                                      )
                                     }
-                                  }}
-                                />
-                              </TableCell>
-                            </TableRow>
-                          );
+                                    size="small"
+                                    fullWidth
+                                    placeholder="..."
+                                    sx={{
+                                      '& .MuiOutlinedInput-root': {
+                                        bgcolor: '#fff',
+                                        fontSize: '0.7rem',
+                                      },
+                                    }}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            );
+                          });
                         })}
                       </TableBody>
                     </Table>
