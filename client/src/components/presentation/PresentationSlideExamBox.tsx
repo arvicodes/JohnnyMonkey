@@ -123,14 +123,22 @@ const PresentationSlideExamBox: React.FC<Props> = ({
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<ExamQuestion | null>(null);
   const [savingQuestion, setSavingQuestion] = useState(false);
-  const [pickedGroupId, setPickedGroupId] = useState('');
+  const [pickedGroupIds, setPickedGroupIds] = useState<string[]>([]);
   const [groupPickOpen, setGroupPickOpen] = useState(false);
   const [groups, setGroups] = useState<Array<{ id: string; name: string }>>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
+  const [targetGroupIds, setTargetGroupIds] = useState<string[]>([]);
 
   const canEdit = typeof onChange === 'function';
-  const gid = (pickedGroupId || groupId || '').trim();
   const examPath = (exam?.path || '').replace(/\\/g, '/');
+  const activeGroupIds =
+    targetGroupIds.length > 0
+      ? targetGroupIds
+      : pickedGroupIds.length > 0
+        ? pickedGroupIds
+        : groupId
+          ? [groupId.trim()]
+          : [];
   const isRunning = Boolean(runningPath && examPath && runningPath === examPath);
 
   const loadGroups = useCallback(async () => {
@@ -180,16 +188,51 @@ const PresentationSlideExamBox: React.FC<Props> = ({
   }, [addAnchor, loadExamFiles]);
 
   useEffect(() => {
-    if (!gid) {
+    const teacherId = teacherIdFromStorage();
+    const lesson = (lessonPath || '').trim();
+    if (!teacherId || !lesson) {
+      setTargetGroupIds(groupId?.trim() ? [groupId.trim()] : []);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/learning-groups/groups-for-path?path=${encodeURIComponent(lesson)}&teacherId=${encodeURIComponent(teacherId)}`,
+        );
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as { groupIds?: string[] };
+        const ids = (data.groupIds || []).filter(Boolean);
+        if (!cancelled) {
+          setTargetGroupIds(ids.length ? ids : groupId?.trim() ? [groupId.trim()] : []);
+        }
+      } catch {
+        if (!cancelled) setTargetGroupIds(groupId?.trim() ? [groupId.trim()] : []);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [lessonPath, groupId]);
+
+  useEffect(() => {
+    if (!activeGroupIds.length) {
       setRunningPath(null);
       return undefined;
     }
     let cancelled = false;
     const poll = async () => {
       try {
-        const status = await fetchLessonExamBeacon(gid);
+        let found: string | null = null;
+        for (const gid of activeGroupIds) {
+          const status = await fetchLessonExamBeacon(gid);
+          if (status.active && status.filePath) {
+            found = status.filePath.replace(/\\/g, '/');
+            break;
+          }
+        }
         if (cancelled) return;
-        setRunningPath(status.active && status.filePath ? status.filePath.replace(/\\/g, '/') : null);
+        setRunningPath(found);
       } catch {
         /* ignore */
       }
@@ -200,7 +243,7 @@ const PresentationSlideExamBox: React.FC<Props> = ({
       cancelled = true;
       window.clearInterval(t);
     };
-  }, [gid]);
+  }, [activeGroupIds.join('|')]);
 
   const attach = (file: { path: string; name: string }) => {
     onChange?.({ path: file.path.replace(/\\/g, '/'), name: file.name });
@@ -208,35 +251,39 @@ const PresentationSlideExamBox: React.FC<Props> = ({
     onMessage?.(`Prüfung „${examLabel(file.name)}“ an diese Folie gehängt`);
   };
 
-  const startForGroup = async (groupIdToUse: string) => {
+  const startForGroups = async (groupIdsToUse: string[]) => {
     if (!examPath) return;
     const teacherId = teacherIdFromStorage();
     if (!teacherId) {
       onMessage?.('Bitte zuerst anmelden.');
       return;
     }
-    const useGid = groupIdToUse.trim();
-    if (!useGid) {
+    const useIds = [...new Set(groupIdsToUse.map((id) => id.trim()).filter(Boolean))];
+    if (!useIds.length) {
       await loadGroups();
       setGroupPickOpen(true);
       return;
     }
     setBusy(true);
     try {
-      if (isRunning && gid === useGid) {
-        await stopLessonExam({ teacherId, groupId: useGid });
+      if (isRunning) {
+        await stopLessonExam({ teacherId, groupIds: useIds });
         setRunningPath(null);
         onMessage?.('Prüfung beendet');
       } else {
         const started = await startLessonExam({
           teacherId,
-          groupId: useGid,
+          groupIds: useIds,
           filePath: examPath,
           lessonPath,
         });
-        setPickedGroupId(useGid);
+        setPickedGroupIds(started.groupIds);
         setRunningPath((started.filePath || examPath).replace(/\\/g, '/'));
-        onMessage?.('Prüfung gestartet — SuS der Lerngruppe sehen Vollbild');
+        onMessage?.(
+          started.groupIds.length > 1
+            ? `Prüfung gestartet — ${started.groupIds.length} Lerngruppen sehen Vollbild`
+            : 'Prüfung gestartet — SuS der Lerngruppe sehen Vollbild',
+        );
       }
     } catch (e) {
       onMessage?.(e instanceof Error ? e.message : 'Prüfung Start/Stop fehlgeschlagen');
@@ -246,11 +293,7 @@ const PresentationSlideExamBox: React.FC<Props> = ({
   };
 
   const toggleRun = async () => {
-    if (isRunning) {
-      await startForGroup(gid);
-      return;
-    }
-    await startForGroup(gid);
+    await startForGroups(activeGroupIds);
   };
 
   const createExam = async () => {
@@ -471,7 +514,11 @@ const PresentationSlideExamBox: React.FC<Props> = ({
     >
       <DialogContent sx={{ p: 0 }}>
         {correctionOpen && examPath ? (
-          <KACorrectionMode kaFilePath={examPath} groupId={gid || null} onClose={() => setCorrectionOpen(false)} />
+          <KACorrectionMode
+            kaFilePath={examPath}
+            groupId={activeGroupIds[0] || null}
+            onClose={() => setCorrectionOpen(false)}
+          />
         ) : null}
       </DialogContent>
     </Dialog>
@@ -766,7 +813,7 @@ const PresentationSlideExamBox: React.FC<Props> = ({
                 key={g.id}
                 onClick={() => {
                   setGroupPickOpen(false);
-                  void startForGroup(g.id);
+                  void startForGroups([g.id]);
                 }}
                 sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
               >

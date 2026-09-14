@@ -1,0 +1,14 @@
+{
+  "pages": [
+    {
+      "title": "ToDo",
+      "text": "<div><b style=\"background-color: transparent; font-size: 1.14rem; color: rgb(239, 108, 0);\"></b></div><div style=\"\"><div style=\"\"><span style=\"color: rgb(84, 110, 122); font-size: 18.24px; font-weight: bold;\">Anmerkungen:</span><br><ul><li><span style=\"font-size: 1.14rem; color: rgb(106, 27, 154); font-weight: bold;\">Spaßfabrik</span><span style=\"font-size: 1.14rem; color: rgb(106, 27, 154);\"> Flyer und HP</span><br></li><li><span style=\"color: rgb(106, 27, 154); font-size: 1.14rem;\">Räume Schule fragen</span><br></li></ul><div><span style=\"color: rgb(106, 27, 154);\"><br></span></div><ul><li><span style=\"color: rgb(84, 110, 122); font-size: 1.14rem;\">INFO: Folien Informatiker alle bis jetzigen ordentlich aufräumen und weiter .....&nbsp;</span><br></li><li><span style=\"color: rgb(84, 110, 122); font-size: 1.14rem;\">speichern der versionen klappt immer noch nicht - Unterschiede lokal und Global?????</span><br></li><li><span style=\"color: rgb(84, 110, 122);\"><br></span></li><li><b style=\"font-size: 1.14rem; color: rgb(84, 110, 122);\">Matrizen</b><span style=\"font-size: 1.14rem; color: rgb(84, 110, 122);\">&nbsp;</span><br></li><li><br></li></ul></div></div><br>",
+      "ink": []
+    }
+  ],
+  "pageIndex": 0,
+  "updatedAt": "2026-08-19T05:40:13.346Z",
+  "userId": "01ed6e10-397e-446c-9254-2ad7fd4ec777",
+  "userName": "Frau Christ",
+  "savedAt": "2026-08-19T05:40:14.263Z"
+}

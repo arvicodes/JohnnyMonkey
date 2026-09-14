@@ -1,0 +1,346 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+3 0 obj
+<< /Length 3039 >>
+stream
+BT
+/F2 16 Tf
+48 793.89 Td
+(KI sucht Mensch) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Pfad) Tj
+/F1 11 Tf
+0 -15 Td
+(git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.01 KI sucht Mensch) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Guten Morgen!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(KI sucht Mensch) Tj
+/F1 11 Tf
+0 -15 Td
+(?"Ich bin .... und mein KI Merkmal ist ..." ?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? \334berlege dir einen Satz mit deinem Roboter/Informatik-Merkmal.) Tj
+/F1 11 Tf
+0 -15 Td
+(? \334berlege dir eine Bewegung dazu.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Phase 1: Jeder/Jede wiederholt Namen plus Bewegung.) Tj
+/F1 11 Tf
+0 -15 Td
+(Phase 2 : Jetzt l\344uft eine Person in die Mitte und zeigt nur die Bewegung einer) Tj
+/F1 11 Tf
+0 -15 Td
+(Mitsch\374lerin oder eines Mitsch\374lers. Die Klasse ruft den Namen.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Richtig erkannt: \204Modell erfolgreich trainiert.\223 Falsch erkannt: \204Fehlklassifikation.\223) Tj
+/F1 11 Tf
+0 -15 Td
+(? Bei Fehlern: Benennt woran es lag: \204Zu \344hnliche Trainingsdaten.\223 \204Zu wenig) Tj
+/F1 11 Tf
+0 -15 Td
+(Wiederholung.\223 \204Das Modell hat \374bergeneralisiert.\223) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Phase 3 : Eine Person ist die \204Eingabe\223 . Sie nennt ein Merkmal, aber nicht den Namen:) Tj
+/F1 11 Tf
+0 -15 Td
+(\204Diese Person hatte etwas mit Pizza.\223) Tj
+/F1 11 Tf
+0 -15 Td
+(? Person zeigt auf zwei bis drei Personen im Kreis. Diese sind \204Neuronen\223 und m\374ssen) Tj
+/F1 11 Tf
+0 -15 Td
+(jeweils eine Assoziation nennen oder eine Bewegung machen .) Tj
+/F1 11 Tf
+0 -15 Td
+(? Beispiel : Neuron 1: \204Tablet Bewegung.\223 Neuron 2: \204Essen.\223 Neuron 3: \204Lara?\223 Die) Tj
+/F1 11 Tf
+0 -15 Td
+(Klasse entscheidet gemeinsam, welche Ausgabe richtig ist. Danach wechselt die Eingabe.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Abschlussphase : Geht alle durcheinander durch den Raum. Bildet auf Kommando) Tj
+/F1 11 Tf
+0 -15 Td
+(Zweiergruppen.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Auftrag: \204 Nenne den Namen der anderen Person und nenne ein m\366gliches KI Problem, das) Tj
+/F1 11 Tf
+0 -15 Td
+(zu ihr passt.\223) Tj
+/F1 11 Tf
+0 -15 Td
+(? Beispiele : \204Das ist Tim . Problem: Sein Roboter w\374rde beim Sport \374berhitzen.\223 \204Das) Tj
+/F1 11 Tf
+0 -15 Td
+(ist Amira . Problem: Ihre KI erkennt Sarkasmus zu gut.\223 \204Das ist Jonas . Problem: Sein) Tj
+/F1 11 Tf
+0 -15 Td
+(Algorithmus braucht erst drei Snacks, bevor er startet.\223) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Phase 2) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Phase 3) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Material) Tj
+/F1 11 Tf
+0 -15 Td
+(Phase 1: Karten mit Beispieltexten) Tj
+/F1 11 Tf
+0 -15 Td
+(Phase 2: gr\374ne Karte und rote Karte) Tj
+/F1 11 Tf
+0 -15 Td
+(+ leere Karten & Eding) Tj
+/F1 11 Tf
+0 -15 Td
+(? Woran lag es? notieren) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+ET
+endstream
+endobj
+4 0 obj
+<< /Type /Page /Parent 9 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 3 0 R >>
+endobj
+5 0 obj
+<< /Length 3127 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(Drau\337en im Kreis:) Tj
+/F1 11 Tf
+0 -15 Td
+(Es liegen Beispielkarten auf dem Boden im Kreis, man darf sie kurz ansehen:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? \204 Ich w\374rde einer KI verbieten, meine Hausaufgaben zu bewerten.\223) Tj
+/F1 11 Tf
+0 -15 Td
+(? \204Mein Roboter m\374sste zuerst lernen, Kaffee zu kochen.\223) Tj
+/F1 11 Tf
+0 -15 Td
+(? \204Meine KI Superkraft w\344re: schlechte Ausreden erkennen.\223) Tj
+/F1 11 Tf
+0 -15 Td
+(? \204Wenn ich ein Algorithmus w\344re, w\344re ich ein Chaos Sort.\223) Tj
+/F1 11 Tf
+0 -15 Td
+(? \204Meine Trainingsdaten bestehen aus Sport, Schlafmangel und Snacks.\223) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Sprechakte) Tj
+/F1 11 Tf
+0 -15 Td
+(Ich beginne: \204Ich bin Vera Christ, ich debugge Code, Klassen und manchmal auch mein) Tj
+/F1 11 Tf
+0 -15 Td
+(eigenes Leben.\223 Oder : \204Wenn mein Gehirn ein Computer w\344re, h\344tte er sehr viele Tabs) Tj
+/F1 11 Tf
+0 -15 Td
+(offen.\223 ODER \204mein Spezialgebiet ist: Menschen, Maschinen und Sch\374ler*innen wieder zum) Tj
+/F1 11 Tf
+0 -15 Td
+(Laufen bringen.\223) Tj
+/F1 11 Tf
+0 -15 Td
+(Pose : Lupe machen, Tastatur tippen, dann dramatisch auf sich selbst zeigen. Schnell) Tj
+/F1 11 Tf
+0 -15 Td
+(viele imagin\344re Fenster antippen, dann kurz \374berfordert gucken. Auf imagin\344ren) Tj
+/F1 11 Tf
+0 -15 Td
+(Startknopf dr\374cken, dann loslaufen.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Was hat das Spiel mit KI zu tun?) Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Setup) Tj
+/F1 11 Tf
+0 -15 Td
+(Die Folie ist leer, wir sammeln auf der Folie order einfach auf den Karten und ich nehme) Tj
+/F1 11 Tf
+0 -15 Td
+(sie f\374r n\344chste Stunde mit.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(M\366gliche Ergebnisse:) Tj
+/F1 11 Tf
+0 -15 Td
+(? Namen und Bewegungen waren Trainingsdaten.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Die Klasse hat Muster erkannt.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Fehler waren Fehlklassifikationen.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Einseitige Daten f\374hrten zu Bias.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Zu \344hnliche Bewegungen machten die Vorhersage schwieriger.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Mehr Wiederholung verbessert das Modell.) Tj
+/F1 11 Tf
+0 -15 Td
+(Merksatz: Eine KI ist nur so gut wie ihre Trainingsdaten, ihre Merkmale und die Art, wie) Tj
+/F1 11 Tf
+0 -15 Td
+(sie daraus Muster bildet.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe: Wer bist du als Person?) Tj
+/F1 11 Tf
+0 -15 Td
+(? Schreibe einen kurzen Steckbrief zu dir: ? Notiere hier deinen Satz und deine) Tj
+/F1 11 Tf
+0 -15 Td
+(Bewegung. Erstelle einen kurzen Steckbrie) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Kurzer K\366nnen-/Wunschzettel : ? Erl\344utere in wenigen Worte \205. dein Vorwissen zu) Tj
+/F1 11 Tf
+0 -15 Td
+(Informatik, deine Erwartungen an das Fach, deine W\374nsche f\374r das Fach, deine W\374nsche f\374r) Tj
+/F1 11 Tf
+0 -15 Td
+(den Unterricht im Allgemeinen.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Was m\366chtest du noch sagen?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Bringe ein leeres, kariertes A4 Heft mit. Dieses ben\366tigen wir ab jetzt jede Stunde.) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 9 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 87 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Bis zur n\344chsten Stunde!) Tj
+ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 9 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R 8 0 R] /Count 3 >>
+endobj
+10 0 obj
+<< /Type /Catalog /Pages 9 0 R >>
+endobj
+xref
+0 11
+0000000000 65535 f 
+0000000009 00000 n 
+0000000106 00000 n 
+0000000208 00000 n 
+0000003298 00000 n 
+0000003440 00000 n 
+0000006618 00000 n 
+0000006760 00000 n 
+0000006896 00000 n 
+0000007038 00000 n 
+0000007107 00000 n 
+trailer
+<< /Size 11 /Root 10 0 R >>
+startxref
+7157
+%%EOF

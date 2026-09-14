@@ -1,0 +1,3505 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+3 0 obj
+<< /Length 2413 >>
+stream
+BT
+/F2 16 Tf
+48 793.89 Td
+(01 Basiswissen) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Pfad) Tj
+/F1 11 Tf
+0 -15 Td
+(git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Guten Morgen!) Tj
+/F1 11 Tf
+0 -15 Td
+(E) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Organisatorisches - Material und Technik) Tj
+/F1 11 Tf
+0 -15 Td
+(??Die Johnny Monkey App) Tj
+/F1 11 Tf
+0 -15 Td
+(? Wir arbeiten mit der App Johnny Monkey, erreichbar durch folgende) Tj
+/F1 11 Tf
+0 -15 Td
+(Eingabe in der Browsersuchleiste: https://mnsplusdocker:44443) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Bist du nicht im Schul-Wlan, musst du allerdings stattdessen eingeben:) Tj
+/F1 11 Tf
+0 -15 Td
+(https://rpl-50147-0.dn.mnsnet.de:44443/) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Logincodes erhaltet ihr und notiert sie im Hausaufgabenheft) Tj
+/F1 11 Tf
+0 -15 Td
+(? AUSWENDIG LERNEN!!! NIEMALS VERGESSEN!!! ????) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Unser Moderator, unsere Moderatorin) Tj
+/F1 11 Tf
+0 -15 Td
+(? Pro Woche) Tj
+/F1 11 Tf
+0 -15 Td
+(? Startet und Beendet die Stunde mit Entry- und Exit-Ticket) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Noten) Tj
+/F1 11 Tf
+0 -15 Td
+(? Zwei Kursarbeiten pro Halbjahr) Tj
+/F1 11 Tf
+0 -15 Td
+(? Zwei Epochalnoten pro Halbjahr) Tj
+/F1 11 Tf
+0 -15 Td
+(? Mehrere H\374s \(immer angek\374ndigt\) und manchmal Projektnoten pro Halbjahr) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Das M\374nzspiel) Tj
+/F1 11 Tf
+0 -15 Td
+(Feld A) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Feld B) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Spielanleitung) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Bei diesem Experiment werden zun\344chst 10 M\374nzen in das Feld A und 40 M\374nzen in das Feld) Tj
+/F1 11 Tf
+0 -15 Td
+(B gelegt.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Anschlie\337end schiebt Spieler A jeweils ein Drittel seiner M\374nzen in das Feld B.) Tj
+/F1 11 Tf
+0 -15 Td
+(Gleichzeitig schiebt Spieler B die H\344lfte seiner M\374nzen in das Feld A.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Die Z\374ge werden mehrmals wiederholt. Eventuell muss gerundet werden!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Material) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? 50 M\374nzen pro Sch\374lerpaar) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+ET
+endstream
+endobj
+4 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 3 0 R >>
+endobj
+5 0 obj
+<< /Length 2045 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(? im LK also 500 M\374nzen) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Lernziele der Stunde) Tj
+/F1 11 Tf
+0 -15 Td
+(\334bergangsmatrizen, verschiedene Darstellungen: Tabelle, Graph, Matrix) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Schwierigkeiten:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Beispiell\366sung:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Vom Spiel zum Modell: Verschiedene Darstellungsformen) Tj
+/F1 11 Tf
+0 -15 Td
+(\334bergangstabelle) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\334bergangsgraph) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(A B A) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(B) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(A) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(B) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Mit Variablen mathematisch beschreiben) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Seien a? und b? die M\374nzmengen in den Feldern A und B nach Runde n. Erg\344nze die Formeln) Tj
+/F1 11 Tf
+0 -15 Td
+(f\374r die n\344chste Runde.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(a??? = ______ ? a? + ______ ? b?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(b??? = ______ ? a? + ______ ? b?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Die SuS k\366nnen das als Hilfestellung nutzen und vervollst\344ndigen.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Vektor und Matrix) Tj
+/F1 11 Tf
+0 -15 Td
+(Anfangsvektor f\374r den Startzustand:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\334bergangsmatrix:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Testet eure Matrix am ersten) Tj
+/F1 11 Tf
+0 -15 Td
+(Spielzug: M ? v? = v? ?) Tj
+/F1 11 Tf
+0 -15 Td
+(Welche Werte erwartet ihr f\374r v??) Tj
+/F1 11 Tf
+0 -15 Td
+(______________________________) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Weiterdenken) Tj
+/F1 11 Tf
+0 -15 Td
+(1. Startet mit einer anderen Verteilung, zum) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 2775 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(Beispiel 25 M\374nzen in A und 25 M\374nzen in B. Was ver\344ndert sich, was bleibt) Tj
+/F1 11 Tf
+0 -15 Td
+(\344hnlich?) Tj
+/F1 11 Tf
+0 -15 Td
+(2. Ver\344ndert eine Spielregel. Welche Eintr\344ge) Tj
+/F1 11 Tf
+0 -15 Td
+(der Matrix m\374ssen sich dadurch ver\344ndern?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(3. Formuliert eine Vermutung dazu, ob sich) Tj
+/F1 11 Tf
+0 -15 Td
+(langfristig immer dieselbe Verteilung einstellt.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Anfangsvektor f\374r den Startzustand:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? v ? = \( ? ? \) \\vec{v}=\\begin{pmatrix}\\Box\\\\[0.8em]\\Box\\end{pmatrix} ? ? ? Matrix f\374r) Tj
+/F1 11 Tf
+0 -15 Td
+(den \334bergang:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(M= ? ? \( ? ? ? ? \) \\begin{pmatrix}\\Box & \\Box\\\\\\Box & \\Box\\end{pmatrix} ? ?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Teste deine Matrix am ersten Spielzug:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(M ? v? = v? ? Welche Werte erwartest du f\374r v? ?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Weiterdenken) Tj
+/F1 11 Tf
+0 -15 Td
+(? Starte mit einer anderen Verteilung, zum Beispiel 25 M\374nzen in A und 25 M\374nzen in B.) Tj
+/F1 11 Tf
+0 -15 Td
+(Was ver\344ndert sich, was bleibt \344hnlich?) Tj
+/F1 11 Tf
+0 -15 Td
+(? Ver\344ndere eine Spielregel. Welche Eintr\344ge der Matrix m\374ssen sich dadurch ver\344ndern?) Tj
+/F1 11 Tf
+0 -15 Td
+(? Formuliere eine Vermutung dazu, ob sich langfristig immer dieselbe Verteilung) Tj
+/F1 11 Tf
+0 -15 Td
+(einstellt.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Bis zur n\344chsten Stunde!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Weiterf\374hrende Fragen \(siehe vorherige Folie\)) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 7) Tj
+/F1 11 Tf
+0 -15 Td
+(Eine Matrix ...) Tj
+/F1 11 Tf
+0 -15 Td
+(\204Eine Art Tabelle, in deren Zeilen und Spalten reelle Zahlen stehen\223) Tj
+/F1 11 Tf
+0 -15 Td
+(? ?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Definition: m ? n -Matrix \\textbf{Definition: } m \\times n\\text{-Matrix} ?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Eine Matrix A ist eine rechteckige Zahlentabelle mit m Zeilen und n Spalten.) Tj
+/F1 11 Tf
+0 -15 Td
+(Ihre Eintr\344ge werden mit a i j a_{ij} bezeichnet, wobei i i die Zeile und j j die Spalte) Tj
+/F1 11 Tf
+0 -15 Td
+(angibt. F\374r alle vorkommenden Indizes gilt: ? a i j ? R ?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(?) Tj
+/F1 11 Tf
+0 -15 Td
+(Eine Matrix A hei\337t quadratisch , wenn sie gleich viele Zeilen wie Spalten besitzt, also) Tj
+ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Length 2481 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(wenn ? m = n ? gilt.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? ?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Ein Vektor ...) Tj
+/F1 11 Tf
+0 -15 Td
+(? Definition: Vektor \\textbf{Definition: Vektor} ?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Ein Vektor v ? \\vec{v} ist eine geordnete Liste von Zahlen. Ein n dimensionaler Vektor) Tj
+/F1 11 Tf
+0 -15 Td
+(besitzt n Eintr\344ge.) Tj
+/F1 11 Tf
+0 -15 Td
+(?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 8) Tj
+/F1 11 Tf
+0 -15 Td
+(? Blitzfragen \\textbf{Blitzfragen} ?) Tj
+/F1 11 Tf
+0 -15 Td
+(? A = \( ? 1 3 4 4 ? 2 1 \) A=\\begin{pmatrix}-1 & 3 & 4\\\\4 & -2 & 1\\end{pmatrix} ?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(1.\\ Bestimme den Typ von A A . \\qquad) Tj
+/F1 11 Tf
+0 -15 Td
+(2.\\ Gib a 12 a_{12} an. \\qquad) Tj
+/F1 11 Tf
+0 -15 Td
+(3.\\ Gib a 23 a_{23} an.) Tj
+/F1 11 Tf
+0 -15 Td
+(? B = \( 2 5 1 0 ? 3 4 \) B=\\begin{pmatrix}2 & 5\\\\1 & 0\\\\-3 & 4\\end{pmatrix} ?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(4.\\ Bestimme den Typ von B B . \\qquad) Tj
+/F1 11 Tf
+0 -15 Td
+(5.\\ Gib b 31 b_{31} an.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(6.\\ Beschreibe die Position von c 24 c_{24} . \\qquad) Tj
+/F1 11 Tf
+0 -15 Td
+(7.\\ Entscheide, ob eine 3 ? 3 3\\times3 -Matrix quadratisch ist.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(?? Blitzfragen ?) Tj
+/F1 11 Tf
+0 -15 Td
+(? A = \( ? 1 3 4 4 ? 2 1 \)) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Bestimme den Typ von A .) Tj
+/F1 11 Tf
+0 -15 Td
+(? Gib a 12 an.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Gib a 23 an.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? B = \( 2 5 1 0 ? 3 4 \) B=\\begin{pmatrix}2 & 5\\\\1 & 0\\\\-3 & 4\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(?) Tj
+/F1 11 Tf
+0 -15 Td
+(? Bestimme den Typ von B B .) Tj
+/F1 11 Tf
+0 -15 Td
+(? Gib b 31 an.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Beschreibe die Position von c 24 .) Tj
+/F1 11 Tf
+0 -15 Td
+(? Entscheide , ob eine 3 ? 3 -Matrix quadratisch ist.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Markiere zusammengeh\366rige Elemente und ordne ide Fachbegriffe zu.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Wir multiplizieren hier eine Matrix mit einem Vektor, ohne die mathematische Regel) Tj
+/F1 11 Tf
+0 -15 Td
+(daf\374r bisher formal festgelegt zu haben. Leite aus den Beispielen eine allgemeine Regel) Tj
+ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 9 0 R >>
+endobj
+11 0 obj
+<< /Length 2256 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(f\374r die Matrix Vektor Multiplikation ab .) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(? A A ist eine 2 ? 3 2 \\times 3 Matrix.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? a 12 = 3 a_{12}=3) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? a 23 = 1 a_{23}=1) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? B B ist eine 3 ? 2 3 \\times 2 Matrix.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? b 31 = ? 3 b_{31}=-3) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? c 24 c_{24} steht in der 2. Zeile und 4. Spalte.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Ja, eine 3 ? 3 3 \\times 3 Matrix ist quadratisch.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 9) Tj
+/F1 11 Tf
+0 -15 Td
+(Definition: Matrix mal Vektor) Tj
+/F1 11 Tf
+0 -15 Td
+(?? Sei ? A = \( a i j \) ? R m ? n ? eine Matrix und v ? ?ein Vektor. Dann ist das Produkt) Tj
+/F1 11 Tf
+0 -15 Td
+(definiert als:) Tj
+/F1 11 Tf
+0 -15 Td
+(??) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Hausaufgabe: \334bungen zu Matrizen und zum Matrix-Vektor Produkt) Tj
+/F1 11 Tf
+0 -15 Td
+(Aufgabe 1: Notiere eine 4?4-Matrix, die die) Tj
+/F1 11 Tf
+0 -15 Td
+(folgenden Bedingungen erf\374llt:) Tj
+/F1 11 Tf
+0 -15 Td
+(?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? a\) a 11 = 3 ; a 23 = 4 ; a 14 = 1 ; a 21 = ? 1 und sonst u ? berall Nullen b\) a i j =) Tj
+/F1 11 Tf
+0 -15 Td
+(i ? j \\text{a\) } a_{11}=3;\\; a_{23}=4;\\; a_{14}=1;\\; a_{21}=-1 \\text{ und sonst \374berall) Tj
+/F1 11 Tf
+0 -15 Td
+(Nullen}) Tj
+/F1 11 Tf
+0 -15 Td
+(\\qquad) Tj
+/F1 11 Tf
+0 -15 Td
+(\\text{b\) } a_{ij}=i-j ?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Aufgabe 2: Berechne .) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? a\) \( 1 2 3 4 5 6 \) ? \( 7 8 9 \) b\) \( 1 1 0 1 1 2 0 0 7 \) ? \( 0 8 15 \) \\text{a\) }\\;) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(1 & 2 & 3\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(4 & 5 & 6) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(\\cdot) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(7\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(8\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(9) Tj
+ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 11 0 R >>
+endobj
+13 0 obj
+<< /Length 2336 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(\\qquad) Tj
+/F1 11 Tf
+0 -15 Td
+(\\text{b\) }\\;) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(1 & 1 & 0\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(1 & 1 & 2\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(0 & 0 & 7) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(\\cdot) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(0\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(8\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(15) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix} c\) \( 4 7 1 1 \) ? \( 4 2 \) d\) \( ? 1 1 \) ? \( 0,5 ? 0,5 \) \\text{c\) }\\;) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(4 & 7\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(1 & 1) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(\\cdot) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(4\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(2) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(\\qquad) Tj
+/F1 11 Tf
+0 -15 Td
+(\\text{d\) }\\;) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(-1 & 1) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(\\cdot) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(0{,}5\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(-0{,}5) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix} ? ?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Aufgabe 3: Zeichne zu der \334bergangsmatrix das) Tj
+/F1 11 Tf
+0 -15 Td
+(passende \334bergangsdiagramm:) Tj
+/F1 11 Tf
+0 -15 Td
+(? ?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Aufgabe 4: In einem Land) Tj
+/F1 11 Tf
+0 -15 Td
+(leben 12 Millionen M\344nner \(M\), 14 Millionen Frauen \(F\) und 8 Millionen Kinder) Tj
+/F1 11 Tf
+0 -15 Td
+(und Jugendliche \(K\). Im Zeitraum von einem Jahr erreichen jeweils 3% der m\344nnlichen) Tj
+/F1 11 Tf
+0 -15 Td
+(und weiblichen Jugendlichen das Erwachsenenalter. Im Durchschnitt bekommen 25%) Tj
+/F1 11 Tf
+0 -15 Td
+(der Frauen in diesem Jahr ein Kind. Die Sterblichkeit betr\344gt bei den M\344nnern) Tj
+/F1 11 Tf
+0 -15 Td
+(15% und bei den Frauen 10%.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Stelle die Bev\366lkerungsentwicklung in einem) Tj
+/F1 11 Tf
+0 -15 Td
+(Jahr in einem geeigneten \334bergangsdiagramm dar .) Tj
+/F1 11 Tf
+0 -15 Td
+(? Beschreibe den Prozess durch eine passende \334bergangsmatrix.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Berechne zu den gegebenen Anfangswerten die) Tj
+ET
+endstream
+endobj
+14 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 13 0 R >>
+endobj
+15 0 obj
+<< /Length 2830 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(Entwicklung der Population in den n\344chsten beiden Jahren. Nutzen Sie die) Tj
+/F1 11 Tf
+0 -15 Td
+(Matrix-Vektor-Multiplikation.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Beispiell\366sung:) Tj
+/F1 11 Tf
+0 -15 Td
+(Aufgabe 1) Tj
+/F1 11 Tf
+0 -15 Td
+(A = \( 3 0 0 1 ? 1 0 4 0 0 0 0 0 0 0 0 0 \) A= \\begin{pmatrix} 3&0&0&1\\\\ -1&0&4&0\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(0&0&0&0\\\\ 0&0&0&0 \\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Mit a i j = i ? j :) Tj
+/F1 11 Tf
+0 -15 Td
+(A = \( 0 ? 1 ? 2 ? 3 1 0 ? 1 ? 2 2 1 0 ? 1 3 2 1 0 \) A= \\begin{pmatrix} 0&-1&-2&-3\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(1&0&-1&-2\\\\ 2&1&0&-1\\\\ 3&2&1&0 \\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Aufgabe 2) Tj
+/F1 11 Tf
+0 -15 Td
+(?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\( 1 2 3 4 5 6 \) \( 7 8 9 \) = \( 50 122 \) \\begin{pmatrix} 1&2&3\\\\ 4&5&6 \\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix} 7\\\\8\\\\9 \\end{pmatrix} = \\begin{pmatrix} 50\\\\122 \\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\( 1 1 0 1 1 2 0 0 7 \) \( 0 8 15 \) = \( 8 38 105 \) \\begin{pmatrix} 1&1&0\\\\ 1&1&2\\\\ 0&0&7) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix} \\begin{pmatrix} 0\\\\8\\\\15 \\end{pmatrix} = \\begin{pmatrix} 8\\\\38\\\\105) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\( 4 7 1 1 \) \( 4 2 \) = \( 30 6 \) \\begin{pmatrix} 4&7\\\\ 1&1 \\end{pmatrix} \\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(4\\\\2 \\end{pmatrix} = \\begin{pmatrix} 30\\\\6 \\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\( ? 1 1 \) \( 0,5 ? 0,5 \) = ? 1 \\begin{pmatrix}-1&1\\end{pmatrix} \\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(0{,}5\\\\-0{,}5 \\end{pmatrix} =-1) Tj
+/F1 11 Tf
+0 -15 Td
+(Aufgabe 3) Tj
+/F1 11 Tf
+0 -15 Td
+(Die Spalten geben den Ausgangszustand, die Zeilen den Zielzustand an.) Tj
+/F1 11 Tf
+0 -15 Td
+(a\)) Tj
+/F1 11 Tf
+0 -15 Td
+(M ? Q : 1 M\\rightarrow Q:1) Tj
+/F1 11 Tf
+0 -15 Td
+(Q ? M : 1 Q\\rightarrow M:1) Tj
+/F1 11 Tf
+0 -15 Td
+(b\)) Tj
+/F1 11 Tf
+0 -15 Td
+(C ? C : 0,6 C\\rightarrow C:0{,}6) Tj
+/F1 11 Tf
+0 -15 Td
+(C ? D : 0,1 C\\rightarrow D:0{,}1) Tj
+/F1 11 Tf
+0 -15 Td
+(D ? C : 0,3 D\\rightarrow C:0{,}3) Tj
+/F1 11 Tf
+0 -15 Td
+(D ? D : 0,7 D\\rightarrow D:0{,}7) Tj
+/F1 11 Tf
+0 -15 Td
+(c\)) Tj
+/F1 11 Tf
+0 -15 Td
+(R ? R : 0,5 R\\rightarrow R:0{,}5) Tj
+/F1 11 Tf
+0 -15 Td
+(R ? Z : 0,2 R\\rightarrow Z:0{,}2) Tj
+/F1 11 Tf
+0 -15 Td
+(R ? E : 0,3 R\\rightarrow E:0{,}3) Tj
+/F1 11 Tf
+0 -15 Td
+(Z ? R : 0,2 Z\\rightarrow R:0{,}2) Tj
+/F1 11 Tf
+0 -15 Td
+(Z ? Z : 0,8 Z\\rightarrow Z:0{,}8) Tj
+/F1 11 Tf
+0 -15 Td
+(E ? R : 0,1 E\\rightarrow R:0{,}1) Tj
+/F1 11 Tf
+0 -15 Td
+(E ? Z : 0,6 E\\rightarrow Z:0{,}6) Tj
+ET
+endstream
+endobj
+16 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 15 0 R >>
+endobj
+17 0 obj
+<< /Length 3520 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(E ? E : 0,3 E\\rightarrow E:0{,}3) Tj
+/F1 11 Tf
+0 -15 Td
+(Aufgabe 4) Tj
+/F1 11 Tf
+0 -15 Td
+(Ausgangsvektor in Millionen:) Tj
+/F1 11 Tf
+0 -15 Td
+(v ? 0 = \( 12 14 8 \) \\vec v_0= \\begin{pmatrix} 12\\\\14\\\\8 \\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(Die Aufgabe gibt 15 % Sterblichkeit bei M\344nnern, 10 % bei Frauen, jeweils 3 % \334bergang) Tj
+/F1 11 Tf
+0 -15 Td
+(der Jugendlichen zu M\344nnern beziehungsweise Frauen sowie Geburten in H\366he von 25 % der) Tj
+/F1 11 Tf
+0 -15 Td
+(Anzahl der Frauen vor.) Tj
+/F1 11 Tf
+0 -15 Td
+(Damit:) Tj
+/F1 11 Tf
+0 -15 Td
+(M = \( 0,85 0 0,03 0 0,90 0,03 0 0,25 0,94 \) M= \\begin{pmatrix} 0{,}85&0&0{,}03\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(0&0{,}90&0{,}03\\\\ 0&0{,}25&0{,}94 \\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(Nach einem Jahr:) Tj
+/F1 11 Tf
+0 -15 Td
+(v ? 1 = M v ? 0 = \( 10,44 12,84 11,02 \) \\vec v_1=M\\vec v_0 = \\begin{pmatrix} 10{,}44\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(12{,}84\\\\ 11{,}02 \\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(also etwa 10,44 Mio. M\344nner, 12,84 Mio. Frauen und 11,02 Mio. Kinder und Jugendliche .) Tj
+/F1 11 Tf
+0 -15 Td
+(Nach zwei Jahren:) Tj
+/F1 11 Tf
+0 -15 Td
+(v ? 2 = M v ? 1 = \( 9,2046 11,8866 13,5688 \) \\vec v_2=M\\vec v_1 = \\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(9{,}2046\\\\ 11{,}8866\\\\ 13{,}5688 \\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(also etwa 9,20 Mio. M\344nner, 11,89 Mio. Frauen und 13,57 Mio. Kinder und Jugendliche .) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(\334bung zur Beschreibung von \334berg\344ngen bei Insektenpopulationen) Tj
+/F1 11 Tf
+0 -15 Td
+(Im Bild ist ein \334bergangsdiagramm f\374r die Entwicklung einer Insektenart zu sehen. Gib) Tj
+/F1 11 Tf
+0 -15 Td
+(diesen \334bergang in den vier unten aufgelisteten Darstellungen an . Zu Beginn wurden 1000) Tj
+/F1 11 Tf
+0 -15 Td
+(Weibchen, 1000 M\344nnchen und 0 Larven gez\344hlt.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Bonus: Stellt sich hier auch ein \204stabiler Zustand\223 nach einiger Zeit ein? Begr\374nde .) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Beispiell\366sung:) Tj
+/F1 11 Tf
+0 -15 Td
+(\334bergangstabelle) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(nach ? / von ? W M L W 0,6 0 0,4 M 0 0,4 0,4 L 8 0 0) Tj
+/F1 11 Tf
+0 -15 Td
+(? \334bergangsmatrix) Tj
+/F1 11 Tf
+0 -15 Td
+(A = \( 0,6 0 0,4 0 0,4 0,4 8 0 0 \) A= \\begin{pmatrix} 0{,}6 & 0 & 0{,}4\\\\ 0 & 0{,}4 &) Tj
+/F1 11 Tf
+0 -15 Td
+(0{,}4\\\\ 8 & 0 & 0 \\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(mit der Reihenfolge) Tj
+/F1 11 Tf
+0 -15 Td
+(\( W M L \) . \\begin{pmatrix} W\\\\M\\\\L \\end{pmatrix}.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Absolute Werte) Tj
+/F1 11 Tf
+0 -15 Td
+(Ausgangszustand:) Tj
+/F1 11 Tf
+0 -15 Td
+(v ? 0 = \( 1000 1000 0 \) \\vec v_0= \\begin{pmatrix} 1000\\\\ 1000\\\\ 0 \\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(Nach einem Monat:) Tj
+/F1 11 Tf
+0 -15 Td
+(v ? 1 = A v ? 0 = \( 600 400 8000 \) \\vec v_1=A\\vec v_0 = \\begin{pmatrix} 600\\\\ 400\\\\ 8000) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(Nach zwei Monaten:) Tj
+/F1 11 Tf
+0 -15 Td
+(v ? 2 = A v ? 1 = \( 3560 3360 4800 \) \\vec v_2=A\\vec v_1 = \\begin{pmatrix} 3560\\\\ 3360\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(4800 \\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(Zustand W M L 0 1000 1000 0 1 600 400 8000 2 3560 3360 4800 ? \334bergangsgleichungen) Tj
+/F1 11 Tf
+0 -15 Td
+(w n + 1 = 0,6 w n + 0,4 l n w_{n+1}=0{,}6w_n+0{,}4l_n m n + 1 = 0,4 m n + 0,4 l n) Tj
+/F1 11 Tf
+0 -15 Td
+(m_{n+1}=0{,}4m_n+0{,}4l_n l n + 1 = 8 w n l_{n+1}=8w_n) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+ET
+endstream
+endobj
+18 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 17 0 R >>
+endobj
+19 0 obj
+<< /Length 3707 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(Bonus: Stabiler Zustand?) Tj
+/F1 11 Tf
+0 -15 Td
+(Nein, es stellt sich kein stabiler Zustand mit konstanten Populationszahlen ein.) Tj
+/F1 11 Tf
+0 -15 Td
+(F\374r einen Fixvektor m\374sste gelten) Tj
+/F1 11 Tf
+0 -15 Td
+(A v ? = v ? . A\\vec v=\\vec v.) Tj
+/F1 11 Tf
+0 -15 Td
+(Dann m\374sste insbesondere) Tj
+/F1 11 Tf
+0 -15 Td
+(w = 0,6 w + 0,4 l ? w = l w=0{,}6w+0{,}4l \\quad\\Rightarrow\\quad w=l) Tj
+/F1 11 Tf
+0 -15 Td
+(und gleichzeitig) Tj
+/F1 11 Tf
+0 -15 Td
+(l = 8 w l=8w) Tj
+/F1 11 Tf
+0 -15 Td
+(gelten. Beides ist nur f\374r) Tj
+/F1 11 Tf
+0 -15 Td
+(w = l = 0 w=l=0) Tj
+/F1 11 Tf
+0 -15 Td
+(m\366glich. Damit folgt auch m = 0 m=0 .) Tj
+/F1 11 Tf
+0 -15 Td
+(Der einzige Fixvektor ist also der Nullvektor. Die vorhandene Insektenpopulation) Tj
+/F1 11 Tf
+0 -15 Td
+(entwickelt sich daher nicht zu einem konstanten Zustand.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(\334bergangsprozesse in der Autowaschanlage) Tj
+/F1 11 Tf
+0 -15 Td
+(Die drei Autowaschanlagen A, B und C haben das Wechselverhalten ihrer Kunden untersucht.) Tj
+/F1 11 Tf
+0 -15 Td
+(Die Kunden von A verteilen sich bei der n\344chsten Autow\344sche im Verh\344ltnis 2 : 1 : 1 auf) Tj
+/F1 11 Tf
+0 -15 Td
+(die drei Autowaschanlagen. Die Kunden von B wechseln das n\344chste Mal zu 25 % zu A und zu) Tj
+/F1 11 Tf
+0 -15 Td
+(25 % zu C. 80 % der Kunden von C sind der Anlage treu, der Rest wechselt zu A. Jeder) Tj
+/F1 11 Tf
+0 -15 Td
+(Kunde w\344scht sein Auto genau einmal pro Woche.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Zeichne ein \334bergangsdiagramm und gib die \334bergangsmatrix f\374r den Prozess an.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? In einer bestimmten Woche waschen von insgesamt 1000 Autofahrern 500 bei A und je 250) Tj
+/F1 11 Tf
+0 -15 Td
+(bei B und C ihr Auto. Vervollst\344ndige die untere Rechnung, zur Berechnung der Verteilung) Tj
+/F1 11 Tf
+0 -15 Td
+(f\374r die folgende Woche:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Notiere analog zu b\), die Berechnung der Verteilung f\374r die zweite Woche.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Beispiell\366sung:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? \334bergangsdiagramm) Tj
+/F1 11 Tf
+0 -15 Td
+(Aus dem Text folgen die \334berg\344nge:) Tj
+/F1 11 Tf
+0 -15 Td
+(A ? A : 0,5 , A ? B : 0,25 , A ? C : 0,25 A\\rightarrow A:0{,}5,\\qquad A\\rightarrow) Tj
+/F1 11 Tf
+0 -15 Td
+(B:0{,}25,\\qquad A\\rightarrow C:0{,}25 B ? A : 0,25 , B ? B : 0,5 , B ? C : 0,25) Tj
+/F1 11 Tf
+0 -15 Td
+(B\\rightarrow A:0{,}25,\\qquad B\\rightarrow B:0{,}5,\\qquad B\\rightarrow C:0{,}25 C ? A :) Tj
+/F1 11 Tf
+0 -15 Td
+(0,2 , C ? C : 0,8 C\\rightarrow A:0{,}2,\\qquad C\\rightarrow C:0{,}8) Tj
+/F1 11 Tf
+0 -15 Td
+(Von C C nach B B gibt es keinen \334bergang.) Tj
+/F1 11 Tf
+0 -15 Td
+(? \334bergangsmatrix) Tj
+/F1 11 Tf
+0 -15 Td
+(Zeilen stehen f\374r nach , Spalten f\374r von :) Tj
+/F1 11 Tf
+0 -15 Td
+(M = \( 0,5 0,25 0,2 0,25 0,5 0 0,25 0,25 0,8 \) M= \\begin{pmatrix} 0{,}5 & 0{,}25 &) Tj
+/F1 11 Tf
+0 -15 Td
+(0{,}2\\\\ 0{,}25 & 0{,}5 & 0\\\\ 0{,}25 & 0{,}25 & 0{,}8 \\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(? Verteilung nach einer Woche) Tj
+/F1 11 Tf
+0 -15 Td
+(\( 0,5 0,25 0,2 0,25 0,5 0 0,25 0,25 0,8 \) \( 500 250 250 \) = \( 0,5 ? 500 + 0,25 ? 250 +) Tj
+/F1 11 Tf
+0 -15 Td
+(0,2 ? 250 0,25 ? 500 + 0,5 ? 250 0,25 ? 500 + 0,25 ? 250 + 0,8 ? 250 \) \\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(0{,}5 & 0{,}25 & 0{,}2\\\\ 0{,}25 & 0{,}5 & 0\\\\ 0{,}25 & 0{,}25 & 0{,}8 \\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix} 500\\\\ 250\\\\ 250 \\end{pmatrix} = \\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(0{,}5\\cdot500+0{,}25\\cdot250+0{,}2\\cdot250\\\\ 0{,}25\\cdot500+0{,}5\\cdot250\\\\) Tj
+ET
+endstream
+endobj
+20 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 19 0 R >>
+endobj
+21 0 obj
+<< /Length 2135 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(0{,}25\\cdot500+0{,}25\\cdot250+0{,}8\\cdot250 \\end{pmatrix} = \( 362,5 250 387,5 \) =) Tj
+/F1 11 Tf
+0 -15 Td
+(\\boxed{ \\begin{pmatrix} 362{,}5\\\\ 250\\\\ 387{,}5 \\end{pmatrix}}) Tj
+/F1 11 Tf
+0 -15 Td
+(Also nach einer Woche:) Tj
+/F1 11 Tf
+0 -15 Td
+(A : 362,5 , B : 250 , C : 387,5 A:362{,}5,\\qquad B:250,\\qquad C:387{,}5) Tj
+/F1 11 Tf
+0 -15 Td
+(? Verteilung nach zwei Wochen) Tj
+/F1 11 Tf
+0 -15 Td
+(\( 0,5 0,25 0,2 0,25 0,5 0 0,25 0,25 0,8 \) \( 362,5 250 387,5 \) = \( 321,25 215,625 463,125) Tj
+/F1 11 Tf
+0 -15 Td
+(\) \\begin{pmatrix} 0{,}5 & 0{,}25 & 0{,}2\\\\ 0{,}25 & 0{,}5 & 0\\\\ 0{,}25 & 0{,}25 & 0{,}8) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix} \\begin{pmatrix} 362{,}5\\\\ 250\\\\ 387{,}5 \\end{pmatrix} = \\boxed{) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix} 321{,}25\\\\ 215{,}625\\\\ 463{,}125 \\end{pmatrix}}) Tj
+/F1 11 Tf
+0 -15 Td
+(Die Gesamtzahl bleibt dabei jeweils bei 1000 1000 .) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Bis zur n\344chsten Stunde!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Prozesse am Fahrrad) Tj
+/F1 11 Tf
+0 -15 Td
+(Mountainbike) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Mountainbike) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Stadtrad) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Stadtrad) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\(stark vereinfacht\)) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Inbusschraube) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Sattelmodell 1) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Sattelmodell 2) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Felge) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Speichen) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Inbus-schraube) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Sattelmodell 1) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Sattelmodell 2) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Felge) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Speichen) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(8) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(6) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+ET
+endstream
+endobj
+22 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 21 0 R >>
+endobj
+23 0 obj
+<< /Length 1760 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(1) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(1) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(2) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(2) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(72) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(64) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(10) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(8) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(1) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(1) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(2) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(2) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(70) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(68) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Beschreibt die Grafik!) Tj
+/F1 11 Tf
+0 -15 Td
+(Sammelt mathematische Fragen, die man hier bearbeiten kann und l\366st diese mit Hilfe von) Tj
+/F1 11 Tf
+0 -15 Td
+(Matrizen!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(M\366gliche Musterl\366sung:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Notiere f\374r jede Firma eine Prozessmatrix.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+([Bild] [Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Matrix = Materialbedarf.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Wie gro\337 ist der Rohstoffbedarf je Rad von Firma Radieschen, wenn jeweils immer 10) Tj
+/F1 11 Tf
+0 -15 Td
+(R\344der gleichzeitig produziert werden. \(skalare Multiplikation\)) Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Bestimme den Rohstoffbedarf beider Mountenbikes und Stadtr\344der zusammen. \(Matrizen) Tj
+/F1 11 Tf
+0 -15 Td
+(Addition \)) Tj
+ET
+endstream
+endobj
+24 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 23 0 R >>
+endobj
+25 0 obj
+<< /Length 1947 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Bestimme den Unterschied im Rohstoffbedarf bei den beiden Mountenbikes und bei den) Tj
+/F1 11 Tf
+0 -15 Td
+(zwei Stadtr\344dern. \(Matrizen Subtraktion \)) Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Wenn Firma Radieschen 3 Mountenbikes und ein Stadtrad bestellt, wie viele Rohstoffe) Tj
+/F1 11 Tf
+0 -15 Td
+(werden dann gebraucht? \(Matrix Vektor Produkt \)) Tj
+/F1 11 Tf
+0 -15 Td
+([Bild] [Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Bonusaufgabe auf dem AB \(w\374rde ich reingeben, wenn die ersten fertig sind\) \(Matrix) Tj
+/F1 11 Tf
+0 -15 Td
+(Produkt \)) Tj
+/F1 11 Tf
+0 -15 Td
+([Bild] [Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Definition der Rechenoperationen f\374r Matrizen) Tj
+/F1 11 Tf
+0 -15 Td
+(Arbeitsauftrag) Tj
+/F1 11 Tf
+0 -15 Td
+(Mathebuch:) Tj
+/F1 11 Tf
+0 -15 Td
+(Seite 170, Nummer 3) Tj
+/F1 11 Tf
+0 -15 Td
+(Seite 174, Nummer 6) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Bis zur n\344chsten Stunde!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Mathebuch:) Tj
+/F1 11 Tf
+0 -15 Td
+(Seite 170, Nummer 3) Tj
+/F1 11 Tf
+0 -15 Td
+(Seite 174, Nummer 6) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+(----------------------------------------------) Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+ET
+endstream
+endobj
+26 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 25 0 R >>
+endobj
+27 0 obj
+<< /Length 2167 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Bis zur n\344chsten Stunde!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Mathebuch:) Tj
+/F1 11 Tf
+0 -15 Td
+(Seite 170, Nummer 6) Tj
+/F1 11 Tf
+0 -15 Td
+(Seite 174, Nummer 2 d und e,) Tj
+/F1 11 Tf
+0 -15 Td
+(Nummer 5 d) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+([Bild] [Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Das neutrale Element der Addition und Multiplikation) Tj
+/F1 11 Tf
+0 -15 Td
+(Bei Rechenoperationen wie Addition oder Multiplikation gibt) Tj
+/F1 11 Tf
+0 -15 Td
+(es ein sogenanntes neutrales Element mit einer besonderen Eigenschaft.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Beispielsweise ist das neutrale Element der) Tj
+/F1 11 Tf
+0 -15 Td
+(Additio n in den reellen Zahlen die 0, denn) Tj
+/F1 11 Tf
+0 -15 Td
+(es gilt x + 0 = x f\374r alle x ? R .) Tj
+/F1 11 Tf
+0 -15 Td
+(? Da au\337erdem x) Tj
+/F1 11 Tf
+0 -15 Td
+(? 1 = x f\374r alle x ? ? gilt, ist 1 das neutrale) Tj
+/F1 11 Tf
+0 -15 Td
+(Element der Multiplikation in der Menge der reellen) Tj
+/F1 11 Tf
+0 -15 Td
+(Zahlen .) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Bestimmen Sie jeweils das neutrale Element f\374r die Addition) Tj
+/F1 11 Tf
+0 -15 Td
+(und die Multiplikation in der Menge der Matrizen ,) Tj
+/F1 11 Tf
+0 -15 Td
+(also Matrizen) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? N 1 mit A) Tj
+/F1 11 Tf
+0 -15 Td
+(+ N 1 = A und) Tj
+/F1 11 Tf
+0 -15 Td
+(? N 2 mit A) Tj
+/F1 11 Tf
+0 -15 Td
+(? N 2 = A .) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Das neutrale Element der Addition und Multiplikation) Tj
+/F1 11 Tf
+0 -15 Td
+(Gesucht ist das neutrale Element der Matrizenaddition .) Tj
+/F1 11 Tf
+0 -15 Td
+(Es soll gelten:) Tj
+/F1 11 Tf
+0 -15 Td
+(A 1 + N = A 2) Tj
+/F1 11 Tf
+0 -15 Td
+(wobei) Tj
+/F1 11 Tf
+0 -15 Td
+(A 1 = A 2) Tj
+/F1 11 Tf
+0 -15 Td
+(sein soll.) Tj
+ET
+endstream
+endobj
+28 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 27 0 R >>
+endobj
+29 0 obj
+<< /Length 2605 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(Das neutrale Element der Matrizenaddition ist die Nullmatrix .) Tj
+/F1 11 Tf
+0 -15 Td
+(Eigenschaften der Nullmatrix:) Tj
+/F1 11 Tf
+0 -15 Td
+(? Alle Eintr\344ge sind Null.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Die Nullmatrix hat dieselbe Dimension wie die Matrix, zu der sie addiert wird.) Tj
+/F1 11 Tf
+0 -15 Td
+(Beispiel:) Tj
+/F1 11 Tf
+0 -15 Td
+(N = \( 0 0 0 0 \)) Tj
+/F1 11 Tf
+0 -15 Td
+(Dann gilt:) Tj
+/F1 11 Tf
+0 -15 Td
+(A + N = A) Tj
+/F1 11 Tf
+0 -15 Td
+(Beispiel 1: Quadratische Matrix) Tj
+/F1 11 Tf
+0 -15 Td
+(\( 1 0 3 3 0 4 1 2 6 \) + \( 0 0 0 0 0 0 0 0 0 \) = \( 1 0 3 3 0 4 1 2 6 \)) Tj
+/F1 11 Tf
+0 -15 Td
+(Beispiel 2: Nicht-quadratische Matrix) Tj
+/F1 11 Tf
+0 -15 Td
+(\( 2 7 3 1 1 5 \) + \( 0 0 0 0 0 0 \) = \( 2 7 3 1 1 5 \)) Tj
+/F1 11 Tf
+0 -15 Td
+(Merksatz) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Das neutrale Element der Addition ist die Nullmatrix .) Tj
+/F1 11 Tf
+0 -15 Td
+(? Das neutrale Element der Multiplikation ist die Einheitsmatrix .) Tj
+/F1 11 Tf
+0 -15 Td
+(? Matrixaddition ist nur f\374r Matrizen gleicher Dimension definiert.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Die Einheitsmatrix ist immer quadratisch .) Tj
+/F1 11 Tf
+0 -15 Td
+(Gesucht ist das neutrale Element der Matrizenmultiplikation .) Tj
+/F1 11 Tf
+0 -15 Td
+(Es soll gelten:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(A 1 ? N = A 2 A_1 \\cdot N = A_2) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(wobei) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(A 1 = A 2 A_1 = A_2) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(sein soll.) Tj
+/F1 11 Tf
+0 -15 Td
+(Das neutrale Element der Matrizenmultiplikation ist die Einheitsmatrix E E \(an der Tafel) Tj
+/F1 11 Tf
+0 -15 Td
+(mit N N bezeichnet\).) Tj
+/F1 11 Tf
+0 -15 Td
+(Eigenschaften der Einheitsmatrix:) Tj
+/F1 11 Tf
+0 -15 Td
+(? Auf der Hauptdiagonalen stehen nur Einsen.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Alle anderen Eintr\344ge sind Null.) Tj
+/F1 11 Tf
+0 -15 Td
+(Beispiel:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(E = \( 1 0 0 0 1 0 0 0 1 \) E=) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(1 & 0 & 0\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(0 & 1 & 0\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(0 & 0 & 1) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Dann gilt f\374r jede passende Matrix A A :) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(A ? E = E ? A = A A \\cdot E = E \\cdot A = A) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Beispiel 1: Quadratische Matrix) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\( 2 3 1 1 7 5 9 8 3 \) ? \( 1 0 0 0 1 0 0 0 1 \) = \( 2 3 1 1 7 5 9 8 3 \) \\begin{pmatrix}) Tj
+ET
+endstream
+endobj
+30 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 29 0 R >>
+endobj
+31 0 obj
+<< /Length 2191 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(2 & 3 & 1\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(1 & 7 & 5\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(9 & 8 & 3) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(\\cdot) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(1 & 0 & 0\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(0 & 1 & 0\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(0 & 0 & 1) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(=) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(2 & 3 & 1\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(1 & 7 & 5\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(9 & 8 & 3) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Beispiel 2: Nicht-quadratische Matrix) Tj
+/F1 11 Tf
+0 -15 Td
+(Die Einheitsmatrix bleibt quadratisch und muss zur inneren Dimension der Multiplikation) Tj
+/F1 11 Tf
+0 -15 Td
+(passen:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\( m ? n \) ? \( n ? n \) \(m \\times n\)\\cdot\(n \\times n\)) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Beispiel:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\( 2 3 1 1 7 5 \) ? \( 1 0 0 0 1 0 0 0 1 \) = \( 2 3 1 1 7 5 \) \\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(2 & 3 & 1\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(1 & 7 & 5) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(\\cdot) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(1 & 0 & 0\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(0 & 1 & 0\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(0 & 0 & 1) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(=) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(2 & 3 & 1\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(1 & 7 & 5) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Addition von Matrizen: Nullmatrix) Tj
+/F1 11 Tf
+0 -15 Td
+(Gesucht ist das neutrale Element der Matrizenaddition .) Tj
+/F1 11 Tf
+0 -15 Td
+(A 1 + N = A 2 wobei A 1 = A 2 sein soll.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Das neutrale Element der Matrizenaddition ist die Nullmatrix .) Tj
+/F1 11 Tf
+0 -15 Td
+(Eigenschaften der Nullmatrix:) Tj
+/F1 11 Tf
+0 -15 Td
+(? Alle Eintr\344ge sind Null.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Die Nullmatrix hat dieselbe Dimension wie die Matrix, zu der sie addiert wird.) Tj
+ET
+endstream
+endobj
+32 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 31 0 R >>
+endobj
+33 0 obj
+<< /Length 2096 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Beispiel:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(N = \( 0 0 0 0 \) N=) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(0 & 0\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(0 & 0) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Dann gilt:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(A + N = A A + N = A A+N=A) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Beispiel 1: Quadratische Matrix) Tj
+/F1 11 Tf
+0 -15 Td
+(Beispiel 2: Nicht-quadratische Matrix) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\( 2 7 3 1 1 5 \) + \( 0 0 0 0 0 0 \) = \( 2 7 3 1 1 5 \) \\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(2 & 7 & 3\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(1 & 1 & 5) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(+) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(0 & 0 & 0\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(0 & 0 & 0) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(=) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(2 & 7 & 3\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(1 & 1 & 5) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix} \(21?71?35?\)+\(00?00?00?\)=\(21?71?35?\)) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Gesucht ist das neutrale Element der Matrizenmultiplikation .) Tj
+/F1 11 Tf
+0 -15 Td
+(Es soll gelten:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(A 1 ? N = A 2 A_1 \\cdot N = A_2 A1??N=A2?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(wobei) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(A 1 = A 2 A_1 = A_2 A1?=A2?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(sein soll.) Tj
+/F1 11 Tf
+0 -15 Td
+(Das neutrale Element der Matrizenmultiplikation ist die Einheitsmatrix E E E \(an der) Tj
+/F1 11 Tf
+0 -15 Td
+(Tafel mit N N N bezeichnet\).) Tj
+/F1 11 Tf
+0 -15 Td
+(Eigenschaften der Einheitsmatrix:) Tj
+/F1 11 Tf
+0 -15 Td
+(? Auf der Hauptdiagonalen stehen nur Einsen.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Alle anderen Eintr\344ge sind Null.) Tj
+/F1 11 Tf
+0 -15 Td
+(Beispiel:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(E = \( 1 0 0 0 1 0 0 0 1 \) E=) Tj
+ET
+endstream
+endobj
+34 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 33 0 R >>
+endobj
+35 0 obj
+<< /Length 1957 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(1 & 0 & 0\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(0 & 1 & 0\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(0 & 0 & 1) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix} E=?) Tj
+/F1 11 Tf
+0 -15 Td
+(Dann gilt f\374r jede passende Matrix A A A:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(A ? E = E ? A = A A \\cdot E = E \\cdot A = A A?E=E?A=A) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Beispiel 1: Quadratische Matrix) Tj
+/F1 11 Tf
+0 -15 Td
+(21 Beispiel 2: Nicht-quadratische Matrix) Tj
+/F1 11 Tf
+0 -15 Td
+(Die Einheitsmatrix bleibt quadratisch und muss zur inneren Dimension der Multiplikation) Tj
+/F1 11 Tf
+0 -15 Td
+(passen:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\( m ? n \) ? \( n ? n \) \(m \\times n\)\\cdot\(n \\times n\) \(m?n\)?\(n?n\)) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Beispiel:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\( 2 3 1 1 7 5 \) ? \( 1 0 0 0 1 0 0 0 1 \) = \( 2 3 1 1 7 5 \) \\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(2 & 3 & 1\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(1 & 7 & 5) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(\\cdot) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(1 & 0 & 0\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(0 & 1 & 0\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(0 & 0 & 1) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(=) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(2 & 3 & 1\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(1 & 7 & 5) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix} \(21?37?15?\)?=\(21?37?15?\)) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Prozesse Schokolade) Tj
+/F1 11 Tf
+0 -15 Td
+(6g) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(3g) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(1g) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(3g) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(5g) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(3g) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(3g) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+ET
+endstream
+endobj
+36 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 35 0 R >>
+endobj
+37 0 obj
+<< /Length 2057 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(1g) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(3g) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(2g) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(6) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(2) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(2) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(2) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(5) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(3) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Kakaopulver) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Kakaobutter) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Zucker) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Milchpulver) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Mehrstufe Prozessmatrizen) Tj
+/F1 11 Tf
+0 -15 Td
+(? Stelle die Teilbedarfsmatrix A f\374r die Pralinenpackungen und die Teilbedarfsmatrix B) Tj
+/F1 11 Tf
+0 -15 Td
+(f\374r die Rohstoffe auf .) Tj
+/F1 11 Tf
+0 -15 Td
+(? Berechne die Gesamtbedarfsmatrix G .) Tj
+/F1 11 Tf
+0 -15 Td
+(? Ein Kunde bestellt:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? 100 Packungen \204Edle Mischung\223) Tj
+/F1 11 Tf
+0 -15 Td
+(? 80 Packungen \204S\374\337e Mischung\223) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Berechne den Gesamtbedarf an Rohstoffen.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Bonusfrage: Warum kann man den Rohstoffbedarf entweder \374ber die Gesamtbedarfsmatrix G G) Tj
+/F1 11 Tf
+0 -15 Td
+(oder durch eine zweistufige Rechnung \(zuerst Schokoladenbedarf, dann Rohstoffbedarf\)) Tj
+/F1 11 Tf
+0 -15 Td
+(bestimmen? Begr\374nden mithilfe der Matrixmultiplikation.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Matrix A \(Schokoladenbedarf je Packung\)) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Zeilen: Schokoladensorten \( Zeile 1: Zartbitterschokolade, Zeile 2: Wei\337e Schokolade) Tj
+/F1 11 Tf
+0 -15 Td
+(...\)) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Spalten: Packungen \(Spalte 1: Edle Mischung, Spalte 2: S\374\337e Mischung\)) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+ET
+endstream
+endobj
+38 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 37 0 R >>
+endobj
+39 0 obj
+<< /Length 1880 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(A = \( 6 2 2 3 2 5 \) A=) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(6 & 2\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(2 & 3\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(2 & 5) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix} ??) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Matrix B \(Rohstoffbedarf je Schokoladenst\374ck\)) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Zeilen: Rohstoffe, Spalten: Schokoladensorten) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(B = \( 6 0 3 1 5 3 3 3 1 0 0 2 \) B=) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(6 & 0 & 3\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(1 & 5 & 3\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(3 & 3 & 1\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(0 & 0 & 2) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Gesamtbedarfsmatrix) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(G= B?A) Tj
+/F1 11 Tf
+0 -15 Td
+(G = \( 6 0 3 1 5 3 3 3 1 0 0 2 \) ? \( 6 2 2 3 2 5 \) ?) Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Kundenbestellung) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Bestellvektor:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(x = \( 100 80 \) x=) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(100\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(80) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Gesamtbedarf:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(r = G ? x r=G\\cdot x) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(r = \( 42 27 22 32 26 20 4 10 \) ? \( 100 80 \) r=) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(42 & 27\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(22 & 32\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(26 & 20\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(4 & 10) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(\\cdot) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(100\\\\) Tj
+ET
+endstream
+endobj
+40 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 39 0 R >>
+endobj
+41 0 obj
+<< /Length 2484 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(80) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Ergebnis) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(F\374r die Bestellung von 100 Edlen Mischungen und 80 S\374\337en Mischungen werden ben\366tigt:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Rohstoff Bedarf Kakaopulver 6.360 g Kakaobutter 4.760 g Zucker 4.200 g Milchpulver 1.200) Tj
+/F1 11 Tf
+0 -15 Td
+(g) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(____________________________________________________________) Tj
+/F1 11 Tf
+0 -15 Td
+(Weg 1: Zweistufige Rechnung) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Zuerst wird aus der Bestellung der Bedarf an Schokoladensorten berechnet. Anschlie\337end) Tj
+/F1 11 Tf
+0 -15 Td
+(wird aus diesem Schokoladenbedarf der Rohstoffbedarf bestimmt.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Mathematisch:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Rohstoffbedarf = A ? \( B ? x \) \\text{Rohstoffbedarf}) Tj
+/F1 11 Tf
+0 -15 Td
+(= A \\cdot \(B \\cdot x\)) Tj
+/F1 11 Tf
+0 -15 Td
+(Dabei ist) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? A A : Rohstoffe ? Schokoladensorten) Tj
+/F1 11 Tf
+0 -15 Td
+(? B B : Schokoladensorten ? Pralinenpackungen) Tj
+/F1 11 Tf
+0 -15 Td
+(? x x : Bestellvektor) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Weg 2: Gesamtbedarfsmatrix) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Zun\344chst werden die beiden Teilbedarfsmatrizen zu einer Gesamtbedarfsmatrix) Tj
+/F1 11 Tf
+0 -15 Td
+(zusammengefasst:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(G = A ? B . G=A\\cdot B.) Tj
+/F1 11 Tf
+0 -15 Td
+(Dann gen\374gt eine einzige Matrixmultiplikation:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Rohstoffbedarf = G ? x . \\text{Rohstoffbedarf}) Tj
+/F1 11 Tf
+0 -15 Td
+(= G \\cdot x.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Begr\374ndung) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Beide Wege liefern dasselbe Ergebnis, weil die Matrixmultiplikation assoziativ ist:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(A ? \( B ? x \) = \( A ? B \) ? x . A\\cdot\(B\\cdot x\)) Tj
+/F1 11 Tf
+0 -15 Td
+(=) Tj
+/F1 11 Tf
+0 -15 Td
+(\(A\\cdot B\)\\cdot x.) Tj
+/F1 11 Tf
+0 -15 Td
+(Deshalb kann man entweder) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? die Berechnung Schritt f\374r Schritt entlang der Produktionsstufen durchf\374hren oder) Tj
+/F1 11 Tf
+0 -15 Td
+(? die Produktionsstufen zun\344chst zu einer Gesamtbedarfsmatrix zusammenfassen.) Tj
+ET
+endstream
+endobj
+42 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 41 0 R >>
+endobj
+43 0 obj
+<< /Length 1558 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Bis zur n\344chsten Stunde!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Mathebuch:) Tj
+/F1 11 Tf
+0 -15 Td
+(Seite 175, Nummer 9) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 23) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 24) Tj
+/F1 11 Tf
+0 -15 Td
+(Seite 173) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Bis zur n\344chsten Stunde!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Mathebuch:) Tj
+/F1 11 Tf
+0 -15 Td
+(Seite , Nummer) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 26) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 27) Tj
+/F1 11 Tf
+0 -15 Td
+(0,1) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(1) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? ^ 0 = \( \( 1 10 260 \) \)) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 28) Tj
+/F1 11 Tf
+0 -15 Td
+(0,1) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(1) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? ^ 0 = \( \( 1 10 260 \) \)) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Text hier\205) Tj
+ET
+endstream
+endobj
+44 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 43 0 R >>
+endobj
+45 0 obj
+<< /Length 2145 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\\[) Tj
+/F1 11 Tf
+0 -15 Td
+(\\vec{a}_0=) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(110\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(260) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(\\]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 29) Tj
+/F1 11 Tf
+0 -15 Td
+(Aufgaben) Tj
+/F1 11 Tf
+0 -15 Td
+(? Stelle die \334bergangsmatrix A A , die beschreibt, wie sich die Fahrzeuge zwischen den) Tj
+/F1 11 Tf
+0 -15 Td
+(beiden Bereichen bewegen, auf .) Tj
+/F1 11 Tf
+0 -15 Td
+(? Interpretiere den Eintrag a 12 = 0,1 a_{12}=0{,}1 im Sachzusammenhang.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Zu Beginn befinden sich 110 Fahrzeuge in der Reparaturhalle und 260 im Verkaufslager.) Tj
+/F1 11 Tf
+0 -15 Td
+(Bestimme den Zustand nach einem, zwei und sowie n \334berg\344ngen.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Entwickele ein Verfahren, mit dem auch der vorherige Zustand bestimmt werden k\366nnte.) Tj
+/F1 11 Tf
+0 -15 Td
+(Untersuche insbesondere, unter welcher Voraussetzung dies eindeutig m\366glich ist.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Bestimme , ob aus a ? 1 \\vec a_1 der Anfangszustand eindeutig bestimmt werden kann.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Lernziele der Stunde) Tj
+/F1 11 Tf
+0 -15 Td
+(Matrixpotenz, Inverse Matrix) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Beispiell\366sung:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? [Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? 10% der Fahrzeuge aus dem Verkaufslager wechseln in die Reparaturhalle.) Tj
+/F1 11 Tf
+0 -15 Td
+(? [Bild] [Bild] [Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? [Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Bis zur n\344chsten Stunde!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Mathebuch:) Tj
+/F1 11 Tf
+0 -15 Td
+(Seite , Nummer) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(a ? 0 = \( 110 260 \) \\vec{a}_0=) Tj
+/F1 11 Tf
+0 -15 Td
+(\\begin{pmatrix}) Tj
+/F1 11 Tf
+0 -15 Td
+(110\\\\) Tj
+/F1 11 Tf
+0 -15 Td
+(260) Tj
+/F1 11 Tf
+0 -15 Td
+(\\end{pmatrix} ?) Tj
+ET
+endstream
+endobj
+46 0 obj
+<< /Type /Page /Parent 47 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 45 0 R >>
+endobj
+47 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R 8 0 R 10 0 R 12 0 R 14 0 R 16 0 R 18 0 R 20 0 R 22 0 R 24 0 R 26 0 R 28 0 R 30 0 R 32 0 R 34 0 R 36 0 R 38 0 R 40 0 R 42 0 R 44 0 R 46 0 R] /Count 22 >>
+endobj
+48 0 obj
+<< /Type /Catalog /Pages 47 0 R >>
+endobj
+xref
+0 49
+0000000000 65535 f 
+0000000009 00000 n 
+0000000106 00000 n 
+0000000208 00000 n 
+0000002672 00000 n 
+0000002815 00000 n 
+0000004911 00000 n 
+0000005054 00000 n 
+0000007880 00000 n 
+0000008023 00000 n 
+0000010555 00000 n 
+0000010699 00000 n 
+0000013007 00000 n 
+0000013152 00000 n 
+0000015540 00000 n 
+0000015685 00000 n 
+0000018567 00000 n 
+0000018712 00000 n 
+0000022284 00000 n 
+0000022429 00000 n 
+0000026188 00000 n 
+0000026333 00000 n 
+0000028520 00000 n 
+0000028665 00000 n 
+0000030477 00000 n 
+0000030622 00000 n 
+0000032621 00000 n 
+0000032766 00000 n 
+0000034985 00000 n 
+0000035130 00000 n 
+0000037787 00000 n 
+0000037932 00000 n 
+0000040175 00000 n 
+0000040320 00000 n 
+0000042468 00000 n 
+0000042613 00000 n 
+0000044622 00000 n 
+0000044767 00000 n 
+0000046876 00000 n 
+0000047021 00000 n 
+0000048953 00000 n 
+0000049098 00000 n 
+0000051634 00000 n 
+0000051779 00000 n 
+0000053389 00000 n 
+0000053534 00000 n 
+0000055731 00000 n 
+0000055876 00000 n 
+0000056080 00000 n 
+trailer
+<< /Size 49 /Root 48 0 R >>
+startxref
+56131
+%%EOF

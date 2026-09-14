@@ -17,6 +17,11 @@ import {
   occupiedStoredLoginCodes,
   toStoredLoginCode,
 } from '../utils/loginCodeCrypto';
+import {
+  folderPathCovers,
+  folderPathsEquivalent,
+  toPortableFolderRef,
+} from '../utils/folderPathMatch';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -455,52 +460,93 @@ router.get('/:groupId/lesson-shared-input-shares', async (req: Request, res: Res
   }
 });
 
-/** Lehrer: Prüfung für eine Lerngruppe starten (Vollbild bei SuS) */
+function normalizeExamGroupIds(groupId?: string, groupIds?: string[]): string[] {
+  const raw = Array.isArray(groupIds) && groupIds.length ? groupIds : groupId ? [groupId] : [];
+  return [...new Set(raw.map((id) => String(id || '').trim()).filter(Boolean))];
+}
+
+/** Lehrer: Lerngruppen zu einem Stunden-/Reihenpfad (alle zugeordneten Reihen) */
+router.get('/groups-for-path', async (req: Request, res: Response) => {
+  try {
+    const lessonPath = String(req.query.path || '').trim();
+    const teacherId = String(req.query.teacherId || '').trim();
+    if (!lessonPath || !teacherId) {
+      return res.status(400).json({ error: 'path und teacherId sind erforderlich' });
+    }
+    const groups = await prisma.learningGroup.findMany({
+      where: { teacherId },
+      select: {
+        id: true,
+        assignments: { where: { type: 'FOLDER' }, select: { refId: true } },
+      },
+    });
+    const groupIds = groups
+      .filter((g) =>
+        g.assignments.some(
+          (a) =>
+            folderPathsEquivalent(a.refId, lessonPath) || folderPathCovers(a.refId, lessonPath),
+        ),
+      )
+      .map((g) => g.id);
+    return res.json({ groupIds });
+  } catch (e: any) {
+    console.error('groups-for-path:', e);
+    return res.status(500).json({ error: e?.message || 'Serverfehler' });
+  }
+});
+
+/** Lehrer: Prüfung für eine oder mehrere Lerngruppen starten (Vollbild bei SuS) */
 router.post('/exam-beacon/start', async (req: Request, res: Response) => {
   try {
-    const { teacherId, groupId, filePath, lessonPath } = req.body as {
+    const { teacherId, groupId, groupIds, filePath, lessonPath } = req.body as {
       teacherId?: string;
       groupId?: string;
+      groupIds?: string[];
       filePath?: string;
       lessonPath?: string;
     };
-    if (!teacherId?.trim() || !groupId?.trim() || !filePath?.trim()) {
-      return res.status(400).json({ error: 'teacherId, groupId und filePath sind erforderlich' });
+    const ids = normalizeExamGroupIds(groupId, groupIds);
+    if (!teacherId?.trim() || !ids.length || !filePath?.trim()) {
+      return res
+        .status(400)
+        .json({ error: 'teacherId, groupId(s) und filePath sind erforderlich' });
     }
-    const group = await prisma.learningGroup.findUnique({
-      where: { id: groupId },
-      select: { teacherId: true },
+    const owned = await prisma.learningGroup.findMany({
+      where: { id: { in: ids }, teacherId },
+      select: { id: true },
     });
-    if (!group || group.teacherId !== teacherId) {
+    if (owned.length !== ids.length) {
       return res.status(403).json({ error: 'Keine Berechtigung' });
     }
     const normalizedPath = String(filePath).replace(/\\/g, '/').trim();
     const beaconId = `exam-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-    await prisma.lessonExamBeacon.upsert({
-      where: { groupId },
-      create: {
-        groupId,
-        filePath: normalizedPath,
-        lessonPath: String(lessonPath || '').trim(),
-        beaconId,
-        active: true,
-      },
-      update: {
-        filePath: normalizedPath,
-        lessonPath: String(lessonPath || '').trim(),
-        beaconId,
-        active: true,
-      },
-    });
-    // Datei für SuS freigeben
-    await prisma.fileShare.upsert({
-      where: {
-        filePath_groupId: { filePath: normalizedPath, groupId },
-      },
-      create: { filePath: normalizedPath, groupId },
-      update: {},
-    });
-    return res.json({ ok: true, beaconId, filePath: normalizedPath, active: true });
+    const lessonPathNorm = String(lessonPath || '').trim();
+    for (const gid of ids) {
+      await prisma.lessonExamBeacon.upsert({
+        where: { groupId: gid },
+        create: {
+          groupId: gid,
+          filePath: normalizedPath,
+          lessonPath: lessonPathNorm,
+          beaconId,
+          active: true,
+        },
+        update: {
+          filePath: normalizedPath,
+          lessonPath: lessonPathNorm,
+          beaconId,
+          active: true,
+        },
+      });
+      await prisma.fileShare.upsert({
+        where: {
+          filePath_groupId: { filePath: normalizedPath, groupId: gid },
+        },
+        create: { filePath: normalizedPath, groupId: gid },
+        update: {},
+      });
+    }
+    return res.json({ ok: true, beaconId, filePath: normalizedPath, active: true, groupIds: ids });
   } catch (e: any) {
     console.error('exam-beacon/start:', e);
     return res.status(500).json({ error: e?.message || 'Serverfehler' });
@@ -510,25 +556,34 @@ router.post('/exam-beacon/start', async (req: Request, res: Response) => {
 /** Lehrer: Prüfung beenden → Overlay bei SuS schließen */
 router.post('/exam-beacon/stop', async (req: Request, res: Response) => {
   try {
-    const { teacherId, groupId } = req.body as { teacherId?: string; groupId?: string };
-    if (!teacherId?.trim() || !groupId?.trim()) {
-      return res.status(400).json({ error: 'teacherId und groupId sind erforderlich' });
+    const { teacherId, groupId, groupIds } = req.body as {
+      teacherId?: string;
+      groupId?: string;
+      groupIds?: string[];
+    };
+    const ids = normalizeExamGroupIds(groupId, groupIds);
+    if (!teacherId?.trim() || !ids.length) {
+      return res.status(400).json({ error: 'teacherId und groupId(s) sind erforderlich' });
     }
-    const group = await prisma.learningGroup.findUnique({
-      where: { id: groupId },
-      select: { teacherId: true },
+    const owned = await prisma.learningGroup.findMany({
+      where: { id: { in: ids }, teacherId },
+      select: { id: true },
     });
-    if (!group || group.teacherId !== teacherId) {
+    if (owned.length !== ids.length) {
       return res.status(403).json({ error: 'Keine Berechtigung' });
     }
-    const existing = await prisma.lessonExamBeacon.findUnique({ where: { groupId } });
-    if (existing) {
-      await prisma.lessonExamBeacon.update({
-        where: { groupId },
-        data: { active: false },
-      });
+    let lastPath: string | null = null;
+    for (const gid of ids) {
+      const existing = await prisma.lessonExamBeacon.findUnique({ where: { groupId: gid } });
+      if (existing) {
+        lastPath = existing.filePath;
+        await prisma.lessonExamBeacon.update({
+          where: { groupId: gid },
+          data: { active: false },
+        });
+      }
     }
-    return res.json({ ok: true, active: false, filePath: existing?.filePath || null });
+    return res.json({ ok: true, active: false, filePath: lastPath, groupIds: ids });
   } catch (e: any) {
     console.error('exam-beacon/stop:', e);
     return res.status(500).json({ error: e?.message || 'Serverfehler' });
@@ -1715,23 +1770,19 @@ router.post('/:id/folders', async (req: Request, res: Response) => {
 router.delete('/:id/folders/:path(*)', async (req: Request, res: Response) => {
   try {
     const groupId = req.params.id;
-    const folderPath = req.params.path;
-    
-    // Find and delete the assignment
-    const assignment = await prisma.groupAssignment.findFirst({
-      where: {
-        groupId: groupId,
-        type: 'FOLDER',
-        refId: folderPath
-      }
+    const folderPath = toPortableFolderRef(req.params.path);
+
+    const assignments = await prisma.groupAssignment.findMany({
+      where: { groupId, type: 'FOLDER' },
     });
+    const assignment = assignments.find((a) => folderPathsEquivalent(a.refId, folderPath));
 
     if (!assignment) {
       return res.status(404).json({ error: 'Ordner-Zuordnung nicht gefunden' });
     }
 
     await prisma.groupAssignment.delete({
-      where: { id: assignment.id }
+      where: { id: assignment.id },
     });
 
     res.json({ message: 'Ordner-Zuordnung erfolgreich entfernt' });

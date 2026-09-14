@@ -1,0 +1,2966 @@
+{
+  "sets": [
+    {
+      "id": "c_0b71f55a-9ca8-4194-8b8d-caea35cd216c",
+      "name": "KI",
+      "reihePath": "git-intern/Informatik/MSS Grundthemen/11-04 KI",
+      "reihePaths": [
+        "git-intern/Informatik/MSS Grundthemen/11-04 KI"
+      ],
+      "lessons": [
+        {
+          "id": "ls_1aabbd5a-a6b9-43b2-bf13-ecbfd9150720",
+          "lessonName": "Allgemein",
+          "lessonKey": "__allgemein__",
+          "topicName": "Allgemein",
+          "tasks": []
+        },
+        {
+          "id": "ls_4b666f0d-68a1-4ede-afec-14b88d9cdf1a",
+          "lessonName": "01.01 KI sucht Mensch",
+          "lessonKey": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.01 KI sucht Mensch",
+          "topicName": "01 Basiswissen",
+          "tasks": []
+        },
+        {
+          "id": "ls_2b1343a5-433b-4bd5-b48b-f7b0e42b827e",
+          "lessonName": "01.02 Orga",
+          "lessonKey": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.02 Orga",
+          "topicName": "01 Basiswissen",
+          "tasks": [
+            {
+              "category": "Eigen",
+              "prompt": "<div data-et-layout=\"img-left\"><p><b>Ordne zu</b>:&nbsp;</p><p>Die Zuordnung eines Bildes zur Kategorie „Hund“ ist eine ___.</p><p><br></p><p></p><img src=\"data:image/png;base64,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",
+              "solution": "Klassifikation.",
+              "id": "q_8a511810-1f79-4c03-a907-f5f31c172c74"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><b>Benenne </b>den Fachbegriff:&nbsp;</p><p>Eine KI ordnet ein Bild der falschen Kategorie zu.</p>",
+              "solution": "Fehlklassifikation.",
+              "id": "q_aa216a18-c7b4-443e-b854-398a5f6b821b"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><b>Entscheide</b>:&nbsp;</p><p>Werden bestimmte Gruppen regelmäßig häufiger falsch erkannt, liegt Bias oder ein zufälliger Fehler vor?</p>",
+              "solution": "Bias.",
+              "id": "q_cf73e9b4-7a22-4be9-b138-d1124879c4f8"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><b>Ergänze</b>:&nbsp;</p><p>Gute Trainingsdaten sollten korrekt, passend und ____ sein.</p>",
+              "solution": "vielfältig.",
+              "id": "q_4e278d40-5b7a-4105-8d25-380b7f4b9d61"
+            }
+          ]
+        },
+        {
+          "id": "ls_bc06e889-a504-47e8-9b88-bf1a6943b1f3",
+          "lessonName": "01.03 Was ist KI? Intelligenz?",
+          "lessonKey": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.03 Was ist KI? Intelligenz?",
+          "topicName": "01 Basiswissen",
+          "tasks": [
+            {
+              "category": "Eigen",
+              "prompt": "<p><b>Ergänze</b> die Merkmale von Intelligenz:&nbsp;</p><p><br></p><p>Intelligenz zeigt sich durch rationales und ________ Denken und Handeln sowie durch Lernen, Schlussfolgern und ________.</p>",
+              "solution": "zweckorientiertes, Problemlösen",
+              "id": "q_088042f6-ad51-48e9-9073-e7a4dd1ee097"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><b>Definiere</b> den Begriff künstliche Intelligenz.</p>",
+              "solution": "Künstliche Intelligenz bezeichnet die Nachahmung menschlicher Intelligenzleistungen durch Programme oder Maschinen.",
+              "id": "q_77ed818b-64d0-4799-958a-d0013dc6dbd6"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><b>Unterscheide</b> schwache und starke KI.</p>",
+              "solution": "Schwache KI ist auf bestimmte Aufgaben spezialisiert. Starke KI könnte unterschiedliche Probleme selbstständig erkennen und lösen.",
+              "id": "q_16eca53c-3b12-4334-9a42-a3917a038185"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><b>Ergänze</b> zwei typische Arbeitsweisen schwacher KI:&nbsp;</p><p><br></p><p>Erkennen von ________ und Durchsuchen großer ________.</p>",
+              "solution": "Mustern, Datenmengen",
+              "id": "q_19ef1a25-515b-456a-a3c2-17cd7df42231"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><b>Ordne</b> heutige KI Anwendungen einer Kategorie zu und begründe.</p>",
+              "solution": "Sie gehören zur schwachen KI, da sie auf bestimmte Aufgaben und Anwendungsbereiche begrenzt sind.",
+              "id": "q_aaec4efb-42f6-4662-b78e-bb17cf739687"
+            }
+          ]
+        },
+        {
+          "id": "ls_c5649148-064a-47a8-b3f5-5541e8a26406",
+          "lessonName": "01.04 Merkmale, KI-Welt",
+          "lessonKey": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.04 Merkmale, KI-Welt",
+          "topicName": "01 Basiswissen",
+          "tasks": [
+            {
+              "category": "Eigen",
+              "prompt": "Was ist ein kognitiver Agent?",
+              "solution": "Ein Akteur, der seine Umgebung wahrnimmt und in ihr handelt.",
+              "id": "q_1ba7d75d-e3a3-41cc-8c5e-bac35d1442e8"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Unterscheide</span> Sensoren und Aktuatoren.</p>",
+              "solution": "Sensoren nehmen die Umgebung wahr, Aktuatoren verändern die Umgebung.",
+              "id": "q_ff0880df-ba8a-4e05-882a-ad636d505ad0"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Nenne</span> vier Merkmale intelligenter Systeme.</p>",
+              "solution": "Zum Beispiel autonom, lernfähig, zielorientiert und adaptiv.",
+              "id": "q_a1f318be-94c8-48dc-b0cb-b777aecc8e17"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Nenne</span> drei Kerngebiete der KI.</p>",
+              "solution": "Zum Beispiel Sprachverstehen, Bildverstehen und Robotik.",
+              "id": "q_8f97f6f1-ca02-4269-a1d2-7083b1d04930"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Was bedeutet KI Vollständigkeit?",
+              "solution": "Einzelne kognitive Fähigkeiten sind mit weiteren kognitiven Fähigkeiten eng verknüpft.",
+              "id": "q_9807784e-cf2c-4fb9-9922-39551b23e79c"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Erkläre</span>, wie mehrere einfache Agenten gemeinsam intelligentes Verhalten erzeugen können.</p>",
+              "solution": "Durch Interaktion und das Zusammenführen lokaler Lösungen kann ein komplexes Gesamtverhalten entstehen.",
+              "id": "q_c4b5ce0b-d1f8-4b06-84b0-11dfe0cf7228"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Was bildet die Grundlage von Intelligenz nach Wahlster?",
+              "solution": "Die Verarbeitung von Wissen.",
+              "id": "q_805e9380-10ce-4ed1-ab14-5b3675b32322"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Unterscheide</span> symbolische und subsymbolische KI am Beispiel Autofahren.</p>",
+              "solution": "Symbolische KI nutzt zum Beispiel Regeln und Wissen, subsymbolische KI zum Beispiel neuronale Netze und Mustererkennung.",
+              "id": "q_bfb6168c-0b77-45b1-89d5-de4af39256e7"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Nenne</span> vier Dimensionen von Intelligenz.</p>",
+              "solution": "Sensomotorische, kognitive, emotionale und soziale Intelligenz.",
+              "id": "q_09f7cfe2-2915-4bac-b5ef-a12d22d5692e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Vergleiche</span> menschliche und künstliche Intelligenz in einem Satz.</p>",
+              "solution": "KI kann Menschen in einzelnen Spezialgebieten übertreffen, ist ihnen aber bei allgemeiner Alltagsintelligenz sowie emotionaler und sozialer Intelligenz unterlegen.",
+              "id": "q_3092eef7-6fb1-4a9e-a230-d6f7b99e34db"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Definiere</span> das Merkmal autonom.</p>",
+              "solution": "Ein autonomes System kann ohne ständige Steuerung durch einen Menschen selbstständig handeln.",
+              "id": "q_2130fc70-18d7-47a3-88f1-efa58bba9cba"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Ordne</span> das Beispiel zu: Ein Fahrzeug bremst selbstständig, weil es ein Hindernis erkennt.</p>",
+              "solution": "Autonom, da das System eigenständig auf seine Umgebung reagiert.",
+              "id": "q_c67cf61e-098b-41fa-90b2-0025b6b2713e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Definiere</span> das Merkmal proaktiv.</p>",
+              "solution": "Ein proaktives System wird selbstständig aktiv, bevor es ausdrücklich dazu aufgefordert wird.",
+              "id": "q_454d6ef0-19b5-4dce-b74a-8d70491ea88f"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Ordne</span> das Beispiel zu: Ein Fahrzeug warnt andere Fahrzeuge frühzeitig vor einer Gefahrenstelle.</p>",
+              "solution": "Proaktiv, da das System von sich aus eine zukünftige Gefahr meldet.",
+              "id": "q_02d52a9a-d0cc-4dd3-bfd6-4291c138ad34"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Definiere</span> das Merkmal adaptiv.</p>",
+              "solution": "Ein adaptives System passt sein Verhalten an veränderte Bedingungen oder Situationen an.",
+              "id": "q_f1a89dfe-e57f-45ed-be45-0ed3bb624105"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Ordne</span> das Beispiel zu: Ein Roboter verändert seine Bewegungen auf rutschigem Untergrund.</p>",
+              "solution": "Adaptiv, da er sein Verhalten an die neue Umgebung anpasst.",
+              "id": "q_09921b2b-9e30-42a7-8d29-78110a935cad"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Definiere</span> das Merkmal selbsterklärend.</p>",
+              "solution": "Ein selbsterklärendes System kann verständlich begründen, warum es eine bestimmte Entscheidung getroffen hat.",
+              "id": "q_3a46bfcd-92ee-4b98-bdf7-77bb711309b8"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Formuliere</span> eine mögliche Erklärung eines selbsterklärenden Fahrzeugs nach einer Bremsung.</p>",
+              "solution": "Ich habe gebremst, weil ich ein Hindernis auf der Fahrbahn erkannt habe.",
+              "id": "q_339f611b-9b22-4d4a-b295-382cae0af116"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Definiere</span> das Merkmal fehlertolerant.</p>",
+              "solution": "Ein fehlertolerantes System kann trotz einzelner Fehler oder Störungen sinnvoll weiterarbeiten.",
+              "id": "q_66649ade-b10f-4c20-84c1-2acb8d8e3a9b"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Ordne</span> das Beispiel zu: Ein Roboter nutzt einen zweiten Sensor weiter, nachdem ein anderer Sensor ausgefallen ist.</p>",
+              "solution": "Fehlertolerant, da das System trotz eines Fehlers funktionsfähig bleibt.",
+              "id": "q_bf4a1fdd-df16-4142-a1af-6759092e8453"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Definiere</span> das Merkmal selbstoptimierend.</p>",
+              "solution": "Ein selbstoptimierendes System verbessert eigenständig die Qualität oder Effizienz seines Verhaltens.",
+              "id": "q_97ed566e-2683-4b16-8185-e02f86a3b5b7"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Ordne</span> das Beispiel zu: Ein Navigationssystem verändert seine Berechnungsstrategie, um schneller geeignete Routen zu finden.</p>",
+              "solution": "Selbstoptimierend, da es seine eigene Arbeitsweise verbessert.",
+              "id": "q_f57e6233-6d1e-4d45-887b-a5706b09021a"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Definiere</span> das Merkmal lernfähig.</p>",
+              "solution": "Ein lernfähiges System kann aus Daten oder Erfahrungen neue Zusammenhänge ableiten und sein Verhalten verändern.",
+              "id": "q_153ed088-3a7c-4c3e-a856-63ab73d43bc8"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Erkläre</span> am Beispiel einer Bilderkennung, woran Lernfähigkeit erkennbar ist.</p>",
+              "solution": "Das System erkennt Objekte nach dem Training mit vielen Beispielen zunehmend zuverlässiger.",
+              "id": "q_da7ccc06-c8ce-4ae7-a31c-977866b0f976"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Definiere</span> das Merkmal zielorientiert.</p>",
+              "solution": "Ein zielorientiertes System richtet seine Entscheidungen und Handlungen auf ein bestimmtes Ziel aus.",
+              "id": "q_7437e4b3-af06-447b-a963-c8736ac0b509"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Ordne</span> das Beispiel zu: Ein Roboter plant selbstständig einen Weg zu einer vorgegebenen Ladestation.</p>",
+              "solution": "Zielorientiert, da seine Handlungen auf das Erreichen der Ladestation ausgerichtet sind.",
+              "id": "q_8e97941a-d163-4e63-9f6e-3149b5c12d03"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Definiere</span> das Merkmal flexibel.</p>",
+              "solution": "Ein flexibles System kann auf unterschiedliche oder unerwartete Situationen mit angepassten Lösungswegen reagieren.",
+              "id": "q_6f3b05ef-d1f5-46cb-8180-46bf1277564c"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Ordne</span> das Beispiel zu: Ein Roboter findet einen anderen Weg, nachdem sein geplanter Weg blockiert wurde.</p>",
+              "solution": "Flexibel, da er einen alternativen Lösungsweg nutzt.",
+              "id": "q_1a89f4d7-648f-481a-a29a-43d3f9542b4d"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Definiere</span> das Merkmal kooperativ.</p>",
+              "solution": "Ein kooperatives System kann mit Menschen oder anderen Systemen Informationen austauschen und gemeinsam handeln.",
+              "id": "q_2246a2d3-6c60-42d6-b7b3-c0e64386895e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Ordne</span> das Beispiel zu: Mehrere Fahrzeuge tauschen Informationen über Staus und Gefahrenstellen aus.</p>",
+              "solution": "Kooperativ, da die Systeme Informationen teilen und dadurch gemeinsam bessere Entscheidungen ermöglichen.",
+              "id": "q_70228a84-4daf-4fc2-b237-ce7cc22ee2d9"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Ergänze</span>: Maschinelles Lernen ist ein ________ der Künstlichen Intelligenz.</p>",
+              "solution": "Teilgebiet",
+              "id": "q_4ddc1eea-4c97-48ca-8f4d-0f238330797f"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Definiere</span> Maschinelles Lernen.</p>",
+              "solution": "Maschinelles Lernen bezeichnet Verfahren, bei denen ein KI System anhand von Daten selbstständig Muster oder Regeln lernt.",
+              "id": "q_3e561797-b0f6-4304-ac03-40a34a98b460"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Wie bezeichnet man ein KI System, das selbstständig lernt?",
+              "solution": "Lernendes System.",
+              "id": "q_aeeeefea-dddf-4995-8a0f-4aaafe1daef7"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Nenne</span> ein Beispiel für ein Verfahren des Maschinellen Lernens.</p>",
+              "solution": "Das Lernen mit einem Entscheidungsbaum.",
+              "id": "q_10965516-6063-45b3-a910-a6a6015af0d1"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Ergänze</span>: Deep Learning ist ein Teilgebiet des ________.</p>",
+              "solution": "Maschinellen Lernens",
+              "id": "q_42f44577-e16b-434d-935a-4228f7089260"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Definiere</span> Deep Learning.</p>",
+              "solution": "Deep Learning bezeichnet Lernverfahren, die mit neuronalen Netzen arbeiten.",
+              "id": "q_87f15bb8-5cb4-424c-9c3e-e446e9accda4"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Welche Bausteine verwenden neuronale Netze zum Lernen?",
+              "solution": "Künstliche Neuronen.",
+              "id": "q_2fbd3335-a6ed-4bf2-830c-3155719f703f"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Ordne ein</span>: Künstliche Intelligenz, Maschinelles Lernen, Deep Learning. Welcher Bereich ist jeweils im anderen enthalten?</p>",
+              "solution": "Deep Learning ist Teil des Maschinellen Lernens und Maschinelles Lernen ist Teil der Künstlichen Intelligenz.",
+              "id": "q_14897f5f-79a7-4bca-8d67-c81ab4c2a637"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Richtig oder falsch: Jedes System mit künstlicher Intelligenz nutzt Maschinelles Lernen.",
+              "solution": "Falsch. Es gibt auch KI Systeme, die nicht selbstständig lernen.",
+              "id": "q_8352d84d-82f6-405b-899a-583f6fb290fe"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Richtig oder falsch: Jedes Deep Learning Verfahren ist auch ein Verfahren des Maschinellen Lernens.",
+              "solution": "Richtig.",
+              "id": "q_542ed14a-5abf-4977-ae4c-c796d48bfab6"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Richtig oder falsch: Jedes Verfahren des Maschinellen Lernens ist Deep Learning.",
+              "solution": "Falsch. Deep Learning ist nur ein Teilgebiet des Maschinellen Lernens.",
+              "id": "q_8e7ae263-5a22-4a09-8851-85975bea8f02"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Ergänze</span>: Intelligente Systeme außerhalb des Maschinellen Lernens lernen nicht ________.</p>",
+              "solution": "selbstständig",
+              "id": "q_e40766c7-04ec-451a-bcf6-adad7b0f3576"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Wie nennt man KI Systeme, bei denen Menschen Regeln und Wissen vorgeben?",
+              "solution": "Wissensbasierte Systeme.",
+              "id": "q_b082c5f0-0485-4f24-8b8b-b18dfedee4b9"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Erkläre</span> kurz, wie ein wissensbasiertes System arbeitet.</p>",
+              "solution": "Menschen geben dem System Regeln und Wissen vor, nach denen es Entscheidungen trifft.",
+              "id": "q_6c342567-aa21-4d9e-9d39-730708cdccdd"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "b: Ein System entscheidet mithilfe fest einprogrammierter Wenn Dann Regeln.",
+              "solution": "Wissensbasiertes System.",
+              "id": "q_c4ab609c-d1bb-4464-a19d-b8135973ec6d"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Ordne zu</span>: Ein System lernt anhand vieler Beispieldaten, ob eine E Mail Spam ist.</p>",
+              "solution": "Maschinelles Lernen.",
+              "id": "q_7e6b42ea-3822-4a63-8102-73e2fa891a8e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Ordne zu</span>: Ein System erkennt Bilder mithilfe eines tiefen neuronalen Netzes.</p>",
+              "solution": "Deep Learning.",
+              "id": "q_63105c93-8e5e-4d6d-b462-608d1a1d0058"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Unterscheide</span> Maschinelles Lernen und wissensbasierte Systeme.</p>",
+              "solution": "Beim Maschinellen Lernen lernt das System aus Daten. Bei wissensbasierten Systemen geben Menschen die Regeln vor.",
+              "id": "q_414b2c3f-ae5a-4b41-a76f-ab91b8277569"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Warum wird die äußere Grenze der Künstlichen Intelligenz häufig gestrichelt dargestellt?",
+              "solution": "Weil der Begriff Künstliche Intelligenz nicht eindeutig abgegrenzt werden kann.",
+              "id": "q_a8f7de9d-5be8-4a4b-8aec-089c34ea6529"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Beurteile</span> die Aussage: „<span style=\"font-style: italic\">Wenn ein System nicht selbstständig lernt, kann es keine KI sein.“</span></p>",
+              "solution": "Die Aussage ist falsch. Auch wissensbasierte Systeme können zur Künstlichen Intelligenz gehören.",
+              "id": "q_028654b4-194d-417a-b4d7-69ebb348df7a"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Nenne</span> die beiden biologischen Einheiten, die im Gehirn für Informationsverarbeitung und Speicherung wichtig sind.</p>",
+              "solution": "Neuronen und Synapsen.",
+              "id": "q_3ea4a27d-1b69-44d7-a110-21d8540a1df9"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Ergänze</span>: Das menschliche Gehirn besitzt ungefähr ______ Neuronen und noch deutlich mehr Synapsen.</p>",
+              "solution": "10¹¹ Neuronen und ungefähr 10¹⁴ Synapsen.",
+              "id": "q_961277f7-e90a-4b16-9d86-d5f78d21be78"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Vergleiche</span> die Geschwindigkeit einzelner Verarbeitungsschritte von Gehirn und Computer.</p>",
+              "solution": "Computer führen einzelne Verarbeitungsschritte wesentlich schneller aus als das menschliche Gehirn.",
+              "id": "q_6f95c950-ab6e-40b6-a304-29c66393f17f"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Ergänze</span>: Die Zykluszeit eines Computers liegt etwa bei 10⁻⁹ s, die des Gehirns etwa bei ______ s.</p>",
+              "solution": "10⁻³ s.",
+              "id": "q_41903b0d-f6e2-4068-bf5e-d3c920e8477d"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Vergleiche</span> Gehirn und Supercomputer hinsichtlich der Zahl der Operationen pro Sekunde.</p>",
+              "solution": "Trotz langsamerer einzelner Verarbeitungsschritte erreicht das Gehirn durch seine stark parallele Verarbeitung eine sehr hohe Gesamtleistung.",
+              "id": "q_235cfdee-e623-46e4-b182-f914bafd782b"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Erkläre</span>, warum die langsamere Zykluszeit des Gehirns nicht automatisch eine geringere Gesamtleistung bedeutet.</p>",
+              "solution": "Sehr viele Neuronen arbeiten gleichzeitig und parallel.",
+              "id": "q_b1831432-b5bd-4eb4-b9db-ddadb32fa306"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Vergleiche</span> den Energieverbrauch von Gehirn und Supercomputer.</p>",
+              "solution": "Das Gehirn benötigt nur ungefähr 20 Watt, ein Supercomputer dagegen mehrere Megawatt.",
+              "id": "q_6c744297-48bf-4ed1-be1b-36b850f7abf1"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Beurteile</span> die Aussage: <span style=\"font-style: italic\">„Ein Supercomputer arbeitet schneller und ist deshalb in jeder Hinsicht leistungsfähiger als das menschliche Gehirn.“</span></p>",
+              "solution": "Falsch. Computer sind bei einzelnen Rechenschritten schneller, das Gehirn arbeitet jedoch extrem parallel und sehr energieeffizient.",
+              "id": "q_c781dd29-5008-4610-8ea0-4413765ad49e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><span style=\"font-weight: bold\">Nenne</span> einen wesentlichen Unterschied zwischen der Informationsverarbeitung im Gehirn und im klassischen Computer.</p>",
+              "solution": "Das Gehirn verarbeitet Informationen stark parallel, während klassische Computer stärker auf schnelle einzelne Rechenoperationen setzen.",
+              "id": "q_1546f452-9e58-4061-9315-486d348d1c48"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Was verdeutlicht der Vergleich von Gehirn und Computer insgesamt?",
+              "solution": "Gehirn und Computer erreichen hohe Leistungen auf sehr unterschiedliche Weise: Das Gehirn durch massive Parallelität und hohe Energieeffizienz, Computer vor allem durch sehr schnelle Rechenoperationen.",
+              "id": "q_f86b8757-1656-4002-865a-8b2ce530844e"
+            }
+          ]
+        },
+        {
+          "id": "ls_730108a1-1298-430f-89d8-5835742b8cdc",
+          "lessonName": "01.05 Experimentell",
+          "lessonKey": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.05 Experimentell",
+          "topicName": "01 Basiswissen",
+          "tasks": []
+        },
+        {
+          "id": "ls_1b45a079-2d1e-4705-aa07-815f357f94c6",
+          "lessonName": "01.06 Der Turing Test",
+          "lessonKey": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.06 Der Turing Test",
+          "topicName": "01 Basiswissen",
+          "tasks": []
+        },
+        {
+          "id": "ls_2df6a133-dc42-4e19-a15b-521d6b85b8c1",
+          "lessonName": "02.01 Affenschach",
+          "lessonKey": "git-intern/Informatik/MSS Grundthemen/11-04 KI/02 Lernarten/02.01 Affenschach",
+          "topicName": "02 Lernarten",
+          "tasks": []
+        },
+        {
+          "id": "ls_47b3110f-4fb5-4a28-962c-e9b2252194bd",
+          "lessonName": "Für später",
+          "lessonKey": "__fuer_spaeter__",
+          "topicName": "Für später",
+          "tasks": []
+        }
+      ]
+    },
+    {
+      "id": "c_0b464fa6-4342-4451-a85c-691c36e5b289",
+      "name": "LK Mathe",
+      "reihePath": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen",
+      "reihePaths": [
+        "git-intern/Mathe/MSS 12 LK/12-01 Matrizen"
+      ],
+      "lessons": [
+        {
+          "id": "ls_ad9cffd7-8139-429d-8d63-601a0d577c68",
+          "lessonName": "Allgemein",
+          "lessonKey": "__allgemein__",
+          "topicName": "Allgemein",
+          "tasks": [
+            {
+              "category": "Eigen",
+              "prompt": "Definiere den Begriff Funktion.",
+              "solution": "Eine Funktion f ist eine Zuordnung, die jedem Element x ihres Definitionsbereichs Df genau einen Funktionswert f(x) zuordnet.",
+              "id": "q_d00b7814-4730-49b4-bc4d-73547c298f7e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Definiere den Begriff Zahlenfolge.",
+              "solution": "Eine Zahlenfolge (aₙ) ist eine Funktion, die jeder natürlichen Zahl n genau eine Zahl aₙ zuordnet.",
+              "id": "q_48aab1f6-0444-4dae-ab78-5857d958d7b7"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Definiere die Konvergenz einer Folge (aₙ) gegen einen Grenzwert L.",
+              "solution": "Eine Folge (aₙ) konvergiert gegen L, wenn zu jedem ε > 0 ein N ∈ ℕ existiert, sodass für alle n ≥ N gilt: |aₙ − L| < ε.",
+              "id": "q_50ed44ff-65df-4626-9a54-bb6e0da79621"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib das Kriterium für eine monoton wachsende Folge an.",
+              "solution": "Eine Folge (aₙ) ist monoton wachsend, wenn für alle n gilt: aₙ₊₁ ≥ aₙ.",
+              "id": "q_9338f800-d054-4b5d-973b-f64d6d632e9f"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib das Kriterium für die Beschränktheit einer Folge an.",
+              "solution": "Eine Folge (aₙ) ist beschränkt, wenn es Zahlen m und M gibt, sodass für alle n gilt: m ≤ aₙ ≤ M.",
+              "id": "q_ea4857d5-d103-4b55-af5c-2b18c49837ba"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib das Kriterium für die Stetigkeit einer Funktion f an einer Stelle x₀ an.",
+              "solution": "Für x₀ ∈ Df ist f an der Stelle x₀ stetig, wenn lim x→x₀ f(x) = f(x₀) gilt.",
+              "id": "q_573b0531-fd8d-4797-8ebd-5ea4d506b270"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Beschreibe eine explizite Darstellung einer Folge.",
+              "solution": "Bei einer expliziten Darstellung wird das Folgenglied aₙ direkt in Abhängigkeit vom Index n angegeben, zum Beispiel aₙ = 3n − 2.",
+              "id": "q_f4d69462-64ec-4582-a6ad-115017b1f3c3"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Beschreibe eine rekursive Darstellung einer Folge.",
+              "solution": "Bei einer rekursiven Darstellung werden ein oder mehrere Anfangsglieder angegeben und weitere Folgenglieder mithilfe vorheriger Folgenglieder bestimmt.",
+              "id": "q_fac0ecda-c884-4f11-9962-e3aaf0b9aee8"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib die mathematische Schreibweise für die Konvergenz einer Folge (aₙ) gegen L an.",
+              "solution": "lim n→∞ aₙ = L.",
+              "id": "q_90067265-6fa1-440b-91d2-5d6a0c07b725"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Formuliere das Stetigkeitskriterium für f an der Stelle x₀.",
+              "solution": "Für x₀ ∈ Df gilt: f ist in x₀ stetig genau dann, wenn lim x→x₀ f(x) = f(x₀) gilt.",
+              "id": "q_a2d49337-206b-4f88-a789-7d547aaaef3e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme die ersten vier Glieder der Folge aₙ = 3n − 2.",
+              "solution": "a₁ = 1, a₂ = 4, a₃ = 7, a₄ = 10.",
+              "id": "q_b8512584-f005-4ba8-84c8-09bae77f50cb"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme die ersten vier Glieder der rekursiv definierten Folge a₁ = 1, aₙ₊₁ = 2aₙ + 1.",
+              "solution": "a₁ = 1, a₂ = 3, a₃ = 7, a₄ = 15.",
+              "id": "q_d8974484-962d-4bf7-80a6-08ab991195e3"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme den Grenzwert lim n→∞ (5n² + 2)/(2n² − 3).",
+              "solution": "Der Grenzwert beträgt 5/2.",
+              "id": "q_d691402f-1167-43c8-9251-318d19f3e28c"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme den Grenzwert lim x→2 (x² − 4)/(x − 2).",
+              "solution": "Für x ≠ 2 gilt (x² − 4)/(x − 2) = x + 2. Daher beträgt der Grenzwert 4.",
+              "id": "q_a20b6309-1df1-4d69-956f-12a9b09bdaab"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Beschreibe die Bedeutung der Ableitung f'(x₀) als Änderungsrate und geometrisch am Graphen.",
+              "solution": "f'(x₀) ist die momentane Änderungsrate von f an der Stelle x₀. Geometrisch entspricht f'(x₀) der Steigung der Tangente an den Graphen im Punkt P(x₀|f(x₀)).",
+              "id": "q_14a1b375-6953-4973-8354-a367a418976e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Definiere die Tangente an den Graphen von f an der Stelle x₀.",
+              "solution": "Ist f an x₀ differenzierbar, dann ist die Tangente die Gerade durch P(x₀|f(x₀)) mit der Steigung f'(x₀).",
+              "id": "q_5059fb80-8c7a-4a89-a71a-0fc7b0826c5a"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Definiere eine Sekante eines Funktionsgraphen.",
+              "solution": "Eine Sekante ist eine Gerade durch zwei verschiedene Punkte P(a|f(a)) und Q(b|f(b)) eines Funktionsgraphen mit a ≠ b.",
+              "id": "q_95e4ec36-0b6e-4247-8716-946fb7755846"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Beschreibe die geometrische Bedeutung von f'(x₀) > 0.",
+              "solution": "Die Tangente an den Graphen von f besitzt an der Stelle x₀ eine positive Steigung.",
+              "id": "q_e13aada1-0844-4019-81e6-12b4e95b21b1"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Beschreibe die geometrische Bedeutung von f'(x₀) = 0.",
+              "solution": "Die Tangente an den Graphen von f ist an der Stelle x₀ waagerecht. Daraus folgt nicht zwingend, dass dort ein Extrempunkt liegt.",
+              "id": "q_44514666-f580-46d1-bd61-63b5a346fa45"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Vergleiche die durchschnittliche und die momentane Änderungsrate.",
+              "solution": "Die durchschnittliche Änderungsrate beschreibt die mittlere Änderung einer Funktion zwischen zwei Stellen. Die momentane Änderungsrate beschreibt die Änderung an einer einzelnen Stelle und wird durch die Ableitung angegeben.",
+              "id": "q_68a9f9c9-ecb6-4e01-b188-983665544a51"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib die Formel für die durchschnittliche Änderungsrate von f im Intervall [a,b] an.",
+              "solution": "(f(b) − f(a))/(b − a) für a ≠ b.",
+              "id": "q_d3640927-03d9-4a8f-9d07-26cdcd929fd6"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib den Differenzenquotienten zwischen x und x + h an.",
+              "solution": "(f(x + h) − f(x))/h für h ≠ 0.",
+              "id": "q_33231574-5b22-4c5d-8e58-19f63c489db6"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Definiere die Ableitung f'(x) mithilfe des Grenzwerts des Differenzenquotienten.",
+              "solution": "Existiert der Grenzwert, so gilt f'(x) = lim h→0 (f(x + h) − f(x))/h.",
+              "id": "q_a34cec33-ff18-422c-9be2-2efa9e0ccfa1"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib die Produktregel an.",
+              "solution": "Für differenzierbare Funktionen u und v gilt: (u · v)' = u' · v + u · v'.",
+              "id": "q_637f3cab-5ff7-406e-87a5-4054596ed1aa"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne die durchschnittliche Änderungsrate von f(x) = x² im Intervall [1,3].",
+              "solution": "(f(3) − f(1))/(3 − 1) = (9 − 1)/2 = 4.",
+              "id": "q_f729464f-a564-424a-a6b8-e2901cadb403"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme die Ableitungsfunktion von f(x) = 3x⁴ − 2x² + 5.",
+              "solution": "f'(x) = 12x³ − 4x.",
+              "id": "q_d4df2843-eb13-4ab2-8ead-740f9741e8f6"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme die Ableitungsfunktion von f(x) = (x² + 1)(x − 3).",
+              "solution": "f'(x) = 2x(x − 3) + x² + 1 = 3x² − 6x + 1.",
+              "id": "q_f7d29812-8e71-4528-b7ef-147143e876a7"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme die Ableitungsfunktion von f(x) = (2x − 1)⁴.",
+              "solution": "f'(x) = 8(2x − 1)³.",
+              "id": "q_a7aad2aa-9bb6-4cc7-bd89-c9476930403a"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme die Gleichung der Tangente an f(x) = x² + 1 an der Stelle x₀ = 1.",
+              "solution": "f(1) = 2 und f'(1) = 2. Damit lautet die Tangente y = 2x.",
+              "id": "q_da47a6e1-662d-45bc-aae2-ee90444ce32e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Definiere den Begriff Nullstelle einer Funktion.",
+              "solution": "Eine Zahl x₀ ∈ Df heißt Nullstelle von f, wenn f(x₀) = 0 gilt.",
+              "id": "q_fd707ada-d5a1-4832-a466-400d6f2eddad"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Definiere den Begriff lokaler Extrempunkt.",
+              "solution": "Ein Punkt P(x₀|f(x₀)) ist ein lokaler Hochpunkt, wenn f(x₀) in einer Umgebung von x₀ mindestens so groß wie alle dortigen Funktionswerte ist. Entsprechend liegt ein lokaler Tiefpunkt vor, wenn f(x₀) dort mindestens so klein wie alle dortigen Funktionswerte ist.",
+              "id": "q_1a4e0390-4008-49de-8229-897071551394"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Definiere den Begriff Wendepunkt.",
+              "solution": "Ein Wendepunkt ist ein Punkt W(x₀|f(x₀)), an dem sich das Krümmungsverhalten des Graphen ändert.",
+              "id": "q_83e37a41-8d8a-4de4-848d-e728ee6ede27"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Vergleiche ein lokales und ein globales Maximum.",
+              "solution": "Bei einem lokalen Maximum ist der Funktionswert nur in einer Umgebung von x₀ maximal. Bei einem globalen Maximum gilt für alle x ∈ Df: f(x₀) ≥ f(x).",
+              "id": "q_10c3b6ed-ed13-456d-8a92-0953727e8a79"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Beurteile, welche Aussage über Extrempunkte aus f'(x₀) = 0 folgt.",
+              "solution": "Aus f'(x₀) = 0 folgt nur, dass der Graph bei x₀ eine waagerechte Tangente besitzt und x₀ eine mögliche Extremstelle ist. Ein Extrempunkt ist damit noch nicht nachgewiesen.",
+              "id": "q_6cde5520-9e16-42ed-8409-dea59ba6c768"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Begründe, weshalb f''(x₀) = 0 allein keinen Wendepunkt nachweist.",
+              "solution": "Die Bedingung f''(x₀) = 0 garantiert keinen Wechsel des Krümmungsverhaltens. Zum Nachweis eines Wendepunkts muss zusätzlich ein Krümmungswechsel gezeigt werden.",
+              "id": "q_f02adbc6-1424-4220-ac0f-1f96f29bcca3"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib eine notwendige Bedingung für einen inneren lokalen Extrempunkt einer differenzierbaren Funktion an.",
+              "solution": "Liegt bei einer inneren Stelle x₀ ein lokaler Extrempunkt vor und ist f dort differenzierbar, dann gilt notwendig f'(x₀) = 0.",
+              "id": "q_a344d0b8-c634-4c48-bd39-30c570d6ddb5"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib das Vorzeichenwechselkriterium von f' für einen lokalen Hochpunkt an.",
+              "solution": "Wechselt f' bei x₀ von positiv zu negativ, besitzt f bei x₀ einen lokalen Hochpunkt.",
+              "id": "q_603241ad-fb2d-4999-ad7d-645b01eecba8"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib das Vorzeichenwechselkriterium von f' für einen lokalen Tiefpunkt an.",
+              "solution": "Wechselt f' bei x₀ von negativ zu positiv, besitzt f bei x₀ einen lokalen Tiefpunkt.",
+              "id": "q_239cf46d-38f1-49c6-97c0-9d4352c1bed5"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib ein hinreichendes Kriterium zum Nachweis eines Wendepunkts mithilfe von f'' an.",
+              "solution": "Wechselt f'' beim Durchgang durch x₀ das Vorzeichen, dann liegt bei W(x₀|f(x₀)) ein Wendepunkt vor.",
+              "id": "q_03b8bbd5-67ca-4514-8015-a9d5efe175c7"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme die Monotonieintervalle von f(x) = x³ − 3x.",
+              "solution": "f'(x) = 3x² − 3. Die Funktion ist streng monoton wachsend auf (−∞,−1] und [1,∞) sowie streng monoton fallend auf [−1,1].",
+              "id": "q_9b11a6c6-3acf-4953-b1d1-5c7e016b019a"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme die Extrempunkte von f(x) = x³ − 3x.",
+              "solution": "Der Hochpunkt ist H(−1|2) und der Tiefpunkt ist T(1|−2).",
+              "id": "q_f1f652d3-ecbc-4b4e-ba04-f7637c4a0edd"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme den Wendepunkt von f(x) = x³ − 3x².",
+              "solution": "f''(x) = 6x − 6. Bei x = 1 wechselt f'' das Vorzeichen und f(1) = −2. Der Wendepunkt ist W(1|−2).",
+              "id": "q_391e5168-ac5e-4245-b84e-647850d17488"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Untersuche den stationären Punkt von f(x) = x⁴ auf seine Art.",
+              "solution": "f'(x) = 4x³. Bei x = 0 wechselt f' von negativ zu positiv. Daher liegt der Tiefpunkt T(0|0) vor.",
+              "id": "q_1f97c7ac-5140-4851-a2de-cf9700f5ffed"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme die Seitenlängen eines Rechtecks mit Umfang 20 cm, für die der Flächeninhalt maximal wird.",
+              "solution": "Die Seitenlängen betragen jeweils 5 cm. Der maximale Flächeninhalt beträgt 25 cm².",
+              "id": "q_80621e7a-b6c6-4a09-8072-aacbed084290"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Definiere eine Exponentialfunktion der Form f(x) = c · qˣ.",
+              "solution": "Eine Funktion der Form f(x) = c · qˣ mit c ≠ 0, q > 0 und q ≠ 1 heißt Exponentialfunktion.",
+              "id": "q_4636af6f-2532-4e3e-b497-e7403d099ab9"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Beschreibe die Bedeutung des Wachstumsfaktors q in einem exponentiellen Modell.",
+              "solution": "Der Wachstumsfaktor q gibt an, mit welchem Faktor der Bestand pro Zeiteinheit multipliziert wird. Es gilt B(t + 1) = q · B(t).",
+              "id": "q_0e928f27-6d84-4f32-9beb-9be0513d17f7"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Vergleiche lineares und exponentielles Wachstum hinsichtlich ihrer Änderung pro Zeiteinheit.",
+              "solution": "Bei linearem Wachstum ist die absolute Änderung pro Zeiteinheit konstant. Bei exponentiellem Wachstum ist die relative Änderung beziehungsweise der Wachstumsfaktor pro Zeiteinheit konstant.",
+              "id": "q_bf030ba7-2809-4772-b582-e261b1071a55"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib die Bedingungen an q für exponentielles Wachstum, exponentiellen Zerfall und einen konstanten Bestand an.",
+              "solution": "Für einen positiven Anfangsbestand gilt: q > 1 bedeutet exponentielles Wachstum, 0 < q < 1 bedeutet exponentiellen Zerfall und q = 1 bedeutet einen konstanten Bestand.",
+              "id": "q_fd4d062d-ae57-4536-8d6d-c2a6e386c4c3"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib den Zusammenhang zwischen einer prozentualen Änderungsrate und dem Wachstumsfaktor q an.",
+              "solution": "Bei einer Zunahme um p Prozent gilt q = 1 + p/100. Bei einer Abnahme um p Prozent gilt q = 1 − p/100.",
+              "id": "q_c27c480d-0d35-4e33-bd5c-94405bfbbfc9"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib die allgemeine Form eines exponentiellen Wachstumsmodells mit Anfangswert c und Wachstumsfaktor q an.",
+              "solution": "f(t) = c · qᵗ mit c > 0 und q > 1.",
+              "id": "q_8afc4f82-6155-4c25-9675-f6816c7f2df2"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne den Bestand nach drei Jahren bei einem Anfangsbestand von 500 und einem jährlichen Wachstum von 4 Prozent.",
+              "solution": "B(3) = 500 · 1,04³ ≈ 562,43. Der Bestand beträgt nach drei Jahren ungefähr 562 Einheiten.",
+              "id": "q_1754bf64-6d87-43ff-bc36-d51397bb569b"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme den Wachstumsfaktor bei einer jährlichen Zunahme um 8 Prozent.",
+              "solution": "q = 1 + 8/100 = 1,08.",
+              "id": "q_1c7957e7-5b05-4dec-b2e5-6e16996e1f86"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Definiere den Begriff Stammfunktion.",
+              "solution": "Eine Funktion F heißt Stammfunktion von f auf einem Intervall, wenn für alle x dieses Intervalls gilt: F'(x) = f(x).",
+              "id": "q_ae766c72-9d05-44e1-ae64-b66365de1afd"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Beschreibe die Bedeutung des bestimmten Integrals ∫ₐᵇ f(x) dx.",
+              "solution": "Das bestimmte Integral beschreibt die Bilanz der orientierten Flächeninhalte zwischen dem Graphen von f und der x Achse auf [a,b]. Flächenanteile oberhalb der x Achse gehen positiv, Flächenanteile unterhalb negativ ein.",
+              "id": "q_57a0fec9-7693-4066-99d3-d7a385ef1018"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Definiere eine Integralfunktion mit fester unterer Grenze a.",
+              "solution": "Eine Integralfunktion zu f mit fester unterer Grenze a ist definiert durch I(x) = ∫ₐˣ f(t) dt.",
+              "id": "q_c95b1ef9-d54b-4207-b4c5-8ac827653012"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Vergleiche Integralwert und geometrischen Flächeninhalt.",
+              "solution": "Beim Integralwert werden Flächenanteile oberhalb der x Achse positiv und Flächenanteile unterhalb negativ berücksichtigt. Beim geometrischen Flächeninhalt werden alle Teilflächen positiv gezählt.",
+              "id": "q_90106365-89b1-43a6-99c7-8f345b2235f3"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Formuliere den Hauptsatz der Differential und Integralrechnung.",
+              "solution": "Ist f stetig, dann ist I(x) = ∫ₐˣ f(t) dt eine Stammfunktion von f und es gilt I'(x) = f(x). Ist F eine Stammfunktion von f, dann gilt außerdem ∫ₐᵇ f(x) dx = F(b) − F(a).",
+              "id": "q_aa75b380-9458-4ad1-b400-206f8e39abd8"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Begründe, weshalb sich zwei Stammfunktionen derselben Funktion auf einem Intervall nur um eine Konstante unterscheiden.",
+              "solution": "Sind F und G Stammfunktionen derselben Funktion, dann gilt (F − G)' = 0. Daher ist F − G auf dem betrachteten Intervall konstant und es gilt F(x) = G(x) + C.",
+              "id": "q_82938d1c-1682-40de-88f7-52a6ba7f2292"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib die Potenzregel zur Bestimmung von Stammfunktionen an.",
+              "solution": "Für n ≠ −1 gilt ∫ xⁿ dx = xⁿ⁺¹/(n + 1) + C.",
+              "id": "q_fd4c6add-06f6-4859-9519-578e4ab771ea"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib die Formel zur Berechnung eines bestimmten Integrals mithilfe einer Stammfunktion an.",
+              "solution": "Ist F eine Stammfunktion von f, dann gilt ∫ₐᵇ f(x) dx = F(b) − F(a).",
+              "id": "q_28eca0fe-6e22-4549-84cb-93d386951097"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib eine Formel zur Berechnung des Flächeninhalts zwischen dem Graphen von f und der x Achse auf [a,b] an.",
+              "solution": "A = ∫ₐᵇ |f(x)| dx.",
+              "id": "q_5540fe43-55cd-4297-a65f-a85d3f03d248"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib eine Formel zur Berechnung des Flächeninhalts zwischen den Graphen von f und g auf [a,b] unter der Voraussetzung f(x) ≥ g(x) an.",
+              "solution": "A = ∫ₐᵇ (f(x) − g(x)) dx.",
+              "id": "q_95f8994e-ba0e-4b85-bd35-ae778384c8d7"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme eine Stammfunktion von f(x) = 6x² − 4x + 3.",
+              "solution": "Eine Stammfunktion ist F(x) = 2x³ − 2x² + 3x + C.",
+              "id": "q_cd7037a1-a55f-4f0e-97ca-81dc3fe50210"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne ∫₀² (3x² − 2x) dx.",
+              "solution": "Eine Stammfunktion ist F(x) = x³ − x². Damit gilt F(2) − F(0) = 2.",
+              "id": "q_cfadf109-47f9-42e2-bdd8-09bed5ce59f9"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne den Flächeninhalt zwischen f(x) = x² und der x Achse im Intervall [0,2].",
+              "solution": "A = ∫₀² x² dx = 8/3.",
+              "id": "q_afb7b50d-2233-409d-9bbf-557be85da15c"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne den Flächeninhalt zwischen f(x) = x und g(x) = x² im Intervall [0,1].",
+              "solution": "Auf [0,1] gilt x ≥ x². Daher ist A = ∫₀¹ (x − x²) dx = 1/6.",
+              "id": "q_3edb09aa-bc71-4626-be2a-9c6eef57eb24"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne den in den ersten zwei Sekunden zurückgelegten Weg für v(t) = 3t² + 2.",
+              "solution": "Da v(t) > 0 auf [0,2] gilt, ist s = ∫₀² (3t² + 2) dt = 12.",
+              "id": "q_83500399-5191-4bdd-bb44-fd6402ccc0dd"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Beurteile, ob die Stetigkeit einer Funktion an x₀ = 2 untersucht werden kann, wenn 2 nicht zu ihrem Definitionsbereich gehört. Begründe deine Entscheidung.",
+              "solution": "Nein. Stetigkeit an einer Stelle x₀ ist nur definiert, wenn x₀ zum Definitionsbereich der Funktion gehört. Ist f(2) nicht definiert, kann die Funktion an x₀ = 2 nicht stetig sein.",
+              "id": "q_602526a7-90a3-45b0-84ec-9b655a636b15"
+            }
+          ]
+        },
+        {
+          "id": "ls_msx0bpf6_ydbhebod",
+          "lessonName": "01.01 Orga",
+          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.01 Orga",
+          "topicName": "01 Basiswissen",
+          "tasks": [
+            {
+              "category": "Eigen",
+              "prompt": "Definiere: Matrix",
+              "solution": "Eine Matrix ist eine rechteckige Anordnung von Elementen in Zeilen und Spalten.",
+              "id": "q_8df055bf-64c1-40ab-827d-43bc3de8839a"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Nenne: Zeilen- und Spaltenvektoren einer 5×7-Matrix",
+              "solution": "Eine 5×7-Matrix hat 5 Zeilenvektoren und 7 Spaltenvektoren.",
+              "id": "q_ae4118d6-e8ba-492f-a679-fb62a1dfdc83"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Definiere: Vektor",
+              "solution": "Ein Vektor ist ein geordnetes Tupel von Zahlen.",
+              "id": "q_f6d8cb62-bce3-4264-b779-214eb5cc99dd"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Die Dimension des Vektors, mit dem eine Matrix der Dimension 3 von rechts multipliziert werden kann",
+              "solution": "Der Vektor muss die Dimension 3 besitzen.",
+              "id": "q_8786e453-3178-4aa8-9c85-124f3e5cf27f"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bezeichne: Eine Matrix mit gleich vielen Zeilen wie Spalten",
+              "solution": "Eine solche Matrix heißt quadratische Matrix.",
+              "id": "q_31494793-3dea-4d12-8fc1-d93ebf46666d"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: (4321)⋅(2  3)\\begin{pmatrix}4\\\\3\\\\2\\\\1\\end{pmatrix}\\cdot(2\\",
+              "solution": "3); (812694623)\\begin{pmatrix}8&12\\\\6&9\\\\4&6\\\\2&3\\end{pmatrix}",
+              "id": "q_c1666496-986e-40b0-ad32-c9a854ad66ba"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: (1123581321)⋅(3455)\\begin{pmatrix}1&1&2&3\\\\5&8&13&21\\end{pmatrix}\\cdot\\begin{pmatrix}34\\\\55\\end{pmatrix}",
+              "solution": "Nicht definiert.",
+              "id": "q_5d4ebed4-5436-43ca-9ee1-ab9f960a19fd"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Definiere: Vektor",
+              "solution": "Ein Vektor ist ein geordnetes n-Tupel von Zahlen.",
+              "id": "q_cc351f4c-255f-4c73-9414-315ec7ed0d4e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: (34581017)⋅(23)\\begin{pmatrix}3&4\\\\5&8\\\\10&17\\end{pmatrix}\\cdot\\begin{pmatrix}2\\\\3\\end{pmatrix}",
+              "solution": "(183471)\\begin{pmatrix}18\\\\34\\\\71\\end{pmatrix}",
+              "id": "q_7416b3e0-68ce-4dbc-82ca-3ec5e02ad8d0"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Erkläre: Den Zusammenhang zwischen Vektoren und Tupeln",
+              "solution": "Jeder Vektor kann als geordnetes Tupel von Zahlen dargestellt werden.",
+              "id": "q_5b014364-b0fd-4544-878d-561b3f89055f"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Nenne: Das allgemeine Schema der Matrix-Vektor-Multiplikation",
+              "solution": "Am×n⋅vn×1=wm×1A_{m\\times n}\\cdot v_{n\\times1}=w_{m\\times1}",
+              "id": "q_11ae8194-6791-4bbe-ab5e-56ef8868add5"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Erkläre: Zeilenvektor",
+              "solution": "Ein Zeilenvektor ist eine Matrix mit genau einer Zeile.",
+              "id": "q_a1f6a0bf-d96e-4a27-b6ee-03e4f2228a9d"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Nenne: Ein Beispiel für eine 6×7-Matrix",
+              "solution": "(123456712345671234567123456712345671234567)\\begin{pmatrix}1&2&3&4&5&6&7\\\\1&2&3&4&5&6&7\\\\1&2&3&4&5&6&7\\\\1&2&3&4&5&6&7\\\\1&2&3&4&5&6&7\\\\1&2&3&4&5&6&7\\end{pmatrix}",
+              "id": "q_2b449848-dc94-42a8-b4bd-4f26aa3b85de"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: (1218)⋅(1534)\\begin{pmatrix}12\\\\18\\end{pmatrix}\\cdot\\begin{pmatrix}15&34\\end{pmatrix}",
+              "solution": "(180408270612)\\begin{pmatrix}180&408\\\\270&612\\end{pmatrix}",
+              "id": "q_3c470331-7a13-4b48-aa43-e2de23fd0cc0"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: (6666777766667777)⋅(6767)\\begin{pmatrix}6&6&6&6\\\\7&7&7&7\\\\6&6&6&6\\\\7&7&7&7\\end{pmatrix}\\cdot\\begin{pmatrix}6\\\\7\\\\6\\\\7\\end{pmatrix}",
+              "solution": "(156182156182)\\begin{pmatrix}156\\\\182\\\\156\\\\182\\end{pmatrix}",
+              "id": "q_f14ab817-d68e-423f-8ee3-6728863d07aa"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Notiere: Eine 3×3-Matrix",
+              "solution": "(a11a12a13a21a22a23a31a32a33)\\begin{pmatrix}a_{11}&a_{12}&a_{13}\\\\a_{21}&a_{22}&a_{23}\\\\a_{31}&a_{32}&a_{33}\\end{pmatrix}",
+              "id": "q_49e25128-e8fc-4b06-8167-51d140b7db4b"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Erkläre: Matrix-Vektor-Multiplikation",
+              "solution": "Jede Zeile der Matrix wird mit dem Vektor skalar multipliziert.",
+              "id": "q_cb4a51ba-095c-4278-8c16-22e48961fdd8"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Definiere: Tupel",
+              "solution": "Ein Tupel ist eine geordnete Liste von Elementen.",
+              "id": "q_31731faa-6a5f-4bcc-a4b3-b5cca7719824"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Zeichne: Das Übergangsdiagramm zur Übergangsmatrix (0,60,90,40,1)\\begin{pmatrix}0{,}6&0{,}9\\\\0{,}4&0{,}1\\end{pmatrix}",
+              "solution": "A→A: 0,6; B→A: 0,9; A→B: 0,4; B→B: 0,1.",
+              "id": "q_581e13be-10b6-4372-898f-1676088376e9"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Löse: (3425)⋅(67)\\begin{pmatrix}3&4\\\\2&5\\end{pmatrix}\\cdot\\begin{pmatrix}6\\\\7\\end{pmatrix}",
+              "solution": "(4647)\\begin{pmatrix}46\\\\47\\end{pmatrix}",
+              "id": "q_0410a57b-37b4-46c3-a5b2-eb0982b040fe"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Notiere: Eine 4×4-Matrix mit aij=i+ja_{ij}=i+j",
+              "solution": "(2345345645675678)\\begin{pmatrix}2&3&4&5\\\\3&4&5&6\\\\4&5&6&7\\\\5&6&7&8\\end{pmatrix}",
+              "id": "q_0bd7dfb2-2c6c-49e3-9341-296d68f3eeae"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Skizziere: Einen Zustandsgraphen mit den Zuständen A und B",
+              "solution": "Der Graph enthält die Knoten A und B sowie Übergangspfeile zwischen ihnen.",
+              "id": "q_9b6c1476-e2c0-428e-9071-d7bc554d27e2"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Erkläre: Die Berechnung nach mehreren Übergängen",
+              "solution": "Man verwendet eine Potenz der Übergangsmatrix.",
+              "id": "q_f4ec25f0-8626-4aaf-8667-9349f755fe05"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Erkläre: Spaltenvektor",
+              "solution": "Ein Spaltenvektor ist eine Matrix mit genau einer Spalte.",
+              "id": "q_f7f93c21-778d-400a-844d-46db013d86a4"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: (1534)2⋅(24)\\begin{pmatrix}1&5\\\\3&4\\end{pmatrix}^2\\cdot\\begin{pmatrix}2\\\\4\\end{pmatrix}",
+              "solution": "\\begin{pmatrix}132\\\\154\\end{pmatrix}",
+              "id": "q_c0072ebf-5908-43ad-b892-11abfedf08f4"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Definiere: n-Tupel",
+              "solution": "Ein n-Tupel ist eine geordnete Liste von n Elementen.",
+              "id": "q_f82ad7c8-aec1-418f-a05b-b8b9e30403b4"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Eine Matrix, die bei der Matrix-Vektor-Multiplikation die Dimension 3 erhält",
+              "solution": "Eine 3×3-Matrix.",
+              "id": "q_cb518afc-a674-479f-b93a-a233d2e4634e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Definiere: Eine n×mn\\times m-Matrix AA",
+              "solution": "A=(aij)A=(a_{ij}) mit 1≤i≤n1\\le i\\le n und 1≤j≤m1\\le j\\le m.",
+              "id": "q_42d45b68-7247-461e-ba86-926ea78717ec"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Erstelle: Eine Übergangstabelle in allgemeiner Form",
+              "solution": "Die Einträge enthalten die Übergangswahrscheinlichkeiten zwischen den Zuständen.",
+              "id": "q_401d0b1a-3a80-425e-8d12-0075342ab7f1"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Die abgebildete Matrix-Vektor-Multiplikation der 8×8-Matrix",
+              "solution": "Nicht bestimmbar, da die Einträge nicht vollständig lesbar sind.",
+              "id": "q_bff926ec-1511-4c52-8db1-8a7d93ba0a32"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Führe durch: Die Matrix-Vektor-Multiplikation M⋅v⃗M\\cdot \\vec v mit M=(a11a12a21a22)M=\\begin{pmatrix}a_{11}&a_{12}\\\\a_{21}&a_{22}\\end{pmatrix}, v⃗=(v1v2)\\vec v=\\begin{pmatrix}v_1\\\\v_2\\end{pmatrix}",
+              "solution": "(a11v1+a12v2a21v1+a22v2)\\begin{pmatrix}a_{11}v_1+a_{12}v_2\\\\a_{21}v_1+a_{22}v_2\\end{pmatrix}",
+              "id": "q_a536c4a4-f6e8-4152-ba34-917d3373884d"
+            }
+          ]
+        },
+        {
+          "id": "ls_msx0bpf6_1v77xc8t",
+          "lessonName": "01.02 Einstieg Matrizen",
+          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen#01.02 Einstieg Matrizen",
+          "topicName": "01 Basiswissen",
+          "tasks": []
+        },
+        {
+          "id": "ls_e52fef79-cf7e-44c3-b623-16120597d99b",
+          "lessonName": "01.03 Definitionen",
+          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen#01.03 Definitionen",
+          "topicName": "01 Basiswissen",
+          "tasks": []
+        },
+        {
+          "id": "ls_aeb00815-81a2-48c1-ba6c-bbaa337fdb01",
+          "lessonName": "01.04 Matrix mal Vektor",
+          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen#01.04 Matrix mal Vektor",
+          "topicName": "01 Basiswissen",
+          "tasks": [
+            {
+              "category": "Eigen",
+              "prompt": "Berechne $\\frac{1}{2}$",
+              "solution": "$\\frac{1}{2}$",
+              "id": "q_0510e38c-febf-4738-80c6-28b89a858fea"
+            }
+          ]
+        },
+        {
+          "id": "ls_b114b098-3cb1-4350-9085-6ec963e5c4d1",
+          "lessonName": "01.05 Insekten und Autos",
+          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen#01.05 Insekten und Autos",
+          "topicName": "01 Basiswissen",
+          "tasks": []
+        },
+        {
+          "id": "ls_32c5dfd7-d817-418c-947d-fc58f81a58e8",
+          "lessonName": "01.06 Gemischtes Üben",
+          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen#01.06 Gemischtes Üben",
+          "topicName": "01 Basiswissen",
+          "tasks": []
+        },
+        {
+          "id": "ls_e696f17b-6e6e-43cb-a137-d7ee1055d4e5",
+          "lessonName": "01.07 Prozesse am Fahrrad",
+          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen#01.07 Prozesse am Fahrrad",
+          "topicName": "01 Basiswissen",
+          "tasks": []
+        },
+        {
+          "id": "ls_aaa57316-7436-449e-938d-e55150ff12d4",
+          "lessonName": "01.08 Übung",
+          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen#01.08 Übung",
+          "topicName": "01 Basiswissen",
+          "tasks": []
+        },
+        {
+          "id": "ls_ed5d8959-2c9f-43ad-a9cf-3a6ee00328d2",
+          "lessonName": "01.09 Neutrales Element",
+          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen#01.09 Neutrales Element",
+          "topicName": "01 Basiswissen",
+          "tasks": []
+        },
+        {
+          "id": "ls_36b228a5-3274-4126-a94e-012f816ac427",
+          "lessonName": "01.10 Mehrstufige Prozesse mit Schokolade",
+          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen#01.10 Mehrstufige Prozesse mit Schokolade",
+          "topicName": "01 Basiswissen",
+          "tasks": []
+        },
+        {
+          "id": "ls_d5ef8b38-f192-4931-a3a2-c58ff32fedd2",
+          "lessonName": "01.07 Prozesse Fahrrad",
+          "lessonKey": "git-intern/Mathe/MSS 12 LK/12-01 Matrizen/01 Basiswissen/01.07 Prozesse Fahrrad",
+          "topicName": "01 Basiswissen",
+          "tasks": []
+        },
+        {
+          "id": "ls_2e430a0b-1c9d-44c0-a4e2-2f955d08330e",
+          "lessonName": "Für später",
+          "lessonKey": "__fuer_spaeter__",
+          "topicName": "Für später",
+          "tasks": [
+            {
+              "category": "Für später",
+              "prompt": "Definiere den natürlichen Logarithmus.",
+              "solution": "Der natürliche Logarithmus ln(x) ist der Logarithmus zur Basis e und die Umkehrfunktion der Exponentialfunktion eˣ. Er ist für x > 0 definiert.",
+              "id": "q_9542552f-bad4-4757-aa98-9281c9b6a59b"
+            },
+            {
+              "category": "Für später",
+              "prompt": "Stelle den Zusammenhang zwischen c · qᵗ und c · eᵏᵗ dar.",
+              "solution": "Es gilt qᵗ = eᵗˡⁿ⁽ᑫ⁾. Daher gilt k = ln(q) beziehungsweise q = eᵏ.",
+              "id": "q_e5718843-6da7-4998-8b58-8dddf978c91e"
+            },
+            {
+              "category": "Für später",
+              "prompt": "Gib die Ableitungen von eˣ und aˣ an.",
+              "solution": "(eˣ)' = eˣ und für a > 0 gilt (aˣ)' = ln(a) · aˣ.",
+              "id": "q_786e2033-7eb5-47f3-b47d-ec0622b5d09a"
+            },
+            {
+              "category": "Für später",
+              "prompt": "Löse die Gleichung 200e⁰˒³ᵗ = 400 nach t auf.",
+              "solution": "t = ln(2)/0,3 ≈ 2,31.",
+              "id": "q_611673d0-cdbc-4373-aab1-9e15d2567a2d"
+            },
+            {
+              "category": "Für später",
+              "prompt": "Bestimme den Zeitpunkt t, für den im Modell B(t) = 1000 · 0,85ᵗ der Wert B(t) = 500 gilt.",
+              "solution": "t = ln(0,5)/ln(0,85) ≈ 4,27.",
+              "id": "q_17f5ce4a-66b2-437c-8057-e6e99d55a1ed"
+            },
+            {
+              "category": "Für später",
+              "prompt": "Beschreibe die Bedeutung des Parameters k im Modell f(t) = c · eᵏᵗ.",
+              "solution": "Es gilt f'(t) = k · f(t). Daher ist k die konstante relative momentane Änderungsrate. Für k > 0 liegt Wachstum, für k < 0 Zerfall und für k = 0 ein konstanter Bestand vor.",
+              "id": "q_cb493663-dc2b-4a52-b197-82260120c2fb"
+            },
+            {
+              "category": "Für später",
+              "prompt": "Bestimme die Ableitungsfunktion von f(x) = 3e²ˣ − 4.",
+              "solution": "f'(x) = 6e²ˣ.",
+              "id": "q_9a74d33e-6143-460e-ba0a-cae0d8fea760"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c_34b3cb65-9e89-436a-8c84-a8e5bf4aa09f",
+      "name": "Mathe 5",
+      "reihePath": "git-intern/Mathe/Klasse 5",
+      "reihePaths": [
+        "git-intern/Mathe/Klasse 5"
+      ],
+      "notes": "Aus der Datei SMANA_AB_Alle_Kategorien_G03_012 habe ich jetz talles aus den WiWo 1 bis 12 in dem Set Allgemein eingefügt.",
+      "lessons": [
+        {
+          "id": "ls_4822dfb3-a9cd-4ef3-9eb9-3f170a6d7dcf",
+          "lessonName": "Allgemein",
+          "lessonKey": "__allgemein__",
+          "topicName": "Allgemein",
+          "tasks": [
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 75 + 87 + 25",
+              "solution": "187",
+              "id": "shared_q_0_0"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 63 + 71 + 29",
+              "solution": "163",
+              "id": "shared_q_0_1"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><b>Gib</b> den Vorgänger von 1 000 000 <b>an</b>.</p>",
+              "solution": "999 999",
+              "id": "shared_q_0_2"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Nachfolger von 1 000 000",
+              "solution": "1 000 001",
+              "id": "shared_q_0_3"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Ergänze zu 100: 35 + 47 + ___",
+              "solution": "18",
+              "id": "shared_q_0_4"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Ergänze zu hundert: 7 · 8 + ___",
+              "solution": "44",
+              "id": "shared_q_0_5"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Ergänze zu 100: 8 + 2 · 17 + ___",
+              "solution": "58",
+              "id": "shared_q_0_6"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 1121 + 843",
+              "solution": "1964",
+              "id": "shared_q_0_7"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 1353 + 804",
+              "solution": "2157",
+              "id": "shared_q_0_8"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 1121 + 1353",
+              "solution": "2474",
+              "id": "shared_q_0_9"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 843 + 804",
+              "solution": "1647",
+              "id": "shared_q_0_10"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 1964 + 2157",
+              "solution": "4121",
+              "id": "shared_q_0_11"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Wandle um in g: 500 kg",
+              "solution": "500 000 g",
+              "id": "shared_q_0_12"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Wandle um in g: 500 mg",
+              "solution": "0,5 g",
+              "id": "shared_q_0_13"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Mindestanzahl der Besucher bei Rundung auf Hunderter von 12 300",
+              "solution": "12 250",
+              "id": "shared_q_0_14"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Höchstanzahl der Besucher bei Rundung auf Hunderter von 12 300",
+              "solution": "12 349",
+              "id": "shared_q_0_15"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne die Ankunftszeit bei einer Abfahrt um 8.16 Uhr und einer Fahrzeit von einer Stunde achtundvierzig Minuten.",
+              "solution": "10.04 Uhr",
+              "id": "shared_q_0_16"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 57 − (16 − 9)",
+              "solution": "50",
+              "id": "shared_q_0_17"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 57 − 16 − 9",
+              "solution": "32",
+              "id": "shared_q_0_18"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: (57 − 16) − 9",
+              "solution": "32",
+              "id": "shared_q_0_19"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Addiere: Zur Summe von 83 und 12 die Differenz von 54 und 17",
+              "solution": "132",
+              "id": "shared_q_0_20"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Strecke in einer halben Stunde bei 40 km in 2 Stunden",
+              "solution": "10 km",
+              "id": "shared_q_0_21"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 27 + 33 + 84 + 29 + 45",
+              "solution": "218",
+              "id": "shared_q_0_22"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Anzahl der verschiedenen dreistelligen Zahlen mit den Ziffern 5, 7 und 0",
+              "solution": "4",
+              "id": "shared_q_0_23"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Nenne: Eine dreistellige Zahl aus den Ziffern 5, 7 und 0",
+              "solution": "570",
+              "id": "shared_q_0_24"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Nenne: Eine weitere dreistellige Zahl aus den Ziffern 5, 7 und 0",
+              "solution": "750",
+              "id": "shared_q_0_25"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Nenne: Eine weitere dreistellige Zahl aus den Ziffern 5, 7 und 0",
+              "solution": "507",
+              "id": "shared_q_0_26"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Nenne: Eine weitere dreistellige Zahl aus den Ziffern 5, 7 und 0",
+              "solution": "705",
+              "id": "shared_q_0_27"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Anzahl der Kinder aus der 5a und 5b zusammen bei 17 und 14 Teilnehmenden",
+              "solution": "31",
+              "id": "shared_q_0_28"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Mindestanzahl zusätzlicher Kinder für sechs gleich große Mannschaften",
+              "solution": "5",
+              "id": "shared_q_0_29"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Anzahl der Ecken eines Würfels",
+              "solution": "8",
+              "id": "shared_q_0_30"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Anzahl der Kanten eines Würfels",
+              "solution": "12",
+              "id": "shared_q_0_31"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Runde auf Zehner: 57",
+              "solution": "60",
+              "id": "shared_q_0_32"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Runde auf Zehner: 323",
+              "solution": "320",
+              "id": "shared_q_0_33"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Runde auf Zehner: 6798",
+              "solution": "6800",
+              "id": "shared_q_0_34"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Runde auf Hunderter: 586",
+              "solution": "600",
+              "id": "shared_q_0_35"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Runde auf Hunderter: 749",
+              "solution": "700",
+              "id": "shared_q_0_36"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Runde auf Hunderter: 6798",
+              "solution": "6800",
+              "id": "shared_q_0_37"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Mindesttiefe des Mittelmeers bei Rundung auf 5300 m",
+              "solution": "5250 m",
+              "id": "shared_q_0_38"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Höchsttiefe des Mittelmeers bei Rundung auf 5300 m",
+              "solution": "5349 m",
+              "id": "shared_q_0_39"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 11 + 12 + 13 + 14 + 15 + 16 + 17 + 18 + 19",
+              "solution": "135",
+              "id": "shared_q_0_40"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Notiere in Ziffern: fünfzig Millionen dreihundertsechstausendvierundzwanzig",
+              "solution": "50 306 024",
+              "id": "shared_q_0_41"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Vorgänger von 67 098 399",
+              "solution": "67 098 398",
+              "id": "shared_q_0_42"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Nachfolger von 67 098 399",
+              "solution": "67 098 400",
+              "id": "shared_q_0_43"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Anzahl der verschiedenen Möglichkeiten, drei Filme anzusehen",
+              "solution": "6",
+              "id": "shared_q_0_44"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Eine mögliche Reihenfolge der Filme A, B und C",
+              "solution": "ABC",
+              "id": "shared_q_0_45"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Schaue ich drei Filme nacheinander, wie viele verschiedene Reihenfolgen sind möglich?",
+              "solution": "6",
+              "id": "shared_q_0_46"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Eine mögliche Reihenfolge der Filme A, B und C",
+              "solution": "BAC",
+              "id": "shared_q_0_47"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><b>Gib an:&nbsp;</b></p><p>Eine mögliche Reihenfolge der Filme A, B und C</p>",
+              "solution": "BCA",
+              "id": "shared_q_0_48"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Eine mögliche Reihenfolge der Filme A, B und C",
+              "solution": "CAB",
+              "id": "shared_q_0_49"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Eine mögliche Reihenfolge der Filme A, B und C",
+              "solution": "CBA",
+              "id": "shared_q_0_50"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Mindestanzahl der Farben zum Färben der Würfelflächen mit unterschiedlichen benachbarten Flächen",
+              "solution": "3",
+              "id": "shared_q_0_51"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Wandle um in cm: 5 m",
+              "solution": "500 cm",
+              "id": "q_ff5c6a37-c20f-4493-b81b-680f539295da"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Wandle um in cm: 3000 mm",
+              "solution": "300 cm",
+              "id": "q_1ed9bd46-8851-4559-ab71-dcce2d3f9c94"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Wandle um in cm: 0,5 dm",
+              "solution": "5 cm",
+              "id": "q_549a9924-f45d-4b21-a161-6508ba67c8bb"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Wandle um in m: 40 cm",
+              "solution": "0,4 m",
+              "id": "q_ab64442f-2d8e-4c6a-862c-be68c446af98"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Wandle um in m: 1 km 700 m",
+              "solution": "1700 m",
+              "id": "q_b3b59066-ee90-4aae-9e7e-9cd63cadfde6"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Wandle um in m: 2,3 km",
+              "solution": "2300 m",
+              "id": "q_85d60a43-778b-47bc-ae2c-e868a6349afd"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Wie viele 25 cm lange Stücke erhält man aus einem 1,50 m langen Rohr?",
+              "solution": "6 Stücke",
+              "id": "q_561fd950-b151-4f2a-a914-0b1dc13c1ab7"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Wie viele Runden entsprechen 3000 m auf einer 400-m-Bahn?",
+              "solution": "7,5 Runden",
+              "id": "q_e90aab2b-526a-4f1d-ad86-381c15f65a7e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 12 m + 20 dm",
+              "solution": "140 dm",
+              "id": "q_d1163e68-1f27-4d24-bebc-55ca63122f20"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 4 dm − 2 cm",
+              "solution": "38 cm",
+              "id": "q_ceab9b73-5924-48fc-ab59-8e96755b391a"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Runde auf Hunderter: 1346",
+              "solution": "1300",
+              "id": "q_25f4f1cf-5aec-4a48-a86b-2ecd1efd3ddc"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Runde auf Hunderter: 99 911",
+              "solution": "99 900",
+              "id": "q_7e65b16a-139e-402e-9251-1bfb5873cb3e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Die kleinstmögliche fünfstellige Zahl mit genau drei verschiedenen Ziffern.",
+              "solution": "10 002",
+              "id": "q_1ba11f75-527c-49d9-a19d-90b8383d7bd3"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Die kleinste Zahl, die auf Tausender zu 5000 gerundet wird.",
+              "solution": "4500",
+              "id": "q_2add56f2-d476-4c56-b4f8-645e7773974c"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Die größte Zahl, die auf Tausender zu 5000 gerundet wird.",
+              "solution": "5499",
+              "id": "q_a8b5ae7f-043c-47c4-8654-8b7995e7ff95"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Wie lang ist eine 2,50 m lange Schnur nach dem Abschneiden von 80 cm?",
+              "solution": "1,70 m",
+              "id": "q_9a25d2e6-6b9c-4a6b-971b-fa5e9ec3090d"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Ordne der Größe nach: 90 cm",
+              "solution": "8000 mm; 0,009 km; 8 m; 85 dm; 90 cm < 8000 mm = 8 m < 85 dm < 0,009 km",
+              "id": "q_c75e0010-87fa-4ecf-b909-4749712433a7"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib in der nächstkleineren Einheit an: 0,5 m",
+              "solution": "5 dm",
+              "id": "q_db735dc1-70e8-4360-805d-3f2374f300bd"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib in der nächstkleineren Einheit an: 12 kg",
+              "solution": "12 000 g",
+              "id": "q_8b5f2cd4-b95e-4b92-830c-576ea27b6100"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib in der nächstkleineren Einheit an: 3 h",
+              "solution": "180 min",
+              "id": "q_e6df9327-52b7-439a-b959-84190b1f077d"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib in der nächstkleineren Einheit an: 80 m",
+              "solution": "800 dm",
+              "id": "q_49cb32aa-5569-450a-90d6-759a8516e4f9"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib in der nächstkleineren Einheit an: 0,1 t",
+              "solution": "100 kg",
+              "id": "q_c00a535d-2ae2-45eb-95cc-de2a45b2a9e2"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib in der nächstgrößeren Einheit an: 60 dm",
+              "solution": "6 m",
+              "id": "q_9698177b-24ce-4f36-835d-5e65c6593249"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib in der nächstgrößeren Einheit an: 60 min",
+              "solution": "1 h",
+              "id": "q_7fd2af81-e9da-400c-8937-930644f67b1a"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib in der nächstgrößeren Einheit an: 60 g",
+              "solution": "0,06 kg",
+              "id": "q_bbff9b43-7e18-43ac-821e-a0353f902f1e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib in der nächstgrößeren Einheit an: 60 Cent",
+              "solution": "0,60 €",
+              "id": "q_5e27d30d-2748-4321-b653-c023c12c0eae"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Wie viele Minuten hat ein Tag?",
+              "solution": "1440 Minuten",
+              "id": "q_8069a8bc-f6f9-4af6-a17e-9fc38dc0a2d2"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Runde auf ganze Meter: 18,09 m",
+              "solution": "18 m",
+              "id": "q_4ba71b4a-1c69-4588-9faf-e4a0a1df3ece"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Runde auf ganze Meter: 48,6 dm",
+              "solution": "5 m",
+              "id": "q_f9188ccd-0548-46bb-8cf5-802c68e3746e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Runde auf ganze Meter: 3952 cm",
+              "solution": "40 m",
+              "id": "q_70012772-9a05-43a0-91ba-b0e0a4d3ae90"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Die Zeitspanne zwischen 8.42 Uhr und 17.13 Uhr.",
+              "solution": "8 h 31 min",
+              "id": "q_3f015ce0-de97-4311-a71d-0b0f9a3840ce"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Welches Gesamtgewicht trägt Frau Freitag nach Hause?",
+              "solution": "4970 g",
+              "id": "q_39a56f23-91cb-4d5d-8ea7-65950ea58d3b"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Wie viele Möglichkeiten gibt es, zwei Schultage von Montag bis Freitag auszuwählen?",
+              "solution": "10 Möglichkeiten",
+              "id": "q_5c4ed387-b49a-406f-9bb6-b3dc8a40a2fe"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Schreibe mit Ziffern: Sieben Milliarden sechsundzwanzig Millionen und eins.",
+              "solution": "7 000 026 000 001",
+              "id": "q_8751037b-d469-49d2-962b-91210fa224b4"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 7428 + 376 + 589",
+              "solution": "8393",
+              "id": "q_55c99b46-2f20-4e6c-9dcb-0351181a20b4"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Die größte vierstellige Zahl mit genau drei verschiedenen Ziffern.",
+              "solution": "9987",
+              "id": "q_d23af6cb-7e91-4cb5-8e43-397d70216f18"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Anzahl der Nullen in der Zahl vier Milliarden vierhunderttausend.",
+              "solution": "8",
+              "id": "q_b3029bec-3578-48cf-b839-7d473787ad6b"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib in Metern an: 3000 cm",
+              "solution": "30 m",
+              "id": "q_a980d0bc-9420-47c4-93ba-da076052ad38"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib in Metern an: 0,2 km",
+              "solution": "200 m",
+              "id": "q_568e621f-f986-4e30-9dea-139fc78d4678"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib in Metern an: 5 dm",
+              "solution": "0,5 m",
+              "id": "q_f9d02b15-5d96-4e40-9e76-ada89a7f23ae"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Länge des Zauns für eine 86 m lange und 47 m breite Pferdekoppel mit 2,50 m breitem Gatter.",
+              "solution": "263,50 m",
+              "id": "q_8f397782-7dd4-40e7-9edc-7e642297b029"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Tatsächliche Strecke bei 16 cm auf einer Karte mit Maßstab 1 : 30 000.",
+              "solution": "4800 m",
+              "id": "q_335ead88-0595-4e50-804a-566e51faaaa2"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Maßstab einer Karte, bei der 1 cm auf der Karte 1 km entspricht.",
+              "solution": "1 : 100 000",
+              "id": "q_de923ecc-eb60-4ef0-a897-dce9df4d5cb5"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Tauchstrecke bei 12 Schritten zu je 70 cm.",
+              "solution": "8,40 m",
+              "id": "q_5f68d7a1-bbcd-4768-8e3d-fbcd8972c2cb"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Rückgeld bei einem Einkauf von 1,69 €, 4,28 € und 1,29 € bei Zahlung mit 10 €.",
+              "solution": "2,74 €",
+              "id": "q_dd0d0c03-02d2-4b1c-be5e-ee3ad879fe65"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Geschenkband pro Päckchen bei 2,40 m Band für 6 Päckchen.",
+              "solution": "40 cm",
+              "id": "q_cd36cf80-f50a-48e4-8506-963465741de4"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne im Kopf: 23 + 46 + 17 + 85 + 14",
+              "solution": "185",
+              "id": "q_ce1a1099-0796-4102-9278-2a7e71c2cc32"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne geschickt im Kopf: 36 + 89 + 64",
+              "solution": "189",
+              "id": "q_c4e29862-07d2-4b09-8614-5b0f56919eec"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne geschickt im Kopf: 187 + 248 + 13",
+              "solution": "448",
+              "id": "q_fe47142c-ff4f-454c-9973-6a2c01b083ce"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne geschickt im Kopf: 4 · 67 · 25",
+              "solution": "6700",
+              "id": "q_23035843-a7b7-498d-b003-2e55a53d30ba"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Schreibe mit zwei Einheiten: 19 mm",
+              "solution": "1 cm 9 mm",
+              "id": "q_1b5cd5fb-3979-4c16-9c3e-ae7d59dafc60"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Schreibe mit zwei Einheiten: 1095 m",
+              "solution": "1 km 95 m",
+              "id": "q_2bfc1070-a51d-4cfd-a105-3e7b335f1441"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Maßstab eines Modells, bei dem 28 m in Wirklichkeit 14 cm im Modell entsprechen.",
+              "solution": "1 : 200",
+              "id": "q_8f37865e-fdb9-429c-90c8-5d5440e57b3e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 1278 + 34 901 + 896 + 41 078",
+              "solution": "78 153",
+              "id": "q_4db65fc9-d284-46ac-8b21-9fa3734daf4b"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 23 242 − 4876 − 9615",
+              "solution": "8751",
+              "id": "q_3e93e8a4-71dd-487a-8ae5-a8dde01f4c12"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Ergänze den Fachausdruck: Summand + Summand =",
+              "solution": "Summe",
+              "id": "q_88bb714b-d7a0-4c74-bd00-faf66dd2238b"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Ergänze den Fachausdruck: Minuend − Subtrahend =",
+              "solution": "Differenz",
+              "id": "q_d52d0fa6-54ac-49bc-8044-dd88c5af41a4"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Anzahl der zweistelligen Zahlen ohne die Ziffer 0.",
+              "solution": "81",
+              "id": "q_34960003-7085-4be3-807d-a23bdceb6457"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Runde auf Hunderter: 7654",
+              "solution": "7700",
+              "id": "q_c5650b02-4800-4ff2-ae9f-66cedb2f2843"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Runde auf Hunderter: 2345",
+              "solution": "2300",
+              "id": "q_412a6959-0e38-4d1f-9fac-3b99be6a4930"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Runde auf Zehner: 704",
+              "solution": "700",
+              "id": "q_00f75fc2-aae1-4f95-84b3-b82995bc2e97"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Flugzeit von 14.38 Uhr bis 15.51 Uhr.",
+              "solution": "1 h 13 min",
+              "id": "q_dc15406b-f367-4cfd-a9c4-1abcac8ebf2a"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Restgewicht eines 3,5 kg schweren Gouda nach dem Abschneiden von 550 g, 320 g und 685 g.",
+              "solution": "1945 g",
+              "id": "q_597c92c7-d7cd-4c82-b2f8-98142212c797"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Restgewicht eines 3,5 kg schweren Gouda nach dem Abschneiden von 550 g, 320 g und 685 g in Kilogramm.",
+              "solution": "1,945 kg",
+              "id": "q_0ddb268c-e29b-4014-a6dd-a7edcde4e46b"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Schreibe als Potenz und berechne: 2 ∙ 2 ∙ 2 ∙ 2 ∙ 2 ∙ 2",
+              "solution": "2⁶ = 64",
+              "id": "q_6772ddf3-50d9-441e-9295-f2eef286d1d4"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Schreibe als Potenz und berechne: 5 ∙ 5 ∙ 5",
+              "solution": "5³ = 125",
+              "id": "q_5d088ec7-f79a-4465-b204-678315f7eaf1"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Schreibe als Potenz und berechne: 10 ∙ 10 ∙ 10 ∙ 10 ∙ 10",
+              "solution": "10⁵ = 100 000",
+              "id": "q_8c881591-4bf0-4e6c-8341-ef1ddd43191c"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 90 : 10",
+              "solution": "9",
+              "id": "q_a323357a-f76e-4163-af8c-ddd978a8a2ce"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 120 000 : 1000",
+              "solution": "120",
+              "id": "q_67cd3676-ec57-4bbc-9374-55f68442e865"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 1100 : 110",
+              "solution": "10",
+              "id": "q_5b1d921f-13e3-43fa-9d66-b76048fafa72"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne schriftlich: 409 ∙ 38",
+              "solution": "15 542",
+              "id": "q_6a8cbf2b-0c55-49b4-b235-4b4ddbce8afa"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne schriftlich: 3456 ∙ 102",
+              "solution": "352 512",
+              "id": "q_e550ebac-d481-4583-b42c-e19765048e33"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme die Summe von 80 und 16:",
+              "solution": "96",
+              "id": "q_a8d785da-7580-41ed-b921-76795fa32c69"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme die Differenz von 80 und 16:",
+              "solution": "64",
+              "id": "q_156d4dcd-00b7-4dde-8eda-0f48e4dfa222"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme das Produkt von 80 und 16:",
+              "solution": "1280",
+              "id": "q_628f2eb4-e740-49b4-947c-499dffd6e7fd"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme den Quotienten von 80 und 16:",
+              "solution": "5",
+              "id": "q_67528694-d4d3-4e38-881b-9417c7bc3f06"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Die von Susi in 9 Wochen zurückgelegte Strecke bei 4 Läufen pro Woche à 4 km",
+              "solution": "144 km",
+              "id": "q_d408f306-196e-4c56-ac38-699a9d7b438f"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Das Rückgeld bei drei Packungen Keksen zu je 3,49 € und Zahlung mit 20 €",
+              "solution": "9,53 €",
+              "id": "q_1aa7e509-05c9-4ad0-9b43-08a818bfad78"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Nenne ein Produkt aus zwei Faktoren mit dem Ergebnis 60:",
+              "solution": "z.B: 1 ∙ 60, 2 ∙ 30, 2 ∙ 20, 4 ∙ 15, 5 ∙ 12, 6 ∙ 10",
+              "id": "q_32b1f5cc-d20b-4995-be3a-fe56a5fd5d61"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: Die Anzahl verschiedener zweistelliger Zahlen beim Würfeln mit zwei Spielwürfeln",
+              "solution": "36",
+              "id": "q_9186ca11-0d93-4b61-aa96-d93b802e0e47"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Wandle in die nächstkleinere Einheit um: 120 min",
+              "solution": "7200 s",
+              "id": "q_989a12cd-b45d-4f44-a94f-738af1bb8c28"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Wandle in die nächstgrößere Einheit um: 120 min",
+              "solution": "2 h",
+              "id": "q_88708bd2-9864-4a62-9ed8-cd7fd533bdaf"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Wandle 35 dm in die nächstkleinere Einheit um.",
+              "solution": "350 cm",
+              "id": "q_791eb2b9-ae12-4a3e-98dd-e10d8132a397"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Wandle in die nächstgrößere Einheit um: 35 dm",
+              "solution": "3,5 m",
+              "id": "q_2f48c964-c9d4-4b10-8f91-ecf50cf13f63"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Wandle in die nächstkleinere Einheit um: 700 g",
+              "solution": "700 000 mg",
+              "id": "q_44256009-3abf-4abb-8fd7-692dafc9b492"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Wandle in die nächstgrößere Einheit um: 700 g",
+              "solution": "0,7 kg",
+              "id": "q_0ec837c5-e210-4ec4-ae62-0578eda5fd54"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Nenne das Kommutativgesetz:",
+              "solution": "3 + 4 = 4 + 3",
+              "id": "q_6f3a2c15-b642-4e61-bce3-1b9db4dc62e7"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Nenne das Assoziativgesetz:",
+              "solution": "3 ∙ 4 ∙ 25 = 3 ∙ (4 ∙ 25)",
+              "id": "q_0c470d0a-2db1-4fc1-9b0b-a1572a286cd4"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Nenne das Distributivgesetz:",
+              "solution": "(25 + 18) ∙ 4 = 25 ∙ 4 + 18 ∙ 4",
+              "id": "q_3010dfcd-054e-4dc0-9389-b68bdc77a9e9"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 9632 : 8",
+              "solution": "1204",
+              "id": "q_c3dfe1a2-b5f1-48a1-bc21-af30ec7b18b4"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 6205 : 17",
+              "solution": "365",
+              "id": "q_cb92e90c-c7ae-4657-bef3-c2afca9d1234"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 5768 : 28",
+              "solution": "206",
+              "id": "q_f736a0a0-e274-4878-a0d4-d82e91138676"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne den Quotienten aus 360 und 24:",
+              "solution": "15",
+              "id": "q_d8eb619d-bac6-4b25-93e2-c19f47632f46"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Mietanteil pro Person bei 984 € Miete und 4 Personen",
+              "solution": "246 €",
+              "id": "q_a8d925a0-c85e-4d02-8f47-4e70f313cef7"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Restlänge einer 1,20 m langen Leiste nach dem Abschneiden von 20 cm",
+              "solution": "1 m",
+              "id": "q_98fc36e4-0cd1-44d2-a873-548d522edf64"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Anzahl der Tüten bei 4 kg Tee und 125 g pro Tüte",
+              "solution": "32",
+              "id": "q_de016fa7-8642-490d-ab22-0d9c99e3814f"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Größe von Max bei einem Turm aus 7 Würfeln mit 4 cm Kantenlänge und vierfacher Körpergröße",
+              "solution": "1,12 m",
+              "id": "q_45cfa7d1-4345-425c-881c-f624cc3020e5"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><b>Gib</b>&nbsp;die Anzahl der Kanten eines Quaders <b>an</b>.</p>",
+              "solution": "12",
+              "id": "q_637f0022-40af-405c-b209-681ea58a80ac"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: Zahl genau in der Mitte zwischen 200 000 und 3 000 000",
+              "solution": "1 600 000",
+              "id": "q_9df523d9-06cd-458a-857b-ef81bc0b8407"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne schriftlich: 237 ∙ 809",
+              "solution": "191 733",
+              "id": "q_fe5a8a65-f71e-43f9-8e88-71eaea79b59e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne schriftlich: 20 978 : 17",
+              "solution": "1234",
+              "id": "q_1e69fc53-b3d6-4329-9ca2-96554487ee4f"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne im Kopf: 28 + 95 + 72",
+              "solution": "195",
+              "id": "q_bae3bfdc-8218-4fa4-94ed-85cc1c9f6f09"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne im Kopf: 234 ∙ 25 ∙ 4",
+              "solution": "23 400",
+              "id": "q_1172dfa7-43a5-437c-99d7-a5cfe27f0a5c"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Anzahl der Delfine",
+              "solution": "6",
+              "id": "q_d2943f00-b99d-4175-9cb2-54df0a352538"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Anzahl der Hunde",
+              "solution": "24",
+              "id": "q_ef3c0f06-6e08-424d-bb0e-d5d46fa2cc8e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Anzahl der Katzen",
+              "solution": "13",
+              "id": "q_6a347fe3-a868-4155-94d1-fed9483d8fb0"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Anzahl der Pferde",
+              "solution": "17",
+              "id": "q_d62181d9-52c8-4d1f-9387-7e697a1449bc"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Anzahl der Wellensittiche",
+              "solution": "9",
+              "id": "q_57ff749b-9c28-452d-8a1b-1d4a06fe5090"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Anzahl der Hamster",
+              "solution": "11",
+              "id": "q_acdca3ae-a0da-47c3-a127-b9f31197f91c"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Anzahl der sonstigen Tiere",
+              "solution": "18",
+              "id": "q_7b9d6d86-db03-4cd8-96b0-fd9d511f4691"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Wirkliche Entfernung bei 6 cm auf einer Karte mit Maßstab 1 : 20 000",
+              "solution": "1200 m",
+              "id": "q_a4f71b49-7d13-4f38-b105-6ba6fba9218f"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib die Entfernung in Kilometern an: 1200 m",
+              "solution": "1,2 km",
+              "id": "q_d33b9884-00cf-48a4-ba70-ffc66d443bcd"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Anzahl der Flügelschläge einer Biene in fünf Minuten bei 250 Flügelschlägen pro Sekunde",
+              "solution": "75 000",
+              "id": "q_44a0a334-bafa-4b11-8a2f-da9efc878d30"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Schreibe mit römischen Zahlzeichen: 14",
+              "solution": "XIV",
+              "id": "q_15ebc6ae-3981-4254-af5c-18799ef8525a"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><b>Notiere</b> die Einerziffer von 52.</p>",
+              "solution": "2",
+              "id": "q_20d4e016-1fb8-4d90-917d-8c606f4169e6"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Schreibe mit römischen Zahlzeichen: 99",
+              "solution": "XCIX",
+              "id": "q_705dcae3-5e58-4ae9-ba47-82b4ea3447d6"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib ein Produkt an, bei dem ein Faktor genauso groß ist wie das Produkt:",
+              "solution": "1 ∙ 5 = 5",
+              "id": "q_8dec07ad-4178-42a9-a008-918559e3ffef"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bilde die Summe: aller zweistelligen Zahlen, bei denen die Zehnerziffer dreimal so groß ist wie die Einerziffer",
+              "solution": "186",
+              "id": "q_149da59b-deff-4e84-9d11-968044b6cd5e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Die ersten fünf Zweierpotenzen (Zweierreihe).",
+              "solution": "1, 2, 4, 8, 16",
+              "id": "q_f9d7128e-3e8d-4f69-9943-e696b43c0444"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Quadratzahl aus der Liste 121",
+              "solution": "11²",
+              "id": "q_8fb61b3b-1329-4751-ab0f-96df258906ad"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Quadratzahl aus der Liste 169",
+              "solution": "13²",
+              "id": "q_9965fd50-a313-4061-abca-521247d6a341"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Quadratzahl aus der Liste 196",
+              "solution": "14²",
+              "id": "q_a9360e02-b221-41ca-aeef-f4fac71194ad"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib an: Quadratzahl aus der Liste 900",
+              "solution": "30²",
+              "id": "q_9a4f0eaa-0ab2-4d97-a78e-d809a82790b8"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "<p><b>Berechne</b> die Anzahl der Runden denen 3000 m auf einer 400-m-Bahn entsprechen.</p>",
+              "solution": "7,5 Runden",
+              "id": "shared_q_0_59"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: Die geometrische Figur mit vier gleich langen Seiten und vier rechten Winkeln.",
+              "solution": "Quadrat",
+              "id": "q_456bd361-4925-457d-8c49-529df8f108a9"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: Die geometrische Figur, deren Rand von allen Punkten den gleichen Abstand zum Mittelpunkt hat.",
+              "solution": "Kreis",
+              "id": "q_193e1214-0430-4677-9224-765c7347bae7"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: Das Viereck mit zwei Paaren benachbarter gleich langer Seiten.",
+              "solution": "Drachen",
+              "id": "q_03b62b3e-e262-4af7-ad85-aa3c63d315e6"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: Das Viereck mit zwei Paaren paralleler Seiten.",
+              "solution": "Parallelogramm",
+              "id": "q_44cf1255-7636-4682-bd7c-ff79af0fd02f"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: Ein Polygon mit drei Seiten.",
+              "solution": "Dreieck",
+              "id": "q_0dc5605d-9f79-43b6-af6f-165c38b839de"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: Das Viereck mit vier rechten Winkeln.",
+              "solution": "Rechteck",
+              "id": "q_e3b14582-8258-4087-81da-dd0a1e8ea9e8"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: Das Viereck mit genau einem Paar paralleler Seiten.",
+              "solution": "Trapez",
+              "id": "q_82efc2a0-05f5-4737-94e5-6347fe840c0c"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: Den Körper, dessen Netz aus sechs gleich großen Quadraten besteht.",
+              "solution": "Würfel",
+              "id": "q_35acc684-4283-4b60-b83d-46c8dff2550d"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: Den Körper, dessen Netz aus einem Quadrat und vier Dreiecken besteht.",
+              "solution": "Pyramide",
+              "id": "q_b617b805-5f31-41cc-b2c9-d715eafa0b99"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 64 008 − 21 761 − 897 − 6839",
+              "solution": "34 511",
+              "id": "q_461fe692-830c-4214-b1f2-48569a28e7d2"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Ordne der Größe nach: 1,5 t",
+              "solution": "1045 kg; 140 000 g; 1 t 99 kg; 140 000 g < 1045 kg < 1 t 99 kg < 1,5 t",
+              "id": "q_e5082c3e-a494-4688-a426-3d1324b0bde8"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Den Anteil pro Freund bei 0,7 kg Wurst für vier Freunde.",
+              "solution": "175 g",
+              "id": "q_a6c49602-7955-477d-9bf9-8069dfa4157f"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Den Kilometerstand nach 748 km Fahrt bei einem Anfangsstand von 57 685 km.",
+              "solution": "58 433 km",
+              "id": "q_e4467763-0300-40fb-a5c6-f10a218bc6e7"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Die Anzahl der Strohhalme bei 7·25 + 12·20 + 5·40.",
+              "solution": "615",
+              "id": "q_41050430-90cd-4950-a413-7f0f2dc64ec5"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: Die Anzahl dreistelliger Zahlen mit der Ziffer 7 an der Zehnerstelle.",
+              "solution": "90",
+              "id": "q_44c74122-5556-4dc8-84b3-070e7447e2df"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Die Differenz aus der größten und der kleinsten dreistelligen Zahl mit der Ziffer 7 an der Zehnerstelle.",
+              "solution": "809",
+              "id": "q_c177df7c-5bf4-4c3f-bb6c-878a99418e35"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: Die Mindestanzahl von Farben, die zum Färben eines Quaders benötigt wird, wenn benachbarte Flächen verschiedene Farben haben sollen.",
+              "solution": "3",
+              "id": "q_e764bd54-8cc0-4c33-b041-821054fde639"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Die Zahl, die von 316 subtrahiert werden muss, um 148 zu erhalten.",
+              "solution": "168",
+              "id": "q_748a5481-93f9-4909-bb6f-0fa1607cac78"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Runde auf Hunderter: 20 378",
+              "solution": "20 400",
+              "id": "q_5888e43b-200d-4885-b7ef-7cc952245e2e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Runde auf Hunderter: 350",
+              "solution": "400",
+              "id": "q_0e223b4c-f17f-4942-adb7-8f0da9cdd80b"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Runde auf Hunderter: 4639",
+              "solution": "4600",
+              "id": "q_3d80e4bc-d55e-43a4-a1bd-9aae69c1f579"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: Den Gewinnanteil pro Person bei 14 838 € für 6 Freunde.",
+              "solution": "2473 €",
+              "id": "q_72d52d54-853c-4c76-8ccf-1e7f0790d62a"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Schreibe als Potenz und berechne: 7 · 7 · 7",
+              "solution": "7³ = 343",
+              "id": "q_a6b2ee71-bf2f-41dd-abd9-504ba02f5d16"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Berechne: 3407 · 4915",
+              "solution": "16 745 405",
+              "id": "q_40a2d1b3-5edb-45f3-bb2e-39d1c714dbd7"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: Die Anzahl verschiedener Quader, die aus 12 Würfeln mit einer Kantenlänge von 1 cm gebaut werden können.",
+              "solution": "4",
+              "id": "q_43d17daa-ca11-4dc6-a690-6404d518706b"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib die Maße eines möglichen Quaders aus 12 Einheitswürfeln an:",
+              "solution": "1 cm × 1 cm × 12 cm",
+              "id": "q_d3a12e95-aaaa-47bf-9064-26eae20c8833"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib die Maße eines möglichen Quaders aus 12 Einheitswürfeln an:",
+              "solution": "1 cm × 2 cm × 6 cm",
+              "id": "q_d80731dd-1d8a-4784-aa4c-a3dc211b4088"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib die Maße eines möglichen Quaders aus 12 Einheitswürfeln an:",
+              "solution": "1 cm × 3 cm × 4 cm",
+              "id": "q_608da101-ff28-46ec-987b-12d9a847fb4c"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib die Maße eines möglichen Quaders aus 12 Einheitswürfeln an:",
+              "solution": "2 cm × 2 cm × 3 cm",
+              "id": "q_a0a5e7f4-538d-40e2-ac35-3e203924a399"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Schreibe mit Ziffern: Siebzehn Billiarden fünf Billionen 345 Milliarden und eins.",
+              "solution": "17 005 345 000 000 001",
+              "id": "q_e4186569-7b9c-49e5-9398-a1b93b916051"
+            }
+          ]
+        },
+        {
+          "id": "ls_6b81dc2f-4bd2-46d5-9da4-908e0b157ada",
+          "lessonName": "1.2 Große Zahlen - Stellenwerttafel",
+          "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/1.2 Große Zahlen - Stellenwerttafel",
+          "topicName": "Kap 1 - Natürliche Zahlen und Größen",
+          "tasks": [
+            {
+              "category": "Große Zahlen",
+              "prompt": "Schreibe mit Ziffern: dreihundert Milliarden",
+              "solution": "300 000 000 000",
+              "id": "q_c49f039d-c921-4849-b38a-3a86b2a962b6"
+            },
+            {
+              "category": "Große Zahlen",
+              "prompt": "Schreibe mit Ziffern: zehn Milliarden",
+              "solution": "10 000 000 000",
+              "id": "q_1bb1fe40-903b-4e96-a8d0-a284e5f0645b"
+            },
+            {
+              "category": "Große Zahlen",
+              "prompt": "Gib an: Geschätzte Anzahl der Sterne, die man mit bloßem Auge sehen kann",
+              "solution": "8 000",
+              "id": "q_6f2f0e2b-5456-4229-a46d-20cbf14383c4"
+            },
+            {
+              "category": "Große Zahlen",
+              "prompt": "Schreibe mit Ziffern: 12 Millionen 563 Tausend 450",
+              "solution": "12 563 450",
+              "id": "q_278c9ed4-9ead-4232-b061-57c1c2ca15a9"
+            },
+            {
+              "category": "Große Zahlen",
+              "prompt": "Schreibe mit Ziffern: 2 Milliarden 48 Tausend",
+              "solution": "2 000 048 000",
+              "id": "q_f2b42b36-b5d3-4ec2-b3bc-8966a2f86331"
+            },
+            {
+              "category": "Große Zahlen",
+              "prompt": "Schreibe mit Ziffern: 7 Billionen 67 Milliarden",
+              "solution": "7 067 000 000 000",
+              "id": "q_90c92537-0d19-4318-ad36-d854e5a04d88"
+            },
+            {
+              "category": "Große Zahlen",
+              "prompt": "Lies die Zahl: 12 563 450",
+              "solution": "12 Millionen 563 Tausend 450",
+              "id": "q_ddc59d81-da88-4452-9bf4-94ca8505e698"
+            },
+            {
+              "category": "Große Zahlen",
+              "prompt": "Gliedere in Dreierpäckchen: 12563450",
+              "solution": "12 563 450",
+              "id": "q_3f154756-ace8-4303-b374-b377aa72a887"
+            },
+            {
+              "category": "Große Zahlen",
+              "prompt": "Schreibe mit Ziffern: Nordamerika 618 Mio.",
+              "solution": "618 000 000",
+              "id": "q_be5757b9-90c5-4d29-a7cc-83e78e17083c"
+            },
+            {
+              "category": "Große Zahlen",
+              "prompt": "Schreibe mit Ziffern: Südamerika 353 Mio.",
+              "solution": "353 000 000",
+              "id": "q_36a88d25-4cc2-4f18-b494-605f92d0db23"
+            },
+            {
+              "category": "Große Zahlen",
+              "prompt": "Schreibe mit Ziffern: Europa 741 Mio.",
+              "solution": "741 000 000",
+              "id": "q_0c8ad1b6-6ee1-4f7b-9dfa-e1f0d2bdc35b"
+            },
+            {
+              "category": "Große Zahlen",
+              "prompt": "Schreibe mit Ziffern: Afrika 1 Mrd. 136 Mio.",
+              "solution": "1 136 000 000",
+              "id": "q_f36f67d8-48e7-4d48-a7d1-aedcb94902dd"
+            },
+            {
+              "category": "Große Zahlen",
+              "prompt": "Schreibe mit Ziffern: Asien 4 Mrd. 351 Mio.",
+              "solution": "4 351 000 000",
+              "id": "q_ba35e2ac-1758-49e1-8224-42b5ab4b0465"
+            },
+            {
+              "category": "Große Zahlen",
+              "prompt": "Schreibe mit Ziffern: Australien/Ozeanien 39 Mio.",
+              "solution": "39 000 000",
+              "id": "q_5c4fc041-6e02-4761-8b6b-5d2840616602"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: den Vorgänger von 100",
+              "solution": "99",
+              "id": "q_0648e386-efbd-424b-939b-2da692a33045"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme den Nachfolger von 100.",
+              "solution": "101",
+              "id": "q_12e93729-d9a1-441c-b4af-10337f98e6cf"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: den Vorgänger von 1 000",
+              "solution": "999",
+              "id": "q_b90cf16d-f4a5-46ce-b1fb-9a711c380edb"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: den Nachfolger von 1 000",
+              "solution": "1 001",
+              "id": "q_fae18d6c-0325-430f-bfe9-6154811dcff7"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: den Vorgänger von 1 000 000",
+              "solution": "999 999",
+              "id": "q_1859111e-0701-4f04-b985-08296d7cca64"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: den Nachfolger von 1 000 000",
+              "solution": "1 000 001",
+              "id": "q_2ea0016f-abb6-4a2d-9217-b0767885b282"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: den Vorgänger von 5 000 000 000",
+              "solution": "4 999 999 999",
+              "id": "q_712cdf95-0ae6-441c-9526-1894e029fa66"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: den Nachfolger von 5 000 000 000",
+              "solution": "5 000 000 001",
+              "id": "q_5fce3b59-5373-4deb-bb35-6a79c237cb8b"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Schreibe als Zahl: eine Million",
+              "solution": "1 000 000",
+              "id": "q_c04e8537-b2d2-4a90-a4c2-afef9ccfe41f"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Schreibe als Wort: 1 000 000",
+              "solution": "eine Million",
+              "id": "q_74669a39-bc57-4e57-a152-8a93cbc88810"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Schreibe als Zahl: eine Milliarde",
+              "solution": "1 000 000 000",
+              "id": "q_4785df70-13eb-4903-abfc-5ae4399043af"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Schreibe als Wort: 1 000 000 000",
+              "solution": "eine Milliarde",
+              "id": "q_aa6d76e2-c91c-46ce-8606-bed3b820448f"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Schreibe als Zahl: eine Billion",
+              "solution": "1 000 000 000 000",
+              "id": "q_55783232-abde-4731-8528-23089ed7b5d3"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Schreibe als Wort: 1 000 000 000 000",
+              "solution": "eine Billion",
+              "id": "q_8b2b6708-9bb3-4609-a94d-7580e2133452"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: die Einerziffer von 48 372",
+              "solution": "2",
+              "id": "q_2c3b4e28-4361-4f36-83be-e5b9b82c7b41"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: die Zehnerziffer von 48 372",
+              "solution": "7",
+              "id": "q_b07a0686-addd-4362-9f48-fa951e2711e1"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: die Hunderterziffer von 48 372",
+              "solution": "3",
+              "id": "q_370a8d16-6573-441e-adfa-3d1b472b08b8"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: die Tausenderziffer von 48 372",
+              "solution": "8",
+              "id": "q_442c8a97-44dd-4f45-9078-ebe758954743"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: den Wert der Ziffer 5 in 5 824",
+              "solution": "5 000",
+              "id": "q_980cd264-dcd7-4870-bd54-961775fe3488"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme den Wert der Ziffer 8 in 5 824.",
+              "solution": "800",
+              "id": "q_66135089-95f0-4358-8e1e-de692cd6cb72"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: den Wert der Ziffer 2 in 5 824",
+              "solution": "20",
+              "id": "q_5c171c71-844c-4839-ad3a-d1a1059c1d6a"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bilde: die Zahl aus 6 Tausendern, 4 Hundertern und 3 Einern",
+              "solution": "6 403",
+              "id": "q_535123b1-80e1-472c-a2ab-ad47964b27ce"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bilde: die Zahl aus 2 Millionen und 5 Tausendern",
+              "solution": "2 005 000",
+              "id": "q_805b4933-c1f4-439c-9bfe-d535cd957e9b"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bilde: die Zahl aus 7 Milliarden und 8 Millionen",
+              "solution": "7 008 000 000",
+              "id": "q_9ec2964a-8235-4df0-827d-14b364043d3b"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib die größere Zahl an: 9 999 oder 10 000",
+              "solution": "10 000",
+              "id": "q_50be76ea-fb65-4172-9ade-1c66368624bc"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib die größere Zahl an: 999 999 oder 1 000 000",
+              "solution": "1 000 000",
+              "id": "q_8bf559f2-7e7d-410e-85f4-031cb7a95142"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Gib die größere Zahl an: eine Million oder eine Milliarde",
+              "solution": "eine Milliarde",
+              "id": "q_249bd20b-48a9-4efc-b5bf-c7ae944891a2"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Ergänze: Million, Milliarde, ___",
+              "solution": "Billion",
+              "id": "q_9853ea5f-4ec1-426b-9d41-382f502bf7e0"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Ergänze: Milliarde, Billion, ___",
+              "solution": "Billiarde",
+              "id": "q_956776c0-63a7-4999-9c45-d07ef25eb742"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Ergänze: Billion, Billiarde, ___",
+              "solution": "Trillion",
+              "id": "q_7b6b7db0-c7c5-4c89-91f7-bed71786eee8"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: die Anzahl der Ziffern von 1 000",
+              "solution": "4",
+              "id": "q_55b4ce3e-3eea-4794-8423-67fedd3d7eb4"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: die Anzahl der Ziffern von 1 000 000",
+              "solution": "7",
+              "id": "q_17b91462-d1ee-4817-b8fd-ff176de9db22"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: die Anzahl der Ziffern von 1 000 000 000",
+              "solution": "10",
+              "id": "q_5c1992a6-4f2b-4ce9-9351-d3510581e141"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: die Anzahl der Nullen in einer Million",
+              "solution": "6",
+              "id": "q_0ad18ea6-aba5-472f-97d6-3e8cc4b30db8"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: die Anzahl der Nullen in einer Milliarde",
+              "solution": "9",
+              "id": "q_a7e5592d-c300-498e-a007-a537f7431031"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: die Anzahl der Nullen in einer Billion",
+              "solution": "12",
+              "id": "q_022a8665-fdd2-416a-ba06-8fb11d68dfc5"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Erkläre: Stellenwerttafel",
+              "solution": "Sie zeigt, an welcher Stelle eine Ziffer steht.Erkläre: Stellenwerttafel; Sie zeigt, an welcher Stelle eine Ziffer steht.",
+              "id": "q_d35930c6-c84f-4591-a787-69ae102a2161"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Erkläre: Zahl",
+              "solution": "Eine Zahl besteht aus einer oder mehreren Ziffern.",
+              "id": "q_51428684-0fd4-4763-bc88-1bf6ca2b0369"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Erkläre: Ziffer",
+              "solution": "Eine Ziffer ist ein Zahlzeichen, zum Beispiel 3 oder 7.",
+              "id": "q_1c619853-49fe-462d-95f2-0b86594903a8"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Nenne: die Ziffern unseres Zahlensystems",
+              "solution": "0, 1, 2, 3, 4, 5, 6, 7, 8, 9",
+              "id": "q_d202210f-1ea0-422c-ab04-97449251f47a"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Erkläre: Zahl",
+              "solution": "Eine Zahl besteht aus einer oder mehreren Ziffern.",
+              "id": "q_5a528dc8-0d80-47ca-a7a7-18cba96b9812"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Erkläre: Ziffer",
+              "solution": "Eine Ziffer ist ein Zahlzeichen, zum Beispiel 3 oder 7.",
+              "id": "q_06e9509a-9f89-46fb-a08d-a6cd23286c57"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Nenne: die Ziffern unseres Zahlensystems",
+              "solution": "0, 1, 2, 3, 4, 5, 6, 7, 8, 9",
+              "id": "q_f15f73f6-5868-4cd2-ac5b-bba78d373be0"
+            }
+          ]
+        },
+        {
+          "id": "ls_1a2fd9b6-a268-4079-91bc-6a7923bc4ebc",
+          "lessonName": "1.0 Kennenlernen und Orga",
+          "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen#1.0 Kennenlernen und Orga",
+          "topicName": "Kap 1 - Natürliche Zahlen und Größen",
+          "tasks": []
+        },
+        {
+          "id": "ls_a5fffb7a-ccf3-457d-85d1-28d27c0531e6",
+          "lessonName": "1.1 Darstellen von Daten",
+          "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen#1.1 Darstellen von Daten",
+          "topicName": "Kap 1 - Natürliche Zahlen und Größen",
+          "tasks": [
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: die Richtung der Balken im Säulendiagramm.",
+              "solution": "senkrecht",
+              "id": "q_98c70f6d-de43-41d4-a74a-1055643a8e3e"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Bestimme: die Richtung der Balken im Balkendiagramm.",
+              "solution": "waagerecht",
+              "id": "q_3fe79b04-71da-4f0c-be15-e7d7270895b4"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Merke: Säulen verlaufen ...",
+              "solution": "von unten nach oben.",
+              "id": "q_2af9ca47-514f-4f8a-af79-72b7940c0534"
+            },
+            {
+              "category": "Eigen",
+              "prompt": "Merke: Balken verlaufen ...",
+              "solution": "von links nach rechts.",
+              "id": "q_4438827e-3d02-4e09-a780-0e8b4548cdd7"
+            }
+          ]
+        },
+        {
+          "id": "ls_7b21749f-3dcb-4203-9f02-df43d4317e31",
+          "lessonName": "1.3 Üben",
+          "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen#1.3 Üben",
+          "topicName": "Kap 1 - Natürliche Zahlen und Größen",
+          "tasks": []
+        },
+        {
+          "id": "ls_59f14d82-227b-41de-bce3-fac5ab305c43",
+          "lessonName": "1.4 Das Binärsystem",
+          "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen#1.4 Das Binärsystem",
+          "topicName": "Kap 1 - Natürliche Zahlen und Größen",
+          "tasks": []
+        },
+        {
+          "id": "ls_9f0d1036-e094-4dab-bf6e-ee0cc8464416",
+          "lessonName": "1.6 Üben",
+          "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen#1.6 Üben",
+          "topicName": "Kap 1 - Natürliche Zahlen und Größen",
+          "tasks": []
+        },
+        {
+          "id": "ls_704e3db1-dc41-4a2c-880f-8b7e91774379",
+          "lessonName": "1.7 Römische Zahlen",
+          "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen#1.7 Römische Zahlen",
+          "topicName": "Kap 1 - Natürliche Zahlen und Größen",
+          "tasks": []
+        },
+        {
+          "id": "ls_06f953fa-134d-48a4-bbe6-04c9c0789e5c",
+          "lessonName": "1.0 Zählen und Zahlen veranschaulichen",
+          "lessonKey": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/1.0 Zählen und Zahlen veranschaulichen",
+          "topicName": "Kap 1 - Natürliche Zahlen und Größen",
+          "tasks": []
+        },
+        {
+          "id": "ls_c9d72438-f2fe-4f6f-8493-225ae17e3fb2",
+          "lessonName": "Für später",
+          "lessonKey": "__fuer_spaeter__",
+          "topicName": "Für später",
+          "tasks": [
+            {
+              "category": "Für später",
+              "prompt": "Berechne: 2⁸",
+              "solution": "256",
+              "id": "q_46bf33d1-47de-4498-a42f-556792f2a7ea"
+            },
+            {
+              "category": "Für später",
+              "prompt": "Berechne: 4³",
+              "solution": "64",
+              "id": "q_f3d13710-5abc-49dd-b318-bd6d7fdc9e89"
+            },
+            {
+              "category": "Für später",
+              "prompt": "Berechne: 17²",
+              "solution": "289",
+              "id": "q_fe995252-e752-4b44-a00d-cd53a7e8a53f"
+            },
+            {
+              "category": "Für später",
+              "prompt": "Berechne: 10⁶",
+              "solution": "1 000 000",
+              "id": "q_b0640b96-ff70-473e-b78b-c566f86e6659"
+            },
+            {
+              "category": "Für später",
+              "prompt": "Schreibe als Potenz und berechne: 3 · 3 + 2 · 2 · 2",
+              "solution": "3² + 2³ = 17",
+              "id": "q_99bb490e-261c-4715-a809-f332393f65bb"
+            },
+            {
+              "category": "Für später",
+              "prompt": "Schreibe als Potenz und berechne: 5 · 5 · 5 · 5",
+              "solution": "5⁴ = 625",
+              "id": "q_bc236a36-4f61-489f-a0be-2331ae8dc233"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "savedAt": "2026-08-29T08:51:20.589Z",
+  "teacherId": "01ed6e10-397e-446c-9254-2ad7fd4ec777"
+}

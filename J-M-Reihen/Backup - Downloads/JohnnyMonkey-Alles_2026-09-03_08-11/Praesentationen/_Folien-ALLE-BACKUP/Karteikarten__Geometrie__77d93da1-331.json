@@ -1,0 +1,192 @@
+{
+  "backupType": "flashcard-deck",
+  "backedUpAt": "2026-07-31T05:43:49.028Z",
+  "id": "77d93da1-331c-4127-b1b4-3e28a52a5072",
+  "title": "Geometrie",
+  "description": "",
+  "subjectId": null,
+  "subjectName": null,
+  "teacherId": "01ed6e10-397e-446c-9254-2ad7fd4ec777",
+  "teacherName": "Frau Christ",
+  "isPublic": false,
+  "createdAt": "2025-12-28T07:08:49.702Z",
+  "updatedAt": "2026-01-29T14:00:45.837Z",
+  "cards": [
+    {
+      "id": "d4780420-6f09-4bf7-afc3-67a0ce4e2718",
+      "front": "<p>Was ist eine <b>Mittelsenkrechte</b>?</p>",
+      "back": "<p><span style=\"font-size: 0.875rem; font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\">Eine </span><b style=\"font-size: 0.875rem; font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\">Gerade</b><span style=\"font-size: 0.875rem; font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\">, die </span><b style=\"font-size: 0.875rem; font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\"><u><span style=\"color: rgb(147, 51, 234);\">auf</span></u></b><span style=\"font-size: 0.875rem; font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\"> eine Strecke AB </span><b style=\"font-size: 0.875rem; font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\"><u><span style=\"color: rgb(147, 51, 234);\">senkrecht</span></u></b><span style=\"font-size: 0.875rem; font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\"> steht und durch den </span><b style=\"font-size: 0.875rem; font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\"><span style=\"color: rgb(220, 38, 38);\">Mittelpunkt M</span></b><span style=\"font-size: 0.875rem; font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\"> geht.</span></p>",
+      "hint": null,
+      "difficulty": 1,
+      "order": 0
+    },
+    {
+      "id": "f94fa0ed-a50b-4d42-a5a1-9f5ed3e640dd",
+      "front": "<p>Was ist eine <b>Winkelhalbierende</b>?</p>",
+      "back": "<p><span style=\"font-size: 0.875rem; font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\">Ein Strahl, der vom </span><b style=\"font-size: 0.875rem; font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\">Scheitelpunkt S </b><span style=\"font-size: 0.875rem; font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\">eines Winkels ausgeht und den Winkel in zwei </span><u style=\"font-size: 0.875rem; font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\"><b>gleich große Winkel </b></u><span style=\"font-size: 0.875rem; font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\">teilt.</span></p>",
+      "hint": null,
+      "difficulty": 1,
+      "order": 1
+    },
+    {
+      "id": "fb8e562d-f124-4e30-ac70-32f9879e52a2",
+      "front": "<p>Was ist eine <b>Achsenspiegelung</b>?</p>",
+      "back": "<p><span style=\"font-size: 0.875rem; font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\">Eine Spiegelung an einer </span><b style=\"font-size: 0.875rem; font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\">Geraden</b><span style=\"font-size: 0.875rem; font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell, &quot;Fira Sans&quot;, &quot;Droid Sans&quot;, &quot;Helvetica Neue&quot;, sans-serif;\"> (der Spiegelachse).</span></p>",
+      "hint": null,
+      "difficulty": 1,
+      "order": 2
+    },
+    {
+      "id": "7718f785-6d90-4b95-8898-d5e68ee62d23",
+      "front": "<p>Wie liegen Punkt und Bildpunkt bei einer <b>Achsenspiegelung</b>?</p>",
+      "back": "<p><br></p><p>Sie liegen auf einer Geraden, die senkrecht zur Spiegelachse steht, auf verschiedenen Seiten der Achse und im gleichen Abstand von der Achse.</p>",
+      "hint": null,
+      "difficulty": 1,
+      "order": 3
+    },
+    {
+      "id": "d0145e2c-4a89-48d6-b116-f8c096f77b3c",
+      "front": "<p>Was bleibt bei einer <b>Achsenspiegelung</b> fest?</p>",
+      "back": "<p><br></p><p>Alle Punkte, die auf der Spiegelachse selbst liegen.</p>",
+      "hint": null,
+      "difficulty": 1,
+      "order": 4
+    },
+    {
+      "id": "0797cd05-1f29-49dd-8cc5-53a6c36ba862",
+      "front": "Was ändert sich bei einer Achsenspiegelung nicht?",
+      "back": "\nAbstände und Winkel bleiben gleich.",
+      "hint": null,
+      "difficulty": 1,
+      "order": 5
+    },
+    {
+      "id": "c3a4a2bf-686c-4035-9118-7ff9bd8cdfed",
+      "front": "Was ändert sich bei einer Achsenspiegelung?",
+      "back": "\nDie Orientierung wird umgekehrt (links und rechts werden vertauscht).",
+      "hint": null,
+      "difficulty": 1,
+      "order": 6
+    },
+    {
+      "id": "4e11bfef-c52c-4cd5-a2dd-3891bf09f884",
+      "front": "Was ist eine Punktspiegelung?",
+      "back": "\nEine Spiegelung an einem Punkt Z (dem Zentrum).",
+      "hint": null,
+      "difficulty": 1,
+      "order": 7
+    },
+    {
+      "id": "6081c486-f5a2-46b0-b076-ec7593e3eb75",
+      "front": "Wie liegen Punkt und Bildpunkt bei einer Punktspiegelung?",
+      "back": "\nSie liegen auf einer Geraden durch Z, auf verschiedenen Seiten von Z und im gleichen Abstand von Z.",
+      "hint": null,
+      "difficulty": 1,
+      "order": 8
+    },
+    {
+      "id": "63963493-3596-494d-8888-002474b89e6a",
+      "front": "Was bleibt bei einer Punktspiegelung fest?",
+      "back": "\nDer Punkt Z (das Zentrum) selbst.",
+      "hint": null,
+      "difficulty": 1,
+      "order": 9
+    },
+    {
+      "id": "f3aae6e7-9ecf-4a95-8bc9-2777c6e8a6b7",
+      "front": "Was passiert bei einer Punktspiegelung mit dem Original?",
+      "back": "\nEs wird um 180° um das Zentrum gedreht.",
+      "hint": null,
+      "difficulty": 1,
+      "order": 10
+    },
+    {
+      "id": "643d7e79-4d80-459a-af7e-a541005f09f2",
+      "front": "Was ist eine Verschiebung?",
+      "back": "\nEine Bewegung, bei der alle Punkte um den gleichen Vektor verschoben werden.",
+      "hint": null,
+      "difficulty": 1,
+      "order": 11
+    },
+    {
+      "id": "a28dbed4-8c9b-4477-b6f6-591a58b79238",
+      "front": "Was bestimmt eine Verschiebung?",
+      "back": "\nEin Verschiebungsvektor, der die Richtung und die Strecke (Länge) angibt.",
+      "hint": null,
+      "difficulty": 1,
+      "order": 12
+    },
+    {
+      "id": "11fbfb21-ddd1-47ea-932d-581e0121b26d",
+      "front": "Wie verlaufen die Verbindungsstrecken bei einer Verschiebung?",
+      "back": "\nSie sind alle parallel, gleich lang und gleich gerichtet wie der Verschiebungsvektor.",
+      "hint": null,
+      "difficulty": 1,
+      "order": 13
+    },
+    {
+      "id": "09737048-dc6e-4819-810c-d3c78fd0c569",
+      "front": "Was bleibt bei einer Verschiebung gleich?",
+      "back": "\nAbstände, Winkel und die Orientierung.",
+      "hint": null,
+      "difficulty": 1,
+      "order": 14
+    },
+    {
+      "id": "9b0afd43-cb4a-4be7-adfb-9ed00c1bc7e6",
+      "front": "Was ist eine Drehung?",
+      "back": "\nEine Bewegung um einen Punkt Z (das Drehzentrum) um einen bestimmten Winkel.",
+      "hint": null,
+      "difficulty": 1,
+      "order": 15
+    },
+    {
+      "id": "12f8db9e-9118-48e9-87db-94c7282dc46c",
+      "front": "Wie weit ist ein Punkt vom Drehzentrum bei einer Drehung entfernt?",
+      "back": "\nPunkt und Bildpunkt haben den gleichen Abstand vom Drehzentrum Z.",
+      "hint": null,
+      "difficulty": 1,
+      "order": 16
+    },
+    {
+      "id": "ec7c41f7-23d8-498e-80dc-150757ea1061",
+      "front": "Was bleibt bei einer Drehung fest?",
+      "back": "\nDer Punkt Z (das Drehzentrum) selbst.",
+      "hint": null,
+      "difficulty": 1,
+      "order": 17
+    },
+    {
+      "id": "66acc87d-2387-42b0-ad76-80ca1f0d907e",
+      "front": "Was ändert sich bei einer Drehung nicht?",
+      "back": "\nAbstände, Winkel und die Orientierung bleiben gleich.",
+      "hint": null,
+      "difficulty": 1,
+      "order": 18
+    },
+    {
+      "id": "b6ef01cf-8ac8-4c00-829e-316fc184cf40",
+      "front": "Was passiert bei einer Doppelspiegelung an zwei senkrechten Geraden?",
+      "back": "\nDas ist dasselbe wie eine Punktspiegelung am Schnittpunkt der beiden Geraden.",
+      "hint": null,
+      "difficulty": 1,
+      "order": 19
+    },
+    {
+      "id": "d48520ce-49f0-466a-b60a-cd0ff9226062",
+      "front": "Was passiert bei einer Doppelspiegelung an zwei parallelen Geraden?",
+      "back": "\nDas ist dasselbe wie eine Verschiebung senkrecht zu den Geraden.",
+      "hint": null,
+      "difficulty": 1,
+      "order": 20
+    },
+    {
+      "id": "c870076c-088b-4ac0-9ede-7bafa7d9c274",
+      "front": "Wie lang ist der Verschiebungsvektor bei Doppelspiegelung an parallelen Geraden?",
+      "back": "\nEr ist doppelt so lang wie der Abstand zwischen den beiden parallelen Geraden.",
+      "hint": null,
+      "difficulty": 1,
+      "order": 21
+    }
+  ]
+}

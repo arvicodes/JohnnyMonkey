@@ -1,0 +1,1663 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+3 0 obj
+<< /Length 2992 >>
+stream
+BT
+/F2 16 Tf
+48 793.89 Td
+(01 Basiswissen) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Pfad) Tj
+/F1 11 Tf
+0 -15 Td
+(git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Guten Morgen!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(KI sucht Mensch) Tj
+/F1 11 Tf
+0 -15 Td
+(?"Ich bin .... und mein KI Merkmal ist ..." ?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? \334berlege dir einen Satz mit deinem Roboter/Informatik-Merkmal.) Tj
+/F1 11 Tf
+0 -15 Td
+(? \334berlege dir eine Bewegung dazu.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Phase 1: Jeder/Jede wiederholt Namen plus Bewegung.) Tj
+/F1 11 Tf
+0 -15 Td
+(Phase 2 : Jetzt l\344uft eine Person in die Mitte und zeigt nur die Bewegung einer) Tj
+/F1 11 Tf
+0 -15 Td
+(Mitsch\374lerin oder eines Mitsch\374lers. Die Klasse ruft den Namen.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Richtig erkannt: \204Modell erfolgreich trainiert.\223 Falsch erkannt: \204Fehlklassifikation.\223) Tj
+/F1 11 Tf
+0 -15 Td
+(? Bei Fehlern: Benennt woran es lag: \204Zu \344hnliche Trainingsdaten.\223 \204Zu wenig) Tj
+/F1 11 Tf
+0 -15 Td
+(Wiederholung.\223 \204Das Modell hat \374bergeneralisiert.\223) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Phase 3 : Eine Person ist die \204Eingabe\223 . Sie nennt ein Merkmal, aber nicht den Namen:) Tj
+/F1 11 Tf
+0 -15 Td
+(\204Diese Person hatte etwas mit Pizza.\223) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Person zeigt auf zwei bis drei Personen im Kreis. Diese sind \204Neuronen\223 und m\374ssen) Tj
+/F1 11 Tf
+0 -15 Td
+(jeweils eine Assoziation nennen oder eine Bewegung machen .) Tj
+/F1 11 Tf
+0 -15 Td
+(? Beispiel : Neuron 1: \204Tablet Bewegung.\223 Neuron 2: \204Essen.\223 Neuron 3: \204Lara?\223 Die) Tj
+/F1 11 Tf
+0 -15 Td
+(Klasse entscheidet gemeinsam, welche Ausgabe richtig ist. Danach wechselt die Eingabe.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Abschlussphase : Geht alle durcheinander durch den Raum. Bildet auf Kommando) Tj
+/F1 11 Tf
+0 -15 Td
+(Zweiergruppen.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Auftrag: \204 Nenne den Namen der anderen Person und nenne ein m\366gliches KI Problem, das) Tj
+/F1 11 Tf
+0 -15 Td
+(zu ihr passt.\223) Tj
+/F1 11 Tf
+0 -15 Td
+(? Beispiele : \204Das ist Tim . Problem: Sein Roboter w\374rde beim Sport \374berhitzen.\223 \204Das) Tj
+/F1 11 Tf
+0 -15 Td
+(ist Amira . Problem: Ihre KI erkennt Sarkasmus zu gut.\223 \204Das ist Jonas . Problem: Sein) Tj
+/F1 11 Tf
+0 -15 Td
+(Algorithmus braucht erst drei Snacks, bevor er startet.\223) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Phase 2) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Phase 3) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Material) Tj
+/F1 11 Tf
+0 -15 Td
+(Phase 1: Karten mit Beispieltexten) Tj
+/F1 11 Tf
+0 -15 Td
+(Phase 2: gr\374ne Karte und rote Karte) Tj
+/F1 11 Tf
+0 -15 Td
+(+ leere Karten & Eding) Tj
+ET
+endstream
+endobj
+4 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 3 0 R >>
+endobj
+5 0 obj
+<< /Length 3201 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(? Woran lag es? notieren) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Drau\337en im Kreis:) Tj
+/F1 11 Tf
+0 -15 Td
+(Es liegen Beispielkarten auf dem Boden im Kreis, man darf sie kurz ansehen:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? \204 Ich w\374rde einer KI verbieten, meine Hausaufgaben zu bewerten.\223) Tj
+/F1 11 Tf
+0 -15 Td
+(? \204Mein Roboter m\374sste zuerst lernen, Kaffee zu kochen.\223) Tj
+/F1 11 Tf
+0 -15 Td
+(? \204Meine KI Superkraft w\344re: schlechte Ausreden erkennen.\223) Tj
+/F1 11 Tf
+0 -15 Td
+(? \204Wenn ich ein Algorithmus w\344re, w\344re ich ein Chaos Sort.\223) Tj
+/F1 11 Tf
+0 -15 Td
+(? \204Meine Trainingsdaten bestehen aus Sport, Schlafmangel und Snacks.\223) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Sprechakte) Tj
+/F1 11 Tf
+0 -15 Td
+(Ich beginne: \204Ich bin Vera Christ, ich debugge Code, Klassen und manchmal auch mein) Tj
+/F1 11 Tf
+0 -15 Td
+(eigenes Leben.\223 Oder : \204Wenn mein Gehirn ein Computer w\344re, h\344tte er sehr viele Tabs) Tj
+/F1 11 Tf
+0 -15 Td
+(offen.\223 ODER \204mein Spezialgebiet ist: Menschen, Maschinen und Sch\374ler*innen wieder zum) Tj
+/F1 11 Tf
+0 -15 Td
+(Laufen bringen.\223) Tj
+/F1 11 Tf
+0 -15 Td
+(Pose : Lupe machen, Tastatur tippen, dann dramatisch auf sich selbst zeigen. Schnell) Tj
+/F1 11 Tf
+0 -15 Td
+(viele imagin\344re Fenster antippen, dann kurz \374berfordert gucken. Auf imagin\344ren) Tj
+/F1 11 Tf
+0 -15 Td
+(Startknopf dr\374cken, dann loslaufen.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Was hat das Spiel mit KI zu tun?) Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Setup) Tj
+/F1 11 Tf
+0 -15 Td
+(Die Folie ist leer, wir sammeln auf der Folie order einfach auf den Karten und ich nehme) Tj
+/F1 11 Tf
+0 -15 Td
+(sie f\374r n\344chste Stunde mit.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(M\366gliche Ergebnisse:) Tj
+/F1 11 Tf
+0 -15 Td
+(? Namen und Bewegungen waren Trainingsdaten.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Die Klasse hat Muster erkannt.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Fehler waren Fehlklassifikationen.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Einseitige Daten f\374hrten zu Bias.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Zu \344hnliche Bewegungen machten die Vorhersage schwieriger.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Mehr Wiederholung verbessert das Modell.) Tj
+/F1 11 Tf
+0 -15 Td
+(Merksatz: Eine KI ist nur so gut wie ihre Trainingsdaten, ihre Merkmale und die Art, wie) Tj
+/F1 11 Tf
+0 -15 Td
+(sie daraus Muster bildet.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe: Wer bist du als Person?) Tj
+/F1 11 Tf
+0 -15 Td
+(? Schreibe einen kurzen Steckbrief zu dir: ? Notiere hier deinen Satz und deine) Tj
+/F1 11 Tf
+0 -15 Td
+(Bewegung. Erstelle einen kurzen Steckbrie) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Kurzer K\366nnen-/Wunschzettel : ? Erl\344utere in wenigen Worte \205. dein Vorwissen zu) Tj
+/F1 11 Tf
+0 -15 Td
+(Informatik, deine Erwartungen an das Fach, deine W\374nsche f\374r das Fach, deine W\374nsche f\374r) Tj
+/F1 11 Tf
+0 -15 Td
+(den Unterricht im Allgemeinen.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Was m\366chtest du noch sagen?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Bringe ein leeres, kariertes A4 Heft mit. Dieses ben\366tigen wir ab jetzt jede Stunde.) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 2819 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Bis zur n\344chsten Stunde!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Referenz) Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Referenz-URL im Element bearbeiten \(z. B. /wall-of-fame\). In der Pr\344sentation zoombar.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Organisatorisches - Benotung) Tj
+/F1 11 Tf
+0 -15 Td
+(? Kursarbeit \227 Gewichtung: 1/3) Tj
+/F1 11 Tf
+0 -15 Td
+(? Andere Leistungen \227 Gewichtung: 2/3 - Epos, Projekte, H\374s, etc.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Organisatorisches - Material und Technik) Tj
+/F1 11 Tf
+0 -15 Td
+(? ? Die Johnny Monkey App) Tj
+/F1 11 Tf
+0 -15 Td
+(? Wir arbeiten mit der App Johnny Monkey , erreichbar durch folgende Eingabe in der) Tj
+/F1 11 Tf
+0 -15 Td
+(Browsersuchleiste: https://mnsplusdocker:44443) Tj
+/F1 11 Tf
+0 -15 Td
+(? Login mit Schulcomputerlogin.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Logge dich IMMER sofort zu Stundenbeginn ein und lege direkt los !) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Das Materialheft ?) Tj
+/F1 11 Tf
+0 -15 Td
+(? Notiere die Adresse und deine Login Daten im Materialheft auf Seite 1.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Starte n\344chste Stunde auf Seite 2.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Beschrifte das Materialheft mit Namen und designe das Cover nach Belieben.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Unser Moderator, unsere Moderatorin) Tj
+/F1 11 Tf
+0 -15 Td
+(? Pro Woche) Tj
+/F1 11 Tf
+0 -15 Td
+(? Startet und Beendet die Stunde mit Entry - und Exit -Ticket) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Themen der Informatik in der MSS) Tj
+/F1 11 Tf
+0 -15 Td
+(? K\374nstliche Intelligenz: Grundlagen des machine learnings) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Algorithmen: Ablaufdiagramme am Beispiel bekannter Algorithmen \(Suchen, Sortieren,) Tj
+/F1 11 Tf
+0 -15 Td
+(Pfade planen\), Korrektheit) Tj
+/F1 11 Tf
+0 -15 Td
+(? Programmierung: Einstieg in die Programmierung in) Tj
+/F1 11 Tf
+0 -15 Td
+(Python, oftmals mit Projekt : Ein kleines Spiel in Python) Tj
+/F1 11 Tf
+0 -15 Td
+(programmieren) Tj
+/F1 11 Tf
+0 -15 Td
+(? Objekt orientierung: Java Greenfoot - Klassen, Objekte, Vererbung,) Tj
+/F1 11 Tf
+0 -15 Td
+(Spezifikation, UML) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Geschichte: Entstehung der Computern und der Informatik als) Tj
+/F1 11 Tf
+0 -15 Td
+(Wissenschaft) Tj
+/F1 11 Tf
+0 -15 Td
+(? Logik : Bin\344rsystem, Logik &) Tj
+/F1 11 Tf
+0 -15 Td
+(Schaltwerke) Tj
+/F1 11 Tf
+0 -15 Td
+(? Digitaltechnik : Computeraufbau, Automaten &) Tj
+/F1 11 Tf
+0 -15 Td
+(Assembler, h\344ufig mit Projekt : Arduino Mikrocontroller oder Micro:Bit) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Internet: Kommunikation in Netzwerken, IP Adressen , Router etc.) Tj
+ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Length 2740 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? IT Sicherheit: Kryptographie & Verschl\374sselung) Tj
+/F1 11 Tf
+0 -15 Td
+(? Datenbanken: Datenbanken in SQL erstellen und) Tj
+/F1 11 Tf
+0 -15 Td
+(verwalten) Tj
+/F1 11 Tf
+0 -15 Td
+(? Webentwicklung in HTML, CSS, Java Script , SQL: Immer als Projekt) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Bildverarbeitung und Computergrafik: Pixel, Grafiken, Kameras) Tj
+/F1 11 Tf
+0 -15 Td
+(? 3D Animation: Grundlagen mit) Tj
+/F1 11 Tf
+0 -15 Td
+(Blender, immer als Projekt) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Optional: Spieledesign - Desktop und mobile Spiele in Unity 3D entwickeln) Tj
+/F1 11 Tf
+0 -15 Td
+(? Optional: 3D Druck) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? K\374nstliche Intelligenz: Grundlagen des machine learnings) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Algorithmen: Ablaufdiagramme am Beispiel bekannter Algorithmen \(Suchen, Sortieren,) Tj
+/F1 11 Tf
+0 -15 Td
+(Pfade planen\), Korrektheit) Tj
+/F1 11 Tf
+0 -15 Td
+(? Programmierung: Einstieg in die Programmierung) Tj
+/F1 11 Tf
+0 -15 Td
+(in Python, oftmals mit Projekt : Ein kleines Spiel in Python) Tj
+/F1 11 Tf
+0 -15 Td
+(? Objekt orientierung: Java Greenfoot - Klassen, Objekte, Vererbung, Spezifikation, UML) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Internet: Kommunikation in Netzwerken, IP Adressen, Router etc.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? IT Sicherheit: Kryptographie & Verschl\374sselung) Tj
+/F1 11 Tf
+0 -15 Td
+(? Datenbanken: Datenbanken in SQL erstellen und verwalten) Tj
+/F1 11 Tf
+0 -15 Td
+(? Webentwicklung in HTML, CSS, Java Script , SQL: Immer als Projekt) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Geschichte: Entstehung der Computern und der Informatik als Wissenschaft) Tj
+/F1 11 Tf
+0 -15 Td
+(? Logik : Bin\344rsystem, Logik & Schaltwerke) Tj
+/F1 11 Tf
+0 -15 Td
+(? Digitaltechnik : Computeraufbau, Automaten & Assembler, h\344ufig mit Projekt : Arduino) Tj
+/F1 11 Tf
+0 -15 Td
+(Mikrocontroller oder Micro:Bit) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Bildverarbeitung und Computergrafik: Pixel, Grafiken, Kameras) Tj
+/F1 11 Tf
+0 -15 Td
+(? 3D Animation: Grundlagen mit Blender, immer als Projekt) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Optional: Spieledesign - Desktop und mobile Spiele in Unity 3D entwickeln) Tj
+/F1 11 Tf
+0 -15 Td
+(? Optional: 3D Druck) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(gn - Desktop und mobile Spiele in Unity 3D entwickeln) Tj
+/F1 11 Tf
+0 -15 Td
+(? Optional: 3D Druck) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe: Wer bist du als Person? Jetzt in der App!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe: Wer bist du als Person? Jetzt in der App!) Tj
+ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 9 0 R >>
+endobj
+11 0 obj
+<< /Length 2453 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Start) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Start) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Start) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Start) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Start) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Start) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Optional: Gruppenvideos) Tj
+/F1 11 Tf
+0 -15 Td
+(Erstellt kurze Vorstellungsv ideos in kleinen Gruppen \(3 Personen\).) Tj
+/F1 11 Tf
+0 -15 Td
+(? Jeder Name sollte mindestens 3 mal genannt werden.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Es gibt kein Thema, einfach witzig, skurril oder normal. Egal! Seid kreativ!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe: Wer bist du als Person? Jetzt in der App!) Tj
+/F1 11 Tf
+0 -15 Td
+(? Lade ein Foto von dir hoch. Dein Gesicht muss gut erkennbar sein, das Foto sollte ein) Tj
+/F1 11 Tf
+0 -15 Td
+(tats\344chliches, aktuelles Aussehen widerspiegeln.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? \334bertrage deinen Satz , deinen Steckbrief und deinen Wunschzettel aus der letzten) Tj
+/F1 11 Tf
+0 -15 Td
+(Hausaufgabe in die App.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Optional: der Ersteller des Videos l\344dt dieses auch hoch.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Bis zur n\344chsten Stunde!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Was hei\337t eigentlich "K\374nstliche Intelligenz" ?) Tj
+/F1 11 Tf
+0 -15 Td
+(? Notiere SPONTAN , ohne zu recherchieren und ohne deine Nachbarn zu fragen deine) Tj
+/F1 11 Tf
+0 -15 Td
+(Antwort .) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Tausche dich mit anderen aus : "Welche Antwort habt ihr gerade notiert?". Findet) Tj
+/F1 11 Tf
+0 -15 Td
+(gemeinsam eine bessere Antwort . Tagt eure Antworten in der Leinwand ein.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(KI suchen ....) Tj
+/F1 11 Tf
+0 -15 Td
+(?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Finde im Wimmelbild recht die Stellen, an denen deiner Meinung nach KI auftritt. F\374lle) Tj
+/F1 11 Tf
+0 -15 Td
+(die Tabelle aus.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(KI Vorkommen) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Was macht die KI? Welches Problem l\366st die KI? Wessen Aufgaben \374bernimmt die KI?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Wo und wie tritt die KI auf?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Welche Daten ben\366tigt die KI?) Tj
+ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 11 0 R >>
+endobj
+13 0 obj
+<< /Length 2767 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Woher bekommt sie diese Daten?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Welche Daten gibt die KI aus?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Wie gibt die KI diese Daten aus?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Woran kann man die Leistungsf\344higkeit der KI bewerten?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Schwache und starke K\374nstliche Intelligenz) Tj
+/F1 11 Tf
+0 -15 Td
+(Schwache KI) Tj
+/F1 11 Tf
+0 -15 Td
+(? auf bestimmte Aufgaben) Tj
+/F1 11 Tf
+0 -15 Td
+(spezialisiert) Tj
+/F1 11 Tf
+0 -15 Td
+(? erkennt Muster und verarbeitet) Tj
+/F1 11 Tf
+0 -15 Td
+(gro\337e Datenmengen) Tj
+/F1 11 Tf
+0 -15 Td
+(? handelt nur innerhalb ihres) Tj
+/F1 11 Tf
+0 -15 Td
+(vorgesehenen Anwendungsbereichs) Tj
+/F1 11 Tf
+0 -15 Td
+(? besitzt kein allgemeines) Tj
+/F1 11 Tf
+0 -15 Td
+(Verst\344ndnis) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Starke KI) Tj
+/F1 11 Tf
+0 -15 Td
+(? h\344tte menschen\344hnliche allgemeine Intelligenz) Tj
+/F1 11 Tf
+0 -15 Td
+(? k\366nnte neue Problemstellungen selbstst\344ndig erkennen) Tj
+/F1 11 Tf
+0 -15 Td
+(? k\366nnte Wissen flexibel auf verschiedene Bereiche \374bertragen) Tj
+/F1 11 Tf
+0 -15 Td
+(? k\366nnte eigenst\344ndig L\366sungswege entwickeln) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Wichtig:) Tj
+/F1 11 Tf
+0 -15 Td
+(Alle heute existierenden KI Systeme z\344hlen zur schwachen KI.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 24) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 25) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(? Beschreibe eine starke KI, die du dir im Alltag w\374nschen w\374rdest \(du kannst dir selbst) Tj
+/F1 11 Tf
+0 -15 Td
+(eine erdenken oder eine aus einer Sci-Fi-Realit\344t beschreiben\). Z eichne auch ein Bild.) Tj
+/F1 11 Tf
+0 -15 Td
+(Begr\374nde , dass es sich um eine starke und nicht um eine schwache KI handelt. Nenne) Tj
+/F1 11 Tf
+0 -15 Td
+(Chancen und Risiken der von dir erw\374nschten KI.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Laut Wolfgang Wahlster \() Tj
+/F1 11 Tf
+0 -15 Td
+(https://www.awhamburg.de/fileadmin/redakteure/Vortraege/Vortrag_Wahlster_pdf.pdf \) gibt) Tj
+/F1 11 Tf
+0 -15 Td
+(es folgende zehn Merkmale intelligenter IT-Systeme im Sinne der K\374nstlichen Intelligenz:) Tj
+/F1 11 Tf
+0 -15 Td
+(? autonom, proaktiv, adaptiv, selbsterkl\344rend, fehlertolerant) Tj
+/F1 11 Tf
+0 -15 Td
+(? selbstoptimierend, lernf\344hig, zielorientiert, flexibel und kooperativ.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Analysiere die in der PDF gegebenen Informationen und erkl\344re diese Merkmale anhand) Tj
+/F1 11 Tf
+0 -15 Td
+(von selbst gew\344hlten Beispielen .) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+ET
+endstream
+endobj
+14 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 13 0 R >>
+endobj
+15 0 obj
+<< /Length 4646 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(Musterl\366sung:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Merkmal Erkl\344rung Beispiel autonom Das System kann ohne st\344ndige Steuerung durch einen) Tj
+/F1 11 Tf
+0 -15 Td
+(Menschen selbstst\344ndig handeln. Ein autonomes Fahrzeug erkennt seine Umgebung und) Tj
+/F1 11 Tf
+0 -15 Td
+(entscheidet selbst, wann es lenken oder bremsen muss. Wahlster beschreibt kognitive) Tj
+/F1 11 Tf
+0 -15 Td
+(Agenten als Systeme, die ihre Umgebung wahrnehmen und darin handeln. proaktiv Das System) Tj
+/F1 11 Tf
+0 -15 Td
+(wartet nicht nur auf einen Auftrag, sondern wird von sich aus aktiv, wenn es) Tj
+/F1 11 Tf
+0 -15 Td
+(Handlungsbedarf erkennt. Ein Fahrzeug erkennt Aquaplaning und warnt andere Fahrzeuge,) Tj
+/F1 11 Tf
+0 -15 Td
+(bevor diese die Gefahrenstelle erreichen. adaptiv Das System passt sein Verhalten an) Tj
+/F1 11 Tf
+0 -15 Td
+(eine ver\344nderte Umgebung oder Situation an. Ein Roboter ver\344ndert seine Bewegungen, wenn) Tj
+/F1 11 Tf
+0 -15 Td
+(er statt auf festem Boden pl\366tzlich auf Schnee oder unebenem Gel\344nde unterwegs ist.) Tj
+/F1 11 Tf
+0 -15 Td
+(Wahlster zeigt hierf\374r unter anderem Roboter f\374r schwieriges Gel\344nde. selbsterkl\344rend) Tj
+/F1 11 Tf
+0 -15 Td
+(Das System kann verst\344ndlich machen, warum es eine bestimmte Entscheidung getroffen hat.) Tj
+/F1 11 Tf
+0 -15 Td
+(Ein intelligentes Fahrzeug erkl\344rt, dass es abbremst, weil eine Verkehrsregel oder eine) Tj
+/F1 11 Tf
+0 -15 Td
+(erkannte Gefahr dies erfordert. Wahlster ordnet insbesondere wissensbasierte,) Tj
+/F1 11 Tf
+0 -15 Td
+(symbolische Prozesse einer Ebene mit Erkl\344rungsm\366glichkeit zu. fehlertolerant Das System) Tj
+/F1 11 Tf
+0 -15 Td
+(kann auch bei St\366rungen, unvollst\344ndigen Informationen oder einzelnen Fehlern weiterhin) Tj
+/F1 11 Tf
+0 -15 Td
+(sinnvoll arbeiten. Ein Roboter kann trotz rutschigem Untergrund sein Gleichgewicht) Tj
+/F1 11 Tf
+0 -15 Td
+(halten und seine Aufgabe weiter ausf\374hren. Wahlster hebt bei bestimmten KI Verfahren) Tj
+/F1 11 Tf
+0 -15 Td
+(eine schnelle und robuste Verarbeitung hervor. selbstoptimierend Das System kann sein) Tj
+/F1 11 Tf
+0 -15 Td
+(eigenes Verhalten so ver\344ndern, dass es seine Aufgabe zunehmend besser oder effizienter) Tj
+/F1 11 Tf
+0 -15 Td
+(erf\374llt. Ein Fahrassistenzsystem passt seine Strategie so an, dass eine Strecke sicherer) Tj
+/F1 11 Tf
+0 -15 Td
+(oder mit geringerem Energieverbrauch zur\374ckgelegt wird. lernf\344hig Das System kann aus) Tj
+/F1 11 Tf
+0 -15 Td
+(Daten oder Erfahrungen neues Wissen gewinnen und sein zuk\374nftiges Verhalten ver\344ndern.) Tj
+/F1 11 Tf
+0 -15 Td
+(Ein Bilderkennungssystem lernt anhand vieler Beispielbilder, bestimmte Gegenst\344nde immer) Tj
+/F1 11 Tf
+0 -15 Td
+(zuverl\344ssiger zu erkennen. Wahlster nennt Lernen und maschinelles Lernen als zentrale) Tj
+/F1 11 Tf
+0 -15 Td
+(Bestandteile der KI. zielorientiert Das System richtet seine Handlungen auf ein) Tj
+/F1 11 Tf
+0 -15 Td
+(vorgegebenes oder selbst erkanntes Ziel aus. Ein autonomes Fahrzeug plant seine) Tj
+/F1 11 Tf
+0 -15 Td
+(Handlungen so, dass es sein Fahrtziel sicher erreicht. Sensorbasierte Handlungsplanung) Tj
+/F1 11 Tf
+0 -15 Td
+(ist bei Wahlster ein zentrales Merkmal kognitiver Agenten. flexibel Das System kann auf) Tj
+/F1 11 Tf
+0 -15 Td
+(unterschiedliche und auch unerwartete Situationen reagieren und verschiedene L\366sungswege) Tj
+/F1 11 Tf
+0 -15 Td
+(nutzen. Ein Roboter erkennt, dass sein urspr\374nglicher Weg blockiert ist, und w\344hlt) Tj
+/F1 11 Tf
+0 -15 Td
+(selbstst\344ndig einen anderen Weg zum Ziel. kooperativ Das System kann Informationen mit) Tj
+/F1 11 Tf
+0 -15 Td
+(anderen Systemen austauschen und gemeinsam mit ihnen ein Ziel verfolgen. Mehrere) Tj
+/F1 11 Tf
+0 -15 Td
+(Fahrzeuge tauschen Informationen \374ber Gefahrenstellen aus. Wahlster zeigt au\337erdem, dass) Tj
+/F1 11 Tf
+0 -15 Td
+(mehrere einfache Agenten durch Zusammenarbeit ein komplexes Gesamtverhalten erzeugen) Tj
+/F1 11 Tf
+0 -15 Td
+(k\366nnen. Zusammenfassend: Ein intelligentes IT System zeichnet sich bei Wahlster also) Tj
+/F1 11 Tf
+0 -15 Td
+(nicht nur dadurch aus, dass es Aufgaben berechnet. Es soll seine Umwelt wahrnehmen,) Tj
+/F1 11 Tf
+0 -15 Td
+(selbstst\344ndig und zielgerichtet handeln, sich anpassen und lernen sowie mit Menschen) Tj
+/F1 11 Tf
+0 -15 Td
+(oder anderen Systemen zusammenarbeiten k\366nnen. Besonders deutlich wird dieses) Tj
+/F1 11 Tf
+0 -15 Td
+(Verst\344ndnis in Wahlsters Beschreibung kognitiver Agenten: Wahrnehmungen werden) Tj
+/F1 11 Tf
+0 -15 Td
+(aufgenommen, verarbeitet und anschlie\337end in passende Handlungen umgesetzt.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Bis zur n\344chsten Stunde!) Tj
+/F1 11 Tf
+0 -15 Td
+(E) Tj
+ET
+endstream
+endobj
+16 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 15 0 R >>
+endobj
+17 0 obj
+<< /Length 4522 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Auf nach drau\337en ...) Tj
+/F1 11 Tf
+0 -15 Td
+(Wir gehen frei herum .... Tausche dich mit so vielen Mitsch\374ler:innen \374ber dein Bild,) Tj
+/F1 11 Tf
+0 -15 Td
+(deine KI aus. Beschreibe deine KI. Dein Gegen\374ber benennt m\366gliche Probleme. Diskutiert) Tj
+/F1 11 Tf
+0 -15 Td
+(.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Besuche alle 10 Stationen. Trefft je eine andere Person an einer der Stationen. Einigt) Tj
+/F1 11 Tf
+0 -15 Td
+(euch gemeinsam ein eine Begriffserkl\344rung und ein Beispiel. Schreibt diese auf die) Tj
+/F1 11 Tf
+0 -15 Td
+(vorliegenden Karteikarten.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Material:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Karten mit den 10 Begriffen.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Leere Karten pro Station) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Musterl\366sung:) Tj
+/F1 11 Tf
+0 -15 Td
+(Merkmal Erkl\344rung Beispiel autonom Das System kann ohne st\344ndige Steuerung durch einen) Tj
+/F1 11 Tf
+0 -15 Td
+(Menschen selbstst\344ndig handeln. Ein autonomes Fahrzeug erkennt seine Umgebung und) Tj
+/F1 11 Tf
+0 -15 Td
+(entscheidet selbst, wann es lenken oder bremsen muss. Wahlster beschreibt kognitive) Tj
+/F1 11 Tf
+0 -15 Td
+(Agenten als Systeme, die ihre Umgebung wahrnehmen und darin handeln. proaktiv Das System) Tj
+/F1 11 Tf
+0 -15 Td
+(wartet nicht nur auf einen Auftrag, sondern wird von sich aus aktiv, wenn es) Tj
+/F1 11 Tf
+0 -15 Td
+(Handlungsbedarf erkennt. Ein Fahrzeug erkennt Aquaplaning und warnt andere Fahrzeuge,) Tj
+/F1 11 Tf
+0 -15 Td
+(bevor diese die Gefahrenstelle erreichen. adaptiv Das System passt sein Verhalten an) Tj
+/F1 11 Tf
+0 -15 Td
+(eine ver\344nderte Umgebung oder Situation an. Ein Roboter ver\344ndert seine Bewegungen, wenn) Tj
+/F1 11 Tf
+0 -15 Td
+(er statt auf festem Boden pl\366tzlich auf Schnee oder unebenem Gel\344nde unterwegs ist.) Tj
+/F1 11 Tf
+0 -15 Td
+(Wahlster zeigt hierf\374r unter anderem Roboter f\374r schwieriges Gel\344nde. selbsterkl\344rend) Tj
+/F1 11 Tf
+0 -15 Td
+(Das System kann verst\344ndlich machen, warum es eine bestimmte Entscheidung getroffen hat.) Tj
+/F1 11 Tf
+0 -15 Td
+(Ein intelligentes Fahrzeug erkl\344rt, dass es abbremst, weil eine Verkehrsregel oder eine) Tj
+/F1 11 Tf
+0 -15 Td
+(erkannte Gefahr dies erfordert. Wahlster ordnet insbesondere wissensbasierte,) Tj
+/F1 11 Tf
+0 -15 Td
+(symbolische Prozesse einer Ebene mit Erkl\344rungsm\366glichkeit zu. fehlertolerant Das System) Tj
+/F1 11 Tf
+0 -15 Td
+(kann auch bei St\366rungen, unvollst\344ndigen Informationen oder einzelnen Fehlern weiterhin) Tj
+/F1 11 Tf
+0 -15 Td
+(sinnvoll arbeiten. Ein Roboter kann trotz rutschigem Untergrund sein Gleichgewicht) Tj
+/F1 11 Tf
+0 -15 Td
+(halten und seine Aufgabe weiter ausf\374hren. Wahlster hebt bei bestimmten KI Verfahren) Tj
+/F1 11 Tf
+0 -15 Td
+(eine schnelle und robuste Verarbeitung hervor. selbstoptimierend Das System kann sein) Tj
+/F1 11 Tf
+0 -15 Td
+(eigenes Verhalten so ver\344ndern, dass es seine Aufgabe zunehmend besser oder effizienter) Tj
+/F1 11 Tf
+0 -15 Td
+(erf\374llt. Ein Fahrassistenzsystem passt seine Strategie so an, dass eine Strecke sicherer) Tj
+/F1 11 Tf
+0 -15 Td
+(oder mit geringerem Energieverbrauch zur\374ckgelegt wird. lernf\344hig Das System kann aus) Tj
+/F1 11 Tf
+0 -15 Td
+(Daten oder Erfahrungen neues Wissen gewinnen und sein zuk\374nftiges Verhalten ver\344ndern.) Tj
+/F1 11 Tf
+0 -15 Td
+(Ein Bilderkennungssystem lernt anhand vieler Beispielbilder, bestimmte Gegenst\344nde immer) Tj
+/F1 11 Tf
+0 -15 Td
+(zuverl\344ssiger zu erkennen. Wahlster nennt Lernen und maschinelles Lernen als zentrale) Tj
+/F1 11 Tf
+0 -15 Td
+(Bestandteile der KI. zielorientiert Das System richtet seine Handlungen auf ein) Tj
+/F1 11 Tf
+0 -15 Td
+(vorgegebenes oder selbst erkanntes Ziel aus. Ein autonomes Fahrzeug plant seine) Tj
+/F1 11 Tf
+0 -15 Td
+(Handlungen so, dass es sein Fahrtziel sicher erreicht. Sensorbasierte Handlungsplanung) Tj
+/F1 11 Tf
+0 -15 Td
+(ist bei Wahlster ein zentrales Merkmal kognitiver Agenten. flexibel Das System kann auf) Tj
+/F1 11 Tf
+0 -15 Td
+(unterschiedliche und auch unerwartete Situationen reagieren und verschiedene L\366sungswege) Tj
+/F1 11 Tf
+0 -15 Td
+(nutzen. Ein Roboter erkennt, dass sein urspr\374nglicher Weg blockiert ist, und w\344hlt) Tj
+/F1 11 Tf
+0 -15 Td
+(selbstst\344ndig einen anderen Weg zum Ziel. kooperativ Das System kann Informationen mit) Tj
+/F1 11 Tf
+0 -15 Td
+(anderen Systemen austauschen und gemeinsam mit ihnen ein Ziel verfolgen. Mehrere) Tj
+ET
+endstream
+endobj
+18 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 17 0 R >>
+endobj
+19 0 obj
+<< /Length 4077 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(Fahrzeuge tauschen Informationen \374ber Gefahrenstellen aus. Wahlster zeigt au\337erdem, dass) Tj
+/F1 11 Tf
+0 -15 Td
+(mehrere einfache Agenten durch Zusammenarbeit ein komplexes Gesamtverhalten erzeugen) Tj
+/F1 11 Tf
+0 -15 Td
+(k\366nnen. Zusammenfassend: Ein intelligentes IT System zeichnet sich bei Wahlster also) Tj
+/F1 11 Tf
+0 -15 Td
+(nicht nur dadurch aus, dass es Aufgaben berechnet. Es soll seine Umwelt wahrnehmen,) Tj
+/F1 11 Tf
+0 -15 Td
+(selbstst\344ndig und zielgerichtet handeln, sich anpassen und lernen sowie mit Menschen) Tj
+/F1 11 Tf
+0 -15 Td
+(oder anderen Systemen zusammenarbeiten k\366nnen. Besonders deutlich wird dieses) Tj
+/F1 11 Tf
+0 -15 Td
+(Verst\344ndnis in Wahlsters Beschreibung kognitiver Agenten: Wahrnehmungen werden) Tj
+/F1 11 Tf
+0 -15 Td
+(aufgenommen, verarbeitet und anschlie\337end in passende Handlungen umgesetzt.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Sammlung - 10 Merkmale intelligenter Systeme) Tj
+/F1 11 Tf
+0 -15 Td
+(Fotos der Stationen) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Wir gehen als Gruppe z\374gig durch die Stationen und besprechen sehr sehr kurz. Sicherung) Tj
+/F1 11 Tf
+0 -15 Td
+(erfolgt durch ein Foto der Karten das hier eingef\374gt wird.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 30) Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Sprechakte:) Tj
+/F1 11 Tf
+0 -15 Td
+(Bisher haben wir versucht zu ergr\374nden, was eine KI ist und was eben nicht. Aber auch) Tj
+/F1 11 Tf
+0 -15 Td
+(innerhalb der Systeme mit K\374nstlicher Intelligenz gibt es erhebliche Unterschiede.) Tj
+/F1 11 Tf
+0 -15 Td
+(In der Abbildung siehst du neu die Begriffe Maschinelles Lernen \(ML - machine learning\)) Tj
+/F1 11 Tf
+0 -15 Td
+(und Deep Learning .) Tj
+/F1 11 Tf
+0 -15 Td
+(Damit ergibt sich ein detaillierteres Bild des Gebiets der K\374nstlichen Intelligenz :) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Durch die \344u\337ere gestrichelte Linie ist angedeutet, dass der Begriff KI nicht genau zu) Tj
+/F1 11 Tf
+0 -15 Td
+(definieren ist. Daher kann man nicht immer genau sagen, ob ein System zu KI geh\366rt, oder) Tj
+/F1 11 Tf
+0 -15 Td
+(eben nicht.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Innerhalb der KI gibt es das \(hier blaue\) Teilgebiet des Maschinellen Lernens . Hier) Tj
+/F1 11 Tf
+0 -15 Td
+(lernt das KI-System selbst\344ndig und wird entsprechend als ? lernendes System bezeichnet.) Tj
+/F1 11 Tf
+0 -15 Td
+(Ein Beispiel f\374r ML ist das Lernen mit Hilfe eines ? Entscheidungsbaums .) Tj
+/F1 11 Tf
+0 -15 Td
+(? Innerhalb des Maschinellen Lernes gibt es das \(hier graue\) Teilgebiet Deep Learning .) Tj
+/F1 11 Tf
+0 -15 Td
+(Damit sind Lernverfahren gemeint, die mit neuronalen Netzen arbeiten. Sie verwenden zum) Tj
+/F1 11 Tf
+0 -15 Td
+(Lernen ? k\374nstliche Neuronen .) Tj
+/F1 11 Tf
+0 -15 Td
+(? Die wei\337en Fl\344chen au\337erhalb des ML umfassen alle intelligenten Systeme, die nicht) Tj
+/F1 11 Tf
+0 -15 Td
+(selbst\344ndig lernen . Dazu geh\366ren ? wissenbasierte Systeme , bei denen der Mensch der KI) Tj
+/F1 11 Tf
+0 -15 Td
+(Regeln vorgibt, nach denen sie handeln soll.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Kleines Wunder - unser Gehirn) Tj
+/F1 11 Tf
+0 -15 Td
+(Merkmal Menschliches Gehirn Supercomputer Personal Computer Recheneinheiten ca. \(10 11 \)) Tj
+/F1 11 Tf
+0 -15 Td
+(Neuronen ca. \(10 4 \) CPUs und \(10 12 \) Transistoren 4 CPUs und ca. \(10 9 \) Transistoren) Tj
+/F1 11 Tf
+0 -15 Td
+(Speichereinheiten ca. \(10 11 \) Neuronen und \(10 14 \) Synapsen ca. \(10 14 \) Bit RAM und) Tj
+/F1 11 Tf
+0 -15 Td
+(\(10 15 \) Bit Festplatte ca. \(10 11 \) Bit RAM und \(10 13 \) Bit Festplatte Zykluszeit ca.) Tj
+/F1 11 Tf
+0 -15 Td
+(\(10 -3 , s\) ca. \(10 -9 , s\) ca. \(10 -9 , s\) Operationen pro Sekunde ca. \(10 17 \) ca. \(10) Tj
+/F1 11 Tf
+0 -15 Td
+(15 \) ca. \(10 10 \) Speicheraktualisierungen pro Sekunde ca. \(10 14 \) ca. \(10 14 \) ca. \(10) Tj
+/F1 11 Tf
+0 -15 Td
+(10 \) Energieverbrauch ca. 15 bis 20 Watt ca. 3 Megawatt ca. 10 bis 40 Watt Gewicht ca.) Tj
+/F1 11 Tf
+0 -15 Td
+(1,4 kg ca. 106 Tonnen ca. 1,24 kg) Tj
+ET
+endstream
+endobj
+20 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 19 0 R >>
+endobj
+21 0 obj
+<< /Length 2005 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 32) Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Stundenende : Unser Roter Faden durch die KI Welt \227> KI Landkarte zeigen, Roten faden) Tj
+/F1 11 Tf
+0 -15 Td
+(einzeichnen , schon einmal Begriffe der SuS sammeln, vielleicht Stationen nummerieren .) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe: KI erleben - Was geht schon?) Tj
+/F1 11 Tf
+0 -15 Td
+(Setzte dich intensiv mit einem der) Tj
+/F1 11 Tf
+0 -15 Td
+(folgenden Themen auseinander und probiere die Tools aus \(siehe PDF\) . Charakterisiere) Tj
+/F1 11 Tf
+0 -15 Td
+(das erprobte Tool nach) Tj
+/F1 11 Tf
+0 -15 Td
+(dem vorgegebenen Schema:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(KI) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\204Welche Bezeichnung gibst du der) Tj
+/F1 11 Tf
+0 -15 Td
+(K\374nstlichen KI?\223) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Aufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\204Was macht die KI?\223,) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\204Welches Problem l\366st) Tj
+/F1 11 Tf
+0 -15 Td
+(die KI?\223,) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\204Wessen Aufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(\374bernimmt die KI?\223) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Umgebung) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\204Welche) Tj
+/F1 11 Tf
+0 -15 Td
+(Umgebung findet die KI vor?\223) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Eingabe-Daten) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\204Welche Daten ben\366tigt) Tj
+/F1 11 Tf
+0 -15 Td
+(die KI?\223) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Sensoren) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\204Woher) Tj
+/F1 11 Tf
+0 -15 Td
+(stammen diese Daten?\223) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Ausgabe-Daten) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\204Welche Daten gibt die) Tj
+/F1 11 Tf
+0 -15 Td
+(KI aus?\223) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Aktoren) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+ET
+endstream
+endobj
+22 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 21 0 R >>
+endobj
+23 0 obj
+<< /Length 1175 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(\204Wie) Tj
+/F1 11 Tf
+0 -15 Td
+(gibt die KI diese Daten aus?\223) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(w\374nschenswerte) Tj
+/F1 11 Tf
+0 -15 Td
+(Qualit\344ten) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(\204Woran kann man die) Tj
+/F1 11 Tf
+0 -15 Td
+(Leistungsf\344higkeit der KI bewerten?\223) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Experimentierzeit!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Themen \(PDF\)) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Bis zur n\344chsten Stunde!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(KI erleben - Was geht schon?) Tj
+/F1 11 Tf
+0 -15 Td
+(? Bildet Gruppen zu den Themen mit denen Ihr euch in der Hausaufgabe besch\344ftigt habt.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Tauscht eure Ergebnisse aus. Bereitet eine kurze \(max. 5 Minuten\) Pr\344sentation vor .) Tj
+/F1 11 Tf
+0 -15 Td
+(? Stellt eure eigenen Kreationen mit den Tools vor!!!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(5 x = 25 min) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Pr\344sentationszeit!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Bis zur n\344chsten Stunde!) Tj
+ET
+endstream
+endobj
+24 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 23 0 R >>
+endobj
+25 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R 8 0 R 10 0 R 12 0 R 14 0 R 16 0 R 18 0 R 20 0 R 22 0 R 24 0 R] /Count 11 >>
+endobj
+26 0 obj
+<< /Type /Catalog /Pages 25 0 R >>
+endobj
+xref
+0 27
+0000000000 65535 f 
+0000000009 00000 n 
+0000000106 00000 n 
+0000000208 00000 n 
+0000003251 00000 n 
+0000003394 00000 n 
+0000006646 00000 n 
+0000006789 00000 n 
+0000009659 00000 n 
+0000009802 00000 n 
+0000012593 00000 n 
+0000012737 00000 n 
+0000015242 00000 n 
+0000015387 00000 n 
+0000018206 00000 n 
+0000018351 00000 n 
+0000023049 00000 n 
+0000023194 00000 n 
+0000027768 00000 n 
+0000027913 00000 n 
+0000032042 00000 n 
+0000032187 00000 n 
+0000034244 00000 n 
+0000034389 00000 n 
+0000035616 00000 n 
+0000035761 00000 n 
+0000035888 00000 n 
+trailer
+<< /Size 27 /Root 26 0 R >>
+startxref
+35939
+%%EOF

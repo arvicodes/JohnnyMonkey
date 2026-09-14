@@ -1,0 +1,175 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+3 0 obj
+<< /Length 2263 >>
+stream
+BT
+/F2 16 Tf
+48 793.89 Td
+(Lehrer-Notizen) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(ToDo) Tj
+/F1 11 Tf
+0 -15 Td
+(? Mal was probieren: H\374 \374bern\344chste Woche?) Tj
+/F1 11 Tf
+0 -15 Td
+(? Thementracks? Meine AG?) Tj
+/F1 11 Tf
+0 -15 Td
+(? Die inverse Matrix \\\(A -1 \\\) erm\366glicht das R\374ckw\344rtsrechnen.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Vorw\344rts: \\\(\\vec a_1=A\\vec a_0\\\)) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(R\374ckw\344rts: \\\(\\vec a_0=A -1 \\vec a_1\\\)) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(F\374r \\\(A=\\begin{pmatrix}a&b\\\\c&d\\end{pmatrix}\\\) gilt: \\\(A -1) Tj
+/F1 11 Tf
+0 -15 Td
+(=\\frac{1}{ad-bc}\\begin{pmatrix}d&-b\\\\-c&a\\end{pmatrix}\\\)) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Die inverse Matrix existiert nur, wenn \\\(\\det\(A\)=ad-bc\\neq0\\\).) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Es gilt: \\\(A -1 A=I\\\) mit \\\(I=\\begin{pmatrix}1&0\\\\0&1\\end{pmatrix}\\\).) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? ?? ODER) Tj
+/F1 11 Tf
+0 -15 Td
+(? Mit dem Stift in die L\366sungsfolie der Tickets schreiben k\366nnen und ach die Tickets) Tj
+/F1 11 Tf
+0 -15 Td
+(selbst, f\374r Skizzen , Formeln etc.) Tj
+/F1 11 Tf
+0 -15 Td
+(? 5er: ? neue Tickets) Tj
+/F1 11 Tf
+0 -15 Td
+(? H\334 Klasse 5) Tj
+/F1 11 Tf
+0 -15 Td
+(? ANTON f\374r Montag) Tj
+/F1 11 Tf
+0 -15 Td
+(? H\334 LKSpiel aufschreiben, Sitzen stehen, dann abschreiben, dann Aufgabe, dann Ha, dann) Tj
+/F1 11 Tf
+0 -15 Td
+(Abschluss ordentlih) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Informatik) Tj
+/F1 11 Tf
+0 -15 Td
+(? LK ? \334Bersichts - Merkblatt) Tj
+/F1 11 Tf
+0 -15 Td
+(? neue Karten) Tj
+/F1 11 Tf
+0 -15 Td
+(? erste H\334/QUiz u) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Themen : GeoCaching !!!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(SuS Notizen) Tj
+/F1 11 Tf
+0 -15 Td
+(Datum Gruppe Keine Hausaufgaben ? Hausaufgaben ?) Tj
+/F1 11 Tf
+0 -15 Td
+(21.08 11 Aron Schr\366der, Felix Reinhard) Tj
+/F1 11 Tf
+0 -15 Td
+(Jan Jung) Tj
+/F1 11 Tf
+0 -15 Td
+(24.08) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Notiz 3) Tj
+/F1 11 Tf
+0 -15 Td
+([Bild] \\) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Notiz 4) Tj
+/F1 11 Tf
+0 -15 Td
+([Bild] [Bild] \\) Tj
+ET
+endstream
+endobj
+4 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 3 0 R >>
+endobj
+5 0 obj
+<< /Type /Pages /Kids [4 0 R] /Count 1 >>
+endobj
+6 0 obj
+<< /Type /Catalog /Pages 5 0 R >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000106 00000 n 
+0000000208 00000 n 
+0000002522 00000 n 
+0000002664 00000 n 
+0000002721 00000 n 
+trailer
+<< /Size 7 /Root 6 0 R >>
+startxref
+2770
+%%EOF

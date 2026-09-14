@@ -1,0 +1,17 @@
+JohnnyMonkey — Alles sichern (2026-09-03_08-11, Europe/Berlin)
+
+Präsentationen (live): 29
+Bereits vorhandene PDF/PPTX aus den Stundenordnern: 30
+Zusätzlich je Präsentation: Praesentation-Text.pdf und Praesentation-Text.pptx (Text der Folien).
+Notizen-Dateien: 136
+Entry-Ticket-Dateien: 21
+
+Ordner:
+  Praesentationen/   Live-Decks + Text-PDF/PPTX + vorhandene PDF/PPTX
+  Notizen/           PDF, PPTX, HTML + live JSON + Sicherheitskopien
+  Entry-Tickets/     PDF, PPTX + Backup-JSON
+
+Eine Extra-Kopie liegt außerdem hier auf dem Rechner:
+  /Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/Backup - Downloads/2026-09-03_08-11_extra
+
+Die Live-Notizen und Live-Folien wurden beim Packen nicht überschrieben.

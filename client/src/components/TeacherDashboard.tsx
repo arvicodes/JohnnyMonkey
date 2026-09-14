@@ -7037,35 +7037,64 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     }
   }, [currentLessonIndex, participationGroupId, lessonKeywordsMap, participations]);
 
-  // Beim Öffnen des Unterrichts-Modals Freigabe-Stand für die Gruppe laden (Dateien + gemeinsame Eingabe)
+  // Beim Öffnen des Unterrichts-Modals Freigabe-Stand für alle zugeordneten Lerngruppen laden
   useEffect(() => {
-    if (isLessonStundeRoute && lessonModalData?.groupId) {
-      const gid = lessonModalData.groupId;
-      fetchFileSharesForGroup(gid);
-      fetch(`/api/learning-groups/${gid}/lesson-shared-input-shares`)
-        .then(res => res.ok ? res.json() : [])
-        .then((paths: string[]) => setLessonSharedInputSharePaths(prev => ({ ...prev, [gid]: paths })))
-        .catch(() => {});
-      fetch(`/api/learning-groups/exam-beacon/status/${encodeURIComponent(gid)}`)
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data: { active?: boolean; beacon?: { filePath: string; beaconId: string } | null } | null) => {
-          if (data?.active && data.beacon?.filePath && data.beacon?.beaconId) {
-            setActiveExamBeacons((prev) => ({
-              ...prev,
-              [gid]: { filePath: data.beacon!.filePath, beaconId: data.beacon!.beaconId },
-            }));
-          } else {
-            setActiveExamBeacons((prev) => {
-              if (!prev[gid]) return prev;
-              const next = { ...prev };
-              delete next[gid];
-              return next;
-            });
-          }
-        })
-        .catch(() => {});
-    }
-  }, [isLessonStundeRoute, lessonModalData?.groupId]);
+    if (!isLessonStundeRoute || !lessonModalData?.lessonPath || !userId) return;
+    const lessonPath = lessonModalData.lessonPath;
+    const fallbackGroupId = lessonModalData.groupId || '';
+    let cancelled = false;
+    (async () => {
+      let gids: string[] = [];
+      try {
+        const res = await fetch(
+          `/api/learning-groups/groups-for-path?path=${encodeURIComponent(lessonPath)}&teacherId=${encodeURIComponent(userId)}`,
+        );
+        if (res.ok) {
+          const data = (await res.json()) as { groupIds?: string[] };
+          gids = (data.groupIds || []).filter(Boolean);
+        }
+      } catch {
+        /* ignore */
+      }
+      if (!gids.length && fallbackGroupId) gids = [fallbackGroupId];
+      if (cancelled) return;
+      for (const gid of gids) {
+        fetchFileSharesForGroup(gid);
+        fetch(`/api/learning-groups/${gid}/lesson-shared-input-shares`)
+          .then((res) => (res.ok ? res.json() : []))
+          .then((paths: string[]) =>
+            setLessonSharedInputSharePaths((prev) => ({ ...prev, [gid]: paths })),
+          )
+          .catch(() => {});
+        fetch(`/api/learning-groups/exam-beacon/status/${encodeURIComponent(gid)}`)
+          .then((res) => (res.ok ? res.json() : null))
+          .then(
+            (data: {
+              active?: boolean;
+              beacon?: { filePath: string; beaconId: string } | null;
+            } | null) => {
+              if (data?.active && data.beacon?.filePath && data.beacon?.beaconId) {
+                setActiveExamBeacons((prev) => ({
+                  ...prev,
+                  [gid]: { filePath: data.beacon!.filePath, beaconId: data.beacon!.beaconId },
+                }));
+              } else {
+                setActiveExamBeacons((prev) => {
+                  if (!prev[gid]) return prev;
+                  const next = { ...prev };
+                  delete next[gid];
+                  return next;
+                });
+              }
+            },
+          )
+          .catch(() => {});
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLessonStundeRoute, lessonModalData?.lessonPath, lessonModalData?.groupId, userId]);
 
   const openLessonStundePage = useCallback(
     (
@@ -13865,6 +13894,23 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     [groups, assignedFolders],
   );
 
+  const resolveGroupIdsForLessonPath = useCallback(
+    (lessonPath: string, fallbackGroupId?: string) => {
+      const want = lessonPath || '';
+      const ids = groups
+        .filter((g) =>
+          (assignedFolders[g.id] || []).some(
+            (p) => folderPathsEquivalent(p, want) || folderPathCovers(p, want),
+          ),
+        )
+        .map((g) => g.id);
+      if (ids.length) return ids;
+      const fb = (fallbackGroupId || '').trim();
+      return fb ? [fb] : [];
+    },
+    [groups, assignedFolders],
+  );
+
   const renderReiheGroupBreadcrumbs = (folderPath: string) => {
     const ids = new Set(resolveGroupIdsForReihe(folderPath));
     const assigned = groups.filter((g) => ids.has(g.id));
@@ -13946,7 +13992,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           setAssignedFolders((prev) => ({
             ...prev,
             [groupId]: (prev[groupId] || []).filter(
-              (p) => (p || '').replace(/\\/g, '/') !== (folderPath || '').replace(/\\/g, '/'),
+              (p) => !folderPathsEquivalent(p, folderPath),
             ),
           }));
         } else {
@@ -13961,8 +14007,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           }
           setAssignedFolders((prev) => {
             const next = [...(prev[groupId] || [])];
-            const n = (folderPath || '').replace(/\\/g, '/');
-            if (!next.some((p) => (p || '').replace(/\\/g, '/') === n)) next.push(folderPath);
+            if (!next.some((p) => folderPathsEquivalent(p, folderPath))) next.push(folderPath);
             return { ...prev, [groupId]: next };
           });
         }
@@ -21465,6 +21510,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   (f: any) => f?.type === 'file' && isLessonPresentationMaterialPdf(f.name || '')
                 );
                 const planShareGroupId = lessonModalData.groupId || '';
+                const planShareGroupIds = resolveGroupIdsForLessonPath(
+                  lessonModalData.lessonPath || '',
+                  planShareGroupId,
+                );
+                const examPathNorm = (p: string) => String(p).replace(/\\/g, '/');
+                const isExamActiveForGroups = (examPath: string) =>
+                  planShareGroupIds.some((gid) => {
+                    const running = activeExamBeacons[gid];
+                    return running && examPathNorm(running.filePath) === examPathNorm(examPath);
+                  });
                 const examFiles = allFiles.filter(
                   (f: any) => typeof f.name === 'string' && isCorrectionFile(f.name)
                 );
@@ -21559,11 +21614,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 const renderPlanItemShareToggle = (itemType: string, planItem?: LessonPlanItem) => {
                   if (itemType === 'pruefung') {
                     const exam = planItem ? resolveExamFileForPlanItem(planItem) : examFiles[0];
-                    if (!exam?.path || !planShareGroupId) return null;
-                    const running = activeExamBeacons[planShareGroupId];
-                    const active =
-                      !!running &&
-                      running.filePath.replace(/\\/g, '/') === String(exam.path).replace(/\\/g, '/');
+                    if (!exam?.path || !planShareGroupIds.length) return null;
+                    const active = isExamActiveForGroups(exam.path);
                     return (
                       <Button
                         type="button"
@@ -21572,7 +21624,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         title={
                           active
                             ? 'Prüfung beenden (Overlay bei SuS schließen)'
-                            : 'Prüfung starten (Vollbild bei allen SuS)'
+                            : planShareGroupIds.length > 1
+                              ? `Prüfung starten für ${planShareGroupIds.length} Lerngruppen`
+                              : 'Prüfung starten (Vollbild bei allen SuS)'
                         }
                         onClick={(e) => {
                           e.preventDefault();
@@ -21585,7 +21639,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify({
                                     teacherId: userId,
-                                    groupId: planShareGroupId,
+                                    groupIds: planShareGroupIds,
                                   }),
                                 });
                                 if (!res.ok) {
@@ -21595,7 +21649,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 }
                                 setActiveExamBeacons((prev) => {
                                   const next = { ...prev };
-                                  delete next[planShareGroupId];
+                                  for (const gid of planShareGroupIds) delete next[gid];
                                   return next;
                                 });
                                 showSnackbar('Prüfung beendet', 'success');
@@ -21605,7 +21659,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify({
                                     teacherId: userId,
-                                    groupId: planShareGroupId,
+                                    groupIds: planShareGroupIds,
                                     filePath: exam.path,
                                     lessonPath: lessonModalData.lessonPath || '',
                                   }),
@@ -21616,19 +21670,29 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   return;
                                 }
                                 const data = await res.json();
-                                setActiveExamBeacons((prev) => ({
-                                  ...prev,
-                                  [planShareGroupId]: {
-                                    filePath: data.filePath || exam.path,
-                                    beaconId: data.beaconId,
-                                  },
-                                }));
-                                // Freigabe-Status lokal aktualisieren
-                                setFileShares((prev) => ({
-                                  ...prev,
-                                  [fileShareKey(exam.path, planShareGroupId)]: true,
-                                }));
-                                showSnackbar('Prüfung gestartet — SuS sehen Vollbild', 'success');
+                                setActiveExamBeacons((prev) => {
+                                  const next = { ...prev };
+                                  for (const gid of planShareGroupIds) {
+                                    next[gid] = {
+                                      filePath: data.filePath || exam.path,
+                                      beaconId: data.beaconId,
+                                    };
+                                  }
+                                  return next;
+                                });
+                                setFileShares((prev) => {
+                                  const next = { ...prev };
+                                  for (const gid of planShareGroupIds) {
+                                    next[fileShareKey(exam.path, gid)] = true;
+                                  }
+                                  return next;
+                                });
+                                showSnackbar(
+                                  planShareGroupIds.length > 1
+                                    ? `Prüfung gestartet — ${planShareGroupIds.length} Lerngruppen`
+                                    : 'Prüfung gestartet — SuS sehen Vollbild',
+                                  'success',
+                                );
                               }
                             } catch {
                               showSnackbar('Netzwerkfehler beim Prüfungs-Start/Stop', 'error');
@@ -23706,27 +23770,21 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                       <DescriptionIcon sx={{ fontSize: 13 }} />
                                     </IconButton>
                                   </Tooltip>
-                                  {planShareGroupId && (
+                                  {planShareGroupIds.length > 0 && (
                                     <Button
                                       type="button"
                                       size="small"
-                                      variant={
-                                        activeExamBeacons[planShareGroupId]?.filePath?.replace(/\\/g, '/') ===
-                                        String(exam.path).replace(/\\/g, '/')
-                                          ? 'contained'
-                                          : 'outlined'
-                                      }
+                                      variant={isExamActiveForGroups(exam.path) ? 'contained' : 'outlined'}
                                       title={
-                                        activeExamBeacons[planShareGroupId]?.filePath?.replace(/\\/g, '/') ===
-                                        String(exam.path).replace(/\\/g, '/')
+                                        isExamActiveForGroups(exam.path)
                                           ? 'Prüfung beenden'
-                                          : 'Prüfung starten (Vollbild bei SuS)'
+                                          : planShareGroupIds.length > 1
+                                            ? `Prüfung starten für ${planShareGroupIds.length} Lerngruppen`
+                                            : 'Prüfung starten (Vollbild bei SuS)'
                                       }
                                       onClick={() => {
                                         void (async () => {
-                                          const isActive =
-                                            activeExamBeacons[planShareGroupId]?.filePath?.replace(/\\/g, '/') ===
-                                            String(exam.path).replace(/\\/g, '/');
+                                          const isActive = isExamActiveForGroups(exam.path);
                                           try {
                                             if (isActive) {
                                               const res = await fetch('/api/learning-groups/exam-beacon/stop', {
@@ -23734,13 +23792,13 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                                 headers: { 'Content-Type': 'application/json' },
                                                 body: JSON.stringify({
                                                   teacherId: userId,
-                                                  groupId: planShareGroupId,
+                                                  groupIds: planShareGroupIds,
                                                 }),
                                               });
                                               if (!res.ok) return;
                                               setActiveExamBeacons((prev) => {
                                                 const next = { ...prev };
-                                                delete next[planShareGroupId];
+                                                for (const gid of planShareGroupIds) delete next[gid];
                                                 return next;
                                               });
                                               showSnackbar('Prüfung beendet', 'success');
@@ -23750,25 +23808,36 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                                 headers: { 'Content-Type': 'application/json' },
                                                 body: JSON.stringify({
                                                   teacherId: userId,
-                                                  groupId: planShareGroupId,
+                                                  groupIds: planShareGroupIds,
                                                   filePath: exam.path,
                                                   lessonPath: lessonModalData.lessonPath || '',
                                                 }),
                                               });
                                               if (!res.ok) return;
                                               const data = await res.json();
-                                              setActiveExamBeacons((prev) => ({
-                                                ...prev,
-                                                [planShareGroupId]: {
-                                                  filePath: data.filePath || exam.path,
-                                                  beaconId: data.beaconId,
-                                                },
-                                              }));
-                                              setFileShares((prev) => ({
-                                                ...prev,
-                                                [fileShareKey(exam.path, planShareGroupId)]: true,
-                                              }));
-                                              showSnackbar('Prüfung gestartet — SuS sehen Vollbild', 'success');
+                                              setActiveExamBeacons((prev) => {
+                                                const next = { ...prev };
+                                                for (const gid of planShareGroupIds) {
+                                                  next[gid] = {
+                                                    filePath: data.filePath || exam.path,
+                                                    beaconId: data.beaconId,
+                                                  };
+                                                }
+                                                return next;
+                                              });
+                                              setFileShares((prev) => {
+                                                const next = { ...prev };
+                                                for (const gid of planShareGroupIds) {
+                                                  next[fileShareKey(exam.path, gid)] = true;
+                                                }
+                                                return next;
+                                              });
+                                              showSnackbar(
+                                                planShareGroupIds.length > 1
+                                                  ? `Prüfung gestartet — ${planShareGroupIds.length} Lerngruppen`
+                                                  : 'Prüfung gestartet — SuS sehen Vollbild',
+                                                'success',
+                                              );
                                             }
                                           } catch {
                                             /* ignore */
@@ -23782,8 +23851,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                         fontSize: '0.58rem',
                                         fontWeight: 800,
                                         textTransform: 'none',
-                                        ...(activeExamBeacons[planShareGroupId]?.filePath?.replace(/\\/g, '/') ===
-                                        String(exam.path).replace(/\\/g, '/')
+                                        ...(isExamActiveForGroups(exam.path)
                                           ? {
                                               bgcolor: '#c62828',
                                               color: '#fff',
@@ -23796,10 +23864,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                             }),
                                       }}
                                     >
-                                      {activeExamBeacons[planShareGroupId]?.filePath?.replace(/\\/g, '/') ===
-                                      String(exam.path).replace(/\\/g, '/')
-                                        ? 'STOP'
-                                        : 'START'}
+                                      {isExamActiveForGroups(exam.path) ? 'STOP' : 'START'}
                                     </Button>
                                   )}
                                 </Box>

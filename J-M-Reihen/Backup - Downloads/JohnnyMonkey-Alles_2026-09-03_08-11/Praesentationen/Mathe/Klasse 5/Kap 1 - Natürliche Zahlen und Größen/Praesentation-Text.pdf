@@ -1,0 +1,733 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+3 0 obj
+<< /Length 2440 >>
+stream
+BT
+/F2 16 Tf
+48 793.89 Td
+(Kap 1 - Nat\374rliche Zahlen und Gr\366\337en) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Pfad) Tj
+/F1 11 Tf
+0 -15 Td
+(git-intern/Mathe/Klasse 5/Kap 1 - Nat\374rliche Zahlen und Gr\366\337en) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Guten Morgen!) Tj
+/F1 11 Tf
+0 -15 Td
+(E) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Wer bin ich? Wer seid ihr?) Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(? Ich war in 3 L\344ndern und bin von Salzburg nach Wien Fahrrad gefahren.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Ich habe ein Eichh\366rnchen gegessen!) Tj
+/F1 11 Tf
+0 -15 Td
+(? Ich habe mit mit den Inlinern hingelegt.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Ich laufe grade nach Braubach!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Organisatorisches - Material und Technik) Tj
+/F1 11 Tf
+0 -15 Td
+(? ? Die Johnny Monkey App) Tj
+/F1 11 Tf
+0 -15 Td
+(? Wir arbeiten mit der App Johnny Monkey , erreichbar durch folgende) Tj
+/F1 11 Tf
+0 -15 Td
+(Eingabe in der Browsersuchleiste: https://mnsplusdocker:44443) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Bist du nicht im Schul-Wlan, musst du allerdings stattdessen eingeben:) Tj
+/F1 11 Tf
+0 -15 Td
+(https://rpl-50147-0.dn.mnsnet.de:44443/) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Logincodes erhaltet ihr und notiert sie im Hausaufgabenheft) Tj
+/F1 11 Tf
+0 -15 Td
+(? AUSWENDIG LERNEN!!! NIEMALS VERGESSEN!!! ????) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Unser Moderator, unsere Moderatorin) Tj
+/F1 11 Tf
+0 -15 Td
+(? Pro Woche) Tj
+/F1 11 Tf
+0 -15 Td
+(? Startet und Beendet die Stunde mit Entry - und Exit -Ticket) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Noten) Tj
+/F1 11 Tf
+0 -15 Td
+(? Zwei Klassenarbeiten pro Halbjahr) Tj
+/F1 11 Tf
+0 -15 Td
+(? Zwei Epochalnoten pro Halbjahr) Tj
+/F1 11 Tf
+0 -15 Td
+(? Mehrere H\374s \(immer angek\374ndigt\) und manchmal Projektnoten pro Halbjahr) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Bis zur n\344chsten Stunde!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Heute noch keine ?!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Welche Sportart betreibst du am liebsten?) Tj
+/F1 11 Tf
+0 -15 Td
+(Arbeitsauftrag) Tj
+/F1 11 Tf
+0 -15 Td
+(Mathebuch:) Tj
+/F1 11 Tf
+0 -15 Td
+(Seite 13, Nummer 5) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Lernziele der Stunde) Tj
+ET
+endstream
+endobj
+4 0 obj
+<< /Type /Page /Parent 13 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 3 0 R >>
+endobj
+5 0 obj
+<< /Length 1657 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(Strichliste, Balkendiagramm, S\344ulendiagramm.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Schwierigkeiten:) Tj
+/F1 11 Tf
+0 -15 Td
+(? es dauert sehr lange Diagramme zu zeichnen.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Genaues Arbeiten. Bleistift und F\374ller.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Beschriftung der Achsen) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Beispiell\366sung:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Bis zur n\344chsten Stunde!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Mathebuch:) Tj
+/F1 11 Tf
+0 -15 Td
+(Seite 14, Nummer 9) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 7) Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Lernziele der Stunde) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Schwierigkeiten:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Beispiell\366sung:) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 8) Tj
+/F1 11 Tf
+0 -15 Td
+(Arbeitsauftrag) Tj
+/F1 11 Tf
+0 -15 Td
+(Mathebuch:) Tj
+/F1 11 Tf
+0 -15 Td
+(Seite 17, Nummer 4) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+([Bild] [Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Bis zur n\344chsten Stunde!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Mathebuch:) Tj
+/F1 11 Tf
+0 -15 Td
+(Seite 17, Nummer 5 und 6) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+([Bild]) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 10) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 13 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 1816 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 11) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Bis zur n\344chsten Stunde!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Mathebuch:) Tj
+/F1 11 Tf
+0 -15 Td
+(Seite , Nummer) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 13) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 14) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 15) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Video / Link) Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Video-URL im Element bearbeiten: Element w\344hlen ? ? ? Link/URL) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 17) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Knacke die r\366mischen Zahlen) Tj
+/F1 11 Tf
+0 -15 Td
+(VIII = ______) Tj
+/F1 11 Tf
+0 -15 Td
+(XIII = ______) Tj
+/F1 11 Tf
+0 -15 Td
+(XVII = ______) Tj
+/F1 11 Tf
+0 -15 Td
+(XXIII = ______) Tj
+/F1 11 Tf
+0 -15 Td
+(XXXII = ______) Tj
+/F1 11 Tf
+0 -15 Td
+(LXII = ______) Tj
+/F1 11 Tf
+0 -15 Td
+(LXXVIII = ______) Tj
+/F1 11 Tf
+0 -15 Td
+(Danach dann Aufgaben mit Subtraktion:) Tj
+/F1 11 Tf
+0 -15 Td
+(XIV = ______) Tj
+/F1 11 Tf
+0 -15 Td
+(XIX = ______) Tj
+/F1 11 Tf
+0 -15 Td
+(XLII = ______) Tj
+/F1 11 Tf
+0 -15 Td
+(XCIV = ______) Tj
+/F1 11 Tf
+0 -15 Td
+(CD = ______) Tj
+/F1 11 Tf
+0 -15 Td
+(CM = ______) Tj
+/F1 11 Tf
+0 -15 Td
+(Schreibe als r\366mische Zahl:) Tj
+/F1 11 Tf
+0 -15 Td
+(44 = ______) Tj
+/F1 11 Tf
+0 -15 Td
+(99 = ______) Tj
+/F1 11 Tf
+0 -15 Td
+(Zum Nachdenken:) Tj
+/F1 11 Tf
+0 -15 Td
+(Warum ist 49 = XLIX und nicht IL?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Lasst uns addieren:) Tj
+/F1 11 Tf
+0 -15 Td
+(II =) Tj
+/F1 11 Tf
+0 -15 Td
+(VIII =) Tj
+/F1 11 Tf
+0 -15 Td
+(XIII =) Tj
+/F1 11 Tf
+0 -15 Td
+(XVII =) Tj
+/F1 11 Tf
+0 -15 Td
+(XXIII =) Tj
+ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 13 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Length 1654 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(XXXII =) Tj
+/F1 11 Tf
+0 -15 Td
+(LXII =) Tj
+/F1 11 Tf
+0 -15 Td
+(LXXVIII =) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Lasst uns subtrahieren:) Tj
+/F1 11 Tf
+0 -15 Td
+(XIV =) Tj
+/F1 11 Tf
+0 -15 Td
+(IL =) Tj
+/F1 11 Tf
+0 -15 Td
+(XIX =) Tj
+/F1 11 Tf
+0 -15 Td
+(IC =) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(CD = 400) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(XLII =) Tj
+/F1 11 Tf
+0 -15 Td
+(XD =) Tj
+/F1 11 Tf
+0 -15 Td
+(XM =) Tj
+/F1 11 Tf
+0 -15 Td
+(XCIV =) Tj
+/F1 11 Tf
+0 -15 Td
+(CM = ______) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Schreibe als r\366mische Zahl:) Tj
+/F1 11 Tf
+0 -15 Td
+(44 = ______) Tj
+/F1 11 Tf
+0 -15 Td
+(99 = ______) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Zum Nachdenken:) Tj
+/F1 11 Tf
+0 -15 Td
+(Warum ist 49 = XLIX und nicht IL?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Beispiell\366sung:) Tj
+/F1 11 Tf
+0 -15 Td
+(VIII = 8) Tj
+/F1 11 Tf
+0 -15 Td
+(XIII = 13) Tj
+/F1 11 Tf
+0 -15 Td
+(XVII = 17) Tj
+/F1 11 Tf
+0 -15 Td
+(XXIII = 23) Tj
+/F1 11 Tf
+0 -15 Td
+(XXXII = 32) Tj
+/F1 11 Tf
+0 -15 Td
+(LXII = 62) Tj
+/F1 11 Tf
+0 -15 Td
+(LXXVIII = 78) Tj
+/F1 11 Tf
+0 -15 Td
+(----------------) Tj
+/F1 11 Tf
+0 -15 Td
+(XIV = 14) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(IL ? XLIX \(49\)) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(XIX = 19) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(IC ? XCIX \(99\)) Tj
+/F1 11 Tf
+0 -15 Td
+(CD = 400) Tj
+/F1 11 Tf
+0 -15 Td
+(XLII = 42) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(XD ? CDXC \(490\)) Tj
+/F1 11 Tf
+0 -15 Td
+(XM ? CMXC \(990\)) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(XCIV = 94) Tj
+ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 13 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 9 0 R >>
+endobj
+11 0 obj
+<< /Length 964 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(CM = 900) Tj
+/F1 11 Tf
+0 -15 Td
+(------------------) Tj
+/F1 11 Tf
+0 -15 Td
+(44 = XLIV) Tj
+/F1 11 Tf
+0 -15 Td
+(99 = XCIX) Tj
+/F1 11 Tf
+0 -15 Td
+(49 = XLIX und nicht IL, weil I nur vor V oder X stehen darf.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Bis zur n\344chsten Stunde!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Arbeitsheft Seite 6 , Nummer 11 und 12) Tj
+/F1 11 Tf
+0 -15 Td
+(Buch Seite 23, Nummer 1 und 5) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Bonus- & Knobelaufgaben) Tj
+/F1 11 Tf
+0 -15 Td
+(Buch Seite 23, Nummer 7 und 8) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Folie 20) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Bis zur n\344chsten Stunde!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Hausaufgabe) Tj
+/F1 11 Tf
+0 -15 Td
+(Arbeitsheft ganze Seite 7) Tj
+ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 13 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 11 0 R >>
+endobj
+13 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R 8 0 R 10 0 R 12 0 R] /Count 5 >>
+endobj
+14 0 obj
+<< /Type /Catalog /Pages 13 0 R >>
+endobj
+xref
+0 15
+0000000000 65535 f 
+0000000009 00000 n 
+0000000106 00000 n 
+0000000208 00000 n 
+0000002699 00000 n 
+0000002842 00000 n 
+0000004550 00000 n 
+0000004693 00000 n 
+0000006560 00000 n 
+0000006703 00000 n 
+0000008408 00000 n 
+0000008552 00000 n 
+0000009567 00000 n 
+0000009712 00000 n 
+0000009796 00000 n 
+trailer
+<< /Size 15 /Root 14 0 R >>
+startxref
+9847
+%%EOF

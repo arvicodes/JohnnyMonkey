@@ -1,0 +1,439 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+3 0 obj
+<< /Length 2734 >>
+stream
+BT
+/F2 16 Tf
+48 793.89 Td
+(Orga) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Pfad) Tj
+/F1 11 Tf
+0 -15 Td
+(git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/01.02 Orga) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Guten Morgen!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Referenz) Tj
+/F1 11 Tf
+0 -15 Td
+(Notizen:) Tj
+/F1 11 Tf
+0 -15 Td
+(Referenz-URL im Element bearbeiten \(z. B. /wall-of-fame\). In der Pr\344sentation zoombar.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Organisatorisches - Benotung) Tj
+/F1 11 Tf
+0 -15 Td
+(? Kursarbeit \227 Gewichtung: 1/3) Tj
+/F1 11 Tf
+0 -15 Td
+(? Andere Leistungen \227 Gewichtung: 2/3 - Epos, Projekte, H\374s, etc.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Organisatorisches - Material und Technik) Tj
+/F1 11 Tf
+0 -15 Td
+(? ? Die Johnny Monkey App) Tj
+/F1 11 Tf
+0 -15 Td
+(? Wir arbeiten mit der App Johnny Monkey , erreichbar durch folgende Eingabe in der) Tj
+/F1 11 Tf
+0 -15 Td
+(Browsersuchleiste: 192.168.8.1) Tj
+/F1 11 Tf
+0 -15 Td
+(? Login mit Schulcomputerlogin.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Logge dich IMMER sofort zu Stundenbeginn ein und lege direkt los !) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Das Materialheft ?) Tj
+/F1 11 Tf
+0 -15 Td
+(? Notiere die IP Adresse und deine Login Daten im Materialheft auf Seite 1.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Starte n\344chste Stunde auf Seite 2.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Beschrifte das Materialheft mit Namen und designe das Cover nach Belieben.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Unser Moderator, unsere Moderatorin) Tj
+/F1 11 Tf
+0 -15 Td
+(? Pro Woche) Tj
+/F1 11 Tf
+0 -15 Td
+(? Startet und Beendet die Stunde mit Entry - und Exit -Ticket) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Themen der Informatik in der MSS) Tj
+/F1 11 Tf
+0 -15 Td
+(? K\374nstliche Intelligenz: Grundlagen des machine learnings) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Algorithmen: Ablaufdiagramme am Beispiel bekannter Algorithmen \(Suchen, Sortieren,) Tj
+/F1 11 Tf
+0 -15 Td
+(Pfade planen\), Korrektheit) Tj
+/F1 11 Tf
+0 -15 Td
+(? Programmierung: Einstieg in die Programmierung in) Tj
+/F1 11 Tf
+0 -15 Td
+(Python, oftmals mit Projekt : Ein kleines Spiel in Python) Tj
+/F1 11 Tf
+0 -15 Td
+(programmieren) Tj
+/F1 11 Tf
+0 -15 Td
+(? Objekt orientierung: Java Greenfoot - Klassen, Objekte, Vererbung,) Tj
+/F1 11 Tf
+0 -15 Td
+(Spezifikation, UML) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Geschichte: Entstehung der Computern und der Informatik als) Tj
+/F1 11 Tf
+0 -15 Td
+(Wissenschaft) Tj
+/F1 11 Tf
+0 -15 Td
+(? Logik : Bin\344rsystem, Logik &) Tj
+/F1 11 Tf
+0 -15 Td
+(Schaltwerke) Tj
+/F1 11 Tf
+0 -15 Td
+(? Digitaltechnik : Computeraufbau, Automaten &) Tj
+ET
+endstream
+endobj
+4 0 obj
+<< /Type /Page /Parent 9 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 3 0 R >>
+endobj
+5 0 obj
+<< /Length 2795 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+(Assembler, h\344ufig mit Projekt : Arduino Mikrocontroller oder Micro:Bit) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(?) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(Internet: Kommunikation in Netzwerken, IP Adressen , Router etc.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? IT Sicherheit: Kryptographie & Verschl\374sselung) Tj
+/F1 11 Tf
+0 -15 Td
+(? Datenbanken: Datenbanken in SQL erstellen und) Tj
+/F1 11 Tf
+0 -15 Td
+(verwalten) Tj
+/F1 11 Tf
+0 -15 Td
+(? Webentwicklung in HTML, CSS, Java Script , SQL: Immer als Projekt) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Bildverarbeitung und Computergrafik: Pixel, Grafiken, Kameras) Tj
+/F1 11 Tf
+0 -15 Td
+(? 3D Animation: Grundlagen mit) Tj
+/F1 11 Tf
+0 -15 Td
+(Blender, immer als Projekt) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Optional: Spieledesign - Desktop und mobile Spiele in Unity 3D entwickeln) Tj
+/F1 11 Tf
+0 -15 Td
+(? Optional: 3D Druck) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? K\374nstliche Intelligenz: Grundlagen des machine learnings) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Algorithmen: Ablaufdiagramme am Beispiel bekannter Algorithmen \(Suchen, Sortieren,) Tj
+/F1 11 Tf
+0 -15 Td
+(Pfade planen\), Korrektheit) Tj
+/F1 11 Tf
+0 -15 Td
+(? Programmierung: Einstieg in die Programmierung) Tj
+/F1 11 Tf
+0 -15 Td
+(in Python, oftmals mit Projekt : Ein kleines Spiel in Python) Tj
+/F1 11 Tf
+0 -15 Td
+(? Objekt orientierung: Java Greenfoot - Klassen, Objekte, Vererbung, Spezifikation, UML) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Internet: Kommunikation in Netzwerken, IP Adressen, Router etc.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? IT Sicherheit: Kryptographie & Verschl\374sselung) Tj
+/F1 11 Tf
+0 -15 Td
+(? Datenbanken: Datenbanken in SQL erstellen und verwalten) Tj
+/F1 11 Tf
+0 -15 Td
+(? Webentwicklung in HTML, CSS, Java Script , SQL: Immer als Projekt) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Geschichte: Entstehung der Computern und der Informatik als Wissenschaft) Tj
+/F1 11 Tf
+0 -15 Td
+(? Logik : Bin\344rsystem, Logik & Schaltwerke) Tj
+/F1 11 Tf
+0 -15 Td
+(? Digitaltechnik : Computeraufbau, Automaten & Assembler, h\344ufig mit Projekt : Arduino) Tj
+/F1 11 Tf
+0 -15 Td
+(Mikrocontroller oder Micro:Bit) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Bildverarbeitung und Computergrafik: Pixel, Grafiken, Kameras) Tj
+/F1 11 Tf
+0 -15 Td
+(? 3D Animation: Grundlagen mit Blender, immer als Projekt) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Optional: Spieledesign - Desktop und mobile Spiele in Unity 3D entwickeln) Tj
+/F1 11 Tf
+0 -15 Td
+(? Optional: 3D Druck) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(gn - Desktop und mobile Spiele in Unity 3D entwickeln) Tj
+/F1 11 Tf
+0 -15 Td
+(? Optional: 3D Druck) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 9 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 1560 >>
+stream
+BT
+/F1 11 Tf
+48 793.89 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe: Wer bist du als Person? Jetzt in der App!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe: Wer bist du als Person? Jetzt in der App!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Start) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Start) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Start) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Start) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Start) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Start) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Optional: Gruppenvideos) Tj
+/F1 11 Tf
+0 -15 Td
+(Erstellt kurze Vorstellungsv ideos in kleinen Gruppen \(3 Personen\).) Tj
+/F1 11 Tf
+0 -15 Td
+(? Jeder Name sollte mindestens 3 mal genannt werden.) Tj
+/F1 11 Tf
+0 -15 Td
+(? Es gibt kein Thema, einfach witzig, skurril oder normal. Egal! Seid kreativ!) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Hausaufgabe: Wer bist du als Person? Jetzt in der App!) Tj
+/F1 11 Tf
+0 -15 Td
+(? Lade ein Foto von dir hoch. Dein Gesicht muss gut erkennbar sein, das Foto sollte ein) Tj
+/F1 11 Tf
+0 -15 Td
+(tats\344chliches, aktuelles Aussehen widerspiegeln.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? \334bertrage deinen Satz , deinen Steckbrief und deinen Wunschzettel aus der letzten) Tj
+/F1 11 Tf
+0 -15 Td
+(Hausaufgabe in die App.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F1 11 Tf
+0 -15 Td
+(? Optional: der Ersteller des Videos l\344dt dieses auch hoch.) Tj
+/F1 11 Tf
+0 -15 Td
+() Tj
+/F2 13 Tf
+0 -15 Td
+(Bis zur n\344chsten Stunde!) Tj
+ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 9 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R 8 0 R] /Count 3 >>
+endobj
+10 0 obj
+<< /Type /Catalog /Pages 9 0 R >>
+endobj
+xref
+0 11
+0000000000 65535 f 
+0000000009 00000 n 
+0000000106 00000 n 
+0000000208 00000 n 
+0000002993 00000 n 
+0000003135 00000 n 
+0000005981 00000 n 
+0000006123 00000 n 
+0000007734 00000 n 
+0000007876 00000 n 
+0000007945 00000 n 
+trailer
+<< /Size 11 /Root 10 0 R >>
+startxref
+7995
+%%EOF
