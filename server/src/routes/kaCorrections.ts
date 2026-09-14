@@ -18,6 +18,15 @@ router.post('/corrections', KACorrectionController.saveCorrection);
 // Status der Abgabe aktualisieren
 router.patch('/submissions/:id/status', KACorrectionController.updateStatus);
 
+// Abgabe nachträglich bearbeiten (Lehrer)
+router.patch('/submissions/:id/answers', KACorrectionController.updateSubmissionAnswers);
+
+// Musterlösung ändern + alle Abgaben neu bewerten
+router.post('/answer-key', KACorrectionController.updateAnswerKey);
+
+// Alle Abgaben neu automatisch bewerten
+router.post('/recalculate', KACorrectionController.recalculateExam);
+
 // Alle Abgaben für eine Klassenarbeit zurücksetzen (nur für Lehrer)
 router.post('/reset-all', KACorrectionController.resetAllSubmissions);
 

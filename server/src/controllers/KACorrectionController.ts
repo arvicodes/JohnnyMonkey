@@ -1,6 +1,13 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { findUserByLoginCode } from '../utils/loginCodeCrypto';
+import {
+  computeSubmissionTotal,
+  parseExamAnswerKey,
+  readExamHtml,
+  replaceCorrectAnswersInHtml,
+  writeExamHtml,
+} from '../utils/examAutoPoints';
 
 const prisma = new PrismaClient();
 
@@ -45,7 +52,72 @@ function getPossiblePaths(filePath: string): string[] {
   return [...candidates];
 }
 
+async function requireTeacher(req: Request) {
+  const loginCode = req.headers['x-login-code'] as string;
+  if (!loginCode) return null;
+  const user = await findUserByLoginCode(prisma, loginCode);
+  if (!user || user.role !== 'TEACHER') return null;
+  return user;
+}
+
 export class KACorrectionController {
+  private static async recomputeSubmissionById(submissionId: string) {
+    const submission = await prisma.kASubmission.findUnique({
+      where: { id: submissionId },
+      include: { corrections: true },
+    });
+    if (!submission) return null;
+    let key = parseExamAnswerKey('');
+    try {
+      key = parseExamAnswerKey(readExamHtml(submission.kaFilePath));
+    } catch {
+      /* keine HTML-Datei */
+    }
+    if (Object.keys(key.answers).length === 0) {
+      const manualSum = submission.corrections.reduce((s, c) => s + (c.manualPoints ?? 0), 0);
+      return prisma.kASubmission.update({
+        where: { id: submissionId },
+        data: { totalPoints: submission.autoPoints + manualSum, status: 'corrected' },
+      });
+    }
+    const { autoPoints, totalPoints } = computeSubmissionTotal(
+      submission.answers,
+      key,
+      submission.corrections.map((c) => ({
+        taskNumber: c.taskNumber,
+        manualPoints: c.manualPoints,
+      })),
+    );
+    return prisma.kASubmission.update({
+      where: { id: submissionId },
+      data: { autoPoints, totalPoints, status: 'corrected' },
+    });
+  }
+
+  private static async recalculateAllForExam(kaFilePath: string): Promise<number> {
+    const uniquePaths = getPossiblePaths(kaFilePath);
+    const html = readExamHtml(kaFilePath);
+    const key = parseExamAnswerKey(html);
+    const submissions = await prisma.kASubmission.findMany({
+      where: { OR: uniquePaths.map((p) => ({ kaFilePath: p })) },
+      include: { corrections: true },
+    });
+    for (const sub of submissions) {
+      const { autoPoints, totalPoints } = computeSubmissionTotal(
+        sub.answers,
+        key,
+        sub.corrections.map((c) => ({
+          taskNumber: c.taskNumber,
+          manualPoints: c.manualPoints,
+        })),
+      );
+      await prisma.kASubmission.update({
+        where: { id: sub.id },
+        data: { autoPoints, totalPoints },
+      });
+    }
+    return submissions.length;
+  }
   /**
    * Abgabe einer Klassenarbeit speichern
    */
@@ -512,32 +584,13 @@ export class KACorrectionController {
         manualPoints: correction.manualPoints
       });
 
-      // Berechne Gesamtpunkte neu
-      const allCorrections = await prisma.kACorrection.findMany({
-        where: { submissionId }
-      });
+      const updatedSubmission = await KACorrectionController.recomputeSubmissionById(submissionId);
+      const totalPoints = updatedSubmission?.totalPoints ?? submission.totalPoints;
+      const autoPoints = updatedSubmission?.autoPoints ?? submission.autoPoints;
 
-      const totalManualPoints = allCorrections.reduce((sum, c) => sum + (c.manualPoints || 0), 0);
-      const totalPoints = submission.autoPoints + totalManualPoints;
+      console.log('📊 Punkteberechnung:', { autoPoints, totalPoints });
 
-      console.log('📊 Punkteberechnung:', {
-        autoPoints: submission.autoPoints,
-        totalManualPoints,
-        totalPoints
-      });
-
-      // Update Submission
-      await prisma.kASubmission.update({
-        where: { id: submissionId },
-        data: {
-          totalPoints,
-          status: 'corrected'
-        }
-      });
-
-      console.log('✅ Submission aktualisiert mit Gesamtpunkten:', totalPoints);
-
-      res.json({ success: true, correction, totalPoints });
+      res.json({ success: true, correction, totalPoints, autoPoints });
     } catch (error) {
       console.error('❌ Fehler beim Speichern der Korrektur:', error);
       console.error('Fehler-Details:', {
@@ -1091,6 +1144,78 @@ export class KACorrectionController {
     } catch (error) {
       console.error('Error getting released results:', error);
       res.status(500).json({ error: 'Fehler beim Laden der Prüfungsergebnisse' });
+    }
+  }
+
+  /** Lehrer: Abgabe eines Schülers nachträglich ändern */
+  static async updateSubmissionAnswers(req: Request, res: Response) {
+    try {
+      const teacher = await requireTeacher(req);
+      if (!teacher) return res.status(403).json({ error: 'Nur Lehrer' });
+
+      const { id } = req.params;
+      const { answers } = req.body as { answers?: Record<string, unknown> };
+      if (!answers || typeof answers !== 'object') {
+        return res.status(400).json({ error: 'answers ist erforderlich' });
+      }
+
+      const submission = await prisma.kASubmission.findUnique({
+        where: { id },
+        include: { corrections: true },
+      });
+      if (!submission) return res.status(404).json({ error: 'Abgabe nicht gefunden' });
+
+      await prisma.kASubmission.update({
+        where: { id },
+        data: { answers: JSON.stringify(answers) },
+      });
+      const updated = await KACorrectionController.recomputeSubmissionById(id);
+      res.json({ success: true, submission: updated });
+    } catch (error) {
+      console.error('Error updating submission answers:', error);
+      res.status(500).json({ error: 'Fehler beim Aktualisieren der Abgabe' });
+    }
+  }
+
+  /** Lehrer: Musterlösung (correctAnswers) in der Prüfungs-HTML ändern und neu bewerten */
+  static async updateAnswerKey(req: Request, res: Response) {
+    try {
+      const teacher = await requireTeacher(req);
+      if (!teacher) return res.status(403).json({ error: 'Nur Lehrer' });
+
+      const { kaFilePath, answers } = req.body as {
+        kaFilePath?: string;
+        answers?: Record<string, string | string[] | number>;
+      };
+      if (!kaFilePath || !answers) {
+        return res.status(400).json({ error: 'kaFilePath und answers sind erforderlich' });
+      }
+
+      const html = readExamHtml(kaFilePath);
+      const updatedHtml = replaceCorrectAnswersInHtml(html, answers);
+      writeExamHtml(kaFilePath, updatedHtml);
+      const count = await KACorrectionController.recalculateAllForExam(kaFilePath);
+      res.json({ success: true, recalculated: count });
+    } catch (error) {
+      console.error('Error updating answer key:', error);
+      res.status(500).json({ error: 'Fehler beim Speichern der Musterlösung' });
+    }
+  }
+
+  /** Lehrer: Alle Abgaben einer Prüfung neu automatisch bewerten */
+  static async recalculateExam(req: Request, res: Response) {
+    try {
+      const teacher = await requireTeacher(req);
+      if (!teacher) return res.status(403).json({ error: 'Nur Lehrer' });
+
+      const { kaFilePath } = req.body as { kaFilePath?: string };
+      if (!kaFilePath) return res.status(400).json({ error: 'kaFilePath ist erforderlich' });
+
+      const count = await KACorrectionController.recalculateAllForExam(kaFilePath);
+      res.json({ success: true, recalculated: count });
+    } catch (error) {
+      console.error('Error recalculating exam:', error);
+      res.status(500).json({ error: 'Fehler bei der Neubewertung' });
     }
   }
 }

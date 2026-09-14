@@ -38,6 +38,7 @@ import {
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table as DocxTable, TableRow as DocxTableRow, TableCell as DocxTableCell, WidthType } from 'docx';
 import { saveAs } from 'file-saver';
 import JSZip from 'jszip';
+import { examGradeLabelForCorrection, examGradeNumericForCorrection } from '../lib/examGradeLabel';
 
 interface KASubmission {
   id: string;
@@ -84,6 +85,13 @@ const getFirstName = (fullName: string): string => {
 // Notenberechnung (wie in gradeConverter.ts - korrekte Tendenzen)
 const calculateGrade = (achieved: number, total: number): { numeric: number; string: string } => {
   if (total === 0) return { numeric: 0, string: '-' };
+
+  if (total === 14) {
+    return {
+      numeric: examGradeNumericForCorrection(achieved, 14),
+      string: examGradeLabelForCorrection(achieved, 14),
+    };
+  }
   
   const percentage = (achieved / total) * 100;
   let grade: number;

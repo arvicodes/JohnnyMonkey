@@ -47,6 +47,7 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } fro
 import { saveAs } from 'file-saver';
 import DreierprobeModal from './DreierprobeModal';
 import { examAnswerMatches, formatExamCorrect, parseExamAnswerKey } from '../lib/examAnswerKey';
+import { examGradeLabelForCorrection } from '../lib/examGradeLabel';
 
 interface KASubmission {
   id: string;
@@ -96,6 +97,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   const [examPoints, setExamPoints] = useState<Record<string, number>>({});
   const [examMaxPoints, setExamMaxPoints] = useState(0);
   const [useGeometryTask3, setUseGeometryTask3] = useState(false);
+  const [answerKeyOpen, setAnswerKeyOpen] = useState(false);
+  const [answerKeyDraft, setAnswerKeyDraft] = useState<Record<string, string>>({});
+  const [answerKeySaving, setAnswerKeySaving] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
+  const [answerEdits, setAnswerEdits] = useState<Record<string, string>>({});
 
   // Helper-Funktion: Bestimmt den Dateityp für Texte
   const getFileTypeName = (): string => {
@@ -719,39 +725,96 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     ? ['3', '4', '5', '6', '7', '8', '9']
     : ['4', '5', '6', '7', '8', '9'];
 
-  // Notenberechnung
-  const calculateGrade = (achieved: number, total: number): string => {
-    if (total === 0) return '-';
-    
-    const percentage = (achieved / total) * 100;
-    let grade: number;
-    let tendency = '';
-    
-    if (percentage >= 92) {
-      grade = 1;
-      if (percentage >= 97) tendency = '+';
-      else if (percentage < 95) tendency = '-';
-    } else if (percentage >= 81) {
-      grade = 2;
-      if (percentage >= 86) tendency = '+';
-      else if (percentage < 84) tendency = '-';
-    } else if (percentage >= 67) {
-      grade = 3;
-      if (percentage >= 72) tendency = '+';
-      else if (percentage < 70) tendency = '-';
-    } else if (percentage >= 50) {
-      grade = 4;
-      if (percentage >= 55) tendency = '+';
-      else if (percentage < 53) tendency = '-';
-    } else if (percentage >= 30) {
-      grade = 5;
-      if (percentage >= 35) tendency = '+';
-      else if (percentage < 33) tendency = '-';
-    } else {
-      grade = 6;
+  const calculateGrade = (achieved: number, total: number): string =>
+    examGradeLabelForCorrection(achieved, total);
+
+  const openAnswerKeyEditor = () => {
+    const draft: Record<string, string> = {};
+    Object.entries(examAnswers).forEach(([k, v]) => {
+      draft[k] = formatExamCorrect(v);
+    });
+    setAnswerKeyDraft(draft);
+    setAnswerKeyOpen(true);
+  };
+
+  const saveAnswerKey = async () => {
+    setAnswerKeySaving(true);
+    try {
+      const loginCode = localStorage.getItem('loginCode') || '';
+      const payload: Record<string, string | string[] | number> = {};
+      Object.entries(answerKeyDraft).forEach(([k, v]) => {
+        const trimmed = v.trim();
+        if (trimmed.includes('/')) {
+          payload[k] = trimmed.split('/').map((s) => s.trim()).filter(Boolean);
+        } else if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
+          payload[k] = Number(trimmed);
+        } else {
+          payload[k] = trimmed;
+        }
+      });
+      const res = await fetch('/api/ka-corrections/answer-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-login-code': loginCode },
+        body: JSON.stringify({ kaFilePath, answers: payload }),
+      });
+      if (!res.ok) throw new Error('Speichern fehlgeschlagen');
+      const data = await res.json();
+      setExamAnswers({ ...examAnswers, ...payload });
+      setAnswerKeyOpen(false);
+      await loadSubmissions();
+      if (selectedSubmission) await loadCorrections(selectedSubmission.id);
+      alert(`Musterlösung gespeichert — ${data.recalculated ?? 0} Abgabe(n) neu bewertet.`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Fehler beim Speichern');
+    } finally {
+      setAnswerKeySaving(false);
     }
-    
-    return `${grade}${tendency}`;
+  };
+
+  const recalculateAllSubmissions = async () => {
+    setRecalculating(true);
+    try {
+      const loginCode = localStorage.getItem('loginCode') || '';
+      const res = await fetch('/api/ka-corrections/recalculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-login-code': loginCode },
+        body: JSON.stringify({ kaFilePath }),
+      });
+      if (!res.ok) throw new Error('Neubewertung fehlgeschlagen');
+      const data = await res.json();
+      await loadSubmissions();
+      if (selectedSubmission) await loadCorrections(selectedSubmission.id);
+      alert(`${data.recalculated ?? 0} Abgabe(n) neu bewertet.`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Fehler bei der Neubewertung');
+    } finally {
+      setRecalculating(false);
+    }
+  };
+
+  const saveStudentAnswerField = async (taskId: string, value: string) => {
+    if (!selectedSubmission) return;
+    const parsed = parseAnswers(selectedSubmission.answers);
+    const next = { ...parsed, [taskId]: value };
+    const loginCode = localStorage.getItem('loginCode') || '';
+    const res = await fetch(`/api/ka-corrections/submissions/${selectedSubmission.id}/answers`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-login-code': loginCode },
+      body: JSON.stringify({ answers: next }),
+    });
+    if (!res.ok) {
+      alert('Abgabe konnte nicht gespeichert werden');
+      return;
+    }
+    const data = await res.json();
+    const updated = data.submission as KASubmission;
+    setSelectedSubmission(updated);
+    setSubmissions((prev) => prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)));
+    setAnswerEdits((prev) => {
+      const copy = { ...prev };
+      delete copy[taskId];
+      return copy;
+    });
   };
 
   const calculateMaxTotalPoints = (): number => {
@@ -1589,6 +1652,30 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
               >
                 {exporting ? 'Exportiert...' : 'Word Download'}
               </Button>
+              {Object.keys(examAnswers).length > 0 && (
+                <>
+                  <Button
+                    onClick={openAnswerKeyEditor}
+                    variant="outlined"
+                    size="small"
+                    startIcon={<Edit />}
+                    tabIndex={-1}
+                    sx={{ fontSize: '0.75rem', px: 1, py: 0.5, minWidth: 'auto', whiteSpace: 'nowrap' }}
+                  >
+                    Musterlösung
+                  </Button>
+                  <Button
+                    onClick={() => void recalculateAllSubmissions()}
+                    variant="outlined"
+                    size="small"
+                    disabled={recalculating || submissions.length === 0}
+                    tabIndex={-1}
+                    sx={{ fontSize: '0.75rem', px: 1, py: 0.5, minWidth: 'auto', whiteSpace: 'nowrap' }}
+                  >
+                    {recalculating ? 'Bewerte…' : 'Neu bewerten'}
+                  </Button>
+                </>
+              )}
               {submissions.length > 0 && (
                 <>
                   <Button 
@@ -2716,40 +2803,33 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                   </Box>
                         </Box>
                         
-                                {/* Antwort kompakt */}
-                        <Box sx={{ 
-                                  bgcolor: 'rgba(255,255,255,0.5)',
-                                  p: 0.25,
-                                  borderRadius: 0.25,
-                                  mb: needsManualCorrection ? 0.5 : 0,
-                                  border: '1px solid rgba(0,0,0,0.1)',
-                                  minHeight: 24
-                        }}>
-                          <Typography variant="caption" sx={{ 
-                            fontFamily: 'monospace',
-                            fontWeight: answer ? 500 : 400,
-                                    color: textColor,
-                                    fontSize: '0.7rem',
-                                    lineHeight: 1.2,
-                                    display: '-webkit-box',
-                                    WebkitLineClamp: 2,
-                                    WebkitBoxOrient: 'vertical',
-                                    overflow: 'hidden'
-                          }}>
-                            {String(answer) || '(leer)'}
-                                    {correctAnswers[taskId] !== undefined && (
-                                      <span style={{ color: '#2e7d32', marginLeft: '8px' }}>
-                                        ({formatExamCorrect(correctAnswers[taskId])})
-                                      </span>
-                                    )}
-                          </Typography>
-                        </Box>
+                                {/* Abgabe bearbeitbar */}
+                        <TextField
+                          label="Abgabe"
+                          size="small"
+                          fullWidth
+                          value={answerEdits[taskId] ?? String(answer ?? '')}
+                          onChange={(e) =>
+                            setAnswerEdits((prev) => ({ ...prev, [taskId]: e.target.value }))
+                          }
+                          onBlur={() => {
+                            const v = answerEdits[taskId];
+                            if (v !== undefined && v !== String(answer ?? '')) {
+                              void saveStudentAnswerField(taskId, v);
+                            }
+                          }}
+                          sx={{ mb: 0.5, '& .MuiInputBase-input': { fontSize: '0.72rem', fontFamily: 'monospace' } }}
+                          helperText={
+                            correctAnswers[taskId] !== undefined
+                              ? `Lösung: ${formatExamCorrect(correctAnswers[taskId])}`
+                              : undefined
+                          }
+                        />
 
-                                {/* Eingabefelder kompakt in einer Zeile */}
-                        {needsManualCorrection && (
+                                {/* Punkte + Kommentar (auch nachträglich, z. B. 0,25 / 0,5) */}
                                   <Box sx={{ mt: 0.5 }}>
                                     <Box display="flex" gap={0.5} alignItems="flex-start">
-                                <Box sx={{ position: 'relative', width: 70 }}>
+                                <Box sx={{ position: 'relative', width: 76 }}>
                                 <TextField
                                   label="Pkt."
                                   type="number"
@@ -2757,18 +2837,12 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                   onChange={(e) => {
                                       const inputValue = e.target.value.trim().toLowerCase();
                                       let value: number | undefined = undefined;
-                                      
-                                      // Wenn "x" eingegeben wird, leere das Feld
-                                      if (inputValue === 'x') {
-                                        value = undefined;
-                                      } else if (inputValue === '') {
+                                      if (inputValue === 'x' || inputValue === '') {
                                         value = undefined;
                                       } else {
                                       const numValue = parseFloat(e.target.value);
                                         value = !isNaN(numValue) ? numValue : undefined;
                                       }
-                                      
-                                    // Für Aufgabe 1: Verwende taskId (z.B. "a1a") statt taskNum ("1")
                                     const correctionKey = taskNum === '1' 
                                       ? (selectedSubmission ? `${selectedSubmission.id}_${taskId}` : taskId)
                                       : (selectedSubmission ? `${selectedSubmission.id}_${taskNum}` : taskNum);
@@ -2778,38 +2852,17 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                     }));
                                   }}
                                   onBlur={() => {
-                                    // Für Aufgabe 1: Verwende taskId (z.B. "a1a") statt taskNum ("1")
-                                    const saveTaskNumber = taskNum === '1' ? taskId : taskNum;
+                                    const saveTaskNumber = taskNum === '1' || !needsManualCorrection ? taskId : taskNum;
                                     saveCorrection(saveTaskNumber, correction.points, correction.comment);
                                   }}
-                                  inputProps={{ min: 0, max: 10, step: 0.5 }}
+                                  inputProps={{ min: 0, max: points || 10, step: 0.25 }}
                                   size="small"
                                   sx={{ 
-                                          width: 70,
-                                    '& .MuiOutlinedInput-root': {
-                                        bgcolor: (correction.points !== undefined && correction.points !== null && !isNaN(correction.points) && correction.points >= 0 && correction.points <= 10) ? '#e8f5e9' : '#ffebee',
-                                        border: (correction.points !== undefined && correction.points !== null && !isNaN(correction.points) && correction.points >= 0 && correction.points <= 10) ? '2px solid #4caf50' : '2px solid #f44336',
-                                            fontSize: '0.7rem',
-                                        height: 32,
-                                        pr: (correction.points !== undefined && correction.points !== null && !isNaN(correction.points) && correction.points >= 0 && correction.points <= 10) ? 3 : 1
-                                    },
-                                    '& .MuiInputLabel-root': {
-                                            fontSize: '0.65rem'
-                                    }
+                                          width: 76,
+                                    '& .MuiOutlinedInput-root': { fontSize: '0.7rem', height: 32 },
+                                    '& .MuiInputLabel-root': { fontSize: '0.65rem' }
                                   }}
                                 />
-                                  {(correction.points !== undefined && correction.points !== null && !isNaN(correction.points) && correction.points >= 0 && correction.points <= 10) && (
-                                    <CheckCircle 
-                                      sx={{ 
-                                        position: 'absolute',
-                                        right: 4,
-                                        top: '50%',
-                                        transform: 'translateY(-50%)',
-                                        fontSize: 16,
-                                        color: '#4caf50'
-                                      }}
-                                    />
-                                  )}
                                 </Box>
                                 <TextField
                                   label="Kommentar"
@@ -2817,30 +2870,28 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                   rows={1}
                                   value={correction.comment ?? ''}
                                   onChange={(e) => {
+                                    const correctionKey = taskNum === '1' 
+                                      ? (selectedSubmission ? `${selectedSubmission.id}_${taskId}` : taskId)
+                                      : (selectedSubmission ? `${selectedSubmission.id}_${taskNum}` : taskNum);
                                     setCorrections(prev => ({
                                       ...prev,
-                                      [taskNum]: { ...prev[taskNum], comment: e.target.value }
+                                      [correctionKey]: { ...prev[correctionKey], comment: e.target.value }
                                     }));
                                   }}
-                                  onBlur={() => saveCorrection(taskNum, correction.points, correction.comment)}
+                                  onBlur={() => {
+                                    const saveTaskNumber = taskNum === '1' || !needsManualCorrection ? taskId : taskNum;
+                                    saveCorrection(saveTaskNumber, correction.points, correction.comment);
+                                  }}
                                   size="small"
-                                        placeholder="..."
+                                        placeholder="…"
                                   sx={{ 
                                           flex: 1,
-                                          mt: 2,
-                                    '& .MuiOutlinedInput-root': {
-                                      bgcolor: '#fff',
-                                            fontSize: '0.7rem',
-                                            height: 32
-                                    },
-                                    '& .MuiInputLabel-root': {
-                                            fontSize: '0.65rem'
-                                    }
+                                    '& .MuiOutlinedInput-root': { bgcolor: '#fff', fontSize: '0.7rem' },
+                                    '& .MuiInputLabel-root': { fontSize: '0.65rem' }
                                   }}
                                 />
                                     </Box>
                           </Box>
-                        )}
                       </CardContent>
                     </Card>
                   </Grid>
@@ -3565,6 +3616,32 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
           })}
         </Box>
       )}
+
+      <Dialog open={answerKeyOpen} onClose={() => !answerKeySaving && setAnswerKeyOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Musterlösung bearbeiten</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1, pt: 1 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+            Änderungen werden in der Prüfungs-HTML gespeichert und alle Abgaben neu bewertet.
+          </Typography>
+          {Object.keys(answerKeyDraft).map((taskId) => (
+            <TextField
+              key={taskId}
+              label={taskId}
+              size="small"
+              value={answerKeyDraft[taskId] ?? ''}
+              onChange={(e) =>
+                setAnswerKeyDraft((prev) => ({ ...prev, [taskId]: e.target.value }))
+              }
+            />
+          ))}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAnswerKeyOpen(false)} disabled={answerKeySaving}>Abbrechen</Button>
+          <Button variant="contained" onClick={() => void saveAnswerKey()} disabled={answerKeySaving}>
+            {answerKeySaving ? 'Speichern…' : 'Speichern & neu bewerten'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Dreierprobe Modal */}
       <DreierprobeModal
