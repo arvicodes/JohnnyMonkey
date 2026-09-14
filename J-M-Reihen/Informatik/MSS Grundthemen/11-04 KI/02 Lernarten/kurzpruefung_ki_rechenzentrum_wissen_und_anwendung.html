@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kurzprüfung KI – Rechenzentrum</title>
+<style>
+:root{
+  --ink:#173042; --navy:#133f5c; --blue:#1e79a5; --sky:#e8f5fb;
+  --line:#c9dbe4; --green:#e8f7ed; --yellow:#fff6d6; --red:#fff0ef;
+  --violet:#f0ebff; --paper:#fff; --bg:#edf4f7; --muted:#607683;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Arial,Helvetica,sans-serif;color:var(--ink)}
+.sheet{max-width:1100px;margin:22px auto;background:#fff;padding:28px;border-radius:22px;box-shadow:0 16px 45px rgba(22,55,75,.14)}
+header{border-bottom:4px solid var(--navy);padding-bottom:15px}
+h1{margin:0;color:var(--navy);font-size:2rem}
+.subtitle{margin:5px 0 0;color:var(--muted)}
+.meta{display:grid;grid-template-columns:2fr 1fr 1fr;gap:15px;margin-top:16px}
+.line{border-bottom:1.7px solid #78909c;padding:7px 2px;color:#637985}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.badge{background:#edf5f8;padding:7px 10px;border-radius:999px;font-size:.9rem}
+.total{margin-left:auto;background:var(--navy);color:white;font-weight:700}
+.material{margin-top:18px;border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.bar{background:var(--navy);color:white;padding:11px 15px;font-size:1.1rem;font-weight:700}
+.content{padding:16px}
+.scenario{display:grid;grid-template-columns:1.15fr .85fr;gap:16px}
+.scene{
+  min-height:255px;border-radius:17px;overflow:hidden;position:relative;
+  background:linear-gradient(135deg,#0d2e43,#1c6888);color:white;padding:22px;
+}
+.scene h2{margin:0 0 10px;font-size:1.35rem}
+.scene p{max-width:610px;line-height:1.48;margin:7px 0}
+.racks{display:flex;gap:8px;position:absolute;right:20px;bottom:20px;opacity:.75}
+.rack{width:44px;height:122px;border:3px solid #91ddf0;border-radius:6px;padding:6px}
+.rack i{display:block;height:8px;background:#47b8da;margin:5px 0;border-radius:2px}
+.dashboard{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{border:1px solid var(--line);border-radius:15px;padding:14px;background:#f8fbfc;text-align:center}
+.tile .ico{font-size:2.3rem;display:block;margin-bottom:5px}
+.tile b{display:block}
+.tile small{color:var(--muted)}
+.flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:8px;margin-top:15px}
+.flowbox{border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center;background:#fbfdfe}
+.arrow{font-size:1.6rem;color:var(--blue);font-weight:bold}
+.data{width:100%;border-collapse:collapse;margin-top:14px;font-size:.93rem}
+.data th,.data td{border:1px solid var(--line);padding:9px;text-align:center}
+.data th{background:#edf6fa}
+.tasks{margin-top:18px}
+.task{border:1px solid var(--line);border-radius:17px;margin:14px 0;overflow:hidden}
+.taskhead{display:flex;justify-content:space-between;gap:12px;padding:11px 14px;background:#f1f7fa;align-items:center}
+.taskhead b{font-size:1.04rem}
+.pts{background:var(--navy);color:#fff;border-radius:999px;padding:5px 9px;font-weight:700}
+.taskbody{padding:14px}
+.part{margin:10px 0 14px}
+.part strong{color:var(--navy)}
+.answer{min-height:80px;border:1.5px solid #bacdd6;border-radius:11px;margin-top:8px;background:#fcfeff}
+.answer.s{min-height:48px}
+.answer.xs{min-height:34px}
+.knowledge{border-left:5px solid #2b86b3;background:#f0f9fd;padding:10px 12px;border-radius:10px;margin:8px 0}
+.apply{border-left:5px solid #50a46b;background:#f1faf4;padding:10px 12px;border-radius:10px;margin:8px 0}
+.dual{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.schema{width:100%;border-collapse:collapse;margin-top:8px}
+.schema th,.schema td{border:1px solid var(--line);padding:9px;vertical-align:top}
+.schema th{background:#edf6fa}
+.options{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.option{border:1px solid var(--line);border-radius:11px;padding:9px;background:#fbfdfe}
+.note{background:var(--yellow);padding:10px 12px;border-radius:11px;border-left:5px solid #d1aa31}
+.footer{margin-top:18px;border-top:2px solid var(--line);padding-top:10px;text-align:center;color:var(--muted);font-size:.9rem}
+@media(max-width:800px){
+  .scenario,.dual,.meta,.options{grid-template-columns:1fr}
+  .flow{grid-template-columns:1fr}
+  .arrow{transform:rotate(90deg)}
+  .total{margin-left:0}
+}
+@media print{
+  body{background:#fff}.sheet{margin:0;max-width:none;border-radius:0;box-shadow:none;padding:12mm}
+  .task{break-inside:avoid}.material{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<main class="sheet">
+<header>
+<h1>Kurzprüfung: Künstliche Intelligenz und verstärkendes Lernen</h1>
+<p class="subtitle">Anwendungsbeispiel: Energieoptimierung in einem Rechenzentrum</p>
+<div class="meta">
+  <div class="line">Name:</div><div class="line">Datum:</div><div class="line">Kurs:</div>
+</div>
+<div class="badges">
+  <span class="badge">Arbeitszeit: 35 Minuten</span>
+  <span class="badge">Wissen + Anwendung</span>
+  <span class="badge">Bearbeite alle Aufgaben</span>
+  <span class="badge total">Gesamt: 30 Punkte</span>
+</div>
+</header>
+
+<section class="material">
+<div class="bar">Material M1 · Das Rechenzentrum</div>
+<div class="content">
+<div class="scenario">
+  <div class="scene">
+    <h2>Die Herausforderung</h2>
+    <p>In einem großen Rechenzentrum entstehen durch die Server erhebliche Wärmemengen. Ein Computersystem soll die Kühlung automatisch steuern.</p>
+    <p>Dafür erhält es laufend Messwerte zur <b>Servertemperatur</b>, zur <b>Auslastung</b> und zur <b>Außentemperatur</b>. Es kann die Lüfterleistung verändern.</p>
+    <p>Nach jeder Veränderung wird bewertet, ob die Server sicher betrieben werden und wie viel Energie verbraucht wurde. Mit der Zeit sollen die Entscheidungen besser werden.</p>
+    <div class="racks">
+      <span class="rack"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      <span class="rack"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      <span class="rack"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    </div>
+  </div>
+  <div class="dashboard">
+    <div class="tile"><span class="ico">🌡️</span><b>Temperatur</b><small>z. B. 28 °C</small></div>
+    <div class="tile"><span class="ico">🖥️</span><b>Auslastung</b><small>niedrig bis hoch</small></div>
+    <div class="tile"><span class="ico">🌀</span><b>Lüfter</b><small>Stufe 0 bis 4</small></div>
+    <div class="tile"><span class="ico">⚡</span><b>Energie</b><small>möglichst gering</small></div>
+  </div>
+</div>
+
+<div class="flow">
+  <div class="flowbox">Messwerte<br><b>28 °C · hohe Last</b></div><div class="arrow">→</div>
+  <div class="flowbox">System verändert Lüfter<br><b>Stufe 2 → 3</b></div><div class="arrow">→</div>
+  <div class="flowbox">Neue Situation<br><b>25 °C · Energieverbrauch steigt</b></div>
+</div>
+</div>
+</section>
+
+<section class="material">
+<div class="bar">Material M2 · Beobachtete Durchläufe</div>
+<div class="content">
+<p>Das System hat bereits mehrere Situationen erlebt. Die letzte Spalte zeigt nur die interne Bewertung des Ergebnisses.</p>
+<table class="data">
+<tr><th>Durchlauf</th><th>Temperatur vorher</th><th>Auslastung</th><th>gewählte Lüfterstufe</th><th>Temperatur danach</th><th>Energiebedarf</th><th>Bewertung</th></tr>
+<tr><td>A</td><td>29 °C</td><td>hoch</td><td>4</td><td>23 °C</td><td>hoch</td><td>+2</td></tr>
+<tr><td>B</td><td>23 °C</td><td>niedrig</td><td>4</td><td>18 °C</td><td>hoch</td><td>−1</td></tr>
+<tr><td>C</td><td>30 °C</td><td>hoch</td><td>1</td><td>31 °C</td><td>niedrig</td><td>−5</td></tr>
+<tr><td>D</td><td>27 °C</td><td>mittel</td><td>3</td><td>23 °C</td><td>mittel</td><td>+4</td></tr>
+</table>
+</div>
+</section>
+
+<section class="tasks">
+<div class="bar">Aufgaben</div>
+
+<div class="task">
+<div class="taskhead"><b>1 · Künstliche Intelligenz und maschinelles Lernen</b><span class="pts">5 P</span></div>
+<div class="taskbody">
+  <div class="knowledge"><b>Wissen:</b> Erkläre den Unterschied zwischen <b>klassischer KI</b> und <b>maschinellem Lernen</b>. <b>(3 P)</b></div>
+  <div class="answer"></div>
+  <div class="apply"><b>Anwendung:</b> Ordne das System aus M1 einem der beiden Ansätze zu und begründe deine Entscheidung mit dem Beispiel. <b>(2 P)</b></div>
+  <div class="answer s"></div>
+</div>
+</div>
+
+<div class="task">
+<div class="taskhead"><b>2 · Formen des maschinellen Lernens</b><span class="pts">4 P</span></div>
+<div class="taskbody">
+  <div class="knowledge"><b>Wissen:</b> Nenne die drei im Unterricht behandelten Formen des maschinellen Lernens. <b>(3 P)</b></div>
+  <div class="dual">
+    <div class="answer s"></div><div class="answer s"></div>
+  </div>
+  <div class="answer s"></div>
+  <div class="apply"><b>Anwendung:</b> Welche dieser Lernformen wird in M1 eingesetzt? Nenne einen Hinweis aus dem Beispiel. <b>(1 P)</b></div>
+  <div class="answer s"></div>
+</div>
+</div>
+
+<div class="task">
+<div class="taskhead"><b>3 · Verstärkendes Lernen am Rechenzentrum</b><span class="pts">8 P</span></div>
+<div class="taskbody">
+  <div class="knowledge"><b>Wissen:</b> Erkläre kurz, was beim verstärkenden Lernen unter einem <b>Agenten</b> verstanden wird und welches Ziel dieser verfolgt. <b>(2 P)</b></div>
+  <div class="answer s"></div>
+  <div class="apply"><b>Anwendung:</b> Übertrage die Fachbegriffe auf M1.</div>
+  <table class="schema">
+    <tr><th>Fachbegriff</th><th>Im Beispiel Rechenzentrum</th><th>Punkte</th></tr>
+    <tr><td>Agent</td><td></td><td>1</td></tr>
+    <tr><td>Umwelt</td><td></td><td>1</td></tr>
+    <tr><td>mögliche Aktion</td><td></td><td>1</td></tr>
+    <tr><td>Belohnung oder Bestrafung</td><td></td><td>1</td></tr>
+  </table>
+  <div class="apply"><b>Anwendung:</b> Erkläre anschließend, wie der Agent durch diese Rückmeldungen seine <b>Strategie optimiert</b>. <b>(2 P)</b></div>
+  <div class="answer s"></div>
+</div>
+</div>
+
+<div class="task">
+<div class="taskhead"><b>4 · Lernen durch wiederholte Interaktion</b><span class="pts">5 P</span></div>
+<div class="taskbody">
+  <div class="knowledge"><b>Wissen + Anwendung:</b> Beschreibe den Lernprozess in vier Schritten am Beispiel des Rechenzentrums. Nutze dabei die Fachbegriffe <b>Umwelt</b>, <b>Aktion</b>, <b>Belohnung/Bestrafung</b> und <b>Strategie</b>. <b>(4 P)</b></div>
+  <table class="schema">
+    <tr><th>Schritt</th><th>Beschreibung am Beispiel</th></tr>
+    <tr><td>1</td><td></td></tr>
+    <tr><td>2</td><td></td></tr>
+    <tr><td>3</td><td></td></tr>
+    <tr><td>4</td><td></td></tr>
+  </table>
+  <div class="apply"><b>Anwendung:</b> Warum ist dabei ein einzelner Durchlauf noch kein ausreichendes Lernen? <b>(1 P)</b></div>
+  <div class="answer xs"></div>
+</div>
+</div>
+
+<div class="task">
+<div class="taskhead"><b>5 · Bewertungen analysieren und Strategie ableiten</b><span class="pts">5 P</span></div>
+<div class="taskbody">
+  <div class="apply"><b>a)</b> Erkläre mithilfe von M2, warum Durchlauf B trotz niedriger Temperatur negativ bewertet wird. <b>(2 P)</b></div>
+  <div class="answer s"></div>
+  <div class="apply"><b>b)</b> Erkläre die starke negative Bewertung von Durchlauf C. <b>(1 P)</b></div>
+  <div class="answer xs"></div>
+  <div class="apply"><b>c)</b> Welche allgemeine Strategie sollte das System aus diesen Erfahrungen lernen? Formuliere eine Regel in eigenen Worten. <b>(2 P)</b></div>
+  <div class="answer s"></div>
+</div>
+</div>
+
+<div class="task">
+<div class="taskhead"><b>6 · Dasselbe Problem mit klassischer KI</b><span class="pts">3 P</span></div>
+<div class="taskbody">
+  <div class="knowledge"><b>Wissen:</b> Klassische KI arbeitet mit <b>Wissensrepräsentation</b> und <b>Wissensverarbeitung</b>.</div>
+  <div class="apply"><b>Anwendung:</b> Beschreibe für das Rechenzentrum jeweils ein konkretes Beispiel:<br>
+  <b>a)</b> Welches Wissen müsste ein Mensch explizit für den Computer darstellen? <b>(1 P)</b><br>
+  <b>b)</b> Wie könnte der Computer dieses Wissen anschließend für eine Schlussfolgerung nutzen? <b>(2 P)</b></div>
+  <div class="answer"></div>
+</div>
+</div>
+
+</section>
+
+<div class="note"><b>Merke für die Bearbeitung:</b> Bei vielen Aufgaben reicht es nicht, nur einen Fachbegriff zu nennen. Zeige am Rechenzentrum, dass du seine Bedeutung verstanden hast.</div>
+<div class="footer">30 Punkte · Wissen sichern · Fachbegriffe anwenden · Beispiel analysieren</div>
+</main>
+</body>
+</html>

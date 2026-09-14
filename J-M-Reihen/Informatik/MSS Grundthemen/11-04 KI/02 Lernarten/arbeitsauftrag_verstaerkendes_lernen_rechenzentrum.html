@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arbeitsauftrag – Verstärkendes Lernen im Rechenzentrum</title>
+<style>
+:root{
+  --bg:#eef5f8;
+  --card:#ffffff;
+  --ink:#173042;
+  --muted:#5d7382;
+  --blue:#0e5f86;
+  --cyan:#1f9cc5;
+  --green:#3aa86b;
+  --red:#d84c4c;
+  --line:#d7e3e8;
+  --soft:#dff3fb;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Inter,Arial,sans-serif;
+  background:linear-gradient(180deg,#eaf4f8,#f8fbfc);
+  color:var(--ink);
+}
+.wrap{
+  max-width:1100px;
+  margin:0 auto;
+  padding:28px 20px 48px;
+}
+.hero{
+  background:linear-gradient(135deg,#0b4d70,#0d7894);
+  color:white;
+  border-radius:26px;
+  padding:28px;
+  box-shadow:0 18px 50px rgba(12,69,94,.18);
+}
+.hero h1{margin:0 0 8px;font-size:clamp(2rem,4vw,3.5rem);line-height:1.05}
+.hero p{margin:0;max-width:820px;font-size:1.08rem;line-height:1.5;color:#e8f7fb}
+.badges{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.badge{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);padding:8px 12px;border-radius:999px;font-size:.92rem}
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:18px;
+  margin-top:20px;
+}
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:22px;
+  padding:22px;
+  box-shadow:0 10px 30px rgba(20,60,80,.07);
+}
+.card h2{margin:0 0 12px;font-size:1.32rem}
+.card h3{margin:18px 0 8px;font-size:1rem}
+.full{grid-column:1/-1}
+.iconrow{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  margin:12px 0 2px;
+}
+.iconbox{
+  background:#f5fafc;
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:16px 10px;
+  text-align:center;
+}
+.icon{font-size:2.2rem;display:block;margin-bottom:6px}
+.task{
+  display:grid;
+  grid-template-columns:46px 1fr;
+  gap:12px;
+  margin:14px 0;
+  align-items:start;
+}
+.num{
+  width:42px;height:42px;border-radius:14px;
+  display:grid;place-items:center;
+  background:var(--soft);color:var(--blue);font-weight:800;
+}
+.task p{margin:2px 0 6px;line-height:1.45}
+textarea,input[type="text"]{
+  width:100%;
+  border:1px solid #bfd0d8;
+  border-radius:14px;
+  padding:12px;
+  font:inherit;
+  background:#fbfdfe;
+  color:var(--ink);
+}
+textarea{min-height:92px;resize:vertical}
+.matrix{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:8px;
+  margin-top:6px;
+}
+.matrix td,.matrix th{
+  background:#f7fbfc;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px;
+  text-align:center;
+}
+.matrix th{background:#e8f5fa}
+.choice{
+  display:flex;gap:8px;flex-wrap:wrap;margin-top:8px
+}
+.choice label{
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:9px 12px;
+  background:#fbfdfe;
+  cursor:pointer;
+}
+.choice input{margin-right:6px}
+.callout{
+  border-left:5px solid var(--cyan);
+  background:#f1fbfe;
+  padding:14px 16px;
+  border-radius:14px;
+  margin-top:12px;
+}
+.reward{
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  gap:12px;align-items:center;
+  margin:16px 0;
+}
+.reward .box{
+  border-radius:18px;padding:16px;text-align:center;
+  border:1px solid var(--line);
+  background:#fff;
+}
+.arrow{font-size:1.8rem;color:var(--blue);font-weight:700}
+.controls{
+  display:flex;gap:10px;flex-wrap:wrap;margin-top:18px
+}
+button{
+  border:0;border-radius:14px;padding:11px 15px;
+  font-weight:700;cursor:pointer;font:inherit
+}
+.primary{background:var(--blue);color:white}
+.secondary{background:#eaf3f7;color:var(--ink)}
+.solution{
+  display:none;
+  background:#f4fbf6;
+  border:1px solid #bfe1ca;
+  border-radius:16px;
+  padding:16px;
+  margin-top:14px;
+}
+.small{font-size:.92rem;color:var(--muted)}
+footer{margin-top:20px;text-align:center;color:var(--muted);font-size:.9rem}
+@media (max-width:800px){
+  .grid{grid-template-columns:1fr}
+  .full{grid-column:auto}
+  .iconrow{grid-template-columns:1fr}
+  .reward{grid-template-columns:1fr}
+  .arrow{transform:rotate(90deg)}
+}
+@media print{
+  body{background:#fff}
+  .controls,.solution{display:none!important}
+  .card,.hero{box-shadow:none}
+  .wrap{max-width:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero">
+    <h1>Verstärkendes Lernen im Rechenzentrum</h1>
+    <p>Arbeitsauftrag zur Frage, wie ein KI Agent durch Ausprobieren energieeffiziente Einstellungen finden kann.</p>
+    <div class="badges">
+      <span class="badge">ca. 20 bis 25 Minuten</span>
+      <span class="badge">Partnerarbeit</span>
+      <span class="badge">Fokus: Zustand, Aktion, Belohnung</span>
+    </div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2>1. Ausgangssituation</h2>
+      <p>Ein Rechenzentrum muss dauerhaft gekühlt werden. Dabei können viele Einstellungen verändert werden. Gleichzeitig ändern sich auch die Umweltbedingungen.</p>
+      <div class="iconrow">
+        <div class="iconbox"><span class="icon">🖥️</span><b>Rechenzentrum</b><div class="small">Auslastung und Wärmeentwicklung</div></div>
+        <div class="iconbox"><span class="icon">🌀</span><b>Kühlung</b><div class="small">Stärke und Einstellung der Kühlung</div></div>
+        <div class="iconbox"><span class="icon">🌤️</span><b>Umwelt</b><div class="small">Temperatur und äußere Bedingungen</div></div>
+      </div>
+      <div class="callout"><b>Problem:</b> Schon wenige Stellschrauben erzeugen sehr viele mögliche Zustände. Ein Mensch kann nicht jede Kombination einzeln ausprobieren.</div>
+    </section>
+
+    <section class="card">
+      <h2>2. Das Prinzip</h2>
+      <div class="reward">
+        <div class="box"><b>Zustand</b><br><span class="small">Wie sieht die Situation gerade aus?</span></div>
+        <div class="arrow">→</div>
+        <div class="box"><b>Aktion</b><br><span class="small">Was verändert der Agent?</span></div>
+      </div>
+      <div class="reward">
+        <div class="box"><b>Folge</b><br><span class="small">Was passiert nach der Aktion?</span></div>
+        <div class="arrow">→</div>
+        <div class="box"><b>Belohnung</b><br><span class="small">War die Entscheidung gut oder schlecht?</span></div>
+      </div>
+      <p class="small">Durch viele Wiederholungen lernt der Agent, welche Aktionen in welchen Situationen günstig sind.</p>
+    </section>
+
+    <section class="card full">
+      <h2>3. Arbeitsauftrag</h2>
+
+      <div class="task">
+        <div class="num">1</div>
+        <div>
+          <p><b>Ordnet die Elemente des Beispiels zu.</b> Was gehört jeweils zu Zustand, Aktion und Belohnung?</p>
+          <table class="matrix">
+            <tr><th>Begriff</th><th>Eure Zuordnung</th></tr>
+            <tr><td>Außentemperatur</td><td><input type="text" placeholder="z. B. Zustand"></td></tr>
+            <tr><td>Kühlleistung erhöhen</td><td><input type="text" placeholder="..."></td></tr>
+            <tr><td>Stromverbrauch sinkt</td><td><input type="text" placeholder="..."></td></tr>
+            <tr><td>Servertemperatur</td><td><input type="text" placeholder="..."></td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="num">2</div>
+        <div>
+          <p><b>Erklärt das Lernen des Agenten in eigenen Worten.</b> Nutzt die Begriffe <i>Zustand</i>, <i>Aktion</i>, <i>Belohnung</i> und <i>Strategie</i>.</p>
+          <textarea placeholder="Eure Erklärung ..."></textarea>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="num">3</div>
+        <div>
+          <p><b>Beurteilt:</b> Warum wäre es unpraktisch, alle möglichen Einstellungen einfach vollständig durchzuprobieren?</p>
+          <textarea placeholder="Begründet mit der Anzahl möglicher Kombinationen ..."></textarea>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="num">4</div>
+        <div>
+          <p><b>Entscheidet:</b> Welche Belohnung wäre für den Agenten sinnvoll?</p>
+          <div class="choice">
+            <label><input type="radio" name="r"> möglichst niedriger Stromverbrauch</label>
+            <label><input type="radio" name="r"> möglichst hohe Servertemperatur</label>
+            <label><input type="radio" name="r"> möglichst viele Änderungen pro Minute</label>
+            <label><input type="radio" name="r"> niedriger Verbrauch bei sicherer Temperatur</label>
+          </div>
+          <textarea placeholder="Begründung ..." style="margin-top:10px"></textarea>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="num">5</div>
+        <div>
+          <p><b>Transfer:</b> Nennt ein weiteres reales Problem, bei dem verstärkendes Lernen sinnvoll sein könnte. Beschreibt kurz Zustand, Aktion und Belohnung.</p>
+          <textarea placeholder="Beispiel: Verkehr, Robotik, Spiele, Energie ..."></textarea>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="primary" onclick="toggleSolution()">Lösungshinweise anzeigen</button>
+        <button class="secondary" onclick="window.print()">Arbeitsblatt drucken</button>
+      </div>
+
+      <div class="solution" id="solution">
+        <b>Mögliche Lösungshinweise</b>
+        <p>1. Außentemperatur und Servertemperatur sind Zustände. Kühlleistung erhöhen ist eine Aktion. Ein sinkender Stromverbrauch kann Teil der Belohnung sein.</p>
+        <p>2. Der Agent beobachtet einen Zustand, wählt eine Aktion, erhält anschließend eine Rückmeldung und verbessert über viele Durchläufe seine Strategie.</p>
+        <p>3. Die Zahl möglicher Kombinationen wächst sehr schnell. Bereits 10 Stellschrauben mit je 10 möglichen Einstellungen ergeben 10<sup>10</sup> Kombinationen.</p>
+        <p>4. Sinnvoll ist nicht nur minimaler Stromverbrauch, sondern niedriger Energieverbrauch bei gleichzeitig sicheren Temperaturen.</p>
+      </div>
+    </section>
+  </div>
+
+  <footer>Arbeitsauftrag: Verstärkendes Lernen am Beispiel Rechenzentrum</footer>
+</div>
+
+<script>
+function toggleSolution(){
+  const el=document.getElementById('solution');
+  el.style.display=el.style.display==='block'?'none':'block';
+}
+</script>
+</body>
+</html>
