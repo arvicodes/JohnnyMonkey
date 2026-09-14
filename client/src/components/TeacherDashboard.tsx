@@ -17815,6 +17815,10 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
               colors={colors}
               groups={groups}
               assignedFolders={assignedFolders}
+              onCorrectExam={(item) => {
+                setSelectedKAFilePath(item.path);
+                setShowKACorrectionMode(true);
+              }}
               onEditExam={(item) => void handleEditSingleQuestion({ path: item.path, name: item.name })}
               onCreateExam={(folderPath) => {
                 setFolderPickerMode('exam');

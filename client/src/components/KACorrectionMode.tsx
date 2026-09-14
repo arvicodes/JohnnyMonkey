@@ -80,6 +80,9 @@ interface KACorrectionModeProps {
 
 type CorrectionMode = 'by-student' | 'by-task';
 
+const submissionStudentName = (submission: KASubmission | null | undefined): string =>
+  submission?.student?.name ?? 'Schüler/in';
+
 const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose, groupId = null }) => {
   const [submissions, setSubmissions] = useState<KASubmission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -808,8 +811,16 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     }
     const data = await res.json();
     const updated = data.submission as KASubmission;
-    setSelectedSubmission(updated);
-    setSubmissions((prev) => prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)));
+    const merged: KASubmission = {
+      ...selectedSubmission,
+      ...updated,
+      student: updated.student ?? selectedSubmission.student,
+      corrections: updated.corrections ?? selectedSubmission.corrections,
+    };
+    setSelectedSubmission(merged);
+    setSubmissions((prev) =>
+      prev.map((s) => (s.id === merged.id ? { ...s, ...merged } : s)),
+    );
     setAnswerEdits((prev) => {
       const copy = { ...prev };
       delete copy[taskId];
@@ -1837,7 +1848,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
             const someFieldsFilled = hasSomeFieldsFilled();
             
             // Extrahiere Vornamen (alles vor dem ersten Leerzeichen)
-            const firstName = submission.student.name.split(' ')[0];
+            const firstName = submissionStudentName(submission).split(' ')[0];
             
             // Berechne Note
             const grade = calculateGrade(submission.totalPoints, maxTotalPoints);
@@ -2061,7 +2072,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                 <Box display="flex" alignItems="center" gap={0.5}>
                   <Person sx={{ color: '#1976d2', fontSize: 18 }} />
                   <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1a1a1a', fontSize: '0.85rem' }}>
-                      {selectedSubmission.student.name}
+                      {submissionStudentName(selectedSubmission)}
                     </Typography>
                   </Box>
               </Box>
@@ -3429,7 +3440,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                       borderRadius: someFieldsFilled ? 0.5 : 0
                                     }}
                                   >
-                                    {submission.student.name}
+                                    {submissionStudentName(submission)}
                                   </Typography>
                                 </TableCell>
                                 <TableCell>
@@ -3509,7 +3520,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                     borderRadius: !allFieldsFilled ? 0.5 : 0
                                   }}
                                 >
-                                    {submission.student.name}
+                                    {submissionStudentName(submission)}
                                   </Typography>
                               </TableCell>
                               <TableCell>

@@ -1017,6 +1017,7 @@ const PresentationNotesPanel: React.FC<PresentationNotesPanelProps> = ({
           slideId={slideIdForExercise || slideId}
           lessonPath={lessonPath}
           groupId={groupId}
+          onChange={onSlideInteractiveExerciseChange}
           onMessage={onMessage}
         />
       ) : null}

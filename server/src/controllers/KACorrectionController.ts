@@ -61,7 +61,7 @@ async function requireTeacher(req: Request) {
 }
 
 export class KACorrectionController {
-  private static async recomputeSubmissionById(submissionId: string) {
+  private static async recomputeSubmissionById(submissionId: string, teacherId?: string) {
     const submission = await prisma.kASubmission.findUnique({
       where: { id: submissionId },
       include: { corrections: true },
@@ -75,22 +75,30 @@ export class KACorrectionController {
     }
     if (Object.keys(key.answers).length === 0) {
       const manualSum = submission.corrections.reduce((s, c) => s + (c.manualPoints ?? 0), 0);
-      return prisma.kASubmission.update({
+      await prisma.kASubmission.update({
         where: { id: submissionId },
         data: { totalPoints: submission.autoPoints + manualSum, status: 'corrected' },
       });
+    } else {
+      const { autoPoints, totalPoints } = computeSubmissionTotal(
+        submission.answers,
+        key,
+        submission.corrections.map((c) => ({
+          taskNumber: c.taskNumber,
+          manualPoints: c.manualPoints,
+        })),
+      );
+      await prisma.kASubmission.update({
+        where: { id: submissionId },
+        data: { autoPoints, totalPoints, status: 'corrected' },
+      });
     }
-    const { autoPoints, totalPoints } = computeSubmissionTotal(
-      submission.answers,
-      key,
-      submission.corrections.map((c) => ({
-        taskNumber: c.taskNumber,
-        manualPoints: c.manualPoints,
-      })),
-    );
-    return prisma.kASubmission.update({
+    return prisma.kASubmission.findUnique({
       where: { id: submissionId },
-      data: { autoPoints, totalPoints, status: 'corrected' },
+      include: {
+        student: { select: { id: true, name: true, loginCode: true } },
+        corrections: teacherId ? { where: { teacherId } } : true,
+      },
     });
   }
 
@@ -1169,7 +1177,7 @@ export class KACorrectionController {
         where: { id },
         data: { answers: JSON.stringify(answers) },
       });
-      const updated = await KACorrectionController.recomputeSubmissionById(id);
+      const updated = await KACorrectionController.recomputeSubmissionById(id, teacher.id);
       res.json({ success: true, submission: updated });
     } catch (error) {
       console.error('Error updating submission answers:', error);

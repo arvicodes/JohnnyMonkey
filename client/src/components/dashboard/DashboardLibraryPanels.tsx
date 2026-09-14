@@ -11,6 +11,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import QuizIcon from '@mui/icons-material/Quiz';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import EditIcon from '@mui/icons-material/Edit';
+import GradingIcon from '@mui/icons-material/Grading';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AddIcon from '@mui/icons-material/Add';
@@ -53,6 +54,8 @@ const BTN_PLAY = '#2e7d32';
 const BTN_PLAY_HOVER = '#1b5e20';
 const BTN_OPEN = '#1976d2';
 const BTN_OPEN_HOVER = '#1565c0';
+const BTN_CORRECT = '#7b1fa2';
+const BTN_CORRECT_HOVER = '#6a1b9a';
 
 type Colors = {
   cardBg: string;
@@ -537,10 +540,19 @@ export const DashboardExamsPanel: React.FC<{
   rootPaths: string[];
   colors: Colors;
   onEditExam?: (item: LibraryExamItem) => void;
+  onCorrectExam?: (item: LibraryExamItem) => void;
   onCreateExam?: (folderPath?: string) => void;
   groups?: GroupLite[];
   assignedFolders?: Record<string, string[]>;
-}> = ({ rootPaths, colors, onEditExam, onCreateExam, groups = [], assignedFolders = {} }) => {
+}> = ({
+  rootPaths,
+  colors,
+  onEditExam,
+  onCorrectExam,
+  onCreateExam,
+  groups = [],
+  assignedFolders = {},
+}) => {
   const [items, setItems] = useState<LibraryExamItem[]>([]);
   const [loading, setLoading] = useState(false);
   const meta = useMemo(() => ({ groups, assignedFolders }), [groups, assignedFolders]);
@@ -598,6 +610,16 @@ export const DashboardExamsPanel: React.FC<{
             accent={accent}
             actions={
               <>
+                {onCorrectExam ? (
+                  <TinyAction
+                    title="Korrektur"
+                    bgcolor={BTN_CORRECT}
+                    hover={BTN_CORRECT_HOVER}
+                    onClick={() => onCorrectExam(item)}
+                  >
+                    <GradingIcon sx={{ fontSize: 12 }} />
+                  </TinyAction>
+                ) : null}
                 {onEditExam ? (
                   <TinyAction
                     title="Bearbeiten"

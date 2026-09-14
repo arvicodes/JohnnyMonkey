@@ -34,6 +34,7 @@ type Props = {
   slideId?: string;
   lessonPath?: string;
   groupId?: string;
+  onChange?: (next: SlideInteractiveExercise | undefined) => void;
   onMessage?: (text: string) => void;
   compact?: boolean;
 };
@@ -58,10 +59,12 @@ const PresentationSlideExerciseBox: React.FC<Props> = ({
   slideId = '',
   lessonPath = '',
   groupId,
+  onChange,
   onMessage,
   compact = true,
 }) => {
   const exercise = useMemo(() => resolveInteractiveExercise(rawExercise), [rawExercise]);
+  const canEdit = typeof onChange === 'function';
   const [busy, setBusy] = useState(false);
   const [runningKey, setRunningKey] = useState<string | null>(null);
   const [pickedGroupId, setPickedGroupId] = useState('');
@@ -242,6 +245,17 @@ const PresentationSlideExerciseBox: React.FC<Props> = ({
             <Button onClick={() => setPreviewOpen(true)} sx={headerBtnSx}>
               Öffnen
             </Button>
+            {canEdit ? (
+              <Button
+                onClick={() => {
+                  onChange?.(undefined);
+                  onMessage?.('Interaktive Übung von dieser Folie gelöst');
+                }}
+                sx={headerBtnSx}
+              >
+                Lösen
+              </Button>
+            ) : null}
           </ButtonGroup>
         </Box>
       </Box>
