@@ -1165,6 +1165,54 @@ class KACorrectionController {
             res.status(500).json({ error: 'Fehler beim Laden der Prüfungsergebnisse' });
         }
     }
+    /** Lehrer: leere Abgabe für Schüler anlegen (z. B. Papierabgabe nachtragen) */
+    static async createSubmissionForStudent(req, res) {
+        try {
+            const teacher = await requireTeacher(req);
+            if (!teacher)
+                return res.status(403).json({ error: 'Nur Lehrer' });
+            const { kaFilePath, studentId, answers } = req.body;
+            if (!kaFilePath || !studentId) {
+                return res.status(400).json({ error: 'kaFilePath und studentId sind erforderlich' });
+            }
+            const student = await prisma.user.findUnique({ where: { id: studentId } });
+            if (!student || student.role !== 'STUDENT') {
+                return res.status(400).json({ error: 'Ungültige Schüler-ID' });
+            }
+            const pathVariants = getPossiblePaths(kaFilePath);
+            const existing = await prisma.kASubmission.findFirst({
+                where: {
+                    studentId,
+                    OR: pathVariants.map((p) => ({ kaFilePath: p })),
+                },
+                include: {
+                    student: { select: { id: true, name: true, loginCode: true } },
+                    corrections: { where: { teacherId: teacher.id } },
+                },
+            });
+            if (existing) {
+                return res.json({ success: true, submission: existing, created: false });
+            }
+            const normalizedPath = kaFilePath.replace(/\\/g, '/').trim();
+            const initialAnswers = answers && typeof answers === 'object' && !Array.isArray(answers) ? answers : {};
+            const submission = await prisma.kASubmission.create({
+                data: {
+                    kaFilePath: normalizedPath,
+                    studentId,
+                    answers: JSON.stringify(initialAnswers),
+                    autoPoints: 0,
+                    totalPoints: 0,
+                    status: 'submitted',
+                },
+            });
+            const updated = await KACorrectionController.recomputeSubmissionById(submission.id, teacher.id);
+            res.json({ success: true, submission: updated, created: true });
+        }
+        catch (error) {
+            console.error('Error creating submission for student:', error);
+            res.status(500).json({ error: 'Fehler beim Anlegen der Abgabe' });
+        }
+    }
     /** Lehrer: Abgabe eines Schülers nachträglich ändern */
     static async updateSubmissionAnswers(req, res) {
         try {

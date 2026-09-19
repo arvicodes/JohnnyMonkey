@@ -43,6 +43,8 @@ export declare class KACorrectionController {
      * Optional: lessonPath filtert auf Abgaben dieser Stunde
      */
     static getMyReleasedResults(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /** Lehrer: leere Abgabe für Schüler anlegen (z. B. Papierabgabe nachtragen) */
+    static createSubmissionForStudent(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /** Lehrer: Abgabe eines Schülers nachträglich ändern */
     static updateSubmissionAnswers(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /** Lehrer: Musterlösung (correctAnswers) in der Prüfungs-HTML ändern und neu bewerten */
