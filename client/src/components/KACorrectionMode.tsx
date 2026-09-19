@@ -197,6 +197,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   const [answerKeySaving, setAnswerKeySaving] = useState(false);
   const [recalculating, setRecalculating] = useState(false);
   const [answerEdits, setAnswerEdits] = useState<Record<string, string>>({});
+  const [creatingManualSubmission, setCreatingManualSubmission] = useState(false);
 
   // Helper-Funktion: Bestimmt den Dateityp für Texte
   const getFileTypeName = (): string => {
@@ -646,6 +647,40 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       void loadCorrections(sub.id);
     } else {
       setSelectedSubmission(null);
+      setAnswerEdits({});
+    }
+  };
+
+  const createManualSubmissionForCurrentStudent = async () => {
+    const student = learningGroupStudents[currentStudentIndex];
+    if (!student || creatingManualSubmission) return;
+    setCreatingManualSubmission(true);
+    try {
+      const loginCode = localStorage.getItem('loginCode') || '';
+      const res = await fetch('/api/ka-corrections/submissions/create-for-student', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-login-code': loginCode },
+        body: JSON.stringify({ kaFilePath, studentId: student.id, answers: {} }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error || 'Abgabe konnte nicht angelegt werden');
+      }
+      const data = await res.json();
+      const submission = data.submission as KASubmission;
+      if (!submission?.id) throw new Error('Ungültige Server-Antwort');
+      setSubmissions((prev) => {
+        if (prev.some((s) => s.id === submission.id)) {
+          return prev.map((s) => (s.id === submission.id ? { ...s, ...submission } : s));
+        }
+        return [...prev, submission];
+      });
+      setSelectedSubmission(submission);
+      await loadCorrections(submission.id);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Fehler beim Anlegen der Abgabe');
+    } finally {
+      setCreatingManualSubmission(false);
     }
   };
 
@@ -2473,13 +2508,47 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         <Box>
           {!selectedSubmission ? (
             <Card sx={{ mb: 1, bgcolor: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-              <CardContent sx={{ p: 1.5, textAlign: 'center' }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
-                  {learningGroupStudents[currentStudentIndex]?.name || 'Schüler/in'}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Noch keine Abgabe für diese Prüfung.
-                </Typography>
+              <CardContent sx={{ p: 1.5 }}>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                  <IconButton
+                    onClick={handlePreviousStudent}
+                    disabled={currentStudentIndex === 0}
+                    size="small"
+                    tabIndex={-1}
+                    sx={{ p: 0.5, width: 28, height: 28 }}
+                  >
+                    <ArrowBack sx={{ fontSize: 16 }} />
+                  </IconButton>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#1976d2' }}>
+                    {currentStudentIndex + 1}/{learningGroupStudents.length}
+                  </Typography>
+                  <IconButton
+                    onClick={handleNextStudent}
+                    disabled={currentStudentIndex === learningGroupStudents.length - 1}
+                    size="small"
+                    tabIndex={-1}
+                    sx={{ p: 0.5, width: 28, height: 28 }}
+                  >
+                    <ArrowForward sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Box>
+                <Box textAlign="center">
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                    {learningGroupStudents[currentStudentIndex]?.name || 'Schüler/in'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                    Noch keine digitale Abgabe. Du kannst die Lösungen hier manuell eintragen.
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    disabled={creatingManualSubmission}
+                    onClick={() => void createManualSubmissionForCurrentStudent()}
+                    startIcon={creatingManualSubmission ? <CircularProgress size={14} color="inherit" /> : <Edit />}
+                  >
+                    {creatingManualSubmission ? 'Wird angelegt…' : 'Abgabe erfassen'}
+                  </Button>
+                </Box>
               </CardContent>
             </Card>
           ) : (

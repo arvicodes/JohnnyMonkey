@@ -21,6 +21,9 @@ router.patch('/submissions/:id/status', KACorrectionController.updateStatus);
 // Abgabe nachträglich bearbeiten (Lehrer)
 router.patch('/submissions/:id/answers', KACorrectionController.updateSubmissionAnswers);
 
+// Leere Abgabe für Schüler anlegen (Lehrer, ohne SuS-Abgabe)
+router.post('/submissions/create-for-student', KACorrectionController.createSubmissionForStudent);
+
 // Musterlösung ändern + alle Abgaben neu bewerten
 router.post('/answer-key', KACorrectionController.updateAnswerKey);
 

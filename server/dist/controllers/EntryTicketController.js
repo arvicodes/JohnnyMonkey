@@ -400,7 +400,22 @@ function lessonFolderKey(lesson) {
     const name = raw.split('/').pop() || raw;
     return name.trim().toLowerCase();
 }
-/** Aktuell im Fragenset hinterlegte ET-Aufgaben für diese Stunde (0 = entfernt). */
+function lessonKeyBelongsToFolder(lessonKey, folderPath) {
+    const normFolder = (normalizeMaterialLessonPath(folderPath) || '').toLowerCase();
+    if (!normFolder)
+        return false;
+    const base = (lessonKey || '').split('#')[0].replace(/\\/g, '/').trim();
+    const normKey = (normalizeMaterialLessonPath(base) || base).toLowerCase();
+    if (!normKey)
+        return false;
+    if (normKey === normFolder || normKey.startsWith(`${normFolder}/`))
+        return true;
+    const folderName = normFolder.split('/').filter(Boolean).pop() || '';
+    if (!folderName)
+        return false;
+    return normKey.includes(folderName) || normKey.endsWith(`/${folderName}`);
+}
+/** Summe der ET-Karten im Fragenset für diese Stunde inkl. Unterstunden (0 = alles entfernt). */
 function countCustomSetTasksForLessonPath(sets, lessonPath, preferredSetId) {
     var _a;
     const want = normalizeMaterialLessonPath(lessonPath);
@@ -413,16 +428,17 @@ function countCustomSetTasksForLessonPath(sets, lessonPath, preferredSetId) {
             ...sets.filter((s) => s.id !== preferredSetId),
         ]
         : sets;
+    let total = 0;
     for (const set of ordered) {
         for (const lesson of set.lessons || []) {
-            const key = normalizeMaterialLessonPath(lesson.lessonKey || '') || '';
-            const matches = (key && sameLessonPath(key, want)) ||
+            const key = lesson.lessonKey || '';
+            const matches = (key && lessonKeyBelongsToFolder(key, want)) ||
                 (folder && lessonFolderKey(lesson) === folder);
             if (matches)
-                return (lesson.tasks || []).length;
+                total += (lesson.tasks || []).length;
         }
     }
-    return 0;
+    return total;
 }
 function taskTextLen(task) {
     return ((task === null || task === void 0 ? void 0 : task.prompt) || '').length + ((task === null || task === void 0 ? void 0 : task.solution) || '').length;
