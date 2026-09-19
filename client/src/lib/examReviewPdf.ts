@@ -1,6 +1,9 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
+/** A4-Breite bei ~96 dpi — entspricht jsPDF-Seitenbreite in px */
+const PDF_A4_WIDTH_PX = 794;
+
 function sanitizeFileName(name: string): string {
   return name.replace(/[<>:"/\\|?*]+/g, '_').trim() || 'pruefung';
 }
@@ -26,6 +29,52 @@ async function waitForIframeImages(doc: Document, timeoutMs = 12000): Promise<vo
   await new Promise((r) => window.setTimeout(r, 200));
 }
 
+/** HU-Grid/Margins der Live-HTML für PDF auf volle A4-Breite zurücksetzen */
+function injectPdfFullWidthStyles(doc: Document) {
+  const style = doc.createElement('style');
+  style.setAttribute('data-jm-pdf-layout', '1');
+  style.textContent = `
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: ${PDF_A4_WIDTH_PX}px !important;
+      max-width: ${PDF_A4_WIDTH_PX}px !important;
+      background: #fff !important;
+      overflow: visible !important;
+    }
+    .exam-shell {
+      display: block !important;
+      grid-template-columns: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      max-width: none !important;
+      background: #fff !important;
+    }
+    .exam-paper {
+      width: 100% !important;
+      max-width: none !important;
+      margin: 0 !important;
+      box-sizing: border-box !important;
+      border-left: none !important;
+      border-right: none !important;
+      padding: 12px 14px 20px !important;
+    }
+    .task, .item, .input-group, table {
+      max-width: none !important;
+    }
+  `;
+  doc.head.appendChild(style);
+}
+
+function pickPdfCaptureRoot(doc: Document): HTMLElement {
+  return (
+    (doc.querySelector('.exam-paper') as HTMLElement | null) ||
+    (doc.querySelector('.exam-shell') as HTMLElement | null) ||
+    (doc.body as HTMLElement)
+  );
+}
+
 async function renderHtmlInIframe(html: string): Promise<{
   iframe: HTMLIFrameElement;
   root: HTMLElement;
@@ -34,8 +83,8 @@ async function renderHtmlInIframe(html: string): Promise<{
   iframe.style.position = 'fixed';
   iframe.style.left = '-10000px';
   iframe.style.top = '0';
-  iframe.style.width = '794px';
-  iframe.style.maxWidth = '794px';
+  iframe.style.width = `${PDF_A4_WIDTH_PX}px`;
+  iframe.style.maxWidth = `${PDF_A4_WIDTH_PX}px`;
   iframe.style.height = '1200px';
   iframe.style.border = 'none';
   document.body.appendChild(iframe);
@@ -48,12 +97,11 @@ async function renderHtmlInIframe(html: string): Promise<{
 
   const doc = iframe.contentDocument;
   if (!doc) throw new Error('Vorschau konnte nicht geladen werden');
+  injectPdfFullWidthStyles(doc);
   await waitForIframeImages(doc);
   await new Promise((r) => window.setTimeout(r, 350));
 
-  const root =
-    (doc.querySelector('.exam-shell') as HTMLElement | null) ||
-    (doc.body as HTMLElement);
+  const root = pickPdfCaptureRoot(doc);
   const h = Math.max(root.scrollHeight, root.offsetHeight, 900);
   iframe.style.height = `${h + 48}px`;
   await new Promise((r) => window.setTimeout(r, 150));
@@ -66,7 +114,7 @@ function cleanupIframe(iframe: HTMLIFrameElement) {
 }
 
 async function canvasFromReviewRoot(root: HTMLElement): Promise<HTMLCanvasElement> {
-  const w = Math.max(root.scrollWidth, root.offsetWidth, 794);
+  const w = Math.max(root.scrollWidth, root.offsetWidth, PDF_A4_WIDTH_PX);
   const h = Math.max(root.scrollHeight, root.offsetHeight, 400);
   const scale = h > 6000 ? 1 : 1.5;
   try {
@@ -74,7 +122,7 @@ async function canvasFromReviewRoot(root: HTMLElement): Promise<HTMLCanvasElemen
       scale,
       useCORS: true,
       allowTaint: true,
-      backgroundColor: '#f3f3f3',
+      backgroundColor: '#ffffff',
       logging: false,
       scrollX: 0,
       scrollY: 0,
@@ -143,22 +191,20 @@ export async function downloadCombinedExamReviewsPdf(
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
-  const margin = 4;
 
   for (let i = 0; i < htmlPages.length; i += 1) {
     const { iframe, root } = await renderHtmlInIframe(htmlPages[i]);
     try {
       const canvas = await canvasFromReviewRoot(root);
       const imgData = canvas.toDataURL('image/png');
-      const usableW = pageWidth - margin * 2;
-      const usableH = pageHeight - margin * 2;
-      const imgHeightAtFullWidth = (canvas.height * usableW) / canvas.width;
-      const scale = imgHeightAtFullWidth > usableH ? usableH / imgHeightAtFullWidth : 1;
-      const drawW = usableW * scale;
+      const imgHeightAtFullWidth = (canvas.height * pageWidth) / canvas.width;
+      const scale = imgHeightAtFullWidth > pageHeight ? pageHeight / imgHeightAtFullWidth : 1;
+      const drawW = pageWidth * scale;
       const drawH = imgHeightAtFullWidth * scale;
+      const offsetX = (pageWidth - drawW) / 2;
 
       if (i > 0) pdf.addPage();
-      pdf.addImage(imgData, 'PNG', margin, margin, drawW, drawH);
+      pdf.addImage(imgData, 'PNG', offsetX, 0, drawW, drawH);
     } finally {
       cleanupIframe(iframe);
     }
