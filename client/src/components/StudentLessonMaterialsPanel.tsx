@@ -642,6 +642,10 @@ export default function StudentLessonMaterialsPanel({
                   totalPoints: Number(exam.totalPoints) || 0,
                   maxPoints: Number(exam.maxPoints) || 0,
                   classAverageText: exam.classAverageLabel || undefined,
+                  studentName:
+                    localStorage.getItem('userName') ||
+                    localStorage.getItem('studentName') ||
+                    undefined,
                 })
                   .then((html) => setReviewHtml(html))
                   .catch((e) =>

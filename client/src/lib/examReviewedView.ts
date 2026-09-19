@@ -15,7 +15,19 @@ export type ExamReviewedViewOpts = {
   totalPoints: number;
   maxPoints: number;
   classAverageText?: string;
+  studentName?: string;
+  /** z. B. Lerngruppe „5a“ — wird im Kopf angezeigt */
+  learningGroupName?: string;
 };
+
+function formatPointsBadge(achieved: number, maxPts: number): string {
+  const fmt = (n: number) => {
+    const r = Math.round(n * 100) / 100;
+    if (Math.abs(r - Math.round(r)) < 1e-9) return String(Math.round(r));
+    return r.toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
+  };
+  return `${fmt(achieved)}/${fmt(maxPts)}`;
+}
 
 function normAnswer(v: unknown): string {
   return String(v ?? '')
@@ -75,26 +87,30 @@ function fillAndMark(
     let achieved = isCorrect ? maxPts : 0;
     if (corrByTask[taskId] != null) {
       achieved = corrByTask[taskId];
-      isCorrect = achieved > 0;
+      isCorrect = achieved >= maxPts;
     } else {
       const num = taskId.match(/^a(\d+)([a-z]?)$/i);
       if (num) {
         const alt = `${num[1]}${num[2] || ''}`;
         if (corrByTask[alt] != null) {
           achieved = corrByTask[alt];
-          isCorrect = achieved > 0;
+          isCorrect = achieved >= maxPts;
         } else if (corrByTask[num[1]] != null && !num[2]) {
           achieved = corrByTask[num[1]];
-          isCorrect = achieved > 0;
+          isCorrect = achieved >= maxPts;
         }
       }
     }
+
+    const isPartial = achieved > 0 && achieved < maxPts - 1e-9;
 
     const byId = doc.getElementById(taskId) as HTMLInputElement | HTMLTextAreaElement | null;
     const radios = doc.querySelectorAll(`input[name="${CSS.escape(taskId)}"]`);
 
     const markEl = (el: HTMLElement) => {
-      el.classList.add(isCorrect ? 'answer-correct' : 'answer-incorrect');
+      el.classList.add(
+        isPartial ? 'answer-partial' : isCorrect ? 'answer-correct' : 'answer-incorrect',
+      );
       el.setAttribute('readonly', 'readonly');
       el.setAttribute('disabled', 'disabled');
       (el as HTMLInputElement).readOnly = true;
@@ -141,8 +157,10 @@ function fillAndMark(
       }
       markEl(byId);
       const badge = doc.createElement('span');
-      badge.className = `points-badge ${achieved > 0 ? 'points-correct' : 'points-incorrect'}`;
-      badge.textContent = `${achieved}/${maxPts}`;
+      badge.className = `points-badge ${
+        isPartial ? 'points-partial' : achieved > 0 ? 'points-correct' : 'points-incorrect'
+      }`;
+      badge.textContent = formatPointsBadge(achieved, maxPts);
       const anchor = anchorAfterField(byId);
       insertAfter(anchor, badge);
       insertSolutionHint(badge);
@@ -159,7 +177,9 @@ function fillAndMark(
         if (match) markEl(input);
         const lab = input.closest('label') || input.parentElement;
         if (lab && match) {
-          lab.classList.add(isCorrect ? 'answer-correct' : 'answer-incorrect');
+          lab.classList.add(
+            isPartial ? 'answer-partial' : isCorrect ? 'answer-correct' : 'answer-incorrect',
+          );
         }
         if (!isCorrect && expected !== undefined) {
           const ok = examAnswerMatches(expected, input.value);
@@ -173,8 +193,10 @@ function fillAndMark(
         radios[0]?.closest('.compare-choice, .input-group, .item') || radios[0]?.parentElement;
       if (wrap) {
         const badge = doc.createElement('span');
-        badge.className = `points-badge ${achieved > 0 ? 'points-correct' : 'points-incorrect'}`;
-        badge.textContent = `${achieved}/${maxPts}`;
+        badge.className = `points-badge ${
+          isPartial ? 'points-partial' : achieved > 0 ? 'points-correct' : 'points-incorrect'
+        }`;
+        badge.textContent = formatPointsBadge(achieved, maxPts);
         wrap.appendChild(badge);
         insertSolutionHint(badge);
       }
@@ -253,6 +275,14 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       color: #1b5e20 !important;
       vertical-align: baseline !important;
     }
+    .answer-partial {
+      background-color: #fff9c4 !important;
+      outline: 2px solid #fff176 !important;
+      outline-offset: 0;
+      border-color: #fff176 !important;
+      color: #f57f17 !important;
+      vertical-align: baseline !important;
+    }
     .answer-incorrect {
       background-color: #ffcdd2 !important;
       outline: 2px solid #f44336 !important;
@@ -282,6 +312,7 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       line-height: 1.2;
     }
     .points-correct { background-color: #4caf50; color: #fff; }
+    .points-partial { background-color: #fff176; color: #5d4037; }
     .points-incorrect { background-color: #f44336; color: #fff; }
     .jm-correct-solution {
       display: inline;
@@ -361,6 +392,22 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
   `;
   doc.head.appendChild(style);
 
+  if (opts.studentName?.trim()) {
+    const nameEl = doc.getElementById('studentName');
+    if (nameEl) nameEl.textContent = opts.studentName.trim();
+  }
+  if (opts.learningGroupName?.trim()) {
+    const classHdr = doc.querySelector('.header-class');
+    if (classHdr) {
+      const base = (classHdr.textContent || '').trim();
+      const grp = opts.learningGroupName.trim();
+      classHdr.textContent = base ? `${base} · ${grp}` : grp;
+    }
+  }
+
+  doc.querySelectorAll('.footer-luck, .footer-clover').forEach((el) => el.remove());
+  doc.querySelectorAll('.footer, .footer-note').forEach((el) => el.remove());
+
   fillAndMark(doc, answers, key, opts.corrections || []);
 
   doc.querySelectorAll('input, textarea, select, button').forEach((el) => {
@@ -385,17 +432,6 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
   `;
   const paper = doc.querySelector('.exam-paper') || doc.body;
   paper.appendChild(box);
-
-  const noteText = doc.getElementById('noteText');
-  const noteNumber = doc.getElementById('noteNumber');
-  const achieved = doc.getElementById('achievedPoints');
-  const total = doc.getElementById('totalPoints');
-  if (noteText) noteText.textContent = opts.gradeLabel || '–';
-  if (noteNumber) noteNumber.textContent = opts.gradeLabel || '–';
-  if (achieved) {
-    achieved.textContent = String(Number(opts.totalPoints || 0).toFixed(1)).replace('.', ',');
-  }
-  if (total && opts.maxPoints > 0) total.textContent = String(opts.maxPoints);
 
   if (!doc.documentElement.getAttribute('lang')) {
     doc.documentElement.setAttribute('lang', 'de');

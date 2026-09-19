@@ -9,7 +9,8 @@ export type ExamAnswerKey = {
 };
 
 function normalizeLoose(raw: unknown): string {
-  return String(raw || '')
+  if (raw === null || raw === undefined) return '';
+  return String(raw)
     .trim()
     .toLowerCase()
     .replace(/\s+/g, '')

@@ -46,6 +46,7 @@ import {
 } from '@mui/icons-material';
 import { teacherIdFromStorage } from '../lib/lessonExamBeacon';
 import { buildExamReviewedHtml } from '../lib/examReviewedView';
+import { downloadCombinedExamReviewsPdf, downloadExamReviewPdf } from '../lib/examReviewPdf';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
 import DreierprobeModal from './DreierprobeModal';
@@ -91,9 +92,9 @@ const correctionStorageKey = (submissionId: string, fieldKey: string): string =>
 
 const REVIEW_COMPLETE_TASK = '__review_complete__';
 const PURPLE_REVIEW = '#7b1fa2';
-const PARTIAL_CREDIT_BG = '#f1f8e9';
-const PARTIAL_CREDIT_BORDER = '#dce775';
-const PARTIAL_CREDIT_TEXT = '#827717';
+const PARTIAL_CREDIT_BG = '#fff9c4';
+const PARTIAL_CREDIT_BORDER = '#fff176';
+const PARTIAL_CREDIT_TEXT = '#f57f17';
 
 /** Deutsche Anzeige: 0,5 / 1 / 1,25 */
 function formatExamPointsDisplay(n: number): string {
@@ -169,6 +170,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   const [learningGroupStudents, setLearningGroupStudents] = useState<Array<{ id: string; name: string; loginCode: string }>>([]);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState('');
+  const [reviewPdfBusy, setReviewPdfBusy] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [examAnswers, setExamAnswers] = useState<Record<string, any>>({});
   const [examPoints, setExamPoints] = useState<Record<string, number>>({});
@@ -947,34 +949,84 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     return Array.from(map.values());
   };
 
+  const activeLearningGroupName =
+    examGroups.find((g) => g.id === activeGroupId)?.name?.trim() || '';
+
+  const classAverageLabelForGroup = useMemo(() => {
+    const subs = groupSubmissions.filter((s) => typeof s.totalPoints === 'number');
+    if (subs.length < 2) return undefined;
+    const avg = subs.reduce((sum, s) => sum + s.totalPoints, 0) / subs.length;
+    return (Math.round(avg * 10) / 10).toFixed(1).replace('.', ',');
+  }, [groupSubmissions]);
+
+  const buildReviewHtmlForSubmission = async (submission: KASubmission): Promise<string> => {
+    let answers: Record<string, unknown> = {};
+    try {
+      answers = JSON.parse(submission.answers || '{}') as Record<string, unknown>;
+    } catch {
+      answers = {};
+    }
+    const previewCorrections = correctionsForPreview(submission);
+    const maxPts = calculateMaxTotalPoints();
+    const totalForPreview = liveAchievedTotal(submission);
+    return buildExamReviewedHtml({
+      filePath: kaFilePath,
+      title: kaFilePath.split('/').pop() || 'Prüfung',
+      answers,
+      corrections: previewCorrections,
+      gradeLabel: calculateGrade(totalForPreview, maxPts),
+      totalPoints: totalForPreview,
+      maxPoints: maxPts,
+      classAverageText: classAverageLabelForGroup,
+      studentName: submissionStudentName(submission),
+      learningGroupName: activeLearningGroupName,
+    });
+  };
+
   const openStudentPreview = async () => {
     if (!selectedSubmission || !canOpenStudentPreview(selectedSubmission)) return;
     setPreviewLoading(true);
     try {
-      let answers: Record<string, unknown> = {};
-      try {
-        answers = JSON.parse(selectedSubmission.answers || '{}') as Record<string, unknown>;
-      } catch {
-        answers = {};
-      }
-      const previewCorrections = correctionsForPreview(selectedSubmission);
-      const maxPts = calculateMaxTotalPoints();
-      const totalForPreview = liveAchievedTotal(selectedSubmission);
-      const html = await buildExamReviewedHtml({
-        filePath: kaFilePath,
-        title: kaFilePath.split('/').pop() || 'Prüfung',
-        answers,
-        corrections: previewCorrections,
-        gradeLabel: calculateGrade(totalForPreview, maxPts),
-        totalPoints: totalForPreview,
-        maxPoints: maxPts,
-      });
+      const html = await buildReviewHtmlForSubmission(selectedSubmission);
       setPreviewTitle(submissionStudentName(selectedSubmission));
       setPreviewHtml(html);
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Vorschau konnte nicht geladen werden');
     } finally {
       setPreviewLoading(false);
+    }
+  };
+
+  const downloadCurrentPreviewPdf = async () => {
+    if (!previewHtml) return;
+    setReviewPdfBusy(true);
+    try {
+      const safe = previewTitle.replace(/[<>:"/\\|?*]+/g, '_').trim() || 'Schueler';
+      await downloadExamReviewPdf(previewHtml, `${safe}_Korrektur`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'PDF konnte nicht erstellt werden');
+    } finally {
+      setReviewPdfBusy(false);
+    }
+  };
+
+  const downloadAllCorrectedReviewsPdf = async () => {
+    const ready = groupSubmissions.filter((s) => canOpenStudentPreview(s));
+    if (ready.length === 0) {
+      alert('Noch keine fertig korrigierten Abgaben in dieser Gruppe.');
+      return;
+    }
+    setReviewPdfBusy(true);
+    try {
+      const pages = await Promise.all(ready.map((s) => buildReviewHtmlForSubmission(s)));
+      const base =
+        (kaFilePath.split('/').pop() || 'Pruefung').replace(/\.(html|htm)$/i, '') || 'Pruefung';
+      const grp = activeLearningGroupName ? `_${activeLearningGroupName}` : '';
+      await downloadCombinedExamReviewsPdf(pages, `${base}${grp}_alle_korrigiert`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Sammel-PDF konnte nicht erstellt werden');
+    } finally {
+      setReviewPdfBusy(false);
     }
   };
 
@@ -2442,6 +2494,17 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                       >
                         {previewLoading ? '…' : 'Vorschau'}
                       </Button>
+                      <Button
+                        onClick={() => void downloadAllCorrectedReviewsPdf()}
+                        variant="outlined"
+                        size="small"
+                        startIcon={<FileDownload />}
+                        disabled={reviewPdfBusy || groupSubmissions.length === 0}
+                        tabIndex={-1}
+                        sx={{ fontSize: '0.72rem', py: 0.35, px: 1, minHeight: 28 }}
+                      >
+                        {reviewPdfBusy ? 'PDF…' : 'Alle als PDF'}
+                      </Button>
                     </span>
                   </Tooltip>
                 </Box>
@@ -3178,7 +3241,9 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                         }}
                                       />
                                     )}
-                                    {isCorrect === false && taskNum !== '1' && (
+                                    {isCorrect === false &&
+                                      taskNum !== '1' &&
+                                      !(hasManualPoints && achievedPoints > 0) && (
                                       <Chip
                                         label="✗"
                                         size="small"
@@ -4093,22 +4158,40 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
           },
         }}
       >
-        <IconButton
-          aria-label="Schließen"
-          onClick={() => setPreviewHtml(null)}
-          size="small"
+        <Box
           sx={{
             position: 'fixed',
             top: 4,
             right: 4,
             zIndex: 1300,
-            width: 28,
-            height: 28,
-            bgcolor: 'rgba(255,255,255,0.9)',
+            display: 'flex',
+            gap: 0.5,
+            alignItems: 'center',
           }}
         >
-          <Close sx={{ fontSize: 18 }} />
-        </IconButton>
+          <Button
+            size="small"
+            variant="contained"
+            startIcon={<FileDownload />}
+            disabled={reviewPdfBusy || !previewHtml}
+            onClick={() => void downloadCurrentPreviewPdf()}
+            sx={{ fontSize: '0.75rem', py: 0.25, bgcolor: PURPLE_REVIEW }}
+          >
+            {reviewPdfBusy ? 'PDF…' : 'PDF'}
+          </Button>
+          <IconButton
+            aria-label="Schließen"
+            onClick={() => setPreviewHtml(null)}
+            size="small"
+            sx={{
+              width: 28,
+              height: 28,
+              bgcolor: 'rgba(255,255,255,0.9)',
+            }}
+          >
+            <Close sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Box>
         <DialogContent sx={{ p: 0, flex: 1, overflow: 'hidden' }}>
           {previewHtml ? (
             <iframe
