@@ -2040,8 +2040,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
             
             const someFieldsFilled = hasSomeFieldsFilled();
             
-            // Extrahiere Vornamen (alles vor dem ersten Leerzeichen)
-            const firstName = student.name.split(' ')[0];
+            const displayName = (student.name || '').trim() || 'Schüler/in';
             
             // Berechne Note
             const grade = submission
@@ -2076,7 +2075,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                             : '#f57c00',
                       }}
                     >
-                      {firstName}
+                      {displayName}
                     </span>
                     {hasSubmission ? (
                       <span
@@ -2113,7 +2112,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                 }
                 tabIndex={-1}
                 sx={{
-                  height: 24,
+                  height: 'auto',
+                  minHeight: 24,
                   fontSize: '0.7rem',
                   fontWeight: isSelected ? 600 : 400,
                   bgcolor: !hasSubmission
@@ -2141,9 +2141,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                     boxShadow: hasSubmission ? '0 2px 4px rgba(0,0,0,0.1)' : undefined,
                   },
                   '& .MuiChip-label': {
-                    padding: '0 8px',
+                    padding: '2px 8px',
                     display: 'flex',
                     alignItems: 'center',
+                    whiteSpace: 'normal',
+                    lineHeight: 1.2,
                   },
                 }}
               />
