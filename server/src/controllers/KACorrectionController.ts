@@ -28,14 +28,41 @@ function kaBasename(kaFilePath: string): string {
 
 async function resolveLessonFolderAbs(lessonPathRaw: string): Promise<string> {
   const { StorageManager } = await import('../utils/storageManager');
-  const lp = lessonPathRaw.replace(/\\/g, '/');
-  if (lp.startsWith('git-intern/')) {
-    return StorageManager.resolveGitInternRelativePath(lp.replace(/^git-intern\//, ''));
+  const lp = lessonPathRaw.replace(/\\/g, '/').trim();
+  const resolvedFile = StorageManager.resolveFilePath(lp);
+  if (resolvedFile && fs.existsSync(resolvedFile) && fs.statSync(resolvedFile).isDirectory()) {
+    return resolvedFile;
   }
-  if (lp.startsWith('J-M-Reihen/') || lp === 'J-M-Reihen') {
-    return StorageManager.resolveGitInternRelativePath(lp.replace(/^J-M-Reihen\/?/, ''));
+  let inner = lp;
+  if (inner.startsWith('git-intern/')) {
+    inner = inner.replace(/^git-intern\//, '');
+  } else if (inner.startsWith('J-M-Reihen/') || inner === 'J-M-Reihen') {
+    inner = inner.replace(/^J-M-Reihen\/?/, '');
   }
-  return StorageManager.resolveGitInternRelativePath(lp);
+  return StorageManager.resolveGitInternRelativePath(inner);
+}
+
+function submissionMatchesLesson(
+  kaFilePath: string,
+  lessonNorm: string,
+  lessonFolderAbs: string,
+  fileNameSet: Set<string>,
+): boolean {
+  const base = kaBasename(kaFilePath);
+  const full = (kaFilePath || '').replace(/\\/g, '/').toLowerCase();
+  if (!lessonNorm && fileNameSet.size === 0) return true;
+
+  if (fileNameSet.size > 0 && fileNameSet.has(base)) return true;
+  if (lessonNorm && full.includes(lessonNorm)) return true;
+  if (lessonFolderAbs && base) {
+    try {
+      const candidate = path.join(lessonFolderAbs, base);
+      if (fs.existsSync(candidate)) return true;
+    } catch {
+      /* ignore */
+    }
+  }
+  return false;
 }
 
 /**
@@ -1068,27 +1095,14 @@ export class KACorrectionController {
         }
       }
 
-      const filtered = submissions.filter((sub) => {
-        const p = (sub.kaFilePath || '').replace(/\\/g, '/');
-        const base = kaBasename(sub.kaFilePath);
-        const full = p.toLowerCase();
-        if (fileNameSet.size > 0) {
-          return fileNameSet.has(base);
-        }
-        if (lessonNorm) {
-          if (full.includes(lessonNorm)) return true;
-          if (
-            lessonFolderAbs &&
-            base &&
-            fs.existsSync(path.join(lessonFolderAbs, base)) &&
-            isCorrectionFile(base)
-          ) {
-            return true;
-          }
-          return false;
-        }
-        return true;
-      });
+      let filtered = submissions.filter((sub) =>
+        submissionMatchesLesson(sub.kaFilePath, lessonNorm, lessonFolderAbs, fileNameSet),
+      );
+
+      // SuS speichern oft nur HU_….html — wenn Stundenfilter alles ausblendet, Korrekturdateien nachladen
+      if (lessonPathRaw && filtered.length === 0 && submissions.length > 0) {
+        filtered = submissions.filter((sub) => isCorrectionFile(kaBasename(sub.kaFilePath)));
+      }
 
       const resultsSource = filtered;
 

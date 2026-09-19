@@ -200,7 +200,27 @@ export default function StudentLessonMaterialsPanel({
           return;
         }
         const data = (await res.json()) as { results?: ReleasedExamResult[] };
-        const rows = Array.isArray(data.results) ? data.results : [];
+        let rows = Array.isArray(data.results) ? data.results : [];
+
+        if (rows.length === 0) {
+          const resAll = await apiGetSafe('/api/ka-corrections/my-released');
+          if (resAll?.ok) {
+            const allData = (await resAll.json()) as { results?: ReleasedExamResult[] };
+            rows = Array.isArray(allData.results) ? allData.results : [];
+          }
+        }
+
+        if (examFiles.length > 0) {
+          const examNames = new Set(examFiles.map((f) => f.name.toLowerCase()));
+          rows = rows.filter((row) => {
+            const base = (
+              row.fileName ||
+              (row.kaFilePath || '').replace(/\\/g, '/').split('/').pop() ||
+              ''
+            ).toLowerCase();
+            return examNames.has(base);
+          });
+        }
 
         const enriched: ReleasedExamResult[] = [];
         for (const row of rows) {
@@ -208,14 +228,16 @@ export default function StudentLessonMaterialsPanel({
             (row.fileName || '').trim() ||
             (row.kaFilePath || '').replace(/\\/g, '/').split('/').pop() ||
             '';
+          const kaPathNorm = (row.kaFilePath || '').replace(/\\/g, '/');
           const matchFile =
             examFiles.find((f) => f.name.toLowerCase() === baseName.toLowerCase()) ||
             examFiles.find((f) => {
-              const base = (row.kaFilePath || '').replace(/\\/g, '/').split('/').pop() || '';
+              const base = kaPathNorm.split('/').pop() || '';
               return f.name.toLowerCase() === base.toLowerCase();
             });
           const htmlPath =
             matchFile?.path ||
+            (kaPathNorm.includes('/') ? kaPathNorm : '') ||
             (baseName
               ? `${lessonPath.replace(/\/+$/, '')}/${baseName}`.replace(/\\/g, '/')
               : '');
