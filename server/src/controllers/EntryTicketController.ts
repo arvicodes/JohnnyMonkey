@@ -455,6 +455,46 @@ function lessonFolderKey(lesson: { lessonName?: string; lessonKey?: string }): s
   return name.trim().toLowerCase();
 }
 
+function lessonKeyBelongsToFolder(lessonKey: string, folderPath: string): boolean {
+  const normFolder = (normalizeMaterialLessonPath(folderPath) || '').toLowerCase();
+  if (!normFolder) return false;
+  const base = (lessonKey || '').split('#')[0].replace(/\\/g, '/').trim();
+  const normKey = (normalizeMaterialLessonPath(base) || base).toLowerCase();
+  if (!normKey) return false;
+  if (normKey === normFolder || normKey.startsWith(`${normFolder}/`)) return true;
+  const folderName = normFolder.split('/').filter(Boolean).pop() || '';
+  if (!folderName) return false;
+  return normKey.includes(folderName) || normKey.endsWith(`/${folderName}`);
+}
+
+/** Summe der ET-Karten im Fragenset für diese Stunde inkl. Unterstunden (0 = alles entfernt). */
+function countCustomSetTasksForLessonPath(
+  sets: EntryTicketCustomSetPayload[],
+  lessonPath: string,
+  preferredSetId?: string | null,
+): number {
+  const want = normalizeMaterialLessonPath(lessonPath);
+  if (!want || sets.length === 0) return 0;
+  const folder = want.split('/').filter(Boolean).pop()?.toLowerCase() || '';
+  const ordered = preferredSetId
+    ? [
+        ...sets.filter((s) => s.id === preferredSetId),
+        ...sets.filter((s) => s.id !== preferredSetId),
+      ]
+    : sets;
+  let total = 0;
+  for (const set of ordered) {
+    for (const lesson of set.lessons || []) {
+      const key = lesson.lessonKey || '';
+      const matches =
+        (key && lessonKeyBelongsToFolder(key, want)) ||
+        (folder && lessonFolderKey(lesson) === folder);
+      if (matches) total += (lesson.tasks || []).length;
+    }
+  }
+  return total;
+}
+
 function taskTextLen(task: { prompt?: string; solution?: string } | undefined): number {
   return (task?.prompt || '').length + (task?.solution || '').length;
 }
@@ -1103,10 +1143,25 @@ export class EntryTicketController {
       const numbered = numberedArchives(store);
       const hit = archiveIndex
         ? numbered.find((a) => a.index === archiveIndex) || null
-        : numbered.filter((a) => sameLessonPath(a.materialLessonPath, lessonPath)).at(-1) ||
-          null;
+        : numbered
+            .filter(
+              (a) =>
+                a.materialLessonPath &&
+                sameLessonPath(a.materialLessonPath, lessonPath),
+            )
+            .at(-1) || null;
 
-      if (!hit || !hit.tasks?.length) {
+      const customSets = await loadStoredCustomSets(group.teacherId);
+      const configuredTasks =
+        lessonPath.trim().length > 0
+          ? countCustomSetTasksForLessonPath(
+              customSets,
+              lessonPath,
+              hit ? archiveCustomSetId(hit) : null,
+            )
+          : 0;
+
+      if (!hit || !hit.tasks?.length || configuredTasks === 0) {
         return res.json({
           completed: false,
           index: archiveIndex,

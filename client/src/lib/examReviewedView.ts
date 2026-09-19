@@ -398,8 +398,26 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       font-weight: 500;
       white-space: pre-wrap;
     }
+    .header-name {
+      margin-top: 10px !important;
+    }
+    .header-name label {
+      font-size: 0.85rem !important;
+      font-weight: 600 !important;
+      color: #555 !important;
+    }
+    #studentName {
+      display: inline-block !important;
+      font-size: 1.65rem !important;
+      font-weight: 800 !important;
+      line-height: 1.2 !important;
+      color: #111 !important;
+      margin-left: 6px !important;
+    }
   `;
   doc.head.appendChild(style);
+
+  doc.querySelectorAll('.aids-box, .header-divider').forEach((el) => el.remove());
 
   if (opts.studentName?.trim()) {
     const nameEl = doc.getElementById('studentName');
@@ -424,10 +442,13 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     (el as HTMLInputElement).readOnly = true;
   });
 
+  const rawTotal = Number(opts.totalPoints) || 0;
+  const cappedTotal =
+    opts.maxPoints > 0 ? Math.min(rawTotal, opts.maxPoints) : rawTotal;
   const pointsText =
     opts.maxPoints > 0
-      ? `${Number(opts.totalPoints || 0).toFixed(1).replace('.', ',')} / ${opts.maxPoints} Punkte`
-      : `${Number(opts.totalPoints || 0).toFixed(1).replace('.', ',')} Punkte`;
+      ? `${cappedTotal.toFixed(1).replace('.', ',')} / ${opts.maxPoints} Punkte`
+      : `${cappedTotal.toFixed(1).replace('.', ',')} Punkte`;
   const generalCommentRaw = (opts.corrections || []).find(
     (c) => c.taskNumber === '__general_comment__',
   )?.comment;

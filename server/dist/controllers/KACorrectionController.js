@@ -1102,13 +1102,41 @@ class KACorrectionController {
                             (stem && cn.includes(stem.slice(0, 8))));
                     }) || grades[0];
                     const stats = classStats.get(base);
+                    let totalPoints = sub.totalPoints;
+                    let autoPoints = sub.autoPoints;
+                    try {
+                        const key = (0, examAutoPoints_1.parseExamAnswerKey)((0, examAutoPoints_1.readExamHtml)(sub.kaFilePath));
+                        if (Object.keys(key.answers).length > 0) {
+                            const computed = (0, examAutoPoints_1.computeSubmissionTotal)(sub.answers, key, sub.corrections.map((c) => ({
+                                taskNumber: c.taskNumber,
+                                manualPoints: c.manualPoints,
+                            })));
+                            totalPoints = computed.totalPoints;
+                            autoPoints = computed.autoPoints;
+                            if (computed.totalPoints !== sub.totalPoints ||
+                                computed.autoPoints !== sub.autoPoints) {
+                                void prisma.kASubmission
+                                    .update({
+                                    where: { id: sub.id },
+                                    data: {
+                                        totalPoints: computed.totalPoints,
+                                        autoPoints: computed.autoPoints,
+                                    },
+                                })
+                                    .catch(() => { });
+                            }
+                        }
+                    }
+                    catch {
+                        /* HTML/Pfad — gespeicherte Werte belassen */
+                    }
                     return {
                         id: sub.id,
                         kaFilePath: sub.kaFilePath,
                         fileName,
                         title,
-                        totalPoints: sub.totalPoints,
-                        autoPoints: sub.autoPoints,
+                        totalPoints,
+                        autoPoints,
                         submittedAt: sub.submittedAt,
                         answers,
                         corrections: sub.corrections,

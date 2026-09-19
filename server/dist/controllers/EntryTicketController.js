@@ -400,6 +400,30 @@ function lessonFolderKey(lesson) {
     const name = raw.split('/').pop() || raw;
     return name.trim().toLowerCase();
 }
+/** Aktuell im Fragenset hinterlegte ET-Aufgaben für diese Stunde (0 = entfernt). */
+function countCustomSetTasksForLessonPath(sets, lessonPath, preferredSetId) {
+    var _a;
+    const want = normalizeMaterialLessonPath(lessonPath);
+    if (!want || sets.length === 0)
+        return 0;
+    const folder = ((_a = want.split('/').filter(Boolean).pop()) === null || _a === void 0 ? void 0 : _a.toLowerCase()) || '';
+    const ordered = preferredSetId
+        ? [
+            ...sets.filter((s) => s.id === preferredSetId),
+            ...sets.filter((s) => s.id !== preferredSetId),
+        ]
+        : sets;
+    for (const set of ordered) {
+        for (const lesson of set.lessons || []) {
+            const key = normalizeMaterialLessonPath(lesson.lessonKey || '') || '';
+            const matches = (key && sameLessonPath(key, want)) ||
+                (folder && lessonFolderKey(lesson) === folder);
+            if (matches)
+                return (lesson.tasks || []).length;
+        }
+    }
+    return 0;
+}
 function taskTextLen(task) {
     return ((task === null || task === void 0 ? void 0 : task.prompt) || '').length + ((task === null || task === void 0 ? void 0 : task.solution) || '').length;
 }
@@ -988,9 +1012,15 @@ class EntryTicketController {
             const numbered = numberedArchives(store);
             const hit = archiveIndex
                 ? numbered.find((a) => a.index === archiveIndex) || null
-                : numbered.filter((a) => sameLessonPath(a.materialLessonPath, lessonPath)).at(-1) ||
-                    null;
-            if (!hit || !((_a = hit.tasks) === null || _a === void 0 ? void 0 : _a.length)) {
+                : numbered
+                    .filter((a) => a.materialLessonPath &&
+                    sameLessonPath(a.materialLessonPath, lessonPath))
+                    .at(-1) || null;
+            const customSets = await loadStoredCustomSets(group.teacherId);
+            const configuredTasks = lessonPath.trim().length > 0
+                ? countCustomSetTasksForLessonPath(customSets, lessonPath, hit ? archiveCustomSetId(hit) : null)
+                : 0;
+            if (!hit || !((_a = hit.tasks) === null || _a === void 0 ? void 0 : _a.length) || configuredTasks === 0) {
                 return res.json({
                     completed: false,
                     index: archiveIndex,
