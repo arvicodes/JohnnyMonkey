@@ -270,14 +270,18 @@ export default function StudentLessonMaterialsPanel({
             '-';
 
           let classAverageLabel: string | undefined;
-          if (row.classAverageGrade != null && Number.isFinite(Number(row.classAverageGrade))) {
-            classAverageLabel = Number(row.classAverageGrade).toFixed(1).replace('.', ',');
-          } else if (row.classAveragePoints != null && maxPoints > 0) {
+          if (row.classAveragePoints != null && maxPoints > 0) {
             const avg = examGradeLabelFromPoints(
               Number(row.classAveragePoints) || 0,
               maxPoints,
             );
             classAverageLabel = avg.numeric.toFixed(1).replace('.', ',');
+          } else if (
+            row.classAverageGrade != null &&
+            Number(row.classAverageGrade) > 0 &&
+            Number.isFinite(Number(row.classAverageGrade))
+          ) {
+            classAverageLabel = Number(row.classAverageGrade).toFixed(1).replace('.', ',');
           }
 
           enriched.push({

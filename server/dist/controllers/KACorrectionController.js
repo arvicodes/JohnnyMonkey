@@ -32,11 +32,17 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.KACorrectionController = void 0;
 const client_1 = require("@prisma/client");
 const loginCodeCrypto_1 = require("../utils/loginCodeCrypto");
 const examAutoPoints_1 = require("../utils/examAutoPoints");
+const examGradeNumeric_1 = require("../utils/examGradeNumeric");
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
 const prisma = new client_1.PrismaClient();
 /**
  * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, KU_, HÜ_, HU_, QZ_)
@@ -44,6 +50,47 @@ const prisma = new client_1.PrismaClient();
 function isCorrectionFile(fileName) {
     const base = (fileName || '').replace(/\\/g, '/').split('/').pop() || fileName || '';
     return /^(KA_|KU_|HÜ_|HU_|QZ_)/i.test(base);
+}
+function kaBasename(kaFilePath) {
+    var _a;
+    return ((_a = (kaFilePath || '').replace(/\\/g, '/').split('/').pop()) === null || _a === void 0 ? void 0 : _a.toLowerCase()) || '';
+}
+async function resolveLessonFolderAbs(lessonPathRaw) {
+    const { StorageManager } = await Promise.resolve().then(() => __importStar(require('../utils/storageManager')));
+    const lp = lessonPathRaw.replace(/\\/g, '/').trim();
+    const resolvedFile = StorageManager.resolveFilePath(lp);
+    if (resolvedFile && fs_1.default.existsSync(resolvedFile) && fs_1.default.statSync(resolvedFile).isDirectory()) {
+        return resolvedFile;
+    }
+    let inner = lp;
+    if (inner.startsWith('git-intern/')) {
+        inner = inner.replace(/^git-intern\//, '');
+    }
+    else if (inner.startsWith('J-M-Reihen/') || inner === 'J-M-Reihen') {
+        inner = inner.replace(/^J-M-Reihen\/?/, '');
+    }
+    return StorageManager.resolveGitInternRelativePath(inner);
+}
+function submissionMatchesLesson(kaFilePath, lessonNorm, lessonFolderAbs, fileNameSet) {
+    const base = kaBasename(kaFilePath);
+    const full = (kaFilePath || '').replace(/\\/g, '/').toLowerCase();
+    if (!lessonNorm && fileNameSet.size === 0)
+        return true;
+    if (fileNameSet.size > 0 && fileNameSet.has(base))
+        return true;
+    if (lessonNorm && full.includes(lessonNorm))
+        return true;
+    if (lessonFolderAbs && base) {
+        try {
+            const candidate = path_1.default.join(lessonFolderAbs, base);
+            if (fs_1.default.existsSync(candidate))
+                return true;
+        }
+        catch {
+            /* ignore */
+        }
+    }
+    return false;
 }
 /**
  * Pfad-Varianten für Abgaben: Lehrer übergibt oft den vollen Ordnerpfad,
@@ -100,7 +147,11 @@ class KACorrectionController {
             /* keine HTML-Datei */
         }
         if (Object.keys(key.answers).length === 0) {
-            const manualSum = submission.corrections.reduce((s, c) => { var _a; return s + ((_a = c.manualPoints) !== null && _a !== void 0 ? _a : 0); }, 0);
+            const manualSum = submission.corrections
+                .filter((c) => c.taskNumber !== '__review_complete__' &&
+                c.taskNumber !== '__general_comment__' &&
+                c.taskNumber !== '3_comment')
+                .reduce((s, c) => { var _a; return s + ((_a = c.manualPoints) !== null && _a !== void 0 ? _a : 0); }, 0);
             await prisma.kASubmission.update({
                 where: { id: submissionId },
                 data: { totalPoints: submission.autoPoints + manualSum, status: 'corrected' },
@@ -825,6 +876,7 @@ class KACorrectionController {
             }
             // Versuche auch mit verschiedenen Varianten zu suchen
             const uniquePaths = getPossiblePaths(kaFilePath);
+            const baseName = (kaFilePath.replace(/\\/g, '/').split('/').pop() || kaFilePath).toLowerCase();
             // Finde alle Submissions für diese KA
             // Prüfe zuerst, ob isReleased Feld existiert (Prisma Client könnte veraltet sein)
             let submissions;
@@ -856,6 +908,17 @@ class KACorrectionController {
                 else {
                     throw e;
                 }
+            }
+            if (submissions.length === 0 && baseName) {
+                const all = await prisma.kASubmission.findMany({
+                    select: { isReleased: true, kaFilePath: true },
+                });
+                submissions = all
+                    .filter((sub) => {
+                    const subBase = (sub.kaFilePath || '').replace(/\\/g, '/').split('/').pop() || '';
+                    return subBase.toLowerCase() === baseName;
+                })
+                    .map((sub) => ({ isReleased: sub.isReleased }));
             }
             if (submissions.length === 0) {
                 return res.json({ isReleased: false, count: 0 });
@@ -917,25 +980,12 @@ class KACorrectionController {
                 .split(',')
                 .map((s) => decodeURIComponent(s.trim()).toLowerCase())
                 .filter(Boolean));
-            // Falls keine Dateinamen mitkommen: Prüfungs-HTMLs im Stundenordner nachschlagen
-            if (fileNameSet.size === 0 && lessonPathRaw) {
+            let lessonFolderAbs = '';
+            if (lessonPathRaw) {
                 try {
-                    const fs = await Promise.resolve().then(() => __importStar(require('fs')));
-                    const path = await Promise.resolve().then(() => __importStar(require('path')));
-                    const { StorageManager } = await Promise.resolve().then(() => __importStar(require('../utils/storageManager')));
-                    let folderAbs = '';
-                    const lp = lessonPathRaw.replace(/\\/g, '/');
-                    if (lp.startsWith('git-intern/')) {
-                        folderAbs = StorageManager.resolveGitInternRelativePath(lp.replace(/^git-intern\//, ''));
-                    }
-                    else if (lp.startsWith('J-M-Reihen/') || lp === 'J-M-Reihen') {
-                        folderAbs = StorageManager.resolveGitInternRelativePath(lp.replace(/^J-M-Reihen\/?/, ''));
-                    }
-                    else {
-                        folderAbs = StorageManager.resolveGitInternRelativePath(lp);
-                    }
-                    if (folderAbs && fs.existsSync(folderAbs)) {
-                        for (const name of fs.readdirSync(folderAbs)) {
+                    lessonFolderAbs = await resolveLessonFolderAbs(lessonPathRaw);
+                    if (lessonFolderAbs && fs_1.default.existsSync(lessonFolderAbs)) {
+                        for (const name of fs_1.default.readdirSync(lessonFolderAbs)) {
                             if (isCorrectionFile(name) && /\.html?$/i.test(name)) {
                                 fileNameSet.add(name.toLowerCase());
                             }
@@ -946,18 +996,11 @@ class KACorrectionController {
                     console.warn('my-released: Ordnerliste nicht lesbar', e);
                 }
             }
-            const filtered = submissions.filter((sub) => {
-                const p = (sub.kaFilePath || '').replace(/\\/g, '/');
-                const base = (p.split('/').pop() || p).toLowerCase();
-                const full = p.toLowerCase();
-                if (fileNameSet.size > 0) {
-                    return fileNameSet.has(base);
-                }
-                if (lessonNorm) {
-                    return full.includes(lessonNorm);
-                }
-                return true;
-            });
+            let filtered = submissions.filter((sub) => submissionMatchesLesson(sub.kaFilePath, lessonNorm, lessonFolderAbs, fileNameSet));
+            // SuS speichern oft nur HU_….html — wenn Stundenfilter alles ausblendet, Korrekturdateien nachladen
+            if (lessonPathRaw && filtered.length === 0 && submissions.length > 0) {
+                filtered = submissions.filter((sub) => isCorrectionFile(kaBasename(sub.kaFilePath)));
+            }
             const resultsSource = filtered;
             // Klassenschnitt je Prüfungsdatei (alle freigegebenen Abgaben derselben Datei)
             const allReleasedPeers = await prisma.kASubmission.findMany({
@@ -967,16 +1010,54 @@ class KACorrectionController {
             const classStats = new Map();
             const byBase = new Map();
             for (const p of allReleasedPeers) {
-                const b = ((p.kaFilePath || '').replace(/\\/g, '/').split('/').pop() || '').toLowerCase();
+                const b = kaBasename(p.kaFilePath);
                 if (!b)
                     continue;
                 const arr = byBase.get(b) || [];
-                arr.push(Number(p.totalPoints) || 0);
+                arr.push({ points: Number(p.totalPoints) || 0, path: p.kaFilePath });
                 byBase.set(b, arr);
             }
-            byBase.forEach((pts, base) => {
-                const sum = pts.reduce((a, n) => a + n, 0);
-                classStats.set(base, { avgPoints: sum / pts.length, count: pts.length });
+            const maxPointsByBase = new Map();
+            const maxForBase = (base, samplePath) => {
+                if (maxPointsByBase.has(base))
+                    return maxPointsByBase.get(base);
+                let max = 0;
+                try {
+                    const key = (0, examAutoPoints_1.parseExamAnswerKey)((0, examAutoPoints_1.readExamHtml)(samplePath));
+                    max = key.maxPoints || 0;
+                }
+                catch {
+                    try {
+                        const key = (0, examAutoPoints_1.parseExamAnswerKey)((0, examAutoPoints_1.readExamHtml)(base));
+                        max = key.maxPoints || 0;
+                    }
+                    catch {
+                        max = 0;
+                    }
+                }
+                maxPointsByBase.set(base, max);
+                return max;
+            };
+            byBase.forEach((rows, base) => {
+                var _a;
+                const samplePath = ((_a = rows[0]) === null || _a === void 0 ? void 0 : _a.path) || base;
+                const maxPts = maxForBase(base, samplePath);
+                const sumPts = rows.reduce((a, r) => a + r.points, 0);
+                if (maxPts <= 0) {
+                    classStats.set(base, {
+                        avgPoints: sumPts / rows.length,
+                        avgGrade: NaN,
+                        count: rows.length,
+                    });
+                    return;
+                }
+                const grades = rows.map((r) => (0, examGradeNumeric_1.examGradeNumericFromPoints)(r.points, maxPts));
+                const sumGrades = grades.reduce((a, g) => a + g, 0);
+                classStats.set(base, {
+                    avgPoints: sumPts / rows.length,
+                    avgGrade: sumGrades / rows.length,
+                    count: rows.length,
+                });
             });
             // Noten aus dem Schema (Schüler)
             const grades = await prisma.grade.findMany({
@@ -1035,6 +1116,7 @@ class KACorrectionController {
                         schemaGradeLabel: (matchedGrade === null || matchedGrade === void 0 ? void 0 : matchedGrade.grade) != null ? formatGradeLabel(Number(matchedGrade.grade)) : null,
                         schemaCategoryName: (matchedGrade === null || matchedGrade === void 0 ? void 0 : matchedGrade.categoryName) || null,
                         classAveragePoints: (_b = stats === null || stats === void 0 ? void 0 : stats.avgPoints) !== null && _b !== void 0 ? _b : null,
+                        classAverageGrade: stats && Number.isFinite(stats.avgGrade) ? stats.avgGrade : null,
                         classAverageCount: (_c = stats === null || stats === void 0 ? void 0 : stats.count) !== null && _c !== void 0 ? _c : 0,
                         recentGrades: grades.slice(0, 8).map((g) => {
                             var _a, _b;

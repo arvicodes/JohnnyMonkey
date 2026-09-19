@@ -482,6 +482,55 @@
           "tasks": []
         },
         {
+          "id": "ls_b998a81d-bbc8-46c4-9c0f-0f41f12afa85",
+          "lessonName": "02.01 Affenschach Einfach",
+          "lessonKey": "git-intern/Informatik/MSS Grundthemen/11-04 KI/02 Lernarten#02.01 Affenschach Einfach",
+          "topicName": "02 Lernarten",
+          "tasks": []
+        },
+        {
+          "id": "ls_8edfc3fe-5f5a-4a27-8945-9feb075c7d29",
+          "lessonName": "02.02 Affenschach lernend",
+          "lessonKey": "git-intern/Informatik/MSS Grundthemen/11-04 KI/02 Lernarten#02.02 Affenschach lernend",
+          "topicName": "02 Lernarten",
+          "tasks": []
+        },
+        {
+          "id": "ls_d253cf47-2e08-4df7-88cb-b71e4ab23a87",
+          "lessonName": "02.03 NIM Spiel",
+          "lessonKey": "git-intern/Informatik/MSS Grundthemen/11-04 KI/02 Lernarten#02.03 NIM Spiel",
+          "topicName": "02 Lernarten",
+          "tasks": []
+        },
+        {
+          "id": "ls_d4fbf447-b9d2-4c7d-a8ce-2c39eeb503e9",
+          "lessonName": "02.04 Gesichtserkennung",
+          "lessonKey": "git-intern/Informatik/MSS Grundthemen/11-04 KI/02 Lernarten#02.04 Gesichtserkennung",
+          "topicName": "02 Lernarten",
+          "tasks": []
+        },
+        {
+          "id": "ls_4a29089a-0767-4090-83c4-7817d671cdd6",
+          "lessonName": "02.04 Mehr Lernarten",
+          "lessonKey": "git-intern/Informatik/MSS Grundthemen/11-04 KI/02 Lernarten#02.04 Mehr Lernarten",
+          "topicName": "02 Lernarten",
+          "tasks": []
+        },
+        {
+          "id": "ls_c6b63bb0-2978-4638-9170-115a43e8620e",
+          "lessonName": "02.04 Reinforcement Lernaring in Snap!",
+          "lessonKey": "git-intern/Informatik/MSS Grundthemen/11-04 KI/02 Lernarten#02.04 Reinforcement Lernaring in Snap!",
+          "topicName": "02 Lernarten",
+          "tasks": []
+        },
+        {
+          "id": "ls_41e5b78c-827a-49bb-a219-22a9bac6424e",
+          "lessonName": "02.05 Geschichte der KI",
+          "lessonKey": "git-intern/Informatik/MSS Grundthemen/11-04 KI/02 Lernarten#02.05 Geschichte der KI",
+          "topicName": "02 Lernarten",
+          "tasks": []
+        },
+        {
           "id": "ls_47b3110f-4fb5-4a28-962c-e9b2252194bd",
           "lessonName": "Für später",
           "lessonKey": "__fuer_spaeter__",
@@ -4854,6 +4903,6 @@
       ]
     }
   ],
-  "savedAt": "2026-09-19T07:17:05.992Z",
+  "savedAt": "2026-09-19T20:01:30.278Z",
   "teacherId": "01ed6e10-397e-446c-9254-2ad7fd4ec777"
 }

@@ -1,5 +1,8 @@
 import fs from 'fs';
 import path from 'path';
+import { StorageManager } from './storageManager';
+
+const examHtmlBasenameCache = new Map<string, string>();
 
 export type ExamAnswerKey = {
   answers: Record<string, string | string[] | number>;
@@ -80,23 +83,82 @@ export function parseExamAnswerKey(html: string): ExamAnswerKey {
   return { answers, points, maxPoints, isGeometry };
 }
 
+function findExamHtmlByBasename(basename: string): string | null {
+  const want = (basename || '').trim().toLowerCase();
+  if (!want || !/^(ka_|ku_|hü_|hu_|qz_)/i.test(basename)) return null;
+  const cached = examHtmlBasenameCache.get(want);
+  if (cached && fs.existsSync(cached)) return cached;
+
+  const resolved = StorageManager.resolveFilePath(basename);
+  if (resolved && fs.existsSync(resolved)) {
+    examHtmlBasenameCache.set(want, resolved);
+    return resolved;
+  }
+
+  const root = StorageManager.resolveGitInternRelativePath('');
+  const walk = (dir: string, depth: number): string | null => {
+    if (depth > 14) return null;
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return null;
+    }
+    for (const e of entries) {
+      const full = path.join(dir, e.name);
+      if (e.isFile() && e.name.toLowerCase() === want) return full;
+      if (
+        e.isDirectory() &&
+        !e.name.startsWith('.') &&
+        e.name !== 'node_modules' &&
+        e.name !== 'Presentation-Sicherheitskopien'
+      ) {
+        const nested = walk(full, depth + 1);
+        if (nested) return nested;
+      }
+    }
+    return null;
+  };
+  const found = walk(root, 0);
+  if (found) examHtmlBasenameCache.set(want, found);
+  return found;
+}
+
 export function resolveExamHtmlPath(filePath: string): string {
   const fp = (filePath || '').replace(/\\/g, '/').trim();
+  const tryPath = (full: string): string | null =>
+    full && fs.existsSync(full) ? full : null;
+
   if (fp.startsWith('git-intern/')) {
     const relativePath = fp.replace(/^git-intern\//, '');
-    if (process.env.NODE_ENV === 'production') {
-      return path.join(process.cwd(), 'J-M-Reihen', relativePath);
-    }
-    const projectRoot = path.resolve(__dirname, '../../..');
-    return path.join(projectRoot, 'J-M-Reihen', relativePath);
+    const full = StorageManager.resolveGitInternRelativePath(relativePath);
+    const hit = tryPath(full);
+    if (hit) return hit;
+  } else if (fp.startsWith('J-M-Reihen/')) {
+    const relativePath = fp.replace(/^J-M-Reihen\//, '');
+    const full = StorageManager.resolveGitInternRelativePath(relativePath);
+    const hit = tryPath(full);
+    if (hit) return hit;
+  } else {
+    const resolved = StorageManager.resolveFilePath(fp);
+    const hit = resolved ? tryPath(resolved) : null;
+    if (hit) return hit;
+    const abs = path.resolve(fp);
+    const hitAbs = tryPath(abs);
+    if (hitAbs) return hitAbs;
+  }
+
+  const base = fp.split('/').pop() || fp;
+  const byName = findExamHtmlByBasename(base);
+  if (byName) return byName;
+
+  if (fp.startsWith('git-intern/')) {
+    const relativePath = fp.replace(/^git-intern\//, '');
+    return StorageManager.resolveGitInternRelativePath(relativePath);
   }
   if (fp.startsWith('J-M-Reihen/')) {
     const relativePath = fp.replace(/^J-M-Reihen\//, '');
-    if (process.env.NODE_ENV === 'production') {
-      return path.join(process.cwd(), 'J-M-Reihen', relativePath);
-    }
-    const projectRoot = path.resolve(__dirname, '../../..');
-    return path.join(projectRoot, 'J-M-Reihen', relativePath);
+    return StorageManager.resolveGitInternRelativePath(relativePath);
   }
   return path.resolve(fp);
 }

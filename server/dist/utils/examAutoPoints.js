@@ -13,8 +13,12 @@ exports.calculateAutoPoints = calculateAutoPoints;
 exports.computeSubmissionTotal = computeSubmissionTotal;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const storageManager_1 = require("./storageManager");
+const examHtmlBasenameCache = new Map();
 function normalizeLoose(raw) {
-    return String(raw || '')
+    if (raw === null || raw === undefined)
+        return '';
+    return String(raw)
         .trim()
         .toLowerCase()
         .replace(/\s+/g, '')
@@ -85,23 +89,87 @@ function parseExamAnswerKey(html) {
     const maxPoints = maxFromHtml || keys.reduce((s, k) => s + (points[k] || 0), 0);
     return { answers, points, maxPoints, isGeometry };
 }
+function findExamHtmlByBasename(basename) {
+    const want = (basename || '').trim().toLowerCase();
+    if (!want || !/^(ka_|ku_|hü_|hu_|qz_)/i.test(basename))
+        return null;
+    const cached = examHtmlBasenameCache.get(want);
+    if (cached && fs_1.default.existsSync(cached))
+        return cached;
+    const resolved = storageManager_1.StorageManager.resolveFilePath(basename);
+    if (resolved && fs_1.default.existsSync(resolved)) {
+        examHtmlBasenameCache.set(want, resolved);
+        return resolved;
+    }
+    const root = storageManager_1.StorageManager.resolveGitInternRelativePath('');
+    const walk = (dir, depth) => {
+        if (depth > 14)
+            return null;
+        let entries;
+        try {
+            entries = fs_1.default.readdirSync(dir, { withFileTypes: true });
+        }
+        catch {
+            return null;
+        }
+        for (const e of entries) {
+            const full = path_1.default.join(dir, e.name);
+            if (e.isFile() && e.name.toLowerCase() === want)
+                return full;
+            if (e.isDirectory() &&
+                !e.name.startsWith('.') &&
+                e.name !== 'node_modules' &&
+                e.name !== 'Presentation-Sicherheitskopien') {
+                const nested = walk(full, depth + 1);
+                if (nested)
+                    return nested;
+            }
+        }
+        return null;
+    };
+    const found = walk(root, 0);
+    if (found)
+        examHtmlBasenameCache.set(want, found);
+    return found;
+}
 function resolveExamHtmlPath(filePath) {
     const fp = (filePath || '').replace(/\\/g, '/').trim();
+    const tryPath = (full) => full && fs_1.default.existsSync(full) ? full : null;
     if (fp.startsWith('git-intern/')) {
         const relativePath = fp.replace(/^git-intern\//, '');
-        if (process.env.NODE_ENV === 'production') {
-            return path_1.default.join(process.cwd(), 'J-M-Reihen', relativePath);
-        }
-        const projectRoot = path_1.default.resolve(__dirname, '../../..');
-        return path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+        const full = storageManager_1.StorageManager.resolveGitInternRelativePath(relativePath);
+        const hit = tryPath(full);
+        if (hit)
+            return hit;
+    }
+    else if (fp.startsWith('J-M-Reihen/')) {
+        const relativePath = fp.replace(/^J-M-Reihen\//, '');
+        const full = storageManager_1.StorageManager.resolveGitInternRelativePath(relativePath);
+        const hit = tryPath(full);
+        if (hit)
+            return hit;
+    }
+    else {
+        const resolved = storageManager_1.StorageManager.resolveFilePath(fp);
+        const hit = resolved ? tryPath(resolved) : null;
+        if (hit)
+            return hit;
+        const abs = path_1.default.resolve(fp);
+        const hitAbs = tryPath(abs);
+        if (hitAbs)
+            return hitAbs;
+    }
+    const base = fp.split('/').pop() || fp;
+    const byName = findExamHtmlByBasename(base);
+    if (byName)
+        return byName;
+    if (fp.startsWith('git-intern/')) {
+        const relativePath = fp.replace(/^git-intern\//, '');
+        return storageManager_1.StorageManager.resolveGitInternRelativePath(relativePath);
     }
     if (fp.startsWith('J-M-Reihen/')) {
         const relativePath = fp.replace(/^J-M-Reihen\//, '');
-        if (process.env.NODE_ENV === 'production') {
-            return path_1.default.join(process.cwd(), 'J-M-Reihen', relativePath);
-        }
-        const projectRoot = path_1.default.resolve(__dirname, '../../..');
-        return path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+        return storageManager_1.StorageManager.resolveGitInternRelativePath(relativePath);
     }
     return path_1.default.resolve(fp);
 }
@@ -144,7 +212,8 @@ function computeSubmissionTotal(answersJson, key, corrections) {
     const corrMap = new Map(corrections.map((c) => [c.taskNumber, c]));
     if (key.isGeometry) {
         const manualSum = corrections
-            .filter((c) => !Object.keys(key.answers).includes(c.taskNumber))
+            .filter((c) => !Object.keys(key.answers).includes(c.taskNumber) &&
+            c.taskNumber !== '__review_complete__')
             .reduce((s, c) => { var _a; return s + ((_a = c.manualPoints) !== null && _a !== void 0 ? _a : 0); }, 0);
         return { autoPoints, totalPoints: autoPoints + manualSum };
     }
@@ -159,7 +228,10 @@ function computeSubmissionTotal(answersJson, key, corrections) {
         }
     }
     const legacyManual = corrections
-        .filter((c) => !Object.keys(key.answers).includes(c.taskNumber) && c.taskNumber !== '3_comment')
+        .filter((c) => !Object.keys(key.answers).includes(c.taskNumber) &&
+        c.taskNumber !== '3_comment' &&
+        c.taskNumber !== '__review_complete__' &&
+        c.taskNumber !== '__general_comment__')
         .reduce((s, c) => { var _a; return s + ((_a = c.manualPoints) !== null && _a !== void 0 ? _a : 0); }, 0);
     if (legacyManual > 0 && totalPoints === autoPoints) {
         totalPoints += legacyManual;

@@ -120,7 +120,14 @@ export class KACorrectionController {
       /* keine HTML-Datei */
     }
     if (Object.keys(key.answers).length === 0) {
-      const manualSum = submission.corrections.reduce((s, c) => s + (c.manualPoints ?? 0), 0);
+      const manualSum = submission.corrections
+        .filter(
+          (c) =>
+            c.taskNumber !== '__review_complete__' &&
+            c.taskNumber !== '__general_comment__' &&
+            c.taskNumber !== '3_comment',
+        )
+        .reduce((s, c) => s + (c.manualPoints ?? 0), 0);
       await prisma.kASubmission.update({
         where: { id: submissionId },
         data: { totalPoints: submission.autoPoints + manualSum, status: 'corrected' },
@@ -1144,10 +1151,16 @@ export class KACorrectionController {
       byBase.forEach((rows, base) => {
         const samplePath = rows[0]?.path || base;
         const maxPts = maxForBase(base, samplePath);
-        const grades = rows.map((r) =>
-          maxPts > 0 ? examGradeNumericFromPoints(r.points, maxPts) : 0,
-        );
         const sumPts = rows.reduce((a, r) => a + r.points, 0);
+        if (maxPts <= 0) {
+          classStats.set(base, {
+            avgPoints: sumPts / rows.length,
+            avgGrade: NaN,
+            count: rows.length,
+          });
+          return;
+        }
+        const grades = rows.map((r) => examGradeNumericFromPoints(r.points, maxPts));
         const sumGrades = grades.reduce((a, g) => a + g, 0);
         classStats.set(base, {
           avgPoints: sumPts / rows.length,
@@ -1217,7 +1230,8 @@ export class KACorrectionController {
               matchedGrade?.grade != null ? formatGradeLabel(Number(matchedGrade.grade)) : null,
             schemaCategoryName: matchedGrade?.categoryName || null,
             classAveragePoints: stats?.avgPoints ?? null,
-            classAverageGrade: stats?.avgGrade ?? null,
+            classAverageGrade:
+              stats && Number.isFinite(stats.avgGrade) ? stats.avgGrade : null,
             classAverageCount: stats?.count ?? 0,
             recentGrades: grades.slice(0, 8).map((g) => ({
               categoryName: g.categoryName,
