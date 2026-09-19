@@ -181,7 +181,8 @@ export function computeSubmissionTotal(
       (c) =>
         !Object.keys(key.answers).includes(c.taskNumber) &&
         c.taskNumber !== '3_comment' &&
-        c.taskNumber !== '__review_complete__',
+        c.taskNumber !== '__review_complete__' &&
+        c.taskNumber !== '__general_comment__',
     )
     .reduce((s, c) => s + (c.manualPoints ?? 0), 0);
   if (legacyManual > 0 && totalPoints === autoPoints) {

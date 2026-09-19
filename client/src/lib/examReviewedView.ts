@@ -389,6 +389,15 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       font-size: 13px;
       color: #546e7a;
     }
+    .jm-review-result .teacher-comment {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(46, 125, 50, 0.35);
+      font-size: 14px;
+      color: #1b5e20;
+      font-weight: 500;
+      white-space: pre-wrap;
+    }
   `;
   doc.head.appendChild(style);
 
@@ -419,6 +428,16 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     opts.maxPoints > 0
       ? `${Number(opts.totalPoints || 0).toFixed(1).replace('.', ',')} / ${opts.maxPoints} Punkte`
       : `${Number(opts.totalPoints || 0).toFixed(1).replace('.', ',')} Punkte`;
+  const generalCommentRaw = (opts.corrections || []).find(
+    (c) => c.taskNumber === '__general_comment__',
+  )?.comment;
+  const generalComment = (generalCommentRaw || '').trim();
+  const escapeHtml = (s: string) =>
+    s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   const box = doc.createElement('div');
   box.className = 'jm-review-result';
   box.innerHTML = `
@@ -427,6 +446,11 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     ${
       opts.classAverageText
         ? `<div class="avg">⌀ Klassenschnitt = ${opts.classAverageText}</div>`
+        : ''
+    }
+    ${
+      generalComment
+        ? `<div class="teacher-comment"><strong>Kommentar:</strong> ${escapeHtml(generalComment)}</div>`
         : ''
     }
   `;

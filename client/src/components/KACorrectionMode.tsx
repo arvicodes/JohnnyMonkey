@@ -46,7 +46,7 @@ import {
 } from '@mui/icons-material';
 import { teacherIdFromStorage } from '../lib/lessonExamBeacon';
 import { buildExamReviewedHtml } from '../lib/examReviewedView';
-import { downloadCombinedExamReviewsPdf, downloadExamReviewPdf } from '../lib/examReviewPdf';
+import { downloadCombinedExamReviewsPdf } from '../lib/examReviewPdf';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
 import DreierprobeModal from './DreierprobeModal';
@@ -91,6 +91,7 @@ const correctionStorageKey = (submissionId: string, fieldKey: string): string =>
   `${submissionId}_${fieldKey}`;
 
 const REVIEW_COMPLETE_TASK = '__review_complete__';
+const GENERAL_COMMENT_TASK = '__general_comment__';
 const PURPLE_REVIEW = '#7b1fa2';
 const PARTIAL_CREDIT_BG = '#fff9c4';
 const PARTIAL_CREDIT_BORDER = '#fff176';
@@ -145,7 +146,13 @@ function isReviewCompleteFlag(submission: KASubmission | null | undefined): bool
 function hasManualCorrectionWork(submission: KASubmission | null | undefined): boolean {
   return Boolean(
     submission?.corrections?.some((c) => {
-      if (c.taskNumber === REVIEW_COMPLETE_TASK || c.taskNumber === '3_comment') return false;
+      if (
+        c.taskNumber === REVIEW_COMPLETE_TASK ||
+        c.taskNumber === '3_comment' ||
+        c.taskNumber === GENERAL_COMMENT_TASK
+      ) {
+        return false;
+      }
       return c.manualPoints != null || Boolean(c.comment?.trim());
     }),
   );
@@ -386,10 +393,12 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
               constructionPoints: corr.manualPoints,
               comment: corr.comment || ''
             };
-          } else if (corr.taskNumber === '3_comment') {
-            // Kommentar für die ganze Aufgabe 3
+          } else if (
+            corr.taskNumber === '3_comment' ||
+            corr.taskNumber === GENERAL_COMMENT_TASK
+          ) {
             allCorrections[correctionKey] = {
-              comment: corr.comment || ''
+              comment: corr.comment || '',
             };
           } else {
             // Für andere Aufgaben: manualPoints sind die normalen Punkte
@@ -445,7 +454,13 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
             const currentValue = updated[correctionKey];
             if (currentValue === undefined || 
                 (corr.taskNumber.match(/^3[a-d]$/) && currentValue.constructionPoints === undefined) ||
-                (!corr.taskNumber.match(/^3[a-d]$/) && corr.taskNumber !== '3_comment' && currentValue.points === undefined)) {
+                (!corr.taskNumber.match(/^3[a-d]$/) &&
+                  corr.taskNumber !== '3_comment' &&
+                  corr.taskNumber !== GENERAL_COMMENT_TASK &&
+                  currentValue.points === undefined) ||
+                ((corr.taskNumber === '3_comment' ||
+                  corr.taskNumber === GENERAL_COMMENT_TASK) &&
+                  currentValue?.comment === undefined)) {
           // Für Aufgabe 3 Teilaufgaben (3a, 3b, 3c, 3d): manualPoints sind die Konstruktionspunkte
           if (corr.taskNumber.match(/^3[a-d]$/)) {
                 updated[correctionKey] = {
@@ -453,13 +468,15 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
               constructionPoints: corr.manualPoints,
                   comment: corr.comment || currentValue?.comment || ''
                 };
-              } else if (corr.taskNumber === '3_comment') {
-                // Kommentar für die ganze Aufgabe 3
+              } else if (
+                corr.taskNumber === '3_comment' ||
+                corr.taskNumber === GENERAL_COMMENT_TASK
+              ) {
                 updated[correctionKey] = {
                   ...currentValue,
-              comment: corr.comment || ''
-            };
-          } else {
+                  comment: corr.comment || '',
+                };
+              } else {
             // Für andere Aufgaben: manualPoints sind die normalen Punkte
                 updated[correctionKey] = {
                   ...currentValue,
@@ -546,6 +563,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         setCorrections((prev) => ({
           ...prev,
           [correctionKey]: { ...prev[correctionKey], constructionPoints: storedPoints, comment },
+        }));
+      } else if (taskNumber === '3_comment' || taskNumber === GENERAL_COMMENT_TASK) {
+        setCorrections((prev) => ({
+          ...prev,
+          [correctionKey]: { ...prev[correctionKey], comment: comment || '' },
         }));
       } else {
         setCorrections((prev) => ({
@@ -952,10 +974,10 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       if (!key.startsWith(prefix)) return;
       const taskNumber = key.slice(prefix.length);
       if (taskNumber === REVIEW_COMPLETE_TASK) return;
-      if (taskNumber === '3_comment') {
+      if (taskNumber === '3_comment' || taskNumber === GENERAL_COMMENT_TASK) {
         if (val.comment) {
-          map.set('3_comment', {
-            taskNumber: '3_comment',
+          map.set(taskNumber, {
+            taskNumber,
             manualPoints: null,
             comment: val.comment,
           });
@@ -1029,19 +1051,6 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       alert(e instanceof Error ? e.message : 'Vorschau konnte nicht geladen werden');
     } finally {
       setPreviewLoading(false);
-    }
-  };
-
-  const downloadCurrentPreviewPdf = async () => {
-    if (!previewHtml) return;
-    setReviewPdfBusy(true);
-    try {
-      const safe = previewTitle.replace(/[<>:"/\\|?*]+/g, '_').trim() || 'Schueler';
-      await downloadExamReviewPdf(previewHtml, `${safe}_Korrektur`);
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'PDF konnte nicht erstellt werden');
-    } finally {
-      setReviewPdfBusy(false);
     }
   };
 
@@ -2629,6 +2638,48 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                       />
                     </Tooltip>
               </Box>
+              {(() => {
+                const generalKey = correctionStorageKey(
+                  selectedSubmission.id,
+                  GENERAL_COMMENT_TASK,
+                );
+                const savedGeneral = selectedSubmission.corrections?.find(
+                  (c) => c.taskNumber === GENERAL_COMMENT_TASK,
+                );
+                const generalComment =
+                  corrections[generalKey]?.comment ?? savedGeneral?.comment ?? '';
+                return (
+                  <TextField
+                    label="Allgemeiner Kommentar (sichtbar in der Freigabe / Vorschau)"
+                    multiline
+                    minRows={2}
+                    maxRows={5}
+                    fullWidth
+                    size="small"
+                    value={generalComment}
+                    onChange={(e) => {
+                      setCorrections((prev) => ({
+                        ...prev,
+                        [generalKey]: { ...prev[generalKey], comment: e.target.value },
+                      }));
+                    }}
+                    onBlur={(e) => {
+                      void saveCorrection(
+                        GENERAL_COMMENT_TASK,
+                        undefined,
+                        e.target.value,
+                        selectedSubmission.id,
+                      );
+                    }}
+                    sx={{
+                      mt: 0.75,
+                      '& .MuiInputBase-input': { fontSize: '0.8rem' },
+                      '& .MuiInputLabel-root': { fontSize: '0.75rem' },
+                    }}
+                    placeholder="z. B. Hinweise zur Bewertung, was besonders gut war …"
+                  />
+                );
+              })()}
             </CardContent>
           </Card>
 
@@ -4208,39 +4259,33 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
           },
         }}
       >
-        <Box
+        <DialogTitle
+          component="div"
           sx={{
             flexShrink: 0,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: 1,
-            px: 1,
-            py: 0.5,
+            py: 0.75,
+            px: 1.5,
             bgcolor: '#fff',
             borderBottom: '1px solid #e0e0e0',
-            zIndex: 2,
           }}
         >
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>
-            {previewTitle}
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.9rem' }}>
+            Vorschau: {previewTitle}
           </Typography>
-          <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-            <Button
-              size="small"
-              variant="contained"
-              startIcon={<FileDownload />}
-              disabled={reviewPdfBusy || !previewHtml}
-              onClick={() => void downloadCurrentPreviewPdf()}
-              sx={{ fontSize: '0.75rem', py: 0.35, bgcolor: PURPLE_REVIEW }}
-            >
-              {reviewPdfBusy ? 'PDF…' : 'Als PDF'}
-            </Button>
-            <IconButton aria-label="Schließen" onClick={() => setPreviewHtml(null)} size="small">
-              <Close sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Box>
-        </Box>
+          <Button
+            type="button"
+            variant="contained"
+            size="small"
+            onClick={() => setPreviewHtml(null)}
+            sx={{ fontSize: '0.8rem', py: 0.4, px: 1.5, flexShrink: 0 }}
+          >
+            Schließen
+          </Button>
+        </DialogTitle>
         <DialogContent sx={{ p: 0, flex: 1, minHeight: 0, overflow: 'hidden' }}>
           {previewHtml ? (
             <iframe
