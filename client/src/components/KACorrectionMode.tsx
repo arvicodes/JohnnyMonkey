@@ -91,6 +91,31 @@ const correctionStorageKey = (submissionId: string, fieldKey: string): string =>
 
 const REVIEW_COMPLETE_TASK = '__review_complete__';
 const PURPLE_REVIEW = '#7b1fa2';
+const PARTIAL_CREDIT_BG = '#f1f8e9';
+const PARTIAL_CREDIT_BORDER = '#dce775';
+const PARTIAL_CREDIT_TEXT = '#827717';
+
+/** Deutsche Anzeige: 0,5 / 1 / 1,25 */
+function formatExamPointsDisplay(n: number): string {
+  if (n == null || Number.isNaN(n)) return '0';
+  const rounded = Math.round(n * 100) / 100;
+  if (Math.abs(rounded - Math.round(rounded)) < 1e-9) return String(Math.round(rounded));
+  return rounded
+    .toFixed(2)
+    .replace(/\.?0+$/, '')
+    .replace('.', ',');
+}
+
+function isPartialCreditScore(achieved: number, max: number): boolean {
+  return max > 0 && achieved > 0 && achieved < max - 1e-9;
+}
+
+function parsePointsInput(raw: string): number | undefined {
+  const inputValue = raw.trim().toLowerCase();
+  if (inputValue === 'x' || inputValue === '') return undefined;
+  const numValue = parseFloat(inputValue);
+  return !Number.isNaN(numValue) ? numValue : undefined;
+}
 
 type ExamGroupTab = {
   id: string;
@@ -599,42 +624,6 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     );
   };
 
-  const openStudentPreview = async () => {
-    if (!selectedSubmission || !isReviewCompleteFlag(selectedSubmission)) return;
-    setPreviewLoading(true);
-    try {
-      let answers: Record<string, unknown> = {};
-      try {
-        answers = JSON.parse(selectedSubmission.answers || '{}') as Record<string, unknown>;
-      } catch {
-        answers = {};
-      }
-      const corrections = (selectedSubmission.corrections || [])
-        .filter((c) => c.taskNumber !== REVIEW_COMPLETE_TASK)
-        .map((c) => ({
-          taskNumber: c.taskNumber,
-          manualPoints: c.manualPoints ?? null,
-          comment: c.comment ?? null,
-        }));
-      const maxPts = calculateMaxTotalPoints();
-      const html = await buildExamReviewedHtml({
-        filePath: kaFilePath,
-        title: kaFilePath.split('/').pop() || 'Prüfung',
-        answers,
-        corrections,
-        gradeLabel: calculateGrade(selectedSubmission.totalPoints, maxPts),
-        totalPoints: selectedSubmission.totalPoints,
-        maxPoints: maxPts,
-      });
-      setPreviewTitle(submissionStudentName(selectedSubmission));
-      setPreviewHtml(html);
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'Vorschau konnte nicht geladen werden');
-    } finally {
-      setPreviewLoading(false);
-    }
-  };
-
   const handleNextStudent = () => {
     if (currentStudentIndex < learningGroupStudents.length - 1) {
       const nextIndex = currentStudentIndex + 1;
@@ -863,6 +852,132 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     return { totalPoints, achievedPoints, autoPoints, manualPoints };
   };
 
+  const liveAchievedTotal = (submission: KASubmission): number => {
+    const answers = parseAnswers(submission.answers);
+    const grouped = groupAnswersByTask(answers);
+    let sum = 0;
+    Object.entries(grouped).forEach(([taskNum, taskAnswers]) => {
+      if (taskNum === '3' && useGeometryTask3) {
+        const subtasks = groupTask3BySubtask(taskAnswers);
+        ['a', 'b', 'c', 'd'].forEach((subtaskLetter) => {
+          const subtaskAnswers = subtasks[subtaskLetter] || [];
+          if (subtaskAnswers.length === 0) return;
+          const coordinateAchieved = subtaskAnswers.reduce((s, item) => {
+            if (item.isCorrect === true) {
+              return s + (pointsDistribution[item.taskId] || 0);
+            }
+            return s;
+          }, 0);
+          const subtaskKey = `3${subtaskLetter}`;
+          const subtaskCorrectionKey = correctionStorageKey(submission.id, subtaskKey);
+          const subtaskCorrection = corrections[subtaskCorrectionKey] || {};
+          const saved = submission.corrections?.find((c) => c.taskNumber === subtaskKey);
+          let constructionPoints =
+            subtaskCorrection.constructionPoints !== undefined &&
+            subtaskCorrection.constructionPoints !== null
+              ? Number(subtaskCorrection.constructionPoints)
+              : saved?.manualPoints != null
+                ? Number(saved.manualPoints)
+                : 0;
+          if (constructionPoints < 0) constructionPoints = 0;
+          if (constructionPoints > 2) constructionPoints = 2;
+          sum += coordinateAchieved + constructionPoints;
+        });
+      } else {
+        sum += sumTaskPoints(taskAnswers, submission).achievedPoints;
+      }
+    });
+    return sum;
+  };
+
+  const canOpenStudentPreview = (submission: KASubmission | null | undefined): boolean =>
+    Boolean(
+      submission &&
+        (isReviewCompleteFlag(submission) || hasManualCorrectionWork(submission)),
+    );
+
+  const correctionsForPreview = (submission: KASubmission) => {
+    const map = new Map<
+      string,
+      { taskNumber: string; manualPoints: number | null; comment: string | null }
+    >();
+    (submission.corrections || [])
+      .filter((c) => c.taskNumber !== REVIEW_COMPLETE_TASK)
+      .forEach((c) => {
+        map.set(c.taskNumber, {
+          taskNumber: c.taskNumber,
+          manualPoints: c.manualPoints ?? null,
+          comment: c.comment ?? null,
+        });
+      });
+    const prefix = `${submission.id}_`;
+    Object.entries(corrections).forEach(([key, val]) => {
+      if (!key.startsWith(prefix)) return;
+      const taskNumber = key.slice(prefix.length);
+      if (taskNumber === REVIEW_COMPLETE_TASK) return;
+      if (taskNumber === '3_comment') {
+        if (val.comment) {
+          map.set('3_comment', {
+            taskNumber: '3_comment',
+            manualPoints: null,
+            comment: val.comment,
+          });
+        }
+        return;
+      }
+      if (/^3[a-d]$/.test(taskNumber)) {
+        const pts =
+          val.constructionPoints !== undefined && val.constructionPoints !== null
+            ? Number(val.constructionPoints)
+            : null;
+        map.set(taskNumber, {
+          taskNumber,
+          manualPoints: pts,
+          comment: val.comment ?? map.get(taskNumber)?.comment ?? null,
+        });
+        return;
+      }
+      const pts = val.points !== undefined && val.points !== null ? Number(val.points) : null;
+      map.set(taskNumber, {
+        taskNumber,
+        manualPoints: pts,
+        comment: val.comment ?? map.get(taskNumber)?.comment ?? null,
+      });
+    });
+    return Array.from(map.values());
+  };
+
+  const openStudentPreview = async () => {
+    if (!selectedSubmission || !canOpenStudentPreview(selectedSubmission)) return;
+    setPreviewLoading(true);
+    try {
+      let answers: Record<string, unknown> = {};
+      try {
+        answers = JSON.parse(selectedSubmission.answers || '{}') as Record<string, unknown>;
+      } catch {
+        answers = {};
+      }
+      const previewCorrections = correctionsForPreview(selectedSubmission);
+      const maxPts = calculateMaxTotalPoints();
+      const totalForPreview = liveAchievedTotal(selectedSubmission);
+      const html = await buildExamReviewedHtml({
+        filePath: kaFilePath,
+        title: kaFilePath.split('/').pop() || 'Prüfung',
+        answers,
+        corrections: previewCorrections,
+        gradeLabel: calculateGrade(totalForPreview, maxPts),
+        totalPoints: totalForPreview,
+        maxPoints: maxPts,
+      });
+      setPreviewTitle(submissionStudentName(selectedSubmission));
+      setPreviewHtml(html);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Vorschau konnte nicht geladen werden');
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
   // Aufgaben mit Rechenweg (müssen manuell korrigiert werden) — Aufgabe 3 nur bei Geometrie-Koordinaten
   const tasksWithRechenweg = useGeometryTask3
     ? ['3', '4', '5', '6', '7', '8', '9']
@@ -975,6 +1090,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   };
 
   const maxTotalPoints = calculateMaxTotalPoints();
+  const selectedLiveTotal = selectedSubmission ? liveAchievedTotal(selectedSubmission) : 0;
 
   // Punkte-zu-Note-Zuordnung für Tooltip
   const getGradeScale = (total: number, currentPoints?: number): React.ReactNode => {
@@ -1827,31 +1943,41 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                   </Button>
                 </>
               )}
-              {groupSubmissions.length > 0 && (
+              {submissions.length > 0 && (
                 <>
-                  <Button
-                    onClick={() => void openStudentPreview()}
-                    variant="outlined"
-                    size="small"
-                    startIcon={<Visibility />}
-                    disabled={
-                      previewLoading ||
-                      !selectedSubmission ||
-                      !isReviewCompleteFlag(selectedSubmission)
+                  <Tooltip
+                    title={
+                      selectedSubmission && !canOpenStudentPreview(selectedSubmission)
+                        ? 'Teilpunkte vergeben oder Doppelklick auf Schüler:in (Bewertung fertig)'
+                        : 'Schüleransicht mit Korrektur'
                     }
-                    tabIndex={-1}
-                    sx={{
-                      fontSize: '0.75rem',
-                      px: 1,
-                      py: 0.5,
-                      minWidth: 'auto',
-                      whiteSpace: 'nowrap',
-                      borderColor: PURPLE_REVIEW,
-                      color: PURPLE_REVIEW,
-                    }}
                   >
-                    {previewLoading ? 'Vorschau…' : 'Vorschau'}
-                  </Button>
+                    <span>
+                      <Button
+                        onClick={() => void openStudentPreview()}
+                        variant="outlined"
+                        size="small"
+                        startIcon={<Visibility />}
+                        disabled={
+                          previewLoading ||
+                          !selectedSubmission ||
+                          !canOpenStudentPreview(selectedSubmission)
+                        }
+                        tabIndex={-1}
+                        sx={{
+                          fontSize: '0.75rem',
+                          px: 1,
+                          py: 0.5,
+                          minWidth: 'auto',
+                          whiteSpace: 'nowrap',
+                          borderColor: PURPLE_REVIEW,
+                          color: PURPLE_REVIEW,
+                        }}
+                      >
+                        {previewLoading ? 'Vorschau…' : 'Vorschau'}
+                      </Button>
+                    </span>
+                  </Tooltip>
                   <Button 
                     onClick={() => setShowDreierprobe(true)}
                     variant="contained"
@@ -1948,7 +2074,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
           alignItems: 'center'
         }}>
           <Typography variant="caption" sx={{ width: '100%', color: '#666', fontSize: '0.68rem', mb: 0.25 }}>
-            Doppelklick auf Schüler:in = Bewertung fertig (lila) · dann Vorschau
+            Teilpunkte zählen in der Aufgabenzeile und Gesamtpunktzahl · Vorschau nach Teilpunkten oder Doppelklick (fertig)
           </Typography>
           {learningGroupStudents.map((student, index) => {
             const submission = submissionByStudentId.get(student.id);
@@ -2028,6 +2154,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
             
             const allFieldsFilled = checkAllFieldsFilled();
             const hasSomeFieldsFilled = () => {
+              if (!submission) return false;
               const prefix = `${submission.id}_`;
               return Object.entries(corrections).some(([key, val]) => {
                 if (!key.startsWith(prefix)) return false;
@@ -2281,19 +2408,49 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                   </IconButton>
                 </Box>
                 
-                {/* Student Name */}
-                <Box display="flex" alignItems="center" gap={0.5}>
-                  <Person sx={{ color: '#1976d2', fontSize: 18 }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1a1a1a', fontSize: '0.85rem' }}>
+                {/* Student Name + Vorschau */}
+                <Box display="flex" alignItems="center" gap={0.75} flexWrap="wrap">
+                  <Box display="flex" alignItems="center" gap={0.5}>
+                    <Person sx={{ color: '#1976d2', fontSize: 18 }} />
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1a1a1a', fontSize: '0.85rem' }}>
                       {submissionStudentName(selectedSubmission)}
                     </Typography>
                   </Box>
+                  <Tooltip
+                    title={
+                      !canOpenStudentPreview(selectedSubmission)
+                        ? 'Teilpunkte vergeben oder Doppelklick auf den Namen oben (Bewertung fertig)'
+                        : 'Vorschau wie für Schüler:in'
+                    }
+                  >
+                    <span>
+                      <Button
+                        onClick={() => void openStudentPreview()}
+                        variant="contained"
+                        size="small"
+                        startIcon={<Visibility />}
+                        disabled={previewLoading || !canOpenStudentPreview(selectedSubmission)}
+                        tabIndex={-1}
+                        sx={{
+                          fontSize: '0.72rem',
+                          py: 0.35,
+                          px: 1,
+                          minHeight: 28,
+                          bgcolor: PURPLE_REVIEW,
+                          '&:hover': { bgcolor: '#6a1b9a' },
+                        }}
+                      >
+                        {previewLoading ? '…' : 'Vorschau'}
+                      </Button>
+                    </span>
+                  </Tooltip>
+                </Box>
               </Box>
               
               {/* Info Row: Chips */}
               <Box display="flex" gap={0.5} flexWrap="wrap" alignItems="center">
                     <Chip
-                      label={`${selectedSubmission.totalPoints.toFixed(2)} von ${maxTotalPoints} (davon ${selectedSubmission.autoPoints.toFixed(2)} auto)`}
+                      label={`${formatExamPointsDisplay(selectedLiveTotal)} von ${formatExamPointsDisplay(maxTotalPoints)} (davon ${formatExamPointsDisplay(selectedSubmission.autoPoints)} auto)`}
                       size="small"
                     sx={{ 
                         bgcolor: '#c8e6c9', 
@@ -2306,7 +2463,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                     <Tooltip 
                       title={
                         <Box component="div" sx={{ fontSize: '0.75rem', lineHeight: 1.6 }}>
-                          {getGradeScale(maxTotalPoints, selectedSubmission.totalPoints)}
+                          {getGradeScale(maxTotalPoints, selectedLiveTotal)}
                         </Box>
                       }
                       arrow
@@ -2346,7 +2503,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                       }}
                     >
                     <Chip
-                        label={`Note: ${calculateGrade(selectedSubmission.totalPoints, maxTotalPoints)}`}
+                        label={`Note: ${calculateGrade(selectedLiveTotal, maxTotalPoints)}`}
                         size="medium"
                         sx={{ 
                           bgcolor: '#1976d2', 
@@ -2430,6 +2587,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                   manualPoints = summed.manualPoints;
                 }
 
+                const taskPartialCredit = isPartialCreditScore(achievedPoints, totalPoints);
+
                 taskSections.push(
                   <Box key={taskNum} sx={{ mb: 1.5 }}>
                     {/* Aufgabenüberschrift */}
@@ -2438,11 +2597,21 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                       fontWeight: 700, 
                       color: '#1976d2', 
                       fontSize: '0.9rem',
-                      borderBottom: '2px solid #1976d2',
+                      borderBottom: `2px solid ${taskPartialCredit ? PARTIAL_CREDIT_BORDER : '#1976d2'}`,
                       pb: 0.5
                     }}>
-                      Aufgabe {taskNum} <span style={{ color: '#666', fontWeight: 500, fontSize: '0.85rem' }}>
-                        {Math.round(achievedPoints)} / {Math.round(totalPoints)}
+                      Aufgabe {taskNum}{' '}
+                      <span
+                        style={{
+                          color: taskPartialCredit ? PARTIAL_CREDIT_TEXT : '#666',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          background: taskPartialCredit ? PARTIAL_CREDIT_BG : undefined,
+                          padding: taskPartialCredit ? '1px 6px' : undefined,
+                          borderRadius: taskPartialCredit ? 4 : undefined,
+                        }}
+                      >
+                        {formatExamPointsDisplay(achievedPoints)} / {formatExamPointsDisplay(totalPoints)}
                       </span>
             </Typography>
             
@@ -2599,8 +2768,18 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                         <Typography variant="caption" sx={{ fontWeight: 700, color: '#1976d2', fontSize: '0.7rem' }}>
                                           A3 {subtask}
                                         </Typography>
-                                    <Typography variant="caption" sx={{ color: '#666', fontSize: '0.65rem' }}>
-                                          {Math.round(achievedPoints)} / {Math.round(totalPoints)}
+                                    <Typography
+                                      variant="caption"
+                                      sx={{
+                                        color: isPartialCreditScore(achievedPoints, totalPoints)
+                                          ? PARTIAL_CREDIT_TEXT
+                                          : '#666',
+                                        fontSize: '0.65rem',
+                                        fontWeight: isPartialCreditScore(achievedPoints, totalPoints) ? 700 : 400,
+                                      }}
+                                    >
+                                      {formatExamPointsDisplay(achievedPoints)} /{' '}
+                                      {formatExamPointsDisplay(totalPoints)}
                                     </Typography>
                                       </Box>
                                       <Box display="flex" gap={0.25} alignItems="center">
@@ -2934,10 +3113,22 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                         }
 
                         let achievedPoints = 0;
-                        if (correction.points !== undefined && correction.points !== null) {
+                        const maxFieldPoints = points || 0;
+                        const hasManualPoints =
+                          correction.points !== undefined && correction.points !== null;
+                        if (hasManualPoints) {
                           achievedPoints = Number(correction.points) || 0;
                         } else if (isCorrect === true) {
-                          achievedPoints = points || 0;
+                          achievedPoints = maxFieldPoints;
+                        }
+
+                        if (
+                          hasManualPoints &&
+                          isPartialCreditScore(achievedPoints, maxFieldPoints)
+                        ) {
+                          bgColor = PARTIAL_CREDIT_BG;
+                          borderColor = PARTIAL_CREDIT_BORDER;
+                          textColor = PARTIAL_CREDIT_TEXT;
                         }
 
                 return (
@@ -2956,8 +3147,20 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                     <Typography variant="caption" sx={{ fontWeight: 700, color: '#1976d2', fontSize: '0.7rem' }}>
                                       {formatTaskId(taskId)}
                           </Typography>
-                                    <Typography variant="caption" sx={{ color: '#666', fontSize: '0.65rem' }}>
-                                      {Math.round(achievedPoints)} / {Math.round(points || 0)}
+                                    <Typography
+                                      variant="caption"
+                                      sx={{
+                                        color: isPartialCreditScore(achievedPoints, maxFieldPoints)
+                                          ? PARTIAL_CREDIT_TEXT
+                                          : '#666',
+                                        fontSize: '0.65rem',
+                                        fontWeight: isPartialCreditScore(achievedPoints, maxFieldPoints)
+                                          ? 700
+                                          : 400,
+                                      }}
+                                    >
+                                      {formatExamPointsDisplay(achievedPoints)} /{' '}
+                                      {formatExamPointsDisplay(maxFieldPoints)}
                                     </Typography>
                                   </Box>
                                   <Box display="flex" gap={0.25} alignItems="center">
@@ -3053,8 +3256,12 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                       [fieldKey]: { ...prev[fieldKey], points: value },
                                     }));
                                   }}
-                                  onBlur={() => {
-                                    saveCorrection(taskId, correction.points, correction.comment);
+                                  onBlur={(e) => {
+                                    void saveCorrection(
+                                      taskId,
+                                      parsePointsInput((e.target as HTMLInputElement).value),
+                                      correction.comment,
+                                    );
                                   }}
                                   inputProps={{ min: 0, max: points || 10, step: 0.25 }}
                                   size="small"
@@ -3112,14 +3319,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
             <CardContent sx={{ p: 0.5, '&:last-child': { pb: 0.5 } }}>
                 <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap alignItems="center">
                   <Chip
-                    label={`${selectedSubmission.totalPoints.toFixed(2)} von ${maxTotalPoints} (davon ${selectedSubmission.autoPoints.toFixed(2)} auto)`}
+                    label={`${formatExamPointsDisplay(selectedLiveTotal)} von ${formatExamPointsDisplay(maxTotalPoints)} (davon ${formatExamPointsDisplay(selectedSubmission.autoPoints)} auto)`}
                     size="small"
                     sx={{ bgcolor: '#c8e6c9', color: '#2e7d32', fontWeight: 600, fontSize: '0.7rem', height: 24 }}
                   />
                   <Tooltip 
                     title={
                       <Box component="div" sx={{ fontSize: '0.75rem', lineHeight: 1.6 }}>
-                        {getGradeScale(maxTotalPoints, selectedSubmission.totalPoints)}
+                        {getGradeScale(maxTotalPoints, selectedLiveTotal)}
                       </Box>
                     }
                     arrow
@@ -3159,7 +3366,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                     }}
                   >
                   <Chip
-                      label={`Note: ${calculateGrade(selectedSubmission.totalPoints, maxTotalPoints)}`}
+                      label={`Note: ${calculateGrade(selectedLiveTotal, maxTotalPoints)}`}
                       size="medium"
                     sx={{ 
                       bgcolor: '#1976d2', 
@@ -3366,7 +3573,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                       A3 {subtask}
                                     </Typography>
                                     <Typography variant="caption" sx={{ color: '#666', fontSize: '0.65rem' }}>
-                                      {Math.round(achievedPoints)} / {Math.round(totalPoints)}
+                                      {formatExamPointsDisplay(achievedPoints)} /{' '}
+                                      {formatExamPointsDisplay(totalPoints)}
                                     </Typography>
                                     <Box display="flex" gap={0.25} alignItems="center">
                                       {allCorrect && (
@@ -3761,10 +3969,10 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                           [fieldCorrectionKey]: { ...prev[fieldCorrectionKey], points: value },
                                         }));
                                       }}
-                                      onBlur={() =>
-                                        saveCorrection(
+                                      onBlur={(e) =>
+                                        void saveCorrection(
                                           taskId,
-                                          fieldState.points,
+                                          parsePointsInput((e.target as HTMLInputElement).value),
                                           fieldState.comment,
                                           submission.id,
                                         )
