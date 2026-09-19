@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -65,11 +65,20 @@ interface LearningGroupStudent {
   loginCode: string;
 }
 
+type ExamGroupTab = {
+  id: string;
+  name: string;
+  students: LearningGroupStudent[];
+};
+
 interface DreierprobeModalProps {
   open: boolean;
   onClose: () => void;
   kaFilePath: string;
+  /** Alle Abgaben der Prüfung (wird pro Lerngruppe gefiltert) */
   submissions: KASubmission[];
+  /** Mehrere Lerngruppen → eigene Dreierprobe je Tab */
+  examGroups?: ExamGroupTab[];
   /** Optional: bekannte Lerngruppe (z. B. aus Präsentation) */
   groupId?: string | null;
   /** Schülerliste der aktiven Lerngruppe (aus Korrekturmodus) */
@@ -155,11 +164,13 @@ const DreierprobeModal: React.FC<DreierprobeModalProps> = ({
   open,
   onClose,
   kaFilePath,
-  submissions,
+  submissions: allSubmissions,
+  examGroups = [],
   groupId: groupIdProp = null,
   groupStudents: groupStudentsProp = [],
   maxTotalPoints: maxTotalPointsProp,
 }) => {
+  const [activeGroupId, setActiveGroupId] = useState('');
   const [learningGroupStudents, setLearningGroupStudents] = useState<LearningGroupStudent[]>([]);
   const [learningGroupId, setLearningGroupId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -190,27 +201,57 @@ Vera Christ`);
 
   useEffect(() => {
     if (!open) return;
+    const preferred =
+      (groupIdProp && examGroups.some((g) => g.id === groupIdProp) ? groupIdProp : '') ||
+      examGroups[0]?.id ||
+      groupIdProp ||
+      '';
+    setActiveGroupId(preferred);
+  }, [open, groupIdProp, examGroups]);
+
+  const activeExamGroup = examGroups.find((g) => g.id === activeGroupId);
+
+  const rosterStudents = useMemo(() => {
+    if (activeExamGroup?.students?.length) return activeExamGroup.students;
+    if (groupStudentsProp.length > 0) return groupStudentsProp;
+    return learningGroupStudents;
+  }, [activeExamGroup, groupStudentsProp, learningGroupStudents]);
+
+  const submissions = useMemo(() => {
+    if (examGroups.length === 0) return allSubmissions;
+    const ids = new Set(rosterStudents.map((s) => s.id));
+    return allSubmissions.filter((s) => s.student && ids.has(s.student.id));
+  }, [allSubmissions, rosterStudents, examGroups.length]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (activeExamGroup?.students?.length) {
+      setLearningGroupStudents(activeExamGroup.students);
+      setLearningGroupId(activeExamGroup.id);
+      setLoading(false);
+      return;
+    }
     if (groupStudentsProp.length > 0) {
       setLearningGroupStudents(groupStudentsProp);
       if (groupIdProp) setLearningGroupId(groupIdProp);
       setLoading(false);
       return;
     }
-    if (submissions.length > 0) {
+    if (allSubmissions.length > 0) {
       void loadLearningGroup();
     } else if (groupIdProp) {
       void loadLearningGroup();
     } else {
       setLoading(false);
     }
-  }, [open, submissions, groupIdProp, groupStudentsProp]);
+  }, [open, allSubmissions, groupIdProp, groupStudentsProp, activeExamGroup]);
 
   useEffect(() => {
     if (open && learningGroupStudents.length > 0 && submissions.length > 0) {
       checkSentMessages();
       checkGradesReleased();
     }
-  }, [open, learningGroupStudents, submissions, kaFilePath]);
+  }, [open, learningGroupStudents, submissions, kaFilePath, activeGroupId]);
 
   const checkGradesReleased = async () => {
     try {
@@ -4473,6 +4514,7 @@ Vera Christ`);
           <BarChart />
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
             Dreierprobe-Statistik
+            {activeExamGroup?.name ? ` · ${activeExamGroup.name}` : ''}
           </Typography>
         </Box>
         <Box display="flex" alignItems="center" gap={0.75}>
@@ -4606,6 +4648,20 @@ Vera Christ`);
       </DialogTitle>
       
       <DialogContent sx={{ p: 2, bgcolor: '#f5f7fa' }}>
+        {examGroups.length > 1 && (
+          <Tabs
+            value={activeGroupId}
+            onChange={(_, v) => {
+              setActiveGroupId(v);
+              setEmailTab(0);
+            }}
+            sx={{ mb: 1.5, minHeight: 36, '& .MuiTab-root': { minHeight: 36, py: 0.5, fontSize: '0.8rem' } }}
+          >
+            {examGroups.map((g) => (
+              <Tab key={g.id} value={g.id} label={g.name} />
+            ))}
+          </Tabs>
+        )}
         {/* Tabs - nur anzeigen wenn fehlende Schüler vorhanden */}
         {missingStudents.length > 0 && (
           <Tabs value={emailTab} onChange={(_, v) => setEmailTab(v)} sx={{ mb: 2 }}>

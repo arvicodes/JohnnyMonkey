@@ -4308,7 +4308,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         open={showDreierprobe}
         onClose={() => setShowDreierprobe(false)}
         kaFilePath={kaFilePath}
-        submissions={groupSubmissions}
+        submissions={submissions}
+        examGroups={examGroups}
         groupId={activeGroupId || groupId}
         groupStudents={learningGroupStudents}
         maxTotalPoints={maxTotalPoints}
