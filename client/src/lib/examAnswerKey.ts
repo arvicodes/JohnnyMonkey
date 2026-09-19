@@ -84,3 +84,23 @@ export function parseExamAnswerKey(html: string): ExamAnswerKey {
 
   return { answers, points, maxPoints, isGeometry };
 }
+
+/** Sortierung a1a, a1b, … a3a, a3b, a3c, a3d (nicht a3c vor a3a). */
+export function compareExamFieldIds(a: string, b: string): number {
+  const ma = a.match(/^a(\d+)([a-z])?(_[xy])?$/i);
+  const mb = b.match(/^a(\d+)([a-z])?(_[xy])?$/i);
+  if (ma && mb) {
+    const na = Number(ma[1]);
+    const nb = Number(mb[1]);
+    if (na !== nb) return na - nb;
+    const la = (ma[2] || '').toLowerCase();
+    const lb = (mb[2] || '').toLowerCase();
+    if (la !== lb) return la.localeCompare(lb, 'de');
+    return (ma[3] || '').localeCompare(mb[3] || '');
+  }
+  return a.localeCompare(b, 'de');
+}
+
+export function sortExamAnswerFieldIds(ids: string[]): string[] {
+  return [...ids].sort(compareExamFieldIds);
+}

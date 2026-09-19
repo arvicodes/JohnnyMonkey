@@ -1879,9 +1879,7 @@
             });
             radioNames.forEach(name => {
                 const selected = document.querySelector(`input[name="${name}"]:checked`);
-                if (selected) {
-                    answers[name] = selected.value || '';
-                }
+                answers[name] = selected ? (selected.value || '') : '';
             });
             
             // Berechne Punkte

@@ -50,7 +50,13 @@ import { downloadCombinedExamReviewsPdf } from '../lib/examReviewPdf';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
 import DreierprobeModal from './DreierprobeModal';
-import { examAnswerMatches, formatExamCorrect, parseExamAnswerKey } from '../lib/examAnswerKey';
+import {
+  compareExamFieldIds,
+  examAnswerMatches,
+  formatExamCorrect,
+  parseExamAnswerKey,
+  sortExamAnswerFieldIds,
+} from '../lib/examAnswerKey';
 import { examGradeLabelForCorrection, examGradeNumericForCorrection } from '../lib/examGradeLabel';
 
 interface KASubmission {
@@ -857,21 +863,32 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     return subtasks;
   };
 
-  // Gruppiere Antworten nach Aufgaben
+  // Gruppiere Antworten nach Aufgaben (alle Felder aus Lösungsschlüssel, auch leere Radios)
   const groupAnswersByTask = (answers: Record<string, any>) => {
     const grouped: Record<
       string,
       Array<{ taskId: string; answer: any; isCorrect?: boolean; points?: number }>
     > = {};
 
-    Object.entries(answers).forEach(([taskId, answer]) => {
+    const addField = (taskId: string, answer: unknown) => {
       const taskMatch = taskId.match(/a(\d+)/);
       if (!taskMatch) return;
       const taskNum = taskMatch[1];
-      const isCorrect = isAnswerCorrect(taskId, answer);
-      const points = pointsDistribution[taskId] ?? 1;
       if (!grouped[taskNum]) grouped[taskNum] = [];
-      grouped[taskNum].push({ taskId, answer, isCorrect, points });
+      if (grouped[taskNum].some((x) => x.taskId === taskId)) return;
+      grouped[taskNum].push({
+        taskId,
+        answer: answer ?? '',
+        isCorrect: isAnswerCorrect(taskId, answer),
+        points: pointsDistribution[taskId] ?? 1,
+      });
+    };
+
+    Object.entries(answers).forEach(([taskId, answer]) => addField(taskId, answer));
+    Object.keys(correctAnswers).forEach((taskId) => addField(taskId, answers[taskId]));
+
+    Object.keys(grouped).forEach((taskNum) => {
+      grouped[taskNum].sort((a, b) => compareExamFieldIds(a.taskId, b.taskId));
     });
 
     return grouped;
@@ -3562,15 +3579,19 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
           </Typography>
           
           {tasksWithRechenweg.map(taskNum => {
+            const taskFieldIds = sortExamAnswerFieldIds(
+              Object.keys(correctAnswers).filter((taskId) => {
+                const match = taskId.match(/a(\d+)/);
+                return match && match[1] === taskNum;
+              }),
+            );
             const taskSubmissions = groupSubmissions.map(sub => {
               const answers = parseAnswers(sub.answers);
-              const taskAnswers = Object.entries(answers)
-                .filter(([taskId]) => {
-                  const match = taskId.match(/a(\d+)/);
-                  return match && match[1] === taskNum;
-                })
-                .map(([taskId, answer]) => ({ taskId, answer }));
-              
+              const taskAnswers = taskFieldIds.map((taskId) => ({
+                taskId,
+                answer: answers[taskId] ?? '',
+              }));
+
               return {
                 submission: sub,
                 answers: taskAnswers

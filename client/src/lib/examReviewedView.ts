@@ -1,4 +1,9 @@
-import { examAnswerMatches, formatExamCorrect, parseExamAnswerKey } from './examAnswerKey';
+import {
+  examAnswerMatches,
+  formatExamCorrect,
+  parseExamAnswerKey,
+  sortExamAnswerFieldIds,
+} from './examAnswerKey';
 
 export type ExamReviewCorrection = {
   taskNumber: string;
@@ -79,7 +84,11 @@ function fillAndMark(
     }
   });
 
-  Object.entries(answers || {}).forEach(([taskId, raw]) => {
+  const studentAnswers = answers || {};
+  const fieldIds = sortExamAnswerFieldIds(Object.keys(key.answers || {}));
+
+  fieldIds.forEach((taskId) => {
+    const raw = studentAnswers[taskId];
     const value = normAnswer(raw);
     const expected = key.answers[taskId];
     const maxPts = key.points[taskId] ?? 1;
@@ -170,8 +179,10 @@ function fillAndMark(
     if (radios.length) {
       radios.forEach((node) => {
         const input = node as HTMLInputElement;
-        const match = normAnswer(input.value) === value;
-        persistInputValue(input, value, match);
+        const match = value ? normAnswer(input.value) === value : false;
+        if (match) {
+          persistInputValue(input, value, true);
+        }
         input.disabled = true;
         input.setAttribute('disabled', 'disabled');
         if (match) markEl(input);
@@ -190,8 +201,13 @@ function fillAndMark(
         }
       });
       const wrap =
-        radios[0]?.closest('.compare-choice, .input-group, .item') || radios[0]?.parentElement;
+        radios[0]?.closest('.item.input-group') ||
+        radios[0]?.closest('.compare-choice, .input-group, .item') ||
+        radios[0]?.parentElement;
       if (wrap) {
+        if (!value) {
+          (wrap as HTMLElement).classList.add('answer-incorrect');
+        }
         const badge = doc.createElement('span');
         badge.className = `points-badge ${
           isPartial ? 'points-partial' : achieved > 0 ? 'points-correct' : 'points-incorrect'
@@ -200,6 +216,7 @@ function fillAndMark(
         wrap.appendChild(badge);
         insertSolutionHint(badge);
       }
+      return;
     }
   });
 }
