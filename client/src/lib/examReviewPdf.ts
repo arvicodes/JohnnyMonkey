@@ -1,6 +1,5 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { saveAs } from 'file-saver';
 
 function sanitizeFileName(name: string): string {
   return name.replace(/[<>:"/\\|?*]+/g, '_').trim() || 'pruefung';
@@ -35,7 +34,8 @@ async function renderHtmlInIframe(html: string): Promise<{
   iframe.style.position = 'fixed';
   iframe.style.left = '-10000px';
   iframe.style.top = '0';
-  iframe.style.width = '210mm';
+  iframe.style.width = '794px';
+  iframe.style.maxWidth = '794px';
   iframe.style.height = '1200px';
   iframe.style.border = 'none';
   document.body.appendChild(iframe);
@@ -49,12 +49,14 @@ async function renderHtmlInIframe(html: string): Promise<{
   const doc = iframe.contentDocument;
   if (!doc) throw new Error('Vorschau konnte nicht geladen werden');
   await waitForIframeImages(doc);
+  await new Promise((r) => window.setTimeout(r, 350));
 
   const root =
     (doc.querySelector('.exam-shell') as HTMLElement | null) ||
     (doc.body as HTMLElement);
-  const h = Math.max(root.scrollHeight, root.offsetHeight, 800);
-  iframe.style.height = `${h + 40}px`;
+  const h = Math.max(root.scrollHeight, root.offsetHeight, 900);
+  iframe.style.height = `${h + 48}px`;
+  await new Promise((r) => window.setTimeout(r, 150));
 
   return { iframe, root };
 }
@@ -64,19 +66,36 @@ function cleanupIframe(iframe: HTMLIFrameElement) {
 }
 
 async function canvasFromReviewRoot(root: HTMLElement): Promise<HTMLCanvasElement> {
-  return html2canvas(root, {
-    scale: 2,
-    useCORS: true,
-    allowTaint: true,
-    backgroundColor: '#f3f3f3',
-    logging: false,
-    scrollX: 0,
-    scrollY: 0,
-    width: root.scrollWidth || root.offsetWidth,
-    height: root.scrollHeight || root.offsetHeight,
-    windowWidth: root.scrollWidth || root.offsetWidth,
-    windowHeight: root.scrollHeight || root.offsetHeight,
-  });
+  const w = Math.max(root.scrollWidth, root.offsetWidth, 794);
+  const h = Math.max(root.scrollHeight, root.offsetHeight, 400);
+  const scale = h > 6000 ? 1 : 1.5;
+  try {
+    return await html2canvas(root, {
+      scale,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#f3f3f3',
+      logging: false,
+      scrollX: 0,
+      scrollY: 0,
+      width: w,
+      height: h,
+      windowWidth: w,
+      windowHeight: h,
+      onclone: (clonedDoc) => {
+        clonedDoc.querySelectorAll('img').forEach((img) => {
+          const el = img as HTMLImageElement;
+          if (el.src && !el.complete) {
+            el.removeAttribute('src');
+          }
+        });
+      },
+    });
+  } catch (err) {
+    throw new Error(
+      err instanceof Error ? err.message : 'Seite konnte nicht für PDF gerendert werden',
+    );
+  }
 }
 
 /** Einzelne korrigierte Prüfung als PDF (mehrere Seiten bei langen HU). */

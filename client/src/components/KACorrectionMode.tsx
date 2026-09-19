@@ -134,7 +134,10 @@ function lessonPathFromKaFilePath(kaFilePath: string): string {
 function isReviewCompleteFlag(submission: KASubmission | null | undefined): boolean {
   return Boolean(
     submission?.corrections?.some(
-      (c) => c.taskNumber === REVIEW_COMPLETE_TASK && c.manualPoints != null,
+      (c) =>
+        c.taskNumber === REVIEW_COMPLETE_TASK &&
+        c.manualPoints != null &&
+        Number(c.manualPoints) > 0,
     ),
   );
 }
@@ -426,6 +429,9 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       
       if (submission) {
         setSelectedSubmission(submission);
+        setSubmissions((prev) =>
+          prev.map((s) => (s.id === submission.id ? { ...s, ...submission } : s)),
+        );
         // Lade bestehende Korrekturen - verwende das gleiche Key-Format wie loadSubmissions
         // Aktualisiere nur die Korrekturen für diesen Schüler, überschreibe nicht den gesamten State
         // Wichtig: Setze Werte aus der DB, auch wenn sie bereits im State sind (beim Neuladen)
@@ -552,13 +558,26 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         const updatedCorrections = sub.corrections ? [...sub.corrections] : [];
         const idx = updatedCorrections.findIndex((c) => c.taskNumber === taskNumber);
         const row: KACorrection = {
-          id: idx >= 0 ? updatedCorrections[idx].id : '',
+          id:
+            idx >= 0
+              ? updatedCorrections[idx].id
+              : typeof data.correction?.id === 'string'
+                ? data.correction.id
+                : '',
           taskNumber,
-          manualPoints: storedPoints,
+          manualPoints:
+            storedPoints !== undefined && storedPoints !== null ? storedPoints : undefined,
           comment: comment || '',
         };
-        if (idx >= 0) updatedCorrections[idx] = { ...updatedCorrections[idx], ...row };
-        else updatedCorrections.push(row);
+        if (idx >= 0) {
+          if (taskNumber === REVIEW_COMPLETE_TASK && storedPoints == null) {
+            updatedCorrections.splice(idx, 1);
+          } else {
+            updatedCorrections[idx] = { ...updatedCorrections[idx], ...row };
+          }
+        } else if (taskNumber !== REVIEW_COMPLETE_TASK || storedPoints != null) {
+          updatedCorrections.push(row);
+        }
         return {
           ...sub,
           corrections: updatedCorrections,
@@ -624,6 +643,22 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       '',
       submission.id,
     );
+    try {
+      const loginCode = localStorage.getItem('loginCode') || '';
+      const res = await fetch(`/api/ka-corrections/submissions/${submission.id}`, {
+        headers: { 'Content-Type': 'application/json', 'x-login-code': loginCode },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const fresh = data.submission as KASubmission | undefined;
+      if (!fresh?.id) return;
+      setSubmissions((prev) => prev.map((s) => (s.id === fresh.id ? fresh : s)));
+      if (selectedSubmission?.id === fresh.id) {
+        setSelectedSubmission(fresh);
+      }
+    } catch {
+      /* patchSubmission reicht meist */
+    }
   };
 
   const handleNextStudent = () => {
@@ -2223,7 +2258,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
             
             // Berechne Note
             const grade = submission
-              ? calculateGrade(submission.totalPoints, maxTotalPoints)
+              ? calculateGrade(liveAchievedTotal(submission), maxTotalPoints)
               : '–';
             
             // Bestimme Farbe basierend auf Note
@@ -2259,10 +2294,17 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                     {hasSubmission ? (
                       <span
                         style={{
-                          fontSize: '0.65rem',
-                          opacity: 0.9,
-                          fontWeight: 600,
+                          fontSize: '0.82rem',
+                          fontWeight: 800,
+                          lineHeight: 1.1,
+                          padding: '1px 7px',
+                          borderRadius: 6,
                           color: reviewFinished ? PURPLE_REVIEW : gradeColor,
+                          backgroundColor: reviewFinished
+                            ? 'rgba(123, 31, 162, 0.12)'
+                            : `${gradeColor}22`,
+                          border: `2px solid ${reviewFinished ? PURPLE_REVIEW : gradeColor}`,
+                          boxShadow: `0 1px 2px ${gradeColor}33`,
                         }}
                       >
                         {grade}
@@ -2270,17 +2312,24 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                     ) : null}
                   </Box>
                 }
-                onClick={() => {
+                onClick={(e) => {
+                  if (e.detail > 1) return;
                   setCurrentStudentIndex(index);
-                  if (submission) {
-                    setSelectedSubmission(submission);
-                    void loadCorrections(submission.id);
-                  } else {
+                  if (!submission) {
                     setSelectedSubmission(null);
+                    return;
                   }
+                  if (selectedSubmission?.id === submission.id) return;
+                  setSelectedSubmission(submission);
+                  void loadCorrections(submission.id);
                 }}
-                onDoubleClick={() => {
-                  if (submission) void toggleReviewComplete(submission);
+                onDoubleClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (!submission) return;
+                  setCurrentStudentIndex(index);
+                  setSelectedSubmission(submission);
+                  void toggleReviewComplete(submission);
                 }}
                 title={
                   !hasSubmission
@@ -4155,44 +4204,44 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
             flexDirection: 'column',
             m: 0,
             borderRadius: 0,
+            overflow: 'hidden',
           },
         }}
       >
         <Box
           sx={{
-            position: 'fixed',
-            top: 4,
-            right: 4,
-            zIndex: 1300,
+            flexShrink: 0,
             display: 'flex',
-            gap: 0.5,
             alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 1,
+            px: 1,
+            py: 0.5,
+            bgcolor: '#fff',
+            borderBottom: '1px solid #e0e0e0',
+            zIndex: 2,
           }}
         >
-          <Button
-            size="small"
-            variant="contained"
-            startIcon={<FileDownload />}
-            disabled={reviewPdfBusy || !previewHtml}
-            onClick={() => void downloadCurrentPreviewPdf()}
-            sx={{ fontSize: '0.75rem', py: 0.25, bgcolor: PURPLE_REVIEW }}
-          >
-            {reviewPdfBusy ? 'PDF…' : 'PDF'}
-          </Button>
-          <IconButton
-            aria-label="Schließen"
-            onClick={() => setPreviewHtml(null)}
-            size="small"
-            sx={{
-              width: 28,
-              height: 28,
-              bgcolor: 'rgba(255,255,255,0.9)',
-            }}
-          >
-            <Close sx={{ fontSize: 18 }} />
-          </IconButton>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>
+            {previewTitle}
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<FileDownload />}
+              disabled={reviewPdfBusy || !previewHtml}
+              onClick={() => void downloadCurrentPreviewPdf()}
+              sx={{ fontSize: '0.75rem', py: 0.35, bgcolor: PURPLE_REVIEW }}
+            >
+              {reviewPdfBusy ? 'PDF…' : 'Als PDF'}
+            </Button>
+            <IconButton aria-label="Schließen" onClick={() => setPreviewHtml(null)} size="small">
+              <Close sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Box>
         </Box>
-        <DialogContent sx={{ p: 0, flex: 1, overflow: 'hidden' }}>
+        <DialogContent sx={{ p: 0, flex: 1, minHeight: 0, overflow: 'hidden' }}>
           {previewHtml ? (
             <iframe
               title={previewTitle}
