@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -41,8 +41,11 @@ import {
   Close,
   BarChart,
   Description,
-  FileDownload
+  FileDownload,
+  Visibility,
 } from '@mui/icons-material';
+import { teacherIdFromStorage } from '../lib/lessonExamBeacon';
+import { buildExamReviewedHtml } from '../lib/examReviewedView';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
 import DreierprobeModal from './DreierprobeModal';
@@ -86,6 +89,44 @@ const submissionStudentName = (submission: KASubmission | null | undefined): str
 const correctionStorageKey = (submissionId: string, fieldKey: string): string =>
   `${submissionId}_${fieldKey}`;
 
+const REVIEW_COMPLETE_TASK = '__review_complete__';
+const PURPLE_REVIEW = '#7b1fa2';
+
+type ExamGroupTab = {
+  id: string;
+  name: string;
+  students: Array<{ id: string; name: string; loginCode: string }>;
+};
+
+function lessonPathFromKaFilePath(kaFilePath: string): string {
+  const p = (kaFilePath || '').replace(/\\/g, '/').trim();
+  const idx = p.lastIndexOf('/');
+  if (idx <= 0) return p;
+  return p.slice(0, idx);
+}
+
+function isReviewCompleteFlag(submission: KASubmission | null | undefined): boolean {
+  return Boolean(
+    submission?.corrections?.some(
+      (c) => c.taskNumber === REVIEW_COMPLETE_TASK && c.manualPoints != null,
+    ),
+  );
+}
+
+function hasManualCorrectionWork(submission: KASubmission | null | undefined): boolean {
+  return Boolean(
+    submission?.corrections?.some((c) => {
+      if (c.taskNumber === REVIEW_COMPLETE_TASK || c.taskNumber === '3_comment') return false;
+      return c.manualPoints != null || Boolean(c.comment?.trim());
+    }),
+  );
+}
+
+function shouldShowPurpleReviewRing(submission: KASubmission | null | undefined): boolean {
+  if (!submission) return false;
+  return hasManualCorrectionWork(submission) || isReviewCompleteFlag(submission);
+}
+
 const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose, groupId = null }) => {
   const [submissions, setSubmissions] = useState<KASubmission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,7 +139,12 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   const [resetting, setResetting] = useState(false);
   const [showDreierprobe, setShowDreierprobe] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [examGroups, setExamGroups] = useState<ExamGroupTab[]>([]);
+  const [activeGroupId, setActiveGroupId] = useState<string>('');
   const [learningGroupStudents, setLearningGroupStudents] = useState<Array<{ id: string; name: string; loginCode: string }>>([]);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [examAnswers, setExamAnswers] = useState<Record<string, any>>({});
   const [examPoints, setExamPoints] = useState<Record<string, number>>({});
   const [examMaxPoints, setExamMaxPoints] = useState(0);
@@ -166,9 +212,85 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     };
   }, [kaFilePath]);
 
+  const groupSubmissions = useMemo(() => {
+    const ids = new Set(learningGroupStudents.map((s) => s.id));
+    return submissions.filter((s) => ids.has(s.student?.id));
+  }, [submissions, learningGroupStudents]);
+
+  const submissionByStudentId = useMemo(() => {
+    const map = new Map<string, KASubmission>();
+    groupSubmissions.forEach((s) => {
+      if (s.student?.id) map.set(s.student.id, s);
+    });
+    return map;
+  }, [groupSubmissions]);
+
+  const loadExamGroups = useCallback(async () => {
+    try {
+      const loginCode = localStorage.getItem('loginCode') || '';
+      const teacherId = teacherIdFromStorage();
+      const lessonPath = lessonPathFromKaFilePath(kaFilePath);
+
+      const response = await fetch('/api/learning-groups', {
+        headers: { 'Content-Type': 'application/json', 'x-login-code': loginCode },
+      });
+      if (!response.ok) return;
+
+      const allGroups = (await response.json()) as Array<{
+        id: string;
+        name: string;
+        students?: Array<{ id: string; name: string; loginCode: string }>;
+      }>;
+
+      let matchedIds: string[] = [];
+      if (teacherId && lessonPath) {
+        const pathRes = await fetch(
+          `/api/learning-groups/groups-for-path?path=${encodeURIComponent(lessonPath)}&teacherId=${encodeURIComponent(teacherId)}`,
+        );
+        if (pathRes.ok) {
+          const data = (await pathRes.json()) as { groupIds?: string[] };
+          matchedIds = (data.groupIds || []).filter(Boolean);
+        }
+      }
+
+      let matched = allGroups.filter((g) => matchedIds.includes(g.id));
+      if (matched.length === 0 && groupId) {
+        matched = allGroups.filter((g) => g.id === groupId);
+      }
+      if (matched.length === 0) {
+        const subIds = new Set(submissions.map((s) => s.student?.id).filter(Boolean));
+        matched = allGroups.filter((g) => g.students?.some((s) => subIds.has(s.id)));
+      }
+
+      const tabs: ExamGroupTab[] = matched
+        .map((g) => ({
+          id: g.id,
+          name: g.name || 'Lerngruppe',
+          students: g.students || [],
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'de'));
+
+      setExamGroups(tabs);
+
+      setExamGroups(tabs);
+      setActiveGroupId((prev) => {
+        if (prev && tabs.some((t) => t.id === prev)) return prev;
+        if (groupId && tabs.some((t) => t.id === groupId)) return groupId;
+        return tabs[0]?.id || '';
+      });
+    } catch (error) {
+      console.error('Fehler beim Laden der Lerngruppen:', error);
+    }
+  }, [kaFilePath, groupId, submissions.length]);
+
   useEffect(() => {
-    loadLearningGroup();
-  }, [submissions]);
+    void loadExamGroups();
+  }, [loadExamGroups]);
+
+  useEffect(() => {
+    const active = examGroups.find((g) => g.id === activeGroupId);
+    setLearningGroupStudents(active?.students || []);
+  }, [examGroups, activeGroupId]);
 
   const loadSubmissions = async () => {
     try {
@@ -226,6 +348,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       const allCorrections: Record<string, { points?: number; comment?: string; constructionPoints?: number }> = {};
       data.submissions?.forEach((submission: KASubmission) => {
         submission.corrections?.forEach((corr: KACorrection) => {
+          if (corr.taskNumber === REVIEW_COMPLETE_TASK) return;
           const correctionKey = `${submission.id}_${corr.taskNumber}`;
           // Für Aufgabe 3 Teilaufgaben (3a, 3b, 3c, 3d): manualPoints sind die Konstruktionspunkte
           if (corr.taskNumber.match(/^3[a-d]$/)) {
@@ -248,58 +371,12 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         });
       });
       setCorrections(allCorrections);
-      
-      if (data.submissions && data.submissions.length > 0) {
-        setSelectedSubmission(data.submissions[0]);
-        loadCorrections(data.submissions[0].id);
-      }
     } catch (err) {
       console.error('Fehler beim Laden der Abgaben:', err);
       // Kein Fehler setzen, sondern einfach leere Liste
       setSubmissions([]);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadLearningGroup = async () => {
-    try {
-      const loginCode = localStorage.getItem('loginCode') || '';
-      
-      // Lade alle Lerngruppen des Lehrers
-      const response = await fetch('/api/learning-groups', {
-        headers: {
-          'Content-Type': 'application/json',
-          'x-login-code': loginCode
-        }
-      });
-
-      if (response.ok) {
-        const groups = await response.json();
-        
-        // Wenn Submissions vorhanden, finde die Gruppe basierend auf dem ersten Schüler
-        if (submissions.length > 0) {
-          const firstStudentId = submissions[0]?.student?.id;
-          if (firstStudentId) {
-            const group = groups.find((g: any) => 
-              g.students?.some((s: any) => s.id === firstStudentId)
-            );
-            
-            if (group && group.students) {
-              setLearningGroupStudents(group.students);
-              return;
-            }
-          }
-        }
-        
-        // Wenn keine Submissions oder keine passende Gruppe gefunden,
-        // nimm die erste verfügbare Gruppe
-        if (groups.length > 0 && groups[0].students) {
-          setLearningGroupStudents(groups[0].students);
-        }
-      }
-    } catch (error) {
-      console.error('Fehler beim Laden der Lerngruppe:', error);
     }
   };
 
@@ -329,6 +406,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         setCorrections(prev => {
           const updated = { ...prev };
         submission.corrections?.forEach((corr: KACorrection) => {
+            if (corr.taskNumber === REVIEW_COMPLETE_TASK) return;
             const correctionKey = `${submission.id}_${corr.taskNumber}`;
             // Setze Wert aus DB, wenn Key nicht existiert oder Wert im State undefined ist
             const currentValue = updated[correctionKey];
@@ -429,7 +507,9 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
 
       const correctionKey = correctionStorageKey(targetSubmissionId, taskNumber);
       const storedPoints = validatedPoints;
-      if (taskNumber.match(/^3[a-d]$/)) {
+      if (taskNumber === REVIEW_COMPLETE_TASK) {
+        /* nur in submission.corrections, nicht im Feld-State */
+      } else if (taskNumber.match(/^3[a-d]$/)) {
         setCorrections((prev) => ({
           ...prev,
           [correctionKey]: { ...prev[correctionKey], constructionPoints: storedPoints, comment },
@@ -464,6 +544,9 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         setSubmissions((prev) =>
           prev.map((sub) => (sub.id === submissionIdOverride ? patchSubmission(sub) : sub)),
         );
+        if (selectedSubmission?.id === submissionIdOverride) {
+          setSelectedSubmission(patchSubmission(selectedSubmission));
+        }
       } else if (selectedSubmission) {
         const updatedSubmission = patchSubmission(selectedSubmission);
         setSelectedSubmission(updatedSubmission);
@@ -480,12 +563,83 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     }
   };
 
+  const selectStudentAtIndex = (index: number) => {
+    const student = learningGroupStudents[index];
+    if (!student) return;
+    const sub = submissionByStudentId.get(student.id);
+    if (sub) {
+      setSelectedSubmission(sub);
+      void loadCorrections(sub.id);
+    } else {
+      setSelectedSubmission(null);
+    }
+  };
+
+  const handleGroupTabChange = (groupIdNext: string) => {
+    setActiveGroupId(groupIdNext);
+    setCurrentStudentIndex(0);
+  };
+
+  useEffect(() => {
+    if (learningGroupStudents.length === 0) {
+      setSelectedSubmission(null);
+      return;
+    }
+    setCurrentStudentIndex(0);
+    selectStudentAtIndex(0);
+  }, [activeGroupId]);
+
+  const toggleReviewComplete = async (submission: KASubmission) => {
+    const finished = isReviewCompleteFlag(submission);
+    await saveCorrection(
+      REVIEW_COMPLETE_TASK,
+      finished ? undefined : 1,
+      '',
+      submission.id,
+    );
+  };
+
+  const openStudentPreview = async () => {
+    if (!selectedSubmission || !isReviewCompleteFlag(selectedSubmission)) return;
+    setPreviewLoading(true);
+    try {
+      let answers: Record<string, unknown> = {};
+      try {
+        answers = JSON.parse(selectedSubmission.answers || '{}') as Record<string, unknown>;
+      } catch {
+        answers = {};
+      }
+      const corrections = (selectedSubmission.corrections || [])
+        .filter((c) => c.taskNumber !== REVIEW_COMPLETE_TASK)
+        .map((c) => ({
+          taskNumber: c.taskNumber,
+          manualPoints: c.manualPoints ?? null,
+          comment: c.comment ?? null,
+        }));
+      const maxPts = calculateMaxTotalPoints();
+      const html = await buildExamReviewedHtml({
+        filePath: kaFilePath,
+        title: kaFilePath.split('/').pop() || 'Prüfung',
+        answers,
+        corrections,
+        gradeLabel: calculateGrade(selectedSubmission.totalPoints, maxPts),
+        totalPoints: selectedSubmission.totalPoints,
+        maxPoints: maxPts,
+      });
+      setPreviewTitle(submissionStudentName(selectedSubmission));
+      setPreviewHtml(html);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Vorschau konnte nicht geladen werden');
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
   const handleNextStudent = () => {
-    if (currentStudentIndex < submissions.length - 1) {
+    if (currentStudentIndex < learningGroupStudents.length - 1) {
       const nextIndex = currentStudentIndex + 1;
       setCurrentStudentIndex(nextIndex);
-      setSelectedSubmission(submissions[nextIndex]);
-      loadCorrections(submissions[nextIndex].id);
+      selectStudentAtIndex(nextIndex);
     }
   };
 
@@ -493,8 +647,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     if (currentStudentIndex > 0) {
       const prevIndex = currentStudentIndex - 1;
       setCurrentStudentIndex(prevIndex);
-      setSelectedSubmission(submissions[prevIndex]);
-      loadCorrections(submissions[prevIndex].id);
+      selectStudentAtIndex(prevIndex);
     }
   };
 
@@ -1674,8 +1827,31 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                   </Button>
                 </>
               )}
-              {submissions.length > 0 && (
+              {groupSubmissions.length > 0 && (
                 <>
+                  <Button
+                    onClick={() => void openStudentPreview()}
+                    variant="outlined"
+                    size="small"
+                    startIcon={<Visibility />}
+                    disabled={
+                      previewLoading ||
+                      !selectedSubmission ||
+                      !isReviewCompleteFlag(selectedSubmission)
+                    }
+                    tabIndex={-1}
+                    sx={{
+                      fontSize: '0.75rem',
+                      px: 1,
+                      py: 0.5,
+                      minWidth: 'auto',
+                      whiteSpace: 'nowrap',
+                      borderColor: PURPLE_REVIEW,
+                      color: PURPLE_REVIEW,
+                    }}
+                  >
+                    {previewLoading ? 'Vorschau…' : 'Vorschau'}
+                  </Button>
                   <Button 
                     onClick={() => setShowDreierprobe(true)}
                     variant="contained"
@@ -1733,7 +1909,32 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         </CardContent>
       </Card>
 
-      {/* Breadcrumb-Liste aller Schüler */}
+      {examGroups.length > 1 && (
+        <Tabs
+          value={activeGroupId}
+          onChange={(_, v) => handleGroupTabChange(String(v))}
+          sx={{
+            mb: 1,
+            minHeight: 36,
+            bgcolor: '#fff',
+            borderRadius: 1,
+            px: 1,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+            '& .MuiTab-root': { minHeight: 36, fontWeight: 700, textTransform: 'none', fontSize: '0.82rem' },
+          }}
+        >
+          {examGroups.map((g) => (
+            <Tab
+              key={g.id}
+              value={g.id}
+              label={`${g.name} (${g.students.length})`}
+              tabIndex={-1}
+            />
+          ))}
+        </Tabs>
+      )}
+
+      {/* Breadcrumb-Liste aller Schüler der aktiven Lerngruppe */}
       {learningGroupStudents.length > 0 && (
         <Box sx={{ 
           mb: 1, 
@@ -1746,15 +1947,19 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
           gap: 0.5,
           alignItems: 'center'
         }}>
-          {/* Schüler mit Abgaben */}
-          {submissions.map((submission, index) => {
-            // Prüfe ob korrigiert: status === 'corrected' oder corrections vorhanden
-            const isCorrected = submission.status === 'corrected' || 
-                                (submission.corrections && submission.corrections.length > 0);
-            const isSelected = selectedSubmission?.id === submission.id;
+          <Typography variant="caption" sx={{ width: '100%', color: '#666', fontSize: '0.68rem', mb: 0.25 }}>
+            Doppelklick auf Schüler:in = Bewertung fertig (lila) · dann Vorschau
+          </Typography>
+          {learningGroupStudents.map((student, index) => {
+            const submission = submissionByStudentId.get(student.id);
+            const hasSubmission = Boolean(submission);
+            const isSelected = currentStudentIndex === index;
+            const purpleRing = hasSubmission && shouldShowPurpleReviewRing(submission);
+            const reviewFinished = hasSubmission && isReviewCompleteFlag(submission);
             
             // Prüfe ob alle Korrekturfelder von mir ausgefüllt sind
             const checkAllFieldsFilled = () => {
+              if (!submission) return false;
               // Bestimme welche Aufgaben vorhanden sind basierend auf den Antworten des Schülers
               const answers = parseAnswers(submission.answers);
               const existingTasks = new Set<string>();
@@ -1836,10 +2041,12 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
             const someFieldsFilled = hasSomeFieldsFilled();
             
             // Extrahiere Vornamen (alles vor dem ersten Leerzeichen)
-            const firstName = submissionStudentName(submission).split(' ')[0];
+            const firstName = student.name.split(' ')[0];
             
             // Berechne Note
-            const grade = calculateGrade(submission.totalPoints, maxTotalPoints);
+            const grade = submission
+              ? calculateGrade(submission.totalPoints, maxTotalPoints)
+              : '–';
             
             // Bestimme Farbe basierend auf Note
             const getGradeColor = (gradeStr: string): string => {
@@ -1857,93 +2064,96 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
             
             return (
               <Chip
-                key={submission.id}
+                key={student.id}
                 label={
                   <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <span style={{ color: allFieldsFilled ? '#2e7d32' : '#f57c00' }}>{firstName}</span>
-                    <span style={{ fontSize: '0.65rem', opacity: 0.9, fontWeight: 600, color: allFieldsFilled ? '#2e7d32' : gradeColor }}>{grade}</span>
+                    <span
+                      style={{
+                        color: !hasSubmission
+                          ? '#b71c1c'
+                          : reviewFinished || allFieldsFilled
+                            ? PURPLE_REVIEW
+                            : '#f57c00',
+                      }}
+                    >
+                      {firstName}
+                    </span>
+                    {hasSubmission ? (
+                      <span
+                        style={{
+                          fontSize: '0.65rem',
+                          opacity: 0.9,
+                          fontWeight: 600,
+                          color: reviewFinished ? PURPLE_REVIEW : gradeColor,
+                        }}
+                      >
+                        {grade}
+                      </span>
+                    ) : null}
                   </Box>
                 }
                 onClick={() => {
                   setCurrentStudentIndex(index);
-                  setSelectedSubmission(submission);
-                  loadCorrections(submission.id);
+                  if (submission) {
+                    setSelectedSubmission(submission);
+                    void loadCorrections(submission.id);
+                  } else {
+                    setSelectedSubmission(null);
+                  }
                 }}
+                onDoubleClick={() => {
+                  if (submission) void toggleReviewComplete(submission);
+                }}
+                title={
+                  !hasSubmission
+                    ? 'Keine Abgabe'
+                    : reviewFinished
+                      ? 'Bewertung fertig (Doppelklick zum Zurücknehmen)'
+                      : 'Doppelklick: Bewertung als fertig markieren'
+                }
                 tabIndex={-1}
                 sx={{
                   height: 24,
                   fontSize: '0.7rem',
                   fontWeight: isSelected ? 600 : 400,
-                  bgcolor: allFieldsFilled 
-                    ? '#e8f5e9' 
-                    : '#fff3e0',
-                  color: allFieldsFilled 
-                    ? '#2e7d32' 
-                    : '#f57c00',
-                  border: isSelected 
-                    ? '2px solid #1976d2' 
-                    : allFieldsFilled 
-                      ? '1px solid #4caf50' 
-                      : '1px solid #ffb74d',
-                  cursor: 'pointer',
+                  bgcolor: !hasSubmission
+                    ? '#ffebee'
+                    : reviewFinished
+                      ? '#f3e5f5'
+                      : allFieldsFilled
+                        ? '#e8f5e9'
+                        : '#fff3e0',
+                  color: !hasSubmission ? '#b71c1c' : '#1a1a1a',
+                  opacity: hasSubmission ? 1 : 0.85,
+                  border: isSelected
+                    ? '2px solid #1976d2'
+                    : purpleRing
+                      ? `2px solid ${PURPLE_REVIEW}`
+                      : hasSubmission
+                        ? allFieldsFilled
+                          ? '1px solid #4caf50'
+                          : '1px solid #ffb74d'
+                        : '1px solid #ef9a9a',
+                  cursor: hasSubmission ? 'pointer' : 'default',
                   transition: 'all 0.2s ease',
                   '&:hover': {
-                    bgcolor: allFieldsFilled 
-                      ? '#c8e6c9' 
-                      : '#ffe0b2',
-                    transform: 'translateY(-1px)',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                  },
-                  '&:active': {
-                    transform: 'translateY(0px)'
+                    transform: hasSubmission ? 'translateY(-1px)' : undefined,
+                    boxShadow: hasSubmission ? '0 2px 4px rgba(0,0,0,0.1)' : undefined,
                   },
                   '& .MuiChip-label': {
                     padding: '0 8px',
                     display: 'flex',
-                    alignItems: 'center'
-                  }
+                    alignItems: 'center',
+                  },
                 }}
               />
             );
           })}
-          
-          {/* Fehlende Schüler (noch nicht abgegeben) */}
-          {learningGroupStudents.length > 0 && submissions.length > 0 && (() => {
-            const submittedStudentIds = new Set(submissions.map(sub => sub.student.id));
-            const missingStudents = learningGroupStudents.filter(
-              student => !submittedStudentIds.has(student.id)
-            );
-            
-            return missingStudents.map((student) => {
-              const firstName = student.name.split(' ')[0];
-              
-              return (
-                <Chip
-                  key={student.id}
-                  label={firstName}
-                  sx={{
-                    height: 24,
-                    fontSize: '0.7rem',
-                    fontWeight: 400,
-                    bgcolor: '#ffebee',
-                    color: '#b71c1c',
-                    opacity: 0.5,
-                    border: '1px solid #ef9a9a',
-                    cursor: 'default',
-                    transition: 'all 0.2s ease',
-                    '&:hover': {
-                      opacity: 0.7
-                    }
-                  }}
-                />
-              );
-            });
-          })()}
         </Box>
       )}
 
       {/* Tabs */}
-      {submissions.length > 0 && (
+      {(groupSubmissions.length > 0 || learningGroupStudents.length > 0) && (
       <Tabs 
         value={mode} 
         onChange={(_, v) => setMode(v)} 
@@ -2000,8 +2210,21 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         </Box>
       )}
 
-      {mode === 'by-student' && selectedSubmission && (
+      {mode === 'by-student' && learningGroupStudents.length > 0 && (
         <Box>
+          {!selectedSubmission ? (
+            <Card sx={{ mb: 1, bgcolor: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+              <CardContent sx={{ p: 1.5, textAlign: 'center' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                  {learningGroupStudents[currentStudentIndex]?.name || 'Schüler/in'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Noch keine Abgabe für diese Prüfung.
+                </Typography>
+              </CardContent>
+            </Card>
+          ) : (
+          <>
           {/* Student Header Card - Kompakt */}
           <Card sx={{ mb: 1, bgcolor: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
             <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
@@ -2037,13 +2260,13 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                       color: '#1976d2',
                       fontSize: '0.75rem'
                     }}>
-                      {currentStudentIndex + 1}/{submissions.length}
+                      {currentStudentIndex + 1}/{learningGroupStudents.length}
                     </Typography>
                   </Box>
                   
                   <IconButton
                     onClick={handleNextStudent}
-                    disabled={currentStudentIndex === submissions.length - 1}
+                    disabled={currentStudentIndex === learningGroupStudents.length - 1}
                     size="small"
                     tabIndex={-1}
                     sx={{ 
@@ -2950,6 +3173,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                 </Stack>
               </CardContent>
             </Card>
+          </>
+          )}
         </Box>
       )}
 
@@ -2960,7 +3185,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
           </Typography>
           
           {tasksWithRechenweg.map(taskNum => {
-            const taskSubmissions = submissions.map(sub => {
+            const taskSubmissions = groupSubmissions.map(sub => {
               const answers = parseAnswers(sub.answers);
               const taskAnswers = Object.entries(answers)
                 .filter(([taskId]) => {
@@ -3644,13 +3869,55 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         </DialogActions>
       </Dialog>
 
+      <Dialog
+        open={Boolean(previewHtml)}
+        onClose={() => setPreviewHtml(null)}
+        fullScreen
+        PaperProps={{
+          sx: {
+            bgcolor: '#f3f3f3',
+            display: 'flex',
+            flexDirection: 'column',
+            m: 0,
+            borderRadius: 0,
+          },
+        }}
+      >
+        <IconButton
+          aria-label="Schließen"
+          onClick={() => setPreviewHtml(null)}
+          size="small"
+          sx={{
+            position: 'fixed',
+            top: 4,
+            right: 4,
+            zIndex: 1300,
+            width: 28,
+            height: 28,
+            bgcolor: 'rgba(255,255,255,0.9)',
+          }}
+        >
+          <Close sx={{ fontSize: 18 }} />
+        </IconButton>
+        <DialogContent sx={{ p: 0, flex: 1, overflow: 'hidden' }}>
+          {previewHtml ? (
+            <iframe
+              title={previewTitle}
+              srcDoc={previewHtml}
+              sandbox="allow-same-origin"
+              style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
       {/* Dreierprobe Modal */}
       <DreierprobeModal
         open={showDreierprobe}
         onClose={() => setShowDreierprobe(false)}
         kaFilePath={kaFilePath}
-        submissions={submissions}
-        groupId={groupId}
+        submissions={groupSubmissions}
+        groupId={activeGroupId || groupId}
         maxTotalPoints={maxTotalPoints}
       />
     </Box>

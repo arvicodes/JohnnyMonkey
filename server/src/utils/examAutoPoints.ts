@@ -156,7 +156,11 @@ export function computeSubmissionTotal(
 
   if (key.isGeometry) {
     const manualSum = corrections
-      .filter((c) => !Object.keys(key.answers).includes(c.taskNumber))
+      .filter(
+        (c) =>
+          !Object.keys(key.answers).includes(c.taskNumber) &&
+          c.taskNumber !== '__review_complete__',
+      )
       .reduce((s, c) => s + (c.manualPoints ?? 0), 0);
     return { autoPoints, totalPoints: autoPoints + manualSum };
   }
@@ -172,7 +176,12 @@ export function computeSubmissionTotal(
   }
 
   const legacyManual = corrections
-    .filter((c) => !Object.keys(key.answers).includes(c.taskNumber) && c.taskNumber !== '3_comment')
+    .filter(
+      (c) =>
+        !Object.keys(key.answers).includes(c.taskNumber) &&
+        c.taskNumber !== '3_comment' &&
+        c.taskNumber !== '__review_complete__',
+    )
     .reduce((s, c) => s + (c.manualPoints ?? 0), 0);
   if (legacyManual > 0 && totalPoints === autoPoints) {
     totalPoints += legacyManual;
