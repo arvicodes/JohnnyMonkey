@@ -8,6 +8,9 @@ import {
   replaceCorrectAnswersInHtml,
   writeExamHtml,
 } from '../utils/examAutoPoints';
+import { examGradeNumericFromPoints } from '../utils/examGradeNumeric';
+import fs from 'fs';
+import path from 'path';
 
 const prisma = new PrismaClient();
 
@@ -17,6 +20,22 @@ const prisma = new PrismaClient();
 function isCorrectionFile(fileName: string): boolean {
   const base = (fileName || '').replace(/\\/g, '/').split('/').pop() || fileName || '';
   return /^(KA_|KU_|HÜ_|HU_|QZ_)/i.test(base);
+}
+
+function kaBasename(kaFilePath: string): string {
+  return (kaFilePath || '').replace(/\\/g, '/').split('/').pop()?.toLowerCase() || '';
+}
+
+async function resolveLessonFolderAbs(lessonPathRaw: string): Promise<string> {
+  const { StorageManager } = await import('../utils/storageManager');
+  const lp = lessonPathRaw.replace(/\\/g, '/');
+  if (lp.startsWith('git-intern/')) {
+    return StorageManager.resolveGitInternRelativePath(lp.replace(/^git-intern\//, ''));
+  }
+  if (lp.startsWith('J-M-Reihen/') || lp === 'J-M-Reihen') {
+    return StorageManager.resolveGitInternRelativePath(lp.replace(/^J-M-Reihen\/?/, ''));
+  }
+  return StorageManager.resolveGitInternRelativePath(lp);
 }
 
 /**
@@ -918,7 +937,8 @@ export class KACorrectionController {
 
       // Versuche auch mit verschiedenen Varianten zu suchen
       const uniquePaths = getPossiblePaths(kaFilePath);
-      
+      const baseName = (kaFilePath.replace(/\\/g, '/').split('/').pop() || kaFilePath).toLowerCase();
+
       // Finde alle Submissions für diese KA
       // Prüfe zuerst, ob isReleased Feld existiert (Prisma Client könnte veraltet sein)
       let submissions: Array<{ isReleased: boolean }>;
@@ -948,6 +968,19 @@ export class KACorrectionController {
         } else {
           throw e;
         }
+      }
+
+      if (submissions.length === 0 && baseName) {
+        const all = await prisma.kASubmission.findMany({
+          select: { isReleased: true, kaFilePath: true },
+        });
+        submissions = all
+          .filter((sub) => {
+            const subBase =
+              (sub.kaFilePath || '').replace(/\\/g, '/').split('/').pop() || '';
+            return subBase.toLowerCase() === baseName;
+          })
+          .map((sub) => ({ isReleased: sub.isReleased }));
       }
 
       if (submissions.length === 0) {
@@ -1019,23 +1052,12 @@ export class KACorrectionController {
           .filter(Boolean),
       );
 
-      // Falls keine Dateinamen mitkommen: Prüfungs-HTMLs im Stundenordner nachschlagen
-      if (fileNameSet.size === 0 && lessonPathRaw) {
+      let lessonFolderAbs = '';
+      if (lessonPathRaw) {
         try {
-          const fs = await import('fs');
-          const path = await import('path');
-          const { StorageManager } = await import('../utils/storageManager');
-          let folderAbs = '';
-          const lp = lessonPathRaw.replace(/\\/g, '/');
-          if (lp.startsWith('git-intern/')) {
-            folderAbs = StorageManager.resolveGitInternRelativePath(lp.replace(/^git-intern\//, ''));
-          } else if (lp.startsWith('J-M-Reihen/') || lp === 'J-M-Reihen') {
-            folderAbs = StorageManager.resolveGitInternRelativePath(lp.replace(/^J-M-Reihen\/?/, ''));
-          } else {
-            folderAbs = StorageManager.resolveGitInternRelativePath(lp);
-          }
-          if (folderAbs && fs.existsSync(folderAbs)) {
-            for (const name of fs.readdirSync(folderAbs)) {
+          lessonFolderAbs = await resolveLessonFolderAbs(lessonPathRaw);
+          if (lessonFolderAbs && fs.existsSync(lessonFolderAbs)) {
+            for (const name of fs.readdirSync(lessonFolderAbs)) {
               if (isCorrectionFile(name) && /\.html?$/i.test(name)) {
                 fileNameSet.add(name.toLowerCase());
               }
@@ -1048,13 +1070,22 @@ export class KACorrectionController {
 
       const filtered = submissions.filter((sub) => {
         const p = (sub.kaFilePath || '').replace(/\\/g, '/');
-        const base = (p.split('/').pop() || p).toLowerCase();
+        const base = kaBasename(sub.kaFilePath);
         const full = p.toLowerCase();
         if (fileNameSet.size > 0) {
           return fileNameSet.has(base);
         }
         if (lessonNorm) {
-          return full.includes(lessonNorm);
+          if (full.includes(lessonNorm)) return true;
+          if (
+            lessonFolderAbs &&
+            base &&
+            fs.existsSync(path.join(lessonFolderAbs, base)) &&
+            isCorrectionFile(base)
+          ) {
+            return true;
+          }
+          return false;
         }
         return true;
       });
@@ -1066,18 +1097,49 @@ export class KACorrectionController {
         where: { isReleased: true },
         select: { kaFilePath: true, totalPoints: true },
       });
-      const classStats = new Map<string, { avgPoints: number; count: number }>();
-      const byBase = new Map<string, number[]>();
+      const classStats = new Map<
+        string,
+        { avgPoints: number; avgGrade: number; count: number }
+      >();
+      const byBase = new Map<string, { points: number; path: string }[]>();
       for (const p of allReleasedPeers) {
-        const b = ((p.kaFilePath || '').replace(/\\/g, '/').split('/').pop() || '').toLowerCase();
+        const b = kaBasename(p.kaFilePath);
         if (!b) continue;
         const arr = byBase.get(b) || [];
-        arr.push(Number(p.totalPoints) || 0);
+        arr.push({ points: Number(p.totalPoints) || 0, path: p.kaFilePath });
         byBase.set(b, arr);
       }
-      byBase.forEach((pts, base) => {
-        const sum = pts.reduce((a, n) => a + n, 0);
-        classStats.set(base, { avgPoints: sum / pts.length, count: pts.length });
+      const maxPointsByBase = new Map<string, number>();
+      const maxForBase = (base: string, samplePath: string): number => {
+        if (maxPointsByBase.has(base)) return maxPointsByBase.get(base)!;
+        let max = 0;
+        try {
+          const key = parseExamAnswerKey(readExamHtml(samplePath));
+          max = key.maxPoints || 0;
+        } catch {
+          try {
+            const key = parseExamAnswerKey(readExamHtml(base));
+            max = key.maxPoints || 0;
+          } catch {
+            max = 0;
+          }
+        }
+        maxPointsByBase.set(base, max);
+        return max;
+      };
+      byBase.forEach((rows, base) => {
+        const samplePath = rows[0]?.path || base;
+        const maxPts = maxForBase(base, samplePath);
+        const grades = rows.map((r) =>
+          maxPts > 0 ? examGradeNumericFromPoints(r.points, maxPts) : 0,
+        );
+        const sumPts = rows.reduce((a, r) => a + r.points, 0);
+        const sumGrades = grades.reduce((a, g) => a + g, 0);
+        classStats.set(base, {
+          avgPoints: sumPts / rows.length,
+          avgGrade: sumGrades / rows.length,
+          count: rows.length,
+        });
       });
 
       // Noten aus dem Schema (Schüler)
@@ -1141,6 +1203,7 @@ export class KACorrectionController {
               matchedGrade?.grade != null ? formatGradeLabel(Number(matchedGrade.grade)) : null,
             schemaCategoryName: matchedGrade?.categoryName || null,
             classAveragePoints: stats?.avgPoints ?? null,
+            classAverageGrade: stats?.avgGrade ?? null,
             classAverageCount: stats?.count ?? 0,
             recentGrades: grades.slice(0, 8).map((g) => ({
               categoryName: g.categoryName,

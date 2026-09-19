@@ -51,7 +51,7 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } fro
 import { saveAs } from 'file-saver';
 import DreierprobeModal from './DreierprobeModal';
 import { examAnswerMatches, formatExamCorrect, parseExamAnswerKey } from '../lib/examAnswerKey';
-import { examGradeLabelForCorrection } from '../lib/examGradeLabel';
+import { examGradeLabelForCorrection, examGradeNumericForCorrection } from '../lib/examGradeLabel';
 
 interface KASubmission {
   id: string;
@@ -1009,13 +1009,6 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   const activeLearningGroupName =
     examGroups.find((g) => g.id === activeGroupId)?.name?.trim() || '';
 
-  const classAverageLabelForGroup = useMemo(() => {
-    const subs = groupSubmissions.filter((s) => typeof s.totalPoints === 'number');
-    if (subs.length < 2) return undefined;
-    const avg = subs.reduce((sum, s) => sum + s.totalPoints, 0) / subs.length;
-    return (Math.round(avg * 10) / 10).toFixed(1).replace('.', ',');
-  }, [groupSubmissions]);
-
   const buildReviewHtmlForSubmission = async (submission: KASubmission): Promise<string> => {
     let answers: Record<string, unknown> = {};
     try {
@@ -1187,6 +1180,16 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
 
   const maxTotalPoints = calculateMaxTotalPoints();
   const selectedLiveTotal = selectedSubmission ? liveAchievedTotal(selectedSubmission) : 0;
+
+  const classAverageLabelForGroup = useMemo(() => {
+    const subs = groupSubmissions.filter((s) => typeof s.totalPoints === 'number');
+    if (subs.length < 2 || maxTotalPoints <= 0) return undefined;
+    const gradeNums = subs.map((s) =>
+      examGradeNumericForCorrection(liveAchievedTotal(s), maxTotalPoints),
+    );
+    const avgGrade = gradeNums.reduce((a, g) => a + g, 0) / gradeNums.length;
+    return (Math.round(avgGrade * 10) / 10).toFixed(1).replace('.', ',');
+  }, [groupSubmissions, corrections, maxTotalPoints, examMaxPoints, examPoints, useGeometryTask3, kaFilePath]);
 
   // Punkte-zu-Note-Zuordnung für Tooltip
   const getGradeScale = (total: number, currentPoints?: number): React.ReactNode => {
@@ -4267,24 +4270,26 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: 1,
-            py: 0.75,
-            px: 1.5,
+            py: 0.35,
+            pl: 1.5,
+            pr: 0.5,
+            minHeight: 40,
             bgcolor: '#fff',
             borderBottom: '1px solid #e0e0e0',
           }}
         >
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.9rem' }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>
             Vorschau: {previewTitle}
           </Typography>
-          <Button
+          <IconButton
             type="button"
-            variant="contained"
-            size="small"
+            aria-label="Schließen"
             onClick={() => setPreviewHtml(null)}
-            sx={{ fontSize: '0.8rem', py: 0.4, px: 1.5, flexShrink: 0 }}
+            size="small"
+            sx={{ width: 28, height: 28, flexShrink: 0 }}
           >
-            Schließen
-          </Button>
+            <Close sx={{ fontSize: 18 }} />
+          </IconButton>
         </DialogTitle>
         <DialogContent sx={{ p: 0, flex: 1, minHeight: 0, overflow: 'hidden' }}>
           {previewHtml ? (
@@ -4305,6 +4310,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         kaFilePath={kaFilePath}
         submissions={groupSubmissions}
         groupId={activeGroupId || groupId}
+        groupStudents={learningGroupStudents}
         maxTotalPoints={maxTotalPoints}
       />
     </Box>

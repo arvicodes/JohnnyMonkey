@@ -72,6 +72,8 @@ interface DreierprobeModalProps {
   submissions: KASubmission[];
   /** Optional: bekannte Lerngruppe (z. B. aus Präsentation) */
   groupId?: string | null;
+  /** Schülerliste der aktiven Lerngruppe (aus Korrekturmodus) */
+  groupStudents?: LearningGroupStudent[];
   /** Maximale Punktzahl der Prüfung (aus HTML); Fallback nur wenn unbekannt */
   maxTotalPoints?: number;
 }
@@ -155,6 +157,7 @@ const DreierprobeModal: React.FC<DreierprobeModalProps> = ({
   kaFilePath,
   submissions,
   groupId: groupIdProp = null,
+  groupStudents: groupStudentsProp = [],
   maxTotalPoints: maxTotalPointsProp,
 }) => {
   const [learningGroupStudents, setLearningGroupStudents] = useState<LearningGroupStudent[]>([]);
@@ -186,10 +189,21 @@ Viele Grüße
 Vera Christ`);
 
   useEffect(() => {
-    if (open && submissions.length > 0) {
-      loadLearningGroup();
+    if (!open) return;
+    if (groupStudentsProp.length > 0) {
+      setLearningGroupStudents(groupStudentsProp);
+      if (groupIdProp) setLearningGroupId(groupIdProp);
+      setLoading(false);
+      return;
     }
-  }, [open, submissions]);
+    if (submissions.length > 0) {
+      void loadLearningGroup();
+    } else if (groupIdProp) {
+      void loadLearningGroup();
+    } else {
+      setLoading(false);
+    }
+  }, [open, submissions, groupIdProp, groupStudentsProp]);
 
   useEffect(() => {
     if (open && learningGroupStudents.length > 0 && submissions.length > 0) {
@@ -4341,7 +4355,7 @@ Vera Christ`);
       
       // Finde die Lerngruppe basierend auf dem ersten Schüler
       const firstStudentId = submissions[0]?.student?.id;
-      if (!firstStudentId) {
+      if (!firstStudentId && !groupIdProp) {
         setLoading(false);
         return;
       }
@@ -4356,12 +4370,16 @@ Vera Christ`);
 
       if (response.ok) {
         const groups = await response.json();
-        // Finde die Gruppe, die den ersten Schüler enthält
-        const group = groups.find((g: any) => 
-          g.students?.some((s: any) => s.id === firstStudentId)
-        );
-        
-        if (group && group.students) {
+        let group: { id: string; students?: LearningGroupStudent[] } | undefined;
+        if (groupIdProp) {
+          group = groups.find((g: { id: string }) => g.id === groupIdProp);
+        }
+        if (!group && firstStudentId) {
+          group = groups.find((g: { students?: Array<{ id: string }> }) =>
+            g.students?.some((s) => s.id === firstStudentId),
+          );
+        }
+        if (group?.students) {
           setLearningGroupStudents(group.students);
           setLearningGroupId(group.id);
         }

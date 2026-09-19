@@ -62,6 +62,7 @@ type ReleasedExamResult = {
   schemaGradeLabel?: string | null;
   schemaCategoryName?: string | null;
   classAveragePoints?: number | null;
+  classAverageGrade?: number | null;
   classAverageCount?: number;
   maxPoints?: number;
   gradeLabel?: string;
@@ -247,7 +248,9 @@ export default function StudentLessonMaterialsPanel({
             '-';
 
           let classAverageLabel: string | undefined;
-          if (row.classAveragePoints != null && maxPoints > 0) {
+          if (row.classAverageGrade != null && Number.isFinite(Number(row.classAverageGrade))) {
+            classAverageLabel = Number(row.classAverageGrade).toFixed(1).replace('.', ',');
+          } else if (row.classAveragePoints != null && maxPoints > 0) {
             const avg = examGradeLabelFromPoints(
               Number(row.classAveragePoints) || 0,
               maxPoints,
@@ -688,7 +691,9 @@ export default function StudentLessonMaterialsPanel({
                   {exam.maxPoints && exam.maxPoints > 0
                     ? `${Number(exam.totalPoints || 0).toFixed(1).replace('.', ',')} / ${exam.maxPoints} Punkte`
                     : `${Number(exam.totalPoints || 0).toFixed(1).replace('.', ',')} Punkte`}
-                  {exam.classAverageLabel ? ` · ⌀ Klassenschnitt = ${exam.classAverageLabel}` : ''}
+                  {exam.classAverageLabel
+                    ? ` · ⌀ Klassenschnitt Note ${exam.classAverageLabel}`
+                    : ''}
                 </Typography>
               </Box>
               <Box

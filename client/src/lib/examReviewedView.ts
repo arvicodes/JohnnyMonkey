@@ -445,7 +445,7 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     <div class="meta">${pointsText}</div>
     ${
       opts.classAverageText
-        ? `<div class="avg">⌀ Klassenschnitt = ${opts.classAverageText}</div>`
+        ? `<div class="avg">⌀ Klassenschnitt Note ${opts.classAverageText}</div>`
         : ''
     }
     ${
