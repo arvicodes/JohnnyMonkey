@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
 import {
@@ -2267,6 +2267,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const [releasedLessonsByGroup, setReleasedLessonsByGroup] = useState<{
     [groupId: string]: { lessonPaths: string[]; useShareFallback: boolean };
   }>({});
+  /** Basenames freigegebener HU/KA (SuS sollen Stunde sehen, auch ohne Material-Freigabe) */
+  const [releasedExamFileNames, setReleasedExamFileNames] = useState<string[]>([]);
 
   // Mitarbeitsbewertung States
   const [participationData, setParticipationData] = useState<{[groupId: string]: {
@@ -3012,6 +3014,49 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     [releasedLessonsByGroup],
   );
 
+  const releasedExamBaseNameSet = useMemo(
+    () => new Set(releasedExamFileNames.map((n) => n.toLowerCase())),
+    [releasedExamFileNames],
+  );
+
+  const treeNodeHasReleasedExam = useCallback(
+    (node: any): boolean => {
+      if (!node) return false;
+      if (node.type === 'file') {
+        const name = (node.name || '').toLowerCase();
+        return isLessonCorrectionFileName(node.name || '') && releasedExamBaseNameSet.has(name);
+      }
+      if (node.type === 'directory' && Array.isArray(node.children)) {
+        return node.children.some((child: any) => treeNodeHasReleasedExam(child));
+      }
+      return false;
+    },
+    [releasedExamBaseNameSet],
+  );
+
+  const fetchReleasedExamFileNames = useCallback(async () => {
+    const res = await apiGetSafe('/api/ka-corrections/my-released');
+    if (!res?.ok) return;
+    try {
+      const data = await res.json();
+      const rows = Array.isArray(data?.results) ? data.results : [];
+      const names = rows
+        .map((r: { fileName?: string; kaFilePath?: string }) => {
+          const fn =
+            r.fileName ||
+            String(r.kaFilePath || '')
+              .replace(/\\/g, '/')
+              .split('/')
+              .pop();
+          return (fn || '').toLowerCase();
+        })
+        .filter(Boolean);
+      setReleasedExamFileNames(Array.from(new Set(names)));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const entryTicketLessonPathsMatch = useCallback((a: string, b: string) => {
     const norm = (p: string) =>
       normalizeLessonMaterialPath(p)
@@ -3337,7 +3382,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           lessonMatchesActiveRunningLesson(groupId, item.path || '', item.name || '');
         const ancestorOfRunningLesson =
           view === 'dashboard' && hasActiveRunningLessonDescendant(item, level);
-        if (!stundeWithLeinwand && !stundeWithRunningLesson && !ancestorOfRunningLesson) return null;
+        const releasedExamInBranch = view === 'dashboard' && treeNodeHasReleasedExam(item);
+        if (
+          !stundeWithLeinwand &&
+          !stundeWithRunningLesson &&
+          !ancestorOfRunningLesson &&
+          !releasedExamInBranch
+        ) {
+          return null;
+        }
       }
 
       // Stunde erst sichtbar, wenn per Play gestartet (oder Legacy-Freigabe vor erstem Play)
@@ -3354,7 +3407,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         const runningLesson =
           isClassModerator &&
           lessonMatchesActiveRunningLesson(groupId, item.path || '', item.name || '');
-        if (!released && !runningLesson) {
+        const hasReleasedExamHere = (item.children || []).some(
+          (f: { type?: string; name?: string }) =>
+            f?.type === 'file' &&
+            isLessonCorrectionFileName(f.name || '') &&
+            releasedExamBaseNameSet.has((f.name || '').toLowerCase()),
+        );
+        if (!released && !runningLesson && !hasReleasedExamHere) {
           return null;
         }
       }
@@ -5537,6 +5596,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             await fetchAssignedFolders(group.id);
           }
           await fetchReleasedLessons();
+          await fetchReleasedExamFileNames();
           
           // Lade Mitarbeitsbewertungen
           await fetchParticipationData(userId);
@@ -5631,6 +5691,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           fetchAssignedFolders(group.id);
         });
         void fetchReleasedLessons();
+        void fetchReleasedExamFileNames();
       }
     };
 
@@ -5641,6 +5702,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           fetchAssignedFolders(group.id);
         });
         void fetchReleasedLessons();
+        void fetchReleasedExamFileNames();
       }
     };
 
@@ -5651,13 +5713,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [lerngruppen, fetchReleasedLessons]);
+  }, [lerngruppen, fetchReleasedLessons, fetchReleasedExamFileNames]);
 
   // Freigeschaltete Stunden regelmäßig aktualisieren (Play-Button der Lehrkraft)
   useEffect(() => {
     if (!userId || lerngruppen.length === 0) return;
     const refresh = () => {
       void fetchReleasedLessons();
+      void fetchReleasedExamFileNames();
       lerngruppen.forEach((group) => {
         void fetchSharedFilesForGroup(group.id);
       });
@@ -5665,7 +5728,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     refresh();
     const id = window.setInterval(refresh, 5000);
     return () => window.clearInterval(id);
-  }, [userId, lerngruppen, fetchReleasedLessons]);
+  }, [userId, lerngruppen, fetchReleasedLessons, fetchReleasedExamFileNames]);
 
   if (loading) return (
     <Box display="flex" justifyContent="center" alignItems="center" height="100vh" sx={{ bgcolor: colors.background }}>
