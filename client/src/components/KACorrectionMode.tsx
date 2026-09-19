@@ -26,7 +26,9 @@ import {
   CardContent,
   Grid,
   Stack,
-  Tooltip
+  Tooltip,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import { 
   CheckCircle, 
@@ -198,6 +200,21 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   const [recalculating, setRecalculating] = useState(false);
   const [answerEdits, setAnswerEdits] = useState<Record<string, string>>({});
   const [creatingManualSubmission, setCreatingManualSubmission] = useState(false);
+  const [tabThroughAnswersOnly, setTabThroughAnswersOnly] = useState(() => {
+    try {
+      return localStorage.getItem('kaCorrectionTabThroughAnswersOnly') === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('kaCorrectionTabThroughAnswersOnly', tabThroughAnswersOnly ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }, [tabThroughAnswersOnly]);
 
   // Helper-Funktion: Bestimmt den Dateityp für Texte
   const getFileTypeName = (): string => {
@@ -928,6 +945,35 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
 
     return grouped;
   };
+
+  const answerFieldTabIndex = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!tabThroughAnswersOnly || !selectedSubmission) return map;
+    const parsed = parseAnswers(selectedSubmission.answers);
+    const fieldIds = sortExamAnswerFieldIds(
+      Array.from(new Set([...Object.keys(parsed), ...Object.keys(correctAnswers)])),
+    ).filter((taskId) => {
+      const taskMatch = taskId.match(/a(\d+)/);
+      if (!taskMatch) return false;
+      if (taskMatch[1] === '3' && useGeometryTask3) return false;
+      return true;
+    });
+    fieldIds.forEach((taskId, idx) => map.set(taskId, idx + 1));
+    return map;
+  }, [
+    tabThroughAnswersOnly,
+    selectedSubmission?.id,
+    selectedSubmission?.answers,
+    examAnswers,
+    useGeometryTask3,
+  ]);
+
+  const tabIndexForAnswerField = (taskId: string): number | undefined => {
+    if (!tabThroughAnswersOnly) return undefined;
+    return answerFieldTabIndex.get(taskId) ?? -1;
+  };
+
+  const tabIndexSkipWhenAnswersOnly: number | undefined = tabThroughAnswersOnly ? -1 : undefined;
 
   const sumTaskPoints = (
     taskAnswers: Array<{ taskId: string; isCorrect?: boolean; points?: number }>,
@@ -2659,6 +2705,21 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
               
               {/* Info Row: Chips */}
               <Box display="flex" gap={0.5} flexWrap="wrap" alignItems="center">
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          size="small"
+                          checked={tabThroughAnswersOnly}
+                          onChange={(_, checked) => setTabThroughAnswersOnly(checked)}
+                        />
+                      }
+                      label={
+                        <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
+                          Tab nur Lösungsfelder
+                        </Typography>
+                      }
+                      sx={{ mr: 0.5, ml: 0, '& .MuiFormControlLabel-label': { lineHeight: 1.2 } }}
+                    />
                     <Chip
                       label={`${formatExamPointsDisplay(selectedLiveTotal)} von ${formatExamPointsDisplay(maxTotalPoints)} (davon ${formatExamPointsDisplay(selectedSubmission.autoPoints)} auto)`}
                       size="small"
@@ -2766,6 +2827,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                       '& .MuiInputLabel-root': { fontSize: '0.75rem' },
                     }}
                     placeholder="z. B. Hinweise zur Bewertung, was besonders gut war …"
+                    inputProps={{ tabIndex: tabIndexSkipWhenAnswersOnly }}
                   />
                 );
               })()}
@@ -3228,7 +3290,12 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                                 saveCorrection(subtaskKey, constructionPoints, currentCorrection.comment, selectedSubmission?.id);
                                                 }
                                             }}
-                                            inputProps={{ min: 0, max: 2, step: 0.5 }}
+                                            inputProps={{
+                                              min: 0,
+                                              max: 2,
+                                              step: 0.5,
+                                              tabIndex: tabIndexSkipWhenAnswersOnly,
+                                            }}
                                             size="small"
                                             sx={{ 
                                               width: 100,
@@ -3295,6 +3362,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                 size="small"
                                 placeholder="Kommentar für die gesamte Aufgabe 3..."
                                 fullWidth
+                                inputProps={{ tabIndex: tabIndexSkipWhenAnswersOnly }}
                                 sx={{ 
                                   '& .MuiOutlinedInput-root': {
                                     bgcolor: '#e3f2fd',
@@ -3477,6 +3545,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                               void saveStudentAnswerField(taskId, v);
                             }
                           }}
+                          inputProps={{ tabIndex: tabIndexForAnswerField(taskId) }}
                           sx={{ mb: 0.5, '& .MuiInputBase-input': { fontSize: '0.72rem', fontFamily: 'monospace' } }}
                           helperText={
                             correctAnswers[taskId] !== undefined
@@ -3517,7 +3586,12 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                       correction.comment,
                                     );
                                   }}
-                                  inputProps={{ min: 0, max: points || 10, step: 0.25 }}
+                                  inputProps={{
+                                    min: 0,
+                                    max: points || 10,
+                                    step: 0.25,
+                                    tabIndex: tabIndexSkipWhenAnswersOnly,
+                                  }}
                                   size="small"
                                   sx={{ 
                                           width: 76,
@@ -3545,6 +3619,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                   }}
                                   size="small"
                                         placeholder="…"
+                                  inputProps={{ tabIndex: tabIndexSkipWhenAnswersOnly }}
                                   sx={{ 
                                           flex: 1,
                                     '& .MuiOutlinedInput-root': { bgcolor: '#fff', fontSize: '0.7rem' },
