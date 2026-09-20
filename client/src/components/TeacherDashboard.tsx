@@ -50,6 +50,7 @@ import { DEFAULT_PROFILE_COLOR } from '../lib/profileColor';
 import TeacherSettingsMenu from './teacher-profile/TeacherSettingsMenu';
 import TeacherFullArchiveModal from './teacher-profile/TeacherFullArchiveModal';
 import { OPEN_TEACHER_NOTES_EVENT } from './TeacherQuickNotes';
+import TeacherLessonCornerControls from './TeacherLessonCornerControls';
 import TeacherProfileDialog from './teacher-profile/TeacherProfileDialog';
 import TeacherScheduleDialog from './teacher-schedule/TeacherScheduleDialog';
 import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
@@ -15874,6 +15875,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                   }),
                 }}
               >
+                {!isLessonStundeRoute && (
                 <IconButton
                   onClick={() => window.dispatchEvent(new Event(OPEN_TEACHER_NOTES_EVENT))}
                   sx={{
@@ -15902,6 +15904,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                     N
                   </Typography>
                 </IconButton>
+                )}
                 <IconButton
                   onClick={() => setShowTeacherMessageBox(true)}
                   sx={{
@@ -20644,6 +20647,8 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
 
       {/* Unterrichtsstunde: nur als eigene Seite /teacher/stunde (kein Modal) */}
       {isLessonStundeRoute && lessonModalData && (
+        <>
+        <TeacherLessonCornerControls onDashboard={handleCloseLessonPage} />
         <Box
           sx={{
             // In Laptop-Ansicht ist rechts ein (Dialog-)Dock; MUI lockt dann body-scroll.
@@ -20852,13 +20857,6 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                 Laptop
               </ToggleButton>
             </ToggleButtonGroup>
-            <DialogCloseIconButton
-              onClose={handleCloseLessonPage}
-              sx={{
-                zIndex: 2,
-                '&:hover': { bgcolor: 'action.hover' },
-              }}
-            />
           </Box>
           <Box
             sx={{
@@ -24931,6 +24929,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
               })()}
           </Box>
         </Box>
+        </>
       )}
 
       {lessonSplitLeft && (

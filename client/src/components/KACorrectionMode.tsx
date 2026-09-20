@@ -175,6 +175,25 @@ function hasManualCorrectionWork(submission: KASubmission | null | undefined): b
   );
 }
 
+function hasDraftCorrectionWork(
+  submissionId: string,
+  corrections: Record<string, { points?: number; comment?: string; constructionPoints?: number }>,
+): boolean {
+  const prefix = `${submissionId}_`;
+  return Object.entries(corrections).some(([key, val]) => {
+    if (!key.startsWith(prefix)) return false;
+    const taskNumber = key.slice(prefix.length);
+    if (taskNumber === REVIEW_COMPLETE_TASK) return false;
+    if (taskNumber === '3_comment' || taskNumber === GENERAL_COMMENT_TASK) {
+      return Boolean(val.comment?.trim());
+    }
+    if (/^3[a-d]$/.test(taskNumber)) {
+      return val.constructionPoints !== undefined && val.constructionPoints !== null;
+    }
+    return val.points !== undefined && val.points !== null;
+  });
+}
+
 function shouldShowPurpleReviewRing(submission: KASubmission | null | undefined): boolean {
   if (!submission) return false;
   return hasManualCorrectionWork(submission) || isReviewCompleteFlag(submission);
@@ -1060,7 +1079,9 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   const canOpenStudentPreview = (submission: KASubmission | null | undefined): boolean =>
     Boolean(
       submission &&
-        (isReviewCompleteFlag(submission) || hasManualCorrectionWork(submission)),
+        (isReviewCompleteFlag(submission) ||
+          hasManualCorrectionWork(submission) ||
+          hasDraftCorrectionWork(submission.id, corrections)),
     );
 
   const correctionsForPreview = (submission: KASubmission) => {
@@ -4509,6 +4530,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         open={Boolean(previewHtml)}
         onClose={() => setPreviewHtml(null)}
         fullScreen
+        disableEnforceFocus
+        sx={{ zIndex: (t) => t.zIndex.modal + 24 }}
         PaperProps={{
           sx: {
             bgcolor: '#f3f3f3',
