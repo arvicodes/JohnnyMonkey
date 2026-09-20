@@ -495,19 +495,42 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       max-height: 96px;
       height: auto;
       object-fit: contain;
-      opacity: 0.92;
+      opacity: 0.94;
       pointer-events: none;
       margin-left: -5%;
+      filter: sepia(0.35) saturate(1.45) hue-rotate(-18deg) brightness(1.03);
     }
     .jm-review-result .grade {
       flex: 0 0 auto;
-      font-family: ${EXAM_TEACHER_GRADE_FONT};
-      font-size: 2.65rem;
-      font-weight: 700;
-      color: ${EXAM_TEACHER_GRADE_RED};
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
       text-align: left;
       padding: 0;
       line-height: 1.1;
+    }
+    .jm-grade-label {
+      font-family: ${EXAM_TEACHER_GRADE_FONT};
+      font-size: 1.45rem;
+      font-weight: 600;
+      color: #ef6c00;
+    }
+    .jm-grade-value {
+      font-family: ${EXAM_TEACHER_GRADE_FONT};
+      font-size: 2.35rem;
+      font-weight: 700;
+      color: ${EXAM_TEACHER_GRADE_RED};
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2.35em;
+      min-height: 2.35em;
+      padding: 0.1em 0.28em;
+      border: 2.5px solid #ef6c00;
+      border-radius: 50%;
+      line-height: 1;
+      box-sizing: border-box;
     }
     .jm-review-rule {
       width: 100%;
@@ -625,7 +648,7 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     <div class="jm-review-head">
       <div class="jm-grade-block">
         <div class="jm-grade-note-wrap">
-          <div class="grade">Note ${opts.gradeLabel || '–'}</div>
+          <div class="grade"><span class="jm-grade-label">Note:</span> <span class="jm-grade-value">${escapeHtmlText(opts.gradeLabel || '–')}</span></div>
         </div>
         <img class="jm-grade-signature" src="${sigUrl}" alt="" />
       </div>
@@ -633,7 +656,7 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
         <div class="meta">${pointsText}</div>
         ${
           opts.classAverageText
-            ? `<div class="avg">⌀ Klassenschnitt Note ${opts.classAverageText}</div>`
+            ? `<div class="avg">⌀ ${escapeHtmlText(opts.classAverageText)}</div>`
             : ''
         }
       </div>
