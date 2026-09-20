@@ -61,7 +61,11 @@ import {
   parseExamAnswerKey,
   sortExamAnswerFieldIds,
 } from '../lib/examAnswerKey';
-import { examGradeLabelForCorrection, examGradeNumericForCorrection } from '../lib/examGradeLabel';
+import {
+  examGradeLabelForCorrection,
+  examGradeNumericForCorrection,
+  formatExamClassAverageDecimal,
+} from '../lib/examGradeLabel';
 
 interface KASubmission {
   id: string;
@@ -1326,7 +1330,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       examGradeNumericForCorrection(liveAchievedTotal(s), maxTotalPoints),
     );
     const avgGrade = gradeNums.reduce((a, g) => a + g, 0) / gradeNums.length;
-    return (Math.round(avgGrade * 10) / 10).toFixed(1).replace('.', ',');
+    return formatExamClassAverageDecimal(avgGrade);
   }, [groupSubmissions, corrections, maxTotalPoints, examMaxPoints, examPoints, useGeometryTask3, kaFilePath]);
 
   // Punkte-zu-Note-Zuordnung für Tooltip

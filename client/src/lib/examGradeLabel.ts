@@ -135,3 +135,9 @@ export function formatExamGradeNumber(grade: number): string {
   const key = String(Math.round(grade * 10) / 10);
   return map[key] || String(grade).replace('.', ',');
 }
+
+/** Klassenschnitt als Dezimalnote mit einer Nachkommastelle (z. B. 2,3). */
+export function formatExamClassAverageDecimal(avgNumeric: number): string {
+  if (!Number.isFinite(avgNumeric) || avgNumeric <= 0) return '–';
+  return (Math.round(avgNumeric * 10) / 10).toFixed(1).replace('.', ',');
+}

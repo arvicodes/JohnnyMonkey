@@ -8,7 +8,12 @@ import {
   EXAM_TEACHER_COMMENT_FONT,
   injectHandwritingFontsIntoDocument,
 } from './handwritingFonts';
-import { EXAM_TEACHER_RED, teacherSignatureImgUrl } from './examTeacherSignature';
+import {
+  EXAM_TEACHER_GRADE_FONT,
+  EXAM_TEACHER_GRADE_RED,
+  EXAM_TEACHER_RED,
+  teacherSignatureImgUrl,
+} from './examTeacherSignature';
 
 export type ExamReviewCorrection = {
   taskNumber: string;
@@ -458,30 +463,37 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     }
     .jm-grade-block {
       position: relative;
-      display: inline-block;
-      min-width: 200px;
-      min-height: 88px;
-      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 280px;
+      min-height: 110px;
+      margin-bottom: 6px;
     }
     .jm-grade-signature {
       position: absolute;
       left: 50%;
-      top: 52%;
+      top: 50%;
       transform: translate(-50%, -50%);
-      width: min(320px, 95%);
+      width: min(380px, 110%);
+      max-height: 120px;
       height: auto;
-      opacity: 0.95;
+      object-fit: contain;
+      opacity: 0.92;
       z-index: 0;
       pointer-events: none;
     }
     .jm-review-result .grade {
       position: relative;
       z-index: 1;
-      font-size: 28px;
-      font-weight: 800;
-      color: #1b5e20;
+      font-family: ${EXAM_TEACHER_GRADE_FONT};
+      font-size: 2.65rem;
+      font-weight: 700;
+      color: ${EXAM_TEACHER_GRADE_RED};
       text-align: center;
-      padding: 8px 12px 0;
+      padding: 4px 16px;
+      line-height: 1.1;
+      text-shadow: 0 0 12px rgba(255,255,255,0.85), 0 1px 2px rgba(255,255,255,0.6);
     }
     .jm-review-result .meta {
       margin-top: 6px;

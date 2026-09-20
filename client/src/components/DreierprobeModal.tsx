@@ -38,7 +38,11 @@ import {
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table as DocxTable, TableRow as DocxTableRow, TableCell as DocxTableCell, WidthType } from 'docx';
 import { saveAs } from 'file-saver';
 import JSZip from 'jszip';
-import { examGradeLabelForCorrection, examGradeNumericForCorrection } from '../lib/examGradeLabel';
+import {
+  examGradeLabelForCorrection,
+  examGradeNumericForCorrection,
+  formatExamClassAverageDecimal,
+} from '../lib/examGradeLabel';
 import { injectHandwritingFontsIntoDocument } from '../lib/handwritingFonts';
 
 interface KASubmission {
@@ -4473,11 +4477,13 @@ Vera Christ`);
   const middleIndex = Math.floor(submissionsWithGrades.length / 2);
   const middleSubmission = submissionsWithGrades[middleIndex];
 
-  // Notenschnitt (basierend auf Durchschnittspunkten)
-  const averagePoints = submissionsWithGrades.length > 0
-    ? submissionsWithGrades.reduce((sum, sub) => sum + sub.totalPoints, 0) / submissionsWithGrades.length
-    : 0;
-  const averageGradeData = calculateGrade(averagePoints, maxTotalPoints);
+  const classAverageDecimal =
+    submissionsWithGrades.length > 0
+      ? formatExamClassAverageDecimal(
+          submissionsWithGrades.reduce((sum, sub) => sum + sub.grade, 0) /
+            submissionsWithGrades.length,
+        )
+      : '–';
 
   // Notenverteilung
   const gradeDistribution: Record<string, number> = {};
@@ -4485,6 +4491,15 @@ Vera Christ`);
     const gradeStr = sub.gradeString;
     gradeDistribution[gradeStr] = (gradeDistribution[gradeStr] || 0) + 1;
   });
+
+  const wholeGradeSummary = [1, 2, 3, 4, 5, 6]
+    .map((g) => ({
+      grade: g,
+      count: submissionsWithGrades.filter(
+        (sub) => Math.min(6, Math.max(1, Math.round(sub.grade))) === g,
+      ).length,
+    }))
+    .filter((row) => row.count > 0);
 
   // Drittelregelung
   const totalSubmissions = submissionsWithGrades.length;
@@ -4718,7 +4733,7 @@ Vera Christ`);
                     ⌀ Schnitt:
                   </Typography>
                   <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.75rem', color: '#1976d2' }}>
-                    {averageGradeData.string} ({submissions.length}/{learningGroupStudents.length || submissions.length})
+                    {classAverageDecimal} ({submissionsForStats.length}/{learningGroupStudents.length || submissions.length})
                   </Typography>
                 </Box>
               </Box>
@@ -4731,6 +4746,26 @@ Vera Christ`);
               <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
                   Notenverteilung
+                </Typography>
+                {wholeGradeSummary.length > 0 && (
+                  <Box sx={{ mb: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {wholeGradeSummary.map(({ grade, count }) => (
+                      <Chip
+                        key={grade}
+                        size="small"
+                        label={`${grade}er: ${count}`}
+                        sx={{
+                          fontSize: '0.72rem',
+                          height: 24,
+                          fontWeight: 600,
+                          bgcolor: '#f5f5f5',
+                        }}
+                      />
+                    ))}
+                  </Box>
+                )}
+                <Typography variant="caption" sx={{ display: 'block', color: '#666', mb: 0.5 }}>
+                  Einzelnoten (mit Tendenz)
                 </Typography>
                 <TableContainer>
                   <Table size="small">

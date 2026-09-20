@@ -44,7 +44,11 @@ import {
 } from '../lib/presentationSlideTemplates';
 import { resolvePreviousLessonFolder } from '../lib/previousLessonFolder';
 import { parseExamAnswerKey } from '../lib/examAnswerKey';
-import { examGradeLabelFromPoints, formatExamGradeNumber } from '../lib/examGradeLabel';
+import {
+  examGradeLabelFromPoints,
+  formatExamClassAverageDecimal,
+  formatExamGradeNumber,
+} from '../lib/examGradeLabel';
 
 type LessonFile = { type: string; name: string; path: string };
 
@@ -275,13 +279,13 @@ export default function StudentLessonMaterialsPanel({
               Number(row.classAveragePoints) || 0,
               maxPoints,
             );
-            classAverageLabel = avg.numeric.toFixed(1).replace('.', ',');
+            classAverageLabel = formatExamClassAverageDecimal(avg.numeric);
           } else if (
             row.classAverageGrade != null &&
             Number(row.classAverageGrade) > 0 &&
             Number.isFinite(Number(row.classAverageGrade))
           ) {
-            classAverageLabel = Number(row.classAverageGrade).toFixed(1).replace('.', ',');
+            classAverageLabel = formatExamClassAverageDecimal(Number(row.classAverageGrade));
           }
 
           enriched.push({
