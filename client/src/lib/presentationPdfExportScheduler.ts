@@ -10,12 +10,20 @@ function collectSlideImageUrls(slide: PresentationSlide): string[] {
   return [...urls].filter(Boolean);
 }
 
-function preloadImage(url: string): Promise<void> {
+function preloadImage(url: string, timeoutMs = 12_000): Promise<void> {
   return new Promise((resolve) => {
+    const finish = () => resolve();
+    const timer = window.setTimeout(finish, timeoutMs);
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = () => resolve();
-    img.onerror = () => resolve();
+    img.onload = () => {
+      window.clearTimeout(timer);
+      finish();
+    };
+    img.onerror = () => {
+      window.clearTimeout(timer);
+      finish();
+    };
     img.src = url;
   });
 }
@@ -25,26 +33,52 @@ export async function waitForSlideRenderAssets(slide: PresentationSlide): Promis
   const urls = collectSlideImageUrls(slide);
   await Promise.all(urls.map(preloadImage));
   try {
-    await document.fonts.ready;
+    await Promise.race([
+      document.fonts.ready,
+      new Promise<void>((r) => window.setTimeout(r, 3000)),
+    ]);
   } catch {
     /* ignore */
   }
   await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 }
 
-export async function waitForDomImages(root: ParentNode): Promise<void> {
+export async function waitForDomImages(root: ParentNode, timeoutMs = 10_000): Promise<void> {
   const imgs = [...root.querySelectorAll('img')];
   await Promise.all(
     imgs.map(
       (img) =>
         new Promise<void>((resolve) => {
-          if (img.complete && img.naturalWidth > 0) {
-            resolve();
+          const done = () => resolve();
+          const timer = window.setTimeout(done, timeoutMs);
+          const src = (img.getAttribute('src') || '').trim();
+          if (!src) {
+            window.clearTimeout(timer);
+            done();
             return;
           }
-          img.addEventListener('load', () => resolve(), { once: true });
-          img.addEventListener('error', () => resolve(), { once: true });
-        })
-    )
+          if (img.complete) {
+            window.clearTimeout(timer);
+            done();
+            return;
+          }
+          img.addEventListener(
+            'load',
+            () => {
+              window.clearTimeout(timer);
+              done();
+            },
+            { once: true },
+          );
+          img.addEventListener(
+            'error',
+            () => {
+              window.clearTimeout(timer);
+              done();
+            },
+            { once: true },
+          );
+        }),
+    ),
   );
 }

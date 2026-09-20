@@ -97,6 +97,7 @@ export default function PresentationDownloadDialog({
     setProgress({ phase: 'Start…' });
     const ordered = sortedSlides.filter((s) => pickedIds.includes(s.id)).map((s) => s.id);
     try {
+      await new Promise<void>((r) => requestAnimationFrame(() => r()));
       await runPresentationDownload(
         deck,
         annotations,

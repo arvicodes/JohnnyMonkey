@@ -187,11 +187,11 @@ export async function captureSlideCanvas(
     'top:0',
     `width:${SLIDE_REF_WIDTH}px`,
     `height:${logicalH}px`,
-    'overflow:hidden',
+    'overflow:visible',
     'pointer-events:none',
     'z-index:-1',
-    'clip-path:inset(100%)',
-    'contain:layout style paint',
+    'opacity:0.01',
+    'transform:translateX(-120vw)',
   ].join(';');
   document.body.appendChild(host);
 
@@ -242,23 +242,31 @@ export async function captureSlideCanvas(
     if (!target) throw new Error('Folie konnte nicht gerendert werden');
 
     const html2canvas = (await import('html2canvas')).default;
-    const canvas = await html2canvas(target, {
-      scale: captureScale,
-      useCORS: true,
-      allowTaint: false,
-      logging: false,
-      backgroundColor: '#ffffff',
-      scrollX: 0,
-      scrollY: 0,
-      width: SLIDE_REF_WIDTH,
-      height: logicalH,
-      windowWidth: SLIDE_REF_WIDTH,
-      windowHeight: logicalH,
-      imageTimeout: 20000,
-      onclone: (clonedDoc, clonedElement) => {
-        prepareSlideCloneForCapture(clonedDoc, clonedElement);
-      },
-    });
+    const canvas = await Promise.race([
+      html2canvas(target, {
+        scale: captureScale,
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        backgroundColor: '#ffffff',
+        scrollX: 0,
+        scrollY: 0,
+        width: SLIDE_REF_WIDTH,
+        height: logicalH,
+        windowWidth: SLIDE_REF_WIDTH,
+        windowHeight: logicalH,
+        imageTimeout: 8000,
+        onclone: (clonedDoc, clonedElement) => {
+          prepareSlideCloneForCapture(clonedDoc, clonedElement);
+        },
+      }),
+      new Promise<HTMLCanvasElement>((_, reject) => {
+        window.setTimeout(
+          () => reject(new Error('Folien-Rendering hat zu lange gedauert (Timeout).')),
+          90_000,
+        );
+      }),
+    ]);
 
     const normalizedCanvas = normalizeCaptureCanvas(
       canvas,

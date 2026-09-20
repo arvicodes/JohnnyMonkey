@@ -85,9 +85,10 @@ async function captureSlides(
   const out: Array<{ slide: PresentationSlide; canvas: HTMLCanvasElement; notes: string }> = [];
   for (let i = 0; i < slides.length; i++) {
     const slide = slides[i];
-    onProgress?.({ phase: 'Folien rendern…', current: i + 1, total });
+    onProgress?.({ phase: 'Folie vorbereiten…', current: i + 1, total });
     const strokes = annotations.bySlideId[slide.id] ?? [];
     const { revealStep, revealEnabled } = revealCaptureOptions(slide, content);
+    onProgress?.({ phase: 'Folie als Bild erfassen…', current: i + 1, total });
     const canvas = await captureSlideCanvas(
       normalized,
       slide,
@@ -95,7 +96,7 @@ async function captureSlides(
       total,
       strokes,
       includeLessonStrokes,
-      2,
+      1,
       {
         revealStep,
         revealEnabled,
