@@ -39,6 +39,7 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Tabl
 import { saveAs } from 'file-saver';
 import JSZip from 'jszip';
 import { examGradeLabelForCorrection, examGradeNumericForCorrection } from '../lib/examGradeLabel';
+import { injectHandwritingFontsIntoDocument } from '../lib/handwritingFonts';
 
 interface KASubmission {
   id: string;
@@ -725,6 +726,7 @@ Vera Christ`);
     // Parse HTML und wende alle Änderungen an (gleiche Logik wie exportAllToPDF)
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlText, 'text/html');
+    injectHandwritingFontsIntoDocument(doc);
     const bodyText = doc.body.innerHTML;
     doc.body.innerHTML = bodyText.replace(/Frau Christ/g, studentName);
 
@@ -1029,7 +1031,7 @@ Vera Christ`);
             commentDiv.style.cssText = 'margin-top: 16px; margin-bottom: 16px; padding: 12px 16px; background-color: #c8e6c9; border: 2px solid #4caf50; border-left: 5px solid #4caf50; border-radius: 6px; font-size: 0.95em; line-height: 1.6; display: block; width: 100%;';
             commentDiv.innerHTML = `
               <div style="font-weight: bold; font-size: 1.05em; color: #2e7d32; margin-bottom: 8px; border-bottom: 1px solid #81c784; padding-bottom: 4px;">Aufgabe 3 - Kommentar</div>
-              <div style="color: #1b5e20; white-space: pre-wrap;">${task3Comment}</div>
+              <div class="jm-teacher-handwriting" style="color: #1b5e20; white-space: pre-wrap;">${task3Comment}</div>
             `;
             
             let parent = lastInput.parentElement;
@@ -1358,7 +1360,7 @@ Vera Christ`);
         `;
         commentDiv.innerHTML = `
           <div style="font-weight: bold; font-size: 1.05em; color: #2e7d32; margin-bottom: 8px; border-bottom: 1px solid #81c784; padding-bottom: 4px;">Aufgabe 3 - Kommentar</div>
-          <div style="color: #1b5e20; white-space: pre-wrap;">${task3CommentIframe}</div>
+          <div class="jm-teacher-handwriting" style="color: #1b5e20; white-space: pre-wrap;">${task3CommentIframe}</div>
         `;
         
         if (lastTask3Input.parentElement) {
@@ -1449,7 +1451,7 @@ Vera Christ`);
       correctionText += '</div>';
       
         if (corr.comment) {
-        correctionText += `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #90caf9;"><strong style="color: #1976d2;">Kommentar:</strong><br><span style="color: #333; white-space: pre-wrap;">${corr.comment}</span></div>`;
+        correctionText += `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #90caf9;"><strong style="color: #1976d2;">Kommentar:</strong><br><span class="jm-teacher-handwriting" style="color: #333; white-space: pre-wrap;">${corr.comment}</span></div>`;
         }
         
           correctionDiv.innerHTML = correctionText;
@@ -1818,7 +1820,7 @@ Vera Christ`);
             `;
             commentDiv.innerHTML = `
               <div style="font-weight: bold; font-size: 1.2em; color: #2e7d32; margin-bottom: 10px; border-bottom: 2px solid #81c784; padding-bottom: 6px;">Aufgabe 3 - Kommentar</div>
-              <div style="color: #1b5e20; white-space: pre-wrap; font-size: 1.05em;">${task3Comment}</div>
+              <div class="jm-teacher-handwriting" style="color: #1b5e20; white-space: pre-wrap; font-size: 1.05em;">${task3Comment}</div>
             `;
             
             // Finde das letzte Element von Aufgabe 3
@@ -1951,6 +1953,7 @@ Vera Christ`);
     // Parse HTML und wende alle Änderungen an (gleiche Logik wie createSingleStudentPDF)
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlText, 'text/html');
+    injectHandwritingFontsIntoDocument(doc);
     const bodyText = doc.body.innerHTML;
     doc.body.innerHTML = bodyText.replace(/Frau Christ/g, studentName);
 
@@ -2247,7 +2250,7 @@ Vera Christ`);
             commentDiv.style.cssText = 'margin-top: 16px; margin-bottom: 16px; padding: 12px 16px; background-color: #c8e6c9; border: 2px solid #4caf50; border-left: 5px solid #4caf50; border-radius: 6px; font-size: 0.95em; line-height: 1.6; display: block; width: 100%;';
             commentDiv.innerHTML = `
               <div style="font-weight: bold; font-size: 1.05em; color: #2e7d32; margin-bottom: 8px; border-bottom: 1px solid #81c784; padding-bottom: 4px;">Aufgabe 3 - Kommentar</div>
-              <div style="color: #1b5e20; white-space: pre-wrap;">${task3Comment}</div>
+              <div class="jm-teacher-handwriting" style="color: #1b5e20; white-space: pre-wrap;">${task3Comment}</div>
             `;
             
             let parent = lastInput.parentElement;
@@ -2756,7 +2759,7 @@ Vera Christ`);
             `;
             commentDiv.innerHTML = `
               <div style="font-weight: bold; font-size: 1.2em; color: #2e7d32; margin-bottom: 10px; border-bottom: 2px solid #81c784; padding-bottom: 6px;">Aufgabe 3 - Kommentar</div>
-              <div style="color: #1b5e20; white-space: pre-wrap; font-size: 1.05em;">${task3CommentFinal}</div>
+              <div class="jm-teacher-handwriting" style="color: #1b5e20; white-space: pre-wrap; font-size: 1.05em;">${task3CommentFinal}</div>
             `;
             
             let insertAfter = lastInput as HTMLElement;
@@ -3214,6 +3217,7 @@ Vera Christ`);
       for (const submission of sortedSubmissions) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlText, 'text/html');
+        injectHandwritingFontsIntoDocument(doc);
         const studentName = submission.student.name;
         
         // Ersetze "Frau Christ" durch Schülername
@@ -4106,6 +4110,7 @@ Vera Christ`);
               titleDiv.textContent = '💬 Kommentar:';
               
               const commentDiv = doc.createElement('div');
+              commentDiv.className = 'jm-teacher-handwriting';
               commentDiv.style.cssText = 'color: #1b5e20; white-space: pre-wrap;';
               commentDiv.textContent = task3CommentForReplacement;
               

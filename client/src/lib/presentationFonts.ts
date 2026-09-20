@@ -1,5 +1,7 @@
 /** Schriftarten für Präsentations-Editoren (Formatleiste). Aptos + Consolas zuerst. */
 
+import { HANDWRITING_FONT_FAMILIES } from './handwritingFonts';
+
 export type PresentationFontOption = {
   label: string;
   value: string;
@@ -14,6 +16,7 @@ export const PRESENTATION_FONT_FAMILIES: PresentationFontOption[] = [
   { label: 'Georgia', value: 'Georgia, "Times New Roman", serif' },
   { label: 'Times New Roman', value: '"Times New Roman", Times, serif' },
   { label: 'Courier New', value: '"Courier New", Courier, monospace' },
+  ...HANDWRITING_FONT_FAMILIES,
 ];
 
 /** Standard-Schrift für Tippen & Einfügen in Folien. */

@@ -4,6 +4,10 @@ import {
   parseExamAnswerKey,
   sortExamAnswerFieldIds,
 } from './examAnswerKey';
+import {
+  EXAM_TEACHER_COMMENT_FONT,
+  injectHandwritingFontsIntoDocument,
+} from './handwritingFonts';
 
 export type ExamReviewCorrection = {
   taskNumber: string;
@@ -32,6 +36,14 @@ function formatPointsBadge(achieved: number, maxPts: number): string {
     return r.toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
   };
   return `${fmt(achieved)}/${fmt(maxPts)}`;
+}
+
+function escapeHtmlText(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function normAnswer(v: unknown): string {
@@ -221,6 +233,58 @@ function fillAndMark(
   });
 }
 
+function findTaskCommentAnchor(doc: Document, taskNumber: string): HTMLElement | null {
+  const tn = String(taskNumber || '').trim();
+  if (!tn || tn === '__general_comment__') return null;
+  if (tn === '3_comment') {
+    const fields = Array.from(doc.querySelectorAll<HTMLElement>('[id^="a3"]'));
+    return fields.length ? fields[fields.length - 1] : null;
+  }
+  const sub3 = tn.match(/^3([a-d])$/i);
+  if (sub3) {
+    return (
+      doc.getElementById(`a3${sub3[1].toLowerCase()}`) ||
+      doc.getElementById(`a3${sub3[1].toUpperCase()}`)
+    );
+  }
+  if (/^\d+$/.test(tn)) {
+    const n = tn;
+    const re = new RegExp(`^a${n}[a-z]?$`, 'i');
+    const candidates = Array.from(doc.querySelectorAll<HTMLElement>(`[id^="a${n}"]`)).filter(
+      (el) => re.test(el.id),
+    );
+    if (candidates.length) return candidates[candidates.length - 1];
+    return doc.getElementById(`a${n}`);
+  }
+  if (/^a\d/i.test(tn)) return doc.getElementById(tn);
+  return doc.getElementById(`a${tn}`);
+}
+
+function insertTaskTeacherComment(doc: Document, anchor: HTMLElement, text: string): void {
+  const wrap = doc.createElement('div');
+  wrap.className = 'jm-task-teacher-comment';
+  wrap.innerHTML = `<div class="jm-task-teacher-comment-label">Kommentar</div><div class="jm-teacher-handwriting">${escapeHtmlText(text)}</div>`;
+  const container =
+    anchor.closest('.item, .input-group, .aufgabe, .task, section') ?? anchor.parentElement;
+  if (!container) return;
+  container.appendChild(wrap);
+}
+
+function injectPerTaskTeacherComments(doc: Document, corrections: ExamReviewCorrection[]): void {
+  const seen = new Set<string>();
+  corrections.forEach((c) => {
+    const text = (c.comment || '').trim();
+    if (!text) return;
+    const tn = String(c.taskNumber || '').trim();
+    if (!tn || tn === '__general_comment__') return;
+    if (seen.has(tn)) return;
+    const anchor = findTaskCommentAnchor(doc, tn);
+    if (!anchor) return;
+    seen.add(tn);
+    insertTaskTeacherComment(doc, anchor, text);
+  });
+}
+
 /** Baut die fertige Korrektur-HTML (nur lesen) — für Dialog/iframe, ohne Popup. */
 export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise<string> {
   const res = await fetch(
@@ -240,6 +304,7 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
   }
 
   const doc = new DOMParser().parseFromString(html, 'text/html');
+  injectHandwritingFontsIntoDocument(doc);
 
   doc
     .querySelectorAll(
@@ -413,7 +478,13 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       font-size: 14px;
       color: #1b5e20;
       font-weight: 500;
+    }
+    .jm-review-result .teacher-comment .jm-teacher-handwriting {
+      font-family: ${EXAM_TEACHER_COMMENT_FONT};
+      font-size: 1.2em;
+      line-height: 1.45;
       white-space: pre-wrap;
+      margin-top: 4px;
     }
     .header-name {
       margin-top: 10px !important;
@@ -453,6 +524,7 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
   doc.querySelectorAll('.footer, .footer-note').forEach((el) => el.remove());
 
   fillAndMark(doc, answers, key, opts.corrections || []);
+  injectPerTaskTeacherComments(doc, opts.corrections || []);
 
   doc.querySelectorAll('input, textarea, select, button').forEach((el) => {
     (el as HTMLInputElement).disabled = true;
@@ -470,12 +542,6 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     (c) => c.taskNumber === '__general_comment__',
   )?.comment;
   const generalComment = (generalCommentRaw || '').trim();
-  const escapeHtml = (s: string) =>
-    s
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
   const box = doc.createElement('div');
   box.className = 'jm-review-result';
   box.innerHTML = `
@@ -488,7 +554,7 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     }
     ${
       generalComment
-        ? `<div class="teacher-comment"><strong>Kommentar:</strong> ${escapeHtml(generalComment)}</div>`
+        ? `<div class="teacher-comment"><strong>Kommentar:</strong><div class="jm-teacher-handwriting">${escapeHtmlText(generalComment)}</div></div>`
         : ''
     }
   `;
