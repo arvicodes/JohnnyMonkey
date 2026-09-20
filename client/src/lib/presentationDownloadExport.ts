@@ -4,7 +4,6 @@ import {
   PresentationDeck,
   PresentationSlide,
   PresentationStroke,
-  htmlToPlain,
   normalizeDeck,
   normalizeSlide,
   slideLogicalHeight,
@@ -16,6 +15,11 @@ import type { PresentationPlayVariants } from './presentationPlayVariants';
 import { getSlideMaxRevealSteps } from './presentationReveal';
 import { captureSlideCanvas, triggerBlobDownload } from './presentationExport';
 import { buildImagePptxBlob, canvasToPngBytes } from './presentationImagePptx';
+import {
+  captureSpeakerNotesCanvas,
+  speakerNotesHtmlForExport,
+  speakerNotesTextForExport,
+} from './presentationNotesExport';
 
 export type PresentationDownloadContentOptions = {
   /** Einblendungen im Endzustand (alle Schritte sichtbar). */
@@ -122,15 +126,12 @@ export function mergeExportInkStrokes(
   return out;
 }
 
-function speakerNotesPlain(slide: PresentationSlide): string {
-  const parts = [
-    htmlToPlain(slide.speakerNotesHtml || ''),
-    (slide.speakerNotes || '').trim(),
-    htmlToPlain(slide.materialHtml || ''),
-    htmlToPlain(slide.preparationHtml || ''),
-  ].filter(Boolean);
-  return parts.join('\n\n').trim();
-}
+type SlideCapture = {
+  slide: PresentationSlide;
+  canvas: HTMLCanvasElement;
+  notesText: string;
+  notesHtml: string;
+};
 
 async function captureSlides(
   deck: PresentationDeck,
@@ -140,10 +141,10 @@ async function captureSlides(
   includeLessonStrokes: boolean,
   onProgress?: (p: PresentationDownloadProgress) => void,
   playVariants?: PresentationPlayVariants | null,
-): Promise<Array<{ slide: PresentationSlide; canvas: HTMLCanvasElement; notes: string }>> {
+): Promise<SlideCapture[]> {
   const normalized = normalizeDeck(deck);
   const total = slides.length;
-  const out: Array<{ slide: PresentationSlide; canvas: HTMLCanvasElement; notes: string }> = [];
+  const out: SlideCapture[] = [];
   for (let i = 0; i < slides.length; i++) {
     const slide = slides[i];
     onProgress?.({ phase: 'Folie vorbereiten…', current: i + 1, total });
@@ -165,21 +166,21 @@ async function captureSlides(
         exportInkStrokes: strokes,
       },
     );
+    const notesHtml = content.includeSpeakerNotes ? speakerNotesHtmlForExport(slide) : '';
+    const notesText = notesHtml ? speakerNotesTextForExport(slide) : '';
     out.push({
       slide,
       canvas,
-      notes: content.includeSpeakerNotes ? speakerNotesPlain(slide) : '',
+      notesText,
+      notesHtml,
     });
   }
   return out;
 }
 
-async function buildPdfDownload(
-  captures: Array<{ canvas: HTMLCanvasElement; notes: string }>,
-  baseName: string,
-): Promise<Blob> {
+async function buildPdfDownload(captures: SlideCapture[], baseName: string): Promise<Blob> {
   let pdf: jsPDF | null = null;
-  for (const { canvas, notes } of captures) {
+  for (const { canvas, notesHtml, notesText } of captures) {
     const w = canvas.width;
     const h = canvas.height;
     const img = canvas.toDataURL('image/png');
@@ -193,33 +194,48 @@ async function buildPdfDownload(
       pdf.addPage([w, h], w > h ? 'landscape' : 'portrait');
     }
     pdf.addImage(img, 'PNG', 0, 0, w, h, undefined, 'FAST');
-    if (notes.trim()) {
+    if (notesHtml || notesText) {
+      const notesCanvas = notesHtml ? await captureSpeakerNotesCanvas(notesHtml) : null;
       const margin = 48;
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      pdf.addPage([pageW, pageH], w > h ? 'landscape' : 'portrait');
-      pdf.setFontSize(11);
-      pdf.setTextColor(40, 40, 40);
-      const lines = pdf.splitTextToSize(notes, pageW - margin * 2);
-      pdf.text(lines, margin, margin + 12);
-      pdf.setFontSize(9);
-      pdf.setTextColor(120, 120, 120);
-      pdf.text('Sprechernotizen', margin, margin);
+      const headerH = 28;
+      if (notesCanvas) {
+        const nw = notesCanvas.width;
+        const nh = notesCanvas.height;
+        const pageW = Math.max(w, nw + margin * 2);
+        const pageH = nh + margin * 2 + headerH;
+        pdf.addPage([pageW, pageH], pageW > pageH ? 'landscape' : 'portrait');
+        pdf.setFontSize(10);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text('Sprechernotizen', margin, margin + 10);
+        const notesImg = notesCanvas.toDataURL('image/png');
+        const drawW = pageW - margin * 2;
+        const drawH = (nh / nw) * drawW;
+        pdf.addImage(notesImg, 'PNG', margin, margin + headerH, drawW, drawH, undefined, 'FAST');
+      } else if (notesText.trim()) {
+        const pageW = pdf.internal.pageSize.getWidth();
+        const pageH = pdf.internal.pageSize.getHeight();
+        pdf.addPage([pageW, pageH], w > h ? 'landscape' : 'portrait');
+        pdf.setFontSize(9);
+        pdf.setTextColor(120, 120, 120);
+        pdf.text('Sprechernotizen', margin, margin);
+        pdf.setFontSize(11);
+        pdf.setTextColor(40, 40, 40);
+        const lines = pdf.splitTextToSize(notesText, pageW - margin * 2);
+        pdf.text(lines, margin, margin + 14);
+      }
     }
   }
   if (!pdf) throw new Error('Keine Folien zum Export');
   return pdf.output('blob');
 }
 
-async function buildPptxDownload(
-  captures: Array<{ canvas: HTMLCanvasElement; notes: string }>,
-): Promise<Blob> {
+async function buildPptxDownload(captures: SlideCapture[]): Promise<Blob> {
   const slides = await Promise.all(
-    captures.map(async ({ canvas, notes }) => ({
+    captures.map(async ({ canvas, notesText }) => ({
       png: await canvasToPngBytes(canvas),
       widthPx: canvas.width,
       heightPx: canvas.height,
-      notes: notes.trim() || undefined,
+      notes: notesText.trim() || undefined,
     })),
   );
   return buildImagePptxBlob(slides);
