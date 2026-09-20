@@ -45,6 +45,8 @@ import {
   Description,
   FileDownload,
   Visibility,
+  Email,
+  LocalHospital,
 } from '@mui/icons-material';
 import { teacherIdFromStorage } from '../lib/lessonExamBeacon';
 import { buildExamReviewedHtml } from '../lib/examReviewedView';
@@ -74,6 +76,7 @@ interface KASubmission {
   answers: string; // JSON string
   autoPoints: number;
   totalPoints: number;
+  markedSick?: boolean;
   corrections: KACorrection[];
 }
 
@@ -104,6 +107,8 @@ const PURPLE_REVIEW = '#7b1fa2';
 const PARTIAL_CREDIT_BG = '#fff9c4';
 const PARTIAL_CREDIT_BORDER = '#fff176';
 const PARTIAL_CREDIT_TEXT = '#f57f17';
+const SICK_HIGHLIGHT_BG = '#fffde7';
+const SICK_BORDER = '#fbc02d';
 
 /** Deutsche Anzeige: 0,5 / 1 / 1,25 */
 function formatExamPointsDisplay(n: number): string {
@@ -182,6 +187,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [showDreierprobe, setShowDreierprobe] = useState(false);
+  const [dreierprobeEmailTab, setDreierprobeEmailTab] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [examGroups, setExamGroups] = useState<ExamGroupTab[]>([]);
   const [activeGroupId, setActiveGroupId] = useState<string>('');
@@ -1279,8 +1285,42 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   const maxTotalPoints = calculateMaxTotalPoints();
   const selectedLiveTotal = selectedSubmission ? liveAchievedTotal(selectedSubmission) : 0;
 
+  const toggleMarkedSick = async (submission: KASubmission, markedSick: boolean) => {
+    const loginCode = localStorage.getItem('loginCode') || '';
+    if (!loginCode) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/ka-corrections/submissions/${submission.id}/marked-sick`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': loginCode,
+        },
+        body: JSON.stringify({ markedSick }),
+      });
+      if (!res.ok) throw new Error('Speichern fehlgeschlagen');
+      const data = await res.json();
+      const updated = data.submission as KASubmission;
+      setSubmissions((prev) => prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)));
+      if (selectedSubmission?.id === updated.id) {
+        setSelectedSubmission({ ...selectedSubmission, ...updated });
+      }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Krank-Status konnte nicht gespeichert werden');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const missingGroupStudents = useMemo(() => {
+    const submitted = new Set(groupSubmissions.map((s) => s.student.id));
+    return learningGroupStudents.filter((s) => !submitted.has(s.id));
+  }, [groupSubmissions, learningGroupStudents]);
+
   const classAverageLabelForGroup = useMemo(() => {
-    const subs = groupSubmissions.filter((s) => typeof s.totalPoints === 'number');
+    const subs = groupSubmissions.filter(
+      (s) => typeof s.totalPoints === 'number' && !s.markedSick,
+    );
     if (subs.length < 2 || maxTotalPoints <= 0) return undefined;
     const gradeNums = subs.map((s) =>
       examGradeNumericForCorrection(liveAchievedTotal(s), maxTotalPoints),
@@ -2192,6 +2232,29 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                   >
                     Dreierprobe
                   </Button>
+                  {missingGroupStudents.length > 0 && (
+                    <Button
+                      onClick={() => {
+                        setDreierprobeEmailTab(true);
+                        setShowDreierprobe(true);
+                      }}
+                      variant="outlined"
+                      size="small"
+                      startIcon={<Email />}
+                      tabIndex={-1}
+                      sx={{
+                        fontSize: '0.75rem',
+                        px: 1,
+                        py: 0.5,
+                        minWidth: 'auto',
+                        whiteSpace: 'nowrap',
+                        borderColor: '#f57c00',
+                        color: '#e65100',
+                      }}
+                    >
+                      Fehlende anschreiben ({missingGroupStudents.length})
+                    </Button>
+                  )}
                 <Button 
                   onClick={handleResetAllSubmissions}
                   variant="outlined"
@@ -2279,6 +2342,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
             const isSelected = currentStudentIndex === index;
             const purpleRing = hasSubmission && shouldShowPurpleReviewRing(submission);
             const reviewFinished = hasSubmission && isReviewCompleteFlag(submission);
+            const isSick = Boolean(submission?.markedSick);
             
             // Prüfe ob alle Korrekturfelder von mir ausgefüllt sind
             const checkAllFieldsFilled = () => {
@@ -2444,9 +2508,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                 title={
                   !hasSubmission
                     ? 'Keine Abgabe'
-                    : reviewFinished
-                      ? 'Bewertung fertig (Doppelklick zum Zurücknehmen)'
-                      : 'Doppelklick: Bewertung als fertig markieren'
+                    : isSick
+                      ? 'Krank — zählt nicht im Klassenschnitt'
+                      : reviewFinished
+                        ? 'Bewertung fertig (Doppelklick zum Zurücknehmen)'
+                        : 'Doppelklick: Bewertung als fertig markieren'
                 }
                 tabIndex={-1}
                 sx={{
@@ -2454,24 +2520,28 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                   minHeight: 24,
                   fontSize: '0.7rem',
                   fontWeight: isSelected ? 600 : 400,
-                  bgcolor: !hasSubmission
-                    ? '#ffebee'
-                    : reviewFinished
-                      ? '#f3e5f5'
-                      : allFieldsFilled
-                        ? '#e8f5e9'
-                        : '#fff3e0',
+                  bgcolor: isSick
+                    ? SICK_HIGHLIGHT_BG
+                    : !hasSubmission
+                      ? '#ffebee'
+                      : reviewFinished
+                        ? '#f3e5f5'
+                        : allFieldsFilled
+                          ? '#e8f5e9'
+                          : '#fff3e0',
                   color: !hasSubmission ? '#b71c1c' : '#1a1a1a',
                   opacity: hasSubmission ? 1 : 0.85,
-                  border: isSelected
-                    ? '2px solid #1976d2'
-                    : purpleRing
-                      ? `2px solid ${PURPLE_REVIEW}`
-                      : hasSubmission
-                        ? allFieldsFilled
-                          ? '1px solid #4caf50'
-                          : '1px solid #ffb74d'
-                        : '1px solid #ef9a9a',
+                  border: isSick
+                    ? `2px solid ${SICK_BORDER}`
+                    : isSelected
+                      ? '2px solid #1976d2'
+                      : purpleRing
+                        ? `2px solid ${PURPLE_REVIEW}`
+                        : hasSubmission
+                          ? allFieldsFilled
+                            ? '1px solid #4caf50'
+                            : '1px solid #ffb74d'
+                          : '1px solid #ef9a9a',
                   cursor: hasSubmission ? 'pointer' : 'default',
                   transition: 'all 0.2s ease',
                   '&:hover': {
@@ -2661,6 +2731,25 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                       {submissionStudentName(selectedSubmission)}
                     </Typography>
                   </Box>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        size="small"
+                        checked={Boolean(selectedSubmission.markedSick)}
+                        disabled={saving}
+                        onChange={(_, on) => void toggleMarkedSick(selectedSubmission, on)}
+                      />
+                    }
+                    label={
+                      <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
+                        <LocalHospital sx={{ fontSize: 16, color: '#f9a825' }} />
+                        <Typography component="span" variant="caption" sx={{ fontWeight: 600 }}>
+                          Krank
+                        </Typography>
+                      </Box>
+                    }
+                    sx={{ m: 0, ml: 0.5 }}
+                  />
                   <Tooltip
                     title={
                       !canOpenStudentPreview(selectedSubmission)
@@ -4471,7 +4560,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       {/* Dreierprobe Modal */}
       <DreierprobeModal
         open={showDreierprobe}
-        onClose={() => setShowDreierprobe(false)}
+        onClose={() => {
+          setShowDreierprobe(false);
+          setDreierprobeEmailTab(false);
+        }}
+        initialEmailTab={dreierprobeEmailTab}
         kaFilePath={kaFilePath}
         submissions={submissions}
         examGroups={examGroups}

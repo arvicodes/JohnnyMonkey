@@ -52,6 +52,7 @@ interface KASubmission {
   status: string;
   submittedAt: string;
   answers: string; // JSON string
+  markedSick?: boolean;
   corrections?: Array<{
     id: string;
     taskNumber: string;
@@ -86,6 +87,8 @@ interface DreierprobeModalProps {
   groupStudents?: LearningGroupStudent[];
   /** Maximale Punktzahl der Prüfung (aus HTML); Fallback nur wenn unbekannt */
   maxTotalPoints?: number;
+  /** Direkt zum Tab „Fehlende anschreiben“ */
+  initialEmailTab?: boolean;
 }
 
 // Hilfsfunktion: Extrahiere Vornamen (alles vor dem ersten Leerzeichen)
@@ -170,6 +173,7 @@ const DreierprobeModal: React.FC<DreierprobeModalProps> = ({
   groupId: groupIdProp = null,
   groupStudents: groupStudentsProp = [],
   maxTotalPoints: maxTotalPointsProp,
+  initialEmailTab = false,
 }) => {
   const [activeGroupId, setActiveGroupId] = useState('');
   const [learningGroupStudents, setLearningGroupStudents] = useState<LearningGroupStudent[]>([]);
@@ -201,7 +205,11 @@ Viele Grüße
 Vera Christ`);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setEmailTab(0);
+      return;
+    }
+    if (initialEmailTab) setEmailTab(1);
     const preferred =
       (groupIdProp && examGroups.some((g) => g.id === groupIdProp) ? groupIdProp : '') ||
       examGroups[0]?.id ||
@@ -4449,7 +4457,8 @@ Vera Christ`);
   const maxTotalPoints = calculateMaxTotalPoints();
 
   // Berechne Noten für alle Submissions
-  const submissionsWithGrades = submissions.map(sub => {
+  const submissionsForStats = submissions.filter((sub) => !sub.markedSick);
+  const submissionsWithGrades = submissionsForStats.map(sub => {
     const gradeData = calculateGrade(sub.totalPoints, maxTotalPoints);
     return {
       ...sub,

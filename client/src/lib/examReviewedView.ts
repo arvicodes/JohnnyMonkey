@@ -8,6 +8,7 @@ import {
   EXAM_TEACHER_COMMENT_FONT,
   injectHandwritingFontsIntoDocument,
 } from './handwritingFonts';
+import { EXAM_TEACHER_RED, teacherSignatureImgUrl } from './examTeacherSignature';
 
 export type ExamReviewCorrection = {
   taskNumber: string;
@@ -263,7 +264,7 @@ function findTaskCommentAnchor(doc: Document, taskNumber: string): HTMLElement |
 function insertTaskTeacherComment(doc: Document, anchor: HTMLElement, text: string): void {
   const wrap = doc.createElement('div');
   wrap.className = 'jm-task-teacher-comment';
-  wrap.innerHTML = `<div class="jm-task-teacher-comment-label">Kommentar</div><div class="jm-teacher-handwriting">${escapeHtmlText(text)}</div>`;
+  wrap.innerHTML = `<div class="jm-teacher-handwriting">${escapeHtmlText(text)}</div>`;
   const container =
     anchor.closest('.item, .input-group, .aufgabe, .task, section') ?? anchor.parentElement;
   if (!container) return;
@@ -455,10 +456,32 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       background: #e8f5e9;
       font-family: Arial, sans-serif;
     }
+    .jm-grade-block {
+      position: relative;
+      display: inline-block;
+      min-width: 200px;
+      min-height: 88px;
+      margin-bottom: 4px;
+    }
+    .jm-grade-signature {
+      position: absolute;
+      left: 50%;
+      top: 52%;
+      transform: translate(-50%, -50%);
+      width: min(320px, 95%);
+      height: auto;
+      opacity: 0.95;
+      z-index: 0;
+      pointer-events: none;
+    }
     .jm-review-result .grade {
+      position: relative;
+      z-index: 1;
       font-size: 28px;
       font-weight: 800;
       color: #1b5e20;
+      text-align: center;
+      padding: 8px 12px 0;
     }
     .jm-review-result .meta {
       margin-top: 6px;
@@ -472,19 +495,24 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       color: #546e7a;
     }
     .jm-review-result .teacher-comment {
-      margin-top: 10px;
-      padding-top: 8px;
-      border-top: 1px solid rgba(46, 125, 50, 0.35);
+      margin-top: 14px;
+      padding-top: 0;
+      border-top: none;
       font-size: 14px;
-      color: #1b5e20;
+      color: ${EXAM_TEACHER_RED};
       font-weight: 500;
+    }
+    .jm-review-result .teacher-comment strong {
+      display: none;
     }
     .jm-review-result .teacher-comment .jm-teacher-handwriting {
       font-family: ${EXAM_TEACHER_COMMENT_FONT};
-      font-size: 1.2em;
-      line-height: 1.45;
+      font-size: 1.55em;
+      font-weight: 600;
+      color: ${EXAM_TEACHER_RED};
+      line-height: 1.4;
       white-space: pre-wrap;
-      margin-top: 4px;
+      margin-top: 0;
     }
     .header-name {
       margin-top: 10px !important;
@@ -542,10 +570,14 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     (c) => c.taskNumber === '__general_comment__',
   )?.comment;
   const generalComment = (generalCommentRaw || '').trim();
+  const sigUrl = teacherSignatureImgUrl(origin);
   const box = doc.createElement('div');
   box.className = 'jm-review-result';
   box.innerHTML = `
-    <div class="grade">Note ${opts.gradeLabel || '–'}</div>
+    <div class="jm-grade-block">
+      <img class="jm-grade-signature" src="${sigUrl}" alt="" />
+      <div class="grade">Note ${opts.gradeLabel || '–'}</div>
+    </div>
     <div class="meta">${pointsText}</div>
     ${
       opts.classAverageText
@@ -554,7 +586,7 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     }
     ${
       generalComment
-        ? `<div class="teacher-comment"><strong>Kommentar:</strong><div class="jm-teacher-handwriting">${escapeHtmlText(generalComment)}</div></div>`
+        ? `<div class="teacher-comment"><div class="jm-teacher-handwriting">${escapeHtmlText(generalComment)}</div></div>`
         : ''
     }
   `;

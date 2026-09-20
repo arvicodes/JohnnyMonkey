@@ -18,6 +18,9 @@ router.post('/corrections', KACorrectionController.saveCorrection);
 // Status der Abgabe aktualisieren
 router.patch('/submissions/:id/status', KACorrectionController.updateStatus);
 
+// Krank markieren (nicht im Klassenschnitt)
+router.patch('/submissions/:id/marked-sick', KACorrectionController.setMarkedSick);
+
 // Abgabe nachträglich bearbeiten (Lehrer)
 router.patch('/submissions/:id/answers', KACorrectionController.updateSubmissionAnswers);
 

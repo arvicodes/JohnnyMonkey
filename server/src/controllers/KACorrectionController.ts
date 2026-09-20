@@ -731,6 +731,30 @@ export class KACorrectionController {
   /**
    * Status der Abgabe aktualisieren (z.B. wenn Zeit abgelaufen)
    */
+  /** Lehrer: Abgabe als krank markieren (hellgelb in UI, nicht im Klassenschnitt). */
+  static async setMarkedSick(req: Request, res: Response) {
+    try {
+      const teacher = await requireTeacher(req);
+      if (!teacher) {
+        return res.status(403).json({ error: 'Nur Lehrer können Krank markieren' });
+      }
+      const { id } = req.params;
+      const markedSick = Boolean(req.body?.markedSick);
+      const submission = await prisma.kASubmission.update({
+        where: { id },
+        data: { markedSick },
+        include: {
+          student: { select: { id: true, name: true, loginCode: true } },
+          corrections: { where: { teacherId: teacher.id } },
+        },
+      });
+      res.json({ success: true, submission });
+    } catch (error) {
+      console.error('Error setting markedSick:', error);
+      res.status(500).json({ error: 'Krank-Status konnte nicht gespeichert werden' });
+    }
+  }
+
   static async updateStatus(req: Request, res: Response) {
     try {
       const { id } = req.params;
@@ -1115,7 +1139,7 @@ export class KACorrectionController {
 
       // Klassenschnitt je Prüfungsdatei (alle freigegebenen Abgaben derselben Datei)
       const allReleasedPeers = await prisma.kASubmission.findMany({
-        where: { isReleased: true },
+        where: { isReleased: true, markedSick: false },
         select: { kaFilePath: true, totalPoints: true },
       });
       const classStats = new Map<
