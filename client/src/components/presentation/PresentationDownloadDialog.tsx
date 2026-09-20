@@ -287,7 +287,7 @@ export default function PresentationDownloadDialog({
                 onChange={(e) => setIncludeLessonStrokes(e.target.checked)}
               />
             }
-            label="Unterrichts-Tinte"
+            label="Stiftzeichnungen auf der Folie"
           />
         </FormGroup>
 

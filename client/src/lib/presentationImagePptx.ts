@@ -38,7 +38,23 @@ const SLIDE_LAYOUT_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?
 <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
 </p:sldLayout>`;
 
-function slidePictureXml(cx: number, cy: number, picId: number): string {
+function fitImageEmu(widthPx: number, heightPx: number): { offX: number; offY: number; cx: number; cy: number } {
+  const aspect = heightPx / Math.max(1, widthPx);
+  let cx = SLIDE_CX;
+  let cy = Math.round(SLIDE_CX * aspect);
+  let offX = 0;
+  let offY = 0;
+  if (cy > SLIDE_CY_16_9) {
+    cy = SLIDE_CY_16_9;
+    cx = Math.round(SLIDE_CY_16_9 / aspect);
+    offX = Math.round((SLIDE_CX - cx) / 2);
+  } else {
+    offY = Math.round((SLIDE_CY_16_9 - cy) / 2);
+  }
+  return { offX, offY, cx, cy };
+}
+
+function slidePictureXml(offX: number, offY: number, cx: number, cy: number, picId: number): string {
   return (
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ` +
@@ -52,7 +68,7 @@ function slidePictureXml(cx: number, cy: number, picId: number): string {
     `<p:nvPicPr><p:cNvPr id="${picId}" name="Bild"/>` +
     `<p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>` +
     `<p:blipFill><a:blip r:embed="rId2"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>` +
-    `<p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>` +
+    `<p:spPr><a:xfrm><a:off x="${offX}" y="${offY}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>` +
     `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>` +
     `</p:pic>` +
     `</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`
@@ -92,12 +108,6 @@ export type ImagePptxSlideInput = {
 
 export async function buildImagePptxBlob(slides: ImagePptxSlideInput[]): Promise<Blob> {
   if (!slides.length) throw new Error('Keine Folien für PPTX');
-
-  let slideCy = SLIDE_CY_16_9;
-  for (const s of slides) {
-    const aspect = s.heightPx / Math.max(1, s.widthPx);
-    slideCy = Math.max(slideCy, Math.round(SLIDE_CX * aspect));
-  }
 
   const zip = new JSZip();
   const n = slides.length;
@@ -182,7 +192,7 @@ export async function buildImagePptxBlob(slides: ImagePptxSlideInput[]): Promise
       `xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">` +
       `<p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>` +
       `<p:sldIdLst>${sldIdLst}</p:sldIdLst>` +
-      `<p:sldSz cx="${SLIDE_CX}" cy="${slideCy}"/>` +
+      `<p:sldSz cx="${SLIDE_CX}" cy="${SLIDE_CY_16_9}"/>` +
       `<p:notesSz cx="6858000" cy="9144000"/>` +
       `</p:presentation>`,
   );
@@ -190,8 +200,7 @@ export async function buildImagePptxBlob(slides: ImagePptxSlideInput[]): Promise
   for (let i = 0; i < n; i++) {
     const slide = slides[i];
     const imageName = `image${i + 1}.png`;
-    const aspect = slide.heightPx / Math.max(1, slide.widthPx);
-    const imgCy = Math.round(SLIDE_CX * aspect);
+    const { offX, offY, cx, cy } = fitImageEmu(slide.widthPx, slide.heightPx);
 
     zip.file(`ppt/media/${imageName}`, slide.png);
 
@@ -210,7 +219,7 @@ export async function buildImagePptxBlob(slides: ImagePptxSlideInput[]): Promise
       `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
         `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels.join('')}</Relationships>`,
     );
-    zip.file(`ppt/slides/slide${i + 1}.xml`, slidePictureXml(SLIDE_CX, imgCy, 4));
+    zip.file(`ppt/slides/slide${i + 1}.xml`, slidePictureXml(offX, offY, cx, cy, 4));
 
     if (notesText) {
       zip.file(`ppt/notesSlides/notesSlide${i + 1}.xml`, notesSlideXml(notesText));

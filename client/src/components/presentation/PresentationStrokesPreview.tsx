@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useLayoutEffect, useMemo, useRef } from 'react';
 import {
   PresentationStroke,
   SLIDE_REF_HEIGHT,
@@ -24,7 +24,7 @@ const PresentationStrokesPreview: React.FC<PresentationStrokesPreviewProps> = ({
     [strokes]
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');

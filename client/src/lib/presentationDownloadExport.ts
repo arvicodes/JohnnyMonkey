@@ -3,6 +3,7 @@ import {
   PresentationAnnotations,
   PresentationDeck,
   PresentationSlide,
+  PresentationStroke,
   htmlToPlain,
   normalizeDeck,
   normalizeSlide,
@@ -96,6 +97,31 @@ function revealCaptureOptions(
   return { revealStep: max > 0 ? max : 999, revealEnabled: max > 0 };
 }
 
+export function mergeExportInkStrokes(
+  slide: PresentationSlide,
+  annotations: PresentationAnnotations,
+  playVariants?: PresentationPlayVariants | null,
+  includeLessonStrokes = true,
+): PresentationStroke[] {
+  const lists: PresentationStroke[][] = [slide.inkStrokes ?? []];
+  if (includeLessonStrokes) {
+    lists.push(annotations.bySlideId[slide.id] ?? []);
+    lists.push(playVariants?.bySlideId[slide.id]?.strokes ?? []);
+  }
+  const seen = new Set<string>();
+  const out: PresentationStroke[] = [];
+  for (const list of lists) {
+    for (const stroke of list) {
+      if (!stroke?.points?.length) continue;
+      const key = stroke.id || `${stroke.points[0]?.x}:${stroke.points[0]?.y}:${stroke.points.length}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(stroke);
+    }
+  }
+  return out;
+}
+
 function speakerNotesPlain(slide: PresentationSlide): string {
   const parts = [
     htmlToPlain(slide.speakerNotesHtml || ''),
@@ -113,6 +139,7 @@ async function captureSlides(
   content: PresentationDownloadContentOptions,
   includeLessonStrokes: boolean,
   onProgress?: (p: PresentationDownloadProgress) => void,
+  playVariants?: PresentationPlayVariants | null,
 ): Promise<Array<{ slide: PresentationSlide; canvas: HTMLCanvasElement; notes: string }>> {
   const normalized = normalizeDeck(deck);
   const total = slides.length;
@@ -120,7 +147,7 @@ async function captureSlides(
   for (let i = 0; i < slides.length; i++) {
     const slide = slides[i];
     onProgress?.({ phase: 'Folie vorbereiten…', current: i + 1, total });
-    const strokes = annotations.bySlideId[slide.id] ?? [];
+    const strokes = mergeExportInkStrokes(slide, annotations, playVariants, includeLessonStrokes);
     const { revealStep, revealEnabled } = revealCaptureOptions(slide, content);
     onProgress?.({ phase: 'Folie als Bild erfassen…', current: i + 1, total });
     const canvas = await captureSlideCanvas(
@@ -129,12 +156,13 @@ async function captureSlides(
       i,
       total,
       strokes,
-      includeLessonStrokes,
+      strokes.length > 0,
       1,
       {
         revealStep,
         revealEnabled,
         hideImages: !content.includeImages,
+        exportInkStrokes: strokes,
       },
     );
     out.push({
@@ -219,6 +247,7 @@ export async function runPresentationDownload(
     content,
     request.includeLessonStrokes !== false,
     onProgress,
+    playVariants,
   );
 
   if (formats.pdf) {

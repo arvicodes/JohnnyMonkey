@@ -7,6 +7,7 @@ import {
   LayoutZoneBox,
   normalizeSlide,
   PresentationSlide,
+  PresentationStroke,
   PresentationSlideFooter,
   SlideElement,
   SLIDE_REF_HEIGHT,
@@ -99,6 +100,8 @@ interface PresentationSlideViewProps {
   imageEditable?: boolean;
   /** PDF-Export: Layout wie im Editor, ohne Animations-Artefakte. */
   exportSnapshot?: boolean;
+  /** Stiftstriche beim Export (Annotationen, nicht nur slide.inkStrokes). */
+  exportInkStrokes?: PresentationStroke[];
   /** Bildgröße begrenzen (Editor). Ohne Wert: Original / Export. */
   imageMaxEdge?: number;
   /** Eingebettete Folien-Tinte (inkStrokes). Im Erstellen-Modus nur auf der Variante. */
@@ -140,6 +143,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   mediaInteractive = false,
   imageEditable = false,
   exportSnapshot = false,
+  exportInkStrokes,
   imageMaxEdge,
   showInkStrokes = true,
   exerciseInteractive = false,
@@ -160,6 +164,12 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
   } | null>(null);
   const slide = normalizeSlide(rawSlide);
   const pages = slidePageCount(slide);
+  const inkPreviewStrokes =
+    exportSnapshot && exportInkStrokes?.length
+      ? exportInkStrokes
+      : !exportSnapshot && showInkStrokes
+        ? slide.inkStrokes || []
+        : [];
   const resolvedImageMax =
     imageMaxEdge ?? (exportSnapshot ? undefined : SLIDE_IMAGE_EDITOR_MAX);
   const effectiveReveal = revealEnabled && slide.revealEnabled !== false;
@@ -933,7 +943,7 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
         editable || imageEditable || animationEditMode ? 25 : 5,
       )}
 
-      {!exportSnapshot && showInkStrokes && (slide.inkStrokes?.length ?? 0) > 0 && (
+      {inkPreviewStrokes.length > 0 && (
         <Box
           sx={{
             position: 'absolute',
@@ -943,7 +953,11 @@ const PresentationSlideView: React.FC<PresentationSlideViewProps> = ({
             overflow: 'hidden',
           }}
         >
-          <PresentationStrokesPreview strokes={slide.inkStrokes || []} scale={scale} logicalHeight={SLIDE_REF_HEIGHT * pages} />
+          <PresentationStrokesPreview
+            strokes={inkPreviewStrokes}
+            scale={scale}
+            logicalHeight={SLIDE_REF_HEIGHT * pages}
+          />
         </Box>
       )}
 

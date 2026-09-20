@@ -161,6 +161,8 @@ export type CaptureSlideExportOptions = {
   revealStep?: number;
   revealEnabled?: boolean;
   hideImages?: boolean;
+  /** Stiftstriche im DOM mitschneiden (Annotationen + Folien-Tinte). */
+  exportInkStrokes?: PresentationStroke[];
 };
 
 export async function captureSlideCanvas(
@@ -177,6 +179,7 @@ export async function captureSlideCanvas(
   const revealEnabled =
     captureOptions?.revealEnabled !== undefined ? captureOptions.revealEnabled : false;
   const hideImages = captureOptions?.hideImages === true;
+  const exportInkStrokes = captureOptions?.exportInkStrokes ?? [];
   const normalizedSlide = normalizeSlide(slide);
   const logicalH = slideLogicalHeight(normalizedSlide);
   const host = document.createElement('div');
@@ -222,12 +225,16 @@ export async function captureSlideCanvas(
           slideFooter={deck.slideFooter}
           deckTitle={deck.title}
           lessonPath={deck.lessonPath}
+          exportInkStrokes={exportInkStrokes}
         />
       );
     });
 
     await waitFrames(3);
     await waitForDomImages(mount);
+    if (exportInkStrokes.length > 0) {
+      await waitFrames(2);
+    }
     try {
       await document.fonts.ready;
     } catch {
@@ -275,12 +282,8 @@ export async function captureSlideCanvas(
       captureScale,
     );
     const ctx = normalizedCanvas.getContext('2d');
-    if (ctx) {
-      const slideInk = normalizedSlide.inkStrokes ?? [];
-      for (const stroke of slideInk) drawPresentationStroke(ctx, stroke);
-      if (includeStrokes && strokes.length > 0) {
-        for (const stroke of strokes) drawPresentationStroke(ctx, stroke);
-      }
+    if (ctx && includeStrokes && strokes.length > 0) {
+      for (const stroke of strokes) drawPresentationStroke(ctx, stroke);
     }
 
     return normalizedCanvas;
