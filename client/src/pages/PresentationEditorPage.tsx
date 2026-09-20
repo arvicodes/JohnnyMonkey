@@ -49,7 +49,9 @@ import {
   Redo as RedoIcon,
   ViewQuilt as LayoutIcon,
   UploadFile as UploadFileIcon,
+  FileDownload as DownloadIcon,
 } from '@mui/icons-material';
+import PresentationDownloadDialog from '../components/presentation/PresentationDownloadDialog';
 import PresentationSlideTemplateBar from '../components/presentation/PresentationSlideTemplateBar';
 import PresentationPptxImportDialog, {
   type PptxImportSelection,
@@ -332,6 +334,7 @@ const PresentationEditorPage: React.FC = () => {
   const slideSelectionAnchorRef = useRef<string | null>(null);
   const [snackbar, setSnackbar] = useState('');
   const [saveNamedOpen, setSaveNamedOpen] = useState(false);
+  const [downloadOpen, setDownloadOpen] = useState(false);
   const [saveNamedLabel, setSaveNamedLabel] = useState('');
   const [saveNamedBusy, setSaveNamedBusy] = useState(false);
   const [activeEditor, setActiveEditor] = useState<HTMLElement | null>(null);
@@ -4386,6 +4389,33 @@ const PresentationEditorPage: React.FC = () => {
 
           <Box sx={{ flex: 1, minWidth: 8 }} />
 
+          <Tooltip title="Download … (PDF / PPTX, alle oder aktuelle Folie)">
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<DownloadIcon sx={{ fontSize: 17 }} />}
+              onClick={() => setDownloadOpen(true)}
+              disabled={!deck?.slides?.length}
+              sx={{
+                flexShrink: 0,
+                height: 30,
+                mr: 0.75,
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: 'none',
+                borderColor: PRES_EDITOR_UI.barBorder,
+                color: PRES_EDITOR_UI.textMuted,
+                '&:hover': {
+                  borderColor: PRES_EDITOR_UI.accent,
+                  color: PRES_EDITOR_UI.accent,
+                  bgcolor: PRES_EDITOR_UI.accentSoft,
+                },
+              }}
+            >
+              Download …
+            </Button>
+          </Tooltip>
+
           <Box
             sx={{
               display: 'flex',
@@ -5647,6 +5677,16 @@ const PresentationEditorPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {deck && annotations && (
+        <PresentationDownloadDialog
+          open={downloadOpen}
+          onClose={() => setDownloadOpen(false)}
+          deck={deck}
+          annotations={annotations}
+          currentSlideId={activeId ?? undefined}
+        />
+      )}
 
       <PresentationPptxImportDialog
         open={pptxImportOpen}

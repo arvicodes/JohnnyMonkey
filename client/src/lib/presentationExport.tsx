@@ -69,7 +69,7 @@ function waitFrames(n = 2): Promise<void> {
   });
 }
 
-function injectExportStyles(host: HTMLElement): () => void {
+function injectExportStyles(host: HTMLElement, hideImages = false): () => void {
   const style = document.createElement('style');
   style.setAttribute('data-pres-export-styles', 'true');
   style.textContent = `
@@ -82,6 +82,12 @@ function injectExportStyles(host: HTMLElement): () => void {
     [data-pres-export-host] [data-pres-slide] * {
       animation: none !important;
       transition: none !important;
+    }
+    ${
+      hideImages
+        ? `[data-pres-export-host] [data-pres-slide] img,
+    [data-pres-export-host] [data-pres-element] img { visibility: hidden !important; }`
+        : ''
     }
   `;
   host.appendChild(style);
@@ -118,13 +124,29 @@ function prepareSlideCloneForCapture(clonedDoc: Document, clonedSlide: HTMLEleme
   });
 }
 
-function normalizeCaptureCanvas(source: HTMLCanvasElement): HTMLCanvasElement {
-  if (source.width === SLIDE_REF_WIDTH && source.height === SLIDE_REF_HEIGHT) {
-    return source;
+function normalizeCaptureCanvas(
+  source: HTMLCanvasElement,
+  targetWidth: number,
+  targetHeight: number,
+  captureScale: number,
+): HTMLCanvasElement {
+  const wantW = Math.max(1, Math.round(targetWidth * captureScale));
+  const wantH = Math.max(1, Math.round(targetHeight * captureScale));
+  if (source.width === wantW && source.height === wantH) {
+    if (captureScale === 1) return source;
+    const out = document.createElement('canvas');
+    out.width = targetWidth;
+    out.height = targetHeight;
+    const ctx = out.getContext('2d');
+    if (!ctx) return source;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, out.width, out.height);
+    ctx.drawImage(source, 0, 0, out.width, out.height);
+    return out;
   }
   const out = document.createElement('canvas');
-  out.width = SLIDE_REF_WIDTH;
-  out.height = SLIDE_REF_HEIGHT;
+  out.width = targetWidth;
+  out.height = targetHeight;
   const ctx = out.getContext('2d');
   if (!ctx) return source;
   ctx.fillStyle = '#ffffff';
@@ -133,15 +155,28 @@ function normalizeCaptureCanvas(source: HTMLCanvasElement): HTMLCanvasElement {
   return out;
 }
 
-async function captureSlideCanvas(
+export type CaptureSlideExportOptions = {
+  includeStrokes?: boolean;
+  captureScale?: number;
+  revealStep?: number;
+  revealEnabled?: boolean;
+  hideImages?: boolean;
+};
+
+export async function captureSlideCanvas(
   deck: PresentationDeck,
   slide: PresentationSlide,
   slideIndex: number,
   slideTotal: number,
   strokes: PresentationStroke[],
   includeStrokes: boolean,
-  captureScale = EXPORT_CAPTURE_SCALE
+  captureScale = EXPORT_CAPTURE_SCALE,
+  captureOptions?: CaptureSlideExportOptions,
 ): Promise<HTMLCanvasElement> {
+  const revealStep = captureOptions?.revealStep ?? 999;
+  const revealEnabled =
+    captureOptions?.revealEnabled !== undefined ? captureOptions.revealEnabled : false;
+  const hideImages = captureOptions?.hideImages === true;
   const normalizedSlide = normalizeSlide(slide);
   const logicalH = slideLogicalHeight(normalizedSlide);
   const host = document.createElement('div');
@@ -165,7 +200,7 @@ async function captureSlideCanvas(
   mount.style.height = `${logicalH}px`;
   host.appendChild(mount);
 
-  const removeStyles = injectExportStyles(host);
+  const removeStyles = injectExportStyles(host, hideImages);
   const root = createRoot(mount);
 
   try {
@@ -176,8 +211,8 @@ async function captureSlideCanvas(
         <PresentationSlideView
           slide={normalizedSlide}
           scale={1}
-          revealStep={999}
-          revealEnabled={false}
+          revealStep={revealStep}
+          revealEnabled={revealEnabled}
           exportSnapshot
           showShadow={false}
           showSlideNumbers={deck.showSlideNumbers !== false}
@@ -216,16 +251,21 @@ async function captureSlideCanvas(
       scrollX: 0,
       scrollY: 0,
       width: SLIDE_REF_WIDTH,
-      height: SLIDE_REF_HEIGHT,
+      height: logicalH,
       windowWidth: SLIDE_REF_WIDTH,
-      windowHeight: SLIDE_REF_HEIGHT,
+      windowHeight: logicalH,
       imageTimeout: 20000,
       onclone: (clonedDoc, clonedElement) => {
         prepareSlideCloneForCapture(clonedDoc, clonedElement);
       },
     });
 
-    const normalizedCanvas = normalizeCaptureCanvas(canvas);
+    const normalizedCanvas = normalizeCaptureCanvas(
+      canvas,
+      SLIDE_REF_WIDTH,
+      logicalH,
+      captureScale,
+    );
     const ctx = normalizedCanvas.getContext('2d');
     if (ctx) {
       const slideInk = normalizedSlide.inkStrokes ?? [];
@@ -611,7 +651,7 @@ export async function refreshPresentationPdfsFromLessonFolder(lessonPath: string
   });
 }
 
-function triggerBlobDownload(blob: Blob, downloadName: string): void {
+export function triggerBlobDownload(blob: Blob, downloadName: string): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
