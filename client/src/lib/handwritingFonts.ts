@@ -1,9 +1,9 @@
 /** Google Fonts + Stacks für Handschrift (Folien & Prüfungs-Kommentare). */
 
+import { EXAM_TEACHER_RED } from './examTeacherSignature';
+
 export const GOOGLE_HANDWRITING_FONTS_HREF =
   'https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Caveat:wght@400;600&family=Indie+Flower&family=Kalam:wght@400;700&family=Patrick+Hand&family=Shadows+Into+Light&display=swap';
-
-import { EXAM_TEACHER_RED } from './examTeacherSignature';
 
 /** Lehrer-Kommentare in freigegebenen Prüfungen / Vorschau. */
 export const EXAM_TEACHER_COMMENT_FONT =
@@ -28,20 +28,37 @@ export const HANDWRITING_FONT_FAMILIES: { label: string; value: string }[] = [
   },
 ];
 
+/** Nur Abstand — kein Kasten, kein Hintergrund. */
+export const EXAM_TEACHER_COMMENT_CONTAINER_STYLE =
+  'margin: 18px 0 14px; padding: 0; background: transparent; border: none; display: block; width: 100%; box-shadow: none;';
+
 export const teacherHandwritingDocumentCss = `
 .jm-teacher-handwriting {
   font-family: ${EXAM_TEACHER_COMMENT_FONT};
-  font-size: 1.55em;
-  line-height: 1.4;
-  font-weight: 600;
+  font-size: 2rem;
+  line-height: 1.35;
+  font-weight: 700;
   color: ${EXAM_TEACHER_RED};
   white-space: pre-wrap;
 }
-.jm-task-teacher-comment {
-  margin-top: 14px;
-  margin-bottom: 6px;
+.jm-task-teacher-comment,
+.jm-exam-teacher-comment {
+  margin: 18px 0 14px;
+  padding: 0;
+  background: transparent;
+  border: none;
 }
 `;
+
+/** HTML für eingebettete Prüfungs-Kommentare (escaped plain text). */
+export function examTeacherCommentMarkup(plainText: string): string {
+  const safe = String(plainText || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+  return `<div class="jm-exam-teacher-comment" style="${EXAM_TEACHER_COMMENT_CONTAINER_STYLE}"><div class="jm-teacher-handwriting">${safe}</div></div>`;
+}
 
 /** In Prüfungs-HTML (iframe / Freigabe) Webfonts + Klassen laden. */
 export function injectHandwritingFontsIntoDocument(doc: Document): void {

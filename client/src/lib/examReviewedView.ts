@@ -507,10 +507,10 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     }
     .jm-review-result .teacher-comment .jm-teacher-handwriting {
       font-family: ${EXAM_TEACHER_COMMENT_FONT};
-      font-size: 1.55em;
-      font-weight: 600;
+      font-size: 2rem;
+      font-weight: 700;
       color: ${EXAM_TEACHER_RED};
-      line-height: 1.4;
+      line-height: 1.35;
       white-space: pre-wrap;
       margin-top: 0;
     }
