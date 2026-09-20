@@ -1,5 +1,4 @@
 import { jsPDF } from 'jspdf';
-import PptxGenJS from 'pptxgenjs';
 import {
   PresentationAnnotations,
   PresentationDeck,
@@ -13,6 +12,7 @@ import {
 } from './presentationDeck';
 import { getSlideMaxRevealSteps } from './presentationReveal';
 import { captureSlideCanvas, triggerBlobDownload } from './presentationExport';
+import { buildImagePptxBlob, canvasToPngBytes } from './presentationImagePptx';
 
 export type PresentationDownloadScope = 'all' | 'current';
 
@@ -157,32 +157,15 @@ async function buildPdfDownload(
 async function buildPptxDownload(
   captures: Array<{ canvas: HTMLCanvasElement; notes: string }>,
 ): Promise<Blob> {
-  const pptx = new PptxGenJS();
-  pptx.author = 'JohnnyMonkey';
-  pptx.subject = 'Präsentation';
-
-  const slideW = 13.333;
-  let maxAspect = 7.5 / slideW;
-  for (const { canvas } of captures) {
-    maxAspect = Math.max(maxAspect, canvas.height / Math.max(1, canvas.width));
-  }
-  const slideH = Math.max(7.5, slideW * maxAspect);
-  pptx.defineLayout({ name: 'JM_EXPORT', width: slideW, height: slideH });
-  pptx.layout = 'JM_EXPORT';
-
-  for (const { canvas, notes } of captures) {
-    const aspect = canvas.height / Math.max(1, canvas.width);
-    const imgH = slideW * aspect;
-    const slide = pptx.addSlide();
-    const dataUrl = canvas.toDataURL('image/png');
-    slide.addImage({ data: dataUrl, x: 0, y: 0, w: slideW, h: imgH });
-    if (notes.trim()) {
-      slide.addNotes(notes);
-    }
-  }
-
-  const out = await pptx.write({ outputType: 'blob' });
-  return out as Blob;
+  const slides = await Promise.all(
+    captures.map(async ({ canvas, notes }) => ({
+      png: await canvasToPngBytes(canvas),
+      widthPx: canvas.width,
+      heightPx: canvas.height,
+      notes: notes.trim() || undefined,
+    })),
+  );
+  return buildImagePptxBlob(slides);
 }
 
 export async function runPresentationDownload(
