@@ -506,9 +506,14 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       font-weight: 700;
       color: ${EXAM_TEACHER_GRADE_RED};
       text-align: left;
-      padding: 0 0 6px;
+      padding: 0;
       line-height: 1.1;
+    }
+    .jm-review-rule {
+      width: 100%;
+      border: none;
       border-bottom: 2px solid rgba(46, 125, 50, 0.55);
+      margin: 8px 0 0;
     }
     .jm-meta-col {
       flex: 0 0 auto;
@@ -530,12 +535,13 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       color: #546e7a;
     }
     .jm-review-result .teacher-comment {
-      margin-top: 12px;
+      margin-top: 10px;
       padding-top: 0;
       border-top: none;
       font-size: 14px;
       color: #757575;
       font-weight: 500;
+      text-align: right;
     }
     .jm-review-result .teacher-comment strong {
       display: none;
@@ -632,9 +638,10 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
         }
       </div>
     </div>
+    <hr class="jm-review-rule" />
     ${
       generalComment
-        ? `<div class="teacher-comment"><span class="jm-comment-label">Kommentar</span><span class="jm-teacher-handwriting">${escapeHtmlText(generalComment)}</span></div>`
+        ? `<div class="teacher-comment"><span class="jm-comment-label">Kommentar:</span> <span class="jm-teacher-handwriting">${escapeHtmlText(generalComment)}</span></div>`
         : ''
     }
   `;
